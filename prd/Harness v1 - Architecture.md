@@ -6,6 +6,7 @@
 **From:** Ian
 **Date:** 2026-09-28
 **Status:** draft for iteration
+**Revision:** v1.0 reviewed by Jesse 2026-09-28 · v1.1 in progress, one PR per review item; see "Review responses" at the end
 **Sits under:** Platform Architecture Plan §1, §6, §8, §18 · Key Visuals fig. 2 and 5 · BML Harness
 
 > **Provenance.** This file is the markdown form of the artifact Jesse reviewed on 2026-09-28 (https://claude.ai/artifact/EpMRSpB9mKa1Pr2kRENrfT). The text is unchanged from that artifact; the figures are the same SVGs, extracted to `figures/`. Jesse's review is in `Harness v1 - Architecture Review.md`. Revisions from here on happen in this file, in git.
@@ -57,7 +58,7 @@ An override is allowed, because a person may overrule the reviewers. The overrid
 
 ## Figure 4 · Lending token aid: a person's own Claude Code picks up work
 
-Anyone with a platform login can point their own Claude Code at the harness and work a card with their own tokens. It is the same persona, the same verbs, and the same gates as a platform-hosted run. Nothing about the gate cares where the agent ran.
+Anyone holding `editor` on the harness's JD area can point their own Claude Code at the harness and work a card with their own tokens. It is the same persona, the same verbs, and the same gates as a platform-hosted run. Nothing about the gate cares where the agent ran.
 
 ![Sequence from left to right: a staff member's Claude Code signs in through Access and is minted an agent identity under that person; it polls and claims an item on a lease; a git worktree on branch harness/item is created; the run works, and every record_run_step call renews the lease and reports tokens; submit_to_gate parks the item; the person approves on the phone. If the laptop closes, the lease expires and the item is released for anyone else.](figures/harness-v1-fig4-external-runner.svg)
 
@@ -66,6 +67,32 @@ Anyone with a platform login can point their own Claude Code at the harness and 
 **Different, and said so:** tokens are reported by the runner, not metered; cost basis is "subscription" on /health. Git writes use the person's own credentials: branch protection and the ship rule's head check guard the merge. No checkpointing: a dead laptop means a released lease.
 
 **What the picture claims.** An external runner is not a special mode. It is a persona on a different host, and the MCP surface is the whole interface, so there is nothing a platform-hosted run can do that a laptop cannot, and nothing a laptop can do that a platform run cannot. Staff, volunteers, and contractors can contribute agent time with their own tokens and their own login, and the merge is still a person's decision.
+
+## Who may act: grants, not names
+
+The harness has no authorization model of its own. Every "who" in this document resolves through the plan's one model (§4): `role_grants (person, role ∈ admin|editor|viewer, scope ∈ org|jd_area)`, agents' grants ≤ their owner's, and the principal travelling with every request. A harness is scoped to a JD area the way a page is, and the area's grants decide who may claim, who may approve, and who may see.
+
+```
+harnesses(id, key, template, jd_area, ...)
+-- the software harness lives in 80–89
+-- a BML harness lives in the area of the program whose product it serves
+```
+
+| Act | Requires | Who holds it in v1 |
+|---|---|---|
+| See a harness, its board, and its items | `viewer` on the harness's area, or the org-wide read that `editor` anywhere carries | everyone, as for any internal page |
+| Claim an item, on either host | `editor` on the harness's area; an agent claims through its owner's grant | software: `editor(80-89)` · BML: `editor` on the program's area |
+| Mint `agent:<person>/<device>` and run externally | the same `editor` grant; the identity inherits it and nothing more | same set; there is no separate external-runner list |
+| Approve, reject, take over, or override at Ship | `admin` on the harness's area | a grants-table row, not a name in a config file |
+| Approve an item whose diff touches ledger, ACL, or infrastructure code | `admin` on the area **and** `admin(20-29)`, the same rule the plan applies to posting a journal entry | finance admin; the risk tier that flags such items is review item 7 |
+| Create or activate a persona on a harness | `admin` on the harness's area; the persona's toolset is bounded by the creator's grants | see "Making a persona" |
+
+Consequences the reader should be able to check:
+
+- **The approver set is a query, not a setting.** "Who approves at Ship" is `people with admin(area)`. Adding a second approver is a grant with an optional `expires_at`, audit-logged like every other grant, and it appears on the quarterly access review. Jesse being the only approver today is a fact about the grants table, not about the harness.
+- **Visibility is the area's, not "internal".** An earlier draft called harness data "classified internal". That is not a platform concept; a harness item carries its area's classification and offline eligibility from §2.6 exactly as any page does. Software-harness items in 80–89 are `internal`, so they may sync to a registered device. Nothing in a harness item may hold a value the principal could not read directly.
+- **BML measurements stay on the public side in v1.** The Validate stage reads web analytics and mailing-list aggregates that carry no donor identity. Any measurement drawn from areas 40–49 passes through the finance and CRM read exclusions and the FRED sensitivity filter of §4 and §9, and is out of scope until a BML harness needs it.
+- **Two CI tests.** Every harness command and MCP verb calls `can(actor, verb, resource)` with the harness's area as the resource scope; a route that skips it fails the build. And no grant, on any path, lets an agent identity write `gate_decisions`, which is Figure 3 restated as a test.
 
 ## Jobs are config, verbs are code
 
@@ -137,7 +164,7 @@ A persona picks an engine the way it picks a run shape. The engine is code behin
 - Gates first: approve, reject, take over from a push
 - Flow and Board read, reorder, priority; Item play-by-play
 - Ranked, coalesced push; resume by watermark after sleep
-- Harness data is internal, so it may live on a device
+- Harness items carry their area's §2.6 classification, which decides whether they may live on a device
 
 ## Controls on the pipeline
 
@@ -162,7 +189,7 @@ Each row is a place where this proposal adds to, reorders, or makes concrete som
 | # | Decision | The plan today | This proposal | Kind |
 |---|---|---|---|---|
 | D1 | First harness instance | §8 doctrine for software; GitHub App in Phase 4 | Software delivery first, BML second, both shipped as templates; GitHub App pulled into v1 because its Deploy and Measure facts are already machine-readable | reorders phasing |
-| D2 | Phone app | Web plus Tauri desktop; no mobile | iOS and Android app on the same contract; harness data classified internal; stack open: Kotlin Multiplatform or Expo | new scope |
+| D2 | Phone app | Web plus Tauri desktop; no mobile | iOS and Android app on the same contract; harness items follow their area's §2.6 classification; stack open: Kotlin Multiplatform or Expo | new scope |
 | D3 | Live updates | HTMX and islands; Durable Objects reserved for page sync hubs | One Durable Object per active harness as wakeup hub with per-session cursors; polling stays as the fallback | extends DO use |
 | D4 | Client contract | Zod at every boundary; shared TypeScript types | A published contract package, one live version, golden fixtures, CI conformance, so web, phone and personas cannot drift | addition |
 | D5 | Where agents run | Workflows; evaluate Cloudflare OS at Phase 4.5 | Two first-class hosts in v1: uw-app Workflows, and a staff member's own Claude Code over remote MCP. One tool registry, one CI test that the two hosts see identical verbs. Cloudflare OS becomes a third host later, not a replacement | extension |
@@ -170,7 +197,7 @@ Each row is a place where this proposal adds to, reorders, or makes concrete som
 | D16 | Engine seam | Workflows host runs; model provider unstated | Five engines behind one seam, chosen per persona: claude-messages in the step, claude-code-sandbox, claude-managed-agent, codex-sandbox, external. A vendor SDK is named in one directory; a CI text gate refuses it elsewhere. A new engine is a directory, never a branch | makes concrete |
 | D17 | Billing by host | AI Gateway budgets and a breaker (§6, §18) | Hosted runs: organization API keys, BYOK through AI Gateway, one spend limit across Anthropic and OpenAI, hard stop or fail-over to a cheaper model. External runs: the person's own plan. Nonprofit Team seats ($8 per user per month, Claude Code included) for staff who lend time. No subscription credential is ever stored on the platform | policy |
 | D12 | Write boundary on a laptop | Write tokens live in the host step, never in the model process | On a laptop the person's own git credentials are present. Accepted, with three guards: branch protection on main, a `harness/<item>` branch convention, and the ship rule checking that the PR head is the commit the item expected | accepted risk |
-| D13 | Who may run externally | Agents have identities and Access service tokens; grants ≤ owner's | Any person with an Access login can mint `agent:<person>/<device>` under themselves; a harness may restrict external pickup to a role. Default open for the software harness, role-gated for BML | policy |
+| D13 | Who may run externally | Agents have identities and Access service tokens; grants ≤ owner's | Any person holding `editor` on the harness's JD area may mint `agent:<person>/<device>` under themselves and claim from it. There is no separate allow-list: the software harness is open to `editor(80-89)`, a BML harness to `editor` on its program's area. See "Who may act" | policy |
 | D6 | Loop edges | Stages in a straight line, ordered by position; a card only moves forward | `feeds` on each stage so Iterate can route to Build or Package | extension |
 | D7 | Item history | `history jsonb` on `queue_items` | A `harness_events` table as the source of truth, with replay ≡ record pinned by test; it is also the dashboard feed | column → table |
 | D8 | Ship gate | "Mechanical gates"; PR declares what it closes, risks, touches | A pure function over GitHub facts with a closed set of refusal reasons; the item's own record is not an input | makes concrete |
@@ -183,13 +210,30 @@ Each row is a place where this proposal adds to, reorders, or makes concrete som
 
 1. Is the BML harness meant to run on the same engine as the software pipeline, or do you see them as separate things? Figure 2 assumes one engine.
 2. For the Deploy Package, which channel should be wired first: the web host, the mailing list, or a social connector? The rest can ship as "not yet wired."
-3. Who besides you approves at Ship in v1? The gate model supports any human identity with the right grant; the question is policy.
+3. ~~Who besides you approves at Ship in v1? The gate model supports any human identity with the right grant; the question is policy.~~ **Answered by the review:** whoever holds `admin` on the harness's JD area. A grants-table row, not a name. See "Who may act".
 4. Does a phone app belong in v1 at all, and if so is "Gates first" the right first screen?
 5. Should the Iterate persona be allowed to open a revision unattended (a scheduled beat with a capability word), or must every revision start with a person?
 6. External runners (Figure 4): should any staff login be able to pick up software-harness cards from their own Claude Code, or only a granted role? And should reported spend count against the harness budget, or be tracked separately as contributed time?
 7. Personas: is the scout pass its own persona with its own stage exit, or the first step inside the Builder's run, as §6 reads literally? And in the BML drawing, is the Iterate box a person's job, an agent's, or both?
 8. Making a persona: is "a persona is a page type with a typed form, activated by a person" the experience you want for non-technical staff, with the interview layer in v1.1? Or should the interview be the v1 front door?
 9. Budget: the Executive Brief's AI-tooling line is about $1,250 a month. Thirty heavy hosted runs a day exceeds it on any current model. How much of the Builder work do you expect people on their own seats to carry, and should we apply for Claude for Nonprofits Team seats now?
+
+## Review responses
+
+One row per item in *Harness v1 - Architecture Review.md*, filled in as each PR lands.
+
+| Item | The review said | Response | Where |
+|---|---|---|---|
+| 1 · Bind to the platform ACL | The harness names no areas, roles, or grants; it must derive from the plan's one model | **Accepted in full.** `harnesses.jd_area` added; claim = `editor(area)`, approve = `admin(area)`, finance-touching items add `admin(20-29)`; D13 rewritten; "classified internal" replaced by the area's §2.6 classification; BML measurements limited to public analytics in v1; two CI tests named | "Who may act", D2, D13, question 3 |
+| 2 · Ship invariant in Postgres | | *pending* | |
+| 3 · Delegations for unattended loops | | *pending* | |
+| 4 · One verb registry | | *pending* | |
+| 5 · Reconcile the cost line | | *pending* | |
+| 6 · Engine hosts in the topology | | *pending* | |
+| 7 · Risk tier in the Ship rule | | *pending* | |
+| 8 · Close stage produces memory | | *pending* | |
+| 9 · External-runner failure mode | | *pending* | |
+| Scope cut · phone app | | *pending; needs Jesse's ruling, conflicts with the earlier v1 brief* | |
 
 ---
 
