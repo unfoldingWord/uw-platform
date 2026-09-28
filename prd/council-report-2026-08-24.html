@@ -1,0 +1,359 @@
+<meta charset="utf-8">
+<title>Council Verdict on An App For Everything</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800;6..12,900&display=swap">
+<style>
+  :root {
+    --bg: #F4F8FA;
+    --surface: #FFFFFF;
+    --sunk: #EDF3F6;
+    --ink: #231F20;
+    --muted: #5A6E7A;
+    --line: #C4D3DB;
+    --ocean: #014263;
+    --panel: #014263;
+    --panel-ink: #E8F4FA;
+    --inspire: #31ADE3;
+    --inspire-soft: #E3F3FB;
+    --cultivate: #3E9A9D;
+    --cultivate-soft: #E4F4F4;
+    --kindle: #B87310;
+    --kindle-soft: #FBEFDC;
+    --red: #B4453C;
+    --red-soft: #F9E7E5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0B171E;
+      --surface: #11222C;
+      --sunk: #0E1D26;
+      --ink: #E6EEF2;
+      --muted: #94AAB5;
+      --line: #2C4756;
+      --ocean: #7FC3E8;
+      --panel: #0E2C3C;
+      --panel-ink: #D9EDF8;
+      --inspire: #31ADE3;
+      --inspire-soft: #10303F;
+      --cultivate: #70C9CC;
+      --cultivate-soft: #0F2E30;
+      --kindle: #E59D33;
+      --kindle-soft: #33270F;
+      --red: #E08A80;
+      --red-soft: #33201E;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0B171E;
+    --surface: #11222C;
+    --sunk: #0E1D26;
+    --ink: #E6EEF2;
+    --muted: #94AAB5;
+    --line: #2C4756;
+    --ocean: #7FC3E8;
+    --panel: #0E2C3C;
+    --panel-ink: #D9EDF8;
+    --inspire: #31ADE3;
+    --inspire-soft: #10303F;
+    --cultivate: #70C9CC;
+    --cultivate-soft: #0F2E30;
+    --kindle: #E59D33;
+    --kindle-soft: #33270F;
+    --red: #E08A80;
+    --red-soft: #33201E;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Nunito Sans', 'Avenir', 'Montserrat', sans-serif;
+    line-height: 1.6;
+    margin: 0;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 40px 24px 96px; }
+
+  header.top { border-bottom: 3px solid var(--inspire); padding-bottom: 22px; }
+  .kicker { color: var(--inspire); font-size: 12.5px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 8px; }
+  h1 { font-size: clamp(28px, 4.4vw, 40px); font-weight: 900; line-height: 1.1; margin: 0; letter-spacing: -0.015em; text-wrap: balance; }
+  .sub { color: var(--muted); margin: 10px 0 0; font-size: 16px; max-width: 66ch; }
+  .meta { color: var(--muted); font-size: 13px; margin-top: 14px; }
+
+  .verdict { background: var(--panel); color: var(--panel-ink); border-radius: 12px; padding: 28px 30px; margin: 30px 0 8px; }
+  .verdict .kicker { color: var(--inspire); }
+  .verdict h2 { font-size: clamp(21px, 3vw, 27px); font-weight: 900; margin: 0 0 12px; line-height: 1.2; text-wrap: balance; color: var(--panel-ink); }
+  .verdict p { margin: 0 0 12px; font-size: 15.5px; opacity: 0.95; }
+  .verdict p:last-child { margin-bottom: 0; }
+
+  h2.sec { font-size: clamp(19px, 2.6vw, 24px); font-weight: 800; margin: 46px 0 6px; text-wrap: balance; }
+  .lede { color: var(--muted); margin: 0 0 18px; max-width: 72ch; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+  .card h3 { margin: 0 0 6px; font-size: 15px; font-weight: 800; }
+  .card p { margin: 0; font-size: 14px; color: var(--muted); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  .scroller { overflow-x: auto; }
+  th { text-align: left; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 0 12px 8px 0; font-weight: 800; border-bottom: 1px solid var(--line); }
+  td { padding: 11px 12px 11px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td.who { font-weight: 800; white-space: nowrap; }
+
+  .pill { display: inline-block; font-size: 11.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+  .pill.cond { background: var(--kindle-soft); color: var(--kindle); }
+  .pill.win { background: var(--cultivate-soft); color: var(--cultivate); }
+  .pill.blind { background: var(--red-soft); color: var(--red); }
+
+  ul.tight { margin: 0 0 0 0; padding-left: 20px; }
+  ul.tight li { margin-bottom: 9px; }
+
+  .do-first { background: var(--kindle-soft); border: 1px solid var(--kindle); border-left-width: 5px; border-radius: 10px; padding: 22px 24px; margin-top: 14px; }
+  .do-first .q { font-size: 17px; font-weight: 800; margin: 0 0 10px; line-height: 1.35; }
+  .do-first p { margin: 0; font-size: 14.5px; color: var(--muted); }
+
+  .build { background: var(--cultivate-soft); border: 1px solid var(--cultivate); border-radius: 10px; padding: 18px 20px; }
+  .gate  { background: var(--inspire-soft); border: 1px solid var(--inspire); border-radius: 10px; padding: 18px 20px; }
+  .hold  { background: var(--red-soft); border: 1px solid var(--red); border-radius: 10px; padding: 18px 20px; }
+  .band h3 { margin: 0 0 10px; font-size: 14px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
+  .build h3 { color: var(--cultivate); }
+  .gate h3 { color: var(--inspire); }
+  .hold h3 { color: var(--red); }
+  .band ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+  .band li { margin-bottom: 7px; }
+  .bands { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 14px; align-items: start; }
+
+  details { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 10px; }
+  summary { cursor: pointer; padding: 14px 18px; font-weight: 800; font-size: 15px; list-style: none; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; color: var(--inspire); font-size: 20px; font-weight: 800; line-height: 1; }
+  details[open] summary::after { content: "\2212"; }
+  summary:focus-visible { outline: 2px solid var(--inspire); outline-offset: 2px; border-radius: 10px; }
+  .body { padding: 0 18px 18px; font-size: 14.5px; color: var(--ink); border-top: 1px solid var(--line); }
+  .body p { margin: 13px 0; }
+  .body p.scope { color: var(--kindle); font-weight: 700; }
+  .role { color: var(--muted); font-weight: 600; font-size: 13px; }
+
+  footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; max-width: 74ch; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <p class="kicker">LLM Council · Verdict</p>
+    <h1>Should unfoldingWord build An App For Everything?</h1>
+    <p class="sub">Five advisors reviewed the executive brief and the architecture plan independently, peer-reviewed each other anonymously, and the chairman synthesized the result.</p>
+    <p class="meta">24 August 2026 · 5 advisors · 5 peer reviews · unanimous on two findings</p>
+  </header>
+
+  <div class="verdict">
+    <p class="kicker">The recommendation</p>
+    <h2>Staged GO — build the reporting layer, gate the ledger behind an auditor's answer, reject the current scope and timeline as written.</h2>
+    <p>Five advisors returned five independent CONDITIONAL-GOs. Not one endorsed the plan as scoped; not one said build nothing. The problem is real and documented. The prescription overshoots it, in the wrong order, on a timeline that does not survive arithmetic.</p>
+    <p>The premise that AI collapses build cost may well be true. Grant it entirely, and every binding constraint below still stands — because they are almost all non-build costs. AI does not get you an auditor's sign-off, does not create segregation of duties, and does not fix a bus factor of one.</p>
+  </div>
+
+  <h2 class="sec">Where the council landed</h2>
+  <p class="lede">Every advisor reached CONDITIONAL-GO. Four converged on nearly identical scope. One broke the other way and was unanimously flagged in peer review.</p>
+  <div class="scroller">
+  <table>
+    <thead>
+      <tr><th>Advisor</th><th>Verdict</th><th>Core argument</th><th>Scope allowed</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="who">First Principles <span class="pill win">Strongest ×5</span></td>
+        <td><span class="pill cond">Conditional</span></td>
+        <td>Three taxonomies is a governance vacuum, not a software defect. A canonical program ID is created by people in a meeting. Make that decision and the systems reconcile with no code.</td>
+        <td>Canonical ID registry + read-only warehouse</td>
+      </tr>
+      <tr>
+        <td class="who">Contrarian</td>
+        <td><span class="pill cond">Conditional</span></td>
+        <td>The savings number is fiction, the timeline is internally contradictory, and Sage and Virtuous are liability transfers, not feature purchases. No auditor has said yes — that is a gate, not a risk.</td>
+        <td>Warehouse + canonical dimension; revisit after 12 months unattended</td>
+      </tr>
+      <tr>
+        <td class="who">Executor</td>
+        <td><span class="pill cond">Conditional</span></td>
+        <td>60–75 weeks of estimates from a part-time builder is 3+ years, and the sequencing puts every dollar of payoff after the riskiest work.</td>
+        <td>6-week budget-vs-actual-vs-field dashboard, used weekly by 3 leads</td>
+      </tr>
+      <tr>
+        <td class="who">Outsider</td>
+        <td><span class="pill cond">Conditional</span></td>
+        <td>A ledger whose designer, implementer, operator and reviewer are one person — an executive with financial authority — is a segregation-of-duties finding before anyone opens a file.</td>
+        <td>Read-only reporting layer + FRED cleanup, 6–10 weeks</td>
+      </tr>
+      <tr>
+        <td class="who">Expansionist <span class="pill blind">Blind spot ×5</span></td>
+        <td><span class="pill cond">Conditional</span></td>
+        <td>The savings are a rounding error; the real asset is a reusable public good for hundreds of small nonprofits, mission-consistent with Door43 and DCS.</td>
+        <td>Multi-tenant and open-licensed from the first commit</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 class="sec">Where the council agrees</h2>
+  <p class="lede">Four points converged independently. These are the high-confidence signals.</p>
+  <div class="grid">
+    <div class="card">
+      <h3>The diagnosis is right; the prescription overshoots</h3>
+      <p>The documented pain is reporting and governance. None of it is fixed by replacing the general ledger. "Sage is the one system that's working."</p>
+    </div>
+    <div class="card">
+      <h3>The savings figure does not survive contact</h3>
+      <p>$30K is an FP&amp;A package never purchased. Notion's $3.5K is noise. The real cost — an executive's build capacity — appears nowhere in the table.</p>
+    </div>
+    <div class="card">
+      <h3>The timeline is off by roughly 3×</h3>
+      <p>The plan's own phases total 60–76 weeks full-time. The builder is not full-time. Two advisors reached 2–3 years independently.</p>
+    </div>
+    <div class="card">
+      <h3>The ledger is sequenced backwards</h3>
+      <p>Riskiest component, largest share of real savings, lands last — after 40+ weeks of prerequisites, run by the least-available person.</p>
+    </div>
+  </div>
+
+  <h2 class="sec">Where the council clashes</h2>
+  <p class="lede">One genuine disagreement, and it was settled decisively in peer review.</p>
+  <div class="card" style="margin-bottom:14px">
+    <h3>The Expansionist versus everyone else</h3>
+    <p style="color:var(--ink)">All five reviewers independently named it the biggest blind spot — the only unanimous verdict in the round. The rebuttals: one peer team converging on an architecture is not market demand; no funder was named; multi-tenancy adds 30–40% scope to a plan already 3× over schedule; and open-sourcing a fund-accounting ledger other nonprofits book on transfers audit liability <em>toward</em> unfoldingWord, not away. What survives: the mission-alignment argument is real — but it justifies a license, not more scope.</p>
+  </div>
+  <div class="card">
+    <h3>A quieter clash: how much to build at all</h3>
+    <p style="color:var(--ink)">The Executor wants a 6-week dashboard. The Contrarian wants 12 months of proven, unattended operation before revisiting anything. The First Principles Thinker argues the decisive act may require no code at all.</p>
+  </div>
+
+  <h2 class="sec">Blind spots the peer review caught</h2>
+  <p class="lede">Four findings emerged only in review — and three cut against the council's own consensus.</p>
+  <ul class="tight">
+    <li><strong>Nobody build-vs-buy tested the fallback.</strong> Everyone converged on "build a warehouse" without asking whether Airbyte/Fivetran plus Metabase, or Sage Intacct's own dimension model, delivers it in days. Two reviewers noted the Google Sheet may exist because a licensed Intacct module was never configured. The build bias survived into the consensus.</li>
+    <li><strong>The recommended scope inherits the defect it rejects.</strong> Every path still routes through one person. A warehouse orphaned by Jesse's departure is worse than Sage orphaned by it — Sage has a vendor.</li>
+    <li><strong>The ROI denominator is unmeasured.</strong> Nobody asked what the reconciliation pain actually costs per year in hours.</li>
+    <li><strong>One reviewer flagged the council itself:</strong> five identical CONDITIONAL-GOs may indicate anchoring rather than genuine convergence.</li>
+  </ul>
+
+  <h2 class="sec">What to build, what to gate, what to hold</h2>
+  <div class="bands">
+    <div class="band build">
+      <h3>Build now</h3>
+      <ul>
+        <li>Canonical program / portfolio / grant ID registry — decided by people, owned by a named person, enforced everywhere</li>
+        <li>Read-only warehouse over Sage, Virtuous, FRED and the budget sheet, with budget-vs-actual-vs-field reporting — <strong>buy-test it first</strong></li>
+        <li>Retire FRED's duplicate programs/portfolios tables; move the Google Sheet budget into real tables</li>
+      </ul>
+    </div>
+    <div class="band gate">
+      <h3>Gate behind</h3>
+      <ul>
+        <li>The audit firm states in writing what it would require to accept a homegrown ledger</li>
+        <li>A second named maintainer exists who is not Jesse</li>
+        <li>The warehouse has run 90 days in weekly use</li>
+      </ul>
+    </div>
+    <div class="band hold">
+      <h3>Hold until gates clear</h3>
+      <ul>
+        <li>The general ledger</li>
+        <li>Donor CRM and Stripe direct</li>
+        <li>Contracts and work-orders</li>
+        <li>CRDT offline sync and the desktop app</li>
+        <li>Agent work queues</li>
+        <li>Notion replacement — low risk, but weakest ROI in the stack</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="sec">Two corrections to the documents</h2>
+  <p class="lede">Both are cheap to fix and both cost credibility if they reach a board unfixed.</p>
+  <ul class="tight">
+    <li>The brief's cost table sums a never-purchased $30K FP&amp;A package into a column labeled <em>Current annual cost</em>. A CFO will catch this immediately, and it discredits the rest of the case.</li>
+    <li>The 6–12 month timeline contradicts the plan's own phase math (60–76 weeks full-time, by a part-time builder). Publish the honest number.</li>
+  </ul>
+
+  <h2 class="sec">The one thing to do first</h2>
+  <div class="do-first">
+    <p class="q">Call the audit firm this week and ask one question: “What would you need to see before you'd accept a general ledger we built ourselves?”</p>
+    <p>One hour, no code, no cost. It is the only untested assumption that can invalidate 16+ weeks of the plan's most expensive work — and the answer resolves it either way. If they require a control narrative, an independent code reviewer, and segregation of duties you cannot currently provide, the ledger question closes and the plan gets dramatically simpler. If they lay out a workable path, the project's largest risk becomes a checklist. Everything else can start the day after that call.</p>
+  </div>
+
+  <h2 class="sec">Full advisor responses</h2>
+  <p class="lede">Each advisor answered independently, without seeing the others.</p>
+
+  <details>
+    <summary><span>The First Principles Thinker <span class="role">· named strongest by all five reviewers</span></span></summary>
+    <div class="body">
+      <p><strong>You're asking a build-vs-buy question. That's not the problem.</strong></p>
+      <p>Strip it down. Three conflicting program taxonomies exist. That is not a software defect — it's the absence of a decision about what a "program" is and who owns that list. No platform creates a canonical program ID. A person does, in a meeting, and then everything else references it. If you build the app without making that decision, you will migrate three taxonomies into one schema and have the same ambiguity with better SQL. If you make that decision without building anything, Notion, FRED, and the grants sheet all reconcile — because the join key finally exists.</p>
+      <p>Second demolition: the $113,500 "savings" is a category error. You are not eliminating a cost; you are converting a priced, transferable, SLA-backed vendor expense into an unpriced, non-transferable liability sitting on the calendar of one executive. Jesse's attention is the scarcest asset unfoldingWord has. Sage costs $40K/yr. Jesse's year does not cost $40K.</p>
+      <p>Third: the GL is the least interesting component and the one being built first. A general ledger is a solved commodity. Nothing about ASC 958 is distinctive to your mission. The pain you actually documented — $73K off plan, four exports stitched by hand — lives <em>between</em> systems, in the reporting layer, not inside any ledger.</p>
+      <p>The real problem statement: "we cannot answer cross-system questions about money, work, and impact." That is a read-only problem. Solve it read-only.</p>
+      <p class="scope">CONDITIONAL-GO — a canonical program/portfolio/grant ID registry decided by humans and enforced as the key everywhere, plus a read-only warehouse with cross-system reports on top. No writes. No GL. No CRM. No CRDT.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>The Contrarian</span></summary>
+    <div class="body">
+      <p>Three things in this proposal are not what they claim to be.</p>
+      <p><strong>The savings number is fiction.</strong> $30K of the $113.5K is an FP&amp;A package they never bought — you cannot save money you weren't spending. Notion at $3.5K is noise. And the number omits the only cost that matters: Jesse. An executive-level technical leader burning 50-60 weeks of build capacity has an opportunity cost well north of $113K/yr. The financial case is negative before the first commit.</p>
+      <p><strong>The timeline is internally contradictory.</strong> The plan's own phases total 50-60 weeks of <em>full-time</em> work, then claims 6-12 months to cutover "dominated by the parallel run." Jesse is not full-time. That's a 2-3 year calendar reality, during which the org runs two of everything. The claim that parallel-run dominates is the tell — the builder has already privately discounted his own estimates.</p>
+      <p><strong>Virtuous and Sage aren't feature purchases, they're liability transfers.</strong> Stripe direct makes uW own PCI scope, dunning, failed recurring gifts, and tax receipting. A homegrown ledger makes uW own audit defense. $80K/yr buys someone else's insurance and someone else's on-call.</p>
+      <p>And the diagnosis is wrong. The $73K variance was a miscategorized ask — a governance failure. Three conflicting taxonomies is a data-stewardship failure. A custom monolith will encode the same bad categorization, faster and with no vendor to blame. If the org can't hold one program ID consistent across three systems today, it will not hold one across a system only one person understands.</p>
+      <p>Untested assumption that should be a gate, not a risk: no auditor has said yes.</p>
+      <p class="scope">CONDITIONAL-GO — read-only warehouse, one canonical dimension, retire FRED's duplicate tables and the Google Sheet. No ledger, CRM, Stripe or CRDT. Revisit after 12 months of the warehouse running without Jesse touching it.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>The Executor</span></summary>
+    <div class="body">
+      <p>Do the arithmetic first. 60-75 weeks of estimates from one part-time builder is not 6-12 months — it's three-plus years at 40% capacity, and that assumes no estimate slips, which they always do. The stated timeline is off by a factor of three or more.</p>
+      <p>Worse, the sequencing puts the payoff last. Phase 3+5 replaces Sage — that's ~$40K of the $80K real savings, and it's the final 16-20 weeks. Every dollar of claimed ROI arrives after the riskiest work, done by the person least available to do it. You never build a general ledger as a solo side project. Auditors, 1099s, restricted-fund accounting, revenue recognition — that's not a schema problem, it's a compliance surface.</p>
+      <p>But the actual pain isn't the systems. It's that nobody can answer cross-system questions and one program is $73K off plan. That's a reporting problem, and it's cheap.</p>
+      <p>Monday morning: build a read-only warehouse. Nightly pulls from Intacct, Virtuous, Notion, FRED into one Postgres. One canonical program/portfolio dimension that maps all three taxonomies. A dashboard showing budget vs. actual vs. field results per program. Four to six weeks, one person, zero risk to the books. If that doesn't get built and used, nothing else will.</p>
+      <p>Fix the Google Sheet budget as a real table in that warehouse. That's Phase 1.5 of value at 5% of cost.</p>
+      <p class="scope">CONDITIONAL-GO — first milestone: a working budget-vs-actual-vs-field dashboard for all programs in 6 weeks, used weekly by three program leads for a month. Everything else re-decided only after that milestone holds.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>The Outsider</span></summary>
+    <div class="body">
+      <p>What jumps out first: the cost claim is wrong on its face. "$25-60/month infrastructure" prices the servers, not the system. One executive's time is the real cost. If Jesse's loaded cost is $150K+ and this consumes half his year for two years, you've spent more than the software to save less than the software.</p>
+      <p>Second: an auditor does not ask "is your ledger append-only and hash-chained." They ask who else can review the code, who segregates duties, and what your change-control documentation looks like. A general ledger whose designer, implementer, sole operator, and sole reviewer are the same person — who is also an executive with financial authority — is a segregation-of-duties finding before anyone opens a file. That's not a technical objection. It's the one thing the audit is for.</p>
+      <p>Third: nobody in the pain section asked for a new general ledger. The stated pain is <em>reconciliation</em> — four systems that don't talk, three conflicting taxonomies, $73K off plan. Replacing Sage doesn't fix that. Sage is the one system that's working.</p>
+      <p>Fourth, the tell: markdown wiki, CRDT offline sync, AI agents on kanban queues, meeting transcript correlation. None of that appears in the pain. That's a builder's wishlist wearing a business case.</p>
+      <p>A donor reading this asks why their gift funded software instead of translation.</p>
+      <p class="scope">CONDITIONAL-GO — read-only reporting layer over Sage, Virtuous, FRED and the sheet, one canonical taxonomy, nightly pulls, plus FRED cleanup. Six to ten weeks. No ledger, CRM, donations, offline sync or agents.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>The Expansionist <span class="role">· named biggest blind spot by all five reviewers</span></span></summary>
+    <div class="body">
+      <p><strong>The $113,500 is the least interesting number in this proposal.</strong></p>
+      <p>Saving software spend is a rounding error against uW's budget. The actual asset is a <em>category-defining public good</em>: the first open-source, GAAP-compliant, offline-capable, fund-accounting-plus-field-data platform built for organizations too small for NetSuite and too complex for QuickBooks. There are hundreds of them in Bible translation alone, thousands across global missions and small-NGO work. None can afford enterprise ERP. All of them have exactly this fragmentation.</p>
+      <p>Richwood Industries independently converging on the same architecture is not a coincidence — it's a market signal arriving before the product does. When a peer outside your sector reinvents your design and cites you, you've found a shape the world wants.</p>
+      <p>Three upsides nobody's pricing: <strong>(1) This is fundable.</strong> Infrastructure-for-the-ecosystem is a grant category — uW could plausibly raise more building this openly than it costs to build. <strong>(2) It's mission-consistent, not a detour.</strong> uW already gives away Door43 and DCS; open operational infrastructure is the same act applied to a new layer. <strong>(3) The unified dataset is the moat.</strong> Money, impact and work in one schema is something no vendor stack can ever offer, because no vendor owns all five. Cost-per-language-completed becomes a query, not a quarter-long project.</p>
+      <p class="scope">CONDITIONAL-GO — but build it multi-tenant and open-licensed from the first commit. Ship uW as tenant one, publicly, and let the ecosystem fund what comes next.</p>
+    </div>
+  </details>
+
+  <h2 class="sec">Peer review highlights</h2>
+  <p class="lede">Each advisor reviewed all five responses anonymized, without knowing who wrote what.</p>
+
+  <details>
+    <summary><span>What the reviewers converged on</span></summary>
+    <div class="body">
+      <p><strong>Strongest response — First Principles, 5 of 5.</strong> Unanimous. "The only one that identifies the root cause as a governance decision rather than a tooling gap." Its reframe of the savings — converting a priced, transferable, SLA-backed vendor expense into an unpriced, non-transferable liability on one executive's calendar — was cited by four of five reviewers as the cleanest argument in the set. The Contrarian placed second in four reviews, credited for catching the never-purchased FP&amp;A package and for turning the audit question into a gate rather than a risk.</p>
+      <p><strong>Biggest blind spot — the Expansionist, 5 of 5.</strong> Also unanimous. "It prices a market and never prices delivery." "One peer team converging on an architecture is not demand." "Multi-tenancy from the first commit adds org_id plumbing, deployment docs and support obligations to a project that, by the other four's arithmetic, cannot ship tenant one." One reviewer added the sharpest structural point: an open GL that other nonprofits book on transfers audit liability toward unfoldingWord.</p>
+      <p><strong>What all five advisors missed.</strong> The fallback was never itself build-vs-buy tested — Airbyte/Fivetran plus Metabase, or Intacct's own dimension model, likely delivers the warehouse in days, and the Google Sheet may exist because a licensed module went unconfigured. Nobody priced a contract data engineer against Jesse's time. Nobody named a second maintainer, so the recommended scope inherits the bus factor it rejected the full build for. Nobody measured what the reconciliation pain costs annually. Nobody checked whether Intacct and Virtuous API terms permit nightly extraction. And nobody noted this is a board decision.</p>
+      <p><strong>A reviewer's warning about the council itself:</strong> "Five identical CONDITIONAL-GOs suggests anchoring, not consensus."</p>
+    </div>
+  </details>
+
+  <footer>
+    Council convened 24 August 2026 on the question: <em>Review the brief and the plan and render an opinion on whether this should be built.</em> Five advisors (Contrarian, First Principles, Expansionist, Outsider, Executor) answered independently, then peer-reviewed all five responses anonymized, then a chairman synthesized. Full transcript with anonymization mapping: <code>council-transcript-2026-08-24.md</code>. Source documents reviewed: <em>An App For Everything — Executive Brief</em> and <em>An App For Everything — Platform Architecture Plan</em>.
+  </footer>
+</div>
