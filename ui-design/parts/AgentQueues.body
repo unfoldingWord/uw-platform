@@ -1,0 +1,110 @@
+    <header class="top">
+      <div class="crumb"><span class="jd">32.14</span><span>Internal Tools and Systems</span><span class="sep">/</span><b>Grant responses</b></div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg><span>Search everything</span><span class="k">⌘K</span></div>
+      <div class="tacts">
+        <div class="seg">
+          <button class="{{asHuman}}" onClick="{{beHuman}}">Acting as Jesse</button>
+          <button class="{{asAgent}}" onClick="{{beAgent}}">Acting as agent</button>
+        </div>
+        <button class="btn"><svg viewBox="0 0 24 24"><path d="M12 8v5l3 2"/><circle cx="12" cy="12" r="9"/></svg>Run log</button>
+      </div>
+    </header>
+    <div class="body">
+      <div class="phead">
+        <div>
+          <p class="eyebrow">Work queue · agents claim cards like anyone else</p>
+          <h1>Grant responses</h1>
+          <p class="lede">{{actorNote}}</p>
+        </div>
+        <div class="sp"></div>
+        <div style="display:flex;gap:20px">
+          <div class="kpi"><span class="l">This board this month</span><span class="v">$18.40</span><span class="d">agent cost · budget $60</span></div>
+          <div class="kpi"><span class="l">Runs</span><span class="v">31</span><span class="d">2 retried from a failed step</span></div>
+        </div>
+      </div>
+
+      <div class="row" style="align-items:flex-start">
+        <sc-for list="{{stages}}" as="st" hint-placeholder-count="4">
+          <div class="lane" style="flex:1">
+            <div class="lh">
+              <span>{{st.name}}</span>
+              <span style="margin-left:auto"></span>
+              <span class="b {{st.wipTone}}">{{st.wip}}</span>
+            </div>
+            <div style="display:flex;gap:5px;padding:0 3px 4px">
+              <span class="b {{st.pickTone}}">pickup: {{st.pickup}}</span>
+              <span class="b {{st.gateTone}}">gate: {{st.gate}}</span>
+            </div>
+            <sc-for list="{{st.cards}}" as="c" hint-placeholder-count="2">
+              <div class="kc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span class="b {{c.claimTone}}">{{c.claim}}</span>
+                  <div class="sp"></div>
+                  <span style="color:#5A6E7A;font-size:10px;font-weight:700" class="mono">{{c.lease}}</span>
+                </div>
+                <div style="font-weight:800;font-size:12.5px">{{c.title}}</div>
+                <div style="color:#5A6E7A;font-size:11px;font-weight:600">{{c.meta}}</div>
+                <div class="bar"><i style="width:{{c.pct}}"></i></div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="color:#5A6E7A;font-size:10.5px;font-weight:700">{{c.progress}}</span>
+                  <div class="sp"></div>
+                  <button class="{{c.advCls}}" onClick="{{c.advance}}">{{c.advLabel}}</button>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{refused}}" hint-placeholder-val="{{ true }}">
+        <div class="card" style="margin-top:14px;border-color:#EBCB94">
+          <div class="cbd">
+            <div class="gate">
+              <svg viewBox="0 0 24 24"><path d="M5 11h14v10H5z"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+              <div><b>Refused server-side.</b> {{refusedText}}</div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <div class="row" style="margin-top:14px;align-items:flex-start">
+        <div class="card" style="flex:1.3">
+          <div class="chd"><h2>Stage configuration</h2><div class="r"><span class="sub">machine-readable, not a habit</span></div></div>
+          <div class="cbd flush">
+            <table class="tbl">
+              <thead><tr><th>Stage</th><th>Agent pickup</th><th>Exit gate</th><th class="num">WIP</th><th>Instructions the agent loads</th></tr></thead>
+              <tbody>
+                <sc-for list="{{cfg}}" as="c" hint-placeholder-count="4">
+                  <tr>
+                    <td style="font-weight:700">{{c.name}}</td>
+                    <td><span class="b {{c.pickTone}}">{{c.pickup}}</span></td>
+                    <td><span class="b {{c.gateTone}}">{{c.gate}}</span></td>
+                    <td class="num">{{c.wip}}</td>
+                    <td><a>{{c.instr}}</a></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          <div class="prov"><span>An agent finishing work in a human_approval stage cannot advance the card — the verb is absent from its toolset, so no prompt produces it.</span></div>
+        </div>
+
+        <div class="card" style="flex:1">
+          <div class="chd"><h2>What the run did</h2><div class="r"><span class="b n">durable workflow · resumable</span></div></div>
+          <div class="cbd" style="display:flex;flex-direction:column;gap:0">
+            <sc-for list="{{steps}}" as="r" hint-placeholder-count="6">
+              <div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #F1F5F8">
+                <span class="b {{r.tone}}" style="height:17px">{{r.mark}}</span>
+                <div style="min-width:0">
+                  <div style="font-weight:700;font-size:12.5px">{{r.step}}</div>
+                  <div style="color:#5A6E7A;font-size:11px;font-weight:600">{{r.detail}}</div>
+                </div>
+                <div class="sp"></div>
+                <span class="mono" style="color:#5A6E7A;font-size:10.5px">{{r.cost}}</span>
+              </div>
+            </sc-for>
+            <div style="padding-top:9px;color:#5A6E7A;font-size:11px;font-weight:600">Every run records model, tokens, cost, tools called, rows read, writes made and gates encountered.</div>
+          </div>
+        </div>
+      </div>
+    </div>

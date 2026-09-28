@@ -1,0 +1,469 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800;6..12,900&display=swap">
+  <style>
+    :root{
+      --bg:#F4F8FA; --surface:#FFFFFF; --ink:#231F20; --muted:#5A6E7A; --line:#C4D3DB;
+      --ocean:#014263; --ocean-ink:#E8F4FA; --inspire:#31ADE3; --inspire-soft:#E3F3FB;
+      --cultivate:#4FA9AC; --cultivate-soft:#E4F4F4; --kindle:#C97F14; --kindle-soft:#FBEFDC;
+      --sink:#0A2E44;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;background:var(--bg);color:var(--ink);
+      font-family:'Nunito Sans','Avenir','Montserrat',sans-serif;font-size:13.5px;line-height:1.5;
+      -webkit-font-smoothing:antialiased;}
+    a{color:var(--inspire);text-decoration:none;} a:hover{color:var(--ocean);text-decoration:underline;}
+    button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;}
+    svg{display:block;}
+
+    .app{width:1440px;height:1000px;display:flex;overflow:hidden;background:var(--bg);}
+
+    /* ---------- sidebar ---------- */
+    .side{width:262px;flex:0 0 262px;background:var(--ocean);color:var(--ocean-ink);
+      display:flex;flex-direction:column;padding:0;}
+    .brand{display:flex;align-items:center;gap:9px;padding:16px 16px 14px;border-bottom:1px solid rgba(255,255,255,.14);}
+    .brand img{height:20px;width:auto;filter:brightness(0) invert(1);opacity:.95;}
+    .brand .bt{font-weight:800;font-size:13px;letter-spacing:.02em;line-height:1.15;padding-left:9px;margin-left:2px;border-left:1px solid rgba(255,255,255,.22);}
+    .brand .bs{font-size:10.5px;opacity:.62;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
+    .navwrap{flex:1;padding:8px 8px 6px;display:flex;flex-direction:column;gap:1px;overflow:hidden;}
+    .grp{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
+      opacity:.5;padding:9px 8px 3px;line-height:1.35;white-space:normal;}
+    .grp .gn{color:var(--inspire);opacity:.95;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:0;}
+    .ni{display:flex;align-items:center;gap:9px;padding:5px 8px;border-radius:5px;
+      color:var(--ocean-ink);opacity:.78;font-weight:600;font-size:12.5px;white-space:nowrap;}
+    .ni svg{width:15px;height:15px;flex:0 0 15px;stroke:currentColor;stroke-width:1.7;fill:none;
+      stroke-linecap:round;stroke-linejoin:round;opacity:.85;}
+    .ni:hover{background:rgba(255,255,255,.07);opacity:1;text-decoration:none;color:var(--ocean-ink);}
+    .ni.on{background:var(--inspire);color:#04222F;opacity:1;font-weight:800;}
+    .ni.on svg{opacity:1;}
+    .nempty{font-size:10.5px;font-weight:600;opacity:.4;padding:3px 8px 5px;font-style:italic;}
+    .ni .nc{margin-left:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9.5px;opacity:.45;font-weight:700;}
+    .ni.on .nc{opacity:.6;}
+    .ni .pill{margin-left:6px;background:rgba(255,255,255,.16);border-radius:20px;
+      padding:0 6px;font-size:10px;font-weight:800;}
+    .ni.on .pill{background:rgba(0,0,0,.16);}
+    .sfoot{border-top:1px solid rgba(255,255,255,.14);padding:10px 14px;display:flex;align-items:center;gap:9px;}
+    .av{width:26px;height:26px;border-radius:50%;background:var(--cultivate);color:#04222F;
+      display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;}
+    .sfoot .n{font-weight:700;font-size:12px;} .sfoot .r{font-size:10.5px;opacity:.6;}
+
+    /* ---------- top bar ---------- */
+    .main{flex:1;display:flex;flex-direction:column;min-width:0;}
+    .top{height:56px;flex:0 0 56px;background:var(--surface);border-bottom:1px solid var(--line);
+      display:flex;align-items:center;gap:14px;padding:0 20px;}
+    .crumb{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px;font-weight:600;}
+    .crumb b{color:var(--ink);font-weight:800;font-size:14.5px;}
+    .crumb .sep{opacity:.5;}
+    .jd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:700;
+      background:var(--inspire-soft);color:var(--ocean);border-radius:4px;padding:1px 5px;}
+    .search{margin-left:auto;display:flex;align-items:center;gap:7px;width:280px;height:32px;
+      border:1px solid var(--line);border-radius:6px;padding:0 10px;color:var(--muted);background:var(--bg);}
+    .search svg{width:14px;height:14px;stroke:currentColor;stroke-width:1.8;fill:none;}
+    .search .k{margin-left:auto;font-size:10px;font-weight:700;border:1px solid var(--line);
+      border-radius:3px;padding:0 4px;background:var(--surface);}
+    .tacts{display:flex;align-items:center;gap:8px;}
+
+    /* ---------- content ---------- */
+    .body{flex:1;overflow:auto;padding:20px 24px 28px;}
+    .phead{display:flex;align-items:flex-end;gap:16px;margin-bottom:16px;}
+    .eyebrow{color:var(--inspire);font-weight:800;font-size:10.5px;letter-spacing:.14em;
+      text-transform:uppercase;margin:0 0 3px;}
+    h1{font-weight:900;font-size:24px;line-height:1.15;margin:0;letter-spacing:-.01em;}
+    .lede{color:var(--muted);margin:5px 0 0;max-width:72ch;font-size:13px;}
+    h2{font-weight:800;font-size:15px;margin:0;}
+    h3{font-weight:800;font-size:12.5px;margin:0;}
+
+    .grid{display:grid;gap:14px;}
+    .row{display:flex;gap:14px;}
+
+    .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+      display:flex;flex-direction:column;min-width:0;}
+    .chd{display:flex;align-items:center;gap:9px;padding:11px 14px;border-bottom:1px solid var(--line);}
+    .chd .sub{color:var(--muted);font-size:11.5px;font-weight:600;}
+    .chd .r{margin-left:auto;display:flex;align-items:center;gap:7px;}
+    .cbd{padding:13px 14px;}
+    .cbd.flush{padding:0;overflow-x:auto;}
+
+    /* ---------- controls ---------- */
+    .btn{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:6px;
+      border:1px solid var(--line);background:var(--surface);font-weight:700;font-size:12px;color:var(--ink);}
+    .btn:hover{border-color:var(--inspire);color:var(--ocean);}
+    .btn svg{width:13px;height:13px;stroke:currentColor;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+    .btn.p{background:var(--inspire);border-color:var(--inspire);color:#04222F;}
+    .btn.p:hover{background:#1E9AD0;border-color:#1E9AD0;color:#04222F;}
+    .btn.q{border-color:transparent;background:transparent;color:var(--muted);}
+    .btn.q:hover{background:var(--bg);color:var(--ink);}
+    .btn.sm{height:24px;padding:0 8px;font-size:11px;}
+    .btn[disabled],.btn.off{opacity:.45;cursor:not-allowed;}
+    .btn.off:hover{border-color:var(--line);color:var(--ink);}
+
+    .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);}
+    .tab{padding:7px 12px 8px;font-weight:700;font-size:12.5px;color:var(--muted);
+      border-bottom:2px solid transparent;margin-bottom:-1px;}
+    .tab:hover{color:var(--ink);}
+    .tab.on{color:var(--ocean);border-bottom-color:var(--inspire);}
+
+    .chips{display:flex;flex-wrap:wrap;gap:6px;}
+    .chip{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:20px;
+      border:1px solid var(--line);background:var(--surface);font-size:11.5px;font-weight:700;color:var(--muted);}
+    .chip:hover{border-color:var(--inspire);color:var(--ocean);}
+    .chip.on{background:var(--inspire-soft);border-color:var(--inspire);color:var(--ocean);}
+
+    .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface);}
+    .seg button{padding:5px 11px;font-size:11.5px;font-weight:700;color:var(--muted);border-right:1px solid var(--line);}
+    .seg button:last-child{border-right:0;}
+    .seg button.on{background:var(--ocean);color:#fff;}
+
+    .sw{width:34px;height:19px;border-radius:20px;background:#C9D6DD;position:relative;flex:0 0 34px;transition:background .12s;}
+    .sw i{position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;
+      box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .12s;}
+    .sw.on{background:var(--inspire);} .sw.on i{left:17px;}
+    .sw.lock{background:#E2E9ED;} .sw.lock i{background:#B7C6CE;}
+
+    /* ---------- badges ---------- */
+    .b{display:inline-flex;align-items:center;gap:4px;border-radius:4px;padding:1px 6px;
+      font-size:10.5px;font-weight:800;letter-spacing:.02em;white-space:nowrap;}
+    .b.i{background:var(--inspire-soft);color:var(--ocean);}
+    .b.c{background:var(--cultivate-soft);color:#256B6D;}
+    .b.k{background:var(--kindle-soft);color:#8A5709;}
+    .b.n{background:#EDF2F5;color:var(--muted);}
+    .b.g{background:#E2F3E7;color:#1F6B39;}
+    .b.r{background:#FBE7E7;color:#9B2C2C;}
+    .b.dot::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;}
+
+    /* ---------- tables ---------- */
+    table.tbl{width:100%;border-collapse:collapse;font-size:12.5px;}
+    .tbl th{text-align:left;font-weight:800;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+      color:var(--muted);padding:8px 12px;border-bottom:1px solid var(--line);background:#FAFCFD;white-space:nowrap;}
+    .tbl td{padding:8px 12px;border-bottom:1px solid #E7EEF2;vertical-align:middle;}
+    .tbl tr:last-child td{border-bottom:0;}
+    .tbl tr.hov:hover td{background:#F7FBFD;cursor:pointer;}
+    .tbl tr.sel td{background:var(--inspire-soft);}
+    .num{text-align:right;font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;}
+
+    /* ---------- misc ---------- */
+    .kpi{display:flex;flex-direction:column;gap:2px;}
+    .kpi .l{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+    .kpi .v{font-size:22px;font-weight:900;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
+    .kpi .d{font-size:11.5px;color:var(--muted);font-weight:600;}
+    .prov{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:10.5px;
+      font-weight:600;border-top:1px dashed var(--line);padding:8px 14px;}
+    .prov .mono{font-size:10.5px;}
+    .gate{display:flex;align-items:flex-start;gap:9px;border-radius:8px;padding:10px 12px;
+      background:var(--kindle-soft);border:1px solid #EBCB94;color:#7A4E08;font-size:12px;font-weight:600;}
+    .gate svg{width:15px;height:15px;flex:0 0 15px;stroke:currentColor;stroke-width:1.9;fill:none;margin-top:1px;}
+    .note{background:var(--inspire-soft);border:1px solid #B9DFF3;color:var(--ocean);border-radius:8px;
+      padding:10px 12px;font-size:12px;font-weight:600;}
+    .ev{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;}
+    .ev.ob{color:#1F6B39;} .ev.co{color:var(--ocean);} .ev.inf{color:#8A5709;} .ev.as{color:#9B2C2C;}
+    .bar{height:7px;border-radius:4px;background:#E7EEF2;overflow:hidden;}
+    .bar i{display:block;height:100%;background:var(--inspire);}
+    .empty{color:var(--muted);font-size:12px;padding:14px;text-align:center;}
+    .sp{flex:1;}
+    .sel-row{background:var(--inspire-soft);}
+    .ckon{background:var(--inspire) !important;border-color:var(--inspire) !important;}
+    .done{text-decoration:line-through;opacity:.45;}
+    .lane{background:#EFF4F7;border-radius:10px;padding:9px;display:flex;flex-direction:column;gap:8px;min-width:0;}
+    .lane .lh{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:0 3px 2px;}
+    .kc{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 10px;display:flex;flex-direction:column;gap:6px;}
+    .kc:hover{border-color:var(--inspire);}
+  </style>
+</helmet>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <img src="uw-logo.png" alt="unfoldingWord">
+      <div class="bt">Platform</div>
+    </div>
+    <nav class="navwrap">
+      <div class="grp"><span class="gn">00-09</span> unfoldingWord Home</div>
+      <a class="ni ni-today"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>Today<span class="nc">00</span></a>
+      <a class="ni ni-pages on"><svg viewBox="0 0 24 24"><path d="M5 4h9l5 5v11H5z"/><path d="M14 4v5h5"/><path d="M8 13h8M8 17h5"/></svg>Pages &amp; Wiki<span class="nc">01</span></a>
+      <a class="ni ni-crosswalk"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 10h16M4 15h16M10 4v16M15 4v16"/></svg>JD Crosswalk<span class="nc">00.07</span></a>
+      <div class="grp"><span class="gn">10-19</span> Internal Operations &amp; Administration</div>
+      <a class="ni ni-meetings"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Meetings<span class="nc">10</span></a>
+      <div class="grp"><span class="gn">20-29</span> Finance</div>
+      <a class="ni ni-ledger"><svg viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M5 8h14"/><path d="M5 8 3 14h4zM19 8l-2 6h4z"/></svg>Ledger<span class="nc">28</span></a>
+      <a class="ni ni-charts"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Budgets &amp; Charts<span class="nc">21</span></a>
+      <a class="ni ni-contracts"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 16c2-3 4 1 6-2"/></svg>Contracts &amp; MOUs<span class="nc">24/25</span></a>
+      <a class="ni ni-expenses"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Expenses<span class="nc">28</span><span class="pill">7</span></a>
+      <a class="ni ni-compliance"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4.5 3 7.8 7 9 4-1.2 7-4.5 7-9V6z"/><path d="m9 12 2 2 4-4"/></svg>Compliance<span class="nc">23</span></a>
+      <div class="grp"><span class="gn">30-39</span> Infrastructure</div>
+      <a class="ni ni-health"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 4 12L16 12h5"/></svg>Health<span class="nc">38</span></a>
+      <a class="ni ni-agents"><svg viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="12" rx="3"/><path d="M12 4v3M9 12h.01M15 12h.01M9.5 16h5"/></svg>Agent Queues<span class="nc">32</span><span class="pill">3</span></a>
+      <a class="ni ni-modules"><svg viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7z"/><path d="m4 7 8 4 8-4M12 11v10"/></svg>Modules<span class="nc">32</span></a>
+      <a class="ni ni-offline"><svg viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.6-7.95A5.5 5.5 0 0 1 17 9.5a3.5 3.5 0 0 1 1.6 6.6"/><path d="m4 4 16 16"/></svg>Desktop &amp; Offline<span class="nc">32</span></a>
+      <div class="grp"><span class="gn">40-49</span> Engage Benefactors</div>
+      <a class="ni ni-crm"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4.6-7 9-7 9z"/></svg>CRM &amp; Giving<span class="nc">48</span></a>
+      <a class="ni ni-grants"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="m8.5 13.5-1 7 4.5-2.5 4.5 2.5-1-7"/></svg>Grants<span class="nc">43</span></a>
+      <a class="ni ni-stories"><svg viewBox="0 0 24 24"><path d="M4 5h7v14H4z"/><path d="M13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg>Story Bank<span class="nc">44</span></a>
+      <div class="grp"><span class="gn">50-59</span> Innovation &amp; Strategy</div>
+      <a class="ni ni-cascade"><svg viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>Strategic Cascade<span class="nc">51</span></a>
+      <div class="grp"><span class="gn">60-79</span> Field Programs</div>
+      <a class="ni ni-field"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18"/></svg>Engagements<span class="nc">60</span></a>
+      <a class="ni ni-impact"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Impact Models<span class="nc">60</span></a>
+      <div class="grp"><span class="gn">80-89</span> Tech &amp; SLR</div>
+      <a class="ni ni-dev"><svg viewBox="0 0 24 24"><circle cx="7" cy="6" r="2.5"/><circle cx="7" cy="18" r="2.5"/><circle cx="17" cy="12" r="2.5"/><path d="M7 8.5v7M9.5 6H14a2.5 2.5 0 0 1 2.5 2.5V9"/></svg>Development<span class="nc">80</span></a>
+      <div class="grp"><span class="gn">90-99</span> Catalyzation</div>
+      <div class="nempty">No modules enabled for this area</div>
+    </nav>
+    <div class="sfoot">
+      <div class="av">JG</div>
+      <div>
+        <div class="n">Jesse Griffin</div>
+        <div class="r">admin · org scope</div>
+      </div>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="top">
+      <div class="crumb"><span class="jd">63.11</span><span>WBWN Chad</span><span class="sep">/</span><span>Programs</span><span class="sep">/</span><b>Chad Initiative</b></div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg><span>Search everything</span><span class="k">⌘K</span></div>
+      <div class="tacts">
+        <div class="seg">
+          <button class="{{mRead}}" onClick="{{setRead}}">Read</button>
+          <button class="{{mEdit}}" onClick="{{setEdit}}">Edit</button>
+          <button class="{{mSug}}" onClick="{{setSug}}">Suggest</button>
+        </div>
+        <button class="btn"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 13h7M9 17h4"/></svg>Export PDF</button>
+        <button class="btn p"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>Request publish</button>
+      </div>
+    </header>
+    <div class="body" style="display:flex;gap:16px;align-items:flex-start">
+
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px">
+        <div class="card">
+          <div class="cbd" style="padding:18px 22px 14px">
+            <p class="eyebrow">Program · charter (NISO)</p>
+            <h1>Chad Initiative</h1>
+            <p class="lede">{{modeNote}}</p>
+            <div class="chips" style="margin-top:11px">
+              <span class="chip on">markdown at rest</span>
+              <span class="chip">v37 · saved 2026-08-24 16:12</span>
+              <span class="chip">3 open suggestions</span>
+              <span class="chip">2 required policies</span>
+            </div>
+          </div>
+          <div class="cbd" style="border-top:1px solid #E7EEF2;padding:16px 22px 20px;font-size:13.5px;line-height:1.62">
+            <h3 style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#5A6E7A;margin-bottom:5px">Need</h3>
+            <p style="margin:0 0 14px">Fourteen languages in the eastern cluster have no scripture in a form the local church can use, and the three partner organizations working there keep separate records that do not reconcile.</p>
+
+            <h3 style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#5A6E7A;margin-bottom:5px">Idea</h3>
+            <p style="margin:0 0 14px">
+              Run one church-centric cohort per cluster,
+              <sc-if value="{{redline}}" hint-placeholder-val="{{ true }}"><span style="background:#FBE7E7;color:#9B2C2C;text-decoration:line-through">with quarterly in-person check-ins</span> <span style="background:#E2F3E7;color:#1F6B39">with monthly remote check-ins and two in-person visits per year</span></sc-if>
+              <sc-if value="{{clean}}" hint-placeholder-val="{{ false }}">with monthly remote check-ins and two in-person visits per year</sc-if>,
+              training local facilitators who can train the next cohort without us.
+            </p>
+
+            <h3 style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#5A6E7A;margin-bottom:5px">Strategy</h3>
+            <p style="margin:0 0 8px">Three projects run in sequence, each pulling from the parking lot only when the previous one clears its WIP limit:</p>
+            <ul style="margin:0 0 14px;padding-left:20px;color:#3A4A53">
+              <li>Facilitator cohort — 12 trainers across 4 partner organizations</li>
+              <li>Open Bible Stories drafting — 14 languages, checked against the gateway language</li>
+              <li>Community checking and publishing to the open licence</li>
+            </ul>
+
+            <h3 style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#5A6E7A;margin-bottom:5px">Outcomes &amp; expected evidence</h3>
+            <table class="tbl" style="margin-bottom:14px;border:1px solid var(--line);border-radius:8px;overflow:hidden">
+              <thead><tr><th>Outcome</th><th>Metric</th><th class="num">Target</th><th class="num">Latest</th></tr></thead>
+              <tbody>
+                <tr><td>Local trainers able to run a cohort unaided</td><td class="mono">trainers_certified</td><td class="num">12</td><td class="num">7</td></tr>
+                <tr><td>Stories drafted and community-checked</td><td class="mono">obs_completions</td><td class="num">14</td><td class="num">5</td></tr>
+                <tr><td>Partner organizations reporting into FRED directly</td><td class="mono">orgs_self_reporting</td><td class="num">4</td><td class="num">2</td></tr>
+              </tbody>
+            </table>
+
+            <h3 style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#5A6E7A;margin-bottom:5px">Risks</h3>
+            <p style="margin:0">Travel access to the eastern cluster is not guaranteed; the contingency is a remote-only cohort at reduced pace, costed in the work order. Records for this program are <b>sensitivity: protected</b> — engagement detail never reaches published pages or org-wide dashboards.</p>
+          </div>
+          <div class="prov">
+            <span>Page</span><span class="mono">chad-initiative@v37</span><span>·</span>
+            <span>last edit <b>human:jesse</b> 2026-08-24 16:12</span><span>·</span>
+            <span>sha256 <span class="mono">4f9c…a12b</span></span><span>·</span><a>History</a><a>Export</a>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="chd">
+            <h2>{{panelTitle}}</h2>
+            <div class="r">
+              <button class="{{tSugC}}" onClick="{{goSug}}">Suggestions ({{nSug}})</button>
+              <button class="{{tVerC}}" onClick="{{goVer}}">Versions</button>
+              <button class="{{tLinkC}}" onClick="{{goLink}}">Backlinks</button>
+              <button class="{{tPolC}}" onClick="{{goPol}}">Policies</button>
+            </div>
+          </div>
+          <div class="cbd flush">
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;gap:11px;padding:10px 14px;border-bottom:1px solid #E7EEF2">
+                <span class="b {{r.tone}}">{{r.tag}}</span>
+                <div style="min-width:0;flex:1">
+                  <div style="font-weight:700">{{r.title}}</div>
+                  <div style="color:#5A6E7A;font-size:11.5px;font-weight:600">{{r.meta}}</div>
+                </div>
+                <sc-if value="{{r.decidable}}" hint-placeholder-val="{{ true }}">
+                  <button class="btn sm p" onClick="{{r.accept}}">Accept</button>
+                  <button class="btn sm" onClick="{{r.reject}}">Reject</button>
+                </sc-if>
+                <sc-if value="{{r.decided}}" hint-placeholder-val="{{ false }}">
+                  <span class="b {{r.decidedTone}}">{{r.decidedLabel}}</span>
+                </sc-if>
+              </div>
+            </sc-for>
+            <div style="padding:10px 14px;color:#5A6E7A;font-size:11.5px;font-weight:600">{{panelFoot}}</div>
+          </div>
+        </div>
+      </div>
+
+      <aside style="width:334px;flex:0 0 334px;display:flex;flex-direction:column;gap:14px">
+        <div class="card">
+          <div class="chd"><h2>Properties</h2><div class="r"><span class="b n">typed frontmatter</span></div></div>
+          <div class="cbd" style="display:flex;flex-direction:column;gap:0">
+            <sc-for list="{{props}}" as="p" hint-placeholder-count="9">
+              <div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid #F1F5F8">
+                <div style="width:112px;flex:0 0 112px;color:#5A6E7A;font-size:11.5px;font-weight:700">{{p.k}}</div>
+                <div style="min-width:0;font-weight:600;font-size:12.5px">{{p.v}}</div>
+              </div>
+            </sc-for>
+            <div style="padding-top:9px;color:#5A6E7A;font-size:11px;font-weight:600">Frontmatter is form-edited and field-level merged — two people editing different fields both win.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="chd"><h2>Rollup</h2><div class="r"><span class="b n">follows the cascade</span></div></div>
+          <div class="cbd" style="display:flex;flex-direction:column;gap:11px">
+            <div style="display:flex;gap:16px">
+              <div class="kpi"><span class="l">Committed</span><span class="v" style="font-size:18px">$412,000</span><span class="d">3 work orders</span></div>
+              <div class="kpi"><span class="l">Actual FY26</span><span class="v" style="font-size:18px">$286,410</span><span class="d">69% of budget</span></div>
+            </div>
+            <div class="bar"><i style="width:69%"></i></div>
+            <div style="display:flex;gap:16px">
+              <div class="kpi"><span class="l">Engagements</span><span class="v" style="font-size:18px">14</span><span class="d">FRED · protected</span></div>
+              <div class="kpi"><span class="l">Stories</span><span class="v" style="font-size:18px">6</span><span class="d">1 publishable</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="chd"><h2>Linked</h2></div>
+          <div class="cbd" style="display:flex;flex-direction:column;gap:7px">
+            <sc-for list="{{links}}" as="l" hint-placeholder-count="5">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="b {{l.tone}}">{{l.rel}}</span>
+                <a style="font-weight:700;font-size:12.5px">{{l.name}}</a>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { mode: 'read', panel: 'suggestions', decided: {} }; }
+  renderVals() {
+    const s = this.state;
+    const setP = (k) => () => this.setState({ panel: k });
+    const decide = (id, how) => () => this.setState({ decided: { ...s.decided, [id]: how } });
+
+    const suggestions = [
+      { id: 'sg1', tag: 'suggestion', tone: 'k', title: 'Change the check-in cadence to monthly remote plus two visits',
+        meta: 'agent:program-assistant · 2026-08-24 06:02 · cites work order WO-2026-041 travel budget' },
+      { id: 'sg2', tag: 'suggestion', tone: 'k', title: 'Add “orgs_self_reporting” as a tracked outcome metric',
+        meta: 'human:amara · 2026-08-23 14:40 · 1 comment' },
+      { id: 'sg3', tag: 'suggestion', tone: 'k', title: 'Name the three partner organizations in the Strategy section',
+        meta: 'agent:program-assistant · 2026-08-22 09:15 · blocked — sensitivity: protected' },
+    ];
+    const versions = [
+      { id: 'v37', tag: 'v37', tone: 'i', title: 'Risks section rewritten after the access review', meta: 'human:jesse · 2026-08-24 16:12 · +142 / −38' },
+      { id: 'v36', tag: 'v36', tone: 'k', title: 'Outcome targets synced from the impact model', meta: 'agent:impact-assistant · 2026-08-19 03:11 · +18 / −6' },
+      { id: 'v35', tag: 'v35', tone: 'i', title: 'Charter created from the NISO template', meta: 'human:jesse · 2026-07-02 10:04 · instantiated_from niso-charter@v4' },
+    ];
+    const backlinks = [
+      { id: 'b1', tag: 'illustrates', tone: 'c', title: 'Story — “A church in Chad reads Ruth”', meta: 'impact_story · 63.96 · private_circulation' },
+      { id: 'b2', tag: 'funds', tone: 'i', title: 'Grant — Foundation award 2025-3311', meta: 'grant · 43.16 · reporting due 2026-10-15' },
+      { id: 'b3', tag: 'delivers_for', tone: 'n', title: 'Project — Facilitator cohort 2026', meta: 'project · 63.12 · in progress' },
+      { id: 'b4', tag: 'meeting', tone: 'n', title: 'Field sync 2026-08-21', meta: 'meeting · 63.98 · transcript linked' },
+    ];
+    const policies = [
+      { id: 'p1', tag: 'required', tone: 'r', title: 'Field data sensitivity & publication policy', meta: 'org level · cannot be overridden below · effective 2026-01-01' },
+      { id: 'p2', tag: 'required', tone: 'r', title: 'Travel & expense policy', meta: 'org level · per-diem caps apply to this program' },
+      { id: 'p3', tag: 'default', tone: 'n', title: 'WIP limit — 3 in progress per project board', meta: 'org level · superseded here to 2' },
+      { id: 'p4', tag: 'template', tone: 'n', title: 'NISO charter structure', meta: 'copied at creation · niso-charter@v4' },
+    ];
+
+    const src = { suggestions, versions, backlinks, policies }[s.panel];
+    const rows = src.map((r) => {
+      const d = s.decided[r.id];
+      return {
+        ...r,
+        decidable: s.panel === 'suggestions' && !d,
+        decided: !!d,
+        decidedTone: d === 'accept' ? 'g' : 'r',
+        decidedLabel: d === 'accept' ? 'accepted into v38' : 'rejected',
+        accept: decide(r.id, 'accept'), reject: decide(r.id, 'reject'),
+      };
+    });
+
+    const foots = {
+      suggestions: 'Suggestions are proposals, not versions. Accepting one writes a new version and records who decided.',
+      versions: 'One immutable snapshot per save, addressable as slug@v37. Export any version, or a redline between two.',
+      backlinks: 'Rebuilt on every save from frontmatter and wiki-links — never hand-maintained.',
+      policies: 'Resolved most-specific-first up the tree. Agents load this before acting on anything under this page.',
+    };
+    const titles = { suggestions: 'Suggestions', versions: 'Version history', backlinks: 'Backlinks', policies: 'Policies in force here' };
+
+    const props = [
+      { k: 'type', v: 'program' }, { k: 'jd_id', v: '63.11' },
+      { k: 'portfolio', v: 'Church-Centric Bible Translation' },
+      { k: 'horizon', v: 'quarter – 1 year' },
+      { k: 'status', v: 'active' }, { k: 'owner', v: 'Amara Doumbé' },
+      { k: 'sensitivity', v: 'protected' },
+      { k: 'offline_eligible', v: 'pages yes · engagements no' },
+      { k: 'zulip_topic', v: '#field-chad / cluster' },
+      { k: 'publish', v: 'not requested' },
+    ];
+    const links = [
+      { rel: 'portfolio', tone: 'i', name: 'Church-Centric Bible Translation' },
+      { rel: 'fund', tone: 'i', name: 'GAU-CCBT · semi-restricted (18% assessment)' },
+      { rel: 'projects', tone: 'n', name: '3 projects · 41 open tasks' },
+      { rel: 'products', tone: 'c', name: 'Open Bible Stories · translationCore' },
+      { rel: 'work orders', tone: 'n', name: 'WO-2026-041 · WO-2026-052' },
+    ];
+
+    const notes = {
+      read: 'Reading the saved version. Everything below renders from plain markdown with typed properties — the same bytes an agent reads and writes.',
+      edit: 'Editing live. Your changes merge with anyone else editing this page, and save as version 38.',
+      suggest: 'Suggesting. Your edits become a tracked-changes set for the page owner to accept or reject — the document does not change until they do.',
+    };
+
+    return {
+      mRead: s.mode === 'read' ? 'on' : '', mEdit: s.mode === 'edit' ? 'on' : '', mSug: s.mode === 'suggest' ? 'on' : '',
+      setRead: () => this.setState({ mode: 'read' }), setEdit: () => this.setState({ mode: 'edit' }), setSug: () => this.setState({ mode: 'suggest' }),
+      modeNote: notes[s.mode],
+      redline: s.mode === 'suggest', clean: s.mode !== 'suggest',
+      panelTitle: titles[s.panel], panelFoot: foots[s.panel],
+      tSugC: 'tab' + (s.panel === 'suggestions' ? ' on' : ''),
+      tVerC: 'tab' + (s.panel === 'versions' ? ' on' : ''),
+      tLinkC: 'tab' + (s.panel === 'backlinks' ? ' on' : ''),
+      tPolC: 'tab' + (s.panel === 'policies' ? ' on' : ''),
+      goSug: setP('suggestions'), goVer: setP('versions'), goLink: setP('backlinks'), goPol: setP('policies'),
+      nSug: suggestions.filter((x) => !s.decided[x.id]).length,
+      rows, props, links,
+    };
+  }
+}
+</script>
+</body>
+</html>

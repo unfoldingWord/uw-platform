@@ -1,0 +1,67 @@
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { view: 'pipe', used: {} }; }
+  renderVals() {
+    const s = this.state;
+    const lanes = [
+      { name: 'Researched', color: '#C4D3DB', sum: '$550K', cards: [
+        { funder: 'Regional community foundation', purpose: 'Field training in West Africa', amt: '$150,000', tag: '10%', tone: 'n', due: 'LOI window 2026-11' },
+        { funder: 'Family trust — anonymous', purpose: 'Open licence content', amt: '$400,000', tag: '10%', tone: 'n', due: 'invitation only' },
+      ] },
+      { name: 'Qualified', color: '#70C9CC', sum: '$1.1M', cards: [
+        { funder: 'Technology foundation', purpose: 'Translation tooling', amt: '$600,000', tag: '25%', tone: 'c', due: 'RFP closes 2026-09-30' },
+        { funder: 'Denominational fund', purpose: 'Chad cluster cohort', amt: '$500,000', tag: '25%', tone: 'c', due: 'rolling' },
+      ] },
+      { name: 'Drafting', color: '#31ADE3', sum: '$1.4M', cards: [
+        { funder: 'Foundation RFP 2026-08', purpose: 'Church-centric translation', amt: '$900,000', tag: 'agent drafted 9 of 11', tone: 'k', due: 'submit by 2026-09-12' },
+        { funder: 'Corporate giving program', purpose: 'Infrastructure and hosting', amt: '$250,000', tag: '50%', tone: 'i', due: 'submit by 2026-09-30' },
+        { funder: 'Bilateral agency', purpose: 'Literacy partnership', amt: '$250,000', tag: '50%', tone: 'i', due: 'submit by 2026-10-08' },
+      ] },
+      { name: 'Submitted', color: '#014263', sum: '$820K', cards: [
+        { funder: 'National foundation', purpose: 'Gateway language support', amt: '$820,000', tag: '75%', tone: 'i', due: 'decision 2026-10-01' },
+      ] },
+      { name: 'Awarded', color: '#2E9E5B', sum: '$1.35M', cards: [
+        { funder: 'Foundation award 2025-3311', purpose: 'Chad cluster · 3 years', amt: '$1,100,000', tag: 'reporting Q3', tone: 'g', due: 'report due 2026-10-15' },
+        { funder: 'Regional trust', purpose: 'Facilitator stipends', amt: '$250,000', tag: 'closed out', tone: 'g', due: 'final report filed' },
+      ] },
+    ];
+
+    const promises = [
+      { text: 'Certify 12 local facilitators across 4 partner organizations', target: '12', actual: '7', ev: 'training_events', evTone: 'i', status: 'behind', tone: 'k' },
+      { text: 'Draft Open Bible Stories in 14 cluster languages', target: '14', actual: '5', ev: 'translation outputs', evTone: 'i', status: 'behind', tone: 'k' },
+      { text: 'Hold 6 community checking sessions', target: '6', actual: '8', ev: 'training_events', evTone: 'i', status: 'exceeded', tone: 'g' },
+      { text: 'Two partner organizations reporting into the platform directly', target: '2', actual: '2', ev: 'field_orgs', evTone: 'i', status: 'met', tone: 'g' },
+      { text: 'Publish one case study on the cluster method', target: '1', actual: '1', ev: 'page · published 2026-07-30', evTone: 'c', status: 'met', tone: 'g' },
+    ];
+
+    const stories = [
+      { id: 's1', level: 'private_circulation', tone: 'c', date: '2026-08-12', title: 'A church in Chad reads Ruth in its own language', note: 'names withheld · country-level location only' },
+      { id: 's2', level: 'newsletter', tone: 'i', date: '2026-06-30', title: 'The facilitator who trained the next four', note: 'consent on file, expires 2027-06-30' },
+      { id: 's3', level: 'internal', tone: 'n', date: '2026-08-19', title: 'What the access restriction cost the cohort', note: 'internal only — cannot be rendered into a funder report' },
+      { id: 's4', level: 'public', tone: 'g', date: '2026-04-02', title: 'Why we train trainers instead of translators', note: 'already used in 2 channels' },
+    ].map((st) => {
+      const blocked = st.level === 'internal';
+      const used = s.used[st.id];
+      return {
+        ...st,
+        cls: 'btn sm' + (blocked ? ' off' : used ? '' : ' p'),
+        cta: blocked ? 'blocked at this level' : used ? 'added — usage logged' : 'Add to report',
+        add: () => { if (!blocked) this.setState({ used: { ...s.used, [st.id]: true } }); },
+      };
+    });
+
+    return {
+      vPipe: s.view === 'pipe' ? 'on' : '', vRep: s.view === 'rep' ? 'on' : '',
+      setPipe: () => this.setState({ view: 'pipe' }), setRep: () => this.setState({ view: 'rep' }),
+      isPipe: s.view === 'pipe', isRep: s.view === 'rep',
+      kpis: [
+        { l: 'Weighted pipeline', v: '$2.24M', d: 'probability weighted · never summed with awards' },
+        { l: 'Awarded FY2026', v: '$1.35M', d: '2 grants · 1 in reporting' },
+        { l: 'Reports due 90 days', v: '3', d: 'next 2026-10-15' },
+        { l: 'Agent-drafted responses', v: '9', d: 'all parked at human review' },
+      ],
+      lanes, promises, stories,
+    };
+  }
+}
+</script>

@@ -1,0 +1,13 @@
+- [x] Document revision methodology that makes sense and works even on export — §2.4
+- [x] Date system is always YYYY-MM-DD — §0
+- [x] PDF export is first class feature across all pages and views — §16
+- [x] Charting/Graphing is also a first class feature across the system. See the revenue-projection, budget-report, and team-chart sister projects which already have a lot of this. — §17
+- [x] story Bank, with a sensitivity setting for each, internal use, newsletters, /private settings, public internet. Internet. Tagging for regions and countries but also relation to projects programs — §9.5
+- [x] simplify an expense reimbursement process. An AI agent can read and guess all sorts of things, human reviews. Just forward from your email, and knows who you are, no is your calendar, knows the programs, makes a good guess at allocation. — §3 (Expense reimbursement)
+- [x] obviously soft credits need to be a first class citizen here — §3 (Soft credits)
+- [x] observability layer is needed in here for all of the things — §18
+- [x] we also need an infrastructure management layer. Something that looks after the architecture and iterates the system itself. Checks on backups and those sorts of things — §19
+- [x] we're also going to want audit compliance reports automatically generated — §20
+- [x] We might want something that maps the connection between JD areas and the strategic Cascade. One is kind of a functional layout, whereas the other is strategic and programmatic, or impact-oriented? If this is an open product, that would help people understand the difference and implement in their own environment — §15
+- [x] We also need to define the modules clearly, if for no other reason to help humans understand the system. Also to Roll out certain modules and not others — §14
+- [x] some data should not be able to go offline — §2.6

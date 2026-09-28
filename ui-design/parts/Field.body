@@ -1,0 +1,111 @@
+    <header class="top">
+      <div class="crumb"><span class="jd">60.01</span><span>Field Programs Meta &amp; FRED</span><span class="sep">/</span><b>Engagements &amp; training</b></div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg><span>Search everything</span><span class="k">⌘K</span></div>
+      <div class="tacts">
+        <span class="b k dot">sensitive records filtered to your grants</span>
+        <button class="btn"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 13h7M9 17h4"/></svg>Export PDF</button>
+      </div>
+    </header>
+    <div class="body">
+      <div class="phead">
+        <div>
+          <p class="eyebrow">FRED, absorbed — one taxonomy, not three</p>
+          <h1>Field engagements</h1>
+          <p class="lede">Engagements and training events relate to platform programs directly, so the chain from a training day to the donor who funded it is a join rather than four exports stitched by hand.</p>
+        </div>
+        <div class="sp"></div>
+        <div class="seg">
+          <button class="{{vEng}}" onClick="{{goEng}}">Engagements</button>
+          <button class="{{vTrn}}" onClick="{{goTrn}}">Training events</button>
+          <button class="{{vRef}}" onClick="{{goRef}}">Reference data</button>
+        </div>
+      </div>
+
+      <div class="row" style="margin-bottom:14px">
+        <sc-for list="{{kpis}}" as="k" hint-placeholder-count="4">
+          <div class="card" style="flex:1"><div class="cbd">
+            <div class="kpi"><span class="l">{{k.l}}</span><span class="v">{{k.v}}</span><span class="d">{{k.d}}</span></div>
+          </div></div>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{isEng}}" hint-placeholder-val="{{ true }}">
+        <div class="row" style="align-items:flex-start">
+          <div class="card" style="flex:1;min-width:0">
+            <div class="chd">
+              <h2>Language engagements</h2>
+              <div class="r"><div class="chips">
+                <sc-for list="{{filters}}" as="f" hint-placeholder-count="4"><button class="{{f.cls}}" onClick="{{f.pick}}">{{f.label}}</button></sc-for>
+              </div></div>
+            </div>
+            <div class="cbd flush">
+              <table class="tbl">
+                <thead><tr><th>Language</th><th>Country</th><th>Partner organization</th><th>Program</th><th class="num">Population</th><th>Sensitivity</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{engs}}" as="e" hint-placeholder-count="8">
+                    <tr class="hov">
+                      <td><div style="font-weight:700">{{e.lang}}</div><div class="mono" style="color:#5A6E7A;font-size:10.5px">{{e.tag}}</div></td>
+                      <td>{{e.country}}</td>
+                      <td>{{e.org}}</td>
+                      <td><a>{{e.prog}}</a></td>
+                      <td class="num">{{e.pop}}</td>
+                      <td><span class="b {{e.tone}}">{{e.sens}}</span></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+            <div class="prov"><span>{{hiddenNote}}</span><span>·</span><span class="mono">query scoped by principal</span><span>·</span><a>CSV</a></div>
+          </div>
+
+          <div class="card" style="width:330px;flex:0 0 330px">
+            <div class="chd"><h2>The chain, end to end</h2></div>
+            <div class="cbd" style="display:flex;flex-direction:column;gap:0">
+              <sc-for list="{{chain}}" as="c" hint-placeholder-count="6">
+                <div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #F1F5F8">
+                  <span style="width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:{{c.color}};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10.5px">{{c.n}}</span>
+                  <div><div style="font-weight:700;font-size:12.5px">{{c.name}}</div><div style="color:#5A6E7A;font-size:11px;font-weight:600">{{c.note}}</div></div>
+                </div>
+              </sc-for>
+              <div class="note" style="margin-top:11px">That single chain answers &ldquo;what training happened under the grants this foundation funded, and what did it cost&rdquo; — the question that costs someone a day today.</div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isTrn}}" hint-placeholder-val="{{ false }}">
+        <div class="card">
+          <div class="chd"><h2>Training events</h2><div class="r"><span class="b n">linked to projects by key, not by a copied string</span></div></div>
+          <div class="cbd flush">
+            <table class="tbl">
+              <thead><tr><th>Date</th><th>Event</th><th>Country</th><th>Category</th><th class="num">Participants</th><th class="num">Person-hours</th><th>Project</th></tr></thead>
+              <tbody>
+                <sc-for list="{{events}}" as="t" hint-placeholder-count="7">
+                  <tr class="hov"><td class="mono">{{t.date}}</td><td style="font-weight:700">{{t.name}}</td><td>{{t.country}}</td>
+                    <td><span class="b {{t.tone}}">{{t.cat}}</span></td><td class="num">{{t.people}}</td><td class="num">{{t.hours}}</td><td><a>{{t.proj}}</a></td></tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          <div class="prov"><span>Calendar events for these dates are what let the expense agent allocate a hotel bill to the right program.</span><span>·</span><a>CSV</a></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isRef}}" hint-placeholder-val="{{ false }}">
+        <div class="card">
+          <div class="chd"><h2>Reference imports</h2><div class="r"><span class="sub">read-only, refreshed on a schedule — staleness shows where the data is used, not only here</span></div></div>
+          <div class="cbd flush">
+            <table class="tbl">
+              <thead><tr><th>Dataset</th><th class="num">Rows</th><th>Last successful refresh</th><th>Lag</th><th>Status</th><th>Runbook</th></tr></thead>
+              <tbody>
+                <sc-for list="{{refs}}" as="r" hint-placeholder-count="5">
+                  <tr class="hov"><td style="font-weight:700">{{r.name}}</td><td class="num">{{r.rows}}</td><td class="mono">{{r.last}}</td><td>{{r.lag}}</td>
+                    <td><span class="b {{r.tone}}">{{r.status}}</span></td><td><a>{{r.runbook}}</a></td></tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          <div class="prov"><span>A chart whose upstream sync failed renders the absence rather than a silently truncated series.</span></div>
+        </div>
+      </sc-if>
+    </div>

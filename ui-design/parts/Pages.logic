@@ -1,0 +1,96 @@
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { mode: 'read', panel: 'suggestions', decided: {} }; }
+  renderVals() {
+    const s = this.state;
+    const setP = (k) => () => this.setState({ panel: k });
+    const decide = (id, how) => () => this.setState({ decided: { ...s.decided, [id]: how } });
+
+    const suggestions = [
+      { id: 'sg1', tag: 'suggestion', tone: 'k', title: 'Change the check-in cadence to monthly remote plus two visits',
+        meta: 'agent:program-assistant · 2026-08-24 06:02 · cites work order WO-2026-041 travel budget' },
+      { id: 'sg2', tag: 'suggestion', tone: 'k', title: 'Add “orgs_self_reporting” as a tracked outcome metric',
+        meta: 'human:amara · 2026-08-23 14:40 · 1 comment' },
+      { id: 'sg3', tag: 'suggestion', tone: 'k', title: 'Name the three partner organizations in the Strategy section',
+        meta: 'agent:program-assistant · 2026-08-22 09:15 · blocked — sensitivity: protected' },
+    ];
+    const versions = [
+      { id: 'v37', tag: 'v37', tone: 'i', title: 'Risks section rewritten after the access review', meta: 'human:jesse · 2026-08-24 16:12 · +142 / −38' },
+      { id: 'v36', tag: 'v36', tone: 'k', title: 'Outcome targets synced from the impact model', meta: 'agent:impact-assistant · 2026-08-19 03:11 · +18 / −6' },
+      { id: 'v35', tag: 'v35', tone: 'i', title: 'Charter created from the NISO template', meta: 'human:jesse · 2026-07-02 10:04 · instantiated_from niso-charter@v4' },
+    ];
+    const backlinks = [
+      { id: 'b1', tag: 'illustrates', tone: 'c', title: 'Story — “A church in Chad reads Ruth”', meta: 'impact_story · 63.96 · private_circulation' },
+      { id: 'b2', tag: 'funds', tone: 'i', title: 'Grant — Foundation award 2025-3311', meta: 'grant · 43.16 · reporting due 2026-10-15' },
+      { id: 'b3', tag: 'delivers_for', tone: 'n', title: 'Project — Facilitator cohort 2026', meta: 'project · 63.12 · in progress' },
+      { id: 'b4', tag: 'meeting', tone: 'n', title: 'Field sync 2026-08-21', meta: 'meeting · 63.98 · transcript linked' },
+    ];
+    const policies = [
+      { id: 'p1', tag: 'required', tone: 'r', title: 'Field data sensitivity & publication policy', meta: 'org level · cannot be overridden below · effective 2026-01-01' },
+      { id: 'p2', tag: 'required', tone: 'r', title: 'Travel & expense policy', meta: 'org level · per-diem caps apply to this program' },
+      { id: 'p3', tag: 'default', tone: 'n', title: 'WIP limit — 3 in progress per project board', meta: 'org level · superseded here to 2' },
+      { id: 'p4', tag: 'template', tone: 'n', title: 'NISO charter structure', meta: 'copied at creation · niso-charter@v4' },
+    ];
+
+    const src = { suggestions, versions, backlinks, policies }[s.panel];
+    const rows = src.map((r) => {
+      const d = s.decided[r.id];
+      return {
+        ...r,
+        decidable: s.panel === 'suggestions' && !d,
+        decided: !!d,
+        decidedTone: d === 'accept' ? 'g' : 'r',
+        decidedLabel: d === 'accept' ? 'accepted into v38' : 'rejected',
+        accept: decide(r.id, 'accept'), reject: decide(r.id, 'reject'),
+      };
+    });
+
+    const foots = {
+      suggestions: 'Suggestions are proposals, not versions. Accepting one writes a new version and records who decided.',
+      versions: 'One immutable snapshot per save, addressable as slug@v37. Export any version, or a redline between two.',
+      backlinks: 'Rebuilt on every save from frontmatter and wiki-links — never hand-maintained.',
+      policies: 'Resolved most-specific-first up the tree. Agents load this before acting on anything under this page.',
+    };
+    const titles = { suggestions: 'Suggestions', versions: 'Version history', backlinks: 'Backlinks', policies: 'Policies in force here' };
+
+    const props = [
+      { k: 'type', v: 'program' }, { k: 'jd_id', v: '63.11' },
+      { k: 'portfolio', v: 'Church-Centric Bible Translation' },
+      { k: 'horizon', v: 'quarter – 1 year' },
+      { k: 'status', v: 'active' }, { k: 'owner', v: 'Amara Doumbé' },
+      { k: 'sensitivity', v: 'protected' },
+      { k: 'offline_eligible', v: 'pages yes · engagements no' },
+      { k: 'zulip_topic', v: '#field-chad / cluster' },
+      { k: 'publish', v: 'not requested' },
+    ];
+    const links = [
+      { rel: 'portfolio', tone: 'i', name: 'Church-Centric Bible Translation' },
+      { rel: 'fund', tone: 'i', name: 'GAU-CCBT · semi-restricted (18% assessment)' },
+      { rel: 'projects', tone: 'n', name: '3 projects · 41 open tasks' },
+      { rel: 'products', tone: 'c', name: 'Open Bible Stories · translationCore' },
+      { rel: 'work orders', tone: 'n', name: 'WO-2026-041 · WO-2026-052' },
+    ];
+
+    const notes = {
+      read: 'Reading the saved version. Everything below renders from plain markdown with typed properties — the same bytes an agent reads and writes.',
+      edit: 'Editing live. Your changes merge with anyone else editing this page, and save as version 38.',
+      suggest: 'Suggesting. Your edits become a tracked-changes set for the page owner to accept or reject — the document does not change until they do.',
+    };
+
+    return {
+      mRead: s.mode === 'read' ? 'on' : '', mEdit: s.mode === 'edit' ? 'on' : '', mSug: s.mode === 'suggest' ? 'on' : '',
+      setRead: () => this.setState({ mode: 'read' }), setEdit: () => this.setState({ mode: 'edit' }), setSug: () => this.setState({ mode: 'suggest' }),
+      modeNote: notes[s.mode],
+      redline: s.mode === 'suggest', clean: s.mode !== 'suggest',
+      panelTitle: titles[s.panel], panelFoot: foots[s.panel],
+      tSugC: 'tab' + (s.panel === 'suggestions' ? ' on' : ''),
+      tVerC: 'tab' + (s.panel === 'versions' ? ' on' : ''),
+      tLinkC: 'tab' + (s.panel === 'backlinks' ? ' on' : ''),
+      tPolC: 'tab' + (s.panel === 'policies' ? ' on' : ''),
+      goSug: setP('suggestions'), goVer: setP('versions'), goLink: setP('backlinks'), goPol: setP('policies'),
+      nSug: suggestions.filter((x) => !s.decided[x.id]).length,
+      rows, props, links,
+    };
+  }
+}
+</script>

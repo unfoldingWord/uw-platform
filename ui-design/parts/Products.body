@@ -1,0 +1,165 @@
+    <header class="top">
+      <div class="crumb"><span class="jd">82</span><span>translationCore Toolset</span><span class="sep">/</span><b>translationCore</b></div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg><span>Search everything</span><span class="k">⌘K</span></div>
+      <div class="tacts">
+        <button class="btn"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 13h7M9 17h4"/></svg>Export PDF</button>
+        <button class="btn p"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New product</button>
+      </div>
+    </header>
+    <div class="body" style="display:flex;gap:14px;align-items:flex-start">
+
+      <div class="card" style="width:276px;flex:0 0 276px">
+        <div class="chd"><h2>Product catalogue</h2><div class="r"><span class="b n">37</span></div></div>
+        <div class="cbd flush">
+          <sc-for list="{{catalog}}" as="p" hint-placeholder-count="7">
+            <div class="{{p.cls}}" style="padding:10px 13px;border-bottom:1px solid #E7EEF2;cursor:pointer" onClick="{{p.pick}}">
+              <div style="display:flex;align-items:center;gap:7px;margin-bottom:2px">
+                <span class="jd">{{p.jd}}</span>
+                <div class="sp"></div>
+                <span class="b {{p.tone}}">{{p.stage}}</span>
+              </div>
+              <div style="font-weight:700;font-size:12.5px">{{p.name}}</div>
+              <div style="color:#5A6E7A;font-size:11px;font-weight:600">{{p.owner}}</div>
+            </div>
+          </sc-for>
+          <div style="padding:10px 13px;color:#5A6E7A;font-size:11px;font-weight:600">Products sit on their own plane: each has one owning category, but a product can serve several programs and portfolios.</div>
+        </div>
+      </div>
+
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px">
+        <div class="card">
+          <div class="chd">
+            <h2>{{name}}</h2>
+            <span class="b {{tone}}">{{stage}}</span>
+            <div class="r"><span class="sub">{{owner}} · {{jd}}</span></div>
+          </div>
+          <div class="cbd" style="display:flex;gap:18px">
+            <div style="flex:1;min-width:0">
+              <p style="margin:0 0 12px;color:#3A4A53;font-size:13px;line-height:1.6">{{summary}}</p>
+              <div style="display:flex;gap:18px;flex-wrap:wrap">
+                <sc-for list="{{kpis}}" as="k" hint-placeholder-count="4">
+                  <div class="kpi"><span class="l">{{k.l}}</span><span class="v" style="font-size:19px">{{k.v}}</span><span class="d">{{k.d}}</span></div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="width:236px;flex:0 0 236px;border-left:1px solid #E7EEF2;padding-left:16px">
+              <h3 style="margin-bottom:7px">Serves</h3>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <sc-for list="{{serves}}" as="v" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:7px">
+                    <span class="b {{v.tone}}">{{v.rel}}</span>
+                    <a style="font-weight:700;font-size:12px">{{v.name}}</a>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="color:#5A6E7A;font-size:11px;font-weight:600;margin-top:9px">Rollups follow the cascade by default and pivot to the product plane through these relations.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="chd">
+            <h2>{{tabTitle}}</h2>
+            <div class="r">
+              <button class="{{tHyp}}" onClick="{{goHyp}}">Hypotheses</button>
+              <button class="{{tRoad}}" onClick="{{goRoad}}">Roadmap</button>
+              <button class="{{tWork}}" onClick="{{goWork}}">Work in flight</button>
+            </div>
+          </div>
+
+          <sc-if value="{{isHyp}}" hint-placeholder-val="{{ true }}">
+            <div class="cbd flush">
+              <table class="tbl">
+                <thead><tr><th style="width:33%">Hypothesis</th><th>Experiment</th><th>Expected evidence</th><th>Result</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{hyps}}" as="h" hint-placeholder-count="4">
+                    <tr class="hov">
+                      <td style="font-weight:600">{{h.text}}</td>
+                      <td style="color:#5A6E7A;font-size:11.5px">{{h.exp}}</td>
+                      <td style="color:#5A6E7A;font-size:11.5px">{{h.ev}}</td>
+                      <td><span class="b {{h.tone}}">{{h.result}}</span></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+            <div class="prov"><span>Validated learning is part of the product template, not a separate practice</span><span>·</span><span>a pivot is recorded as a decision page with its evidence</span></div>
+          </sc-if>
+
+          <sc-if value="{{isRoad}}" hint-placeholder-val="{{ false }}">
+            <div class="cbd" style="display:flex;flex-direction:column;gap:9px">
+              <sc-for list="{{road}}" as="r" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:12px;border:1px solid #E7EEF2;border-radius:8px;padding:10px 12px;background:#FCFDFE">
+                  <span class="b {{r.tone}}" style="width:78px;justify-content:center">{{r.when}}</span>
+                  <div style="min-width:0;flex:1">
+                    <div style="font-weight:700;font-size:12.5px">{{r.name}}</div>
+                    <div style="color:#5A6E7A;font-size:11px;font-weight:600">{{r.note}}</div>
+                  </div>
+                  <div class="bar" style="width:90px"><i style="width:{{r.pct}}"></i></div>
+                  <span style="font-size:11px;font-weight:700;color:#5A6E7A;width:34px;text-align:right">{{r.pct}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{isWork}}" hint-placeholder-val="{{ false }}">
+            <div class="cbd flush">
+              <table class="tbl">
+                <thead><tr><th>Issue</th><th>Project</th><th>Sprint</th><th>Owner</th><th>Status</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{work}}" as="w" hint-placeholder-count="5">
+                    <tr class="hov">
+                      <td><span class="mono" style="color:#5A6E7A;font-size:11px">{{w.ref}}</span> {{w.title}}</td>
+                      <td><a>{{w.project}}</a></td>
+                      <td class="mono">{{w.sprint}}</td>
+                      <td>{{w.who}}</td>
+                      <td><span class="b {{w.tone}}">{{w.status}}</span></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+            <div class="prov"><span>Issues stay in the repository; the platform adds the product and project relation</span><span>·</span><span class="mono">issue_links · project —(delivers_for)→ product</span></div>
+          </sc-if>
+        </div>
+      </div>
+
+      <div style="width:300px;flex:0 0 300px;display:flex;flex-direction:column;gap:14px">
+        <div class="card">
+          <div class="chd"><h2>Product page</h2><div class="r"><span class="b n">typed frontmatter</span></div></div>
+          <div class="cbd" style="display:flex;flex-direction:column;gap:0">
+            <sc-for list="{{props}}" as="p" hint-placeholder-count="8">
+              <div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid #F1F5F8">
+                <div style="width:104px;flex:0 0 104px;color:#5A6E7A;font-size:11.5px;font-weight:700">{{p.k}}</div>
+                <div style="font-weight:600;font-size:12.5px">{{p.v}}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="chd"><h2>Releases</h2></div>
+          <div class="cbd" style="display:flex;flex-direction:column;gap:0">
+            <sc-for list="{{releases}}" as="r" hint-placeholder-count="4">
+              <div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #F1F5F8">
+                <span class="mono" style="width:52px;flex:0 0 52px;font-size:11px;color:#5A6E7A">{{r.date}}</span>
+                <div><div style="font-weight:700;font-size:12.5px">{{r.ver}}</div><div style="color:#5A6E7A;font-size:11px;font-weight:600">{{r.note}}</div></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="chd"><h2>Content &amp; policies</h2></div>
+          <div class="cbd" style="display:flex;flex-direction:column;gap:7px">
+            <sc-for list="{{policies}}" as="p" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="b {{p.tone}}">{{p.kind}}</span>
+                <span style="font-weight:600;font-size:12px">{{p.name}}</span>
+              </div>
+            </sc-for>
+            <div style="color:#5A6E7A;font-size:11px;font-weight:600;margin-top:4px">Templates are copied into a product at creation with their version recorded, not referenced — so a template change never rewrites a live product page underneath you.</div>
+          </div>
+        </div>
+      </div>
+    </div>

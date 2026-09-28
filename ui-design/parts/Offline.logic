@@ -1,0 +1,49 @@
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { on: { '62': true, '00': true, '50': true }, blocked: '' }; }
+  renderVals() {
+    const s = this.state;
+    const defs = [
+      { key: '00', range: '00-09', name: 'unfoldingWord Home', classification: 'internal', clTone: 'n', pages: 108, tasks: 12, note: 'policies, runbooks and templates — useful in the field', eligible: true },
+      { key: '10', range: '10-19', name: 'Internal Operations & Administration', classification: 'restricted', clTone: 'r', pages: 74, tasks: 4, note: 'personnel and access records never leave the server', eligible: false, why: 'Security incidents, access grants and audit logs are classified restricted, offline_eligibility never. They are readable in the app under your grants, but they are never sent to a device.' },
+      { key: '20', range: '20-29', name: 'Finance', classification: 'restricted', clTone: 'r', pages: 168, tasks: 21, note: 'ledger, funds, budgets, contracts, expenses — online only', eligible: false, why: 'Ledger, gift and CRM data carry offline_eligibility never. Financial invariants live in one database, and money data does not belong on a laptop in a sensitive country.' },
+      { key: '30', range: '30-39', name: 'Infrastructure', classification: 'internal', clTone: 'n', pages: 142, tasks: 19, note: 'runbooks and architecture decisions', eligible: true },
+      { key: '40', range: '40-49', name: 'Engage Benefactors', classification: 'restricted', clTone: 'r', pages: 132, tasks: 18, note: 'donor records — online only, always', eligible: false, why: 'Contacts, gifts, soft credits and giving history are classified restricted with offline_eligibility never. Nothing in this area reaches a device, regardless of grants.' },
+      { key: '50', range: '50-59', name: 'Innovation & Strategy', classification: 'internal', clTone: 'n', pages: 136, tasks: 27, note: 'charters, decisions, OKRs, agent instructions', eligible: true },
+      { key: '62', range: '60-79', name: 'Field Programs', classification: 'sensitive', clTone: 'r', pages: 757, tasks: 85, note: 'pages sync · sensitive engagements need an area-admin opt-in', eligible: true },
+      { key: '80', range: '80-89', name: 'Tech & SLR', classification: 'internal', clTone: 'n', pages: 296, tasks: 63, note: 'product pages, specs, decision records', eligible: true },
+      { key: '90', range: '90-99', name: 'Catalyzation', classification: 'internal', clTone: 'n', pages: 184, tasks: 22, note: 'adoption guides and partner enablement material', eligible: true },
+    ];
+    const areas = defs.map((d) => {
+      const on = d.eligible && !!s.on[d.key];
+      return {
+        ...d,
+        cls: d.eligible ? '' : 'done',
+        swCls: 'sw' + (!d.eligible ? ' lock' : on ? ' on' : ''),
+        toggle: () => {
+          if (!d.eligible) { this.setState({ blocked: d.why }); return; }
+          this.setState({ on: { ...s.on, [d.key]: !on }, blocked: '' });
+        },
+      };
+    });
+    return {
+      areas,
+      blocked: !!s.blocked, blockedText: s.blocked,
+      caps: [
+        { state: 'works', tone: 'g', name: 'Read and edit pages', note: 'local markdown plus the merge layer — conflict-free on reconnect' },
+        { state: 'works', tone: 'g', name: 'Create and edit tasks', note: 'queued and reconciled field by field' },
+        { state: 'works', tone: 'g', name: 'Read the directory and project lists', note: 'cached read models, marked with their age' },
+        { state: 'works', tone: 'g', name: 'Draft anything', note: 'a grant response, a trip report, a journal entry draft' },
+        { state: 'blocked', tone: 'r', name: 'Anything financial', note: 'ledger, gifts, CRM require connectivity by design' },
+        { state: 'blocked', tone: 'r', name: 'Submit, approve, post or publish', note: 'the submission verbs are online-only' },
+      ],
+      nPending: 3,
+      pending: [
+        { kind: 'page', tone: 'i', name: 'Trip report — eastern cluster, August', note: 'edited offline 2026-08-22 · merges cleanly' },
+        { kind: 'task', tone: 'i', name: '2 tasks created offline', note: 'field-level reconciliation, no conflicts' },
+        { kind: 'draft', tone: 'k', name: 'Expense narrative for the cohort trip', note: 'will submit when you reconnect — submission is online-only' },
+      ],
+    };
+  }
+}
+</script>

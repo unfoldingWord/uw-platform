@@ -1,0 +1,112 @@
+    <header class="top">
+      <div class="crumb"><b>Johnny.Decimal ↔ Strategic Cascade</b><span class="sep">·</span><span>the two axes, mapped</span></div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg><span>Search everything</span><span class="k">⌘K</span></div>
+      <div class="tacts">
+        <button class="btn"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 13h7M9 17h4"/></svg>Export PDF</button>
+        <button class="btn"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 10h16M10 4v16"/></svg>Edit map</button>
+      </div>
+    </header>
+    <div class="body">
+      <div class="phead">
+        <div>
+          <p class="eyebrow">Function × strategy</p>
+          <h1>Where a thing lives, and why it exists</h1>
+          <p class="lede">Neither axis is derivable from the other, and neither is the parent. Every entity carries both coordinates; this matrix is the explicit map between them.</p>
+        </div>
+        <div class="sp"></div>
+        <div class="seg">
+          <sc-for list="{{metrics}}" as="m" hint-placeholder-count="4">
+            <button class="{{m.cls}}" onClick="{{m.pick}}">{{m.label}}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div class="row" style="align-items:flex-start">
+        <div class="card" style="flex:1;min-width:0">
+          <div class="chd">
+            <h2>Areas down · cascade across</h2>
+            <div class="r">
+              <span class="b i dot">owns</span><span class="b c dot">supports</span><span class="b k dot">funds</span><span class="b n dot">reports on</span>
+            </div>
+          </div>
+          <div class="cbd flush" style="overflow:auto">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th style="width:210px">Johnny.Decimal area</th>
+                  <sc-for list="{{cols}}" as="c" hint-placeholder-count="5">
+                    <th class="num">{{c}}</th>
+                  </sc-for>
+                  <th class="num">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <sc-for list="{{rows}}" as="r" hint-placeholder-count="9">
+                  <tr>
+                    <td>
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <span class="jd">{{r.range}}</span>
+                        <span style="font-weight:700">{{r.name}}</span>
+                      </div>
+                    </td>
+                    <sc-for list="{{r.cells}}" as="c" hint-placeholder-count="5">
+                      <td class="num {{c.cls}}" style="cursor:pointer;background:{{c.bg}}" onClick="{{c.pick}}">
+                        <span style="font-weight:{{c.weight}};color:{{c.fg}}">{{c.v}}</span>
+                      </td>
+                    </sc-for>
+                    <td class="num" style="font-weight:800">{{r.total}}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          <div class="prov">
+            <span>Cell values</span><span class="mono">{{metricNote}}</span><span>·</span>
+            <span>relation from <span class="mono">jd_cascade_map</span></span><span>·</span><span>as of 2026-08-25</span><span>·</span><a>CSV</a>
+          </div>
+        </div>
+
+        <div class="card" style="width:352px;flex:0 0 352px">
+          <div class="chd"><h2>{{cellTitle}}</h2><div class="r"><span class="b {{cellTone}}">{{cellRel}}</span></div></div>
+          <div class="cbd" style="display:flex;flex-direction:column;gap:12px">
+            <p style="margin:0;color:#3A4A53;font-size:12.5px">{{cellText}}</p>
+            <div style="display:flex;gap:14px;flex-wrap:wrap">
+              <sc-for list="{{cellKpis}}" as="k" hint-placeholder-count="4">
+                <div class="kpi" style="min-width:92px"><span class="l">{{k.l}}</span><span class="v" style="font-size:17px">{{k.v}}</span></div>
+              </sc-for>
+            </div>
+            <div>
+              <h3 style="margin-bottom:6px">Both directions from here</h3>
+              <div style="display:flex;flex-direction:column;gap:7px">
+                <sc-for list="{{cellLinks}}" as="l" hint-placeholder-count="4">
+                  <a style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:12.5px">
+                    <span class="b n">{{l.dir}}</span>{{l.name}}
+                  </a>
+                </sc-for>
+              </div>
+            </div>
+            <div class="note">Access rides the functional axis — a grant of <span class="mono">admin(20-29)</span> is the finance admin. Money and outcomes ride the strategic axis. Reporting joins them here.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:14px">
+        <div class="card" style="flex:1">
+          <div class="chd"><h2>Why two axes</h2><div class="r"><span class="sub">the section an adopting organization reads first</span></div></div>
+          <div class="cbd" style="display:flex;gap:16px">
+            <div style="flex:1;border-right:1px solid #E7EEF2;padding-right:16px">
+              <h3 style="color:#014263">Johnny.Decimal · functional</h3>
+              <p style="margin:5px 0 0;color:#3A4A53;font-size:12.5px">Where a thing lives. Stable, addressable, mirrored in shared drives and chat folders. Changes rarely — a renumber is an org restructure. Answers &ldquo;where do I file this.&rdquo;</p>
+            </div>
+            <div style="flex:1;border-right:1px solid #E7EEF2;padding-right:16px">
+              <h3 style="color:#31ADE3">Strategic Cascade · strategic</h3>
+              <p style="margin:5px 0 0;color:#3A4A53;font-size:12.5px">Why a thing exists. Purpose → portfolio → program → project → task. Supposed to change every planning cycle. Answers &ldquo;what outcome does this serve.&rdquo;</p>
+            </div>
+            <div style="flex:1">
+              <h3 style="color:#C97F14">The failure this prevents</h3>
+              <p style="margin:5px 0 0;color:#3A4A53;font-size:12.5px">Model only one axis and the other gets smuggled in as duplicated select fields — exactly the portfolio-select duplication and the parallel grant taxonomy the migration is paying off.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>

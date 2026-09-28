@@ -1,0 +1,102 @@
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.state = { mode: 'chart', chart: 'bal', inactive: false, series: { actual: true, forecast: true, prior: true } };
+  }
+  renderVals() {
+    const s = this.state;
+
+    // --- program balance by month (Budget Report encoding) ---
+    const months = ['2025-10','2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06','2026-07','2026-08','2026-09'];
+    const budget = [360,360,380,360,360,380,360,360,380,360,360,380];
+    const comm   = [330,344,402,351,338,372,356,349,391,342,288,120];
+    const actual = [318,331,396,342,329,361,344,338,372,318,214,0];
+    const balA   = [2980,2712,2390,2102,1841,1552,1284,1006,712,468,286];
+    const balF   = [286,104];
+    const balP   = [3120,2864,2530,2260,1998,1712,1450,1188,904,662,470,240];
+
+    const x = (i) => Math.round(58 + i * ((884 - 58) / 11));
+    const y = (v) => Math.round(212 - (v / 3000) * 148);
+    const pts = (arr, off) => arr.map((v, i) => x(i + (off || 0)) + ',' + y(v)).join(' ');
+
+    const rows = months.map((m, i) => {
+      const v = actual[i] - budget[i];
+      return {
+        period: m,
+        budget: '$' + budget[i] + ',000',
+        comm: '$' + comm[i] + ',000',
+        actual: actual[i] ? '$' + actual[i] + ',000' : '—',
+        bal: (balA[i] !== undefined ? '$' + balA[i].toLocaleString('en-US') + ',000' : '—'),
+        var: actual[i] ? (v >= 0 ? '+' : '−') + '$' + Math.abs(v) + ',000' : '—',
+        color: !actual[i] ? '#5A6E7A' : v > 0 ? '#D9534F' : '#2E8B57',
+      };
+    });
+
+    // --- cumulative contributed revenue (Revenue Projection encoding) ---
+    const cum = (arr) => { let t = 0; return arr.map((v) => (t += v)); };
+    const rActual = cum([318,331,396,342,329,361,344,338,372,318,214]);
+    const rPrior  = cum([301,318,372,330,316,348,331,322,356,305,288,340]);
+    const rx = (i) => Math.round(46 + i * ((686 - 46) / 11));
+    const ry = (v) => Math.round(206 - (v / 4200) * 186);
+    const last = rActual[rActual.length - 1];
+
+    const legend1 = [
+      { key: 'actual', name: 'Actual', swatch: '#014263' },
+      { key: 'forecast', name: 'Forecast', swatch: 'repeating-linear-gradient(90deg,#31ADE3 0 6px,transparent 6px 11px)' },
+      { key: 'prior', name: 'FY2025', swatch: '#C4D3DB' },
+    ].map((l) => ({
+      ...l,
+      cls: 'item' + (s.series[l.key] ? '' : ' off'),
+      toggle: () => this.setState({ series: { ...s.series, [l.key]: !s.series[l.key] } }),
+    }));
+
+    const allChips = [
+      { name: 'Church-Centric BT', note: 'on plan', cls: 'healthy' },
+      { name: 'Content Development', note: 'on plan', cls: 'healthy' },
+      { name: 'Tools & Technology', note: 'drawing down reserves', cls: 'watch' },
+      { name: 'Field Training', note: 'projected negative', cls: 'shortfall' },
+      { name: 'Catalyst Partners', note: 'unrestricted', cls: 'healthy' },
+      { name: 'Legacy print', note: 'inactive', cls: 'inactive' },
+    ];
+    const chips = allChips.filter((c) => s.inactive || c.cls !== 'inactive');
+
+    const lib = [
+      { k: 'bal', kind: 'line', tone: 'i', name: 'Program balance by month', note: 'actuals solid, forecast dashed, zero line' },
+      { k: 'rev', kind: 'line', tone: 'i', name: 'Cumulative revenue to projection', note: 'with prior-year reference' },
+      { k: 'bva', kind: 'bar', tone: 'c', name: 'Budget vs committed vs actual', note: 'by period, per portfolio' },
+      { k: 'fx', kind: 'matrix', tone: 'n', name: 'Functional expense matrix', note: 'account × function, feeds the 990' },
+      { k: 'fund', kind: 'area', tone: 'c', name: 'Fund balances over time', note: 'restriction respected' },
+      { k: 'pipe', kind: 'bar', tone: 'c', name: 'Grant pipeline by confidence', note: 'never summed with awards' },
+      { k: 'ret', kind: 'cohort', tone: 'n', name: 'Donor retention · LYBUNT / SYBUNT', note: 'labelled with its credit basis' },
+      { k: 'burn', kind: 'line', tone: 'n', name: 'Sprint burndown & cumulative flow', note: 'straight off version history' },
+      { k: 'cover', kind: 'map', tone: 'n', name: 'Engagement coverage by country', note: 'aggregates only for protected rows' },
+    ].map((l) => ({ ...l, cls: s.chart === l.k ? 'sel-row' : '', pick: () => this.setState({ chart: l.k }) }));
+
+    return {
+      kpis: [
+        { l: 'Combined program balance', v: '$2.86M', d: 'across 5 portfolios', color: '#014263', tone: '' },
+        { l: 'Unrestricted balance', v: '$520K', d: 'Catalyst Partners', color: '#31ADE3', tone: '' },
+        { l: 'Projected year-end', v: '$1.04M', d: 'if committed lands', color: '#2E8B57', tone: 'pos' },
+        { l: 'Programs projected negative', v: '1', d: 'Field Training', color: '#D9534F', tone: 'neg' },
+        { l: 'Drawing down reserves', v: '1', d: 'on watch this year', color: '#E59D33', tone: '' },
+      ],
+      chips,
+      inactiveBox: s.inactive ? 'ckon' : '',
+      toggleInactive: () => this.setState({ inactive: !s.inactive }),
+      legend1,
+      showActual: s.series.actual, showForecast: s.series.forecast, showPrior: s.series.prior,
+      balActual: pts(balA), balForecast: pts(balF, 10), balPrior: pts(balP),
+      revActual: rActual.map((v, i) => rx(i) + ',' + ry(v)).join(' '),
+      revProj: [rx(10) + ',' + ry(last), rx(11) + ',' + ry(last + 296)].join(' '),
+      revPrior: rPrior.map((v, i) => rx(i) + ',' + ry(v)).join(' '),
+      revSplitX: rx(10), revSplitY: ry(last),
+      vChart: s.mode === 'chart' ? 'on' : '', vTable: s.mode === 'table' ? 'on' : '',
+      showChart: () => this.setState({ mode: 'chart' }), showTable: () => this.setState({ mode: 'table' }),
+      isChart: s.mode === 'chart', isTable: s.mode === 'table',
+      rows, lib,
+      dq: '2026-09 shows committed only — no postings yet in an open future period. Two partner invoices totalling $18,400 are excluded because their work order dimension is unresolved; they are listed in the exclusions report rather than guessed into a bucket. Ambiguous rows are omitted and reported, never guessed.',
+    };
+  }
+}
+</script>

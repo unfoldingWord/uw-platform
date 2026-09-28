@@ -1,0 +1,121 @@
+    <header class="top">
+      <div class="crumb"><span class="jd">60-79</span><b>Field Programs</b><span class="sep">·</span><span>area home</span></div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg><span>Search everything</span><span class="k">⌘K</span></div>
+      <div class="tacts">
+        <button class="btn"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 13h7M9 17h4"/></svg>Export PDF</button>
+        <button class="btn p"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New page here</button>
+      </div>
+    </header>
+    <div class="body">
+      <div class="phead">
+        <div>
+          <p class="eyebrow">Area home · everything filed here</p>
+          <h1>60-79 Field Programs</h1>
+          <p class="lede">Every area gets this page. It is the functional view — what lives here, who can see it, and what is moving — as opposed to the cascade view, which asks what outcome the same work serves.</p>
+        </div>
+        <div class="sp"></div>
+        <div style="display:flex;gap:20px">
+          <div class="kpi"><span class="l">Pages</span><span class="v">757</span><span class="d">38 stale</span></div>
+          <div class="kpi"><span class="l">Open projects</span><span class="v">{{nProjects}}</span><span class="d">across 6 countries</span></div>
+          <div class="kpi"><span class="l">People with access</span><span class="v">14</span><span class="d">3 time-boxed</span></div>
+        </div>
+      </div>
+
+      <div class="row" style="align-items:flex-start">
+        <div style="flex:1.5;min-width:0;display:flex;flex-direction:column;gap:14px">
+          <div class="card">
+            <div class="chd">
+              <h2>Projects in this area</h2>
+              <span class="b i">{{nProjects}} open</span>
+              <div class="r">
+                <div class="chips">
+                  <sc-for list="{{filters}}" as="f" hint-placeholder-count="4"><button class="{{f.cls}}" onClick="{{f.pick}}">{{f.label}}</button></sc-for>
+                </div>
+                <button class="btn sm">Open board</button>
+              </div>
+            </div>
+            <div class="cbd flush">
+              <table class="tbl">
+                <thead><tr><th>Project</th><th>Category</th><th>Program</th><th>Status</th><th style="width:120px">Progress</th><th class="num">Committed</th><th>Due</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{projects}}" as="p" hint-placeholder-count="8">
+                    <tr class="hov">
+                      <td><div style="font-weight:700">{{p.name}}</div><div style="color:#5A6E7A;font-size:11px;font-weight:600">{{p.owner}}</div></td>
+                      <td><span class="jd">{{p.jd}}</span></td>
+                      <td><a>{{p.program}}</a></td>
+                      <td><span class="b {{p.tone}}">{{p.status}}</span></td>
+                      <td><div class="bar"><i style="width:{{p.pct}}"></i></div></td>
+                      <td class="num">{{p.committed}}</td>
+                      <td class="mono">{{p.due}}</td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+            <div class="prov"><span>Projects belong to a category here and serve a program on the strategic axis — the crosswalk holds the join.</span><span>·</span><a>CSV</a></div>
+          </div>
+
+          <div class="card">
+            <div class="chd"><h2>Categories</h2><div class="r"><span class="sub">the boxes on this shelf</span></div></div>
+            <div class="cbd" style="display:flex;flex-wrap:wrap;gap:9px">
+              <sc-for list="{{cats}}" as="c" hint-placeholder-count="11">
+                <div style="display:flex;align-items:center;gap:9px;border:1px solid #E7EEF2;border-radius:8px;padding:8px 11px;background:#FCFDFE;min-width:210px">
+                  <span class="jd">{{c.id}}</span>
+                  <div style="min-width:0">
+                    <div style="font-weight:700;font-size:12px">{{c.name}}</div>
+                    <div style="color:#5A6E7A;font-size:10.5px;font-weight:600">{{c.note}}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px">
+          <div class="card">
+            <div class="chd"><h2>Meetings here</h2><div class="r"><span class="b n">xx.98</span><button class="btn sm q">All meetings</button></div></div>
+            <div class="cbd flush">
+              <sc-for list="{{meetings}}" as="m" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid #E7EEF2">
+                  <span class="mono" style="color:#5A6E7A;font-size:11px;width:74px;flex:0 0 74px">{{m.date}}</span>
+                  <div style="min-width:0;flex:1">
+                    <div style="font-weight:700;font-size:12.5px">{{m.name}}</div>
+                    <div style="color:#5A6E7A;font-size:11px;font-weight:600">{{m.note}}</div>
+                  </div>
+                  <span class="b {{m.tone}}">{{m.state}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="chd"><h2>Recently changed</h2><div class="r"><span class="sub">humans and agents</span></div></div>
+            <div class="cbd flush">
+              <sc-for list="{{recent}}" as="r" hint-placeholder-count="5">
+                <div style="display:flex;gap:9px;padding:8px 14px;border-bottom:1px solid #E7EEF2">
+                  <span class="b {{r.tone}}" style="height:17px">{{r.who}}</span>
+                  <div style="min-width:0">
+                    <div style="font-weight:600;font-size:12.5px">{{r.what}}</div>
+                    <div style="color:#5A6E7A;font-size:11px;font-weight:600">{{r.when}} · {{r.jd}}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="chd"><h2>Reserved IDs</h2><div class="r"><span class="sub">the same four in every area</span></div></div>
+            <div class="cbd" style="display:flex;flex-direction:column;gap:6px">
+              <sc-for list="{{reserved}}" as="r" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:9px">
+                  <span class="jd">{{r.id}}</span>
+                  <span style="font-weight:700;font-size:12px">{{r.name}}</span>
+                  <div class="sp"></div>
+                  <span style="color:#5A6E7A;font-size:11px;font-weight:700">{{r.count}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>

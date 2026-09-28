@@ -1,0 +1,39 @@
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { filter: 'all', sel: 'r1' }; }
+  renderVals() {
+    const s = this.state;
+    const all = [
+      { group: 'Entities', id: 'r1', type: 'program', tone: 'i', title: 'Chad Initiative', sub: 'active · owner Amara Doumbé · 3 projects', jd: '63.11', cascade: 'Church-Centric', kind: 'entities' },
+      { group: 'Entities', id: 'r2', type: 'project', tone: 'i', title: 'Facilitator cohort 2026', sub: 'in progress · 41 open tasks', jd: '63.12', cascade: 'Church-Centric', kind: 'entities' },
+      { group: 'Entities', id: 'r3', type: 'work order', tone: 'i', title: 'WO-2026-041 — Chad facilitator cohort', sub: '$186,000 · 65% consumed', jd: '25.02', cascade: 'Church-Centric', kind: 'entities' },
+      { group: 'Pages', id: 'r4', type: 'charter', tone: 'c', title: 'Chad Initiative — NISO charter', sub: 'v37 · edited 2026-08-24 by human:jesse', jd: '63.11', cascade: 'Church-Centric', kind: 'pages' },
+      { group: 'Pages', id: 'r5', type: 'decision', tone: 'c', title: 'Remote-only contingency for the eastern cluster', sub: 'decided 2026-08-21 · linked to the charter', jd: '63.11', cascade: 'Church-Centric', kind: 'pages' },
+      { group: 'Pages', id: 'r6', type: 'meeting', tone: 'c', title: 'Field sync — 2026-08-21', sub: 'transcript linked · 4 suggested action items', jd: '63.98', cascade: 'Church-Centric', kind: 'pages' },
+      { group: 'Pages', id: 'r7', type: 'story', tone: 'c', title: 'A church in Chad reads Ruth in its own language', sub: 'private_circulation · consent on file', jd: '63.96', cascade: 'Church-Centric', kind: 'pages' },
+      { group: 'Field data', id: 'r8', type: 'training', tone: 'k', title: 'Community checking — Ruth · 2026-08-08', sub: '18 participants · 144 person-hours', jd: '60.01', cascade: 'Church-Centric', kind: 'field' },
+      { group: 'Field data', id: 'r9', type: 'engagement', tone: 'k', title: '2 protected engagements match', sub: 'names withheld — visible because you hold a grant on area 63', jd: '60.01', cascade: 'Church-Centric', kind: 'field' },
+      { group: 'Actions', id: 'r10', type: 'action', tone: 'n', title: 'New task on Chad Initiative', sub: 'creates a task attached to this program', jd: '—', cascade: '—', kind: 'actions' },
+      { group: 'Actions', id: 'r11', type: 'action', tone: 'n', title: 'Export the Chad program page to PDF', sub: 'same query as the screen, letterhead, provenance footer', jd: '—', cascade: '—', kind: 'actions' },
+    ];
+    const shown = all.filter((r) => s.filter === 'all' || r.kind === s.filter);
+    const names = [];
+    shown.forEach((r) => { if (names.indexOf(r.group) < 0) names.push(r.group); });
+    const groups = names.map((n) => ({
+      name: n,
+      items: shown.filter((r) => r.group === n).map((r) => ({
+        ...r, cls: r.id === s.sel ? 'sel-row' : '', pick: () => this.setState({ sel: r.id }),
+      })),
+    }));
+    const filters = [
+      { k: 'all', l: 'Everything' }, { k: 'entities', l: 'Entities' }, { k: 'pages', l: 'Pages' },
+      { k: 'field', l: 'Field data' }, { k: 'actions', l: 'Actions' },
+    ].map((f) => ({ label: f.l, cls: 'chip' + (s.filter === f.k ? ' on' : ''), pick: () => this.setState({ filter: f.k }) }));
+
+    return {
+      groups, filters, count: shown.length,
+      hiddenNote: '3 results hidden by your grants',
+    };
+  }
+}
+</script>

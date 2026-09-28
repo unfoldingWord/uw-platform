@@ -1,0 +1,534 @@
+<meta charset="utf-8">
+<title>An App For Everything in Six Pictures</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800;6..12,900&display=swap">
+<style>
+  :root {
+    --bg: #F4F8FA;
+    --surface: #FFFFFF;
+    --ink: #231F20;
+    --muted: #5A6E7A;
+    --line: #C4D3DB;
+    --ocean: #014263;
+    --ocean-panel: #014263;
+    --ocean-panel-ink: #E8F4FA;
+    --inspire: #31ADE3;
+    --inspire-soft: #E3F3FB;
+    --cultivate: #4FA9AC;
+    --cultivate-soft: #E4F4F4;
+    --kindle: #C97F14;
+    --kindle-soft: #FBEFDC;
+    --logo-light: inline-block;
+    --logo-dark: none;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0B171E;
+      --surface: #11222C;
+      --ink: #E6EEF2;
+      --muted: #94AAB5;
+      --line: #2C4756;
+      --ocean: #7FC3E8;
+      --ocean-panel: #0E2C3C;
+      --ocean-panel-ink: #D9EDF8;
+      --inspire: #31ADE3;
+      --inspire-soft: #10303F;
+      --cultivate: #70C9CC;
+      --cultivate-soft: #0F2E30;
+      --kindle: #E59D33;
+      --kindle-soft: #33270F;
+      --logo-light: none;
+      --logo-dark: inline-block;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0B171E;
+    --surface: #11222C;
+    --ink: #E6EEF2;
+    --muted: #94AAB5;
+    --line: #2C4756;
+    --ocean: #7FC3E8;
+    --ocean-panel: #0E2C3C;
+    --ocean-panel-ink: #D9EDF8;
+    --inspire: #31ADE3;
+    --inspire-soft: #10303F;
+    --cultivate: #70C9CC;
+    --cultivate-soft: #0F2E30;
+    --kindle: #E59D33;
+    --kindle-soft: #33270F;
+    --logo-light: none;
+    --logo-dark: inline-block;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Nunito Sans', 'Avenir', 'Montserrat', sans-serif;
+    line-height: 1.55;
+    margin: 0;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 40px 24px 88px; }
+
+  header.masthead { display: flex; flex-wrap: wrap; align-items: center; gap: 20px 28px; padding-bottom: 26px; border-bottom: 3px solid var(--inspire); }
+  .logo-light { display: var(--logo-light); }
+  .logo-dark { display: var(--logo-dark); }
+  .masthead img { height: 44px; width: auto; }
+  .masthead .titles { flex: 1 1 380px; }
+  h1 { font-weight: 900; font-size: clamp(26px, 4vw, 38px); line-height: 1.12; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+  .subtitle { color: var(--muted); font-size: 16px; margin: 6px 0 0; font-style: italic; }
+
+  .intro { max-width: 68ch; font-size: 17px; margin: 26px 0 8px; }
+
+  section.fig { margin-top: 56px; }
+  .eyebrow { color: var(--inspire); font-weight: 800; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; margin: 0 0 6px; }
+  h2 { font-weight: 800; font-size: clamp(20px, 2.6vw, 26px); margin: 0 0 8px; text-wrap: balance; }
+  .lede { color: var(--muted); max-width: 70ch; margin: 0 0 18px; font-size: 15.5px; }
+
+  figure { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 14px 8px; }
+  .scroller { overflow-x: auto; }
+  figure svg { display: block; width: 100%; min-width: 720px; max-width: 100%; height: auto; margin: 0 auto; }
+  figcaption { color: var(--muted); font-size: 13.5px; padding: 12px 8px 10px; border-top: 1px solid var(--line); margin-top: 12px; max-width: none; }
+  figcaption strong { color: var(--ink); }
+
+  footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13.5px; max-width: 75ch; }
+
+  /* ---- SVG palette classes ---- */
+  .box    { fill: var(--surface); stroke: var(--line); stroke-width: 1.4; }
+  .boxI   { fill: var(--inspire-soft); stroke: var(--inspire); stroke-width: 1.6; }
+  .boxO   { fill: var(--ocean-panel); stroke: var(--ocean-panel); }
+  .boxC   { fill: var(--cultivate-soft); stroke: var(--cultivate); stroke-width: 1.4; stroke-dasharray: 5 4; }
+  .boxK   { fill: var(--kindle-soft); stroke: var(--kindle); stroke-width: 1.6; }
+  .ghost  { fill: none; stroke: var(--line); stroke-width: 1.2; }
+  .t      { fill: var(--ink); font-family: 'Nunito Sans', 'Avenir', sans-serif; font-size: 13px; }
+  .tb     { fill: var(--ink); font-family: 'Nunito Sans', 'Avenir', sans-serif; font-size: 13.5px; font-weight: 800; }
+  .tm     { fill: var(--muted); font-family: 'Nunito Sans', 'Avenir', sans-serif; font-size: 11.5px; }
+  .tO     { fill: var(--ocean-panel-ink); font-family: 'Nunito Sans', 'Avenir', sans-serif; font-size: 13.5px; font-weight: 800; }
+  .tOs    { fill: var(--ocean-panel-ink); opacity: 0.85; font-family: 'Nunito Sans', 'Avenir', sans-serif; font-size: 11.5px; }
+  .tI     { fill: var(--inspire); font-family: 'Nunito Sans', 'Avenir', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; }
+  .tC     { fill: var(--cultivate); font-family: 'Nunito Sans', 'Avenir', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; }
+  .tK     { fill: var(--kindle); font-family: 'Nunito Sans', 'Avenir', sans-serif; font-size: 12px; font-weight: 800; }
+  .edge   { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+  .edgeI  { stroke: var(--inspire); stroke-width: 1.8; fill: none; }
+  .edgeK  { stroke: var(--kindle); stroke-width: 1.8; fill: none; }
+  .edgeD  { stroke: var(--muted); stroke-width: 1.2; fill: none; stroke-dasharray: 4 4; }
+  .arr    { fill: var(--muted); }
+  .arrI   { fill: var(--inspire); }
+  .arrK   { fill: var(--kindle); }
+  .barI   { fill: var(--inspire-soft); stroke: var(--inspire); stroke-width: 1.4; }
+  .barC   { fill: var(--cultivate-soft); stroke: var(--cultivate); stroke-width: 1.4; stroke-dasharray: 5 4; }
+  .gateK  { fill: var(--kindle); }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <img class="logo-light" src="data:image/png;base64,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" alt="unfoldingWord">
+    <img class="logo-dark" src="data:image/png;base64,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" alt="unfoldingWord">
+    <div class="titles">
+      <h1>An App For Everything in Six Pictures</h1>
+      <p class="subtitle">A vertically and horizontally integrated operating system for the whole organization.</p>
+    </div>
+  </header>
+
+  <p class="intro">Six pictures that explain the platform: the problem it removes, the shape of the answer, how it follows our strategy and our money, how AI agents work inside it, and the path from here to there. Each picture stands alone; together they are the whole argument.</p>
+
+  <!-- ================= FIG 1 ================= -->
+  <section class="fig">
+    <p class="eyebrow">Figure 1</p>
+    <h2>Five systems, one question</h2>
+    <p class="lede">Ask "what happened under this grant, and what did it cost?" and today a person stitches exports from four or five systems by hand. On the platform, the same question is a single query over one database.</p>
+    <figure>
+      <div class="scroller">
+      <svg viewBox="0 0 960 430" role="img" aria-label="Left: five disconnected systems joined only by a person stitching exports by hand. Right: one platform holding the same five domains in one database, answering the same question with a single query.">
+        <text class="tI" x="20" y="30">TODAY</text>
+        <text class="tI" x="530" y="30">WITH THE PLATFORM</text>
+        <line class="edgeD" x1="485" y1="16" x2="485" y2="414"/>
+
+        
+        <rect class="box" x="30"  y="70"  width="150" height="46" rx="6"/>
+        <text class="tb" x="105" y="90" text-anchor="middle">Sage Intacct</text>
+        <text class="tm" x="105" y="106" text-anchor="middle">ledger</text>
+
+        <rect class="box" x="290" y="70"  width="150" height="46" rx="6"/>
+        <text class="tb" x="365" y="90" text-anchor="middle">Virtuous</text>
+        <text class="tm" x="365" y="106" text-anchor="middle">donors + gifts</text>
+
+        <rect class="box" x="20"  y="210" width="150" height="46" rx="6"/>
+        <text class="tb" x="95"  y="230" text-anchor="middle">Notion + Sheets</text>
+        <text class="tm" x="95"  y="246" text-anchor="middle">knowledge + budget</text>
+
+        <rect class="box" x="300" y="210" width="150" height="46" rx="6"/>
+        <text class="tb" x="375" y="230" text-anchor="middle">FRED</text>
+        <text class="tm" x="375" y="246" text-anchor="middle">field results</text>
+
+        <rect class="box" x="160" y="330" width="150" height="46" rx="6"/>
+        <text class="tb" x="235" y="350" text-anchor="middle">GitHub + ZenHub</text>
+        <text class="tm" x="235" y="366" text-anchor="middle">dev work</text>
+
+        
+        <ellipse class="boxK" cx="235" cy="185" rx="86" ry="34"/>
+        <text class="tK" x="235" y="181" text-anchor="middle">a person, by hand</text>
+        <text class="tm" x="235" y="197" text-anchor="middle">exports · re-keying · notes</text>
+
+        <line class="edgeD" x1="180" y1="112" x2="215" y2="155"/>
+        <line class="edgeD" x1="300" y1="112" x2="262" y2="155"/>
+        <line class="edgeD" x1="170" y1="222" x2="150" y2="192"/>
+        <line class="edgeD" x1="300" y1="228" x2="318" y2="222"/>
+        <line class="edgeD" x1="235" y1="330" x2="235" y2="219"/>
+
+        
+        <rect class="boxI" x="530" y="70" width="400" height="306" rx="10"/>
+        <text class="tb" x="730" y="98" text-anchor="middle">One platform · one database</text>
+        <g>
+          <rect class="box" x="552" y="116" width="356" height="38" rx="5"/>
+          <text class="t" x="730" y="140" text-anchor="middle">Knowledge, pages, policies</text>
+          <rect class="box" x="552" y="162" width="356" height="38" rx="5"/>
+          <text class="t" x="730" y="186" text-anchor="middle">Programs, projects, products, OKRs</text>
+          <rect class="box" x="552" y="208" width="356" height="38" rx="5"/>
+          <text class="t" x="730" y="232" text-anchor="middle">Donors, gifts, grants</text>
+          <rect class="box" x="552" y="254" width="356" height="38" rx="5"/>
+          <text class="t" x="730" y="278" text-anchor="middle">Ledger, budgets, contracts, work orders</text>
+          <rect class="box" x="552" y="300" width="356" height="38" rx="5"/>
+          <text class="t" x="730" y="324" text-anchor="middle">Field engagements and training (FRED)</text>
+        </g>
+        <text class="tm" x="730" y="366" text-anchor="middle">every row relates to every other row</text>
+
+        <text class="tI" x="730" y="404" text-anchor="middle">same question → one query, one answer</text>
+      </svg>
+      </div>
+      <figcaption><strong>The pain today is the orange ellipse.</strong> Every cross-system answer routes through a person doing manual reconciliation. The platform replaces the person-in-the-middle with foreign keys.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ================= FIG 2 ================= -->
+  <section class="fig">
+    <p class="eyebrow">Figure 2</p>
+    <h2>The spine: how the layers stack</h2>
+    <p class="lede">Sources feed one canonical data layer. Agents and apps reach it only through a small set of tool verbs. Institutional memory is woven across every layer. Every "should we build X?" is answered by where X sits on this spine.</p>
+    <figure>
+      <div class="scroller">
+      <svg viewBox="0 0 960 540" role="img" aria-label="A four-layer stack: sources and services sync into the canonical entity layer in Postgres; the MCP surface of small tool verbs reads it; one workspace of humans, apps, and agents sits on top. An institutional memory rail runs alongside all layers.">
+        <defs>
+          <marker id="m-up" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" class="arr"/>
+          </marker>
+        </defs>
+
+        
+        <rect class="boxO" x="110" y="46" width="580" height="72" rx="8"/>
+        <text class="tO" x="400" y="78" text-anchor="middle">ONE WORKSPACE — humans, apps and agents together</text>
+        <text class="tOs" x="400" y="98" text-anchor="middle">web · desktop app (works offline) · Zulip bot · published website</text>
+
+        <line class="edge" x1="400" y1="170" x2="400" y2="122" marker-end="url(#m-up)"/>
+        <text class="tm" x="412" y="150">tool calls</text>
+
+        <rect class="boxI" x="110" y="174" width="580" height="60" rx="8"/>
+        <text class="tb" x="400" y="200" text-anchor="middle">MCP SURFACE — small, single-purpose tool verbs</text>
+        <text class="tm" x="400" y="218" text-anchor="middle">the agent abstraction: dangerous verbs simply don't exist here</text>
+
+        <line class="edge" x1="400" y1="290" x2="400" y2="238" marker-end="url(#m-up)"/>
+        <text class="tm" x="412" y="268">entity reads and writes</text>
+
+        <rect class="box" x="110" y="294" width="580" height="88" rx="8"/>
+        <text class="tb" x="400" y="322" text-anchor="middle">CANONICAL ENTITY LAYER — one Postgres database</text>
+        <text class="tm" x="400" y="342" text-anchor="middle">pages (markdown + typed properties) and records: people · funds · gifts · grants</text>
+        <text class="tm" x="400" y="360" text-anchor="middle">programs · products · engagements · journal entries · work orders · tasks</text>
+
+        <line class="edge" x1="400" y1="438" x2="400" y2="386" marker-end="url(#m-up)"/>
+        <text class="tm" x="412" y="416">sync · capture — provenance kept on every fact</text>
+
+        <rect class="box" x="110" y="442" width="580" height="64" rx="8"/>
+        <text class="tb" x="400" y="468" text-anchor="middle">SOURCES AND SERVICES</text>
+        <text class="tm" x="400" y="488" text-anchor="middle">Stripe · GitHub · Zoom · Google Calendar · Zulip · Progress Bible · Google sign-in</text>
+
+        
+        <rect class="boxC" x="730" y="46" width="204" height="460" rx="8"/>
+        <text class="tC" x="832" y="76" text-anchor="middle">INSTITUTIONAL</text>
+        <text class="tC" x="832" y="92" text-anchor="middle">MEMORY</text>
+        <text class="tm" x="832" y="122" text-anchor="middle">policies · decisions</text>
+        <text class="tm" x="832" y="140" text-anchor="middle">learnings · skills</text>
+        <text class="tm" x="832" y="178" text-anchor="middle">read before acting,</text>
+        <text class="tm" x="832" y="196" text-anchor="middle">written back after —</text>
+        <text class="tm" x="832" y="214" text-anchor="middle">by people and agents</text>
+        <text class="tm" x="832" y="252" text-anchor="middle">a lesson paid for once</text>
+        <text class="tm" x="832" y="270" text-anchor="middle">is filed once</text>
+        <text class="tm" x="832" y="478" text-anchor="middle">woven across every layer</text>
+      </svg>
+      </div>
+      <figcaption><strong>The knowledge and execution layer comes first; the agent is the last 10%.</strong> Agents never touch source systems directly — they see only the entity layer, through verbs we chose.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ================= FIG 3 ================= -->
+  <section class="fig">
+    <p class="eyebrow">Figure 3</p>
+    <h2>The Strategic Cascade becomes the schema</h2>
+    <p class="lede">The vertical axis of integration: our existing cascade is not a poster on the wall — it is the database's actual shape. Money and impact attach at the portfolio tier; products sit on a crossing plane.</p>
+    <figure>
+      <div class="scroller">
+      <svg viewBox="0 0 960 600" role="img" aria-label="The strategic cascade from Purpose down to Task as a chain of entities, each with its time horizon. A fund and an impact model attach to the portfolio tier. Products sit on a separate plane owned by programs, with projects delivering for them.">
+        <defs>
+          <marker id="m-dn" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" class="arr"/>
+          </marker>
+          <marker id="m-i" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" class="arrI"/>
+          </marker>
+        </defs>
+
+        
+        <g>
+          <rect class="boxO" x="90" y="34" width="280" height="46" rx="7"/>
+          <text class="tO" x="230" y="62" text-anchor="middle">PURPOSE</text>
+          <text class="tm" x="80" y="62" text-anchor="end">enduring</text>
+
+          <line class="edge" x1="230" y1="80" x2="230" y2="106" marker-end="url(#m-dn)"/>
+          <rect class="boxO" x="90" y="110" width="280" height="46" rx="7"/>
+          <text class="tO" x="230" y="138" text-anchor="middle">OBJECTIVE (MTP)</text>
+          <text class="tm" x="80" y="138" text-anchor="end">stable</text>
+
+          <line class="edge" x1="230" y1="156" x2="230" y2="182" marker-end="url(#m-dn)"/>
+          <rect class="box" x="90" y="186" width="280" height="46" rx="7"/>
+          <text class="tb" x="230" y="207" text-anchor="middle">Principles + Values</text>
+          <text class="tm" x="230" y="223" text-anchor="middle">become the policy engine</text>
+          <text class="tm" x="80" y="214" text-anchor="end">stable</text>
+
+          <line class="edge" x1="230" y1="232" x2="230" y2="258" marker-end="url(#m-dn)"/>
+          <rect class="boxI" x="90" y="262" width="280" height="46" rx="7"/>
+          <text class="tb" x="230" y="283" text-anchor="middle">Strategic Intent ≡ Portfolio</text>
+          <text class="tm" x="230" y="299" text-anchor="middle">one entity, two names</text>
+          <text class="tm" x="80" y="290" text-anchor="end">1–3+ years</text>
+
+          <line class="edge" x1="230" y1="308" x2="230" y2="334" marker-end="url(#m-dn)"/>
+          <rect class="box" x="90" y="338" width="280" height="46" rx="7"/>
+          <text class="tb" x="230" y="366" text-anchor="middle">Program</text>
+          <text class="tm" x="80" y="366" text-anchor="end">quarter – 1 year</text>
+
+          <line class="edge" x1="230" y1="384" x2="230" y2="410" marker-end="url(#m-dn)"/>
+          <rect class="box" x="90" y="414" width="280" height="46" rx="7"/>
+          <text class="tb" x="230" y="442" text-anchor="middle">Project</text>
+          <text class="tm" x="80" y="442" text-anchor="end">weeks – months</text>
+
+          <line class="edge" x1="230" y1="460" x2="230" y2="486" marker-end="url(#m-dn)"/>
+          <rect class="box" x="90" y="490" width="280" height="46" rx="7"/>
+          <text class="tb" x="230" y="518" text-anchor="middle">Task — anyone's todo list</text>
+          <text class="tm" x="80" y="518" text-anchor="end">daily</text>
+        </g>
+
+        
+        <rect class="box" x="620" y="204" width="290" height="46" rx="7"/>
+        <text class="tb" x="765" y="225" text-anchor="middle">Impact model</text>
+        <text class="tm" x="765" y="241" text-anchor="middle">metrics + nightly snapshots</text>
+
+        <rect class="box" x="620" y="272" width="290" height="46" rx="7"/>
+        <text class="tb" x="765" y="293" text-anchor="middle">Fund (GAU)</text>
+        <text class="tm" x="765" y="309" text-anchor="middle">restriction class · 18% assessment</text>
+
+        <line class="edgeI" x1="370" y1="285" x2="614" y2="295" marker-end="url(#m-i)"/>
+        <line class="edgeI" x1="370" y1="278" x2="614" y2="232" marker-end="url(#m-i)"/>
+        <text class="tm" x="470" y="266">each portfolio has one</text>
+
+        
+        <g transform="rotate(-7 700 445)">
+          <rect class="boxC" x="540" y="415" width="330" height="60" rx="8"/>
+          <text class="tC" x="705" y="440" text-anchor="middle">PRODUCTS — a crossing plane</text>
+          <text class="tm" x="705" y="458" text-anchor="middle">owned by a program, may cross portfolios</text>
+        </g>
+        <line class="edge" x1="370" y1="358" x2="576" y2="414" marker-end="url(#m-dn)"/>
+        <text class="tm" x="470" y="378">owns</text>
+        <line class="edge" x1="370" y1="438" x2="540" y2="448" marker-end="url(#m-dn)"/>
+        <text class="tm" x="470" y="426">delivers for</text>
+      </svg>
+      </div>
+      <figcaption><strong>Vertical integration, literally:</strong> a journal entry or an hour of work at the bottom traces to purpose at the top without a human stitching anything. Portfolio and Strategic Intent are stored as one entity because each portfolio has exactly one intent.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ================= FIG 4 ================= -->
+  <section class="fig">
+    <p class="eyebrow">Figure 4</p>
+    <h2>Follow the dollar</h2>
+    <p class="lede">The horizontal axis of integration: one unbroken thread from a donor's gift to the field results it made possible — and back to the donor as a report.</p>
+    <figure>
+      <div class="scroller">
+      <svg viewBox="0 0 960 340" role="img" aria-label="A left-to-right chain: a gift arrives via Stripe, lands in a fund, is planned and spent through budget, commitments, and actuals, flows through partner work orders and invoices, produces field results, and rolls up into impact snapshots — which loop back to the donor as a grant report.">
+        <defs>
+          <marker id="m-r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" class="arr"/>
+          </marker>
+          <marker id="m-ri" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" class="arrI"/>
+          </marker>
+        </defs>
+
+        
+        <path class="edgeI" d="M 895 160 C 940 60, 60 60, 88 152" marker-end="url(#m-ri)"/>
+        <text class="tI" x="480" y="76" text-anchor="middle">grant report: what your gift did — generated from live data</text>
+
+        
+        <g>
+          <rect class="box" x="28" y="160" width="120" height="64" rx="7"/>
+          <text class="tb" x="88" y="187" text-anchor="middle">Donor gives</text>
+          <text class="tm" x="88" y="204" text-anchor="middle">Stripe checkout</text>
+
+          <line class="edge" x1="148" y1="192" x2="176" y2="192" marker-end="url(#m-r)"/>
+
+          <rect class="box" x="180" y="160" width="120" height="64" rx="7"/>
+          <text class="tb" x="240" y="187" text-anchor="middle">Fund (GAU)</text>
+          <text class="tm" x="240" y="204" text-anchor="middle">restriction tracked</text>
+
+          <line class="edge" x1="300" y1="192" x2="328" y2="192" marker-end="url(#m-r)"/>
+
+          <rect class="boxI" x="332" y="152" width="156" height="80" rx="7"/>
+          <text class="tb" x="410" y="177" text-anchor="middle">Budget · Committed</text>
+          <text class="tb" x="410" y="194" text-anchor="middle">· Actual</text>
+          <text class="tm" x="410" y="212" text-anchor="middle">account × fund × function</text>
+
+          <line class="edge" x1="488" y1="192" x2="516" y2="192" marker-end="url(#m-r)"/>
+
+          <rect class="box" x="520" y="160" width="130" height="64" rx="7"/>
+          <text class="tb" x="585" y="182" text-anchor="middle">Work orders</text>
+          <text class="tb" x="585" y="198" text-anchor="middle">+ invoices</text>
+          <text class="tm" x="585" y="214" text-anchor="middle">PM + CFO approved</text>
+
+          <line class="edge" x1="650" y1="192" x2="678" y2="192" marker-end="url(#m-r)"/>
+
+          <rect class="box" x="682" y="160" width="130" height="64" rx="7"/>
+          <text class="tb" x="747" y="182" text-anchor="middle">Field results</text>
+          <text class="tm" x="747" y="199" text-anchor="middle">trainings · language</text>
+          <text class="tm" x="747" y="214" text-anchor="middle">engagements (FRED)</text>
+
+          <line class="edge" x1="812" y1="192" x2="840" y2="192" marker-end="url(#m-r)"/>
+
+          <rect class="box" x="844" y="160" width="96" height="64" rx="7"/>
+          <text class="tb" x="892" y="187" text-anchor="middle">Impact</text>
+          <text class="tm" x="892" y="204" text-anchor="middle">snapshots</text>
+        </g>
+
+        <text class="tm" x="480" y="286" text-anchor="middle">Today this thread crosses Virtuous, Sage, a spreadsheet, Notion and FRED — five systems, zero shared keys.</text>
+        <text class="tm" x="480" y="306" text-anchor="middle">On the platform it is one chain of foreign keys, so the report at the top writes itself.</text>
+      </svg>
+      </div>
+      <figcaption><strong>Who funded what, and what happened.</strong> The blue box is where planning, commitment and actual spend finally share one set of dimensions — the reconciliation program leads now do by hand.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ================= FIG 5 ================= -->
+  <section class="fig">
+    <p class="eyebrow">Figure 5</p>
+    <h2>Agents work here — governed</h2>
+    <p class="lede">AI agents subscribe to work queues and claim cards like any team member. What they cannot do is enforced by the server, not by etiquette: the approval gate is physical, and the dangerous verbs do not exist in their toolset.</p>
+    <figure>
+      <div class="scroller">
+      <svg viewBox="0 0 960 420" role="img" aria-label="A kanban flow of four stages: intake, agent draft, human review, done. An agent claims a card under a lease in the draft stage and submits it to a human-approval gate it cannot pass by itself. A footer lists verbs that do not exist for agents.">
+        <defs>
+          <marker id="m-r2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" class="arr"/>
+          </marker>
+        </defs>
+
+        
+        <text class="tI" x="130" y="40" text-anchor="middle">INTAKE</text>
+        <text class="tI" x="360" y="40" text-anchor="middle">AGENT DRAFT</text>
+        <text class="tm" x="360" y="58" text-anchor="middle">WIP limit: 3</text>
+        <text class="tI" x="642" y="40" text-anchor="middle">HUMAN REVIEW</text>
+        <text class="tI" x="862" y="40" text-anchor="middle">DONE</text>
+
+        <rect class="ghost" x="40"  y="66" width="180" height="240" rx="8"/>
+        <rect class="ghost" x="260" y="66" width="200" height="240" rx="8"/>
+        <rect class="ghost" x="542" y="66" width="200" height="240" rx="8"/>
+        <rect class="ghost" x="782" y="66" width="160" height="240" rx="8"/>
+
+        
+        <rect class="box" x="56" y="86" width="148" height="70" rx="6"/>
+        <text class="t" x="130" y="112" text-anchor="middle">RFP arrives</text>
+        <text class="tm" x="130" y="130" text-anchor="middle">grant response needed</text>
+
+        <line class="edge" x1="220" y1="120" x2="254" y2="120" marker-end="url(#m-r2)"/>
+
+        
+        <rect class="boxI" x="276" y="86" width="168" height="118" rx="6"/>
+        <text class="tb" x="360" y="110" text-anchor="middle">Draft: grant 43.27</text>
+        <text class="tm" x="360" y="130" text-anchor="middle">claimed by agent · lease 15 min</text>
+        <text class="tm" x="360" y="150" text-anchor="middle">reads policies + memory first</text>
+        <text class="tm" x="360" y="170" text-anchor="middle">every claim marked: observed /</text>
+        <text class="tm" x="360" y="186" text-anchor="middle">confirmed / inferred / assumed</text>
+
+        <line class="edge" x1="444" y1="140" x2="490" y2="140" marker-end="url(#m-r2)"/>
+        <text class="tm" x="466" y="128" text-anchor="middle">submit</text>
+
+        
+        <rect class="gateK" x="498" y="72" width="8" height="228" rx="3"/>
+        <text class="tK" x="502" y="326" text-anchor="middle">the gate: human approval, enforced by the server</text>
+
+        <line class="edgeK" x1="506" y1="140" x2="536" y2="140" marker-end="url(#m-r2)"/>
+
+        
+        <rect class="boxK" x="558" y="86" width="168" height="98" rx="6"/>
+        <text class="tb" x="642" y="110" text-anchor="middle">A person decides</text>
+        <text class="tm" x="642" y="130" text-anchor="middle">approve · reject · take over</text>
+        <text class="tm" x="642" y="150" text-anchor="middle">evidence and sources</text>
+        <text class="tm" x="642" y="166" text-anchor="middle">attached to every claim</text>
+
+        <line class="edge" x1="726" y1="130" x2="776" y2="130" marker-end="url(#m-r2)"/>
+
+        <rect class="box" x="796" y="86" width="132" height="70" rx="6"/>
+        <text class="t" x="862" y="112" text-anchor="middle">Submitted</text>
+        <text class="tm" x="862" y="130" text-anchor="middle">audit trail kept</text>
+
+        
+        <rect class="boxO" x="40" y="348" width="902" height="52" rx="8"/>
+        <text class="tO" x="491" y="370" text-anchor="middle">Verbs that do not exist for agents</text>
+        <text class="tOs" x="491" y="389" text-anchor="middle">post a journal entry · send donor email · publish a page · approve their own work</text>
+      </svg>
+      </div>
+      <figcaption><strong>Same lanes, same rules, different worker.</strong> Queues also run intake triage, product content and meeting-correlation review. An agent that finishes novel work drafts a reusable skill and a learning — suggested until a person confirms.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ================= FIG 6 ================= -->
+  <section class="fig">
+    <p class="eyebrow">Figure 6</p>
+    <h2>The path there: absorb one domain at a time</h2>
+    <p class="lede">No big-bang cutover. Each system is absorbed only when its replacement is proven, and the ledger runs in parallel with Sage — reconciled to zero monthly — until we and the auditors sign off.</p>
+    <figure>
+      <div class="scroller">
+      <svg viewBox="0 0 960 400" role="img" aria-label="Staggered phase bars from start to cutover: foundation; Notion migration with work queues; FRED merge; CRM and giving; desktop and offline; ledger build followed by a parallel run with Sage ending at an auditor sign-off gate; publishing, GitHub, and meetings built during the wait.">
+        <text class="tm" x="200" y="30">start</text>
+        <text class="tm" x="880" y="30" text-anchor="end">full cutover</text>
+        <line class="edgeD" x1="200" y1="38" x2="940" y2="38"/>
+
+        <text class="t" x="188" y="76" text-anchor="end">Foundation: auth, wiki, editor</text>
+        <rect class="barI" x="200" y="60" width="120" height="24" rx="5"/>
+
+        <text class="t" x="188" y="120" text-anchor="end">Notion migration + work queues</text>
+        <rect class="barI" x="290" y="104" width="150" height="24" rx="5"/>
+
+        <text class="t" x="188" y="164" text-anchor="end">FRED merge</text>
+        <rect class="barI" x="410" y="148" width="80" height="24" rx="5"/>
+
+        <text class="t" x="188" y="208" text-anchor="end">CRM + giving (Stripe direct)</text>
+        <rect class="barI" x="470" y="192" width="120" height="24" rx="5"/>
+
+        <text class="t" x="188" y="252" text-anchor="end">Desktop app + offline</text>
+        <rect class="barI" x="560" y="236" width="110" height="24" rx="5"/>
+
+        <text class="t" x="188" y="296" text-anchor="end">Ledger build, then parallel run</text>
+        <rect class="barI" x="560" y="280" width="130" height="24" rx="5"/>
+        <rect class="barC" x="690" y="280" width="180" height="24" rx="5"/>
+        <text class="tm" x="780" y="272" text-anchor="middle">Sage mirrored · reconciled to $0.00 monthly</text>
+        <path class="gateK" d="M 888 292 l 12 -12 l 12 12 l -12 12 z"/>
+        <text class="tK" x="900" y="322" text-anchor="middle">auditor + CFO</text>
+        <text class="tK" x="900" y="336" text-anchor="middle">sign-off</text>
+
+        <text class="t" x="188" y="352" text-anchor="end">Publishing · GitHub · meetings</text>
+        <rect class="barI" x="620" y="336" width="200" height="24" rx="5"/>
+        <text class="tm" x="720" y="380" text-anchor="middle">built during the parallel-run wait</text>
+      </svg>
+      </div>
+      <figcaption><strong>Retirement is a gradient, not a weekend migration.</strong> After each cutover the platform keeps emitting compatible exports (Virtuous-shaped, Sage-shaped) until the last person stops needing them. The orange diamond is the only fixed gate: no ledger cutover without written auditor comfort.</figcaption>
+    </figure>
+  </section>
+
+  <footer>
+    Companion documents: <em>An App For Everything — Executive Brief</em> and <em>An App For Everything — Platform Architecture Plan</em>. Figures follow the architecture plan as of August 21, 2026; brand colors per the unfoldingWord brand guide (Kindle orange marks exactly one thing in every figure: a human hand on the process).
+  </footer>
+</div>

@@ -1,0 +1,94 @@
+    <header class="top">
+      <div class="crumb"><span class="jd">32.11</span><span>Internal Tools and Systems</span><span class="sep">/</span><b>Modules</b></div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg><span>Search everything</span><span class="k">⌘K</span></div>
+      <div class="tacts">
+        <span class="b n">generated from the registry in code</span>
+        <button class="btn"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 13h7M9 17h4"/></svg>Export PDF</button>
+      </div>
+    </header>
+    <div class="body">
+      <div class="phead">
+        <div>
+          <p class="eyebrow">What the system is made of, and what you can turn on</p>
+          <h1>Modules</h1>
+          <p class="lede">A module is a named slice that owns its tables, page types, routes, tools, queues and crons. Disabling one removes its routes, tools, nav entries and crons — and its API says &ldquo;not enabled&rdquo; rather than failing.</p>
+        </div>
+        <div class="sp"></div>
+        <div style="display:flex;gap:20px">
+          <div class="kpi"><span class="l">Enabled org-wide</span><span class="v">{{nOn}}</span><span class="d">of 21</span></div>
+          <div class="kpi"><span class="l">Piloting</span><span class="v">{{nPilot}}</span><span class="d">scoped to one area</span></div>
+        </div>
+      </div>
+
+      <div class="row" style="align-items:flex-start">
+        <div class="card" style="flex:1;min-width:0">
+          <div class="chd">
+            <h2>Registry</h2>
+            <div class="r"><span class="sub">a module ships four things or it is not done: runbook, export path, verification steps, classification</span></div>
+          </div>
+          <div class="cbd flush">
+            <table class="tbl">
+              <thead><tr><th style="width:52px">On</th><th>Module</th><th>Depends on</th><th>Owns</th><th>Scope</th><th>Ships</th></tr></thead>
+              <tbody>
+                <sc-for list="{{mods}}" as="m" hint-placeholder-count="20">
+                  <tr class="{{m.cls}}">
+                    <td>
+                      <button onClick="{{m.toggle}}"><span class="{{m.swCls}}"><i></i></span></button>
+                    </td>
+                    <td>
+                      <div style="display:flex;align-items:center;gap:7px">
+                        <span style="font-weight:800">{{m.name}}</span>
+                        <span class="b {{m.statusTone}}">{{m.status}}</span>
+                      </div>
+                      <div class="mono" style="color:#5A6E7A;font-size:10.5px">{{m.key}}</div>
+                    </td>
+                    <td class="mono" style="color:#5A6E7A;font-size:11px">{{m.deps}}</td>
+                    <td style="color:#5A6E7A;font-size:11.5px">{{m.owns}}</td>
+                    <td><span class="b {{m.scopeTone}}">{{m.scope}}</span></td>
+                    <td><span class="b {{m.shipTone}}">{{m.ships}}</span></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          <div class="prov"><span>Cross-module access goes through a published interface — never a direct join into another module&rsquo;s tables, checked in CI.</span></div>
+        </div>
+
+        <div style="width:330px;flex:0 0 330px;display:flex;flex-direction:column;gap:14px">
+          <sc-if value="{{warn}}" hint-placeholder-val="{{ true }}">
+            <div class="card" style="border-color:#EBCB94">
+              <div class="cbd">
+                <div class="gate">
+                  <svg viewBox="0 0 24 24"><path d="M12 9v5M12 17h.01"/><path d="M10.3 4.3 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z"/></svg>
+                  <div>{{warnText}}</div>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <div class="card">
+            <div class="chd"><h2>Adoption paths</h2><div class="r"><span class="b n">modules are the unit of adoption</span></div></div>
+            <div class="cbd" style="display:flex;flex-direction:column;gap:10px">
+              <sc-for list="{{paths}}" as="p" hint-placeholder-count="3">
+                <div style="border:1px solid var(--line);border-radius:8px;padding:10px">
+                  <div style="font-weight:800;font-size:12.5px">{{p.name}}</div>
+                  <div style="color:#5A6E7A;font-size:11.5px;margin:3px 0 6px">{{p.note}}</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:5px">
+                    <sc-for list="{{p.keys}}" as="k" hint-placeholder-count="3"><span class="b i">{{k}}</span></sc-for>
+                  </div>
+                </div>
+              </sc-for>
+              <div style="color:#5A6E7A;font-size:11px;font-weight:600">A platform that can only be adopted whole will not be adopted.</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="chd"><h2>Pilot scope</h2></div>
+            <div class="cbd" style="display:flex;flex-direction:column;gap:9px">
+              <div style="font-size:12.5px;color:#3A4A53">Enabling is per scope, not only global. Story Bank runs for area 63 only; Expenses runs for Finance before the whole organization sees it.</div>
+              <div class="mono" style="background:#F7FBFD;border:1px solid var(--line);border-radius:6px;padding:9px;font-size:10.5px;color:#3A4A53">module_enablements (module_key, scope_kind ∈ org | jd_area, scope_area, pilot, enabled_by, enabled_at)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>

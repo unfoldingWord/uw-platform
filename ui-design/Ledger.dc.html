@@ -1,0 +1,542 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800;6..12,900&display=swap">
+  <style>
+    :root{
+      --bg:#F4F8FA; --surface:#FFFFFF; --ink:#231F20; --muted:#5A6E7A; --line:#C4D3DB;
+      --ocean:#014263; --ocean-ink:#E8F4FA; --inspire:#31ADE3; --inspire-soft:#E3F3FB;
+      --cultivate:#4FA9AC; --cultivate-soft:#E4F4F4; --kindle:#C97F14; --kindle-soft:#FBEFDC;
+      --sink:#0A2E44;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;background:var(--bg);color:var(--ink);
+      font-family:'Nunito Sans','Avenir','Montserrat',sans-serif;font-size:13.5px;line-height:1.5;
+      -webkit-font-smoothing:antialiased;}
+    a{color:var(--inspire);text-decoration:none;} a:hover{color:var(--ocean);text-decoration:underline;}
+    button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;}
+    svg{display:block;}
+
+    .app{width:1440px;height:1000px;display:flex;overflow:hidden;background:var(--bg);}
+
+    /* ---------- sidebar ---------- */
+    .side{width:262px;flex:0 0 262px;background:var(--ocean);color:var(--ocean-ink);
+      display:flex;flex-direction:column;padding:0;}
+    .brand{display:flex;align-items:center;gap:9px;padding:16px 16px 14px;border-bottom:1px solid rgba(255,255,255,.14);}
+    .brand img{height:20px;width:auto;filter:brightness(0) invert(1);opacity:.95;}
+    .brand .bt{font-weight:800;font-size:13px;letter-spacing:.02em;line-height:1.15;padding-left:9px;margin-left:2px;border-left:1px solid rgba(255,255,255,.22);}
+    .brand .bs{font-size:10.5px;opacity:.62;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
+    .navwrap{flex:1;padding:8px 8px 6px;display:flex;flex-direction:column;gap:1px;overflow:hidden;}
+    .grp{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
+      opacity:.5;padding:9px 8px 3px;line-height:1.35;white-space:normal;}
+    .grp .gn{color:var(--inspire);opacity:.95;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:0;}
+    .ni{display:flex;align-items:center;gap:9px;padding:5px 8px;border-radius:5px;
+      color:var(--ocean-ink);opacity:.78;font-weight:600;font-size:12.5px;white-space:nowrap;}
+    .ni svg{width:15px;height:15px;flex:0 0 15px;stroke:currentColor;stroke-width:1.7;fill:none;
+      stroke-linecap:round;stroke-linejoin:round;opacity:.85;}
+    .ni:hover{background:rgba(255,255,255,.07);opacity:1;text-decoration:none;color:var(--ocean-ink);}
+    .ni.on{background:var(--inspire);color:#04222F;opacity:1;font-weight:800;}
+    .ni.on svg{opacity:1;}
+    .nempty{font-size:10.5px;font-weight:600;opacity:.4;padding:3px 8px 5px;font-style:italic;}
+    .ni .nc{margin-left:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9.5px;opacity:.45;font-weight:700;}
+    .ni.on .nc{opacity:.6;}
+    .ni .pill{margin-left:6px;background:rgba(255,255,255,.16);border-radius:20px;
+      padding:0 6px;font-size:10px;font-weight:800;}
+    .ni.on .pill{background:rgba(0,0,0,.16);}
+    .sfoot{border-top:1px solid rgba(255,255,255,.14);padding:10px 14px;display:flex;align-items:center;gap:9px;}
+    .av{width:26px;height:26px;border-radius:50%;background:var(--cultivate);color:#04222F;
+      display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;}
+    .sfoot .n{font-weight:700;font-size:12px;} .sfoot .r{font-size:10.5px;opacity:.6;}
+
+    /* ---------- top bar ---------- */
+    .main{flex:1;display:flex;flex-direction:column;min-width:0;}
+    .top{height:56px;flex:0 0 56px;background:var(--surface);border-bottom:1px solid var(--line);
+      display:flex;align-items:center;gap:14px;padding:0 20px;}
+    .crumb{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px;font-weight:600;}
+    .crumb b{color:var(--ink);font-weight:800;font-size:14.5px;}
+    .crumb .sep{opacity:.5;}
+    .jd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:700;
+      background:var(--inspire-soft);color:var(--ocean);border-radius:4px;padding:1px 5px;}
+    .search{margin-left:auto;display:flex;align-items:center;gap:7px;width:280px;height:32px;
+      border:1px solid var(--line);border-radius:6px;padding:0 10px;color:var(--muted);background:var(--bg);}
+    .search svg{width:14px;height:14px;stroke:currentColor;stroke-width:1.8;fill:none;}
+    .search .k{margin-left:auto;font-size:10px;font-weight:700;border:1px solid var(--line);
+      border-radius:3px;padding:0 4px;background:var(--surface);}
+    .tacts{display:flex;align-items:center;gap:8px;}
+
+    /* ---------- content ---------- */
+    .body{flex:1;overflow:auto;padding:20px 24px 28px;}
+    .phead{display:flex;align-items:flex-end;gap:16px;margin-bottom:16px;}
+    .eyebrow{color:var(--inspire);font-weight:800;font-size:10.5px;letter-spacing:.14em;
+      text-transform:uppercase;margin:0 0 3px;}
+    h1{font-weight:900;font-size:24px;line-height:1.15;margin:0;letter-spacing:-.01em;}
+    .lede{color:var(--muted);margin:5px 0 0;max-width:72ch;font-size:13px;}
+    h2{font-weight:800;font-size:15px;margin:0;}
+    h3{font-weight:800;font-size:12.5px;margin:0;}
+
+    .grid{display:grid;gap:14px;}
+    .row{display:flex;gap:14px;}
+
+    .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+      display:flex;flex-direction:column;min-width:0;}
+    .chd{display:flex;align-items:center;gap:9px;padding:11px 14px;border-bottom:1px solid var(--line);}
+    .chd .sub{color:var(--muted);font-size:11.5px;font-weight:600;}
+    .chd .r{margin-left:auto;display:flex;align-items:center;gap:7px;}
+    .cbd{padding:13px 14px;}
+    .cbd.flush{padding:0;overflow-x:auto;}
+
+    /* ---------- controls ---------- */
+    .btn{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:6px;
+      border:1px solid var(--line);background:var(--surface);font-weight:700;font-size:12px;color:var(--ink);}
+    .btn:hover{border-color:var(--inspire);color:var(--ocean);}
+    .btn svg{width:13px;height:13px;stroke:currentColor;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+    .btn.p{background:var(--inspire);border-color:var(--inspire);color:#04222F;}
+    .btn.p:hover{background:#1E9AD0;border-color:#1E9AD0;color:#04222F;}
+    .btn.q{border-color:transparent;background:transparent;color:var(--muted);}
+    .btn.q:hover{background:var(--bg);color:var(--ink);}
+    .btn.sm{height:24px;padding:0 8px;font-size:11px;}
+    .btn[disabled],.btn.off{opacity:.45;cursor:not-allowed;}
+    .btn.off:hover{border-color:var(--line);color:var(--ink);}
+
+    .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);}
+    .tab{padding:7px 12px 8px;font-weight:700;font-size:12.5px;color:var(--muted);
+      border-bottom:2px solid transparent;margin-bottom:-1px;}
+    .tab:hover{color:var(--ink);}
+    .tab.on{color:var(--ocean);border-bottom-color:var(--inspire);}
+
+    .chips{display:flex;flex-wrap:wrap;gap:6px;}
+    .chip{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:20px;
+      border:1px solid var(--line);background:var(--surface);font-size:11.5px;font-weight:700;color:var(--muted);}
+    .chip:hover{border-color:var(--inspire);color:var(--ocean);}
+    .chip.on{background:var(--inspire-soft);border-color:var(--inspire);color:var(--ocean);}
+
+    .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface);}
+    .seg button{padding:5px 11px;font-size:11.5px;font-weight:700;color:var(--muted);border-right:1px solid var(--line);}
+    .seg button:last-child{border-right:0;}
+    .seg button.on{background:var(--ocean);color:#fff;}
+
+    .sw{width:34px;height:19px;border-radius:20px;background:#C9D6DD;position:relative;flex:0 0 34px;transition:background .12s;}
+    .sw i{position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;
+      box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .12s;}
+    .sw.on{background:var(--inspire);} .sw.on i{left:17px;}
+    .sw.lock{background:#E2E9ED;} .sw.lock i{background:#B7C6CE;}
+
+    /* ---------- badges ---------- */
+    .b{display:inline-flex;align-items:center;gap:4px;border-radius:4px;padding:1px 6px;
+      font-size:10.5px;font-weight:800;letter-spacing:.02em;white-space:nowrap;}
+    .b.i{background:var(--inspire-soft);color:var(--ocean);}
+    .b.c{background:var(--cultivate-soft);color:#256B6D;}
+    .b.k{background:var(--kindle-soft);color:#8A5709;}
+    .b.n{background:#EDF2F5;color:var(--muted);}
+    .b.g{background:#E2F3E7;color:#1F6B39;}
+    .b.r{background:#FBE7E7;color:#9B2C2C;}
+    .b.dot::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;}
+
+    /* ---------- tables ---------- */
+    table.tbl{width:100%;border-collapse:collapse;font-size:12.5px;}
+    .tbl th{text-align:left;font-weight:800;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+      color:var(--muted);padding:8px 12px;border-bottom:1px solid var(--line);background:#FAFCFD;white-space:nowrap;}
+    .tbl td{padding:8px 12px;border-bottom:1px solid #E7EEF2;vertical-align:middle;}
+    .tbl tr:last-child td{border-bottom:0;}
+    .tbl tr.hov:hover td{background:#F7FBFD;cursor:pointer;}
+    .tbl tr.sel td{background:var(--inspire-soft);}
+    .num{text-align:right;font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;}
+
+    /* ---------- misc ---------- */
+    .kpi{display:flex;flex-direction:column;gap:2px;}
+    .kpi .l{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+    .kpi .v{font-size:22px;font-weight:900;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
+    .kpi .d{font-size:11.5px;color:var(--muted);font-weight:600;}
+    .prov{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:10.5px;
+      font-weight:600;border-top:1px dashed var(--line);padding:8px 14px;}
+    .prov .mono{font-size:10.5px;}
+    .gate{display:flex;align-items:flex-start;gap:9px;border-radius:8px;padding:10px 12px;
+      background:var(--kindle-soft);border:1px solid #EBCB94;color:#7A4E08;font-size:12px;font-weight:600;}
+    .gate svg{width:15px;height:15px;flex:0 0 15px;stroke:currentColor;stroke-width:1.9;fill:none;margin-top:1px;}
+    .note{background:var(--inspire-soft);border:1px solid #B9DFF3;color:var(--ocean);border-radius:8px;
+      padding:10px 12px;font-size:12px;font-weight:600;}
+    .ev{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;}
+    .ev.ob{color:#1F6B39;} .ev.co{color:var(--ocean);} .ev.inf{color:#8A5709;} .ev.as{color:#9B2C2C;}
+    .bar{height:7px;border-radius:4px;background:#E7EEF2;overflow:hidden;}
+    .bar i{display:block;height:100%;background:var(--inspire);}
+    .empty{color:var(--muted);font-size:12px;padding:14px;text-align:center;}
+    .sp{flex:1;}
+    .sel-row{background:var(--inspire-soft);}
+    .ckon{background:var(--inspire) !important;border-color:var(--inspire) !important;}
+    .done{text-decoration:line-through;opacity:.45;}
+    .lane{background:#EFF4F7;border-radius:10px;padding:9px;display:flex;flex-direction:column;gap:8px;min-width:0;}
+    .lane .lh{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:0 3px 2px;}
+    .kc{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 10px;display:flex;flex-direction:column;gap:6px;}
+    .kc:hover{border-color:var(--inspire);}
+  </style>
+</helmet>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <img src="uw-logo.png" alt="unfoldingWord">
+      <div class="bt">Platform</div>
+    </div>
+    <nav class="navwrap">
+      <div class="grp"><span class="gn">00-09</span> unfoldingWord Home</div>
+      <a class="ni ni-today"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>Today<span class="nc">00</span></a>
+      <a class="ni ni-pages"><svg viewBox="0 0 24 24"><path d="M5 4h9l5 5v11H5z"/><path d="M14 4v5h5"/><path d="M8 13h8M8 17h5"/></svg>Pages &amp; Wiki<span class="nc">01</span></a>
+      <a class="ni ni-crosswalk"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 10h16M4 15h16M10 4v16M15 4v16"/></svg>JD Crosswalk<span class="nc">00.07</span></a>
+      <div class="grp"><span class="gn">10-19</span> Internal Operations &amp; Administration</div>
+      <a class="ni ni-meetings"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Meetings<span class="nc">10</span></a>
+      <div class="grp"><span class="gn">20-29</span> Finance</div>
+      <a class="ni ni-ledger on"><svg viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M5 8h14"/><path d="M5 8 3 14h4zM19 8l-2 6h4z"/></svg>Ledger<span class="nc">28</span></a>
+      <a class="ni ni-charts"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Budgets &amp; Charts<span class="nc">21</span></a>
+      <a class="ni ni-contracts"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 16c2-3 4 1 6-2"/></svg>Contracts &amp; MOUs<span class="nc">24/25</span></a>
+      <a class="ni ni-expenses"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Expenses<span class="nc">28</span><span class="pill">7</span></a>
+      <a class="ni ni-compliance"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4.5 3 7.8 7 9 4-1.2 7-4.5 7-9V6z"/><path d="m9 12 2 2 4-4"/></svg>Compliance<span class="nc">23</span></a>
+      <div class="grp"><span class="gn">30-39</span> Infrastructure</div>
+      <a class="ni ni-health"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 4 12L16 12h5"/></svg>Health<span class="nc">38</span></a>
+      <a class="ni ni-agents"><svg viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="12" rx="3"/><path d="M12 4v3M9 12h.01M15 12h.01M9.5 16h5"/></svg>Agent Queues<span class="nc">32</span><span class="pill">3</span></a>
+      <a class="ni ni-modules"><svg viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7z"/><path d="m4 7 8 4 8-4M12 11v10"/></svg>Modules<span class="nc">32</span></a>
+      <a class="ni ni-offline"><svg viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.6-7.95A5.5 5.5 0 0 1 17 9.5a3.5 3.5 0 0 1 1.6 6.6"/><path d="m4 4 16 16"/></svg>Desktop &amp; Offline<span class="nc">32</span></a>
+      <div class="grp"><span class="gn">40-49</span> Engage Benefactors</div>
+      <a class="ni ni-crm"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4.6-7 9-7 9z"/></svg>CRM &amp; Giving<span class="nc">48</span></a>
+      <a class="ni ni-grants"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="m8.5 13.5-1 7 4.5-2.5 4.5 2.5-1-7"/></svg>Grants<span class="nc">43</span></a>
+      <a class="ni ni-stories"><svg viewBox="0 0 24 24"><path d="M4 5h7v14H4z"/><path d="M13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg>Story Bank<span class="nc">44</span></a>
+      <div class="grp"><span class="gn">50-59</span> Innovation &amp; Strategy</div>
+      <a class="ni ni-cascade"><svg viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>Strategic Cascade<span class="nc">51</span></a>
+      <div class="grp"><span class="gn">60-79</span> Field Programs</div>
+      <a class="ni ni-field"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18"/></svg>Engagements<span class="nc">60</span></a>
+      <a class="ni ni-impact"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Impact Models<span class="nc">60</span></a>
+      <div class="grp"><span class="gn">80-89</span> Tech &amp; SLR</div>
+      <a class="ni ni-dev"><svg viewBox="0 0 24 24"><circle cx="7" cy="6" r="2.5"/><circle cx="7" cy="18" r="2.5"/><circle cx="17" cy="12" r="2.5"/><path d="M7 8.5v7M9.5 6H14a2.5 2.5 0 0 1 2.5 2.5V9"/></svg>Development<span class="nc">80</span></a>
+      <div class="grp"><span class="gn">90-99</span> Catalyzation</div>
+      <div class="nempty">No modules enabled for this area</div>
+    </nav>
+    <div class="sfoot">
+      <div class="av">JG</div>
+      <div>
+        <div class="n">Jesse Griffin</div>
+        <div class="r">admin · org scope</div>
+      </div>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="top">
+      <div class="crumb"><span class="jd">28.07</span><span>Monthly Close</span><span class="sep">/</span><b>General ledger</b></div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg><span>Search everything</span><span class="k">⌘K</span></div>
+      <div class="tacts">
+        <div class="seg">
+          <button onClick="{{prevP}}">‹</button><button class="on">{{period}}</button><button onClick="{{nextP}}">›</button>
+        </div>
+        <button class="btn"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 13h7M9 17h4"/></svg>Export PDF</button>
+        <button class="{{closeCls}}" onClick="{{closeP}}"><svg viewBox="0 0 24 24"><path d="M5 11h14v10H5z"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>{{closeLabel}}</button>
+      </div>
+    </header>
+    <div class="body">
+      <div class="phead">
+        <div>
+          <p class="eyebrow">Fund accounting · double entry · append only</p>
+          <h1>General ledger — {{period}}</h1>
+          <p class="lede">{{ledgerNote}}</p>
+        </div>
+        <div class="sp"></div>
+        <div style="display:flex;gap:20px">
+          <div class="kpi"><span class="l">Trial balance</span><span class="v" style="color:#1F6B39">0.00</span><span class="d">checked 08:02</span></div>
+          <div class="kpi"><span class="l">Drafts waiting</span><span class="v">{{nDrafts}}</span><span class="d">oldest 2 days</span></div>
+          <div class="kpi"><span class="l">Sage difference</span><span class="v" style="color:#1F6B39">0.00</span><span class="d">parallel run month 4</span></div>
+        </div>
+      </div>
+
+      <div class="tabs" style="margin-bottom:14px">
+        <button class="{{t1}}" onClick="{{go1}}">Journal</button>
+        <button class="{{t2}}" onClick="{{go2}}">Funds</button>
+        <button class="{{t3}}" onClick="{{go3}}">Budget vs actual</button>
+        <button class="{{t4}}" onClick="{{go4}}">Functional expense</button>
+      </div>
+
+      <sc-if value="{{isJournal}}" hint-placeholder-val="{{ true }}">
+        <div class="row" style="align-items:flex-start">
+          <div class="card" style="flex:1;min-width:0">
+            <div class="chd">
+              <h2>Journal entries</h2>
+              <div class="r">
+                <div class="chips">
+                  <sc-for list="{{filters}}" as="f" hint-placeholder-count="4">
+                    <button class="{{f.cls}}" onClick="{{f.pick}}">{{f.label}}</button>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+            <div class="cbd flush">
+              <table class="tbl">
+                <thead><tr>
+                  <th style="width:34px"></th><th>Entry</th><th>Date</th><th>Source</th><th>Status</th><th class="num">Debit</th><th class="num">Credit</th><th style="width:92px"></th>
+                </tr></thead>
+                <tbody>
+                  <sc-for list="{{jes}}" as="j" hint-placeholder-count="6">
+                    <tr class="hov {{j.selCls}}" onClick="{{j.toggle}}">
+                      <td style="color:#5A6E7A;font-weight:800">{{j.caret}}</td>
+                      <td>
+                        <div style="font-weight:700" class="mono">{{j.id}}</div>
+                        <div style="color:#5A6E7A;font-size:11px;font-weight:600">{{j.desc}}</div>
+                      </td>
+                      <td class="mono">{{j.date}}</td>
+                      <td><span class="b {{j.srcTone}}">{{j.src}}</span></td>
+                      <td><span class="b {{j.stTone}}">{{j.status}}</span></td>
+                      <td class="num">{{j.amt}}</td>
+                      <td class="num">{{j.amt}}</td>
+                      <td>
+                        <sc-if value="{{j.postable}}" hint-placeholder-val="{{ true }}">
+                          <button class="btn sm p" onClick="{{j.post}}">Post</button>
+                        </sc-if>
+                      </td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+              <sc-if value="{{hasOpen}}" hint-placeholder-val="{{ true }}">
+                <div style="background:#F7FBFD;border-top:1px solid var(--line);padding:12px 14px">
+                  <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">
+                    <h3>{{openId}} — lines</h3>
+                    <span class="b n">{{openDims}}</span>
+                    <div class="sp"></div>
+                    <span style="color:#5A6E7A;font-size:11px;font-weight:600">every line carries account × fund × function, or it does not post</span>
+                  </div>
+                  <table class="tbl" style="background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden">
+                    <thead><tr><th>Account</th><th>Fund</th><th>Function</th><th>Program</th><th class="num">Debit</th><th class="num">Credit</th></tr></thead>
+                    <tbody>
+                      <sc-for list="{{lines}}" as="l" hint-placeholder-count="4">
+                        <tr><td class="mono">{{l.acct}}</td><td>{{l.fund}}</td><td>{{l.func}}</td><td>{{l.prog}}</td><td class="num">{{l.dr}}</td><td class="num">{{l.cr}}</td></tr>
+                      </sc-for>
+                    </tbody>
+                  </table>
+                </div>
+              </sc-if>
+            </div>
+            <div class="prov"><span>Append only — a posted entry is reversed, never edited.</span><span>·</span><span class="mono">nightly export → R2 object-locked · 7 yr</span><span>·</span><a>CSV</a></div>
+          </div>
+
+          <div class="card" style="width:330px;flex:0 0 330px">
+            <div class="chd"><h2>Posting gate</h2><div class="r"><span class="b k">human only</span></div></div>
+            <div class="cbd" style="display:flex;flex-direction:column;gap:11px">
+              <div class="gate">
+                <svg viewBox="0 0 24 24"><path d="M5 11h14v10H5z"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                <div>{{gateText}}</div>
+              </div>
+              <div>
+                <h3 style="margin-bottom:6px">Invariants checked before posting</h3>
+                <div style="display:flex;flex-direction:column;gap:5px">
+                  <sc-for list="{{checks}}" as="c" hint-placeholder-count="5">
+                    <div style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600">
+                      <span class="b {{c.tone}}">{{c.mark}}</span><span>{{c.text}}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div class="note">Sage remains the system of record until the auditors sign off. Reconciliation runs nightly and this month&rsquo;s difference is zero.</div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isFunds}}" hint-placeholder-val="{{ false }}">
+        <div class="card">
+          <div class="chd"><h2>Funds</h2><div class="r"><span class="b n">semi-restricted funds carry an 18% operational assessment · Catalyst Partners 0%</span></div></div>
+          <div class="cbd flush">
+            <table class="tbl">
+              <thead><tr><th>Fund (GAU)</th><th>Restriction</th><th class="num">Opening</th><th class="num">Received</th><th class="num">Released</th><th class="num">Assessment</th><th class="num">Balance</th></tr></thead>
+              <tbody>
+                <sc-for list="{{funds}}" as="f" hint-placeholder-count="6">
+                  <tr class="hov"><td><b>{{f.name}}</b></td><td><span class="b {{f.tone}}">{{f.restr}}</span></td>
+                    <td class="num">{{f.open}}</td><td class="num">{{f.recv}}</td><td class="num">{{f.rel}}</td><td class="num">{{f.asmt}}</td><td class="num" style="font-weight:800">{{f.bal}}</td></tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          <div class="prov"><span>Donor restriction is tracked on the fund, never inferred from the program.</span><span>·</span><a>CSV</a><a>PDF</a></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isBudget}}" hint-placeholder-val="{{ false }}">
+        <div class="card">
+          <div class="chd"><h2>Budget vs committed vs actual — FY2026 through {{period}}</h2><div class="r"><button class="btn sm q">Open in Charts</button></div></div>
+          <div class="cbd">
+            <sc-for list="{{bva}}" as="b" hint-placeholder-count="5">
+              <div style="display:flex;align-items:center;gap:14px;padding:9px 0;border-bottom:1px solid #F1F5F8">
+                <div style="width:230px;flex:0 0 230px;font-weight:700;font-size:12.5px">{{b.name}}</div>
+                <div style="flex:1;position:relative;height:22px">
+                  <div style="position:absolute;left:0;top:0;height:22px;width:100%;background:#EDF2F5;border-radius:4px"></div>
+                  <div style="position:absolute;left:0;top:0;height:22px;width:{{b.commPct}};background:#E3F3FB;border-radius:4px"></div>
+                  <div style="position:absolute;left:0;top:0;height:22px;width:{{b.actPct}};background:#31ADE3;border-radius:4px"></div>
+                </div>
+                <div class="num" style="width:96px;flex:0 0 96px">{{b.actual}}</div>
+                <div class="num" style="width:96px;flex:0 0 96px;color:#5A6E7A">{{b.budget}}</div>
+                <span class="b {{b.tone}}" style="width:74px;justify-content:flex-end">{{b.var}}</span>
+              </div>
+            </sc-for>
+            <div style="display:flex;gap:16px;margin-top:11px;color:#5A6E7A;font-size:11.5px;font-weight:700">
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:#31ADE3"></span>actual</span>
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:#E3F3FB"></span>committed</span>
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:#EDF2F5"></span>budget</span>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isFunc}}" hint-placeholder-val="{{ false }}">
+        <div class="card">
+          <div class="chd"><h2>Functional expense — account × function</h2><div class="r"><span class="b n">the 990 statement comes straight off this matrix</span></div></div>
+          <div class="cbd flush">
+            <table class="tbl">
+              <thead><tr><th>Account</th><th class="num">Program</th><th class="num">Management &amp; general</th><th class="num">Fundraising</th><th class="num">Total</th></tr></thead>
+              <tbody>
+                <sc-for list="{{fx}}" as="f" hint-placeholder-count="7">
+                  <tr class="hov"><td><span class="mono">{{f.code}}</span> {{f.name}}</td><td class="num">{{f.prog}}</td><td class="num">{{f.mg}}</td><td class="num">{{f.fr}}</td><td class="num" style="font-weight:800">{{f.tot}}</td></tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          <div class="prov"><span>Every expense line carries a function dimension at posting time — no year-end allocation exercise.</span><span>·</span><a>CSV</a><a>PDF</a></div>
+        </div>
+      </sc-if>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { tab: 'journal', open: 'JE-2026-0812', posted: {}, filter: 'all', pIdx: 0 }; }
+  renderVals() {
+    const s = this.state;
+    const periods = ['2026-08', '2026-07', '2026-06'];
+    const period = periods[s.pIdx];
+
+    const base = [
+      { id: 'JE-2026-0812', desc: 'August operational assessment — 18% on semi-restricted funds', date: '2026-08-25', src: 'agent draft', srcTone: 'k', amt: '$47,180.00', draft: true },
+      { id: 'JE-2026-0811', desc: 'Expense report — Chad training trip (4 items)', date: '2026-08-24', src: 'agent draft', srcTone: 'k', amt: '$3,412.60', draft: true },
+      { id: 'JE-2026-0810', desc: 'Stripe payout 2026-08-22 — 41 gifts', date: '2026-08-23', src: 'stripe', srcTone: 'i', amt: '$28,940.00', draft: false },
+      { id: 'JE-2026-0809', desc: 'Partner invoice PI-2026-118 — Chad facilitator cohort', date: '2026-08-22', src: 'human:jesse', srcTone: 'n', amt: '$62,000.00', draft: false },
+      { id: 'JE-2026-0808', desc: 'Payroll allocation by area of responsibility', date: '2026-08-20', src: 'cron', srcTone: 'i', amt: '$118,204.00', draft: false },
+      { id: 'JE-2026-0807', desc: 'Grant award recognition — Foundation 2025-3311 tranche 2', date: '2026-08-18', src: 'human:jesse', srcTone: 'n', amt: '$250,000.00', draft: false },
+    ];
+    const jes = base
+      .filter((j) => s.filter === 'all' || (s.filter === 'drafts' ? (j.draft && !s.posted[j.id]) : s.filter === 'agent' ? j.srcTone === 'k' : !j.draft || s.posted[j.id]))
+      .map((j) => {
+        const isDraft = j.draft && !s.posted[j.id];
+        return {
+          ...j,
+          status: isDraft ? 'draft' : 'posted',
+          stTone: isDraft ? 'k' : 'g',
+          postable: isDraft,
+          caret: s.open === j.id ? '▾' : '▸',
+          selCls: s.open === j.id ? 'sel' : '',
+          toggle: () => this.setState({ open: s.open === j.id ? '' : j.id }),
+          post: () => this.setState({ posted: { ...s.posted, [j.id]: true }, open: j.id }),
+        };
+      });
+
+    const lineSets = {
+      'JE-2026-0812': [
+        { acct: '7900 Assessment expense', fund: 'GAU-CCBT Church-Centric', func: 'Program', prog: 'Chad Initiative', dr: '$21,384.00', cr: '' },
+        { acct: '7900 Assessment expense', fund: 'GAU-CONTENT Content', func: 'Program', prog: 'Gateway Language Support', dr: '$14,206.00', cr: '' },
+        { acct: '7900 Assessment expense', fund: 'GAU-TECH Tools', func: 'Program', prog: 'translationCore', dr: '$11,590.00', cr: '' },
+        { acct: '4900 Assessment revenue', fund: 'Unrestricted', func: 'Management & general', prog: '—', dr: '', cr: '$47,180.00' },
+      ],
+      'JE-2026-0811': [
+        { acct: '6210 Travel', fund: 'GAU-CCBT Church-Centric', func: 'Program', prog: 'Chad Initiative', dr: '$2,180.40', cr: '' },
+        { acct: '6230 Lodging', fund: 'GAU-CCBT Church-Centric', func: 'Program', prog: 'Chad Initiative', dr: '$981.20', cr: '' },
+        { acct: '6240 Meals', fund: 'GAU-CCBT Church-Centric', func: 'Program', prog: 'Chad Initiative', dr: '$251.00', cr: '' },
+        { acct: '2110 Accrued reimbursements', fund: 'Unrestricted', func: 'Management & general', prog: '—', dr: '', cr: '$3,412.60' },
+      ],
+    };
+    const lines = lineSets[s.open] || [
+      { acct: '1010 Operating cash', fund: 'Unrestricted', func: 'Management & general', prog: '—', dr: '$28,940.00', cr: '' },
+      { acct: '4010 Contributions', fund: 'GAU-CCBT Church-Centric', func: 'Program', prog: '—', dr: '', cr: '$22,140.00' },
+      { acct: '4010 Contributions', fund: 'Unrestricted', func: 'Management & general', prog: '—', dr: '', cr: '$6,800.00' },
+    ];
+
+    const openJe = base.find((j) => j.id === s.open);
+    const openIsDraft = openJe && openJe.draft && !s.posted[openJe.id];
+
+    const funds = [
+      { name: 'GAU-CCBT · Church-Centric BT', restr: 'semi-restricted', tone: 'i', open: '$412,900', recv: '$1,214,000', rel: '$1,188,400', asmt: '$213,912', bal: '$224,588' },
+      { name: 'GAU-CONTENT · Content Development', restr: 'semi-restricted', tone: 'i', open: '$264,100', recv: '$702,000', rel: '$618,900', asmt: '$111,402', bal: '$235,798' },
+      { name: 'GAU-TECH · Tools & Technology', restr: 'semi-restricted', tone: 'i', open: '$188,400', recv: '$651,000', rel: '$590,200', asmt: '$106,236', bal: '$142,964' },
+      { name: 'GAU-TRAIN · Field Training', restr: 'semi-restricted', tone: 'i', open: '$96,200', recv: '$318,000', rel: '$274,500', asmt: '$49,410', bal: '$90,290' },
+      { name: 'Catalyst Partners', restr: 'unrestricted', tone: 'c', open: '$204,800', recv: '$412,000', rel: '$96,300', asmt: '$0', bal: '$520,500' },
+      { name: 'Board designated reserve', restr: 'board designated', tone: 'n', open: '$620,000', recv: '$0', rel: '$0', asmt: '$0', bal: '$620,000' },
+    ];
+
+    const bva = [
+      { name: 'Church-Centric BT', budget: 1840000, comm: 1512000, actual: 1188400 },
+      { name: 'Content Development', budget: 960000, comm: 742000, actual: 618900 },
+      { name: 'Tools & Technology', budget: 720000, comm: 655000, actual: 590200 },
+      { name: 'Field Training', budget: 480000, comm: 391000, actual: 274500 },
+      { name: 'Catalyst Partners', budget: 300000, comm: 120000, actual: 96300 },
+    ].map((b) => {
+      const v = Math.round(((b.actual / b.budget) - 0.64) * 100);
+      return {
+        name: b.name,
+        budget: '$' + b.budget.toLocaleString('en-US'),
+        actual: '$' + b.actual.toLocaleString('en-US'),
+        commPct: Math.round((b.comm / b.budget) * 100) + '%',
+        actPct: Math.round((b.actual / b.budget) * 100) + '%',
+        var: (v >= 0 ? '+' : '') + v + ' pts',
+        tone: v > 8 ? 'r' : v < -8 ? 'k' : 'g',
+      };
+    });
+
+    const fx = [
+      { code: '6100', name: 'Salaries & benefits', prog: '$1,412,000', mg: '$318,000', fr: '$204,000', tot: '$1,934,000' },
+      { code: '6210', name: 'Travel', prog: '$286,400', mg: '$21,000', fr: '$18,600', tot: '$326,000' },
+      { code: '6300', name: 'Partner grants & subawards', prog: '$742,000', mg: '$0', fr: '$0', tot: '$742,000' },
+      { code: '6400', name: 'Software & infrastructure', prog: '$41,200', mg: '$34,800', fr: '$6,100', tot: '$82,100' },
+      { code: '6500', name: 'Professional fees', prog: '$18,000', mg: '$96,400', fr: '$12,000', tot: '$126,400' },
+      { code: '6600', name: 'Events & training delivery', prog: '$198,300', mg: '$4,200', fr: '$9,800', tot: '$212,300' },
+      { code: '7900', name: 'Operational assessment', prog: '$378,000', mg: '−$378,000', fr: '$0', tot: '$0' },
+    ];
+
+    const filters = [
+      { key: 'all', label: 'All' }, { key: 'drafts', label: 'Drafts only' },
+      { key: 'agent', label: 'Agent-drafted' }, { key: 'posted', label: 'Posted' },
+    ].map((f) => ({ label: f.label, cls: 'chip' + (s.filter === f.key ? ' on' : ''), pick: () => this.setState({ filter: f.key }) }));
+
+    const nDrafts = base.filter((j) => j.draft && !s.posted[j.id]).length;
+
+    return {
+      period, prevP: () => this.setState({ pIdx: Math.min(2, s.pIdx + 1) }), nextP: () => this.setState({ pIdx: Math.max(0, s.pIdx - 1) }),
+      closeCls: 'btn' + (nDrafts ? ' off' : ' p'),
+      closeLabel: nDrafts ? 'Close period — ' + nDrafts + ' drafts open' : 'Close period',
+      closeP: () => {},
+      ledgerNote: nDrafts
+        ? 'Agents draft entries and finance posts them. ' + nDrafts + ' drafts are waiting; the period cannot close until every one is posted or rejected.'
+        : 'Every draft is cleared. The period is ready to close, and the nightly tamper-evident export will seal it.',
+      nDrafts,
+      t1: 'tab' + (s.tab === 'journal' ? ' on' : ''), t2: 'tab' + (s.tab === 'funds' ? ' on' : ''),
+      t3: 'tab' + (s.tab === 'budget' ? ' on' : ''), t4: 'tab' + (s.tab === 'func' ? ' on' : ''),
+      go1: () => this.setState({ tab: 'journal' }), go2: () => this.setState({ tab: 'funds' }),
+      go3: () => this.setState({ tab: 'budget' }), go4: () => this.setState({ tab: 'func' }),
+      isJournal: s.tab === 'journal', isFunds: s.tab === 'funds', isBudget: s.tab === 'budget', isFunc: s.tab === 'func',
+      filters, jes, lines,
+      hasOpen: !!s.open, openId: s.open,
+      openDims: openIsDraft ? 'draft · not yet in any total' : 'posted · immutable',
+      gateText: openIsDraft
+        ? 'JE-' + s.open.slice(3) + ' was drafted by an agent. Posting is a human verb — it does not exist in any agent toolset, so no prompt can produce it.'
+        : 'Nothing selected is awaiting a post. Posted entries are immutable; a correction is a reversing entry with its own audit trail.',
+      checks: [
+        { mark: 'ok', tone: 'g', text: 'Debits equal credits' },
+        { mark: 'ok', tone: 'g', text: 'Every line has account × fund × function' },
+        { mark: 'ok', tone: 'g', text: 'Period 2026-08 is open' },
+        { mark: 'ok', tone: 'g', text: 'Donor restriction respected on every fund' },
+        { mark: 'ok', tone: 'g', text: 'Actor holds admin(20–29)' },
+      ],
+      funds, bva, fx,
+    };
+  }
+}
+</script>
+</body>
+</html>

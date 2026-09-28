@@ -1,0 +1,51 @@
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { basis: 'hard', sug: 'open' }; }
+  renderVals() {
+    const s = this.state;
+    const soft = s.basis === 'soft';
+
+    const all = [
+      { date: '2026-08-14', source: 'Rennick Family Fund (DAF sponsor)', note: 'grant recommendation · check', kind: 'soft', reason: 'daf_advisor', fund: 'GAU-CCBT Church-Centric', amt: '$25,000.00', receipt: 'thank-you, no tax language', rcTone: 'n' },
+      { date: '2026-06-02', source: 'Marguerite Rennick', note: 'Stripe · recurring', kind: 'hard', reason: 'legal donor', fund: 'Catalyst Partners', amt: '$1,200.00', receipt: 'receipt sent', rcTone: 'g' },
+      { date: '2026-03-02', source: 'Marguerite Rennick', note: 'Stripe · recurring', kind: 'hard', reason: 'legal donor', fund: 'Catalyst Partners', amt: '$1,200.00', receipt: 'receipt sent', rcTone: 'g' },
+      { date: '2025-12-29', source: 'Rennick Family Fund (DAF sponsor)', note: 'year-end recommendation', kind: 'soft', reason: 'daf_advisor', fund: 'GAU-CCBT Church-Centric', amt: '$40,000.00', receipt: 'thank-you, no tax language', rcTone: 'n' },
+      { date: '2025-12-18', source: 'Paul Rennick employer match', note: 'matched his gift of $2,500', kind: 'soft', reason: 'employer_match', fund: 'Catalyst Partners', amt: '$2,500.00', receipt: 'thank-you, no tax language', rcTone: 'n' },
+      { date: '2025-11-04', source: 'Marguerite Rennick', note: 'appeal response · check', kind: 'hard', reason: 'legal donor', fund: 'GAU-CONTENT Content', amt: '$5,000.00', receipt: 'receipt sent', rcTone: 'g' },
+    ];
+    const gifts = (soft ? all : all.filter((g) => g.kind === 'hard')).map((g) => ({
+      ...g, tone: g.kind === 'hard' ? 'i' : 'k', weight: g.kind === 'hard' ? 800 : 600,
+    }));
+
+    const barsHard = [ { y: '21', v: 18 }, { y: '22', v: 26 }, { y: '23', v: 22 }, { y: '24', v: 34 }, { y: '25', v: 40 }, { y: '26', v: 24 } ];
+    const barsSoft = [ { y: '21', v: 30 }, { y: '22', v: 44 }, { y: '23', v: 38 }, { y: '24', v: 52 }, { y: '25', v: 100 }, { y: '26', v: 62 } ];
+    const bars = (soft ? barsSoft : barsHard).map((b) => ({ y: b.y, h: Math.round(b.v * 0.6) + 'px', color: soft ? '#C97F14' : '#31ADE3' }));
+
+    return {
+      bHard: soft ? '' : 'on', bSoft: soft ? 'on' : '',
+      setHard: () => this.setState({ basis: 'hard' }), setSoft: () => this.setState({ basis: 'soft' }),
+      basis: soft ? 'soft_inclusive' : 'hard', basisTone: soft ? 'k' : 'i',
+      basisNote: soft
+        ? 'Showing relationship truth. Soft credits may overlap and may each equal the full gift — they are not a split, they are not revenue, and they never touch the ledger. Totals here deliberately exceed contributed revenue.'
+        : 'Showing financial truth. One hard credit per gift, equal to the gift amount. These figures tie to contributed revenue in the general ledger to the cent.',
+      lifetime: soft ? '$284,600' : '$96,400',
+      lifetimeD: soft ? 'includes DAF, match and solicited gifts' : 'legal donor only',
+      fy: soft ? '$27,400' : '$2,400',
+      fyD: soft ? '3 credits across 3 gifts' : '2 recurring gifts',
+      largest: soft ? '$40,000' : '$5,000',
+      largestD: soft ? '2025-12-29 · DAF, soft-credited' : '2025-11-04 · legal donor',
+      gifts, bars,
+      rels: [
+        { kind: 'household', tone: 'n', name: 'Paul Rennick', note: 'spouse · matched gift through his employer' },
+        { kind: 'advises', tone: 'i', name: 'Rennick Family Fund', note: 'DAF at a national sponsor · advisor of record' },
+        { kind: 'congregant_of', tone: 'n', name: 'Grace Community Church', note: 'church conduit for designated giving' },
+        { kind: 'solicitor', tone: 'c', name: 'Daniel Okoro (staff)', note: 'worked the 2025 year-end ask' },
+      ],
+      suggestOpen: s.sug === 'open', suggestDone: s.sug !== 'open',
+      sugResult: s.sug === 'accepted' ? 'soft credit added — daf_advisor · $25,000' : 'suggestion dismissed',
+      acceptSug: () => this.setState({ sug: 'accepted' }),
+      dismissSug: () => this.setState({ sug: 'dismissed' }),
+    };
+  }
+}
+</script>

@@ -1,0 +1,297 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 1000,
+      "title": "Today — home",
+      "page": "page-1"
+    },
+    {
+      "file": "Search.dc.html",
+      "x": 1540,
+      "y": 0,
+      "w": 1440,
+      "h": 1000,
+      "title": "Command palette",
+      "page": "page-1"
+    },
+    {
+      "file": "Pages.dc.html",
+      "x": 3080,
+      "y": 0,
+      "w": 1440,
+      "h": 1000,
+      "title": "Page & editor",
+      "page": "page-1"
+    },
+    {
+      "file": "Cascade.dc.html",
+      "x": 0,
+      "y": 1120,
+      "w": 1440,
+      "h": 1000,
+      "title": "Strategic cascade",
+      "page": "page-1"
+    },
+    {
+      "file": "MeetingsHome.dc.html",
+      "x": 1540,
+      "y": 1120,
+      "w": 1440,
+      "h": 1000,
+      "title": "Meetings rollup",
+      "page": "page-1"
+    },
+    {
+      "file": "Meetings.dc.html",
+      "x": 3080,
+      "y": 1120,
+      "w": 1440,
+      "h": 1000,
+      "title": "Meeting & correlation",
+      "page": "page-1"
+    },
+    {
+      "file": "Crosswalk.dc.html",
+      "x": 0,
+      "y": 2240,
+      "w": 1440,
+      "h": 1000,
+      "title": "JD ↔ cascade crosswalk",
+      "page": "page-1"
+    },
+    {
+      "file": "AreaHome.dc.html",
+      "x": 1540,
+      "y": 2240,
+      "w": 1440,
+      "h": 1000,
+      "title": "Area home — 60-79",
+      "page": "page-1"
+    },
+    {
+      "file": "Ledger.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 1000,
+      "title": "General ledger",
+      "page": "page-2"
+    },
+    {
+      "file": "Charts.dc.html",
+      "x": 1540,
+      "y": 0,
+      "w": 1440,
+      "h": 1000,
+      "title": "Program financials",
+      "page": "page-2"
+    },
+    {
+      "file": "Contracts.dc.html",
+      "x": 3080,
+      "y": 0,
+      "w": 1440,
+      "h": 1000,
+      "title": "Contracts & work orders",
+      "page": "page-2"
+    },
+    {
+      "file": "Expenses.dc.html",
+      "x": 0,
+      "y": 1120,
+      "w": 1440,
+      "h": 1000,
+      "title": "Expense review",
+      "page": "page-2"
+    },
+    {
+      "file": "Compliance.dc.html",
+      "x": 1540,
+      "y": 1120,
+      "w": 1440,
+      "h": 1000,
+      "title": "Compliance artifacts",
+      "page": "page-2"
+    },
+    {
+      "file": "Crm.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 1000,
+      "title": "CRM — contact & soft credits",
+      "page": "page-3"
+    },
+    {
+      "file": "Grants.dc.html",
+      "x": 1540,
+      "y": 0,
+      "w": 1440,
+      "h": 1000,
+      "title": "Grants pipeline & reporting",
+      "page": "page-3"
+    },
+    {
+      "file": "StoryBank.dc.html",
+      "x": 3080,
+      "y": 0,
+      "w": 1440,
+      "h": 1000,
+      "title": "Story bank",
+      "page": "page-3"
+    },
+    {
+      "file": "Impact.dc.html",
+      "x": 0,
+      "y": 1120,
+      "w": 1440,
+      "h": 1000,
+      "title": "Impact model",
+      "page": "page-3"
+    },
+    {
+      "file": "Field.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 1000,
+      "title": "Field engagements (FRED)",
+      "page": "page-4"
+    },
+    {
+      "file": "Products.dc.html",
+      "x": 1540,
+      "y": 0,
+      "w": 1440,
+      "h": 1000,
+      "title": "Product",
+      "page": "page-4"
+    },
+    {
+      "file": "Development.dc.html",
+      "x": 3080,
+      "y": 0,
+      "w": 1440,
+      "h": 1000,
+      "title": "Development",
+      "page": "page-4"
+    },
+    {
+      "file": "Directory.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 1000,
+      "title": "Directory & access",
+      "page": "page-5"
+    },
+    {
+      "file": "Health.dc.html",
+      "x": 1540,
+      "y": 0,
+      "w": 1440,
+      "h": 1000,
+      "title": "System health",
+      "page": "page-5"
+    },
+    {
+      "file": "Modules.dc.html",
+      "x": 3080,
+      "y": 0,
+      "w": 1440,
+      "h": 1000,
+      "title": "Modules registry",
+      "page": "page-5"
+    },
+    {
+      "file": "AgentQueues.dc.html",
+      "x": 0,
+      "y": 1120,
+      "w": 1440,
+      "h": 1000,
+      "title": "Agent work queues",
+      "page": "page-5"
+    },
+    {
+      "file": "Offline.dc.html",
+      "x": 1540,
+      "y": 1120,
+      "w": 1440,
+      "h": 1000,
+      "title": "Desktop & offline",
+      "page": "page-5"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief-page-1",
+      "x": -460,
+      "y": 0,
+      "w": 380,
+      "text": "Start here. Every screen is one artboard at 1440×1000. The left nav is unfoldingWord's real Johnny.Decimal index — click an area heading in the prototype to open its area home, where that area's projects and meetings live.",
+      "page": "page-1"
+    },
+    {
+      "id": "brief-page-2",
+      "x": -460,
+      "y": 0,
+      "w": 380,
+      "text": "Money. Worth testing: posting a draft journal entry, settling lines and hitting the policy flag in Expense review, and the Program financials screen — which is the Budget Report and Revenue Projection dashboards re-hosted over live ledger data.",
+      "page": "page-2"
+    },
+    {
+      "id": "brief-page-3",
+      "x": -460,
+      "y": 0,
+      "w": 380,
+      "text": "Fundraising and strategy. Try the hard vs soft_inclusive switch on the contact record, and pushing a story above its sensitivity level in Story Bank.",
+      "page": "page-3"
+    },
+    {
+      "id": "brief-page-4",
+      "x": -460,
+      "y": 0,
+      "w": 380,
+      "text": "Field and product. Products are a plane of their own: one owning category, but serving several programs. Development filters by product.",
+      "page": "page-4"
+    },
+    {
+      "id": "brief-page-5",
+      "x": -460,
+      "y": 0,
+      "w": 380,
+      "text": "Running the system. Toggle modules off, switch the four health planes, revoke a time-boxed grant, and try to sync Finance offline.",
+      "page": "page-5"
+    }
+  ],
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "00-09 Home & Strategy"
+    },
+    {
+      "id": "page-2",
+      "name": "20-29 Finance"
+    },
+    {
+      "id": "page-3",
+      "name": "40-49 Benefactors & 50-59 Strategy"
+    },
+    {
+      "id": "page-4",
+      "name": "60-79 Field & 80-89 Tech"
+    },
+    {
+      "id": "page-5",
+      "name": "10-19 & 30-39 Running the system"
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "page-1"
+  }
+}

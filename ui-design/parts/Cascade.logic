@@ -1,0 +1,93 @@
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.state = { lens: 'money', sel: 'prog-chad', open: { purpose: 1, mtp: 1, 'port-ccbt': 1, 'prog-chad': 1, 'port-content': 0, 'port-tools': 0 } };
+  }
+  renderVals() {
+    const s = this.state;
+    const C = { purpose: '#014263', mtp: '#014263', principles: '#4FA9AC', portfolio: '#31ADE3', program: '#31ADE3', project: '#5A6E7A', task: '#C4D3DB' };
+
+    const tiers = [
+      { name: 'Purpose', horizon: 'enduring', color: C.purpose },
+      { name: 'Objective (MTP)', horizon: 'stable · 10 yr', color: C.mtp },
+      { name: 'Principles + Values', horizon: 'stable · policy engine', color: C.principles },
+      { name: 'Portfolio', horizon: 'strategic intent · 1–3 yr', color: C.portfolio },
+      { name: 'Program', horizon: 'quarter – 1 year', color: C.program },
+      { name: 'Project', horizon: 'weeks – months', color: C.project },
+      { name: 'Task', horizon: 'daily', color: C.task },
+    ];
+
+    const raw = [
+      { id: 'purpose', d: 0, tier: 'Purpose', name: 'The earth filled with the knowledge of the glory of the LORD', sub: 'enduring', color: C.purpose, kids: 1, money: '—', impact: '—', work: '—' },
+      { id: 'mtp', d: 1, tier: 'Objective (MTP)', name: 'The Bible in every language, the church in every people group', sub: 'stable', color: C.mtp, kids: 1, parent: 'purpose', money: '$4.30M', impact: '469 engagements', work: '26 programs' },
+      { id: 'principles', d: 2, tier: 'Principles + Values', name: 'Church-centric · open licence · evidence first', sub: '9 org-level policies · 4 required', color: C.principles, kids: 0, parent: 'mtp', money: '—', impact: '—', work: '—' },
+      { id: 'port-ccbt', d: 2, tier: 'Portfolio', name: 'Church-Centric Bible Translation', sub: 'intent: every church equipped to translate', color: C.portfolio, kids: 1, parent: 'mtp', money: '$1.84M', impact: '412 engagements', work: '9 programs' },
+      { id: 'prog-chad', d: 3, tier: 'Program', name: 'Chad Initiative', sub: '63.11 · WBWN Chad · owner Amara Doumbé', color: C.program, kids: 1, parent: 'port-ccbt', money: '$412K committed', impact: '14 languages', work: '3 projects' },
+      { id: 'proj-coh', d: 4, tier: 'Project', name: 'Facilitator cohort 2026', sub: '63.12 · in progress · WIP 2 of 2', color: C.project, kids: 1, parent: 'prog-chad', money: '$186K', impact: '7 of 12 certified', work: '41 tasks' },
+      { id: 'task-1', d: 5, tier: 'Task', name: 'Confirm the September cohort roster with partners', sub: 'due 2026-08-28 · Amara', color: C.task, kids: 0, parent: 'proj-coh', money: '—', impact: '—', work: 'open' },
+      { id: 'proj-obs', d: 4, tier: 'Project', name: 'Open Bible Stories drafting — 14 languages', sub: '63.13 · blocked on access', color: C.project, kids: 0, parent: 'prog-chad', money: '$142K', impact: '5 of 14 drafted', work: '28 tasks' },
+      { id: 'prog-gl', d: 3, tier: 'Program', name: 'Gateway Language Support', sub: '86.11 · Strategic Language Resources', color: C.program, kids: 0, parent: 'port-ccbt', money: '$588K committed', impact: '38 languages', work: '5 projects' },
+      { id: 'port-content', d: 2, tier: 'Portfolio', name: 'Content Development', sub: 'intent: unrestricted, openly licensed content', color: C.portfolio, kids: 1, parent: 'mtp', money: '$960K', impact: '2,661 outputs', work: '6 programs' },
+      { id: 'prog-obs', d: 3, tier: 'Program', name: 'Open Bible Stories maintenance', sub: '87.01 · Open Bible Stories', color: C.program, kids: 0, parent: 'port-content', money: '$210K', impact: '1,204 outputs', work: '2 projects' },
+      { id: 'port-tools', d: 2, tier: 'Portfolio', name: 'Tools & Technology', sub: 'intent: software that removes friction', color: C.portfolio, kids: 1, parent: 'mtp', money: '$720K', impact: '37 products', work: '5 programs' },
+      { id: 'prog-tc', d: 3, tier: 'Program', name: 'translationCore', sub: '82.01 · translationCore Toolset', color: C.program, kids: 0, parent: 'port-tools', money: '$364K', impact: '11 releases', work: '4 projects' },
+      { id: 'port-cat', d: 2, tier: 'Portfolio', name: 'Catalyst Partners', sub: 'unrestricted · no operational assessment', color: C.portfolio, kids: 0, parent: 'mtp', money: '$300K', impact: '—', work: '2 programs' },
+    ];
+
+    const visible = raw.filter((n) => {
+      let p = n.parent;
+      while (p) { if (!s.open[p]) return false; p = (raw.find((x) => x.id === p) || {}).parent; }
+      return true;
+    });
+
+    const tone = { money: 'i', impact: 'c', work: 'n' }[s.lens];
+    const nodes = visible.map((n) => ({
+      ...n,
+      indent: n.d * 16 + 'px',
+      caret: n.kids ? (s.open[n.id] ? '▾' : '▸') : '',
+      weight: n.d <= 2 ? 800 : 600,
+      metric: n[s.lens],
+      tone,
+      rowCls: n.id === s.sel ? 'sel-row' : '',
+      pick: () => this.setState({ sel: n.id }),
+      toggle: () => this.setState({ open: { ...s.open, [n.id]: !s.open[n.id] } }),
+    }));
+
+    const details = {
+      'prog-chad': {
+        name: 'Chad Initiative', tier: 'Program',
+        text: 'Fourteen languages in the eastern cluster, three partner organizations, one church-centric cohort per cluster. Charter is a NISO page at 63.11.',
+        kpis: [ { l: 'Committed', v: '$412K', d: '3 work orders' }, { l: 'Actual FY26', v: '$286K', d: '69% of budget' }, { l: 'Engagements', v: '14', d: 'protected' }, { l: 'Stories', v: '6', d: '1 publishable' } ],
+        links: [ { rel: 'fund', tone: 'i', name: 'GAU-CCBT · 18% assessment' }, { rel: 'grant', tone: 'i', name: 'Foundation award 2025-3311' }, { rel: 'area', tone: 'n', name: '63 · WBWN Chad (owns)' }, { rel: 'product', tone: 'c', name: 'Open Bible Stories' } ],
+        note: 'This program files into area 63 and serves the Church-Centric intent. Those are two different facts, and the crosswalk keeps them apart.',
+      },
+      'port-ccbt': {
+        name: 'Church-Centric Bible Translation', tier: 'Portfolio',
+        text: 'The portfolio carries its strategic intent as one entity — no separate Strategic Intent record to drift out of sync.',
+        kpis: [ { l: 'Budget FY26', v: '$1.84M', d: 'GAU-CCBT' }, { l: 'Actual', v: '$1.19M', d: '65%' }, { l: 'Programs', v: '9', d: '31 projects' }, { l: 'Grants', v: '6', d: '2 reporting soon' } ],
+        links: [ { rel: 'fund', tone: 'i', name: 'GAU-CCBT · semi-restricted' }, { rel: 'impact model', tone: 'c', name: '11 metrics · nightly snapshot' }, { rel: 'areas', tone: 'n', name: '61-66 owned · 20s, 40s support' }, { rel: 'stories', tone: 'c', name: '24 in the story bank' } ],
+        note: 'Impact, money and work sit on the same page because they share one spine — this is the whole point of the platform.',
+      },
+    };
+    const d = details[s.sel] || {
+      name: (raw.find((x) => x.id === s.sel) || {}).name || '—',
+      tier: (raw.find((x) => x.id === s.sel) || {}).tier || '',
+      text: 'Select any node to see its rollup. Every tier carries its own time horizon, which is how the cascade encodes cadence discipline.',
+      kpis: [ { l: 'Money', v: (raw.find((x) => x.id === s.sel) || {}).money || '—', d: 'this subtree' }, { l: 'Work', v: (raw.find((x) => x.id === s.sel) || {}).work || '—', d: 'this subtree' } ],
+      links: [ { rel: 'parent', tone: 'n', name: 'follows the tree' } ],
+      note: 'Rollups follow the tree by default and pivot to the product plane through explicit relations.',
+    };
+
+    return {
+      tiers, nodes,
+      lMoney: s.lens === 'money' ? 'on' : '', lImpact: s.lens === 'impact' ? 'on' : '', lWork: s.lens === 'work' ? 'on' : '',
+      setMoney: () => this.setState({ lens: 'money' }), setImpact: () => this.setState({ lens: 'impact' }), setWork: () => this.setState({ lens: 'work' }),
+      lensLabel: { money: 'showing committed and actual', impact: 'showing impact metrics', work: 'showing work in flight' }[s.lens],
+      expandAll: () => { const o = {}; raw.forEach((n) => { o[n.id] = 1; }); this.setState({ open: o }); },
+      collapseAll: () => this.setState({ open: { purpose: 1 } }),
+      selName: d.name, selTier: d.tier, selText: d.text, selKpis: d.kpis, selLinks: d.links, selNote: d.note,
+    };
+  }
+}
+</script>

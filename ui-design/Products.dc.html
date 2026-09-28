@@ -1,0 +1,506 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800;6..12,900&display=swap">
+  <style>
+    :root{
+      --bg:#F4F8FA; --surface:#FFFFFF; --ink:#231F20; --muted:#5A6E7A; --line:#C4D3DB;
+      --ocean:#014263; --ocean-ink:#E8F4FA; --inspire:#31ADE3; --inspire-soft:#E3F3FB;
+      --cultivate:#4FA9AC; --cultivate-soft:#E4F4F4; --kindle:#C97F14; --kindle-soft:#FBEFDC;
+      --sink:#0A2E44;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;background:var(--bg);color:var(--ink);
+      font-family:'Nunito Sans','Avenir','Montserrat',sans-serif;font-size:13.5px;line-height:1.5;
+      -webkit-font-smoothing:antialiased;}
+    a{color:var(--inspire);text-decoration:none;} a:hover{color:var(--ocean);text-decoration:underline;}
+    button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;}
+    svg{display:block;}
+
+    .app{width:1440px;height:1000px;display:flex;overflow:hidden;background:var(--bg);}
+
+    /* ---------- sidebar ---------- */
+    .side{width:262px;flex:0 0 262px;background:var(--ocean);color:var(--ocean-ink);
+      display:flex;flex-direction:column;padding:0;}
+    .brand{display:flex;align-items:center;gap:9px;padding:16px 16px 14px;border-bottom:1px solid rgba(255,255,255,.14);}
+    .brand img{height:20px;width:auto;filter:brightness(0) invert(1);opacity:.95;}
+    .brand .bt{font-weight:800;font-size:13px;letter-spacing:.02em;line-height:1.15;padding-left:9px;margin-left:2px;border-left:1px solid rgba(255,255,255,.22);}
+    .brand .bs{font-size:10.5px;opacity:.62;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
+    .navwrap{flex:1;padding:8px 8px 6px;display:flex;flex-direction:column;gap:1px;overflow:hidden;}
+    .grp{display:flex;align-items:flex-start;gap:4px;font-size:9.5px;font-weight:800;letter-spacing:.11em;
+      text-transform:uppercase;color:var(--ocean-ink);opacity:.5;padding:9px 8px 3px;line-height:1.35;
+      white-space:normal;border-radius:5px;cursor:pointer;}
+    .grp:hover{opacity:.95;background:rgba(255,255,255,.06);text-decoration:none;color:var(--ocean-ink);}
+    .grp .ga{width:11px;height:11px;flex:0 0 11px;stroke:currentColor;stroke-width:2.4;fill:none;margin-left:auto;opacity:0;margin-top:1px;}
+    .grp:hover .ga{opacity:.8;}
+    .grp .gn{color:var(--inspire);opacity:.95;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:0;}
+    .ni{display:flex;align-items:center;gap:9px;padding:5px 8px;border-radius:5px;
+      color:var(--ocean-ink);opacity:.78;font-weight:600;font-size:12.5px;white-space:nowrap;}
+    .ni svg{width:15px;height:15px;flex:0 0 15px;stroke:currentColor;stroke-width:1.7;fill:none;
+      stroke-linecap:round;stroke-linejoin:round;opacity:.85;}
+    .ni:hover{background:rgba(255,255,255,.07);opacity:1;text-decoration:none;color:var(--ocean-ink);}
+    .ni.on{background:var(--inspire);color:#04222F;opacity:1;font-weight:800;}
+    .ni.on svg{opacity:1;}
+    .nempty{font-size:10.5px;font-weight:600;opacity:.4;padding:3px 8px 5px;font-style:italic;}
+    .ni .nc{margin-left:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9.5px;opacity:.45;font-weight:700;}
+    .ni.on .nc{opacity:.6;}
+    .ni .pill{margin-left:6px;background:rgba(255,255,255,.16);border-radius:20px;
+      padding:0 6px;font-size:10px;font-weight:800;}
+    .ni.on .pill{background:rgba(0,0,0,.16);}
+    .sfoot{border-top:1px solid rgba(255,255,255,.14);padding:10px 14px;display:flex;align-items:center;gap:9px;}
+    .av{width:26px;height:26px;border-radius:50%;background:var(--cultivate);color:#04222F;
+      display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;}
+    .sfoot .n{font-weight:700;font-size:12px;} .sfoot .r{font-size:10.5px;opacity:.6;}
+
+    /* ---------- top bar ---------- */
+    .main{flex:1;display:flex;flex-direction:column;min-width:0;}
+    .top{height:56px;flex:0 0 56px;background:var(--surface);border-bottom:1px solid var(--line);
+      display:flex;align-items:center;gap:14px;padding:0 20px;}
+    .crumb{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px;font-weight:600;}
+    .crumb b{color:var(--ink);font-weight:800;font-size:14.5px;}
+    .crumb .sep{opacity:.5;}
+    .jd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:700;
+      background:var(--inspire-soft);color:var(--ocean);border-radius:4px;padding:1px 5px;}
+    .search{margin-left:auto;display:flex;align-items:center;gap:7px;width:280px;height:32px;
+      border:1px solid var(--line);border-radius:6px;padding:0 10px;color:var(--muted);background:var(--bg);}
+    .search svg{width:14px;height:14px;stroke:currentColor;stroke-width:1.8;fill:none;}
+    .search .k{margin-left:auto;font-size:10px;font-weight:700;border:1px solid var(--line);
+      border-radius:3px;padding:0 4px;background:var(--surface);}
+    .tacts{display:flex;align-items:center;gap:8px;}
+
+    /* ---------- content ---------- */
+    .body{flex:1;overflow:auto;padding:20px 24px 28px;}
+    .phead{display:flex;align-items:flex-end;gap:16px;margin-bottom:16px;}
+    .eyebrow{color:var(--inspire);font-weight:800;font-size:10.5px;letter-spacing:.14em;
+      text-transform:uppercase;margin:0 0 3px;}
+    h1{font-weight:900;font-size:24px;line-height:1.15;margin:0;letter-spacing:-.01em;}
+    .lede{color:var(--muted);margin:5px 0 0;max-width:72ch;font-size:13px;}
+    h2{font-weight:800;font-size:15px;margin:0;}
+    h3{font-weight:800;font-size:12.5px;margin:0;}
+
+    .grid{display:grid;gap:14px;}
+    .row{display:flex;gap:14px;}
+
+    .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+      display:flex;flex-direction:column;min-width:0;}
+    .chd{display:flex;align-items:center;gap:9px;padding:11px 14px;border-bottom:1px solid var(--line);}
+    .chd .sub{color:var(--muted);font-size:11.5px;font-weight:600;}
+    .chd .r{margin-left:auto;display:flex;align-items:center;gap:7px;}
+    .cbd{padding:13px 14px;}
+    .cbd.flush{padding:0;overflow-x:auto;}
+
+    /* ---------- controls ---------- */
+    .btn{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:6px;
+      border:1px solid var(--line);background:var(--surface);font-weight:700;font-size:12px;color:var(--ink);}
+    .btn:hover{border-color:var(--inspire);color:var(--ocean);}
+    .btn svg{width:13px;height:13px;stroke:currentColor;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+    .btn.p{background:var(--inspire);border-color:var(--inspire);color:#04222F;}
+    .btn.p:hover{background:#1E9AD0;border-color:#1E9AD0;color:#04222F;}
+    .btn.q{border-color:transparent;background:transparent;color:var(--muted);}
+    .btn.q:hover{background:var(--bg);color:var(--ink);}
+    .btn.sm{height:24px;padding:0 8px;font-size:11px;}
+    .btn[disabled],.btn.off{opacity:.45;cursor:not-allowed;}
+    .btn.off:hover{border-color:var(--line);color:var(--ink);}
+
+    .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);}
+    .tab{padding:7px 12px 8px;font-weight:700;font-size:12.5px;color:var(--muted);
+      border-bottom:2px solid transparent;margin-bottom:-1px;}
+    .tab:hover{color:var(--ink);}
+    .tab.on{color:var(--ocean);border-bottom-color:var(--inspire);}
+
+    .chips{display:flex;flex-wrap:wrap;gap:6px;}
+    .chip{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:20px;
+      border:1px solid var(--line);background:var(--surface);font-size:11.5px;font-weight:700;color:var(--muted);}
+    .chip:hover{border-color:var(--inspire);color:var(--ocean);}
+    .chip.on{background:var(--inspire-soft);border-color:var(--inspire);color:var(--ocean);}
+
+    .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface);}
+    .seg button{padding:5px 11px;font-size:11.5px;font-weight:700;color:var(--muted);border-right:1px solid var(--line);}
+    .seg button:last-child{border-right:0;}
+    .seg button.on{background:var(--ocean);color:#fff;}
+
+    .sw{width:34px;height:19px;border-radius:20px;background:#C9D6DD;position:relative;flex:0 0 34px;transition:background .12s;}
+    .sw i{position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;
+      box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .12s;}
+    .sw.on{background:var(--inspire);} .sw.on i{left:17px;}
+    .sw.lock{background:#E2E9ED;} .sw.lock i{background:#B7C6CE;}
+
+    /* ---------- badges ---------- */
+    .b{display:inline-flex;align-items:center;gap:4px;border-radius:4px;padding:1px 6px;
+      font-size:10.5px;font-weight:800;letter-spacing:.02em;white-space:nowrap;}
+    .b.i{background:var(--inspire-soft);color:var(--ocean);}
+    .b.c{background:var(--cultivate-soft);color:#256B6D;}
+    .b.k{background:var(--kindle-soft);color:#8A5709;}
+    .b.n{background:#EDF2F5;color:var(--muted);}
+    .b.g{background:#E2F3E7;color:#1F6B39;}
+    .b.r{background:#FBE7E7;color:#9B2C2C;}
+    .b.dot::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;}
+
+    /* ---------- tables ---------- */
+    table.tbl{width:100%;border-collapse:collapse;font-size:12.5px;}
+    .tbl th{text-align:left;font-weight:800;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+      color:var(--muted);padding:8px 12px;border-bottom:1px solid var(--line);background:#FAFCFD;white-space:nowrap;}
+    .tbl td{padding:8px 12px;border-bottom:1px solid #E7EEF2;vertical-align:middle;}
+    .tbl tr:last-child td{border-bottom:0;}
+    .tbl tr.hov:hover td{background:#F7FBFD;cursor:pointer;}
+    .tbl tr.sel td{background:var(--inspire-soft);}
+    .num{text-align:right;font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;}
+
+    /* ---------- misc ---------- */
+    .kpi{display:flex;flex-direction:column;gap:2px;}
+    .kpi .l{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+    .kpi .v{font-size:22px;font-weight:900;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
+    .kpi .d{font-size:11.5px;color:var(--muted);font-weight:600;}
+    .prov{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:10.5px;
+      font-weight:600;border-top:1px dashed var(--line);padding:8px 14px;}
+    .prov .mono{font-size:10.5px;}
+    .gate{display:flex;align-items:flex-start;gap:9px;border-radius:8px;padding:10px 12px;
+      background:var(--kindle-soft);border:1px solid #EBCB94;color:#7A4E08;font-size:12px;font-weight:600;}
+    .gate svg{width:15px;height:15px;flex:0 0 15px;stroke:currentColor;stroke-width:1.9;fill:none;margin-top:1px;}
+    .note{background:var(--inspire-soft);border:1px solid #B9DFF3;color:var(--ocean);border-radius:8px;
+      padding:10px 12px;font-size:12px;font-weight:600;}
+    .ev{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;}
+    .ev.ob{color:#1F6B39;} .ev.co{color:var(--ocean);} .ev.inf{color:#8A5709;} .ev.as{color:#9B2C2C;}
+    .bar{height:7px;border-radius:4px;background:#E7EEF2;overflow:hidden;}
+    .bar i{display:block;height:100%;background:var(--inspire);}
+    .empty{color:var(--muted);font-size:12px;padding:14px;text-align:center;}
+    .sp{flex:1;}
+    /* ---- dashboard vocabulary ported from Budget Report / Revenue Projection ---- */
+    .kpirow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+    .kpic{background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--inspire);
+      border-radius:10px;padding:11px 13px;display:flex;flex-direction:column;gap:2px;}
+    .kpic .lbl{font-size:11px;font-weight:700;color:var(--muted);}
+    .kpic .val{font-size:26px;font-weight:900;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1;}
+    .kpic .sub{font-size:11px;color:var(--muted);font-weight:600;}
+    .kpic .val.neg{color:#D9534F;} .kpic .val.pos{color:#2E8B57;}
+    .schip{border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700;border:1.5px solid;white-space:nowrap;}
+    .schip.healthy{background:#EAF6EF;border-color:#2E8B57;color:#1F5E3A;}
+    .schip.watch{background:#FDF3E3;border-color:#E59D33;color:#8A5A13;}
+    .schip.shortfall{background:#FBECEB;border-color:#D9534F;color:#9C2F2B;}
+    .schip.inactive{background:#F1F1EF;border-color:#CFCECA;color:#6B6A64;}
+    .legend{display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+    .legend .item{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--muted);cursor:pointer;}
+    .legend .item.off{opacity:.35;text-decoration:line-through;}
+    .legend .sw{width:16px;height:4px;border-radius:2px;display:block;}
+    .ctitle{font-size:11.5px;color:var(--muted);font-weight:600;margin:2px 0 6px;}
+    .banner{display:flex;align-items:center;gap:9px;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;}
+    .banner.warn{background:#FDF3E3;border:1.5px solid #E59D33;color:#8A5A13;}
+    .sel-row{background:var(--inspire-soft);}
+    .ckon{background:var(--inspire) !important;border-color:var(--inspire) !important;}
+    .done{text-decoration:line-through;opacity:.45;}
+    .lane{background:#EFF4F7;border-radius:10px;padding:9px;display:flex;flex-direction:column;gap:8px;min-width:0;}
+    .lane .lh{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:0 3px 2px;}
+    .kc{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 10px;display:flex;flex-direction:column;gap:6px;}
+    .kc:hover{border-color:var(--inspire);}
+  </style>
+</helmet>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <img src="uw-logo.png" alt="unfoldingWord">
+      <div class="bt">Platform</div>
+    </div>
+    <nav class="navwrap">
+      <a class="grp" data-area="area-00"><span class="gn">00-09</span> unfoldingWord Home<svg class="ga" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a>
+      <a class="ni ni-today"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>Today<span class="nc">00</span></a>
+      <a class="ni ni-pages"><svg viewBox="0 0 24 24"><path d="M5 4h9l5 5v11H5z"/><path d="M14 4v5h5"/><path d="M8 13h8M8 17h5"/></svg>Pages &amp; Wiki<span class="nc">01</span></a>
+      <a class="ni ni-cascade"><svg viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>Strategic Cascade<span class="nc">01.12</span></a>
+      <a class="ni ni-meetings"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Meetings<span class="nc">xx.98</span></a>
+      <a class="ni ni-crosswalk"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 10h16M4 15h16M10 4v16M15 4v16"/></svg>JD Crosswalk<span class="nc">00.07</span></a>
+      <a class="grp" data-area="area-10"><span class="gn">10-19</span> Internal Operations &amp; Administration<svg class="ga" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a>
+      <a class="ni ni-directory"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5"/><path d="M16 11a3 3 0 1 0-1.5-5.6"/><path d="M17.5 15c2 .6 3.5 2 3.5 5"/></svg>Directory &amp; Access<span class="nc">15</span></a>
+      <a class="grp" data-area="area-20"><span class="gn">20-29</span> Finance<svg class="ga" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a>
+      <a class="ni ni-ledger"><svg viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M5 8h14"/><path d="M5 8 3 14h4zM19 8l-2 6h4z"/></svg>Ledger<span class="nc">28</span></a>
+      <a class="ni ni-charts"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Budgets &amp; Charts<span class="nc">21</span></a>
+      <a class="ni ni-contracts"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 16c2-3 4 1 6-2"/></svg>Contracts &amp; MOUs<span class="nc">24/25</span></a>
+      <a class="ni ni-expenses"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Expenses<span class="nc">28</span><span class="pill">7</span></a>
+      <a class="ni ni-compliance"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4.5 3 7.8 7 9 4-1.2 7-4.5 7-9V6z"/><path d="m9 12 2 2 4-4"/></svg>Compliance<span class="nc">23</span></a>
+      <a class="grp" data-area="area-30"><span class="gn">30-39</span> Infrastructure<svg class="ga" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a>
+      <a class="ni ni-health"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 4 12L16 12h5"/></svg>Health<span class="nc">38</span></a>
+      <a class="ni ni-agents"><svg viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="12" rx="3"/><path d="M12 4v3M9 12h.01M15 12h.01M9.5 16h5"/></svg>Agent Queues<span class="nc">32</span><span class="pill">3</span></a>
+      <a class="ni ni-modules"><svg viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7z"/><path d="m4 7 8 4 8-4M12 11v10"/></svg>Modules<span class="nc">32</span></a>
+      <a class="ni ni-offline"><svg viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.6-7.95A5.5 5.5 0 0 1 17 9.5a3.5 3.5 0 0 1 1.6 6.6"/><path d="m4 4 16 16"/></svg>Desktop &amp; Offline<span class="nc">32</span></a>
+      <a class="grp" data-area="area-40"><span class="gn">40-49</span> Engage Benefactors<svg class="ga" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a>
+      <a class="ni ni-crm"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4.6-7 9-7 9z"/></svg>CRM &amp; Giving<span class="nc">48</span></a>
+      <a class="ni ni-grants"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="m8.5 13.5-1 7 4.5-2.5 4.5 2.5-1-7"/></svg>Grants<span class="nc">43</span></a>
+      <a class="ni ni-stories"><svg viewBox="0 0 24 24"><path d="M4 5h7v14H4z"/><path d="M13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg>Story Bank<span class="nc">44</span></a>
+      <a class="grp" data-area="area-50"><span class="gn">50-59</span> Innovation &amp; Strategy<svg class="ga" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a>
+      <a class="ni ni-impact"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Impact Models<span class="nc">51</span></a>
+      <a class="grp" data-area="area-60"><span class="gn">60-79</span> Field Programs<svg class="ga" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a>
+      <a class="ni ni-field"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18"/></svg>Engagements<span class="nc">60</span></a>
+      <a class="grp" data-area="area-80"><span class="gn">80-89</span> Tech &amp; SLR<svg class="ga" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a>
+      <a class="ni ni-products on"><svg viewBox="0 0 24 24"><path d="M4 8.5 12 4l8 4.5v7L12 20l-8-4.5z"/><path d="M4 8.5 12 13l8-4.5M12 13v7"/></svg>Products<span class="nc">80</span></a>
+      <a class="ni ni-dev"><svg viewBox="0 0 24 24"><circle cx="7" cy="6" r="2.5"/><circle cx="7" cy="18" r="2.5"/><circle cx="17" cy="12" r="2.5"/><path d="M7 8.5v7M9.5 6H14a2.5 2.5 0 0 1 2.5 2.5V9"/></svg>Development<span class="nc">80</span></a>
+      <a class="grp" data-area="area-90"><span class="gn">90-99</span> Catalyzation<svg class="ga" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a>
+      <div class="nempty">No modules enabled for this area</div>
+    </nav>
+    <div class="sfoot">
+      <div class="av">JG</div>
+      <div>
+        <div class="n">Jesse Griffin</div>
+        <div class="r">admin · org scope</div>
+      </div>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="top">
+      <div class="crumb"><span class="jd">82</span><span>translationCore Toolset</span><span class="sep">/</span><b>translationCore</b></div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg><span>Search everything</span><span class="k">⌘K</span></div>
+      <div class="tacts">
+        <button class="btn"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 13h7M9 17h4"/></svg>Export PDF</button>
+        <button class="btn p"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New product</button>
+      </div>
+    </header>
+    <div class="body" style="display:flex;gap:14px;align-items:flex-start">
+
+      <div class="card" style="width:276px;flex:0 0 276px">
+        <div class="chd"><h2>Product catalogue</h2><div class="r"><span class="b n">37</span></div></div>
+        <div class="cbd flush">
+          <sc-for list="{{catalog}}" as="p" hint-placeholder-count="7">
+            <div class="{{p.cls}}" style="padding:10px 13px;border-bottom:1px solid #E7EEF2;cursor:pointer" onClick="{{p.pick}}">
+              <div style="display:flex;align-items:center;gap:7px;margin-bottom:2px">
+                <span class="jd">{{p.jd}}</span>
+                <div class="sp"></div>
+                <span class="b {{p.tone}}">{{p.stage}}</span>
+              </div>
+              <div style="font-weight:700;font-size:12.5px">{{p.name}}</div>
+              <div style="color:#5A6E7A;font-size:11px;font-weight:600">{{p.owner}}</div>
+            </div>
+          </sc-for>
+          <div style="padding:10px 13px;color:#5A6E7A;font-size:11px;font-weight:600">Products sit on their own plane: each has one owning category, but a product can serve several programs and portfolios.</div>
+        </div>
+      </div>
+
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px">
+        <div class="card">
+          <div class="chd">
+            <h2>{{name}}</h2>
+            <span class="b {{tone}}">{{stage}}</span>
+            <div class="r"><span class="sub">{{owner}} · {{jd}}</span></div>
+          </div>
+          <div class="cbd" style="display:flex;gap:18px">
+            <div style="flex:1;min-width:0">
+              <p style="margin:0 0 12px;color:#3A4A53;font-size:13px;line-height:1.6">{{summary}}</p>
+              <div style="display:flex;gap:18px;flex-wrap:wrap">
+                <sc-for list="{{kpis}}" as="k" hint-placeholder-count="4">
+                  <div class="kpi"><span class="l">{{k.l}}</span><span class="v" style="font-size:19px">{{k.v}}</span><span class="d">{{k.d}}</span></div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="width:236px;flex:0 0 236px;border-left:1px solid #E7EEF2;padding-left:16px">
+              <h3 style="margin-bottom:7px">Serves</h3>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <sc-for list="{{serves}}" as="v" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:7px">
+                    <span class="b {{v.tone}}">{{v.rel}}</span>
+                    <a style="font-weight:700;font-size:12px">{{v.name}}</a>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="color:#5A6E7A;font-size:11px;font-weight:600;margin-top:9px">Rollups follow the cascade by default and pivot to the product plane through these relations.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="chd">
+            <h2>{{tabTitle}}</h2>
+            <div class="r">
+              <button class="{{tHyp}}" onClick="{{goHyp}}">Hypotheses</button>
+              <button class="{{tRoad}}" onClick="{{goRoad}}">Roadmap</button>
+              <button class="{{tWork}}" onClick="{{goWork}}">Work in flight</button>
+            </div>
+          </div>
+
+          <sc-if value="{{isHyp}}" hint-placeholder-val="{{ true }}">
+            <div class="cbd flush">
+              <table class="tbl">
+                <thead><tr><th style="width:33%">Hypothesis</th><th>Experiment</th><th>Expected evidence</th><th>Result</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{hyps}}" as="h" hint-placeholder-count="4">
+                    <tr class="hov">
+                      <td style="font-weight:600">{{h.text}}</td>
+                      <td style="color:#5A6E7A;font-size:11.5px">{{h.exp}}</td>
+                      <td style="color:#5A6E7A;font-size:11.5px">{{h.ev}}</td>
+                      <td><span class="b {{h.tone}}">{{h.result}}</span></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+            <div class="prov"><span>Validated learning is part of the product template, not a separate practice</span><span>·</span><span>a pivot is recorded as a decision page with its evidence</span></div>
+          </sc-if>
+
+          <sc-if value="{{isRoad}}" hint-placeholder-val="{{ false }}">
+            <div class="cbd" style="display:flex;flex-direction:column;gap:9px">
+              <sc-for list="{{road}}" as="r" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:12px;border:1px solid #E7EEF2;border-radius:8px;padding:10px 12px;background:#FCFDFE">
+                  <span class="b {{r.tone}}" style="width:78px;justify-content:center">{{r.when}}</span>
+                  <div style="min-width:0;flex:1">
+                    <div style="font-weight:700;font-size:12.5px">{{r.name}}</div>
+                    <div style="color:#5A6E7A;font-size:11px;font-weight:600">{{r.note}}</div>
+                  </div>
+                  <div class="bar" style="width:90px"><i style="width:{{r.pct}}"></i></div>
+                  <span style="font-size:11px;font-weight:700;color:#5A6E7A;width:34px;text-align:right">{{r.pct}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{isWork}}" hint-placeholder-val="{{ false }}">
+            <div class="cbd flush">
+              <table class="tbl">
+                <thead><tr><th>Issue</th><th>Project</th><th>Sprint</th><th>Owner</th><th>Status</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{work}}" as="w" hint-placeholder-count="5">
+                    <tr class="hov">
+                      <td><span class="mono" style="color:#5A6E7A;font-size:11px">{{w.ref}}</span> {{w.title}}</td>
+                      <td><a>{{w.project}}</a></td>
+                      <td class="mono">{{w.sprint}}</td>
+                      <td>{{w.who}}</td>
+                      <td><span class="b {{w.tone}}">{{w.status}}</span></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+            <div class="prov"><span>Issues stay in the repository; the platform adds the product and project relation</span><span>·</span><span class="mono">issue_links · project —(delivers_for)→ product</span></div>
+          </sc-if>
+        </div>
+      </div>
+
+      <div style="width:300px;flex:0 0 300px;display:flex;flex-direction:column;gap:14px">
+        <div class="card">
+          <div class="chd"><h2>Product page</h2><div class="r"><span class="b n">typed frontmatter</span></div></div>
+          <div class="cbd" style="display:flex;flex-direction:column;gap:0">
+            <sc-for list="{{props}}" as="p" hint-placeholder-count="8">
+              <div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid #F1F5F8">
+                <div style="width:104px;flex:0 0 104px;color:#5A6E7A;font-size:11.5px;font-weight:700">{{p.k}}</div>
+                <div style="font-weight:600;font-size:12.5px">{{p.v}}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="chd"><h2>Releases</h2></div>
+          <div class="cbd" style="display:flex;flex-direction:column;gap:0">
+            <sc-for list="{{releases}}" as="r" hint-placeholder-count="4">
+              <div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #F1F5F8">
+                <span class="mono" style="width:52px;flex:0 0 52px;font-size:11px;color:#5A6E7A">{{r.date}}</span>
+                <div><div style="font-weight:700;font-size:12.5px">{{r.ver}}</div><div style="color:#5A6E7A;font-size:11px;font-weight:600">{{r.note}}</div></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="chd"><h2>Content &amp; policies</h2></div>
+          <div class="cbd" style="display:flex;flex-direction:column;gap:7px">
+            <sc-for list="{{policies}}" as="p" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="b {{p.tone}}">{{p.kind}}</span>
+                <span style="font-weight:600;font-size:12px">{{p.name}}</span>
+              </div>
+            </sc-for>
+            <div style="color:#5A6E7A;font-size:11px;font-weight:600;margin-top:4px">Templates are copied into a product at creation with their version recorded, not referenced — so a template change never rewrites a live product page underneath you.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { sel: 'tc', tab: 'hyp' }; }
+  renderVals() {
+    const s = this.state;
+    const defs = [
+      { k: 'tc', jd: '82', name: 'translationCore', owner: 'Tools & Technology', stage: 'sustaining', tone: 'g' },
+      { k: 'bts', jd: '84', name: 'BT Servant', owner: 'Tools & Technology', stage: 'building', tone: 'i' },
+      { k: 'obs', jd: '87', name: 'Open Bible Stories', owner: 'Content Development', stage: 'sustaining', tone: 'g' },
+      { k: 'fbt', jd: '83', name: 'Foundations BT', owner: 'Content Development', stage: 'sustaining', tone: 'g' },
+      { k: 'ebp', jd: '81', name: 'English Book Packages', owner: 'Content Development', stage: 'sustaining', tone: 'g' },
+      { k: 'slr', jd: '86', name: 'Strategic Language Resources', owner: 'Content Development', stage: 'building', tone: 'i' },
+      { k: 'obtc', jd: '85', name: 'Open Bible Technology Community', owner: 'Tools & Technology', stage: 'exploring', tone: 'k' },
+    ];
+    const catalog = defs.map((d) => ({ ...d, cls: d.k === s.sel ? 'sel-row' : '', pick: () => this.setState({ sel: d.k }) }));
+    const cur = defs.find((d) => d.k === s.sel) || defs[0];
+
+    const detail = {
+      tc: {
+        summary: 'The desktop and web toolset translators use to draft, align and check. Its adoption is what makes checking possible without an outside consultant in the room, so its roadmap is driven by what field cohorts get stuck on rather than by feature requests.',
+        kpis: [ { l: 'Active installs', v: '4,180', d: '+12% this quarter' }, { l: 'Languages served', v: '212', d: 'across 31 partners' }, { l: 'Open issues', v: '46', d: '9 in this sprint' }, { l: 'Spend FY26', v: '$364K', d: '51% of budget' } ],
+        serves: [ { rel: 'owned by', tone: 'i', name: 'Tools & Technology portfolio' }, { rel: 'also serves', tone: 'c', name: 'Chad Initiative' }, { rel: 'also serves', tone: 'c', name: 'Gateway Language Support' }, { rel: 'delivered by', tone: 'n', name: '4 projects · 2 active' } ],
+      },
+      bts: {
+        summary: 'A messaging-first assistant for translators working from a phone, in places where a laptop and a stable connection are not a given. Still proving its core premise before it earns a wider rollout.',
+        kpis: [ { l: 'Pilot users', v: '86', d: '3 countries' }, { l: 'Sessions / week', v: '412', d: '+38% this month' }, { l: 'Open issues', v: '61', d: '14 in this sprint' }, { l: 'Spend FY26', v: '$186K', d: '62% of budget' } ],
+        serves: [ { rel: 'owned by', tone: 'i', name: 'Tools & Technology portfolio' }, { rel: 'also serves', tone: 'c', name: 'Chad Initiative' }, { rel: 'grant', tone: 'c', name: 'Foundation award 2025-3311' }, { rel: 'delivered by', tone: 'n', name: '3 projects · 3 active' } ],
+      },
+    };
+    const d = detail[s.sel] || {
+      summary: 'Every product carries the same shape: a charter, hypotheses with expected evidence, a roadmap, the work in flight, and the programs it serves. That shape is what makes twenty-odd products comparable.',
+      kpis: [ { l: 'Open issues', v: '—', d: 'no repository linked yet' }, { l: 'Spend FY26', v: '—', d: 'no budget line yet' } ],
+      serves: [ { rel: 'owned by', tone: 'i', name: cur.owner } ],
+    };
+
+    const setT = (k) => () => this.setState({ tab: k });
+    return {
+      catalog,
+      name: cur.name, jd: cur.jd, stage: cur.stage, tone: cur.tone, owner: cur.owner,
+      summary: d.summary, kpis: d.kpis, serves: d.serves,
+      tHyp: 'tab' + (s.tab === 'hyp' ? ' on' : ''), tRoad: 'tab' + (s.tab === 'road' ? ' on' : ''), tWork: 'tab' + (s.tab === 'work' ? ' on' : ''),
+      goHyp: setT('hyp'), goRoad: setT('road'), goWork: setT('work'),
+      isHyp: s.tab === 'hyp', isRoad: s.tab === 'road', isWork: s.tab === 'work',
+      tabTitle: { hyp: 'Hypotheses and what would prove them', road: 'Roadmap', work: 'Work in flight' }[s.tab],
+      hyps: [
+        { text: 'Cohorts that use alignment early finish checking faster', exp: 'Two cohorts, one trained on alignment in module 2 instead of module 4', ev: 'Median days from draft to community check drops by a third', result: 'supported', tone: 'g' },
+        { text: 'Offline mode is what blocks adoption in the eastern cluster', exp: 'Ship the offline build to 12 facilitators and watch session counts', ev: 'Weekly sessions rise in low-connectivity districts', result: 'running', tone: 'i' },
+        { text: 'Partners will self-report results if the form is inside the tool', exp: 'Embed the reporting step at the end of a checking session', ev: 'Half of partner orgs file without a staff reminder', result: 'not started', tone: 'n' },
+        { text: 'A consultant queue inside the product reduces waiting', exp: 'Route check requests through the platform work queue', ev: 'Median wait for a consultant answer falls below 5 days', result: 'refuted', tone: 'r' },
+      ],
+      road: [
+        { when: 'shipped', tone: 'g', name: 'Alignment rewrite', note: 'released 4.1 · closed 22 issues', pct: '100%' },
+        { when: 'this quarter', tone: 'i', name: 'Offline build for field cohorts', note: '2 projects · blocked on sync review', pct: '64%' },
+        { when: 'next', tone: 'n', name: 'Partner self-reporting step', note: 'depends on the field module', pct: '12%' },
+        { when: 'later', tone: 'n', name: 'Consultant queue integration', note: 'parked after the refuted hypothesis', pct: '0%' },
+      ],
+      work: [
+        { ref: 'uw-tc#912', title: 'Offline cache invalidation on reconnect', project: 'Offline build', sprint: '2026-34', who: 'agent lane 1', status: 'in review', tone: 'i' },
+        { ref: 'uw-tc#908', title: 'Alignment memory across books', project: 'Alignment rewrite', sprint: '2026-34', who: 'jesse', status: 'in progress', tone: 'i' },
+        { ref: 'uw-tc#901', title: 'Checking session export to FRED', project: 'Partner reporting', sprint: '2026-35', who: 'unassigned', status: 'backlog', tone: 'n' },
+        { ref: 'uw-tc#894', title: 'Crash on very large alignment files', project: 'Offline build', sprint: '2026-33', who: 'jesse', status: 'done', tone: 'g' },
+        { ref: 'uw-tc#889', title: 'Arabic script rendering in the checker', project: 'Alignment rewrite', sprint: '2026-33', who: 'agent lane 2', status: 'done', tone: 'g' },
+      ],
+      props: [
+        { k: 'type', v: 'product' }, { k: 'jd category', v: cur.jd + ' · ' + cur.name },
+        { k: 'owning portfolio', v: cur.owner }, { k: 'stage', v: cur.stage },
+        { k: 'licence', v: 'CC BY-SA 4.0' }, { k: 'repository', v: 'unfoldingWord/' + cur.k },
+        { k: 'support level', v: 'field-critical' }, { k: 'offline_eligible', v: 'pages sync' },
+      ],
+      releases: [
+        { date: '2026-07-30', ver: '4.2', note: 'checking speed, 31 fixes' },
+        { date: '2026-04-18', ver: '4.1', note: 'alignment rewrite' },
+        { date: '2026-01-22', ver: '4.0', note: 'new project format' },
+        { date: '2025-10-04', ver: '3.9', note: 'final 3.x maintenance' },
+      ],
+      policies: [
+        { kind: 'required', tone: 'r', name: 'Open licence policy' },
+        { kind: 'required', tone: 'r', name: 'Field data sensitivity policy' },
+        { kind: 'template', tone: 'n', name: 'Product charter (NISO) v4' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

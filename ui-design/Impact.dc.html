@@ -1,0 +1,397 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800;6..12,900&display=swap">
+  <style>
+    :root{
+      --bg:#F4F8FA; --surface:#FFFFFF; --ink:#231F20; --muted:#5A6E7A; --line:#C4D3DB;
+      --ocean:#014263; --ocean-ink:#E8F4FA; --inspire:#31ADE3; --inspire-soft:#E3F3FB;
+      --cultivate:#4FA9AC; --cultivate-soft:#E4F4F4; --kindle:#C97F14; --kindle-soft:#FBEFDC;
+      --sink:#0A2E44;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;background:var(--bg);color:var(--ink);
+      font-family:'Nunito Sans','Avenir','Montserrat',sans-serif;font-size:13.5px;line-height:1.5;
+      -webkit-font-smoothing:antialiased;}
+    a{color:var(--inspire);text-decoration:none;} a:hover{color:var(--ocean);text-decoration:underline;}
+    button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;}
+    svg{display:block;}
+
+    .app{width:1440px;height:1000px;display:flex;overflow:hidden;background:var(--bg);}
+
+    /* ---------- sidebar ---------- */
+    .side{width:262px;flex:0 0 262px;background:var(--ocean);color:var(--ocean-ink);
+      display:flex;flex-direction:column;padding:0;}
+    .brand{display:flex;align-items:center;gap:9px;padding:16px 16px 14px;border-bottom:1px solid rgba(255,255,255,.14);}
+    .brand img{height:20px;width:auto;filter:brightness(0) invert(1);opacity:.95;}
+    .brand .bt{font-weight:800;font-size:13px;letter-spacing:.02em;line-height:1.15;padding-left:9px;margin-left:2px;border-left:1px solid rgba(255,255,255,.22);}
+    .brand .bs{font-size:10.5px;opacity:.62;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
+    .navwrap{flex:1;padding:8px 8px 6px;display:flex;flex-direction:column;gap:1px;overflow:hidden;}
+    .grp{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
+      opacity:.5;padding:9px 8px 3px;line-height:1.35;white-space:normal;}
+    .grp .gn{color:var(--inspire);opacity:.95;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:0;}
+    .ni{display:flex;align-items:center;gap:9px;padding:5px 8px;border-radius:5px;
+      color:var(--ocean-ink);opacity:.78;font-weight:600;font-size:12.5px;white-space:nowrap;}
+    .ni svg{width:15px;height:15px;flex:0 0 15px;stroke:currentColor;stroke-width:1.7;fill:none;
+      stroke-linecap:round;stroke-linejoin:round;opacity:.85;}
+    .ni:hover{background:rgba(255,255,255,.07);opacity:1;text-decoration:none;color:var(--ocean-ink);}
+    .ni.on{background:var(--inspire);color:#04222F;opacity:1;font-weight:800;}
+    .ni.on svg{opacity:1;}
+    .nempty{font-size:10.5px;font-weight:600;opacity:.4;padding:3px 8px 5px;font-style:italic;}
+    .ni .nc{margin-left:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9.5px;opacity:.45;font-weight:700;}
+    .ni.on .nc{opacity:.6;}
+    .ni .pill{margin-left:6px;background:rgba(255,255,255,.16);border-radius:20px;
+      padding:0 6px;font-size:10px;font-weight:800;}
+    .ni.on .pill{background:rgba(0,0,0,.16);}
+    .sfoot{border-top:1px solid rgba(255,255,255,.14);padding:10px 14px;display:flex;align-items:center;gap:9px;}
+    .av{width:26px;height:26px;border-radius:50%;background:var(--cultivate);color:#04222F;
+      display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;}
+    .sfoot .n{font-weight:700;font-size:12px;} .sfoot .r{font-size:10.5px;opacity:.6;}
+
+    /* ---------- top bar ---------- */
+    .main{flex:1;display:flex;flex-direction:column;min-width:0;}
+    .top{height:56px;flex:0 0 56px;background:var(--surface);border-bottom:1px solid var(--line);
+      display:flex;align-items:center;gap:14px;padding:0 20px;}
+    .crumb{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px;font-weight:600;}
+    .crumb b{color:var(--ink);font-weight:800;font-size:14.5px;}
+    .crumb .sep{opacity:.5;}
+    .jd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:700;
+      background:var(--inspire-soft);color:var(--ocean);border-radius:4px;padding:1px 5px;}
+    .search{margin-left:auto;display:flex;align-items:center;gap:7px;width:280px;height:32px;
+      border:1px solid var(--line);border-radius:6px;padding:0 10px;color:var(--muted);background:var(--bg);}
+    .search svg{width:14px;height:14px;stroke:currentColor;stroke-width:1.8;fill:none;}
+    .search .k{margin-left:auto;font-size:10px;font-weight:700;border:1px solid var(--line);
+      border-radius:3px;padding:0 4px;background:var(--surface);}
+    .tacts{display:flex;align-items:center;gap:8px;}
+
+    /* ---------- content ---------- */
+    .body{flex:1;overflow:auto;padding:20px 24px 28px;}
+    .phead{display:flex;align-items:flex-end;gap:16px;margin-bottom:16px;}
+    .eyebrow{color:var(--inspire);font-weight:800;font-size:10.5px;letter-spacing:.14em;
+      text-transform:uppercase;margin:0 0 3px;}
+    h1{font-weight:900;font-size:24px;line-height:1.15;margin:0;letter-spacing:-.01em;}
+    .lede{color:var(--muted);margin:5px 0 0;max-width:72ch;font-size:13px;}
+    h2{font-weight:800;font-size:15px;margin:0;}
+    h3{font-weight:800;font-size:12.5px;margin:0;}
+
+    .grid{display:grid;gap:14px;}
+    .row{display:flex;gap:14px;}
+
+    .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+      display:flex;flex-direction:column;min-width:0;}
+    .chd{display:flex;align-items:center;gap:9px;padding:11px 14px;border-bottom:1px solid var(--line);}
+    .chd .sub{color:var(--muted);font-size:11.5px;font-weight:600;}
+    .chd .r{margin-left:auto;display:flex;align-items:center;gap:7px;}
+    .cbd{padding:13px 14px;}
+    .cbd.flush{padding:0;overflow-x:auto;}
+
+    /* ---------- controls ---------- */
+    .btn{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:6px;
+      border:1px solid var(--line);background:var(--surface);font-weight:700;font-size:12px;color:var(--ink);}
+    .btn:hover{border-color:var(--inspire);color:var(--ocean);}
+    .btn svg{width:13px;height:13px;stroke:currentColor;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+    .btn.p{background:var(--inspire);border-color:var(--inspire);color:#04222F;}
+    .btn.p:hover{background:#1E9AD0;border-color:#1E9AD0;color:#04222F;}
+    .btn.q{border-color:transparent;background:transparent;color:var(--muted);}
+    .btn.q:hover{background:var(--bg);color:var(--ink);}
+    .btn.sm{height:24px;padding:0 8px;font-size:11px;}
+    .btn[disabled],.btn.off{opacity:.45;cursor:not-allowed;}
+    .btn.off:hover{border-color:var(--line);color:var(--ink);}
+
+    .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);}
+    .tab{padding:7px 12px 8px;font-weight:700;font-size:12.5px;color:var(--muted);
+      border-bottom:2px solid transparent;margin-bottom:-1px;}
+    .tab:hover{color:var(--ink);}
+    .tab.on{color:var(--ocean);border-bottom-color:var(--inspire);}
+
+    .chips{display:flex;flex-wrap:wrap;gap:6px;}
+    .chip{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:20px;
+      border:1px solid var(--line);background:var(--surface);font-size:11.5px;font-weight:700;color:var(--muted);}
+    .chip:hover{border-color:var(--inspire);color:var(--ocean);}
+    .chip.on{background:var(--inspire-soft);border-color:var(--inspire);color:var(--ocean);}
+
+    .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface);}
+    .seg button{padding:5px 11px;font-size:11.5px;font-weight:700;color:var(--muted);border-right:1px solid var(--line);}
+    .seg button:last-child{border-right:0;}
+    .seg button.on{background:var(--ocean);color:#fff;}
+
+    .sw{width:34px;height:19px;border-radius:20px;background:#C9D6DD;position:relative;flex:0 0 34px;transition:background .12s;}
+    .sw i{position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;
+      box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .12s;}
+    .sw.on{background:var(--inspire);} .sw.on i{left:17px;}
+    .sw.lock{background:#E2E9ED;} .sw.lock i{background:#B7C6CE;}
+
+    /* ---------- badges ---------- */
+    .b{display:inline-flex;align-items:center;gap:4px;border-radius:4px;padding:1px 6px;
+      font-size:10.5px;font-weight:800;letter-spacing:.02em;white-space:nowrap;}
+    .b.i{background:var(--inspire-soft);color:var(--ocean);}
+    .b.c{background:var(--cultivate-soft);color:#256B6D;}
+    .b.k{background:var(--kindle-soft);color:#8A5709;}
+    .b.n{background:#EDF2F5;color:var(--muted);}
+    .b.g{background:#E2F3E7;color:#1F6B39;}
+    .b.r{background:#FBE7E7;color:#9B2C2C;}
+    .b.dot::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;}
+
+    /* ---------- tables ---------- */
+    table.tbl{width:100%;border-collapse:collapse;font-size:12.5px;}
+    .tbl th{text-align:left;font-weight:800;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+      color:var(--muted);padding:8px 12px;border-bottom:1px solid var(--line);background:#FAFCFD;white-space:nowrap;}
+    .tbl td{padding:8px 12px;border-bottom:1px solid #E7EEF2;vertical-align:middle;}
+    .tbl tr:last-child td{border-bottom:0;}
+    .tbl tr.hov:hover td{background:#F7FBFD;cursor:pointer;}
+    .tbl tr.sel td{background:var(--inspire-soft);}
+    .num{text-align:right;font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;}
+
+    /* ---------- misc ---------- */
+    .kpi{display:flex;flex-direction:column;gap:2px;}
+    .kpi .l{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+    .kpi .v{font-size:22px;font-weight:900;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
+    .kpi .d{font-size:11.5px;color:var(--muted);font-weight:600;}
+    .prov{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:10.5px;
+      font-weight:600;border-top:1px dashed var(--line);padding:8px 14px;}
+    .prov .mono{font-size:10.5px;}
+    .gate{display:flex;align-items:flex-start;gap:9px;border-radius:8px;padding:10px 12px;
+      background:var(--kindle-soft);border:1px solid #EBCB94;color:#7A4E08;font-size:12px;font-weight:600;}
+    .gate svg{width:15px;height:15px;flex:0 0 15px;stroke:currentColor;stroke-width:1.9;fill:none;margin-top:1px;}
+    .note{background:var(--inspire-soft);border:1px solid #B9DFF3;color:var(--ocean);border-radius:8px;
+      padding:10px 12px;font-size:12px;font-weight:600;}
+    .ev{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;}
+    .ev.ob{color:#1F6B39;} .ev.co{color:var(--ocean);} .ev.inf{color:#8A5709;} .ev.as{color:#9B2C2C;}
+    .bar{height:7px;border-radius:4px;background:#E7EEF2;overflow:hidden;}
+    .bar i{display:block;height:100%;background:var(--inspire);}
+    .empty{color:var(--muted);font-size:12px;padding:14px;text-align:center;}
+    .sp{flex:1;}
+    .sel-row{background:var(--inspire-soft);}
+    .ckon{background:var(--inspire) !important;border-color:var(--inspire) !important;}
+    .done{text-decoration:line-through;opacity:.45;}
+    .lane{background:#EFF4F7;border-radius:10px;padding:9px;display:flex;flex-direction:column;gap:8px;min-width:0;}
+    .lane .lh{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:0 3px 2px;}
+    .kc{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 10px;display:flex;flex-direction:column;gap:6px;}
+    .kc:hover{border-color:var(--inspire);}
+  </style>
+</helmet>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <img src="uw-logo.png" alt="unfoldingWord">
+      <div class="bt">Platform</div>
+    </div>
+    <nav class="navwrap">
+      <div class="grp"><span class="gn">00-09</span> unfoldingWord Home</div>
+      <a class="ni ni-today"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>Today<span class="nc">00</span></a>
+      <a class="ni ni-pages"><svg viewBox="0 0 24 24"><path d="M5 4h9l5 5v11H5z"/><path d="M14 4v5h5"/><path d="M8 13h8M8 17h5"/></svg>Pages &amp; Wiki<span class="nc">01</span></a>
+      <a class="ni ni-crosswalk"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 10h16M4 15h16M10 4v16M15 4v16"/></svg>JD Crosswalk<span class="nc">00.07</span></a>
+      <div class="grp"><span class="gn">10-19</span> Internal Operations &amp; Administration</div>
+      <a class="ni ni-meetings"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Meetings<span class="nc">10</span></a>
+      <div class="grp"><span class="gn">20-29</span> Finance</div>
+      <a class="ni ni-ledger"><svg viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M5 8h14"/><path d="M5 8 3 14h4zM19 8l-2 6h4z"/></svg>Ledger<span class="nc">28</span></a>
+      <a class="ni ni-charts"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Budgets &amp; Charts<span class="nc">21</span></a>
+      <a class="ni ni-contracts"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 16c2-3 4 1 6-2"/></svg>Contracts &amp; MOUs<span class="nc">24/25</span></a>
+      <a class="ni ni-expenses"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Expenses<span class="nc">28</span><span class="pill">7</span></a>
+      <a class="ni ni-compliance"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4.5 3 7.8 7 9 4-1.2 7-4.5 7-9V6z"/><path d="m9 12 2 2 4-4"/></svg>Compliance<span class="nc">23</span></a>
+      <div class="grp"><span class="gn">30-39</span> Infrastructure</div>
+      <a class="ni ni-health"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 4 12L16 12h5"/></svg>Health<span class="nc">38</span></a>
+      <a class="ni ni-agents"><svg viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="12" rx="3"/><path d="M12 4v3M9 12h.01M15 12h.01M9.5 16h5"/></svg>Agent Queues<span class="nc">32</span><span class="pill">3</span></a>
+      <a class="ni ni-modules"><svg viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7z"/><path d="m4 7 8 4 8-4M12 11v10"/></svg>Modules<span class="nc">32</span></a>
+      <a class="ni ni-offline"><svg viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.6-7.95A5.5 5.5 0 0 1 17 9.5a3.5 3.5 0 0 1 1.6 6.6"/><path d="m4 4 16 16"/></svg>Desktop &amp; Offline<span class="nc">32</span></a>
+      <div class="grp"><span class="gn">40-49</span> Engage Benefactors</div>
+      <a class="ni ni-crm"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4.6-7 9-7 9z"/></svg>CRM &amp; Giving<span class="nc">48</span></a>
+      <a class="ni ni-grants"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="m8.5 13.5-1 7 4.5-2.5 4.5 2.5-1-7"/></svg>Grants<span class="nc">43</span></a>
+      <a class="ni ni-stories"><svg viewBox="0 0 24 24"><path d="M4 5h7v14H4z"/><path d="M13 5h7v14h-7z"/><path d="M6.5 9h2M15.5 9h2"/></svg>Story Bank<span class="nc">44</span></a>
+      <div class="grp"><span class="gn">50-59</span> Innovation &amp; Strategy</div>
+      <a class="ni ni-cascade"><svg viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>Strategic Cascade<span class="nc">51</span></a>
+      <div class="grp"><span class="gn">60-79</span> Field Programs</div>
+      <a class="ni ni-field"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18"/></svg>Engagements<span class="nc">60</span></a>
+      <a class="ni ni-impact on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Impact Models<span class="nc">60</span></a>
+      <div class="grp"><span class="gn">80-89</span> Tech &amp; SLR</div>
+      <a class="ni ni-dev"><svg viewBox="0 0 24 24"><circle cx="7" cy="6" r="2.5"/><circle cx="7" cy="18" r="2.5"/><circle cx="17" cy="12" r="2.5"/><path d="M7 8.5v7M9.5 6H14a2.5 2.5 0 0 1 2.5 2.5V9"/></svg>Development<span class="nc">80</span></a>
+      <div class="grp"><span class="gn">90-99</span> Catalyzation</div>
+      <div class="nempty">No modules enabled for this area</div>
+    </nav>
+    <div class="sfoot">
+      <div class="av">JG</div>
+      <div>
+        <div class="n">Jesse Griffin</div>
+        <div class="r">admin · org scope</div>
+      </div>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="top">
+      <div class="crumb"><span class="jd">60.16</span><span>Field Programs Meta &amp; FRED</span><span class="sep">/</span><b>Impact model — Church-Centric BT</b></div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg><span>Search everything</span><span class="k">⌘K</span></div>
+      <div class="tacts">
+        <button class="btn"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 13h7M9 17h4"/></svg>Export PDF</button>
+        <button class="btn"><svg viewBox="0 0 24 24"><path d="M4 4v6h6M20 20v-6h-6"/><path d="M20 9A8 8 0 0 0 5.6 5.6M4 15a8 8 0 0 0 14.4 3.4"/></svg>Run snapshot</button>
+      </div>
+    </header>
+    <div class="body">
+      <div class="phead">
+        <div>
+          <p class="eyebrow">One model per portfolio · nightly snapshots</p>
+          <h1>Impact model</h1>
+          <p class="lede">The narrative theory of change is a page; each metric is a whitelisted, versioned query over platform data. Impact sits beside budget-versus-actual and the grants that funded it — which is what makes a grant report assemble itself.</p>
+        </div>
+        <div class="sp"></div>
+        <div style="display:flex;gap:20px">
+          <div class="kpi"><span class="l">Metrics</span><span class="v">8</span><span class="d">1 failing</span></div>
+          <div class="kpi"><span class="l">Last run</span><span class="v" style="font-size:17px">2026-08-25</span><span class="d">03:14 UTC · 7 of 8 ok</span></div>
+        </div>
+      </div>
+
+      <div class="row" style="align-items:flex-start">
+        <div class="card" style="flex:1;min-width:0">
+          <div class="chd">
+            <h2>Metric definitions</h2>
+            <div class="r"><span class="sub">a metric nobody can check is a claim without evidence</span></div>
+          </div>
+          <div class="cbd flush">
+            <table class="tbl">
+              <thead><tr><th>Metric</th><th>Definition</th><th>Unit</th><th class="num">Target</th><th class="num">Latest</th><th style="width:104px">Trend</th><th>Run</th></tr></thead>
+              <tbody>
+                <sc-for list="{{metrics}}" as="m" hint-placeholder-count="8">
+                  <tr class="{{m.cls}} hov" onClick="{{m.pick}}">
+                    <td><div style="font-weight:700">{{m.name}}</div><div class="mono" style="color:#5A6E7A;font-size:10.5px">{{m.key}}</div></td>
+                    <td style="color:#5A6E7A;font-size:11.5px">{{m.def}}</td>
+                    <td>{{m.unit}}</td>
+                    <td class="num">{{m.target}}</td>
+                    <td class="num" style="font-weight:800">{{m.latest}}</td>
+                    <td>
+                      <svg viewBox="0 0 96 26" style="width:96px;height:26px">
+                        <polyline points="{{m.spark}}" fill="none" stroke="{{m.color}}" stroke-width="2"></polyline>
+                      </svg>
+                    </td>
+                    <td><span class="b {{m.tone}}">{{m.status}}</span></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          <div class="prov"><span>Each metric is a versioned query, not a number somebody typed</span><span>·</span><span class="mono">impact_metrics · impact_snapshots</span><span>·</span><a>CSV</a></div>
+        </div>
+
+        <div class="card" style="width:340px;flex:0 0 340px">
+          <div class="chd"><h2>{{selName}}</h2><div class="r"><span class="b {{selTone}}">{{selStatus}}</span></div></div>
+          <div class="cbd" style="display:flex;flex-direction:column;gap:12px">
+            <div>
+              <h3 style="margin-bottom:5px">Definition</h3>
+              <p style="margin:0;color:#3A4A53;font-size:12.5px">{{selDef}}</p>
+            </div>
+            <div style="display:flex;gap:16px">
+              <div class="kpi"><span class="l">Latest</span><span class="v" style="font-size:19px">{{selLatest}}</span><span class="d">{{selAsOf}}</span></div>
+              <div class="kpi"><span class="l">Target</span><span class="v" style="font-size:19px">{{selTarget}}</span><span class="d">{{selDir}}</span></div>
+            </div>
+            <svg viewBox="0 0 300 96" style="width:100%;height:auto">
+              <line x1="10" y1="86" x2="292" y2="86" stroke="#C4D3DB" stroke-width="1.2"></line>
+              <polyline points="{{selSeries}}" fill="none" stroke="#31ADE3" stroke-width="2.4"></polyline>
+              <line x1="10" y1="{{targetY}}" x2="292" y2="{{targetY}}" stroke="#C97F14" stroke-width="1.4" stroke-dasharray="5 4"></line>
+            </svg>
+            <div style="color:#5A6E7A;font-size:11px;font-weight:600">Dashed line is target. Series is one point per nightly run; a failed run is a gap, never an interpolation.</div>
+            <sc-if value="{{selFailed}}" hint-placeholder-val="{{ false }}">
+              <div class="gate">
+                <svg viewBox="0 0 24 24"><path d="M12 9v5M12 17h.01"/><path d="M10.3 4.3 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z"/></svg>
+                <div>{{selError}}</div>
+              </div>
+            </sc-if>
+            <div>
+              <h3 style="margin-bottom:6px">Feeds</h3>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <span class="b i">portfolio dashboard</span><span class="b i">grant report — 2025-3311</span>
+                <span class="b c">board packet Q3</span><span class="b n">public impact page</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:14px">
+        <div class="card" style="flex:1">
+          <div class="chd"><h2>Theory of change</h2><div class="r"><span class="b n">the model itself is a page</span></div></div>
+          <div class="cbd" style="display:flex;gap:12px;align-items:stretch">
+            <sc-for list="{{toc}}" as="t" hint-placeholder-count="5">
+              <div style="flex:1;border:1px solid var(--line);border-radius:8px;padding:11px 12px;background:#FCFDFE">
+                <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
+                  <span style="width:20px;height:20px;border-radius:50%;background:{{t.color}};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px">{{t.n}}</span>
+                  <span style="font-weight:800;font-size:12px">{{t.name}}</span>
+                </div>
+                <div style="color:#3A4A53;font-size:11.5px">{{t.text}}</div>
+                <div style="margin-top:7px"><span class="b {{t.tone}}">{{t.metric}}</span></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { sel: 'trainers_certified' }; }
+  renderVals() {
+    const s = this.state;
+    const spark = (vals) => {
+      const mx = Math.max.apply(null, vals) || 1;
+      return vals.map((v, i) => Math.round(4 + i * (88 / (vals.length - 1))) + ',' + Math.round(22 - (v / mx) * 18)).join(' ');
+    };
+    const big = (vals, target) => {
+      const mx = Math.max(Math.max.apply(null, vals), target) || 1;
+      return {
+        pts: vals.map((v, i) => Math.round(10 + i * (282 / (vals.length - 1))) + ',' + Math.round(86 - (v / mx) * 72)).join(' '),
+        ty: Math.round(86 - (target / mx) * 72),
+      };
+    };
+
+    const defs = [
+      { key: 'trainers_certified', name: 'Facilitators certified', def: 'Distinct people completing all four modules with a checking sign-off', unit: 'people', target: 12, series: [0, 0, 2, 2, 4, 5, 7, 7], status: 'ok', tone: 'g' },
+      { key: 'obs_completions', name: 'Open Bible Stories completed', def: 'Language editions community-checked and published to the open licence', unit: 'editions', target: 14, series: [0, 1, 1, 2, 3, 3, 4, 5], status: 'ok', tone: 'g' },
+      { key: 'engagement_count', name: 'Active language engagements', def: 'Engagements with at least one event in the last 180 days', unit: 'engagements', target: 420, series: [366, 372, 381, 390, 398, 404, 409, 412], status: 'ok', tone: 'g' },
+      { key: 'training_hours', name: 'Training person-hours', def: 'Participants × hours across all training events in the period', unit: 'hours', target: 12000, series: [1100, 2400, 3600, 4900, 6100, 7400, 8300, 9140], status: 'ok', tone: 'g' },
+      { key: 'orgs_self_reporting', name: 'Partner orgs self-reporting', def: 'Field organizations writing into the platform without staff re-keying', unit: 'orgs', target: 8, series: [0, 0, 1, 1, 1, 2, 2, 2], status: 'ok', tone: 'g' },
+      { key: 'translated_products', name: 'Translation outputs', def: 'Distinct translation outputs recorded against an engagement', unit: 'outputs', target: 2800, series: [2210, 2298, 2361, 2440, 2502, 2571, 2618, 2661], status: 'ok', tone: 'g' },
+      { key: 'pb_coverage', name: 'Progress Bible coverage delta', def: 'Cluster languages with no recorded project in the reference dataset', unit: 'languages', target: 0, series: [22, 21, 20, 19, 18, 18, 17, 17], status: 'failed', tone: 'r', lowerBetter: true },
+      { key: 'stories_published', name: 'Stories cleared for publication', def: 'Story bank entries with consent recorded and a level above internal', unit: 'stories', target: 20, series: [4, 6, 7, 9, 11, 12, 14, 15], status: 'ok', tone: 'g' },
+    ];
+
+    const metrics = defs.map((d) => ({
+      ...d,
+      latest: d.series[d.series.length - 1].toLocaleString('en-US'),
+      target: d.target.toLocaleString('en-US'),
+      spark: spark(d.series),
+      color: d.status === 'failed' ? '#C4D3DB' : '#31ADE3',
+      cls: d.key === s.sel ? 'sel-row' : '',
+      pick: () => this.setState({ sel: d.key }),
+    }));
+
+    const sel = defs.find((d) => d.key === s.sel) || defs[0];
+    const b = big(sel.series, sel.target);
+
+    return {
+      metrics,
+      selName: sel.name, selDef: sel.def, selTone: sel.tone, selStatus: sel.status,
+      selLatest: sel.series[sel.series.length - 1].toLocaleString('en-US'),
+      selTarget: sel.target.toLocaleString('en-US'),
+      selAsOf: 'as of 2026-08-25', selDir: sel.lowerBetter ? 'direction: down is better' : 'direction: up is better',
+      selSeries: b.pts, targetY: b.ty,
+      selFailed: sel.status === 'failed',
+      selError: 'Last run failed: the Progress Bible refresh has not succeeded since 2026-08-18, so this metric would compare against a stale reference. The snapshot records the failure rather than writing a number.',
+      toc: [
+        { n: '1', name: 'Inputs', text: 'Funded cohorts, facilitator stipends, checking tools', color: '#C4D3DB', metric: 'budget vs actual', tone: 'n' },
+        { n: '2', name: 'Activities', text: 'Modules delivered, checking sessions held', color: '#70C9CC', metric: 'training_hours', tone: 'c' },
+        { n: '3', name: 'Outputs', text: 'Drafted and checked scripture in cluster languages', color: '#31ADE3', metric: 'obs_completions', tone: 'i' },
+        { n: '4', name: 'Outcomes', text: 'Local facilitators running cohorts unaided', color: '#31ADE3', metric: 'trainers_certified', tone: 'i' },
+        { n: '5', name: 'Impact', text: 'Churches using scripture in the language they speak at home', color: '#014263', metric: 'stories + engagements', tone: 'i' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

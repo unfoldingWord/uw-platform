@@ -1,0 +1,96 @@
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.state = { scope: 'mine', taskTab: 'mine', done: {}, confirmed: {}, cleared: {} };
+  }
+  renderVals() {
+    const s = this.state;
+    const money = (n) => '$' + n.toLocaleString('en-US');
+
+    const allGates = [
+      { id: 'g1', mod: 'Expenses', tone: 'k', title: 'Expense report — Chad training trip, 4 items',
+        meta: 'Agent allocated 3 of 4 items · 1 policy flag (per-diem cap) · submitted 2026-08-24', cta: 'Review' },
+      { id: 'g2', mod: 'Ledger', tone: 'i', title: 'Draft journal entry JE-2026-0812 — August operational assessment',
+        meta: 'Drafted by agent:finance-assistant · balanced · $47,180.00 across 6 funds', cta: 'Post' },
+      { id: 'g3', mod: 'Stories', tone: 'c', title: 'Story “A church in Chad reads Ruth” — consent not yet recorded',
+        meta: 'Created at internal · cannot be published until a human records consent and sets a level', cta: 'Set level' },
+      { id: 'g4', mod: 'Grants', tone: 'i', title: 'Grant response draft — Foundation RFP, 9 of 11 questions drafted',
+        meta: 'Agent queue “Grant responses” · stage exit gate: human_approval', cta: 'Review' },
+    ];
+    const gates = allGates.filter((g) => !s.cleared[g.id]).map((g) => ({
+      ...g, act: () => this.setState({ cleared: { ...s.cleared, [g.id]: true } }),
+    }));
+
+    const mine = [
+      { id: 't1', title: 'Confirm FY2027 portfolio budget lines with program leads', parent: 'Portfolio · Church-Centric Bible Translation', due: '2026-08-27', src: 'manual', srcTone: 'n' },
+      { id: 't2', title: 'Sign the Chad partner work order (WO-2026-041)', parent: 'Contracts · 25.02', due: '2026-08-26', src: 'manual', srcTone: 'n' },
+      { id: 't3', title: 'Reconcile Stripe payout 2026-08-22 against gifts', parent: 'Ledger · 28.07', due: '2026-08-25', src: 'manual', srcTone: 'n' },
+      { id: 't4', title: 'Review quarterly access report before the audit window', parent: 'Compliance · 23.04', due: '2026-09-01', src: 'cron', srcTone: 'i' },
+    ];
+    const suggested = [
+      { id: 's1', title: 'Send the revised training calendar to the Chad partner', parent: 'Meeting · Field sync 2026-08-21', due: '2026-08-28', src: 'from transcript', srcTone: 'k' },
+      { id: 's2', title: 'Ask finance whether the 18% assessment applies to the match', parent: 'Meeting · Field sync 2026-08-21', due: 'no date stated', src: 'from transcript', srcTone: 'k' },
+      { id: 's3', title: 'File the OBS completion numbers into the impact model', parent: 'Meeting · Field sync 2026-08-21', due: '2026-08-29', src: 'from transcript', srcTone: 'k' },
+    ];
+    const visible = (s.taskTab === 'mine' ? mine : suggested).filter((t) => !s.confirmed[t.id]);
+    const tasks = visible.map((t) => ({
+      ...t,
+      isSuggested: s.taskTab === 'suggested',
+      boxCls: s.done[t.id] ? 'ckon' : '',
+      textCls: s.done[t.id] ? 'done' : '',
+      toggle: () => this.setState({ done: { ...s.done, [t.id]: !s.done[t.id] } }),
+      confirm: () => this.setState({ confirmed: { ...s.confirmed, [t.id]: true } }),
+    }));
+
+    const ports = [
+      { name: 'Church-Centric Bible Translation', intent: 'Every church equipped to translate in its own language', budget: 1840000, comm: 1512000, actual: 1188400, progs: 9, metric: '412 engagements' },
+      { name: 'Content Development', intent: 'Unrestricted, openly licensed biblical content', budget: 960000, comm: 742000, actual: 618900, progs: 6, metric: '2,661 outputs' },
+      { name: 'Tools & Technology', intent: 'Software that removes friction from translation', budget: 720000, comm: 655000, actual: 590200, progs: 5, metric: '37 products' },
+      { name: 'Field Training', intent: 'Local trainers who can train the next cohort', budget: 480000, comm: 391000, actual: 274500, progs: 4, metric: '216 events' },
+      { name: 'Catalyst Partners', intent: 'Unrestricted · no operational assessment', budget: 300000, comm: 120000, actual: 96300, progs: 2, metric: '—' },
+    ].map((p) => ({
+      ...p, budget: money(p.budget), comm: money(p.comm), actual: money(p.actual),
+      pct: Math.round((p.actual / p.budget) * 100) + '%',
+    }));
+
+    const acts = [
+      { who: 'agent', tone: 'k', what: 'Drafted 9 grant responses against the funder template', when: '2026-08-25 06:14', where: 'queue · Grant responses' },
+      { who: 'human', tone: 'i', what: 'Posted JE-2026-0808 — Stripe payout reconciliation', when: '2026-08-24 16:41', where: 'Ledger · 28.07' },
+      { who: 'agent', tone: 'k', what: 'Linked the Zoom transcript to Field sync and proposed 3 action items', when: '2026-08-24 15:02', where: 'Comms · correlation' },
+      { who: 'human', tone: 'i', what: 'Set story “Ruth in Chad” to private_circulation', when: '2026-08-24 11:20', where: 'Story Bank · 63.96' },
+      { who: 'agent', tone: 'k', what: 'Proposed allocation for 4 forwarded receipts (2 assumed)', when: '2026-08-24 09:33', where: 'Expenses · 28.12' },
+      { who: 'human', tone: 'i', what: 'Published product page translationCore 4.2', when: '2026-08-23 14:07', where: 'Publish · 82.01' },
+    ];
+
+    const health = [
+      { name: 'Ledger', note: 'trial balance 0', color: '#2E9E5B' },
+      { name: 'Stripe', note: 'synced 04:02', color: '#2E9E5B' },
+      { name: 'Sage mirror', note: 'lag 26h', color: '#C97F14' },
+      { name: 'Zoom', note: 'synced 07:41', color: '#2E9E5B' },
+      { name: 'GitHub', note: 'synced 08:00', color: '#2E9E5B' },
+      { name: 'Progress Bible', note: 'refresh failed', color: '#C0392B' },
+      { name: 'Agent spend', note: '$61 of $250 mo', color: '#2E9E5B' },
+      { name: 'Backups', note: 'drill passed 2026-08-01', color: '#2E9E5B' },
+    ];
+
+    return {
+      segMine: s.scope === 'mine' ? 'on' : '',
+      segOrg: s.scope === 'org' ? 'on' : '',
+      setMine: () => this.setState({ scope: 'mine' }),
+      setOrg: () => this.setState({ scope: 'org' }),
+      gates, gateCount: gates.length, noGates: gates.length === 0, clearedAt: '2026-08-25 08:14',
+      tabMine: 'tab' + (s.taskTab === 'mine' ? ' on' : ''),
+      tabSug: 'tab' + (s.taskTab === 'suggested' ? ' on' : ''),
+      tMine: () => this.setState({ taskTab: 'mine' }),
+      tSug: () => this.setState({ taskTab: 'suggested' }),
+      nMine: mine.length, nSug: suggested.filter((t) => !s.confirmed[t.id]).length,
+      tasks,
+      taskFoot: s.taskTab === 'suggested'
+        ? 'Extracted from meeting transcripts. Suggested until you confirm — nothing becomes a commitment on its own.'
+        : 'Tasks attach to any entity, or to nothing at all.',
+      ports, acts, health,
+    };
+  }
+}
+</script>

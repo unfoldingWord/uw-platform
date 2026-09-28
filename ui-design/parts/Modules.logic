@@ -1,0 +1,70 @@
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { off: {}, warn: '' }; }
+  renderVals() {
+    const s = this.state;
+    const defs = [
+      { key: 'core', name: 'Core', status: 'core', deps: '—', owns: 'pages, versions, revisions, search, JD registry, ACL, policy engine, tasks, files', scope: 'org', ships: 'complete' },
+      { key: 'strategy', name: 'Strategy', status: 'core', deps: 'core', owns: 'cascade entities, OKRs, NISO charters', scope: 'org', ships: 'complete' },
+      { key: 'directory', name: 'Directory', status: 'core', deps: 'core', owns: 'people, organizations, areas of responsibility', scope: 'org', ships: 'complete' },
+      { key: 'agents', name: 'Agents', status: 'standard', deps: 'core', owns: 'MCP surface, work queues, personas, memory, skills', scope: 'org', ships: 'complete' },
+      { key: 'ledger', name: 'Ledger', status: 'standard', deps: 'core, directory', owns: 'GL, funds, functions, budgets, periods, assessments', scope: 'org', ships: 'complete' },
+      { key: 'contracts', name: 'Contracts', status: 'standard', deps: 'ledger', owns: 'MOU, contracts, work orders, commitments, invoices', scope: 'org', ships: 'complete' },
+      { key: 'expenses', name: 'Expenses', status: 'standard', deps: 'ledger', owns: 'reimbursements, corporate cards, receipt intake', scope: 'pilot · 20–29', ships: 'complete' },
+      { key: 'crm', name: 'CRM & Giving', status: 'standard', deps: 'core, directory', owns: 'contacts, gifts, soft credits, Stripe, acknowledgments', scope: 'org', ships: 'complete' },
+      { key: 'grants', name: 'Grants', status: 'standard', deps: 'crm, strategy', owns: 'pipeline, funder templates, grant reporting', scope: 'org', ships: 'complete' },
+      { key: 'field', name: 'Field Data (FRED)', status: 'standard', deps: 'strategy', owns: 'engagements, training events, outputs, field orgs', scope: 'org', ships: 'complete' },
+      { key: 'impact', name: 'Impact', status: 'standard', deps: 'field, strategy', owns: 'impact models, metric definitions, snapshots', scope: 'org', ships: 'complete' },
+      { key: 'stories', name: 'Story Bank', status: 'optional', deps: 'core', owns: 'impact stories, consent, sensitivity, usage tracking', scope: 'pilot · 62', ships: 'complete' },
+      { key: 'publish', name: 'Publishing', status: 'optional', deps: 'core', owns: 'render pipeline, public site, web templates', scope: 'org', ships: 'complete' },
+      { key: 'docs_out', name: 'Documents', status: 'standard', deps: 'core', owns: 'PDF and DOCX rendering, letterhead, document sets', scope: 'org', ships: 'complete' },
+      { key: 'charts', name: 'Charts', status: 'standard', deps: 'core', owns: 'chart specs, renderers, standard chart library', scope: 'org', ships: 'complete' },
+      { key: 'dev', name: 'Dev', status: 'optional', deps: 'core', owns: 'GitHub read model, sprints, epics, boards', scope: 'org', ships: 'complete' },
+      { key: 'comms', name: 'Comms', status: 'optional', deps: 'core', owns: 'chat, meetings, calendar, correlation engine', scope: 'org', ships: 'complete' },
+      { key: 'offline', name: 'Desktop & Offline', status: 'optional', deps: 'core', owns: 'sync protocol, local replica, markdown vault', scope: 'org', ships: 'runbook missing' },
+      { key: 'observe', name: 'Observability', status: 'core', deps: 'core', owns: 'health surfaces, logs, SLOs, alerting', scope: 'org', ships: 'complete' },
+      { key: 'infra', name: 'Infrastructure', status: 'core', deps: 'core', owns: 'environments, backups and restore drills, migrations, cost watch', scope: 'org', ships: 'complete' },
+      { key: 'compliance', name: 'Compliance', status: 'standard', deps: 'ledger, core', owns: 'obligations registry, generated audit artifacts', scope: 'org', ships: 'complete' },
+    ];
+    const statusTone = { core: 'i', standard: 'c', optional: 'n' };
+    const depMap = {};
+    defs.forEach((d) => { depMap[d.key] = d.deps.split(', ').filter((x) => x !== '—'); });
+
+    const mods = defs.map((d) => {
+      const on = !s.off[d.key];
+      return {
+        ...d,
+        cls: on ? '' : 'done',
+        swCls: 'sw' + (d.status === 'core' ? ' lock' : on ? ' on' : ''),
+        statusTone: statusTone[d.status],
+        scopeTone: d.scope.indexOf('pilot') === 0 ? 'k' : 'n',
+        shipTone: d.ships === 'complete' ? 'g' : 'k',
+        toggle: () => {
+          if (d.status === 'core') {
+            this.setState({ warn: 'Core modules cannot be disabled — pages, ACL and the policy engine are what every other module depends on.' });
+            return;
+          }
+          const dependents = defs.filter((x) => depMap[x.key].indexOf(d.key) >= 0 && !s.off[x.key]).map((x) => x.name);
+          if (on && dependents.length) {
+            this.setState({ warn: 'Turn off ' + dependents.join(' and ') + ' first — ' + dependents.join(' and ') + ' declare a dependency on ' + d.name + ', and a module may only depend on modules it declares.' });
+            return;
+          }
+          this.setState({ off: { ...s.off, [d.key]: on }, warn: '' });
+        },
+      };
+    });
+
+    return {
+      mods,
+      nOn: defs.length - Object.keys(s.off).filter((k) => s.off[k]).length,
+      nPilot: 2,
+      warn: !!s.warn, warnText: s.warn,
+      paths: [
+        { name: 'Knowledge only', note: 'An organization that wants the wiki and the cascade and nothing else', keys: ['core', 'strategy', 'directory'] },
+        { name: 'Fund accounting only', note: 'Someone who wants the GL and its audit artifacts', keys: ['core', 'ledger', 'compliance'] },
+        { name: 'Field organization', note: 'Programs, field data, impact and stories, no ledger', keys: ['core', 'strategy', 'field', 'impact', 'stories'] },
+      ],
+    };
+  }
+}
+</script>

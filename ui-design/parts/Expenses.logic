@@ -1,0 +1,82 @@
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { sel: 'er1', settled: {}, overridden: false, approved: false }; }
+  renderVals() {
+    const s = this.state;
+
+    const queue = [
+      { id: 'er1', status: 'needs you', tone: 'k', date: '2026-08-24', total: '$3,412.60', title: 'Chad training trip', who: 'Amara Doumbé', items: '4 items · 1 policy flag' },
+      { id: 'er2', status: 'proposed', tone: 'i', date: '2026-08-24', total: '$186.40', title: 'Conference registration', who: 'Daniel Okoro', items: '1 item' },
+      { id: 'er3', status: 'proposed', tone: 'i', date: '2026-08-23', total: '$1,024.00', title: 'Translation workshop supplies', who: 'Grace Mbeki', items: '6 items' },
+      { id: 'er4', status: 'manager', tone: 'n', date: '2026-08-22', total: '$742.10', title: 'August corporate card — unmatched', who: 'card feed', items: '3 charges without receipts' },
+      { id: 'er5', status: 'approved', tone: 'g', date: '2026-08-20', total: '$2,980.00', title: 'Partner visit — Nigeria', who: 'Amara Doumbé', items: '5 items · JE drafted' },
+    ].map((q) => ({ ...q, cls: q.id === s.sel ? 'sel-row' : '', pick: () => this.setState({ sel: q.id }) }));
+
+    const extract = [
+      { k: 'vendor', v: 'Hôtel le Sahel', basis: 'observed', cls: 'ob', why: 'printed on the receipt header' },
+      { k: 'date', v: '2026-08-19', basis: 'observed', cls: 'ob', why: 'normalized from the receipt' },
+      { k: 'amount', v: '629,160 XAF', basis: 'observed', cls: 'ob', why: 'total line' },
+      { k: 'functional USD', v: '$981.20', basis: 'inferred', cls: 'inf', why: 'ECB rate for 2026-08-19' },
+      { k: 'trip purpose', v: 'Facilitator cohort — Chad', basis: 'confirmed', cls: 'co', why: 'calendar event 2026-08-18..21 links this project' },
+      { k: 'program', v: 'Chad Initiative', basis: 'confirmed', cls: 'co', why: 'the calendar event belongs to that program page' },
+      { k: 'nights over cap', v: '1 of 3', basis: 'assumed', cls: 'as', why: 'per-diem cap read from travel policy; single-room rate assumed' },
+    ];
+
+    const rawItems = [
+      { id: 'i1', vendor: 'Hôtel le Sahel — lodging', date: '2026-08-19', amt: '$981.20', fx: '629,160 XAF', dims: '6230 Lodging · GAU-CCBT · Program', reason: 'calendar → project → fund', prog: 'Chad Initiative', conf: '94%', flagged: true, flag: 'over per-diem cap' },
+      { id: 'i2', vendor: 'Air Tchad — N’Djamena', date: '2026-08-18', amt: '$1,840.00', fx: '', dims: '6210 Travel · GAU-CCBT · Program', reason: 'work order WO-2026-041 scope', prog: 'Chad Initiative', conf: '97%', flagged: false, flag: '' },
+      { id: 'i3', vendor: 'Local transport (3)', date: '2026-08-20', amt: '$340.40', fx: '218,000 XAF', dims: '6210 Travel · GAU-CCBT · Program', reason: 'prior approved allocations, same vendor class', prog: 'Chad Initiative', conf: '81%', flagged: false, flag: '' },
+      { id: 'i4', vendor: 'Meals — 3 days', date: '2026-08-21', amt: '$251.00', fx: '160,800 XAF', dims: '6240 Meals · GAU-CCBT · Program', reason: 'areas of responsibility prior (60/40) not needed', prog: 'Chad Initiative', conf: '68%', flagged: false, flag: '' },
+    ];
+    const items = rawItems.map((i) => {
+      const st = s.settled[i.id];
+      return {
+        ...i,
+        rowCls: st ? '' : '',
+        pending: !st, settled: !!st,
+        settledTone: st === 'confirm' ? 'g' : 'i',
+        settledLabel: st === 'confirm' ? 'confirmed' : 'corrected by you',
+        confirm: () => this.setState({ settled: { ...s.settled, [i.id]: 'confirm' } }),
+        correct: () => this.setState({ settled: { ...s.settled, [i.id]: 'correct' } }),
+      };
+    });
+    const nSettled = rawItems.filter((i) => s.settled[i.id]).length;
+    const allSettled = nSettled === rawItems.length;
+
+    const flagOpen = !s.overridden;
+
+    return {
+      queue, queueCount: '4 open',
+      repTitle: 'Chad training trip — 4 items',
+      repStatus: s.approved ? 'approved · JE drafted' : allSettled && !flagOpen ? 'ready to approve' : 'your review',
+      repTone: s.approved ? 'g' : allSettled && !flagOpen ? 'i' : 'k',
+      extract, items,
+      confirmedNote: nSettled + ' of ' + rawItems.length + ' lines settled',
+      confirmAll: () => { const o = {}; rawItems.forEach((i) => { o[i.id] = 'confirm'; }); this.setState({ settled: o }); },
+      polTone: flagOpen ? 'r' : 'g',
+      polLabel: flagOpen ? '1 violation' : 'override recorded',
+      polText: flagOpen
+        ? 'Lodging on 2026-08-19 is $118.20 above the Chad per-diem cap in the travel policy (effective 2026-01-01). A flagged item cannot be approved without an explicit override.'
+        : 'Override recorded by Jesse Griffin on 2026-08-25 with reason “only room available during the cohort week”. The override rides with the item into the audit trail.',
+      canOverride: flagOpen,
+      override: () => this.setState({ overridden: true }),
+      chain: [
+        { mark: 'done', tone: 'g', step: 'Received and extracted', who: 'agent:expense-assistant · 2026-08-24 07:43' },
+        { mark: 'done', tone: 'g', step: 'Allocation proposed', who: 'agent:expense-assistant · 4 lines, 2 with stated assumptions' },
+        { mark: s.approved || allSettled ? 'done' : 'now', tone: s.approved || allSettled ? 'g' : 'k', step: 'Submitter confirms or corrects', who: 'Amara Doumbé · one click when the guess is right' },
+        { mark: s.approved ? 'done' : 'next', tone: s.approved ? 'g' : 'n', step: 'Approver signs off', who: 'area lead · finance for their own expenses' },
+        { mark: s.approved ? 'now' : 'next', tone: s.approved ? 'k' : 'n', step: 'Finance posts the journal entry', who: 'the agent drafts it and can never post it' },
+      ],
+      repTotal: '$3,412.60', repItems: '4 items · 1 override',
+      approveCls: 'btn p' + (allSettled && !flagOpen && !s.approved ? '' : ' off'),
+      approve: () => { if (allSettled && !flagOpen) this.setState({ approved: true }); },
+      approveLabel: s.approved ? 'Approved — JE-2026-0811 drafted' : 'Approve report',
+      approveNote: s.approved
+        ? 'Approval drafted one balanced journal entry: expense at account × fund × function, credit accrued reimbursements. It sits in the ledger as a draft until finance posts it.'
+        : flagOpen ? 'Blocked: settle every line and resolve the policy flag first.'
+        : allSettled ? 'Every line is settled and the override is recorded. Approving drafts the journal entry.'
+        : 'Confirm or correct each line to continue.',
+    };
+  }
+}
+</script>

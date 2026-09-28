@@ -1,0 +1,112 @@
+    <header class="top">
+      <div class="crumb"><span class="jd">63.98</span><span>WBWN Chad</span><span class="sep">/</span><b>Field sync — 2026-08-21</b></div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg><span>Search everything</span><span class="k">⌘K</span></div>
+      <div class="tacts">
+        <button class="btn"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 13h7M9 17h4"/></svg>Export PDF</button>
+        <button class="btn"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="m15 12 6-4v8z"/></svg>Recording</button>
+      </div>
+    </header>
+    <div class="body">
+      <div class="phead">
+        <div>
+          <p class="eyebrow">Assembled automatically · edited by humans</p>
+          <h1>Field sync — 2026-08-21</h1>
+          <p class="lede">Calendar event, Zoom recording, transcript and the entity this meeting belongs to were joined deterministically. No AI was needed for the common case; the graph already connects.</p>
+        </div>
+        <div class="sp"></div>
+        <div style="display:flex;gap:9px;flex-wrap:wrap;max-width:340px;justify-content:flex-end">
+          <span class="b g dot">calendar matched</span><span class="b g dot">recording linked</span>
+          <span class="b g dot">transcript ingested</span><span class="b i dot">program inferred</span>
+        </div>
+      </div>
+
+      <div class="row" style="align-items:flex-start">
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px">
+          <div class="card">
+            <div class="chd">
+              <h2>Suggested action items</h2>
+              <span class="b k">{{nOpen}} unconfirmed</span>
+              <div class="r"><span class="sub">extracted todos never silently become commitments</span></div>
+            </div>
+            <div class="cbd flush">
+              <sc-for list="{{actions}}" as="a" hint-placeholder-count="4">
+                <div style="display:flex;align-items:flex-start;gap:11px;padding:11px 14px;border-bottom:1px solid #E7EEF2">
+                  <div style="min-width:0;flex:1">
+                    <div class="{{a.textCls}}" style="font-weight:700;font-size:12.5px">{{a.title}}</div>
+                    <div style="display:flex;align-items:center;gap:7px;margin-top:3px;color:#5A6E7A;font-size:11px;font-weight:600">
+                      <span>owner {{a.owner}}</span><span style="opacity:.5">·</span><span>{{a.due}}</span>
+                      <span class="b n mono">{{a.anchor}}</span>
+                    </div>
+                    <div style="color:#5A6E7A;font-size:11.5px;font-style:italic;margin-top:4px">&ldquo;{{a.quote}}&rdquo;</div>
+                  </div>
+                  <sc-if value="{{a.open}}" hint-placeholder-val="{{ true }}">
+                    <button class="btn sm p" onClick="{{a.confirm}}">Confirm</button>
+                    <button class="btn sm" onClick="{{a.drop}}">Discard</button>
+                  </sc-if>
+                  <sc-if value="{{a.done}}" hint-placeholder-val="{{ false }}">
+                    <span class="b {{a.doneTone}}">{{a.doneLabel}}</span>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+            <div class="prov"><span>Each item carries its source: transcript page plus a line anchor you can click into.</span><span>·</span><span class="mono">tasks.source = meeting_action_item</span></div>
+          </div>
+
+          <div class="card">
+            <div class="chd">
+              <h2>Transcript</h2>
+              <div class="r"><span class="b n">immutable body · speaker labelled</span><button class="btn sm q">Open full</button></div>
+            </div>
+            <div class="cbd" style="display:flex;flex-direction:column;gap:9px;font-size:12.5px">
+              <sc-for list="{{lines}}" as="l" hint-placeholder-count="5">
+                <div style="display:flex;gap:11px">
+                  <span class="mono" style="width:52px;flex:0 0 52px;color:#5A6E7A;font-size:10.5px;padding-top:2px">{{l.t}}</span>
+                  <div style="min-width:0">
+                    <span style="font-weight:800">{{l.who}}</span>
+                    <span style="color:#3A4A53"> {{l.text}}</span>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="width:340px;flex:0 0 340px;display:flex;flex-direction:column;gap:14px">
+          <div class="card">
+            <div class="chd"><h2>How it correlated</h2><div class="r"><span class="b n">evidence first</span></div></div>
+            <div class="cbd" style="display:flex;flex-direction:column;gap:0">
+              <sc-for list="{{corr}}" as="c" hint-placeholder-count="5">
+                <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #F1F5F8">
+                  <span class="b {{c.tone}}" style="height:17px">{{c.how}}</span>
+                  <div><div style="font-weight:700;font-size:12.5px">{{c.what}}</div><div style="color:#5A6E7A;font-size:11px;font-weight:600">{{c.why}}</div></div>
+                </div>
+              </sc-for>
+              <div style="color:#5A6E7A;font-size:11px;font-weight:600;margin-top:9px">Low-confidence links become a review-queue item on the area dashboard rather than a quiet guess.</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="chd"><h2>Meeting</h2></div>
+            <div class="cbd" style="display:flex;flex-direction:column;gap:0">
+              <sc-for list="{{meta}}" as="m" hint-placeholder-count="6">
+                <div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid #F1F5F8">
+                  <div style="width:96px;flex:0 0 96px;color:#5A6E7A;font-size:11.5px;font-weight:700">{{m.k}}</div>
+                  <div style="font-weight:600;font-size:12.5px">{{m.v}}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="chd"><h2>Decisions recorded</h2></div>
+            <div class="cbd" style="display:flex;flex-direction:column;gap:9px">
+              <div style="border-left:3px solid #31ADE3;padding-left:10px">
+                <div style="font-weight:700;font-size:12.5px">Remote-only contingency for the eastern cluster</div>
+                <div style="color:#5A6E7A;font-size:11.5px">Flagged in Zulip with the decision marker, captured into this page&rsquo;s activity log, and written up as a decision page linked to the program charter.</div>
+              </div>
+              <div style="color:#5A6E7A;font-size:11px;font-weight:600">The chat firehose is not mirrored — Zulip stays the system of record for conversation.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>

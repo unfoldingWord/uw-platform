@@ -1,0 +1,86 @@
+    <header class="top">
+      <div class="crumb"><b>Strategic Cascade</b><span class="sep">·</span><span>why a thing exists</span></div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg><span>Search everything</span><span class="k">⌘K</span></div>
+      <div class="tacts">
+        <button class="btn"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 13h7M9 17h4"/></svg>Export PDF</button>
+        <button class="btn p"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New program</button>
+      </div>
+    </header>
+    <div class="body">
+      <div class="phead">
+        <div>
+          <p class="eyebrow">The strategic axis</p>
+          <h1>Purpose down to today&rsquo;s task</h1>
+          <p class="lede">One tree, seven tiers, each with its own time horizon. Money and outcomes roll up this axis; permission rides the other one.</p>
+        </div>
+        <div class="sp"></div>
+        <div class="seg">
+          <button class="{{lMoney}}" onClick="{{setMoney}}">Money</button>
+          <button class="{{lImpact}}" onClick="{{setImpact}}">Impact</button>
+          <button class="{{lWork}}" onClick="{{setWork}}">Work</button>
+        </div>
+      </div>
+
+      <div class="row" style="align-items:flex-start">
+        <div class="card" style="width:186px;flex:0 0 186px">
+          <div class="chd"><h2>Tiers</h2></div>
+          <div class="cbd" style="display:flex;flex-direction:column;gap:0">
+            <sc-for list="{{tiers}}" as="t" hint-placeholder-count="7">
+              <div style="display:flex;gap:9px;padding:7px 0;border-bottom:1px solid #F1F5F8">
+                <span style="width:3px;flex:0 0 3px;border-radius:3px;background:{{t.color}}"></span>
+                <div>
+                  <div style="font-weight:800;font-size:12px">{{t.name}}</div>
+                  <div style="color:#5A6E7A;font-size:10.5px;font-weight:600">{{t.horizon}}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div class="card" style="flex:1;min-width:0">
+          <div class="chd">
+            <h2>Cascade tree</h2>
+            <span class="b n">{{lensLabel}}</span>
+            <div class="r"><button class="btn sm q" onClick="{{expandAll}}">Expand all</button><button class="btn sm q" onClick="{{collapseAll}}">Collapse</button></div>
+          </div>
+          <div class="cbd flush">
+            <sc-for list="{{nodes}}" as="n" hint-placeholder-count="12">
+              <div class="{{n.rowCls}}" style="display:flex;align-items:center;gap:9px;padding:7px 14px;border-bottom:1px solid #F1F5F8;cursor:pointer" onClick="{{n.pick}}">
+                <span style="width:{{n.indent}};flex:0 0 {{n.indent}}"></span>
+                <button onClick="{{n.toggle}}" style="width:14px;flex:0 0 14px;color:#5A6E7A;font-weight:800;font-size:11px">{{n.caret}}</button>
+                <span style="width:3px;height:16px;flex:0 0 3px;border-radius:3px;background:{{n.color}}"></span>
+                <div style="min-width:0;flex:1">
+                  <div style="font-weight:{{n.weight}};font-size:12.5px">{{n.name}}</div>
+                  <div style="color:#5A6E7A;font-size:10.5px;font-weight:600">{{n.tier}} · {{n.sub}}</div>
+                </div>
+                <span class="b {{n.tone}}">{{n.metric}}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div class="prov"><span>Rollups follow the tree; products pivot through page_links.</span><span>·</span><span class="mono">as-of 2026-08-25</span><span>·</span><a>CSV</a></div>
+        </div>
+
+        <div class="card" style="width:330px;flex:0 0 330px">
+          <div class="chd"><h2>{{selName}}</h2><div class="r"><span class="b i">{{selTier}}</span></div></div>
+          <div class="cbd" style="display:flex;flex-direction:column;gap:12px">
+            <p style="margin:0;color:#3A4A53;font-size:12.5px">{{selText}}</p>
+            <div style="display:flex;gap:14px;flex-wrap:wrap">
+              <sc-for list="{{selKpis}}" as="k" hint-placeholder-count="4">
+                <div class="kpi" style="min-width:96px"><span class="l">{{k.l}}</span><span class="v" style="font-size:17px">{{k.v}}</span><span class="d">{{k.d}}</span></div>
+              </sc-for>
+            </div>
+            <div>
+              <h3 style="margin-bottom:6px">Also on this page</h3>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <sc-for list="{{selLinks}}" as="l" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span class="b {{l.tone}}">{{l.rel}}</span><a style="font-weight:700;font-size:12px">{{l.name}}</a>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div class="note">{{selNote}}</div>
+          </div>
+        </div>
+      </div>
+    </div>

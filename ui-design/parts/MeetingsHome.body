@@ -1,0 +1,107 @@
+    <header class="top">
+      <div class="crumb"><b>Meetings</b><span class="sep">·</span><span>your schedule and recaps across every area</span></div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg><span>Search everything</span><span class="k">⌘K</span></div>
+      <div class="tacts">
+        <button class="btn"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 13h7M9 17h4"/></svg>Export PDF</button>
+        <button class="btn p"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New meeting</button>
+      </div>
+    </header>
+    <div class="body">
+      <div class="phead">
+        <div>
+          <p class="eyebrow">Rollup · a meeting always belongs to an area</p>
+          <h1>Your meetings</h1>
+          <p class="lede">Meetings are filed at <span class="mono">xx.98</span> inside the area they belong to — this page is the rollup across all of them, so you can see your week and clear your recaps in one place.</p>
+        </div>
+        <div class="sp"></div>
+        <div class="seg">
+          <button class="{{vWeek}}" onClick="{{goWeek}}">This week</button>
+          <button class="{{vRecap}}" onClick="{{goRecap}}">Needs a recap</button>
+          <button class="{{vAll}}" onClick="{{goAll}}">All areas</button>
+        </div>
+      </div>
+
+      <div class="row" style="margin-bottom:14px">
+        <sc-for list="{{kpis}}" as="k" hint-placeholder-count="4">
+          <div class="card" style="flex:1"><div class="cbd">
+            <div class="kpi"><span class="l">{{k.l}}</span><span class="v">{{k.v}}</span><span class="d">{{k.d}}</span></div>
+          </div></div>
+        </sc-for>
+      </div>
+
+      <div class="row" style="align-items:flex-start">
+        <div class="card" style="flex:1.5;min-width:0">
+          <div class="chd">
+            <h2>{{listTitle}}</h2>
+            <div class="r"><span class="sub">{{listNote}}</span></div>
+          </div>
+          <div class="cbd flush">
+            <table class="tbl">
+              <thead><tr><th>When</th><th>Meeting</th><th>Area</th><th>Attendees</th><th>Recap</th><th style="width:118px"></th></tr></thead>
+              <tbody>
+                <sc-for list="{{rows}}" as="m" hint-placeholder-count="8">
+                  <tr class="hov">
+                    <td><div class="mono" style="font-weight:700">{{m.date}}</div><div style="color:#5A6E7A;font-size:11px;font-weight:600">{{m.time}}</div></td>
+                    <td>
+                      <div style="font-weight:700">{{m.name}}</div>
+                      <div style="color:#5A6E7A;font-size:11px;font-weight:600">{{m.entity}}</div>
+                    </td>
+                    <td><span class="jd">{{m.jd}}</span> <span style="font-size:11px;color:#5A6E7A;font-weight:700">{{m.area}}</span></td>
+                    <td>{{m.people}}</td>
+                    <td><span class="b {{m.tone}}">{{m.recap}}</span></td>
+                    <td>
+                      <sc-if value="{{m.needs}}" hint-placeholder-val="{{ true }}">
+                        <button class="btn sm p" onClick="{{m.act}}">{{m.cta}}</button>
+                      </sc-if>
+                      <sc-if value="{{m.done}}" hint-placeholder-val="{{ false }}">
+                        <button class="btn sm q">Open</button>
+                      </sc-if>
+                    </td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          <div class="prov"><span>Deterministic joins first — Zoom UUID to calendar event to meeting page — and AI only for what is left over.</span><span>·</span><span class="mono">calendar_events · transcripts</span></div>
+        </div>
+
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px">
+          <div class="card">
+            <div class="chd"><h2>Action items from your meetings</h2><span class="b k">{{nOpen}} unconfirmed</span></div>
+            <div class="cbd flush">
+              <sc-for list="{{actions}}" as="a" hint-placeholder-count="4">
+                <div style="display:flex;align-items:flex-start;gap:10px;padding:9px 14px;border-bottom:1px solid #E7EEF2">
+                  <div style="min-width:0;flex:1">
+                    <div class="{{a.cls}}" style="font-weight:600;font-size:12.5px">{{a.title}}</div>
+                    <div style="color:#5A6E7A;font-size:11px;font-weight:600">{{a.src}} · {{a.due}}</div>
+                  </div>
+                  <sc-if value="{{a.open}}" hint-placeholder-val="{{ true }}">
+                    <button class="btn sm" onClick="{{a.confirm}}">Confirm</button>
+                  </sc-if>
+                  <sc-if value="{{a.settled}}" hint-placeholder-val="{{ false }}">
+                    <span class="b g">confirmed</span>
+                  </sc-if>
+                </div>
+              </sc-for>
+              <div style="padding:9px 14px;color:#5A6E7A;font-size:11px;font-weight:600">Extracted from transcripts, suggested until you confirm. Confirming files the task against the meeting&rsquo;s entity, not against this page.</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="chd"><h2>By area</h2><div class="r"><span class="sub">every area keeps its own xx.98</span></div></div>
+            <div class="cbd" style="display:flex;flex-direction:column;gap:0">
+              <sc-for list="{{byArea}}" as="a" hint-placeholder-count="7">
+                <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #F1F5F8">
+                  <span class="jd">{{a.id}}</span>
+                  <span style="font-weight:700;font-size:12px;min-width:0">{{a.name}}</span>
+                  <div class="sp"></div>
+                  <div class="bar" style="width:80px"><i style="width:{{a.pct}}"></i></div>
+                  <span style="font-size:11px;font-weight:700;color:#5A6E7A;width:52px;text-align:right">{{a.count}}</span>
+                </div>
+              </sc-for>
+              <div style="color:#5A6E7A;font-size:11px;font-weight:600;margin-top:9px">Counts are meetings in the last 90 days. Click an area to open its meetings in place.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
