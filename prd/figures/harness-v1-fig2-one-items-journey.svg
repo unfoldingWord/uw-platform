@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 470" role="img" aria-label="Eight stages left to right: Package, Scope, Plan, Build, Check, Ship, Validate, Close. Above each, who works it and its exit gate. Ship is the human gate in orange. Below, two rows name the same stages for the software template and the BML template, and four brackets map the stages onto Product Package, Build Package, Deploy Package and Iterate. A loop arrow returns from Close to Scope as the regular tweak and a dashed arrow from Validate to Package as the occasional tweak." style="font-family:\'Nunito Sans\',system-ui,sans-serif;background:#FFFFFF">
+      <defs>
+        <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+        <marker id="arr2K" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C97F14"/></marker>
+      </defs>
+      <g fill="none" stroke="currentColor" stroke-width="1.4" font-size="12.5" color="#231F20">
+        <!-- who works, row y=60..100 -->
+        <text x="20" y="62" stroke="none" fill="#5A6E7A" font-size="11" font-weight="700" letter-spacing="1.5">WHO</text>
+        <g stroke="none" fill="#231F20" font-size="11.5" font-weight="700">
+          <text x="99" y="82" text-anchor="middle">person</text>
+          <text x="231" y="82" text-anchor="middle">Scout</text>
+          <text x="363" y="82" text-anchor="middle">Builder</text>
+          <text x="495" y="82" text-anchor="middle">Builder</text>
+          <text x="627" y="82" text-anchor="middle">CI + Reviewer</text>
+          <text x="759" y="82" text-anchor="middle" fill="#C97F14">A PERSON</text>
+          <text x="891" y="82" text-anchor="middle">engine</text>
+          <text x="1023" y="82" text-anchor="middle">Iterate</text>
+        </g>
+        <g stroke="none" fill="#5A6E7A" font-size="10.5">
+          <text x="99" y="98" text-anchor="middle">writes the package</text>
+          <text x="231" y="98" text-anchor="middle">premise vs current data</text>
+          <text x="363" y="98" text-anchor="middle">plan → hold if unsure</text>
+          <text x="495" y="98" text-anchor="middle">worktree lane</text>
+          <text x="627" y="98" text-anchor="middle">3 rounds then a person</text>
+          <text x="759" y="98" text-anchor="middle" fill="#C97F14">merge · deploy on approval</text>
+          <text x="891" y="98" text-anchor="middle">watches deploy + measures</text>
+          <text x="1023" y="98" text-anchor="middle">writes learning · revisions</text>
+        </g>
+
+        <!-- stage boxes y=120 h=64 -->
+        <text x="20" y="142" stroke="none" fill="#5A6E7A" font-size="11" font-weight="700" letter-spacing="1.5">STAGE</text>
+        <g stroke="#014263" fill="#FFFFFF">
+          <rect x="40" y="120" width="118" height="64" rx="4"/>
+          <rect x="172" y="120" width="118" height="64" rx="4"/>
+          <rect x="304" y="120" width="118" height="64" rx="4"/>
+          <rect x="436" y="120" width="118" height="64" rx="4"/>
+          <rect x="568" y="120" width="118" height="64" rx="4"/>
+          <rect x="700" y="120" width="118" height="64" rx="4" stroke="#C97F14" stroke-width="2.4" fill="#FBEFDC"/>
+          <rect x="832" y="120" width="118" height="64" rx="4"/>
+          <rect x="964" y="120" width="118" height="64" rx="4"/>
+        </g>
+        <g stroke="none" fill="#231F20" font-weight="800" font-size="14">
+          <text x="99" y="147" text-anchor="middle">Package</text>
+          <text x="231" y="147" text-anchor="middle">Scope</text>
+          <text x="363" y="147" text-anchor="middle">Plan</text>
+          <text x="495" y="147" text-anchor="middle">Build</text>
+          <text x="627" y="147" text-anchor="middle">Check</text>
+          <text x="759" y="147" text-anchor="middle">Ship</text>
+          <text x="891" y="147" text-anchor="middle">Validate</text>
+          <text x="1023" y="147" text-anchor="middle">Close</text>
+        </g>
+        <g stroke="none" fill="#5A6E7A" font-size="10.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">
+          <text x="99" y="170" text-anchor="middle">exit: none</text>
+          <text x="231" y="170" text-anchor="middle">exit: checks</text>
+          <text x="363" y="170" text-anchor="middle">exit: checks</text>
+          <text x="495" y="170" text-anchor="middle">exit: checks</text>
+          <text x="627" y="170" text-anchor="middle">exit: checks</text>
+          <text x="759" y="170" text-anchor="middle" fill="#C97F14" font-weight="600">exit: human_approval</text>
+          <text x="891" y="170" text-anchor="middle">exit: checks</text>
+          <text x="1023" y="170" text-anchor="middle">exit: none</text>
+        </g>
+        <!-- forward arrows -->
+        <g marker-end="url(#arr2)">
+          <line x1="158" y1="152" x2="172" y2="152"/><line x1="290" y1="152" x2="304" y2="152"/><line x1="422" y1="152" x2="436" y2="152"/>
+          <line x1="554" y1="152" x2="568" y2="152"/><line x1="686" y1="152" x2="700" y2="152"/><line x1="818" y1="152" x2="832" y2="152"/><line x1="950" y1="152" x2="964" y2="152"/>
+        </g>
+        <!-- loop: Close -> Scope (regular tweak) above -->
+        <path d="M1023,120 L1023,44 L231,44 L231,120" stroke="#014263" stroke-width="1.6" marker-end="url(#arr2)"/>
+        <text x="627" y="40" text-anchor="middle" stroke="none" fill="#014263" font-size="11.5" font-weight="700">regular tweak · next revision enters Scope · unattended beats carry their creator's authority</text>
+        <!-- loop: Validate -> Package (occasional tweak) below, dashed -->
+        <path d="M891,184 L891,214 L99,214 L99,184" stroke="#C97F14" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#arr2K)"/>
+        <text x="495" y="210" text-anchor="middle" stroke="none" fill="#C97F14" font-size="11.5" font-weight="700">occasional tweak · a new package version · always human_approval</text>
+
+        <!-- template rows -->
+        <text x="20" y="262" stroke="none" fill="#5A6E7A" font-size="11" font-weight="700" letter-spacing="1.5">SOFTWARE</text>
+        <g stroke="none" fill="#231F20" font-size="11">
+          <text x="99" y="262" text-anchor="middle">backlog issue</text>
+          <text x="231" y="262" text-anchor="middle">premise verified</text>
+          <text x="363" y="262" text-anchor="middle">plan approved</text>
+          <text x="495" y="262" text-anchor="middle">commits → PR</text>
+          <text x="627" y="262" text-anchor="middle">CI + review verdict</text>
+          <text x="759" y="262" text-anchor="middle">merge · tag · deploy</text>
+          <text x="891" y="262" text-anchor="middle">deploy watched</text>
+          <text x="1023" y="262" text-anchor="middle">issue closed + learning</text>
+        </g>
+        <text x="20" y="292" stroke="none" fill="#5A6E7A" font-size="11" font-weight="700" letter-spacing="1.5">BML</text>
+        <g stroke="none" fill="#231F20" font-size="11">
+          <text x="99" y="292" text-anchor="middle">goal · strategy · data</text>
+          <text x="231" y="292" text-anchor="middle">niche identification</text>
+          <text x="363" y="292" text-anchor="middle">product tuning</text>
+          <text x="495" y="292" text-anchor="middle">asset package</text>
+          <text x="627" y="292" text-anchor="middle">brand · policy checks</text>
+          <text x="759" y="292" text-anchor="middle">deploy to channels</text>
+          <text x="891" y="292" text-anchor="middle">collect feedback</text>
+          <text x="1023" y="292" text-anchor="middle">analyze · compare</text>
+        </g>
+
+        <!-- brackets: Jesse's BML boxes -->
+        <g stroke="#014263" stroke-width="1.6">
+          <path d="M40,318 L40,330 L158,330 L158,318"/>
+          <path d="M172,318 L172,330 L686,330 L686,318"/>
+          <path d="M700,318 L700,330 L818,330 L818,318"/>
+          <path d="M832,318 L832,330 L1082,330 L1082,318"/>
+        </g>
+        <g stroke="none" fill="#014263" font-size="12.5" font-weight="800">
+          <text x="99" y="352" text-anchor="middle">Product Package</text>
+          <text x="429" y="352" text-anchor="middle">Build Package</text>
+          <text x="759" y="352" text-anchor="middle">Deploy Package</text>
+          <text x="957" y="352" text-anchor="middle">Iterate</text>
+        </g>
+        <g stroke="none" fill="#5A6E7A" font-size="11">
+          <text x="99" y="370" text-anchor="middle">mostly static · kickstarts</text>
+          <text x="429" y="370" text-anchor="middle">~1 day · sends to Deploy on approval</text>
+          <text x="759" y="370" text-anchor="middle">weeks · observed</text>
+          <text x="957" y="370" text-anchor="middle">feeds Build regularly, Package occasionally</text>
+        </g>
+
+        <!-- what a stage row is -->
+        <rect x="40" y="398" width="1042" height="52" rx="4" stroke="#C4D3DB" fill="#FFFFFF"/>
+        <text x="56" y="418" stroke="none" fill="#231F20" font-size="11.5" font-weight="700">A stage is a row, not code:</text>
+        <text x="56" y="438" stroke="none" fill="#5A6E7A" font-size="11.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">harness_stages(key, position, agent_pickup, exit_gate, wip_limit, instructions_page_id, feeds[])   — the plan's queue_stages plus feeds</text>
+      </g>
+    </svg>

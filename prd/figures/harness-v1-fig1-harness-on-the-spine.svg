@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 940" role="img" aria-label="Layered architecture of the harness module: web page and phone app on top, command API, live hub and push in the edge layer, the harness engine with stages, leases, event log, workflow runs and spend breaker, the MCP surface as the agent boundary, four personas, two hosts they run on: a Cloudflare Workflow inside the platform or Claude Code on a staff member's own machine, external sources GitHub, CI, deploy targets and measurements, and Postgres at the bottom. A single orange arrow carries human gate decisions from the clients to the gate_decisions table." style="font-family:\'Nunito Sans\',system-ui,sans-serif;background:#FFFFFF">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+        <marker id="arrK" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C97F14"/></marker>
+        <marker id="arrI" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#31ADE3"/></marker>
+      </defs>
+      <g fill="none" stroke="currentColor" stroke-width="1.4" font-size="12.5" color="#231F20">
+
+        <!-- Band A: clients -->
+        <text x="20" y="34" fill="#5A6E7A" stroke="none" font-size="11" font-weight="700" letter-spacing="1.5">PEOPLE</text>
+        <rect x="90" y="16" width="300" height="60" rx="4" stroke="#014263" fill="#FFFFFF"/>
+        <text x="106" y="40" stroke="none" fill="#231F20" font-weight="700">Web harness page</text>
+        <text x="106" y="60" stroke="none" fill="#5A6E7A" font-size="11.5">uw-app SSR + islands · Flow · Board · Gates · Item</text>
+        <rect x="410" y="16" width="300" height="60" rx="4" stroke="#31ADE3" fill="#E3F3FB"/>
+        <text x="426" y="40" stroke="none" fill="#231F20" font-weight="700">Phone app · iOS + Android</text>
+        <text x="426" y="60" stroke="none" fill="#5A6E7A" font-size="11.5">same contract · Gates first · acts from a push</text>
+        <rect x="730" y="16" width="200" height="60" rx="4" stroke="#5A6E7A" stroke-dasharray="5 4" fill="#FFFFFF"/>
+        <text x="746" y="40" stroke="none" fill="#5A6E7A" font-weight="700">Zulip thread</text>
+        <text x="746" y="60" stroke="none" fill="#5A6E7A" font-size="11.5">keyed to the item · later</text>
+        <rect x="950" y="16" width="150" height="60" rx="4" stroke="#C97F14" fill="#FBEFDC"/>
+        <text x="966" y="40" stroke="none" fill="#231F20" font-weight="700">A person</text>
+        <text x="966" y="60" stroke="none" fill="#5A6E7A" font-size="11.5">approve · reject · take over</text>
+
+        <!-- contract bar -->
+        <rect x="90" y="96" width="1010" height="22" rx="3" stroke="#31ADE3" fill="#E3F3FB"/>
+        <text x="595" y="111" text-anchor="middle" stroke="none" fill="#231F20" font-size="11.5" font-weight="700">packages/contracts — one live version · golden fixtures · CI conformance · consumed by web islands, phone, personas</text>
+
+        <!-- Band B: edge -->
+        <text x="20" y="160" fill="#5A6E7A" stroke="none" font-size="11" font-weight="700" letter-spacing="1.5">EDGE</text>
+        <rect x="90" y="140" width="320" height="64" rx="4" stroke="#014263" fill="#FFFFFF"/>
+        <text x="106" y="164" stroke="none" fill="#231F20" font-weight="700">Command API · Hono</text>
+        <text x="106" y="184" stroke="none" fill="#5A6E7A" font-size="11.5">every command carries requestId → accepted | error</text>
+        <rect x="430" y="140" width="330" height="64" rx="4" stroke="#31ADE3" fill="#E3F3FB"/>
+        <text x="446" y="164" stroke="none" fill="#231F20" font-weight="700">Live hub · one Durable Object per active harness</text>
+        <text x="446" y="184" stroke="none" fill="#5A6E7A" font-size="11.5">wakeup only: "this harness may have news" · per-session cursor</text>
+        <rect x="780" y="140" width="320" height="64" rx="4" stroke="#31ADE3" fill="#E3F3FB"/>
+        <text x="796" y="164" stroke="none" fill="#231F20" font-weight="700">Push · APNs / FCM</text>
+        <text x="796" y="184" stroke="none" fill="#5A6E7A" font-size="11.5">ranked: gate waiting on you › run failed › stage advanced</text>
+
+        <!-- arrows A<->B -->
+        <line x1="240" y1="76" x2="240" y2="140" marker-end="url(#arr)"/>
+        <text x="248" y="92" stroke="none" fill="#231F20" font-size="11">commands: kickstart · enqueue · reorder · pause · prompt</text>
+        <line x1="1025" y1="76" x2="1025" y2="92" stroke="#C97F14" stroke-width="2.2"/>
+        <path d="M1025,92 L1025,128 L395,128 L395,140" stroke="#C97F14" stroke-width="2.2" marker-end="url(#arrK)"/>
+        <text x="640" y="136" stroke="none" fill="#C97F14" font-size="11" font-weight="700" text-anchor="middle">gate decision — the only path into gate_decisions</text>
+        <line x1="560" y1="140" x2="560" y2="76" marker-end="url(#arr)"/>
+        <text x="568" y="92" stroke="none" fill="#231F20" font-size="11">wakeup, then client reads events from its cursor</text>
+        <line x1="900" y1="140" x2="900" y2="76" stroke="#31ADE3" marker-end="url(#arrI)"/>
+        <text x="908" y="92" stroke="none" fill="#231F20" font-size="11">"waiting on you"</text>
+
+        <!-- Band C: engine -->
+        <text x="20" y="262" fill="#5A6E7A" stroke="none" font-size="11" font-weight="700" letter-spacing="1.5">ENGINE</text>
+        <rect x="90" y="236" width="1010" height="120" rx="6" stroke="#014263" stroke-width="1.8" fill="#E6EEF2"/>
+        <text x="106" y="256" stroke="none" fill="#231F20" font-weight="800" font-size="13">Harness engine · inside uw-app</text>
+        <g stroke="#014263" fill="#FFFFFF">
+          <rect x="106" y="268" width="186" height="74" rx="4"/>
+          <rect x="304" y="268" width="186" height="74" rx="4"/>
+          <rect x="502" y="268" width="186" height="74" rx="4" stroke="#31ADE3" fill="#E3F3FB"/>
+          <rect x="700" y="268" width="186" height="74" rx="4"/>
+          <rect x="898" y="268" width="186" height="74" rx="4"/>
+        </g>
+        <g stroke="none" fill="#231F20" font-weight="700">
+          <text x="118" y="288">Stages &amp; gates</text>
+          <text x="316" y="288">Leases &amp; WIP</text>
+          <text x="514" y="288">Event log</text>
+          <text x="712" y="288">Runs · Workflows</text>
+          <text x="910" y="288">Spend breaker</text>
+        </g>
+        <g stroke="none" fill="#5A6E7A" font-size="11">
+          <text x="118" y="306">pickup none | allowed | auto</text><text x="118" y="320">exit none | checks | human</text><text x="118" y="334">feeds → loop edges</text>
+          <text x="316" y="306">claim = UPDATE … WHERE</text><text x="316" y="320">lease expired or unclaimed</text><text x="316" y="334">WIP applies to agents too</text>
+          <text x="514" y="306">append-only, closed vocabulary</text><text x="514" y="320">replay(events) ≡ record</text><text x="514" y="334">= dashboard feed, play-by-play</text>
+          <text x="712" y="306">read → scout → work → submit</text><text x="712" y="320">retry from the failed step</text><text x="712" y="334">hibernates at a human gate</text>
+          <text x="910" y="306">AI Gateway meter</text><text x="910" y="320">hold new at 75 %</text><text x="910" y="334">pause running at 90 %</text>
+        </g>
+
+        <!-- arrows B->C -->
+        <line x1="250" y1="204" x2="250" y2="236" marker-end="url(#arr)"/>
+        <text x="258" y="224" stroke="none" fill="#231F20" font-size="11">validated command</text>
+        <line x1="595" y1="236" x2="595" y2="204" marker-end="url(#arr)"/>
+        <text x="603" y="224" stroke="none" fill="#231F20" font-size="11">wakeup on every event</text>
+        <line x1="940" y1="236" x2="940" y2="204" marker-end="url(#arr)"/>
+        <text x="948" y="224" stroke="none" fill="#231F20" font-size="11">gate events</text>
+
+        <!-- Band D: MCP -->
+        <text x="20" y="412" fill="#5A6E7A" stroke="none" font-size="11" font-weight="700" letter-spacing="1.5">AGENT BOUNDARY</text>
+        <rect x="90" y="390" width="690" height="60" rx="4" stroke="#014263" fill="#FFFFFF"/>
+        <text x="106" y="412" stroke="none" fill="#231F20" font-weight="700">MCP surface · the only way a persona touches the platform</text>
+        <text x="106" y="432" stroke="none" fill="#5A6E7A" font-size="11.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">poll_queue · claim_item · read_page · resolve_context · write_page · submit_to_gate · record_run_step · get_health</text>
+        <rect x="800" y="390" width="300" height="60" rx="4" stroke="#B23A3A" fill="none"/>
+        <text x="816" y="412" stroke="none" fill="#B23A3A" font-weight="700">Verbs that do not exist</text>
+        <text x="816" y="432" stroke="none" fill="#B23A3A" font-size="11.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">approve · merge · deploy · advance past human gate</text>
+
+        <!-- arrows C<->D -->
+        <line x1="400" y1="390" x2="400" y2="356" marker-end="url(#arr)"/>
+        <text x="408" y="376" stroke="none" fill="#231F20" font-size="11">claim on lease · submit to gate · run steps</text>
+        <line x1="793" y1="356" x2="793" y2="390" marker-end="url(#arr)"/>
+        <text x="801" y="376" stroke="none" fill="#231F20" font-size="11">a run hosts one persona turn</text>
+
+        <!-- Band E: personas -->
+        <text x="20" y="506" fill="#5A6E7A" stroke="none" font-size="11" font-weight="700" letter-spacing="1.5">PERSONAS</text>
+        <g stroke="#014263" fill="#FFFFFF">
+          <rect x="90" y="484" width="235" height="60" rx="4"/>
+          <rect x="345" y="484" width="235" height="60" rx="4"/>
+          <rect x="600" y="484" width="235" height="60" rx="4"/>
+          <rect x="855" y="484" width="245" height="60" rx="4"/>
+        </g>
+        <g stroke="none" fill="#231F20" font-weight="700">
+          <text x="106" y="506">Scout</text><text x="361" y="506">Builder</text><text x="616" y="506">Reviewer</text><text x="871" y="506">Iterate</text>
+        </g>
+        <g stroke="none" fill="#5A6E7A" font-size="11.5">
+          <text x="106" y="526">verifies the premise before work</text>
+          <text x="361" y="526">isolated worktree · one lane per repo</text>
+          <text x="616" y="526">own identity · different model · argues</text>
+          <text x="871" y="526">reads measurements · proposes revisions</text>
+        </g>
+        <line x1="595" y1="450" x2="595" y2="484" marker-end="url(#arr)"/>
+        <text x="603" y="470" stroke="none" fill="#231F20" font-size="11">tool calls · identity = agent:&lt;id&gt; or agent:&lt;person&gt;/&lt;device&gt; · grants ≤ owner's</text>
+
+        <!-- Band E2: where personas run -->
+        <text x="20" y="588" fill="#5A6E7A" stroke="none" font-size="11" font-weight="700" letter-spacing="1.5">RUNS ON</text>
+        <line x1="595" y1="544" x2="595" y2="566" marker-end="url(#arr)"/>
+        <text x="603" y="560" stroke="none" fill="#231F20" font-size="11">a persona is configuration; it runs on either host, same verbs, same gates</text>
+        <rect x="90" y="566" width="495" height="56" rx="4" stroke="#014263" fill="#FFFFFF"/>
+        <text x="106" y="588" stroke="none" fill="#231F20" font-weight="700">Cloudflare Workflow · inside uw-app</text>
+        <text x="106" y="607" stroke="none" fill="#5A6E7A" font-size="11.5">org API key via AI Gateway · metered · model runs in the step or in a Cloudflare Sandbox</text>
+        <rect x="605" y="566" width="495" height="56" rx="4" stroke="#31ADE3" stroke-width="1.8" fill="#E3F3FB"/>
+        <text x="621" y="588" stroke="none" fill="#231F20" font-weight="700">External runner · Claude Code on a staff member's own machine</text>
+        <text x="621" y="607" stroke="none" fill="#5A6E7A" font-size="11.5">remote MCP over Access login · their own subscription · tokens reported · lease renewed by each step</text>
+
+        <!-- Band F: sources -->
+        <text x="20" y="698" fill="#5A6E7A" stroke="none" font-size="11" font-weight="700" letter-spacing="1.5">OUTSIDE</text>
+        <g stroke="#014263" fill="#FFFFFF">
+          <rect x="90" y="676" width="235" height="60" rx="4"/>
+          <rect x="345" y="676" width="235" height="60" rx="4"/>
+          <rect x="600" y="676" width="235" height="60" rx="4"/>
+          <rect x="855" y="676" width="245" height="60" rx="4"/>
+        </g>
+        <g stroke="none" fill="#231F20" font-weight="700">
+          <text x="106" y="698">GitHub App</text><text x="361" y="698">CI checks</text><text x="616" y="698">Deploy targets</text><text x="871" y="698">Measurement sources</text>
+        </g>
+        <g stroke="none" fill="#5A6E7A" font-size="11.5">
+          <text x="106" y="718">webhooks via uw-ingest → gh_* read model</text>
+          <text x="361" y="718">check runs per commit</text>
+          <text x="616" y="718">wrangler · web host · mail · social · phone</text>
+          <text x="871" y="718">analytics · list stats · manual entry</text>
+        </g>
+        <!-- hosts -> github -->
+        <line x1="160" y1="622" x2="160" y2="676" marker-end="url(#arr)"/>
+        <text x="168" y="652" stroke="none" fill="#231F20" font-size="11">branch · PR · review, on host-held tokens</text>
+        <path d="M760,622 L760,646 L300,646 L300,676" stroke="#31ADE3" marker-end="url(#arrI)"/>
+        <text x="530" y="641" stroke="none" fill="#231F20" font-size="11" text-anchor="middle">their own git credentials · branch harness/&lt;item&gt; · ship rule checks the head</text>
+
+        <!-- ship rule: outside -> engine, drawn on the far left -->
+        <path d="M60,676 L60,300 L106,300" stroke="#014263" stroke-width="1.6" marker-end="url(#arr)" fill="none"/>
+        <line x1="90" y1="706" x2="60" y2="706" stroke="#014263" stroke-width="1.6"/>
+        <line x1="60" y1="706" x2="60" y2="676" stroke="#014263" stroke-width="1.6"/>
+        <text x="52" y="488" stroke="none" fill="#014263" font-size="10.5" font-weight="700" transform="rotate(-90 52 488)" text-anchor="middle">ship rule reads facts, never the record</text>
+
+        <!-- Band G: postgres -->
+        <text x="20" y="796" fill="#5A6E7A" stroke="none" font-size="11" font-weight="700" letter-spacing="1.5">DATA</text>
+        <rect x="90" y="772" width="1010" height="84" rx="6" stroke="#014263" stroke-width="1.8" fill="#FFFFFF"/>
+        <text x="106" y="796" stroke="none" fill="#231F20" font-weight="800" font-size="13">Neon Postgres via Hyperdrive · Drizzle schema is the source of truth</text>
+        <text x="106" y="818" stroke="none" fill="#231F20" font-size="11.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">harnesses · harness_stages · harness_items · harness_events · harness_runs(host: workflow | external) · personas · measurements</text>
+        <text x="106" y="838" stroke="none" fill="#231F20" font-size="11.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">gate_decisions <tspan fill="#C97F14" font-weight="700">← human identities only</tspan> · gh_repos · gh_issues · gh_prs · gh_check_runs · push_devices · push_cooldowns · pages</text>
+        <!-- arrows to data -->
+        <path d="M1060,356 L1060,772" marker-end="url(#arr)" stroke-dasharray="3 3"/>
+        <text x="1068" y="564" stroke="none" fill="#231F20" font-size="11" transform="rotate(90 1068 564)" text-anchor="middle">all durable state</text>
+        <path d="M207,736 L207,772" marker-end="url(#arr)"/>
+        <text x="215" y="758" stroke="none" fill="#231F20" font-size="11">read model · nightly gap sweep</text>
+        <path d="M977,736 L977,772" marker-end="url(#arr)"/>
+        <text x="985" y="758" stroke="none" fill="#231F20" font-size="11">measurements</text>
+
+        <!-- footer note -->
+        <text x="90" y="896" stroke="none" fill="#5A6E7A" font-size="11.5">One trace id follows a command, webhook, or run step end to end. Full logs 30 days · metrics 13 months · audit 7 years, per plan §18.</text>
+        <text x="90" y="916" stroke="none" fill="#5A6E7A" font-size="11.5">Agent plane of /health reads from this diagram: spend vs budget (metered + reported), breaker state, runs today by host, gate refusals, agent writes, stale learnings.</text>
+      </g>
+    </svg>

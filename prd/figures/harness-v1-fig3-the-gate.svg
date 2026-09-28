@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 330" role="img" aria-label="An agent submits an item to a gate through the MCP verb submit_to_gate; the item waits on a human. A person's approve command writes a gate_decisions row, the engine records gate_approved and advances the item, and the live hub wakes clients. A struck dashed line from the agent to gate_decisions shows there is no such route and the attempt is logged. At Ship, the engine also evaluates the ship rule over GitHub facts and either advances or refuses with a closed reason." style="font-family:\'Nunito Sans\',system-ui,sans-serif;background:#FFFFFF">
+      <defs>
+        <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+        <marker id="arr3K" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C97F14"/></marker>
+      </defs>
+      <g fill="none" stroke="currentColor" stroke-width="1.4" font-size="12.5" color="#231F20">
+        <!-- agent -->
+        <rect x="40" y="40" width="180" height="56" rx="4" stroke="#014263" fill="#FFFFFF"/>
+        <text x="56" y="63" stroke="none" fill="#231F20" font-weight="700">Persona run</text>
+        <text x="56" y="82" stroke="none" fill="#5A6E7A" font-size="11.5">Workflow step, agent identity</text>
+        <!-- mcp -->
+        <rect x="280" y="40" width="200" height="56" rx="4" stroke="#014263" fill="#FFFFFF"/>
+        <text x="296" y="63" stroke="none" fill="#231F20" font-weight="700" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" font-size="12">submit_to_gate</text>
+        <text x="296" y="82" stroke="none" fill="#5A6E7A" font-size="11.5">MCP · runs stage checks first</text>
+        <line x1="220" y1="68" x2="280" y2="68" marker-end="url(#arr3)"/>
+        <!-- item -->
+        <rect x="540" y="30" width="220" height="76" rx="4" stroke="#014263" stroke-width="1.8" fill="#E6EEF2"/>
+        <text x="556" y="53" stroke="none" fill="#231F20" font-weight="800">Item at Ship</text>
+        <text x="556" y="72" stroke="none" fill="#5A6E7A" font-size="11.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">waiting_on: human</text>
+        <text x="556" y="92" stroke="none" fill="#5A6E7A" font-size="11.5">run hibernates · push "waiting on you"</text>
+        <line x1="480" y1="68" x2="540" y2="68" marker-end="url(#arr3)"/>
+        <!-- person -->
+        <rect x="540" y="160" width="220" height="56" rx="4" stroke="#C97F14" stroke-width="2" fill="#FBEFDC"/>
+        <text x="556" y="183" stroke="none" fill="#231F20" font-weight="700">A person · web or phone</text>
+        <text x="556" y="202" stroke="none" fill="#5A6E7A" font-size="11.5">approve · reject · take over · override + reason</text>
+        <!-- gate_decisions -->
+        <rect x="820" y="160" width="260" height="56" rx="4" stroke="#C97F14" fill="#FFFFFF"/>
+        <text x="836" y="183" stroke="none" fill="#231F20" font-weight="700" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" font-size="12">gate_decisions</text>
+        <text x="836" y="202" stroke="none" fill="#5A6E7A" font-size="11.5">actor, decision, reason, evidence · audit 7 y</text>
+        <line x1="760" y1="188" x2="820" y2="188" stroke="#C97F14" stroke-width="2.2" marker-end="url(#arr3K)"/>
+        <text x="790" y="180" stroke="none" fill="#C97F14" font-size="10.5" text-anchor="middle" font-weight="700">command</text>
+        <!-- engine advances -->
+        <rect x="820" y="30" width="260" height="76" rx="4" stroke="#014263" fill="#FFFFFF"/>
+        <text x="836" y="53" stroke="none" fill="#231F20" font-weight="700">Engine advances</text>
+        <text x="836" y="72" stroke="none" fill="#5A6E7A" font-size="11.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">event gate_approved → next stage</text>
+        <text x="836" y="92" stroke="none" fill="#5A6E7A" font-size="11.5">live hub wakes every screen · run resumes</text>
+        <line x1="950" y1="160" x2="950" y2="106" marker-end="url(#arr3)"/>
+        <!-- the struck path -->
+        <path d="M130,96 L130,260 L820,260 L820,216" stroke="#B23A3A" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#arr3)"/>
+        <line x1="440" y1="248" x2="470" y2="272" stroke="#B23A3A" stroke-width="2.4"/>
+        <line x1="470" y1="248" x2="440" y2="272" stroke="#B23A3A" stroke-width="2.4"/>
+        <text x="455" y="292" stroke="none" fill="#B23A3A" font-size="11.5" font-weight="700" text-anchor="middle">no route exists for an agent identity · the attempt is an event: gate_refused_to_agent</text>
+        <!-- ship rule -->
+        <rect x="40" y="140" width="440" height="100" rx="4" stroke="#014263" fill="#FFFFFF"/>
+        <text x="56" y="163" stroke="none" fill="#231F20" font-weight="700">Ship rule · a pure function over GitHub facts</text>
+        <text x="56" y="183" stroke="none" fill="#5A6E7A" font-size="11.5">PR open · not draft · head = expected commit · CI green on that commit</text>
+        <text x="56" y="201" stroke="none" fill="#5A6E7A" font-size="11.5">Reviewer identity approved that commit · the item record is not an input</text>
+        <text x="56" y="225" stroke="none" fill="#231F20" font-size="11.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">→ advance | refuse(reason ∈ closed set)</text>
+        <path d="M480,190 L510,190 L510,106 L560,106" marker-end="url(#arr3)"/>
+        <text x="520" y="134" stroke="none" fill="#231F20" font-size="11">evaluated before the button is enabled</text>
+        <text x="40" y="316" stroke="none" fill="#5A6E7A" font-size="11.5">An override is allowed, because a person may overrule the reviewers. The override and its reason ride into the audit trail with the merge, exactly as the prototype's merge button says.</text>
+      </g>
+    </svg>
