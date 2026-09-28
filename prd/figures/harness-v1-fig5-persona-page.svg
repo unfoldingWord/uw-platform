@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 384" role="img" aria-label="A persona page. The top half is a form with fields: identity, owner, harness subscription, toolset checkboxes offering only verbs the creator holds with forbidden verbs shown greyed as not offered, run shape chosen from a registry, model and budget, capability word, requires_tools derived from the toolset, and a status control from suggested to active that only a person can flip. The bottom half is the markdown body holding the instructions. To the right, the same page's default view shows runs today, spend against budget, escalation rate and gate refusals." style="font-family:\'Nunito Sans\',system-ui,sans-serif;background:#FFFFFF">
+      <g fill="none" stroke="currentColor" stroke-width="1.4" font-size="12" color="#231F20">
+        <!-- page -->
+        <rect x="40" y="20" width="700" height="344" rx="6" stroke="#014263" stroke-width="1.8" fill="#FFFFFF"/>
+        <text x="56" y="44" stroke="none" fill="#231F20" font-weight="800" font-size="13">page · type: persona · grant-writer</text>
+        <text x="724" y="44" stroke="none" fill="#5A6E7A" font-size="11" text-anchor="end">frontmatter is form-edited · body is markdown</text>
+        <line x1="40" y1="56" x2="740" y2="56" stroke="#C4D3DB"/>
+        <g stroke="none" fill="#5A6E7A" font-size="11.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">
+          <text x="56" y="80">identity</text><text x="56" y="102">owner</text><text x="56" y="124">harness</text><text x="56" y="146">toolset</text><text x="56" y="190">run shape</text><text x="56" y="212">model · budget</text><text x="56" y="234">capability</text><text x="56" y="256">requires_tools</text><text x="56" y="278">status</text>
+        </g>
+        <g stroke="none" fill="#231F20" font-size="11.5">
+          <text x="190" y="80">agent:grant-writer</text><text x="340" y="80" fill="#5A6E7A">token minted on activation · grants ≤ owner's</text>
+          <text x="190" y="102">jesse</text>
+          <text x="190" y="124">Grant responses · filter: any funder</text>
+          <text x="190" y="146">☑ poll_queue ☑ claim_item ☑ read_page ☑ resolve_context ☑ write_page ☑ submit_to_gate</text>
+          <text x="190" y="164">☐ list_gifts <tspan fill="#5A6E7A">(needs finance role)</tspan>   <tspan fill="#B23A3A">approve · merge · deploy — not offered</tspan></text>
+          <text x="190" y="190">workflow-run <tspan fill="#5A6E7A">· from the run-shape registry: workflow-run · external-run · (a new shape is code)</tspan></text>
+          <text x="190" y="212">claude-sonnet-5 · $40 / month</text>
+          <text x="190" y="234">draft <tspan fill="#5A6E7A">(one word; the narrowest opens nothing)</tspan></text>
+          <text x="190" y="256">derived from toolset · missing verbs open a card in the software harness</text>
+          <text x="190" y="278">suggested → active</text>
+        </g>
+        <rect x="330" y="266" width="120" height="20" rx="3" stroke="#C97F14" stroke-width="1.8" fill="#FBEFDC"/>
+        <text x="390" y="280" text-anchor="middle" stroke="none" fill="#231F20" font-size="11" font-weight="700">Activate · a person</text>
+        <text x="460" y="280" stroke="none" fill="#5A6E7A" font-size="11">runs the tool check and a dry run on a sample card first</text>
+        <line x1="40" y1="294" x2="740" y2="294" stroke="#C4D3DB"/>
+        <g stroke="none" fill="#5A6E7A" font-size="11.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">
+          <text x="56" y="318"># Grant writer</text>
+          <text x="56" y="336">Read the funder template and resolve_context before drafting. Mark every claim</text>
+          <text x="56" y="354">observed / confirmed / inferred / assumed. Never invent a figure; leave a gap and say so.</text>
+        </g>
+        <!-- default view -->
+        <rect x="770" y="20" width="310" height="344" rx="6" stroke="#014263" fill="#FFFFFF"/>
+        <text x="786" y="44" stroke="none" fill="#231F20" font-weight="800" font-size="13">the same page's default view</text>
+        <line x1="770" y1="56" x2="1080" y2="56" stroke="#C4D3DB"/>
+        <g stroke="none" fill="#5A6E7A" font-size="11.5">
+          <text x="786" y="82">runs today</text><text x="786" y="108">spend this month</text><text x="786" y="134">escalation rate</text><text x="786" y="160">gate refusals · 7 d</text><text x="786" y="186">writes · 7 d</text><text x="786" y="212">hosts</text>
+        </g>
+        <g stroke="none" fill="#231F20" font-size="12" font-weight="700" text-anchor="end">
+          <text x="1064" y="82">7</text><text x="1064" y="108">$18.20 of $40</text><text x="1064" y="134">2 of 7 asked a person</text><text x="1064" y="160">0</text><text x="1064" y="186">11 page versions</text><text x="1064" y="212">workflow 5 · external 2</text>
+        </g>
+        <line x1="786" y1="228" x2="1064" y2="228" stroke="#C4D3DB"/>
+        <text x="786" y="250" stroke="none" fill="#231F20" font-size="11.5" font-weight="700">last play-by-plays</text>
+        <g stroke="none" fill="#5A6E7A" font-size="11">
+          <text x="786" y="270">Foundation RFP 2026-08 · at review</text>
+          <text x="786" y="288">Corporate giving program · drafting</text>
+          <text x="786" y="306">Technology foundation RFP · scoping</text>
+          <text x="786" y="326">rising escalations mean better canon, not a smaller cap</text>
+        </g>
+      </g>
+    </svg>

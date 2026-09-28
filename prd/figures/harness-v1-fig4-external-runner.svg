@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 330" role="img" aria-label="Sequence from left to right: a staff member's Claude Code signs in through Access and is minted an agent identity under that person; it polls and claims an item on a lease; a git worktree on branch harness slash item is created; the run works, and every record_run_step call renews the lease and reports tokens; submit_to_gate parks the item; the person approves on the phone. If the laptop closes, the lease expires and the item is released for anyone else." style="font-family:\'Nunito Sans\',system-ui,sans-serif;background:#FFFFFF">
+      <defs>
+        <marker id="arr4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+        <marker id="arr4K" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C97F14"/></marker>
+      </defs>
+      <g fill="none" stroke="currentColor" stroke-width="1.4" font-size="12.5" color="#231F20">
+        <!-- six steps -->
+        <g stroke="#31ADE3" fill="#E3F3FB">
+          <rect x="40" y="60" width="160" height="90" rx="4"/>
+        </g>
+        <g stroke="#014263" fill="#FFFFFF">
+          <rect x="222" y="60" width="160" height="90" rx="4"/>
+          <rect x="404" y="60" width="160" height="90" rx="4"/>
+          <rect x="586" y="60" width="160" height="90" rx="4"/>
+          <rect x="768" y="60" width="160" height="90" rx="4"/>
+        </g>
+        <rect x="950" y="60" width="150" height="90" rx="4" stroke="#C97F14" stroke-width="2" fill="#FBEFDC"/>
+        <g stroke="none" fill="#231F20" font-weight="700">
+          <text x="54" y="82">1 · Sign in</text>
+          <text x="236" y="82">2 · Claim</text>
+          <text x="418" y="82">3 · Workspace</text>
+          <text x="600" y="82">4 · Work</text>
+          <text x="782" y="82">5 · Submit</text>
+          <text x="964" y="82">6 · Decide</text>
+        </g>
+        <g stroke="none" fill="#5A6E7A" font-size="11">
+          <text x="54" y="100">Claude Code adds the</text><text x="54" y="114">platform MCP server;</text><text x="54" y="128">Access login mints</text><text x="54" y="142" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" fill="#231F20">agent:ian/laptop</text>
+          <text x="236" y="100" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" fill="#231F20">poll_queue · claim_item</text><text x="236" y="114">lease 15 min · WIP</text><text x="236" y="128">limit applies · card shows</text><text x="236" y="142">"claimed · external"</text>
+          <text x="418" y="100">git worktree on</text><text x="418" y="114" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" fill="#231F20">harness/&lt;item&gt;</text><text x="418" y="128">skills already synced</text><text x="418" y="142">to the repo</text>
+          <text x="600" y="100" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" fill="#231F20">resolve_context</text><text x="600" y="114" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" fill="#231F20">record_run_step</text><text x="600" y="128">each step renews the lease</text><text x="600" y="142">and reports tokens (their plan)</text>
+          <text x="782" y="100">push branch · open PR</text><text x="782" y="114" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" fill="#231F20">submit_to_gate</text><text x="782" y="128">stage checks run</text><text x="782" y="142">item parks at Ship</text>
+          <text x="964" y="100">phone push:</text><text x="964" y="114">"waiting on you"</text><text x="964" y="128">approve · reject</text><text x="964" y="142">as a person, not an agent</text>
+        </g>
+        <g marker-end="url(#arr4)">
+          <line x1="200" y1="105" x2="222" y2="105"/><line x1="382" y1="105" x2="404" y2="105"/><line x1="564" y1="105" x2="586" y2="105"/><line x1="746" y1="105" x2="768" y2="105"/>
+        </g>
+        <line x1="928" y1="105" x2="950" y2="105" stroke="#C97F14" stroke-width="2.2" marker-end="url(#arr4K)"/>
+        <!-- failure path -->
+        <path d="M666,150 L666,190 L302,190 L302,150" stroke="#5A6E7A" stroke-dasharray="5 4" marker-end="url(#arr4)"/>
+        <text x="484" y="184" text-anchor="middle" stroke="none" fill="#5A6E7A" font-size="11">laptop closes · lease expires · item is released · anyone, or a platform Workflow, may claim it next</text>
+        <!-- what is the same / different -->
+        <rect x="40" y="216" width="520" height="90" rx="4" stroke="#C4D3DB" fill="#FFFFFF"/>
+        <text x="56" y="238" stroke="none" fill="#231F20" font-weight="700" font-size="12">Same as a platform run</text>
+        <text x="56" y="258" stroke="none" fill="#5A6E7A" font-size="11.5">verbs, gates, WIP, lease, event log, play-by-play, live updates,</text>
+        <text x="56" y="276" stroke="none" fill="#5A6E7A" font-size="11.5">write recorded as agent:&lt;person&gt;/&lt;device&gt; with grants ≤ that person's,</text>
+        <text x="56" y="294" stroke="none" fill="#5A6E7A" font-size="11.5">and one CI test: every verb a Workflow can call, an external runner can call.</text>
+        <rect x="580" y="216" width="520" height="90" rx="4" stroke="#C4D3DB" fill="#FFFFFF"/>
+        <text x="596" y="238" stroke="none" fill="#231F20" font-weight="700" font-size="12">Different, and said so</text>
+        <text x="596" y="258" stroke="none" fill="#5A6E7A" font-size="11.5">tokens are reported by the runner, not metered; cost basis is "subscription" on /health,</text>
+        <text x="596" y="276" stroke="none" fill="#5A6E7A" font-size="11.5">git writes use the person's own credentials: branch protection + ship rule head</text>
+        <text x="596" y="294" stroke="none" fill="#5A6E7A" font-size="11.5">check guard the merge; no checkpointing: a dead laptop means a released lease.</text>
+      </g>
+    </svg>
