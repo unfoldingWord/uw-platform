@@ -10,20 +10,20 @@
         <text x="20" y="34" fill="#5A6E7A" stroke="none" font-size="11" font-weight="700" letter-spacing="1.5">PEOPLE</text>
         <rect x="90" y="16" width="300" height="60" rx="4" stroke="#014263" fill="#FFFFFF"/>
         <text x="106" y="40" stroke="none" fill="#231F20" font-weight="700">Web harness page</text>
-        <text x="106" y="60" stroke="none" fill="#5A6E7A" font-size="11.5">SSR + islands · Flow · Board · Gates · Item · phone-width</text>
+        <text x="106" y="60" stroke="none" fill="#5A6E7A" font-size="11.5" textLength="280" lengthAdjust="spacingAndGlyphs">SSR + islands · Flow · Board · Gates · Item</text>
         <rect x="410" y="16" width="300" height="60" rx="4" stroke="#31ADE3" fill="#E3F3FB"/>
-        <text x="426" y="40" stroke="none" fill="#231F20" font-weight="700">Zulip bot thread · keyed to the item</text>
+        <text x="426" y="40" stroke="none" fill="#231F20" font-weight="700">Zulip bot thread · per item</text>
         <text x="426" y="60" stroke="none" fill="#5A6E7A" font-size="11.5">v1 · the same wake, and a place to talk</text>
         <rect x="730" y="16" width="200" height="60" rx="4" stroke="#5A6E7A" stroke-dasharray="5 4" fill="#FFFFFF"/>
         <text x="746" y="40" stroke="none" fill="#5A6E7A" font-weight="700">Native phone app</text>
-        <text x="746" y="60" stroke="none" fill="#5A6E7A" font-size="11.5">later · contract is mobile-ready</text>
+        <text x="746" y="60" stroke="none" fill="#5A6E7A" font-size="11.5">after v1 · mobile-ready</text>
         <rect x="950" y="16" width="150" height="60" rx="4" stroke="#C97F14" fill="#FBEFDC"/>
         <text x="966" y="40" stroke="none" fill="#231F20" font-weight="700">A person</text>
         <text x="966" y="60" stroke="none" fill="#5A6E7A" font-size="11.5">approve · reject · take over</text>
 
         <!-- contract bar -->
         <rect x="90" y="96" width="1010" height="22" rx="3" stroke="#31ADE3" fill="#E3F3FB"/>
-        <text x="595" y="111" text-anchor="middle" stroke="none" fill="#231F20" font-size="11.5" font-weight="700">packages/contracts — one live version · golden fixtures · CI conformance · consumed by web islands, Zulip bot, personas · mobile-ready</text>
+        <text x="595" y="111" text-anchor="middle" stroke="none" fill="#231F20" font-size="11.5" font-weight="700">packages/contracts — one live version · golden fixtures · CI conformance · consumed by web islands, Zulip bot, personas</text>
 
         <!-- Band B: edge -->
         <text x="20" y="160" fill="#5A6E7A" stroke="none" font-size="11" font-weight="700" letter-spacing="1.5">EDGE</text>
@@ -67,11 +67,11 @@
           <text x="910" y="288">Spend breaker</text>
         </g>
         <g stroke="none" fill="#5A6E7A" font-size="11">
-          <text x="118" y="306">exit none | checks | human</text><text x="118" y="320">connector ⇒ human gate · DB CHECK</text><text x="118" y="334">feeds → loops · validators</text>
-          <text x="316" y="306">claim = UPDATE … WHERE</text><text x="316" y="320">unattended claim needs a delegation</text><text x="316" y="334">WIP applies to agents too</text>
+          <text x="118" y="306">exit none | checks | human</text><text x="118" y="320">connector ⇒ human gate</text><text x="118" y="334" textLength="168" lengthAdjust="spacingAndGlyphs">feeds → loops · validators</text>
+          <text x="316" y="306">claim = UPDATE … WHERE</text><text x="316" y="320">beats need a delegation</text><text x="316" y="334">WIP applies to agents too</text>
           <text x="514" y="306">append-only, closed vocabulary</text><text x="514" y="320">replay(events) ≡ record</text><text x="514" y="334">= dashboard feed, play-by-play</text>
           <text x="712" y="306">read → scout → work → submit</text><text x="712" y="320">retry from the failed step</text><text x="712" y="334">hibernates at a human gate</text>
-          <text x="910" y="306">AI Gateway · capped at the brief</text><text x="910" y="320">hold new at 75 %</text><text x="910" y="334">pause running at 90 %</text>
+          <text x="910" y="306">Gateway meter · capped</text><text x="910" y="320">hold new at 75 %</text><text x="910" y="334">pause running at 90 %</text>
         </g>
 
         <!-- arrows B->C -->
@@ -85,12 +85,12 @@
         <!-- Band D: MCP -->
         <text x="20" y="412" fill="#5A6E7A" stroke="none" font-size="11" font-weight="700" letter-spacing="1.5">AGENT BOUNDARY</text>
         <rect x="90" y="390" width="690" height="60" rx="4" stroke="#014263" fill="#FFFFFF"/>
-        <text x="106" y="409" stroke="none" fill="#231F20" font-weight="700">MCP surface · one verb registry from packages/contracts · the only way a persona touches the platform</text>
-        <text x="106" y="427" stroke="none" fill="#5A6E7A" font-size="10.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">search_pages · read_page · write_page · query_entities · resolve_context · create_task · role-gated: list_gifts</text>
-        <text x="106" y="443" stroke="none" fill="#5A6E7A" font-size="10.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">poll_queue · claim_item · submit_to_gate · record_run_step · get_health</text>
+        <text x="106" y="409" stroke="none" fill="#231F20" font-weight="700">MCP surface · one verb registry · the only way a persona touches the platform</text>
+        <text x="106" y="427" stroke="none" fill="#5A6E7A" font-size="10.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">search_pages · read_page · write_page · query_entities · resolve_context · create_task</text>
+        <text x="106" y="443" stroke="none" fill="#5A6E7A" font-size="10.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">poll_queue · claim_item · submit_to_gate · record_run_step · get_health · role-gated: list_gifts</text>
         <rect x="800" y="390" width="300" height="60" rx="4" stroke="#B23A3A" fill="none"/>
         <text x="816" y="412" stroke="none" fill="#B23A3A" font-weight="700">Verbs that do not exist</text>
-        <text x="816" y="432" stroke="none" fill="#B23A3A" font-size="11.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">approve · merge · deploy · publish · advance</text>
+        <text x="816" y="432" stroke="none" fill="#B23A3A" font-size="11.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" textLength="280" lengthAdjust="spacingAndGlyphs">approve · merge · deploy · publish · advance</text>
 
         <!-- arrows C<->D -->
         <line x1="400" y1="390" x2="400" y2="356" marker-end="url(#arr)"/>
@@ -109,9 +109,9 @@
           <text x="106" y="506">Builder</text><text x="451" y="506">Reviewer</text><text x="796" y="506">Iterate</text>
         </g>
         <g stroke="none" fill="#5A6E7A" font-size="11.5">
-          <text x="106" y="526">scout pass first: premise vs data · then a worktree lane</text>
-          <text x="451" y="526">own identity · different vendor · two of them if high</text>
-          <text x="796" y="526">measurements · revisions with evidence labels</text>
+          <text x="106" y="526">scout pass first · then a worktree lane</text>
+          <text x="451" y="526">own identity · other vendor · two if high</text>
+          <text x="796" y="526">reads measurements · labelled revisions</text>
         </g>
         <line x1="595" y1="450" x2="595" y2="484" marker-end="url(#arr)"/>
         <text x="603" y="470" stroke="none" fill="#231F20" font-size="11">tool calls · identity = agent:&lt;id&gt; or agent:&lt;person&gt;/&lt;device&gt; · grants ≤ owner's</text>
@@ -122,10 +122,10 @@
         <text x="603" y="560" stroke="none" fill="#231F20" font-size="11">a persona is configuration; it runs on either host, same verbs, same gates</text>
         <rect x="90" y="566" width="495" height="56" rx="4" stroke="#014263" fill="#FFFFFF"/>
         <text x="106" y="588" stroke="none" fill="#231F20" font-weight="700">Cloudflare Workflow · inside uw-app</text>
-        <text x="106" y="607" stroke="none" fill="#5A6E7A" font-size="11.5">org API keys via AI Gateway · always-on tier on OpenRouter · hosted Builder off by default</text>
+        <text x="106" y="607" stroke="none" fill="#5A6E7A" font-size="11.5">org keys via AI Gateway · OpenRouter always-on tier · Builder off</text>
         <rect x="605" y="566" width="495" height="56" rx="4" stroke="#31ADE3" stroke-width="1.8" fill="#E3F3FB"/>
         <text x="621" y="588" stroke="none" fill="#231F20" font-weight="700">External runner · Claude Code on a staff member's own machine</text>
-        <text x="621" y="607" stroke="none" fill="#5A6E7A" font-size="11.5">Access login · own subscription · tokens reported · a routine needs a delegation</text>
+        <text x="621" y="607" stroke="none" fill="#5A6E7A" font-size="11.5">Access login · own seat · tokens reported · routine needs delegation</text>
 
         <!-- Band F: sources -->
         <text x="20" y="698" fill="#5A6E7A" stroke="none" font-size="11" font-weight="700" letter-spacing="1.5">OUTSIDE</text>
@@ -160,7 +160,7 @@
         <text x="20" y="796" fill="#5A6E7A" stroke="none" font-size="11" font-weight="700" letter-spacing="1.5">DATA</text>
         <rect x="90" y="772" width="1010" height="84" rx="6" stroke="#014263" stroke-width="1.8" fill="#FFFFFF"/>
         <text x="106" y="796" stroke="none" fill="#231F20" font-weight="800" font-size="13">Neon Postgres via Hyperdrive · Drizzle schema is the source of truth</text>
-        <text x="106" y="818" stroke="none" fill="#231F20" font-size="11.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">harnesses(jd_area) · harness_stages(connector) · harness_items(risk_tier, risk_domains) · harness_events · harness_runs · personas · measurements</text>
+        <text x="106" y="818" stroke="none" fill="#231F20" font-size="11.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" textLength="990" lengthAdjust="spacingAndGlyphs">harnesses(jd_area) · harness_stages(connector) · harness_items(risk_tier, risk_domains) · harness_events · harness_runs · personas · measurements</text>
         <text x="106" y="838" stroke="none" fill="#231F20" font-size="11.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">gate_decisions <tspan fill="#C97F14" font-weight="700">← human identities only</tspan> · delegations · gh_repos · gh_issues · gh_prs · gh_check_runs · push_subscriptions · push_cooldowns</text>
         <!-- arrows to data -->
         <path d="M1060,356 L1060,772" marker-end="url(#arr)" stroke-dasharray="3 3"/>
@@ -172,6 +172,7 @@
 
         <!-- footer note -->
         <text x="90" y="896" stroke="none" fill="#5A6E7A" font-size="11.5">One trace id follows a command, webhook, or run step end to end. Full logs 30 days · metrics 13 months · audit 7 years, per plan §18.</text>
-        <text x="90" y="916" stroke="none" fill="#5A6E7A" font-size="11.5">Agent plane of /health reads from this diagram: spend vs budget (metered + reported), breaker state, runs today by host, live delegations, gate refusals, agent writes, stale learnings.</text>
+        <text x="90" y="916" stroke="none" fill="#5A6E7A" font-size="11.5">Agent plane of /health reads from this diagram: spend vs budget (metered + reported), breaker state, runs by host,</text>
+        <text x="90" y="934" stroke="none" fill="#5A6E7A" font-size="11.5">live delegations, gate refusals, agent writes, stale learnings.</text>
       </g>
     </svg>

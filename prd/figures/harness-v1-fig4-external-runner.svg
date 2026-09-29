@@ -25,7 +25,7 @@
         </g>
         <g stroke="none" fill="#5A6E7A" font-size="11">
           <text x="54" y="100">Claude Code adds the</text><text x="54" y="114">platform MCP server;</text><text x="54" y="128">Access login mints</text><text x="54" y="142" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" fill="#231F20">agent:ian/laptop</text>
-          <text x="236" y="100" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" fill="#231F20">poll_queue · claim_item</text><text x="236" y="114">lease 15 min · WIP limit</text><text x="236" y="128">routine: + delegation_id</text><text x="236" y="142">card: "claimed · external"</text>
+          <text x="236" y="100" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" fill="#231F20">poll_queue · claim_item</text><text x="236" y="114">lease 15 min · WIP</text><text x="236" y="128">needs delegation_id</text><text x="236" y="142">card says external</text>
           <text x="418" y="100">git worktree on</text><text x="418" y="114" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" fill="#231F20">harness/&lt;item&gt;</text><text x="418" y="128">skills already synced</text><text x="418" y="142">to the repo</text>
           <text x="600" y="100" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" fill="#231F20">resolve_context</text><text x="600" y="114" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" fill="#231F20">record_run_step</text><text x="600" y="128">each step renews the lease</text><text x="600" y="142">and reports tokens (their plan)</text>
           <text x="782" y="100">push branch · open PR</text><text x="782" y="114" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" fill="#231F20">submit_to_gate</text><text x="782" y="128">stage checks run</text><text x="782" y="142">item parks at Ship</text>
@@ -37,17 +37,17 @@
         <line x1="928" y1="105" x2="950" y2="105" stroke="#C97F14" stroke-width="2.2" marker-end="url(#arr4K)"/>
         <!-- failure path -->
         <path d="M666,150 L666,190 L302,190 L302,150" stroke="#5A6E7A" stroke-dasharray="5 4" marker-end="url(#arr4)"/>
-        <text x="484" y="184" text-anchor="middle" stroke="none" fill="#5A6E7A" font-size="11">laptop closes · lease expires · branch marked abandoned (wip: pushed at the warning) · next claim starts from the expected head</text>
+        <text x="484" y="184" text-anchor="middle" stroke="none" fill="#5A6E7A" font-size="11">laptop closes · lease expires · branch abandoned (wip: pushed at warning) · next claim starts from expected head</text>
         <!-- what is the same / different -->
         <rect x="40" y="216" width="520" height="90" rx="4" stroke="#C4D3DB" fill="#FFFFFF"/>
         <text x="56" y="238" stroke="none" fill="#231F20" font-weight="700" font-size="12">Same as a platform run</text>
         <text x="56" y="258" stroke="none" fill="#5A6E7A" font-size="11.5">verbs, gates, WIP, lease, event log, play-by-play, live updates,</text>
-        <text x="56" y="276" stroke="none" fill="#5A6E7A" font-size="11.5">written as agent:&lt;person&gt;/&lt;device&gt; as &lt;persona&gt;, via delegation if unattended,</text>
+        <text x="56" y="276" stroke="none" fill="#5A6E7A" font-size="11.5">identity agent:&lt;person&gt;/&lt;device&gt; as &lt;persona&gt;, delegation if unattended,</text>
         <text x="56" y="294" stroke="none" fill="#5A6E7A" font-size="11.5">and one CI test: every verb a Workflow can call, an external runner can call.</text>
         <rect x="580" y="216" width="520" height="90" rx="4" stroke="#C4D3DB" fill="#FFFFFF"/>
         <text x="596" y="238" stroke="none" fill="#231F20" font-weight="700" font-size="12">Different, and said so</text>
         <text x="596" y="258" stroke="none" fill="#5A6E7A" font-size="11.5">tokens are reported by the runner, not metered; cost basis is "subscription" on /health,</text>
         <text x="596" y="276" stroke="none" fill="#5A6E7A" font-size="11.5">git writes use the person's own credentials: branch protection + ship rule head</text>
-        <text x="596" y="294" stroke="none" fill="#5A6E7A" font-size="11.5">check guard the merge; a dead laptop means a released lease and an abandoned branch.</text>
+        <text x="596" y="294" stroke="none" fill="#5A6E7A" font-size="11.5">check guard the merge; a dead laptop = released lease, abandoned branch.</text>
       </g>
     </svg>
