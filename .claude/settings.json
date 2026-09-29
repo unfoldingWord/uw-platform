@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "uw-dev-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "unfoldingWord/uw-dev-skills"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "uw-dev@uw-dev-marketplace": true
+  }
+}
