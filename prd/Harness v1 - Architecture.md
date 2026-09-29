@@ -194,7 +194,7 @@ A persona picks an engine the way it picks a run shape. The engine is code behin
 | `claude-messages` | A tool-use loop over the MCP verbs, inside the Workflow step | No | API key, metered | Scout, Iterate, intake: personas with no filesystem or shell |
 | `claude-code-sandbox` | Claude Code headless in a Cloudflare Sandbox; official Cloudflare tutorial; key injected at the egress proxy | Yes | API key, metered | Builder |
 | `claude-managed-agent` | Anthropic hosts the loop, Cloudflare hosts the sandbox; API-driven with session budgets and GitHub PRs | Yes, theirs | API key + $0.08 per session-hour | Builder, when we would rather not own the loop |
-| `codex-sandbox` | Codex via the OpenAI Agents API executor in a Cloudflare Container; official tutorial | Yes | API key, metered | The second Reviewer identity on `high`-tier items: a different vendor, as the plan asks |
+| `codex-sandbox` | Codex via the OpenAI Agents API executor in a Cloudflare Container; official tutorial | Yes | API key, metered | The second Reviewer identity on `high`-tier items, eligible only when its resolved model provider differs from the first review's, as the plan asks |
 | `external` | The person's own Claude Code or Codex on their machine, connected to the MCP surface | No, theirs | Their subscription; tokens self-reported | Builder, Reviewer, anything a person chooses to lend time to |
 | `openrouter-messages` | The same tool-use loop as `claude-messages`, inside the Workflow step, with the model chosen per persona from OpenRouter's catalogue (a flash-class model such as GLM 5.3 flash) | No | OpenRouter API key, metered through AI Gateway | The always-on backbone and the platform's baseline model service: Scout, Iterate, intake, validators, Reviewer; any glue job that runs often and needs no frontier model |
 
@@ -228,7 +228,7 @@ A persona picks an engine the way it picks a run shape. The engine is code behin
 - One verb registry from `packages/contracts`: the plan's page, record, and role-gated verbs plus poll, claim, submit to gate, record step, health
 - No approve, merge, deploy, publish, or advance verbs
 - Three personas as configuration: Builder (scout pass as its first step), Reviewer, Iterate
-- Reviewer has its own identity and runs on the always-on tier by default, reading the diff through GitHub facts; `high` items add a second reviewer identity on another vendor; verdicts read back from GitHub
+- Reviewer has its own identity and runs on the always-on tier by default, reading the diff through GitHub facts; `high` items add a second reviewer identity whose resolved model provider must differ from the first review's; verdicts read back from GitHub
 - Two hosts, first class: a platform Workflow, or a staff member's own Claude Code over remote MCP with their own tokens; a scheduled routine on either host claims only under a live delegation
 - Six engines behind one seam; hosted Builder off by default, the always-on tier on OpenRouter
 - A synced harness skill in the repo so a local session knows the flow and pushes a WIP commit before a lease lapses
