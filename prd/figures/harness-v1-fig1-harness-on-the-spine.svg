@@ -13,7 +13,7 @@
         <text x="106" y="60" stroke="none" fill="#5A6E7A" font-size="11.5">SSR + islands · Flow · Board · Gates · Item · phone-width</text>
         <rect x="410" y="16" width="300" height="60" rx="4" stroke="#31ADE3" fill="#E3F3FB"/>
         <text x="426" y="40" stroke="none" fill="#231F20" font-weight="700">Zulip bot thread · keyed to the item</text>
-        <text x="426" y="60" stroke="none" fill="#5A6E7A" font-size="11.5">v1 · the same wake, and a place to talk about the card</text>
+        <text x="426" y="60" stroke="none" fill="#5A6E7A" font-size="11.5">v1 · the same wake, and a place to talk</text>
         <rect x="730" y="16" width="200" height="60" rx="4" stroke="#5A6E7A" stroke-dasharray="5 4" fill="#FFFFFF"/>
         <text x="746" y="40" stroke="none" fill="#5A6E7A" font-weight="700">Native phone app</text>
         <text x="746" y="60" stroke="none" fill="#5A6E7A" font-size="11.5">later · contract is mobile-ready</text>

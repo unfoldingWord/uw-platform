@@ -118,6 +118,6 @@
         <!-- what a stage row is -->
         <rect x="40" y="398" width="1042" height="52" rx="4" stroke="#C4D3DB" fill="#FFFFFF"/>
         <text x="56" y="418" stroke="none" fill="#231F20" font-size="11.5" font-weight="700">A stage is a row, not code:</text>
-        <text x="56" y="438" stroke="none" fill="#5A6E7A" font-size="10.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">harness_stages(key, position, agent_pickup, exit_gate, connector, wip_limit, instructions, validators[], feeds[]) · CHECK (connector = 'none' OR exit_gate = 'human_approval')</text>
+        <text x="56" y="438" stroke="none" fill="#5A6E7A" font-size="10" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" textLength="1000" lengthAdjust="spacingAndGlyphs">harness_stages(key, position, agent_pickup, exit_gate, connector, wip_limit, instructions_page_id, validators[], feeds[]) · CHECK (connector = 'none' OR exit_gate = 'human_approval')</text>
       </g>
     </svg>

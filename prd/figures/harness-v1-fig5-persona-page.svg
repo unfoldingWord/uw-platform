@@ -12,8 +12,9 @@
           <text x="190" y="80">agent:grant-writer</text><text x="340" y="80" fill="#5A6E7A">token minted on activation · grants ≤ owner's</text>
           <text x="190" y="102">jesse</text>
           <text x="190" y="124">Grant responses · filter: any funder</text>
-          <text x="190" y="146">☑ poll_queue ☑ claim_item ☑ read_page ☑ resolve_context ☑ write_page ☑ submit_to_gate</text>
-          <text x="190" y="164" font-size="10.5">☑ search_pages ☑ query_entities ☐ list_gifts <tspan fill="#5A6E7A">(finance role)</tspan>  <tspan fill="#B23A3A">approve · merge · deploy · publish — not offered</tspan></text>
+          <text x="190" y="146" font-size="10">☑ poll_queue ☑ claim_item ☑ read_page ☑ resolve_context ☑ write_page ☑ submit_to_gate</text>
+          <text x="190" y="160" font-size="10">☑ search_pages ☑ query_entities ☐ list_gifts <tspan fill="#5A6E7A">(needs the finance role)</tspan></text>
+          <text x="190" y="174" font-size="10" fill="#B23A3A">approve · merge · deploy · publish: not offered to any persona</text>
           <text x="190" y="190">workflow-run <tspan fill="#5A6E7A">· from the run-shape registry: workflow-run · external-run · (a new shape is code)</tspan></text>
           <text x="190" y="212">openrouter-messages · glm-5.3-flash · $40 / month</text>
           <text x="190" y="234">draft <tspan fill="#5A6E7A">(one word; the narrowest opens nothing)</tspan></text>
