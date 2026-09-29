@@ -1,0 +1,11 @@
+---
+status: accepted
+date: 2026-09-29
+---
+# The Ship gate is a Postgres invariant, and the ship rule is a pure function over facts
+
+Two decisions that only work together. First, a stage with an external effect cannot exit without a human: `harness_stages.connector` and `exit_gate` are `NOT NULL`, and `CHECK (connector = 'none' OR exit_gate = 'human_approval')` holds on insert and update. Templates stay data; the invariant does not, and a template author, an admin or an agent with page-writing rights cannot lower Ship's gate because the database refuses the row. A property test walks every template's paths, loop edges included, and fails if any path reaches an external effect without crossing a human gate. Second, whether the Ship button is enabled is decided by a pure function whose inputs are GitHub facts about the head commit, the item's risk tier and domains, and the approver's principal with its resolved grants. The item's own narrative record is not an input. Its output is advance, or a refusal from a closed set. When a decision is recorded, the command locks and re-reads the approver's grant rows with `SELECT ... FOR SHARE` in the same transaction as the `gate_decisions` insert, so a revocation either commits first and the re-read refuses, or waits behind the gate.
+
+The review that produced this found the earlier draft's conflict, "a stage is a row, not code" against "the gate is the absence of a route", and the Codex review found that a bare implication passes on null and that a co-transactional read is not atomic under read committed. Both are now in the constraint text and the lock.
+
+**Consequences.** The ship rule takes exactly one approver principal; an item touching two risk domains needs one approver holding both grants, and a quorum is deferred with its shape stated in the spec. Stage rows are edited only by an admin command, never through a page. Two tests stay on real Postgres: the migration test that inserts `('merge', 'checks')` and is refused, and the race test in both orders. Source: spec "The gate is a constraint, not a column value", "Risk tier in the ship rule", D8, D19.
