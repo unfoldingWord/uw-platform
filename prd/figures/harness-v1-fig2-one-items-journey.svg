@@ -8,7 +8,7 @@
         <text x="20" y="62" stroke="none" fill="#5A6E7A" font-size="11" font-weight="700" letter-spacing="1.5">WHO</text>
         <g stroke="none" fill="#231F20" font-size="11.5" font-weight="700">
           <text x="99" y="82" text-anchor="middle">person</text>
-          <text x="231" y="82" text-anchor="middle">Scout</text>
+          <text x="231" y="82" text-anchor="middle">Builder</text>
           <text x="363" y="82" text-anchor="middle">Builder</text>
           <text x="495" y="82" text-anchor="middle">Builder</text>
           <text x="627" y="82" text-anchor="middle">CI + Reviewer</text>
@@ -18,13 +18,13 @@
         </g>
         <g stroke="none" fill="#5A6E7A" font-size="10.5">
           <text x="99" y="98" text-anchor="middle">writes the package</text>
-          <text x="231" y="98" text-anchor="middle">premise vs current data</text>
+          <text x="231" y="98" text-anchor="middle">scout pass first</text>
           <text x="363" y="98" text-anchor="middle">plan → hold if unsure</text>
           <text x="495" y="98" text-anchor="middle">worktree lane</text>
-          <text x="627" y="98" text-anchor="middle">3 rounds then a person</text>
+          <text x="627" y="98" text-anchor="middle">reviewers by tier</text>
           <text x="759" y="98" text-anchor="middle" fill="#C97F14">merge · deploy on approval</text>
           <text x="891" y="98" text-anchor="middle">watches deploy + measures</text>
-          <text x="1023" y="98" text-anchor="middle">writes learning · revisions</text>
+          <text x="1023" y="98" text-anchor="middle">learning attached</text>
         </g>
 
         <!-- stage boxes y=120 h=64 -->
@@ -57,7 +57,7 @@
           <text x="627" y="170" text-anchor="middle">exit: checks</text>
           <text x="759" y="170" text-anchor="middle" fill="#C97F14" font-weight="600">exit: human_approval</text>
           <text x="891" y="170" text-anchor="middle">exit: checks</text>
-          <text x="1023" y="170" text-anchor="middle">exit: none</text>
+          <text x="1023" y="170" text-anchor="middle">exit: learning</text>
         </g>
         <!-- forward arrows -->
         <g marker-end="url(#arr2)">
@@ -66,7 +66,7 @@
         </g>
         <!-- loop: Close -> Scope (regular tweak) above -->
         <path d="M1023,120 L1023,44 L231,44 L231,120" stroke="#014263" stroke-width="1.6" marker-end="url(#arr2)"/>
-        <text x="627" y="40" text-anchor="middle" stroke="none" fill="#014263" font-size="11.5" font-weight="700">regular tweak · next revision enters Scope · unattended beats carry their creator's authority</text>
+        <text x="627" y="40" text-anchor="middle" stroke="none" fill="#014263" font-size="11.5" font-weight="700">regular tweak → Scope · unattended beats need a delegation: approver's grant · capability · expiry</text>
         <!-- loop: Validate -> Package (occasional tweak) below, dashed -->
         <path d="M891,184 L891,214 L99,214 L99,184" stroke="#C97F14" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#arr2K)"/>
         <text x="495" y="210" text-anchor="middle" stroke="none" fill="#C97F14" font-size="11.5" font-weight="700">occasional tweak · a new package version · always human_approval</text>
@@ -118,6 +118,6 @@
         <!-- what a stage row is -->
         <rect x="40" y="398" width="1042" height="52" rx="4" stroke="#C4D3DB" fill="#FFFFFF"/>
         <text x="56" y="418" stroke="none" fill="#231F20" font-size="11.5" font-weight="700">A stage is a row, not code:</text>
-        <text x="56" y="438" stroke="none" fill="#5A6E7A" font-size="11.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">harness_stages(key, position, agent_pickup, exit_gate, wip_limit, instructions_page_id, feeds[])   — the plan's queue_stages plus feeds</text>
+        <text x="56" y="438" stroke="none" fill="#5A6E7A" font-size="10" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" textLength="1000" lengthAdjust="spacingAndGlyphs">harness_stages(key, position, agent_pickup, exit_gate, connector, wip_limit, instructions_page_id, validators[], feeds[]) · CHECK (connector = 'none' OR exit_gate = 'human_approval')</text>
       </g>
     </svg>
