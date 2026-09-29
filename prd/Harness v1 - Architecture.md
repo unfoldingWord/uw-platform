@@ -9,7 +9,7 @@
 **Revision:** v1.0 reviewed by Jesse 2026-09-28 · v1.1 applies every item of that review in one revision; see "Review responses" at the end
 **Sits under:** Platform Architecture Plan §1, §6, §8, §18 · Key Visuals fig. 2 and 5 · BML Harness
 
-> **Provenance.** This file began as the markdown form of the artifact Jesse reviewed on 2026-09-28 (https://claude.ai/artifact/EpMRSpB9mKa1Pr2kRENrfT); that unchanged v1.0 text is commit `80d4c80`. Jesse's review is in `Harness v1 - Architecture Review.md`, and v1.1 is the text with that review applied. The figures in `figures/` are still the v1.0 drawings and are regenerated once v1.1 merges; where a figure and the text disagree (the phone app, the fifth persona name, the verb list), the text wins.
+> **Provenance.** This file began as the markdown form of the artifact Jesse reviewed on 2026-09-28 (https://claude.ai/artifact/EpMRSpB9mKa1Pr2kRENrfT); that unchanged v1.0 text is commit `80d4c80`. Jesse's review is in `Harness v1 - Architecture Review.md`, and v1.1 is the text with that review applied. The figures in `figures/` match v1.1; where a figure and the text ever disagree, the text wins.
 
 ## How to read this
 
