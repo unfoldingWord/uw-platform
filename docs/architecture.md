@@ -32,7 +32,7 @@ apps/uw-ingest      → contracts, core, db                   composition root
 sim/                → harness, contracts, core              composition root
 ```
 
-The two apps and the sim are composition roots: they construct the engine with adapters and nothing constructs them. `packages/harness` is the pure layer: it may import `packages/contracts` and `packages/core` types and nothing with side effects. Everything durable is in Postgres through an adapter; nothing in the engine knows it is Postgres.
+`apps/uw-app` and `sim/` are the composition roots that construct the engine with adapters. `apps/uw-ingest` is a root too, but it never touches the engine: it verifies webhooks and enqueues, and the queue consumer inside `uw-app` is what hands the event to the engine. `packages/harness` is the pure layer: it may import `packages/contracts` and `packages/core` types and nothing with side effects. Everything durable is in Postgres through an adapter; nothing in the engine knows it is Postgres.
 
 ## The engine over ports
 
