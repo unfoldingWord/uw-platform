@@ -17,16 +17,16 @@
         <rect x="540" y="30" width="220" height="76" rx="4" stroke="#014263" stroke-width="1.8" fill="#E6EEF2"/>
         <text x="556" y="53" stroke="none" fill="#231F20" font-weight="800">Item at Ship</text>
         <text x="556" y="72" stroke="none" fill="#5A6E7A" font-size="11.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">waiting_on: human</text>
-        <text x="556" y="92" stroke="none" fill="#5A6E7A" font-size="11.5">run hibernates · push "waiting on you"</text>
+        <text x="556" y="92" stroke="none" fill="#5A6E7A" font-size="11.5">run hibernates · notify: web push · Zulip</text>
         <line x1="480" y1="68" x2="540" y2="68" marker-end="url(#arr3)"/>
         <!-- person -->
         <rect x="540" y="160" width="220" height="56" rx="4" stroke="#C97F14" stroke-width="2" fill="#FBEFDC"/>
-        <text x="556" y="183" stroke="none" fill="#231F20" font-weight="700">A person · web or phone</text>
+        <text x="556" y="183" stroke="none" fill="#231F20" font-weight="700">A person · from a push or Zulip</text>
         <text x="556" y="202" stroke="none" fill="#5A6E7A" font-size="11.5">approve · reject · take over · override + reason</text>
         <!-- gate_decisions -->
         <rect x="820" y="160" width="260" height="56" rx="4" stroke="#C97F14" fill="#FFFFFF"/>
         <text x="836" y="183" stroke="none" fill="#231F20" font-weight="700" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" font-size="12">gate_decisions</text>
-        <text x="836" y="202" stroke="none" fill="#5A6E7A" font-size="11.5">actor, decision, reason, evidence · audit 7 y</text>
+        <text x="836" y="202" stroke="none" fill="#5A6E7A" font-size="11.5">actor · decision · reason · grants locked · 7 y</text>
         <line x1="760" y1="188" x2="820" y2="188" stroke="#C97F14" stroke-width="2.2" marker-end="url(#arr3K)"/>
         <text x="790" y="180" stroke="none" fill="#C97F14" font-size="10.5" text-anchor="middle" font-weight="700">command</text>
         <!-- engine advances -->
@@ -42,10 +42,10 @@
         <text x="455" y="292" stroke="none" fill="#B23A3A" font-size="11.5" font-weight="700" text-anchor="middle">no route exists for an agent identity · the attempt is an event: gate_refused_to_agent</text>
         <!-- ship rule -->
         <rect x="40" y="140" width="440" height="100" rx="4" stroke="#014263" fill="#FFFFFF"/>
-        <text x="56" y="163" stroke="none" fill="#231F20" font-weight="700">Ship rule · a pure function over GitHub facts</text>
+        <text x="56" y="163" stroke="none" fill="#231F20" font-weight="700">Ship rule · a pure function over GitHub facts + tier + approver</text>
         <text x="56" y="183" stroke="none" fill="#5A6E7A" font-size="11.5">PR open · not draft · head = expected commit · CI green on that commit</text>
-        <text x="56" y="201" stroke="none" fill="#5A6E7A" font-size="11.5">Reviewer identity approved that commit · the item record is not an input</text>
-        <text x="56" y="225" stroke="none" fill="#231F20" font-size="11.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">→ advance | refuse(reason ∈ closed set)</text>
+        <text x="56" y="201" stroke="none" fill="#5A6E7A" font-size="11.5">reviewers ≥ tier (2 vendors if high) · approver holds each domain's grant</text>
+        <text x="56" y="225" stroke="none" fill="#231F20" font-size="11.5" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace">→ advance | refuse(reason ∈ closed set) · record not an input</text>
         <path d="M480,190 L510,190 L510,106 L560,106" marker-end="url(#arr3)"/>
         <text x="520" y="134" stroke="none" fill="#231F20" font-size="11">evaluated before the button is enabled</text>
         <text x="40" y="316" stroke="none" fill="#5A6E7A" font-size="11.5">An override is allowed, because a person may overrule the reviewers. The override and its reason ride into the audit trail with the merge, exactly as the prototype's merge button says.</text>
