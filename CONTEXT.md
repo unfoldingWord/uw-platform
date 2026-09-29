@@ -105,7 +105,7 @@ The code behind one seam that talks to a model vendor: `claude-messages`, `claud
 _Avoid_: model (that is one field of the persona), provider, backend, LLM
 
 **Always-on tier**:
-The hosted runs that happen often and need no frontier model: scout passes, Iterate reads, intake, validators. They run on `openrouter-messages` on a flash-class model.
+The hosted runs that happen often and need no frontier model: scout passes, Iterate reads, intake, validators, and Reviewer by default (spec D21). They run on `openrouter-messages` on a cheap open model.
 _Avoid_: background jobs, cheap tier, batch
 
 **Run step**:

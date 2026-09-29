@@ -19,7 +19,20 @@ sim/                    memory adapters for every port, fixture harnesses, scena
 infra/                  wrangler configs, Access policies, environments; declared, never clicked
 ```
 
-Imports go down only, and dependency-cruiser and ESLint enforce it. `packages/harness` is the pure layer: it may import `packages/contracts` and `packages/core` types and nothing with side effects. Everything durable is in Postgres through an adapter; nothing in the engine knows it is Postgres.
+The listing is by role, not by import direction. Dependencies form this DAG, and dependency-cruiser and ESLint enforce exactly it:
+
+```
+packages/contracts  → nothing
+packages/core       → contracts
+packages/db         → contracts, core
+packages/ui         → nothing
+packages/harness    → contracts, core            (types only; no side effects)
+apps/uw-app         → harness, db, contracts, core, ui      composition root
+apps/uw-ingest      → contracts, core, db                   composition root
+sim/                → harness, contracts, core              composition root
+```
+
+The two apps and the sim are composition roots: they construct the engine with adapters and nothing constructs them. `packages/harness` is the pure layer: it may import `packages/contracts` and `packages/core` types and nothing with side effects. Everything durable is in Postgres through an adapter; nothing in the engine knows it is Postgres.
 
 ## The engine over ports
 
@@ -70,7 +83,7 @@ Every durable value has one writer. The Drizzle schema declares every table with
 | `measurements` | the Validate stage | public-side sources only in v1 |
 | `pages`, `page_versions` | the page API and `write_page` | plan §2; harness stage rows are not pages |
 | `role_grants` | the grants command | plan §4; audit-logged |
-| `gh_*` | `uw-ingest` and the nightly sweep | read model; GitHub is the source of truth |
+| `gh_*` | the GitHub read-model module in `uw-app`, called by both the webhook consumer and the nightly sweep | one writer, two entry points; GitHub is the source of truth |
 | `push_subscriptions`, `push_cooldowns` | the notifier | per person |
 
 ## Events are the spine
@@ -115,7 +128,7 @@ A rule that lives only in prose drifts. Each has a check in `verify` and in CI, 
 
 | Rule | Check |
 |---|---|
-| Imports go down the tower only | dependency-cruiser and ESLint `no-restricted-imports` |
+| Imports follow the dependency DAG above | dependency-cruiser and ESLint `no-restricted-imports` |
 | `packages/harness` is pure | `no-restricted-globals` and `no-restricted-imports` in `packages/harness/**`; its tsconfig has no Workers types |
 | A vendor SDK is named in one directory | a text gate refuses `@anthropic-ai`, `openai`, `openrouter` imports outside `apps/uw-app/engines/<engine>/` |
 | No agent route or tool writes gate decisions | a static test over the route table and tool handlers, plus a runtime test per identity kind |
