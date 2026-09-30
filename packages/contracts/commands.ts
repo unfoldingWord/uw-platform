@@ -30,7 +30,7 @@ export const commandNameSchema = z.enum(commandNames);
 export const overrideCommandSchema = z.object({
   command: z.literal('override'),
   requestId,
-  reason: z.string().min(1),
+  reason: z.string().refine((reason) => reason.trim().length > 0, 'an override needs a reason'),
 });
 
 export const commandSchema = z.discriminatedUnion('command', [
@@ -54,4 +54,5 @@ export const commandSchema = z.discriminatedUnion('command', [
 ]);
 
 export type CommandName = z.infer<typeof commandNameSchema>;
+export type OverrideCommand = z.infer<typeof overrideCommandSchema>;
 export type Command = z.infer<typeof commandSchema>;

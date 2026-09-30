@@ -29,6 +29,7 @@ export type ExitGate = z.infer<typeof exitGateSchema>;
 export type AgentPickup = z.infer<typeof agentPickupSchema>;
 export type RiskTier = z.infer<typeof riskTierSchema>;
 export type RiskDomain = z.infer<typeof riskDomainSchema>;
+export type RiskDomains = z.infer<typeof riskDomainsSchema>;
 export type EvidenceLabel = z.infer<typeof evidenceLabelSchema>;
 export type Role = z.infer<typeof roleSchema>;
 export type Scope = z.infer<typeof scopeSchema>;

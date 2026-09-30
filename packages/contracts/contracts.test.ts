@@ -9,6 +9,7 @@ import { commandSchema } from './commands.ts';
 import { outcomeSchema } from './outcomes.ts';
 import { eventNameSchema } from './events.ts';
 import * as closedSets from './closed-sets.ts';
+import * as contracts from './index.ts';
 
 const fixtureRoot = join(import.meta.dirname, 'fixtures');
 
@@ -41,6 +42,14 @@ describe('golden fixtures', () => {
       expect(result.error).toBeInstanceOf(z.ZodError);
     });
   }
+
+  it('registers every exported schema', () => {
+    const registered = new Set(Object.values(schemaRegistry));
+    const unregistered = Object.entries(contracts)
+      .filter(([, value]) => value instanceof z.ZodType && !registered.has(value))
+      .map(([name]) => name);
+    expect(unregistered).toEqual([]);
+  });
 
   it('has a fixture directory only for registered schemas', () => {
     expect(readdirSync(fixtureRoot).sort()).toEqual(Object.keys(schemaRegistry).sort());
