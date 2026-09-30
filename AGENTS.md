@@ -166,9 +166,9 @@ Done means: all nine steps completed, `pnpm verify` green, no shared root change
 
 ## 8. Review and merge
 
-- **Codex reviews every PR** and posts one exit condition per round. Answer exactly that condition, in one push per round. Unrelated changes restart the review.
+- **Codex reviews every PR**, run by a person from the Codex CLI, so a PR waits at "ready for review" until someone runs it. Each round it posts findings by severity, inline comments, and a verdict. Answer every finding it lists, in one push per round. Unrelated changes restart the review.
 - **An approved PR is frozen.** Push only if the reviewer requested changes or the PR conflicts with `main`. Record non-blocking notes (P3, follow-up, hygiene) as follow-up issues, never as pushes to an approved PR.
-- **A human merges, by squash.** Never merge your own PR. Never merge from the "Approved" badge alone; branch protection requires the named CI checks on the current head, one approval, and an up-to-date branch, and dismisses stale approvals on new commits.
+- **A human merges, by squash.** Never merge your own PR. Codex posts from a person's account. When that account authored the PR, GitHub allows only a comment, so Codex's verdict is a comment, not a formal approval, and the merging human reads the verdict, never the badge. When a different account runs Codex, it can submit a formal approval, and that approval counts toward the one branch protection requires. Never merge from the "Approved" badge alone; branch protection requires the named CI checks on the current head, one approval, and an up-to-date branch, and dismisses stale approvals on new commits.
 - **Do not subscribe to the PR.** Someone else updates and merges it.
 - **Decisions go on the PR**, as a comment from your own account. The DRIs are Ian and Jesse; the reviewer acts only on a decision it can see there.
 - **Hot files.** `packages/db/schema.ts`, `packages/contracts/` and the event vocabulary are the files most likely to conflict. They change only in their own PRs, and the M2 issues that touch the schema are worked in order, tables first.
