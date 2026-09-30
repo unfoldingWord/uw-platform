@@ -1,0 +1,55 @@
+name: Deploy Production
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  checks: read
+
+jobs:
+  production-gate:
+    name: production-gate
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      ACTOR: ${{ github.actor }}
+      SHA: ${{ github.sha }}
+      REF: ${{ github.ref }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuse a ref that is not main or a v* tag
+        run: |
+          case "$REF" in
+            refs/heads/main|refs/tags/v*) echo "Ref $REF is deployable." ;;
+            *) echo "::error::Production deploys only from main or a v* tag, not $REF."; exit 1 ;;
+          esac
+      - name: Refuse unless the actor is listed in main's production-deployers
+        run: bash .github/scripts/require-production-deployer.sh "$REPO" "$ACTOR"
+      - name: Refuse unless every CI job succeeded on this commit
+        run: bash .github/scripts/require-green-ci.sh "$REPO" "$SHA"
+
+  deploy-production:
+    name: deploy-production
+    needs: [production-gate]
+    runs-on: ubuntu-latest
+    env:
+      SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Deploy production
+        working-directory: apps/uw-app
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: >-
+          pnpm exec wrangler deploy --config ../../infra/uw-app/wrangler.toml --env production
+          --var "COMMIT_SHA:$SHA"

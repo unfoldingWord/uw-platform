@@ -126,6 +126,7 @@ export default {
   ],
   options: {
     doNotFollow: { path: 'node_modules' },
+    exclude: { path: '/dist/' },
     tsPreCompilationDeps: true,
     enhancedResolveOptions: {
       exportsFields: ['exports'],

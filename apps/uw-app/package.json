@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "check": "tsc --noEmit -p tsconfig.json",
+    "build": "wrangler deploy --dry-run --config ../../infra/uw-app/wrangler.toml --env staging --outdir \"$PWD/dist\"",
     "dev": "wrangler dev --config ../../infra/uw-app/wrangler.toml --env staging",
     "deploy:staging": "wrangler deploy --config ../../infra/uw-app/wrangler.toml --env staging --var COMMIT_SHA:$(git rev-parse HEAD)"
   },

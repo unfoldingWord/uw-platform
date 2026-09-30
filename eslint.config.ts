@@ -63,7 +63,7 @@ const networkGlobals = [
 }));
 
 export default defineConfig([
-  { ignores: ['**/node_modules/**', '**/.wrangler/**', 'prd/**', 'ui-design/**'] },
+  { ignores: ['**/node_modules/**', '**/.wrangler/**', '**/dist/**', 'prd/**', 'ui-design/**'] },
   js.configs.recommended,
   tseslint.configs.recommended,
   security.configs.recommended,
