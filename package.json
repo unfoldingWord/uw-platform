@@ -16,7 +16,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "knip": "knip",
-    "architecture": "depcruise apps packages --config .dependency-cruiser.mjs",
+    "architecture": "node tools/architecture/check-architecture.ts",
     "test": "vitest run",
     "build": "pnpm -r --if-present run build",
     "audit:prod": "pnpm audit --prod --audit-level high",

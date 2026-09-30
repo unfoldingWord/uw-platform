@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import config from '../../.dependency-cruiser.mjs';
+import { architectureRoots, presentRoots } from './roots.ts';
 
 const roots: string[] = [];
 
@@ -17,12 +18,20 @@ function tree(files: Record<string, string>): string {
     '@anthropic-ai/sdk',
     '@openrouter/sdk',
     'wrangler',
+    'eslint',
+    'vitest',
   ];
   for (const name of stubs) {
     files[`node_modules/${name}/index.js`] = 'export default 1;';
     files[`node_modules/${name}/package.json`] = JSON.stringify({ name, main: 'index.js' });
   }
-  for (const directory of ['apps', 'packages', 'sim']) {
+  files['node_modules/typed/index.js'] = 'export default 1;';
+  files['node_modules/typed/index.d.ts'] = 'export default 1;';
+  files['node_modules/typed/package.json'] = JSON.stringify({
+    name: 'typed',
+    exports: { '.': { types: './index.d.ts', default: './index.js' } },
+  });
+  for (const directory of architectureRoots) {
     mkdirSync(join(root, directory), { recursive: true });
   }
   for (const [path, source] of Object.entries(files)) {
@@ -35,7 +44,7 @@ function tree(files: Record<string, string>): string {
 async function violations(files: Record<string, string>): Promise<string[]> {
   const root = tree(files);
   const result = await cruise(
-    ['apps', 'packages', 'sim'],
+    architectureRoots,
     { ...config.options, baseDir: root, validate: true, ruleSet: config },
     undefined,
   );
@@ -65,6 +74,30 @@ const refusals: [string, string, string, string][] = [
     'packages/harness/a.ts',
     "import '../db/b.ts';",
     'harness-imports-contracts-and-core-only',
+  ],
+  [
+    'harness into a root dependency',
+    'packages/harness/a.ts',
+    "import 'eslint';",
+    'harness-imports-contracts-and-core-only',
+  ],
+  [
+    'harness into a dependency that resolves to its types',
+    'packages/harness/a.ts',
+    "import 'typed';",
+    'harness-imports-contracts-and-core-only',
+  ],
+  [
+    'a harness test into a root dependency',
+    'packages/harness/a.test.ts',
+    "import 'eslint';",
+    'harness-tests-import-contracts-core-and-vitest-only',
+  ],
+  [
+    'a contracts test into apps',
+    'packages/contracts/a.test.ts',
+    "import '../../apps/uw-app/b.ts';",
+    'contracts-imports-nothing',
   ],
   ['harness into Hono', 'packages/harness/a.ts', "import 'hono';", 'harness-is-pure'],
   ['harness into Drizzle', 'packages/harness/a.ts', "import 'drizzle-orm';", 'harness-is-pure'],
@@ -152,6 +185,15 @@ describe('the dependency rules', () => {
     ).toContain(rule);
   });
 
+  it('accepts a harness test that imports Vitest and core', async () => {
+    expect(
+      await violations({
+        'packages/core/index.ts': leaf,
+        'packages/harness/a.test.ts': "import 'vitest'; import '../core/index.ts';",
+      }),
+    ).toEqual([]);
+  });
+
   it('refuses a circular import', async () => {
     expect(
       await violations({
@@ -167,5 +209,15 @@ describe('the dependency rules', () => {
         'apps/uw-app/engines/claude-messages/a.ts': "import '@anthropic-ai/sdk';",
       }),
     ).toEqual([]);
+  });
+});
+
+describe('the architecture roots', () => {
+  it('cruise the sim and the tests alongside apps and packages', () => {
+    expect(architectureRoots).toEqual(['apps', 'packages', 'sim', 'tests']);
+  });
+
+  it('skip a root that does not exist yet', () => {
+    expect(presentRoots((root) => root !== 'sim')).toEqual(['apps', 'packages', 'tests']);
   });
 });

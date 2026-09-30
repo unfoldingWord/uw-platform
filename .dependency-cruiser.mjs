@@ -17,6 +17,9 @@ const impure = [
   '^(node:)?(http|https|http2|net|tls|dns|dgram)$',
 ];
 
+const harnessMayImport = '^packages/(harness|contracts|core)/';
+const testFile = '\\.test\\.ts$';
+
 const forbidden = (name, comment, from, to) => ({
   name,
   comment,
@@ -58,12 +61,20 @@ export default {
       '^packages/ui/',
       '^(apps|sim|packages/(contracts|core|db|harness))/',
     ),
-    forbidden(
-      'harness-imports-contracts-and-core-only',
-      'packages/harness imports nothing from apps, db, ui or the sim.',
-      '^packages/harness/',
-      '^(apps|sim|packages/(db|ui))/',
-    ),
+    {
+      name: 'harness-imports-contracts-and-core-only',
+      comment: 'packages/harness imports packages/contracts and packages/core and nothing else.',
+      severity: 'error',
+      from: { path: '^packages/harness/', pathNot: testFile },
+      to: { pathNot: harnessMayImport },
+    },
+    {
+      name: 'harness-tests-import-contracts-core-and-vitest-only',
+      comment: 'A packages/harness test imports what the harness may, plus Vitest.',
+      severity: 'error',
+      from: { path: `^packages/harness/.*${testFile}` },
+      to: { pathNot: [harnessMayImport, npm('vitest')] },
+    },
     forbidden(
       'harness-is-pure',
       'packages/harness imports nothing from Workers, Drizzle, a vendor SDK or the network.',
@@ -104,6 +115,6 @@ export default {
       conditionNames: ['import', 'require', 'node', 'default', 'types'],
       mainFields: ['module', 'main', 'types'],
     },
-    exclude: { path: ['\\.test\\.ts$', '\\.d\\.ts$'] },
+    exclude: { path: ['^(apps|packages|sim|tests)/.*\\.d\\.ts$'] },
   },
 };
