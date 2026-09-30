@@ -20,6 +20,7 @@ function tree(files: Record<string, string>): string {
     'wrangler',
     'eslint',
     'vitest',
+    'zod',
   ];
   for (const name of stubs) {
     files[`node_modules/${name}/index.js`] = 'export default 1;';
@@ -98,6 +99,30 @@ const refusals: [string, string, string, string][] = [
     'packages/harness/a.test.ts',
     "import 'eslint';",
     'harness-tests-import-contracts-core-and-vitest-only',
+  ],
+  [
+    'contracts into the network',
+    'packages/contracts/a.ts',
+    "import 'node:https';",
+    'contracts-imports-zod-only',
+  ],
+  [
+    'contracts into node:fs',
+    'packages/contracts/a.ts',
+    "import 'node:fs';",
+    'contracts-imports-zod-only',
+  ],
+  [
+    'contracts into Hono',
+    'packages/contracts/a.ts',
+    "import 'hono';",
+    'contracts-imports-zod-only',
+  ],
+  [
+    'a contracts test into the network',
+    'packages/contracts/a.test.ts',
+    "import 'node:https';",
+    'contracts-tests-import-zod-vitest-and-fixture-reads-only',
   ],
   [
     'a contracts test into apps',
@@ -192,15 +217,6 @@ describe('the dependency rules', () => {
     ).toContain(rule);
   });
 
-  it('accepts a harness test that imports Vitest and core', async () => {
-    expect(
-      await violations({
-        'packages/core/index.ts': leaf,
-        'packages/harness/a.test.ts': "import 'vitest'; import '../core/index.ts';",
-      }),
-    ).toEqual([]);
-  });
-
   it('refuses a circular import', async () => {
     expect(
       await violations({
@@ -209,8 +225,29 @@ describe('the dependency rules', () => {
       }),
     ).toContain('no-circular');
   });
+});
 
-  it('accepts a vendor SDK inside an engine directory', async () => {
+describe('the dependency rules allow', () => {
+  it('a harness test that imports Vitest and core', async () => {
+    expect(
+      await violations({
+        'packages/core/index.ts': leaf,
+        'packages/harness/a.test.ts': "import 'vitest'; import '../core/index.ts';",
+      }),
+    ).toEqual([]);
+  });
+
+  it('contracts on zod and a contracts test reading its fixtures', async () => {
+    expect(
+      await violations({
+        'packages/contracts/index.ts': "import 'zod'; export const value = 1;",
+        'packages/contracts/a.test.ts':
+          "import 'vitest'; import 'node:fs'; import 'node:path'; import 'zod'; import './index.ts';",
+      }),
+    ).toEqual([]);
+  });
+
+  it('a vendor SDK inside an engine directory', async () => {
     expect(
       await violations({
         'apps/uw-app/engines/claude-messages/a.ts': "import '@anthropic-ai/sdk';",
