@@ -7,6 +7,11 @@
     "check": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@uw/core": "workspace:*"
+    "@uw/core": "workspace:*",
+    "hono": "^4.13.11"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260930.1",
+    "wrangler": "^4.144.0"
   }
 }
