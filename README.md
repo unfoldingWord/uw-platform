@@ -22,11 +22,12 @@ A pnpm workspace on Node 22, TypeScript strict in every package through one `tsc
 | `apps/uw-app/` | `@uw/uw-app` | The Hono monolith on Workers: SSR pages and islands, command API, MCP surface, live hub, Workflows, queue consumer, crons. The harness runs here as part of the `agents` module |
 | `apps/uw-ingest/` | `@uw/uw-ingest` | Public webhooks (GitHub, later Stripe and Zulip): signature verification and enqueue, nothing else |
 | `packages/core/` | `@uw/core` | `dates.ts`, the one `formatDate`/`parseDate` pair and the shared Zod ISO date schema (plan §0); `modules.ts`, the module registry (plan §14). `acl.ts` lands with the ACL work |
-| `packages/db/` | `@uw/db` | The Drizzle schema, the only schema, and its migrations. Empty until #7 |
+| `packages/db/` | `@uw/db` | `schema.ts`, the only schema, holding no table yet; `declarations.ts`, `declareTable`, which every table goes through to state its `classification` and `offline_eligibility` (plan §2.6); `client.ts`, the factory `uw-app` calls with the Hyperdrive connection string; `migrate.ts`, the direct-connection runner, not exported, used only by `pnpm db:migrate`; `migrations/`, generated SQL and hand-written SQL in one journal |
 | `packages/contracts/` | `@uw/contracts` | Commands, events, outcomes and the verb registry as Zod. Depends on no other workspace package. Empty until #13 and #14 |
 | `packages/harness/` | `@uw/harness` | The engine: pure TypeScript over ports. Empty until the engine issues land; its tsconfig has no Workers types |
 | `tools/lint/` | | The custom gates: `uw/no-ad-hoc-dates`, `uw/no-comments`, the vendor-SDK text gate, and the `lint:dates` grep |
 | `tools/architecture/` | | Tests that prove each dependency rule refuses what it should |
+| `tools/db/` | | The drift check: `drizzle-kit generate` against a copy of the committed migrations, run by `pnpm test`, which fails when `schema.ts` changed without a migration |
 
 `infra/` (wrangler configs, Access policies, R2 lifecycle, Neon branches, the drift detector, plan §19) is reserved for #5.
 
@@ -46,9 +47,11 @@ Every script is a root script; a package adds only the `check` and `build` it ne
 | `pnpm format` / `pnpm format:check` | Prettier, the only formatter, over code and config files |
 | `pnpm knip` | Unused files, exports, dependencies and types |
 | `pnpm architecture` | dependency-cruiser over `apps` and `packages`: the dependency DAG in `docs/architecture.md`, circular imports, vendor SDKs, the engine's purity |
-| `pnpm test` | Vitest: Worker code in `apps/*` runs under `@cloudflare/vitest-pool-workers`, everything else in plain Node |
+| `pnpm test` | Vitest: Worker code in `apps/*` runs under `@cloudflare/vitest-pool-workers`, everything else in plain Node. The real-Postgres tests in `packages/db` run when `TEST_DATABASE_URL` names a server where the role may create databases; each creates and drops its own database. Without it they are skipped (#79 sets it in CI on a Neon branch) |
 | `pnpm build` | `build` in every package that has one. `apps/uw-app` bundles the Worker with a wrangler dry run into `apps/uw-app/dist` |
 | `pnpm audit:prod` / `pnpm audit:all` | `pnpm audit` for production and for all dependencies; both fail on a high or critical advisory |
+| `pnpm db:generate` | `drizzle-kit generate` over `packages/db/schema.ts`: writes the next SQL migration. `pnpm db:generate --custom --name <name>` adds an empty hand-written one to the same journal, applied in order with the generated ones |
+| `pnpm db:migrate` | Applies every migration to the database in `DATABASE_URL`, over a direct connection. Re-running is a no-op |
 | `pnpm verify` | check, lint, lint:dates, lint:vendor, format:check, knip, architecture, test, build, in that order. `walk` and `trace` join the chain with the issues that create them |
 
 ## CI and deploys

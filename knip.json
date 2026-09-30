@@ -5,8 +5,21 @@
       "entry": ["tools/*/check-*.ts", "tools/**/*.test.ts"],
       "project": ["tools/**/*.ts", "*.ts"]
     },
-    "apps/*": { "entry": ["**/*.test.ts"], "project": ["**/*.ts"] },
-    "apps/uw-app": { "entry": ["index.ts", "**/*.test.ts"], "project": ["**/*.ts", "**/*.tsx"] },
-    "packages/*": { "entry": ["**/*.test.ts"], "project": ["**/*.ts"] }
+    "apps/*": {
+      "entry": ["**/*.test.ts"],
+      "project": ["**/*.ts"]
+    },
+    "apps/uw-app": {
+      "entry": ["index.ts", "**/*.test.ts"],
+      "project": ["**/*.ts", "**/*.tsx"]
+    },
+    "packages/*": {
+      "entry": ["**/*.test.ts"],
+      "project": ["**/*.ts"]
+    },
+    "packages/db": {
+      "entry": ["**/*.test.ts", "bin/*.ts", "fixtures/*/schema.ts"],
+      "project": ["**/*.ts"]
+    }
   }
 }
