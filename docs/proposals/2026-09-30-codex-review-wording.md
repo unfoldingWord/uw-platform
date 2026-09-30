@@ -12,7 +12,7 @@ In `AGENTS.md` section 8, replace the first bullet with:
 
 In the same section, insert after "Never merge your own PR.":
 
-> Codex posts from a person's account, so its verdict is a comment, not a formal approval; the merging human reads the verdict, never the badge.
+> Codex posts from a person's account. When that account authored the PR, GitHub allows only a comment, so Codex's verdict is a comment, not a formal approval, and the merging human reads the verdict, never the badge. When a different account runs Codex, it can submit a formal approval, and that approval counts toward the one branch protection requires.
 
 In ADR 0008, replace "Every PR is reviewed by Codex, which posts one exit condition per round; the author answers exactly that condition in one push;" with:
 
