@@ -15,13 +15,13 @@ Each document has one job. Load the one the task needs; do not restate one insid
 | [`docs/adr/`](docs/adr/) | Why the shape is this way. Read before proposing to change it |
 | GitHub issues and milestones | The work. Each issue cites the spec, carries acceptance criteria and blocked-by edges. There is no other list |
 | `ui-design/` and, when it lands, `design-system/` | The prototype and the tokens. See ADR 0007 |
-| `docs/exceptions.md`, `docs/proposals/` | Recorded exceptions to the rules; proposals to change shared roots |
+| `docs/exceptions.md` | Recorded exceptions to the rules |
 
 Where the spec and this file disagree, the spec wins on what and this file wins on how. Where an issue and the spec disagree, the spec wins and the issue is corrected.
 
 ## 1. Fixed decisions
 
-These are settled. Work inside them; open a proposal (section 9) to change one.
+These are settled. Work inside them; changing one is an architecture change (section 9), made in its own PR.
 
 | Concern | Decision |
 |---|---|
@@ -96,7 +96,7 @@ Every kind of work has one template. Copy the template, fill the blanks, stop.
 - New screen: one island, one route, one scenario, tokens only.
 - New word: `CONTEXT.md` first.
 
-If the work does not fit a template, that is a proposal (section 9), not an improvisation.
+If the work does not fit a template, say so on the issue and ask before building. Do not improvise.
 
 ### Rule 2. Forbidden dependencies fail mechanically
 
@@ -126,10 +126,10 @@ A durable value is anything in Postgres.
 Adding a persona, an engine, a validator, a connector or a screen means adding a folder or a registry row, and touching shared roots only at reserved discovery points.
 
 - Discovery is by registry, never by editing a switch. An `if (engineName)` or `if (personaName)` branch in shared code is the smell this rule forbids.
-- Changes to `packages/db/schema.ts`, `packages/contracts/`, `packages/harness/ports.ts`, `packages/core/acl.ts`, `infra/`, `.github/workflows/`, `AGENTS.md`, `CONTEXT.md`, or `docs/adr/` are architecture changes and need a proposal (section 9). The schema and the contracts also change only in their own PRs, never incidentally.
+- Changes to `packages/db/schema.ts`, `packages/contracts/`, `packages/harness/ports.ts`, `packages/core/acl.ts`, `infra/`, `.github/workflows/`, `AGENTS.md`, `CONTEXT.md`, or `docs/adr/` are architecture changes. Each goes in its own PR, never mixed into feature work, and the PR description says which shared root it changes and why. The human who merges it is the approval.
 - `ui-design/` and `design-system/` are produced in Claude Design and synced here. A code PR reads them and never hand-edits them.
 
-### Rule 5. Exceptions are narrow, explicit, and reviewed as architecture changes
+### Rule 5. Exceptions are narrow, explicit, and recorded
 
 - Every exception to rules 1 to 4 is recorded in `docs/exceptions.md` with: the rule broken, the file, why the rule cannot hold here, and the date.
 - An exception without an entry is a defect.
@@ -155,14 +155,14 @@ Do these in order for every task.
 1. **Pick.** Take the highest-priority open issue labelled `ready` in the lowest-numbered milestone whose blocked-by list is empty and that nobody is assigned to. Assign yourself and comment that you are starting. One open PR per worker.
 2. **Orient.** Read the issue, then the spec section and plan section it cites, then `CONTEXT.md` for the words, then the folder it touches, then `docs/exceptions.md`. State in one line which template (rule 1) applies.
 3. **Search for prior decisions.** Grep for the tables, events and verbs involved. Find the existing writer (rule 3) before adding one. Check the spec's Decisions table and `docs/adr/` before reopening a settled question. Where the issue says "not specified in the spec; decide in the PR", decide, and record the decision in the PR body.
-4. **Plan the files.** List every file you will add or edit. If any is a shared root (rule 4), stop and write a proposal (section 9).
+4. **Plan the files.** List every file you will add or edit. If any is a shared root (rule 4), that change goes in its own PR, and its description says which shared root and why.
 5. **Write the scenario first.** For a spec section, the scenario in `sim/scenarios/` that proves it, observed red. For a bug, the scenario that reproduces it, observed red. Only then implement.
 6. **Implement.** Copy the template. Fill it. Keep each file under 500 lines and each function under 50.
 7. **Verify.** `pnpm verify` green. If a screen changed, load it in light and dark at phone width. If an adapter changed, run it against staging. Paste the command output in your summary.
 8. **Open the PR.** Branch `harness/<issue>-<slug>` off `main`. The body says `Closes #<issue>`, what it touches, its risk tier and domains, and every "decide in the PR" decision you made. Draft until verify is green, then mark ready for review.
 9. **Report.** Summarize what changed, what you verified, and what you did not verify. Label inferences as inferences. If you could not verify something, say so first.
 
-Done means: all nine steps completed, `pnpm verify` green, no shared root changed without a proposal, no exception missing its entry, every acceptance criterion on the issue checked with the evidence behind it, and no claim of verification standing without the run behind it.
+Done means: all nine steps completed, `pnpm verify` green, no shared root changed inside a feature PR, no exception missing its entry, every acceptance criterion on the issue checked with the evidence behind it, and no claim of verification standing without the run behind it.
 
 ## 8. Review and merge
 
@@ -174,9 +174,9 @@ Done means: all nine steps completed, `pnpm verify` green, no shared root change
 - **Hot files.** `packages/db/schema.ts`, `packages/contracts/` and the event vocabulary are the files most likely to conflict. They change only in their own PRs, and the M2 issues that touch the schema are worked in order, tables first.
 - If none of this applies because no `ready` issue is available, exit without doing anything.
 
-## 9. Proposals
+## 9. Architecture changes
 
-A proposal is a short markdown file in `docs/proposals/<date>-<slug>.md` with four headings: Problem, Change, Alternatives, Rules affected. Write it, stop, and ask a human to approve before touching a shared root. A proposal does not need to be long. It needs to be reviewable. If it is accepted and it is hard to reverse, surprising without context and the result of a real trade-off, it also becomes an ADR, and if it changes the design it also changes the spec's Decisions table.
+A change to a shared root (rule 4) or a fixed decision (section 1) goes in its own PR. The description says what changes, why, and what was rejected. Codex reviews it like any other PR and a human merges it; there is no separate approval step. If the change is hard to reverse, surprising without context and the result of a real trade-off, the same PR adds an ADR in `docs/adr/`, and if it changes the design it also changes the spec's Decisions table.
 
 ## 10. Things that always hold
 
@@ -188,4 +188,4 @@ A proposal is a short markdown file in `docs/proposals/<date>-<slug>.md` with fo
 - Code carries no comments: no line comments, no block comments, no JSDoc, no directive comments, no commented-out code. What a comment would have said goes into a name, a type, a test, or `docs/`. A lint rule enforces this.
 - Deleting code with no visible callers is allowed once a grep of the repo confirms zero references. Say that you grepped.
 - No merge to `main` without a human's explicit permission.
-- When the requested implementation conflicts with a rule in this file, the rule wins. Say so, then propose.
+- When the requested implementation conflicts with a rule in this file, the rule wins. Say so, and ask the DRIs on the issue or PR before building.
