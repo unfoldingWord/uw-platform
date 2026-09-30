@@ -31,13 +31,8 @@ jobs:
             refs/heads/main|refs/tags/v*) echo "Ref $REF is deployable." ;;
             *) echo "::error::Production deploys only from main or a v* tag, not $REF."; exit 1 ;;
           esac
-      - name: Refuse unless the actor is a repository admin
-        run: |
-          permission="$(gh api "repos/$REPO/collaborators/$ACTOR/permission" --jq .permission)"
-          if [ "$permission" != "admin" ]; then
-            echo "::error::$ACTOR has $permission permission; production deploys need admin."
-            exit 1
-          fi
+      - name: Refuse unless the actor is a repository admin named in main's deployers list
+        run: bash .github/scripts/require-production-deployer.sh "$REPO" "$ACTOR"
       - name: Refuse unless every CI job succeeded on this commit
         run: bash .github/scripts/require-green-ci.sh "$REPO" "$SHA"
 

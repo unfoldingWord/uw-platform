@@ -1,10 +1,16 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import manifest from '../../package.json' with { type: 'json' };
 
 const checkRunContract = ['security-audit', 'lint', 'typecheck', 'architecture', 'test', 'build'];
 
-const ci = readFileSync('.github/workflows/ci.yml', 'utf8');
+const workflowDirectory = '.github/workflows';
+const workflows = readdirSync(workflowDirectory).map((file) => ({
+  file,
+  source: readFileSync(join(workflowDirectory, file), 'utf8'),
+}));
+const ci = readFileSync(join(workflowDirectory, 'ci.yml'), 'utf8');
 const productionGate = readFileSync('.github/scripts/require-green-ci.sh', 'utf8');
 
 function jobNames(workflow: string): string[] {
@@ -31,5 +37,22 @@ describe('the CI workflow', () => {
 
   it('is the set of jobs production requires green', () => {
     expect(productionGate).toContain(`required=(${checkRunContract.join(' ')})`);
+  });
+});
+
+describe('the workflows that run PR code', () => {
+  it('never see a secret', () => {
+    const exposed = workflows
+      .filter(({ source }) => /^ {2}pull_request:$/m.test(source) && source.includes('secrets.'))
+      .map(({ file }) => file);
+    expect(exposed).toEqual([]);
+  });
+
+  it('are the only ones that check out the PR head', () => {
+    const trusted = workflows
+      .filter(({ source }) => !/^ {2}pull_request:$/m.test(source))
+      .filter(({ source }) => source.includes('pull_request.head'))
+      .map(({ file }) => file);
+    expect(trusted).toEqual([]);
   });
 });

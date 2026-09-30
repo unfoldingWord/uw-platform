@@ -1,38 +1,52 @@
 name: Deploy PR
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened]
-
-concurrency:
-  group: deploy-pr-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  workflow_run:
+    workflows: [Build PR]
+    types: [completed]
 
 permissions:
   contents: read
+  actions: read
   pull-requests: write
 
 jobs:
   deploy-pr:
     name: deploy-pr
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.pull_requests[0] != null
     runs-on: ubuntu-latest
+    concurrency:
+      group: pr-worker-${{ github.event.workflow_run.pull_requests[0].number }}
+      cancel-in-progress: true
     env:
-      WORKER_NAME: uw-app-pr-${{ github.event.pull_request.number }}
-      WORKER_URL: https://uw-app-pr-${{ github.event.pull_request.number }}.unfoldingword.workers.dev
-      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      GH_TOKEN: ${{ github.token }}
+      PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      WORKER_NAME: uw-app-pr-${{ github.event.workflow_run.pull_requests[0].number }}
+      WORKER_URL: https://uw-app-pr-${{ github.event.workflow_run.pull_requests[0].number }}.unfoldingword.workers.dev
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
       - uses: ./.github/actions/setup
-      - name: Deploy the PR Worker
+      - uses: actions/download-artifact@v4
+        with:
+          name: pr-worker
+          path: ${{ runner.temp }}/pr-worker
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+      - name: Refuse unless the PR is open at this head and the artifact is only the bundle
+        run: bash .github/scripts/check-pr-artifact.sh "$GITHUB_REPOSITORY" "$PR_NUMBER" "$HEAD_SHA" "$RUNNER_TEMP/pr-worker"
+      - name: Deploy the PR bundle with the main branch's config and tooling
         working-directory: apps/uw-app
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: >-
-          pnpm exec wrangler deploy --config ../../infra/uw-app/wrangler.toml --env staging
+          pnpm exec wrangler deploy "$RUNNER_TEMP/pr-worker/index.js" --no-bundle
+          --config ../../infra/uw-app/wrangler.toml --env staging
           --name "$WORKER_NAME" --var "COMMIT_SHA:$HEAD_SHA"
       - name: Confirm /health reports the PR head
         run: bash .github/scripts/await-health.sh "$WORKER_URL" "$HEAD_SHA"
@@ -47,10 +61,10 @@ jobs:
               `**URL:** ${process.env.WORKER_URL}`,
               `**Commit:** \`${process.env.HEAD_SHA}\``,
               '',
-              'Re-deployed on every push to this PR and deleted when the PR closes.',
+              'Re-deployed on every push to this PR and deleted when the PR closes. Built from this PR; deployed with the wrangler config and tooling on main.',
             ].join('\n');
             const { owner, repo } = context.repo;
-            const issue_number = context.issue.number;
+            const issue_number = Number(process.env.PR_NUMBER);
             const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
             const existing = comments.find((comment) => comment.body?.includes(marker));
             if (existing) {

@@ -58,15 +58,16 @@ GitHub Actions, in `.github/workflows/`. The repository is private on GitHub's F
 | Workflow | When | What |
 |---|---|---|
 | `CI` | every PR and every push to `main` | `security-audit` first, then `lint`, `typecheck`, `architecture`, `test` and `build` in parallel. A newer push to the same ref cancels the older run |
-| `Deploy PR` | a PR is opened, pushed to or reopened | deploys the PR to its own Worker, `uw-app-pr-<number>`, checks its `/health` reports the PR head, and posts the URL on the PR |
-| `Cleanup PR Worker` | a PR is closed or merged | deletes `uw-app-pr-<number>` |
+| `Build PR` | a PR is opened, pushed to or reopened | bundles the PR with no secrets and uploads the bundle |
+| `Deploy PR` | `Build PR` succeeds | runs from `main`'s definition: checks the PR is still open at that head, deploys the bundle to `uw-app-pr-<number>` with `main`'s wrangler config and tooling, checks `/health`, and posts the URL on the PR |
+| `Cleanup PR Worker` | a PR is closed or merged | runs from `main`'s definition (`pull_request_target`) and deletes `uw-app-pr-<number>`; shares a concurrency group with `Deploy PR`, so closing cancels an in-flight deploy |
 | `Deploy Staging` | `CI` succeeds on a push to `main` | deploys that exact commit to `uw-app-staging` and checks its `/health`. A red `CI` deploys nothing, so staging stays on the last green commit |
 | `Main Alarm` | `CI` finishes on a push to `main` | on red, opens (or comments on) one issue labelled `ci-red-main` naming the commit and the failing run; on the next green, closes it |
-| `Deploy Production` | a `v*` tag, or manual dispatch from `main` | refuses unless the actor is a repository admin and all six CI jobs succeeded on that commit, then deploys `uw-app` (unreachable until it gets a route) |
+| `Deploy Production` | a `v*` tag, or manual dispatch from `main` | refuses unless the actor is a repository admin listed in `.github/production-deployers` on `main` and all six CI jobs succeeded on that commit, then deploys `uw-app` (unreachable until it gets a route) |
 
 **Check-run names are a contract.** The six `CI` jobs are named `security-audit`, `lint`, `typecheck`, `architecture`, `test` and `build`. The harness ship rule (#20) and the production gate read them by name, and `tools/ci/ci-workflow.test.ts` fails if they drift from this list or if `CI` stops running a step of `pnpm verify`.
 
-**Secrets.** `CLOUDFLARE_API_TOKEN` (Workers Scripts edit on the unfoldingWord account) and `CLOUDFLARE_ACCOUNT_ID`, as repository secrets. Never in a wrangler or workflow file.
+**Secrets.** `CLOUDFLARE_API_TOKEN` (Workers Scripts edit on the unfoldingWord account) and `CLOUDFLARE_ACCOUNT_ID`, as repository secrets. Never in a wrangler or workflow file. No workflow that runs PR code sees a secret; `tools/ci/ci-workflow.test.ts` enforces it. One hole remains and is recorded in `docs/exceptions.md`: on this plan any writer can push a workflow that reads a repository secret, and the token can deploy production.
 
 ## Contributing
 

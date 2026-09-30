@@ -29,6 +29,15 @@ jobs:
               await github.paginate(github.rest.issues.listForRepo, { owner, repo, labels: label, state: 'open' })
             ).filter((issue) => !issue.pull_request);
             const commit = `\`${run.head_sha.slice(0, 7)}\``;
+            try {
+              await github.rest.issues.getLabel({ owner, repo, name: label });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              await github.rest.issues.createLabel({
+                owner, repo, name: label, color: 'b60205',
+                description: 'CI is red on main; staging is frozen on the last green commit',
+              });
+            }
             if (run.conclusion === 'success') {
               for (const issue of open) {
                 await github.rest.issues.createComment({
