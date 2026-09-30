@@ -5,10 +5,9 @@ export const exitGateSchema = z.enum(['none', 'checks', 'human_approval']);
 export const agentPickupSchema = z.enum(['none', 'allowed', 'auto']);
 export const riskTierSchema = z.enum(['low', 'standard', 'high']);
 export const riskDomainSchema = z.enum(['ledger', 'acl', 'infra', 'migration']);
-export const riskDomainsSchema = z.array(riskDomainSchema).refine(
-  (domains) => new Set(domains).size === domains.length,
-  'risk domains are a set',
-);
+export const riskDomainsSchema = z
+  .array(riskDomainSchema)
+  .refine((domains) => new Set(domains).size === domains.length, 'risk domains are a set');
 export const evidenceLabelSchema = z.enum(['observed', 'confirmed', 'inferred', 'assumed']);
 export const roleSchema = z.enum(['admin', 'editor', 'viewer']);
 export const scopeSchema = z.enum(['org', 'jd_area']);

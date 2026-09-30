@@ -151,11 +151,24 @@ describe('closed sets', () => {
     ]);
     expect(closedSets.costBasisSchema.options).toEqual(['metered', 'subscription']);
   });
+});
 
+describe('refusal reasons and events', () => {
   it('names the spec refusal reasons and events', () => {
-    const reasons = ['risk_tier_undeclared', 'reviewer_count_below_tier', 'approver_lacks_domain_grant', 'delegation_required'];
+    const reasons = [
+      'risk_tier_undeclared',
+      'reviewer_count_below_tier',
+      'approver_lacks_domain_grant',
+      'delegation_required',
+    ];
     for (const reason of reasons) {
-      expect(outcomeSchema.safeParse({ status: 'error', requestId: '3f1d7c1e-8c53-4a53-9d6e-0a9b6a0f4d11', reason }).success).toBe(true);
+      expect(
+        outcomeSchema.safeParse({
+          status: 'error',
+          requestId: '3f1d7c1e-8c53-4a53-9d6e-0a9b6a0f4d11',
+          reason,
+        }).success,
+      ).toBe(true);
     }
     for (const name of ['gate_approved', 'lease_expired', 'delegation_lapsed', 'abandoned']) {
       expect(eventNameSchema.safeParse(name).success).toBe(true);
