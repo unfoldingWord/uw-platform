@@ -3,6 +3,12 @@ import { moduleSchema, modules } from './modules.ts';
 
 const keys = modules.map((declared) => declared.key);
 
+const undeclaredDependencies = (declared: (typeof modules)[number]): string[] =>
+  declared.depends_on.filter((dependency) => !keys.includes(dependency));
+
+const dependsOnLaterModule = (declared: (typeof modules)[number], position: number): boolean =>
+  declared.depends_on.some((dependency) => keys.indexOf(dependency) >= position);
+
 describe('the module registry', () => {
   it('declares core and agents', () => {
     expect(keys).toEqual(['core', 'agents']);
@@ -17,16 +23,12 @@ describe('the module registry', () => {
   });
 
   it('depends only on declared modules', () => {
-    const undeclared = modules.flatMap((declared) =>
-      declared.depends_on.filter((dependency) => !keys.includes(dependency)),
-    );
+    const undeclared = modules.flatMap(undeclaredDependencies);
     expect(undeclared).toEqual([]);
   });
 
   it('declares each module after everything it depends on', () => {
-    const outOfOrder = modules.filter((declared, position) =>
-      declared.depends_on.some((dependency) => keys.indexOf(dependency) >= position),
-    );
+    const outOfOrder = modules.filter(dependsOnLaterModule);
     expect(outOfOrder).toEqual([]);
   });
 

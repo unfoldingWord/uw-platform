@@ -56,14 +56,18 @@ export const noAdHocDates: Rule.RuleModule = {
   meta: {
     type: 'problem',
     docs: {
-      description: 'Dates render and parse only through formatDate and parseDate in packages/core/dates.ts',
+      description:
+        'Dates render and parse only through formatDate and parseDate in packages/core/dates.ts',
     },
     schema: [],
     messages: {
       localeMethod: '{{name}} is locale-dependent. Use formatDate from packages/core/dates.ts.',
-      intlFormatter: 'Intl.{{name}} is locale-dependent. Use formatDate from packages/core/dates.ts.',
-      isoStringCut: 'Cutting toISOString() is an ad-hoc date format. Use formatDate from packages/core/dates.ts.',
-      formatToken: 'This is an ad-hoc date format string. Dates render only through packages/core/dates.ts.',
+      intlFormatter:
+        'Intl.{{name}} is locale-dependent. Use formatDate from packages/core/dates.ts.',
+      isoStringCut:
+        'Cutting toISOString() is an ad-hoc date format. Use formatDate from packages/core/dates.ts.',
+      formatToken:
+        'This is an ad-hoc date format string. Dates render only through packages/core/dates.ts.',
     },
   },
   create: (context) => ({

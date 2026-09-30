@@ -13,7 +13,9 @@ export function isScanned(path: string): boolean {
 }
 
 export function findDateViolations(path: string, source: string): DateViolation[] {
-  return source.split('\n').flatMap((text, index) =>
-    bannedDateText.test(text) ? [{ path, line: index + 1, text: text.trim() }] : [],
-  );
+  return source
+    .split('\n')
+    .flatMap((text, index) =>
+      bannedDateText.test(text) ? [{ path, line: index + 1, text: text.trim() }] : [],
+    );
 }
