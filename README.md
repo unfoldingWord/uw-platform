@@ -24,25 +24,40 @@ A pnpm workspace on Node 22, TypeScript strict in every package through one `tsc
 | `packages/core/` | `@uw/core` | `dates.ts`, the one `formatDate`/`parseDate` pair and the shared Zod ISO date schema (plan §0); `modules.ts`, the module registry (plan §14). `acl.ts` lands with the ACL work |
 | `packages/db/` | `@uw/db` | The Drizzle schema, the only schema, and its migrations. Empty until #7 |
 | `packages/contracts/` | `@uw/contracts` | Commands, events, outcomes and the verb registry as Zod. Depends on no other workspace package. Empty until #13 and #14 |
-| `tools/lint/` | | The date gate: the `uw/no-ad-hoc-dates` ESLint rule and the `lint:dates` grep, over the same patterns |
+| `packages/harness/` | `@uw/harness` | The engine: pure TypeScript over ports. Empty until the engine issues land; its tsconfig has no Workers types |
+| `tools/lint/` | | The custom gates: `uw/no-ad-hoc-dates`, `uw/no-comments`, the vendor-SDK text gate, and the `lint:dates` grep |
+| `tools/architecture/` | | Tests that prove each dependency rule refuses what it should |
 
 `infra/` (wrangler configs, Access policies, R2 lifecycle, Neon branches, the drift detector, plan §19) is reserved for #5.
 
-These plan packages are deliberately not created in M0, and their names are reserved so nobody invents a different layout: `apps/uw-www/` (public site), `apps/uw-desktop/` (Tauri shell), `packages/editor/` (Tiptap and Yjs editor and sync client), `packages/charts/` (chart specs and renderers), `packages/docs/` (print styles, letterhead, PDF and DOCX rendering), `packages/compliance/` (obligations, reports, evidence queries). The harness packages in `docs/architecture.md` (`packages/harness/`, `packages/ui/`, `sim/`) arrive with the issues that build them.
+These plan packages are deliberately not created in M0, and their names are reserved so nobody invents a different layout: `apps/uw-www/` (public site), `apps/uw-desktop/` (Tauri shell), `packages/editor/` (Tiptap and Yjs editor and sync client), `packages/charts/` (chart specs and renderers), `packages/docs/` (print styles, letterhead, PDF and DOCX rendering), `packages/compliance/` (obligations, reports, evidence queries). The harness packages in `docs/architecture.md` (`packages/ui/`, `sim/`) arrive with the issues that build them.
 
 ## Scripts
 
+Every script is a root script; a package adds only the `check` and `build` it needs. CI calls `pnpm verify` and nothing else.
+
 | Command | Runs |
 |---|---|
-| `pnpm check` | `tsc --noEmit` at the root and in every package |
-| `pnpm lint` | ESLint, which today hosts the date rule; the full config is #67 |
+| `pnpm check` | `tsc --noEmit` at the root and in every package. `packages/harness` has its own tsconfig with no Workers types, so a Workers global fails here |
+| `pnpm lint` | ESLint flat config with zero warnings allowed: `@eslint/js`, `typescript-eslint`, `eslint-plugin-security`, the six fitness functions (function of 50 lines, 25 statements, complexity 10, depth 4, 3 nested callbacks, 5 parameters), the date rule, the no-comments rule, the vendor-SDK and `packages/harness` purity import rules |
+| `pnpm lint:fix` | The same, with `--fix` |
 | `pnpm lint:dates` | The CI grep for locale-dependent and ad-hoc date formatting outside `packages/core/dates.ts` |
-| `pnpm test` | Vitest over every package; the Workers pool is #67 |
-| `pnpm verify` | All of the above in order. #67 extends it to the full chain and #68 makes CI call it |
+| `pnpm lint:vendor` | The text gate: `@anthropic-ai/*`, `openai` and OpenRouter imports outside `apps/uw-app/engines/<engine>/` |
+| `pnpm format` / `pnpm format:check` | Prettier, the only formatter, over code and config files |
+| `pnpm knip` | Unused files, exports, dependencies and types |
+| `pnpm architecture` | dependency-cruiser over `apps` and `packages`: the dependency DAG in `docs/architecture.md`, circular imports, vendor SDKs, the engine's purity |
+| `pnpm test` | Vitest: Worker code in `apps/*` runs under `@cloudflare/vitest-pool-workers`, everything else in plain Node |
+| `pnpm build` | `build` in every package that has one |
+| `pnpm audit:prod` / `pnpm audit:all` | `pnpm audit` for production and for all dependencies; both fail on a high or critical advisory |
+| `pnpm verify` | check, lint, lint:dates, lint:vendor, format:check, knip, architecture, test, build, in that order. `walk` and `trace` join the chain with the issues that create them |
+
+## Contributing
+
+Node 22 (`.nvmrc`) and the pnpm version in `packageManager`. `pnpm install` installs the Husky pre-commit hook, which runs lint-staged (ESLint with `--fix` and Prettier on staged files). The hook is the fast half; `pnpm verify` is the whole chain and the only thing CI runs. Audits run beside it in CI, not inside it, because they need the network. Read `AGENTS.md` before your first edit.
 
 ## Status
 
-Spec ratified, issues filed, contributor rules written. The M0 scaffold is in progress: the workspace layout, the date module and its gate, and the module registry are in place; the toolchain (#67), CI (#68) and deploys (#5) follow.
+Spec ratified, issues filed, contributor rules written. The M0 scaffold is in progress: the workspace layout, the date module and its gate, and the module registry are in place; the toolchain (#67 in review), CI (#68) and deploys (#5) follow.
 
 ## Licence
 

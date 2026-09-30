@@ -1,0 +1,11 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["tools/lint/check-*.ts", "tools/**/*.test.ts"],
+      "project": ["tools/**/*.ts", "*.ts"]
+    },
+    "apps/*": { "entry": ["**/*.test.ts"], "project": ["**/*.ts"] },
+    "packages/*": { "entry": ["**/*.test.ts"], "project": ["**/*.ts"] }
+  }
+}

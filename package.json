@@ -7,18 +7,47 @@
     "node": ">=22.18"
   },
   "scripts": {
+    "prepare": "husky",
     "check": "tsc --noEmit -p tsconfig.json && pnpm -r run check",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix --max-warnings 0",
     "lint:dates": "node tools/lint/check-dates.ts",
+    "lint:vendor": "node tools/lint/check-vendor-sdk.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "knip": "knip",
+    "architecture": "depcruise apps packages --config .dependency-cruiser.mjs",
     "test": "vitest run",
-    "verify": "pnpm check && pnpm lint && pnpm lint:dates && pnpm test"
+    "build": "pnpm -r --if-present run build",
+    "audit:prod": "pnpm audit --prod --audit-level high",
+    "audit:all": "pnpm audit --audit-level high",
+    "verify": "pnpm check && pnpm lint && pnpm lint:dates && pnpm lint:vendor && pnpm format:check && pnpm knip && pnpm architecture && pnpm test && pnpm build"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "@cloudflare/workers-types": "^5.20260930.1",
+    "@eslint/js": "^10.0.1",
     "@types/estree": "^1.0.9",
     "@types/node": "^22.20.4",
+    "dependency-cruiser": "^18.4.0",
     "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-security": "^4.1.0",
+    "husky": "^9.1.7",
+    "knip": "^6.38.0",
+    "lint-staged": "^17.6.0",
+    "prettier": "^3.9.9",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.0",
-    "vitest": "^5.0.2"
+    "vitest": "^4.1.11"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,mjs,cjs}": [
+      "eslint --fix --max-warnings 0",
+      "prettier --write"
+    ],
+    "*.{json,yml,yaml}": [
+      "prettier --write"
+    ]
   }
 }
