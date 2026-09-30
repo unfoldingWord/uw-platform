@@ -88,6 +88,12 @@ const refusals: [string, string, string, string][] = [
     'harness-imports-contracts-and-core-only',
   ],
   [
+    'harness into a declaration file in apps',
+    'packages/harness/a.ts',
+    "import type { Value } from '../../apps/uw-app/types.d.ts'; export type Local = Value;",
+    'harness-imports-contracts-and-core-only',
+  ],
+  [
     'a harness test into a root dependency',
     'packages/harness/a.test.ts',
     "import 'eslint';",
@@ -181,6 +187,7 @@ describe('the dependency rules', () => {
         'apps/uw-app/b.ts': leaf,
         'packages/db/b.ts': leaf,
         'packages/harness/b.ts': leaf,
+        'apps/uw-app/types.d.ts': 'export type Value = number;',
       }),
     ).toContain(rule);
   });

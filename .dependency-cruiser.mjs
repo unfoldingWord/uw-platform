@@ -115,6 +115,5 @@ export default {
       conditionNames: ['import', 'require', 'node', 'default', 'types'],
       mainFields: ['module', 'main', 'types'],
     },
-    exclude: { path: ['^(apps|packages|sim|tests)/.*\\.d\\.ts$'] },
   },
 };
