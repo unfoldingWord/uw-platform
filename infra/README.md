@@ -14,7 +14,7 @@ Everything Cloudflare, Neon and Access that the platform runs on is declared her
 ### Deploy staging by hand
 
 ```
-pnpm --filter @uw/uw-app exec wrangler deploy --config ../../infra/uw-app/wrangler.toml --env staging --var COMMIT_SHA:$(git rev-parse HEAD)
+pnpm --filter @uw/uw-app deploy:staging
 ```
 
 `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` come from the shell or from the CI secret store. They are never written to a wrangler file. The token is scoped to Workers Scripts edit on the one account.
