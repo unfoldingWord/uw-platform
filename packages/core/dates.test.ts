@@ -28,16 +28,24 @@ describe('parseDate', () => {
     expect(formatDate(parseDate('2024-02-29'))).toBe('2024-02-29');
   });
 
-  it.each(['03/03/2026', '12/31/2026', '2026-3-3', 'March 3, 2026', '2026-03-03T00:00:00Z', '', ' 2026-03-03'])(
-    'rejects %j',
+  it.each([
+    '03/03/2026',
+    '12/31/2026',
+    '2026-3-3',
+    'March 3, 2026',
+    '2026-03-03T00:00:00Z',
+    '',
+    ' 2026-03-03',
+  ])('rejects %j', (text) => {
+    expect(() => parseDate(text)).toThrow(RangeError);
+  });
+
+  it.each(['2026-02-29', '2026-13-01', '2026-04-31', '2026-00-10'])(
+    'rejects the impossible date %j',
     (text) => {
       expect(() => parseDate(text)).toThrow(RangeError);
     },
   );
-
-  it.each(['2026-02-29', '2026-13-01', '2026-04-31', '2026-00-10'])('rejects the impossible date %j', (text) => {
-    expect(() => parseDate(text)).toThrow(RangeError);
-  });
 });
 
 describe('isoDateSchema', () => {
