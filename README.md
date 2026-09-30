@@ -63,7 +63,7 @@ GitHub Actions, in `.github/workflows/`. The repository is private on GitHub's F
 | `Cleanup PR Worker` | a PR is closed or merged | runs from `main`'s definition (`pull_request_target`) and deletes `uw-app-pr-<number>`; shares a concurrency group with `Deploy PR`, so closing cancels an in-flight deploy |
 | `Deploy Staging` | `CI` succeeds on a push to `main` | deploys that exact commit to `uw-app-staging` and checks its `/health`. A red `CI` deploys nothing, so staging stays on the last green commit |
 | `Main Alarm` | `CI` finishes on a push to `main` | on red, opens (or comments on) one issue labelled `ci-red-main` naming the commit and the failing run; on the next green, closes it |
-| `Deploy Production` | a `v*` tag, or manual dispatch from `main` | refuses unless the actor is a repository admin listed in `.github/production-deployers` on `main` and all six CI jobs succeeded on that commit, then deploys `uw-app` (unreachable until it gets a route) |
+| `Deploy Production` | a `v*` tag, or manual dispatch from `main` | refuses unless the actor is listed in `.github/production-deployers` on `main` (the DRIs) and all six CI jobs succeeded on that commit, then deploys `uw-app` (unreachable until it gets a route) |
 
 **Check-run names are a contract.** The six `CI` jobs are named `security-audit`, `lint`, `typecheck`, `architecture`, `test` and `build`. The harness ship rule (#20) and the production gate read them by name, and `tools/ci/ci-workflow.test.ts` fails if they drift from this list or if `CI` stops running a step of `pnpm verify`.
 
