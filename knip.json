@@ -6,6 +6,7 @@
       "project": ["tools/**/*.ts", "*.ts"]
     },
     "apps/*": { "entry": ["**/*.test.ts"], "project": ["**/*.ts"] },
+    "apps/uw-app": { "entry": ["index.ts", "**/*.test.ts"], "project": ["**/*.ts", "**/*.tsx"] },
     "packages/*": { "entry": ["**/*.test.ts"], "project": ["**/*.ts"] }
   }
 }
