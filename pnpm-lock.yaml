@@ -63,6 +63,9 @@ importers:
 
   apps/uw-app:
     dependencies:
+      '@uw/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@uw/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -79,11 +82,18 @@ importers:
 
   apps/uw-ingest:
     dependencies:
+      '@uw/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@uw/core':
         specifier: workspace:*
         version: link:../../packages/core
 
-  packages/contracts: {}
+  packages/contracts:
+    dependencies:
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
 
   packages/core:
     dependencies:

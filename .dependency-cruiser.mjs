@@ -18,6 +18,7 @@ const impure = [
 ];
 
 const harnessMayImport = '^packages/(harness|contracts|core)/';
+const contractsMayImport = ['^packages/contracts/', npm('zod')];
 const testFile = '\\.test\\.ts$';
 
 const forbidden = (name, comment, from, to) => ({
@@ -43,6 +44,22 @@ export default {
       '^packages/contracts/',
       '^(apps|sim|packages/(core|db|harness|ui))/',
     ),
+    {
+      name: 'contracts-imports-zod-only',
+      comment:
+        'packages/contracts imports zod and its own files and nothing else: no node, Workers or network module.',
+      severity: 'error',
+      from: { path: '^packages/contracts/', pathNot: testFile },
+      to: { pathNot: contractsMayImport },
+    },
+    {
+      name: 'contracts-tests-import-zod-vitest-and-fixture-reads-only',
+      comment:
+        'A packages/contracts test imports what contracts may, plus Vitest and node:fs and node:path to read its fixtures.',
+      severity: 'error',
+      from: { path: `^packages/contracts/.*${testFile}` },
+      to: { pathNot: [...contractsMayImport, npm('vitest'), '^(node:)?(fs|path)$'] },
+    },
     forbidden(
       'core-imports-contracts-only',
       'packages/core depends on packages/contracts and nothing else in the workspace.',
