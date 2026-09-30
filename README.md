@@ -34,7 +34,7 @@ These plan packages are deliberately not created in M0, and their names are rese
 
 ## Scripts
 
-Every script is a root script; a package adds only the `check` and `build` it needs. CI calls `pnpm verify` and nothing else.
+Every script is a root script; a package adds only the `check` and `build` it needs. CI runs the same steps as `pnpm verify`, split into named jobs (see CI and deploys).
 
 | Command | Runs |
 |---|---|
@@ -47,17 +47,34 @@ Every script is a root script; a package adds only the `check` and `build` it ne
 | `pnpm knip` | Unused files, exports, dependencies and types |
 | `pnpm architecture` | dependency-cruiser over `apps` and `packages`: the dependency DAG in `docs/architecture.md`, circular imports, vendor SDKs, the engine's purity |
 | `pnpm test` | Vitest: Worker code in `apps/*` runs under `@cloudflare/vitest-pool-workers`, everything else in plain Node |
-| `pnpm build` | `build` in every package that has one |
+| `pnpm build` | `build` in every package that has one. `apps/uw-app` bundles the Worker with a wrangler dry run into `apps/uw-app/dist` |
 | `pnpm audit:prod` / `pnpm audit:all` | `pnpm audit` for production and for all dependencies; both fail on a high or critical advisory |
 | `pnpm verify` | check, lint, lint:dates, lint:vendor, format:check, knip, architecture, test, build, in that order. `walk` and `trace` join the chain with the issues that create them |
 
+## CI and deploys
+
+GitHub Actions, in `.github/workflows/`. The repository is private on GitHub's Free plan, so there is no branch protection (#12): nothing on GitHub stops a merge with red checks. Two things stand in for it. Whoever merges confirms every check is green with `gh pr checks <number>` and never merges on red (`AGENTS.md` section 8). And the deploy is the hard gate: nothing reaches staging or production unless CI passed on that exact commit.
+
+| Workflow | When | What |
+|---|---|---|
+| `CI` | every PR and every push to `main` | `security-audit` first, then `lint`, `typecheck`, `architecture`, `test` and `build` in parallel. A newer push to the same ref cancels the older run |
+| `Deploy PR` | a PR is opened, pushed to or reopened | deploys the PR to its own Worker, `uw-app-pr-<number>`, checks its `/health` reports the PR head, and posts the URL on the PR |
+| `Cleanup PR Worker` | a PR is closed or merged | deletes `uw-app-pr-<number>` |
+| `Deploy Staging` | `CI` succeeds on a push to `main` | deploys that exact commit to `uw-app-staging` and checks its `/health`. A red `CI` deploys nothing, so staging stays on the last green commit |
+| `Main Alarm` | `CI` finishes on a push to `main` | on red, opens (or comments on) one issue labelled `ci-red-main` naming the commit and the failing run; on the next green, closes it |
+| `Deploy Production` | a `v*` tag, or manual dispatch from `main` | refuses unless the actor is a repository admin and all six CI jobs succeeded on that commit, then deploys `uw-app` (unreachable until it gets a route) |
+
+**Check-run names are a contract.** The six `CI` jobs are named `security-audit`, `lint`, `typecheck`, `architecture`, `test` and `build`. The harness ship rule (#20) and the production gate read them by name, and `tools/ci/ci-workflow.test.ts` fails if they drift from this list or if `CI` stops running a step of `pnpm verify`.
+
+**Secrets.** `CLOUDFLARE_API_TOKEN` (Workers Scripts edit on the unfoldingWord account) and `CLOUDFLARE_ACCOUNT_ID`, as repository secrets. Never in a wrangler or workflow file.
+
 ## Contributing
 
-Node 22 (`.nvmrc`) and the pnpm version in `packageManager`. `pnpm install` installs the Husky pre-commit hook, which runs lint-staged (ESLint with `--fix` and Prettier on staged files). The hook is the fast half; `pnpm verify` is the whole chain and the only thing CI runs. Audits run beside it in CI, not inside it, because they need the network. Read `AGENTS.md` before your first edit.
+Node 22 (`.nvmrc`) and the pnpm version in `packageManager`. `pnpm install` installs the Husky pre-commit hook, which runs lint-staged (ESLint with `--fix` and Prettier on staged files). The hook is the fast half; `pnpm verify` is the whole chain, and CI runs the same steps. Audits run in CI, not inside `pnpm verify`, because they need the network. Read `AGENTS.md` before your first edit.
 
 ## Status
 
-Spec ratified, issues filed, contributor rules written. The M0 scaffold is in progress: the workspace layout, the date module and its gate, and the module registry are in place; the toolchain (#67 in review), CI (#68) and deploys (#5) follow.
+Spec ratified, issues filed, contributor rules written. The M0 scaffold is in progress: the workspace layout, the date module and its gate, and the module registry are in place; the toolchain (#67), the Worker shell and its wrangler config (#5), the contracts (#13) and CI with deploys (#68) are in place.
 
 ## Licence
 

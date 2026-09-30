@@ -1,0 +1,57 @@
+name: Main Alarm
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: main-alarm
+  cancel-in-progress: false
+
+permissions:
+  issues: write
+
+jobs:
+  main-alarm:
+    name: main-alarm
+    if: github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const label = 'ci-red-main';
+            const { owner, repo } = context.repo;
+            const open = (
+              await github.paginate(github.rest.issues.listForRepo, { owner, repo, labels: label, state: 'open' })
+            ).filter((issue) => !issue.pull_request);
+            const commit = `\`${run.head_sha.slice(0, 7)}\``;
+            if (run.conclusion === 'success') {
+              for (const issue of open) {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: issue.number,
+                  body: `CI is green again on \`main\` at ${commit}: ${run.html_url}. Staging deploys resume.`,
+                });
+                await github.rest.issues.update({ owner, repo, issue_number: issue.number, state: 'closed', state_reason: 'completed' });
+              }
+              return;
+            }
+            if (!['failure', 'timed_out', 'startup_failure'].includes(run.conclusion)) {
+              core.info(`CI concluded ${run.conclusion}; nothing to raise.`);
+              return;
+            }
+            const body = [
+              `CI failed on \`main\` at ${commit} (${run.head_commit?.message?.split('\n')[0] ?? 'no message'}).`,
+              '',
+              `Failing run: ${run.html_url}`,
+              '',
+              'Staging is frozen on the last green commit until CI is green on `main` again; this issue closes itself then.',
+            ].join('\n');
+            if (open.length > 0) {
+              await github.rest.issues.createComment({ owner, repo, issue_number: open[0].number, body });
+            } else {
+              await github.rest.issues.create({ owner, repo, title: `CI is red on main at ${run.head_sha.slice(0, 7)}`, body, labels: [label] });
+            }
