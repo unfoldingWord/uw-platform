@@ -6,8 +6,10 @@
   "exports": {
     "./acl": "./acl.ts",
     "./dates": "./dates.ts",
+    "./log": "./log.ts",
     "./modules": "./modules.ts",
-    "./principal": "./principal.ts"
+    "./principal": "./principal.ts",
+    "./trace": "./trace.ts"
   },
   "scripts": {
     "check": "tsc --noEmit -p tsconfig.json"
