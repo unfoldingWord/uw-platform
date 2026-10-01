@@ -1,4 +1,4 @@
-import { errors, SignJWT } from 'jose';
+import { createLocalJWKSet, errors, exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { refusalSchema } from '@uw/contracts';
 import { createApp } from '../app.tsx';
@@ -128,6 +128,44 @@ describe('FD-7 a token that does not verify gets 401', () => {
 
   it('refuses a token with neither email nor common_name', async () => {
     await expectRefusal(await fixture.sign({}), 401, 'unauthenticated');
+  });
+});
+
+async function twoKeySetAndKidlessToken() {
+  const first = await generateKeyPair('RS256', { extractable: true });
+  const second = await generateKeyPair('RS256', { extractable: true });
+  const jwks = {
+    keys: [
+      { ...(await exportJWK(first.publicKey)), alg: 'RS256' },
+      { ...(await exportJWK(second.publicKey)), alg: 'RS256' },
+    ],
+  };
+  const token = await new SignJWT(person)
+    .setProtectedHeader({ alg: 'RS256' })
+    .setIssuer(fixtureAccessEnv.ACCESS_TEAM_DOMAIN)
+    .setAudience(fixtureAccessEnv.ACCESS_AUD)
+    .setExpirationTime('5m')
+    .sign(first.privateKey);
+  return { keys: createLocalJWKSet(jwks), token };
+}
+
+describe('FD-7 a token jose cannot select a key for or does not support gets 401', () => {
+  it('refuses a token whose header names an unrecognised critical parameter', async () => {
+    const [, payload, signature] = (await fixture.sign(person)).split('.');
+    const header = base64url({ alg: 'RS256', kid: 'fixture', crit: ['x'], x: 1 });
+    await expectRefusal(`${header}.${payload}.${signature}`, 401, 'unauthenticated');
+  });
+
+  it('refuses a token with no kid against a key set holding two matching keys', async () => {
+    const { keys, token } = await twoKeySetAndKidlessToken();
+    const { deps } = recordingDeps();
+    const response = await createApp({ ...deps, accessKeys: () => keys }).request(
+      '/',
+      { headers: { 'cf-access-jwt-assertion': token } },
+      fixtureAccessEnv,
+    );
+    expect(response.status).toBe(401);
+    expect(refusalSchema.parse(await response.json()).reason).toBe('unauthenticated');
   });
 });
 

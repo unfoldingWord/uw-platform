@@ -25,6 +25,8 @@ const badTokenErrors = [
   errors.JWSInvalid,
   errors.JWTInvalid,
   errors.JWKSNoMatchingKey,
+  errors.JWKSMultipleMatchingKeys,
+  errors.JOSENotSupported,
   errors.JOSEAlgNotAllowed,
 ];
 
