@@ -71,3 +71,10 @@ describe('FD-11 error fields for a log line', () => {
     });
   });
 });
+
+describe('FD-11 error fields never carry a URL', () => {
+  it('replaces every URL in the message, credentials and all', () => {
+    const error = new Error('connect postgres://u:pw@db.example/x failed; see https://a.b/c?t=1');
+    expect(errorFields(error).error_message).toBe('connect <url> failed; see <url>');
+  });
+});

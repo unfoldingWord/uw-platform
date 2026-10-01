@@ -66,6 +66,7 @@ export function createLogger(context: LogContext, sink: LogSink): Logger {
 }
 
 const ERROR_MESSAGE_LIMIT = 200;
+const URL_IN_TEXT = /[a-z][a-z0-9+.-]*:\/\/\S+/gi;
 
 export type ErrorFields = { readonly error_name: string; readonly error_message: string };
 
@@ -74,6 +75,6 @@ export function errorFields(error: unknown): ErrorFields {
   const message = isError ? error.message : String(error);
   return {
     error_name: isError ? error.name : 'non_error',
-    error_message: message.slice(0, ERROR_MESSAGE_LIMIT),
+    error_message: message.replace(URL_IN_TEXT, '<url>').slice(0, ERROR_MESSAGE_LIMIT),
   };
 }
