@@ -20,6 +20,12 @@ const impure = [
 const harnessMayImport = '^packages/(harness|contracts|core)/';
 const contractsMayImport = ['^packages/contracts/', npm('zod')];
 const testFile = '\\.test\\.ts$';
+const portContracts = '^packages/harness/port-contracts/';
+const simMayImport = [
+  '^sim/',
+  '^packages/(harness|contracts|db)/',
+  '^(node:)?(fs|path|url|process|os|assert|assert/strict|child_process)$',
+];
 
 const forbidden = (name, comment, from, to) => ({
   name,
@@ -82,8 +88,23 @@ export default {
       name: 'harness-imports-contracts-and-core-only',
       comment: 'packages/harness imports packages/contracts and packages/core and nothing else.',
       severity: 'error',
-      from: { path: '^packages/harness/', pathNot: testFile },
+      from: { path: '^packages/harness/', pathNot: [testFile, portContracts] },
       to: { pathNot: harnessMayImport },
+    },
+    {
+      name: 'harness-port-contracts-import-the-harness-and-vitest-only',
+      comment: 'A port contract suite imports what the harness may, plus Vitest.',
+      severity: 'error',
+      from: { path: portContracts },
+      to: { pathNot: [harnessMayImport, npm('vitest')] },
+    },
+    {
+      name: 'port-contracts-only-in-tests',
+      comment:
+        'Only test files import a port contract suite, so Vitest never enters a Worker bundle.',
+      severity: 'error',
+      from: { path: '^(apps|sim)/', pathNot: testFile },
+      to: { path: portContracts },
     },
     {
       name: 'harness-tests-import-contracts-core-and-vitest-only',
@@ -104,6 +125,29 @@ export default {
       '^sim/',
       '^(apps|packages/(core|ui))/',
     ),
+    {
+      name: 'sim-imports-harness-contracts-db-and-node-only',
+      comment:
+        'sim imports packages/harness, packages/contracts, packages/db, its own files and Node built-ins; its tests also Vitest.',
+      severity: 'error',
+      from: { path: '^sim/' },
+      to: { pathNot: [...simMayImport, npm('vitest')] },
+    },
+    {
+      name: 'sim-os-and-child-process-only-in-tests-cli-and-runner',
+      comment:
+        'Only sim tests, sim/cli and sim/runner reach the host through node:os or node:child_process.',
+      severity: 'error',
+      from: { path: '^sim/', pathNot: [testFile, '^sim/(cli|runner)/'] },
+      to: { path: '^(node:)?(os|child_process)$' },
+    },
+    {
+      name: 'sim-non-test-files-never-import-vitest',
+      comment: 'Only sim tests import Vitest.',
+      severity: 'error',
+      from: { path: '^sim/', pathNot: testFile },
+      to: { path: npm('vitest') },
+    },
     forbidden(
       'ingest-never-touches-the-kernel',
       'apps/uw-ingest verifies webhooks and enqueues; it never imports the kernel.',
