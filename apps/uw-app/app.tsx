@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { meRoutes } from './auth/me.ts';
 import { withPrincipal } from './auth/principal-middleware.ts';
 import { withDatabase } from './database.ts';
 import { platformDeps, type AppDeps, type AppEnv } from './deps.ts';
@@ -21,6 +22,7 @@ export function createApp(deps: AppDeps = platformDeps): Hono<AppEnv> {
   app.get('/health', (c) => c.json({ status: 'ok', commit: commitOf(c.env) }));
 
   app.use(withPrincipal(deps));
+  app.route('/api/me', meRoutes());
 
   app.get('/', (c) => {
     const commit = commitOf(c.env).slice(0, 7);
