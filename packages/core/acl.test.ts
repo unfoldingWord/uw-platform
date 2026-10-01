@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import type { Grant, Principal } from '@uw/contracts';
-import { can, type AclAction, type AclResource } from './acl.ts';
+import { actionForVerbRole, can, minimumRole, type AclAction, type AclResource } from './acl.ts';
 import { personPrincipal } from './principal.ts';
 
 const personId = '00000000-0000-4000-8000-000000000009';
@@ -49,14 +49,25 @@ const matrix: Row[] = [
   ['org viewer may not write', [org('viewer')], 'write', software, false],
   ['no grant may do nothing', [], 'read', software, false],
   ['grants add up', [area('viewer', '80-89'), area('editor', '20-29')], 'write', finance, true],
+  ['area editor may not write the org', [area('editor', '80-89')], 'write', wholeOrg, false],
+  ['area viewer may not read the org', [area('viewer', '80-89')], 'read', wholeOrg, false],
+  ['org editor writes the org', [org('editor')], 'write', wholeOrg, true],
+  ['org editor may not administer', [org('editor')], 'admin', software, false],
+  ['org editor may not administer the org', [org('editor')], 'admin', wholeOrg, false],
 ];
 
 const actions: AclAction[] = ['read', 'write', 'admin'];
 
+const resources: AclResource[] = [software, finance, wholeOrg];
+
 function orgAdminCoversAreaAdmin(action: AclAction): void {
   const areaAdmin = holding(area('admin', '80-89'));
   const orgAdmin = holding(org('admin'));
-  if (can(areaAdmin, action, software)) expect(can(orgAdmin, action, software)).toBe(true);
+  const uncovered = resources.filter(
+    (resource) => can(areaAdmin, action, resource) && !can(orgAdmin, action, resource),
+  );
+  expect(uncovered).toEqual([]);
+  expect(resources.filter((resource) => !can(orgAdmin, action, resource))).toEqual([]);
 }
 
 describe('FD-8 can()', () => {
@@ -70,7 +81,60 @@ describe('FD-8 can()', () => {
   );
 
   it('takes a principal, an action and a resource and no database handle', () => {
-    expectTypeOf(can).parameters.toEqualTypeOf<[Principal, AclAction, AclResource]>();
+    expectTypeOf(can).parameters.toEqualTypeOf<
+      [Principal, AclAction, AclResource, (Date | undefined)?]
+    >();
     expectTypeOf(can).returns.toEqualTypeOf<boolean>();
+  });
+});
+
+const at = new Date('2026-10-01T12:00:00.000Z');
+
+function expiring(expiresAt: string): Grant {
+  return { ...org('admin'), expiresAt };
+}
+
+describe('FD-8 can() treats an expired grant as absent', () => {
+  it('ignores a grant that expired before the instant asked about', () => {
+    expect(can(holding(expiring('2026-10-01T11:59:59.000Z')), 'read', software, at)).toBe(false);
+  });
+
+  it('ignores a grant that expires at exactly that instant', () => {
+    expect(can(holding(expiring('2026-10-01T12:00:00.000Z')), 'read', software, at)).toBe(false);
+  });
+
+  it('honours a grant that has not yet expired', () => {
+    expect(can(holding(expiring('2026-10-01T12:00:01.000Z')), 'admin', wholeOrg, at)).toBe(true);
+  });
+
+  it('checks expiry against the current time when no instant is given', () => {
+    expect(can(holding(expiring('2000-01-01T00:00:00.000Z')), 'read', software)).toBe(false);
+    expect(can(holding(expiring('2999-01-01T00:00:00.000Z')), 'read', software)).toBe(true);
+  });
+
+  it('still honours a live grant beside an expired one', () => {
+    const grants = [expiring('2000-01-01T00:00:00.000Z'), area('editor', '80-89')];
+    expect(can(holding(...grants), 'write', software, at)).toBe(true);
+  });
+});
+
+const roles: Grant['role'][] = ['viewer', 'editor', 'admin'];
+
+function roundTrips(role: Grant['role']): void {
+  expect(minimumRole[actionForVerbRole(role)]).toBe(role);
+}
+
+describe('CT-2 FD-8 a verb grant role maps to one can() action', () => {
+  it('maps viewer to read, editor to write and admin to admin', () => {
+    expect(roles.map(actionForVerbRole)).toEqual(['read', 'write', 'admin']);
+  });
+
+  it.each(roles)('round-trips %s through minimumRole', roundTrips);
+
+  it('keeps an editor of another area out of an editor(40-49) verb', () => {
+    const gifts: AclResource = { kind: 'area', area: '40-49' };
+    const action = actionForVerbRole('editor');
+    expect(can(holding(area('editor', '80-89')), action, gifts, at)).toBe(false);
+    expect(can(holding(area('editor', '40-49')), action, gifts, at)).toBe(true);
   });
 });
