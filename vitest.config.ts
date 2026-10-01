@@ -15,12 +15,18 @@ export default defineConfig({
         test: {
           name: 'workers',
           include: workerPackages.map((path) => `${path}/**/*.test.ts`),
+          exclude: ['**/*.pg.test.ts', '**/node_modules/**'],
         },
       },
       {
         test: {
           name: 'node',
-          include: ['packages/**/*.test.ts', 'tools/**/*.test.ts', 'sim/**/*.test.ts'],
+          include: [
+            'packages/**/*.test.ts',
+            'tools/**/*.test.ts',
+            'sim/**/*.test.ts',
+            'apps/**/*.pg.test.ts',
+          ],
         },
       },
     ],

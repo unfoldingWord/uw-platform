@@ -6,7 +6,9 @@
   "exports": {
     "./client": "./client.ts",
     "./declarations": "./declarations.ts",
-    "./schema": "./schema.ts"
+    "./migrate": "./migrate.ts",
+    "./schema": "./schema.ts",
+    "./test-database": "./test-database.ts"
   },
   "scripts": {
     "check": "tsc --noEmit -p tsconfig.json"

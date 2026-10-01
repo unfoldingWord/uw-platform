@@ -6,5 +6,5 @@
     "jsxImportSource": "hono/jsx"
   },
   "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "**/*.pg.test.ts", "testing/postgres.ts"]
 }
