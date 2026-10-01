@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { PersonStatus } from '@uw/contracts';
 import type { Executor } from '@uw/db/client';
 import { people } from '@uw/db/schema';
@@ -42,4 +42,17 @@ export async function signIn(db: Executor, rawEmail: string): Promise<PersonReco
   const created = await selectByEmail(db, email);
   if (!created) throw new Error('a person row must exist after sign-in');
   return created;
+}
+
+export async function lockPerson(db: Executor, personId: string): Promise<PersonRecord | null> {
+  const [row] = await db.select().from(people).where(eq(people.id, personId)).for('update');
+  if (!row) return null;
+  return { personId: row.id, email: row.email, status: row.status as PersonStatus };
+}
+
+export async function activatePerson(db: Executor, personId: string): Promise<void> {
+  await db
+    .update(people)
+    .set({ status: 'active' })
+    .where(and(eq(people.id, personId), eq(people.status, 'pending')));
 }
