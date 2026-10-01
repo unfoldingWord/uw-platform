@@ -1,12 +1,18 @@
 import { describeConnectorsNotWired } from '@uw/harness/port-contracts/connectors';
 import { describeGithubFactsNotWired } from '@uw/harness/port-contracts/github-facts';
 import { describeGrantsNotWired } from '@uw/harness/port-contracts/grants';
+import { describeHubNotWired } from '@uw/harness/port-contracts/hub';
 import { describeModelEngineNotWired } from '@uw/harness/port-contracts/model-engine';
+import { describeNotifierNotWired } from '@uw/harness/port-contracts/notifier';
+import { describeRunsNotWired } from '@uw/harness/port-contracts/runs';
 import { describeStoreNotWired } from '@uw/harness/port-contracts/store';
 import { connectorsNotWired } from './connectors.not-wired.ts';
 import { githubFactsNotWired } from './github-facts.not-wired.ts';
 import { grantsNotWired } from './grants.not-wired.ts';
+import { hubNotWired } from './hub.not-wired.ts';
 import { modelEngineNotWired } from './model-engine.not-wired.ts';
+import { notifierNotWired } from './notifier.not-wired.ts';
+import { runsNotWired } from './runs.not-wired.ts';
 import { storeNotWired } from './store.not-wired.ts';
 
 describeStoreNotWired('uw-app with no database', storeNotWired);
@@ -14,3 +20,6 @@ describeGrantsNotWired('uw-app with no database', grantsNotWired);
 describeGithubFactsNotWired('uw-app until GH-2', githubFactsNotWired);
 describeConnectorsNotWired('uw-app until GH-6', connectorsNotWired);
 describeModelEngineNotWired('uw-app until HE-2', modelEngineNotWired);
+describeHubNotWired('uw-app until WB-3', hubNotWired);
+describeNotifierNotWired('uw-app until NT-1', notifierNotWired);
+describeRunsNotWired('uw-app until HE-1', runsNotWired);
