@@ -3,8 +3,7 @@
   "workspaces": {
     ".": {
       "entry": ["tools/*/check-*.ts", "tools/**/*.test.ts"],
-      "project": ["tools/**/*.ts", "*.ts"],
-      "ignoreDependencies": ["smol-toml"]
+      "project": ["tools/**/*.ts", "*.ts"]
     },
     "apps/*": {
       "entry": ["**/*.test.ts"],
