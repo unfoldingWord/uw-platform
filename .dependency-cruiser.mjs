@@ -107,6 +107,14 @@ export default {
       to: { path: portContracts },
     },
     {
+      name: 'test-seed-only-in-tests-and-sim',
+      comment:
+        'Only test files and sim/ import the fixture seeding helpers, which write tables their owners write.',
+      severity: 'error',
+      from: { path: '^(apps|packages)/', pathNot: testFile },
+      to: { path: '^packages/db/test-seed\\.ts$' },
+    },
+    {
       name: 'harness-tests-import-contracts-core-and-vitest-only',
       comment: 'A packages/harness test imports what the harness may, plus Vitest.',
       severity: 'error',

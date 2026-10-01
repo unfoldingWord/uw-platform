@@ -1,6 +1,6 @@
 import type { Context, MiddlewareHandler } from 'hono';
 import { personPrincipal, serviceTokenPrincipal } from '@uw/core/principal';
-import { resolveGrants } from '../acl/grant-store.ts';
+import { resolveGrants } from '@uw/db/store';
 import type { AppDeps, AppEnv } from '../deps.ts';
 import { refuse } from '../http/outcomes.ts';
 import { signIn } from '../people/directory.ts';
@@ -47,7 +47,7 @@ export function withPrincipal(deps: Pick<AppDeps, 'accessKeys'>): MiddlewareHand
     if (database === null) return refuse(c, 'database_not_configured');
     const person = await signIn(database.db, identity.email);
     if (person.status === 'pending') return refusePending(c);
-    const grants = await resolveGrants(database.db, person.personId);
+    const grants = await resolveGrants(database.db, person.personId, { at: new Date() });
     c.set(
       'principal',
       personPrincipal({
