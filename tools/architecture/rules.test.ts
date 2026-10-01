@@ -149,28 +149,28 @@ const refusals: [string, string, string, string][] = [
   ],
   ['core into db', 'packages/core/a.ts', "import '../db/b.ts';", 'core-imports-contracts-only'],
   [
-    'sim into db',
+    'sim into core',
     'sim/a.ts',
-    "import '../packages/db/b.ts';",
-    'sim-imports-harness-and-contracts-only',
+    "import '../packages/core/b.ts';",
+    'sim-imports-harness-contracts-and-db-only',
   ],
   [
     'sim into apps',
     'sim/a.ts',
     "import '../apps/uw-app/b.ts';",
-    'sim-imports-harness-and-contracts-only',
+    'sim-imports-harness-contracts-and-db-only',
   ],
   [
-    'ingest into the engine',
+    'ingest into the kernel',
     'apps/uw-ingest/a.ts',
     "import '../../packages/harness/b.ts';",
-    'ingest-never-touches-the-engine',
+    'ingest-never-touches-the-kernel',
   ],
   [
-    'an island into the engine',
+    'an island into the kernel',
     'apps/uw-app/islands/a.ts',
     "import '../../../packages/harness/b.ts';",
-    'islands-never-call-the-engine',
+    'islands-never-call-the-kernel',
   ],
   [
     'a vendor SDK outside an engine',
@@ -200,7 +200,7 @@ describe('the dependency rules', () => {
         'packages/core/index.ts':
           "import { value } from '../contracts/index.ts'; export const core = value;",
         'packages/harness/index.ts':
-          "import { core } from '../core/index.ts'; export const engine = core;",
+          "import { core } from '../core/index.ts'; export const kernel = core;",
       }),
     ).toEqual([]);
   });
@@ -211,6 +211,7 @@ describe('the dependency rules', () => {
         [path]: source,
         'apps/uw-app/b.ts': leaf,
         'packages/db/b.ts': leaf,
+        'packages/core/b.ts': leaf,
         'packages/harness/b.ts': leaf,
         'apps/uw-app/types.d.ts': 'export type Value = number;',
       }),
@@ -243,6 +244,18 @@ describe('the dependency rules allow', () => {
         'packages/contracts/index.ts': "import 'zod'; export const value = 1;",
         'packages/contracts/a.test.ts':
           "import 'vitest'; import 'node:fs'; import 'node:path'; import 'zod'; import './index.ts';",
+      }),
+    ).toEqual([]);
+  });
+
+  it('the sim on the harness, the contracts and the db', async () => {
+    expect(
+      await violations({
+        'packages/contracts/index.ts': leaf,
+        'packages/db/index.ts': leaf,
+        'packages/harness/index.ts': leaf,
+        'sim/a.ts':
+          "import '../packages/harness/index.ts'; import '../packages/contracts/index.ts'; import '../packages/db/index.ts';",
       }),
     ).toEqual([]);
   });

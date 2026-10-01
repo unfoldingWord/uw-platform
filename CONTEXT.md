@@ -100,6 +100,14 @@ _Avoid_: mode, runner type
 Where a run executes: the platform (a Cloudflare Workflow, optionally with a Sandbox or Container) or an **external runner** (a staff member's own Claude Code or Codex on their own machine). Billing follows the host.
 _Avoid_: environment, runtime, machine
 
+**Kernel**:
+The pure core in `packages/harness`: the stage machine, the ship rule, the fold and the walker, built by `createKernel(ports)` and reaching everything outside itself through a port.
+_Avoid_: engine (that is the model-vendor seam), core (that is `packages/core`), service, backend
+
+**Port**:
+An interface the kernel needs from the world: Clock, Ids, Store, Grants, GitHubFacts, Connectors, ModelEngine, Hub, Notifier, Runs. Each has a platform adapter, a test adapter and one contract test run against both.
+_Avoid_: interface (too general), driver, provider, memory adapter (the test adapter for Store is real Postgres)
+
 **Engine**:
 The code behind one seam that talks to a model vendor: `claude-messages`, `claude-code-sandbox`, `claude-managed-agent`, `codex-sandbox`, `external`, `openrouter-messages`. A persona picks one. The vendor SDK is named in exactly one directory per engine.
 _Avoid_: model (that is one field of the persona), provider, backend, LLM
@@ -168,21 +176,25 @@ _Avoid_: inbox, to-do, notifications
 
 ## The repo and the build
 
+**PRD**:
+`docs/PRD.md`, the list of what v1 is: every requirement with a stable ID, the build order, the release criteria and the decision log. The list of work; there is no other.
+_Avoid_: backlog, issues (they are history), roadmap
+
+**Requirement**:
+One row of the PRD with a stable ID such as `KN-13`. Scenarios, tests, commits and the progress tracker name requirements by ID.
+_Avoid_: issue, ticket, story, task
+
 **Spec**:
-`prd/Harness v1 - Architecture.md`, the ratified design. The source of truth for what the harness is. Its Decisions table is where a design change is recorded.
-_Avoid_: PRD (the plan's PRD is the platform's), design doc, RFC
+`prd/Harness v1 - Architecture.md`, the ratified design. The source of truth for how the harness is designed and why. Its Decisions table is where a design change is recorded.
+_Avoid_: PRD (that is `docs/PRD.md`), design doc, RFC
 
 **Plan**:
 `prd/An App For Everything - Platform Architecture Plan.md`, Jesse's design for the whole platform. The harness sits one level below it and consumes its ACL, pages and topology.
 _Avoid_: roadmap, vision (that is the Executive Brief)
 
-**Milestone**:
-One of the ten GitHub milestones M0 to M9. Issues carry their milestone, a priority label, an area label and native blocked-by edges.
-_Avoid_: phase (that is the plan's word for platform rollout), sprint, epic
-
-**Ready**:
-The label on an issue that is unblocked and pickable. Assigning yourself is the claim.
-_Avoid_: available, open (every unclosed issue is open), unassigned
+**Build-order step**:
+One of the eleven steps in PRD section 13. Each needs the ones before it; the progress tracker reports by step.
+_Avoid_: milestone (the GitHub milestones M0 to M9 are history), phase (that is the plan's word for platform rollout), sprint, epic
 
 **Verify**:
 `pnpm verify`, the whole check chain, the same one CI runs.

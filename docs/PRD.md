@@ -618,7 +618,7 @@ The issues left these as "decide in the PR". They are decided here so the build 
 | P25 | Zulip topics are named `<harness>/<item ref>`. Only waiting-on-you and run-failed reasons post. A post does not use the cooldown and @-mentions no one. Replies are `comment_recorded` events. A reply from an unmapped author is recorded with the email and no person. A harness-level `delegation_lapsed` posts to a topic named for the harness. |
 | P26 | A failed run is a Workflow that has exhausted its retries or been aborted. Workflow steps retry 3 times. A failed hosted run under a delegation wakes the delegating person. |
 | P27 | The breaker stops; it does not fail over to a cheaper model. |
-| P28 | The persona dry run is one `claude-messages`-shaped turn against a fixture item on memory adapters that writes nothing durable. A persona whose missing verb later ships needs the person to press Activate again. |
+| P28 | The persona dry run is one `claude-messages`-shaped turn against a fixture item on test adapters that writes nothing durable. A persona whose missing verb later ships needs the person to press Activate again. |
 | P29 | Builder's default model on the hosted path is the persona page's `model` field, with Sonnet-class as the fixture value. Reviewer's lens split for `high` items is correctness on the first reviewer and security on the second. |
 | P30 | The default review date for `assumed` and `inferred` learnings is 90 days after `as_of`. A contradiction is detected by `supersedes` alone. |
 | P31 | The bracket each stage belongs to is a column on `harness_stages`. The Flow diagram is inline SVG. Board reorder is a menu action, with drag-and-drop optional. The play-by-play pages 100 events at a time. Home lives at the app root. A gate the person cannot decide for lack of a domain grant is not shown. |
@@ -634,7 +634,7 @@ The issues left these as "decide in the PR". They are decided here so the build 
 - Issue #61 carries two engine lines for Reviewer. The later one, `openrouter-messages` by default, is the spec's (P3).
 - Issue #12 asked for branch protection. It was closed because the plan the repository is on does not offer it; FD-4's deploy gate stands in.
 - The spec's Figure 2 drawing shows Close with exit `none`; the v1.1 text makes it `checks` with `learning_attached`. The text wins.
-- `docs/architecture.md` and ADR 0001 on `main` still say "engine" for the pure core and describe in-memory tables for the Store test adapter. Issue #82 corrects both; this document already uses the corrected terms.
+- `docs/architecture.md` and ADR 0001 used to say "engine" for the pure core and describe in-memory tables for the Store test adapter. Issue #82 corrected both on 2026-10-01; this document, `AGENTS.md`, `CONTEXT.md` and the dependency rules use the corrected terms.
 
 ## Appendix B. Issue to requirement map
 
