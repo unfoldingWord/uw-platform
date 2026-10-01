@@ -83,7 +83,7 @@ importers:
         version: link:../uw-ingest
       drizzle-orm:
         specifier: ^0.45.3
-        version: 0.45.3(@cloudflare/workers-types@5.20260930.1)(postgres@3.4.9)
+        version: 0.45.3(@cloudflare/workers-types@5.20260930.1)(@electric-sql/pglite@0.5.8)(postgres@3.4.9)
       hono:
         specifier: ^4.13.11
         version: 4.13.11
@@ -120,7 +120,7 @@ importers:
         version: link:../../packages/db
       drizzle-orm:
         specifier: ^0.45.3
-        version: 0.45.3(@cloudflare/workers-types@5.20260930.1)(postgres@3.4.9)
+        version: 0.45.3(@cloudflare/workers-types@5.20260930.1)(@electric-sql/pglite@0.5.8)(postgres@3.4.9)
       hono:
         specifier: ^4.13.11
         version: 4.13.11
@@ -152,6 +152,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@electric-sql/pglite':
+        specifier: ^0.5.8
+        version: 0.5.8
       '@uw/contracts':
         specifier: workspace:*
         version: link:../contracts
@@ -160,7 +163,7 @@ importers:
         version: link:../core
       drizzle-orm:
         specifier: ^0.45.3
-        version: 0.45.3(@cloudflare/workers-types@5.20260930.1)(postgres@3.4.9)
+        version: 0.45.3(@cloudflare/workers-types@5.20260930.1)(@electric-sql/pglite@0.5.8)(postgres@3.4.9)
       postgres:
         specifier: ^3.4.9
         version: 3.4.9
@@ -290,6 +293,9 @@ packages:
 
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
+
+  '@electric-sql/pglite@0.5.8':
+    resolution: {integrity: sha512-n9tsbUOhwx2epK1V0ZG9Ar4SHWUju04dhmzZXiSBXwBoleOvIfals33NAaWgagQVAL4Rbvx/Ptsu3P+pA09f6Q==}
 
   '@emnapi/core@1.11.2':
     resolution: {integrity: sha512-TC8MkTuZUtcTSiFeuC0ksCh9QIJ5+F21MvZ4Wn4ORfYaFJ/0dsiudv5tVkejgwZlwQ39jL9WWDe2lz8x0WglOA==}
@@ -2545,6 +2551,8 @@ snapshots:
 
   '@drizzle-team/brocli@0.10.2': {}
 
+  '@electric-sql/pglite@0.5.8': {}
+
   '@emnapi/core@1.11.2':
     dependencies:
       '@emnapi/wasi-threads': 1.2.2
@@ -3431,9 +3439,10 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.23.15
 
-  drizzle-orm@0.45.3(@cloudflare/workers-types@5.20260930.1)(postgres@3.4.9):
+  drizzle-orm@0.45.3(@cloudflare/workers-types@5.20260930.1)(@electric-sql/pglite@0.5.8)(postgres@3.4.9):
     optionalDependencies:
       '@cloudflare/workers-types': 5.20260930.1
+      '@electric-sql/pglite': 0.5.8
       postgres: 3.4.9
 
   enhanced-resolve@5.25.1:

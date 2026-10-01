@@ -11,7 +11,7 @@ import type { Principal } from '@uw/core/principal';
 import { advisoryLocks } from '@uw/db/advisory-locks';
 import type { Database, Executor, Transaction } from '@uw/db/client';
 import { pages, pageVersions } from '@uw/db/schema';
-import { pgConstraint, pgErrorCode } from '../http/pg-errors.ts';
+import { pgConstraint, pgErrorCode } from '@uw/db/errors';
 import { checkFrontmatter } from './validate.ts';
 
 export const owns = ['pages', 'page_versions'] as const;

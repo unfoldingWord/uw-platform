@@ -7,14 +7,19 @@
     "./advisory-locks": "./advisory-locks.ts",
     "./client": "./client.ts",
     "./declarations": "./declarations.ts",
+    "./embedded": "./embedded.ts",
+    "./errors": "./errors.ts",
+    "./journal": "./journal.ts",
     "./migrate": "./migrate.ts",
     "./schema": "./schema.ts",
-    "./test-database": "./test-database.ts"
+    "./test-database": "./test-database.ts",
+    "./test-targets": "./test-targets.ts"
   },
   "scripts": {
     "check": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@uw/contracts": "workspace:*",
     "@uw/core": "workspace:*",
     "drizzle-orm": "^0.45.3",
