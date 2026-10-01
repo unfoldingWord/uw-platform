@@ -4,13 +4,16 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./acl": "./acl.ts",
     "./dates": "./dates.ts",
-    "./modules": "./modules.ts"
+    "./modules": "./modules.ts",
+    "./principal": "./principal.ts"
   },
   "scripts": {
     "check": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@uw/contracts": "workspace:*",
     "zod": "^4.6.5"
   }
 }
