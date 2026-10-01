@@ -34,6 +34,25 @@ function grantAllows(grant: Grant, action: AclAction, resource: AclResource): bo
   return action === 'read' && reaches(grant.role, 'editor');
 }
 
-export function can(actor: Principal, action: AclAction, resource: AclResource): boolean {
-  return actor.grants.some((grant) => grantAllows(grant, action, resource));
+function isLive(grant: Grant, at: Date): boolean {
+  return grant.expiresAt === null || new Date(grant.expiresAt).getTime() > at.getTime();
+}
+
+export function can(
+  actor: Principal,
+  action: AclAction,
+  resource: AclResource,
+  at: Date = new Date(),
+): boolean {
+  return actor.grants.some((grant) => isLive(grant, at) && grantAllows(grant, action, resource));
+}
+
+const actionByVerbRole: ReadonlyMap<Role, AclAction> = new Map<Role, AclAction>([
+  [minimumRole.read, 'read'],
+  [minimumRole.write, 'write'],
+  [minimumRole.admin, 'admin'],
+]);
+
+export function actionForVerbRole(role: Role): AclAction {
+  return actionByVerbRole.get(role) ?? 'admin';
 }
