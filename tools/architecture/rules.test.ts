@@ -161,6 +161,48 @@ const refusals: [string, string, string, string][] = [
     'sim-imports-harness-contracts-and-db-only',
   ],
   [
+    'sim into an npm package',
+    'sim/a.ts',
+    "import 'zod';",
+    'sim-imports-harness-contracts-db-and-node-only',
+  ],
+  [
+    'sim into Drizzle',
+    'sim/a.ts',
+    "import 'drizzle-orm';",
+    'sim-imports-harness-contracts-db-and-node-only',
+  ],
+  [
+    'a sim adapter into node:os',
+    'sim/adapters/a.ts',
+    "import 'node:os';",
+    'sim-os-and-child-process-only-in-tests-cli-and-runner',
+  ],
+  [
+    'a sim adapter into node:child_process',
+    'sim/adapters/a.ts',
+    "import 'node:child_process';",
+    'sim-os-and-child-process-only-in-tests-cli-and-runner',
+  ],
+  [
+    'a sim non-test file into Vitest',
+    'sim/a.ts',
+    "import 'vitest';",
+    'sim-non-test-files-never-import-vitest',
+  ],
+  [
+    'a port contract into a root dependency',
+    'packages/harness/port-contracts/a.ts',
+    "import 'eslint';",
+    'harness-port-contracts-import-the-harness-and-vitest-only',
+  ],
+  [
+    'a non-test app file into a port contract',
+    'apps/uw-app/a.ts',
+    "import '../../packages/harness/port-contracts/b.ts';",
+    'port-contracts-only-in-tests',
+  ],
+  [
     'ingest into the kernel',
     'apps/uw-ingest/a.ts',
     "import '../../packages/harness/b.ts';",
@@ -213,6 +255,7 @@ describe('the dependency rules', () => {
         'packages/db/b.ts': leaf,
         'packages/core/b.ts': leaf,
         'packages/harness/b.ts': leaf,
+        'packages/harness/port-contracts/b.ts': leaf,
         'apps/uw-app/types.d.ts': 'export type Value = number;',
       }),
     ).toContain(rule);
@@ -264,6 +307,36 @@ describe('the dependency rules allow', () => {
     expect(
       await violations({
         'apps/uw-app/engines/claude-messages/a.ts': "import '@anthropic-ai/sdk';",
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('the dependency rules allow the sim and port contracts', () => {
+  it('a port contract on Vitest and the ports', async () => {
+    expect(
+      await violations({
+        'packages/harness/index.ts': leaf,
+        'packages/harness/port-contracts/a.ts': "import 'vitest'; import '../index.ts';",
+      }),
+    ).toEqual([]);
+  });
+
+  it('the sim on Node built-ins, and a sim test on Vitest', async () => {
+    expect(
+      await violations({
+        'sim/a.ts':
+          "import 'node:fs'; import 'node:path'; import 'node:url'; import 'node:assert/strict';",
+        'sim/a.test.ts': "import 'vitest'; import 'node:os'; import './a.ts';",
+      }),
+    ).toEqual([]);
+  });
+
+  it('node:os and node:child_process in the sim cli and runner', async () => {
+    expect(
+      await violations({
+        'sim/cli/a.ts': "import 'node:os'; import 'node:child_process';",
+        'sim/runner/a.ts': "import 'node:os'; import 'node:child_process';",
       }),
     ).toEqual([]);
   });
