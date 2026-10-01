@@ -23,6 +23,10 @@ export const engineSchema = z.enum([
   'openrouter-messages',
 ]);
 export const costBasisSchema = z.enum(['metered', 'subscription']);
+export const capabilityWordSchema = z.enum(['none', 'iterate', 'build', 'review']);
+export const gateDecisionSchema = z.enum(['approve', 'reject', 'take_over', 'override']);
+export const personStatusSchema = z.enum(['active', 'pending']);
+export const principalKindSchema = z.enum(['person', 'agent']);
 
 export type Connector = z.infer<typeof connectorSchema>;
 export type ExitGate = z.infer<typeof exitGateSchema>;
@@ -38,3 +42,7 @@ export type OfflineEligibility = z.infer<typeof offlineEligibilitySchema>;
 export type RunShape = z.infer<typeof runShapeSchema>;
 export type Engine = z.infer<typeof engineSchema>;
 export type CostBasis = z.infer<typeof costBasisSchema>;
+export type CapabilityWord = z.infer<typeof capabilityWordSchema>;
+export type GateDecision = z.infer<typeof gateDecisionSchema>;
+export type PersonStatus = z.infer<typeof personStatusSchema>;
+export type PrincipalKind = z.infer<typeof principalKindSchema>;

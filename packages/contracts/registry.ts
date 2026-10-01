@@ -1,14 +1,25 @@
 import type { ZodType } from 'zod';
 import * as closedSets from './closed-sets.ts';
 import { commandNameSchema, commandSchema, overrideCommandSchema } from './commands.ts';
+import { grantRoleCommandSchema, revokeRoleCommandSchema } from './acl-commands.ts';
+import { jdAreaSchema } from './areas.ts';
 import { eventNameSchema, eventSchema } from './events.ts';
+import {
+  healthIndicatorSchema,
+  healthReportSchema,
+  indicatorStatusSchema,
+  overallStatusSchema,
+} from './health.ts';
 import { identitySchema } from './identity.ts';
 import {
   acceptedOutcomeSchema,
   errorOutcomeSchema,
   errorReasonSchema,
   outcomeSchema,
+  refusalSchema,
 } from './outcomes.ts';
+import { platformCommandNameSchema } from './platform-commands.ts';
+import { grantSchema, principalSchema } from './principal.ts';
 
 export const schemaRegistry: Record<string, ZodType> = {
   command: commandSchema,
@@ -35,4 +46,19 @@ export const schemaRegistry: Record<string, ZodType> = {
   'run-shape': closedSets.runShapeSchema,
   engine: closedSets.engineSchema,
   'cost-basis': closedSets.costBasisSchema,
+  refusal: refusalSchema,
+  'capability-word': closedSets.capabilityWordSchema,
+  'gate-decision': closedSets.gateDecisionSchema,
+  'person-status': closedSets.personStatusSchema,
+  'principal-kind': closedSets.principalKindSchema,
+  'jd-area': jdAreaSchema,
+  grant: grantSchema,
+  principal: principalSchema,
+  'platform-command-name': platformCommandNameSchema,
+  'grant-role-command': grantRoleCommandSchema,
+  'revoke-role-command': revokeRoleCommandSchema,
+  'indicator-status': indicatorStatusSchema,
+  'overall-status': overallStatusSchema,
+  'health-indicator': healthIndicatorSchema,
+  'health-report': healthReportSchema,
 };
