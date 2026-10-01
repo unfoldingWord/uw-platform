@@ -48,3 +48,22 @@ The file holds the bodies of two Cloudflare API calls, applied by a person with 
 - The same two calls for `health_bypass.application` with `health_bypass.policies`.
 
 Replace `<google-idp-id>` with the Google identity provider's id from `GET /accounts/{account_id}/access/identity_providers`. After creation, the application's AUD tag and the team domain go into `ACCESS_AUD` and `ACCESS_TEAM_DOMAIN` in `infra/uw-app/wrangler.go-live.toml` (Task 16 of the step-1 plan). Production gets its own application when `uw-app` has a production route.
+
+## uw-ingest
+
+`uw-ingest/wrangler.toml` declares two environments, `staging` and `production`, like `uw-app`. uw-ingest is a separate Worker and is not behind Access: each webhook source authenticates by its signature over the raw body.
+
+| Environment | Worker name | Reachable at | Deployed by |
+|---|---|---|---|
+| staging | `uw-ingest-staging` | `https://uw-ingest-staging.<account subdomain>.workers.dev` | `deploy-ingest-staging` after green CI on `main` |
+| production | `uw-ingest` | nowhere yet: no route, `workers_dev = false` | `deploy-ingest-production` on a tagged release, after the production gate |
+
+`GITHUB_WEBHOOK_SECRET` is a Worker secret, set with `wrangler secret put GITHUB_WEBHOOK_SECRET --env <name>`. It appears in no file.
+
+The queue and Hyperdrive bindings are in `uw-ingest/wrangler.go-live.toml` until the resources exist; nothing in `wrangler.toml` binds a resource that is not there yet.
+
+Deploy staging by hand:
+
+```
+pnpm --filter @uw/uw-ingest deploy:staging
+```
