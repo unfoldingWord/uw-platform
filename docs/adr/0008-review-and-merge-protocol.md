@@ -1,8 +1,11 @@
 ---
-status: accepted
+status: superseded
 date: 2026-09-29
+superseded: 2026-10-01
 ---
 # Issues are the work, Codex reviews every PR, a human squash-merges
+
+> Superseded on 2026-10-01. The work is now the requirement list in [`docs/PRD.md`](../PRD.md), built under `AGENTS.md` sections 7 and 8. The issue pickup, the per-issue pull request and the Codex review round described below no longer apply. A person still decides every merge to `main`.
 
 Work exists only as GitHub issues under the ten milestones, each citing the section of the spec it implements, with acceptance criteria and native blocked-by edges. Pickup is by the `ready` label, not by assignee: the highest-priority unblocked issue in the lowest milestone, claimed by assigning yourself. One open PR per worker. Branches are `harness/<issue>-<slug>` off `main`; the PR says which issue it closes and declares what it touches and its risk tier. Every PR is reviewed by Codex, run by a person from the Codex CLI, which posts findings by severity and a verdict each round; the author answers every finding in one push; an approved PR is frozen and non-blocking notes become follow-up issues. A human merges, by squash, once CI is green and the review is approved. The repository is private on GitHub's Free plan, so branch protection and rulesets are not available (issue #12); the merger enforces the same conditions by hand, confirming every CI check on the current head is green before merging and never merging on red.
 
