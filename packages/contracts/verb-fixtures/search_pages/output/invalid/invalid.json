@@ -1,0 +1,12 @@
+{
+  "pages": [
+    {
+      "id": "nope",
+      "type": "skill",
+      "jdArea": "80-89",
+      "slug": "harness-skill",
+      "title": "Harness skill",
+      "status": "draft"
+    }
+  ]
+}

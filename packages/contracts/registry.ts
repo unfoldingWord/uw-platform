@@ -18,8 +18,20 @@ import {
   outcomeSchema,
   refusalSchema,
 } from './outcomes.ts';
+import {
+  createPageCommandSchema,
+  frontmatterSchema,
+  pageSchema,
+  pageStatusSchema,
+  pageTypeSchema,
+  slugSchema,
+  updatePageCommandSchema,
+} from './pages.ts';
 import { platformCommandNameSchema } from './platform-commands.ts';
 import { grantSchema, principalSchema } from './principal.ts';
+import { runStepSchema, submitToGateResultSchema } from './verb-io.ts';
+import { forbiddenVerbSchema, verbNameSchema } from './verb-names.ts';
+import { verbGrantSchema, verbGroupSchema } from './verbs.ts';
 
 export const schemaRegistry: Record<string, ZodType> = {
   command: commandSchema,
@@ -61,4 +73,17 @@ export const schemaRegistry: Record<string, ZodType> = {
   'overall-status': overallStatusSchema,
   'health-indicator': healthIndicatorSchema,
   'health-report': healthReportSchema,
+  'page-type': pageTypeSchema,
+  'page-status': pageStatusSchema,
+  slug: slugSchema,
+  frontmatter: frontmatterSchema,
+  page: pageSchema,
+  'create-page-command': createPageCommandSchema,
+  'update-page-command': updatePageCommandSchema,
+  'verb-name': verbNameSchema,
+  'forbidden-verb': forbiddenVerbSchema,
+  'verb-group': verbGroupSchema,
+  'verb-grant': verbGrantSchema,
+  'submit-to-gate-result': submitToGateResultSchema,
+  'run-step': runStepSchema,
 };
