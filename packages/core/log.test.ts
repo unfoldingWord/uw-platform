@@ -149,3 +149,53 @@ describe('FD-11 error fields find a database error wherever it sits', () => {
     });
   });
 });
+
+describe('FD-11 error fields for a query that failed without a SQLSTATE', () => {
+  const sql = 'update "people" set "bio" = $1 where "email" = $2';
+  const params = 'private bio text,ada.lovelace@example.org';
+
+  function failedQuery(cause?: object): Error {
+    return Object.assign(new Error(`Failed query: ${sql}\nparams: ${params}`), {
+      query: sql,
+      params: [params],
+      ...(cause === undefined ? {} : { cause }),
+    });
+  }
+
+  it('logs only the name when there is no cause', () => {
+    expect(errorFields(failedQuery())).toEqual({ error_name: 'Error' });
+  });
+
+  it('logs the cause name and a non-SQLSTATE code, never the query', () => {
+    const fields = errorFields(failedQuery({ name: 'Error', code: 'ECONNRESET' }));
+    expect(fields).toEqual({ error_name: 'Error', error_code: 'ECONNRESET' });
+  });
+
+  it('recognises a quoted query by its message alone', () => {
+    const fields = errorFields(new Error(`Failed query: ${sql}`, { cause: { name: 'X' } }));
+    expect(fields).toEqual({ error_name: 'X' });
+  });
+
+  it('does not take a Node code such as EPIPE for a SQLSTATE', () => {
+    const error = Object.assign(new Error('write failed'), { code: 'EPIPE' });
+    expect(errorFields(error)).toEqual({ error_name: 'Error', error_message: 'write failed' });
+  });
+
+  it('caps a constraint name at 200 characters', () => {
+    const cause = { code: '23505', constraint_name: 'c'.repeat(500) };
+    expect(errorFields(new Error('x', { cause }))).toMatchObject({
+      constraint_name: 'c'.repeat(200),
+    });
+  });
+});
+
+describe('FD-11 which codes count as a SQLSTATE', () => {
+  it.each(['23505', 'P0001', 'XX000', 'F0000', 'HV000'])('counts %s', (code) => {
+    const error = new Error('row value', { cause: { code } });
+    expect(errorFields(error)).toEqual({ error_name: 'Error', error_code: code });
+  });
+
+  it.each(['EPIPE', 'ECONNRESET', 'CONNECT_TIMEOUT'])('does not count %s', (code) => {
+    expect(errorFields(Object.assign(new Error('m'), { code }))).toHaveProperty('error_message');
+  });
+});
