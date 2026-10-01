@@ -36,6 +36,20 @@ export class ToolOutsideToolsetError extends Error {
   }
 }
 
+export class ProviderMismatchError extends Error {
+  readonly pinned: string;
+  readonly resolved: string | null;
+
+  constructor(pinned: string, resolved: string | null) {
+    super(
+      `the run pins provider ${pinned}, but the turn was served by ${resolved ?? 'no provider'}`,
+    );
+    this.name = 'ProviderMismatchError';
+    this.pinned = pinned;
+    this.resolved = resolved;
+  }
+}
+
 export function notWiredCall(port: PortName, method: string): Promise<never> {
   return Promise.reject(new PortNotWiredError(port, method));
 }

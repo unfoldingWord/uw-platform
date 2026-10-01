@@ -105,6 +105,52 @@ function describeReporting(open: () => Promise<ModelEngineSubject>): void {
   });
 }
 
+function describePinning(open: () => Promise<ModelEngineSubject>): void {
+  it('reports the pinned provider when the turn was served by it', async () => {
+    const subject = await open();
+    await subject.respondNextWith(turnCalling('read_page'));
+    const result = await subject.engine.turn({
+      ...turnRequest,
+      pinnedProvider: 'fixture-provider',
+    });
+    expect(result.resolvedProvider).toBe('fixture-provider');
+  });
+
+  it('rejects with both provider names when another provider served a pinned turn', async () => {
+    const subject = await open();
+    await subject.respondNextWith(turnCalling('read_page'));
+    await expect(
+      subject.engine.turn({ ...turnRequest, pinnedProvider: 'pinned-provider' }),
+    ).rejects.toMatchObject({
+      name: 'ProviderMismatchError',
+      pinned: 'pinned-provider',
+      resolved: 'fixture-provider',
+    });
+  });
+
+  it('reports whichever provider served an unpinned turn', async () => {
+    const subject = await open();
+    await subject.respondNextWith({
+      ...turnCalling('read_page'),
+      resolvedProvider: 'other-provider',
+    });
+    const result = await subject.engine.turn(turnRequest);
+    expect(result.resolvedProvider).toBe('other-provider');
+  });
+
+  it('rejects a history whose tool result answers no earlier tool call', async () => {
+    const subject = await open();
+    const orphan: TurnRequest = {
+      ...turnRequest,
+      messages: [
+        { role: 'user', text: 'begin' },
+        { role: 'tool', callId: 'call-9', verb: 'claim_item', output: {}, isError: false },
+      ],
+    };
+    await expect(subject.engine.turn(orphan)).rejects.toThrow('call-9');
+  });
+}
+
 export function describeModelEngineContract(
   adapter: string,
   open: () => Promise<ModelEngineSubject>,
@@ -112,6 +158,7 @@ export function describeModelEngineContract(
   describe(`DX-3 modelEngine port contract on ${adapter}`, () => {
     describeToolset(open);
     describeReporting(open);
+    describePinning(open);
   });
 }
 

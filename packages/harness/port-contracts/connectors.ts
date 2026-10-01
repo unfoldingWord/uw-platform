@@ -44,6 +44,14 @@ export function describeConnectorsContract(
         reason: 'head_mismatch',
       });
     });
+
+    it('leaves another connector succeeding after a refusal on one', async () => {
+      const subject = await open();
+      await subject.refuseNext('merge', 'head_mismatch');
+      expect(await subject.connectors.run(request('deploy'))).toMatchObject({
+        outcome: 'succeeded',
+      });
+    });
   });
 }
 

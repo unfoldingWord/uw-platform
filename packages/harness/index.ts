@@ -7,6 +7,7 @@ export type { Kernel, KernelHealth } from './kernel.ts';
 export {
   notWiredCall,
   PortNotWiredError,
+  ProviderMismatchError,
   RunTransitionError,
   ToolOutsideToolsetError,
 } from './port-errors.ts';

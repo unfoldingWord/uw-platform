@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   notWiredCall,
   PortNotWiredError,
+  ProviderMismatchError,
   RunTransitionError,
   ToolOutsideToolsetError,
 } from './index.ts';
@@ -34,6 +35,24 @@ describe('DX-1 port errors', () => {
     const error = new ToolOutsideToolsetError('write_page');
     expect(error.verb).toBe('write_page');
     expect(error.message).toBe('the turn called write_page, which is outside the offered toolset');
+  });
+
+  it('ProviderMismatchError names the pinned and the resolved provider', () => {
+    const error = new ProviderMismatchError('anthropic', 'together');
+    expect(error).toMatchObject({
+      name: 'ProviderMismatchError',
+      pinned: 'anthropic',
+      resolved: 'together',
+    });
+    expect(error.message).toBe(
+      'the run pins provider anthropic, but the turn was served by together',
+    );
+  });
+
+  it('ProviderMismatchError says so when no provider served the turn', () => {
+    expect(new ProviderMismatchError('anthropic', null).message).toBe(
+      'the run pins provider anthropic, but the turn was served by no provider',
+    );
   });
 });
 
