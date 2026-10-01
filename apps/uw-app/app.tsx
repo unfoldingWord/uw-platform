@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { errorFields } from '@uw/core/log';
 import { aclRoutes } from './acl/routes.ts';
 import { meRoutes } from './auth/me.ts';
 import { withPrincipal } from './auth/principal-middleware.ts';
@@ -16,9 +17,12 @@ export function createApp(deps: AppDeps = platformDeps): Hono<AppEnv> {
   app.use(observe(deps));
   app.use(withDatabase(deps));
 
-  app.onError((_error, c) => {
+  app.onError((error, c) => {
     c.set('outcome', 'internal_error');
-    requestLogger(c).error('request failed', { outcome: 'internal_error' });
+    requestLogger(c).error('request failed', {
+      outcome: 'internal_error',
+      ...errorFields(error),
+    });
     return c.json({ status: 'error', reason: 'internal_error' }, 500);
   });
 

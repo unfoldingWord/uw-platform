@@ -135,7 +135,9 @@ describe('FD-10 the ingest consumer', () => {
       expect.objectContaining({ level: 'error', outcome: 'malformed_envelope' }),
     );
   });
+});
 
+describe('FD-10 the ingest consumer when the dead-letter queue fails', () => {
   it('retries a message when the dead-letter send fails', async () => {
     const h = harness();
     const failing: ConsumerDeps = {
@@ -150,7 +152,13 @@ describe('FD-10 the ingest consumer', () => {
     await consumeBatch([message], failing);
     expect(message.retried).toBe(true);
     expect(message.acked).toBe(false);
-    expect(outcomes(h)).toContain('dead_letter_failed');
+    expect(h.lines).toContainEqual(
+      expect.objectContaining({
+        outcome: 'dead_letter_failed',
+        error_name: 'Error',
+        error_message: 'dead-letter queue down',
+      }),
+    );
   });
 });
 
@@ -176,7 +184,13 @@ describe('FD-10 the ingest consumer duplicates and failures', () => {
     await consumeBatch([message], h.deps);
     expect(message.retried).toBe(true);
     expect(message.acked).toBe(false);
-    expect(outcomes(h)).toContain('handler_failed');
+    expect(h.lines).toContainEqual(
+      expect.objectContaining({
+        outcome: 'handler_failed',
+        error_name: 'Error',
+        error_message: 'handler down',
+      }),
+    );
   });
 
   it('treats a source with no handler as malformed', async () => {
@@ -243,7 +257,12 @@ describe('FD-11 the ingest consumer lag', () => {
     await consumeBatch(batch, h.deps);
     expect(batch.every((message) => message.acked)).toBe(true);
     expect(h.lines).toContainEqual(
-      expect.objectContaining({ level: 'warn', outcome: 'watermark_failed' }),
+      expect.objectContaining({
+        level: 'warn',
+        outcome: 'watermark_failed',
+        error_name: 'Error',
+        error_message: 'watermark store down',
+      }),
     );
   });
 });

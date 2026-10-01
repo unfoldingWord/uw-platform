@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createLogger } from './log.ts';
+import { createLogger, errorFields } from './log.ts';
 
 function capture() {
   const lines: Record<string, unknown>[] = [];
@@ -48,5 +48,26 @@ describe('FD-11 the structured logger', () => {
       .with({ principal: 'human:ian' })
       .error('failed', { outcome: 'internal_error', trace_id: 'forged' });
     expect(lines[0]).toMatchObject({ principal: 'human:ian', trace_id: context.traceId });
+  });
+});
+
+describe('FD-11 error fields for a log line', () => {
+  it('names the error and carries its message', () => {
+    expect(errorFields(new TypeError('no such column'))).toEqual({
+      error_name: 'TypeError',
+      error_message: 'no such column',
+    });
+  });
+
+  it('bounds the message to 200 characters', () => {
+    const fields = errorFields(new Error('x'.repeat(500)));
+    expect(fields.error_message).toHaveLength(200);
+  });
+
+  it('describes a thrown value that is not an Error', () => {
+    expect(errorFields('plain string')).toEqual({
+      error_name: 'non_error',
+      error_message: 'plain string',
+    });
   });
 });
