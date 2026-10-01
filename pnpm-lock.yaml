@@ -169,7 +169,11 @@ importers:
         specifier: ^0.31.11
         version: 0.31.11
 
-  packages/harness: {}
+  packages/harness:
+    dependencies:
+      '@uw/contracts':
+        specifier: workspace:*
+        version: link:../contracts
 
 packages:
 

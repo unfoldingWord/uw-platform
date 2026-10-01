@@ -1,6 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "types": [] },
+  "compilerOptions": { "types": [], "erasableSyntaxOnly": true },
   "include": ["**/*.ts"],
   "exclude": ["node_modules"]
 }
