@@ -12,10 +12,11 @@ const defaultBranch = '${{ github.event.repository.default_branch }}';
 const workflowRunHead = '${{ github.event.workflow_run.head_sha }}';
 
 const trustedCheckoutRefs: Record<string, (string | null)[]> = {
-  'cleanup-pr.yml': [defaultBranch],
+  'cleanup-pr.yml': [defaultBranch, defaultBranch],
   'deploy-pr.yml': [null],
-  'deploy-production.yml': [null, null, null],
-  'deploy-staging.yml': [workflowRunHead, workflowRunHead],
+  'deploy-production.yml': [null, null, null, null],
+  'deploy-staging.yml': [workflowRunHead, workflowRunHead, workflowRunHead],
+  'neon-pr.yml': [null, workflowRunHead],
   'main-alarm.yml': [],
 };
 

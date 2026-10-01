@@ -14,12 +14,37 @@ permissions:
   contents: read
 
 jobs:
+  migrate-staging:
+    name: migrate-staging
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - name: Skip unless the staging direct connection is set
+        id: gate
+        env:
+          NEON_DIRECT_URL_STAGING: ${{ secrets.NEON_DIRECT_URL_STAGING }}
+        run: bash .github/scripts/secret-gate.sh NEON_DIRECT_URL_STAGING
+      - if: steps.gate.outputs.configured == 'true'
+        uses: ./.github/actions/setup
+      - name: Apply migrations to staging
+        if: steps.gate.outputs.configured == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DIRECT_URL_STAGING }}
+        run: pnpm db:migrate
+
   deploy-staging:
     name: deploy-staging
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'main'
+    needs: [migrate-staging]
     runs-on: ubuntu-latest
     env:
       SHA: ${{ github.event.workflow_run.head_sha }}
@@ -46,6 +71,7 @@ jobs:
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'main'
+    needs: [migrate-staging]
     runs-on: ubuntu-latest
     env:
       SHA: ${{ github.event.workflow_run.head_sha }}

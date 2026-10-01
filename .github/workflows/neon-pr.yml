@@ -1,0 +1,64 @@
+name: Neon PR Branch
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+concurrency:
+  group: neon-pr-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  neon-branch:
+    name: neon-branch
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.pull_requests[0] != null
+    runs-on: ubuntu-latest
+    env:
+      BRANCH: pr-${{ github.event.workflow_run.pull_requests[0].number }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip unless the Neon API key is set
+        id: gate
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: bash .github/scripts/secret-gate.sh NEON_API_KEY
+      - name: Check out the PR's migrations as data, beside main's tooling
+        if: steps.gate.outputs.configured == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          path: pr
+          persist-credentials: false
+      - if: steps.gate.outputs.configured == 'true'
+        uses: ./.github/actions/setup
+      - name: Create or reuse the PR's Neon branch
+        id: branch
+        if: steps.gate.outputs.configured == 'true'
+        uses: neondatabase/create-branch-action@v6
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch_name: ${{ env.BRANCH }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+      - name: Swap in the PR's migration files as data, keeping main's runner
+        if: steps.gate.outputs.configured == 'true'
+        run: |
+          rm -rf packages/db/migrations
+          cp -R pr/packages/db/migrations packages/db/migrations
+      - name: Apply the PR's migrations with main's runner
+        if: steps.gate.outputs.configured == 'true'
+        env:
+          DATABASE_URL: ${{ steps.branch.outputs.db_url }}
+        run: node packages/db/bin/migrate.ts
+      - name: Re-apply them, which must be a no-op
+        if: steps.gate.outputs.configured == 'true'
+        env:
+          DATABASE_URL: ${{ steps.branch.outputs.db_url }}
+        run: node packages/db/bin/migrate.ts
