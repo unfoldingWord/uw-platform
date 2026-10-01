@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, isNull, lte, or, sql } from 'drizzle-orm';
+import { and, asc, eq, isNull, lte, or, sql } from 'drizzle-orm';
 import {
   scopeSchema,
   type ErrorReason,
@@ -10,13 +10,12 @@ import { can, type AclResource } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
 import type { Database, Executor, Transaction } from '@uw/db/client';
 import { grantAudit, roleGrants } from '@uw/db/schema';
+import type { CommandResult } from '../http/commands.ts';
 import { pgConstraint, pgErrorCode } from '../http/pg-errors.ts';
+import { liveGrant, toGrant } from './grant-store.ts';
 import { activatePerson, lockPerson } from '../people/directory.ts';
 
 export const owns = ['role_grants', 'grant_audit'] as const;
-
-export type CommandResult =
-  { readonly ok: true } | { readonly ok: false; readonly reason: ErrorReason };
 
 type GrantRow = typeof roleGrants.$inferSelect;
 
@@ -146,20 +145,35 @@ async function insertGrant(
   });
 }
 
+async function withLiveGrants(tx: Transaction, actor: Principal): Promise<Principal> {
+  if (actor.personId === null) return { ...actor, grants: [] };
+  const rows = await tx
+    .select()
+    .from(roleGrants)
+    .where(and(eq(roleGrants.personId, actor.personId), liveGrant()))
+    .orderBy(asc(roleGrants.id))
+    .for('share');
+  return { ...actor, grants: rows.map(toGrant) };
+}
+
 async function grantInTransaction(
   tx: Transaction,
   actor: Principal,
   command: GrantRoleCommand,
   traceId: string,
 ): Promise<CommandResult> {
+  const live = await withLiveGrants(tx, actor);
+  if (!can(live, 'admin', scopeResource(command.scopeKind, command.scopeArea))) {
+    return refused('not_permitted');
+  }
   const person = await lockPerson(tx, command.personId);
   if (!person) return refused('person_not_found');
   if (person.status === 'pending') {
-    const approval = await approvePending(tx, actor, command.personId);
+    const approval = await approvePending(tx, live, command.personId);
     if (!approval.ok) return approval;
   }
-  await closeExpiredDuplicate(tx, actor, command, traceId);
-  await insertGrant(tx, actor, command, traceId);
+  await closeExpiredDuplicate(tx, live, command, traceId);
+  await insertGrant(tx, live, command, traceId);
   return accepted;
 }
 
@@ -193,26 +207,36 @@ async function lockLiveOrgAdmins(tx: Transaction): Promise<string[]> {
   const rows = await tx
     .select({ id: roleGrants.id })
     .from(roleGrants)
-    .where(
-      and(
-        eq(roleGrants.role, 'admin'),
-        eq(roleGrants.scopeKind, 'org'),
-        isNull(roleGrants.revokedAt),
-        or(isNull(roleGrants.expiresAt), gt(roleGrants.expiresAt, sql`now()`)),
-      ),
-    )
+    .where(and(eq(roleGrants.role, 'admin'), eq(roleGrants.scopeKind, 'org'), liveGrant()))
     .orderBy(asc(roleGrants.id))
     .for('update');
   return rows.map((row) => row.id);
 }
 
-async function lockLiveGrant(tx: Transaction, grantId: string): Promise<GrantRow | null> {
-  const [row] = await tx
-    .select()
+type Locked = { readonly target: GrantRow | null; readonly live: Principal };
+
+async function lockTargetAndCallerGrants(
+  tx: Transaction,
+  actor: Principal,
+  grantId: string,
+): Promise<Locked> {
+  const isTarget = and(eq(roleGrants.id, grantId), isNull(roleGrants.revokedAt));
+  const isCallers =
+    actor.personId === null ? undefined : and(eq(roleGrants.personId, actor.personId), liveGrant());
+  const rows = await tx
+    .select({
+      grant: roleGrants,
+      live: sql<boolean>`(${roleGrants.revokedAt} IS NULL AND (${roleGrants.expiresAt} IS NULL OR ${roleGrants.expiresAt} > now()))`,
+    })
     .from(roleGrants)
-    .where(and(eq(roleGrants.id, grantId), isNull(roleGrants.revokedAt)))
+    .where(or(isTarget, isCallers))
+    .orderBy(asc(roleGrants.id))
     .for('update');
-  return row ?? null;
+  const callers = rows.filter((row) => row.live && row.grant.personId === actor.personId);
+  return {
+    target: rows.find((row) => row.grant.id === grantId)?.grant ?? null,
+    live: { ...actor, grants: callers.map((row) => toGrant(row.grant)) },
+  };
 }
 
 async function revokeInTransaction(
@@ -222,9 +246,9 @@ async function revokeInTransaction(
   traceId: string,
 ): Promise<CommandResult> {
   const orgAdminIds = await lockLiveOrgAdmins(tx);
-  const locked = await lockLiveGrant(tx, command.grantId);
+  const { target: locked, live } = await lockTargetAndCallerGrants(tx, actor, command.grantId);
   if (!locked) return refused('grant_not_found');
-  if (!can(actor, 'admin', scopeResource(scopeSchema.parse(locked.scopeKind), locked.scopeArea))) {
+  if (!can(live, 'admin', scopeResource(scopeSchema.parse(locked.scopeKind), locked.scopeArea))) {
     return refused('not_permitted');
   }
   if (orgAdminIds.length === 1 && orgAdminIds.includes(locked.id)) {

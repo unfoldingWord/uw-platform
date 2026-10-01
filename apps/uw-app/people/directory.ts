@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import type { PersonStatus } from '@uw/contracts';
+import { personStatusSchema, type PersonStatus } from '@uw/contracts';
 import type { Executor } from '@uw/db/client';
 import { people } from '@uw/db/schema';
 
@@ -24,7 +24,7 @@ function statusForEmail(email: string): PersonStatus {
 async function selectByEmail(db: Executor, email: string): Promise<PersonRecord | null> {
   const [row] = await db.select().from(people).where(eq(people.email, email)).limit(1);
   if (!row) return null;
-  return { personId: row.id, email: row.email, status: row.status as PersonStatus };
+  return { personId: row.id, email: row.email, status: personStatusSchema.parse(row.status) };
 }
 
 export async function signIn(db: Executor, rawEmail: string): Promise<PersonRecord> {
@@ -47,7 +47,7 @@ export async function signIn(db: Executor, rawEmail: string): Promise<PersonReco
 export async function lockPerson(db: Executor, personId: string): Promise<PersonRecord | null> {
   const [row] = await db.select().from(people).where(eq(people.id, personId)).for('update');
   if (!row) return null;
-  return { personId: row.id, email: row.email, status: row.status as PersonStatus };
+  return { personId: row.id, email: row.email, status: personStatusSchema.parse(row.status) };
 }
 
 export async function activatePerson(db: Executor, personId: string): Promise<void> {
