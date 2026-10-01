@@ -6,9 +6,11 @@ const agent = `agent:${segment}`;
 const device = `agent:${segment}/${segment}`;
 const delegated = `agent:${segment}/${segment} as ${segment} via delegation:${segment}`;
 
+export const identityPattern = `^(?:${human}|${agent}|${device}|${delegated})$`;
+
 export const identitySchema = z
   .string()
-  .regex(new RegExp(`^(?:${human}|${agent}|${device}|${delegated})$`), 'not an identity string')
+  .regex(new RegExp(identityPattern), 'not an identity string')
   .brand<'Identity'>();
 
 export type Identity = z.infer<typeof identitySchema>;
