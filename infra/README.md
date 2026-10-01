@@ -79,3 +79,27 @@ Thirty-day retention is the R2 bucket `uw-logs` with the lifecycle rule in `logs
 - Substitute the three `${...}` placeholders in `logs/logpush-workers.json` from the shell with `envsubst`, then send it with `POST /accounts/{account_id}/logpush/jobs`.
 
 Nothing in the files is a secret. `logpush = true` is added to `wrangler.go-live.toml` with the go-live wiring, because Workers Logpush needs the paid plan and the job above.
+
+## Switching on the go-live wiring (FD-12)
+
+`uw-app/wrangler.go-live.toml` and `uw-ingest/wrangler.go-live.toml` are each their `wrangler.toml` plus the bindings whose resources do not exist yet: `logpush`, the `HYPERDRIVE` binding, the ingest queue producer and consumer, the `INGEST_DLQ` producer, and uw-app's `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD`. A test keeps each file equal to its live twin plus exactly those.
+
+`uw-app/wrangler.toml` also declares a `preview` environment. Per-PR Workers deploy with `--env preview`, so they never register as the staging queue consumer. In the go-live file `preview` binds Hyperdrive and declares no queue consumer.
+
+A person adds, in the repository settings:
+
+| Name | Kind | Where it comes from |
+|---|---|---|
+| `NEON_API_KEY` | secret | An API key for the Neon project |
+| `NEON_PROJECT_ID` | variable | The Neon project's id |
+| `NEON_DIRECT_URL_STAGING` | secret | The direct, non-pooled connection string for the staging branch |
+| `NEON_DIRECT_URL_PRODUCTION` | secret | The direct, non-pooled connection string for the production branch |
+
+Then, with Cloudflare access:
+
+- Create the Hyperdrive configs: `wrangler hyperdrive create uw-staging --connection-string=...` and `wrangler hyperdrive create uw-production --connection-string=...`, using the pooled connection strings.
+- Create the four queues: `wrangler queues create uw-ingest-events-staging`, `uw-ingest-events-staging-dlq`, `uw-ingest-events-production` and `uw-ingest-events-production-dlq`.
+- Replace every `set-at-go-live` with the real Hyperdrive id, Access AUD tag and Access team domain.
+- Once every resource exists, copy each `wrangler.go-live.toml` over its `wrangler.toml` in one reviewed PR.
+
+Until that PR, the per-PR and staging Workers run with no database and no queue, `/health` says so, and every go-live job logs a notice and stays green. After it, per-PR Workers bind to staging's Hyperdrive (P33).
