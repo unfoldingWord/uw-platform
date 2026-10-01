@@ -8,6 +8,8 @@ import { grantRole, revokeRole } from './grant-commands.ts';
 
 const IAN_ID = '00000000-0000-4000-8000-000000000001';
 const JESSE_ID = '00000000-0000-4000-8000-000000000002';
+const KIM_ID = '00000000-0000-4000-8000-000000000003';
+const KIM_GRANT_ID = '00000000-0000-4000-8000-000000000103';
 const IAN_GRANT_ID = '00000000-0000-4000-8000-000000000101';
 const JESSE_GRANT_ID = '00000000-0000-4000-8000-000000000102';
 
@@ -26,6 +28,15 @@ async function seedJesse(db: Database): Promise<void> {
   );
   await db.execute(
     sql`INSERT INTO role_grants (id, person_id, role, scope_kind, granted_by) VALUES (${JESSE_GRANT_ID}, ${JESSE_ID}, 'admin', 'org', ${IAN_ID})`,
+  );
+}
+
+async function seedThirdAdmin(db: Database): Promise<void> {
+  await db.execute(
+    sql`INSERT INTO people (id, email, display_name, status) VALUES (${KIM_ID}, 'kim@unfoldingword.org', 'Kim', 'active')`,
+  );
+  await db.execute(
+    sql`INSERT INTO role_grants (id, person_id, role, scope_kind, granted_by) VALUES (${KIM_GRANT_ID}, ${KIM_ID}, 'admin', 'org', ${IAN_ID})`,
   );
 }
 
@@ -73,6 +84,7 @@ describe.skipIf(!testServer)('FD-8 revoke re-checks the caller under lock', () =
   it('refuses a revoke from a principal whose org admin grant was just revoked', () =>
     withAppDatabase(async (db) => {
       await seedJesse(db);
+      await seedThirdAdmin(db);
       const staleJesse = orgAdmin(JESSE_ID, 'jesse@unfoldingword.org', JESSE_GRANT_ID);
       const ian = orgAdmin(IAN_ID, 'ian.lindsley@unfoldingword.org', IAN_GRANT_ID);
       await revokeRole(
@@ -88,6 +100,6 @@ describe.skipIf(!testServer)('FD-8 revoke re-checks the caller under lock', () =
         randomUUID(),
       );
       expect(result).toEqual({ ok: false, reason: 'not_permitted' });
-      expect(await liveGrantCount(db)).toBe(1);
+      expect(await liveGrantCount(db)).toBe(2);
     }));
 });

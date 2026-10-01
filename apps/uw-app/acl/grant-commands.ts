@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, lte, or, sql } from 'drizzle-orm';
+import { and, asc, eq, isNull, lte, sql } from 'drizzle-orm';
 import {
   scopeSchema,
   type ErrorReason,
@@ -21,6 +21,8 @@ type GrantRow = typeof roleGrants.$inferSelect;
 
 const ONE_LIVE_GRANT_CONSTRAINT = 'role_grants_one_live';
 const UNIQUE_VIOLATION = '23505';
+
+const ACL_COMMANDS_LOCK_KEY = 7301001;
 
 const accepted: CommandResult = { ok: true };
 
@@ -145,6 +147,10 @@ async function insertGrant(
   });
 }
 
+async function serialiseAclCommands(tx: Transaction): Promise<void> {
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(${ACL_COMMANDS_LOCK_KEY}::bigint)`);
+}
+
 async function withLiveGrants(tx: Transaction, actor: Principal): Promise<Principal> {
   if (actor.personId === null) return { ...actor, grants: [] };
   const rows = await tx
@@ -162,6 +168,7 @@ async function grantInTransaction(
   command: GrantRoleCommand,
   traceId: string,
 ): Promise<CommandResult> {
+  await serialiseAclCommands(tx);
   const live = await withLiveGrants(tx, actor);
   if (!can(live, 'admin', scopeResource(command.scopeKind, command.scopeArea))) {
     return refused('not_permitted');
@@ -213,30 +220,13 @@ async function lockLiveOrgAdmins(tx: Transaction): Promise<string[]> {
   return rows.map((row) => row.id);
 }
 
-type Locked = { readonly target: GrantRow | null; readonly live: Principal };
-
-async function lockTargetAndCallerGrants(
-  tx: Transaction,
-  actor: Principal,
-  grantId: string,
-): Promise<Locked> {
-  const isTarget = and(eq(roleGrants.id, grantId), isNull(roleGrants.revokedAt));
-  const isCallers =
-    actor.personId === null ? undefined : and(eq(roleGrants.personId, actor.personId), liveGrant());
-  const rows = await tx
-    .select({
-      grant: roleGrants,
-      live: sql<boolean>`(${roleGrants.revokedAt} IS NULL AND (${roleGrants.expiresAt} IS NULL OR ${roleGrants.expiresAt} > now()))`,
-    })
+async function lockLiveGrant(tx: Transaction, grantId: string): Promise<GrantRow | null> {
+  const [row] = await tx
+    .select()
     .from(roleGrants)
-    .where(or(isTarget, isCallers))
-    .orderBy(asc(roleGrants.id))
+    .where(and(eq(roleGrants.id, grantId), isNull(roleGrants.revokedAt)))
     .for('update');
-  const callers = rows.filter((row) => row.live && row.grant.personId === actor.personId);
-  return {
-    target: rows.find((row) => row.grant.id === grantId)?.grant ?? null,
-    live: { ...actor, grants: callers.map((row) => toGrant(row.grant)) },
-  };
+  return row ?? null;
 }
 
 async function revokeInTransaction(
@@ -245,8 +235,10 @@ async function revokeInTransaction(
   command: RevokeRoleCommand,
   traceId: string,
 ): Promise<CommandResult> {
+  await serialiseAclCommands(tx);
   const orgAdminIds = await lockLiveOrgAdmins(tx);
-  const { target: locked, live } = await lockTargetAndCallerGrants(tx, actor, command.grantId);
+  const live = await withLiveGrants(tx, actor);
+  const locked = await lockLiveGrant(tx, command.grantId);
   if (!locked) return refused('grant_not_found');
   if (!can(live, 'admin', scopeResource(scopeSchema.parse(locked.scopeKind), locked.scopeArea))) {
     return refused('not_permitted');
