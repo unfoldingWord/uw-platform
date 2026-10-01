@@ -13,7 +13,7 @@ import type { Database, Executor, Transaction } from '@uw/db/client';
 import { grantAudit, roleGrants } from '@uw/db/schema';
 import type { CommandResult } from '../http/commands.ts';
 import { pgConstraint, pgErrorCode } from '@uw/db/errors';
-import { liveGrant, toGrant } from './grant-store.ts';
+import { liveGrant, toGrant } from '@uw/db/store';
 import { activatePerson, lockPerson } from '../people/directory.ts';
 
 export const owns = ['role_grants', 'grant_audit'] as const;
@@ -150,12 +150,12 @@ async function serialiseAclCommands(tx: Transaction): Promise<void> {
   await tx.execute(sql`SELECT pg_advisory_xact_lock(${advisoryLocks.grantCommands}::bigint)`);
 }
 
-async function withLiveGrants(tx: Transaction, actor: Principal): Promise<Principal> {
+async function withLiveGrants(tx: Transaction, actor: Principal, at: Date): Promise<Principal> {
   if (actor.personId === null) return { ...actor, grants: [] };
   const rows = await tx
     .select()
     .from(roleGrants)
-    .where(and(eq(roleGrants.personId, actor.personId), liveGrant()))
+    .where(and(eq(roleGrants.personId, actor.personId), liveGrant(at)))
     .orderBy(asc(roleGrants.id))
     .for('share');
   return { ...actor, grants: rows.map(toGrant) };
@@ -169,7 +169,7 @@ async function grantInTransaction(
   at: Date,
 ): Promise<CommandResult> {
   await serialiseAclCommands(tx);
-  const live = await withLiveGrants(tx, actor);
+  const live = await withLiveGrants(tx, actor, at);
   if (!can(live, 'admin', scopeResource(command.scopeKind, command.scopeArea), at)) {
     return refused('not_permitted');
   }
@@ -211,11 +211,11 @@ export async function grantRole(
   }
 }
 
-async function lockLiveOrgAdmins(tx: Transaction): Promise<string[]> {
+async function lockLiveOrgAdmins(tx: Transaction, at: Date): Promise<string[]> {
   const rows = await tx
     .select({ id: roleGrants.id })
     .from(roleGrants)
-    .where(and(eq(roleGrants.role, 'admin'), eq(roleGrants.scopeKind, 'org'), liveGrant()))
+    .where(and(eq(roleGrants.role, 'admin'), eq(roleGrants.scopeKind, 'org'), liveGrant(at)))
     .orderBy(asc(roleGrants.id))
     .for('update');
   return rows.map((row) => row.id);
@@ -238,8 +238,8 @@ async function revokeInTransaction(
   at: Date,
 ): Promise<CommandResult> {
   await serialiseAclCommands(tx);
-  const orgAdminIds = await lockLiveOrgAdmins(tx);
-  const live = await withLiveGrants(tx, actor);
+  const orgAdminIds = await lockLiveOrgAdmins(tx, at);
+  const live = await withLiveGrants(tx, actor, at);
   const locked = await lockLiveGrant(tx, command.grantId);
   if (!locked) return refused('grant_not_found');
   const scope = scopeResource(scopeSchema.parse(locked.scopeKind), locked.scopeArea);
