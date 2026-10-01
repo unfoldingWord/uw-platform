@@ -23,20 +23,69 @@ function portOf(file: string, root: string, ports: readonly string[]): string | 
   return ports.find((port) => kebab(port) === base);
 }
 
+const notWiredSuffix = '.not-wired.ts';
+
+function notWiredName(port: string): string {
+  return `describe${port.charAt(0).toUpperCase()}${port.slice(1)}NotWired`;
+}
+
+function hasNotWiredAdapter(port: string, tree: SourceTree): boolean {
+  return adapterRoots.some((root) => tree.paths.includes(`${root}${kebab(port)}${notWiredSuffix}`));
+}
+
 function suiteViolations(ports: readonly string[], tree: SourceTree): string[] {
   return ports.flatMap((port) => {
     const path = `${contractRoot}${kebab(port)}.ts`;
     if (!tree.paths.includes(path)) return [`${port}: no contract suite at ${path}`];
-    const exported = tree.read(path).includes(`export function ${suiteName(port)}(`);
-    return exported ? [] : [`${port}: ${path} does not export ${suiteName(port)}`];
+    const source = tree.read(path);
+    const required = [
+      suiteName(port),
+      ...(hasNotWiredAdapter(port, tree) ? [notWiredName(port)] : []),
+    ];
+    return required
+      .filter((name) => !source.includes(`export function ${name}(`))
+      .map((name) => `${port}: ${path} does not export ${name}`);
   });
+}
+
+function importedNames(source: string, specifier: string): string[] {
+  return [...source.matchAll(/import\s*\{([^}]*)\}\s*from\s*'([^']+)'/g)]
+    .filter((match) => match[2] === specifier)
+    .flatMap((match) => (match[1] ?? '').split(','))
+    .map((name) => (name.split(' as ').pop() ?? '').trim())
+    .filter((name) => name !== '');
+}
+
+function callArguments(source: string, name: string): string[] {
+  const found: string[] = [];
+  let from = source.indexOf(`${name}(`);
+  while (from !== -1) {
+    const open = from + name.length;
+    let depth = 0;
+    let end = open;
+    for (; end < source.length; end += 1) {
+      depth += source.charAt(end) === '(' ? 1 : source.charAt(end) === ')' ? -1 : 0;
+      if (depth === 0) break;
+    }
+    found.push(source.slice(open + 1, end));
+    from = source.indexOf(`${name}(`, end);
+  }
+  return found;
+}
+
+function mentions(text: string, identifier: string): boolean {
+  return text.split(/[^A-Za-z0-9_$]+/).includes(identifier);
 }
 
 function runsAdapter(source: string, file: string, port: string): boolean {
   const base = file.slice(file.lastIndexOf('/') + 1);
-  return (
-    source.includes(`from './${base}'`) &&
-    source.includes(`from '@uw/harness/port-contracts/${kebab(port)}'`)
+  const suite = file.endsWith(notWiredSuffix) ? notWiredName(port) : suiteName(port);
+  if (!importedNames(source, `@uw/harness/port-contracts/${kebab(port)}`).includes(suite)) {
+    return false;
+  }
+  const bindings = importedNames(source, `./${base}`);
+  return callArguments(source, suite).some((args) =>
+    bindings.some((binding) => mentions(args, binding)),
   );
 }
 

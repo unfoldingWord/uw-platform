@@ -16,16 +16,29 @@ function without(files: Record<string, string>, removed: string): Record<string,
   return Object.fromEntries(Object.entries(files).filter(([path]) => path !== removed));
 }
 
-const suite = { 'packages/harness/port-contracts/hub.ts': 'export function describeHubContract(' };
-const runner = "import { describeHubContract } from '@uw/harness/port-contracts/hub';";
+const suite = {
+  'packages/harness/port-contracts/hub.ts':
+    'export function describeHubContract( export function describeHubNotWired(',
+};
+const contractImport = "import { describeHubContract } from '@uw/harness/port-contracts/hub';";
+const notWiredImport = "import { describeHubNotWired } from '@uw/harness/port-contracts/hub';";
+const contractTest = `${contractImport} import { createSimHub } from './hub.ts'; describeHubContract('x', async () => createSimHub());`;
+const notWiredTest = `${notWiredImport} import { hubNotWired } from './hub.not-wired.ts'; describeHubNotWired('x', hubNotWired);`;
 
 const wired = {
   ...suite,
   'apps/uw-app/ports/hub.not-wired.ts': '',
-  'apps/uw-app/ports/hub.contract.test.ts': `${runner} import { hubNotWired } from './hub.not-wired.ts';`,
+  'apps/uw-app/ports/hub.contract.test.ts': notWiredTest,
   'sim/adapters/hub.ts': '',
-  'sim/adapters/hub.contract.test.ts': `${runner} import { createSimHub } from './hub.ts';`,
+  'sim/adapters/hub.contract.test.ts': contractTest,
 };
+
+const unrunHub =
+  'sim/adapters/hub.ts: no contract test in sim/adapters/ runs it against the hub contract';
+
+function withSimTest(source: string): Record<string, string> {
+  return { ...wired, 'sim/adapters/hub.contract.test.ts': source };
+}
 
 describe('DX-3 every port has a contract run against every adapter', () => {
   it('holds for the repository', () => {
@@ -77,12 +90,46 @@ describe('DX-3 the check refuses a misplaced file', () => {
   });
 
   it('fails when the contract test imports the adapter but not the suite', () => {
+    const files = withSimTest("import { createSimHub } from './hub.ts';");
+    expect(portContractViolations(['hub'], tree(files))).toContain(unrunHub);
+  });
+});
+
+describe('DX-3 the contract is called with the adapter', () => {
+  it('fails when both imports are present and the suite is never called', () => {
+    const files = withSimTest(`${contractImport} import { createSimHub } from './hub.ts';`);
+    expect(portContractViolations(['hub'], tree(files))).toContain(unrunHub);
+  });
+
+  it('fails when the call does not pass the adapter binding', () => {
+    const files = withSimTest(
+      `${contractImport} import { createSimHub } from './hub.ts'; describeHubContract('x', async () => other());`,
+    );
+    expect(portContractViolations(['hub'], tree(files))).toContain(unrunHub);
+  });
+
+  it('fails when a not-wired call stands in for an adapter that needs the contract', () => {
+    const files = withSimTest(
+      `${notWiredImport} import { createSimHub } from './hub.ts'; describeHubNotWired('x', createSimHub);`,
+    );
+    expect(portContractViolations(['hub'], tree(files))).toContain(unrunHub);
+  });
+
+  it('fails when a contract call stands in for a not-wired adapter', () => {
+    const source = `${contractImport} import { hubNotWired } from './hub.not-wired.ts'; describeHubContract('x', hubNotWired);`;
+    const files = { ...wired, 'apps/uw-app/ports/hub.contract.test.ts': source };
+    expect(portContractViolations(['hub'], tree(files))).toContain(
+      'apps/uw-app/ports/hub.not-wired.ts: no contract test in apps/uw-app/ports/ runs it against the hub contract',
+    );
+  });
+
+  it('fails when a port with a not-wired adapter has no not-wired suite', () => {
     const files = {
       ...wired,
-      'sim/adapters/hub.contract.test.ts': "import { createSimHub } from './hub.ts';",
+      'packages/harness/port-contracts/hub.ts': 'export function describeHubContract(',
     };
     expect(portContractViolations(['hub'], tree(files))).toContain(
-      'sim/adapters/hub.ts: no contract test in sim/adapters/ runs it against the hub contract',
+      'hub: packages/harness/port-contracts/hub.ts does not export describeHubNotWired',
     );
   });
 });
