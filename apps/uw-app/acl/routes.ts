@@ -8,9 +8,9 @@ import {
 import type { Database } from '@uw/db/client';
 import type { Principal } from '@uw/core/principal';
 import type { AppEnv } from '../deps.ts';
-import { malformed, readJson, toOutcome } from '../http/commands.ts';
+import { malformed, readJson, toOutcome, type CommandResult } from '../http/commands.ts';
 import { refuse, reply } from '../http/outcomes.ts';
-import { grantRole, revokeRole, type CommandResult } from './grant-commands.ts';
+import { grantRole, revokeRole } from './grant-commands.ts';
 
 type Run = (
   db: Database,

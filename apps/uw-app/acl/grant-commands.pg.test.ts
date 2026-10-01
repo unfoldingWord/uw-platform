@@ -336,3 +336,51 @@ describe.skipIf(!testServer)('FD-8 command bodies', () => {
       expect([sent.status, sent.body['reason']]).toEqual([404, 'not_wired']);
     }));
 });
+
+async function liveGrantCount(db: Database): Promise<number> {
+  const rows = await db.execute<{ n: number }>(
+    sql`SELECT count(*)::int AS n FROM role_grants WHERE revoked_at IS NULL`,
+  );
+  return rows[0]?.n ?? -1;
+}
+
+async function expectRevokeRefused(db: Database, email: string, grantId: string): Promise<void> {
+  const auditsBefore = (await audits(db)).length;
+  const liveBefore = await liveGrantCount(db);
+  const sent = await command(db, email, {
+    command: 'revoke_role',
+    requestId: randomUUID(),
+    grantId,
+  });
+  expect([sent.status, sent.body['reason']]).toEqual([403, 'not_permitted']);
+  expect((await audits(db)).length).toBe(auditsBefore);
+  expect(await liveGrantCount(db)).toBe(liveBefore);
+}
+
+async function grantTo(db: Database, email: string, role: string, area: string | null) {
+  const sent = await command(db, IAN, grantBody(await personId(db, email), role, area));
+  expect(sent.status).toBe(200);
+  return grantIdFor(db, email, role);
+}
+
+describe.skipIf(!testServer)('FD-8 revoke_role refusals', () => {
+  it('refuses an editor', () =>
+    withAppDatabase(async (db) => {
+      await grantTo(db, 'e@unfoldingword.org', 'editor', AREA);
+      const viewerGrant = await grantTo(db, 'v@unfoldingword.org', 'viewer', AREA);
+      await expectRevokeRefused(db, 'e@unfoldingword.org', viewerGrant);
+    }));
+
+  it('refuses an area admin revoking an org admin grant', () =>
+    withAppDatabase(async (db) => {
+      await grantTo(db, 'a@unfoldingword.org', 'admin', AREA);
+      await expectRevokeRefused(db, 'a@unfoldingword.org', IAN_GRANT_ID);
+    }));
+
+  it('refuses an area admin revoking a grant in another area', () =>
+    withAppDatabase(async (db) => {
+      await grantTo(db, 'a@unfoldingword.org', 'admin', AREA);
+      const elsewhere = await grantTo(db, 'w@unfoldingword.org', 'editor', '20-29');
+      await expectRevokeRefused(db, 'a@unfoldingword.org', elsewhere);
+    }));
+});

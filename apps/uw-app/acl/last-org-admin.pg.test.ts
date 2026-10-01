@@ -73,7 +73,7 @@ describe.skipIf(!testServer)('FD-8 the last org admin survives a concurrent revo
         const results = await race(dbA, dbB);
         expect(results.filter((result) => result.ok)).toHaveLength(1);
         expect(results.filter((result) => !result.ok)).toEqual([
-          { ok: false, reason: 'last_org_admin' },
+          { ok: false, reason: 'not_permitted' },
         ]);
         expect(await liveOrgAdmins(dbA)).toBe(1);
         await restoreBoth(dbA);
