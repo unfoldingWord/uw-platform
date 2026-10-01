@@ -19,6 +19,7 @@ type Run = (
   actor: Principal,
   body: unknown,
   traceId: string,
+  at: Date,
 ) => Promise<{ readonly requestId: string; readonly result: CommandResult } | null>;
 
 function summarise(result: PageResult): CommandResult {
@@ -28,21 +29,21 @@ function summarise(result: PageResult): CommandResult {
 const handlers = new Map<string, Run>([
   [
     'create_page',
-    async (db, actor, body, traceId) => {
+    async (db, actor, body, traceId, at) => {
       const parsed = createPageCommandSchema.safeParse(body);
       if (!parsed.success) return null;
       const command: CreatePageCommand = parsed.data;
-      const result = await createPage(db, actor, command, traceId, new Date());
+      const result = await createPage(db, actor, command, traceId, at);
       return { requestId: command.requestId, result: summarise(result) };
     },
   ],
   [
     'update_page',
-    async (db, actor, body, traceId) => {
+    async (db, actor, body, traceId, at) => {
       const parsed = updatePageCommandSchema.safeParse(body);
       if (!parsed.success) return null;
       const command: UpdatePageCommand = parsed.data;
-      const result = await updatePage(db, actor, command, traceId, new Date());
+      const result = await updatePage(db, actor, command, traceId, at);
       return { requestId: command.requestId, result: summarise(result) };
     },
   ],
@@ -56,7 +57,7 @@ async function handleCommand(c: Context<AppEnv>): Promise<Response> {
   const actor = c.get('principal');
   if (actor === null) return refuse(c, 'unauthenticated');
   const body = await readJson(c);
-  const outcome = await run(database.db, actor, body, c.get('traceId'));
+  const outcome = await run(database.db, actor, body, c.get('traceId'), c.get('now'));
   if (outcome === null) return malformed(c, body);
   return reply(c, toOutcome(outcome.requestId, outcome.result));
 }
@@ -68,7 +69,7 @@ async function handleRead(c: Context<AppEnv>): Promise<Response> {
   if (actor === null) return refuse(c, 'unauthenticated');
   const pageId = z.uuid().safeParse(c.req.param('pageId'));
   if (!pageId.success) return refuse(c, 'page_not_found');
-  const page = await readPage(database.db, actor, pageId.data, new Date());
+  const page = await readPage(database.db, actor, pageId.data, c.get('now'));
   if (page === null) return refuse(c, 'page_not_found');
   c.set('outcome', 'accepted');
   return c.json({ page: pageSchema.parse(page) }, 200);

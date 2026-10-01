@@ -111,7 +111,7 @@ export default {
       comment:
         'Only test files and sim/ import the fixture seeding helpers, which write tables their owners write.',
       severity: 'error',
-      from: { path: '^(apps|packages)/', pathNot: testFile },
+      from: { path: '^(apps|packages|tools)/', pathNot: testFile },
       to: { path: '^packages/db/test-seed\\.ts$' },
     },
     {

@@ -89,16 +89,17 @@ async function closeExpiredDuplicate(
   actor: Principal,
   command: GrantRoleCommand,
   traceId: string,
+  at: Date,
 ): Promise<void> {
   const [expired] = await tx
     .select()
     .from(roleGrants)
-    .where(and(sameScope(command), lte(roleGrants.expiresAt, sql`now()`)))
+    .where(and(sameScope(command), lte(roleGrants.expiresAt, at)))
     .for('update');
   if (!expired) return;
   const [closed] = await tx
     .update(roleGrants)
-    .set({ revokedAt: sql`now()` })
+    .set({ revokedAt: at })
     .where(eq(roleGrants.id, expired.id))
     .returning();
   if (!closed) throw new Error('an expired grant locked in this transaction must update');
@@ -179,7 +180,7 @@ async function grantInTransaction(
     const approval = await approvePending(tx, live, command.personId, at);
     if (!approval.ok) return approval;
   }
-  await closeExpiredDuplicate(tx, live, command, traceId);
+  await closeExpiredDuplicate(tx, live, command, traceId, at);
   await insertGrant(tx, live, command, traceId);
   return accepted;
 }
@@ -251,7 +252,7 @@ async function revokeInTransaction(
   }
   const [updated] = await tx
     .update(roleGrants)
-    .set({ revokedAt: sql`now()` })
+    .set({ revokedAt: at })
     .where(eq(roleGrants.id, locked.id))
     .returning();
   if (!updated) throw new Error('a grant locked in this transaction must update');

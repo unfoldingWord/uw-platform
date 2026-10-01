@@ -17,26 +17,27 @@ type Run = (
   actor: Principal,
   body: unknown,
   traceId: string,
+  at: Date,
 ) => Promise<{ readonly requestId: string; readonly result: CommandResult } | null>;
 
 const handlers = new Map<string, Run>([
   [
     'grant_role',
-    async (db, actor, body, traceId) => {
+    async (db, actor, body, traceId, at) => {
       const parsed = grantRoleCommandSchema.safeParse(body);
       if (!parsed.success) return null;
       const command: GrantRoleCommand = parsed.data;
-      const result = await grantRole(db, actor, command, traceId, new Date());
+      const result = await grantRole(db, actor, command, traceId, at);
       return { requestId: command.requestId, result };
     },
   ],
   [
     'revoke_role',
-    async (db, actor, body, traceId) => {
+    async (db, actor, body, traceId, at) => {
       const parsed = revokeRoleCommandSchema.safeParse(body);
       if (!parsed.success) return null;
       const command: RevokeRoleCommand = parsed.data;
-      const result = await revokeRole(db, actor, command, traceId, new Date());
+      const result = await revokeRole(db, actor, command, traceId, at);
       return { requestId: command.requestId, result };
     },
   ],
@@ -50,7 +51,7 @@ async function handle(c: Context<AppEnv>): Promise<Response> {
   const actor = c.get('principal');
   if (actor === null) return refuse(c, 'unauthenticated');
   const body = await readJson(c);
-  const outcome = await run(database.db, actor, body, c.get('traceId'));
+  const outcome = await run(database.db, actor, body, c.get('traceId'), c.get('now'));
   if (outcome === null) return malformed(c, body);
   return reply(c, toOutcome(outcome.requestId, outcome.result));
 }

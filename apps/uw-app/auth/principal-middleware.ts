@@ -34,6 +34,8 @@ function refusePending(c: Context<AppEnv>): Response | Promise<Response> {
 
 export function withPrincipal(deps: Pick<AppDeps, 'accessKeys'>): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
+    const now = new Date();
+    c.set('now', now);
     const dev = devEmail(c.env, c.req.url);
     const identity: AccessIdentity | Response = dev
       ? { kind: 'person', email: dev }
@@ -47,7 +49,7 @@ export function withPrincipal(deps: Pick<AppDeps, 'accessKeys'>): MiddlewareHand
     if (database === null) return refuse(c, 'database_not_configured');
     const person = await signIn(database.db, identity.email);
     if (person.status === 'pending') return refusePending(c);
-    const grants = await resolveGrants(database.db, person.personId, { at: new Date() });
+    const grants = await resolveGrants(database.db, person.personId, { at: now });
     c.set(
       'principal',
       personPrincipal({

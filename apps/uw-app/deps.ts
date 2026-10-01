@@ -16,6 +16,7 @@ export type AppEnv = {
   Bindings: Bindings;
   Variables: {
     traceId: string;
+    now: Date;
     logger: Logger;
     database: DatabaseHandle | null;
     principal: Principal | null;

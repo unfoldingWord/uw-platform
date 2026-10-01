@@ -78,13 +78,13 @@ export function describeGrantsResolve(adapter: string, subject: () => GrantsSubj
     it('returns the live grants in grant order, as contract grants', async () => {
       const p1 = person(1);
       await given(subject(), p1, [
-        orgAdmin(1, p1),
-        areaEditor(2, p1, new Date('2030-06-01T00:00:00.000Z')),
+        orgAdmin(2, p1),
+        areaEditor(1, p1, new Date('2030-06-01T00:00:00.000Z')),
       ]);
       expect(await subject().grants.resolve(p1, at)).toEqual([
-        { grantId: grantId(1), role: 'admin', scopeKind: 'org', scopeArea: null, expiresAt: null },
+        { grantId: grantId(2), role: 'admin', scopeKind: 'org', scopeArea: null, expiresAt: null },
         {
-          grantId: grantId(2),
+          grantId: grantId(1),
           role: 'editor',
           scopeKind: 'jd_area',
           scopeArea: '80-89',
