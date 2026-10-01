@@ -84,7 +84,7 @@ Nothing in the files is a secret. `logpush = true` is added to `wrangler.go-live
 
 `uw-app/wrangler.go-live.toml` and `uw-ingest/wrangler.go-live.toml` are each their `wrangler.toml` plus the bindings whose resources do not exist yet: `logpush`, the `HYPERDRIVE` binding, the ingest queue producer and consumer, the `INGEST_DLQ` producer, and uw-app's `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD`. A test keeps each file equal to its live twin plus exactly those.
 
-`uw-app/wrangler.toml` also declares a `preview` environment. Per-PR Workers deploy with `--env preview`, so they never register as the staging queue consumer. In the go-live file `preview` binds Hyperdrive and declares no queue consumer.
+`uw-app/wrangler.toml` also declares a `preview` environment. Per-PR Workers deploy with `--env preview`, so they never register as the staging queue consumer. In the go-live file `preview` binds Hyperdrive and declares no queue consumer. Its Hyperdrive id must equal staging's (P33); a test checks that they match.
 
 A person adds, in the repository settings:
 
@@ -94,6 +94,8 @@ A person adds, in the repository settings:
 | `NEON_PROJECT_ID` | variable | The Neon project's id |
 | `NEON_DIRECT_URL_STAGING` | secret | The direct, non-pooled connection string for the staging branch |
 | `NEON_DIRECT_URL_PRODUCTION` | secret | The direct, non-pooled connection string for the production branch |
+
+The per-PR Neon branch `pr-<number>` is forked from the Neon branch named `staging` (`parent_branch: staging` in `neon-pr.yml`), never from the project's default branch, which may hold production data. The Neon branch `staging` must exist and must be staging's data.
 
 Then, with Cloudflare access:
 
