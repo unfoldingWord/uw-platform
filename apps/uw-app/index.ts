@@ -1,3 +1,10 @@
 import { createApp } from './app.tsx';
+import type { Bindings } from './env.ts';
+import { consumeIngestBatch } from './queue/worker.ts';
 
-export default createApp();
+const app = createApp();
+
+export default {
+  fetch: app.fetch,
+  queue: consumeIngestBatch,
+} satisfies ExportedHandler<Bindings>;
