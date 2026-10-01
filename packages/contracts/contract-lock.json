@@ -1,0 +1,57 @@
+{
+  "versions": [
+    {
+      "version": "1.0.0",
+      "sets": {
+        "agent-pickup": ["none", "allowed", "auto"],
+        "classification": ["public", "internal", "restricted", "sensitive"],
+        "command-name": [
+          "kickstart",
+          "enqueue",
+          "import",
+          "reorder",
+          "claim",
+          "release",
+          "submit_to_gate",
+          "approve",
+          "reject",
+          "take_over",
+          "override",
+          "prompt_run",
+          "stop_run",
+          "pause",
+          "resume",
+          "tweak_package",
+          "schedule_regular_tweak"
+        ],
+        "connector": ["none", "merge", "deploy", "publish", "send", "post"],
+        "cost-basis": ["metered", "subscription"],
+        "engine": [
+          "claude-messages",
+          "claude-code-sandbox",
+          "claude-managed-agent",
+          "codex-sandbox",
+          "external",
+          "openrouter-messages"
+        ],
+        "error-reason": [
+          "risk_tier_undeclared",
+          "reviewer_count_below_tier",
+          "approver_lacks_domain_grant",
+          "delegation_required",
+          "command_not_wired",
+          "malformed_command"
+        ],
+        "event-name": ["gate_approved", "lease_expired", "delegation_lapsed", "abandoned"],
+        "evidence-label": ["observed", "confirmed", "inferred", "assumed"],
+        "exit-gate": ["none", "checks", "human_approval"],
+        "offline-eligibility": ["sync", "cache_readonly", "never"],
+        "risk-domain": ["ledger", "acl", "infra", "migration"],
+        "risk-tier": ["low", "standard", "high"],
+        "role": ["admin", "editor", "viewer"],
+        "run-shape": ["workflow-run", "external-run"],
+        "scope": ["org", "jd_area"]
+      }
+    }
+  ]
+}
