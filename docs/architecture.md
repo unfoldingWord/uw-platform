@@ -72,7 +72,7 @@ Every port has a platform adapter and a test adapter, and may have more than one
 
 **What only real Postgres can prove, and where each runs:**
 
-| Guarantee | Embedded Postgres, in the sim and unit tests | Neon branch in CI |
+| Guarantee | Embedded Postgres, in the sim and unit tests | Postgres service container in CI |
 |---|---|---|
 | The null-safe stage check: `('merge','checks')` and `('merge', NULL)` refused on insert and update | yes | yes |
 | `harness_events` refuses UPDATE and DELETE | yes | yes |
@@ -80,7 +80,7 @@ Every port has a platform adapter and a test adapter, and may have more than one
 | WIP limit: the count and the claim are one transaction | yes, sequentially | yes, with two claims racing one slot |
 | The gate decision's locked grant re-read: revoke then decide, and decide then revoke | no; it needs two connections | yes |
 
-PGlite is a single connection, so every test that races two connections runs on the Neon branch.
+PGlite is a single connection, so every test that races two connections runs against a Postgres server: the service container in CI, or any server `TEST_DATABASE_URL` points at locally. Neither needs an account or a secret; the Neon branch per pull request is go-live wiring (PRD FD-12).
 
 ## What is durable, and who writes it
 

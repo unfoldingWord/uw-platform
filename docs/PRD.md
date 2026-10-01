@@ -154,7 +154,8 @@ Requirement identifiers are stable. **Must** is a v1 requirement. **Later** is d
 | FD-3 | `uw-app` is a Hono Worker with one server-rendered route and a health route that reports the deployed commit. Wrangler config in `infra/` declares staging and production; no secret in any wrangler file. | Built | #5 |
 | FD-4 | CI with six separately named jobs (`security-audit`, `lint`, `typecheck`, `architecture`, `test`, `build`); a Worker per PR (`uw-app-pr-<number>`), deleted when the PR closes; staging deploys only after CI is green on that commit; production deploys only on a tag or manual dispatch by a listed deployer with all six jobs green; a red `main` opens one alarm issue. The job names are a contract the ship rule reads. | Built | #68, #12 |
 | FD-5 | `packages/db` holds `schema.ts` as the only schema, a drizzle-kit config, and `migrations/` with generated SQL plus hand-written SQL for constraints and triggers, applied in order. A client factory takes a Hyperdrive connection string; a separate direct connection is used only by the migration runner. Every table declares `classification` (`public`, `internal`, `restricted`, `sensitive`) and `offline_eligibility` (`sync`, `cache_readonly`, `never`) as typed data; `pnpm verify` fails on a table without both, and on a schema change without a matching migration. Migrations apply from empty and re-applying is a no-op. | Built | #7 |
-| FD-6 | CI creates a Neon branch per PR, applies every migration from empty, re-applies them, runs the schema tests, and drops the branch whether or not they pass. Staging migrates on merge to `main` after CI is green; production migrates on a tagged release. `uw-app` connects only through a Hyperdrive binding declared for both environments. | Must | #79 |
+| FD-6 | CI's `test` job starts a Postgres service container, sets `TEST_DATABASE_URL` to it, applies every migration from empty, re-applies them, and runs the schema, constraint and concurrency tests against it. It needs no secret and no account. | Must | #79 |
+| FD-12 | **Go-live wiring, written during the build and switched on after it.** A CI job that creates a Neon branch per PR and drops it; a migrate-staging job on merge to `main` after CI is green; a migrate-production job on a tagged release; the Hyperdrive binding for staging and production. Each job skips cleanly, and stays green, while its secret is absent. A binding is added to a wrangler file only when the resource it names exists, so a deploy never fails on a missing one; until then `uw-app` starts without a database and `/health` reports the database indicator as not configured. A test asserts each job skips when its secret is absent. | Must | #79 |
 | FD-7 | Cloudflare Access with Google as the identity provider sits in front of `uw-app`, declared in `infra/`. Hono middleware verifies the Access JWT on every request (signature, audience, expiry), maps the email to a `people` row, auto-provisions `@unfoldingword.org` addresses and marks anyone else pending with an explicit "pending approval" response. A typed `Principal` (person or agent id, resolved grants, an `interactive` flag) is exported from `packages/core`, available to every handler, and serialisable into a queue message. A service-token JWT yields a non-interactive principal. A tampered, expired or wrong-audience JWT gets 401. | Must | #6 |
 | FD-8 | `role_grants(person_id, role, scope_kind, scope_area, granted_by, granted_at, expires_at, revoked_at)` with roles `admin`, `editor`, `viewer` at scope `org` or `jd_area`, declared `restricted` and `never`. `can(actor, verb, resource)` in `packages/core/acl.ts` is pure over the grants already resolved on the principal and takes no database handle. Org-scope admin is allowed everything an area admin is; `editor` on one area reads every area and writes only its own; `viewer` reads only its own. Grants resolve from the table on every request with no cross-request cache. Grant and revoke are commands that require `admin` in the target scope and write an audit record with the actor, the time and the before and after row. A bootstrap migration grants org admin to Ian and Jesse. | Must | #8 |
 | FD-9 | `pages(id, type, jd_area, slug, title, parent_id, frontmatter jsonb, body_md, version, status)` and `page_versions` (a full snapshot per save with `edit_source` of `human:<id>` or `agent:<id>`), declared `internal` and `sync`. A page-type registry in code gives each type a Zod frontmatter schema, a classification and an offline eligibility. Registered types: `skill`, `learning`, `persona`, `product`, `system_goal`, `product_strategy`, `data_sources`. Create, read and update handlers validate frontmatter, refuse unknown types, write one version per save, and check `can()` with the page's `jd_area`. No editor UI. Stage rows are not pages. | Must | #9 |
@@ -280,7 +281,8 @@ Requirement identifiers are stable. **Must** is a v1 requirement. **Later** is d
 | DX-3 | **A contract test per port.** One shared test suite per port, run against every adapter of that port. A check fails on a port without one. | Must | #82 |
 | DX-4 | **The sim.** `pnpm sim -- <scenario>` runs one scenario and prints the event log and the folded state; `pnpm sim -- all` runs every scenario. Scenarios live in `sim/scenarios/`, are named for the requirement ID they prove, and assert on the event log and folded state. | Must | architecture.md |
 | DX-5 | **Every Must requirement in this document that is not marked Built has a scenario or a test that fails without it.** `pnpm trace` fails on a requirement ID with neither. `pnpm walk -- <template>` prints every path from Package to an external effect and the gate each crosses. Both join `pnpm verify`. | Must | architecture.md |
-| DX-6 | **What only separate connections can prove** runs on the Neon branch in CI: the grant re-read race (KN-14), N concurrent claims on one item, and two claims racing one WIP slot (KN-5). The constraint and trigger tests (KN-2, KN-3) run on both the embedded Postgres and the Neon branch. | Must | #82, #17, #21 |
+| DX-6 | **What only separate connections can prove** runs on the Postgres service container in CI (FD-6), and locally whenever `TEST_DATABASE_URL` points at a Postgres server: the grant re-read race (KN-14), N concurrent claims on one item, and two claims racing one WIP slot (KN-5). The constraint and trigger tests (KN-2, KN-3) run on both the embedded Postgres and the service container. | Must | #82, #17, #21 |
+| DX-8 | **The build needs no live account.** Every Must requirement is proven against test adapters, fixture keys and recorded fixtures: Access JWTs signed by a fixture key pair, GitHub webhooks and API responses from fixtures, model turns scripted, AI Gateway cost data from fixtures, push and Zulip sends recorded. Each platform adapter is written, passes its port's contract test where the contract can run without the live service, and is listed in `docs/progress_tracker.md` as awaiting live verification. Nothing a requirement needs may be reachable only with a secret. | Must | section 15 |
 | DX-7 | **Figure 2 end to end in the sim.** One scenario takes a fixture item from kickstart to Close on the software template with scripted personas and fixture GitHub facts, covering the claim, a held premise, the lease warning and expiry, the PR declaration, the ship rule's refusals, an agent's refused gate attempt, the approve, the merge connector, a refused Close, a Close with a learning, and an Iterate beat under a delegation that then lapses. It is the machine-checkable half of the release criteria. | Must | #64 |
 
 ---
@@ -464,8 +466,8 @@ Not on `main`: `sim/`, `packages/ui/`, any table, any port, any adapter, any MCP
 
 Each step needs the ones above it. Within a step, order is free.
 
-1. **Finish the foundation.** FD-6, FD-7, FD-8, FD-9, FD-10, FD-11, CT-2.
-2. **Stand up the kernel's frame.** DX-1 to DX-6: the ports, the embedded-Postgres Store adapter, the contract tests, the sim, `walk` and `trace`.
+1. **Finish the foundation.** FD-6, FD-12 (written, not switched on), FD-7, FD-8, FD-9, FD-10, FD-11, CT-2.
+2. **Stand up the kernel's frame.** DX-1 to DX-6 and DX-8: the ports, the embedded-Postgres Store adapter, the contract tests, the sim, `walk` and `trace`.
 3. **Kernel and data.** KN-1 to KN-3 first (tables, the Ship invariant, the event log), then KN-4 to KN-18.
 4. **Agent boundary.** AB-1 to AB-8.
 5. **GitHub facts.** GH-1 to GH-7.
@@ -484,18 +486,22 @@ Each step needs the ones above it. Within a step, order is free.
 
 v1 is ready when all of these are true. There is no date.
 
-**Provable by the build, with no person and no live service**
+**Provable by the build, with no person, no account and no secret**
 
 1. `pnpm verify` is green, including `walk`, `trace` and `sim -- all`.
 2. Every Must requirement not marked Built has a scenario or test named for its ID (DX-5).
 3. DX-7 passes: one item travels Package to Close in the sim with every gate exercised.
 4. Both templates pass the property test; the negative fixture fails it.
 5. The three agent-boundary checks (AB-7) pass, and fail when their planted fixtures are added.
-6. The CI job on a Neon branch passes the race and concurrency tests (DX-6).
+6. The CI `test` job passes the race and concurrency tests on its Postgres service container (DX-6).
 
-**Provable only on staging, by people**
+The build is finished when items 1 to 6 hold. Nothing below is needed to reach that point.
 
-7. Unauthenticated requests to staging are rejected at the edge; a signed-in person reaches the app.
+**After the build: go-live, by people**
+
+These start once the build is finished and the accounts in section 15 exist. Each platform adapter gets its first run against the real service here, so expect this stage to find defects the test adapters could not.
+
+7. The go-live wiring (FD-12) is switched on: staging has its database through Hyperdrive, and each platform adapter listed in the tracker as awaiting live verification has run against its service. Unauthenticated requests to staging are rejected at the edge; a signed-in person reaches the app.
 8. The acceptance scenario of issue #64 runs on staging, driven by one person with `admin(80-89)` and one with `editor` only: kickstart; a hosted claim with the scout step on the always-on engine; a laptop claim by the `editor` whose tool list equals the hosted one; a held premise on a deliberately wrong item; work on `harness/<item>` with subscription tokens on the board; the `wip:` push at the lease warning, then expiry and a fresh claim from the expected head; a PR refused without its declaration and accepted with it; CI and a Reviewer verdict read back from GitHub; a web push and a Zulip thread that carry no content and open the Gates view at phone width; the ship button disabled with its closed reason when the head changes and when a `high` item has one reviewer; an agent's approve attempt refused and logged on each host; an approve that produces exactly one `gate_decisions` row, a merge and a deploy; a measurement at Validate; Close refused without a learning and accepted with one; an Iterate beat under a delegation, refused without one, stopped when it is revoked; and `/health` showing all of it.
 9. The event log for that item is exported with screenshots of the Flow, Board, Gates, play-by-play and `/health` views, in light and dark.
 10. One real item, the council's canonical taxonomy registry, has travelled the production harness end to end and closed with a confirmed learning (issue #65).
@@ -504,12 +510,12 @@ v1 is ready when all of these are true. There is no date.
 
 ## 15. Dependencies and prerequisites
 
-These need a person, an account or a secret. The build cannot create them. Where one is missing, the code and its tests against fakes are still built, the platform adapter is written, and the gap is recorded in `docs/progress_tracker.md`.
+These need a person, an account or a secret, and the build cannot create them. **None of them is needed until the build is finished** (DX-8): the build proves every requirement against test adapters and fixtures, writes the platform adapters, and records each one in `docs/progress_tracker.md` as awaiting live verification. They are needed for go-live, section 14 items 7 to 10. The one exception is already in place: the Cloudflare token that lets CI deploy the per-PR Worker.
 
 | Dependency | Needed by | Owner | Status |
 |---|---|---|---|
 | Cloudflare account, API token, account id (GitHub secrets) | FD-3, FD-4 | Ian | In place |
-| Neon project, API key, connection strings; Hyperdrive configs for staging and production | FD-6 | Ian | To set up |
+| Neon project, API key, connection strings; Hyperdrive configs for staging and production | FD-12 | Ian | To set up, after the build |
 | Cloudflare Access application with Google as identity provider; team domain and audience tag | FD-7 | Ian, Jesse | To set up |
 | Access service tokens for agent identities | AB-2, AB-6 | Ian | To set up |
 | Cloudflare Queue and dead-letter queue | FD-10 | Ian | To set up (declared in wrangler) |
@@ -623,7 +629,7 @@ The issues left these as "decide in the PR". They are decided here so the build 
 | P30 | The default review date for `assumed` and `inferred` learnings is 90 days after `as_of`. A contradiction is detected by `supersedes` alone. |
 | P31 | The bracket each stage belongs to is a column on `harness_stages`. The Flow diagram is inline SVG. Board reorder is a menu action, with drag-and-drop optional. The play-by-play pages 100 events at a time. Home lives at the app root. A gate the person cannot decide for lack of a domain grant is not shown. |
 | P32 | The interim tokens live in `packages/ui/tokens/`. The tested phone width is 390 pixels. The service worker caches the shell only and holds no harness data. |
-| P33 | Per-PR Workers bind to shared staging's database through its Hyperdrive config; only CI's schema job uses the per-PR Neon branch. |
+| P33 | Once FD-12 is on, per-PR Workers bind to shared staging's database through its Hyperdrive config; only CI's Neon job uses the per-PR Neon branch. Until then a per-PR Worker runs with no database. |
 | P34 | The engine seam's loop caps at 40 turns. A tool error is returned to the model as the tool result. |
 
 ---
@@ -669,7 +675,7 @@ The issues left these as "decide in the PR". They are decided here so the build 
 | #30 | AB-6 | | #66 | section 17 |
 | #31 | AB-7 | | #67 | FD-2 |
 | #32 | AB-8 | | #68 | FD-4 |
-| #33 | GH-1 | | #79 | FD-6 |
+| #33 | GH-1 | | #79 | FD-6, FD-12 |
 | #34 | GH-2 | | #82 | DX-1, DX-2, DX-3, DX-6, P1 |
 | #35 | GH-3 | | | |
 | #36 | GH-4, GH-5 | | | |

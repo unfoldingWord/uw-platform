@@ -9,8 +9,8 @@ The steps are PRD section 13.
 | Step | Requirements | State | Evidence |
 |---|---|---|---|
 | 0. Already on `main` | FD-1, FD-2, FD-3, FD-4, FD-5, CT-1 | Built | PRD section 12 |
-| 1. Finish the foundation | FD-6 to FD-11, CT-2 | Not started | |
-| 2. The kernel's frame | DX-1 to DX-6 | Not started | |
+| 1. Finish the foundation | FD-6 to FD-12, CT-2 | Not started | |
+| 2. The kernel's frame | DX-1 to DX-6, DX-8 | Not started | |
 | 3. Kernel and data | KN-1 to KN-18 | Not started | |
 | 4. Agent boundary | AB-1 to AB-8 | Not started | |
 | 5. GitHub facts | GH-1 to GH-7 | Not started | |
@@ -42,7 +42,7 @@ Work that is built and whose verification did not run, with the reason.
 
 ## Waiting on a person
 
-Accounts, secrets and installations from PRD section 15 that were missing when the build reached them.
+Platform adapters and go-live wiring that are written and await their first run against the real service (PRD DX-8, FD-12), with the account or secret from PRD section 15 each one needs.
 
-| Date | Requirement | What is needed | From whom |
-|---|---|---|---|
+| Date | Requirement | What is written | What is needed to verify it live | From whom |
+|---|---|---|---|---|
