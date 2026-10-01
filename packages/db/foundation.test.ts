@@ -39,8 +39,11 @@ const page = (
   fields: Partial<Record<'type' | 'jd_area' | 'slug' | 'version', string>> = {},
 ) =>
   `INSERT INTO pages (id, type, jd_area, slug, title, frontmatter, body_md, version, status) VALUES ('${id}', '${fields.type ?? 'skill'}', '${fields.jd_area ?? '80-89'}', '${fields.slug ?? `s-${id.slice(-4)}`}', 'T', '{}', '', ${fields.version ?? '1'}, 'draft')`;
-const snapshot = (version: number, source: string) =>
-  `INSERT INTO page_versions (page_id, version, type, jd_area, slug, title, frontmatter, body_md, status, edit_source) VALUES ('${pageA}', ${version}, 'skill', '80-89', 'shared', 'T', '{}', '', 'draft', '${source}')`;
+type SnapshotFields = Partial<
+  Record<'version' | 'type' | 'status' | 'jd_area' | 'slug' | 'edit_source', string>
+>;
+const snapshot = (fields: SnapshotFields = {}) =>
+  `INSERT INTO page_versions (page_id, version, type, jd_area, slug, title, frontmatter, body_md, status, edit_source) VALUES ('${pageA}', ${fields.version ?? '1'}, '${fields.type ?? 'skill'}', '${fields.jd_area ?? '80-89'}', '${fields.slug ?? 'shared'}', 'T', '{}', '', '${fields.status ?? 'draft'}', '${fields.edit_source ?? 'human:ian'}')`;
 const delivery = (source: string) =>
   `INSERT INTO webhook_deliveries (source, delivery_id) VALUES ('${source}', 'd-1')`;
 
@@ -149,9 +152,26 @@ const slugsPerArea: Check = async (sql) => {
 
 const snapshotsPerVersion: Check = async (sql) => {
   await sql.unsafe(page(pageA, { slug: 'shared' }));
-  expect(await attempt(sql, snapshot(1, 'human:ian'))).toBe('ok');
-  expect(await attempt(sql, snapshot(1, 'human:ian'))).toBe('23505');
-  expect(await attempt(sql, snapshot(2, 'robot:x'))).toBe('23514');
+  expect(await attempt(sql, snapshot())).toBe('ok');
+  expect(await attempt(sql, snapshot())).toBe('23505');
+  expect(await attempt(sql, snapshot({ version: '2', edit_source: 'robot:x' }))).toBe('23514');
+};
+
+const snapshotRefusals: Check = async (sql) => {
+  await sql.unsafe(page(pageA, { slug: 'shared' }));
+  expect(await attempt(sql, snapshot({ type: 'policy' }))).toBe('23514');
+  expect(await attempt(sql, snapshot({ status: 'published' }))).toBe('23514');
+  expect(await attempt(sql, snapshot({ jd_area: '8-9' }))).toBe('23514');
+  expect(await attempt(sql, snapshot({ jd_area: '80-19' }))).toBe('23514');
+  expect(await attempt(sql, snapshot({ slug: 'Not Kebab' }))).toBe('23514');
+  expect(await attempt(sql, snapshot({ version: '0' }))).toBe('23514');
+};
+
+const auditRefusesUnknownAction: Check = async (sql) => {
+  const audit = (action: string) =>
+    `INSERT INTO grant_audit (actor, action, grant_id) VALUES ('human:ian', '${action}', '00000000-0000-4000-8000-000000000101')`;
+  expect(await attempt(sql, audit('delete'))).toBe('23514');
+  expect(await attempt(sql, audit('revoke'))).toBe('ok');
 };
 
 const deliveriesOncePerSource: Check = async (sql) => {
@@ -198,6 +218,7 @@ describe.skipIf(!testServer)(
     );
     it('refuses UPDATE, DELETE and TRUNCATE on grant_audit', { timeout }, run(auditIsAppendOnly));
     it('refuses an actor that is not an identity string', { timeout }, run(auditActorIsIdentity));
+    it('refuses an unknown action', { timeout }, run(auditRefusesUnknownAction));
   },
 );
 
@@ -216,6 +237,11 @@ describe.skipIf(!testServer)('FD-9 pages and page_versions on real Postgres', ()
     'keeps slugs unique per area and allows the same slug in another area',
     { timeout },
     run(slugsPerArea),
+  );
+  it(
+    'refuses a snapshot with a bad type, status, area, slug or version 0',
+    { timeout },
+    run(snapshotRefusals),
   );
   it(
     'keeps one snapshot per page version and an identity-shaped edit source',
