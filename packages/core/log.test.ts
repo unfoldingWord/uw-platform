@@ -60,8 +60,10 @@ describe('FD-11 error fields for a log line', () => {
   });
 
   it('bounds the message to 200 characters', () => {
-    const fields = errorFields(new Error('x'.repeat(500)));
-    expect(fields.error_message).toHaveLength(200);
+    expect(errorFields(new Error('x'.repeat(500)))).toEqual({
+      error_name: 'Error',
+      error_message: 'x'.repeat(200),
+    });
   });
 
   it('describes a thrown value that is not an Error', () => {
@@ -75,6 +77,75 @@ describe('FD-11 error fields for a log line', () => {
 describe('FD-11 error fields never carry a URL', () => {
   it('replaces every URL in the message, credentials and all', () => {
     const error = new Error('connect postgres://u:pw@db.example/x failed; see https://a.b/c?t=1');
-    expect(errorFields(error).error_message).toBe('connect <url> failed; see <url>');
+    expect(errorFields(error)).toMatchObject({ error_message: 'connect <url> failed; see <url>' });
+  });
+});
+
+function drizzleQueryError(cause: object): Error {
+  return new Error(
+    'Failed query: update "people" set "status" = $1 where "email" = $2\nparams: active,ada.lovelace@example.org',
+    { cause },
+  );
+}
+
+describe('FD-11 error fields for a database error', () => {
+  const postgresCause = {
+    name: 'PostgresError',
+    code: '23505',
+    constraint_name: 'people_email_key',
+    table_name: 'people',
+    message: 'duplicate key value violates unique constraint "people_email_key"',
+  };
+
+  it('names the cause, its code, constraint and table, and nothing else', () => {
+    expect(errorFields(drizzleQueryError(postgresCause))).toEqual({
+      error_name: 'PostgresError',
+      error_code: '23505',
+      constraint_name: 'people_email_key',
+      table_name: 'people',
+    });
+  });
+
+  it('never lets a query parameter reach the serialised line', () => {
+    const { lines, sink } = capture();
+    const fields = errorFields(drizzleQueryError(postgresCause));
+    createLogger(context, sink).error('request failed', { outcome: 'internal_error', ...fields });
+    expect(JSON.stringify(lines)).not.toContain('example.org');
+    expect(JSON.stringify(lines)).not.toContain('Failed query');
+  });
+
+  it('reads the constraint field PGlite uses', () => {
+    const fields = errorFields(
+      drizzleQueryError({ name: 'error', code: '23503', constraint: 'fk' }),
+    );
+    expect(fields).toEqual({ error_name: 'error', error_code: '23503', constraint_name: 'fk' });
+  });
+});
+
+describe('FD-11 error fields find a database error wherever it sits', () => {
+  it('reads a code carried by the error itself', () => {
+    const direct = Object.assign(new Error('secret row value'), { code: '40001' });
+    expect(errorFields(direct)).toEqual({ error_name: 'Error', error_code: '40001' });
+  });
+
+  it('finds a code several causes down, within a small depth', () => {
+    const deep = new Error('outer', { cause: new Error('middle', { cause: { code: '57014' } }) });
+    expect(errorFields(deep)).toMatchObject({ error_code: '57014' });
+  });
+
+  it('keeps the redacted bounded message when no cause carries a code', () => {
+    const error = new Error('connect https://a.b/c failed', { cause: new Error('refused') });
+    expect(errorFields(error)).toEqual({
+      error_name: 'Error',
+      error_message: 'connect <url> failed',
+    });
+  });
+
+  it('does not take a non-SQLSTATE code such as ECONNREFUSED for a database error', () => {
+    const error = Object.assign(new Error('connect failed'), { code: 'ECONNREFUSED' });
+    expect(errorFields(error)).toEqual({
+      error_name: 'Error',
+      error_message: 'connect failed',
+    });
   });
 });
