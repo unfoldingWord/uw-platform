@@ -28,6 +28,7 @@ describe('FD-10 an accepted delivery', () => {
     expect(envelope?.principal.identity).toBe('agent:ingest');
     expect(ingestEnvelopeSchema.safeParse(envelope).success).toBe(true);
     expect(envelope?.traceId).toBe(response.headers.get('x-trace-id'));
+    expect(h.queue.options).toEqual([{ contentType: 'json' }]);
     expect(h.lines[0]).toMatchObject({
       trace_id: envelope?.traceId,
       route: 'POST /webhooks/:source',
@@ -74,6 +75,15 @@ describe('FD-10 refused deliveries', () => {
 
   it('refuses an unknown source', () =>
     expectRefused({ body, path: '/webhooks/stripe' }, 404, 'unknown_source'));
+
+  it('refuses a signed delivery with no event header', () =>
+    expectRefused({ body, event: null }, 400, 'malformed_delivery'));
+
+  it('refuses a delivery id the envelope cannot carry', () =>
+    expectRefused({ body, deliveryId: 'd'.repeat(201) }, 400, 'malformed_delivery'));
+
+  it('refuses a body declared larger than 25 MB before reading it', () =>
+    expectRefused({ body, contentLength: 25 * 1024 * 1024 + 1 }, 413, 'payload_too_large'));
 });
 
 describe('FD-10 replay detection', () => {
@@ -112,6 +122,8 @@ describe('FD-10 missing configuration', () => {
       status: 503,
       json: { status: 'error', reason: 'source_not_configured' },
     });
+    expect(h.queue.sent).toHaveLength(0);
+    expect(h.ledger.keys.size).toBe(0);
   });
 
   it('refuses with replay_store_not_configured when there is no ledger', async () => {

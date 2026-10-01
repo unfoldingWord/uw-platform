@@ -37,21 +37,32 @@ export type Delivery = {
   readonly secret?: string;
   readonly signature?: string | null;
   readonly deliveryId?: string | null;
+  readonly event?: string | null;
+  readonly contentLength?: number;
   readonly path?: string;
 };
+
+function deliveryHeaders(delivery: Delivery): Headers {
+  const headers = new Headers();
+  if (delivery.event !== null) headers.set('x-github-event', delivery.event ?? 'pull_request');
+  if (delivery.deliveryId !== null) headers.set('x-github-delivery', delivery.deliveryId ?? 'd-1');
+  if (delivery.contentLength !== undefined) {
+    headers.set('content-length', String(delivery.contentLength));
+  }
+  return headers;
+}
 
 export async function post(
   h: ReturnType<typeof harness>,
   delivery: Delivery,
   env: IngestBindings = h.env,
 ): Promise<Response> {
-  const headers = new Headers({ 'x-github-event': 'pull_request' });
+  const headers = deliveryHeaders(delivery);
   const signature =
     delivery.signature === undefined
       ? await sign(delivery.secret ?? FIXTURE_SECRET, delivery.body)
       : delivery.signature;
   if (signature !== null) headers.set('x-hub-signature-256', signature);
-  if (delivery.deliveryId !== null) headers.set('x-github-delivery', delivery.deliveryId ?? 'd-1');
   return h.app.request(
     delivery.path ?? '/webhooks/github',
     { method: 'POST', headers, body: delivery.body },
