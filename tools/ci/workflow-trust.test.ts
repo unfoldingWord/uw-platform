@@ -14,8 +14,8 @@ const workflowRunHead = '${{ github.event.workflow_run.head_sha }}';
 const trustedCheckoutRefs: Record<string, (string | null)[]> = {
   'cleanup-pr.yml': [defaultBranch],
   'deploy-pr.yml': [null],
-  'deploy-production.yml': [null, null],
-  'deploy-staging.yml': [workflowRunHead],
+  'deploy-production.yml': [null, null, null],
+  'deploy-staging.yml': [workflowRunHead, workflowRunHead],
   'main-alarm.yml': [],
 };
 
