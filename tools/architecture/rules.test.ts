@@ -197,6 +197,12 @@ const refusals: [string, string, string, string][] = [
     'harness-port-contracts-import-the-harness-and-vitest-only',
   ],
   [
+    'a non-test package file into a port contract',
+    'packages/harness/index.ts',
+    "import './port-contracts/b.ts';",
+    'port-contracts-only-in-tests',
+  ],
+  [
     'a non-test app file into a port contract',
     'apps/uw-app/a.ts',
     "import '../../packages/harness/port-contracts/b.ts';",
@@ -326,7 +332,7 @@ describe('the dependency rules allow the sim and port contracts', () => {
     expect(
       await violations({
         'sim/a.ts':
-          "import 'node:fs'; import 'node:path'; import 'node:url'; import 'node:assert/strict';",
+          "import 'node:fs'; import 'node:path'; import 'node:url'; import 'node:assert/strict'; import 'node:fs/promises'; import 'fs/promises';",
         'sim/a.test.ts': "import 'vitest'; import 'node:os'; import './a.ts';",
       }),
     ).toEqual([]);

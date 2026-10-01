@@ -24,7 +24,7 @@ const portContracts = '^packages/harness/port-contracts/';
 const simMayImport = [
   '^sim/',
   '^packages/(harness|contracts|db)/',
-  '^(node:)?(fs|path|url|process|os|assert|assert/strict|child_process)$',
+  '^(node:)?(fs|fs/promises|path|url|process|os|assert|assert/strict|child_process)$',
 ];
 
 const forbidden = (name, comment, from, to) => ({
@@ -103,7 +103,7 @@ export default {
       comment:
         'Only test files import a port contract suite, so Vitest never enters a Worker bundle.',
       severity: 'error',
-      from: { path: '^(apps|sim)/', pathNot: testFile },
+      from: { path: '^(apps|sim|packages)/', pathNot: [testFile, portContracts] },
       to: { path: portContracts },
     },
     {
