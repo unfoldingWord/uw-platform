@@ -107,6 +107,14 @@ export default {
       to: { path: portContracts },
     },
     {
+      name: 'apps-never-import-the-embedded-database',
+      comment:
+        'Worker sources never import the embedded Postgres, so PGlite never enters a Worker bundle.',
+      severity: 'error',
+      from: { path: '^apps/' },
+      to: { path: ['^packages/db/embedded\\.ts$', npm('@electric-sql/pglite')] },
+    },
+    {
       name: 'test-seed-only-in-tests-and-sim',
       comment:
         'Only test files and sim/ import the fixture seeding helpers, which write tables their owners write.',
