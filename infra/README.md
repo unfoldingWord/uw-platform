@@ -35,3 +35,16 @@ A binding is added by a diff to `uw-app/wrangler.toml`, once in `[env.staging]` 
 | Crons | `[env.<name>.triggers]` with `crons` | later |
 
 Ids that are not secret (a Hyperdrive id) may be committed. A secret is set with `wrangler secret put --env <name>` and appears in the file nowhere.
+
+## Access (FD-7)
+
+`access/uw-app.json` declares Cloudflare Access in front of `uw-app` on staging and every per-PR Worker. People sign in with Google; any valid service token passes as a non-identity request and becomes a non-interactive agent principal; `/health` alone is bypassed so the deploy jobs can read the deployed commit.
+
+The allow policy admits any Google account on purpose. A person outside `@unfoldingword.org` must reach the app to be recorded as pending (FD-7). Authorization is the grants table, not Access.
+
+The file holds the bodies of two Cloudflare API calls, applied by a person with an API token holding Access: Apps and Policies Edit:
+
+- `POST /accounts/{account_id}/access/apps`, then `POST /accounts/{account_id}/access/apps/{app_id}/policies`, for `application` with `policies`.
+- The same two calls for `health_bypass.application` with `health_bypass.policies`.
+
+Replace `<google-idp-id>` with the Google identity provider's id from `GET /accounts/{account_id}/access/identity_providers`. After creation, the application's AUD tag and the team domain go into `ACCESS_AUD` and `ACCESS_TEAM_DOMAIN` in `infra/uw-app/wrangler.go-live.toml` (Task 16 of the step-1 plan). Production gets its own application when `uw-app` has a production route.
