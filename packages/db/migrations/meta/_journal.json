@@ -1,1 +1,27 @@
-{ "version": "7", "dialect": "postgresql", "entries": [] }
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790888360629,
+      "tag": "0000_foundation_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790888361390,
+      "tag": "0001_grant_audit_append_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790888362144,
+      "tag": "0002_bootstrap_admins",
+      "breakpoints": true
+    }
+  ]
+}

@@ -131,6 +131,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@uw/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@uw/core':
         specifier: workspace:*
         version: link:../core
