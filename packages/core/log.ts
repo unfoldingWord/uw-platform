@@ -68,9 +68,49 @@ export function createLogger(context: LogContext, sink: LogSink): Logger {
 const ERROR_MESSAGE_LIMIT = 200;
 const URL_IN_TEXT = /[a-z][a-z0-9+.-]*:\/\/\S+/gi;
 
-export type ErrorFields = { readonly error_name: string; readonly error_message: string };
+const CAUSE_DEPTH_LIMIT = 4;
+const SQLSTATE = /^[0-9A-Z]{5}$/;
+
+export type DatabaseErrorFields = {
+  readonly error_name: string;
+  readonly error_code: string;
+  readonly constraint_name?: string;
+  readonly table_name?: string;
+};
+
+export type MessageErrorFields = { readonly error_name: string; readonly error_message: string };
+
+export type ErrorFields = DatabaseErrorFields | MessageErrorFields;
+
+function textField(value: unknown, key: string): string | undefined {
+  if (typeof value !== 'object' || value === null) return undefined;
+  const found: unknown = Reflect.get(value, key);
+  return typeof found === 'string' ? found : undefined;
+}
+
+function findDatabaseError(error: unknown): DatabaseErrorFields | null {
+  let current: unknown = error;
+  for (let depth = 0; depth < CAUSE_DEPTH_LIMIT; depth += 1) {
+    const code = textField(current, 'code');
+    if (code !== undefined && SQLSTATE.test(code)) {
+      const constraint = textField(current, 'constraint_name') ?? textField(current, 'constraint');
+      const table = textField(current, 'table_name');
+      return {
+        error_name: textField(current, 'name') ?? 'database_error',
+        error_code: code,
+        ...(constraint === undefined ? {} : { constraint_name: constraint }),
+        ...(table === undefined ? {} : { table_name: table }),
+      };
+    }
+    if (typeof current !== 'object' || current === null) return null;
+    current = Reflect.get(current, 'cause');
+  }
+  return null;
+}
 
 export function errorFields(error: unknown): ErrorFields {
+  const database = findDatabaseError(error);
+  if (database !== null) return database;
   const isError = error instanceof Error;
   const message = isError ? error.message : String(error);
   return {
