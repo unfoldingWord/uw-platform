@@ -8,6 +8,7 @@ import {
 } from '@uw/contracts';
 import { can } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
+import { advisoryLocks } from '@uw/db/advisory-locks';
 import type { Database, Executor, Transaction } from '@uw/db/client';
 import { pages, pageVersions } from '@uw/db/schema';
 import { pgConstraint, pgErrorCode } from '../http/pg-errors.ts';
@@ -23,7 +24,6 @@ type PageRow = typeof pages.$inferSelect;
 const UNIQUE_VIOLATION = '23505';
 const PAGE_PRIMARY_KEY = 'pages_pkey';
 const SLUG_PER_AREA = 'pages_slug_per_area';
-const PAGE_REPARENTING_LOCK_KEY = 7301002;
 
 function refused(reason: ErrorReason): PageResult {
   return { ok: false, reason };
@@ -190,7 +190,7 @@ async function updateInTransaction(
   traceId: string,
 ): Promise<PageResult> {
   if (command.parentId !== null) {
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(${PAGE_REPARENTING_LOCK_KEY}::bigint)`);
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${advisoryLocks.pageReparenting}::bigint)`);
   }
   const stored = await readPage(tx, actor, command.pageId);
   if (!stored) return refused('page_not_found');

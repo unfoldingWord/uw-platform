@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./advisory-locks": "./advisory-locks.ts",
     "./client": "./client.ts",
     "./declarations": "./declarations.ts",
     "./migrate": "./migrate.ts",
