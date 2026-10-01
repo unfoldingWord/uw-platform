@@ -75,6 +75,9 @@ importers:
       '@uw/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@uw/uw-ingest':
+        specifier: workspace:*
+        version: link:../uw-ingest
       drizzle-orm:
         specifier: ^0.45.3
         version: 0.45.3(@cloudflare/workers-types@5.20260930.1)(postgres@3.4.9)
