@@ -78,4 +78,4 @@ Thirty-day retention is the R2 bucket `uw-logs` with the lifecycle rule in `logs
 - Apply the rule with `PUT /accounts/{account_id}/r2/buckets/uw-logs/lifecycle`, sending `logs/r2-lifecycle.json` as the body.
 - Substitute the three `${...}` placeholders in `logs/logpush-workers.json` from the shell with `envsubst`, then send it with `POST /accounts/{account_id}/logpush/jobs`.
 
-Nothing in the files is a secret. `logpush = true` is set in `uw-app/wrangler.go-live.toml`, because Workers Logpush needs the paid plan and the job above.
+Nothing in the files is a secret. `logpush = true` is added to `wrangler.go-live.toml` with the go-live wiring, because Workers Logpush needs the paid plan and the job above.
