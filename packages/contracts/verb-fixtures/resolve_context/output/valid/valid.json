@@ -1,0 +1,34 @@
+{
+  "instructions": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "type": "skill",
+    "jdArea": "80-89",
+    "slug": "harness-skill",
+    "title": "Harness skill",
+    "status": "draft"
+  },
+  "package": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "type": "skill",
+      "jdArea": "80-89",
+      "slug": "harness-skill",
+      "title": "Harness skill",
+      "status": "draft"
+    }
+  ],
+  "learnings": [
+    {
+      "page": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "type": "skill",
+        "jdArea": "80-89",
+        "slug": "harness-skill",
+        "title": "Harness skill",
+        "status": "draft"
+      },
+      "confidence": "observed",
+      "asOf": "2026-10-01"
+    }
+  ]
+}
