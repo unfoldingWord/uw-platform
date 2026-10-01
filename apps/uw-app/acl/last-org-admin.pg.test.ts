@@ -46,12 +46,14 @@ async function race(dbA: Database, dbB: Database) {
       ian,
       { command: 'revoke_role', requestId: randomUUID(), grantId: JESSE_GRANT_ID },
       randomUUID(),
+      new Date(),
     ),
     revokeRole(
       dbB,
       jesse,
       { command: 'revoke_role', requestId: randomUUID(), grantId: IAN_GRANT_ID },
       randomUUID(),
+      new Date(),
     ),
   ]);
 }

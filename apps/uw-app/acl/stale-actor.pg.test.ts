@@ -58,6 +58,7 @@ describe.skipIf(!testServer)('FD-8 a command re-checks the caller under lock', (
         ian,
         { command: 'revoke_role', requestId: randomUUID(), grantId: JESSE_GRANT_ID },
         randomUUID(),
+        new Date(),
       );
       expect(revoked).toEqual({ ok: true });
       const before = await liveGrantCount(db);
@@ -74,6 +75,7 @@ describe.skipIf(!testServer)('FD-8 a command re-checks the caller under lock', (
           expiresAt: null,
         },
         randomUUID(),
+        new Date(),
       );
       expect(result).toEqual({ ok: false, reason: 'not_permitted' });
       expect(await liveGrantCount(db)).toBe(before);
@@ -92,12 +94,14 @@ describe.skipIf(!testServer)('FD-8 revoke re-checks the caller under lock', () =
         ian,
         { command: 'revoke_role', requestId: randomUUID(), grantId: JESSE_GRANT_ID },
         randomUUID(),
+        new Date(),
       );
       const result = await revokeRole(
         db,
         staleJesse,
         { command: 'revoke_role', requestId: randomUUID(), grantId: IAN_GRANT_ID },
         randomUUID(),
+        new Date(),
       );
       expect(result).toEqual({ ok: false, reason: 'not_permitted' });
       expect(await liveGrantCount(db)).toBe(2);

@@ -26,7 +26,8 @@ const handlers = new Map<string, Run>([
       const parsed = grantRoleCommandSchema.safeParse(body);
       if (!parsed.success) return null;
       const command: GrantRoleCommand = parsed.data;
-      return { requestId: command.requestId, result: await grantRole(db, actor, command, traceId) };
+      const result = await grantRole(db, actor, command, traceId, new Date());
+      return { requestId: command.requestId, result };
     },
   ],
   [
@@ -35,10 +36,8 @@ const handlers = new Map<string, Run>([
       const parsed = revokeRoleCommandSchema.safeParse(body);
       if (!parsed.success) return null;
       const command: RevokeRoleCommand = parsed.data;
-      return {
-        requestId: command.requestId,
-        result: await revokeRole(db, actor, command, traceId),
-      };
+      const result = await revokeRole(db, actor, command, traceId, new Date());
+      return { requestId: command.requestId, result };
     },
   ],
 ]);
