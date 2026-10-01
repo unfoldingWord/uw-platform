@@ -13,6 +13,10 @@
       "entry": ["index.ts", "**/*.test.ts"],
       "project": ["**/*.ts", "**/*.tsx"]
     },
+    "apps/uw-ingest": {
+      "entry": ["index.ts", "**/*.test.ts"],
+      "project": ["**/*.ts"]
+    },
     "packages/*": {
       "entry": ["**/*.test.ts"],
       "project": ["**/*.ts"]
