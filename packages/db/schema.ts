@@ -143,6 +143,11 @@ export const pageVersions = declareTable(
   },
   { classification: 'internal', offlineEligibility: 'sync' },
   (t) => [
+    check('page_versions_type_known', oneOf(t.type, pageTypeSchema.options)),
+    check('page_versions_status_known', oneOf(t.status, pageStatusSchema.options)),
+    check('page_versions_area_form', matches(t.jdArea, JD_AREA_PATTERN)),
+    check('page_versions_slug_form', matches(t.slug, SLUG_PATTERN)),
+    check('page_versions_version_positive', sql`${t.version} >= 1`),
     uniqueIndex('page_versions_page_version').on(t.pageId, t.version),
     check('page_versions_edit_source_is_identity', matches(t.editSource, IDENTITY_PATTERN)),
   ],
