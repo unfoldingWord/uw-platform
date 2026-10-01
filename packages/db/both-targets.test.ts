@@ -1,5 +1,12 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { closeEmbeddedTemplate, createEmbeddedDatabase } from './embedded.ts';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  closeEmbeddedTemplate,
+  createEmbeddedDatabase,
+  type EmbeddedDatabase,
+} from './embedded.ts';
 import { pgConstraint, pgErrorCode } from './errors.ts';
 import { migrationTimestamps } from './journal.ts';
 import { appliedMigrations } from './migration-ledger.ts';
@@ -31,23 +38,27 @@ function badArea(opened: OpenedDatabase) {
 }
 
 function describeTarget(target: DatabaseTarget): void {
-  let opened: OpenedDatabase;
+  let opened: OpenedDatabase | undefined;
   beforeAll(async () => {
     opened = await target.open();
   }, 60_000);
-  afterAll(() => opened.close());
+  afterAll(() => opened?.close());
+  const current = (): OpenedDatabase => {
+    if (!opened) throw new Error('the database did not open');
+    return opened;
+  };
 
   it('applied every migration in the journal, in order', async () => {
-    expect(await appliedMigrations(opened.db)).toEqual(migrationTimestamps);
+    expect(await appliedMigrations(current().db)).toEqual(migrationTimestamps);
   });
 
   it('refuses an UPDATE of grant_audit through its append-only trigger', async () => {
-    const refused = await refusal(opened.db.update(grantAudit).set({ actor: 'human:x' }));
+    const refused = await refusal(current().db.update(grantAudit).set({ actor: 'human:x' }));
     expect(refused.code).toBe('P0001');
   });
 
   it('refuses a grant whose area is not NN-NN, naming the constraint', async () => {
-    expect(await refusal(badArea(opened))).toEqual({
+    expect(await refusal(badArea(current()))).toEqual({
       code: '23514',
       constraint: 'role_grants_area_matches_scope',
     });
@@ -61,9 +72,11 @@ describe.each(databaseTargets)(
 
 describe('DX-2 each embedded database is its own', () => {
   it('does not show one clone a row written in another', async () => {
-    const first = await createEmbeddedDatabase();
-    const second = await createEmbeddedDatabase();
+    let first: EmbeddedDatabase | undefined;
+    let second: EmbeddedDatabase | undefined;
     try {
+      first = await createEmbeddedDatabase();
+      second = await createEmbeddedDatabase();
       await first.db.insert(people).values({
         email: 'clone@fixture.unfoldingword.org',
         displayName: 'Clone',
@@ -72,8 +85,54 @@ describe('DX-2 each embedded database is its own', () => {
       expect(await second.db.select().from(people)).toHaveLength(1);
       expect(await first.db.select().from(people)).toHaveLength(2);
     } finally {
-      await first.close();
-      await second.close();
+      await first?.close();
+      await second?.close();
+    }
+  }, 60_000);
+});
+
+async function brokenMigrations(): Promise<string> {
+  const folder = await mkdtemp(join(tmpdir(), 'uw-broken-migrations-'));
+  await mkdir(join(folder, 'meta'));
+  await writeFile(join(folder, '0000_broken.sql'), 'THIS IS NOT SQL;');
+  await writeFile(
+    join(folder, 'meta', '_journal.json'),
+    JSON.stringify({
+      version: '7',
+      dialect: 'postgresql',
+      entries: [{ idx: 0, version: '7', when: 1, tag: '0000_broken', breakpoints: true }],
+    }),
+  );
+  return folder;
+}
+
+describe('DX-2 a failing migration leaves nothing open and the next call rebuilds', () => {
+  beforeEach(closeEmbeddedTemplate);
+
+  it('rejects, closes cleanly, and then builds a working database', async () => {
+    const folder = await brokenMigrations();
+    try {
+      await expect(createEmbeddedDatabase(folder)).rejects.toThrow();
+      await expect(closeEmbeddedTemplate()).resolves.toBeUndefined();
+      const rebuilt = await createEmbeddedDatabase();
+      try {
+        expect(await appliedMigrations(rebuilt.db)).toEqual(migrationTimestamps);
+      } finally {
+        await rebuilt.close();
+      }
+    } finally {
+      await rm(folder, { recursive: true });
+    }
+  }, 60_000);
+
+  it('does not cache the failure: a retry after a failed build succeeds without closing first', async () => {
+    const folder = await brokenMigrations();
+    try {
+      await expect(createEmbeddedDatabase(folder)).rejects.toThrow();
+      const rebuilt = await createEmbeddedDatabase();
+      await rebuilt.close();
+    } finally {
+      await rm(folder, { recursive: true });
     }
   }, 60_000);
 });

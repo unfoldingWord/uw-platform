@@ -20,8 +20,11 @@ function serverTarget(server: string): DatabaseTarget {
       return {
         db,
         close: async () => {
-          await db.$client.end();
-          await database.drop();
+          try {
+            await db.$client.end();
+          } finally {
+            await database.drop();
+          }
         },
       };
     },
