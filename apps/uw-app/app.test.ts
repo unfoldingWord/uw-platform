@@ -50,3 +50,43 @@ describe('uw-app shell', () => {
     expect(response.status).toBe(404);
   });
 });
+
+const failureMarker = 'jwks-endpoint-marker-7c2e';
+
+async function failingRequest() {
+  const { deps, lines } = recordingDeps();
+  const fixture = await createAccessFixture();
+  const token = await fixture.sign({ email: 'ada@example.org' });
+  const failing = {
+    ...deps,
+    accessKeys: () => async () => {
+      throw new RangeError(failureMarker);
+    },
+  };
+  const response = await createApp(failing).request(
+    '/',
+    { headers: { 'cf-access-jwt-assertion': token } },
+    fixtureAccessEnv,
+  );
+  return { response, lines };
+}
+
+describe('FD-11 an unexpected failure is diagnosable from the log alone', () => {
+  it('logs the error name and message on the request-failed line', async () => {
+    const { lines } = await failingRequest();
+    expect(lines).toContainEqual(
+      expect.objectContaining({
+        level: 'error',
+        message: 'request failed',
+        error_name: 'RangeError',
+        error_message: failureMarker,
+      }),
+    );
+  });
+
+  it('never puts the error in the response', async () => {
+    const { response } = await failingRequest();
+    expect(response.status).toBe(500);
+    expect(await response.text()).not.toContain(failureMarker);
+  });
+});

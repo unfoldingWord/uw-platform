@@ -168,3 +168,35 @@ describe('FD-11 health and logging', () => {
     expect(h.rawLines.some((line) => line.includes(marker))).toBe(false);
   });
 });
+
+describe('FD-11 an unexpected failure is diagnosable from the log alone', () => {
+  const marker = 'ledger-open-marker-91d4';
+
+  async function failingPost() {
+    const h = harness({
+      openLedger: () => {
+        throw new RangeError(marker);
+      },
+    });
+    const response = await post(h, { body });
+    return { h, response };
+  }
+
+  it('logs the error name and message on the request-failed line', async () => {
+    const { h } = await failingPost();
+    expect(h.lines).toContainEqual(
+      expect.objectContaining({
+        level: 'error',
+        message: 'request failed',
+        error_name: 'RangeError',
+        error_message: marker,
+      }),
+    );
+  });
+
+  it('never puts the error in the response', async () => {
+    const { response } = await failingPost();
+    expect(response.status).toBe(500);
+    expect(await response.text()).not.toContain(marker);
+  });
+});

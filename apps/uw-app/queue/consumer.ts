@@ -1,5 +1,5 @@
 import { ingestEnvelopeSchema, type IngestEnvelope, type IngestSource } from '@uw/contracts';
-import { createLogger, type Logger, type LogSink } from '@uw/core/log';
+import { createLogger, errorFields, type Logger, type LogSink } from '@uw/core/log';
 import type { QueueProducer } from '../env.ts';
 
 export const INGEST_QUEUE_KEY = 'ingest';
@@ -61,9 +61,12 @@ async function refuseMalformed(message: ConsumerMessage, deps: ConsumerDeps): Pr
   }
   try {
     await deps.deadLetter.send({ reason: 'malformed_envelope', body: message.body });
-  } catch {
+  } catch (error) {
     message.retry();
-    logger.error('dead-letter send failed, retrying', { outcome: 'dead_letter_failed' });
+    logger.error('dead-letter send failed, retrying', {
+      outcome: 'dead_letter_failed',
+      ...errorFields(error),
+    });
     return;
   }
   message.ack();
@@ -80,10 +83,11 @@ async function handle(
 ): Promise<void> {
   try {
     await handler(envelope, logger);
-  } catch {
+  } catch (error) {
     message.retry();
     logger.error('handler failed, retrying', {
       outcome: 'handler_failed',
+      ...errorFields(error),
       event: envelope.event,
       delivery_id: envelope.deliveryId,
     });
@@ -128,9 +132,10 @@ async function recordLag(messages: readonly ConsumerMessage[], deps: ConsumerDep
   const latest = new Date(Math.max(...messages.map((message) => message.timestamp.getTime())));
   try {
     await deps.watermarks.record(INGEST_QUEUE_KEY, latest, deps.now());
-  } catch {
+  } catch (error) {
     unattributedLogger(deps).warn('queue watermark not recorded', {
       outcome: 'watermark_failed',
+      ...errorFields(error),
     });
   }
 }

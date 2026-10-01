@@ -64,3 +64,16 @@ export function createLogger(context: LogContext, sink: LogSink): Logger {
     error: write('error'),
   };
 }
+
+const ERROR_MESSAGE_LIMIT = 200;
+
+export type ErrorFields = { readonly error_name: string; readonly error_message: string };
+
+export function errorFields(error: unknown): ErrorFields {
+  const isError = error instanceof Error;
+  const message = isError ? error.message : String(error);
+  return {
+    error_name: isError ? error.name : 'non_error',
+    error_message: message.slice(0, ERROR_MESSAGE_LIMIT),
+  };
+}
