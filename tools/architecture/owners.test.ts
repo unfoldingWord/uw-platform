@@ -1,4 +1,11 @@
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -36,7 +43,7 @@ function sourcesUnder(base: string, roots: string[]): string[] {
 
 function writes(source: string, entry: Entry): boolean {
   return [
-    new RegExp(`\\.(insert|update|delete)\\(\\s*${entry.exportName}\\b`),
+    new RegExp(`\\.(insert|update|delete)\\(\\s*(?:\\w+\\.)?${entry.exportName}\\b`),
     new RegExp(`\\b(INSERT INTO|UPDATE|DELETE FROM)\\s+"?${entry.table}"?\\b`, 'i'),
   ].some((pattern) => pattern.test(source));
 }
@@ -71,8 +78,24 @@ function exportingOwns(base: string, sources: string[]): string[] {
     .map((file) => `${dirname(file)}/`);
 }
 
+const UNSCANNED_PACKAGE = 'db';
+
+function packageRoots(base: string): string[] {
+  if (!existsSync(join(base, 'packages'))) return [];
+  return readdirSync(join(base, 'packages'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name !== UNSCANNED_PACKAGE)
+    .map((entry) => `packages/${entry.name}`)
+    .sort();
+}
+
+function scanRoots(base: string): string[] {
+  return ['apps/uw-app', 'apps/uw-ingest', ...packageRoots(base), 'sim'].filter((root) =>
+    existsSync(join(base, root)),
+  );
+}
+
 const repoRoot = join(import.meta.dirname, '..', '..');
-const sources = sourcesUnder(repoRoot, ['apps/uw-app', 'apps/uw-ingest']);
+const sources = sourcesUnder(repoRoot, scanRoots(repoRoot));
 
 describe('AGENTS.md rule 3: every table has one writer', () => {
   it('has every schema table owned by exactly one module', () => {
@@ -104,6 +127,41 @@ function plantedTree(): string {
   writeFileSync(join(base, 'apps/uw-app/acl/raw.ts'), 'sql`UPDATE people SET status = 1`;');
   return base;
 }
+
+function plantedOutsideApps(): string {
+  const base = mkdtempSync(join(tmpdir(), 'uw-owners-'));
+  mkdirSync(join(base, 'apps/uw-app/people'), { recursive: true });
+  mkdirSync(join(base, 'packages/harness'), { recursive: true });
+  mkdirSync(join(base, 'packages/db'), { recursive: true });
+  mkdirSync(join(base, 'sim/adapters'), { recursive: true });
+  writeFileSync(join(base, 'apps/uw-app/people/directory.ts'), 'db.insert(people).values(row);');
+  writeFileSync(join(base, 'apps/uw-app/namespaced.ts'), 'tx.insert(schema.people);');
+  writeFileSync(join(base, 'packages/harness/store.ts'), 'await db.update(people).set(row);');
+  writeFileSync(join(base, 'packages/db/schema.ts'), 'db.insert(people).values(row);');
+  writeFileSync(join(base, 'sim/adapters/store.ts'), 'await tx.delete(schema.people);');
+  return base;
+}
+
+describe('AGENTS.md rule 3: the check scans packages and the sim', () => {
+  const people_: Entry = { exportName: 'people', table: 'people' };
+
+  it('scans every package except packages/db, and the sim when present', () => {
+    const base = plantedOutsideApps();
+    expect(scanRoots(base)).toEqual(['apps/uw-app', 'packages/harness', 'sim']);
+  });
+
+  it('catches a namespaced write in an app, a package and the sim', () => {
+    const base = plantedOutsideApps();
+    const found = writersOutsideOwner(base, sourcesUnder(base, scanRoots(base)), people_, [
+      { dir: 'apps/uw-app/people/', tables: ['people'] },
+    ]);
+    expect(found.sort()).toEqual([
+      'apps/uw-app/namespaced.ts',
+      'packages/harness/store.ts',
+      'sim/adapters/store.ts',
+    ]);
+  });
+});
 
 describe('AGENTS.md rule 3: the check itself fails on a violation', () => {
   const people_: Entry = { exportName: 'people', table: 'people' };
