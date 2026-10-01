@@ -5,6 +5,7 @@ import { withPrincipal } from './auth/principal-middleware.ts';
 import { withDatabase } from './database.ts';
 import { platformDeps, type AppDeps, type AppEnv } from './deps.ts';
 import { commitOf } from './env.ts';
+import { healthRoutes } from './health/routes.tsx';
 import { observe } from './observe.ts';
 import { pageRoutes } from './pages/routes.ts';
 import { requestLogger } from './request-logger.ts';
@@ -21,7 +22,7 @@ export function createApp(deps: AppDeps = platformDeps): Hono<AppEnv> {
     return c.json({ status: 'error', reason: 'internal_error' }, 500);
   });
 
-  app.get('/health', (c) => c.json({ status: 'ok', commit: commitOf(c.env) }));
+  app.route('/health', healthRoutes());
 
   app.use(withPrincipal(deps));
   app.route('/api/me', meRoutes());
