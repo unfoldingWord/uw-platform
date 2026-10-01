@@ -146,3 +146,12 @@ describe('P13 per-PR Workers never register as a queue consumer', () => {
     expect(consumers.sort()).toEqual(['production', 'staging']);
   });
 });
+
+describe('P33 preview shares staging Hyperdrive', () => {
+  it('binds the same Hyperdrive id in preview as in staging', () => {
+    const idOf = (name: string): string | undefined =>
+      hyperdriveOf(environment('uw-app', name, goLive))[0]?.id;
+    expect(idOf('preview')).toBeDefined();
+    expect(idOf('preview')).toBe(idOf('staging'));
+  });
+});

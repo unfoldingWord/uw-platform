@@ -23,8 +23,13 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BRANCH: pr-${{ github.event.workflow_run.pull_requests[0].number }}
+      PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Skip unless the Neon API key is set
         id: gate
         env:
@@ -39,6 +44,9 @@ jobs:
           persist-credentials: false
       - if: steps.gate.outputs.configured == 'true'
         uses: ./.github/actions/setup
+      - name: Refuse unless the PR is still open at this head
+        if: steps.gate.outputs.configured == 'true'
+        run: bash .github/scripts/check-pr-open.sh "$GITHUB_REPOSITORY" "$PR_NUMBER" "$HEAD_SHA"
       - name: Create or reuse the PR's Neon branch
         id: branch
         if: steps.gate.outputs.configured == 'true'
@@ -46,10 +54,19 @@ jobs:
         with:
           project_id: ${{ vars.NEON_PROJECT_ID }}
           branch_name: ${{ env.BRANCH }}
+          parent_branch: staging
           api_key: ${{ secrets.NEON_API_KEY }}
       - name: Swap in the PR's migration files as data, keeping main's runner
         if: steps.gate.outputs.configured == 'true'
         run: |
+          if [ ! -d pr/packages/db/migrations ]; then
+            echo "::notice::The PR has no packages/db/migrations, so main's migrations are applied."
+            exit 0
+          fi
+          if [ -n "$(find pr/packages/db/migrations -type l)" ]; then
+            echo "::error::The PR's migrations hold a symlink; refusing to read them."
+            exit 1
+          fi
           rm -rf packages/db/migrations
           cp -R pr/packages/db/migrations packages/db/migrations
       - name: Apply the PR's migrations with main's runner
