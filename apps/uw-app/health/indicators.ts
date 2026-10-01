@@ -95,7 +95,7 @@ async function queueIndicator(
     const progress = await withTimeout(queueProgress(handle.db), DATABASE_TIMEOUT_MS);
     return progressIndicator(progress, clock());
   } catch {
-    return { name: 'queue', status: 'red', detail: 'watermark unreadable' };
+    return { name: 'queue', status: 'red', detail: 'queue progress unreadable' };
   }
 }
 

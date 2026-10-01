@@ -86,7 +86,7 @@ describe('FD-11 a database that accepts connections and never answers', () => {
     expect(named(indicators, 'database').status).toBe('red');
     expect(named(indicators, 'queue')).toMatchObject({
       status: 'red',
-      detail: 'watermark unreadable',
+      detail: 'queue progress unreadable',
     });
   });
 });
