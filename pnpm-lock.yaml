@@ -183,6 +183,9 @@ importers:
 
   sim:
     dependencies:
+      '@uw/db':
+        specifier: workspace:*
+        version: link:../packages/db
       '@uw/harness':
         specifier: workspace:*
         version: link:../packages/harness

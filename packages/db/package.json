@@ -12,6 +12,7 @@
     "./journal": "./journal.ts",
     "./migrate": "./migrate.ts",
     "./schema": "./schema.ts",
+    "./store": "./store/index.ts",
     "./test-database": "./test-database.ts",
     "./test-targets": "./test-targets.ts"
   },
