@@ -38,12 +38,7 @@ function isLive(grant: Grant, at: Date): boolean {
   return grant.expiresAt === null || new Date(grant.expiresAt).getTime() > at.getTime();
 }
 
-export function can(
-  actor: Principal,
-  action: AclAction,
-  resource: AclResource,
-  at: Date = new Date(),
-): boolean {
+export function can(actor: Principal, action: AclAction, resource: AclResource, at: Date): boolean {
   return actor.grants.some((grant) => isLive(grant, at) && grantAllows(grant, action, resource));
 }
 
