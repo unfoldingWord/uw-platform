@@ -121,7 +121,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['tools/lint/date-patterns.ts'],
+    files: ['tools/lint/date-patterns.ts', 'tools/architecture/owners.test.ts'],
     rules: { 'security/detect-non-literal-regexp': 'off' },
   },
   {
