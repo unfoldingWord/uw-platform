@@ -51,6 +51,9 @@ importers:
       prettier:
         specifier: ^3.9.9
         version: 3.9.9
+      smol-toml:
+        specifier: ^1.9.0
+        version: 1.9.0
       typescript:
         specifier: ~6.0.3
         version: 6.0.3
@@ -72,6 +75,12 @@ importers:
       '@uw/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@uw/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      drizzle-orm:
+        specifier: ^0.45.3
+        version: 0.45.3(@cloudflare/workers-types@5.20260930.1)(postgres@3.4.9)
       hono:
         specifier: ^4.13.11
         version: 4.13.11
@@ -79,6 +88,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^5.20260930.1
         version: 5.20260930.1
+      '@types/node':
+        specifier: ^22.20.4
+        version: 22.20.4
       wrangler:
         specifier: ^4.144.0
         version: 4.144.0(@cloudflare/workers-types@5.20260930.1)(@types/node@22.20.4)
@@ -91,6 +103,16 @@ importers:
       '@uw/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@uw/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      drizzle-orm:
+        specifier: ^0.45.3
+        version: 0.45.3(@cloudflare/workers-types@5.20260930.1)(postgres@3.4.9)
+    devDependencies:
+      '@types/node':
+        specifier: ^22.20.4
+        version: 22.20.4
 
   packages/contracts:
     dependencies:

@@ -4,11 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "tsc --noEmit -p tsconfig.json"
+    "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json"
   },
   "dependencies": {
     "@uw/contracts": "workspace:*",
-    "@uw/core": "workspace:*"
+    "@uw/core": "workspace:*",
+    "@uw/db": "workspace:*",
+    "drizzle-orm": "^0.45.3"
   },
-  "contractVersion": "1.0.0"
+  "contractVersion": "1.0.0",
+  "devDependencies": {
+    "@types/node": "^22.20.4"
+  }
 }
