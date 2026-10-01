@@ -8,6 +8,7 @@ import {
 } from '@uw/contracts';
 import { can, type AclResource } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
+import { advisoryLocks } from '@uw/db/advisory-locks';
 import type { Database, Executor, Transaction } from '@uw/db/client';
 import { grantAudit, roleGrants } from '@uw/db/schema';
 import type { CommandResult } from '../http/commands.ts';
@@ -21,8 +22,6 @@ type GrantRow = typeof roleGrants.$inferSelect;
 
 const ONE_LIVE_GRANT_CONSTRAINT = 'role_grants_one_live';
 const UNIQUE_VIOLATION = '23505';
-
-const ACL_COMMANDS_LOCK_KEY = 7301001;
 
 const accepted: CommandResult = { ok: true };
 
@@ -148,7 +147,7 @@ async function insertGrant(
 }
 
 async function serialiseAclCommands(tx: Transaction): Promise<void> {
-  await tx.execute(sql`SELECT pg_advisory_xact_lock(${ACL_COMMANDS_LOCK_KEY}::bigint)`);
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(${advisoryLocks.grantCommands}::bigint)`);
 }
 
 async function withLiveGrants(tx: Transaction, actor: Principal): Promise<Principal> {
