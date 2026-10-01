@@ -1,4 +1,4 @@
-import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose';
+import { createRemoteJWKSet, errors, jwtVerify, type JWTVerifyGetKey } from 'jose';
 import { z } from 'zod';
 import type { Bindings } from '../env.ts';
 
@@ -11,10 +11,26 @@ export type AccessIdentity =
 
 const teamDomainPattern = /^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/;
 
+const nameableClientId = /^[^A-Za-z0-9_]*[A-Za-z0-9]/;
+
 const claimsSchema = z.object({
-  email: z.email().optional(),
-  common_name: z.string().min(1).max(200).optional(),
+  email: z.preprocess((value) => (value === '' ? undefined : value), z.email().optional()),
+  common_name: z.string().min(1).max(200).regex(nameableClientId).optional(),
 });
+
+const badTokenErrors = [
+  errors.JWTExpired,
+  errors.JWTClaimValidationFailed,
+  errors.JWSSignatureVerificationFailed,
+  errors.JWSInvalid,
+  errors.JWTInvalid,
+  errors.JWKSNoMatchingKey,
+  errors.JOSEAlgNotAllowed,
+];
+
+function isBadToken(error: unknown): boolean {
+  return badTokenErrors.some((kind) => error instanceof kind);
+}
 
 const keySets = new Map<string, JWTVerifyGetKey>();
 
@@ -43,13 +59,15 @@ export async function verifyAccessJwt(
       issuer: config.teamDomain,
       audience: config.audience,
       algorithms: ['RS256'],
+      requiredClaims: ['exp'],
     });
     const claims = claimsSchema.safeParse(payload);
     if (!claims.success) return null;
     if (claims.data.email) return { kind: 'person', email: claims.data.email.toLowerCase() };
     if (claims.data.common_name) return { kind: 'service', clientId: claims.data.common_name };
     return null;
-  } catch {
-    return null;
+  } catch (error) {
+    if (isBadToken(error)) return null;
+    throw error;
   }
 }

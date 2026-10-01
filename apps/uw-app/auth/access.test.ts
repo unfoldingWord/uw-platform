@@ -1,4 +1,4 @@
-import { SignJWT } from 'jose';
+import { errors, SignJWT } from 'jose';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { refusalSchema } from '@uw/contracts';
 import { createApp } from '../app.tsx';
@@ -66,6 +66,7 @@ describe('FD-7 the Access JWT is verified on every request', () => {
       ACCESS_TEAM_DOMAIN: 'https://evil.example.com',
     }).response;
     expect(response.status).toBe(503);
+    expect(refusalSchema.parse(await response.json()).reason).toBe('access_not_configured');
   });
 
   it('refuses a request with no token', async () => {
@@ -127,5 +128,46 @@ describe('FD-7 a token that does not verify gets 401', () => {
 
   it('refuses a token with neither email nor common_name', async () => {
     await expectRefusal(await fixture.sign({}), 401, 'unauthenticated');
+  });
+});
+
+describe('FD-7 expiry is required and identity claims are constrained', () => {
+  it('refuses a signed token that carries no expiry', async () => {
+    const token = await fixture.sign(person, { expiresAt: null });
+    await expectRefusal(token, 401, 'unauthenticated');
+  });
+
+  it('treats an empty email as absent and yields the service-token principal', async () => {
+    const { response, lines } = call('/', await fixture.sign({ email: '', ...service }));
+    expect((await response).status).toBe(200);
+    expect(lines.at(-1)).toMatchObject({ principal: 'agent:svc-a1b2c3d4-access' });
+  });
+
+  it('refuses a common_name that cannot name an agent identity', async () => {
+    await expectRefusal(await fixture.sign({ common_name: '___' }), 401, 'unauthenticated');
+  });
+
+  it('maps a token with both email and common_name to the person', async () => {
+    const token = await fixture.sign({ ...person, ...service });
+    await expectRefusal(token, 503, 'database_not_configured');
+  });
+
+  it('answers 500 internal_error and logs an error when the key set cannot be fetched', async () => {
+    const { deps, lines } = recordingDeps();
+    const failing = {
+      ...deps,
+      accessKeys: () => async () => {
+        throw new errors.JWKSTimeout();
+      },
+    };
+    const token = await fixture.sign(person);
+    const response = await createApp(failing).request(
+      '/',
+      { headers: { 'cf-access-jwt-assertion': token } },
+      fixtureAccessEnv,
+    );
+    expect(response.status).toBe(500);
+    expect(refusalSchema.parse(await response.json()).reason).toBe('internal_error');
+    expect(lines.map((line) => line['level'])).toContain('error');
   });
 });
