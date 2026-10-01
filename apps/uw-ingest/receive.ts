@@ -25,9 +25,16 @@ const refusalStatus = new Map<IngestRefusal, ContentfulStatusCode>([
   ['replay_store_not_configured', 503],
   ['queue_not_configured', 503],
   ['enqueue_failed', 503],
+  ['payload_too_large', 413],
 ]);
 
-type Queue = { send(body: IngestEnvelope): Promise<void> };
+const WEBHOOK_BODY_LIMIT_BYTES = 25 * 1024 * 1024;
+
+type Queue = NonNullable<IngestEnv['Bindings']['INGEST_QUEUE']>;
+
+function declaredTooLarge(headers: Headers): boolean {
+  return Number(headers.get('content-length') ?? 0) > WEBHOOK_BODY_LIMIT_BYTES;
+}
 
 function parseJson(rawBody: string): { readonly value: unknown } | null {
   try {
@@ -68,7 +75,7 @@ async function enqueue(
 ): Promise<IngestRefusal | null> {
   if (!(await ledger.claim(envelope.source, envelope.deliveryId))) return 'replayed';
   try {
-    await queue.send(envelope);
+    await queue.send(envelope, { contentType: 'json' });
     return null;
   } catch {
     await ledger.release(envelope.source, envelope.deliveryId);
@@ -76,29 +83,44 @@ async function enqueue(
   }
 }
 
-async function admit(
-  c: Context<IngestEnv>,
-  deps: IngestDeps,
-  ledger: DeliveryLedger | undefined,
-): Promise<IngestRefusal | null> {
+type Verified = {
+  readonly source: IngestSource;
+  readonly delivery: VerifiedDelivery;
+  readonly rawBody: string;
+  readonly payload: unknown;
+};
+
+async function verifiedDelivery(c: Context<IngestEnv>): Promise<Verified | IngestRefusal> {
   const name = ingestSourceSchema.safeParse(c.req.param('source'));
   const source = name.success ? webhookSources.get(name.data) : undefined;
   if (!name.success || !source) return 'unknown_source';
   const secret = source.secret(c.env);
   if (!secret) return 'source_not_configured';
+  if (declaredTooLarge(c.req.raw.headers)) return 'payload_too_large';
   const rawBody = await c.req.text();
   const delivery = await source.verify(c.req.raw.headers, rawBody, secret);
   if (typeof delivery === 'string') return delivery;
   const parsed = parseJson(rawBody);
   if (!parsed) return 'malformed_payload';
+  return { source: name.data, delivery, rawBody, payload: parsed.value };
+}
+
+async function admit(
+  c: Context<IngestEnv>,
+  deps: IngestDeps,
+  ledger: DeliveryLedger | undefined,
+): Promise<IngestRefusal | null> {
+  const verified = await verifiedDelivery(c);
+  if (typeof verified === 'string') return verified;
   if (!ledger) return 'replay_store_not_configured';
   const queue = c.env.INGEST_QUEUE;
   if (!queue) return 'queue_not_configured';
+  const { source, delivery, rawBody, payload } = verified;
   const envelope = buildEnvelope(
     deps,
-    { traceId: c.get('traceId'), source: name.data, delivery },
+    { traceId: c.get('traceId'), source, delivery },
     rawBody,
-    parsed.value,
+    payload,
   );
   if (!envelope.success) return 'malformed_delivery';
   return enqueue(ledger, queue, envelope.data);

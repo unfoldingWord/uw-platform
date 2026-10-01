@@ -1,12 +1,16 @@
 import type { IngestEnvelope } from '@uw/contracts';
 import type { DeliveryLedger } from '../deliveries/ledger.ts';
+import type { QueueSendOptions } from '../env.ts';
 
 export function recordingQueue() {
   const sent: IngestEnvelope[] = [];
+  const options: (QueueSendOptions | undefined)[] = [];
   let failures = 0;
   return {
     sent,
-    send: async (body: IngestEnvelope): Promise<void> => {
+    options,
+    send: async (body: IngestEnvelope, sendOptions?: QueueSendOptions): Promise<void> => {
+      options.push(sendOptions);
       if (failures > 0) {
         failures -= 1;
         throw new Error('queue unavailable');
