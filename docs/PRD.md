@@ -299,6 +299,8 @@ Every table declares its classification and offline eligibility. Every table has
 | `role_grants` | person, role, scope kind, scope area, granted by, granted at, expires at, revoked at | the grants command |
 | `grant_audit` | actor, time, before, after | the grants command |
 | `pages`, `page_versions` | see FD-9 | the page API and `write_page` |
+| `webhook_deliveries` | source, delivery id, received at; primary key on source and delivery id | the `uw-ingest` delivery ledger |
+| `queue_watermarks` | queue, last enqueued at, last consumed at | the queue consumer in `uw-app` |
 | `harnesses` | id, key, template, jd_area, hosted_builder_enabled, paused | the stage command |
 | `harness_stages` | harness, key, position, agent_pickup, exit_gate, connector, wip_limit, instructions_page_id, validators[], feeds[], paused | the stage command |
 | `harness_items` | harness, stage, title, page, claimed_by, claimant_kind, lease_expires, priority, due, risk_tier, risk_domains[], expected_head, branch_state, pr_number, zulip_topic | the kernel |
@@ -355,6 +357,8 @@ agent:<person>/<device> as <persona> via delegation:<id>
 Ship rule: `pr_not_open`, `pr_is_draft`, `head_mismatch`, `checks_not_green`, `no_reviewer_approval`, `risk_tier_undeclared`, `reviewer_count_below_tier`, `reviewer_providers_not_distinct`, `approver_lacks_domain_grant`.
 
 Elsewhere: `not_permitted`, `not_wired`, `wip_limit_reached`, `lease_held`, `lease_expired`, `pickup_not_allowed`, `validator_failed`, `unknown_validator`, `delegation_required`, `gate_refused_to_agent`, `reason_required`, `spend_held`, `hosted_builder_off`, `engine_not_available`, `diff_exceeds_review_budget`, `unknown_verb`, `forbidden_verb`.
+
+Added in step 1: `malformed_command`, `unauthenticated`, `access_not_configured`, `database_not_configured`, `internal_error`, `pending_approval`, `person_not_found`, `grant_not_found`, `grant_exists`, `last_org_admin`, `expiry_in_past`, `unknown_page_type`, `invalid_frontmatter`, `page_not_found`, `page_exists`, `slug_taken`, `stale_version`, `parent_not_found`, `parent_cycle`.
 
 ### 8.6 Event vocabulary
 
