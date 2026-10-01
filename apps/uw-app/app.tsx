@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { withPrincipal } from './auth/principal-middleware.ts';
 import { withDatabase } from './database.ts';
 import { platformDeps, type AppDeps, type AppEnv } from './deps.ts';
 import { commitOf } from './env.ts';
@@ -18,6 +19,8 @@ export function createApp(deps: AppDeps = platformDeps): Hono<AppEnv> {
   });
 
   app.get('/health', (c) => c.json({ status: 'ok', commit: commitOf(c.env) }));
+
+  app.use(withPrincipal(deps));
 
   app.get('/', (c) => {
     const commit = commitOf(c.env).slice(0, 7);

@@ -55,8 +55,8 @@ describe('FD-11 the request log line on refusals and cleanup failures', () => {
   it('logs an unmatched path under a fixed route, not the path or a wildcard', async () => {
     const { deps, lines } = recordingDeps();
     const response = await createApp(deps).request('/nowhere', {}, {});
-    expect(response.status).toBe(404);
-    expect(lines[0]).toMatchObject({ route: 'GET unmatched', outcome: 'http_404' });
+    expect(response.status).toBe(503);
+    expect(lines[0]).toMatchObject({ route: 'GET unmatched', outcome: 'access_not_configured' });
   });
 
   it('does not let a failing release replace the response, and logs a warning', async () => {
