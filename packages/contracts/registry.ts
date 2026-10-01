@@ -12,6 +12,12 @@ import {
 } from './health.ts';
 import { identitySchema } from './identity.ts';
 import {
+  ingestEnvelopeSchema,
+  ingestRefusalSchema,
+  ingestResponseSchema,
+  ingestSourceSchema,
+} from './ingest.ts';
+import {
   acceptedOutcomeSchema,
   errorOutcomeSchema,
   errorReasonSchema,
@@ -27,6 +33,16 @@ import {
   slugSchema,
   updatePageCommandSchema,
 } from './pages.ts';
+import {
+  dataSourceKindSchema,
+  dataSourcesFrontmatterSchema,
+  learningFrontmatterSchema,
+  personaFrontmatterSchema,
+  productFrontmatterSchema,
+  productStrategyFrontmatterSchema,
+  skillFrontmatterSchema,
+  systemGoalFrontmatterSchema,
+} from './page-types.ts';
 import { platformCommandNameSchema } from './platform-commands.ts';
 import { grantSchema, principalSchema } from './principal.ts';
 import { runStepSchema, submitToGateResultSchema } from './verb-io.ts';
@@ -86,4 +102,16 @@ export const schemaRegistry: Record<string, ZodType> = {
   'verb-grant': verbGrantSchema,
   'submit-to-gate-result': submitToGateResultSchema,
   'run-step': runStepSchema,
+  'skill-frontmatter': skillFrontmatterSchema,
+  'learning-frontmatter': learningFrontmatterSchema,
+  'persona-frontmatter': personaFrontmatterSchema,
+  'product-frontmatter': productFrontmatterSchema,
+  'system-goal-frontmatter': systemGoalFrontmatterSchema,
+  'product-strategy-frontmatter': productStrategyFrontmatterSchema,
+  'data-sources-frontmatter': dataSourcesFrontmatterSchema,
+  'data-source-kind': dataSourceKindSchema,
+  'ingest-source': ingestSourceSchema,
+  'ingest-refusal': ingestRefusalSchema,
+  'ingest-envelope': ingestEnvelopeSchema,
+  'ingest-response': ingestResponseSchema,
 };
