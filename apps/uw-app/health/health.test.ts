@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createClient } from '@uw/db/client';
 import { healthReportSchema, type HealthIndicator } from '@uw/contracts';
 import { createApp } from '../app.tsx';
 import type { DatabaseHandle } from '../database.ts';
@@ -8,7 +9,11 @@ import { DATABASE_TIMEOUT_MS, overallStatus } from './indicators.ts';
 const commit = '0123456789abcdef0123456789abcdef01234567';
 
 function handleWithPing(ping: () => Promise<void>): DatabaseHandle {
-  return { db: {} as never, ping, release: async () => undefined };
+  return {
+    db: createClient('postgres://unused@127.0.0.1:1/unused'),
+    ping,
+    release: async () => undefined,
+  };
 }
 
 async function getHealth(openDatabase: () => DatabaseHandle | null, headers: HeadersInit = {}) {

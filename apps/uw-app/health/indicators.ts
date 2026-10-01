@@ -15,17 +15,16 @@ function commitIndicator(commit: string): HealthIndicator {
   return { name: 'commit', status: 'ok', detail: commit };
 }
 
-function timeoutAfter(ms: number): { promise: Promise<never>; cancel: () => void } {
+async function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const promise = new Promise<never>((_resolve, reject) => {
+  const timeout = new Promise<never>((_resolve, reject) => {
     timer = setTimeout(() => reject(new Error('timeout')), ms);
   });
-  return {
-    promise,
-    cancel: () => {
-      if (timer !== undefined) clearTimeout(timer);
-    },
-  };
+  try {
+    return await Promise.race([work, timeout]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
 }
 
 async function databaseIndicator(
@@ -34,14 +33,11 @@ async function databaseIndicator(
 ): Promise<HealthIndicator> {
   if (!handle)
     return { name: 'database', status: 'not_configured', detail: 'no Hyperdrive binding' };
-  const timeout = timeoutAfter(DATABASE_TIMEOUT_MS);
   const started = clock();
   try {
-    await Promise.race([handle.ping(), timeout.promise]);
+    await withTimeout(handle.ping(), DATABASE_TIMEOUT_MS);
   } catch {
     return { name: 'database', status: 'red', detail: 'unreachable' };
-  } finally {
-    timeout.cancel();
   }
   const elapsed = clock() - started;
   const status = elapsed < DATABASE_AMBER_MS ? 'ok' : 'amber';
@@ -61,7 +57,10 @@ async function queueIndicator(
     return { name: 'queue', status: 'not_configured', detail: 'no queue binding' };
   }
   try {
-    const watermark = await readWatermark(handle.db, INGEST_QUEUE_KEY);
+    const watermark = await withTimeout(
+      readWatermark(handle.db, INGEST_QUEUE_KEY),
+      DATABASE_TIMEOUT_MS,
+    );
     if (!watermark) return { name: 'queue', status: 'ok', detail: 'no messages consumed yet' };
     const lag = Math.max(
       0,
@@ -87,10 +86,10 @@ export async function healthReport(
   clock: () => number,
 ): Promise<HealthReport> {
   const commit = commitOf(env);
-  const indicators = [
-    commitIndicator(commit),
-    await databaseIndicator(handle, clock),
-    await queueIndicator(env, handle),
-  ];
+  const [database, queue] = await Promise.all([
+    databaseIndicator(handle, clock),
+    queueIndicator(env, handle),
+  ]);
+  const indicators = [commitIndicator(commit), database, queue];
   return { status: overallStatus(indicators), commit, indicators };
 }
