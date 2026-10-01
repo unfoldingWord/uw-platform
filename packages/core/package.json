@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./acl": "./acl.ts",
+    "./database-error": "./database-error.ts",
     "./dates": "./dates.ts",
     "./log": "./log.ts",
     "./modules": "./modules.ts",

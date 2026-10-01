@@ -12,7 +12,7 @@ import { advisoryLocks } from '@uw/db/advisory-locks';
 import type { Database, Executor, Transaction } from '@uw/db/client';
 import { grantAudit, roleGrants } from '@uw/db/schema';
 import type { CommandResult } from '../http/commands.ts';
-import { pgConstraint, pgErrorCode } from '../http/pg-errors.ts';
+import { pgConstraint, pgErrorCode } from '@uw/db/errors';
 import { liveGrant, toGrant } from './grant-store.ts';
 import { activatePerson, lockPerson } from '../people/directory.ts';
 
