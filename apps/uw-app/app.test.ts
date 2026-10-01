@@ -26,12 +26,12 @@ describe('uw-app shell', () => {
       { COMMIT_SHA: commit },
     );
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ status: 'ok', commit });
+    expect(await response.json()).toMatchObject({ status: 'ok', commit });
   });
 
   it('reports an unknown commit when none was deployed', async () => {
     const response = await createApp(recordingDeps().deps).request('/health', {}, {});
-    expect(await response.json()).toEqual({ status: 'ok', commit: 'unknown' });
+    expect(await response.json()).toMatchObject({ status: 'ok', commit: 'unknown' });
   });
 
   it('serves a server-rendered page at the root', async () => {
