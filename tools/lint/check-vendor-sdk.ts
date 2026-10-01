@@ -1,14 +1,9 @@
-import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { findVendorViolations, isVendorScanned } from './vendor-sdk.ts';
+import { repoFiles } from '../repo-files.ts';
 
-const listed = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], {
-  encoding: 'utf8',
-});
-
-const violations = listed
-  .split('\n')
-  .filter((path) => isVendorScanned(path) && existsSync(path))
+const violations = repoFiles()
+  .filter((path) => isVendorScanned(path))
   .flatMap((path) => findVendorViolations(path, readFileSync(path, 'utf8')));
 
 for (const { path, line, text } of violations) {
