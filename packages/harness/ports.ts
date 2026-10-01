@@ -71,12 +71,18 @@ export type ToolCall = {
   readonly input: unknown;
 };
 export type TurnMessage =
-  | { readonly role: 'user' | 'assistant'; readonly text: string }
+  | { readonly role: 'user'; readonly text: string }
+  | {
+      readonly role: 'assistant';
+      readonly text: string | null;
+      readonly toolCalls: readonly ToolCall[];
+    }
   | {
       readonly role: 'tool';
       readonly callId: string;
       readonly verb: VerbName;
       readonly output: unknown;
+      readonly isError: boolean;
     };
 export type TurnUsage = {
   readonly inputTokens: number;
@@ -87,15 +93,18 @@ export type TurnUsage = {
 export type TurnRequest = {
   readonly engine: Engine;
   readonly model: string;
+  readonly pinnedProvider: string | null;
   readonly persona: string;
   readonly instructions: string;
   readonly tools: readonly VerbName[];
   readonly messages: readonly TurnMessage[];
   readonly traceId: string;
 };
+export type StopReason = 'end_turn' | 'tool_use' | 'max_tokens' | 'refused';
 export type TurnResult = {
   readonly toolCalls: readonly ToolCall[];
   readonly text: string | null;
+  readonly stopReason: StopReason;
   readonly usage: TurnUsage;
   readonly resolvedProvider: string | null;
   readonly resolvedModel: string;
@@ -116,7 +125,7 @@ export type Wake = {
 export type NotifyOutcome = 'sent' | 'dropped';
 export type Notifier = { notify(wake: Wake): Promise<NotifyOutcome> };
 
-export type RunState = 'running' | 'hibernated' | 'stopped';
+export type RunState = 'running' | 'hibernated' | 'stopped' | 'completed' | 'failed';
 export type RunAction = 'start' | 'hibernate' | 'resume' | 'stop';
 export type RunStart = {
   readonly runId: string;
