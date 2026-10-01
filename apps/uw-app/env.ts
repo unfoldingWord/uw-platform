@@ -1,5 +1,5 @@
 type HyperdriveBinding = { readonly connectionString: string };
-type QueueProducer<Body> = { send(body: Body): Promise<void> };
+export type QueueProducer<Body> = { send(body: Body): Promise<void> };
 
 export type Bindings = {
   COMMIT_SHA?: string;
