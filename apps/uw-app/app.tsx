@@ -6,6 +6,7 @@ import { withDatabase } from './database.ts';
 import { platformDeps, type AppDeps, type AppEnv } from './deps.ts';
 import { commitOf } from './env.ts';
 import { observe } from './observe.ts';
+import { pageRoutes } from './pages/routes.ts';
 import { requestLogger } from './request-logger.ts';
 
 export function createApp(deps: AppDeps = platformDeps): Hono<AppEnv> {
@@ -25,6 +26,7 @@ export function createApp(deps: AppDeps = platformDeps): Hono<AppEnv> {
   app.use(withPrincipal(deps));
   app.route('/api/me', meRoutes());
   app.route('/api/acl', aclRoutes());
+  app.route('/api/pages', pageRoutes());
 
   app.get('/', (c) => {
     const commit = commitOf(c.env).slice(0, 7);
