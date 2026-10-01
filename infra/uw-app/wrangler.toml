@@ -7,6 +7,9 @@ workers_dev = false
 [vars]
 COMMIT_SHA = "unknown"
 
+[observability]
+enabled = true
+
 [env.staging]
 name = "uw-app-staging"
 workers_dev = true
@@ -14,9 +17,15 @@ workers_dev = true
 [env.staging.vars]
 COMMIT_SHA = "unknown"
 
+[env.staging.observability]
+enabled = true
+
 [env.production]
 name = "uw-app"
 workers_dev = false
 
 [env.production.vars]
 COMMIT_SHA = "unknown"
+
+[env.production.observability]
+enabled = true

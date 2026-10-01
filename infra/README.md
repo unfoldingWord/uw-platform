@@ -67,3 +67,15 @@ Deploy staging by hand:
 ```
 pnpm --filter @uw/uw-ingest deploy:staging
 ```
+
+## Logs (FD-11)
+
+Workers Logs is on for both Workers, in the top-level block and in `staging` and `production`, because wrangler does not carry top-level observability into an environment.
+
+Thirty-day retention is the R2 bucket `uw-logs` with the lifecycle rule in `logs/r2-lifecycle.json`, fed by the Logpush job in `logs/logpush-workers.json`. A person applies both, once, awaiting go-live:
+
+- Create the bucket `uw-logs`.
+- Apply the rule with `PUT /accounts/{account_id}/r2/buckets/uw-logs/lifecycle`, sending `logs/r2-lifecycle.json` as the body.
+- Substitute the three `${...}` placeholders in `logs/logpush-workers.json` from the shell with `envsubst`, then send it with `POST /accounts/{account_id}/logpush/jobs`.
+
+Nothing in the files is a secret. `logpush = true` is set in `uw-app/wrangler.go-live.toml`, because Workers Logpush needs the paid plan and the job above.

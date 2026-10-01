@@ -1,0 +1,10 @@
+{
+  "name": "uw-workers-logs",
+  "dataset": "workers_trace_events",
+  "destination_conf": "r2://uw-logs/{DATE}?account-id=${CLOUDFLARE_ACCOUNT_ID}&access-key-id=${R2_ACCESS_KEY_ID}&secret-access-key=${R2_SECRET_ACCESS_KEY}",
+  "output_options": {
+    "field_names": ["EventTimestampMs", "Outcome", "ScriptName", "Logs", "Exceptions"],
+    "timestamp_format": "rfc3339"
+  },
+  "enabled": true
+}
