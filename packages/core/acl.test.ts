@@ -24,6 +24,8 @@ const area = (role: Grant['role'], scopeArea: string): Grant => ({
   expiresAt: null,
 });
 
+const at = new Date('2026-10-01T12:00:00.000Z');
+
 const software: AclResource = { kind: 'area', area: '80-89' };
 const finance: AclResource = { kind: 'area', area: '20-29' };
 const wholeOrg: AclResource = { kind: 'org' };
@@ -64,15 +66,15 @@ function orgAdminCoversAreaAdmin(action: AclAction): void {
   const areaAdmin = holding(area('admin', '80-89'));
   const orgAdmin = holding(org('admin'));
   const uncovered = resources.filter(
-    (resource) => can(areaAdmin, action, resource) && !can(orgAdmin, action, resource),
+    (resource) => can(areaAdmin, action, resource, at) && !can(orgAdmin, action, resource, at),
   );
   expect(uncovered).toEqual([]);
-  expect(resources.filter((resource) => !can(orgAdmin, action, resource))).toEqual([]);
+  expect(resources.filter((resource) => !can(orgAdmin, action, resource, at))).toEqual([]);
 }
 
 describe('FD-8 can()', () => {
   it.each(matrix)('%s', (_label, grants, action, resource, expected) => {
-    expect(can(holding(...grants), action, resource)).toBe(expected);
+    expect(can(holding(...grants), action, resource, at)).toBe(expected);
   });
 
   it.each(actions)(
@@ -81,14 +83,10 @@ describe('FD-8 can()', () => {
   );
 
   it('takes a principal, an action and a resource and no database handle', () => {
-    expectTypeOf(can).parameters.toEqualTypeOf<
-      [Principal, AclAction, AclResource, (Date | undefined)?]
-    >();
+    expectTypeOf(can).parameters.toEqualTypeOf<[Principal, AclAction, AclResource, Date]>();
     expectTypeOf(can).returns.toEqualTypeOf<boolean>();
   });
 });
-
-const at = new Date('2026-10-01T12:00:00.000Z');
 
 function expiring(expiresAt: string): Grant {
   return { ...org('admin'), expiresAt };
@@ -105,11 +103,6 @@ describe('FD-8 can() treats an expired grant as absent', () => {
 
   it('honours a grant that has not yet expired', () => {
     expect(can(holding(expiring('2026-10-01T12:00:01.000Z')), 'admin', wholeOrg, at)).toBe(true);
-  });
-
-  it('checks expiry against the current time when no instant is given', () => {
-    expect(can(holding(expiring('2000-01-01T00:00:00.000Z')), 'read', software)).toBe(false);
-    expect(can(holding(expiring('2999-01-01T00:00:00.000Z')), 'read', software)).toBe(true);
   });
 
   it('still honours a live grant beside an expired one', () => {
