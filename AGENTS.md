@@ -87,7 +87,7 @@ These behaviors are predictable inputs. The repository is shaped so that the con
 Every kind of work has one template. Copy the template, fill the blanks, stop.
 
 - New kernel module: a function on the module's interface in `packages/harness`, a test at that interface, a scenario named for the requirement ID.
-- New port: `packages/harness/ports.ts`, then the platform adapter, the test adapter and the port's contract test together, never one without the others.
+- New port: `packages/harness/ports.ts`, then the platform adapter in `apps/uw-app/ports/`, the test adapter in `sim/adapters/` and the port's contract suite in `packages/harness/port-contracts/` with a contract test beside each adapter, together, never one without the others. A port whose service is built in a later step gets a platform adapter that is not wired, and its contract test proves that.
 - New event: the enum in `packages/contracts`, its fixtures, and the folds that should count it.
 - New verb: the registry in `packages/contracts`, the MCP handler, the persona toolsets that may hold it.
 - New engine: a directory under `apps/uw-app/engines/<key>/`; the vendor SDK imported there and nowhere else.
@@ -106,10 +106,11 @@ The build enforces these. A violation is a red build, not a judgment call.
 - `packages/harness/*` imports nothing from Workers, Drizzle, a vendor SDK or the network. It is pure TypeScript and runs in plain Node. This is what lets the sim exist.
 - `packages/contracts/*` and `packages/db/*` import nothing from `apps/*`.
 - A vendor SDK (`@anthropic-ai/*`, `openai`, OpenRouter) is imported only inside `apps/uw-app/engines/<key>/`.
-- Application code reaches Postgres, GitHub, a model, the hub or a notifier only through a port; nothing outside `apps/uw-app` and `sim/adapters` implements one.
+- Application code reaches Postgres, GitHub, a model, the hub or a notifier only through a port; nothing outside `apps/uw-app`, `sim/adapters` and `packages/db/store` implements one. `packages/db/store` holds the one Drizzle implementation of the Store and Grants ports, which the platform adapter and the sim's test adapter both bind, because both must run the same queries (PRD DX-2).
 - No route, tool handler or Workflow step reachable by an agent identity writes `gate_decisions` or `harness_stages`.
 - Islands never call the kernel directly; they call the command API.
-- `sim/*` imports `packages/harness`, `packages/contracts` and `packages/db` and nothing else. It imports `packages/db` because the Store test adapter runs the real migrations on an embedded Postgres (PRD DX-2).
+- `sim/*` imports `packages/harness`, `packages/contracts`, `packages/db` and Node built-ins, its tests also Vitest, and nothing else. `node:os` and `node:child_process` appear only in sim tests, `sim/cli` and `sim/runner`. It imports `packages/db` because the Store test adapter runs the real migrations on an embedded Postgres (PRD DX-2), and never imports Drizzle or PGlite itself.
+- A port's contract suite lives in `packages/harness/port-contracts/`; those files are the only non-test harness code that imports Vitest, and no non-test file in `apps/` imports them.
 
 Enforced by dependency-cruiser, ESLint `no-restricted-imports` and `no-restricted-globals`, a tsconfig for `packages/harness` with no Workers types, and the static route test. When you hit the wall, the fix is to move the code, not to relax the rule.
 
