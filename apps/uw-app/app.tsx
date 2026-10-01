@@ -3,6 +3,7 @@ import { withDatabase } from './database.ts';
 import { platformDeps, type AppDeps, type AppEnv } from './deps.ts';
 import { commitOf } from './env.ts';
 import { observe } from './observe.ts';
+import { requestLogger } from './request-logger.ts';
 
 export function createApp(deps: AppDeps = platformDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
@@ -12,7 +13,7 @@ export function createApp(deps: AppDeps = platformDeps): Hono<AppEnv> {
 
   app.onError((_error, c) => {
     c.set('outcome', 'internal_error');
-    c.get('logger').error('request failed', { outcome: 'internal_error' });
+    requestLogger(c).error('request failed', { outcome: 'internal_error' });
     return c.json({ status: 'error', reason: 'internal_error' }, 500);
   });
 

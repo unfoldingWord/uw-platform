@@ -1,7 +1,10 @@
 import { sql } from 'drizzle-orm';
 import type { MiddlewareHandler } from 'hono';
 import { createClient, type Database } from '@uw/db/client';
+import type { Logger } from '@uw/core/log';
+import type { Principal } from '@uw/core/principal';
 import type { Bindings } from './env.ts';
+import { requestLogger } from './request-logger.ts';
 
 export type DatabaseHandle = {
   readonly db: Database;
@@ -21,9 +24,17 @@ export function hyperdriveDatabase(env: Bindings): DatabaseHandle | null {
   };
 }
 
+async function release(handle: DatabaseHandle | null, logger: Logger): Promise<void> {
+  try {
+    await handle?.release();
+  } catch {
+    logger.warn('database release failed', { outcome: 'release_failed' });
+  }
+}
+
 type DatabaseEnv = {
   Bindings: Bindings;
-  Variables: { database: DatabaseHandle | null };
+  Variables: { database: DatabaseHandle | null; logger: Logger; principal: Principal | null };
 };
 
 export function withDatabase(deps: {
@@ -35,7 +46,7 @@ export function withDatabase(deps: {
     try {
       await next();
     } finally {
-      await handle?.release();
+      await release(handle, requestLogger(c));
     }
   };
 }
