@@ -29,3 +29,12 @@ COMMIT_SHA = "unknown"
 
 [env.production.observability]
 enabled = true
+
+[env.preview]
+workers_dev = true
+
+[env.preview.vars]
+COMMIT_SHA = "unknown"
+
+[env.preview.observability]
+enabled = true

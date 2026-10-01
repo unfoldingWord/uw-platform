@@ -1,0 +1,78 @@
+name = "uw-app"
+main = "../../apps/uw-app/index.ts"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+
+[vars]
+COMMIT_SHA = "unknown"
+
+[observability]
+enabled = true
+
+[env.staging]
+name = "uw-app-staging"
+workers_dev = true
+logpush = true
+
+[env.staging.vars]
+COMMIT_SHA = "unknown"
+ACCESS_TEAM_DOMAIN = "https://set-at-go-live.cloudflareaccess.com"
+ACCESS_AUD = "set-at-go-live"
+
+[env.staging.observability]
+enabled = true
+
+[[env.staging.hyperdrive]]
+binding = "HYPERDRIVE"
+id = "set-at-go-live"
+
+[[env.staging.queues.consumers]]
+queue = "uw-ingest-events-staging"
+max_retries = 3
+dead_letter_queue = "uw-ingest-events-staging-dlq"
+
+[[env.staging.queues.producers]]
+binding = "INGEST_DLQ"
+queue = "uw-ingest-events-staging-dlq"
+
+[env.production]
+name = "uw-app"
+workers_dev = false
+logpush = true
+
+[env.production.vars]
+COMMIT_SHA = "unknown"
+ACCESS_TEAM_DOMAIN = "https://set-at-go-live.cloudflareaccess.com"
+ACCESS_AUD = "set-at-go-live"
+
+[env.production.observability]
+enabled = true
+
+[[env.production.hyperdrive]]
+binding = "HYPERDRIVE"
+id = "set-at-go-live"
+
+[[env.production.queues.consumers]]
+queue = "uw-ingest-events-production"
+max_retries = 3
+dead_letter_queue = "uw-ingest-events-production-dlq"
+
+[[env.production.queues.producers]]
+binding = "INGEST_DLQ"
+queue = "uw-ingest-events-production-dlq"
+
+[env.preview]
+workers_dev = true
+
+[env.preview.vars]
+COMMIT_SHA = "unknown"
+ACCESS_TEAM_DOMAIN = "https://set-at-go-live.cloudflareaccess.com"
+ACCESS_AUD = "set-at-go-live"
+
+[env.preview.observability]
+enabled = true
+
+[[env.preview.hyperdrive]]
+binding = "HYPERDRIVE"
+id = "set-at-go-live"
