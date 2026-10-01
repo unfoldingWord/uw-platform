@@ -24,7 +24,7 @@ describe('DX-1 port errors', () => {
     );
   });
 
-  it('RunTransitionError says nothing when the run does not exist', () => {
+  it('RunTransitionError names nothing as the state when the run does not exist', () => {
     expect(new RunTransitionError('r1', null, 'hibernate').message).toBe(
       'cannot hibernate run r1 from nothing',
     );
@@ -34,5 +34,13 @@ describe('DX-1 port errors', () => {
     const error = new ToolOutsideToolsetError('write_page');
     expect(error.verb).toBe('write_page');
     expect(error.message).toBe('the turn called write_page, which is outside the offered toolset');
+  });
+});
+
+describe('DX-1 run transitions out of the terminal states', () => {
+  it.each(['completed', 'failed'] as const)('names %s as the state', (state) => {
+    expect(new RunTransitionError('r1', state, 'resume').message).toBe(
+      `cannot resume run r1 from ${state}`,
+    );
   });
 });

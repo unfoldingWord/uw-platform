@@ -30,9 +30,31 @@ function notWiredPorts(): Ports {
   };
 }
 
+function throwingPorts(): Ports {
+  const refuse = (): never => {
+    throw new Error('a port was called');
+  };
+  return {
+    clock: { now: refuse },
+    ids: { next: refuse },
+    store: { transaction: refuse, appliedMigrations: refuse },
+    grants: { resolve: refuse, lockAndReread: refuse },
+    githubFacts: { pullRequest: refuse },
+    connectors: { run: refuse },
+    modelEngine: { turn: refuse },
+    hub: { wake: refuse },
+    notifier: { notify: refuse },
+    runs: { start: refuse, hibernate: refuse, resume: refuse, stop: refuse, status: refuse },
+  };
+}
+
 describe('DX-1 createKernel(ports)', () => {
-  it('builds over ten ports without calling one, and walks as the pure walker does', () => {
-    expect(createKernel(notWiredPorts()).walk([])).toEqual([]);
+  it('builds over ten ports without calling one', () => {
+    expect(() => createKernel(throwingPorts())).not.toThrow();
+  });
+
+  it('walks as the pure walker does, without calling a port', () => {
+    expect(createKernel(throwingPorts()).walk([])).toEqual([]);
   });
 
   it('reads health from the clock and the store', async () => {
