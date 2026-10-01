@@ -21,6 +21,7 @@ function tree(files: Record<string, string>): string {
     'eslint',
     'vitest',
     'zod',
+    '@electric-sql/pglite',
   ];
   for (const name of stubs) {
     files[`node_modules/${name}/index.js`] = 'export default 1;';
@@ -221,6 +222,18 @@ const refusals: [string, string, string, string][] = [
     'islands-never-call-the-kernel',
   ],
   [
+    'a Worker file into the embedded database',
+    'apps/uw-app/a.ts',
+    "import '../../packages/db/embedded.ts';",
+    'apps-never-import-the-embedded-database',
+  ],
+  [
+    'a Worker file into PGlite',
+    'apps/uw-app/a.ts',
+    "import '@electric-sql/pglite';",
+    'apps-never-import-the-embedded-database',
+  ],
+  [
     'a vendor SDK outside an engine',
     'apps/uw-app/a.ts',
     "import '@anthropic-ai/sdk';",
@@ -259,6 +272,7 @@ describe('the dependency rules', () => {
         [path]: source,
         'apps/uw-app/b.ts': leaf,
         'packages/db/b.ts': leaf,
+        'packages/db/embedded.ts': leaf,
         'packages/core/b.ts': leaf,
         'packages/harness/b.ts': leaf,
         'packages/harness/port-contracts/b.ts': leaf,
