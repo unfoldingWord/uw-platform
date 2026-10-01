@@ -1,18 +1,25 @@
 import { Hono } from 'hono';
+import { withDatabase } from './database.ts';
+import { platformDeps, type AppDeps, type AppEnv } from './deps.ts';
+import { commitOf } from './env.ts';
+import { observe } from './observe.ts';
 
-export interface Bindings {
-  COMMIT_SHA?: string;
-}
+export function createApp(deps: AppDeps = platformDeps): Hono<AppEnv> {
+  const app = new Hono<AppEnv>();
 
-const unknownCommit = 'unknown';
+  app.use(observe(deps));
+  app.use(withDatabase(deps));
 
-export function createApp(): Hono<{ Bindings: Bindings }> {
-  const app = new Hono<{ Bindings: Bindings }>();
+  app.onError((_error, c) => {
+    c.set('outcome', 'internal_error');
+    c.get('logger').error('request failed', { outcome: 'internal_error' });
+    return c.json({ status: 'error', reason: 'internal_error' }, 500);
+  });
 
-  app.get('/health', (c) => c.json({ status: 'ok', commit: c.env.COMMIT_SHA ?? unknownCommit }));
+  app.get('/health', (c) => c.json({ status: 'ok', commit: commitOf(c.env) }));
 
   app.get('/', (c) => {
-    const commit = (c.env.COMMIT_SHA ?? unknownCommit).slice(0, 7);
+    const commit = commitOf(c.env).slice(0, 7);
     return c.html(
       <html lang="en">
         <head>
