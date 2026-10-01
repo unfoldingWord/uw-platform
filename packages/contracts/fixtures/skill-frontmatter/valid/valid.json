@@ -1,0 +1,4 @@
+{
+  "name": "write-release-notes",
+  "description": "Draft release notes from merged pull requests."
+}

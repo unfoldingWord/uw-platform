@@ -1,0 +1,14 @@
+{
+  "sources": [
+    {
+      "name": "Site analytics",
+      "kind": "web_analytics",
+      "url": "https://example.org/analytics"
+    },
+    {
+      "name": "Partner list",
+      "kind": "manual",
+      "url": null
+    }
+  ]
+}
