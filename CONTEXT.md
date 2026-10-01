@@ -112,6 +112,34 @@ _Avoid_: engine (that is the model-vendor seam), core (that is `packages/core`),
 An interface the kernel needs from the world: Clock, Ids, Store, Grants, GitHubFacts, Connectors, ModelEngine, Hub, Notifier, Runs. Each has a platform adapter, a test adapter and one contract test run against both.
 _Avoid_: interface (too general), driver, provider, memory adapter (the test adapter for Store is real Postgres)
 
+**Adapter**:
+One implementation of a port. A **platform adapter** lives in `apps/uw-app/ports/` and reaches the real service; a **test adapter** lives in `sim/adapters/` and is scripted or records what it was asked. The Store and Grants adapters bind the one Drizzle implementation in `packages/db/store/`, so both run the same queries. An adapter whose service is built in a later step is **not wired**: every call rejects with `PortNotWiredError`, which the kernel reports as the refusal `not_wired`.
+_Avoid_: driver, implementation, mock, fake, stub (say "not wired")
+
+**Port contract**:
+The one shared test suite for a port, in `packages/harness/port-contracts/`, run against every adapter of that port, so a platform adapter and a test adapter cannot drift.
+_Avoid_: interface test, integration test
+
+**Sim**:
+The kernel on test adapters, run in Node: `sim/`. `pnpm sim -- <scenario>` runs one scenario and prints its event log and folded state.
+_Avoid_: simulator, harness (that is the pipeline), test bed
+
+**World**:
+What a scenario runs in: one embedded Postgres with the real migrations, the ten test adapters, one clock, and the kernel built over them. Built by `createWorld()`.
+_Avoid_: fixture (that is data), context, environment
+
+**Scenario**:
+A file in `sim/scenarios/` named `<requirement ID>.<slug>.ts` that drives a world and asserts on the event log and the folded state.
+_Avoid_: test (tests sit at module interfaces), story, script
+
+**Walk**:
+Every path through a template's stages from Package along position order and every feeds edge, cut at the first revisited stage. `pnpm walk -- <template>` prints every path to an external effect and the gate each crosses.
+_Avoid_: traversal, crawl
+
+**Trace**:
+The check that every Must requirement not marked Built has a scenario or a test named for it. `pnpm trace` lists every unproven one; `pnpm trace:built` fails only on those whose build-order step the progress tracker marks Built.
+_Avoid_: coverage (that is lines of code), audit
+
 **Engine**:
 The code behind one seam that talks to a model vendor: `claude-messages`, `claude-code-sandbox`, `claude-managed-agent`, `codex-sandbox`, `external`, `openrouter-messages`. A persona picks one. The vendor SDK is named in exactly one directory per engine.
 _Avoid_: model (that is one field of the persona), provider, backend, LLM
