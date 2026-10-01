@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { aclRoutes } from './acl/routes.ts';
 import { meRoutes } from './auth/me.ts';
 import { withPrincipal } from './auth/principal-middleware.ts';
 import { withDatabase } from './database.ts';
@@ -23,6 +24,7 @@ export function createApp(deps: AppDeps = platformDeps): Hono<AppEnv> {
 
   app.use(withPrincipal(deps));
   app.route('/api/me', meRoutes());
+  app.route('/api/acl', aclRoutes());
 
   app.get('/', (c) => {
     const commit = commitOf(c.env).slice(0, 7);

@@ -1,6 +1,6 @@
 import type { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
-import type { ErrorReason } from '@uw/contracts';
+import type { ErrorReason, Outcome } from '@uw/contracts';
 import type { AppEnv } from '../deps.ts';
 
 const DEFAULT_REFUSAL_STATUS: ContentfulStatusCode = 422;
@@ -27,4 +27,13 @@ const statusByReason = new Map<ErrorReason, ContentfulStatusCode>([
 export function refuse(c: Context<AppEnv>, reason: ErrorReason): Response {
   c.set('outcome', reason);
   return c.json({ status: 'error', reason }, statusByReason.get(reason) ?? DEFAULT_REFUSAL_STATUS);
+}
+
+export function reply(c: Context<AppEnv>, outcome: Outcome): Response {
+  if (outcome.status === 'error') {
+    c.set('outcome', outcome.reason);
+    return c.json(outcome, statusByReason.get(outcome.reason) ?? DEFAULT_REFUSAL_STATUS);
+  }
+  c.set('outcome', 'accepted');
+  return c.json(outcome, 200);
 }
