@@ -62,6 +62,10 @@ _Avoid_: session, token, actor (actor is the field name on an event, and holds a
 One row of `role_grants`: a role (`admin`, `editor`, `viewer`) at a scope (the org, or one JD area), optionally expiring. `can(actor, verb, resource)` is the one function that reads them (plan §4).
 _Avoid_: permission, role (a role is one field of a grant), ACL entry
 
+**Grant audit**:
+One row of `grant_audit`: who granted or revoked which grant, when, the row before and after, and the trace id. Append-only.
+_Avoid_: access log, history
+
 **Persona**:
 A job an agent does, defined as configuration: an identity, a harness subscription, an instructions page, a toolset picked from the verb registry, a run shape and an engine. Three in v1: Builder, Reviewer, Iterate. A persona is a page of type `persona`.
 _Avoid_: agent (an agent is the identity a persona runs as), bot, worker, role
@@ -156,6 +160,18 @@ _Avoid_: prompt, playbook, instructions (as a noun; an instructions page is a sk
 A row of `measurements` read at Validate: web analytics, list aggregates, manual entries. In v1 nothing that carries donor identity.
 _Avoid_: metric, KPI, analytics (that is a source of measurements)
 
+**Trace id**:
+The UUID minted at the edge of each Worker for one request or delivery, carried in the `x-trace-id` header, on every log line, in every envelope and on the audit row it produces.
+_Avoid_: request id (that is a command's `requestId`), correlation id, span
+
+**Envelope**:
+The Zod-validated message `uw-ingest` puts on the queue for one verified webhook delivery: source, delivery id, event, trace id, the ingest principal and the payload.
+_Avoid_: event (that is a row of `harness_events`), message (the queue's word for the transport), job
+
+**Page type**:
+One entry of the page-type registry in `packages/contracts`: a frontmatter schema, a classification and an offline eligibility. Seven in v1: `skill`, `learning`, `persona`, `product`, `system_goal`, `product_strategy`, `data_sources`.
+_Avoid_: template (that is a stage graph), kind, category
+
 ## Reaching a person
 
 **Wake**:
@@ -173,6 +189,10 @@ _Avoid_: debounce, rate limit, digest
 **Waiting on you**:
 The Home view and the wake for gates the current person can decide and runs on items they hold.
 _Avoid_: inbox, to-do, notifications
+
+**Indicator**:
+One named line of `/health`: a status from `ok`, `amber`, `red`, `not_configured`, `not_wired` and a short detail. The overall status is the worst indicator.
+_Avoid_: metric, check (that is a CI job or a validator), alarm
 
 ## The repo and the build
 
@@ -199,3 +219,7 @@ _Avoid_: milestone (the GitHub milestones M0 to M9 are history), phase (that is 
 **Verify**:
 `pnpm verify`, the whole check chain, the same one CI runs.
 _Avoid_: build, test (one part of it), lint (one part of it)
+
+**Go-live wiring**:
+The CI jobs, bindings and declarations that need an account or a secret (PRD FD-12). Written during the build, they skip or stay out of the deployed wrangler file until the resource exists.
+_Avoid_: production setup, deployment config
