@@ -36,9 +36,28 @@ jobs:
       - name: Refuse unless every CI job succeeded on this commit
         run: bash .github/scripts/require-green-ci.sh "$REPO" "$SHA"
 
+  migrate-production:
+    name: migrate-production
+    runs-on: ubuntu-latest
+    needs: [production-gate]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip unless the production direct connection is set
+        id: gate
+        env:
+          NEON_DIRECT_URL_PRODUCTION: ${{ secrets.NEON_DIRECT_URL_PRODUCTION }}
+        run: bash .github/scripts/secret-gate.sh NEON_DIRECT_URL_PRODUCTION
+      - if: steps.gate.outputs.configured == 'true'
+        uses: ./.github/actions/setup
+      - name: Apply migrations to production
+        if: steps.gate.outputs.configured == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DIRECT_URL_PRODUCTION }}
+        run: pnpm db:migrate
+
   deploy-production:
     name: deploy-production
-    needs: [production-gate]
+    needs: [production-gate, migrate-production]
     runs-on: ubuntu-latest
     env:
       SHA: ${{ github.sha }}
@@ -56,7 +75,7 @@ jobs:
 
   deploy-ingest-production:
     name: deploy-ingest-production
-    needs: [production-gate]
+    needs: [production-gate, migrate-production]
     runs-on: ubuntu-latest
     env:
       SHA: ${{ github.sha }}

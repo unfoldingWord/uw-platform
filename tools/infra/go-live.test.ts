@@ -1,0 +1,148 @@
+import { readFileSync } from 'node:fs';
+import { parse } from 'smol-toml';
+import { describe, expect, it } from 'vitest';
+
+type Block = Record<string, unknown>;
+type Binding = { binding?: string; queue?: string; id?: string };
+type Queues = {
+  consumers?: { queue: string; max_retries?: number; dead_letter_queue?: string }[];
+  producers?: Binding[];
+};
+
+const goLiveOnly = ['logpush', 'hyperdrive', 'queues'];
+const accessVars = ['ACCESS_TEAM_DOMAIN', 'ACCESS_AUD'];
+const apps = ['uw-app', 'uw-ingest'] as const;
+const deployedEnvironments = ['staging', 'production'] as const;
+const placeholder = 'set-at-go-live';
+
+function load(path: string): Block {
+  return parse(readFileSync(path, 'utf8')) as Block;
+}
+
+function omit(block: Block, keys: string[]): Block {
+  return Object.fromEntries(Object.entries(block).filter(([key]) => !keys.includes(key)));
+}
+
+function environments(config: Block): Record<string, Block> {
+  return (config['env'] ?? {}) as Record<string, Block>;
+}
+
+function withoutGoLiveBindings(config: Block): Block {
+  const stripped = Object.fromEntries(
+    Object.entries(environments(config)).map(([name, block]) => [
+      name,
+      { ...omit(block, goLiveOnly), vars: omit((block['vars'] ?? {}) as Block, accessVars) },
+    ]),
+  );
+  return { ...config, env: stripped };
+}
+
+function environment(app: string, name: string, file: string): Block {
+  return environments(load(`infra/${app}/${file}`))[name] ?? {};
+}
+
+function queuesOf(block: Block): Queues {
+  return (block['queues'] ?? {}) as Queues;
+}
+
+function hyperdriveOf(block: Block): Binding[] {
+  return (block['hyperdrive'] ?? []) as Binding[];
+}
+
+function varsOf(block: Block): Record<string, string> {
+  return (block['vars'] ?? {}) as Record<string, string>;
+}
+
+const goLive = 'wrangler.go-live.toml';
+const live = 'wrangler.toml';
+const idShape = new RegExp(`^(${placeholder}|[0-9a-f]{32})$`);
+
+function producerQueue(queues: Queues, binding: string): string {
+  return queues.producers?.find((producer) => producer.binding === binding)?.queue ?? '';
+}
+
+function expectQueueWiring(name: string): void {
+  const app = queuesOf(environment('uw-app', name, goLive));
+  const ingest = queuesOf(environment('uw-ingest', name, goLive));
+  const events = `uw-ingest-events-${name}`;
+  expect(app.consumers).toEqual([
+    { queue: events, max_retries: 3, dead_letter_queue: `${events}-dlq` },
+  ]);
+  expect(producerQueue(ingest, 'INGEST_QUEUE')).toBe(events);
+  expect(producerQueue(app, 'INGEST_DLQ')).toBe(`${events}-dlq`);
+}
+
+describe('FD-12 the go-live config is the live config plus the bindings whose resources do not exist yet', () => {
+  it.each(apps)('%s go-live minus its bindings equals the live file', (app) => {
+    const withBindings = withoutGoLiveBindings(load(`infra/${app}/${goLive}`));
+    const deployed = withoutGoLiveBindings(load(`infra/${app}/${live}`));
+    expect(withBindings).toEqual(deployed);
+  });
+
+  it.each(apps)('%s live file declares none of the go-live bindings', (app) => {
+    const config = load(`infra/${app}/${live}`);
+    const blocks = [config, ...Object.values(environments(config))];
+    for (const block of blocks) {
+      expect(goLiveOnly.filter((key) => key in block)).toEqual([]);
+      expect(accessVars.filter((key) => key in varsOf(block))).toEqual([]);
+    }
+  });
+});
+
+describe('FD-10 the ingest queue, its producer and its dead-letter queue agree', () => {
+  it.each(deployedEnvironments)(
+    '%s producer, consumer and dead-letter queue are one wiring',
+    (name) => {
+      expectQueueWiring(name);
+    },
+  );
+
+  it.each(deployedEnvironments)('%s binds Hyperdrive as HYPERDRIVE in both Workers', (name) => {
+    for (const app of apps) {
+      expect(hyperdriveOf(environment(app, name, goLive)).map((entry) => entry.binding)).toEqual([
+        'HYPERDRIVE',
+      ]);
+    }
+  });
+
+  it.each(deployedEnvironments)('%s turns Logpush on in both Workers', (name) => {
+    for (const app of apps) {
+      expect(environment(app, name, goLive)['logpush']).toBe(true);
+    }
+  });
+});
+
+describe('FD-7 the Access variables and ids are placeholders or well formed', () => {
+  it.each(apps)('%s Hyperdrive ids are the placeholder or 32 lowercase hex characters', (app) => {
+    const blocks = Object.values(environments(load(`infra/${app}/${goLive}`)));
+    const ids = blocks.flatMap(hyperdriveOf).map((entry) => entry.id ?? '');
+    expect(ids.length).toBeGreaterThan(0);
+    expect(ids.every((id) => idShape.test(id))).toBe(true);
+  });
+
+  it('uw-app Access AUD tags and team domains are well formed in every environment', () => {
+    const blocks = Object.values(environments(load(`infra/uw-app/${goLive}`)));
+    const settings = blocks.map(varsOf);
+    expect(settings.every((vars) => idShape.test(vars['ACCESS_AUD'] ?? ''))).toBe(true);
+    expect(
+      settings.every((vars) =>
+        /^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(vars['ACCESS_TEAM_DOMAIN'] ?? ''),
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('P13 per-PR Workers never register as a queue consumer', () => {
+  it.each([live, goLive])('uw-app %s has a preview environment with no queue consumer', (file) => {
+    const preview = environment('uw-app', 'preview', file);
+    expect(Object.keys(preview).length).toBeGreaterThan(0);
+    expect(queuesOf(preview).consumers ?? []).toEqual([]);
+  });
+
+  it('only staging and production declare a consumer', () => {
+    const consumers = Object.entries(environments(load(`infra/uw-app/${goLive}`)))
+      .filter(([, block]) => (queuesOf(block).consumers ?? []).length > 0)
+      .map(([name]) => name);
+    expect(consumers.sort()).toEqual(['production', 'staging']);
+  });
+});
