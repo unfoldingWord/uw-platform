@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - packages/*
+  - sim
 onlyBuiltDependencies:
   - esbuild
   - workerd

@@ -13,6 +13,7 @@
     "@uw/contracts": "workspace:*",
     "@uw/core": "workspace:*",
     "@uw/db": "workspace:*",
+    "@uw/harness": "workspace:*",
     "@uw/uw-ingest": "workspace:*",
     "drizzle-orm": "^0.45.3",
     "hono": "^4.13.11",
