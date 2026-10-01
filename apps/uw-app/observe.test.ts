@@ -44,7 +44,35 @@ describe('FD-11 one trace id per request, and the request log line', () => {
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ status: 'error', reason: 'internal_error' });
     expect(lines.map((line) => line['level'])).toEqual(['error', 'info']);
+    expect(lines[0]).toMatchObject({ route: 'GET /health', principal: null });
     expect(lines[1]).toMatchObject({ outcome: 'internal_error' });
+    expect(response.headers.get('x-trace-id')).toBe(lines[0]?.['trace_id']);
     expect(JSON.stringify(lines)).not.toContain('secret');
+  });
+});
+
+describe('FD-11 the request log line on refusals and cleanup failures', () => {
+  it('logs an unmatched path under a fixed route, not the path or a wildcard', async () => {
+    const { deps, lines } = recordingDeps();
+    const response = await createApp(deps).request('/nowhere', {}, {});
+    expect(response.status).toBe(404);
+    expect(lines[0]).toMatchObject({ route: 'GET unmatched', outcome: 'http_404' });
+  });
+
+  it('does not let a failing release replace the response, and logs a warning', async () => {
+    const { deps, lines } = recordingDeps();
+    const handle = {
+      db: {} as never,
+      ping: () => Promise.resolve(),
+      release: () => Promise.reject(new Error('socket closed')),
+    };
+    const response = await createApp({ ...deps, openDatabase: () => handle }).request(
+      '/health',
+      {},
+      {},
+    );
+    expect(response.status).toBe(200);
+    expect(lines.map((line) => line['level'])).toEqual(['warn', 'info']);
+    expect(lines[0]).toMatchObject({ route: 'GET /health', outcome: 'release_failed' });
   });
 });
