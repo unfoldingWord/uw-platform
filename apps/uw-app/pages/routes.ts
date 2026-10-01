@@ -32,7 +32,7 @@ const handlers = new Map<string, Run>([
       const parsed = createPageCommandSchema.safeParse(body);
       if (!parsed.success) return null;
       const command: CreatePageCommand = parsed.data;
-      const result = await createPage(db, actor, command, traceId);
+      const result = await createPage(db, actor, command, traceId, new Date());
       return { requestId: command.requestId, result: summarise(result) };
     },
   ],
@@ -42,7 +42,7 @@ const handlers = new Map<string, Run>([
       const parsed = updatePageCommandSchema.safeParse(body);
       if (!parsed.success) return null;
       const command: UpdatePageCommand = parsed.data;
-      const result = await updatePage(db, actor, command, traceId);
+      const result = await updatePage(db, actor, command, traceId, new Date());
       return { requestId: command.requestId, result: summarise(result) };
     },
   ],
@@ -68,7 +68,7 @@ async function handleRead(c: Context<AppEnv>): Promise<Response> {
   if (actor === null) return refuse(c, 'unauthenticated');
   const pageId = z.uuid().safeParse(c.req.param('pageId'));
   if (!pageId.success) return refuse(c, 'page_not_found');
-  const page = await readPage(database.db, actor, pageId.data);
+  const page = await readPage(database.db, actor, pageId.data, new Date());
   if (page === null) return refuse(c, 'page_not_found');
   c.set('outcome', 'accepted');
   return c.json({ page: pageSchema.parse(page) }, 200);

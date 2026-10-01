@@ -48,11 +48,12 @@ export async function readPage(
   db: Executor,
   actor: Principal,
   pageId: string,
+  at: Date,
 ): Promise<Page | null> {
   const [row] = await db.select().from(pages).where(eq(pages.id, pageId));
   if (!row) return null;
   const page = toPage(row);
-  return can(actor, 'read', { kind: 'area', area: page.jdArea }) ? page : null;
+  return can(actor, 'read', { kind: 'area', area: page.jdArea }, at) ? page : null;
 }
 
 async function snapshot(tx: Transaction, row: PageRow, actor: Principal, traceId: string) {
@@ -117,11 +118,14 @@ export async function createPage(
   actor: Principal,
   command: CreatePageCommand,
   traceId: string,
+  at: Date,
 ): Promise<PageResult> {
   const check = checkFrontmatter(command.type, command.frontmatter);
   if (!check.ok) return refused(check.reason);
-  if (!can(actor, 'write', { kind: 'area', area: command.jdArea })) return refused('not_permitted');
-  if (command.parentId !== null && (await readPage(db, actor, command.parentId)) === null) {
+  if (!can(actor, 'write', { kind: 'area', area: command.jdArea }, at)) {
+    return refused('not_permitted');
+  }
+  if (command.parentId !== null && (await readPage(db, actor, command.parentId, at)) === null) {
     return refused('parent_not_found');
   }
   try {
@@ -150,10 +154,11 @@ async function parentRefusal(
   tx: Transaction,
   actor: Principal,
   command: UpdatePageCommand,
+  at: Date,
 ): Promise<ErrorReason | null> {
   if (command.parentId === null) return null;
   if (command.parentId === command.pageId) return 'parent_cycle';
-  if ((await readPage(tx, actor, command.parentId)) === null) return 'parent_not_found';
+  if ((await readPage(tx, actor, command.parentId, at)) === null) return 'parent_not_found';
   if (await ancestorChainReaches(tx, command.parentId, command.pageId)) return 'parent_cycle';
   return null;
 }
@@ -188,16 +193,19 @@ async function updateInTransaction(
   actor: Principal,
   command: UpdatePageCommand,
   traceId: string,
+  at: Date,
 ): Promise<PageResult> {
   if (command.parentId !== null) {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(${advisoryLocks.pageReparenting}::bigint)`);
   }
-  const stored = await readPage(tx, actor, command.pageId);
+  const stored = await readPage(tx, actor, command.pageId, at);
   if (!stored) return refused('page_not_found');
-  if (!can(actor, 'write', { kind: 'area', area: stored.jdArea })) return refused('not_permitted');
+  if (!can(actor, 'write', { kind: 'area', area: stored.jdArea }, at)) {
+    return refused('not_permitted');
+  }
   const check = checkFrontmatter(stored.type, command.frontmatter);
   if (!check.ok) return refused(check.reason);
-  const blocked = await parentRefusal(tx, actor, command);
+  const blocked = await parentRefusal(tx, actor, command, at);
   if (blocked !== null) return refused(blocked);
   return writeUpdate(tx, actor, command, traceId);
 }
@@ -207,9 +215,10 @@ export async function updatePage(
   actor: Principal,
   command: UpdatePageCommand,
   traceId: string,
+  at: Date,
 ): Promise<PageResult> {
   try {
-    return await db.transaction((tx) => updateInTransaction(tx, actor, command, traceId));
+    return await db.transaction((tx) => updateInTransaction(tx, actor, command, traceId, at));
   } catch (error) {
     return refusalOrThrow(error);
   }

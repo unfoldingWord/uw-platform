@@ -68,12 +68,14 @@ function round(dbA: Database, dbB: Database, pair: Pair) {
       expiresAt: null,
     },
     randomUUID(),
+    new Date(),
   );
   const revoke = revokeRole(
     dbB,
     areaAdmin(),
     { command: 'revoke_role', requestId: randomUUID(), grantId: pair.expiredGrantId },
     randomUUID(),
+    new Date(),
   );
   return Promise.all([grant, revoke]);
 }

@@ -112,8 +112,8 @@ async function closeExpiredDuplicate(
   });
 }
 
-async function approvePending(tx: Transaction, actor: Principal, personId: string) {
-  if (!can(actor, 'admin', { kind: 'org' })) return refused('not_permitted');
+async function approvePending(tx: Transaction, actor: Principal, personId: string, at: Date) {
+  if (!can(actor, 'admin', { kind: 'org' }, at)) return refused('not_permitted');
   await activatePerson(tx, personId);
   return accepted;
 }
@@ -166,16 +166,17 @@ async function grantInTransaction(
   actor: Principal,
   command: GrantRoleCommand,
   traceId: string,
+  at: Date,
 ): Promise<CommandResult> {
   await serialiseAclCommands(tx);
   const live = await withLiveGrants(tx, actor);
-  if (!can(live, 'admin', scopeResource(command.scopeKind, command.scopeArea))) {
+  if (!can(live, 'admin', scopeResource(command.scopeKind, command.scopeArea), at)) {
     return refused('not_permitted');
   }
   const person = await lockPerson(tx, command.personId);
   if (!person) return refused('person_not_found');
   if (person.status === 'pending') {
-    const approval = await approvePending(tx, live, command.personId);
+    const approval = await approvePending(tx, live, command.personId, at);
     if (!approval.ok) return approval;
   }
   await closeExpiredDuplicate(tx, live, command, traceId);
@@ -194,15 +195,16 @@ export async function grantRole(
   actor: Principal,
   command: GrantRoleCommand,
   traceId: string,
+  at: Date,
 ): Promise<CommandResult> {
-  if (!can(actor, 'admin', scopeResource(command.scopeKind, command.scopeArea))) {
+  if (!can(actor, 'admin', scopeResource(command.scopeKind, command.scopeArea), at)) {
     return refused('not_permitted');
   }
-  if (command.expiresAt !== null && new Date(command.expiresAt).getTime() <= Date.now()) {
+  if (command.expiresAt !== null && new Date(command.expiresAt).getTime() <= at.getTime()) {
     return refused('expiry_in_past');
   }
   try {
-    return await db.transaction((tx) => grantInTransaction(tx, actor, command, traceId));
+    return await db.transaction((tx) => grantInTransaction(tx, actor, command, traceId, at));
   } catch (error) {
     if (isLiveGrantConflict(error)) return refused('grant_exists');
     throw error;
@@ -233,13 +235,15 @@ async function revokeInTransaction(
   actor: Principal,
   command: RevokeRoleCommand,
   traceId: string,
+  at: Date,
 ): Promise<CommandResult> {
   await serialiseAclCommands(tx);
   const orgAdminIds = await lockLiveOrgAdmins(tx);
   const live = await withLiveGrants(tx, actor);
   const locked = await lockLiveGrant(tx, command.grantId);
   if (!locked) return refused('grant_not_found');
-  if (!can(live, 'admin', scopeResource(scopeSchema.parse(locked.scopeKind), locked.scopeArea))) {
+  const scope = scopeResource(scopeSchema.parse(locked.scopeKind), locked.scopeArea);
+  if (!can(live, 'admin', scope, at)) {
     return refused('not_permitted');
   }
   if (orgAdminIds.length === 1 && orgAdminIds.includes(locked.id)) {
@@ -267,6 +271,7 @@ export function revokeRole(
   actor: Principal,
   command: RevokeRoleCommand,
   traceId: string,
+  at: Date,
 ): Promise<CommandResult> {
-  return db.transaction((tx) => revokeInTransaction(tx, actor, command, traceId));
+  return db.transaction((tx) => revokeInTransaction(tx, actor, command, traceId, at));
 }
