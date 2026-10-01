@@ -9,7 +9,8 @@ The organization's operating platform, built as modules on one database with one
 - [`prd/Harness v1 - Architecture.md`](prd/Harness%20v1%20-%20Architecture.md): the ratified spec for the harness, with Jesse's review applied. What to build and why.
 - [`docs/architecture.md`](docs/architecture.md): the shape. A pure engine over ports, driven headlessly in a sim, with events as the spine.
 - [`docs/adr/`](docs/adr/): why the shape is this way.
-- [GitHub milestones](https://github.com/unfoldingWord/uw-platform/milestones): the work, M0 to M9. Every issue cites the spec and carries acceptance criteria and blocked-by edges. Pick by the `ready` label.
+- [`docs/PRD.md`](docs/PRD.md): the work. Every requirement with a stable ID, the build order, the release criteria and the decision log. GitHub issues #4 to #82 are history; the PRD's Appendix B maps each to the requirements that replaced it.
+- [`docs/progress_tracker.md`](docs/progress_tracker.md): where the build stands.
 - [`prd/`](prd/): Jesse's platform corpus, which the harness sits under: the Executive Brief, the Platform Architecture Plan, Key Visuals, the council review, and the review of the harness spec.
 - [`ui-design/`](ui-design/): the Claude Design prototype of the platform; the source of the brand tokens until a `design-system/` folder lands.
 
@@ -56,7 +57,7 @@ Every script is a root script; a package adds only the `check` and `build` it ne
 
 ## CI and deploys
 
-GitHub Actions, in `.github/workflows/`. The repository is private on GitHub's Free plan, so there is no branch protection (#12): nothing on GitHub stops a merge with red checks. Two things stand in for it. Whoever merges confirms every check is green with `gh pr checks <number>` and never merges on red (`AGENTS.md` section 8). And the deploy is the hard gate: nothing reaches staging or production unless CI passed on that exact commit.
+GitHub Actions, in `.github/workflows/`. The repository is private on GitHub's Free plan, so there is no branch protection (#12): nothing on GitHub stops a merge with red checks. Two things stand in for it. Whoever merges confirms every check is green with `gh pr checks <number>` and never merges on red (`AGENTS.md` section 10). And the deploy is the hard gate: nothing reaches staging or production unless CI passed on that exact commit.
 
 | Workflow | When | What |
 |---|---|---|
