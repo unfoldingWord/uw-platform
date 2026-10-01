@@ -45,7 +45,7 @@ function describeTarget(target: DatabaseTarget): void {
   });
 }
 
-describe.each(databaseTargets)('DX-2 DX-6 the Drizzle store on the $name database', describeTarget);
+describe.each(databaseTargets)('DX-2 the Drizzle store on the $name database', describeTarget);
 
 describe('DX-2 executorOf', () => {
   it('refuses a transaction the Drizzle store did not open', () => {
