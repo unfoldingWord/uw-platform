@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { schemaRegistry } from './registry.ts';
 import { verbIo } from './verb-io.ts';
 import { FORBIDDEN_VERBS, verbNames, type VerbName } from './verb-names.ts';
-import { findVerb, verbManifest, verbRegistry } from './verbs.ts';
+import { findVerb, verbGrantSchema, verbManifest, verbRegistry } from './verbs.ts';
 
 const fixtureRoot = join(import.meta.dirname, 'verb-fixtures');
 type Side = 'input' | 'output';
@@ -65,6 +65,13 @@ describe('CT-2 the verb registry', () => {
   it('serves every verb in v1 except the two role-gated ones', () => {
     const unserved = verbRegistry.filter((entry) => !entry.servedInV1).map((entry) => entry.name);
     expect(unserved).toEqual(['list_gifts', 'create_draft_journal_entry']);
+  });
+
+  it('declares every grant in a shape verbGrantSchema accepts', () => {
+    const unparsed = verbRegistry
+      .filter((entry) => entry.grant !== null && !verbGrantSchema.safeParse(entry.grant).success)
+      .map((entry) => entry.name);
+    expect(unparsed).toEqual([]);
   });
 
   it('groups the verbs as PRD section 8.2 does', () => {

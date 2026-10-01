@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { jdAreaSchema } from './areas.ts';
+import { jdAreaSchema, type JdArea } from './areas.ts';
 import { roleSchema, type Role } from './closed-sets.ts';
 import { verbIo } from './verb-io.ts';
 import type { VerbName } from './verb-names.ts';
@@ -33,7 +33,7 @@ export type VerbManifestEntry = {
 };
 
 const onResource = (role: Role): VerbGrant => ({ scope: 'resource_area', role });
-const inArea = (role: Role, area: string): VerbGrant => ({ scope: 'fixed_area', role, area });
+const inArea = (role: Role, area: JdArea): VerbGrant => ({ scope: 'fixed_area', role, area });
 
 const ioByName = new Map<string, { input: z.ZodType; output: z.ZodType }>(Object.entries(verbIo));
 
