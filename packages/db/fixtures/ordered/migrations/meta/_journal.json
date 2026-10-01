@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790796815364,
+      "tag": "0000_probes",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790796816252,
+      "tag": "0001_stage_check",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790796817188,
+      "tag": "0002_probe_note",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+ALTER TABLE "probes" ADD COLUMN "note" text DEFAULT '' NOT NULL;
