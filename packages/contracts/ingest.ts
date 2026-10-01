@@ -16,6 +16,7 @@ export const ingestRefusalSchema = z.enum([
   'replay_store_not_configured',
   'queue_not_configured',
   'enqueue_failed',
+  'payload_too_large',
 ]);
 
 export const ingestEnvelopeSchema = z.object({
