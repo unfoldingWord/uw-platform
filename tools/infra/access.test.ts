@@ -37,10 +37,14 @@ describe('FD-7 Cloudflare Access in front of uw-app, declared in infra', () => {
     });
   });
 
-  it('bypasses Access for /health only', () => {
+  it('bypasses Access for /health only, on staging and on every per-PR Worker', () => {
     expect(declaration.health_bypass.application.domain).toBe(
       'uw-app-staging.unfoldingword.workers.dev/health',
     );
+    expect(declaration.health_bypass.application.destinations?.map((d) => d.uri)).toEqual([
+      'uw-app-staging.unfoldingword.workers.dev/health',
+      'uw-app-pr-*.unfoldingword.workers.dev/health',
+    ]);
     expect(declaration.health_bypass.policies).toEqual([
       { name: 'Deploy health probe', decision: 'bypass', include: [{ everyone: {} }] },
     ]);

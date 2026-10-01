@@ -38,7 +38,7 @@ Ids that are not secret (a Hyperdrive id) may be committed. A secret is set with
 
 ## Access (FD-7)
 
-`access/uw-app.json` declares Cloudflare Access in front of `uw-app` on staging and every per-PR Worker. People sign in with Google; any valid service token passes as a non-identity request and becomes a non-interactive agent principal; `/health` alone is bypassed so the deploy jobs can read the deployed commit.
+`access/uw-app.json` declares Cloudflare Access in front of `uw-app` on staging and every per-PR Worker. People sign in with Google; any valid service token passes as a non-identity request and becomes a non-interactive agent principal; `/health` alone is bypassed, on staging and on every per-PR Worker, so the deploy jobs (`deploy-staging.yml` and `deploy-pr.yml`, through `await-health.sh`) can read the deployed commit.
 
 The allow policy admits any Google account on purpose. A person outside `@unfoldingword.org` must reach the app to be recorded as pending (FD-7). Authorization is the grants table, not Access.
 

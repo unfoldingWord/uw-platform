@@ -28,6 +28,10 @@
       "name": "uw-app health probe",
       "type": "self_hosted",
       "domain": "uw-app-staging.unfoldingword.workers.dev/health",
+      "destinations": [
+        { "type": "public", "uri": "uw-app-staging.unfoldingword.workers.dev/health" },
+        { "type": "public", "uri": "uw-app-pr-*.unfoldingword.workers.dev/health" }
+      ],
       "allowed_idps": []
     },
     "policies": [
