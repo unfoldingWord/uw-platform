@@ -1,0 +1,8 @@
+{
+  "identity": "agent:ingest",
+  "kind": "agent",
+  "personId": null,
+  "email": null,
+  "grants": [],
+  "interactive": false
+}
