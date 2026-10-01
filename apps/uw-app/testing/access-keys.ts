@@ -10,7 +10,7 @@ export const fixtureAccessEnv = {
 type SignOptions = {
   readonly audience?: string;
   readonly issuer?: string;
-  readonly expiresAt?: number;
+  readonly expiresAt?: number | null;
 };
 
 export type AccessFixture = {
@@ -23,13 +23,16 @@ export async function createAccessFixture(): Promise<AccessFixture> {
   const jwk = { ...(await exportJWK(publicKey)), kid: 'fixture', alg: 'RS256' };
   return {
     keys: createLocalJWKSet({ keys: [jwk] }),
-    sign: (claims, options = {}) =>
-      new SignJWT(claims)
+    sign: (claims, options = {}) => {
+      const jwt = new SignJWT(claims)
         .setProtectedHeader({ alg: 'RS256', kid: 'fixture' })
         .setIssuer(options.issuer ?? FIXTURE_TEAM_DOMAIN)
         .setAudience(options.audience ?? FIXTURE_AUDIENCE)
-        .setIssuedAt()
-        .setExpirationTime(options.expiresAt ?? Math.floor(Date.now() / 1000) + 300)
-        .sign(privateKey),
+        .setIssuedAt();
+      if (options.expiresAt !== null) {
+        jwt.setExpirationTime(options.expiresAt ?? Math.floor(Date.now() / 1000) + 300);
+      }
+      return jwt.sign(privateKey);
+    },
   };
 }
