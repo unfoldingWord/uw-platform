@@ -1,0 +1,12 @@
+{
+  "name": "@uw/sim",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@uw/harness": "workspace:*"
+  }
+}

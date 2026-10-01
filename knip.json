@@ -24,6 +24,10 @@
     "packages/db": {
       "entry": ["**/*.test.ts", "bin/*.ts", "fixtures/*/schema.ts"],
       "project": ["**/*.ts"]
+    },
+    "sim": {
+      "entry": ["cli/*.ts", "scenarios/*.ts", "**/*.test.ts"],
+      "project": ["**/*.ts"]
     }
   }
 }

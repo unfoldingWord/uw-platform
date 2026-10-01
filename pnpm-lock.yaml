@@ -75,6 +75,9 @@ importers:
       '@uw/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@uw/harness':
+        specifier: workspace:*
+        version: link:../../packages/harness
       '@uw/uw-ingest':
         specifier: workspace:*
         version: link:../uw-ingest
@@ -174,6 +177,12 @@ importers:
       '@uw/contracts':
         specifier: workspace:*
         version: link:../contracts
+
+  sim:
+    dependencies:
+      '@uw/harness':
+        specifier: workspace:*
+        version: link:../packages/harness
 
 packages:
 
