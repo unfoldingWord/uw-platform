@@ -29,7 +29,7 @@ describe('GH-1 the GitHub App is declared with least privilege', () => {
     expect(manifest.default_permissions).toEqual({
       metadata: 'read',
       issues: 'write',
-      pull_requests: 'write',
+      pull_requests: 'read',
       checks: 'read',
       contents: 'write',
     });
