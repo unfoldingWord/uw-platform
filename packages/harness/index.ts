@@ -26,3 +26,5 @@ export type { Accepted, Detail, KernelOutcome, Refused } from './outcome.ts';
 export { readAllEvents } from './items/record.ts';
 export { foldItem, replay, ReplayError } from './items/fold.ts';
 export type { FoldableEvent } from './items/fold.ts';
+export type { Activated, ActivateInput } from './stages/activate.ts';
+export type { StageChange, StageCommands, StageInput } from './stages/commands.ts';

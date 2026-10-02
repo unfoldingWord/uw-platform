@@ -1,6 +1,14 @@
-import { principalSchema, type JdArea, type Principal, type Role, type Scope } from '@uw/contracts';
+import {
+  principalSchema,
+  type Harness,
+  type JdArea,
+  type Principal,
+  type Role,
+  type Scope,
+  type Stage,
+} from '@uw/contracts';
 import { seedGrant, seedPerson } from '@uw/db/test-seed';
-import type { Caller } from '@uw/harness';
+import type { Caller, Template } from '@uw/harness';
 import type { World } from './world.ts';
 
 const ianPersonId = '00000000-0000-4000-8000-000000000001';
@@ -80,4 +88,26 @@ export function simAgent(
 
 export function simCaller(world: World, actor: Principal): Caller {
   return { actor, traceId: world.adapters.ids.next() };
+}
+
+export async function createSimHarness(
+  world: World,
+  template: Template,
+  options: { readonly key?: string; readonly jdArea?: JdArea } = {},
+): Promise<{
+  readonly harness: Harness;
+  readonly stages: readonly Stage[];
+  readonly admin: Principal;
+}> {
+  const admin = await simIan(world);
+  const outcome = await world.kernel.stages.activate(simCaller(world, admin), {
+    harnessId: world.adapters.ids.next(),
+    harnessKey: options.key ?? template.key,
+    jdArea: options.jdArea ?? '80-89',
+    template,
+  });
+  if (outcome.status !== 'accepted') {
+    throw new Error(`activating ${template.key} was refused: ${outcome.reason}`);
+  }
+  return { harness: outcome.value.harness, stages: outcome.value.stages, admin };
 }
