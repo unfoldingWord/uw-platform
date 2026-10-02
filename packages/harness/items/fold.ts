@@ -80,8 +80,9 @@ function abandonBranch(state: ItemState): ItemState {
   return { ...state, branchState: 'abandoned' };
 }
 
-function adoptBranch(state: ItemState): ItemState {
-  return { ...state, branchState: 'active' };
+function adoptBranch(state: ItemState, event: FoldableEvent): ItemState {
+  const { head } = eventEvidenceSchemas.branch_adopted.parse(event.evidence);
+  return { ...state, branchState: 'active', expectedHead: head ?? state.expectedHead };
 }
 
 function submit(state: ItemState, event: FoldableEvent): ItemState {
