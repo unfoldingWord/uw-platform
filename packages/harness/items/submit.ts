@@ -24,7 +24,13 @@ import {
 } from './record.ts';
 import { holdsClaim } from './release.ts';
 import { delegationRefusal } from './run-steps.ts';
-import { exitDrafts, resolveExit, type Exit } from './transitions.ts';
+import {
+  exitDrafts,
+  isOccasionalTweak,
+  resolveExit,
+  unattendedLoop,
+  type Exit,
+} from './transitions.ts';
 
 type SubmitToGateResult = (typeof submitToGateResultSchema.options)[number];
 type SubmitPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
@@ -59,6 +65,7 @@ type Submission = {
   readonly item: ItemState;
   readonly stage: Stage;
   readonly exit: Exit;
+  readonly tweak: boolean;
   readonly input: SubmitInput;
 };
 
@@ -77,6 +84,7 @@ function submittedDraft(submission: Submission, result: SubmitToGateResult): Eve
 }
 
 async function passThrough(_tx: StoreTransaction, submission: Submission): Promise<Decision> {
+  if (submission.tweak) return parkedTweak(submission, []);
   return {
     result: 'advanced',
     drafts: [submittedDraft(submission, 'advanced'), ...exitDrafts(submission.exit)],
@@ -100,13 +108,19 @@ async function runChecks(tx: StoreTransaction, submission: Submission): Promise<
       failures,
     };
   }
+  const passed = draft('checks_passed', { stage: stage.key, validators: stage.validators });
+  if (submission.tweak) return parkedTweak(submission, [passed]);
   return {
     result: 'advanced',
-    drafts: [
-      submittedDraft(submission, 'advanced'),
-      draft('checks_passed', { stage: stage.key, validators: stage.validators }),
-      ...exitDrafts(submission.exit),
-    ],
+    drafts: [submittedDraft(submission, 'advanced'), passed, ...exitDrafts(submission.exit)],
+    failures: [],
+  };
+}
+
+function parkedTweak(submission: Submission, after: readonly EventDraft[]): Decision {
+  return {
+    result: 'parked',
+    drafts: [submittedDraft(submission, 'parked'), ...after],
     failures: [],
   };
 }
@@ -174,9 +188,21 @@ async function submitIn(
   if (denied !== null) return denied;
   const exit = resolveExit(stages, stage, input.to);
   if (exit === null) return refused('transition_not_allowed', { from: stage.key, to: input.to });
+  if (unattendedLoop(exit, caller.actor, item.delegationId)) {
+    await recordItemEvents(tx, context, item.itemId, [
+      draft('delegation_required', { stage: stage.key }),
+    ]);
+    return refused('delegation_required', { stage: stage.key });
+  }
   const handler = gates.get(stage.exitGate);
   if (handler === undefined) return refused('malformed_command', { exitGate: stage.exitGate });
-  const decision = await handler(tx, { item, stage, exit, input });
+  const decision = await handler(tx, {
+    item,
+    stage,
+    exit,
+    tweak: isOccasionalTweak(stages, exit),
+    input,
+  });
   const recorded = await recordItemEvents(tx, context, item.itemId, decision.drafts);
   return accepted({ item: recorded.item, result: decision.result, failures: decision.failures });
 }
