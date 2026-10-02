@@ -1,10 +1,10 @@
-import type { ItemState } from '@uw/contracts';
+import type { Harness, IssueRef, ItemState } from '@uw/contracts';
 import { allowed } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { actingPrincipal, isRefusal } from '../delegations/acting.ts';
 import { accepted, refused, type KernelOutcome } from '../outcome.ts';
-import type { Ports } from '../ports.ts';
-import { createItem, recordContext } from './record.ts';
+import type { Ports, StoreTransaction } from '../ports.ts';
+import { createItem, recordContext, type RecordContext, type Recorded } from './record.ts';
 
 type EnqueuePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
@@ -16,6 +16,36 @@ export type EnqueueInput = {
   readonly due: string | null;
   readonly delegationId: string | null;
 };
+
+export type EnqueueDraft = {
+  readonly title: string;
+  readonly pageId: string | null;
+  readonly priority: number;
+  readonly due: string | null;
+  readonly issue: IssueRef | null;
+};
+
+export async function enqueueIn(
+  tx: StoreTransaction,
+  context: RecordContext,
+  harness: Harness,
+  input: EnqueueDraft,
+): Promise<KernelOutcome<Recorded>> {
+  const stages = await tx.harnessStages.read.forHarness(harness.id);
+  const first = stages.reduce<(typeof stages)[number] | null>(
+    (lowest, stage) => (lowest === null || stage.position < lowest.position ? stage : lowest),
+    null,
+  );
+  if (first === null) return refused('stage_not_found', { harnessId: harness.id });
+  return accepted(
+    await createItem(tx, context, {
+      itemId: context.ids.next(),
+      harnessId: harness.id,
+      stageKey: first.key,
+      ...input,
+    }),
+  );
+}
 
 export async function enqueue(
   ports: EnqueuePorts,
@@ -33,22 +63,13 @@ export async function enqueue(
     if (!allowed(actor, 'write', harness, at)) {
       return refused('not_permitted', { harnessId: harness.id });
     }
-    const stages = await tx.harnessStages.read.forHarness(harness.id);
-    const first = stages.reduce<(typeof stages)[number] | null>(
-      (lowest, stage) => (lowest === null || stage.position < lowest.position ? stage : lowest),
-      null,
-    );
-    if (first === null) return refused('stage_not_found', { harnessId: harness.id });
-    const recorded = await createItem(tx, context, {
-      itemId: ports.ids.next(),
-      harnessId: harness.id,
-      stageKey: first.key,
+    const recorded = await enqueueIn(tx, context, harness, {
       title: input.title,
       pageId: input.pageId,
       priority: input.priority,
       due: input.due,
       issue: null,
     });
-    return accepted(recorded.item);
+    return recorded.status === 'accepted' ? accepted(recorded.value.item) : recorded;
   });
 }

@@ -1,4 +1,5 @@
 import {
+  ingestIdentity,
   principalSchema,
   systemIdentity,
   type Harness,
@@ -91,6 +92,17 @@ export function simAgent(
 export function simSystem(): Principal {
   return principalSchema.parse({
     identity: systemIdentity,
+    kind: 'agent',
+    personId: null,
+    email: null,
+    grants: [],
+    interactive: false,
+  });
+}
+
+export function simIngest(): Principal {
+  return principalSchema.parse({
+    identity: ingestIdentity,
     kind: 'agent',
     personId: null,
     email: null,

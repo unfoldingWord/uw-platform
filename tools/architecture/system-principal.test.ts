@@ -69,3 +69,61 @@ describe('only the composition roots construct the system principal', () => {
     expect(minters([file], () => source)).toEqual([]);
   });
 });
+
+const ingestNamed = new Set([
+  'packages/contracts/identity.ts',
+  'packages/core/principal.ts',
+  'packages/harness/access.ts',
+]);
+
+const ingestRoots = ['apps/uw-ingest/', 'apps/uw-app/github/', 'apps/uw-app/cron/', 'sim/'];
+
+const ingestMentions = [
+  /\bingestPrincipal\s*\(/,
+  /\bingestIdentity\b/,
+  /\bINGEST_IDENTITY\b/,
+  /['"`]agent:ingest['"`]/,
+  /agent:\$\{\s*['"`]ingest['"`]\s*\}/,
+  /['"`]agent:['"`]\s*\+\s*['"`]ingest['"`]/,
+];
+
+function ingestAllowed(file: string): boolean {
+  return (
+    ingestNamed.has(file) ||
+    ingestRoots.some((root) => file.startsWith(root)) ||
+    /\.test\.tsx?$/.test(file)
+  );
+}
+
+function ingestMinters(files: readonly string[], read: (file: string) => string): string[] {
+  return files
+    .filter((file) => isSource(file) && !ingestAllowed(file))
+    .filter((file) => ingestMentions.some((pattern) => pattern.test(read(file))));
+}
+
+describe('GH-3 only the ingest edge, the GitHub module, the cron and the sim construct the ingest principal', () => {
+  it('finds no other file that names it', () => {
+    expect(ingestMinters(repoFiles(), (file) => readFileSync(file, 'utf8'))).toEqual([]);
+  });
+
+  it.each([
+    ['apps/uw-app/mcp/server.ts', 'const actor = ingestPrincipal();'],
+    ['packages/harness/items/import.ts', "const identity = 'agent:ingest';"],
+    ['apps/uw-app/pages/issue-pages.ts', 'const editor = INGEST_IDENTITY;'],
+    ['apps/uw-app/queue/x.ts', 'const id = `agent:${"ingest"}`;'],
+    ['packages/db/y.ts', "const id = 'agent:' + 'ingest';"],
+    ['apps/uw-app/routes/z.ts', 'principalSchema.parse({ identity: ingestIdentity })'],
+  ])('flags %s', (file, source) => {
+    expect(ingestMinters([file], () => source)).toEqual([file]);
+  });
+
+  it.each([
+    ['apps/uw-ingest/receive.ts', 'principal: ingestPrincipal(),'],
+    ['apps/uw-app/github/import.ts', 'kernel.items.importIssue({ actor: ingestPrincipal() })'],
+    ['apps/uw-app/cron/sweep.ts', 'ingestPrincipal()'],
+    ['sim/fixtures.ts', 'principalSchema.parse({ identity: ingestIdentity })'],
+    ['packages/harness/items/create-issue.test.ts', "identitySchema.parse('agent:ingest')"],
+  ])('allows %s', (file, source) => {
+    expect(ingestMinters([file], () => source)).toEqual([]);
+  });
+});

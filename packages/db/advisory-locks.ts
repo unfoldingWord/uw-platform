@@ -9,6 +9,7 @@ export const lockKeyPrefixes: readonly string[] = [
   'harness-stage-claims:',
   'harness-stages:',
   'harness_events:',
+  'github-issue:',
   'persona-activation:',
 ];
 

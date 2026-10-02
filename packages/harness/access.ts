@@ -1,4 +1,10 @@
-import { deviceOwnerSegment, systemIdentity, type Harness, type Principal } from '@uw/contracts';
+import {
+  deviceOwnerSegment,
+  ingestIdentity,
+  systemIdentity,
+  type Harness,
+  type Principal,
+} from '@uw/contracts';
 import { can, type AclAction } from '@uw/core/acl';
 
 export function allowed(
@@ -26,6 +32,16 @@ export function bareAgent(identity: string): boolean {
 export function isSystemPrincipal(actor: Principal): boolean {
   return (
     actor.identity === systemIdentity &&
+    actor.kind === 'agent' &&
+    actor.personId === null &&
+    actor.grants.length === 0 &&
+    !actor.interactive
+  );
+}
+
+export function isIngestPrincipal(actor: Principal): boolean {
+  return (
+    actor.identity === ingestIdentity &&
     actor.kind === 'agent' &&
     actor.personId === null &&
     actor.grants.length === 0 &&
