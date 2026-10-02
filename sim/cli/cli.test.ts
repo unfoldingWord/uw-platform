@@ -1,0 +1,111 @@
+import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+
+const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
+const commandTimeout = 90_000;
+
+function run(script: string, args: readonly string[]): SpawnSyncReturns<string> {
+  return spawnSync(process.execPath, [script, ...args], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    timeout: 60_000,
+  });
+}
+
+function exited(status: number, script: string, args: readonly string[]): SpawnSyncReturns<string> {
+  const result = run(script, args);
+  if (result.status === null)
+    throw new Error(`${script} did not exit on its own: ${result.stderr}`);
+  expect(result.status, `${result.stderr}${result.stdout}`).toBe(status);
+  return result;
+}
+
+function expectDx1Passes(args: readonly string[]): void {
+  const { stdout } = exited(0, 'sim/cli/sim.ts', args);
+  for (const line of [
+    'scenario DX-1.kernel-over-test-adapters:',
+    'events (0):',
+    'state:',
+    'result: pass',
+    '1 of 1 scenarios passed',
+  ]) {
+    expect(stdout).toContain(line);
+  }
+}
+
+describe('DX-4 the sim command', () => {
+  it(
+    'runs one scenario by requirement ID and prints its log, state and result',
+    () => {
+      expectDx1Passes(['DX-1']);
+    },
+    commandTimeout,
+  );
+
+  it(
+    'drops a literal -- before reading the selector',
+    () => {
+      expectDx1Passes(['--', 'DX-1']);
+    },
+    commandTimeout,
+  );
+
+  it(
+    'runs every scenario with all',
+    () => {
+      expect(exited(0, 'sim/cli/sim.ts', ['all']).stdout).toContain('2 of 2 scenarios passed');
+    },
+    commandTimeout,
+  );
+
+  it(
+    'names the known scenarios when none matches',
+    () => {
+      expect(exited(1, 'sim/cli/sim.ts', ['ZZ-1']).stderr).toContain(
+        'no scenario matches ZZ-1; known: DX-1.kernel-over-test-adapters, DX-2.store-is-embedded-postgres',
+      );
+    },
+    commandTimeout,
+  );
+
+  it(
+    'prints the sim usage with no selector',
+    () => {
+      expect(exited(1, 'sim/cli/sim.ts', []).stderr).toContain(
+        'usage: pnpm sim -- <scenario | requirement ID | all>',
+      );
+    },
+    commandTimeout,
+  );
+});
+
+describe('DX-5 the walk command', () => {
+  it(
+    'says no template is registered yet for walk all',
+    () => {
+      expect(exited(0, 'sim/cli/walk.ts', ['all']).stdout).toBe('no templates registered yet\n');
+    },
+    commandTimeout,
+  );
+
+  it(
+    'names the registered templates when the asked one is unknown',
+    () => {
+      expect(exited(1, 'sim/cli/walk.ts', ['software']).stderr).toContain(
+        'unknown template software; registered: none',
+      );
+    },
+    commandTimeout,
+  );
+
+  it(
+    'prints the walk usage with no template',
+    () => {
+      expect(exited(1, 'sim/cli/walk.ts', []).stderr).toContain(
+        'usage: pnpm walk -- <template | all>',
+      );
+    },
+    commandTimeout,
+  );
+});

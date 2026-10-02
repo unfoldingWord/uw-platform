@@ -11,3 +11,5 @@ export {
   RunTransitionError,
   ToolOutsideToolsetError,
 } from './port-errors.ts';
+export { templates } from './templates.ts';
+export type { Template } from './templates.ts';

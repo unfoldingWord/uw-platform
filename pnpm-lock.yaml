@@ -183,6 +183,9 @@ importers:
 
   sim:
     dependencies:
+      '@uw/contracts':
+        specifier: workspace:*
+        version: link:../packages/contracts
       '@uw/db':
         specifier: workspace:*
         version: link:../packages/db
