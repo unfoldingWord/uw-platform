@@ -82,6 +82,7 @@ const itemEvidence = {
     riskTier: riskTierSchema.nullable(),
     riskDomains: riskDomainsSchema,
     refusal: z.literal('risk_tier_undeclared').nullable(),
+    head: head.optional(),
   }),
   run_step_recorded: z.strictObject({
     runId: id,
