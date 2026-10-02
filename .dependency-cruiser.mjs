@@ -30,7 +30,8 @@ const simMayImport = [
 const github = (file) => `^apps/uw-app/github/${file}\\.ts$`;
 const octokitWebhookSignatures = npm('@octokit/webhooks-methods');
 const appTesting = '^apps/(uw-app|uw-ingest)/(github/)?testing/';
-const compositionRoots = '^apps/uw-app/(queue/worker|cron/scheduled|kernel)\\.ts$';
+const compositionRoots =
+  '^apps/uw-app/(queue/worker|cron/scheduled|cron/github-sweep|kernel)\\.ts$';
 
 const forbidden = (name, comment, from, to) => ({
   name,

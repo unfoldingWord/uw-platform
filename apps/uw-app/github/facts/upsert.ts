@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, lte, or, sql, type SQL } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import type { Database, Executor, Transaction } from '@uw/db/client';
 import { ghCheckRuns, ghIssues, ghMilestones, ghPrs, ghRepos, ghReviews } from '@uw/db/schema';
@@ -14,7 +14,7 @@ import type {
 } from './records.ts';
 import { pullRequestChanges, type PullRequestChange } from './queries.ts';
 
-type RepairCounts = {
+export type RepairCounts = {
   readonly repos: number;
   readonly milestones: number;
   readonly issues: number;
@@ -403,4 +403,23 @@ export function upsertFacts(db: Database, batch: FactBatch, freshAt: Date): Prom
 
 export function recordFiles(db: Database, files: FilesRecord): Promise<boolean> {
   return recordFilesIn(db, files);
+}
+
+export async function recordSweep(
+  db: Database,
+  repoId: number,
+  sweep: { readonly sweptThrough: Date; readonly at: Date; readonly repaired: RepairCounts },
+): Promise<void> {
+  await db
+    .update(ghRepos)
+    .set({
+      sweptThrough: sweep.sweptThrough,
+      lastSweep: { at: sweep.at.toISOString(), repaired: sweep.repaired },
+    })
+    .where(
+      and(
+        eq(ghRepos.githubId, repoId),
+        or(isNull(ghRepos.sweptThrough), lte(ghRepos.sweptThrough, sweep.sweptThrough)),
+      ),
+    );
 }
