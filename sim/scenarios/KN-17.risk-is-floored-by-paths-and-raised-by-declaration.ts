@@ -140,7 +140,7 @@ async function ratchetOnItem(world: World): Promise<{
   assertHigh(await submitWith(world, scene, otherHead));
   const last = await submitWith(world, scene, {
     ...otherHead,
-    head: ` ${simSha('abc123').toUpperCase()} `,
+    head: simSha('abc123').toUpperCase(),
     declaration: low,
   });
   assertHigh(last);
