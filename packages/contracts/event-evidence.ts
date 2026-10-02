@@ -19,7 +19,7 @@ import {
 import { identitySchema } from './identity.ts';
 import { errorReasonSchema } from './outcomes.ts';
 import { slugSchema } from './pages.ts';
-import { riskDeclarationSchema, shipRefusalSchema } from './ship-rule.ts';
+import { fullShaSchema, riskDeclarationSchema, shipRefusalSchema } from './ship-rule.ts';
 import { runStepSchema, submitToGateResultSchema } from './verb-io.ts';
 
 export const personaActivationRefusalSchema = z.enum([
@@ -32,7 +32,7 @@ const id = z.uuid();
 const instant = z.iso.datetime();
 const stage = stageKeySchema;
 const text = z.string().min(1).max(500);
-const head = z.string().min(1).max(64);
+const head = fullShaSchema;
 const effect = connectorSchema.exclude(['none']);
 const stageColumnSchema = z.strictObject(
   stageSchema.omit({ id: true, harnessId: true }).partial().shape,

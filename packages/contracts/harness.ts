@@ -12,6 +12,7 @@ import {
   stageBracketSchema,
 } from './closed-sets.ts';
 import { agentIdentityPattern, identitySchema, isPersonaIdentity } from './identity.ts';
+import { fullShaSchema } from './ship-rule.ts';
 import { slugSchema } from './pages.ts';
 
 const distinct = (values: readonly string[]) => new Set(values).size === values.length;
@@ -82,7 +83,7 @@ export const itemStateSchema = z.strictObject({
   gateStatus: gateStatusSchema,
   gateTarget: stageKeySchema.nullable(),
   branchState: branchStateSchema,
-  expectedHead: z.string().min(1).nullable(),
+  expectedHead: fullShaSchema.nullable(),
   riskTier: riskTierSchema.nullable(),
   riskDomains: riskDomainsSchema,
   pullRequest: pullRequestRefSchema.nullable(),

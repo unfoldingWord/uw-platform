@@ -42,6 +42,11 @@ export const riskDeclarationSchema = z.strictObject({
 
 const sha = z.string().min(1).max(64);
 
+export const fullShaPattern = '^(?:[0-9a-f]{40}|[0-9a-f]{64})$';
+export const fullShaSchema = z
+  .string()
+  .regex(new RegExp(fullShaPattern), 'a head is a full lowercase commit SHA');
+
 export const shipRuleInputSchema = z.strictObject({
   pullRequest: z.strictObject({ open: z.boolean(), draft: z.boolean(), head: sha }).nullable(),
   expectedHead: sha.nullable(),

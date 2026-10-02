@@ -119,12 +119,15 @@ export const verbIo = {
   },
   submit_to_gate: {
     input: z
-      .object({
+      .strictObject({
         itemId: z.uuid(),
         evidence: json,
         to: stageKeySchema.nullable(),
         pullRequest: pullRequestRefSchema.nullable(),
-        head: z.string().min(1).max(64).nullable(),
+        head: z
+          .string()
+          .regex(/^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$/)
+          .nullable(),
       })
       .refine(
         (input) => (input.pullRequest === null) === (input.head === null),
