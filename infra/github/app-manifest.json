@@ -1,0 +1,17 @@
+{
+  "name": "uw-harness-staging",
+  "url": "https://github.com/unfoldingWord/uw-platform",
+  "hook_attributes": {
+    "url": "https://uw-ingest-staging.unfoldingword.workers.dev/webhooks/github",
+    "active": true
+  },
+  "public": false,
+  "default_permissions": {
+    "metadata": "read",
+    "issues": "write",
+    "pull_requests": "write",
+    "checks": "read",
+    "contents": "write"
+  },
+  "default_events": ["issues", "pull_request", "pull_request_review", "check_run", "push"]
+}
