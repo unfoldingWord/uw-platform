@@ -192,6 +192,32 @@ describe('KN-12 low and standard need one reviewer; high needs two on distinct p
     const same = [approval('r1', 'anthropic'), approval('R1 ', 'openai')];
     expect(refusedWith({ ...high, approvals: same })).toEqual(['reviewer_count_below_tier']);
   });
+});
+
+describe('KN-12 lookalike and fullwidth identifiers', () => {
+  const high = { ...green(), riskTier: 'high' as const };
+
+  it('treats lookalike reviewers and providers as unresolved', () => {
+    const lookalikes = ['\u0430nthropic', 'anthropic\u200b', '\u0130penai', 'open\u0430i'];
+    for (const provider of lookalikes) {
+      const pair = [approval('r1', 'anthropic'), approval('r2', provider)];
+      expect(refusedWith({ ...high, approvals: pair })).toEqual([
+        'reviewer_providers_not_distinct',
+      ]);
+    }
+    const reviewers = [approval('r1', 'anthropic'), approval('r\u0432', 'openai')];
+    expect(refusedWith({ ...high, approvals: reviewers })).toEqual(['reviewer_count_below_tier']);
+    const zeroWidth = [approval('r1', 'anthropic'), approval('r2\u200b', 'openai')];
+    expect(refusedWith({ ...high, approvals: zeroWidth })).toEqual(['reviewer_count_below_tier']);
+    expect(refusedWith({ ...green(), approvals: [approval('\u0440', 'anthropic')] })).toEqual([
+      'no_reviewer_approval',
+    ]);
+  });
+
+  it('folds fullwidth forms to the same reviewer and provider', () => {
+    const wide = [approval('r1', 'anthropic'), approval('\uff52\uff11', '\uff41nthropic')];
+    expect(refusedWith({ ...high, approvals: wide })).toEqual(['reviewer_count_below_tier']);
+  });
 
   it('advances on two reviewers with distinct providers', () => {
     const distinct = [approval('r1', 'anthropic'), approval('r2', 'openai')];

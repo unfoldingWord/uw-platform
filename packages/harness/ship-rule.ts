@@ -18,18 +18,21 @@ function approvalsOnHead(input: ShipRuleInput): ShipRuleInput['approvals'] {
   return head === null ? [] : input.approvals.filter((approval) => approval.commit === head);
 }
 
-function normalised(value: string): string {
-  return value.trim().toLowerCase();
+const identifier = /^[a-z0-9._-]+$/u;
+
+function normalised(value: string): string | null {
+  const folded = value.normalize('NFKC').trim().toLowerCase();
+  return identifier.test(folded) ? folded : null;
 }
 
 function providersByReviewer(input: ShipRuleInput): ReadonlyMap<string, ReadonlySet<string>> {
   const byReviewer = new Map<string, Set<string>>();
   for (const approval of approvalsOnHead(input)) {
     const reviewer = normalised(approval.reviewer);
-    if (reviewer === '') continue;
+    if (reviewer === null) continue;
     const providers = byReviewer.get(reviewer) ?? new Set<string>();
-    const provider = approval.provider === null ? '' : normalised(approval.provider);
-    if (provider !== '') providers.add(provider);
+    const provider = approval.provider === null ? null : normalised(approval.provider);
+    if (provider !== null) providers.add(provider);
     byReviewer.set(reviewer, providers);
   }
   return byReviewer;
