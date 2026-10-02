@@ -232,7 +232,9 @@ describe('KN-16 a beat checks the delegation and lapses it once', () => {
           agentOf(
             scene,
             scene.kim,
-            second ? `kim/laptop as iterate via delegation:${delegation.id}` : 'iterate',
+            second
+              ? `${scene.kim.personId}/laptop as iterate via delegation:${delegation.id}`
+              : 'iterate',
           ),
           { delegationId: delegation.id },
         );
