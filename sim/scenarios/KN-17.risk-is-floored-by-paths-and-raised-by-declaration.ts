@@ -56,11 +56,26 @@ async function atBuild(
   return { harnessId: harness.id, itemId, owner };
 }
 
+type Scene = { readonly harnessId: string; readonly itemId: string; readonly owner: Principal };
+
 type Change = {
   readonly head: string;
   readonly paths: readonly string[];
   readonly declaration: RiskDeclaration | null;
 };
+
+async function submitHeld(
+  world: World,
+  scene: { readonly itemId: string; readonly owner: Principal },
+  change: Change | null,
+): Promise<KernelOutcome<{ readonly item: ItemState }>> {
+  return world.kernel.items.submit(simCaller(world, scene.owner), {
+    itemId: scene.itemId,
+    to: null,
+    evidence: {},
+    change: change === null ? null : { pullRequest, ...change },
+  });
+}
 
 async function submitWith(
   world: World,
@@ -69,13 +84,7 @@ async function submitWith(
 ): Promise<ItemState> {
   const worker = simCaller(world, scene.owner);
   valueOf(await world.kernel.items.claim(worker, { itemId: scene.itemId, delegationId: null }));
-  const submitted = await world.kernel.items.submit(worker, {
-    itemId: scene.itemId,
-    to: null,
-    evidence: {},
-    change: change === null ? null : { pullRequest, ...change },
-  });
-  return valueOf(submitted).item;
+  return valueOf(await submitHeld(world, scene, change)).item;
 }
 
 async function derivedEvents(world: World, harnessId: string, itemId: string) {
@@ -92,34 +101,57 @@ async function derivedEvents(world: World, harnessId: string, itemId: string) {
     .map((event) => eventEvidenceSchemas.risk_derived.parse(event.evidence));
 }
 
+const benign = ['apps/uw-app/board.tsx'];
+const low: RiskDeclaration = { riskTier: 'low', riskDomains: [] };
+
+function assertHigh(item: ItemState): void {
+  assert.equal(item.riskTier, 'high');
+  assert.deepEqual(item.riskDomains, ['migration']);
+}
+
+async function ratchetOnItem(world: World): Promise<{
+  readonly scene: Scene;
+  readonly last: ItemState;
+}> {
+  const scene = await atBuild(world, 2);
+  assertHigh(await submitWith(world, scene, { head: 'abc123', paths, declaration }));
+  const otherHead = { head: 'def456', paths: benign, declaration: low };
+  assertHigh(await submitWith(world, scene, otherHead));
+  const last = await submitWith(world, scene, { ...otherHead, head: ' ABC123 ' });
+  assertHigh(last);
+  assert.equal(last.expectedHead, 'abc123');
+  return { scene, last };
+}
+
+async function undeclaredOnItem(world: World): Promise<void> {
+  const other = await atBuild(world, 3);
+  const worker = simCaller(world, other.owner);
+  valueOf(await world.kernel.items.claim(worker, { itemId: other.itemId, delegationId: null }));
+  const spaced = await submitHeld(world, other, { head: 'abc 123', paths, declaration: null });
+  assert.equal(spaced.status === 'error' && spaced.reason, 'malformed_command');
+  const undeclared = valueOf(
+    await submitHeld(world, other, { head: 'def456', paths, declaration: null }),
+  ).item;
+  assert.equal(undeclared.riskTier, null);
+  assert.deepEqual(undeclared.riskDomains, ['migration']);
+  const noChange = await submitWith(world, other, null);
+  assert.equal(noChange.riskTier, null);
+  assert.deepEqual(noChange.riskDomains, ['migration']);
+  const derived = await derivedEvents(world, other.harnessId, other.itemId);
+  assert.equal(derived.length, 1);
+  assert.equal(derived[0]?.refusal, 'risk_tier_undeclared');
+  assert.equal(derived[0]?.declaration, null);
+}
+
 export const scenario = defineScenario({
   id: 'KN-17',
   title:
     'risk is floored high by protected paths, raised and never lowered by the declaration, and an undeclared tier is recorded for the ship rule',
   run: async (world) => {
-    const scene = await atBuild(world, 2);
-    const declared = await submitWith(world, scene, { head: 'abc123', paths, declaration });
-    assert.equal(declared.riskTier, 'high');
-    assert.deepEqual(declared.riskDomains, ['migration']);
-    const sameHead = await submitWith(world, scene, {
-      head: 'abc123',
-      paths: ['apps/uw-app/board.tsx'],
-      declaration: { riskTier: 'low', riskDomains: [] },
-    });
-    assert.equal(sameHead.riskTier, 'high');
-    assert.deepEqual(sameHead.riskDomains, ['migration']);
-    const noChange = await submitWith(world, scene, null);
-    assert.equal(noChange.riskTier, 'high');
-    assert.deepEqual(noChange.riskDomains, ['migration']);
-    const other = await atBuild(world, 3);
-    const undeclared = await submitWith(world, other, { head: 'def456', paths, declaration: null });
-    assert.equal(undeclared.riskTier, null);
-    assert.deepEqual(undeclared.riskDomains, ['migration']);
-    const refused = await derivedEvents(world, other.harnessId, other.itemId);
-    assert.equal(refused[0]?.refusal, 'risk_tier_undeclared');
-    assert.equal(refused[0]?.declaration, null);
+    const { scene, last } = await ratchetOnItem(world);
+    await undeclaredOnItem(world);
     const derived = await derivedEvents(world, scene.harnessId, scene.itemId);
-    assert.equal(derived.length, 2);
+    assert.equal(derived.length, 3);
     assert.deepEqual(derived[0], {
       paths,
       declaration,
@@ -129,6 +161,7 @@ export const scenario = defineScenario({
       refusal: null,
     });
     assert.deepEqual(derived[1]?.floorDomains, ['migration']);
-    return { state: { riskTier: declared.riskTier, riskDomains: declared.riskDomains } };
+    assert.deepEqual(derived[2]?.floorDomains, ['migration']);
+    return { state: { riskTier: last.riskTier, riskDomains: last.riskDomains } };
   },
 });

@@ -86,10 +86,7 @@ function submittedDraft(submission: Submission, result: SubmitToGateResult): Eve
 
 function riskDraft(change: SubmitChange, item: ItemState): EventDraft {
   const fresh = floorFromPaths(change.paths);
-  const floor =
-    item.expectedHead === change.head
-      ? carryForward(fresh, { tier: item.riskTier, domains: item.riskDomains })
-      : fresh;
+  const floor = carryForward(fresh, { tier: item.riskTier, domains: item.riskDomains });
   const result = applyDeclaration(floor, change.declaration);
   return draft('risk_derived', {
     paths: [...change.paths],
@@ -99,6 +96,17 @@ function riskDraft(change: SubmitChange, item: ItemState): EventDraft {
     riskDomains: [...result.domains],
     refusal: result.ok ? null : result.reason,
   });
+}
+
+function normalisedHead(head: string): string | null {
+  const trimmed = head.trim().toLowerCase();
+  return trimmed === '' || /\s/u.test(trimmed) ? null : trimmed;
+}
+
+function withNormalisedHead(input: SubmitInput): SubmitInput | null {
+  if (input.change === null) return input;
+  const head = normalisedHead(input.change.head);
+  return head === null ? null : { ...input, change: { ...input.change, head } };
 }
 
 async function passThrough(_tx: StoreTransaction, submission: Submission): Promise<Decision> {
@@ -231,6 +239,10 @@ export function submit(
   caller: Caller,
   input: SubmitInput,
 ): Promise<KernelOutcome<Submitted>> {
+  const normalised = withNormalisedHead(input);
+  if (normalised === null) {
+    return Promise.resolve(refused('malformed_command', { head: input.change?.head ?? null }));
+  }
   const at = ports.clock.now();
-  return ports.store.transaction((tx) => submitIn(ports, tx, caller, input, at));
+  return ports.store.transaction((tx) => submitIn(ports, tx, caller, normalised, at));
 }
