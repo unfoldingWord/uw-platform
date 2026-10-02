@@ -4,6 +4,7 @@ export { portNames } from './ports.ts';
 export type * from './ports.ts';
 export { createKernel } from './kernel.ts';
 export type { Kernel, KernelHealth } from './kernel.ts';
+export type { PollItem } from './reads/poll.ts';
 export {
   notWiredCall,
   PortNotWiredError,
