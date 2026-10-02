@@ -1,18 +1,21 @@
-import type { Grant, Identity, JdArea, Principal } from '@uw/contracts';
+import {
+  delegationIdOf,
+  personaSlugOf,
+  type Grant,
+  type Identity,
+  type JdArea,
+  type Principal,
+} from '@uw/contracts';
 import { allowed } from '../access.ts';
 import type { Delegation } from '../ports.ts';
 
-const ASSUMING = ' as ';
-const VIA_DELEGATION = ' via delegation:';
-
 export function personaMatches(identity: Identity, delegation: Delegation): boolean {
   if (identity === delegation.persona) return true;
-  const asAt = identity.indexOf(ASSUMING);
-  const viaAt = identity.indexOf(VIA_DELEGATION);
-  if (!identity.startsWith('agent:') || asAt < 0 || viaAt < asAt + ASSUMING.length) return false;
-  const slug = identity.slice(asAt + ASSUMING.length, viaAt);
-  const id = identity.slice(viaAt + VIA_DELEGATION.length);
-  return `agent:${slug}` === delegation.persona && id === delegation.id;
+  const slug = personaSlugOf(identity);
+  const id = delegationIdOf(identity);
+  return (
+    slug !== null && id !== null && `agent:${slug}` === delegation.persona && id === delegation.id
+  );
 }
 
 function delegatePrincipal(delegation: Delegation, grants: readonly Grant[]): Principal {
