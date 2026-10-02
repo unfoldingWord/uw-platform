@@ -13,6 +13,7 @@ function notWiredPorts(): Ports {
     },
     grants: {
       resolve: () => notWiredCall('grants', 'resolve'),
+      resolveIn: () => notWiredCall('grants', 'resolveIn'),
       lockAndReread: () => notWiredCall('grants', 'lockAndReread'),
     },
     githubFacts: { pullRequest: () => notWiredCall('githubFacts', 'pullRequest') },
@@ -38,7 +39,7 @@ function throwingPorts(): Ports {
     clock: { now: refuse },
     ids: { next: refuse },
     store: { transaction: refuse, appliedMigrations: refuse },
-    grants: { resolve: refuse, lockAndReread: refuse },
+    grants: { resolve: refuse, resolveIn: refuse, lockAndReread: refuse },
     githubFacts: { pullRequest: refuse },
     connectors: { run: refuse },
     modelEngine: { turn: refuse },

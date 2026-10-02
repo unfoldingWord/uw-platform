@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { identitySchema, type ItemState } from '@uw/contracts';
 import type { PageFacts, Store, StoreTransaction } from '../ports.ts';
 import { awaitBlocked, type LockWaiters } from './lock-wait.ts';
+import { describeDelegations } from './store-delegations.ts';
 import { describeEvents } from './store-events.ts';
 import {
   at,
@@ -347,6 +348,7 @@ export function describeStoreGateways(
     describeLeases(subject);
     describePages(subject);
     describeEvents(subject);
+    describeDelegations(subject);
     if (concurrentConnections) describeItemLock(subject);
   });
 }

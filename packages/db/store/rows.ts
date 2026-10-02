@@ -1,5 +1,7 @@
 import {
+  capabilityWordSchema,
   eventSchema,
+  identitySchema,
   harnessSchema,
   itemStateSchema,
   stageSchema,
@@ -8,7 +10,14 @@ import {
   type ItemState,
   type Stage,
 } from '@uw/contracts';
-import type { harnessEvents, harnessItems, harnessStages, harnesses } from '../schema.ts';
+import type {
+  delegations,
+  harnessEvents,
+  harnessItems,
+  harnessStages,
+  harnesses,
+} from '../schema.ts';
+import type { Delegation } from './types.ts';
 
 export function toHarness(row: typeof harnesses.$inferSelect): Harness {
   return harnessSchema.parse({
@@ -79,4 +88,19 @@ export function toEvent(row: typeof harnessEvents.$inferSelect): HarnessEvent {
     traceId: row.traceId,
     position: row.position,
   });
+}
+
+export function toDelegation(row: typeof delegations.$inferSelect): Delegation {
+  return {
+    id: row.id,
+    personId: row.personId,
+    persona: identitySchema.parse(row.persona),
+    harnessId: row.harnessId,
+    capability: capabilityWordSchema.parse(row.capability),
+    grantedAt: row.grantedAt,
+    expiresAt: row.expiresAt,
+    revokedAt: row.revokedAt,
+    lapsedAt: row.lapsedAt,
+    supersedes: row.supersedes,
+  };
 }

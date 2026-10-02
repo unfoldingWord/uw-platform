@@ -31,3 +31,4 @@ export type { StageChange, StageCommands, StageInput } from './stages/commands.t
 export type { EnqueueInput } from './items/enqueue.ts';
 export type { ItemCommands } from './items/commands.ts';
 export type { Rebuilt, RepairCommands } from './items/repair.ts';
+export type { DelegationCommands, GrantInput } from './delegations/commands.ts';

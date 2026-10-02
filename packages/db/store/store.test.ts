@@ -60,6 +60,7 @@ describe('DX-2 executorOf', () => {
       harnessStages: untouched(),
       harnessItems: untouched(),
       harnessEvents: untouched(),
+      delegations: untouched(),
       pages: untouched(),
     };
     expect(() => executorOf(foreign)).toThrow('not a transaction of the Drizzle store');

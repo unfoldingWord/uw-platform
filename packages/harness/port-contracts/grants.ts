@@ -137,6 +137,20 @@ export function describeGrantsUnderLock(adapter: string, subject: () => GrantsSu
   });
 }
 
+function describeGrantsInTransaction(adapter: string, subject: () => GrantsSubject): void {
+  describe(`DX-3 grants port contract on ${adapter}: inside a transaction`, () => {
+    it('DX-3 reads grants inside a transaction without a lock', async () => {
+      const p7 = person(7);
+      const reread = () =>
+        subject().store.transaction((tx) => subject().grants.resolveIn(tx, p7, at));
+      await given(subject(), p7, [orgAdmin(8, p7)]);
+      expect(ids(await reread())).toEqual([grantId(8)]);
+      await subject().revoke(grantId(8), at);
+      expect(ids(await reread())).toEqual([]);
+    });
+  });
+}
+
 function nameOfRefusal(error: unknown): string {
   return error instanceof Error ? error.name : 'rejected';
 }
@@ -185,6 +199,7 @@ export function describeGrantsContract(adapter: string, open: () => Promise<Gran
   const subject = withSubject(open);
   describeGrantsResolve(adapter, subject);
   describeGrantsUnderLock(adapter, subject);
+  describeGrantsInTransaction(adapter, subject);
   describeGrantsOutsideTransaction(adapter, subject);
   describeGrantsAfterTransaction(adapter, subject);
 }
@@ -192,6 +207,7 @@ export function describeGrantsContract(adapter: string, open: () => Promise<Gran
 export function describeGrantsNotWired(adapter: string, grants: Grants): void {
   describeNotWired('grants', adapter, grants, {
     resolve: true,
+    resolveIn: true,
     lockAndReread: true,
   } satisfies Record<keyof Grants, true>);
 }
