@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { parsePrincipal, type Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
@@ -287,3 +287,79 @@ describe.skipIf(!testServer)(
       }));
   },
 );
+
+function bareApp(db: Database, seed: (c: Context<AppEnv>) => void): Hono<AppEnv> {
+  const deps = postgresDeps(db, fixture);
+  const app = new Hono<AppEnv>();
+  app.use(observe(deps));
+  app.use(withDatabase(deps));
+  app.use(async (c, next) => {
+    c.set('now', new Date());
+    seed(c);
+    await next();
+  });
+  app.use(withAgentPrincipal());
+  app.get('/probe', (c) => c.json({ principal: c.get('principal') }));
+  return app;
+}
+
+function leaveUnset(): void {
+  return undefined;
+}
+
+function setPersonAccess(c: Context<AppEnv>): void {
+  c.set('access', { kind: 'person', email: people.maker.email });
+}
+
+async function sendBare(app: Hono<AppEnv>): Promise<Sent> {
+  const raw = await app.request(
+    '/probe',
+    { headers: { 'x-uw-device': 'laptop' } },
+    fixtureAccessEnv,
+  );
+  return { status: raw.status, body: (await raw.json()) as Record<string, unknown> };
+}
+
+async function probeRepeated(db: Database, headers: [string, string][]): Promise<Sent> {
+  const token = await fixture.sign({ email: people.maker.email });
+  const raw = await probeApp(db).request(
+    '/probe',
+    { headers: [['cf-access-jwt-assertion', token], ...headers] },
+    fixtureAccessEnv,
+  );
+  return { status: raw.status, body: (await raw.json()) as Record<string, unknown> };
+}
+
+describe.skipIf(!testServer)('the edge refuses minting it cannot ground', () => {
+  it('refuses unauthenticated when no Access identity was set, or no person principal', () =>
+    withPeople(async (db) => {
+      const unset = bareApp(db, leaveUnset);
+      expect(refusalOf(await sendBare(unset))).toEqual([401, 'unauthenticated']);
+      const personless = bareApp(db, setPersonAccess);
+      expect(refusalOf(await sendBare(personless))).toEqual([401, 'unauthenticated']);
+    }));
+
+  it('refuses a device or persona header sent twice with different values', () =>
+    withPeople(async (db) => {
+      const devices = await probeRepeated(db, [
+        ['x-uw-device', 'laptop'],
+        ['x-uw-device', 'desktop'],
+      ]);
+      expect(refusalOf(devices)).toEqual([400, 'malformed_command']);
+      const personas = await probeRepeated(db, [
+        ['x-uw-device', 'laptop'],
+        ['x-uw-persona', 'iterate'],
+        ['x-uw-persona', 'review'],
+        ['x-uw-delegation', DELEGATION],
+      ]);
+      expect(refusalOf(personas)).toEqual([400, 'malformed_command']);
+    }));
+
+  it("refuses a token's wrong device before it reads the owner's status", () =>
+    withPeople(async (db) => {
+      await bindRoutine(db);
+      await db.execute(sql`UPDATE people SET status = 'pending' WHERE id = ${idOf('routine')}`);
+      const wrong = await asToken(db, { 'x-uw-device': 'laptop' });
+      expect(refusalOf(wrong)).toEqual([400, 'malformed_command']);
+    }));
+});

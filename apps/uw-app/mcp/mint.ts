@@ -103,11 +103,11 @@ async function serviceOwner(
   if (!clientId.success) return refuse(c, 'unauthenticated');
   const binding = await liveBinding(db, clientId.data);
   if (binding === null) return refuse(c, 'unauthenticated');
-  const person = await personById(db, binding.personId);
-  if (person?.status !== 'active') return refuse(c, 'pending_approval');
   if (claim.device !== null && claim.device !== binding.device) {
     return refuse(c, 'malformed_command');
   }
+  const person = await personById(db, binding.personId);
+  if (person?.status !== 'active') return refuse(c, 'pending_approval');
   const grants = await resolveGrants(db, binding.personId, { at: c.get('now') });
   return { personId: binding.personId, grants, device: binding.device, interactive: false };
 }
@@ -115,7 +115,7 @@ async function serviceOwner(
 export function withAgentPrincipal(): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
     const access = c.get('access');
-    if (access === null) return refuse(c, 'unauthenticated');
+    if (!access) return refuse(c, 'unauthenticated');
     const database = c.get('database');
     if (database === null) return refuse(c, 'database_not_configured');
     const claim = agentClaimOf((name) => c.req.header(name));

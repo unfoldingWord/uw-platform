@@ -77,7 +77,7 @@ describe("AB-2 an agent identity is minted under its owner with exactly the owne
   });
 });
 
-describe('AB-6 a runner names its persona and delegation together or not at all', () => {
+describe('a runner names its persona and delegation together or not at all', () => {
   it('reads no claim when no agent header is sent', () => {
     expect(agentClaimOf(headersOf({}))).toEqual({ device: null, delegation: null });
   });
