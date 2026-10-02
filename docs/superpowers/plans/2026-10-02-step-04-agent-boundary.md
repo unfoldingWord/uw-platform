@@ -33,7 +33,7 @@
 15. **AB-7 runtime over KN-13's hiding.** Every agent attempt at a gate decision on an existing item now records `gate_refused_to_agent`, including an agent that cannot read the harness; that agent is still answered `item_not_found` (KN-13's no-probing ruling keeps its reply, AB-7 gets its event).
 16. **The schema splits by domain.** `packages/db/schema.ts` reached 496 non-blank lines. The platform tables (`people`, `role_grants`, `grant_audit`, `pages`, `page_versions`, `webhook_deliveries`, `queue_watermarks`) move unchanged to `packages/db/schema-platform.ts` with the new `tasks` and `service_tokens`; `schema.ts` keeps the harness tables, imports what they reference and re-exports the platform file, so it stays the one schema everyone imports and drizzle-kit reads. `AGENTS.md` section 1 and rule 1 say so (Task 6).
 17. **The persona slugs `system` and `ingest` are reserved** (step-3 re-review carry f): no persona identity, persona page, delegation or `x-uw-persona` header may name them.
-18. **The contract moves `3.2.0` → `4.0.0` (Task 2: `principalSchema` tightens) → `4.1.0` (Task 4: additive).**
+18. **The contract moves `3.2.0` → `4.0.0` (Task 2: `principalSchema` tightens) → `5.0.0` (Task 4: additive).**
 
 ---
 
@@ -76,7 +76,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Contracts**
 
-- The live version moves `3.2.0` → `4.0.0` (Task 2) → `4.1.0` (Task 4). Each move changes, together and in one commit: the schemas, their fixtures under `packages/contracts/fixtures/<registry key>/{valid,invalid}/` (and `packages/contracts/verb-fixtures/<verb>/{input,output}/{valid,invalid}/` for verb I/O), the `schemaRegistry` entries, `CONTRACT_VERSION` in `packages/contracts/version.ts`, a new last entry in `packages/contracts/contract-lock.json` recording every closed set, and `"contractVersion"` in `apps/uw-app/package.json` and `apps/uw-ingest/package.json`. No other task changes a contract; if one finds it must, it bumps the minor version the same way and records why in the tracker.
+- The live version moves `3.2.0` → `4.0.0` (Task 2) → `5.0.0` (Task 4). Each move changes, together and in one commit: the schemas, their fixtures under `packages/contracts/fixtures/<registry key>/{valid,invalid}/` (and `packages/contracts/verb-fixtures/<verb>/{input,output}/{valid,invalid}/` for verb I/O), the `schemaRegistry` entries, `CONTRACT_VERSION` in `packages/contracts/version.ts`, a new last entry in `packages/contracts/contract-lock.json` recording every closed set, and `"contractVersion"` in `apps/uw-app/package.json` and `apps/uw-ingest/package.json`. No other task changes a contract; if one finds it must, it bumps the minor version the same way and records why in the tracker.
 
 **Shared roots**
 
@@ -417,7 +417,7 @@ git add packages/harness sim packages/db/store/claim-race.test.ts
 git commit -m "fix(harness): refuse a device identity that is not its owner's, answer a foreign delegation as an unknown one, and make attaching a learning a holder's act" -m "AB-2 AB-6 KN-5 KN-7 KN-16"
 ```
 
-### Task 4: Contracts for the surface: verb summaries and inputs, the activation failure, task status, service-token commands (contract 4.1.0)
+### Task 4: Contracts for the surface: verb summaries and inputs, the activation failure, task status, service-token commands (contract 5.0.0)
 
 **Requirements:** AB-1 (each tool carries a description from the registry), AB-4 (`submit_to_gate` input), AB-5 (`create_task` input; task status), AB-2 (service-token binding commands), AB-8 (`persona_activation_failed` evidence), CT-3.
 
@@ -425,7 +425,7 @@ git commit -m "fix(harness): refuse a device identity that is not its owner's, a
 - Modify: `packages/contracts/verbs.ts`, `verb-io.ts`, `event-evidence.ts`, `closed-sets.ts`, `platform-commands.ts`, `registry.ts`, `index.ts`, `version.ts`, `contract-lock.json`, `verbs.test.ts`
 - Create: `packages/contracts/agent-commands.ts`
 - Fixtures: `verb-fixtures/submit_to_gate/input/**`, `verb-fixtures/create_task/input/**`, `fixtures/{task-status,persona-activation-refusal,bind-service-token-command,revoke-service-token-command,service-client-id,platform-command-name}/**`, the `persona_activation_failed` cases in the event fixtures
-- Modify: `apps/uw-app/package.json`, `apps/uw-ingest/package.json` (`4.1.0`)
+- Modify: `apps/uw-app/package.json`, `apps/uw-ingest/package.json` (`5.0.0`)
 - Modify: `docs/PRD.md` (own commit)
 
 **Interfaces:**
@@ -523,7 +523,7 @@ export type BindServiceTokenCommand = z.infer<typeof bindServiceTokenCommandSche
 export type RevokeServiceTokenCommand = z.infer<typeof revokeServiceTokenCommandSchema>;
 ```
 
-`platform-commands.ts` adds `'bind_service_token'`, `'revoke_service_token'`. Register `task-status`, `persona-activation-refusal`, `service-client-id`, `bind-service-token-command`, `revoke-service-token-command`; export the new file from `index.ts`. `CONTRACT_VERSION = '4.1.0'`, lock entry, app pins.
+`platform-commands.ts` adds `'bind_service_token'`, `'revoke_service_token'`. Register `task-status`, `persona-activation-refusal`, `service-client-id`, `bind-service-token-command`, `revoke-service-token-command`; export the new file from `index.ts`. `CONTRACT_VERSION = '5.0.0'`, lock entry, app pins.
 
 - [ ] **Step 3: The PRD names what the contract now holds (own commit)**
 
@@ -536,7 +536,7 @@ Expected: PASS.
 
 ```bash
 git add packages/contracts apps/uw-app/package.json apps/uw-ingest/package.json
-git commit -m "feat(contracts): verb summaries, submit_to_gate's loop target and pull request, create_task's area, task status, the activation failure and the service-token commands; contract 4.1.0" -m "Shared root packages/contracts: the MCP surface needs a description per tool, the submit and task inputs the handlers pass on, and the binding commands minting needs." -m "AB-1 AB-2 AB-4 AB-5 AB-8 CT-3"
+git commit -m "feat(contracts): verb summaries, submit_to_gate's loop target and pull request, create_task's area, task status, the activation failure and the service-token commands; contract 5.0.0" -m "Shared root packages/contracts: the MCP surface needs a description per tool, the submit and task inputs the handlers pass on, and the binding commands minting needs." -m "AB-1 AB-2 AB-4 AB-5 AB-8 CT-3"
 git add docs/PRD.md
 git commit -m "docs(prd): the tasks and service_tokens tables, task status and the activation refusal set" -m "AB-2 AB-5 AB-8"
 ```
@@ -1445,7 +1445,7 @@ Rewrite "The agent boundary" to state what is built: the endpoint `POST /mcp` be
 | AB-2 | Carry (f): persona slugs `system` and `ingest` are reserved in persona identities, persona pages, delegations and the `x-uw-persona` header | A persona cannot be called `system` or `ingest` |
 | AB-4 | `AppDeps.clock` (Task 12) feeds both the request instant and the MCP route's kernel, so tests move one clock for both; production passes `systemClock` | A deps object built without it fails to typecheck, which is the intent |
 
-- New dependencies: `2026-10-02 | @modelcontextprotocol/sdk ^1.31.0 (MIT, apps/uw-app) | a hand-written JSON-RPC and Streamable HTTP server, client and in-process transport for the MCP surface`; `2026-10-02 | @cfworker/json-schema ^4.1.1 (MIT, apps/uw-app) | Ajv's code-generating validator, which Workers forbid, as the SDK's JSON Schema validator`; `2026-10-02 | Contract versions 4.0.0 (Task 2, principal and persona schemas tighten) and 4.1.0 (Task 4, additive) | Not a dependency: contractVersion in both apps moved with each`. Add any `pnpm.overrides` or knip ignore that Task 12 needed.
+- New dependencies: `2026-10-02 | @modelcontextprotocol/sdk ^1.31.0 (MIT, apps/uw-app) | a hand-written JSON-RPC and Streamable HTTP server, client and in-process transport for the MCP surface`; `2026-10-02 | @cfworker/json-schema ^4.1.1 (MIT, apps/uw-app) | Ajv's code-generating validator, which Workers forbid, as the SDK's JSON Schema validator`; `2026-10-02 | Contract versions 4.0.0 (Task 2, principal and persona schemas tighten) and 5.0.0 (Task 4, additive) | Not a dependency: contractVersion in both apps moved with each`. Add any `pnpm.overrides` or knip ignore that Task 12 needed.
 - Not verified: the MCP endpoint behind a real Access application (a person's Claude Code or Codex signing in through `cloudflared access` and the edge adding `cf-access-jwt-assertion`; a real service-token JWT's `common_name`); the SDK's web-standard transport in a deployed Worker (only `pnpm build` and the Workers Vitest pool ran it); a real client's handling of the stateless server's `405` on `GET`; Postgres full-text search on Neon (only the local Postgres 16 ran it).
 - Waiting on a person: `| 2026-10-02 | AB-2 AB-6 | The /mcp endpoint, service-token bindings and the minting edge | Access service tokens for agent identities (PRD 15), bound with bind_service_token; a first real external run (Claude Code with an MCP server entry for https://<uw-app>/mcp and the x-uw-device header) | Ian |`.
 - Carried to later steps: `| 2026-10-02 | Step 4 | Step 5 | GH-5: submit_to_gate's paths and risk declaration come from GitHub facts at the head; today the MCP handler passes paths [] and no declaration, so the ship rule refuses risk_tier_undeclared |`; `| 2026-10-02 | Step 4 | Step 5 | GH-2's six tables go in packages/db/schema-github.ts, re-exported by schema.ts |`; `| 2026-10-02 | Step 4 | Step 7 | HE-1: the Workflow host reaches the platform through connectInProcess with the beat or run principal; record_run_step there is metered |`; `| 2026-10-02 | Step 4 | Step 8 | WB-10: get_health switches its not_wired indicators to WB-10's exported queries |`; `| 2026-10-02 | Step 4 | Step 10 | PE-3: activation's dry run and status flip replace the not_wired success; PE-7: query_entities gains measurements_for_item with measurements' writer; the personas projection joins poll_queue's subscription |`.
