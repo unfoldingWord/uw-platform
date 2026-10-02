@@ -56,6 +56,6 @@ export function databaseErrorFacts(error: unknown): DatabaseErrorFacts | null {
       chain,
       (link) => textField(link, 'constraint_name') ?? textField(link, 'constraint'),
     ),
-    table: firstOf(chain, (link) => textField(link, 'table_name')),
+    table: firstOf(chain, (link) => textField(link, 'table_name') ?? textField(link, 'table')),
   };
 }
