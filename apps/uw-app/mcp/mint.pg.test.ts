@@ -363,3 +363,24 @@ describe.skipIf(!testServer)('the edge refuses minting it cannot ground', () => 
       expect(refusalOf(wrong)).toEqual([400, 'malformed_command']);
     }));
 });
+
+describe.skipIf(!testServer)('AB-2 an interactive login never shares a bound device', () => {
+  it("refuses a login naming the device the person's live service token is bound to", () =>
+    withPeople(async (db) => {
+      await bindRoutine(db);
+      const shared = await asPerson(db, 'routine', { 'x-uw-device': ROUTINE_DEVICE });
+      expect(refusalOf(shared)).toEqual([403, 'not_permitted']);
+      const laptop = await asPerson(db, 'routine', { 'x-uw-device': 'laptop' });
+      expect(principalOf(laptop).identity).toBe(`agent:${idOf('routine')}/laptop`);
+    }));
+
+  it('mints the device again once its binding is revoked, and for another person', () =>
+    withPeople(async (db) => {
+      await bindRoutine(db);
+      const other = await asPerson(db, 'maker', { 'x-uw-device': ROUTINE_DEVICE });
+      expect(principalOf(other).identity).toBe(`agent:${idOf('maker')}/${ROUTINE_DEVICE}`);
+      await revokeRoutine(db);
+      const freed = await asPerson(db, 'routine', { 'x-uw-device': ROUTINE_DEVICE });
+      expect(principalOf(freed).identity).toBe(`agent:${idOf('routine')}/${ROUTINE_DEVICE}`);
+    }));
+});

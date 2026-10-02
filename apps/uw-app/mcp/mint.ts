@@ -11,7 +11,7 @@ import {
 } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
 import { resolveGrants } from '@uw/db/store';
-import { liveBinding } from '../agents/service-tokens.ts';
+import { deviceIsBound, liveBinding } from '../agents/service-tokens.ts';
 import type { AppEnv } from '../deps.ts';
 import { refuse } from '../http/outcomes.ts';
 import { personById } from '../people/directory.ts';
@@ -81,10 +81,15 @@ type Owner = {
   readonly interactive: boolean;
 };
 
-function personOwner(c: Context<AppEnv>, claim: AgentClaim): Owner | Response {
+async function personOwner(
+  c: Context<AppEnv>,
+  db: Database,
+  claim: AgentClaim,
+): Promise<Owner | Response> {
   const person = c.get('principal');
   if (person?.kind !== 'person' || person.personId === null) return refuse(c, 'unauthenticated');
   if (claim.device === null) return refuse(c, 'malformed_command');
+  if (await deviceIsBound(db, person.personId, claim.device)) return refuse(c, 'not_permitted');
   return {
     personId: person.personId,
     grants: person.grants,
@@ -122,7 +127,7 @@ export function withAgentPrincipal(): MiddlewareHandler<AppEnv> {
     if (claim === null) return refuse(c, 'malformed_command');
     const owner =
       access.kind === 'person'
-        ? personOwner(c, claim)
+        ? await personOwner(c, database.db, claim)
         : await serviceOwner(c, database.db, access.clientId, claim);
     if (owner instanceof Response) return owner;
     if (!mayMint(owner.grants, c.get('now'))) return refuse(c, 'not_permitted');
