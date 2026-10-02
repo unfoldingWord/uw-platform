@@ -211,7 +211,8 @@ export const tasks = declareTable(
 export const serviceTokens = declareTable(
   'service_tokens',
   {
-    clientId: text('client_id').primaryKey(),
+    id: uuid('id').primaryKey(),
+    clientId: text('client_id').notNull(),
     personId: uuid('person_id')
       .notNull()
       .references(() => people.id),
@@ -227,6 +228,9 @@ export const serviceTokens = declareTable(
     check('service_tokens_bound_by_is_human', matches(t.boundBy, HUMAN_IDENTITY_PATTERN)),
     uniqueIndex('service_tokens_one_live_device')
       .on(t.personId, t.device)
+      .where(sql`${t.revokedAt} IS NULL`),
+    uniqueIndex('service_tokens_one_live_client')
+      .on(t.clientId)
       .where(sql`${t.revokedAt} IS NULL`),
   ],
 );

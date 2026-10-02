@@ -51,9 +51,9 @@ function insertTask(db: Db, id: string, change: Partial<TaskRow> = {}) {
 function insertToken(db: Db, clientId: string, change: Partial<TokenRow> = {}) {
   const row = { ...validToken, ...change };
   return db.execute(sql`INSERT INTO service_tokens
-      (client_id, person_id, device, bound_by, bound_at, revoked_at, trace_id)
-    VALUES (${clientId}, ${person}, ${row.device}, ${row.boundBy}, ${atText}::timestamptz,
-      ${row.revokedAt}::timestamptz, ${trace})`);
+      (id, client_id, person_id, device, bound_by, bound_at, revoked_at, trace_id)
+    VALUES (${crypto.randomUUID()}, ${clientId}, ${person}, ${row.device}, ${row.boundBy},
+      ${atText}::timestamptz, ${row.revokedAt}::timestamptz, ${trace})`);
 }
 
 function openDatabase(target: DatabaseTarget): () => Db {
@@ -112,12 +112,16 @@ function tokenRules(db: () => Db): void {
     });
   });
 
-  it('binds a client id, and refuses a second binding of the same client id', async () => {
+  it('binds a client id, refuses a second live binding of it, and binds it again after a revoke', async () => {
     await insertToken(db(), 'client-a');
     expect(await refusal(insertToken(db(), 'client-a', { device: 'desktop' }))).toEqual({
       code: '23505',
-      constraint: 'service_tokens_pkey',
+      constraint: 'service_tokens_one_live_client',
     });
+    await db().execute(
+      sql`UPDATE service_tokens SET revoked_at = ${atText}::timestamptz WHERE client_id = 'client-a'`,
+    );
+    await insertToken(db(), 'client-a', { device: 'desktop' });
   });
 
   it('refuses a device that is not lowercase kebab-case', async () => {
