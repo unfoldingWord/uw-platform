@@ -1,6 +1,10 @@
 import fc from 'fast-check';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { eventEvidenceSchemas, type NewHarnessEvent } from '../../packages/contracts/index.ts';
+import {
+  eventEvidenceSchemas,
+  identitySchema,
+  type NewHarnessEvent,
+} from '../../packages/contracts/index.ts';
 import { closeEmbeddedTemplate } from '../../packages/db/embedded.ts';
 import { readAllEvents, replay, software, type Caller } from '../../packages/harness/index.ts';
 import {
@@ -14,6 +18,8 @@ import { createWorld, type World } from '../../sim/world.ts';
 import { itemEventSequence } from './item-events.ts';
 
 type Setup = { readonly world: World; readonly harnessId: string; readonly caller: Caller };
+
+const agent = 'agent:builder';
 
 let setup: Setup | null = null;
 
@@ -62,9 +68,14 @@ async function recordSequence(
   );
   for (let index = 0; index < rest.length; index += batch) {
     const drafts = rest.slice(index, index + batch).map(asDraft);
+    const varied = {
+      ...context,
+      at: new Date(context.at.getTime() + (index + 1) * 60_000),
+      actor: index % 2 === 0 ? context.actor : identitySchema.parse(agent),
+    };
     await store.transaction(async (tx) => {
       await tx.harnessItems.read.lock(itemId);
-      return recordItemEvents(tx, context, itemId, drafts);
+      return recordItemEvents(tx, varied, itemId, drafts);
     });
   }
   return itemId;

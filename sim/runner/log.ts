@@ -1,5 +1,5 @@
 import { type HarnessEvent, type ItemState } from '@uw/contracts';
-import { readAllEvents, replay, type Store, type StoreTransaction } from '@uw/harness';
+import { notReplayed, readAllEvents, replay, type Store, type StoreTransaction } from '@uw/harness';
 
 export type WorldLog = {
   readonly events: readonly HarnessEvent[];
@@ -11,8 +11,9 @@ function driftFields(projected: ItemState, replayed: ItemState | null): string[]
   const fields = new Set([...Object.keys(projected), ...Object.keys(replayed)]);
   return [...fields].filter(
     (field) =>
+      !notReplayed.some((kept) => kept === field) &&
       JSON.stringify(Reflect.get(projected, field)) !==
-      JSON.stringify(Reflect.get(replayed, field)),
+        JSON.stringify(Reflect.get(replayed, field)),
   );
 }
 
