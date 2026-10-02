@@ -45,7 +45,7 @@ createKernel(ports: Ports): Kernel
 Kernel = {
   walk(stages): WalkPath[],
   templateProperty, shipRule, replay,
-  events, items, repair, stages, delegations, gates,
+  events, reads, items, repair, stages, delegations, gates, personas,
   health(),
 }
 ```
@@ -87,7 +87,7 @@ PGlite is a single connection, so every test that races two connections runs aga
 
 ## What is durable, and who writes it
 
-Every durable value has one writer. The Drizzle schema declares every table with its classification (plan §2.6) and the kernel module that owns it.
+Every durable value has one writer. The Drizzle schema declares every table with its classification (plan §2.6) and the kernel module that owns it. The schema is split by domain: `packages/db/schema.ts` holds the harness tables and re-exports `packages/db/schema-platform.ts`, which holds the platform tables (`people`, `role_grants`, `grant_audit`, `pages`, `page_versions`, `webhook_deliveries`, `queue_watermarks`, `tasks`, `service_tokens`). Everything imports `schema.ts`, and drizzle-kit reads it; a new table goes in the file for its domain.
 
 | Table | Written by | Notes |
 |---|---|---|
@@ -101,6 +101,8 @@ Every durable value has one writer. The Drizzle schema declares every table with
 | `measurements` | the Validate stage | public-side sources only in v1 |
 | `pages`, `page_versions` | the page API and `write_page` | plan §2; harness stage rows are not pages |
 | `role_grants` | the grants command | plan §4; audit-logged |
+| `tasks` | `apps/uw-app/tasks/store.ts` (`create_task`) | created `suggested` with `created_by` the agent identity; statuses `suggested`, `open`, `done`, `dismissed` |
+| `service_tokens` | `apps/uw-app/agents/service-tokens.ts` (`bind_service_token`, `revoke_service_token`), org admin only | binds an Access service token's client id to one person's device; one live binding per device; revoke sets `revoked_at` and records no revoker |
 | `gh_*` | the GitHub read-model module in `uw-app`, called by both the webhook consumer and the nightly sweep | one writer, two entry points; GitHub is the source of truth |
 | `push_subscriptions`, `push_cooldowns` | the notifier | per person |
 
@@ -133,7 +135,25 @@ The vocabulary is a closed enum in `packages/contracts`, listed in PRD section 8
 
 ## The agent boundary
 
-The MCP surface serves exactly the verb registry and nothing else. There is no verb for approving, merging, deploying, publishing or advancing past a human gate, on any host. A persona is configuration over the verb registry and the run-shape registry; a new verb, a new run shape or a new engine is reviewed code. The two hosts, a Cloudflare Workflow and a person's own Claude Code over remote MCP, see identical tool lists, and a CI test asserts it.
+The MCP surface serves exactly the served verbs of the verb registry and nothing else. There is no verb for approving, merging, deploying, publishing or advancing past a human gate, on any host. A persona is configuration over the verb registry and the run-shape registry; a new verb, a new run shape or a new engine is reviewed code. The code is `apps/uw-app/mcp/`.
+
+**The endpoint.** `POST /mcp` is behind Access (`apps/uw-app/mcp/routes.ts`, mounted in `app.tsx`). It is the SDK's web-standard Streamable HTTP transport, stateless (no session id) with JSON responses; `GET` and `DELETE` answer `405` with `Allow: POST`. A request carries one JSON-RPC message of at most 256 KiB; a batch is refused. One SDK `Server` is built per request and closed after it.
+
+**Minting** (`apps/uw-app/mcp/mint.ts`). The edge turns an Access credential into an agent identity for the request. A person's login must send `x-uw-device` (`^[a-z0-9][a-z0-9-]{0,31}$`) and is minted `agent:<personId>/<device>`, interactive. A service token is looked up by its client id in `service_tokens`; with no live binding it is `401 unauthenticated`, and with one it is minted `agent:<personId>/<device>` for the bound person and device, not interactive. `x-uw-persona` and `x-uw-delegation` come together or not at all; with both, the identity is the delegated form `agent:<personId>/<device> as <persona> via delegation:<id>` and the kernel checks that delegation on every call. Minting needs a live `editor` or `admin` grant at any scope (`403 not_permitted` otherwise), and the minted grants are exactly the owner's grants resolved for this request, so a revoked grant is gone on the next request. Each verb then checks the harness's area. A bare `agent:<persona>` is never minted at the edge: it is the beat principal of a delegation, which only the in-process host is given.
+
+**Two hosts, one server.** `createVerbServer(context)` (`apps/uw-app/mcp/server.ts`) builds the server for a principal, an instant and a host. The `external` host is the HTTP route above. The `workflow` host is `connectInProcess` (`apps/uw-app/mcp/in-process.ts`), the same server over the SDK's in-memory transport; until the Workflow step lands (HE-1) only test files may import it (dependency-cruiser `in-process-host-only-in-tests`). The host forces the cost basis: `record_run_step` must say `subscription` from the external host and `metered` from the Workflow host, and anything else is `not_permitted` `{ why: 'cost_basis_is_the_hosts', expected }`.
+
+**The tool list and the dispatcher.** `tools/list` is `toolsFor(principal, at)` (`apps/uw-app/mcp/tools.ts`): every registry verb served in v1 whose name holds no forbidden verb and, for a fixed-area verb, whose grant the principal holds, with input and output JSON Schema from the verb's own Zod schemas. `tools/call` is `callVerb` (`apps/uw-app/mcp/dispatch.ts`). A name that is not a served verb for this principal (a forbidden verb, an alias of one, an unserved verb, anything else) is the JSON-RPC error `-32602` with `Unknown tool: <name>`. Arguments are parsed with the verb's input schema (`malformed_command` on failure). Every handler is built by `gatedHandler` or `rowFilteredHandler` (`apps/uw-app/mcp/handler.ts`), and `createVerbServer` refuses at startup a handler no builder made, or a rows handler for a verb with a registry grant. A gated handler names the resource it touches, and the dispatcher runs the one central `can()` on it before the handler acts; when the caller may not read it, the reply is the handler's own not-found refusal, byte-identical to a missing id. A rows handler maps each row to its resource and the builder drops every row `can()` refuses. A refusal is an MCP result with `isError: true` and text `{"status":"error","reason":<closed set>,"detail":{…}}`; every call is logged with its outcome.
+
+**The verbs.** Harness verbs (`poll_queue`, `claim_item`, `submit_to_gate`, `record_run_step`, `get_health`) call `kernel.reads` and the kernel's item commands. A delegated identity, a bare persona and a non-interactive device without a delegation see only what they may act on: the harnesses their live delegations name, and nothing without one. Page verbs (`search_pages`, `read_page`, `write_page`) read through `apps/uw-app/pages/` and save through its `createPage` and `updatePage`; an agent's save of a `learning`, `skill` or `persona` page is only ever `suggested`, and it may not save a page any stage names as its instructions. `resolve_context`, `query_entities` (`open_tasks`, `stage_items`) and `create_task` read pages and stages and write `tasks`. Persona activation's tool check (AB-8) is the kernel command `kernel.personas.activate`.
+
+**The three AB-7 checks.**
+
+| Check | Where | What fails it |
+|---|---|---|
+| Static | `tools/architecture/agent-boundary.ts`, run by `tools/architecture/agent-boundary.test.ts` | From `apps/uw-app/app.tsx` (every route an agent principal can reach, `/mcp` and `/api/*` through a service token) the import closure must not touch `gate_decisions` or `harness_stages`, or call `kernel.gates`, `kernel.stages`, `kernel.repair`, `kernel.delegations.grant` or `kernel.delegations.revoke`, or reach a connector; every MCP handler goes through a builder and `can()`. Planted handlers and routes fail it. These are token-level backstops; the builders' runtime refusal is the enforcement |
+| Runtime | `sim/kernel/agent-boundary-runtime.test.ts`, scenario `sim/scenarios/AB-7.no-agent-identity-writes-a-gate-decision.ts` | Every agent identity form, in every grant combination, attempting every gate decision: each attempt records `gate_refused_to_agent` and writes no decision; a planted gate command that lets an agent decide fails it |
+| Conformance | `apps/uw-app/mcp/conformance.pg.test.ts` | The Workflow host and an external runner are served the same tools with the same schemas, each served verb answers on both with its output or a closed refusal, and unserved names get the same unknown-tool error; a planted host-specific tool fails it |
 
 ## The sim
 
@@ -163,8 +183,8 @@ A rule that lives only in prose drifts. Each has a check in `verify` and in CI, 
 | `packages/harness` is pure | `no-restricted-globals` and `no-restricted-imports` in `packages/harness/**`; its tsconfig has no Workers types |
 | Every port has a contract test run against every adapter | `tools/architecture/port-contracts.test.ts`: each port has a suite in `packages/harness/port-contracts/`, an adapter in `apps/uw-app/ports/` and in `sim/adapters/`, and a contract test beside each adapter that runs it |
 | A vendor SDK is named in one directory | a text gate refuses `@anthropic-ai`, `openai`, `openrouter` imports outside `apps/uw-app/engines/<engine>/` |
-| No agent route or tool writes gate decisions | a static test over the route table and tool handlers, plus a runtime test per identity kind |
-| Both hosts see the same verbs | the tool list served to a Workflow equals the list served to an external runner, and both equal the registry |
+| No agent route or tool writes gate decisions | `tools/architecture/agent-boundary.test.ts` over the closure from the app entry, plus `sim/kernel/agent-boundary-runtime.test.ts` over every identity form and grant combination |
+| Both hosts see the same verbs | `apps/uw-app/mcp/conformance.pg.test.ts`: the tool list served in process equals the list served over HTTP, and both equal the served registry |
 | Ship exits only on human approval | the stage check constraint, its migration test, and the template walk in CI and at activation |
 | Replay equals record | a property test over random event sequences |
 | One writer per durable table | a test walks every module's `owns` export |
