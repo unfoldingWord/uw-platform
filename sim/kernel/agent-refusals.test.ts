@@ -47,14 +47,39 @@ function approveAs(scene: Scene, actor: Principal) {
   });
 }
 
-async function unreadableAgentSeesNoItem(scene: Scene): Promise<void> {
+async function unreadableAgentIsRecordedButSeesNoItem(scene: Scene): Promise<void> {
   const elsewhere = await simPerson(scene.world, 3, [
     { role: 'viewer', scopeKind: 'jd_area', scopeArea: '30-39' },
   ]);
+  const agent = simAgent(elsewhere, 'reviewer', { interactive: true });
   const before = await eventsOf(scene);
-  const outcome = await approveAs(scene, simAgent(elsewhere, 'reviewer', { interactive: true }));
-  expect(outcome).toMatchObject({ status: 'error', reason: 'item_not_found' });
+  const outcome = await approveAs(scene, agent);
+  expect(outcome).toEqual({
+    status: 'error',
+    reason: 'item_not_found',
+    detail: { itemId: scene.itemId },
+  });
+  const gained = (await eventsOf(scene)).slice(before.length);
+  expect(gained.map((event) => [event.name, event.actor, event.evidence])).toEqual([
+    ['gate_refused_to_agent', agent.identity, { decision: 'approve', stage: 'check' }],
+  ]);
+}
+
+async function missingItemRecordsNothing(scene: Scene): Promise<void> {
+  const missing = '00000000-0000-4000-8000-000000009999';
+  const agent = simAgent(scene.ian, 'reviewer', { interactive: true });
+  const before = await eventsOf(scene);
+  const outcome = await approveAs({ ...scene, itemId: missing }, agent);
+  expect(outcome).toEqual({
+    status: 'error',
+    reason: 'item_not_found',
+    detail: { itemId: missing },
+  });
   expect(await eventsOf(scene)).toEqual(before);
+  const decisions = await scene.world.adapters.store.transaction((tx) =>
+    tx.gateDecisions.read.forItem(missing),
+  );
+  expect(decisions).toEqual([]);
 }
 
 async function readableAgentIsRefusedAsAgent(scene: Scene): Promise<void> {
@@ -65,7 +90,11 @@ async function readableAgentIsRefusedAsAgent(scene: Scene): Promise<void> {
 }
 
 describe('KN-13 an agent that cannot read the harness learns nothing about the item', () => {
-  it('answers item_not_found and records no event', () => inScene(unreadableAgentSeesNoItem));
+  it('answers item_not_found and records gate_refused_to_agent', () =>
+    inScene(unreadableAgentIsRecordedButSeesNoItem));
+
+  it('answers a missing id the same item_not_found and records nothing', () =>
+    inScene(missingItemRecordsNothing));
 
   it('records gate_refused_to_agent for an agent that can read it', () =>
     inScene(readableAgentIsRefusedAsAgent));
