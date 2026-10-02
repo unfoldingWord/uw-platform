@@ -72,6 +72,30 @@ function describePaging(subject: EventsSubject): void {
   });
 }
 
+function describeIsolation(subject: EventsSubject): void {
+  it("DX-3 KN-4 pages only the asked harness's events, never another harness's", async () => {
+    const pages = await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0x1600, 'gateway-events-own');
+      await seedHarness(tx, 0x1700, 'gateway-events-other');
+      const own = [1, 2].map((n) => newEventSchema.parse(eventOf(0x1600, n, null)));
+      const other = [1, 2, 3].map((n) => newEventSchema.parse(eventOf(0x1700, n, null)));
+      await tx.harnessEvents.write.append(own);
+      await tx.harnessEvents.write.append(other);
+      const read = (base: number) =>
+        tx.harnessEvents.read.page({ harnessId: uid(base), itemId: null, after: 0, limit: 100 });
+      return [await read(0x1600), await read(0x1700)];
+    });
+    expect(pages.map((page) => page.events.map((event) => event.harnessId))).toEqual([
+      [uid(0x1600), uid(0x1600)],
+      [uid(0x1700), uid(0x1700), uid(0x1700)],
+    ]);
+    expect(pages.map(positions)).toEqual([
+      [1, 2],
+      [1, 2, 3],
+    ]);
+  });
+}
+
 function describePageBounds(subject: EventsSubject): void {
   it('DX-3 KN-4 refuses a page outside 1 to 100 rows or before position 0', async () => {
     const bad = [
@@ -118,6 +142,7 @@ function describeRefusals(subject: EventsSubject): void {
 export function describeEvents(subject: EventsSubject): void {
   describeAppend(subject);
   describePaging(subject);
+  describeIsolation(subject);
   describePageBounds(subject);
   describeRefusals(subject);
 }
