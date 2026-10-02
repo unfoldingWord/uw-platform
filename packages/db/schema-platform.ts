@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   check,
+  date,
   foreignKey,
   index,
   integer,
@@ -17,8 +18,17 @@ import {
   personStatusSchema,
   roleSchema,
   scopeSchema,
+  taskStatusSchema,
 } from '@uw/contracts';
-import { IDENTITY_PATTERN, JD_AREA_PATTERN, SLUG_PATTERN, matches, oneOf } from './checks.ts';
+import {
+  DEVICE_PATTERN,
+  HUMAN_IDENTITY_PATTERN,
+  IDENTITY_PATTERN,
+  JD_AREA_PATTERN,
+  SLUG_PATTERN,
+  matches,
+  oneOf,
+} from './checks.ts';
 import { instant } from './columns.ts';
 import { declareTable } from './declarations.ts';
 
@@ -173,4 +183,50 @@ export const queueWatermarks = declareTable(
     lastConsumedAt: instant('last_consumed_at').notNull(),
   },
   { classification: 'internal', offlineEligibility: 'never' },
+);
+
+export const tasks = declareTable(
+  'tasks',
+  {
+    id: uuid('id').primaryKey(),
+    jdArea: text('jd_area').notNull(),
+    title: text('title').notNull(),
+    pageId: uuid('page_id').references(() => pages.id),
+    due: date('due', { mode: 'string' }),
+    status: text('status').notNull(),
+    createdBy: text('created_by').notNull(),
+    traceId: uuid('trace_id').notNull(),
+    createdAt: instant('created_at').notNull(),
+  },
+  { classification: 'internal', offlineEligibility: 'sync' },
+  (t) => [
+    check('tasks_status_known', oneOf(t.status, taskStatusSchema.options)),
+    check('tasks_area_form', matches(t.jdArea, JD_AREA_PATTERN)),
+    check('tasks_created_by_is_identity', matches(t.createdBy, IDENTITY_PATTERN)),
+    check('tasks_title_not_blank', sql`length(btrim(${t.title})) > 0`),
+    index('tasks_area_status').on(t.jdArea, t.status),
+  ],
+);
+
+export const serviceTokens = declareTable(
+  'service_tokens',
+  {
+    clientId: text('client_id').primaryKey(),
+    personId: uuid('person_id')
+      .notNull()
+      .references(() => people.id),
+    device: text('device').notNull(),
+    boundBy: text('bound_by').notNull(),
+    boundAt: instant('bound_at').notNull(),
+    revokedAt: instant('revoked_at'),
+    traceId: uuid('trace_id').notNull(),
+  },
+  { classification: 'restricted', offlineEligibility: 'never' },
+  (t) => [
+    check('service_tokens_device_form', matches(t.device, DEVICE_PATTERN)),
+    check('service_tokens_bound_by_is_human', matches(t.boundBy, HUMAN_IDENTITY_PATTERN)),
+    uniqueIndex('service_tokens_one_live_device')
+      .on(t.personId, t.device)
+      .where(sql`${t.revokedAt} IS NULL`),
+  ],
 );

@@ -1,6 +1,7 @@
 import { sql, type SQL } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import {
+  devicePattern,
   humanIdentityPattern,
   identityPattern,
   jdAreaPattern,
@@ -37,3 +38,4 @@ export const IDENTITY_PATTERN = identityPattern;
 export const STAGE_KEY_PATTERN = stageKeyPattern;
 export const PERSONA_IDENTITY_PATTERN = personaIdentityPattern;
 export const HUMAN_IDENTITY_PATTERN = humanIdentityPattern;
+export const DEVICE_PATTERN = devicePattern;
