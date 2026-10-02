@@ -122,6 +122,7 @@ A durable value is anything in Postgres.
 - Each table is written by exactly one module, named in PRD section 8.1; `harness_events` is append-only and the database refuses UPDATE and DELETE on it.
 - Every other module reads through the owner's exported functions.
 - The writer exports an `owns` constant listing every table it owns; a check fails on any table claimed twice or written elsewhere.
+- A kernel table is written through its Store gateway's `write` half (`tx.<table>.write.*`), named after the table's Drizzle export; only the table's owner module calls it, and `tools/architecture/owners.test.ts` treats that call as a write.
 - `gate_decisions` is written only by the gate command, only for a human principal, inside a transaction that locks and re-reads the approver's grants.
 
 ### Rule 4. New work adds isolated files rather than branches in shared roots
