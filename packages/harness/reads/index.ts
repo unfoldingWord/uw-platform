@@ -30,15 +30,15 @@ export function createKernelReads(ports: ReadPorts): KernelReads {
   return {
     harness: (caller, input) => {
       const at = ports.clock.now();
-      return ports.store.transaction((tx) => harnessScene(tx, caller, input.harnessId, at));
+      return ports.store.transaction((tx) => harnessScene(ports, tx, caller, input.harnessId, at));
     },
     item: (caller, input) => {
       const at = ports.clock.now();
-      return ports.store.transaction((tx) => itemScene(tx, caller, input.itemId, at));
+      return ports.store.transaction((tx) => itemScene(ports, tx, caller, input.itemId, at));
     },
     inStage: (caller, input) => {
       const at = ports.clock.now();
-      return ports.store.transaction((tx) => itemsInStage(tx, caller, input, at));
+      return ports.store.transaction((tx) => itemsInStage(ports, tx, caller, input, at));
     },
     poll: (caller, input) => {
       const at = ports.clock.now();

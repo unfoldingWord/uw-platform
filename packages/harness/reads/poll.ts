@@ -1,17 +1,18 @@
 import {
   delegationIdOf,
+  type Grant,
   type Harness,
   type ItemState,
   type Principal,
   type Stage,
 } from '@uw/contracts';
-import { allowed, bareAgent, ownerBound } from '../access.ts';
-import { personaMatches } from '../delegations/beat.ts';
+import { allowed, bareAgent, isAgent, ownerBound } from '../access.ts';
+import { beatPrincipal } from '../delegations/beat.ts';
 import { assertDelegationLive } from '../delegations/live.ts';
 import { leaseLapsed } from '../items/leases.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
-import type { Ports, StoreTransaction } from '../ports.ts';
-import { byPriorityThenId } from './scene.ts';
+import type { Delegation, StoreTransaction } from '../ports.ts';
+import { byPriorityThenId, presentedDelegation, type ScenePorts } from './scene.ts';
 
 export type PollItem = {
   readonly itemId: string;
@@ -23,52 +24,68 @@ export type PollItem = {
 
 export type PollInput = { readonly harnessId: string | null; readonly limit: number };
 
-type PollPorts = Pick<Ports, 'grants'>;
 type Form = 'delegated' | 'persona' | 'other';
+type Judged = { readonly harness: Harness; readonly principal: Principal };
 type Subscription = (
-  ports: PollPorts,
+  ports: ScenePorts,
   tx: StoreTransaction,
   actor: Principal,
   at: Date,
-) => Promise<readonly Harness[] | Refused>;
+) => Promise<readonly Judged[] | Refused>;
 
-async function harnessesById(
+async function judgedBy(
   tx: StoreTransaction,
-  harnessIds: readonly string[],
-): Promise<readonly Harness[]> {
-  const found: Harness[] = [];
-  for (const harnessId of new Set(harnessIds)) {
-    const harness = await tx.harnesses.read.byId(harnessId);
-    if (harness !== null) found.push(harness);
-  }
-  return found;
+  delegation: Delegation,
+  grants: readonly Grant[],
+  at: Date,
+): Promise<Judged | null> {
+  const harness = await tx.harnesses.read.byId(delegation.harnessId);
+  if (harness === null) return null;
+  return { harness, principal: beatPrincipal(delegation, grants, harness.jdArea, at) };
 }
 
 const delegated: Subscription = async (ports, tx, actor, at) => {
   const delegationId = delegationIdOf(actor.identity) ?? '';
-  const found = await tx.delegations.read.byId(delegationId);
-  if (found === null || found.personId !== actor.personId) {
-    return refused('delegation_not_found', { delegationId });
-  }
-  if (!personaMatches(actor.identity, found)) return refused('not_permitted', { delegationId });
-  const liveness = await assertDelegationLive(tx, ports, delegationId, at);
-  if (!liveness.live) return refused('delegation_lapsed', { delegationId, why: liveness.why });
-  return harnessesById(tx, [liveness.delegation.harnessId]);
+  const presented = await presentedDelegation(ports, tx, actor, delegationId, at);
+  if (presented.status !== 'accepted') return presented;
+  const judged = await judgedBy(tx, presented.value.delegation, presented.value.grants, at);
+  return judged === null ? [] : [judged];
 };
 
-const persona: Subscription = async (_ports, tx, actor, at) => {
+async function personaJudged(
+  ports: ScenePorts,
+  tx: StoreTransaction,
+  delegation: Delegation,
+  at: Date,
+): Promise<Judged | null> {
+  const liveness = await assertDelegationLive(tx, ports, delegation.id, at);
+  if (!liveness.live || liveness.delegation.capability === 'none') return null;
+  return judgedBy(tx, liveness.delegation, liveness.grants, at);
+}
+
+const persona: Subscription = async (ports, tx, actor, at) => {
   if (actor.personId === null) return [];
   const live = await tx.delegations.read.live(
     { personId: actor.personId, persona: actor.identity, harnessId: null },
     at,
   );
-  return harnessesById(
-    tx,
-    live.map((delegation) => delegation.harnessId),
-  );
+  const judged = new Map<string, Judged>();
+  for (const delegation of live) {
+    if (judged.has(delegation.harnessId)) continue;
+    const found = await personaJudged(ports, tx, delegation, at);
+    if (found !== null) judged.set(found.harness.id, found);
+  }
+  return [...judged.values()];
 };
 
-const other: Subscription = (_ports, tx) => tx.harnesses.read.list();
+const other: Subscription = async (ports, tx, actor, at) => {
+  if (isAgent(actor) && !actor.interactive) return [];
+  const grants =
+    actor.personId === null ? [] : await ports.grants.resolveIn(tx, actor.personId, at);
+  const principal = { ...actor, grants: [...grants] };
+  const harnesses = await tx.harnesses.read.list();
+  return harnesses.map((harness) => ({ harness, principal }));
+};
 
 const subscriptions: ReadonlyMap<Form, Subscription> = new Map<Form, Subscription>([
   ['delegated', delegated],
@@ -79,16 +96,6 @@ const subscriptions: ReadonlyMap<Form, Subscription> = new Map<Form, Subscriptio
 function formOf(actor: Principal): Form {
   if (delegationIdOf(actor.identity) !== null) return 'delegated';
   return bareAgent(actor.identity) ? 'persona' : 'other';
-}
-
-async function freshActor(
-  ports: PollPorts,
-  tx: StoreTransaction,
-  actor: Principal,
-  at: Date,
-): Promise<Principal> {
-  if (actor.personId === null) return { ...actor, grants: [] };
-  return { ...actor, grants: [...(await ports.grants.resolveIn(tx, actor.personId, at))] };
 }
 
 function claimable(stages: readonly Stage[], item: ItemState, at: Date): boolean {
@@ -118,16 +125,16 @@ function polledItem(item: ItemState): PollItem {
   };
 }
 
-function workable(fresh: Principal, input: PollInput, at: Date) {
-  return (harness: Harness): boolean =>
+function workable(input: PollInput, at: Date) {
+  return ({ harness, principal }: Judged): boolean =>
     (input.harnessId === null || harness.id === input.harnessId) &&
     !harness.paused &&
-    allowed(fresh, 'read', harness, at) &&
-    allowed(fresh, 'write', harness, at);
+    allowed(principal, 'read', harness, at) &&
+    allowed(principal, 'write', harness, at);
 }
 
 export async function pollQueue(
-  ports: PollPorts,
+  ports: ScenePorts,
   tx: StoreTransaction,
   actor: Principal,
   input: PollInput,
@@ -137,9 +144,8 @@ export async function pollQueue(
   const subscribe = subscriptions.get(formOf(actor)) ?? other;
   const subscribed = await subscribe(ports, tx, actor, at);
   if ('status' in subscribed) return subscribed;
-  const fresh = await freshActor(ports, tx, actor, at);
   const items: ItemState[] = [];
-  for (const harness of subscribed.filter(workable(fresh, input, at))) {
+  for (const { harness } of subscribed.filter(workable(input, at))) {
     items.push(...(await claimableIn(tx, harness, at)));
   }
   return accepted(items.sort(byPriorityThenId).slice(0, input.limit).map(polledItem));
