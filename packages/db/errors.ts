@@ -7,3 +7,5 @@ export function pgErrorCode(error: unknown): string | null {
 export function pgConstraint(error: unknown): string | null {
   return databaseErrorFacts(error)?.constraint ?? null;
 }
+
+export { databaseErrorFacts };

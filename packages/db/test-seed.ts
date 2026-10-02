@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import type { Role, Scope } from '@uw/contracts';
 import type { AnyExecutor } from './any-database.ts';
-import { people, roleGrants } from './schema.ts';
+import { grantAudit, people, roleGrants } from './schema.ts';
 
 export type SeedPerson = {
   readonly id: string;
@@ -34,4 +34,8 @@ export async function seedGrant(db: AnyExecutor, grant: SeedGrant): Promise<void
 
 export async function revokeSeededGrant(db: AnyExecutor, grantId: string, at: Date): Promise<void> {
   await db.update(roleGrants).set({ revokedAt: at }).where(eq(roleGrants.id, grantId));
+}
+
+export async function rewriteGrantAudit(db: AnyExecutor, actor: string): Promise<void> {
+  await db.update(grantAudit).set({ actor });
 }

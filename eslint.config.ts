@@ -121,6 +121,10 @@ export default defineConfig([
     },
   },
   {
+    files: ['sim/runner/**', 'sim/cli/**'],
+    rules: { 'security/detect-non-literal-fs-filename': 'off' },
+  },
+  {
     files: ['tools/lint/date-patterns.ts', 'tools/architecture/owners.test.ts'],
     rules: { 'security/detect-non-literal-regexp': 'off' },
   },
