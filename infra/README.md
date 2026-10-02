@@ -71,7 +71,7 @@ pnpm --filter @uw/uw-ingest deploy:staging
 
 ## GitHub App (GH-1)
 
-`github/app-manifest.json` declares the staging App, `uw-harness-staging`: private, its webhook pointed at `uw-ingest`'s `/webhooks/github` route, the five events `issues`, `pull_request`, `pull_request_review`, `check_run` and `push`, and least-privilege permissions. `metadata`, `checks` and `pull_requests` are read. `issues` is write for the cross-reference comment, and `contents` is write for the merge and its tag: GitHub's "Permissions required for GitHub Apps" lists `PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge` and `POST /repos/{owner}/{repo}/git/refs` under Contents write, with no additional permission. The harness writes nothing else to GitHub. A merge of a pull request that changes `.github/workflows/` would also need the Workflows permission, which the App does not hold, so GitHub refuses that merge and the connector records the refusal.
+`github/app-manifest.json` declares the staging App, `uw-harness-staging`: private, its webhook pointed at `uw-ingest`'s `/webhooks/github` route, the five events `issues`, `pull_request`, `pull_request_review`, `check_run` and `push`, and least-privilege permissions. `metadata`, `checks` and `pull_requests` are read. `issues` is write for the cross-reference comment, and `contents` is write for the merge and its tag: GitHub's "Permissions required for GitHub Apps" lists `PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge` and `POST /repos/{owner}/{repo}/git/refs` under Contents write, with no additional permission. The harness writes nothing else to GitHub.
 
 An org owner of `unfoldingWord` sets it up once, awaiting go-live:
 
