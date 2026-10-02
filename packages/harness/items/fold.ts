@@ -1,0 +1,171 @@
+import {
+  eventEvidenceSchemas,
+  type EventName,
+  type HarnessEvent,
+  type ItemState,
+  type NewHarnessEvent,
+} from '@uw/contracts';
+
+export type FoldableEvent = NewHarnessEvent | HarnessEvent;
+
+export class ReplayError extends Error {
+  readonly eventId: string;
+
+  constructor(message: string, eventId: string) {
+    super(message);
+    this.name = 'ReplayError';
+    this.eventId = eventId;
+  }
+}
+
+type Step = (state: ItemState, event: FoldableEvent) => ItemState;
+
+const releasedFields = {
+  holder: null,
+  claimantKind: null,
+  delegationId: null,
+  leaseExpiresAt: null,
+} as const;
+
+function created(event: FoldableEvent): ItemState {
+  const evidence = eventEvidenceSchemas.item_created.parse(event.evidence);
+  if (event.itemId === null) throw new ReplayError('item_created names no item', event.eventId);
+  return {
+    itemId: event.itemId,
+    harnessId: event.harnessId,
+    stageKey: evidence.stage,
+    title: evidence.title,
+    pageId: evidence.pageId,
+    priority: evidence.priority,
+    due: evidence.due,
+    ...releasedFields,
+    gateStatus: 'working',
+    gateTarget: null,
+    branchState: 'none',
+    expectedHead: null,
+    riskTier: null,
+    riskDomains: [],
+    pullRequest: null,
+    zulipTopic: null,
+  };
+}
+
+function claim(state: ItemState, event: FoldableEvent): ItemState {
+  const evidence = eventEvidenceSchemas.item_claimed.parse(event.evidence);
+  return {
+    ...state,
+    holder: evidence.holder,
+    claimantKind: evidence.claimantKind,
+    delegationId: evidence.delegationId,
+    leaseExpiresAt: evidence.leaseExpiresAt,
+  };
+}
+
+function release(state: ItemState): ItemState {
+  return { ...state, ...releasedFields };
+}
+
+function renewLease(state: ItemState, event: FoldableEvent): ItemState {
+  const evidence =
+    event.name === 'lease_renewed'
+      ? eventEvidenceSchemas.lease_renewed.parse(event.evidence)
+      : eventEvidenceSchemas.run_step_recorded.parse(event.evidence);
+  return { ...state, leaseExpiresAt: evidence.leaseExpiresAt };
+}
+
+function abandonBranch(state: ItemState): ItemState {
+  return { ...state, branchState: 'abandoned' };
+}
+
+function adoptBranch(state: ItemState): ItemState {
+  return { ...state, branchState: 'active' };
+}
+
+function submit(state: ItemState, event: FoldableEvent): ItemState {
+  const evidence = eventEvidenceSchemas.submitted_to_gate.parse(event.evidence);
+  const head =
+    evidence.expectedHead === null
+      ? {}
+      : { expectedHead: evidence.expectedHead, branchState: 'active' as const };
+  const pullRequest = evidence.pullRequest === null ? {} : { pullRequest: evidence.pullRequest };
+  const park =
+    evidence.result === 'parked'
+      ? { ...releasedFields, gateStatus: 'parked' as const, gateTarget: evidence.to }
+      : {};
+  return { ...state, ...head, ...pullRequest, ...park };
+}
+
+function failChecks(state: ItemState): ItemState {
+  return { ...state, gateStatus: 'checks_failed' };
+}
+
+function advance(state: ItemState, event: FoldableEvent): ItemState {
+  const evidence = eventEvidenceSchemas.stage_advanced.parse(event.evidence);
+  const settled = { ...state, ...releasedFields, gateTarget: null };
+  if (evidence.to === null) return { ...settled, gateStatus: 'done' };
+  return { ...settled, stageKey: evidence.to, gateStatus: 'working' };
+}
+
+function takeLoopEdge(state: ItemState, event: FoldableEvent): ItemState {
+  const evidence = eventEvidenceSchemas.loop_edge_taken.parse(event.evidence);
+  return {
+    ...state,
+    ...releasedFields,
+    stageKey: evidence.to,
+    gateStatus: 'working',
+    gateTarget: null,
+  };
+}
+
+function reject(state: ItemState): ItemState {
+  return { ...state, gateStatus: 'working', gateTarget: null };
+}
+
+function takeOver(state: ItemState, event: FoldableEvent): ItemState {
+  const evidence = eventEvidenceSchemas.gate_taken_over.parse(event.evidence);
+  return {
+    ...state,
+    holder: evidence.holder,
+    claimantKind: 'person',
+    delegationId: null,
+    leaseExpiresAt: null,
+    gateStatus: 'working',
+    gateTarget: null,
+  };
+}
+
+function deriveRisk(state: ItemState, event: FoldableEvent): ItemState {
+  const evidence = eventEvidenceSchemas.risk_derived.parse(event.evidence);
+  return { ...state, riskTier: evidence.riskTier, riskDomains: evidence.riskDomains };
+}
+
+const steps: ReadonlyMap<EventName, Step> = new Map<EventName, Step>([
+  ['item_claimed', claim],
+  ['item_released', release],
+  ['lease_expired', release],
+  ['lease_renewed', renewLease],
+  ['run_step_recorded', renewLease],
+  ['branch_abandoned', abandonBranch],
+  ['branch_adopted', adoptBranch],
+  ['submitted_to_gate', submit],
+  ['checks_failed', failChecks],
+  ['stage_advanced', advance],
+  ['loop_edge_taken', takeLoopEdge],
+  ['gate_rejected', reject],
+  ['gate_taken_over', takeOver],
+  ['risk_derived', deriveRisk],
+]);
+
+export function foldItem(state: ItemState | null, event: FoldableEvent): ItemState {
+  if (event.name === 'item_created') {
+    if (state !== null) throw new ReplayError('item_created twice', event.eventId);
+    return created(event);
+  }
+  if (state === null) throw new ReplayError(`${event.name} before item_created`, event.eventId);
+  const step = steps.get(event.name);
+  return step === undefined ? state : step(state, event);
+}
+
+export function replay(events: readonly FoldableEvent[]): ItemState | null {
+  return events.reduce<ItemState | null>(foldItem, null);
+}
