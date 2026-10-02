@@ -200,7 +200,7 @@ async function submitIn(
     item,
     stage,
     exit,
-    tweak: isOccasionalTweak(stages, exit),
+    tweak: isOccasionalTweak(exit),
     input,
   });
   const recorded = await recordItemEvents(tx, context, item.itemId, decision.drafts);
