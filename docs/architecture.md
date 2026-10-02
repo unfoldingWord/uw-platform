@@ -43,10 +43,10 @@ sim/                → harness, contracts, db                composition root
 createKernel(ports: Ports): Kernel
 
 Kernel = {
-  harnesses, stages, items, runs, gates, delegations, personas,
-  replay(events): ItemState,
-  shipRule(inputs): Advance | Refuse,
-  walk(template): Path[],
+  walk(stages): WalkPath[],
+  templateProperty, shipRule, replay,
+  events, items, repair, stages, delegations, gates,
+  health(),
 }
 ```
 
@@ -78,7 +78,7 @@ Every port has a platform adapter and a test adapter, and may have more than one
 | Guarantee | Embedded Postgres, in the sim and unit tests | Postgres service container in CI |
 |---|---|---|
 | The null-safe stage check: `('merge','checks')` and `('merge', NULL)` refused on insert and update | yes | yes |
-| `harness_events` refuses UPDATE and DELETE | yes | yes |
+| `harness_events` refuses UPDATE and DELETE; positions are assigned in order under a per-harness lock held to commit | yes | yes, with two connections for the position order; the `uw_app` role's missing UPDATE, DELETE and TRUNCATE grants |
 | Claim is one conditional UPDATE: a second claim on a held item is refused | yes, sequentially | yes, with N concurrent connections |
 | WIP limit: the count and the claim are one transaction | yes, sequentially | yes, with two claims racing one slot |
 | The gate decision's locked grant re-read: revoke then decide, and decide then revoke | no; it needs two connections | yes |
@@ -116,7 +116,7 @@ The MCP surface serves exactly the verb registry and nothing else. There is no v
 
 ## The sim
 
-`sim/` is the kernel on test adapters. `createWorld()` gives a scenario one clone of an embedded Postgres migrated once per process, the ten test adapters, one settable clock starting `2026-10-01T09:00:00.000Z`, and `createKernel` over them; `createSimHarness(template, fixture)` arrives with the templates in step 3. Scenarios in `sim/scenarios/` are named for the PRD requirement they prove: `KN-10.feeds-edge-cannot-bypass-ship.ts`, `KN-13.agent-cannot-write-decision.ts`, `KN-16.delegation-lapses-when-grant-revoked.ts`, `DX-7.software-template-end-to-end.ts`. Assertions are on the event log and the folded item state.
+`sim/` is the kernel on test adapters. `createWorld()` gives a scenario one clone of an embedded Postgres migrated once per process, the ten test adapters, one settable clock starting `2026-10-01T09:00:00.000Z`, and `createKernel` over them; `createSimHarness(template, fixture)` builds a harness from a template. Scenarios in `sim/scenarios/` are named for the PRD requirement they prove: `KN-10.activation-refuses-a-bypass.ts`, `KN-13.agent-cannot-write-decision.ts`, `KN-16.delegation-lapses-when-grant-revoked.ts`, `DX-7.software-template-end-to-end.ts`. Assertions are on the event log and the folded item state.
 
 The cockpit (PRD DX-4, DX-5):
 
