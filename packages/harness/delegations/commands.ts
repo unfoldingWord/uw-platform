@@ -51,8 +51,11 @@ async function supersession(
   const sameBinding =
     old.personId === personId && old.harnessId === next.harnessId && old.persona === next.persona;
   if (!sameBinding) return refused('not_permitted', { delegationId: old.id });
+  if (old.revokedAt !== null) return refused('stale_version', { delegationId: old.id });
+  if (old.lapsedAt !== null || old.expiresAt.getTime() <= at.getTime()) return [];
   const changed = await tx.delegations.write.revoke(old.id, at);
-  return changed ? [draft('delegation_revoked', { delegationId: old.id })] : [];
+  if (!changed) return refused('stale_version', { delegationId: old.id });
+  return [draft('delegation_revoked', { delegationId: old.id })];
 }
 
 function draftOf(
@@ -191,7 +194,7 @@ async function beatIn(
   }
   const harness = await tx.harnesses.read.byId(found.harnessId);
   if (harness === null) return refused('harness_not_found', { harnessId: found.harnessId });
-  const principal = beatPrincipal(liveness.delegation, liveness.grants, harness.jdArea);
+  const principal = beatPrincipal(liveness.delegation, liveness.grants, harness.jdArea, at);
   return accepted({ delegation: liveness.delegation, principal });
 }
 

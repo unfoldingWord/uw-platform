@@ -24,7 +24,7 @@ async function holdsAdmin(
   const harness = await tx.harnesses.read.byId(delegation.harnessId);
   if (harness === null) return null;
   const grants = await ports.grants.resolveIn(tx, delegation.personId, at);
-  return adminGrantOn(delegation, grants, harness.jdArea) === null ? null : grants;
+  return adminGrantOn(delegation, grants, harness.jdArea, at) === null ? null : grants;
 }
 
 export async function assertDelegationLive(

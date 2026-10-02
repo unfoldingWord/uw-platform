@@ -2,7 +2,6 @@ import type { Grant, Identity, JdArea, Principal } from '@uw/contracts';
 import { allowed } from '../access.ts';
 import type { Delegation } from '../ports.ts';
 
-const BEFORE_ANY_EXPIRY = new Date(0);
 const ASSUMING = ' as ';
 const VIA_DELEGATION = ' via delegation:';
 
@@ -31,24 +30,29 @@ export function adminGrantOn(
   delegation: Delegation,
   grants: readonly Grant[],
   area: JdArea,
+  at: Date,
 ): Grant | null {
   const found = grants.find((grant) =>
-    allowed(delegatePrincipal(delegation, [grant]), 'admin', { jdArea: area }, BEFORE_ANY_EXPIRY),
+    allowed(delegatePrincipal(delegation, [grant]), 'admin', { jdArea: area }, at),
   );
   return found ?? null;
 }
 
 function earlier(grantExpiry: string | null, delegationExpiry: Date): string {
-  const own = delegationExpiry.toISOString();
-  return grantExpiry !== null && grantExpiry < own ? grantExpiry : own;
+  if (grantExpiry === null) return delegationExpiry.toISOString();
+  const grantMs = new Date(grantExpiry).getTime();
+  return grantMs < delegationExpiry.getTime()
+    ? new Date(grantMs).toISOString()
+    : delegationExpiry.toISOString();
 }
 
 export function beatPrincipal(
   delegation: Delegation,
   grants: readonly Grant[],
   area: JdArea,
+  at: Date,
 ): Principal {
-  const held = delegation.capability === 'none' ? null : adminGrantOn(delegation, grants, area);
+  const held = delegation.capability === 'none' ? null : adminGrantOn(delegation, grants, area, at);
   if (held === null) return delegatePrincipal(delegation, []);
   return delegatePrincipal(delegation, [
     {
