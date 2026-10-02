@@ -57,6 +57,7 @@ type Body = Record<string, unknown>;
 type SettableClock = { now(): Date; advance(milliseconds: number): void };
 type Rig = {
   readonly db: Database;
+  readonly second: Database;
   readonly clock: SettableClock;
   readonly fixture: AccessFixture;
   readonly kernel: Kernel;
@@ -99,17 +100,19 @@ async function bind(r: Rig, owner: Owner): Promise<void> {
 async function openRig(): Promise<Rig> {
   const database = await createMigratedDatabase(testServer ?? '');
   const db = createClient(database.connectionString);
+  const second = createClient(database.connectionString);
   const clock = settableClock();
   await seedOwner(db, KIM);
   await seedOwner(db, LEE);
   await seedOwner(db, ADA);
   const ian = await personOn(db, IAN_ID, 'ian.lindsley@unfoldingword.org', clock.now());
   const drop = async () => {
-    await db.$client.end();
+    await Promise.all([db.$client.end(), second.$client.end()]);
     await database.drop();
   };
   const r = {
     db,
+    second,
     clock,
     fixture: await createAccessFixture(),
     kernel: kernelOn(db, clock),
@@ -183,14 +186,24 @@ function delegationHeaders(delegationId: string | null): Record<string, string> 
   return { 'x-uw-persona': 'iterate', 'x-uw-delegation': delegationId };
 }
 
-async function connect(r: Rig, headers: Record<string, string>): Promise<Client> {
-  const app = createApp(postgresDeps(r.db, r.fixture, undefined, r.clock));
+async function connect(
+  r: Rig,
+  headers: Record<string, string>,
+  db: Database = r.db,
+): Promise<Client> {
+  const app = createApp(postgresDeps(db, r.fixture, undefined, r.clock));
   return httpClient(app, headers);
 }
 
-async function routine(r: Rig, owner: Owner, delegationId: string | null): Promise<Client> {
+async function routine(
+  r: Rig,
+  owner: Owner,
+  delegationId: string | null,
+  db: Database = r.db,
+): Promise<Client> {
   const token = await r.fixture.sign({ common_name: owner.client });
-  return connect(r, { 'cf-access-jwt-assertion': token, ...delegationHeaders(delegationId) });
+  const headers = { 'cf-access-jwt-assertion': token, ...delegationHeaders(delegationId) };
+  return connect(r, headers, db);
 }
 
 async function login(r: Rig, owner: Owner, delegationId: string): Promise<Client> {
@@ -234,7 +247,7 @@ async function lapses(r: Rig, scene: Scene, delegationId: string) {
   return log
     .filter((event) => event.name === 'delegation_lapsed')
     .filter((event) => event.evidence['delegationId'] === delegationId)
-    .map((event) => event.evidence['why']);
+    .map((event) => [event.evidence['why'], event.actor]);
 }
 
 async function claimedLive(r: Rig, scene: Scene, n: number) {
@@ -279,10 +292,11 @@ async function stopsWhenRevoked(): Promise<void> {
     reason: 'delegation_lapsed',
     detail: { delegationId, why: 'revoked' },
   };
+  const revokedBy = [['revoked', routineIdentity(KIM, delegationId)]];
   expect(await step(runner, at(scene, 0))).toEqual(lapsed);
-  expect(await lapses(r, scene, delegationId)).toEqual(['revoked']);
+  expect(await lapses(r, scene, delegationId)).toEqual(revokedBy);
   expect(await submit(runner, at(scene, 0))).toEqual(lapsed);
-  expect(await lapses(r, scene, delegationId)).toEqual(['revoked']);
+  expect(await lapses(r, scene, delegationId)).toEqual(revokedBy);
   const item = value(await r.kernel.reads.item(caller(r.ian), { itemId: at(scene, 0) })).item;
   expect(item.stageKey).toBe('package');
 }
@@ -294,16 +308,36 @@ async function stopsWhenAdminIsLost(): Promise<void> {
   const runner = await routine(r, LEE, delegationId);
   expect(await claim(runner, at(scene, 0), delegationId)).toMatchObject({ itemId: at(scene, 0) });
   await revokeSeededGrant(r.db, LEE.adminGrant, r.clock.now());
+  const lostBy = [['grant_lost', routineIdentity(LEE, delegationId)]];
   expect(await step(runner, at(scene, 0))).toEqual({
     status: 'error',
     reason: 'delegation_lapsed',
     detail: { delegationId, why: 'grant_lost' },
   });
-  expect(await lapses(r, scene, delegationId)).toEqual(['grant_lost']);
+  expect(await lapses(r, scene, delegationId)).toEqual(lostBy);
   const row = await platformStore(r.db).transaction((tx) => tx.delegations.read.byId(delegationId));
   expect(row?.lapsedAt).toEqual(r.clock.now());
   expect(await submit(runner, at(scene, 0))).toMatchObject({ reason: 'delegation_lapsed' });
-  expect(await lapses(r, scene, delegationId)).toEqual(['grant_lost']);
+  expect(await lapses(r, scene, delegationId)).toEqual(lostBy);
+}
+
+async function lapsesOnceUnderRace(): Promise<void> {
+  const r = await rig();
+  const scene = await sceneOf(r, 'delegated-race', 1);
+  const { delegationId } = await claimedLive(r, scene, 0);
+  const first = await routine(r, KIM, delegationId);
+  const second = await routine(r, KIM, delegationId, r.second);
+  await revoke(r, KIM, delegationId);
+  const replies = await Promise.all([step(first, at(scene, 0)), step(second, at(scene, 0))]);
+  const lapsed = {
+    status: 'error',
+    reason: 'delegation_lapsed',
+    detail: { delegationId, why: 'revoked' },
+  };
+  expect(replies).toEqual([lapsed, lapsed]);
+  expect(await lapses(r, scene, delegationId)).toEqual([
+    ['revoked', routineIdentity(KIM, delegationId)],
+  ]);
 }
 
 async function refusesAnotherPersonsDelegation(): Promise<void> {
@@ -333,6 +367,10 @@ describe.skipIf(!testServer)(
     it(
       'stops with one delegation_lapsed and lapses the delegation when the owner loses admin',
       stopsWhenAdminIsLost,
+    );
+    it(
+      'writes one delegation_lapsed when two connections step under a revoked delegation',
+      lapsesOnceUnderRace,
     );
     it(
       "refuses another person's delegation as delegation_not_found, alike to a missing one",
@@ -381,16 +419,44 @@ function polled(reply: Body): unknown[] {
   return Array.isArray(items) ? items.map((item: Body) => item['itemId']) : [];
 }
 
-async function seesOnlyItsDelegation(): Promise<void> {
+async function pollsOnlyItsDelegation(): Promise<void> {
   const r = await rig();
   const scene = await sceneOf(r, 'delegated-poll', 1);
-  const elsewhere = await sceneOf(r, 'delegated-poll-other', 1);
+  await sceneOf(r, 'delegated-poll-other', 1);
   const live = await routine(r, KIM, await delegate(r, KIM, scene.harnessId));
   expect(polled(await body(live, 'poll_queue', { harnessId: null, limit: 10 }))).toEqual([
     at(scene, 0),
   ]);
   const idle = await routine(r, KIM, await delegate(r, KIM, scene.harnessId, 'none'));
   expect(await body(idle, 'poll_queue', { harnessId: null, limit: 10 })).toEqual({ items: [] });
+}
+
+async function pollsNothingWhenRevoked(): Promise<void> {
+  const r = await rig();
+  const scene = await sceneOf(r, 'delegated-poll-revoked', 1);
+  const delegationId = await delegate(r, KIM, scene.harnessId);
+  const runner = await routine(r, KIM, delegationId);
+  await revoke(r, KIM, delegationId);
+  expect(await body(runner, 'poll_queue', { harnessId: null, limit: 10 })).toEqual({
+    status: 'error',
+    reason: 'delegation_lapsed',
+    detail: { delegationId, why: 'revoked' },
+  });
+}
+
+describe.skipIf(!testServer)(
+  'AB-4 a delegated runner polls only what its delegation may act on',
+  () => {
+    it('polls its own harness, and nothing under capability none', pollsOnlyItsDelegation);
+    it('polls nothing under a revoked delegation', pollsNothingWhenRevoked);
+  },
+);
+
+async function hidesAnotherHarness(): Promise<void> {
+  const r = await rig();
+  const scene = await sceneOf(r, 'delegated-hidden', 1);
+  const elsewhere = await sceneOf(r, 'delegated-hidden-other', 1);
+  const live = await routine(r, KIM, await delegate(r, KIM, scene.harnessId));
   const outside = await claim(live, at(elsewhere, 0), null);
   const missing = await claim(live, MISSING, null);
   expect(outside).toEqual({
@@ -430,20 +496,14 @@ async function revokedReadsNothing(): Promise<void> {
   const hidden = await claim(runner, at(scene, 0), delegationId);
   const absent = await claim(runner, MISSING, delegationId);
   expect(JSON.stringify(hidden)).toBe(JSON.stringify(absent));
-  expect(await body(runner, 'poll_queue', { harnessId: null, limit: 10 })).toMatchObject({
-    reason: 'delegation_lapsed',
-  });
 }
 
 describe.skipIf(!testServer)(
-  'AB-4 a delegated runner sees only what its delegation may act on',
+  'AB-3 a delegated runner is answered alike for an item it cannot read and a missing one',
   () => {
+    it('hides an item on another harness as a missing one', hidesAnotherHarness);
     it(
-      'polls its own harness, nothing under capability none, and hides another harness as missing',
-      seesOnlyItsDelegation,
-    );
-    it(
-      'reads no scene under a revoked delegation, and answers hidden and missing alike',
+      'reads no scene under a revoked delegation, and answers hidden and missing claims alike',
       revokedReadsNothing,
     );
   },

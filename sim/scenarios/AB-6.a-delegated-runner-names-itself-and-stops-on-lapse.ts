@@ -100,12 +100,16 @@ async function itemLog(scene: Cast, itemId: string): Promise<readonly HarnessEve
   return (await harnessLog(scene)).filter((event) => event.itemId === itemId);
 }
 
-async function lapsesOf(scene: Cast, delegationId: string): Promise<number> {
+async function lapseEvents(scene: Cast, delegationId: string): Promise<readonly HarnessEvent[]> {
   const log = await harnessLog(scene);
   return log.filter(
     (event) =>
       event.name === 'delegation_lapsed' && event.evidence['delegationId'] === delegationId,
-  ).length;
+  );
+}
+
+async function lapsesOf(scene: Cast, delegationId: string): Promise<number> {
+  return (await lapseEvents(scene, delegationId)).length;
 }
 
 function step(caller: Caller, scene: Cast, itemId: string) {
@@ -168,9 +172,11 @@ async function lapsedRun(scene: Cast, caller: Caller, delegationId: string): Pro
     }),
   );
   assert.equal(reasonOf(await step(caller, scene, second)), 'delegation_lapsed');
-  assert.equal(await lapsesOf(scene, delegationId), 1);
+  const lapsedBy = [caller.actor.identity];
+  const actors = async () => (await lapseEvents(scene, delegationId)).map((event) => event.actor);
+  assert.deepEqual(await actors(), lapsedBy);
   assert.equal(reasonOf(await submit(caller, scene, second)), 'delegation_lapsed');
-  assert.equal(await lapsesOf(scene, delegationId), 1);
+  assert.deepEqual(await actors(), lapsedBy);
 }
 
 async function interactiveClaim(scene: Cast): Promise<void> {
