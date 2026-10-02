@@ -24,25 +24,29 @@ async function countByEmail(opened: OpenedDatabase, address: string): Promise<nu
 }
 
 function describeTarget(target: DatabaseTarget): void {
-  let opened: OpenedDatabase;
+  let open: OpenedDatabase | undefined;
   beforeAll(async () => {
-    opened = await target.open();
+    open = await target.open();
   });
-  afterAll(() => opened.close());
+  afterAll(() => open?.close());
+  const opened = (): OpenedDatabase => {
+    if (open === undefined) throw new Error('the database did not open');
+    return open;
+  };
 
   it('rolls back a write when the work throws', async () => {
-    await expect(writeThenFail(opened)).rejects.toThrow('after the write');
-    expect(await countByEmail(opened, email)).toBe(0);
+    await expect(writeThenFail(opened())).rejects.toThrow('after the write');
+    expect(await countByEmail(opened(), email)).toBe(0);
   });
 
   it('commits a write when the work returns', async () => {
     const committed = 'commit@fixture.unfoldingword.org';
-    await createDrizzleStore(opened.db).transaction(async (tx) => {
+    await createDrizzleStore(opened().db).transaction(async (tx) => {
       await executorOf(tx)
         .insert(people)
         .values({ email: committed, displayName: 'Commit', status: 'active' });
     });
-    expect(await countByEmail(opened, committed)).toBe(1);
+    expect(await countByEmail(opened(), committed)).toBe(1);
   });
 }
 
