@@ -12,13 +12,12 @@ function main(args: readonly string[]): number {
     return 1;
   }
   if (selector === 'all') {
-    if (templates.size === 0) process.stdout.write('no templates registered yet\n');
     print([...templates.values()]);
     return 0;
   }
   const template = templates.get(selector);
   if (!template) {
-    const registered = [...templates.keys()].join(', ') || 'none';
+    const registered = [...templates.keys()].join(', ');
     process.stderr.write(`unknown template ${selector}; registered: ${registered}\n`);
     return 1;
   }

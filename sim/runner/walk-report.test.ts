@@ -1,9 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import type { Template, WalkStage } from '@uw/harness';
+import type { Template, TemplateStage } from '@uw/harness';
 import { formatTemplateWalk } from './walk-report.ts';
 
-function stage(key: string, position: number, extra: Partial<WalkStage> = {}): WalkStage {
-  return { key, position, exitGate: 'none', connector: 'none', feeds: [], ...extra };
+function stage(key: string, position: number, extra: Partial<TemplateStage> = {}): TemplateStage {
+  return {
+    key,
+    position,
+    exitGate: 'none',
+    connector: 'none',
+    feeds: [],
+    title: key,
+    bracket: 'build_package',
+    agentPickup: 'allowed',
+    wipLimit: 3,
+    validators: [],
+    ...extra,
+  };
 }
 
 const eightStages: Template = {
