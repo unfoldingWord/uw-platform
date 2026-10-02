@@ -38,9 +38,8 @@ function listLine(values: readonly string[]): string {
   return values.length === 0 ? 'none' : values.join(', ');
 }
 
-function rendered(declaration: PullRequestDeclaration): string {
+function rendered(declaration: PullRequestDeclaration): readonly string[] {
   return [
-    'Some prose.',
     '```harness',
     `closes: ${listLine(declaration.closes)}`,
     `risks: ${declaration.risks}`,
@@ -48,80 +47,98 @@ function rendered(declaration: PullRequestDeclaration): string {
     `risk_tier: ${declaration.riskTier}`,
     `risk_domains: ${listLine(declaration.riskDomains)}`,
     '```',
-  ].join('\n');
+  ];
 }
 
-const linePool = fc.constantFrom(
-  '```harness',
-  '```harnessx',
+const tailPool = fc.constantFrom(
+  'prose about the change',
+  'Closes #12',
+  '```ts',
+  'const tier = 1;',
   '```',
-  ' ```harness',
-  'closes: #12',
-  'closes: none',
-  'risks: slower',
-  'touches: apps',
-  'risk_tier: high',
-  'risk_tier: medium',
-  'risk_domains: acl, migration',
-  'risk_domains: acl, acl',
-  'owner: me',
-  'risk_tier standard',
+  '~~~',
+  '',
+  '```harness',
+  '``` harness',
+  '~~~harness',
+  '````harness',
+  '```Harness',
+  '> ```harness',
+  '- ```harness',
+  '1. risk_tier: high',
+  '> risk_tier: high',
+  '| risk_tier | high |',
+  '## risk tier: **HIGH**',
   'Risk_Tier: low',
   '  touches : apps',
+  '<?',
+  '?>',
+  '<![CDATA[',
+  ']]>',
   '<!--',
   '-->',
-  '``` harness',
-  '  ```harness',
-  '```harness\u200B',
-  '```h\u0430rness',
-  '~~~harness',
-  '````harness',
-  '```Harness',
-  '````',
-  '~~~',
-  '```ts',
-  'prose about the change',
+  '<!X',
+  '<details>',
+  '</details>',
+  'a\rb',
+  'a\u2028b',
+  'a\u2029b',
+  'a\u0085b',
+  'a\fb',
+  'a\vb',
+  '\uFEFF',
+);
+
+const prefixPool = fc.constantFrom(
+  'Adds the board.',
   '',
-  '\r',
+  '<details>',
+  '<?',
+  ' ',
+  '> note',
+  '\uFEFF',
 );
+const innerPool = fc.constantFrom('~~~', '````', '  ```', '```ts', '~~~harness', ' ```');
+const separators = fc.constantFrom('\n', '\r\n');
 
-const surrounded = fc
-  .tuple(fc.array(linePool, { maxLength: 6 }), declarations, fc.array(linePool, { maxLength: 6 }))
-  .map(([before, declaration, after]) => [...before, rendered(declaration), ...after].join('\n'));
+const headFirst = fc
+  .tuple(declarations, fc.array(tailPool, { maxLength: 6 }), separators)
+  .map(([declaration, tail, separator]) => [...rendered(declaration), ...tail].join(separator));
 
-const lookalikeOpenings = fc.constantFrom(
-  '``` harness',
-  '  ```harness',
-  '```harness\u200B',
-  '```h\u0430rness',
-  '~~~harness',
-  '````harness',
-  '```Harness',
-  '\u200B```harness',
-);
+const prefixed = fc
+  .tuple(fc.array(prefixPool, { minLength: 1, maxLength: 3 }), declarations, separators)
+  .map(([prefix, declaration, separator]) => [...prefix, ...rendered(declaration)].join(separator));
 
-const relabelled = fc
-  .tuple(lookalikeOpenings, declarations)
-  .map(([opening, declaration]) => rendered(declaration).replace('```harness', opening));
+const fencedInside = fc
+  .tuple(declarations, innerPool, fc.integer({ min: 1, max: 5 }))
+  .map(([declaration, inner, at]) => {
+    const lines = [...rendered(declaration)];
+    lines.splice(at, 0, inner);
+    return lines.join('\n');
+  });
 
 const bodies = fc.oneof(
-  surrounded,
-  relabelled,
+  headFirst,
+  prefixed,
+  fencedInside,
   fc.string({ unit: 'grapheme', maxLength: 400 }),
   fc
-    .array(fc.oneof(linePool, fc.string({ maxLength: 30 })), { maxLength: 30 })
+    .array(fc.oneof(tailPool, fc.string({ maxLength: 30 })), { maxLength: 30 })
     .map((lines) => lines.join('\n')),
-  fc.array(linePool, { maxLength: 30 }).map((lines) => lines.join('\r\n')),
 );
 
-const keyLine = /^(?:closes|risks|touches|risk_tier|risk_domains)\s*:/u;
+const keyLine = /^(?:closes|risks|touches|risktier|riskdomains)[:|]/u;
 const fenceRun = /^(?:`{3,}|~{3,})/u;
+const forbidden = ['\u0085', '\u2028', '\u2029', '\f', '\v', '\uFEFF', '<!', '<?'];
 
-function detected(line: string): string {
-  return line
-    .normalize('NFKC')
-    .replace(/\p{Cf}/gu, '')
-    .trimStart();
+function stripped(line: string): string {
+  let rest = line.normalize('NFKC').replace(/\p{Cf}/gu, '');
+  let previous = '';
+  while (rest !== previous) {
+    previous = rest;
+    rest = rest.replace(/^[\s>|#*+-]+/u, '').replace(/^\d{1,9}[.)]/u, '');
+  }
+  return rest;
 }
 
 function isCandidate(line: string): boolean {
@@ -131,34 +148,59 @@ function isCandidate(line: string): boolean {
   return info.toLowerCase().includes('harness') || /[^\x20-\x7e]/u.test(info);
 }
 
-function assertUnambiguous(body: string): void {
-  expect(body.includes('<!--')).toBe(false);
-  const raw = body.split(/\r?\n/u).map((line) => line.trimEnd());
-  const seen = raw.map(detected);
-  const candidates = seen.flatMap((line, index) => (isCandidate(line) ? [index] : []));
-  expect(candidates).toHaveLength(1);
-  const start = candidates[0] ?? -1;
-  expect(raw[start]).toBe('```harness');
-  const end = raw.indexOf('```', start + 1);
-  const outside = seen.filter((_line, index) => index < start || index > end);
-  expect(outside.filter((line) => keyLine.test(line.toLowerCase()))).toEqual([]);
+function isKeyLine(line: string): boolean {
+  return keyLine.test(line.toLowerCase().replace(/[\s*_`]/gu, ''));
+}
+
+function headLines(body: string): readonly string[] {
+  return body.split(/\r?\n/u);
+}
+
+function closeOf(lines: readonly string[]): number {
+  return lines.indexOf('```', 1);
+}
+
+function fenceInsideBlock(lines: readonly string[]): boolean {
+  const close = closeOf(lines);
+  const inside = lines.slice(1, close === -1 ? lines.length : close);
+  return inside.some((line) => fenceRun.test(line.trim()));
+}
+
+function passesOuterRules(body: string): boolean {
+  return (
+    /\r(?!\n)/u.test(body) === false &&
+    forbidden.every((mark) => !body.includes(mark)) &&
+    headLines(body)[0] === '```harness'
+  );
+}
+
+function assertAllowlisted(body: string): void {
+  expect(passesOuterRules(body)).toBe(true);
+  const lines = headLines(body);
+  expect(fenceInsideBlock(lines)).toBe(false);
+  const after = lines.slice(closeOf(lines) + 1).map(stripped);
+  expect(after.filter((line) => isCandidate(line) || isKeyLine(line))).toEqual([]);
 }
 
 function assertWellFormed(body: string): void {
   const result = parseDeclaration(body);
-  if (!result.ok) {
-    expect(problems.has(result.problem)).toBe(true);
+  if (result.ok) {
+    expect(pullRequestDeclarationSchema.parse(result.declaration)).toEqual(result.declaration);
+    assertAllowlisted(body);
     return;
   }
-  expect(pullRequestDeclarationSchema.parse(result.declaration)).toEqual(result.declaration);
-  assertUnambiguous(body);
+  expect(problems.has(result.problem)).toBe(true);
+  if (body.length <= 65_536 && passesOuterRules(body) && fenceInsideBlock(headLines(body))) {
+    expect(result.problem).toBe('ambiguous_block');
+  }
 }
 
 function assertReadsBack(declaration: PullRequestDeclaration): void {
   const riskDomains = riskDomainSchema.options.filter((domain) =>
     declaration.riskDomains.includes(domain),
   );
-  expect(parseDeclaration(rendered(declaration))).toEqual({
+  const body = [...rendered(declaration), '', 'Adds the board.'].join('\n');
+  expect(parseDeclaration(body)).toEqual({
     ok: true,
     declaration: { ...declaration, riskDomains },
   });
@@ -169,12 +211,12 @@ function assertTooLong(length: number): void {
   expect(parseDeclaration(body)).toEqual({ ok: false, problem: 'too_long' });
 }
 
-describe('P16 any PR body parses to one unambiguous declaration or one closed-set problem', () => {
-  it('never throws, and declares only from one exact block with no lookalike and no stray key line', () => {
-    fc.assert(fc.property(bodies, assertWellFormed), { numRuns: 1000 });
+describe('P16 any PR body parses to one allowlisted head declaration or one closed-set problem', () => {
+  it('never throws, and declares only from a head block with nothing ambiguous after it', () => {
+    fc.assert(fc.property(bodies, assertWellFormed), { numRuns: 2000 });
   });
 
-  it('reads back every declaration it is written from, domains in schema order', () => {
+  it('reads back every head declaration it is written from, domains in schema order', () => {
     fc.assert(fc.property(declarations, assertReadsBack), { numRuns: 500 });
   });
 
