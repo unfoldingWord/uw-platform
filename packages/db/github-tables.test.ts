@@ -69,6 +69,7 @@ function prRow(githubId: number, change: Partial<PrRow> = {}): PrRow {
     headSha: sha40,
     headRef: 'harness/item',
     baseRef: 'main',
+    baseSha: sha40,
     githubUpdatedAt: freshAt,
     freshAt,
     ...change,
@@ -289,6 +290,16 @@ const columnRefusals: [string, (db: Db) => PromiseLike<unknown>, string][] = [
     'an abbreviated head for a PR file list',
     (db) => db.insert(schema.ghPrs).values(prRow(9100000702, { filesHead: 'abc123' })),
     'gh_prs_files_head_form',
+  ],
+  [
+    'an abbreviated base for a PR',
+    (db) => db.insert(schema.ghPrs).values(prRow(9100000703, { baseSha: 'abc123' })),
+    'gh_prs_base_sha_form',
+  ],
+  [
+    'an abbreviated base for a PR file list',
+    (db) => db.insert(schema.ghPrs).values(prRow(9100000704, { filesBase: 'abc123' })),
+    'gh_prs_files_base_form',
   ],
   [
     'an abbreviated commit on a review',
