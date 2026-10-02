@@ -1,6 +1,7 @@
 import {
   capabilityWordSchema,
   eventSchema,
+  gateDecisionSchema,
   identitySchema,
   harnessSchema,
   itemStateSchema,
@@ -12,12 +13,13 @@ import {
 } from '@uw/contracts';
 import type {
   delegations,
+  gateDecisions,
   harnessEvents,
   harnessItems,
   harnessStages,
   harnesses,
 } from '../schema.ts';
-import type { Delegation } from './types.ts';
+import type { Delegation, GateDecisionRow } from './types.ts';
 
 export function toHarness(row: typeof harnesses.$inferSelect): Harness {
   return harnessSchema.parse({
@@ -102,5 +104,20 @@ export function toDelegation(row: typeof delegations.$inferSelect): Delegation {
     revokedAt: row.revokedAt,
     lapsedAt: row.lapsedAt,
     supersedes: row.supersedes,
+  };
+}
+
+export function toGateDecision(row: typeof gateDecisions.$inferSelect): GateDecisionRow {
+  return {
+    id: row.id,
+    harnessId: row.harnessId,
+    itemId: row.itemId,
+    stageId: row.stageId,
+    actor: identitySchema.parse(row.actor),
+    decision: gateDecisionSchema.parse(row.decision),
+    reason: row.reason,
+    evidence: eventSchema.shape.evidence.parse(row.evidence),
+    traceId: row.traceId,
+    decidedAt: row.decidedAt,
   };
 }

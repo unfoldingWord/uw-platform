@@ -60,6 +60,7 @@ describe('DX-2 executorOf', () => {
       harnessStages: untouched(),
       harnessItems: untouched(),
       harnessEvents: untouched(),
+      gateDecisions: untouched(),
       delegations: untouched(),
       pages: untouched(),
     };
