@@ -27,9 +27,16 @@ const stage = stageKeySchema;
 const text = z.string().min(1).max(500);
 const head = z.string().min(1).max(64);
 const effect = connectorSchema.exclude(['none']);
-const stageColumns = z.strictObject(
+const stageColumnSchema = z.strictObject(
   stageSchema.omit({ id: true, harnessId: true }).partial().shape,
 );
+const stageColumns = z.record(z.string(), z.json()).superRefine((columns, context) => {
+  const result = stageColumnSchema.safeParse(columns);
+  if (result.success) return;
+  for (const issue of result.error.issues) {
+    context.addIssue({ code: 'custom', path: issue.path, message: issue.message });
+  }
+});
 const tokens = z.number().int().min(0);
 const nonBlank = z
   .string()
