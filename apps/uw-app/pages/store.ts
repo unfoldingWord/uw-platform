@@ -4,6 +4,7 @@ import {
   type CreatePageCommand,
   type ErrorReason,
   type Page,
+  type PageStatus,
   type UpdatePageCommand,
 } from '@uw/contracts';
 import { can } from '@uw/core/acl';
@@ -18,6 +19,17 @@ export const owns = ['pages', 'page_versions'] as const;
 
 export type PageResult =
   { readonly ok: true; readonly page: Page } | { readonly ok: false; readonly reason: ErrorReason };
+
+export type PageRefusal = {
+  readonly ok: false;
+  readonly reason: ErrorReason;
+  readonly detail: Readonly<Record<string, string | readonly string[]>>;
+};
+
+type CheckedSave = {
+  readonly command: Omit<UpdatePageCommand, 'status'>;
+  readonly statusFor: (stored: Page) => PageStatus | PageRefusal;
+};
 
 type PageRow = typeof pages.$inferSelect;
 
@@ -188,26 +200,62 @@ async function writeUpdate(
   return { ok: true, page: toPage(row) };
 }
 
-async function updateInTransaction(
+async function lockedPage(
   tx: Transaction,
   actor: Principal,
-  command: UpdatePageCommand,
-  traceId: string,
+  pageId: string,
   at: Date,
-): Promise<PageResult> {
+): Promise<Page | null> {
+  const [row] = await tx.select().from(pages).where(eq(pages.id, pageId)).for('update');
+  if (!row) return null;
+  const page = toPage(row);
+  return can(actor, 'read', { kind: 'area', area: page.jdArea }, at) ? page : null;
+}
+
+type Save = {
+  readonly actor: Principal;
+  readonly checked: CheckedSave;
+  readonly traceId: string;
+  readonly at: Date;
+};
+
+async function updateInTransaction(tx: Transaction, save: Save): Promise<PageResult | PageRefusal> {
+  const { actor, checked, traceId, at } = save;
+  const { command } = checked;
   if (command.parentId !== null) {
     await tx.execute(advisoryLock(advisoryLocks.pageReparenting));
   }
-  const stored = await readPage(tx, actor, command.pageId, at);
+  const stored = await lockedPage(tx, actor, command.pageId, at);
   if (!stored) return refused('page_not_found');
   if (!can(actor, 'write', { kind: 'area', area: stored.jdArea }, at)) {
     return refused('not_permitted');
   }
+  const status = checked.statusFor(stored);
+  if (typeof status !== 'string') return status;
   const check = checkFrontmatter(stored.type, command.frontmatter);
   if (!check.ok) return refused(check.reason);
-  const blocked = await parentRefusal(tx, actor, command, at);
+  const full = { ...command, status };
+  const blocked = await parentRefusal(tx, actor, full, at);
   if (blocked !== null) return refused(blocked);
-  return writeUpdate(tx, actor, command, traceId);
+  return writeUpdate(tx, actor, full, traceId);
+}
+
+async function saveChecked(db: Database, save: Save): Promise<PageResult | PageRefusal> {
+  try {
+    return await db.transaction((tx) => updateInTransaction(tx, save));
+  } catch (error) {
+    return refusalOrThrow(error);
+  }
+}
+
+export function updateCheckedPage(
+  db: Database,
+  actor: Principal,
+  checked: CheckedSave,
+  traceId: string,
+  at: Date,
+): Promise<PageResult | PageRefusal> {
+  return saveChecked(db, { actor, checked, traceId, at });
 }
 
 export async function updatePage(
@@ -217,9 +265,7 @@ export async function updatePage(
   traceId: string,
   at: Date,
 ): Promise<PageResult> {
-  try {
-    return await db.transaction((tx) => updateInTransaction(tx, actor, command, traceId, at));
-  } catch (error) {
-    return refusalOrThrow(error);
-  }
+  const checked: CheckedSave = { command, statusFor: () => command.status };
+  const result = await saveChecked(db, { actor, checked, traceId, at });
+  return result.ok ? result : refused(result.reason);
 }
