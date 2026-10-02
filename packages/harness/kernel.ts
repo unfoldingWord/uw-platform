@@ -7,7 +7,6 @@ import { createRepairCommands, type RepairCommands } from './items/repair.ts';
 import { createPersonaCommands, type PersonaCommands } from './personas/commands.ts';
 import type { Ports } from './ports.ts';
 import { createKernelReads, type KernelReads } from './reads/index.ts';
-import { shipRule } from './ship-rule.ts';
 import { createStageCommands, type StageCommands } from './stages/commands.ts';
 import { templateProperty } from './template-property.ts';
 import { walk, type WalkPath, type WalkStage } from './walk.ts';
@@ -17,7 +16,6 @@ export type KernelHealth = { readonly now: Date; readonly appliedMigrations: rea
 export type Kernel = {
   readonly walk: (stages: readonly WalkStage[]) => WalkPath[];
   readonly templateProperty: typeof templateProperty;
-  readonly shipRule: typeof shipRule;
   readonly replay: typeof replay;
   readonly events: EventReads;
   readonly reads: KernelReads;
@@ -34,7 +32,6 @@ export function createKernel(ports: Ports): Kernel {
   return {
     walk,
     templateProperty,
-    shipRule,
     replay,
     events: createEventReads(ports),
     reads: createKernelReads(ports),

@@ -18,8 +18,9 @@ import {
   exitAfterDecision,
   inFlightRefusal,
   readShipFacts,
-  shipRefusal,
+  shipCheck,
   type PendingExit,
+  type ShipCheck,
   type ShipSnapshot,
 } from './approve-at-ship.ts';
 import type { ExitPorts } from './exit.ts';
@@ -222,12 +223,18 @@ function routeOf(gate: Gate, decision: GateDecision): Route | Refused {
   return { exit: forward, connector: effectOf(stage.connector) };
 }
 
+type Decision = {
+  readonly input: DecideInput;
+  readonly exit: Exit | null;
+  readonly before: readonly EventDraft[];
+};
+
 async function recordDecision(
   tx: StoreTransaction,
   gate: Gate,
-  input: DecideInput,
-  exit: Exit | null,
+  decision: Decision,
 ): Promise<KernelOutcome<Decided>> {
+  const { input, exit } = decision;
   const { item, stage, approver, context } = gate;
   const draftOf = decisionDrafts.get(input.decision);
   if (draftOf === undefined) return refused('malformed_command', { decision: input.decision });
@@ -244,7 +251,11 @@ async function recordDecision(
     traceId: context.traceId,
     decidedAt: context.at,
   });
-  const drafts = [draftOf(decisionId, gate, input), ...(exit === null ? [] : exitDrafts(exit))];
+  const drafts = [
+    ...decision.before,
+    draftOf(decisionId, gate, input),
+    ...(exit === null ? [] : exitDrafts(exit)),
+  ];
   const recorded = await recordItemEvents(tx, context, item.itemId, drafts);
   return accepted({ decisionId, item: recorded.item, advanced: exit !== null });
 }
@@ -286,6 +297,16 @@ async function openRoute(
   return inFlight ?? routeOf(gate, decision);
 }
 
+async function checkedRoute(
+  tx: StoreTransaction,
+  gate: Gate,
+  decision: GateDecision,
+  routed: { readonly route: Route; readonly snapshot: ShipSnapshot | null },
+): Promise<ShipCheck> {
+  if (routed.route.connector !== null) return shipCheck(tx, gate, decision, routed.snapshot);
+  return { refusal: await approverRefusal(tx, gate, decision), drafts: [] };
+}
+
 async function decideIn(
   ports: GatePorts,
   tx: StoreTransaction,
@@ -296,15 +317,16 @@ async function decideIn(
   if (isRefused(gate)) return gate;
   const route = await openRoute(tx, gate, input.decision);
   if (isRefused(route)) return route;
-  const denied =
-    route.connector === null
-      ? await approverRefusal(tx, gate, input.decision)
-      : await shipRefusal(tx, gate, input.decision, snapshot);
-  if (denied !== null) return denied;
+  const ship = await checkedRoute(tx, gate, input.decision, { route, snapshot });
+  if (ship.refusal !== null) return ship.refusal;
   const full = await wipRefusal(tx, gate, input.decision);
   if (full !== null) return full;
   const { exit, connector } = route;
-  const recorded = await recordDecision(tx, gate, input, connector === null ? exit : null);
+  const recorded = await recordDecision(tx, gate, {
+    input,
+    exit: connector === null ? exit : null,
+    before: ship.drafts,
+  });
   if (recorded.status !== 'accepted') return recorded;
   const decided = recorded.value;
   const pending =

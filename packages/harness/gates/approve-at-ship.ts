@@ -8,7 +8,13 @@ import type {
   Stage,
 } from '@uw/contracts';
 import { allowed } from '../access.ts';
-import { draft, readAllEvents, recordItemEvents, type RecordContext } from '../items/record.ts';
+import {
+  draft,
+  readAllEvents,
+  recordItemEvents,
+  type EventDraft,
+  type RecordContext,
+} from '../items/record.ts';
 import { resolveExit } from '../items/transitions.ts';
 import { refused, type Refused } from '../outcome.ts';
 import { PortNotWiredError } from '../port-errors.ts';
@@ -16,7 +22,7 @@ import type { EffectConnector, Ports, PullRequestFacts, StoreTransaction } from 
 import { shipRule } from '../ship-rule.ts';
 import { exitThroughConnector, type ExitPorts } from './exit.ts';
 import { decisionInFlight, sameChange } from './parking.ts';
-import { assembleShipInput } from './ship-input.ts';
+import { assembleShipInput, riskDerivedAtShip } from './ship-input.ts';
 
 type ShipPorts = Pick<Ports, 'githubFacts' | 'store'> & ExitPorts;
 
@@ -50,6 +56,8 @@ export type PendingExit = {
 };
 
 const shipDecisions: ReadonlySet<GateDecision> = new Set<GateDecision>(['approve', 'override']);
+
+const FACTS_FRESH_MS = 60_000;
 
 export function effectOf(connector: Connector): EffectConnector | null {
   return connector === 'none' ? null : connector;
@@ -86,10 +94,19 @@ export async function readShipFacts(
   }
   if (item.pullRequest === null) return { item, facts: null };
   try {
-    return { item, facts: await ports.githubFacts.pullRequest(item.pullRequest) };
+    const facts = await ports.githubFacts.refresh(item.pullRequest);
+    return facts !== null && isStale(facts, request.at) ? staleRefusal(facts) : { item, facts };
   } catch (error) {
     return factsFailure(error);
   }
+}
+
+function isStale(facts: PullRequestFacts, at: Date): boolean {
+  return facts.freshAt.getTime() < at.getTime() - FACTS_FRESH_MS;
+}
+
+function staleRefusal(facts: PullRequestFacts): Refused {
+  return refused('facts_stale', { freshAt: facts.freshAt.toISOString() });
 }
 
 export async function inFlightRefusal(
@@ -100,39 +117,55 @@ export async function inFlightRefusal(
   return decisionInFlight(events) ? refused('decision_in_flight', { itemId: item.itemId }) : null;
 }
 
-function shipReasons(
+export type ShipCheck = {
+  readonly refusal: Refused | null;
+  readonly drafts: readonly EventDraft[];
+};
+
+type ShipVerdict = {
+  readonly reasons: readonly ShipRefusal[];
+  readonly derived: readonly EventDraft[];
+};
+
+function shipVerdict(
   gate: ShipGate,
   decision: GateDecision,
   snapshot: ShipSnapshot | null,
-): readonly ShipRefusal[] {
-  if (snapshot === null || !sameChange(snapshot.item, gate.item)) return ['head_mismatch'];
-  const outcome = shipRule(
-    assembleShipInput({
-      facts: snapshot.facts,
-      item: gate.item,
-      area: gate.harness.jdArea,
-      approver: gate.approver,
-      at: gate.context.at,
-      override: decision === 'override',
-    }),
-  );
-  return outcome.verdict === 'advance' ? [] : outcome.reasons;
+): ShipVerdict {
+  if (snapshot === null || !sameChange(snapshot.item, gate.item)) {
+    return { reasons: ['head_mismatch'], derived: [] };
+  }
+  const source = {
+    facts: snapshot.facts,
+    item: gate.item,
+    harness: gate.harness,
+    approver: gate.approver,
+    at: gate.context.at,
+    override: decision === 'override',
+  };
+  const outcome = shipRule(assembleShipInput(source));
+  const evidence = riskDerivedAtShip(source);
+  return {
+    reasons: outcome.verdict === 'advance' ? [] : outcome.reasons,
+    derived: evidence === null ? [] : [draft('risk_derived', evidence)],
+  };
 }
 
-export async function shipRefusal(
+export async function shipCheck(
   tx: StoreTransaction,
   gate: ShipGate,
   decision: GateDecision,
   snapshot: ShipSnapshot | null,
-): Promise<Refused | null> {
-  const reasons = shipReasons(gate, decision, snapshot);
+): Promise<ShipCheck> {
+  const { reasons, derived } = shipVerdict(gate, decision, snapshot);
   const [first] = reasons;
-  if (first === undefined) return null;
+  if (first === undefined) return { refusal: null, drafts: derived };
   const stage = gate.stage.key;
   await recordItemEvents(tx, gate.context, gate.item.itemId, [
+    ...derived,
     draft('ship_refused', { stage, reasons: [...reasons] }),
   ]);
-  return refused(first, { stage, reasons });
+  return { refusal: refused(first, { stage, reasons }), drafts: [] };
 }
 
 export async function exitAfterDecision(

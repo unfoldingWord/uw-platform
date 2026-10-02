@@ -8,6 +8,7 @@ import {
 import { readAllEvents, software, type KernelOutcome, type PullRequestRef } from '@uw/harness';
 import { createSimHarness, simAdvance, simAgent, simCaller, simPerson } from '../fixtures.ts';
 import { defineScenario } from '../scenario.ts';
+import { simSha } from '../ship-fixtures.ts';
 import type { World } from '../world.ts';
 
 function valueOf<T>(outcome: KernelOutcome<T>): T {
@@ -116,12 +117,16 @@ async function ratchetOnItem(world: World): Promise<{
   readonly last: ItemState;
 }> {
   const scene = await atBuild(world, 2);
-  assertHigh(await submitWith(world, scene, { head: 'abc123', paths, declaration }));
-  const otherHead = { head: 'def456', paths: benign, declaration: null };
+  assertHigh(await submitWith(world, scene, { head: simSha('abc123'), paths, declaration }));
+  const otherHead = { head: simSha('def456'), paths: benign, declaration: null };
   assertHigh(await submitWith(world, scene, otherHead));
-  const last = await submitWith(world, scene, { ...otherHead, head: ' ABC123 ', declaration: low });
+  const last = await submitWith(world, scene, {
+    ...otherHead,
+    head: ` ${simSha('abc123').toUpperCase()} `,
+    declaration: low,
+  });
   assertHigh(last);
-  assert.equal(last.expectedHead, 'abc123');
+  assert.equal(last.expectedHead, simSha('abc123'));
   return { scene, last };
 }
 
@@ -136,7 +141,7 @@ async function undeclaredOnItem(world: World): Promise<void> {
   });
   assert.equal(spaced.status === 'error' && spaced.reason, 'malformed_command');
   const undeclared = valueOf(
-    await submitHeld(world, other, { head: 'def456', paths: benign, declaration: null }),
+    await submitHeld(world, other, { head: simSha('def456'), paths: benign, declaration: null }),
   ).item;
   assert.equal(undeclared.riskTier, null);
   assert.deepEqual(undeclared.riskDomains, []);
@@ -165,6 +170,7 @@ export const scenario = defineScenario({
       riskTier: 'high',
       riskDomains: ['migration'],
       refusal: null,
+      head: simSha('abc123'),
     });
     assert.deepEqual(derived[1]?.floorDomains, ['migration']);
     assert.equal(derived[1]?.refusal, 'risk_tier_undeclared');

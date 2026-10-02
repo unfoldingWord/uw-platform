@@ -10,6 +10,7 @@ import {
   itemLog,
   namesSince,
   simParkedAtShip,
+  simSha,
   standardChange,
 } from '../ship-fixtures.ts';
 import type { World } from '../world.ts';
@@ -48,7 +49,7 @@ async function refusedOver(scene: Scene, facts: PullRequestFacts) {
   assert.deepEqual((await readWorldLog(world.adapters.store)).drift, []);
   if (outcome.status !== 'error') throw new Error('the approve was accepted');
   const after = await itemLog(world, harnessId, itemId);
-  assert.deepEqual(namesSince(before, after), ['ship_refused']);
+  assert.deepEqual(namesSince(before, after), ['risk_derived', 'ship_refused']);
   assert.deepEqual(after.decisions, []);
   assert.deepEqual(world.adapters.connectors.calls(), []);
   const item = await world.adapters.store.transaction((tx) => tx.harnessItems.read.byId(itemId));
@@ -58,9 +59,9 @@ async function refusedOver(scene: Scene, facts: PullRequestFacts) {
 }
 
 async function refusesAnotherHead(scene: Scene): Promise<void> {
-  const facts = greenFacts(scene.world, 'def456', [
-    approvedBy('uw-reviewer', 'anthropic', 'def456'),
-  ]);
+  const other = simSha('def456');
+  const reviews = [approvedBy('uw-reviewer[bot]', 'anthropic', other, 9100000101)];
+  const facts = greenFacts(scene.world, { itemId: scene.itemId, head: other, reviews });
   const { outcome, evidence } = await refusedOver(scene, facts);
   assert.equal(outcome.reason, 'head_mismatch');
   assert.deepEqual(outcome.detail['reasons'], ['head_mismatch']);
@@ -68,9 +69,9 @@ async function refusesAnotherHead(scene: Scene): Promise<void> {
 }
 
 async function refusesADraftWithAFailingJob(scene: Scene): Promise<void> {
-  const green = greenFacts(scene.world, 'abc123', [
-    approvedBy('uw-reviewer', 'anthropic', 'abc123'),
-  ]);
+  const { head } = standardChange;
+  const reviews = [approvedBy('uw-reviewer[bot]', 'anthropic', head, 9100000102)];
+  const green = greenFacts(scene.world, { itemId: scene.itemId, head, reviews });
   const facts: PullRequestFacts = {
     ...green,
     draft: true,

@@ -99,7 +99,7 @@ const everyField = {
   gateStatus: 'parked',
   gateTarget: 'build',
   branchState: 'active',
-  expectedHead: 'abc123',
+  expectedHead: 'a'.repeat(40),
   riskTier: 'high',
   riskDomains: ['acl', 'infra'],
   pullRequest: { repo: 'unfoldingWord/uw-platform', number: 7 },

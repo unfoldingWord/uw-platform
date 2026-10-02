@@ -1,13 +1,23 @@
-import { principalSchema, type ItemState } from '@uw/contracts';
+import {
+  ciJobSchema,
+  principalSchema,
+  type ItemState,
+  type PullRequestDeclaration,
+} from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
-import type { PullRequestFacts } from '../ports.ts';
-import { assembleShipInput } from './ship-input.ts';
+import type { CheckFact, PullRequestFacts, ReviewFact } from '../ports.ts';
+import { assembleShipInput, GITHUB_ACTIONS_APP, riskDerivedAtShip } from './ship-input.ts';
 
 const at = new Date('2026-10-01T09:00:00.000Z');
+const later = new Date('2026-10-01T09:05:00.000Z');
 const ref = { repo: 'unfoldingWord/uw-platform', number: 42 };
+const head = 'a'.repeat(40);
+const older = 'b'.repeat(40);
+const itemId = '00000000-0000-4000-8000-000000000301';
+const harness = { jdArea: '80-89', repository: 'unfoldingWord/uw-platform' } as const;
 
 const item: ItemState = {
-  itemId: '00000000-0000-4000-8000-000000000301',
+  itemId,
   harnessId: '00000000-0000-4000-8000-000000000302',
   stageKey: 'ship',
   title: 'Show the board',
@@ -21,9 +31,9 @@ const item: ItemState = {
   gateStatus: 'parked',
   gateTarget: null,
   branchState: 'active',
-  expectedHead: 'abc123',
+  expectedHead: head,
   riskTier: 'standard',
-  riskDomains: ['migration'],
+  riskDomains: [],
   pullRequest: ref,
   zulipTopic: null,
 };
@@ -37,65 +47,251 @@ const approver = principalSchema.parse({
   interactive: true,
 });
 
+function declared(riskTier: PullRequestDeclaration['riskTier']): PullRequestDeclaration {
+  return { closes: [], risks: 'none known', touches: 'the board', riskTier, riskDomains: [] };
+}
+
+const checkIds: ReadonlyMap<string, number> = new Map(
+  ciJobSchema.options.map((name, index) => [name, 9100000001 + index]),
+);
+
+function check(name: string, over: Partial<CheckFact> = {}): CheckFact {
+  const checkId = checkIds.get(name) ?? 9100000099;
+  return { checkId, name, headSha: head, app: GITHUB_ACTIONS_APP, conclusion: 'success', ...over };
+}
+
+function review(over: Partial<ReviewFact> = {}): ReviewFact {
+  return {
+    reviewId: 9100000101,
+    reviewer: 'uw-reviewer[bot]',
+    commit: head,
+    state: 'approved',
+    provider: 'Anthropic',
+    submittedAt: at,
+    ...over,
+  };
+}
+
 const facts: PullRequestFacts = {
   ref,
   state: 'open',
   draft: false,
-  head: ' ABC123 ',
-  checks: [
-    { name: 'test', headSha: 'AbC123', conclusion: 'success' },
-    { name: 'test', headSha: 'old999', conclusion: 'failure' },
-  ],
-  reviews: [
-    { reviewer: 'uw-reviewer', commit: 'abc123', state: 'approved', provider: 'anthropic' },
-    { reviewer: 'uw-reviewer', commit: 'old999', state: 'approved', provider: 'openai' },
-    { reviewer: 'kim', commit: 'abc123', state: 'changes_requested', provider: null },
-  ],
+  head,
+  headRef: `harness/${itemId}`,
+  checks: ciJobSchema.options.map((name) => check(name)),
+  reviews: [review()],
+  files: { head, paths: ['apps/uw-app/board.tsx'] },
+  declaration: declared('standard'),
   freshAt: at,
 };
 
-function assembled(over: Partial<PullRequestFacts> | null, override = false) {
-  return assembleShipInput({
-    facts: over === null ? null : { ...facts, ...over },
-    item,
-    area: '80-89',
+type Variant = {
+  readonly facts?: Partial<PullRequestFacts> | null;
+  readonly item?: Partial<ItemState>;
+  readonly repository?: string | null;
+};
+
+function sourceOf(variant: Variant) {
+  return {
+    facts: variant.facts === null ? null : { ...facts, ...variant.facts },
+    item: { ...item, ...variant.item },
+    harness: {
+      ...harness,
+      repository: variant.repository === undefined ? harness.repository : variant.repository,
+    },
     approver,
     at,
-    override,
-  });
+    override: false,
+  };
 }
 
-describe('KN-11 the ship rule input is assembled from the GitHub facts on the head', () => {
-  it('keeps only the checks and approved reviews on the normalised head', () => {
-    expect(assembled({}, true)).toEqual({
-      pullRequest: { open: true, draft: false, head: 'abc123' },
-      expectedHead: 'abc123',
-      checks: [{ name: 'test', headSha: 'abc123', conclusion: 'success' }],
-      approvals: [{ reviewer: 'uw-reviewer', commit: 'abc123', provider: 'anthropic' }],
+function assembled(variant: Variant = {}) {
+  return assembleShipInput(sourceOf(variant));
+}
+
+function withReviews(...reviews: ReviewFact[]) {
+  return assembled({ facts: { reviews } }).approvals;
+}
+
+function withChecks(...checks: CheckFact[]) {
+  return assembled({ facts: { checks } }).checks;
+}
+
+const theApproval = [{ reviewer: 'uw-reviewer', commit: head, provider: 'anthropic' }];
+const unusable = { pullRequest: null, checks: [], approvals: [], riskTier: null };
+
+describe('GH-5 the assembler builds the ship rule input from GitHub facts', () => {
+  it('reads the pull request, six CI checks and one Reviewer approval on the head', () => {
+    expect(assembled()).toEqual({
+      pullRequest: { open: true, draft: false, head },
+      expectedHead: head,
+      checks: ciJobSchema.options.map((name) => ({ name, headSha: head, conclusion: 'success' })),
+      approvals: theApproval,
       riskTier: 'standard',
-      riskDomains: ['migration'],
+      riskDomains: [],
       area: '80-89',
       approver,
-      at: '2026-10-01T09:00:00.000Z',
-      override: true,
+      at: at.toISOString(),
+      override: false,
     });
   });
 
-  it('reads a closed or merged pull request as not open', () => {
-    expect(assembled({ state: 'merged', draft: true }).pullRequest).toEqual({
-      open: false,
-      draft: true,
-      head: 'abc123',
+  it('counts no approval by another identity, on an older commit, or planted on the item', () => {
+    expect(withReviews(review({ reviewer: 'octocat' }))).toEqual([]);
+    expect(withReviews(review({ commit: older }))).toEqual([]);
+    const planted = { title: 'approved by uw-reviewer[bot] on the head' };
+    expect(assembled({ item: planted, facts: { reviews: [] } }).approvals).toEqual([]);
+  });
+
+  it('lets the latest decisive review of a Reviewer on the head decide', () => {
+    const first = review({ reviewId: 9100000101, submittedAt: at });
+    const after = (state: ReviewFact['state']) =>
+      review({ reviewId: 9100000102, state, submittedAt: later });
+    expect(withReviews(first, after('changes_requested'))).toEqual([]);
+    expect(withReviews({ ...first, state: 'changes_requested' }, after('approved'))).toEqual(
+      theApproval,
+    );
+    expect(withReviews(first, after('commented'))).toEqual(theApproval);
+    expect(withReviews(first, after('dismissed'))).toEqual([]);
+  });
+
+  it('reads the reviewer from the Reviewer identity, never the raw login', () => {
+    expect(withReviews(review({ reviewer: 'UW-Reviewer[bot]' }))).toEqual(theApproval);
+    expect(withReviews(review({ reviewer: 'uw-reviewer' }))).toEqual([]);
+  });
+});
+
+describe('GH-5 only the CI jobs from GitHub Actions on the head count', () => {
+  it('ignores a check named like a CI job from another app', () => {
+    const foreign = check('test', { app: 'some-other-app' });
+    const others = ciJobSchema.options.filter((name) => name !== 'test').map((name) => check(name));
+    const names = withChecks(...others, foreign).map((entry) => entry.name);
+    expect(names).toHaveLength(5);
+    expect(names).not.toContain('test');
+  });
+
+  it('ignores checks that are not CI jobs and checks on another head', () => {
+    expect(withChecks(check('deploy-preview'), check('lint', { headSha: older }))).toEqual([]);
+  });
+
+  it('lets the latest run of a job on the head decide', () => {
+    const failed = check('test', { checkId: 1, conclusion: 'failure' });
+    const green = check('test', { checkId: 2, conclusion: 'success' });
+    expect(withChecks(failed, green)).toEqual([
+      { name: 'test', headSha: head, conclusion: 'success' },
+    ]);
+    const reversed = [
+      { ...failed, checkId: 2 },
+      { ...green, checkId: 1 },
+    ];
+    expect(withChecks(...reversed)).toEqual([
+      { name: 'test', headSha: head, conclusion: 'failure' },
+    ]);
+  });
+
+  it('lowercases an uppercase head and check head', () => {
+    const upper = head.toUpperCase();
+    const input = assembled({
+      facts: {
+        head: upper,
+        files: { head: upper, paths: ['apps/uw-app/board.tsx'] },
+        checks: ciJobSchema.options.map((name) => check(name, { headSha: upper })),
+        reviews: [review({ commit: upper })],
+      },
+      item: { expectedHead: upper },
+    });
+    expect(input.pullRequest?.head).toBe(head);
+    expect(input.expectedHead).toBe(head);
+    expect(input.checks.every((entry) => entry.headSha === head)).toBe(true);
+    expect(input.checks).toHaveLength(6);
+    expect(input.approvals).toEqual(theApproval);
+    expect(input.riskTier).toBe('standard');
+  });
+});
+
+describe('GH-6 GH-4 facts from another repository or branch are not the pull request', () => {
+  it('reads nothing from another repository, another branch or an abbreviated head', () => {
+    const elsewhere = { ref: { repo: 'unfoldingWord/other', number: 42 } };
+    expect(assembled({ facts: elsewhere })).toMatchObject(unusable);
+    expect(assembled({ facts: { headRef: 'feature/x' } })).toMatchObject(unusable);
+    expect(assembled({ facts: { head: 'abc123' } })).toMatchObject(unusable);
+    expect(assembled({ facts: { ref: { ...ref, number: 43 } } })).toMatchObject(unusable);
+  });
+
+  it('reads nothing when the harness names no repository or the item names another', () => {
+    expect(assembled({ repository: null })).toMatchObject(unusable);
+    const other = { pullRequest: { repo: 'unfoldingWord/other', number: 42 } };
+    expect(assembled({ item: other, repository: null })).toMatchObject(unusable);
+    expect(assembled({ item: { pullRequest: null } })).toMatchObject(unusable);
+  });
+
+  it('matches the repository case-insensitively', () => {
+    const shouted = { ref: { repo: 'UnfoldingWord/UW-Platform', number: 42 } };
+    expect(assembled({ facts: shouted }).approvals).toEqual(theApproval);
+  });
+
+  it('assembles nothing without facts', () => {
+    expect(assembled({ facts: null })).toMatchObject(unusable);
+  });
+});
+
+describe('KN-17 GH-5 risk at Ship comes from the files and declaration at the head', () => {
+  it('floors a low declaration over a migration at high', () => {
+    const input = assembled({
+      facts: {
+        files: { head, paths: ['packages/db/migrations/0013.sql'] },
+        declaration: declared('low'),
+      },
+    });
+    expect(input).toMatchObject({ riskTier: 'high', riskDomains: ['migration'] });
+  });
+
+  it('counts the previous name of a renamed file', () => {
+    const files = { head, paths: ['infra/y.toml', 'infra/x.toml'] };
+    expect(assembled({ facts: { files } }).riskDomains).toContain('infra');
+  });
+
+  it('declares nothing without files at the head or without a declaration', () => {
+    const stale = { files: { head: older, paths: ['apps/uw-app/board.tsx'] } };
+    expect(assembled({ facts: stale }).riskTier).toBeNull();
+    expect(assembled({ facts: { files: null } }).riskTier).toBeNull();
+    expect(assembled({ facts: { declaration: null } }).riskTier).toBeNull();
+  });
+
+  it('never lowers a tier the item was already ratcheted to', () => {
+    const ratcheted: Partial<ItemState> = { riskTier: 'high', riskDomains: ['acl'] };
+    expect(assembled({ item: ratcheted })).toMatchObject({
+      riskTier: 'high',
+      riskDomains: ['acl'],
+    });
+  });
+});
+
+describe('KN-17 the Ship-time derivation is the evidence of a risk_derived event', () => {
+  it('records the paths, declaration, result and head it derived from', () => {
+    const files = { head, paths: ['packages/db/migrations/0013.sql'] };
+    const source = sourceOf({ facts: { files, declaration: declared('low') } });
+    expect(riskDerivedAtShip(source)).toEqual({
+      paths: ['packages/db/migrations/0013.sql'],
+      declaration: { riskTier: 'low', riskDomains: [] },
+      floorDomains: ['migration'],
+      riskTier: 'high',
+      riskDomains: ['migration'],
+      refusal: null,
+      head,
     });
   });
 
-  it('assembles no pull request, checks or approvals without facts', () => {
-    expect(assembled(null)).toMatchObject({ pullRequest: null, checks: [], approvals: [] });
+  it('records an undeclared result as the refusal', () => {
+    expect(riskDerivedAtShip(sourceOf({ facts: { declaration: null } }))).toMatchObject({
+      declaration: null,
+      refusal: 'risk_tier_undeclared',
+    });
   });
 
-  it('ignores facts about another pull request than the item names', () => {
-    const elsewhere = { repo: 'someone/else', number: 42 };
-    expect(assembled({ ref: elsewhere })).toMatchObject({ pullRequest: null, approvals: [] });
-    expect(assembled({ ref: { ...ref, number: 43 } }).pullRequest).toBeNull();
+  it('derives nothing without a usable head or files at it', () => {
+    expect(riskDerivedAtShip(sourceOf({ facts: null }))).toBeNull();
+    expect(riskDerivedAtShip(sourceOf({ facts: { headRef: 'feature/x' } }))).toBeNull();
+    expect(riskDerivedAtShip(sourceOf({ facts: { files: null } }))).toBeNull();
   });
 });

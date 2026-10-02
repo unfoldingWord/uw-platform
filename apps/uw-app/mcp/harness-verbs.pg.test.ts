@@ -32,6 +32,7 @@ const CLIENT = 'verbs-routine.access';
 const ROUTINE = 'hourly-routine';
 const MINUTE = 60_000;
 const PULL_REQUEST = { repo: 'unfoldingWord/uw-platform', number: 7 };
+const HEAD = 'a'.repeat(40);
 
 type Body = Record<string, unknown>;
 type SettableClock = { now(): Date; advance(milliseconds: number): void };
@@ -387,7 +388,7 @@ describe.skipIf(!testServer)('AB-4 submit_to_gate parks at a human gate', () => 
       evidence: { summary: 'ready for a person' },
       to: null,
       pullRequest: PULL_REQUEST,
-      head: 'abc1234',
+      head: HEAD,
     });
     expect(submitted.body).toEqual({ itemId, result: 'parked', failures: [] });
     const item = value(await r.kernel.reads.item(caller(r.ian), { itemId })).item;
@@ -396,12 +397,12 @@ describe.skipIf(!testServer)('AB-4 submit_to_gate parks at a human gate', () => 
     expect(risk?.evidence).toMatchObject({ refusal: 'risk_tier_undeclared' });
     const [parked] = await eventsNamed(r, h, 'submitted_to_gate').then((all) => all.slice(-1));
     expect(parked?.actor).toBe(`agent:${EDITOR.id}/laptop`);
-    expect(parked?.evidence).toMatchObject({ pullRequest: PULL_REQUEST, expectedHead: 'abc1234' });
+    expect(parked?.evidence).toMatchObject({ pullRequest: PULL_REQUEST, expectedHead: HEAD });
   });
 });
 
 function submission(itemId: string, to: string | null): Body {
-  return { itemId, evidence: {}, to, pullRequest: PULL_REQUEST, head: 'abc1234' };
+  return { itemId, evidence: {}, to, pullRequest: PULL_REQUEST, head: HEAD };
 }
 
 describe.skipIf(!testServer)('AB-4 submit_to_gate names no stage past a human gate', () => {

@@ -13,10 +13,34 @@ function factsFor(repo: string, number: number, head: string): PullRequestFacts 
     state: 'open',
     draft: false,
     head,
-    checks: [{ name: 'test', headSha: head, conclusion: 'success' }],
-    reviews: [
-      { reviewer: 'uw-reviewer', commit: head, state: 'approved', provider: 'fixture-provider' },
+    headRef: 'harness/b1000000-0000-4000-8000-000000000002',
+    checks: [
+      {
+        checkId: 9100000001,
+        name: 'test',
+        headSha: head,
+        app: 'github-actions',
+        conclusion: 'success',
+      },
     ],
+    reviews: [
+      {
+        reviewId: 9100000101,
+        reviewer: 'uw-reviewer[bot]',
+        commit: head,
+        state: 'approved',
+        provider: 'fixture-provider',
+        submittedAt: new Date('2026-10-01T08:59:00.000Z'),
+      },
+    ],
+    files: { head, paths: ['apps/uw-app/board.tsx'] },
+    declaration: {
+      closes: ['#7'],
+      risks: 'none known',
+      touches: 'the board',
+      riskTier: 'standard',
+      riskDomains: [],
+    },
     freshAt: new Date('2026-10-01T09:00:00.000Z'),
   };
 }
@@ -51,6 +75,8 @@ export function describeGithubFactsContract(
       expect(answer?.head).toBe('a'.repeat(40));
     });
 
+    shapeCases(open);
+
     it('answers the latest facts after the head moves', async () => {
       const subject = await open();
       await subject.given(factsFor('unfoldingWord/uw-platform', 8, 'a'.repeat(40)));
@@ -64,9 +90,44 @@ export function describeGithubFactsContract(
   });
 }
 
+function shapeCases(open: () => Promise<GithubFactsSubject>): void {
+  it('round-trips the files, declaration, head ref and check and review ids exactly', async () => {
+    const subject = await open();
+    const known = factsFor('unfoldingWord/uw-platform', 9, 'd'.repeat(40));
+    await subject.given(known);
+    const answer = await subject.facts.pullRequest(known.ref);
+    expect(answer?.files).toEqual(known.files);
+    expect(answer?.declaration).toEqual(known.declaration);
+    expect(answer?.headRef).toBe(known.headRef);
+    expect(answer?.checks).toEqual(known.checks);
+    expect(answer?.reviews).toEqual(known.reviews);
+  });
+
+  it('answers the same facts for a repository asked in another case', async () => {
+    const subject = await open();
+    const known = factsFor('unfoldingWord/uw-platform', 10, 'e'.repeat(40));
+    await subject.given(known);
+    const answer = await subject.facts.pullRequest({
+      repo: 'UnfoldingWord/UW-Platform',
+      number: 10,
+    });
+    expect(answer).toEqual(known);
+  });
+
+  it('refreshes to the facts GitHub holds, and to null when it holds none', async () => {
+    const subject = await open();
+    const known = factsFor('unfoldingWord/uw-platform', 11, 'f'.repeat(40));
+    await subject.given(known);
+    expect(await subject.facts.refresh(known.ref)).toEqual(known);
+    expect(
+      await subject.facts.refresh({ repo: 'unfoldingWord/uw-platform', number: 405 }),
+    ).toBeNull();
+  });
+}
+
 export function describeGithubFactsNotWired(adapter: string, facts: GitHubFacts): void {
-  describeNotWired('githubFacts', adapter, facts, { pullRequest: true } satisfies Record<
-    keyof GitHubFacts,
-    true
-  >);
+  describeNotWired('githubFacts', adapter, facts, {
+    pullRequest: true,
+    refresh: true,
+  } satisfies Record<keyof GitHubFacts, true>);
 }

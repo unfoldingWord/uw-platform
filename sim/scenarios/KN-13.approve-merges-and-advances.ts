@@ -45,9 +45,9 @@ async function parkedAtShip(world: World): Promise<Scene> {
 
 async function approveAndMerge(scene: Scene): Promise<void> {
   const { world, harnessId, itemId } = scene;
-  world.adapters.githubFacts.given(
-    greenFacts(world, 'abc123', [approvedBy('uw-reviewer', 'anthropic', 'abc123')]),
-  );
+  const { head } = standardChange;
+  const reviews = [approvedBy('uw-reviewer[bot]', 'anthropic', head, 9100000101)];
+  world.adapters.githubFacts.given(greenFacts(world, { itemId, head, reviews }));
   const before = await itemLog(world, harnessId, itemId);
   const approved = valueOf(
     await world.kernel.gates.decide(simCaller(world, scene.ian), {
@@ -64,6 +64,7 @@ async function approveAndMerge(scene: Scene): Promise<void> {
   const after = await itemLog(world, harnessId, itemId);
   assert.deepEqual(after.decisions, ['approve']);
   assert.deepEqual(namesSince(before, after), [
+    'risk_derived',
     'gate_approved',
     'connector_succeeded',
     'stage_advanced',
@@ -78,7 +79,7 @@ async function approveAndMerge(scene: Scene): Promise<void> {
     itemId,
     traceId: after.events.at(-1)?.traceId,
     pullRequest: shipPullRequest,
-    expectedHead: 'abc123',
+    expectedHead: standardChange.head,
     message: 'Show the board',
   });
 }

@@ -17,6 +17,7 @@ import {
   simPerson,
   simSystem,
 } from '../fixtures.ts';
+import { simSha } from '../ship-fixtures.ts';
 import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -207,15 +208,15 @@ describe('GH-4 a submit records the expected head and a later submit replaces it
     await setValidators(scene, 'scope', ['learning_attached']);
     const itemId = await enqueueAt(scene, 'scope', 'Wire the board');
     value(await claimAs(scene, scene.builder, itemId));
-    const first = value(await submitAs(scene, scene.builder, itemId, change('abc123')));
+    const first = value(await submitAs(scene, scene.builder, itemId, change(simSha('abc123'))));
     expect(first.item).toMatchObject({
-      expectedHead: 'abc123',
+      expectedHead: simSha('abc123'),
       branchState: 'active',
       pullRequest: { repo: 'unfoldingWord/uw-platform', number: 7 },
     });
-    const second = value(await submitAs(scene, scene.builder, itemId, change('def456')));
-    expect(second.item.expectedHead).toBe('def456');
-    expect((await stateOf(scene, itemId))?.expectedHead).toBe('def456');
+    const second = value(await submitAs(scene, scene.builder, itemId, change(simSha('def456'))));
+    expect(second.item.expectedHead).toBe(simSha('def456'));
+    expect((await stateOf(scene, itemId))?.expectedHead).toBe(simSha('def456'));
   });
 });
 
@@ -224,7 +225,7 @@ describe('GH-4 a lapsed lease abandons the active branch', () => {
     await setValidators(scene, 'scope', ['learning_attached']);
     const itemId = await enqueueAt(scene, 'scope', 'Wire the board');
     value(await claimAs(scene, scene.builder, itemId));
-    value(await submitAs(scene, scene.builder, itemId, change('abc123')));
+    value(await submitAs(scene, scene.builder, itemId, change(simSha('abc123'))));
     scene.world.adapters.clock.advance(LEASE_MS + 1);
     return itemId;
   }

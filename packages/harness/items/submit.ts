@@ -96,6 +96,7 @@ function riskDraft(change: SubmitChange, item: ItemState): EventDraft {
     riskTier: result.ok ? result.tier : floor.tier,
     riskDomains: [...result.domains],
     refusal: result.ok ? null : result.reason,
+    head: normalisedHead(change.head),
   });
 }
 

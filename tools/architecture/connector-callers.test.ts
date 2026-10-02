@@ -1,6 +1,6 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { repoFiles } from '../repo-files.ts';
 
@@ -10,6 +10,8 @@ const connectorRun =
   /connectors\s*\??\.\s*run\b|connectors\s*\??\.?\s*\[\s*['"`]run['"`]\s*\]|\brun\s*[,}][^=]*=\s*[\w.?]*connectors\b/;
 const connectorsReference = /\bconnectors\b(?!\/)/;
 const shipRuleCall = /\bshipRule\s*\(/;
+const shipRuleReference = /\bshipRule\b/;
+const assemblerCall = /\bassembleShipInput\s*\(/;
 const connectorExitCall = /\bexitThroughConnector\s*\(/;
 
 const exitModule = 'packages/harness/gates/exit.ts';
@@ -48,6 +50,7 @@ afterAll(() => {
 
 function plant(name: string, text: string): string {
   const file = join(planted, name);
+  mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, text);
   return file;
 }
@@ -103,11 +106,40 @@ describe('the connectors port runs only from the kernel stage-exit path', () => 
       exitModule,
     ]);
   });
+});
+
+const approveAtShip = 'packages/harness/gates/approve-at-ship.ts';
+const shipRuleModule = 'packages/harness/ship-rule.ts';
+const shipRuleCallers = [approveAtShip, shipRuleModule];
+const shipRuleNames = [approveAtShip, 'packages/harness/index.ts', shipRuleModule];
+const assemblerCallers = [approveAtShip, 'packages/harness/gates/ship-input.ts'];
+
+function strays(pattern: RegExp, allowed: readonly string[], files: readonly string[]): string[] {
+  return filesMatching(pattern, files).filter((file) => !allowed.includes(file));
+}
+
+describe("GH-5 the assembler is the ship rule's only caller", () => {
+  it('finds the assembler called only from the approve-at-Ship path and its own module', () => {
+    expect(filesMatching(assemblerCall, sources())).toEqual(assemblerCallers);
+  });
 
   it('finds the ship rule called only from the approve-at-Ship path and its own module', () => {
-    expect(filesMatching(shipRuleCall, sources())).toEqual([
-      'packages/harness/gates/approve-at-ship.ts',
-      'packages/harness/ship-rule.ts',
-    ]);
+    expect(filesMatching(shipRuleCall, sources())).toEqual(shipRuleCallers);
+  });
+
+  it('finds the ship rule named only where it is called, defined and published', () => {
+    expect(filesMatching(shipRuleReference, sources())).toEqual(shipRuleNames);
+  });
+
+  it('flags a planted call of the ship rule or the assembler from an app module', () => {
+    const viaKernel = plant('apps/uw-app/x.ts', 'kernel.shipRule(input);');
+    const direct = plant('apps/uw-app/y.ts', 'shipRule(input);');
+    const aliased = plant('apps/uw-app/z.ts', "import { shipRule as rule } from '@uw/harness';");
+    const assembler = plant('apps/uw-app/w.ts', 'assembleShipInput(source);');
+    expect(strays(shipRuleCall, shipRuleCallers, [viaKernel, direct])).toEqual(
+      [viaKernel, direct].sort(),
+    );
+    expect(strays(shipRuleReference, shipRuleNames, [aliased])).toEqual([aliased]);
+    expect(strays(assemblerCall, assemblerCallers, [assembler])).toEqual([assembler]);
   });
 });
