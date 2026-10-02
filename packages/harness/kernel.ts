@@ -1,5 +1,7 @@
 import { createEventReads, type EventReads } from './items/events.ts';
+import { createItemCommands, type ItemCommands } from './items/commands.ts';
 import { replay } from './items/fold.ts';
+import { createRepairCommands, type RepairCommands } from './items/repair.ts';
 import type { Ports } from './ports.ts';
 import { createStageCommands, type StageCommands } from './stages/commands.ts';
 import { templateProperty } from './template-property.ts';
@@ -12,6 +14,8 @@ export type Kernel = {
   readonly templateProperty: typeof templateProperty;
   readonly replay: typeof replay;
   readonly events: EventReads;
+  readonly items: ItemCommands;
+  readonly repair: RepairCommands;
   readonly stages: StageCommands;
   readonly health: () => Promise<KernelHealth>;
 };
@@ -22,6 +26,8 @@ export function createKernel(ports: Ports): Kernel {
     templateProperty,
     replay,
     events: createEventReads(ports),
+    items: createItemCommands(ports),
+    repair: createRepairCommands(ports),
     stages: createStageCommands(ports),
     health: async () => ({
       now: ports.clock.now(),
