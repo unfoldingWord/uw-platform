@@ -1,4 +1,4 @@
-import type { Template } from '../template-property.ts';
+import type { Template } from './types.ts';
 import { eightStages } from './eight-stages.ts';
 
 export const bml: Template = eightStages(

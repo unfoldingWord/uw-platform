@@ -57,7 +57,7 @@ describe('KN-15 every validator key a template names exists', () => {
   });
 });
 
-describe('KN-18 every connector a template names is registered', () => {
+describe('KN-15 every connector a template names is registered', () => {
   it.each([software, bml])('$key', (template) => {
     for (const stage of template.stages) expect(connectorRegistered(stage.connector)).toBe(true);
   });

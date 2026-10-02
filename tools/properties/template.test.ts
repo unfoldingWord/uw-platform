@@ -42,12 +42,20 @@ function assertViolationsAreReal(entries: readonly Draft[]): void {
     expect(isPrefixOfSome(violation.path, walked)).toBe(true);
     expect(violation.path.at(-1)).toBe(violation.effectStage);
     expect(byKey.get(violation.effectStage)?.connector).not.toBe('none');
-    expect(violation.path.some((key) => byKey.get(key)?.exitGate === 'human_approval')).toBe(false);
+    expect(byKey.get(violation.effectStage)?.exitGate).not.toBe('human_approval');
   }
 }
 
-describe('KN-10 the property holds on random stage graphs the database accepts, and every reported path is real', () => {
-  it('is empty when every stage with a connector has a human_approval exit', () => {
+function assertCompleteness(entries: readonly Draft[]): void {
+  const stages = build(entries, false);
+  const unguarded = walk(stages).some((path) =>
+    path.some((step) => step.connector !== 'none' && step.exitGate !== 'human_approval'),
+  );
+  expect(templateProperty(stages).length > 0).toBe(unguarded);
+}
+
+describe('KN-10 the property holds on random stage graphs, and every reported path is real', () => {
+  it('is empty when every stage with a connector has a human_approval exit, as the database guarantees', () => {
     fc.assert(
       fc.property(drafts, (entries) => {
         expect(templateProperty(build(entries, true))).toEqual([]);
@@ -56,7 +64,11 @@ describe('KN-10 the property holds on random stage graphs the database accepts, 
     );
   });
 
-  it('reports only real paths that end at a connector and hold no human_approval exit', () => {
+  it('reports only real paths that end at a connector and has no human_approval exit of its own', () => {
     fc.assert(fc.property(drafts, assertViolationsAreReal), { numRuns: 300 });
+  });
+
+  it('is non-empty exactly when a walked effect step has no human_approval exit of its own', () => {
+    fc.assert(fc.property(drafts, assertCompleteness), { numRuns: 300 });
   });
 });

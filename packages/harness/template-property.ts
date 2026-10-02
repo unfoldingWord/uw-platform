@@ -1,35 +1,13 @@
-import { effectPaths, walk, type WalkStage, type WalkStep } from './walk.ts';
-import type { AgentPickup, StageBracket } from '@uw/contracts';
-
-export type TemplateStage = WalkStage & {
-  readonly title: string;
-  readonly bracket: StageBracket;
-  readonly agentPickup: AgentPickup;
-  readonly wipLimit: number;
-  readonly validators: readonly string[];
-};
-
-export type Template = {
-  readonly key: string;
-  readonly title: string;
-  readonly stages: readonly TemplateStage[];
-};
+import { effectPaths, walk, type WalkStage } from './walk.ts';
 
 export type TemplateViolation = { readonly path: readonly string[]; readonly effectStage: string };
 
-function bypassesApproval(steps: readonly WalkStep[]): boolean {
-  const effectIndex = steps.length - 1;
-  const firstEffect = steps.findIndex((entry) => entry.connector !== 'none');
-  const approved = steps.some((entry) => entry.exitGate === 'human_approval');
-  return firstEffect === effectIndex && !approved;
-}
-
 export function templateProperty(stages: readonly WalkStage[]): readonly TemplateViolation[] {
   return effectPaths(walk(stages))
-    .filter((effect) => bypassesApproval(effect.steps))
+    .filter((effect) => effect.steps.at(-1)?.exitGate !== 'human_approval')
     .map((effect) => {
       const path = effect.steps.map((entry) => entry.key);
-      return { path, effectStage: path[path.length - 1] ?? '' };
+      return { path, effectStage: path.at(-1) ?? '' };
     });
 }
 

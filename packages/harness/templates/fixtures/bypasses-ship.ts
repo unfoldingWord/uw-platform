@@ -1,4 +1,4 @@
-import type { Template, TemplateStage } from '../../template-property.ts';
+import type { Template, TemplateStage } from '../types.ts';
 import { software } from '../software.ts';
 
 const hotfix: TemplateStage = {
