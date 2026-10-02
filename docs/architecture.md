@@ -118,15 +118,16 @@ The MCP surface serves exactly the verb registry and nothing else. There is no v
 
 `sim/` is the kernel on test adapters. `createWorld()` gives a scenario one clone of an embedded Postgres migrated once per process, the ten test adapters, one settable clock starting `2026-10-01T09:00:00.000Z`, and `createKernel` over them; `createSimHarness(template, fixture)` arrives with the templates in step 3. Scenarios in `sim/scenarios/` are named for the PRD requirement they prove: `KN-10.feeds-edge-cannot-bypass-ship.ts`, `KN-13.agent-cannot-write-decision.ts`, `KN-16.delegation-lapses-when-grant-revoked.ts`, `DX-7.software-template-end-to-end.ts`. Assertions are on the event log and the folded item state.
 
-The cockpit, once built (PRD DX-4, DX-5):
+The cockpit (PRD DX-4, DX-5):
 
 ```
 pnpm sim -- <scenario>      run one scenario; print the event log and the folded state
 pnpm sim -- all             every scenario
 pnpm walk -- <template>     every path from Package to an external effect, and the gate each crosses
 pnpm trace                  PRD requirement IDs with neither a scenario nor a test
+pnpm trace:built            the same list; fails only on requirements whose step is marked Built
 pnpm check                  lint, format, typecheck
-pnpm verify                 the whole chain, the same one CI runs
+pnpm verify                 the whole chain, the same one CI runs, including walk:all, trace:built and sim:all
 ```
 
 A deployed Worker is touched for three things: platform adapters, rendering, and the tests only real infrastructure can prove. Everything else is proven in the sim first.
