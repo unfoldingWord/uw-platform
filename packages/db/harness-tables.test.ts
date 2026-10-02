@@ -133,6 +133,20 @@ async function refusal(work: PromiseLike<unknown>) {
   throw new Error('expected the database to refuse');
 }
 
+function messageChain(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+  return `${error.message} ${error.cause === undefined ? '' : messageChain(error.cause)}`;
+}
+
+async function refusalMessage(work: PromiseLike<unknown>): Promise<string> {
+  try {
+    await work;
+  } catch (error) {
+    return messageChain(error);
+  }
+  throw new Error('expected the database to refuse');
+}
+
 async function columnsOf(db: Db, table: string): Promise<string[]> {
   const rows = await db
     .select({ name: informationColumns.columnName })
@@ -217,6 +231,12 @@ function tableShape(db: () => Db): void {
     },
   );
 
+  it('KN-1 declares harnesses.jd_area NOT NULL', async () => {
+    const missing = db().execute(sql`INSERT INTO harnesses (id, key, template, jd_area, created_at)
+      VALUES (${idOf(0xb4)}, 'unscoped', 'software', NULL, ${atText}::timestamptz)`);
+    expect((await refusal(missing)).code).toBe('23502');
+  });
+
   it('KN-1 refuses a jd_area that is a range of areas', async () => {
     expect(await refusal(insertHarness(db(), idOf(0xb3), 'wide', '80-99'))).toEqual({
       code: '23514',
@@ -242,14 +262,17 @@ function gateDecisionRules(db: () => Db): void {
     });
   });
 
-  it('refuses an update and a delete of a row it holds', async () => {
+  it('refuses an update, a delete and a truncate with the trigger message', async () => {
     await insertDecision(db(), idOf(0xf3), 'human:ian', 'approve', null);
     const changed = db().execute(
       sql`UPDATE gate_decisions SET reason = 'x' WHERE id = ${idOf(0xf3)}`,
     );
     const removed = db().execute(sql`DELETE FROM gate_decisions WHERE id = ${idOf(0xf3)}`);
+    const emptied = db().execute(sql`TRUNCATE gate_decisions`);
     expect((await refusal(changed)).code).toBe('P0001');
-    expect((await refusal(removed)).code).toBe('P0001');
+    expect(await refusalMessage(changed)).toContain('gate_decisions is append-only');
+    expect(await refusalMessage(removed)).toContain('gate_decisions is append-only');
+    expect(await refusalMessage(emptied)).toContain('gate_decisions is append-only');
   });
 }
 
@@ -284,7 +307,7 @@ function itemRules(db: () => Db): void {
 function describeTarget(target: DatabaseTarget): void {
   const db = openDatabase(target);
   tableShape(db);
-  describe('KN-13 gate_decisions takes only a human actor and is append-only', () =>
+  describe('KN-1 gate_decisions takes only a human actor and is append-only', () =>
     gateDecisionRules(db));
   describe('harness_items refuses a contradictory row', () => itemRules(db));
 }

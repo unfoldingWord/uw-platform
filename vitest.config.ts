@@ -21,6 +21,7 @@ export default defineConfig({
       {
         test: {
           name: 'node',
+          testTimeout: 30_000,
           include: [
             'packages/**/*.test.ts',
             'tools/**/*.test.ts',

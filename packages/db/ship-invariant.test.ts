@@ -114,6 +114,18 @@ function describeTarget(target: DatabaseTarget): void {
     );
     expect(await refusal(lowered)).toEqual({ code: '23514', constraint: constraintName });
   });
+
+  it('refuses raising connector to merge on a (none, checks) row, and a NULL exit_gate', async () => {
+    await insertStage(db(), 0x30, 'none', 'checks');
+    const raised = db().execute(
+      sql`UPDATE harness_stages SET connector = 'merge' WHERE id = ${stageId(0x30)}`,
+    );
+    const cleared = db().execute(
+      sql`UPDATE harness_stages SET exit_gate = NULL WHERE id = ${stageId(0x30)}`,
+    );
+    expect(await refusal(raised)).toEqual({ code: '23514', constraint: constraintName });
+    expect((await refusal(cleared)).code).toBe('23502');
+  });
 }
 
 describe('KN-2 DX-6 the Ship invariant holds in Postgres', () => {
