@@ -29,11 +29,19 @@ describe('GH-5 identifiers from GitHub are normalised or count as nothing', () =
     expect(fullSha(`${upper40}a`)).toBeNull();
     expect(fullSha('g'.repeat(40))).toBeNull();
   });
+});
 
+describe('repository comparison', () => {
   it('compares repositories case-insensitively and never matches a missing one', () => {
     expect(sameRepository('UnfoldingWord/UW-Platform', 'unfoldingWord/uw-platform')).toBe(true);
     expect(sameRepository('unfoldingWord/uw-platform', 'unfoldingWord/uw-other')).toBe(false);
     expect(sameRepository('unfoldingWord/uw-platform', null)).toBe(false);
+  });
+
+  it('folds ASCII only, so a non-ASCII lookalike never matches', () => {
+    expect(sameRepository('\u212A/x', 'K/x')).toBe(false);
+    expect(sameRepository('k/x', '\u212A/x')).toBe(false);
+    expect(sameRepository('not a repository', 'not a repository')).toBe(false);
   });
 });
 

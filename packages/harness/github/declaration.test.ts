@@ -45,7 +45,7 @@ function success(declaration: PullRequestDeclaration): DeclarationParse {
 
 const body = bodyWith(fields);
 
-describe('GH-5 the PR declaration is parsed from the fenced harness block', () => {
+describe('P16 the PR declaration is parsed from the fenced harness block', () => {
   it('parses the block into the declaration', () => {
     expect(parseDeclaration(body)).toEqual(success(parsed));
   });
@@ -69,24 +69,30 @@ describe('GH-5 the PR declaration is parsed from the fenced harness block', () =
   it('reads closes: none as no issues and refuses a bare number', () => {
     const none = replaced('closes', 'closes: none');
     expect(parseDeclaration(bodyWith(none))).toEqual(success({ ...parsed, closes: [] }));
+    const twice = replaced('closes', 'closes: #12, #12, a/b#3');
+    expect(parseDeclaration(bodyWith(twice))).toEqual(
+      success({ ...parsed, closes: ['#12', 'a/b#3'] }),
+    );
     const bare = replaced('closes', 'closes: 12');
     expect(parseDeclaration(bodyWith(bare))).toEqual(failure('invalid_value'));
   });
 });
 
-describe('GH-5 a PR body without exactly one closed harness block declares nothing', () => {
+describe('P16 a PR body without exactly one closed harness block declares nothing', () => {
   it('finds no declaration in an absent, empty or unfenced body', () => {
     expect(parseDeclaration(null)).toEqual(failure('missing'));
     expect(parseDeclaration('')).toEqual(failure('missing'));
     expect(parseDeclaration(fields.join('\n'))).toEqual(failure('missing'));
   });
 
-  it('does not take a harnessx fence for a harness block', () => {
-    expect(parseDeclaration(body.replace('```harness', '```harnessx'))).toEqual(failure('missing'));
+  it('takes a harnessx fence for an ambiguous block, not a declaration', () => {
+    expect(parseDeclaration(body.replace('```harness', '```harnessx'))).toEqual(
+      failure('ambiguous_block'),
+    );
   });
 
   it('refuses two harness blocks', () => {
-    expect(parseDeclaration(`${body}\n\n${body}`)).toEqual(failure('duplicate_block'));
+    expect(parseDeclaration(`${body}\n\n${body}`)).toEqual(failure('ambiguous_block'));
   });
 
   it('refuses a block with no closing fence', () => {
@@ -97,9 +103,13 @@ describe('GH-5 a PR body without exactly one closed harness block declares nothi
   it('refuses a body longer than a GitHub PR body may be', () => {
     expect(parseDeclaration(`${body}\n${'x'.repeat(65_536)}`)).toEqual(failure('too_long'));
   });
+
+  it('counts a body that is not a string as missing', () => {
+    expect(parseDeclaration(JSON.parse('{}').body)).toEqual(failure('missing'));
+  });
 });
 
-describe('GH-5 a harness block with a wrong line declares nothing', () => {
+describe('P16 a harness block with a wrong line declares nothing', () => {
   it('refuses an unknown key', () => {
     expect(parseDeclaration(bodyWith([...fields, 'owner: me']))).toEqual(failure('unknown_key'));
   });
@@ -133,7 +143,7 @@ describe('GH-5 a harness block with a wrong line declares nothing', () => {
   });
 });
 
-describe('GH-5 the risk declaration is the parsed tier and domains or nothing', () => {
+describe('the risk declaration is the parsed tier and domains or nothing', () => {
   it('takes the tier and domains from a declaration', () => {
     expect(riskDeclarationOf({ ...parsed, riskTier: 'high', riskDomains: ['acl'] })).toEqual({
       riskTier: 'high',
@@ -150,7 +160,7 @@ function reviewBody(provider: string): string {
   return ['Looks good.', '```harness-review', provider, 'model: claude', '```'].join('\n');
 }
 
-describe('GH-5 the review provider comes from the fenced harness-review block', () => {
+describe('the review provider comes from the fenced harness-review block', () => {
   it('reads and normalises the provider', () => {
     expect(parseReviewProvider(reviewBody('provider: Anthropic'))).toBe('anthropic');
   });
@@ -167,5 +177,62 @@ describe('GH-5 the review provider comes from the fenced harness-review block', 
     expect(parseReviewProvider(reviewBody('model: claude'))).toBeNull();
     const repeated = reviewBody('provider: anthropic\nprovider: openai');
     expect(parseReviewProvider(repeated)).toBeNull();
+  });
+});
+
+const visibleHigh = bodyWith(replaced('risk_tier', 'risk_tier: high'));
+const hiddenLow = `<!--\n${bodyWith(replaced('risk_tier', 'risk_tier: low'))}\n-->`;
+
+function lookalike(opening: string): string {
+  const lines = replaced('risk_tier', 'risk_tier: low');
+  return [opening, ...lines, '```'].join('\n');
+}
+
+const lookalikeOpenings: readonly (readonly [string, string])[] = [
+  ['a space before the info string', '``` harness'],
+  ['an indented fence', '  ```harness'],
+  ['a zero-width suffix', '```harness\u200B'],
+  ['a Cyrillic а', '```h\u0430rness'],
+  ['a tilde fence', '~~~harness'],
+  ['four backticks', '````harness'],
+  ['a capitalised info string', '```Harness'],
+];
+
+describe('P16 a PR body cannot show one declaration and have another read', () => {
+  it('refuses any body holding an HTML comment', () => {
+    expect(parseDeclaration(`${visibleHigh}\n${hiddenLow}`)).toEqual(failure('ambiguous_block'));
+    expect(parseDeclaration(hiddenLow)).toEqual(failure('ambiguous_block'));
+    expect(parseDeclaration(`${body}\n<!-- a template note -->`)).toEqual(
+      failure('ambiguous_block'),
+    );
+  });
+
+  it.each(lookalikeOpenings)('refuses %s beside the exact block', (_name, opening) => {
+    expect(parseDeclaration(`${lookalike(opening)}\n\n${visibleHigh}`)).toEqual(
+      failure('ambiguous_block'),
+    );
+    expect(parseDeclaration(`${visibleHigh}\n\n${lookalike(opening)}`)).toEqual(
+      failure('ambiguous_block'),
+    );
+  });
+
+  it.each(lookalikeOpenings)('refuses %s on its own', (_name, opening) => {
+    expect(parseDeclaration(lookalike(opening))).toEqual(failure('ambiguous_block'));
+  });
+
+  it('refuses an exact block shown as an example inside another fence', () => {
+    const example = ['````markdown', ...visibleHigh.split('\n'), '````'].join('\n');
+    expect(parseDeclaration(example)).toEqual(failure('ambiguous_block'));
+  });
+
+  it('refuses a declaration key line outside the block, whatever its case', () => {
+    expect(parseDeclaration(`Risk_Tier: low\n${body}`)).toEqual(failure('ambiguous_block'));
+    expect(parseDeclaration(`${body}\n  risks : none`)).toEqual(failure('ambiguous_block'));
+    expect(parseDeclaration(`${body}\nrisk\u200B_tier: low`)).toEqual(failure('ambiguous_block'));
+  });
+
+  it('still reads a block beside ordinary code blocks and prose', () => {
+    const withCode = ['```ts', 'const tier = 1;', '```', body, '~~~', 'plain', '~~~'].join('\n');
+    expect(parseDeclaration(withCode)).toEqual(success(parsed));
   });
 });
