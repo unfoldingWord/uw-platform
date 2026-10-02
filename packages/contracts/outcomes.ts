@@ -60,6 +60,7 @@ export const errorReasonSchema = z.enum([
   'stage_edit_refused',
   'item_not_at_gate',
   'reason_not_one_line',
+  'decision_in_flight',
 ]);
 
 export const refusalSchema = z.object({
