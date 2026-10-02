@@ -102,7 +102,7 @@ export function approvedBy(
   return { reviewId, reviewer: login, commit, state: 'approved', provider, submittedAt };
 }
 
-export type FactsInput = {
+type FactsInput = {
   readonly itemId: string;
   readonly head: string;
   readonly reviews: readonly ReviewFact[];

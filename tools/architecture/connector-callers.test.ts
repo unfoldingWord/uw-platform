@@ -136,6 +136,9 @@ describe("GH-5 the assembler is the ship rule's only caller", () => {
     const direct = plant('apps/uw-app/y.ts', 'shipRule(input);');
     const aliased = plant('apps/uw-app/z.ts', "import { shipRule as rule } from '@uw/harness';");
     const assembler = plant('apps/uw-app/w.ts', 'assembleShipInput(source);');
+    expect(sourcesAmong(['apps/uw-app/x.ts', 'apps/uw-app/x.test.ts'])).toEqual([
+      'apps/uw-app/x.ts',
+    ]);
     expect(strays(shipRuleCall, shipRuleCallers, [viaKernel, direct])).toEqual(
       [viaKernel, direct].sort(),
     );
