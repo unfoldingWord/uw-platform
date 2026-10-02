@@ -21,15 +21,19 @@ const wiring = [
   'sim/world.ts',
 ];
 
-function sources(): string[] {
-  return repoFiles().filter(
+function sourcesAmong(files: readonly string[]): string[] {
+  return files.filter(
     (file) =>
       sourceRoots.some((root) => file.startsWith(root)) &&
-      /\.tsx?$/.test(file) &&
-      !/\.test\.tsx?$/.test(file) &&
+      /\.(?:tsx?|m?js)$/.test(file) &&
+      !/\.test\.(?:tsx?|m?js)$/.test(file) &&
       !file.includes('node_modules') &&
       !file.startsWith('packages/harness/port-contracts/'),
   );
+}
+
+function sources(): string[] {
+  return sourcesAmong(repoFiles());
 }
 
 function filesMatching(pattern: RegExp, files: readonly string[]): string[] {
@@ -62,6 +66,18 @@ describe('the connectors port runs only from the kernel stage-exit path', () => 
   it('flags every planted way of calling run on the connectors port', () => {
     const files = runCalls.map((text, index) => plant(`run-${index}.ts`, text));
     expect(filesMatching(connectorRun, files)).toEqual([...files].sort());
+  });
+
+  it('flags a planted .mjs run call and a planted .js exit call', () => {
+    const run = plant('planted.mjs', 'await ports.connectors.run(request);');
+    const exit = plant('exit-caller.js', 'exitThroughConnector(ports, context, pending)');
+    expect(filesMatching(connectorRun, [run])).toEqual([run]);
+    expect(filesMatching(connectorExitCall, [exit])).toEqual([exit]);
+  });
+
+  it('scans .js and .mjs sources and skips their test files', () => {
+    const files = ['apps/x.mjs', 'apps/y.js', 'apps/z.test.mjs', 'apps/w.test.js'];
+    expect(sourcesAmong(files)).toEqual(['apps/x.mjs', 'apps/y.js']);
   });
 
   it('flags a planted file that only references the connectors port', () => {

@@ -37,7 +37,6 @@ export type { LeaseOutcome } from './items/run-steps.ts';
 export type { Rebuilt, RepairCommands } from './items/repair.ts';
 export type { DelegationCommands, GrantInput } from './delegations/commands.ts';
 export type { GateCommands } from './gates/commands.ts';
-export { exitThroughConnector } from './gates/exit.ts';
 export type { Decided, DecideInput } from './gates/decide.ts';
 export { applyDeclaration, domainOf, floorFromPaths } from './risk/derive.ts';
 export type { RiskFloor, RiskResult } from './risk/derive.ts';

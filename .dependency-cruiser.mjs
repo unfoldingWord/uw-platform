@@ -131,6 +131,14 @@ export default {
       to: { path: '^packages/db/test-seed\\.ts$' },
     },
     {
+      name: 'harness-testing-only-in-tests',
+      comment:
+        'The connector exit and other test-only kernel entry points are imported only by test files.',
+      severity: 'error',
+      from: { pathNot: testFile },
+      to: { path: '^packages/harness/testing\\.ts$' },
+    },
+    {
       name: 'harness-tests-import-contracts-core-and-vitest-only',
       comment: 'A packages/harness test imports what the harness may, plus Vitest.',
       severity: 'error',
