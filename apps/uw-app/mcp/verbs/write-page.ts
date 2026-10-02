@@ -19,8 +19,9 @@ export const writePageVerb = gatedHandler({
   hidden: hiddenWrite,
   resource: writeArea,
   run: async (context, input) => {
-    const { db, principal, traceId, at } = context;
-    const written = await writePageAsAgent(db, principal, input, traceId, at);
+    const { db, principal, traceId, at, kernel } = context;
+    const request = { traceId, at, instructions: kernel.reads };
+    const written = await writePageAsAgent(db, principal, input, request);
     if (!written.ok) {
       if (written.reason === 'page_not_found') return hiddenPage(input);
       return refusal(written.reason, 'detail' in written ? written.detail : {});

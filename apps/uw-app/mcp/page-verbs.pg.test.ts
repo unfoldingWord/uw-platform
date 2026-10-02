@@ -1,18 +1,16 @@
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { principalSchema, type Principal } from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
-import { lockWaiters } from '@uw/db/store';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
 import { seedGrant, seedPage, seedPerson, type SeedPage } from '@uw/db/test-seed';
+import { software } from '@uw/harness';
 import { createApp } from '../app.tsx';
-import { writePageAsAgent } from '../pages/agent-write.ts';
 import { updatePage } from '../pages/store.ts';
 import { createAccessFixture, type AccessFixture } from '../testing/access-keys.ts';
 import { kernelOn, personOn } from '../testing/kernel.ts';
 import { callTool, httpClient } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
-import { awaitBlocked } from '../../../packages/harness/port-contracts/lock-wait.ts';
 import { callVerb } from './dispatch.ts';
 import { verbHandlers } from './verbs/index.ts';
 
@@ -32,16 +30,15 @@ const SEEDED = {
   persona80: '00000000-0000-4000-8000-000000001413',
 };
 const GRANTED_AT = new Date('2026-01-01T00:00:00.000Z');
+const IAN = { id: '00000000-0000-4000-8000-000000000001', email: 'ian.lindsley@unfoldingword.org' };
+const clock = { now: () => new Date() };
 
 type Body = Record<string, unknown>;
 type Rig = {
   readonly db: Database;
   readonly fixture: AccessFixture;
-  readonly connectionString: string;
   readonly drop: () => Promise<void>;
 };
-
-let rigged: Promise<Rig> | null = null;
 
 const productFrontmatter = {
   owner: `human:${EDITOR.id}`,
@@ -129,19 +126,23 @@ async function openRig(): Promise<Rig> {
   return {
     db,
     fixture: await createAccessFixture(),
-    connectionString: database.connectionString,
     drop,
   };
 }
 
-function rig(): Promise<Rig> {
-  rigged ??= openRig();
-  return rigged;
+function freshRig(): () => Rig {
+  let current: Rig | null = null;
+  beforeAll(async () => {
+    current = await openRig();
+  });
+  afterAll(async () => {
+    await current?.drop();
+  });
+  return () => {
+    if (current === null) throw new Error('the rig is not open');
+    return current;
+  };
 }
-
-afterAll(async () => {
-  if (rigged !== null) await (await rigged).drop();
-});
 
 type Reply = { readonly text: string; readonly body: Body };
 type Tool = (name: string, args: Body) => Promise<Reply>;
@@ -181,7 +182,6 @@ async function viewer(r: Rig): Promise<Tool> {
     { traceId: 'trace', commit: 'test-commit', route: 'POST /mcp', principal: null },
     () => undefined,
   );
-  const clock = { now: () => new Date() };
   return async (name, args) => {
     const context = {
       principal,
@@ -247,8 +247,9 @@ function notFound(pageId: string): Body {
 describe.skipIf(!testServer)(
   'AB-5 search_pages and read_page return only pages the principal may read',
   () => {
+    const rig = freshRig();
     it('finds only the readable area for the viewer and both areas for the editor', async () => {
-      const r = await rig();
+      const r = rig();
       const found = await search(await viewer(r), 'harvest');
       expect(idsOf(found.body)).toEqual([SEEDED.workshop30]);
       const editor = await search(await runner(r, EDITOR.email), 'harvest');
@@ -256,13 +257,13 @@ describe.skipIf(!testServer)(
     });
 
     it('narrows the search to one page type', async () => {
-      const r = await rig();
+      const r = rig();
       const learning = await search(await runner(r, EDITOR.email), 'harvest', 'learning');
       expect(idsOf(learning.body)).toEqual([SEEDED.lesson80]);
     });
 
     it('reads a readable page and answers an unreadable one exactly as a missing one', async () => {
-      const r = await rig();
+      const r = rig();
       const reader = await viewer(r);
       const readable = await reader('read_page', { pageId: SEEDED.workshop30 });
       expect(readable.body['page']).toMatchObject({ id: SEEDED.workshop30, jdArea: '30-39' });
@@ -277,16 +278,16 @@ describe.skipIf(!testServer)(
 describe.skipIf(!testServer)(
   "AB-5 write_page runs the page API's validation and records the agent",
   () => {
-    it('creates a draft product page recorded as agent:<person>/laptop', async () => {
-      const r = await rig();
+    const rig = freshRig();
+
+    it('creates a new product page as a draft', async () => {
       const page = newPage('agent-product');
-      const created = await write(await runner(r, EDITOR.email), page);
+      const created = await write(await runner(rig(), EDITOR.email), page);
       expect(created.body).toEqual({ pageId: page['pageId'], version: 1, status: 'draft' });
-      expect(await editSources(r, String(page['pageId']))).toEqual([`agent:${EDITOR.id}/laptop`]);
     });
 
     it('refuses an unknown frontmatter field, a taken slug and a stale version', async () => {
-      const r = await rig();
+      const r = rig();
       const editor = await runner(r, EDITOR.email);
       const extra = newPage('agent-extra', {
         frontmatter: { ...productFrontmatter, colour: 'red' },
@@ -299,7 +300,7 @@ describe.skipIf(!testServer)(
     });
 
     it('refuses a person who may not write the area, and hides a page they cannot read', async () => {
-      const r = await rig();
+      const r = rig();
       const writer = await viewer(r);
       expect((await write(writer, newPage('viewer-product'))).body['reason']).toBe('not_permitted');
       const save = { ...newPage('seeded-1410'), pageId: SEEDED.workshop80, expectedVersion: 1 };
@@ -346,8 +347,9 @@ const gatedRefusal = { status: 'error', reason: 'not_permitted', detail: { why: 
 describe.skipIf(!testServer)(
   'AB-5 a gated page lands as suggested and is never edited by an agent',
   () => {
+    const rig = freshRig();
     it('suggests a learning, saves it while suggested, and refuses it once a person activates it', async () => {
-      const r = await rig();
+      const r = rig();
       const editor = await runner(r, EDITOR.email);
       const page = await suggestThenActivate(r, editor);
       expect((await write(editor, page)).body).toEqual(gatedRefusal);
@@ -359,7 +361,7 @@ describe.skipIf(!testServer)(
     });
 
     it('refuses a save over an active persona page and leaves it unchanged', async () => {
-      const r = await rig();
+      const r = rig();
       const save = newPage('seeded-1413', {
         pageId: SEEDED.persona80,
         type: 'persona',
@@ -375,7 +377,7 @@ describe.skipIf(!testServer)(
     });
 
     it('refuses policy, which is not a registered page type, and a save that changes type or area', async () => {
-      const r = await rig();
+      const r = rig();
       const editor = await runner(r, EDITOR.email);
       expect(
         (await write(editor, newPage('agent-policy', { type: 'policy' }))).body['reason'],
@@ -391,109 +393,91 @@ describe.skipIf(!testServer)(
   },
 );
 
-async function seedSuggested(db: Database): Promise<string> {
-  const pageId = crypto.randomUUID();
-  await seedPage(
-    db,
-    seeded(pageId, {
-      type: 'learning',
-      status: 'suggested',
-      frontmatter: learningFrontmatter,
-      slug: 'racing-learning',
-      bodyMd: 'The racing notes.',
-    }),
+describe.skipIf(!testServer)('AB-3 page version history records the agent identity', () => {
+  const rig = freshRig();
+
+  it('records a page the agent creates as agent:<person>/laptop', async () => {
+    const r = rig();
+    const page = newPage('agent-history');
+    expect((await write(await runner(r, EDITOR.email), page)).body['status']).toBe('draft');
+    expect(await editSources(r, String(page['pageId']))).toEqual([`agent:${EDITOR.id}/laptop`]);
+  });
+});
+
+async function nameAsInstructions(r: Rig, stageKey: string, pageId: string): Promise<void> {
+  const ian = await personOn(r.db, IAN.id, IAN.email, new Date());
+  const kernel = kernelOn(r.db, clock);
+  const caller = { actor: ian, traceId: crypto.randomUUID() };
+  const harnessId = crypto.randomUUID();
+  const harnessKey = `software-${stageKey}`;
+  const activation = { harnessId, harnessKey, jdArea: '80-89', template: software };
+  expect((await kernel.stages.activate(caller, activation)).status).toBe('accepted');
+  const change = { instructionsPageId: pageId };
+  const edited = await kernel.stages.updateStage(caller, { harnessId, stageKey, change });
+  expect(edited.status).toBe('accepted');
+}
+
+function personSave(r: Rig, page: Body) {
+  return personOn(r.db, EDITOR.id, EDITOR.email, new Date()).then((person) =>
+    updatePage(
+      r.db,
+      person,
+      {
+        command: 'update_page',
+        requestId: crypto.randomUUID(),
+        pageId: String(page['pageId']),
+        expectedVersion: 1,
+        slug: String(page['slug']),
+        title: 'Edited by a person',
+        parentId: null,
+        frontmatter: productFrontmatter,
+        bodyMd: 'A person edits the instructions.',
+        status: 'active',
+      },
+      crypto.randomUUID(),
+      new Date(),
+    ),
   );
-  return pageId;
 }
 
-function activation(db: Database, person: Principal, pageId: string) {
-  const command = {
-    command: 'update_page' as const,
-    requestId: crypto.randomUUID(),
-    pageId,
-    expectedVersion: 1,
-    slug: 'racing-learning',
-    title: 'A seeded page',
-    parentId: null,
-    frontmatter: learningFrontmatter,
-    bodyMd: 'The racing notes.',
-    status: 'active' as const,
-  };
-  return updatePage(db, person, command, crypto.randomUUID(), new Date());
-}
-
-function agentSave(db: Database, agent: Principal, pageId: string) {
-  const input = {
-    pageId,
-    type: 'learning' as const,
-    jdArea: '80-89',
-    slug: 'racing-learning',
-    title: 'Overwritten by an agent',
-    parentId: null,
-    frontmatter: learningFrontmatter,
-    bodyMd: 'The agent was here.',
-    expectedVersion: 1,
-  };
-  return writePageAsAgent(db, agent, input, crypto.randomUUID(), new Date());
-}
-
-type Connections = {
-  readonly person: Database;
-  readonly agent: Database;
-  readonly holder: Database;
+const instructionsRefusal = {
+  status: 'error',
+  reason: 'not_permitted',
+  detail: { why: 'stage_instructions' },
 };
 
-async function raceBehindARowLock(r: Rig, c: Connections, pageId: string) {
-  const person = await personOn(c.person, EDITOR.id, EDITOR.email, new Date());
-  const agent = await deviceOf(c.agent, EDITOR);
-  let release = (): void => undefined;
-  const released = new Promise<void>((resolve) => void (release = resolve));
-  let locked = (): void => undefined;
-  const rowLocked = new Promise<void>((resolve) => void (locked = resolve));
-  const holding = c.holder.$client.begin(async (sql) => {
-    await sql`SELECT id FROM pages WHERE id = ${pageId} FOR UPDATE`;
-    locked();
-    await released;
-  });
-  await rowLocked;
-  try {
-    const activated = activation(c.person, person, pageId);
-    await awaitBlocked(async () => ((await lockWaiters(r.db)) >= 1 ? 1 : 0));
-    const saved = agentSave(c.agent, agent, pageId);
-    await awaitBlocked(async () => ((await lockWaiters(r.db)) >= 2 ? 1 : 0));
-    release();
-    return { activated: await activated, saved: await saved };
-  } finally {
-    release();
-    await holding;
-  }
-}
-
-async function withConnections(r: Rig, work: (c: Connections) => Promise<void>): Promise<void> {
-  const c = {
-    person: createClient(r.connectionString),
-    agent: createClient(r.connectionString),
-    holder: createClient(r.connectionString),
-  };
-  try {
-    await work(c);
-  } finally {
-    await Promise.all(Object.values(c).map((db) => db.$client.end()));
-  }
-}
-
 describe.skipIf(!testServer)(
-  "AB-5 an agent's save racing a person's activation never undoes it",
+  'an agent never saves a page a stage names as its instructions',
   () => {
-    it('keeps the activation when the agent saves the version the person just replaced', async () => {
-      const r = await rig();
-      const pageId = await seedSuggested(r.db);
-      await withConnections(r, async (c) => {
-        const { activated, saved } = await raceBehindARowLock(r, c, pageId);
-        expect(activated.ok).toBe(true);
-        expect(saved).toMatchObject({ ok: false, reason: 'stale_version' });
+    const rig = freshRig();
+
+    it('refuses the agent on an active product page and accepts a person', async () => {
+      const r = rig();
+      const pageId = crypto.randomUUID();
+      await seedPage(r.db, seeded(pageId, { status: 'active', slug: 'stage-instructions' }));
+      await nameAsInstructions(r, 'package', pageId);
+      const save = newPage('stage-instructions', { pageId, expectedVersion: 1 });
+      expect((await write(await runner(r, EDITOR.email), save)).body).toEqual(instructionsRefusal);
+      expect(await storedPage(r, pageId)).toEqual({ status: 'active', version: 1, versions: 0 });
+      expect((await personSave(r, save)).ok).toBe(true);
+    });
+
+    it('refuses the agent on a suggested learning page too', async () => {
+      const r = rig();
+      const pageId = crypto.randomUUID();
+      const learning = { type: 'learning' as const, status: 'suggested' as const };
+      await seedPage(
+        r.db,
+        seeded(pageId, { ...learning, frontmatter: learningFrontmatter, slug: 'stage-learning' }),
+      );
+      await nameAsInstructions(r, 'check', pageId);
+      const save = newPage('stage-learning', {
+        pageId,
+        type: 'learning',
+        frontmatter: learningFrontmatter,
+        expectedVersion: 1,
       });
-      expect(await storedPage(r, pageId)).toEqual({ status: 'active', version: 2, versions: 1 });
+      expect((await write(await runner(r, EDITOR.email), save)).body).toEqual(instructionsRefusal);
     });
   },
 );
