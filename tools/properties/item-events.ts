@@ -232,11 +232,17 @@ function loopEdge(model: Model, pick: number): boolean {
   return true;
 }
 
-const tiers = ['low', 'standard', 'high'] as const;
+const tiers = ['low', 'standard', 'high', null] as const;
+const tierOrder = ['low', 'standard', 'high'];
+const domainOrder = ['ledger', 'acl', 'infra', 'migration'];
 const domainSets = [[], ['acl'], ['ledger', 'migration']];
 
+function higherTier(left: string | null, right: string | null): string | null {
+  return tierOrder.indexOf(left ?? '') >= tierOrder.indexOf(right ?? '') ? left : right;
+}
+
 function riskDerived(model: Model, pick: number): boolean {
-  const riskTier = tiers[pick % tiers.length] ?? 'low';
+  const riskTier = tiers[pick % tiers.length] ?? null;
   const riskDomains = domainSets[pick % domainSets.length] ?? [];
   emit(model, 'risk_derived', {
     paths: ['src/index.ts'],
@@ -246,7 +252,14 @@ function riskDerived(model: Model, pick: number): boolean {
     riskDomains,
     refusal: null,
   });
-  Object.assign(model.expected, { riskTier, riskDomains });
+  const held = model.expected;
+  const union = domainOrder.filter(
+    (domain) => held.riskDomains.includes(domain) || riskDomains.includes(domain),
+  );
+  Object.assign(model.expected, {
+    riskTier: higherTier(held.riskTier, riskTier),
+    riskDomains: union,
+  });
   return true;
 }
 

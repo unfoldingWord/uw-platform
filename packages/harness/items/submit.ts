@@ -92,7 +92,7 @@ function riskDraft(change: SubmitChange, item: ItemState): EventDraft {
     paths: [...change.paths],
     declaration: change.declaration,
     floorDomains: [...floor.domains],
-    riskTier: result.ok ? result.tier : null,
+    riskTier: result.ok ? result.tier : floor.tier,
     riskDomains: [...result.domains],
     refusal: result.ok ? null : result.reason,
   });
