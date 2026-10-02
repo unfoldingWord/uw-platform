@@ -1,5 +1,5 @@
 import type { Harness, ItemState, Principal, Stage } from '@uw/contracts';
-import { allowed } from '../access.ts';
+import { allowed, bareAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { beatPrincipal, personaMatches } from '../delegations/beat.ts';
 import { assertDelegationLive, recordLapse } from '../delegations/live.ts';
@@ -91,7 +91,7 @@ async function delegationGuard(
 ): Promise<Refused | null> {
   const { caller, harness, stage, context } = scene;
   if (delegationId === null) {
-    if (caller.actor.interactive) return null;
+    if (caller.actor.interactive && !bareAgent(caller.actor.identity)) return null;
     await recordItemEvents(tx, context, item.itemId, [
       draft('delegation_required', { stage: stage.key }),
     ]);

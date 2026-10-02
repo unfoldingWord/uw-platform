@@ -27,7 +27,10 @@ export const scenario = defineScenario({
       { role: 'editor', scopeKind: 'jd_area', scopeArea: '80-89' },
     ]);
     const editor: Caller = simCaller(world, owner);
-    const builder = simCaller(world, simAgent(owner, 'builder', { interactive: true }));
+    const builder = simCaller(
+      world,
+      simAgent(owner, `${owner.personId}/builder`, { interactive: true }),
+    );
     const enqueue = (title: string) =>
       world.kernel.items.enqueue(editor, {
         harnessId: harness.id,
