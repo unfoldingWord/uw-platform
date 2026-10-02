@@ -27,9 +27,11 @@ export const personaIdentitySchema = identitySchema.refine(
   'a persona identity is agent:<persona>, not a reserved name',
 );
 
+export const repositoryPattern =
+  '^(?!-)(?![A-Za-z0-9-]*-/)[A-Za-z0-9-]{1,39}/(?!\\.\\.?$)[A-Za-z0-9._-]{1,100}$';
 export const repositorySchema = z
   .string()
-  .regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/, 'a repository is owner/name');
+  .regex(new RegExp(repositoryPattern), 'a repository is a GitHub owner/name');
 
 export const pullRequestRefSchema = z.strictObject({
   repo: repositorySchema,
