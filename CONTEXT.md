@@ -231,7 +231,7 @@ The nightly repair that re-reads GitHub from a repository's watermark through th
 _Avoid_: sync, backfill, reconcile job
 
 **PR declaration**:
-The one fenced `harness` block in a PR body, naming `closes`, `risks`, `touches`, `risk_tier` and `risk_domains`. It can raise an item's risk tier, never lower it; two blocks or an unclosed block declare nothing.
+The fenced `harness` block that opens a PR body, naming `closes`, `risks`, `touches`, `risk_tier` and `risk_domains`. The body's first line is exactly ```` ```harness ```` and the block closes on a line that is exactly ```` ``` ````; prose follows it. It can raise an item's risk tier, never lower it. A body that does not open with the block, an unclosed block, a second harness-like fence or a declaration key line after the block, HTML markup starting `<!` or `<?`, or an unusual line break declares nothing.
 _Avoid_: PR template, PR metadata
 
 **Reviewer identity**:
