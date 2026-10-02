@@ -33,6 +33,10 @@ function pnpmTree(files: Record<string, string>): string {
   mkdirSync(join(root, 'apps/uw-app/node_modules/@octokit'), { recursive: true });
   symlinkSync(join(root, store), join(root, 'apps/uw-app/node_modules/@octokit/core'), 'dir');
   for (const name of githubFiles) write(root, `apps/uw-app/github/${name}.ts`, leaf);
+  for (const name of ['@octokit/rest', '@octokit/webhooks-methods']) {
+    write(root, `node_modules/${name}/index.js`, 'export default 1;');
+    write(root, `node_modules/${name}/package.json`, JSON.stringify({ name, main: 'index.js' }));
+  }
   for (const [path, source] of Object.entries(files)) write(root, path, source);
   return root;
 }
@@ -69,6 +73,18 @@ const refusals: [string, string, string, string][] = [
     'apps/uw-app/ports/connectors.ts',
     "import '../github/client.ts';",
     'github-reads-only-in-github-and-composition-roots',
+  ],
+  [
+    'any other Octokit package outside the session',
+    'apps/uw-app/x.ts',
+    "import '@octokit/rest';",
+    'github-token-and-octokit-only-in-the-session',
+  ],
+  [
+    'the webhook signature package outside uw-ingest',
+    'apps/uw-app/x.ts',
+    "import '@octokit/webhooks-methods';",
+    'octokit-webhooks-methods-only-in-ingest',
   ],
   [
     'a route opening a session',
@@ -151,6 +167,12 @@ describe('the GitHub dependency rules allow', () => {
         'apps/uw-app/kernel.ts':
           "import './github/client.ts'; import './github/transport.ts'; import './github/app-config.ts';",
       }),
+    ).toEqual([]);
+  });
+
+  it('uw-ingest on the webhook signature package', async () => {
+    expect(
+      await violations({ 'apps/uw-ingest/sources/a.ts': "import '@octokit/webhooks-methods';" }),
     ).toEqual([]);
   });
 

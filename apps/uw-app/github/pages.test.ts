@@ -111,13 +111,13 @@ describe('the other GitHub list reads are whole or refused', () => {
       status: 200,
       body: { total_count: 150, [key]: pageOf(size).body },
     });
-    github.on('GET', '/repos/o/r/commits/abc/check-runs', [
+    github.on('GET', `/repos/o/r/commits/${'a'.repeat(40)}/check-runs`, [
       wrapped('check_runs', 100),
       wrapped('check_runs', 50),
     ]);
     github.on('GET', '/installation/repositories', wrapped('repositories', 2));
     const reads = readsOver(github);
-    const runs = await reads.checkRuns('o/r', 'abc');
+    const runs = await reads.checkRuns('o/r', 'a'.repeat(40));
     expect(runs.ok && runs.value.length).toBe(150);
     const repositories = await reads.installationRepositories();
     expect(repositories.ok && repositories.value.length).toBe(2);

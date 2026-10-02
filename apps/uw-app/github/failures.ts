@@ -25,8 +25,12 @@ const byStatus = new Map<number, GitHubFailure>([
   [429, 'rate_limited'],
 ]);
 
+function isRateLimit(headers: Headers): boolean {
+  return headers.get('x-ratelimit-remaining') === '0' || headers.has('retry-after');
+}
+
 export function failureOf(status: number, headers: Headers): GitHubFailure {
-  if (status === 403 && headers.get('x-ratelimit-remaining') === '0') return 'rate_limited';
+  if (status === 403 && isRateLimit(headers)) return 'rate_limited';
   if (status >= 500) return 'server_error';
   return byStatus.get(status) ?? 'unprocessable';
 }

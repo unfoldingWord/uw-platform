@@ -28,7 +28,7 @@ const simMayImport = [
 ];
 
 const github = (file) => `^apps/uw-app/github/${file}\\.ts$`;
-const octokitRest = npm('@octokit/(core|request|request-error|endpoint|graphql|auth-token)');
+const octokitWebhookSignatures = npm('@octokit/webhooks-methods');
 const compositionRoots = '^apps/uw-app/(queue/worker|cron/scheduled|kernel)\\.ts$';
 
 const forbidden = (name, comment, from, to) => ({
@@ -223,10 +223,18 @@ export default {
     {
       name: 'github-token-and-octokit-only-in-the-session',
       comment:
-        'Only the session mints an installation token or reaches Octokit, so no other module holds a token.',
+        'Only the session mints an installation token or reaches any Octokit package but the webhook signature check, so no other module holds a token.',
       severity: 'error',
       from: { pathNot: [github('session'), testFile] },
-      to: { path: [github('token'), octokitRest] },
+      to: { path: [github('token'), npm('@octokit')], pathNot: octokitWebhookSignatures },
+    },
+    {
+      name: 'octokit-webhooks-methods-only-in-ingest',
+      comment:
+        'The one Octokit package outside the session is the webhook signature check, and only uw-ingest imports it.',
+      severity: 'error',
+      from: { pathNot: ['^apps/uw-ingest/', testFile] },
+      to: { path: octokitWebhookSignatures },
     },
     {
       name: 'github-merge-writes-only-in-merge',
