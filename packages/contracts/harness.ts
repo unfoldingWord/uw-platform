@@ -11,7 +11,7 @@ import {
   riskTierSchema,
   stageBracketSchema,
 } from './closed-sets.ts';
-import { agentIdentityPattern, identitySchema } from './identity.ts';
+import { agentIdentityPattern, identitySchema, isPersonaIdentity } from './identity.ts';
 import { slugSchema } from './pages.ts';
 
 const distinct = (values: readonly string[]) => new Set(values).size === values.length;
@@ -23,8 +23,8 @@ export const stageKeySchema = z
 
 export const personaIdentityPattern = agentIdentityPattern;
 export const personaIdentitySchema = identitySchema.refine(
-  (value) => value.startsWith('agent:') && !value.includes('/'),
-  'a persona identity is agent:<persona>',
+  isPersonaIdentity,
+  'a persona identity is agent:<persona>, not a reserved name',
 );
 
 export const pullRequestRefSchema = z.strictObject({

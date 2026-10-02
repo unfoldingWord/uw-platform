@@ -18,7 +18,7 @@ import {
   stageKeySchema,
   stageSchema,
 } from './harness.ts';
-import { identitySchema } from './identity.ts';
+import { deviceSegmentSchema, identitySchema, personaSlugSchema } from './identity.ts';
 import {
   ingestEnvelopeSchema,
   ingestRefusalSchema,
@@ -77,6 +77,8 @@ export const schemaRegistry: Record<string, ZodType> = {
   'event-name': eventNameSchema,
   'new-event': newEventSchema,
   identity: identitySchema,
+  'device-segment': deviceSegmentSchema,
+  'persona-slug': personaSlugSchema,
   connector: closedSets.connectorSchema,
   'exit-gate': closedSets.exitGateSchema,
   'agent-pickup': closedSets.agentPickupSchema,
