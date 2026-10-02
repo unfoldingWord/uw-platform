@@ -63,6 +63,7 @@ type Scene = {
   readonly workflowItem: string;
   readonly hiddenItem: string;
   readonly hiddenHarness: string;
+  readonly undelegatedHarness: string;
   readonly delegationId: string;
   readonly beat: Principal;
 };
@@ -161,6 +162,7 @@ async function openScene(r: Rig): Promise<Scene> {
   scenes += 1;
   const harnessId = await harnessIn(r, `software-conformance-${scenes}`, '80-89');
   const hidden = await harnessIn(r, `software-hidden-${scenes}`, '30-39');
+  const undelegated = await harnessIn(r, `software-undelegated-${scenes}`, '80-89');
   const { delegationId, beat } = await delegated(r, harnessId);
   return {
     harnessId,
@@ -168,6 +170,7 @@ async function openScene(r: Rig): Promise<Scene> {
     workflowItem: await enqueue(r, harnessId, 'workflow item'),
     hiddenItem: await enqueue(r, hidden, 'hidden item'),
     hiddenHarness: hidden,
+    undelegatedHarness: undelegated,
     delegationId,
     beat,
   };
@@ -374,10 +377,11 @@ async function beatSeesOnlyItsHarness(_r: Rig, scene: Scene, hosts: Hosts): Prom
   expect((await body(hosts.workflow, 'get_health', { harnessId: scene.harnessId }))['status']).toBe(
     'ok',
   );
-  const hidden = textOf(await health(scene.hiddenHarness));
   const missing = textOf(await health(MISSING));
   expect(missing).toContain('harness_not_found');
-  expect(hidden).toBe(missing.replace(MISSING, scene.hiddenHarness));
+  for (const harnessId of [scene.undelegatedHarness, scene.hiddenHarness]) {
+    expect(textOf(await health(harnessId))).toBe(missing.replace(MISSING, harnessId));
+  }
 }
 
 function delegatedLaptop(owner: Principal, delegationId: string): Principal {
