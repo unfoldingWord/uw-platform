@@ -207,3 +207,87 @@ describe('the review provider cannot be shown as one and read as another', () =>
     expect(parseReviewProvider(body)).toBeNull();
   });
 });
+
+const rawBlockProbes: readonly Probe[] = [
+  [
+    'a one-line raw pre harness block',
+    `${low}\n<pre lang="harness">closes: none&#10;risks: r&#10;touches: t&#10;risk_tier: high&#10;risk_domains: none</pre>`,
+    'ambiguous_block',
+  ],
+  [
+    'a multi-line raw pre block with entity-spelled keys',
+    `${low}\n<pre lang="harness">\ncloses&#58; none\nrisk&#95;tier&#58; high\n</pre>`,
+    'ambiguous_block',
+  ],
+  [
+    'an uppercase PRE block',
+    `${low}\n<PRE LANG="harness">risk_tier: high</PRE>`,
+    'ambiguous_block',
+  ],
+  ['a raw code element', `${low}\n<code>risk_tier: high</code>`, 'ambiguous_block'],
+  [
+    'a decimal-entity fence label',
+    `${low}\n\n${block('```h&#97;rness', 'high')}`,
+    'ambiguous_block',
+  ],
+  [
+    'a hex-entity tilde label',
+    `${low}\n\n${block('~~~h&#x61;rness', 'high', '~~~')}`,
+    'ambiguous_block',
+  ],
+  ['a named entity in a key line', `${low}\n\nrisk&lowbar;tier&colon; high`, 'ambiguous_block'],
+  [
+    'a named entity in a fence label',
+    `${low}\n\n${block('```harn&eacute;ss', 'high')}`,
+    'ambiguous_block',
+  ],
+  [
+    'an entity-spelled label with homoglyph keys',
+    `${low}\n\n${['```h&#97;rness', 'r\u0456sk_tier: high', '```'].join('\n')}`,
+    'ambiguous_block',
+  ],
+  [
+    'a punctuated label with homoglyph keys',
+    `${low}\n\n${['```h.rness', 'r\u0456sk_tier: high', '```'].join('\n')}`,
+    'ambiguous_block',
+  ],
+  [
+    'a non-ASCII label with homoglyph keys',
+    `${low}\n\n${['```harn\u0435ss', 'r\u0456sk_tier: high', '```'].join('\n')}`,
+    'ambiguous_block',
+  ],
+  ['a backslash-escaped label', `${low}\n\n${block('```harnes\\s', 'high')}`, 'ambiguous_block'],
+  [
+    'a NUL in the block',
+    block('```harness', 'low').replace('risks: ', 'risks: a\u0000'),
+    'ambiguous_block',
+  ],
+  ['a backslash-escaped key line', `${low}\n\nrisk\\_tier: high`, 'ambiguous_block'],
+  ['a tagged key line', `${low}\n\n<b>risk_tier</b>: high`, 'ambiguous_block'],
+];
+
+describe('P16 a raw or entity-spelled harness block after the head is refused', () => {
+  it.each(rawBlockProbes)('refuses %s', (_name, body, problem) => {
+    expect(parseDeclaration(body)).toEqual({ ok: false, problem });
+  });
+
+  it('still reads a head block beside an ampersand in prose and a plain-labelled fence', () => {
+    const body = [low, '', 'R&D work, Q&A notes.', '```yaml', 'a: 1', '```'].join('\n');
+    expect(parseDeclaration(body)).toMatchObject({ ok: true, declaration: { riskTier: 'low' } });
+  });
+});
+
+describe('the review provider cannot be shown twice through raw HTML or an entity label', () => {
+  it.each([
+    [
+      'a raw pre harness-review block',
+      `${reviewBlock('anthropic')}\n<pre lang="harness-review">provider: openai</pre>`,
+    ],
+    [
+      'an entity-spelled harness-review label',
+      `${reviewBlock('anthropic')}\n\n${['```h&#97;rness-review', 'pr\u043Evider: openai', '```'].join('\n')}`,
+    ],
+  ])('is nothing for %s', (_name, body) => {
+    expect(parseReviewProvider(body)).toBeNull();
+  });
+});

@@ -86,6 +86,19 @@ const tailPool = fc.constantFrom(
   'a\u0085b',
   'a\fb',
   'a\vb',
+  'a\0b',
+  '<pre lang="harness">risk_tier: high</pre>',
+  '<PRE lang="harness">closes: none&#10;risk_tier: high</PRE>',
+  '<code>risk_tier: high</code>',
+  '```h&#97;rness',
+  '~~~h&#x61;rness',
+  '```h.rness',
+  '```yaml title',
+  'risk&#95;tier&#58; high',
+  'risk&lowbar;tier&colon; high',
+  'R&D notes',
+  'risk\\_tier: high',
+  '<b>risk_tier</b>: high',
   '\uFEFF',
 );
 
@@ -129,7 +142,7 @@ const bodies = fc.oneof(
 
 const keyLine = /^(?:closes|risks|touches|risktier|riskdomains)[:|]/u;
 const fenceRun = /^(?:`{3,}|~{3,})/u;
-const forbidden = ['\u0085', '\u2028', '\u2029', '\f', '\v', '\uFEFF', '<!', '<?'];
+const forbidden = ['\0', '\u0085', '\u2028', '\u2029', '\f', '\v', '\uFEFF', '<!', '<?'];
 
 function stripped(line: string): string {
   let rest = line.normalize('NFKC').replace(/\p{Cf}/gu, '');
@@ -144,12 +157,16 @@ function stripped(line: string): string {
 function isCandidate(line: string): boolean {
   const run = fenceRun.exec(line)?.[0];
   if (run === undefined) return false;
-  const info = line.slice(run.length);
-  return info.toLowerCase().includes('harness') || /[^\x20-\x7e]/u.test(info);
+  const info = line.slice(run.length).trim();
+  return info.toLowerCase().includes('harness') || /[^A-Za-z0-9_-]/u.test(info);
 }
 
 function isKeyLine(line: string): boolean {
-  return keyLine.test(line.toLowerCase().replace(/[\s*_`]/gu, ''));
+  const bare = line
+    .toLowerCase()
+    .replace(/<[^<>]*>/gu, '')
+    .replaceAll('\\', '');
+  return keyLine.test(bare.replace(/[\s*_`]/gu, ''));
 }
 
 function headLines(body: string): readonly string[] {
@@ -170,6 +187,8 @@ function passesOuterRules(body: string): boolean {
   return (
     /\r(?!\n)/u.test(body) === false &&
     forbidden.every((mark) => !body.includes(mark)) &&
+    !/&(?:#[0-9]|#x[0-9a-f]|[a-z][a-z0-9]*;)/iu.test(body) &&
+    !/<(?:pre|code)/iu.test(body) &&
     headLines(body)[0] === '```harness'
   );
 }

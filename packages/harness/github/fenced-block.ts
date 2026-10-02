@@ -6,12 +6,15 @@ export type BlockRead =
 
 const maxBodyLength = 65_536;
 const closingFence = '```';
-const forbiddenCharacters = /\r(?!\n)|[\u0085\u2028\u2029\f\v\uFEFF]/u;
+const forbiddenCharacters = /\r(?!\n)|[\0\u0085\u2028\u2029\f\v\uFEFF]/u;
 const forbiddenMarkup: readonly string[] = ['<!', '<?'];
+const characterReference = /&(?:#[0-9]|#x[0-9a-f]|[a-z][a-z0-9]*;)/iu;
+const rawCodeTag = /<(?:pre|code)/iu;
 const fenceStart = /^(?:`{3}|~{3})/u;
 const fenceRun = /^(?:`{3,}|~{3,})/u;
 const formatCharacters = /\p{Cf}/gu;
-const nonAscii = /[^\x20-\x7e]/u;
+const unusualLabel = /[^A-Za-z0-9_-]/u;
+const tag = /<[^<>]*>/gu;
 const containerMarks = /^[\s>|#*+-]+/u;
 const orderedMarker = /^\d{1,9}[.)]/u;
 const markup = /[\s*_`]/gu;
@@ -37,12 +40,12 @@ function detectionForm(line: string): string {
 function isCandidate(line: string): boolean {
   const run = fenceRun.exec(line)?.[0];
   if (run === undefined) return false;
-  const info = line.slice(run.length);
-  return info.toLowerCase().includes('harness') || nonAscii.test(info);
+  const info = line.slice(run.length).trim();
+  return info.toLowerCase().includes('harness') || unusualLabel.test(info);
 }
 
 function isKeyLine(line: string, keys: readonly string[]): boolean {
-  const squashed = line.toLowerCase().replace(markup, '');
+  const squashed = line.toLowerCase().replace(tag, '').replaceAll('\\', '').replace(markup, '');
   return keys.some((key) => {
     const name = key.replace(markup, '');
     const next = squashed.charAt(name.length);
@@ -76,7 +79,12 @@ function headBlock(raw: readonly string[], opening: string, keys: readonly strin
 }
 
 function hasForbidden(body: string): boolean {
-  return forbiddenCharacters.test(body) || forbiddenMarkup.some((mark) => body.includes(mark));
+  return (
+    forbiddenCharacters.test(body) ||
+    forbiddenMarkup.some((mark) => body.includes(mark)) ||
+    characterReference.test(body) ||
+    rawCodeTag.test(body)
+  );
 }
 
 export function fencedBlock(body: unknown, info: string, keys: readonly string[]): BlockRead {
