@@ -1,6 +1,6 @@
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { CallToolResultSchema, ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
-import { errorReasonSchema, findVerb } from '@uw/contracts';
+import { errorReasonSchema, findVerb, type ErrorReason } from '@uw/contracts';
 import type { McpHost } from '../mcp/context.ts';
 
 export type ToolSurface = { readonly host: McpHost; readonly tools: readonly Tool[] };
@@ -66,6 +66,16 @@ function isUnknownTool(outcome: unknown): boolean {
   );
 }
 
+type Expected = 'accepted' | ErrorReason;
+
+export type CallResult = {
+  readonly verb: string;
+  readonly outcome: unknown;
+  readonly expected: Expected;
+};
+
+const BROKEN: ReadonlySet<string> = new Set(['internal_error', 'not_wired', 'malformed_command']);
+
 function refusalBody(text: string | undefined): unknown {
   try {
     return JSON.parse(text ?? '');
@@ -74,33 +84,35 @@ function refusalBody(text: string | undefined): unknown {
   }
 }
 
-function closedRefusal(text: string | undefined): boolean {
+function closedReason(text: string | undefined): ErrorReason | null {
   const body = refusalBody(text);
-  if (typeof body !== 'object' || body === null || !('reason' in body)) return false;
-  return errorReasonSchema.safeParse(body.reason).success;
+  if (typeof body !== 'object' || body === null || !('reason' in body)) return null;
+  const reason = errorReasonSchema.safeParse(body.reason);
+  return reason.success ? reason.data : null;
 }
 
-function answered(verb: string, outcome: unknown): boolean {
+function answerOf(verb: string, outcome: unknown): Expected | null {
   const result = CallToolResultSchema.safeParse(outcome);
-  if (!result.success) return false;
+  if (!result.success) return null;
   if (result.data.isError === true) {
     const block = result.data.content.find((content) => content.type === 'text');
-    return closedRefusal(block?.type === 'text' ? block.text : undefined);
+    return closedReason(block?.type === 'text' ? block.text : undefined);
   }
   const output = findVerb(verb)?.output;
-  return output !== undefined && output.safeParse(result.data.structuredContent).success;
+  const fits = output !== undefined && output.safeParse(result.data.structuredContent).success;
+  return fits ? 'accepted' : null;
 }
 
-function failureOf(host: McpHost, verb: string, outcome: unknown): string | null {
+function failureOf(host: McpHost, call: CallResult): string | null {
+  const { verb, outcome, expected } = call;
   if (isUnknownTool(outcome)) return `${host} answered ${verb} as an unknown tool`;
-  if (!answered(verb, outcome))
+  const answer = answerOf(verb, outcome);
+  if (answer === null)
     return `${host} answered ${verb} with neither its output nor a closed refusal`;
-  return null;
+  if (BROKEN.has(answer)) return `${host} answered ${verb} ${answer}`;
+  return answer === expected ? null : `${host} answered ${verb} ${answer}, not ${expected}`;
 }
 
-export function callableFailures(
-  host: McpHost,
-  results: readonly { readonly verb: string; readonly outcome: unknown }[],
-): string[] {
-  return results.flatMap(({ verb, outcome }) => failureOf(host, verb, outcome) ?? []);
+export function callableFailures(host: McpHost, results: readonly CallResult[]): string[] {
+  return results.flatMap((call) => failureOf(host, call) ?? []);
 }
