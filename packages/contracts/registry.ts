@@ -19,6 +19,7 @@ import {
 } from './health.ts';
 import {
   harnessSchema,
+  issueRefSchema,
   itemStateSchema,
   personaIdentitySchema,
   pullRequestRefSchema,
@@ -52,6 +53,7 @@ import {
 import {
   dataSourceKindSchema,
   dataSourcesFrontmatterSchema,
+  issueFrontmatterSchema,
   learningFrontmatterSchema,
   personaFrontmatterSchema,
   productFrontmatterSchema,
@@ -137,6 +139,7 @@ export const schemaRegistry: Record<string, ZodType> = {
   'system-goal-frontmatter': systemGoalFrontmatterSchema,
   'product-strategy-frontmatter': productStrategyFrontmatterSchema,
   'data-sources-frontmatter': dataSourcesFrontmatterSchema,
+  'issue-frontmatter': issueFrontmatterSchema,
   'data-source-kind': dataSourceKindSchema,
   'ingest-source': ingestSourceSchema,
   'ingest-refusal': ingestRefusalSchema,
@@ -150,6 +153,7 @@ export const schemaRegistry: Record<string, ZodType> = {
   'stage-key': stageKeySchema,
   'persona-identity': personaIdentitySchema,
   'pull-request-ref': pullRequestRefSchema,
+  'issue-ref': issueRefSchema,
   repository: repositorySchema,
   harness: harnessSchema,
   stage: stageSchema,

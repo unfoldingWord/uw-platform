@@ -7,6 +7,7 @@ import {
   type Classification,
   type OfflineEligibility,
 } from './closed-sets.ts';
+import { repositorySchema } from './harness.ts';
 import { identitySchema, isPersonaIdentity } from './identity.ts';
 import { slugSchema, type PageType } from './pages.ts';
 import { verbNameSchema } from './verb-names.ts';
@@ -68,6 +69,13 @@ export const dataSourcesFrontmatterSchema = z.strictObject({
     .min(1),
 });
 
+export const issueFrontmatterSchema = z.strictObject({
+  repo: repositorySchema,
+  number: z.number().int().min(1),
+  github_id: z.number().int().min(1),
+  url: z.url(),
+});
+
 export type PageTypeDefinition = {
   readonly frontmatter: z.ZodType;
   readonly classification: Classification;
@@ -84,6 +92,7 @@ export const pageTypeRegistry = {
   system_goal: { frontmatter: systemGoalFrontmatterSchema, ...internalSync },
   product_strategy: { frontmatter: productStrategyFrontmatterSchema, ...internalSync },
   data_sources: { frontmatter: dataSourcesFrontmatterSchema, ...internalSync },
+  issue: { frontmatter: issueFrontmatterSchema, ...internalSync },
 } as const satisfies Record<PageType, PageTypeDefinition>;
 
 const byType = new Map<string, PageTypeDefinition>(Object.entries(pageTypeRegistry));

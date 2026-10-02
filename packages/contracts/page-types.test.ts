@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { classificationSchema, offlineEligibilitySchema } from './closed-sets.ts';
 import {
   dataSourceKindSchema,
+  issueFrontmatterSchema,
   pageTypeDefinition,
   pageTypeRegistry,
   personaFrontmatterSchema,
@@ -26,7 +27,7 @@ function acceptsPersona(overrides: Record<string, unknown>): boolean {
 }
 
 describe('FD-9 the page-type registry', () => {
-  it('registers exactly the seven v1 page types', () => {
+  it('registers exactly the eight v1 page types', () => {
     expect(Object.keys(pageTypeRegistry)).toEqual([...pageTypes]);
   });
 
@@ -72,5 +73,26 @@ describe('FD-9 the persona frontmatter', () => {
 describe('FD-9 the data-sources kind set', () => {
   it('is the closed set of source kinds', () => {
     expect(dataSourceKindSchema.options).toEqual(['web_analytics', 'mailing_list', 'manual']);
+  });
+});
+
+const issue = {
+  repo: 'unfoldingWord/uw-platform',
+  number: 42,
+  github_id: 9100000001,
+  url: 'https://github.com/unfoldingWord/uw-platform/issues/42',
+};
+
+describe('GH-3 an issue page links to the issue it mirrors', () => {
+  it('validates the repository, number, GitHub id and url of the issue', () => {
+    expect(issueFrontmatterSchema.safeParse(issue).success).toBe(true);
+    expect(pageTypeDefinition('issue')?.frontmatter.safeParse(issue).success).toBe(true);
+  });
+
+  it('refuses an issue page with no url, a zero number or a repository that is not owner/name', () => {
+    const withoutUrl = { repo: issue.repo, number: issue.number, github_id: issue.github_id };
+    expect(issueFrontmatterSchema.safeParse(withoutUrl).success).toBe(false);
+    expect(issueFrontmatterSchema.safeParse({ ...issue, number: 0 }).success).toBe(false);
+    expect(issueFrontmatterSchema.safeParse({ ...issue, repo: 'uw-platform' }).success).toBe(false);
   });
 });
