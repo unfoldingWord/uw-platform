@@ -14,7 +14,7 @@ import type { Delegation, StoreTransaction } from '../ports.ts';
 import {
   byPriorityThenId,
   presentedDelegation,
-  workingDelegation,
+  workingDelegations,
   type ScenePorts,
 } from './scene.ts';
 
@@ -56,26 +56,11 @@ const delegated: Subscription = async (ports, tx, actor, at) => {
   return judged === null ? [] : [judged];
 };
 
-async function personaJudged(
-  ports: ScenePorts,
-  tx: StoreTransaction,
-  delegation: Delegation,
-  at: Date,
-): Promise<Judged | null> {
-  const working = await workingDelegation(ports, tx, delegation.id, at);
-  return working === null ? null : judgedBy(tx, working.delegation, working.grants, at);
-}
-
 const persona: Subscription = async (ports, tx, actor, at) => {
-  if (actor.personId === null) return [];
-  const live = await tx.delegations.read.live(
-    { personId: actor.personId, persona: actor.identity, harnessId: null },
-    at,
-  );
   const judged = new Map<string, Judged>();
-  for (const delegation of live) {
+  for (const { delegation, grants } of await workingDelegations(ports, tx, actor, null, at)) {
     if (judged.has(delegation.harnessId)) continue;
-    const found = await personaJudged(ports, tx, delegation, at);
+    const found = await judgedBy(tx, delegation, grants, at);
     if (found !== null) judged.set(found.harness.id, found);
   }
   return [...judged.values()];

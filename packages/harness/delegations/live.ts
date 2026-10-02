@@ -35,6 +35,15 @@ export async function assertDelegationLive(
 ): Promise<Liveness> {
   const delegation = await tx.delegations.read.byId(delegationId);
   if (delegation === null) return { live: false, delegation: null, why: null };
+  return livenessOf(tx, ports, delegation, at);
+}
+
+export async function livenessOf(
+  tx: StoreTransaction,
+  ports: Pick<Ports, 'grants'>,
+  delegation: Delegation,
+  at: Date,
+): Promise<Liveness> {
   if (delegation.revokedAt !== null) return lapsed(delegation, 'revoked');
   if (delegation.expiresAt.getTime() <= at.getTime()) return lapsed(delegation, 'expired');
   const grants = await holdsAdmin(tx, ports, delegation, at);

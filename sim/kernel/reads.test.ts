@@ -440,3 +440,26 @@ describe('AB-4 a bare persona reads only the harnesses its working delegations n
   it('leaves a person and an interactive device with no delegation reading every readable harness', () =>
     inScene(othersUnchanged));
 });
+
+function routineOf(scene: Scene): Principal {
+  return simAgent(scene.ian, `${scene.ian.personId ?? ''}/hourly-routine`, { interactive: false });
+}
+
+async function unattendedScene(scene: Scene): Promise<void> {
+  const runner = routineOf(scene);
+  await hiddenAsMissing(scene, runner, 'own');
+  await hiddenAsMissing(scene, runner, 'other');
+  const delegationId = await delegate(scene, scene.ian, 'agent:iterate');
+  await hiddenAsMissing(scene, runner, 'own');
+  const delegated = principalSchema.parse({
+    ...runner,
+    identity: delegatedIdentity(runner.identity, 'iterate', delegationId),
+  });
+  expect(await readsOwn(scene, delegated)).toEqual(shown);
+  await hiddenAsMissing(scene, delegated, 'other');
+}
+
+describe('AB-4 a non-interactive device without a delegation reads no harness, item or stage', () => {
+  it('answers every scene read as missing until it names a live delegation, then reads only that harness', () =>
+    inScene(unattendedScene));
+});
