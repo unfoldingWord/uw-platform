@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { jdAreaSchema } from './areas.ts';
 import { principalKindSchema, roleSchema } from './closed-sets.ts';
-import { identitySchema } from './identity.ts';
+import { deviceOwnerSegment, identitySchema } from './identity.ts';
 
 const instant = z.iso.datetime();
 
@@ -37,7 +37,11 @@ export const principalSchema = z
         ? principal.identity === `human:${principal.personId ?? ''}` && principal.email !== null
         : principal.identity.startsWith('agent:'),
     'a person principal is human:<personId> with an email; an agent principal is agent:…',
-  );
+  )
+  .refine((principal) => {
+    const owner = deviceOwnerSegment(principal.identity);
+    return owner === null || (principal.personId !== null && owner === principal.personId);
+  }, "an agent:<person>/<device> identity names its principal's person");
 
 export type Grant = z.infer<typeof grantSchema>;
 export type Principal = z.infer<typeof principalSchema>;

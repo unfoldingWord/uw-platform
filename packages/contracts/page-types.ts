@@ -7,16 +7,14 @@ import {
   type Classification,
   type OfflineEligibility,
 } from './closed-sets.ts';
-import { identitySchema } from './identity.ts';
+import { identitySchema, isPersonaIdentity } from './identity.ts';
 import { slugSchema, type PageType } from './pages.ts';
 import { verbNameSchema } from './verb-names.ts';
 
 const text = z.string().min(1).max(2000);
 const distinct = <T>(values: readonly T[]) => new Set(values).size === values.length;
 const humanIdentity = identitySchema.refine((value) => value.startsWith('human:'));
-const agentIdentity = identitySchema.refine(
-  (value) => value.startsWith('agent:') && !value.includes('/'),
-);
+const agentIdentity = identitySchema.refine(isPersonaIdentity);
 
 export const dataSourceKindSchema = z.enum(['web_analytics', 'mailing_list', 'manual']);
 
