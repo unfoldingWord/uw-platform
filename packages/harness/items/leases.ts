@@ -3,6 +3,7 @@ import type { StoreTransaction } from '../ports.ts';
 import { draft, recordItemEvents, type EventDraft, type RecordContext } from './record.ts';
 
 export const LEASE_MS = 15 * 60 * 1000;
+export const LEASE_WARNING_MS = 3 * 60 * 1000;
 
 type LapsedItem = ItemState & { readonly holder: Identity; readonly leaseExpiresAt: string };
 

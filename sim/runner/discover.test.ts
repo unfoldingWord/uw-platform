@@ -37,6 +37,8 @@ describe('DX-4 scenarios are files named for a requirement ID', () => {
       ['KN-4.an-item-is-the-fold-of-its-events', 'KN-4'],
       ['KN-5.agent-cannot-claim-in-a-none-stage', 'KN-5'],
       ['KN-5.claim-takes-a-lease', 'KN-5'],
+      ['KN-5.lease-expiry-releases-once', 'KN-5'],
+      ['KN-5.record-run-step-renews-the-lease', 'KN-5'],
       ['KN-5.wip-limit-for-people-and-agents', 'KN-5'],
     ]);
   });

@@ -11,7 +11,7 @@ type ReleasePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
 export type ReleaseInput = { readonly itemId: string; readonly delegationId: string | null };
 
-async function holdsClaim(
+export async function holdsClaim(
   tx: StoreTransaction,
   item: ItemState,
   actor: Principal,

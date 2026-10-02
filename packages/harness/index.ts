@@ -31,6 +31,7 @@ export type { StageChange, StageCommands, StageInput } from './stages/commands.t
 export type { EnqueueInput } from './items/enqueue.ts';
 export type { ItemCommands } from './items/commands.ts';
 export type { Claimed, ClaimInput } from './items/claim.ts';
-export { expireLapsedLease, LEASE_MS } from './items/leases.ts';
+export { expireLapsedLease, LEASE_MS, LEASE_WARNING_MS } from './items/leases.ts';
+export type { LeaseOutcome } from './items/run-steps.ts';
 export type { Rebuilt, RepairCommands } from './items/repair.ts';
 export type { DelegationCommands, GrantInput } from './delegations/commands.ts';
