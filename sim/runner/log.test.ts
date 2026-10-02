@@ -133,6 +133,7 @@ describe('KN-4 DX-4 the runner reads the log and fails a scenario whose projecti
       expect(result.report).toBeNull();
       expect(result.failure).toContain('projection drift');
       expect(result.failure).toContain('title');
+      expect(result.failure).not.toContain('stage');
     },
     worldTimeout,
   );
