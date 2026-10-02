@@ -11,6 +11,7 @@ const refusingTransaction: StoreTransaction = {
   harnesses: untouched(),
   harnessStages: untouched(),
   harnessItems: untouched(),
+  harnessEvents: untouched(),
   pages: untouched(),
 };
 

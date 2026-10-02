@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import {
-  harnessSchema,
-  identitySchema,
-  itemStateSchema,
-  stageSchema,
-  type Harness,
-  type ItemState,
-  type Stage,
-} from '@uw/contracts';
+import { identitySchema, type ItemState } from '@uw/contracts';
 import type { PageFacts, Store, StoreTransaction } from '../ports.ts';
-import { storeRefusalOf } from '../port-errors.ts';
+import { describeEvents } from './store-events.ts';
+import {
+  at,
+  harnessOf,
+  hour,
+  itemOf,
+  refusedBy,
+  seedHarness,
+  stageOf,
+  uid,
+} from './store-gateway-fixtures.ts';
 
 export type SeededPage = PageFacts & { readonly slug: string; readonly title: string };
 
@@ -17,96 +19,6 @@ export type GatewaySubject = {
   readonly store: Store;
   seedPage(page: SeededPage): Promise<void>;
 };
-
-const at = new Date('2026-10-01T09:00:00.000Z');
-const hour = 3_600_000;
-
-function uid(n: number): string {
-  return `00000000-0000-4000-8000-${(0x5a0000000000 + n).toString(16)}`;
-}
-
-function harnessOf(base: number, key: string): Harness {
-  return harnessSchema.parse({
-    id: uid(base),
-    key,
-    template: 'software',
-    jdArea: '80-89',
-    hostedBuilderEnabled: false,
-    paused: false,
-  });
-}
-
-function stageOf(base: number, offset: number, key: string, position: number): Stage {
-  const ship = key === 'ship';
-  return stageSchema.parse({
-    id: uid(base + offset),
-    harnessId: uid(base),
-    key,
-    title: key,
-    position,
-    bracket: ship ? 'deploy_package' : 'build_package',
-    agentPickup: ship ? 'none' : 'allowed',
-    exitGate: ship ? 'human_approval' : 'checks',
-    connector: ship ? 'merge' : 'none',
-    wipLimit: 3,
-    instructionsPageId: null,
-    validators: [],
-    feeds: [],
-    paused: false,
-  });
-}
-
-type Stages = { readonly build: Stage; readonly review: Stage; readonly ship: Stage };
-
-function stagesOf(base: number): Stages {
-  return {
-    build: stageOf(base, 1, 'build', 1),
-    review: stageOf(base, 2, 'review', 2),
-    ship: stageOf(base, 3, 'ship', 3),
-  };
-}
-
-async function seedHarness(tx: StoreTransaction, base: number, key: string): Promise<Stages> {
-  await tx.harnesses.write.insert(harnessOf(base, key), at);
-  const stages = stagesOf(base);
-  await tx.harnessStages.write.insert(stages.build);
-  await tx.harnessStages.write.insert(stages.review);
-  await tx.harnessStages.write.insert(stages.ship);
-  return stages;
-}
-
-function itemOf(
-  base: number,
-  n: number,
-  overrides: Readonly<Record<string, unknown>> = {},
-): ItemState {
-  return itemStateSchema.parse({
-    itemId: uid(base + 10 + n),
-    harnessId: uid(base),
-    stageKey: 'build',
-    title: `Item ${n}`,
-    pageId: null,
-    priority: 0,
-    due: null,
-    holder: null,
-    claimantKind: null,
-    delegationId: null,
-    leaseExpiresAt: null,
-    gateStatus: 'working',
-    gateTarget: null,
-    branchState: 'none',
-    expectedHead: null,
-    riskTier: null,
-    riskDomains: [],
-    pullRequest: null,
-    zulipTopic: null,
-    ...overrides,
-  });
-}
-
-function refusedBy(work: (tx: StoreTransaction) => Promise<unknown>, store: Store) {
-  return store.transaction(work).then(() => null, storeRefusalOf);
-}
 
 function describeHarnesses(subject: () => GatewaySubject): void {
   it('DX-3 inserts and reads a harness by id, by key and in the list', async () => {
@@ -441,6 +353,7 @@ export function describeStoreGateways(
     describeClaims(subject);
     describeLeases(subject);
     describePages(subject);
+    describeEvents(subject);
     if (concurrentConnections) describeItemLock(subject);
   });
 }
