@@ -13,6 +13,7 @@ import type {
   PageStatus,
   PageType,
   PrincipalKind,
+  PullRequestDeclaration,
   RunShape,
   ShipRuleInput,
   Stage,
@@ -164,27 +165,38 @@ export type PullRequestRef = NonNullable<ItemState['pullRequest']>;
 export type PullRequestState = 'open' | 'closed' | 'merged';
 export type CheckConclusion = NonNullable<ShipRuleInput['checks'][number]['conclusion']>;
 export type CheckFact = {
+  readonly checkId: number;
   readonly name: string;
   readonly headSha: string;
+  readonly app: string | null;
   readonly conclusion: CheckConclusion | null;
 };
 export type ReviewState = 'approved' | 'changes_requested' | 'commented' | 'dismissed';
 export type ReviewFact = {
+  readonly reviewId: number;
   readonly reviewer: string;
   readonly commit: string;
   readonly state: ReviewState;
   readonly provider: string | null;
+  readonly submittedAt: Date | null;
 };
+export type ChangedFiles = { readonly head: string; readonly paths: readonly string[] };
 export type PullRequestFacts = {
   readonly ref: PullRequestRef;
   readonly state: PullRequestState;
   readonly draft: boolean;
   readonly head: string;
+  readonly headRef: string;
   readonly checks: readonly CheckFact[];
   readonly reviews: readonly ReviewFact[];
+  readonly files: ChangedFiles | null;
+  readonly declaration: PullRequestDeclaration | null;
   readonly freshAt: Date;
 };
-export type GitHubFacts = { pullRequest(ref: PullRequestRef): Promise<PullRequestFacts | null> };
+export type GitHubFacts = {
+  pullRequest(ref: PullRequestRef): Promise<PullRequestFacts | null>;
+  refresh(ref: PullRequestRef): Promise<PullRequestFacts | null>;
+};
 
 export type EffectConnector = Exclude<Connector, 'none'>;
 export type ConnectorRequest = {
