@@ -15,7 +15,7 @@ import {
   uid,
 } from './store-gateway-fixtures.ts';
 
-export type SeededPage = PageFacts & { readonly slug: string; readonly title: string };
+export type SeededPage = PageFacts & { readonly slug: string };
 
 export type GatewaySubject = {
   readonly store: Store;
@@ -129,6 +129,7 @@ function describeProjection(subject: () => GatewaySubject): void {
       status: 'active',
       jdArea: '80-89',
       bodyMd: 'body',
+      frontmatter: {},
       slug: 'gateway-project',
       title: 'Gateway project',
     });
@@ -300,6 +301,11 @@ function describeItemLock(subject: () => GatewaySubject): void {
   });
 }
 
+function factsOf(page: SeededPage): PageFacts {
+  const { id, type, status, jdArea, title, bodyMd, frontmatter } = page;
+  return { id, type, status, jdArea, title, bodyMd, frontmatter };
+}
+
 function describePages(subject: () => GatewaySubject): void {
   it('DX-3 reads page facts for the ids it is given', async () => {
     const page: SeededPage = {
@@ -308,6 +314,7 @@ function describePages(subject: () => GatewaySubject): void {
       status: 'draft',
       jdArea: '80-89',
       bodyMd: 'facts body',
+      frontmatter: { name: 'gateway-facts', description: 'Facts carry the frontmatter' },
       slug: 'gateway-facts',
       title: 'Gateway facts',
     };
@@ -316,7 +323,9 @@ function describePages(subject: () => GatewaySubject): void {
       ...page,
       id: uid(0xcff),
       slug: 'gateway-facts-earlier',
+      title: 'Gateway facts earlier',
       bodyMd: 'earlier body',
+      frontmatter: {},
     };
     await subject().seedPage(earlier);
     const facts = await subject().store.transaction(async (tx) => ({
@@ -324,10 +333,7 @@ function describePages(subject: () => GatewaySubject): void {
       none: await tx.pages.read.facts([]),
     }));
     expect(facts).toEqual({
-      found: [
-        { id: earlier.id, type: 'skill', status: 'draft', jdArea: '80-89', bodyMd: 'earlier body' },
-        { id: page.id, type: 'skill', status: 'draft', jdArea: '80-89', bodyMd: 'facts body' },
-      ],
+      found: [factsOf(earlier), factsOf(page)],
       none: [],
     });
   });

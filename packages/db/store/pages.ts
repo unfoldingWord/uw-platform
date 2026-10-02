@@ -1,5 +1,5 @@
 import { asc, inArray } from 'drizzle-orm';
-import { pageStatusSchema, pageTypeSchema } from '@uw/contracts';
+import { frontmatterSchema, pageStatusSchema, pageTypeSchema } from '@uw/contracts';
 import type { AnyExecutor } from '../any-database.ts';
 import { pages } from '../schema.ts';
 import type { PagesGateway } from './types.ts';
@@ -15,7 +15,9 @@ export function bindPages(executor: AnyExecutor): PagesGateway {
             type: pages.type,
             status: pages.status,
             jdArea: pages.jdArea,
+            title: pages.title,
             bodyMd: pages.bodyMd,
+            frontmatter: pages.frontmatter,
           })
           .from(pages)
           .where(inArray(pages.id, [...pageIds]))
@@ -24,6 +26,7 @@ export function bindPages(executor: AnyExecutor): PagesGateway {
           ...row,
           type: pageTypeSchema.parse(row.type),
           status: pageStatusSchema.parse(row.status),
+          frontmatter: frontmatterSchema.parse(row.frontmatter),
         }));
       },
     },

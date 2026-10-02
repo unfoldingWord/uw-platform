@@ -121,8 +121,10 @@ export type SeedPage = {
   readonly bodyMd: string;
   readonly slug: string;
   readonly title: string;
+  readonly frontmatter?: Readonly<Record<string, unknown>>;
+  readonly parentId?: string | null;
 };
 
 export async function seedPage(db: AnyExecutor, page: SeedPage): Promise<void> {
-  await db.insert(pages).values({ ...page, parentId: null, frontmatter: {}, version: 1 });
+  await db.insert(pages).values({ parentId: null, frontmatter: {}, ...page, version: 1 });
 }

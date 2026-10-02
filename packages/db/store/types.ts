@@ -25,7 +25,9 @@ export type PageFacts = {
   readonly type: PageType;
   readonly status: PageStatus;
   readonly jdArea: string;
+  readonly title: string;
   readonly bodyMd: string;
+  readonly frontmatter: Readonly<Record<string, unknown>>;
 };
 export type StagePosition = { readonly id: string; readonly position: number };
 
