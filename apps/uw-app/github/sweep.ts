@@ -32,6 +32,7 @@ type RepositorySweep = {
   readonly outcome: Outcome;
   readonly reason: Reason | 'internal_error' | null;
   readonly heldAt: Date | null;
+  readonly candidate: Date | null;
   readonly sweptThrough: Date | null;
   readonly repaired: RepairCounts;
   readonly unparsedItems: number;
@@ -117,6 +118,11 @@ function plus(a: RepairCounts, b: RepairCounts): RepairCounts {
 
 function earlier(a: Date | null, b: Date): Date {
   return a === null || b < a ? b : a;
+}
+
+function later(a: Date | null, b: Date | null): Date | null {
+  if (a === null) return b;
+  return b !== null && b > a ? b : a;
 }
 
 function stop(pass: Pass, reason: Reason): void {
@@ -247,7 +253,7 @@ function outcomeOf(pass: Pass, sweptThrough: Date | null): Outcome {
 function sweepOf(
   pass: Pass,
   outcome: Outcome,
-  sweptThrough: Date | null,
+  candidate: Date | null,
   reason: RepositorySweep['reason'],
 ): RepositorySweep {
   const { repo, repaired, heldAt, unparsed } = pass;
@@ -256,7 +262,8 @@ function sweepOf(
     outcome,
     reason,
     heldAt,
-    sweptThrough,
+    candidate,
+    sweptThrough: later(pass.state.sweptThrough, candidate),
     repaired,
     unparsedItems: unparsed,
   };
@@ -265,7 +272,7 @@ function sweepOf(
 async function recorded(pass: Pass, sweep: RepositorySweep): Promise<RepositorySweep> {
   const { deps, startedAt } = pass.run;
   const attemptedAt = sweep.outcome === 'deferred' ? pass.state.attemptedAt : startedAt;
-  await recordSweep(deps.db, pass.repo.githubId, sweep.sweptThrough, {
+  await recordSweep(deps.db, pass.repo.githubId, sweep.candidate, {
     at: deps.now(),
     attemptedAt,
     outcome: sweep.outcome,
@@ -287,8 +294,8 @@ async function passOver(pass: Pass): Promise<RepositorySweep> {
   pass.unparsed += listing.value.unparsed;
   await sweepListing(pass, listing.value.issues);
   await sweepOpen(pass);
-  const sweptThrough = pass.heldAt ?? pass.through;
-  return recorded(pass, sweepOf(pass, outcomeOf(pass, sweptThrough), sweptThrough, pass.reason));
+  const candidate = pass.heldAt ?? pass.through;
+  return recorded(pass, sweepOf(pass, outcomeOf(pass, candidate), candidate, pass.reason));
 }
 
 function logged(logger: Logger, sweep: RepositorySweep): RepositorySweep {
@@ -298,7 +305,7 @@ function logged(logger: Logger, sweep: RepositorySweep): RepositorySweep {
       outcome: 'stalled',
       repository: sweep.repo,
       reason: sweep.reason,
-      held_at: sweep.sweptThrough?.toISOString() ?? null,
+      held_at: sweep.candidate?.toISOString() ?? null,
     });
   }
   logger[sweep.outcome === 'ok' ? 'info' : 'warn']('github sweep repaired', {
@@ -316,6 +323,29 @@ function logged(logger: Logger, sweep: RepositorySweep): RepositorySweep {
     repaired_reviews: repaired.reviews,
     repaired_files: repaired.files,
   });
+  return sweep;
+}
+
+async function recordedFailure(pass: Pass): Promise<RepositorySweep> {
+  const sweep = sweepOf(pass, 'failed', null, 'internal_error');
+  const { deps, startedAt, logger } = pass.run;
+  try {
+    await recordSweep(deps.db, pass.repo.githubId, null, {
+      at: startedAt,
+      attemptedAt: startedAt,
+      outcome: 'failed',
+      heldAt: sweep.heldAt,
+      reason: 'internal_error',
+      repaired: sweep.repaired,
+      unparsedItems: sweep.unparsedItems,
+    });
+  } catch (error) {
+    logger.error('github sweep failure not recorded', {
+      outcome: 'record_failed',
+      repository: pass.repo.fullName,
+      ...errorFields(error),
+    });
+  }
   return sweep;
 }
 
@@ -353,7 +383,7 @@ async function sweepRepository(
       repository: repo.fullName,
       ...errorFields(error),
     });
-    return sweepOf(pass, 'failed', null, 'internal_error');
+    return recordedFailure(pass);
   }
 }
 
