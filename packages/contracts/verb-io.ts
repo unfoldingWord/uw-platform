@@ -3,6 +3,7 @@ import { jdAreaSchema } from './areas.ts';
 import { costBasisSchema, evidenceLabelSchema } from './closed-sets.ts';
 import { healthReportSchema } from './health.ts';
 import { pullRequestRefSchema, stageKeySchema } from './harness.ts';
+import { fullShaSchema } from './ship-rule.ts';
 import {
   frontmatterSchema,
   pageSchema,
@@ -114,8 +115,19 @@ export const verbIo = {
     }),
   },
   claim_item: {
-    input: z.object({ itemId: z.uuid(), delegationId: z.uuid().nullable() }),
-    output: lease.extend({ itemId: z.uuid() }),
+    input: z.object({
+      itemId: z.uuid(),
+      delegationId: z.uuid().nullable(),
+      adoptBranch: z.boolean().default(false),
+    }),
+    output: lease.extend({
+      itemId: z.uuid(),
+      branch: z.strictObject({
+        name: z.string().regex(/^harness\/[0-9a-f-]{36}$/),
+        startFrom: fullShaSchema.nullable(),
+        adopted: z.boolean(),
+      }),
+    }),
   },
   submit_to_gate: {
     input: z
