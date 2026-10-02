@@ -8,6 +8,7 @@ import {
   type EventDraft,
   type RecordContext,
 } from '../items/record.ts';
+import { lockKeys } from '../lock-keys.ts';
 import { exitDrafts, resolveExit, type Exit } from '../items/transitions.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
@@ -116,6 +117,28 @@ function normalised(input: DecideInput): DecideInput | Refused {
   return { ...input, reason: kept, findings };
 }
 
+type Placed = Pick<Gate, 'item' | 'harness' | 'stages' | 'stage'>;
+
+async function placed(tx: StoreTransaction, itemId: string): Promise<Placed | Refused> {
+  const pre = await tx.harnessItems.read.byId(itemId);
+  if (pre === null) return refused('item_not_found', { itemId });
+  const harness = await tx.harnesses.read.byId(pre.harnessId);
+  if (harness === null) return refused('harness_not_found', { harnessId: pre.harnessId });
+  const before = await tx.harnessStages.read.forHarness(harness.id);
+  const claimed = before.find((entry) => entry.key === pre.stageKey);
+  if (claimed === undefined) return refused('stage_not_found', { stage: pre.stageKey });
+  await tx.lock(lockKeys.stageClaims(claimed.id));
+  const item = await tx.harnessItems.read.lock(itemId);
+  if (item === null) return refused('item_not_found', { itemId });
+  const stages = await tx.harnessStages.read.forHarness(harness.id);
+  const stage = stages.find((entry) => entry.id === claimed.id);
+  if (stage === undefined) return refused('stage_not_found', { stage: claimed.key });
+  if (item.stageKey !== stage.key) {
+    return refused('item_not_at_gate', { itemId, gateStatus: item.gateStatus, why: 'moved' });
+  }
+  return { item, harness, stages, stage };
+}
+
 async function standing(
   ports: GatePorts,
   tx: StoreTransaction,
@@ -123,13 +146,9 @@ async function standing(
   input: DecideInput,
   at: Date,
 ): Promise<Gate | Refused> {
-  const item = await tx.harnessItems.read.lock(input.itemId);
-  if (item === null) return refused('item_not_found', { itemId: input.itemId });
-  const harness = await tx.harnesses.read.byId(item.harnessId);
-  if (harness === null) return refused('harness_not_found', { harnessId: item.harnessId });
-  const stages = await tx.harnessStages.read.forHarness(harness.id);
-  const stage = stages.find((entry) => entry.key === item.stageKey);
-  if (stage === undefined) return refused('stage_not_found', { stage: item.stageKey });
+  const place = await placed(tx, input.itemId);
+  if (isRefused(place)) return place;
+  const { item, harness } = place;
   const { actor } = caller;
   if (!allowed(actor, 'admin', harness, at)) {
     return refused('not_permitted', { harnessId: harness.id });
@@ -142,7 +161,19 @@ async function standing(
   }
   const grants = await ports.grants.lockAndReread(tx, actor.personId, at);
   const approver = { ...actor, grants: [...grants] };
-  return { item, harness, stages, stage, approver, context: recordContext(ports, caller, at) };
+  return { ...place, approver, context: recordContext(ports, caller, at) };
+}
+
+async function wipRefusal(
+  tx: StoreTransaction,
+  gate: Gate,
+  decision: GateDecision,
+): Promise<Refused | null> {
+  if (decision !== 'take_over') return null;
+  const { harness, stage, context } = gate;
+  const held = await tx.harnessItems.read.heldInStage(harness.id, stage.key, context.at);
+  if (held < stage.wipLimit) return null;
+  return refused('wip_limit_reached', { stage: stage.key, wipLimit: stage.wipLimit });
 }
 
 async function approverRefusal(
@@ -216,6 +247,8 @@ async function decideIn(
   if (isRefused(gate)) return gate;
   const denied = await approverRefusal(tx, gate, input.decision);
   if (denied !== null) return denied;
+  const full = await wipRefusal(tx, gate, input.decision);
+  if (full !== null) return full;
   const exit = advancing.has(input.decision) ? exitOf(gate) : null;
   if (exit !== null && isRefused(exit)) return exit;
   return recordDecision(tx, gate, input, exit);
