@@ -50,13 +50,14 @@ These are settled. Work inside them; changing one is an architecture change (sec
 
 ## 2. The cockpit
 
-The commands a worker drives the system with. `sim`, `walk` and `trace` do not exist yet; building them is PRD DX-4 and DX-5, and until then they are the contract for what must be provided.
+The commands a worker drives the system with. `pnpm verify` runs `pnpm walk:all`, `pnpm trace:built` and `pnpm sim:all`; `trace:built` fails only on an unproven Must requirement whose build-order step the progress tracker marks Built, and `pnpm trace` lists every unproven one.
 
 ```
 pnpm sim -- <scenario>     run one scenario; print the event log and the folded state
 pnpm sim -- all            every scenario
 pnpm walk -- <template>    every path from Package to an external effect, and the gate each crosses
 pnpm trace                 PRD requirement IDs with neither a scenario nor a test
+pnpm trace:built           the same list; fails only on requirements whose step is marked Built
 pnpm check                 lint, format, typecheck
 pnpm verify                the whole chain, the same one CI runs
 pnpm db:generate           generate a migration from the schema
