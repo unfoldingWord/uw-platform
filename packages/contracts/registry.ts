@@ -10,6 +10,7 @@ import * as closedSets from './closed-sets.ts';
 import { commandNameSchema, commandSchema, overrideCommandSchema } from './commands.ts';
 import { personaActivationRefusalSchema } from './event-evidence.ts';
 import { eventNameSchema, eventSchema, newEventSchema } from './events.ts';
+import { issueReferenceSchema, pullRequestDeclarationSchema } from './github.ts';
 import {
   healthIndicatorSchema,
   healthReportSchema,
@@ -163,4 +164,6 @@ export const schemaRegistry: Record<string, ZodType> = {
   'service-client-id': serviceClientIdSchema,
   'bind-service-token-command': bindServiceTokenCommandSchema,
   'revoke-service-token-command': revokeServiceTokenCommandSchema,
+  'issue-reference': issueReferenceSchema,
+  'pull-request-declaration': pullRequestDeclarationSchema,
 };

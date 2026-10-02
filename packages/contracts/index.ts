@@ -5,6 +5,7 @@ export * from './closed-sets.ts';
 export * from './commands.ts';
 export * from './event-evidence.ts';
 export * from './events.ts';
+export * from './github.ts';
 export * from './harness.ts';
 export * from './health.ts';
 export * from './identity.ts';

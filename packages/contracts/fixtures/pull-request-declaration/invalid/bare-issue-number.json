@@ -1,0 +1,7 @@
+{
+  "closes": ["12"],
+  "risks": "none known",
+  "touches": "apps/uw-app/board",
+  "riskTier": "standard",
+  "riskDomains": []
+}
