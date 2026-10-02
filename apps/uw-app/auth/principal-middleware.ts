@@ -37,11 +37,13 @@ export function withPrincipal(deps: Pick<AppDeps, 'accessKeys'>): MiddlewareHand
   return async (c, next) => {
     const now = systemClock.now();
     c.set('now', now);
+    c.set('access', null);
     const dev = devEmail(c.env, c.req.url);
     const identity: AccessIdentity | Response = dev
       ? { kind: 'person', email: dev }
       : await verifiedIdentity(c, deps);
     if (identity instanceof Response) return identity;
+    c.set('access', identity);
     if (identity.kind === 'service') {
       c.set('principal', serviceTokenPrincipal(identity.clientId));
       return next();

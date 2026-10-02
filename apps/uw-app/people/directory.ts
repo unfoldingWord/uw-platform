@@ -44,6 +44,12 @@ export async function signIn(db: Executor, rawEmail: string): Promise<PersonReco
   return created;
 }
 
+export async function personById(db: Executor, personId: string): Promise<PersonRecord | null> {
+  const [row] = await db.select().from(people).where(eq(people.id, personId)).limit(1);
+  if (!row) return null;
+  return { personId: row.id, email: row.email, status: personStatusSchema.parse(row.status) };
+}
+
 export async function lockPerson(db: Executor, personId: string): Promise<PersonRecord | null> {
   const [row] = await db.select().from(people).where(eq(people.id, personId)).for('update');
   if (!row) return null;

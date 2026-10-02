@@ -1,7 +1,7 @@
 import type { JWTVerifyGetKey } from 'jose';
 import type { Logger, LogSink } from '@uw/core/log';
 import type { Principal } from '@uw/core/principal';
-import { remoteAccessKeys, type AccessConfig } from './auth/access.ts';
+import { remoteAccessKeys, type AccessConfig, type AccessIdentity } from './auth/access.ts';
 import { hyperdriveDatabase, type DatabaseHandle } from './database.ts';
 import type { Bindings } from './env.ts';
 
@@ -20,6 +20,7 @@ export type AppEnv = {
     logger: Logger;
     database: DatabaseHandle | null;
     principal: Principal | null;
+    access: AccessIdentity | null;
     outcome: string | null;
   };
 };
