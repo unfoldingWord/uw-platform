@@ -216,6 +216,32 @@ _Avoid_: event (that is a row of `harness_events`), message (the queue's word fo
 One entry of the page-type registry in `packages/contracts`: a frontmatter schema, a classification and an offline eligibility. Seven in v1: `skill`, `learning`, `persona`, `product`, `system_goal`, `product_strategy`, `data_sources`.
 _Avoid_: template (that is a stage graph), kind, category
 
+## What GitHub says
+
+**GitHub facts**:
+What GitHub says about a PR: whether it is open, its head commit, the check runs on that head and the reviews on it. Read from the read model at evaluation time, never from an agent or a value planted on an item.
+_Avoid_: PR status, CI result
+
+**Read model**:
+The six `gh_*` tables (`gh_repos`, `gh_issues`, `gh_milestones`, `gh_prs`, `gh_check_runs`, `gh_reviews`), one row per GitHub id, each with a classification and a freshness timestamp, written by one module from webhooks and the sweep.
+_Avoid_: cache, mirror
+
+**Sweep**:
+The nightly repair that re-reads GitHub from a repository's watermark through the same upsert path the webhooks use, and records what it repaired.
+_Avoid_: sync, backfill, reconcile job
+
+**PR declaration**:
+The one fenced `harness` block in a PR body, naming `closes`, `risks`, `touches`, `risk_tier` and `risk_domains`. It can raise an item's risk tier, never lower it; two blocks or an unclosed block declare nothing.
+_Avoid_: PR template, PR metadata
+
+**Reviewer identity**:
+A GitHub login listed as a Reviewer. Only its reviews on the head commit count toward the ship rule; a review by another login, or on an older commit, does not.
+_Avoid_: reviewer account, bot reviewer
+
+**Cross-reference comment**:
+The one comment the harness leaves on an imported issue, linking it to its item. Exactly one lands, whether a webhook or the sweep imports the issue first.
+_Avoid_: bot comment, backlink
+
 ## Reaching a person
 
 **Wake**:
