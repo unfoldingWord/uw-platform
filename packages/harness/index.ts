@@ -15,3 +15,7 @@ export {
 export type { StoreRefusal } from './port-errors.ts';
 export { templates } from './templates.ts';
 export type { Template } from './templates.ts';
+export type { Caller } from './caller.ts';
+export type { Accepted, Detail, KernelOutcome, Refused } from './outcome.ts';
+export { foldItem, replay, ReplayError } from './items/fold.ts';
+export type { FoldableEvent } from './items/fold.ts';
