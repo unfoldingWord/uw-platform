@@ -2,14 +2,25 @@ import { describe, expect, it } from 'vitest';
 import { eventSchema, type HarnessEvent } from '@uw/contracts';
 import { formatResult } from './report.ts';
 
-function event(name: HarnessEvent['name'], at: string): HarnessEvent {
+const itemCreated = {
+  stage: 'package',
+  title: 'Wire the board',
+  pageId: null,
+  priority: 0,
+  due: null,
+};
+
+function event(position: number, at: string): HarnessEvent {
   return eventSchema.parse({
     eventId: 'c2000000-0000-4000-8000-000000000001',
     harnessId: 'c2000000-0000-4000-8000-000000000002',
-    name,
+    itemId: 'c2000000-0000-4000-8000-000000000004',
+    name: 'item_created',
+    position,
     at,
     actor: 'human:c2000000-0000-4000-8000-000000000003',
-    payload: { stage: 'ship' },
+    evidence: itemCreated,
+    traceId: 'c2000000-0000-4000-8000-000000000005',
   });
 }
 
@@ -17,10 +28,7 @@ const passing = {
   name: 'ZZ-1.fixture',
   title: 'a fixture',
   report: {
-    events: [
-      event('lease_expired', '2026-10-01T09:15:00.000Z'),
-      event('gate_approved', '2026-10-01T09:20:00.000Z'),
-    ],
+    events: [event(1, '2026-10-01T09:15:00.000Z'), event(2, '2026-10-01T09:20:00.000Z')],
     state: { stage: 'ship', holder: null },
   },
   failure: null,
@@ -29,8 +37,8 @@ const passing = {
 const passingText = [
   'scenario ZZ-1.fixture: a fixture',
   'events (2):',
-  '  1. 2026-10-01T09:15:00.000Z lease_expired human:c2000000-0000-4000-8000-000000000003 {"stage":"ship"}',
-  '  2. 2026-10-01T09:20:00.000Z gate_approved human:c2000000-0000-4000-8000-000000000003 {"stage":"ship"}',
+  '  1. #1 2026-10-01T09:15:00.000Z item_created human:c2000000-0000-4000-8000-000000000003 {"stage":"package","title":"Wire the board","pageId":null,"priority":0,"due":null}',
+  '  2. #2 2026-10-01T09:20:00.000Z item_created human:c2000000-0000-4000-8000-000000000003 {"stage":"package","title":"Wire the board","pageId":null,"priority":0,"due":null}',
   'state:',
   '  {',
   '    "stage": "ship",',

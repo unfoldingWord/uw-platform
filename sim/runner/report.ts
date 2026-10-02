@@ -2,7 +2,7 @@ import type { HarnessEvent } from '@uw/contracts';
 import type { ScenarioResult } from './run.ts';
 
 function eventLine(event: HarnessEvent, index: number): string {
-  return `  ${index + 1}. ${event.at} ${event.name} ${event.actor} ${JSON.stringify(event.payload)}`;
+  return `  ${index + 1}. #${event.position} ${event.at} ${event.name} ${event.actor} ${JSON.stringify(event.evidence)}`;
 }
 
 function indent(text: string): string {
