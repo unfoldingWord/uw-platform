@@ -367,7 +367,7 @@ Elsewhere: `not_permitted`, `not_wired`, `wip_limit_reached`, `lease_held`, `lea
 
 Added in step 1: `malformed_command`, `unauthenticated`, `access_not_configured`, `database_not_configured`, `internal_error`, `pending_approval`, `person_not_found`, `grant_not_found`, `grant_exists`, `last_org_admin`, `expiry_in_past`, `unknown_page_type`, `invalid_frontmatter`, `page_not_found`, `page_exists`, `slug_taken`, `stale_version`, `parent_not_found`, `parent_cycle`.
 
-Added in step 3: `harness_not_found`, `harness_exists`, `stage_not_found`, `item_not_found`, `delegation_not_found`, `delegation_lapsed`, `not_holder`, `transition_not_allowed`, `unknown_feed_target`, `connector_not_registered`, `template_bypasses_gate`, `stage_edit_refused`, `item_not_at_gate`, `reason_not_one_line`.
+Added in step 3: `harness_not_found`, `harness_exists`, `stage_not_found`, `item_not_found`, `delegation_not_found`, `delegation_lapsed`, `not_holder`, `transition_not_allowed`, `unknown_feed_target`, `connector_not_registered`, `template_bypasses_gate`, `stage_edit_refused`, `item_not_at_gate`, `reason_not_one_line`, `decision_in_flight` (an approve or override at a connector stage while an earlier approval of the same parking still awaits its connector outcome).
 
 ### 8.6 Event vocabulary
 
