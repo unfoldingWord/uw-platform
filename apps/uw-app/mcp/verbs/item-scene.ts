@@ -1,4 +1,4 @@
-import { delegationIdOf } from '@uw/contracts';
+import { delegationIdOf, deviceOwnerSegment } from '@uw/contracts';
 import type { AclResource } from '@uw/core/acl';
 import type { Caller } from '@uw/harness';
 import type { VerbContext } from '../context.ts';
@@ -15,8 +15,13 @@ export function hiddenItem(input: ItemInput): VerbRefusal {
 }
 
 async function delegationRefusal(context: VerbContext): Promise<VerbRefusal | null> {
-  const delegationId = delegationIdOf(context.principal.identity);
-  if (delegationId === null) return null;
+  const { principal } = context;
+  const delegationId = delegationIdOf(principal.identity);
+  if (delegationId === null) {
+    const unattendedDevice =
+      deviceOwnerSegment(principal.identity) !== null && !principal.interactive;
+    return unattendedDevice ? refusal('delegation_required', { actor: principal.identity }) : null;
+  }
   const beat = await context.kernel.delegations.beat(callerOf(context), { delegationId });
   return beat.status === 'accepted' ? null : refusal(beat.reason, beat.detail);
 }

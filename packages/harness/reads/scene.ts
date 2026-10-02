@@ -6,10 +6,10 @@ import {
   type Principal,
   type Stage,
 } from '@uw/contracts';
-import { allowed, bareAgent, ownerBound } from '../access.ts';
+import { allowed, bareAgent, isAgent, ownerBound } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { personaMatches } from '../delegations/beat.ts';
-import { assertDelegationLive } from '../delegations/live.ts';
+import { livenessOf } from '../delegations/live.ts';
 import { accepted, refused, type KernelOutcome } from '../outcome.ts';
 import type { Delegation, Ports, StoreTransaction } from '../ports.ts';
 
@@ -34,35 +34,41 @@ export async function presentedDelegation(
     return refused('delegation_not_found', { delegationId });
   }
   if (!personaMatches(actor.identity, found)) return refused('not_permitted', { delegationId });
-  const liveness = await assertDelegationLive(tx, ports, delegationId, at);
+  const liveness = await livenessOf(tx, ports, found, at);
   if (!liveness.live) return refused('delegation_lapsed', { delegationId, why: liveness.why });
   return accepted({ delegation: liveness.delegation, grants: liveness.grants });
 }
 
-export async function workingDelegation(
+export async function workingDelegations(
   ports: ScenePorts,
   tx: StoreTransaction,
-  delegationId: string,
+  actor: Principal,
+  harnessId: string | null,
   at: Date,
-): Promise<LiveDelegation | null> {
-  const liveness = await assertDelegationLive(tx, ports, delegationId, at);
-  if (!liveness.live || liveness.delegation.capability === 'none') return null;
-  return { delegation: liveness.delegation, grants: liveness.grants };
+): Promise<readonly LiveDelegation[]> {
+  if (actor.personId === null) return [];
+  const filter = { personId: actor.personId, persona: actor.identity, harnessId };
+  const working: LiveDelegation[] = [];
+  for (const delegation of await tx.delegations.read.live(filter, at)) {
+    const liveness = await livenessOf(tx, ports, delegation, at);
+    if (liveness.live && liveness.delegation.capability !== 'none') {
+      working.push({ delegation: liveness.delegation, grants: liveness.grants });
+    }
+  }
+  return working;
 }
 
-async function personaAdmits(
+async function undelegatedAdmits(
   ports: ScenePorts,
   tx: StoreTransaction,
   actor: Principal,
   harness: Harness,
   at: Date,
 ): Promise<boolean> {
-  if (actor.personId === null) return false;
-  const filter = { personId: actor.personId, persona: actor.identity, harnessId: harness.id };
-  for (const delegation of await tx.delegations.read.live(filter, at)) {
-    if ((await workingDelegation(ports, tx, delegation.id, at)) !== null) return true;
+  if (bareAgent(actor.identity)) {
+    return (await workingDelegations(ports, tx, actor, harness.id, at)).length > 0;
   }
-  return false;
+  return !isAgent(actor) || actor.interactive;
 }
 
 async function delegationAdmits(
@@ -73,9 +79,7 @@ async function delegationAdmits(
   at: Date,
 ): Promise<boolean> {
   const delegationId = delegationIdOf(actor.identity);
-  if (delegationId === null) {
-    return bareAgent(actor.identity) ? personaAdmits(ports, tx, actor, harness, at) : true;
-  }
+  if (delegationId === null) return undelegatedAdmits(ports, tx, actor, harness, at);
   const presented = await presentedDelegation(ports, tx, actor, delegationId, at);
   return presented.status === 'accepted' && presented.value.delegation.harnessId === harness.id;
 }
