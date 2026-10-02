@@ -11,7 +11,8 @@ import { bindServiceToken } from '../agents/service-tokens.ts';
 import { createApp } from '../app.tsx';
 import { platformStore } from '../ports/store.ts';
 import { createAccessFixture, type AccessFixture } from '../testing/access-keys.ts';
-import { kernelOn, noFacts, personOn } from '../testing/kernel.ts';
+import { seedPullRequest } from '../testing/github-facts.ts';
+import { kernelOn, personOn } from '../testing/kernel.ts';
 import { areaGrant, callTool, httpClient, testAgent } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
 import type { VerbContext } from './context.ts';
@@ -87,7 +88,7 @@ async function openRig(): Promise<Rig> {
     await database.drop();
   };
   const fixture = await createAccessFixture();
-  const kernel = kernelOn(db, clock, { githubFacts: noFacts });
+  const kernel = kernelOn(db, clock);
   return { db, clock, fixture, kernel, ian, editor, drop };
 }
 
@@ -421,30 +422,39 @@ async function submitInProcess(r: Rig, args: Body): Promise<Body> {
   return JSON.parse(textOf(await callVerb(context, 'submit_to_gate', args, verbHandlers)));
 }
 
+async function seededAtCheck(r: Rig, key: string) {
+  const held = await heldByPersonAtCheck(r, key);
+  await seedPullRequest(r.db, {
+    repoId: 9100000011,
+    pullRequestId: 9100000211,
+    ...pullRequestOf(key),
+    head: HEAD,
+    headRef: `harness/${held.itemId}`,
+    paths: ['apps/uw-app/board.tsx'],
+    freshAt: r.clock.now(),
+  });
+  return held;
+}
+
 describe.skipIf(!testServer)(
-  'submit_to_gate with a pull request over HTTP is not wired until the platform GitHub facts port is',
+  'GH-2 submit_to_gate with a pull request over HTTP reads the pull request from the read model',
   () => {
-    it('answers not_wired for githubFacts and records nothing', async () => {
+    it('parks the submission and derives the risk from the stored changed files', async () => {
       const r = await rig();
-      const { h, itemId } = await heldByPersonAtCheck(r, 'software-gate-http');
+      const { h, itemId } = await seededAtCheck(r, 'software-gate-http');
       const laptop = await runner(r, 'laptop');
       expect((await claim(laptop, itemId)).isError).toBe(false);
-      const all = () =>
-        platformStore(r.db).transaction((tx) => readAllEvents(tx, h.harnessId, itemId));
-      const before = await all();
       const submitted = await call(
         laptop,
         'submit_to_gate',
         submission(itemId, 'software-gate-http', null),
       );
-      expect(submitted.body).toEqual({
-        status: 'error',
-        reason: 'not_wired',
-        detail: { port: 'githubFacts' },
-      });
-      expect(await all()).toEqual(before);
+      expect(submitted.body).toEqual({ itemId, result: 'parked', failures: [] });
+      expect((await eventsNamed(r, h, 'risk_derived')).map((event) => event.evidence)).toEqual([
+        expect.objectContaining({ paths: ['apps/uw-app/board.tsx'], head: HEAD }),
+      ]);
       const item = value(await r.kernel.reads.item(caller(r.ian), { itemId })).item;
-      expect(item).toMatchObject({ stageKey: 'check', gateStatus: 'working' });
+      expect(item).toMatchObject({ stageKey: 'check', gateStatus: 'parked' });
     });
   },
 );

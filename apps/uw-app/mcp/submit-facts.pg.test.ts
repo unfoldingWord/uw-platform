@@ -7,7 +7,7 @@ import { seedGrant, seedPerson } from '@uw/db/test-seed';
 import { readAllEvents, software, type Caller, type Kernel } from '@uw/harness';
 import { systemClock } from '../ports/clock.ts';
 import { platformStore } from '../ports/store.ts';
-import { agentOf, kernelOn, noFacts, personOn } from '../testing/kernel.ts';
+import { agentOf, kernelOn, personOn } from '../testing/kernel.ts';
 import type { VerbContext } from './context.ts';
 import { callVerb } from './dispatch.ts';
 import { verbHandlers } from './verbs/index.ts';
@@ -57,7 +57,7 @@ async function openRig(): Promise<Rig> {
   const database = await createMigratedDatabase(testServer ?? '');
   const db = createClient(database.connectionString);
   await seedOwner(db);
-  const kernel = kernelOn(db, systemClock, { githubFacts: noFacts });
+  const kernel = kernelOn(db, systemClock);
   const ian = await personOn(db, IAN_ID, 'ian.lindsley@unfoldingword.org', new Date());
   const owner = await personOn(db, OWNER.id, OWNER.email, new Date());
   const harnessId = crypto.randomUUID();

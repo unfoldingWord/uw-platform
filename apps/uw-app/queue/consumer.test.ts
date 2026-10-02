@@ -4,7 +4,7 @@ import { createLogger } from '@uw/core/log';
 import {
   consumeBatch,
   INGEST_QUEUE_KEY,
-  ingestHandlers,
+  notWiredHandlers,
   type ConsumerDeps,
   type ConsumerMessage,
   type IngestHandler,
@@ -74,6 +74,7 @@ function harness(options: HarnessOptions = {}): Harness {
     (async (envelope, logger) => {
       handled.push(envelope);
       logger.info('handled', { outcome: 'handled' });
+      return 'handled';
     });
   const deps: ConsumerDeps = {
     handlers: new Map([['github', handler]]),
@@ -158,6 +159,20 @@ describe('FD-10 the ingest consumer when the dead-letter queue fails', () => {
         error_name: 'Error',
         error_message: 'dead-letter queue down',
       }),
+    );
+  });
+});
+
+describe('FD-10 the ingest consumer and a malformed payload', () => {
+  it('sends a delivery its handler finds malformed to the dead-letter queue and acks it', async () => {
+    const h = harness({ handler: async () => 'malformed' });
+    const message = fakeMessage(validEnvelope);
+    await consumeBatch([message], h.deps);
+    expect(h.deadLettered).toEqual([{ reason: 'malformed_payload', body: validEnvelope }]);
+    expect(message.acked).toBe(true);
+    expect(message.retried).toBe(false);
+    expect(h.lines).toContainEqual(
+      expect.objectContaining({ trace_id: validEnvelope.traceId, outcome: 'malformed_payload' }),
     );
   });
 });
@@ -270,7 +285,7 @@ describe('FD-11 the ingest consumer lag', () => {
 describe('FD-10 the github handler', () => {
   it('treats the queued principal as a record, not an authority: it logs and reads no grants', async () => {
     const lines: Record<string, unknown>[] = [];
-    const handler = ingestHandlers.get('github');
+    const handler = notWiredHandlers.get('github');
     const staleAdmin = {
       ...validEnvelope,
       principal: {

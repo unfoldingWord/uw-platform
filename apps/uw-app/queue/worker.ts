@@ -1,22 +1,45 @@
 import { commitOf, type Bindings } from '../env.ts';
-import { hyperdriveDatabase } from '../database.ts';
-import { consumeBatch, ingestHandlers } from './consumer.ts';
+import { hyperdriveDatabase, type DatabaseHandle } from '../database.ts';
+import { githubAppOf } from '../github/app-config.ts';
+import { createGitHubReads } from '../github/client.ts';
+import { githubIngestHandler } from '../github/ingest.ts';
+import type { OpenReads } from '../github/refresh.ts';
+import { platformGitHubTransport } from '../github/transport.ts';
+import { platformKernel } from '../kernel.ts';
+import { systemClock } from '../ports/clock.ts';
+import { consumeBatch, notWiredHandlers, type IngestHandler } from './consumer.ts';
 import { postgresWatermarks } from './watermarks.ts';
+
+function readsOf(env: Bindings, now: () => Date): OpenReads | null {
+  const config = githubAppOf(env);
+  if (config === null) return null;
+  return () => createGitHubReads(config, platformGitHubTransport(now));
+}
+
+function handlersFor(database: DatabaseHandle | null, env: Bindings, now: () => Date) {
+  if (database === null) return notWiredHandlers;
+  const client = readsOf(env, now);
+  const kernel = platformKernel(database, systemClock, client);
+  return new Map<'github', IngestHandler>([
+    ['github', githubIngestHandler({ db: database.db, kernel, client, now })],
+  ]);
+}
 
 export async function consumeIngestBatch(
   batch: MessageBatch<unknown>,
   env: Bindings,
 ): Promise<void> {
   const database = hyperdriveDatabase(env);
+  const now = () => new Date();
   try {
     await consumeBatch(batch.messages, {
-      handlers: ingestHandlers,
+      handlers: handlersFor(database, env, now),
       deadLetter: env.INGEST_DLQ ?? null,
       watermarks: database ? postgresWatermarks(database.db) : null,
       sink: (line) => console.log(line),
       commit: commitOf(env),
       newId: () => crypto.randomUUID(),
-      now: () => new Date(),
+      now,
     });
   } finally {
     await database?.release();

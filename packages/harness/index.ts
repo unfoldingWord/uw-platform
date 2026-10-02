@@ -48,4 +48,4 @@ export { protectedDirectories } from './risk/protected-directories.ts';
 export type { ProtectedDirectory } from './risk/protected-directories.ts';
 export { shipRule } from './ship-rule.ts';
 export { parseDeclaration, parseReviewProvider } from './github/declaration.ts';
-export { fullSha } from './github/identifiers.ts';
+export { fullSha, sameRepository } from './github/identifiers.ts';
