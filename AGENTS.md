@@ -35,7 +35,7 @@ These are settled. Work inside them; changing one is an architecture change (sec
 | Truth | `harness_events` is append-only and the source of truth; state is a fold; replay equals record (ADR 0004) |
 | Unattended work | Runs only on a delegation, on every host (ADR 0005) |
 | Hosts, engines, billing | Two hosts, one verb registry, six engines each in its own directory, billing by host (ADR 0006) |
-| Schema | Drizzle in `packages/db/schema.ts` is the only schema; migrations in `packages/db/migrations/`; every table declares `classification` and `offline_eligibility` (plan §2.6) |
+| Schema | Drizzle in `packages/db/schema.ts` is the only schema; it re-exports one `packages/db/schema-<domain>.ts` file per domain (platform, and later GitHub) so no file passes 500 lines; migrations in `packages/db/migrations/`; every table declares `classification` and `offline_eligibility` (plan §2.6) |
 | Authorization | Plan §4: `role_grants` with `admin | editor | viewer` at `org` or `jd_area` scope, one `can(actor, verb, resource)`, a principal minted at the edge on every request. The harness derives from it and adds nothing beside it |
 | Conventions | Plan §0: dates `YYYY-MM-DD` through one `formatDate`/`parseDate` pair, money in integer minor units, UUID ids with slugs, Zod at every boundary |
 | Contracts | `packages/contracts` publishes commands, events, outcomes and the verb registry as Zod, one live version, golden fixtures, a conformance test (spec D4) |
@@ -93,7 +93,7 @@ Every kind of work has one template. Copy the template, fill the blanks, stop.
 - New verb: the registry in `packages/contracts`, the MCP handler, the persona toolsets that may hold it.
 - New engine: a directory under `apps/uw-app/engines/<key>/`; the vendor SDK imported there and nowhere else.
 - New validator or connector: a registry entry and a handler; a stage row picks it by key.
-- New table or column: `packages/db/schema.ts` with its classification, and a migration.
+- New table or column: the `packages/db/schema.ts` file for its domain (`schema.ts` for the harness, `schema-platform.ts` for the platform) with its classification, and a migration.
 - New command: `packages/contracts`, the Hono route with `can()`, a scenario.
 - New screen: one island, one route, one scenario, tokens only.
 - New word: `CONTEXT.md` first.
@@ -130,7 +130,7 @@ A durable value is anything in Postgres.
 Adding a persona, an engine, a validator, a connector or a screen means adding a folder or a registry row, and touching shared roots only at reserved discovery points.
 
 - Discovery is by registry, never by editing a switch. An `if (engineName)` or `if (personaName)` branch in shared code is the smell this rule forbids.
-- The shared roots are `packages/db/schema.ts`, `packages/contracts/`, `packages/harness/ports.ts`, `packages/core/acl.ts`, `infra/`, `.github/workflows/`, `AGENTS.md`, `CONTEXT.md` and `docs/adr/`. A change to one goes in its own commit, never mixed with feature code, and the commit message names the shared root and why it changed.
+- The shared roots are `packages/db/schema.ts`, `packages/db/schema-*.ts`, `packages/contracts/`, `packages/harness/ports.ts`, `packages/core/acl.ts`, `infra/`, `.github/workflows/`, `AGENTS.md`, `CONTEXT.md` and `docs/adr/`. A change to one goes in its own commit, never mixed with feature code, and the commit message names the shared root and why it changed.
 - `ui-design/` and `design-system/` are produced in Claude Design and synced here. Code reads them and never hand-edits them.
 
 ### Rule 5. Exceptions are narrow, explicit, and recorded
