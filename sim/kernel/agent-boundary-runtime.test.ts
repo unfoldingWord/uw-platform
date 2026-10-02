@@ -1,16 +1,15 @@
 import { principalSchema, type Principal } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { software, type Caller } from '@uw/harness';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   agentAttempts,
   gateViolations,
-  stageViolations,
   type AgentAttempt,
   type Decide,
-  type UpdateStage,
   type Violation,
 } from '../agent-boundary.ts';
+import { stageViolations, type StageCommands } from '../stage-boundary.ts';
 import { createSimHarness, simParkedAtCheck } from '../fixtures.ts';
 import { createWorld, type World } from '../world.ts';
 
@@ -22,16 +21,40 @@ type Scene = {
   readonly attempts: readonly AgentAttempt[];
 };
 
-async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
+async function openScene(): Promise<Scene> {
   const world = await createWorld();
   try {
     const { harness, admin } = await createSimHarness(world, software);
     const parked = await simParkedAtCheck(world, { harnessId: harness.id, admin, title: 'Gate' });
     const attempts = await agentAttempts(world, harness.id);
-    await work({ world, target: { itemId: parked.itemId, harnessId: harness.id }, attempts });
-  } finally {
+    return { world, target: { itemId: parked.itemId, harnessId: harness.id }, attempts };
+  } catch (error) {
     await world.close();
+    throw error;
   }
+}
+
+async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
+  const scene = await openScene();
+  try {
+    await work(scene);
+  } finally {
+    await scene.world.close();
+  }
+}
+
+function sharedScene(): () => Scene {
+  let current: Scene | null = null;
+  beforeAll(async () => {
+    current = await openScene();
+  });
+  afterAll(async () => {
+    await current?.world.close();
+  });
+  return () => {
+    if (current === null) throw new Error('the shared scene is not open');
+    return current;
+  };
 }
 
 function laundered(caller: Caller): Caller {
@@ -67,8 +90,14 @@ const silentDecide: Decide = async (caller) => ({
   detail: { actor: caller.actor.identity },
 });
 
-function bypassingUpdate(world: World): UpdateStage {
-  return (caller, input) => world.kernel.stages.updateStage(laundered(caller), input);
+function bypassingStages(world: World): StageCommands {
+  const { stages } = world.kernel;
+  return {
+    activate: (caller, input) => stages.activate(laundered(caller), input),
+    createStage: (caller, input) => stages.createStage(laundered(caller), input),
+    updateStage: (caller, input) => stages.updateStage(laundered(caller), input),
+    reorderStages: (caller, input) => stages.reorderStages(laundered(caller), input),
+  };
 }
 
 function labelsWith(violations: readonly Violation[], why: string): ReadonlySet<string> {
@@ -104,36 +133,55 @@ async function stageBypassIsCaught(scene: Scene): Promise<void> {
     world,
     target.harnessId,
     attempts,
-    bypassingUpdate(world),
+    bypassingStages(world),
   );
   const first = 'admin org, bare persona agent:reviewer, ';
-  expect(violations.some((v) => v.startsWith(first) && v.endsWith(': accepted'))).toBe(true);
+  const accepted = violations.filter((v) => v.startsWith(first) && v.endsWith(': accepted'));
+  expect(accepted).toContain(`${first}activate the software template: accepted`);
+  expect(accepted).toContain(`${first}reorderStages reversed: accepted`);
   expect(violations).toContain('harness_stages changed');
+  expect(violations).toContain('a harness was activated');
 }
+
+async function mispinnedReadabilityIsCaught(scene: Scene): Promise<void> {
+  const { world, target, attempts } = scene;
+  const flipped = attempts
+    .slice(0, 2)
+    .map((attempt) => ({ ...attempt, readable: !attempt.readable }));
+  const violations = await gateViolations(world, target, flipped, world.kernel.gates.decide);
+  const disagreeing = labelsWith(violations, 'disagrees with the read');
+  expect([...disagreeing].sort()).toEqual(flipped.map((attempt) => attempt.label).sort());
+}
+
+async function everyFormIsBuilt({ attempts }: Scene): Promise<void> {
+  const labels = attempts.map((attempt) => attempt.label);
+  const identities = attempts.map((attempt) => attempt.actor.identity);
+  expect(attempts).toHaveLength(13 * 4 + 3 + 3 + 1);
+  expect(attempts.filter((attempt) => attempt.readable)).toHaveLength(8 * 4 + 7);
+  expect(new Set(labels).size).toBe(attempts.length);
+  expect(identities.filter((identity) => !identity.startsWith('agent:'))).toEqual([]);
+}
+
+const shared = sharedScene();
 
 describe('AB-7 the runtime check fails on a planted gate command that lets an agent decide', () => {
   it('names the attempts a planted decide that launders the agent into a person lets through', () =>
     inScene(bypassIsCaught));
 
   it('names every attempt a planted decide accepts without writing anything', () =>
-    inScene(acceptanceIsCaught));
+    acceptanceIsCaught(shared()));
 
   it('flags a planted decide that refuses not_permitted and records no event', () =>
-    inScene(silenceIsCaught));
+    silenceIsCaught(shared()));
+
+  it('flags attempts whose pinned readability disagrees with what the harness read allows', () =>
+    mispinnedReadabilityIsCaught(shared()));
 
   it('flags a planted stage command that lets a laundered agent lower a gate', () =>
     inScene(stageBypassIsCaught));
 });
 
-async function everyFormIsBuilt({ attempts }: Scene): Promise<void> {
-  const labels = attempts.map((attempt) => attempt.label);
-  const identities = attempts.map((attempt) => attempt.actor.identity);
-  expect(attempts).toHaveLength(13 * 4 + 2);
-  expect(new Set(labels).size).toBe(attempts.length);
-  expect(identities.filter((identity) => !identity.startsWith('agent:'))).toEqual([]);
-}
-
 describe('the runtime boundary check builds every grant combination and identity form', () => {
-  it('builds four identity forms for no grant, nine role and scope pairs and three expired grants, plus a delegated device and a beat', () =>
-    inScene(everyFormIsBuilt));
+  it('builds four identity forms per grant set plus delegated, beat and revoked identities', () =>
+    everyFormIsBuilt(shared()));
 });
