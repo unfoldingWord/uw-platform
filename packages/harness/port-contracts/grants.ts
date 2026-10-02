@@ -2,6 +2,7 @@ import { grantSchema, type Grant, type JdArea, type Role, type Scope } from '@uw
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Grants, Store } from '../ports.ts';
 import { describeNotWired } from './not-wired-cases.ts';
+import { escapedAfter } from './store.ts';
 
 export type SeedGrantInput = {
   readonly id: string;
@@ -160,11 +161,32 @@ function describeGrantsOutsideTransaction(adapter: string, subject: () => Grants
   });
 }
 
+function describeGrantsAfterTransaction(adapter: string, subject: () => GrantsSubject): void {
+  describe(`DX-3 grants port contract on ${adapter}: after a transaction`, () => {
+    it('lets a continuation scheduled inside the work resolve after the commit', async () => {
+      const { grants, store } = subject();
+      expect(await escapedAfter(store, () => grants.resolve(person(8), at), false)).toEqual([
+        'resolved',
+        'resolved',
+      ]);
+    });
+
+    it('lets a continuation scheduled inside the work resolve after a rollback', async () => {
+      const { grants, store } = subject();
+      expect(await escapedAfter(store, () => grants.resolve(person(8), at), true)).toEqual([
+        'resolved',
+        'resolved',
+      ]);
+    });
+  });
+}
+
 export function describeGrantsContract(adapter: string, open: () => Promise<GrantsSubject>): void {
   const subject = withSubject(open);
   describeGrantsResolve(adapter, subject);
   describeGrantsUnderLock(adapter, subject);
   describeGrantsOutsideTransaction(adapter, subject);
+  describeGrantsAfterTransaction(adapter, subject);
 }
 
 export function describeGrantsNotWired(adapter: string, grants: Grants): void {

@@ -73,6 +73,28 @@ function describeRace(subject: () => StoreSubject): void {
   });
 }
 
+export async function escapedAfter(
+  store: Store,
+  call: () => Promise<unknown>,
+  failWork: boolean,
+): Promise<string[]> {
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const escaped: { outcomes: Promise<string[]> } = { outcomes: Promise.resolve([]) };
+  await store
+    .transaction(async () => {
+      escaped.outcomes = gate.then(async () =>
+        (await Promise.allSettled([call(), store.transaction(async () => 1)])).map(outcomeOf),
+      );
+      if (failWork) throw new Error('after scheduling');
+    })
+    .catch(() => undefined);
+  release();
+  return escaped.outcomes;
+}
+
 async function locksHeldAround(subject: StoreSubject): Promise<number[]> {
   return subject.store.transaction(async (tx) => {
     const before = await subject.advisoryLocksHeld(tx);
@@ -105,6 +127,22 @@ function describeExclusion(subject: () => StoreSubject, shape: StoreShape): void
     },
     refusalTimeout,
   );
+
+  it('DX-3 lets a continuation scheduled inside the work call the store after the commit', async () => {
+    const store = subject().store;
+    expect(await escapedAfter(store, () => store.appliedMigrations(), false)).toEqual([
+      'resolved',
+      'resolved',
+    ]);
+  });
+
+  it('DX-3 lets a continuation scheduled inside the work call the store after a rollback', async () => {
+    const store = subject().store;
+    expect(await escapedAfter(store, () => store.appliedMigrations(), true)).toEqual([
+      'resolved',
+      'resolved',
+    ]);
+  });
 
   it('DX-3 does not nest transactions: the work gets only lock, so pass the transaction along', async () => {
     const members = await subject().store.transaction(async (tx) => Object.keys(tx));

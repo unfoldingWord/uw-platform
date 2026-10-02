@@ -13,12 +13,22 @@ class CallOutsideOpenTransactionError extends Error {
   }
 }
 
-const openTransactions = new AsyncLocalStorage<ReadonlySet<AnyDatabase>>();
+type OpenToken = { open: boolean };
 
-export function insideOpenTransaction<T>(db: AnyDatabase, work: () => Promise<T>): Promise<T> {
-  const open = new Set(openTransactions.getStore());
-  open.add(db);
-  return openTransactions.run(open, work);
+const openTransactions = new AsyncLocalStorage<ReadonlyMap<AnyDatabase, OpenToken>>();
+
+export async function insideOpenTransaction<T>(
+  db: AnyDatabase,
+  work: () => Promise<T>,
+): Promise<T> {
+  const token: OpenToken = { open: true };
+  const marked = new Map(openTransactions.getStore());
+  marked.set(db, token);
+  try {
+    return await openTransactions.run(marked, work);
+  } finally {
+    token.open = false;
+  }
 }
 
 export async function outsideOpenTransaction<T>(
@@ -26,6 +36,6 @@ export async function outsideOpenTransaction<T>(
   call: string,
   work: () => Promise<T>,
 ): Promise<T> {
-  if (openTransactions.getStore()?.has(db)) throw new CallOutsideOpenTransactionError(call);
+  if (openTransactions.getStore()?.get(db)?.open) throw new CallOutsideOpenTransactionError(call);
   return work();
 }
