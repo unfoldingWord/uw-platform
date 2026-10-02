@@ -14,6 +14,11 @@ describe('GH-5 only listed Reviewer identities are reviewers', () => {
     expect(reviewerOf('octocat')).toBeNull();
     expect(reviewerOf('')).toBeNull();
   });
+
+  it('counts a non-ASCII lookalike of a listed login as no reviewer', () => {
+    expect(reviewerOf('\uFF55\uFF57-reviewer\uFF3Bbot\uFF3D')).toBeNull();
+    expect(reviewerOf('uw-reviewer[bot]\u200B')).toBeNull();
+  });
 });
 
 describe('the Reviewer identity list', () => {

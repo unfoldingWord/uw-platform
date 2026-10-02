@@ -9,6 +9,10 @@ const byLogin: ReadonlyMap<string, string> = new Map(
   reviewerIdentities.map((entry) => [entry.login.toLowerCase(), entry.reviewer]),
 );
 
+const asciiLogin = /^[!-~]+$/u;
+
 export function reviewerOf(login: string): string | null {
-  return byLogin.get(login.normalize('NFKC').trim().toLowerCase()) ?? null;
+  const trimmed = login.trim();
+  if (!asciiLogin.test(trimmed)) return null;
+  return byLogin.get(trimmed.toLowerCase()) ?? null;
 }
