@@ -36,3 +36,8 @@ export { expireLapsedLease, LEASE_MS, LEASE_WARNING_MS } from './items/leases.ts
 export type { LeaseOutcome } from './items/run-steps.ts';
 export type { Rebuilt, RepairCommands } from './items/repair.ts';
 export type { DelegationCommands, GrantInput } from './delegations/commands.ts';
+export { applyDeclaration, domainOf, floorFromPaths } from './risk/derive.ts';
+export type { RiskFloor, RiskResult } from './risk/derive.ts';
+export { approverCovers, domainGrants, requiredResources } from './risk/domain-grants.ts';
+export { protectedDirectories } from './risk/protected-directories.ts';
+export type { ProtectedDirectory } from './risk/protected-directories.ts';
