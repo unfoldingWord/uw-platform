@@ -243,15 +243,18 @@ describe.skipIf(!testServer)('an org admin revokes a service token binding', () 
       expect(await liveBinding(db, CLIENT)).toEqual({ personId: idOf('editor'), device: DEVICE });
     }));
 
-  it('refuses binding a revoked token again, so it never comes back live', () =>
+  it('binds a revoked client id again, live once more, and refuses a second live binding', () =>
     withPeople(async (db) => {
       await asIan(db, bindBody(idOf('editor')));
       await asIan(db, revokeBody());
-      expect(outcomeOf(await asIan(db, bindBody(idOf('editor'))))).toBe('grant_exists');
+      expect(await liveBinding(db, CLIENT)).toBeNull();
       expect(outcomeOf(await asIan(db, bindBody(idOf('editor'), CLIENT, 'other')))).toBe(
+        'accepted',
+      );
+      expect(await liveBinding(db, CLIENT)).toEqual({ personId: idOf('editor'), device: 'other' });
+      expect(outcomeOf(await asIan(db, bindBody(idOf('editor'), CLIENT, 'third')))).toBe(
         'grant_exists',
       );
-      expect(await liveBinding(db, CLIENT)).toBeNull();
     }));
 
   it('refuses an unknown token', () =>

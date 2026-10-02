@@ -19,7 +19,10 @@ export const owns = ['service_tokens'] as const;
 type ServiceTokenBinding = { readonly personId: string; readonly device: string };
 
 const UNIQUE_VIOLATION = '23505';
-const BINDING_CONSTRAINTS = new Set(['service_tokens_pkey', 'service_tokens_one_live_device']);
+const BINDING_CONSTRAINTS = new Set([
+  'service_tokens_one_live_client',
+  'service_tokens_one_live_device',
+]);
 const BINDABLE_ROLES = new Set(['editor', 'admin']);
 
 const accepted: CommandResult = { ok: true };
@@ -58,6 +61,7 @@ async function bindInTransaction(
   const refusal = await targetRefusal(tx, command.personId, at);
   if (refusal !== null) return refused(refusal);
   await tx.insert(serviceTokens).values({
+    id: crypto.randomUUID(),
     clientId: command.clientId,
     personId: command.personId,
     device: command.device,
