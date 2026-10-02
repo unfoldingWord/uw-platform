@@ -1,0 +1,73 @@
+{
+  "pullRequest": {
+    "open": true,
+    "draft": false,
+    "head": "abc123"
+  },
+  "expectedHead": "abc123",
+  "checks": [
+    {
+      "name": "security-audit",
+      "headSha": "abc123",
+      "conclusion": "success"
+    },
+    {
+      "name": "lint",
+      "headSha": "abc123",
+      "conclusion": "success"
+    },
+    {
+      "name": "typecheck",
+      "headSha": "abc123",
+      "conclusion": "success"
+    },
+    {
+      "name": "architecture",
+      "headSha": "abc123",
+      "conclusion": "success"
+    },
+    {
+      "name": "test",
+      "headSha": "abc123",
+      "conclusion": "success"
+    },
+    {
+      "name": "build",
+      "headSha": "abc123",
+      "conclusion": "success"
+    }
+  ],
+  "approvals": [
+    {
+      "reviewer": "reviewer-one",
+      "commit": "abc123",
+      "provider": "anthropic"
+    },
+    {
+      "reviewer": "reviewer-two",
+      "commit": "abc123",
+      "provider": "openai"
+    }
+  ],
+  "riskTier": "high",
+  "riskDomains": ["acl"],
+  "area": "80-89",
+  "approver": {
+    "identity": "human:00000000-0000-4000-8000-000000000001",
+    "kind": "person",
+    "personId": "00000000-0000-4000-8000-000000000001",
+    "email": "ian.lindsley@unfoldingword.org",
+    "grants": [
+      {
+        "grantId": "00000000-0000-4000-8000-000000000101",
+        "role": "admin",
+        "scopeKind": "org",
+        "scopeArea": null,
+        "expiresAt": null
+      }
+    ],
+    "interactive": true
+  },
+  "at": "2026-10-01T09:00:00.000Z",
+  "override": false
+}

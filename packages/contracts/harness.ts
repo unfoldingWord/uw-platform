@@ -1,0 +1,87 @@
+import { z } from 'zod';
+import { jdAreaSchema } from './areas.ts';
+import {
+  agentPickupSchema,
+  branchStateSchema,
+  connectorSchema,
+  exitGateSchema,
+  gateStatusSchema,
+  principalKindSchema,
+  riskDomainsSchema,
+  riskTierSchema,
+  stageBracketSchema,
+} from './closed-sets.ts';
+import { agentIdentityPattern, identitySchema } from './identity.ts';
+import { slugSchema } from './pages.ts';
+
+const distinct = (values: readonly string[]) => new Set(values).size === values.length;
+
+export const stageKeyPattern = '^[a-z][a-z0-9_]{0,63}$';
+export const stageKeySchema = z
+  .string()
+  .regex(new RegExp(stageKeyPattern), 'a stage key is lowercase snake_case');
+
+export const personaIdentityPattern = agentIdentityPattern;
+export const personaIdentitySchema = identitySchema.refine(
+  (value) => value.startsWith('agent:') && !value.includes('/'),
+  'a persona identity is agent:<persona>',
+);
+
+export const pullRequestRefSchema = z.strictObject({
+  repo: z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/, 'a repository is owner/name'),
+  number: z.number().int().min(1),
+});
+
+export const harnessSchema = z.strictObject({
+  id: z.uuid(),
+  key: slugSchema,
+  template: slugSchema,
+  jdArea: jdAreaSchema,
+  hostedBuilderEnabled: z.boolean(),
+  paused: z.boolean(),
+});
+
+export const stageSchema = z.strictObject({
+  id: z.uuid(),
+  harnessId: z.uuid(),
+  key: stageKeySchema,
+  title: z.string().min(1).max(120),
+  position: z.number().int().min(1),
+  bracket: stageBracketSchema,
+  agentPickup: agentPickupSchema,
+  exitGate: exitGateSchema,
+  connector: connectorSchema,
+  wipLimit: z.number().int().min(1),
+  instructionsPageId: z.uuid().nullable(),
+  validators: z
+    .array(z.string().regex(/^[a-z][a-z0-9_]*$/))
+    .refine(distinct, 'a stage names each validator once'),
+  feeds: z.array(stageKeySchema).refine(distinct, 'a stage names each feeds target once'),
+  paused: z.boolean(),
+});
+
+export const itemStateSchema = z.strictObject({
+  itemId: z.uuid(),
+  harnessId: z.uuid(),
+  stageKey: stageKeySchema,
+  title: z.string().min(1).max(200),
+  pageId: z.uuid().nullable(),
+  priority: z.number().int(),
+  due: z.iso.date().nullable(),
+  holder: identitySchema.nullable(),
+  claimantKind: principalKindSchema.nullable(),
+  delegationId: z.uuid().nullable(),
+  leaseExpiresAt: z.iso.datetime().nullable(),
+  gateStatus: gateStatusSchema,
+  gateTarget: stageKeySchema.nullable(),
+  branchState: branchStateSchema,
+  expectedHead: z.string().min(1).nullable(),
+  riskTier: riskTierSchema.nullable(),
+  riskDomains: riskDomainsSchema,
+  pullRequest: pullRequestRefSchema.nullable(),
+  zulipTopic: z.string().min(1).nullable(),
+});
+
+export type Harness = z.infer<typeof harnessSchema>;
+export type Stage = z.infer<typeof stageSchema>;
+export type ItemState = z.infer<typeof itemStateSchema>;

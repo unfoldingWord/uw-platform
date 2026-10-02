@@ -46,6 +46,20 @@ export const errorReasonSchema = z.enum([
   'stale_version',
   'parent_not_found',
   'parent_cycle',
+  'harness_not_found',
+  'harness_exists',
+  'stage_not_found',
+  'item_not_found',
+  'delegation_not_found',
+  'delegation_lapsed',
+  'not_holder',
+  'transition_not_allowed',
+  'unknown_feed_target',
+  'connector_not_registered',
+  'template_bypasses_gate',
+  'stage_edit_refused',
+  'item_not_at_gate',
+  'reason_not_one_line',
 ]);
 
 export const refusalSchema = z.object({

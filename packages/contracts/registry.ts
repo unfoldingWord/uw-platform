@@ -10,6 +10,14 @@ import {
   indicatorStatusSchema,
   overallStatusSchema,
 } from './health.ts';
+import {
+  harnessSchema,
+  itemStateSchema,
+  personaIdentitySchema,
+  pullRequestRefSchema,
+  stageKeySchema,
+  stageSchema,
+} from './harness.ts';
 import { identitySchema } from './identity.ts';
 import {
   ingestEnvelopeSchema,
@@ -45,6 +53,14 @@ import {
 } from './page-types.ts';
 import { platformCommandNameSchema } from './platform-commands.ts';
 import { grantSchema, principalSchema } from './principal.ts';
+import {
+  checkConclusionSchema,
+  ciJobSchema,
+  riskDeclarationSchema,
+  shipRefusalSchema,
+  shipRuleInputSchema,
+  shipRuleOutcomeSchema,
+} from './ship-rule.ts';
 import { runStepSchema, submitToGateResultSchema } from './verb-io.ts';
 import { forbiddenVerbSchema, verbNameSchema } from './verb-names.ts';
 import { verbGrantSchema, verbGroupSchema } from './verbs.ts';
@@ -114,4 +130,21 @@ export const schemaRegistry: Record<string, ZodType> = {
   'ingest-refusal': ingestRefusalSchema,
   'ingest-envelope': ingestEnvelopeSchema,
   'ingest-response': ingestResponseSchema,
+  'stage-bracket': closedSets.stageBracketSchema,
+  'gate-status': closedSets.gateStatusSchema,
+  'branch-state': closedSets.branchStateSchema,
+  'run-outcome': closedSets.runOutcomeSchema,
+  'delegation-lapse': closedSets.delegationLapseSchema,
+  'stage-key': stageKeySchema,
+  'persona-identity': personaIdentitySchema,
+  'pull-request-ref': pullRequestRefSchema,
+  harness: harnessSchema,
+  stage: stageSchema,
+  'item-state': itemStateSchema,
+  'ci-job': ciJobSchema,
+  'check-conclusion': checkConclusionSchema,
+  'ship-refusal': shipRefusalSchema,
+  'risk-declaration': riskDeclarationSchema,
+  'ship-rule-input': shipRuleInputSchema,
+  'ship-rule-outcome': shipRuleOutcomeSchema,
 };
