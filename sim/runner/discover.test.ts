@@ -24,11 +24,15 @@ afterAll(() => {
 });
 
 describe('DX-4 scenarios are files named for a requirement ID', () => {
-  it('finds the step-2 scenarios, each declaring the ID its file name starts with', async () => {
+  it('finds the scenarios, each declaring the ID its file name starts with', async () => {
     const found = await discoverScenarios(scenariosDirectory);
     expect(found.map((loaded) => [loaded.name, loaded.scenario.id])).toEqual([
       ['DX-1.kernel-over-test-adapters', 'DX-1'],
       ['DX-2.store-is-embedded-postgres', 'DX-2'],
+      ['KN-10.activation-refuses-a-bypass', 'KN-10'],
+      ['KN-15.both-templates-activate', 'KN-15'],
+      ['KN-18.activate-a-template', 'KN-18'],
+      ['KN-18.lowering-ship-is-refused-by-postgres', 'KN-18'],
     ]);
   });
 
