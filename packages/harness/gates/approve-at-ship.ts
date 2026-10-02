@@ -1,4 +1,5 @@
 import type {
+  Connector,
   GateDecision,
   Harness,
   ItemState,
@@ -6,16 +7,27 @@ import type {
   ShipRefusal,
   Stage,
 } from '@uw/contracts';
-import { draft, recordItemEvents, type RecordContext } from '../items/record.ts';
+import { allowed } from '../access.ts';
+import { draft, readAllEvents, recordItemEvents, type RecordContext } from '../items/record.ts';
 import { resolveExit } from '../items/transitions.ts';
 import { refused, type Refused } from '../outcome.ts';
 import { PortNotWiredError } from '../port-errors.ts';
-import type { Ports, PullRequestFacts, StoreTransaction } from '../ports.ts';
+import type { EffectConnector, Ports, PullRequestFacts, StoreTransaction } from '../ports.ts';
 import { shipRule } from '../ship-rule.ts';
-import { exitThroughConnector } from './exit.ts';
+import { exitThroughConnector, type ExitPorts } from './exit.ts';
+import { decisionInFlight, sameChange } from './parking.ts';
 import { assembleShipInput } from './ship-input.ts';
 
-type ShipPorts = Pick<Ports, 'connectors' | 'githubFacts' | 'store'>;
+type ShipPorts = Pick<Ports, 'githubFacts' | 'store'> & ExitPorts;
+
+export type ShipRequest = {
+  readonly actor: Principal;
+  readonly at: Date;
+  readonly itemId: string;
+  readonly decision: GateDecision;
+};
+
+type AtExit = { readonly item: ItemState; readonly harness: Harness };
 
 export type ShipSnapshot = { readonly item: ItemState; readonly facts: PullRequestFacts | null };
 
@@ -30,48 +42,62 @@ type ShipGate = {
 export type PendingExit = {
   readonly item: ItemState;
   readonly stage: Stage;
+  readonly connector: EffectConnector;
   readonly next: Stage | null;
+  readonly decisionId: string;
   readonly overrideReason: string | null;
   readonly context: RecordContext;
 };
 
 const shipDecisions: ReadonlySet<GateDecision> = new Set<GateDecision>(['approve', 'override']);
 
-async function itemAtConnectorExit(
-  tx: StoreTransaction,
-  itemId: string,
-): Promise<ItemState | null> {
+export function effectOf(connector: Connector): EffectConnector | null {
+  return connector === 'none' ? null : connector;
+}
+
+async function itemAtConnectorExit(tx: StoreTransaction, itemId: string): Promise<AtExit | null> {
   const item = await tx.harnessItems.read.byId(itemId);
   if (item === null || item.gateStatus !== 'parked') return null;
+  const harness = await tx.harnesses.read.byId(item.harnessId);
+  if (harness === null) return null;
   const stages = await tx.harnessStages.read.forHarness(item.harnessId);
   const stage = stages.find((entry) => entry.key === item.stageKey);
-  if (stage === undefined || stage.connector === 'none') return null;
-  if (item.gateTarget === null) return item;
-  return resolveExit(stages, stage, item.gateTarget)?.kind === 'forward' ? item : null;
+  if (stage === undefined || effectOf(stage.connector) === null) return null;
+  if (item.gateTarget === null) return { item, harness };
+  return resolveExit(stages, stage, item.gateTarget)?.kind === 'forward' ? { item, harness } : null;
+}
+
+function factsFailure(error: unknown): Refused {
+  if (error instanceof PortNotWiredError) return refused('not_wired', { port: error.port });
+  const name = error instanceof Error ? error.name : 'unknown';
+  return refused('internal_error', { port: 'githubFacts', error: name });
 }
 
 export async function readShipFacts(
   ports: ShipPorts,
-  itemId: string,
-  decision: GateDecision,
+  request: ShipRequest,
 ): Promise<ShipSnapshot | Refused | null> {
-  if (!shipDecisions.has(decision)) return null;
-  const item = await ports.store.transaction((tx) => itemAtConnectorExit(tx, itemId));
-  if (item === null) return null;
+  if (!shipDecisions.has(request.decision)) return null;
+  const found = await ports.store.transaction((tx) => itemAtConnectorExit(tx, request.itemId));
+  if (found === null) return null;
+  const { item, harness } = found;
+  if (!allowed(request.actor, 'admin', harness, request.at)) {
+    return refused('not_permitted', { harnessId: harness.id });
+  }
   if (item.pullRequest === null) return { item, facts: null };
   try {
     return { item, facts: await ports.githubFacts.pullRequest(item.pullRequest) };
   } catch (error) {
-    if (error instanceof PortNotWiredError) return refused('not_wired', { port: error.port });
-    throw error;
+    return factsFailure(error);
   }
 }
 
-function sameChange(before: ItemState, after: ItemState): boolean {
-  const [was, now] = [before.pullRequest, after.pullRequest];
-  const samePullRequest =
-    was === null || now === null ? was === now : was.repo === now.repo && was.number === now.number;
-  return samePullRequest && before.expectedHead === after.expectedHead;
+export async function inFlightRefusal(
+  tx: StoreTransaction,
+  item: ItemState,
+): Promise<Refused | null> {
+  const events = await readAllEvents(tx, item.harnessId, item.itemId);
+  return decisionInFlight(events) ? refused('decision_in_flight', { itemId: item.itemId }) : null;
 }
 
 function shipReasons(
