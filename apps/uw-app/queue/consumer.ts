@@ -13,7 +13,9 @@ export type ConsumerMessage = {
   retry(): void;
 };
 
-export type IngestHandler = (envelope: IngestEnvelope, logger: Logger) => Promise<void>;
+type HandlerOutcome = 'handled' | 'malformed';
+
+export type IngestHandler = (envelope: IngestEnvelope, logger: Logger) => Promise<HandlerOutcome>;
 
 export type Watermarks = {
   record(queue: string, enqueuedAt: Date, consumedAt: Date): Promise<void>;
@@ -29,7 +31,7 @@ export type ConsumerDeps = {
   readonly now: () => Date;
 };
 
-export const ingestHandlers: ReadonlyMap<IngestSource, IngestHandler> = new Map<
+export const notWiredHandlers: ReadonlyMap<IngestSource, IngestHandler> = new Map<
   IngestSource,
   IngestHandler
 >([
@@ -41,6 +43,7 @@ export const ingestHandlers: ReadonlyMap<IngestSource, IngestHandler> = new Map<
         event: envelope.event,
         delivery_id: envelope.deliveryId,
       });
+      return 'handled';
     },
   ],
 ]);
@@ -52,15 +55,21 @@ function unattributedLogger(deps: ConsumerDeps): Logger {
   );
 }
 
-async function refuseMalformed(message: ConsumerMessage, deps: ConsumerDeps): Promise<void> {
-  const logger = unattributedLogger(deps);
+type Malformed = 'malformed_envelope' | 'malformed_payload';
+
+async function deadLetter(
+  message: ConsumerMessage,
+  deps: ConsumerDeps,
+  logger: Logger,
+  reason: Malformed,
+): Promise<void> {
   if (!deps.deadLetter) {
     message.retry();
-    logger.error('malformed envelope, retrying', { outcome: 'malformed_envelope' });
+    logger.error(`${reason.replace('_', ' ')}, retrying`, { outcome: reason });
     return;
   }
   try {
-    await deps.deadLetter.send({ reason: 'malformed_envelope', body: message.body });
+    await deps.deadLetter.send({ reason, body: message.body });
   } catch (error) {
     message.retry();
     logger.error('dead-letter send failed, retrying', {
@@ -70,9 +79,7 @@ async function refuseMalformed(message: ConsumerMessage, deps: ConsumerDeps): Pr
     return;
   }
   message.ack();
-  logger.warn('malformed envelope sent to the dead-letter queue', {
-    outcome: 'malformed_envelope',
-  });
+  logger.warn(`${reason.replace('_', ' ')} sent to the dead-letter queue`, { outcome: reason });
 }
 
 async function handle(
@@ -80,9 +87,10 @@ async function handle(
   envelope: IngestEnvelope,
   handler: IngestHandler,
   logger: Logger,
-): Promise<void> {
+): Promise<HandlerOutcome | null> {
+  let outcome: HandlerOutcome;
   try {
-    await handler(envelope, logger);
+    outcome = await handler(envelope, logger);
   } catch (error) {
     message.retry();
     logger.error('handler failed, retrying', {
@@ -91,9 +99,10 @@ async function handle(
       event: envelope.event,
       delivery_id: envelope.deliveryId,
     });
-    return;
+    return null;
   }
-  message.ack();
+  if (outcome === 'handled') message.ack();
+  return outcome;
 }
 
 async function consumeOne(
@@ -103,7 +112,9 @@ async function consumeOne(
 ): Promise<void> {
   const parsed = ingestEnvelopeSchema.safeParse(message.body);
   const handler = parsed.success ? deps.handlers.get(parsed.data.source) : undefined;
-  if (!parsed.success || !handler) return refuseMalformed(message, deps);
+  if (!parsed.success || !handler) {
+    return deadLetter(message, deps, unattributedLogger(deps), 'malformed_envelope');
+  }
   const envelope = parsed.data;
   const logger = createLogger(
     {
@@ -124,7 +135,8 @@ async function consumeOne(
     return;
   }
   seen.add(key);
-  await handle(message, envelope, handler, logger);
+  const outcome = await handle(message, envelope, handler, logger);
+  if (outcome === 'malformed') await deadLetter(message, deps, logger, 'malformed_payload');
 }
 
 async function recordLag(messages: readonly ConsumerMessage[], deps: ConsumerDeps): Promise<void> {

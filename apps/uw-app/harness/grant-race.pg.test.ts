@@ -14,14 +14,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import { revokeRole } from '../acl/grant-commands.ts';
 import { platformGrants } from '../ports/grants.ts';
-import {
-  agentOf,
-  fixedFacts,
-  kernelOn,
-  noFacts,
-  pausingGrants,
-  personOn,
-} from '../testing/kernel.ts';
+import { agentOf, fixedFacts, kernelOn, pausingGrants, personOn } from '../testing/kernel.ts';
 import { awaitBlocked } from '../../../packages/harness/port-contracts/lock-wait.ts';
 
 const ianId = '00000000-0000-4000-8000-000000000001';
@@ -156,10 +149,7 @@ async function raceOn(connections: Connections): Promise<Race> {
   });
   const ian = await personOn(connections.decider, ianId, 'ian.lindsley@unfoldingword.org', instant);
   const kim = await personOn(connections.decider, kimId, kimEmail, instant);
-  const item = await parkAtShip(
-    kernelOn(connections.decider, clock, { githubFacts: noFacts }),
-    ian,
-  );
+  const item = await parkAtShip(kernelOn(connections.decider, clock), ian);
   const facts = fixedFacts(greenFacts(item.itemId));
   const decider = kernelOn(connections.decider, clock, { githubFacts: facts });
   return { connections, decider, ian, kim, item };

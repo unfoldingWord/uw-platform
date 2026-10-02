@@ -1,7 +1,9 @@
 import { createKernel, type Clock, type Kernel, type Ports } from '@uw/harness';
 import type { DatabaseHandle } from './database.ts';
+import type { OpenReads } from './github/refresh.ts';
 import { systemClock } from './ports/clock.ts';
 import { connectorsNotWired } from './ports/connectors.not-wired.ts';
+import { platformGitHubFacts } from './ports/github-facts.ts';
 import { githubFactsNotWired } from './ports/github-facts.not-wired.ts';
 import { platformGrants } from './ports/grants.ts';
 import { grantsNotWired } from './ports/grants.not-wired.ts';
@@ -13,13 +15,17 @@ import { runsNotWired } from './ports/runs.not-wired.ts';
 import { platformStore } from './ports/store.ts';
 import { storeNotWired } from './ports/store.not-wired.ts';
 
-export function platformPorts(database: DatabaseHandle | null, clock: Clock = systemClock): Ports {
+export function platformPorts(
+  database: DatabaseHandle | null,
+  clock: Clock = systemClock,
+  github: OpenReads | null = null,
+): Ports {
   return {
     clock,
     ids: randomIds,
     store: database ? platformStore(database.db) : storeNotWired,
     grants: database ? platformGrants(database.db) : grantsNotWired,
-    githubFacts: githubFactsNotWired,
+    githubFacts: database ? platformGitHubFacts(database.db, github, clock) : githubFactsNotWired,
     connectors: connectorsNotWired,
     modelEngine: modelEngineNotWired,
     hub: hubNotWired,
@@ -31,6 +37,7 @@ export function platformPorts(database: DatabaseHandle | null, clock: Clock = sy
 export function platformKernel(
   database: DatabaseHandle | null,
   clock: Clock = systemClock,
+  github: OpenReads | null = null,
 ): Kernel {
-  return createKernel(platformPorts(database, clock));
+  return createKernel(platformPorts(database, clock, github));
 }

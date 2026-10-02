@@ -17,7 +17,7 @@ import { storeNotWired } from './store.not-wired.ts';
 
 describeStoreNotWired('uw-app with no database', storeNotWired);
 describeGrantsNotWired('uw-app with no database', grantsNotWired);
-describeGithubFactsNotWired('uw-app until GH-2', githubFactsNotWired);
+describeGithubFactsNotWired('uw-app with no database', githubFactsNotWired);
 describeConnectorsNotWired('uw-app until GH-6', connectorsNotWired);
 describeModelEngineNotWired('uw-app until HE-2', modelEngineNotWired);
 describeHubNotWired('uw-app until WB-3', hubNotWired);
