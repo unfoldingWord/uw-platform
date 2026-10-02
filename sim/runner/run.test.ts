@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { seedGrant } from '@uw/db/test-seed';
-import type { Scenario, ScenarioReport } from '../scenario.ts';
+import type { Scenario, ScenarioOutcome } from '../scenario.ts';
 import { grantOutsideItsArea } from '../scenarios/DX-2.store-is-embedded-postgres.ts';
 import { createWorld, type World } from '../world.ts';
 import { runScenario, selectScenarios, type LoadedScenario } from './run.ts';
@@ -9,16 +9,17 @@ import { runScenario, selectScenarios, type LoadedScenario } from './run.ts';
 afterAll(closeEmbeddedTemplate);
 
 const worldTimeout = 60_000;
-const emptyReport: ScenarioReport = { events: [], state: { done: true } };
+const emptyOutcome: ScenarioOutcome = { state: { done: true } };
+const emptyReport = { events: [], state: { done: true } };
 
 function loaded(name: string, run: Scenario['run']): LoadedScenario {
   return { name, scenario: { id: name.split('.')[0] ?? name, title: `the ${name} fixture`, run } };
 }
 
 const all = [
-  loaded('ZZ-1.one', async () => emptyReport),
-  loaded('ZZ-1.two', async () => emptyReport),
-  loaded('ZZ-2.three', async () => emptyReport),
+  loaded('ZZ-1.one', async () => emptyOutcome),
+  loaded('ZZ-1.two', async () => emptyOutcome),
+  loaded('ZZ-2.three', async () => emptyOutcome),
 ];
 
 function recordingWorld(): { readonly open: () => Promise<World>; closed(): boolean } {
@@ -36,9 +37,9 @@ function recordingWorld(): { readonly open: () => Promise<World>; closed(): bool
   return { open, closed: () => closed };
 }
 
-async function refuseAreaGrant(world: World): Promise<ScenarioReport> {
+async function refuseAreaGrant(world: World): Promise<ScenarioOutcome> {
   await seedGrant(world.database.db, grantOutsideItsArea(world.adapters.clock.now()));
-  return emptyReport;
+  return emptyOutcome;
 }
 
 describe('DX-4 selecting scenarios', () => {
@@ -100,7 +101,7 @@ describe('DX-4 a scenario that does not finish', () => {
     'reports a scenario that does not finish in time as a failure and closes the world',
     async () => {
       const world = recordingWorld();
-      const stuck = loaded('ZZ-5.stuck', () => new Promise<ScenarioReport>(() => undefined));
+      const stuck = loaded('ZZ-5.stuck', () => new Promise<ScenarioOutcome>(() => undefined));
       const result = await runScenario(stuck, world.open, 50);
       expect(result).toMatchObject({
         report: null,

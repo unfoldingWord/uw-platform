@@ -14,7 +14,6 @@ export const scenario = defineScenario({
     assert.equal(after.now.getTime() - before.now.getTime(), 15 * 60 * 1000);
     assert.deepEqual(after.appliedMigrations, migrationTimestamps);
     return {
-      events: [],
       state: {
         now: after.now,
         appliedMigrations: after.appliedMigrations.length,
