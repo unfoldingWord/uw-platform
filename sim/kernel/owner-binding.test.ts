@@ -214,26 +214,61 @@ describe('AB-6 a delegation id that belongs to someone else reads as one that do
     inWorld(ownPersonaMismatchRefused));
 });
 
-async function delegatedMustPresentItsOwn(world: World): Promise<void> {
+type Named = {
+  readonly scene: Scene;
+  readonly delegated: Caller;
+  readonly own: string;
+  readonly another: string;
+};
+
+async function namedScene(world: World): Promise<Named> {
   const a = await simPerson(world, 4, admin);
   const scene = await sceneOf(world, a);
   const own = await delegate(world, a, scene.harnessId, 'agent:builder');
-  const another = await delegate(world, a, scene.harnessId, 'agent:iterate');
+  const another = await delegate(world, a, scene.harnessId, 'agent:builder');
   const device = `${a.personId ?? ''}/laptop as builder via delegation:${own}`;
-  const delegated = simAgent(a, device, { interactive: true });
+  const delegated = simCaller(world, simAgent(a, device, { interactive: true }));
+  return { scene, delegated, own, another };
+}
+
+function mismatch(delegationId: string | null): KernelOutcome<never> {
+  return {
+    status: 'error',
+    reason: 'not_permitted',
+    detail: { delegationId, why: 'delegation_mismatch' },
+  };
+}
+
+async function claimMustPresentItsOwn(world: World): Promise<void> {
+  const { scene, delegated, own, another } = await namedScene(world);
   const before = await eventCount(scene);
   const claim = (delegationId: string | null) =>
-    world.kernel.items.claim(simCaller(world, delegated), { itemId: scene.itemId, delegationId });
-  expect([reasonOf(await claim(null)), reasonOf(await claim(another))]).toEqual([
-    'not_permitted',
-    'not_permitted',
-  ]);
+    world.kernel.items.claim(delegated, { itemId: scene.itemId, delegationId });
+  expect(await claim(null)).toEqual(mismatch(null));
+  expect(await claim(another)).toEqual(mismatch(another));
   expect(await eventCount(scene)).toBe(before);
   expect(await holderOf(scene)).toBeNull();
   expect(reasonOf(await claim(own))).toBe('accepted');
 }
 
+async function enqueueMustPresentItsOwn(world: World): Promise<void> {
+  const { scene, delegated, own } = await namedScene(world);
+  const enqueue = (delegationId: string | null) =>
+    world.kernel.items.enqueue(delegated, {
+      harnessId: scene.harnessId,
+      title: 'Another',
+      pageId: null,
+      priority: 1,
+      due: null,
+      delegationId,
+    });
+  expect(await enqueue(null)).toEqual(mismatch(null));
+  expect(reasonOf(await enqueue(own))).toBe('accepted');
+}
+
 describe('AB-6 an identity that names a delegation acts only under that delegation', () => {
-  it('claiming with no delegation id or with another live one is not_permitted', () =>
-    inWorld(delegatedMustPresentItsOwn));
+  it('claiming with no delegation id or with another live one for its persona is not_permitted', () =>
+    inWorld(claimMustPresentItsOwn));
+
+  it('enqueueing with no delegation id is not_permitted', () => inWorld(enqueueMustPresentItsOwn));
 });

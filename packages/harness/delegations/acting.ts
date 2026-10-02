@@ -50,14 +50,13 @@ async function delegatedPrincipal(
   delegationId: string,
 ): Promise<Principal | Refused> {
   const { caller, harness, context } = input;
-  const liveness = await assertDelegationLive(tx, ports, delegationId, context.at);
-  const { delegation } = liveness;
-  if (delegation === null || delegation.personId !== caller.actor.personId) {
+  const found = await tx.delegations.read.byId(delegationId);
+  if (found === null || found.personId !== caller.actor.personId) {
     return refused('delegation_not_found', { delegationId });
   }
-  if (!boundTo(caller.actor, harness, delegation)) {
-    return refused('not_permitted', { delegationId });
-  }
+  if (!boundTo(caller.actor, harness, found)) return refused('not_permitted', { delegationId });
+  const liveness = await assertDelegationLive(tx, ports, delegationId, context.at);
+  const delegation = liveness.delegation ?? found;
   if (!liveness.live) {
     if (liveness.why !== null) await recordLapse(tx, context, delegation, liveness.why);
     return refused('delegation_lapsed', { delegationId, why: liveness.why });
