@@ -5,6 +5,7 @@ import {
   type ItemState,
   type NewHarnessEvent,
 } from '@uw/contracts';
+import { carryForward } from '../risk/derive.ts';
 
 export const notReplayed: readonly (keyof ItemState)[] = ['zulipTopic'];
 
@@ -138,7 +139,9 @@ function takeOver(state: ItemState, event: FoldableEvent): ItemState {
 
 function deriveRisk(state: ItemState, event: FoldableEvent): ItemState {
   const evidence = eventEvidenceSchemas.risk_derived.parse(event.evidence);
-  return { ...state, riskTier: evidence.riskTier, riskDomains: evidence.riskDomains };
+  const held = { tier: state.riskTier, domains: state.riskDomains };
+  const floored = carryForward(held, { tier: evidence.riskTier, domains: evidence.riskDomains });
+  return { ...state, riskTier: floored.tier, riskDomains: [...floored.domains] };
 }
 
 const steps: ReadonlyMap<EventName, Step> = new Map<EventName, Step>([

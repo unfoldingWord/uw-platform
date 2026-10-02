@@ -251,8 +251,26 @@ describe('KN-4 replay folds loop edges, rejections and risk', () => {
     });
     expect(replay([...base(), derived])).toMatchObject({
       riskTier: 'high',
-      riskDomains: ['acl', 'ledger'],
+      riskDomains: ['ledger', 'acl'],
     });
+  });
+});
+
+describe('KN-17 replay never lowers risk', () => {
+  const derived = (position: number, riskTier: 'low' | 'high' | null, riskDomains: string[]) =>
+    event(position, 'risk_derived', {
+      paths: [],
+      declaration: null,
+      floorDomains: [],
+      riskTier,
+      riskDomains,
+      refusal: null,
+    });
+
+  it('keeps the higher tier and unions domains when a later derivation is null or lower', () => {
+    const high = derived(7, 'high', ['migration']);
+    const kept = replay([...base(), high, derived(8, null, ['acl']), derived(9, 'low', [])]);
+    expect(kept).toMatchObject({ riskTier: 'high', riskDomains: ['acl', 'migration'] });
   });
 });
 
