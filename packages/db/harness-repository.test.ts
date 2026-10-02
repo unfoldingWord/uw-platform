@@ -46,8 +46,24 @@ function openDatabase(target: DatabaseTarget): () => Db {
   };
 }
 
+const malformed = [
+  'no-slash',
+  'unfoldingWord/uw platform',
+  'a/b/c',
+  '/uw-platform',
+  'unfoldingWord/',
+  'unfoldingWord/.',
+  'unfoldingWord/..',
+  '-x/y',
+  'x-/y',
+  `${'a'.repeat(40)}/y`,
+  `x/${'a'.repeat(101)}`,
+  'unfolding_word/uw-platform',
+  'unfoldingWord/\u212Aey',
+];
+
 function repositoryRules(db: () => Db): void {
-  it.each(['no-slash', 'unfoldingWord/uw platform', 'a/b/c', '/uw-platform', 'unfoldingWord/'])(
+  it.each(malformed)(
     'refuses the malformed repository %j by harnesses_repository_form',
     async (repository) => {
       expect(await refusal(insertHarness(db(), 0xa1, repository))).toEqual({
@@ -65,6 +81,13 @@ function repositoryRules(db: () => Db): void {
     });
   });
 
+  it('accepts the longest owner and name GitHub allows and a dot-led name', async () => {
+    const before = await countOf(db());
+    await insertHarness(db(), 0xd1, `${'a'.repeat(39)}/${'b'.repeat(100)}`);
+    await insertHarness(db(), 0xd2, 'unfoldingWord/.github');
+    expect(await countOf(db())).toBe(before + 2);
+  });
+
   it('accepts any number of harnesses that name no repository', async () => {
     const before = await countOf(db());
     await insertHarness(db(), 0xc1, null);
@@ -73,7 +96,7 @@ function repositoryRules(db: () => Db): void {
   });
 }
 
-describe('GH-6 the harnesses repository column', () => {
+describe('the harnesses repository column (the GH-6 SECURITY carry)', () => {
   describe.each(databaseTargets.map((target) => [target.name, target] as const))(
     'on the %s database',
     (_name, target) => repositoryRules(openDatabase(target)),

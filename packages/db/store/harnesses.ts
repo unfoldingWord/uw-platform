@@ -1,3 +1,4 @@
+import { repositorySchema } from '@uw/contracts';
 import { asc, eq, sql } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
 import { harnesses } from '../schema.ts';
@@ -17,6 +18,7 @@ export function bindHarnesses(executor: AnyExecutor): HarnessesGateway {
         return rows[0] ? toHarness(rows[0]) : null;
       },
       byRepository: async (repository) => {
+        if (!repositorySchema.safeParse(repository).success) return null;
         const rows = await executor
           .select()
           .from(harnesses)

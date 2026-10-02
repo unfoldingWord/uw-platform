@@ -84,7 +84,7 @@ async function refusesMalformedRepository(world: World, ian: Caller): Promise<vo
   expect(await world.adapters.store.transaction((tx) => tx.harnesses.read.list())).toEqual([]);
 }
 
-describe('GH-6 a harness names its repository', () => {
+describe('a harness names its repository (the GH-6 SECURITY carry)', () => {
   it('stores the repository, records it on template_activated, and finds the harness by it in any case', () =>
     inWorld(storesAndRecords));
   it('refuses a second harness on a repository another harness holds, in any case', () =>
