@@ -1,12 +1,39 @@
 import { principalSchema, type Principal } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
-import { createKernel, type Clock, type Kernel } from '@uw/harness';
+import {
+  createKernel,
+  type Clock,
+  type GitHubFacts,
+  type Grants,
+  type Kernel,
+  type Ports,
+  type PullRequestFacts,
+} from '@uw/harness';
 import { platformPorts } from '../kernel.ts';
 import { platformGrants } from '../ports/grants.ts';
 
-export function kernelOn(db: Database, clock: Clock): Kernel {
+declare function setTimeout(handler: () => void, milliseconds: number): unknown;
+
+export function kernelOn(db: Database, clock: Clock, overrides: Partial<Ports> = {}): Kernel {
   const handle = { db, ping: async () => undefined, release: async () => undefined };
-  return createKernel({ ...platformPorts(handle), clock });
+  return createKernel({ ...platformPorts(handle), clock, ...overrides });
+}
+
+export function fixedFacts(facts: PullRequestFacts): GitHubFacts {
+  return { pullRequest: async () => facts };
+}
+
+export function pausingGrants(grants: Grants, onLocked: () => void, pauseMs: number): Grants {
+  return {
+    resolve: (personId, at) => grants.resolve(personId, at),
+    resolveIn: (tx, personId, at) => grants.resolveIn(tx, personId, at),
+    lockAndReread: async (tx, personId, at) => {
+      const locked = await grants.lockAndReread(tx, personId, at);
+      onLocked();
+      await new Promise<void>((resolve) => setTimeout(resolve, pauseMs));
+      return locked;
+    },
+  };
 }
 
 export async function personOn(
