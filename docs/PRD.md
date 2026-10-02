@@ -301,13 +301,13 @@ Every table declares its classification and offline eligibility. Every table has
 | `pages`, `page_versions` | see FD-9 | the page API and `write_page` |
 | `webhook_deliveries` | source, delivery id, received at; primary key on source and delivery id | the `uw-ingest` delivery ledger |
 | `queue_watermarks` | queue, last enqueued at, last consumed at | the queue consumer in `uw-app` |
-| `harnesses` | id, key, template, jd_area, hosted_builder_enabled, paused | the stage command |
-| `harness_stages` | harness, key, position, agent_pickup, exit_gate, connector, wip_limit, instructions_page_id, validators[], feeds[], paused | the stage command |
-| `harness_items` | harness, stage, title, page, claimed_by, claimant_kind, lease_expires, priority, due, risk_tier, risk_domains[], expected_head, branch_state, pr_number, zulip_topic | the kernel |
+| `harnesses` | id, key, template, jd_area, hosted_builder_enabled, paused, created at | the stage command |
+| `harness_stages` | harness, key, title, position, bracket (P31), agent_pickup, exit_gate, connector, wip_limit, instructions_page_id, validators[], feeds[], paused | the stage command |
+| `harness_items` | harness, stage, title, page, claimed_by, claimant_kind, delegation, lease_expires, priority, due, gate status, gate target, risk_tier, risk_domains[], expected_head, branch_state, pull request repository and `pr_number`, zulip_topic, created at | the kernel |
 | `harness_events` | see KN-3 | the kernel, append-only |
-| `harness_runs` | item, persona, host, run shape, engine, model, resolved provider, steps with tokens, cost and cost basis, trace id, outcome | the run shape |
-| `gate_decisions` | item, stage, actor, decision, reason, evidence | the gate command, human principals only |
-| `delegations` | id, person, persona, harness, capability, granted at, expires at, revoked at | the delegation command |
+| `harness_runs` | item, persona, run shape (the run shape names the host; there is no separate host column), engine, model, resolved provider, steps with tokens, cost and cost basis, trace id, outcome | the run shape |
+| `gate_decisions` | harness, item, stage, actor, decision, reason, evidence, trace id | the gate command, human principals only |
+| `delegations` | id, person, persona, harness, capability, granted at, expires at, revoked at, lapsed at, supersedes (P14), trace id | the delegation command |
 | `measurements` | item, source, name, value, as of | the Validate stage |
 | `personas` | identity, harness, page | a projection of persona pages |
 | `gh_repos`, `gh_issues`, `gh_prs`, `gh_milestones`, `gh_check_runs`, `gh_reviews` | GitHub id, facts, freshness | the read-model module |
