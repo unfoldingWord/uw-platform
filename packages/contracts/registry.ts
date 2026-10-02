@@ -1,8 +1,14 @@
 import type { ZodType } from 'zod';
 import * as closedSets from './closed-sets.ts';
 import { commandNameSchema, commandSchema, overrideCommandSchema } from './commands.ts';
+import {
+  bindServiceTokenCommandSchema,
+  revokeServiceTokenCommandSchema,
+  serviceClientIdSchema,
+} from './agent-commands.ts';
 import { grantRoleCommandSchema, revokeRoleCommandSchema } from './acl-commands.ts';
 import { jdAreaSchema } from './areas.ts';
+import { personaActivationRefusalSchema } from './event-evidence.ts';
 import { eventNameSchema, eventSchema, newEventSchema } from './events.ts';
 import {
   healthIndicatorSchema,
@@ -150,4 +156,9 @@ export const schemaRegistry: Record<string, ZodType> = {
   'risk-declaration': riskDeclarationSchema,
   'ship-rule-input': shipRuleInputSchema,
   'ship-rule-outcome': shipRuleOutcomeSchema,
+  'task-status': closedSets.taskStatusSchema,
+  'persona-activation-refusal': personaActivationRefusalSchema,
+  'service-client-id': serviceClientIdSchema,
+  'bind-service-token-command': bindServiceTokenCommandSchema,
+  'revoke-service-token-command': revokeServiceTokenCommandSchema,
 };

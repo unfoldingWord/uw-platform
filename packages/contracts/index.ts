@@ -1,3 +1,4 @@
+export * from './agent-commands.ts';
 export * from './acl-commands.ts';
 export * from './areas.ts';
 export * from './closed-sets.ts';

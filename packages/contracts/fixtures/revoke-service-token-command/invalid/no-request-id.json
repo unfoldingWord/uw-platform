@@ -1,0 +1,4 @@
+{
+  "command": "revoke_service_token",
+  "clientId": "abc123.access"
+}

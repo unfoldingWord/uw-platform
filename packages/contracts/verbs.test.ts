@@ -106,6 +106,37 @@ describe('CT-2 the verb manifest is contract data', () => {
   });
 });
 
+function summaryProblems(summary: string): string[] {
+  const problems: string[] = [];
+  if (summary.length === 0) problems.push('empty');
+  if (summary.length > 200) problems.push('longer than 200 characters');
+  if (summary.charAt(0) !== summary.charAt(0).toUpperCase()) problems.push('not sentence case');
+  if (summary.includes('!')) problems.push('has an exclamation mark');
+  return problems;
+}
+
+function allSummaryProblems(): string[] {
+  return verbRegistry.flatMap((entry) => problemsOf(entry));
+}
+
+function problemsOf(entry: { name: string; summary: string }): string[] {
+  return summaryProblems(entry.summary).map((problem) => `${entry.name}: ${problem}`);
+}
+
+describe('AB-1 every verb carries a summary a tool list can show', () => {
+  it('gives every verb a plain sentence-case summary of at most 200 characters', () => {
+    expect(allSummaryProblems()).toEqual([]);
+  });
+
+  it('serialises every summary in the manifest', () => {
+    const manifest = verbManifest();
+    expect(manifest.map((entry) => entry.summary)).toEqual(
+      verbRegistry.map((entry) => entry.summary),
+    );
+    expect(manifest.every((entry) => entry.summary.length > 0)).toBe(true);
+  });
+});
+
 describe.each(verbNames)('CT-2 %s fixtures', (name) => {
   it('judges input fixtures correctly', () => {
     judge(name, 'input');

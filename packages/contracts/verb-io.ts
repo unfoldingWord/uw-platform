@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { jdAreaSchema } from './areas.ts';
 import { costBasisSchema, evidenceLabelSchema } from './closed-sets.ts';
 import { healthReportSchema } from './health.ts';
+import { pullRequestRefSchema, stageKeySchema } from './harness.ts';
 import {
   frontmatterSchema,
   pageSchema,
@@ -73,6 +74,7 @@ export const verbIo = {
   create_task: {
     input: z.object({
       title: z.string().min(1).max(200),
+      jdArea: jdAreaSchema,
       pageId: z.uuid().nullable(),
       due: z.iso.date().nullable(),
     }),
@@ -116,7 +118,18 @@ export const verbIo = {
     output: lease.extend({ itemId: z.uuid() }),
   },
   submit_to_gate: {
-    input: z.object({ itemId: z.uuid(), evidence: json }),
+    input: z
+      .object({
+        itemId: z.uuid(),
+        evidence: json,
+        to: stageKeySchema.nullable(),
+        pullRequest: pullRequestRefSchema.nullable(),
+        head: z.string().min(1).max(64).nullable(),
+      })
+      .refine(
+        (input) => (input.pullRequest === null) === (input.head === null),
+        'a pull request and its head come together',
+      ),
     output: z.object({
       itemId: z.uuid(),
       result: submitToGateResultSchema,
