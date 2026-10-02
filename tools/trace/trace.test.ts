@@ -24,14 +24,27 @@ const fixturePrd = [
   '3. **Not a step.** ZZ-6.',
 ].join('\n');
 
-const fixtureTracker = [
-  '| Step | Requirements | State | Evidence |',
-  '|---|---|---|---|',
+function trackerWith(rows: readonly string[]): string {
+  return [
+    '## Status by build-order step',
+    '',
+    '| Step | Requirements | State | Evidence |',
+    '|---|---|---|---|',
+    ...rows,
+    '',
+    '## Decisions',
+    '| 2026-10-01 | ZZ-1 | Built | why | cost |',
+  ].join('\n');
+}
+
+const fixtureTracker = trackerWith([
+  '| 0. Zero | ZZ-0 | Built | x |',
   '| 1. First | ZZ-1 | Built | x |',
   '| 2. Second | ZZ-4 | done | |',
   '| 3. Third | ZZ-9 | Not started | |',
-  '| 2026-10-01 | ZZ-1 | Built | why | cost |',
-].join('\n');
+]);
+
+const fixtureStepNumbers = [1, 2, 3];
 
 function fixtureReport(proven: readonly string[]) {
   return trace({
@@ -69,6 +82,30 @@ describe('DX-5 trace reads the PRD', () => {
     ]);
   });
 
+  it('throws on a requirement row whose priority is malformed', () => {
+    for (const bad of ['must', 'Must*', 'Maybe']) {
+      const prd = fixturePrd.replace(
+        '| ZZ-4 | Must two. | Must |',
+        `| ZZ-4 | Must two. | ${bad} |`,
+      );
+      expect(() => parseRequirements(prd)).toThrow(/ZZ-4/);
+    }
+  });
+
+  it('throws on a build-order ID with no requirement row and on an ID in two steps', () => {
+    const unknown = fixturePrd.replace('ZZ-1, ZZ-2.', 'ZZ-1, ZZ-2, ZZ-99.');
+    expect(() => parseBuildOrder(unknown)).toThrow(/ZZ-99/);
+    const twice = fixturePrd.replace('ZZ-1, ZZ-2.', 'ZZ-1, ZZ-2, ZZ-4.');
+    expect(() => parseBuildOrder(twice)).toThrow(/ZZ-4/);
+  });
+
+  it('keeps ranges and single IDs in true text order', () => {
+    const prd = fixturePrd
+      .replace('ZZ-1, ZZ-2.', 'ZZ-2, ZZ-1 and ZZ-4 to ZZ-5, ZZ-3.')
+      .replace('ZZ-4 to ZZ-5 and ZZ-3: words.', 'words.');
+    expect(parseBuildOrder(prd)[0]?.ids).toEqual(['ZZ-2', 'ZZ-1', 'ZZ-4', 'ZZ-5', 'ZZ-3']);
+  });
+
   it('reads the real PRD', () => {
     const requirements = parseRequirements(realPrd());
     const ids = requirements.map((requirement) => requirement.id);
@@ -82,9 +119,50 @@ describe('DX-5 trace reads the PRD', () => {
 
 describe('DX-5 trace reads the tracker and the proofs', () => {
   it('lists the steps the tracker marks Built or Done', () => {
-    expect(completedSteps(fixtureTracker)).toEqual(new Set([1, 2]));
+    expect(completedSteps(fixtureTracker, fixtureStepNumbers)).toEqual(new Set([0, 1, 2]));
   });
 
+  it('accepts every state in the closed set, in any case', () => {
+    const rows = ['Not started', 'IN PROGRESS', ' built '].map(
+      (state, index) => `| ${index}. S | ZZ-${index} | ${state} | |`,
+    );
+    expect(completedSteps(trackerWith(rows), [1, 2])).toEqual(new Set([2]));
+  });
+
+  it('throws on a state outside the closed set', () => {
+    for (const state of ['**Built**', 'Built (2026-10-01)', 'Bult', '']) {
+      const rows = fixtureTracker.split('\n').map((row) => row.replace('| done |', `| ${state} |`));
+      expect(() => completedSteps(rows.join('\n'), fixtureStepNumbers)).toThrow(/state/i);
+    }
+  });
+
+  it('throws on a missing step row, an extra step row and a row with an extra column', () => {
+    const without = fixtureTracker.replace('| 3. Third | ZZ-9 | Not started | |\n', '');
+    expect(() => completedSteps(without, fixtureStepNumbers)).toThrow(/step 3/);
+    const extra = fixtureTracker.replace(
+      '\n\n## Decisions',
+      '\n| 4. Fourth | ZZ-8 | Built | |\n\n## Decisions',
+    );
+    expect(() => completedSteps(extra, fixtureStepNumbers)).toThrow(/step 4/);
+    const wide = fixtureTracker.replace('| done | |', '| done | | extra |');
+    expect(() => completedSteps(wide, fixtureStepNumbers)).toThrow(/row/i);
+  });
+
+  it('throws when the section is absent', () => {
+    expect(() => completedSteps('| 1. First | ZZ-1 | Built | x |', [1])).toThrow(
+      /Status by build-order step/,
+    );
+  });
+
+  it('reads the real tracker', () => {
+    const steps = parseBuildOrder(realPrd()).map((entry) => entry.step);
+    const completed = completedSteps(readFileSync('docs/progress_tracker.md', 'utf8'), steps);
+    expect(completed.has(0)).toBe(true);
+    expect(completed.has(1)).toBe(true);
+  });
+});
+
+describe('DX-5 trace reads the proofs', () => {
   it('counts a scenario file named for an ID', () => {
     expect(
       scenarioProofs([
@@ -93,6 +171,31 @@ describe('DX-5 trace reads the tracker and the proofs', () => {
         'sim/runner/ZZ-5.x.ts',
       ]),
     ).toEqual(['ZZ-4']);
+  });
+
+  it('counts only titles that are the first argument of describe, it or test', () => {
+    const counted = [
+      "describe('ZZ-1 a', () => {})",
+      "it.each([1, 2])('ZZ-2 b %s', () => {})",
+      "describe.skipIf(!server)('ZZ-3 c', () => {})",
+      "test.concurrent('ZZ-4 d', () => {})",
+      "describe.runIf(a.b(1))('ZZ-5 e', () => {})",
+      'it.sequential(`ZZ-6 f`, () => {})',
+    ].join('\n');
+    expect(testProofs(counted)).toEqual(['ZZ-1', 'ZZ-2', 'ZZ-3', 'ZZ-4', 'ZZ-5', 'ZZ-6']);
+  });
+
+  it('does not count todo, skipped or failing tests, thrown messages or fixtures', () => {
+    const ignored = [
+      "it.todo('ZZ-1 a')",
+      "describe.skip('ZZ-2 b', () => {})",
+      "it.fails('ZZ-3 c', () => {})",
+      "test.skip.each([1])('ZZ-4 d', () => {})",
+      "expect(run).toThrow('ZZ-5 e')",
+      "const title = 'ZZ-6 f';",
+      "log.it('ZZ-7 g')",
+    ].join('\n');
+    expect(testProofs(ignored)).toEqual([]);
   });
 
   it('counts a test title that leads with an ID and a word', () => {

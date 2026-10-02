@@ -7,14 +7,18 @@ import { trace, type TraceReport } from './trace.ts';
 
 export function repositoryTrace(): TraceReport {
   const prd = readFileSync('docs/PRD.md', 'utf8');
+  const steps = parseBuildOrder(prd);
   const paths = repoFiles();
   const fromTests = paths
     .filter((path) => provingTestFile.test(path))
     .flatMap((path) => testProofs(readFileSync(path, 'utf8')));
   return trace({
     requirements: parseRequirements(prd),
-    steps: parseBuildOrder(prd),
-    completed: completedSteps(readFileSync('docs/progress_tracker.md', 'utf8')),
+    steps,
+    completed: completedSteps(
+      readFileSync('docs/progress_tracker.md', 'utf8'),
+      steps.map((entry) => entry.step),
+    ),
     proven: new Set([...scenarioProofs(paths), ...fromTests]),
   });
 }
