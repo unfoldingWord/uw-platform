@@ -125,3 +125,21 @@ export async function liveBinding(
     .where(and(eq(serviceTokens.clientId, clientId), isNull(serviceTokens.revokedAt)));
   return row ?? null;
 }
+
+export async function deviceIsBound(
+  db: Executor,
+  personId: string,
+  device: string,
+): Promise<boolean> {
+  const rows = await db
+    .select({ clientId: serviceTokens.clientId })
+    .from(serviceTokens)
+    .where(
+      and(
+        eq(serviceTokens.personId, personId),
+        eq(serviceTokens.device, device),
+        isNull(serviceTokens.revokedAt),
+      ),
+    );
+  return rows.length > 0;
+}
