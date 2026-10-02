@@ -1,6 +1,11 @@
-import { and, asc, desc, eq, notInArray, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, notInArray, or, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
-import { learningFrontmatterSchema, type EvidenceLabel, type JdArea } from '@uw/contracts';
+import {
+  evidenceLabelSchema,
+  learningFrontmatterSchema,
+  type EvidenceLabel,
+  type JdArea,
+} from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
 import { pages } from '@uw/db/schema';
@@ -82,6 +87,15 @@ function tierOf(tiers: readonly (readonly [string, number])[]): SQL {
   return sql`CASE ${sql.join(whens, sql` `)} ELSE ${AREA_TIER}::int END`;
 }
 
+const CALENDAR_DATE = '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$';
+
+function carriesFacts(): SQL | undefined {
+  return and(
+    inArray(sql`${pages.frontmatter} ->> 'confidence'`, [...evidenceLabelSchema.options]),
+    sql`${pages.frontmatter} ->> 'as_of' ~ ${CALENDAR_DATE}`,
+  );
+}
+
 function learningOf(row: { readonly frontmatter: unknown }): Learning | null {
   const { frontmatter, ...page } = row;
   const facts = learningFactsSchema.safeParse(frontmatter);
@@ -101,7 +115,15 @@ async function applicableLearnings(
   const rows = await db
     .select({ ...summaryColumns, frontmatter: pages.frontmatter })
     .from(pages)
-    .where(and(eq(pages.type, 'learning'), eq(pages.status, 'active'), applies, readable))
+    .where(
+      and(
+        eq(pages.type, 'learning'),
+        eq(pages.status, 'active'),
+        applies,
+        carriesFacts(),
+        readable,
+      ),
+    )
     .orderBy(
       asc(tierOf(tiers)),
       sql`${pages.frontmatter} ->> 'as_of' DESC NULLS LAST`,

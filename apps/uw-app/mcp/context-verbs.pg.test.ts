@@ -374,7 +374,8 @@ describe.skipIf(!testServer)(
 
     it('drops and logs a learning whose frontmatter does not parse', async () => {
       const r = rig();
-      await seedPage(r.db, page(PAGE.broken, { type: 'learning', frontmatter: {} }));
+      const frontmatter = learning('2026-02-30', 'observed');
+      await seedPage(r.db, page(PAGE.broken, { type: 'learning', frontmatter }));
       const lines: string[] = [];
       const reader = await viewer(r, VIEWER_80, lines);
       const context = await reader('resolve_context', { itemId: r.packageItems.bare });
@@ -393,6 +394,27 @@ describe.skipIf(!testServer)(
     });
   },
 );
+
+describe.skipIf(!testServer)('AB-5 resolve_context fills 20 learnings past invalid ones', () => {
+  const rig = freshRig();
+  it('leaves out learnings without confidence or as_of before taking 20', async () => {
+    const r = rig();
+    await seedBulkLearnings(r, 20);
+    for (const [n, frontmatter] of [
+      { as_of: '2026-12-01' },
+      { confidence: 'observed' },
+    ].entries()) {
+      const slug = `invalid-${n}`;
+      await seedPage(r.db, page(crypto.randomUUID(), { type: 'learning', slug, frontmatter }));
+    }
+    const found = asOfs(
+      await (
+        await viewer(r, VIEWER_80)
+      )('resolve_context', { itemId: r.packageItems.bare }),
+    );
+    expect([found.length, found[0], found.at(-1)]).toEqual([20, '2026-09-30', '2026-08-04']);
+  });
+});
 
 async function seedTasks(r: Rig): Promise<readonly Body[]> {
   const tasks: Body[] = [];
