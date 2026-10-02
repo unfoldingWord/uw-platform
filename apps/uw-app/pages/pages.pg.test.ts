@@ -110,7 +110,7 @@ function updateBody(pageId: string, overrides: Record<string, unknown> = {}) {
     parentId: null,
     frontmatter: skillFrontmatter,
     bodyMd: 'Edited.',
-    status: 'active',
+    status: 'draft',
     ...overrides,
   };
 }
@@ -396,5 +396,21 @@ describe.skipIf(!testServer)('FD-9 update_page parents', () => {
         expect(outcome.reasons).toEqual(['parent_cycle']);
         expect(outcome.parented).toBe(1);
       }
+    }));
+});
+
+describe.skipIf(!testServer)('AB-5 the page routes never activate a gated page', () => {
+  it('answers create_page and update_page into active not_permitted, writing nothing', () =>
+    withAppDatabase(async (db) => {
+      await seedPeople(db);
+      const before = await pageCount(db);
+      expect(reasonOf(await create(db, ED, { status: 'active' }))).toEqual([403, 'not_permitted']);
+      expect(await pageCount(db)).toBe(before);
+      const pageId = await seeded(db);
+      expect(reasonOf(await update(db, ED, pageId, { status: 'active' }))).toEqual([
+        403,
+        'not_permitted',
+      ]);
+      expect(await versionNumbers(db, pageId)).toEqual([1]);
     }));
 });

@@ -3,11 +3,10 @@ import { principalSchema, type Principal } from '@uw/contracts';
 import { createClient, type Database } from '@uw/db/client';
 import { lockWaiters } from '@uw/db/store';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
-import { seedGrant, seedPage, seedPerson } from '@uw/db/test-seed';
+import { activateSeededPage, seedGrant, seedPage, seedPerson } from '@uw/db/test-seed';
 import { kernelOn, personOn } from '../testing/kernel.ts';
 import { awaitBlocked } from '../../../packages/harness/port-contracts/lock-wait.ts';
 import { writePageAsAgent } from './agent-write.ts';
-import { updatePage } from './store.ts';
 
 const EDITOR = {
   id: '00000000-0000-4000-8000-000000001451',
@@ -55,20 +54,11 @@ async function seedSuggested(db: Database): Promise<string> {
   return pageId;
 }
 
-function activation(db: Database, person: Principal, pageId: string) {
-  const command = {
-    command: 'update_page' as const,
-    requestId: crypto.randomUUID(),
-    pageId,
-    expectedVersion: 1,
-    slug: 'racing-learning',
-    title: 'A seeded page',
-    parentId: null,
-    frontmatter: learningFrontmatter,
-    bodyMd: 'The racing notes.',
-    status: 'active' as const,
-  };
-  return updatePage(db, person, command, crypto.randomUUID(), new Date());
+function activation(db: Database, pageId: string) {
+  return db.transaction(async (tx) => {
+    await activateSeededPage(tx, pageId);
+    return { ok: true };
+  });
 }
 
 function agentSave(db: Database, agent: Principal, pageId: string) {
@@ -98,7 +88,6 @@ type Connections = {
 };
 
 async function raceBehindARowLock(r: Rig, c: Connections, pageId: string) {
-  const person = await personOn(c.person, EDITOR.id, EDITOR.email, new Date());
   const agent = await deviceOf(c.agent, EDITOR);
   let release = (): void => undefined;
   const released = new Promise<void>((resolve) => void (release = resolve));
@@ -111,7 +100,7 @@ async function raceBehindARowLock(r: Rig, c: Connections, pageId: string) {
   });
   await rowLocked;
   try {
-    const activated = activation(c.person, person, pageId);
+    const activated = activation(c.person, pageId);
     await awaitBlocked(async () => ((await lockWaiters(r.db)) >= 1 ? 1 : 0));
     const saved = agentSave(c.agent, agent, pageId);
     await awaitBlocked(async () => ((await lockWaiters(r.db)) >= 2 ? 1 : 0));
@@ -176,7 +165,7 @@ describe.skipIf(!testServer)(
         expect(activated.ok).toBe(true);
         expect(saved).toMatchObject({ ok: false, reason: 'stale_version' });
       });
-      expect(await storedPage(r, pageId)).toEqual({ status: 'active', version: 2, versions: 1 });
+      expect(await storedPage(r, pageId)).toEqual({ status: 'active', version: 2, versions: 0 });
     });
   },
 );

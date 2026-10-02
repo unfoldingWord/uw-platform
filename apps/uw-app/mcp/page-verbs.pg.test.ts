@@ -3,7 +3,13 @@ import { principalSchema, type Principal } from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
-import { seedGrant, seedPage, seedPerson, type SeedPage } from '@uw/db/test-seed';
+import {
+  activateSeededPage,
+  seedGrant,
+  seedPage,
+  seedPerson,
+  type SeedPage,
+} from '@uw/db/test-seed';
 import { software } from '@uw/harness';
 import { createApp } from '../app.tsx';
 import { updatePage } from '../pages/store.ts';
@@ -319,26 +325,7 @@ async function suggestThenActivate(r: Rig, editor: Tool): Promise<Body> {
   expect((await write(editor, page)).body).toMatchObject({ version: 1, status: 'suggested' });
   const saved = await write(editor, { ...page, bodyMd: 'Saved again.', expectedVersion: 1 });
   expect(saved.body).toMatchObject({ version: 2, status: 'suggested' });
-  const person = await personOn(r.db, EDITOR.id, EDITOR.email, new Date());
-  const activated = await updatePage(
-    r.db,
-    person,
-    {
-      command: 'update_page',
-      requestId: crypto.randomUUID(),
-      pageId: String(page['pageId']),
-      expectedVersion: 2,
-      slug: 'agent-learning',
-      title: 'An agent page',
-      parentId: null,
-      frontmatter: learningFrontmatter,
-      bodyMd: 'Saved again.',
-      status: 'active',
-    },
-    crypto.randomUUID(),
-    new Date(),
-  );
-  expect(activated.ok).toBe(true);
+  await activateSeededPage(r.db, String(page['pageId']));
   return { ...page, expectedVersion: 3 };
 }
 
@@ -348,7 +335,7 @@ describe.skipIf(!testServer)(
   'AB-5 a gated page lands as suggested and is never edited by an agent',
   () => {
     const rig = freshRig();
-    it('suggests a learning, saves it while suggested, and refuses it once a person activates it', async () => {
+    it('suggests a learning, saves it while suggested, and refuses it once it is activated', async () => {
       const r = rig();
       const editor = await runner(r, EDITOR.email);
       const page = await suggestThenActivate(r, editor);
@@ -356,7 +343,7 @@ describe.skipIf(!testServer)(
       expect(await storedPage(r, String(page['pageId']))).toEqual({
         status: 'active',
         version: 3,
-        versions: 3,
+        versions: 2,
       });
     });
 
