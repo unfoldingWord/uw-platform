@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { identitySchema, type ItemState } from '@uw/contracts';
 import type { PageFacts, Store, StoreTransaction } from '../ports.ts';
+import { awaitBlocked, type LockWaiters } from './lock-wait.ts';
 import { describeEvents } from './store-events.ts';
 import {
   at,
@@ -17,6 +18,7 @@ export type SeededPage = PageFacts & { readonly slug: string; readonly title: st
 
 export type GatewaySubject = {
   readonly store: Store;
+  readonly lockWaiters?: LockWaiters;
   seedPage(page: SeededPage): Promise<void>;
 };
 
@@ -265,26 +267,20 @@ function describeLeases(subject: () => GatewaySubject): void {
   });
 }
 
-declare function setTimeout(handler: () => void, milliseconds: number): unknown;
-
-function pause(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
-async function itemLockRace(store: Store, itemId: string): Promise<string[]> {
+async function itemLockRace(subject: GatewaySubject, itemId: string): Promise<string[]> {
   const order: string[] = [];
   let signal: () => void = () => undefined;
   const held = new Promise<void>((resolve) => {
     signal = resolve;
   });
-  const first = store.transaction(async (tx) => {
+  const first = subject.store.transaction(async (tx) => {
     await tx.harnessItems.read.lock(itemId);
     signal();
-    await pause(150);
+    await awaitBlocked(subject.lockWaiters);
     order.push('first finished');
   });
   await held;
-  const second = store.transaction(async (tx) => {
+  const second = subject.store.transaction(async (tx) => {
     await tx.harnessItems.read.lock(itemId);
     order.push('second locked');
   });
@@ -299,10 +295,7 @@ function describeItemLock(subject: () => GatewaySubject): void {
       await seedHarness(tx, 0xe00, 'gateway-row-lock');
       await tx.harnessItems.write.insert(item, at);
     });
-    expect(await itemLockRace(subject().store, item.itemId)).toEqual([
-      'first finished',
-      'second locked',
-    ]);
+    expect(await itemLockRace(subject(), item.itemId)).toEqual(['first finished', 'second locked']);
   });
 }
 
