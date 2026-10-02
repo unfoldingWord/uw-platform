@@ -72,6 +72,11 @@ describe('KN-17 the protected-directory map is robust and protects itself', () =
     expect(domainOf('packages/harness/risk-notes.md')).toBeNull();
   });
 
+  it('protects the ship rule under acl', () => {
+    expect(domainOf('packages/harness/ship-rule.ts')).toBe('acl');
+    expect(domainOf('packages/harness/ship-rule.test.ts')).toBeNull();
+  });
+
   it('keeps every entry in normalised form and round-trips through domainOf', () => {
     for (const entry of protectedDirectories) {
       expect(entry.path).toBe(entry.path.toLowerCase());
