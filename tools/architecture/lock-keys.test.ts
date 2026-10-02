@@ -15,7 +15,12 @@ function numericLocks(files: readonly string[], read: (file: string) => string):
 
 describe('every advisory lock goes through one string key space, with try, shared and uncast keys flagged', () => {
   it('registers the kernel lock key prefixes', () => {
-    const kernel = [lockKeys.stageClaims(''), lockKeys.harnessStages('')];
+    const kernel = [
+      lockKeys.stageClaims(''),
+      lockKeys.harnessStages(''),
+      lockKeys.harnessEvents(''),
+      lockKeys.personaActivation(''),
+    ];
     expect(kernel.filter((prefix) => !lockKeyPrefixes.includes(prefix))).toEqual([]);
   });
 
