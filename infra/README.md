@@ -69,6 +69,41 @@ Deploy staging by hand:
 pnpm --filter @uw/uw-ingest deploy:staging
 ```
 
+## GitHub App (GH-1)
+
+`github/app-manifest.json` declares the staging App, `uw-harness-staging`: private, its webhook pointed at `uw-ingest`'s `/webhooks/github` route, the five events `issues`, `pull_request`, `pull_request_review`, `check_run` and `push`, and least-privilege permissions. `metadata` and `checks` are read. `issues` is write for the cross-reference comment, `pull_requests` is write for the merge, and `contents` is write for the merge and its tag. The harness writes nothing else to GitHub.
+
+An org owner of `unfoldingWord` sets it up once, awaiting go-live:
+
+1. Register the App with GitHub's "Register a GitHub App from a manifest" flow (docs.github.com): post the file's JSON, with a `redirect_url` added for the flow's one-time `code`, as the `manifest` field of a form to `https://github.com/organizations/unfoldingWord/settings/apps/new`, then exchange the code with `POST /app-manifests/{code}/conversions`. The answer carries the App id, the webhook secret and a private key, once.
+2. Install the App on `unfoldingWord/uw-platform` only, and note the installation id from the installation's settings URL.
+3. Convert the key to PKCS#8, which the Worker requires: `openssl pkcs8 -topk8 -nocrypt -in key.pem -out key.pkcs8.pem`. Delete both files after step 4.
+4. Set the secrets. For `uw-app` (from `infra/uw-app`):
+
+   ```
+   wrangler secret put GITHUB_APP_ID --env <name>
+   wrangler secret put GITHUB_APP_INSTALLATION_ID --env <name>
+   wrangler secret put GITHUB_APP_PRIVATE_KEY --env <name>
+   ```
+
+   For `uw-ingest` (from `infra/uw-ingest`):
+
+   ```
+   wrangler secret put GITHUB_WEBHOOK_SECRET --env <name>
+   ```
+
+None of the four appears in any file. Until they are set, `uw-app` treats GitHub as not configured and nothing that runs needs them.
+
+The production App is a second registration from a copy of the manifest with production's ingest URL, once that Worker has a route.
+
+The webhook host assumes the account's `workers.dev` subdomain is `unfoldingword`; confirm it before registering, and correct the manifest if it differs.
+
+### Tokens and the subrequest budget
+
+`uw-app` signs a JWT with the App key and mints one installation token per unit of work: one queue delivery, one sweep run or one connector run. The token lives only inside the client object for that unit, so it never reaches a caller, a log line, a model process or an MCP response. It is valid for an hour, longer than any unit of work.
+
+Each unit therefore spends one subrequest on the token plus one per GitHub request. The client bounds every list it reads: a pull request's files at 30 pages of 100 (GitHub's own cap of 3,000 files), the issues of a sweep at the caller's page limit, and any other list at 10 pages. A delivery that refreshes one pull request's facts makes at most 52 subrequests (token, pull request, 30 pages of files, 10 of reviews, 10 of check runs) and usually 5. Every unit must stay under the Workers per-invocation subrequest limit of the account's plan.
+
 ## Logs (FD-11)
 
 Workers Logs is on for both Workers, in the top-level block and in `staging` and `production`, because wrangler does not carry top-level observability into an environment.
