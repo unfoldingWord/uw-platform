@@ -1,6 +1,6 @@
-import type { Template } from './template-property.ts';
 import { bml } from './templates/bml.ts';
 import { software } from './templates/software.ts';
+import type { Template } from './templates/types.ts';
 
 export type { Template };
 
