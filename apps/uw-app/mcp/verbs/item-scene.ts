@@ -19,7 +19,11 @@ export async function itemArea(
   context: VerbContext,
   input: ItemInput,
 ): Promise<Found<null> | VerbRefusal> {
-  const scene = await context.kernel.reads.item(callerOf(context), { itemId: input.itemId });
+  const scene = await context.kernel.reads.item(
+    callerOf(context),
+    { itemId: input.itemId },
+    { at: context.at },
+  );
   if (scene.status === 'error') {
     return delegationRefusal(context) ?? refusal(scene.reason, scene.detail);
   }
@@ -32,7 +36,11 @@ export async function harnessAreas(
 ): Promise<(harnessId: string) => AclResource | null> {
   const areas = new Map<string, AclResource>();
   for (const harnessId of new Set(harnessIds)) {
-    const scene = await context.kernel.reads.harness(callerOf(context), { harnessId });
+    const scene = await context.kernel.reads.harness(
+      callerOf(context),
+      { harnessId },
+      { at: context.at },
+    );
     if (scene.status === 'accepted') {
       areas.set(harnessId, { kind: 'area', area: scene.value.harness.jdArea });
     }
