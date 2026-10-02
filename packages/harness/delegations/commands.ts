@@ -9,6 +9,7 @@ import { allowed, isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { draft, recordContext, recordHarnessEvents, type EventDraft } from '../items/record.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
+import { storeRefusalOf } from '../port-errors.ts';
 import type { Delegation, DelegationFilter, Ports, StoreTransaction } from '../ports.ts';
 import { adminRefusal, agentRefusal } from '../stages/rules.ts';
 import { beatPrincipal, personaMatches } from './beat.ts';
@@ -198,13 +199,29 @@ async function beatIn(
   return accepted({ delegation: liveness.delegation, principal });
 }
 
+const SUPERSEDED_ONCE = 'delegations_supersedes_once';
+
+async function grantOnce(
+  ports: DelegationPorts,
+  caller: Caller,
+  input: GrantInput,
+  at: Date,
+): Promise<KernelOutcome<Delegation>> {
+  try {
+    return await ports.store.transaction((tx) => grantIn(ports, tx, caller, input, at));
+  } catch (error) {
+    if (storeRefusalOf(error)?.constraint !== SUPERSEDED_ONCE) throw error;
+    return refused('stale_version', { delegationId: input.supersedes });
+  }
+}
+
 export function createDelegationCommands(ports: DelegationPorts): DelegationCommands {
   return {
     grant: async (caller, input) => {
       const at = ports.clock.now();
       const agent = agentRefusal(caller);
       if (agent !== null) return agent;
-      return ports.store.transaction((tx) => grantIn(ports, tx, caller, input, at));
+      return grantOnce(ports, caller, input, at);
     },
     revoke: async (caller, input) => {
       const at = ports.clock.now();
