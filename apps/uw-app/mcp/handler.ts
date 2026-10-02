@@ -1,7 +1,7 @@
 import type { z } from 'zod';
 import type { ErrorReason, VerbName, verbIo } from '@uw/contracts';
 import type { AclResource } from '@uw/core/acl';
-import type { Detail } from '@uw/harness';
+import type { Detail, KernelOutcome } from '@uw/harness';
 import type { VerbContext } from './context.ts';
 
 export type VerbInput<N extends VerbName> = z.infer<(typeof verbIo)[N]['input']>;
@@ -46,4 +46,12 @@ export function rowFilteredHandler<N extends VerbName>(
 
 export function refusal(reason: ErrorReason, detail: Detail = {}): VerbRefusal {
   return { status: 'error', reason, detail };
+}
+
+export function fromKernel<T, O>(
+  outcome: KernelOutcome<T>,
+  output: (value: T) => O,
+): { readonly status: 'accepted'; readonly output: O } | VerbRefusal {
+  if (outcome.status === 'error') return refusal(outcome.reason, outcome.detail);
+  return { status: 'accepted', output: output(outcome.value) };
 }
