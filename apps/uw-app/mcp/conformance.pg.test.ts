@@ -369,6 +369,17 @@ async function hiddenAndAbsent(client: Client, scene: Scene, probe: Probe) {
   return { hidden, absent: absent.replace(MISSING, hiddenId) };
 }
 
+async function beatSeesOnlyItsHarness(_r: Rig, scene: Scene, hosts: Hosts): Promise<void> {
+  const health = (harnessId: string) => outcomeOf(hosts.workflow, 'get_health', { harnessId });
+  expect((await body(hosts.workflow, 'get_health', { harnessId: scene.harnessId }))['status']).toBe(
+    'ok',
+  );
+  const hidden = textOf(await health(scene.hiddenHarness));
+  const missing = textOf(await health(MISSING));
+  expect(missing).toContain('harness_not_found');
+  expect(hidden).toBe(missing.replace(MISSING, scene.hiddenHarness));
+}
+
 function delegatedLaptop(owner: Principal, delegationId: string): Principal {
   return principalSchema.parse({
     ...owner,
@@ -415,6 +426,8 @@ describe.skipIf(!testServer)(
       withHosts(unknownOnBoth));
     it('answers a hidden id byte-identically to a missing one on both hosts', () =>
       withHosts(hiddenIsMissing));
+    it('answers the beat principal in process only for the harness its delegation names', () =>
+      withHosts(beatSeesOnlyItsHarness));
   },
 );
 
