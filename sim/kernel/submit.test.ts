@@ -9,7 +9,14 @@ import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { revokeSeededGrant } from '@uw/db/test-seed';
 import { LEASE_MS, readAllEvents, software, type Caller, type KernelOutcome } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, simAgent, simCaller, simIan, simPerson } from '../fixtures.ts';
+import {
+  createSimHarness,
+  simAgent,
+  simCaller,
+  simIan,
+  simPerson,
+  simSystem,
+} from '../fixtures.ts';
 import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -227,7 +234,11 @@ describe('GH-4 a lapsed lease abandons the active branch', () => {
 
   sceneIt('writes lease_expired then branch_abandoned when the sweep sees it', async (scene) => {
     const itemId = await activeBranch(scene);
-    const swept = value(await scene.world.kernel.items.expireLeases(scene.admin, { limit: 10 }));
+    const swept = value(
+      await scene.world.kernel.items.expireLeases(simCaller(scene.world, simSystem()), {
+        limit: 10,
+      }),
+    );
     expect(swept.expired).toEqual([itemId]);
     expect(await lastNames(scene, itemId)).toEqual(['lease_expired', 'branch_abandoned']);
     expect((await stateOf(scene, itemId))?.branchState).toBe('abandoned');

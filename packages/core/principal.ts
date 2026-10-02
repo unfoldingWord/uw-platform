@@ -1,4 +1,4 @@
-import { principalSchema, type Grant, type Principal } from '@uw/contracts';
+import { principalSchema, systemIdentity, type Grant, type Principal } from '@uw/contracts';
 
 export type { Grant, Principal };
 
@@ -45,6 +45,17 @@ export function serviceTokenPrincipal(clientId: string): Principal {
 export function ingestPrincipal(): Principal {
   return principalSchema.parse({
     identity: INGEST_IDENTITY,
+    kind: 'agent',
+    personId: null,
+    email: null,
+    grants: [],
+    interactive: false,
+  });
+}
+
+export function systemPrincipal(): Principal {
+  return principalSchema.parse({
+    identity: systemIdentity,
     kind: 'agent',
     personId: null,
     email: null,

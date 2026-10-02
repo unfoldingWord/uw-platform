@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ingestPrincipal,
+  systemPrincipal,
   parsePrincipal,
   personPrincipal,
   serviceTokenPrincipal,
@@ -47,6 +48,17 @@ describe('FD-7 the principal', () => {
       identity: 'agent:ingest',
       kind: 'agent',
       personId: null,
+      interactive: false,
+    });
+  });
+
+  it('names the platform maintenance identity agent:system, with no person and no grants', () => {
+    expect(systemPrincipal()).toEqual({
+      identity: 'agent:system',
+      kind: 'agent',
+      personId: null,
+      email: null,
+      grants: [],
       interactive: false,
     });
   });

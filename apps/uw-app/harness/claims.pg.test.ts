@@ -1,4 +1,5 @@
 import type { HarnessEvent, Principal } from '@uw/contracts';
+import { systemPrincipal } from '@uw/core/principal';
 import { createClient, type Database } from '@uw/db/client';
 import { seedGrant, seedPerson } from '@uw/db/test-seed';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
@@ -186,7 +187,7 @@ async function sweepRace(round: Round) {
   round.rig.clock.advance(LEASE_MS + 1000);
   const sweep = (n: number) =>
     kernelOn(connectionAt(round.rig, n), round.rig.clock).items.expireLeases(
-      caller(round.rig.owner),
+      caller(systemPrincipal()),
       { limit: 10 },
     );
   const [claimed] = await Promise.all([

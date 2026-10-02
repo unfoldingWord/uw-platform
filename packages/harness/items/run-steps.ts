@@ -1,4 +1,5 @@
 import type { CostBasis, EventEvidence, ItemState } from '@uw/contracts';
+import { isSystemPrincipal } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { assertDelegationLive, recordLapse } from '../delegations/live.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
@@ -131,6 +132,9 @@ export async function expireLeases(
   input: SweepInput,
 ): Promise<KernelOutcome<Swept>> {
   const at = ports.clock.now();
+  if (!isSystemPrincipal(caller.actor)) {
+    return refused('not_permitted', { actor: caller.actor.identity });
+  }
   const context = recordContext(ports, caller, at);
   const lapsed = await ports.store.transaction((tx) =>
     tx.harnessItems.read.lapsedLeases(at, input.limit),

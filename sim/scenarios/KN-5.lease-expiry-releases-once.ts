@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import { readAllEvents, software, type Caller, type KernelOutcome } from '@uw/harness';
 import type { World } from '../world.ts';
-import { createSimHarness, simAgent, simCaller, simIan, simPerson } from '../fixtures.ts';
+import {
+  createSimHarness,
+  simAgent,
+  simCaller,
+  simIan,
+  simPerson,
+  simSystem,
+} from '../fixtures.ts';
 import { defineScenario } from '../scenario.ts';
 
 const minute = 60_000;
@@ -66,7 +73,9 @@ async function claim(scene: Cast, caller: Caller, itemId: string): Promise<void>
 }
 
 async function sweep(scene: Cast): Promise<readonly string[]> {
-  const swept = await scene.world.kernel.items.expireLeases(scene.admin, { limit: 10 });
+  const swept = await scene.world.kernel.items.expireLeases(simCaller(scene.world, simSystem()), {
+    limit: 10,
+  });
   return valueOf(swept).expired;
 }
 
