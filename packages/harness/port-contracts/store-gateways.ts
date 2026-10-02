@@ -105,6 +105,37 @@ const everyField = {
   zulipTopic: 'harness 7',
 } as const;
 
+function instructionsPage(id: string): SeededPage {
+  return {
+    id,
+    type: 'product',
+    status: 'active',
+    jdArea: '80-89',
+    bodyMd: 'body',
+    frontmatter: {},
+    slug: `gateway-instructions-${id.slice(-3)}`,
+    title: 'Gateway instructions',
+  };
+}
+
+function describeInstructions(subject: () => GatewaySubject): void {
+  it('DX-3 says whether any stage names a page as its instructions', async () => {
+    const named = uid(0x18f1);
+    const unnamed = uid(0x18f2);
+    await subject().seedPage(instructionsPage(named));
+    await subject().seedPage(instructionsPage(unnamed));
+    const found = await subject().store.transaction(async (tx) => {
+      const { review } = await seedHarness(tx, 0x1800, 'gateway-instructions');
+      await tx.harnessStages.write.update({ ...review, instructionsPageId: named });
+      return {
+        named: await tx.harnessStages.read.namesInstructions(named),
+        unnamed: await tx.harnessStages.read.namesInstructions(unnamed),
+      };
+    });
+    expect(found).toEqual({ named: true, unnamed: false });
+  });
+}
+
 function describeMissingStage(subject: () => GatewaySubject): void {
   it('DX-3 refuses to update a stage that does not exist', async () => {
     const missing = stageOf(0x1100, 1, 'build', 1);
@@ -399,6 +430,7 @@ export function describeStoreGateways(
     describeHarnesses(subject);
     describeStages(subject);
     describeMissingStage(subject);
+    describeInstructions(subject);
     describeProjection(subject);
     describeItemOrder(subject);
     describeClaims(subject);
