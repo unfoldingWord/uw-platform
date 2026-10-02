@@ -1,4 +1,5 @@
 import { delegationIdOf } from '@uw/contracts';
+import type { AclResource } from '@uw/core/acl';
 import type { Caller } from '@uw/harness';
 import type { VerbContext } from '../context.ts';
 import { refusal, type Found, type VerbRefusal } from '../handler.ts';
@@ -29,4 +30,18 @@ export async function itemArea(
     return (await delegationRefusal(context)) ?? refusal(scene.reason, scene.detail);
   }
   return { resource: { kind: 'area', area: scene.value.harness.jdArea }, found: null };
+}
+
+export async function harnessAreas(
+  context: VerbContext,
+  harnessIds: readonly string[],
+): Promise<(harnessId: string) => AclResource | null> {
+  const areas = new Map<string, AclResource>();
+  for (const harnessId of new Set(harnessIds)) {
+    const scene = await context.kernel.reads.harness(callerOf(context), { harnessId });
+    if (scene.status === 'accepted') {
+      areas.set(harnessId, { kind: 'area', area: scene.value.harness.jdArea });
+    }
+  }
+  return (harnessId) => areas.get(harnessId) ?? null;
 }

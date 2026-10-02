@@ -1,10 +1,18 @@
-import { fromKernel, rowFilteredHandler } from '../handler.ts';
-import { callerOf } from './item-scene.ts';
+import { refusal, rowFilteredHandler } from '../handler.ts';
+import { callerOf, harnessAreas } from './item-scene.ts';
 
 export const pollQueue = rowFilteredHandler({
   name: 'poll_queue',
-  run: async (context, input) =>
-    fromKernel(await context.kernel.reads.poll(callerOf(context), input), (items) => ({
-      items: [...items],
-    })),
+  rows: async (context, input) => {
+    const polled = await context.kernel.reads.poll(callerOf(context), input);
+    return polled.status === 'error' ? refusal(polled.reason, polled.detail) : polled.value;
+  },
+  resources: async (context, _input, items) => {
+    const areaOf = await harnessAreas(
+      context,
+      items.map((item) => item.harnessId),
+    );
+    return (item) => areaOf(item.harnessId);
+  },
+  reply: (items) => ({ status: 'accepted', output: { items: [...items] } }),
 });

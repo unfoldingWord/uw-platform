@@ -77,24 +77,27 @@ function throwingHandlers(
   return [
     rowFilteredHandler({
       name: 'poll_queue',
-      run: async () => {
+      rows: async () => {
         recorder.ran.push('poll_queue');
         throw new PortNotWiredError('store', 'transaction');
       },
+      resources: async () => () => null,
+      reply: () => ({ status: 'accepted', output: { items: [] } }),
     }),
     rowFilteredHandler({
       name: 'search_pages',
-      run: async () => {
+      rows: async () => {
         recorder.ran.push('search_pages');
         throw new Error('boom');
       },
+      resources: async () => () => null,
+      reply: () => ({ status: 'accepted', output: { pages: [] } }),
     }),
     rowFilteredHandler({
       name: 'query_entities',
-      run: async () => ({
-        status: 'accepted',
-        output: { rows: [{ count: Number.POSITIVE_INFINITY }] },
-      }),
+      rows: async () => [{ count: Number.POSITIVE_INFINITY }],
+      resources: async () => () => ({ kind: 'area', area: '80-89' }),
+      reply: (rows) => ({ status: 'accepted', output: { rows: [...rows] } }),
     }),
   ];
 }
