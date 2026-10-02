@@ -5,29 +5,31 @@ const githubId = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const count = z.number().int().positive().max(2_147_483_647);
 const instant = z.iso.datetime({ offset: true }).transform((value) => new Date(value));
 const openOrClosed = z.enum(['open', 'closed']);
+const text = z.string().refine((value) => !value.includes('\u0000'));
+const name = text.pipe(z.string().min(1));
 
 export const repositorySchema = z.object({
   id: githubId,
   full_name: repositoryName,
-  default_branch: z.string().min(1),
+  default_branch: name,
   private: z.boolean(),
 });
 
 export const milestoneSchema = z.object({
   id: githubId,
   number: count,
-  title: z.string(),
+  title: text,
   state: openOrClosed,
   due_on: instant.nullable().optional(),
   updated_at: instant,
 });
 
-const labelSchema = z.object({ name: z.string() });
+const labelSchema = z.object({ name: text });
 
 export const issueSchema = z.object({
   id: githubId,
   number: count,
-  title: z.string(),
+  title: text,
   state: openOrClosed,
   labels: z.array(labelSchema),
   milestone: milestoneSchema.nullable().optional(),
@@ -38,13 +40,13 @@ export const issueSchema = z.object({
 export const pullSchema = z.object({
   id: githubId,
   number: count,
-  title: z.string(),
+  title: text,
   state: openOrClosed,
   draft: z.boolean().optional(),
   merged: z.boolean().nullable().optional(),
   merged_at: z.string().nullable().optional(),
-  head: z.object({ sha: z.string(), ref: z.string().min(1) }),
-  base: z.object({ ref: z.string().min(1) }),
+  head: z.object({ sha: z.string(), ref: name }),
+  base: z.object({ sha: z.string(), ref: name }),
   body: z.string().nullable().optional(),
   milestone: milestoneSchema.nullable().optional(),
   updated_at: instant,
@@ -52,7 +54,7 @@ export const pullSchema = z.object({
 
 export const reviewSchema = z.object({
   id: githubId,
-  user: z.object({ login: z.string() }).nullable(),
+  user: z.object({ login: name }).nullable(),
   commit_id: z.string().nullable(),
   state: z.string(),
   body: z.string().nullable().optional(),
@@ -62,17 +64,17 @@ export const reviewSchema = z.object({
 export const checkRunSchema = z.object({
   id: githubId,
   head_sha: z.string(),
-  name: z.string().min(1),
+  name,
   status: z.string(),
   conclusion: z.string().nullable(),
   started_at: instant.nullable().optional(),
   completed_at: instant.nullable().optional(),
-  app: z.object({ slug: z.string() }).nullable().optional(),
+  app: z.object({ slug: name }).nullable().optional(),
 });
 
 export const fileSchema = z.object({
-  filename: z.string().min(1),
-  previous_filename: z.string().min(1).optional(),
+  filename: name,
+  previous_filename: name.optional(),
 });
 
 const withRepository = { action: z.string().optional(), repository: repositorySchema };

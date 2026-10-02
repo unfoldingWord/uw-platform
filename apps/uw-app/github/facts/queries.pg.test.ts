@@ -8,6 +8,7 @@ import reviewSubmitted from '../fixtures/pull-request-review-submitted.json' wit
 import pullRequestSynchronize from '../fixtures/pull-request-synchronize.json' with { type: 'json' };
 import { webhookBatch } from '../testing/batches.ts';
 import {
+  base,
   changedPaths,
   completedCheck,
   declaration,
@@ -32,6 +33,7 @@ const expectedFacts = {
   draft: false,
   head,
   headRef,
+  base,
   checks: [
     {
       checkId: 9100000401,
@@ -51,7 +53,7 @@ const expectedFacts = {
       submittedAt: new Date('2026-10-02T08:10:00.000Z'),
     },
   ],
-  files: { head, paths: changedPaths },
+  files: { head, base, paths: changedPaths },
   declaration,
   freshAt: at,
 };
@@ -62,8 +64,14 @@ async function seeded(db: Database): Promise<void> {
   await upsertFacts(db, completed, at);
   const oldRun = { ...completedCheck, githubId: 9100000409, headSha: nextHead };
   await upsertFacts(db, { ...emptyBatch, repos: [repo], checkRuns: [oldRun] }, at);
-  const files = { pullRequestId: openedPull.githubId, head, paths: changedPaths, problem: null };
-  await recordFiles(db, files, at);
+  const files = {
+    pullRequestId: openedPull.githubId,
+    head,
+    base,
+    paths: changedPaths,
+    problem: null,
+  };
+  await recordFiles(db, files);
 }
 
 describe.skipIf(!testServer)('GH-2 the read model answers for a PR from its own tables', () => {
@@ -86,11 +94,16 @@ describe.skipIf(!testServer)('GH-2 the read model answers for a PR from its own 
       const files = {
         pullRequestId: openedPull.githubId,
         head: nextHead,
+        base,
         paths: ['a.ts'],
         problem: null,
       };
-      await recordFiles(db, files, at);
-      expect((await pullRequestFacts(db, ref))?.files).toEqual({ head: nextHead, paths: ['a.ts'] });
+      await recordFiles(db, files);
+      expect((await pullRequestFacts(db, ref))?.files).toEqual({
+        head: nextHead,
+        base,
+        paths: ['a.ts'],
+      });
     }));
 
   it('answers no files and no declaration when what is stored is a problem', () =>
@@ -99,10 +112,11 @@ describe.skipIf(!testServer)('GH-2 the read model answers for a PR from its own 
       const files = {
         pullRequestId: openedPull.githubId,
         head,
+        base,
         paths: null,
         problem: 'too_many_files',
       };
-      await recordFiles(db, files, at);
+      await recordFiles(db, files);
       await db
         .update(ghPrs)
         .set({ declaration: { riskTier: 'none' } })
@@ -110,7 +124,9 @@ describe.skipIf(!testServer)('GH-2 the read model answers for a PR from its own 
       const facts = await pullRequestFacts(db, ref);
       expect([facts?.files, facts?.declaration]).toEqual([null, null]);
     }));
+});
 
+describe.skipIf(!testServer)('GH-2 the read model answers nothing it does not hold', () => {
   it('answers null for a pull request it does not hold', () =>
     withAppDatabase(async (db) => {
       await seeded(db);
@@ -143,7 +159,7 @@ describe.skipIf(!testServer)('the read model lists a repository and its open pul
           githubId: openedPull.githubId,
           number: 7,
           head,
-          base: 'main',
+          baseSha: base,
           filesKnown: true,
         },
       ]);

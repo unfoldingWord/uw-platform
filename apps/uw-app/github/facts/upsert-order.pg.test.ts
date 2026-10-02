@@ -2,9 +2,16 @@ import { asc, sql } from 'drizzle-orm';
 import type { Database } from '@uw/db/client';
 import { pgErrorCode } from '@uw/db/errors';
 import { describe, expect, it } from 'vitest';
-import { ghCheckRuns } from '@uw/db/schema';
+import { ghCheckRuns, ghPrs } from '@uw/db/schema';
 import restCheckRuns from '../fixtures/rest-check-runs.json' with { type: 'json' };
-import { head, nextHead, openedPull, repo } from '../testing/facts-fixtures.ts';
+import {
+  completedCheck,
+  head,
+  nextHead,
+  openedPull,
+  repo,
+  submittedReview,
+} from '../testing/facts-fixtures.ts';
 import { testServer, withAppDatabase } from '../../testing/postgres.ts';
 import { checkRunsFromRest } from './normalise.ts';
 import { emptyBatch, type FactBatch, type PullRequestRecord } from './records.ts';
@@ -24,10 +31,10 @@ function pullsIn(order: readonly number[], headSha: string, minute: number): Fac
   return { ...emptyBatch, repos: [repo], pullRequests };
 }
 
-async function lockWaits(db: Database): Promise<void> {
+async function lockWaits(db: Database, waiting = 1): Promise<void> {
   for (let attempt = 0; attempt < 250; attempt += 1) {
-    const rows = await db.execute(sql`SELECT 1 FROM pg_locks WHERE NOT granted`);
-    if (rows.length > 0) return;
+    const rows = await db.execute(sql`SELECT DISTINCT pid FROM pg_locks WHERE NOT granted`);
+    if (rows.length >= waiting) return;
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   throw new TypeError('the upsert never waited for the held row');
@@ -81,6 +88,63 @@ describe.skipIf(!testServer)('the upsert takes its row locks in GitHub id order'
       await holder.done;
       await upsert;
       expect(seen).toEqual(['held', 'free', 'free']);
+    }));
+});
+
+async function reviewsBesidePull(db: Database) {
+  await upsertFacts(db, { ...emptyBatch, repos: [repo], pullRequests: [openedPull] }, at);
+  const holder = await holding(db, openedPull.githubId);
+  const newer = { ...openedPull, title: 'Show the board, renamed', githubUpdatedAt: at };
+  const withPull = upsertFacts(db, { ...emptyBatch, repos: [repo], pullRequests: [newer] }, at);
+  await lockWaits(db, 1);
+  const reviewsOnly = upsertFacts(
+    db,
+    { ...emptyBatch, repos: [repo], reviews: [submittedReview] },
+    at,
+  );
+  await lockWaits(db, 2);
+  holder.release();
+  await holder.done;
+  const settled = await Promise.allSettled([withPull, reviewsOnly]);
+  return settled.map((outcome) => outcome.status);
+}
+
+describe.skipIf(!testServer)('a batch that names a pull request only through its reviews', () => {
+  it('waits for a batch holding that pull request instead of deadlocking with it', () =>
+    withAppDatabase(async (db) => {
+      expect(await reviewsBesidePull(db)).toEqual(['fulfilled', 'fulfilled']);
+    }));
+});
+
+describe.skipIf(!testServer)('a later fact in the same batch or a re-completed check wins', () => {
+  it('keeps the newer of two records for one pull request in a batch', () =>
+    withAppDatabase(async (db) => {
+      const newer = { ...openedPull, headSha: nextHead, githubUpdatedAt: at };
+      await upsertFacts(
+        db,
+        { ...emptyBatch, repos: [repo], pullRequests: [newer, openedPull] },
+        at,
+      );
+      const rows = await db.select({ head: ghPrs.headSha }).from(ghPrs);
+      expect(rows).toEqual([{ head: nextHead }]);
+    }));
+
+  it('keeps the later completion of a check run when an older completion arrives after it', () =>
+    withAppDatabase(async (db) => {
+      const failed = {
+        ...completedCheck,
+        conclusion: 'failure' as const,
+        completedAt: new Date('2026-10-02T08:10:00.000Z'),
+      };
+      await upsertFacts(db, { ...emptyBatch, repos: [repo], checkRuns: [failed] }, at);
+      const late = await upsertFacts(
+        db,
+        { ...emptyBatch, repos: [repo], checkRuns: [completedCheck] },
+        at,
+      );
+      expect(late.repaired.checkRuns).toBe(0);
+      const rows = await db.select({ conclusion: ghCheckRuns.conclusion }).from(ghCheckRuns);
+      expect(rows).toEqual([{ conclusion: 'failure' }]);
     }));
 });
 

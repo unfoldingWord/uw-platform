@@ -44,9 +44,23 @@ type Columns = Readonly<Record<string, PgColumn>>;
 type Keyed = { readonly githubId: number };
 type Dated = Keyed & { readonly githubUpdatedAt: Date };
 
+function updatedAt(record: Keyed): number | null {
+  return 'githubUpdatedAt' in record && record.githubUpdatedAt instanceof Date
+    ? record.githubUpdatedAt.getTime()
+    : null;
+}
+
+function supersedes(record: Keyed, held: Keyed | undefined): boolean {
+  if (held === undefined) return true;
+  const [incoming, stored] = [updatedAt(record), updatedAt(held)];
+  return incoming === null || stored === null || incoming >= stored;
+}
+
 function inIdOrder<T extends Keyed>(records: readonly T[]): T[] {
   const latest = new Map<number, T>();
-  for (const record of records) latest.set(record.githubId, record);
+  for (const record of records) {
+    if (supersedes(record, latest.get(record.githubId))) latest.set(record.githubId, record);
+  }
   return [...latest.values()].sort((a, b) => a.githubId - b.githubId);
 }
 
@@ -73,6 +87,21 @@ function notOlder(table: string): SQL {
 
 const statusRank = (side: string) =>
   `CASE ${side}.status WHEN 'completed' THEN 2 WHEN 'in_progress' THEN 1 ELSE 0 END`;
+const completedAt = (side: string) => `COALESCE(${side}.completed_at, '-infinity'::timestamptz)`;
+const checkMovesForward = [
+  `${statusRank('excluded')} > ${statusRank('gh_check_runs')}`,
+  `OR (${statusRank('excluded')} = ${statusRank('gh_check_runs')}`,
+  `AND (excluded.status <> 'completed' OR ${completedAt('excluded')} >= ${completedAt('gh_check_runs')}))`,
+].join(' ');
+
+function pullsTouched(batch: FactBatch): readonly number[] {
+  const ids = new Set<number>([
+    ...batch.pullRequests.map((pull) => pull.githubId),
+    ...batch.reviews.map((review) => review.pullRequestId),
+    ...batch.files.map((files) => files.pullRequestId),
+  ]);
+  return [...ids].sort((a, b) => a - b);
+}
 
 const repoColumns = {
   fullName: ghRepos.fullName,
@@ -105,6 +134,7 @@ const pullColumns = {
   headSha: ghPrs.headSha,
   headRef: ghPrs.headRef,
   baseRef: ghPrs.baseRef,
+  baseSha: ghPrs.baseSha,
   milestoneId: ghPrs.milestoneId,
   declaration: ghPrs.declaration,
   declarationProblem: ghPrs.declarationProblem,
@@ -129,8 +159,10 @@ const reviewColumns = {
   provider: ghReviews.provider,
   submittedAt: ghReviews.submittedAt,
 };
+const sameComparison =
+  'gh_prs.head_sha = excluded.head_sha AND gh_prs.base_sha = excluded.base_sha AND gh_prs.base_ref = excluded.base_ref';
 const sameHeadOr = (column: string) =>
-  sql.raw(`CASE WHEN gh_prs.head_sha = excluded.head_sha THEN gh_prs.${column} END`);
+  sql.raw(`CASE WHEN ${sameComparison} THEN gh_prs.${column} END`);
 
 async function upsertRepos(tx: Transaction, repos: readonly RepoRecord[], freshAt: Date) {
   if (repos.length === 0) return 0;
@@ -189,6 +221,7 @@ async function upsertPulls(tx: Transaction, pulls: readonly PullRequestRecord[],
         ...excluded(pullColumns),
         files: sameHeadOr('files'),
         filesHead: sameHeadOr('files_head'),
+        filesBase: sameHeadOr('files_base'),
         filesProblem: sameHeadOr('files_problem'),
       },
       setWhere: both(notOlder('gh_prs'), differs('gh_prs', pullColumns)),
@@ -205,10 +238,7 @@ async function upsertChecks(tx: Transaction, runs: readonly CheckRunRecord[], fr
     .onConflictDoUpdate({
       target: ghCheckRuns.githubId,
       set: excluded(checkColumns),
-      setWhere: both(
-        sql.raw(`${statusRank('excluded')} >= ${statusRank('gh_check_runs')}`),
-        differs('gh_check_runs', checkColumns),
-      ),
+      setWhere: both(sql.raw(checkMovesForward), differs('gh_check_runs', checkColumns)),
     })
     .returning({ githubId: ghCheckRuns.githubId });
   return rows.length;
@@ -307,18 +337,28 @@ async function storedIssues(
   }));
 }
 
-async function recordFilesIn(db: Executor, files: FilesRecord, freshAt: Date): Promise<boolean> {
+async function recordFilesIn(db: Executor, files: FilesRecord): Promise<boolean> {
+  const at = and(
+    eq(ghPrs.githubId, files.pullRequestId),
+    eq(ghPrs.headSha, files.head),
+    eq(ghPrs.baseSha, files.base),
+  );
   const rows = await db
     .update(ghPrs)
-    .set({ files: files.paths, filesHead: files.head, filesProblem: files.problem, freshAt })
-    .where(and(eq(ghPrs.githubId, files.pullRequestId), eq(ghPrs.headSha, files.head)))
+    .set({
+      files: files.paths,
+      filesHead: files.head,
+      filesBase: files.base,
+      filesProblem: files.problem,
+    })
+    .where(at)
     .returning({ githubId: ghPrs.githubId });
   return rows.length > 0;
 }
 
-async function recordAllFiles(tx: Transaction, files: readonly FilesRecord[], freshAt: Date) {
+async function recordAllFiles(tx: Transaction, files: readonly FilesRecord[]) {
   let landed = 0;
-  for (const record of files) if (await recordFilesIn(tx, record, freshAt)) landed += 1;
+  for (const record of files) if (await recordFilesIn(tx, record)) landed += 1;
   return landed;
 }
 
@@ -333,7 +373,7 @@ async function writeRecords(
   const pullRequests = await upsertPulls(tx, inIdOrder(batch.pullRequests), freshAt);
   const checkRuns = await upsertChecks(tx, inIdOrder(batch.checkRuns), freshAt);
   const reviews = await upsertReviews(tx, inIdOrder(batch.reviews), freshAt);
-  const files = await recordAllFiles(tx, batch.files, freshAt);
+  const files = await recordAllFiles(tx, batch.files);
   return { repos, milestones, issues, pullRequests, checkRuns, reviews, files };
 }
 
@@ -351,7 +391,7 @@ export function upsertFacts(db: Database, batch: FactBatch, freshAt: Date): Prom
   const pullIds = inIdOrder(batch.pullRequests).map((pull) => pull.githubId);
   return db.transaction(async (tx) => {
     const had = await lockedLabels(tx, issueIds);
-    await lockPulls(tx, pullIds);
+    await lockPulls(tx, pullsTouched(batch));
     const repaired = await writeRecords(tx, batch, freshAt);
     await stampFresh(tx, batch, freshAt);
     const issues = await storedIssues(tx, issueIds, had);
@@ -361,6 +401,6 @@ export function upsertFacts(db: Database, batch: FactBatch, freshAt: Date): Prom
   });
 }
 
-export function recordFiles(db: Database, files: FilesRecord, freshAt: Date): Promise<boolean> {
-  return recordFilesIn(db, files, freshAt);
+export function recordFiles(db: Database, files: FilesRecord): Promise<boolean> {
+  return recordFilesIn(db, files);
 }

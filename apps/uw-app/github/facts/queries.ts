@@ -16,7 +16,7 @@ export type PullRequestChange = {
   readonly githubId: number;
   readonly number: number;
   readonly head: string;
-  readonly base: string;
+  readonly baseSha: string;
   readonly filesKnown: boolean;
 };
 
@@ -42,8 +42,8 @@ export async function pullRequestChanges(
     githubId: pull.githubId,
     number: pull.number,
     head: pull.headSha,
-    base: pull.baseRef,
-    filesKnown: pull.filesHead === pull.headSha,
+    baseSha: pull.baseSha,
+    filesKnown: pull.filesHead === pull.headSha && pull.filesBase === pull.baseSha,
   }));
 }
 
@@ -113,9 +113,9 @@ async function reviewsOf(db: Executor, pull: PullRow): Promise<readonly ReviewFa
 }
 
 function filesOf(pull: PullRow): ChangedFiles | null {
-  if (pull.filesHead !== pull.headSha) return null;
+  if (pull.filesHead !== pull.headSha || pull.filesBase !== pull.baseSha) return null;
   const parsed = paths.safeParse(pull.files);
-  return parsed.success ? { head: pull.filesHead, paths: parsed.data } : null;
+  return parsed.success ? { head: pull.headSha, base: pull.baseSha, paths: parsed.data } : null;
 }
 
 async function pullNamed(db: Executor, ref: PullRequestRef) {
@@ -143,6 +143,7 @@ export async function pullRequestFacts(
     draft: pull.draft,
     head: pull.headSha,
     headRef: pull.headRef,
+    base: pull.baseSha,
     checks: await checksAt(db, pull),
     reviews: await reviewsOf(db, pull),
     files: filesOf(pull),
