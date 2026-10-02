@@ -342,6 +342,13 @@ Every table declares its classification and offline eligibility. Every table has
 | cost basis | `metered`, `subscription` |
 | gate decision | `approve`, `reject`, `take_over`, `override` |
 | capability word | `none`, `iterate`, `build`, `review` |
+| stage bracket | `product_package`, `build_package`, `deploy_package`, `iterate` |
+| gate status | `working`, `parked`, `checks_failed`, `done` |
+| branch state | `none`, `active`, `abandoned` |
+| run outcome | `running`, `hibernated`, `stopped`, `completed`, `failed` |
+| delegation lapse | `expired`, `revoked`, `grant_lost` |
+| CI job | `security-audit`, `lint`, `typecheck`, `architecture`, `test`, `build` |
+| check conclusion | `success`, `failure`, `neutral`, `cancelled`, `skipped`, `timed_out`, `action_required`, `stale` |
 
 ### 8.4 Identity strings
 
@@ -359,6 +366,8 @@ Ship rule: `pr_not_open`, `pr_is_draft`, `head_mismatch`, `checks_not_green`, `n
 Elsewhere: `not_permitted`, `not_wired`, `wip_limit_reached`, `lease_held`, `lease_expired`, `pickup_not_allowed`, `validator_failed`, `unknown_validator`, `delegation_required`, `gate_refused_to_agent`, `reason_required`, `spend_held`, `hosted_builder_off`, `engine_not_available`, `diff_exceeds_review_budget`, `unknown_verb`, `forbidden_verb`.
 
 Added in step 1: `malformed_command`, `unauthenticated`, `access_not_configured`, `database_not_configured`, `internal_error`, `pending_approval`, `person_not_found`, `grant_not_found`, `grant_exists`, `last_org_admin`, `expiry_in_past`, `unknown_page_type`, `invalid_frontmatter`, `page_not_found`, `page_exists`, `slug_taken`, `stale_version`, `parent_not_found`, `parent_cycle`.
+
+Added in step 3: `harness_not_found`, `harness_exists`, `stage_not_found`, `item_not_found`, `delegation_not_found`, `delegation_lapsed`, `not_holder`, `transition_not_allowed`, `unknown_feed_target`, `connector_not_registered`, `template_bypasses_gate`, `stage_edit_refused`, `item_not_at_gate`, `reason_not_one_line`.
 
 ### 8.6 Event vocabulary
 
