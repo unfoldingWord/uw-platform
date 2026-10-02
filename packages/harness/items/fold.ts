@@ -181,6 +181,7 @@ export const unchangedNames: ReadonlySet<EventName> = new Set<EventName>([
   'delegation_lapsed',
   'delegation_required',
   'stage_edit_refused',
+  'stage_edited',
   'template_activated',
   'harness_paused',
   'harness_resumed',

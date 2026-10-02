@@ -1,6 +1,7 @@
 import type { Harness, JdArea, Stage } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
 import { draft, recordContext, recordHarnessEvents } from '../items/record.ts';
+import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import { storeRefusalOf } from '../port-errors.ts';
 import type { Ports } from '../ports.ts';
@@ -40,6 +41,7 @@ async function insertAll(
 ): Promise<KernelOutcome<Activated>> {
   return ports.store.transaction(async (tx) => {
     const { harness, stages } = activated;
+    await tx.lock(lockKeys.harnessStages(harness.id));
     const denied = await adminRefusal(ports, tx, caller, harness, at);
     if (denied !== null) return denied;
     const taken =
