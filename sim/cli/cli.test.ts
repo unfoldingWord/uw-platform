@@ -71,7 +71,7 @@ describe('DX-4 the sim command', () => {
     'names the known scenarios when none matches',
     () => {
       expect(exited(1, 'sim/cli/sim.ts', ['ZZ-1']).stderr).toContain(
-        'no scenario matches ZZ-1; known: AB-4.poll-returns-what-the-caller-may-claim, AB-6.a-delegated-runner-names-itself-and-stops-on-lapse, AB-8.missing-verb-opens-one-item',
+        'no scenario matches ZZ-1; known: AB-4.poll-returns-what-the-caller-may-claim, AB-6.a-delegated-runner-names-itself-and-stops-on-lapse, AB-7.no-agent-identity-writes-a-gate-decision, AB-8.missing-verb-opens-one-item',
       );
     },
     commandTimeout,
