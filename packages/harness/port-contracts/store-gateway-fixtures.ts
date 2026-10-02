@@ -16,12 +16,13 @@ export function uid(n: number): string {
   return `00000000-0000-4000-8000-${(0x5a0000000000 + n).toString(16)}`;
 }
 
-export function harnessOf(base: number, key: string): Harness {
+export function harnessOf(base: number, key: string, repository: string | null = null): Harness {
   return harnessSchema.parse({
     id: uid(base),
     key,
     template: 'software',
     jdArea: '80-89',
+    repository,
     hostedBuilderEnabled: false,
     paused: false,
   });

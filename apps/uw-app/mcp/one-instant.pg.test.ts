@@ -62,7 +62,13 @@ describe.skipIf(!testServer)('a verb call judges the kernel read at the request 
       const kernel = kernelOn(db, { now: () => kernelNow });
       const ian = await personOn(db, IAN_ID, 'ian.lindsley@unfoldingword.org', requestAt);
       const harnessId = crypto.randomUUID();
-      const activate = { harnessId, harnessKey: 'software', jdArea: '80-89', template: software };
+      const activate = {
+        harnessId,
+        harnessKey: 'software',
+        jdArea: '80-89',
+        template: software,
+        repository: 'unfoldingWord/uw-platform',
+      };
       expect((await kernel.stages.activate(caller(ian), activate)).status).toBe('accepted');
       const context = contextOf(kernel, laptopUntil(expiresAt));
       const result = await callVerb(context, 'get_health', { harnessId }, verbHandlers);

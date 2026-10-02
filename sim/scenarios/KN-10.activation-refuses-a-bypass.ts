@@ -13,6 +13,7 @@ export const scenario = defineScenario({
       harnessKey: 'bypass',
       jdArea: '80-89',
       template: bypassesShip,
+      repository: null,
     });
     assert.equal(outcome.status, 'error');
     assert.equal(outcome.status === 'error' && outcome.reason, 'template_bypasses_gate');

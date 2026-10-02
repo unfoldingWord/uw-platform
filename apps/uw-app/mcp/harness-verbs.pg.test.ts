@@ -117,6 +117,7 @@ async function harnessWith(r: Rig, key: string, priorities: readonly number[], a
       harnessKey: key,
       jdArea: area,
       template,
+      repository: null,
     }),
   );
   const change = { agentPickup: 'allowed' as const };

@@ -94,6 +94,7 @@ async function openRound(
       harnessKey: `software-${round}`,
       jdArea: '80-89',
       template: software,
+      repository: null,
     }),
   );
   accepted(

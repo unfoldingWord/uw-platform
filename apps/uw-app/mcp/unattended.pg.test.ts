@@ -85,7 +85,13 @@ function value<T>(outcome: { status: 'accepted'; value: T } | { status: 'error';
 
 async function harnessIn(r: Rig, key: string): Promise<string> {
   const harnessId = crypto.randomUUID();
-  const activate = { harnessId, harnessKey: key, jdArea: '80-89', template: software };
+  const activate = {
+    harnessId,
+    harnessKey: key,
+    jdArea: '80-89',
+    template: software,
+    repository: `unfoldingWord/${key}`,
+  };
   value(await r.kernel.stages.activate(caller(r.ian), activate));
   return harnessId;
 }

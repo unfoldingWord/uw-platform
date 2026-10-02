@@ -40,7 +40,13 @@ function value<T>(outcome: { status: 'accepted'; value: T } | { status: 'error';
 
 async function gatedHarness(kernel: Kernel, ian: Principal): Promise<string> {
   const harnessId = crypto.randomUUID();
-  const activate = { harnessId, harnessKey: 'software', jdArea: '80-89', template: software };
+  const activate = {
+    harnessId,
+    harnessKey: 'software',
+    jdArea: '80-89',
+    template: software,
+    repository: 'unfoldingWord/uw-platform',
+  };
   value(await kernel.stages.activate(caller(ian), activate));
   const change = { exitGate: 'human_approval' as const };
   value(await kernel.stages.updateStage(caller(ian), { harnessId, stageKey: 'check', change }));

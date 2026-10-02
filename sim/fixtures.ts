@@ -103,21 +103,37 @@ export function simCaller(world: World, actor: Principal): Caller {
   return { actor, traceId: world.adapters.ids.next() };
 }
 
+type SimHarnessOptions = {
+  readonly key?: string;
+  readonly jdArea?: JdArea;
+  readonly repository?: string | null;
+};
+
+function defaultRepository(template: Template, key: string): string | null {
+  if (template.key !== 'software') return null;
+  return key === template.key ? 'unfoldingWord/uw-platform' : `unfoldingWord/${key}`;
+}
+
 export async function createSimHarness(
   world: World,
   template: Template,
-  options: { readonly key?: string; readonly jdArea?: JdArea } = {},
+  options: SimHarnessOptions = {},
 ): Promise<{
   readonly harness: Harness;
   readonly stages: readonly Stage[];
   readonly admin: Principal;
 }> {
   const admin = await simIan(world);
+  const harnessKey = options.key ?? template.key;
   const outcome = await world.kernel.stages.activate(simCaller(world, admin), {
     harnessId: world.adapters.ids.next(),
-    harnessKey: options.key ?? template.key,
+    harnessKey,
     jdArea: options.jdArea ?? '80-89',
     template,
+    repository:
+      options.repository === undefined
+        ? defaultRepository(template, harnessKey)
+        : options.repository,
   });
   if (outcome.status !== 'accepted') {
     throw new Error(`activating ${template.key} was refused: ${outcome.reason}`);
