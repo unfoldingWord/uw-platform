@@ -15,6 +15,7 @@ import restIssues from '../fixtures/rest-issues.json' with { type: 'json' };
 import restPull from '../fixtures/rest-pull.json' with { type: 'json' };
 import restReviews from '../fixtures/rest-reviews.json' with { type: 'json' };
 import {
+  base,
   completedCheck,
   head,
   labelledIssue,
@@ -138,6 +139,34 @@ describe('GitHub deliveries that carry no facts', () => {
       event: 'push',
     });
   });
+});
+
+describe('GitHub deliveries with a value the read model cannot store', () => {
+  it('counts a pull request whose base is not a full SHA as malformed', () => {
+    const pull = pullRequestOpened.pull_request;
+    const pullRequest = { ...pull, base: { ...pull.base, sha: 'main' } };
+    expect(
+      factsFromWebhook('pull_request', { ...pullRequestOpened, pull_request: pullRequest }),
+    ).toEqual({
+      kind: 'malformed',
+      event: 'pull_request',
+    });
+  });
+
+  it('counts a NUL in a stored string as malformed', () => {
+    const pull = pullRequestOpened.pull_request;
+    const titled = { ...pull, title: 'Show\u0000the board' };
+    const branched = { ...pull, head: { ...pull.head, ref: 'harness/\u0000' } };
+    for (const pullRequest of [titled, branched]) {
+      expect(
+        factsFromWebhook('pull_request', { ...pullRequestOpened, pull_request: pullRequest }),
+      ).toMatchObject({ kind: 'malformed' });
+    }
+    const label = { ...issuesLabeled.issue, labels: [{ name: 'har\u0000ness' }] };
+    expect(factsFromWebhook('issues', { ...issuesLabeled, issue: label })).toMatchObject({
+      kind: 'malformed',
+    });
+  });
 
   it('counts a pull request with an abbreviated head as malformed', () => {
     const pullRequest = {
@@ -188,27 +217,30 @@ describe('GH-2 GitHub REST answers become fact records', () => {
 
 describe('GH-5 the changed files at a head include the previous names of renames', () => {
   it('lists every filename and every previous filename once, in first-seen order', () => {
-    expect(filesFromRest(openedPull.githubId, head, restFiles.files)).toEqual({
+    expect(filesFromRest(openedPull.githubId, { head, base }, restFiles.files)).toEqual({
       pullRequestId: openedPull.githubId,
       head,
+      base,
       paths: ['apps/uw-app/board.tsx', 'apps/uw-app/board/view.tsx', 'apps/uw-app/view.tsx'],
       problem: null,
     });
   });
 
   it('records too many files as a problem with no paths', () => {
-    expect(filesFromRest(openedPull.githubId, head, 'too_many_files')).toEqual({
+    expect(filesFromRest(openedPull.githubId, { head, base }, 'too_many_files')).toEqual({
       pullRequestId: openedPull.githubId,
       head,
+      base,
       paths: null,
       problem: 'too_many_files',
     });
   });
 
   it('records a file entry of the wrong shape as a problem with no paths', () => {
-    expect(filesFromRest(openedPull.githubId, head, [{ status: 'added' }])).toEqual({
+    expect(filesFromRest(openedPull.githubId, { head, base }, [{ status: 'added' }])).toEqual({
       pullRequestId: openedPull.githubId,
       head,
+      base,
       paths: null,
       problem: 'malformed_files',
     });

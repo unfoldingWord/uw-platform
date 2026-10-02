@@ -42,6 +42,7 @@ export type PullRequestRecord = {
   readonly headSha: string;
   readonly headRef: string;
   readonly baseRef: string;
+  readonly baseSha: string;
   readonly milestoneId: number | null;
   readonly declaration: PullRequestDeclaration | null;
   readonly declarationProblem: string | null;
@@ -51,6 +52,7 @@ export type PullRequestRecord = {
 export type FilesRecord = {
   readonly pullRequestId: number;
   readonly head: string;
+  readonly base: string;
   readonly paths: readonly string[] | null;
   readonly problem: string | null;
 };

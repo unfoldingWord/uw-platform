@@ -10,6 +10,7 @@ import type {
 
 export const head = `c0ffee${'0'.repeat(34)}`;
 export const nextHead = `beef${'0'.repeat(36)}`;
+export const base = '0'.repeat(40);
 export const headRef = 'harness/b1000000-0000-4000-8000-000000000002';
 
 export const repo: RepoRecord = {
@@ -58,6 +59,7 @@ export const openedPull: PullRequestRecord = {
   headSha: head,
   headRef,
   baseRef: 'main',
+  baseSha: base,
   milestoneId: null,
   declaration,
   declarationProblem: null,

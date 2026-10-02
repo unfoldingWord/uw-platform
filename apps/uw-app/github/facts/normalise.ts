@@ -106,7 +106,8 @@ function declarationOf(body: string | null | undefined) {
 
 function pullOf(repoId: number, pull: Pull): PullRequestRecord | null {
   const headSha = fullSha(pull.head.sha);
-  if (headSha === null) return null;
+  const baseSha = fullSha(pull.base.sha);
+  if (headSha === null || baseSha === null) return null;
   const merged = pull.merged === true || Boolean(pull.merged_at);
   return {
     githubId: pull.id,
@@ -118,6 +119,7 @@ function pullOf(repoId: number, pull: Pull): PullRequestRecord | null {
     headSha,
     headRef: pull.head.ref,
     baseRef: pull.base.ref,
+    baseSha,
     milestoneId: pull.milestone?.id ?? null,
     ...declarationOf(pull.body),
     githubUpdatedAt: pull.updated_at,
@@ -251,18 +253,21 @@ export function factsFromPull(repo: RepoRecord, pull: unknown): FactBatch | null
 
 export function filesFromRest(
   pullRequestId: number,
-  head: string,
+  compared: { readonly head: string; readonly base: string },
   files: readonly unknown[] | 'too_many_files',
 ): FilesRecord {
-  if (files === 'too_many_files') return { pullRequestId, head, paths: null, problem: files };
+  const { head, base } = compared;
+  if (files === 'too_many_files') return { pullRequestId, head, base, paths: null, problem: files };
   const parsed = fileSchema.array().safeParse(files);
-  if (!parsed.success) return { pullRequestId, head, paths: null, problem: 'malformed_files' };
+  if (!parsed.success) {
+    return { pullRequestId, head, base, paths: null, problem: 'malformed_files' };
+  }
   const paths = parsed.data.flatMap((file) =>
     file.previous_filename === undefined
       ? [file.filename]
       : [file.filename, file.previous_filename],
   );
-  return { pullRequestId, head, paths: [...new Set(paths)], problem: null };
+  return { pullRequestId, head, base, paths: [...new Set(paths)], problem: null };
 }
 
 export function reviewsFromRest(

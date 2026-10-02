@@ -10,7 +10,7 @@ import reviewDismissed from '../fixtures/pull-request-review-dismissed.json' wit
 import reviewSubmitted from '../fixtures/pull-request-review-submitted.json' with { type: 'json' };
 import pullRequestSynchronize from '../fixtures/pull-request-synchronize.json' with { type: 'json' };
 import { webhookBatch } from '../testing/batches.ts';
-import { changedPaths, head, nextHead, openedPull } from '../testing/facts-fixtures.ts';
+import { base, changedPaths, head, nextHead, openedPull } from '../testing/facts-fixtures.ts';
 import { testServer, withAppDatabase } from '../../testing/postgres.ts';
 import { recordFiles, upsertFacts, type UpsertReport } from './upsert.ts';
 
@@ -32,8 +32,14 @@ function inProgress() {
   return webhookBatch('check_run', { ...checkRunCompleted, check_run: run });
 }
 
-function filesAt(at: string) {
-  return { pullRequestId: openedPull.githubId, head: at, paths: changedPaths, problem: null };
+function filesAt(at: string, against = base) {
+  return {
+    pullRequestId: openedPull.githubId,
+    head: at,
+    base: against,
+    paths: changedPaths,
+    problem: null,
+  };
 }
 
 async function prRow(db: Database) {
@@ -117,17 +123,19 @@ describe.skipIf(!testServer)(
     it('records files at the current head and refuses them at any other head', () =>
       withAppDatabase(async (db) => {
         await upsertFacts(db, opened, firstAt);
-        expect(await recordFiles(db, filesAt(nextHead), laterAt)).toBe(false);
+        expect(await recordFiles(db, filesAt(nextHead))).toBe(false);
         expect((await prRow(db)).filesHead).toBeNull();
-        expect(await recordFiles(db, filesAt(head), laterAt)).toBe(true);
+        expect(await recordFiles(db, filesAt(head))).toBe(true);
         const row = await prRow(db);
-        expect([row.filesHead, row.files, row.freshAt]).toEqual([head, changedPaths, laterAt]);
+        expect([row.filesHead, row.filesBase, row.files]).toEqual([head, base, changedPaths]);
+        expect(row.freshAt).toEqual(firstAt);
+        expect(await recordFiles(db, filesAt(head, nextHead))).toBe(false);
       }));
 
     it('clears the old head files when the head moves, and reports them unknown', () =>
       withAppDatabase(async (db) => {
         const before = await upsertFacts(db, opened, firstAt);
-        await recordFiles(db, filesAt(head), firstAt);
+        await recordFiles(db, filesAt(head));
         const moved = await upsertFacts(db, synchronized, laterAt);
         expect(before.pullRequests[0]?.filesKnown).toBe(false);
         expect(moved.pullRequests[0]?.filesKnown).toBe(false);
@@ -138,7 +146,7 @@ describe.skipIf(!testServer)(
     it('keeps the files when a delivery repeats the same head', () =>
       withAppDatabase(async (db) => {
         await upsertFacts(db, opened, firstAt);
-        await recordFiles(db, filesAt(head), firstAt);
+        await recordFiles(db, filesAt(head));
         const again = await upsertFacts(db, submitted, laterAt);
         expect(again.pullRequests[0]?.filesKnown).toBe(true);
         expect((await prRow(db)).filesHead).toBe(head);
@@ -146,7 +154,7 @@ describe.skipIf(!testServer)(
   },
 );
 
-describe.skipIf(!testServer)('GH-2 the upsert reports what it stored', () => {
+describe.skipIf(!testServer)('the upsert reports what it stored', () => {
   it('reports the labels an issue had before the upsert', () =>
     withAppDatabase(async (db) => {
       const labelled = await upsertFacts(db, webhookBatch('issues', issuesLabeled), firstAt);
@@ -173,7 +181,7 @@ describe.skipIf(!testServer)('GH-2 the upsert reports what it stored', () => {
           githubId: openedPull.githubId,
           number: 7,
           head,
-          base: 'main',
+          baseSha: base,
           filesKnown: false,
         },
       ]);
