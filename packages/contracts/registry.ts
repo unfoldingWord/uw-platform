@@ -21,6 +21,7 @@ import {
   itemStateSchema,
   personaIdentitySchema,
   pullRequestRefSchema,
+  repositorySchema,
   stageKeySchema,
   stageSchema,
 } from './harness.ts';
@@ -147,6 +148,7 @@ export const schemaRegistry: Record<string, ZodType> = {
   'stage-key': stageKeySchema,
   'persona-identity': personaIdentitySchema,
   'pull-request-ref': pullRequestRefSchema,
+  repository: repositorySchema,
   harness: harnessSchema,
   stage: stageSchema,
   'item-state': itemStateSchema,

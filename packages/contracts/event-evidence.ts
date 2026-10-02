@@ -12,6 +12,7 @@ import {
 import {
   personaIdentitySchema,
   pullRequestRefSchema,
+  repositorySchema,
   stageKeySchema,
   stageSchema,
 } from './harness.ts';
@@ -150,7 +151,11 @@ const harnessEvidence = {
     message: text,
     itemId: id.nullable(),
   }),
-  template_activated: z.strictObject({ template: slugSchema, stages: z.array(stage).min(1) }),
+  template_activated: z.strictObject({
+    template: slugSchema,
+    stages: z.array(stage).min(1),
+    repository: repositorySchema.nullable(),
+  }),
 };
 
 export const eventEvidenceSchemas = { ...itemEvidence, ...gateEvidence, ...harnessEvidence };

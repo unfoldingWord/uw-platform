@@ -27,8 +27,12 @@ export const personaIdentitySchema = identitySchema.refine(
   'a persona identity is agent:<persona>, not a reserved name',
 );
 
+export const repositorySchema = z
+  .string()
+  .regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/, 'a repository is owner/name');
+
 export const pullRequestRefSchema = z.strictObject({
-  repo: z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/, 'a repository is owner/name'),
+  repo: repositorySchema,
   number: z.number().int().min(1),
 });
 
@@ -37,6 +41,7 @@ export const harnessSchema = z.strictObject({
   key: slugSchema,
   template: slugSchema,
   jdArea: jdAreaSchema,
+  repository: repositorySchema.nullable(),
   hostedBuilderEnabled: z.boolean(),
   paused: z.boolean(),
 });
