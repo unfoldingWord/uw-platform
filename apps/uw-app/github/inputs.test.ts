@@ -28,7 +28,7 @@ function calls(): { readonly sent: () => number; readonly each: [string, Call][]
     sent: () => github.requests().length,
     each: [
       ['pullRequest', (n) => reads.pullRequest('o/r', n)],
-      ['pullRequestFiles', (n) => reads.pullRequestFiles('o/r', n)],
+      ['changedFiles', (_n, s) => reads.changedFiles('o/r', 'main', s)],
       ['pullRequestReviews', (n) => reads.pullRequestReviews('o/r', n)],
       ['issueComments', (n) => reads.issueComments('o/r', n)],
       ['checkRuns', (_n, s) => reads.checkRuns('o/r', s)],
@@ -43,7 +43,7 @@ describe('a GitHub call with a malformed number, sha or page limit is refused wi
   it.each([0, -1, 1.5, Number.NaN, 2 ** 60])('refuses the number %d', async (number) => {
     const { sent, each } = calls();
     for (const [name, call] of each) {
-      if (name === 'checkRuns' || name === 'tag') continue;
+      if (['checkRuns', 'changedFiles', 'tag'].includes(name)) continue;
       expect(await call(number, sha)).toEqual(refused);
     }
     expect(sent()).toBe(0);
@@ -54,7 +54,7 @@ describe('a GitHub call with a malformed number, sha or page limit is refused wi
     async (bad) => {
       const { sent, each } = calls();
       for (const [name, call] of each) {
-        if (name !== 'checkRuns' && name !== 'merge' && name !== 'tag') continue;
+        if (!['checkRuns', 'changedFiles', 'merge', 'tag'].includes(name)) continue;
         expect(await call(1, bad)).toEqual(refused);
       }
       expect(sent()).toBe(0);

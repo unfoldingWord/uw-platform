@@ -32,7 +32,7 @@ function mints(github: FixtureGitHub): unknown[] {
 async function everyRead(github: FixtureGitHub): Promise<void> {
   const reads = createGitHubReads(app, fixtureTransport(github));
   await reads.pullRequest('o/r', 2);
-  await reads.pullRequestFiles('o/r', 2);
+  await reads.changedFiles('o/r', 'main', sha);
   await reads.pullRequestReviews('o/r', 2);
   await reads.checkRuns('o/r', sha);
   await reads.issuesSince('o/r', null, 1);
