@@ -1,5 +1,5 @@
 {
-  "id": "262e656e-11f8-4032-9cbe-a3af06346810",
+  "id": "7476da43-29d1-4f3a-af86-846266b766ad",
   "prevId": "989a2dbe-5788-4689-931b-e498f6689cb6",
   "version": "7",
   "dialect": "postgresql",
@@ -1155,7 +1155,7 @@
         },
         "harnesses_repository_form": {
           "name": "harnesses_repository_form",
-          "value": "\"harnesses\".\"repository\" ~ '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$'"
+          "value": "\"harnesses\".\"repository\" ~ '^(?!-)(?![A-Za-z0-9-]*-/)[A-Za-z0-9-]{1,39}/(?!\\.\\.?$)[A-Za-z0-9._-]{1,100}$'"
         }
       },
       "isRLSEnabled": false
@@ -2786,7 +2786,7 @@
       "checkConstraints": {
         "gh_repos_full_name_form": {
           "name": "gh_repos_full_name_form",
-          "value": "\"gh_repos\".\"full_name\" ~ '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$'"
+          "value": "\"gh_repos\".\"full_name\" ~ '^(?!-)(?![A-Za-z0-9-]*-/)[A-Za-z0-9-]{1,39}/(?!\\.\\.?$)[A-Za-z0-9._-]{1,100}$'"
         }
       },
       "isRLSEnabled": false

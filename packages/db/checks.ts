@@ -6,6 +6,7 @@ import {
   identityPattern,
   jdAreaPattern,
   personaIdentityPattern,
+  repositoryPattern,
   stageKeyPattern,
 } from '@uw/contracts';
 
@@ -39,5 +40,5 @@ export const STAGE_KEY_PATTERN = stageKeyPattern;
 export const PERSONA_IDENTITY_PATTERN = personaIdentityPattern;
 export const HUMAN_IDENTITY_PATTERN = humanIdentityPattern;
 export const DEVICE_PATTERN = devicePattern;
-export const REPOSITORY_PATTERN = '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$';
+export const REPOSITORY_PATTERN = repositoryPattern;
 export const FULL_SHA_PATTERN = '^(?:[0-9a-f]{40}|[0-9a-f]{64})$';
