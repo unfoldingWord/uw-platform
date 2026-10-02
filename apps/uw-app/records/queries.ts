@@ -5,6 +5,8 @@ import { refusal, type VerbRefusal } from '../mcp/handler.ts';
 import { callerOf } from '../mcp/verbs/item-scene.ts';
 import { openTasks } from '../tasks/store.ts';
 
+const STAGE_ITEM_LIMIT = 50;
+
 const rowSchema = z.record(z.string(), z.json());
 
 type Row = z.infer<typeof rowSchema>;
@@ -41,7 +43,7 @@ const stageItemsQuery = entityQuery(
   async (context, params) => {
     const items = await context.kernel.reads.inStage(callerOf(context), params);
     if (items.status === 'error') return refusal(items.reason, items.detail);
-    return items.value.map((item) => rowSchema.parse(item));
+    return items.value.slice(0, STAGE_ITEM_LIMIT).map((item) => rowSchema.parse(item));
   },
 );
 
