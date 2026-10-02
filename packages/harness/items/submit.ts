@@ -129,7 +129,8 @@ function riskDraft(command: Command, item: ItemState): readonly EventDraft[] {
 
 function withNormalisedHead(input: SubmitInput): SubmitInput | null {
   if (input.change === null) return input;
-  const head = fullSha(input.change.head);
+  const given = input.change.head;
+  const head = given === given.trim() ? fullSha(given) : null;
   return head === null
     ? null
     : { ...input, change: { pullRequest: input.change.pullRequest, head } };
@@ -278,8 +279,19 @@ async function submitIn(
 
 type FactsRead = { readonly facts: PullRequestFacts | null } | { readonly refusal: Refused };
 
-async function readFacts(ports: SubmitPorts, change: SubmitChange | null): Promise<FactsRead> {
+async function harnessRepository(ports: SubmitPorts, itemId: string): Promise<string | null> {
+  return ports.store.transaction(async (tx) => {
+    const item = await tx.harnessItems.read.byId(itemId);
+    const harness = item === null ? null : await tx.harnesses.read.byId(item.harnessId);
+    return harness?.repository ?? null;
+  });
+}
+
+async function readFacts(ports: SubmitPorts, input: SubmitInput): Promise<FactsRead> {
+  const { change } = input;
   if (change === null) return { facts: null };
+  const repository = await harnessRepository(ports, input.itemId);
+  if (!sameRepository(change.pullRequest.repo, repository)) return { facts: null };
   try {
     return { facts: await ports.githubFacts.pullRequest(change.pullRequest) };
   } catch (error) {
@@ -296,7 +308,7 @@ export async function submit(
   if (normalised === null) {
     return refused('malformed_command', { head: input.change?.head ?? null });
   }
-  const read = await readFacts(ports, normalised.change);
+  const read = await readFacts(ports, normalised);
   if ('refusal' in read) return read.refusal;
   const command = { caller, input: normalised, facts: read.facts, at: ports.clock.now() };
   return ports.store.transaction((tx) => submitIn(ports, tx, command));

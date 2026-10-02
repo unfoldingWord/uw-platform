@@ -421,6 +421,34 @@ async function submitInProcess(r: Rig, args: Body): Promise<Body> {
   return JSON.parse(textOf(await callVerb(context, 'submit_to_gate', args, verbHandlers)));
 }
 
+describe.skipIf(!testServer)(
+  'submit_to_gate with a pull request over HTTP is not wired until the platform GitHub facts port is',
+  () => {
+    it('answers not_wired for githubFacts and records nothing', async () => {
+      const r = await rig();
+      const { h, itemId } = await heldByPersonAtCheck(r, 'software-gate-http');
+      const laptop = await runner(r, 'laptop');
+      expect((await claim(laptop, itemId)).isError).toBe(false);
+      const all = () =>
+        platformStore(r.db).transaction((tx) => readAllEvents(tx, h.harnessId, itemId));
+      const before = await all();
+      const submitted = await call(
+        laptop,
+        'submit_to_gate',
+        submission(itemId, 'software-gate-http', null),
+      );
+      expect(submitted.body).toEqual({
+        status: 'error',
+        reason: 'not_wired',
+        detail: { port: 'githubFacts' },
+      });
+      expect(await all()).toEqual(before);
+      const item = value(await r.kernel.reads.item(caller(r.ian), { itemId })).item;
+      expect(item).toMatchObject({ stageKey: 'check', gateStatus: 'working' });
+    });
+  },
+);
+
 describe.skipIf(!testServer)('AB-4 submit_to_gate names no stage past a human gate', () => {
   it('parks a submission that names ship with a pull request, and the item stays at check', async () => {
     const r = await rig();

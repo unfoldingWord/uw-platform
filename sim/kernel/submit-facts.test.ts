@@ -6,6 +6,7 @@ import {
   readAllEvents,
   software,
   type Caller,
+  type GitHubFacts,
   type Kernel,
   type KernelOutcome,
   type PullRequestFacts,
@@ -128,7 +129,23 @@ async function expectNoRiskButSubmitted(scene: Scene, itemId: string): Promise<v
   expect(submitted?.evidence).toMatchObject({ expectedHead: head, pullRequest: shipPullRequest });
 }
 
-describe('GH-5 submit derives risk from GitHub facts at the submitted head', () => {
+function recordingFacts(scene: Scene): { port: GitHubFacts; calls: PullRequestRef[] } {
+  const calls: PullRequestRef[] = [];
+  const facts = scene.world.adapters.githubFacts;
+  const port: GitHubFacts = {
+    pullRequest: (ref) => {
+      calls.push(ref);
+      return facts.pullRequest(ref);
+    },
+    refresh: (ref) => {
+      calls.push(ref);
+      return facts.refresh(ref);
+    },
+  };
+  return { port, calls };
+}
+
+describe('KN-17 submit derives risk from the changed files and declaration GitHub holds at the head', () => {
   sceneIt('derives the tier from the changed files and declaration GitHub holds', async (scene) => {
     const itemId = await heldAtScope(scene);
     scene.world.adapters.githubFacts.given(factsFor(scene, itemId));
@@ -165,10 +182,18 @@ describe('GH-5 submit derives risk from GitHub facts at the submitted head', () 
     await expectNoRiskButSubmitted(scene, itemId);
   });
 
+  sceneIt('derives nothing when the pull request is on another branch', async (scene) => {
+    const itemId = await heldAtScope(scene);
+    scene.world.adapters.githubFacts.given({ ...factsFor(scene, itemId), headRef: 'feature/x' });
+    await expectNoRiskButSubmitted(scene, itemId);
+  });
+
   sceneIt('derives nothing when GitHub holds no facts for the pull request', async (scene) => {
     await expectNoRiskButSubmitted(scene, await heldAtScope(scene));
   });
+});
 
+describe('submit takes no paths or declaration from the change', () => {
   sceneIt('ignores paths and a declaration the agent puts in the change', async (scene) => {
     const itemId = await heldAtScope(scene);
     const smuggled = {
@@ -195,6 +220,14 @@ describe('GH-5 submit takes only a full commit SHA as the head', () => {
     expect(await eventsOf(scene, itemId)).toEqual(before);
   });
 
+  sceneIt('refuses a full head with surrounding space as malformed', async (scene) => {
+    const itemId = await heldAtScope(scene);
+    const before = await eventsOf(scene, itemId);
+    const outcome = await submitAs(scene, scene.builder, itemId, changeAt(` ${head} `));
+    expect(outcome).toMatchObject({ status: 'error', reason: 'malformed_command' });
+    expect(await eventsOf(scene, itemId)).toEqual(before);
+  });
+
   sceneIt('stores an uppercase full head lowercased', async (scene) => {
     const itemId = await heldAtScope(scene);
     const submitted = value(
@@ -204,7 +237,7 @@ describe('GH-5 submit takes only a full commit SHA as the head', () => {
   });
 });
 
-describe('GH-6 submit refuses a pull request in another repository', () => {
+describe('submit refuses a pull request in another repository', () => {
   const elsewhere = { repo: 'unfoldingWord/other', number: 42 };
 
   sceneIt('refuses the holder with repository_mismatch and records nothing', async (scene) => {
@@ -217,6 +250,16 @@ describe('GH-6 submit refuses a pull request in another repository', () => {
       detail: { why: 'repository_mismatch' },
     });
     expect(await eventsOf(scene, itemId)).toEqual(before);
+  });
+
+  sceneIt('reads no GitHub facts for a pull request in another repository', async (scene) => {
+    const itemId = await heldAtScope(scene);
+    const { port, calls } = recordingFacts(scene);
+    const kernel = createKernel({ ...scene.world.adapters, githubFacts: port });
+    await submitOn(kernel, scene.builder, itemId, changeAt(head, elsewhere));
+    expect(calls).toEqual([]);
+    await submitOn(kernel, scene.builder, itemId, changeAt(head));
+    expect(calls).toEqual([shipPullRequest]);
   });
 
   sceneIt(
@@ -257,7 +300,7 @@ describe('GH-4 a later submit replaces the expected head', () => {
   });
 });
 
-describe('GH-5 a submit whose GitHub facts are not wired is refused', () => {
+describe('a submit whose GitHub facts are not wired is refused', () => {
   sceneIt('answers not_wired and records nothing', async (scene) => {
     const itemId = await heldAtScope(scene);
     const unwired = {
