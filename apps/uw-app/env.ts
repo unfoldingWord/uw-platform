@@ -7,6 +7,9 @@ export type Bindings = {
   ACCESS_AUD?: string;
   ACCESS_MCP_AUD?: string;
   DEV_PRINCIPAL_EMAIL?: string;
+  GITHUB_APP_ID?: string;
+  GITHUB_APP_INSTALLATION_ID?: string;
+  GITHUB_APP_PRIVATE_KEY?: string;
   HYPERDRIVE?: HyperdriveBinding;
   INGEST_DLQ?: QueueProducer<unknown>;
 };
