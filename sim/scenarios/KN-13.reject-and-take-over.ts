@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import type { GateDecision, HarnessEvent, Principal } from '@uw/contracts';
 import { readAllEvents, software, type Caller, type KernelOutcome } from '@uw/harness';
 import { createSimHarness, simAgent, simCaller, simParkedAtCheck, simPerson } from '../fixtures.ts';
+import { readWorldLog } from '../runner/log.ts';
 import { defineScenario } from '../scenario.ts';
 import type { World } from '../world.ts';
 
@@ -34,13 +35,16 @@ async function cast(world: World): Promise<Cast> {
   return { world, harnessId: harness.id, itemId: parked.itemId, ian: admin, builder };
 }
 
-function decide(scene: Cast, decision: GateDecision, findings: readonly string[] = []) {
-  return scene.world.kernel.gates.decide(simCaller(scene.world, scene.ian), {
+async function decide(scene: Cast, decision: GateDecision, findings: readonly string[] = []) {
+  const outcome = await scene.world.kernel.gates.decide(simCaller(scene.world, scene.ian), {
     itemId: scene.itemId,
     decision,
     reason: null,
     findings,
   });
+  const { drift } = await readWorldLog(scene.world.adapters.store);
+  assert.deepEqual(drift, [], `the projection drifted after ${decision}`);
+  return outcome;
 }
 
 function eventsOf(scene: Cast): Promise<readonly HarnessEvent[]> {

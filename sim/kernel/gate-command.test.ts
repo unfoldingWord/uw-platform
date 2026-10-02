@@ -1,4 +1,9 @@
-import type { GateDecision, HarnessEvent, Principal } from '@uw/contracts';
+import {
+  identitySchema,
+  type GateDecision,
+  type HarnessEvent,
+  type Principal,
+} from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { revokeSeededGrant } from '@uw/db/test-seed';
 import { readAllEvents, software, type KernelOutcome } from '@uw/harness';
@@ -232,4 +237,116 @@ describe('the gate decision command before the ship rule is wired', () => {
       'item_not_found',
     );
   });
+});
+
+async function setStage(scene: Scene, stageKey: string, change: Record<string, unknown>) {
+  value(
+    await scene.world.kernel.stages.updateStage(simCaller(scene.world, scene.ian), {
+      harnessId: scene.harnessId,
+      stageKey,
+      change,
+    }),
+  );
+}
+
+async function submitAsIan(scene: Scene, to: string | null) {
+  const ian = simCaller(scene.world, scene.ian);
+  return value(
+    await scene.world.kernel.items.submit(ian, {
+      itemId: scene.itemId,
+      to,
+      evidence: {},
+      change: null,
+    }),
+  );
+}
+
+describe('KN-13 override advances with its reason recorded', () => {
+  sceneIt('overrides at Check with a trimmed reason and advances to Ship', async (scene) => {
+    const before = await written(scene);
+    const overridden = value(
+      await decideAs(scene, scene.ian, { decision: 'override', reason: '  known risk  ' }),
+    );
+    expect(overridden).toMatchObject({ advanced: true, item: { stageKey: 'ship' } });
+    const rows = await scene.world.adapters.store.transaction((tx) =>
+      tx.gateDecisions.read.forItem(scene.itemId),
+    );
+    expect(rows.map((row) => [row.decision, row.reason])).toEqual([['override', 'known risk']]);
+    const after = await written(scene);
+    expect(namesAfter(before, after)).toEqual(['gate_overridden', 'stage_advanced']);
+    expect(after.events.at(-2)?.evidence).toEqual({
+      decisionId: overridden.decisionId,
+      stage: 'check',
+      reason: 'known risk',
+    });
+  });
+});
+
+describe('KN-13 take over reassigns the item to a person within the stage WIP limit', () => {
+  sceneIt('refuses a take over at a WIP-full stage and writes nothing', async (scene) => {
+    const other = await simParkedAtCheck(scene.world, {
+      harnessId: scene.harnessId,
+      admin: scene.ian,
+      title: 'Other',
+    });
+    await setStage(scene, 'check', { wipLimit: 1 });
+    value(await decideAs(scene, scene.ian, { decision: 'take_over', itemId: other.itemId }));
+    const before = await written(scene);
+    const outcome = await decideAs(scene, scene.ian, { decision: 'take_over' });
+    expect(reasonOf(outcome)).toBe('wip_limit_reached');
+    expect(await written(scene)).toEqual(before);
+  });
+});
+
+function crafted(kind: Principal['kind'], identity: string, owner: Principal): Principal {
+  return { ...owner, kind, identity: identitySchema.parse(identity) };
+}
+
+describe('KN-13 only a human principal may decide, whatever its kind field says', () => {
+  sceneIt(
+    'refuses an agent kind with a human identity and a person kind with an agent identity',
+    async (scene) => {
+      const before = await written(scene);
+      for (const principal of [
+        crafted('agent', scene.ian.identity, scene.ian),
+        crafted('person', 'agent:reviewer', scene.ian),
+      ]) {
+        const outcome = await decideAs(scene, principal, { decision: 'approve' });
+        expect(reasonOf(outcome)).toBe('gate_refused_to_agent');
+      }
+      const after = await written(scene);
+      expect(namesAfter(before, after)).toEqual(Array(2).fill('gate_refused_to_agent'));
+      expect(after.decisions).toEqual([]);
+    },
+  );
+});
+
+describe('KN-13 approve without a connector takes the exit the item is parked for', () => {
+  sceneIt('takes the loop edge for a tweak parked at a human approval stage', async (scene) => {
+    value(await decideAs(scene, scene.ian, { decision: 'take_over' }));
+    await setStage(scene, 'check', { feeds: ['scope'] });
+    expect((await submitAsIan(scene, 'scope')).item).toMatchObject({
+      gateStatus: 'parked',
+      gateTarget: 'scope',
+    });
+    const before = await written(scene);
+    const approved = value(await decideAs(scene, scene.ian, { decision: 'approve' }));
+    expect(approved.item).toMatchObject({ stageKey: 'scope', gateStatus: 'working' });
+    const after = await written(scene);
+    expect(namesAfter(before, after)).toEqual(['gate_approved', 'loop_edge_taken']);
+    expect(after.events.at(-1)?.evidence).toEqual({ from: 'check', to: 'scope' });
+  });
+
+  sceneIt(
+    'finishes the item when the last stage is a human approval without a connector',
+    async (scene) => {
+      await setStage(scene, 'check', { position: 90 });
+      const before = await written(scene);
+      const approved = value(await decideAs(scene, scene.ian, { decision: 'approve' }));
+      expect(approved).toMatchObject({ advanced: true, item: { gateStatus: 'done' } });
+      const after = await written(scene);
+      expect(namesAfter(before, after)).toEqual(['gate_approved', 'stage_advanced']);
+      expect(after.events.at(-1)?.evidence).toEqual({ from: 'check', to: null });
+    },
+  );
 });
