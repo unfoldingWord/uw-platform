@@ -4,8 +4,10 @@ import type {
   Engine,
   Grant,
   Harness,
+  HarnessEvent,
   Identity,
   ItemState,
+  NewHarnessEvent,
   PageStatus,
   PageType,
   PrincipalKind,
@@ -69,12 +71,24 @@ export type HarnessItemsGateway = {
 export type PagesGateway = {
   readonly read: { facts(pageIds: readonly string[]): Promise<readonly PageFacts[]> };
 };
+export type EventQuery = {
+  readonly harnessId: string;
+  readonly itemId: string | null;
+  readonly after: number;
+  readonly limit: number;
+};
+export type EventPage = { readonly events: readonly HarnessEvent[]; readonly next: number | null };
+export type HarnessEventsGateway = {
+  readonly read: { page(query: EventQuery): Promise<EventPage> };
+  readonly write: { append(events: readonly NewHarnessEvent[]): Promise<readonly HarnessEvent[]> };
+};
 
 export type StoreTransaction = {
   lock(key: string): Promise<void>;
   readonly harnesses: HarnessesGateway;
   readonly harnessStages: HarnessStagesGateway;
   readonly harnessItems: HarnessItemsGateway;
+  readonly harnessEvents: HarnessEventsGateway;
   readonly pages: PagesGateway;
 };
 
