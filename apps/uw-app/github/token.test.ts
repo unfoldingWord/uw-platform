@@ -33,7 +33,7 @@ function readsOver(github: FixtureGitHub, key = privateKey) {
 function programmed(): FixtureGitHub {
   const github = fixtureGitHub();
   github.on('GET', '/repos/o/r/pulls/1', { status: 200, body: { number: 1 } });
-  github.on('GET', '/repos/o/r/commits/abc/check-runs', {
+  github.on('GET', `/repos/o/r/commits/${'a'.repeat(40)}/check-runs`, {
     status: 200,
     body: { total_count: 0, check_runs: [] },
   });
@@ -61,7 +61,7 @@ describe('GH-1 an installation token is minted once per unit of work', () => {
     const github = programmed();
     const first = readsOver(github);
     await first.pullRequest('o/r', 1);
-    await first.checkRuns('o/r', 'abc');
+    await first.checkRuns('o/r', 'a'.repeat(40));
     await readsOver(github).pullRequest('o/r', 1);
     const tokens = tokenRequests(github);
     expect(tokens.map((request) => request.method)).toEqual(['POST', 'POST']);

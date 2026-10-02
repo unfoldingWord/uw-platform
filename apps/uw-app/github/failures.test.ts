@@ -24,6 +24,7 @@ const statuses: [number, Record<string, string>, string][] = [
   [403, { 'x-ratelimit-remaining': '0' }, 'rate_limited'],
   [403, { 'x-ratelimit-remaining': '12' }, 'forbidden'],
   [403, {}, 'forbidden'],
+  [403, { 'retry-after': '60', 'x-ratelimit-remaining': '4000' }, 'rate_limited'],
   [404, {}, 'not_found'],
   [405, {}, 'not_mergeable'],
   [409, {}, 'conflict'],

@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import type { GitHubAppConfig } from './app-config.ts';
 import { failed, type GitHubResult } from './failures.ts';
-import { refusedInput, openSession, repositoryOf, shaped, type GitHubSession } from './session.ts';
+import { isCount, isFullSha, refusedInput } from './inputs.ts';
+import { openSession, shaped, type GitHubSession } from './session.ts';
 import type { GitHubTransport } from './transport.ts';
 
 type List = readonly unknown[];
@@ -21,6 +22,13 @@ export type GitHubReads = {
   issueComments(repo: string, number: number): Promise<GitHubResult<List>>;
 };
 
+const readPermissions = {
+  contents: 'read',
+  pull_requests: 'read',
+  issues: 'read',
+  checks: 'read',
+  metadata: 'read',
+} as const;
 const perPage = 100;
 const filePages = 30;
 const listPages = 10;
@@ -32,6 +40,7 @@ const record = z.record(z.string(), z.unknown());
 type Lister = {
   readonly route: string;
   readonly parameters: Record<string, unknown>;
+  readonly repository: string | null;
   readonly pageOf: z.ZodType<List>;
   readonly maxPages: number;
 };
@@ -39,11 +48,8 @@ type Lister = {
 async function paged(session: GitHubSession, lister: Lister): Promise<GitHubResult<Page>> {
   const items: unknown[] = [];
   for (let page = 1; page <= lister.maxPages; page += 1) {
-    const answer = await session.request(lister.route, {
-      ...lister.parameters,
-      per_page: perPage,
-      page,
-    });
+    const parameters = { ...lister.parameters, per_page: perPage, page };
+    const answer = await session.request(lister.route, parameters, lister.repository);
     if (!answer.ok) return answer;
     const list = shaped(lister.pageOf, answer.value);
     if (!list.ok) return list;
@@ -61,57 +67,37 @@ async function whole(session: GitHubSession, lister: Lister): Promise<GitHubResu
     : { ok: true, value: result.value.items };
 }
 
-function inRepository<T>(
-  name: string,
-  read: (repository: Record<string, string>) => Promise<GitHubResult<T>>,
-): Promise<GitHubResult<T>> {
-  const repository = repositoryOf(name);
-  return repository ? read({ ...repository }) : Promise.resolve(refusedInput);
+function listOf(route: string, parameters: Record<string, unknown>, repository: string): Lister {
+  return { route, parameters, repository, pageOf: array, maxPages: listPages };
 }
 
-function listOf(route: string, parameters: Record<string, unknown>): Lister {
-  return { route, parameters, pageOf: array, maxPages: listPages };
+function refusedUnless<T>(valid: boolean, read: () => Promise<GitHubResult<T>>) {
+  return valid ? read() : Promise.resolve(refusedInput);
 }
 
 function pullRequestReads(session: GitHubSession) {
+  const pulls = '/repos/{owner}/{repo}/pulls/{pull_number}';
   return {
     pullRequest: (repo: string, number: number) =>
-      inRepository(repo, async (repository) => {
-        const answer = await session.request('GET /repos/{owner}/{repo}/pulls/{pull_number}', {
-          ...repository,
-          pull_number: number,
-        });
+      refusedUnless(isCount(number), async () => {
+        const answer = await session.request(`GET ${pulls}`, { pull_number: number }, repo);
         return answer.ok ? shaped(record, answer.value) : answer;
       }),
     pullRequestFiles: (repo: string, number: number) =>
-      inRepository(repo, async (repository): Promise<GitHubResult<List | 'too_many_files'>> => {
-        const result = await paged(session, {
-          ...listOf('GET /repos/{owner}/{repo}/pulls/{pull_number}/files', {
-            ...repository,
-            pull_number: number,
-          }),
-          maxPages: filePages,
-        });
+      refusedUnless(isCount(number), async (): Promise<GitHubResult<List | 'too_many_files'>> => {
+        const lister = listOf(`GET ${pulls}/files`, { pull_number: number }, repo);
+        const result = await paged(session, { ...lister, maxPages: filePages });
         if (!result.ok) return result;
         return { ok: true, value: result.value.capped ? 'too_many_files' : result.value.items };
       }),
     pullRequestReviews: (repo: string, number: number) =>
-      inRepository(repo, (repository) =>
-        whole(
-          session,
-          listOf('GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews', {
-            ...repository,
-            pull_number: number,
-          }),
-        ),
+      refusedUnless(isCount(number), () =>
+        whole(session, listOf(`GET ${pulls}/reviews`, { pull_number: number }, repo)),
       ),
     checkRuns: (repo: string, sha: string) =>
-      inRepository(repo, (repository) =>
+      refusedUnless(isFullSha(sha), () =>
         whole(session, {
-          ...listOf('GET /repos/{owner}/{repo}/commits/{ref}/check-runs', {
-            ...repository,
-            ref: sha,
-          }),
+          ...listOf('GET /repos/{owner}/{repo}/commits/{ref}/check-runs', { ref: sha }, repo),
           pageOf: checkRunPage,
         }),
       ),
@@ -121,31 +107,24 @@ function pullRequestReads(session: GitHubSession) {
 function issueReads(session: GitHubSession) {
   return {
     issuesSince: (repo: string, since: Date | null, maxPages: number) =>
-      inRepository(repo, async (repository) => {
-        const result = await paged(session, {
-          ...listOf('GET /repos/{owner}/{repo}/issues', {
-            ...repository,
-            ...(since ? { since: since.toISOString() } : {}),
-            state: 'all',
-            sort: 'updated',
-            direction: 'asc',
-          }),
-          maxPages,
-        });
+      refusedUnless(isCount(maxPages), async () => {
+        const filters = { state: 'all', sort: 'updated', direction: 'asc' };
+        const parameters = since ? { since: since.toISOString(), ...filters } : filters;
+        const lister = listOf('GET /repos/{owner}/{repo}/issues', parameters, repo);
+        const result = await paged(session, { ...lister, maxPages });
         if (!result.ok) return result;
-        return {
-          ok: true as const,
-          value: { issues: result.value.items, capped: result.value.capped },
-        };
+        const { items, capped } = result.value;
+        return { ok: true as const, value: { issues: items, capped } };
       }),
     issueComments: (repo: string, number: number) =>
-      inRepository(repo, (repository) =>
+      refusedUnless(isCount(number), () =>
         whole(
           session,
-          listOf('GET /repos/{owner}/{repo}/issues/{issue_number}/comments', {
-            ...repository,
-            issue_number: number,
-          }),
+          listOf(
+            'GET /repos/{owner}/{repo}/issues/{issue_number}/comments',
+            { issue_number: number },
+            repo,
+          ),
         ),
       ),
   };
@@ -155,10 +134,16 @@ export function createGitHubReads(
   config: GitHubAppConfig,
   transport: GitHubTransport,
 ): GitHubReads {
-  const session = openSession(config, transport);
+  const session = openSession(config, transport, readPermissions);
   return {
     installationRepositories: () =>
-      whole(session, { ...listOf('GET /installation/repositories', {}), pageOf: repositoryPage }),
+      whole(session, {
+        route: 'GET /installation/repositories',
+        parameters: {},
+        repository: null,
+        pageOf: repositoryPage,
+        maxPages: listPages,
+      }),
     ...pullRequestReads(session),
     ...issueReads(session),
   };

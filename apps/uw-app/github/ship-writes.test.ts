@@ -13,13 +13,13 @@ beforeAll(async () => {
   app = await fixtureApp();
 });
 
-async function tagOver(existingSha: string | null) {
+async function tagOver(existingSha: string | null, type = 'commit') {
   const github = fixtureGitHub();
   github.on('POST', '/repos/o/r/git/refs', { status: 422, body: { message: 'exists' } });
   if (existingSha) {
     github.on('GET', existing, {
       status: 200,
-      body: { ref: 'refs/tags/harness/x', object: { sha: existingSha, type: 'commit' } },
+      body: { ref: 'refs/tags/harness/x', object: { sha: existingSha, type } },
     });
   }
   return createShipWrites(app, fixtureTransport(github)).tag('o/r', 'harness/x', sha);
@@ -32,6 +32,10 @@ describe('the merge tag is idempotent on its sha', () => {
 
   it('answers conflict when the tag points at another sha', async () => {
     expect(await tagOver('b'.repeat(40))).toEqual({ ok: false, failure: 'conflict', status: 422 });
+  });
+
+  it('answers conflict for an annotated tag of the name, since the harness creates only lightweight tags', async () => {
+    expect(await tagOver(sha, 'tag')).toEqual({ ok: false, failure: 'conflict', status: 422 });
   });
 
   it('answers the failure of reading the existing tag', async () => {

@@ -62,7 +62,7 @@ export function fixtureGitHub(): FixtureGitHub {
     minted += 1;
     return {
       status: 201,
-      body: { token: `ghs_fixture_${minted}`, expires_at: '2026-10-02T01:00:00Z' },
+      body: { token: `ghs_fixture_${minted}`, expires_at: '2099-01-01T00:00:00Z' },
     };
   };
 
