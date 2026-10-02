@@ -61,7 +61,7 @@ export const scenario = defineScenario({
       refusals.map((outcome) => outcome.status === 'error' && outcome.reason),
       ['lease_held', 'lease_held'],
     );
-    const released = await world.kernel.items.release(builder, { itemId });
+    const released = await world.kernel.items.release(builder, { itemId, delegationId: null });
     assert.equal(released.status, 'accepted');
     const taken = await world.kernel.items.claim(editor, { itemId, delegationId: null });
     const personLease = personClaim(taken, owner.identity);
