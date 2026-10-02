@@ -24,8 +24,9 @@ const claimed = {
 };
 
 describe('KN-3 the event vocabulary is PRD section 8.6', () => {
-  it('has the forty-five names and none of the placeholders it replaces', () => {
-    expect(eventNameSchema.options).toHaveLength(45);
+  it('has the forty-six names and none of the placeholders it replaces', () => {
+    expect(eventNameSchema.options).toHaveLength(46);
+    expect(eventNameSchema.safeParse('stage_edited').success).toBe(true);
     expect(eventNameSchema.options[0]).toBe('item_created');
     expect(eventNameSchema.options.at(-1)).toBe('persona_activated');
     expect(eventNameSchema.safeParse('abandoned').success).toBe(false);
@@ -36,6 +37,42 @@ describe('KN-3 the event vocabulary is PRD section 8.6', () => {
     for (const name of Object.keys(eventEvidenceSchemas)) {
       expect(eventNameSchema.safeParse(name).success).toBe(true);
     }
+  });
+});
+
+const stageEdited = {
+  ...base,
+  itemId: null,
+  name: 'stage_edited',
+  evidence: {
+    stageId: '00000000-0000-4000-8000-0000000000d1',
+    key: 'review',
+    before: { exitGate: 'checks' },
+    after: { exitGate: 'human_approval' },
+  },
+};
+
+describe('KN-3 stage_edited evidence carries the stage and only the columns the edit changed', () => {
+  it('accepts an update with before and after, and a creation with no before', () => {
+    expect(eventSchema.safeParse(stageEdited).success).toBe(true);
+    const created = {
+      ...stageEdited,
+      evidence: { ...stageEdited.evidence, before: null, after: { title: 'Review', position: 30 } },
+    };
+    expect(eventSchema.safeParse(created).success).toBe(true);
+  });
+
+  it('refuses a column that is not a stage column and a changed id', () => {
+    const unknown = {
+      ...stageEdited,
+      evidence: { ...stageEdited.evidence, after: { colour: 'red' } },
+    };
+    const id = {
+      ...stageEdited,
+      evidence: { ...stageEdited.evidence, after: { id: base.eventId } },
+    };
+    expect(eventSchema.safeParse(unknown).success).toBe(false);
+    expect(eventSchema.safeParse(id).success).toBe(false);
   });
 });
 
