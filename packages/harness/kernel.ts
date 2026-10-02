@@ -4,6 +4,7 @@ import { createItemCommands, type ItemCommands } from './items/commands.ts';
 import { replay } from './items/fold.ts';
 import { createRepairCommands, type RepairCommands } from './items/repair.ts';
 import type { Ports } from './ports.ts';
+import { shipRule } from './ship-rule.ts';
 import { createStageCommands, type StageCommands } from './stages/commands.ts';
 import { templateProperty } from './template-property.ts';
 import { walk, type WalkPath, type WalkStage } from './walk.ts';
@@ -13,6 +14,7 @@ export type KernelHealth = { readonly now: Date; readonly appliedMigrations: rea
 export type Kernel = {
   readonly walk: (stages: readonly WalkStage[]) => WalkPath[];
   readonly templateProperty: typeof templateProperty;
+  readonly shipRule: typeof shipRule;
   readonly replay: typeof replay;
   readonly events: EventReads;
   readonly items: ItemCommands;
@@ -26,6 +28,7 @@ export function createKernel(ports: Ports): Kernel {
   return {
     walk,
     templateProperty,
+    shipRule,
     replay,
     events: createEventReads(ports),
     items: createItemCommands(ports),

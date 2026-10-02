@@ -41,3 +41,4 @@ export type { RiskFloor, RiskResult } from './risk/derive.ts';
 export { approverCovers, domainGrants, requiredResources } from './risk/domain-grants.ts';
 export { protectedDirectories } from './risk/protected-directories.ts';
 export type { ProtectedDirectory } from './risk/protected-directories.ts';
+export { shipRule } from './ship-rule.ts';

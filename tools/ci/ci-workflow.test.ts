@@ -2,8 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import manifest from '../../package.json' with { type: 'json' };
-
-const checkRunContract = ['security-audit', 'lint', 'typecheck', 'architecture', 'test', 'build'];
+import { ciJobSchema } from '../../packages/contracts/ship-rule.ts';
 
 const ci = readFileSync(join('.github/workflows', 'ci.yml'), 'utf8');
 const productionGate = readFileSync('.github/scripts/require-green-ci.sh', 'utf8');
@@ -22,7 +21,7 @@ function verifySteps(): string[] {
 
 describe('the CI workflow', () => {
   it('names its jobs exactly as the check-run contract', () => {
-    expect(jobNames(ci)).toEqual(checkRunContract);
+    expect(jobNames(ci)).toEqual(ciJobSchema.options);
   });
 
   it('runs every step of pnpm verify', () => {
@@ -31,6 +30,6 @@ describe('the CI workflow', () => {
   });
 
   it('is the set of jobs production requires green', () => {
-    expect(productionGate).toContain(`required=(${checkRunContract.join(' ')})`);
+    expect(productionGate).toContain(`required=(${ciJobSchema.options.join(' ')})`);
   });
 });
