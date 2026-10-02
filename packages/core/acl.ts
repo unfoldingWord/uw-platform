@@ -27,11 +27,25 @@ function neededRole(action: AclAction): Role {
   return minimumRoleByAction.get(action) ?? 'admin';
 }
 
+type ReadScope = { readonly kind: 'all' } | { readonly kind: 'area'; readonly area: JdArea } | null;
+
+function readScope(grant: Grant): ReadScope {
+  if (grant.scopeKind === 'org')
+    return reaches(grant.role, minimumRole.read) ? { kind: 'all' } : null;
+  if (reaches(grant.role, 'editor')) return { kind: 'all' };
+  return reaches(grant.role, minimumRole.read) ? { kind: 'area', area: grant.scopeArea } : null;
+}
+
 function grantAllows(grant: Grant, action: AclAction, resource: AclResource): boolean {
+  if (action === 'read') {
+    const scope = readScope(grant);
+    if (scope === null) return false;
+    if (scope.kind === 'all') return true;
+    return resource.kind === 'area' && scope.area === resource.area;
+  }
   if (grant.scopeKind === 'org') return reaches(grant.role, neededRole(action));
   if (resource.kind === 'org') return false;
-  if (grant.scopeArea === resource.area) return reaches(grant.role, neededRole(action));
-  return action === 'read' && reaches(grant.role, 'editor');
+  return grant.scopeArea === resource.area && reaches(grant.role, neededRole(action));
 }
 
 function isLive(grant: Grant, at: Date): boolean {
@@ -40,6 +54,19 @@ function isLive(grant: Grant, at: Date): boolean {
 
 export function can(actor: Principal, action: AclAction, resource: AclResource, at: Date): boolean {
   return actor.grants.some((grant) => isLive(grant, at) && grantAllows(grant, action, resource));
+}
+
+type ReadableAreas =
+  { readonly kind: 'all' } | { readonly kind: 'some'; readonly areas: readonly JdArea[] };
+
+export function readableAreas(actor: Principal, at: Date): ReadableAreas {
+  const scopes = actor.grants.filter((grant) => isLive(grant, at)).map(readScope);
+  const areas = new Set<JdArea>();
+  for (const scope of scopes) {
+    if (scope?.kind === 'all') return { kind: 'all' };
+    if (scope) areas.add(scope.area);
+  }
+  return { kind: 'some', areas: [...areas].sort() };
 }
 
 const actionByVerbRole: ReadonlyMap<Role, AclAction> = new Map<Role, AclAction>([
