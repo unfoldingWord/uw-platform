@@ -312,6 +312,8 @@ Every table declares its classification and offline eligibility. Every table has
 | `personas` | identity, harness, page | a projection of persona pages |
 | `gh_repos`, `gh_issues`, `gh_prs`, `gh_milestones`, `gh_check_runs`, `gh_reviews` | GitHub id, facts, freshness | the read-model module |
 | `push_subscriptions`, `push_cooldowns` | per person and device; per person | the notifier |
+| `tasks` | id, jd_area, title, page, due, status (task status), created_by, trace id, created at | the tasks module, through `create_task` |
+| `service_tokens` | client id, person, device, bound by, bound at, revoked at, trace id | the service-token command, org admin only |
 
 ### 8.2 The verb registry
 
@@ -343,6 +345,8 @@ Every table declares its classification and offline eligibility. Every table has
 | gate decision | `approve`, `reject`, `take_over`, `override` |
 | capability word | `none`, `iterate`, `build`, `review` |
 | stage bracket | `product_package`, `build_package`, `deploy_package`, `iterate` |
+| task status | `suggested`, `open`, `done`, `dismissed` |
+| persona activation refusal | `unknown_verb`, `forbidden_verb`, `not_permitted` |
 | gate status | `working`, `parked`, `checks_failed`, `done` |
 | branch state | `none`, `active`, `abandoned` |
 | run outcome | `running`, `hibernated`, `stopped`, `completed`, `failed` |
