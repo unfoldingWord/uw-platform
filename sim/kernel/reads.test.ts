@@ -355,3 +355,88 @@ describe('the kernel reads hide the scene from a forged owner or a delegation th
   it('a device naming another owner reads nothing', () => inScene(ownerMismatch));
   it('a delegated device reads only its live delegation harness', () => inScene(delegatedScene));
 });
+
+const MISSING_ID = '00000000-0000-4000-8000-000000009999';
+
+type Probe = {
+  readonly read: (scene: Scene, caller: Caller, id: string) => Promise<KernelOutcome<unknown>>;
+  readonly own: (scene: Scene) => string;
+  readonly other: (scene: Scene) => string;
+};
+
+const probes: readonly Probe[] = [
+  {
+    read: (s, c, harnessId) => s.world.kernel.reads.harness(c, { harnessId }),
+    own: (s) => s.firstId,
+    other: (s) => s.secondId,
+  },
+  {
+    read: (s, c, itemId) => s.world.kernel.reads.item(c, { itemId }),
+    own: (s) => s.firstItem,
+    other: (s) => s.secondItem,
+  },
+  {
+    read: (s, c, harnessId) => s.world.kernel.reads.inStage(c, { harnessId, stageKey: 'package' }),
+    own: (s) => s.firstId,
+    other: (s) => s.secondId,
+  },
+];
+
+async function hiddenAsMissing(scene: Scene, actor: Principal, side: 'own' | 'other') {
+  const caller = simCaller(scene.world, actor);
+  for (const probe of probes) {
+    const id = side === 'own' ? probe.own(scene) : probe.other(scene);
+    const answered = JSON.stringify(await probe.read(scene, caller, id));
+    const missing = JSON.stringify(await probe.read(scene, caller, MISSING_ID));
+    expect(missing).toContain('_not_found');
+    expect(answered).toBe(missing.replace(MISSING_ID, id));
+  }
+}
+
+async function readsOwn(scene: Scene, actor: Principal): Promise<readonly string[]> {
+  const caller = simCaller(scene.world, actor);
+  return Promise.all(
+    probes.map((probe) => probe.read(scene, caller, probe.own(scene)).then(reasonOf)),
+  );
+}
+
+const shown = ['accepted', 'accepted', 'accepted'];
+
+function iterateOf(scene: Scene): Principal {
+  return simAgent(scene.ian, 'iterate', { interactive: false });
+}
+
+async function personaScene(scene: Scene): Promise<void> {
+  const persona = iterateOf(scene);
+  await hiddenAsMissing(scene, persona, 'own');
+  const delegationId = await delegate(scene, scene.ian, 'agent:iterate');
+  expect(await readsOwn(scene, persona)).toEqual(shown);
+  await hiddenAsMissing(scene, persona, 'other');
+  await revoke(scene, delegationId);
+  await hiddenAsMissing(scene, persona, 'own');
+}
+
+async function personaNoneScene(scene: Scene): Promise<void> {
+  await delegate(scene, scene.ian, 'agent:iterate', { capability: 'none' });
+  const persona = iterateOf(scene);
+  await hiddenAsMissing(scene, persona, 'own');
+}
+
+async function othersUnchanged(scene: Scene): Promise<void> {
+  const laptop = simAgent(scene.ian, `${scene.ian.personId ?? ''}/laptop`, { interactive: true });
+  for (const actor of [scene.ian, laptop]) {
+    const caller = simCaller(scene.world, actor);
+    for (const probe of probes) {
+      expect(reasonOf(await probe.read(scene, caller, probe.own(scene)))).toBe('accepted');
+      expect(reasonOf(await probe.read(scene, caller, probe.other(scene)))).toBe('accepted');
+    }
+  }
+}
+
+describe('AB-4 a bare persona reads only the harnesses its working delegations name', () => {
+  it('reads its live delegation harness, answers another harness, its item and its stage as missing, and nothing once revoked', () =>
+    inScene(personaScene));
+  it('reads nothing when its only delegation is none', () => inScene(personaNoneScene));
+  it('leaves a person and an interactive device with no delegation reading every readable harness', () =>
+    inScene(othersUnchanged));
+});
