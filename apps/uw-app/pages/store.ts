@@ -8,7 +8,7 @@ import {
 } from '@uw/contracts';
 import { can } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
-import { advisoryLocks } from '@uw/db/advisory-locks';
+import { advisoryLock, advisoryLocks } from '@uw/db/advisory-locks';
 import type { Database, Executor, Transaction } from '@uw/db/client';
 import { pages, pageVersions } from '@uw/db/schema';
 import { pgConstraint, pgErrorCode } from '@uw/db/errors';
@@ -196,7 +196,7 @@ async function updateInTransaction(
   at: Date,
 ): Promise<PageResult> {
   if (command.parentId !== null) {
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(${advisoryLocks.pageReparenting}::bigint)`);
+    await tx.execute(advisoryLock(advisoryLocks.pageReparenting));
   }
   const stored = await readPage(tx, actor, command.pageId, at);
   if (!stored) return refused('page_not_found');

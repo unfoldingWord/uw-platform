@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, isNull, lte } from 'drizzle-orm';
 import {
   scopeSchema,
   type ErrorReason,
@@ -8,7 +8,7 @@ import {
 } from '@uw/contracts';
 import { can, type AclResource } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
-import { advisoryLocks } from '@uw/db/advisory-locks';
+import { advisoryLock, advisoryLocks } from '@uw/db/advisory-locks';
 import type { Database, Executor, Transaction } from '@uw/db/client';
 import { grantAudit, roleGrants } from '@uw/db/schema';
 import type { CommandResult } from '../http/commands.ts';
@@ -148,7 +148,7 @@ async function insertGrant(
 }
 
 async function serialiseAclCommands(tx: Transaction): Promise<void> {
-  await tx.execute(sql`SELECT pg_advisory_xact_lock(${advisoryLocks.grantCommands}::bigint)`);
+  await tx.execute(advisoryLock(advisoryLocks.grantCommands));
 }
 
 async function withLiveGrants(tx: Transaction, actor: Principal, at: Date): Promise<Principal> {

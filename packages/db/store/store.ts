@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { advisoryLock } from '../advisory-locks.ts';
 import type { AnyDatabase, AnyExecutor } from '../any-database.ts';
 import { appliedMigrations } from '../migration-ledger.ts';
 import { bindDelegations } from './delegations.ts';
@@ -27,7 +27,7 @@ export function executorOf(tx: DrizzleTransaction): AnyExecutor {
 function bind(executor: AnyExecutor): DrizzleTransaction {
   const tx: DrizzleTransaction = {
     lock: async (key) => {
-      await executor.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`);
+      await executor.execute(advisoryLock(key));
     },
     harnesses: bindHarnesses(executor),
     harnessStages: bindStages(executor),

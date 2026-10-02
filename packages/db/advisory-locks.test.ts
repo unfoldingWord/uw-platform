@@ -1,20 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import { advisoryLocks } from './advisory-locks.ts';
+import { advisoryLocks, lockKeyPrefixes } from './advisory-locks.ts';
 
-describe('FD-8 FD-9 advisory lock keys live in one registry', () => {
-  it('names the grant-command and page re-parent keys', () => {
-    expect(advisoryLocks).toEqual({ grantCommands: 7301001, pageReparenting: 7301002 });
+function clashes(keys: readonly string[]): string[] {
+  return keys.flatMap((key, index) =>
+    keys
+      .filter((other, at) => at !== index && other.startsWith(key))
+      .map((other) => `${key} ${other}`),
+  );
+}
+
+describe('FD-8 FD-9 advisory lock keys live in one registry, in one key space', () => {
+  it('names the grant-command and page re-parent keys as strings', () => {
+    expect(advisoryLocks).toEqual({
+      grantCommands: 'acl-grant-commands',
+      pageReparenting: 'pages-reparenting',
+    });
   });
 
-  it('gives every lock a distinct key', () => {
-    const keys = Object.values(advisoryLocks);
-    expect(new Set(keys).size).toBe(keys.length);
+  it('lists the string key prefixes the kernel and the event trigger use', () => {
+    expect(lockKeyPrefixes).toEqual([
+      'harness-stage-claims:',
+      'harness-stages:',
+      'harness_events:',
+    ]);
   });
 
-  it('keeps every key a positive safe integer', () => {
-    const invalid = Object.values(advisoryLocks).filter(
-      (key) => !Number.isSafeInteger(key) || key <= 0,
-    );
-    expect(invalid).toEqual([]);
+  it('keeps every key distinct from, and no prefix of, another', () => {
+    expect(clashes([...Object.values(advisoryLocks), ...lockKeyPrefixes])).toEqual([]);
+    expect(clashes(['a', 'ab'])).toEqual(['a ab']);
   });
 });
