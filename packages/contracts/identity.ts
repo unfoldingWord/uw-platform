@@ -6,6 +6,8 @@ const agent = `agent:${segment}`;
 const device = `agent:${segment}/${segment}`;
 const delegated = `agent:${segment}/${segment} as ${segment} via delegation:${segment}`;
 
+export const humanIdentityPattern = `^${human}$`;
+
 export const agentIdentityPattern = `^${agent}$`;
 
 export const identityPattern = `^(?:${human}|${agent}|${device}|${delegated})$`;
