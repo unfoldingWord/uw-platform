@@ -15,6 +15,11 @@ export {
 export type { StoreRefusal } from './port-errors.ts';
 export { templates } from './templates.ts';
 export type { Template } from './templates.ts';
+export { describeViolation, templateProperty } from './template-property.ts';
+export type { TemplateStage, TemplateViolation } from './template-property.ts';
+export { software } from './templates/software.ts';
+export { bml } from './templates/bml.ts';
+export { bypassesShip } from './templates/fixtures/bypasses-ship.ts';
 export type { Caller } from './caller.ts';
 export type { Accepted, Detail, KernelOutcome, Refused } from './outcome.ts';
 export { foldItem, replay, ReplayError } from './items/fold.ts';

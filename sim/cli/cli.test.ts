@@ -82,9 +82,13 @@ describe('DX-4 the sim command', () => {
 
 describe('DX-5 the walk command', () => {
   it(
-    'says no template is registered yet for walk all',
+    'prints both templates for walk all',
     () => {
-      expect(exited(0, 'sim/cli/walk.ts', ['all']).stdout).toBe('no templates registered yet\n');
+      const { stdout } = exited(0, 'sim/cli/walk.ts', ['all']);
+      expect(stdout).toContain('template software (Software delivery):');
+      expect(stdout).toContain('ship [human_approval, merge]');
+      expect(stdout).toContain('template bml (BML product flywheel):');
+      expect(stdout).toContain('ship [human_approval, publish]');
     },
     commandTimeout,
   );
@@ -92,8 +96,8 @@ describe('DX-5 the walk command', () => {
   it(
     'names the registered templates when the asked one is unknown',
     () => {
-      expect(exited(1, 'sim/cli/walk.ts', ['software']).stderr).toContain(
-        'unknown template software; registered: none',
+      expect(exited(1, 'sim/cli/walk.ts', ['nonesuch']).stderr).toContain(
+        'unknown template nonesuch; registered: software, bml',
       );
     },
     commandTimeout,
