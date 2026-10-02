@@ -205,8 +205,10 @@ describe('KN-13 an agent principal can write no gate decision', () => {
   });
 });
 
-describe('the gate decision command before the ship rule is wired', () => {
-  sceneIt('refuses approve at Ship as not_wired and writes nothing', async (scene) => {
+const withoutPullRequest = ['pr_not_open', 'head_mismatch', 'checks_not_green'] as const;
+
+describe('KN-13 approve or override at Ship evaluates the ship rule', () => {
+  sceneIt('refuses an item with no pull request with every reason in order', async (scene) => {
     value(await decideAs(scene, scene.ian, { decision: 'approve' }));
     const ian = simCaller(scene.world, scene.ian);
     value(await scene.world.kernel.items.claim(ian, { itemId: scene.itemId, delegationId: null }));
@@ -220,13 +222,21 @@ describe('the gate decision command before the ship rule is wired', () => {
     );
     expect(parked.item).toMatchObject({ stageKey: 'ship', gateStatus: 'parked' });
     const before = await written(scene);
-    for (const decision of ['approve', 'override'] as const) {
-      const outcome = await decideAs(scene, scene.ian, { decision, reason: 'ship it' });
-      expect(reasonOf(outcome)).toBe('not_wired');
-    }
-    expect(await written(scene)).toEqual(before);
+    const approved = await decideAs(scene, scene.ian, { decision: 'approve' });
+    const overridden = await decideAs(scene, scene.ian, { decision: 'override', reason: 'go' });
+    const after = await written(scene);
+    expect(namesAfter(before, after)).toEqual(['ship_refused', 'ship_refused']);
+    expect(after.events.slice(-2).map((event) => event.evidence['reasons'])).toEqual([
+      [...withoutPullRequest, 'no_reviewer_approval', 'risk_tier_undeclared'],
+      [...withoutPullRequest, 'risk_tier_undeclared'],
+    ]);
+    expect([reasonOf(approved), reasonOf(overridden)]).toEqual(['pr_not_open', 'pr_not_open']);
+    expect(after.decisions).toEqual(before.decisions);
+    expect(scene.world.adapters.connectors.calls()).toEqual([]);
   });
+});
 
+describe('the gate decision command on an item that does not exist', () => {
   sceneIt('refuses a decision on an item that does not exist', async (scene) => {
     const itemId = '00000000-0000-4000-8000-00000000dead';
     const agent = simAgent(scene.ian, 'reviewer', { interactive: true });
