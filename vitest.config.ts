@@ -5,6 +5,7 @@ const workerPackages = ['apps/uw-app', 'apps/uw-ingest'];
 
 export default defineConfig({
   test: {
+    maxWorkers: 6,
     projects: [
       {
         plugins: [
