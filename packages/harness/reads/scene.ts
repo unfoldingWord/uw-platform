@@ -90,7 +90,9 @@ async function delegationAdmits(
   const delegationId = delegationIdOf(actor.identity);
   if (delegationId === null) return undelegatedAdmits(ports, tx, actor, harness, at);
   const presented = await presentedDelegation(ports, tx, actor, delegationId, at);
-  return presented.status === 'accepted' && presented.value.delegation.harnessId === harness.id;
+  if (presented.status !== 'accepted') return false;
+  const { delegation } = presented.value;
+  return delegation.harnessId === harness.id && delegation.capability !== 'none';
 }
 
 async function readableHarness(
