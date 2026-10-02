@@ -128,7 +128,7 @@ describe('AB-8 activation refuses a forbidden verb and an unreachable verb', () 
   });
 });
 
-describe('AB-8 activation refuses a caller who may not activate, and stops short of PE-3 when every verb passes', () => {
+describe('persona activation refuses a caller who may not activate, and stops short of PE-3 when every verb passes', () => {
   it('refuses an editor who is not an admin of the harness area, with no event', async () => {
     const editor = byPerson([{ role: 'editor', scopeKind: 'jd_area', scopeArea: '30-39' }]);
     const seen = await inScene(requiring(['approve']), editor);
@@ -228,4 +228,23 @@ describe('persona activation refuses a page it cannot activate before running th
     expect(seen.outcome).toMatchObject({ reason: 'unknown_verb', detail: { itemId: null } });
     expect(seen.failures).toEqual([expect.objectContaining({ itemId: null })]);
   });
+});
+
+describe('persona activation hides a page from a person who cannot read its area', () => {
+  it.each([
+    ['frontmatter that is not a persona', { owner: 7 }],
+    ['a harness that does not exist', { harness: '00000000-0000-4000-8000-000000008398' }],
+  ])(
+    'answers a person who cannot read the page area page_not_found for %s',
+    async (_case, change) => {
+      const page = (scene: PersonaScene) => ({ frontmatter: personaFrontmatter(scene, change) });
+      const outsider = byPerson([{ role: 'viewer', scopeKind: 'jd_area', scopeArea: '80-89' }]);
+      const seen = await inScene(page, outsider);
+      expect(seen.outcome).toEqual({
+        status: 'error',
+        reason: 'page_not_found',
+        detail: { pageId },
+      });
+    },
+  );
 });

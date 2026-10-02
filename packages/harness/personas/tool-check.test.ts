@@ -103,3 +103,31 @@ describe("AB-8 the tool check judges a verb's reach by the activating person's g
     expect(toolCheck(input, servedListGifts())).toBeNull();
   });
 });
+
+describe('AB-8 the tool check names a long verb by its first 64 characters, so the failure fits its event and item', () => {
+  it('cuts a long unknown verb to 64 characters in the verb and the message', () => {
+    const failure = check(['a'.repeat(300)], 'editor');
+    expect(failure).toEqual({
+      verb: 'a'.repeat(64),
+      reason: 'unknown_verb',
+      message: `persona iterate requires verb ${'a'.repeat(64)}, which does not exist`,
+    });
+    expect(failure?.message.length).toBeLessThanOrEqual(200);
+  });
+
+  it('judges a long name on all of it, so a forbidden verb past the cut is still forbidden', () => {
+    const name = `${'a'.repeat(100)}approve`;
+    expect(check([name], 'editor')).toEqual({
+      verb: 'a'.repeat(64),
+      reason: 'forbidden_verb',
+      message: `persona iterate names ${'a'.repeat(64)}, which no agent may hold`,
+    });
+  });
+
+  it('keeps a long forbidden name within the event message cap', () => {
+    const failure = check([`approve${'a'.repeat(600)}`], 'editor');
+    expect(failure?.reason).toBe('forbidden_verb');
+    expect(failure?.verb).toHaveLength(64);
+    expect(failure?.message.length).toBeLessThanOrEqual(500);
+  });
+});
