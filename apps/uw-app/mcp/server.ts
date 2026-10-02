@@ -3,7 +3,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { CfWorkerJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/cfworker';
 import { CONTRACT_VERSION } from '@uw/contracts';
 import type { VerbContext } from './context.ts';
-import { callVerb } from './dispatch.ts';
+import { assertGatedWhereGranted, callVerb } from './dispatch.ts';
 import type { VerbHandler } from './handler.ts';
 import { toolsFor } from './tools.ts';
 import { verbHandlers } from './verbs/index.ts';
@@ -12,6 +12,7 @@ export function createVerbServer(
   context: VerbContext,
   handlers: ReadonlyMap<string, VerbHandler> = verbHandlers,
 ): Server {
+  assertGatedWhereGranted(handlers);
   const server = new Server(
     { name: 'uw-platform', version: CONTRACT_VERSION },
     {
