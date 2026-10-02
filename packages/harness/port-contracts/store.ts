@@ -148,7 +148,14 @@ function describeExclusion(subject: () => StoreSubject, shape: StoreShape): void
 
   it('DX-3 does not nest transactions: the work gets only lock and the gateways, so pass the transaction along', async () => {
     const members = await subject().store.transaction(async (tx) => Object.keys(tx).sort());
-    expect(members).toEqual(['harnessItems', 'harnessStages', 'harnesses', 'lock', 'pages']);
+    expect(members).toEqual([
+      'harnessEvents',
+      'harnessItems',
+      'harnessStages',
+      'harnesses',
+      'lock',
+      'pages',
+    ]);
   });
 }
 

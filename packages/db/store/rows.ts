@@ -1,12 +1,14 @@
 import {
+  eventSchema,
   harnessSchema,
   itemStateSchema,
   stageSchema,
   type Harness,
+  type HarnessEvent,
   type ItemState,
   type Stage,
 } from '@uw/contracts';
-import type { harnessItems, harnessStages, harnesses } from '../schema.ts';
+import type { harnessEvents, harnessItems, harnessStages, harnesses } from '../schema.ts';
 
 export function toHarness(row: typeof harnesses.$inferSelect): Harness {
   return harnessSchema.parse({
@@ -62,5 +64,19 @@ export function toItemState(row: typeof harnessItems.$inferSelect, stageKey: str
         ? null
         : { repo: row.prRepo, number: row.prNumber },
     zulipTopic: row.zulipTopic,
+  });
+}
+
+export function toEvent(row: typeof harnessEvents.$inferSelect): HarnessEvent {
+  return eventSchema.parse({
+    eventId: row.id,
+    harnessId: row.harnessId,
+    itemId: row.itemId,
+    name: row.name,
+    at: row.at.toISOString(),
+    actor: row.actor,
+    evidence: row.evidence,
+    traceId: row.traceId,
+    position: row.position,
   });
 }

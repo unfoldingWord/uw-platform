@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import type { AnyDatabase, AnyExecutor } from '../any-database.ts';
 import { appliedMigrations } from '../migration-ledger.ts';
+import { bindEvents } from './events.ts';
 import { bindHarnesses } from './harnesses.ts';
 import { bindItems } from './items.ts';
 import { insideOpenTransaction, outsideOpenTransaction } from './open-transactions.ts';
@@ -29,6 +30,7 @@ function bind(executor: AnyExecutor): DrizzleTransaction {
     harnesses: bindHarnesses(executor),
     harnessStages: bindStages(executor),
     harnessItems: bindItems(executor),
+    harnessEvents: bindEvents(executor),
     pages: bindPages(executor),
   };
   executors.set(tx, executor);
