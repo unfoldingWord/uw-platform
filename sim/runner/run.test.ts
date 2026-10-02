@@ -2,6 +2,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { seedGrant } from '@uw/db/test-seed';
 import type { Scenario, ScenarioReport } from '../scenario.ts';
+import { grantOutsideItsArea } from '../scenarios/DX-2.store-is-embedded-postgres.ts';
 import { createWorld, type World } from '../world.ts';
 import { runScenario, selectScenarios, type LoadedScenario } from './run.ts';
 
@@ -36,15 +37,7 @@ function recordingWorld(): { readonly open: () => Promise<World>; closed(): bool
 }
 
 async function refuseAreaGrant(world: World): Promise<ScenarioReport> {
-  await seedGrant(world.database.db, {
-    id: 'd1000000-0000-4000-8000-000000000001',
-    personId: '00000000-0000-4000-8000-000000000001',
-    role: 'admin',
-    scopeKind: 'jd_area',
-    scopeArea: '80-99',
-    grantedAt: world.adapters.clock.now(),
-    expiresAt: null,
-  });
+  await seedGrant(world.database.db, grantOutsideItsArea(world.adapters.clock.now()));
   return emptyReport;
 }
 
