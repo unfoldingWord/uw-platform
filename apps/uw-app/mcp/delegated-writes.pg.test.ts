@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { sql } from 'drizzle-orm';
-import type { Principal } from '@uw/contracts';
+import type { CapabilityWord, Principal } from '@uw/contracts';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
 import { revokeSeededGrant, seedGrant, seedPerson } from '@uw/db/test-seed';
@@ -99,12 +99,15 @@ async function harnessOf(r: Rig): Promise<string> {
   return harnessId;
 }
 
-async function delegate(r: Rig, owner: Owner, harnessId: string): Promise<string> {
+async function delegate(
+  r: Rig,
+  owner: Owner,
+  harnessId: string,
+  capability: CapabilityWord = 'iterate',
+): Promise<string> {
   const person = await personOn(r.db, owner.id, owner.email, new Date());
   const input = { harnessId, persona: 'agent:iterate', expiresAt: null, supersedes: null };
-  return value(
-    await r.kernel.delegations.grant(caller(person), { ...input, capability: 'iterate' }),
-  ).id;
+  return value(await r.kernel.delegations.grant(caller(person), { ...input, capability })).id;
 }
 
 async function login(
@@ -236,5 +239,37 @@ describe.skipIf(!testServer)('AB-6 a lapsed delegation stops every verb', () => 
     ]);
     expect(outcome.written).toBe(0);
     expect(await lapsesOn(r, harnessId)).toBe(1);
+  });
+});
+
+describe.skipIf(!testServer)('AB-4 a delegation with capability none reads no scene', () => {
+  it('answers get_health, resolve_context and stage_items as missing', async () => {
+    const r = await rig();
+    const harnessId = await harnessOf(r);
+    const itemId = await itemOn(r, harnessId);
+    const client = await login(r, KIM, await delegate(r, KIM, harnessId, 'none'));
+    const health = await callTool(client, 'get_health', { harnessId });
+    expect(health.body).toEqual({
+      status: 'error',
+      reason: 'harness_not_found',
+      detail: { harnessId },
+    });
+    const context = await callTool(client, 'resolve_context', { itemId });
+    expect(context.body).toEqual({ status: 'error', reason: 'item_not_found', detail: { itemId } });
+    const params = { harnessId, stageKey: 'package' };
+    const rows = await callTool(client, 'query_entities', { query: 'stage_items', params });
+    expect(rows.body).toMatchObject({ status: 'error', reason: 'harness_not_found' });
+  });
+
+  it('reads the same scene under a working delegation', async () => {
+    const r = await rig();
+    const harnessId = await harnessOf(r);
+    const itemId = await itemOn(r, harnessId);
+    const client = await login(r, KIM, await delegate(r, KIM, harnessId));
+    expect((await callTool(client, 'get_health', { harnessId })).isError).toBe(false);
+    expect((await callTool(client, 'resolve_context', { itemId })).isError).toBe(false);
+    const params = { harnessId, stageKey: 'package' };
+    const rows = await callTool(client, 'query_entities', { query: 'stage_items', params });
+    expect(rows.isError).toBe(false);
   });
 });
