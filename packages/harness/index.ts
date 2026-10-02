@@ -33,6 +33,13 @@ export type { Activated, ActivateInput } from './stages/activate.ts';
 export type { StageChange, StageCommands, StageInput } from './stages/commands.ts';
 export type { EnqueueInput } from './items/enqueue.ts';
 export type { ItemCommands } from './items/commands.ts';
+export type {
+  Imported,
+  ImportIssueInput,
+  ImportTarget,
+  LabelRemoved,
+  LabelRemovedInput,
+} from './items/import.ts';
 export type { Claimed, ClaimInput } from './items/claim.ts';
 export type { SubmitChange, Submitted, SubmitInput } from './items/submit.ts';
 export { expireLapsedLease, LEASE_MS, LEASE_WARNING_MS } from './items/leases.ts';
