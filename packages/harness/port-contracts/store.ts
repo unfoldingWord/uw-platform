@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Store, StoreTransaction } from '../ports.ts';
+import { awaitBlocked, type LockWaiters } from './lock-wait.ts';
 import { describeNotWired } from './not-wired-cases.ts';
 import { describeStoreGateways, type SeededPage } from './store-gateways.ts';
 
@@ -10,6 +11,7 @@ export type StoreSubject = {
   readonly expectedMigrations: readonly number[];
   seedPage(page: SeededPage): Promise<void>;
   advisoryLocksHeld(tx: StoreTransaction): Promise<number>;
+  readonly lockWaiters?: LockWaiters;
   close(): Promise<void>;
 };
 
@@ -26,13 +28,11 @@ async function takeTwice(tx: StoreTransaction): Promise<void> {
   await tx.lock('store-contract');
 }
 
-declare function setTimeout(handler: () => void, milliseconds: number): unknown;
-
-function pause(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
-export async function race(store: Store, firstWork: () => Promise<void>): Promise<string[]> {
+export async function race(
+  store: Store,
+  waiters: LockWaiters | undefined,
+  firstWork: () => Promise<void>,
+): Promise<string[]> {
   const order: string[] = [];
   let signal: () => void = () => undefined;
   let fail: (error: unknown) => void = () => undefined;
@@ -44,7 +44,7 @@ export async function race(store: Store, firstWork: () => Promise<void>): Promis
     .transaction(async (tx) => {
       await tx.lock('store-contract-race');
       signal();
-      await pause(150);
+      await awaitBlocked(waiters);
       await firstWork();
       order.push('first finished');
     })
@@ -63,14 +63,16 @@ export async function race(store: Store, firstWork: () => Promise<void>): Promis
 
 function describeRace(subject: () => StoreSubject): void {
   it('holds a second transaction on a lock until the first commits', async () => {
-    expect(await race(subject().store, async () => undefined)).toEqual([
+    expect(await race(subject().store, subject().lockWaiters, async () => undefined)).toEqual([
       'first finished',
       'second locked',
     ]);
   });
 
   it('releases a lock when the transaction that held it throws', async () => {
-    const order = await race(subject().store, () => Promise.reject(new Error('after the lock')));
+    const order = await race(subject().store, subject().lockWaiters, () =>
+      Promise.reject(new Error('after the lock')),
+    );
     expect(order).toEqual(['first failed', 'second locked']);
   });
 }

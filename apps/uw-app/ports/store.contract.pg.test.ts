@@ -1,7 +1,7 @@
 import { describe } from 'vitest';
 import { createClient } from '@uw/db/client';
 import { migrationTimestamps } from '@uw/db/journal';
-import { advisoryLocksHeld } from '@uw/db/store';
+import { advisoryLocksHeld, lockWaiters } from '@uw/db/store';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
 import { seedPage } from '@uw/db/test-seed';
 import { describeStoreContract } from '@uw/harness/port-contracts/store';
@@ -18,6 +18,7 @@ describe.skipIf(!testServer)('DX-3 the platform store on Postgres', () => {
         expectedMigrations: migrationTimestamps,
         seedPage: (page) => seedPage(db, page),
         advisoryLocksHeld,
+        lockWaiters: () => lockWaiters(db),
         close: async () => {
           await db.$client.end();
           await database.drop();

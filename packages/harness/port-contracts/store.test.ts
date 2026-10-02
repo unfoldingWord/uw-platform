@@ -22,6 +22,8 @@ const lockRefused: Store = {
 
 describe('DX-3 the store contract race', () => {
   it('rejects at once when the first transaction fails before it holds the lock', async () => {
-    await expect(race(lockRefused, async () => undefined)).rejects.toThrow('lock refused');
+    await expect(race(lockRefused, undefined, async () => undefined)).rejects.toThrow(
+      'lock refused',
+    );
   }, 1_000);
 });
