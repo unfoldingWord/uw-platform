@@ -98,6 +98,15 @@ const drifting = scenarioOf('ZZ-10.drifting', async (world) => {
   return { state: {} };
 });
 
+const topical = scenarioOf('ZZ-10.topical', async (world) => {
+  const context = await contextOf(world);
+  await world.adapters.store.transaction(async (tx) => {
+    const item = await withTwoItemEvents(context, tx);
+    await tx.harnessItems.write.project(itemStateSchema.parse({ ...item, zulipTopic: 'a topic' }));
+  });
+  return { state: {} };
+});
+
 const long = scenarioOf('ZZ-10.long', async (world) => {
   const context = await contextOf(world);
   await world.adapters.store.transaction(async (tx) => {
@@ -122,6 +131,15 @@ describe('KN-4 DX-4 the runner reads the log and fails a scenario whose projecti
         [2, 'item_claimed'],
       ]);
       expect(result.report?.state).toEqual({});
+    },
+    worldTimeout,
+  );
+
+  it(
+    'does not call a topic the log cannot rebuild drift',
+    async () => {
+      const result = await runScenario(topical, () => createWorld());
+      expect(result.failure).toBeNull();
     },
     worldTimeout,
   );

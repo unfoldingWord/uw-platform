@@ -6,6 +6,8 @@ import {
   type NewHarnessEvent,
 } from '@uw/contracts';
 
+export const notReplayed: readonly (keyof ItemState)[] = ['zulipTopic'];
+
 export type FoldableEvent = NewHarnessEvent | HarnessEvent;
 
 export class ReplayError extends Error {
