@@ -1,4 +1,4 @@
-import type { Principal } from '@uw/contracts';
+import type { GateDecision, Principal } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import {
   createKernel,
@@ -116,32 +116,6 @@ describe('KN-13 a connector that refuses or is not wired leaves the decision and
       'connector_error: TypeError',
     );
   });
-
-  sceneIt(
-    'records a merge that succeeded after the item left the gate, without the stage exit',
-    async (scene) => {
-      const connectors: Connectors = {
-        run: async () => {
-          await takeOver(scene);
-          return { outcome: 'succeeded', detail: { sha: 'merged1' } };
-        },
-      };
-      const before = await itemLog(scene.world, scene.harnessId, scene.itemId);
-      const decided = value(await approve(scene, kernelWith(scene, { connectors })));
-      expect(decided).toMatchObject({ advanced: false, item: { stageKey: 'ship' } });
-      expect(decided.item.gateStatus).toBe('working');
-      const after = await itemLog(scene.world, scene.harnessId, scene.itemId);
-      expect(namesSince(before, after)).toEqual([
-        'gate_approved',
-        'gate_taken_over',
-        'connector_succeeded',
-      ]);
-      expect(after.events.at(-1)?.evidence).toEqual({
-        connector: 'merge',
-        detail: { sha: 'merged1' },
-      });
-    },
-  );
 });
 
 describe('KN-13 approve at Ship reads the GitHub facts before its transaction', () => {
@@ -245,29 +219,72 @@ describe('KN-13 an approval whose connector has not reported refuses a second on
   });
 });
 
-describe('KN-13 the stage exit advances only the parking that was approved', () => {
-  sceneIt(
-    'records the merge but does not advance when a new head was parked while it ran',
-    async (scene) => {
-      const connectors: Connectors = {
-        run: async () => {
-          await resubmitAnotherHead(scene);
-          return { outcome: 'succeeded', detail: {} };
-        },
-      };
-      const decided = value(await approve(scene, kernelWith(scene, { connectors })));
-      expect(decided.advanced).toBe(false);
-      expect(decided.item).toMatchObject({
-        stageKey: 'ship',
-        gateStatus: 'parked',
-        expectedHead: ianSubmitsAnotherHead,
+async function decideWith(scene: Scene, decision: GateDecision) {
+  return scene.world.kernel.gates.decide(simCaller(scene.world, scene.ian), {
+    itemId: scene.itemId,
+    decision,
+    reason: null,
+    findings: decision === 'reject' ? ['not yet'] : [],
+  });
+}
+
+async function holderCannotRepark(scene: Scene): Promise<void> {
+  const max = simCaller(scene.world, scene.max);
+  const { items } = scene.world.kernel;
+  const claimed = await items.claim(max, { itemId: scene.itemId, delegationId: null });
+  expect(claimed.status).toBe('error');
+  const submitted = await items.submit(max, {
+    itemId: scene.itemId,
+    to: null,
+    evidence: {},
+    change: { ...standardChange, head: ianSubmitsAnotherHead },
+  });
+  expect(submitted.status).toBe('error');
+}
+
+describe('KN-13 no gate decision is taken while an approval awaits its connector', () => {
+  sceneIt('refuses take over and reject mid-flight, then accepts them after', async (scene) => {
+    const gate = gatedConnectors(scene);
+    const first = approve(scene, kernelWith(scene, { connectors: gate.connectors }));
+    await gate.running;
+    const before = await itemLog(scene.world, scene.harnessId, scene.itemId);
+    for (const decision of ['take_over', 'reject'] as const) {
+      expect(await decideWith(scene, decision)).toMatchObject({
+        status: 'error',
+        reason: 'decision_in_flight',
       });
-      const { events } = await itemLog(scene.world, scene.harnessId, scene.itemId);
-      const names = events.map((event) => event.name);
-      expect(names.slice(-2)).toEqual(['submitted_to_gate', 'connector_succeeded']);
-      expect(names.slice(names.lastIndexOf('gate_approved'))).not.toContain('stage_advanced');
-    },
-  );
+    }
+    await holderCannotRepark(scene);
+    expect(await itemLog(scene.world, scene.harnessId, scene.itemId)).toEqual(before);
+    scene.world.adapters.connectors.refuseNext('merge', 'merge conflict');
+    gate.release();
+    expect(value(await first)).toMatchObject({ advanced: false, item: { gateStatus: 'parked' } });
+    expect(value(await decideWith(scene, 'reject')).item.gateStatus).toBe('working');
+    const { decisions } = await itemLog(scene.world, scene.harnessId, scene.itemId);
+    expect(decisions).toEqual(['approve', 'reject']);
+  });
+});
+
+describe('KN-13 the stage exit advances the parking that was approved', () => {
+  sceneIt('refuses a take over tried while the merge runs, then advances', async (scene) => {
+    let midFlight: KernelOutcome<unknown> | null = null;
+    const connectors: Connectors = {
+      run: async () => {
+        midFlight = await decideWith(scene, 'take_over');
+        return { outcome: 'succeeded', detail: {} };
+      },
+    };
+    const before = await itemLog(scene.world, scene.harnessId, scene.itemId);
+    const decided = value(await approve(scene, kernelWith(scene, { connectors })));
+    expect(midFlight).toMatchObject({ status: 'error', reason: 'decision_in_flight' });
+    expect(decided).toMatchObject({ advanced: true, item: { stageKey: 'validate' } });
+    const after = await itemLog(scene.world, scene.harnessId, scene.itemId);
+    expect(namesSince(before, after)).toEqual([
+      'gate_approved',
+      'connector_succeeded',
+      'stage_advanced',
+    ]);
+  });
 });
 
 describe('KN-13 approve at Ship reads GitHub only for an admin and never throws on a failed read', () => {
