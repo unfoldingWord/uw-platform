@@ -79,6 +79,42 @@ function device(owner: Principal): Principal {
   return simAgent(owner, `${owner.personId}/claude`, { interactive: true });
 }
 
+async function hidesBindingFromStranger(scene: Scene): Promise<void> {
+  const stranger = await simPerson(scene.world, 4, []);
+  const elsewhere = { ...issue, repo: 'unfoldingWord/other' };
+  const refusal = {
+    status: 'error',
+    reason: 'not_permitted',
+    detail: { harnessId: scene.harnessId },
+  };
+  expect(await importAs(scene, stranger, { issue: elsewhere })).toEqual(refusal);
+  expect(await importAs(scene, stranger)).toEqual(refusal);
+  expect(await itemCount(scene)).toBe(0);
+}
+
+async function refusesMalformedRemoval(scene: Scene): Promise<void> {
+  await importAs(scene, simIngest());
+  const ingest = simCaller(scene.world, simIngest());
+  expect(await removeAs(scene, ingest, 'h'.repeat(51))).toEqual({
+    status: 'error',
+    reason: 'malformed_command',
+    detail: { githubId: issue.githubId, field: 'label' },
+  });
+  const undated = await scene.world.kernel.items.labelRemoved(ingest, {
+    githubId: issue.githubId,
+    label: 'harness',
+    githubUpdatedAt: 'yesterday',
+  });
+  expect(undated).toEqual({
+    status: 'error',
+    reason: 'malformed_command',
+    detail: { githubId: issue.githubId, field: 'githubUpdatedAt' },
+  });
+  expect(await removeAs(scene, ingest, 'harness')).toMatchObject({
+    value: { recorded: true },
+  });
+}
+
 describe("GH-3 only the ingest principal or a writer on the area imports, onto the harness of the issue's repository", () => {
   it('refuses an agent device with editor and a viewer person, and creates nothing', () =>
     inScene(async (scene) => {
@@ -108,6 +144,9 @@ describe("GH-3 only the ingest principal or a writer on the area imports, onto t
       ).toMatchObject({ reason: 'harness_not_found' });
       expect(await itemCount(scene)).toBe(0);
     }));
+
+  it('answers a person without grants alike whether or not the repository is bound', () =>
+    inScene(hidesBindingFromStranger));
 
   it('refuses an issue in another repository with a closed-set reason, even from the ingest principal', () =>
     inScene(async (scene) => {
@@ -154,7 +193,7 @@ describe('GH-3 an issue on no harness of its repository creates nothing, and an 
     }));
 });
 
-describe('GH-3 the import target is the harness bound to the repository, hidden from anyone else', () => {
+describe('the import target is the harness bound to the repository, hidden from anyone else', () => {
   it('answers the software harness and its area for a repository named in another case', () =>
     inScene(async (scene) => {
       for (const actor of [simIngest(), scene.viewer]) {
@@ -206,6 +245,9 @@ describe('GH-3 only the ingest principal records a removed label, once per item'
         value: { recorded: true },
       });
     }));
+
+  it('refuses a label over 50 characters or an update time that is not an instant', () =>
+    inScene(refusesMalformedRemoval));
 
   it('records nothing a second time, whatever the case of the label or the time of the retry', () =>
     inScene(async (scene) => {

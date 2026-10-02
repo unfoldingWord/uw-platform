@@ -88,6 +88,46 @@ async function oneItemPerIssue(connections: Connections): Promise<void> {
   }
 }
 
+function removeOn(db: Database, round: number) {
+  return kernelOn(db, clock).items.labelRemoved(
+    { actor: ingestPrincipal(), traceId: crypto.randomUUID() },
+    {
+      githubId: issue.githubId + round,
+      label: 'harness',
+      githubUpdatedAt: new Date(instant.getTime() + round).toISOString(),
+    },
+  );
+}
+
+async function labelEvents(db: Database, githubId: number): Promise<number> {
+  const rows = await db.$client`
+    SELECT e.id FROM harness_events e JOIN harness_items i ON i.id = e.item_id
+    WHERE e.name = 'label_removed' AND i.issue_github_id = ${githubId}`;
+  return rows.length;
+}
+
+async function oneRemovalPerIssue(connections: Connections): Promise<void> {
+  await seedHarness(connections.one);
+  for (let round = 0; round < rounds; round += 1) {
+    valueOf(await importOn(connections.one, round));
+    const outcomes = await Promise.all([
+      removeOn(connections.one, round),
+      removeOn(connections.two, round),
+    ]);
+    const recorded = outcomes.map((outcome) => valueOf(outcome).recorded);
+    expect(recorded.sort()).toEqual([false, true]);
+    expect(await labelEvents(connections.one, issue.githubId + round)).toBe(1);
+  }
+}
+
+describe.skipIf(!testServer)(
+  'GH-3 two label removals of one issue on two connections record one event',
+  () => {
+    it('answers recorded once and records one label_removed', () =>
+      withConnections(oneRemovalPerIssue));
+  },
+);
+
 describe.skipIf(!testServer)(
   'GH-3 two imports of one issue on two connections make one item',
   () => {
