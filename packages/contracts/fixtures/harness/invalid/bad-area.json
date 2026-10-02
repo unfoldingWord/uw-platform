@@ -3,6 +3,7 @@
   "key": "software",
   "template": "software",
   "jdArea": "80-99",
+  "repository": "unfoldingWord/uw-platform",
   "hostedBuilderEnabled": false,
   "paused": false
 }
