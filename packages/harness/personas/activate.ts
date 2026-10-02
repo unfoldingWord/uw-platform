@@ -13,12 +13,14 @@ import { lockKeys } from '../lock-keys.ts';
 import {
   createItem,
   draft,
+  readAllEvents,
   recordContext,
   recordHarnessEvents,
   type NewItem,
 } from '../items/record.ts';
 import { refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { PageFacts, Ports, StoreTransaction } from '../ports.ts';
+import { agentRefusal } from '../stages/rules.ts';
 import { toolCheck, type ToolCheckFailure } from './tool-check.ts';
 
 type PersonaPorts = Pick<Ports, 'grants' | 'ids'>;
@@ -36,11 +38,13 @@ type Opening = { readonly itemId: string; readonly create: NewItem | null };
 type Activation = {
   readonly caller: Caller;
   readonly pageId: string;
+  readonly expectedVersion: number;
   readonly at: Date;
   readonly registry: readonly VerbDefinition[];
 };
 
 const SOFTWARE_HARNESS_KEY = 'software';
+const SOFTWARE_HARNESS_MISSING = 'software_harness_missing';
 
 type Readable = {
   readonly page: PageFacts;
@@ -54,6 +58,8 @@ async function readablePage(
   activation: Activation,
 ): Promise<Readable | Refused> {
   const { caller, at, pageId } = activation;
+  const agent = agentRefusal(caller);
+  if (agent !== null) return agent;
   const personId = caller.actor.personId;
   if (personId === null) return refused('not_permitted', { actor: caller.actor.identity });
   const [page] = await tx.pages.read.facts([pageId]);
@@ -93,18 +99,32 @@ function lowestStageKey(stages: readonly { key: string; position: number }[]): s
   return sorted[0]?.key ?? null;
 }
 
+async function earlierItems(
+  tx: StoreTransaction,
+  persona: Persona,
+  verb: string,
+): Promise<ReadonlySet<unknown>> {
+  const events = await readAllEvents(tx, persona.harness.id, null);
+  const earlier = events.filter(
+    (event) =>
+      event.name === 'persona_activation_failed' &&
+      event.evidence['pageId'] === persona.page.id &&
+      event.evidence['verb'] === verb,
+  );
+  return new Set(earlier.map((event) => event.evidence['itemId']));
+}
+
 async function openingFor(
   ports: PersonaPorts,
   tx: StoreTransaction,
-  pageId: string,
-  title: string,
+  persona: Persona,
+  failure: ToolCheckFailure,
 ): Promise<Opening | null> {
   const software = await tx.harnesses.read.byKey(SOFTWARE_HARNESS_KEY);
   if (software === null) return null;
+  const earlier = await earlierItems(tx, persona, failure.verb);
   const items = await tx.harnessItems.read.forHarness(software.id);
-  const open = items.find(
-    (item) => item.pageId === pageId && item.title === title && item.gateStatus !== 'done',
-  );
+  const open = items.find((item) => earlier.has(item.itemId) && item.gateStatus !== 'done');
   if (open !== undefined) return { itemId: open.itemId, create: null };
   const stageKey = lowestStageKey(await tx.harnessStages.read.forHarness(software.id));
   if (stageKey === null) return null;
@@ -113,8 +133,8 @@ async function openingFor(
     itemId,
     harnessId: software.id,
     stageKey,
-    title,
-    pageId,
+    title: failure.message,
+    pageId: persona.page.id,
     priority: 0,
     due: null,
   };
@@ -129,8 +149,8 @@ async function recordFailure(
   failure: ToolCheckFailure,
 ): Promise<Refused> {
   const pageId = persona.page.id;
-  const opening =
-    failure.reason === 'unknown_verb' ? await openingFor(ports, tx, pageId, failure.message) : null;
+  const missing = failure.reason === 'unknown_verb';
+  const opening = missing ? await openingFor(ports, tx, persona, failure) : null;
   await tx.lock(lockKeys.harnessEvents(persona.harness.id));
   if (opening?.create) await tx.lock(lockKeys.harnessEvents(opening.create.harnessId));
   const context = recordContext(ports, activation.caller, activation.at);
@@ -147,7 +167,8 @@ async function recordFailure(
     }),
   ]);
   if (opening?.create) await createItem(tx, context, opening.create);
-  return refused(reason, { verb, message, itemId });
+  const unopened = missing && opening === null ? { why: SOFTWARE_HARNESS_MISSING } : {};
+  return refused(reason, { verb, message, itemId, ...unopened });
 }
 
 function verbsOf(frontmatter: Frontmatter): readonly string[] {
@@ -166,6 +187,9 @@ export async function activateIn(
   if ('status' in persona) return persona;
   const denied = authorised(readable, persona.harness, activation.at);
   if (denied !== null) return denied;
+  if (persona.page.version !== activation.expectedVersion) {
+    return refused('stale_version', { pageId: persona.page.id, version: persona.page.version });
+  }
   if (persona.page.status !== 'suggested') {
     return refused('not_permitted', { why: 'not_suggested' });
   }

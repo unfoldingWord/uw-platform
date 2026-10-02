@@ -6,7 +6,10 @@ import { agentRefusal } from '../stages/rules.ts';
 import { activateIn } from './activate.ts';
 
 export type PersonaCommands = {
-  activate(caller: Caller, input: { readonly pageId: string }): Promise<KernelOutcome<never>>;
+  activate(
+    caller: Caller,
+    input: { readonly pageId: string; readonly expectedVersion: number },
+  ): Promise<KernelOutcome<never>>;
 };
 
 export function createPersonaCommands(
@@ -18,7 +21,8 @@ export function createPersonaCommands(
       const at = ports.clock.now();
       const agent = agentRefusal(caller);
       if (agent !== null) return agent;
-      const activation = { caller, pageId: input.pageId, at, registry };
+      const { pageId, expectedVersion } = input;
+      const activation = { caller, pageId, expectedVersion, at, registry };
       return ports.store.transaction((tx) => activateIn(ports, tx, activation));
     },
   };
