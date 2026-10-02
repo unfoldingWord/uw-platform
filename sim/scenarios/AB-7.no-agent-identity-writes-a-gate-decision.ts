@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { software } from '@uw/harness';
-import { agentAttempts, gateViolations, stageViolations } from '../agent-boundary.ts';
+import { agentAttempts, gateViolations } from '../agent-boundary.ts';
 import { createSimHarness, simParkedAtCheck, simPerson } from '../fixtures.ts';
 import { defineScenario } from '../scenario.ts';
 import { simParkedAtShip, standardChange } from '../ship-fixtures.ts';
+import { stageViolations } from '../stage-boundary.ts';
 
 export const scenario = defineScenario({
   id: 'AB-7',
@@ -31,8 +32,8 @@ export const scenario = defineScenario({
       const target = { itemId: parked.itemId, harnessId: harness.id };
       assert.deepEqual(await gateViolations(world, target, attempts, decide), []);
     }
-    const updateStage = world.kernel.stages.updateStage;
-    assert.deepEqual(await stageViolations(world, harness.id, attempts, updateStage), []);
+    const { stages } = world.kernel;
+    assert.deepEqual(await stageViolations(world, harness.id, attempts, stages), []);
     return { state: { attempts: attempts.length, decisions: 0 } };
   },
 });
