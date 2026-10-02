@@ -224,6 +224,18 @@ async function lockedPage(
   return can(actor, 'read', { kind: 'area', area: page.jdArea }, at) ? page : null;
 }
 
+async function movesParent(
+  tx: Transaction,
+  command: Pick<UpdatePageCommand, 'pageId' | 'parentId'>,
+): Promise<boolean> {
+  if (command.parentId === null) return false;
+  const [row] = await tx
+    .select({ parentId: pages.parentId })
+    .from(pages)
+    .where(eq(pages.id, command.pageId));
+  return row?.parentId !== command.parentId;
+}
+
 type Save = {
   readonly actor: Principal;
   readonly checked: CheckedSave;
@@ -234,11 +246,13 @@ type Save = {
 async function updateInTransaction(tx: Transaction, save: Save): Promise<PageResult | PageRefusal> {
   const { actor, checked, traceId, at } = save;
   const { command } = checked;
-  if (command.parentId !== null) {
-    await tx.execute(advisoryLock(advisoryLocks.pageReparenting));
-  }
+  const reparents = await movesParent(tx, command);
+  if (reparents) await tx.execute(advisoryLock(advisoryLocks.pageReparenting));
   const stored = await lockedPage(tx, actor, command.pageId, at);
   if (!stored) return refused('page_not_found');
+  if (!reparents && command.parentId !== null && stored.parentId !== command.parentId) {
+    return refused('stale_version');
+  }
   if (!can(actor, 'write', { kind: 'area', area: stored.jdArea }, at)) {
     return refused('not_permitted');
   }
