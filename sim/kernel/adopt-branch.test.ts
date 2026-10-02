@@ -116,13 +116,26 @@ const notAdoptable = {
   detail: { adoptBranch: true, why: 'branch_not_adoptable' },
 };
 
-async function refusedWithNothingRecorded(scene: Scene, port: GitHubFacts): Promise<void> {
+async function refusedWithNothingRecorded(
+  scene: Scene,
+  port: GitHubFacts,
+  refusal: unknown = notAdoptable,
+): Promise<void> {
   const before = await eventsOf(scene);
-  expect(await adoptWith(scene, port)).toEqual(notAdoptable);
+  expect(await adoptWith(scene, port)).toEqual(refusal);
   expect(await eventsOf(scene)).toEqual(before);
 }
 
-describe('GH-4 adopting takes only the tip of the item’s own branch in its harness repository', () => {
+function freshAtShifted(scene: Scene, milliseconds: number): PullRequestFacts {
+  const freshAt = new Date(scene.world.adapters.clock.now().getTime() + milliseconds);
+  return tipFacts(scene, { freshAt });
+}
+
+function stale(freshAt: string | null) {
+  return { status: 'error', reason: 'facts_stale', detail: { freshAt } };
+}
+
+describe('GH-4 adopting takes only the tip of the item’s own branch on a pull request in its harness repository', () => {
   sceneIt('refuses a tip on another item’s branch and records nothing', async (scene) => {
     const other = tipFacts(scene, { headRef: `harness/${crypto.randomUUID()}` });
     await refusedWithNothingRecorded(scene, answering(other));
@@ -133,8 +146,27 @@ describe('GH-4 adopting takes only the tip of the item’s own branch in its har
     await refusedWithNothingRecorded(scene, answering(foreign));
   });
 
-  sceneIt('refuses when GitHub holds no facts for the pull request', async (scene) => {
-    await refusedWithNothingRecorded(scene, answering(null));
+  sceneIt('answers facts_stale when GitHub holds no facts for the pull request', async (scene) => {
+    await refusedWithNothingRecorded(scene, answering(null), stale(null));
+  });
+
+  sceneIt('answers facts_stale for facts more than a minute either side of now', async (scene) => {
+    for (const shift of [-61_000, 61_000]) {
+      const facts = freshAtShifted(scene, shift);
+      const refusal = stale(facts.freshAt.toISOString());
+      await refusedWithNothingRecorded(scene, answering(facts), refusal);
+    }
+  });
+
+  sceneIt('adopts facts read within the minute', async (scene) => {
+    const claimed = value(await adoptWith(scene, answering(freshAtShifted(scene, -59_000))));
+    expect(claimed.branch.adopted).toBe(true);
+  });
+
+  sceneIt('refuses the branch of a closed or merged pull request', async (scene) => {
+    for (const state of ['closed', 'merged'] as const) {
+      await refusedWithNothingRecorded(scene, answering(tipFacts(scene, { state })));
+    }
   });
 
   sceneIt('refuses a tip that is not a full SHA', async (scene) => {
@@ -155,7 +187,9 @@ describe('GH-4 adopting takes only the tip of the item’s own branch in its har
       detail: { port: 'githubFacts' },
     });
   });
+});
 
+describe('adoption reads GitHub facts outside the claim transaction', () => {
   sceneIt('reads GitHub facts before the claim transaction opens', async (scene) => {
     const port: GitHubFacts = {
       pullRequest: async () => {

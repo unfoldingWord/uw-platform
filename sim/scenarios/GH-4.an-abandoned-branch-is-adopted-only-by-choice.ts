@@ -77,8 +77,14 @@ async function heldAtScope(scene: Cast, builder: Caller): Promise<string> {
   return itemId;
 }
 
-async function claimAfterLapse(scene: Cast, caller: Caller, itemId: string, adopt: boolean) {
-  scene.world.adapters.clock.advance(16 * minute);
+async function claimAfterLapse(
+  scene: Cast,
+  caller: Caller,
+  itemId: string,
+  adopt: boolean,
+  lapse = 16 * minute,
+) {
+  scene.world.adapters.clock.advance(lapse);
   const before = await itemLog(scene.world, scene.harnessId, itemId);
   const claimed = valueOf(
     await scene.world.kernel.items.claim(caller, {
@@ -121,10 +127,11 @@ async function declined(scene: Cast, itemId: string): Promise<void> {
 }
 
 async function adopted(scene: Cast, third: Caller, itemId: string): Promise<void> {
+  scene.world.adapters.clock.advance(16 * minute);
   scene.world.adapters.githubFacts.given(
     greenFacts(scene.world, { itemId, head: pushedTip, reviews: [] }),
   );
-  const claim = await claimAfterLapse(scene, third, itemId, true);
+  const claim = await claimAfterLapse(scene, third, itemId, true, 0);
   assert.deepEqual(claim.names, ['lease_expired', 'item_claimed', 'branch_adopted']);
   const recorded = claim.events.find((event) => event.name === 'branch_adopted');
   assert.deepEqual(recorded?.evidence, { head: pushedTip });

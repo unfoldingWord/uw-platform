@@ -21,6 +21,7 @@ import type { EffectConnector, Ports, PullRequestFacts, StoreTransaction } from 
 import { shipRule } from '../ship-rule.ts';
 import { exitThroughConnector, type ExitPorts } from './exit.ts';
 import { factsFailure } from './facts-failure.ts';
+import { isStale, staleRefusal } from './facts-fresh.ts';
 import { decisionInFlight, sameChange } from './parking.ts';
 import { assembleShipInput, riskDerivedAtShip } from './ship-input.ts';
 
@@ -57,8 +58,6 @@ export type PendingExit = {
 
 const shipDecisions: ReadonlySet<GateDecision> = new Set<GateDecision>(['approve', 'override']);
 
-const FACTS_FRESH_MS = 60_000;
-
 export function effectOf(connector: Connector): EffectConnector | null {
   return connector === 'none' ? null : connector;
 }
@@ -93,14 +92,6 @@ export async function readShipFacts(
   } catch (error) {
     return factsFailure(error);
   }
-}
-
-function isStale(facts: PullRequestFacts, at: Date): boolean {
-  return Math.abs(facts.freshAt.getTime() - at.getTime()) > FACTS_FRESH_MS;
-}
-
-function staleRefusal(facts: PullRequestFacts): Refused {
-  return refused('facts_stale', { freshAt: facts.freshAt.toISOString() });
 }
 
 export async function inFlightRefusal(
