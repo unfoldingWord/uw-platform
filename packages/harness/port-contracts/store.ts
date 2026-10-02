@@ -183,7 +183,7 @@ export function describeStoreContract(
     });
 
     describeExclusion(() => subject, shape);
-    describeStoreGateways(adapter, () => subject);
+    describeStoreGateways(adapter, () => subject, shape.concurrentConnections);
   });
 }
 
