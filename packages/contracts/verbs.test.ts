@@ -128,6 +128,12 @@ describe('AB-1 every verb carries a summary a tool list can show', () => {
     expect(allSummaryProblems()).toEqual([]);
   });
 
+  it('words claim_item as the registry promises', () => {
+    expect(findVerb('claim_item')?.summary).toBe(
+      "Claim an item; an agent's claim takes a 15-minute lease. An unattended runner names its delegation.",
+    );
+  });
+
   it('serialises every summary in the manifest', () => {
     const manifest = verbManifest();
     expect(manifest.map((entry) => entry.summary)).toEqual(
