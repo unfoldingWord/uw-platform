@@ -7,6 +7,7 @@ const kernelTables: readonly PgTable[] = [
   schema.harnesses,
   schema.harnessStages,
   schema.harnessItems,
+  schema.harnessEvents,
   schema.harnessRuns,
   schema.gateDecisions,
   schema.delegations,

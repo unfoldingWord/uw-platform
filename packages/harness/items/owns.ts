@@ -1,1 +1,1 @@
-export const owns = ['harness_items'] as const;
+export const owns = ['harness_events', 'harness_items'] as const;
