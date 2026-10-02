@@ -1,9 +1,6 @@
 import type { Caller } from '../caller.ts';
 import type { KernelOutcome } from '../outcome.ts';
-import type { Ports } from '../ports.ts';
-import { decide, type Decided, type DecideInput } from './decide.ts';
-
-type GatePorts = Pick<Ports, 'clock' | 'connectors' | 'githubFacts' | 'grants' | 'ids' | 'store'>;
+import { decide, type Decided, type DecideInput, type GatePorts } from './decide.ts';
 
 export type GateCommands = {
   decide(caller: Caller, input: DecideInput): Promise<KernelOutcome<Decided>>;
