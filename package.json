@@ -21,13 +21,15 @@
     "sim:all": "node sim/cli/sim.ts all",
     "walk": "node sim/cli/walk.ts",
     "walk:all": "node sim/cli/walk.ts all",
+    "trace": "node tools/trace/check-trace.ts",
+    "trace:built": "node tools/trace/check-trace.ts --built",
     "db:generate": "pnpm --filter @uw/db exec drizzle-kit generate",
     "db:migrate": "node packages/db/bin/migrate.ts",
     "test": "vitest run",
     "build": "pnpm -r --if-present run build",
     "audit:prod": "pnpm audit --prod --audit-level high",
     "audit:all": "pnpm audit --audit-level high",
-    "verify": "pnpm check && pnpm lint && pnpm lint:dates && pnpm lint:vendor && pnpm format:check && pnpm knip && pnpm architecture && pnpm test && pnpm build"
+    "verify": "pnpm check && pnpm lint && pnpm lint:dates && pnpm lint:vendor && pnpm format:check && pnpm knip && pnpm architecture && pnpm walk:all && pnpm trace:built && pnpm test && pnpm sim:all && pnpm build"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.22.0",
