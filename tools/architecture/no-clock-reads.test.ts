@@ -1,18 +1,19 @@
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { repoFiles } from '../repo-files.ts';
 
 const clockFreeRoots = ['packages/core', 'packages/harness'];
 
 const clockRead = /\bnew\s+Date\s*\(\s*\)|\bDate\s*\.\s*now\s*\(/;
 
 function sourcesUnder(root: string): string[] {
-  return readdirSync(root, { recursive: true, encoding: 'utf8' })
-    .filter(
-      (file) =>
-        /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file) && !file.includes('node_modules'),
-    )
-    .map((file) => join(root, file));
+  return repoFiles().filter(
+    (file) =>
+      file.startsWith(`${root}/`) &&
+      /\.tsx?$/.test(file) &&
+      !/\.test\.tsx?$/.test(file) &&
+      !file.includes('node_modules'),
+  );
 }
 
 function clockReaders(roots: readonly string[]): string[] {
