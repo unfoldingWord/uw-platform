@@ -10,6 +10,10 @@ export function allowed(
   return can(actor, action, { kind: 'area', area: harness.jdArea }, at);
 }
 
+export function isAgent(actor: Principal): boolean {
+  return actor.kind === 'agent' || !actor.identity.startsWith('human:');
+}
+
 export function bareAgent(identity: string): boolean {
   return identity.startsWith('agent:') && !identity.includes('/');
 }

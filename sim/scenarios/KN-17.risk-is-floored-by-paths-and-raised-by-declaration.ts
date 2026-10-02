@@ -38,6 +38,7 @@ async function atBuild(
       pageId: null,
       priority: 1,
       due: null,
+      delegationId: null,
     }),
   );
   const editor = simCaller(world, owner);

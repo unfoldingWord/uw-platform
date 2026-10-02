@@ -26,6 +26,7 @@ async function lapsedScene(world: World): Promise<Scene> {
       pageId: null,
       priority: 1,
       due: null,
+      delegationId: null,
     }),
   );
   await world.kernel.stages.updateStage(simCaller(world, admin), {

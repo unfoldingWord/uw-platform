@@ -1,11 +1,11 @@
 import type { Harness, ItemState, Principal } from '@uw/contracts';
-import { allowed, bareAgent } from '../access.ts';
+import { allowed, bareAgent, isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
-import { accepted, refused, type KernelOutcome } from '../outcome.ts';
+import { actingPrincipal, isRefusal } from '../delegations/acting.ts';
+import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
-import { withFreshGrants } from './claim.ts';
 import { lapseDrafts } from './leases.ts';
-import { draft, recordContext, recordItemEvents } from './record.ts';
+import { draft, recordContext, recordItemEvents, type RecordContext } from './record.ts';
 
 type ReleasePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
@@ -24,8 +24,33 @@ export async function holdsClaim(
   return delegation !== null && delegation.personId === actor.personId;
 }
 
-function adminOverride(actor: Principal, harness: Harness, at: Date): boolean {
-  return actor.kind !== 'agent' && allowed(actor, 'admin', harness, at);
+function adminOverride(fresh: Principal, harness: Harness, at: Date): boolean {
+  return !isAgent(fresh) && allowed(fresh, 'admin', harness, at);
+}
+
+type Release = {
+  readonly caller: Caller;
+  readonly input: ReleaseInput;
+  readonly item: ItemState;
+  readonly harness: Harness;
+  readonly context: RecordContext;
+};
+
+async function releaseRefusal(
+  ports: ReleasePorts,
+  tx: StoreTransaction,
+  { caller, input, item, harness, context }: Release,
+): Promise<Refused | null> {
+  const notHolder = refused('not_holder', { itemId: item.itemId });
+  const { at } = context;
+  if (await holdsClaim(tx, item, caller.actor, input)) {
+    const delegationId = input.delegationId;
+    const acting = await actingPrincipal(ports, tx, { caller, harness, delegationId, context });
+    if (isRefusal(acting)) return acting;
+    return allowed(acting, 'write', harness, at) ? null : notHolder;
+  }
+  const fresh = await actingPrincipal(ports, tx, { caller, harness, delegationId: null, context });
+  return !isRefusal(fresh) && adminOverride(fresh, harness, at) ? null : notHolder;
 }
 
 export function release(
@@ -39,20 +64,13 @@ export function release(
     if (item === null) return refused('item_not_found', { itemId: input.itemId });
     const harness = await tx.harnesses.read.byId(item.harnessId);
     if (harness === null) return refused('harness_not_found', { harnessId: item.harnessId });
-    const fresh = await withFreshGrants(ports, tx, caller.actor, at);
-    const holds =
-      (await holdsClaim(tx, item, caller.actor, input)) && allowed(fresh, 'write', harness, at);
-    if (item.holder === null || !(holds || adminOverride(caller.actor, harness, at))) {
-      return refused('not_holder', { itemId: item.itemId });
-    }
+    if (item.holder === null) return refused('not_holder', { itemId: item.itemId });
+    const context = recordContext(ports, caller, at);
+    const denied = await releaseRefusal(ports, tx, { caller, input, item, harness, context });
+    if (denied !== null) return denied;
     const lapse = lapseDrafts(item, at);
     const drafts = lapse.length > 0 ? lapse : [draft('item_released', { holder: item.holder })];
-    const recorded = await recordItemEvents(
-      tx,
-      recordContext(ports, caller, at),
-      item.itemId,
-      drafts,
-    );
+    const recorded = await recordItemEvents(tx, context, item.itemId, drafts);
     return accepted(recorded.item);
   });
 }

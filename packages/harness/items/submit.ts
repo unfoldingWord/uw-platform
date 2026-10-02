@@ -1,5 +1,6 @@
 import type {
   ExitGate,
+  Harness,
   HarnessEvent,
   ItemState,
   RiskDeclaration,
@@ -12,7 +13,6 @@ import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.
 import type { Ports, PullRequestRef, StoreTransaction } from '../ports.ts';
 import { runValidators } from '../validators/registry.ts';
 import { attachedPageIds } from '../validators/learning-attached.ts';
-import { withFreshGrants } from './claim.ts';
 import { expireLapsedLease, leaseLapsed } from './leases.ts';
 import {
   draft,
@@ -24,7 +24,8 @@ import {
 } from './record.ts';
 import { holdsClaim } from './release.ts';
 import { applyDeclaration, carryForward, floorFromPaths } from '../risk/derive.ts';
-import { delegationRefusal } from './run-steps.ts';
+import { heldStanding } from './run-steps.ts';
+import { actingPrincipal, isRefusal, recordDelegationRequired } from '../delegations/acting.ts';
 import {
   exitDrafts,
   isOccasionalTweak,
@@ -164,29 +165,42 @@ const gates: ReadonlyMap<ExitGate, GateHandler> = new Map<ExitGate, GateHandler>
 type Standing = {
   readonly caller: Caller;
   readonly item: ItemState;
+  readonly harness: Harness;
+  readonly stage: Stage;
   readonly context: RecordContext;
-  readonly permitted: boolean;
 };
+
+async function notHolderRefusal(
+  tx: StoreTransaction,
+  ports: SubmitPorts,
+  { caller, item, harness, context }: Standing,
+): Promise<Refused> {
+  const acting = await actingPrincipal(ports, tx, { caller, harness, delegationId: null, context });
+  const permitted = !isRefusal(acting) && allowed(acting, 'write', harness, context.at);
+  return permitted ? refused('not_holder', { itemId: item.itemId }) : notPermitted(item);
+}
 
 async function standingRefusal(
   tx: StoreTransaction,
   ports: SubmitPorts,
-  { caller, item, context, permitted }: Standing,
+  standing: Standing,
 ): Promise<Refused | null> {
+  const { caller, item, context } = standing;
   const holds = await holdsClaim(tx, item, caller.actor, {
     itemId: item.itemId,
     delegationId: item.delegationId,
   });
-  if (!holds) {
-    return permitted ? refused('not_holder', { itemId: item.itemId }) : notPermitted(item);
+  if (!holds) return notHolderRefusal(tx, ports, standing);
+  const held = await heldStanding(tx, ports, context, { caller, item });
+  if (held?.reason === 'delegation_required') {
+    return recordDelegationRequired(tx, context, item.itemId, standing.stage.key);
   }
-  const lapsed = await delegationRefusal(tx, ports, context, item);
-  if (lapsed !== null) return lapsed;
+  if (held !== null) return held;
   if (leaseLapsed(item, context.at)) {
     await expireLapsedLease(tx, context, item);
     return refused('lease_expired', { itemId: item.itemId, leaseExpiresAt: item.leaseExpiresAt });
   }
-  return permitted ? null : notPermitted(item);
+  return null;
 }
 
 function notPermitted(item: ItemState): Refused {
@@ -207,18 +221,13 @@ async function submitIn(
   const stages = await tx.harnessStages.read.forHarness(harness.id);
   const stage = stages.find((entry) => entry.key === item.stageKey);
   if (stage === undefined) return refused('stage_not_found', { stage: item.stageKey });
-  const fresh = await withFreshGrants(ports, tx, caller.actor, at);
   const context = recordContext(ports, caller, at);
-  const permitted = allowed(fresh, 'write', harness, at);
-  const denied = await standingRefusal(tx, ports, { caller, item, context, permitted });
+  const denied = await standingRefusal(tx, ports, { caller, item, harness, stage, context });
   if (denied !== null) return denied;
   const exit = resolveExit(stages, stage, input.to);
   if (exit === null) return refused('transition_not_allowed', { from: stage.key, to: input.to });
   if (unattendedLoop(exit, caller.actor, item.delegationId)) {
-    await recordItemEvents(tx, context, item.itemId, [
-      draft('delegation_required', { stage: stage.key }),
-    ]);
-    return refused('delegation_required', { stage: stage.key });
+    return recordDelegationRequired(tx, context, item.itemId, stage.key);
   }
   const handler = gates.get(stage.exitGate);
   if (handler === undefined) return refused('malformed_command', { exitGate: stage.exitGate });

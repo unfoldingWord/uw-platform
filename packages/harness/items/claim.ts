@@ -1,11 +1,10 @@
-import type { Harness, ItemState, Principal, Stage } from '@uw/contracts';
-import { allowed, bareAgent } from '../access.ts';
+import type { Harness, ItemState, Stage } from '@uw/contracts';
+import { allowed, isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
-import { beatPrincipal, personaMatches } from '../delegations/beat.ts';
-import { assertDelegationLive, recordLapse } from '../delegations/live.ts';
+import { actingPrincipal, isRefusal, recordDelegationRequired } from '../delegations/acting.ts';
 import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
-import type { Delegation, Ports, StoreTransaction } from '../ports.ts';
+import type { Ports, StoreTransaction } from '../ports.ts';
 import { lapseDrafts, LEASE_MS, leaseLapsed } from './leases.ts';
 import { draft, recordContext, recordItemEvents, type RecordContext } from './record.ts';
 
@@ -41,7 +40,7 @@ function claimGuards(scene: Scene, item: ItemState): Refused | null {
 }
 
 function pickupRefusal(caller: Caller, stage: Stage): Refused | null {
-  if (caller.actor.kind === 'agent' && stage.agentPickup === 'none') {
+  if (isAgent(caller.actor) && stage.agentPickup === 'none') {
     return refused('pickup_not_allowed', { stage: stage.key });
   }
   return null;
@@ -52,37 +51,7 @@ function lockedGuards(scene: Scene, item: ItemState): Refused | null {
   return gateRefusal(item) ?? pickupRefusal(scene.caller, scene.stage);
 }
 
-async function grantsGuard(
-  ports: ClaimPorts,
-  tx: StoreTransaction,
-  scene: Scene,
-): Promise<Refused | null> {
-  const { caller, harness, context } = scene;
-  const fresh = await withFreshGrants(ports, tx, caller.actor, context.at);
-  if (allowed(fresh, 'write', harness, context.at)) return null;
-  return refused('not_permitted', { harnessId: harness.id });
-}
-
-export async function withFreshGrants(
-  ports: Pick<Ports, 'grants'>,
-  tx: StoreTransaction,
-  actor: Principal,
-  at: Date,
-): Promise<Principal> {
-  if (actor.personId === null) return actor;
-  return { ...actor, grants: [...(await ports.grants.resolveIn(tx, actor.personId, at))] };
-}
-
-function bindingRefusal(scene: Scene, item: ItemState, delegation: Delegation): Refused | null {
-  const { caller, context } = scene;
-  const bound =
-    delegation.personId === caller.actor.personId &&
-    delegation.harnessId === item.harnessId &&
-    personaMatches(context.actor, delegation);
-  return bound ? null : refused('not_permitted', { delegationId: delegation.id });
-}
-
-async function delegationGuard(
+async function actingGuard(
   tx: StoreTransaction,
   ports: ClaimPorts,
   scene: Scene,
@@ -90,24 +59,13 @@ async function delegationGuard(
   delegationId: string | null,
 ): Promise<Refused | null> {
   const { caller, harness, stage, context } = scene;
-  if (delegationId === null) {
-    if (caller.actor.interactive && !bareAgent(caller.actor.identity)) return null;
-    await recordItemEvents(tx, context, item.itemId, [
-      draft('delegation_required', { stage: stage.key }),
-    ]);
-    return refused('delegation_required', { stage: stage.key });
+  const acting = await actingPrincipal(ports, tx, { caller, harness, delegationId, context });
+  if (isRefusal(acting)) {
+    if (acting.reason !== 'delegation_required') return acting;
+    return recordDelegationRequired(tx, context, item.itemId, stage.key);
   }
-  const liveness = await assertDelegationLive(tx, ports, delegationId, context.at);
-  if (liveness.delegation === null) return refused('delegation_not_found', { delegationId });
-  const unbound = bindingRefusal(scene, item, liveness.delegation);
-  if (unbound !== null) return unbound;
-  if (!liveness.live) {
-    if (liveness.why !== null) await recordLapse(tx, context, liveness.delegation, liveness.why);
-    return refused('delegation_lapsed', { delegationId, why: liveness.why });
-  }
-  const beat = beatPrincipal(liveness.delegation, liveness.grants, harness.jdArea, context.at);
-  if (allowed(beat, 'write', harness, context.at)) return null;
-  return refused('not_permitted', { delegationId, why: 'delegation_capability' });
+  if (allowed(acting, 'write', harness, context.at)) return null;
+  return refused('not_permitted', { harnessId: harness.id, delegationId });
 }
 
 async function takeClaim(
@@ -125,7 +83,7 @@ async function takeClaim(
   if (held >= stage.wipLimit) {
     return refused('wip_limit_reached', { stage: stage.key, wipLimit: stage.wipLimit });
   }
-  const leaseExpiresAt = caller.actor.kind === 'agent' ? new Date(at.getTime() + LEASE_MS) : null;
+  const leaseExpiresAt = isAgent(caller.actor) ? new Date(at.getTime() + LEASE_MS) : null;
   const won = await tx.harnessItems.write.claim({
     itemId: item.itemId,
     holder: caller.actor.identity,
@@ -188,10 +146,8 @@ async function claimIn(
   const locked = { ...scene, stage };
   const stale = lockedGuards(locked, item);
   if (stale !== null) return stale;
-  const denied = await delegationGuard(tx, ports, locked, item, input.delegationId);
+  const denied = await actingGuard(tx, ports, locked, item, input.delegationId);
   if (denied !== null) return denied;
-  const unpermitted = await grantsGuard(ports, tx, locked);
-  if (unpermitted !== null) return unpermitted;
   return takeClaim(tx, locked, item, input.delegationId);
 }
 

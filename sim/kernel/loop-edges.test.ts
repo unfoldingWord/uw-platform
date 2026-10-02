@@ -57,6 +57,7 @@ async function enqueueAt(scene: Scene, stageKey: string): Promise<string> {
       pageId: null,
       priority: 1,
       due: null,
+      delegationId: null,
     }),
   );
   await project(scene, itemId, (item) => ({ ...item, stageKey }));

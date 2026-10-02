@@ -96,6 +96,7 @@ async function parkAtShip(kernel: Kernel, ian: Principal): Promise<ItemState> {
       pageId: null,
       priority: 1,
       due: null,
+      delegationId: null,
     }),
     'enqueue',
   );

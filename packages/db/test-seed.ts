@@ -1,7 +1,8 @@
 import { eq } from 'drizzle-orm';
-import type { PageStatus, PageType, Role, Scope } from '@uw/contracts';
+import type { CapabilityWord, PageStatus, PageType, Role, Scope } from '@uw/contracts';
 import type { AnyExecutor } from './any-database.ts';
 import {
+  delegations,
   grantAudit,
   harnessEvents,
   harnessItems,
@@ -47,6 +48,14 @@ export async function revokeSeededGrant(db: AnyExecutor, grantId: string, at: Da
 
 export async function rewriteGrantAudit(db: AnyExecutor, actor: string): Promise<void> {
   await db.update(grantAudit).set({ actor });
+}
+
+export async function rewriteDelegation(
+  db: AnyExecutor,
+  delegationId: string,
+  change: { readonly capability?: CapabilityWord; readonly harnessId?: string },
+): Promise<void> {
+  await db.update(delegations).set(change).where(eq(delegations.id, delegationId));
 }
 
 const seededAt = new Date('2026-10-01T09:00:00.000Z');

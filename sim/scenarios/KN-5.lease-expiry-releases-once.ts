@@ -64,6 +64,7 @@ async function enqueue(scene: Cast, title: string): Promise<string> {
     pageId: null,
     priority: 1,
     due: null,
+    delegationId: null,
   });
   return valueOf(outcome).itemId;
 }

@@ -43,6 +43,7 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
       pageId: null,
       priority: 1,
       due: null,
+      delegationId: null,
     });
     const item = value(enqueued);
     await work({ world, harnessId: harness.id, itemId: item.itemId, kim, max });
@@ -172,6 +173,7 @@ describe('KN-5 the WIP limit counts agents against people', () => {
         pageId: null,
         priority: 1,
         due: null,
+        delegationId: null,
       }),
     );
     await claimAs(scene, agentCaller(scene, scene.max, 'builder', true));

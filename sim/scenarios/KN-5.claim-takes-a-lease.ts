@@ -56,6 +56,7 @@ export const scenario = defineScenario({
       pageId: null,
       priority: 1,
       due: null,
+      delegationId: null,
     });
     assert.equal(enqueued.status, 'accepted');
     if (enqueued.status !== 'accepted') throw new Error('unreachable');

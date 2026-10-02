@@ -1,11 +1,12 @@
 import type { ItemState } from '@uw/contracts';
 import { allowed } from '../access.ts';
 import type { Caller } from '../caller.ts';
+import { actingPrincipal, isRefusal } from '../delegations/acting.ts';
 import { accepted, refused, type KernelOutcome } from '../outcome.ts';
 import type { Ports } from '../ports.ts';
 import { createItem, recordContext } from './record.ts';
 
-type EnqueuePorts = Pick<Ports, 'clock' | 'ids' | 'store'>;
+type EnqueuePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
 export type EnqueueInput = {
   readonly harnessId: string;
@@ -13,6 +14,7 @@ export type EnqueueInput = {
   readonly pageId: string | null;
   readonly priority: number;
   readonly due: string | null;
+  readonly delegationId: string | null;
 };
 
 export async function enqueue(
@@ -24,7 +26,11 @@ export async function enqueue(
   return ports.store.transaction(async (tx) => {
     const harness = await tx.harnesses.read.byId(input.harnessId);
     if (harness === null) return refused('harness_not_found', { harnessId: input.harnessId });
-    if (!allowed(caller.actor, 'write', harness, at)) {
+    const context = recordContext(ports, caller, at);
+    const { delegationId } = input;
+    const actor = await actingPrincipal(ports, tx, { caller, harness, delegationId, context });
+    if (isRefusal(actor)) return actor;
+    if (!allowed(actor, 'write', harness, at)) {
       return refused('not_permitted', { harnessId: harness.id });
     }
     const stages = await tx.harnessStages.read.forHarness(harness.id);
@@ -33,7 +39,7 @@ export async function enqueue(
       null,
     );
     if (first === null) return refused('stage_not_found', { harnessId: harness.id });
-    const recorded = await createItem(tx, recordContext(ports, caller, at), {
+    const recorded = await createItem(tx, context, {
       itemId: ports.ids.next(),
       harnessId: harness.id,
       stageKey: first.key,
