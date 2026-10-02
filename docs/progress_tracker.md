@@ -443,6 +443,7 @@ Work that is built and whose verification did not run, with the reason.
 | 2026-10-02 | FD-11 | The real `setTimeout` behind `AppDeps.timers` in the health timeout: the tests inject a timer, so the 2 s bound itself runs only in production (the wall-time test flaked twice and was replaced in the final fix wave) | A deterministic test cannot also measure wall time |
 | 2026-10-02 | AB-2 AB-5 | Unbounded suggested writes: any minted agent can create unlimited `suggested` tasks and `draft` pages in an area it may write, the same class as the unbounded `gate_refused_to_agent` events | No rate limiting in v1; minting needs an editor grant |
 | 2026-10-02 | AB-1 FD-7 | That Cloudflare Access issues a token scoped to one application when a host has applications on more than one path (`/mcp` and the rest), so a `/mcp` token carries only the `mcp` audience; inferred from Access's per-application audiences, not run | No Access application exists yet; check on staging when the applications are applied |
+| 2026-10-02 | GH-6 CT-3 | Stored `template_activated` events written before contract 7.0.0 have no `repository`, so they no longer satisfy the live evidence schema; no reader parses that evidence today (`packages/harness/items/fold.ts` ignores the name). Harnesses activated before migration 0014 keep a null repository and no command sets one | Whether a deployed database already holds such events or harnesses was not checked; a validator that parses events by name, or a repository backfill before go-live, must handle both |
 
 ## Waiting on a person
 
