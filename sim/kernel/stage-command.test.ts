@@ -1,8 +1,9 @@
 import type { Harness, Stage } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
+import { revokeSeededGrant } from '@uw/db/test-seed';
 import { readAllEvents, software, type Caller } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, simAgent, simCaller, simPerson, simPersonId } from '../fixtures.ts';
+import { createSimHarness, simAgent, simCaller, simPerson } from '../fixtures.ts';
 import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -87,7 +88,9 @@ describe('KN-18 the stage command refuses what only a human admin may do', () =>
       change: { title: 'Changed' },
     });
     expect(outcome).toMatchObject({ status: 'error', reason: 'not_permitted' });
-    expect(simPersonId(1)).toBe(editor.personId);
+    expect((await logOf(world, harness.id)).map((event) => event.name)).toEqual([
+      'template_activated',
+    ]);
   });
 
   harnessIt('refuses an unknown harness', async (world, _harness, ian) => {
@@ -134,20 +137,23 @@ describe('KN-18 the stage command refuses what the kernel can see before Postgre
       reason: 'connector_not_registered',
       detail: { stage: 'extra', connector: 'deploy' },
     });
+    const last = (await logOf(world, harness.id)).at(-1);
+    expect(last?.name).toBe('stage_edit_refused');
+    expect(last?.evidence).toMatchObject({ reason: 'connector_not_registered' });
   });
+});
 
-  describe('KN-8 a dangling feeds target is refused at write time', () => {
-    harnessIt('refuses a feeds target that is not a stage', async (world, harness, ian) => {
-      const outcome = await world.kernel.stages.updateStage(ian, {
-        harnessId: harness.id,
-        stageKey: 'close',
-        change: { feeds: ['nowhere'] },
-      });
-      expect(outcome).toMatchObject({
-        status: 'error',
-        reason: 'unknown_feed_target',
-        detail: { stage: 'close', target: 'nowhere' },
-      });
+describe('KN-18 a dangling feeds target is refused at write time', () => {
+  harnessIt('refuses a feeds target that is not a stage', async (world, harness, ian) => {
+    const outcome = await world.kernel.stages.updateStage(ian, {
+      harnessId: harness.id,
+      stageKey: 'close',
+      change: { feeds: ['nowhere'] },
+    });
+    expect(outcome).toMatchObject({
+      status: 'error',
+      reason: 'unknown_feed_target',
+      detail: { stage: 'close', target: 'nowhere' },
     });
   });
 });
@@ -239,5 +245,54 @@ describe('KN-18 activating a second harness with a taken key', () => {
       template: software,
     });
     expect(outcome).toMatchObject({ status: 'error', reason: 'harness_exists' });
+  });
+});
+
+describe('KN-18 the stage command reads the admin grant again inside its transaction', () => {
+  const adminGrantId = '00000000-0000-4000-8000-000000000101';
+
+  harnessIt(
+    'refuses a stale principal whose admin grant was revoked',
+    async (world, harness, ian) => {
+      await revokeSeededGrant(world.database.db, adminGrantId, world.adapters.clock.now());
+      world.adapters.clock.advance(1000);
+      const update = await world.kernel.stages.updateStage(ian, {
+        harnessId: harness.id,
+        stageKey: 'build',
+        change: { title: 'Changed' },
+      });
+      const activate = await world.kernel.stages.activate(ian, {
+        harnessId: world.adapters.ids.next(),
+        harnessKey: 'other',
+        jdArea: '80-89',
+        template: software,
+      });
+      expect(update).toMatchObject({ status: 'error', reason: 'not_permitted' });
+      expect(activate).toMatchObject({ status: 'error', reason: 'not_permitted' });
+      expect(
+        (await stagesOf(world, harness.id)).find((stage) => stage.key === 'build')?.title,
+      ).toBe('Commits to PR');
+    },
+  );
+});
+
+describe('KN-18 an update cannot carry identity fields', () => {
+  const foreign = '00000000-0000-4000-8000-0000000000ff';
+
+  it.each([
+    ['key', { key: 'renamed' }],
+    ['id', { id: foreign }],
+    ['harnessId', { harnessId: foreign }],
+  ])('refuses a change carrying %s and changes nothing', async (_name, extra) => {
+    await withHarness(async (world, harness, ian) => {
+      const before = await stagesOf(world, harness.id);
+      const outcome = await world.kernel.stages.updateStage(ian, {
+        harnessId: harness.id,
+        stageKey: 'build',
+        change: Object.assign({ title: 'Changed' }, extra),
+      });
+      expect(outcome).toMatchObject({ status: 'error', reason: 'malformed_command' });
+      expect(await stagesOf(world, harness.id)).toEqual(before);
+    });
   });
 });

@@ -5,7 +5,7 @@ import type { Ports } from '../ports.ts';
 import { activateTemplate, type Activated, type ActivateInput } from './activate.ts';
 import { editInTransaction, type EditWork } from './edit.ts';
 
-type StagePorts = Pick<Ports, 'clock' | 'ids' | 'store'>;
+type StagePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
 export type StageInput = Omit<Stage, 'id' | 'harnessId' | 'paused'>;
 export type StageChange = Partial<Omit<Stage, 'id' | 'harnessId' | 'key'>>;
@@ -29,6 +29,11 @@ export type StageCommands = {
     input: { readonly harnessId: string; readonly order: readonly string[] },
   ): Promise<KernelOutcome<readonly Stage[]>>;
 };
+
+const stageChangeSchema = stageSchema
+  .omit({ id: true, harnessId: true, key: true })
+  .partial()
+  .strict();
 
 function replaceOne(stages: readonly Stage[], next: Stage): readonly Stage[] {
   return stages.map((stage) => (stage.key === next.key ? next : stage));
@@ -55,7 +60,9 @@ function updateWork(stageKey: string, change: StageChange): EditWork<Stage> {
   return (_harness, stages) => {
     const current = stages.find((stage) => stage.key === stageKey);
     if (current === undefined) return refused('stage_not_found', { stage: stageKey });
-    const next: Stage = { ...current, ...change };
+    const parsed = stageChangeSchema.safeParse(change);
+    if (!parsed.success) return refused('malformed_command', { stage: stageKey });
+    const next: Stage = Object.assign({}, current, parsed.data);
     if (!stageSchema.safeParse(next).success) {
       return refused('malformed_command', { stage: stageKey });
     }
