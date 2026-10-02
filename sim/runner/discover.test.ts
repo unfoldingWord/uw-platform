@@ -6,6 +6,7 @@ import { discoverScenarios } from './discover.ts';
 
 const scenariosDirectory = fileURLToPath(new URL('../scenarios/', import.meta.url));
 const fixturesRoot = fileURLToPath(new URL('./fixtures/', import.meta.url));
+const planted: string[] = [];
 
 const validScenario =
   "export const scenario = { id: 'ZZ-3', title: 't', run: async () => ({ events: [], state: {} }) };";
@@ -13,11 +14,14 @@ const validScenario =
 function plant(files: Readonly<Record<string, string>>): string {
   mkdirSync(fixturesRoot, { recursive: true });
   const directory = mkdtempSync(join(fixturesRoot, 'uw-scenarios-'));
+  planted.push(directory);
   for (const [file, text] of Object.entries(files)) writeFileSync(join(directory, file), text);
   return directory;
 }
 
-afterAll(() => rmSync(fixturesRoot, { recursive: true, force: true }));
+afterAll(() => {
+  for (const directory of planted) rmSync(directory, { recursive: true, force: true });
+});
 
 describe('DX-4 scenarios are files named for a requirement ID', () => {
   it('finds the step-2 scenarios, each declaring the ID its file name starts with', async () => {
