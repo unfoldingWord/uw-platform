@@ -78,7 +78,7 @@ function servedListGifts(): readonly VerbDefinition[] {
 const withFixtureRegistry: Activate = async (scene) => {
   const kim: Principal = await simPerson(scene.world, 5, admin3039);
   const personas = createPersonaCommands(scene.world.adapters, servedListGifts());
-  return personas.activate(simCaller(scene.world, kim), { pageId });
+  return personas.activate(simCaller(scene.world, kim), { pageId, expectedVersion: 1 });
 };
 
 describe('AB-8 activation refuses a forbidden verb and an unreachable verb', () => {
@@ -155,7 +155,11 @@ describe('persona activation refuses a caller who may not activate, and stops sh
     const agent: Activate = (scene) =>
       activatePersona(scene.world, simAgent(scene.ian, 'iterate', { interactive: true }), pageId);
     const seen = await inScene(requiring(['approve']), agent);
-    expect(seen.outcome).toMatchObject({ status: 'error', reason: 'not_permitted' });
+    expect(seen.outcome).toEqual({
+      status: 'error',
+      reason: 'not_permitted',
+      detail: { actor: 'agent:iterate' },
+    });
     expect(seen.failures).toEqual([]);
   });
 
@@ -225,7 +229,10 @@ describe('persona activation refuses a page it cannot activate before running th
 
   it('records a missing verb with no item when there is no software harness', async () => {
     const seen = await inScene(requiring(['summarise_measurements']), byIan, { software: false });
-    expect(seen.outcome).toMatchObject({ reason: 'unknown_verb', detail: { itemId: null } });
+    expect(seen.outcome).toMatchObject({
+      reason: 'unknown_verb',
+      detail: { itemId: null, why: 'software_harness_missing' },
+    });
     expect(seen.failures).toEqual([expect.objectContaining({ itemId: null })]);
   });
 });
@@ -247,4 +254,17 @@ describe('persona activation hides a page from a person who cannot read its area
       });
     },
   );
+});
+
+describe('AB-8 activation acts on the page version the person read', () => {
+  it('refuses a version that is no longer the stored one stale_version, with no event or item', async () => {
+    const stale: Activate = (scene) => activatePersona(scene.world, scene.ian, pageId, 2);
+    const seen = await inScene(requiring(['summarise_measurements']), stale);
+    expect(seen.outcome).toEqual({
+      status: 'error',
+      reason: 'stale_version',
+      detail: { pageId, version: 1 },
+    });
+    expect([seen.failures, seen.items, seen.status]).toEqual([[], 0, 'suggested']);
+  });
 });

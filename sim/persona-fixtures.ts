@@ -77,8 +77,9 @@ export function activatePersona(
   world: World,
   actor: Principal,
   pageId: string,
+  expectedVersion = 1,
 ): Promise<KernelOutcome<never>> {
-  return world.kernel.personas.activate(simCaller(world, actor), { pageId });
+  return world.kernel.personas.activate(simCaller(world, actor), { pageId, expectedVersion });
 }
 
 export function harnessLog(world: World, harnessId: string): Promise<readonly HarnessEvent[]> {

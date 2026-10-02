@@ -68,7 +68,23 @@ function itemIdsOf(failures: readonly HarnessEvent[]): readonly unknown[] {
 
 const missing = (verb: string) => `persona iterate requires verb ${verb}, which does not exist`;
 
+function renamed(identity: string): Between {
+  return (scene) =>
+    rewritePageFrontmatter(
+      scene.world.database.db,
+      pageId,
+      personaFrontmatter(scene, { identity, requires_tools: ['summarise_measurements'] }),
+    );
+}
+
 describe('AB-8 a missing verb opens one item per persona page and verb', () => {
+  it('keeps one item when the persona is renamed between attempts', async () => {
+    const seen = await attempts(['summarise_measurements'], [renamed('agent:tuner')]);
+    expect(seen.reasons).toEqual(['unknown_verb', 'unknown_verb']);
+    expect(seen.items).toHaveLength(1);
+    expect(itemIdsOf(seen.failures)).toEqual([seen.items[0]?.itemId, seen.items[0]?.itemId]);
+  });
+
   it('opens a second item when the persona later needs a different missing verb', async () => {
     const seen = await attempts(['summarise_measurements'], [requiring(['measure_reach'])]);
     expect(seen.reasons).toEqual(['unknown_verb', 'unknown_verb']);

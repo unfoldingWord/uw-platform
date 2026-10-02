@@ -142,6 +142,7 @@ async function secondBlockedOrArrived(scene: Scene, second: Gate): Promise<boole
 function activateOn(scene: Scene, db: Database, gate: Gate): Promise<KernelOutcome<never>> {
   return kernelOn(db, clock, { grants: gate.grants }).personas.activate(caller(scene.ian), {
     pageId,
+    expectedVersion: 1,
   });
 }
 
