@@ -5,7 +5,7 @@ import { hiddenItem, itemArea } from './item-scene.ts';
 
 function changeOf(input: VerbInput<'submit_to_gate'>): SubmitChange | null {
   const { pullRequest, head } = input;
-  return pullRequest && head ? { pullRequest, head, paths: [], declaration: null } : null;
+  return pullRequest && head ? { pullRequest, head } : null;
 }
 
 export const submitToGate = gatedHandler({

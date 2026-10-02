@@ -99,8 +99,6 @@ type ItemChange = Parameters<Scene['world']['kernel']['items']['submit']>[1]['ch
 const change = (head: string): ItemChange => ({
   pullRequest: { repo: 'unfoldingWord/uw-platform', number: 7 },
   head,
-  paths: ['packages/harness/items/submit.ts'],
-  declaration: null,
 });
 
 function eventsOf(scene: Scene, itemId: string | null): Promise<readonly HarnessEvent[]> {

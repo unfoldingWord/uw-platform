@@ -17,10 +17,10 @@ import {
 } from '../items/record.ts';
 import { resolveExit } from '../items/transitions.ts';
 import { refused, type Refused } from '../outcome.ts';
-import { PortNotWiredError } from '../port-errors.ts';
 import type { EffectConnector, Ports, PullRequestFacts, StoreTransaction } from '../ports.ts';
 import { shipRule } from '../ship-rule.ts';
 import { exitThroughConnector, type ExitPorts } from './exit.ts';
+import { factsFailure } from './facts-failure.ts';
 import { decisionInFlight, sameChange } from './parking.ts';
 import { assembleShipInput, riskDerivedAtShip } from './ship-input.ts';
 
@@ -73,12 +73,6 @@ async function itemAtConnectorExit(tx: StoreTransaction, itemId: string): Promis
   if (stage === undefined || effectOf(stage.connector) === null) return null;
   if (item.gateTarget === null) return { item, harness };
   return resolveExit(stages, stage, item.gateTarget)?.kind === 'forward' ? { item, harness } : null;
-}
-
-function factsFailure(error: unknown): Refused {
-  if (error instanceof PortNotWiredError) return refused('not_wired', { port: error.port });
-  const name = error instanceof Error ? error.name : 'unknown';
-  return refused('internal_error', { port: 'githubFacts', error: name });
 }
 
 export async function readShipFacts(

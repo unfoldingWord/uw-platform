@@ -57,13 +57,24 @@ async function submitWithChange(
 ): Promise<ItemState> {
   const caller = simCaller(world, worker);
   accepted(await world.kernel.items.claim(caller, { itemId, delegationId: null }), 'claim');
+  if (change !== null) world.adapters.githubFacts.given(factsOf(world, itemId, change));
   const submitted = await world.kernel.items.submit(caller, {
     itemId,
     to: null,
     evidence: {},
-    change,
+    change: change === null ? null : { pullRequest: change.pullRequest, head: change.head },
   });
   return accepted(submitted, 'submit').item;
+}
+
+export function declared(risk: RiskDeclaration | null): PullRequestDeclaration | null {
+  return risk === null ? null : { ...standardDeclaration, ...risk };
+}
+
+function factsOf(world: World, itemId: string, change: ShipChange): PullRequestFacts {
+  const { head, paths, pullRequest: ref } = change;
+  const declaration = declared(change.declaration);
+  return greenFacts(world, { itemId, head, reviews: [], paths, declaration, ref });
 }
 
 export async function simParkedAtShip(world: World, input: ShipInput): Promise<ItemState> {

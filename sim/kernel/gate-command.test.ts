@@ -10,7 +10,7 @@ import { readAllEvents, software, type KernelOutcome } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createSimHarness, simAgent, simCaller, simParkedAtCheck, simPerson } from '../fixtures.ts';
 import { readWorldLog } from '../runner/log.ts';
-import { simSha } from '../ship-fixtures.ts';
+import { greenFacts, simSha } from '../ship-fixtures.ts';
 import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -88,16 +88,17 @@ function namesAfter(before: Written, after: Written): string[] {
 async function withAclRisk(scene: Scene): Promise<void> {
   const ian = simCaller(scene.world, scene.ian);
   value(await decideAs(scene, scene.ian, { decision: 'take_over' }));
+  const pullRequest = { repo: 'unfoldingWord/uw-platform', number: 7 };
+  const head = simSha('abc123');
+  const paths = ['packages/core/acl.ts'];
+  const { itemId } = scene;
+  const facts = { itemId, head, reviews: [], ref: pullRequest, paths, declaration: null };
+  scene.world.adapters.githubFacts.given(greenFacts(scene.world, facts));
   const submitted = await scene.world.kernel.items.submit(ian, {
-    itemId: scene.itemId,
+    itemId,
     to: null,
     evidence: {},
-    change: {
-      pullRequest: { repo: 'unfoldingWord/uw-platform', number: 7 },
-      head: simSha('abc123'),
-      paths: ['packages/core/acl.ts'],
-      declaration: null,
-    },
+    change: { pullRequest, head },
   });
   expect(value(submitted).item).toMatchObject({ gateStatus: 'parked', riskDomains: ['acl'] });
 }
