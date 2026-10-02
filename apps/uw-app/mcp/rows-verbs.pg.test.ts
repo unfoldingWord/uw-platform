@@ -169,27 +169,31 @@ async function agentOn(r: Rig, person: { id: string; email: string }, kernel = r
   return { principal, tool };
 }
 
-function listed(body: Body, key: string, field: string): unknown[] {
+function listed(body: Body, key: string, field: string): unknown[] | Body {
   const rows = body[key];
-  return Array.isArray(rows) ? rows.map((row: Body) => row[field]) : [];
+  return Array.isArray(rows) ? rows.map((row: Body) => row[field]) : body;
 }
 
-async function searched(tool: Tool): Promise<unknown[]> {
+function sorted(found: unknown[] | Body): unknown[] | Body {
+  return Array.isArray(found) ? [...found].map(String).sort() : found;
+}
+
+async function searched(tool: Tool): Promise<unknown[] | Body> {
   const body = await tool('search_pages', { query: 'lantern', type: null, limit: 20 });
   return listed(body, 'pages', 'jdArea');
 }
 
-async function openTasksIn(tool: Tool, area: Area): Promise<unknown[]> {
+async function openTasksIn(tool: Tool, area: Area): Promise<unknown[] | Body> {
   const body = await tool('query_entities', { query: 'open_tasks', params: { jdArea: area } });
   return listed(body, 'rows', 'jdArea');
 }
 
-async function stageItemsIn(r: Rig, tool: Tool, area: Area): Promise<unknown[]> {
+async function stageItemsIn(r: Rig, tool: Tool, area: Area): Promise<unknown[] | Body> {
   const params = { harnessId: r.harnesses[area], stageKey: 'package' };
   return listed(await tool('query_entities', { query: 'stage_items', params }), 'rows', 'itemId');
 }
 
-async function polled(tool: Tool): Promise<unknown[]> {
+async function polled(tool: Tool): Promise<unknown[] | Body> {
   return listed(await tool('poll_queue', { harnessId: null, limit: 20 }), 'items', 'itemId');
 }
 
@@ -202,19 +206,36 @@ async function kernelPollingAs(r: Rig, actor: Principal): Promise<Kernel> {
   return { ...r.kernel, reads };
 }
 
-describe.skipIf(!testServer)(
-  'AB-3 a row-filtered verb never answers a row from an area the caller cannot read',
-  () => {
-    beforeAll(async () => {
-      current = await openRig();
-    });
-    afterAll(async () => {
-      await current?.drop();
-    });
+function kernelListingBoth(r: Rig, actor: Principal): Kernel {
+  const reads = {
+    ...r.kernel.reads,
+    inStage: async (_caller: Caller, input: Parameters<Kernel['reads']['inStage']>[1]) => {
+      const both = [];
+      for (const harnessId of Object.values(r.harnesses)) {
+        const found = await r.kernel.reads.inStage(caller(actor), { ...input, harnessId });
+        if (found.status === 'error') return found;
+        both.push(...found.value);
+      }
+      return { status: 'accepted' as const, value: both };
+    },
+  };
+  return { ...r.kernel, reads };
+}
 
+beforeAll(async () => {
+  if (testServer) current = await openRig();
+});
+
+afterAll(async () => {
+  await current?.drop();
+});
+
+describe.skipIf(!testServer)(
+  'AB-5 search_pages and query_entities never answer a row from an area the caller cannot read',
+  () => {
     it('search_pages answers the page in the readable area and not the other', async () => {
       const r = rig();
-      expect((await searched((await agentOn(r, ORG_VIEWER)).tool)).sort()).toEqual([
+      expect(sorted(await searched((await agentOn(r, ORG_VIEWER)).tool))).toEqual([
         '30-39',
         '80-89',
       ]);
@@ -224,10 +245,8 @@ describe.skipIf(!testServer)(
     it('query_entities open_tasks answers tasks only in the readable area', async () => {
       const r = rig();
       const all = (await agentOn(r, ORG_VIEWER)).tool;
-      expect([...(await openTasksIn(all, '80-89')), ...(await openTasksIn(all, '30-39'))]).toEqual([
-        '80-89',
-        '30-39',
-      ]);
+      expect(await openTasksIn(all, '80-89')).toEqual(['80-89']);
+      expect(await openTasksIn(all, '30-39')).toEqual(['30-39']);
       const reader = (await agentOn(r, VIEWER_80)).tool;
       expect(await openTasksIn(reader, '80-89')).toEqual(['80-89']);
       expect(await openTasksIn(reader, '30-39')).toEqual([]);
@@ -239,13 +258,30 @@ describe.skipIf(!testServer)(
       expect(await stageItemsIn(r, all, '30-39')).toEqual([r.items['30-39']]);
       const reader = (await agentOn(r, VIEWER_80)).tool;
       expect(await stageItemsIn(r, reader, '80-89')).toEqual([r.items['80-89']]);
-      expect(await stageItemsIn(r, reader, '30-39')).toEqual([]);
+      expect(await stageItemsIn(r, reader, '30-39')).toEqual({
+        status: 'error',
+        reason: 'harness_not_found',
+        detail: { harnessId: r.harnesses['30-39'] },
+      });
     });
 
+    it('query_entities stage_items drops the unreadable harness item even when the stage read holds both', async () => {
+      const r = rig();
+      const editor = await agentOn(r, ORG_EDITOR);
+      const mixed = kernelListingBoth(r, editor.principal);
+      const reader = (await agentOn(r, VIEWER_80, mixed)).tool;
+      expect(await stageItemsIn(r, reader, '80-89')).toEqual([r.items['80-89']]);
+    });
+  },
+);
+
+describe.skipIf(!testServer)(
+  'poll_queue never answers an item from an area the caller cannot read',
+  () => {
     it('poll_queue drops the queued item of the unreadable area even when the queue holds both', async () => {
       const r = rig();
       const editor = await agentOn(r, ORG_EDITOR);
-      expect((await polled(editor.tool)).sort()).toEqual(
+      expect(sorted(await polled(editor.tool))).toEqual(
         [r.items['80-89'], r.items['30-39']].sort(),
       );
       const mixed = await kernelPollingAs(r, editor.principal);
