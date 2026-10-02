@@ -74,6 +74,14 @@ _Avoid_: agent (an agent is the identity a persona runs as), bot, worker, role
 The principal a persona runs as: `agent:<persona>` for a platform-hosted run, `agent:<person>/<device>` for a run on a person's own machine, suffixed `as <persona>` and, when unattended, `via delegation:<id>`. Its grants never exceed its owner's.
 _Avoid_: service account, bot user, machine user
 
+**Device**:
+The second segment of `agent:<person>/<device>`: a lowercase name a person gives one of their machines or routines (`laptop`, `hourly-routine`). The first segment is the person's id, so a device identity always names its owner. A person's login names the device in the `x-uw-device` header; a service token's device comes from its binding.
+_Avoid_: host (that is where a run executes), machine id, client
+
+**Service token binding**:
+A row of `service_tokens` that maps one Cloudflare Access service token (by its client id) to the person it acts for and the device it is. Only an org admin binds or revokes one. A token with no live binding cannot reach the MCP surface.
+_Avoid_: API key, agent account, allow-list
+
 **Scout pass**:
 The first step of a Builder run: verify the item's premise against current code and data before building. In v1 it is a step, not a persona.
 _Avoid_: Scout (as a persona name in v1), explorer, triage
