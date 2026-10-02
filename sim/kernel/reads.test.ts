@@ -1,6 +1,19 @@
-import { delegatedIdentity, principalSchema, type Principal } from '@uw/contracts';
+import {
+  delegatedIdentity,
+  identitySchema,
+  principalSchema,
+  type CapabilityWord,
+  type Principal,
+} from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
-import { software, type Caller, type KernelOutcome, type PollItem } from '@uw/harness';
+import { revokeSeededGrant } from '@uw/db/test-seed';
+import {
+  readAllEvents,
+  software,
+  type Caller,
+  type KernelOutcome,
+  type PollItem,
+} from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createSimHarness, simAgent, simCaller, simPerson } from '../fixtures.ts';
 import { createWorld, type World } from '../world.ts';
@@ -68,12 +81,19 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
   }
 }
 
-async function delegate(scene: Scene, by: Principal, persona: string): Promise<string> {
+type DelegateOptions = { readonly capability?: CapabilityWord; readonly expiresAt?: Date };
+
+async function delegate(
+  scene: Scene,
+  by: Principal,
+  persona: string,
+  options: DelegateOptions = {},
+): Promise<string> {
   const granted = await scene.world.kernel.delegations.grant(simCaller(scene.world, by), {
     harnessId: scene.firstId,
     persona,
-    capability: 'iterate',
-    expiresAt: null,
+    capability: options.capability ?? 'iterate',
+    expiresAt: options.expiresAt ?? null,
     supersedes: null,
   });
   return value(granted).id;
@@ -150,8 +170,13 @@ async function foreignDelegation(scene: Scene): Promise<void> {
     { role: 'admin', scopeKind: 'jd_area', scopeArea: '80-89' },
   ]);
   const kims = await delegate(scene, kim, 'agent:iterate');
+  const revoked = await delegate(scene, kim, 'agent:iterate');
+  await revoke(scene, revoked);
+  const soon = new Date(scene.world.adapters.clock.now().getTime() + 60_000);
+  const expiring = await delegate(scene, kim, 'agent:iterate', { expiresAt: soon });
+  scene.world.adapters.clock.advance(120_000);
   const missing = '00000000-0000-4000-8000-000000009999';
-  for (const delegationId of [kims, missing]) {
+  for (const delegationId of [kims, revoked, expiring, missing]) {
     expect(await polled(scene, delegatedDevice(scene.ian, 'iterate', delegationId))).toEqual({
       status: 'error',
       reason: 'delegation_not_found',
@@ -165,8 +190,61 @@ describe('AB-4 a persona polls only the harnesses its live delegations name', ()
     inScene(barePersona));
   it('a delegated device polls its delegation harness, and is refused once it lapses without an event', () =>
     inScene(delegatedForm));
-  it('a delegated device naming another person’s delegation is refused as not found', () =>
+  it('a delegated device naming another person’s delegation, live, revoked or expired, is refused as not found', () =>
     inScene(foreignDelegation));
+});
+
+function eventCount(scene: Scene): Promise<number> {
+  return scene.world.adapters.store
+    .transaction((tx) => readAllEvents(tx, scene.firstId, null))
+    .then((events) => events.length);
+}
+
+async function delegatedNone(scene: Scene): Promise<void> {
+  const none = await delegate(scene, scene.ian, 'agent:iterate', { capability: 'none' });
+  expect(await polled(scene, delegatedDevice(scene.ian, 'iterate', none))).toEqual({
+    status: 'accepted',
+    value: [],
+  });
+}
+
+async function personaNone(scene: Scene): Promise<void> {
+  await delegate(scene, scene.ian, 'agent:iterate', { capability: 'none' });
+  expect(await idsPolled(scene, simAgent(scene.ian, 'iterate', { interactive: false }))).toEqual(
+    [],
+  );
+}
+
+async function personaLostAdmin(scene: Scene): Promise<void> {
+  const kim = await simPerson(scene.world, 4, [
+    { role: 'admin', scopeKind: 'jd_area', scopeArea: '80-89' },
+    { role: 'editor', scopeKind: 'jd_area', scopeArea: '80-89' },
+  ]);
+  await delegate(scene, kim, 'agent:iterate');
+  const persona = simAgent(kim, 'iterate', { interactive: false });
+  expect(await idsPolled(scene, persona)).toEqual([scene.firstItem]);
+  const adminGrant = kim.grants.find((grant) => grant.role === 'admin');
+  if (adminGrant === undefined) throw new Error('kim holds no admin grant');
+  const { db } = scene.world.database;
+  await revokeSeededGrant(db, adminGrant.grantId, scene.world.adapters.clock.now());
+  const before = await eventCount(scene);
+  expect(await idsPolled(scene, persona)).toEqual([]);
+  expect(await eventCount(scene)).toBe(before);
+}
+
+async function undelegatedRunner(scene: Scene): Promise<void> {
+  const runner = simAgent(scene.ian, `${scene.ian.personId ?? ''}/runner`, {
+    interactive: false,
+  });
+  expect(await idsPolled(scene, runner)).toEqual([]);
+}
+
+describe('AB-4 poll judges each harness with the principal a claim would use', () => {
+  it('a delegated device on a none delegation polls nothing', () => inScene(delegatedNone));
+  it('a persona whose only delegation is none polls nothing', () => inScene(personaNone));
+  it('a persona whose person dropped to editor polls nothing, and no event is written', () =>
+    inScene(personaLostAdmin));
+  it('a non-interactive device with no delegation polls nothing', () => inScene(undelegatedRunner));
 });
 
 type Reader = (scene: Scene, caller: Caller) => Promise<KernelOutcome<unknown>>;
@@ -230,4 +308,50 @@ async function scenes(scene: Scene): Promise<void> {
 describe('the kernel reads hide what the caller may not see', () => {
   it.each([...readers.keys()])('%s', (name) => inScene((scene) => hides(scene, name)));
   it('answers a harness, an item and a stage to a caller who may read them', () => inScene(scenes));
+});
+
+function crafted(a: Principal, b: Principal): Principal {
+  return {
+    identity: identitySchema.parse(`agent:${b.personId ?? ''}/laptop`),
+    kind: 'agent',
+    personId: a.personId,
+    email: null,
+    grants: a.grants,
+    interactive: true,
+  };
+}
+
+async function readsAs(scene: Scene, actor: Principal): Promise<readonly string[]> {
+  const caller = simCaller(scene.world, actor);
+  return Promise.all([...readers.values()].map(([read]) => read(scene, caller).then(reasonOf)));
+}
+
+const hidden = ['harness_not_found', 'item_not_found', 'harness_not_found'];
+
+async function ownerMismatch(scene: Scene): Promise<void> {
+  const other = await simPerson(scene.world, 7, []);
+  const forged = crafted(scene.ian, other);
+  expect(await readsAs(scene, forged)).toEqual(hidden);
+  expect(await polled(scene, forged)).toEqual({
+    status: 'error',
+    reason: 'not_permitted',
+    detail: { why: 'owner_mismatch' },
+  });
+}
+
+async function delegatedScene(scene: Scene): Promise<void> {
+  const delegationId = await delegate(scene, scene.ian, 'agent:iterate');
+  const device = delegatedDevice(scene.ian, 'iterate', delegationId);
+  expect(await readsAs(scene, device)).toEqual(['accepted', 'accepted', 'accepted']);
+  const elsewhere = await scene.world.kernel.reads.harness(simCaller(scene.world, device), {
+    harnessId: scene.secondId,
+  });
+  expect(reasonOf(elsewhere)).toBe('harness_not_found');
+  await revoke(scene, delegationId);
+  expect(await readsAs(scene, device)).toEqual(hidden);
+}
+
+describe('the kernel reads hide the scene from a forged owner or a delegation that does not bind', () => {
+  it('a device naming another owner reads nothing', () => inScene(ownerMismatch));
+  it('a delegated device reads only its live delegation harness', () => inScene(delegatedScene));
 });
