@@ -77,6 +77,11 @@ describe('KN-17 the protected-directory map is robust and protects itself', () =
     expect(domainOf('packages/harness/ship-rule.test.ts')).toBeNull();
   });
 
+  it('protects the gate decision path that assembles and applies the ship rule under acl', () => {
+    expect(domainOf('packages/harness/gates/ship-input.ts')).toBe('acl');
+    expect(domainOf('packages/harness/gates/exit.ts')).toBe('acl');
+  });
+
   it('keeps every entry in normalised form and round-trips through domainOf', () => {
     for (const entry of protectedDirectories) {
       expect(entry.path).toBe(entry.path.toLowerCase());

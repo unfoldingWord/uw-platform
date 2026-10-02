@@ -11,4 +11,5 @@ export const protectedDirectories: readonly ProtectedDirectory[] = [
   { path: 'packages/ledger/', domain: 'ledger' },
   { path: 'packages/harness/risk/', domain: 'acl' },
   { path: 'packages/harness/ship-rule.ts', domain: 'acl' },
+  { path: 'packages/harness/gates/', domain: 'acl' },
 ];

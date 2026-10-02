@@ -3,7 +3,7 @@ import type { KernelOutcome } from '../outcome.ts';
 import type { Ports } from '../ports.ts';
 import { decide, type Decided, type DecideInput } from './decide.ts';
 
-type GatePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
+type GatePorts = Pick<Ports, 'clock' | 'connectors' | 'githubFacts' | 'grants' | 'ids' | 'store'>;
 
 export type GateCommands = {
   decide(caller: Caller, input: DecideInput): Promise<KernelOutcome<Decided>>;

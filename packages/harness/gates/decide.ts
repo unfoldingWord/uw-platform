@@ -13,8 +13,15 @@ import { exitDrafts, resolveExit, type Exit } from '../items/transitions.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
 import { approverCovers } from '../risk/domain-grants.ts';
+import {
+  exitAfterDecision,
+  readShipFacts,
+  shipRefusal,
+  type PendingExit,
+  type ShipSnapshot,
+} from './approve-at-ship.ts';
 
-type GatePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
+type GatePorts = Pick<Ports, 'clock' | 'connectors' | 'githubFacts' | 'grants' | 'ids' | 'store'>;
 
 export type DecideInput = {
   readonly itemId: string;
@@ -194,19 +201,21 @@ async function approverRefusal(
   return refused('approver_lacks_domain_grant', { stage: stage.key });
 }
 
-function exitOf(gate: Gate): Exit | Refused {
+type Route = { readonly exit: Exit | null; readonly ship: boolean };
+
+function routeOf(gate: Gate, decision: GateDecision): Route | Refused {
+  if (!advancing.has(decision)) return { exit: null, ship: false };
   const { item, stages, stage } = gate;
   if (item.gateTarget !== null) {
     const target = resolveExit(stages, stage, item.gateTarget);
     if (target === null) {
       return refused('transition_not_allowed', { from: stage.key, to: item.gateTarget });
     }
-    if (target.kind === 'loop') return target;
+    if (target.kind === 'loop') return { exit: target, ship: false };
   }
-  if (stage.connector !== 'none') {
-    return refused('not_wired', { stage: stage.key, connector: stage.connector });
-  }
-  return resolveExit(stages, stage, null) ?? refused('transition_not_allowed', { from: stage.key });
+  const forward = resolveExit(stages, stage, null);
+  if (forward === null) return refused('transition_not_allowed', { from: stage.key });
+  return { exit: forward, ship: stage.connector !== 'none' };
 }
 
 async function recordDecision(
@@ -236,25 +245,50 @@ async function recordDecision(
   return accepted({ decisionId, item: recorded.item, advanced: exit !== null });
 }
 
+type Committed = { readonly decided: Decided; readonly pending: PendingExit | null };
+
+type Request = {
+  readonly caller: Caller;
+  readonly input: DecideInput;
+  readonly at: Date;
+  readonly snapshot: ShipSnapshot | null;
+};
+
+function pendingExit(gate: Gate, decided: Decided, exit: Exit, input: DecideInput): PendingExit {
+  return {
+    item: decided.item,
+    stage: gate.stage,
+    next: exit.to,
+    overrideReason: input.decision === 'override' ? input.reason : null,
+    context: gate.context,
+  };
+}
+
 async function decideIn(
   ports: GatePorts,
   tx: StoreTransaction,
-  caller: Caller,
-  input: DecideInput,
-  at: Date,
-): Promise<KernelOutcome<Decided>> {
-  const gate = await standing(ports, tx, caller, input, at);
+  request: Request,
+): Promise<KernelOutcome<Committed>> {
+  const { input, snapshot } = request;
+  const gate = await standing(ports, tx, request.caller, input, request.at);
   if (isRefused(gate)) return gate;
-  const denied = await approverRefusal(tx, gate, input.decision);
+  const route = routeOf(gate, input.decision);
+  if (isRefused(route)) return route;
+  const denied = route.ship
+    ? await shipRefusal(tx, gate, input.decision, snapshot)
+    : await approverRefusal(tx, gate, input.decision);
   if (denied !== null) return denied;
   const full = await wipRefusal(tx, gate, input.decision);
   if (full !== null) return full;
-  const exit = advancing.has(input.decision) ? exitOf(gate) : null;
-  if (exit !== null && isRefused(exit)) return exit;
-  return recordDecision(tx, gate, input, exit);
+  const recorded = await recordDecision(tx, gate, input, route.ship ? null : route.exit);
+  if (recorded.status !== 'accepted') return recorded;
+  const decided = recorded.value;
+  const pending =
+    route.ship && route.exit !== null ? pendingExit(gate, decided, route.exit, input) : null;
+  return accepted({ decided, pending });
 }
 
-export function decide(
+export async function decide(
   ports: GatePorts,
   caller: Caller,
   input: DecideInput,
@@ -262,6 +296,13 @@ export function decide(
   const at = ports.clock.now();
   if (!humanPrincipal(caller.actor)) return refuseAgent(ports, caller, input, at);
   const checked = normalised(input);
-  if (isRefused(checked)) return Promise.resolve(checked);
-  return ports.store.transaction((tx) => decideIn(ports, tx, caller, checked, at));
+  if (isRefused(checked)) return checked;
+  const snapshot = await readShipFacts(ports, checked.itemId, checked.decision);
+  if (snapshot !== null && isRefused(snapshot)) return snapshot;
+  const request = { caller, input: checked, at, snapshot };
+  const outcome = await ports.store.transaction((tx) => decideIn(ports, tx, request));
+  if (outcome.status !== 'accepted') return outcome;
+  const { decided, pending } = outcome.value;
+  if (pending === null) return accepted(decided);
+  return accepted({ ...decided, ...(await exitAfterDecision(ports, pending)) });
 }
