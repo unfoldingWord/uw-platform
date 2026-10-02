@@ -21,7 +21,7 @@ export type FixtureGitHub = {
 const tokenRoute = /^POST \/app\/installations\/[0-9]+\/access_tokens$/;
 const notFound: FixtureReply = { status: 404, body: { message: 'Not Found' } };
 
-function urlOf(input: RequestInfo | URL): URL {
+function urlOf(input: Parameters<typeof fetch>[0]): URL {
   if (input instanceof URL) return input;
   return new URL(typeof input === 'string' ? input : input.url);
 }
@@ -66,7 +66,7 @@ export function fixtureGitHub(): FixtureGitHub {
     };
   };
 
-  const send = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  const send = (input: Parameters<typeof fetch>[0], init?: RequestInit): Promise<Response> => {
     const url = urlOf(input);
     const method = (init?.method ?? 'GET').toUpperCase();
     recorded.push({

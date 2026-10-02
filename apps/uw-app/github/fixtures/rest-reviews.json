@@ -1,0 +1,44 @@
+[
+  {
+    "id": 9100000301,
+    "node_id": "PRR_fixture",
+    "user": {
+      "login": "uw-reviewer[bot]",
+      "id": 9100000903,
+      "type": "Bot"
+    },
+    "body": "```harness-review\nprovider: Anthropic\nmodel: claude\n```\nLooks good.",
+    "commit_id": "c0ffee0000000000000000000000000000000000",
+    "submitted_at": "2026-10-02T08:10:00Z",
+    "state": "APPROVED",
+    "author_association": "NONE"
+  },
+  {
+    "id": 9100000302,
+    "node_id": "PRR_fixture",
+    "user": {
+      "login": "uw-reviewer[bot]",
+      "id": 9100000903,
+      "type": "Bot"
+    },
+    "body": "```harness-review\nprovider: Anthropic\nmodel: claude\n```\nLooks good.",
+    "commit_id": "abc123",
+    "submitted_at": "2026-10-02T08:10:00Z",
+    "state": "COMMENTED",
+    "author_association": "NONE"
+  },
+  {
+    "id": 9100000303,
+    "node_id": "PRR_fixture",
+    "user": {
+      "login": "uw-reviewer[bot]",
+      "id": 9100000903,
+      "type": "Bot"
+    },
+    "body": "```harness-review\nprovider: Anthropic\nmodel: claude\n```\nLooks good.",
+    "commit_id": "c0ffee0000000000000000000000000000000000",
+    "submitted_at": null,
+    "state": "PENDING",
+    "author_association": "NONE"
+  }
+]

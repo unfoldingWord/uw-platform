@@ -1,0 +1,21 @@
+{
+  "total_count": 1,
+  "repository_selection": "selected",
+  "repositories": [
+    {
+      "id": 9100000001,
+      "node_id": "R_fixture",
+      "name": "uw-platform",
+      "full_name": "unfoldingWord/uw-platform",
+      "private": true,
+      "owner": {
+        "login": "unfoldingWord",
+        "id": 9100000901,
+        "type": "Organization"
+      },
+      "html_url": "https://github.com/unfoldingWord/uw-platform",
+      "default_branch": "main",
+      "visibility": "private"
+    }
+  ]
+}
