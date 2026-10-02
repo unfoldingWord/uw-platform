@@ -7,15 +7,18 @@ How the harness code is shaped so that an agent can hold the whole of it, prove 
 ```
 apps/uw-app/            Hono on Cloudflare Workers: SSR pages and islands, command API,
                         MCP surface, live hub (Durable Object), Workflows, crons
+apps/uw-app/ports/      platform adapters, one file per port (or port.variant), each beside its contract test
 apps/uw-ingest/         webhook verification and enqueue; nothing else
 packages/harness/       the kernel: pure TypeScript over ports; no Worker, vendor or
                         database import; the stage machine, ship rule, replay, walker
 packages/contracts/     commands, events, outcomes and the verb registry as Zod; one
                         live version, golden fixtures, conformance test
 packages/db/            Drizzle schema (the source of truth), migrations, constraints
+packages/db/store/      the one Drizzle implementation of Store and Grants that both adapters bind
 packages/core/          acl (can, principal), dates, modules registry, shared Zod schemas
 packages/ui/            design tokens as CSS and the Tailwind theme built from them
 sim/                    test adapters for every port, fixture harnesses, scenarios, CLI
+sim/adapters/           test adapters, one file per port, each beside its contract test
 infra/                  wrangler configs, Access policies, environments; declared, never clicked
 ```
 
@@ -113,7 +116,7 @@ The MCP surface serves exactly the verb registry and nothing else. There is no v
 
 ## The sim
 
-`sim/` is the kernel on test adapters. `createSimHarness(template, fixture)` returns a kernel plus the command handlers; `createWorld()` holds any number of harnesses, one embedded Postgres with the real migrations applied, a fixture GitHub with scripted facts per commit, scripted personas, and one shared clock. Scenarios in `sim/scenarios/` are named for the PRD requirement they prove: `KN-10.feeds-edge-cannot-bypass-ship.ts`, `KN-13.agent-cannot-write-decision.ts`, `KN-16.delegation-lapses-when-grant-revoked.ts`, `DX-7.software-template-end-to-end.ts`. Assertions are on the event log and the folded item state.
+`sim/` is the kernel on test adapters. `createWorld()` gives a scenario one clone of an embedded Postgres migrated once per process, the ten test adapters, one settable clock starting `2026-10-01T09:00:00.000Z`, and `createKernel` over them; `createSimHarness(template, fixture)` arrives with the templates in step 3. Scenarios in `sim/scenarios/` are named for the PRD requirement they prove: `KN-10.feeds-edge-cannot-bypass-ship.ts`, `KN-13.agent-cannot-write-decision.ts`, `KN-16.delegation-lapses-when-grant-revoked.ts`, `DX-7.software-template-end-to-end.ts`. Assertions are on the event log and the folded item state.
 
 The cockpit, once built (PRD DX-4, DX-5):
 
@@ -136,7 +139,7 @@ A rule that lives only in prose drifts. Each has a check in `verify` and in CI, 
 |---|---|
 | Imports follow the dependency DAG above | dependency-cruiser and ESLint `no-restricted-imports` |
 | `packages/harness` is pure | `no-restricted-globals` and `no-restricted-imports` in `packages/harness/**`; its tsconfig has no Workers types |
-| Every port has a contract test run against every adapter | a test walks the ports in `packages/harness/ports.ts` and fails on one with no contract test, or with an adapter the contract test does not run |
+| Every port has a contract test run against every adapter | `tools/architecture/port-contracts.test.ts`: each port has a suite in `packages/harness/port-contracts/`, an adapter in `apps/uw-app/ports/` and in `sim/adapters/`, and a contract test beside each adapter that runs it |
 | A vendor SDK is named in one directory | a text gate refuses `@anthropic-ai`, `openai`, `openrouter` imports outside `apps/uw-app/engines/<engine>/` |
 | No agent route or tool writes gate decisions | a static test over the route table and tool handlers, plus a runtime test per identity kind |
 | Both hosts see the same verbs | the tool list served to a Workflow equals the list served to an external runner, and both equal the registry |
@@ -149,6 +152,7 @@ A rule that lives only in prose drifts. Each has a check in `verify` and in CI, 
 | Tokens agree | the Tailwind theme is compared to `packages/ui/tokens/*.css` by name and value |
 | Nothing unused | knip over files, dependencies, exports and types |
 | Every requirement is proven | `trace` fails on a PRD Must requirement with neither a scenario nor a test |
+| Nothing needs a live account | `tools/architecture/no-live-account.test.ts` |
 
 ## Where a change goes
 
