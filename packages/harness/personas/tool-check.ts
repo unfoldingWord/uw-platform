@@ -21,6 +21,12 @@ type ToolCheckInput = {
   readonly at: Date;
 };
 
+const SHOWN_VERB_MAX = 64;
+
+function shown(verb: string): string {
+  return verb.slice(0, SHOWN_VERB_MAX);
+}
+
 function reaches(input: ToolCheckInput, definition: VerbDefinition): boolean {
   const { grant } = definition;
   if (grant === null) return true;
@@ -33,16 +39,18 @@ export function toolCheck(
   registry: readonly VerbDefinition[] = verbRegistry,
 ): ToolCheckFailure | null {
   const slug = input.personaSlug;
-  const forbidden = input.verbs.find(isForbiddenVerbName);
-  if (forbidden !== undefined) {
+  const found = input.verbs.find(isForbiddenVerbName);
+  if (found !== undefined) {
+    const forbidden = shown(found);
     const message = `persona ${slug} names ${forbidden}, which no agent may hold`;
     return { verb: forbidden, reason: 'forbidden_verb', message };
   }
   const served = new Map<string, VerbDefinition>(
     registry.filter((entry) => entry.servedInV1).map((entry) => [entry.name, entry]),
   );
-  const unknown = input.verbs.find((verb) => !served.has(verb));
-  if (unknown !== undefined) {
+  const missing = input.verbs.find((verb) => !served.has(verb));
+  if (missing !== undefined) {
+    const unknown = shown(missing);
     const message = `persona ${slug} requires verb ${unknown}, which does not exist`;
     return { verb: unknown, reason: 'unknown_verb', message };
   }
@@ -51,6 +59,7 @@ export function toolCheck(
     return definition !== undefined && !reaches(input, definition);
   });
   if (unreached === undefined) return null;
-  const message = `persona ${slug} requires verb ${unreached}, which the activating person's grants do not reach`;
-  return { verb: unreached, reason: 'not_permitted', message };
+  const verb = shown(unreached);
+  const message = `persona ${slug} requires verb ${verb}, which the activating person's grants do not reach`;
+  return { verb, reason: 'not_permitted', message };
 }

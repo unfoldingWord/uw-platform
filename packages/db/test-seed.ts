@@ -58,6 +58,14 @@ export async function rewriteDelegation(
   await db.update(delegations).set(change).where(eq(delegations.id, delegationId));
 }
 
+export async function rewritePageFrontmatter(
+  db: AnyExecutor,
+  pageId: string,
+  frontmatter: Readonly<Record<string, unknown>>,
+): Promise<void> {
+  await db.update(pages).set({ frontmatter }).where(eq(pages.id, pageId));
+}
+
 const seededAt = new Date('2026-10-01T09:00:00.000Z');
 const seededActor = 'human:00000000-0000-4000-8000-000000000001';
 const seededTrace = '00000000-0000-4000-8000-0000000000e1';

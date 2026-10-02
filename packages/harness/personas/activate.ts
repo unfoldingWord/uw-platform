@@ -3,6 +3,7 @@ import {
   personaFrontmatterSchema,
   personaSlugOf,
   type Harness,
+  type JdArea,
   type Principal,
   type VerbDefinition,
 } from '@uw/contracts';
@@ -41,36 +42,50 @@ type Activation = {
 
 const SOFTWARE_HARNESS_KEY = 'software';
 
-async function personaOf(tx: StoreTransaction, pageId: string): Promise<Persona | Refused> {
+type Readable = {
+  readonly page: PageFacts;
+  readonly area: JdArea;
+  readonly activator: Principal;
+};
+
+async function readablePage(
+  ports: PersonaPorts,
+  tx: StoreTransaction,
+  activation: Activation,
+): Promise<Readable | Refused> {
+  const { caller, at, pageId } = activation;
+  const personId = caller.actor.personId;
+  if (personId === null) return refused('not_permitted', { actor: caller.actor.identity });
   const [page] = await tx.pages.read.facts([pageId]);
-  if (page === undefined || page.type !== 'persona') return refused('page_not_found', { pageId });
+  const grants = await ports.grants.lockAndReread(tx, personId, at);
+  const activator = { ...caller.actor, grants: [...grants] };
+  const area = jdAreaSchema.safeParse(page?.jdArea);
+  const visible =
+    page !== undefined &&
+    page.type === 'persona' &&
+    area.success &&
+    allowed(activator, 'read', { jdArea: area.data }, at);
+  if (!visible || !area.success) return refused('page_not_found', { pageId });
+  return { page, area: area.data, activator };
+}
+
+async function personaOf(tx: StoreTransaction, page: PageFacts): Promise<Persona | Refused> {
   const parsed = personaFrontmatterSchema.safeParse(page.frontmatter);
-  if (!parsed.success) return refused('invalid_frontmatter', { pageId });
+  if (!parsed.success) return refused('invalid_frontmatter', { pageId: page.id });
   const harness = await tx.harnesses.read.byId(parsed.data.harness);
   if (harness === null) return refused('harness_not_found', { harnessId: parsed.data.harness });
   return { page, frontmatter: parsed.data, harness };
 }
 
-async function activatorOf(
-  ports: PersonaPorts,
-  tx: StoreTransaction,
-  activation: Activation,
-  persona: Persona,
-): Promise<Principal | Refused> {
-  const { caller, at } = activation;
-  const { harness, page } = persona;
-  const personId = caller.actor.personId;
-  if (personId === null) return refused('not_permitted', { jdArea: harness.jdArea });
-  const grants = await ports.grants.lockAndReread(tx, personId, at);
-  const activator = { ...caller.actor, grants: [...grants] };
+function authorised(readable: Readable, harness: Harness, at: Date): Refused | null {
+  const { activator, area } = readable;
   if (!allowed(activator, 'admin', harness, at)) {
     return refused('not_permitted', { jdArea: harness.jdArea });
   }
-  const pageArea = jdAreaSchema.safeParse(page.jdArea);
-  if (!pageArea.success || !allowed(activator, 'write', { jdArea: pageArea.data }, at)) {
-    return refused('not_permitted', { jdArea: page.jdArea });
+  if (!allowed(activator, 'write', { jdArea: area }, at)) {
+    return refused('not_permitted', { jdArea: area });
   }
-  return activator;
+  return null;
 }
 
 function lowestStageKey(stages: readonly { key: string; position: number }[]): string | null {
@@ -87,7 +102,9 @@ async function openingFor(
   const software = await tx.harnesses.read.byKey(SOFTWARE_HARNESS_KEY);
   if (software === null) return null;
   const items = await tx.harnessItems.read.forHarness(software.id);
-  const open = items.find((item) => item.pageId === pageId && item.gateStatus !== 'done');
+  const open = items.find(
+    (item) => item.pageId === pageId && item.title === title && item.gateStatus !== 'done',
+  );
   if (open !== undefined) return { itemId: open.itemId, create: null };
   const stageKey = lowestStageKey(await tx.harnessStages.read.forHarness(software.id));
   if (stageKey === null) return null;
@@ -143,10 +160,12 @@ export async function activateIn(
   activation: Activation,
 ): Promise<KernelOutcome<never>> {
   await tx.lock(lockKeys.personaActivation(activation.pageId));
-  const persona = await personaOf(tx, activation.pageId);
+  const readable = await readablePage(ports, tx, activation);
+  if ('status' in readable) return readable;
+  const persona = await personaOf(tx, readable.page);
   if ('status' in persona) return persona;
-  const activator = await activatorOf(ports, tx, activation, persona);
-  if ('status' in activator) return activator;
+  const denied = authorised(readable, persona.harness, activation.at);
+  if (denied !== null) return denied;
   if (persona.page.status !== 'suggested') {
     return refused('not_permitted', { why: 'not_suggested' });
   }
@@ -155,7 +174,7 @@ export async function activateIn(
     {
       personaSlug: personaSlugOf(identity) ?? identity,
       verbs: verbsOf(persona.frontmatter),
-      activator,
+      activator: readable.activator,
       area: persona.harness.jdArea,
       at: activation.at,
     },
