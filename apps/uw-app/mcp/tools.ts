@@ -40,13 +40,22 @@ export function toolsFor(
   return registry.filter((verb) => offered(principal, at, verb)).map(toolOf);
 }
 
+const indexes = new WeakMap<readonly VerbDefinition[], ReadonlyMap<string, VerbDefinition>>();
+
+function indexOf(registry: readonly VerbDefinition[]): ReadonlyMap<string, VerbDefinition> {
+  const known = indexes.get(registry);
+  if (known !== undefined) return known;
+  const index = new Map<string, VerbDefinition>(registry.map((verb) => [verb.name, verb]));
+  indexes.set(registry, index);
+  return index;
+}
+
 export function servedVerb(
   name: string,
   principal: Principal,
   at: Date,
   registry: readonly VerbDefinition[] = verbRegistry,
 ): VerbDefinition | null {
-  const byName = new Map<string, VerbDefinition>(registry.map((verb) => [verb.name, verb]));
-  const verb = byName.get(name);
+  const verb = indexOf(registry).get(name);
   return verb !== undefined && offered(principal, at, verb) ? verb : null;
 }

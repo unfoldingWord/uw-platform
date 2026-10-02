@@ -2,7 +2,7 @@ import type { HealthIndicator, HealthReport } from '@uw/contracts';
 import type { Accepted, Kernel, KernelHealth } from '@uw/harness';
 import { overallStatus } from '../../health/indicators.ts';
 import type { VerbContext } from '../context.ts';
-import { fromKernel, gatedHandler, refusal } from '../handler.ts';
+import { gatedHandler, refusal } from '../handler.ts';
 
 type HarnessScene = Extract<
   Awaited<ReturnType<Kernel['reads']['harness']>>,
@@ -54,17 +54,15 @@ function readScene(context: VerbContext, harnessId: string) {
 
 export const getHealth = gatedHandler({
   name: 'get_health',
-  hiddenAs: 'harness_not_found',
+  hidden: (input) => refusal('harness_not_found', { harnessId: input.harnessId }),
   resource: async (context, input) => {
     const scene = await readScene(context, input.harnessId);
     if (scene.status === 'error') return refusal(scene.reason, scene.detail);
-    return { kind: 'area', area: scene.value.harness.jdArea };
+    const found: HarnessScene = scene.value;
+    return { resource: { kind: 'area', area: found.harness.jdArea }, found };
   },
-  run: async (context, input) => {
+  run: async (context, _input, scene: HarnessScene) => {
     const health = await context.kernel.health();
-    const scene = await readScene(context, input.harnessId);
-    return fromKernel<HarnessScene, 'get_health'>(scene, (value) =>
-      reportOf(value, health, context.commit),
-    );
+    return { status: 'accepted', output: reportOf(scene, health, context.commit) };
   },
 });

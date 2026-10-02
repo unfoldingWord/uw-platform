@@ -4,33 +4,21 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { CfWorkerJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/cfworker';
-import {
-  CONTRACT_VERSION,
-  principalSchema,
-  verbRegistry,
-  type Grant,
-  type HealthReport,
-  type Principal,
-  type Role,
-} from '@uw/contracts';
-import { createLogger } from '@uw/core/log';
-import { createClient } from '@uw/db/client';
+import { CONTRACT_VERSION, verbRegistry, type HealthReport, type Principal } from '@uw/contracts';
 import { PortNotWiredError } from '@uw/harness';
-import { platformKernel } from '../kernel.ts';
-import { callTool } from '../testing/mcp.ts';
+import { areaGrant, callTool, testAgent, testContext } from '../testing/mcp.ts';
 import type { VerbContext } from './context.ts';
 import {
   gatedHandler,
+  refusal,
   rowFilteredHandler,
   type RowFilteredHandler,
   type VerbHandler,
 } from './handler.ts';
 import { createVerbServer } from './server.ts';
 
-const OWNER = '00000000-0000-4000-8000-000000000301';
 const ITEM = '00000000-0000-4000-8000-000000000302';
 const HARNESS = '00000000-0000-4000-8000-000000000303';
-const at = new Date('2026-10-02T12:00:00.000Z');
 const healthy: HealthReport = { status: 'ok', commit: 'test-commit', indicators: [] };
 
 const UNKNOWN_NAMES = [
@@ -51,50 +39,13 @@ const UNKNOWN_NAMES = [
   'nope',
 ];
 
-function grant(role: Role, area: string): Grant {
-  return {
-    grantId: '00000000-0000-4000-8000-000000000304',
-    role,
-    scopeKind: 'jd_area',
-    scopeArea: area,
-    expiresAt: null,
-  };
-}
-
-function agent(grants: readonly Grant[]): Principal {
-  return principalSchema.parse({
-    identity: `agent:${OWNER}/laptop`,
-    kind: 'agent',
-    personId: OWNER,
-    email: null,
-    grants,
-    interactive: true,
-  });
-}
-
-function contextFor(principal: Principal, lines: string[] = []): VerbContext {
-  return {
-    principal,
-    host: 'external',
-    at,
-    traceId: '00000000-0000-4000-8000-000000000305',
-    kernel: platformKernel(null),
-    db: createClient('postgres://unused@127.0.0.1:1/unused'),
-    commit: 'test-commit',
-    logger: createLogger(
-      { traceId: 'trace', commit: 'test-commit', route: 'POST /mcp', principal: null },
-      (line) => lines.push(line),
-    ),
-  };
-}
-
 type Recorder = { readonly seen: Principal[]; readonly ran: string[] };
 
 function stubHandlers(recorder: Recorder): ReadonlyMap<string, VerbHandler> {
   const health = gatedHandler({
     name: 'get_health',
-    hiddenAs: 'harness_not_found',
-    resource: async () => ({ kind: 'area', area: '80-89' }),
+    hidden: (input) => refusal('harness_not_found', { harnessId: input.harnessId }),
+    resource: async () => ({ resource: { kind: 'area', area: '80-89' }, found: null }),
     run: async (context) => {
       recorder.seen.push(context.principal);
       recorder.ran.push('get_health');
@@ -103,8 +54,8 @@ function stubHandlers(recorder: Recorder): ReadonlyMap<string, VerbHandler> {
   });
   const claim = gatedHandler({
     name: 'claim_item',
-    hiddenAs: 'item_not_found',
-    resource: async () => ({ kind: 'area', area: '80-89' }),
+    hidden: (input) => refusal('item_not_found', { itemId: input.itemId }),
+    resource: async () => ({ resource: { kind: 'area', area: '80-89' }, found: null }),
     run: async () => {
       recorder.ran.push('claim_item');
       return {
@@ -189,7 +140,7 @@ function initializeRequest(): Request {
 }
 
 async function rawInitialize(): Promise<Response> {
-  const server = createVerbServer(contextFor(agent([grant('editor', '80-89')])));
+  const server = createVerbServer(testContext(testAgent([areaGrant('editor', '80-89')])));
   const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
   await server.connect(transport);
   try {
@@ -204,9 +155,14 @@ function newRecorder(): Recorder {
 }
 
 describe('AB-1 the verb server runs in workerd', () => {
+  it('builds the server with the cfworker validator, never Ajv', () => {
+    const server = createVerbServer(testContext(testAgent([areaGrant('editor', '80-89')])));
+    expect(Reflect.get(server, '_jsonSchemaValidator')).toBeInstanceOf(CfWorkerJsonSchemaValidator);
+  });
+
   it('lists the served tools to an SDK client using the cfworker validator', async () => {
     const client = await connected(
-      contextFor(agent([grant('editor', '80-89')])),
+      testContext(testAgent([areaGrant('editor', '80-89')])),
       stubHandlers(newRecorder()),
     );
     const { tools } = await client.listTools();
@@ -236,7 +192,7 @@ describe('AB-1 a forbidden or unknown name is the unknown-tool error', () => {
   it.each(UNKNOWN_NAMES)('refuses %j as an unknown tool and runs no handler', async (name) => {
     const recorder = newRecorder();
     const client = await connected(
-      contextFor(agent([grant('admin', '40-49'), grant('editor', '80-89')])),
+      testContext(testAgent([areaGrant('admin', '40-49'), areaGrant('editor', '80-89')])),
       stubHandlers(recorder),
     );
     await expectUnknownTool(client, name);
@@ -248,8 +204,8 @@ describe('AB-1 a forbidden or unknown name is the unknown-tool error', () => {
 describe('AB-3 the handler receives the principal minted at the edge', () => {
   it('passes the principal given to the server to the handler, unchanged', async () => {
     const recorder = newRecorder();
-    const principal = agent([grant('viewer', '80-89')]);
-    const client = await connected(contextFor(principal), stubHandlers(recorder));
+    const principal = testAgent([areaGrant('viewer', '80-89')]);
+    const client = await connected(testContext(principal), stubHandlers(recorder));
     const result = await callTool(client, 'get_health', { harnessId: HARNESS });
     expect(result).toEqual({ isError: false, body: healthy });
     expect(recorder.seen).toHaveLength(1);
@@ -260,7 +216,7 @@ describe('AB-3 the handler receives the principal minted at the edge', () => {
   it('refuses a principal without the verb role on the area not_permitted, before the handler runs', async () => {
     const recorder = newRecorder();
     const client = await connected(
-      contextFor(agent([grant('viewer', '80-89')])),
+      testContext(testAgent([areaGrant('viewer', '80-89')])),
       stubHandlers(recorder),
     );
     const result = await callTool(client, 'claim_item', { itemId: ITEM, delegationId: null });
@@ -275,11 +231,14 @@ describe('AB-3 the handler receives the principal minted at the edge', () => {
   it('answers a principal that cannot read the area with the handler hiding reason', async () => {
     const recorder = newRecorder();
     const client = await connected(
-      contextFor(agent([grant('viewer', '20-29')])),
+      testContext(testAgent([areaGrant('viewer', '20-29')])),
       stubHandlers(recorder),
     );
     const result = await callTool(client, 'claim_item', { itemId: ITEM, delegationId: null });
-    expect(result.body).toMatchObject({ status: 'error', reason: 'item_not_found' });
+    expect(result).toEqual({
+      isError: true,
+      body: { status: 'error', reason: 'item_not_found', detail: { itemId: ITEM } },
+    });
     expect(recorder.ran).toEqual([]);
     await client.close();
   });
@@ -289,7 +248,7 @@ type Refusal = { readonly result: Awaited<ReturnType<typeof callTool>>; readonly
 
 async function refusalOf(name: string, args: Record<string, unknown>): Promise<Refusal> {
   const lines: string[] = [];
-  const context = contextFor(agent([grant('editor', '80-89')]), lines);
+  const context = testContext(testAgent([areaGrant('editor', '80-89')]), lines);
   const client = await connected(context, stubHandlers(newRecorder()));
   const result = await callTool(client, name, args);
   await client.close();

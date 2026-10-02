@@ -81,15 +81,20 @@ async function editorClient(db: Database): Promise<Client> {
   });
 }
 
-async function rawMcp(db: Database, method: string, jwt: string | null): Promise<Response> {
+const listRequest = { jsonrpc: '2.0', id: 1, method: 'tools/list' };
+
+async function rawMcp(
+  db: Database,
+  method: string,
+  jwt: string | null,
+  body: string | null = method === 'POST' ? JSON.stringify(listRequest) : null,
+): Promise<Response> {
   const headers: Record<string, string> = {
     'content-type': 'application/json',
     accept: 'application/json, text/event-stream',
     'x-uw-device': 'laptop',
     ...(jwt === null ? {} : { 'cf-access-jwt-assertion': jwt }),
   };
-  const body =
-    method === 'POST' ? JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) : null;
   return createApp(postgresDeps(db, fixture)).request(
     '/mcp',
     { method, headers, body },
@@ -187,6 +192,31 @@ describe.skipIf(!testServer)('AB-1 /mcp is a Streamable HTTP endpoint behind Acc
         expect(response.headers.get('allow')).toBe('POST');
         expect(await response.json()).toEqual({ status: 'error', reason: 'not_wired' });
       }
+    }));
+});
+
+describe.skipIf(!testServer)('/mcp takes one JSON-RPC message of at most 256 KiB', () => {
+  it('refuses a JSON-RPC batch with an invalid-request error before any call runs', () =>
+    withAppDatabase(async (db) => {
+      await seed(db);
+      const jwt = await fixture.sign({ email: EDITOR.email });
+      const response = await rawMcp(db, 'POST', jwt, JSON.stringify([listRequest, listRequest]));
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        jsonrpc: '2.0',
+        error: { code: -32600, message: 'Invalid Request: batch requests are not accepted' },
+        id: null,
+      });
+    }));
+
+  it('refuses a body over 256 KiB as too large', () =>
+    withAppDatabase(async (db) => {
+      await seed(db);
+      const jwt = await fixture.sign({ email: EDITOR.email });
+      const padded = JSON.stringify({ ...listRequest, params: { pad: 'x'.repeat(256 * 1024) } });
+      const response = await rawMcp(db, 'POST', jwt, padded);
+      expect(response.status).toBe(413);
+      expect(await response.json()).toMatchObject({ jsonrpc: '2.0', error: { code: -32000 } });
     }));
 });
 

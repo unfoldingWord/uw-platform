@@ -1,16 +1,18 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
-import { verbIo, type VerbDefinition, type VerbName } from '@uw/contracts';
+import { findVerb, verbIo, type VerbDefinition, type VerbName } from '@uw/contracts';
 import { actionForVerbRole, can, type AclResource } from '@uw/core/acl';
 import { errorFields } from '@uw/core/log';
 import { PortNotWiredError } from '@uw/harness';
 import type { VerbContext } from './context.ts';
 import {
   refusal,
+  type Found,
   type GatedHandler,
   type VerbHandler,
   type VerbInput,
   type VerbRefusal,
+  type VerbReply,
 } from './handler.ts';
 import { servedVerb } from './tools.ts';
 
@@ -21,6 +23,9 @@ type Parsed =
 type Answer =
   { readonly status: 'accepted'; readonly output: Record<string, unknown> } | VerbRefusal;
 
+const ROOT = '(root)';
+const NAME_IN_LOG = 64;
+
 const inputSchemas = new Map(Object.entries(verbIo).map(([name, io]) => [name, io.input]));
 
 function parsedInput(name: VerbName, args: unknown): Parsed {
@@ -28,11 +33,11 @@ function parsedInput(name: VerbName, args: unknown): Parsed {
   if (schema === undefined) throw new Error(`verb ${name} has no input schema`);
   const parsed = schema.safeParse(args ?? {});
   if (parsed.success) return { ok: true, input: parsed.data };
-  const fields = parsed.error.issues.map((issue) => issue.path.map(String).join('.'));
+  const fields = parsed.error.issues.map((issue) => issue.path.map(String).join('.') || ROOT);
   return { ok: false, refusal: refusal('malformed_command', { fields: [...new Set(fields)] }) };
 }
 
-function isRefusal(value: AclResource | VerbRefusal): value is VerbRefusal {
+function isRefusal(value: Found<unknown> | VerbRefusal): value is VerbRefusal {
   return 'status' in value;
 }
 
@@ -53,14 +58,14 @@ async function gate(
   definition: VerbDefinition,
   handler: GatedHandler<VerbName>,
   input: Input,
-): Promise<VerbRefusal | null> {
-  const resource = await handler.resource(context, input);
-  if (isRefusal(resource)) return resource;
+): Promise<Found<unknown> | VerbRefusal> {
+  const found = await handler.resource(context, input);
+  if (isRefusal(found)) return found;
   const { principal, at } = context;
-  if (!can(principal, 'read', resource, at)) return refusal(handler.hiddenAs);
+  if (!can(principal, 'read', found.resource, at)) return handler.hidden(input);
   const action = actionForVerbRole(definition.grant?.role ?? 'admin');
-  const target = grantResource(definition, resource);
-  return can(principal, action, target, at) ? null : refusal('not_permitted');
+  const target = grantResource(definition, found.resource);
+  return can(principal, action, target, at) ? found : refusal('not_permitted');
 }
 
 async function replyOf(
@@ -70,15 +75,31 @@ async function replyOf(
   input: Input,
 ): Promise<Answer> {
   if (handler.kind === 'gated') {
-    const refused = await gate(context, definition, handler, input);
-    if (refused !== null) return refused;
+    const found = await gate(context, definition, handler, input);
+    if (isRefusal(found)) return found;
+    return accepted(definition, await handler.run(context, input, found.found));
   }
-  const reply = await handler.run(context, input);
+  return accepted(definition, await handler.run(context, input));
+}
+
+function accepted(definition: VerbDefinition, reply: VerbReply<VerbName>): Answer {
   if (reply.status === 'error') return reply;
   return {
     status: 'accepted',
     output: structured(definition.name, definition.output.parse(reply.output)),
   };
+}
+
+function misdeclared(definition: VerbDefinition | undefined, handler: VerbHandler): boolean {
+  return definition === undefined || (definition.grant !== null && handler.kind !== 'gated');
+}
+
+export function assertGatedWhereGranted(handlers: ReadonlyMap<string, VerbHandler>): void {
+  for (const [name, handler] of handlers) {
+    if (name !== handler.name || misdeclared(findVerb(name), handler)) {
+      throw new Error(`verb ${name} must be served by a gated handler under its own name`);
+    }
+  }
 }
 
 function resultOf(reply: Answer): CallToolResult {
@@ -102,6 +123,30 @@ function failed(context: VerbContext, name: string, error: unknown): VerbRefusal
   return refusal('internal_error');
 }
 
+function logCall(context: VerbContext, name: string, outcome: string): void {
+  context.logger.info('verb call', { outcome, verb: name.slice(0, NAME_IN_LOG) });
+}
+
+async function answerOf(
+  context: VerbContext,
+  definition: VerbDefinition,
+  args: unknown,
+  handler: VerbHandler | undefined,
+): Promise<Answer> {
+  if (handler === undefined) return refusal('not_wired');
+  if (misdeclared(definition, handler)) {
+    context.logger.error('verb misdeclared', { outcome: 'internal_error', verb: definition.name });
+    return refusal('internal_error');
+  }
+  try {
+    const parsed = parsedInput(definition.name, args);
+    if (!parsed.ok) return parsed.refusal;
+    return await replyOf(context, definition, handler, parsed.input);
+  } catch (error) {
+    return failed(context, definition.name, error);
+  }
+}
+
 export async function callVerb(
   context: VerbContext,
   name: string,
@@ -109,14 +154,11 @@ export async function callVerb(
   handlers: ReadonlyMap<string, VerbHandler>,
 ): Promise<CallToolResult> {
   const definition = servedVerb(name, context.principal, context.at);
-  if (definition === null) throw new McpError(ErrorCode.InvalidParams, `Unknown tool: ${name}`);
-  const handler = handlers.get(definition.name);
-  if (handler === undefined) return resultOf(refusal('not_wired'));
-  try {
-    const parsed = parsedInput(definition.name, args);
-    if (!parsed.ok) return resultOf(parsed.refusal);
-    return resultOf(await replyOf(context, definition, handler, parsed.input));
-  } catch (error) {
-    return resultOf(failed(context, definition.name, error));
+  if (definition === null) {
+    logCall(context, name, 'unknown_tool');
+    throw new McpError(ErrorCode.InvalidParams, `Unknown tool: ${name}`);
   }
+  const answer = await answerOf(context, definition, args, handlers.get(definition.name));
+  logCall(context, definition.name, answer.status === 'accepted' ? 'accepted' : answer.reason);
+  return resultOf(answer);
 }
