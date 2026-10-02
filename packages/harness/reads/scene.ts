@@ -6,7 +6,7 @@ import {
   type Principal,
   type Stage,
 } from '@uw/contracts';
-import { allowed, ownerBound } from '../access.ts';
+import { allowed, bareAgent, ownerBound } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { personaMatches } from '../delegations/beat.ts';
 import { assertDelegationLive } from '../delegations/live.ts';
@@ -39,6 +39,32 @@ export async function presentedDelegation(
   return accepted({ delegation: liveness.delegation, grants: liveness.grants });
 }
 
+export async function workingDelegation(
+  ports: ScenePorts,
+  tx: StoreTransaction,
+  delegationId: string,
+  at: Date,
+): Promise<LiveDelegation | null> {
+  const liveness = await assertDelegationLive(tx, ports, delegationId, at);
+  if (!liveness.live || liveness.delegation.capability === 'none') return null;
+  return { delegation: liveness.delegation, grants: liveness.grants };
+}
+
+async function personaAdmits(
+  ports: ScenePorts,
+  tx: StoreTransaction,
+  actor: Principal,
+  harness: Harness,
+  at: Date,
+): Promise<boolean> {
+  if (actor.personId === null) return false;
+  const filter = { personId: actor.personId, persona: actor.identity, harnessId: harness.id };
+  for (const delegation of await tx.delegations.read.live(filter, at)) {
+    if ((await workingDelegation(ports, tx, delegation.id, at)) !== null) return true;
+  }
+  return false;
+}
+
 async function delegationAdmits(
   ports: ScenePorts,
   tx: StoreTransaction,
@@ -47,7 +73,9 @@ async function delegationAdmits(
   at: Date,
 ): Promise<boolean> {
   const delegationId = delegationIdOf(actor.identity);
-  if (delegationId === null) return true;
+  if (delegationId === null) {
+    return bareAgent(actor.identity) ? personaAdmits(ports, tx, actor, harness, at) : true;
+  }
   const presented = await presentedDelegation(ports, tx, actor, delegationId, at);
   return presented.status === 'accepted' && presented.value.delegation.harnessId === harness.id;
 }

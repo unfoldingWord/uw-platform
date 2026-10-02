@@ -8,11 +8,15 @@ import {
 } from '@uw/contracts';
 import { allowed, bareAgent, isAgent, ownerBound } from '../access.ts';
 import { beatPrincipal } from '../delegations/beat.ts';
-import { assertDelegationLive } from '../delegations/live.ts';
 import { leaseLapsed } from '../items/leases.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { Delegation, StoreTransaction } from '../ports.ts';
-import { byPriorityThenId, presentedDelegation, type ScenePorts } from './scene.ts';
+import {
+  byPriorityThenId,
+  presentedDelegation,
+  workingDelegation,
+  type ScenePorts,
+} from './scene.ts';
 
 export type PollItem = {
   readonly itemId: string;
@@ -58,9 +62,8 @@ async function personaJudged(
   delegation: Delegation,
   at: Date,
 ): Promise<Judged | null> {
-  const liveness = await assertDelegationLive(tx, ports, delegation.id, at);
-  if (!liveness.live || liveness.delegation.capability === 'none') return null;
-  return judgedBy(tx, liveness.delegation, liveness.grants, at);
+  const working = await workingDelegation(ports, tx, delegation.id, at);
+  return working === null ? null : judgedBy(tx, working.delegation, working.grants, at);
 }
 
 const persona: Subscription = async (ports, tx, actor, at) => {
