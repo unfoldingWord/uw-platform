@@ -183,6 +183,7 @@ describe('the GitHub dependency rules allow', () => {
       await violations({
         'apps/uw-app/queue/worker.ts': reads,
         'apps/uw-app/cron/scheduled.ts': reads,
+        'apps/uw-app/cron/github-sweep.ts': reads,
         'apps/uw-app/kernel.ts':
           "import './github/client.ts'; import './github/transport.ts'; import './github/app-config.ts';",
       }),
