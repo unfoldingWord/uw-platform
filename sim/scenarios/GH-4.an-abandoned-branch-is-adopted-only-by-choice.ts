@@ -134,6 +134,19 @@ async function adopted(scene: Cast, third: Caller, itemId: string): Promise<void
     adopted: true,
   });
   assert.equal(claim.claimed.item.branchState, 'active');
+  assert.equal(claim.claimed.item.expectedHead, pushedTip);
+}
+
+async function abandonedAgain(scene: Cast, fourth: Caller, itemId: string): Promise<void> {
+  const claim = await claimAfterLapse(scene, fourth, itemId, false);
+  assert.deepEqual(claim.names, ['lease_expired', 'branch_abandoned', 'item_claimed']);
+  const abandoned = claim.events.filter((event) => event.name === 'branch_abandoned');
+  assert.deepEqual(abandoned.at(-1)?.evidence, { head: pushedTip });
+  assert.deepEqual(claim.claimed.branch, {
+    name: `harness/${itemId}`,
+    startFrom: pushedTip,
+    adopted: false,
+  });
 }
 
 export const scenario = defineScenario({
@@ -146,9 +159,11 @@ export const scenario = defineScenario({
     await declined(scene, itemId);
     const third = scene.device('third');
     await adopted(scene, third, itemId);
+    const fourth = scene.device('fourth');
+    await abandonedAgain(scene, fourth, itemId);
     await refusedAdoption(scene);
     const resubmitted = valueOf(
-      await world.kernel.items.submit(third, {
+      await world.kernel.items.submit(fourth, {
         itemId,
         to: null,
         evidence: {},
