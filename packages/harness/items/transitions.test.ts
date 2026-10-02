@@ -1,6 +1,6 @@
-import type { Stage } from '@uw/contracts';
+import { principalSchema, type Stage } from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
-import { exitDrafts, resolveExit } from './transitions.ts';
+import { exitDrafts, isOccasionalTweak, resolveExit, unattendedLoop } from './transitions.ts';
 
 function stageAt(key: string, position: number): Stage {
   return {
@@ -60,5 +60,46 @@ describe('exitDrafts', () => {
     expect(exitDrafts({ kind: 'loop', from: third, to: first })).toEqual([
       { name: 'loop_edge_taken', evidence: { from: 'third', to: 'first' } },
     ]);
+  });
+});
+
+describe('loop exits', () => {
+  const fed = { ...third, feeds: ['first', 'second'] };
+
+  it('resolves a feeds target that is not the next stage to a loop exit', () => {
+    expect(resolveExit(stages, fed, 'first')).toEqual({ kind: 'loop', from: fed, to: first });
+  });
+
+  it('keeps a feeds target that is the next stage a forward exit', () => {
+    const early = { ...first, feeds: ['second'] };
+    expect(resolveExit(stages, early, 'second')).toEqual({
+      kind: 'forward',
+      from: early,
+      to: second,
+    });
+  });
+
+  it('marks only a loop to the lowest position as the occasional tweak', () => {
+    expect(isOccasionalTweak(stages, { kind: 'loop', from: fed, to: first })).toBe(true);
+    expect(isOccasionalTweak(stages, { kind: 'loop', from: fed, to: second })).toBe(false);
+    expect(isOccasionalTweak(stages, { kind: 'forward', from: first, to: second })).toBe(false);
+  });
+
+  it('flags only an unattended loop without a delegation id', () => {
+    const loop = { kind: 'loop', from: fed, to: first } as const;
+    const agent = (interactive: boolean) =>
+      principalSchema.parse({
+        identity: 'agent:00000000-0000-4000-8000-000000000006/runner',
+        kind: 'agent',
+        personId: '00000000-0000-4000-8000-000000000006',
+        email: null,
+        grants: [],
+        interactive,
+      });
+    const runner = agent(false);
+    const attended = agent(true);
+    expect(unattendedLoop(loop, runner, null)).toBe(true);
+    expect(unattendedLoop(loop, runner, 'd')).toBe(false);
+    expect(unattendedLoop(loop, attended, null)).toBe(false);
   });
 });
