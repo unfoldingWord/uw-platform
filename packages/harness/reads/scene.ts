@@ -58,6 +58,15 @@ export async function workingDelegations(
   return working;
 }
 
+export function unattendedWithoutDelegation(actor: Principal): boolean {
+  return (
+    delegationIdOf(actor.identity) === null &&
+    !bareAgent(actor.identity) &&
+    isAgent(actor) &&
+    !actor.interactive
+  );
+}
+
 async function undelegatedAdmits(
   ports: ScenePorts,
   tx: StoreTransaction,
@@ -68,7 +77,7 @@ async function undelegatedAdmits(
   if (bareAgent(actor.identity)) {
     return (await workingDelegations(ports, tx, actor, harness.id, at)).length > 0;
   }
-  return !isAgent(actor) || actor.interactive;
+  return !unattendedWithoutDelegation(actor);
 }
 
 async function delegationAdmits(

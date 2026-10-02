@@ -142,17 +142,36 @@ async function isAccepted(runner: Client, name: string, args: Body): Promise<boo
   return !(await callTool(runner, name, args)).isError;
 }
 
+const itemVerbs: readonly (readonly [string, (itemId: string) => Body])[] = [
+  ['claim_item', (itemId) => ({ itemId, delegationId: null })],
+  [
+    'submit_to_gate',
+    (itemId) => ({ itemId, evidence: {}, to: null, pullRequest: null, head: null }),
+  ],
+  [
+    'record_run_step',
+    (itemId) => ({
+      itemId,
+      runId: '00000000-0000-4000-8000-000000001960',
+      step: 'work',
+      tokensIn: 1,
+      tokensOut: 1,
+      costBasis: 'subscription',
+    }),
+  ],
+];
+
 async function undelegatedSeesNothing(): Promise<void> {
   const r = await rig();
   const scene = await openScene(r);
   const runner = await routine(r, null);
   await answersAsMissing(runner, 'get_health', 'harnessId', scene.harnessId);
   await answersAsMissing(runner, 'resolve_context', 'itemId', scene.itemId);
-  const claimed = await callTool(runner, 'claim_item', {
-    itemId: scene.itemId,
-    delegationId: null,
-  });
-  expect(claimed.body['reason']).toBe('delegation_required');
+  for (const [name, args] of itemVerbs) {
+    const existing = await text(runner, name, args(scene.itemId));
+    expect(existing).toContain('delegation_required');
+    expect(existing).toBe(await text(runner, name, args(MISSING)));
+  }
   await runner.close();
 }
 
@@ -181,7 +200,7 @@ describe.skipIf(!testServer)(
   'AB-4 an unattended runner without a delegation sees no harness, item or stage',
   () => {
     it(
-      'answers get_health and resolve_context exactly as for a missing id',
+      'answers get_health, resolve_context and every item verb exactly as for a missing id',
       undelegatedSeesNothing,
     );
     it('reads its delegated harness once it names a live delegation', delegatedSeesItsHarness);
