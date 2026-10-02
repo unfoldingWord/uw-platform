@@ -24,6 +24,7 @@ import {
   costBasisSchema,
   dataSourceKindSchema,
   engineSchema,
+  eventNameSchema,
   exitGateSchema,
   gateDecisionSchema,
   gateStatusSchema,
@@ -477,4 +478,34 @@ export const personas = declareTable(
   },
   internalSync,
   (t) => [check('personas_identity_form', matches(t.identity, PERSONA_IDENTITY_PATTERN))],
+);
+
+export const harnessEvents = declareTable(
+  'harness_events',
+  {
+    id: uuid('id').primaryKey(),
+    harnessId: uuid('harness_id')
+      .notNull()
+      .references(() => harnesses.id),
+    itemId: uuid('item_id'),
+    position: bigint('position', { mode: 'number' }).notNull().default(0),
+    name: text('name').notNull(),
+    actor: text('actor').notNull(),
+    evidence: jsonb('evidence').notNull(),
+    traceId: uuid('trace_id').notNull(),
+    at: instant('at').notNull(),
+  },
+  internalSync,
+  (t) => [
+    foreignKey({
+      name: 'harness_events_item_fk',
+      columns: [t.harnessId, t.itemId],
+      foreignColumns: [harnessItems.harnessId, harnessItems.id],
+    }),
+    check('harness_events_name_known', oneOf(t.name, eventNameSchema.options)),
+    check('harness_events_actor_is_identity', matches(t.actor, IDENTITY_PATTERN)),
+    check('harness_events_position_positive', sql`${t.position} >= 1`),
+    uniqueIndex('harness_events_position_per_harness').on(t.harnessId, t.position),
+    index('harness_events_item').on(t.itemId, t.position),
+  ],
 );

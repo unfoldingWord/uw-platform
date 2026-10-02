@@ -43,6 +43,20 @@
       "when": 1790904728379,
       "tag": "0005_gate_decisions_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790905557924,
+      "tag": "0006_harness_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790905558712,
+      "tag": "0007_harness_events_append_only",
+      "breakpoints": true
     }
   ]
 }
