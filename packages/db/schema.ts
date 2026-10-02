@@ -38,6 +38,7 @@ import {
   IDENTITY_PATTERN,
   JD_AREA_PATTERN,
   PERSONA_IDENTITY_PATTERN,
+  REPOSITORY_PATTERN,
   SLUG_PATTERN,
   STAGE_KEY_PATTERN,
   matches,
@@ -65,12 +66,17 @@ export const harnesses = declareTable(
     hostedBuilderEnabled: boolean('hosted_builder_enabled').notNull().default(false),
     paused: boolean('paused').notNull().default(false),
     createdAt: instant('created_at').notNull(),
+    repository: text('repository'),
   },
   internalSync,
   (t) => [
     check('harnesses_area_form', matches(t.jdArea, JD_AREA_PATTERN)),
     check('harnesses_key_form', matches(t.key, SLUG_PATTERN)),
     check('harnesses_template_form', matches(t.template, SLUG_PATTERN)),
+    check('harnesses_repository_form', matches(t.repository, REPOSITORY_PATTERN)),
+    uniqueIndex('harnesses_repository_once')
+      .on(sql`lower(${t.repository})`)
+      .where(sql`${t.repository} IS NOT NULL`),
   ],
 );
 
