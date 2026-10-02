@@ -73,3 +73,43 @@ describe('FD-7 a service token id', () => {
     expect(() => serviceTokenPrincipal(clientId)).toThrow(RangeError);
   });
 });
+
+const owner = '00000000-0000-4000-8000-000000000001';
+const other = '00000000-0000-4000-8000-000000000002';
+const delegation = 'delegation:00000000-0000-4000-a000-000000000009';
+
+function deviceAgent(identity: string, personId: string | null) {
+  return { identity, kind: 'agent', personId, email: null, grants: [], interactive: true };
+}
+
+describe("AB-2 a device identity is owned by its principal's person", () => {
+  it.each([
+    ['a device of another person', deviceAgent(`agent:${other}/laptop`, owner)],
+    ['a device with no person', deviceAgent(`agent:${owner}/laptop`, null)],
+    [
+      'a delegated device of another person',
+      deviceAgent(`agent:${other}/laptop as iterate via ${delegation}`, owner),
+    ],
+    [
+      'a delegated device with no person',
+      deviceAgent(`agent:${owner}/laptop as iterate via ${delegation}`, null),
+    ],
+  ])('refuses %s', (_label, principal) => {
+    expect(() => parsePrincipal(principal)).toThrow();
+  });
+
+  it.each([
+    ['a device of its person', deviceAgent(`agent:${owner}/laptop`, owner)],
+    [
+      'a delegated device of its person',
+      deviceAgent(`agent:${owner}/laptop as iterate via ${delegation}`, owner),
+    ],
+  ])('accepts %s', (_label, principal) => {
+    expect(parsePrincipal(principal)).toEqual(principal);
+  });
+
+  it('still accepts the platform and ingest identities, which name no device', () => {
+    expect(parsePrincipal(systemPrincipal())).toEqual(systemPrincipal());
+    expect(parsePrincipal(ingestPrincipal())).toEqual(ingestPrincipal());
+  });
+});
