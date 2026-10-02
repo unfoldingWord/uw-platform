@@ -304,12 +304,33 @@ function itemRules(db: () => Db): void {
   });
 }
 
+function insertDelegation(db: Db, id: string, supersedes: string | null) {
+  return db.execute(sql`INSERT INTO delegations
+      (id, person_id, persona, harness_id, capability, granted_at, expires_at, supersedes, trace_id)
+    VALUES (${id}, '00000000-0000-4000-8000-000000000001', 'agent:builder', ${harnessA}, 'build',
+      ${atText}::timestamptz, ${atText}::timestamptz + interval '1 day', ${supersedes},
+      ${idOf(0xe9)})`);
+}
+
+function delegationRules(db: () => Db): void {
+  it('lets one delegation, and only one, supersede another', async () => {
+    await insertDelegation(db(), idOf(0xd1), null);
+    await insertDelegation(db(), idOf(0xd2), null);
+    await insertDelegation(db(), idOf(0xd3), idOf(0xd1));
+    expect(await refusal(insertDelegation(db(), idOf(0xd4), idOf(0xd1)))).toEqual({
+      code: '23505',
+      constraint: 'delegations_supersedes_once',
+    });
+  });
+}
+
 function describeTarget(target: DatabaseTarget): void {
   const db = openDatabase(target);
   tableShape(db);
   describe('KN-1 gate_decisions takes only a human actor and is append-only', () =>
     gateDecisionRules(db));
   describe('harness_items refuses a contradictory row', () => itemRules(db));
+  describe('KN-16 delegations are renewed at most once each', () => delegationRules(db));
 }
 
 describe('KN-1 the harness tables', () => {

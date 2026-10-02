@@ -302,6 +302,9 @@ export const delegations = declareTable(
     check('delegations_expires_after_grant', sql`${t.expiresAt} > ${t.grantedAt}`),
     index('delegations_person').on(t.personId),
     index('delegations_harness').on(t.harnessId),
+    uniqueIndex('delegations_supersedes_once')
+      .on(t.supersedes)
+      .where(sql`${t.supersedes} IS NOT NULL`),
   ],
 );
 

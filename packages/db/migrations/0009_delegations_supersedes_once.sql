@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "delegations_supersedes_once" ON "delegations" USING btree ("supersedes") WHERE "delegations"."supersedes" IS NOT NULL;
