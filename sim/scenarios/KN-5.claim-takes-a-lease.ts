@@ -3,11 +3,15 @@ import { LEASE_MS, software, type Claimed, type KernelOutcome } from '@uw/harnes
 import { createSimHarness, simAgent, simCaller, simIan, simPerson } from '../fixtures.ts';
 import { defineScenario } from '../scenario.ts';
 
-function agentClaim(outcome: KernelOutcome<Claimed>, expected: string): string | null {
+function agentClaim(
+  outcome: KernelOutcome<Claimed>,
+  expected: string,
+  identity: string,
+): string | null {
   assert.equal(outcome.status, 'accepted');
   if (outcome.status !== 'accepted') throw new Error('unreachable');
   assert.equal(outcome.value.leaseExpiresAt, expected);
-  assert.equal(outcome.value.item.holder, 'agent:builder');
+  assert.equal(outcome.value.item.holder, identity);
   assert.equal(outcome.value.item.claimantKind, 'agent');
   assert.equal(outcome.value.item.delegationId, null);
   return outcome.value.leaseExpiresAt;
@@ -38,8 +42,14 @@ export const scenario = defineScenario({
     const owner = await simPerson(world, 2, [{ role: 'editor', ...area }]);
     const other = await simPerson(world, 3, [{ role: 'editor', ...area }]);
     const editor = simCaller(world, owner);
-    const builder = simCaller(world, simAgent(owner, 'builder', { interactive: true }));
-    const reviewer = simCaller(world, simAgent(other, 'reviewer', { interactive: true }));
+    const builder = simCaller(
+      world,
+      simAgent(owner, `${owner.personId}/builder`, { interactive: true }),
+    );
+    const reviewer = simCaller(
+      world,
+      simAgent(other, `${other.personId}/reviewer`, { interactive: true }),
+    );
     const enqueued = await world.kernel.items.enqueue(editor, {
       harnessId: harness.id,
       title: 'Wire the board',
@@ -52,7 +62,7 @@ export const scenario = defineScenario({
     const itemId = enqueued.value.itemId;
     const expected = new Date(world.adapters.clock.now().getTime() + LEASE_MS).toISOString();
     const claimed = await world.kernel.items.claim(builder, { itemId, delegationId: null });
-    const lease = agentClaim(claimed, expected);
+    const lease = agentClaim(claimed, expected, `agent:${owner.personId}/builder`);
     const refusals = await Promise.all([
       world.kernel.items.claim(reviewer, { itemId, delegationId: null }),
       world.kernel.items.claim(editor, { itemId, delegationId: null }),

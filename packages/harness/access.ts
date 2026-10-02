@@ -9,3 +9,7 @@ export function allowed(
 ): boolean {
   return can(actor, action, { kind: 'area', area: harness.jdArea }, at);
 }
+
+export function bareAgent(identity: string): boolean {
+  return identity.startsWith('agent:') && !identity.includes('/');
+}

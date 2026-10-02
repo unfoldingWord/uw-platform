@@ -1,5 +1,5 @@
-import type { ItemState, Principal } from '@uw/contracts';
-import { allowed } from '../access.ts';
+import type { Harness, ItemState, Principal } from '@uw/contracts';
+import { allowed, bareAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { accepted, refused, type KernelOutcome } from '../outcome.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
@@ -11,10 +11,6 @@ type ReleasePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
 export type ReleaseInput = { readonly itemId: string; readonly delegationId: string | null };
 
-function bareAgent(identity: string): boolean {
-  return identity.startsWith('agent:') && !identity.includes('/');
-}
-
 async function holdsClaim(
   tx: StoreTransaction,
   item: ItemState,
@@ -23,10 +19,13 @@ async function holdsClaim(
 ): Promise<boolean> {
   if (item.holder === null || item.holder !== actor.identity) return false;
   if (!bareAgent(item.holder)) return true;
-  if (input.delegationId !== item.delegationId) return false;
-  if (input.delegationId === null) return true;
+  if (input.delegationId === null || input.delegationId !== item.delegationId) return false;
   const delegation = await tx.delegations.read.byId(input.delegationId);
   return delegation !== null && delegation.personId === actor.personId;
+}
+
+function adminOverride(actor: Principal, harness: Harness, at: Date): boolean {
+  return actor.kind !== 'agent' && allowed(actor, 'admin', harness, at);
 }
 
 export function release(
@@ -43,7 +42,7 @@ export function release(
     const fresh = await withFreshGrants(ports, tx, caller.actor, at);
     const holds =
       (await holdsClaim(tx, item, caller.actor, input)) && allowed(fresh, 'write', harness, at);
-    if (item.holder === null || !(holds || allowed(caller.actor, 'admin', harness, at))) {
+    if (item.holder === null || !(holds || adminOverride(caller.actor, harness, at))) {
       return refused('not_holder', { itemId: item.itemId });
     }
     const lapse = lapseDrafts(item, at);

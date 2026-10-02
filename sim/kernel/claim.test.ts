@@ -70,7 +70,8 @@ function agentCaller(
   persona: string,
   interactive: boolean,
 ): Caller {
-  return simCaller(scene.world, simAgent(owner, persona, { interactive }));
+  const named = interactive ? `${owner.personId}/${persona}` : persona;
+  return simCaller(scene.world, simAgent(owner, named, { interactive }));
 }
 
 function claimAs(scene: Scene, caller: Caller, delegationId: string | null = null) {
@@ -140,6 +141,20 @@ describe('KN-5 who may claim', () => {
     });
     const outcome = await claimAs(scene, caller);
     expect(outcome).toMatchObject({ reason: 'not_permitted', detail: { why: 'parked' } });
+  });
+});
+
+describe('a bare agent identity acts only under a delegation', () => {
+  sceneIt('refuses an interactive bare agent without one', async (scene) => {
+    const bare = simCaller(scene.world, simAgent(scene.max, 'builder', { interactive: true }));
+    const outcome = await claimAs(scene, bare);
+    expect(reasonOf(outcome)).toBe('delegation_required');
+    expect(await namesOf(scene)).toEqual(['item_created', 'delegation_required']);
+  });
+
+  sceneIt('lets an interactive device agent claim without one', async (scene) => {
+    const outcome = await claimAs(scene, agentCaller(scene, scene.max, 'laptop', true));
+    expect(value(outcome).item.claimantKind).toBe('agent');
   });
 });
 
@@ -295,7 +310,7 @@ describe('KN-5 a lapsed lease is released once', () => {
     await claimAs(scene, builder);
     scene.world.adapters.clock.advance(16 * minute);
     const taken = value(await claimAs(scene, reviewer));
-    expect(taken.item.holder).toBe('agent:reviewer');
+    expect(taken.item.holder).toBe(`agent:${scene.kim.personId}/reviewer`);
     expect(await namesOf(scene)).toEqual([
       'item_created',
       'item_claimed',
@@ -378,5 +393,18 @@ describe('release of a delegated or lapsed claim', () => {
     });
     expect(value(released).holder).toBeNull();
     expect(await namesOf(scene)).toEqual(['item_created', 'item_claimed', 'lease_expired']);
+  });
+});
+
+describe('admin release is never used by an agent', () => {
+  sceneIt('refuses an agent carrying admin grants', async (scene) => {
+    await claimAs(scene, simCaller(scene.world, scene.max));
+    const adminAgent = agentCaller(scene, scene.kim, 'laptop', true);
+    const outcome = await scene.world.kernel.items.release(adminAgent, {
+      itemId: scene.itemId,
+      delegationId: null,
+    });
+    expect(reasonOf(outcome)).toBe('not_holder');
+    expect((await itemOf(scene))?.holder).toBe(scene.max.identity);
   });
 });
