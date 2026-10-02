@@ -5,6 +5,7 @@ import {
   type ShipRuleInput,
   type ShipRuleOutcome,
 } from '@uw/contracts';
+import { normalisedIdentifier } from './github/identifiers.ts';
 import { approverCovers } from './risk/domain-grants.ts';
 
 type Predicate = (input: ShipRuleInput) => boolean;
@@ -18,20 +19,13 @@ function approvalsOnHead(input: ShipRuleInput): ShipRuleInput['approvals'] {
   return head === null ? [] : input.approvals.filter((approval) => approval.commit === head);
 }
 
-const identifier = /^[a-z0-9._-]+$/u;
-
-function normalised(value: string): string | null {
-  const folded = value.normalize('NFKC').trim().toLowerCase();
-  return identifier.test(folded) ? folded : null;
-}
-
 function providersByReviewer(input: ShipRuleInput): ReadonlyMap<string, ReadonlySet<string>> {
   const byReviewer = new Map<string, Set<string>>();
   for (const approval of approvalsOnHead(input)) {
-    const reviewer = normalised(approval.reviewer);
+    const reviewer = normalisedIdentifier(approval.reviewer);
     if (reviewer === null) continue;
     const providers = byReviewer.get(reviewer) ?? new Set<string>();
-    const provider = approval.provider === null ? null : normalised(approval.provider);
+    const provider = approval.provider === null ? null : normalisedIdentifier(approval.provider);
     if (provider !== null) providers.add(provider);
     byReviewer.set(reviewer, providers);
   }

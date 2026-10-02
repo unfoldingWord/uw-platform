@@ -12,4 +12,6 @@ export const protectedDirectories: readonly ProtectedDirectory[] = [
   { path: 'packages/harness/risk/', domain: 'acl' },
   { path: 'packages/harness/ship-rule.ts', domain: 'acl' },
   { path: 'packages/harness/gates/', domain: 'acl' },
+  { path: 'packages/harness/github/', domain: 'acl' },
+  { path: 'apps/uw-app/github/', domain: 'acl' },
 ];

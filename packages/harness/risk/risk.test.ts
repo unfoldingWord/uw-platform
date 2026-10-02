@@ -77,6 +77,11 @@ describe('KN-17 the protected-directory map is robust and protects itself', () =
     expect(domainOf('packages/harness/ship-rule.test.ts')).toBeNull();
   });
 
+  it('protects the GitHub identity and merge code under acl', () => {
+    expect(domainOf('packages/harness/github/reviewers.ts')).toBe('acl');
+    expect(domainOf('apps/uw-app/github/merge.ts')).toBe('acl');
+  });
+
   it('protects the gate decision path that assembles and applies the ship rule under acl', () => {
     expect(domainOf('packages/harness/gates/ship-input.ts')).toBe('acl');
     expect(domainOf('packages/harness/gates/exit.ts')).toBe('acl');
