@@ -159,8 +159,10 @@ describe('KN-7 every claim carries an evidence label', () => {
     );
     expect(result).toEqual([`learning_attached: page ${pageA} states no claim`]);
   });
+});
 
-  it('checks a revision draft attached beside a valid learning', () => {
+describe('KN-7 the validator checks the labels of every attached suggested page, whatever its type', () => {
+  it('checks a persona draft beside a valid learning; attach takes only learnings and skills, so the Iterate revision clause waits for PE-7', () => {
     const result = failures(
       [created(), attached(2, pageA), attached(3, pageB)],
       [
