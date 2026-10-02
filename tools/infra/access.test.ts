@@ -13,6 +13,7 @@ type Declaration = {
   application: Application;
   policies: Policy[];
   health_bypass: { application: Application; policies: Policy[] };
+  mcp: { application: Application; policies: Policy[] };
 };
 
 const declaration: Declaration = JSON.parse(readFileSync('infra/access/uw-app.json', 'utf8'));
@@ -25,16 +26,14 @@ describe('FD-7 Cloudflare Access in front of uw-app, declared in infra', () => {
     ]);
   });
 
-  it('signs people in with Google and lets any valid service token through as non-identity', () => {
-    const [people, agents] = declaration.policies;
-    expect(people).toMatchObject({
-      decision: 'allow',
-      include: [{ login_method: { id: '<google-idp-id>' } }],
-    });
-    expect(agents).toMatchObject({
-      decision: 'non_identity',
-      include: [{ any_valid_service_token: {} }],
-    });
+  it('signs people in with Google and admits no service token on the app', () => {
+    expect(declaration.policies).toEqual([
+      {
+        name: 'Anyone signed in with Google',
+        decision: 'allow',
+        include: [{ login_method: { id: '<google-idp-id>' } }],
+      },
+    ]);
   });
 
   it('bypasses Access for /health only, on staging and on every per-PR Worker', () => {
@@ -52,5 +51,29 @@ describe('FD-7 Cloudflare Access in front of uw-app, declared in infra', () => {
 
   it('holds no secret', () => {
     expect(JSON.stringify(declaration)).not.toMatch(/secret|token_value|client_secret/i);
+  });
+});
+
+describe('FD-7 AB-1 the MCP surface is its own Access application', () => {
+  it('puts /mcp behind its own application, on staging and on every per-PR Worker', () => {
+    expect(declaration.mcp.application.domain).toBe('uw-app-staging.unfoldingword.workers.dev/mcp');
+    expect(declaration.mcp.application.destinations?.map((d) => d.uri)).toEqual([
+      'uw-app-staging.unfoldingword.workers.dev/mcp',
+      'uw-app-pr-*.unfoldingword.workers.dev/mcp',
+    ]);
+    expect(declaration.mcp.application.allowed_idps).toEqual(['<google-idp-id>']);
+  });
+
+  it('signs agents on /mcp in with Google or any valid service token as non-identity', () => {
+    const [people, agents] = declaration.mcp.policies;
+    expect(declaration.mcp.policies).toHaveLength(2);
+    expect(people).toMatchObject({
+      decision: 'allow',
+      include: [{ login_method: { id: '<google-idp-id>' } }],
+    });
+    expect(agents).toMatchObject({
+      decision: 'non_identity',
+      include: [{ any_valid_service_token: {} }],
+    });
   });
 });

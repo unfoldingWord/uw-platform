@@ -10,7 +10,7 @@ type Queues = {
 };
 
 const goLiveOnly = ['logpush', 'hyperdrive', 'queues'];
-const accessVars = ['ACCESS_TEAM_DOMAIN', 'ACCESS_AUD'];
+const accessVars = ['ACCESS_TEAM_DOMAIN', 'ACCESS_AUD', 'ACCESS_MCP_AUD'];
 const apps = ['uw-app', 'uw-ingest'] as const;
 const deployedEnvironments = ['staging', 'production'] as const;
 const placeholder = 'set-at-go-live';
@@ -124,6 +124,7 @@ describe('FD-7 the Access variables and ids are placeholders or well formed', ()
     const blocks = Object.values(environments(load(`infra/uw-app/${goLive}`)));
     const settings = blocks.map(varsOf);
     expect(settings.every((vars) => idShape.test(vars['ACCESS_AUD'] ?? ''))).toBe(true);
+    expect(settings.every((vars) => idShape.test(vars['ACCESS_MCP_AUD'] ?? ''))).toBe(true);
     expect(
       settings.every((vars) =>
         /^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(vars['ACCESS_TEAM_DOMAIN'] ?? ''),
