@@ -18,6 +18,11 @@ export const verbNames = [
 
 export const FORBIDDEN_VERBS = ['approve', 'merge', 'deploy', 'publish', 'advance'] as const;
 
+export function isForbiddenVerbName(name: string): boolean {
+  const normal = name.trim().toLowerCase();
+  return FORBIDDEN_VERBS.some((verb) => normal.includes(verb));
+}
+
 export const verbNameSchema = z.enum(verbNames);
 export const forbiddenVerbSchema = z.enum(FORBIDDEN_VERBS);
 
