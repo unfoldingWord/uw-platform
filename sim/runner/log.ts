@@ -1,28 +1,10 @@
 import { type HarnessEvent, type ItemState } from '@uw/contracts';
-import { replay, type Store, type StoreTransaction } from '@uw/harness';
+import { readAllEvents, replay, type Store, type StoreTransaction } from '@uw/harness';
 
 export type WorldLog = {
   readonly events: readonly HarnessEvent[];
   readonly drift: readonly string[];
 };
-
-const pageLimit = 100;
-
-async function pageHarness(tx: StoreTransaction, harnessId: string): Promise<HarnessEvent[]> {
-  const events: HarnessEvent[] = [];
-  let after = 0;
-  while (true) {
-    const page = await tx.harnessEvents.read.page({
-      harnessId,
-      itemId: null,
-      after,
-      limit: pageLimit,
-    });
-    events.push(...page.events);
-    if (page.next === null) return events;
-    after = page.next;
-  }
-}
 
 function driftFields(projected: ItemState, replayed: ItemState | null): string[] {
   if (replayed === null) return ['the item has no item_created event'];
@@ -55,7 +37,7 @@ async function readLog(tx: StoreTransaction): Promise<WorldLog> {
   const events: HarnessEvent[] = [];
   const drift: string[] = [];
   for (const harness of harnesses) {
-    const own = await pageHarness(tx, harness.id);
+    const own = await readAllEvents(tx, harness.id, null);
     events.push(...own);
     for (const item of await tx.harnessItems.read.forHarness(harness.id)) {
       const found = driftOf(item, own);
