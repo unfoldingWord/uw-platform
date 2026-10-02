@@ -115,6 +115,14 @@ export default {
       to: { path: ['^packages/db/embedded\\.ts$', npm('@electric-sql/pglite')] },
     },
     {
+      name: 'store-executor-stays-in-the-store',
+      comment:
+        'Only the Store and Grants gateways in packages/db/store unwrap a transaction to its Drizzle executor.',
+      severity: 'error',
+      from: { pathNot: '^packages/db/store/' },
+      to: { path: '^packages/db/store/store\\.ts$' },
+    },
+    {
       name: 'test-seed-only-in-tests-and-sim',
       comment:
         'Only test files and sim/ import the fixture seeding helpers, which write tables their owners write.',

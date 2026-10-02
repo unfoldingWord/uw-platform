@@ -1,9 +1,12 @@
 import { sql } from 'drizzle-orm';
 import type { AnyDatabase, AnyExecutor } from '../any-database.ts';
 import { appliedMigrations } from '../migration-ledger.ts';
+import { bindHarnesses } from './harnesses.ts';
+import { bindItems } from './items.ts';
 import { insideOpenTransaction, outsideOpenTransaction } from './open-transactions.ts';
-
-export type DrizzleTransaction = { lock(key: string): Promise<void> };
+import { bindPages } from './pages.ts';
+import { bindStages } from './stages.ts';
+import type { DrizzleTransaction } from './types.ts';
 
 export type DrizzleStore = {
   transaction<T>(work: (tx: DrizzleTransaction) => Promise<T>): Promise<T>;
@@ -23,6 +26,10 @@ function bind(executor: AnyExecutor): DrizzleTransaction {
     lock: async (key) => {
       await executor.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`);
     },
+    harnesses: bindHarnesses(executor),
+    harnessStages: bindStages(executor),
+    harnessItems: bindItems(executor),
+    pages: bindPages(executor),
   };
   executors.set(tx, executor);
   return tx;

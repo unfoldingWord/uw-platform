@@ -1,6 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { integer, pgSchema, text } from 'drizzle-orm/pg-core';
-import { executorOf, type DrizzleTransaction } from './store.ts';
+import { executorOf } from './store.ts';
+import type { DrizzleTransaction } from './types.ts';
 
 const pgLocks = pgSchema('pg_catalog').table('pg_locks', {
   locktype: text('locktype'),

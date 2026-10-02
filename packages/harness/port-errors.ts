@@ -53,3 +53,21 @@ export class ProviderMismatchError extends Error {
 export function notWiredCall(port: PortName, method: string): Promise<never> {
   return Promise.reject(new PortNotWiredError(port, method));
 }
+
+export type StoreRefusal = {
+  readonly code: string;
+  readonly constraint: string | null;
+  readonly table: string | null;
+};
+
+function textOrNull(error: Error, key: string): string | null {
+  const value: unknown = Reflect.get(error, key);
+  return typeof value === 'string' ? value : null;
+}
+
+export function storeRefusalOf(error: unknown): StoreRefusal | null {
+  if (!(error instanceof Error) || error.name !== 'StoreRefusedError') return null;
+  const code = textOrNull(error, 'code');
+  if (code === null) return null;
+  return { code, constraint: textOrNull(error, 'constraint'), table: textOrNull(error, 'table') };
+}

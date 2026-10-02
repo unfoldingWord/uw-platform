@@ -362,6 +362,28 @@ describe('the dependency rules allow the sim and port contracts', () => {
   });
 });
 
+describe('the store executor rule', () => {
+  const store = 'export const executorOf = 1;';
+
+  it('refuses an import of the store module from outside packages/db/store', async () => {
+    expect(
+      await violations({
+        'packages/db/store/store.ts': store,
+        'apps/uw-app/x.ts': "import '../../packages/db/store/store.ts';",
+      }),
+    ).toContain('store-executor-stays-in-the-store');
+  });
+
+  it('allows a sibling inside packages/db/store', async () => {
+    expect(
+      await violations({
+        'packages/db/store/store.ts': store,
+        'packages/db/store/y.ts': "import './store.ts';",
+      }),
+    ).not.toContain('store-executor-stays-in-the-store');
+  });
+});
+
 describe('the architecture roots', () => {
   it('cruise the sim and the tests alongside apps and packages', () => {
     expect(architectureRoots).toEqual(['apps', 'packages', 'sim', 'tests']);

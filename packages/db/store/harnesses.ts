@@ -1,0 +1,31 @@
+import { asc, eq } from 'drizzle-orm';
+import type { AnyExecutor } from '../any-database.ts';
+import { harnesses } from '../schema.ts';
+import { refusing } from './refusal.ts';
+import { toHarness } from './rows.ts';
+import type { HarnessesGateway } from './types.ts';
+
+export function bindHarnesses(executor: AnyExecutor): HarnessesGateway {
+  return {
+    read: {
+      byId: async (harnessId) => {
+        const rows = await executor.select().from(harnesses).where(eq(harnesses.id, harnessId));
+        return rows[0] ? toHarness(rows[0]) : null;
+      },
+      byKey: async (key) => {
+        const rows = await executor.select().from(harnesses).where(eq(harnesses.key, key));
+        return rows[0] ? toHarness(rows[0]) : null;
+      },
+      list: async () => {
+        const rows = await executor.select().from(harnesses).orderBy(asc(harnesses.key));
+        return rows.map(toHarness);
+      },
+    },
+    write: {
+      insert: (harness, at) =>
+        refusing(async () => {
+          await executor.insert(harnesses).values({ ...harness, createdAt: at });
+        }),
+    },
+  };
+}

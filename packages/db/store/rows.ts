@@ -1,0 +1,66 @@
+import {
+  harnessSchema,
+  itemStateSchema,
+  stageSchema,
+  type Harness,
+  type ItemState,
+  type Stage,
+} from '@uw/contracts';
+import type { harnessItems, harnessStages, harnesses } from '../schema.ts';
+
+export function toHarness(row: typeof harnesses.$inferSelect): Harness {
+  return harnessSchema.parse({
+    id: row.id,
+    key: row.key,
+    template: row.template,
+    jdArea: row.jdArea,
+    hostedBuilderEnabled: row.hostedBuilderEnabled,
+    paused: row.paused,
+  });
+}
+
+export function toStage(row: typeof harnessStages.$inferSelect): Stage {
+  return stageSchema.parse({
+    id: row.id,
+    harnessId: row.harnessId,
+    key: row.key,
+    title: row.title,
+    position: row.position,
+    bracket: row.bracket,
+    agentPickup: row.agentPickup,
+    exitGate: row.exitGate,
+    connector: row.connector,
+    wipLimit: row.wipLimit,
+    instructionsPageId: row.instructionsPageId,
+    validators: row.validators,
+    feeds: row.feeds,
+    paused: row.paused,
+  });
+}
+
+export function toItemState(row: typeof harnessItems.$inferSelect, stageKey: string): ItemState {
+  return itemStateSchema.parse({
+    itemId: row.id,
+    harnessId: row.harnessId,
+    stageKey,
+    title: row.title,
+    pageId: row.pageId,
+    priority: row.priority,
+    due: row.due,
+    holder: row.claimedBy,
+    claimantKind: row.claimantKind,
+    delegationId: row.delegationId,
+    leaseExpiresAt: row.leaseExpires?.toISOString() ?? null,
+    gateStatus: row.gateStatus,
+    gateTarget: row.gateTarget,
+    branchState: row.branchState,
+    expectedHead: row.expectedHead,
+    riskTier: row.riskTier,
+    riskDomains: row.riskDomains,
+    pullRequest:
+      row.prRepo === null || row.prNumber === null
+        ? null
+        : { repo: row.prRepo, number: row.prNumber },
+    zulipTopic: row.zulipTopic,
+  });
+}

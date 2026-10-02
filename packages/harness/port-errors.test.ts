@@ -4,6 +4,7 @@ import {
   PortNotWiredError,
   ProviderMismatchError,
   RunTransitionError,
+  storeRefusalOf,
   ToolOutsideToolsetError,
 } from './index.ts';
 
@@ -61,5 +62,36 @@ describe('DX-1 run transitions out of the terminal states', () => {
     expect(new RunTransitionError('r1', state, 'resume').message).toBe(
       `cannot resume run r1 from ${state}`,
     );
+  });
+});
+
+describe('DX-3 store refusals', () => {
+  it('DX-3 a store refusal is recognised by name and code', () => {
+    const refusal = Object.assign(new Error('refused'), {
+      name: 'StoreRefusedError',
+      code: '23514',
+      constraint: 'harness_stages_effect_needs_human_gate',
+      table: 'harness_stages',
+    });
+    expect(storeRefusalOf(refusal)).toEqual({
+      code: '23514',
+      constraint: 'harness_stages_effect_needs_human_gate',
+      table: 'harness_stages',
+    });
+    expect(
+      storeRefusalOf(Object.assign(new Error('x'), { name: 'StoreRefusedError', code: 'P0001' })),
+    ).toEqual({
+      code: 'P0001',
+      constraint: null,
+      table: null,
+    });
+  });
+
+  it('DX-3 a store refusal is not guessed from a plain error or a non-error', () => {
+    expect(storeRefusalOf(new Error('plain'))).toBeNull();
+    expect(storeRefusalOf(Object.assign(new Error('x'), { code: '23514' }))).toBeNull();
+    expect(storeRefusalOf(Object.assign(new Error('x'), { name: 'StoreRefusedError' }))).toBeNull();
+    expect(storeRefusalOf({ name: 'StoreRefusedError', code: '23514' })).toBeNull();
+    expect(storeRefusalOf('refused')).toBeNull();
   });
 });

@@ -3,7 +3,8 @@ import { grantSchema, type Grant } from '@uw/contracts';
 import type { AnyDatabase, AnyExecutor } from '../any-database.ts';
 import { roleGrants } from '../schema.ts';
 import { outsideOpenTransaction } from './open-transactions.ts';
-import { executorOf, type DrizzleTransaction } from './store.ts';
+import { executorOf } from './store.ts';
+import type { DrizzleTransaction } from './types.ts';
 
 function toGrant(row: typeof roleGrants.$inferSelect): Grant {
   return grantSchema.parse({

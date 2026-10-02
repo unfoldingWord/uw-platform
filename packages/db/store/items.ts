@@ -1,0 +1,141 @@
+import { and, asc, eq, isNotNull, isNull, lte, or, count, gt, type SQL, sql } from 'drizzle-orm';
+import type { ItemState } from '@uw/contracts';
+import type { AnyExecutor } from '../any-database.ts';
+import { harnessItems, harnessStages } from '../schema.ts';
+import { refusing } from './refusal.ts';
+import { toItemState } from './rows.ts';
+import type { HarnessItemsGateway, ItemClaim } from './types.ts';
+
+const stageOf = (harnessId: string, stageKey: string) =>
+  sql`(SELECT id FROM harness_stages WHERE harness_id = ${harnessId} AND key = ${stageKey})`;
+
+function columnsOf(item: ItemState) {
+  return {
+    stageId: stageOf(item.harnessId, item.stageKey),
+    title: item.title,
+    pageId: item.pageId,
+    priority: item.priority,
+    due: item.due,
+    claimedBy: item.holder,
+    claimantKind: item.claimantKind,
+    delegationId: item.delegationId,
+    leaseExpires: item.leaseExpiresAt === null ? null : new Date(item.leaseExpiresAt),
+    gateStatus: item.gateStatus,
+    gateTarget: item.gateTarget,
+    riskTier: item.riskTier,
+    riskDomains: [...item.riskDomains],
+    expectedHead: item.expectedHead,
+    branchState: item.branchState,
+    prRepo: item.pullRequest?.repo ?? null,
+    prNumber: item.pullRequest?.number ?? null,
+    zulipTopic: item.zulipTopic,
+  };
+}
+
+function selectItems(executor: AnyExecutor) {
+  return executor
+    .select({ item: harnessItems, stageKey: harnessStages.key })
+    .from(harnessItems)
+    .innerJoin(harnessStages, eq(harnessStages.id, harnessItems.stageId));
+}
+
+function claimable(at: Date): SQL | undefined {
+  return or(
+    isNull(harnessItems.claimedBy),
+    and(isNotNull(harnessItems.leaseExpires), lte(harnessItems.leaseExpires, at)),
+  );
+}
+
+async function claim(executor: AnyExecutor, request: ItemClaim): Promise<boolean> {
+  const rows = await executor
+    .update(harnessItems)
+    .set({
+      claimedBy: request.holder,
+      claimantKind: request.claimantKind,
+      delegationId: request.delegationId,
+      leaseExpires: request.leaseExpiresAt,
+    })
+    .where(and(eq(harnessItems.id, request.itemId), claimable(request.at)))
+    .returning({ id: harnessItems.id });
+  return rows.length === 1;
+}
+
+async function project(executor: AnyExecutor, item: ItemState): Promise<void> {
+  const rows = await executor
+    .update(harnessItems)
+    .set(columnsOf(item))
+    .where(eq(harnessItems.id, item.itemId))
+    .returning({ id: harnessItems.id });
+  if (rows.length === 0) throw new Error(`no item ${item.itemId} to project`);
+}
+
+async function heldInStage(
+  executor: AnyExecutor,
+  harnessId: string,
+  stageKey: string,
+  at: Date,
+): Promise<number> {
+  const rows = await executor
+    .select({ held: count() })
+    .from(harnessItems)
+    .innerJoin(harnessStages, eq(harnessStages.id, harnessItems.stageId))
+    .where(
+      and(
+        eq(harnessItems.harnessId, harnessId),
+        eq(harnessStages.key, stageKey),
+        isNotNull(harnessItems.claimedBy),
+        or(isNull(harnessItems.leaseExpires), gt(harnessItems.leaseExpires, at)),
+      ),
+    );
+  return rows[0]?.held ?? 0;
+}
+
+function bindReads(executor: AnyExecutor): HarnessItemsGateway['read'] {
+  return {
+    byId: async (itemId) => {
+      const rows = await selectItems(executor).where(eq(harnessItems.id, itemId));
+      return rows[0] ? toItemState(rows[0].item, rows[0].stageKey) : null;
+    },
+    lock: async (itemId) => {
+      const rows = await selectItems(executor)
+        .where(eq(harnessItems.id, itemId))
+        .for('update', { of: harnessItems });
+      return rows[0] ? toItemState(rows[0].item, rows[0].stageKey) : null;
+    },
+    forHarness: async (harnessId) => {
+      const rows = await selectItems(executor)
+        .where(eq(harnessItems.harnessId, harnessId))
+        .orderBy(asc(harnessItems.priority), asc(harnessItems.createdAt), asc(harnessItems.id));
+      return rows.map((row) => toItemState(row.item, row.stageKey));
+    },
+    heldInStage: (harnessId, stageKey, at) => heldInStage(executor, harnessId, stageKey, at),
+    lapsedLeases: async (at, limit) => {
+      const rows = await executor
+        .select({ id: harnessItems.id })
+        .from(harnessItems)
+        .where(and(isNotNull(harnessItems.leaseExpires), lte(harnessItems.leaseExpires, at)))
+        .orderBy(asc(harnessItems.leaseExpires), asc(harnessItems.id))
+        .limit(limit);
+      return rows.map((row) => row.id);
+    },
+  };
+}
+
+export function bindItems(executor: AnyExecutor): HarnessItemsGateway {
+  return {
+    read: bindReads(executor),
+    write: {
+      insert: (item, at) =>
+        refusing(async () => {
+          await executor.insert(harnessItems).values({
+            id: item.itemId,
+            harnessId: item.harnessId,
+            ...columnsOf(item),
+            createdAt: at,
+          });
+        }),
+      claim: (request) => refusing(() => claim(executor, request)),
+      project: (item) => refusing(() => project(executor, item)),
+    },
+  };
+}
