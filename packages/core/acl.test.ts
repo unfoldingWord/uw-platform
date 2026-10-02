@@ -1,6 +1,13 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import type { Grant, Principal } from '@uw/contracts';
-import { actionForVerbRole, can, minimumRole, type AclAction, type AclResource } from './acl.ts';
+import {
+  actionForVerbRole,
+  can,
+  minimumRole,
+  readableAreas,
+  type AclAction,
+  type AclResource,
+} from './acl.ts';
 import { personPrincipal } from './principal.ts';
 
 const personId = '00000000-0000-4000-8000-000000000009';
@@ -129,5 +136,33 @@ describe('CT-2 FD-8 a verb grant role maps to one can() action', () => {
     const action = actionForVerbRole('editor');
     expect(can(holding(area('editor', '80-89')), action, gifts, at)).toBe(false);
     expect(can(holding(area('editor', '40-49')), action, gifts, at)).toBe(true);
+  });
+});
+
+function viewing(...grants: Grant[]): ReturnType<typeof readableAreas> {
+  return readableAreas(holding(...grants), at);
+}
+
+describe('readableAreas names exactly the areas can() lets a principal read', () => {
+  it('names every area for an org viewer', () => {
+    expect(viewing(org('viewer'))).toEqual({ kind: 'all' });
+  });
+
+  it('names every area for an editor on one area, because editors read every area', () => {
+    expect(viewing(area('editor', '80-89'))).toEqual({ kind: 'all' });
+  });
+
+  it('names the sorted, distinct areas of area viewers', () => {
+    const grants = [area('viewer', '80-89'), area('viewer', '30-39'), area('viewer', '80-89')];
+    expect(viewing(...grants)).toEqual({ kind: 'some', areas: ['30-39', '80-89'] });
+  });
+
+  it('names no area for a viewer grant that expires at or before the instant', () => {
+    const expired: Grant = { ...area('viewer', '80-89'), expiresAt: at.toISOString() };
+    expect(viewing(expired)).toEqual({ kind: 'some', areas: [] });
+  });
+
+  it('names no area for a principal with no grants', () => {
+    expect(viewing()).toEqual({ kind: 'some', areas: [] });
   });
 });
