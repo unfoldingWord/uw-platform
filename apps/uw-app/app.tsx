@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { errorFields } from '@uw/core/log';
 import { aclRoutes } from './acl/routes.ts';
+import { agentRoutes } from './agents/routes.ts';
 import { meRoutes } from './auth/me.ts';
 import { withPrincipal } from './auth/principal-middleware.ts';
 import { withDatabase } from './database.ts';
@@ -31,6 +32,7 @@ export function createApp(deps: AppDeps = platformDeps): Hono<AppEnv> {
   app.use(withPrincipal(deps));
   app.route('/api/me', meRoutes());
   app.route('/api/acl', aclRoutes());
+  app.route('/api/agents', agentRoutes());
   app.route('/api/pages', pageRoutes());
 
   app.get('/', (c) => {
