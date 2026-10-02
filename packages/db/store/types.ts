@@ -40,7 +40,10 @@ export type HarnessesGateway = {
   readonly write: { insert(harness: Harness, at: Date): Promise<void> };
 };
 export type HarnessStagesGateway = {
-  readonly read: { forHarness(harnessId: string): Promise<readonly Stage[]> };
+  readonly read: {
+    forHarness(harnessId: string): Promise<readonly Stage[]>;
+    namesInstructions(pageId: string): Promise<boolean>;
+  };
   readonly write: {
     insert(stage: Stage): Promise<void>;
     update(stage: Stage): Promise<void>;

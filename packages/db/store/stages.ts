@@ -61,6 +61,14 @@ export function bindStages(executor: AnyExecutor): HarnessStagesGateway {
           .orderBy(asc(harnessStages.position));
         return rows.map(toStage);
       },
+      namesInstructions: async (pageId) => {
+        const rows = await executor
+          .select({ id: harnessStages.id })
+          .from(harnessStages)
+          .where(eq(harnessStages.instructionsPageId, pageId))
+          .limit(1);
+        return rows.length > 0;
+      },
     },
     write: {
       insert: (stage) =>
