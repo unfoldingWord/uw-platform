@@ -230,7 +230,7 @@ describe('DX-5 trace decides what is due', () => {
   it('prints the due list, then the not yet built list', () => {
     expect(formatTrace(fixtureReport(['ZZ-2', 'ZZ-4']))).toBe(
       [
-        'trace: 4 Must requirements not marked Built; 2 proven, 2 unproven',
+        'trace: 4 Must requirements; 2 proven, 2 unproven (1 due, 1 in steps not yet built)',
         'unproven and due:',
         '  ZZ-6  (in no build-order step)',
         'unproven, step not yet built:',
@@ -241,7 +241,7 @@ describe('DX-5 trace decides what is due', () => {
 
   it('prints only the first line when nothing is unproven', () => {
     expect(formatTrace(fixtureReport(['ZZ-2', 'ZZ-4', 'ZZ-5', 'ZZ-6']))).toBe(
-      'trace: 4 Must requirements not marked Built; 4 proven, 0 unproven',
+      'trace: 4 Must requirements; 4 proven, 0 unproven (0 due, 0 in steps not yet built)',
     );
   });
 });
