@@ -1,7 +1,15 @@
 import { eq } from 'drizzle-orm';
 import type { Role, Scope } from '@uw/contracts';
 import type { AnyExecutor } from './any-database.ts';
-import { grantAudit, people, roleGrants } from './schema.ts';
+import {
+  grantAudit,
+  harnessEvents,
+  harnessItems,
+  harnessStages,
+  harnesses,
+  people,
+  roleGrants,
+} from './schema.ts';
 
 export type SeedPerson = {
   readonly id: string;
@@ -38,4 +46,59 @@ export async function revokeSeededGrant(db: AnyExecutor, grantId: string, at: Da
 
 export async function rewriteGrantAudit(db: AnyExecutor, actor: string): Promise<void> {
   await db.update(grantAudit).set({ actor });
+}
+
+const seededAt = new Date('2026-10-01T09:00:00.000Z');
+const seededActor = 'human:00000000-0000-4000-8000-000000000001';
+const seededTrace = '00000000-0000-4000-8000-0000000000e1';
+
+export type SeedEvent = {
+  readonly harnessId: string;
+  readonly n: number;
+  readonly itemId?: string;
+  readonly name?: string;
+  readonly actor?: string;
+  readonly position?: number;
+};
+
+export function seededEventId(harnessId: string, n: number): string {
+  return `00000000-0000-4000-9000-${harnessId.slice(-4)}${n.toString(16).padStart(8, '0')}`;
+}
+
+export async function seedHarness(
+  db: AnyExecutor,
+  harness: { readonly id: string; readonly key: string; readonly jdArea: string },
+): Promise<void> {
+  await db.insert(harnesses).values({ ...harness, template: 'software', createdAt: seededAt });
+}
+
+export async function seedItem(
+  db: AnyExecutor,
+  item: { readonly id: string; readonly harnessId: string; readonly stageId: string },
+): Promise<void> {
+  await db.insert(harnessStages).values({
+    id: item.stageId,
+    harnessId: item.harnessId,
+    key: 'ship',
+    title: 'Stage',
+    position: 1,
+    bracket: 'deploy_package',
+    agentPickup: 'none',
+    exitGate: 'human_approval',
+  });
+  await db.insert(harnessItems).values({ ...item, title: 'Item', createdAt: seededAt });
+}
+
+export async function seedEvent(db: AnyExecutor, event: SeedEvent): Promise<void> {
+  await db.insert(harnessEvents).values({
+    id: seededEventId(event.harnessId, event.n),
+    harnessId: event.harnessId,
+    itemId: event.itemId ?? null,
+    ...(event.position === undefined ? {} : { position: event.position }),
+    name: event.name ?? 'item_created',
+    actor: event.actor ?? seededActor,
+    evidence: {},
+    traceId: seededTrace,
+    at: seededAt,
+  });
 }
