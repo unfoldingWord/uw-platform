@@ -5,6 +5,7 @@ import { describeNotWired } from './not-wired-cases.ts';
 export type GithubFactsSubject = {
   readonly facts: GitHubFacts;
   given(facts: PullRequestFacts): Promise<void>;
+  now(): Date;
 };
 
 function factsFor(repo: string, number: number, head: string): PullRequestFacts {
@@ -118,7 +119,10 @@ function shapeCases(open: () => Promise<GithubFactsSubject>): void {
     const subject = await open();
     const known = factsFor('unfoldingWord/uw-platform', 11, 'f'.repeat(40));
     await subject.given(known);
-    expect(await subject.facts.refresh(known.ref)).toEqual(known);
+    const called = subject.now();
+    const refreshed = await subject.facts.refresh(known.ref);
+    expect(refreshed === null ? null : { ...refreshed, freshAt: known.freshAt }).toEqual(known);
+    expect(refreshed?.freshAt.getTime()).toBeGreaterThanOrEqual(called.getTime());
     expect(
       await subject.facts.refresh({ repo: 'unfoldingWord/uw-platform', number: 405 }),
     ).toBeNull();

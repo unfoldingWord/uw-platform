@@ -102,7 +102,7 @@ export async function readShipFacts(
 }
 
 function isStale(facts: PullRequestFacts, at: Date): boolean {
-  return facts.freshAt.getTime() < at.getTime() - FACTS_FRESH_MS;
+  return Math.abs(facts.freshAt.getTime() - at.getTime()) > FACTS_FRESH_MS;
 }
 
 function staleRefusal(facts: PullRequestFacts): Refused {

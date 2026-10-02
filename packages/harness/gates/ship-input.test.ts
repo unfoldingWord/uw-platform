@@ -209,7 +209,7 @@ describe('GH-5 only the CI jobs from GitHub Actions on the head count', () => {
   });
 });
 
-describe('GH-6 GH-4 facts from another repository or branch are not the pull request', () => {
+describe('GH-5 GH-4 facts from another repository or branch are not the pull request', () => {
   it('reads nothing from another repository, another branch or an abbreviated head', () => {
     const elsewhere = { ref: { repo: 'unfoldingWord/other', number: 42 } };
     expect(assembled({ facts: elsewhere })).toMatchObject(unusable);

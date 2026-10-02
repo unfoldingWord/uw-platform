@@ -1,5 +1,6 @@
 import type { ConnectorRequest, PullRequestFacts, TurnRequest } from '@uw/harness';
 import { describe, expect, it } from 'vitest';
+import { createSimClock } from './clock.ts';
 import { createSimConnectors } from './connectors.ts';
 import { createSimGitHubFacts } from './github-facts.ts';
 import { createSimModelEngine } from './model-engine.ts';
@@ -67,7 +68,7 @@ describe('DX-4 the recording sim adapters', () => {
   });
 
   it('answers a copy of the facts it holds', async () => {
-    const facts = createSimGitHubFacts();
+    const facts = createSimGitHubFacts(createSimClock(new Date('2026-10-01T09:00:00.000Z')));
     facts.given(pullRequestFacts);
     const first = await facts.pullRequest(pullRequestFacts.ref);
     if (first) Object.assign(first, { head: 'z'.repeat(40) });

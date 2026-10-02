@@ -150,6 +150,19 @@ describe('GH-5 an approve at Ship fails closed on stale or missing GitHub facts'
     expect(scene.world.adapters.connectors.calls()).toEqual([]);
   });
 
+  sceneIt('refuses facts stamped more than a minute after the decision', async (scene) => {
+    const at = scene.world.adapters.clock.now();
+    const ahead = approved(scene, new Date(at.getTime() + 60_001));
+    const githubFacts: GitHubFacts = {
+      pullRequest: async () => approved(scene),
+      refresh: async () => ahead,
+    };
+    const { outcome, names, decisions } = await approveWith(scene, githubFacts);
+    expect(outcome).toMatchObject({ status: 'error', reason: 'facts_stale' });
+    expect(names).toEqual([]);
+    expect(decisions).toEqual([]);
+  });
+
   sceneIt('accepts facts refreshed within the minute', async (scene) => {
     const at = scene.world.adapters.clock.now();
     const recent = approved(scene, new Date(at.getTime() - 60_000));

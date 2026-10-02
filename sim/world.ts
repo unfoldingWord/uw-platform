@@ -34,12 +34,13 @@ export type World = {
 };
 
 function simAdapters(database: EmbeddedDatabase, start: Date): SimAdapters {
+  const clock = createSimClock(start);
   return {
-    clock: createSimClock(start),
+    clock,
     ids: createSimIds(),
     store: createSimStore(database),
     grants: createSimGrants(database),
-    githubFacts: createSimGitHubFacts(),
+    githubFacts: createSimGitHubFacts(clock),
     connectors: createSimConnectors(),
     modelEngine: createSimModelEngine(),
     hub: createSimHub(),
