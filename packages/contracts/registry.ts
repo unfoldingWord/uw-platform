@@ -3,7 +3,7 @@ import * as closedSets from './closed-sets.ts';
 import { commandNameSchema, commandSchema, overrideCommandSchema } from './commands.ts';
 import { grantRoleCommandSchema, revokeRoleCommandSchema } from './acl-commands.ts';
 import { jdAreaSchema } from './areas.ts';
-import { eventNameSchema, eventSchema } from './events.ts';
+import { eventNameSchema, eventSchema, newEventSchema } from './events.ts';
 import {
   healthIndicatorSchema,
   healthReportSchema,
@@ -75,6 +75,7 @@ export const schemaRegistry: Record<string, ZodType> = {
   'error-reason': errorReasonSchema,
   event: eventSchema,
   'event-name': eventNameSchema,
+  'new-event': newEventSchema,
   identity: identitySchema,
   connector: closedSets.connectorSchema,
   'exit-gate': closedSets.exitGateSchema,

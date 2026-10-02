@@ -196,9 +196,15 @@ describe('refusal reasons and events', () => {
         }).success,
       ).toBe(true);
     }
-    for (const name of ['gate_approved', 'lease_expired', 'delegation_lapsed', 'abandoned']) {
+    for (const name of [
+      'gate_approved',
+      'lease_expired',
+      'delegation_lapsed',
+      'branch_abandoned',
+    ]) {
       expect(eventNameSchema.safeParse(name).success).toBe(true);
     }
+    expect(eventNameSchema.safeParse('abandoned').success).toBe(false);
   });
 });
 

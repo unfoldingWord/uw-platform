@@ -1,0 +1,11 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000e1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": null,
+  "name": "template_activated",
+  "position": 1,
+  "at": "2026-10-01T09:00:00.000Z",
+  "actor": "agent:builder",
+  "evidence": { "template": "software", "stages": ["package", "scope"] },
+  "traceId": "00000000-0000-4000-8000-0000000000c1"
+}
