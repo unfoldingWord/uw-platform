@@ -10,9 +10,11 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { owns as acl } from '../../apps/uw-app/acl/grant-commands.ts';
+import { owns as serviceTokens } from '../../apps/uw-app/agents/service-tokens.ts';
 import { owns as pages } from '../../apps/uw-app/pages/store.ts';
 import { owns as people } from '../../apps/uw-app/people/directory.ts';
 import { owns as queue } from '../../apps/uw-app/queue/watermarks.ts';
+import { owns as tasks } from '../../apps/uw-app/tasks/store.ts';
 import { owns as deliveries } from '../../apps/uw-ingest/deliveries/ledger.ts';
 import { owns as delegations } from '../../packages/harness/delegations/owns.ts';
 import { owns as gates } from '../../packages/harness/gates/owns.ts';
@@ -33,6 +35,8 @@ const owners: Owner[] = [
   { dir: 'apps/uw-app/acl/', tables: acl },
   { dir: 'apps/uw-app/pages/', tables: pages },
   { dir: 'apps/uw-app/queue/', tables: queue },
+  { dir: 'apps/uw-app/tasks/', tables: tasks },
+  { dir: 'apps/uw-app/agents/', tables: serviceTokens },
   { dir: 'apps/uw-ingest/deliveries/', tables: deliveries },
   { dir: 'packages/harness/stages/', tables: stages },
   { dir: 'packages/harness/items/', tables: items },
