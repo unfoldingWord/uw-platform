@@ -18,3 +18,5 @@ export const identitySchema = z
   .brand<'Identity'>();
 
 export type Identity = z.infer<typeof identitySchema>;
+
+export const systemIdentity = 'agent:system';

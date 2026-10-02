@@ -1,0 +1,16 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000e2",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": null,
+  "name": "stage_edited",
+  "position": 2,
+  "at": "2026-10-02T09:00:00.000Z",
+  "actor": "human:00000000-0000-4000-8000-000000000001",
+  "evidence": {
+    "stageId": "00000000-0000-4000-8000-0000000000d1",
+    "key": "review",
+    "before": { "exitGate": "checks", "wipLimit": 3 },
+    "after": { "exitGate": "human_approval", "wipLimit": 2 }
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1"
+}

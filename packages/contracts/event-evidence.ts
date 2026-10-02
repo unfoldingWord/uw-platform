@@ -9,7 +9,12 @@ import {
   riskDomainsSchema,
   riskTierSchema,
 } from './closed-sets.ts';
-import { personaIdentitySchema, pullRequestRefSchema, stageKeySchema } from './harness.ts';
+import {
+  personaIdentitySchema,
+  pullRequestRefSchema,
+  stageKeySchema,
+  stageSchema,
+} from './harness.ts';
 import { identitySchema } from './identity.ts';
 import { errorReasonSchema } from './outcomes.ts';
 import { slugSchema } from './pages.ts';
@@ -22,6 +27,9 @@ const stage = stageKeySchema;
 const text = z.string().min(1).max(500);
 const head = z.string().min(1).max(64);
 const effect = connectorSchema.exclude(['none']);
+const stageColumns = z.strictObject(
+  stageSchema.omit({ id: true, harnessId: true }).partial().shape,
+);
 const tokens = z.number().int().min(0);
 const nonBlank = z
   .string()
@@ -114,6 +122,12 @@ const harnessEvidence = {
     reason: errorReasonSchema,
     code: z.string().nullable(),
     constraint: z.string().nullable(),
+  }),
+  stage_edited: z.strictObject({
+    stageId: id,
+    key: stage,
+    before: stageColumns.nullable(),
+    after: stageColumns,
   }),
   template_activated: z.strictObject({ template: slugSchema, stages: z.array(stage).min(1) }),
 };
