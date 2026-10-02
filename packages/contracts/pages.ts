@@ -9,6 +9,7 @@ export const pageTypes = [
   'system_goal',
   'product_strategy',
   'data_sources',
+  'issue',
 ] as const;
 
 export const pageTypeSchema = z.enum(pageTypes);

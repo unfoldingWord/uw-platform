@@ -16,6 +16,8 @@ export const identityPattern = `^(?:${human}|${agent}|${device}|${delegated})$`;
 
 export const systemIdentity = 'agent:system';
 
+export const ingestIdentity = 'agent:ingest';
+
 const AGENT = 'agent:';
 const ASSUMING = ' as ';
 const VIA_DELEGATION = ' via delegation:';

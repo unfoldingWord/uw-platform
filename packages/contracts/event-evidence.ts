@@ -10,6 +10,7 @@ import {
   riskTierSchema,
 } from './closed-sets.ts';
 import {
+  issueRefSchema,
   personaIdentitySchema,
   pullRequestRefSchema,
   repositorySchema,
@@ -61,6 +62,7 @@ const itemEvidence = {
     pageId: id.nullable(),
     priority: z.number().int(),
     due: z.iso.date().nullable(),
+    issue: issueRefSchema.nullable().default(null),
   }),
   item_claimed: z.strictObject({
     holder: identitySchema,
@@ -75,6 +77,11 @@ const itemEvidence = {
   branch_adopted: z.strictObject({ head: head.nullable() }),
   stage_advanced: z.strictObject({ from: stage, to: stage.nullable() }),
   loop_edge_taken: z.strictObject({ from: stage, to: stage }),
+  label_removed: z.strictObject({
+    issue: issueRefSchema,
+    label: z.string().min(1).max(50),
+    githubUpdatedAt: instant,
+  }),
   risk_derived: z.strictObject({
     paths: z.array(z.string().min(1)),
     declaration: riskDeclarationSchema.nullable(),

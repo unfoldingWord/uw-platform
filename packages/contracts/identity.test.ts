@@ -4,6 +4,7 @@ import {
   delegationIdOf,
   deviceOwnerSegment,
   identitySchema,
+  ingestIdentity,
   isPersonaIdentity,
   personaSlugOf,
 } from './identity.ts';
@@ -66,5 +67,13 @@ describe('the device and persona slots of an identity', () => {
     'agent:p1/Laptop as iterate via delegation:d1',
   ])('refuses %s', (value) => {
     expect(identitySchema.safeParse(value).success).toBe(false);
+  });
+});
+
+describe('the ingest identity is named in one place', () => {
+  it('is agent:ingest, a well-formed identity that no persona may take', () => {
+    expect(ingestIdentity).toBe('agent:ingest');
+    expect(identitySchema.safeParse(ingestIdentity).success).toBe(true);
+    expect(isPersonaIdentity(ingestIdentity)).toBe(false);
   });
 });

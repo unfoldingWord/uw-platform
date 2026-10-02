@@ -39,6 +39,12 @@ export const pullRequestRefSchema = z.strictObject({
   number: z.number().int().min(1),
 });
 
+export const issueRefSchema = z.strictObject({
+  repo: repositorySchema,
+  number: z.number().int().min(1),
+  githubId: z.number().int().min(1),
+});
+
 export const harnessSchema = z.strictObject({
   id: z.uuid(),
   key: slugSchema,
@@ -87,9 +93,11 @@ export const itemStateSchema = z.strictObject({
   riskTier: riskTierSchema.nullable(),
   riskDomains: riskDomainsSchema,
   pullRequest: pullRequestRefSchema.nullable(),
+  issue: issueRefSchema.nullable(),
   zulipTopic: z.string().min(1).nullable(),
 });
 
 export type Harness = z.infer<typeof harnessSchema>;
 export type Stage = z.infer<typeof stageSchema>;
 export type ItemState = z.infer<typeof itemStateSchema>;
+export type IssueRef = z.infer<typeof issueRefSchema>;

@@ -28,5 +28,5 @@
     "@types/node": "^22.20.4",
     "wrangler": "^4.144.0"
   },
-  "contractVersion": "8.1.0"
+  "contractVersion": "9.0.0"
 }
