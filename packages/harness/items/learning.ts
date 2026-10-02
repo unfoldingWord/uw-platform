@@ -4,7 +4,8 @@ import type { Caller } from '../caller.ts';
 import { actingPrincipal, isRefusal } from '../delegations/acting.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
-import { draft, recordContext, recordItemEvents } from './record.ts';
+import { expireLapsedLease, leaseLapsed } from './leases.ts';
+import { draft, recordContext, recordItemEvents, type RecordContext } from './record.ts';
 import { holdsClaim } from './release.ts';
 
 type LearningPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
@@ -34,7 +35,20 @@ async function presentedDelegation(
   if (!(await holdsClaim(tx, item, caller.actor, held))) {
     return refused('not_holder', { itemId: item.itemId });
   }
+  if (delegationId !== null && delegationId !== item.delegationId) {
+    return refused('not_permitted', { delegationId });
+  }
   return { delegationId: item.delegationId };
+}
+
+async function lapsedLeaseRefusal(
+  tx: StoreTransaction,
+  context: RecordContext,
+  item: ItemState,
+): Promise<Refused | null> {
+  if (!leaseLapsed(item, context.at)) return null;
+  await expireLapsedLease(tx, context, item);
+  return refused('lease_expired', { itemId: item.itemId, leaseExpiresAt: item.leaseExpiresAt });
 }
 
 async function standing(
@@ -58,7 +72,8 @@ async function standing(
   if (!allowed(actor, 'write', harness, at)) {
     return refused('not_permitted', { harnessId: harness.id });
   }
-  return { item };
+  if (!isAgent(caller.actor)) return { item };
+  return (await lapsedLeaseRefusal(tx, context, item)) ?? { item };
 }
 
 function isStandingRefusal(value: Refused | Standing): value is Refused {

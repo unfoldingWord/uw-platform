@@ -63,14 +63,21 @@ async function race(connections: Connections, first: Outcome): Promise<boolean> 
     .catch((error: unknown) => {
       if (!(error instanceof RolledBack)) throw error;
     });
-  await claimed.promise;
-  const second = createDrizzleStore(connections.two).transaction((tx) =>
-    tx.harnessItems.write.claim(claimBy('agent:b')),
-  );
-  await awaitWaiting(connections.observer);
-  finish.resolve();
-  await winner;
-  return second;
+  try {
+    await Promise.race([claimed.promise, winner]);
+    const second = createDrizzleStore(connections.two).transaction((tx) =>
+      tx.harnessItems.write.claim(claimBy('agent:b')),
+    );
+    try {
+      await awaitWaiting(connections.observer);
+    } finally {
+      finish.resolve();
+    }
+    return await second;
+  } finally {
+    finish.resolve();
+    await winner;
+  }
 }
 
 async function holderOf(observer: Database): Promise<string | null> {

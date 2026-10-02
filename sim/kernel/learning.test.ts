@@ -1,7 +1,7 @@
 import type { Principal } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { seedPage } from '@uw/db/test-seed';
-import { readAllEvents, software, type Caller, type KernelOutcome } from '@uw/harness';
+import { LEASE_MS, readAllEvents, software, type Caller, type KernelOutcome } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createSimHarness, simAgent, simCaller, simIan, simPerson } from '../fixtures.ts';
 import { createWorld, type World } from '../world.ts';
@@ -213,6 +213,28 @@ describe("KN-7 attaching a learning is the holder's act, or a person's with writ
     expect(reasonOf(await attach(scene, agent))).toBeNull();
     expect(await attachedBy(scene)).toEqual([agent.actor.identity]);
   });
+
+  sceneIt('KN-7 the holder whose lease has lapsed is lease_expired', async (scene) => {
+    const agent = await claimedByDevice(scene);
+    scene.world.adapters.clock.advance(LEASE_MS + 1);
+    expect(reasonOf(await attach(scene, agent))).toBe('lease_expired');
+    expect(await attachedBy(scene)).toEqual([]);
+    expect(await eventNames(scene)).toContain('lease_expired');
+  });
+
+  sceneIt(
+    'KN-7 the holder presenting a delegation it did not claim under is not_permitted',
+    async (scene) => {
+      const agent = await claimedByDevice(scene);
+      const outcome = await scene.world.kernel.items.attachLearning(agent, {
+        itemId: scene.itemId,
+        pageId: learningId,
+        delegationId: scene.world.adapters.ids.next(),
+      });
+      expect(reasonOf(outcome)).toBe('not_permitted');
+      expect(await attachedBy(scene)).toEqual([]);
+    },
+  );
 
   sceneIt('KN-7 an editor who does not hold the item attaches', async (scene) => {
     await claimedByDevice(scene);
