@@ -1,6 +1,8 @@
 import { createClient, type Database } from '@uw/db/client';
 import { testServer, withMigratedDatabase } from '@uw/db/test-database';
+import type { Clock } from '@uw/harness';
 import type { AppDeps } from '../deps.ts';
+import { systemClock } from '../ports/clock.ts';
 import type { AccessFixture } from './access-keys.ts';
 
 export { testServer };
@@ -20,11 +22,13 @@ export function postgresDeps(
   db: Database,
   fixture: AccessFixture,
   sink: AppDeps['sink'] = () => undefined,
+  clock: Clock = systemClock,
 ): AppDeps {
   return {
     openDatabase: () => ({ db, ping: async () => undefined, release: async () => undefined }),
     accessKeys: () => fixture.keys,
     newId: () => crypto.randomUUID(),
     sink,
+    clock,
   };
 }

@@ -1,4 +1,4 @@
-import { createKernel, type Kernel, type Ports } from '@uw/harness';
+import { createKernel, type Clock, type Kernel, type Ports } from '@uw/harness';
 import type { DatabaseHandle } from './database.ts';
 import { systemClock } from './ports/clock.ts';
 import { connectorsNotWired } from './ports/connectors.not-wired.ts';
@@ -13,9 +13,9 @@ import { runsNotWired } from './ports/runs.not-wired.ts';
 import { platformStore } from './ports/store.ts';
 import { storeNotWired } from './ports/store.not-wired.ts';
 
-export function platformPorts(database: DatabaseHandle | null): Ports {
+export function platformPorts(database: DatabaseHandle | null, clock: Clock = systemClock): Ports {
   return {
-    clock: systemClock,
+    clock,
     ids: randomIds,
     store: database ? platformStore(database.db) : storeNotWired,
     grants: database ? platformGrants(database.db) : grantsNotWired,
@@ -28,6 +28,9 @@ export function platformPorts(database: DatabaseHandle | null): Ports {
   };
 }
 
-export function platformKernel(database: DatabaseHandle | null): Kernel {
-  return createKernel(platformPorts(database));
+export function platformKernel(
+  database: DatabaseHandle | null,
+  clock: Clock = systemClock,
+): Kernel {
+  return createKernel(platformPorts(database, clock));
 }

@@ -10,6 +10,8 @@
     "deploy:staging": "wrangler deploy --config ../../infra/uw-app/wrangler.toml --env staging --var COMMIT_SHA:$(git rev-parse HEAD)"
   },
   "dependencies": {
+    "@cfworker/json-schema": "^4.1.1",
+    "@modelcontextprotocol/sdk": "^1.31.0",
     "@uw/contracts": "workspace:*",
     "@uw/core": "workspace:*",
     "@uw/db": "workspace:*",
