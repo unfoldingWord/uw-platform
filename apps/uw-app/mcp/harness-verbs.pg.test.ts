@@ -11,7 +11,7 @@ import { bindServiceToken } from '../agents/service-tokens.ts';
 import { createApp } from '../app.tsx';
 import { platformStore } from '../ports/store.ts';
 import { createAccessFixture, type AccessFixture } from '../testing/access-keys.ts';
-import { kernelOn, personOn } from '../testing/kernel.ts';
+import { kernelOn, noFacts, personOn } from '../testing/kernel.ts';
 import { areaGrant, callTool, httpClient, testAgent } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
 import type { VerbContext } from './context.ts';
@@ -31,7 +31,6 @@ const LEAVER_80 = '00000000-0000-4000-8000-000000001304';
 const CLIENT = 'verbs-routine.access';
 const ROUTINE = 'hourly-routine';
 const MINUTE = 60_000;
-const PULL_REQUEST = { repo: 'unfoldingWord/uw-platform', number: 7 };
 const HEAD = 'a'.repeat(40);
 
 type Body = Record<string, unknown>;
@@ -88,7 +87,8 @@ async function openRig(): Promise<Rig> {
     await database.drop();
   };
   const fixture = await createAccessFixture();
-  return { db, clock, fixture, kernel: kernelOn(db, clock), ian, editor, drop };
+  const kernel = kernelOn(db, clock, { githubFacts: noFacts });
+  return { db, clock, fixture, kernel, ian, editor, drop };
 }
 
 function rig(): Promise<Rig> {
@@ -109,6 +109,14 @@ function value<T>(outcome: { status: 'accepted'; value: T } | { status: 'error';
   return outcome.value;
 }
 
+function repositoryOf(key: string): string {
+  return `unfoldingWord/${key}`;
+}
+
+function pullRequestOf(key: string) {
+  return { repo: repositoryOf(key), number: 7 };
+}
+
 async function harnessWith(r: Rig, key: string, priorities: readonly number[], area = '80-89') {
   const harnessId = crypto.randomUUID();
   const template = software;
@@ -118,7 +126,7 @@ async function harnessWith(r: Rig, key: string, priorities: readonly number[], a
       harnessKey: key,
       jdArea: area,
       template,
-      repository: null,
+      repository: repositoryOf(key),
     }),
   );
   const change = { agentPickup: 'allowed' as const };
@@ -383,26 +391,34 @@ describe.skipIf(!testServer)('AB-4 submit_to_gate parks at a human gate', () => 
     const { h, itemId } = await heldByPersonAtCheck(r, 'software-gate');
     const laptop = await runner(r, 'laptop');
     expect((await claim(laptop, itemId)).isError).toBe(false);
-    const submitted = await call(laptop, 'submit_to_gate', {
-      itemId,
+    const submitted = await submitInProcess(r, {
+      ...submission(itemId, 'software-gate', null),
       evidence: { summary: 'ready for a person' },
-      to: null,
-      pullRequest: PULL_REQUEST,
-      head: HEAD,
     });
-    expect(submitted.body).toEqual({ itemId, result: 'parked', failures: [] });
+    expect(submitted).toEqual({ itemId, result: 'parked', failures: [] });
     const item = value(await r.kernel.reads.item(caller(r.ian), { itemId })).item;
     expect(item).toMatchObject({ stageKey: 'check', gateStatus: 'parked' });
-    const [risk] = await eventsNamed(r, h, 'risk_derived');
-    expect(risk?.evidence).toMatchObject({ refusal: 'risk_tier_undeclared' });
+    expect(await eventsNamed(r, h, 'risk_derived')).toEqual([]);
     const [parked] = await eventsNamed(r, h, 'submitted_to_gate').then((all) => all.slice(-1));
     expect(parked?.actor).toBe(`agent:${EDITOR.id}/laptop`);
-    expect(parked?.evidence).toMatchObject({ pullRequest: PULL_REQUEST, expectedHead: HEAD });
+    expect(parked?.evidence).toMatchObject({
+      pullRequest: pullRequestOf('software-gate'),
+      expectedHead: HEAD,
+    });
   });
 });
 
-function submission(itemId: string, to: string | null): Body {
-  return { itemId, evidence: {}, to, pullRequest: PULL_REQUEST, head: HEAD };
+function submission(itemId: string, key: string, to: string | null): Body {
+  return { itemId, evidence: {}, to, pullRequest: pullRequestOf(key), head: HEAD };
+}
+
+function unchanged(itemId: string): Body {
+  return { itemId, evidence: {}, to: null, pullRequest: null, head: null };
+}
+
+async function submitInProcess(r: Rig, args: Body): Promise<Body> {
+  const context = { ...workflowContext(r, devicePrincipal(r.editor)), host: 'external' as const };
+  return JSON.parse(textOf(await callVerb(context, 'submit_to_gate', args, verbHandlers)));
 }
 
 describe.skipIf(!testServer)('AB-4 submit_to_gate names no stage past a human gate', () => {
@@ -411,8 +427,8 @@ describe.skipIf(!testServer)('AB-4 submit_to_gate names no stage past a human ga
     const { itemId } = await heldByPersonAtCheck(r, 'software-gate-ship');
     const laptop = await runner(r, 'laptop');
     expect((await claim(laptop, itemId)).isError).toBe(false);
-    const submitted = await call(laptop, 'submit_to_gate', submission(itemId, 'ship'));
-    expect(submitted.body).toEqual({ itemId, result: 'parked', failures: [] });
+    const submitted = await submitInProcess(r, submission(itemId, 'software-gate-ship', 'ship'));
+    expect(submitted).toEqual({ itemId, result: 'parked', failures: [] });
     const item = value(await r.kernel.reads.item(caller(r.ian), { itemId })).item;
     expect(item).toMatchObject({ stageKey: 'check', gateStatus: 'parked' });
   });
@@ -425,7 +441,7 @@ describe.skipIf(!testServer)('AB-4 submit_to_gate refuses a lapsed lease', () =>
     const laptop = await runner(r, 'laptop');
     expect((await claim(laptop, at(h, 0))).isError).toBe(false);
     r.clock.advance(LEASE_MS + MINUTE);
-    const submitted = await call(laptop, 'submit_to_gate', submission(at(h, 0), null));
+    const submitted = await call(laptop, 'submit_to_gate', unchanged(at(h, 0)));
     expect(submitted.body).toMatchObject({ reason: 'lease_expired', detail: { itemId: at(h, 0) } });
     const item = value(await r.kernel.reads.item(caller(r.ian), { itemId: at(h, 0) })).item;
     expect(item.stageKey).toBe('package');
@@ -461,7 +477,7 @@ describe.skipIf(!testServer)(
       const own = [
         await claim(laptop, missingId),
         await step(laptop, missingId, 'metered'),
-        await call(laptop, 'submit_to_gate', submission(missingId, null)),
+        await call(laptop, 'submit_to_gate', unchanged(missingId)),
       ];
       expect(own.every((result) => result.isError)).toBe(true);
       for (const body of seen) expect(surfaceRefusal.safeParse(body).success).toBe(true);

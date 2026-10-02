@@ -19,6 +19,8 @@ export function kernelOn(db: Database, clock: Clock, overrides: Partial<Ports> =
   return createKernel({ ...platformPorts(handle), clock, ...overrides });
 }
 
+export const noFacts: GitHubFacts = { pullRequest: async () => null, refresh: async () => null };
+
 export function fixedFacts(facts: PullRequestFacts): GitHubFacts {
   return { pullRequest: async () => facts, refresh: async () => facts };
 }

@@ -102,7 +102,7 @@ function release(model: Model): void {
 }
 
 function submit(model: Model, result: string, to: string | null, pick: number): void {
-  const head = `head${model.count}`;
+  const head = model.count.toString(16).padStart(40, '0');
   const pullRequest = pick % 2 === 0 ? { repo, number: pick + 1 } : null;
   emit(model, 'submitted_to_gate', {
     stage: stageKey(model.stage),

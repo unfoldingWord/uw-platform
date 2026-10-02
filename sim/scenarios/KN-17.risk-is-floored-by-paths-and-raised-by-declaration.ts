@@ -5,10 +5,16 @@ import {
   type Principal,
   type RiskDeclaration,
 } from '@uw/contracts';
-import { readAllEvents, software, type KernelOutcome, type PullRequestRef } from '@uw/harness';
+import {
+  readAllEvents,
+  software,
+  type KernelOutcome,
+  type PullRequestFacts,
+  type PullRequestRef,
+} from '@uw/harness';
 import { createSimHarness, simAdvance, simAgent, simCaller, simPerson } from '../fixtures.ts';
 import { defineScenario } from '../scenario.ts';
-import { simSha } from '../ship-fixtures.ts';
+import { declared, greenFacts, simSha } from '../ship-fixtures.ts';
 import type { World } from '../world.ts';
 
 function valueOf<T>(outcome: KernelOutcome<T>): T {
@@ -71,16 +77,28 @@ type Change = {
   readonly declaration: RiskDeclaration | null;
 };
 
+function factsOf(world: World, scene: Scene, change: Change): PullRequestFacts {
+  return greenFacts(world, {
+    itemId: scene.itemId,
+    head: change.head.trim().toLowerCase(),
+    reviews: [],
+    ref: scene.pullRequest,
+    paths: change.paths,
+    declaration: declared(change.declaration),
+  });
+}
+
 async function submitHeld(
   world: World,
   scene: Scene,
   change: Change | null,
 ): Promise<KernelOutcome<{ readonly item: ItemState }>> {
+  if (change !== null) world.adapters.githubFacts.given(factsOf(world, scene, change));
   return world.kernel.items.submit(simCaller(world, scene.owner), {
     itemId: scene.itemId,
     to: null,
     evidence: {},
-    change: change === null ? null : { pullRequest: scene.pullRequest, ...change },
+    change: change === null ? null : { pullRequest: scene.pullRequest, head: change.head },
   });
 }
 

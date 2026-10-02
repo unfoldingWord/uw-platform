@@ -3,14 +3,16 @@ import type {
   Harness,
   HarnessEvent,
   ItemState,
-  RiskDeclaration,
   Stage,
   submitToGateResultSchema,
 } from '@uw/contracts';
 import { allowed } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
-import type { Ports, PullRequestRef, StoreTransaction } from '../ports.ts';
+import { factsFailure } from '../gates/facts-failure.ts';
+import { riskDeclarationOf } from '../github/declaration.ts';
+import { branchFor, fullSha, sameRepository } from '../github/identifiers.ts';
+import type { Ports, PullRequestFacts, PullRequestRef, StoreTransaction } from '../ports.ts';
 import { runValidators } from '../validators/registry.ts';
 import { attachedPageIds } from '../validators/learning-attached.ts';
 import { expireLapsedLease, leaseLapsed } from './leases.ts';
@@ -35,14 +37,9 @@ import {
 } from './transitions.ts';
 
 type SubmitToGateResult = (typeof submitToGateResultSchema.options)[number];
-type SubmitPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
+type SubmitPorts = Pick<Ports, 'clock' | 'githubFacts' | 'grants' | 'ids' | 'store'>;
 
-export type SubmitChange = {
-  readonly pullRequest: PullRequestRef;
-  readonly head: string;
-  readonly paths: readonly string[];
-  readonly declaration: RiskDeclaration | null;
-};
+export type SubmitChange = { readonly pullRequest: PullRequestRef; readonly head: string };
 
 export type SubmitInput = {
   readonly itemId: string;
@@ -71,6 +68,13 @@ type Submission = {
   readonly input: SubmitInput;
 };
 
+type Command = {
+  readonly caller: Caller;
+  readonly input: SubmitInput;
+  readonly facts: PullRequestFacts | null;
+  readonly at: Date;
+};
+
 type GateHandler = (tx: StoreTransaction, submission: Submission) => Promise<Decision>;
 
 function submittedDraft(submission: Submission, result: SubmitToGateResult): EventDraft {
@@ -85,30 +89,50 @@ function submittedDraft(submission: Submission, result: SubmitToGateResult): Eve
   });
 }
 
-function riskDraft(change: SubmitChange, item: ItemState): EventDraft {
-  const fresh = floorFromPaths(change.paths);
-  const floor = carryForward(fresh, { tier: item.riskTier, domains: item.riskDomains });
-  const result = applyDeclaration(floor, change.declaration);
-  return draft('risk_derived', {
-    paths: [...change.paths],
-    declaration: change.declaration,
-    floorDomains: [...floor.domains],
-    riskTier: result.ok ? result.tier : floor.tier,
-    riskDomains: [...result.domains],
-    refusal: result.ok ? null : result.reason,
-    head: normalisedHead(change.head),
-  });
+function samePullRequest(facts: PullRequestFacts, change: SubmitChange): boolean {
+  const { repo, number } = change.pullRequest;
+  return sameRepository(facts.ref.repo, repo) && facts.ref.number === number;
 }
 
-function normalisedHead(head: string): string | null {
-  const trimmed = head.trim().toLowerCase();
-  return trimmed === '' || /\s/u.test(trimmed) ? null : trimmed;
+function pathsAtHead(
+  facts: PullRequestFacts | null,
+  change: SubmitChange,
+  item: ItemState,
+): readonly string[] | null {
+  if (facts === null || !samePullRequest(facts, change)) return null;
+  if (facts.headRef !== branchFor(item.itemId) || fullSha(facts.head) !== change.head) return null;
+  if (facts.files === null || fullSha(facts.files.head) !== change.head) return null;
+  return facts.files.paths;
+}
+
+function riskDraft(command: Command, item: ItemState): readonly EventDraft[] {
+  const { change } = command.input;
+  if (change === null || command.facts === null) return [];
+  const paths = pathsAtHead(command.facts, change, item);
+  if (paths === null) return [];
+  const fresh = floorFromPaths(paths);
+  const floor = carryForward(fresh, { tier: item.riskTier, domains: item.riskDomains });
+  const declaration = riskDeclarationOf(command.facts.declaration);
+  const result = applyDeclaration(floor, declaration);
+  return [
+    draft('risk_derived', {
+      paths: [...paths],
+      declaration,
+      floorDomains: [...floor.domains],
+      riskTier: result.ok ? result.tier : floor.tier,
+      riskDomains: [...result.domains],
+      refusal: result.ok ? null : result.reason,
+      head: change.head,
+    }),
+  ];
 }
 
 function withNormalisedHead(input: SubmitInput): SubmitInput | null {
   if (input.change === null) return input;
-  const head = normalisedHead(input.change.head);
-  return head === null ? null : { ...input, change: { ...input.change, head } };
+  const head = fullSha(input.change.head);
+  return head === null
+    ? null
+    : { ...input, change: { pullRequest: input.change.pullRequest, head } };
 }
 
 async function passThrough(_tx: StoreTransaction, submission: Submission): Promise<Decision> {
@@ -208,13 +232,19 @@ function notPermitted(item: ItemState): Refused {
   return refused('not_permitted', { harnessId: item.harnessId });
 }
 
+function repositoryRefusal(input: SubmitInput, harness: Harness): Refused | null {
+  if (input.change === null || sameRepository(input.change.pullRequest.repo, harness.repository)) {
+    return null;
+  }
+  return refused('not_permitted', { why: 'repository_mismatch' });
+}
+
 async function submitIn(
   ports: SubmitPorts,
   tx: StoreTransaction,
-  caller: Caller,
-  input: SubmitInput,
-  at: Date,
+  command: Command,
 ): Promise<KernelOutcome<Submitted>> {
+  const { caller, input, at } = command;
   const item = await tx.harnessItems.read.lock(input.itemId);
   if (item === null) return refused('item_not_found', { itemId: input.itemId });
   const harness = await tx.harnesses.read.byId(item.harnessId);
@@ -225,6 +255,8 @@ async function submitIn(
   const context = recordContext(ports, caller, at);
   const denied = await standingRefusal(tx, ports, { caller, item, harness, stage, context });
   if (denied !== null) return denied;
+  const mismatch = repositoryRefusal(input, harness);
+  if (mismatch !== null) return mismatch;
   const exit = resolveExit(stages, stage, input.to);
   if (exit === null) return refused('transition_not_allowed', { from: stage.key, to: input.to });
   if (unattendedLoop(exit, caller.actor, item.delegationId)) {
@@ -239,20 +271,33 @@ async function submitIn(
     tweak: isOccasionalTweak(exit),
     input,
   });
-  const risk = input.change === null ? [] : [riskDraft(input.change, item)];
+  const risk = riskDraft(command, item);
   const recorded = await recordItemEvents(tx, context, item.itemId, [...risk, ...decision.drafts]);
   return accepted({ item: recorded.item, result: decision.result, failures: decision.failures });
 }
 
-export function submit(
+type FactsRead = { readonly facts: PullRequestFacts | null } | { readonly refusal: Refused };
+
+async function readFacts(ports: SubmitPorts, change: SubmitChange | null): Promise<FactsRead> {
+  if (change === null) return { facts: null };
+  try {
+    return { facts: await ports.githubFacts.pullRequest(change.pullRequest) };
+  } catch (error) {
+    return { refusal: factsFailure(error) };
+  }
+}
+
+export async function submit(
   ports: SubmitPorts,
   caller: Caller,
   input: SubmitInput,
 ): Promise<KernelOutcome<Submitted>> {
   const normalised = withNormalisedHead(input);
   if (normalised === null) {
-    return Promise.resolve(refused('malformed_command', { head: input.change?.head ?? null }));
+    return refused('malformed_command', { head: input.change?.head ?? null });
   }
-  const at = ports.clock.now();
-  return ports.store.transaction((tx) => submitIn(ports, tx, caller, normalised, at));
+  const read = await readFacts(ports, normalised.change);
+  if ('refusal' in read) return read.refusal;
+  const command = { caller, input: normalised, facts: read.facts, at: ports.clock.now() };
+  return ports.store.transaction((tx) => submitIn(ports, tx, command));
 }

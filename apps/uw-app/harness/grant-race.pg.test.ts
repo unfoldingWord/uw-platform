@@ -14,7 +14,14 @@ import {
 import { describe, expect, it } from 'vitest';
 import { revokeRole } from '../acl/grant-commands.ts';
 import { platformGrants } from '../ports/grants.ts';
-import { agentOf, fixedFacts, kernelOn, pausingGrants, personOn } from '../testing/kernel.ts';
+import {
+  agentOf,
+  fixedFacts,
+  kernelOn,
+  noFacts,
+  pausingGrants,
+  personOn,
+} from '../testing/kernel.ts';
 import { awaitBlocked } from '../../../packages/harness/port-contracts/lock-wait.ts';
 
 const ianId = '00000000-0000-4000-8000-000000000001';
@@ -88,19 +95,11 @@ function accepted<T>(outcome: KernelOutcome<T>, what: string): T {
 async function passStage(kernel: Kernel, worker: Principal, itemId: string, change: boolean) {
   const as = caller(worker);
   accepted(await kernel.items.claim(as, { itemId, delegationId: null }), 'claim');
-  const declared = change
-    ? {
-        pullRequest,
-        head,
-        paths: ['apps/uw-app/board.tsx'],
-        declaration: { riskTier: 'standard' as const, riskDomains: [] },
-      }
-    : null;
   const submitted = await kernel.items.submit(as, {
     itemId,
     to: null,
     evidence: {},
-    change: declared,
+    change: change ? { pullRequest, head } : null,
   });
   return accepted(submitted, 'submit').item;
 }
@@ -156,7 +155,10 @@ async function raceOn(connections: Connections): Promise<Race> {
   });
   const ian = await personOn(connections.decider, ianId, 'ian.lindsley@unfoldingword.org', instant);
   const kim = await personOn(connections.decider, kimId, kimEmail, instant);
-  const item = await parkAtShip(kernelOn(connections.decider, clock), ian);
+  const item = await parkAtShip(
+    kernelOn(connections.decider, clock, { githubFacts: noFacts }),
+    ian,
+  );
   const facts = fixedFacts(greenFacts(item.itemId));
   const decider = kernelOn(connections.decider, clock, { githubFacts: facts });
   return { connections, decider, ian, kim, item };

@@ -277,9 +277,10 @@ describe('KN-17 replay never lowers risk', () => {
 describe('KN-4 replay folds a submit by its result', () => {
   it('records the pull request and keeps the holder on a submit that is not parked', () => {
     const request = { repo: 'unfoldingWord/uw-platform', number: 7 };
-    expect(replay([...base(), submitted('advanced', 'abc', request)])).toMatchObject({
+    const head = 'abc'.padEnd(40, '0');
+    expect(replay([...base(), submitted('advanced', head, request)])).toMatchObject({
       pullRequest: request,
-      expectedHead: 'abc',
+      expectedHead: head,
       branchState: 'active',
       holder: builder,
       gateStatus: 'working',
