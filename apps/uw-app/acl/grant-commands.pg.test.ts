@@ -261,7 +261,7 @@ describe.skipIf(!testServer)('FD-8 grant_role refusals and approval of a pending
         '/api/acl/commands/grant_role',
         body,
       );
-      expect([sent.status, sent.body['reason']]).toEqual([403, 'not_permitted']);
+      expect([sent.status, sent.body['reason']]).toEqual([401, 'unauthenticated']);
     }));
 });
 

@@ -218,7 +218,7 @@ function freshRig(): () => Rig {
 }
 
 async function runner(r: Rig, email: string): Promise<Tool> {
-  const token = await r.fixture.sign({ email });
+  const token = await r.fixture.signForMcp({ email });
   const client = await httpClient(createApp(postgresDeps(r.db, r.fixture)), {
     'cf-access-jwt-assertion': token,
     'x-uw-device': 'laptop',

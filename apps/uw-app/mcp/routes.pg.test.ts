@@ -74,7 +74,7 @@ async function seed(db: Database): Promise<void> {
 }
 
 async function editorClient(db: Database): Promise<Client> {
-  const token = await fixture.sign({ email: EDITOR.email });
+  const token = await fixture.signForMcp({ email: EDITOR.email });
   return httpClient(createApp(postgresDeps(db, fixture)), {
     'cf-access-jwt-assertion': token,
     'x-uw-device': 'laptop',
@@ -103,7 +103,7 @@ async function rawMcp(
 }
 
 async function tampered(): Promise<string> {
-  const token = await fixture.sign({ email: EDITOR.email });
+  const token = await fixture.signForMcp({ email: EDITOR.email });
   const [header, payload, signature] = token.split('.');
   return `${header}.${payload}.${signature?.startsWith('A') ? 'B' : 'A'}${signature?.slice(1) ?? ''}`;
 }
@@ -185,7 +185,7 @@ describe.skipIf(!testServer)('AB-1 /mcp is a Streamable HTTP endpoint behind Acc
   it('answers GET and DELETE 405 with Allow: POST', () =>
     withAppDatabase(async (db) => {
       await seed(db);
-      const token = await fixture.sign({ email: EDITOR.email });
+      const token = await fixture.signForMcp({ email: EDITOR.email });
       for (const method of ['GET', 'DELETE']) {
         const response = await rawMcp(db, method, token);
         expect(response.status).toBe(405);
@@ -199,7 +199,7 @@ describe.skipIf(!testServer)('/mcp takes one JSON-RPC message of at most 256 KiB
   it('refuses a JSON-RPC batch with an invalid-request error before any call runs', () =>
     withAppDatabase(async (db) => {
       await seed(db);
-      const jwt = await fixture.sign({ email: EDITOR.email });
+      const jwt = await fixture.signForMcp({ email: EDITOR.email });
       const response = await rawMcp(db, 'POST', jwt, JSON.stringify([listRequest, listRequest]));
       expect(response.status).toBe(400);
       expect(await response.json()).toEqual({
@@ -212,7 +212,7 @@ describe.skipIf(!testServer)('/mcp takes one JSON-RPC message of at most 256 KiB
   it('refuses a body over 256 KiB as too large', () =>
     withAppDatabase(async (db) => {
       await seed(db);
-      const jwt = await fixture.sign({ email: EDITOR.email });
+      const jwt = await fixture.signForMcp({ email: EDITOR.email });
       const padded = JSON.stringify({ ...listRequest, params: { pad: 'x'.repeat(256 * 1024) } });
       const response = await rawMcp(db, 'POST', jwt, padded);
       expect(response.status).toBe(413);
@@ -264,5 +264,39 @@ describe.skipIf(!testServer)('AB-3 get_health is gated on the harness area', () 
           }),
         },
       ]);
+    }));
+});
+
+async function deviceless(db: Database, token: string): Promise<[number, unknown]> {
+  const response = await createApp(postgresDeps(db, fixture)).request(
+    '/mcp',
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json, text/event-stream',
+        'cf-access-jwt-assertion': token,
+      },
+      body: JSON.stringify(listRequest),
+    },
+    fixtureAccessEnv,
+  );
+  const body = (await response.json()) as Record<string, unknown>;
+  return [response.status, body['reason']];
+}
+
+describe.skipIf(!testServer)('AB-2 /mcp always mints an agent and never serves the person', () => {
+  it('refuses a person login without x-uw-device malformed_command', () =>
+    withAppDatabase(async (db) => {
+      await seed(db);
+      const token = await fixture.signForMcp({ email: EDITOR.email });
+      expect(await deviceless(db, token)).toEqual([400, 'malformed_command']);
+    }));
+
+  it("refuses the person's app-audience session on /mcp unauthenticated", () =>
+    withAppDatabase(async (db) => {
+      await seed(db);
+      const token = await fixture.sign({ email: EDITOR.email });
+      expect((await rawMcp(db, 'POST', token)).status).toBe(401);
     }));
 });
