@@ -1,4 +1,4 @@
-import { and, asc, eq, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import { checkConclusionSchema, pullRequestDeclarationSchema } from '@uw/contracts';
 import type { Executor } from '@uw/db/client';
@@ -26,6 +26,9 @@ const pullState = z.enum(['open', 'closed', 'merged']);
 const reviewState = z.enum(['approved', 'changes_requested', 'commented', 'dismissed']);
 const conclusion = checkConclusionSchema.nullable();
 const paths = z.array(z.string());
+const attempted = z.object({ attemptedAt: z.iso.datetime({ offset: true }).nullable() });
+
+export type SweepState = { readonly sweptThrough: Date | null; readonly attemptedAt: Date | null };
 
 export async function pullRequestChanges(
   db: Executor,
@@ -150,4 +153,29 @@ export async function pullRequestFacts(
     declaration: declaration.success ? declaration.data : null,
     freshAt: pull.freshAt,
   };
+}
+
+export async function sweepStates(
+  db: Executor,
+  repoIds: readonly number[],
+): Promise<ReadonlyMap<number, SweepState>> {
+  if (repoIds.length === 0) return new Map();
+  const rows = await db
+    .select({
+      githubId: ghRepos.githubId,
+      sweptThrough: ghRepos.sweptThrough,
+      lastSweep: ghRepos.lastSweep,
+    })
+    .from(ghRepos)
+    .where(inArray(ghRepos.githubId, [...repoIds]));
+  return new Map(
+    rows.map((row) => {
+      const parsed = attempted.safeParse(row.lastSweep);
+      const at = parsed.success ? parsed.data.attemptedAt : null;
+      return [
+        row.githubId,
+        { sweptThrough: row.sweptThrough, attemptedAt: at ? new Date(at) : null },
+      ];
+    }),
+  );
 }

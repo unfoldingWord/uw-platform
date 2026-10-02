@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
-import { createLogger } from '@uw/core/log';
 import type { Database } from '@uw/db/client';
+import { cronLogger } from '../../cron/job.ts';
 import { ghRepos } from '@uw/db/schema';
 import { systemClock } from '../../ports/clock.ts';
 import { kernelOn } from '../../testing/kernel.ts';
@@ -27,6 +27,7 @@ const checkRunsPath = `/repos/${platform}/commits/${head}/check-runs`;
 const comparePath = `/repos/${platform}/compare/${base}...${head}`;
 export const tokenPath = '/app/installations/77/access_tokens';
 export const outage = { status: 500, body: { message: 'Server Error' } };
+export const listedAt = new Date('2026-10-02T08:00:00.000Z');
 export const firstRun = new Date('2026-10-03T03:17:00.000Z');
 export const nextRun = new Date('2026-10-04T03:17:00.000Z');
 export const zero = {
@@ -94,9 +95,15 @@ export async function sweepOnce(
   run: { readonly github: FixtureGitHub; readonly at: Date; readonly options?: SweepOptions },
 ): Promise<Sweeping> {
   const lines: Line[] = [];
-  const context = { traceId: crypto.randomUUID(), commit: 'c', route: 'cron github sweep' };
-  const logger = createLogger({ ...context, principal: null }, (line) =>
-    lines.push(JSON.parse(line) as Line),
+  const logger = cronLogger(
+    {
+      now: () => run.at,
+      fetch: run.github.fetch,
+      sink: (line) => lines.push(JSON.parse(line) as Line),
+      newId: () => crypto.randomUUID(),
+      commit: 'c',
+    },
+    'cron github sweep',
   );
   const deps = {
     db,

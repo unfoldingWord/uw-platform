@@ -10,27 +10,31 @@ import {
   repoFromRest,
   reviewsFromRest,
 } from './facts/normalise.ts';
-import { openPullRequests, repoByName } from './facts/queries.ts';
+import { openPullRequests, sweepStates, type SweepState } from './facts/queries.ts';
 import { emptyBatch, type FactBatch, type RepoRecord } from './facts/records.ts';
-import { recordSweep, upsertFacts, type RepairCounts } from './facts/upsert.ts';
+import { recordSweep, upsertFacts, type RepairCounts, type SweepRecord } from './facts/upsert.ts';
 import { followUpserts, type GitHubDeps } from './follow-up.ts';
 import { issueSchema } from './payloads.ts';
 import type { GitHubTransport } from './transport.ts';
 
-export type SweepDeps = Omit<GitHubDeps, 'client'> & {
+type SweepDeps = Omit<GitHubDeps, 'client'> & {
   readonly app: GitHubAppConfig;
   readonly transport: GitHubTransport;
 };
 
 export type SweepOptions = { readonly maxPages?: number; readonly maxSubrequests?: number };
 
+type Outcome = SweepRecord['outcome'];
+type Reason = GitHubFailure | 'budget_exhausted' | 'page_limit' | 'pull_request_not_swept';
+
 type RepositorySweep = {
   readonly repo: string;
-  readonly outcome: 'swept' | 'failed' | 'deferred';
-  readonly repaired: RepairCounts;
+  readonly outcome: Outcome;
+  readonly reason: Reason | 'internal_error' | null;
+  readonly heldAt: Date | null;
   readonly sweptThrough: Date | null;
-  readonly capped: boolean;
-  readonly failure: GitHubFailure | null;
+  readonly repaired: RepairCounts;
+  readonly unparsedItems: number;
 };
 
 export type SweepReport = {
@@ -39,7 +43,7 @@ export type SweepReport = {
   readonly subrequests: number;
 };
 
-type Budget = { spent: number; readonly limit: number };
+type Budget = { spent: number; exhausted: boolean; readonly limit: number };
 
 type Run = {
   readonly deps: SweepDeps;
@@ -53,11 +57,15 @@ type Run = {
 type Pass = {
   readonly run: Run;
   readonly repo: RepoRecord;
+  readonly state: SweepState;
   readonly reads: GitHubReads;
   readonly swept: Set<number>;
   repaired: RepairCounts;
+  unparsed: number;
   capped: boolean;
+  reason: Reason | null;
   heldAt: Date | null;
+  through: Date | null;
 };
 
 const overlapMs = 10 * 60_000;
@@ -65,7 +73,6 @@ const defaultPages = 30;
 const defaultSubrequests = 900;
 const perPullRequest = 8;
 const repositoryStart = 2;
-const unlisted = new Date(0);
 const noRepairs: RepairCounts = {
   repos: 0,
   milestones: 0,
@@ -75,6 +82,7 @@ const noRepairs: RepairCounts = {
   reviews: 0,
   files: 0,
 };
+const unswept: SweepState = { sweptThrough: null, attemptedAt: null };
 const listedSchema = issueSchema.pick({ number: true, updated_at: true, pull_request: true });
 
 function remaining(budget: Budget): number {
@@ -85,7 +93,10 @@ function metered(transport: GitHubTransport, budget: Budget): GitHubTransport {
   return {
     now: transport.now,
     fetch: (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-      if (remaining(budget) <= 0) return Promise.reject(new Error('subrequest bound reached'));
+      if (remaining(budget) <= 0) {
+        budget.exhausted = true;
+        return Promise.reject(new Error('subrequest bound reached'));
+      }
       budget.spent += 1;
       return transport.fetch(input, init);
     },
@@ -104,13 +115,18 @@ function plus(a: RepairCounts, b: RepairCounts): RepairCounts {
   };
 }
 
-function hold(pass: Pass, at: Date): void {
-  if (pass.heldAt === null || at < pass.heldAt) pass.heldAt = at;
+function earlier(a: Date | null, b: Date): Date {
+  return a === null || b < a ? b : a;
+}
+
+function stop(pass: Pass, reason: Reason): void {
+  pass.reason ??= reason;
+  if (reason === 'budget_exhausted' || reason === 'page_limit') pass.capped = true;
 }
 
 function affordable(pass: Pass): boolean {
   if (remaining(pass.run.budget) >= perPullRequest) return true;
-  pass.capped = true;
+  stop(pass, 'budget_exhausted');
   return false;
 }
 
@@ -165,34 +181,39 @@ async function sweepPull(pass: Pass, number: number): Promise<boolean> {
     pass.swept.add(number);
     return true;
   }
+  const failure = pass.run.budget.exhausted ? 'budget_exhausted' : read.failure;
+  stop(pass, failure === 'budget_exhausted' ? failure : 'pull_request_not_swept');
   pass.run.logger.warn('pull request not swept', {
     outcome: 'pull_request_not_swept',
     repository: pass.repo.fullName,
     pull_request: number,
-    failure: read.failure,
+    failure,
     status: read.status,
   });
   return false;
 }
 
-function listedOf(issues: readonly unknown[]) {
+function listedOf(pass: Pass, issues: readonly unknown[]) {
   return issues.flatMap((issue) => {
     const parsed = listedSchema.safeParse(issue);
-    return parsed.success ? [parsed.data] : [];
+    if (parsed.success) return [parsed.data];
+    pass.unparsed += 1;
+    return [];
   });
 }
 
-async function sweepListing(pass: Pass, issues: readonly unknown[], capped: boolean) {
+async function sweepListing(pass: Pass, issues: readonly unknown[]): Promise<void> {
+  const listed = listedOf(pass, issues);
   const { issues: records, milestones } = issuesFromRest(pass.repo, issues);
+  const pulls = listed.filter((issue) => issue.pull_request);
+  pass.unparsed += listed.length - pulls.length - records.length;
   await upsertAndFollow(pass, { ...emptyBatch, repos: [pass.repo], milestones, issues: records });
-  const listed = listedOf(issues);
-  if (capped) {
-    pass.capped = true;
-    hold(pass, listed.at(-1)?.updated_at ?? unlisted);
+  for (const issue of listed) {
+    if (pass.through === null || issue.updated_at > pass.through) pass.through = issue.updated_at;
   }
-  for (const pull of listed.filter((issue) => issue.pull_request)) {
+  for (const pull of pulls) {
     const swept = affordable(pass) && (await sweepPull(pass, pull.number));
-    if (!swept) hold(pass, pull.updated_at);
+    if (!swept) pass.heldAt = earlier(pass.heldAt, pull.updated_at);
   }
 }
 
@@ -206,48 +227,87 @@ async function sweepOpen(pass: Pass): Promise<void> {
 }
 
 async function listIssues(pass: Pass) {
-  const stored = await repoByName(pass.run.deps.db, pass.repo.fullName);
-  const watermark = stored?.sweptThrough ?? null;
+  const watermark = pass.state.sweptThrough;
   const since = watermark ? new Date(watermark.getTime() - overlapMs) : null;
   const affordablePages = remaining(pass.run.budget) - 1 - perPullRequest;
   const pages = Math.max(1, Math.min(pass.run.maxPages, affordablePages));
-  return pass.reads.issuesSince(pass.repo.fullName, since, pages);
+  const listing = await pass.reads.issuesSince(pass.repo.fullName, since, pages);
+  if (listing.ok && listing.value.capped) {
+    stop(pass, pages < pass.run.maxPages ? 'budget_exhausted' : 'page_limit');
+  }
+  return listing;
 }
 
-function finished(
+function outcomeOf(pass: Pass, sweptThrough: Date | null): Outcome {
+  const stored = pass.state.sweptThrough;
+  if (sweptThrough !== null && stored !== null && sweptThrough < stored) return 'stalled';
+  return pass.capped ? 'capped' : 'ok';
+}
+
+function sweepOf(
   pass: Pass,
-  outcome: RepositorySweep['outcome'],
+  outcome: Outcome,
   sweptThrough: Date | null,
-  failure: GitHubFailure | null,
+  reason: RepositorySweep['reason'],
 ): RepositorySweep {
-  const { repo, repaired, capped } = pass;
-  return { repo: repo.fullName, outcome, repaired, sweptThrough, capped, failure };
+  const { repo, repaired, heldAt, unparsed } = pass;
+  return {
+    repo: repo.fullName,
+    outcome,
+    reason,
+    heldAt,
+    sweptThrough,
+    repaired,
+    unparsedItems: unparsed,
+  };
+}
+
+async function recorded(pass: Pass, sweep: RepositorySweep): Promise<RepositorySweep> {
+  const { deps, startedAt } = pass.run;
+  const attemptedAt = sweep.outcome === 'deferred' ? pass.state.attemptedAt : startedAt;
+  await recordSweep(deps.db, pass.repo.githubId, sweep.sweptThrough, {
+    at: deps.now(),
+    attemptedAt,
+    outcome: sweep.outcome,
+    heldAt: sweep.heldAt,
+    reason: sweep.reason,
+    repaired: sweep.repaired,
+    unparsedItems: sweep.unparsedItems,
+  });
+  return sweep;
 }
 
 async function passOver(pass: Pass): Promise<RepositorySweep> {
-  const { deps, startedAt } = pass.run;
   await upsertAndFollow(pass, { ...emptyBatch, repos: [pass.repo] });
   const listing = await listIssues(pass);
-  if (!listing.ok) return finished(pass, 'failed', null, listing.failure);
-  await sweepListing(pass, listing.value.issues, listing.value.capped);
+  if (!listing.ok) {
+    const reason = pass.run.budget.exhausted ? 'budget_exhausted' : listing.failure;
+    return recorded(pass, sweepOf(pass, 'failed', null, reason));
+  }
+  pass.unparsed += listing.value.unparsed;
+  await sweepListing(pass, listing.value.issues);
   await sweepOpen(pass);
-  const sweptThrough = pass.heldAt && pass.heldAt < startedAt ? pass.heldAt : startedAt;
-  await recordSweep(deps.db, pass.repo.githubId, {
-    sweptThrough,
-    at: deps.now(),
-    repaired: pass.repaired,
-  });
-  return finished(pass, 'swept', sweptThrough, null);
+  const sweptThrough = pass.heldAt ?? pass.through;
+  return recorded(pass, sweepOf(pass, outcomeOf(pass, sweptThrough), sweptThrough, pass.reason));
 }
 
 function logged(logger: Logger, sweep: RepositorySweep): RepositorySweep {
   const { repaired } = sweep;
-  logger[sweep.outcome === 'swept' ? 'info' : 'warn']('github sweep repaired', {
+  if (sweep.outcome === 'stalled') {
+    logger.warn('github sweep stalled below its watermark', {
+      outcome: 'stalled',
+      repository: sweep.repo,
+      reason: sweep.reason,
+      held_at: sweep.sweptThrough?.toISOString() ?? null,
+    });
+  }
+  logger[sweep.outcome === 'ok' ? 'info' : 'warn']('github sweep repaired', {
     outcome: sweep.outcome,
     repository: sweep.repo,
-    capped: sweep.capped,
-    failure: sweep.failure,
+    reason: sweep.reason,
+    held_at: sweep.heldAt?.toISOString() ?? null,
     swept_through: sweep.sweptThrough?.toISOString() ?? null,
+    unparsed_items: sweep.unparsedItems,
     repaired_repos: repaired.repos,
     repaired_milestones: repaired.milestones,
     repaired_issues: repaired.issues,
@@ -259,29 +319,76 @@ function logged(logger: Logger, sweep: RepositorySweep): RepositorySweep {
   return sweep;
 }
 
-async function sweepRepository(run: Run, repo: RepoRecord): Promise<RepositorySweep> {
+async function attempt(pass: Pass): Promise<RepositorySweep> {
+  if (remaining(pass.run.budget) < repositoryStart + perPullRequest) {
+    await upsertAndFollow(pass, { ...emptyBatch, repos: [pass.repo] });
+    return recorded(pass, sweepOf(pass, 'deferred', null, 'budget_exhausted'));
+  }
+  return passOver(pass);
+}
+
+async function sweepRepository(
+  run: Run,
+  repo: RepoRecord,
+  state: SweepState,
+): Promise<RepositorySweep> {
   const pass: Pass = {
     run,
     repo,
+    state,
     reads: createGitHubReads(run.deps.app, run.transport),
     swept: new Set(),
     repaired: noRepairs,
+    unparsed: 0,
     capped: false,
+    reason: null,
     heldAt: null,
+    through: null,
   };
-  if (remaining(run.budget) < repositoryStart + perPullRequest) {
-    return logged(run.logger, { ...finished(pass, 'deferred', null, null), capped: true });
-  }
   try {
-    return logged(run.logger, await passOver(pass));
+    return logged(run.logger, await attempt(pass));
   } catch (error) {
     run.logger.error('github sweep failed for a repository', {
       outcome: 'internal_error',
       repository: repo.fullName,
       ...errorFields(error),
     });
-    return finished(pass, 'failed', null, null);
+    return sweepOf(pass, 'failed', null, 'internal_error');
   }
+}
+
+function instant(at: Date | null): number {
+  return at === null ? Number.NEGATIVE_INFINITY : at.getTime();
+}
+
+async function stalestFirst(db: SweepDeps['db'], repos: readonly RepoRecord[]) {
+  const states = await sweepStates(
+    db,
+    repos.map((repo) => repo.githubId),
+  );
+  const stated = repos.map((repo) => ({ repo, state: states.get(repo.githubId) ?? unswept }));
+  return stated.sort(
+    (a, b) =>
+      instant(a.state.attemptedAt) - instant(b.state.attemptedAt) ||
+      instant(a.state.sweptThrough) - instant(b.state.sweptThrough) ||
+      a.repo.githubId - b.repo.githubId,
+  );
+}
+
+function runOf(deps: SweepDeps, logger: Logger, options: SweepOptions): Run {
+  const budget: Budget = {
+    spent: 0,
+    exhausted: false,
+    limit: options.maxSubrequests ?? defaultSubrequests,
+  };
+  return {
+    deps,
+    logger,
+    budget,
+    transport: metered(deps.transport, budget),
+    startedAt: deps.now(),
+    maxPages: options.maxPages ?? defaultPages,
+  };
 }
 
 export async function sweepGitHub(
@@ -289,18 +396,8 @@ export async function sweepGitHub(
   logger: Logger,
   options: SweepOptions = {},
 ): Promise<SweepReport> {
-  const budget: Budget = { spent: 0, limit: options.maxSubrequests ?? defaultSubrequests };
-  const transport = metered(deps.transport, budget);
-  const startedAt = deps.now();
-  const run: Run = {
-    deps,
-    logger,
-    budget,
-    transport,
-    startedAt,
-    maxPages: options.maxPages ?? defaultPages,
-  };
-  const listed = await createGitHubReads(deps.app, transport).installationRepositories();
+  const run = runOf(deps, logger, options);
+  const listed = await createGitHubReads(deps.app, run.transport).installationRepositories();
   if (!listed.ok) {
     const { failure, status } = listed;
     logger.warn('github repositories not listed', {
@@ -308,11 +405,12 @@ export async function sweepGitHub(
       failure,
       status,
     });
-    return { repositories: [], failure, subrequests: budget.spent };
+    return { repositories: [], failure, subrequests: run.budget.spent };
   }
+  const repos = listed.value.map(repoFromRest).filter((repo) => repo !== null);
   const repositories: RepositorySweep[] = [];
-  for (const repo of listed.value.map(repoFromRest)) {
-    if (repo !== null) repositories.push(await sweepRepository(run, repo));
+  for (const { repo, state } of await stalestFirst(deps.db, repos)) {
+    repositories.push(await sweepRepository(run, repo, state));
   }
-  return { repositories, failure: null, subrequests: budget.spent };
+  return { repositories, failure: null, subrequests: run.budget.spent };
 }

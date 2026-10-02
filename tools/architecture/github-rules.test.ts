@@ -63,6 +63,24 @@ afterEach(() => {
 
 const refusals: [string, string, string, string][] = [
   [
+    'the cron sweep root reaching the read client',
+    'apps/uw-app/cron/github-sweep.ts',
+    "import '../github/client.ts';",
+    'github-reads-only-in-github-and-composition-roots',
+  ],
+  [
+    'the scheduled root reaching the App configuration',
+    'apps/uw-app/cron/scheduled.ts',
+    "import '../github/app-config.ts';",
+    'github-app-config-only-in-github-and-composition-roots',
+  ],
+  [
+    'the kernel root reaching the transport',
+    'apps/uw-app/kernel.ts',
+    "import './github/transport.ts';",
+    'github-reads-only-in-github-and-composition-roots',
+  ],
+  [
     'a route reaching the read client',
     'apps/uw-app/http/a.ts',
     "import '../github/client.ts';",
@@ -176,17 +194,15 @@ describe('the app test helpers', () => {
 });
 
 describe('the GitHub dependency rules allow', () => {
-  it('the composition roots on the read client, its transport and the App configuration', async () => {
+  it('the queue root on the read client, its transport and the App configuration', async () => {
     const reads =
       "import '../github/client.ts'; import '../github/transport.ts'; import '../github/app-config.ts';";
+    expect(await violations({ 'apps/uw-app/queue/worker.ts': reads })).toEqual([]);
+  });
+
+  it('the cron sweep root on the App configuration', async () => {
     expect(
-      await violations({
-        'apps/uw-app/queue/worker.ts': reads,
-        'apps/uw-app/cron/scheduled.ts': reads,
-        'apps/uw-app/cron/github-sweep.ts': reads,
-        'apps/uw-app/kernel.ts':
-          "import './github/client.ts'; import './github/transport.ts'; import './github/app-config.ts';",
-      }),
+      await violations({ 'apps/uw-app/cron/github-sweep.ts': "import '../github/app-config.ts';" }),
     ).toEqual([]);
   });
 

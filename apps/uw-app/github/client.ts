@@ -7,6 +7,7 @@ import type { GitHubTransport } from './transport.ts';
 
 type List = readonly unknown[];
 type Page = { readonly items: List; readonly capped: boolean };
+type IssueListing = { readonly issues: List; readonly capped: boolean; readonly unparsed: number };
 
 export type GitHubReads = {
   installationRepositories(): Promise<GitHubResult<List>>;
@@ -22,7 +23,7 @@ export type GitHubReads = {
     repo: string,
     since: Date | null,
     maxPages: number,
-  ): Promise<GitHubResult<{ readonly issues: List; readonly capped: boolean }>>;
+  ): Promise<GitHubResult<IssueListing>>;
   issueComments(repo: string, number: number): Promise<GitHubResult<List>>;
 };
 
@@ -40,6 +41,10 @@ const array = z.array(z.unknown());
 const checkRunPage = z.object({ check_runs: array }).transform((page) => page.check_runs);
 const repositoryPage = z.object({ repositories: array }).transform((page) => page.repositories);
 const record = z.record(z.string(), z.unknown());
+const keyed = z.object({
+  id: z.number().int().positive(),
+  updated_at: z.iso.datetime({ offset: true }),
+});
 const comparison = z
   .object({ status: z.string().optional(), files: array.optional() })
   .refine((answer) => answer.files !== undefined || answer.status === 'identical')
@@ -121,18 +126,61 @@ function pullRequestReads(session: GitHubSession) {
   };
 }
 
+type Keyset = {
+  readonly seen: Map<number, { readonly item: unknown; readonly updatedAt: number }>;
+  unparsed: number;
+  latest: number | null;
+};
+
+function admitted(keyset: Keyset, page: List): boolean {
+  const before = keyset.seen.size;
+  for (const item of page) {
+    const parsed = keyed.safeParse(item);
+    if (!parsed.success) {
+      keyset.unparsed += 1;
+      continue;
+    }
+    const updatedAt = Date.parse(parsed.data.updated_at);
+    keyset.seen.set(parsed.data.id, { item, updatedAt });
+    keyset.latest = Math.max(keyset.latest ?? updatedAt, updatedAt);
+  }
+  return keyset.seen.size > before;
+}
+
+function listingOf(keyset: Keyset, capped: boolean): GitHubResult<IssueListing> {
+  const issues = [...keyset.seen.values()]
+    .sort((a, b) => a.updatedAt - b.updatedAt)
+    .map((entry) => entry.item);
+  return { ok: true, value: { issues, capped, unparsed: keyset.unparsed } };
+}
+
+async function keysetIssues(
+  session: GitHubSession,
+  repo: string,
+  since: Date | null,
+  maxPages: number,
+): Promise<GitHubResult<IssueListing>> {
+  const keyset: Keyset = { seen: new Map(), unparsed: 0, latest: null };
+  const filters = { state: 'all', sort: 'updated', direction: 'asc', per_page: perPage, page: 1 };
+  let from = since;
+  for (let request = 0; request < maxPages; request += 1) {
+    const parameters = from ? { since: from.toISOString(), ...filters } : filters;
+    const answer = await session.request('GET /repos/{owner}/{repo}/issues', parameters, repo);
+    if (!answer.ok) return answer;
+    const page = shaped(array, answer.value);
+    if (!page.ok) return page;
+    const progressed = admitted(keyset, page.value);
+    if (page.value.length < perPage) return listingOf(keyset, false);
+    if (!progressed || keyset.latest === null) return listingOf(keyset, true);
+    from = new Date(keyset.latest);
+  }
+  return listingOf(keyset, true);
+}
+
 function issueReads(session: GitHubSession) {
   return {
     issuesSince: (repo: string, since: Date | null, maxPages: number) =>
-      refusedUnless(isCount(maxPages), async () => {
-        const filters = { state: 'all', sort: 'updated', direction: 'asc' };
-        const parameters = since ? { since: since.toISOString(), ...filters } : filters;
-        const lister = listOf('GET /repos/{owner}/{repo}/issues', parameters, repo);
-        const result = await paged(session, { ...lister, maxPages });
-        if (!result.ok) return result;
-        const { items, capped } = result.value;
-        return { ok: true as const, value: { issues: items, capped } };
-      }),
+      refusedUnless(isCount(maxPages), () => keysetIssues(session, repo, since, maxPages)),
     issueComments: (repo: string, number: number) =>
       refusedUnless(isCount(number), () =>
         whole(

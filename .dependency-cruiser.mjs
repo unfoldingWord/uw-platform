@@ -30,8 +30,8 @@ const simMayImport = [
 const github = (file) => `^apps/uw-app/github/${file}\\.ts$`;
 const octokitWebhookSignatures = npm('@octokit/webhooks-methods');
 const appTesting = '^apps/(uw-app|uw-ingest)/(github/)?testing/';
-const compositionRoots =
-  '^apps/uw-app/(queue/worker|cron/scheduled|cron/github-sweep|kernel)\\.ts$';
+const readRoots = '^apps/uw-app/queue/worker\\.ts$';
+const appConfigRoots = '^apps/uw-app/(queue/worker|cron/github-sweep)\\.ts$';
 
 const forbidden = (name, comment, from, to) => ({
   name,
@@ -217,10 +217,18 @@ export default {
     {
       name: 'github-reads-only-in-github-and-composition-roots',
       comment:
-        'The read-only GitHub client, its transport and the App configuration are imported only under apps/uw-app/github and by the composition roots.',
+        'The read-only GitHub client and its transport are imported only under apps/uw-app/github and by the queue root.',
       severity: 'error',
-      from: { pathNot: ['^apps/uw-app/github/', compositionRoots, testFile] },
-      to: { path: github('(client|transport|app-config)') },
+      from: { pathNot: ['^apps/uw-app/github/', readRoots, testFile] },
+      to: { path: github('(client|transport)') },
+    },
+    {
+      name: 'github-app-config-only-in-github-and-composition-roots',
+      comment:
+        'The GitHub App configuration is read only under apps/uw-app/github and by the queue and cron sweep roots.',
+      severity: 'error',
+      from: { pathNot: ['^apps/uw-app/github/', appConfigRoots, testFile] },
+      to: { path: github('app-config') },
     },
     {
       name: 'github-session-only-in-the-github-clients',
