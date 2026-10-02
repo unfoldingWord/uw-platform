@@ -58,6 +58,8 @@ export const branchStateSchema = z.enum(['none', 'active', 'abandoned']);
 export const runOutcomeSchema = z.enum(['running', 'hibernated', 'stopped', 'completed', 'failed']);
 export const delegationLapseSchema = z.enum(['expired', 'revoked', 'grant_lost']);
 
+export const taskStatusSchema = z.enum(['suggested', 'open', 'done', 'dismissed']);
+
 export type StageBracket = z.infer<typeof stageBracketSchema>;
 export type GateStatus = z.infer<typeof gateStatusSchema>;
 export type BranchState = z.infer<typeof branchStateSchema>;

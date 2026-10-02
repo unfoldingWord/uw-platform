@@ -1,0 +1,18 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000e1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "name": "persona_activation_failed",
+  "position": 1,
+  "at": "2026-10-01T09:00:00.000Z",
+  "actor": "human:00000000-0000-4000-8000-000000000001",
+  "evidence": {
+    "pageId": "00000000-0000-4000-8000-0000000000d2",
+    "persona": "agent:iterate",
+    "verb": "summarise_measurements",
+    "reason": "unknown_verb",
+    "message": "persona iterate requires verb summarise_measurements, which does not exist",
+    "itemId": "00000000-0000-4000-8000-0000000000b1"
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1"
+}

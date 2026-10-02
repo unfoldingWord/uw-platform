@@ -21,6 +21,12 @@ import { slugSchema } from './pages.ts';
 import { riskDeclarationSchema, shipRefusalSchema } from './ship-rule.ts';
 import { runStepSchema, submitToGateResultSchema } from './verb-io.ts';
 
+export const personaActivationRefusalSchema = z.enum([
+  'unknown_verb',
+  'forbidden_verb',
+  'not_permitted',
+]);
+
 const id = z.uuid();
 const instant = z.iso.datetime();
 const stage = stageKeySchema;
@@ -135,6 +141,14 @@ const harnessEvidence = {
     key: stage,
     before: stageColumns.nullable(),
     after: stageColumns,
+  }),
+  persona_activation_failed: z.strictObject({
+    pageId: id,
+    persona: personaIdentitySchema,
+    verb: z.string().regex(/^[a-z][a-z_]*$/),
+    reason: personaActivationRefusalSchema,
+    message: text,
+    itemId: id.nullable(),
   }),
   template_activated: z.strictObject({ template: slugSchema, stages: z.array(stage).min(1) }),
 };
