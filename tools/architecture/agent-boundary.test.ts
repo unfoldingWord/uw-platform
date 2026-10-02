@@ -189,7 +189,24 @@ const unfiltered = [
   '});',
 ].join('\n');
 
-const filtered = unfiltered.replace('  reply:', '  resources: async () => () => null,\n  reply:');
+const withResources = (resources: string): string =>
+  unfiltered.replace('  reply:', `  resources: ${resources},\n  reply:`);
+
+const filtered = withResources("async () => (page) => ({ kind: 'area', area: page.jdArea })");
+
+const blockFiltered = withResources(
+  'async (context, _input, pages) => {\n    const seen = pages.length;\n    return (page) => (seen > 0 ? null : page.area);\n  }',
+);
+
+const rowless = [
+  'async () => () => null',
+  "async () => () => ({ kind: 'org' })",
+  "async () => (_page) => ({ kind: 'org' })",
+  "async () => _ => ({ kind: 'org' })",
+  "async () => {\n    return () => ({ kind: 'org' });\n  }",
+  "async () => {\n    return function () {\n      return { kind: 'org' };\n    };\n  }",
+  'async () => everything',
+];
 
 const shorthand = [
   "const kind = 'rows' as const;",
@@ -205,6 +222,34 @@ describe('AB-3 every MCP handler goes through can()', () => {
 
   it('passes a planted row-filtered handler that names its resources', () => {
     expect(skippingWith({ [rawVerb]: filtered })).toEqual([]);
+  });
+
+  it('passes a planted row-filtered handler whose block-bodied resources return a row mapper', () => {
+    expect(skippingWith({ [rawVerb]: blockFiltered })).toEqual([]);
+  });
+
+  it.each(rowless)('flags a planted resources mapper that takes no row: %s', (resources) => {
+    expect(skippingWith({ [rawVerb]: withResources(resources) })).toEqual([rawVerb]);
+  });
+
+  it.each(['let seen = 0;', 'export let seen = 0;', 'var seen = 0;'])(
+    'flags a planted row-filtered handler file with a module-level %s',
+    (line) => {
+      expect(skippingWith({ [rawVerb]: `${line}\n${filtered}` })).toEqual([rawVerb]);
+    },
+  );
+
+  it('flags a planted file whose second row-filtered handler maps no row', () => {
+    const second = withResources('async () => () => null').replace(
+      'export const raw',
+      'export const raw2',
+    );
+    expect(skippingWith({ [rawVerb]: `${filtered}\n${second}` })).toEqual([rawVerb]);
+  });
+
+  it('passes a planted row-filtered handler file whose only let is inside a function', () => {
+    const text = `${filtered}\nexport function count() {\n  let seen = 0;\n  seen += 1;\n  return seen;\n}`;
+    expect(skippingWith({ [rawVerb]: text })).toEqual([]);
   });
 
   it('flags a planted row-filtered handler that filters nothing', () => {

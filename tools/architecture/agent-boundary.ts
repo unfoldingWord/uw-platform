@@ -40,7 +40,13 @@ const gateReach = [
 
 const handlerBuilder = /\b(?:gatedHandler|rowFilteredHandler)\s*\(/;
 const rowsBuilder = /\browFilteredHandler\s*\(/;
-const rowFilter = /\bresources\s*:/;
+const rowsReply = /\breply\s*:/;
+const returnedArrows = [
+  /=>\s*(?:\(([^()]*)\)|(\w+))\s*=>/g,
+  /\breturn\s+(?:\(([^()]*)\)|(\w+))\s*=>/g,
+  /\breturn\s+function\b[^(]*\(([^()]*)\)/g,
+];
+const moduleLets = [/^(?:let|var)\b/m, /^export[ \t]+(?:let|var)\b/m];
 const declaresHandler = /\brun\s*[:(,}]|\bkind\s*(?::\s*['"](?:gated|rows)['"]|[,}])/;
 const nameLiteral = /\bname\s*:\s*['"](\w+)['"]/g;
 const canCall = /\bcan\s*\(/;
@@ -120,10 +126,37 @@ function verbModules(sources: SourceFiles): string[] {
   );
 }
 
+const rowFilters = /\bresources\s*:/g;
+
+function resourcesSegments(text: string): string[] {
+  return [...text.matchAll(rowFilters)].map((match) => {
+    const rest = text.slice(match.index);
+    const end = rest.slice(1).search(rowsReply);
+    return end < 0 ? rest : rest.slice(0, end + 1);
+  });
+}
+
+function takesARow(parameters: string): boolean {
+  const first = parameters.split(',')[0]?.trim() ?? '';
+  return first !== '' && !first.startsWith('_');
+}
+
+function mapsEachRow(segment: string): boolean {
+  const mappers = returnedArrows.flatMap((pattern) =>
+    [...segment.matchAll(pattern)].map((match) => match[1] ?? match[2] ?? ''),
+  );
+  return mappers.length > 0 && mappers.every(takesARow);
+}
+
+function mapsEveryRow(text: string): boolean {
+  const segments = resourcesSegments(text);
+  return segments.length > 0 && segments.every(mapsEachRow);
+}
+
 function rowsHandlerSkips(text: string): boolean {
   if (!rowsBuilder.test(text)) return false;
   const granted = namesIn(text).some((name) => (findVerb(name)?.grant ?? null) !== null);
-  return granted || !rowFilter.test(text);
+  return granted || !mapsEveryRow(text) || moduleLets.some((pattern) => pattern.test(text));
 }
 
 function handlerSkips(text: string): boolean {
