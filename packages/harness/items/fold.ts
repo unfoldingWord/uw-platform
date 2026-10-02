@@ -156,12 +156,53 @@ const steps: ReadonlyMap<EventName, Step> = new Map<EventName, Step>([
   ['risk_derived', deriveRisk],
 ]);
 
+export const unchangedNames: ReadonlySet<EventName> = new Set<EventName>([
+  'premise_held',
+  'label_removed',
+  'run_started',
+  'run_failed',
+  'run_hibernated',
+  'run_resumed',
+  'run_stopped',
+  'checks_passed',
+  'gate_approved',
+  'gate_overridden',
+  'gate_refused_to_agent',
+  'ship_refused',
+  'connector_succeeded',
+  'connector_refused',
+  'delegation_granted',
+  'delegation_revoked',
+  'delegation_lapsed',
+  'delegation_required',
+  'stage_edit_refused',
+  'template_activated',
+  'harness_paused',
+  'harness_resumed',
+  'learning_attached',
+  'nothing_learned',
+  'comment_recorded',
+  'breaker_holding',
+  'breaker_pausing',
+  'breaker_open',
+  'persona_activation_failed',
+  'persona_activated',
+]);
+
+export const steppedNames: readonly EventName[] = [...steps.keys()];
+
+function ownedBy(state: ItemState, event: FoldableEvent): boolean {
+  return event.itemId === state.itemId && event.harnessId === state.harnessId;
+}
+
 export function foldItem(state: ItemState | null, event: FoldableEvent): ItemState {
   if (event.name === 'item_created') {
     if (state !== null) throw new ReplayError('item_created twice', event.eventId);
     return created(event);
   }
   if (state === null) throw new ReplayError(`${event.name} before item_created`, event.eventId);
+  if (!ownedBy(state, event))
+    throw new ReplayError(`${event.name} for another item`, event.eventId);
   const step = steps.get(event.name);
   return step === undefined ? state : step(state, event);
 }

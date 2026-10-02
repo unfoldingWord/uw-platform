@@ -153,7 +153,7 @@ describe('KN-4 the one recording module writes the projection from the fold of t
     expect(replay(await readAllEvents(world.tx, harnessId, itemId))).toEqual(projected(world));
   });
 
-  it('folds the locked row, so a competing record is never overwritten', async () => {
+  it('folds onto the latest row', async () => {
     const world = recording();
     const context = contextFor(`human:${personId}`);
     await createItem(world.tx, context, initial);
@@ -187,7 +187,35 @@ describe('KN-3 the kernel refuses to record an unknown name or ill-fitting evide
     world.log.length = 0;
     const unknownName: string = 'item_teleported';
     const unknown: EventDraft = { name: unknownName as EventName, evidence: {} };
-    await expect(recordItemEvents(world.tx, context, itemId, [unknown])).rejects.toThrow();
+    await expect(recordItemEvents(world.tx, context, itemId, [unknown])).rejects.toMatchObject({
+      name: 'ZodError',
+    });
+    expect(world.log).toEqual(['lock']);
+  });
+
+  it('refuses evidence that does not fit the name before any write', async () => {
+    const world = recording();
+    const context = contextFor(`human:${personId}`);
+    await createItem(world.tx, context, initial);
+    world.log.length = 0;
+    const misfit: EventDraft = { name: 'item_claimed', evidence: { leaseExpiresAt: lease } };
+    await expect(recordItemEvents(world.tx, context, itemId, [misfit])).rejects.toMatchObject({
+      name: 'ZodError',
+    });
+    expect(world.log).toEqual(['lock']);
+  });
+});
+
+describe('recording nothing', () => {
+  it('neither projects nor appends for empty drafts', async () => {
+    const world = recording();
+    const context = contextFor(`human:${personId}`);
+    await createItem(world.tx, context, initial);
+    world.log.length = 0;
+    const result = await recordItemEvents(world.tx, context, itemId, []);
+    expect(result.events).toEqual([]);
+    expect(world.log).toEqual(['lock']);
+    expect(await recordHarnessEvents(world.tx, context, harnessId, [])).toEqual([]);
     expect(world.log).toEqual(['lock']);
   });
 });

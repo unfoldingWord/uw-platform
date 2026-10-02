@@ -1,11 +1,12 @@
 import {
   newEventSchema,
+  eventNames,
   type EventName,
   type ItemState,
   type NewHarnessEvent,
 } from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
-import { foldItem, replay, ReplayError } from './fold.ts';
+import { foldItem, replay, ReplayError, steppedNames, unchangedNames } from './fold.ts';
 
 const harnessId = '00000000-0000-4000-8000-0000000000a1';
 const itemId = '00000000-0000-4000-8000-0000000000b1';
@@ -138,5 +139,168 @@ describe('KN-4 replay refuses an item event out of order', () => {
 
   it('refuses a second creation', () => {
     expect(() => replay([created('build'), created('build')])).toThrow(ReplayError);
+  });
+});
+
+const later = '2026-10-01T11:00:00.000Z';
+const base = (): NewHarnessEvent[] => [created('build'), claimed(builder, 'agent', lease)];
+
+function submitted(result: string, head: string | null, pullRequest: unknown): NewHarnessEvent {
+  return event(7, 'submitted_to_gate', {
+    stage: 'build',
+    result,
+    to: null,
+    expectedHead: head,
+    pullRequest,
+    evidence: {},
+  });
+}
+
+describe('KN-4 replay folds lease and branch events', () => {
+  it('releases the holder on lease_expired', () => {
+    const expired = event(7, 'lease_expired', { holder: builder, leaseExpiresAt: lease });
+    expect(replay([...base(), expired])).toMatchObject({
+      holder: null,
+      claimantKind: null,
+      delegationId: null,
+      leaseExpiresAt: null,
+    });
+  });
+
+  it('moves only the lease on lease_renewed', () => {
+    const renewed = event(7, 'lease_renewed', { leaseExpiresAt: later });
+    expect(replay([...base(), renewed])).toMatchObject({ holder: builder, leaseExpiresAt: later });
+  });
+
+  it('moves only the lease on run_step_recorded', () => {
+    const step = event(7, 'run_step_recorded', {
+      runId: '00000000-0000-4000-8000-0000000000f1',
+      step: 'work',
+      tokensIn: 1,
+      tokensOut: 2,
+      costBasis: 'metered',
+      leaseExpiresAt: later,
+    });
+    expect(replay([...base(), step])).toMatchObject({ holder: builder, leaseExpiresAt: later });
+  });
+
+  it('marks the branch abandoned and then active again', () => {
+    const abandoned = event(7, 'branch_abandoned', { head: null });
+    const adopted = event(8, 'branch_adopted', { head: null });
+    expect(replay([...base(), abandoned])?.branchState).toBe('abandoned');
+    expect(replay([...base(), abandoned, adopted])?.branchState).toBe('active');
+  });
+});
+
+describe('KN-4 replay folds gate and stage events', () => {
+  it('sets checks_failed on the gate status and keeps the holder', () => {
+    const failed = event(7, 'checks_failed', { stage: 'build', failures: ['lint'] });
+    expect(replay([...base(), failed])).toMatchObject({
+      gateStatus: 'checks_failed',
+      holder: builder,
+    });
+  });
+
+  it('moves to the next stage, working and released, on stage_advanced', () => {
+    const failed = event(7, 'checks_failed', { stage: 'build', failures: ['lint'] });
+    expect(replay([...base(), failed, advanced('build', 'check')])).toMatchObject({
+      stageKey: 'check',
+      gateStatus: 'working',
+      gateTarget: null,
+      holder: null,
+    });
+  });
+});
+
+describe('KN-4 replay folds loop edges, rejections and risk', () => {
+  it('returns to a stage, working and released, on loop_edge_taken', () => {
+    const looped = event(7, 'loop_edge_taken', { from: 'check', to: 'build' });
+    const held = [created('check'), claimed(builder, 'agent', lease)];
+    expect(replay([...held, looped])).toMatchObject({
+      stageKey: 'build',
+      gateStatus: 'working',
+      holder: null,
+      leaseExpiresAt: null,
+    });
+    expect(replay([...held, parked('ship'), looped])).toMatchObject({
+      gateStatus: 'working',
+      gateTarget: null,
+    });
+  });
+
+  it('clears the park on gate_rejected', () => {
+    const rejected = event(7, 'gate_rejected', {
+      decisionId: '00000000-0000-4000-8000-0000000000d1',
+      stage: 'check',
+      findings: [],
+    });
+    expect(replay([...base(), parked('ship'), rejected])).toMatchObject({
+      gateStatus: 'working',
+      gateTarget: null,
+    });
+  });
+
+  it('takes the risk tier and domains from risk_derived', () => {
+    const derived = event(7, 'risk_derived', {
+      paths: ['a.ts'],
+      declaration: null,
+      floorDomains: [],
+      riskTier: 'high',
+      riskDomains: ['acl', 'ledger'],
+      refusal: null,
+    });
+    expect(replay([...base(), derived])).toMatchObject({
+      riskTier: 'high',
+      riskDomains: ['acl', 'ledger'],
+    });
+  });
+});
+
+describe('KN-4 replay folds a submit by its result', () => {
+  it('records the pull request and keeps the holder on a submit that is not parked', () => {
+    const request = { repo: 'unfoldingWord/uw-platform', number: 7 };
+    expect(replay([...base(), submitted('advanced', 'abc', request)])).toMatchObject({
+      pullRequest: request,
+      expectedHead: 'abc',
+      branchState: 'active',
+      holder: builder,
+      gateStatus: 'working',
+    });
+  });
+
+  it('leaves the branch and head alone when the submit has no head', () => {
+    expect(replay([...base(), submitted('advanced', null, null)])).toMatchObject({
+      expectedHead: null,
+      branchState: 'none',
+      pullRequest: null,
+    });
+  });
+});
+
+describe('KN-4 replay leaves state alone for events that do not fold', () => {
+  it('keeps state deep-equal across gate_approved and comment_recorded', () => {
+    const approved = event(7, 'gate_approved', {
+      decisionId: '00000000-0000-4000-8000-0000000000d1',
+      stage: 'ship',
+    });
+    const commented = event(8, 'comment_recorded', {});
+    expect(replay([...base(), approved, commented])).toEqual(replay(base()));
+  });
+
+  it('names every event either as a fold step or as unchanged, never both', () => {
+    const named = [...steppedNames, ...unchangedNames, 'item_created'].toSorted();
+    expect(named).toEqual([...eventNames].toSorted());
+  });
+});
+
+describe('KN-4 replay refuses an event that is not about the item', () => {
+  it('refuses an event for another item and a harness-level event', () => {
+    const other = {
+      ...claimed(builder, 'agent', lease),
+      itemId: '00000000-0000-4000-8000-0000000000b2',
+    };
+    const harnessLevel = { ...claimed(builder, 'agent', lease), itemId: null };
+    expect(() => replay([created('build'), other])).toThrow(ReplayError);
+    expect(() => replay([created('build'), harnessLevel])).toThrow(ReplayError);
   });
 });

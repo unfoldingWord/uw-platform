@@ -11,6 +11,7 @@ const itemId = '00000000-0000-4000-8000-0000000000b1';
 const decisionId = '00000000-0000-4000-8000-0000000000d1';
 const traceId = '00000000-0000-4000-8000-0000000000e1';
 const agent = 'agent:builder';
+const repo = 'unfoldingWord/uw-platform';
 const person = 'human:00000000-0000-4000-8000-000000000001';
 const epoch = Date.parse('2026-10-01T09:00:00.000Z');
 const minute = 60_000;
@@ -20,6 +21,7 @@ const operations = [
   'release',
   'renew',
   'expire',
+  'runStep',
   'submitParked',
   'submitAdvanced',
   'checksFailed',
@@ -27,33 +29,49 @@ const operations = [
   'takeOver',
   'loopEdge',
   'riskDerived',
+  'abandonBranch',
+  'adoptBranch',
+  'irrelevant',
 ] as const;
 
 type Operation = (typeof operations)[number];
 type Step = { readonly operation: Operation; readonly pick: number };
 
-type Model = {
-  stage: number;
-  held: boolean;
-  parked: boolean;
-  done: boolean;
-  count: number;
-  readonly events: NewHarnessEvent[];
+type Expected = {
+  stageKey: string;
+  holder: string | null;
+  claimantKind: 'agent' | 'person' | null;
+  delegationId: null;
+  leaseExpiresAt: string | null;
+  gateStatus: 'working' | 'parked' | 'checks_failed' | 'done';
+  gateTarget: string | null;
+  branchState: 'none' | 'active' | 'abandoned';
+  expectedHead: string | null;
+  pullRequest: { repo: string; number: number } | null;
+  riskTier: 'low' | 'standard' | 'high' | null;
+  riskDomains: string[];
 };
 
+export type ItemSequence = { readonly events: NewHarnessEvent[]; readonly expected: Expected };
+
+type Model = {
+  stage: number;
+  count: number;
+  expected: Expected;
+  readonly events: NewHarnessEvent[];
+};
 type Evidence = Record<string, unknown>;
 type Handler = (model: Model, pick: number) => boolean;
 
 function emit(model: Model, name: EventName, evidence: Evidence): void {
   model.count += 1;
-  const instant = new Date(epoch + model.count * minute);
   model.events.push(
     newEventSchema.parse({
       eventId: `00000000-0000-4000-8000-${model.count.toString(16).padStart(12, '0')}`,
       harnessId,
       itemId,
       name,
-      at: instant.toISOString(),
+      at: new Date(epoch + model.count * minute).toISOString(),
       actor: person,
       evidence,
       traceId,
@@ -69,116 +87,193 @@ function stageKey(index: number): string {
   return stageKeys[index] ?? 'package';
 }
 
-function submit(model: Model, result: string, to: string | null): void {
+function held(model: Model): boolean {
+  return model.expected.holder !== null;
+}
+
+function leased(model: Model): boolean {
+  return model.expected.leaseExpiresAt !== null;
+}
+
+function release(model: Model): void {
+  model.expected.holder = null;
+  model.expected.claimantKind = null;
+  model.expected.leaseExpiresAt = null;
+}
+
+function submit(model: Model, result: string, to: string | null, pick: number): void {
+  const head = `head${model.count}`;
+  const pullRequest = pick % 2 === 0 ? { repo, number: pick + 1 } : null;
   emit(model, 'submitted_to_gate', {
     stage: stageKey(model.stage),
     result,
     to,
-    expectedHead: `head${model.count}`,
-    pullRequest: null,
+    expectedHead: head,
+    pullRequest,
     evidence: {},
   });
+  model.expected.expectedHead = head;
+  model.expected.branchState = 'active';
+  if (pullRequest !== null) model.expected.pullRequest = pullRequest;
 }
 
 function claim(model: Model): boolean {
-  if (model.held || model.parked) return false;
-  model.held = true;
+  if (held(model) || model.expected.gateStatus === 'parked') return false;
+  const leaseExpiresAt = leaseAfter(model);
   emit(model, 'item_claimed', {
     holder: agent,
     claimantKind: 'agent',
     delegationId: null,
-    leaseExpiresAt: leaseAfter(model),
+    leaseExpiresAt,
   });
+  Object.assign(model.expected, { holder: agent, claimantKind: 'agent', leaseExpiresAt });
   return true;
 }
 
-function release(model: Model): boolean {
-  if (!model.held) return false;
-  model.held = false;
-  emit(model, 'item_released', { holder: agent });
+function releaseHolder(model: Model): boolean {
+  const holder = model.expected.holder;
+  if (holder === null) return false;
+  emit(model, 'item_released', { holder });
+  release(model);
   return true;
 }
 
 function renew(model: Model): boolean {
-  if (!model.held) return false;
-  emit(model, 'lease_renewed', { leaseExpiresAt: leaseAfter(model) });
+  if (!leased(model)) return false;
+  const leaseExpiresAt = leaseAfter(model);
+  emit(model, 'lease_renewed', { leaseExpiresAt });
+  model.expected.leaseExpiresAt = leaseExpiresAt;
+  return true;
+}
+
+function runStep(model: Model): boolean {
+  if (!leased(model)) return false;
+  const leaseExpiresAt = leaseAfter(model);
+  emit(model, 'run_step_recorded', {
+    runId: '00000000-0000-4000-8000-0000000000f1',
+    step: 'work',
+    tokensIn: 1,
+    tokensOut: 1,
+    costBasis: 'metered',
+    leaseExpiresAt,
+  });
+  model.expected.leaseExpiresAt = leaseExpiresAt;
   return true;
 }
 
 function expire(model: Model): boolean {
-  if (!model.held) return false;
-  model.held = false;
-  emit(model, 'lease_expired', { holder: agent, leaseExpiresAt: leaseAfter(model) });
+  const { holder, leaseExpiresAt } = model.expected;
+  if (holder === null || leaseExpiresAt === null) return false;
+  emit(model, 'lease_expired', { holder, leaseExpiresAt });
+  release(model);
   return true;
 }
 
 function submitParked(model: Model, pick: number): boolean {
-  if (!model.held) return false;
-  model.held = false;
-  model.parked = true;
-  submit(model, 'parked', stageKey(pick % stageKeys.length));
+  if (!held(model)) return false;
+  const to = stageKey(pick % stageKeys.length);
+  submit(model, 'parked', to, pick);
+  release(model);
+  Object.assign(model.expected, { gateStatus: 'parked', gateTarget: to });
   return true;
 }
 
-function submitAdvanced(model: Model): boolean {
-  if (!model.held) return false;
-  const from = stageKey(model.stage);
+function submitAdvanced(model: Model, pick: number): boolean {
+  if (!held(model)) return false;
   const last = model.stage === stageKeys.length - 1;
-  model.held = false;
-  submit(model, 'advanced', last ? null : stageKey(model.stage + 1));
-  emit(model, 'stage_advanced', { from, to: last ? null : stageKey(model.stage + 1) });
-  model.done = last;
+  const to = last ? null : stageKey(model.stage + 1);
+  submit(model, 'advanced', to, pick);
+  emit(model, 'stage_advanced', { from: stageKey(model.stage), to });
+  release(model);
+  model.expected.gateTarget = null;
+  model.expected.gateStatus = last ? 'done' : 'working';
   model.stage = last ? model.stage : model.stage + 1;
+  model.expected.stageKey = stageKey(model.stage);
   return true;
 }
 
 function checksFailed(model: Model): boolean {
-  if (!model.held) return false;
+  if (!held(model)) return false;
   emit(model, 'checks_failed', { stage: stageKey(model.stage), failures: ['a check failed'] });
+  model.expected.gateStatus = 'checks_failed';
   return true;
 }
 
 function reject(model: Model): boolean {
-  if (!model.parked) return false;
-  model.parked = false;
+  if (model.expected.gateStatus !== 'parked') return false;
   emit(model, 'gate_rejected', { decisionId, stage: stageKey(model.stage), findings: [] });
+  Object.assign(model.expected, { gateStatus: 'working', gateTarget: null });
   return true;
 }
 
 function takeOver(model: Model): boolean {
-  if (!model.parked) return false;
-  model.parked = false;
-  model.held = true;
+  if (model.expected.gateStatus !== 'parked') return false;
   emit(model, 'gate_taken_over', { decisionId, stage: stageKey(model.stage), holder: person });
+  Object.assign(model.expected, {
+    holder: person,
+    claimantKind: 'person',
+    leaseExpiresAt: null,
+    gateStatus: 'working',
+    gateTarget: null,
+  });
   return true;
 }
 
 function loopEdge(model: Model, pick: number): boolean {
+  if (held(model)) return false;
   const to = pick % stageKeys.length;
   emit(model, 'loop_edge_taken', { from: stageKey(model.stage), to: stageKey(to) });
   model.stage = to;
-  model.held = false;
-  model.parked = false;
+  Object.assign(model.expected, {
+    stageKey: stageKey(to),
+    gateStatus: 'working',
+    gateTarget: null,
+  });
   return true;
 }
 
-function riskDerived(model: Model): boolean {
+const tiers = ['low', 'standard', 'high'] as const;
+const domainSets = [[], ['acl'], ['ledger', 'migration']];
+
+function riskDerived(model: Model, pick: number): boolean {
+  const riskTier = tiers[pick % tiers.length] ?? 'low';
+  const riskDomains = domainSets[pick % domainSets.length] ?? [];
   emit(model, 'risk_derived', {
     paths: ['src/index.ts'],
     declaration: null,
     floorDomains: [],
-    riskTier: 'low',
-    riskDomains: [],
+    riskTier,
+    riskDomains,
     refusal: null,
   });
+  Object.assign(model.expected, { riskTier, riskDomains });
+  return true;
+}
+
+function abandonBranch(model: Model): boolean {
+  emit(model, 'branch_abandoned', { head: null });
+  model.expected.branchState = 'abandoned';
+  return true;
+}
+
+function adoptBranch(model: Model): boolean {
+  emit(model, 'branch_adopted', { head: null });
+  model.expected.branchState = 'active';
+  return true;
+}
+
+function irrelevant(model: Model, pick: number): boolean {
+  if (pick % 2 === 0) emit(model, 'comment_recorded', {});
+  else emit(model, 'checks_passed', { stage: stageKey(model.stage), validators: [] });
   return true;
 }
 
 const handlers: ReadonlyMap<Operation, Handler> = new Map<Operation, Handler>([
   ['claim', claim],
-  ['release', release],
+  ['release', releaseHolder],
   ['renew', renew],
   ['expire', expire],
+  ['runStep', runStep],
   ['submitParked', submitParked],
   ['submitAdvanced', submitAdvanced],
   ['checksFailed', checksFailed],
@@ -186,17 +281,27 @@ const handlers: ReadonlyMap<Operation, Handler> = new Map<Operation, Handler>([
   ['takeOver', takeOver],
   ['loopEdge', loopEdge],
   ['riskDerived', riskDerived],
+  ['abandonBranch', abandonBranch],
+  ['adoptBranch', adoptBranch],
+  ['irrelevant', irrelevant],
 ]);
 
-function walkSteps(start: number, steps: readonly Step[]): NewHarnessEvent[] {
-  const model: Model = {
-    stage: start,
-    held: false,
-    parked: false,
-    done: false,
-    count: 0,
-    events: [],
+function startModel(start: number): Model {
+  const expected: Expected = {
+    stageKey: stageKey(start),
+    holder: null,
+    claimantKind: null,
+    delegationId: null,
+    leaseExpiresAt: null,
+    gateStatus: 'working',
+    gateTarget: null,
+    branchState: 'none',
+    expectedHead: null,
+    pullRequest: null,
+    riskTier: null,
+    riskDomains: [],
   };
+  const model: Model = { stage: start, count: 0, expected, events: [] };
   emit(model, 'item_created', {
     stage: stageKey(start),
     title: 'Item',
@@ -204,17 +309,22 @@ function walkSteps(start: number, steps: readonly Step[]): NewHarnessEvent[] {
     priority: 0,
     due: null,
   });
-  for (const step of steps) {
-    if (model.done) break;
-    handlers.get(step.operation)?.(model, step.pick);
-  }
-  return model.events;
+  return model;
 }
 
-export function itemEventSequence(): fc.Arbitrary<NewHarnessEvent[]> {
+function walkSteps(start: number, steps: readonly Step[]): ItemSequence {
+  const model = startModel(start);
+  for (const step of steps) {
+    if (model.expected.gateStatus === 'done') break;
+    handlers.get(step.operation)?.(model, step.pick);
+  }
+  return { events: model.events, expected: model.expected };
+}
+
+export function itemEventSequence(): fc.Arbitrary<ItemSequence> {
   const step = fc.record({
     operation: fc.constantFrom(...operations),
-    pick: fc.nat({ max: stageKeys.length - 1 }),
+    pick: fc.nat({ max: 1000 }),
   });
   return fc
     .tuple(fc.nat({ max: stageKeys.length - 1 }), fc.array(step, { maxLength: 40 }))

@@ -11,9 +11,10 @@ import {
 import type { Caller } from '../caller.ts';
 import type { Ids, Ports, StoreTransaction } from '../ports.ts';
 
+import { foldItem } from './fold.ts';
+
 type ItemTransaction = Pick<StoreTransaction, 'harnessItems' | 'harnessEvents'>;
 type EventTransaction = Pick<StoreTransaction, 'harnessEvents'>;
-import { foldItem } from './fold.ts';
 
 export type RecordContext = {
   readonly actor: Identity;
@@ -81,6 +82,7 @@ export async function recordHarnessEvents(
   harnessId: string,
   drafts: readonly EventDraft[],
 ): Promise<readonly HarnessEvent[]> {
+  if (drafts.length === 0) return [];
   const stamped = drafts.map((entry) => stamp(context, harnessId, null, entry));
   return tx.harnessEvents.write.append(stamped);
 }
@@ -93,6 +95,7 @@ export async function recordItemEvents(
 ): Promise<Recorded> {
   const locked = await tx.harnessItems.read.lock(itemId);
   if (locked === null) throw new RecordError('the item to record against does not exist', itemId);
+  if (drafts.length === 0) return { events: [], item: locked };
   const stamped = drafts.map((entry) => stamp(context, locked.harnessId, itemId, entry));
   const next = stamped.reduce<ItemState>(foldItem, locked);
   await tx.harnessItems.write.project(next);
