@@ -4,6 +4,7 @@ import { closeEmbeddedTemplate } from '../embedded.ts';
 import { people } from '../schema.ts';
 import { databaseTargets, type DatabaseTarget, type OpenedDatabase } from '../test-targets.ts';
 import { createDrizzleStore, executorOf } from './store.ts';
+import type { DrizzleTransaction } from './types.ts';
 
 afterAll(closeEmbeddedTemplate);
 
@@ -47,10 +48,19 @@ function describeTarget(target: DatabaseTarget): void {
 
 describe.each(databaseTargets)('DX-2 the Drizzle store on the $name database', describeTarget);
 
+function untouched<T extends object>(): T {
+  return new Proxy<T>(Object.create(null), {});
+}
+
 describe('DX-2 executorOf', () => {
   it('refuses a transaction the Drizzle store did not open', () => {
-    expect(() => executorOf({ lock: async () => undefined })).toThrow(
-      'not a transaction of the Drizzle store',
-    );
+    const foreign: DrizzleTransaction = {
+      lock: async () => undefined,
+      harnesses: untouched(),
+      harnessStages: untouched(),
+      harnessItems: untouched(),
+      pages: untouched(),
+    };
+    expect(() => executorOf(foreign)).toThrow('not a transaction of the Drizzle store');
   });
 });

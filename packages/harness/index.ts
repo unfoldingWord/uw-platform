@@ -9,7 +9,9 @@ export {
   PortNotWiredError,
   ProviderMismatchError,
   RunTransitionError,
+  storeRefusalOf,
   ToolOutsideToolsetError,
 } from './port-errors.ts';
+export type { StoreRefusal } from './port-errors.ts';
 export { templates } from './templates.ts';
 export type { Template } from './templates.ts';

@@ -1,0 +1,365 @@
+import { describe, expect, it } from 'vitest';
+import {
+  harnessSchema,
+  identitySchema,
+  itemStateSchema,
+  stageSchema,
+  type Harness,
+  type ItemState,
+  type Stage,
+} from '@uw/contracts';
+import type { PageFacts, Store, StoreTransaction } from '../ports.ts';
+import { storeRefusalOf } from '../port-errors.ts';
+
+export type SeededPage = PageFacts & { readonly slug: string; readonly title: string };
+
+export type GatewaySubject = {
+  readonly store: Store;
+  seedPage(page: SeededPage): Promise<void>;
+};
+
+const at = new Date('2026-10-01T09:00:00.000Z');
+const hour = 3_600_000;
+
+function uid(n: number): string {
+  return `00000000-0000-4000-8000-${(0x5a0000000000 + n).toString(16)}`;
+}
+
+function harnessOf(base: number, key: string): Harness {
+  return harnessSchema.parse({
+    id: uid(base),
+    key,
+    template: 'software',
+    jdArea: '80-89',
+    hostedBuilderEnabled: false,
+    paused: false,
+  });
+}
+
+function stageOf(base: number, offset: number, key: string, position: number): Stage {
+  const ship = key === 'ship';
+  return stageSchema.parse({
+    id: uid(base + offset),
+    harnessId: uid(base),
+    key,
+    title: key,
+    position,
+    bracket: ship ? 'deploy_package' : 'build_package',
+    agentPickup: ship ? 'none' : 'allowed',
+    exitGate: ship ? 'human_approval' : 'checks',
+    connector: ship ? 'merge' : 'none',
+    wipLimit: 3,
+    instructionsPageId: null,
+    validators: [],
+    feeds: [],
+    paused: false,
+  });
+}
+
+type Stages = { readonly build: Stage; readonly review: Stage; readonly ship: Stage };
+
+function stagesOf(base: number): Stages {
+  return {
+    build: stageOf(base, 1, 'build', 1),
+    review: stageOf(base, 2, 'review', 2),
+    ship: stageOf(base, 3, 'ship', 3),
+  };
+}
+
+async function seedHarness(tx: StoreTransaction, base: number, key: string): Promise<Stages> {
+  await tx.harnesses.write.insert(harnessOf(base, key), at);
+  const stages = stagesOf(base);
+  await tx.harnessStages.write.insert(stages.build);
+  await tx.harnessStages.write.insert(stages.review);
+  await tx.harnessStages.write.insert(stages.ship);
+  return stages;
+}
+
+function itemOf(
+  base: number,
+  n: number,
+  overrides: Readonly<Record<string, unknown>> = {},
+): ItemState {
+  return itemStateSchema.parse({
+    itemId: uid(base + 10 + n),
+    harnessId: uid(base),
+    stageKey: 'build',
+    title: `Item ${n}`,
+    pageId: null,
+    priority: 0,
+    due: null,
+    holder: null,
+    claimantKind: null,
+    delegationId: null,
+    leaseExpiresAt: null,
+    gateStatus: 'working',
+    gateTarget: null,
+    branchState: 'none',
+    expectedHead: null,
+    riskTier: null,
+    riskDomains: [],
+    pullRequest: null,
+    zulipTopic: null,
+    ...overrides,
+  });
+}
+
+function refusedBy(work: (tx: StoreTransaction) => Promise<unknown>, store: Store) {
+  return store.transaction(work).then(() => null, storeRefusalOf);
+}
+
+function describeHarnesses(subject: () => GatewaySubject): void {
+  it('DX-3 KN-1 inserts and reads a harness by id, by key and in the list', async () => {
+    const harness = harnessOf(0x100, 'gateway-read-b');
+    const other = harnessOf(0x200, 'gateway-read-a');
+    const found = await subject().store.transaction(async (tx) => {
+      await tx.harnesses.write.insert(harness, at);
+      await tx.harnesses.write.insert(other, at);
+      const listed = await tx.harnesses.read.list();
+      return {
+        byId: await tx.harnesses.read.byId(harness.id),
+        byKey: await tx.harnesses.read.byKey('gateway-read-b'),
+        missing: await tx.harnesses.read.byKey('gateway-read-none'),
+        keys: listed.map((entry) => entry.key).filter((key) => key.startsWith('gateway-read-')),
+      };
+    });
+    expect(found).toEqual({
+      byId: harness,
+      byKey: harness,
+      missing: null,
+      keys: ['gateway-read-a', 'gateway-read-b'],
+    });
+  });
+
+  it('DX-3 refuses a second harness with the same key as a StoreRefusedError 23505', async () => {
+    const outcome = await refusedBy(async (tx) => {
+      await tx.harnesses.write.insert(harnessOf(0x300, 'gateway-dup'), at);
+      await tx.harnesses.write.insert(harnessOf(0x400, 'gateway-dup'), at);
+    }, subject().store);
+    expect(outcome).toMatchObject({ code: '23505', table: 'harnesses' });
+  });
+}
+
+function describeStages(subject: () => GatewaySubject): void {
+  it('DX-3 KN-2 refuses a stage update to (merge, checks), naming the constraint', async () => {
+    const outcome = await refusedBy(async (tx) => {
+      const { ship } = await seedHarness(tx, 0x500, 'gateway-ship');
+      await tx.harnessStages.write.update({ ...ship, exitGate: 'checks' });
+    }, subject().store);
+    expect(outcome).toMatchObject({
+      code: '23514',
+      constraint: 'harness_stages_effect_needs_human_gate',
+    });
+  });
+
+  it('DX-3 returns stages in position order and repositions without a unique clash', async () => {
+    const result = await subject().store.transaction(async (tx) => {
+      const { build, review, ship } = await seedHarness(tx, 0x600, 'gateway-order');
+      await tx.harnessStages.write.reposition(uid(0x600), [
+        { id: ship.id, position: 1 },
+        { id: build.id, position: 2 },
+        { id: review.id, position: 3 },
+      ]);
+      return (await tx.harnessStages.read.forHarness(uid(0x600))).map((stage) => [
+        stage.key,
+        stage.position,
+      ]);
+    });
+    expect(result).toEqual([
+      ['ship', 1],
+      ['build', 2],
+      ['review', 3],
+    ]);
+  });
+}
+
+const everyField = {
+  stageKey: 'ship',
+  priority: 4,
+  due: '2026-10-15',
+  holder: 'agent:builder',
+  claimantKind: 'agent',
+  leaseExpiresAt: new Date(at.getTime() + hour).toISOString(),
+  gateStatus: 'parked',
+  gateTarget: 'build',
+  branchState: 'active',
+  expectedHead: 'abc123',
+  riskTier: 'high',
+  riskDomains: ['acl', 'infra'],
+  pullRequest: { repo: 'unfoldingWord/uw-platform', number: 7 },
+  zulipTopic: 'harness 7',
+} as const;
+
+function describeProjection(subject: () => GatewaySubject): void {
+  it('DX-3 KN-4 projects every item field and reads it back unchanged', async () => {
+    const pageId = uid(0x7ff);
+    await subject().seedPage({
+      id: pageId,
+      type: 'product',
+      status: 'active',
+      jdArea: '80-89',
+      bodyMd: 'body',
+      slug: 'gateway-project',
+      title: 'Gateway project',
+    });
+    const full = itemOf(0x700, 1, { ...everyField, pageId });
+    const read = await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0x700, 'gateway-project');
+      await tx.harnessItems.write.insert(itemOf(0x700, 1), at);
+      await tx.harnessItems.write.project(full);
+      return {
+        byId: await tx.harnessItems.read.byId(full.itemId),
+        locked: await tx.harnessItems.read.lock(full.itemId),
+        listed: await tx.harnessItems.read.forHarness(uid(0x700)),
+        absent: await tx.harnessItems.read.byId(uid(0x7fe)),
+      };
+    });
+    expect(read).toEqual({ byId: full, locked: full, listed: [full], absent: null });
+  });
+
+  it('DX-3 KN-4 refuses to project an item that does not exist', async () => {
+    const outcome = await subject()
+      .store.transaction(async (tx) => {
+        await seedHarness(tx, 0x800, 'gateway-absent');
+        await tx.harnessItems.write.project(itemOf(0x800, 1));
+      })
+      .then(
+        () => 'resolved',
+        (error: unknown) => (error instanceof Error ? error.message : 'rejected'),
+      );
+    expect(outcome).toBe(`no item ${uid(0x80b)} to project`);
+  });
+
+  it('DX-3 KN-4 lists items by priority, then creation, then id', async () => {
+    const later = new Date(at.getTime() + hour);
+    const order = await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0x900, 'gateway-items');
+      await tx.harnessItems.write.insert(itemOf(0x900, 3, { priority: 2 }), at);
+      await tx.harnessItems.write.insert(itemOf(0x900, 2, { priority: 1 }), later);
+      await tx.harnessItems.write.insert(itemOf(0x900, 1, { priority: 1 }), at);
+      return (await tx.harnessItems.read.forHarness(uid(0x900))).map((item) => item.title);
+    });
+    expect(order).toEqual(['Item 1', 'Item 2', 'Item 3']);
+  });
+}
+
+function fourItems(base: number) {
+  return {
+    one: itemOf(base, 1),
+    two: itemOf(base, 2),
+    three: itemOf(base, 3),
+    four: itemOf(base, 4),
+  };
+}
+
+async function insertAll(tx: StoreTransaction, items: readonly ItemState[]): Promise<void> {
+  for (const item of items) await tx.harnessItems.write.insert(item, at);
+}
+
+function claimRequest(item: ItemState, holder: string, lease: number | null, now: Date) {
+  return {
+    itemId: item.itemId,
+    holder: identitySchema.parse(holder),
+    claimantKind: 'agent' as const,
+    delegationId: null,
+    leaseExpiresAt: lease === null ? null : new Date(now.getTime() + lease),
+    at: now,
+  };
+}
+
+function describeClaims(subject: () => GatewaySubject): void {
+  it('DX-3 KN-5 claims an unheld item once, refuses a held one, and takes a lapsed lease', async () => {
+    const item = itemOf(0xa00, 1);
+    const results = await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0xa00, 'gateway-claim');
+      await tx.harnessItems.write.insert(item, at);
+      const first = await tx.harnessItems.write.claim(claimRequest(item, 'agent:one', hour, at));
+      const held = await tx.harnessItems.write.claim(claimRequest(item, 'agent:two', hour, at));
+      const after = new Date(at.getTime() + 2 * hour);
+      const lapsed = await tx.harnessItems.write.claim(
+        claimRequest(item, 'agent:two', hour, after),
+      );
+      return {
+        first,
+        held,
+        lapsed,
+        holder: (await tx.harnessItems.read.byId(item.itemId))?.holder,
+      };
+    });
+    expect(results).toEqual({ first: true, held: false, lapsed: true, holder: 'agent:two' });
+  });
+}
+
+function describeLeases(subject: () => GatewaySubject): void {
+  it('DX-3 KN-5 counts only live holders in a stage', async () => {
+    const { one, two, three, four } = fourItems(0xb00);
+    const counts = await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0xb00, 'gateway-held');
+      await insertAll(tx, [one, two, three, four]);
+      await tx.harnessItems.write.claim(claimRequest(one, 'agent:one', null, at));
+      await tx.harnessItems.write.claim(claimRequest(two, 'agent:one', hour, at));
+      await tx.harnessItems.write.claim(claimRequest(three, 'agent:one', 1_000, at));
+      const now = new Date(at.getTime() + 60_000);
+      return [
+        await tx.harnessItems.read.heldInStage(uid(0xb00), 'build', now),
+        await tx.harnessItems.read.heldInStage(uid(0xb00), 'review', now),
+      ];
+    });
+    expect(counts).toEqual([2, 0]);
+  });
+
+  it('DX-3 KN-5 lists lapsed leases in expiry order', async () => {
+    const { one, two, three, four } = fourItems(0xc00);
+    const lapsed = await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0xc00, 'gateway-lapsed');
+      await insertAll(tx, [one, two, three, four]);
+      await tx.harnessItems.write.claim(claimRequest(one, 'agent:one', 3_000, at));
+      await tx.harnessItems.write.claim(claimRequest(two, 'agent:one', 1_000, at));
+      await tx.harnessItems.write.claim(claimRequest(three, 'agent:one', hour, at));
+      const ids = new Set([one, two, three, four].map((item) => item.itemId));
+      const now = new Date(at.getTime() + 10_000);
+      const all = await tx.harnessItems.read.lapsedLeases(now, 1_000);
+      return {
+        mine: all.filter((id) => ids.has(id)),
+        cappedIsFirst: (await tx.harnessItems.read.lapsedLeases(now, 1)).join() === all[0],
+      };
+    });
+    expect(lapsed).toEqual({ mine: [two.itemId, one.itemId], cappedIsFirst: true });
+  });
+}
+
+function describePages(subject: () => GatewaySubject): void {
+  it('DX-3 reads page facts for the ids it is given', async () => {
+    const page: SeededPage = {
+      id: uid(0xd00),
+      type: 'skill',
+      status: 'draft',
+      jdArea: '80-89',
+      bodyMd: 'facts body',
+      slug: 'gateway-facts',
+      title: 'Gateway facts',
+    };
+    await subject().seedPage(page);
+    const facts = await subject().store.transaction(async (tx) => ({
+      found: await tx.pages.read.facts([page.id, uid(0xd01)]),
+      none: await tx.pages.read.facts([]),
+    }));
+    expect(facts).toEqual({
+      found: [
+        { id: page.id, type: 'skill', status: 'draft', jdArea: '80-89', bodyMd: 'facts body' },
+      ],
+      none: [],
+    });
+  });
+}
+
+export function describeStoreGateways(adapter: string, subject: () => GatewaySubject): void {
+  describe(`DX-3 store gateways on ${adapter}`, () => {
+    describeHarnesses(subject);
+    describeStages(subject);
+    describeProjection(subject);
+    describeClaims(subject);
+    describeLeases(subject);
+    describePages(subject);
+  });
+}

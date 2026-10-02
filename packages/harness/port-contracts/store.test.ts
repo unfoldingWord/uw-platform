@@ -1,9 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import type { Store } from '../ports.ts';
+import type { Store, StoreTransaction } from '../ports.ts';
 import { race } from './store.ts';
 
+function untouched<T extends object>(): T {
+  return new Proxy<T>(Object.create(null), {});
+}
+
+const refusingTransaction: StoreTransaction = {
+  lock: () => Promise.reject(new Error('lock refused')),
+  harnesses: untouched(),
+  harnessStages: untouched(),
+  harnessItems: untouched(),
+  pages: untouched(),
+};
+
 const lockRefused: Store = {
-  transaction: (work) => work({ lock: () => Promise.reject(new Error('lock refused')) }),
+  transaction: (work) => work(refusingTransaction),
   appliedMigrations: async () => [],
 };
 

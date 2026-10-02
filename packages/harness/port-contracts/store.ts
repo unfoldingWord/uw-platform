@@ -1,12 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Store, StoreTransaction } from '../ports.ts';
 import { describeNotWired } from './not-wired-cases.ts';
+import { describeStoreGateways, type SeededPage } from './store-gateways.ts';
 
 export type StoreShape = { readonly concurrentConnections: boolean };
 
 export type StoreSubject = {
   readonly store: Store;
   readonly expectedMigrations: readonly number[];
+  seedPage(page: SeededPage): Promise<void>;
   advisoryLocksHeld(tx: StoreTransaction): Promise<number>;
   close(): Promise<void>;
 };
@@ -144,9 +146,9 @@ function describeExclusion(subject: () => StoreSubject, shape: StoreShape): void
     ]);
   });
 
-  it('DX-3 does not nest transactions: the work gets only lock, so pass the transaction along', async () => {
-    const members = await subject().store.transaction(async (tx) => Object.keys(tx));
-    expect(members).toEqual(['lock']);
+  it('DX-3 does not nest transactions: the work gets only lock and the gateways, so pass the transaction along', async () => {
+    const members = await subject().store.transaction(async (tx) => Object.keys(tx).sort());
+    expect(members).toEqual(['harnessItems', 'harnessStages', 'harnesses', 'lock', 'pages']);
   });
 }
 
@@ -181,6 +183,7 @@ export function describeStoreContract(
     });
 
     describeExclusion(() => subject, shape);
+    describeStoreGateways(adapter, () => subject);
   });
 }
 

@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import type { Role, Scope } from '@uw/contracts';
+import type { PageStatus, PageType, Role, Scope } from '@uw/contracts';
 import type { AnyExecutor } from './any-database.ts';
 import {
   grantAudit,
@@ -7,6 +7,7 @@ import {
   harnessItems,
   harnessStages,
   harnesses,
+  pages,
   people,
   roleGrants,
 } from './schema.ts';
@@ -101,4 +102,18 @@ export async function seedEvent(db: AnyExecutor, event: SeedEvent): Promise<void
     traceId: seededTrace,
     at: seededAt,
   });
+}
+
+export type SeedPage = {
+  readonly id: string;
+  readonly type: PageType;
+  readonly status: PageStatus;
+  readonly jdArea: string;
+  readonly bodyMd: string;
+  readonly slug: string;
+  readonly title: string;
+};
+
+export async function seedPage(db: AnyExecutor, page: SeedPage): Promise<void> {
+  await db.insert(pages).values({ ...page, parentId: null, frontmatter: {}, version: 1 });
 }
