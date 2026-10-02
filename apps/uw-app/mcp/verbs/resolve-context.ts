@@ -9,7 +9,11 @@ async function itemScope(
   context: VerbContext,
   input: VerbInput<'resolve_context'>,
 ): Promise<Found<ContextScope> | VerbRefusal> {
-  const scene = await context.kernel.reads.item(callerOf(context), { itemId: input.itemId });
+  const scene = await context.kernel.reads.item(
+    callerOf(context),
+    { itemId: input.itemId },
+    { at: context.at },
+  );
   if (scene.status === 'error') return refusal(scene.reason, scene.detail);
   const { item, stage, harness } = scene.value;
   return {

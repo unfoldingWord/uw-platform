@@ -5,7 +5,7 @@ import { harnessAreas } from './item-scene.ts';
 export const pollQueue = rowFilteredHandler({
   name: 'poll_queue',
   rows: async (context, input) => {
-    const polled = await context.kernel.reads.poll(callerOf(context), input);
+    const polled = await context.kernel.reads.poll(callerOf(context), input, { at: context.at });
     return polled.status === 'error' ? refusal(polled.reason, polled.detail) : polled.value;
   },
   resources: async (context, _input, items) => {

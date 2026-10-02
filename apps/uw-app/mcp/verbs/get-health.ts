@@ -49,6 +49,7 @@ function readScene(context: VerbContext, harnessId: string) {
   return context.kernel.reads.harness(
     { actor: context.principal, traceId: context.traceId },
     { harnessId },
+    { at: context.at },
   );
 }
 
