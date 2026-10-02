@@ -8,16 +8,25 @@ export const domainGrants: ReadonlyMap<RiskDomain, AclResource> = new Map<RiskDo
   ['migration', { kind: 'org' }],
 ]);
 
+export function resourcesFrom(
+  grants: ReadonlyMap<RiskDomain, AclResource>,
+  area: JdArea,
+  domains: readonly RiskDomain[],
+): readonly AclResource[] | null {
+  const resources: AclResource[] = [{ kind: 'area', area }];
+  for (const domain of domains) {
+    const resource = grants.get(domain);
+    if (resource === undefined) return null;
+    resources.push(resource);
+  }
+  return resources;
+}
+
 export function requiredResources(
   area: JdArea,
   domains: readonly RiskDomain[],
-): readonly AclResource[] {
-  const resources: AclResource[] = [{ kind: 'area', area }];
-  for (const domain of domains) {
-    const resource = domainGrants.get(domain);
-    if (resource !== undefined) resources.push(resource);
-  }
-  return resources;
+): readonly AclResource[] | null {
+  return resourcesFrom(domainGrants, area, domains);
 }
 
 export function approverCovers(
@@ -26,5 +35,7 @@ export function approverCovers(
   domains: readonly RiskDomain[],
   at: Date,
 ): boolean {
-  return requiredResources(area, domains).every((resource) => can(approver, 'admin', resource, at));
+  const resources = requiredResources(area, domains);
+  if (resources === null) return false;
+  return resources.every((resource) => can(approver, 'admin', resource, at));
 }

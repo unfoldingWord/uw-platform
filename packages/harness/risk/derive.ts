@@ -13,19 +13,18 @@ export type RiskResult =
     };
 
 function normalise(path: string): string {
-  const raw = path.replaceAll('\\', '/');
   const kept: string[] = [];
-  for (const segment of raw.split('/')) {
+  for (const segment of path.replaceAll('\\', '/').toLowerCase().split('/')) {
     if (segment === '..') kept.pop();
     else if (segment !== '' && segment !== '.') kept.push(segment);
   }
-  const joined = kept.join('/');
-  return raw.endsWith('/') && joined !== '' ? `${joined}/` : joined;
+  return kept.join('/');
 }
 
 function matches(entry: string, path: string): boolean {
-  if (entry.endsWith('/')) return path.startsWith(entry);
-  return path === entry;
+  const base = normalise(entry);
+  if (entry.endsWith('/')) return path === base || path.startsWith(`${base}/`);
+  return path === base;
 }
 
 export function domainOf(path: string): RiskDomain | null {
@@ -47,13 +46,17 @@ export function floorFromPaths(paths: readonly string[]): RiskFloor {
   return { tier: found.size > 0 ? 'high' : null, domains: inSchemaOrder(found) };
 }
 
-function rankOf(tier: RiskTier): number {
-  return riskTierSchema.options.indexOf(tier);
+function rankOf(tier: RiskTier | null): number {
+  return tier === null ? -1 : riskTierSchema.options.indexOf(tier);
 }
 
-function higher(left: RiskTier | null, right: RiskTier): RiskTier {
-  if (left === null) return right;
+function higher(left: RiskTier | null, right: RiskTier | null): RiskTier | null {
   return rankOf(left) >= rankOf(right) ? left : right;
+}
+
+export function carryForward(floor: RiskFloor, previous: RiskFloor): RiskFloor {
+  const domains = inSchemaOrder(new Set([...floor.domains, ...previous.domains]));
+  return { tier: higher(floor.tier, previous.tier), domains };
 }
 
 export function applyDeclaration(
@@ -64,5 +67,6 @@ export function applyDeclaration(
     return { ok: false, reason: 'risk_tier_undeclared', domains: floor.domains };
   }
   const domains = inSchemaOrder(new Set([...floor.domains, ...declaration.riskDomains]));
-  return { ok: true, tier: higher(floor.tier, declaration.riskTier), domains };
+  const tier = higher(floor.tier, declaration.riskTier) ?? declaration.riskTier;
+  return { ok: true, tier, domains };
 }

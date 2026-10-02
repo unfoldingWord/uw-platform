@@ -9,4 +9,5 @@ export const protectedDirectories: readonly ProtectedDirectory[] = [
   { path: 'infra/', domain: 'infra' },
   { path: '.github/workflows/', domain: 'infra' },
   { path: 'packages/ledger/', domain: 'ledger' },
+  { path: 'packages/harness/risk/', domain: 'acl' },
 ];
