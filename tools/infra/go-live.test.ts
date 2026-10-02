@@ -9,7 +9,7 @@ type Queues = {
   producers?: Binding[];
 };
 
-const goLiveOnly = ['logpush', 'hyperdrive', 'queues'];
+const goLiveOnly = ['logpush', 'hyperdrive', 'queues', 'triggers'];
 const accessVars = ['ACCESS_TEAM_DOMAIN', 'ACCESS_AUD', 'ACCESS_MCP_AUD'];
 const apps = ['uw-app', 'uw-ingest'] as const;
 const deployedEnvironments = ['staging', 'production'] as const;

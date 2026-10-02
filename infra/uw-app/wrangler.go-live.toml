@@ -24,6 +24,9 @@ ACCESS_MCP_AUD = "set-at-go-live"
 [env.staging.observability]
 enabled = true
 
+[env.staging.triggers]
+crons = ["17 3 * * *"]
+
 [[env.staging.hyperdrive]]
 binding = "HYPERDRIVE"
 id = "set-at-go-live"
@@ -50,6 +53,9 @@ ACCESS_MCP_AUD = "set-at-go-live"
 
 [env.production.observability]
 enabled = true
+
+[env.production.triggers]
+crons = ["17 3 * * *"]
 
 [[env.production.hyperdrive]]
 binding = "HYPERDRIVE"
