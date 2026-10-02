@@ -156,6 +156,25 @@ describe('the GitHub dependency rules refuse', () => {
   });
 });
 
+describe('the app test helpers', () => {
+  it('refuse a module that is not a test', async () => {
+    const found = await violations({
+      'apps/uw-app/testing/github-facts.ts': leaf,
+      'apps/uw-app/http/a.ts': "import '../testing/github-facts.ts';",
+    });
+    expect(found.map((violation) => violation.rule)).toContain('app-testing-only-in-tests');
+  });
+
+  it('allow a test file and another test helper', async () => {
+    const found = await violations({
+      'apps/uw-app/github/testing/facts-fixtures.ts': leaf,
+      'apps/uw-app/testing/github-facts.ts': "import '../github/testing/facts-fixtures.ts';",
+      'apps/uw-app/mcp/a.test.ts': "import '../testing/github-facts.ts';",
+    });
+    expect(found.map((violation) => violation.rule)).not.toContain('app-testing-only-in-tests');
+  });
+});
+
 describe('the GitHub dependency rules allow', () => {
   it('the composition roots on the read client, its transport and the App configuration', async () => {
     const reads =

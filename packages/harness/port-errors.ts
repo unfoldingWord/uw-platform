@@ -12,6 +12,16 @@ export class PortNotWiredError extends Error {
   }
 }
 
+export class FactsUnavailableError extends Error {
+  readonly failure: string;
+
+  constructor(failure: string) {
+    super(`the GitHub facts could not be read again: ${failure}`);
+    this.name = 'FactsUnavailableError';
+    this.failure = failure;
+  }
+}
+
 export class RunTransitionError extends Error {
   readonly runId: string;
   readonly from: RunState | null;

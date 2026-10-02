@@ -7,6 +7,7 @@ export type { Kernel, KernelHealth } from './kernel.ts';
 export type { PollItem } from './reads/poll.ts';
 export { unattendedWithoutDelegation } from './reads/scene.ts';
 export {
+  FactsUnavailableError,
   notWiredCall,
   PortNotWiredError,
   ProviderMismatchError,
