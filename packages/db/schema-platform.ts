@@ -172,6 +172,7 @@ export const webhookDeliveries = declareTable(
   (t) => [
     primaryKey({ name: 'webhook_deliveries_pk', columns: [t.source, t.deliveryId] }),
     check('webhook_deliveries_source_known', oneOf(t.source, ingestSourceSchema.options)),
+    index('webhook_deliveries_received_at').on(t.receivedAt),
   ],
 );
 

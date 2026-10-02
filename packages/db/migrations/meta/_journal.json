@@ -92,6 +92,13 @@
       "when": 1790957852800,
       "tag": "0012_identity_checks_follow_the_device_rule",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790961624661,
+      "tag": "0013_github_read_model",
+      "breakpoints": true
     }
   ]
 }
