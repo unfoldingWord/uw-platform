@@ -27,6 +27,10 @@ const simMayImport = [
   '^(node:)?(fs|fs/promises|path|url|process|os|assert|assert/strict|child_process)$',
 ];
 
+const github = (file) => `^apps/uw-app/github/${file}\\.ts$`;
+const octokitRest = npm('@octokit/(core|request|request-error|endpoint|graphql|auth-token)');
+const compositionRoots = '^apps/uw-app/(queue/worker|cron/scheduled|kernel)\\.ts$';
+
 const forbidden = (name, comment, from, to) => ({
   name,
   comment,
@@ -199,6 +203,51 @@ export default {
       'Islands call the command API, never the kernel.',
       '^apps/uw-app/islands/',
       '^packages/harness/',
+    ),
+    {
+      name: 'github-reads-only-in-github-and-composition-roots',
+      comment:
+        'The read-only GitHub client, its transport and the App configuration are imported only under apps/uw-app/github and by the composition roots.',
+      severity: 'error',
+      from: { pathNot: ['^apps/uw-app/github/', compositionRoots, testFile] },
+      to: { path: github('(client|transport|app-config)') },
+    },
+    {
+      name: 'github-session-only-in-the-github-clients',
+      comment:
+        'Only the read client, the comment writer and the ship writes open a GitHub session.',
+      severity: 'error',
+      from: { pathNot: [github('(client|comments|ship-writes)'), testFile] },
+      to: { path: github('session') },
+    },
+    {
+      name: 'github-token-and-octokit-only-in-the-session',
+      comment:
+        'Only the session mints an installation token or reaches Octokit, so no other module holds a token.',
+      severity: 'error',
+      from: { pathNot: [github('session'), testFile] },
+      to: { path: [github('token'), octokitRest] },
+    },
+    {
+      name: 'github-merge-writes-only-in-merge',
+      comment:
+        'The merge and the tag are written only by the merge connector in apps/uw-app/github/merge.ts; the queue and cron roots hold a read-only client.',
+      severity: 'error',
+      from: { pathNot: [github('merge'), testFile] },
+      to: { path: github('ship-writes') },
+    },
+    {
+      name: 'github-comments-only-in-github',
+      comment: 'The cross-reference comment is written only from apps/uw-app/github.',
+      severity: 'error',
+      from: { pathNot: ['^apps/uw-app/github/', testFile] },
+      to: { path: github('comments') },
+    },
+    forbidden(
+      'github-never-in-mcp-or-engines',
+      'Nothing an agent or a model process reaches imports the GitHub client, so no token reaches either.',
+      '^apps/uw-app/(mcp|engines)/',
+      '^apps/uw-app/github/',
     ),
     {
       name: 'vendor-sdk-only-in-engines',
