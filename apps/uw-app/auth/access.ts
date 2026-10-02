@@ -55,6 +55,7 @@ export function accessConfigFrom(
   const teamDomain = env.ACCESS_TEAM_DOMAIN;
   const audience = audienceOf(env, surface);
   if (!teamDomain || !audience || !teamDomainPattern.test(teamDomain)) return null;
+  if (env.ACCESS_MCP_AUD === env.ACCESS_AUD) return null;
   return { teamDomain, audience };
 }
 

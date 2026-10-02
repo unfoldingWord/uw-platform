@@ -265,3 +265,17 @@ describe('AB-1 FD-7 each Access application is accepted only on its own paths', 
     ]);
   });
 });
+
+describe('the two Access applications must carry different audiences', () => {
+  it('refuses both surfaces when the mcp and app audiences are the same tag', async () => {
+    const env = { ...fixtureAccessEnv, ACCESS_MCP_AUD: fixtureAccessEnv.ACCESS_AUD };
+    expect(await refusalOn('/mcp', await fixture.signForMcp(person), 'POST', env)).toEqual([
+      503,
+      'access_not_configured',
+    ]);
+    expect(await refusalOn('/api/pages', await fixture.sign(person), 'GET', env)).toEqual([
+      503,
+      'access_not_configured',
+    ]);
+  });
+});
