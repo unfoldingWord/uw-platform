@@ -164,7 +164,9 @@ export type ParkInput = {
   readonly title: string;
 };
 
-export async function simParkedAtCheck(world: World, input: ParkInput): Promise<ItemState> {
+type HeldInput = ParkInput & { readonly agent: Principal };
+
+async function enqueuedAtGatedCheck(world: World, input: ParkInput): Promise<string> {
   const caller = simCaller(world, input.admin);
   const gated = await world.kernel.stages.updateStage(caller, {
     harnessId: input.harnessId,
@@ -181,7 +183,11 @@ export async function simParkedAtCheck(world: World, input: ParkInput): Promise<
     delegationId: null,
   });
   if (enqueued.status !== 'accepted') throw new Error(`enqueue was refused: ${enqueued.reason}`);
-  const { itemId } = enqueued.value;
+  return enqueued.value.itemId;
+}
+
+export async function simParkedAtCheck(world: World, input: ParkInput): Promise<ItemState> {
+  const itemId = await enqueuedAtGatedCheck(world, input);
   const parked = await simAdvance(world, {
     harnessId: input.harnessId,
     itemId,
@@ -190,4 +196,22 @@ export async function simParkedAtCheck(world: World, input: ParkInput): Promise<
   });
   if (parked.gateStatus !== 'parked') throw new Error(`the item is ${parked.gateStatus} at check`);
   return parked;
+}
+
+export async function simHeldAtCheck(world: World, input: HeldInput): Promise<ItemState> {
+  const itemId = await enqueuedAtGatedCheck(world, input);
+  const atCheck = await simAdvance(world, {
+    harnessId: input.harnessId,
+    itemId,
+    worker: input.admin,
+    through: ['package', 'scope', 'plan', 'build'],
+  });
+  if (atCheck.stageKey !== 'check') throw new Error(`the item is at ${atCheck.stageKey}`);
+  const claimed = await world.kernel.items.claim(simCaller(world, input.agent), {
+    itemId,
+    delegationId: null,
+  });
+  if (claimed.status !== 'accepted')
+    throw new Error(`claiming check was refused: ${claimed.reason}`);
+  return claimed.value.item;
 }

@@ -3,7 +3,7 @@ import type { Logger } from '@uw/core/log';
 import type { Database } from '@uw/db/client';
 import type { Kernel } from '@uw/harness';
 
-type McpHost = 'external' | 'workflow';
+export type McpHost = 'external' | 'workflow';
 
 export type VerbContext = {
   readonly principal: Principal;
