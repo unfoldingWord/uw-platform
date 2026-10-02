@@ -5,7 +5,7 @@ import {
   type Harness,
   type Principal,
 } from '@uw/contracts';
-import { allowed } from '../access.ts';
+import { allowed, isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { draft, recordContext, recordHarnessEvents, type EventDraft } from '../items/record.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
@@ -169,7 +169,7 @@ async function readableLive(
 
 function boundTo(caller: Caller, delegation: Delegation): boolean {
   return (
-    caller.actor.kind === 'agent' &&
+    isAgent(caller.actor) &&
     caller.actor.personId === delegation.personId &&
     personaMatches(caller.actor.identity, delegation)
   );

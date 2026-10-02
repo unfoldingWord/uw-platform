@@ -1,5 +1,5 @@
 import type { GateDecision, Harness, ItemState, Principal, Stage } from '@uw/contracts';
-import { allowed } from '../access.ts';
+import { allowed, isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import {
   draft,
@@ -87,10 +87,6 @@ function isRefused<T extends object>(value: T | Refused): value is Refused {
   return 'status' in value;
 }
 
-function humanPrincipal(actor: Principal): boolean {
-  return actor.kind === 'person' && actor.identity.startsWith('human:');
-}
-
 function refuseAgent(
   ports: GatePorts,
   caller: Caller,
@@ -98,8 +94,11 @@ function refuseAgent(
   at: Date,
 ): Promise<Refused> {
   return ports.store.transaction(async (tx) => {
+    const notFound = refused('item_not_found', { itemId: input.itemId });
     const item = await tx.harnessItems.read.lock(input.itemId);
-    if (item === null) return refused('item_not_found', { itemId: input.itemId });
+    if (item === null) return notFound;
+    const harness = await tx.harnesses.read.byId(item.harnessId);
+    if (harness === null || !allowed(caller.actor, 'read', harness, at)) return notFound;
     await recordItemEvents(tx, recordContext(ports, caller, at), item.itemId, [
       draft('gate_refused_to_agent', { decision: input.decision, stage: item.stageKey }),
     ]);
@@ -320,7 +319,7 @@ export async function decide(
   input: DecideInput,
 ): Promise<KernelOutcome<Decided>> {
   const at = ports.clock.now();
-  if (!humanPrincipal(caller.actor)) return refuseAgent(ports, caller, input, at);
+  if (isAgent(caller.actor)) return refuseAgent(ports, caller, input, at);
   const checked = normalised(input);
   if (isRefused(checked)) return checked;
   const snapshot = await readShipFacts(ports, {
