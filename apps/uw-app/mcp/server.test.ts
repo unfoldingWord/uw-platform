@@ -60,7 +60,12 @@ function stubHandlers(recorder: Recorder): ReadonlyMap<string, VerbHandler> {
       recorder.ran.push('claim_item');
       return {
         status: 'accepted',
-        output: { itemId: ITEM, leaseExpiresAt: null, leaseWarning: false },
+        output: {
+          itemId: ITEM,
+          leaseExpiresAt: null,
+          leaseWarning: false,
+          branch: { name: `harness/${ITEM}`, startFrom: null, adopted: false },
+        },
       };
     },
   });
