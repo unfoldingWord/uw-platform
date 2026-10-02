@@ -46,3 +46,20 @@ export type CapabilityWord = z.infer<typeof capabilityWordSchema>;
 export type GateDecision = z.infer<typeof gateDecisionSchema>;
 export type PersonStatus = z.infer<typeof personStatusSchema>;
 export type PrincipalKind = z.infer<typeof principalKindSchema>;
+
+export const stageBracketSchema = z.enum([
+  'product_package',
+  'build_package',
+  'deploy_package',
+  'iterate',
+]);
+export const gateStatusSchema = z.enum(['working', 'parked', 'checks_failed', 'done']);
+export const branchStateSchema = z.enum(['none', 'active', 'abandoned']);
+export const runOutcomeSchema = z.enum(['running', 'hibernated', 'stopped', 'completed', 'failed']);
+export const delegationLapseSchema = z.enum(['expired', 'revoked', 'grant_lost']);
+
+export type StageBracket = z.infer<typeof stageBracketSchema>;
+export type GateStatus = z.infer<typeof gateStatusSchema>;
+export type BranchState = z.infer<typeof branchStateSchema>;
+export type RunOutcome = z.infer<typeof runOutcomeSchema>;
+export type DelegationLapse = z.infer<typeof delegationLapseSchema>;

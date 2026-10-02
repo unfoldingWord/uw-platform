@@ -1,0 +1,4 @@
+{
+  "verdict": "refuse",
+  "reasons": ["head_mismatch", "checks_not_green"]
+}
