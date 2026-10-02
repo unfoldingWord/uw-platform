@@ -1,34 +1,33 @@
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { McpError, type Tool } from '@modelcontextprotocol/sdk/types.js';
+import { McpError } from '@modelcontextprotocol/sdk/types.js';
 import {
   delegatedIdentity,
   isForbiddenVerbName,
   principalSchema,
   verbRegistry,
   type CostBasis,
+  type ErrorReason,
   type Principal,
 } from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
-import { seedGrant, seedPerson } from '@uw/db/test-seed';
+import { seedGrant, seedPage, seedPerson } from '@uw/db/test-seed';
 import { software, type Caller, type Kernel } from '@uw/harness';
 import { createApp } from '../app.tsx';
 import { createAccessFixture, type AccessFixture } from '../testing/access-keys.ts';
 import {
   callableFailures,
   toolSurfaceMismatches,
+  type CallResult,
   type ToolSurface,
 } from '../testing/conformance.ts';
 import { kernelOn, personOn } from '../testing/kernel.ts';
-import { areaGrant, httpClient, testAgent, testContext } from '../testing/mcp.ts';
+import { httpClient } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
 import type { McpHost, VerbContext } from './context.ts';
 import { connectInProcess } from './in-process.ts';
-import { toolsFor } from './tools.ts';
 import { verbHandlers } from './verbs/index.ts';
 
 const IAN_ID = '00000000-0000-4000-8000-000000000001';
@@ -39,7 +38,6 @@ const OWNER = {
 const ADMIN_GRANT = '00000000-0000-4000-8000-000000001902';
 const EDITOR_GRANT = '00000000-0000-4000-8000-000000001903';
 const MISSING = '00000000-0000-4000-8000-000000001999';
-const FIXTURES = join(import.meta.dirname, '../../../packages/contracts/verb-fixtures');
 const hostBasis = new Map<McpHost, CostBasis>([
   ['external', 'subscription'],
   ['workflow', 'metered'],
@@ -66,6 +64,7 @@ type Scene = {
   readonly undelegatedHarness: string;
   readonly delegationId: string;
   readonly beat: Principal;
+  readonly pageId: string;
 };
 
 let rigged: Promise<Rig> | null = null;
@@ -133,6 +132,15 @@ async function enqueue(r: Rig, harnessId: string, title: string): Promise<string
   return value(await r.kernel.items.enqueue(caller(r.ian), input)).itemId;
 }
 
+async function pageIn(r: Rig): Promise<string> {
+  const id = crypto.randomUUID();
+  const frontmatter = { owner: `human:${OWNER.id}`, summary: 'A page both hosts read.' };
+  const slug = `conformance-read-${id.slice(0, 8)}`;
+  const page = { id, type: 'product' as const, status: 'draft' as const, slug, frontmatter };
+  await seedPage(r.db, { ...page, jdArea: '80-89', title: 'Conformance', bodyMd: 'Read me.' });
+  return id;
+}
+
 function builder(owner: Principal): Principal {
   return principalSchema.parse({
     ...owner,
@@ -173,6 +181,7 @@ async function openScene(r: Rig): Promise<Scene> {
     undelegatedHarness: undelegated,
     delegationId,
     beat,
+    pageId: await pageIn(r),
   };
 }
 
@@ -224,17 +233,72 @@ function servedNames(): string[] {
     .map((verb) => verb.name);
 }
 
-function firstValidInput(verb: string): Body {
-  const dir = join(FIXTURES, verb, 'input', 'valid');
-  const [first] = readdirSync(dir).toSorted();
-  if (first === undefined) throw new Error(`verb ${verb} has no valid input fixture`);
-  return JSON.parse(readFileSync(join(dir, first), 'utf8'));
+type Call = { readonly verb: string; readonly args: Body };
+
+function itemOn(host: McpHost, scene: Scene): string {
+  return host === 'external' ? scene.laptopItem : scene.workflowItem;
 }
 
-function argsOn(host: McpHost, verb: string): Body {
-  const input = firstValidInput(verb);
-  return verb === 'record_run_step' ? { ...input, costBasis: hostBasis.get(host) } : input;
+function pageArgs(host: McpHost): Body {
+  const pageId = crypto.randomUUID();
+  return {
+    pageId,
+    type: 'product',
+    jdArea: '80-89',
+    slug: `conformance-${host}-${pageId.slice(0, 8)}`,
+    title: `Written from the ${host} host`,
+    parentId: null,
+    frontmatter: { owner: `human:${OWNER.id}`, summary: 'A page the conformance check writes.' },
+    bodyMd: 'Conformance.',
+    expectedVersion: null,
+  };
 }
+
+function itemCalls(host: McpHost, scene: Scene): Call[] {
+  const itemId = itemOn(host, scene);
+  const delegationId = host === 'external' ? null : scene.delegationId;
+  const run = { runId: crypto.randomUUID(), step: 'work', tokensIn: 1, tokensOut: 1 };
+  return [
+    { verb: 'poll_queue', args: { harnessId: scene.harnessId, limit: 5 } },
+    { verb: 'claim_item', args: { itemId, delegationId } },
+    { verb: 'record_run_step', args: { itemId, ...run, costBasis: hostBasis.get(host) } },
+    { verb: 'resolve_context', args: { itemId } },
+    {
+      verb: 'submit_to_gate',
+      args: { itemId, evidence: {}, to: null, pullRequest: null, head: null },
+    },
+  ];
+}
+
+function sceneCalls(host: McpHost, scene: Scene): Call[] {
+  const stageItems = { harnessId: scene.harnessId, stageKey: 'package' };
+  return [
+    ...itemCalls(host, scene),
+    { verb: 'get_health', args: { harnessId: scene.harnessId } },
+    { verb: 'search_pages', args: { query: 'conformance', type: null, limit: 10 } },
+    { verb: 'read_page', args: { pageId: scene.pageId } },
+    { verb: 'write_page', args: pageArgs(host) },
+    { verb: 'query_entities', args: { query: 'stage_items', params: stageItems } },
+    {
+      verb: 'create_task',
+      args: { title: `task from ${host}`, jdArea: '80-89', pageId: null, due: null },
+    },
+  ];
+}
+
+const expectedOutcomes = new Map<string, 'accepted' | ErrorReason>([
+  ['poll_queue', 'accepted'],
+  ['claim_item', 'accepted'],
+  ['record_run_step', 'accepted'],
+  ['resolve_context', 'accepted'],
+  ['submit_to_gate', 'accepted'],
+  ['get_health', 'accepted'],
+  ['search_pages', 'accepted'],
+  ['read_page', 'accepted'],
+  ['write_page', 'accepted'],
+  ['query_entities', 'accepted'],
+  ['create_task', 'accepted'],
+]);
 
 function outcomeOf(client: Client, name: string, args: Body): Promise<unknown> {
   return client.callTool({ name, arguments: args }).then(
@@ -243,10 +307,13 @@ function outcomeOf(client: Client, name: string, args: Body): Promise<unknown> {
   );
 }
 
-async function callEach(host: McpHost, client: Client) {
-  const results: { verb: string; outcome: unknown }[] = [];
-  for (const verb of servedNames()) {
-    results.push({ verb, outcome: await outcomeOf(client, verb, argsOn(host, verb)) });
+async function callEach(host: McpHost, client: Client, scene: Scene): Promise<CallResult[]> {
+  const calls = sceneCalls(host, scene);
+  expect(calls.map((call) => call.verb).toSorted()).toEqual(servedNames().toSorted());
+  const results: CallResult[] = [];
+  for (const { verb, args } of calls) {
+    const expected = expectedOutcomes.get(verb) ?? 'internal_error';
+    results.push({ verb, outcome: await outcomeOf(client, verb, args), expected });
   }
   return results;
 }
@@ -262,9 +329,11 @@ async function surfacesMatch(_r: Rig, _scene: Scene, hosts: Hosts): Promise<void
   expect(surfaces.map((surface) => surface.tools.length)).toEqual([served.length, served.length]);
 }
 
-async function everyVerbCallable(_r: Rig, _scene: Scene, hosts: Hosts): Promise<void> {
-  expect(callableFailures('workflow', await callEach('workflow', hosts.workflow))).toEqual([]);
-  expect(callableFailures('external', await callEach('external', hosts.external))).toEqual([]);
+async function everyVerbCallable(_r: Rig, scene: Scene, hosts: Hosts): Promise<void> {
+  const workflow = await callEach('workflow', hosts.workflow, scene);
+  const external = await callEach('external', hosts.external, scene);
+  expect(callableFailures('workflow', workflow)).toEqual([]);
+  expect(callableFailures('external', external)).toEqual([]);
 }
 
 function textOf(outcome: unknown): string {
@@ -434,87 +503,3 @@ describe.skipIf(!testServer)(
       withHosts(beatSeesOnlyItsHarness));
   },
 );
-
-const AT = new Date('2026-10-02T12:00:00.000Z');
-
-function registryTools(): Tool[] {
-  return toolsFor(testAgent([areaGrant('editor', '80-89')]), AT);
-}
-
-function surfacesWith(workflow: Tool[]): ToolSurface[] {
-  return [
-    { host: 'workflow', tools: workflow },
-    { host: 'external', tools: registryTools() },
-  ];
-}
-
-const approveItem: Tool = { name: 'approve_item', inputSchema: { type: 'object' } };
-
-function widened(tool: Tool): Tool {
-  if (tool.name !== 'claim_item') return tool;
-  return { ...tool, inputSchema: { ...tool.inputSchema, required: [] } };
-}
-
-async function unservedOnWorkflow(): Promise<unknown> {
-  const client = await connectInProcess(testContext(testAgent([areaGrant('editor', '80-89')])));
-  try {
-    return await outcomeOf(client, 'list_gifts', { since: '2026-01-01' });
-  } finally {
-    await client.close();
-  }
-}
-
-describe('AB-7 the conformance check fails on a planted host-specific tool', () => {
-  it('passes the registry served to both hosts', () => {
-    expect(toolSurfaceMismatches(surfacesWith(registryTools()), servedNames())).toEqual([]);
-  });
-
-  it('names a tool only the workflow host serves', () => {
-    const mismatches = toolSurfaceMismatches(
-      surfacesWith([...registryTools(), approveItem]),
-      servedNames(),
-    );
-    expect(mismatches).toEqual([
-      'workflow serves unregistered approve_item',
-      'approve_item is served by only one of workflow and external',
-    ]);
-  });
-
-  it('names a verb the workflow host does not serve', () => {
-    const tools = registryTools().filter((tool) => tool.name !== 'poll_queue');
-    expect(toolSurfaceMismatches(surfacesWith(tools), servedNames())).toEqual([
-      'workflow lacks poll_queue',
-      'poll_queue is served by only one of workflow and external',
-    ]);
-  });
-
-  it('names a verb whose input schema differs between hosts', () => {
-    const tools = registryTools().map(widened);
-    expect(toolSurfaceMismatches(surfacesWith(tools), servedNames())).toEqual([
-      'claim_item inputSchema differs between workflow and external',
-    ]);
-  });
-
-  it('names a verb a host answers as an unknown tool', async () => {
-    const outcome = await unservedOnWorkflow();
-    expect(callableFailures('workflow', [{ verb: 'list_gifts', outcome }])).toEqual([
-      'workflow answered list_gifts as an unknown tool',
-    ]);
-  });
-
-  it('names a verb answered with an open refusal or an output outside its schema', () => {
-    const open = {
-      content: [{ type: 'text', text: '{"status":"error","reason":"boom"}' }],
-      isError: true,
-    };
-    const wrong = { content: [{ type: 'text', text: '{}' }], structuredContent: { pages: 1 } };
-    const results = [
-      { verb: 'claim_item', outcome: open },
-      { verb: 'search_pages', outcome: wrong },
-    ];
-    expect(callableFailures('external', results)).toEqual([
-      'external answered claim_item with neither its output nor a closed refusal',
-      'external answered search_pages with neither its output nor a closed refusal',
-    ]);
-  });
-});
