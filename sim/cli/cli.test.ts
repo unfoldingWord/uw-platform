@@ -1,8 +1,10 @@
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { discoverScenarios } from '../runner/discover.ts';
 
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
+const scenariosDirectory = fileURLToPath(new URL('../scenarios/', import.meta.url));
 const commandTimeout = 90_000;
 const everyScenarioTimeout = 300_000;
 
@@ -69,10 +71,13 @@ describe('DX-4 the sim command', () => {
 
   it(
     'names the known scenarios when none matches',
-    () => {
-      expect(exited(1, 'sim/cli/sim.ts', ['ZZ-1']).stderr).toContain(
-        'no scenario matches ZZ-1; known: AB-4.poll-returns-what-the-caller-may-claim, AB-6.a-delegated-runner-names-itself-and-stops-on-lapse, AB-7.no-agent-identity-writes-a-gate-decision, AB-8.missing-verb-opens-one-item',
-      );
+    async () => {
+      const { stderr } = exited(1, 'sim/cli/sim.ts', ['ZZ-1']);
+      const prefix = 'no scenario matches ZZ-1; known: ';
+      expect(stderr).toMatch(/^no scenario matches ZZ-1; known: /);
+      const known = (await discoverScenarios(scenariosDirectory)).map((loaded) => loaded.name);
+      expect(known.length).toBeGreaterThan(0);
+      expect(stderr.slice(prefix.length).trimEnd()).toBe(known.join(', '));
     },
     commandTimeout,
   );
