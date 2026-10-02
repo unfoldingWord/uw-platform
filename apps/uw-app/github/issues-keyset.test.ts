@@ -54,13 +54,13 @@ function movedListing(search: URLSearchParams): Issue[] {
   return run(1, 100);
 }
 
-function movingTransport() {
+function routedTransport(route: (search: URLSearchParams) => unknown[]) {
   const github = fixtureGitHub();
   const transport = fixtureTransport(github);
   const fetch = (input: Parameters<typeof github.fetch>[0], init?: RequestInit) => {
     const url = new URL(input instanceof Request ? input.url : String(input));
     if (url.pathname !== issuesPath) return transport.fetch(input, init);
-    const body = JSON.stringify(movedListing(url.searchParams));
+    const body = JSON.stringify(route(url.searchParams));
     return Promise.resolve(new Response(body, { headers: { 'content-type': 'application/json' } }));
   };
   return { ...transport, fetch };
@@ -86,7 +86,11 @@ describe('the issue listing pages by keyset from the greatest updated_at seen', 
   });
 
   it('does not skip an item updated between two requests', async () => {
-    const result = await createGitHubReads(app, movingTransport()).issuesSince('o/r', since, 5);
+    const result = await createGitHubReads(app, routedTransport(movedListing)).issuesSince(
+      'o/r',
+      since,
+      5,
+    );
     const issues = result.ok ? result.value.issues : [];
     expect(new Set(idsOf(issues))).toEqual(new Set(run(1, 101).map((item) => item.id)));
     expect(issues.at(-1)).toEqual(moved);
@@ -112,14 +116,6 @@ describe('the issue listing says when it was capped and what it could not key', 
     expect(searches(github)).toHaveLength(2);
   });
 
-  it('reports capped when a full page makes no progress past a tie', async () => {
-    const github = fixtureGitHub();
-    const tied = Array.from({ length: 100 }, (_, index) => issue(index + 1, 0));
-    const result = await listing(github, [tied, tied, tied]);
-    expect(result.ok && result.value.capped).toBe(true);
-    expect(searches(github)).toHaveLength(2);
-  });
-
   it('counts the items it cannot key', async () => {
     const github = fixtureGitHub();
     const result = await listing(github, [[issue(1, 0), { id: 'x' }, { updated_at: 'never' }]]);
@@ -128,5 +124,46 @@ describe('the issue listing says when it was capped and what it could not key', 
       capped: false,
       unparsed: 2,
     });
+  });
+});
+
+const tiedAt = 30;
+const tiedFirst = run(1, 100).map((item) => ({ ...item, updated_at: minute(tiedAt) }));
+const tiedRest = run(101, 50).map((item) => ({ ...item, updated_at: minute(tiedAt) }));
+
+function tiedListing(rest: readonly Issue[]) {
+  return (search: URLSearchParams): Issue[] => {
+    if (search.get('since') === minute(tiedAt) && search.get('page') === '2') return [...rest];
+    return tiedFirst;
+  };
+}
+
+async function listTied(rest: readonly Issue[], maxPages = 5) {
+  const reads = createGitHubReads(app, routedTransport(tiedListing(rest)));
+  const result = await reads.issuesSince('o/r', since, maxPages);
+  return result.ok ? result.value : null;
+}
+
+describe('the issue listing pages through a second with more than a page of ties', () => {
+  it('reads all 150 items tied in one second in one run when nothing moves', async () => {
+    const listed = await listTied(tiedRest);
+    expect(listed?.capped).toBe(false);
+    expect(listed?.issues).toHaveLength(150);
+  });
+
+  it('stays capped at the tied second when a tied item moves during the run', async () => {
+    const moving = [...tiedRest.slice(1), issue(5, tiedAt + 1)];
+    const listed = await listTied(moving);
+    expect(listed?.capped).toBe(true);
+    const times = (listed?.issues ?? []).map((item) => (item as Issue).updated_at);
+    expect(times.every((time) => time === minute(tiedAt))).toBe(true);
+  });
+
+  it('stays capped at the tied second when the request limit ends the run inside it', async () => {
+    const listed = await listTied(
+      run(101, 100).map((item) => ({ ...item, updated_at: minute(tiedAt) })),
+      3,
+    );
+    expect(listed?.capped).toBe(true);
   });
 });

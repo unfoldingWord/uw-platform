@@ -92,7 +92,12 @@ export type Sweeping = {
 export async function sweepOnce(
   db: Database,
   app: GitHubAppConfig,
-  run: { readonly github: FixtureGitHub; readonly at: Date; readonly options?: SweepOptions },
+  run: {
+    readonly github: FixtureGitHub;
+    readonly at: Date;
+    readonly options?: SweepOptions;
+    readonly now?: () => Date;
+  },
 ): Promise<Sweeping> {
   const lines: Line[] = [];
   const logger = cronLogger(
@@ -108,7 +113,7 @@ export async function sweepOnce(
   const deps = {
     db,
     kernel: kernelOn(db, systemClock),
-    now: () => run.at,
+    now: run.now ?? (() => run.at),
     app,
     transport: fixtureTransport(run.github),
   };

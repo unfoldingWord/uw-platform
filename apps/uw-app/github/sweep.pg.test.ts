@@ -66,6 +66,7 @@ async function firstSweep(db: Database): Promise<void> {
       outcome: 'ok',
       reason: null,
       heldAt: null,
+      candidate: listedAt,
       sweptThrough: listedAt,
       repaired: firstRepairs,
       unparsedItems: 0,
@@ -175,7 +176,8 @@ async function listingFails(db: Database): Promise<void> {
       repo: platform,
       outcome: 'failed',
       reason: 'server_error',
-      sweptThrough: null,
+      candidate: null,
+      sweptThrough: listedAt,
     }),
   ]);
   expect(await storedRepository(db, platformId)).toMatchObject({

@@ -130,7 +130,16 @@ type Keyset = {
   readonly seen: Map<number, { readonly item: unknown; readonly updatedAt: number }>;
   unparsed: number;
   latest: number | null;
+  moved: boolean;
+  tiedAt: number | null;
 };
+
+type Cursor = { readonly from: Date | null; readonly page: number; readonly tie: number | null };
+
+function timeOf(item: unknown): number | null {
+  const parsed = keyed.safeParse(item);
+  return parsed.success ? Date.parse(parsed.data.updated_at) : null;
+}
 
 function admitted(keyset: Keyset, page: List): boolean {
   const before = keyset.seen.size;
@@ -141,6 +150,8 @@ function admitted(keyset: Keyset, page: List): boolean {
       continue;
     }
     const updatedAt = Date.parse(parsed.data.updated_at);
+    const held = keyset.seen.get(parsed.data.id);
+    if (held !== undefined && held.updatedAt !== updatedAt) keyset.moved = true;
     keyset.seen.set(parsed.data.id, { item, updatedAt });
     keyset.latest = Math.max(keyset.latest ?? updatedAt, updatedAt);
   }
@@ -148,10 +159,27 @@ function admitted(keyset: Keyset, page: List): boolean {
 }
 
 function listingOf(keyset: Keyset, capped: boolean): GitHubResult<IssueListing> {
-  const issues = [...keyset.seen.values()]
-    .sort((a, b) => a.updatedAt - b.updatedAt)
-    .map((entry) => entry.item);
-  return { ok: true, value: { issues, capped, unparsed: keyset.unparsed } };
+  const { tiedAt } = keyset;
+  const unsure = tiedAt !== null && (capped || keyset.moved);
+  const entries = [...keyset.seen.values()].filter((entry) => !unsure || entry.updatedAt <= tiedAt);
+  const issues = entries.sort((a, b) => a.updatedAt - b.updatedAt).map((entry) => entry.item);
+  return { ok: true, value: { issues, capped: capped || unsure, unparsed: keyset.unparsed } };
+}
+
+function nextCursor(keyset: Keyset, cursor: Cursor, page: List, progressed: boolean) {
+  const latest = keyset.latest;
+  if (latest === null) return null;
+  const { tie } = cursor;
+  if (tie !== null) {
+    const beyond = page.some((item) => (timeOf(item) ?? tie) > tie);
+    return beyond
+      ? { from: new Date(latest), page: 1, tie: null }
+      : { ...cursor, page: cursor.page + 1 };
+  }
+  if (progressed) return { from: new Date(latest), page: 1, tie: null };
+  if (cursor.from?.getTime() !== latest) return { from: new Date(latest), page: 1, tie: null };
+  keyset.tiedAt ??= latest;
+  return { from: cursor.from, page: 2, tie: latest };
 }
 
 async function keysetIssues(
@@ -160,19 +188,21 @@ async function keysetIssues(
   since: Date | null,
   maxPages: number,
 ): Promise<GitHubResult<IssueListing>> {
-  const keyset: Keyset = { seen: new Map(), unparsed: 0, latest: null };
-  const filters = { state: 'all', sort: 'updated', direction: 'asc', per_page: perPage, page: 1 };
-  let from = since;
-  for (let request = 0; request < maxPages; request += 1) {
-    const parameters = from ? { since: from.toISOString(), ...filters } : filters;
+  const keyset: Keyset = { seen: new Map(), unparsed: 0, latest: null, moved: false, tiedAt: null };
+  const filters = { state: 'all', sort: 'updated', direction: 'asc', per_page: perPage };
+  let cursor: Cursor | null = { from: since, page: 1, tie: null };
+  for (let request = 0; request < maxPages && cursor !== null; request += 1) {
+    const { from, page } = cursor;
+    const parameters = from
+      ? { since: from.toISOString(), ...filters, page }
+      : { ...filters, page };
     const answer = await session.request('GET /repos/{owner}/{repo}/issues', parameters, repo);
     if (!answer.ok) return answer;
-    const page = shaped(array, answer.value);
-    if (!page.ok) return page;
-    const progressed = admitted(keyset, page.value);
-    if (page.value.length < perPage) return listingOf(keyset, false);
-    if (!progressed || keyset.latest === null) return listingOf(keyset, true);
-    from = new Date(keyset.latest);
+    const listed = shaped(array, answer.value);
+    if (!listed.ok) return listed;
+    const progressed = admitted(keyset, listed.value);
+    if (listed.value.length < perPage) return listingOf(keyset, false);
+    cursor = nextCursor(keyset, cursor, listed.value, progressed);
   }
   return listingOf(keyset, true);
 }

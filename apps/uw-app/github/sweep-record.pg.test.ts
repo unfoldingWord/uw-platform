@@ -49,7 +49,12 @@ async function stalled(db: Database): Promise<void> {
   github.on('GET', reviewsPath(7), outage);
   const { report, lines } = await sweepOnce(db, app, { github, at: nextRun });
   expect(report.repositories).toEqual([
-    expect.objectContaining({ outcome: 'stalled', heldAt: listedAt, sweptThrough: listedAt }),
+    expect.objectContaining({
+      outcome: 'stalled',
+      heldAt: listedAt,
+      candidate: listedAt,
+      sweptThrough: new Date(laterPull),
+    }),
   ]);
   expect(await storedRepository(db, platformId)).toEqual({
     sweptThrough: new Date(laterPull),
@@ -66,7 +71,10 @@ async function stalled(db: Database): Promise<void> {
 async function slowRunFinishesLate(db: Database): Promise<void> {
   await sweepOnce(db, app, { github: withLaterPull(), at: nextRun });
   const { report } = await sweepOnce(db, app, { github: programmed(), at: firstRun });
-  expect(report.repositories[0]?.sweptThrough).toEqual(listedAt);
+  expect(report.repositories[0]).toMatchObject({
+    candidate: listedAt,
+    sweptThrough: new Date(laterPull),
+  });
   expect(await storedRepository(db, platformId)).toMatchObject({
     sweptThrough: new Date(laterPull),
     lastSweep: expect.objectContaining({ at: firstRun.toISOString() }) as unknown,
@@ -125,6 +133,37 @@ async function busyFirst(db: Database): Promise<void> {
   ]);
 }
 
+function throwingAt(call: number, at: Date) {
+  let calls = 0;
+  return () => {
+    calls += 1;
+    if (calls === call) throw new Error('clock unavailable');
+    return at;
+  };
+}
+
+async function throwingFirst(db: Database): Promise<void> {
+  const options = { maxSubrequests: 16 };
+  const night = () => {
+    const github = programmed();
+    withOtherRepository(github);
+    return github;
+  };
+  const now = throwingAt(5, firstRun);
+  const first = await sweepOnce(db, app, { github: night(), at: firstRun, options, now });
+  expect(outcomes(first)).toEqual([
+    [platform, 'failed'],
+    [other, 'deferred'],
+  ]);
+  expect((await storedRepository(db, platformId))?.lastSweep).toMatchObject({
+    outcome: 'failed',
+    reason: 'internal_error',
+    attemptedAt: firstRun.toISOString(),
+  });
+  const second = await sweepOnce(db, app, { github: night(), at: nextRun, options });
+  expect(outcomes(second)[0]).toEqual([other, 'ok']);
+}
+
 async function unparsedCounted(db: Database): Promise<void> {
   const github = programmed();
   const broken = { id: 9100000777, number: 77, updated_at: '2026-10-02T07:00:00Z' };
@@ -139,12 +178,12 @@ async function unparsedCounted(db: Database): Promise<void> {
   );
 }
 
-describe.skipIf(!testServer)(
-  'GH-2 the sweep reaches every repository and shows what it skipped',
-  () => {
-    it('starts the repository it deferred first on the next run, so none starves', () =>
-      withAppDatabase(busyFirst));
+describe.skipIf(!testServer)('the sweep reaches every repository and shows what it skipped', () => {
+  it('starts the repository it deferred first on the next run, so none starves', () =>
+    withAppDatabase(busyFirst));
 
-    it('counts the listed items it could not read', () => withAppDatabase(unparsedCounted));
-  },
-);
+  it('records a repository that throws, so it does not run first every night', () =>
+    withAppDatabase(throwingFirst));
+
+  it('counts the listed items it could not read', () => withAppDatabase(unparsedCounted));
+});
