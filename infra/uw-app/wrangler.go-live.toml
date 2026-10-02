@@ -19,6 +19,7 @@ logpush = true
 COMMIT_SHA = "unknown"
 ACCESS_TEAM_DOMAIN = "https://set-at-go-live.cloudflareaccess.com"
 ACCESS_AUD = "set-at-go-live"
+ACCESS_MCP_AUD = "set-at-go-live"
 
 [env.staging.observability]
 enabled = true
@@ -45,6 +46,7 @@ logpush = true
 COMMIT_SHA = "unknown"
 ACCESS_TEAM_DOMAIN = "https://set-at-go-live.cloudflareaccess.com"
 ACCESS_AUD = "set-at-go-live"
+ACCESS_MCP_AUD = "set-at-go-live"
 
 [env.production.observability]
 enabled = true
@@ -69,6 +71,7 @@ workers_dev = true
 COMMIT_SHA = "unknown"
 ACCESS_TEAM_DOMAIN = "https://set-at-go-live.cloudflareaccess.com"
 ACCESS_AUD = "set-at-go-live"
+ACCESS_MCP_AUD = "set-at-go-live"
 
 [env.preview.observability]
 enabled = true
