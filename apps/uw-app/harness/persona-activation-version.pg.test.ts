@@ -21,13 +21,13 @@ function persona(ian: Principal, harnessId: string, toolset: readonly string[]) 
     identity: 'agent:iterate',
     owner: ian.identity,
     harness: harnessId,
-    toolset,
+    toolset: [...toolset],
     run_shape: 'workflow-run',
     engine: 'openrouter-messages',
     model: 'glm-5.3-flash',
     budget: { monthly_minor: 0, currency: 'USD' },
     capability: 'iterate',
-    requires_tools: toolset,
+    requires_tools: [...toolset],
   };
 }
 
