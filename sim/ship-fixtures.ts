@@ -130,6 +130,8 @@ const standardDeclaration: PullRequestDeclaration = {
   riskDomains: [],
 };
 
+const shipBase = simSha('ba5e');
+
 export function greenFacts(world: World, input: FactsInput): PullRequestFacts {
   const { head } = input;
   return {
@@ -138,6 +140,7 @@ export function greenFacts(world: World, input: FactsInput): PullRequestFacts {
     draft: false,
     head,
     headRef: `harness/${input.itemId}`,
+    base: shipBase,
     checks: ciJobSchema.options.map((name, index) => ({
       checkId: 9100000001 + index,
       name,
@@ -146,7 +149,7 @@ export function greenFacts(world: World, input: FactsInput): PullRequestFacts {
       conclusion: 'success',
     })),
     reviews: [...input.reviews],
-    files: { head, paths: [...(input.paths ?? ['apps/uw-app/board.tsx'])] },
+    files: { head, base: shipBase, paths: [...(input.paths ?? ['apps/uw-app/board.tsx'])] },
     declaration: input.declaration === undefined ? standardDeclaration : input.declaration,
     freshAt: world.adapters.clock.now(),
   };

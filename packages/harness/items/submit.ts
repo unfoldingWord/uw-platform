@@ -28,6 +28,7 @@ import { holdsClaim } from './release.ts';
 import { applyDeclaration, carryForward, floorFromPaths } from '../risk/derive.ts';
 import { heldStanding } from './run-steps.ts';
 import { actingPrincipal, isRefusal, recordDelegationRequired } from '../delegations/acting.ts';
+import { pathsComparedAt } from '../github/changed-files.ts';
 import {
   exitDrafts,
   isOccasionalTweak,
@@ -101,8 +102,7 @@ function pathsAtHead(
 ): readonly string[] | null {
   if (facts === null || !samePullRequest(facts, change)) return null;
   if (facts.headRef !== branchFor(item.itemId) || fullSha(facts.head) !== change.head) return null;
-  if (facts.files === null || fullSha(facts.files.head) !== change.head) return null;
-  return facts.files.paths;
+  return pathsComparedAt(facts, change.head);
 }
 
 function riskDraft(command: Command, item: ItemState): readonly EventDraft[] {
