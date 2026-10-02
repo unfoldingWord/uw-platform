@@ -22,6 +22,7 @@ export type KernelReads = {
     input: { readonly harnessId: string; readonly stageKey: string },
   ): Promise<KernelOutcome<readonly ItemState[]>>;
   poll(caller: Caller, input: PollInput): Promise<KernelOutcome<readonly PollItem[]>>;
+  namesInstructions(input: { readonly pageId: string }): Promise<boolean>;
 };
 
 type ReadPorts = Pick<Ports, 'clock' | 'grants' | 'store'>;
@@ -44,5 +45,7 @@ export function createKernelReads(ports: ReadPorts): KernelReads {
       const at = ports.clock.now();
       return ports.store.transaction((tx) => pollQueue(ports, tx, caller.actor, input, at));
     },
+    namesInstructions: (input) =>
+      ports.store.transaction((tx) => tx.harnessStages.read.namesInstructions(input.pageId)),
   };
 }

@@ -117,6 +117,8 @@ Locks are taken in one order, and none after the first event append:
 
 Persona activation has no stage to lock, so it takes `persona-activation:<pageId>` first; a second activation of the same page waits there and then reads the item the first opened, so a missing verb opens one open item per persona page and verb however many attempts race. It then re-reads the activator's grants (`FOR SHARE`), reads what it needs, and takes `harness_events:<harnessId>` for the persona's harness and then for the software harness before the first append; its appends go in that order, the `persona_activation_failed` event first and the software item after it.
 
+A page update (`apps/uw-app/pages/store.ts`) takes `pages-reparenting` first when it re-parents, then the page row (`SELECT ... FOR UPDATE`), in that order, and checks the stored version and status under that row lock; no page transaction takes a kernel lock, and no kernel transaction locks a page row.
+
 Where there is no row to lock, a unique constraint is the guard: `delegations_supersedes_once` lets one renewal of a dead delegation insert and the command maps the other's violation to `stale_version`.
 
 **Isolation is READ COMMITTED**, Postgres's default; nothing sets another level. The WIP count after the stage-claims lock and the stage re-read after the harness-stages lock rely on each statement seeing what committed before it began. Under REPEATABLE READ the snapshot is fixed at the transaction's first statement, so a count or re-read after a lock wait would miss the commit it waited for, and both the WIP limit and the lost-update guard would silently fail.
