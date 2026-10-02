@@ -36,9 +36,24 @@ function isBadToken(error: unknown): boolean {
 
 const keySets = new Map<string, JWTVerifyGetKey>();
 
-export function accessConfigFrom(env: Bindings): AccessConfig | null {
+export type AccessSurface = 'app' | 'mcp';
+
+const MCP_PATH = '/mcp';
+
+export function surfaceOf(path: string): AccessSurface {
+  return path === MCP_PATH || path.startsWith(`${MCP_PATH}/`) ? 'mcp' : 'app';
+}
+
+function audienceOf(env: Bindings, surface: AccessSurface): string | undefined {
+  return surface === 'mcp' ? env.ACCESS_MCP_AUD : env.ACCESS_AUD;
+}
+
+export function accessConfigFrom(
+  env: Bindings,
+  surface: AccessSurface = 'app',
+): AccessConfig | null {
   const teamDomain = env.ACCESS_TEAM_DOMAIN;
-  const audience = env.ACCESS_AUD;
+  const audience = audienceOf(env, surface);
   if (!teamDomain || !audience || !teamDomainPattern.test(teamDomain)) return null;
   return { teamDomain, audience };
 }

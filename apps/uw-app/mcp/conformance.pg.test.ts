@@ -196,7 +196,7 @@ async function hostsOf(
   inProcess: Principal,
   headers: Record<string, string> = {},
 ): Promise<Hosts> {
-  const token = await r.fixture.sign({ email: OWNER.email });
+  const token = await r.fixture.signForMcp({ email: OWNER.email });
   const app = createApp(postgresDeps(r.db, r.fixture, undefined, r.clock));
   const external = await httpClient(app, {
     'cf-access-jwt-assertion': token,

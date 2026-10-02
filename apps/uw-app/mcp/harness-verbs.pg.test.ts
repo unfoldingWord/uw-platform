@@ -134,7 +134,7 @@ async function harnessWith(r: Rig, key: string, priorities: readonly number[], a
 }
 
 async function runner(r: Rig, device: string, email = EDITOR.email): Promise<Client> {
-  const token = await r.fixture.sign({ email });
+  const token = await r.fixture.signForMcp({ email });
   const app = createApp(postgresDeps(r.db, r.fixture, undefined, r.clock));
   return httpClient(app, { 'cf-access-jwt-assertion': token, 'x-uw-device': device });
 }
@@ -150,7 +150,7 @@ async function routineRunner(r: Rig): Promise<Client> {
   expect(await bindServiceToken(r.db, r.ian, command, crypto.randomUUID(), r.clock.now())).toEqual({
     ok: true,
   });
-  const token = await r.fixture.sign({ common_name: CLIENT });
+  const token = await r.fixture.signForMcp({ common_name: CLIENT });
   const app = createApp(postgresDeps(r.db, r.fixture, undefined, r.clock));
   return httpClient(app, { 'cf-access-jwt-assertion': token });
 }

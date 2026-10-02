@@ -239,7 +239,7 @@ describe.skipIf(!testServer)('an org admin revokes a service token binding', () 
       const byArea = await send(db, { email: people.areaAdmin.email }, revokeBody());
       expect(outcomeOf(byArea)).toBe('not_permitted');
       const bySvc = await send(db, { common_name: CLIENT }, revokeBody());
-      expect(outcomeOf(bySvc)).toBe('not_permitted');
+      expect(outcomeOf(bySvc)).toBe('unauthenticated');
       expect(await liveBinding(db, CLIENT)).toEqual({ personId: idOf('editor'), device: DEVICE });
     }));
 
@@ -266,7 +266,7 @@ describe.skipIf(!testServer)(
     it('refuses a service-token caller', () =>
       withPeople(async (db) => {
         const sent = await send(db, { common_name: 'other.access' }, bindBody(idOf('editor')));
-        expect(outcomeOf(sent)).toBe('not_permitted');
+        expect(outcomeOf(sent)).toBe('unauthenticated');
         expect(await liveBinding(db, CLIENT)).toBeNull();
       }));
 

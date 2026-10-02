@@ -77,9 +77,9 @@ describe('FD-7 the Access JWT is verified on every request', () => {
     await expectRefusal(await fixture.sign(person), 503, 'database_not_configured');
   });
 
-  it('turns a valid service token into a non-interactive agent principal', async () => {
-    const { response, lines } = call('/', await fixture.sign(service));
-    expect((await response).status).toBe(200);
+  it('turns a valid service token on /mcp into a non-interactive agent principal', async () => {
+    const { response, lines } = call('/mcp', await fixture.signForMcp(service));
+    expect((await response).status).toBe(503);
     expect(lines.at(-1)).toMatchObject({ principal: 'agent:svc-a1b2c3d4-access' });
   });
 });
@@ -176,8 +176,8 @@ describe('FD-7 expiry is required and identity claims are constrained', () => {
   });
 
   it('treats an empty email as absent and yields the service-token principal', async () => {
-    const { response, lines } = call('/', await fixture.sign({ email: '', ...service }));
-    expect((await response).status).toBe(200);
+    const { response, lines } = call('/mcp', await fixture.signForMcp({ email: '', ...service }));
+    expect((await response).status).toBe(503);
     expect(lines.at(-1)).toMatchObject({ principal: 'agent:svc-a1b2c3d4-access' });
   });
 
@@ -207,5 +207,61 @@ describe('FD-7 expiry is required and identity claims are constrained', () => {
     expect(response.status).toBe(500);
     expect(refusalSchema.parse(await response.json()).reason).toBe('internal_error');
     expect(lines.map((line) => line['level'])).toContain('error');
+  });
+});
+
+async function refusalOn(path: string, token: string, method = 'GET', env = fixtureAccessEnv) {
+  const { deps } = recordingDeps();
+  const app = createApp({ ...deps, accessKeys: () => fixture.keys });
+  const headers = { 'cf-access-jwt-assertion': token, 'x-uw-device': 'laptop' };
+  const response = await app.request(path, { method, headers }, env);
+  return [response.status, refusalSchema.parse(await response.json()).reason];
+}
+
+describe('AB-1 FD-7 each Access application is accepted only on its own paths', () => {
+  it('refuses an app-audience person token on /mcp', async () => {
+    expect(await refusalOn('/mcp', await fixture.sign(person), 'POST')).toEqual([
+      401,
+      'unauthenticated',
+    ]);
+  });
+
+  it('refuses an mcp-audience person token on /api/* and on the app root', async () => {
+    const token = await fixture.signForMcp(person);
+    expect(await refusalOn('/api/acl/commands/grant_role', token, 'POST')).toEqual([
+      401,
+      'unauthenticated',
+    ]);
+    expect(await refusalOn('/api/me', token)).toEqual([401, 'unauthenticated']);
+    expect(await refusalOn('/', token)).toEqual([401, 'unauthenticated']);
+  });
+
+  it('accepts an mcp-audience token on /mcp and stops at the missing database', async () => {
+    expect(await refusalOn('/mcp', await fixture.signForMcp(person), 'POST')).toEqual([
+      503,
+      'database_not_configured',
+    ]);
+    expect(await refusalOn('/mcp', await fixture.signForMcp(service), 'POST')).toEqual([
+      503,
+      'database_not_configured',
+    ]);
+  });
+
+  it('refuses a service token on /api/*, whichever audience it carries', async () => {
+    for (const token of [await fixture.signForMcp(service), await fixture.sign(service)]) {
+      expect(await refusalOn('/api/pages', token)).toEqual([401, 'unauthenticated']);
+      expect(await refusalOn('/api/agents/commands/bind_service_token', token, 'POST')).toEqual([
+        401,
+        'unauthenticated',
+      ]);
+    }
+  });
+
+  it('refuses /mcp when the mcp audience is not configured', async () => {
+    const env = { ...fixtureAccessEnv, ACCESS_MCP_AUD: '' };
+    expect(await refusalOn('/mcp', await fixture.signForMcp(person), 'POST', env)).toEqual([
+      503,
+      'access_not_configured',
+    ]);
   });
 });

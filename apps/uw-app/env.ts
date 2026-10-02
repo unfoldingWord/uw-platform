@@ -5,6 +5,7 @@ export type Bindings = {
   COMMIT_SHA?: string;
   ACCESS_TEAM_DOMAIN?: string;
   ACCESS_AUD?: string;
+  ACCESS_MCP_AUD?: string;
   DEV_PRINCIPAL_EMAIL?: string;
   HYPERDRIVE?: HyperdriveBinding;
   INGEST_DLQ?: QueueProducer<unknown>;

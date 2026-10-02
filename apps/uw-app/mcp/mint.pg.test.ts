@@ -86,7 +86,7 @@ function probeApp(db: Database): Hono<AppEnv> {
   app.use(withDatabase(deps));
   app.use(withPrincipal(deps));
   app.use(withAgentPrincipal());
-  app.get('/probe', (c) => c.json({ principal: c.get('principal') }));
+  app.get('/mcp/probe', (c) => c.json({ principal: c.get('principal') }));
   return app;
 }
 
@@ -96,8 +96,8 @@ async function probe(
   headers: Record<string, string> = {},
 ): Promise<Sent> {
   const sent = { ...headers };
-  if (claims) sent['cf-access-jwt-assertion'] = await fixture.sign(claims);
-  const raw = await probeApp(db).request('/probe', { headers: sent }, fixtureAccessEnv);
+  if (claims) sent['cf-access-jwt-assertion'] = await fixture.signForMcp(claims);
+  const raw = await probeApp(db).request('/mcp/probe', { headers: sent }, fixtureAccessEnv);
   return { status: raw.status, body: (await raw.json()) as Record<string, unknown> };
 }
 
@@ -299,7 +299,7 @@ function bareApp(db: Database, seed: (c: Context<AppEnv>) => void): Hono<AppEnv>
     await next();
   });
   app.use(withAgentPrincipal());
-  app.get('/probe', (c) => c.json({ principal: c.get('principal') }));
+  app.get('/mcp/probe', (c) => c.json({ principal: c.get('principal') }));
   return app;
 }
 
@@ -313,7 +313,7 @@ function setPersonAccess(c: Context<AppEnv>): void {
 
 async function sendBare(app: Hono<AppEnv>): Promise<Sent> {
   const raw = await app.request(
-    '/probe',
+    '/mcp/probe',
     { headers: { 'x-uw-device': 'laptop' } },
     fixtureAccessEnv,
   );
@@ -321,9 +321,9 @@ async function sendBare(app: Hono<AppEnv>): Promise<Sent> {
 }
 
 async function probeRepeated(db: Database, headers: [string, string][]): Promise<Sent> {
-  const token = await fixture.sign({ email: people.maker.email });
+  const token = await fixture.signForMcp({ email: people.maker.email });
   const raw = await probeApp(db).request(
-    '/probe',
+    '/mcp/probe',
     { headers: [['cf-access-jwt-assertion', token], ...headers] },
     fixtureAccessEnv,
   );

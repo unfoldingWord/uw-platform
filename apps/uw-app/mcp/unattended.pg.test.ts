@@ -116,14 +116,14 @@ async function client(r: Rig, headers: Record<string, string>): Promise<Client> 
 }
 
 async function routine(r: Rig, delegationId: string | null): Promise<Client> {
-  const token = await r.fixture.sign({ common_name: CLIENT });
+  const token = await r.fixture.signForMcp({ common_name: CLIENT });
   const delegated =
     delegationId === null ? {} : { 'x-uw-persona': 'iterate', 'x-uw-delegation': delegationId };
   return client(r, { 'cf-access-jwt-assertion': token, ...delegated });
 }
 
 async function laptop(r: Rig): Promise<Client> {
-  const token = await r.fixture.sign({ email: OWNER.email });
+  const token = await r.fixture.signForMcp({ email: OWNER.email });
   return client(r, { 'cf-access-jwt-assertion': token, 'x-uw-device': 'laptop' });
 }
 

@@ -7,8 +7,10 @@ import { signIn } from '../people/directory.ts';
 import {
   ACCESS_JWT_HEADER,
   accessConfigFrom,
+  surfaceOf,
   verifyAccessJwt,
   type AccessIdentity,
+  type AccessSurface,
 } from './access.ts';
 import { devEmail } from './dev-principal.ts';
 import { pendingApprovalPage } from './pending-approval.tsx';
@@ -18,11 +20,13 @@ type Keys = Pick<AppDeps, 'accessKeys'>;
 async function verifiedIdentity(
   c: Context<AppEnv>,
   deps: Keys,
+  surface: AccessSurface,
 ): Promise<AccessIdentity | Response> {
-  const config = accessConfigFrom(c.env);
+  const config = accessConfigFrom(c.env, surface);
   if (!config) return refuse(c, 'access_not_configured');
   const token = c.req.header(ACCESS_JWT_HEADER);
   const identity = token ? await verifyAccessJwt(token, config, deps.accessKeys(config)) : null;
+  if (identity?.kind === 'service' && surface !== 'mcp') return refuse(c, 'unauthenticated');
   return identity ?? refuse(c, 'unauthenticated');
 }
 
@@ -42,7 +46,7 @@ export function withPrincipal(
     const dev = devEmail(c.env, c.req.url);
     const identity: AccessIdentity | Response = dev
       ? { kind: 'person', email: dev }
-      : await verifiedIdentity(c, deps);
+      : await verifiedIdentity(c, deps, surfaceOf(c.req.path));
     if (identity instanceof Response) return identity;
     c.set('access', identity);
     if (identity.kind === 'service') {

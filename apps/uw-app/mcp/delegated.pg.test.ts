@@ -201,13 +201,13 @@ async function routine(
   delegationId: string | null,
   db: Database = r.db,
 ): Promise<Client> {
-  const token = await r.fixture.sign({ common_name: owner.client });
+  const token = await r.fixture.signForMcp({ common_name: owner.client });
   const headers = { 'cf-access-jwt-assertion': token, ...delegationHeaders(delegationId) };
   return connect(r, headers, db);
 }
 
 async function login(r: Rig, owner: Owner, delegationId: string): Promise<Client> {
-  const token = await r.fixture.sign({ email: owner.email });
+  const token = await r.fixture.signForMcp({ email: owner.email });
   const headers = { 'cf-access-jwt-assertion': token, 'x-uw-device': 'laptop' };
   return connect(r, { ...headers, ...delegationHeaders(delegationId) });
 }
