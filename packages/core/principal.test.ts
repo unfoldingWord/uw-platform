@@ -113,3 +113,26 @@ describe("a device identity is owned by its principal's person", () => {
     expect(parsePrincipal(ingestPrincipal())).toEqual(ingestPrincipal());
   });
 });
+
+describe('AB-2 a bare agent identity is a lowercase slug', () => {
+  const bare = (identity: string) => ({
+    identity,
+    kind: 'agent',
+    personId: null,
+    email: null,
+    grants: [],
+    interactive: false,
+  });
+
+  it('refuses agent:System and agent:Builder', () => {
+    expect(() => parsePrincipal(bare('agent:System'))).toThrow();
+    expect(() => parsePrincipal(bare('agent:Builder'))).toThrow();
+  });
+
+  it('still builds the system, ingest and service-token principals', () => {
+    expect(systemPrincipal().identity).toBe('agent:system');
+    expect(ingestPrincipal().identity).toBe('agent:ingest');
+    expect(serviceTokenPrincipal('A1B2C3D4.Access').identity).toBe('agent:svc-a1b2c3d4-access');
+    expect(serviceTokenPrincipal(`${'x'.repeat(200)}`).identity).toHaveLength(210);
+  });
+});
