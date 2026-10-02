@@ -112,6 +112,7 @@ async function openRound(
         pageId: null,
         priority: 1,
         due: null,
+        delegationId: null,
       }),
     );
     itemIds.push(item.itemId);

@@ -46,6 +46,7 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
       pageId: null,
       priority: 1,
       due: null,
+      delegationId: null,
     });
     if (created.status !== 'accepted') throw new Error('enqueue refused');
     await work({ world, itemId: created.value.itemId, harnessId: harness.id, owner, editor });
@@ -175,6 +176,7 @@ describe('KN-7 attaching a learning', () => {
     const outcome = await scene.world.kernel.items.attachLearning(agent, {
       itemId: scene.itemId,
       pageId: learningId,
+      delegationId: null,
     });
     expect(reasonOf(outcome)).toBeNull();
     expect(await eventNames(scene)).toContain('learning_attached');
@@ -184,6 +186,7 @@ describe('KN-7 attaching a learning', () => {
     const outcome = await scene.world.kernel.items.attachLearning(scene.editor, {
       itemId: scene.itemId,
       pageId: scene.world.adapters.ids.next(),
+      delegationId: null,
     });
     expect(reasonOf(outcome)).toBe('page_not_found');
   });
@@ -192,6 +195,7 @@ describe('KN-7 attaching a learning', () => {
     const outcome = await scene.world.kernel.items.attachLearning(await viewerOf(scene), {
       itemId: scene.itemId,
       pageId: learningId,
+      delegationId: null,
     });
     expect(reasonOf(outcome)).toBe('not_permitted');
   });
@@ -200,10 +204,15 @@ describe('KN-7 attaching a learning', () => {
 describe('KN-7 only suggested learnings attach', () => {
   sceneIt('KN-7 a page that is not a suggested learning or skill is refused', async (scene) => {
     const { attachLearning } = scene.world.kernel.items;
-    const active = await attachLearning(scene.editor, { itemId: scene.itemId, pageId: activeId });
+    const active = await attachLearning(scene.editor, {
+      itemId: scene.itemId,
+      pageId: activeId,
+      delegationId: null,
+    });
     const product = await attachLearning(scene.editor, {
       itemId: scene.itemId,
       pageId: productId,
+      delegationId: null,
     });
     expect([reasonOf(active), reasonOf(product)]).toEqual([
       'malformed_command',
@@ -216,6 +225,7 @@ describe('KN-7 only suggested learnings attach', () => {
     const outcome = await scene.world.kernel.items.attachLearning(scene.editor, {
       itemId: scene.itemId,
       pageId: learningId,
+      delegationId: null,
     });
     expect(reasonOf(outcome)).toBeNull();
     const events = await scene.world.adapters.store.transaction((tx) =>

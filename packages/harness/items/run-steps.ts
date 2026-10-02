@@ -1,7 +1,7 @@
 import type { CostBasis, EventEvidence, ItemState } from '@uw/contracts';
-import { isSystemPrincipal } from '../access.ts';
+import { allowed, isAgent, isSystemPrincipal } from '../access.ts';
 import type { Caller } from '../caller.ts';
-import { assertDelegationLive, recordLapse } from '../delegations/live.ts';
+import { actingPrincipal, isRefusal } from '../delegations/acting.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
 import { expireLapsedLease, LEASE_MS, LEASE_WARNING_MS, leaseLapsed } from './leases.ts';
@@ -31,25 +31,30 @@ async function holderRefusal(
 ): Promise<Refused | null> {
   const { actor } = caller;
   const holds =
-    actor.kind === 'agent' &&
+    isAgent(actor) &&
     item.leaseExpiresAt !== null &&
     (await holdsClaim(tx, item, actor, { itemId: item.itemId, delegationId: item.delegationId }));
   return holds ? null : refused('not_holder', { itemId: item.itemId });
 }
 
-export async function delegationRefusal(
+export async function heldStanding(
   tx: StoreTransaction,
   ports: StepPorts,
   context: RecordContext,
-  item: ItemState,
+  scene: { readonly caller: Caller; readonly item: ItemState },
 ): Promise<Refused | null> {
-  const { delegationId } = item;
-  if (delegationId === null) return null;
-  const liveness = await assertDelegationLive(tx, ports, delegationId, context.at);
-  if (liveness.live) return null;
-  if (liveness.delegation === null) return refused('delegation_not_found', { delegationId });
-  if (liveness.why !== null) await recordLapse(tx, context, liveness.delegation, liveness.why);
-  return refused('delegation_lapsed', { delegationId, why: liveness.why });
+  const { caller, item } = scene;
+  const harness = await tx.harnesses.read.byId(item.harnessId);
+  if (harness === null) return refused('harness_not_found', { harnessId: item.harnessId });
+  const acting = await actingPrincipal(ports, tx, {
+    caller,
+    harness,
+    delegationId: item.delegationId,
+    context,
+  });
+  if (isRefusal(acting)) return acting;
+  if (allowed(acting, 'write', harness, context.at)) return null;
+  return refused('not_permitted', { harnessId: harness.id });
 }
 
 function stepDraft(input: RunStepInput | null, leaseExpiresAt: string) {
@@ -81,8 +86,8 @@ async function renewIn(
   const context = recordContext(ports, caller, at);
   const notHolder = await holderRefusal(tx, caller, item);
   if (notHolder !== null) return notHolder;
-  const lapsed = await delegationRefusal(tx, ports, context, item);
-  if (lapsed !== null) return lapsed;
+  const standing = await heldStanding(tx, ports, context, { caller, item });
+  if (standing !== null) return standing;
   if (leaseLapsed(item, at)) {
     await expireLapsedLease(tx, context, item);
     return refused('lease_expired', { itemId, leaseExpiresAt: item.leaseExpiresAt });

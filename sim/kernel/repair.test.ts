@@ -20,6 +20,7 @@ async function withItem(
       pageId: null,
       priority: 1,
       due: null,
+      delegationId: null,
     });
     if (enqueued.status !== 'accepted') throw new Error('the enqueue was refused');
     await work(world, harness, ian, enqueued.value);

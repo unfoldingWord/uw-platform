@@ -41,6 +41,7 @@ async function setup(world: World): Promise<Setup> {
       pageId: null,
       priority: 1,
       due: null,
+      delegationId: null,
     }),
   );
   valueOf(await world.kernel.items.claim(builder, { itemId, delegationId: null }));

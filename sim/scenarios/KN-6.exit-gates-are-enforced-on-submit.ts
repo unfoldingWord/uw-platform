@@ -38,6 +38,7 @@ async function cast(world: World): Promise<Cast> {
       pageId: null,
       priority: 1,
       due: null,
+      delegationId: null,
     }),
   );
   return { world, harnessId: harness.id, itemId, owner, editor, builder };

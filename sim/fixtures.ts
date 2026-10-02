@@ -178,6 +178,7 @@ export async function simParkedAtCheck(world: World, input: ParkInput): Promise<
     pageId: null,
     priority: 1,
     due: null,
+    delegationId: null,
   });
   if (enqueued.status !== 'accepted') throw new Error(`enqueue was refused: ${enqueued.reason}`);
   const { itemId } = enqueued.value;

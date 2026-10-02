@@ -74,6 +74,7 @@ async function enqueueAt(scene: Scene, stageKey: string, title: string): Promise
       pageId: null,
       priority: 1,
       due: null,
+      delegationId: null,
     }),
   );
   await scene.world.adapters.store.transaction(async (tx) => {

@@ -70,6 +70,7 @@ export async function simParkedAtShip(world: World, input: ShipInput): Promise<I
       pageId: null,
       priority: 1,
       due: null,
+      delegationId: null,
     }),
     'enqueue',
   );

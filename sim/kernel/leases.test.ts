@@ -45,6 +45,7 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
         pageId: null,
         priority: 1,
         due: null,
+        delegationId: null,
       }),
     );
     await work({ world, harnessId: harness.id, itemId: item.itemId, kim, max });

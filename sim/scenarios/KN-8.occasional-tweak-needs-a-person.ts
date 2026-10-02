@@ -37,6 +37,7 @@ async function parkedTweak(world: World): Promise<Cast> {
       pageId: null,
       priority: 1,
       due: null,
+      delegationId: null,
     }),
   );
   await simAdvance(world, { harnessId: harness.id, itemId, worker: max, through: ['package'] });

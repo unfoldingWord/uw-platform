@@ -25,6 +25,7 @@ async function itemAtScope(lane: Lane, title: string): Promise<string> {
       pageId: null,
       priority: 1,
       due: null,
+      delegationId: null,
     }),
   );
   await simAdvance(lane.world, {
@@ -62,6 +63,16 @@ async function submitScope(lane: Lane, itemId: string) {
   );
 }
 
+async function attach(lane: Lane, itemId: string, pageId: string): Promise<void> {
+  valueOf(
+    await lane.world.kernel.items.attachLearning(lane.editor, {
+      itemId,
+      pageId,
+      delegationId: null,
+    }),
+  );
+}
+
 export const scenario = defineScenario({
   id: 'KN-7',
   title:
@@ -84,12 +95,12 @@ export const scenario = defineScenario({
     const a = await itemAtScope(lane, 'Wire the board');
     assert.equal((await submitScope(lane, a)).result, 'checks_failed');
     const labelled = await seedLearning(world, 1, '- [observed] the board loads in 300 ms');
-    valueOf(await items.attachLearning(lane.editor, { itemId: a, pageId: labelled }));
+    await attach(lane, a, labelled);
     assert.equal((await submitScope(lane, a)).result, 'advanced');
 
     const b = await itemAtScope(lane, 'Speed the board');
     const bare = await seedLearning(world, 2, '- the board is faster');
-    valueOf(await items.attachLearning(lane.editor, { itemId: b, pageId: bare }));
+    await attach(lane, b, bare);
     const unlabelled = await submitScope(lane, b);
     assert.equal(unlabelled.result, 'checks_failed');
     assert.match(unlabelled.failures.join('\n'), /claim without an evidence label/);

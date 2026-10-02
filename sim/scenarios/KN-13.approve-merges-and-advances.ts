@@ -113,6 +113,7 @@ async function validateAndClose(scene: Scene): Promise<ItemState> {
     await scene.world.kernel.items.attachLearning(simCaller(scene.world, scene.max), {
       itemId: scene.itemId,
       pageId,
+      delegationId: null,
     }),
   );
   const done = await passStage(scene);
