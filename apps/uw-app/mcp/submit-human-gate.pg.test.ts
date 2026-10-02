@@ -17,6 +17,7 @@ const OWNER = {
   email: 'gate-owner@unfoldingword.org',
 };
 const pullRequest = { repo: 'unfoldingWord/uw-platform', number: 7 };
+const HEAD = 'a'.repeat(40);
 
 type Rig = {
   readonly db: Database;
@@ -162,10 +163,10 @@ async function releaseIfHeld(
 const attempts = [
   [{ to: null, pullRequest: null, head: null }, 'parked'],
   [{ to: 'ship', pullRequest: null, head: null }, 'parked'],
-  [{ to: 'ship', pullRequest, head: 'abc1234' }, 'parked'],
-  [{ to: null, pullRequest, head: 'abc1234' }, 'parked'],
+  [{ to: 'ship', pullRequest, head: HEAD }, 'parked'],
+  [{ to: null, pullRequest, head: HEAD }, 'parked'],
   [{ to: 'ship', pullRequest, head: null }, 'malformed_command'],
-  [{ to: 'merge', pullRequest: null, head: 'abc1234' }, 'malformed_command'],
+  [{ to: 'merge', pullRequest: null, head: HEAD }, 'malformed_command'],
 ] as const;
 
 const cases = ['device', 'delegated'].flatMap((actor) =>

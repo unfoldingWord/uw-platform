@@ -10,6 +10,7 @@ import { readAllEvents, software, type KernelOutcome } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createSimHarness, simAgent, simCaller, simParkedAtCheck, simPerson } from '../fixtures.ts';
 import { readWorldLog } from '../runner/log.ts';
+import { simSha } from '../ship-fixtures.ts';
 import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -93,7 +94,7 @@ async function withAclRisk(scene: Scene): Promise<void> {
     evidence: {},
     change: {
       pullRequest: { repo: 'unfoldingWord/uw-platform', number: 7 },
-      head: 'abc123',
+      head: simSha('abc123'),
       paths: ['packages/core/acl.ts'],
       declaration: null,
     },

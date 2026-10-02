@@ -23,6 +23,7 @@ type Lane = {
 const reason = 'Hotfix for the outage on 2026-10-01';
 const hotfix = { repo: 'unfoldingWord/uw-platform', number: 43 };
 const migration = { repo: 'unfoldingWord/uw-platform', number: 44 };
+const migrationPaths = ['packages/db/migrations/0009_x.sql'];
 
 async function decideAs(lane: Lane, itemId: string, decision: GateDecision, why: string | null) {
   const outcome = await lane.world.kernel.gates.decide(simCaller(lane.world, lane.ian), {
@@ -43,7 +44,9 @@ async function overridesTheMissingReview(lane: Lane): Promise<readonly GateDecis
     title: 'Fix the outage',
     change: { ...standardChange, pullRequest: hotfix },
   });
-  world.adapters.githubFacts.given(greenFacts(world, 'abc123', [], hotfix));
+  const { head } = standardChange;
+  const facts = { itemId: parked.itemId, head, reviews: [], ref: hotfix };
+  world.adapters.githubFacts.given(greenFacts(world, facts));
   const approved = await decideAs(lane, parked.itemId, 'approve', null);
   assert.equal(approved.status === 'error' && approved.reason, 'no_reviewer_approval');
   const blank = await decideAs(lane, parked.itemId, 'override', '   ');
@@ -80,12 +83,14 @@ async function overrideKeepsTheTierRule(lane: Lane): Promise<void> {
     change: {
       ...standardChange,
       pullRequest: migration,
-      paths: ['packages/db/migrations/0009_x.sql'],
+      paths: migrationPaths,
     },
   });
   assert.equal(parked.riskTier, 'high');
-  const reviews = [approvedBy('uw-reviewer', 'anthropic', 'abc123')];
-  world.adapters.githubFacts.given(greenFacts(world, 'abc123', reviews, migration));
+  const { head } = standardChange;
+  const reviews = [approvedBy('uw-reviewer[bot]', 'anthropic', head, 9100000101)];
+  const facts = { itemId: parked.itemId, head, reviews, ref: migration, paths: migrationPaths };
+  world.adapters.githubFacts.given(greenFacts(world, facts));
   const overridden = await decideAs(lane, parked.itemId, 'override', reason);
   assert.equal(overridden.status === 'error' && overridden.reason, 'reviewer_count_below_tier');
   const { decisions } = await itemLog(world, harnessId, parked.itemId);

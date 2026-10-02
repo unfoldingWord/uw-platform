@@ -20,7 +20,7 @@ export function kernelOn(db: Database, clock: Clock, overrides: Partial<Ports> =
 }
 
 export function fixedFacts(facts: PullRequestFacts): GitHubFacts {
-  return { pullRequest: async () => facts };
+  return { pullRequest: async () => facts, refresh: async () => facts };
 }
 
 export function pausingGrants(grants: Grants, onLocked: () => void, pauseMs: number): Grants {

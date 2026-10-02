@@ -50,7 +50,7 @@ function parked(to: string): NewHarnessEvent {
     stage: 'check',
     result: 'parked',
     to,
-    expectedHead: 'abc123',
+    expectedHead: 'a'.repeat(40),
     pullRequest: null,
     evidence: {},
   });
@@ -94,7 +94,7 @@ describe("KN-4 replay is a pure reducer over an item's events", () => {
       holder: null,
       gateStatus: 'parked',
       gateTarget: 'package',
-      expectedHead: 'abc123',
+      expectedHead: 'a'.repeat(40),
       branchState: 'active',
     });
   });

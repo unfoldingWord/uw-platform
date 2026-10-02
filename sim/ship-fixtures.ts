@@ -4,6 +4,7 @@ import {
   type HarnessEvent,
   type ItemState,
   type Principal,
+  type PullRequestDeclaration,
   type RiskDeclaration,
 } from '@uw/contracts';
 import {
@@ -30,11 +31,15 @@ export type ShipInput = {
   readonly change: ShipChange;
 };
 
+export function simSha(seed: string): string {
+  return seed.padEnd(40, '0');
+}
+
 export const shipPullRequest: PullRequestRef = { repo: 'unfoldingWord/uw-platform', number: 42 };
 
 export const standardChange: ShipChange = {
   pullRequest: shipPullRequest,
-  head: 'abc123',
+  head: simSha('abc123'),
   paths: ['apps/uw-app/board.tsx'],
   declaration: { riskTier: 'standard', riskDomains: [] },
 };
@@ -87,23 +92,51 @@ export async function simParkedAtShip(world: World, input: ShipInput): Promise<I
   return parked;
 }
 
-export function approvedBy(reviewer: string, provider: string, commit: string): ReviewFact {
-  return { reviewer, commit, state: 'approved', provider };
+export function approvedBy(
+  login: string,
+  provider: string | null,
+  commit: string,
+  reviewId: number,
+  submittedAt: Date | null = null,
+): ReviewFact {
+  return { reviewId, reviewer: login, commit, state: 'approved', provider, submittedAt };
 }
 
-export function greenFacts(
-  world: World,
-  head: string,
-  reviews: readonly ReviewFact[],
-  ref: PullRequestRef = shipPullRequest,
-): PullRequestFacts {
+export type FactsInput = {
+  readonly itemId: string;
+  readonly head: string;
+  readonly reviews: readonly ReviewFact[];
+  readonly ref?: PullRequestRef;
+  readonly paths?: readonly string[];
+  readonly declaration?: PullRequestDeclaration | null;
+};
+
+const standardDeclaration: PullRequestDeclaration = {
+  closes: [],
+  risks: 'none known',
+  touches: 'the board',
+  riskTier: 'standard',
+  riskDomains: [],
+};
+
+export function greenFacts(world: World, input: FactsInput): PullRequestFacts {
+  const { head } = input;
   return {
-    ref,
+    ref: input.ref ?? shipPullRequest,
     state: 'open',
     draft: false,
     head,
-    checks: ciJobSchema.options.map((name) => ({ name, headSha: head, conclusion: 'success' })),
-    reviews: [...reviews],
+    headRef: `harness/${input.itemId}`,
+    checks: ciJobSchema.options.map((name, index) => ({
+      checkId: 9100000001 + index,
+      name,
+      headSha: head,
+      app: 'github-actions',
+      conclusion: 'success',
+    })),
+    reviews: [...input.reviews],
+    files: { head, paths: [...(input.paths ?? ['apps/uw-app/board.tsx'])] },
+    declaration: input.declaration === undefined ? standardDeclaration : input.declaration,
     freshAt: world.adapters.clock.now(),
   };
 }

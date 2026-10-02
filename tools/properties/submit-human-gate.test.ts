@@ -32,7 +32,7 @@ const hex = fc.string({
   maxLength: 40,
 });
 const pullRequest = { repo: 'unfoldingWord/uw-platform', number: 7 };
-const fixedChange = { pullRequest, head: 'abc1234', paths: [], declaration: null };
+const fixedChange = { pullRequest, head: 'a'.repeat(40), paths: [], declaration: null };
 
 const changeArb = fc.option(
   fc.record({

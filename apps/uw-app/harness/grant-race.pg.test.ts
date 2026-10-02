@@ -25,17 +25,44 @@ const pauseMs = 1_500;
 const instant = new Date();
 const clock: Clock = { now: () => instant };
 
-const greenFacts: PullRequestFacts = {
-  ref: { repo: 'unfoldingWord/uw-platform', number: 42 },
-  state: 'open',
-  draft: false,
-  head: 'abc123',
-  checks: ciJobSchema.options.map((name) => ({ name, headSha: 'abc123', conclusion: 'success' })),
-  reviews: [
-    { reviewer: 'uw-reviewer', commit: 'abc123', state: 'approved', provider: 'anthropic' },
-  ],
-  freshAt: instant,
-};
+const head = 'a'.repeat(40);
+const pullRequest = { repo: 'unfoldingWord/uw-platform', number: 42 };
+
+function greenFacts(itemId: string): PullRequestFacts {
+  return {
+    ref: pullRequest,
+    state: 'open',
+    draft: false,
+    head,
+    headRef: `harness/${itemId}`,
+    checks: ciJobSchema.options.map((name, index) => ({
+      checkId: 9100000001 + index,
+      name,
+      headSha: head,
+      app: 'github-actions',
+      conclusion: 'success',
+    })),
+    reviews: [
+      {
+        reviewId: 9100000101,
+        reviewer: 'uw-reviewer[bot]',
+        commit: head,
+        state: 'approved',
+        provider: 'anthropic',
+        submittedAt: instant,
+      },
+    ],
+    files: { head, paths: ['apps/uw-app/board.tsx'] },
+    declaration: {
+      closes: [],
+      risks: 'none known',
+      touches: 'the board',
+      riskTier: 'standard',
+      riskDomains: [],
+    },
+    freshAt: instant,
+  };
+}
 
 type Race = {
   readonly connections: {
@@ -63,8 +90,8 @@ async function passStage(kernel: Kernel, worker: Principal, itemId: string, chan
   accepted(await kernel.items.claim(as, { itemId, delegationId: null }), 'claim');
   const declared = change
     ? {
-        pullRequest: greenFacts.ref,
-        head: 'abc123',
+        pullRequest,
+        head,
         paths: ['apps/uw-app/board.tsx'],
         declaration: { riskTier: 'standard' as const, riskDomains: [] },
       }
@@ -129,8 +156,9 @@ async function raceOn(connections: Connections): Promise<Race> {
   });
   const ian = await personOn(connections.decider, ianId, 'ian.lindsley@unfoldingword.org', instant);
   const kim = await personOn(connections.decider, kimId, kimEmail, instant);
-  const decider = kernelOn(connections.decider, clock, { githubFacts: fixedFacts(greenFacts) });
-  const item = await parkAtShip(decider, ian);
+  const item = await parkAtShip(kernelOn(connections.decider, clock), ian);
+  const facts = fixedFacts(greenFacts(item.itemId));
+  const decider = kernelOn(connections.decider, clock, { githubFacts: facts });
   return { connections, decider, ian, kim, item };
 }
 
@@ -188,7 +216,7 @@ async function decideHoldingTheShareLock(race: Race) {
       },
       pauseMs,
     ),
-    githubFacts: fixedFacts(greenFacts),
+    githubFacts: fixedFacts(greenFacts(race.item.itemId)),
   });
   const deciding = decider.gates.decide(caller(race.kim), approve(race.item));
   await reachedLock;

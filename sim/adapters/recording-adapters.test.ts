@@ -33,8 +33,11 @@ const pullRequestFacts: PullRequestFacts = {
   state: 'open',
   draft: false,
   head: 'a'.repeat(40),
+  headRef: 'harness/b1000000-0000-4000-8000-000000000003',
   checks: [],
   reviews: [],
+  files: null,
+  declaration: null,
   freshAt: new Date('2026-10-01T09:00:00.000Z'),
 };
 

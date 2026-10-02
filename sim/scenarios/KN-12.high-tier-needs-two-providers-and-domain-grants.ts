@@ -10,6 +10,7 @@ import {
   itemLog,
   shipPullRequest,
   simParkedAtShip,
+  simSha,
 } from '../ship-fixtures.ts';
 import type { World } from '../world.ts';
 
@@ -22,6 +23,8 @@ type Scene = {
 };
 
 const area = { scopeKind: 'jd_area', scopeArea: '80-89' } as const;
+const head = simSha('abc123');
+const migrationPaths = ['packages/db/migrations/0009_x.sql'];
 
 async function parkedHighAtShip(world: World): Promise<Scene> {
   const { harness, admin } = await createSimHarness(world, software);
@@ -33,8 +36,8 @@ async function parkedHighAtShip(world: World): Promise<Scene> {
     title: 'Add a migration',
     change: {
       pullRequest: shipPullRequest,
-      head: 'abc123',
-      paths: ['packages/db/migrations/0009_x.sql'],
+      head,
+      paths: migrationPaths,
       declaration: { riskTier: 'standard', riskDomains: [] },
     },
   });
@@ -45,7 +48,8 @@ async function parkedHighAtShip(world: World): Promise<Scene> {
 
 async function approveOver(scene: Scene, approver: Principal, reviews: readonly ReviewFact[]) {
   const { world } = scene;
-  world.adapters.githubFacts.given(greenFacts(world, 'abc123', reviews));
+  const facts = { itemId: scene.itemId, head, reviews, paths: migrationPaths };
+  world.adapters.githubFacts.given(greenFacts(world, facts));
   const outcome = await world.kernel.gates.decide(simCaller(world, approver), {
     itemId: scene.itemId,
     decision: 'approve',
@@ -69,9 +73,9 @@ async function refusedWith(
   assert.deepEqual(decisions, []);
 }
 
-const anthropic = approvedBy('uw-reviewer', 'anthropic', 'abc123');
-const secondAnthropic = approvedBy('uw-reviewer-two', 'anthropic', 'abc123');
-const openai = approvedBy('uw-reviewer-two', 'openai', 'abc123');
+const anthropic = approvedBy('uw-reviewer[bot]', 'anthropic', head, 9100000101);
+const secondAnthropic = approvedBy('uw-reviewer-codex[bot]', 'anthropic', head, 9100000102);
+const openai = approvedBy('uw-reviewer-codex[bot]', 'openai', head, 9100000103);
 
 export const scenario = defineScenario({
   id: 'KN-12',
