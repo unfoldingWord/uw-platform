@@ -177,6 +177,22 @@ describe('KN-12 low and standard need one reviewer; high needs two on distinct p
     ]);
   });
 
+  it('counts providers per reviewer: a reviewer with two providers is unresolved', () => {
+    const split = [approval('r1', 'anthropic'), approval('r1', 'openai'), approval('r2', null)];
+    expect(refusedWith({ ...high, approvals: split })).toEqual(['reviewer_providers_not_distinct']);
+    const twoPlusOne = [approval('r1', 'anthropic'), approval('r1', 'openai'), approval('r2', 'x')];
+    expect(refusedWith({ ...high, approvals: twoPlusOne })).toEqual([
+      'reviewer_providers_not_distinct',
+    ]);
+  });
+
+  it('normalises provider and reviewer case and whitespace', () => {
+    const cased = [approval('r1', 'anthropic'), approval('r2', ' Anthropic ')];
+    expect(refusedWith({ ...high, approvals: cased })).toEqual(['reviewer_providers_not_distinct']);
+    const same = [approval('r1', 'anthropic'), approval('R1 ', 'openai')];
+    expect(refusedWith({ ...high, approvals: same })).toEqual(['reviewer_count_below_tier']);
+  });
+
   it('advances on two reviewers with distinct providers', () => {
     const distinct = [approval('r1', 'anthropic'), approval('r2', 'openai')];
     expect(shipRule({ ...high, approvals: distinct })).toEqual({ verdict: 'advance' });
@@ -197,6 +213,11 @@ describe('KN-12 the approver holds admin on the area plus each domain grant', ()
     const both = approverOf({ role: 'admin', area: '80-89' }, { role: 'admin', area: '20-29' });
     expect(shipRule({ ...domain(['ledger']), approver: both })).toEqual({ verdict: 'advance' });
     expect(refusedWith(domain(['ledger']))).toEqual(['approver_lacks_domain_grant']);
+  });
+
+  it('refuses admin on 20-29 only when the area is 80-89', () => {
+    const other = approverOf({ role: 'admin', area: '20-29' });
+    expect(refusedWith({ ...green(), approver: other })).toEqual(['approver_lacks_domain_grant']);
   });
 
   it('refuses an editor on the area', () => {
@@ -238,7 +259,7 @@ describe('KN-11 P11 every failing reason is reported, in section 8.5 order', () 
   });
 });
 
-describe('KN-11 P12 override bypasses no_reviewer_approval and nothing else', () => {
+describe('KN-12 P12 override bypasses no_reviewer_approval and nothing else', () => {
   const override = (input: ShipRuleInput): ShipRuleInput => ({ ...input, override: true });
 
   it('advances an unreviewed pull request when overridden', () => {

@@ -18,16 +18,34 @@ function approvalsOnHead(input: ShipRuleInput): ShipRuleInput['approvals'] {
   return head === null ? [] : input.approvals.filter((approval) => approval.commit === head);
 }
 
-function reviewersOnHead(input: ShipRuleInput): ReadonlySet<string> {
-  return new Set(approvalsOnHead(input).map((approval) => approval.reviewer));
+function normalised(value: string): string {
+  return value.trim().toLowerCase();
 }
 
-function providersOnHead(input: ShipRuleInput): ReadonlySet<string> {
-  const providers = new Set<string>();
+function providersByReviewer(input: ShipRuleInput): ReadonlyMap<string, ReadonlySet<string>> {
+  const byReviewer = new Map<string, Set<string>>();
   for (const approval of approvalsOnHead(input)) {
-    if (approval.provider !== null) providers.add(approval.provider);
+    const reviewer = normalised(approval.reviewer);
+    if (reviewer === '') continue;
+    const providers = byReviewer.get(reviewer) ?? new Set<string>();
+    const provider = approval.provider === null ? '' : normalised(approval.provider);
+    if (provider !== '') providers.add(provider);
+    byReviewer.set(reviewer, providers);
   }
-  return providers;
+  return byReviewer;
+}
+
+function reviewersOnHead(input: ShipRuleInput): number {
+  return providersByReviewer(input).size;
+}
+
+function resolvedProviders(input: ShipRuleInput): ReadonlySet<string> {
+  const resolved = new Set<string>();
+  for (const providers of providersByReviewer(input).values()) {
+    const [only] = providers;
+    if (providers.size === 1 && only !== undefined) resolved.add(only);
+  }
+  return resolved;
 }
 
 function pullRequestNotOpen(input: ShipRuleInput): boolean {
@@ -55,7 +73,7 @@ function checksNotGreen(input: ShipRuleInput): boolean {
 }
 
 function noReviewerApproval(input: ShipRuleInput): boolean {
-  return !input.override && reviewersOnHead(input).size === 0;
+  return !input.override && reviewersOnHead(input) === 0;
 }
 
 function riskTierUndeclared(input: ShipRuleInput): boolean {
@@ -63,12 +81,12 @@ function riskTierUndeclared(input: ShipRuleInput): boolean {
 }
 
 function reviewerCountBelowTier(input: ShipRuleInput): boolean {
-  return input.riskTier === 'high' && reviewersOnHead(input).size < 2;
+  return input.riskTier === 'high' && reviewersOnHead(input) < 2;
 }
 
 function reviewerProvidersNotDistinct(input: ShipRuleInput): boolean {
   return (
-    input.riskTier === 'high' && reviewersOnHead(input).size >= 2 && providersOnHead(input).size < 2
+    input.riskTier === 'high' && reviewersOnHead(input) >= 2 && resolvedProviders(input).size < 2
   );
 }
 
