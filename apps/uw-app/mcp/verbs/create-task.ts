@@ -17,7 +17,8 @@ export const createTaskVerb = gatedHandler({
     const task = { ...input, taskId: crypto.randomUUID() };
     const created = await createTask(db, principal, task, traceId, at);
     if (!created.ok) {
-      return refusal(created.reason, input.pageId === null ? {} : { pageId: input.pageId });
+      const page = created.reason === 'page_not_found' && input.pageId !== null;
+      return refusal(created.reason, page ? { pageId: input.pageId } : {});
     }
     return { status: 'accepted', output: { taskId: created.task.taskId, status: 'suggested' } };
   },

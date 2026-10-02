@@ -9,6 +9,7 @@ import { areaFilter, summaryColumns, summarySchema, type PageSummary } from './r
 const LEARNING_LIMIT = 20;
 const AREA_TIER = 3;
 const notPackageTypes = ['learning', 'skill'];
+const notPackageStatuses = ['retired'];
 
 const learningFactsSchema = z.object({
   confidence: learningFrontmatterSchema.shape.confidence,
@@ -34,6 +35,7 @@ type ContextScope = {
 };
 
 type Readable = SQL | undefined;
+type OnInvalid = (pageId: string) => void;
 
 const nothing: ContextPages = { instructions: null, package: [], learnings: [] };
 
@@ -56,7 +58,11 @@ async function packagePages(
   readable: Readable,
 ): Promise<readonly PageSummary[]> {
   if (pageId === null) return [];
-  const child = and(eq(pages.parentId, pageId), notInArray(pages.type, notPackageTypes));
+  const child = and(
+    eq(pages.parentId, pageId),
+    notInArray(pages.type, notPackageTypes),
+    notInArray(pages.status, notPackageStatuses),
+  );
   const rows = await db
     .select(summaryColumns)
     .from(pages)
@@ -76,16 +82,19 @@ function tierOf(tiers: readonly (readonly [string, number])[]): SQL {
   return sql`CASE ${sql.join(whens, sql` `)} ELSE ${AREA_TIER}::int END`;
 }
 
-function learningOf(row: { readonly frontmatter: unknown }): Learning {
+function learningOf(row: { readonly frontmatter: unknown }): Learning | null {
   const { frontmatter, ...page } = row;
-  const facts = learningFactsSchema.parse(frontmatter);
-  return { page: summarySchema.parse(page), confidence: facts.confidence, asOf: facts.as_of };
+  const facts = learningFactsSchema.safeParse(frontmatter);
+  if (!facts.success) return null;
+  const { confidence, as_of: asOf } = facts.data;
+  return { page: summarySchema.parse(page), confidence, asOf };
 }
 
 async function applicableLearnings(
   db: Executor,
   scope: ContextScope,
   readable: Readable,
+  onInvalid: OnInvalid,
 ): Promise<readonly Learning[]> {
   const tiers = parentTiers(scope);
   const applies = or(eq(pages.jdArea, scope.area), ...tiers.map(([id]) => eq(pages.parentId, id)));
@@ -93,9 +102,17 @@ async function applicableLearnings(
     .select({ ...summaryColumns, frontmatter: pages.frontmatter })
     .from(pages)
     .where(and(eq(pages.type, 'learning'), eq(pages.status, 'active'), applies, readable))
-    .orderBy(asc(tierOf(tiers)), desc(sql`${pages.frontmatter} ->> 'as_of'`), asc(pages.id))
+    .orderBy(
+      asc(tierOf(tiers)),
+      sql`${pages.frontmatter} ->> 'as_of' DESC NULLS LAST`,
+      asc(pages.id),
+    )
     .limit(LEARNING_LIMIT);
-  return rows.map((row) => learningOf(row));
+  return rows.flatMap((row) => {
+    const found = learningOf(row);
+    if (found === null) onInvalid(row.id);
+    return found === null ? [] : [found];
+  });
 }
 
 export async function contextPages(
@@ -103,12 +120,13 @@ export async function contextPages(
   actor: Principal,
   scope: ContextScope,
   at: Date,
+  onInvalid: OnInvalid,
 ): Promise<ContextPages> {
   const readable = areaFilter(actor, at);
   if (readable === null) return nothing;
   return {
     instructions: await instructionsPage(db, scope.instructionsPageId, readable),
     package: await packagePages(db, scope.itemPageId, readable),
-    learnings: await applicableLearnings(db, scope, readable),
+    learnings: await applicableLearnings(db, scope, readable, onInvalid),
   };
 }

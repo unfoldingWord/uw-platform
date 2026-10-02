@@ -37,6 +37,8 @@ const PAGE = {
   suggestedLearning: '00000000-0000-4000-8000-000000001516',
   otherAreaLearning: '00000000-0000-4000-8000-000000001517',
   skill: '00000000-0000-4000-8000-000000001518',
+  retired: '00000000-0000-4000-8000-000000001519',
+  broken: '00000000-0000-4000-8000-000000001520',
 };
 const GRANTED_AT = new Date('2026-01-01T00:00:00.000Z');
 const clock = { now: () => new Date() };
@@ -50,6 +52,7 @@ type Rig = {
   readonly ian: Principal;
   readonly harnessId: string;
   readonly itemIds: readonly string[];
+  readonly packageItems: { readonly bare: string; readonly paged: string };
   readonly drop: () => Promise<void>;
 };
 
@@ -115,6 +118,12 @@ const seededPages: readonly SeedPage[] = [
     parentId: PAGE.item,
     frontmatter: { name: 'run-workshop', description: 'How to run a workshop.' },
   }),
+  page(PAGE.retired, {
+    type: 'product_strategy',
+    status: 'retired',
+    parentId: PAGE.item,
+    frontmatter: strategyFrontmatter,
+  }),
   page(PAGE.suggestedLearning, {
     type: 'learning',
     status: 'suggested',
@@ -152,6 +161,17 @@ async function itemInScope(kernel: Kernel, ian: Principal, harnessId: string, n:
   return itemId;
 }
 
+async function itemInPackage(
+  kernel: Kernel,
+  ian: Principal,
+  harnessId: string,
+  pageId: string | null,
+  priority = 0,
+) {
+  const input = { harnessId, title: 'Package item', pageId, priority, due: null };
+  return value(await kernel.items.enqueue(caller(ian), { ...input, delegationId: null })).itemId;
+}
+
 async function seedHarness(kernel: Kernel, ian: Principal) {
   const harnessId = crypto.randomUUID();
   const activation = { harnessId, harnessKey: 'software', jdArea: '80-89', template: software };
@@ -162,7 +182,11 @@ async function seedHarness(kernel: Kernel, ian: Principal) {
     await itemInScope(kernel, ian, harnessId, 1),
     await itemInScope(kernel, ian, harnessId, 2),
   ];
-  return { harnessId, itemIds };
+  const packageItems = {
+    bare: await itemInPackage(kernel, ian, harnessId, null),
+    paged: await itemInPackage(kernel, ian, harnessId, PAGE.item),
+  };
+  return { harnessId, itemIds, packageItems };
 }
 
 async function openRig(): Promise<Rig> {
@@ -171,12 +195,12 @@ async function openRig(): Promise<Rig> {
   await seedWorld(db);
   const kernel = kernelOn(db, clock);
   const ian = await personOn(db, IAN.id, IAN.email, new Date());
-  const { harnessId, itemIds } = await seedHarness(kernel, ian);
+  const scene = await seedHarness(kernel, ian);
   const drop = async () => {
     await db.$client.end();
     await database.drop();
   };
-  return { db, fixture: await createAccessFixture(), kernel, ian, harnessId, itemIds, drop };
+  return { db, fixture: await createAccessFixture(), kernel, ian, ...scene, drop };
 }
 
 function freshRig(): () => Rig {
@@ -209,7 +233,11 @@ function bodyOf(text: string): Body {
     : {};
 }
 
-async function viewer(r: Rig, person: { id: string; email: string }): Promise<Tool> {
+async function viewer(
+  r: Rig,
+  person: { id: string; email: string },
+  lines: string[] = [],
+): Promise<Tool> {
   const human = await personOn(r.db, person.id, person.email, new Date());
   const principal = principalSchema.parse({
     ...human,
@@ -219,7 +247,7 @@ async function viewer(r: Rig, person: { id: string; email: string }): Promise<To
   });
   const logger = createLogger(
     { traceId: 'trace', commit: 'test-commit', route: 'POST /mcp', principal: null },
-    () => undefined,
+    (line) => lines.push(line),
   );
   return async (name, args) => {
     const context = {
@@ -303,6 +331,69 @@ describe.skipIf(!testServer)(
   },
 );
 
+const areaOnly = [laterTiers[1], laterTiers[0], itemLearning];
+
+async function seedBulkLearnings(r: Rig, count: number): Promise<void> {
+  for (let n = 1; n <= count; n += 1) {
+    const day = String(n).padStart(2, '0');
+    const id = crypto.randomUUID();
+    const frontmatter = learning(`2026-08-${day}`, 'observed');
+    await seedPage(r.db, page(id, { type: 'learning', slug: `bulk-${day}`, frontmatter }));
+  }
+}
+
+function asOfs(body: Body): unknown[] {
+  const learnings = Array.isArray(body['learnings']) ? body['learnings'] : [];
+  return learnings.map((entry: Body) => entry['asOf']);
+}
+
+describe.skipIf(!testServer)(
+  'AB-5 resolve_context orders learnings by as_of within a tier and answers at most 20',
+  () => {
+    const rig = freshRig();
+
+    it('answers only area learnings, newest first, for an item with no page or instructions', async () => {
+      const r = rig();
+      const reader = await viewer(r, VIEWER_80);
+      expect(await reader('resolve_context', { itemId: r.packageItems.bare })).toEqual({
+        instructions: null,
+        package: [],
+        learnings: areaOnly,
+      });
+    });
+
+    it('puts the item page tier first and leaves out a retired package page', async () => {
+      const r = rig();
+      const reader = await viewer(r, VIEWER_80);
+      expect(await reader('resolve_context', { itemId: r.packageItems.paged })).toEqual({
+        instructions: null,
+        package: [summary(PAGE.item), summary(PAGE.strategy, 'product_strategy')],
+        learnings: [itemLearning, laterTiers[1], laterTiers[0]],
+      });
+    });
+
+    it('drops and logs a learning whose frontmatter does not parse', async () => {
+      const r = rig();
+      await seedPage(r.db, page(PAGE.broken, { type: 'learning', frontmatter: {} }));
+      const lines: string[] = [];
+      const reader = await viewer(r, VIEWER_80, lines);
+      const context = await reader('resolve_context', { itemId: r.packageItems.bare });
+      expect(context['learnings']).toEqual(areaOnly);
+      expect(lines.filter((line) => line.includes(PAGE.broken))).toHaveLength(1);
+    });
+
+    it('answers at most 20 learnings', async () => {
+      const r = rig();
+      await seedBulkLearnings(r, 20);
+      const reader = await viewer(r, VIEWER_80);
+      const found = asOfs(await reader('resolve_context', { itemId: r.packageItems.bare }));
+      expect(found).toHaveLength(20);
+      expect(found.slice(0, 4)).toEqual(['2026-09-30', '2026-09-20', '2026-09-01', '2026-08-20']);
+      expect(found.at(-1)).toBe('2026-08-04');
+    });
+  },
+);
+
 async function seedTasks(r: Rig): Promise<readonly Body[]> {
   const tasks: Body[] = [];
   for (const [n, title] of ['Plan the workshop', 'Book the venue'].entries()) {
@@ -353,6 +444,19 @@ describe.skipIf(!testServer)(
       });
     });
 
+    it('answers at most 50 items of a stage, highest priority first', async () => {
+      const r = rig();
+      const harnessId = crypto.randomUUID();
+      const activation = { harnessId, harnessKey: 'many', jdArea: '80-89', template: software };
+      value(await r.kernel.stages.activate(caller(r.ian), activation));
+      for (let n = 0; n < 51; n += 1) await itemInPackage(r.kernel, r.ian, harnessId, null, n);
+      const query = { query: 'stage_items', params: { harnessId, stageKey: 'package' } };
+      const found = await (await runner(r, EDITOR.email))('query_entities', query);
+      const rows = Array.isArray(found['rows']) ? found['rows'] : [];
+      expect(rows).toHaveLength(50);
+      expect(rows.map((row: Body) => row['priority'])).not.toContain(0);
+    });
+
     it('refuses a query outside the whitelist and parameters that do not parse', async () => {
       const tool = await runner(rig(), EDITOR.email);
       for (const query of ['drop_tables', 'measurements_for_item', 'constructor']) {
@@ -389,6 +493,16 @@ describe.skipIf(!testServer)('AB-5 create_task suggests a task attributed to the
     expect(await createdBy(r, created['taskId'])).toEqual({
       created_by: `agent:${EDITOR.id}/laptop`,
       status: 'suggested',
+    });
+  });
+
+  it('names the page only when the linked page is missing', async () => {
+    const pageId = '00000000-0000-4000-8000-000000001599';
+    const editor = await runner(rig(), EDITOR.email);
+    expect(await editor('create_task', { ...task, jdArea: '80-89', pageId })).toEqual({
+      status: 'error',
+      reason: 'page_not_found',
+      detail: { pageId },
     });
   });
 

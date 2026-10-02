@@ -27,7 +27,10 @@ export const resolveContext = gatedHandler({
   hidden: hiddenItem,
   resource: itemScope,
   run: async (context, _input, scope) => {
-    const pages = await contextPages(context.db, context.principal, scope, context.at);
+    const { db, principal, at, logger } = context;
+    const dropped = (pageId: string) =>
+      logger.warn('learning frontmatter invalid', { outcome: 'learning_dropped', pageId });
+    const pages = await contextPages(db, principal, scope, at, dropped);
     return {
       status: 'accepted',
       output: {
