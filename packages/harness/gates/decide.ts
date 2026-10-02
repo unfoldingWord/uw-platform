@@ -277,14 +277,13 @@ function pendingExit(
   };
 }
 
-async function shipDenied(
+async function openRoute(
   tx: StoreTransaction,
   gate: Gate,
-  input: DecideInput,
-  snapshot: ShipSnapshot | null,
-): Promise<Refused | null> {
+  decision: GateDecision,
+): Promise<Route | Refused> {
   const inFlight = await inFlightRefusal(tx, gate.item);
-  return inFlight ?? shipRefusal(tx, gate, input.decision, snapshot);
+  return inFlight ?? routeOf(gate, decision);
 }
 
 async function decideIn(
@@ -295,12 +294,12 @@ async function decideIn(
   const { input, snapshot } = request;
   const gate = await standing(ports, tx, request.caller, input, request.at);
   if (isRefused(gate)) return gate;
-  const route = routeOf(gate, input.decision);
+  const route = await openRoute(tx, gate, input.decision);
   if (isRefused(route)) return route;
   const denied =
     route.connector === null
       ? await approverRefusal(tx, gate, input.decision)
-      : await shipDenied(tx, gate, input, snapshot);
+      : await shipRefusal(tx, gate, input.decision, snapshot);
   if (denied !== null) return denied;
   const full = await wipRefusal(tx, gate, input.decision);
   if (full !== null) return full;
