@@ -29,35 +29,62 @@ function readsOver(github: FixtureGitHub) {
   return createGitHubReads(app, fixtureTransport(github));
 }
 
-describe('the GitHub reads page within their bounds', () => {
-  it('reads pull request files in pages of 100 until a short page', async () => {
+const head = 'c'.repeat(40);
+const comparePath = `/repos/o/r/compare/main...${head}`;
+
+function filesOf(size: number): { status: number; body: unknown } {
+  const files = Array.from({ length: size }, (_, index) => ({ filename: `f${index}` }));
+  return { status: 200, body: { status: 'ahead', commits: [], files } };
+}
+
+describe('GH-5 the changed files are read by head SHA, never by pull request number', () => {
+  it('reads the files of the comparison from the base to that exact head', async () => {
     const github = fixtureGitHub();
-    github.on('GET', '/repos/o/r/pulls/2/files', pages(2, 7));
-    const result = await readsOver(github).pullRequestFiles('o/r', 2);
-    expect(result.ok && Array.isArray(result.value) && result.value.length).toBe(207);
-    expect(sent(github, '/repos/o/r/pulls/2/files').map((request) => request.search)).toEqual([
-      '?per_page=100&page=1',
-      '?per_page=100&page=2',
-      '?per_page=100&page=3',
+    github.on('GET', comparePath, filesOf(3));
+    const result = await readsOver(github).changedFiles('o/r', 'main', head);
+    expect(result.ok && Array.isArray(result.value) && result.value.length).toBe(3);
+    expect(sent(github, comparePath).map((request) => request.search)).toEqual([
+      '?per_page=1&page=1',
     ]);
   });
 
-  it('answers too_many_files after 30 full pages and reads no further', async () => {
+  it('answers too_many_files when the comparison reaches the 300 files GitHub lists', async () => {
     const github = fixtureGitHub();
-    github.on('GET', '/repos/o/r/pulls/2/files', pages(31, null));
-    expect(await readsOver(github).pullRequestFiles('o/r', 2)).toEqual({
+    github.on('GET', comparePath, filesOf(300));
+    expect(await readsOver(github).changedFiles('o/r', 'main', head)).toEqual({
       ok: true,
       value: 'too_many_files',
     });
-    expect(sent(github, '/repos/o/r/pulls/2/files')).toHaveLength(30);
   });
 
-  it('reads 29 full pages and a short one as the whole list', async () => {
+  it('reads 299 files as the whole list', async () => {
     const github = fixtureGitHub();
-    github.on('GET', '/repos/o/r/pulls/2/files', pages(29, 0));
-    const result = await readsOver(github).pullRequestFiles('o/r', 2);
-    expect(result.ok && Array.isArray(result.value) && result.value.length).toBe(2900);
+    github.on('GET', comparePath, filesOf(299));
+    const result = await readsOver(github).changedFiles('o/r', 'main', head);
+    expect(result.ok && Array.isArray(result.value) && result.value.length).toBe(299);
   });
+
+  it('reads a comparison with no files listed as no files', async () => {
+    const github = fixtureGitHub();
+    github.on('GET', comparePath, { status: 200, body: { status: 'identical', commits: [] } });
+    expect(await readsOver(github).changedFiles('o/r', 'main', head)).toEqual({
+      ok: true,
+      value: [],
+    });
+  });
+
+  it.each(['', 'a..b', 'main...x', 'with space', '-flag'])(
+    'refuses the base %j without a request',
+    async (base) => {
+      const github = fixtureGitHub();
+      expect(await readsOver(github).changedFiles('o/r', base, head)).toEqual({
+        ok: false,
+        failure: 'unprocessable',
+        status: null,
+      });
+      expect(github.requests()).toEqual([]);
+    },
+  );
 });
 
 describe('the GitHub issue reads page from an instant up to a page limit', () => {

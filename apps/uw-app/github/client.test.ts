@@ -21,7 +21,7 @@ function programmed(): FixtureGitHub {
   const ok = (body: unknown) => ({ status: 200, body });
   github.on('GET', '/installation/repositories', ok({ total_count: 1, repositories: [{}] }));
   github.on('GET', '/repos/o/r/pulls/2', ok({ number: 2 }));
-  github.on('GET', '/repos/o/r/pulls/2/files', ok([{ filename: 'a.ts' }]));
+  github.on('GET', `/repos/o/r/compare/main...${sha}`, ok({ files: [{ filename: 'a.ts' }] }));
   github.on('GET', '/repos/o/r/pulls/2/reviews', ok([{ id: 1 }]));
   github.on(
     'GET',
@@ -44,7 +44,7 @@ async function everyCall(github: FixtureGitHub): Promise<GitHubResult<unknown>[]
   return [
     await reads.installationRepositories(),
     await reads.pullRequest('o/r', 2),
-    await reads.pullRequestFiles('o/r', 2),
+    await reads.changedFiles('o/r', 'main', sha),
     await reads.pullRequestReviews('o/r', 2),
     await reads.checkRuns('o/r', sha),
     await reads.issuesSince('o/r', null, 3),

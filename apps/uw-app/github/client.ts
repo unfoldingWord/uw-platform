@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { GitHubAppConfig } from './app-config.ts';
 import { failed, type GitHubResult } from './failures.ts';
-import { isCount, isFullSha, refusedInput } from './inputs.ts';
+import { isBranch, isCount, isFullSha, refusedInput } from './inputs.ts';
 import { openSession, shaped, type GitHubSession } from './session.ts';
 import type { GitHubTransport } from './transport.ts';
 
@@ -11,7 +11,11 @@ type Page = { readonly items: List; readonly capped: boolean };
 export type GitHubReads = {
   installationRepositories(): Promise<GitHubResult<List>>;
   pullRequest(repo: string, number: number): Promise<GitHubResult<unknown>>;
-  pullRequestFiles(repo: string, number: number): Promise<GitHubResult<List | 'too_many_files'>>;
+  changedFiles(
+    repo: string,
+    base: string,
+    head: string,
+  ): Promise<GitHubResult<List | 'too_many_files'>>;
   pullRequestReviews(repo: string, number: number): Promise<GitHubResult<List>>;
   checkRuns(repo: string, sha: string): Promise<GitHubResult<List>>;
   issuesSince(
@@ -30,12 +34,13 @@ const readPermissions = {
   metadata: 'read',
 } as const;
 const perPage = 100;
-const filePages = 30;
+const listedFiles = 300;
 const listPages = 10;
 const array = z.array(z.unknown());
 const checkRunPage = z.object({ check_runs: array }).transform((page) => page.check_runs);
 const repositoryPage = z.object({ repositories: array }).transform((page) => page.repositories);
 const record = z.record(z.string(), z.unknown());
+const comparison = z.object({ files: array.optional() }).transform((answer) => answer.files ?? []);
 
 type Lister = {
   readonly route: string;
@@ -83,13 +88,22 @@ function pullRequestReads(session: GitHubSession) {
         const answer = await session.request(`GET ${pulls}`, { pull_number: number }, repo);
         return answer.ok ? shaped(record, answer.value) : answer;
       }),
-    pullRequestFiles: (repo: string, number: number) =>
-      refusedUnless(isCount(number), async (): Promise<GitHubResult<List | 'too_many_files'>> => {
-        const lister = listOf(`GET ${pulls}/files`, { pull_number: number }, repo);
-        const result = await paged(session, { ...lister, maxPages: filePages });
-        if (!result.ok) return result;
-        return { ok: true, value: result.value.capped ? 'too_many_files' : result.value.items };
-      }),
+    changedFiles: (repo: string, base: string, head: string) =>
+      refusedUnless(
+        isBranch(base) && isFullSha(head),
+        async (): Promise<GitHubResult<List | 'too_many_files'>> => {
+          const route = 'GET /repos/{owner}/{repo}/compare/{basehead}';
+          const parameters = { basehead: `${base}...${head}`, per_page: 1, page: 1 };
+          const answer = await session.request(route, parameters, repo);
+          if (!answer.ok) return answer;
+          const files = shaped(comparison, answer.value);
+          if (!files.ok) return files;
+          return {
+            ok: true,
+            value: files.value.length >= listedFiles ? 'too_many_files' : files.value,
+          };
+        },
+      ),
     pullRequestReviews: (repo: string, number: number) =>
       refusedUnless(isCount(number), () =>
         whole(session, listOf(`GET ${pulls}/reviews`, { pull_number: number }, repo)),
