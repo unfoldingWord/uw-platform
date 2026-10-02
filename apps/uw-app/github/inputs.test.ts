@@ -28,7 +28,7 @@ function calls(): { readonly sent: () => number; readonly each: [string, Call][]
     sent: () => github.requests().length,
     each: [
       ['pullRequest', (n) => reads.pullRequest('o/r', n)],
-      ['changedFiles', (_n, s) => reads.changedFiles('o/r', 'main', s)],
+      ['changedFiles', (_n, s) => reads.changedFiles('o/r', s, s)],
       ['pullRequestReviews', (n) => reads.pullRequestReviews('o/r', n)],
       ['issueComments', (n) => reads.issueComments('o/r', n)],
       ['checkRuns', (_n, s) => reads.checkRuns('o/r', s)],

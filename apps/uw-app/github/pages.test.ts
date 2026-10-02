@@ -30,18 +30,25 @@ function readsOver(github: FixtureGitHub) {
 }
 
 const head = 'c'.repeat(40);
-const comparePath = `/repos/o/r/compare/main...${head}`;
+const base = 'b'.repeat(40);
+const comparePath = `/repos/o/r/compare/${base}...${head}`;
 
 function filesOf(size: number): { status: number; body: unknown } {
   const files = Array.from({ length: size }, (_, index) => ({ filename: `f${index}` }));
   return { status: 200, body: { status: 'ahead', commits: [], files } };
 }
 
-describe('GH-5 the changed files are read by head SHA, never by pull request number', () => {
-  it('reads the files of the comparison from the base to that exact head', async () => {
+async function answerTo(body: unknown) {
+  const github = fixtureGitHub();
+  github.on('GET', comparePath, { status: 200, body });
+  return readsOver(github).changedFiles('o/r', base, head);
+}
+
+describe('GH-5 the changed files are read by comparing the base SHA with the head SHA', () => {
+  it('reads the files of the comparison from that exact base to that exact head', async () => {
     const github = fixtureGitHub();
     github.on('GET', comparePath, filesOf(3));
-    const result = await readsOver(github).changedFiles('o/r', 'main', head);
+    const result = await readsOver(github).changedFiles('o/r', base, head);
     expect(result.ok && Array.isArray(result.value) && result.value.length).toBe(3);
     expect(sent(github, comparePath).map((request) => request.search)).toEqual([
       '?per_page=1&page=1',
@@ -49,35 +56,32 @@ describe('GH-5 the changed files are read by head SHA, never by pull request num
   });
 
   it('answers too_many_files when the comparison reaches the 300 files GitHub lists', async () => {
-    const github = fixtureGitHub();
-    github.on('GET', comparePath, filesOf(300));
-    expect(await readsOver(github).changedFiles('o/r', 'main', head)).toEqual({
-      ok: true,
-      value: 'too_many_files',
-    });
+    expect(await answerTo(filesOf(300).body)).toEqual({ ok: true, value: 'too_many_files' });
   });
 
   it('reads 299 files as the whole list', async () => {
-    const github = fixtureGitHub();
-    github.on('GET', comparePath, filesOf(299));
-    const result = await readsOver(github).changedFiles('o/r', 'main', head);
+    const result = await answerTo(filesOf(299).body);
     expect(result.ok && Array.isArray(result.value) && result.value.length).toBe(299);
   });
 
-  it('reads a comparison with no files listed as no files', async () => {
-    const github = fixtureGitHub();
-    github.on('GET', comparePath, { status: 200, body: { status: 'identical', commits: [] } });
-    expect(await readsOver(github).changedFiles('o/r', 'main', head)).toEqual({
-      ok: true,
-      value: [],
-    });
+  it('reads an identical comparison with no files listed as no files', async () => {
+    expect(await answerTo({ status: 'identical', commits: [] })).toEqual({ ok: true, value: [] });
   });
 
-  it.each(['', 'a..b', 'main...x', 'with space', '-flag'])(
-    'refuses the base %j without a request',
-    async (base) => {
+  it('counts any other comparison with no files listed as malformed', async () => {
+    expect(await answerTo({ status: 'ahead', commits: [] })).toEqual({
+      ok: false,
+      failure: 'malformed_response',
+      status: 200,
+    });
+    expect(await answerTo({ commits: [] })).toMatchObject({ ok: false });
+  });
+
+  it.each(['main', 'refs/heads/main', 'b'.repeat(39), 'B'.repeat(40), ''])(
+    'refuses the base %j, which is not a full SHA, without a request',
+    async (named) => {
       const github = fixtureGitHub();
-      expect(await readsOver(github).changedFiles('o/r', base, head)).toEqual({
+      expect(await readsOver(github).changedFiles('o/r', named, head)).toEqual({
         ok: false,
         failure: 'unprocessable',
         status: null,

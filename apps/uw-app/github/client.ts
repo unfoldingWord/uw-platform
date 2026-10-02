@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { GitHubAppConfig } from './app-config.ts';
 import { failed, type GitHubResult } from './failures.ts';
-import { isBranch, isCount, isFullSha, refusedInput } from './inputs.ts';
+import { isCount, isFullSha, refusedInput } from './inputs.ts';
 import { openSession, shaped, type GitHubSession } from './session.ts';
 import type { GitHubTransport } from './transport.ts';
 
@@ -40,7 +40,10 @@ const array = z.array(z.unknown());
 const checkRunPage = z.object({ check_runs: array }).transform((page) => page.check_runs);
 const repositoryPage = z.object({ repositories: array }).transform((page) => page.repositories);
 const record = z.record(z.string(), z.unknown());
-const comparison = z.object({ files: array.optional() }).transform((answer) => answer.files ?? []);
+const comparison = z
+  .object({ status: z.string().optional(), files: array.optional() })
+  .refine((answer) => answer.files !== undefined || answer.status === 'identical')
+  .transform((answer) => answer.files ?? []);
 
 type Lister = {
   readonly route: string;
@@ -90,7 +93,7 @@ function pullRequestReads(session: GitHubSession) {
       }),
     changedFiles: (repo: string, base: string, head: string) =>
       refusedUnless(
-        isBranch(base) && isFullSha(head),
+        isFullSha(base) && isFullSha(head),
         async (): Promise<GitHubResult<List | 'too_many_files'>> => {
           const route = 'GET /repos/{owner}/{repo}/compare/{basehead}';
           const parameters = { basehead: `${base}...${head}`, per_page: 1, page: 1 };

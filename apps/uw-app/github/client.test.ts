@@ -8,6 +8,7 @@ import { fixtureApp, fixtureTransport } from './testing/app-key.ts';
 import { fixtureGitHub, type FixtureGitHub } from './testing/fixture-github.ts';
 
 const sha = 'a'.repeat(40);
+const base = 'b'.repeat(40);
 const tokenPath = '/app/installations/77/access_tokens';
 
 let app: GitHubAppConfig;
@@ -21,7 +22,7 @@ function programmed(): FixtureGitHub {
   const ok = (body: unknown) => ({ status: 200, body });
   github.on('GET', '/installation/repositories', ok({ total_count: 1, repositories: [{}] }));
   github.on('GET', '/repos/o/r/pulls/2', ok({ number: 2 }));
-  github.on('GET', `/repos/o/r/compare/main...${sha}`, ok({ files: [{ filename: 'a.ts' }] }));
+  github.on('GET', `/repos/o/r/compare/${base}...${sha}`, ok({ files: [{ filename: 'a.ts' }] }));
   github.on('GET', '/repos/o/r/pulls/2/reviews', ok([{ id: 1 }]));
   github.on(
     'GET',
@@ -44,7 +45,7 @@ async function everyCall(github: FixtureGitHub): Promise<GitHubResult<unknown>[]
   return [
     await reads.installationRepositories(),
     await reads.pullRequest('o/r', 2),
-    await reads.changedFiles('o/r', 'main', sha),
+    await reads.changedFiles('o/r', base, sha),
     await reads.pullRequestReviews('o/r', 2),
     await reads.checkRuns('o/r', sha),
     await reads.issuesSince('o/r', null, 3),
