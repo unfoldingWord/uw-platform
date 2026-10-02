@@ -180,13 +180,18 @@ export type ReviewFact = {
   readonly provider: string | null;
   readonly submittedAt: Date | null;
 };
-export type ChangedFiles = { readonly head: string; readonly paths: readonly string[] };
+export type ChangedFiles = {
+  readonly head: string;
+  readonly base: string;
+  readonly paths: readonly string[];
+};
 export type PullRequestFacts = {
   readonly ref: PullRequestRef;
   readonly state: PullRequestState;
   readonly draft: boolean;
   readonly head: string;
   readonly headRef: string;
+  readonly base: string;
   readonly checks: readonly CheckFact[];
   readonly reviews: readonly ReviewFact[];
   readonly files: ChangedFiles | null;
