@@ -1,5 +1,6 @@
 import {
   principalSchema,
+  systemIdentity,
   type Harness,
   type ItemState,
   type JdArea,
@@ -84,6 +85,17 @@ export function simAgent(
     email: null,
     grants: owner.grants,
     interactive: options.interactive,
+  });
+}
+
+export function simSystem(): Principal {
+  return principalSchema.parse({
+    identity: systemIdentity,
+    kind: 'agent',
+    personId: null,
+    email: null,
+    grants: [],
+    interactive: false,
   });
 }
 

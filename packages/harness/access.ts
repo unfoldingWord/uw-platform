@@ -1,4 +1,4 @@
-import type { Harness, Principal } from '@uw/contracts';
+import { systemIdentity, type Harness, type Principal } from '@uw/contracts';
 import { can, type AclAction } from '@uw/core/acl';
 
 export function allowed(
@@ -12,4 +12,14 @@ export function allowed(
 
 export function bareAgent(identity: string): boolean {
   return identity.startsWith('agent:') && !identity.includes('/');
+}
+
+export function isSystemPrincipal(actor: Principal): boolean {
+  return (
+    actor.identity === systemIdentity &&
+    actor.kind === 'agent' &&
+    actor.personId === null &&
+    actor.grants.length === 0 &&
+    !actor.interactive
+  );
 }

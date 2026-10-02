@@ -1,6 +1,6 @@
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { afterAll, describe, expect, it } from 'vitest';
-import { simAgent, simCaller, simIan, simPerson, simPersonId } from './fixtures.ts';
+import { simAgent, simCaller, simIan, simPerson, simPersonId, simSystem } from './fixtures.ts';
 import { createWorld, type World } from './world.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -46,6 +46,10 @@ async function inWorld(check: (world: World) => Promise<void>): Promise<void> {
 }
 
 describe('DX-4 sim fixtures build principals from the seeded people and grants', () => {
+  it('builds the system principal with no person and no grants', () => {
+    expect(simSystem()).toMatchObject({ identity: 'agent:system', personId: null, grants: [] });
+  });
+
   it('numbers people and their grants by the formula', () => {
     expect(simPersonId(3)).toBe('00000000-0000-4000-8000-000000000103');
   });
