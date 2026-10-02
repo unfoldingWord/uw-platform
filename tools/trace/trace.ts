@@ -32,9 +32,9 @@ function line(entry: Unproven): string {
 }
 
 export function formatTrace(report: TraceReport): string {
-  const head = `trace: ${report.must} Must requirements not marked Built; ${report.proven} proven, ${report.unproven.length} unproven`;
   const due = report.unproven.filter((entry) => entry.due);
   const later = report.unproven.filter((entry) => !entry.due);
+  const head = `trace: ${report.must} Must requirements; ${report.proven} proven, ${report.unproven.length} unproven (${due.length} due, ${later.length} in steps not yet built)`;
   return [
     head,
     ...(due.length > 0 ? ['unproven and due:', ...due.map(line)] : []),
