@@ -1,10 +1,12 @@
 import { z } from 'zod';
 
 const segment = '[A-Za-z0-9][A-Za-z0-9_-]*';
+const slug = '[a-z0-9][a-z0-9_-]*';
+const deviceSlot = '[a-z0-9][a-z0-9-]{0,31}';
 const human = `human:${segment}`;
-const agent = `agent:${segment}`;
-const device = `agent:${segment}/${segment}`;
-const delegated = `agent:${segment}/${segment} as ${segment} via delegation:${segment}`;
+const agent = `agent:${slug}`;
+const device = `agent:${segment}/${deviceSlot}`;
+const delegated = `agent:${segment}/${deviceSlot} as ${slug} via delegation:${segment}`;
 
 export const humanIdentityPattern = `^${human}$`;
 
