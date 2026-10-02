@@ -3,6 +3,7 @@ import type {
   Connector,
   CostBasis,
   Engine,
+  GateDecision,
   Grant,
   Harness,
   HarnessEvent,
@@ -113,12 +114,30 @@ export type DelegationsGateway = {
   };
 };
 
+export type GateDecisionRow = {
+  readonly id: string;
+  readonly harnessId: string;
+  readonly itemId: string;
+  readonly stageId: string;
+  readonly actor: Identity;
+  readonly decision: GateDecision;
+  readonly reason: string | null;
+  readonly evidence: HarnessEvent['evidence'];
+  readonly traceId: string;
+  readonly decidedAt: Date;
+};
+export type GateDecisionsGateway = {
+  readonly read: { forItem(itemId: string): Promise<readonly GateDecisionRow[]> };
+  readonly write: { insert(decision: GateDecisionRow): Promise<void> };
+};
+
 export type StoreTransaction = {
   lock(key: string): Promise<void>;
   readonly harnesses: HarnessesGateway;
   readonly harnessStages: HarnessStagesGateway;
   readonly harnessItems: HarnessItemsGateway;
   readonly harnessEvents: HarnessEventsGateway;
+  readonly gateDecisions: GateDecisionsGateway;
   readonly delegations: DelegationsGateway;
   readonly pages: PagesGateway;
 };
