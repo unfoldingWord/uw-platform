@@ -64,6 +64,13 @@
       "when": 1790927078899,
       "tag": "0008_harness_events_stage_edited",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790928036357,
+      "tag": "0009_delegations_supersedes_once",
+      "breakpoints": true
     }
   ]
 }
