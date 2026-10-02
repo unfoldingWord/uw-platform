@@ -286,7 +286,7 @@ function deliveryIndexRules(db: () => Db): void {
 
 function describeTarget(target: DatabaseTarget): void {
   const db = openDatabase(target);
-  describe('GH-2 the read-model tables are keyed on the GitHub id, classified and timestamped', () =>
+  describe('the read-model tables are keyed on the GitHub id, classified and timestamped', () =>
     readModelRules(db));
   describe('the read-model tables refuse malformed facts', () => factRules(db));
   describe('the read-model tables refuse a second row for one GitHub thing', () =>
