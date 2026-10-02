@@ -24,6 +24,11 @@ describe('FD-11 database error facts', () => {
     });
   });
 
+  it('reads the table field PGlite uses, from a cause', () => {
+    const error = new Error('wrapped', { cause: { code: '23514', table: 'role_grants' } });
+    expect(databaseErrorFacts(error)).toMatchObject({ code: '23514', table: 'role_grants' });
+  });
+
   it('is null for an error that is not from the database', () => {
     expect(databaseErrorFacts(new Error('plain'))).toBeNull();
     expect(databaseErrorFacts('text')).toBeNull();
