@@ -13,6 +13,7 @@ const later = new Date('2026-10-01T09:05:00.000Z');
 const ref = { repo: 'unfoldingWord/uw-platform', number: 42 };
 const head = 'a'.repeat(40);
 const older = 'b'.repeat(40);
+const base = '0'.repeat(40);
 const itemId = '00000000-0000-4000-8000-000000000301';
 const harness = { jdArea: '80-89', repository: 'unfoldingWord/uw-platform' } as const;
 
@@ -78,9 +79,10 @@ const facts: PullRequestFacts = {
   draft: false,
   head,
   headRef: `harness/${itemId}`,
+  base,
   checks: ciJobSchema.options.map((name) => check(name)),
   reviews: [review()],
-  files: { head, paths: ['apps/uw-app/board.tsx'] },
+  files: { head, base, paths: ['apps/uw-app/board.tsx'] },
   declaration: declared('standard'),
   freshAt: at,
 };
@@ -194,7 +196,7 @@ describe('GH-5 only the CI jobs from GitHub Actions on the head count', () => {
     const input = assembled({
       facts: {
         head: upper,
-        files: { head: upper, paths: ['apps/uw-app/board.tsx'] },
+        files: { head: upper, base, paths: ['apps/uw-app/board.tsx'] },
         checks: ciJobSchema.options.map((name) => check(name, { headSha: upper })),
         reviews: [review({ commit: upper })],
       },
@@ -239,7 +241,7 @@ describe('KN-17 GH-5 risk at Ship comes from the files and declaration at the he
   it('floors a low declaration over a migration at high', () => {
     const input = assembled({
       facts: {
-        files: { head, paths: ['packages/db/migrations/0013.sql'] },
+        files: { head, base, paths: ['packages/db/migrations/0013.sql'] },
         declaration: declared('low'),
       },
     });
@@ -247,15 +249,22 @@ describe('KN-17 GH-5 risk at Ship comes from the files and declaration at the he
   });
 
   it('counts the previous name of a renamed file', () => {
-    const files = { head, paths: ['infra/y.toml', 'infra/x.toml'] };
+    const files = { head, base, paths: ['infra/y.toml', 'infra/x.toml'] };
     expect(assembled({ facts: { files } }).riskDomains).toContain('infra');
   });
 
   it('declares nothing without files at the head or without a declaration', () => {
-    const stale = { files: { head: older, paths: ['apps/uw-app/board.tsx'] } };
+    const stale = { files: { head: older, base, paths: ['apps/uw-app/board.tsx'] } };
     expect(assembled({ facts: stale }).riskTier).toBeNull();
     expect(assembled({ facts: { files: null } }).riskTier).toBeNull();
     expect(assembled({ facts: { declaration: null } }).riskTier).toBeNull();
+  });
+
+  it('declares nothing from files compared against a base the pull request no longer has', () => {
+    const migration = { head, base, paths: ['packages/db/migrations/0013.sql'] };
+    expect(assembled({ facts: { files: migration, base: older } }).riskTier).toBeNull();
+    expect(assembled({ facts: { files: { ...migration, base: older } } }).riskTier).toBeNull();
+    expect(assembled({ facts: { files: migration, base: 'abc123' } }).riskTier).toBeNull();
   });
 
   it('never lowers a tier the item was already ratcheted to', () => {
@@ -269,7 +278,7 @@ describe('KN-17 GH-5 risk at Ship comes from the files and declaration at the he
 
 describe('KN-17 the Ship-time derivation is the evidence of a risk_derived event', () => {
   it('records the paths, declaration, result and head it derived from', () => {
-    const files = { head, paths: ['packages/db/migrations/0013.sql'] };
+    const files = { head, base, paths: ['packages/db/migrations/0013.sql'] };
     const source = sourceOf({ facts: { files, declaration: declared('low') } });
     expect(riskDerivedAtShip(source)).toEqual({
       paths: ['packages/db/migrations/0013.sql'],

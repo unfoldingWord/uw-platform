@@ -42,6 +42,7 @@ function greenFacts(itemId: string): PullRequestFacts {
     draft: false,
     head,
     headRef: `harness/${itemId}`,
+    base: '0'.repeat(40),
     checks: ciJobSchema.options.map((name, index) => ({
       checkId: 9100000001 + index,
       name,
@@ -59,7 +60,7 @@ function greenFacts(itemId: string): PullRequestFacts {
         submittedAt: instant,
       },
     ],
-    files: { head, paths: ['apps/uw-app/board.tsx'] },
+    files: { head, base: '0'.repeat(40), paths: ['apps/uw-app/board.tsx'] },
     declaration: {
       closes: [],
       risks: 'none known',

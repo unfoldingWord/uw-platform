@@ -177,7 +177,7 @@ describe('KN-17 submit derives risk from the changed files and declaration GitHu
   sceneIt('derives nothing when the changed files are of an older head', async (scene) => {
     const itemId = await heldAtScope(scene);
     const facts = factsFor(scene, itemId);
-    const files = { head: otherHead, paths: migrationPaths };
+    const files = { head: otherHead, base: facts.base, paths: migrationPaths };
     scene.world.adapters.githubFacts.given({ ...facts, files });
     await expectNoRiskButSubmitted(scene, itemId);
   });
@@ -317,4 +317,17 @@ describe('a submit whose GitHub facts are not wired is refused', () => {
     });
     expect(await eventsOf(scene, itemId)).toEqual(before);
   });
+});
+
+describe('KN-17 submit derives no risk from changed files read against another base', () => {
+  sceneIt(
+    'derives nothing when the changed files were compared against another base',
+    async (scene) => {
+      const itemId = await heldAtScope(scene);
+      const facts = factsFor(scene, itemId);
+      const files = { head, base: otherHead, paths: migrationPaths };
+      scene.world.adapters.githubFacts.given({ ...facts, files });
+      await expectNoRiskButSubmitted(scene, itemId);
+    },
+  );
 });

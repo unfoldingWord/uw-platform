@@ -6,6 +6,7 @@ import {
   type Principal,
   type ShipRuleInput,
 } from '@uw/contracts';
+import { pathsComparedAt } from '../github/changed-files.ts';
 import { riskDeclarationOf } from '../github/declaration.ts';
 import { branchFor, fullSha, normalisedIdentifier, sameRepository } from '../github/identifiers.ts';
 import { reviewerOf } from '../github/reviewers.ts';
@@ -91,8 +92,9 @@ function approvalsOn(facts: PullRequestFacts, head: string): ShipRuleInput['appr
 }
 
 function derivedAt(facts: PullRequestFacts, item: ItemState, head: string): RiskDerived | null {
-  if (facts.files === null || fullSha(facts.files.head) !== head) return null;
-  const paths = [...facts.files.paths];
+  const compared = pathsComparedAt(facts, head);
+  if (compared === null) return null;
+  const paths = [...compared];
   const held = { tier: item.riskTier, domains: item.riskDomains };
   const floor = carryForward(floorFromPaths(paths), held);
   const declaration = riskDeclarationOf(facts.declaration);

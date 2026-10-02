@@ -15,6 +15,7 @@ function factsFor(repo: string, number: number, head: string): PullRequestFacts 
     draft: false,
     head,
     headRef: 'harness/b1000000-0000-4000-8000-000000000002',
+    base: '0'.repeat(40),
     checks: [
       {
         checkId: 9100000001,
@@ -34,7 +35,7 @@ function factsFor(repo: string, number: number, head: string): PullRequestFacts 
         submittedAt: new Date('2026-10-01T08:59:00.000Z'),
       },
     ],
-    files: { head, paths: ['apps/uw-app/board.tsx'] },
+    files: { head, base: '0'.repeat(40), paths: ['apps/uw-app/board.tsx'] },
     declaration: {
       closes: ['#7'],
       risks: 'none known',
