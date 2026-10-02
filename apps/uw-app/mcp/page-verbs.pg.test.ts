@@ -397,7 +397,13 @@ async function nameAsInstructions(r: Rig, stageKey: string, pageId: string): Pro
   const caller = { actor: ian, traceId: crypto.randomUUID() };
   const harnessId = crypto.randomUUID();
   const harnessKey = `software-${stageKey}`;
-  const activation = { harnessId, harnessKey, jdArea: '80-89', template: software };
+  const activation = {
+    harnessId,
+    harnessKey,
+    jdArea: '80-89',
+    template: software,
+    repository: null,
+  };
   expect((await kernel.stages.activate(caller, activation)).status).toBe('accepted');
   const change = { instructionsPageId: pageId };
   const edited = await kernel.stages.updateStage(caller, { harnessId, stageKey, change });

@@ -86,6 +86,7 @@ async function parkAtShip(kernel: Kernel, ian: Principal): Promise<ItemState> {
       harnessKey: 'software',
       jdArea: '80-89',
       template: software,
+      repository: 'unfoldingWord/uw-platform',
     }),
     'activate',
   );

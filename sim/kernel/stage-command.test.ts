@@ -62,6 +62,7 @@ describe('KN-18 the stage command refuses what only a human admin may do', () =>
         harnessKey: 'other',
         jdArea: '80-89',
         template: software,
+        repository: null,
       });
       const update = await world.kernel.stages.updateStage(agent, {
         harnessId: harness.id,
@@ -243,6 +244,7 @@ describe('KN-18 activating a second harness with a taken key', () => {
       harnessKey: 'software',
       jdArea: '30-39',
       template: software,
+      repository: null,
     });
     expect(outcome).toMatchObject({ status: 'error', reason: 'harness_exists' });
   });
@@ -266,6 +268,7 @@ describe('KN-18 the stage command reads the admin grant again inside its transac
         harnessKey: 'other',
         jdArea: '80-89',
         template: software,
+        repository: null,
       });
       expect(update).toMatchObject({ status: 'error', reason: 'not_permitted' });
       expect(activate).toMatchObject({ status: 'error', reason: 'not_permitted' });

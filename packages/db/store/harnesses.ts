@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
 import { harnesses } from '../schema.ts';
 import { refusing } from './refusal.ts';
@@ -14,6 +14,13 @@ export function bindHarnesses(executor: AnyExecutor): HarnessesGateway {
       },
       byKey: async (key) => {
         const rows = await executor.select().from(harnesses).where(eq(harnesses.key, key));
+        return rows[0] ? toHarness(rows[0]) : null;
+      },
+      byRepository: async (repository) => {
+        const rows = await executor
+          .select()
+          .from(harnesses)
+          .where(sql`lower(${harnesses.repository}) = lower(${repository})`);
         return rows[0] ? toHarness(rows[0]) : null;
       },
       list: async () => {

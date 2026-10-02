@@ -45,6 +45,7 @@ async function raceOn(first: Database, second: Database): Promise<Race> {
       harnessKey: 'software',
       jdArea: '80-89',
       template: software,
+      repository: 'unfoldingWord/uw-platform',
     }),
     'activate',
   );

@@ -4,6 +4,7 @@ import type { GateDecisionRow, PageFacts, Store, StoreTransaction } from '../por
 import { awaitBlocked, type LockWaiters } from './lock-wait.ts';
 import { describeDelegations } from './store-delegations.ts';
 import { describeEvents } from './store-events.ts';
+import { describeHarnessRepositories } from './store-harnesses.ts';
 import {
   at,
   harnessOf,
@@ -428,6 +429,7 @@ export function describeStoreGateways(
 ): void {
   describe(`DX-3 store gateways on ${adapter}`, () => {
     describeHarnesses(subject);
+    describeHarnessRepositories(subject);
     describeStages(subject);
     describeMissingStage(subject);
     describeInstructions(subject);

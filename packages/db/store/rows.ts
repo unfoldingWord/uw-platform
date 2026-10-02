@@ -27,6 +27,7 @@ export function toHarness(row: typeof harnesses.$inferSelect): Harness {
     key: row.key,
     template: row.template,
     jdArea: row.jdArea,
+    repository: row.repository,
     hostedBuilderEnabled: row.hostedBuilderEnabled,
     paused: row.paused,
   });

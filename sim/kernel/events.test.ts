@@ -34,6 +34,7 @@ const harness = harnessSchema.parse({
   key: 'software',
   template: 'software',
   jdArea: '80-89',
+  repository: 'unfoldingWord/uw-platform',
   hostedBuilderEnabled: false,
   paused: false,
 });

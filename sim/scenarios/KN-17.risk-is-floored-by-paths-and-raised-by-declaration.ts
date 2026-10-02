@@ -5,7 +5,7 @@ import {
   type Principal,
   type RiskDeclaration,
 } from '@uw/contracts';
-import { readAllEvents, software, type KernelOutcome } from '@uw/harness';
+import { readAllEvents, software, type KernelOutcome, type PullRequestRef } from '@uw/harness';
 import { createSimHarness, simAdvance, simAgent, simCaller, simPerson } from '../fixtures.ts';
 import { defineScenario } from '../scenario.ts';
 import type { World } from '../world.ts';
@@ -17,8 +17,6 @@ function valueOf<T>(outcome: KernelOutcome<T>): T {
 
 const paths = ['packages/db/migrations/0009_x.sql'];
 const declaration: RiskDeclaration = { riskTier: 'standard', riskDomains: [] };
-const pullRequest = { repo: 'unfoldingWord/uw-platform', number: 7 };
-
 async function atBuild(
   world: World,
   n: number,
@@ -26,8 +24,10 @@ async function atBuild(
   readonly harnessId: string;
   readonly itemId: string;
   readonly owner: Principal;
+  readonly pullRequest: PullRequestRef;
 }> {
-  const { harness } = await createSimHarness(world, software, { key: `risk-${n}` });
+  const repository = `unfoldingWord/risk-${n}`;
+  const { harness } = await createSimHarness(world, software, { key: `risk-${n}`, repository });
   const owner = await simPerson(world, n, [
     { role: 'editor', scopeKind: 'jd_area', scopeArea: '80-89' },
   ]);
@@ -54,10 +54,15 @@ async function atBuild(
     through: ['scope', 'plan'],
   });
   assert.equal(item.stageKey, 'build');
-  return { harnessId: harness.id, itemId, owner };
+  return { harnessId: harness.id, itemId, owner, pullRequest: { repo: repository, number: 7 } };
 }
 
-type Scene = { readonly harnessId: string; readonly itemId: string; readonly owner: Principal };
+type Scene = {
+  readonly harnessId: string;
+  readonly itemId: string;
+  readonly owner: Principal;
+  readonly pullRequest: PullRequestRef;
+};
 
 type Change = {
   readonly head: string;
@@ -67,22 +72,18 @@ type Change = {
 
 async function submitHeld(
   world: World,
-  scene: { readonly itemId: string; readonly owner: Principal },
+  scene: Scene,
   change: Change | null,
 ): Promise<KernelOutcome<{ readonly item: ItemState }>> {
   return world.kernel.items.submit(simCaller(world, scene.owner), {
     itemId: scene.itemId,
     to: null,
     evidence: {},
-    change: change === null ? null : { pullRequest, ...change },
+    change: change === null ? null : { pullRequest: scene.pullRequest, ...change },
   });
 }
 
-async function submitWith(
-  world: World,
-  scene: { readonly itemId: string; readonly owner: Principal },
-  change: Change | null,
-): Promise<ItemState> {
+async function submitWith(world: World, scene: Scene, change: Change | null): Promise<ItemState> {
   const worker = simCaller(world, scene.owner);
   valueOf(await world.kernel.items.claim(worker, { itemId: scene.itemId, delegationId: null }));
   return valueOf(await submitHeld(world, scene, change)).item;

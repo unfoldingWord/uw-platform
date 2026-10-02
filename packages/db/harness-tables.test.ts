@@ -38,7 +38,16 @@ const expectedDeclarations = [
 ] as const;
 
 const expectedColumns: Record<string, string[]> = {
-  harnesses: ['id', 'key', 'template', 'jd_area', 'hosted_builder_enabled', 'paused', 'created_at'],
+  harnesses: [
+    'id',
+    'key',
+    'template',
+    'jd_area',
+    'hosted_builder_enabled',
+    'paused',
+    'created_at',
+    'repository',
+  ],
   harness_stages: [
     'id',
     'harness_id',

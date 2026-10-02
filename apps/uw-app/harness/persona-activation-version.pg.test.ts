@@ -35,7 +35,13 @@ async function scene(db: Database) {
   const ian = await personOn(db, ianId, 'ian.lindsley@unfoldingword.org', new Date());
   const harnessId = crypto.randomUUID();
   const kernel = kernelOn(db, systemClock);
-  const activate = { harnessId, harnessKey: 'bml', jdArea: '30-39', template: bml };
+  const activate = {
+    harnessId,
+    harnessKey: 'bml',
+    jdArea: '30-39',
+    template: bml,
+    repository: null,
+  };
   expect((await kernel.stages.activate(caller(ian), activate)).status).toBe('accepted');
   await seedPage(db, {
     id: pageId,

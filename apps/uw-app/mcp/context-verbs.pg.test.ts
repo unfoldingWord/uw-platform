@@ -172,10 +172,14 @@ async function itemInPackage(
   return value(await kernel.items.enqueue(caller(ian), { ...input, delegationId: null })).itemId;
 }
 
+function activationOf(harnessId: string, harnessKey: string) {
+  const repository = harnessKey === 'software' ? 'unfoldingWord/uw-platform' : null;
+  return { harnessId, harnessKey, jdArea: '80-89', template: software, repository };
+}
+
 async function seedHarness(kernel: Kernel, ian: Principal) {
   const harnessId = crypto.randomUUID();
-  const activation = { harnessId, harnessKey: 'software', jdArea: '80-89', template: software };
-  value(await kernel.stages.activate(caller(ian), activation));
+  value(await kernel.stages.activate(caller(ian), activationOf(harnessId, 'software')));
   const change = { instructionsPageId: PAGE.instructions };
   value(await kernel.stages.updateStage(caller(ian), { harnessId, stageKey: 'scope', change }));
   const itemIds = [
@@ -469,8 +473,7 @@ describe.skipIf(!testServer)(
     it('answers at most 50 items of a stage, highest priority first', async () => {
       const r = rig();
       const harnessId = crypto.randomUUID();
-      const activation = { harnessId, harnessKey: 'many', jdArea: '80-89', template: software };
-      value(await r.kernel.stages.activate(caller(r.ian), activation));
+      value(await r.kernel.stages.activate(caller(r.ian), activationOf(harnessId, 'many')));
       for (let n = 0; n < 51; n += 1) await itemInPackage(r.kernel, r.ian, harnessId, null, n);
       const query = { query: 'stage_items', params: { harnessId, stageKey: 'package' } };
       const found = await (await runner(r, EDITOR.email))('query_entities', query);

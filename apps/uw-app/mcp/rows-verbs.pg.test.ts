@@ -92,7 +92,13 @@ async function seedPagesAndTasks(db: Database, ian: Principal): Promise<void> {
 
 async function harnessIn(kernel: Kernel, ian: Principal, area: Area) {
   const harnessId = crypto.randomUUID();
-  const activation = { harnessId, harnessKey: `rows-${area}`, jdArea: area, template: software };
+  const activation = {
+    harnessId,
+    harnessKey: `rows-${area}`,
+    jdArea: area,
+    template: software,
+    repository: null,
+  };
   value(await kernel.stages.activate(caller(ian), activation));
   const change = { agentPickup: 'allowed' as const };
   value(await kernel.stages.updateStage(caller(ian), { harnessId, stageKey: 'package', change }));
