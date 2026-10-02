@@ -22,10 +22,30 @@ const lockRefused: Store = {
   appliedMigrations: async () => [],
 };
 
+const lockingTransaction: StoreTransaction = {
+  ...refusingTransaction,
+  lock: async () => undefined,
+};
+
+const neverBlocks: Store = {
+  transaction: (work) => work(lockingTransaction),
+  appliedMigrations: async () => [],
+};
+
 describe('DX-3 the store contract race', () => {
   it('rejects at once when the first transaction fails before it holds the lock', async () => {
     await expect(race(lockRefused, undefined, async () => undefined)).rejects.toThrow(
       'lock refused',
     );
   }, 1_000);
+
+  it('fails with the deadline message when the second transaction is never seen waiting', async () => {
+    await expect(
+      race(
+        neverBlocks,
+        async () => 0,
+        () => Promise.reject(new Error('after the lock')),
+      ),
+    ).rejects.toThrow('never observed waiting');
+  }, 10_000);
 });

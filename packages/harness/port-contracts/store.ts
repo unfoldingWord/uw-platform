@@ -28,6 +28,17 @@ async function takeTwice(tx: StoreTransaction): Promise<void> {
   await tx.lock('store-contract');
 }
 
+async function workThenRecord(order: string[], work: () => Promise<void>): Promise<unknown> {
+  try {
+    await work();
+  } catch (error) {
+    order.push('first failed');
+    return error;
+  }
+  order.push('first finished');
+  return null;
+}
+
 export async function race(
   store: Store,
   waiters: LockWaiters | undefined,
@@ -40,17 +51,18 @@ export async function race(
     signal = resolve;
     fail = reject;
   });
+  let workError: unknown = null;
   const first = store
     .transaction(async (tx) => {
       await tx.lock('store-contract-race');
       signal();
       await awaitBlocked(waiters);
-      await firstWork();
-      order.push('first finished');
+      workError = await workThenRecord(order, firstWork);
+      if (workError !== null) throw workError;
     })
     .catch((error: unknown) => {
-      order.push('first failed');
       fail(error);
+      if (workError === null || error !== workError) throw error;
     });
   await held;
   const second = store.transaction(async (tx) => {
