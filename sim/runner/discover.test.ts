@@ -42,6 +42,7 @@ describe('DX-4 scenarios are files named for a requirement ID', () => {
       ['KN-5.wip-limit-for-people-and-agents', 'KN-5'],
       ['KN-6.a-failing-validator-holds-the-item', 'KN-6'],
       ['KN-6.exit-gates-are-enforced-on-submit', 'KN-6'],
+      ['KN-7.close-needs-a-learning-or-a-signed-nothing-learned', 'KN-7'],
       ['KN-8.feeds-edges-and-refused-transitions', 'KN-8'],
     ]);
   });
