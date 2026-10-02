@@ -379,13 +379,15 @@ submitted_to_gate  checks_passed  checks_failed  gate_approved  gate_rejected
 gate_taken_over  gate_overridden  gate_refused_to_agent  ship_refused
 connector_succeeded  connector_refused
 delegation_granted  delegation_revoked  delegation_lapsed  delegation_required
-stage_edit_refused  template_activated  harness_paused  harness_resumed
+stage_edit_refused  stage_edited  template_activated  harness_paused  harness_resumed
 learning_attached  nothing_learned  comment_recorded
 breaker_holding  breaker_pausing  breaker_open
 persona_activation_failed  persona_activated
 ```
 
 `packages/contracts` on `main` carries four placeholder names (`gate_approved`, `lease_expired`, `delegation_lapsed`, `abandoned`). The list above replaces them; `abandoned` becomes `branch_abandoned`.
+
+`stage_edited` (contract 3.2.0) records every accepted stage create, update and reorder: the stage id, its key, and before/after limited to the columns the edit changed (before is null for a creation; a reorder writes one per stage whose position changed). It is a harness-level event and changes no item.
 
 ---
 
