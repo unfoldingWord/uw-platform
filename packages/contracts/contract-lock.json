@@ -1675,7 +1675,7 @@
       }
     },
     {
-      "version": "4.1.0",
+      "version": "5.0.0",
       "sets": {
         "agent-pickup": ["none", "allowed", "auto"],
         "branch-state": ["none", "active", "abandoned"],

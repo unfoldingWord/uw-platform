@@ -1,13 +1,13 @@
 import type { ZodType } from 'zod';
-import * as closedSets from './closed-sets.ts';
-import { commandNameSchema, commandSchema, overrideCommandSchema } from './commands.ts';
+import { grantRoleCommandSchema, revokeRoleCommandSchema } from './acl-commands.ts';
 import {
   bindServiceTokenCommandSchema,
   revokeServiceTokenCommandSchema,
   serviceClientIdSchema,
 } from './agent-commands.ts';
-import { grantRoleCommandSchema, revokeRoleCommandSchema } from './acl-commands.ts';
 import { jdAreaSchema } from './areas.ts';
+import * as closedSets from './closed-sets.ts';
+import { commandNameSchema, commandSchema, overrideCommandSchema } from './commands.ts';
 import { personaActivationRefusalSchema } from './event-evidence.ts';
 import { eventNameSchema, eventSchema, newEventSchema } from './events.ts';
 import {

@@ -11,7 +11,7 @@
     "persona": "agent:system",
     "verb": "summarise_measurements",
     "reason": "unknown_verb",
-    "message": "persona iterate requires verb summarise_measurements, which does not exist",
+    "message": "persona system requires verb summarise_measurements, which does not exist",
     "itemId": "00000000-0000-4000-8000-0000000000b1"
   },
   "traceId": "00000000-0000-4000-8000-0000000000c1"
