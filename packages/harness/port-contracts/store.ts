@@ -52,9 +52,11 @@ export async function race(
     fail = reject;
   });
   let workError: unknown = null;
+  let locked = false;
   const first = store
     .transaction(async (tx) => {
       await tx.lock('store-contract-race');
+      locked = true;
       signal();
       await awaitBlocked(waiters);
       workError = await workThenRecord(order, firstWork);
@@ -62,7 +64,7 @@ export async function race(
     })
     .catch((error: unknown) => {
       fail(error);
-      if (workError === null || error !== workError) throw error;
+      if (locked && error !== workError) throw error;
     });
   await held;
   const second = store.transaction(async (tx) => {
