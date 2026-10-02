@@ -23,6 +23,7 @@ import {
   type RecordContext,
 } from './record.ts';
 import { holdsClaim } from './release.ts';
+import { applyDeclaration, floorFromPaths } from '../risk/derive.ts';
 import { delegationRefusal } from './run-steps.ts';
 import {
   exitDrafts,
@@ -80,6 +81,19 @@ function submittedDraft(submission: Submission, result: SubmitToGateResult): Eve
     expectedHead: input.change?.head ?? null,
     pullRequest: input.change?.pullRequest ?? null,
     evidence: input.evidence,
+  });
+}
+
+function riskDraft(change: SubmitChange): EventDraft {
+  const floor = floorFromPaths(change.paths);
+  const result = applyDeclaration(floor, change.declaration);
+  return draft('risk_derived', {
+    paths: [...change.paths],
+    declaration: change.declaration,
+    floorDomains: [...floor.domains],
+    riskTier: result.ok ? result.tier : null,
+    riskDomains: [...result.domains],
+    refusal: result.ok ? null : result.reason,
   });
 }
 
@@ -203,7 +217,8 @@ async function submitIn(
     tweak: isOccasionalTweak(exit),
     input,
   });
-  const recorded = await recordItemEvents(tx, context, item.itemId, decision.drafts);
+  const risk = input.change === null ? [] : [riskDraft(input.change)];
+  const recorded = await recordItemEvents(tx, context, item.itemId, [...risk, ...decision.drafts]);
   return accepted({ item: recorded.item, result: decision.result, failures: decision.failures });
 }
 
