@@ -191,6 +191,25 @@ describe('KN-7 a quoted claim is bounded and claims are counted', () => {
     expect(result[0]?.length).toBeLessThanOrEqual(500);
   });
 
+  it('splits CRLF and unicode line breaks and counts every list marker', () => {
+    expect(checkClaims('- [observed] a\r\n- b\r\n')).toEqual({ claims: 2, unlabelled: ['b'] });
+    expect(checkClaims('- [observed] a\u2028- b\u2029- c')).toEqual({
+      claims: 3,
+      unlabelled: ['b', 'c'],
+    });
+    expect(checkClaims('- [observed] a\n+ plain\n1. numbered\n2) paren')).toEqual({
+      claims: 4,
+      unlabelled: ['plain', 'numbered', 'paren'],
+    });
+  });
+
+  it('fails a CRLF body with an unlabelled claim naming it', () => {
+    const body = '- [observed] fast\r\n- slow\r\n';
+    expect(
+      failures([created(), attached(2, pageA)], [page(pageA, 'learning', 'suggested', body)]),
+    ).toEqual([`learning_attached: page ${pageA} has a claim without an evidence label: slow`]);
+  });
+
   it('counts claims and lists the unlabelled ones', () => {
     expect(checkClaims('intro\n- [observed] a\n- b\n  * [inferred] c')).toEqual({
       claims: 3,
