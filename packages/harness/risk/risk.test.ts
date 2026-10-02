@@ -1,7 +1,23 @@
-import { principalSchema, type JdArea, type Principal, type Role } from '@uw/contracts';
+import {
+  principalSchema,
+  riskDomainSchema,
+  riskTierSchema,
+  type JdArea,
+  type Principal,
+  type RiskDeclaration,
+  type RiskDomain,
+  type RiskTier,
+  type Role,
+} from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
-import { applyDeclaration, domainOf, floorFromPaths } from './derive.ts';
-import { approverCovers, domainGrants, requiredResources } from './domain-grants.ts';
+import {
+  applyDeclaration,
+  carryForward,
+  domainOf,
+  floorFromPaths,
+  type RiskFloor,
+} from './derive.ts';
+import { approverCovers, domainGrants, requiredResources, resourcesFrom } from './domain-grants.ts';
 import { protectedDirectories } from './protected-directories.ts';
 
 const at = new Date('2026-10-01T00:00:00.000Z');
@@ -47,6 +63,29 @@ describe('KN-17 the protected-directory map', () => {
     expect(domainOf('apps/uw-app/acl/grants.ts')).toBe('acl');
     expect(domainOf('.github/workflows/ci.yml')).toBe('infra');
     expect(domainOf('packages/ledger/post.ts')).toBe('ledger');
+  });
+});
+
+describe('KN-17 the protected-directory map is robust and protects itself', () => {
+  it('protects the risk map itself under acl', () => {
+    expect(domainOf('packages/harness/risk/protected-directories.ts')).toBe('acl');
+    expect(domainOf('packages/harness/risk-notes.md')).toBeNull();
+  });
+
+  it('keeps every entry in normalised form and round-trips through domainOf', () => {
+    for (const entry of protectedDirectories) {
+      expect(entry.path).toBe(entry.path.toLowerCase());
+      expect(entry.path).not.toMatch(/\\|\/\/|^\.?\/|(^|\/)\.{1,2}(\/|$)/u);
+      expect(domainOf(entry.path)).toBe(entry.domain);
+    }
+  });
+
+  it('matches the bare directory, a trailing slash on a file, and any letter case', () => {
+    expect(domainOf('infra')).toBe('infra');
+    expect(domainOf('packages/ledger')).toBe('ledger');
+    expect(domainOf('packages/core/acl.ts/')).toBe('acl');
+    expect(domainOf('Infra/X.json')).toBe('infra');
+    expect(domainOf('PACKAGES/Core/ACL.ts')).toBe('acl');
   });
 
   it('does not match a sibling that only shares a name prefix', () => {
@@ -157,5 +196,76 @@ describe('KN-17 the domain-to-grant map', () => {
     expect(approverCovers(expired, '80-89', ['acl'], at)).toBe(false);
     const live = approver({ role: 'admin', area: null, expiresAt: '2026-10-02T00:00:00.000Z' });
     expect(approverCovers(live, '80-89', ['acl'], at)).toBe(true);
+  });
+});
+
+const tiers: readonly (RiskTier | null)[] = [null, ...riskTierSchema.options];
+const domainSubsets = riskDomainSchema.options.reduce<RiskDomain[][]>(
+  (subsets, domain) => [...subsets, ...subsets.map((subset) => [...subset, domain])],
+  [[]],
+);
+
+function everyCase(): readonly (readonly [RiskFloor, RiskDeclaration])[] {
+  const cases: (readonly [RiskFloor, RiskDeclaration])[] = [];
+  for (const tier of tiers) {
+    for (const domains of domainSubsets) {
+      for (const riskTier of riskTierSchema.options) {
+        for (const riskDomains of domainSubsets) {
+          cases.push([
+            { tier, domains },
+            { riskTier, riskDomains },
+          ]);
+        }
+      }
+    }
+  }
+  return cases;
+}
+
+function assertNeverLowers(floor: RiskFloor, declaration: RiskDeclaration): void {
+  const result = applyDeclaration(floor, declaration);
+  if (!result.ok) throw new Error('a declaration was refused');
+  const rank = riskTierSchema.options.indexOf(result.tier);
+  expect(rank).toBeGreaterThanOrEqual(riskTierSchema.options.indexOf(declaration.riskTier));
+  if (floor.tier !== null) {
+    expect(rank).toBeGreaterThanOrEqual(riskTierSchema.options.indexOf(floor.tier));
+  }
+  for (const domain of [...floor.domains, ...declaration.riskDomains]) {
+    expect(result.domains).toContain(domain);
+  }
+}
+
+describe('KN-17 applyDeclaration never lowers a tier or removes a domain', () => {
+  it('holds over every floor, declared tier and domain subset', () => {
+    for (const [floor, declaration] of everyCase()) assertNeverLowers(floor, declaration);
+  });
+
+  it('carries a previous derivation forward as a floor: tier never lower, domains a union', () => {
+    const carried = carryForward(
+      { tier: null, domains: ['infra'] },
+      { tier: 'high', domains: ['migration'] },
+    );
+    expect(carried).toEqual({ tier: 'high', domains: ['infra', 'migration'] });
+    expect(carryForward({ tier: 'high', domains: [] }, { tier: null, domains: [] }).tier).toBe(
+      'high',
+    );
+    expect(carryForward({ tier: null, domains: [] }, { tier: null, domains: [] }).tier).toBeNull();
+  });
+});
+
+describe('KN-17 the domain-to-grant map fails closed', () => {
+  it('covers every risk domain and nothing else', () => {
+    expect([...domainGrants.keys()].toSorted()).toEqual(riskDomainSchema.options.toSorted());
+    expect(domainGrants.size).toBe(riskDomainSchema.options.length);
+  });
+
+  it('treats a domain with no mapped resource as uncovered', () => {
+    const partial = new Map(domainGrants);
+    partial.delete('infra');
+    expect(resourcesFrom(partial, '80-89', ['acl', 'infra'])).toBeNull();
+    expect(resourcesFrom(partial, '80-89', ['acl'])).toEqual([
+      { kind: 'area', area: '80-89' },
+      { kind: 'org' },
+    ]);
   });
 });
