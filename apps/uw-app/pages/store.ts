@@ -13,6 +13,7 @@ import { advisoryLock, advisoryLocks } from '@uw/db/advisory-locks';
 import type { Database, Executor, Transaction } from '@uw/db/client';
 import { pages, pageVersions } from '@uw/db/schema';
 import { pgConstraint, pgErrorCode } from '@uw/db/errors';
+import { isGatedType } from './gating.ts';
 import { checkFrontmatter } from './validate.ts';
 
 export const owns = ['pages', 'page_versions'] as const;
@@ -39,6 +40,16 @@ const SLUG_PER_AREA = 'pages_slug_per_area';
 
 function refused(reason: ErrorReason): PageResult {
   return { ok: false, reason };
+}
+
+const activationRequired: PageRefusal = {
+  ok: false,
+  reason: 'not_permitted',
+  detail: { why: 'activation_required' },
+};
+
+function activates(type: string, from: PageStatus | null, to: PageStatus): boolean {
+  return to === 'active' && from !== 'active' && isGatedType(type);
 }
 
 function toPage(row: PageRow): Page {
@@ -131,9 +142,10 @@ export async function createPage(
   command: CreatePageCommand,
   traceId: string,
   at: Date,
-): Promise<PageResult> {
+): Promise<PageResult | PageRefusal> {
   const check = checkFrontmatter(command.type, command.frontmatter);
   if (!check.ok) return refused(check.reason);
+  if (activates(command.type, null, command.status)) return activationRequired;
   if (!can(actor, 'write', { kind: 'area', area: command.jdArea }, at)) {
     return refused('not_permitted');
   }
@@ -264,8 +276,8 @@ export async function updatePage(
   command: UpdatePageCommand,
   traceId: string,
   at: Date,
-): Promise<PageResult> {
-  const checked: CheckedSave = { command, statusFor: () => command.status };
-  const result = await saveChecked(db, { actor, checked, traceId, at });
-  return result.ok ? result : refused(result.reason);
+): Promise<PageResult | PageRefusal> {
+  const statusFor = (stored: Page): PageStatus | PageRefusal =>
+    activates(stored.type, stored.status, command.status) ? activationRequired : command.status;
+  return saveChecked(db, { actor, checked: { command, statusFor }, traceId, at });
 }

@@ -1,8 +1,9 @@
 import type { z } from 'zod';
-import type { Page, PageStatus, PageType, verbIo } from '@uw/contracts';
+import type { Page, PageStatus, verbIo } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
 import type { Kernel } from '@uw/harness';
+import { isGatedType } from './gating.ts';
 import { createPage, updateCheckedPage, type PageRefusal, type PageResult } from './store.ts';
 
 type AgentPage = z.infer<(typeof verbIo)['write_page']['input']>;
@@ -12,8 +13,6 @@ type AgentRequest = {
   readonly at: Date;
   readonly instructions: Pick<Kernel['reads'], 'namesInstructions'>;
 };
-
-const gatedPageTypes: ReadonlySet<PageType> = new Set<PageType>(['learning', 'skill', 'persona']);
 
 function refusedWith(reason: PageRefusal['reason'], detail: PageRefusal['detail']): PageRefusal {
   return { ok: false, reason, detail };
@@ -28,7 +27,7 @@ function statusFor(input: AgentPage, expectedVersion: number, instructions: bool
     ];
     if (moved.length > 0) return refusedWith('malformed_command', { fields: moved });
     if (instructions) return refusedWith('not_permitted', { why: 'stage_instructions' });
-    if (gatedPageTypes.has(stored.type) && stored.status !== 'suggested') {
+    if (isGatedType(stored.type) && stored.status !== 'suggested') {
       return refusedWith('not_permitted', { why: 'gated_page' });
     }
     return stored.status;
@@ -44,7 +43,7 @@ export async function writePageAsAgent(
   const { traceId, at } = request;
   const { expectedVersion, type, jdArea, ...editable } = input;
   if (expectedVersion === null) {
-    const status = gatedPageTypes.has(type) ? 'suggested' : 'draft';
+    const status = isGatedType(type) ? 'suggested' : 'draft';
     const command = { command: 'create_page' as const, requestId: crypto.randomUUID() };
     return createPage(db, actor, { ...command, ...editable, type, jdArea, status }, traceId, at);
   }

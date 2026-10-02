@@ -12,7 +12,7 @@ import type { Principal } from '@uw/core/principal';
 import type { AppEnv } from '../deps.ts';
 import { malformed, readJson, toOutcome, type CommandResult } from '../http/commands.ts';
 import { refuse, reply } from '../http/outcomes.ts';
-import { createPage, readPage, updatePage, type PageResult } from './store.ts';
+import { createPage, readPage, updatePage, type PageRefusal, type PageResult } from './store.ts';
 
 type Run = (
   db: Database,
@@ -22,8 +22,8 @@ type Run = (
   at: Date,
 ) => Promise<{ readonly requestId: string; readonly result: CommandResult } | null>;
 
-function summarise(result: PageResult): CommandResult {
-  return result.ok ? { ok: true } : result;
+function summarise(result: PageResult | PageRefusal): CommandResult {
+  return result.ok ? { ok: true } : { ok: false, reason: result.reason };
 }
 
 const handlers = new Map<string, Run>([

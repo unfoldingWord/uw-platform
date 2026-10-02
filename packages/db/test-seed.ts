@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { CapabilityWord, PageStatus, PageType, Role, Scope } from '@uw/contracts';
 import type { AnyExecutor } from './any-database.ts';
 import {
@@ -64,6 +64,13 @@ export async function rewritePageFrontmatter(
   frontmatter: Readonly<Record<string, unknown>>,
 ): Promise<void> {
   await db.update(pages).set({ frontmatter }).where(eq(pages.id, pageId));
+}
+
+export async function activateSeededPage(db: AnyExecutor, pageId: string): Promise<void> {
+  await db
+    .update(pages)
+    .set({ status: 'active', version: sql`${pages.version} + 1` })
+    .where(eq(pages.id, pageId));
 }
 
 const seededAt = new Date('2026-10-01T09:00:00.000Z');
