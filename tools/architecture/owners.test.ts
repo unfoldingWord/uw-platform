@@ -16,6 +16,7 @@ import { owns as queue } from '../../apps/uw-app/queue/watermarks.ts';
 import { owns as deliveries } from '../../apps/uw-ingest/deliveries/ledger.ts';
 import { tableEntries } from '../../packages/db/declarations.ts';
 import * as schema from '../../packages/db/schema.ts';
+import { repoFiles } from '../repo-files.ts';
 
 type Owner = { dir: string; tables: readonly string[] };
 type Entry = { exportName: string; table: string };
@@ -30,14 +31,21 @@ const owners: Owner[] = [
 
 const entries = tableEntries(schema);
 
+function isScannedSource(file: string): boolean {
+  return /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file) && !file.includes('node_modules');
+}
+
 function sourcesUnder(base: string, roots: string[]): string[] {
   return roots.flatMap((root) =>
     readdirSync(join(base, root), { recursive: true, encoding: 'utf8' })
-      .filter(
-        (file) =>
-          /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file) && !file.includes('node_modules'),
-      )
+      .filter(isScannedSource)
       .map((file) => join(root, file)),
+  );
+}
+
+function repoSourcesUnder(roots: readonly string[]): string[] {
+  return repoFiles().filter(
+    (file) => isScannedSource(file) && roots.some((root) => file.startsWith(`${root}/`)),
   );
 }
 
@@ -95,7 +103,7 @@ function scanRoots(base: string): string[] {
 }
 
 const repoRoot = join(import.meta.dirname, '..', '..');
-const sources = sourcesUnder(repoRoot, scanRoots(repoRoot));
+const sources = repoSourcesUnder(scanRoots(repoRoot));
 
 describe('AGENTS.md rule 3: every table has one writer', () => {
   it('has every schema table owned by exactly one module', () => {
