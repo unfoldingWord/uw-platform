@@ -78,6 +78,18 @@ const taskRefusals: [string, Partial<TaskRow>, string, string][] = [
     '23514',
     'tasks_created_by_is_identity',
   ],
+  [
+    'a creator whose device is not lowercase kebab-case',
+    { createdBy: 'agent:jesse/My_Laptop' },
+    '23514',
+    'tasks_created_by_is_identity',
+  ],
+  [
+    'a bare agent creator that is not lowercase',
+    { createdBy: 'agent:System' },
+    '23514',
+    'tasks_created_by_is_identity',
+  ],
   ['a blank title', { title: '   ' }, '23514', 'tasks_title_not_blank'],
   ['a page that does not exist', { page: idOf(0x9f) }, '23503', 'tasks_page_id_pages_id_fk'],
 ];
