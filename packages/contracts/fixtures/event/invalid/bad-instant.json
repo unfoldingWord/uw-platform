@@ -1,8 +1,16 @@
 {
-  "eventId": "3f1d7c1e-8c53-4a53-9d6e-0a9b6a0f4d11",
-  "harnessId": "3f1d7c1e-8c53-4a53-9d6e-0a9b6a0f4d11",
-  "name": "lease_expired",
+  "eventId": "00000000-0000-4000-8000-0000000000e1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "name": "item_claimed",
+  "position": 1,
   "at": "2026-09-30",
-  "actor": "agent:x",
-  "payload": {}
+  "actor": "agent:builder",
+  "evidence": {
+    "holder": "agent:builder",
+    "claimantKind": "agent",
+    "delegationId": null,
+    "leaseExpiresAt": "2026-10-01T09:15:00.000Z"
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1"
 }

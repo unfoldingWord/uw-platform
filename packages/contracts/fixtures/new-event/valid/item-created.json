@@ -1,0 +1,16 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000e1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "name": "item_created",
+  "at": "2026-10-01T09:00:00.000Z",
+  "actor": "agent:builder",
+  "evidence": {
+    "stage": "package",
+    "title": "Wire the board",
+    "pageId": null,
+    "priority": 0,
+    "due": null
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1"
+}
