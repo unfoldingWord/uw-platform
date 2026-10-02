@@ -15,7 +15,7 @@ import {
   uid,
 } from './store-gateway-fixtures.ts';
 
-export type SeededPage = PageFacts & { readonly slug: string };
+export type SeededPage = Omit<PageFacts, 'version'> & { readonly slug: string };
 
 export type GatewaySubject = {
   readonly store: Store;
@@ -334,7 +334,7 @@ function describeItemLock(subject: () => GatewaySubject): void {
 
 function factsOf(page: SeededPage): PageFacts {
   const { id, type, status, jdArea, title, bodyMd, frontmatter } = page;
-  return { id, type, status, jdArea, title, bodyMd, frontmatter };
+  return { id, type, status, jdArea, title, bodyMd, frontmatter, version: 1 };
 }
 
 function describePages(subject: () => GatewaySubject): void {
