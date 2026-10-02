@@ -1,5 +1,6 @@
+import { callerOf } from '../context.ts';
 import { refusal, rowFilteredHandler } from '../handler.ts';
-import { callerOf, harnessAreas } from './item-scene.ts';
+import { harnessAreas } from './item-scene.ts';
 
 export const pollQueue = rowFilteredHandler({
   name: 'poll_queue',

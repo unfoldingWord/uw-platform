@@ -1,28 +1,18 @@
-import { delegationIdOf } from '@uw/contracts';
 import type { AclResource } from '@uw/core/acl';
-import { unattendedWithoutDelegation, type Caller } from '@uw/harness';
-import type { VerbContext } from '../context.ts';
+import { unattendedWithoutDelegation } from '@uw/harness';
+import { callerOf, type VerbContext } from '../context.ts';
 import { refusal, type Found, type VerbRefusal } from '../handler.ts';
 
 type ItemInput = { readonly itemId: string };
-
-export function callerOf(context: VerbContext): Caller {
-  return { actor: context.principal, traceId: context.traceId };
-}
 
 export function hiddenItem(input: ItemInput): VerbRefusal {
   return refusal('item_not_found', { itemId: input.itemId });
 }
 
-async function delegationRefusal(context: VerbContext): Promise<VerbRefusal | null> {
+function delegationRefusal(context: VerbContext): VerbRefusal | null {
   const { principal } = context;
-  if (unattendedWithoutDelegation(principal)) {
-    return refusal('delegation_required', { actor: principal.identity });
-  }
-  const delegationId = delegationIdOf(principal.identity);
-  if (delegationId === null) return null;
-  const beat = await context.kernel.delegations.beat(callerOf(context), { delegationId });
-  return beat.status === 'accepted' ? null : refusal(beat.reason, beat.detail);
+  if (!unattendedWithoutDelegation(principal)) return null;
+  return refusal('delegation_required', { actor: principal.identity });
 }
 
 export async function itemArea(
@@ -31,7 +21,7 @@ export async function itemArea(
 ): Promise<Found<null> | VerbRefusal> {
   const scene = await context.kernel.reads.item(callerOf(context), { itemId: input.itemId });
   if (scene.status === 'error') {
-    return (await delegationRefusal(context)) ?? refusal(scene.reason, scene.detail);
+    return delegationRefusal(context) ?? refusal(scene.reason, scene.detail);
   }
   return { resource: { kind: 'area', area: scene.value.harness.jdArea }, found: null };
 }

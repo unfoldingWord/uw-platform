@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { jdAreaSchema, stageKeySchema } from '@uw/contracts';
 import type { AclResource } from '@uw/core/acl';
-import type { VerbContext } from '../mcp/context.ts';
+import { callerOf, type VerbContext } from '../mcp/context.ts';
 import { refusal, type VerbRefusal } from '../mcp/handler.ts';
-import { callerOf, harnessAreas } from '../mcp/verbs/item-scene.ts';
+import { harnessAreas } from '../mcp/verbs/item-scene.ts';
 import { openTasks } from '../tasks/store.ts';
 
 const STAGE_ITEM_LIMIT = 50;

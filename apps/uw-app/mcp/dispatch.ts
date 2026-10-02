@@ -1,10 +1,16 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
-import { findVerb, verbIo, type VerbDefinition, type VerbName } from '@uw/contracts';
+import {
+  delegationIdOf,
+  findVerb,
+  verbIo,
+  type VerbDefinition,
+  type VerbName,
+} from '@uw/contracts';
 import { actionForVerbRole, can, type AclResource } from '@uw/core/acl';
 import { errorFields } from '@uw/core/log';
 import { PortNotWiredError } from '@uw/harness';
-import type { VerbContext } from './context.ts';
+import { callerOf, type VerbContext } from './context.ts';
 import {
   isBuiltHandler,
   refusal,
@@ -131,6 +137,13 @@ function logCall(context: VerbContext, name: string, outcome: string): void {
   context.logger.info('verb call', { outcome, verb: name.slice(0, NAME_IN_LOG) });
 }
 
+async function delegationRefusal(context: VerbContext): Promise<VerbRefusal | null> {
+  const delegationId = delegationIdOf(context.principal.identity);
+  if (delegationId === null) return null;
+  const beat = await context.kernel.delegations.beat(callerOf(context), { delegationId });
+  return beat.status === 'accepted' ? null : refusal(beat.reason, beat.detail);
+}
+
 async function answerOf(
   context: VerbContext,
   definition: VerbDefinition,
@@ -143,6 +156,8 @@ async function answerOf(
     return refusal('internal_error');
   }
   try {
+    const lapsed = await delegationRefusal(context);
+    if (lapsed !== null) return lapsed;
     const parsed = parsedInput(definition.name, args);
     if (!parsed.ok) return parsed.refusal;
     return await replyOf(context, definition, handler, parsed.input);

@@ -1,6 +1,7 @@
+import { callerOf } from '../context.ts';
 import type { SubmitChange } from '@uw/harness';
 import { fromKernel, gatedHandler, type VerbInput } from '../handler.ts';
-import { callerOf, hiddenItem, itemArea } from './item-scene.ts';
+import { hiddenItem, itemArea } from './item-scene.ts';
 
 function changeOf(input: VerbInput<'submit_to_gate'>): SubmitChange | null {
   const { pullRequest, head } = input;

@@ -1,7 +1,7 @@
 import { contextPages } from '../../pages/context.ts';
-import type { VerbContext } from '../context.ts';
+import { callerOf, type VerbContext } from '../context.ts';
 import { gatedHandler, refusal, type Found, type VerbInput, type VerbRefusal } from '../handler.ts';
-import { callerOf, hiddenItem } from './item-scene.ts';
+import { hiddenItem } from './item-scene.ts';
 
 type ContextScope = Parameters<typeof contextPages>[2];
 

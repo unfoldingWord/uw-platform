@@ -1,7 +1,7 @@
 import type { CostBasis } from '@uw/contracts';
-import type { McpHost } from '../context.ts';
+import { callerOf, type McpHost } from '../context.ts';
 import { fromKernel, gatedHandler, refusal } from '../handler.ts';
-import { callerOf, hiddenItem, itemArea } from './item-scene.ts';
+import { hiddenItem, itemArea } from './item-scene.ts';
 
 const hostCostBasis = new Map<McpHost, CostBasis>([
   ['external', 'subscription'],

@@ -1,7 +1,7 @@
 import type { Principal } from '@uw/contracts';
 import type { Logger } from '@uw/core/log';
 import type { Database } from '@uw/db/client';
-import type { Kernel } from '@uw/harness';
+import type { Caller, Kernel } from '@uw/harness';
 
 export type McpHost = 'external' | 'workflow';
 
@@ -15,3 +15,7 @@ export type VerbContext = {
   readonly commit: string;
   readonly logger: Logger;
 };
+
+export function callerOf(context: VerbContext): Caller {
+  return { actor: context.principal, traceId: context.traceId };
+}

@@ -1,5 +1,6 @@
+import { callerOf } from '../context.ts';
 import { fromKernel, gatedHandler } from '../handler.ts';
-import { callerOf, hiddenItem, itemArea } from './item-scene.ts';
+import { hiddenItem, itemArea } from './item-scene.ts';
 
 export const claimItem = gatedHandler({
   name: 'claim_item',
