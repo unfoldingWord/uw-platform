@@ -95,6 +95,7 @@ export function itemOf(
     riskTier: null,
     riskDomains: [],
     pullRequest: null,
+    issue: null,
     zulipTopic: null,
     ...overrides,
   });

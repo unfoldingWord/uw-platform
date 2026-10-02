@@ -5,6 +5,7 @@ import { awaitBlocked, type LockWaiters } from './lock-wait.ts';
 import { describeDelegations } from './store-delegations.ts';
 import { describeEvents } from './store-events.ts';
 import { describeHarnessRepositories } from './store-harnesses.ts';
+import { describeItemIssues } from './store-items-issue.ts';
 import {
   at,
   harnessOf,
@@ -103,6 +104,7 @@ const everyField = {
   riskTier: 'high',
   riskDomains: ['acl', 'infra'],
   pullRequest: { repo: 'unfoldingWord/uw-platform', number: 7 },
+  issue: { repo: 'unfoldingWord/uw-platform', number: 8, githubId: 9100000101 },
   zulipTopic: 'harness 7',
 } as const;
 
@@ -434,6 +436,7 @@ export function describeStoreGateways(
     describeMissingStage(subject);
     describeInstructions(subject);
     describeProjection(subject);
+    describeItemIssues(subject);
     describeItemOrder(subject);
     describeClaims(subject);
     describeLeases(subject);

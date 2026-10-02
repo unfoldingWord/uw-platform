@@ -86,6 +86,9 @@ const expectedColumns: Record<string, string[]> = {
     'pr_number',
     'zulip_topic',
     'created_at',
+    'issue_repo',
+    'issue_number',
+    'issue_github_id',
   ],
   harness_runs: [
     'id',

@@ -137,6 +137,7 @@ async function openingFor(
     pageId: persona.page.id,
     priority: 0,
     due: null,
+    issue: null,
   };
   return { itemId, create };
 }

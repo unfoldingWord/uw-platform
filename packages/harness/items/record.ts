@@ -5,16 +5,19 @@ import {
   type EvidenceName,
   type HarnessEvent,
   type Identity,
+  type IssueRef,
   type ItemState,
   type NewHarnessEvent,
 } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
+import { sameRepository } from '../github/identifiers.ts';
 import type { Ids, Ports, StoreTransaction } from '../ports.ts';
 
 import { foldItem } from './fold.ts';
 
 type ItemTransaction = Pick<StoreTransaction, 'harnessItems' | 'harnessEvents'>;
 type EventTransaction = Pick<StoreTransaction, 'harnessEvents'>;
+type CreateTransaction = Pick<StoreTransaction, 'harnesses' | 'harnessItems' | 'harnessEvents'>;
 
 export type RecordContext = {
   readonly actor: Identity;
@@ -33,6 +36,7 @@ export type NewItem = {
   readonly pageId: string | null;
   readonly priority: number;
   readonly due: string | null;
+  readonly issue: IssueRef | null;
 };
 
 export type Recorded = {
@@ -103,11 +107,23 @@ export async function recordItemEvents(
   return { events, item: next };
 }
 
+async function assertIssueInHarnessRepository(
+  tx: CreateTransaction,
+  initial: NewItem,
+): Promise<void> {
+  if (initial.issue === null) return;
+  const harness = await tx.harnesses.read.byId(initial.harnessId);
+  if (!sameRepository(initial.issue.repo, harness?.repository ?? null)) {
+    throw new RecordError('the issue is not in the harness repository', initial.itemId);
+  }
+}
+
 export async function createItem(
-  tx: ItemTransaction,
+  tx: CreateTransaction,
   context: RecordContext,
   initial: NewItem,
 ): Promise<Recorded> {
+  await assertIssueInHarnessRepository(tx, initial);
   const event = stamp(
     context,
     initial.harnessId,
@@ -118,6 +134,7 @@ export async function createItem(
       pageId: initial.pageId,
       priority: initial.priority,
       due: initial.due,
+      issue: initial.issue,
     }),
   );
   const item = foldItem(null, event);

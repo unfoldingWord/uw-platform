@@ -52,6 +52,11 @@ export function toStage(row: typeof harnessStages.$inferSelect): Stage {
   });
 }
 
+function issueOf(row: typeof harnessItems.$inferSelect) {
+  if (row.issueRepo === null || row.issueNumber === null || row.issueGithubId === null) return null;
+  return { repo: row.issueRepo, number: row.issueNumber, githubId: row.issueGithubId };
+}
+
 export function toItemState(row: typeof harnessItems.$inferSelect, stageKey: string): ItemState {
   return itemStateSchema.parse({
     itemId: row.id,
@@ -75,6 +80,7 @@ export function toItemState(row: typeof harnessItems.$inferSelect, stageKey: str
       row.prRepo === null || row.prNumber === null
         ? null
         : { repo: row.prRepo, number: row.prNumber },
+    issue: issueOf(row),
     zulipTopic: row.zulipTopic,
   });
 }

@@ -68,6 +68,7 @@ async function withTwoItemEvents(context: RecordContext, tx: StoreTransaction): 
     pageId: null,
     priority: 0,
     due: null,
+    issue: null,
   });
   const recorded = await recordItemEvents(tx, context, itemId, [
     draft('item_claimed', {
