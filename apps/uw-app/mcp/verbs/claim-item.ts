@@ -10,11 +10,13 @@ export const claimItem = gatedHandler({
     const claimed = await context.kernel.items.claim(callerOf(context), {
       itemId: input.itemId,
       delegationId: input.delegationId,
+      adoptBranch: input.adoptBranch,
     });
     return fromKernel(claimed, (value) => ({
       itemId: value.item.itemId,
       leaseExpiresAt: value.leaseExpiresAt,
       leaseWarning: value.leaseWarning,
+      branch: value.branch,
     }));
   },
 });

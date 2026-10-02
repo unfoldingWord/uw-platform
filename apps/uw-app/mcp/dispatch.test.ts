@@ -7,7 +7,12 @@ import { createVerbServer } from './server.ts';
 import { verbHandlers } from './verbs/index.ts';
 
 const ITEM = '00000000-0000-4000-8000-000000000402';
-const lease = { itemId: ITEM, leaseExpiresAt: null, leaseWarning: false };
+const lease = {
+  itemId: ITEM,
+  leaseExpiresAt: null,
+  leaseWarning: false,
+  branch: { name: `harness/${ITEM}`, startFrom: null, adopted: false },
+};
 
 function claimRows(ran: string[]): ReadonlyMap<string, VerbHandler> {
   const handler = rowFilteredHandler({
