@@ -1,5 +1,5 @@
 import type { Harness, Stage } from '@uw/contracts';
-import { allowed } from '../access.ts';
+import { allowed, isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { connectorRegistered } from '../connectors/registry.ts';
 import { refused, type Refused } from '../outcome.ts';
@@ -8,9 +8,7 @@ import type { Ports, StoreTransaction } from '../ports.ts';
 import type { TemplateStage } from '../templates/types.ts';
 
 export function agentRefusal(caller: Caller): Refused | null {
-  return caller.actor.kind === 'agent'
-    ? refused('not_permitted', { actor: caller.actor.identity })
-    : null;
+  return isAgent(caller.actor) ? refused('not_permitted', { actor: caller.actor.identity }) : null;
 }
 
 export async function adminRefusal(
