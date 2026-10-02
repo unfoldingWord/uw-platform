@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import type { AnyDatabase, AnyExecutor } from '../any-database.ts';
 import { appliedMigrations } from '../migration-ledger.ts';
+import { insideOpenTransaction, outsideOpenTransaction } from './open-transactions.ts';
 
 export type DrizzleTransaction = { lock(key: string): Promise<void> };
 
@@ -35,7 +36,7 @@ async function inTransaction<T>(
   try {
     return await db.transaction(async (executor) => {
       try {
-        return await work(bind(executor));
+        return await insideOpenTransaction(db, () => work(bind(executor)));
       } catch (error) {
         thrown.failed = true;
         thrown.error = error;
@@ -49,7 +50,9 @@ async function inTransaction<T>(
 
 export function createDrizzleStore(db: AnyDatabase): DrizzleStore {
   return {
-    transaction: (work) => inTransaction(db, work),
-    appliedMigrations: () => appliedMigrations(db),
+    transaction: (work) =>
+      outsideOpenTransaction(db, 'store.transaction', () => inTransaction(db, work)),
+    appliedMigrations: () =>
+      outsideOpenTransaction(db, 'store.appliedMigrations', () => appliedMigrations(db)),
   };
 }

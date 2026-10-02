@@ -2,11 +2,22 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Store, StoreTransaction } from '../ports.ts';
 import { describeNotWired } from './not-wired-cases.ts';
 
+export type StoreShape = { readonly concurrentConnections: boolean };
+
 export type StoreSubject = {
   readonly store: Store;
   readonly expectedMigrations: readonly number[];
+  advisoryLocksHeld(tx: StoreTransaction): Promise<number>;
   close(): Promise<void>;
 };
+
+const refusalTimeout = 2_000;
+
+function outcomeOf(result: PromiseSettledResult<unknown>): string {
+  if (result.status === 'fulfilled') return 'resolved';
+  const reason: unknown = result.reason;
+  return reason instanceof Error ? reason.name : 'rejected';
+}
 
 async function takeTwice(tx: StoreTransaction): Promise<void> {
   await tx.lock('store-contract');
@@ -19,11 +30,13 @@ function pause(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-async function race(store: Store, firstWork: () => Promise<void>): Promise<string[]> {
+export async function race(store: Store, firstWork: () => Promise<void>): Promise<string[]> {
   const order: string[] = [];
   let signal: () => void = () => undefined;
-  const held = new Promise<void>((resolve) => {
+  let fail: (error: unknown) => void = () => undefined;
+  const held = new Promise<void>((resolve, reject) => {
     signal = resolve;
+    fail = reject;
   });
   const first = store
     .transaction(async (tx) => {
@@ -33,7 +46,10 @@ async function race(store: Store, firstWork: () => Promise<void>): Promise<strin
       await firstWork();
       order.push('first finished');
     })
-    .catch(() => order.push('first failed'));
+    .catch((error: unknown) => {
+      order.push('first failed');
+      fail(error);
+    });
   await held;
   const second = store.transaction(async (tx) => {
     await tx.lock('store-contract-race');
@@ -43,7 +59,7 @@ async function race(store: Store, firstWork: () => Promise<void>): Promise<strin
   return order;
 }
 
-function describeExclusion(subject: () => StoreSubject): void {
+function describeRace(subject: () => StoreSubject): void {
   it('holds a second transaction on a lock until the first commits', async () => {
     expect(await race(subject().store, async () => undefined)).toEqual([
       'first finished',
@@ -55,6 +71,40 @@ function describeExclusion(subject: () => StoreSubject): void {
     const order = await race(subject().store, () => Promise.reject(new Error('after the lock')));
     expect(order).toEqual(['first failed', 'second locked']);
   });
+}
+
+async function locksHeldAround(subject: StoreSubject): Promise<number[]> {
+  return subject.store.transaction(async (tx) => {
+    const before = await subject.advisoryLocksHeld(tx);
+    await tx.lock('store-contract-visible');
+    return [before, await subject.advisoryLocksHeld(tx)];
+  });
+}
+
+function describeExclusion(subject: () => StoreSubject, shape: StoreShape): void {
+  if (shape.concurrentConnections) describeRace(subject);
+
+  it('holds the advisory lock in the database while the transaction runs, and frees it at commit', async () => {
+    expect(await locksHeldAround(subject())).toEqual([0, 1]);
+    expect(await subject().store.transaction((tx) => subject().advisoryLocksHeld(tx))).toBe(0);
+  });
+
+  it(
+    'refuses a read outside the open transaction: the work must pass the transaction along',
+    async () => {
+      const store = subject().store;
+      const outcomes = await store.transaction(async () =>
+        (
+          await Promise.allSettled([store.appliedMigrations(), store.transaction(async () => 1)])
+        ).map(outcomeOf),
+      );
+      expect(outcomes).toEqual([
+        'CallOutsideOpenTransactionError',
+        'CallOutsideOpenTransactionError',
+      ]);
+    },
+    refusalTimeout,
+  );
 
   it('DX-3 does not nest transactions: the work gets only lock, so pass the transaction along', async () => {
     const members = await subject().store.transaction(async (tx) => Object.keys(tx));
@@ -62,7 +112,11 @@ function describeExclusion(subject: () => StoreSubject): void {
   });
 }
 
-export function describeStoreContract(adapter: string, open: () => Promise<StoreSubject>): void {
+export function describeStoreContract(
+  adapter: string,
+  open: () => Promise<StoreSubject>,
+  shape: StoreShape,
+): void {
   describe(`DX-3 store port contract on ${adapter}`, () => {
     let subject: StoreSubject;
     beforeAll(async () => {
@@ -88,7 +142,7 @@ export function describeStoreContract(adapter: string, open: () => Promise<Store
       await expect(subject.store.transaction(takeTwice)).resolves.toBeUndefined();
     });
 
-    describeExclusion(() => subject);
+    describeExclusion(() => subject, shape);
   });
 }
 

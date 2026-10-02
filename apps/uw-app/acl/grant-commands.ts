@@ -13,7 +13,7 @@ import type { Database, Executor, Transaction } from '@uw/db/client';
 import { grantAudit, roleGrants } from '@uw/db/schema';
 import type { CommandResult } from '../http/commands.ts';
 import { pgConstraint, pgErrorCode } from '@uw/db/errors';
-import { liveGrant, toGrant } from '@uw/db/store';
+import { liveGrant, resolveGrants } from '@uw/db/store';
 import { activatePerson, lockPerson } from '../people/directory.ts';
 
 export const owns = ['role_grants', 'grant_audit'] as const;
@@ -153,13 +153,7 @@ async function serialiseAclCommands(tx: Transaction): Promise<void> {
 
 async function withLiveGrants(tx: Transaction, actor: Principal, at: Date): Promise<Principal> {
   if (actor.personId === null) return { ...actor, grants: [] };
-  const rows = await tx
-    .select()
-    .from(roleGrants)
-    .where(and(eq(roleGrants.personId, actor.personId), liveGrant(at)))
-    .orderBy(asc(roleGrants.id))
-    .for('share');
-  return { ...actor, grants: rows.map(toGrant) };
+  return { ...actor, grants: await resolveGrants(tx, actor.personId, { at, lock: 'share' }) };
 }
 
 async function grantInTransaction(
