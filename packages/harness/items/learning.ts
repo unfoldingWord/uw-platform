@@ -1,5 +1,4 @@
-import type { ItemState, Principal } from '@uw/contracts';
-import { can } from '@uw/core/acl';
+import type { ItemState } from '@uw/contracts';
 import { allowed } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
@@ -17,7 +16,6 @@ const lineBreak = /[\r\n]/;
 
 type Standing = {
   readonly item: ItemState;
-  readonly actor: Principal;
 };
 
 async function standing(
@@ -35,7 +33,7 @@ async function standing(
   if (!allowed(actor, 'write', harness, at)) {
     return refused('not_permitted', { harnessId: harness.id });
   }
-  return { item, actor };
+  return { item };
 }
 
 function isRefusal(value: Refused | Standing): value is Refused {
@@ -52,9 +50,7 @@ export function attachLearning(
     const scene = await standing(ports, tx, caller, input.itemId, at);
     if (isRefusal(scene)) return scene;
     const [page] = await tx.pages.read.facts([input.pageId]);
-    const readable =
-      page !== undefined && can(scene.actor, 'read', { kind: 'area', area: page.jdArea }, at);
-    if (page === undefined || !readable) return refused('page_not_found', { pageId: input.pageId });
+    if (page === undefined) return refused('page_not_found', { pageId: input.pageId });
     const learning = page.type === 'learning' || page.type === 'skill';
     if (!learning || page.status !== 'suggested') {
       return refused('malformed_command', {
@@ -74,8 +70,9 @@ export function attachLearning(
 }
 
 function reasonRefusal(reason: string): Refused | null {
-  if (reason.trim().length === 0) return refused('reason_required');
-  if (lineBreak.test(reason) || reason.length > maxReason) return refused('reason_not_one_line');
+  const line = reason.trim();
+  if (line.length === 0) return refused('reason_required');
+  if (lineBreak.test(line) || line.length > maxReason) return refused('reason_not_one_line');
   return null;
 }
 

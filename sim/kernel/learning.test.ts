@@ -92,7 +92,7 @@ describe('KN-7 an agent cannot sign nothing learned', () => {
     expect(reasonOf(outcome)).toBe('not_permitted');
   });
 
-  sceneIt('KN-7 an unknown item is item_not_found', async (scene) => {
+  sceneIt('signing nothing learned on an unknown item is item_not_found', async (scene) => {
     const outcome = await scene.world.kernel.items.markNothingLearned(scene.editor, {
       itemId: scene.world.adapters.ids.next(),
       reason: 'Routine dependency bump',
@@ -102,6 +102,28 @@ describe('KN-7 an agent cannot sign nothing learned', () => {
 });
 
 describe('KN-7 the reason is one line', () => {
+  sceneIt('KN-7 a trailing newline is trimmed and accepted', async (scene) => {
+    const outcome = await scene.world.kernel.items.markNothingLearned(scene.editor, {
+      itemId: scene.itemId,
+      reason: 'Routine bump\n',
+    });
+    expect(reasonOf(outcome)).toBeNull();
+    const events = await scene.world.adapters.store.transaction((tx) =>
+      readAllEvents(tx, scene.harnessId, scene.itemId),
+    );
+    expect(events.find((event) => event.name === 'nothing_learned')?.evidence).toEqual({
+      reason: 'Routine bump',
+    });
+  });
+
+  sceneIt('KN-7 a reason that trims to 200 characters is accepted', async (scene) => {
+    const outcome = await scene.world.kernel.items.markNothingLearned(scene.editor, {
+      itemId: scene.itemId,
+      reason: `${'x'.repeat(200)}   `,
+    });
+    expect(reasonOf(outcome)).toBeNull();
+  });
+
   sceneIt('KN-7 a blank reason is reason_required', async (scene) => {
     const outcome = await scene.world.kernel.items.markNothingLearned(scene.editor, {
       itemId: scene.itemId,
@@ -125,7 +147,9 @@ describe('KN-7 the reason is one line', () => {
     });
     expect(reasonOf(outcome)).toBe('reason_not_one_line');
   });
+});
 
+describe('KN-7 who, when and why are recorded', () => {
   sceneIt('KN-7 a person signs it: the event carries who, when and why', async (scene) => {
     const outcome = await scene.world.kernel.items.markNothingLearned(scene.editor, {
       itemId: scene.itemId,
@@ -143,7 +167,20 @@ describe('KN-7 the reason is one line', () => {
 });
 
 describe('KN-7 attaching a learning', () => {
-  sceneIt('KN-7 an unknown page is page_not_found', async (scene) => {
+  sceneIt('KN-7 an agent may attach a suggested learning it drafted', async (scene) => {
+    const agent = simCaller(
+      scene.world,
+      simAgent(scene.owner, `${scene.owner.personId}/builder`, { interactive: true }),
+    );
+    const outcome = await scene.world.kernel.items.attachLearning(agent, {
+      itemId: scene.itemId,
+      pageId: learningId,
+    });
+    expect(reasonOf(outcome)).toBeNull();
+    expect(await eventNames(scene)).toContain('learning_attached');
+  });
+
+  sceneIt('attaching an unknown page is page_not_found', async (scene) => {
     const outcome = await scene.world.kernel.items.attachLearning(scene.editor, {
       itemId: scene.itemId,
       pageId: scene.world.adapters.ids.next(),
@@ -151,14 +188,16 @@ describe('KN-7 attaching a learning', () => {
     expect(reasonOf(outcome)).toBe('page_not_found');
   });
 
-  sceneIt('KN-7 a viewer is not_permitted', async (scene) => {
+  sceneIt('a viewer cannot attach a learning', async (scene) => {
     const outcome = await scene.world.kernel.items.attachLearning(await viewerOf(scene), {
       itemId: scene.itemId,
       pageId: learningId,
     });
     expect(reasonOf(outcome)).toBe('not_permitted');
   });
+});
 
+describe('KN-7 only suggested learnings attach', () => {
   sceneIt('KN-7 a page that is not a suggested learning or skill is refused', async (scene) => {
     const { attachLearning } = scene.world.kernel.items;
     const active = await attachLearning(scene.editor, { itemId: scene.itemId, pageId: activeId });
