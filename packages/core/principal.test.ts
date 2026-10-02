@@ -82,7 +82,7 @@ function deviceAgent(identity: string, personId: string | null) {
   return { identity, kind: 'agent', personId, email: null, grants: [], interactive: true };
 }
 
-describe("AB-2 a device identity is owned by its principal's person", () => {
+describe("a device identity is owned by its principal's person", () => {
   it.each([
     ['a device of another person', deviceAgent(`agent:${other}/laptop`, owner)],
     ['a device with no person', deviceAgent(`agent:${owner}/laptop`, null)],
