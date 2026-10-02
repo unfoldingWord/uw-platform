@@ -1,0 +1,34 @@
+{
+  "status": "ahead",
+  "ahead_by": 2,
+  "behind_by": 0,
+  "total_commits": 2,
+  "commits": [],
+  "files": [
+    {
+      "sha": "1111111111111111111111111111111111111111",
+      "filename": "apps/uw-app/board.tsx",
+      "status": "modified",
+      "additions": 4,
+      "deletions": 1,
+      "changes": 5
+    },
+    {
+      "sha": "2222222222222222222222222222222222222222",
+      "filename": "apps/uw-app/board/view.tsx",
+      "previous_filename": "apps/uw-app/view.tsx",
+      "status": "renamed",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0
+    },
+    {
+      "sha": "3333333333333333333333333333333333333333",
+      "filename": "apps/uw-app/view.tsx",
+      "status": "added",
+      "additions": 3,
+      "deletions": 0,
+      "changes": 3
+    }
+  ]
+}

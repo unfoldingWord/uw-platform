@@ -1,0 +1,34 @@
+{
+  "ref": "refs/heads/harness/b1000000-0000-4000-8000-000000000002",
+  "before": "c0ffee0000000000000000000000000000000000",
+  "after": "beef000000000000000000000000000000000000",
+  "forced": false,
+  "commits": [],
+  "head_commit": null,
+  "pusher": {
+    "name": "ianjl"
+  },
+  "repository": {
+    "id": 9100000001,
+    "node_id": "R_fixture",
+    "name": "uw-platform",
+    "full_name": "unfoldingWord/uw-platform",
+    "private": true,
+    "owner": {
+      "login": "unfoldingWord",
+      "id": 9100000901,
+      "type": "Organization"
+    },
+    "html_url": "https://github.com/unfoldingWord/uw-platform",
+    "default_branch": "main",
+    "visibility": "private"
+  },
+  "sender": {
+    "login": "ianjl",
+    "id": 9100000902,
+    "type": "User"
+  },
+  "installation": {
+    "id": 77
+  }
+}

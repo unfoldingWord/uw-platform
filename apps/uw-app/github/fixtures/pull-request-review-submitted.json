@@ -1,0 +1,100 @@
+{
+  "action": "submitted",
+  "review": {
+    "id": 9100000301,
+    "node_id": "PRR_fixture",
+    "user": {
+      "login": "uw-reviewer[bot]",
+      "id": 9100000903,
+      "type": "Bot"
+    },
+    "body": "```harness-review\nprovider: Anthropic\nmodel: claude\n```\nLooks good.",
+    "commit_id": "c0ffee0000000000000000000000000000000000",
+    "submitted_at": "2026-10-02T08:10:00Z",
+    "state": "approved",
+    "author_association": "NONE"
+  },
+  "pull_request": {
+    "id": 9100000201,
+    "node_id": "PR_fixture",
+    "number": 7,
+    "title": "Show the board",
+    "state": "open",
+    "draft": false,
+    "locked": false,
+    "user": {
+      "login": "ianjl",
+      "id": 9100000902,
+      "type": "User"
+    },
+    "body": "```harness\ncloses: #12\nrisks: the board renders slower on phones\ntouches: apps/uw-app/board\nrisk_tier: standard\nrisk_domains: none\n```\n\nAdds the board.",
+    "created_at": "2026-10-02T08:00:00Z",
+    "updated_at": "2026-10-02T08:10:00Z",
+    "merged_at": null,
+    "merged": false,
+    "milestone": null,
+    "head": {
+      "label": "unfoldingWord:harness/b1000000-0000-4000-8000-000000000002",
+      "ref": "harness/b1000000-0000-4000-8000-000000000002",
+      "sha": "c0ffee0000000000000000000000000000000000",
+      "repo": {
+        "id": 9100000001,
+        "node_id": "R_fixture",
+        "name": "uw-platform",
+        "full_name": "unfoldingWord/uw-platform",
+        "private": true,
+        "owner": {
+          "login": "unfoldingWord",
+          "id": 9100000901,
+          "type": "Organization"
+        },
+        "html_url": "https://github.com/unfoldingWord/uw-platform",
+        "default_branch": "main",
+        "visibility": "private"
+      }
+    },
+    "base": {
+      "label": "unfoldingWord:main",
+      "ref": "main",
+      "sha": "0000000000000000000000000000000000000000",
+      "repo": {
+        "id": 9100000001,
+        "node_id": "R_fixture",
+        "name": "uw-platform",
+        "full_name": "unfoldingWord/uw-platform",
+        "private": true,
+        "owner": {
+          "login": "unfoldingWord",
+          "id": 9100000901,
+          "type": "Organization"
+        },
+        "html_url": "https://github.com/unfoldingWord/uw-platform",
+        "default_branch": "main",
+        "visibility": "private"
+      }
+    }
+  },
+  "repository": {
+    "id": 9100000001,
+    "node_id": "R_fixture",
+    "name": "uw-platform",
+    "full_name": "unfoldingWord/uw-platform",
+    "private": true,
+    "owner": {
+      "login": "unfoldingWord",
+      "id": 9100000901,
+      "type": "Organization"
+    },
+    "html_url": "https://github.com/unfoldingWord/uw-platform",
+    "default_branch": "main",
+    "visibility": "private"
+  },
+  "sender": {
+    "login": "ianjl",
+    "id": 9100000902,
+    "type": "User"
+  },
+  "installation": {
+    "id": 77
+  }
+}

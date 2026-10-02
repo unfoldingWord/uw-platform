@@ -1,0 +1,47 @@
+{
+  "action": "completed",
+  "check_run": {
+    "id": 9100000401,
+    "head_sha": "c0ffee0000000000000000000000000000000000",
+    "external_id": "",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-10-02T08:01:00Z",
+    "completed_at": "2026-10-02T08:05:00Z",
+    "name": "test",
+    "app": {
+      "id": 15368,
+      "slug": "github-actions",
+      "name": "GitHub Actions"
+    },
+    "pull_requests": [
+      {
+        "number": 7,
+        "id": 9100000201
+      }
+    ]
+  },
+  "repository": {
+    "id": 9100000001,
+    "node_id": "R_fixture",
+    "name": "uw-platform",
+    "full_name": "unfoldingWord/uw-platform",
+    "private": true,
+    "owner": {
+      "login": "unfoldingWord",
+      "id": 9100000901,
+      "type": "Organization"
+    },
+    "html_url": "https://github.com/unfoldingWord/uw-platform",
+    "default_branch": "main",
+    "visibility": "private"
+  },
+  "sender": {
+    "login": "ianjl",
+    "id": 9100000902,
+    "type": "User"
+  },
+  "installation": {
+    "id": 77
+  }
+}
