@@ -6,6 +6,7 @@ import { remoteAccessKeys, type AccessConfig, type AccessIdentity } from './auth
 import { hyperdriveDatabase, type DatabaseHandle } from './database.ts';
 import type { Bindings } from './env.ts';
 import { systemClock } from './ports/clock.ts';
+import { systemTimers, type Timers } from './timers.ts';
 
 export type AppDeps = {
   readonly openDatabase: (env: Bindings) => DatabaseHandle | null;
@@ -13,6 +14,7 @@ export type AppDeps = {
   readonly newId: () => string;
   readonly sink: LogSink;
   readonly clock: Clock;
+  readonly timers: Timers;
 };
 
 export type AppEnv = {
@@ -34,4 +36,5 @@ export const platformDeps: AppDeps = {
   newId: () => crypto.randomUUID(),
   sink: (line) => console.log(line),
   clock: systemClock,
+  timers: systemTimers,
 };

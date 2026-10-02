@@ -7,6 +7,7 @@ import { createApp } from '../app.tsx';
 import { DATABASE_TIMEOUT_MS } from './indicators.ts';
 import { postgresWatermarks } from '../queue/watermarks.ts';
 import { recordingDeps } from '../testing/deps.ts';
+import type { Timers } from '../timers.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 
 const enqueuedAt = new Date('2026-10-01T12:00:00.000Z');
@@ -51,7 +52,17 @@ function portOf(server: Server): number {
   return typeof address === 'object' && address ? address.port : 0;
 }
 
-async function stalledReport(): Promise<{ elapsed: number; indicators: HealthIndicator[] }> {
+function firedTimers() {
+  const calls: number[] = [];
+  const timers: Timers = {
+    after: async (ms) => {
+      calls.push(ms);
+    },
+  };
+  return { calls, timers };
+}
+
+async function stalledReport(timers: Timers): Promise<HealthIndicator[]> {
   const server = await listenSilently();
   const db = createClient(`postgres://u@127.0.0.1:${portOf(server)}/d`);
   const handle = {
@@ -61,18 +72,14 @@ async function stalledReport(): Promise<{ elapsed: number; indicators: HealthInd
   };
   const { deps } = recordingDeps();
   const env = { INGEST_DLQ: { send: async () => undefined } };
-  const started = Date.now();
   try {
-    const response = await createApp({ ...deps, openDatabase: () => handle }).request(
+    const response = await createApp({ ...deps, timers, openDatabase: () => handle }).request(
       '/health',
       {},
       env,
     );
     expect(response.status).toBe(200);
-    return {
-      elapsed: Date.now() - started,
-      indicators: healthReportSchema.parse(await response.json()).indicators,
-    };
+    return healthReportSchema.parse(await response.json()).indicators;
   } finally {
     await db.$client.end({ timeout: 0 });
     server.close();
@@ -80,9 +87,10 @@ async function stalledReport(): Promise<{ elapsed: number; indicators: HealthInd
 }
 
 describe('FD-11 a database that accepts connections and never answers', () => {
-  it('answers 200 within the timeout with the database and queue red', async () => {
-    const { elapsed, indicators } = await stalledReport();
-    expect(elapsed).toBeLessThan(DATABASE_TIMEOUT_MS + 1000);
+  it('answers 200 once the timeout fires, with the database and queue red', async () => {
+    const { calls, timers } = firedTimers();
+    const indicators = await stalledReport(timers);
+    expect(calls).toEqual([DATABASE_TIMEOUT_MS, DATABASE_TIMEOUT_MS]);
     expect(named(indicators, 'database').status).toBe('red');
     expect(named(indicators, 'queue')).toMatchObject({
       status: 'red',

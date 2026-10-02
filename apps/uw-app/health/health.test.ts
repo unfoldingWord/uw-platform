@@ -4,6 +4,7 @@ import { healthReportSchema, type HealthIndicator } from '@uw/contracts';
 import { createApp } from '../app.tsx';
 import type { DatabaseHandle } from '../database.ts';
 import { recordingDeps } from '../testing/deps.ts';
+import { systemTimers, type Timers } from '../timers.ts';
 import { DATABASE_TIMEOUT_MS, overallStatus } from './indicators.ts';
 
 const commit = '0123456789abcdef0123456789abcdef01234567';
@@ -16,9 +17,13 @@ function handleWithPing(ping: () => Promise<void>): DatabaseHandle {
   };
 }
 
-async function getHealth(openDatabase: () => DatabaseHandle | null, headers: HeadersInit = {}) {
+async function getHealth(
+  openDatabase: () => DatabaseHandle | null,
+  headers: HeadersInit = {},
+  timers: Timers = systemTimers,
+) {
   const { deps } = recordingDeps();
-  return createApp({ ...deps, openDatabase }).request(
+  return createApp({ ...deps, openDatabase, timers }).request(
     '/health',
     { headers },
     { COMMIT_SHA: commit },
@@ -65,12 +70,17 @@ describe('FD-11 and FD-12 the health report', () => {
     expect(report.status).toBe('red');
   });
 
-  it('turns the database red within the timeout when it never answers', async () => {
-    const started = Date.now();
-    const response = await getHealth(() => handleWithPing(neverPing));
-    expect(Date.now() - started).toBeLessThan(DATABASE_TIMEOUT_MS + 1000);
+  it('turns the database red once the timeout fires when it never answers', async () => {
+    const calls: number[] = [];
+    const timers: Timers = {
+      after: async (ms) => {
+        calls.push(ms);
+      },
+    };
+    const response = await getHealth(() => handleWithPing(neverPing), {}, timers);
     const report = healthReportSchema.parse(await response.json());
     expect(statusOf(report.indicators, 'database')).toBe('red');
+    expect(calls).toEqual([DATABASE_TIMEOUT_MS]);
   });
 
   it('renders a screen when html is accepted', async () => {

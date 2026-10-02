@@ -5,6 +5,7 @@ import type { DatabaseHandle } from '../database.ts';
 import { commitOf, type Bindings } from '../env.ts';
 import { INGEST_QUEUE_KEY } from '../queue/consumer.ts';
 import { readWatermark, type Watermark } from '../queue/watermarks.ts';
+import type { Timers } from '../timers.ts';
 
 const DATABASE_AMBER_MS = 500;
 export const DATABASE_TIMEOUT_MS = 2000;
@@ -18,27 +19,30 @@ function commitIndicator(commit: string): HealthIndicator {
   return { name: 'commit', status: 'ok', detail: commit };
 }
 
-async function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_resolve, reject) => {
-    timer = setTimeout(() => reject(new Error('timeout')), ms);
+async function withTimeout<T>(work: Promise<T>, timers: Timers): Promise<T> {
+  const cancel = new AbortController();
+  const timeout = timers.after(DATABASE_TIMEOUT_MS, cancel.signal).then((): never => {
+    throw new Error('timeout');
   });
   try {
     return await Promise.race([work, timeout]);
   } finally {
-    if (timer !== undefined) clearTimeout(timer);
+    cancel.abort();
   }
 }
 
+type Probe = { readonly clock: () => number; readonly timers: Timers };
+
 async function databaseIndicator(
   handle: Pick<DatabaseHandle, 'ping'> | null,
-  clock: () => number,
+  probe: Probe,
 ): Promise<HealthIndicator> {
+  const { clock, timers } = probe;
   if (!handle)
     return { name: 'database', status: 'not_configured', detail: 'no Hyperdrive binding' };
   const started = clock();
   try {
-    await withTimeout(handle.ping(), DATABASE_TIMEOUT_MS);
+    await withTimeout(handle.ping(), timers);
   } catch {
     return { name: 'database', status: 'red', detail: 'unreachable' };
   }
@@ -86,14 +90,14 @@ function progressIndicator(progress: QueueProgress, nowMs: number): HealthIndica
 async function queueIndicator(
   env: Bindings,
   handle: DatabaseHandle | null,
-  clock: () => number,
+  probe: Probe,
 ): Promise<HealthIndicator> {
   if (!env.INGEST_DLQ || !handle) {
     return { name: 'queue', status: 'not_configured', detail: 'no queue binding' };
   }
   try {
-    const progress = await withTimeout(queueProgress(handle.db), DATABASE_TIMEOUT_MS);
-    return progressIndicator(progress, clock());
+    const progress = await withTimeout(queueProgress(handle.db), probe.timers);
+    return progressIndicator(progress, probe.clock());
   } catch {
     return { name: 'queue', status: 'red', detail: 'queue progress unreadable' };
   }
@@ -108,12 +112,12 @@ export function overallStatus(indicators: readonly HealthIndicator[]): OverallSt
 export async function healthReport(
   env: Bindings,
   handle: DatabaseHandle | null,
-  clock: () => number,
+  probe: Probe,
 ): Promise<HealthReport> {
   const commit = commitOf(env);
   const [database, queue] = await Promise.all([
-    databaseIndicator(handle, clock),
-    queueIndicator(env, handle, clock),
+    databaseIndicator(handle, probe),
+    queueIndicator(env, handle, probe),
   ]);
   const indicators = [commitIndicator(commit), database, queue];
   return { status: overallStatus(indicators), commit, indicators };

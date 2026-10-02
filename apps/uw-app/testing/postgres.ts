@@ -3,6 +3,7 @@ import { testServer, withMigratedDatabase } from '@uw/db/test-database';
 import type { Clock } from '@uw/harness';
 import type { AppDeps } from '../deps.ts';
 import { systemClock } from '../ports/clock.ts';
+import { systemTimers } from '../timers.ts';
 import type { AccessFixture } from './access-keys.ts';
 
 export { testServer };
@@ -30,5 +31,6 @@ export function postgresDeps(
     newId: () => crypto.randomUUID(),
     sink,
     clock,
+    timers: systemTimers,
   };
 }
