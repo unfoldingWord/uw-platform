@@ -47,6 +47,7 @@ export async function enqueue(
       pageId: input.pageId,
       priority: input.priority,
       due: input.due,
+      issue: null,
     });
     return accepted(recorded.item);
   });

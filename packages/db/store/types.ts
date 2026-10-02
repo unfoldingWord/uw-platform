@@ -55,6 +55,7 @@ export type HarnessStagesGateway = {
 export type HarnessItemsGateway = {
   readonly read: {
     byId(itemId: string): Promise<ItemState | null>;
+    byIssue(githubId: number): Promise<ItemState | null>;
     lock(itemId: string): Promise<ItemState | null>;
     forHarness(harnessId: string): Promise<readonly ItemState[]>;
     heldInStage(harnessId: string, stageKey: string, at: Date): Promise<number>;

@@ -1,8 +1,14 @@
-import { principalSchema, systemIdentity, type Grant, type Principal } from '@uw/contracts';
+import {
+  ingestIdentity,
+  principalSchema,
+  systemIdentity,
+  type Grant,
+  type Principal,
+} from '@uw/contracts';
 
 export type { Grant, Principal };
 
-export const INGEST_IDENTITY = 'agent:ingest';
+export const INGEST_IDENTITY = ingestIdentity;
 
 const leadingCharacter = /^[a-z0-9]/;
 

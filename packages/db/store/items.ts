@@ -1,5 +1,5 @@
 import { and, asc, eq, isNotNull, isNull, lte, or, count, gt, type SQL, sql } from 'drizzle-orm';
-import type { ItemState } from '@uw/contracts';
+import type { IssueRef, ItemState } from '@uw/contracts';
 import type { AnyExecutor } from '../any-database.ts';
 import { harnessItems, harnessStages } from '../schema.ts';
 import { refusing } from './refusal.ts';
@@ -8,6 +8,11 @@ import type { HarnessItemsGateway, ItemClaim } from './types.ts';
 
 const stageOf = (harnessId: string, stageKey: string) =>
   sql`(SELECT id FROM harness_stages WHERE harness_id = ${harnessId} AND key = ${stageKey})`;
+
+function issueColumnsOf(issue: IssueRef | null) {
+  if (issue === null) return { issueRepo: null, issueNumber: null, issueGithubId: null };
+  return { issueRepo: issue.repo, issueNumber: issue.number, issueGithubId: issue.githubId };
+}
 
 function columnsOf(item: ItemState) {
   return {
@@ -28,6 +33,7 @@ function columnsOf(item: ItemState) {
     branchState: item.branchState,
     prRepo: item.pullRequest?.repo ?? null,
     prNumber: item.pullRequest?.number ?? null,
+    ...issueColumnsOf(item.issue),
     zulipTopic: item.zulipTopic,
   };
 }
@@ -94,6 +100,10 @@ function bindReads(executor: AnyExecutor): HarnessItemsGateway['read'] {
   return {
     byId: async (itemId) => {
       const rows = await selectItems(executor).where(eq(harnessItems.id, itemId));
+      return rows[0] ? toItemState(rows[0].item, rows[0].stageKey) : null;
+    },
+    byIssue: async (githubId) => {
+      const rows = await selectItems(executor).where(eq(harnessItems.issueGithubId, githubId));
       return rows[0] ? toItemState(rows[0].item, rows[0].stageKey) : null;
     },
     lock: async (itemId) => {

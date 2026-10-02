@@ -80,6 +80,7 @@ export const modules = [
       'system_goal',
       'product_strategy',
       'data_sources',
+      'issue',
     ],
     mcp_tools: [
       'search_pages',

@@ -7,7 +7,7 @@ import {
   type NewHarnessEvent,
 } from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
-import type { HarnessEventsGateway, HarnessItemsGateway } from '../ports.ts';
+import type { HarnessEventsGateway, HarnessItemsGateway, HarnessesGateway } from '../ports.ts';
 import { replay } from './fold.ts';
 import {
   createItem,
@@ -37,6 +37,7 @@ const initial: NewItem = {
   pageId: null,
   priority: 0,
   due: null,
+  issue: null,
 };
 
 type Recording = {
@@ -44,6 +45,7 @@ type Recording = {
   readonly rows: Map<string, ItemState>;
   readonly appended: HarnessEvent[];
   readonly tx: {
+    readonly harnesses: HarnessesGateway;
     readonly harnessItems: HarnessItemsGateway;
     readonly harnessEvents: HarnessEventsGateway;
   };
@@ -57,6 +59,7 @@ function itemsGateway(log: string[], rows: Map<string, ItemState>): HarnessItems
   return {
     read: {
       byId: unused,
+      byIssue: unused,
       lock: async (id) => {
         log.push('lock');
         return rows.get(id) ?? null;
@@ -105,11 +108,20 @@ function eventsGateway(log: string[], appended: HarnessEvent[]): HarnessEventsGa
   };
 }
 
+const harnessesGateway: HarnessesGateway = {
+  read: { byId: unused, byKey: unused, byRepository: unused, list: unused },
+  write: { insert: unused },
+};
+
 function recording(): Recording {
   const log: string[] = [];
   const rows = new Map<string, ItemState>();
   const appended: HarnessEvent[] = [];
-  const tx = { harnessItems: itemsGateway(log, rows), harnessEvents: eventsGateway(log, appended) };
+  const tx = {
+    harnesses: harnessesGateway,
+    harnessItems: itemsGateway(log, rows),
+    harnessEvents: eventsGateway(log, appended),
+  };
   return { log, rows, appended, tx };
 }
 

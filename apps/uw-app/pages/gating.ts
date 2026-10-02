@@ -10,6 +10,7 @@ const gatingByType = {
   system_goal: 'open',
   product_strategy: 'open',
   data_sources: 'open',
+  issue: 'open',
 } as const satisfies Record<PageType, Gating>;
 
 const gating: ReadonlyMap<string, Gating> = new Map(Object.entries(gatingByType));

@@ -73,6 +73,7 @@ const item = itemStateSchema.parse({
   riskTier: null,
   riskDomains: [],
   pullRequest: null,
+  issue: null,
   zulipTopic: null,
 });
 

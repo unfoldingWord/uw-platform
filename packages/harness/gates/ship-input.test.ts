@@ -36,6 +36,7 @@ const item: ItemState = {
   riskTier: 'standard',
   riskDomains: [],
   pullRequest: ref,
+  issue: null,
   zulipTopic: null,
 };
 

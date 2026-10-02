@@ -49,6 +49,7 @@ function created(event: FoldableEvent): ItemState {
     riskTier: null,
     riskDomains: [],
     pullRequest: null,
+    issue: evidence.issue,
     zulipTopic: null,
   };
 }

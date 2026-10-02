@@ -64,6 +64,7 @@ async function recordSequence(
       pageId: created.pageId,
       priority: created.priority,
       due: created.due,
+      issue: created.issue,
     }),
   );
   for (let index = 0; index < rest.length; index += batch) {
