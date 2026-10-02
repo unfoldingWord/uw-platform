@@ -1,5 +1,6 @@
 import type { HarnessEvent, Principal } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
+import { revokeSeededGrant, seedGrant } from '@uw/db/test-seed';
 import { readAllEvents, software, type Caller, type KernelOutcome } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createSimHarness, simAgent, simCaller, simPerson } from '../fixtures.ts';
@@ -220,22 +221,30 @@ describe('KN-16 renewal supersedes the old delegation', () => {
 });
 
 describe('KN-16 a beat checks the delegation and lapses it once', () => {
-  sceneIt('lapses an expired delegation once, whoever beats again', async (scene) => {
-    const delegation = value(
-      await grantAs(scene, scene.kim, 'agent:iterate', new Date(nowOf(scene).getTime() + hour)),
-    );
-    const beat = () =>
-      scene.world.kernel.delegations.beat(agentOf(scene, scene.kim), {
-        delegationId: delegation.id,
-      });
-    expect(reasonOf(await beat())).toBeNull();
-    scene.world.adapters.clock.advance(2 * hour);
-    const first = await beat();
-    const second = await beat();
-    expect([reasonOf(first), lapseWhy(first)]).toEqual(['delegation_lapsed', 'expired']);
-    expect([reasonOf(second), lapseWhy(second)]).toEqual(['delegation_lapsed', 'expired']);
-    expect(await logOf(scene, 'delegation_lapsed')).toHaveLength(1);
-  });
+  sceneIt(
+    'lapses an expired delegation once, even when a second agent of the person beats again',
+    async (scene) => {
+      const delegation = value(
+        await grantAs(scene, scene.kim, 'agent:iterate', new Date(nowOf(scene).getTime() + hour)),
+      );
+      const beat = (second = false) =>
+        scene.world.kernel.delegations.beat(
+          agentOf(
+            scene,
+            scene.kim,
+            second ? `kim/laptop as iterate via delegation:${delegation.id}` : 'iterate',
+          ),
+          { delegationId: delegation.id },
+        );
+      expect(reasonOf(await beat())).toBeNull();
+      scene.world.adapters.clock.advance(2 * hour);
+      const first = await beat();
+      const second = await beat(true);
+      expect([reasonOf(first), lapseWhy(first)]).toEqual(['delegation_lapsed', 'expired']);
+      expect([reasonOf(second), lapseWhy(second)]).toEqual(['delegation_lapsed', 'expired']);
+      expect(await logOf(scene, 'delegation_lapsed')).toHaveLength(1);
+    },
+  );
 });
 
 describe('KN-16 a beat binds the delegation to its person and capability', () => {
@@ -315,4 +324,81 @@ describe('KN-16 live delegations are queryable', () => {
       expect(await live({})).toEqual([iterate.id, builder.id]);
     },
   );
+});
+
+describe('KN-16 renewal races and dead rows', () => {
+  sceneIt('refuses a second renewal of a row another renewal already revoked', async (scene) => {
+    const old = value(await grantAs(scene, scene.kim));
+    const renew = () =>
+      scene.world.kernel.delegations.grant(simCaller(scene.world, scene.kim), {
+        harnessId: scene.harnessId,
+        persona: 'agent:iterate',
+        capability: 'iterate',
+        expiresAt: null,
+        supersedes: old.id,
+      });
+    value(await renew());
+    expect(reasonOf(await renew())).toBe('stale_version');
+    expect(await logOf(scene, 'delegation_granted')).toHaveLength(2);
+    expect(await logOf(scene, 'delegation_revoked')).toHaveLength(1);
+  });
+
+  sceneIt(
+    'renews an expired or lapsed row without stamping or recording a revoke',
+    async (scene) => {
+      const expiring = value(
+        await grantAs(scene, scene.kim, 'agent:iterate', new Date(nowOf(scene).getTime() + hour)),
+      );
+      scene.world.adapters.clock.advance(2 * hour);
+      const renewal = value(
+        await scene.world.kernel.delegations.grant(simCaller(scene.world, scene.kim), {
+          harnessId: scene.harnessId,
+          persona: 'agent:iterate',
+          capability: 'iterate',
+          expiresAt: null,
+          supersedes: expiring.id,
+        }),
+      );
+      expect(renewal.supersedes).toBe(expiring.id);
+      expect((await rowOf(scene, expiring.id))?.revokedAt).toBeNull();
+      expect(await logOf(scene, 'delegation_revoked')).toEqual([]);
+    },
+  );
+});
+
+describe('KN-16 a lapse is final and live respects read access', () => {
+  sceneIt('stays lapsed when the admin grant comes back, with no second event', async (scene) => {
+    const delegation = value(await grantAs(scene, scene.kim));
+    const adminGrant = scene.kim.grants[0];
+    if (adminGrant === undefined) throw new Error('kim has no grant');
+    await revokeSeededGrant(scene.world.database.db, adminGrant.grantId, nowOf(scene));
+    const beat = () =>
+      scene.world.kernel.delegations.beat(agentOf(scene, scene.kim), {
+        delegationId: delegation.id,
+      });
+    expect(lapseWhy(await beat())).toBe('grant_lost');
+    await seedGrant(scene.world.database.db, {
+      id: '00000000-0000-4000-8000-0000000d0f01',
+      personId: scene.kim.personId ?? '',
+      role: 'admin',
+      scopeKind: 'jd_area',
+      scopeArea: '80-89',
+      grantedAt: nowOf(scene),
+      expiresAt: null,
+    });
+    const again = await beat();
+    expect([reasonOf(again), lapseWhy(again)]).toEqual(['delegation_lapsed', 'grant_lost']);
+    expect(await logOf(scene, 'delegation_lapsed')).toHaveLength(1);
+  });
+
+  sceneIt('lists nothing to a caller who cannot read the harness', async (scene) => {
+    value(await grantAs(scene, scene.kim));
+    const nobody = await simPerson(scene.world, 7, []);
+    const none = await scene.world.kernel.delegations.live(simCaller(scene.world, nobody), {
+      personId: null,
+      persona: null,
+      harnessId: null,
+    });
+    expect(value(none)).toEqual([]);
+  });
 });
