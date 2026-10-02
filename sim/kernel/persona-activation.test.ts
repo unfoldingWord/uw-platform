@@ -256,7 +256,7 @@ describe('persona activation hides a page from a person who cannot read its area
   );
 });
 
-describe('AB-8 activation acts on the page version the person read', () => {
+describe('persona activation acts on the page version the person read', () => {
   it('refuses a version that is no longer the stored one stale_version, with no event or item', async () => {
     const stale: Activate = (scene) => activatePersona(scene.world, scene.ian, pageId, 2);
     const seen = await inScene(requiring(['summarise_measurements']), stale);

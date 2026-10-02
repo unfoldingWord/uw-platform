@@ -54,25 +54,22 @@ function contextOf(kernel: Kernel, principal: Principal): VerbContext {
   };
 }
 
-describe.skipIf(!testServer)(
-  'AB-3 a verb call judges the kernel read at the request instant',
-  () => {
-    it('answers get_health for a grant live at the request even when the kernel clock has passed it', async () => {
-      const database = await createMigratedDatabase(testServer ?? '');
-      const db = createClient(database.connectionString);
-      try {
-        const kernel = kernelOn(db, { now: () => kernelNow });
-        const ian = await personOn(db, IAN_ID, 'ian.lindsley@unfoldingword.org', requestAt);
-        const harnessId = crypto.randomUUID();
-        const activate = { harnessId, harnessKey: 'software', jdArea: '80-89', template: software };
-        expect((await kernel.stages.activate(caller(ian), activate)).status).toBe('accepted');
-        const context = contextOf(kernel, laptopUntil(expiresAt));
-        const result = await callVerb(context, 'get_health', { harnessId }, verbHandlers);
-        expect(result.isError).toBeUndefined();
-      } finally {
-        await db.$client.end();
-        await database.drop();
-      }
-    });
-  },
-);
+describe.skipIf(!testServer)('a verb call judges the kernel read at the request instant', () => {
+  it('answers get_health for a grant live at the request even when the kernel clock has passed it', async () => {
+    const database = await createMigratedDatabase(testServer ?? '');
+    const db = createClient(database.connectionString);
+    try {
+      const kernel = kernelOn(db, { now: () => kernelNow });
+      const ian = await personOn(db, IAN_ID, 'ian.lindsley@unfoldingword.org', requestAt);
+      const harnessId = crypto.randomUUID();
+      const activate = { harnessId, harnessKey: 'software', jdArea: '80-89', template: software };
+      expect((await kernel.stages.activate(caller(ian), activate)).status).toBe('accepted');
+      const context = contextOf(kernel, laptopUntil(expiresAt));
+      const result = await callVerb(context, 'get_health', { harnessId }, verbHandlers);
+      expect(result.isError).toBeUndefined();
+    } finally {
+      await db.$client.end();
+      await database.drop();
+    }
+  });
+});
