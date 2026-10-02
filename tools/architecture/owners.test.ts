@@ -49,8 +49,8 @@ const PORT_CONTRACTS = 'packages/harness/port-contracts/';
 
 function isScannedSource(file: string): boolean {
   return (
-    /\.tsx?$/.test(file) &&
-    !/\.test\.tsx?$/.test(file) &&
+    /\.(?:tsx?|m?js)$/.test(file) &&
+    !/\.test\.(?:tsx?|m?js)$/.test(file) &&
     !file.includes('node_modules') &&
     !file.includes(PORT_CONTRACTS)
   );
@@ -71,10 +71,15 @@ function repoSourcesUnder(roots: readonly string[]): string[] {
 }
 
 function writes(source: string, entry: Entry): boolean {
+  const name = entry.exportName;
   return [
-    new RegExp(`\\.(insert|update|delete)\\(\\s*(?:\\w+\\.)?${entry.exportName}\\b`),
-    new RegExp(`\\b(INSERT INTO|UPDATE|DELETE FROM)\\s+"?${entry.table}"?\\b`, 'i'),
-    new RegExp(`\\b${entry.exportName}\\.write\\b`),
+    new RegExp(`\\.(insert|update|delete)\\(\\s*(?:\\w+\\.)?${name}\\b`),
+    new RegExp(`\\b(INSERT INTO|UPDATE|DELETE FROM)\\s+(?:"?\\w+"?\\.)?"?${entry.table}"?\\b`, 'i'),
+    new RegExp(`\\b${name}\\s*\\.\\s*write\\b`),
+    new RegExp(`\\b${name}\\s*\\[\\s*['"\`]write['"\`]\\s*\\]`),
+    new RegExp(`\\[\\s*['"\`]${name}['"\`]\\s*\\]`),
+    new RegExp(`=\\s*(?:\\w+\\.)?${name}\\s*[;,)\\n]`),
+    new RegExp(`\\{[^{}]*\\b${name}\\b[^{}]*\\}\\s*=(?!>)`),
   ].some((pattern) => pattern.test(source));
 }
 
@@ -226,8 +231,48 @@ function plantedGateway(): string {
   return base;
 }
 
+function plantedEvasions(): string {
+  const base = mkdtempSync(join(tmpdir(), 'uw-owners-'));
+  mkdirSync(join(base, 'packages/harness/items'), { recursive: true });
+  mkdirSync(join(base, 'packages/harness/stages'), { recursive: true });
+  const planted: Record<string, string> = {
+    'items/aliased.ts': 'const g = tx.harnessStages;\nawait g.write.insert(row);',
+    'items/destructured.ts':
+      'const { harnessStages } = tx;\nawait harnessStages.write.insert(row);',
+    'items/bracketed.ts': "await tx['harnessStages'].write.insert(row);",
+    'items/spaced.ts': 'await tx.harnessStages\n  .write.insert(row);',
+    'items/plain.js': 'await tx.harnessStages.write.insert(row);',
+    'items/module.mjs': 'await tx.harnessStages.write.insert(row);',
+    'items/qualified.ts': 'sql`UPDATE public.harness_stages SET title = 1`;',
+    'items/reads.ts': 'await tx.harnessStages.read.forHarness(id);',
+    'stages/owner.ts': 'const g = tx.harnessStages;\nawait g.write.insert(row);',
+  };
+  for (const [file, source] of Object.entries(planted)) {
+    writeFileSync(join(base, 'packages/harness', file), source);
+  }
+  return base;
+}
+
 describe('AGENTS.md rule 3: a gateway write is a write', () => {
   const stages_: Entry = { exportName: 'harnessStages', table: 'harness_stages' };
+
+  it('catches an aliased, destructured, bracketed or qualified write and a .js or .mjs file', () => {
+    const base = plantedEvasions();
+    const found = writersOutsideOwner(base, sourcesUnder(base, ['packages/harness']), stages_, [
+      { dir: 'packages/harness/stages/', tables: ['harness_stages'] },
+    ]);
+    expect(found.sort()).toEqual(
+      [
+        'aliased.ts',
+        'bracketed.ts',
+        'destructured.ts',
+        'module.mjs',
+        'plain.js',
+        'qualified.ts',
+        'spaced.ts',
+      ].map((file) => `packages/harness/items/${file}`),
+    );
+  });
 
   it('reports a gateway write outside the owner and not inside it', () => {
     const base = plantedGateway();
