@@ -79,10 +79,11 @@ describe('loop exits', () => {
     });
   });
 
-  it('marks only a loop to the lowest position as the occasional tweak', () => {
-    expect(isOccasionalTweak(stages, { kind: 'loop', from: fed, to: first })).toBe(true);
-    expect(isOccasionalTweak(stages, { kind: 'loop', from: fed, to: second })).toBe(false);
-    expect(isOccasionalTweak(stages, { kind: 'forward', from: first, to: second })).toBe(false);
+  it('marks only a loop into a product_package stage as the occasional tweak', () => {
+    const product = { ...first, bracket: 'product_package' } as const;
+    expect(isOccasionalTweak({ kind: 'loop', from: fed, to: product })).toBe(true);
+    expect(isOccasionalTweak({ kind: 'loop', from: fed, to: first })).toBe(false);
+    expect(isOccasionalTweak({ kind: 'forward', from: first, to: product })).toBe(false);
   });
 
   it('flags only an unattended loop without a delegation id', () => {

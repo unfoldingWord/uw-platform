@@ -118,7 +118,9 @@ describe('KN-8 a transition to a stage that is neither next nor fed is refused',
     );
     expect(namesOf(await eventsOf(scene, itemId))).toEqual(before);
   });
+});
 
+describe('KN-8 a feeds edge re-enters an earlier stage', () => {
   sceneIt('takes a feeds edge and records loop_edge_taken on the same item', async (scene) => {
     await feed(scene, 'plan', ['scope']);
     const itemId = await enqueueAt(scene, 'plan');
@@ -226,8 +228,31 @@ describe('KN-8 the occasional tweak to the first stage parks for a person', () =
     expect(names.slice(-2)).toEqual(['submitted_to_gate', 'checks_passed']);
     expect(names).not.toContain('loop_edge_taken');
   });
+});
 
-  sceneIt('does not park a loop to a later-positioned stage that is not first', async (scene) => {
+describe('KN-8 the occasional tweak follows the bracket, not the position', () => {
+  sceneIt('still parks after the stages are reordered so Package is not first', async (scene) => {
+    await feed(scene, 'plan', ['package', 'scope']);
+    value(
+      await scene.world.kernel.stages.reorderStages(scene.admin, {
+        harnessId: scene.harnessId,
+        order: ['scope', 'package', 'plan', 'build', 'check', 'ship', 'validate', 'close'],
+      }),
+    );
+    const itemId = await enqueueAt(scene, 'plan');
+    value(await scene.world.kernel.items.claim(scene.builder, { itemId, delegationId: null }));
+    const parked = value(await submitTo(scene, scene.builder, itemId, 'package'));
+    expect(parked.item).toMatchObject({ stageKey: 'plan', gateTarget: 'package' });
+    const next = await enqueueAt(scene, 'plan');
+    value(
+      await scene.world.kernel.items.claim(scene.builder, { itemId: next, delegationId: null }),
+    );
+    const looped = value(await submitTo(scene, scene.builder, next, 'scope'));
+    expect(looped.result).toBe('advanced');
+    expect(looped.item).toMatchObject({ stageKey: 'scope', gateTarget: null });
+  });
+
+  sceneIt('does not park a loop into a stage that is not product_package', async (scene) => {
     await feed(scene, 'build', ['plan']);
     const itemId = await enqueueAt(scene, 'build');
     value(await scene.world.kernel.items.claim(scene.builder, { itemId, delegationId: null }));
@@ -235,4 +260,48 @@ describe('KN-8 the occasional tweak to the first stage parks for a person', () =
     expect(looped.result).toBe('advanced');
     expect(looped.item.gateTarget).toBeNull();
   });
+});
+
+describe('KN-8 the occasional tweak is held by checks and by who may traverse it', () => {
+  sceneIt('fails the checks and does not park when a validator fails', async (scene) => {
+    await feed(scene, 'plan', ['package']);
+    await setStage(scene, 'plan', { validators: ['learning_attached'] });
+    const itemId = await enqueueAt(scene, 'plan');
+    value(await scene.world.kernel.items.claim(scene.builder, { itemId, delegationId: null }));
+    const failed = value(await submitTo(scene, scene.builder, itemId, 'package'));
+    expect(failed.result).toBe('checks_failed');
+    expect(failed.item).toMatchObject({ stageKey: 'plan', gateTarget: null });
+    expect(namesOf(await eventsOf(scene, itemId)).slice(-2)).toEqual([
+      'submitted_to_gate',
+      'checks_failed',
+    ]);
+  });
+
+  sceneIt('parks a loop out of a human_approval stage with its target', async (scene) => {
+    await feed(scene, 'ship', ['package']);
+    const itemId = await enqueueAt(scene, 'ship');
+    value(await scene.world.kernel.items.claim(scene.editor, { itemId, delegationId: null }));
+    const parked = value(await submitTo(scene, scene.editor, itemId, 'package'));
+    expect(parked.result).toBe('parked');
+    expect(parked.item).toMatchObject({ stageKey: 'ship', gateTarget: 'package' });
+  });
+
+  sceneIt(
+    'refuses an unattended agent attempting the tweak without a delegation',
+    async (scene) => {
+      await feed(scene, 'plan', ['package']);
+      const itemId = await enqueueAt(scene, 'plan');
+      const runner = `${scene.max.personId}/runner`;
+      const bare = simCaller(scene.world, simAgent(scene.max, runner, { interactive: false }));
+      await project(scene, itemId, (item) => ({
+        ...item,
+        holder: bare.actor.identity,
+        claimantKind: 'agent',
+        delegationId: null,
+        leaseExpiresAt: new Date(scene.world.adapters.clock.now().getTime() + 60_000).toISOString(),
+      }));
+      expect(reasonOf(await submitTo(scene, bare, itemId, 'package'))).toBe('delegation_required');
+      expect((await stateOf(scene, itemId))?.gateTarget).toBeNull();
+    },
+  );
 });
