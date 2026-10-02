@@ -1,4 +1,4 @@
-import { systemIdentity, type Harness, type Principal } from '@uw/contracts';
+import { deviceOwnerSegment, systemIdentity, type Harness, type Principal } from '@uw/contracts';
 import { can, type AclAction } from '@uw/core/acl';
 
 export function allowed(
@@ -12,6 +12,11 @@ export function allowed(
 
 export function isAgent(actor: Principal): boolean {
   return actor.kind === 'agent' || !actor.identity.startsWith('human:');
+}
+
+export function ownerBound(actor: Principal): boolean {
+  const owner = deviceOwnerSegment(actor.identity);
+  return owner === null || owner === actor.personId;
 }
 
 export function bareAgent(identity: string): boolean {

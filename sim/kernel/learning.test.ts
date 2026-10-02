@@ -3,7 +3,7 @@ import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { seedPage } from '@uw/db/test-seed';
 import { readAllEvents, software, type Caller, type KernelOutcome } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, simAgent, simCaller, simPerson } from '../fixtures.ts';
+import { createSimHarness, simAgent, simCaller, simIan, simPerson } from '../fixtures.ts';
 import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -167,37 +167,67 @@ describe('KN-7 who, when and why are recorded', () => {
   });
 });
 
-describe('KN-7 attaching a learning', () => {
-  sceneIt('KN-7 an agent may attach a suggested learning it drafted', async (scene) => {
-    const agent = simCaller(
-      scene.world,
-      simAgent(scene.owner, `${scene.owner.personId}/builder`, { interactive: true }),
-    );
-    const outcome = await scene.world.kernel.items.attachLearning(agent, {
-      itemId: scene.itemId,
-      pageId: learningId,
-      delegationId: null,
-    });
-    expect(reasonOf(outcome)).toBeNull();
-    expect(await eventNames(scene)).toContain('learning_attached');
+function deviceOf(scene: Scene): Caller {
+  const device = `${scene.owner.personId ?? ''}/builder`;
+  return simCaller(scene.world, simAgent(scene.owner, device, { interactive: true }));
+}
+
+async function claimedByDevice(scene: Scene): Promise<Caller> {
+  await scene.world.kernel.stages.updateStage(simCaller(scene.world, await simIan(scene.world)), {
+    harnessId: scene.harnessId,
+    stageKey: 'package',
+    change: { agentPickup: 'allowed' },
+  });
+  const agent = deviceOf(scene);
+  const claimed = await scene.world.kernel.items.claim(agent, {
+    itemId: scene.itemId,
+    delegationId: null,
+  });
+  if (claimed.status !== 'accepted') throw new Error(`claim refused: ${claimed.reason}`);
+  return agent;
+}
+
+function attach(scene: Scene, caller: Caller, pageId = learningId) {
+  return scene.world.kernel.items.attachLearning(caller, {
+    itemId: scene.itemId,
+    pageId,
+    delegationId: null,
+  });
+}
+
+async function attachedBy(scene: Scene): Promise<readonly string[]> {
+  const events = await scene.world.adapters.store.transaction((tx) =>
+    readAllEvents(tx, scene.harnessId, scene.itemId),
+  );
+  return events.filter((event) => event.name === 'learning_attached').map((event) => event.actor);
+}
+
+describe("KN-7 attaching a learning is the holder's act, or a person's with write", () => {
+  sceneIt('KN-7 an agent that does not hold the item is not_holder', async (scene) => {
+    expect(reasonOf(await attach(scene, deviceOf(scene)))).toBe('not_holder');
+    expect(await attachedBy(scene)).toEqual([]);
+  });
+
+  sceneIt('KN-7 the agent holding the item attaches and the event names it', async (scene) => {
+    const agent = await claimedByDevice(scene);
+    expect(reasonOf(await attach(scene, agent))).toBeNull();
+    expect(await attachedBy(scene)).toEqual([agent.actor.identity]);
+  });
+
+  sceneIt('KN-7 an editor who does not hold the item attaches', async (scene) => {
+    await claimedByDevice(scene);
+    expect(reasonOf(await attach(scene, scene.editor))).toBeNull();
+    expect(await attachedBy(scene)).toEqual([scene.owner.identity]);
+  });
+
+  sceneIt('KN-7 a viewer is not_permitted', async (scene) => {
+    expect(reasonOf(await attach(scene, await viewerOf(scene)))).toBe('not_permitted');
+    expect(await attachedBy(scene)).toEqual([]);
   });
 
   sceneIt('attaching an unknown page is page_not_found', async (scene) => {
-    const outcome = await scene.world.kernel.items.attachLearning(scene.editor, {
-      itemId: scene.itemId,
-      pageId: scene.world.adapters.ids.next(),
-      delegationId: null,
-    });
+    const outcome = await attach(scene, scene.editor, scene.world.adapters.ids.next());
     expect(reasonOf(outcome)).toBe('page_not_found');
-  });
-
-  sceneIt('a viewer cannot attach a learning', async (scene) => {
-    const outcome = await scene.world.kernel.items.attachLearning(await viewerOf(scene), {
-      itemId: scene.itemId,
-      pageId: learningId,
-      delegationId: null,
-    });
-    expect(reasonOf(outcome)).toBe('not_permitted');
   });
 });
 

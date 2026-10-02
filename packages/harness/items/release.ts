@@ -1,5 +1,5 @@
 import type { Harness, ItemState, Principal } from '@uw/contracts';
-import { allowed, bareAgent, isAgent } from '../access.ts';
+import { allowed, bareAgent, isAgent, ownerBound } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { actingPrincipal, isRefusal } from '../delegations/acting.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
@@ -17,6 +17,7 @@ export async function holdsClaim(
   actor: Principal,
   input: ReleaseInput,
 ): Promise<boolean> {
+  if (!ownerBound(actor)) return false;
   if (item.holder === null || item.holder !== actor.identity) return false;
   if (!bareAgent(item.holder)) return true;
   if (input.delegationId === null || input.delegationId !== item.delegationId) return false;
