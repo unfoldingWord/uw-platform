@@ -56,7 +56,7 @@ function nothingLearned(actor: string): HarnessEvent {
 }
 
 function page(id: string, type: PageType, status: PageStatus, bodyMd: string): PageFacts {
-  return { id, type, status, jdArea: '11', title: id, bodyMd, frontmatter: {} };
+  return { id, type, status, jdArea: '11', title: id, bodyMd, frontmatter: {}, version: 1 };
 }
 
 function contextOf(

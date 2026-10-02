@@ -28,6 +28,7 @@ export type PageFacts = {
   readonly title: string;
   readonly bodyMd: string;
   readonly frontmatter: Readonly<Record<string, unknown>>;
+  readonly version: number;
 };
 export type StagePosition = { readonly id: string; readonly position: number };
 

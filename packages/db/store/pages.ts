@@ -18,6 +18,7 @@ export function bindPages(executor: AnyExecutor): PagesGateway {
             title: pages.title,
             bodyMd: pages.bodyMd,
             frontmatter: pages.frontmatter,
+            version: pages.version,
           })
           .from(pages)
           .where(inArray(pages.id, [...pageIds]))
