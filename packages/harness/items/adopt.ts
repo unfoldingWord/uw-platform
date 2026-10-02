@@ -1,5 +1,6 @@
 import type { Harness, ItemState } from '@uw/contracts';
 import { factsFailure } from '../gates/facts-failure.ts';
+import { isStale, staleRefusal } from '../gates/facts-fresh.ts';
 import { branchFor, fullSha, sameRepository } from '../github/identifiers.ts';
 import { refused, type Refused } from '../outcome.ts';
 import type { Ports, PullRequestFacts, PullRequestRef } from '../ports.ts';
@@ -37,12 +38,26 @@ export async function readBranchTip(ports: TipPorts, itemId: string): Promise<Br
   }
 }
 
-function tipOf(item: ItemState, harness: Harness, facts: PullRequestFacts | null): string | null {
-  const ref = item.pullRequest;
-  if (facts === null || ref === null || !sameRepository(ref.repo, harness.repository)) return null;
+const notAdoptable = refused('not_permitted', { adoptBranch: true, why: 'branch_not_adoptable' });
+
+function tipOf(item: ItemState, ref: PullRequestRef, facts: PullRequestFacts): string | null {
   if (!sameRepository(facts.ref.repo, ref.repo) || facts.ref.number !== ref.number) return null;
-  if (facts.headRef !== branchFor(item.itemId)) return null;
+  if (facts.state !== 'open' || facts.headRef !== branchFor(item.itemId)) return null;
   return fullSha(facts.head);
+}
+
+function adoptedTip(
+  item: ItemState,
+  harness: Harness,
+  tip: BranchTip,
+  at: Date,
+): Adoption | Refused {
+  if ('refusal' in tip) return tip.refusal;
+  const ref = item.pullRequest;
+  if (ref === null || !sameRepository(ref.repo, harness.repository)) return notAdoptable;
+  if (tip.facts === null || isStale(tip.facts, at)) return staleRefusal(tip.facts);
+  const head = tipOf(item, ref, tip.facts);
+  return head === null ? notAdoptable : { head };
 }
 
 function abandonedBy(item: ItemState, at: Date): boolean {
@@ -60,12 +75,7 @@ export function adoptionOf(
   if (!abandonedBy(item, at)) {
     return refused('malformed_command', { adoptBranch: true, why: 'no_abandoned_branch' });
   }
-  if ('refusal' in tip) return tip.refusal;
-  const head = tipOf(item, harness, tip.facts);
-  if (head === null) {
-    return refused('not_permitted', { adoptBranch: true, why: 'branch_not_adoptable' });
-  }
-  return { head };
+  return adoptedTip(item, harness, tip, at);
 }
 
 export function claimedBranch(item: ItemState, adoption: Adoption): ClaimedBranch {
