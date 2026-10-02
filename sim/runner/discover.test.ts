@@ -24,6 +24,7 @@ afterAll(() => {
 });
 
 const expectedScenarios = [
+  ['AB-4.poll-returns-what-the-caller-may-claim', 'AB-4'],
   ['DX-1.kernel-over-test-adapters', 'DX-1'],
   ['DX-2.store-is-embedded-postgres', 'DX-2'],
   ['KN-10.activation-refuses-a-bypass', 'KN-10'],
