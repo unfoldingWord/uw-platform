@@ -1,4 +1,12 @@
-import type { Harness, HarnessEvent, IssueRef, ItemState, JdArea, Principal } from '@uw/contracts';
+import {
+  eventEvidenceSchemas,
+  type Harness,
+  type HarnessEvent,
+  type IssueRef,
+  type ItemState,
+  type JdArea,
+  type Principal,
+} from '@uw/contracts';
 import { allowed, isAgent, isIngestPrincipal, isSystemPrincipal } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { sameRepository } from '../github/identifiers.ts';
@@ -56,11 +64,11 @@ export async function importIssue(
     await tx.lock(lockKeys.githubIssue(issue.githubId));
     const harness = await tx.harnesses.read.byId(harnessId);
     if (harness === null) return refused('harness_not_found', { harnessId });
-    if (!sameRepository(issue.repo, harness.repository)) {
-      return refused('not_permitted', { harnessId, why: 'repository_mismatch' });
-    }
     if (!(await mayWrite(ports, tx, caller.actor, harness, at))) {
       return refused('not_permitted', { harnessId });
+    }
+    if (!sameRepository(issue.repo, harness.repository)) {
+      return refused('not_permitted', { harnessId, why: 'repository_mismatch' });
     }
     const existing = await tx.harnessItems.read.byIssue(issue.githubId);
     if (existing !== null && existing.harnessId !== harness.id) {
@@ -93,6 +101,13 @@ function removedBefore(events: readonly HarnessEvent[], label: string): boolean 
   });
 }
 
+function malformedField(input: LabelRemovedInput): string | null {
+  const { shape } = eventEvidenceSchemas.label_removed;
+  if (!shape.label.safeParse(input.label).success) return 'label';
+  if (!shape.githubUpdatedAt.safeParse(input.githubUpdatedAt).success) return 'githubUpdatedAt';
+  return null;
+}
+
 export async function labelRemoved(
   ports: ImportPorts,
   caller: Caller,
@@ -100,6 +115,8 @@ export async function labelRemoved(
 ): Promise<KernelOutcome<LabelRemoved>> {
   const { githubId, label, githubUpdatedAt } = input;
   if (!isImportPrincipal(caller.actor)) return refused('not_permitted', { githubId });
+  const field = malformedField(input);
+  if (field !== null) return refused('malformed_command', { githubId, field });
   const at = ports.clock.now();
   return ports.store.transaction(async (tx) => {
     await tx.lock(lockKeys.githubIssue(githubId));

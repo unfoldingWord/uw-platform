@@ -78,30 +78,30 @@ const ingestNamed = new Set([
 
 const ingestRoots = ['apps/uw-ingest/', 'apps/uw-app/github/', 'apps/uw-app/cron/', 'sim/'];
 
-const ingestMentions = [
-  /\bingestPrincipal\s*\(/,
-  /\bingestIdentity\b/,
-  /\bINGEST_IDENTITY\b/,
+const ingestConstructors = [/\bingestPrincipal\s*\(/, /\bingestIdentity\b/, /\bINGEST_IDENTITY\b/];
+
+const ingestLiterals = [
   /['"`]agent:ingest['"`]/,
   /agent:\$\{\s*['"`]ingest['"`]\s*\}/,
   /['"`]agent:['"`]\s*\+\s*['"`]ingest['"`]/,
 ];
 
-function ingestAllowed(file: string): boolean {
-  return (
-    ingestNamed.has(file) ||
-    ingestRoots.some((root) => file.startsWith(root)) ||
-    /\.test\.tsx?$/.test(file)
-  );
+function definingOrTest(file: string): boolean {
+  return ingestNamed.has(file) || /\.test\.tsx?$/.test(file);
+}
+
+function ingestMinter(file: string, source: string): boolean {
+  if (definingOrTest(file)) return false;
+  if (ingestLiterals.some((pattern) => pattern.test(source))) return true;
+  if (ingestRoots.some((root) => file.startsWith(root))) return false;
+  return ingestConstructors.some((pattern) => pattern.test(source));
 }
 
 function ingestMinters(files: readonly string[], read: (file: string) => string): string[] {
-  return files
-    .filter((file) => isSource(file) && !ingestAllowed(file))
-    .filter((file) => ingestMentions.some((pattern) => pattern.test(read(file))));
+  return files.filter((file) => isSource(file) && ingestMinter(file, read(file)));
 }
 
-describe('GH-3 only the ingest edge, the GitHub module, the cron and the sim construct the ingest principal', () => {
+describe('only the ingest edge, the GitHub module, the cron and the sim construct the ingest principal', () => {
   it('finds no other file that names it', () => {
     expect(ingestMinters(repoFiles(), (file) => readFileSync(file, 'utf8'))).toEqual([]);
   });
@@ -113,6 +113,10 @@ describe('GH-3 only the ingest edge, the GitHub module, the cron and the sim con
     ['apps/uw-app/queue/x.ts', 'const id = `agent:${"ingest"}`;'],
     ['packages/db/y.ts', "const id = 'agent:' + 'ingest';"],
     ['apps/uw-app/routes/z.ts', 'principalSchema.parse({ identity: ingestIdentity })'],
+    ['apps/uw-app/github/import.ts', "const editor = 'agent:ingest';"],
+    ['apps/uw-app/cron/sweep.ts', 'const id = `agent:${"ingest"}`;'],
+    ['sim/world.ts', "const id = 'agent:' + 'ingest';"],
+    ['apps/uw-ingest/receive.ts', 'const id = "agent:ingest";'],
   ])('flags %s', (file, source) => {
     expect(ingestMinters([file], () => source)).toEqual([file]);
   });
