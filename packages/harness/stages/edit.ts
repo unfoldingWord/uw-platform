@@ -1,6 +1,7 @@
-import type { Harness, Stage } from '@uw/contracts';
+import type { Harness, HarnessEvent, Stage } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
-import { recordContext, recordHarnessEvents, draft } from '../items/record.ts';
+import { recordContext, recordHarnessEvents, draft, type EventDraft } from '../items/record.ts';
+import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import { storeRefusalOf } from '../port-errors.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
@@ -53,6 +54,55 @@ async function recordRefusal(
   );
 }
 
+type Columns = HarnessEvent['evidence'];
+
+function columnsOf(stage: Stage): Columns {
+  return {
+    key: stage.key,
+    title: stage.title,
+    position: stage.position,
+    bracket: stage.bracket,
+    agentPickup: stage.agentPickup,
+    exitGate: stage.exitGate,
+    connector: stage.connector,
+    wipLimit: stage.wipLimit,
+    instructionsPageId: stage.instructionsPageId,
+    validators: [...stage.validators],
+    feeds: [...stage.feeds],
+    paused: stage.paused,
+  };
+}
+
+function changedColumns(before: Stage, after: Stage): { before: Columns; after: Columns } {
+  const was = new Map(Object.entries(columnsOf(before)));
+  const changed = Object.entries(columnsOf(after)).filter(
+    ([column, value]) => JSON.stringify(was.get(column)) !== JSON.stringify(value),
+  );
+  return {
+    before: Object.fromEntries(changed.map(([column]) => [column, was.get(column) ?? null])),
+    after: Object.fromEntries(changed),
+  };
+}
+
+function editDraft(previous: Stage | undefined, next: Stage): EventDraft | null {
+  if (previous === undefined) {
+    return draft('stage_edited', {
+      stageId: next.id,
+      key: next.key,
+      before: null,
+      after: columnsOf(next),
+    });
+  }
+  const changed = changedColumns(previous, next);
+  if (Object.keys(changed.after).length === 0) return null;
+  return draft('stage_edited', { stageId: next.id, key: next.key, ...changed });
+}
+
+function editDrafts(before: readonly Stage[], after: readonly Stage[]): readonly EventDraft[] {
+  const previous = new Map(before.map((stage) => [stage.id, stage]));
+  return after.flatMap((stage) => editDraft(previous.get(stage.id), stage) ?? []);
+}
+
 export async function editInTransaction<T>(
   ports: StagePorts,
   caller: Caller,
@@ -63,13 +113,20 @@ export async function editInTransaction<T>(
   let planned: string | null = null;
   try {
     return await ports.store.transaction(async (tx) => {
+      await tx.lock(lockKeys.harnessStages(harnessId));
       const harness = await authorize(ports, tx, caller, harnessId, at);
       if ('status' in harness) return harness;
-      const plan = work(harness, await tx.harnessStages.read.forHarness(harness.id));
+      const current = await tx.harnessStages.read.forHarness(harness.id);
+      const plan = work(harness, current);
       if ('status' in plan) return plan;
       planned = plan.stageKey;
       const problem = stageProblems(plan.resulting);
-      if (problem === null) return accepted(await plan.apply(tx));
+      if (problem === null) {
+        const value = await plan.apply(tx);
+        const context = recordContext(ports, caller, at);
+        await recordHarnessEvents(tx, context, harness.id, editDrafts(current, plan.resulting));
+        return accepted(value);
+      }
       await recordRefusal(
         ports,
         tx,
