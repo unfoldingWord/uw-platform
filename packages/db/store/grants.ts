@@ -41,6 +41,7 @@ export async function resolveGrants(
 
 export type DrizzleGrants = {
   resolve(personId: string, at: Date): Promise<readonly Grant[]>;
+  resolveIn(tx: DrizzleTransaction, personId: string, at: Date): Promise<readonly Grant[]>;
   lockAndReread(tx: DrizzleTransaction, personId: string, at: Date): Promise<readonly Grant[]>;
 };
 
@@ -48,6 +49,7 @@ export function createDrizzleGrants(db: AnyDatabase): DrizzleGrants {
   return {
     resolve: (personId, at) =>
       outsideOpenTransaction(db, 'grants.resolve', () => resolveGrants(db, personId, { at })),
+    resolveIn: (tx, personId, at) => resolveGrants(executorOf(tx), personId, { at }),
     lockAndReread: (tx, personId, at) =>
       resolveGrants(executorOf(tx), personId, { at, lock: 'share' }),
   };

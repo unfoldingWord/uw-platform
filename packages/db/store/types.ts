@@ -1,4 +1,5 @@
 import type {
+  CapabilityWord,
   Harness,
   HarnessEvent,
   Identity,
@@ -72,11 +73,41 @@ export type HarnessEventsGateway = {
   readonly write: { append(events: readonly NewHarnessEvent[]): Promise<readonly HarnessEvent[]> };
 };
 
+export type Delegation = {
+  readonly id: string;
+  readonly personId: string;
+  readonly persona: Identity;
+  readonly harnessId: string;
+  readonly capability: CapabilityWord;
+  readonly grantedAt: Date;
+  readonly expiresAt: Date;
+  readonly revokedAt: Date | null;
+  readonly lapsedAt: Date | null;
+  readonly supersedes: string | null;
+};
+export type DelegationFilter = {
+  readonly personId: string | null;
+  readonly persona: string | null;
+  readonly harnessId: string | null;
+};
+export type DelegationsGateway = {
+  readonly read: {
+    byId(delegationId: string): Promise<Delegation | null>;
+    live(filter: DelegationFilter, at: Date): Promise<readonly Delegation[]>;
+  };
+  readonly write: {
+    insert(delegation: Delegation, traceId: string): Promise<void>;
+    revoke(delegationId: string, at: Date): Promise<boolean>;
+    markLapsed(delegationId: string, at: Date): Promise<boolean>;
+  };
+};
+
 export type DrizzleTransaction = {
   lock(key: string): Promise<void>;
   readonly harnesses: HarnessesGateway;
   readonly harnessStages: HarnessStagesGateway;
   readonly harnessItems: HarnessItemsGateway;
   readonly harnessEvents: HarnessEventsGateway;
+  readonly delegations: DelegationsGateway;
   readonly pages: PagesGateway;
 };

@@ -1,0 +1,63 @@
+import { and, asc, eq, gt, isNull, type SQL } from 'drizzle-orm';
+import type { AnyExecutor } from '../any-database.ts';
+import { delegations } from '../schema.ts';
+import { refusing } from './refusal.ts';
+import { toDelegation } from './rows.ts';
+import type { DelegationFilter, DelegationsGateway } from './types.ts';
+
+function matching(filter: DelegationFilter, at: Date): SQL | undefined {
+  return and(
+    isNull(delegations.revokedAt),
+    isNull(delegations.lapsedAt),
+    gt(delegations.expiresAt, at),
+    filter.personId === null ? undefined : eq(delegations.personId, filter.personId),
+    filter.persona === null ? undefined : eq(delegations.persona, filter.persona),
+    filter.harnessId === null ? undefined : eq(delegations.harnessId, filter.harnessId),
+  );
+}
+
+async function stamp(
+  executor: AnyExecutor,
+  delegationId: string,
+  column: 'revokedAt' | 'lapsedAt',
+  at: Date,
+): Promise<boolean> {
+  const values = column === 'revokedAt' ? { revokedAt: at } : { lapsedAt: at };
+  const unset = column === 'revokedAt' ? delegations.revokedAt : delegations.lapsedAt;
+  const rows = await executor
+    .update(delegations)
+    .set(values)
+    .where(and(eq(delegations.id, delegationId), isNull(unset)))
+    .returning({ id: delegations.id });
+  return rows.length === 1;
+}
+
+export function bindDelegations(executor: AnyExecutor): DelegationsGateway {
+  return {
+    read: {
+      byId: async (delegationId) => {
+        const rows = await executor
+          .select()
+          .from(delegations)
+          .where(eq(delegations.id, delegationId));
+        return rows[0] ? toDelegation(rows[0]) : null;
+      },
+      live: async (filter, at) => {
+        const rows = await executor
+          .select()
+          .from(delegations)
+          .where(matching(filter, at))
+          .orderBy(asc(delegations.grantedAt), asc(delegations.id));
+        return rows.map(toDelegation);
+      },
+    },
+    write: {
+      insert: (delegation, traceId) =>
+        refusing(async () => {
+          await executor.insert(delegations).values({ ...delegation, traceId });
+        }),
+      revoke: (delegationId, at) => stamp(executor, delegationId, 'revokedAt', at),
+      markLapsed: (delegationId, at) => stamp(executor, delegationId, 'lapsedAt', at),
+    },
+  };
+}

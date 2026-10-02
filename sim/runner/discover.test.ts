@@ -31,6 +31,7 @@ describe('DX-4 scenarios are files named for a requirement ID', () => {
       ['DX-2.store-is-embedded-postgres', 'DX-2'],
       ['KN-10.activation-refuses-a-bypass', 'KN-10'],
       ['KN-15.both-templates-activate', 'KN-15'],
+      ['KN-16.delegation-lapses-when-grant-revoked', 'KN-16'],
       ['KN-18.activate-a-template', 'KN-18'],
       ['KN-18.lowering-ship-is-refused-by-postgres', 'KN-18'],
       ['KN-4.an-item-is-the-fold-of-its-events', 'KN-4'],
