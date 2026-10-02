@@ -22,7 +22,7 @@
 4. **The harness label is `harness`.** An issue carrying it is imported onto the harness whose `repository` equals the issue's repository, case-insensitively; with no such harness the import logs `no_harness_for_repository` and does nothing.
 5. **A harness names its repository** (`owner/name` or null), set at activation, unique case-insensitively. A submit, a ship decision and a merge on a PR whose repository is not the harness's are refused: submit `not_permitted` `{ why: 'repository_mismatch' }`, the ship rule through absent facts (`pr_not_open`, `head_mismatch`, `checks_not_green`), the connector `repository_mismatch`.
 6. **Heads are full SHAs.** A head is 40 or 64 lowercase hex after trimming and lowercasing; anything else (an abbreviated head) is `malformed_command` at submit and makes the facts unusable at Ship. The read model's CHECKs refuse any other form.
-7. **The PR declaration** is the first fenced block whose opening line is exactly `` ```harness `` in the PR body, closed by a line `` ``` ``, holding `key: value` lines for exactly `closes`, `risks`, `touches`, `risk_tier`, `risk_domains`. `closes` is `none` or a comma list of `#N` or `owner/name#N`; `risk_domains` is `none` or a comma list of risk domains; blank lines are ignored; CRLF is accepted. A second `harness` block, an unclosed block, an unknown or repeated key, a missing key or an invalid value makes the declaration absent (fail closed), with the problem recorded on the read model. It is parsed when the PR is upserted; the body itself is not stored.
+7. **The PR declaration** is the fenced block that opens the PR body: its first line is exactly `` ```harness `` (S5-R39 makes the head position and form an allowlist; see `docs/progress_tracker.md`), closed by a line `` ``` ``, holding `key: value` lines for exactly `closes`, `risks`, `touches`, `risk_tier`, `risk_domains`. `closes` is `none` or a comma list of `#N` or `owner/name#N`; `risk_domains` is `none` or a comma list of risk domains; blank lines are ignored; CRLF is accepted. A second `harness` block, an unclosed block, an unknown or repeated key, a missing key or an invalid value makes the declaration absent (fail closed), with the problem recorded on the read model. It is parsed when the PR is upserted; the body itself is not stored.
 8. **Reviewer identities are a reviewed list in `packages/harness/github/reviewers.ts`**: GitHub login `uw-reviewer[bot]` is reviewer `uw-reviewer`, `uw-reviewer-codex[bot]` is `uw-reviewer-codex`. Only a review by a listed login counts; the ship rule sees the listed reviewer id, never the login. `packages/harness/github/` and `apps/uw-app/github/` become protected paths (domain `acl`), so changing who counts as a reviewer needs org-scope admin. The real logins are confirmed by a person (Waiting on a person).
 9. **The resolved provider is read from the review body**: a fenced block `` ```harness-review `` with a `provider: <id>` line (and `model: <id>`, read and ignored). No block, or a provider that fails `[a-z0-9._-]` after NFKC and lowercase, is a null provider.
 10. **What counts on the head.** A check counts only if its app is `github-actions`, its name is one of the six CI jobs, and it is the latest run (highest GitHub id) of that name on the head. A review counts only if it is by a Reviewer identity, on the head, and is that reviewer's latest review on the head among `approved`, `changes_requested` and `dismissed` (by submission time, then id); `commented` reviews are ignored; only an `approved` latest counts.
@@ -413,8 +413,6 @@ git commit -m "feat(harness): template activation records the harness's reposito
 
 ````ts
 const body = [
-  'Adds the board.',
-  '',
   '```harness',
   'closes: #12, unfoldingWord/uw-platform#14',
   'risks: the board renders slower on phones',
@@ -422,6 +420,8 @@ const body = [
   'risk_tier: standard',
   'risk_domains: none',
   '```',
+  '',
+  'Adds the board.',
 ].join('\n');
 ````
 
