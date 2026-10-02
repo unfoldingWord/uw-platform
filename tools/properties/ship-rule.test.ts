@@ -9,12 +9,12 @@ import {
   shipRuleOutcomeSchema,
   type ShipRuleInput,
 } from '../../packages/contracts/index.ts';
-import { shipRule } from '../../packages/harness/index.ts';
+import { approverCovers, shipRule } from '../../packages/harness/index.ts';
 
 const heads = fc.constantFrom('a', 'b');
 const jobs = fc.constantFrom(...ciJobSchema.options, 'extra');
 const conclusions = fc.constantFrom(...checkConclusionSchema.options, null);
-const providers = fc.constantFrom('anthropic', 'openai', null);
+const providers = fc.constantFrom('anthropic', 'Anthropic', ' openai', 'openai', null);
 const areas = fc.constantFrom('20-29', '80-89');
 const domains = fc.subarray(['ledger', 'acl', 'infra', 'migration'] as const);
 const expiries = fc.constantFrom(null, '2026-09-01T00:00:00.000Z', '2027-01-01T00:00:00.000Z');
@@ -53,7 +53,7 @@ const inputArb: fc.Arbitrary<ShipRuleInput> = fc
     }),
     approvals: fc.array(
       fc.record({
-        reviewer: fc.constantFrom('r1', 'r2', 'r3'),
+        reviewer: fc.constantFrom('r1', 'R1', ' r2', 'r2', 'r3'),
         commit: heads,
         provider: providers,
       }),
@@ -88,6 +88,51 @@ function checkOverride(input: ShipRuleInput): void {
   expect(overridden).toEqual(plain.filter((reason) => reason !== 'no_reviewer_approval'));
 }
 
+function clean(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function reviewerProviders(input: ShipRuleInput): Map<string, Set<string>> {
+  const byReviewer = new Map<string, Set<string>>();
+  const head = input.pullRequest?.head;
+  for (const approval of input.approvals.filter((entry) => entry.commit === head)) {
+    const providers = byReviewer.get(clean(approval.reviewer)) ?? new Set<string>();
+    if (approval.provider !== null) providers.add(clean(approval.provider));
+    byReviewer.set(clean(approval.reviewer), providers);
+  }
+  return byReviewer;
+}
+
+function highHolds(input: ShipRuleInput): boolean {
+  const resolved = [...reviewerProviders(input).values()].filter((set) => set.size === 1);
+  const distinct = new Set(resolved.map((set) => [...set].join()));
+  return reviewerProviders(input).size >= 2 && distinct.size >= 2;
+}
+
+function checksGreen(input: ShipRuleInput, head: string): boolean {
+  return ciJobSchema.options.every((job) => {
+    const runs = input.checks.filter((c) => c.name === job && c.headSha === head);
+    return runs.length > 0 && runs.every((c) => c.conclusion === 'success');
+  });
+}
+
+function tierHolds(input: ShipRuleInput): boolean {
+  return input.riskTier !== null && (input.riskTier !== 'high' || highHolds(input));
+}
+
+function advanceImplies(input: ShipRuleInput): boolean {
+  const pr = input.pullRequest;
+  if (pr === null || input.expectedHead === null) return false;
+  const reviewed = reviewerProviders(input).size >= 1 || input.override;
+  const covers = approverCovers(input.approver, input.area, input.riskDomains, new Date(input.at));
+  const open = pr.open && !pr.draft && pr.head === input.expectedHead;
+  return open && checksGreen(input, pr.head) && reviewed && tierHolds(input) && covers;
+}
+
+function checkAdvance(input: ShipRuleInput): void {
+  if (shipRule(input).verdict === 'advance') expect(advanceImplies(input)).toBe(true);
+}
+
 describe('KN-12 the ship rule is deterministic over random inputs', () => {
   it('is a pure function of its input with a well-formed, ordered, distinct outcome', () => {
     fc.assert(fc.property(inputArb, checkPure), { numRuns: 1000 });
@@ -95,5 +140,9 @@ describe('KN-12 the ship rule is deterministic over random inputs', () => {
 
   it('lets override remove no_reviewer_approval and nothing else', () => {
     fc.assert(fc.property(inputArb, checkOverride), { numRuns: 1000 });
+  });
+
+  it('advances only when every fact holds', () => {
+    fc.assert(fc.property(inputArb, checkAdvance), { numRuns: 1000 });
   });
 });
