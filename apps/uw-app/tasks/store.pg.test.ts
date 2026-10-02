@@ -133,6 +133,26 @@ describe.skipIf(!testServer)(
   },
 );
 
+describe.skipIf(!testServer)('AB-5 create_task checks the grant at the given instant', () => {
+  it('refuses an agent whose only write grant has expired', () =>
+    withAppDatabase(async (db) => {
+      const id = '00000000-0000-4000-8000-000000000799';
+      await seedPerson(db, { id, email: 'lapsed@unfoldingword.org' });
+      await seedGrant(db, {
+        id: '00000000-0000-4000-8000-000000001799',
+        personId: id,
+        role: 'editor',
+        scopeKind: 'jd_area',
+        scopeArea: AREA,
+        grantedAt: granted,
+        expiresAt: at,
+      });
+      const held = await personOn(db, id, 'lapsed@unfoldingword.org', granted);
+      const result = await createTask(db, agentOf(held, 'laptop'), newTask(AREA), randomUUID(), at);
+      expect(result).toEqual({ ok: false, reason: 'not_permitted' });
+    }));
+});
+
 describe.skipIf(!testServer)('AB-5 open_tasks returns no task the principal could not read', () => {
   it('shows a viewer only the area they can read', () =>
     withRig(async (db, { editor, viewer }) => {
