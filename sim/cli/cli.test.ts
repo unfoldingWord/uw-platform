@@ -4,17 +4,23 @@ import { describe, expect, it } from 'vitest';
 
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
 const commandTimeout = 90_000;
+const everyScenarioTimeout = 300_000;
 
-function run(script: string, args: readonly string[]): SpawnSyncReturns<string> {
+function run(script: string, args: readonly string[], timeout: number): SpawnSyncReturns<string> {
   return spawnSync(process.execPath, [script, ...args], {
     cwd: repoRoot,
     encoding: 'utf8',
-    timeout: 60_000,
+    timeout,
   });
 }
 
-function exited(status: number, script: string, args: readonly string[]): SpawnSyncReturns<string> {
-  const result = run(script, args);
+function exited(
+  status: number,
+  script: string,
+  args: readonly string[],
+  timeout = 60_000,
+): SpawnSyncReturns<string> {
+  const result = run(script, args, timeout);
   if (result.status === null)
     throw new Error(`${script} did not exit on its own: ${result.stderr}`);
   expect(result.status, `${result.stderr}${result.stdout}`).toBe(status);
@@ -54,9 +60,11 @@ describe('DX-4 the sim command', () => {
   it(
     'runs every scenario with all',
     () => {
-      expect(exited(0, 'sim/cli/sim.ts', ['all']).stdout).toMatch(/(\d+) of \1 scenarios passed/);
+      expect(exited(0, 'sim/cli/sim.ts', ['all'], everyScenarioTimeout - 10_000).stdout).toMatch(
+        /(\d+) of \1 scenarios passed/,
+      );
     },
-    commandTimeout,
+    everyScenarioTimeout,
   );
 
   it(

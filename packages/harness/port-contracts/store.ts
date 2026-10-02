@@ -169,32 +169,38 @@ export function describeStoreContract(
   shape: StoreShape,
 ): void {
   describe(`DX-3 store port contract on ${adapter}`, () => {
-    let subject: StoreSubject;
+    let opened: StoreSubject | undefined;
     beforeAll(async () => {
-      subject = await open();
+      opened = await open();
     });
-    afterAll(() => subject.close());
+    afterAll(() => opened?.close());
+    const subject = (): StoreSubject => {
+      if (opened === undefined) throw new Error('the store subject is not open');
+      return opened;
+    };
 
     it('reports every migration in the journal as applied, in order', async () => {
-      expect(await subject.store.appliedMigrations()).toEqual(subject.expectedMigrations);
+      expect(await subject().store.appliedMigrations()).toEqual(subject().expectedMigrations);
     });
 
     it('returns what the work returns', async () => {
-      expect(await subject.store.transaction(async () => 42)).toBe(42);
+      expect(await subject().store.transaction(async () => 42)).toBe(42);
     });
 
     it('rejects with the very error the work threw', async () => {
       const failure = new Error('work failed');
-      await expect(subject.store.transaction(() => Promise.reject(failure))).rejects.toBe(failure);
+      await expect(subject().store.transaction(() => Promise.reject(failure))).rejects.toBe(
+        failure,
+      );
     });
 
     it('lets one transaction take a lock twice and a later one take it again', async () => {
-      await subject.store.transaction(takeTwice);
-      await expect(subject.store.transaction(takeTwice)).resolves.toBeUndefined();
+      await subject().store.transaction(takeTwice);
+      await expect(subject().store.transaction(takeTwice)).resolves.toBeUndefined();
     });
 
-    describeExclusion(() => subject, shape);
-    describeStoreGateways(adapter, () => subject, shape.concurrentConnections);
+    describeExclusion(subject, shape);
+    describeStoreGateways(adapter, subject, shape.concurrentConnections);
   });
 }
 
