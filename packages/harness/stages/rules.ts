@@ -4,6 +4,7 @@ import type { Caller } from '../caller.ts';
 import { connectorRegistered } from '../connectors/registry.ts';
 import { refused, type Refused } from '../outcome.ts';
 import { validatorRegistry } from '../validators/registry.ts';
+import type { Ports, StoreTransaction } from '../ports.ts';
 import type { TemplateStage } from '../templates/types.ts';
 
 export function agentRefusal(caller: Caller): Refused | null {
@@ -12,14 +13,19 @@ export function agentRefusal(caller: Caller): Refused | null {
     : null;
 }
 
-export function permissionRefusal(
+export async function adminRefusal(
+  ports: Pick<Ports, 'grants'>,
+  tx: StoreTransaction,
   caller: Caller,
   harness: Pick<Harness, 'jdArea'>,
   at: Date,
-): Refused | null {
+): Promise<Refused | null> {
   const agent = agentRefusal(caller);
   if (agent !== null) return agent;
-  return allowed(caller.actor, 'admin', harness, at)
+  const personId = caller.actor.personId;
+  if (personId === null) return refused('not_permitted', { jdArea: harness.jdArea });
+  const grants = await ports.grants.lockAndReread(tx, personId, at);
+  return allowed({ ...caller.actor, grants: [...grants] }, 'admin', harness, at)
     ? null
     : refused('not_permitted', { jdArea: harness.jdArea });
 }

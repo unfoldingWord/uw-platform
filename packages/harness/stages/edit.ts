@@ -4,9 +4,9 @@ import { recordContext, recordHarnessEvents, draft } from '../items/record.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import { storeRefusalOf } from '../port-errors.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
-import { agentRefusal, permissionRefusal, stageProblems } from './rules.ts';
+import { adminRefusal, agentRefusal, stageProblems } from './rules.ts';
 
-type StagePorts = Pick<Ports, 'clock' | 'ids' | 'store'>;
+type StagePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
 type EditPlan<T> = {
   readonly stageKey: string | null;
@@ -17,6 +17,7 @@ type EditPlan<T> = {
 export type EditWork<T> = (harness: Harness, stages: readonly Stage[]) => EditPlan<T> | Refused;
 
 async function authorize(
+  ports: StagePorts,
   tx: StoreTransaction,
   caller: Caller,
   harnessId: string,
@@ -26,7 +27,7 @@ async function authorize(
   if (agent !== null) return agent;
   const harness = await tx.harnesses.read.byId(harnessId);
   if (harness === null) return refused('harness_not_found', { harnessId });
-  return permissionRefusal(caller, harness, at) ?? harness;
+  return (await adminRefusal(ports, tx, caller, harness, at)) ?? harness;
 }
 
 async function recordRefusal(
@@ -62,7 +63,7 @@ export async function editInTransaction<T>(
   let planned: string | null = null;
   try {
     return await ports.store.transaction(async (tx) => {
-      const harness = await authorize(tx, caller, harnessId, at);
+      const harness = await authorize(ports, tx, caller, harnessId, at);
       if ('status' in harness) return harness;
       const plan = work(harness, await tx.harnessStages.read.forHarness(harness.id));
       if ('status' in plan) return plan;

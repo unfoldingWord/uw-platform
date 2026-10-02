@@ -6,9 +6,9 @@ import { storeRefusalOf } from '../port-errors.ts';
 import type { Ports } from '../ports.ts';
 import { describeViolation, templateProperty } from '../template-property.ts';
 import type { Template } from '../templates/types.ts';
-import { permissionRefusal, stageFromTemplate, stageProblems } from './rules.ts';
+import { adminRefusal, agentRefusal, stageFromTemplate, stageProblems } from './rules.ts';
 
-type StagePorts = Pick<Ports, 'clock' | 'ids' | 'store'>;
+type StagePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
 export type ActivateInput = {
   readonly harnessId: string;
@@ -40,6 +40,8 @@ async function insertAll(
 ): Promise<KernelOutcome<Activated>> {
   return ports.store.transaction(async (tx) => {
     const { harness, stages } = activated;
+    const denied = await adminRefusal(ports, tx, caller, harness, at);
+    if (denied !== null) return denied;
     const taken =
       (await tx.harnesses.read.byId(harness.id)) ?? (await tx.harnesses.read.byKey(harness.key));
     if (taken !== null) return refused('harness_exists', { harnessKey: harness.key });
@@ -61,8 +63,8 @@ export async function activateTemplate(
   input: ActivateInput,
 ): Promise<KernelOutcome<Activated>> {
   const at = ports.clock.now();
-  const denied = permissionRefusal(caller, input, at);
-  if (denied !== null) return denied;
+  const agent = agentRefusal(caller);
+  if (agent !== null) return agent;
   const harness: Harness = {
     id: input.harnessId,
     key: input.harnessKey,
@@ -81,6 +83,9 @@ export async function activateTemplate(
   } catch (error) {
     const store = storeRefusalOf(error);
     if (store === null) throw error;
+    if (store.constraint === 'harnesses_key_unique') {
+      return refused('harness_exists', { harnessKey: input.harnessKey });
+    }
     return refused('stage_edit_refused', { code: store.code, constraint: store.constraint });
   }
 }
