@@ -4,14 +4,16 @@ import { lockKeyPrefixes } from '../../packages/db/advisory-locks.ts';
 import { lockKeys } from '../../packages/harness/lock-keys.ts';
 import { repoFiles } from '../repo-files.ts';
 
+const forbiddenLock = /pg_try_advisory_|pg_advisory_(?:xact_)?lock(?:_shared)?\(\s*(?:\d|\$\{)/;
+
 function numericLocks(files: readonly string[], read: (file: string) => string): string[] {
   return files
     .filter((file) => /\.(?:tsx?|m?js|sql)$/.test(file) && !file.includes('node_modules'))
     .filter((file) => file !== 'tools/architecture/lock-keys.test.ts')
-    .filter((file) => /pg_advisory_(?:xact_)?lock\(\s*(?:\d|\$\{[^}]*\}::bigint)/.test(read(file)));
+    .filter((file) => forbiddenLock.test(read(file)));
 }
 
-describe('every advisory lock goes through one string key space', () => {
+describe('every advisory lock goes through one string key space, with try, shared and uncast keys flagged', () => {
   it('registers the kernel lock key prefixes', () => {
     const kernel = [lockKeys.stageClaims(''), lockKeys.harnessStages('')];
     expect(kernel.filter((prefix) => !lockKeyPrefixes.includes(prefix))).toEqual([]);
@@ -24,6 +26,9 @@ describe('every advisory lock goes through one string key space', () => {
   it.each([
     'sql`SELECT pg_advisory_xact_lock(${keys.grantCommands}::bigint)`',
     'SELECT pg_advisory_lock(7301001)',
+    'SELECT pg_try_advisory_xact_lock(hashtextextended(${key}, 0))',
+    'sql`SELECT pg_advisory_xact_lock(${n})`',
+    'SELECT pg_advisory_lock_shared(42)',
   ])('flags %s', (source) => {
     expect(numericLocks(['apps/uw-app/x.ts'], () => source)).toEqual(['apps/uw-app/x.ts']);
   });

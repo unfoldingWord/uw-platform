@@ -1,6 +1,7 @@
 import type { ItemState, Principal, Stage } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
-import { exitThroughConnector, readAllEvents, software, type KernelOutcome } from '@uw/harness';
+import { readAllEvents, software, type KernelOutcome } from '@uw/harness';
+import { exitThroughConnector } from '@uw/harness/testing';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createSimHarness, simPerson } from '../fixtures.ts';
 import { simParkedAtShip, standardChange } from '../ship-fixtures.ts';
