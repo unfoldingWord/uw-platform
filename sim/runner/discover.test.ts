@@ -25,6 +25,7 @@ afterAll(() => {
 
 const expectedScenarios = [
   ['AB-4.poll-returns-what-the-caller-may-claim', 'AB-4'],
+  ['AB-6.a-delegated-runner-names-itself-and-stops-on-lapse', 'AB-6'],
   ['AB-8.missing-verb-opens-one-item', 'AB-8'],
   ['DX-1.kernel-over-test-adapters', 'DX-1'],
   ['DX-2.store-is-embedded-postgres', 'DX-2'],
