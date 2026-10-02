@@ -295,7 +295,10 @@ describe('KN-16 a claim refuses a delegation that belongs to someone else', () =
       agentCaller(scene, scene.kim, 'reviewer', false),
       delegationId,
     );
-    expect([reasonOf(borrowed), reasonOf(wrong)]).toEqual(['not_permitted', 'not_permitted']);
+    expect([reasonOf(borrowed), reasonOf(wrong)]).toEqual([
+      'delegation_not_found',
+      'not_permitted',
+    ]);
   });
 
   sceneIt('refuses a person who names a delegation', async (scene) => {

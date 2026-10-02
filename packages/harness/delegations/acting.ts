@@ -1,5 +1,5 @@
-import type { Harness, Principal } from '@uw/contracts';
-import { bareAgent } from '../access.ts';
+import { delegationIdOf, type Harness, type Principal } from '@uw/contracts';
+import { bareAgent, ownerBound } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { draft, recordItemEvents, type RecordContext } from '../items/record.ts';
 import { refused, type Refused } from '../outcome.ts';
@@ -35,11 +35,12 @@ async function freshGrants(
 }
 
 function boundTo(actor: Principal, harness: Harness, delegation: Delegation): boolean {
-  return (
-    delegation.personId === actor.personId &&
-    delegation.harnessId === harness.id &&
-    personaMatches(actor.identity, delegation)
-  );
+  return delegation.harnessId === harness.id && personaMatches(actor.identity, delegation);
+}
+
+function presentsNamedDelegation(actor: Principal, delegationId: string | null): boolean {
+  const named = delegationIdOf(actor.identity);
+  return named === null || named === delegationId;
 }
 
 async function delegatedPrincipal(
@@ -51,7 +52,9 @@ async function delegatedPrincipal(
   const { caller, harness, context } = input;
   const liveness = await assertDelegationLive(tx, ports, delegationId, context.at);
   const { delegation } = liveness;
-  if (delegation === null) return refused('delegation_not_found', { delegationId });
+  if (delegation === null || delegation.personId !== caller.actor.personId) {
+    return refused('delegation_not_found', { delegationId });
+  }
   if (!boundTo(caller.actor, harness, delegation)) {
     return refused('not_permitted', { delegationId });
   }
@@ -71,6 +74,10 @@ export async function actingPrincipal(
   input: ActingInput,
 ): Promise<Principal | Refused> {
   const { caller, delegationId, context } = input;
+  if (!ownerBound(caller.actor)) return refused('not_permitted', { why: 'owner_mismatch' });
+  if (!presentsNamedDelegation(caller.actor, delegationId)) {
+    return refused('not_permitted', { delegationId, why: 'delegation_mismatch' });
+  }
   if (delegationId !== null) return delegatedPrincipal(ports, tx, input, delegationId);
   if (needsDelegation(caller.actor)) {
     return refused('delegation_required', { actor: caller.actor.identity });

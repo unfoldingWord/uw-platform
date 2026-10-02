@@ -112,15 +112,6 @@ const presented: ReadonlyMap<string, Attempt> = new Map<string, Attempt>([
         delegationId,
       }),
   ],
-  [
-    'attach a learning',
-    (scene, delegationId) =>
-      scene.world.kernel.items.attachLearning(scene.agent, {
-        itemId: scene.itemId,
-        pageId: learningId,
-        delegationId,
-      }),
-  ],
 ]);
 
 function reasonOf(outcome: KernelOutcome<unknown>): string {
@@ -169,6 +160,15 @@ const held: ReadonlyMap<string, HeldAttempt> = new Map<string, HeldAttempt>([
         tokensIn: 1,
         tokensOut: 1,
         costBasis: 'metered',
+      }),
+  ],
+  [
+    'attach a learning',
+    (scene: Scene) =>
+      scene.world.kernel.items.attachLearning(scene.agent, {
+        itemId: scene.itemId,
+        pageId: learningId,
+        delegationId: null,
       }),
   ],
   [

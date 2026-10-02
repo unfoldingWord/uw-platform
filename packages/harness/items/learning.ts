@@ -5,6 +5,7 @@ import { actingPrincipal, isRefusal } from '../delegations/acting.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
 import { draft, recordContext, recordItemEvents } from './record.ts';
+import { holdsClaim } from './release.ts';
 
 type LearningPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
@@ -22,6 +23,20 @@ type Standing = {
   readonly item: ItemState;
 };
 
+async function presentedDelegation(
+  tx: StoreTransaction,
+  caller: Caller,
+  item: ItemState,
+  delegationId: string | null,
+): Promise<Refused | { readonly delegationId: string | null }> {
+  if (!isAgent(caller.actor)) return { delegationId };
+  const held = { itemId: item.itemId, delegationId: item.delegationId };
+  if (!(await holdsClaim(tx, item, caller.actor, held))) {
+    return refused('not_holder', { itemId: item.itemId });
+  }
+  return { delegationId: item.delegationId };
+}
+
 async function standing(
   ports: LearningPorts,
   tx: StoreTransaction,
@@ -29,11 +44,14 @@ async function standing(
   input: { readonly itemId: string; readonly delegationId: string | null },
   at: Date,
 ): Promise<Refused | Standing> {
-  const { itemId, delegationId } = input;
+  const { itemId } = input;
   const item = await tx.harnessItems.read.lock(itemId);
   if (item === null) return refused('item_not_found', { itemId });
   const harness = await tx.harnesses.read.byId(item.harnessId);
   if (harness === null) return refused('harness_not_found', { harnessId: item.harnessId });
+  const presented = await presentedDelegation(tx, caller, item, input.delegationId);
+  if ('status' in presented) return presented;
+  const { delegationId } = presented;
   const context = recordContext(ports, caller, at);
   const actor = await actingPrincipal(ports, tx, { caller, harness, delegationId, context });
   if (isRefusal(actor)) return actor;

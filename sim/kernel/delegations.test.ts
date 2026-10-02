@@ -291,11 +291,12 @@ describe('KN-16 a beat binds the delegation to its person and capability', () =>
     const unknown = await scene.world.kernel.delegations.beat(agentOf(scene, scene.kim), {
       delegationId: scene.world.adapters.ids.next(),
     });
-    expect([otherPerson, otherPersona, human].map(reasonOf)).toEqual([
-      'not_permitted',
-      'not_permitted',
-      'not_permitted',
-    ]);
+    expect([otherPersona, human].map(reasonOf)).toEqual(['not_permitted', 'not_permitted']);
+    expect(otherPerson).toEqual({
+      status: 'error',
+      reason: 'delegation_not_found',
+      detail: { delegationId: delegation.id },
+    });
     expect(reasonOf(unknown)).toBe('delegation_not_found');
     expect(await logOf(scene, 'delegation_lapsed')).toEqual([]);
   });

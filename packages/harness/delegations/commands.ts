@@ -5,7 +5,7 @@ import {
   type Harness,
   type Principal,
 } from '@uw/contracts';
-import { allowed, isAgent } from '../access.ts';
+import { allowed, isAgent, ownerBound } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { draft, recordContext, recordHarnessEvents, type EventDraft } from '../items/record.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
@@ -171,7 +171,7 @@ async function readableLive(
 function boundTo(caller: Caller, delegation: Delegation): boolean {
   return (
     isAgent(caller.actor) &&
-    caller.actor.personId === delegation.personId &&
+    ownerBound(caller.actor) &&
     personaMatches(caller.actor.identity, delegation)
   );
 }
@@ -184,7 +184,9 @@ async function beatIn(
   at: Date,
 ): Promise<KernelOutcome<{ readonly delegation: Delegation; readonly principal: Principal }>> {
   const found = await tx.delegations.read.byId(delegationId);
-  if (found === null) return refused('delegation_not_found', { delegationId });
+  if (found === null || found.personId !== caller.actor.personId) {
+    return refused('delegation_not_found', { delegationId });
+  }
   if (!boundTo(caller, found)) return refused('not_permitted', { delegationId });
   const liveness = await assertDelegationLive(tx, ports, delegationId, at);
   if (!liveness.live) {
