@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { identitySchema, type ItemState } from '@uw/contracts';
-import type { PageFacts, Store, StoreTransaction } from '../ports.ts';
+import type { GateDecisionRow, PageFacts, Store, StoreTransaction } from '../ports.ts';
 import { awaitBlocked, type LockWaiters } from './lock-wait.ts';
 import { describeDelegations } from './store-delegations.ts';
 import { describeEvents } from './store-events.ts';
@@ -333,6 +333,57 @@ function describePages(subject: () => GatewaySubject): void {
   });
 }
 
+function decisionOf(base: number, n: number, actor: string, decidedAt: Date): GateDecisionRow {
+  return {
+    id: uid(base + 0x80 + n),
+    harnessId: uid(base),
+    itemId: uid(base + 11),
+    stageId: uid(base + 2),
+    actor: identitySchema.parse(actor),
+    decision: 'approve',
+    reason: null,
+    evidence: { findings: [], gateTarget: null },
+    traceId: uid(base + 0x90 + n),
+    decidedAt,
+  };
+}
+
+async function seedDecisionItem(tx: StoreTransaction, base: number, key: string): Promise<void> {
+  await seedHarness(tx, base, key);
+  await tx.harnessItems.write.insert(itemOf(base, 1), at);
+}
+
+function describeGateDecisions(subject: () => GatewaySubject): void {
+  it('DX-3 inserts gate decisions and reads them for an item by decision time, then id', async () => {
+    const later = decisionOf(0x1300, 1, 'human:ian', new Date(at.getTime() + hour));
+    const tied = decisionOf(0x1300, 3, 'human:kim', at);
+    const first = { ...decisionOf(0x1300, 2, 'human:kim', at), decision: 'reject' as const };
+    const rows = await subject().store.transaction(async (tx) => {
+      await seedDecisionItem(tx, 0x1300, 'gateway-gate-decisions');
+      await tx.gateDecisions.write.insert(later);
+      await tx.gateDecisions.write.insert(tied);
+      await tx.gateDecisions.write.insert({ ...first, reason: 'not yet' });
+      return {
+        found: await tx.gateDecisions.read.forItem(uid(0x1300 + 11)),
+        none: await tx.gateDecisions.read.forItem(uid(0x13fe)),
+      };
+    });
+    expect(rows).toEqual({ found: [{ ...first, reason: 'not yet' }, tied, later], none: [] });
+  });
+
+  it('DX-3 refuses a gate decision whose actor is an agent, naming gate_decisions_actor_is_human', async () => {
+    const outcome = await refusedBy(async (tx) => {
+      await seedDecisionItem(tx, 0x1400, 'gateway-gate-decisions-agent');
+      await tx.gateDecisions.write.insert(decisionOf(0x1400, 1, 'agent:builder', at));
+    }, subject().store);
+    expect(outcome).toMatchObject({
+      code: '23514',
+      constraint: 'gate_decisions_actor_is_human',
+      table: 'gate_decisions',
+    });
+  });
+}
+
 export function describeStoreGateways(
   adapter: string,
   subject: () => GatewaySubject,
@@ -349,6 +400,7 @@ export function describeStoreGateways(
     describePages(subject);
     describeEvents(subject);
     describeDelegations(subject);
+    describeGateDecisions(subject);
     if (concurrentConnections) describeItemLock(subject);
   });
 }

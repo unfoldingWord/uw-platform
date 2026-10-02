@@ -1,4 +1,5 @@
 import { createDelegationCommands, type DelegationCommands } from './delegations/commands.ts';
+import { createGateCommands, type GateCommands } from './gates/commands.ts';
 import { createEventReads, type EventReads } from './items/events.ts';
 import { createItemCommands, type ItemCommands } from './items/commands.ts';
 import { replay } from './items/fold.ts';
@@ -21,6 +22,7 @@ export type Kernel = {
   readonly repair: RepairCommands;
   readonly stages: StageCommands;
   readonly delegations: DelegationCommands;
+  readonly gates: GateCommands;
   readonly health: () => Promise<KernelHealth>;
 };
 
@@ -35,6 +37,7 @@ export function createKernel(ports: Ports): Kernel {
     repair: createRepairCommands(ports),
     stages: createStageCommands(ports),
     delegations: createDelegationCommands(ports),
+    gates: createGateCommands(ports),
     health: async () => ({
       now: ports.clock.now(),
       appliedMigrations: await ports.store.appliedMigrations(),

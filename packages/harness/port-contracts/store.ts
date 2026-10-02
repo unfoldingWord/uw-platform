@@ -152,6 +152,7 @@ function describeExclusion(subject: () => StoreSubject, shape: StoreShape): void
     const members = await subject().store.transaction(async (tx) => Object.keys(tx).sort());
     expect(members).toEqual([
       'delegations',
+      'gateDecisions',
       'harnessEvents',
       'harnessItems',
       'harnessStages',

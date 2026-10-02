@@ -145,3 +145,36 @@ export async function simAdvance(world: World, input: AdvanceInput): Promise<Ite
   if (item === null) throw new Error('advance needs at least one stage to pass through');
   return item;
 }
+
+export type ParkInput = {
+  readonly harnessId: string;
+  readonly admin: Principal;
+  readonly title: string;
+};
+
+export async function simParkedAtCheck(world: World, input: ParkInput): Promise<ItemState> {
+  const caller = simCaller(world, input.admin);
+  const gated = await world.kernel.stages.updateStage(caller, {
+    harnessId: input.harnessId,
+    stageKey: 'check',
+    change: { exitGate: 'human_approval' },
+  });
+  if (gated.status !== 'accepted') throw new Error(`gating check was refused: ${gated.reason}`);
+  const enqueued = await world.kernel.items.enqueue(caller, {
+    harnessId: input.harnessId,
+    title: input.title,
+    pageId: null,
+    priority: 1,
+    due: null,
+  });
+  if (enqueued.status !== 'accepted') throw new Error(`enqueue was refused: ${enqueued.reason}`);
+  const { itemId } = enqueued.value;
+  const parked = await simAdvance(world, {
+    harnessId: input.harnessId,
+    itemId,
+    worker: input.admin,
+    through: ['package', 'scope', 'plan', 'build', 'check'],
+  });
+  if (parked.gateStatus !== 'parked') throw new Error(`the item is ${parked.gateStatus} at check`);
+  return parked;
+}

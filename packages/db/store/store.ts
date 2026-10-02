@@ -3,6 +3,7 @@ import type { AnyDatabase, AnyExecutor } from '../any-database.ts';
 import { appliedMigrations } from '../migration-ledger.ts';
 import { bindDelegations } from './delegations.ts';
 import { bindEvents } from './events.ts';
+import { bindGateDecisions } from './gate-decisions.ts';
 import { bindHarnesses } from './harnesses.ts';
 import { bindItems } from './items.ts';
 import { insideOpenTransaction, outsideOpenTransaction } from './open-transactions.ts';
@@ -32,6 +33,7 @@ function bind(executor: AnyExecutor): DrizzleTransaction {
     harnessStages: bindStages(executor),
     harnessItems: bindItems(executor),
     harnessEvents: bindEvents(executor),
+    gateDecisions: bindGateDecisions(executor),
     delegations: bindDelegations(executor),
     pages: bindPages(executor),
   };
