@@ -67,23 +67,34 @@ async function connect(
   return { ok: true, value: { octokit, expiresAt: issued.value.expiresAt } };
 }
 
+type Attempt = {
+  readonly promise: Promise<GitHubResult<Minted>>;
+  settled: GitHubResult<Minted> | null;
+};
+
 function minter(config: GitHubAppConfig, transport: GitHubTransport, scope: TokenScope): Minter {
-  let pending: Promise<GitHubResult<Minted>> | null = null;
+  let current: Attempt | null = null;
   const start = (): Promise<GitHubResult<Minted>> => {
-    const attempt: Promise<GitHubResult<Minted>> = connect(config, transport, scope)
-      .catch(() => failed('unreachable', null))
-      .then((result) => {
-        if (!result.ok && pending === attempt) pending = null;
-        return result;
-      });
-    pending = attempt;
-    return attempt;
+    const attempt: Attempt = {
+      settled: null,
+      promise: connect(config, transport, scope)
+        .catch(() => failed('unreachable', null))
+        .then((result) => {
+          attempt.settled = result;
+          if (!result.ok && current === attempt) current = null;
+          return result;
+        }),
+    };
+    current = attempt;
+    return attempt.promise;
   };
-  return async () => {
-    const held = await (pending ?? start());
-    if (!held.ok) return held;
-    const left = held.value.expiresAt.getTime() - transport.now().getTime();
-    return left > refreshMargin ? held : start();
+  const fresh = (minted: Minted) =>
+    minted.expiresAt.getTime() - transport.now().getTime() > refreshMargin;
+  return () => {
+    if (current?.settled === null) return current.promise;
+    const held = current?.settled;
+    if (held?.ok && fresh(held.value)) return Promise.resolve(held);
+    return start();
   };
 }
 

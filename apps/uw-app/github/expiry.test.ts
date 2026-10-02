@@ -88,3 +88,49 @@ describe('a unit of work re-mints a token near its expiry and never keeps a fail
     });
   });
 });
+
+function mintCount(github: FixtureGitHub): number {
+  return github.requests().filter((request) => request.path === tokenPath).length;
+}
+
+describe('a re-mint is shared while in flight, and a fresh mint serves its own call', () => {
+  it('lets concurrent callers share one first mint and one re-mint', async () => {
+    const github = fixtureGitHub();
+    github.on('POST', tokenPath, [issued('ghs_a', minutes(60)), issued('ghs_b', minutes(120))]);
+    const unit = clocked(github);
+    await Promise.all([unit.read(start), unit.read(start), unit.read(start)]);
+    expect(mintCount(github)).toBe(1);
+    await Promise.all([unit.read(minutes(56)), unit.read(minutes(56)), unit.read(minutes(56))]);
+    expect(mintCount(github)).toBe(2);
+    expect(readTokens(github)).toEqual([
+      'token ghs_a',
+      'token ghs_a',
+      'token ghs_a',
+      'token ghs_b',
+      'token ghs_b',
+      'token ghs_b',
+    ]);
+  });
+
+  it('uses a token minted already inside the margin for its call, and mints again on the next', async () => {
+    const github = fixtureGitHub();
+    github.on('POST', tokenPath, [
+      issued('ghs_a', minutes(2)),
+      issued('ghs_b', minutes(3)),
+      issued('ghs_c', minutes(60)),
+    ]);
+    const unit = clocked(github);
+    await unit.read(start);
+    expect(mintCount(github)).toBe(1);
+    await unit.read(start);
+    await unit.read(start);
+    await unit.read(start);
+    expect(mintCount(github)).toBe(3);
+    expect(readTokens(github)).toEqual([
+      'token ghs_a',
+      'token ghs_b',
+      'token ghs_c',
+      'token ghs_c',
+    ]);
+  });
+});
