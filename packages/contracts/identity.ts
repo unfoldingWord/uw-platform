@@ -12,13 +12,6 @@ export const agentIdentityPattern = `^${agent}$`;
 
 export const identityPattern = `^(?:${human}|${agent}|${device}|${delegated})$`;
 
-export const identitySchema = z
-  .string()
-  .regex(new RegExp(identityPattern), 'not an identity string')
-  .brand<'Identity'>();
-
-export type Identity = z.infer<typeof identitySchema>;
-
 export const systemIdentity = 'agent:system';
 
 const AGENT = 'agent:';
@@ -66,10 +59,29 @@ export function delegatedIdentity(
 }
 
 export function isPersonaIdentity(value: string): boolean {
-  return (
-    value.startsWith(AGENT) &&
-    !value.includes('/') &&
-    !value.includes(' ') &&
-    !reserved.has(value.slice(AGENT.length))
-  );
+  return value.startsWith(AGENT) && personaSlugSchema.safeParse(value.slice(AGENT.length)).success;
 }
+
+function deviceSegmentOf(identity: string): string | null {
+  if (deviceOwnerSegment(identity) === null) return null;
+  const asAt = identity.indexOf(ASSUMING);
+  return identity.slice(identity.indexOf('/') + 1, asAt < 0 ? undefined : asAt);
+}
+
+function slotsAreWellFormed(identity: string): boolean {
+  const device = deviceSegmentOf(identity);
+  if (device !== null && !deviceSegmentSchema.safeParse(device).success) return false;
+  if (delegationIdOf(identity) === null) return true;
+  return personaSlugSchema.safeParse(personaSlugOf(identity)).success;
+}
+
+export const identitySchema = z
+  .string()
+  .regex(new RegExp(identityPattern), 'not an identity string')
+  .refine(
+    slotsAreWellFormed,
+    'a device is lowercase kebab-case and a delegated persona is a lowercase, unreserved slug',
+  )
+  .brand<'Identity'>();
+
+export type Identity = z.infer<typeof identitySchema>;

@@ -3,6 +3,7 @@ import {
   delegatedIdentity,
   delegationIdOf,
   deviceOwnerSegment,
+  identitySchema,
   isPersonaIdentity,
   personaSlugOf,
 } from './identity.ts';
@@ -39,7 +40,31 @@ describe('a persona identity', () => {
     expect(isPersonaIdentity(value)).toBe(true);
   });
 
-  it.each(['agent:ingest', 'agent:p1/laptop', delegated, 'human:p1'])('refuses %s', (value) => {
+  it.each([
+    'agent:ingest',
+    'agent:System',
+    'agent:INGEST',
+    'agent:Iterate',
+    'agent:p1/laptop',
+    delegated,
+    'human:p1',
+  ])('refuses %s', (value) => {
     expect(isPersonaIdentity(value)).toBe(false);
+  });
+});
+
+describe('the device and persona slots of an identity', () => {
+  it.each(['agent:p1/laptop', 'agent:p1/hourly-routine', delegated])('accepts %s', (value) => {
+    expect(identitySchema.safeParse(value).success).toBe(true);
+  });
+
+  it.each([
+    'agent:p1/Laptop',
+    'agent:p1/my_laptop',
+    'agent:p1/laptop as Iterate via delegation:d1',
+    'agent:p1/laptop as ingest via delegation:d1',
+    'agent:p1/Laptop as iterate via delegation:d1',
+  ])('refuses %s', (value) => {
+    expect(identitySchema.safeParse(value).success).toBe(false);
   });
 });

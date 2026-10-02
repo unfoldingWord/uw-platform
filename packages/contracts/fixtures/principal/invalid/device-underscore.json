@@ -1,0 +1,8 @@
+{
+  "identity": "agent:00000000-0000-4000-8000-000000000001/my_laptop",
+  "kind": "agent",
+  "personId": "00000000-0000-4000-8000-000000000001",
+  "email": null,
+  "grants": [],
+  "interactive": true
+}
