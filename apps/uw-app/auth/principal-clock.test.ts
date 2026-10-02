@@ -21,7 +21,7 @@ afterEach(() => {
 
 function requestInstant(token: string): Promise<Response> {
   const app = new Hono<AppEnv>()
-    .use(withPrincipal({ accessKeys: () => fixture.keys }))
+    .use(withPrincipal({ accessKeys: () => fixture.keys, clock: systemClock }))
     .get('/', (c) => c.text(c.get('now').toISOString()));
   return Promise.resolve(
     app.request('/', { headers: { 'cf-access-jwt-assertion': token } }, fixtureAccessEnv),

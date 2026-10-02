@@ -3,7 +3,6 @@ import { personPrincipal, serviceTokenPrincipal } from '@uw/core/principal';
 import { resolveGrants } from '@uw/db/store';
 import type { AppDeps, AppEnv } from '../deps.ts';
 import { refuse } from '../http/outcomes.ts';
-import { systemClock } from '../ports/clock.ts';
 import { signIn } from '../people/directory.ts';
 import {
   ACCESS_JWT_HEADER,
@@ -33,9 +32,11 @@ function refusePending(c: Context<AppEnv>): Response | Promise<Response> {
   return refuse(c, 'pending_approval');
 }
 
-export function withPrincipal(deps: Pick<AppDeps, 'accessKeys'>): MiddlewareHandler<AppEnv> {
+export function withPrincipal(
+  deps: Pick<AppDeps, 'accessKeys' | 'clock'>,
+): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
-    const now = systemClock.now();
+    const now = deps.clock.now();
     c.set('now', now);
     c.set('access', null);
     const dev = devEmail(c.env, c.req.url);
