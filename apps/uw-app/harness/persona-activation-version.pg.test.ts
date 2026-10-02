@@ -70,7 +70,7 @@ async function agentWidens(db: Database, ian: Principal, harnessId: string) {
   return writePageAsAgent(db, agentOf(ian, 'laptop'), input, request);
 }
 
-describe.skipIf(!testServer)('AB-8 activation is pinned to the version the person read', () => {
+describe.skipIf(!testServer)('persona activation is pinned to the version the person read', () => {
   it('refuses activating version 1 after an agent saved version 2, recording nothing', async () => {
     const database = await createMigratedDatabase(testServer ?? '');
     const db = createClient(database.connectionString);
