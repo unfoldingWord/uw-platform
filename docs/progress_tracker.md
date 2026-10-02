@@ -40,17 +40,17 @@ Commits are on `build/v1`. Tests are the files whose `describe` names carry the 
 
 ## Step 2 evidence by requirement
 
-Commits are on `build/v1`, from `e8318c3` onward. The commit that adds `no-live-account.test.ts` and this section is named by role, since a commit cannot name its own hash. KN-9 is a step-3 requirement built early (the walker, see the decision row).
+Commits are on `build/v1`, from `e8318c3` onward. `ed466b4` adds `no-live-account.test.ts` and this section. KN-9 is a step-3 requirement built early (the walker, see the decision row).
 
 | Requirement | Commits | Tests |
 |---|---|---|
-| DX-1 | `e0a600d`, `592b43b`, `d583fbf`, `1205e0d`, `0353782`, `fadf489` | `packages/harness/kernel.test.ts`, `apps/uw-app/kernel.test.ts`, `apps/uw-app/kernel.pg.test.ts`, `sim/scenarios/DX-1.kernel-over-test-adapters.ts` |
+| DX-1 | `e0a600d`, `592b43b`, `7381f5e`, `d583fbf`, `1205e0d`, `0353782`, `fadf489` | `packages/harness/kernel.test.ts`, `apps/uw-app/kernel.test.ts`, `apps/uw-app/kernel.pg.test.ts`, `sim/scenarios/DX-1.kernel-over-test-adapters.ts` |
 | DX-2 | `7b33583`, `2f17b0a`, `8b13492`, `bb72b3b`, `45cfff2`, `f1a33d1`, `18dbce9`, `166579e`, `ec0d7e7`, `fadf489`, `9d35566` | `packages/db/both-targets.test.ts`, `packages/db/store/store.test.ts`, `sim/scenarios/DX-2.store-is-embedded-postgres.ts`, `apps/uw-app/ports/store.contract.pg.test.ts` |
-| DX-3 | `e0a600d`, `7b33583`, `af9916b`, `8b13492`, `bb72b3b`, `18dbce9`, `519a7c6`, `166579e`, `ec0d7e7`, `8e0b9c4`, `0b0dfa5`, `9bf4218`, `05fce5a`, `32b7092` | every `*.contract*.test.ts` in `apps/uw-app/ports/` and `sim/adapters/`, `tools/architecture/port-contracts.test.ts` |
+| DX-3 | `e0a600d`, `7b33583`, `7381f5e`, `af9916b`, `8b13492`, `bb72b3b`, `18dbce9`, `519a7c6`, `166579e`, `ec0d7e7`, `8e0b9c4`, `0b0dfa5`, `9bf4218`, `05fce5a`, `32b7092` | every `*.contract*.test.ts` in `apps/uw-app/ports/` and `sim/adapters/`, `tools/architecture/port-contracts.test.ts` |
 | DX-4 | `e0a600d`, `2f17b0a`, `af9916b`, `fadf489`, `b871ec0`, `9d35566`, `93bf10d`, `3a55552`, `c182d02` | `sim/runner/*.test.ts`, `sim/cli/cli.test.ts` |
 | DX-5 | `e8318c3`, `e0a600d`, `7b33583`, `fadf489`, `93bf10d`, `3a55552`, `68748cc`, `c182d02` | `tools/trace/trace.test.ts`, `packages/harness/walk.test.ts` |
 | DX-6 | `45cfff2`, `f1a33d1`, `18dbce9` | `packages/db/both-targets.test.ts`, `packages/db/store/store-lock.test.ts`, `packages/db/store/grants-lock.test.ts` |
-| DX-8 | `8e0b9c4`, `9bf4218`, the commit that adds this section | `tools/architecture/no-live-account.test.ts` |
+| DX-8 | `166579e`, `8e0b9c4`, `9bf4218`, `ed466b4`, and the fix commit that widens the scan | `tools/architecture/no-live-account.test.ts` |
 | KN-9 | `e8318c3` | `packages/harness/walk.test.ts`, `sim/runner/walk-report.test.ts` |
 
 ## Decisions made during the build
@@ -197,6 +197,7 @@ Work that is built and whose verification did not run, with the reason.
 | 2026-10-01 | DX-2 | `appliedMigrations` reads `drizzle.__drizzle_migrations`; the Neon application role's SELECT on the `drizzle` schema is untested | No Neon project |
 | 2026-10-01 | DX-3 | The six not-wired platform adapters (`apps/uw-app/ports/github-facts.not-wired.ts` until GH-2, `apps/uw-app/ports/connectors.not-wired.ts` until GH-6, `apps/uw-app/ports/model-engine.not-wired.ts` until HE-2, `apps/uw-app/ports/hub.not-wired.ts` until WB-3, `apps/uw-app/ports/notifier.not-wired.ts` until NT-1, `apps/uw-app/ports/runs.not-wired.ts` until HE-1) and `apps/uw-app/ports/store.not-wired.ts`, `apps/uw-app/ports/grants.not-wired.ts` (used while uw-app has no database, FD-12) are proven only to be not wired | Their services are built in later steps |
 | 2026-10-01 | DX-5 | The proofs scanner is lexical: it counts a matching title inside a string or template literal, under a skipped or dead parent, in `skipIf(true)`, in a callback-less `it(`; a reversed range such as ZZ-5 to ZZ-3 drops IDs silently; step 0 is hardcoded in the tracker check. Reading the Vitest JSON reporter (passed tests only) is the stricter option for the end-of-build `trace` | The cost of a parser for a gate that review also covers |
+| 2026-10-01 | DX-8 | Reads of Worker bindings (`env.X`) inside tests, and reads through a variable or helper that holds the environment object passed from outside the scanned files; the scan flags every `process.env` not followed by an allowed name and every `import.meta.env`, in test files, port contracts, `sim/`, `tools/`, `vitest.config.ts` and `packages/db/test-*.ts`, and ci.yml's lint, typecheck, architecture, test and build jobs are checked for `secrets.` | A binding named in a test's own fixture is not an account read and is not mechanically distinguishable |
 
 ## Waiting on a person
 
