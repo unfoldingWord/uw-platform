@@ -210,6 +210,12 @@ const refusals: [string, string, string, string][] = [
     'port-contracts-only-in-tests',
   ],
   [
+    'a non-test app file into the in-process host',
+    'apps/uw-app/a.ts',
+    "import './mcp/in-process.ts';",
+    'in-process-host-only-in-tests',
+  ],
+  [
     'ingest into the kernel',
     'apps/uw-ingest/a.ts',
     "import '../../packages/harness/b.ts';",
@@ -276,6 +282,7 @@ describe('the dependency rules', () => {
         'packages/core/b.ts': leaf,
         'packages/harness/b.ts': leaf,
         'packages/harness/port-contracts/b.ts': leaf,
+        'apps/uw-app/mcp/in-process.ts': leaf,
         'apps/uw-app/types.d.ts': 'export type Value = number;',
       }),
     ).toContain(rule);
@@ -319,6 +326,15 @@ describe('the dependency rules allow', () => {
         'packages/harness/index.ts': leaf,
         'sim/a.ts':
           "import '../packages/harness/index.ts'; import '../packages/contracts/index.ts'; import '../packages/db/index.ts';",
+      }),
+    ).toEqual([]);
+  });
+
+  it('a test that connects the in-process host', async () => {
+    expect(
+      await violations({
+        'apps/uw-app/mcp/in-process.ts': leaf,
+        'apps/uw-app/mcp/a.test.ts': "import './in-process.ts';",
       }),
     ).toEqual([]);
   });

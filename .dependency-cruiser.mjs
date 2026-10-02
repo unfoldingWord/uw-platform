@@ -131,6 +131,14 @@ export default {
       to: { path: '^packages/db/test-seed\\.ts$' },
     },
     {
+      name: 'in-process-host-only-in-tests',
+      comment:
+        'Only test files connect the in-process Workflow host until the Workflow step that serves it lands.',
+      severity: 'error',
+      from: { pathNot: testFile },
+      to: { path: '^apps/uw-app/mcp/in-process\\.ts$' },
+    },
+    {
       name: 'harness-testing-only-in-tests',
       comment:
         'The connector exit and other test-only kernel entry points are imported only by test files.',
