@@ -20,7 +20,7 @@ export function isRefusal(value: Principal | Refused): value is Refused {
   return 'status' in value;
 }
 
-export function needsDelegation(actor: Principal): boolean {
+function needsDelegation(actor: Principal): boolean {
   return !actor.interactive || bareAgent(actor.identity);
 }
 
