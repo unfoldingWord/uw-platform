@@ -7,28 +7,41 @@ export type SourceFiles = { readonly files: readonly string[]; read(file: string
 
 const appRoot = 'apps/uw-app/';
 const mcpRoot = 'apps/uw-app/mcp/';
+const entryPoints = ['apps/uw-app/app.tsx', 'apps/uw-app/index.ts'];
 const verbsRoot = 'apps/uw-app/mcp/verbs/';
 const verbsIndex = 'apps/uw-app/mcp/verbs/index.ts';
-const dispatchFile = 'apps/uw-app/mcp/dispatch.ts';
+const canCallers = ['apps/uw-app/mcp/dispatch.ts', 'apps/uw-app/mcp/handler.ts'];
 
-const sourceFile = /\.(?:tsx?|m?js)$/;
-const testFile = /\.test\.(?:tsx?|m?js)$/;
+const sourceFile = /\.[cm]?[jt]sx?$/;
+const testFile = /\.test\.[cm]?[jt]sx?$/;
+const relativePath = /^\.{1,2}\//;
 
-const relativeImports = [
-  /\bfrom\s*(['"])(\.{1,2}\/[^'"\n]*)\1/g,
-  /\bimport\s*\(\s*(['"])(\.{1,2}\/[^'"\n]*)\1/g,
-  /\bimport\s*(['"])(\.{1,2}\/[^'"\n]*)\1/g,
+const moduleSpecifiers = [
+  /^(\s*(?:import|export)\b[^;'"`=()]*\bfrom\s*)(['"])([^'"\n]*)\2/gm,
+  /^(\s*import\s*)(['"])([^'"\n]*)\2/gm,
+  /(\bimport\s*\(\s*)(['"])([^'"\n]*)\2/g,
 ];
-const moduleSpecifier = /(\bfrom\s*|\bimport\s*\(?\s*)(['"])[^'"\n]*\2/g;
 
-const gateReach =
-  /\bgateDecisions\b|\bgate_decisions\b|\bharnessStages\b|\bharness_stages\b|\.gates\s*\??\.|\bkernel\s*\??\.\s*stages\b|\bstages\s*\??\.\s*activate\s*\(|\b(?:createStage|updateStage|reorderStages)\s*\(|\.repair\s*\??\.|\.delegations\s*\??\.\s*(?:grant|revoke)\b|\bexitThroughConnector\b|\bconnectors\s*\??\./;
+const gateReach = [
+  /\bgateDecisions\b|\bgate_decisions\b|\bharnessStages\b|\bharness_stages\b/,
+  /\.gates\s*\??\./,
+  /\bkernel\s*\??\.\s*stages\b/,
+  /\bstages\s*\??\.\s*activate\s*\(/,
+  /\b(?:createStage|updateStage|reorderStages)\s*\(/,
+  /\.repair\s*\??\./,
+  /\.delegations\s*\??\.\s*(?:grant|revoke|write)\b/,
+  /\bexitThroughConnector\b/,
+  /\bconnectors\s*\??\./,
+  /\[\s*['"`](?:gates|stages|repair|connectors)['"`]\s*\]/,
+  /\bdelegations\s*\??\.?\s*\[\s*['"`](?:grant|revoke|write)['"`]\s*\]/,
+  /\{[^{}]*\b(?:gates|repair|connectors)\b[^{}]*\}\s*=(?![=>])/,
+  /\{[^{}]*\b(?:grant|revoke|write)\b[^{}]*\}\s*=\s*[\w.?]*delegations\b/,
+];
 
 const handlerBuilder = /\b(?:gatedHandler|rowFilteredHandler)\s*\(/;
 const rowsBuilder = /\browFilteredHandler\s*\(/;
-const rowFilter =
-  /\bcan\s*\(|\breadableAreas\s*\(|\bsearchPages\s*\(|\.reads\s*\??\.\s*poll\s*\(|\bentityQueries\b/;
-const declaresHandler = /\brun\s*:|\bkind\s*:\s*['"](?:gated|rows)['"]/;
+const rowFilter = /\bresources\s*:/;
+const declaresHandler = /\brun\s*[:(,}]|\bkind\s*(?::\s*['"](?:gated|rows)['"]|[,}])/;
 const nameLiteral = /\bname\s*:\s*['"](\w+)['"]/g;
 const canCall = /\bcan\s*\(/;
 
@@ -40,18 +53,26 @@ function isSource(file: string): boolean {
   return sourceFile.test(file) && !testFile.test(file) && !file.includes('node_modules/');
 }
 
+function specifiersOf(text: string): string[] {
+  return moduleSpecifiers.flatMap((pattern) =>
+    [...text.matchAll(pattern)].map((match) => match[3] ?? ''),
+  );
+}
+
 function importsOf(file: string, text: string): string[] {
   const directory = posix.dirname(file);
-  return relativeImports.flatMap((pattern) =>
-    [...text.matchAll(pattern)].map((match) =>
-      posix.normalize(posix.join(directory, match[2] ?? '')),
-    ),
-  );
+  return specifiersOf(text)
+    .filter((specifier) => relativePath.test(specifier))
+    .map((specifier) => posix.normalize(posix.join(directory, specifier)));
+}
+
+function isSeed(file: string): boolean {
+  return file.startsWith(mcpRoot) || entryPoints.includes(file);
 }
 
 export function agentReachable(sources: SourceFiles): string[] {
   const known = new Set(sources.files.filter((file) => file.startsWith(appRoot) && isSource(file)));
-  const pending = [...known].filter((file) => file.startsWith(mcpRoot));
+  const pending = [...known].filter(isSeed);
   const reached = new Set(pending);
   for (let file = pending.pop(); file !== undefined; file = pending.pop()) {
     for (const target of importsOf(file, sources.read(file))) {
@@ -64,12 +85,25 @@ export function agentReachable(sources: SourceFiles): string[] {
   return [...reached].sort();
 }
 
+export function importsLeavingApp(sources: SourceFiles, files: readonly string[]): string[] {
+  return files
+    .filter((file) =>
+      importsOf(file, sources.read(file)).some((target) => !target.startsWith(appRoot)),
+    )
+    .sort();
+}
+
 function withoutModulePaths(text: string): string {
-  return text.replaceAll(moduleSpecifier, "$1''");
+  return moduleSpecifiers.reduce((stripped, pattern) => stripped.replaceAll(pattern, "$1''"), text);
 }
 
 export function gateTouches(sources: SourceFiles, files: readonly string[]): string[] {
-  return files.filter((file) => gateReach.test(withoutModulePaths(sources.read(file)))).sort();
+  return files
+    .filter((file) => {
+      const text = withoutModulePaths(sources.read(file));
+      return gateReach.some((pattern) => pattern.test(text));
+    })
+    .sort();
 }
 
 function namesIn(text: string): string[] {
@@ -82,8 +116,7 @@ function verbModules(sources: SourceFiles): string[] {
     (file) =>
       file.startsWith(verbsRoot) &&
       isSource(file) &&
-      file !== verbsIndex &&
-      (registered.has(file) || declaresHandler.test(sources.read(file))),
+      ((file !== verbsIndex && registered.has(file)) || declaresHandler.test(sources.read(file))),
   );
 }
 
@@ -102,6 +135,6 @@ export function handlersSkippingCan(sources: SourceFiles): string[] {
   const unbuilt = verbModules(sources).filter((file) => !handlerBuilder.test(sources.read(file)));
   const app = sources.files.filter((file) => file.startsWith(appRoot) && isSource(file));
   const skipping = app.filter((file) => handlerSkips(sources.read(file)));
-  const dispatch = canCall.test(sources.read(dispatchFile)) ? [] : [dispatchFile];
-  return [...new Set([...unbuilt, ...skipping, ...dispatch])].sort();
+  const uncan = canCallers.filter((file) => !canCall.test(sources.read(file)));
+  return [...new Set([...unbuilt, ...skipping, ...uncan])].sort();
 }

@@ -3,6 +3,7 @@ import {
   agentReachable,
   gateTouches,
   handlersSkippingCan,
+  importsLeavingApp,
   repoSources,
   type SourceFiles,
 } from './agent-boundary.ts';
@@ -42,6 +43,20 @@ const gateCalls = [
   'await db.insert(harnessStages).values(row);',
   'await sql`update harness_stages set paused = true`;',
   'await exitThroughConnector(ports, context, pending);',
+  'await tx.delegations.write.insert(row);',
+  'const rows = await sql`select * from "gate_decisions"`;',
+  'export const read = sql`select * from "gate_decisions"`;',
+  'const { gates } = context.kernel;',
+  'const { repair: fix } = kernel;',
+  'const { hub, connectors } = ports;',
+  'const { grant } = context.kernel.delegations;',
+  'const { revoke: undo } = kernel?.delegations;',
+  "await kernel['gates'].decide(caller, input);",
+  'await kernel?.["stages"].activate(caller, input);',
+  'await kernel[`repair`].reopen(caller, input);',
+  "await ports['connectors'].run(request);",
+  "await kernel.delegations['grant'](caller, input);",
+  'await tx.delegations?.["write"].insert(row);',
 ];
 
 const harmless = [
@@ -53,8 +68,21 @@ const harmless = [
 ];
 
 describe('AB-7 no file an agent principal can reach touches a gate decision or a stage row', () => {
-  it('finds no gate or stage touch in the real closure of the MCP surface', () => {
+  it('finds no gate or stage touch in the real closure an agent principal reaches', () => {
     expect(gateTouches(real, agentReachable(real))).toEqual([]);
+  });
+
+  it('reaches every route an agent principal can call, through the app entry', () => {
+    const closure = agentReachable(real);
+    expect(closure).toContain('apps/uw-app/app.tsx');
+    expect(closure).toContain('apps/uw-app/acl/routes.ts');
+    expect(closure).toContain('apps/uw-app/agents/routes.ts');
+    expect(closure).toContain('apps/uw-app/pages/routes.ts');
+    expect(closure).toContain('apps/uw-app/mcp/routes.ts');
+  });
+
+  it('finds no file in the real closure importing out of the app by a relative path', () => {
+    expect(importsLeavingApp(real, agentReachable(real))).toEqual([]);
   });
 
   it('follows imports out of the MCP surface into the stores it calls', () => {
@@ -89,10 +117,13 @@ describe('AB-7 the static check fails on a planted handler', () => {
     expect(touchedWith({ [sneakVerb]: text })).toEqual([sneakVerb]);
   });
 
-  it('flags a planted .mjs verb that decides a gate', () => {
-    const file = 'apps/uw-app/mcp/verbs/approve-sneak.mjs';
-    expect(touchedWith({ [file]: 'await kernel.gates.decide(caller, input);' })).toEqual([file]);
-  });
+  it.each(['mjs', 'mts', 'cjs', 'cts', 'jsx'])(
+    'flags a planted .%s verb that decides a gate',
+    (ext) => {
+      const file = `apps/uw-app/mcp/verbs/approve-sneak.${ext}`;
+      expect(touchedWith({ [file]: 'await kernel.gates.decide(caller, input);' })).toEqual([file]);
+    },
+  );
 
   it.each(harmless)('passes a planted verb whose only near miss is %s', (text) => {
     expect(touchedWith({ [sneakVerb]: text })).toEqual([]);
@@ -100,6 +131,35 @@ describe('AB-7 the static check fails on a planted handler', () => {
 
   it('ignores a gate write in a file nothing on the MCP surface imports', () => {
     expect(touchedWith({ [sneakGate]: 'await kernel.gates.decide(caller, input);' })).toEqual([]);
+  });
+});
+
+describe('AB-7 the static check fails on a planted route or a way out of the app', () => {
+  it('flags a gate call in an /api route an agent service token reaches', () => {
+    const file = 'apps/uw-app/acl/routes.ts';
+    const text = `${real.read(file)}\nexport const s = (kernel) => kernel.gates.decide;\n`;
+    expect(touchedWith({ [file]: text })).toEqual([file]);
+  });
+
+  it('follows a planted .cts helper a route imports', () => {
+    const helper = 'apps/uw-app/acl/sneak.cts';
+    const route = 'apps/uw-app/acl/routes.ts';
+    const planted = {
+      [route]: `import { sneak } from './sneak.cts';\n${real.read(route)}`,
+      [helper]: 'export const sneak = (kernel) => kernel.repair.reopen;',
+    };
+    expect(touchedWith(planted)).toEqual([helper]);
+  });
+
+  it('flags a planted verb importing kernel internals by a relative path', () => {
+    const text = "import { decide } from '../../../../packages/harness/gates/decide.ts';";
+    const sources = withPlanted({ [sneakVerb]: text });
+    expect(importsLeavingApp(sources, agentReachable(sources))).toEqual([sneakVerb]);
+  });
+
+  it('passes a planted verb importing a package by name', () => {
+    const sources = withPlanted({ [sneakVerb]: "import { can } from '@uw/core/acl';" });
+    expect(importsLeavingApp(sources, agentReachable(sources))).toEqual([]);
   });
 });
 
@@ -124,19 +184,27 @@ const unfiltered = [
   "import { rowFilteredHandler } from '../handler.ts';",
   'export const raw = rowFilteredHandler({',
   "  name: 'search_pages',",
-  "  run: async () => ({ status: 'accepted', output: { pages: [] } }),",
+  '  rows: async () => [],',
+  "  reply: () => ({ status: 'accepted', output: { pages: [] } }),",
   '});',
 ].join('\n');
 
+const filtered = unfiltered.replace('  reply:', '  resources: async () => () => null,\n  reply:');
+
+const shorthand = [
+  "const kind = 'rows' as const;",
+  "const name = 'search_pages' as const;",
+  "const run = async () => ({ status: 'accepted', output: { pages: [] } });",
+  'export const hidden = { kind, name, run };',
+].join('\n');
+
 describe('AB-3 every MCP handler goes through can()', () => {
-  it('finds every real verb handler and the dispatcher going through can()', () => {
+  it('finds every real verb handler, the builders and the dispatcher going through can()', () => {
     expect(handlersSkippingCan(real)).toEqual([]);
   });
 
-  it('flags a planted handler that is a bare object literal', () => {
-    const text =
-      "export const raw = { kind: 'rows', name: 'search_pages', run: async () => ({}) };";
-    expect(skippingWith({ [rawVerb]: text })).toEqual([rawVerb]);
+  it('passes a planted row-filtered handler that names its resources', () => {
+    expect(skippingWith({ [rawVerb]: filtered })).toEqual([]);
   });
 
   it('flags a planted row-filtered handler that filters nothing', () => {
@@ -144,22 +212,42 @@ describe('AB-3 every MCP handler goes through can()', () => {
   });
 
   it('flags a planted row-filtered handler for a verb the registry grants', () => {
-    const text = unfiltered
-      .replace("'search_pages'", "'claim_item'")
-      .replace('async () =>', 'async (c) => can(c.principal, "read", r, c.at) &&');
+    const text = filtered.replace("'search_pages'", "'claim_item'");
     expect(skippingWith({ [rawVerb]: text })).toEqual([rawVerb]);
   });
 
   it('flags a planted handler under a forbidden verb name', () => {
-    const text = unfiltered
-      .replace("'search_pages'", "'approve_item'")
-      .replace('async () =>', 'async (c) => searchPages(c.db) &&');
+    const text = filtered.replace("'search_pages'", "'approve_item'");
     expect(skippingWith({ [rawVerb]: text })).toEqual([rawVerb]);
   });
 
-  it('flags a planted dispatcher that never calls can()', () => {
-    const file = 'apps/uw-app/mcp/dispatch.ts';
+  it.each(['dispatch', 'handler'])('flags a planted %s.ts that never calls can()', (name) => {
+    const file = `apps/uw-app/mcp/${name}.ts`;
     const text = real.read(file).replaceAll(/\bcan\(/g, 'allow(');
     expect(skippingWith({ [file]: text })).toEqual([file]);
+  });
+});
+
+describe('AB-3 a hand-built handler fails the static check', () => {
+  it('flags a planted handler that is a bare object literal', () => {
+    const text =
+      "export const raw = { kind: 'rows', name: 'search_pages', run: async () => ({}) };";
+    expect(skippingWith({ [rawVerb]: text })).toEqual([rawVerb]);
+  });
+
+  it('flags a shorthand literal re-exported through a real verb', () => {
+    const file = 'apps/uw-app/mcp/verbs/search-pages.ts';
+    const hidden = 'apps/uw-app/mcp/verbs/hidden.ts';
+    const planted = {
+      [hidden]: shorthand,
+      [file]: `${real.read(file)}\nexport { hidden } from './hidden.ts';\n`,
+    };
+    expect(skippingWith(planted)).toEqual([hidden]);
+  });
+
+  it('flags a literal handler written inside the verb index', () => {
+    const file = 'apps/uw-app/mcp/verbs/index.ts';
+    const planted = { [file]: `${real.read(file)}\n${shorthand}\n` };
+    expect(skippingWith(planted)).toEqual([file]);
   });
 });
