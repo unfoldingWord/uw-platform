@@ -1,5 +1,6 @@
 import { databaseErrorFacts } from '@uw/db/errors';
 import type { Scenario, ScenarioReport } from '../scenario.ts';
+import { readWorldLog } from './log.ts';
 import type { World } from '../world.ts';
 
 export type LoadedScenario = { readonly name: string; readonly scenario: Scenario };
@@ -46,6 +47,14 @@ async function withinTime<T>(work: Promise<T>, milliseconds: number): Promise<T>
   }
 }
 
+async function runAndRead(scenario: Scenario, world: World): Promise<ScenarioReport> {
+  const outcome = await scenario.run(world);
+  const log = await readWorldLog(world.adapters.store);
+  const [firstDrift] = log.drift;
+  if (firstDrift !== undefined) throw new Error(`projection drift: ${firstDrift}`);
+  return { events: log.events, state: outcome.state };
+}
+
 export async function runScenario(
   loaded: LoadedScenario,
   openWorld: () => Promise<World>,
@@ -54,7 +63,7 @@ export async function runScenario(
   const { name, scenario } = loaded;
   const world = await openWorld();
   try {
-    const report = await withinTime(scenario.run(world), milliseconds);
+    const report = await withinTime(runAndRead(scenario, world), milliseconds);
     return { name, title: scenario.title, report, failure: null };
   } catch (error) {
     return { name, title: scenario.title, report: null, failure: failureOf(error) };

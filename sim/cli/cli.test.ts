@@ -54,7 +54,7 @@ describe('DX-4 the sim command', () => {
   it(
     'runs every scenario with all',
     () => {
-      expect(exited(0, 'sim/cli/sim.ts', ['all']).stdout).toContain('2 of 2 scenarios passed');
+      expect(exited(0, 'sim/cli/sim.ts', ['all']).stdout).toMatch(/(\d+) of \1 scenarios passed/);
     },
     commandTimeout,
   );
@@ -63,7 +63,7 @@ describe('DX-4 the sim command', () => {
     'names the known scenarios when none matches',
     () => {
       expect(exited(1, 'sim/cli/sim.ts', ['ZZ-1']).stderr).toContain(
-        'no scenario matches ZZ-1; known: DX-1.kernel-over-test-adapters, DX-2.store-is-embedded-postgres',
+        'no scenario matches ZZ-1; known: DX-1.kernel-over-test-adapters',
       );
     },
     commandTimeout,

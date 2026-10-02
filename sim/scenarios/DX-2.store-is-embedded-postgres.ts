@@ -43,7 +43,6 @@ export const scenario = defineScenario({
     );
     assert.equal(audit.code, 'P0001');
     return {
-      events: [],
       state: {
         appliedMigrations: applied.length,
         refused: { role_grants_area_matches_scope: '23514', grant_audit_append_only: 'P0001' },
