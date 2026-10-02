@@ -14,6 +14,13 @@ import { owns as pages } from '../../apps/uw-app/pages/store.ts';
 import { owns as people } from '../../apps/uw-app/people/directory.ts';
 import { owns as queue } from '../../apps/uw-app/queue/watermarks.ts';
 import { owns as deliveries } from '../../apps/uw-ingest/deliveries/ledger.ts';
+import { owns as delegations } from '../../packages/harness/delegations/owns.ts';
+import { owns as gates } from '../../packages/harness/gates/owns.ts';
+import { owns as items } from '../../packages/harness/items/owns.ts';
+import { owns as measurements } from '../../packages/harness/measurements/owns.ts';
+import { owns as personas } from '../../packages/harness/personas/owns.ts';
+import { owns as runs } from '../../packages/harness/runs/owns.ts';
+import { owns as stages } from '../../packages/harness/stages/owns.ts';
 import { tableEntries } from '../../packages/db/declarations.ts';
 import * as schema from '../../packages/db/schema.ts';
 import { repoFiles } from '../repo-files.ts';
@@ -27,19 +34,33 @@ const owners: Owner[] = [
   { dir: 'apps/uw-app/pages/', tables: pages },
   { dir: 'apps/uw-app/queue/', tables: queue },
   { dir: 'apps/uw-ingest/deliveries/', tables: deliveries },
+  { dir: 'packages/harness/stages/', tables: stages },
+  { dir: 'packages/harness/items/', tables: items },
+  { dir: 'packages/harness/gates/', tables: gates },
+  { dir: 'packages/harness/delegations/', tables: delegations },
+  { dir: 'packages/harness/runs/', tables: runs },
+  { dir: 'packages/harness/measurements/', tables: measurements },
+  { dir: 'packages/harness/personas/', tables: personas },
 ];
 
 const entries = tableEntries(schema);
 
+const PORT_CONTRACTS = 'packages/harness/port-contracts/';
+
 function isScannedSource(file: string): boolean {
-  return /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file) && !file.includes('node_modules');
+  return (
+    /\.tsx?$/.test(file) &&
+    !/\.test\.tsx?$/.test(file) &&
+    !file.includes('node_modules') &&
+    !file.includes(PORT_CONTRACTS)
+  );
 }
 
 function sourcesUnder(base: string, roots: string[]): string[] {
   return roots.flatMap((root) =>
     readdirSync(join(base, root), { recursive: true, encoding: 'utf8' })
-      .filter(isScannedSource)
-      .map((file) => join(root, file)),
+      .map((file) => join(root, file))
+      .filter(isScannedSource),
   );
 }
 
@@ -53,6 +74,7 @@ function writes(source: string, entry: Entry): boolean {
   return [
     new RegExp(`\\.(insert|update|delete)\\(\\s*(?:\\w+\\.)?${entry.exportName}\\b`),
     new RegExp(`\\b(INSERT INTO|UPDATE|DELETE FROM)\\s+"?${entry.table}"?\\b`, 'i'),
+    new RegExp(`\\b${entry.exportName}\\.write\\b`),
   ].some((pattern) => pattern.test(source));
 }
 
@@ -189,5 +211,29 @@ describe('AGENTS.md rule 3: the check itself fails on a violation', () => {
       { dir: 'apps/uw-app/people/', tables: ['people'] },
     ]);
     expect(found.sort()).toEqual(['apps/uw-app/acl/raw.ts', 'apps/uw-app/acl/stray.ts']);
+  });
+});
+
+function plantedGateway(): string {
+  const base = mkdtempSync(join(tmpdir(), 'uw-owners-'));
+  mkdirSync(join(base, 'packages/harness/items'), { recursive: true });
+  mkdirSync(join(base, 'packages/harness/stages'), { recursive: true });
+  mkdirSync(join(base, 'packages/harness/port-contracts'), { recursive: true });
+  const line = 'await tx.harnessStages.write.insert(row);';
+  writeFileSync(join(base, 'packages/harness/items/stray.ts'), line);
+  writeFileSync(join(base, 'packages/harness/stages/ok.ts'), line);
+  writeFileSync(join(base, 'packages/harness/port-contracts/store.ts'), line);
+  return base;
+}
+
+describe('AGENTS.md rule 3: a gateway write is a write', () => {
+  const stages_: Entry = { exportName: 'harnessStages', table: 'harness_stages' };
+
+  it('reports a gateway write outside the owner and not inside it', () => {
+    const base = plantedGateway();
+    const found = writersOutsideOwner(base, sourcesUnder(base, ['packages/harness']), stages_, [
+      { dir: 'packages/harness/stages/', tables: ['harness_stages'] },
+    ]);
+    expect(found).toEqual(['packages/harness/items/stray.ts']);
   });
 });
