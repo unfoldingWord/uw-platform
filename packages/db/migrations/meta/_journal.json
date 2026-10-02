@@ -29,6 +29,20 @@
       "when": 1790888531209,
       "tag": "0003_page_versions_checks",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790904727593,
+      "tag": "0004_harness_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790904728379,
+      "tag": "0005_gate_decisions_append_only",
+      "breakpoints": true
     }
   ]
 }
