@@ -2,9 +2,10 @@ import { and, asc, eq, gt, isNull, or, type SQL } from 'drizzle-orm';
 import { grantSchema, type Grant } from '@uw/contracts';
 import type { AnyDatabase, AnyExecutor } from '../any-database.ts';
 import { roleGrants } from '../schema.ts';
+import { outsideOpenTransaction } from './open-transactions.ts';
 import { executorOf, type DrizzleTransaction } from './store.ts';
 
-export function toGrant(row: typeof roleGrants.$inferSelect): Grant {
+function toGrant(row: typeof roleGrants.$inferSelect): Grant {
   return grantSchema.parse({
     grantId: row.id,
     role: row.role,
@@ -21,7 +22,7 @@ export function liveGrant(at: Date): SQL | undefined {
   );
 }
 
-export type GrantReadOptions = { readonly at: Date; readonly lock?: 'none' | 'share' };
+export type GrantReadOptions = { readonly at: Date; readonly lock?: 'share' };
 
 export async function resolveGrants(
   db: AnyExecutor,
@@ -44,7 +45,8 @@ export type DrizzleGrants = {
 
 export function createDrizzleGrants(db: AnyDatabase): DrizzleGrants {
   return {
-    resolve: (personId, at) => resolveGrants(db, personId, { at }),
+    resolve: (personId, at) =>
+      outsideOpenTransaction(db, 'grants.resolve', () => resolveGrants(db, personId, { at })),
     lockAndReread: (tx, personId, at) =>
       resolveGrants(executorOf(tx), personId, { at, lock: 'share' }),
   };

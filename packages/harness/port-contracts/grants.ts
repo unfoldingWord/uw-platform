@@ -136,10 +136,35 @@ export function describeGrantsUnderLock(adapter: string, subject: () => GrantsSu
   });
 }
 
+function nameOfRefusal(error: unknown): string {
+  return error instanceof Error ? error.name : 'rejected';
+}
+
+const refusalTimeout = 2_000;
+
+function resolveInsideTransaction({ grants, store }: GrantsSubject): Promise<string> {
+  return store.transaction(() =>
+    grants.resolve(person(8), at).then(() => 'resolved', nameOfRefusal),
+  );
+}
+
+function describeGrantsOutsideTransaction(adapter: string, subject: () => GrantsSubject): void {
+  describe(`DX-3 grants port contract on ${adapter}: inside an open transaction`, () => {
+    it(
+      'refuses a resolve outside the open transaction: the work must reread through it',
+      async () => {
+        expect(await resolveInsideTransaction(subject())).toBe('CallOutsideOpenTransactionError');
+      },
+      refusalTimeout,
+    );
+  });
+}
+
 export function describeGrantsContract(adapter: string, open: () => Promise<GrantsSubject>): void {
   const subject = withSubject(open);
   describeGrantsResolve(adapter, subject);
   describeGrantsUnderLock(adapter, subject);
+  describeGrantsOutsideTransaction(adapter, subject);
 }
 
 export function describeGrantsNotWired(adapter: string, grants: Grants): void {
