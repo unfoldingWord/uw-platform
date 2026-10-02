@@ -180,6 +180,9 @@ export const harnessItems = declareTable(
     branchState: text('branch_state').notNull().default('none'),
     prRepo: text('pr_repo'),
     prNumber: integer('pr_number'),
+    issueRepo: text('issue_repo'),
+    issueNumber: integer('issue_number'),
+    issueGithubId: bigint('issue_github_id', { mode: 'number' }),
     zulipTopic: text('zulip_topic'),
     createdAt: instant('created_at').notNull(),
   },
@@ -211,6 +214,13 @@ export const harnessItems = declareTable(
     check('harness_items_risk_tier_known', oneOf(t.riskTier, riskTierSchema.options)),
     check('harness_items_risk_domains_known', subsetOf(t.riskDomains, riskDomainSchema.options)),
     check('harness_items_pr_whole', sql`(${t.prRepo} IS NULL) = (${t.prNumber} IS NULL)`),
+    check(
+      'harness_items_issue_whole',
+      sql`(${t.issueRepo} IS NULL) = (${t.issueNumber} IS NULL) AND (${t.issueNumber} IS NULL) = (${t.issueGithubId} IS NULL)`,
+    ),
+    uniqueIndex('harness_items_issue_once')
+      .on(t.issueGithubId)
+      .where(sql`${t.issueGithubId} IS NOT NULL`),
     index('harness_items_stage').on(t.harnessId, t.stageId),
     index('harness_items_lease').on(t.leaseExpires),
   ],
