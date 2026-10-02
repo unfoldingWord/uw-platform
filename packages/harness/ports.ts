@@ -47,6 +47,7 @@ export type HarnessesGateway = {
   readonly read: {
     byId(harnessId: string): Promise<Harness | null>;
     byKey(key: string): Promise<Harness | null>;
+    byRepository(repository: string): Promise<Harness | null>;
     list(): Promise<readonly Harness[]>;
   };
   readonly write: { insert(harness: Harness, at: Date): Promise<void> };
