@@ -109,7 +109,7 @@ function refusedBy(work: (tx: StoreTransaction) => Promise<unknown>, store: Stor
 }
 
 function describeHarnesses(subject: () => GatewaySubject): void {
-  it('DX-3 KN-1 inserts and reads a harness by id, by key and in the list', async () => {
+  it('DX-3 inserts and reads a harness by id, by key and in the list', async () => {
     const harness = harnessOf(0x100, 'gateway-read-b');
     const other = harnessOf(0x200, 'gateway-read-a');
     const found = await subject().store.transaction(async (tx) => {
@@ -190,8 +190,23 @@ const everyField = {
   zulipTopic: 'harness 7',
 } as const;
 
+function describeMissingStage(subject: () => GatewaySubject): void {
+  it('DX-3 refuses to update a stage that does not exist', async () => {
+    const missing = stageOf(0x1100, 1, 'build', 1);
+    const outcome = await subject()
+      .store.transaction(async (tx) => {
+        await tx.harnessStages.write.update(missing);
+      })
+      .then(
+        () => 'resolved',
+        (error: unknown) => (error instanceof Error ? error.message : 'rejected'),
+      );
+    expect(outcome).toBe(`no stage ${missing.id} to update`);
+  });
+}
+
 function describeProjection(subject: () => GatewaySubject): void {
-  it('DX-3 KN-4 projects every item field and reads it back unchanged', async () => {
+  it('DX-3 projects every item field and reads it back unchanged', async () => {
     const pageId = uid(0x7ff);
     await subject().seedPage({
       id: pageId,
@@ -212,12 +227,19 @@ function describeProjection(subject: () => GatewaySubject): void {
         locked: await tx.harnessItems.read.lock(full.itemId),
         listed: await tx.harnessItems.read.forHarness(uid(0x700)),
         absent: await tx.harnessItems.read.byId(uid(0x7fe)),
+        lockedAbsent: await tx.harnessItems.read.lock(uid(0x7fe)),
       };
     });
-    expect(read).toEqual({ byId: full, locked: full, listed: [full], absent: null });
+    expect(read).toEqual({
+      byId: full,
+      locked: full,
+      listed: [full],
+      absent: null,
+      lockedAbsent: null,
+    });
   });
 
-  it('DX-3 KN-4 refuses to project an item that does not exist', async () => {
+  it('DX-3 refuses to project an item that does not exist', async () => {
     const outcome = await subject()
       .store.transaction(async (tx) => {
         await seedHarness(tx, 0x800, 'gateway-absent');
@@ -229,17 +251,20 @@ function describeProjection(subject: () => GatewaySubject): void {
       );
     expect(outcome).toBe(`no item ${uid(0x80b)} to project`);
   });
+}
 
-  it('DX-3 KN-4 lists items by priority, then creation, then id', async () => {
+function describeItemOrder(subject: () => GatewaySubject): void {
+  it('DX-3 lists items by priority, then creation, then id', async () => {
     const later = new Date(at.getTime() + hour);
     const order = await subject().store.transaction(async (tx) => {
       await seedHarness(tx, 0x900, 'gateway-items');
-      await tx.harnessItems.write.insert(itemOf(0x900, 3, { priority: 2 }), at);
+      await tx.harnessItems.write.insert(itemOf(0x900, 4, { priority: 2 }), at);
       await tx.harnessItems.write.insert(itemOf(0x900, 2, { priority: 1 }), later);
+      await tx.harnessItems.write.insert(itemOf(0x900, 3, { priority: 1 }), at);
       await tx.harnessItems.write.insert(itemOf(0x900, 1, { priority: 1 }), at);
       return (await tx.harnessItems.read.forHarness(uid(0x900))).map((item) => item.title);
     });
-    expect(order).toEqual(['Item 1', 'Item 2', 'Item 3']);
+    expect(order).toEqual(['Item 1', 'Item 3', 'Item 2', 'Item 4']);
   });
 }
 
@@ -268,7 +293,7 @@ function claimRequest(item: ItemState, holder: string, lease: number | null, now
 }
 
 function describeClaims(subject: () => GatewaySubject): void {
-  it('DX-3 KN-5 claims an unheld item once, refuses a held one, and takes a lapsed lease', async () => {
+  it('DX-3 claims an unheld item once, refuses a held one, and takes a lapsed lease', async () => {
     const item = itemOf(0xa00, 1);
     const results = await subject().store.transaction(async (tx) => {
       await seedHarness(tx, 0xa00, 'gateway-claim');
@@ -291,7 +316,7 @@ function describeClaims(subject: () => GatewaySubject): void {
 }
 
 function describeLeases(subject: () => GatewaySubject): void {
-  it('DX-3 KN-5 counts only live holders in a stage', async () => {
+  it('DX-3 counts only live holders in a stage', async () => {
     const { one, two, three, four } = fourItems(0xb00);
     const counts = await subject().store.transaction(async (tx) => {
       await seedHarness(tx, 0xb00, 'gateway-held');
@@ -308,7 +333,7 @@ function describeLeases(subject: () => GatewaySubject): void {
     expect(counts).toEqual([2, 0]);
   });
 
-  it('DX-3 KN-5 lists lapsed leases in expiry order', async () => {
+  it('DX-3 lists lapsed leases in expiry order', async () => {
     const { one, two, three, four } = fourItems(0xc00);
     const lapsed = await subject().store.transaction(async (tx) => {
       await seedHarness(tx, 0xc00, 'gateway-lapsed');
@@ -328,6 +353,47 @@ function describeLeases(subject: () => GatewaySubject): void {
   });
 }
 
+declare function setTimeout(handler: () => void, milliseconds: number): unknown;
+
+function pause(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function itemLockRace(store: Store, itemId: string): Promise<string[]> {
+  const order: string[] = [];
+  let signal: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => {
+    signal = resolve;
+  });
+  const first = store.transaction(async (tx) => {
+    await tx.harnessItems.read.lock(itemId);
+    signal();
+    await pause(150);
+    order.push('first finished');
+  });
+  await held;
+  const second = store.transaction(async (tx) => {
+    await tx.harnessItems.read.lock(itemId);
+    order.push('second locked');
+  });
+  await Promise.all([first, second]);
+  return order;
+}
+
+function describeItemLock(subject: () => GatewaySubject): void {
+  it('DX-3 holds a second transaction on an item row lock until the first commits', async () => {
+    const item = itemOf(0xe00, 1);
+    await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0xe00, 'gateway-row-lock');
+      await tx.harnessItems.write.insert(item, at);
+    });
+    expect(await itemLockRace(subject().store, item.itemId)).toEqual([
+      'first finished',
+      'second locked',
+    ]);
+  });
+}
+
 function describePages(subject: () => GatewaySubject): void {
   it('DX-3 reads page facts for the ids it is given', async () => {
     const page: SeededPage = {
@@ -340,12 +406,20 @@ function describePages(subject: () => GatewaySubject): void {
       title: 'Gateway facts',
     };
     await subject().seedPage(page);
+    const earlier: SeededPage = {
+      ...page,
+      id: uid(0xcff),
+      slug: 'gateway-facts-earlier',
+      bodyMd: 'earlier body',
+    };
+    await subject().seedPage(earlier);
     const facts = await subject().store.transaction(async (tx) => ({
-      found: await tx.pages.read.facts([page.id, uid(0xd01)]),
+      found: await tx.pages.read.facts([page.id, uid(0xd01), earlier.id]),
       none: await tx.pages.read.facts([]),
     }));
     expect(facts).toEqual({
       found: [
+        { id: earlier.id, type: 'skill', status: 'draft', jdArea: '80-89', bodyMd: 'earlier body' },
         { id: page.id, type: 'skill', status: 'draft', jdArea: '80-89', bodyMd: 'facts body' },
       ],
       none: [],
@@ -353,13 +427,20 @@ function describePages(subject: () => GatewaySubject): void {
   });
 }
 
-export function describeStoreGateways(adapter: string, subject: () => GatewaySubject): void {
+export function describeStoreGateways(
+  adapter: string,
+  subject: () => GatewaySubject,
+  concurrentConnections: boolean,
+): void {
   describe(`DX-3 store gateways on ${adapter}`, () => {
     describeHarnesses(subject);
     describeStages(subject);
+    describeMissingStage(subject);
     describeProjection(subject);
+    describeItemOrder(subject);
     describeClaims(subject);
     describeLeases(subject);
     describePages(subject);
+    if (concurrentConnections) describeItemLock(subject);
   });
 }

@@ -1,4 +1,4 @@
-import { inArray } from 'drizzle-orm';
+import { asc, inArray } from 'drizzle-orm';
 import { pageStatusSchema, pageTypeSchema } from '@uw/contracts';
 import type { AnyExecutor } from '../any-database.ts';
 import { pages } from '../schema.ts';
@@ -18,7 +18,8 @@ export function bindPages(executor: AnyExecutor): PagesGateway {
             bodyMd: pages.bodyMd,
           })
           .from(pages)
-          .where(inArray(pages.id, [...pageIds]));
+          .where(inArray(pages.id, [...pageIds]))
+          .orderBy(asc(pages.id));
         return rows.map((row) => ({
           ...row,
           type: pageTypeSchema.parse(row.type),

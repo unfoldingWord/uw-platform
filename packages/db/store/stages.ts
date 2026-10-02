@@ -71,10 +71,12 @@ export function bindStages(executor: AnyExecutor): HarnessStagesGateway {
         }),
       update: (stage) =>
         refusing(async () => {
-          await executor
+          const rows = await executor
             .update(harnessStages)
             .set(columnsOf(stage))
-            .where(eq(harnessStages.id, stage.id));
+            .where(eq(harnessStages.id, stage.id))
+            .returning({ id: harnessStages.id });
+          if (rows.length === 0) throw new Error(`no stage ${stage.id} to update`);
         }),
       reposition: (harnessId, positions) =>
         refusing(() => reposition(executor, harnessId, positions)),
