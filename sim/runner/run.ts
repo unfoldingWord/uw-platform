@@ -29,14 +29,33 @@ function failureOf(error: unknown): string {
   return details.length === 0 ? facts.name : `${facts.name} (${details.join(', ')})`;
 }
 
+const scenarioTimeout = 30_000;
+
+async function withinTime<T>(work: Promise<T>, milliseconds: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`the scenario did not finish within ${milliseconds} ms`)),
+      milliseconds,
+    );
+  });
+  try {
+    return await Promise.race([work, late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function runScenario(
   loaded: LoadedScenario,
   openWorld: () => Promise<World>,
+  milliseconds: number = scenarioTimeout,
 ): Promise<ScenarioResult> {
   const { name, scenario } = loaded;
   const world = await openWorld();
   try {
-    return { name, title: scenario.title, report: await scenario.run(world), failure: null };
+    const report = await withinTime(scenario.run(world), milliseconds);
+    return { name, title: scenario.title, report, failure: null };
   } catch (error) {
     return { name, title: scenario.title, report: null, failure: failureOf(error) };
   } finally {

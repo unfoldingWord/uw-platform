@@ -94,3 +94,20 @@ describe('DX-4 running a scenario', () => {
     worldTimeout,
   );
 });
+
+describe('DX-4 a scenario that does not finish', () => {
+  it(
+    'reports a scenario that does not finish in time as a failure and closes the world',
+    async () => {
+      const world = recordingWorld();
+      const stuck = loaded('ZZ-5.stuck', () => new Promise<ScenarioReport>(() => undefined));
+      const result = await runScenario(stuck, world.open, 50);
+      expect(result).toMatchObject({
+        report: null,
+        failure: 'the scenario did not finish within 50 ms',
+      });
+      expect(world.closed()).toBe(true);
+    },
+    worldTimeout,
+  );
+});
