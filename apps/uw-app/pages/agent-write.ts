@@ -18,8 +18,12 @@ function refusedWith(reason: PageRefusal['reason'], detail: PageRefusal['detail'
   return { ok: false, reason, detail };
 }
 
+const ISSUE_MIRROR = 'issue';
+const issueMirror = (): PageRefusal => refusedWith('not_permitted', { why: 'issue_mirror' });
+
 function statusFor(input: AgentPage, expectedVersion: number, instructions: boolean) {
   return (stored: Page): PageStatus | PageRefusal => {
+    if (stored.type === ISSUE_MIRROR) return issueMirror();
     if (stored.version !== expectedVersion) return refusedWith('stale_version', {});
     const moved = [
       ...(stored.type === input.type ? [] : ['type']),
@@ -42,6 +46,7 @@ export async function writePageAsAgent(
 ): Promise<PageResult | PageRefusal> {
   const { traceId, at } = request;
   const { expectedVersion, type, jdArea, ...editable } = input;
+  if (type === ISSUE_MIRROR) return issueMirror();
   if (expectedVersion === null) {
     const status = isGatedType(type) ? 'suggested' : 'draft';
     const command = { command: 'create_page' as const, requestId: crypto.randomUUID() };
