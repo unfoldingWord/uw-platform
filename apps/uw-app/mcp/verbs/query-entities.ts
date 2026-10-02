@@ -3,7 +3,7 @@ import { refusal, rowFilteredHandler } from '../handler.ts';
 
 export const queryEntities = rowFilteredHandler({
   name: 'query_entities',
-  run: async (context, input) => {
+  rows: async (context, input) => {
     const query = entityQueries.get(input.query);
     if (query === undefined) return refusal('malformed_command', { why: 'unknown_query' });
     const params = query.params.safeParse(input.params);
@@ -13,8 +13,8 @@ export const queryEntities = rowFilteredHandler({
       );
       return refusal('malformed_command', { fields: [...new Set(fields)] });
     }
-    const rows = await query.run(context, params.data);
-    if ('status' in rows) return rows;
-    return { status: 'accepted', output: { rows: [...rows] } };
+    return query.run(context, params.data);
   },
+  resources: async () => (found) => found.resource,
+  reply: (visible) => ({ status: 'accepted', output: { rows: visible.map((found) => found.row) } }),
 });

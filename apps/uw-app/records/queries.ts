@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { jdAreaSchema, stageKeySchema } from '@uw/contracts';
+import type { AclResource } from '@uw/core/acl';
 import type { VerbContext } from '../mcp/context.ts';
 import { refusal, type VerbRefusal } from '../mcp/handler.ts';
-import { callerOf } from '../mcp/verbs/item-scene.ts';
+import { callerOf, harnessAreas } from '../mcp/verbs/item-scene.ts';
 import { openTasks } from '../tasks/store.ts';
 
 const STAGE_ITEM_LIMIT = 50;
@@ -10,7 +11,8 @@ const STAGE_ITEM_LIMIT = 50;
 const rowSchema = z.record(z.string(), z.json());
 
 type Row = z.infer<typeof rowSchema>;
-type Rows = readonly Row[] | VerbRefusal;
+type QueryRow = { readonly row: Row; readonly resource: AclResource | null };
+type Rows = readonly QueryRow[] | VerbRefusal;
 
 type EntityQuery = {
   readonly params: z.ZodType;
@@ -26,8 +28,8 @@ function entityQuery<S extends z.ZodType>(
 
 const openTasksQuery = entityQuery(z.object({ jdArea: jdAreaSchema }), async (context, params) => {
   const found = await openTasks(context.db, context.principal, params.jdArea, context.at);
-  return found.map((task) =>
-    rowSchema.parse({
+  return found.map((task) => ({
+    row: rowSchema.parse({
       taskId: task.taskId,
       title: task.title,
       pageId: task.pageId,
@@ -35,7 +37,8 @@ const openTasksQuery = entityQuery(z.object({ jdArea: jdAreaSchema }), async (co
       status: task.status,
       jdArea: task.jdArea,
     }),
-  );
+    resource: { kind: 'area', area: task.jdArea },
+  }));
 });
 
 const stageItemsQuery = entityQuery(
@@ -43,7 +46,11 @@ const stageItemsQuery = entityQuery(
   async (context, params) => {
     const items = await context.kernel.reads.inStage(callerOf(context), params);
     if (items.status === 'error') return refusal(items.reason, items.detail);
-    return items.value.slice(0, STAGE_ITEM_LIMIT).map((item) => rowSchema.parse(item));
+    const areaOf = await harnessAreas(context, [params.harnessId]);
+    return items.value.slice(0, STAGE_ITEM_LIMIT).map((item) => ({
+      row: rowSchema.parse(item),
+      resource: areaOf(item.harnessId),
+    }));
   },
 );
 

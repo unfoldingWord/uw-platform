@@ -6,6 +6,7 @@ import { errorFields } from '@uw/core/log';
 import { PortNotWiredError } from '@uw/harness';
 import type { VerbContext } from './context.ts';
 import {
+  isBuiltHandler,
   refusal,
   type Found,
   type GatedHandler,
@@ -91,13 +92,16 @@ function accepted(definition: VerbDefinition, reply: VerbReply<VerbName>): Answe
 }
 
 function misdeclared(definition: VerbDefinition | undefined, handler: VerbHandler): boolean {
-  return definition === undefined || (definition.grant !== null && handler.kind !== 'gated');
+  if (definition === undefined || !isBuiltHandler(handler)) return true;
+  return definition.grant !== null && handler.kind !== 'gated';
 }
 
 export function assertGatedWhereGranted(handlers: ReadonlyMap<string, VerbHandler>): void {
   for (const [name, handler] of handlers) {
     if (name !== handler.name || misdeclared(findVerb(name), handler)) {
-      throw new Error(`verb ${name} must be served by a gated handler under its own name`);
+      throw new Error(
+        `verb ${name} must be served by a handler builder, gated where the registry grants it, under its own name`,
+      );
     }
   }
 }

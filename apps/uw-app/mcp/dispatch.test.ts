@@ -12,10 +12,12 @@ const lease = { itemId: ITEM, leaseExpiresAt: null, leaseWarning: false };
 function claimRows(ran: string[]): ReadonlyMap<string, VerbHandler> {
   const handler = rowFilteredHandler({
     name: 'claim_item',
-    run: async () => {
+    rows: async () => {
       ran.push('claim_item');
-      return { status: 'accepted', output: lease };
+      return [lease];
     },
+    resources: async () => () => ({ kind: 'area', area: '80-89' }),
+    reply: () => ({ status: 'accepted', output: lease }),
   });
   return new Map<string, VerbHandler>([[handler.name, handler]]);
 }
