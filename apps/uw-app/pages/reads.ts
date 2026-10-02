@@ -6,7 +6,7 @@ import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
 import { pages } from '@uw/db/schema';
 
-const summarySchema = pageSchema.pick({
+export const summarySchema = pageSchema.pick({
   id: true,
   type: true,
   jdArea: true,
@@ -15,7 +15,16 @@ const summarySchema = pageSchema.pick({
   status: true,
 });
 
-type PageSummary = z.infer<typeof summarySchema>;
+export type PageSummary = z.infer<typeof summarySchema>;
+
+export const summaryColumns = {
+  id: pages.id,
+  type: pages.type,
+  jdArea: pages.jdArea,
+  slug: pages.slug,
+  title: pages.title,
+  status: pages.status,
+};
 
 type PageQuery = {
   readonly text: string;
@@ -28,7 +37,7 @@ export async function pageArea(db: Executor, pageId: string): Promise<JdArea | n
   return row ? jdAreaSchema.parse(row.jdArea) : null;
 }
 
-function areaFilter(actor: Principal, at: Date): SQL | undefined | null {
+export function areaFilter(actor: Principal, at: Date): SQL | undefined | null {
   const readable = readableAreas(actor, at);
   if (readable.kind === 'all') return undefined;
   if (readable.areas.length === 0) return null;
@@ -46,14 +55,7 @@ export async function searchPages(
   const document = sql`to_tsvector('simple', ${pages.title} || ' ' || ${pages.bodyMd})`;
   const terms = sql`websearch_to_tsquery('simple', ${query.text})`;
   const rows = await db
-    .select({
-      id: pages.id,
-      type: pages.type,
-      jdArea: pages.jdArea,
-      slug: pages.slug,
-      title: pages.title,
-      status: pages.status,
-    })
+    .select(summaryColumns)
     .from(pages)
     .where(
       and(

@@ -1,0 +1,114 @@
+import { and, asc, desc, eq, notInArray, or, sql, type SQL } from 'drizzle-orm';
+import { z } from 'zod';
+import { learningFrontmatterSchema, type EvidenceLabel, type JdArea } from '@uw/contracts';
+import type { Principal } from '@uw/core/principal';
+import type { Executor } from '@uw/db/client';
+import { pages } from '@uw/db/schema';
+import { areaFilter, summaryColumns, summarySchema, type PageSummary } from './reads.ts';
+
+const LEARNING_LIMIT = 20;
+const AREA_TIER = 3;
+const notPackageTypes = ['learning', 'skill'];
+
+const learningFactsSchema = z.object({
+  confidence: learningFrontmatterSchema.shape.confidence,
+  as_of: learningFrontmatterSchema.shape.as_of,
+});
+
+type Learning = {
+  readonly page: PageSummary;
+  readonly confidence: EvidenceLabel;
+  readonly asOf: string;
+};
+
+type ContextPages = {
+  readonly instructions: PageSummary | null;
+  readonly package: readonly PageSummary[];
+  readonly learnings: readonly Learning[];
+};
+
+type ContextScope = {
+  readonly itemPageId: string | null;
+  readonly instructionsPageId: string | null;
+  readonly area: JdArea;
+};
+
+type Readable = SQL | undefined;
+
+const nothing: ContextPages = { instructions: null, package: [], learnings: [] };
+
+async function instructionsPage(
+  db: Executor,
+  pageId: string | null,
+  readable: Readable,
+): Promise<PageSummary | null> {
+  if (pageId === null) return null;
+  const [row] = await db
+    .select(summaryColumns)
+    .from(pages)
+    .where(and(eq(pages.id, pageId), readable));
+  return row ? summarySchema.parse(row) : null;
+}
+
+async function packagePages(
+  db: Executor,
+  pageId: string | null,
+  readable: Readable,
+): Promise<readonly PageSummary[]> {
+  if (pageId === null) return [];
+  const child = and(eq(pages.parentId, pageId), notInArray(pages.type, notPackageTypes));
+  const rows = await db
+    .select(summaryColumns)
+    .from(pages)
+    .where(and(or(eq(pages.id, pageId), child), readable))
+    .orderBy(desc(sql`${pages.id} = ${pageId}`), asc(pages.id));
+  return rows.map((row) => summarySchema.parse(row));
+}
+
+function parentTiers(scope: ContextScope): readonly (readonly [string, number])[] {
+  const parents = [scope.itemPageId, scope.instructionsPageId];
+  return parents.flatMap((id, n) => (id === null ? [] : [[id, n + 1] as const]));
+}
+
+function tierOf(tiers: readonly (readonly [string, number])[]): SQL {
+  if (tiers.length === 0) return sql`${AREA_TIER}`;
+  const whens = tiers.map(([id, tier]) => sql`WHEN ${pages.parentId} = ${id} THEN ${tier}::int`);
+  return sql`CASE ${sql.join(whens, sql` `)} ELSE ${AREA_TIER}::int END`;
+}
+
+function learningOf(row: { readonly frontmatter: unknown }): Learning {
+  const { frontmatter, ...page } = row;
+  const facts = learningFactsSchema.parse(frontmatter);
+  return { page: summarySchema.parse(page), confidence: facts.confidence, asOf: facts.as_of };
+}
+
+async function applicableLearnings(
+  db: Executor,
+  scope: ContextScope,
+  readable: Readable,
+): Promise<readonly Learning[]> {
+  const tiers = parentTiers(scope);
+  const applies = or(eq(pages.jdArea, scope.area), ...tiers.map(([id]) => eq(pages.parentId, id)));
+  const rows = await db
+    .select({ ...summaryColumns, frontmatter: pages.frontmatter })
+    .from(pages)
+    .where(and(eq(pages.type, 'learning'), eq(pages.status, 'active'), applies, readable))
+    .orderBy(asc(tierOf(tiers)), desc(sql`${pages.frontmatter} ->> 'as_of'`), asc(pages.id))
+    .limit(LEARNING_LIMIT);
+  return rows.map((row) => learningOf(row));
+}
+
+export async function contextPages(
+  db: Executor,
+  actor: Principal,
+  scope: ContextScope,
+  at: Date,
+): Promise<ContextPages> {
+  const readable = areaFilter(actor, at);
+  if (readable === null) return nothing;
+  return {
+    instructions: await instructionsPage(db, scope.instructionsPageId, readable),
+    package: await packagePages(db, scope.itemPageId, readable),
+    learnings: await applicableLearnings(db, scope, readable),
+  };
+}
