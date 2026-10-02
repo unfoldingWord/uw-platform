@@ -32,6 +32,7 @@ const laterAt = new Date('2026-10-02T10:00:00.000Z');
 const repoId = 9100000001;
 const sha40 = 'abcdef0123456789abcdef0123456789abcdef01';
 const sha64 = 'abcdef0123456789'.repeat(4);
+const uppercaseSha = 'ABCDEF0123'.repeat(4);
 
 const information = pgSchema('information_schema');
 const constraints = information.table('table_constraints', {
@@ -93,28 +94,62 @@ function insertRepo(db: Db, githubId: number, fullName: string) {
   });
 }
 
-function insertCheckRun(db: Db, githubId: number, conclusion: string | null) {
+type CheckRunRow = typeof schema.ghCheckRuns.$inferInsert;
+type ReviewRow = typeof schema.ghReviews.$inferInsert;
+
+function insertCheckRun(db: Db, githubId: number, change: Partial<CheckRunRow> = {}) {
   return db.insert(schema.ghCheckRuns).values({
     githubId,
     repoId,
     headSha: sha40,
     name: 'test',
     status: 'completed',
-    conclusion,
+    conclusion: null,
     freshAt,
+    ...change,
   });
 }
 
-function insertReview(db: Db, githubId: number, prId: number, state: string) {
+function insertReview(db: Db, githubId: number, prId: number, change: Partial<ReviewRow> = {}) {
   return db.insert(schema.ghReviews).values({
     githubId,
     repoId,
     prId,
     reviewerLogin: 'zz-reviewer',
     commitId: sha40,
+    state: 'approved',
+    freshAt,
+    ...change,
+  });
+}
+
+function insertIssue(db: Db, githubId: number, state: string) {
+  return db.insert(schema.ghIssues).values({
+    githubId,
+    repoId,
+    number: githubId - 9100000000,
+    title: 'Index the deliveries',
     state,
+    githubUpdatedAt: freshAt,
     freshAt,
   });
+}
+
+function insertMilestone(db: Db, githubId: number, state: string) {
+  return db.insert(schema.ghMilestones).values({
+    githubId,
+    repoId,
+    number: githubId - 9100000000,
+    title: 'Step 5',
+    state,
+    githubUpdatedAt: freshAt,
+    freshAt,
+  });
+}
+
+async function reviewOnNewPr(db: Db, change: Partial<ReviewRow>) {
+  await db.insert(schema.ghPrs).values(prRow(9100000205));
+  return insertReview(db, 9100000403, 9100000205, change);
 }
 
 function openDatabase(target: DatabaseTarget): () => Db {
@@ -198,7 +233,7 @@ function readModelRules(db: () => Db): void {
 
 const headRefusals: [string, string][] = [
   ['an abbreviated head', 'abc123'],
-  ['an uppercase head', 'ABCDEF0123'.repeat(4)],
+  ['an uppercase head', uppercaseSha],
 ];
 
 function factRules(db: () => Db): void {
@@ -218,20 +253,22 @@ function factRules(db: () => Db): void {
   });
 
   it('refuses a check conclusion outside the closed set', async () => {
-    expect(await refusal(insertCheckRun(db(), 9100000301, 'green'))).toEqual({
+    expect(await refusal(insertCheckRun(db(), 9100000301, { conclusion: 'green' }))).toEqual({
       code: '23514',
       constraint: 'gh_check_runs_conclusion_known',
     });
-    await insertCheckRun(db(), 9100000302, null);
+    await insertCheckRun(db(), 9100000302);
   });
 
   it('refuses a review state outside the closed set', async () => {
     await db().insert(schema.ghPrs).values(prRow(9100000204));
-    expect(await refusal(insertReview(db(), 9100000401, 9100000204, 'pending'))).toEqual({
-      code: '23514',
-      constraint: 'gh_reviews_state_known',
-    });
-    await insertReview(db(), 9100000402, 9100000204, 'approved');
+    expect(await refusal(insertReview(db(), 9100000401, 9100000204, { state: 'pending' }))).toEqual(
+      {
+        code: '23514',
+        constraint: 'gh_reviews_state_known',
+      },
+    );
+    await insertReview(db(), 9100000402, 9100000204);
   });
 
   it('refuses a repository name with no owner', async () => {
@@ -239,6 +276,56 @@ function factRules(db: () => Db): void {
       code: '23514',
       constraint: 'gh_repos_full_name_form',
     });
+  });
+}
+
+const columnRefusals: [string, (db: Db) => PromiseLike<unknown>, string][] = [
+  [
+    'a PR state outside the closed set',
+    (db) => db.insert(schema.ghPrs).values(prRow(9100000701, { state: 'draft' })),
+    'gh_prs_state_known',
+  ],
+  [
+    'an abbreviated head for a PR file list',
+    (db) => db.insert(schema.ghPrs).values(prRow(9100000702, { filesHead: 'abc123' })),
+    'gh_prs_files_head_form',
+  ],
+  [
+    'an abbreviated commit on a review',
+    (db) => reviewOnNewPr(db, { commitId: 'abc123' }),
+    'gh_reviews_commit_id_form',
+  ],
+  [
+    'an uppercase head on a check run',
+    (db) => insertCheckRun(db, 9100000303, { headSha: uppercaseSha }),
+    'gh_check_runs_head_sha_form',
+  ],
+  [
+    'a check status outside the closed set',
+    (db) => insertCheckRun(db, 9100000304, { status: 'done' }),
+    'gh_check_runs_status_known',
+  ],
+  [
+    'an issue state outside the closed set',
+    (db) => insertIssue(db, 9100000801, 'merged'),
+    'gh_issues_state_known',
+  ],
+  [
+    'a milestone state outside the closed set',
+    (db) => insertMilestone(db, 9100000901, 'merged'),
+    'gh_milestones_state_known',
+  ],
+];
+
+function columnRules(db: () => Db): void {
+  it.each(columnRefusals)('refuses %s', async (_label, work, constraint) => {
+    expect(await refusal(work(db()))).toEqual({ code: '23514', constraint });
+  });
+
+  it('accepts an open issue, a closed milestone and a queued check run', async () => {
+    await insertIssue(db(), 9100000802, 'open');
+    await insertMilestone(db(), 9100000902, 'closed');
+    await insertCheckRun(db(), 9100000305, { status: 'queued' });
   });
 }
 
@@ -289,6 +376,8 @@ function describeTarget(target: DatabaseTarget): void {
   describe('the read-model tables are keyed on the GitHub id, classified and timestamped', () =>
     readModelRules(db));
   describe('the read-model tables refuse malformed facts', () => factRules(db));
+  describe('every read-model state and commit column refuses a value outside its form', () =>
+    columnRules(db));
   describe('the read-model tables refuse a second row for one GitHub thing', () =>
     identityRules(db));
   describe('webhook deliveries can be read by when they arrived', () => deliveryIndexRules(db));
