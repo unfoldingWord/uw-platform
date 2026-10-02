@@ -164,7 +164,10 @@ export type ParkInput = {
   readonly title: string;
 };
 
-type HeldInput = ParkInput & { readonly agent: Principal };
+type HeldInput = ParkInput & {
+  readonly agent: Principal;
+  readonly delegationId: string | null;
+};
 
 async function enqueuedAtGatedCheck(world: World, input: ParkInput): Promise<string> {
   const caller = simCaller(world, input.admin);
@@ -209,7 +212,7 @@ export async function simHeldAtCheck(world: World, input: HeldInput): Promise<It
   if (atCheck.stageKey !== 'check') throw new Error(`the item is at ${atCheck.stageKey}`);
   const claimed = await world.kernel.items.claim(simCaller(world, input.agent), {
     itemId,
-    delegationId: null,
+    delegationId: input.delegationId,
   });
   if (claimed.status !== 'accepted')
     throw new Error(`claiming check was refused: ${claimed.reason}`);

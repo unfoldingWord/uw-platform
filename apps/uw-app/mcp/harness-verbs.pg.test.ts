@@ -5,7 +5,7 @@ import { principalSchema, refusalSchema, type HarnessEvent, type Principal } fro
 import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
-import { seedGrant, seedPerson } from '@uw/db/test-seed';
+import { revokeSeededGrant, seedGrant, seedPerson } from '@uw/db/test-seed';
 import { LEASE_MS, readAllEvents, software, type Caller, type Kernel } from '@uw/harness';
 import { bindServiceToken } from '../agents/service-tokens.ts';
 import { createApp } from '../app.tsx';
@@ -23,6 +23,11 @@ const EDITOR = {
   id: '00000000-0000-4000-8000-000000001301',
   email: 'verbs-editor@unfoldingword.org',
 };
+const LEAVER = {
+  id: '00000000-0000-4000-8000-000000001303',
+  email: 'verbs-leaver@unfoldingword.org',
+};
+const LEAVER_80 = '00000000-0000-4000-8000-000000001304';
 const CLIENT = 'verbs-routine.access';
 const ROUTINE = 'hourly-routine';
 const MINUTE = 60_000;
@@ -49,20 +54,32 @@ function settableClock(): SettableClock {
   return { now: () => new Date(current), advance: (ms) => void (current += ms) };
 }
 
+function editorGrant(id: string, personId: string, area: string) {
+  const grantedAt = new Date('2026-01-01T00:00:00.000Z');
+  return {
+    id,
+    personId,
+    role: 'editor' as const,
+    scopeKind: 'jd_area' as const,
+    scopeArea: area,
+    grantedAt,
+    expiresAt: null,
+  };
+}
+
+async function seedPeople(db: Database): Promise<void> {
+  await seedPerson(db, EDITOR);
+  await seedGrant(db, editorGrant('00000000-0000-4000-8000-000000001302', EDITOR.id, '80-89'));
+  await seedPerson(db, LEAVER);
+  await seedGrant(db, editorGrant(LEAVER_80, LEAVER.id, '80-89'));
+  await seedGrant(db, editorGrant('00000000-0000-4000-8000-000000001305', LEAVER.id, '20-29'));
+}
+
 async function openRig(): Promise<Rig> {
   const database = await createMigratedDatabase(testServer ?? '');
   const db = createClient(database.connectionString);
   const clock = settableClock();
-  await seedPerson(db, EDITOR);
-  await seedGrant(db, {
-    id: '00000000-0000-4000-8000-000000001302',
-    personId: EDITOR.id,
-    role: 'editor',
-    scopeKind: 'jd_area',
-    scopeArea: '80-89',
-    grantedAt: new Date('2026-01-01T00:00:00.000Z'),
-    expiresAt: null,
-  });
+  await seedPeople(db);
   const ian = await personOn(db, IAN_ID, 'ian.lindsley@unfoldingword.org', clock.now());
   const editor = await personOn(db, EDITOR.id, EDITOR.email, clock.now());
   const drop = async () => {
@@ -116,8 +133,8 @@ async function harnessWith(r: Rig, key: string, priorities: readonly number[], a
   return { harnessId, itemIds };
 }
 
-async function runner(r: Rig, device: string): Promise<Client> {
-  const token = await r.fixture.sign({ email: EDITOR.email });
+async function runner(r: Rig, device: string, email = EDITOR.email): Promise<Client> {
+  const token = await r.fixture.sign({ email });
   const app = createApp(postgresDeps(r.db, r.fixture, undefined, r.clock));
   return httpClient(app, { 'cf-access-jwt-assertion': token, 'x-uw-device': device });
 }
@@ -329,8 +346,9 @@ function textOf(result: Awaited<ReturnType<typeof callVerb>>): string {
 
 async function heldByPersonAtCheck(
   r: Rig,
+  key: string,
 ): Promise<{ readonly h: Harness; readonly itemId: string }> {
-  const h = await harnessWith(r, 'software-gate', [1]);
+  const h = await harnessWith(r, key, [1]);
   const change = { exitGate: 'human_approval' as const };
   value(
     await r.kernel.stages.updateStage(caller(r.ian), {
@@ -360,7 +378,7 @@ async function heldByPersonAtCheck(
 describe.skipIf(!testServer)('AB-4 submit_to_gate parks at a human gate', () => {
   it('parks the runner submission with its pull request, and the item stays at check', async () => {
     const r = await rig();
-    const { h, itemId } = await heldByPersonAtCheck(r);
+    const { h, itemId } = await heldByPersonAtCheck(r, 'software-gate');
     const laptop = await runner(r, 'laptop');
     expect((await claim(laptop, itemId)).isError).toBe(false);
     const submitted = await call(laptop, 'submit_to_gate', {
@@ -381,22 +399,75 @@ describe.skipIf(!testServer)('AB-4 submit_to_gate parks at a human gate', () => 
   });
 });
 
+function submission(itemId: string, to: string | null): Body {
+  return { itemId, evidence: {}, to, pullRequest: PULL_REQUEST, head: 'abc1234' };
+}
+
+describe.skipIf(!testServer)('AB-4 submit_to_gate names no stage past a human gate', () => {
+  it('parks a submission that names ship with a pull request, and the item stays at check', async () => {
+    const r = await rig();
+    const { itemId } = await heldByPersonAtCheck(r, 'software-gate-ship');
+    const laptop = await runner(r, 'laptop');
+    expect((await claim(laptop, itemId)).isError).toBe(false);
+    const submitted = await call(laptop, 'submit_to_gate', submission(itemId, 'ship'));
+    expect(submitted.body).toEqual({ itemId, result: 'parked', failures: [] });
+    const item = value(await r.kernel.reads.item(caller(r.ian), { itemId })).item;
+    expect(item).toMatchObject({ stageKey: 'check', gateStatus: 'parked' });
+  });
+});
+
+describe.skipIf(!testServer)('AB-4 submit_to_gate refuses a lapsed lease', () => {
+  it('answers lease_expired once the lease has lapsed, and the item does not move', async () => {
+    const r = await rig();
+    const h = await harnessWith(r, 'software-lapsed', [1]);
+    const laptop = await runner(r, 'laptop');
+    expect((await claim(laptop, at(h, 0))).isError).toBe(false);
+    r.clock.advance(LEASE_MS + MINUTE);
+    const submitted = await call(laptop, 'submit_to_gate', submission(at(h, 0), null));
+    expect(submitted.body).toMatchObject({ reason: 'lease_expired', detail: { itemId: at(h, 0) } });
+    const item = value(await r.kernel.reads.item(caller(r.ian), { itemId: at(h, 0) })).item;
+    expect(item.stageKey).toBe('package');
+  });
+});
+
+describe.skipIf(!testServer)(
+  'AB-4 a grant the owner loses stops the runner on its next call',
+  () => {
+    it('refuses the next claim on the area once the owner loses editor there', async () => {
+      const r = await rig();
+      const h = await harnessWith(r, 'software-revoked', [1, 1]);
+      const laptop = await runner(r, 'laptop', LEAVER.email);
+      expect((await claim(laptop, at(h, 0))).isError).toBe(false);
+      await revokeSeededGrant(r.db, LEAVER_80, r.clock.now());
+      const refused = await claim(laptop, at(h, 1));
+      expect(refused.body).toMatchObject({ status: 'error', reason: 'not_permitted' });
+      const item = value(await r.kernel.reads.item(caller(r.ian), { itemId: at(h, 1) })).item;
+      expect(item.holder).toBeNull();
+    });
+  },
+);
+
 const surfaceRefusal = refusalSchema.extend({ detail: z.record(z.string(), z.json()) }).strict();
 
 describe.skipIf(!testServer)(
   'AB-4 every refusal through the surface is a closed-set reason',
   () => {
-    it('parses every error body this file saw with the refusal schema', () => {
-      const reasons = seen.map((body) => surfaceRefusal.parse(body).reason);
-      expect(new Set(reasons)).toEqual(
-        new Set([
-          'lease_held',
-          'delegation_required',
-          'item_not_found',
-          'not_permitted',
-          'lease_expired',
-        ]),
-      );
+    it('parses its own refusals and every error body this file saw with the refusal schema', async () => {
+      const r = await rig();
+      const laptop = await runner(r, 'laptop');
+      const missingId = '00000000-0000-4000-8000-000000001398';
+      const own = [
+        await claim(laptop, missingId),
+        await step(laptop, missingId, 'metered'),
+        await call(laptop, 'submit_to_gate', submission(missingId, null)),
+      ];
+      expect(own.every((result) => result.isError)).toBe(true);
+      for (const body of seen) expect(surfaceRefusal.safeParse(body).success).toBe(true);
+      expect(own.map((result) => surfaceRefusal.parse(result.body).reason)).toEqual([
+        'item_not_found',
+        'item_not_found',
+        'item_not_found',
+      ]);
     });
   },
 );
