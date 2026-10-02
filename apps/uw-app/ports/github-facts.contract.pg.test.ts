@@ -4,6 +4,7 @@ import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
 import type { CheckFact, PullRequestFacts, ReviewFact } from '@uw/harness';
 import { describeGithubFactsContract } from '@uw/harness/port-contracts/github-facts';
+import { createLogger } from '@uw/core/log';
 import type { GitHubAppConfig } from '../github/app-config.ts';
 import { createGitHubReads } from '../github/client.ts';
 import {
@@ -21,6 +22,10 @@ import { platformGitHubFacts } from './github-facts.ts';
 type Opened = { readonly db: Database; readonly drop: () => Promise<void> };
 
 const opened: Opened[] = [];
+const silent = createLogger(
+  { traceId: crypto.randomUUID(), commit: 'c', route: 'contract', principal: null },
+  () => undefined,
+);
 const repoIds = new Map<string, number>();
 const pullIds = new Map<string, number>();
 let app: GitHubAppConfig;
@@ -148,7 +153,7 @@ describe.skipIf(!testServer)('DX-3 the platform GitHub facts on Postgres', () =>
     const github = fixtureGitHub();
     const reads = () => createGitHubReads(app, { fetch: github.fetch, now: systemClock.now });
     return {
-      facts: platformGitHubFacts(db, reads, systemClock),
+      facts: platformGitHubFacts(db, { open: reads, logger: silent }, systemClock),
       given: (facts) => given(db, github, facts),
       now: systemClock.now,
     };

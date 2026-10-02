@@ -175,6 +175,17 @@ describe('FD-10 the ingest consumer and a malformed payload', () => {
       expect.objectContaining({ trace_id: validEnvelope.traceId, outcome: 'malformed_payload' }),
     );
   });
+
+  it('retries a delivery its handler finds malformed when no dead-letter producer is bound', async () => {
+    const h = harness({ handler: async () => 'malformed', withDeadLetter: false });
+    const message = fakeMessage(validEnvelope);
+    await consumeBatch([message], h.deps);
+    expect(message.retried).toBe(true);
+    expect(message.acked).toBe(false);
+    expect(h.lines).toContainEqual(
+      expect.objectContaining({ level: 'error', outcome: 'malformed_payload' }),
+    );
+  });
 });
 
 describe('FD-10 the ingest consumer duplicates and failures', () => {

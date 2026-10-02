@@ -2,6 +2,7 @@ import type { Principal } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import {
   createKernel,
+  FactsUnavailableError,
   software,
   type GitHubFacts,
   type PullRequestFacts,
@@ -183,6 +184,25 @@ describe('GH-5 an approve at Ship fails closed on stale or missing GitHub facts'
     const { outcome, names, decisions } = await approveWith(scene, githubFacts);
     expect(outcome).toMatchObject({ status: 'error', reason: 'pr_not_open' });
     expect(names).toEqual(['ship_refused']);
+    expect(decisions).toEqual([]);
+  });
+});
+
+describe('GH-5 an approve at Ship fails closed when GitHub cannot be read again', () => {
+  sceneIt('refuses as stale when GitHub cannot be read again', async (scene) => {
+    const githubFacts: GitHubFacts = {
+      pullRequest: async () => approved(scene),
+      refresh: async () => {
+        throw new FactsUnavailableError('server_error');
+      },
+    };
+    const { outcome, names, decisions } = await approveWith(scene, githubFacts);
+    expect(outcome).toMatchObject({
+      status: 'error',
+      reason: 'facts_stale',
+      detail: { freshAt: null },
+    });
+    expect(names).toEqual([]);
     expect(decisions).toEqual([]);
   });
 });

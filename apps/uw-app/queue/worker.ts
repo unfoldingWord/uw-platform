@@ -6,7 +6,6 @@ import { githubIngestHandler } from '../github/ingest.ts';
 import type { OpenReads } from '../github/refresh.ts';
 import { platformGitHubTransport } from '../github/transport.ts';
 import { platformKernel } from '../kernel.ts';
-import { systemClock } from '../ports/clock.ts';
 import { consumeBatch, notWiredHandlers, type IngestHandler } from './consumer.ts';
 import { postgresWatermarks } from './watermarks.ts';
 
@@ -19,7 +18,7 @@ function readsOf(env: Bindings, now: () => Date): OpenReads | null {
 function handlersFor(database: DatabaseHandle | null, env: Bindings, now: () => Date) {
   if (database === null) return notWiredHandlers;
   const client = readsOf(env, now);
-  const kernel = platformKernel(database, systemClock, client);
+  const kernel = platformKernel(database);
   return new Map<'github', IngestHandler>([
     ['github', githubIngestHandler({ db: database.db, kernel, client, now })],
   ]);

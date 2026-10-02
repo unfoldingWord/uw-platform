@@ -29,6 +29,7 @@ const simMayImport = [
 
 const github = (file) => `^apps/uw-app/github/${file}\\.ts$`;
 const octokitWebhookSignatures = npm('@octokit/webhooks-methods');
+const appTesting = '^apps/(uw-app|uw-ingest)/(github/)?testing/';
 const compositionRoots = '^apps/uw-app/(queue/worker|cron/scheduled|kernel)\\.ts$';
 
 const forbidden = (name, comment, from, to) => ({
@@ -129,9 +130,9 @@ export default {
     {
       name: 'test-seed-only-in-tests-and-sim',
       comment:
-        'Only test files and sim/ import the fixture seeding helpers, which write tables their owners write.',
+        'Only test files, the app test helpers and sim/ import the fixture seeding helpers, which write tables their owners write.',
       severity: 'error',
-      from: { path: '^(apps|packages|tools)/', pathNot: testFile },
+      from: { path: '^(apps|packages|tools)/', pathNot: [testFile, appTesting] },
       to: { path: '^packages/db/test-seed\\.ts$' },
     },
     {
@@ -141,6 +142,14 @@ export default {
       severity: 'error',
       from: { pathNot: testFile },
       to: { path: '^apps/uw-app/mcp/in-process\\.ts$' },
+    },
+    {
+      name: 'app-testing-only-in-tests',
+      comment:
+        'The app test helpers under testing/ write fixtures straight into tables and hold fixture keys, so only test files and other test helpers import them.',
+      severity: 'error',
+      from: { pathNot: [testFile, appTesting] },
+      to: { path: appTesting },
     },
     {
       name: 'harness-testing-only-in-tests',
