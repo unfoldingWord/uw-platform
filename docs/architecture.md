@@ -104,6 +104,23 @@ Every durable value has one writer. The Drizzle schema declares every table with
 | `gh_*` | the GitHub read-model module in `uw-app`, called by both the webhook consumer and the nightly sweep | one writer, two entry points; GitHub is the source of truth |
 | `push_subscriptions`, `push_cooldowns` | the notifier | per person |
 
+## Transactions and locks
+
+A kernel command opens one transaction (`ports.store.transaction`) and passes the transaction object as-is to everything it calls; transactions never nest. A second transaction opens only after the first has settled: to record a refusal after Postgres aborted the first (`stage_edit_refused`), or to record a connector's outcome after the decision committed. The lease sweep lists lapsed leases in one transaction and expires each item in its own.
+
+Locks are taken in one order, and none after the first event append:
+
+1. **The stage lock.** The stage command and activation take `harness-stages:<harnessId>` before anything else and read the stage rows after it, so two edits of one harness serialise and neither writes back a row the other changed. Claim, take over and the gate decision take `harness-stage-claims:<stageId>` and re-read the stage after it, so the WIP count and the claim are one serial step. No command takes both.
+2. **The item row.** `harnessItems.read.lock` (`SELECT ... FOR UPDATE`), and `recordItemEvents` folds the locked row.
+3. **Grants.** `grants.lockAndReread` (`FOR SHARE` on the person's `role_grants`) where a revoke must wait for the command (the stage and gate commands); `grants.resolveIn`, a plain read in the same transaction, for the write-level checks of the item commands.
+4. **Appends.** The `harness_events` insert trigger takes `harness_events:<harnessId>` and holds it to commit, so positions become visible in order. Taking any lock after it would hold the harness's append lock while waiting.
+
+Where there is no row to lock, a unique constraint is the guard: `delegations_supersedes_once` lets one renewal of a dead delegation insert and the command maps the other's violation to `stale_version`.
+
+**Isolation is READ COMMITTED**, Postgres's default; nothing sets another level. The WIP count after the stage-claims lock and the stage re-read after the harness-stages lock rely on each statement seeing what committed before it began. Under REPEATABLE READ the snapshot is fixed at the transaction's first statement, so a count or re-read after a lock wait would miss the commit it waited for, and both the WIP limit and the lost-update guard would silently fail.
+
+**One key space.** Every advisory lock is `pg_advisory_xact_lock(hashtextextended(key, 0))` over a string key, built by `advisoryLock(key)` in `packages/db/advisory-locks.ts` (the Drizzle store's `tx.lock` and the platform's grant commands and page re-parent use it; the event trigger writes the same expression in SQL). That file is the registry: the platform keys `acl-grant-commands` and `pages-reparenting`, and the prefixes `harness-stage-claims:`, `harness-stages:` and `harness_events:`. Its tests fail if one key is a prefix of another, if a kernel lock key's prefix is not registered, or if a numeric advisory lock appears anywhere in the repository. Two distinct strings can still hash alike (64 bits); the cost is two unrelated commands waiting on each other, never a missed lock.
+
 ## Events are the spine
 
 Every kernel operation returns events; the kernel appends them and wakes the hub. Modules never call each other's internals; where one reacts to another, it reacts to an event. Item state is a fold; the play-by-play, the board, the dashboard feed and the audit trail are all reads over the same rows.
