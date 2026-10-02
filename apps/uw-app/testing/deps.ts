@@ -1,5 +1,6 @@
 import type { AppDeps } from '../deps.ts';
 import { systemClock } from '../ports/clock.ts';
+import { systemTimers } from '../timers.ts';
 
 export function recordingDeps() {
   const lines: Record<string, unknown>[] = [];
@@ -11,6 +12,7 @@ export function recordingDeps() {
     newId: () => crypto.randomUUID(),
     sink: (line) => lines.push(JSON.parse(line)),
     clock: systemClock,
+    timers: systemTimers,
   };
   return { deps, lines };
 }

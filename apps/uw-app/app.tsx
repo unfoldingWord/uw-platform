@@ -28,7 +28,7 @@ export function createApp(deps: AppDeps = platformDeps): Hono<AppEnv> {
     return c.json({ status: 'error', reason: 'internal_error' }, 500);
   });
 
-  app.route('/health', healthRoutes());
+  app.route('/health', healthRoutes(deps));
 
   app.use(withPrincipal(deps));
   app.route('/api/me', meRoutes());
