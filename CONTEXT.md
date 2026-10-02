@@ -168,6 +168,14 @@ _Avoid_: verb (that is the agent's word), action, mutation, endpoint
 One row of `harness_events`: a typed, append-only record of something that happened to a harness, from a closed vocabulary. The item's state is a fold over its events; replay equals record.
 _Avoid_: log line, history entry, audit row (the audit trail is a fold over events), message
 
+**Projection**:
+The `harness_items` row: the fold of an item's events, written in the same transaction as the events it folds. Replaying the log must give exactly the projection.
+_Avoid_: cache, snapshot
+
+**Gateway**:
+One table's member of a Store transaction, `tx.<table>`, with a `read` half and a `write` half; only the table's owner calls the write half.
+_Avoid_: repository, DAO
+
 **Play-by-play**:
 The rendering of an item's events in order, with actor, host, cost basis and links.
 _Avoid_: timeline, activity, log, history
