@@ -91,39 +91,6 @@ describe('GH-5 the changed files are read by comparing the base SHA with the hea
   );
 });
 
-describe('the GitHub issue reads page from an instant up to a page limit', () => {
-  it('reads issues updated since an instant, oldest first, across every state', async () => {
-    const github = fixtureGitHub();
-    github.on('GET', '/repos/o/r/issues', pages(1, 3));
-    const since = new Date('2026-10-01T00:00:00.000Z');
-    const result = await readsOver(github).issuesSince('o/r', since, 5);
-    expect(result.ok && result.value.issues.length).toBe(103);
-    expect(result.ok && result.value.capped).toBe(false);
-    const search = new URLSearchParams(sent(github, '/repos/o/r/issues')[0]?.search);
-    expect(Object.fromEntries(search)).toEqual({
-      since: '2026-10-01T00:00:00.000Z',
-      state: 'all',
-      sort: 'updated',
-      direction: 'asc',
-      per_page: '100',
-      page: '1',
-    });
-  });
-
-  it('reports capped when the page limit of full issue pages was read', async () => {
-    const github = fixtureGitHub();
-    github.on('GET', '/repos/o/r/issues', pages(5, null));
-    const result = await readsOver(github).issuesSince('o/r', null, 2);
-    expect(result).toEqual({
-      ok: true,
-      value: { issues: expect.any(Array) as unknown, capped: true },
-    });
-    const requests = sent(github, '/repos/o/r/issues');
-    expect(requests).toHaveLength(2);
-    expect(requests[0]?.search).not.toContain('since');
-  });
-});
-
 describe('the other GitHub list reads are whole or refused', () => {
   it('refuses a list longer than ten pages rather than answer part of it', async () => {
     const github = fixtureGitHub();

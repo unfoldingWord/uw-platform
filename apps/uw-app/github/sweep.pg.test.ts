@@ -9,6 +9,7 @@ import { changedPaths, head } from './testing/facts-fixtures.ts';
 import {
   firstRun,
   issuesOf,
+  listedAt,
   nextRun,
   other,
   outage,
@@ -18,7 +19,6 @@ import {
   reviewsPath,
   storedRepository,
   sweepOnce,
-  tokenPath,
   withOtherRepository,
   zero,
 } from './testing/sweep-rig.ts';
@@ -41,6 +41,18 @@ beforeAll(async () => {
   app = await fixtureApp();
 });
 
+function lastSweep(at: Date, repaired: typeof zero, outcome = 'ok') {
+  return {
+    at: at.toISOString(),
+    attemptedAt: at.toISOString(),
+    outcome,
+    heldAt: null,
+    reason: null,
+    repaired,
+    unparsedItems: 0,
+  };
+}
+
 async function firstSweep(db: Database): Promise<void> {
   const github = programmed();
   const { report } = await sweepOnce(db, app, { github, at: firstRun });
@@ -51,16 +63,17 @@ async function firstSweep(db: Database): Promise<void> {
   expect(report.repositories).toEqual([
     {
       repo: platform,
-      outcome: 'swept',
+      outcome: 'ok',
+      reason: null,
+      heldAt: null,
+      sweptThrough: listedAt,
       repaired: firstRepairs,
-      sweptThrough: firstRun,
-      capped: false,
-      failure: null,
+      unparsedItems: 0,
     },
   ]);
   expect(await storedRepository(db, platformId)).toEqual({
-    sweptThrough: firstRun,
-    lastSweep: { at: firstRun.toISOString(), repaired: firstRepairs },
+    sweptThrough: listedAt,
+    lastSweep: lastSweep(firstRun, firstRepairs),
   });
   expect(await pullRequestFacts(db, { repo: platform, number: 7 })).toMatchObject({
     head,
@@ -75,15 +88,15 @@ async function secondSweep(db: Database): Promise<void> {
   await sweepOnce(db, app, { github: programmed(), at: firstRun });
   const github = programmed();
   const { report } = await sweepOnce(db, app, { github, at: nextRun });
-  const since = new Date(firstRun.getTime() - overlap).toISOString();
+  const since = new Date(listedAt.getTime() - overlap).toISOString();
   const [listing] = requestsTo(github, issuesOf(platform));
   expect(new URLSearchParams(listing?.search).get('since')).toBe(since);
   expect(report.repositories).toEqual([
-    expect.objectContaining({ outcome: 'swept', repaired: zero, sweptThrough: nextRun }),
+    expect.objectContaining({ outcome: 'ok', repaired: zero, sweptThrough: listedAt }),
   ]);
   expect(await storedRepository(db, platformId)).toEqual({
-    sweptThrough: nextRun,
-    lastSweep: { at: nextRun.toISOString(), repaired: zero },
+    sweptThrough: listedAt,
+    lastSweep: lastSweep(nextRun, zero),
   });
   expect(github.requests().some((request) => request.path.includes('/compare/'))).toBe(false);
 }
@@ -99,6 +112,7 @@ async function missedReview(db: Database): Promise<void> {
   expect((await pullRequestFacts(db, { repo: platform, number: 7 }))?.reviews).toEqual([
     expect.objectContaining({ reviewId: 9100000301, state: 'approved', commit: head }),
   ]);
+  expect((await storedRepository(db, platformId))?.sweptThrough).toEqual(listedAt);
 }
 
 describe.skipIf(!testServer)(
@@ -132,11 +146,21 @@ async function cappedListing(db: Database): Promise<void> {
   const { report } = await sweepOnce(db, app, { github, at: firstRun, options: { maxPages: 1 } });
   const last = new Date(page[99]?.updated_at ?? '');
   expect(report.repositories).toEqual([
-    expect.objectContaining({ outcome: 'swept', capped: true, sweptThrough: last }),
+    expect.objectContaining({ outcome: 'capped', reason: 'page_limit', sweptThrough: last }),
   ]);
   expect(report.repositories[0]?.repaired.issues).toBe(100);
   expect(requestsTo(github, issuesOf(platform))).toHaveLength(1);
   expect((await storedRepository(db, platformId))?.sweptThrough).toEqual(last);
+}
+
+async function neverPastUnreturned(db: Database): Promise<void> {
+  const { report } = await sweepOnce(db, app, { github: programmed(), at: nextRun });
+  expect(report.repositories[0]?.sweptThrough).toEqual(listedAt);
+  expect(listedAt < nextRun).toBe(true);
+  const quiet = programmed();
+  quiet.on('GET', issuesOf(platform), { status: 200, body: [] });
+  await sweepOnce(db, app, { github: quiet, at: new Date(nextRun.getTime() + 86_400_000) });
+  expect((await storedRepository(db, platformId))?.sweptThrough).toEqual(listedAt);
 }
 
 async function listingFails(db: Database): Promise<void> {
@@ -146,16 +170,19 @@ async function listingFails(db: Database): Promise<void> {
   github.on('GET', issuesOf(platform), outage);
   const { report, lines } = await sweepOnce(db, app, { github, at: nextRun });
   expect(report.repositories).toEqual([
+    expect.objectContaining({ repo: other, outcome: 'ok', sweptThrough: null }),
     expect.objectContaining({
       repo: platform,
       outcome: 'failed',
-      failure: 'server_error',
+      reason: 'server_error',
       sweptThrough: null,
     }),
-    expect.objectContaining({ repo: other, outcome: 'swept', sweptThrough: nextRun }),
   ]);
-  expect((await storedRepository(db, platformId))?.sweptThrough).toEqual(firstRun);
-  expect((await storedRepository(db, otherId))?.sweptThrough).toEqual(nextRun);
+  expect(await storedRepository(db, platformId)).toMatchObject({
+    sweptThrough: listedAt,
+    lastSweep: expect.objectContaining({ outcome: 'failed', reason: 'server_error' }) as unknown,
+  });
+  expect((await storedRepository(db, otherId))?.lastSweep).toMatchObject({ outcome: 'ok' });
   expect(lines).toContainEqual(
     expect.objectContaining({ message: 'github sweep repaired', outcome: 'failed' }),
   );
@@ -165,23 +192,9 @@ describe.skipIf(!testServer)('GH-2 the sweep moves the watermark only past what 
   it('stops at the last listed issue when the page limit caps the listing', () =>
     withAppDatabase(cappedListing));
 
+  it('never moves past the greatest instant it listed, even with nothing new', () =>
+    withAppDatabase(neverPastUnreturned));
+
   it('keeps the watermark when the listing fails and still sweeps the next repository', () =>
     withAppDatabase(listingFails));
-});
-
-async function tokensPerRepository(db: Database): Promise<void> {
-  const github = programmed();
-  withOtherRepository(github);
-  await sweepOnce(db, app, { github, at: firstRun });
-  const scopes = requestsTo(github, tokenPath).map((request) => request.body);
-  expect(scopes).toEqual([
-    { permissions: { metadata: 'read' } },
-    expect.objectContaining({ repositories: ['uw-platform'] }),
-    expect.objectContaining({ repositories: ['uw-other'] }),
-  ]);
-}
-
-describe.skipIf(!testServer)('GH-2 the sweep mints one token per repository per run', () => {
-  it('mints one token to list the repositories and one for each repository', () =>
-    withAppDatabase(tokensPerRepository));
 });

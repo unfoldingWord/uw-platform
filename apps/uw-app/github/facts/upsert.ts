@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, lte, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import type { Database, Executor, Transaction } from '@uw/db/client';
 import { ghCheckRuns, ghIssues, ghMilestones, ghPrs, ghRepos, ghReviews } from '@uw/db/schema';
@@ -405,21 +405,40 @@ export function recordFiles(db: Database, files: FilesRecord): Promise<boolean> 
   return recordFilesIn(db, files);
 }
 
+export type SweepRecord = {
+  readonly at: Date;
+  readonly attemptedAt: Date | null;
+  readonly outcome: 'ok' | 'capped' | 'stalled' | 'deferred' | 'failed';
+  readonly heldAt: Date | null;
+  readonly reason: string | null;
+  readonly repaired: RepairCounts;
+  readonly unparsedItems: number;
+};
+
+function sweepJson(record: SweepRecord) {
+  return {
+    ...record,
+    at: record.at.toISOString(),
+    attemptedAt: record.attemptedAt?.toISOString() ?? null,
+    heldAt: record.heldAt?.toISOString() ?? null,
+  };
+}
+
 export async function recordSweep(
   db: Database,
   repoId: number,
-  sweep: { readonly sweptThrough: Date; readonly at: Date; readonly repaired: RepairCounts },
+  sweptThrough: Date | null,
+  record: SweepRecord,
 ): Promise<void> {
+  const through = sweptThrough?.toISOString();
+  const forward =
+    through === undefined
+      ? {}
+      : {
+          sweptThrough: sql`GREATEST(COALESCE(${ghRepos.sweptThrough}, ${through}::timestamptz), ${through}::timestamptz)`,
+        };
   await db
     .update(ghRepos)
-    .set({
-      sweptThrough: sweep.sweptThrough,
-      lastSweep: { at: sweep.at.toISOString(), repaired: sweep.repaired },
-    })
-    .where(
-      and(
-        eq(ghRepos.githubId, repoId),
-        or(isNull(ghRepos.sweptThrough), lte(ghRepos.sweptThrough, sweep.sweptThrough)),
-      ),
-    );
+    .set({ ...forward, lastSweep: sweepJson(record) })
+    .where(eq(ghRepos.githubId, repoId));
 }
