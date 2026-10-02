@@ -2,6 +2,7 @@ import { sql, type SQL } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import {
   devicePattern,
+  fullShaPattern,
   humanIdentityPattern,
   identityPattern,
   jdAreaPattern,
@@ -41,4 +42,4 @@ export const PERSONA_IDENTITY_PATTERN = personaIdentityPattern;
 export const HUMAN_IDENTITY_PATTERN = humanIdentityPattern;
 export const DEVICE_PATTERN = devicePattern;
 export const REPOSITORY_PATTERN = repositoryPattern;
-export const FULL_SHA_PATTERN = '^(?:[0-9a-f]{40}|[0-9a-f]{64})$';
+export const FULL_SHA_PATTERN = fullShaPattern;

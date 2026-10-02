@@ -64,6 +64,7 @@ import { grantSchema, principalSchema } from './principal.ts';
 import {
   checkConclusionSchema,
   ciJobSchema,
+  fullShaSchema,
   riskDeclarationSchema,
   shipRefusalSchema,
   shipRuleInputSchema,
@@ -157,6 +158,7 @@ export const schemaRegistry: Record<string, ZodType> = {
   'check-conclusion': checkConclusionSchema,
   'ship-refusal': shipRefusalSchema,
   'risk-declaration': riskDeclarationSchema,
+  'full-sha': fullShaSchema,
   'ship-rule-input': shipRuleInputSchema,
   'ship-rule-outcome': shipRuleOutcomeSchema,
   'task-status': closedSets.taskStatusSchema,

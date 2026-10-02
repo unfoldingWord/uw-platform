@@ -1,0 +1,24 @@
+{
+  "itemId": "00000000-0000-4000-8000-0000000000c1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "stageKey": "build",
+  "title": "Add the ledger export",
+  "pageId": null,
+  "priority": 0,
+  "due": null,
+  "holder": "agent:builder",
+  "claimantKind": "agent",
+  "delegationId": null,
+  "leaseExpiresAt": "2026-10-01T09:15:00.000Z",
+  "gateStatus": "working",
+  "gateTarget": null,
+  "branchState": "active",
+  "expectedHead": "abc123",
+  "riskTier": null,
+  "riskDomains": [],
+  "pullRequest": {
+    "repo": "unfoldingWord/uw-platform",
+    "number": 7
+  },
+  "zulipTopic": null
+}

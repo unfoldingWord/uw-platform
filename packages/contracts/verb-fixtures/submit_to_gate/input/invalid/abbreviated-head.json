@@ -1,0 +1,10 @@
+{
+  "itemId": "00000000-0000-4000-8000-000000000002",
+  "evidence": {},
+  "to": null,
+  "pullRequest": {
+    "repo": "unfoldingWord/uw-platform",
+    "number": 7
+  },
+  "head": "abc123"
+}
