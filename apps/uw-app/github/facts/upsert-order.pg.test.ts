@@ -33,7 +33,9 @@ function pullsIn(order: readonly number[], headSha: string, minute: number): Fac
 
 async function lockWaits(db: Database, waiting = 1): Promise<void> {
   for (let attempt = 0; attempt < 250; attempt += 1) {
-    const rows = await db.execute(sql`SELECT DISTINCT pid FROM pg_locks WHERE NOT granted`);
+    const rows = await db.execute(
+      sql`SELECT DISTINCT l.pid FROM pg_locks l JOIN pg_stat_activity a ON a.pid = l.pid WHERE NOT l.granted AND a.datname = current_database()`,
+    );
     if (rows.length >= waiting) return;
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
