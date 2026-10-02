@@ -40,6 +40,8 @@ describe('DX-4 scenarios are files named for a requirement ID', () => {
       ['KN-5.lease-expiry-releases-once', 'KN-5'],
       ['KN-5.record-run-step-renews-the-lease', 'KN-5'],
       ['KN-5.wip-limit-for-people-and-agents', 'KN-5'],
+      ['KN-6.a-failing-validator-holds-the-item', 'KN-6'],
+      ['KN-6.exit-gates-are-enforced-on-submit', 'KN-6'],
     ]);
   });
 

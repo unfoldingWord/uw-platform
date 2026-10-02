@@ -5,6 +5,7 @@ import type { Ports } from '../ports.ts';
 import { claim, type Claimed, type ClaimInput } from './claim.ts';
 import { enqueue, type EnqueueInput } from './enqueue.ts';
 import { release, type ReleaseInput } from './release.ts';
+import { submit, type Submitted, type SubmitInput } from './submit.ts';
 import {
   expireLeases,
   recordRunStep,
@@ -25,6 +26,7 @@ export type ItemCommands = {
   renewLease(caller: Caller, input: RenewInput): Promise<KernelOutcome<LeaseOutcome>>;
   recordRunStep(caller: Caller, input: RunStepInput): Promise<KernelOutcome<LeaseOutcome>>;
   expireLeases(caller: Caller, input: SweepInput): Promise<KernelOutcome<Swept>>;
+  submit(caller: Caller, input: SubmitInput): Promise<KernelOutcome<Submitted>>;
 };
 
 export function createItemCommands(ports: ItemPorts): ItemCommands {
@@ -35,5 +37,6 @@ export function createItemCommands(ports: ItemPorts): ItemCommands {
     renewLease: (caller, input) => renewLease(ports, caller, input),
     recordRunStep: (caller, input) => recordRunStep(ports, caller, input),
     expireLeases: (caller, input) => expireLeases(ports, caller, input),
+    submit: (caller, input) => submit(ports, caller, input),
   };
 }

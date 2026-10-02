@@ -1,6 +1,7 @@
 import {
   principalSchema,
   type Harness,
+  type ItemState,
   type JdArea,
   type Principal,
   type Role,
@@ -110,4 +111,37 @@ export async function createSimHarness(
     throw new Error(`activating ${template.key} was refused: ${outcome.reason}`);
   }
   return { harness: outcome.value.harness, stages: outcome.value.stages, admin };
+}
+
+export type AdvanceInput = {
+  readonly harnessId: string;
+  readonly itemId: string;
+  readonly worker: Principal;
+  readonly through: readonly string[];
+};
+
+export async function simAdvance(world: World, input: AdvanceInput): Promise<ItemState> {
+  const caller = simCaller(world, input.worker);
+  let item: ItemState | null = null;
+  for (const stageKey of input.through) {
+    const where = `${stageKey} in ${input.harnessId}`;
+    const claimed = await world.kernel.items.claim(caller, {
+      itemId: input.itemId,
+      delegationId: null,
+    });
+    if (claimed.status !== 'accepted')
+      throw new Error(`claiming ${where} was refused: ${claimed.reason}`);
+    const submitted = await world.kernel.items.submit(caller, {
+      itemId: input.itemId,
+      to: null,
+      evidence: {},
+      change: null,
+    });
+    if (submitted.status !== 'accepted') {
+      throw new Error(`submitting ${where} was refused: ${submitted.reason}`);
+    }
+    item = submitted.value.item;
+  }
+  if (item === null) throw new Error('advance needs at least one stage to pass through');
+  return item;
 }

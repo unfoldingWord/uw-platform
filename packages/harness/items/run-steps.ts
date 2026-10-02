@@ -36,7 +36,7 @@ async function holderRefusal(
   return holds ? null : refused('not_holder', { itemId: item.itemId });
 }
 
-async function delegationRefusal(
+export async function delegationRefusal(
   tx: StoreTransaction,
   ports: StepPorts,
   context: RecordContext,
