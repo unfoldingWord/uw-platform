@@ -1,5 +1,6 @@
-import type { HarnessEvent, ItemState, Principal } from '@uw/contracts';
+import type { CapabilityWord, HarnessEvent, ItemState, Principal } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
+import { revokeSeededGrant } from '@uw/db/test-seed';
 import {
   bml,
   expireLapsedLease,
@@ -76,13 +77,16 @@ function claimAs(scene: Scene, caller: Caller, delegationId: string | null = nul
   return scene.world.kernel.items.claim(caller, { itemId: scene.itemId, delegationId });
 }
 
-function delegate(scene: Scene, harnessId = scene.harnessId, persona = 'agent:builder') {
+function delegate(
+  scene: Scene,
+  options: { harnessId?: string; capability?: CapabilityWord; expiresAt?: Date } = {},
+) {
   return scene.world.kernel.delegations
     .grant(simCaller(scene.world, scene.kim), {
-      harnessId,
-      persona,
-      capability: 'iterate',
-      expiresAt: null,
+      harnessId: options.harnessId ?? scene.harnessId,
+      persona: 'agent:builder',
+      capability: options.capability ?? 'iterate',
+      expiresAt: options.expiresAt ?? null,
       supersedes: null,
     })
     .then((outcome) => value(outcome).id);
@@ -118,6 +122,15 @@ describe('KN-5 who may claim', () => {
     expect(reasonOf(outcome)).toBe('item_not_found');
   });
 
+  sceneIt('refuses a done item', async (scene) => {
+    await scene.world.adapters.store.transaction(async (tx) => {
+      const item = await tx.harnessItems.read.byId(scene.itemId);
+      if (item !== null) await tx.harnessItems.write.project({ ...item, gateStatus: 'done' });
+    });
+    const outcome = await claimAs(scene, simCaller(scene.world, scene.max));
+    expect(outcome).toMatchObject({ reason: 'not_permitted', detail: { why: 'done' } });
+  });
+
   sceneIt('refuses a parked item', async (scene) => {
     const caller = simCaller(scene.world, scene.max);
     const parked = { gateStatus: 'parked' } as const;
@@ -130,7 +143,32 @@ describe('KN-5 who may claim', () => {
   });
 });
 
-describe('KN-16 a claim under a delegation checks it', () => {
+describe('KN-5 the WIP limit counts agents against people', () => {
+  sceneIt('counts an agent-held item against a person on the WIP limit', async (scene) => {
+    await scene.world.kernel.stages.updateStage(simCaller(scene.world, await simIan(scene.world)), {
+      harnessId: scene.harnessId,
+      stageKey: 'package',
+      change: { wipLimit: 1 },
+    });
+    const second = value(
+      await scene.world.kernel.items.enqueue(simCaller(scene.world, scene.max), {
+        harnessId: scene.harnessId,
+        title: 'Second',
+        pageId: null,
+        priority: 1,
+        due: null,
+      }),
+    );
+    await claimAs(scene, agentCaller(scene, scene.max, 'builder', true));
+    const outcome = await scene.world.kernel.items.claim(simCaller(scene.world, scene.max), {
+      itemId: second.itemId,
+      delegationId: null,
+    });
+    expect(reasonOf(outcome)).toBe('wip_limit_reached');
+  });
+});
+
+describe('a non-interactive agent needs a delegation to claim', () => {
   sceneIt(
     'refuses a non-interactive agent without one and records delegation_required',
     async (scene) => {
@@ -140,7 +178,9 @@ describe('KN-16 a claim under a delegation checks it', () => {
       expect((await itemOf(scene))?.holder).toBeNull();
     },
   );
+});
 
+describe('KN-16 a claim under a delegation checks it', () => {
   sceneIt('records the delegation id on the item and on item_claimed', async (scene) => {
     const delegationId = await delegate(scene);
     const outcome = await claimAs(
@@ -169,7 +209,48 @@ describe('KN-16 a claim under a delegation checks it', () => {
   });
 });
 
-describe('KN-16 a claim refuses a delegation that is not the caller own', () => {
+describe('KN-16 a claim names why a delegation is not live', () => {
+  sceneIt('refuses an expired delegation', async (scene) => {
+    const soon = new Date(scene.world.adapters.clock.now().getTime() + minute);
+    const delegationId = await delegate(scene, { expiresAt: soon });
+    scene.world.adapters.clock.advance(2 * minute);
+    const outcome = await claimAs(
+      scene,
+      agentCaller(scene, scene.kim, 'builder', false),
+      delegationId,
+    );
+    expect(outcome).toMatchObject({ reason: 'delegation_lapsed', detail: { why: 'expired' } });
+  });
+
+  sceneIt('refuses a delegation whose person lost admin', async (scene) => {
+    const delegationId = await delegate(scene);
+    const adminGrant = scene.kim.grants[0];
+    if (adminGrant === undefined) throw new Error('kim has no grant');
+    const at = scene.world.adapters.clock.now();
+    await revokeSeededGrant(scene.world.database.db, adminGrant.grantId, at);
+    const outcome = await claimAs(
+      scene,
+      agentCaller(scene, scene.kim, 'builder', false),
+      delegationId,
+    );
+    expect(outcome).toMatchObject({ reason: 'delegation_lapsed', detail: { why: 'grant_lost' } });
+  });
+
+  sceneIt('refuses a delegation whose capability is none', async (scene) => {
+    const delegationId = await delegate(scene, { capability: 'none' });
+    const outcome = await claimAs(
+      scene,
+      agentCaller(scene, scene.kim, 'builder', false),
+      delegationId,
+    );
+    expect(outcome).toMatchObject({
+      reason: 'not_permitted',
+      detail: { why: 'delegation_capability' },
+    });
+  });
+});
+
+describe('KN-16 a claim refuses a delegation that belongs to someone else', () => {
   sceneIt('refuses an unknown delegation', async (scene) => {
     const caller = agentCaller(scene, scene.kim, 'builder', false);
     const outcome = await claimAs(scene, caller, scene.world.adapters.ids.next());
@@ -178,7 +259,7 @@ describe('KN-16 a claim refuses a delegation that is not the caller own', () => 
 
   sceneIt('refuses a delegation for another harness', async (scene) => {
     const other = await createSimHarness(scene.world, bml);
-    const delegationId = await delegate(scene, other.harness.id);
+    const delegationId = await delegate(scene, { harnessId: other.harness.id });
     const outcome = await claimAs(
       scene,
       agentCaller(scene, scene.kim, 'builder', false),
@@ -248,11 +329,11 @@ describe('KN-5 a lapsed lease is released once', () => {
   });
 });
 
-describe('KN-5 release', () => {
+describe('release by the holder or an admin', () => {
   sceneIt('refuses a non-holder editor and an unheld item', async (scene) => {
     const lee = await simPerson(scene.world, 5, [{ role: 'editor', ...area }]);
     const release = (caller: Caller) =>
-      scene.world.kernel.items.release(caller, { itemId: scene.itemId });
+      scene.world.kernel.items.release(caller, { itemId: scene.itemId, delegationId: null });
     const unheld = await release(simCaller(scene.world, scene.max));
     await claimAs(scene, simCaller(scene.world, scene.max));
     const stranger = await release(simCaller(scene.world, lee));
@@ -261,7 +342,7 @@ describe('KN-5 release', () => {
 
   sceneIt('accepts the holder and an org admin, recording item_released', async (scene) => {
     const release = (caller: Caller) =>
-      scene.world.kernel.items.release(caller, { itemId: scene.itemId });
+      scene.world.kernel.items.release(caller, { itemId: scene.itemId, delegationId: null });
     const ian = simCaller(scene.world, await simIan(scene.world));
     await claimAs(scene, simCaller(scene.world, scene.max));
     const byAdmin = value(await release(ian));
@@ -269,5 +350,33 @@ describe('KN-5 release', () => {
     const byHolder = value(await release(simCaller(scene.world, scene.max)));
     expect([byAdmin.holder, byHolder.holder]).toEqual([null, null]);
     expect((await namesOf(scene)).filter((name) => name === 'item_released')).toHaveLength(2);
+  });
+});
+
+describe('release of a delegated or lapsed claim', () => {
+  sceneIt('refuses another owner agent of the same persona', async (scene) => {
+    const lee = await simPerson(scene.world, 5, [{ role: 'editor', ...area }]);
+    const delegationId = await delegate(scene);
+    await claimAs(scene, agentCaller(scene, scene.kim, 'builder', false), delegationId);
+    const release = (caller: Caller, id: string | null) =>
+      scene.world.kernel.items.release(caller, { itemId: scene.itemId, delegationId: id });
+    const theirs = agentCaller(scene, lee, 'builder', false);
+    const bare = await release(theirs, null);
+    const guessed = await release(theirs, delegationId);
+    expect([reasonOf(bare), reasonOf(guessed)]).toEqual(['not_holder', 'not_holder']);
+    const own = await release(agentCaller(scene, scene.kim, 'builder', false), delegationId);
+    expect(value(own).holder).toBeNull();
+  });
+
+  sceneIt('records the lapse rather than item_released on a lapsed lease', async (scene) => {
+    const builder = agentCaller(scene, scene.max, 'builder', true);
+    await claimAs(scene, builder);
+    scene.world.adapters.clock.advance(16 * minute);
+    const released = await scene.world.kernel.items.release(builder, {
+      itemId: scene.itemId,
+      delegationId: null,
+    });
+    expect(value(released).holder).toBeNull();
+    expect(await namesOf(scene)).toEqual(['item_created', 'item_claimed', 'lease_expired']);
   });
 });

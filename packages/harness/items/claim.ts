@@ -1,4 +1,4 @@
-import type { Harness, ItemState, Stage } from '@uw/contracts';
+import type { Harness, ItemState, Principal, Stage } from '@uw/contracts';
 import { allowed } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { beatPrincipal, personaMatches } from '../delegations/beat.ts';
@@ -37,8 +37,10 @@ function claimGuards(scene: Scene, item: ItemState): Refused | null {
   if (!allowed(caller.actor, 'write', harness, context.at)) {
     return refused('not_permitted', { harnessId: harness.id });
   }
-  const gated = gateRefusal(item);
-  if (gated !== null) return gated;
+  return gateRefusal(item) ?? pickupRefusal(caller, stage);
+}
+
+function pickupRefusal(caller: Caller, stage: Stage): Refused | null {
   if (caller.actor.kind === 'agent' && stage.agentPickup === 'none') {
     return refused('pickup_not_allowed', { stage: stage.key });
   }
@@ -47,7 +49,28 @@ function claimGuards(scene: Scene, item: ItemState): Refused | null {
 
 function lockedGuards(scene: Scene, item: ItemState): Refused | null {
   if (item.stageKey !== scene.stage.key) return refused('not_permitted', { why: 'moved' });
-  return gateRefusal(item);
+  return gateRefusal(item) ?? pickupRefusal(scene.caller, scene.stage);
+}
+
+async function grantsGuard(
+  ports: ClaimPorts,
+  tx: StoreTransaction,
+  scene: Scene,
+): Promise<Refused | null> {
+  const { caller, harness, context } = scene;
+  const fresh = await withFreshGrants(ports, tx, caller.actor, context.at);
+  if (allowed(fresh, 'write', harness, context.at)) return null;
+  return refused('not_permitted', { harnessId: harness.id });
+}
+
+export async function withFreshGrants(
+  ports: Pick<Ports, 'grants'>,
+  tx: StoreTransaction,
+  actor: Principal,
+  at: Date,
+): Promise<Principal> {
+  if (actor.personId === null) return actor;
+  return { ...actor, grants: [...(await ports.grants.resolveIn(tx, actor.personId, at))] };
 }
 
 function bindingRefusal(scene: Scene, item: ItemState, delegation: Delegation): Refused | null {
@@ -159,11 +182,17 @@ async function claimIn(
   await tx.lock(lockKeys.stageClaims(scene.stage.id));
   const item = await tx.harnessItems.read.lock(input.itemId);
   if (item === null) return refused('item_not_found', { itemId: input.itemId });
-  const stale = lockedGuards(scene, item);
+  const stages = await tx.harnessStages.read.forHarness(scene.harness.id);
+  const stage = stages.find((entry) => entry.id === scene.stage.id);
+  if (stage === undefined) return refused('stage_not_found', { stage: scene.stage.key });
+  const locked = { ...scene, stage };
+  const stale = lockedGuards(locked, item);
   if (stale !== null) return stale;
-  const denied = await delegationGuard(tx, ports, scene, item, input.delegationId);
+  const denied = await delegationGuard(tx, ports, locked, item, input.delegationId);
   if (denied !== null) return denied;
-  return takeClaim(tx, scene, item, input.delegationId);
+  const unpermitted = await grantsGuard(ports, tx, locked);
+  if (unpermitted !== null) return unpermitted;
+  return takeClaim(tx, locked, item, input.delegationId);
 }
 
 export function claim(
@@ -173,26 +202,4 @@ export function claim(
 ): Promise<KernelOutcome<Claimed>> {
   const at = ports.clock.now();
   return ports.store.transaction((tx) => claimIn(ports, tx, caller, input, at));
-}
-
-export function release(
-  ports: Pick<Ports, 'clock' | 'ids' | 'store'>,
-  caller: Caller,
-  input: { readonly itemId: string },
-): Promise<KernelOutcome<ItemState>> {
-  const at = ports.clock.now();
-  return ports.store.transaction(async (tx) => {
-    const item = await tx.harnessItems.read.lock(input.itemId);
-    if (item === null) return refused('item_not_found', { itemId: input.itemId });
-    const harness = await tx.harnesses.read.byId(item.harnessId);
-    if (harness === null) return refused('harness_not_found', { harnessId: item.harnessId });
-    const holds = item.holder !== null && item.holder === caller.actor.identity;
-    if (item.holder === null || !(holds || allowed(caller.actor, 'admin', harness, at))) {
-      return refused('not_holder', { itemId: item.itemId });
-    }
-    const recorded = await recordItemEvents(tx, recordContext(ports, caller, at), item.itemId, [
-      draft('item_released', { holder: item.holder }),
-    ]);
-    return accepted(recorded.item);
-  });
 }

@@ -43,7 +43,7 @@ export const scenario = defineScenario({
       itemId: secondItem,
       delegationId: null,
     });
-    await world.kernel.items.release(editor, { itemId: first });
+    await world.kernel.items.release(editor, { itemId: first, delegationId: null });
     const freed = await world.kernel.items.claim(builder, {
       itemId: secondItem,
       delegationId: null,
