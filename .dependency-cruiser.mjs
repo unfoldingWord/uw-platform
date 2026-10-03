@@ -277,6 +277,22 @@ export default {
       from: { pathNot: ['^apps/uw-app/github/', testFile] },
       to: { path: github('comments') },
     },
+    {
+      name: 'github-module-only-in-ports-and-roots',
+      comment:
+        'Only the platform adapters, the queue root and the cron sweep root import apps/uw-app/github, so no other module reaches the read client, the comment writer or the sweep.',
+      severity: 'error',
+      from: {
+        pathNot: [
+          '^apps/uw-app/github/',
+          '^apps/uw-app/ports/',
+          appConfigRoots,
+          appTesting,
+          testFile,
+        ],
+      },
+      to: { path: '^apps/uw-app/github/' },
+    },
     forbidden(
       'github-never-in-mcp-or-engines',
       'Nothing an agent or a model process reaches imports the GitHub client, so no token reaches either.',
