@@ -1,6 +1,7 @@
-import { and, asc, eq, gt, isNotNull } from 'drizzle-orm';
-import type { HarnessEvent, NewHarnessEvent } from '@uw/contracts';
+import { and, asc, desc, eq, gt, isNotNull } from 'drizzle-orm';
+import type { EventName, HarnessEvent, NewHarnessEvent } from '@uw/contracts';
 import type { AnyExecutor } from '../any-database.ts';
+import { oneOf } from '../checks.ts';
 import { harnessEvents } from '../schema.ts';
 import { refusing } from './refusal.ts';
 import { toEvent } from './rows.ts';
@@ -13,6 +14,7 @@ export function bindEvents(executor: AnyExecutor): HarnessEventsGateway {
     read: {
       page: (query) => page(executor, query),
       createdFor: (actor, requestId) => createdFor(executor, actor, requestId),
+      latestNamed: (names, harnessId) => latestNamed(executor, names, harnessId),
     },
     write: { append: (events) => refusing(() => appendAll(executor, events)) },
   };
@@ -88,4 +90,32 @@ async function createdFor(
     )
     .limit(1);
   return rows[0]?.itemId ?? null;
+}
+
+export function latestNamedQuery(
+  executor: AnyExecutor,
+  names: readonly EventName[],
+  harnessId: string | null,
+) {
+  return executor
+    .select()
+    .from(harnessEvents)
+    .where(
+      and(
+        oneOf(harnessEvents.name, names),
+        harnessId === null ? undefined : eq(harnessEvents.harnessId, harnessId),
+      ),
+    )
+    .orderBy(desc(harnessEvents.at), desc(harnessEvents.position))
+    .limit(1);
+}
+
+async function latestNamed(
+  executor: AnyExecutor,
+  names: readonly EventName[],
+  harnessId: string | null,
+): Promise<HarnessEvent | null> {
+  if (names.length === 0) return null;
+  const [row] = await latestNamedQuery(executor, names, harnessId);
+  return row ? toEvent(row) : null;
 }

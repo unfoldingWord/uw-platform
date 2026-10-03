@@ -8,6 +8,7 @@ import { bindHarnesses } from './harnesses.ts';
 import { bindItems } from './items.ts';
 import { insideOpenTransaction, outsideOpenTransaction } from './open-transactions.ts';
 import { bindPages } from './pages.ts';
+import { bindRuns } from './runs.ts';
 import { bindStages } from './stages.ts';
 import type { DrizzleTransaction } from './types.ts';
 
@@ -33,6 +34,7 @@ function bind(executor: AnyExecutor): DrizzleTransaction {
     harnessStages: bindStages(executor),
     harnessItems: bindItems(executor),
     harnessEvents: bindEvents(executor),
+    harnessRuns: bindRuns(executor),
     gateDecisions: bindGateDecisions(executor),
     delegations: bindDelegations(executor),
     pages: bindPages(executor),

@@ -1,10 +1,17 @@
 import {
   capabilityWordSchema,
+  costBasisSchema,
+  engineSchema,
   eventSchema,
   gateDecisionSchema,
   identitySchema,
   harnessSchema,
   itemStateSchema,
+  runFailureSchema,
+  runHibernationSchema,
+  runOutcomeSchema,
+  runShapeSchema,
+  runStepRecordSchema,
   stageSchema,
   type Harness,
   type HarnessEvent,
@@ -16,10 +23,11 @@ import type {
   gateDecisions,
   harnessEvents,
   harnessItems,
+  harnessRuns,
   harnessStages,
   harnesses,
 } from '../schema.ts';
-import type { Delegation, GateDecisionRow } from './types.ts';
+import type { Delegation, GateDecisionRow, RunRow } from './types.ts';
 
 export function toHarness(row: typeof harnesses.$inferSelect): Harness {
   return harnessSchema.parse({
@@ -127,5 +135,31 @@ export function toGateDecision(row: typeof gateDecisions.$inferSelect): GateDeci
     evidence: eventSchema.shape.evidence.parse(row.evidence),
     traceId: row.traceId,
     decidedAt: row.decidedAt,
+  };
+}
+
+const runSteps = runStepRecordSchema.array();
+
+function textsOf(value: unknown, column: string): string[] {
+  if (!Array.isArray(value)) throw new TypeError(`harness_runs.${column} is not an array`);
+  return value.map((entry: unknown) => {
+    if (typeof entry !== 'string') throw new TypeError(`harness_runs.${column} holds a non-string`);
+    return entry;
+  });
+}
+
+export function toRun(row: typeof harnessRuns.$inferSelect): RunRow {
+  return {
+    ...row,
+    persona: identitySchema.parse(row.persona),
+    runShape: runShapeSchema.parse(row.runShape),
+    engine: engineSchema.parse(row.engine),
+    steps: runSteps.parse(row.steps),
+    costBasis: costBasisSchema.parse(row.costBasis),
+    outcome: runOutcomeSchema.parse(row.outcome),
+    hibernatedFor: runHibernationSchema.nullable().parse(row.hibernatedFor),
+    failure: runFailureSchema.nullable().parse(row.failure),
+    gates: textsOf(row.gates, 'gates'),
+    prompts: textsOf(row.prompts, 'prompts'),
   };
 }

@@ -26,6 +26,7 @@ function tracking(tx: StoreTransaction, appended: Set<string>): StoreTransaction
     harnessStages: tx.harnessStages,
     harnessItems: tx.harnessItems,
     harnessEvents: trackingEvents(tx.harnessEvents, appended),
+    harnessRuns: tx.harnessRuns,
     gateDecisions: tx.gateDecisions,
     delegations: tx.delegations,
     pages: tx.pages,

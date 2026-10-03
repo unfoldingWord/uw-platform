@@ -3,6 +3,7 @@ import type { Store, StoreTransaction } from '../ports.ts';
 import { awaitBlocked, type LockWaiters } from './lock-wait.ts';
 import { describeNotWired } from './not-wired-cases.ts';
 import { describeStoreGateways, type SeededPage } from './store-gateways.ts';
+import { describeStoreRuns } from './store-runs.ts';
 
 export type StoreShape = { readonly concurrentConnections: boolean };
 
@@ -16,6 +17,18 @@ export type StoreSubject = {
 };
 
 const refusalTimeout = 2_000;
+
+const transactionMembers = [
+  'delegations',
+  'gateDecisions',
+  'harnessEvents',
+  'harnessItems',
+  'harnessRuns',
+  'harnessStages',
+  'harnesses',
+  'lock',
+  'pages',
+];
 
 function outcomeOf(result: PromiseSettledResult<unknown>): string {
   if (result.status === 'fulfilled') return 'resolved';
@@ -164,16 +177,7 @@ function describeExclusion(subject: () => StoreSubject, shape: StoreShape): void
 
   it('DX-3 does not nest transactions: the work gets only lock and the gateways, so pass the transaction along', async () => {
     const members = await subject().store.transaction(async (tx) => Object.keys(tx).sort());
-    expect(members).toEqual([
-      'delegations',
-      'gateDecisions',
-      'harnessEvents',
-      'harnessItems',
-      'harnessStages',
-      'harnesses',
-      'lock',
-      'pages',
-    ]);
+    expect(members).toEqual(transactionMembers);
   });
 }
 
@@ -215,6 +219,7 @@ export function describeStoreContract(
 
     describeExclusion(subject, shape);
     describeStoreGateways(adapter, subject, shape.concurrentConnections);
+    describeStoreRuns(adapter, subject);
   });
 }
 
