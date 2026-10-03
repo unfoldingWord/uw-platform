@@ -46,6 +46,14 @@ export async function revokeSeededGrant(db: AnyExecutor, grantId: string, at: Da
   await db.update(roleGrants).set({ revokedAt: at }).where(eq(roleGrants.id, grantId));
 }
 
+export async function rewriteHarnessRepository(
+  db: AnyExecutor,
+  harnessId: string,
+  repository: string | null,
+): Promise<void> {
+  await db.update(harnesses).set({ repository }).where(eq(harnesses.id, harnessId));
+}
+
 export async function rewriteGrantAudit(db: AnyExecutor, actor: string): Promise<void> {
   await db.update(grantAudit).set({ actor });
 }

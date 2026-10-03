@@ -15,7 +15,7 @@ import {
 } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createSimHarness, simAgent, simCaller, simPerson } from '../fixtures.ts';
-import { greenFacts, shipPullRequest, simSha } from '../ship-fixtures.ts';
+import { greenFacts, shipBase, shipPullRequest, simSha } from '../ship-fixtures.ts';
 import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -174,6 +174,8 @@ describe('KN-17 submit derives risk from the changed files and declaration GitHu
       riskDomains: ['infra', 'migration'],
       refusal: null,
       head,
+      repository: shipPullRequest.repo,
+      base: { sha: shipBase, ref: 'main' },
     });
   });
 

@@ -349,23 +349,44 @@ describe('GH-6 a recovery and the late exit record one outcome between them', ()
   });
 });
 
-describe('GH-6 a recovery records connector_lost when the request could never have merged', () => {
-  sceneIt('records connector_lost for a request the connector refuses outright', async (scene) => {
+describe('GH-6 a recovery records connector_lost only when GitHub shows no merge', () => {
+  sceneIt(
+    'records connector_lost when the outcome read answers that nothing merged',
+    async (scene) => {
+      await lostApproval(scene, true);
+      scene.world.adapters.clock.advance(sixteenMinutes);
+      const kernel = withConnectors(scene, {
+        run: (request) => scene.world.adapters.connectors.run(request),
+        outcomeOf: async () => null,
+      });
+      expect(await recoverAs(scene, scene.ian, kernel)).toEqual({
+        status: 'accepted',
+        value: { items: [{ itemId: scene.itemId, outcome: 'lost' }] },
+      });
+      const last = (await logOf(scene)).events.at(-1);
+      expect([last?.name, last?.evidence]).toEqual([
+        'connector_refused',
+        { connector: 'merge', reason: 'connector_lost' },
+      ]);
+    },
+  );
+
+  sceneIt('refuses and records nothing for any refusal from the outcome read', async (scene) => {
     await lostApproval(scene, true);
     scene.world.adapters.clock.advance(sixteenMinutes);
-    const kernel = withConnectors(scene, {
-      run: (request) => scene.world.adapters.connectors.run(request),
-      outcomeOf: async () => ({ outcome: 'refused', reason: 'repository_mismatch' }),
-    });
-    expect(await recoverAs(scene, scene.ian, kernel)).toEqual({
-      status: 'accepted',
-      value: { items: [{ itemId: scene.itemId, outcome: 'lost' }] },
-    });
-    const last = (await logOf(scene)).events.at(-1);
-    expect([last?.name, last?.evidence]).toEqual([
-      'connector_refused',
-      { connector: 'merge', reason: 'connector_lost' },
-    ]);
+    for (const reason of ['repository_mismatch', 'head_ref_mismatch', 'malformed_request']) {
+      const kernel = withConnectors(scene, {
+        run: (request) => scene.world.adapters.connectors.run(request),
+        outcomeOf: async () => ({ outcome: 'refused', reason }),
+      });
+      const before = await logOf(scene);
+      expect(await recoverAs(scene, scene.ian, kernel)).toMatchObject({
+        status: 'error',
+        reason: 'facts_stale',
+        detail: { itemId: scene.itemId, why: reason },
+      });
+      expect(await logOf(scene)).toEqual(before);
+    }
   });
 });
 

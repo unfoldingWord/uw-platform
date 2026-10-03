@@ -299,7 +299,7 @@ describe('KN-17 GH-5 risk at Ship comes from the files and declaration at the he
 });
 
 describe('KN-17 the Ship-time derivation is the evidence of a risk_derived event', () => {
-  it('records the paths, declaration, result and head it derived from', () => {
+  it('records the paths, declaration, result, head, repository and base it derived from', () => {
     const files = { head, base, paths: ['packages/db/migrations/0013.sql'] };
     const source = sourceOf({ facts: { files, declaration: declared('low') } });
     expect(riskDerivedAtShip(source)).toEqual({
@@ -310,6 +310,8 @@ describe('KN-17 the Ship-time derivation is the evidence of a risk_derived event
       riskDomains: ['migration'],
       refusal: null,
       head,
+      repository: 'unfoldingWord/uw-platform',
+      base: { sha: base, ref: 'main' },
     });
   });
 
