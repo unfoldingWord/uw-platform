@@ -420,3 +420,34 @@ describe('GH-6 a recovery re-reads the admin grant before it records', () => {
     },
   );
 });
+
+async function unshipStageRow(scene: Scene): Promise<void> {
+  await scene.world.adapters.store.transaction(async (tx) => {
+    const stages = await tx.harnessStages.read.forHarness(scene.harnessId);
+    const ship = stages.find((stage) => stage.key === 'ship');
+    if (ship === undefined) throw new Error('no ship stage');
+    await tx.harnessStages.write.update({ ...ship, connector: 'none', exitGate: 'checks' });
+  });
+}
+
+describe('GH-6 a recovery uses the connector in force when the person decided', () => {
+  sceneIt(
+    'records the decision-time merge after the stage row lost its connector',
+    async (scene) => {
+      await lostApproval(scene, true);
+      await unshipStageRow(scene);
+      scene.world.adapters.clock.advance(sixteenMinutes);
+      expect(await recoverAs(scene, scene.ian)).toEqual({
+        status: 'accepted',
+        value: { items: [{ itemId: scene.itemId, outcome: 'succeeded' }] },
+      });
+      const outcome = (await logOf(scene)).events.find((event) =>
+        event.name.startsWith('connector_'),
+      );
+      expect([outcome?.name, outcome?.evidence['connector']]).toEqual([
+        'connector_succeeded',
+        'merge',
+      ]);
+    },
+  );
+});
