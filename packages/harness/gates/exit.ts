@@ -1,4 +1,4 @@
-import type { ItemState, Stage } from '@uw/contracts';
+import type { HarnessEvent, ItemState, Stage } from '@uw/contracts';
 import {
   draft,
   readAllEvents,
@@ -16,11 +16,11 @@ import type {
   Ports,
   StoreTransaction,
 } from '../ports.ts';
-import { parkingChangedSince, sameChange } from './parking.ts';
+import { outcomeRecordedSince, parkingChangedSince, sameChange } from './parking.ts';
 
 export type ExitPorts = Pick<Ports, 'connectors' | 'store'>;
 
-type ExitInput = {
+export type ExitInput = {
   readonly item: ItemState;
   readonly stage: Stage;
   readonly connector: EffectConnector;
@@ -54,7 +54,7 @@ async function runConnector(
   }
 }
 
-function requestOf(context: RecordContext, input: ExitInput): ConnectorRequest {
+export function requestOf(context: RecordContext, input: ExitInput): ConnectorRequest {
   const { item } = input;
   return {
     connector: input.connector,
@@ -70,16 +70,16 @@ function requestOf(context: RecordContext, input: ExitInput): ConnectorRequest {
   };
 }
 
-async function stillApproved(
-  tx: StoreTransaction,
-  input: ExitInput,
-  locked: ItemState,
-): Promise<boolean> {
+export type ExitEntry = { readonly input: ExitInput; readonly outcome: ConnectorOutcome };
+
+type ExitRecord = { readonly recorded: readonly ExitEntry[]; readonly advanced: boolean };
+
+const nothingRecorded: ExitRecord = { recorded: [], advanced: false };
+
+function stillApproved(events: readonly HarnessEvent[], input: ExitInput, locked: ItemState) {
   const { item, stage, decisionId } = input;
   if (locked.stageKey !== stage.key || locked.gateStatus !== 'parked') return false;
-  if (!sameChange(item, locked)) return false;
-  const events = await readAllEvents(tx, item.harnessId, item.itemId);
-  return !parkingChangedSince(events, decisionId);
+  return sameChange(item, locked) && !parkingChangedSince(events, decisionId);
 }
 
 function outcomeDraft(connector: EffectConnector, outcome: ConnectorOutcome): EventDraft {
@@ -88,19 +88,47 @@ function outcomeDraft(connector: EffectConnector, outcome: ConnectorOutcome): Ev
     : draft('connector_succeeded', { connector, detail: { ...outcome.detail } });
 }
 
+async function recordIn(
+  tx: StoreTransaction,
+  context: RecordContext,
+  itemId: string,
+  entries: readonly ExitEntry[],
+): Promise<ExitRecord> {
+  const locked = await tx.harnessItems.read.lock(itemId);
+  if (locked === null) return nothingRecorded;
+  const events = await readAllEvents(tx, locked.harnessId, itemId);
+  const open = entries.filter((entry) => !outcomeRecordedSince(events, entry.input.decisionId));
+  if (open.length === 0) return nothingRecorded;
+  const advancing = open.find(
+    (entry) => entry.outcome.outcome === 'succeeded' && stillApproved(events, entry.input, locked),
+  );
+  const exit =
+    advancing === undefined
+      ? []
+      : exitDrafts({ kind: 'forward', from: advancing.input.stage, to: advancing.input.next });
+  const outcomes = open.map((entry) => outcomeDraft(entry.input.connector, entry.outcome));
+  await recordItemEvents(tx, context, itemId, [...outcomes, ...exit]);
+  return { recorded: open, advanced: advancing !== undefined };
+}
+
+export async function recordExitOutcomes(
+  ports: Pick<Ports, 'store'>,
+  context: RecordContext,
+  entries: readonly ExitEntry[],
+): Promise<ExitRecord> {
+  const [first] = entries;
+  if (first === undefined) return nothingRecorded;
+  const { itemId } = first.input.item;
+  const same = entries.filter((entry) => entry.input.item.itemId === itemId);
+  return ports.store.transaction((tx) => recordIn(tx, context, itemId, same));
+}
+
 export async function exitThroughConnector(
   ports: ExitPorts,
   context: RecordContext,
   input: ExitInput,
 ): Promise<boolean> {
-  const { item, stage, next, connector } = input;
   const outcome = await runConnector(ports, requestOf(context, input));
-  return ports.store.transaction(async (tx) => {
-    const locked = await tx.harnessItems.read.lock(item.itemId);
-    if (locked === null) return false;
-    const advancing = outcome.outcome === 'succeeded' && (await stillApproved(tx, input, locked));
-    const exit = advancing ? exitDrafts({ kind: 'forward', from: stage, to: next }) : [];
-    await recordItemEvents(tx, context, item.itemId, [outcomeDraft(connector, outcome), ...exit]);
-    return advancing;
-  });
+  const recorded = await recordExitOutcomes(ports, context, [{ input, outcome }]);
+  return recorded.advanced;
 }
