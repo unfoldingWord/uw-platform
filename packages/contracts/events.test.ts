@@ -24,8 +24,8 @@ const claimed = {
 };
 
 describe('KN-3 the event vocabulary is PRD section 8.6', () => {
-  it('has the forty-six names and none of the placeholders it replaces', () => {
-    expect(eventNameSchema.options).toHaveLength(46);
+  it('has the forty-eight names and none of the placeholders it replaces', () => {
+    expect(eventNameSchema.options).toHaveLength(48);
     expect(eventNameSchema.safeParse('stage_edited').success).toBe(true);
     expect(eventNameSchema.options[0]).toBe('item_created');
     expect(eventNameSchema.options.at(-1)).toBe('persona_activated');
@@ -96,5 +96,51 @@ describe('KN-3 every event row carries harness, item, name, actor, evidence, tra
     expect(position).toBe(1);
     expect(newEventSchema.safeParse(unpositioned).success).toBe(true);
     expect(newEventSchema.safeParse(claimed).success).toBe(false);
+  });
+});
+
+const reordered = {
+  ...base,
+  name: 'item_reordered',
+  evidence: { priority: 30, before: null },
+};
+
+describe('KN-3 item_reordered and stage_removed carry what changed', () => {
+  it('takes an integer priority and the item placed before, or null', () => {
+    expect(eventSchema.safeParse(reordered).success).toBe(true);
+    const before = { ...reordered, evidence: { priority: 30, before: base.itemId } };
+    expect(eventSchema.safeParse(before).success).toBe(true);
+    const fractional = { ...reordered, evidence: { priority: 1.5, before: null } };
+    expect(eventSchema.safeParse(fractional).success).toBe(false);
+  });
+
+  it('needs the removed stage and its columns', () => {
+    const removed = {
+      ...base,
+      itemId: null,
+      name: 'stage_removed',
+      evidence: {
+        stageId: '00000000-0000-4000-8000-0000000000d1',
+        key: 'review',
+        before: { title: 'Review', position: 30 },
+      },
+    };
+    expect(eventSchema.safeParse(removed).success).toBe(true);
+    const { before, ...withoutBefore } = removed.evidence;
+    expect(before.position).toBe(30);
+    expect(eventSchema.safeParse({ ...removed, evidence: withoutBefore }).success).toBe(false);
+  });
+});
+
+describe('an event carries the requestId of the command that appended it, or null', () => {
+  it('reads an event without a requestId as null', () => {
+    const parsed = eventSchema.parse(claimed);
+    expect(parsed.requestId).toBeNull();
+  });
+
+  it('takes a uuid requestId and refuses any other string', () => {
+    const requestId = '00000000-0000-4000-8000-0000000000f1';
+    expect(eventSchema.parse({ ...claimed, requestId }).requestId).toBe(requestId);
+    expect(eventSchema.safeParse({ ...claimed, requestId: 'x' }).success).toBe(false);
   });
 });

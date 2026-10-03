@@ -101,12 +101,21 @@ describe('commands and outcomes', () => {
     expect(commandSchema.safeParse({ command: 'pause' }).success).toBe(false);
   });
 
-  it('requires a reason on override', () => {
-    const requestId = '3f1d7c1e-8c53-4a53-9d6e-0a9b6a0f4d11';
-    expect(commandSchema.safeParse({ command: 'override', requestId }).success).toBe(false);
-    expect(commandSchema.safeParse({ command: 'override', requestId, reason: 'ok' }).success).toBe(
-      true,
-    );
+  it('requires a reason, the item and the seen head on override', () => {
+    const base = {
+      command: 'override',
+      requestId: '3f1d7c1e-8c53-4a53-9d6e-0a9b6a0f4d11',
+      itemId: '00000000-0000-4000-8000-0000000000bb',
+      head: 'a'.repeat(40),
+    };
+    expect(commandSchema.safeParse(base).success).toBe(false);
+    expect(commandSchema.safeParse({ ...base, reason: 'ok' }).success).toBe(true);
+    const { itemId, ...withoutItem } = base;
+    expect(itemId).toBe(base.itemId);
+    expect(commandSchema.safeParse({ ...withoutItem, reason: 'ok' }).success).toBe(false);
+    const { head, ...withoutHead } = base;
+    expect(head).toBe(base.head);
+    expect(commandSchema.safeParse({ ...withoutHead, reason: 'ok' }).success).toBe(false);
   });
 
   it('carries a reason that says a command is not wired', () => {

@@ -18,5 +18,6 @@
     "riskDomains": ["migration"],
     "refusal": null,
     "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-  }
+  },
+  "requestId": null
 }

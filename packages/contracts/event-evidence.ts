@@ -72,6 +72,7 @@ const itemEvidence = {
     leaseExpiresAt: instant.nullable(),
   }),
   item_released: z.strictObject({ holder: identitySchema }),
+  item_reordered: z.strictObject({ priority: z.number().int(), before: id.nullable() }),
   lease_renewed: z.strictObject({ leaseExpiresAt: instant }),
   lease_expired: z.strictObject({ holder: identitySchema, leaseExpiresAt: instant }),
   branch_abandoned: z.strictObject({ head: head.nullable() }),
@@ -154,6 +155,9 @@ const harnessEvidence = {
     before: stageColumns.nullable(),
     after: stageColumns,
   }),
+  stage_removed: z.strictObject({ stageId: id, key: stage, before: stageColumns }),
+  harness_paused: z.strictObject({ stage: stage.nullable() }),
+  harness_resumed: z.strictObject({ stage: stage.nullable() }),
   persona_activation_failed: z.strictObject({
     pageId: id,
     persona: personaIdentitySchema,
