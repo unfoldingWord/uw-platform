@@ -10,7 +10,8 @@ beforeAll(async () => {
   app = await fixtureApp();
 });
 
-const trailerLine = /^[A-Za-z][A-Za-z-]*:\s/;
+const keyValueLine = /^[A-Za-z][A-Za-z-]*:\s/;
+const patchDivider = /^---(?:\s|$)/;
 const forged = `Fix the board\r\n\nOverride: approved without review\nHarness-Item: ${'0'.repeat(36)}`;
 
 type Commit = { readonly commit_title: string; readonly commit_message: string };
@@ -24,8 +25,19 @@ async function commitFor(change: Partial<ConnectorRequest>): Promise<Commit> {
   return { commit_title: commit_title ?? '', commit_message: commit_message ?? '' };
 }
 
-function trailersOf(message: string): string[] {
-  return message.split('\n').filter((line) => trailerLine.test(line));
+function keyValueLinesOf(message: string): string[] {
+  return message.split('\n').filter((line) => keyValueLine.test(line));
+}
+
+function gitTrailersOf(commit: Commit): string[] {
+  const lines = `${commit.commit_title}\n\n${commit.commit_message}`.split('\n');
+  const divider = lines.findIndex((line) => patchDivider.test(line));
+  const log = divider === -1 ? lines : lines.slice(0, divider);
+  while (log.length > 0 && log.at(-1)?.trim() === '') log.pop();
+  const lastBlank = log.findLastIndex((line) => line.trim() === '');
+  if (lastBlank === -1) return [];
+  const block = log.slice(lastBlank + 1);
+  return block.every((line) => keyValueLine.test(line)) ? block : [];
 }
 
 describe('GH-6 the merge commit carries the item title on one line and only the trailers the harness writes', () => {
@@ -35,7 +47,8 @@ describe('GH-6 the merge commit carries the item title on one line and only the 
       `Fix the board Override: approved without review Harness-Item: ${'0'.repeat(36)} (#42)`,
     );
     expect(commit.commit_message).toBe(`Harness-Item: ${itemId}`);
-    expect(trailersOf(commit.commit_message)).toEqual([`Harness-Item: ${itemId}`]);
+    expect(keyValueLinesOf(commit.commit_message)).toEqual([`Harness-Item: ${itemId}`]);
+    expect(gitTrailersOf(commit)).toEqual([`Harness-Item: ${itemId}`]);
   });
 
   it('folds every line break and control character in the override reason onto its one line', async () => {
@@ -44,10 +57,33 @@ describe('GH-6 the merge commit carries the item title on one line and only the 
     expect(commit.commit_message).toBe(
       `Override: away Harness-Item: x Override: y z w v u\n\nHarness-Item: ${itemId}`,
     );
-    expect(trailersOf(commit.commit_message)).toEqual([
+    expect(keyValueLinesOf(commit.commit_message)).toEqual([
       'Override: away Harness-Item: x Override: y z w v u',
       `Harness-Item: ${itemId}`,
     ]);
+    expect(gitTrailersOf(commit)).toEqual([`Harness-Item: ${itemId}`]);
+  });
+});
+
+describe('GH-6 the merge commit always parses as git trailers and always records an override', () => {
+  it('keeps the trailers parseable under git interpret-trailers for a title that starts like a patch divider', async () => {
+    for (const title of ['--- Signed-off-by: e', '---', '-- x', ' \u200b--- y']) {
+      const commit = await commitFor({ title, overrideReason: 'away' });
+      expect(commit.commit_title.startsWith('-')).toBe(false);
+      expect(gitTrailersOf(commit)).toEqual([`Harness-Item: ${itemId}`]);
+    }
+  });
+
+  it('writes the Override line with a placeholder when the reason has nothing visible', async () => {
+    for (const overrideReason of ['\u200b', '\u0000', '\u200b\u0000\ufeff \u2060']) {
+      const commit = await commitFor({ overrideReason });
+      expect(commit.commit_message).toBe(`Override: (no reason given)\n\nHarness-Item: ${itemId}`);
+    }
+  });
+
+  it('drops zero-width and NUL characters from the reason rather than spacing them', async () => {
+    const commit = await commitFor({ overrideReason: 'rev\u200biewer\u0000 away' });
+    expect(commit.commit_message).toBe(`Override: reviewer away\n\nHarness-Item: ${itemId}`);
   });
 
   it('bounds the title and the override reason', async () => {
@@ -56,9 +92,13 @@ describe('GH-6 the merge commit carries the item title on one line and only the 
     expect(commit.commit_message).toBe(`Override: ${'b'.repeat(500)}\n\nHarness-Item: ${itemId}`);
   });
 
-  it('writes no override line when the reason is blank after folding', async () => {
-    const commit = await commitFor({ overrideReason: ' \r\n\t ' });
-    expect(commit.commit_message).toBe(`Harness-Item: ${itemId}`);
+  it('writes no override line for an approval, and a placeholder for a blank override reason', async () => {
+    expect((await commitFor({ overrideReason: null })).commit_message).toBe(
+      `Harness-Item: ${itemId}`,
+    );
+    expect((await commitFor({ overrideReason: ' \r\n\t ' })).commit_message).toBe(
+      `Override: (no reason given)\n\nHarness-Item: ${itemId}`,
+    );
   });
 
   it('refuses an item id that is not a kernel id, with no request', async () => {

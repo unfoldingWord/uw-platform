@@ -148,7 +148,8 @@ async function tagged(
 async function mergeShaOf(writes: ShipWrites, target: Target, live: Live): Promise<string | null> {
   if (live.mergeSha !== null) return live.mergeSha;
   const again = await readLive(writes, target);
-  return isRefusal(again) ? null : again.mergeSha;
+  if (isRefusal(again) || identityRefusal(target, again) !== null) return null;
+  return mergedAtHead(target, again) ? again.mergeSha : null;
 }
 
 async function alreadyMerged(
