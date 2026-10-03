@@ -5,10 +5,12 @@ import {
   mergeOver,
   mergeSha,
   openGitHub,
+  otherHead,
   paths,
   pullAt,
   request,
   tagName,
+  writesOf,
 } from './testing/merge-rig.ts';
 
 let app: GitHubAppConfig;
@@ -42,6 +44,20 @@ describe('GH-6 the merge connector answers a merge GitHub reports oddly without 
       outcome: 'succeeded',
       detail: { mergeSha, tag: tagName, already: 'true' },
     });
+  });
+
+  it.each([
+    ['a fork head', pullAt({ merged: true, headRepo: 'someone/uw-platform' })],
+    ['another head', pullAt({ merged: true, head: otherHead })],
+    ['an unmerged pull request', pullAt()],
+    ['an abbreviated merge commit', pullAt({ merged: true, mergeSha: 'ace' })],
+  ])('takes no merge commit from a second read showing %s', async (_name, second) => {
+    const github = openGitHub([pullAt({ merged: true, mergeSha: null }), second]);
+    expect(await mergeOver(app, github).run(request)).toEqual({
+      outcome: 'succeeded',
+      detail: { mergeSha: 'unknown', tag: 'none', already: 'true' },
+    });
+    expect(writesOf(github)).toEqual([]);
   });
 
   it('answers a merge with no known commit as succeeded without a tag, on run and on recovery', async () => {
