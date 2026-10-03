@@ -4,6 +4,8 @@ import type { Kernel } from '@uw/harness';
 import { areaGrant, testAgent, testContext } from '../../testing/mcp.ts';
 import type { McpHost, VerbContext } from '../context.ts';
 import { recordRunStep } from './record-run-step.ts';
+import { callVerb } from '../dispatch.ts';
+import { verbHandlers } from './index.ts';
 
 const lease = { leaseExpiresAt: '2026-10-03T09:15:00.000Z', leaseWarning: false };
 
@@ -75,5 +77,32 @@ describe('an external runner cannot set its own cost or provider', () => {
     const reply = await recordRunStep.run(stepContext('workflow', reached), input, null);
     expect(reply.status).toBe('accepted');
     expect(reached).toEqual([input]);
+  });
+});
+
+describe('record_run_step names every key it takes', () => {
+  it('refuses a misspelled cost key malformed_command before the handler runs', async () => {
+    const context = testContext(testAgent([areaGrant('editor', '80-89')]));
+    const args = {
+      itemId: '00000000-0000-4000-8000-0000000000b1',
+      runId: '00000000-0000-4000-8000-0000000000f1',
+      step: 'work',
+      tokensIn: 1,
+      tokensOut: 1,
+      costBasis: 'subscription',
+      cost_minor: 4,
+    };
+    const result = await callVerb(context, 'record_run_step', args, verbHandlers);
+    expect(result.isError).toBe(true);
+    expect(JSON.parse(JSON.stringify(result.content))).toEqual([
+      {
+        type: 'text',
+        text: JSON.stringify({
+          status: 'error',
+          reason: 'malformed_command',
+          detail: { fields: ['(root)'] },
+        }),
+      },
+    ]);
   });
 });
