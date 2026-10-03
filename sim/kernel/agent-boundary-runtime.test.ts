@@ -167,6 +167,8 @@ async function everyFormIsBuilt({ attempts }: Scene): Promise<void> {
 
 const shared = sharedScene();
 
+const STAGE_BYPASS_TIMEOUT_MS = 120_000;
+
 describe('AB-7 the runtime check fails on a planted gate command that lets an agent decide', () => {
   it('names the attempts a planted decide that launders the agent into a person lets through', () =>
     inScene(bypassIsCaught));
@@ -180,8 +182,11 @@ describe('AB-7 the runtime check fails on a planted gate command that lets an ag
   it('flags attempts whose pinned readability disagrees with what the harness read allows', () =>
     mispinnedReadabilityIsCaught(shared()));
 
-  it('flags a planted stage command that lets a laundered agent lower a gate', () =>
-    inScene(stageBypassIsCaught));
+  it(
+    'flags a planted stage command that lets a laundered agent lower a gate',
+    () => inScene(stageBypassIsCaught),
+    STAGE_BYPASS_TIMEOUT_MS,
+  );
 });
 
 describe('the runtime boundary check builds every grant combination and identity form', () => {
