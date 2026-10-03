@@ -5,7 +5,7 @@ import { ingestPrincipal } from '@uw/core/principal';
 import type { Caller } from '@uw/harness';
 import { boundedTitle, ensureIssuePage } from '../pages/issue-pages.ts';
 import { randomIds } from '../ports/ids.ts';
-import { ensureCrossReference } from './cross-reference.ts';
+import { ensureCrossReference, type CrossReference } from './cross-reference.ts';
 import type { GitHubDeps } from './deps.ts';
 import type { IssueChange } from './facts/records.ts';
 import { carriesHarnessLabel, HARNESS_LABEL } from './harness-label.ts';
@@ -45,24 +45,46 @@ export function isImportable(change: IssueChange): boolean {
   return change.open && carriesHarnessLabel(change.labels);
 }
 
+type CrossReferenceTiming = 'now' | 'sweep';
+
+function refusedTarget(caller: Caller): string {
+  return caller.actor.kind === 'person' ? 'import_target_refused' : 'no_harness_for_repository';
+}
+
+async function crossReference(
+  deps: GitHubDeps,
+  change: IssueChange,
+  reference: CrossReference,
+  timing: CrossReferenceTiming,
+  logger: Logger,
+): Promise<void> {
+  if (timing === 'now') return ensureCrossReference(deps, change, reference, logger);
+  logger.info('cross-reference comment left for the nightly sweep', {
+    outcome: 'cross_reference_deferred',
+    repository: change.repo,
+    issue: change.number,
+  });
+}
+
 export async function importStoredIssue(
   deps: GitHubDeps,
   caller: Caller,
   change: IssueChange,
   logger: Logger,
+  timing: CrossReferenceTiming,
 ): Promise<ImportResult> {
-  const fields = { repository: change.repo, issue: change.number };
+  const fields = { repository: change.repo, issue: change.number, importer: caller.actor.kind };
   const target = await deps.kernel.reads.importTarget(caller, { repository: change.repo });
   if (target.status !== 'accepted') {
-    logger.info('labelled issue not imported: no harness names its repository', {
-      outcome: 'no_harness_for_repository',
+    logger.info('issue not imported: no import target', {
+      outcome: refusedTarget(caller),
       ...fields,
     });
     return { ok: false, reason: 'not_permitted' };
   }
   const page = await wrapPage(deps, caller, change, target.value.jdArea);
   if (!page.ok) {
-    logger.warn('labelled issue not imported: its page slug is taken', {
+    logger.warn('issue not imported: its page slug is taken', {
       outcome: 'issue_page_slug_taken',
       ...fields,
     });
@@ -75,25 +97,22 @@ export async function importStoredIssue(
     pageId: page.pageId,
   });
   if (imported.status !== 'accepted') {
-    logger.warn('labelled issue not imported', {
-      outcome: 'issue_not_imported',
-      ...fields,
-      reason: imported.reason,
-    });
-    return { ok: false, reason: imported.reason };
+    const { reason } = imported;
+    logger.warn('issue not imported', { outcome: 'issue_not_imported', ...fields, reason });
+    return { ok: false, reason };
   }
   const { item, created } = imported.value;
-  logger.info('labelled issue imported', {
+  logger.info('issue imported', {
     outcome: created ? 'issue_imported' : 'issue_already_imported',
     ...fields,
   });
   const reference = { itemId: item.itemId, pageCreatedAt: page.createdAt };
-  await ensureCrossReference(deps, change, reference, logger);
+  await crossReference(deps, change, reference, timing, logger);
   return { ok: true, created };
 }
 
 async function importLabelled(deps: GitHubDeps, change: IssueChange, logger: Logger) {
-  await importStoredIssue(deps, callerFor(logger), change, logger);
+  await importStoredIssue(deps, callerFor(logger), change, logger, 'now');
 }
 
 async function recordRemoval(deps: GitHubDeps, change: IssueChange, logger: Logger) {
