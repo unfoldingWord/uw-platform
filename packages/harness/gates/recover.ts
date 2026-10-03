@@ -1,4 +1,4 @@
-import type { Harness, HarnessEvent, Stage } from '@uw/contracts';
+import { eventEvidenceSchemas, type Harness, type HarnessEvent, type Stage } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
 import { replay } from '../items/fold.ts';
 import { readAllEvents, recordContext, type RecordContext } from '../items/record.ts';
@@ -42,6 +42,18 @@ function overrideReasonOf(approval: HarnessEvent): string | null {
   return approval.name === 'gate_overridden' && typeof reason === 'string' ? reason : null;
 }
 
+type Decided = Pick<ExitInput, 'repository' | 'expectedBase'>;
+
+function decidedOn(events: readonly HarnessEvent[], index: number): Decided {
+  const approval = events.at(index);
+  const derived = events
+    .slice(0, index)
+    .findLast((event) => event.name === 'risk_derived' && event.traceId === approval?.traceId);
+  const parsed = eventEvidenceSchemas.risk_derived.safeParse(derived?.evidence);
+  if (!parsed.success) return { repository: null, expectedBase: null };
+  return { repository: parsed.data.repository, expectedBase: parsed.data.base };
+}
+
 function stuckAt(events: readonly HarnessEvent[], index: number, place: Place): ExitInput | null {
   const approval = events.at(index);
   const item = replay(events.slice(0, index + 1));
@@ -57,8 +69,7 @@ function stuckAt(events: readonly HarnessEvent[], index: number, place: Place): 
     next: resolveExit(place.stages, stage, null)?.to ?? null,
     decisionId,
     overrideReason: overrideReasonOf(approval),
-    repository: place.harness.repository,
-    expectedBase: null,
+    ...decidedOn(events, index),
   };
 }
 
@@ -92,9 +103,10 @@ function unread(input: ExitInput, why: string): Refused {
   return refused('facts_stale', { itemId: input.item.itemId, why });
 }
 
-function refusalOf(input: ExitInput, reason: string): Refused | null {
-  if (reason === 'not_wired') return refused('not_wired', { port: 'connectors' });
-  return reason.startsWith('github_') ? unread(input, reason) : null;
+function refusalOf(input: ExitInput, reason: string): Refused {
+  return reason === 'not_wired'
+    ? refused('not_wired', { port: 'connectors' })
+    : unread(input, reason);
 }
 
 async function provenOutcome(
@@ -104,10 +116,9 @@ async function provenOutcome(
 ): Promise<ExitEntry | Refused> {
   try {
     const answer = await ports.connectors.outcomeOf(requestOf(context, input));
-    if (answer === null || answer.outcome === 'succeeded') {
-      return { input, outcome: answer ?? lost };
-    }
-    return refusalOf(input, answer.reason) ?? { input, outcome: lost };
+    if (answer === null) return { input, outcome: lost };
+    if (answer.outcome === 'succeeded') return { input, outcome: answer };
+    return refusalOf(input, answer.reason);
   } catch (error) {
     if (error instanceof PortNotWiredError) return refused('not_wired', { port: error.port });
     return unread(input, 'github_unreadable');

@@ -93,7 +93,17 @@ function approvalsOn(facts: PullRequestFacts, head: string): ShipRuleInput['appr
     }));
 }
 
-function derivedAt(facts: PullRequestFacts, item: ItemState, head: string): RiskDerived | null {
+function decidedBaseOf(facts: PullRequestFacts): RiskDerived['base'] {
+  const sha = fullSha(facts.base);
+  return sha === null ? null : { sha, ref: facts.baseRef };
+}
+
+function derivedAt(
+  facts: PullRequestFacts,
+  source: ShipInputSource,
+  head: string,
+): RiskDerived | null {
+  const { item } = source;
   const compared = pathsComparedAt(facts, head);
   if (compared === null) return null;
   const paths = [...compared];
@@ -109,16 +119,18 @@ function derivedAt(facts: PullRequestFacts, item: ItemState, head: string): Risk
     riskDomains: [...result.domains],
     refusal: result.ok ? null : result.reason,
     head,
+    repository: source.harness.repository,
+    base: decidedBaseOf(facts),
   };
 }
 
 function riskAtHead(
   facts: PullRequestFacts,
-  item: ItemState,
+  source: ShipInputSource,
   head: string,
 ): Pick<ShipRuleInput, 'riskTier' | 'riskDomains'> {
-  const derived = derivedAt(facts, item, head);
-  if (derived === null) return { riskTier: null, riskDomains: [...item.riskDomains] };
+  const derived = derivedAt(facts, source, head);
+  if (derived === null) return { riskTier: null, riskDomains: [...source.item.riskDomains] };
   return {
     riskTier: derived.refusal === null ? derived.riskTier : null,
     riskDomains: [...derived.riskDomains],
@@ -143,7 +155,7 @@ function fromFacts(
     pullRequest: { open: facts.state === 'open', draft: facts.draft, head },
     checks: latestChecks(facts, head),
     approvals: approvalsOn(facts, head),
-    ...riskAtHead(facts, item, head),
+    ...riskAtHead(facts, source, head),
   };
 }
 
@@ -162,5 +174,5 @@ export function assembleShipInput(source: ShipInputSource): ShipRuleInput {
 export function riskDerivedAtShip(source: ShipInputSource): RiskDerived | null {
   const { facts, item } = source;
   const head = usableHead(facts, item, source.harness);
-  return facts === null || head === null ? null : derivedAt(facts, item, head);
+  return facts === null || head === null ? null : derivedAt(facts, source, head);
 }

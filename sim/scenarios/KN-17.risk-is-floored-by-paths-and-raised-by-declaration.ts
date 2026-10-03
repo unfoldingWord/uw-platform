@@ -14,7 +14,7 @@ import {
 } from '@uw/harness';
 import { createSimHarness, simAdvance, simAgent, simCaller, simPerson } from '../fixtures.ts';
 import { defineScenario } from '../scenario.ts';
-import { declared, greenFacts, simSha } from '../ship-fixtures.ts';
+import { declared, greenFacts, shipBase, simSha } from '../ship-fixtures.ts';
 import type { World } from '../world.ts';
 
 function valueOf<T>(outcome: KernelOutcome<T>): T {
@@ -189,6 +189,8 @@ export const scenario = defineScenario({
       riskDomains: ['migration'],
       refusal: null,
       head: simSha('abc123'),
+      repository: scene.pullRequest.repo,
+      base: { sha: shipBase, ref: 'main' },
     });
     assert.deepEqual(derived[1]?.floorDomains, ['migration']);
     assert.equal(derived[1]?.refusal, 'risk_tier_undeclared');

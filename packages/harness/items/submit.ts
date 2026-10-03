@@ -1,4 +1,5 @@
 import type {
+  EventEvidence,
   ExitGate,
   Harness,
   HarnessEvent,
@@ -108,6 +109,11 @@ function pathsAtHead(
   return pathsComparedAt(facts, change.head);
 }
 
+function baseOf(facts: PullRequestFacts): EventEvidence['risk_derived']['base'] {
+  const sha = fullSha(facts.base);
+  return sha === null ? null : { sha, ref: facts.baseRef };
+}
+
 function riskDraft(command: Command, item: ItemState): readonly EventDraft[] {
   const { change } = command.input;
   if (change === null || command.facts === null) return [];
@@ -126,6 +132,8 @@ function riskDraft(command: Command, item: ItemState): readonly EventDraft[] {
       riskDomains: [...result.domains],
       refusal: result.ok ? null : result.reason,
       head: change.head,
+      repository: change.pullRequest.repo,
+      base: baseOf(command.facts),
     }),
   ];
 }
