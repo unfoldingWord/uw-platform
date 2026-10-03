@@ -9,9 +9,10 @@ import issuesLabeled from '../github/fixtures/issues-labeled.json' with { type: 
 import type { GitHubAppConfig } from '../github/app-config.ts';
 import { fixtureApp } from '../github/testing/app-key.ts';
 import { labelledIssue, repo } from '../github/testing/facts-fixtures.ts';
-import { commentId, posts, withComments } from '../github/testing/import-rig.ts';
+import { commentId, deliver, depsOn, posts, withComments } from '../github/testing/import-rig.ts';
 import { programmed, sweepOnce } from '../github/testing/sweep-rig.ts';
-import { agentOf } from '../testing/kernel.ts';
+import { createLogger } from '@uw/core/log';
+import { agentOf, personOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import {
   dispatchAs,
@@ -23,7 +24,6 @@ import {
   type Person,
   type Scene,
 } from '../testing/commands.ts';
-import type { PersonDeps } from './person-deps.ts';
 
 const platform = 'unfoldingWord/uw-platform';
 const other = 'unfoldingWord/uw-other';
@@ -66,31 +66,15 @@ async function scene(db: Database): Promise<Scene> {
 
 type Opened = { count: number };
 
-function watchedPerson(opened: Opened): PersonDeps {
-  return {
-    gateGitHub: () => {
-      opened.count += 1;
-      return null;
-    },
-  };
-}
-
 function send(
   db: Database,
   who: Pick<Person, 'email'>,
   harnessId: string,
   body: { readonly repository: string; readonly number: number },
-  opened: Opened = { count: 0 },
 ) {
   const requestId = randomUUID();
   const path = `/api/harness/${harnessId}/commands/import`;
-  return post(
-    db,
-    who.email,
-    path,
-    { command: 'import', requestId, ...body },
-    watchedPerson(opened),
-  );
+  return post(db, who.email, path, { command: 'import', requestId, ...body });
 }
 
 async function counts(db: Database) {
@@ -194,11 +178,32 @@ async function refusedPrincipals(db: Database): Promise<void> {
   expect(await counts(db)).toEqual({ items: 0, pages: 0 });
 }
 
+type Line = Record<string, unknown>;
+
+async function importAs(db: Database, who: Person, harnessId: string, opened: Opened) {
+  const lines: Line[] = [];
+  const logger = createLogger(
+    { traceId: randomUUID(), commit: 'test', route: 'POST', principal: null },
+    (line) => lines.push(JSON.parse(line) as Line),
+  );
+  const gateGitHub = () => {
+    opened.count += 1;
+    return null;
+  };
+  const requestId = randomUUID();
+  const actor = await personOn(db, who.id, who.email, new Date());
+  const body = { requestId, repository: platform, number: 12 };
+  const scope = dispatchScope(db, { logger, gateGitHub });
+  const outcome = await dispatchAs(actor, harnessId, 'import', body, scope);
+  expect(outcome).toEqual({ status: 'accepted', requestId });
+  return lines.map((line) => line['outcome']);
+}
+
 async function noClient(db: Database): Promise<void> {
   const { harnessId, editor } = await scene(db);
   const opened = { count: 0 };
-  const sent = await send(db, editor, harnessId, { repository: platform, number: 12 }, opened);
-  expect(sent.body).toMatchObject({ status: 'accepted' });
+  const outcomes = await importAs(db, editor, harnessId, opened);
+  expect(outcomes).toEqual(['issue_imported', 'cross_reference_deferred']);
   expect(opened.count).toBe(0);
   expect(await xrefOf(db, labelledIssue.githubId)).toBeNull();
   const github = withComments(programmed());
@@ -209,6 +214,17 @@ async function noClient(db: Database): Promise<void> {
   ]);
   expect(await xrefOf(db, labelledIssue.githubId)).toBe(String(commentId));
   expect(await counts(db)).toEqual({ items: 1, pages: 1 });
+}
+
+async function webhookFirst(db: Database): Promise<void> {
+  const { harnessId, editor } = await scene(db);
+  await deliver(depsOn(db, app, null), issuesLabeled);
+  const [created] = await eventsNamed(db, harnessId, 'item_created');
+  expect(created?.actor).toBe('agent:ingest');
+  const outcomes = await importAs(db, editor, harnessId, { count: 0 });
+  expect(outcomes).toEqual(['issue_already_imported', 'cross_reference_deferred']);
+  expect(await counts(db)).toEqual({ items: 1, pages: 1 });
+  expect(await eventsNamed(db, harnessId, 'item_created')).toEqual([created]);
 }
 
 describe.skipIf(!testServer)('WB-1 GH-3 a person imports an issue by reference', () => {
@@ -228,6 +244,9 @@ describe.skipIf(!testServer)('WB-1 GH-3 a person imports an issue by reference',
 
   it('WB-1 an agent, and a person without write, cannot import', () =>
     withAppDatabase(refusedPrincipals));
+
+  it('WB-1 GH-3 a person importing an issue the webhook imported first reuses its item and page', () =>
+    withAppDatabase(webhookFirst));
 
   it('WB-1 GH-3 the import holds no GitHub client and leaves the cross-reference comment pending for the sweep', () =>
     withAppDatabase(noClient));

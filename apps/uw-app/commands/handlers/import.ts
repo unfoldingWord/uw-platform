@@ -15,7 +15,7 @@ export const importCommand = commandHandler({
     if (change === null) return { ok: false, reason: 'issue_not_found' };
     if (!isImportable(change)) return { ok: false, reason: 'not_permitted' };
     const deps = { db, kernel: context.kernel, client: null, now: () => context.clock.now() };
-    const imported = await importStoredIssue(deps, context.caller, change, context.logger);
+    const imported = await importStoredIssue(deps, context.caller, change, context.logger, 'sweep');
     return imported.ok ? { ok: true } : { ok: false, reason: imported.reason };
   },
 });
