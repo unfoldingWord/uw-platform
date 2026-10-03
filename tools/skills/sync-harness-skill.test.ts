@@ -74,7 +74,7 @@ describe('the synced harness skill', () => {
     expect(headings).toEqual(flow);
   });
 
-  it('the skill tells a session to push a wip commit at the lease warning with its own credentials', () => {
+  it('HE-7 the skill tells a session to push a wip commit at the lease warning with its own credentials', () => {
     const body = readFileSync(repoCopy, 'utf8');
     const warning = body.slice(
       body.indexOf('## The lease warning'),
