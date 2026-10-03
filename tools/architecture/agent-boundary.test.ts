@@ -4,6 +4,8 @@ import {
   gateTouches,
   handlersSkippingCan,
   importsLeavingApp,
+  mcpReachable,
+  personSurface,
   repoSources,
   type SourceFiles,
 } from './agent-boundary.ts';
@@ -29,6 +31,14 @@ function skippingWith(planted: Readonly<Record<string, string>>): string[] {
 }
 
 const sneakVerb = 'apps/uw-app/mcp/verbs/approve-sneak.ts';
+const gateCommands = 'apps/uw-app/commands/person/gates.ts';
+const inProcessHost = 'apps/uw-app/mcp/in-process.ts';
+const commandApi = 'apps/uw-app/commands/';
+const gateGitHubHolders = [
+  'apps/uw-app/commands/person/gate-kernel.ts',
+  'apps/uw-app/commands/person/gate-github.ts',
+  'apps/uw-app/commands/person-deps.ts',
+];
 const sneakGate = 'apps/uw-app/gates/sneak.ts';
 
 const gateCalls = [
@@ -71,8 +81,25 @@ const harmless = [
 ];
 
 describe('AB-7 no file an agent principal can reach touches a gate decision or a stage row', () => {
-  it('finds no gate or stage touch in the real closure an agent principal reaches', () => {
-    expect(gateTouches(real, agentReachable(real))).toEqual([]);
+  it('AB-7 gate, stage and delegation-grant touches reachable from app.tsx live only in the person surface', () => {
+    const closure = agentReachable(real);
+    expect(closure).toContain(gateCommands);
+    expect(gateTouches(real, closure)).toEqual([]);
+    expect(
+      gateTouches(
+        real,
+        closure.filter((file) => !file.startsWith(personSurface)),
+      ),
+    ).toEqual([]);
+    expect(real.read(gateCommands)).toMatch(/\bkernel\.gates\.decide\(/);
+  });
+
+  it('AB-7 nothing the MCP surface reaches imports the command API', () => {
+    const closure = mcpReachable(real);
+    expect(closure).toContain(inProcessHost);
+    expect(closure).toContain('apps/uw-app/mcp/dispatch.ts');
+    expect(closure.filter((file) => file.startsWith(commandApi))).toEqual([]);
+    for (const holder of gateGitHubHolders) expect(closure).not.toContain(holder);
   });
 
   it('reaches every route an agent principal can call, through the app entry', () => {
@@ -134,6 +161,92 @@ describe('AB-7 the static check fails on a planted handler', () => {
 
   it('ignores a gate write in a file nothing on the MCP surface imports', () => {
     expect(touchedWith({ [sneakGate]: 'await kernel.gates.decide(caller, input);' })).toEqual([]);
+  });
+});
+
+const registryFile = 'apps/uw-app/commands/registry.ts';
+
+function underRegistry(file: string, text: string): Record<string, string> {
+  const specifier = `./${file.slice(commandApi.length)}`;
+  return { [registryFile]: `import '${specifier}';\n${real.read(registryFile)}`, [file]: text };
+}
+
+function reachedFromMcp(planted: Readonly<Record<string, string>>): string[] {
+  return mcpReachable(withPlanted(planted)).filter((file) => file.startsWith(commandApi));
+}
+
+const carvedOut = [
+  'await kernel.gates.decide(caller, input);',
+  'await kernel?.gates?.recoverConnectors(caller, input);',
+  'await context.kernel.stages.createStage(caller, input);',
+  'await kernel.delegations.grant(caller, input);',
+  'await kernel.delegations.revoke(caller, input);',
+];
+
+const notCarvedOut = [
+  'const decide = kernel.gates.decide;',
+  'const { gates } = context.kernel;',
+  "await kernel['gates'].decide(caller, input);",
+  'await db.insert(gateDecisions).values(row);',
+  'await sql`update harness_stages set paused = true`;',
+  'await kernel.repair.reopen(caller, input);',
+  'await ports.connectors.run(request);',
+  'await exitThroughConnector(ports, context, pending);',
+  'await tx.delegations.write.insert(row);',
+  'await stages.removeStage(caller, input);',
+];
+
+const personSneak = 'apps/uw-app/commands/person/sneak.ts';
+
+describe('AB-7 a planted gate touch outside the person surface fails, and a planted MCP import of the command API fails', () => {
+  it('flags a gate decision in a command handler outside the person surface', () => {
+    const file = 'apps/uw-app/commands/handlers/sneak.ts';
+    expect(touchedWith(underRegistry(file, carvedOut[0] ?? ''))).toEqual([file]);
+  });
+
+  it('flags a gate decision in a file that only shares the person surface prefix', () => {
+    const file = 'apps/uw-app/commands/person-sneak.ts';
+    expect(touchedWith(underRegistry(file, carvedOut[0] ?? ''))).toEqual([file]);
+  });
+
+  it.each(carvedOut)('passes a planted person-surface handler that runs %s', (text) => {
+    expect(touchedWith(underRegistry(personSneak, text))).toEqual([]);
+  });
+
+  it.each(notCarvedOut)('flags a planted person-surface handler that runs %s', (text) => {
+    expect(touchedWith(underRegistry(personSneak, text))).toEqual([personSneak]);
+  });
+
+  it('flags a planted verb importing the command dispatcher', () => {
+    const planted = { [sneakVerb]: "import { executeCommand } from '../../commands/dispatch.ts';" };
+    expect(reachedFromMcp(planted)).toContain('apps/uw-app/commands/dispatch.ts');
+  });
+
+  it('flags a planted verb importing the person gate commands, which the carve-out would pass', () => {
+    const planted = { [sneakVerb]: "import '../../commands/person/gates.ts';" };
+    expect(reachedFromMcp(planted)).toContain(gateCommands);
+    expect(touchedWith(planted)).toEqual([]);
+  });
+
+  it('follows three hops from a planted verb to the person deps', () => {
+    const planted = {
+      [sneakVerb]: "import { hop } from '../../pages/hop.ts';\nexport const x = hop;",
+      'apps/uw-app/pages/hop.ts': "export { hop } from '../http/hop.ts';",
+      'apps/uw-app/http/hop.ts':
+        "import { platformPersonDeps } from '../commands/person-deps.ts';\nexport const hop = platformPersonDeps;",
+    };
+    expect(reachedFromMcp(planted)).toContain('apps/uw-app/commands/person-deps.ts');
+  });
+
+  it('follows the in-process host through a dynamic import to the gate kernel', () => {
+    const planted = {
+      [inProcessHost]: `import { later } from '../agents/hop.ts';\n${real.read(inProcessHost)}`,
+      'apps/uw-app/agents/hop.ts':
+        "export const later = () => import('../commands/person/gate-kernel.ts');",
+    };
+    const reached = reachedFromMcp(planted);
+    expect(reached).toContain('apps/uw-app/commands/person/gate-kernel.ts');
+    expect(reached).not.toContain('apps/uw-app/commands/person-deps.ts');
   });
 });
 

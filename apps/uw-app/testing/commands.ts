@@ -117,7 +117,7 @@ export function command(
   });
 }
 
-async function allEvents(db: Database, harnessId: string): Promise<HarnessEvent[]> {
+export async function allEvents(db: Database, harnessId: string): Promise<HarnessEvent[]> {
   const kernel = kernelOn(db, { now: () => new Date() });
   const caller = callerOf(await ian(db));
   const events: HarnessEvent[] = [];
