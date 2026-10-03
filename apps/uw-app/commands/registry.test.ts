@@ -99,6 +99,18 @@ describe('the command builders guard the agent rule and the brand', () => {
     ).toThrow(/recover_connectors/);
   });
 
+  it('lets only revoke_delegation waive admin for the delegation owner', () => {
+    const run = async () => ({ ok: true }) as const;
+    expect(() =>
+      commandHandler({ name: 'revoke_delegation', action: 'admin', ownerMayRevoke: true, run }),
+    ).not.toThrow();
+    expect(() =>
+      commandHandler({ name: 'pause', action: 'admin', ownerMayRevoke: true, run }),
+    ).toThrow(/pause/);
+    const waiving = [...commandRegistry.values()].filter((handler) => handler.ownerMayRevoke);
+    expect(waiving.map((handler) => handler.name)).toEqual(['revoke_delegation']);
+  });
+
   it('refuses to dispatch to a handler no builder made, even from a hand-made registry', async () => {
     const built = notWiredCommand('claim', 'write');
     const registry = new Map([['claim' as const, { ...built }]]);

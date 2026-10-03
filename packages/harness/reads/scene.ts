@@ -120,18 +120,26 @@ export async function harnessScene(
   return accepted({ harness, stages: await tx.harnessStages.read.forHarness(harness.id) });
 }
 
+export type DelegationScene = { readonly harnessId: string; readonly owned: boolean };
+
 export async function delegationHarness(
   ports: ScenePorts,
   tx: StoreTransaction,
   caller: Caller,
   delegationId: string,
   at: Date,
-): Promise<KernelOutcome<{ readonly harnessId: string }>> {
+): Promise<KernelOutcome<DelegationScene>> {
   const delegation = await tx.delegations.read.byId(delegationId);
   const harness =
     delegation === null ? null : await readableHarness(ports, tx, caller, delegation.harnessId, at);
-  if (harness === null) return refused('delegation_not_found', { delegationId });
-  return accepted({ harnessId: harness.id });
+  if (delegation === null || harness === null) {
+    return refused('delegation_not_found', { delegationId });
+  }
+  const { personId } = caller.actor;
+  return accepted({
+    harnessId: harness.id,
+    owned: personId !== null && delegation.personId === personId,
+  });
 }
 
 type StagedItemScene = ItemScene & { readonly stages: readonly Stage[] };

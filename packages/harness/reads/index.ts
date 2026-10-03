@@ -7,6 +7,7 @@ import { pollQueue, type PollInput, type PollItem } from './poll.ts';
 import { importTarget, issueImported } from './repository.ts';
 import {
   delegationHarness,
+  type DelegationScene,
   harnessScene,
   itemScene,
   itemsInStage,
@@ -32,7 +33,7 @@ export type KernelReads = {
     caller: Caller,
     input: { readonly delegationId: string },
     options?: ReadOptions,
-  ): Promise<KernelOutcome<{ readonly harnessId: string }>>;
+  ): Promise<KernelOutcome<DelegationScene>>;
   inStage(
     caller: Caller,
     input: StageItemsInput,

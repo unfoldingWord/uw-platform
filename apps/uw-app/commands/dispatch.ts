@@ -44,6 +44,8 @@ export type DispatchScope = {
 
 type Reply = Outcome | Refusal;
 
+type Lookup = { readonly kernel: Kernel; readonly caller: Caller; readonly at: Date };
+
 type Admitted = {
   readonly handler: CommandHandler;
   readonly database: DatabaseHandle;
@@ -90,6 +92,23 @@ function permitted(command: Admitted, scene: Scene): boolean {
   if (command.principal.kind !== 'person') return command.handler.agents === 'recorded';
   const resource = { kind: 'area', area: scene.area } as const;
   return can(command.principal, command.handler.action, resource, command.at);
+}
+
+const namedDelegation = z.object({ delegationId: z.uuid() });
+
+async function ownerRevokes(lookup: Lookup, command: Admitted): Promise<boolean> {
+  const named = namedDelegation.safeParse(command.body);
+  if (!command.handler.ownerMayRevoke || !named.success) return false;
+  if (!isHumanPrincipal(command.principal)) return false;
+  const { delegationId } = named.data;
+  const read = await lookup.kernel.reads.delegation(
+    lookup.caller,
+    { delegationId },
+    { at: lookup.at },
+  );
+  return (
+    read.status === 'accepted' && read.value.owned && read.value.harnessId === command.harnessId
+  );
 }
 
 function replayed(
@@ -172,7 +191,9 @@ async function dispatchAdmitted(command: Admitted, scope: DispatchScope): Promis
   const lookup = { kernel, caller, at: command.at, db: command.database.db };
   const scene = await sceneOf(lookup, command.handler, command.harnessId, command.body);
   if (typeof scene === 'string') return error(command.requestId, scene);
-  if (!permitted(command, scene)) return error(command.requestId, 'not_permitted');
+  if (!permitted(command, scene) && !(await ownerRevokes(lookup, command))) {
+    return error(command.requestId, 'not_permitted');
+  }
   const foreign = await foreignTarget(lookup, scene, command);
   if (foreign !== null) return error(command.requestId, foreign);
   return runOnce(command, contextOf(command, scope, kernel, scene, clock));
