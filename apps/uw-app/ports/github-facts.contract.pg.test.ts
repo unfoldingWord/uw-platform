@@ -88,7 +88,7 @@ function restPull(facts: PullRequestFacts, updatedAt: string) {
       ref: facts.headRef,
       repo: facts.headRepo === null ? null : { full_name: facts.headRepo },
     },
-    base: { sha: facts.base, ref: 'main', repo: repository },
+    base: { sha: facts.base, ref: facts.baseRef, repo: repository },
     body: bodyOf(facts.declaration),
     updated_at: updatedAt,
   };

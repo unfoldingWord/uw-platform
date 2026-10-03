@@ -11,6 +11,7 @@ import { PortNotWiredError } from '../port-errors.ts';
 import type {
   ConnectorOutcome,
   ConnectorRequest,
+  DecidedBase,
   EffectConnector,
   Ports,
   StoreTransaction,
@@ -27,14 +28,10 @@ type ExitInput = {
   readonly decisionId: string;
   readonly overrideReason: string | null;
   readonly repository: string | null;
-  readonly expectedBase: string | null;
+  readonly expectedBase: DecidedBase | null;
 };
 
 const REASON_LIMIT = 500;
-
-function messageOf(title: string, overrideReason: string | null): string {
-  return overrideReason === null ? title : `${title}\n\nOverride: ${overrideReason}`;
-}
 
 function failureOf(error: unknown): string {
   if (error instanceof PortNotWiredError) return 'not_wired';
@@ -68,7 +65,8 @@ function requestOf(context: RecordContext, input: ExitInput): ConnectorRequest {
     expectedHead: item.expectedHead,
     expectedBase: input.expectedBase,
     repository: input.repository,
-    message: messageOf(item.title, input.overrideReason),
+    title: item.title,
+    overrideReason: input.overrideReason,
   };
 }
 

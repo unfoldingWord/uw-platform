@@ -27,9 +27,10 @@ export const request: ConnectorRequest = {
   traceId: 'b1000000-0000-4000-8000-000000000003',
   pullRequest: { repo: 'unfoldingWord/uw-platform', number: 42 },
   expectedHead: head,
-  expectedBase: base,
+  expectedBase: { sha: base, ref: 'main' },
   repository: 'unfoldingWord/uw-platform',
-  message: 'Show the board\n\nOverride: reviewer is away',
+  title: 'Show the board',
+  overrideReason: 'reviewer is away',
 };
 
 type PullChange = {
@@ -37,8 +38,10 @@ type PullChange = {
   readonly ref?: string;
   readonly headRepo?: string | null;
   readonly base?: string;
+  readonly baseRef?: string;
   readonly state?: 'open' | 'closed';
   readonly merged?: boolean;
+  readonly mergeSha?: string | null;
 };
 
 function headRepositoryOf(headRepo: string | null | undefined) {
@@ -46,9 +49,25 @@ function headRepositoryOf(headRepo: string | null | undefined) {
   return headRepo === null ? null : { ...restPull.head.repo, full_name: headRepo };
 }
 
+function mergeCommitOf(change: PullChange): string | null {
+  if (change.merged !== true) return null;
+  return change.mergeSha === undefined ? mergeSha : change.mergeSha;
+}
+
+function sidesOf(change: PullChange) {
+  return {
+    head: {
+      ...restPull.head,
+      sha: change.head ?? head,
+      ref: change.ref ?? tagName,
+      repo: headRepositoryOf(change.headRepo),
+    },
+    base: { ...restPull.base, sha: change.base ?? base, ref: change.baseRef ?? 'main' },
+  };
+}
+
 export function pullAt(change: PullChange = {}): FixtureReply {
   const merged = change.merged ?? false;
-  const headRepo = headRepositoryOf(change.headRepo);
   return {
     status: 200,
     body: {
@@ -57,14 +76,8 @@ export function pullAt(change: PullChange = {}): FixtureReply {
       state: change.state ?? (merged ? 'closed' : 'open'),
       merged,
       merged_at: merged ? '2026-10-02T12:00:00Z' : null,
-      merge_commit_sha: merged ? mergeSha : null,
-      head: {
-        ...restPull.head,
-        sha: change.head ?? head,
-        ref: change.ref ?? tagName,
-        repo: headRepo,
-      },
-      base: { ...restPull.base, sha: change.base ?? base },
+      merge_commit_sha: mergeCommitOf(change),
+      ...sidesOf(change),
     },
   };
 }

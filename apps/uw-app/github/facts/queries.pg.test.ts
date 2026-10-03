@@ -35,6 +35,7 @@ const expectedFacts = {
   headRef,
   headRepo: 'unfoldingWord/uw-platform',
   base,
+  baseRef: 'main',
   checks: [
     {
       checkId: 9100000401,

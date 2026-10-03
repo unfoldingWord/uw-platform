@@ -10,7 +10,9 @@ type Tagged = GitHubResult<{ readonly created: boolean }>;
 
 const shipPermissions = { contents: 'write', pull_requests: 'read', metadata: 'read' } as const;
 const tagName = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
-const merged = z.object({ sha: z.string().min(1) }).transform(({ sha }) => ({ sha }));
+const merged = z
+  .object({ sha: z.string().refine(isFullSha), merged: z.literal(true) })
+  .transform(({ sha }) => ({ sha }));
 const lightweightRef = z.object({ object: z.object({ sha: z.string(), type: z.string() }) });
 const record = z.record(z.string(), z.unknown());
 

@@ -150,6 +150,7 @@ export async function pullRequestFacts(
     headRef: pull.headRef,
     headRepo: pull.headRepo,
     base: pull.baseSha,
+    baseRef: pull.baseRef,
     checks: await checksAt(db, pull),
     reviews: await reviewsOf(db, pull),
     files: filesOf(pull),

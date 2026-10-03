@@ -3,15 +3,13 @@ import { mergeHandler, type MergeGitHub } from '../github/merge.ts';
 
 export type ShipGitHub = MergeGitHub;
 
-type ConnectorHandler = Connectors;
-
-const notWiredConnector: ConnectorHandler = {
+const notWiredConnector: Connectors = {
   run: async () => ({ outcome: 'refused', reason: 'not_wired' }),
   outcomeOf: async () => null,
 };
 
-function handlersFor(github: ShipGitHub | null): ReadonlyMap<EffectConnector, ConnectorHandler> {
-  return new Map<EffectConnector, ConnectorHandler>([
+function handlersFor(github: ShipGitHub | null): ReadonlyMap<EffectConnector, Connectors> {
+  return new Map<EffectConnector, Connectors>([
     ['merge', github === null ? notWiredConnector : mergeHandler(github)],
     ['deploy', notWiredConnector],
     ['publish', notWiredConnector],

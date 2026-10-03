@@ -11,7 +11,7 @@ import {
 import { lockKeys } from '../lock-keys.ts';
 import { exitDrafts, resolveExit, type Exit } from '../items/transitions.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
-import type { EffectConnector, Ports, StoreTransaction } from '../ports.ts';
+import type { DecidedBase, EffectConnector, Ports, StoreTransaction } from '../ports.ts';
 import { approverCovers } from '../risk/domain-grants.ts';
 import {
   effectOf,
@@ -271,6 +271,11 @@ type Request = {
 
 type ShipRoute = { readonly exit: Exit; readonly connector: EffectConnector };
 
+function baseOf(snapshot: ShipSnapshot | null): DecidedBase | null {
+  const facts = snapshot?.facts ?? null;
+  return facts === null ? null : { sha: facts.base, ref: facts.baseRef };
+}
+
 function pendingExit(
   gate: Gate,
   decided: Decided,
@@ -286,7 +291,7 @@ function pendingExit(
     decisionId: decided.decisionId,
     overrideReason: input.decision === 'override' ? input.reason : null,
     repository: gate.harness.repository,
-    expectedBase: snapshot?.facts?.base ?? null,
+    expectedBase: baseOf(snapshot),
     context: gate.context,
   };
 }
