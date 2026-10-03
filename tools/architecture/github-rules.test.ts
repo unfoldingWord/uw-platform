@@ -206,6 +206,24 @@ const personSurface = {
 
 const surfaceRefusals: [string, string, string, string][] = [
   [
+    'a gate command building the gate kernel',
+    'apps/uw-app/commands/person/gates.ts',
+    "import { gateKernel } from './gate-kernel.ts';",
+    'gate-kernel-only-in-gate-commands',
+  ],
+  [
+    'a gate command opening the gate GitHub',
+    'apps/uw-app/commands/person/gates.ts',
+    "import { platformGateGitHub } from './gate-github.ts';",
+    'gate-kernel-only-in-gate-commands',
+  ],
+  [
+    'the command capabilities opening the gate GitHub',
+    'apps/uw-app/commands/capabilities.ts',
+    "import './person/gate-github.ts';",
+    'gate-kernel-only-in-gate-commands',
+  ],
+  [
     'the dispatcher building the gate kernel',
     'apps/uw-app/commands/dispatch.ts',
     "import './person/gate-kernel.ts';",
@@ -315,11 +333,11 @@ describe('the person gate kernel and the person surface', () => {
     expect(found.map((violation) => violation.rule)).toContain(rule);
   });
 
-  it('allow the gate commands, the person deps on the gate GitHub, the command API and tests', async () => {
+  it('allow the command capabilities on the gate kernel, the person deps on the gate GitHub, the command API and tests', async () => {
     const found = await violations({
       ...personSurface,
-      'apps/uw-app/commands/person/gates.ts':
-        "import './gate-kernel.ts'; import './gate-github.ts'; import './x.ts';",
+      'apps/uw-app/commands/capabilities.ts': "import './person/gate-kernel.ts';",
+      'apps/uw-app/commands/person/gates.ts': "import './x.ts';",
       'apps/uw-app/commands/person-deps.ts': "import './person/gate-github.ts';",
       'apps/uw-app/commands/routes.ts': "import './person/x.ts'; import './person-deps.ts';",
       'apps/uw-app/commands/person/gate-kernel.test.ts': "import './gate-kernel.ts';",
@@ -369,7 +387,7 @@ describe('the GitHub module is imported only by the platform adapters and the qu
   });
 });
 
-const importCommandFile = 'apps/uw-app/commands/handlers/import.ts';
+const importCommandFile = 'apps/uw-app/commands/capabilities.ts';
 const importPath = {
   'apps/uw-app/github/import.ts': leaf,
   'apps/uw-app/github/facts/queries.ts': leaf,
@@ -379,22 +397,28 @@ const importPath = {
 
 const importCommandRefusals: [string, string, string, string][] = [
   [
-    'the import command reaching the cross-reference writer',
+    'the command capabilities reaching the cross-reference writer',
     importCommandFile,
-    "import '../../github/cross-reference.ts';",
+    "import '../github/cross-reference.ts';",
     'import-command-only-on-the-import-path',
   ],
   [
-    'the import command reaching the sweep',
+    'the command capabilities reaching the sweep',
     importCommandFile,
-    "import '../../github/sweep.ts';",
+    "import '../github/sweep.ts';",
     'import-command-only-on-the-import-path',
   ],
   [
-    'the import command reaching the read client',
+    'the command capabilities reaching the read client',
     importCommandFile,
-    "import '../../github/client.ts';",
+    "import '../github/client.ts';",
     'github-reads-only-in-github-and-composition-roots',
+  ],
+  [
+    'the import handler reaching the import path itself',
+    'apps/uw-app/commands/handlers/import.ts',
+    "import '../../github/import.ts';",
+    'github-module-only-in-ports-and-roots',
   ],
   [
     'another command reaching the import path',
@@ -410,11 +434,10 @@ describe('the person import command', () => {
     expect(found.map((violation) => violation.rule)).toContain(rule);
   });
 
-  it('allows the import command on the import path and the issue read', async () => {
+  it('allows the command capabilities on the import path and the issue read', async () => {
     const found = await violations({
       ...importPath,
-      [importCommandFile]:
-        "import '../../github/import.ts'; import '../../github/facts/queries.ts';",
+      [importCommandFile]: "import '../github/import.ts'; import '../github/facts/queries.ts';",
     });
     expect(found).toEqual([]);
   });

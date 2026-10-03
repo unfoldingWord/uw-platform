@@ -21,6 +21,7 @@ export const protectedDirectories: readonly ProtectedDirectory[] = [
   { path: 'apps/uw-app/commands/person/gate-kernel.ts', domain: 'acl' },
   { path: 'apps/uw-app/commands/person/gate-github.ts', domain: 'acl' },
   { path: 'apps/uw-app/commands/dispatch.ts', domain: 'acl' },
+  { path: 'apps/uw-app/commands/capabilities.ts', domain: 'acl' },
   { path: 'apps/uw-app/commands/person-deps.ts', domain: 'acl' },
   { path: 'packages/contracts/ship-rule.ts', domain: 'acl' },
 ];

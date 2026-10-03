@@ -15,6 +15,7 @@ import type { DatabaseHandle } from '../database.ts';
 import { malformedOutcome, toOutcome } from '../http/commands.ts';
 import { hubWiring, platformKernel } from '../kernel.ts';
 import type { ShipGitHub } from '../ports/connectors.ts';
+import { commandCapabilities, type GateAccess } from './capabilities.ts';
 import {
   isBuiltCommand,
   isHumanPrincipal,
@@ -154,8 +155,9 @@ async function runOnce(command: Admitted, context: CommandContext): Promise<Outc
   return after ?? error(command.requestId, 'request_in_flight');
 }
 
-function opensGitHub(command: Admitted): boolean {
-  return isHumanPrincipal(command.principal) && opensGateGitHub(command.handler);
+function gateAccess(command: Admitted): GateAccess {
+  if (!opensGateGitHub(command.handler)) return 'none';
+  return isHumanPrincipal(command.principal) ? 'github' : 'ordinary';
 }
 
 function contextOf(
@@ -170,17 +172,24 @@ function contextOf(
     traceId: command.traceId,
     requestId: command.requestId,
   };
+  const capabilities = commandCapabilities({
+    command: command.handler.name,
+    database: command.database,
+    kernel,
+    caller,
+    clock,
+    hub: scope.hub,
+    logger: scope.logger,
+    gate: gateAccess(command),
+    gateGitHub: scope.gateGitHub,
+  });
   return {
+    ...capabilities,
     kernel,
     caller,
     harnessId: command.harnessId,
     harness: scene.harness,
     stages: scene.stages,
-    database: command.database,
-    gateGitHub: opensGitHub(command) ? scope.gateGitHub : () => null,
-    hub: scope.hub,
-    clock,
-    logger: scope.logger,
   };
 }
 

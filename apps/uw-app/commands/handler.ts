@@ -8,23 +8,16 @@ import {
   type Stage,
 } from '@uw/contracts';
 import type { AclAction } from '@uw/core/acl';
-import type { Logger } from '@uw/core/log';
-import type { Caller, Clock, Hub, Kernel, KernelOutcome } from '@uw/harness';
-import type { DatabaseHandle } from '../database.ts';
+import type { Caller, Kernel, KernelOutcome } from '@uw/harness';
 import type { CommandResult } from '../http/commands.ts';
-import type { ShipGitHub } from '../ports/connectors.ts';
+import type { CommandCapabilities } from './capabilities.ts';
 
-export type CommandContext = {
+export type CommandContext = CommandCapabilities & {
   readonly kernel: Kernel;
   readonly caller: Caller;
   readonly harnessId: string;
   readonly harness: Harness | null;
   readonly stages: readonly Stage[];
-  readonly database: DatabaseHandle;
-  readonly gateGitHub: () => ShipGitHub | null;
-  readonly hub: Hub;
-  readonly clock: Clock;
-  readonly logger: Logger;
 };
 
 export type CommandScope = 'harness' | 'new_harness';

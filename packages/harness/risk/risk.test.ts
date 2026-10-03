@@ -114,6 +114,10 @@ describe('KN-17 the protected-directory map covers the code that decides what Sh
     expect(domainOf('apps/uw-app/commands/registry.ts')).toBeNull();
   });
 
+  it('protects the command capabilities, which build the gate kernel for a person on a gate command, under acl', () => {
+    expect(domainOf('apps/uw-app/commands/capabilities.ts')).toBe('acl');
+  });
+
   it('protects the ship rule contract (CI jobs and refusals) under acl', () => {
     expect(domainOf('packages/contracts/ship-rule.ts')).toBe('acl');
     expect(domainOf('packages/contracts/ship-rule.test.ts')).toBeNull();
