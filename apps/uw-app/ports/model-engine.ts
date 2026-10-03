@@ -5,6 +5,10 @@ export type SpendReader = ModelEngine['spend'];
 
 export const spendNotWired: SpendReader = () => notWiredCall('modelEngine', 'spend');
 
+export function spendOnlyEngine(spend: SpendReader): ModelEngine {
+  return { turn: () => notWiredCall('modelEngine', 'turn'), spend: (since) => spend(since) };
+}
+
 export function platformModelEngine(registry: EngineRegistry, spend: SpendReader): ModelEngine {
   return {
     turn: async (request) => {

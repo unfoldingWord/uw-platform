@@ -1,14 +1,17 @@
+import { engineConfigOf } from '../engines/config.ts';
 import { commitOf, type Bindings } from '../env.ts';
 import { cronLogger, type CronDeps } from './job.ts';
 import { cronJobs } from './registry.ts';
 
 function platformCronDeps(env: Bindings): CronDeps {
+  const send = fetch.bind(globalThis);
   return {
     now: () => new Date(),
-    fetch: fetch.bind(globalThis),
+    fetch: send,
     sink: (line) => console.log(line),
     newId: () => crypto.randomUUID(),
     commit: commitOf(env),
+    engines: engineConfigOf(env, send),
   };
 }
 

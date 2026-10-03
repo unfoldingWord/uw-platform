@@ -109,6 +109,7 @@ export async function sweepOnce(
       sink: (line) => lines.push(JSON.parse(line) as Line),
       newId: () => crypto.randomUUID(),
       commit: 'c',
+      engines: { fetch: run.github.fetch },
     },
     'cron github sweep',
   );

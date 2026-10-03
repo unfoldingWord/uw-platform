@@ -1,5 +1,6 @@
 import { createLogger, type Logger, type LogSink } from '@uw/core/log';
 import { systemPrincipal } from '@uw/core/principal';
+import type { EngineConfig } from '../engines/config.ts';
 import type { Bindings } from '../env.ts';
 
 export type CronDeps = {
@@ -8,6 +9,7 @@ export type CronDeps = {
   readonly sink: LogSink;
   readonly newId: () => string;
   readonly commit: string;
+  readonly engines: EngineConfig;
 };
 
 export type CronJob = (env: Bindings, deps: CronDeps) => Promise<void>;
