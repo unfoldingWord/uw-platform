@@ -35,6 +35,7 @@ export type CommandHandler = {
   readonly action: AclAction;
   readonly scope: CommandScope;
   readonly agents: AgentRule;
+  readonly ownerMayRevoke: boolean;
   readonly run: (context: CommandContext, body: unknown) => Promise<CommandResult>;
 };
 
@@ -43,6 +44,7 @@ type CommandSpec<Name extends CommandName> = {
   readonly action: AclAction;
   readonly scope?: CommandScope;
   readonly agents?: AgentRule;
+  readonly ownerMayRevoke?: boolean;
   readonly run: (context: CommandContext, body: CommandBody<Name>) => Promise<CommandResult>;
 };
 
@@ -90,11 +92,15 @@ export function commandHandler<Name extends CommandName>(spec: CommandSpec<Name>
   if (spec.agents === 'recorded' && !agentRecorded.has(spec.name)) {
     throw new TypeError(`the ${spec.name} command may not let an agent reach the kernel`);
   }
+  if (spec.ownerMayRevoke === true && spec.name !== 'revoke_delegation') {
+    throw new TypeError(`the ${spec.name} command may not waive admin for an owner`);
+  }
   return brandCommand({
     name: spec.name,
     action: spec.action,
     scope: spec.scope ?? 'harness',
     agents: spec.agents ?? 'refused',
+    ownerMayRevoke: spec.ownerMayRevoke ?? false,
     run: async (context, body) => spec.run(context, schema.parse(body)),
   });
 }

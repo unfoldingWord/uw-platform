@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { principalSchema, type Principal } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
+import { revokeSeededGrant, seedGrant, seedPerson } from '@uw/db/test-seed';
 import { agentOf, kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import {
@@ -144,6 +145,43 @@ async function foreignSupersedes(db: Database): Promise<void> {
   expect(await delegationsOf(db, scene.otherHarnessId)).toHaveLength(1);
 }
 
+async function grantedTo(db: Database, personId: string, role: 'admin' | 'editor') {
+  const grantId = randomUUID();
+  await seedGrant(db, {
+    id: grantId,
+    personId,
+    role,
+    scopeKind: 'jd_area',
+    scopeArea: '80-89',
+    grantedAt: new Date(Date.now() - 60_000),
+    expiresAt: null,
+  });
+  return grantId;
+}
+
+async function ownerRevokesWithoutAdmin(db: Database): Promise<void> {
+  const scene = await softwareHarness(db);
+  const { harnessId } = scene;
+  const owner = { id: randomUUID(), email: 'owner@unfoldingword.org' };
+  await seedPerson(db, owner);
+  const adminGrant = await grantedTo(db, owner.id, 'admin');
+  await grantedTo(db, owner.id, 'editor');
+  await command(db, owner, harnessId, 'schedule_regular_tweak', tweak());
+  const [delegation] = await delegationsOf(db, harnessId);
+  const delegationId = delegation?.id ?? '';
+  await revokeSeededGrant(db, adminGrant, new Date());
+  const revoke = (who: { readonly email: string }) =>
+    command(db, who, harnessId, 'revoke_delegation', { requestId: randomUUID(), delegationId });
+  expect((await revoke(scene.editor)).body).toMatchObject({ reason: 'not_permitted' });
+  expect(await delegationsOf(db, harnessId)).toHaveLength(1);
+  const before = await eventCount(db, harnessId);
+  expect((await revoke(owner)).body).toMatchObject({ status: 'accepted' });
+  expect(await delegationsOf(db, harnessId)).toEqual([]);
+  const [event] = await eventsNamed(db, harnessId, 'delegation_revoked');
+  expect(event).toMatchObject({ actor: `human:${owner.id}`, evidence: { delegationId } });
+  expect(await eventCount(db, harnessId)).toBe(before + 1);
+}
+
 describe.skipIf(!testServer)('WB-1 KN-16 the delegation commands on the person surface', () => {
   it('WB-1 schedule_regular_tweak writes a delegation for the admin with the capability word and expiry', () =>
     withAppDatabase(scheduled));
@@ -156,4 +194,7 @@ describe.skipIf(!testServer)('WB-1 KN-16 the delegation commands on the person s
 
   it('schedule_regular_tweak superseding a delegation of another harness is delegation_not_found, as for a missing one', () =>
     withAppDatabase(foreignSupersedes));
+
+  it('WB-1 KN-16 the owner of a delegation revokes it without admin, and another person without admin cannot', () =>
+    withAppDatabase(ownerRevokesWithoutAdmin));
 });

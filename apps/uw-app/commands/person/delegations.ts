@@ -15,6 +15,7 @@ export const scheduleRegularTweakCommand = commandHandler({
 export const revokeDelegationCommand = commandHandler({
   name: 'revoke_delegation',
   action: 'admin',
+  ownerMayRevoke: true,
   run: async ({ kernel, caller }, body: CommandBody<'revoke_delegation'>) =>
     fromKernel(await kernel.delegations.revoke(caller, { delegationId: body.delegationId })),
 });
