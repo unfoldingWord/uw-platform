@@ -22,14 +22,24 @@ describe('the queue and cron hub wakes each harness once per unit of work', () =
     expect(target.woken).toEqual([first, second]);
   });
 
-  it('wakes nothing again for a unit already flushed, and wakes nothing for a unit that appended nothing', async () => {
+  it('wakes nothing for a unit that appended nothing, and nothing again on a second flush', async () => {
     const target = recording();
     const unit = unitHub(target.hub);
     await unit.flush();
+    expect(target.woken).toEqual([]);
     await unit.hub.wake(first);
     await unit.flush();
     await unit.flush();
     expect(target.woken).toEqual([first]);
+  });
+
+  it('forwards a wake that arrives after the unit has flushed straight to the hub', async () => {
+    const target = recording();
+    const unit = unitHub(target.hub);
+    await unit.hub.wake(first);
+    await unit.flush();
+    await unit.hub.wake(second);
+    expect(target.woken).toEqual([first, second]);
   });
 
   it('drops a failing wake so the unit of work still finishes', async () => {
