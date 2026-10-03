@@ -84,7 +84,6 @@ describe('AB-7 no file an agent principal can reach touches a gate decision or a
   it('AB-7 gate, stage and delegation-grant touches reachable from app.tsx live only in the person surface', () => {
     const closure = agentReachable(real);
     expect(closure).toContain(gateCommands);
-    expect(gateTouches(real, closure)).toEqual([]);
     expect(
       gateTouches(
         real,

@@ -66,7 +66,9 @@ function readsBeforeTheMerge(github: FixtureGitHub): void {
   const merge = sent.indexOf(`PUT ${mergePath}`);
   expect(sent.indexOf(`GET ${pulls}/reviews`)).toBeGreaterThanOrEqual(0);
   expect(sent.indexOf(`GET ${pulls}/reviews`)).toBeLessThan(merge);
-  expect(sent.findIndex((line) => line.includes('/check-runs'))).toBeLessThan(merge);
+  const checks = sent.findIndex((line) => line.includes('/check-runs'));
+  expect(checks).toBeGreaterThanOrEqual(0);
+  expect(checks).toBeLessThan(merge);
 }
 
 async function approveMerges(db: Database): Promise<void> {
@@ -141,7 +143,49 @@ async function noAppIsNotWired(db: Database): Promise<void> {
   expect(await itemState(db, parked.item.itemId)).toMatchObject({ gateStatus: 'parked' });
 }
 
+async function secondApproveDecidesNothing(db: Database): Promise<void> {
+  const parked = await parkedAtShip(db);
+  const github = readyToShip(parked.item.itemId);
+  const person = await gateDeps(github);
+  const target = { email: kimEmail, item: parked.item };
+  const head = parked.item.expectedHead;
+  await send(db, target, 'approve', approval(parked, randomUUID(), head), person);
+  const events = await eventCount(db, parked.item.harnessId);
+  const requestId = randomUUID();
+  const again = await send(db, target, 'approve', approval(parked, requestId, head), person);
+  expect(again.body).toEqual({ status: 'error', requestId, reason: 'item_not_at_gate' });
+  expect(await decisionRows(db, parked.item)).toBe(1);
+  expect(await eventCount(db, parked.item.harnessId)).toBe(events);
+  expect(shipWrites(github)).toEqual([`PUT ${mergePath}`, `POST ${refs}`]);
+}
+
+async function approvalAwaitingItsConnector(db: Database): Promise<void> {
+  const parked = await parkedAtShip(db);
+  await lostAfterTheMerge(db, parked);
+  const github = readyToShip(parked.item.itemId);
+  const person = await gateDeps(github);
+  const target = { email: kimEmail, item: parked.item };
+  const head = parked.item.expectedHead;
+  for (const [name, extra] of [
+    ['approve', { head }],
+    ['override', { head, reason: 'urgent' }],
+  ] as const) {
+    const requestId = randomUUID();
+    const body = { requestId, itemId: parked.item.itemId, ...extra };
+    const sent = await send(db, target, name, body, person);
+    expect(sent.body).toEqual({ status: 'error', requestId, reason: 'decision_in_flight' });
+  }
+  expect(await decisionRows(db, parked.item)).toBe(1);
+  expect(shipWrites(github)).toEqual([]);
+}
+
 describe.skipIf(!testServer)('WB-1 a person approves at Ship through the command API', () => {
+  it('WB-1 a second approve with a new requestId after the first committed decides nothing and merges nothing again', () =>
+    withAppDatabase(secondApproveDecidesNothing));
+
+  it('WB-1 an approve or override while an approval waits for its connector outcome is decision_in_flight', () =>
+    withAppDatabase(approvalAwaitingItsConnector));
+
   it('WB-1 approve at Ship through the command API refreshes GitHub facts, writes one gate decision and merges through the connector', () =>
     withAppDatabase(approveMerges));
 
@@ -297,11 +341,11 @@ function losingAfterTheConnector(db: Database, ran: () => boolean): Store {
   };
 }
 
-export async function kernelThatLosesTheExit(db: Database, itemId: string): Promise<Kernel> {
+async function kernelThatLosesTheExit(db: Database, itemId: string): Promise<Kernel> {
   const github = readyToShip(itemId);
   const app = await fixtureApp();
   const logger = createLogger(
-    { traceId: crypto.randomUUID(), commit: 'test', route: 'lost', principal: null },
+    { traceId: randomUUID(), commit: 'test', route: 'lost', principal: null },
     () => undefined,
   );
   const open = () => createGitHubReads(app, { fetch: github.fetch, now: clock.now });
@@ -322,8 +366,7 @@ export async function kernelThatLosesTheExit(db: Database, itemId: string): Prom
   });
 }
 
-async function recovered(db: Database): Promise<void> {
-  const parked = await parkedAtShip(db);
+async function lostAfterTheMerge(db: Database, parked: ParkedAtShip): Promise<void> {
   const lost = await kernelThatLosesTheExit(db, parked.item.itemId);
   const decision = { itemId: parked.item.itemId, decision: 'approve' as const, reason: null };
   await expect(
@@ -333,6 +376,11 @@ async function recovered(db: Database): Promise<void> {
       seenHead: parked.item.expectedHead,
     }),
   ).rejects.toThrow('the exit was lost');
+}
+
+async function recovered(db: Database): Promise<void> {
+  const parked = await parkedAtShip(db);
+  await lostAfterTheMerge(db, parked);
   expect(namesOf(await allEvents(db, parked.item.harnessId))).not.toContain('connector_succeeded');
   const github = alreadyShipped(parked.item.itemId);
   const requestId = randomUUID();
