@@ -10,6 +10,7 @@ const harnessId = '00000000-0000-4000-8000-0000000000a1';
 const itemId = '00000000-0000-4000-8000-0000000000b1';
 const decisionId = '00000000-0000-4000-8000-0000000000d1';
 const traceId = '00000000-0000-4000-8000-0000000000e1';
+const runId = '00000000-0000-4000-8000-0000000000f1';
 const agent = 'agent:builder';
 const repo = 'unfoldingWord/uw-platform';
 const person = 'human:00000000-0000-4000-8000-000000000001';
@@ -33,6 +34,7 @@ const operations = [
   'adoptBranch',
   'reorder',
   'irrelevant',
+  'runEvent',
 ] as const;
 
 type Operation = (typeof operations)[number];
@@ -152,7 +154,7 @@ function runStep(model: Model): boolean {
   if (!leased(model)) return false;
   const leaseExpiresAt = leaseAfter(model);
   emit(model, 'run_step_recorded', {
-    runId: '00000000-0000-4000-8000-0000000000f1',
+    runId,
     step: 'work',
     tokensIn: 1,
     tokensOut: 1,
@@ -290,6 +292,35 @@ function irrelevant(model: Model, pick: number): boolean {
   return true;
 }
 
+const hibernated = { runId, why: 'paused' };
+const runEvents: readonly (readonly [EventName, Evidence])[] = [
+  [
+    'run_started',
+    {
+      runId,
+      persona: agent,
+      runShape: 'workflow-run',
+      engine: 'claude-messages',
+      model: 'claude-sonnet-5',
+      delegationId: null,
+    },
+  ],
+  ['run_hibernated', hibernated],
+  ['run_resumed', hibernated],
+  ['run_prompted', { runId, message: 'Look at the board first.' }],
+  ['premise_held', { runId, reason: 'the issue was closed upstream' }],
+  ['run_stopped', { runId, why: 'stopped_by_person' }],
+  ['run_failed', { runId, step: 'work', why: 'retries_exhausted', detail: 'RangeError' }],
+  ['run_completed', { runId, result: 'submitted', gates: [], review: null }],
+];
+
+function runEvent(model: Model, pick: number): boolean {
+  const [name, evidence] = runEvents[pick % runEvents.length] ?? runEvents[0] ?? [];
+  if (name === undefined || evidence === undefined) return false;
+  emit(model, name, evidence);
+  return true;
+}
+
 const handlers: ReadonlyMap<Operation, Handler> = new Map<Operation, Handler>([
   ['claim', claim],
   ['release', releaseHolder],
@@ -307,6 +338,7 @@ const handlers: ReadonlyMap<Operation, Handler> = new Map<Operation, Handler>([
   ['adoptBranch', adoptBranch],
   ['reorder', reorder],
   ['irrelevant', irrelevant],
+  ['runEvent', runEvent],
 ]);
 
 function startModel(start: number): Model {
