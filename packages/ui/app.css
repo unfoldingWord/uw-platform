@@ -8,6 +8,8 @@
 @source '../../apps/uw-app/**/*.tsx';
 @source not './dist';
 @source not '../../apps/uw-app/dist';
+@source not './components/**/*.test.tsx';
+@source not '../../apps/uw-app/**/*.test.tsx';
 
 @theme {
   --color-*: initial;
