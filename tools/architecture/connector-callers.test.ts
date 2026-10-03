@@ -12,6 +12,7 @@ const connectorsReference = /\bconnectors\b(?!\/)/;
 const shipRuleCall = /\bshipRule\s*\(/;
 const shipRuleReference = /\bshipRule\b/;
 const assemblerCall = /\bassembleShipInput\s*\(/;
+const previewCall = /\bshipPreview\s*\(/;
 const connectorExitCall = /\bexitThroughConnector\s*\(/;
 const mergeCall = /\bwrites\s*\??\.\s*merge\s*\(|\bmergeHandler\s*\(/;
 const shipWritesCall = /\bcreateShipWrites\s*\(/;
@@ -181,6 +182,13 @@ function strays(pattern: RegExp, allowed: readonly string[], files: readonly str
 describe("GH-5 the assembler is the ship rule's only caller", () => {
   it('finds the assembler called only from the approve-at-Ship path and its own module', () => {
     expect(filesMatching(assemblerCall, sources())).toEqual(assemblerCallers);
+  });
+
+  it('finds the ship preview defined beside the approve-at-Ship path and called only from the gate view', () => {
+    expect(filesMatching(previewCall, sources())).toEqual([
+      approveAtShip,
+      'packages/harness/gates/view.ts',
+    ]);
   });
 
   it('finds the ship rule called only from the approve-at-Ship path and its own module', () => {

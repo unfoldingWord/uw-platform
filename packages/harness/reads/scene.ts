@@ -95,7 +95,7 @@ async function delegationAdmits(
   return delegation.harnessId === harness.id && delegation.capability !== 'none';
 }
 
-async function readableHarness(
+export async function readableHarness(
   ports: ScenePorts,
   tx: StoreTransaction,
   caller: Caller,

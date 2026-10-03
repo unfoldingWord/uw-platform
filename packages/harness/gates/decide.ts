@@ -33,6 +33,7 @@ export type DecideInput = {
   readonly decision: GateDecision;
   readonly reason: string | null;
   readonly findings: readonly string[];
+  readonly seenHead?: string | null;
 };
 
 export type Decided = {
@@ -151,6 +152,11 @@ async function placed(tx: StoreTransaction, itemId: string): Promise<Placed | Re
   return { item, harness, stages, stage };
 }
 
+function notTheHeadSeen(input: DecideInput, item: ItemState): boolean {
+  if (input.seenHead === undefined || !advancing.has(input.decision)) return false;
+  return input.seenHead !== item.expectedHead;
+}
+
 async function standing(
   ports: GatePorts,
   tx: StoreTransaction,
@@ -167,6 +173,12 @@ async function standing(
   }
   if (item.gateStatus !== 'parked') {
     return refused('item_not_at_gate', { itemId: item.itemId, gateStatus: item.gateStatus });
+  }
+  if (notTheHeadSeen(input, item)) {
+    return refused('head_mismatch', {
+      why: 'not_the_head_you_saw',
+      expectedHead: item.expectedHead,
+    });
   }
   if (actor.personId === null || actor.identity !== `human:${actor.personId}`) {
     return refused('not_permitted', { actor: actor.identity });

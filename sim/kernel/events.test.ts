@@ -1,5 +1,6 @@
 import {
   harnessSchema,
+  identitySchema,
   itemStateSchema,
   newEventSchema,
   principalSchema,
@@ -149,6 +150,23 @@ async function withLog(check: (world: World, ian: Principal) => Promise<void>): 
 }
 
 const everything: Query = { harnessId, itemId: null, after: 0, limit: 10 };
+const missingHarnessId = '00000000-0000-4000-8000-0000000000ff';
+const missingReply = {
+  status: 'error',
+  reason: 'harness_not_found',
+  detail: { harnessId: missingHarnessId },
+};
+
+function agentOf(ian: Principal, identity: string, interactive: boolean): Principal {
+  return principalSchema.parse({ ...ian, identity, kind: 'agent', email: null, interactive });
+}
+
+async function hiddenLikeMissing(world: World, actor: Principal): Promise<void> {
+  const hidden = await readAs(world, actor, everything);
+  const missing = await readAs(world, actor, { ...everything, harnessId: missingHarnessId });
+  expect(missing).toEqual(missingReply);
+  expect(JSON.stringify(hidden)).toBe(JSON.stringify(missing).replace(missingHarnessId, harnessId));
+}
 
 async function namesAcrossPages(world: World, ian: Principal, limit: number): Promise<string[]> {
   const names: string[] = [];
@@ -173,18 +191,10 @@ describe('KN-4 the kernel reads a harness log through the one read path, checkin
     });
   });
 
-  it('refuses a stranger not_permitted and an unknown harness harness_not_found', async () => {
+  it('refuses an unknown harness harness_not_found', async () => {
     await withLog(async (world, ian) => {
-      const stranger = principalFor(strangerId, []);
-      expect(await readAs(world, stranger, everything)).toMatchObject({
-        status: 'error',
-        reason: 'not_permitted',
-      });
-      const unknown = { ...everything, harnessId: '00000000-0000-4000-8000-0000000000ff' };
-      expect(await readAs(world, ian, unknown)).toMatchObject({
-        status: 'error',
-        reason: 'harness_not_found',
-      });
+      const unknown = { ...everything, harnessId: missingHarnessId };
+      expect(await readAs(world, ian, unknown)).toEqual(missingReply);
     });
   });
 
@@ -198,6 +208,52 @@ describe('KN-4 the kernel reads a harness log through the one read path, checkin
     await withLog(async (world, ian) => {
       const read = await readAs(world, ian, { ...everything, itemId });
       expect(namesOf(read)).toEqual(['item_created', 'item_claimed', 'item_released']);
+    });
+  });
+});
+
+describe('WB-3 an event read on a harness the caller may not read answers harness_not_found, like a missing one', () => {
+  it('answers a person without a grant as it answers a missing harness', async () => {
+    await withLog(async (world) => {
+      await hiddenLikeMissing(world, principalFor(strangerId, []));
+    });
+  });
+
+  it('answers an unattended agent with no delegation as it answers a missing harness', async () => {
+    await withLog(async (world, ian) => {
+      await hiddenLikeMissing(world, agentOf(ian, `agent:${ianId}/runner`, false));
+    });
+  });
+
+  it('answers a bare persona with no live delegation as it answers a missing harness', async () => {
+    await withLog(async (world, ian) => {
+      await hiddenLikeMissing(world, agentOf(ian, 'agent:builder', true));
+    });
+  });
+
+  it('answers a delegated identity whose delegation is not live as it answers a missing harness', async () => {
+    await withLog(async (world, ian) => {
+      const identity = `agent:${ianId}/laptop as builder via delegation:${missingHarnessId}`;
+      await hiddenLikeMissing(world, agentOf(ian, identity, false));
+    });
+  });
+
+  it('answers a device naming another person as it answers a missing harness', async () => {
+    await withLog(async (world, ian) => {
+      const foreign: Principal = {
+        ...ian,
+        identity: identitySchema.parse(`agent:${strangerId}/laptop`),
+        kind: 'agent',
+        email: null,
+      };
+      await hiddenLikeMissing(world, foreign);
+    });
+  });
+
+  it("gives the owner's interactive device the same events the owner reads", async () => {
+    await withLog(async (world, ian) => {
+      const device = agentOf(ian, `agent:${ianId}/laptop`, true);
+      expect(namesOf(await readAs(world, device, everything))).toEqual(loggedNames);
     });
   });
 });
