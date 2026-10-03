@@ -2,7 +2,8 @@ import type { Harness, IssueRef, ItemState } from '@uw/contracts';
 import { allowed } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { actingPrincipal, isRefusal } from '../delegations/acting.ts';
-import { accepted, refused, type KernelOutcome } from '../outcome.ts';
+import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
+import { storeRefusalOf } from '../port-errors.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
 import { createItem, recordContext, type RecordContext, type Recorded } from './record.ts';
 
@@ -47,7 +48,22 @@ export async function enqueueIn(
   );
 }
 
+const oneItemPerRequest = 'harness_events_one_item_per_request';
+
+function requestRefusal(error: unknown, caller: Caller): Refused {
+  if (storeRefusalOf(error)?.constraint !== oneItemPerRequest) throw error;
+  return refused('request_in_flight', { requestId: caller.requestId ?? null });
+}
+
 export async function enqueue(
+  ports: EnqueuePorts,
+  caller: Caller,
+  input: EnqueueInput,
+): Promise<KernelOutcome<ItemState>> {
+  return enqueueOnce(ports, caller, input).catch((error: unknown) => requestRefusal(error, caller));
+}
+
+function enqueueOnce(
   ports: EnqueuePorts,
   caller: Caller,
   input: EnqueueInput,
