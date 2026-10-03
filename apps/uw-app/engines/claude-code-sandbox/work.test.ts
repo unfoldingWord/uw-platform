@@ -156,7 +156,56 @@ async function notWired(): Promise<void> {
   expect(keyless.sessions).toEqual([]);
 }
 
+function modelCall(): Request {
+  return new Request('http://model.internal/v1/messages', { method: 'POST', body: '{}' });
+}
+
+class Halt extends Error {}
+
+async function everyModelRequestChecked(): Promise<void> {
+  const answers: number[] = [];
+  let turns = 0;
+  const halt = new Halt('the run was stopped');
+  const host = fakeContainerHost([
+    async (egress) => {
+      for (let call = 0; call < 4; call += 1) {
+        const response = await egress(modelCall());
+        answers.push(response.status);
+        if (response.status === 403) expect(await response.text()).toBe('run halted');
+      }
+      return reply(result);
+    },
+  ]);
+  const { engine, sent } = engineOn(host);
+  const onTurn = async () => {
+    turns += 1;
+    if (turns === 2) throw halt;
+  };
+  await expect(engine.work({ ...work, onTurn })).rejects.toBe(halt);
+  expect(answers).toEqual([200, 403, 403, 403]);
+  expect(turns).toBe(2);
+  expect(sent).toHaveLength(1);
+  expect(host.sessions.map((session) => session.destroyed)).toEqual([true]);
+}
+
+async function haltOutranksExecFailure(): Promise<void> {
+  const halt = new Halt('the lease lapsed');
+  const host = fakeContainerHost([
+    async (egress) => {
+      expect((await egress(modelCall())).status).toBe(403);
+      throw new Error('the container stopped');
+    },
+  ]);
+  const onTurn = () => Promise.reject(halt);
+  await expect(engineOn(host).engine.work({ ...work, onTurn })).rejects.toBe(halt);
+}
+
 describe('claude-code-sandbox', () => {
+  it('HE-8 every model request from the sandbox checks the run first, and a halt stops the step', async () => {
+    await everyModelRequestChecked();
+    await haltOutranksExecFailure();
+  });
+
   it(
     "HE-8 Claude Code runs headless with the persona's toolset as MCP tools and no key in its environment",
     headless,
