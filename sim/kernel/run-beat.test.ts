@@ -2,7 +2,7 @@ import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { rewritePageFrontmatter } from '@uw/db/test-seed';
 import type { Caller } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { simCaller } from '../fixtures.ts';
+import { readSpend, simCaller } from '../fixtures.ts';
 import { readWorldLog } from '../runner/log.ts';
 import {
   builderFrontmatter,
@@ -105,8 +105,13 @@ async function systemOnly(scene: RunWorld): Promise<void> {
   }
 }
 
+async function freshBeat(scene: RunWorld) {
+  await readSpend(scene.world);
+  return value(await beat(scene)).started;
+}
+
 async function holdOnce(scene: RunWorld): Promise<void> {
-  const [started] = value(await beat(scene)).started;
+  const [started] = await freshBeat(scene);
   if (started === undefined) throw new Error('the beat started nothing');
   const host = systemCaller(scene);
   value(await scene.world.kernel.runs.holdPremise(host, started.runId, { reason: 'not yet' }));
@@ -114,15 +119,15 @@ async function holdOnce(scene: RunWorld): Promise<void> {
 
 async function backsOff(scene: RunWorld): Promise<void> {
   await holdOnce(scene);
-  expect(value(await beat(scene)).started).toEqual([]);
+  expect(await freshBeat(scene)).toEqual([]);
   scene.world.adapters.clock.advance(14 * minute);
-  expect(value(await beat(scene)).started).toEqual([]);
+  expect(await freshBeat(scene)).toEqual([]);
   scene.world.adapters.clock.advance(2 * minute);
   await holdOnce(scene);
   scene.world.adapters.clock.advance(16 * minute);
-  expect(value(await beat(scene)).started).toEqual([]);
+  expect(await freshBeat(scene)).toEqual([]);
   scene.world.adapters.clock.advance(15 * minute);
-  expect(value(await beat(scene)).started).toHaveLength(1);
+  expect(await freshBeat(scene)).toHaveLength(1);
 }
 
 describe('the hosted beat', () => {

@@ -2,7 +2,7 @@ import { identitySchema, type CapabilityWord, type Principal } from '@uw/contrac
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { readAllEvents, software, type Caller, type KernelOutcome } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, simAgent, simCaller, simPerson } from '../fixtures.ts';
+import { createSimHarness, readSpend, simAgent, simCaller, simPerson } from '../fixtures.ts';
 import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -23,6 +23,7 @@ function reasonOf(outcome: KernelOutcome<unknown>): string {
 
 async function sceneOf(world: World, enqueuer: Principal): Promise<Scene> {
   const { harness, admin: ian } = await createSimHarness(world, software);
+  await readSpend(world);
   await world.kernel.stages.updateStage(simCaller(world, ian), {
     harnessId: harness.id,
     stageKey: 'package',

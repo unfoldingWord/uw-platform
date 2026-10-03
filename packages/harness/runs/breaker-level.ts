@@ -34,7 +34,7 @@ export async function currentLevel(tx: StoreTransaction): Promise<BreakerLevel> 
 
 export async function spendRefusal(tx: StoreTransaction, at: Date): Promise<Refused | null> {
   const latest = await latestReading(tx, null);
-  if (latest === null) return null;
+  if (latest === null) return refused('spend_held', { level: 'open', why: 'no_reading' });
   const level = levelOfEvent(latest);
   if (level !== 'open') return refused('spend_held', { level });
   const age = at.getTime() - new Date(latest.at).getTime();

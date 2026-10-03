@@ -5,7 +5,7 @@ import type { Database } from '@uw/db/client';
 import { seedHostedRun } from '@uw/db/test-seed';
 import type { Caller } from '@uw/harness';
 import { platformStore } from '../ports/store.ts';
-import { kernelOn } from '../testing/kernel.ts';
+import { kernelOn, seedSpendReading } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import {
   accepted,
@@ -62,6 +62,7 @@ async function hostedRun(db: Database): Promise<Hosted> {
     await kernel.delegations.beat(callerOf(personaOf(admin)), { delegationId: delegation.id }),
   );
   const beatCaller = callerOf(beat.principal);
+  await seedSpendReading(db, harnessId, new Date());
   accepted(await kernel.items.claim(beatCaller, { itemId, delegationId: delegation.id }));
   const runId = randomUUID();
   const run = { id: runId, harnessId, itemId, delegationId: delegation.id };

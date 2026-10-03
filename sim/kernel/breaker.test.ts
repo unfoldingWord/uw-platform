@@ -34,7 +34,7 @@ async function inWorld(work: (scene: Breaking) => Promise<void>): Promise<void> 
   const base = await createWorld();
   try {
     const { world, calls } = watchingRuns(base);
-    const scene = await runWorld(world);
+    const scene = await runWorld(world, { spendReading: false });
     const { harness } = await createSimHarness(world, software, { key: 'second' });
     await work({ ...scene, calls, second: harness.id });
     expect((await readWorldLog(base.adapters.store)).drift).toEqual([]);
@@ -216,6 +216,22 @@ async function staleReading(scene: Breaking): Promise<void> {
   value(await startOn(scene));
 }
 
+async function noReading(scene: Breaking): Promise<void> {
+  const before = await itemEvents(scene, scene.itemId);
+  const refused = await startOn(scene);
+  expect(reasonOf(refused)).toBe('spend_held');
+  expect(detailOf(refused)).toEqual({ level: 'open', why: 'no_reading' });
+  const bare = await scene.world.kernel.items.claim(await beatOf(scene), {
+    itemId: scene.itemId,
+    delegationId: scene.delegationId,
+  });
+  expect(reasonOf(bare)).toBe('spend_held');
+  expect(await itemEvents(scene, scene.itemId)).toEqual(before);
+  value(await check(scene));
+  expect(await breakerNames(scene)).toEqual([['breaker_open'], ['breaker_open']]);
+  value(await startOn(scene));
+}
+
 async function malformed(scene: Breaking): Promise<void> {
   const { breaker } = scene.world.kernel;
   const caller = systemCaller(scene);
@@ -272,6 +288,9 @@ describe('the spend breaker', () => {
 
   it("with no reading fresher than ten minutes, a hosted start and a bare persona's claim are refused spend_held", () =>
     inWorld(staleReading));
+
+  it("with no spend reading ever recorded, a hosted start and a bare persona's claim are refused spend_held until a zero reading lands", () =>
+    inWorld(noReading));
 
   it('a cap that is not a positive integer or a currency that is not the reading is malformed', () =>
     inWorld(malformed));

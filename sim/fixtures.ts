@@ -11,7 +11,7 @@ import {
   type Stage,
 } from '@uw/contracts';
 import { seedGrant, seedPerson } from '@uw/db/test-seed';
-import type { Caller, Template } from '@uw/harness';
+import { DEFAULT_SPEND_CAP, type Caller, type Template } from '@uw/harness';
 import type { World } from './world.ts';
 
 const ianPersonId = '00000000-0000-4000-8000-000000000001';
@@ -250,4 +250,14 @@ export async function simHeldAtCheck(world: World, input: HeldInput): Promise<It
 export async function simSeenHead(world: World, itemId: string): Promise<string | null> {
   const item = await world.adapters.store.transaction((tx) => tx.harnessItems.read.byId(itemId));
   return item?.expectedHead ?? null;
+}
+
+export async function readSpend(world: World): Promise<void> {
+  const outcome = await world.kernel.breaker.check(simCaller(world, simSystem()), {
+    ...DEFAULT_SPEND_CAP,
+    since: world.adapters.clock.now(),
+  });
+  if (outcome.status !== 'accepted') {
+    throw new Error(`the spend reading was refused: ${outcome.reason}`);
+  }
 }

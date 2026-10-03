@@ -3,7 +3,14 @@ import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { revokeSeededGrant } from '@uw/db/test-seed';
 import { readAllEvents, software, type Caller, type KernelOutcome } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, simAgent, simCaller, simIan, simPerson } from '../fixtures.ts';
+import {
+  createSimHarness,
+  readSpend,
+  simAgent,
+  simCaller,
+  simIan,
+  simPerson,
+} from '../fixtures.ts';
 import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -31,6 +38,7 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
   const world = await createWorld();
   try {
     const { harness } = await createSimHarness(world, software);
+    await readSpend(world);
     await world.kernel.stages.updateStage(simCaller(world, await simIan(world)), {
       harnessId: harness.id,
       stageKey: 'package',

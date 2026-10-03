@@ -6,7 +6,14 @@ import {
   type Principal,
 } from '@uw/contracts';
 import { readAllEvents, software, type Caller, type KernelOutcome } from '@uw/harness';
-import { createSimHarness, simAgent, simCaller, simIan, simPerson } from '../fixtures.ts';
+import {
+  createSimHarness,
+  readSpend,
+  simAgent,
+  simCaller,
+  simIan,
+  simPerson,
+} from '../fixtures.ts';
 import { defineScenario } from '../scenario.ts';
 import type { World } from '../world.ts';
 
@@ -59,6 +66,7 @@ async function enqueue(world: World, harnessId: string, n: number): Promise<stri
 
 async function cast(world: World): Promise<Cast> {
   const { harness, admin } = await createSimHarness(world, software);
+  await readSpend(world);
   valueOf(
     await world.kernel.stages.updateStage(simCaller(world, admin), {
       harnessId: harness.id,

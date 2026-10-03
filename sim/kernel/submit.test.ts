@@ -11,6 +11,7 @@ import { LEASE_MS, readAllEvents, software, type Caller, type KernelOutcome } fr
 import { afterAll, describe, expect, it } from 'vitest';
 import {
   createSimHarness,
+  readSpend,
   simAgent,
   simCaller,
   simIan,
@@ -47,6 +48,7 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
   const world = await createWorld();
   try {
     const { harness } = await createSimHarness(world, software);
+    await readSpend(world);
     const kim = await simPerson(world, 4, [{ role: 'admin', ...area }]);
     const max = await simPerson(world, 6, [{ role: 'editor', ...area }]);
     await work({

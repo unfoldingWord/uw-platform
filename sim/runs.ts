@@ -11,7 +11,14 @@ import {
   type StartedRun,
   type Template,
 } from '@uw/harness';
-import { createSimHarness, simAdvance, simCaller, simPerson, simSystem } from './fixtures.ts';
+import {
+  createSimHarness,
+  readSpend,
+  simAdvance,
+  simCaller,
+  simPerson,
+  simSystem,
+} from './fixtures.ts';
 import type { World } from './world.ts';
 
 export type RunWorld = {
@@ -133,8 +140,15 @@ const signOff: Template = {
   ],
 };
 
-async function delegated(world: World, template: Template): Promise<Delegated> {
+type WorldOptions = { readonly spendReading?: boolean };
+
+async function delegated(
+  world: World,
+  template: Template,
+  options: WorldOptions,
+): Promise<Delegated> {
   const { harness, admin } = await createSimHarness(world, template);
+  if (options.spendReading !== false) await readSpend(world);
   const owner = await simPerson(world, 4, [
     { role: 'admin', scopeKind: 'jd_area', scopeArea: '80-89' },
   ]);
@@ -152,15 +166,15 @@ function withPersona(scene: Delegated, itemId: string): RunWorld {
   return { ...scene, itemId, pageId: defaultPageId, persona: personaPrincipal(scene.owner) };
 }
 
-export async function runWorld(world: World): Promise<RunWorld> {
-  const scene = await delegated(world, software);
+export async function runWorld(world: World, options: WorldOptions = {}): Promise<RunWorld> {
+  const scene = await delegated(world, software, options);
   const itemId = await itemInScope(scene, 'Wire the run host');
   await seedPersona(scene, { id: defaultPageId });
   return withPersona(scene, itemId);
 }
 
 export async function gateWorld(world: World): Promise<RunWorld> {
-  const scene = await delegated(world, signOff);
+  const scene = await delegated(world, signOff, {});
   const enqueued = await world.kernel.items.enqueue(simCaller(world, scene.admin), {
     harnessId: scene.harnessId,
     title: 'Sign off the release notes',

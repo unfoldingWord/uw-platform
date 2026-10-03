@@ -23,7 +23,7 @@ import {
   type CallResult,
   type ToolSurface,
 } from '../testing/conformance.ts';
-import { kernelOn, personOn } from '../testing/kernel.ts';
+import { kernelOn, personOn, seedSpendReading } from '../testing/kernel.ts';
 import { httpClient } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
 import type { McpHost, VerbContext } from './context.ts';
@@ -179,6 +179,7 @@ async function openScene(r: Rig): Promise<Scene> {
   const hidden = await harnessIn(r, `software-hidden-${scenes}`, '30-39');
   const undelegated = await harnessIn(r, `software-undelegated-${scenes}`, '80-89');
   const { delegationId, beat } = await delegated(r, harnessId);
+  await seedSpendReading(r.db, harnessId, r.clock.now());
   const workflowItem = await enqueue(r, harnessId, 'workflow item');
   const workflowRunId = crypto.randomUUID();
   const run = { id: workflowRunId, harnessId, itemId: workflowItem, delegationId };
