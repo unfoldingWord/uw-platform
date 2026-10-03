@@ -19,6 +19,12 @@ const textPairs = [
   ['ink', 'inspire-soft'],
   ['ink', 'cultivate-soft'],
   ['ink', 'kindle-soft'],
+  ['muted', 'inspire-soft'],
+  ['muted', 'cultivate-soft'],
+  ['muted', 'kindle-soft'],
+  ['link', 'inspire-soft'],
+  ['link', 'cultivate-soft'],
+  ['link', 'kindle-soft'],
   ['ocean-panel-ink', 'ocean-panel'],
 ] as const;
 
@@ -26,6 +32,9 @@ const focusPairs = [
   ['focus', 'surface'],
   ['focus', 'bg'],
   ['focus', 'ocean-panel'],
+  ['focus', 'inspire-soft'],
+  ['focus', 'cultivate-soft'],
+  ['focus', 'kindle-soft'],
   ['kindle', 'surface'],
 ] as const;
 
@@ -45,6 +54,16 @@ describe.each(themes)('the %s theme', (theme) => {
     'the focus ring and the human-action colour: %s against %s meets 3:1',
     (foreground, background) => {
       expect(contrast(theme, foreground, background)).toBeGreaterThanOrEqual(3);
+    },
+  );
+});
+
+describe('the accent fills are not text colours in light', () => {
+  it.each(['inspire', 'cultivate'])(
+    '%s falls below 4.5:1 on the light surface, so text sits on it in on-accent and links use link',
+    (accent) => {
+      expect(contrast('light', accent, 'surface')).toBeLessThan(4.5);
+      expect(contrast('light', 'on-accent', accent)).toBeGreaterThanOrEqual(4.5);
     },
   );
 });
