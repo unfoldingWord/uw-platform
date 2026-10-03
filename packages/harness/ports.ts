@@ -318,6 +318,7 @@ export type Connectors = {
   outcomeOf(request: ConnectorRequest): Promise<ConnectorOutcome | null>;
   review(request: ReviewRequest): Promise<ReviewOutcome>;
 };
+export type EffectHandler = Omit<Connectors, 'review'>;
 
 export type ToolCall = {
   readonly callId: string;
