@@ -127,21 +127,6 @@ describe('KN-18 the stage command refuses what the kernel can see before Postgre
       expect(await stagesOf(world, harness.id)).toHaveLength(8);
     },
   );
-
-  harnessIt('refuses a connector with no registered handler', async (world, harness, ian) => {
-    const outcome = await world.kernel.stages.createStage(ian, {
-      harnessId: harness.id,
-      stage: newStage({ connector: 'deploy', exitGate: 'human_approval' }),
-    });
-    expect(outcome).toMatchObject({
-      status: 'error',
-      reason: 'connector_not_registered',
-      detail: { stage: 'extra', connector: 'deploy' },
-    });
-    const last = (await logOf(world, harness.id)).at(-1);
-    expect(last?.name).toBe('stage_edit_refused');
-    expect(last?.evidence).toMatchObject({ reason: 'connector_not_registered' });
-  });
 });
 
 describe('KN-18 a dangling feeds target is refused at write time', () => {

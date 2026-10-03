@@ -45,7 +45,11 @@ export const pullSchema = z.object({
   draft: z.boolean().optional(),
   merged: z.boolean().nullable().optional(),
   merged_at: z.string().nullable().optional(),
-  head: z.object({ sha: z.string(), ref: name }),
+  head: z.object({
+    sha: z.string(),
+    ref: name,
+    repo: z.object({ full_name: z.string() }).nullable().optional(),
+  }),
   base: z.object({ sha: z.string(), ref: name }),
   body: z.string().nullable().optional(),
   milestone: milestoneSchema.nullable().optional(),

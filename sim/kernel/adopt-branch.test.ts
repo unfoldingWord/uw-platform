@@ -135,6 +135,17 @@ function stale(freshAt: string | null) {
   return { status: 'error', reason: 'facts_stale', detail: { freshAt } };
 }
 
+describe('GH-4 adopting takes no tip whose head lives outside the harness repository', () => {
+  sceneIt(
+    'refuses a tip whose head is in a fork or a deleted fork and records nothing',
+    async (scene) => {
+      for (const headRepo of ['someone/uw-platform', null]) {
+        await refusedWithNothingRecorded(scene, answering(tipFacts(scene, { headRepo })));
+      }
+    },
+  );
+});
+
 describe('GH-4 adopting takes only the tip of the item’s own branch on a pull request in its harness repository', () => {
   sceneIt('refuses a tip on another item’s branch and records nothing', async (scene) => {
     const other = tipFacts(scene, { headRef: `harness/${crypto.randomUUID()}` });

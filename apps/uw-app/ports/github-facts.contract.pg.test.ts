@@ -83,7 +83,11 @@ function restPull(facts: PullRequestFacts, updatedAt: string) {
     state: facts.state === 'open' ? 'open' : 'closed',
     draft: facts.draft,
     merged: facts.state === 'merged',
-    head: { sha: facts.head, ref: facts.headRef, repo: repository },
+    head: {
+      sha: facts.head,
+      ref: facts.headRef,
+      repo: facts.headRepo === null ? null : { full_name: facts.headRepo },
+    },
     base: { sha: facts.base, ref: 'main', repo: repository },
     body: bodyOf(facts.declaration),
     updated_at: updatedAt,

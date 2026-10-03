@@ -12,6 +12,7 @@ const shipPermissions = { contents: 'write', pull_requests: 'read', metadata: 'r
 const tagName = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
 const merged = z.object({ sha: z.string().min(1) }).transform(({ sha }) => ({ sha }));
 const lightweightRef = z.object({ object: z.object({ sha: z.string(), type: z.string() }) });
+const record = z.record(z.string(), z.unknown());
 
 function isTagName(name: string): boolean {
   return (
@@ -75,7 +76,30 @@ function tag(session: GitHubSession) {
   };
 }
 
+function pullRequest(session: GitHubSession) {
+  return async (repo: string, number: number): Promise<GitHubResult<unknown>> => {
+    if (!isCount(number)) return refusedInput;
+    const route = 'GET /repos/{owner}/{repo}/pulls/{pull_number}';
+    const answer = await session.request(route, { pull_number: number }, repo);
+    return answer.ok ? shaped(record, answer.value) : answer;
+  };
+}
+
+function tagAt(session: GitHubSession) {
+  return (repo: string, name: string, sha: string): Promise<Tagged> =>
+    isTagName(name) && isFullSha(sha)
+      ? existingTag(session, repo, name, sha)
+      : Promise.resolve(refusedInput);
+}
+
+export type ShipWrites = ReturnType<typeof createShipWrites>;
+
 export function createShipWrites(config: GitHubAppConfig, transport: GitHubTransport) {
   const session = openSession(config, transport, shipPermissions);
-  return { merge: merge(session), tag: tag(session) };
+  return {
+    pullRequest: pullRequest(session),
+    tagAt: tagAt(session),
+    merge: merge(session),
+    tag: tag(session),
+  };
 }

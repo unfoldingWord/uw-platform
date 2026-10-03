@@ -141,6 +141,28 @@ describe('GitHub deliveries that carry no facts', () => {
   });
 });
 
+function pullFromHead(repository: unknown) {
+  const pull = pullRequestOpened.pull_request;
+  const pullRequest = { ...pull, head: { ...pull.head, repo: repository } };
+  return factsFromWebhook('pull_request', { ...pullRequestOpened, pull_request: pullRequest });
+}
+
+describe('GH-2 a pull request carries the repository its head lives in', () => {
+  it('carries a fork head as the fork repository', () => {
+    expect(pullFromHead({ full_name: 'someone/uw-platform' })).toEqual(
+      batchOf({ pullRequests: [{ ...openedPull, headRepo: 'someone/uw-platform' }] }),
+    );
+  });
+
+  it('carries a deleted fork or an unusable repository name as no head repository', () => {
+    for (const repository of [null, { full_name: '../x' }]) {
+      expect(pullFromHead(repository)).toEqual(
+        batchOf({ pullRequests: [{ ...openedPull, headRepo: null }] }),
+      );
+    }
+  });
+});
+
 describe('GitHub deliveries with a value the read model cannot store', () => {
   it('counts a pull request whose base is not a full SHA as malformed', () => {
     const pull = pullRequestOpened.pull_request;

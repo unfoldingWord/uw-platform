@@ -42,6 +42,7 @@ const notAdoptable = refused('not_permitted', { adoptBranch: true, why: 'branch_
 
 function tipOf(item: ItemState, ref: PullRequestRef, facts: PullRequestFacts): string | null {
   if (!sameRepository(facts.ref.repo, ref.repo) || facts.ref.number !== ref.number) return null;
+  if (facts.headRepo === null || !sameRepository(facts.headRepo, ref.repo)) return null;
   if (facts.state !== 'open' || facts.headRef !== branchFor(item.itemId)) return null;
   return fullSha(facts.head);
 }

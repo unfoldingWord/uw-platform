@@ -10,6 +10,7 @@ import {
   greenFacts,
   itemLog,
   namesSince,
+  shipBase,
   shipPullRequest,
   simParkedAtShip,
   standardChange,
@@ -80,6 +81,8 @@ async function approveAndMerge(scene: Scene): Promise<void> {
     traceId: after.events.at(-1)?.traceId,
     pullRequest: shipPullRequest,
     expectedHead: standardChange.head,
+    expectedBase: shipBase,
+    repository: 'unfoldingWord/uw-platform',
     message: 'Show the board',
   });
 }

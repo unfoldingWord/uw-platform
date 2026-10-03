@@ -58,6 +58,7 @@ export const openedPull: PullRequestRecord = {
   draft: false,
   headSha: head,
   headRef,
+  headRepo: 'unfoldingWord/uw-platform',
   baseRef: 'main',
   baseSha: base,
   milestoneId: null,

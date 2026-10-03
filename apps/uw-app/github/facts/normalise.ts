@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import { checkConclusionSchema } from '@uw/contracts';
+import { checkConclusionSchema, repositorySchema as repositoryName } from '@uw/contracts';
 import {
   fullSha,
   parseDeclaration,
@@ -104,6 +104,11 @@ function declarationOf(body: string | null | undefined) {
     : { declaration: null, declarationProblem: parsed.problem };
 }
 
+function headRepositoryOf(pull: Pull): string | null {
+  const parsed = repositoryName.safeParse(pull.head.repo?.full_name);
+  return parsed.success ? parsed.data : null;
+}
+
 function pullOf(repoId: number, pull: Pull): PullRequestRecord | null {
   const headSha = fullSha(pull.head.sha);
   const baseSha = fullSha(pull.base.sha);
@@ -118,6 +123,7 @@ function pullOf(repoId: number, pull: Pull): PullRequestRecord | null {
     draft: pull.draft ?? false,
     headSha,
     headRef: pull.head.ref,
+    headRepo: headRepositoryOf(pull),
     baseRef: pull.base.ref,
     baseSha,
     milestoneId: pull.milestone?.id ?? null,

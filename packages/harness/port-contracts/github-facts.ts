@@ -15,6 +15,7 @@ function factsFor(repo: string, number: number, head: string): PullRequestFacts 
     draft: false,
     head,
     headRef: 'harness/b1000000-0000-4000-8000-000000000002',
+    headRepo: repo,
     base: '0'.repeat(40),
     checks: [
       {
@@ -93,7 +94,7 @@ export function describeGithubFactsContract(
 }
 
 function shapeCases(open: () => Promise<GithubFactsSubject>): void {
-  it('round-trips the files, declaration, head ref and check and review ids exactly', async () => {
+  it('round-trips the files, declaration, head ref and repository and check and review ids exactly', async () => {
     const subject = await open();
     const known = factsFor('unfoldingWord/uw-platform', 9, 'd'.repeat(40));
     await subject.given(known);
@@ -101,8 +102,21 @@ function shapeCases(open: () => Promise<GithubFactsSubject>): void {
     expect(answer?.files).toEqual(known.files);
     expect(answer?.declaration).toEqual(known.declaration);
     expect(answer?.headRef).toBe(known.headRef);
+    expect(answer?.headRepo).toBe(known.headRepo);
     expect(answer?.checks).toEqual(known.checks);
     expect(answer?.reviews).toEqual(known.reviews);
+  });
+
+  it('round-trips a head in a fork and a head whose fork was deleted', async () => {
+    const subject = await open();
+    for (const [number, headRepo] of [
+      [11, 'someone/uw-platform'],
+      [12, null],
+    ] as const) {
+      const known = { ...factsFor('unfoldingWord/uw-platform', number, 'd'.repeat(40)), headRepo };
+      await subject.given(known);
+      expect((await subject.facts.pullRequest(known.ref))?.headRepo).toBe(headRepo);
+    }
   });
 
   it('answers the same facts for a repository asked in another case', async () => {

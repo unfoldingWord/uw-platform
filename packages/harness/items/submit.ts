@@ -101,6 +101,9 @@ function pathsAtHead(
   item: ItemState,
 ): readonly string[] | null {
   if (facts === null || !samePullRequest(facts, change)) return null;
+  if (facts.headRepo === null || !sameRepository(facts.headRepo, change.pullRequest.repo)) {
+    return null;
+  }
   if (facts.headRef !== branchFor(item.itemId) || fullSha(facts.head) !== change.head) return null;
   return pathsComparedAt(facts, change.head);
 }

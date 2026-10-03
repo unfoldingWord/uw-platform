@@ -382,11 +382,29 @@ function deliveryIndexRules(db: () => Db): void {
   });
 }
 
+function headRepositoryRules(db: () => Db): void {
+  it('refuses a head repository that is not an owner and name, and accepts a fork or none', async () => {
+    const pull = prRow(9100000205, { headRepo: 'someone/..' });
+    expect(await refusal(db().insert(schema.ghPrs).values(pull))).toEqual({
+      code: '23514',
+      constraint: 'gh_prs_head_repo_form',
+    });
+    await db()
+      .insert(schema.ghPrs)
+      .values(prRow(9100000206, { headRepo: 'someone/uw-platform' }));
+    await db()
+      .insert(schema.ghPrs)
+      .values(prRow(9100000207, { headRepo: null }));
+  });
+}
+
 function describeTarget(target: DatabaseTarget): void {
   const db = openDatabase(target);
   describe('the read-model tables are keyed on the GitHub id, classified and timestamped', () =>
     readModelRules(db));
   describe('the read-model tables refuse malformed facts', () => factRules(db));
+  describe('a pull request head repository is an owner and name or absent', () =>
+    headRepositoryRules(db));
   describe('every read-model state and commit column refuses a value outside its form', () =>
     columnRules(db));
   describe('the read-model tables refuse a second row for one GitHub thing', () =>

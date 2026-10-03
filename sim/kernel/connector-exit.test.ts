@@ -105,7 +105,10 @@ describe('KN-13 a connector that refuses or is not wired leaves the decision and
 
   sceneIt('records not_wired when the connectors port is not wired', async (scene) => {
     const kernel = kernelWith(scene, {
-      connectors: { run: () => notWiredCall('connectors', 'run') },
+      connectors: {
+        run: () => notWiredCall('connectors', 'run'),
+        outcomeOf: () => notWiredCall('connectors', 'outcomeOf'),
+      },
     });
     await expectParkedAfterRefusal(scene, kernel, 'not_wired');
   });
@@ -114,7 +117,7 @@ describe('KN-13 a connector that refuses or is not wired leaves the decision and
     const run = () => Promise.reject(new TypeError('socket closed'));
     await expectParkedAfterRefusal(
       scene,
-      kernelWith(scene, { connectors: { run } }),
+      kernelWith(scene, { connectors: { run, outcomeOf: async () => null } }),
       'connector_error: TypeError',
     );
   });
@@ -204,6 +207,7 @@ function gatedConnectors(scene: Scene): Gate {
       await opened;
       return scene.world.adapters.connectors.run(request);
     },
+    outcomeOf: (request) => scene.world.adapters.connectors.outcomeOf(request),
   };
   return { running, release, connectors };
 }
@@ -281,6 +285,7 @@ describe('KN-13 the stage exit advances the parking that was approved', () => {
         midFlight = await decideWith(scene, 'take_over');
         return { outcome: 'succeeded', detail: {} };
       },
+      outcomeOf: async () => null,
     };
     const before = await itemLog(scene.world, scene.harnessId, scene.itemId);
     const decided = value(await approve(scene, kernelWith(scene, { connectors })));

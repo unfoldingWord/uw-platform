@@ -10,6 +10,7 @@ import { fixtureGitHub, type FixtureGitHub } from './testing/fixture-github.ts';
 const sha = 'a'.repeat(40);
 const base = 'b'.repeat(40);
 const tokenPath = '/app/installations/77/access_tokens';
+const shipKeys = ['merge', 'pullRequest', 'tag', 'tagAt'];
 
 let app: GitHubAppConfig;
 
@@ -34,6 +35,11 @@ function programmed(): FixtureGitHub {
   github.on('POST', '/repos/o/r/issues/1/comments', { status: 201, body: { id: 9100000001 } });
   github.on('PUT', '/repos/o/r/pulls/2/merge', ok({ sha: 'b'.repeat(40), merged: true }));
   github.on('POST', '/repos/o/r/git/refs', { status: 201, body: { ref: 'refs/tags/harness/x' } });
+  github.on(
+    'GET',
+    '/repos/o/r/git/ref/tags/harness/x',
+    ok({ ref: 'refs/tags/harness/x', object: { sha, type: 'commit' } }),
+  );
   return github;
 }
 
@@ -50,6 +56,8 @@ async function everyCall(github: FixtureGitHub): Promise<GitHubResult<unknown>[]
     await reads.checkRuns('o/r', sha),
     await reads.issuesSince('o/r', null, 3),
     await reads.issueComments('o/r', 1, new Date('2026-10-02T00:00:00.000Z')),
+    await writes.pullRequest('o/r', 2),
+    await writes.tagAt('o/r', 'harness/x', sha),
     await comments.comment('o/r', 1, 'see the item'),
     await writes.merge('o/r', 2, { sha, title: 'Ship x', message: 'Item x' }),
     await writes.tag('o/r', 'harness/x', sha),
@@ -57,9 +65,9 @@ async function everyCall(github: FixtureGitHub): Promise<GitHubResult<unknown>[]
 }
 
 describe('GH-1 write-back is a comment, the merge and the merge tag, and no token leaves the client', () => {
-  it('offers only those three writes', () => {
+  it('offers only those three writes, beside the reads the merge needs', () => {
     const transport = fixtureTransport(fixtureGitHub());
-    expect(Object.keys(createShipWrites(app, transport)).sort()).toEqual(['merge', 'tag']);
+    expect(Object.keys(createShipWrites(app, transport)).sort()).toEqual(shipKeys);
     expect(Object.keys(createIssueComments(app, transport))).toEqual(['comment']);
   });
 

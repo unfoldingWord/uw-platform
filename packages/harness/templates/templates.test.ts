@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { connectorRegistered } from '../connectors/registry.ts';
+import { connectorRegistered, connectorRegistry } from '../connectors/registry.ts';
 import { validatorRegistry } from '../validators/registry.ts';
 import { bml } from './bml.ts';
 import { software } from './software.ts';
@@ -59,6 +59,7 @@ describe('KN-15 every validator key a template names exists', () => {
 
 describe('KN-15 every connector a template names is registered', () => {
   it.each([software, bml])('$key', (template) => {
-    for (const stage of template.stages) expect(connectorRegistered(stage.connector)).toBe(true);
+    for (const stage of template.stages)
+      expect(connectorRegistered(stage.connector, connectorRegistry)).toBe(true);
   });
 });

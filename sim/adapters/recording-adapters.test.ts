@@ -15,6 +15,8 @@ const connectorRequest = (
   traceId: 'b1000000-0000-4000-8000-000000000003',
   pullRequest: null,
   expectedHead: null,
+  expectedBase: null,
+  repository: null,
   message,
 });
 
@@ -35,6 +37,7 @@ const pullRequestFacts: PullRequestFacts = {
   draft: false,
   head: 'a'.repeat(40),
   headRef: 'harness/b1000000-0000-4000-8000-000000000003',
+  headRepo: 'unfoldingWord/uw-platform',
   base: '0'.repeat(40),
   checks: [],
   reviews: [],
