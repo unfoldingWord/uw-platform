@@ -3,10 +3,10 @@ export type { EffectPath, WalkPath, WalkStage, WalkStep } from './walk.ts';
 export { portNames } from './ports.ts';
 export type * from './ports.ts';
 export { createKernel } from './kernel.ts';
+export type { Kernel, KernelHealth } from './kernel.ts';
 export { engineDescriptor, engineDescriptors, hostable } from './engines.ts';
 export type { EngineDescriptor } from './engines.ts';
 export { runShapes, workflowRunSteps } from './runs/shapes.ts';
-export type { Kernel, KernelHealth } from './kernel.ts';
 export type { PollItem } from './reads/poll.ts';
 export { stagePageLimit, unattendedWithoutDelegation } from './reads/scene.ts';
 export {
