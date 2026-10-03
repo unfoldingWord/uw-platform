@@ -16,6 +16,7 @@ const connectorExitCall = /\bexitThroughConnector\s*\(/;
 const mergeCall = /\bwrites\s*\??\.\s*merge\s*\(|\bmergeHandler\s*\(/;
 const shipWritesCall = /\bcreateShipWrites\s*\(/;
 const outcomeOfCall = /connectors\s*\??\.\s*outcomeOf\b/;
+const recordOutcomeCall = /\brecordExitOutcomes\s*\(/;
 const shipWiring =
   /\b(?:platformConnectors|mergeHandler|createShipWrites|ShipGitHub|MergeGitHub)\b/;
 const threeArguments = /\bplatform(?:Kernel|Ports)\s*\(\s*[^,()]*,\s*[^,()]*,/;
@@ -25,7 +26,16 @@ const mergeRig = 'apps/uw-app/github/testing/merge-rig.ts';
 const readOnlyRoots = ['apps/uw-app/queue/', 'apps/uw-app/cron/'];
 
 const exitModule = 'packages/harness/gates/exit.ts';
-const wiring = ['apps/uw-app/kernel.ts', exitModule, 'packages/harness/ports.ts', 'sim/world.ts'];
+const recoverModule = 'packages/harness/gates/recover.ts';
+const lostExit = 'sim/lost-exit.ts';
+const wiring = [
+  'apps/uw-app/kernel.ts',
+  exitModule,
+  recoverModule,
+  'packages/harness/ports.ts',
+  lostExit,
+  'sim/world.ts',
+];
 
 function sourcesAmong(files: readonly string[]): string[] {
   return files.filter(
@@ -93,11 +103,11 @@ describe('the connectors port runs only from the kernel stage-exit path', () => 
     expect(filesMatching(connectorsReference, [passed, imported])).toEqual([passed]);
   });
 
-  it('finds connectors.run only in the stage-exit module', () => {
-    expect(filesMatching(connectorRun, sources())).toEqual([exitModule]);
+  it('finds connectors.run only in the stage-exit module and the lost-exit sim helper', () => {
+    expect(filesMatching(connectorRun, sources())).toEqual([exitModule, lostExit]);
   });
 
-  it('finds the connectors port referenced only by the stage exit, the wiring and scenarios', () => {
+  it('finds the connectors port referenced only by the stage exit, the recovery, the wiring and scenarios', () => {
     const outside = filesMatching(connectorsReference, sources()).filter(
       (file) => !file.startsWith('sim/scenarios/'),
     );
@@ -125,8 +135,12 @@ describe('GH-6 the merge connector runs only from the kernel stage-exit path', (
     ]);
   });
 
-  it('finds no source asking the connectors port for an earlier outcome', () => {
-    expect(filesMatching(outcomeOfCall, sources())).toEqual([]);
+  it('finds the connectors port asked for an earlier outcome only by the recovery', () => {
+    expect(filesMatching(outcomeOfCall, sources())).toEqual([recoverModule]);
+  });
+
+  it('finds a connector outcome recorded only by the stage exit and the recovery', () => {
+    expect(filesMatching(recordOutcomeCall, sources())).toEqual([exitModule, recoverModule]);
   });
 
   it('gives the queue and cron roots a kernel with no ship GitHub', () => {
@@ -140,10 +154,12 @@ describe('GH-6 the merge connector runs only from the kernel stage-exit path', (
     const merge = plant('apps/uw-app/github/m.ts', 'await writes.merge(repo, 1, change);');
     const handler = plant('apps/uw-app/x/h.ts', 'const effects = mergeHandler(github);');
     const outcome = plant('apps/uw-app/x/o.ts', 'await ports.connectors?.outcomeOf(request);');
+    const record = plant('apps/uw-app/x/r.ts', 'await recordExitOutcomes (ports, context, []);');
     const wired = plant('apps/uw-app/queue/w.ts', 'platformKernel(database, clock, ship);');
     const named = plant('apps/uw-app/cron/n.ts', 'const effects = platformConnectors(ship);');
     expect(filesMatching(mergeCall, [merge, handler])).toEqual([merge, handler].sort());
     expect(filesMatching(outcomeOfCall, [outcome])).toEqual([outcome]);
+    expect(filesMatching(recordOutcomeCall, [record])).toEqual([record]);
     expect(filesMatching(threeArguments, [wired])).toEqual([wired]);
     expect(filesMatching(shipWiring, [named])).toEqual([named]);
     expect(readOnlyRootFiles(['apps/uw-app/queue/worker.ts', 'apps/uw-app/kernel.ts'])).toEqual([

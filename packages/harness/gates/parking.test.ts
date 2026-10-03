@@ -1,7 +1,13 @@
 import { identitySchema, type EventName, type HarnessEvent, type ItemState } from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
 import { foldItem } from '../items/fold.ts';
-import { decisionInFlight, parkingChangedSince, sameChange } from './parking.ts';
+import {
+  approvalsAwaitingOutcome,
+  decisionInFlight,
+  outcomeRecordedSince,
+  parkingChangedSince,
+  sameChange,
+} from './parking.ts';
 
 const actor = identitySchema.parse('human:00000000-0000-4000-8000-000000000001');
 const decision = '00000000-0000-4000-8000-0000000000d1';
@@ -102,5 +108,37 @@ describe('sameChange', () => {
     ['a pull request on one side only', { pullRequest: pr }, {}, false],
   ])('%s', (_title, before, after, expected) => {
     expect(sameChange(withChange(before), withChange(after))).toBe(expected);
+  });
+});
+
+const looped = event('loop_edge_taken');
+const exitedElsewhere = {
+  ...event('stage_advanced'),
+  traceId: '00000000-0000-4000-8000-0000000000c2',
+};
+
+describe('outcomeRecordedSince', () => {
+  it.each([
+    ['a decision that is not in the log', [parked, merged], false],
+    ['the approval and nothing after it', [parked, approved], false],
+    ['a merge after it', [parked, approved, merged], true],
+    ['a refusal after it', [parked, approved, refusedMerge], true],
+    ['only a new parking after it', [parked, approved, parked], false],
+  ])('%s', (_title, events, expected) => {
+    expect(outcomeRecordedSince(events, decision)).toBe(expected);
+  });
+});
+
+describe('approvalsAwaitingOutcome', () => {
+  it.each([
+    ['no approval', [parked], []],
+    ['an approval with no connector result', [parked, approved], [1]],
+    ['an approval answered by a connector result', [parked, approved, merged], []],
+    ['an approval behind a later parking', [parked, approved, parked], [1]],
+    ['an approval that took its exit in its own decision', [parked, approved, looped], []],
+    ['an approval followed by an exit of another trace', [parked, approved, exitedElsewhere], [1]],
+    ['an answered approval and a later one', [parked, approved, merged, parked, overridden], [4]],
+  ])('%s', (_title, events, expected) => {
+    expect(approvalsAwaitingOutcome(events)).toEqual(expected);
   });
 });

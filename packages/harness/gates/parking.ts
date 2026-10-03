@@ -29,12 +29,38 @@ export function decisionInFlight(events: readonly HarnessEvent[]): boolean {
   return !since.slice(approvedAt + 1).some((event) => connectorOutcomes.has(event.name));
 }
 
-export function parkingChangedSince(events: readonly HarnessEvent[], decisionId: string): boolean {
-  const decidedAt = events.findIndex(
+const exits: ReadonlySet<EventName> = new Set<EventName>(['stage_advanced', 'loop_edge_taken']);
+
+function indexOfDecision(events: readonly HarnessEvent[], decisionId: string): number {
+  return events.findIndex(
     (event) => approvals.has(event.name) && event.evidence['decisionId'] === decisionId,
   );
+}
+
+export function parkingChangedSince(events: readonly HarnessEvent[], decisionId: string): boolean {
+  const decidedAt = indexOfDecision(events, decisionId);
   if (decidedAt < 0) return true;
   return events.slice(decidedAt + 1).some((event) => parkingChanges.has(event.name));
+}
+
+export function outcomeRecordedSince(events: readonly HarnessEvent[], decisionId: string): boolean {
+  const decidedAt = indexOfDecision(events, decisionId);
+  if (decidedAt < 0) return false;
+  return events.slice(decidedAt + 1).some((event) => connectorOutcomes.has(event.name));
+}
+
+function exitedInItsDecision(events: readonly HarnessEvent[], index: number): boolean {
+  const [approval, next] = [events.at(index), events.at(index + 1)];
+  return next !== undefined && exits.has(next.name) && next.traceId === approval?.traceId;
+}
+
+export function approvalsAwaitingOutcome(events: readonly HarnessEvent[]): readonly number[] {
+  const lastOutcome = events.findLastIndex((event) => connectorOutcomes.has(event.name));
+  return events.flatMap((event, index) =>
+    index > lastOutcome && approvals.has(event.name) && !exitedInItsDecision(events, index)
+      ? [index]
+      : [],
+  );
 }
 
 export function sameChange(before: ItemState, after: ItemState): boolean {
