@@ -109,12 +109,10 @@ export async function connectInProcess(
     logger: connection.logger,
   };
   const verbs = modelVerbs(scene, connection.within);
-  const modelLimits = { tools: verbs, guard: sceneGuard(connection) };
+  const guard = sceneGuard(connection);
+  const modelLimits = { tools: verbs, guard };
   const model = await linked(context, verbs, modelLimits);
-  const core = await linked(context, coreVerbs, {
-    tools: coreVerbs,
-    guard: () => Promise.resolve(null),
-  });
+  const core = await linked(context, coreVerbs, { tools: coreVerbs, guard });
   return {
     status: 'accepted',
     value: {
