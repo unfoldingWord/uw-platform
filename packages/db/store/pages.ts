@@ -1,5 +1,11 @@
-import { and, asc, desc, eq, inArray, sql, type SQL } from 'drizzle-orm';
-import { frontmatterSchema, pageStatusSchema, pageTypeSchema } from '@uw/contracts';
+import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
+import {
+  frontmatterSchema,
+  pageStatusSchema,
+  pageTypeSchema,
+  personaFrontmatterSchema,
+  type Identity,
+} from '@uw/contracts';
 import type { AnyExecutor } from '../any-database.ts';
 import { pages } from '../schema.ts';
 import type { PageFacts, PagesGateway } from './types.ts';
@@ -26,13 +32,36 @@ function toFacts(row: FactRow): PageFacts {
   };
 }
 
-async function factsWhere(executor: AnyExecutor, where: SQL | undefined, order: readonly SQL[]) {
+async function factsWhere(executor: AnyExecutor, where: SQL | undefined) {
+  const rows = await executor.select(factColumns).from(pages).where(where).orderBy(asc(pages.id));
+  return rows.map(toFacts);
+}
+
+async function activePersona(
+  executor: AnyExecutor,
+  identity: Identity,
+  harnessId: string,
+): Promise<PageFacts | null> {
   const rows = await executor
     .select(factColumns)
     .from(pages)
-    .where(where)
-    .orderBy(...order);
-  return rows.map(toFacts);
+    .where(
+      and(
+        eq(pages.type, 'persona'),
+        eq(pages.status, 'active'),
+        eq(sql`${pages.frontmatter}->>'identity'`, identity),
+        eq(sql`${pages.frontmatter}->>'harness'`, harnessId),
+      ),
+    )
+    .orderBy(asc(pages.id))
+    .limit(2);
+  const [row] = rows;
+  if (rows.length !== 1 || row === undefined) return null;
+  const frontmatter = frontmatterSchema.safeParse(row.frontmatter);
+  if (!frontmatter.success || !personaFrontmatterSchema.safeParse(row.frontmatter).success) {
+    return null;
+  }
+  return { ...row, type: 'persona', status: 'active', frontmatter: frontmatter.data };
 }
 
 export function bindPages(executor: AnyExecutor): PagesGateway {
@@ -40,21 +69,9 @@ export function bindPages(executor: AnyExecutor): PagesGateway {
     read: {
       facts: async (pageIds) => {
         if (pageIds.length === 0) return [];
-        return factsWhere(executor, inArray(pages.id, [...pageIds]), [asc(pages.id)]);
+        return factsWhere(executor, inArray(pages.id, [...pageIds]));
       },
-      activePersona: async (identity, harnessId) => {
-        const rows = await factsWhere(
-          executor,
-          and(
-            eq(pages.type, 'persona'),
-            eq(pages.status, 'active'),
-            eq(sql`${pages.frontmatter}->>'identity'`, identity),
-            eq(sql`${pages.frontmatter}->>'harness'`, harnessId),
-          ),
-          [desc(pages.version), asc(pages.id)],
-        );
-        return rows[0] ?? null;
-      },
+      activePersona: (identity, harnessId) => activePersona(executor, identity, harnessId),
     },
   };
 }

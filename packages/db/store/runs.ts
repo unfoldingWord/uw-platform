@@ -23,9 +23,22 @@ function mutableColumnsOf(run: RunRow) {
   };
 }
 
+export function runsQuery(executor: AnyExecutor, where: SQL | undefined) {
+  return executor.select().from(harnessRuns).where(where).orderBy(asc(harnessRuns.id));
+}
+
+export function liveRuns(scope: { readonly harnessId?: string | null; readonly itemId?: string }) {
+  return and(
+    oneOf(harnessRuns.outcome, liveOutcomes),
+    scope.harnessId === undefined || scope.harnessId === null
+      ? undefined
+      : eq(harnessRuns.harnessId, scope.harnessId),
+    scope.itemId === undefined ? undefined : eq(harnessRuns.itemId, scope.itemId),
+  );
+}
+
 async function runsWhere(executor: AnyExecutor, where: SQL | undefined): Promise<RunRow[]> {
-  const rows = await executor.select().from(harnessRuns).where(where).orderBy(asc(harnessRuns.id));
-  return rows.map(toRun);
+  return (await runsQuery(executor, where)).map(toRun);
 }
 
 async function firstWhere(executor: AnyExecutor, where: SQL | undefined): Promise<RunRow | null> {
@@ -52,17 +65,12 @@ async function update(executor: AnyExecutor, run: RunRow): Promise<boolean> {
 }
 
 export function bindRuns(executor: AnyExecutor): HarnessRunsGateway {
-  const live = oneOf(harnessRuns.outcome, liveOutcomes);
   return {
     read: {
       byId: (runId) => firstWhere(executor, eq(harnessRuns.id, runId)),
       lock: (runId) => lock(executor, runId),
-      liveForItem: (itemId) => firstWhere(executor, and(eq(harnessRuns.itemId, itemId), live)),
-      live: (harnessId) =>
-        runsWhere(
-          executor,
-          and(live, harnessId === null ? undefined : eq(harnessRuns.harnessId, harnessId)),
-        ),
+      liveForItem: (itemId) => firstWhere(executor, liveRuns({ itemId })),
+      live: (harnessId) => runsWhere(executor, liveRuns({ harnessId })),
     },
     write: {
       insert: (run) =>
