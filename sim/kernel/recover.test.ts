@@ -1,97 +1,25 @@
 import type { Principal } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { revokeSeededGrant } from '@uw/db/test-seed';
-import { createKernel, software, type Connectors, type Kernel } from '@uw/harness';
-import { afterAll, describe, expect, it } from 'vitest';
+import { createKernel, type Connectors, type Kernel } from '@uw/harness';
+import { afterAll, describe, expect } from 'vitest';
+import { simAgent, simCaller, simPerson, simSystem } from '../fixtures.ts';
+import { namesSince, simSha, standardChange } from '../ship-fixtures.ts';
 import {
-  createSimHarness,
-  simAgent,
-  simCaller,
-  simPerson,
-  simSystem,
-  simSeenHead,
-} from '../fixtures.ts';
-import { kernelThatLosesTheExit } from '../lost-exit.ts';
-import { readWorldLog } from '../runner/log.ts';
-import {
-  approvedBy,
-  greenFacts,
-  itemLog,
-  namesSince,
-  simParkedAtShip,
-  simSha,
-  standardChange,
-} from '../ship-fixtures.ts';
-import { createWorld, type World } from '../world.ts';
+  decide,
+  giveFacts,
+  head,
+  logOf,
+  lostApproval,
+  recoverAs,
+  sceneIt,
+  sixteenMinutes,
+  type Scene,
+} from './recover-scene.ts';
 
-afterAll(closeEmbeddedTemplate);
-
-type Scene = {
-  readonly world: World;
-  readonly harnessId: string;
-  readonly itemId: string;
-  readonly ian: Principal;
-  readonly max: Principal;
-};
-
-const sixteenMinutes = 16 * 60_000;
-const head = standardChange.head;
 const movedHead = simSha('fff999');
 
-function giveFacts(world: World, itemId: string, onHead: string, reviewId: number): void {
-  const reviews = [approvedBy('uw-reviewer[bot]', 'anthropic', onHead, reviewId)];
-  world.adapters.githubFacts.given(greenFacts(world, { itemId, head: onHead, reviews }));
-}
-
-async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
-  const world = await createWorld();
-  try {
-    const { harness, admin } = await createSimHarness(world, software);
-    const max = await simPerson(world, 2, [
-      { role: 'editor', scopeKind: 'jd_area', scopeArea: '80-89' },
-    ]);
-    const parked = await simParkedAtShip(world, {
-      harnessId: harness.id,
-      editor: max,
-      title: 'Show the board',
-      change: standardChange,
-    });
-    giveFacts(world, parked.itemId, head, 9100000101);
-    await work({ world, harnessId: harness.id, itemId: parked.itemId, ian: admin, max });
-    expect((await readWorldLog(world.adapters.store)).drift).toEqual([]);
-  } finally {
-    await world.close();
-  }
-}
-
-function sceneIt(title: string, work: (scene: Scene) => Promise<void>): void {
-  it(title, () => inScene(work));
-}
-
-async function decide(scene: Scene, kernel: Kernel, decision: 'approve' | 'take_over') {
-  return kernel.gates.decide(simCaller(scene.world, scene.ian), {
-    itemId: scene.itemId,
-    decision,
-    reason: null,
-    findings: [],
-    seenHead: await simSeenHead(scene.world, scene.itemId),
-  });
-}
-
-function recoverAs(scene: Scene, who: Principal, kernel: Kernel = scene.world.kernel) {
-  return kernel.gates.recoverConnectors(simCaller(scene.world, who), {
-    harnessId: scene.harnessId,
-  });
-}
-
-async function lostApproval(scene: Scene, effectHappened: boolean): Promise<void> {
-  const losing = kernelThatLosesTheExit(scene.world, { effectHappened });
-  await expect(decide(scene, losing, 'approve')).rejects.toMatchObject({ name: 'ExitLost' });
-}
-
-function logOf(scene: Scene) {
-  return itemLog(scene.world, scene.harnessId, scene.itemId);
-}
+afterAll(closeEmbeddedTemplate);
 
 function withConnectors(scene: Scene, connectors: Connectors): Kernel {
   return createKernel({ ...scene.world.adapters, connectors });
@@ -456,50 +384,6 @@ describe('GH-6 a recovery uses the connector in force when the person decided', 
         'connector_succeeded',
         'merge',
       ]);
-    },
-  );
-});
-
-async function spareAfterShip(scene: Scene): Promise<void> {
-  const stages = await scene.world.adapters.store.transaction((tx) =>
-    tx.harnessStages.read.forHarness(scene.harnessId),
-  );
-  const ship = stages.find((stage) => stage.key === 'ship');
-  if (ship === undefined) throw new Error('no ship stage');
-  const created = await scene.world.kernel.stages.createStage(simCaller(scene.world, scene.ian), {
-    harnessId: scene.harnessId,
-    stage: {
-      key: 'spare',
-      title: 'Spare',
-      position: ship.position + 5,
-      bracket: 'iterate',
-      agentPickup: 'allowed',
-      exitGate: 'checks',
-      connector: 'none',
-      wipLimit: 3,
-      instructionsPageId: null,
-      validators: [],
-      feeds: [],
-    },
-  });
-  expect(created.status).toBe('accepted');
-}
-
-describe('GH-6 a recovery advances to the stage the decision routed to', () => {
-  sceneIt(
-    'takes the item to the next stage fixed at the decision after a stage is inserted after Ship',
-    async (scene) => {
-      await lostApproval(scene, true);
-      await spareAfterShip(scene);
-      scene.world.adapters.clock.advance(sixteenMinutes);
-      expect(await recoverAs(scene, scene.ian)).toEqual({
-        status: 'accepted',
-        value: { items: [{ itemId: scene.itemId, outcome: 'succeeded' }] },
-      });
-      const advanced = (await logOf(scene)).events.findLast(
-        (event) => event.name === 'stage_advanced',
-      );
-      expect(advanced?.evidence).toMatchObject({ from: 'ship', to: 'validate' });
     },
   );
 });

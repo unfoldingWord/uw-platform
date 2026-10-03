@@ -151,3 +151,15 @@ export type SeedPage = {
 export async function seedPage(db: AnyExecutor, page: SeedPage): Promise<void> {
   await db.insert(pages).values({ parentId: null, frontmatter: {}, ...page, version: 1 });
 }
+
+export async function dropDecisionNext(db: AnyExecutor, itemId: string): Promise<void> {
+  await db.execute(
+    sql`ALTER TABLE gate_decisions DISABLE TRIGGER gate_decisions_no_update_or_delete`,
+  );
+  await db.execute(
+    sql`UPDATE gate_decisions SET evidence = evidence - 'next' WHERE item_id = ${itemId}`,
+  );
+  await db.execute(
+    sql`ALTER TABLE gate_decisions ENABLE TRIGGER gate_decisions_no_update_or_delete`,
+  );
+}
