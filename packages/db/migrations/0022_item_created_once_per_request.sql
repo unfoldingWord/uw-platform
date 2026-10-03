@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "harness_events_one_item_per_request" ON "harness_events" USING btree ("actor","request_id") WHERE "harness_events"."name" = 'item_created' AND "harness_events"."request_id" IS NOT NULL;

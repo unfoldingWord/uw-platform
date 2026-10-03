@@ -368,6 +368,9 @@ export const harnessEvents = declareTable(
     check('harness_events_actor_is_identity', matches(t.actor, IDENTITY_PATTERN)),
     check('harness_events_position_positive', sql`${t.position} >= 1`),
     uniqueIndex('harness_events_position_per_harness').on(t.harnessId, t.position),
+    uniqueIndex('harness_events_one_item_per_request')
+      .on(t.actor, t.requestId)
+      .where(sql`${t.name} = 'item_created' AND ${t.requestId} IS NOT NULL`),
     index('harness_events_item').on(t.itemId, t.position),
   ],
 );
