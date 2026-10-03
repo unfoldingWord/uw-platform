@@ -234,14 +234,16 @@ describe.skipIf(!testServer)('the live hub indicator never shares an unsettled p
 });
 
 describe('the live hub indicator bounds its work', () => {
-  it('asks at most the first 50 harnesses', async () => {
+  it('asks at most the first 50 harnesses, says so, and turns amber for the rest it did not ask', async () => {
     const ids = Array.from({ length: HUB_HEALTH_LIMIT + 10 }, () => randomUUID());
     const hub = answering(oneConnection);
     const kernel = { reads: { harnessIdsForHealth: async () => ids } };
     const indicator = await hubIndicator({ HARNESS_HUB: hub.namespace }, kernel, systemTimers);
-    expect(indicator.detail).toBe(
-      `${HUB_HEALTH_LIMIT} connections across ${HUB_HEALTH_LIMIT} harnesses; last wake never`,
-    );
+    expect(indicator).toEqual({
+      name: 'live_hub',
+      status: 'amber',
+      detail: `${HUB_HEALTH_LIMIT} connections across the first ${HUB_HEALTH_LIMIT} of ${ids.length} harnesses; last wake never`,
+    });
     expect(hub.asked).toEqual(ids.slice(0, HUB_HEALTH_LIMIT).map((id) => `GET /stats ${id}`));
   });
 

@@ -50,11 +50,15 @@ function latestWake(answered: readonly Stats[]): string {
   return wakes.length === 0 ? 'never' : new Date(Math.max(...wakes)).toISOString();
 }
 
-function summary(polled: readonly (Stats | null)[]): HealthIndicator {
+function scopeOf(polled: number, total: number): string {
+  return polled === total ? `${polled} harnesses` : `the first ${polled} of ${total} harnesses`;
+}
+
+function summary(polled: readonly (Stats | null)[], total: number): HealthIndicator {
   const answered = polled.filter((stats): stats is Stats => stats !== null);
-  const connections = answered.reduce((total, stats) => total + stats.connections, 0);
-  const detail = `${connections} connections across ${polled.length} harnesses; last wake ${latestWake(answered)}`;
-  const status = answered.length === polled.length ? 'ok' : 'amber';
+  const connections = answered.reduce((sum, stats) => sum + stats.connections, 0);
+  const detail = `${connections} connections across ${scopeOf(polled.length, total)}; last wake ${latestWake(answered)}`;
+  const status = answered.length === total ? 'ok' : 'amber';
   return { name: NAME, status, detail };
 }
 
@@ -71,7 +75,8 @@ async function pollHubs(
     const ids = await Promise.race([kernel.reads.harnessIdsForHealth(), deadline]);
     if (ids === 'timed_out') throw new Error('harness list timed out');
     const polled = ids.slice(0, HUB_HEALTH_LIMIT);
-    return summary(await Promise.all(polled.map((id) => statsOf(namespace, id, deadline))));
+    const answers = await Promise.all(polled.map((id) => statsOf(namespace, id, deadline)));
+    return summary(answers, ids.length);
   } catch {
     return { name: NAME, status: 'amber', detail: 'harness list unreadable' };
   } finally {
