@@ -139,6 +139,23 @@ async function stoppedMidStep(db: Database): Promise<void> {
   }
 }
 
+async function coreStoppedMidStep(db: Database): Promise<void> {
+  const rig = await hostRig(db, host);
+  const runId = await startedRun(rig);
+  const step = await opened(rig, runId);
+  try {
+    accepted(await rig.kernel.runs.stop(callerOf(rig.admin), { itemId: rig.itemId }));
+    const call = await step.core.callTool({
+      name: 'resolve_context',
+      arguments: { itemId: rig.itemId },
+    });
+    expect(call.isError).toBe(true);
+    expect(JSON.stringify(call.content)).toContain('run_stopped');
+  } finally {
+    await step.close();
+  }
+}
+
 function overHttp(step: OpenStep, method: string, params: object) {
   return step.http(
     new Request('http://mcp.internal/mcp', {
@@ -194,4 +211,7 @@ describe.skipIf(!testServer)('the step connection', () => {
 
   it("a tool call after a person stopped the run is refused by the step's per-call check", () =>
     withAppDatabase(stoppedMidStep));
+
+  it("a core call after a person stopped the run is refused by the core's per-call check", () =>
+    withAppDatabase(coreStoppedMidStep));
 });
