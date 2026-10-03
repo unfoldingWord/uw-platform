@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { commandNames } from '@uw/contracts';
 import { hubNotWired } from '../ports/hub.not-wired.ts';
+import { runsNotWired } from '../ports/runs.not-wired.ts';
 import { executeCommand } from './dispatch.ts';
 import { commandHandler, type CommandHandler } from './handler.ts';
 import { notWiredCommand } from './not-wired.ts';
@@ -129,6 +130,7 @@ describe('the command builders guard the agent rule and the brand', () => {
       registry,
       gateGitHub: () => null,
       hub: hubNotWired,
+      runs: runsNotWired,
       logger: {} as never,
     };
     await expect(executeCommand(request, scope)).rejects.toThrow(/claim/);

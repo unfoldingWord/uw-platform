@@ -7,6 +7,7 @@ import type { Bindings } from '../env.ts';
 import { hubWiring, platformKernel } from '../kernel.ts';
 import { hubOf } from '../ports/hub.ts';
 import { spendOnlyEngine } from '../ports/model-engine.ts';
+import { runsOf } from '../ports/runs.ts';
 import { unitHub } from '../unit-hub.ts';
 import { cronLogger, type CronDeps, type CronJob } from './job.ts';
 
@@ -106,7 +107,11 @@ async function minuteWith(
 ): Promise<void> {
   const unit = unitHub(hubOf(env, logger));
   const modelEngine = spendOnlyEngine(gatewaySpend(deps.engines, deps.now));
-  const kernel = platformKernel(database, { now: deps.now }, hubWiring(unit.hub, { modelEngine }));
+  const kernel = platformKernel(
+    database,
+    { now: deps.now },
+    hubWiring(unit.hub, { modelEngine, runs: runsOf(env) }),
+  );
   const caller: Caller = { actor: systemPrincipal(), traceId: deps.newId(), requestId: null };
   const minute = { kernel, caller, deps, logger };
   try {

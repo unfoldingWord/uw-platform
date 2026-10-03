@@ -8,6 +8,7 @@ import { fixtureApp, fixtureTransport } from '../../github/testing/app-key.ts';
 import { fixtureGitHub } from '../../github/testing/fixture-github.ts';
 import { hubWiring, platformPorts } from '../../kernel.ts';
 import { systemClock } from '../../ports/clock.ts';
+import { runsNotWired } from '../../ports/runs.not-wired.ts';
 import { platformPersonDeps } from '../person-deps.ts';
 import { platformGateGitHub } from './gate-github.ts';
 import { gateKernel, gateWiring } from './gate-kernel.ts';
@@ -17,6 +18,7 @@ const logger = createLogger(
   () => undefined,
 );
 const hub: Hub = { wake: async () => undefined };
+const live = { hub, runs: runsNotWired };
 const untouched: DatabaseHandle = {
   db: {} as Database,
   ping: async () => undefined,
@@ -34,7 +36,7 @@ describe('GH-6 the gate kernel opens the read client and the ship writes from on
   it('reaches GitHub for the refresh and the merge, each with a token from the one App installation', async () => {
     const github = fixtureGitHub();
     const ship = { app: await fixtureApp(), transport: fixtureTransport(github) };
-    const wiring = gateWiring(ship, hub, logger);
+    const wiring = gateWiring(ship, live, logger);
     expect(wiring.ship).toBe(ship);
     expect(wiring.hub).toBe(hub);
     const ports = platformPorts(untouched, systemClock, wiring);
@@ -47,8 +49,8 @@ describe('GH-6 the gate kernel opens the read client and the ship writes from on
   });
 
   it('wires neither the read client nor the ship writes without a GitHub App configuration', async () => {
-    const wiring = gateWiring(null, hub, logger);
-    expect(wiring).toEqual(hubWiring(hub));
+    const wiring = gateWiring(null, live, logger);
+    expect(wiring).toEqual(hubWiring(hub, { runs: runsNotWired }));
     const ports = platformPorts(untouched, systemClock, wiring);
     expect(await ports.connectors.run({ ...contractRequest, connector: 'merge' })).toEqual({
       outcome: 'refused',
@@ -57,7 +59,7 @@ describe('GH-6 the gate kernel opens the read client and the ship writes from on
     await expect(ports.githubFacts.refresh(contractRequest.pullRequest)).rejects.toMatchObject({
       name: 'PortNotWiredError',
     });
-    expect(Object.keys(gateKernel(untouched, systemClock, null, hub, logger))).toContain('gates');
+    expect(Object.keys(gateKernel(untouched, systemClock, null, live, logger))).toContain('gates');
   });
 
   it('opens the person gate GitHub from the App configuration, and nothing when any part is absent', () => {

@@ -1,7 +1,20 @@
+import type { RunStart } from '@uw/harness';
 type HyperdriveBinding = { readonly connectionString: string };
 export type QueueProducer<Body> = { send(body: Body): Promise<void> };
 type HubStub = { fetch(input: string, init?: RequestInit): Promise<Response> };
 export type HubNamespace = { idFromName(name: string): unknown; get(id: unknown): HubStub };
+export type WorkflowInstance = {
+  readonly id: string;
+  status(): Promise<{ readonly status: string }>;
+  pause(): Promise<void>;
+  resume(): Promise<void>;
+  terminate(): Promise<void>;
+  sendEvent(event: { readonly type: string; readonly payload: unknown }): Promise<void>;
+};
+export type WorkflowBinding = {
+  create(options: { readonly id: string; readonly params: RunStart }): Promise<WorkflowInstance>;
+  get(id: string): Promise<WorkflowInstance>;
+};
 
 export type Bindings = {
   AI_GATEWAY_ACCOUNT_ID?: string;
@@ -21,6 +34,7 @@ export type Bindings = {
   GITHUB_APP_INSTALLATION_ID?: string;
   GITHUB_APP_PRIVATE_KEY?: string;
   HARNESS_HUB?: HubNamespace;
+  HARNESS_RUN?: WorkflowBinding;
   HYPERDRIVE?: HyperdriveBinding;
   INGEST_DLQ?: QueueProducer<unknown>;
   OPENAI_API_KEY?: string;

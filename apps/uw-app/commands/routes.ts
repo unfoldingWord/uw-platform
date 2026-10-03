@@ -3,6 +3,7 @@ import type { AppDeps, AppEnv } from '../deps.ts';
 import { answer, readJson } from '../http/commands.ts';
 import { connectLive } from '../live/connect.ts';
 import { hubOf } from '../ports/hub.ts';
+import { runsOf } from '../ports/runs.ts';
 import { requestLogger } from '../request-logger.ts';
 import { executeCommand } from './dispatch.ts';
 import type { PersonDeps } from './person-deps.ts';
@@ -29,6 +30,7 @@ async function handleCommand(
     registry: commandRegistry,
     gateGitHub: () => person.gateGitHub(c.env, () => deps.clock.now()),
     hub: hubOf(c.env, logger),
+    runs: runsOf(c.env),
     logger,
   });
   return answer(c, outcome);

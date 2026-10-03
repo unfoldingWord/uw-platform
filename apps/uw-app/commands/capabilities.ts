@@ -1,10 +1,11 @@
 import type { ErrorReason, Page } from '@uw/contracts';
 import type { Logger } from '@uw/core/log';
-import type { Caller, Clock, Hub, Kernel } from '@uw/harness';
+import type { Caller, Clock, Kernel } from '@uw/harness';
 import type { DatabaseHandle } from '../database.ts';
 import { issueByNumber } from '../github/facts/queries.ts';
 import { importStoredIssue, isImportable } from '../github/import.ts';
 import { readPage } from '../pages/store.ts';
+import type { LiveWiring } from '../kernel.ts';
 import type { ShipGitHub } from '../ports/connectors.ts';
 import { gateKernel } from './person/gate-kernel.ts';
 
@@ -28,17 +29,17 @@ export type CapabilityGrounds = {
   readonly kernel: Kernel;
   readonly caller: Caller;
   readonly clock: Clock;
-  readonly hub: Hub;
+  readonly live: LiveWiring;
   readonly logger: Logger;
   readonly gate: GateAccess;
   readonly gateGitHub: () => ShipGitHub | null;
 };
 
 function gateKernelOf(grounds: CapabilityGrounds): () => Kernel {
-  const { command, database, clock, hub, logger } = grounds;
+  const { command, database, clock, live, logger } = grounds;
   if (grounds.gate === 'ordinary') return () => grounds.kernel;
   if (grounds.gate === 'github') {
-    return () => gateKernel(database, clock, grounds.gateGitHub(), hub, logger);
+    return () => gateKernel(database, clock, grounds.gateGitHub(), live, logger);
   }
   return () => {
     throw new TypeError(`the ${command} command builds no gate kernel`);

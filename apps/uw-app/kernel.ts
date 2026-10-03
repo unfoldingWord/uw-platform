@@ -5,6 +5,7 @@ import {
   type Kernel,
   type ModelEngine,
   type Ports,
+  type Runs,
 } from '@uw/harness';
 import type { DatabaseHandle } from './database.ts';
 import type { GitHubAccess } from './github/refresh.ts';
@@ -27,12 +28,22 @@ type KernelWiring = {
   readonly reads: GitHubAccess | null;
   readonly ship: ShipGitHub | null;
   readonly modelEngine: ModelEngine;
+  readonly runs: Runs;
 };
 
-type HostWiring = Partial<Pick<KernelWiring, 'modelEngine'>>;
+export type LiveWiring = { readonly hub: Hub; readonly runs: Runs };
+
+type HostWiring = Partial<Pick<KernelWiring, 'modelEngine' | 'runs'>>;
 
 export function hubWiring(hub: Hub, host: HostWiring = {}): KernelWiring {
-  return { hub, reads: null, ship: null, modelEngine: modelEngineNotWired, ...host };
+  return {
+    hub,
+    reads: null,
+    ship: null,
+    modelEngine: modelEngineNotWired,
+    runs: runsNotWired,
+    ...host,
+  };
 }
 
 const idle = hubWiring(hubNotWired);
@@ -54,7 +65,7 @@ export function platformPorts(
     modelEngine: wiring.modelEngine,
     hub: wiring.hub,
     notifier: notifierNotWired,
-    runs: runsNotWired,
+    runs: wiring.runs,
   };
 }
 

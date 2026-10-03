@@ -10,7 +10,7 @@ import {
 } from '@uw/contracts';
 import { can } from '@uw/core/acl';
 import type { Logger } from '@uw/core/log';
-import type { Caller, Clock, Hub, Kernel } from '@uw/harness';
+import type { Caller, Clock, Hub, Kernel, Runs } from '@uw/harness';
 import type { DatabaseHandle } from '../database.ts';
 import { malformedOutcome, toOutcome } from '../http/commands.ts';
 import { hubWiring, platformKernel } from '../kernel.ts';
@@ -40,6 +40,7 @@ export type DispatchScope = {
   readonly registry: ReadonlyMap<CommandName, CommandHandler>;
   readonly gateGitHub: () => ShipGitHub | null;
   readonly hub: Hub;
+  readonly runs: Runs;
   readonly logger: Logger;
 };
 
@@ -178,7 +179,7 @@ function contextOf(
     kernel,
     caller,
     clock,
-    hub: scope.hub,
+    live: { hub: scope.hub, runs: scope.runs },
     logger: scope.logger,
     gate: gateAccess(command),
     gateGitHub: scope.gateGitHub,
@@ -195,7 +196,11 @@ function contextOf(
 
 async function dispatchAdmitted(command: Admitted, scope: DispatchScope): Promise<Outcome> {
   const clock: Clock = { now: () => command.at };
-  const kernel = platformKernel(command.database, clock, hubWiring(scope.hub));
+  const kernel = platformKernel(
+    command.database,
+    clock,
+    hubWiring(scope.hub, { runs: scope.runs }),
+  );
   const caller: Caller = { actor: command.principal, traceId: command.traceId };
   const lookup = { kernel, caller, at: command.at, db: command.database.db };
   const scene = await sceneOf(lookup, command.handler, command.harnessId, command.body);

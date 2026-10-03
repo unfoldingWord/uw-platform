@@ -90,10 +90,11 @@ function describeRefusals(open: () => Promise<RunsSubject>): void {
     await expectRefused(runs.hibernate(runId), null, 'hibernate');
   });
 
-  it('refuses to resume a run that is running', async () => {
+  it('takes a resume of a running run as a wake-up and leaves it running', async () => {
     const { runs } = await open();
     await runs.start(run(runId));
-    await expectRefused(runs.resume(runId), 'running', 'resume');
+    await runs.resume(runId);
+    expect(await runs.status(runId)).toBe('running');
   });
 }
 
