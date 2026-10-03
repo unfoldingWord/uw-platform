@@ -70,4 +70,5 @@ export const commandRegistry = commandRegistryOf([
   updateStageCommand,
   reorderStagesCommand,
   removeStageCommand,
+  notWiredCommand('set_hosted_builder', 'admin'),
 ]);
