@@ -16,6 +16,14 @@ export function bindGateDecisions(executor: AnyExecutor): GateDecisionsGateway {
           .orderBy(asc(gateDecisions.decidedAt), asc(gateDecisions.id));
         return rows.map(toGateDecision);
       },
+      anyForStage: async (stageId) => {
+        const rows = await executor
+          .select({ id: gateDecisions.id })
+          .from(gateDecisions)
+          .where(eq(gateDecisions.stageId, stageId))
+          .limit(1);
+        return rows.length > 0;
+      },
     },
     write: {
       insert: (decision) =>
