@@ -6,6 +6,7 @@ import { createIssueComments, type IssueComments } from './comments.ts';
 import type { GitHubTransport } from './transport.ts';
 
 export type GitHubClient = {
+  readonly appId: string;
   readonly reads: () => GitHubReads;
   readonly comments: () => IssueComments;
 };
@@ -27,6 +28,7 @@ function once<T>(open: () => T): () => T {
 
 export function githubClient(app: GitHubAppConfig, transport: GitHubTransport): GitHubClient {
   return {
+    appId: app.appId,
     reads: () => createGitHubReads(app, transport),
     comments: () => createIssueComments(app, transport),
   };
@@ -35,5 +37,8 @@ export function githubClient(app: GitHubAppConfig, transport: GitHubTransport): 
 export function unitOfWork(deps: GitHubDeps): GitHubDeps {
   const { client } = deps;
   if (client === null) return deps;
-  return { ...deps, client: { reads: once(client.reads), comments: once(client.comments) } };
+  return {
+    ...deps,
+    client: { appId: client.appId, reads: once(client.reads), comments: once(client.comments) },
+  };
 }

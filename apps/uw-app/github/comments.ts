@@ -6,6 +6,7 @@ import { openSession, shaped } from './session.ts';
 import type { GitHubTransport } from './transport.ts';
 
 const commentPermissions = { issues: 'write', metadata: 'read' } as const;
+const postTimeoutMs = 30_000;
 const created = z.object({ id: z.number().int() }).transform(({ id }) => ({ id }));
 
 export type IssueComments = {
@@ -19,6 +20,7 @@ export type IssueComments = {
 export function createIssueComments(
   config: GitHubAppConfig,
   transport: GitHubTransport,
+  timeoutMs = postTimeoutMs,
 ): IssueComments {
   const session = openSession(config, transport, commentPermissions);
   return {
@@ -30,7 +32,7 @@ export function createIssueComments(
       if (!isCount(number)) return refusedInput;
       const answer = await session.request(
         'POST /repos/{owner}/{repo}/issues/{issue_number}/comments',
-        { issue_number: number, body },
+        { issue_number: number, body, request: { signal: AbortSignal.timeout(timeoutMs) } },
         repo,
       );
       return answer.ok ? shaped(created, answer.value) : answer;

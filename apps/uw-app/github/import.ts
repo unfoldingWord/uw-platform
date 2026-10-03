@@ -75,7 +75,12 @@ async function importLabelled(deps: GitHubDeps, change: IssueChange, logger: Log
     outcome: created ? 'issue_imported' : 'issue_already_imported',
     ...fields,
   });
-  await ensureCrossReference(deps, change, item.itemId, logger);
+  await ensureCrossReference(
+    deps,
+    change,
+    { itemId: item.itemId, pageCreatedAt: page.createdAt },
+    logger,
+  );
 }
 
 async function recordRemoval(deps: GitHubDeps, change: IssueChange, logger: Logger) {

@@ -10,20 +10,28 @@ import {
 import type { IssueChange } from './facts/records.ts';
 
 const MARKER = '<!-- uw-harness:cross-reference -->';
+const sinceMarginMs = 60 * 60_000;
 const posted = z.object({
   id: z.number().int().positive(),
   body: z.string().nullable().optional(),
-  user: z.object({ type: z.string() }).nullable().optional(),
+  performed_via_github_app: z.object({ id: z.number() }).nullable().optional(),
 });
+
+export type CrossReference = {
+  readonly itemId: string;
+  readonly pageCreatedAt: Date;
+};
 
 export function crossReferenceBody(itemId: string): string {
   return `${MARKER}\nThis issue is tracked as harness item \`${itemId}\`.`;
 }
 
-function ourComment(comments: readonly unknown[], body: string): number | null {
+function ourComment(comments: readonly unknown[], body: string, appId: string): number | null {
   for (const comment of comments) {
     const parsed = posted.safeParse(comment);
-    if (!parsed.success || parsed.data.user?.type !== 'Bot') continue;
+    if (!parsed.success) continue;
+    const app = parsed.data.performed_via_github_app?.id;
+    if (app === undefined || String(app) !== appId) continue;
     if (parsed.data.body?.trim() === body) return parsed.data.id;
   }
   return null;
@@ -32,11 +40,13 @@ function ourComment(comments: readonly unknown[], body: string): number | null {
 async function placed(
   client: GitHubClient,
   change: IssueChange,
-  body: string,
+  reference: CrossReference,
 ): Promise<GitHubResult<{ readonly id: number; readonly found: boolean }>> {
-  const listed = await client.reads().issueComments(change.repo, change.number);
+  const body = crossReferenceBody(reference.itemId);
+  const since = new Date(reference.pageCreatedAt.getTime() - sinceMarginMs);
+  const listed = await client.reads().issueComments(change.repo, change.number, since);
   if (!listed.ok) return listed;
-  const found = ourComment(listed.value, body);
+  const found = ourComment(listed.value, body, client.appId);
   if (found !== null) return { ok: true, value: { id: found, found: true } };
   const sent = await client.comments().comment(change.repo, change.number, body);
   return sent.ok ? { ok: true, value: { id: sent.value.id, found: false } } : sent;
@@ -45,7 +55,7 @@ async function placed(
 export async function ensureCrossReference(
   deps: GitHubDeps,
   change: IssueChange,
-  itemId: string,
+  reference: CrossReference,
   logger: Logger,
 ): Promise<void> {
   const fields = { repository: change.repo, issue: change.number };
@@ -58,7 +68,7 @@ export async function ensureCrossReference(
   }
   const at = deps.now();
   if (!(await claimCrossReference(deps.db, change.githubId, at))) return;
-  const result = await placed(deps.client, change, crossReferenceBody(itemId));
+  const result = await placed(deps.client, change, reference);
   if (!result.ok) {
     await releaseCrossReference(deps.db, change.githubId, at);
     logger.warn('cross-reference comment not posted', {

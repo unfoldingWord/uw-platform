@@ -49,7 +49,7 @@ async function everyCall(github: FixtureGitHub): Promise<GitHubResult<unknown>[]
     await reads.pullRequestReviews('o/r', 2),
     await reads.checkRuns('o/r', sha),
     await reads.issuesSince('o/r', null, 3),
-    await reads.issueComments('o/r', 1),
+    await reads.issueComments('o/r', 1, new Date('2026-10-02T00:00:00.000Z')),
     await comments.comment('o/r', 1, 'see the item'),
     await writes.merge('o/r', 2, { sha, title: 'Ship x', message: 'Item x' }),
     await writes.tag('o/r', 'harness/x', sha),
