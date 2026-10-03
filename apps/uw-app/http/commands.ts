@@ -1,6 +1,6 @@
 import type { Context } from 'hono';
 import { z } from 'zod';
-import type { ErrorReason, Outcome } from '@uw/contracts';
+import type { ErrorReason, Outcome, Refusal } from '@uw/contracts';
 import type { AppEnv } from '../deps.ts';
 import { refuse, reply } from './outcomes.ts';
 
@@ -17,14 +17,18 @@ export async function readJson(c: Context<AppEnv>): Promise<unknown> {
   }
 }
 
-export function malformed(c: Context<AppEnv>, body: unknown): Response {
+export function malformedOutcome(body: unknown): Outcome | Refusal {
   const carried = requestIdOnly.safeParse(body);
-  if (!carried.success) return refuse(c, 'malformed_command');
-  return reply(c, {
-    status: 'error',
-    requestId: carried.data.requestId,
-    reason: 'malformed_command',
-  });
+  if (!carried.success) return { status: 'error', reason: 'malformed_command' };
+  return { status: 'error', requestId: carried.data.requestId, reason: 'malformed_command' };
+}
+
+export function answer(c: Context<AppEnv>, outcome: Outcome | Refusal): Response {
+  return 'requestId' in outcome ? reply(c, outcome) : refuse(c, outcome.reason);
+}
+
+export function malformed(c: Context<AppEnv>, body: unknown): Response {
+  return answer(c, malformedOutcome(body));
 }
 
 export function toOutcome(requestId: string, result: CommandResult): Outcome {
