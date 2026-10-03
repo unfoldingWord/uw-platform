@@ -3,7 +3,7 @@ import type {
   Connector,
   CostBasis,
   Engine,
-  EventName,
+  BreakerLevel,
   GateDecision,
   Grant,
   Harness,
@@ -102,6 +102,7 @@ export type PagesGateway = {
     activePersona(identity: Identity, harnessId: string): Promise<PageFacts | null>;
   };
 };
+export type BreakerEventName = `breaker_${BreakerLevel}`;
 export type EventQuery = {
   readonly harnessId: string;
   readonly itemId: string | null;
@@ -114,7 +115,7 @@ export type HarnessEventsGateway = {
     page(query: EventQuery): Promise<EventPage>;
     createdFor(actor: string, requestId: string): Promise<string | null>;
     latestNamed(
-      names: readonly EventName[],
+      names: readonly BreakerEventName[],
       harnessId: string | null,
     ): Promise<HarnessEvent | null>;
   };
