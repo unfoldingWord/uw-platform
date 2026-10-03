@@ -226,6 +226,7 @@ function routeOf(gate: Gate, decision: GateDecision): Route | Refused {
 type Decision = {
   readonly input: DecideInput;
   readonly exit: Exit | null;
+  readonly connector: EffectConnector | null;
   readonly before: readonly EventDraft[];
 };
 
@@ -247,7 +248,11 @@ async function recordDecision(
     actor: approver.identity,
     decision: input.decision,
     reason: input.reason,
-    evidence: { findings: [...input.findings], gateTarget: item.gateTarget },
+    evidence: {
+      findings: [...input.findings],
+      gateTarget: item.gateTarget,
+      connector: decision.connector,
+    },
     traceId: context.traceId,
     decidedAt: context.at,
   });
@@ -333,6 +338,7 @@ async function decideIn(
   const recorded = await recordDecision(tx, gate, {
     input,
     exit: connector === null ? exit : null,
+    connector,
     before: ship.drafts,
   });
   if (recorded.status !== 'accepted') return recorded;

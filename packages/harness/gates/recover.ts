@@ -1,11 +1,23 @@
-import { eventEvidenceSchemas, type Harness, type HarnessEvent, type Stage } from '@uw/contracts';
+import {
+  connectorSchema,
+  eventEvidenceSchemas,
+  type Harness,
+  type HarnessEvent,
+  type Stage,
+} from '@uw/contracts';
 import type { Caller } from '../caller.ts';
 import { replay } from '../items/fold.ts';
 import { readAllEvents, recordContext, type RecordContext } from '../items/record.ts';
 import { resolveExit } from '../items/transitions.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import { PortNotWiredError } from '../port-errors.ts';
-import type { ConnectorOutcome, Ports, StoreTransaction } from '../ports.ts';
+import type {
+  ConnectorOutcome,
+  EffectConnector,
+  GateDecisionRow,
+  Ports,
+  StoreTransaction,
+} from '../ports.ts';
 import { adminRefusal, agentRefusal } from '../stages/rules.ts';
 import { effectOf } from './approve-at-ship.ts';
 import { recordExitOutcomes, requestOf, type ExitEntry, type ExitInput } from './exit.ts';
@@ -18,6 +30,8 @@ type RecoveredItem = { readonly itemId: string; readonly outcome: 'succeeded' | 
 export type Recovered = { readonly items: readonly RecoveredItem[] };
 
 type Place = { readonly harness: Harness; readonly stages: readonly Stage[]; readonly at: Date };
+
+type Decided = ReadonlyMap<string, EffectConnector>;
 
 type Scan = {
   readonly harness: Harness;
@@ -42,9 +56,9 @@ function overrideReasonOf(approval: HarnessEvent): string | null {
   return approval.name === 'gate_overridden' && typeof reason === 'string' ? reason : null;
 }
 
-type Decided = Pick<ExitInput, 'repository' | 'expectedBase'>;
+type DecidedOn = Pick<ExitInput, 'repository' | 'expectedBase'>;
 
-function decidedOn(events: readonly HarnessEvent[], index: number): Decided {
+function decidedOn(events: readonly HarnessEvent[], index: number): DecidedOn {
   const approval = events.at(index);
   const derived = events
     .slice(0, index)
@@ -54,13 +68,24 @@ function decidedOn(events: readonly HarnessEvent[], index: number): Decided {
   return { repository: parsed.data.repository, expectedBase: parsed.data.base };
 }
 
-function stuckAt(events: readonly HarnessEvent[], index: number, place: Place): ExitInput | null {
+function connectorAt(stage: Stage | undefined, decided: Decided, decisionId: unknown) {
+  const recorded = typeof decisionId === 'string' ? decided.get(decisionId) : undefined;
+  if (recorded !== undefined) return recorded;
+  return stage === undefined ? null : effectOf(stage.connector);
+}
+
+function stuckAt(
+  events: readonly HarnessEvent[],
+  index: number,
+  scope: { readonly place: Place; readonly decided: Decided },
+): ExitInput | null {
+  const { place } = scope;
   const approval = events.at(index);
   const item = replay(events.slice(0, index + 1));
   if (approval === undefined || item === null || !timedOut(approval, place.at)) return null;
   const decisionId = approval.evidence['decisionId'];
   const stage = place.stages.find((entry) => entry.key === item.stageKey);
-  const connector = stage === undefined ? null : effectOf(stage.connector);
+  const connector = connectorAt(stage, scope.decided, decisionId);
   if (typeof decisionId !== 'string' || stage === undefined || connector === null) return null;
   return {
     item,
@@ -73,9 +98,22 @@ function stuckAt(events: readonly HarnessEvent[], index: number, place: Place): 
   };
 }
 
-function stuckIn(events: readonly HarnessEvent[], place: Place): readonly ExitInput[] {
+function decidedConnectors(rows: readonly GateDecisionRow[]): Decided {
+  return new Map(
+    rows.flatMap((row) => {
+      const parsed = connectorSchema.safeParse(row.evidence['connector']);
+      const connector = parsed.success ? effectOf(parsed.data) : null;
+      return connector === null ? [] : [[row.id, connector] as const];
+    }),
+  );
+}
+
+function stuckIn(
+  events: readonly HarnessEvent[],
+  scope: { readonly place: Place; readonly decided: Decided },
+): readonly ExitInput[] {
   return approvalsAwaitingOutcome(events).flatMap((index) => {
-    const stuck = stuckAt(events, index, place);
+    const stuck = stuckAt(events, index, scope);
     return stuck === null ? [] : [stuck];
   });
 }
@@ -94,7 +132,8 @@ async function scanIn(
   const place = { harness, stages: await tx.harnessStages.read.forHarness(harnessId), at };
   const stuck: ExitInput[] = [];
   for (const item of await tx.harnessItems.read.forHarness(harnessId)) {
-    stuck.push(...stuckIn(await readAllEvents(tx, harnessId, item.itemId), place));
+    const decided = decidedConnectors(await tx.gateDecisions.read.forItem(item.itemId));
+    stuck.push(...stuckIn(await readAllEvents(tx, harnessId, item.itemId), { place, decided }));
   }
   return { harness, stuck, context: recordContext(ports, caller, at) };
 }
