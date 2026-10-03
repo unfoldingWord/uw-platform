@@ -6,6 +6,7 @@ import type { ImportTarget } from '../items/import.ts';
 import { pollQueue, type PollInput, type PollItem } from './poll.ts';
 import { importTarget, issueImported } from './repository.ts';
 import {
+  delegationHarness,
   harnessScene,
   itemScene,
   itemsInStage,
@@ -26,6 +27,11 @@ export type KernelReads = {
     input: { readonly itemId: string },
     options?: ReadOptions,
   ): Promise<KernelOutcome<ItemScene>>;
+  delegation(
+    caller: Caller,
+    input: { readonly delegationId: string },
+    options?: ReadOptions,
+  ): Promise<KernelOutcome<{ readonly harnessId: string }>>;
   inStage(
     caller: Caller,
     input: { readonly harnessId: string; readonly stageKey: string },
@@ -61,6 +67,12 @@ export function createKernelReads(ports: ReadPorts): KernelReads {
     item: (caller, input, options) => {
       const at = instant(options);
       return ports.store.transaction((tx) => itemScene(ports, tx, caller, input.itemId, at));
+    },
+    delegation: (caller, input, options) => {
+      const at = instant(options);
+      return ports.store.transaction((tx) =>
+        delegationHarness(ports, tx, caller, input.delegationId, at),
+      );
     },
     inStage: (caller, input, options) => {
       const at = instant(options);
