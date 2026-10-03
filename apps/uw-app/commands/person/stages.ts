@@ -58,3 +58,10 @@ export const resumeCommand = commandHandler({
   run: async ({ kernel, caller, harnessId }, body: CommandBody<'resume'>) =>
     fromKernel(await kernel.stages.resume(caller, { harnessId, stageKey: body.stageKey })),
 });
+
+export const setHostedBuilderCommand = commandHandler({
+  name: 'set_hosted_builder',
+  action: 'admin',
+  run: async ({ kernel, caller, harnessId }, body: CommandBody<'set_hosted_builder'>) =>
+    fromKernel(await kernel.stages.setHostedBuilder(caller, { harnessId, enabled: body.enabled })),
+});
