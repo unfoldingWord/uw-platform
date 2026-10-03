@@ -7,9 +7,15 @@ import {
 } from './agent-commands.ts';
 import { jdAreaSchema } from './areas.ts';
 import * as closedSets from './closed-sets.ts';
-import { commandNameSchema, commandSchema, overrideCommandSchema } from './commands.ts';
+import {
+  commandNameSchema,
+  commandSchema,
+  overrideCommandSchema,
+  templateKeySchema,
+} from './commands.ts';
 import { personaActivationRefusalSchema } from './event-evidence.ts';
 import { eventNameSchema, eventSchema, newEventSchema } from './events.ts';
+import { gateViewSchema } from './gate-view.ts';
 import { issueReferenceSchema, pullRequestDeclarationSchema } from './github.ts';
 import {
   healthIndicatorSchema,
@@ -34,6 +40,7 @@ import {
   ingestResponseSchema,
   ingestSourceSchema,
 } from './ingest.ts';
+import { eventPageReplySchema, eventQuerySchema, hubWakeSchema } from './live.ts';
 import {
   acceptedOutcomeSchema,
   errorOutcomeSchema,
@@ -172,4 +179,9 @@ export const schemaRegistry: Record<string, ZodType> = {
   'revoke-service-token-command': revokeServiceTokenCommandSchema,
   'issue-reference': issueReferenceSchema,
   'pull-request-declaration': pullRequestDeclarationSchema,
+  'template-key': templateKeySchema,
+  'hub-wake': hubWakeSchema,
+  'event-page-reply': eventPageReplySchema,
+  'event-read-query': eventQuerySchema,
+  'gate-view': gateViewSchema,
 };

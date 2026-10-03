@@ -11,5 +11,6 @@
     "stages": ["package", "scope"],
     "repository": "unfoldingWord/uw-platform"
   },
-  "traceId": "00000000-0000-4000-8000-0000000000c1"
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
 }

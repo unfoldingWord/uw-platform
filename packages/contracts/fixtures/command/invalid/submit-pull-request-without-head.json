@@ -1,0 +1,11 @@
+{
+  "command": "submit_to_gate",
+  "requestId": "3f1d7c1e-8c53-4a53-9d6e-0a9b6a0f4d11",
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "to": null,
+  "pullRequest": {
+    "repo": "unfoldingWord/uw-platform",
+    "number": 7
+  },
+  "head": null
+}

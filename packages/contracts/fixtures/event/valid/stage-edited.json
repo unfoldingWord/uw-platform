@@ -9,8 +9,15 @@
   "evidence": {
     "stageId": "00000000-0000-4000-8000-0000000000d1",
     "key": "review",
-    "before": { "exitGate": "checks", "wipLimit": 3 },
-    "after": { "exitGate": "human_approval", "wipLimit": 2 }
+    "before": {
+      "exitGate": "checks",
+      "wipLimit": 3
+    },
+    "after": {
+      "exitGate": "human_approval",
+      "wipLimit": 2
+    }
   },
-  "traceId": "00000000-0000-4000-8000-0000000000c1"
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
 }

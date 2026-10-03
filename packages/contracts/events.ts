@@ -6,6 +6,7 @@ export const eventNames = [
   'item_created',
   'item_claimed',
   'item_released',
+  'item_reordered',
   'lease_renewed',
   'lease_expired',
   'branch_abandoned',
@@ -38,6 +39,7 @@ export const eventNames = [
   'delegation_required',
   'stage_edit_refused',
   'stage_edited',
+  'stage_removed',
   'template_activated',
   'harness_paused',
   'harness_resumed',
@@ -81,6 +83,7 @@ const fields = {
   actor: identitySchema,
   evidence: z.record(z.string(), z.json()),
   traceId: z.uuid(),
+  requestId: z.uuid().nullable().default(null),
 };
 
 export const newEventSchema = z.strictObject(fields).superRefine(checkEvidence);
