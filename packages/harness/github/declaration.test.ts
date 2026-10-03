@@ -2,6 +2,8 @@ import type { PullRequestDeclaration } from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
 import {
   DECLARED_CLOSES_LIMIT,
+  DECLARED_REFERENCE_LIMIT,
+  declarationWithinLimit,
   parseDeclaration,
   parseReviewProvider,
   riskDeclarationOf,
@@ -162,6 +164,23 @@ describe('P16 a harness block with a wrong line declares nothing', () => {
   });
 });
 
+describe('P16 a closed issue reference in the harness block is bounded', () => {
+  it('takes a closed issue reference as long as the limit and refuses one longer', () => {
+    const reference = (length: number): string => `${'o'.repeat(length - 4)}/r#1`;
+    const atLimit = reference(DECLARED_REFERENCE_LIMIT);
+    expect(DECLARED_REFERENCE_LIMIT).toBe(160);
+    expect(atLimit).toHaveLength(160);
+    expect(parseDeclaration(bodyWith(replaced('closes', `closes: ${atLimit}`)))).toEqual(
+      success({ ...parsed, closes: [atLimit] }),
+    );
+    const over = reference(DECLARED_REFERENCE_LIMIT + 1);
+    expect(over).toHaveLength(161);
+    expect(parseDeclaration(bodyWith(replaced('closes', `closes: #12, ${over}`)))).toEqual(
+      failure('invalid_value'),
+    );
+  });
+});
+
 describe('the risk declaration is the parsed tier and domains or nothing', () => {
   it('takes the tier and domains from a declaration', () => {
     expect(riskDeclarationOf({ ...parsed, riskTier: 'high', riskDomains: ['acl'] })).toEqual({
@@ -172,6 +191,17 @@ describe('the risk declaration is the parsed tier and domains or nothing', () =>
 
   it('is nothing without a declaration', () => {
     expect(riskDeclarationOf(null)).toBeNull();
+  });
+
+  it('is nothing for a stored declaration with a closed issue reference over the limit', () => {
+    const atLimit = `${'o'.repeat(156)}/r#1`;
+    const over = `${'o'.repeat(157)}/r#1`;
+    expect(declarationWithinLimit({ ...parsed, closes: [atLimit] })).toEqual({
+      ...parsed,
+      closes: [atLimit],
+    });
+    expect(declarationWithinLimit({ ...parsed, closes: ['#12', over] })).toBeNull();
+    expect(riskDeclarationOf({ ...parsed, closes: [over] })).toBeNull();
   });
 });
 

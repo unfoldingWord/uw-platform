@@ -32,6 +32,14 @@ const declarationKeys: readonly string[] = [
 const knownKeys: ReadonlySet<string> = new Set(declarationKeys);
 
 export const DECLARED_CLOSES_LIMIT = 50;
+export const DECLARED_REFERENCE_LIMIT = 160;
+
+function closesWithinLimit(closes: readonly string[]): boolean {
+  return (
+    closes.length <= DECLARED_CLOSES_LIMIT &&
+    closes.every((reference) => reference.length <= DECLARED_REFERENCE_LIMIT)
+  );
+}
 
 function refused(problem: DeclarationProblem): {
   readonly ok: false;
@@ -75,7 +83,7 @@ function inSchemaOrder(domains: readonly RiskDomain[]): RiskDomain[] {
 function assemble(fields: Fields): DeclarationParse {
   const field = (key: string): string => fields.get(key) ?? '';
   const closes = setOf(field('closes'));
-  if (closes.length > DECLARED_CLOSES_LIMIT) return refused('invalid_value');
+  if (!closesWithinLimit(closes)) return refused('invalid_value');
   const parsed = pullRequestDeclarationSchema.safeParse({
     closes,
     risks: field('risks'),
@@ -100,7 +108,7 @@ export function parseDeclaration(body: string | null): DeclarationParse {
 export function declarationWithinLimit(
   declaration: PullRequestDeclaration | null,
 ): PullRequestDeclaration | null {
-  if (declaration === null || declaration.closes.length > DECLARED_CLOSES_LIMIT) return null;
+  if (declaration === null || !closesWithinLimit(declaration.closes)) return null;
   return declaration;
 }
 

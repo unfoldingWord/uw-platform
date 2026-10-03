@@ -106,7 +106,8 @@ async function hiddenItem(db: Database): Promise<void> {
   const { itemId, harnessId } = parked.item;
   const other = await otherHarness(db, parked);
   const missing = await viewAs(db, kimEmail, gatePath(harnessId, missingItem));
-  sameAsMissing(missing, missing);
+  expect(missing.status).toBe(404);
+  expect(missing.body).toEqual({ status: 'error', reason: 'item_not_found' });
   sameAsMissing(await viewAs(db, strangerEmail, gatePath(harnessId, itemId)), missing);
   sameAsMissing(await viewAs(db, kimEmail, gatePath(other, itemId)), missing);
   sameAsMissing(await viewAs(db, kimEmail, gatePath(randomUUID(), itemId)), missing);
@@ -134,12 +135,46 @@ async function agentsDecideNoGate(db: Database): Promise<void> {
   }
 }
 
+const storedDeclaration = {
+  closes: ['#12'],
+  risks: 'the board renders slower on phones',
+  touches: 'apps/uw-app/board',
+  riskTier: 'standard',
+  riskDomains: [],
+};
+
+async function storeCloses(db: Database, closes: readonly string[]): Promise<void> {
+  const declaration = JSON.stringify({ ...storedDeclaration, closes });
+  await db.$client`UPDATE gh_prs SET declaration = ${declaration}::jsonb WHERE number = 7`;
+}
+
+async function overLongReference(db: Database): Promise<void> {
+  const parked = await parkedAtShip(db);
+  const path = gatePath(parked.item.harnessId, parked.item.itemId);
+  const atLimit = `${'o'.repeat(156)}/r#1`;
+  await storeCloses(db, ['#12', atLimit]);
+  const shown = await viewAs(db, kimEmail, path);
+  expect(shown.status).toBe(200);
+  expect(gateViewSchema.parse(shown.body).facts?.declaration?.closes).toEqual(['#12', atLimit]);
+  const over = `${'o'.repeat(157)}/r#1`;
+  await storeCloses(db, ['#12', over]);
+  const hidden = await viewAs(db, kimEmail, path);
+  expect(hidden.status).toBe(200);
+  const view = gateViewSchema.parse(hidden.body);
+  expect(view.facts).not.toBeNull();
+  expect(view.facts?.declaration).toBeNull();
+  expect(hidden.text).not.toContain(over);
+}
+
 describe.skipIf(!testServer)('GH-5 the gate view route', () => {
   it('GH-5 the gate view route shows the parsed declaration, the tier and domains and the head they were derived at', () =>
     withAppDatabase(viewShown));
 
   it('GH-5 the gate view route of a hidden item is item_not_found', () =>
     withAppDatabase(hiddenItem));
+
+  it('GH-5 the gate view route shows no declaration when a stored closed issue reference is over the limit, and does not fail', () =>
+    withAppDatabase(overLongReference));
 });
 
 describe.skipIf(!testServer)('the gate view route shows an agent no gate', () => {
