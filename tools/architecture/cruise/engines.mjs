@@ -1,11 +1,15 @@
 import { npm, vendorSdk, testFile, engineKeys, engineDirectory } from './shared.mjs';
 
 const environment = '^apps/uw-app/env\\.ts$';
+const containers = npm('@cloudflare/containers');
+const sandbox = '^apps/uw-app/engines/sandbox/';
 const enginesMayImport = [
   '^packages/(harness|contracts)/',
   npm('zod'),
   ...vendorSdk,
+  containers,
   '^apps/uw-app/engines/(seam|config|tool-schemas)\\.ts$',
+  sandbox,
   environment,
 ];
 
@@ -69,5 +73,36 @@ export const engineRules = [
     severity: 'error',
     from: { path: '^apps/uw-app/engines/', pathNot: testFile },
     to: { path: environment, dependencyTypesNot: ['type-only'] },
+  },
+  {
+    name: 'containers-only-in-the-sandbox',
+    comment: 'The Containers package is imported only under apps/uw-app/engines/sandbox/.',
+    severity: 'error',
+    from: { pathNot: sandbox },
+    to: { path: containers },
+  },
+  {
+    name: 'sandbox-only-from-the-sandbox-engines',
+    comment:
+      'The shared sandbox files are imported only by the two sandbox engines, the engine configuration, the Worker entry (for the classes) and tests.',
+    severity: 'error',
+    from: {
+      pathNot: [
+        sandbox,
+        '^apps/uw-app/engines/(claude-code-sandbox|codex-sandbox)/',
+        '^apps/uw-app/engines/config\\.ts$',
+        '^apps/uw-app/index\\.ts$',
+        testFile,
+      ],
+    },
+    to: { path: sandbox },
+  },
+  {
+    name: 'sandbox-classes-only-in-the-worker-entry',
+    comment:
+      'The sandbox Durable Object classes, which need the Workers runtime, are imported only by the Worker entry and tests, so nothing a Node test imports reaches them.',
+    severity: 'error',
+    from: { pathNot: ['^apps/uw-app/index\\.ts$', testFile] },
+    to: { path: `${sandbox}classes\\.ts$` },
   },
 ];

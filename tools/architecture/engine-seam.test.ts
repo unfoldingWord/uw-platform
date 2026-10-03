@@ -44,6 +44,14 @@ const platform = {
   'apps/uw-app/engines/claude-messages/index.ts': "import './turn.ts';",
   'apps/uw-app/engines/claude-messages/prices.ts': leaf,
   'apps/uw-app/engines/codex-sandbox/index.ts': leaf,
+  'apps/uw-app/engines/sandbox/run.ts': leaf,
+  'apps/uw-app/engines/sandbox/classes.ts': "import '@cloudflare/containers';",
+  'apps/uw-app/index.ts': "import './engines/sandbox/classes.ts';",
+  'node_modules/@cloudflare/containers/index.js': 'export default 1;',
+  'node_modules/@cloudflare/containers/package.json': JSON.stringify({
+    name: '@cloudflare/containers',
+    main: 'index.js',
+  }),
   'packages/db/index.ts': leaf,
 };
 
@@ -94,6 +102,27 @@ const reaches: [string, string, string, string][] = [
   ],
 ];
 
+const sandboxCases: [string, string, string, string][] = [
+  [
+    'the containers package outside the sandbox directory',
+    'apps/uw-app/engines/codex-sandbox/index.ts',
+    "import '@cloudflare/containers';",
+    'containers-only-in-the-sandbox',
+  ],
+  [
+    'the sandbox from the run host',
+    'apps/uw-app/runs/run-core.ts',
+    "import '../engines/sandbox/run.ts';",
+    'sandbox-only-from-the-sandbox-engines',
+  ],
+  [
+    'the sandbox classes from outside the Worker entry',
+    'apps/uw-app/engines/sandbox/run.ts',
+    "import './classes.ts';",
+    'sandbox-classes-only-in-the-worker-entry',
+  ],
+];
+
 const allowedEngine = [
   "import '@uw/harness';",
   "import '@uw/contracts';",
@@ -133,6 +162,18 @@ describe('the engine seam', () => {
 
   it('allows an engine the harness, the contracts, zod, the seam files, its own directory and the environment as types', async () => {
     expect(await violations({ ...platform, [engineFile]: allowedEngine })).toEqual([]);
+  });
+
+  it.each(sandboxCases)('refuses %s', async (_name, path, source, rule) => {
+    const found = await violations({ ...platform, [path]: source });
+    expect(found.map((violation) => violation.rule)).toContain(rule);
+  });
+
+  it('allows a sandbox engine the shared sandbox files', async () => {
+    const engine = 'apps/uw-app/engines/codex-sandbox/index.ts';
+    const files = { ...platform, [engineFile]: leaf, [engine]: "import '../sandbox/run.ts';" };
+    const found = await violations(files);
+    expect(found).toEqual([]);
   });
 
   it('refuses the spend reader from outside the roots', async () => {
