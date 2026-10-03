@@ -197,7 +197,7 @@ The remote MCP server inside `uw-app` that serves the verb registry. The only wa
 _Avoid_: API (that is the command API people use), agent API, gateway
 
 **Command**:
-An action a person takes on the harness through the command API: kickstart, enqueue, import, reorder, claim, release, submit, approve, reject, take over, override, prompt run, stop run, pause, resume, tweak package, schedule regular tweak, revoke delegation, recover connectors, and the stage command: activate template, create, update, reorder and remove stage. Every command carries a `requestId` and returns `accepted` or `error`.
+An action a person takes on the harness through the command API: kickstart, enqueue, import, reorder, claim, release, submit, approve, reject, take over, override, prompt run, stop run, pause, resume, tweak package, schedule regular tweak, revoke delegation, recover connectors, and the stage command: activate template, create, update, reorder and remove stage; and set hosted Builder. Every command carries a `requestId` and returns `accepted` or `error`.
 _Avoid_: verb (that is the agent's word), action, mutation, endpoint
 
 **Person surface**:
