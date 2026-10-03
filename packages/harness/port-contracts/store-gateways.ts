@@ -303,25 +303,33 @@ function describeLeases(subject: () => GatewaySubject): void {
   });
 }
 
-async function itemLockRace(subject: GatewaySubject, itemId: string): Promise<string[]> {
+type LockRace = { readonly order: string[]; readonly second: ItemState | null };
+
+async function itemLockRace(
+  subject: GatewaySubject,
+  itemId: string,
+  firstWork: (tx: StoreTransaction, item: ItemState) => Promise<void> = async () => undefined,
+): Promise<LockRace> {
   const order: string[] = [];
   let signal: () => void = () => undefined;
   const held = new Promise<void>((resolve) => {
     signal = resolve;
   });
   const first = subject.store.transaction(async (tx) => {
-    await tx.harnessItems.read.lock(itemId);
+    const item = await tx.harnessItems.read.lock(itemId);
+    if (item !== null) await firstWork(tx, item);
     signal();
     await awaitBlocked(subject.lockWaiters);
     order.push('first finished');
   });
   await held;
   const second = subject.store.transaction(async (tx) => {
-    await tx.harnessItems.read.lock(itemId);
+    const item = await tx.harnessItems.read.lock(itemId);
     order.push('second locked');
+    return item;
   });
-  await Promise.all([first, second]);
-  return order;
+  const [, locked] = await Promise.all([first, second]);
+  return { order, second: locked };
 }
 
 function describeItemLock(subject: () => GatewaySubject): void {
@@ -331,7 +339,23 @@ function describeItemLock(subject: () => GatewaySubject): void {
       await seedHarness(tx, 0xe00, 'gateway-row-lock');
       await tx.harnessItems.write.insert(item, at);
     });
-    expect(await itemLockRace(subject(), item.itemId)).toEqual(['first finished', 'second locked']);
+    const race = await itemLockRace(subject(), item.itemId);
+    expect(race.order).toEqual(['first finished', 'second locked']);
+  });
+
+  it('DX-3 finds the item at its new stage when the lock waited on a stage move', async () => {
+    const item = itemOf(0xe80, 1);
+    await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0xe80, 'gateway-row-lock-move');
+      await tx.harnessItems.write.insert(item, at);
+    });
+    const race = await itemLockRace(subject(), item.itemId, (tx, locked) =>
+      tx.harnessItems.write.project({ ...locked, stageKey: 'review' }),
+    );
+    expect(race).toEqual({
+      order: ['first finished', 'second locked'],
+      second: { ...item, stageKey: 'review' },
+    });
   });
 }
 

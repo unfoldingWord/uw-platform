@@ -107,9 +107,13 @@ function bindReads(executor: AnyExecutor): HarnessItemsGateway['read'] {
       return rows[0] ? toItemState(rows[0].item, rows[0].stageKey) : null;
     },
     lock: async (itemId) => {
-      const rows = await selectItems(executor)
+      const locked = await executor
+        .select({ id: harnessItems.id })
+        .from(harnessItems)
         .where(eq(harnessItems.id, itemId))
-        .for('update', { of: harnessItems });
+        .for('update');
+      if (locked.length === 0) return null;
+      const rows = await selectItems(executor).where(eq(harnessItems.id, itemId));
       return rows[0] ? toItemState(rows[0].item, rows[0].stageKey) : null;
     },
     forHarness: async (harnessId) => {
