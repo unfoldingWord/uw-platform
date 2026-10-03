@@ -44,7 +44,7 @@ export type HostRig = {
 
 export type RigOptions = {
   readonly toolset?: readonly VerbName[];
-  readonly engine?: 'claude-messages' | 'openrouter-messages';
+  readonly engine?: 'claude-messages' | 'openrouter-messages' | 'claude-code-sandbox';
   readonly provider?: string | null;
   readonly capability?: 'build' | 'review';
   readonly gate?: boolean;
@@ -62,6 +62,7 @@ const defaultToolset: readonly VerbName[] = [
 const models: ReadonlyMap<string, string> = new Map([
   ['claude-messages', 'claude-sonnet-5'],
   ['openrouter-messages', 'z-ai/glm-5.3'],
+  ['claude-code-sandbox', 'claude-sonnet-5'],
 ]);
 
 function clockFrom(start: number): TestClock {
@@ -183,13 +184,16 @@ export function personaPrincipal(rig: HostRig): Principal {
   });
 }
 
-export async function startedRun(rig: HostRig): Promise<string> {
-  const started = await rig.kernel.runs.start(callerOf(personaPrincipal(rig)), {
+export function startRun(rig: HostRig) {
+  return rig.kernel.runs.start(callerOf(personaPrincipal(rig)), {
     itemId: rig.itemId,
     delegationId: rig.delegationId,
     personaPageId,
   });
-  return accepted(started).runId;
+}
+
+export async function startedRun(rig: HostRig): Promise<string> {
+  return accepted(await startRun(rig)).runId;
 }
 
 export type Script = (work: EngineWork) => Promise<EngineWorkResult>;

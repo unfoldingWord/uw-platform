@@ -21,6 +21,7 @@ import {
   runDepsFor,
   scriptedEngines,
   startedRun,
+  startRun,
   type HostRig,
   type RigOptions,
   type Script,
@@ -306,6 +307,35 @@ async function gateExpires(db: Database): Promise<void> {
   expect(stopped?.evidence).toEqual({ runId: r.runId, why: 'gate_wait_expired' });
 }
 
+async function hostedBuilderOnly(db: Database): Promise<void> {
+  const rig = await hostRig(db, host, { engine: 'claude-code-sandbox', provider: 'anthropic' });
+  expect(await startRun(rig)).toMatchObject({
+    status: 'error',
+    reason: 'hosted_builder_off',
+  });
+  const enabled = { harnessId: rig.harnessId, enabled: true };
+  accepted(await rig.kernel.stages.setHostedBuilder(callerOf(rig.admin), enabled));
+  const calls: Calls = { scout: 0, work: 0, works: [], scouts: [] };
+  const engines = scriptedEngines({
+    'openrouter-messages': scout(calls),
+    'claude-code-sandbox': worker(calls, async () => ended('built', { computeMinor: 12 })),
+  });
+  const runId = await startedRun(rig);
+  const begun: RunStart = {
+    runId,
+    harnessId: rig.harnessId,
+    itemId: rig.itemId,
+    persona: personaPrincipal(rig).identity,
+    runShape: 'workflow-run',
+    engine: 'claude-code-sandbox',
+    traceId: randomUUID(),
+  };
+  expect(await runWorkflow(begun, fakeSteps(), runDepsFor(rig, host, engines))).toBe('submitted');
+  expect(calls.works.map((work) => typeof work.egress.mcp)).toEqual(['function']);
+  const work = (await runRow(rig, runId))?.steps.find((step) => step.step === 'work');
+  expect(work).toMatchObject({ computeMinor: 12, resolvedProvider: 'anthropic' });
+}
+
 describe.skipIf(!testServer)('the run core', () => {
   it('HE-1 a run records read, scout, work and submit as named steps, each through record_run_step with its cost', () =>
     withAppDatabase(namedSteps));
@@ -333,6 +363,9 @@ describe.skipIf(!testServer)('the run core', () => {
 
   it('HE-4 a provider mismatch fails the run provider_mismatch and posts no review', () =>
     withAppDatabase(mismatch));
+
+  it('HE-8 a Builder on claude-code-sandbox runs only where hosted Builder is on', () =>
+    withAppDatabase(hostedBuilderOnly));
 
   it('HE-1 a held premise ends the run without a work step', () => withAppDatabase(heldPremise));
 

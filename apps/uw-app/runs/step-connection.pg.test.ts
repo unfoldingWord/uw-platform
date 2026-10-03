@@ -139,6 +139,40 @@ async function stoppedMidStep(db: Database): Promise<void> {
   }
 }
 
+function overHttp(step: OpenStep, method: string, params: object) {
+  return step.http(
+    new Request('http://mcp.internal/mcp', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json, text/event-stream',
+      },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+    }),
+  );
+}
+
+async function sandboxSurface(db: Database): Promise<void> {
+  const rig = await hostRig(db, host);
+  const step = await opened(rig, await startedRun(rig));
+  try {
+    const listed = (await (await overHttp(step, 'tools/list', {})).json()) as {
+      result: { tools: { name: string }[] };
+    };
+    expect(listed.result.tools.map((tool) => tool.name).sort()).toEqual(
+      ['read_page', 'resolve_context', 'search_pages', 'submit_to_gate'].sort(),
+    );
+    accepted(await rig.kernel.runs.stop(callerOf(rig.admin), { itemId: rig.itemId }));
+    const call = await overHttp(step, 'tools/call', {
+      name: 'search_pages',
+      arguments: { query: 'board', type: null, limit: 5 },
+    });
+    expect(await call.text()).toContain('run_stopped');
+  } finally {
+    await step.close();
+  }
+}
+
 describe.skipIf(!testServer)('the step connection', () => {
   it("HE-1 a step connects as the run's beat principal and never as a principal it is given", () =>
     withAppDatabase(beatPrincipal));
@@ -154,6 +188,9 @@ describe.skipIf(!testServer)('the step connection', () => {
 
   it('HE-1 a step for a run whose delegation lapsed opens no connection', () =>
     withAppDatabase(lapsedDelegation));
+
+  it("HE-8 a sandbox reaches the step's surface over HTTP with the persona's toolset and the per-call check", () =>
+    withAppDatabase(sandboxSurface));
 
   it("a tool call after a person stopped the run is refused by the step's per-call check", () =>
     withAppDatabase(stoppedMidStep));

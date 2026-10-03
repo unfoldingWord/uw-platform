@@ -1,6 +1,13 @@
 import { verbIo, type Engine, type VerbName } from '@uw/contracts';
-import { parseScoutVerdict, ProviderMismatchError, SCOUT_ENGINE } from '@uw/harness';
+import { errorFields } from '@uw/core/log';
+import {
+  parseScoutVerdict,
+  PortNotWiredError,
+  ProviderMismatchError,
+  SCOUT_ENGINE,
+} from '@uw/harness';
 import { engineAdapter } from '../engines/registry.ts';
+import type { EngineWork, EngineWorkResult } from '../engines/seam.ts';
 import type { RunDeps } from './deps.ts';
 import {
   contextText,
@@ -11,6 +18,7 @@ import {
 } from './prompts.ts';
 import {
   callCore,
+  countedHttp,
   countedTools,
   haltedBy,
   isOpen,
@@ -119,13 +127,35 @@ function onTurnOf(deps: RunDeps, open: OpenStep): () => Promise<void> {
   };
 }
 
+async function engineWork(
+  deps: RunDeps,
+  engine: Engine,
+  work: EngineWork,
+): Promise<EngineWorkResult> {
+  try {
+    return await engineAdapter(deps.engines, engine).work(work);
+  } catch (error) {
+    if (error instanceof PortNotWiredError) {
+      deps.logger.warn('engine not wired', { outcome: 'not_wired', engine, ...errorFields(error) });
+    }
+    throw error;
+  }
+}
+
+function merged(first: readonly VerbName[], second: readonly VerbName[]): VerbName[] {
+  return [...new Set([...first, ...second])];
+}
+
 async function modelRun(deps: RunDeps, open: OpenStep, plan: ModelPlan): Promise<ModelDone> {
   const { run, item, persona } = open.scene;
   const tools = countedTools(open.client);
+  const http = countedHttp(open.http);
   const toolset = persona.toolset.filter(
     (verb) => verb !== 'record_run_step' && (plan.step === 'work' || readOnly.has(verb)),
   );
-  const result = await engineAdapter(deps.engines, plan.engine).work({
+  const refused = (host: string) =>
+    deps.logger.warn('sandbox egress refused', { outcome: 'egress_refused', host });
+  const result = await engineWork(deps, plan.engine, {
     runId: run.id,
     itemId: item.itemId,
     traceId: run.traceId,
@@ -137,6 +167,7 @@ async function modelRun(deps: RunDeps, open: OpenStep, plan: ModelPlan): Promise
     toolset,
     tools,
     onTurn: onTurnOf(deps, open),
+    egress: { mcp: http.handle, refused },
   });
   await recordStep(open, {
     step: plan.step,
@@ -146,8 +177,8 @@ async function modelRun(deps: RunDeps, open: OpenStep, plan: ModelPlan): Promise
     computeMinor: result.computeMinor,
     model: result.resolvedModel,
     resolvedProvider: plan.step === 'work' ? result.resolvedProvider : null,
-    toolsCalled: [...result.toolsCalled],
-    writes: tools.writes(),
+    toolsCalled: merged(result.toolsCalled, http.called()),
+    writes: tools.writes() + http.writes(),
   });
   const { text, outcome, resolvedProvider, resolvedModel } = result;
   return { kind: 'model', text, outcome, resolvedProvider, resolvedModel };

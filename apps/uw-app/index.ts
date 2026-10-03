@@ -3,6 +3,7 @@ import { runScheduled } from './cron/scheduled.ts';
 import type { Bindings } from './env.ts';
 import { consumeIngestBatch } from './queue/worker.ts';
 
+export { ClaudeCodeSandbox, CodexSandbox, ContainerProxy } from './engines/sandbox/classes.ts';
 export { HarnessHub } from './live/harness-hub.ts';
 export { HarnessRun } from './runs/workflow.ts';
 
