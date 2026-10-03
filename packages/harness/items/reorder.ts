@@ -25,21 +25,34 @@ function placements(
   return placed.map((item, index) => ({ item, priority: (placed.length - index) * 10 }));
 }
 
+async function stagePeers(
+  tx: StoreTransaction,
+  harnessId: string,
+  stageKey: string,
+): Promise<readonly string[]> {
+  const items = await tx.harnessItems.read.forHarness(harnessId);
+  return items
+    .filter((item) => item.stageKey === stageKey)
+    .map((item) => item.itemId)
+    .sort();
+}
+
 async function lockStage(
   tx: StoreTransaction,
   harnessId: string,
   stageKey: string,
 ): Promise<readonly ItemState[]> {
-  const peers = (await tx.harnessItems.read.forHarness(harnessId))
-    .filter((item) => item.stageKey === stageKey)
-    .map((item) => item.itemId)
-    .sort();
-  const locked: ItemState[] = [];
-  for (const itemId of peers) {
-    const row = await tx.harnessItems.read.lock(itemId);
-    if (row !== null && row.stageKey === stageKey) locked.push(row);
+  const locked = new Map<string, ItemState>();
+  for (let peers = await stagePeers(tx, harnessId, stageKey); ;) {
+    const unlocked = peers.filter((itemId) => !locked.has(itemId));
+    if (unlocked.length === 0) break;
+    for (const itemId of unlocked) {
+      const row = await tx.harnessItems.read.lock(itemId);
+      if (row !== null) locked.set(itemId, row);
+    }
+    peers = await stagePeers(tx, harnessId, stageKey);
   }
-  return locked.sort(byPriorityThenId);
+  return [...locked.values()].filter((row) => row.stageKey === stageKey).sort(byPriorityThenId);
 }
 
 async function writeRefusal(
@@ -58,7 +71,7 @@ async function writeRefusal(
 
 function placementRefusal(order: readonly ItemState[], input: ReorderInput): Refused | ItemState {
   const moved = order.find((item) => item.itemId === input.itemId);
-  if (moved === undefined) return refused('not_permitted', { why: 'moved' });
+  if (moved === undefined) return refused('stale_version', { itemId: input.itemId, why: 'moved' });
   if (input.beforeItemId === input.itemId) {
     return refused('malformed_command', { why: 'before_is_the_item' });
   }
