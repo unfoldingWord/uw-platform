@@ -50,6 +50,8 @@ export type { SubmitChange, Submitted, SubmitInput } from './items/submit.ts';
 export { expireLapsedLease, LEASE_MS, LEASE_WARNING_MS } from './items/leases.ts';
 export type { LeaseOutcome, StepOutcome } from './items/run-steps.ts';
 export type { RunCommands } from './runs/commands.ts';
+export { DEFAULT_SPEND_CAP } from './runs/breaker.ts';
+export type { BreakerCommands, BreakerReading, BreakerState } from './runs/breaker.ts';
 export type {
   RunPersona,
   RunScene,

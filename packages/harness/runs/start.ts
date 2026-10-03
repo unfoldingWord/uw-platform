@@ -7,7 +7,7 @@ import { draft, recordContext, recordItemEvents, type RecordContext } from '../i
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import { PortNotWiredError, storeRefusalOf } from '../port-errors.ts';
 import type { Ports, RunRow, StoreTransaction } from '../ports.ts';
-import { currentLevel } from './breaker-level.ts';
+import { spendRefusal } from './breaker-level.ts';
 import { personaOfPage, personaPageOf, type PersonaPage } from './persona.ts';
 import { ended, heldByRun, newHostedRun } from './rows.ts';
 import type { RunPersona, StartedRun, StartRunInput } from './types.ts';
@@ -78,11 +78,6 @@ async function personaFor(
   return hostingRefusal(page, harness) ?? personaOfPage(page.facts);
 }
 
-async function spendRefusal(tx: StoreTransaction): Promise<Refused | null> {
-  const level = await currentLevel(tx);
-  return level === 'open' ? null : refused('spend_held', { level });
-}
-
 async function beatPrincipalOf(
   ports: StartPorts,
   tx: StoreTransaction,
@@ -145,7 +140,7 @@ async function startIn(
   if ('status' in target) return target;
   const persona = await personaFor(tx, start, target.harness);
   if ('status' in persona) return persona;
-  const held = await spendRefusal(tx);
+  const held = await spendRefusal(tx, start.at);
   if (held !== null) return held;
   return openRun(ports, tx, start, { item: target.item, persona });
 }

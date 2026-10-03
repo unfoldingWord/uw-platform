@@ -1,5 +1,5 @@
 import type { HealthIndicator, HealthReport } from '@uw/contracts';
-import type { Accepted, Kernel, KernelHealth } from '@uw/harness';
+import type { Accepted, BreakerState, Kernel, KernelHealth } from '@uw/harness';
 import { overallStatus } from '../../health/indicators.ts';
 import type { VerbContext } from '../context.ts';
 import { gatedHandler, refusal } from '../handler.ts';
@@ -32,15 +32,35 @@ function databaseIndicator(health: KernelHealth): HealthIndicator {
   return { name: 'database', status: 'ok', detail: `${count} migrations applied` };
 }
 
-function reportOf(scene: HarnessScene, health: KernelHealth, commit: string): HealthReport {
+const breakerStatus = {
+  open: 'ok',
+  holding: 'amber',
+  pausing: 'red',
+} as const satisfies Record<BreakerState['level'], HealthIndicator['status']>;
+
+function breakerIndicator(breaker: BreakerState): HealthIndicator {
+  const status = breakerStatus[breaker.level];
+  const detail =
+    breaker.reading === null
+      ? 'no reading yet'
+      : `${breaker.reading.percent.toString()} percent of the cap spent`;
+  return { name: 'breaker', status, detail };
+}
+
+type Readings = {
+  readonly health: KernelHealth;
+  readonly breaker: BreakerState;
+  readonly commit: string;
+};
+
+function reportOf(scene: HarnessScene, { health, breaker, commit }: Readings): HealthReport {
   const indicators: HealthIndicator[] = [
     harnessIndicator(scene),
     databaseIndicator(health),
-    ...WB10_INDICATORS.map((name): HealthIndicator => ({
-      name,
-      status: 'not_wired',
-      detail: WB10_DETAIL,
-    })),
+    ...WB10_INDICATORS.map((name): HealthIndicator => {
+      if (name === 'breaker') return breakerIndicator(breaker);
+      return { name, status: 'not_wired', detail: WB10_DETAIL };
+    }),
   ];
   return { status: overallStatus(indicators), commit, indicators };
 }
@@ -64,6 +84,8 @@ export const getHealth = gatedHandler({
   },
   run: async (context, _input, scene: HarnessScene) => {
     const health = await context.kernel.health();
-    return { status: 'accepted', output: reportOf(scene, health, context.commit) };
+    const breaker = await context.kernel.breaker.state();
+    const readings = { health, breaker, commit: context.commit };
+    return { status: 'accepted', output: reportOf(scene, readings) };
   },
 });

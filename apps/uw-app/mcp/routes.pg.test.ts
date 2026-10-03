@@ -39,7 +39,7 @@ const INDICATORS = [
   'agent_writes',
   'stale_learnings',
 ];
-const NOT_WIRED = INDICATORS.slice(2);
+const NOT_WIRED = INDICATORS.slice(2).filter((name) => name !== 'breaker');
 
 let fixture: AccessFixture;
 
@@ -171,14 +171,14 @@ describe.skipIf(!testServer)('AB-1 /mcp is a Streamable HTTP endpoint behind Acc
       await client.close();
     }));
 
-  it('answers get_health on a harness in 80-89 with every indicator, the WB-10 ones not wired', () =>
+  it('answers get_health on a harness in 80-89 with every indicator, the WB-10 ones but the breaker not wired', () =>
     withAppDatabase(async (db) => {
       await seed(db);
       const body = await healthOverHttp(db);
       const indicators = indicatorsOf(body);
       expect(namesOf(indicators)).toEqual(INDICATORS);
       expect(namesOf(withStatus(indicators, 'not_wired'))).toEqual(NOT_WIRED);
-      expect(namesOf(withStatus(indicators, 'ok'))).toEqual(['harness', 'database']);
+      expect(namesOf(withStatus(indicators, 'ok'))).toEqual(['harness', 'database', 'breaker']);
       expect(body['status']).toBe('ok');
     }));
 
