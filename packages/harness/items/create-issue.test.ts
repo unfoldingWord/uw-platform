@@ -62,6 +62,7 @@ function itemsGateway(inserted: ItemState[]): HarnessItemsGateway {
       forHarness: unused,
       heldInStage: unused,
       openInStage: unused,
+      lowestOpenPriority: unused,
       lapsedLeases: unused,
     },
     write: {
@@ -76,7 +77,7 @@ function itemsGateway(inserted: ItemState[]): HarnessItemsGateway {
 
 function eventsGateway(appended: HarnessEvent[]): HarnessEventsGateway {
   return {
-    read: { page: unused },
+    read: { page: unused, createdFor: unused },
     write: {
       append: async (events: readonly NewHarnessEvent[]) => {
         const stored = events.map((event, index) => ({ ...event, position: index + 1 }));

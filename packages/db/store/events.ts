@@ -1,4 +1,4 @@
-import { and, asc, eq, gt } from 'drizzle-orm';
+import { and, asc, eq, gt, isNotNull } from 'drizzle-orm';
 import type { HarnessEvent, NewHarnessEvent } from '@uw/contracts';
 import type { AnyExecutor } from '../any-database.ts';
 import { harnessEvents } from '../schema.ts';
@@ -10,7 +10,10 @@ const maxPage = 100;
 
 export function bindEvents(executor: AnyExecutor): HarnessEventsGateway {
   return {
-    read: { page: (query) => page(executor, query) },
+    read: {
+      page: (query) => page(executor, query),
+      createdFor: (actor, requestId) => createdFor(executor, actor, requestId),
+    },
     write: { append: (events) => refusing(() => appendAll(executor, events)) },
   };
 }
@@ -65,4 +68,24 @@ async function page(executor: AnyExecutor, query: EventQuery): Promise<EventPage
     events,
     next: last !== undefined && events.length === query.limit ? last.position : null,
   };
+}
+
+async function createdFor(
+  executor: AnyExecutor,
+  actor: string,
+  requestId: string,
+): Promise<string | null> {
+  const rows = await executor
+    .select({ itemId: harnessEvents.itemId })
+    .from(harnessEvents)
+    .where(
+      and(
+        eq(harnessEvents.actor, actor),
+        eq(harnessEvents.requestId, requestId),
+        eq(harnessEvents.name, 'item_created'),
+        isNotNull(harnessEvents.itemId),
+      ),
+    )
+    .limit(1);
+  return rows[0]?.itemId ?? null;
 }

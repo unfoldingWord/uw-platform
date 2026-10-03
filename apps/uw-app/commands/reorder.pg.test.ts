@@ -157,7 +157,65 @@ async function serviceTokenReadsNothing(db: Database): Promise<void> {
   expect(read.body).toEqual({ status: 'error', reason: 'unauthenticated' });
 }
 
+async function enqueuedThroughApi(db: Database, scene: Scene): Promise<string[]> {
+  for (const title of ['A', 'B', 'C']) {
+    const requestId = randomUUID();
+    const body = { requestId, title, pageId: null, due: null };
+    const sent = await command(db, scene.editor, scene.harnessId, 'enqueue', body);
+    expect(sent.body).toEqual({ status: 'accepted', requestId });
+  }
+  return listed(db, scene.viewer, scene.harnessId, 'package');
+}
+
+async function freshLaneMovesOne(db: Database): Promise<void> {
+  const scene = await softwareHarness(db);
+  const order = await enqueuedThroughApi(db, scene);
+  const created = await eventsNamed(db, scene.harnessId, 'item_created');
+  const priorities = created.map((event) => event.evidence['priority']);
+  expect(priorities).toEqual([0, -1000, -2000]);
+  expect(order).toEqual(created.map((event) => event.itemId));
+  const [first, second, third] = order;
+  const sent = await command(db, scene.editor, scene.harnessId, 'reorder', {
+    requestId: randomUUID(),
+    itemId: third,
+    beforeItemId: second,
+  });
+  expect(sent.body).toMatchObject({ status: 'accepted' });
+  const reordered = await eventsNamed(db, scene.harnessId, 'item_reordered');
+  expect(reordered.map((event) => [event.itemId, event.evidence['priority']])).toEqual([
+    [third, -500],
+  ]);
+  expect(await listed(db, scene.viewer, scene.harnessId, 'package')).toEqual([
+    first,
+    third,
+    second,
+  ]);
+}
+
+async function tiedLaneRenumbers(db: Database): Promise<void> {
+  const scene = await softwareHarness(db);
+  const [first, second, third] = await threeEnqueued(db, scene);
+  const sent = await command(db, scene.editor, scene.harnessId, 'reorder', {
+    requestId: randomUUID(),
+    itemId: third,
+    beforeItemId: second,
+  });
+  expect(sent.body).toMatchObject({ status: 'accepted' });
+  const reordered = await eventsNamed(db, scene.harnessId, 'item_reordered');
+  expect(reordered.map((event) => [event.itemId, event.evidence['priority']])).toEqual([
+    [first, 3000],
+    [third, 2000],
+    [second, 1000],
+  ]);
+}
+
 describe.skipIf(!testServer)('WB-2 reorder through the command API', () => {
+  it('a new item lands below the lane, and a middle move in a lane of fresh enqueues writes one event', () =>
+    withAppDatabase(freshLaneMovesOne));
+
+  it('a middle move between tied priorities renumbers the open lane, one event per item whose priority changed', () =>
+    withAppDatabase(tiedLaneRenumbers));
+
   it('WB-2 reorder through the command API places the item before the named one and the stage’s items read back in the server’s order', () =>
     withAppDatabase(reorderBefore));
 

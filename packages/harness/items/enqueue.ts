@@ -2,7 +2,7 @@ import type { Harness, IssueRef, ItemState } from '@uw/contracts';
 import { allowed } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { actingPrincipal, isRefusal } from '../delegations/acting.ts';
-import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
+import { accepted, refused, type KernelOutcome } from '../outcome.ts';
 import { storeRefusalOf } from '../port-errors.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
 import { createItem, recordContext, type RecordContext, type Recorded } from './record.ts';
@@ -13,7 +13,7 @@ export type EnqueueInput = {
   readonly harnessId: string;
   readonly title: string;
   readonly pageId: string | null;
-  readonly priority: number;
+  readonly priority: number | null;
   readonly due: string | null;
   readonly delegationId: string | null;
 };
@@ -21,7 +21,7 @@ export type EnqueueInput = {
 export type EnqueueDraft = {
   readonly title: string;
   readonly pageId: string | null;
-  readonly priority: number;
+  readonly priority: number | null;
   readonly due: string | null;
   readonly issue: IssueRef | null;
 };
@@ -38,21 +38,41 @@ export async function enqueueIn(
     null,
   );
   if (first === null) return refused('stage_not_found', { harnessId: harness.id });
+  const priority = input.priority ?? (await bottomOf(tx, harness.id, first.key));
   return accepted(
     await createItem(tx, context, {
       itemId: context.ids.next(),
       harnessId: harness.id,
       stageKey: first.key,
       ...input,
+      priority,
     }),
   );
 }
 
+const laneSpacing = 1000;
+const lowestPriority = -(2 ** 31);
+
+async function bottomOf(tx: StoreTransaction, harnessId: string, stageKey: string) {
+  const lowest = await tx.harnessItems.read.lowestOpenPriority(harnessId, stageKey);
+  return lowest === null ? 0 : Math.max(lowest - laneSpacing, lowestPriority);
+}
+
 const oneItemPerRequest = 'harness_events_one_item_per_request';
 
-function requestRefusal(error: unknown, caller: Caller): Refused {
-  if (storeRefusalOf(error)?.constraint !== oneItemPerRequest) throw error;
-  return refused('request_in_flight', { requestId: caller.requestId ?? null });
+async function alreadyCreated(
+  ports: EnqueuePorts,
+  caller: Caller,
+  error: unknown,
+): Promise<KernelOutcome<ItemState>> {
+  const requestId = caller.requestId ?? null;
+  if (storeRefusalOf(error)?.constraint !== oneItemPerRequest || requestId === null) throw error;
+  const item = await ports.store.transaction(async (tx) => {
+    const itemId = await tx.harnessEvents.read.createdFor(caller.actor.identity, requestId);
+    return itemId === null ? null : tx.harnessItems.read.byId(itemId);
+  });
+  if (item === null) throw error;
+  return accepted(item);
 }
 
 export async function enqueue(
@@ -60,7 +80,9 @@ export async function enqueue(
   caller: Caller,
   input: EnqueueInput,
 ): Promise<KernelOutcome<ItemState>> {
-  return enqueueOnce(ports, caller, input).catch((error: unknown) => requestRefusal(error, caller));
+  return enqueueOnce(ports, caller, input).catch((error: unknown) =>
+    alreadyCreated(ports, caller, error),
+  );
 }
 
 function enqueueOnce(

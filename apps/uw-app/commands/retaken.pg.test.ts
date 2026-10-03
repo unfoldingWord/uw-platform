@@ -79,14 +79,10 @@ async function oneItemPerRequest(db: Database): Promise<void> {
       ...first,
       pageId: command === 'kickstart' ? pageId : null,
     });
-    const retaken = await dispatchAs(
-      actor,
-      scene.harnessId,
-      command,
-      { requestId, ...body },
-      dispatchScope(db),
-    );
-    expect(retaken).toEqual({ status: 'error', requestId, reason: 'request_in_flight' });
+    const send = () =>
+      dispatchAs(actor, scene.harnessId, command, { requestId, ...body }, dispatchScope(db));
+    expect(await send()).toEqual({ status: 'accepted', requestId });
+    expect(await send()).toEqual({ status: 'accepted', requestId });
     const created = await eventsNamed(db, scene.harnessId, 'item_created');
     expect(created.filter((event) => event.requestId === requestId)).toHaveLength(1);
   }
@@ -118,7 +114,7 @@ async function otherRequestsStillCreate(db: Database): Promise<void> {
 }
 
 describe.skipIf(!testServer)('a retaken request creates no second item', () => {
-  it('a retaken enqueue or kickstart whose first run already created the item answers request_in_flight and creates nothing', () =>
+  it('a retaken enqueue or kickstart whose first run already created the item answers accepted, creates nothing, and replays accepted', () =>
     withAppDatabase(oneItemPerRequest));
 
   it('distinct requestIds, and calls that name no requestId, each still create their item', () =>

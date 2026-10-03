@@ -6,7 +6,7 @@ import { describeDelegations } from './store-delegations.ts';
 import { describeEvents } from './store-events.ts';
 import { describeHarnessRepositories } from './store-harnesses.ts';
 import { describeItemIssues } from './store-items-issue.ts';
-import { describeStageItems } from './store-items-stage.ts';
+import { describeLowestOpen, describeStageItems } from './store-items-stage.ts';
 import { describeHarnessPause, describeStageRemoval } from './store-pause-and-removal.ts';
 import {
   at,
@@ -461,6 +461,7 @@ export function describeStoreGateways(
     describeProjection(subject);
     describeItemIssues(subject);
     describeStageItems(subject);
+    describeLowestOpen(subject);
     describeItemOrder(subject);
     describeClaims(subject);
     describeLeases(subject);
