@@ -17,12 +17,13 @@ type RiskDerived = {
 };
 
 export function GateCallout(props: {
+  readonly itemId: string;
   readonly title: string;
   readonly reason: string | null;
   readonly actions: Child;
   readonly children?: Child;
 }) {
-  const headingId = domId('gate', props.title);
+  const headingId = domId('gate', props.itemId);
   return (
     <section
       aria-labelledby={headingId}
@@ -67,15 +68,15 @@ function Declared(props: { readonly declaration: Declaration | null }) {
   );
 }
 
-function Derived(props: { readonly derived: RiskDerived | null }) {
+function Derived(props: { readonly derived: RiskDerived | null; readonly when: string }) {
   const derived = props.derived;
-  if (derived === null) return <Fact term="Derived tier">Not derived</Fact>;
+  if (derived === null) return <Fact term={`Tier ${props.when}`}>Not derived</Fact>;
   return (
     <>
-      <Fact term="Derived tier">
+      <Fact term={`Tier ${props.when}`}>
         {derived.riskTier ?? 'None'} at <code class="font-mono">{derived.head ?? 'no head'}</code>
       </Fact>
-      <Fact term="Derived domains">{listed(derived.riskDomains)}</Fact>
+      <Fact term={`Domains ${props.when}`}>{listed(derived.riskDomains)}</Fact>
     </>
   );
 }
@@ -83,20 +84,29 @@ function Derived(props: { readonly derived: RiskDerived | null }) {
 export function GateFacts(props: {
   readonly declaration: Declaration | null;
   readonly riskDerived: RiskDerived | null;
-  readonly approvingHead: string | null;
+  readonly derivedNow?: RiskDerived | null;
+  readonly reviewProviders?: readonly string[];
+  readonly head: string | null;
 }) {
   const derivedHead = props.riskDerived?.head ?? null;
-  const moved = derivedHead !== null && derivedHead !== props.approvingHead;
+  const moved = derivedHead !== null && derivedHead !== props.head;
   return (
     <div class="flex flex-col gap-2">
       <dl class="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
         <Declared declaration={props.declaration} />
-        <Derived derived={props.riskDerived} />
+        <Derived derived={props.riskDerived} when="recorded" />
+        {props.derivedNow === undefined ? null : (
+          <Derived derived={props.derivedNow} when="derived now" />
+        )}
+        {props.reviewProviders === undefined ? null : (
+          <Fact term="Review providers">{listed(props.reviewProviders)}</Fact>
+        )}
         <Fact term="You approve head">
-          <code class="font-mono">{props.approvingHead ?? 'No head'}</code>
+          <code class="font-mono">{props.head ?? 'No head'}</code>
         </Fact>
       </dl>
-      {moved ? <Note>The tier was derived at another head than the one you approve</Note> : null}
+      {props.head === null ? null : <input type="hidden" name="head" value={props.head} />}
+      {moved ? <Note>The tier was recorded at another head than the one you approve</Note> : null}
     </div>
   );
 }

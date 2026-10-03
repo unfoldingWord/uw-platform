@@ -4,12 +4,12 @@ import { repoFiles } from '../repo-files.ts';
 
 const owner = 'packages/ui/components/human-action.tsx';
 
-const kindle = /-kindle\b|\bkindle-soft\b/;
+const kindle = /-kindle\b|\bkindle-soft\b|["'`]kindle["'`]/i;
 
 function scanned(path: string): boolean {
   return (
-    /^(apps\/|packages\/ui\/components\/)/.test(path) &&
-    /\.tsx?$/.test(path) &&
+    ((/^(apps\/|packages\/ui\/components\/)/.test(path) && /\.tsx?$/.test(path)) ||
+      (/^apps\//.test(path) && /\.css$/.test(path))) &&
     !/\.test\.tsx?$/.test(path)
   );
 }
@@ -38,6 +38,10 @@ describe('WB-11 Kindle marks a human action', () => {
     ['apps/uw-app/pages/board.tsx', '<a class="text-kindle">Open</a>'],
     ['apps/uw-app/routes/gates.tsx', '<p style="color: var(--uw-kindle)">x</p>'],
     ['apps/uw-app/islands/live/flash.ts', "element.classList.add('outline-kindle');"],
+    ['packages/ui/components/badge.tsx', "const tone = 'kindle'; const c = `bg-${tone}`;"],
+    ['apps/uw-app/pages/board.tsx', 'const tones = { warm: "Kindle" };'],
+    ['apps/uw-app/pages/board.css', '.warm { background: var(--uw-kindle); }'],
+    ['apps/uw-app/pages/board.css', '.warm { @apply bg-kindle-soft; }'],
   ])('flags a planted Kindle use in %s: %s', (path, text) => {
     expect(scanned(path)).toBe(true);
     expect(usesKindle(path, text)).toBe(true);
@@ -55,6 +59,7 @@ describe('WB-11 Kindle marks a human action', () => {
     expect(scanned('packages/ui/components/human-action.test.ts')).toBe(false);
     expect(scanned('packages/ui/tokens/theme.css')).toBe(false);
     expect(scanned('packages/ui/app.css')).toBe(false);
+    expect(scanned('apps/uw-app/pages/board.css')).toBe(true);
     expect(scanned('packages/ui/generated/app-css.ts')).toBe(false);
   });
 });

@@ -11,7 +11,7 @@ export function KanbanCard(props: {
   const href = safeHref(props.href);
   return (
     <article class="rounded-lg border border-line bg-surface p-3 text-ink">
-      <h3 class="m-0 text-sm font-bold">
+      <h3 class="m-0 break-words text-sm font-bold">
         {href === undefined ? (
           props.title
         ) : (

@@ -22,7 +22,14 @@ const card = (title: string) =>
 describe('WB-11 the lane', () => {
   it('WB-11 a lane shows its count against its WIP limit and says when it is paused', async () => {
     const document = await dom(
-      jsx(Lane, { title: 'Build', count: 3, wipLimit: 3, paused: true, children: card('one') }),
+      jsx(Lane, {
+        stageKey: 'build',
+        title: 'Build',
+        count: 3,
+        wipLimit: 3,
+        paused: true,
+        children: card('one'),
+      }),
     );
     const lane = found(document.querySelector('section'));
     const heading = found(document.getElementById(found(lane.getAttribute('aria-labelledby'))));
@@ -37,27 +44,47 @@ describe('WB-11 the lane', () => {
   });
 
   it('a lane that is not paused says nothing about pausing', async () => {
-    const document = await dom(jsx(Lane, { title: 'Build', count: 1, wipLimit: 3 }));
+    const document = await dom(
+      jsx(Lane, { stageKey: 'build', title: 'Build', count: 1, wipLimit: 3 }),
+    );
     expect(document.body.textContent).not.toContain('Paused');
     expect(document.body.textContent).toContain('1 of 3');
   });
 
   it('a lane escapes its title', async () => {
-    const document = await dom(jsx(Lane, { title: '<b>x</b>', count: 0, wipLimit: 1 }));
+    const document = await dom(
+      jsx(Lane, { stageKey: 'build', title: '<b>x</b>', count: 0, wipLimit: 1 }),
+    );
     expect(document.querySelector('b')).toBeNull();
     expect(document.querySelector('h2')?.textContent).toBe('<b>x</b>');
   });
+});
 
-  it('two lanes on one page label themselves with different ids', async () => {
-    const first = await jsx(Lane, { title: 'Build', count: 0, wipLimit: 1 }).toString();
-    const second = await jsx(Lane, { title: 'Ship', count: 0, wipLimit: 1 }).toString();
-    const ids = [first, second].map((markup) => /aria-labelledby="([^"]+)"/.exec(markup)?.[1]);
-    expect(new Set(ids).size).toBe(2);
+describe('the lane ids and keyboard order', () => {
+  it('lanes with colliding or non-Latin titles each label themselves with their own heading', async () => {
+    const lanes = [
+      ['build', 'Build'],
+      ['build_again', 'build!'],
+      ['check', 'Строить'],
+      ['review', 'Проверка'],
+    ].map(([stageKey, title]) =>
+      jsx(Lane, { stageKey: found(stageKey), title: found(title), count: 0, wipLimit: 1 }),
+    );
+    const markup = (await Promise.all(lanes.map((lane) => lane.toString()))).join('');
+    const document = new JSDOM(`<!DOCTYPE html><body>${markup}</body>`).window.document;
+    const named = [...document.querySelectorAll('section')].map(
+      (lane) =>
+        found(document.getElementById(found(lane.getAttribute('aria-labelledby')))).textContent,
+    );
+    expect(named).toEqual(['Build', 'build!', 'Строить', 'Проверка']);
+    const ids = [...document.querySelectorAll('[id]')].map((element) => element.id);
+    expect(new Set(ids).size).toBe(4);
   });
 
   it('every card in a lane is reached with the keyboard through its link, in order', async () => {
     const document = await dom(
       jsx(Lane, {
+        stageKey: 'build',
         title: 'Build',
         count: 2,
         wipLimit: 3,
@@ -73,6 +100,7 @@ describe('WB-11 the lane', () => {
 describe('the lane passes axe-core', () => {
   it('has no axe-core violations, paused, with cards', async () => {
     const lane = jsx(Lane, {
+      stageKey: 'build',
       title: 'Build',
       count: 2,
       wipLimit: 3,

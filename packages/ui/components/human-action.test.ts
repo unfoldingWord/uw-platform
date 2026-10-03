@@ -17,7 +17,10 @@ function found<T>(value: T | null | undefined): T {
   return value;
 }
 
-const approve = { label: 'Approve', name: 'decision', value: 'approve' };
+const itemA = '0b6f1c1e-4a5d-4c3b-9e2f-1a2b3c4d5e6f';
+const itemB = '7d3e2f1a-9b8c-4d5e-8f6a-0b1c2d3e4f5a';
+const approve = { itemId: itemA, label: 'Approve', name: 'decision', value: 'approve' };
+const redClass = /\b(?:text|bg|border|outline)-red\b/;
 
 function classesOf(element: Element | null): string[] {
   return (element?.getAttribute('class') ?? '').split(/\s+/);
@@ -55,18 +58,34 @@ describe('WB-11 the human action', () => {
       jsx(HumanActionButton, { ...approve, disabledReason: 'checks_not_green' }),
     );
     const button = found(document.querySelector('button'));
-    expect(button.hasAttribute('disabled')).toBe(true);
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(button.getAttribute('type')).toBe('button');
     const reason = found(document.getElementById(found(button.getAttribute('aria-describedby'))));
     expect(reason.textContent).toBe('Checks not green');
     expect(reason.parentElement).toBe(button.parentElement);
-    expect(`${button.outerHTML}${reason.outerHTML}`).not.toMatch(/red/);
+    expect(`${button.outerHTML}${reason.outerHTML}`).not.toMatch(redClass);
+  });
+
+  it('a refused human action stays in the tab order and cannot submit its form', async () => {
+    const document = await dom(
+      jsx(HumanActionButton, { ...approve, disabledReason: 'checks_not_green' }),
+    );
+    const button = found(document.querySelector('button'));
+    expect(button.hasAttribute('disabled')).toBe(false);
+    expect(button.hasAttribute('tabindex')).toBe(false);
+    expect(button.getAttribute('type')).not.toBe('submit');
+    expect(classesOf(button)).toEqual(
+      expect.arrayContaining(['aria-disabled:bg-kindle-soft', 'aria-disabled:text-ink']),
+    );
   });
 });
 
 describe('the human action, refused or escaped', () => {
   it('a human action without a refusal has no description', async () => {
     const document = await dom(jsx(HumanActionButton, { ...approve, disabledReason: null }));
-    expect(document.querySelector('button')?.hasAttribute('aria-describedby')).toBe(false);
+    const button = found(document.querySelector('button'));
+    expect(button.hasAttribute('aria-describedby')).toBe(false);
+    expect(button.hasAttribute('aria-disabled')).toBe(false);
   });
 
   it('a human action escapes its label and its reason', async () => {
@@ -77,19 +96,24 @@ describe('the human action, refused or escaped', () => {
     expect(document.querySelector('button')?.textContent).toBe('<b>x</b>');
   });
 
-  it('two refused actions on one page describe themselves with different ids', async () => {
-    const first = await jsx(HumanActionButton, { ...approve, disabledReason: 'a' }).toString();
-    const second = await jsx(HumanActionButton, {
-      label: 'Reject',
-      name: 'decision',
-      value: 'reject',
-      disabledReason: 'a',
-    }).toString();
-    const ids = [first, second].map((markup) => /aria-describedby="([^"]+)"/.exec(markup)?.[1]);
-    expect(new Set(ids).size).toBe(2);
+  it('two refused approves for two items on one page are each described by their own reason', async () => {
+    const page = [
+      jsx(HumanActionButton, { ...approve, disabledReason: 'checks_not_green' }),
+      jsx(HumanActionButton, { ...approve, itemId: itemB, disabledReason: 'pr_is_draft' }),
+      jsx(HumanActionButton, { ...approve, value: 'reject', disabledReason: 'not_permitted' }),
+    ];
+    const markup = (await Promise.all(page.map((part) => part.toString()))).join('');
+    const document = new JSDOM(`<!DOCTYPE html><body>${markup}</body>`).window.document;
+    const reasons = [...document.querySelectorAll('button')].map(
+      (button) =>
+        found(document.getElementById(found(button.getAttribute('aria-describedby')))).textContent,
+    );
+    expect(reasons).toEqual(['Checks not green', 'Pr is draft', 'Not permitted']);
+    const ids = [...document.querySelectorAll('[id]')].map((element) => element.id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('WB-11 the human gate mark is a Kindle-edged label in ink on the soft Kindle fill', async () => {
+  it('the human gate mark is a Kindle-edged label in ink on the soft Kindle fill', async () => {
     const document = await dom(jsx(HumanGateMark, { label: 'Ship' }));
     const mark = document.querySelector('span');
     expect(mark?.textContent).toBe('Ship');
