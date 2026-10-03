@@ -16,7 +16,7 @@ import {
   type PersonaScene,
   type SceneOptions,
 } from '../persona-fixtures.ts';
-import { createWorld } from '../world.ts';
+import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
 
@@ -29,10 +29,21 @@ type Seen = {
   readonly outcome: KernelOutcome<never>;
   readonly failures: readonly unknown[];
   readonly items: number;
+  readonly created: number;
   readonly status: string | null;
 };
 
 type Activate = (scene: PersonaScene) => Promise<KernelOutcome<never>>;
+
+async function createdIn(world: World, harnessIds: readonly (string | null)[]): Promise<number> {
+  let created = 0;
+  for (const harnessId of harnessIds) {
+    if (harnessId === null) continue;
+    const log = await harnessLog(world, harnessId);
+    created += log.filter((event) => event.name === 'item_created').length;
+  }
+  return created;
+}
 
 async function inScene(
   page: (scene: PersonaScene) => Omit<PersonaPage, 'id'>,
@@ -48,7 +59,8 @@ async function inScene(
       (event) => event.evidence,
     );
     const items = (await harnessItems(world, scene.softwareId)).length;
-    return { outcome, failures, items, status: await pageStatus(world, pageId) };
+    const created = await createdIn(world, [scene.bmlId, scene.softwareId]);
+    return { outcome, failures, items, created, status: await pageStatus(world, pageId) };
   } finally {
     await world.close();
   }
@@ -126,6 +138,36 @@ describe('AB-8 activation refuses a forbidden verb and an unreachable verb', () 
       detail: { step: 'PE-3' },
     });
     expect(seen.failures).toEqual([]);
+  });
+});
+
+describe('HE-10 activation refuses a persona on the reserved engine', () => {
+  it('HE-10 activating a persona on claude-managed-agent is refused engine_not_available and opens no item', async () => {
+    const message = 'persona iterate uses engine claude-managed-agent, which is not available';
+    const page = (scene: PersonaScene) => ({
+      frontmatter: personaFrontmatter(scene, {
+        engine: 'claude-managed-agent',
+        requires_tools: ['summarise_measurements'],
+      }),
+    });
+    const seen = await inScene(page, byIan);
+    expect(seen.outcome).toEqual({
+      status: 'error',
+      reason: 'engine_not_available',
+      detail: { engine: 'claude-managed-agent' },
+    });
+    expect(seen.failures).toEqual([
+      {
+        pageId,
+        persona: 'agent:iterate',
+        verb: null,
+        engine: 'claude-managed-agent',
+        reason: 'engine_not_available',
+        message,
+        itemId: null,
+      },
+    ]);
+    expect([seen.items, seen.created, seen.status]).toEqual([0, 0, 'suggested']);
   });
 });
 

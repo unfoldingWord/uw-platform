@@ -8,6 +8,7 @@ import {
   type VerbDefinition,
 } from '@uw/contracts';
 import { allowed } from '../access.ts';
+import { engineDescriptor } from '../engines.ts';
 import type { Caller } from '../caller.ts';
 import { lockKeys } from '../lock-keys.ts';
 import {
@@ -173,6 +174,32 @@ async function recordFailure(
   return refused(reason, { verb, message, itemId, ...unopened });
 }
 
+async function refuseReservedEngine(
+  ports: PersonaPorts,
+  tx: StoreTransaction,
+  activation: Activation,
+  persona: Persona,
+): Promise<Refused | null> {
+  const { engine, identity } = persona.frontmatter;
+  if (engineDescriptor(engine).availability !== 'reserved') return null;
+  const slug = personaSlugOf(identity) ?? identity;
+  const message = `persona ${slug} uses engine ${engine}, which is not available`;
+  await tx.lock(lockKeys.harnessEvents(persona.harness.id));
+  const context = recordContext(ports, activation.caller, activation.at);
+  await recordHarnessEvents(tx, context, persona.harness.id, [
+    draft('persona_activation_failed', {
+      pageId: persona.page.id,
+      persona: identity,
+      verb: null,
+      engine,
+      reason: 'engine_not_available',
+      message,
+      itemId: null,
+    }),
+  ]);
+  return refused('engine_not_available', { engine });
+}
+
 function verbsOf(frontmatter: Frontmatter): readonly string[] {
   return [...new Set([...frontmatter.requires_tools, ...frontmatter.toolset])];
 }
@@ -195,6 +222,8 @@ export async function activateIn(
   if (persona.page.status !== 'suggested') {
     return refused('not_permitted', { why: 'not_suggested' });
   }
+  const reserved = await refuseReservedEngine(ports, tx, activation, persona);
+  if (reserved !== null) return reserved;
   const { identity } = persona.frontmatter;
   const failure = toolCheck(
     {
