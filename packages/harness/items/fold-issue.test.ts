@@ -17,6 +17,7 @@ function event(n: number, name: EventName, evidence: Record<string, unknown>): N
     actor: 'agent:ingest',
     evidence,
     traceId: '00000000-0000-4000-8000-0000000000e1',
+    requestId: null,
   });
 }
 
