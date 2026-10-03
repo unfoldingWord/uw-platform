@@ -60,6 +60,7 @@ describe('DX-2 executorOf', () => {
   it('refuses a transaction the Drizzle store did not open', () => {
     const foreign: DrizzleTransaction = {
       lock: async () => undefined,
+      lockShared: async () => undefined,
       harnesses: untouched(),
       harnessStages: untouched(),
       harnessItems: untouched(),
