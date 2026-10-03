@@ -1,7 +1,11 @@
 import { Hono } from 'hono';
 import { errorFields } from '@uw/core/log';
+import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { Shell } from '@uw/ui/components/shell.tsx';
+import { appCssPath } from '@uw/ui/generated/app-css';
 import { aclRoutes } from './acl/routes.ts';
 import { agentRoutes } from './agents/routes.ts';
+import { assetRoutes } from './assets/routes.ts';
 import { meRoutes } from './auth/me.ts';
 import { withPrincipal } from './auth/principal-middleware.ts';
 import { platformPersonDeps, type PersonDeps } from './commands/person-deps.ts';
@@ -34,6 +38,7 @@ export function createApp(
   });
 
   app.route('/health', healthRoutes(deps));
+  app.route('/', assetRoutes());
 
   app.use(withPrincipal(deps));
   app.route('/api/me', meRoutes());
@@ -46,17 +51,19 @@ export function createApp(
   app.get('/', (c) => {
     const commit = commitOf(c.env).slice(0, 7);
     return c.html(
-      <html lang="en">
-        <head>
-          <meta charset="utf-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <title>unfoldingWord</title>
-        </head>
-        <body>
-          <h1>unfoldingWord</h1>
-          <p>Deployed commit {commit}.</p>
-        </body>
-      </html>,
+      <Shell
+        title="unfoldingWord"
+        nav={[
+          { href: '/', label: 'Home' },
+          { href: '/health', label: 'Health' },
+        ]}
+        current="/"
+        crumbs={[{ label: 'Home' }]}
+        stylesheet={appCssPath}
+      >
+        <PageHead title="unfoldingWord" />
+        <p>Deployed commit {commit}.</p>
+      </Shell>,
     );
   });
 

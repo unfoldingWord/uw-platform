@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
+import { appCssPath } from '@uw/ui/generated/app-css';
 import { createApp } from './app.tsx';
 import {
   createAccessFixture,
@@ -33,8 +34,11 @@ describe.skipIf(!testServer)('uw-app shell for a signed-in person', () => {
       expect(response.status).toBe(200);
       expect(response.headers.get('content-type')).toContain('text/html');
       const html = await response.text();
-      expect(html).toContain('<h1>unfoldingWord</h1>');
-      expect(html).toContain(commit.slice(0, 7));
+      expect(html).toContain('<nav aria-label="Main"');
+      expect(html).toContain('<main id="main"');
+      expect(html).toContain(`<link rel="stylesheet" href="${appCssPath}"`);
+      expect(html).toMatch(/<h1[^>]*>unfoldingWord<\/h1>/);
+      expect(html).toContain(`Deployed commit ${commit.slice(0, 7)}.`);
     }));
 
   it('answers an unknown path with a 404 and no exception text', () =>
