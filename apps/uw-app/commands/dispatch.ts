@@ -13,7 +13,7 @@ import type { Logger } from '@uw/core/log';
 import type { Caller, Clock, Kernel } from '@uw/harness';
 import type { DatabaseHandle } from '../database.ts';
 import { malformedOutcome, toOutcome } from '../http/commands.ts';
-import { platformKernel } from '../kernel.ts';
+import { hubWiring, platformKernel } from '../kernel.ts';
 import type { ShipGitHub } from '../ports/connectors.ts';
 import { hubNotWired } from '../ports/hub.not-wired.ts';
 import {
@@ -134,6 +134,13 @@ async function runOnce(command: Admitted, context: CommandContext): Promise<Outc
   return after ?? error(command.requestId, 'request_in_flight');
 }
 
+function opensGitHub(command: Admitted): boolean {
+  const { principal } = command;
+  const person = principal.kind === 'person' && principal.personId !== null;
+  const human = person && principal.identity === `human:${principal.personId}`;
+  return human && opensGateGitHub(command.handler);
+}
+
 function contextOf(
   command: Admitted,
   scope: DispatchScope,
@@ -153,7 +160,7 @@ function contextOf(
     harness: scene.harness,
     stages: scene.stages,
     database: command.database,
-    gateGitHub: opensGateGitHub(command.handler) ? scope.gateGitHub : () => null,
+    gateGitHub: opensGitHub(command) ? scope.gateGitHub : () => null,
     hub: hubNotWired,
     clock,
     logger: scope.logger,
@@ -162,7 +169,7 @@ function contextOf(
 
 async function dispatchAdmitted(command: Admitted, scope: DispatchScope): Promise<Outcome> {
   const clock: Clock = { now: () => command.at };
-  const kernel = platformKernel(command.database, clock);
+  const kernel = platformKernel(command.database, clock, hubWiring(hubNotWired));
   const caller: Caller = { actor: command.principal, traceId: command.traceId };
   const lookup = { kernel, caller, at: command.at, db: command.database.db };
   const scene = await sceneOf(lookup, command.handler, command.harnessId, command.body);

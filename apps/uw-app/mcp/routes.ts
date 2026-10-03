@@ -4,7 +4,8 @@ import type { AppDeps, AppEnv } from '../deps.ts';
 import { commitOf } from '../env.ts';
 import { MAX_BODY_BYTES } from '../http/body.ts';
 import { refuse } from '../http/outcomes.ts';
-import { platformKernel } from '../kernel.ts';
+import { hubWiring, platformKernel } from '../kernel.ts';
+import { hubNotWired } from '../ports/hub.not-wired.ts';
 import { requestLogger } from '../request-logger.ts';
 import { jsonRpcError, singleMessage } from './body.ts';
 import { withAgentPrincipal } from './mint.ts';
@@ -25,7 +26,7 @@ async function serve(c: Context<AppEnv>, deps: Pick<AppDeps, 'clock'>): Promise<
     host: 'external',
     at: c.get('now'),
     traceId: c.get('traceId'),
-    kernel: platformKernel(database, deps.clock),
+    kernel: platformKernel(database, deps.clock, hubWiring(hubNotWired)),
     db: database.db,
     commit: commitOf(c.env),
     logger: requestLogger(c),

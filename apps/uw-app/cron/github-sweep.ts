@@ -3,7 +3,10 @@ import { hyperdriveDatabase, type DatabaseHandle } from '../database.ts';
 import type { Bindings } from '../env.ts';
 import { githubAppOf } from '../github/app-config.ts';
 import { sweepGitHub } from '../github/sweep.ts';
-import { platformKernel } from '../kernel.ts';
+import { hubWiring, platformKernel } from '../kernel.ts';
+import { systemClock } from '../ports/clock.ts';
+import { hubNotWired } from '../ports/hub.not-wired.ts';
+import { unitHub } from '../unit-hub.ts';
 import { cronLogger, type CronDeps, type CronJob } from './job.ts';
 
 async function sweepWith(
@@ -19,16 +22,13 @@ async function sweepWith(
     });
     return;
   }
+  const unit = unitHub(hubNotWired);
+  const kernel = platformKernel(database, systemClock, hubWiring(unit.hub));
+  const transport = { fetch: deps.fetch, now: deps.now };
   const report = await sweepGitHub(
-    {
-      db: database.db,
-      kernel: platformKernel(database),
-      now: deps.now,
-      app,
-      transport: { fetch: deps.fetch, now: deps.now },
-    },
+    { db: database.db, kernel, now: deps.now, app, transport },
     logger,
-  );
+  ).finally(() => unit.flush());
   logger.info('github sweep finished', {
     outcome: report.failure ?? 'finished',
     repositories: report.repositories.length,

@@ -48,6 +48,30 @@ async function contextWithoutEnv(db: Database): Promise<void> {
   expect(contexts.get('approve')?.gateGitHub()).toBe(client);
 }
 
+async function agentGetsNoGitHub(db: Database): Promise<void> {
+  const scene = await softwareHarness(db);
+  const itemId = await enqueued(db, scene.harnessId, 'Gate the board');
+  const opened: unknown[] = [];
+  const registry = commandRegistryOf([
+    commandHandler({
+      name: 'approve',
+      action: 'admin',
+      agents: 'recorded',
+      run: async (context) => {
+        opened.push(context.gateGitHub());
+        return { ok: true };
+      },
+    }),
+  ]);
+  const client = { app: null, transport: null };
+  const scope = dispatchScope(db, { registry, gateGitHub: () => client as never });
+  const admin = await ian(db);
+  const approve = () => ({ requestId: randomUUID(), itemId, head: null });
+  await dispatchAs(agentOf(admin, 'builder'), scene.harnessId, 'approve', approve(), scope);
+  await dispatchAs(admin, scene.harnessId, 'approve', approve(), scope);
+  expect(opened).toEqual([null, client]);
+}
+
 async function newHarnessScope(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   let runs = 0;
@@ -213,6 +237,9 @@ describe.skipIf(!testServer)('the command API answers hidden and foreign as miss
 describe.skipIf(!testServer)('the command context', () => {
   it('carries no environment, and opens the gate GitHub client only for a gate command', () =>
     withAppDatabase(contextWithoutEnv));
+
+  it('opens no GitHub client for an agent principal on a gate command, only for a person', () =>
+    withAppDatabase(agentGetsNoGitHub));
 
   it('resolves a new harness scope from the body area and calls can() on it', () =>
     withAppDatabase(newHarnessScope));

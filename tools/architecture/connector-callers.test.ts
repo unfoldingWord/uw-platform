@@ -20,8 +20,11 @@ const shipWritesCall = /\bcreateShipWrites\s*\(/;
 const outcomeOfCall = /connectors\s*\??\.\s*outcomeOf\b/;
 const recordOutcomeCall = /\brecordExitOutcomes\s*\(/;
 const shipWiring =
-  /\b(?:platformConnectors|mergeHandler|createShipWrites|ShipGitHub|MergeGitHub)\b/;
-const threeArguments = /\bplatform(?:Kernel|Ports)\s*\(\s*[^,()]*,\s*[^,()]*,/;
+  /\b(?:platformConnectors|mergeHandler|createShipWrites|ShipGitHub|MergeGitHub)\b|\b(?:reads|ship)\s*:/;
+const gitHubWired =
+  /\bplatform(?:Kernel|Ports)\s*\(\s*(?:[^,()]*|[^,()]*\([^()]*\)[^,()]*),\s*(?:[^,()]*|[^,()]*\([^()]*\)[^,()]*),(?!\s*(?:hubWiring\(|\)))/;
+const gateKernelModule = 'apps/uw-app/commands/person/gate-kernel.ts';
+const kernelRoot = 'apps/uw-app/kernel.ts';
 const mergeModule = 'apps/uw-app/github/merge.ts';
 const connectorsAdapter = 'apps/uw-app/ports/connectors.ts';
 const mergeRig = 'apps/uw-app/github/testing/merge-rig.ts';
@@ -175,11 +178,16 @@ describe('GH-6 the merge connector runs only from the kernel stage-exit path', (
     expect(filesMatching(recordOutcomeCall, sources())).toEqual([exitModule, recoverModule]);
   });
 
-  it('gives the queue and cron roots a kernel with no ship GitHub', () => {
+  it('GH-6 the only kernel built with GitHub reads or the ship writes is the gate kernel', () => {
+    const app = sources().filter((file) => file.startsWith('apps/uw-app/'));
+    expect(app.length).toBeGreaterThan(0);
+    expect(filesMatching(gitHubWired, app)).toEqual([gateKernelModule, kernelRoot]);
+  });
+
+  it('GH-6 the queue and cron roots name no ship or read wiring', () => {
     const roots = readOnlyRootFiles(sources());
     expect(roots.length).toBeGreaterThan(0);
     expect(filesMatching(shipWiring, roots)).toEqual([]);
-    expect(filesMatching(threeArguments, roots)).toEqual([]);
   });
 
   it('flags a planted merge call, outcome read and ship wiring', () => {
@@ -192,11 +200,50 @@ describe('GH-6 the merge connector runs only from the kernel stage-exit path', (
     expect(filesMatching(mergeCall, [merge, handler])).toEqual([merge, handler].sort());
     expect(filesMatching(outcomeOfCall, [outcome])).toEqual([outcome]);
     expect(filesMatching(recordOutcomeCall, [record])).toEqual([record]);
-    expect(filesMatching(threeArguments, [wired])).toEqual([wired]);
+    expect(filesMatching(gitHubWired, [wired])).toEqual([wired]);
     expect(filesMatching(shipWiring, [named])).toEqual([named]);
     expect(readOnlyRootFiles(['apps/uw-app/queue/worker.ts', 'apps/uw-app/kernel.ts'])).toEqual([
       'apps/uw-app/queue/worker.ts',
     ]);
+  });
+});
+
+const wiredCalls = [
+  'platformKernel(database, clock, { hub, reads, ship });',
+  'platformPorts(database, clockOf(env), ship);',
+  'platformKernel(handleOf(env), clock, gateWiring(github, hub, logger));',
+  'platformKernel(\n  database,\n  systemClock,\n  { hub: hubOf(env), reads, ship },\n);',
+];
+const hubOnlyCalls = [
+  'platformKernel(database, clock, hubWiring(hubNotWired));',
+  'platformKernel(database, clockOf(env), hubWiring(unit.hub));',
+  'platformKernel(\n  database,\n  systemClock,\n  hubWiring(unit.hub),\n);',
+  'platformKernel(database, clock);',
+  'platformKernel(\n  database,\n  clock,\n);',
+  'platformPorts(null);',
+];
+
+describe('the GitHub kernel wiring check', () => {
+  it('flags every planted kernel given GitHub, and none given the hub alone', () => {
+    const wired = wiredCalls.map((text, index) =>
+      plant(`apps/uw-app/queue/wired-${index}.ts`, text),
+    );
+    const hubOnly = hubOnlyCalls.map((text, index) =>
+      plant(`apps/uw-app/cron/hub-${index}.ts`, text),
+    );
+    expect(filesMatching(gitHubWired, [...wired, ...hubOnly])).toEqual([...wired].sort());
+  });
+
+  it('flags a planted read or ship wiring named in a queue or cron root', () => {
+    const reads = plant(
+      'apps/uw-app/queue/r.ts',
+      'const wiring = { hub, reads: access, ship: null };',
+    );
+    const ship = plant(
+      'apps/uw-app/cron/s.ts',
+      'const wiring = { hub, ship };\nuse({ ship : github });',
+    );
+    expect(filesMatching(shipWiring, [reads, ship])).toEqual([reads, ship].sort());
   });
 });
 

@@ -4,7 +4,7 @@ import { aclRoutes } from './acl/routes.ts';
 import { agentRoutes } from './agents/routes.ts';
 import { meRoutes } from './auth/me.ts';
 import { withPrincipal } from './auth/principal-middleware.ts';
-import { noGateGitHub, type PersonDeps } from './commands/person-deps.ts';
+import { platformPersonDeps, type PersonDeps } from './commands/person-deps.ts';
 import { harnessRoutes } from './commands/routes.ts';
 import { withDatabase } from './database.ts';
 import { platformDeps, type AppDeps, type AppEnv } from './deps.ts';
@@ -17,7 +17,7 @@ import { requestLogger } from './request-logger.ts';
 
 export function createApp(
   deps: AppDeps = platformDeps,
-  person: PersonDeps = noGateGitHub,
+  person: PersonDeps = platformPersonDeps,
 ): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
