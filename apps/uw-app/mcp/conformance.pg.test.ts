@@ -4,7 +4,6 @@ import { McpError } from '@modelcontextprotocol/sdk/types.js';
 import {
   delegatedIdentity,
   isForbiddenVerbName,
-  newEventSchema,
   principalSchema,
   verbRegistry,
   type CostBasis,
@@ -14,7 +13,13 @@ import {
 import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
-import { seedGrant, seedHostedRun, seedPage, seedPerson } from '@uw/db/test-seed';
+import {
+  seedBreakerReading,
+  seedGrant,
+  seedHostedRun,
+  seedPage,
+  seedPerson,
+} from '@uw/db/test-seed';
 import { software, type Caller, type Kernel } from '@uw/harness';
 import { createApp } from '../app.tsx';
 import { createAccessFixture, type AccessFixture } from '../testing/access-keys.ts';
@@ -25,7 +30,6 @@ import {
   type ToolSurface,
 } from '../testing/conformance.ts';
 import { kernelOn, personOn } from '../testing/kernel.ts';
-import { platformStore } from '../ports/store.ts';
 import { httpClient } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
 import type { McpHost, VerbContext } from './context.ts';
@@ -82,21 +86,6 @@ function grantRow(id: string, personId: string, role: 'admin' | 'editor') {
   const grantedAt = new Date('2026-01-01T00:00:00.000Z');
   const scope = { scopeKind: 'jd_area' as const, scopeArea: '80-89' };
   return { id, personId, role, ...scope, grantedAt, expiresAt: null };
-}
-
-async function seedSpendReading(db: Database, harnessId: string, at: Date): Promise<void> {
-  const reading = newEventSchema.parse({
-    eventId: crypto.randomUUID(),
-    harnessId,
-    itemId: null,
-    name: 'breaker_open',
-    at: at.toISOString(),
-    actor: 'agent:system',
-    evidence: { spentMinor: 0, capMinor: 125_000, currency: 'USD', percent: 0 },
-    traceId: crypto.randomUUID(),
-    requestId: null,
-  });
-  await platformStore(db).transaction((tx) => tx.harnessEvents.write.append([reading]));
 }
 
 async function openRig(): Promise<Rig> {
@@ -196,7 +185,7 @@ async function openScene(r: Rig): Promise<Scene> {
   const hidden = await harnessIn(r, `software-hidden-${scenes}`, '30-39');
   const undelegated = await harnessIn(r, `software-undelegated-${scenes}`, '80-89');
   const { delegationId, beat } = await delegated(r, harnessId);
-  await seedSpendReading(r.db, harnessId, r.clock.now());
+  await seedBreakerReading(r.db, { harnessId, at: r.clock.now(), actor: 'agent:system' });
   const workflowItem = await enqueue(r, harnessId, 'workflow item');
   const workflowRunId = crypto.randomUUID();
   const run = { id: workflowRunId, harnessId, itemId: workflowItem, delegationId };
