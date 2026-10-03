@@ -94,6 +94,7 @@ describe('AB-8 activation refuses a forbidden verb and an unreachable verb', () 
         pageId,
         persona: 'agent:iterate',
         verb: 'approve',
+        engine: null,
         reason: 'forbidden_verb',
         message: forbidden,
         itemId: null,

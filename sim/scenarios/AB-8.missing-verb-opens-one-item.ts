@@ -32,6 +32,7 @@ function assertFailure(event: HarnessEvent | undefined, itemId: string): void {
     pageId,
     persona: 'agent:iterate',
     verb: 'summarise_measurements',
+    engine: null,
     reason: 'unknown_verb',
     message,
     itemId,

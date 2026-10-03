@@ -30,7 +30,7 @@ describe('FD-9 frontmatter is validated by page type', () => {
     expect(checkFrontmatter('persona', persona)).toEqual({
       ok: true,
       type: 'persona',
-      frontmatter: persona,
+      frontmatter: { ...persona, provider: null },
     });
   });
 
