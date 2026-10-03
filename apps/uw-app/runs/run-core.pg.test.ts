@@ -373,6 +373,133 @@ async function hostedBuilderOnly(db: Database): Promise<void> {
   expect(work).toMatchObject({ computeMinor: 12, resolvedProvider: 'anthropic' });
 }
 
+type Ran = Awaited<ReturnType<typeof running>>;
+
+function wholeHarness(r: Ran) {
+  return { harnessId: r.rig.harnessId, stageKey: null };
+}
+
+function pauseBefore(r: Ran, step: string): void {
+  let armed = true;
+  r.steps.beforeStep = async (name) => {
+    if (!armed || name !== step) return;
+    armed = false;
+    accepted(await r.rig.kernel.stages.pause(callerOf(r.rig.admin), wholeHarness(r)));
+  };
+}
+
+async function resumeHarness(r: Ran): Promise<'resumed'> {
+  accepted(await r.rig.kernel.stages.resume(callerOf(r.rig.admin), wholeHarness(r)));
+  return 'resumed';
+}
+
+async function breakerAt(r: Ran, percent: number): Promise<void> {
+  r.rig.spentMinor = (125_000 * percent) / 100;
+  r.rig.clock.advance(1000);
+  const since = r.rig.clock.now();
+  accepted(await r.rig.kernel.breaker.check(host, { capMinor: 125_000, currency: 'USD', since }));
+}
+
+async function pausedBeforeHold(db: Database): Promise<void> {
+  const r = await running(db, {}, done, held);
+  pauseBefore(r, 'hold premise');
+  r.steps.onWait = () => resumeHarness(r);
+  expect(await r.run()).toBe('premise_held');
+  expect(r.steps.names).toContain('hold premise again 1');
+  expect(await runRow(r.rig, r.runId)).toMatchObject({ outcome: 'completed' });
+  const names = await runNames(r.rig);
+  expect(names.slice(-3)).toEqual(['premise_held', 'item_released', 'run_completed']);
+}
+
+async function breakerBeforeClose(db: Database): Promise<void> {
+  const r = await running(db, {});
+  let armed = true;
+  r.steps.beforeStep = async (name) => {
+    if (!armed || name !== 'close') return;
+    armed = false;
+    await breakerAt(r, 95);
+  };
+  r.steps.onWait = async () => {
+    await breakerAt(r, 10);
+    return 'resumed';
+  };
+  expect(await r.run()).toBe('submitted');
+  expect(r.steps.names).toContain('close again 1');
+  expect(await runRow(r.rig, r.runId)).toMatchObject({ outcome: 'completed' });
+  const names = (await runNames(r.rig)).filter((name) => name.startsWith('run_'));
+  expect(names.slice(-3)).toEqual(['run_hibernated', 'run_resumed', 'run_completed']);
+}
+
+async function pausedBeforeDecidedClose(db: Database): Promise<void> {
+  const r = await running(db, { gate: true });
+  let decided = false;
+  r.steps.onWait = async () => {
+    if (decided) return resumeHarness(r);
+    decided = true;
+    accepted(
+      await r.rig.kernel.gates.decide(callerOf(r.rig.admin), {
+        itemId: r.rig.itemId,
+        decision: 'approve',
+        reason: null,
+        findings: [],
+        seenHead: null,
+      }),
+    );
+    return 'resumed';
+  };
+  pauseBefore(r, 'close');
+  expect(await r.run()).toBe('decided');
+  expect(r.steps.names).toContain('close again 1');
+  expect(await runRow(r.rig, r.runId)).toMatchObject({ outcome: 'completed', gates: ['package'] });
+}
+
+async function retriedSubmit(db: Database): Promise<void> {
+  const rig = await hostRig(db, host, {});
+  const calls: Calls = { scout: 0, work: 0, works: [], scouts: [] };
+  const engines = scriptedEngines({
+    'openrouter-messages': scout(calls),
+    'claude-messages': worker(calls, done),
+  });
+  const runId = await startedRun(rig);
+  const items = rig.kernel.items;
+  let refusedOnce = false;
+  const submit: typeof items.submit = async (caller, input) => {
+    if (refusedOnce) return items.submit(caller, input);
+    refusedOnce = true;
+    return { status: 'error', reason: 'not_permitted', detail: { why: 'run_hibernated' } };
+  };
+  const steps = fakeSteps();
+  const start: RunStart = {
+    runId,
+    harnessId: rig.harnessId,
+    itemId: rig.itemId,
+    persona: 'agent:builder',
+    runShape: 'workflow-run',
+    engine: 'claude-messages',
+    traceId: randomUUID(),
+  };
+  const deps = runDepsFor(rig, host, engines);
+  const verbKernel = { ...rig.kernel, items: { ...items, submit } };
+  expect(await runWorkflow(start, steps, { ...deps, verbKernel })).toBe('submitted');
+  expect(steps.names).toContain('submit again 1');
+  const run = await runRow(rig, runId);
+  expect(run?.steps.map((step) => step.step)).toEqual(['read', 'scout', 'work', 'submit']);
+}
+
+describe.skipIf(!testServer)('the run core when a pause or the breaker lands between steps', () => {
+  it('HE-1 a pause that lands before the held premise is recorded waits and records it after resume', () =>
+    withAppDatabase(pausedBeforeHold));
+
+  it('HE-1 a breaker that hibernates the run before its close waits and closes it after the breaker opens', () =>
+    withAppDatabase(breakerBeforeClose));
+
+  it('HE-1 a pause that lands after a gate decision waits and closes the run decided after resume', () =>
+    withAppDatabase(pausedBeforeDecidedClose));
+
+  it('a submit step run again after a hibernation refusal records the submit step once', () =>
+    withAppDatabase(retriedSubmit));
+});
+
 describe.skipIf(!testServer)('the run core', () => {
   it('HE-1 a run records read, scout, work and submit as named steps, each through record_run_step with its cost', () =>
     withAppDatabase(namedSteps));

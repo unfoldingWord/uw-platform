@@ -1,5 +1,5 @@
 import type { RunFailure } from '@uw/contracts';
-import { parseReviewVerdict, type RunStart } from '@uw/harness';
+import { parseReviewVerdict, type KernelOutcome, type RunStart } from '@uw/harness';
 import {
   readBody,
   scoutBody,
@@ -34,8 +34,10 @@ type Awake = Exclude<Halted, Hibernated>;
 type Ended = Extract<Halted, { readonly kind: 'ended' }>;
 type Kinded = { readonly kind: string } & { readonly [key: string]: Json };
 type Wake = 'resumed' | 'ended' | 'timed_out';
+type HostDone = { readonly kind: 'done' };
 
 const ended: Ended = { kind: 'ended' };
+const hostDone: HostDone = { kind: 'done' };
 const PRINTABLE = /^[ -~]{1,200}$/;
 
 function errorName(error: unknown): string {
@@ -121,12 +123,21 @@ function settled(flow: Flow, step: FailStep, result: Awake | Mismatch): Promise<
   return failRun(flow, step, 'retries_exhausted', result.detail);
 }
 
+function hostHalted(outcome: KernelOutcome<unknown>): HostDone | Halted {
+  if (outcome.status === 'accepted') return hostDone;
+  return haltedBy(outcome.reason, outcome.detail);
+}
+
 async function hostStep(
   flow: Flow,
+  step: FailStep,
   name: string,
-  call: (deps: RunDeps) => Promise<{ readonly status: string }>,
-) {
-  await flow.steps.do(name, STEP, async () => outcomeOf(await call(flow.deps)));
+  call: (deps: RunDeps) => Promise<KernelOutcome<unknown>>,
+): Promise<string | null> {
+  const result = await stepped<HostDone>(flow, name, STEP, async () =>
+    hostHalted(await call(flow.deps)),
+  );
+  return result.kind === 'done' ? null : settled(flow, step, result);
 }
 
 type DiffRead = { readonly kind: 'diff'; readonly diff: string };
@@ -143,7 +154,7 @@ function reviewDiff(flow: Flow): Promise<DiffRead | Awake> {
 async function postReview(flow: Flow, work: ModelDone): Promise<string> {
   const { deps, runId } = flow;
   const verdict = parseReviewVerdict(work.text);
-  await hostStep(flow, 'post review', (d) =>
+  const halted = await hostStep(flow, 'work', 'post review', (d) =>
     verdict.ok
       ? d.runKernel.runs.postReview(deps.host, runId, {
           ...verdict.verdict,
@@ -152,7 +163,7 @@ async function postReview(flow: Flow, work: ModelDone): Promise<string> {
         })
       : d.runKernel.runs.complete(deps.host, runId, { result: 'review_withheld', review: null }),
   );
-  return 'reviewed';
+  return halted ?? 'reviewed';
 }
 
 async function closeAfterSubmit(flow: Flow): Promise<string> {
@@ -160,10 +171,10 @@ async function closeAfterSubmit(flow: Flow): Promise<string> {
   const submitted = await stepped(flow, 'submit', STEP, () => submitBody(deps, runId));
   if (submitted.kind !== 'submitted') return settled(flow, 'submit', submitted);
   if (submitted.result !== 'parked') {
-    await hostStep(flow, 'close', (d) =>
+    const halted = await hostStep(flow, 'submit', 'close', (d) =>
       d.runKernel.runs.complete(deps.host, runId, { result: 'submitted', review: null }),
     );
-    return 'submitted';
+    return halted ?? 'submitted';
   }
   const woke = await awaitWake(flow);
   if (woke === 'ended') return 'ended';
@@ -171,10 +182,10 @@ async function closeAfterSubmit(flow: Flow): Promise<string> {
     await halt(flow, 'gate wait expired');
     return 'gate_wait_expired';
   }
-  await hostStep(flow, 'close', (d) =>
+  const halted = await hostStep(flow, 'submit', 'close', (d) =>
     d.runKernel.runs.complete(deps.host, runId, { result: 'decided', review: null }),
   );
-  return 'decided';
+  return halted ?? 'decided';
 }
 
 async function afterWork(flow: Flow, read: ReadDone, diff: string | null): Promise<string> {
@@ -195,10 +206,10 @@ async function afterRead(flow: Flow, read: ReadDone): Promise<string> {
   const scout = await stepped(flow, 'scout', STEP, () => scoutBody(deps, runId, read));
   if (scout.kind !== 'scout') return settled(flow, 'scout', scout);
   if (!scout.holds) {
-    await hostStep(flow, 'hold premise', (d) =>
+    const halted = await hostStep(flow, 'scout', 'hold premise', (d) =>
       d.runKernel.runs.holdPremise(deps.host, runId, { reason: scout.reason }),
     );
-    return 'premise_held';
+    return halted ?? 'premise_held';
   }
   return afterWork(flow, read, diff?.diff ?? null);
 }
