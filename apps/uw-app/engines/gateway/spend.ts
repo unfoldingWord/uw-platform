@@ -22,13 +22,13 @@ const SPEND_QUERY = `query Spend($account: string!, $gateway: string!, $since: T
 const replySchema = z.object({
   data: z.object({
     viewer: z.object({
-      accounts: z.array(
+      accounts: z.tuple([
         z.object({
           aiGatewayRequestsAdaptiveGroups: z.array(
             z.object({ sum: z.object({ cost: z.number().nonnegative().nullable() }) }),
           ),
         }),
-      ),
+      ]),
     }),
   }),
   errors: z.null().optional(),
@@ -45,10 +45,11 @@ export class SpendUnreadableError extends Error {
 }
 
 function costOf(reply: z.infer<typeof replySchema>): number {
-  const groups = reply.data.viewer.accounts.flatMap(
-    (account) => account.aiGatewayRequestsAdaptiveGroups,
+  const [account] = reply.data.viewer.accounts;
+  return account.aiGatewayRequestsAdaptiveGroups.reduce(
+    (total, group) => total + (group.sum.cost ?? 0),
+    0,
   );
-  return groups.reduce((total, group) => total + (group.sum.cost ?? 0), 0);
 }
 
 export function gatewaySpend(config: EngineConfig, now: () => Date): ModelEngine['spend'] {
