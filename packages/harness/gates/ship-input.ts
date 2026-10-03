@@ -15,7 +15,7 @@ import { applyDeclaration, carryForward, floorFromPaths } from '../risk/derive.t
 
 type ShipHarness = Pick<Harness, 'jdArea' | 'repository'>;
 
-type ShipInputSource = {
+export type ShipInputSource = {
   readonly facts: PullRequestFacts | null;
   readonly item: ItemState;
   readonly harness: ShipHarness;

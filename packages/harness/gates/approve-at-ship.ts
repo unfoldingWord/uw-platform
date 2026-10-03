@@ -4,7 +4,11 @@ import type {
   Harness,
   ItemState,
   Principal,
+  RiskDomain,
+  RiskTier,
   ShipRefusal,
+  ShipRuleInput,
+  ShipRuleOutcome,
   Stage,
 } from '@uw/contracts';
 import { allowed } from '../access.ts';
@@ -29,7 +33,7 @@ import { exitThroughConnector, type ExitPorts } from './exit.ts';
 import { factsFailure } from './facts-failure.ts';
 import { isStale, staleRefusal } from './facts-fresh.ts';
 import { decisionInFlight, sameChange } from './parking.ts';
-import { assembleShipInput, riskDerivedAtShip } from './ship-input.ts';
+import { assembleShipInput, riskDerivedAtShip, type ShipInputSource } from './ship-input.ts';
 
 type ShipPorts = Pick<Ports, 'githubFacts' | 'store'> & ExitPorts;
 
@@ -100,6 +104,29 @@ export async function readShipFacts(
   } catch (error) {
     return factsFailure(error);
   }
+}
+
+type ShipPreview = {
+  readonly input: Omit<ShipRuleInput, 'approver'>;
+  readonly outcome: ShipRuleOutcome;
+  readonly derived: {
+    readonly riskTier: RiskTier | null;
+    readonly riskDomains: readonly RiskDomain[];
+    readonly head: string | null;
+  } | null;
+};
+
+export function shipPreview(source: ShipInputSource): ShipPreview {
+  const { approver, ...input } = assembleShipInput(source);
+  const evidence = riskDerivedAtShip(source);
+  return {
+    input,
+    outcome: shipRule({ ...input, approver }),
+    derived:
+      evidence === null
+        ? null
+        : { riskTier: evidence.riskTier, riskDomains: evidence.riskDomains, head: evidence.head },
+  };
 }
 
 export async function inFlightRefusal(
