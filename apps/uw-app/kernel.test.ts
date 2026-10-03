@@ -156,5 +156,11 @@ describe('HE-4 only the run wiring holds the Reviewer review writes', () => {
       reason: 'not_wired',
     });
     expect(hubWiring(recordingHub).reviews).toBeNull();
+    const carried = { ...host, reviews, reads: reviews, ship: reviews };
+    expect(hubWiring(recordingHub, carried)).toMatchObject({
+      reviews: null,
+      reads: null,
+      ship: null,
+    });
   });
 });

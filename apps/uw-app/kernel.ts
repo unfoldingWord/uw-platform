@@ -42,9 +42,8 @@ export function hubWiring(hub: Hub, host: HostWiring = {}): KernelWiring {
     reads: null,
     ship: null,
     reviews: null,
-    modelEngine: modelEngineNotWired,
-    runs: runsNotWired,
-    ...host,
+    modelEngine: host.modelEngine ?? modelEngineNotWired,
+    runs: host.runs ?? runsNotWired,
   };
 }
 
