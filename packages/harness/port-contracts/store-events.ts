@@ -15,6 +15,7 @@ function eventOf(base: number, n: number, itemId: string | null, name = 'item_cr
     actor: 'human:00000000-0000-4000-8000-000000000001',
     evidence: { stage: 'build', title: `Item ${n}`, pageId: null, priority: 0, due: null },
     traceId: uid(base + 0x80),
+    requestId: null,
   };
 }
 

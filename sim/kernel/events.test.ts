@@ -116,6 +116,7 @@ async function seedLog(world: World): Promise<void> {
           actor: `human:${ianId}`,
           evidence: entry.evidence,
           traceId,
+          requestId: null,
         }),
       ),
     );

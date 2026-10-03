@@ -164,6 +164,7 @@ const steps: ReadonlyMap<EventName, Step> = new Map<EventName, Step>([
 ]);
 
 export const unchangedNames: ReadonlySet<EventName> = new Set<EventName>([
+  'item_reordered',
   'premise_held',
   'label_removed',
   'run_started',
@@ -184,6 +185,7 @@ export const unchangedNames: ReadonlySet<EventName> = new Set<EventName>([
   'delegation_required',
   'stage_edit_refused',
   'stage_edited',
+  'stage_removed',
   'template_activated',
   'harness_paused',
   'harness_resumed',

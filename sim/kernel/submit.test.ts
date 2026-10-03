@@ -188,6 +188,7 @@ describe('KN-6 the last stage closes the item', () => {
           actor: scene.max.identity,
           evidence: { reason: 'nothing surprising' },
           traceId: scene.world.adapters.ids.next(),
+          requestId: null,
         }),
       ]),
     );
