@@ -251,7 +251,7 @@ async function noEditBypassesShip(db: Database): Promise<void> {
     stage: spare({ connector: 'merge' }),
   });
   for (const sent of [lowered, unguarded]) {
-    expect(sent.body).toMatchObject({ status: 'error', reason: 'template_bypasses_gate' });
+    expect(sent.body).toMatchObject({ status: 'error', reason: 'stage_edit_refused' });
   }
   expect((await sceneOf(db, harnessId)).stages).toEqual(before.stages);
   const paused = await send(db, IAN, harnessId, 'update_stage', {

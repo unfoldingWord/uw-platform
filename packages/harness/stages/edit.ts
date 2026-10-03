@@ -5,7 +5,7 @@ import { lockKeys } from '../lock-keys.ts';
 import { refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import { storeRefusalOf } from '../port-errors.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
-import { adminRefusal, agentRefusal, bypassRefusal, stageProblems } from './rules.ts';
+import { adminRefusal, agentRefusal, stageProblems } from './rules.ts';
 
 type StagePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
@@ -113,11 +113,6 @@ function editDrafts(before: readonly Stage[], after: readonly Stage[]): readonly
   return [...after.flatMap((stage) => editDraft(previous.get(stage.id), stage) ?? []), ...removed];
 }
 
-function walkRefusal(stages: readonly Stage[]): Refused | null {
-  const keys = new Set(stages.map((stage) => stage.key));
-  return keys.size === stages.length ? bypassRefusal(stages) : null;
-}
-
 export async function editInTransaction<T>(
   ports: StagePorts,
   caller: Caller,
@@ -135,7 +130,7 @@ export async function editInTransaction<T>(
       const plan = await work(tx, harness, current);
       if ('status' in plan) return plan;
       planned = plan.stageKey;
-      const problem = stageProblems(plan.resulting) ?? walkRefusal(plan.resulting);
+      const problem = stageProblems(plan.resulting);
       if (problem === null) {
         const applied = await plan.apply(tx);
         if (applied.status !== 'accepted') return applied;
