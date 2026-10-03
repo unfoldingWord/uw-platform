@@ -104,9 +104,15 @@ async function noStateKept(): Promise<void> {
   expect(host.sessions.map((session) => session.destroyed)).toEqual([true, true]);
   const [first, second] = host.sessions.map((session) => session.id);
   expect(first).not.toBe(second);
-  const silent = fakeContainerHost([reply([], 1)]);
+  const silent = fakeContainerHost([reply([])]);
   await expect(engineOn(silent).engine.work(work)).rejects.toThrow('codex answered no message');
   expect(silent.sessions.map((session) => session.destroyed)).toEqual([true]);
+}
+
+async function crashFails(): Promise<void> {
+  const crashed = fakeContainerHost([reply(events.slice(0, 3), 1)]);
+  await expect(engineOn(crashed).engine.work(work)).rejects.toThrow('codex exited 1');
+  expect(crashed.sessions.map((session) => session.destroyed)).toEqual([true]);
 }
 
 describe('codex-sandbox', () => {
@@ -116,4 +122,9 @@ describe('codex-sandbox', () => {
   );
 
   it('HE-9 the container holds no state after the step', noStateKept);
+
+  it(
+    'a Codex session that exits non-zero fails the step, even after an earlier message',
+    crashFails,
+  );
 });

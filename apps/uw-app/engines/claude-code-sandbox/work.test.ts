@@ -64,8 +64,8 @@ function engineOn(host: FakeContainerHost | null, settings: Record<string, strin
   return { engine, sent };
 }
 
-function reply(body: unknown) {
-  return { exitCode: 0, stdout: JSON.stringify(body), stderr: '' };
+function reply(body: unknown, exitCode = 0) {
+  return { exitCode, stdout: JSON.stringify(body), stderr: '' };
 }
 
 type Session = FakeContainerHost['sessions'][number];
@@ -200,8 +200,39 @@ async function haltOutranksExecFailure(): Promise<void> {
   await expect(engineOn(host).engine.work({ ...work, onTurn })).rejects.toBe(halt);
 }
 
+async function failedRunsFail(): Promise<void> {
+  const crashed = fakeContainerHost([reply(result, 1)]);
+  await expect(engineOn(crashed).engine.work(work)).rejects.toThrow('claude code exited 1');
+  const errored = { ...result, subtype: 'error_during_execution', is_error: true, result: null };
+  const failing = fakeContainerHost([reply(errored)]);
+  await expect(engineOn(failing).engine.work(work)).rejects.toThrow(
+    'claude code answered an error',
+  );
+  const capped = fakeContainerHost([reply({ ...result, subtype: 'error_max_turns' }, 1)]);
+  expect((await engineOn(capped).engine.work(work)).outcome).toBe('turn_limit');
+}
+
+async function servedModel(): Promise<void> {
+  const modelUsage = {
+    'claude-haiku-5-20260801': { inputTokens: 40, outputTokens: 12 },
+    'claude-sonnet-5-20260901': { inputTokens: 1160, outputTokens: 328 },
+  };
+  const served = fakeContainerHost([reply({ ...result, modelUsage })]);
+  expect((await engineOn(served).engine.work(work)).resolvedModel).toBe('claude-sonnet-5-20260901');
+  const unreadable = { 'claude sonnet; rm -rf': { inputTokens: 1, outputTokens: 400 } };
+  const odd = fakeContainerHost([reply({ ...result, modelUsage: unreadable })]);
+  expect((await engineOn(odd).engine.work(work)).resolvedModel).toBe('claude-sonnet-5');
+}
+
 describe('claude-code-sandbox', () => {
-  it('HE-8 every model request from the sandbox checks the run first, and a halt stops the step', async () => {
+  it(
+    'a Claude Code session that exits non-zero or answers an error fails the step',
+    failedRunsFail,
+  );
+
+  it('a Claude Code step records the model the CLI reports it was served', servedModel);
+
+  it('every model request from the sandbox checks the run first, and a halt stops the step', async () => {
     await everyModelRequestChecked();
     await haltOutranksExecFailure();
   });

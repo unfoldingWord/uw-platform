@@ -2,7 +2,7 @@ import { notWiredCall, ProviderMismatchError } from '@uw/harness';
 import type { EngineConfig } from '../config.ts';
 import type { EngineWork, EngineWorkResult } from '../seam.ts';
 import { egress, type EgressRoutes, type ModelRoute } from './egress.ts';
-import type { ContainerHost } from './host.ts';
+import type { ContainerHost, ExecResult } from './host.ts';
 import { SandboxNotWiredError } from './not-wired.ts';
 import {
   computeMinorOf,
@@ -19,6 +19,7 @@ export type SandboxReading = {
   readonly inputTokens: number;
   readonly outputTokens: number;
   readonly costMicros: number | null;
+  readonly model: string | null;
 };
 
 export type SandboxPlan = {
@@ -28,7 +29,7 @@ export type SandboxPlan = {
   readonly env: Readonly<Record<string, string>>;
   files(input: EngineWork): readonly SessionFile[];
   command(input: EngineWork): readonly string[];
-  read(stdout: string): SandboxReading;
+  read(ran: ExecResult): SandboxReading;
 };
 
 export const WORKSPACE = '/workspace';
@@ -120,12 +121,12 @@ export async function sandboxWork(
     timeoutMs: SESSION_TIMEOUT_MS,
   };
   const ran = await guardedSession(plan.host, spec, routes, config, input.onTurn);
-  const reading = plan.read(ran.stdout);
+  const { model, ...reading } = plan.read(ran);
   return {
     ...reading,
     computeMinor: computeMinorOf(ran.wallMs, config.SANDBOX_MINOR_PER_HOUR),
     resolvedProvider: plan.provider,
-    resolvedModel: input.model,
+    resolvedModel: model ?? input.model,
     toolsCalled: [],
   };
 }
