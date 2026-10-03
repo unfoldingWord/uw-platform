@@ -20,6 +20,7 @@ import type {
   ReviewRequest,
   RunRow,
 } from '../ports.ts';
+import { isFailureDetail } from './evidence-rules.ts';
 import { complete, completeAfter, fail } from './lifecycle.ts';
 import { runScene } from './scene.ts';
 import type { RunScene } from './types.ts';
@@ -46,7 +47,6 @@ type Planned = {
 
 const REVIEW_DIFF_BUDGET = 80_000;
 const UNREPORTED_MODEL = 'unreported';
-const PRINTABLE = /^[ -~]{1,500}$/;
 const decisive: ReadonlySet<ReviewFact['state']> = new Set([
   'approved',
   'changes_requested',
@@ -93,7 +93,7 @@ function overBudget(ports: ReviewPorts, caller: Caller, runId: string) {
 }
 
 function unavailable(ports: ReviewPorts, caller: Caller, runId: string, reason: string) {
-  const detail = PRINTABLE.test(reason) ? reason : 'unavailable';
+  const detail = isFailureDetail(reason) ? reason : 'unavailable';
   const outcome = fail(ports, caller, runId, { step: 'work', why: 'retries_exhausted', detail });
   return endedAs<ReviewDiff>(outcome, { ended: 'retries_exhausted' });
 }
