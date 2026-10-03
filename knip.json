@@ -28,7 +28,7 @@
     },
     "packages/ui": {
       "entry": ["**/*.test.ts"],
-      "project": ["**/*.ts", "**/*.tsx"]
+      "project": ["**/*.ts", "**/*.tsx", "**/*.css"]
     },
     "sim": {
       "entry": ["cli/*.ts", "scenarios/*.ts", "**/*.test.ts"],
