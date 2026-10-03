@@ -9,7 +9,7 @@ type Queues = {
   producers?: Binding[];
 };
 
-const goLiveOnly = ['logpush', 'hyperdrive', 'queues', 'triggers'];
+const goLiveOnly = ['logpush', 'hyperdrive', 'queues', 'triggers', 'durable_objects', 'migrations'];
 const accessVars = ['ACCESS_TEAM_DOMAIN', 'ACCESS_AUD', 'ACCESS_MCP_AUD'];
 const apps = ['uw-app', 'uw-ingest'] as const;
 const deployedEnvironments = ['staging', 'production'] as const;
@@ -34,7 +34,7 @@ function withoutGoLiveBindings(config: Block): Block {
       { ...omit(block, goLiveOnly), vars: omit((block['vars'] ?? {}) as Block, accessVars) },
     ]),
   );
-  return { ...config, env: stripped };
+  return { ...omit(config, goLiveOnly), env: stripped };
 }
 
 function environment(app: string, name: string, file: string): Block {
@@ -86,6 +86,32 @@ describe('FD-12 the go-live config is the live config plus the bindings whose re
       expect(goLiveOnly.filter((key) => key in block)).toEqual([]);
       expect(accessVars.filter((key) => key in varsOf(block))).toEqual([]);
     }
+  });
+});
+
+type HubBinding = { name?: string; class_name?: string };
+type Migration = { tag?: string; new_sqlite_classes?: string[] };
+
+function hubBindingsOf(block: Block): HubBinding[] {
+  return ((block['durable_objects'] ?? {}) as { bindings?: HubBinding[] }).bindings ?? [];
+}
+
+describe('WB-3 the live hub Durable Object is declared for go-live only', () => {
+  it.each(['staging', 'production', 'preview'])(
+    '%s binds HARNESS_HUB to the HarnessHub class',
+    (name) => {
+      expect(hubBindingsOf(environment('uw-app', name, goLive))).toEqual([
+        { name: 'HARNESS_HUB', class_name: 'HarnessHub' },
+      ]);
+    },
+  );
+
+  it('binds HARNESS_HUB at the top level and declares HarnessHub as a SQLite class', () => {
+    const config = load(`infra/uw-app/${goLive}`);
+    expect(hubBindingsOf(config)).toEqual([{ name: 'HARNESS_HUB', class_name: 'HarnessHub' }]);
+    expect(config['migrations'] as Migration[]).toEqual([
+      { tag: 'v1', new_sqlite_classes: ['HarnessHub'] },
+    ]);
   });
 });
 
