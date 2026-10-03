@@ -8,6 +8,7 @@ function untouched<T extends object>(): T {
 
 const refusingTransaction: StoreTransaction = {
   lock: () => Promise.reject(new Error('lock refused')),
+  lockShared: () => Promise.reject(new Error('lock refused')),
   harnesses: untouched(),
   harnessStages: untouched(),
   harnessItems: untouched(),
