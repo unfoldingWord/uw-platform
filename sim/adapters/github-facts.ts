@@ -19,7 +19,10 @@ const diffKeyOf = (ref: PullRequestRef, range: DiffRange): string =>
 function readDiff(text: string | undefined, budgetBytes: number): DiffRead {
   if (text === undefined) return { kind: 'unavailable', reason: 'no_diff' };
   const bytes = new TextEncoder().encode(text).length;
-  return bytes > budgetBytes ? { kind: 'too_large', bytes } : { kind: 'diff', text, bytes };
+  const usable = Number.isSafeInteger(budgetBytes) && budgetBytes >= 0;
+  return usable && bytes <= budgetBytes
+    ? { kind: 'diff', text, bytes }
+    : { kind: 'too_large', bytes };
 }
 
 export function createSimGitHubFacts(clock: Clock): SimGitHubFacts {

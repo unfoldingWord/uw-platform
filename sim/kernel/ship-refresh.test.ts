@@ -102,6 +102,13 @@ async function approveWith(scene: Scene, githubFacts: GitHubFacts, store?: Store
   return { outcome, names: namesSince(before, after), decisions: after.decisions };
 }
 
+function factsAnswering(
+  pullRequest: GitHubFacts['pullRequest'],
+  refresh: GitHubFacts['refresh'],
+): GitHubFacts {
+  return { pullRequest, refresh, diff: () => notWiredCall('githubFacts', 'diff') };
+}
+
 function sceneIt(title: string, work: (scene: Scene) => Promise<void>): void {
   it(title, () => inScene(work));
 }
@@ -125,26 +132,18 @@ describe('GH-5 an approve at Ship decides on facts refreshed from GitHub before 
   sceneIt('refreshes while no transaction is open', async (scene) => {
     const watched = watchedStore(scene.world.adapters.store);
     const seen: boolean[] = [];
-    const githubFacts: GitHubFacts = {
-      pullRequest: async () => approved(scene),
-      refresh: async () => {
+    const githubFacts = factsAnswering(
+      async () => approved(scene),
+      async () => {
         seen.push(watched.open());
         return approved(scene);
       },
-      diff: () => notWiredCall('githubFacts', 'diff'),
-    };
+    );
     const { outcome } = await approveWith(scene, githubFacts, watched.store);
     expect(outcome.status).toBe('accepted');
     expect(seen).toEqual([false]);
   });
 });
-
-function factsAnswering(
-  pullRequest: GitHubFacts['pullRequest'],
-  refresh: GitHubFacts['refresh'],
-): GitHubFacts {
-  return { pullRequest, refresh, diff: () => notWiredCall('githubFacts', 'diff') };
-}
 
 describe('GH-5 an approve at Ship fails closed on stale or missing GitHub facts', () => {
   sceneIt('refuses facts older than a minute without deciding or recording', async (scene) => {
@@ -200,13 +199,12 @@ describe('GH-5 an approve at Ship fails closed on stale or missing GitHub facts'
 
 describe('GH-5 an approve at Ship fails closed when GitHub cannot be read again', () => {
   sceneIt('refuses as stale when GitHub cannot be read again', async (scene) => {
-    const githubFacts: GitHubFacts = {
-      pullRequest: async () => approved(scene),
-      refresh: async () => {
+    const githubFacts = factsAnswering(
+      async () => approved(scene),
+      async () => {
         throw new FactsUnavailableError('server_error');
       },
-      diff: () => notWiredCall('githubFacts', 'diff'),
-    };
+    );
     const { outcome, names, decisions } = await approveWith(scene, githubFacts);
     expect(outcome).toMatchObject({
       status: 'error',
