@@ -25,11 +25,16 @@ function costRefusal(input: RunStepInput): Refused | null {
   return refused('malformed_command', { why: 'subscription_has_no_cost' });
 }
 
+function otherDelegation(run: RunRow, item: ItemState): boolean {
+  return run.runShape === 'workflow-run' && run.delegationId !== item.delegationId;
+}
+
 function runRefusal(run: RunRow, { caller, item, input }: StepScene): Refused | null {
   const elsewhere =
     run.itemId !== item.itemId ||
     run.costBasis !== input.costBasis ||
-    run.persona !== caller.actor.identity;
+    run.persona !== caller.actor.identity ||
+    otherDelegation(run, item);
   if (elsewhere) return refused('not_permitted', { why: 'run_elsewhere' });
   if (run.outcome !== 'running') return refused('not_permitted', { why: `run_${run.outcome}` });
   if (run.steps.length >= STEP_LIMIT) return refused('not_permitted', { why: 'run_step_limit' });

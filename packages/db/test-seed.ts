@@ -75,6 +75,14 @@ export async function rewritePageFrontmatter(
   await db.update(pages).set({ frontmatter }).where(eq(pages.id, pageId));
 }
 
+export async function rewriteRunDelegation(
+  db: AnyExecutor,
+  runId: string,
+  delegationId: string,
+): Promise<void> {
+  await db.update(harnessRuns).set({ delegationId }).where(eq(harnessRuns.id, runId));
+}
+
 export async function activateSeededPage(db: AnyExecutor, pageId: string): Promise<void> {
   await db
     .update(pages)

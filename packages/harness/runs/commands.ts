@@ -1,5 +1,6 @@
+import { isSystemPrincipal } from '../access.ts';
 import type { Caller } from '../caller.ts';
-import type { KernelOutcome } from '../outcome.ts';
+import { refused, type KernelOutcome } from '../outcome.ts';
 import type { Ports, RunRow } from '../ports.ts';
 import { prompt, stop, type PromptInput, type StopInput } from './control.ts';
 import {
@@ -32,15 +33,31 @@ export type RunCommands = {
   prompt(caller: Caller, input: PromptInput): RunOutcome;
 };
 
+type HostMember<A extends readonly unknown[], R> = (
+  caller: Caller,
+  ...args: A
+) => Promise<KernelOutcome<R>>;
+
+function hostOnly<A extends readonly unknown[], R>(member: HostMember<A, R>): HostMember<A, R> {
+  return (caller, ...args) => {
+    if (isSystemPrincipal(caller.actor)) return member(caller, ...args);
+    return Promise.resolve(refused('not_permitted', { actor: caller.actor.identity }));
+  };
+}
+
 export function createRunCommands(ports: RunPorts): RunCommands {
   return {
     start: (caller, input) => startRun(ports, caller, input),
-    scene: (caller, runId) => runScene(ports, caller, runId),
-    hibernateAtGate: (caller, runId) => hibernateAtGate(ports, caller, runId),
-    complete: (caller, runId, input) => complete(ports, caller, runId, input),
-    fail: (caller, runId, input) => fail(ports, caller, runId, input),
-    holdPremise: (caller, runId, input) => holdPremise(ports, caller, runId, input),
-    halt: (caller, runId, why) => halt(ports, caller, runId, why),
+    scene: hostOnly((caller, runId: string) => runScene(ports, caller, runId)),
+    hibernateAtGate: hostOnly((caller, runId: string) => hibernateAtGate(ports, caller, runId)),
+    complete: hostOnly((caller, runId: string, input: CompleteInput) =>
+      complete(ports, caller, runId, input),
+    ),
+    fail: hostOnly((caller, runId: string, input: FailInput) => fail(ports, caller, runId, input)),
+    holdPremise: hostOnly((caller, runId: string, input: { readonly reason: string }) =>
+      holdPremise(ports, caller, runId, input),
+    ),
+    halt: hostOnly((caller, runId: string, why: HaltReason) => halt(ports, caller, runId, why)),
     stop: (caller, input) => stop(ports, caller, input),
     prompt: (caller, input) => prompt(ports, caller, input),
   };

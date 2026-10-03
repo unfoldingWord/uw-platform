@@ -1,5 +1,6 @@
 import type { Principal } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
+import { rewriteRunDelegation } from '@uw/db/test-seed';
 import type { Caller, RunRow, RunStepInput } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import { simAgent, simCaller, simPerson } from '../fixtures.ts';
@@ -233,6 +234,45 @@ async function runElsewhere(scene: Started): Promise<void> {
   expect((await runOf(scene.world, scene.runId))?.steps).toEqual([]);
 }
 
+async function hostedRunOnLaptop(scene: Started): Promise<void> {
+  scene.world.adapters.clock.advance(16 * 60_000);
+  const laptop = deviceOf(scene, scene.owner);
+  value(await scene.world.kernel.items.claim(laptop, { itemId: scene.itemId, delegationId: null }));
+  const before = await countOf(scene, scene.itemId);
+  const outcome = await stepAs(scene, laptop, stepOf(scene.itemId, scene.runId));
+  expect(reasonOf(outcome)).toBe('not_permitted');
+  expect(detailOf(outcome)).toEqual({ why: 'run_elsewhere' });
+  expect(await countOf(scene, scene.itemId)).toBe(before);
+  expect((await runOf(scene.world, scene.runId))?.steps).toEqual([]);
+}
+
+async function subscriptionOnHostedRun(scene: Started): Promise<void> {
+  const before = await countOf(scene, scene.itemId);
+  const outcome = await stepAs(scene, scene.beat, stepOf(scene.itemId, scene.runId));
+  expect(reasonOf(outcome)).toBe('not_permitted');
+  expect(detailOf(outcome)).toEqual({ why: 'run_elsewhere' });
+  expect(await countOf(scene, scene.itemId)).toBe(before);
+  expect((await runOf(scene.world, scene.runId))?.steps).toEqual([]);
+}
+
+async function anotherDelegation(scene: Started): Promise<void> {
+  const granted = await scene.world.kernel.delegations.grant(simCaller(scene.world, scene.owner), {
+    harnessId: scene.harnessId,
+    persona: 'agent:reviewer',
+    capability: 'build',
+    expiresAt: null,
+    supersedes: null,
+  });
+  const delegationId = value(granted).id;
+  await rewriteRunDelegation(scene.world.database.db, scene.runId, delegationId);
+  const before = await countOf(scene, scene.itemId);
+  const outcome = await stepAs(scene, scene.beat, metered(scene));
+  expect(reasonOf(outcome)).toBe('not_permitted');
+  expect(detailOf(outcome)).toEqual({ why: 'run_elsewhere' });
+  expect(await countOf(scene, scene.itemId)).toBe(before);
+  expect((await runOf(scene.world, scene.runId))?.steps).toEqual([]);
+}
+
 describe('record_run_step on a hosted run', () => {
   startedIt(
     'HE-1 a metered step appends to the run, sums cost and compute, and records run_step_recorded with them',
@@ -242,6 +282,21 @@ describe('record_run_step on a hosted run', () => {
   startedIt('HE-1 a metered step for an unknown run id is run_not_found', meteredUnknownRun);
 
   startedIt('HE-1 the 201st step is refused run_step_limit', refusesStepLimit);
+
+  startedIt(
+    "a laptop that claims the item after the hosted run's lease lapsed cannot step on the hosted run",
+    hostedRunOnLaptop,
+  );
+
+  startedIt(
+    'a subscription step on a metered run is refused run_elsewhere',
+    subscriptionOnHostedRun,
+  );
+
+  startedIt(
+    "a hosted run under another delegation than the item's is refused run_elsewhere",
+    anotherDelegation,
+  );
 });
 
 describe('record_run_step on an external run', () => {

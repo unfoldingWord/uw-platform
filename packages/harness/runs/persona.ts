@@ -1,7 +1,7 @@
 import { modelIdSchema, personaFrontmatterSchema } from '@uw/contracts';
 import { engineDescriptor } from '../engines.ts';
 import { refused, type Refused } from '../outcome.ts';
-import type { PageFacts } from '../ports.ts';
+import type { PageFacts, RunRow } from '../ports.ts';
 import type { RunPersona } from './types.ts';
 
 type PersonaFrontmatter = ReturnType<typeof personaFrontmatterSchema.parse>;
@@ -27,6 +27,26 @@ export function personaOfPage(facts: PageFacts | undefined): RunPersona | Refuse
     engine: frontmatter.engine,
     model: frontmatter.model,
     provider,
+    toolset: frontmatter.toolset,
+    instructions: page.facts.bodyMd,
+  };
+}
+
+export function pinnedPersonaOf(run: RunRow, facts: PageFacts | undefined): RunPersona | Refused {
+  const page = personaPageOf(facts);
+  if (page === null) return refused('page_not_found', { pageId: facts?.id ?? null });
+  const { frontmatter } = page;
+  if (frontmatter.identity !== run.persona || frontmatter.harness !== run.harnessId) {
+    return refused('not_permitted', { why: 'run_elsewhere' });
+  }
+  if (run.pinnedProvider === null)
+    return refused('malformed_command', { why: 'provider_required' });
+  return {
+    identity: run.persona,
+    pageId: page.facts.id,
+    engine: run.engine,
+    model: run.model,
+    provider: run.pinnedProvider,
     toolset: frontmatter.toolset,
     instructions: page.facts.bodyMd,
   };
