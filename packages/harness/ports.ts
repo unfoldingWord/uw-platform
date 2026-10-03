@@ -195,6 +195,7 @@ export type PullRequestFacts = {
   readonly headRepo: string | null;
   readonly base: string;
   readonly baseRef: string;
+  readonly defaultBranch: string;
   readonly checks: readonly CheckFact[];
   readonly reviews: readonly ReviewFact[];
   readonly files: ChangedFiles | null;
