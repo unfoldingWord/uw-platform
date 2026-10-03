@@ -119,6 +119,20 @@ async function otherPin(): Promise<void> {
   expect(gateway.requests).toEqual([]);
 }
 
+async function noAmbientToken(): Promise<void> {
+  const ambient = process.env;
+  ambient['ANTHROPIC_AUTH_TOKEN'] = 'ambient-subscription-token';
+  try {
+    const { gateway, turn } = gatewayWith(endTurn);
+    await turn(request);
+    const [sent] = gateway.requests;
+    expect(sent?.headers['authorization']).toBeUndefined();
+    expect(JSON.stringify(sent?.headers)).not.toContain('ambient-subscription-token');
+  } finally {
+    delete ambient['ANTHROPIC_AUTH_TOKEN'];
+  }
+}
+
 async function noKey(): Promise<void> {
   const settings = [
     { ...configured, ANTHROPIC_API_KEY: undefined },
@@ -148,7 +162,9 @@ describe('claude-messages', () => {
 
   it('HE-4 a pin other than anthropic fails closed', otherPin);
 
-  it('HE-3 an engine with no key answers not_wired', noKey);
+  it('an engine with no key answers not_wired', noKey);
+
+  it('the client never reads an auth token from the environment', noAmbientToken);
 
   it('a model with no known price reports its cost as unknown', async () => {
     const { turn } = gatewayWith({ ...endTurn, model: 'claude-unpriced-9' });

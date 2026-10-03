@@ -36,6 +36,7 @@ function clientOf(config: EngineConfig): Anthropic | null {
   const token = config.AI_GATEWAY_TOKEN;
   return new Anthropic({
     apiKey,
+    authToken: null,
     baseURL: `https://gateway.ai.cloudflare.com/v1/${account}/${gateway}/anthropic`,
     fetch: config.fetch,
     defaultHeaders: token ? { 'cf-aig-authorization': `Bearer ${token}` } : {},

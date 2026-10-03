@@ -130,7 +130,7 @@ describe('the engine registry', () => {
   it('HE-10 claude-managed-agent answers engine_not_available for a turn and for work', () =>
     unavailable('claude-managed-agent'));
 
-  it('HE-2 external never runs on the platform', () => unavailable('external'));
+  it('external never runs on the platform', () => unavailable('external'));
 
   it('the engines not yet built answer not_wired for their work', async () => {
     const registry = engineRegistryOf(config);
