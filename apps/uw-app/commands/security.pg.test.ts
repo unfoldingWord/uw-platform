@@ -167,7 +167,7 @@ async function foreignDelegation(db: Database): Promise<void> {
     requestId: randomUUID(),
     delegationId: delegation.id,
   });
-  expect(own.body).toMatchObject({ reason: 'not_wired' });
+  expect(own.body).toMatchObject({ status: 'accepted' });
 }
 
 async function malformedHarnessId(db: Database): Promise<void> {
