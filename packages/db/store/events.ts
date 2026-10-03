@@ -1,13 +1,22 @@
-import { and, asc, desc, eq, gt, isNotNull } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, inArray, isNotNull, notLike } from 'drizzle-orm';
 import type { HarnessEvent, NewHarnessEvent } from '@uw/contracts';
 import type { AnyExecutor } from '../any-database.ts';
 import { oneOf } from '../checks.ts';
 import { harnessEvents } from '../schema.ts';
 import { refusing } from './refusal.ts';
 import { toEvent } from './rows.ts';
-import type { BreakerEventName, EventPage, EventQuery, HarnessEventsGateway } from './types.ts';
+import type {
+  BreakerEventName,
+  EventPage,
+  EventQuery,
+  HarnessEventsGateway,
+  RecentEvents,
+  StageEntry,
+} from './types.ts';
 
 const maxPage = 100;
+const maxRecent = 5000;
+const stageEntryNames = ['item_created', 'stage_advanced', 'loop_edge_taken'];
 
 export function bindEvents(executor: AnyExecutor): HarnessEventsGateway {
   return {
@@ -15,6 +24,8 @@ export function bindEvents(executor: AnyExecutor): HarnessEventsGateway {
       page: (query) => page(executor, query),
       createdFor: (actor, requestId) => createdFor(executor, actor, requestId),
       latestNamed: (names, harnessId) => latestNamed(executor, names, harnessId),
+      enteredStage: (harnessId, itemIds) => enteredStage(executor, harnessId, itemIds),
+      recent: (query) => recent(executor, query),
     },
     write: { append: (events) => refusing(() => appendAll(executor, events)) },
   };
@@ -118,4 +129,54 @@ async function latestNamed(
   if (names.length === 0) return null;
   const [row] = await latestNamedQuery(executor, names, harnessId);
   return row ? toEvent(row) : null;
+}
+
+async function enteredStage(
+  executor: AnyExecutor,
+  harnessId: string,
+  itemIds: readonly string[],
+): Promise<readonly StageEntry[]> {
+  if (itemIds.length === 0) return [];
+  const rows = await executor
+    .selectDistinctOn([harnessEvents.itemId], {
+      itemId: harnessEvents.itemId,
+      at: harnessEvents.at,
+    })
+    .from(harnessEvents)
+    .where(
+      and(
+        eq(harnessEvents.harnessId, harnessId),
+        inArray(harnessEvents.itemId, [...itemIds]),
+        inArray(harnessEvents.name, stageEntryNames),
+      ),
+    )
+    .orderBy(asc(harnessEvents.itemId), desc(harnessEvents.position));
+  return rows.flatMap((row) => (row.itemId === null ? [] : [{ itemId: row.itemId, at: row.at }]));
+}
+
+export function recentQuery(executor: AnyExecutor, query: RecentEvents) {
+  if (!Number.isInteger(query.limit) || query.limit < 1 || query.limit > maxRecent) {
+    throw new RangeError(`a recent read holds 1 to ${maxRecent} events, not ${query.limit}`);
+  }
+  return executor
+    .select()
+    .from(harnessEvents)
+    .where(
+      and(
+        gte(harnessEvents.at, query.since),
+        query.names === null ? undefined : inArray(harnessEvents.name, [...query.names]),
+        query.agentsOnly ? notLike(harnessEvents.actor, 'human:%') : undefined,
+      ),
+    )
+    .orderBy(desc(harnessEvents.at), asc(harnessEvents.harnessId), desc(harnessEvents.position))
+    .limit(query.limit);
+}
+
+async function recent(
+  executor: AnyExecutor,
+  query: RecentEvents,
+): Promise<readonly HarnessEvent[]> {
+  const rows = recentQuery(executor, query);
+  if (query.names !== null && query.names.length === 0) return [];
+  return (await rows).map(toEvent);
 }

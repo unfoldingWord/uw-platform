@@ -3,13 +3,15 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { AnyExecutor } from '../any-database.ts';
 import { closeEmbeddedTemplate } from '../embedded.ts';
 import { databaseTargets, type DatabaseTarget, type OpenedDatabase } from '../test-targets.ts';
-import { latestNamedQuery } from './events.ts';
-import { liveRuns, runsQuery } from './runs.ts';
+import { latestNamedQuery, recentQuery } from './events.ts';
+import { failedSinceQuery, liveRuns, runsQuery, startedSinceQuery } from './runs.ts';
 
 afterAll(closeEmbeddedTemplate);
 
 const harness = '00000000-0000-4000-8000-0000000000b1';
 const item = '00000000-0000-4000-8000-0000000000d1';
+
+const since = new Date('2026-10-01T00:00:00.000Z');
 
 const breakers = (harnessId: string | null) => (tx: AnyExecutor) =>
   latestNamedQuery(tx, ['breaker_holding', 'breaker_open'], harnessId);
@@ -62,6 +64,16 @@ function describeTarget(target: DatabaseTarget): void {
   it('reads the live run of one item through an index on the item', async () => {
     const plan = await planOf(db(), (tx) => runsQuery(tx, liveRuns({ itemId: item })));
     expect(plan).toMatch(/Index Scan using harness_runs_(one_live_per_item|item)\b/);
+  });
+
+  it('recent, startedSince and failedSince use their indexes', async () => {
+    const recent = (tx: AnyExecutor) =>
+      recentQuery(tx, { since, names: null, agentsOnly: true, limit: 100 });
+    expect(await planOf(db(), recent)).toContain('harness_events_at');
+    const started = (tx: AnyExecutor) => startedSinceQuery(tx, since, 100);
+    expect(await planOf(db(), started)).toContain('harness_runs_started_at');
+    const failed = (tx: AnyExecutor) => failedSinceQuery(tx, since, 100);
+    expect(await planOf(db(), failed)).toContain('harness_runs_failed_ended');
   });
 }
 

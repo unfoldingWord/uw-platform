@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, inArray, ne, sql, type SQL } from 'drizzle-orm';
 import {
   frontmatterSchema,
   pageStatusSchema,
@@ -6,6 +6,7 @@ import {
   personaFrontmatterSchema,
   type Identity,
 } from '@uw/contracts';
+import { isoDateSchema } from '@uw/core/dates';
 import type { AnyExecutor } from '../any-database.ts';
 import { pages } from '../schema.ts';
 import type { PageFacts, PagesGateway } from './types.ts';
@@ -64,6 +65,35 @@ async function activePersona(
   return { ...row, type: 'persona', status: 'active', frontmatter: frontmatter.data };
 }
 
+const maxLearnings = 5000;
+
+async function staleLearnings(
+  executor: AnyExecutor,
+  today: string,
+  limit: number,
+): Promise<readonly PageFacts[]> {
+  const day = isoDateSchema.safeParse(today);
+  if (!day.success) throw new RangeError(`today is a calendar date, not ${today}`);
+  if (!Number.isInteger(limit) || limit < 1 || limit > maxLearnings) {
+    throw new RangeError(`a learning read holds 1 to ${maxLearnings} pages, not ${limit}`);
+  }
+  const reviewBy = sql`coalesce((${pages.frontmatter}->>'review_by')::date, (${pages.frontmatter}->>'as_of')::date + 90)`;
+  const rows = await executor
+    .select(factColumns)
+    .from(pages)
+    .where(
+      and(
+        eq(pages.type, 'learning'),
+        ne(pages.status, 'retired'),
+        inArray(sql`${pages.frontmatter}->>'confidence'`, ['assumed', 'inferred']),
+        sql`${reviewBy} < ${day.data}::date`,
+      ),
+    )
+    .orderBy(asc(pages.id))
+    .limit(limit);
+  return rows.map(toFacts);
+}
+
 export function bindPages(executor: AnyExecutor): PagesGateway {
   return {
     read: {
@@ -72,6 +102,7 @@ export function bindPages(executor: AnyExecutor): PagesGateway {
         return factsWhere(executor, inArray(pages.id, [...pageIds]));
       },
       activePersona: (identity, harnessId) => activePersona(executor, identity, harnessId),
+      staleLearnings: (today, limit) => staleLearnings(executor, today, limit),
     },
   };
 }
