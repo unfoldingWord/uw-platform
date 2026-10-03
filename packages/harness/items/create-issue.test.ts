@@ -61,6 +61,7 @@ function itemsGateway(inserted: ItemState[]): HarnessItemsGateway {
       lock: unused,
       forHarness: unused,
       heldInStage: unused,
+      openInStage: unused,
       lapsedLeases: unused,
     },
     write: {
