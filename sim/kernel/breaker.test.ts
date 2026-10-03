@@ -1,6 +1,6 @@
 import type { HarnessEvent } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
-import { readAllEvents, software, type Caller } from '@uw/harness';
+import { createKernel, readAllEvents, software, type Caller } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createSimHarness, simAgent, simCaller, simPerson } from '../fixtures.ts';
 import { readWorldLog } from '../runner/log.ts';
@@ -273,6 +273,18 @@ async function stateReads(scene: Breaking): Promise<void> {
   expect(await breaker.state(clock.now())).toMatchObject({ at: read, fresh: false });
 }
 
+async function unreadableSpend(scene: Breaking): Promise<void> {
+  await checkAt(scene, 10);
+  scene.world.adapters.clock.advance(6 * minute);
+  const down = new RangeError('the gateway analytics are down');
+  const modelEngine = { ...scene.world.adapters.modelEngine, spend: () => Promise.reject(down) };
+  const kernel = createKernel({ ...scene.world.adapters, modelEngine });
+  await expect(
+    kernel.breaker.check(systemCaller(scene), { capMinor, currency: 'USD', since }),
+  ).rejects.toBe(down);
+  expect(await breakerNames(scene)).toEqual([['breaker_open'], ['breaker_open']]);
+}
+
 describe('the spend breaker', () => {
   it('HE-5 a reading at the same level within five minutes of the last records nothing', () =>
     inWorld(sameLevel));
@@ -307,4 +319,7 @@ describe('the spend breaker', () => {
 
   it('the state is the latest breaker event on any harness, open when there is none', () =>
     inWorld(stateReads));
+
+  it('a spend read that throws records nothing and the error reaches the caller', () =>
+    inWorld(unreadableSpend));
 });
