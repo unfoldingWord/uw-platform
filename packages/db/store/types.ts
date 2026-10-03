@@ -31,6 +31,8 @@ export type PageFacts = {
   readonly version: number;
 };
 export type StagePosition = { readonly id: string; readonly position: number };
+export type StageCursor = { readonly priority: number; readonly itemId: string };
+export type StagePage = { readonly after: StageCursor | null; readonly limit: number };
 
 export type HarnessesGateway = {
   readonly read: {
@@ -63,6 +65,11 @@ export type HarnessItemsGateway = {
     lock(itemId: string): Promise<ItemState | null>;
     forHarness(harnessId: string): Promise<readonly ItemState[]>;
     heldInStage(harnessId: string, stageKey: string, at: Date): Promise<number>;
+    openInStage(
+      harnessId: string,
+      stageKey: string,
+      page: StagePage,
+    ): Promise<readonly ItemState[]>;
     lapsedLeases(at: Date, limit: number): Promise<readonly string[]>;
   };
   readonly write: {

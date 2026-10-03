@@ -11,7 +11,7 @@ import type { Caller } from '../caller.ts';
 import { personaMatches } from '../delegations/beat.ts';
 import { livenessOf } from '../delegations/live.ts';
 import { accepted, refused, type KernelOutcome } from '../outcome.ts';
-import type { Delegation, Ports, StoreTransaction } from '../ports.ts';
+import type { Delegation, Ports, StageCursor, StoreTransaction } from '../ports.ts';
 
 export type ScenePorts = Pick<Ports, 'grants'>;
 export type HarnessScene = { readonly harness: Harness; readonly stages: readonly Stage[] };
@@ -175,11 +175,20 @@ export function byPriorityThenId(
   return a.itemId < b.itemId ? -1 : 1;
 }
 
+export type StageItemsInput = {
+  readonly harnessId: string;
+  readonly stageKey: string;
+  readonly after?: StageCursor | null;
+  readonly limit?: number;
+};
+
+export const stagePageLimit = 50;
+
 export async function itemsInStage(
   ports: ScenePorts,
   tx: StoreTransaction,
   caller: Caller,
-  input: { readonly harnessId: string; readonly stageKey: string },
+  input: StageItemsInput,
   at: Date,
 ): Promise<KernelOutcome<readonly ItemState[]>> {
   const scene = await harnessScene(ports, tx, caller, input.harnessId, at);
@@ -187,6 +196,7 @@ export async function itemsInStage(
   if (!scene.value.stages.some((stage) => stage.key === input.stageKey)) {
     return refused('stage_not_found', { stageKey: input.stageKey });
   }
-  const items = await tx.harnessItems.read.forHarness(input.harnessId);
-  return accepted(items.filter((item) => item.stageKey === input.stageKey).sort(byPriorityThenId));
+  const limit = Math.max(1, Math.min(input.limit ?? stagePageLimit, stagePageLimit));
+  const page = { after: input.after ?? null, limit };
+  return accepted(await tx.harnessItems.read.openInStage(input.harnessId, input.stageKey, page));
 }
