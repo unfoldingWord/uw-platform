@@ -5,6 +5,7 @@ import {
   errorOutcomeSchema,
   refusalSchema,
   type HarnessEvent,
+  type ItemState,
   type Outcome,
   type Principal,
   type Refusal,
@@ -79,6 +80,23 @@ export async function post(
       body: JSON.stringify(body),
       headers: { 'cf-access-jwt-assertion': token, 'content-type': 'application/json' },
     },
+    fixtureAccessEnv,
+  );
+  const text = await raw.text();
+  const parsed = JSON.parse(text) as Record<string, unknown>;
+  return { status: raw.status, body: parsed, text, traceId: raw.headers.get('x-trace-id') ?? '' };
+}
+
+export async function get(
+  db: Database,
+  claims: Readonly<Record<string, unknown>>,
+  path: string,
+): Promise<Sent> {
+  const keys = await accessFixture();
+  const token = await keys.sign({ ...claims });
+  const raw = await createApp(postgresDeps(db, keys), noGateGitHub).request(
+    path,
+    { method: 'GET', headers: { 'cf-access-jwt-assertion': token } },
     fixtureAccessEnv,
   );
   const text = await raw.text();
@@ -190,6 +208,11 @@ export async function enqueued(db: Database, harnessId: string, title: string): 
     }),
   );
   return item.itemId;
+}
+
+export async function itemState(db: Database, itemId: string): Promise<ItemState> {
+  const kernel = kernelOn(db, { now: () => new Date() });
+  return accepted(await kernel.reads.item(callerOf(await ian(db)), { itemId })).item;
 }
 
 function handleOn(db: Database): DatabaseHandle {

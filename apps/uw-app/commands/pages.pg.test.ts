@@ -77,7 +77,7 @@ async function kickstartPage(db: Database): Promise<void> {
   const inside = await kickstart(await page(db, '80-89'));
   expect(missing.body).toEqual({ status: 'error', requestId, reason: 'page_not_found' });
   expect(outside.text).toBe(missing.text);
-  expect(inside.body).toEqual({ status: 'error', requestId, reason: 'not_wired' });
+  expect(inside.body).toEqual({ status: 'accepted', requestId });
 }
 
 describe.skipIf(!testServer)('a page a command names', () => {
@@ -89,6 +89,6 @@ describe.skipIf(!testServer)('a page a command names', () => {
   it('a page id that is not a uuid is malformed_command, never an internal error', () =>
     withAppDatabase(malformedPageId));
 
-  it('kickstart checks its page the same way before not_wired', () =>
+  it('kickstart checks its page the same way before it enqueues', () =>
     withAppDatabase(kickstartPage));
 });

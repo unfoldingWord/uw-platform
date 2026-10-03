@@ -1,6 +1,14 @@
 import type { CommandName } from '@uw/contracts';
 import { isBuiltCommand, type CommandHandler } from './handler.ts';
-import { claimCommand, enqueueCommand, releaseCommand } from './handlers/items.ts';
+import {
+  claimCommand,
+  enqueueCommand,
+  kickstartCommand,
+  releaseCommand,
+  reorderCommand,
+  submitCommand,
+  tweakPackageCommand,
+} from './handlers/items.ts';
 import { notWiredCommand } from './not-wired.ts';
 
 export function commandRegistryOf(
@@ -20,13 +28,13 @@ export function commandRegistryOf(
 }
 
 export const commandRegistry = commandRegistryOf([
-  notWiredCommand('kickstart', 'write'),
+  kickstartCommand,
   enqueueCommand,
   notWiredCommand('import', 'write'),
-  notWiredCommand('reorder', 'write'),
+  reorderCommand,
   claimCommand,
   releaseCommand,
-  notWiredCommand('submit_to_gate', 'write'),
+  submitCommand,
   notWiredCommand('approve', 'admin'),
   notWiredCommand('reject', 'admin'),
   notWiredCommand('take_over', 'admin'),
@@ -35,7 +43,7 @@ export const commandRegistry = commandRegistryOf([
   notWiredCommand('stop_run', 'write'),
   notWiredCommand('pause', 'admin'),
   notWiredCommand('resume', 'admin'),
-  notWiredCommand('tweak_package', 'write'),
+  tweakPackageCommand,
   notWiredCommand('schedule_regular_tweak', 'admin'),
   notWiredCommand('revoke_delegation', 'admin'),
   notWiredCommand('recover_connectors', 'admin'),
