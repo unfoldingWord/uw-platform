@@ -20,6 +20,7 @@ const hostCalls: Readonly<Record<string, HostCall>> = {
   halt: (commands, caller) => commands.halt(caller, runId, 'lease_expired'),
   beat: (commands, caller) => commands.beat(caller, { limit: 0 }),
   reviewDiff: (commands, caller) => commands.reviewDiff(caller, runId),
+  progress: (commands, caller) => commands.progress(caller, runId),
   postReview: (commands, caller) =>
     commands.postReview(caller, runId, {
       verdict: 'approve',

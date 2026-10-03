@@ -149,12 +149,40 @@ export default {
       to: { path: '^packages/db/test-seed\\.ts$' },
     },
     {
-      name: 'in-process-host-only-in-tests',
+      name: 'in-process-host-only-in-run-steps',
       comment:
-        'Only test files connect the in-process Workflow host until the Workflow step that serves it lands.',
+        'Only the run steps (and tests) connect the in-process Workflow host, so every step connects as its run scene and nothing else picks a principal for it.',
       severity: 'error',
-      from: { pathNot: testFile },
+      from: { pathNot: [testFile, '^apps/uw-app/runs/steps\\.ts$'] },
       to: { path: '^apps/uw-app/mcp/in-process\\.ts$' },
+    },
+    {
+      name: 'run-host-only-from-the-workflow',
+      comment:
+        'The run host under apps/uw-app/runs/ is reached only from the Worker entry, which exports the HarnessRun Workflow, from itself, and from tests and their helpers.',
+      severity: 'error',
+      from: { pathNot: ['^apps/uw-app/index\\.ts$', '^apps/uw-app/runs/', appTesting, testFile] },
+      to: { path: '^apps/uw-app/runs/' },
+    },
+    forbidden(
+      'mcp-never-imports-the-run-host',
+      'The MCP surface imports nothing of the run host, so no verb reaches the run kernel or its GitHub wiring.',
+      '^apps/uw-app/mcp/',
+      '^apps/uw-app/runs/',
+    ),
+    {
+      name: 'verb-server-only-in-the-hosts',
+      comment:
+        'The verb server is built only by the HTTP route and the in-process host (and the test helpers), so no third site serves verbs under a principal of its choosing.',
+      severity: 'error',
+      from: {
+        pathNot: [
+          '^apps/uw-app/mcp/(routes|in-process|server)\\.ts$',
+          '^apps/uw-app/testing/',
+          testFile,
+        ],
+      },
+      to: { path: '^apps/uw-app/mcp/server\\.ts$' },
     },
     {
       name: 'app-testing-only-in-tests',

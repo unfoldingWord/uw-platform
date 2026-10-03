@@ -89,7 +89,10 @@ describe('only the live route opens a socket to the hub', () => {
 });
 
 const cloudflareImport = /(?:from\s*|import\s*\(?\s*)['"](cloudflare[^'"]*)['"]/g;
-const runtimeModuleHost = 'apps/uw-app/live/harness-hub.ts';
+const runtimeModuleHosts: ReadonlySet<string> = new Set([
+  'apps/uw-app/live/harness-hub.ts',
+  'apps/uw-app/runs/workflow.ts',
+]);
 
 function isSource(file: string): boolean {
   return (
@@ -103,25 +106,30 @@ function cloudflareStrays(files: readonly string[], read: (file: string) => stri
   return files.filter(isSource).flatMap((file) =>
     [...read(file).matchAll(cloudflareImport)]
       .map((match) => match[1] ?? '')
-      .filter((specifier) => file !== runtimeModuleHost || specifier !== 'cloudflare:workers')
+      .filter((specifier) => !runtimeModuleHosts.has(file) || specifier !== 'cloudflare:workers')
       .map((specifier) => `${file} imports ${specifier}`),
   );
 }
 
-describe('the Workers runtime module is imported only by the hub Durable Object', () => {
-  it('finds cloudflare imported only as cloudflare:workers and only from the HarnessHub file', () => {
+describe('the Workers runtime module is imported only by the hub Durable Object and the HarnessRun Workflow', () => {
+  it('finds cloudflare imported only as cloudflare:workers and only from the HarnessHub and HarnessRun files', () => {
     const others = repoFiles().filter((file) => file !== 'tools/architecture/hub-wiring.test.ts');
     expect(cloudflareStrays(others, (file) => readFileSync(file, 'utf8'))).toEqual([]);
   });
 
   it('flags the cloudflare package, and the runtime module outside the hub file', () => {
     const planted = new Map([
-      [runtimeModuleHost, "import { DurableObject } from 'cloudflare:workers';"],
+      ['apps/uw-app/live/harness-hub.ts', "import { DurableObject } from 'cloudflare:workers';"],
+      [
+        'apps/uw-app/runs/workflow.ts',
+        "import { WorkflowEntrypoint } from 'cloudflare:workers';\nimport { NonRetryableError } from 'cloudflare:workflows';",
+      ],
       ['apps/uw-app/live/other.ts', "import { DurableObject } from 'cloudflare:workers';"],
       ['apps/uw-app/ports/sdk.ts', "import Cloudflare from 'cloudflare';"],
       ['apps/uw-app/ports/lazy.ts', "const sdk = await import('cloudflare/resources');"],
     ]);
     expect(cloudflareStrays([...planted.keys()], (file) => planted.get(file) ?? '')).toEqual([
+      'apps/uw-app/runs/workflow.ts imports cloudflare:workflows',
       'apps/uw-app/live/other.ts imports cloudflare:workers',
       'apps/uw-app/ports/sdk.ts imports cloudflare',
       'apps/uw-app/ports/lazy.ts imports cloudflare/resources',

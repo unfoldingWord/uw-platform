@@ -112,7 +112,7 @@ export function assertGatedWhereGranted(handlers: ReadonlyMap<string, VerbHandle
   }
 }
 
-function resultOf(reply: Answer): CallToolResult {
+export function resultOf(reply: Answer): CallToolResult {
   if (reply.status === 'accepted') {
     return {
       content: [{ type: 'text', text: JSON.stringify(reply.output) }],

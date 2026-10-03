@@ -213,7 +213,31 @@ const refusals: [string, string, string, string][] = [
     'a non-test app file into the in-process host',
     'apps/uw-app/a.ts',
     "import './mcp/in-process.ts';",
-    'in-process-host-only-in-tests',
+    'in-process-host-only-in-run-steps',
+  ],
+  [
+    'the run core into the in-process host past the run steps',
+    'apps/uw-app/runs/run-core.ts',
+    "import '../mcp/in-process.ts';",
+    'in-process-host-only-in-run-steps',
+  ],
+  [
+    'an app module into the run host',
+    'apps/uw-app/cron/a.ts',
+    "import '../runs/b.ts';",
+    'run-host-only-from-the-workflow',
+  ],
+  [
+    'the MCP surface into the run host',
+    'apps/uw-app/mcp/a.test.ts',
+    "import '../runs/b.ts';",
+    'mcp-never-imports-the-run-host',
+  ],
+  [
+    'an app module into the verb server',
+    'apps/uw-app/commands/a.ts',
+    "import '../mcp/server.ts';",
+    'verb-server-only-in-the-hosts',
   ],
   [
     'ingest into the kernel',
@@ -283,6 +307,8 @@ describe('the dependency rules', () => {
         'packages/harness/b.ts': leaf,
         'packages/harness/port-contracts/b.ts': leaf,
         'apps/uw-app/mcp/in-process.ts': leaf,
+        'apps/uw-app/mcp/server.ts': leaf,
+        'apps/uw-app/runs/b.ts': leaf,
         'apps/uw-app/types.d.ts': 'export type Value = number;',
       }),
     ).toContain(rule);
@@ -326,6 +352,21 @@ describe('the dependency rules allow', () => {
         'packages/harness/index.ts': leaf,
         'sim/a.ts':
           "import '../packages/harness/index.ts'; import '../packages/contracts/index.ts'; import '../packages/db/index.ts';",
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('the run host dependency rules allow', () => {
+  it('the run steps on the in-process host, the Worker entry on the run host, and the hosts on the verb server', async () => {
+    expect(
+      await violations({
+        'apps/uw-app/mcp/server.ts': leaf,
+        'apps/uw-app/mcp/in-process.ts': "import './server.ts';",
+        'apps/uw-app/mcp/routes.ts': "import './server.ts';",
+        'apps/uw-app/runs/steps.ts': "import '../mcp/in-process.ts';",
+        'apps/uw-app/runs/workflow.ts': "import './steps.ts';",
+        'apps/uw-app/index.ts': "import './runs/workflow.ts';",
       }),
     ).toEqual([]);
   });

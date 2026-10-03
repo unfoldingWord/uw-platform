@@ -45,6 +45,7 @@ const wiring = [
   'packages/harness/runs/commands.ts',
   'packages/harness/runs/review.ts',
   'apps/uw-app/testing/lost-exit.ts',
+  'apps/uw-app/testing/run-host.ts',
   exitModule,
   recoverModule,
   'packages/harness/ports.ts',
@@ -191,7 +192,11 @@ describe('GH-6 the merge connector runs only from the kernel stage-exit path', (
   it('GH-6 the only kernel built with GitHub reads or the ship writes is the gate kernel', () => {
     const app = sources().filter((file) => file.startsWith('apps/uw-app/'));
     expect(app.length).toBeGreaterThan(0);
-    expect(filesMatching(gitHubWired, app)).toEqual([gateKernelModule, kernelRoot]);
+    expect(filesMatching(gitHubWired, app)).toEqual([
+      gateKernelModule,
+      kernelRoot,
+      'apps/uw-app/runs/deps.ts',
+    ]);
   });
 
   it('GH-6 the queue and cron roots name no ship or read wiring', () => {

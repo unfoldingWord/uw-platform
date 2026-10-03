@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { isForbiddenVerbName, verbRegistry } from '@uw/contracts';
 import { gatedHandler, type VerbHandler } from '../mcp/handler.ts';
-import { connectInProcess } from '../mcp/in-process.ts';
+import { serveVerbsForTest } from './in-process.ts';
 import { toolsFor } from '../mcp/tools.ts';
 import { verbHandlers } from '../mcp/verbs/index.ts';
 import { callableFailures, toolSurfaceMismatches, type ToolSurface } from './conformance.ts';
@@ -41,7 +41,7 @@ async function callInProcess(
   handlers: ReadonlyMap<string, VerbHandler> = verbHandlers,
 ): Promise<unknown> {
   const context = testContext(testAgent([areaGrant('editor', '80-89')]));
-  const client = await connectInProcess(context, handlers);
+  const client = await serveVerbsForTest(context, handlers);
   try {
     return await client.callTool({ name, arguments: args }).then(
       (result) => result,

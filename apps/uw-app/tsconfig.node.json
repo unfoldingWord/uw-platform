@@ -9,7 +9,8 @@
     "**/*.pg.test.ts",
     "testing/postgres.ts",
     "testing/commands.ts",
-    "testing/harness-reads.ts"
+    "testing/harness-reads.ts",
+    "testing/run-host.ts"
   ],
   "exclude": ["node_modules"]
 }
