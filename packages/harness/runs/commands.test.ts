@@ -18,6 +18,7 @@ const hostCalls: Readonly<Record<string, HostCall>> = {
     commands.fail(caller, runId, { step: 'work', why: 'retries_exhausted', detail: '\u0000' }),
   holdPremise: (commands, caller) => commands.holdPremise(caller, runId, { reason: '' }),
   halt: (commands, caller) => commands.halt(caller, runId, 'lease_expired'),
+  beat: (commands, caller) => commands.beat(caller, { limit: 0 }),
 };
 
 const personReachable = ['start', 'stop', 'prompt'];

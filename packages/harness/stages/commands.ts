@@ -8,6 +8,7 @@ import type { Ports, StageCursor, StoreTransaction } from '../ports.ts';
 import type { HarnessScene } from '../reads/scene.ts';
 import { activateTemplate, type Activated, type ActivateInput } from './activate.ts';
 import { editInTransaction, type EditWork } from './edit.ts';
+import { setHostedBuilder, type HostedBuilderInput } from './hosted-builder.ts';
 import { setPause, type PauseInput } from './pause.ts';
 
 type StagePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store' | 'runs'>;
@@ -42,6 +43,7 @@ export type StageCommands = {
   ): Promise<KernelOutcome<readonly Stage[]>>;
   pause(caller: Caller, input: PauseInput): Promise<KernelOutcome<HarnessScene>>;
   resume(caller: Caller, input: PauseInput): Promise<KernelOutcome<HarnessScene>>;
+  setHostedBuilder(caller: Caller, input: HostedBuilderInput): Promise<KernelOutcome<HarnessScene>>;
 };
 
 const stageChangeSchema = stageSchema
@@ -222,5 +224,6 @@ export function createStageCommands(ports: StagePorts): StageCommands {
       editInTransaction(ports, caller, input.harnessId, removeWork(input.stageKey)),
     pause: (caller, input) => setPause(ports, caller, input, true),
     resume: (caller, input) => setPause(ports, caller, input, false),
+    setHostedBuilder: (caller, input) => setHostedBuilder(ports, caller, input),
   };
 }

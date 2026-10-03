@@ -12,7 +12,9 @@ import {
 import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
+import { engineDescriptor } from '../engines.ts';
 import { spendRefusal } from '../runs/breaker-level.ts';
+import { personaPageOf } from '../runs/persona.ts';
 import { endRunDrafts, stopWorkflows } from '../runs/ends.ts';
 import { lapseDrafts, LEASE_MS, leaseLapsed } from './leases.ts';
 import { pausedRefusal } from './paused.ts';
@@ -81,13 +83,23 @@ function lockedGuards(scene: Scene, item: ItemState): Refused | null {
   return gateRefusal(item) ?? pickupRefusal(caller, stage) ?? pausedRefusal(caller, harness, stage);
 }
 
-async function bareRefusal(
+async function hostedBuilderRefusal(
   tx: StoreTransaction,
   caller: Caller,
-  at: Date,
+  harness: Harness,
 ): Promise<Refused | null> {
+  if (harness.hostedBuilderEnabled) return null;
+  const page = personaPageOf(
+    (await tx.pages.read.activePersona(caller.actor.identity, harness.id)) ?? undefined,
+  );
+  if (page === null || !engineDescriptor(page.frontmatter.engine).needsHostedBuilder) return null;
+  return refused('hosted_builder_off', { harnessId: harness.id });
+}
+
+async function bareRefusal(tx: StoreTransaction, scene: Scene): Promise<Refused | null> {
+  const { caller, harness, context } = scene;
   if (!bareAgent(caller.actor.identity)) return null;
-  return spendRefusal(tx, at);
+  return (await hostedBuilderRefusal(tx, caller, harness)) ?? (await spendRefusal(tx, context.at));
 }
 
 async function actingGuard(
@@ -193,7 +205,7 @@ async function claimIn(
   const stage = stages.find((entry) => entry.id === scene.stage.id);
   if (stage === undefined) return refused('stage_not_found', { stage: scene.stage.key });
   const locked = { ...scene, harness, stage };
-  const stale = lockedGuards(locked, item) ?? (await bareRefusal(tx, caller, at));
+  const stale = lockedGuards(locked, item) ?? (await bareRefusal(tx, locked));
   if (stale !== null) return stale;
   const denied = await actingGuard(tx, ports, locked, item, input.delegationId);
   if (denied !== null) return denied;

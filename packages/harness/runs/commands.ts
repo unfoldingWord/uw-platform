@@ -2,6 +2,7 @@ import { isSystemPrincipal } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { refused, type KernelOutcome } from '../outcome.ts';
 import type { Ports, RunRow } from '../ports.ts';
+import { beat, type BeatInput, type Beaten } from './beat.ts';
 import { prompt, stop, type PromptInput, type StopInput } from './control.ts';
 import {
   complete,
@@ -31,6 +32,7 @@ export type RunCommands = {
   halt(caller: Caller, runId: string, why: HaltReason): RunOutcome;
   stop(caller: Caller, input: StopInput): RunOutcome;
   prompt(caller: Caller, input: PromptInput): RunOutcome;
+  beat(caller: Caller, input: BeatInput): Promise<KernelOutcome<Beaten>>;
 };
 
 type HostMember<A extends readonly unknown[], R> = (
@@ -60,5 +62,6 @@ export function createRunCommands(ports: RunPorts): RunCommands {
     halt: hostOnly((caller, runId: string, why: HaltReason) => halt(ports, caller, runId, why)),
     stop: (caller, input) => stop(ports, caller, input),
     prompt: (caller, input) => prompt(ports, caller, input),
+    beat: hostOnly((caller, input: BeatInput) => beat(ports, caller, input)),
   };
 }
