@@ -118,7 +118,7 @@ describe('grants read inside a waking transaction', () => {
       await reading.resolveIn(tx, 'p1', at);
       await reading.lockAndReread(tx, 'p1', at);
     });
-    expect(grants.seen).toEqual([original, original]);
+    expect(grants.seen).toHaveLength(2);
     expect(grants.seen.every((tx) => tx === original)).toBe(true);
   });
 
