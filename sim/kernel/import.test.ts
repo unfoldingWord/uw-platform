@@ -268,3 +268,28 @@ describe('GH-3 only the ingest principal records a removed label, once per item'
       expect(await itemCount(scene)).toBe(1);
     }));
 });
+
+async function answersWhetherImported(scene: Scene): Promise<void> {
+  const ingest = simCaller(scene.world, simIngest());
+  const ask = (caller: Caller) =>
+    scene.world.kernel.reads.issueImported(caller, { githubId: issue.githubId });
+  expect(await ask(ingest)).toEqual({ status: 'accepted', value: false });
+  await importAs(scene, simIngest());
+  expect(await ask(ingest)).toEqual({ status: 'accepted', value: true });
+  expect(await ask(simCaller(scene.world, simSystem()))).toEqual({
+    status: 'accepted',
+    value: true,
+  });
+  for (const actor of [scene.editor, device(scene.editor)]) {
+    expect(await ask(simCaller(scene.world, actor))).toEqual({
+      status: 'error',
+      reason: 'not_permitted',
+      detail: { githubId: issue.githubId },
+    });
+  }
+}
+
+describe('only an import principal asks whether an issue already has an item', () => {
+  it('answers false then true for the ingest principal, and refuses a person and a device', () =>
+    inScene(answersWhetherImported));
+});

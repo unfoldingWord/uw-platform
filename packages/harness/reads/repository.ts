@@ -25,3 +25,12 @@ export async function importTarget(
   }
   return accepted({ harnessId: harness.id, jdArea: harness.jdArea });
 }
+
+export async function issueImported(
+  tx: StoreTransaction,
+  caller: Caller,
+  githubId: number,
+): Promise<KernelOutcome<boolean>> {
+  if (!isImportPrincipal(caller.actor)) return refused('not_permitted', { githubId });
+  return accepted((await tx.harnessItems.read.byIssue(githubId)) !== null);
+}

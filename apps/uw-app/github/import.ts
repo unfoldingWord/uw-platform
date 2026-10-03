@@ -79,13 +79,15 @@ async function importLabelled(deps: GitHubDeps, change: IssueChange, logger: Log
 }
 
 async function recordRemoval(deps: GitHubDeps, change: IssueChange, logger: Logger) {
-  const removed = await deps.kernel.items.labelRemoved(callerFor(logger), {
+  const caller = callerFor(logger);
+  const imported = await deps.kernel.reads.issueImported(caller, { githubId: change.githubId });
+  if (imported.status !== 'accepted' || !imported.value) return;
+  const removed = await deps.kernel.items.labelRemoved(caller, {
     githubId: change.githubId,
     label: HARNESS_LABEL,
     githubUpdatedAt: change.githubUpdatedAt.toISOString(),
   });
   if (removed.status !== 'accepted') {
-    if (removed.reason === 'item_not_found') return;
     logger.warn('harness label removal not recorded', {
       outcome: 'label_removal_refused',
       repository: change.repo,
@@ -102,8 +104,16 @@ async function recordRemoval(deps: GitHubDeps, change: IssueChange, logger: Logg
   });
 }
 
-export function followIssue(deps: GitHubDeps, change: IssueChange, logger: Logger): Promise<void> {
-  return carriesHarnessLabel(change.labels)
-    ? importLabelled(deps, change, logger)
-    : recordRemoval(deps, change, logger);
+export async function followIssue(
+  deps: GitHubDeps,
+  change: IssueChange,
+  logger: Logger,
+): Promise<void> {
+  if (!carriesHarnessLabel(change.labels)) return recordRemoval(deps, change, logger);
+  if (change.open) return importLabelled(deps, change, logger);
+  logger.info('labelled issue not imported: it is closed', {
+    outcome: 'issue_closed',
+    repository: change.repo,
+    issue: change.number,
+  });
 }
