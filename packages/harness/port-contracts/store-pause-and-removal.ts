@@ -18,6 +18,21 @@ export function describeHarnessPause(subject: RemovalSubject): void {
     expect(seen).toEqual([true, true, true, false]);
   });
 
+  it('DX-3 sets hosted Builder on and back, and reports no harness for an id that names none', async () => {
+    const seen = await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0x2510, 'gateway-hosted-builder');
+      const enabledOf = async () =>
+        (await tx.harnesses.read.byId(uid(0x2510)))?.hostedBuilderEnabled;
+      const before = await enabledOf();
+      const set = await tx.harnesses.write.setHostedBuilder(uid(0x2510), true);
+      const enabled = await enabledOf();
+      const unset = await tx.harnesses.write.setHostedBuilder(uid(0x2510), false);
+      const missing = await tx.harnesses.write.setHostedBuilder(uid(0x25fd), true);
+      return [before, set, enabled, unset, await enabledOf(), missing];
+    });
+    expect(seen).toEqual([false, true, true, true, false, false]);
+  });
+
   it('DX-3 reports that no harness was paused when the id names none', async () => {
     const found = await subject().store.transaction((tx) =>
       tx.harnesses.write.setPaused(uid(0x25fe), true),

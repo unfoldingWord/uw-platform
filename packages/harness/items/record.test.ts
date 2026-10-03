@@ -114,7 +114,7 @@ function eventsGateway(log: string[], appended: HarnessEvent[]): HarnessEventsGa
 
 const harnessesGateway: HarnessesGateway = {
   read: { byId: unused, byKey: unused, byRepository: unused, list: unused },
-  write: { insert: unused, setPaused: unused },
+  write: { insert: unused, setPaused: unused, setHostedBuilder: unused },
 };
 
 function recording(): Recording {

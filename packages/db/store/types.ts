@@ -52,6 +52,7 @@ export type HarnessesGateway = {
   readonly write: {
     insert(harness: Harness, at: Date): Promise<void>;
     setPaused(harnessId: string, paused: boolean): Promise<boolean>;
+    setHostedBuilder(harnessId: string, enabled: boolean): Promise<boolean>;
   };
 };
 export type HarnessStagesGateway = {
