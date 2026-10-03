@@ -17,6 +17,8 @@ const configurationFiles: readonly string[] = [
   'apps/uw-app/env.ts',
   'infra/uw-app/wrangler.toml',
   'infra/uw-app/wrangler.go-live.toml',
+  'infra/containers/claude-code/Dockerfile',
+  'infra/containers/codex/Dockerfile',
 ];
 
 function scanned(path: string): boolean {
