@@ -258,5 +258,9 @@ export const commandRequests = declareTable(
       'command_requests_settled_with_outcome',
       sql`(${t.outcome} IS NULL) = (${t.settledAt} IS NULL)`,
     ),
+    check(
+      'command_requests_outcome_bounded',
+      sql`${t.outcome} IS NULL OR octet_length(${t.outcome}::text) <= 16384`,
+    ),
   ],
 );

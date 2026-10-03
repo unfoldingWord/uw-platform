@@ -1,5 +1,5 @@
 {
-  "id": "7c7a6f6a-211e-415d-8218-fd92eebd8507",
+  "id": "a2fe73ee-6d15-4f1f-974a-6f1afc7de9a5",
   "prevId": "1243273b-890d-4c61-82be-3e5f02a60f6c",
   "version": "7",
   "dialect": "postgresql",
@@ -1441,6 +1441,10 @@
         "command_requests_settled_with_outcome": {
           "name": "command_requests_settled_with_outcome",
           "value": "(\"command_requests\".\"outcome\" IS NULL) = (\"command_requests\".\"settled_at\" IS NULL)"
+        },
+        "command_requests_outcome_bounded": {
+          "name": "command_requests_outcome_bounded",
+          "value": "\"command_requests\".\"outcome\" IS NULL OR octet_length(\"command_requests\".\"outcome\"::text) <= 16384"
         }
       },
       "isRLSEnabled": false

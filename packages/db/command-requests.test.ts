@@ -36,6 +36,25 @@ async function refusal(
   throw new Error('expected the database to refuse');
 }
 
+type Insert = (row: Partial<Claim>) => PromiseLike<unknown>;
+
+function describeOutcomeBound(insert: Insert): void {
+  it('stores a settled outcome of 16384 bytes and refuses one a byte longer', async () => {
+    const settled = (n: number, reason: string) =>
+      insert({
+        requestId: `00000000-0000-4000-8000-0000000000${n}`,
+        settledAt: at,
+        outcome: { reason },
+      });
+    const frame = JSON.stringify({ reason: '' }).length + 1;
+    await settled(10, 'x'.repeat(16_384 - frame));
+    expect(await refusal(settled(11, 'x'.repeat(16_385 - frame)))).toEqual({
+      code: '23514',
+      constraint: 'command_requests_outcome_bounded',
+    });
+  });
+}
+
 function describeTarget(target: DatabaseTarget): void {
   let opened: OpenedDatabase | undefined;
   beforeAll(async () => {
@@ -46,6 +65,7 @@ function describeTarget(target: DatabaseTarget): void {
     if (!opened) throw new Error('the database did not open');
     return opened.db.insert(commandRequests).values({ ...claimed, ...row });
   };
+  describeOutcomeBound(insert);
 
   it('keeps one row per actor and requestId, and lets another actor use the same requestId', async () => {
     await insert({});
