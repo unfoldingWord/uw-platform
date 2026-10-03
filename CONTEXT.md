@@ -297,7 +297,7 @@ One window per person in which a weaker wake never spends what a stronger one ne
 _Avoid_: debounce, rate limit, digest
 
 **Waiting on you**:
-The Home view and the wake for gates the current person can decide and runs on items they hold.
+The Home view and the wake for gates the current person can decide, their delegations that lapsed and were not renewed, and failed runs on items they hold or ran.
 _Avoid_: inbox, to-do, notifications
 
 **Indicator**:
@@ -311,6 +311,38 @@ _Avoid_: variable, style constant
 **Shell**:
 The page frame every screen renders inside: sidebar, top bar and content, fluid from phone width up.
 _Avoid_: layout, chrome, template (that is a stage graph)
+
+**Home**:
+The app root, where "Waiting on you" lists what the person can act on, ranked.
+_Avoid_: dashboard, inbox
+
+**Flow view**:
+One harness drawn as the BML diagram from its stage rows under the four brackets, with each stage's count, WIP, age and cost, live.
+_Avoid_: pipeline view, diagram page
+
+**Board**:
+The screen with one column per stage and one card per item.
+_Avoid_: kanban (the prototype's word), queue
+
+**Card**:
+The Board's rendering of an item.
+_Avoid_: ticket, tile
+
+**Agent plane**:
+The indicators on `/health` about agents: spend, breaker, runs, delegations, gate refusals, agent writes, stale learnings and the GitHub sweep, each with a drill-through.
+_Avoid_: ops dashboard, metrics
+
+**Drill-through**:
+The list behind one indicator, filtered by `can()`.
+_Avoid_: detail page, report
+
+**Island**:
+The browser code the bundle carries: the command forms and the live refresh. It calls the command API and the event read route, never the kernel.
+_Avoid_: widget, client app, SPA
+
+**Fragment refresh**:
+Re-rendering `<main>` from the server after a wake, merged into the page without a reload.
+_Avoid_: hot reload, polling (that is the hub's fallback)
 
 ## The repo and the build
 
