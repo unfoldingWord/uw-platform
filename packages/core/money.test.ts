@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatMoney } from './money.ts';
+import { formatCount, formatMoney } from './money.ts';
 
 describe('WB-11 money is formatted once from integer minor units', () => {
   it('WB-11 formats US dollars with grouping and two decimals', () => {
@@ -45,5 +45,13 @@ describe('WB-11 money is formatted once from integer minor units', () => {
     for (const currency of ['usd', 'US', 'USDD', '', 'U$D']) {
       expect(() => formatMoney({ amountMinor: 1, currency })).toThrow(RangeError);
     }
+  });
+});
+
+describe('formatCount', () => {
+  it('formatCount groups digits', () => {
+    expect(formatCount(0)).toBe('0');
+    expect(formatCount(1234567)).toBe('1,234,567');
+    expect(formatCount(-4200)).toBe('-4,200');
   });
 });

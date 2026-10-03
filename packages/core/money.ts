@@ -21,3 +21,9 @@ export function formatMoney(money: Money): string {
   const digits = format.resolvedOptions().maximumFractionDigits ?? 2;
   return format.format(decimalText(money.amountMinor, digits) as `${number}`);
 }
+
+const counts = new Intl.NumberFormat('en-US');
+
+export function formatCount(count: number): string {
+  return counts.format(count);
+}

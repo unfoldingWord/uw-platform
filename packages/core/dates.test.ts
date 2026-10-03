@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, isoDateSchema, parseDate } from './dates.ts';
+import { formatDate, formatDuration, formatInstant, isoDateSchema, parseDate } from './dates.ts';
 
 describe('formatDate', () => {
   it('renders the UTC calendar date as an ISO 8601 date', () => {
@@ -55,5 +55,24 @@ describe('isoDateSchema', () => {
 
   it.each(['2026-3-3', '03/03/2026', 'March 3, 2026'])('rejects %j', (text) => {
     expect(isoDateSchema.safeParse(text).success).toBe(false);
+  });
+});
+
+describe('formatInstant', () => {
+  it('formatInstant writes the date, the UTC hour and minute, and UTC', () => {
+    expect(formatInstant(new Date('2026-10-03T07:05:59.999Z'))).toBe('2026-10-03 07:05 UTC');
+    expect(formatInstant(new Date('2026-12-31T23:59:00.000+05:00'))).toBe('2026-12-31 18:59 UTC');
+  });
+});
+
+describe('formatDuration', () => {
+  it('formatDuration writes minutes, hours and days', () => {
+    const minute = 60_000;
+    expect(formatDuration(45 * minute + 59_000)).toBe('45 min');
+    expect(formatDuration(0)).toBe('0 min');
+    expect(formatDuration(-5 * minute)).toBe('0 min');
+    expect(formatDuration(192 * minute)).toBe('3 h 12 min');
+    expect(formatDuration(60 * minute)).toBe('1 h 0 min');
+    expect(formatDuration((2 * 24 + 4) * 60 * minute + 30 * minute)).toBe('2 d 4 h');
   });
 });
