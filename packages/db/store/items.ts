@@ -139,6 +139,26 @@ async function openInStage(
   return rows.map((row) => toItemState(row.item, row.stageKey));
 }
 
+async function lowestOpenPriority(
+  executor: AnyExecutor,
+  harnessId: string,
+  stageKey: string,
+): Promise<number | null> {
+  const rows = await executor
+    .select({ lowest: sql<number | null>`min(${harnessItems.priority})` })
+    .from(harnessItems)
+    .innerJoin(harnessStages, eq(harnessStages.id, harnessItems.stageId))
+    .where(
+      and(
+        eq(harnessItems.harnessId, harnessId),
+        eq(harnessStages.key, stageKey),
+        ne(harnessItems.gateStatus, 'done'),
+      ),
+    );
+  const lowest = rows[0]?.lowest;
+  return lowest === null || lowest === undefined ? null : Number(lowest);
+}
+
 function bindReads(executor: AnyExecutor): HarnessItemsGateway['read'] {
   return {
     byId: async (itemId) => {
@@ -167,6 +187,7 @@ function bindReads(executor: AnyExecutor): HarnessItemsGateway['read'] {
     },
     heldInStage: (harnessId, stageKey, at) => heldInStage(executor, harnessId, stageKey, at),
     openInStage: (harnessId, stageKey, page) => openInStage(executor, harnessId, stageKey, page),
+    lowestOpenPriority: (harnessId, stageKey) => lowestOpenPriority(executor, harnessId, stageKey),
     lapsedLeases: async (at, limit) => {
       const rows = await executor
         .select({ id: harnessItems.id })

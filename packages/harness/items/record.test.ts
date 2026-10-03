@@ -67,6 +67,7 @@ function itemsGateway(log: string[], rows: Map<string, ItemState>): HarnessItems
       forHarness: unused,
       heldInStage: unused,
       openInStage: unused,
+      lowestOpenPriority: unused,
       lapsedLeases: unused,
     },
     write: {
@@ -86,6 +87,7 @@ function itemsGateway(log: string[], rows: Map<string, ItemState>): HarnessItems
 function eventsGateway(log: string[], appended: HarnessEvent[]): HarnessEventsGateway {
   return {
     read: {
+      createdFor: unused,
       page: async (query) => {
         const matching = appended.filter(
           (event) => event.position > query.after && event.harnessId === query.harnessId,

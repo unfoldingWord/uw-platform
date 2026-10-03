@@ -70,6 +70,7 @@ export type HarnessItemsGateway = {
       stageKey: string,
       page: StagePage,
     ): Promise<readonly ItemState[]>;
+    lowestOpenPriority(harnessId: string, stageKey: string): Promise<number | null>;
     lapsedLeases(at: Date, limit: number): Promise<readonly string[]>;
   };
   readonly write: {
@@ -89,7 +90,10 @@ export type EventQuery = {
 };
 export type EventPage = { readonly events: readonly HarnessEvent[]; readonly next: number | null };
 export type HarnessEventsGateway = {
-  readonly read: { page(query: EventQuery): Promise<EventPage> };
+  readonly read: {
+    page(query: EventQuery): Promise<EventPage>;
+    createdFor(actor: string, requestId: string): Promise<string | null>;
+  };
   readonly write: { append(events: readonly NewHarnessEvent[]): Promise<readonly HarnessEvent[]> };
 };
 

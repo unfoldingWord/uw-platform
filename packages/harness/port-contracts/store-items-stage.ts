@@ -46,3 +46,24 @@ export function describeStageItems(subject: ItemsSubject): void {
     ]);
   });
 }
+
+export function describeLowestOpen(subject: ItemsSubject): void {
+  it('WB-2 reads the lowest priority among a stage’s open items, and null for a stage with none', async () => {
+    const { store } = subject();
+    await store.transaction(async (tx) => {
+      await seedHarness(tx, base + 0x100, 'gateway-stage-lowest');
+      const rows = [
+        itemOf(base + 0x100, 1, { priority: 10 }),
+        itemOf(base + 0x100, 2, { priority: -5, gateStatus: 'done' }),
+        itemOf(base + 0x100, 3, { priority: 7 }),
+        itemOf(base + 0x100, 4, { priority: 3, stageKey: 'review' }),
+      ];
+      for (const row of rows) await tx.harnessItems.write.insert(row, at);
+    });
+    const lowest = await store.transaction(async (tx) => [
+      await tx.harnessItems.read.lowestOpenPriority(uid(base + 0x100), 'build'),
+      await tx.harnessItems.read.lowestOpenPriority(uid(base + 0x100), 'ship'),
+    ]);
+    expect(lowest).toEqual([7, null]);
+  });
+}

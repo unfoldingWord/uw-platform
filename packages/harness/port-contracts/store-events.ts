@@ -61,6 +61,27 @@ function describeRequestIds(subject: EventsSubject): void {
   });
 }
 
+function describeCreatedFor(subject: EventsSubject): void {
+  it('DX-3 finds the item a request created by its actor and requestId, and nothing for another', async () => {
+    const requestId = uid(0x2a00 + 0xc0);
+    const item = itemOf(0x2a00, 1);
+    const actor = 'human:00000000-0000-4000-8000-000000000001';
+    const found = await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0x2a00, 'gateway-events-created');
+      await tx.harnessItems.write.insert(item, at);
+      const created = { ...eventOf(0x2a00, 1, item.itemId), requestId };
+      await tx.harnessEvents.write.append([newEventSchema.parse(created)]);
+      const read = tx.harnessEvents.read;
+      return [
+        await read.createdFor(actor, requestId),
+        await read.createdFor('human:00000000-0000-4000-8000-000000000002', requestId),
+        await read.createdFor(actor, uid(0x2a00 + 0xc1)),
+      ];
+    });
+    expect(found).toEqual([item.itemId, null, null]);
+  });
+}
+
 function describePaging(subject: EventsSubject): void {
   it('DX-3 KN-4 pages a harness and an item in cursor order and resumes after a cursor', async () => {
     const itemX = itemOf(0xf20, 1);
@@ -158,6 +179,7 @@ function describeRefusals(subject: EventsSubject): void {
 export function describeEvents(subject: EventsSubject): void {
   describeAppend(subject);
   describeRequestIds(subject);
+  describeCreatedFor(subject);
   describePaging(subject);
   describeIsolation(subject);
   describePageBounds(subject);
