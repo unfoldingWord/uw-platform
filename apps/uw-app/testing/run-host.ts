@@ -44,7 +44,7 @@ export type HostRig = {
 
 export type RigOptions = {
   readonly toolset?: readonly VerbName[];
-  readonly engine?: 'claude-messages' | 'openrouter-messages' | 'claude-code-sandbox';
+  readonly engine?: Engine;
   readonly provider?: string | null;
   readonly capability?: 'build' | 'review';
   readonly gate?: boolean;
@@ -63,6 +63,7 @@ const models: ReadonlyMap<string, string> = new Map([
   ['claude-messages', 'claude-sonnet-5'],
   ['openrouter-messages', 'z-ai/glm-5.3'],
   ['claude-code-sandbox', 'claude-sonnet-5'],
+  ['codex-sandbox', 'gpt-5.5-codex'],
 ]);
 
 function clockFrom(start: number): TestClock {
