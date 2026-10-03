@@ -223,9 +223,9 @@ describe('kernel.runs stop and prompt', () => {
 
   startedIt('HE-1 an agent is refused stop and prompt', agentRefused);
 
-  startedIt("HE-1 a prompt reaches the run's next step and is delivered once", promptDeliveredOnce);
+  startedIt("a prompt reaches the run's next step and is delivered once", promptDeliveredOnce);
 
-  startedIt('HE-1 a twenty-first pending prompt is refused prompts_full', promptsFull);
+  startedIt('a twenty-first pending prompt is refused prompts_full', promptsFull);
 
   startedIt('a blank or over-long prompt is malformed and records nothing', malformedPrompt);
 

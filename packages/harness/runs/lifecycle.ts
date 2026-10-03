@@ -8,6 +8,7 @@ import type {
   RunStop,
 } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
+import { lapseDrafts } from '../items/leases.ts';
 import {
   draft,
   readAllEvents,
@@ -65,6 +66,10 @@ function released(item: ItemState, run: RunRow): readonly EventDraft[] {
   return heldByRun(item, run) ? [draft('item_released', { holder: run.persona })] : [];
 }
 
+function lapsedLease({ item, run, context }: Held): readonly EventDraft[] {
+  return heldByRun(item, run) ? lapseDrafts(item, context.at) : [];
+}
+
 async function endRun(
   tx: StoreTransaction,
   held: Held,
@@ -72,10 +77,7 @@ async function endRun(
   drafts: readonly EventDraft[],
 ): Promise<KernelOutcome<RunRow>> {
   await tx.harnessRuns.write.update(next);
-  await recordItemEvents(tx, held.context, held.item.itemId, [
-    ...drafts,
-    ...released(held.item, held.run),
-  ]);
+  await recordItemEvents(tx, held.context, held.item.itemId, drafts);
   return accepted(next);
 }
 
@@ -127,6 +129,7 @@ export function complete(
         gates: [...run.gates],
         review: input.review,
       }),
+      ...released(held.item, run),
     ]);
   });
 }
@@ -144,6 +147,7 @@ export function fail(
     const next = ended(held.run, { outcome: 'failed', failure: input.why }, held.context.at);
     return endRun(tx, held, next, [
       draft('run_failed', { runId, step: input.step, why: input.why, detail: input.detail }),
+      ...released(held.item, held.run),
     ]);
   });
 }
@@ -156,7 +160,10 @@ export function halt(
 ): Promise<KernelOutcome<RunRow>> {
   return onRun(ports, caller, { runId, outcomes: live }, (tx, held) => {
     const next = ended(held.run, { outcome: 'stopped' }, held.context.at);
-    return endRun(tx, held, next, [draft('run_stopped', { runId, why })]);
+    const stopped = draft('run_stopped', { runId, why });
+    const lapse = why === 'lease_expired' ? lapsedLease(held) : [];
+    if (lapse.length > 0) return endRun(tx, held, next, [...lapse, stopped]);
+    return endRun(tx, held, next, [stopped, ...released(held.item, held.run)]);
   });
 }
 
