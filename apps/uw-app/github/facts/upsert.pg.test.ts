@@ -32,6 +32,11 @@ function inProgress() {
   return webhookBatch('check_run', { ...checkRunCompleted, check_run: run });
 }
 
+function openedAt(updatedAt: string, change: Record<string, unknown> = {}) {
+  const pull = { ...pullRequestOpened.pull_request, updated_at: updatedAt, ...change };
+  return webhookBatch('pull_request', { ...pullRequestOpened, pull_request: pull });
+}
+
 function filesAt(at: string, against = base) {
   return {
     pullRequestId: openedPull.githubId,
@@ -187,6 +192,34 @@ describe.skipIf(!testServer)('the upsert reports what it stored', () => {
       ]);
     }));
 });
+
+describe.skipIf(!testServer)(
+  'GH-2 a delivery from the same second never moves the stored head back',
+  () => {
+    it('keeps the newer head and its files when a delivery from the same second names the old head', () =>
+      withAppDatabase(async (db) => {
+        await upsertFacts(db, synchronized, firstAt);
+        await recordFiles(db, filesAt(nextHead));
+        const sameSecond = await upsertFacts(db, openedAt('2026-10-02T08:30:00Z'), laterAt);
+        expect(sameSecond.repaired.pullRequests).toBe(0);
+        const row = await prRow(db);
+        expect([row.headSha, row.filesHead, row.files]).toEqual([nextHead, nextHead, changedPaths]);
+        expect(row.freshAt).toEqual(laterAt);
+      }));
+
+    it('still takes a change at the same head from the same second', () =>
+      withAppDatabase(async (db) => {
+        await upsertFacts(db, openedAt('2026-10-02T08:00:00Z'), firstAt);
+        const edited = await upsertFacts(
+          db,
+          openedAt('2026-10-02T08:00:00Z', { draft: true }),
+          laterAt,
+        );
+        expect(edited.repaired.pullRequests).toBe(1);
+        expect((await prRow(db)).draft).toBe(true);
+      }));
+  },
+);
 
 describe.skipIf(!testServer)(
   'GH-2 each read-model row carries the instant it was last confirmed',

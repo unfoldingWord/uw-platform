@@ -76,6 +76,11 @@ function notOlder(table: string): SQL {
   return sql.raw(`excluded.github_updated_at >= ${table}.github_updated_at`);
 }
 
+const pullMovesForward = [
+  'excluded.github_updated_at > gh_prs.github_updated_at',
+  'OR (excluded.github_updated_at = gh_prs.github_updated_at AND excluded.head_sha = gh_prs.head_sha)',
+].join(' ');
+
 const statusRank = (side: string) =>
   `CASE ${side}.status WHEN 'completed' THEN 2 WHEN 'in_progress' THEN 1 ELSE 0 END`;
 const completedAt = (side: string) => `COALESCE(${side}.completed_at, '-infinity'::timestamptz)`;
@@ -216,7 +221,7 @@ async function upsertPulls(tx: Transaction, pulls: readonly PullRequestRecord[],
         filesBase: sameHeadOr('files_base'),
         filesProblem: sameHeadOr('files_problem'),
       },
-      setWhere: both(notOlder('gh_prs'), differs('gh_prs', pullColumns)),
+      setWhere: both(sql.raw(`(${pullMovesForward})`), differs('gh_prs', pullColumns)),
     })
     .returning({ githubId: ghPrs.githubId });
   return rows.length;
