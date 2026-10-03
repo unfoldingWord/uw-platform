@@ -20,6 +20,7 @@ type Forwarded = {
   readonly path: string;
   readonly upgrade: string | null;
   readonly credential: string | null;
+  readonly person: string | null;
 };
 
 type RecordingHub = { readonly namespace: HubNamespace; readonly seen: Forwarded[] };
@@ -32,6 +33,7 @@ type Ask = {
   readonly upgrade?: string | null;
   readonly hub?: RecordingHub;
   readonly audience?: 'app' | 'mcp';
+  readonly method?: string;
 };
 
 let fixture: Promise<AccessFixture> | null = null;
@@ -54,6 +56,7 @@ function recordingHub(): RecordingHub {
           path: new URL(request.url).pathname,
           upgrade: request.headers.get('upgrade'),
           credential: request.headers.get('cf-access-jwt-assertion'),
+          person: request.headers.get('x-hub-person'),
         });
         return new Response(null, { status: 200, headers: { 'x-hub': 'connected' } });
       },
@@ -72,7 +75,7 @@ async function connect(db: Database, ask: Ask): Promise<Answer> {
   const env = ask.hub ? { ...fixtureAccessEnv, HARNESS_HUB: ask.hub.namespace } : fixtureAccessEnv;
   const raw = await createApp(postgresDeps(db, keys), noGateGitHub).request(
     `/api/harness/${ask.harnessId}/live`,
-    { method: 'GET', headers },
+    { method: ask.method ?? 'GET', headers },
     env,
   );
   return { status: raw.status, text: await raw.text(), hub: raw.headers.get('x-hub') };
@@ -96,6 +99,7 @@ describe.skipIf(!testServer)('WB-3 the live socket connects through can()', () =
         path: '/connect',
         upgrade: 'websocket',
         credential: null,
+        person: scene.viewer.id,
       };
       expect(hub.seen).toEqual([forwarded, forwarded]);
     }));
@@ -170,6 +174,18 @@ describe.skipIf(!testServer)('the live socket route refuses before the hub', () 
         expect(answer.status).toBe(401);
         expect(JSON.parse(answer.text)).toEqual({ status: 'error', reason: 'unauthenticated' });
       }
+      expect(hub.seen).toEqual([]);
+    }));
+});
+
+describe.skipIf(!testServer)('the live socket route opens only on GET', () => {
+  it('refuses a HEAD upgrade before the hub', () =>
+    withAppDatabase(async (db) => {
+      const scene = await softwareHarness(db);
+      const hub = recordingHub();
+      const claims = { email: scene.viewer.email };
+      const answer = await connect(db, { claims, harnessId: scene.harnessId, hub, method: 'HEAD' });
+      expect(answer).toMatchObject({ status: 400, hub: null });
       expect(hub.seen).toEqual([]);
     }));
 });

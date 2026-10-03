@@ -20,6 +20,8 @@ export function openHub(ctx: HubContext): OpenHub {
     storage: {
       get: (key) => ctx.storage.get(key),
       put: (key, value) => ctx.storage.put(key, value),
+      getAlarm: () => ctx.storage.getAlarm(),
+      setAlarm: (scheduledTime) => ctx.storage.setAlarm(scheduledTime),
     },
   };
   return { state, core: createHubCore(state, { setTimeout }, () => systemClock.now()) };
@@ -43,6 +45,10 @@ export class HarnessHub extends DurableObject<Bindings> {
 
   override fetch(request: Request): Promise<Response> {
     return hubFetch(this.hub.core, this.hub.state, request);
+  }
+
+  override alarm(): Promise<void> {
+    return this.hub.core.shed();
   }
 
   override webSocketMessage(): void {

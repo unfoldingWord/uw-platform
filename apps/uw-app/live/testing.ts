@@ -7,29 +7,57 @@ import {
   type HubTimers,
 } from './hub-core.ts';
 
-export type FakeSocket = HubSocket & { readonly sent: string[] };
+export type FakeSocket = HubSocket & {
+  readonly sent: string[];
+  readonly closed: [number, string][];
+};
 
-export type FakeHubState = HubState & { readonly stored: Map<string, string> };
+export type FakeHubState = HubState & {
+  readonly stored: Map<string, string>;
+  alarm(): number | null;
+};
 
 export type ManualTimers = HubTimers & { runAll(): Promise<void> };
 
 export const wakeInstant = new Date('2026-10-03T12:00:00.000Z');
 
-export function fakeSocket(failing = false): FakeSocket {
+export const socketOwner = 'b3000000-0000-4000-8000-0000000000aa';
+
+export function fakeSocket(
+  failing = false,
+  tag: unknown = { openedAt: wakeInstant.getTime(), person: socketOwner },
+): FakeSocket {
   const sent: string[] = [];
+  const closed: [number, string][] = [];
+  let attachment: unknown = tag;
+  let readyState = 1;
   return {
     sent,
+    closed,
+    get readyState() {
+      return readyState;
+    },
     send: (message) => {
       if (failing) throw new Error('socket closed');
       sent.push(message);
     },
+    close: (code, reason) => {
+      closed.push([code, reason]);
+      readyState = 3;
+    },
+    serializeAttachment: (value) => {
+      attachment = structuredClone(value);
+    },
+    deserializeAttachment: () => attachment,
   };
 }
 
 export function fakeHubState(sockets: HubSocket[] = []): FakeHubState {
   const stored = new Map<string, string>();
+  let alarm: number | null = null;
   return {
     stored,
+    alarm: () => alarm,
     acceptWebSocket: (socket) => {
       sockets.push(socket);
     },
@@ -38,6 +66,10 @@ export function fakeHubState(sockets: HubSocket[] = []): FakeHubState {
       get: async (key) => stored.get(key),
       put: async (key, value) => {
         stored.set(key, value);
+      },
+      getAlarm: async () => alarm,
+      setAlarm: async (scheduledTime) => {
+        alarm = scheduledTime;
       },
     },
   };
