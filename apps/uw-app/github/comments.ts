@@ -8,7 +8,18 @@ import type { GitHubTransport } from './transport.ts';
 const commentPermissions = { issues: 'write', metadata: 'read' } as const;
 const created = z.object({ id: z.number().int() }).transform(({ id }) => ({ id }));
 
-export function createIssueComments(config: GitHubAppConfig, transport: GitHubTransport) {
+export type IssueComments = {
+  comment(
+    repo: string,
+    number: number,
+    body: string,
+  ): Promise<GitHubResult<{ readonly id: number }>>;
+};
+
+export function createIssueComments(
+  config: GitHubAppConfig,
+  transport: GitHubTransport,
+): IssueComments {
   const session = openSession(config, transport, commentPermissions);
   return {
     comment: async (

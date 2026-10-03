@@ -20,7 +20,7 @@ import { pullRequestFacts } from './facts/queries.ts';
 import type { FactBatch, PullRequestRecord, RepoRecord } from './facts/records.ts';
 import { upsertFacts } from './facts/upsert.ts';
 
-export type OpenReads = () => GitHubReads;
+type OpenReads = () => GitHubReads;
 
 export type GitHubAccess = { readonly open: OpenReads; readonly logger: Logger };
 
