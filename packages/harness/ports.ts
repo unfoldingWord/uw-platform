@@ -15,6 +15,7 @@ import type {
   PageType,
   PrincipalKind,
   PullRequestDeclaration,
+  ReviewVerdict,
   RunFailure,
   RunHibernation,
   RunOutcome,
@@ -272,9 +273,15 @@ export type PullRequestFacts = {
   readonly declaration: PullRequestDeclaration | null;
   readonly freshAt: Date;
 };
+export type DiffRange = { readonly base: string; readonly head: string };
+export type DiffRead =
+  | { readonly kind: 'diff'; readonly text: string; readonly bytes: number }
+  | { readonly kind: 'too_large'; readonly bytes: number | null }
+  | { readonly kind: 'unavailable'; readonly reason: string };
 export type GitHubFacts = {
   pullRequest(ref: PullRequestRef): Promise<PullRequestFacts | null>;
   refresh(ref: PullRequestRef): Promise<PullRequestFacts | null>;
+  diff(ref: PullRequestRef, range: DiffRange, budgetBytes: number): Promise<DiffRead>;
 };
 
 export type EffectConnector = Exclude<Connector, 'none'>;
@@ -294,9 +301,22 @@ export type ConnectorRequest = {
 export type ConnectorOutcome =
   | { readonly outcome: 'succeeded'; readonly detail: Readonly<Record<string, string>> }
   | { readonly outcome: 'refused'; readonly reason: string };
+export type ReviewRequest = {
+  readonly reviewer: string;
+  readonly repository: string;
+  readonly pullRequest: PullRequestRef;
+  readonly head: string;
+  readonly verdict: ReviewVerdict;
+  readonly body: string;
+  readonly traceId: string;
+};
+export type ReviewOutcome =
+  | { readonly outcome: 'posted'; readonly reviewId: number }
+  | { readonly outcome: 'refused'; readonly reason: string };
 export type Connectors = {
   run(request: ConnectorRequest): Promise<ConnectorOutcome>;
   outcomeOf(request: ConnectorRequest): Promise<ConnectorOutcome | null>;
+  review(request: ReviewRequest): Promise<ReviewOutcome>;
 };
 
 export type ToolCall = {
@@ -321,8 +341,14 @@ export type TurnMessage =
 export type TurnUsage = {
   readonly inputTokens: number;
   readonly outputTokens: number;
-  readonly costMinor: number | null;
+  readonly costMicros: number | null;
   readonly costBasis: CostBasis;
+};
+export type Spend = {
+  readonly spentMinor: number;
+  readonly currency: string;
+  readonly since: Date;
+  readonly asOf: Date;
 };
 export type TurnRequest = {
   readonly engine: Engine;
@@ -343,7 +369,10 @@ export type TurnResult = {
   readonly resolvedProvider: string | null;
   readonly resolvedModel: string;
 };
-export type ModelEngine = { turn(request: TurnRequest): Promise<TurnResult> };
+export type ModelEngine = {
+  turn(request: TurnRequest): Promise<TurnResult>;
+  spend(since: Date): Promise<Spend>;
+};
 
 export type Hub = { wake(harnessId: string): Promise<void> };
 
