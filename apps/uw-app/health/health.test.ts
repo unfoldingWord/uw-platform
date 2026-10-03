@@ -8,6 +8,7 @@ import { systemTimers, type Timers } from '../timers.ts';
 import { DATABASE_TIMEOUT_MS, overallStatus } from './indicators.ts';
 
 const commit = '0123456789abcdef0123456789abcdef01234567';
+const indicatorNames = ['commit', 'database', 'queue', 'live_hub'];
 
 function handleWithPing(ping: () => Promise<void>): DatabaseHandle {
   return {
@@ -47,17 +48,18 @@ function indicator(status: HealthIndicator['status']): HealthIndicator {
 }
 
 describe('FD-11 and FD-12 the health report', () => {
-  it('reports ok with the database and queue not configured when nothing is bound', async () => {
+  it('reports ok with the database and queue not configured and the hub not wired when nothing is bound', async () => {
     const response = await getHealth(() => null);
     expect(response.status).toBe(200);
     const raw = await response.text();
     expect(raw).toContain(`"commit":"${commit}"`);
     const report = healthReportSchema.parse(JSON.parse(raw));
     expect(report.status).toBe('ok');
-    expect(report.indicators.map((i) => i.name)).toEqual(['commit', 'database', 'queue']);
+    expect(report.indicators.map((i) => i.name)).toEqual(indicatorNames);
     expect(statusOf(report.indicators, 'commit')).toBe('ok');
     expect(statusOf(report.indicators, 'database')).toBe('not_configured');
     expect(statusOf(report.indicators, 'queue')).toBe('not_configured');
+    expect(statusOf(report.indicators, 'live_hub')).toBe('not_wired');
   });
 
   it('turns the database red and answers 200 when it is unreachable', async () => {

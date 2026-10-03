@@ -3,9 +3,11 @@ import type { Executor } from '@uw/db/client';
 import { oldestDeliveryReceivedAfter } from '@uw/uw-ingest/deliveries/backlog';
 import type { DatabaseHandle } from '../database.ts';
 import { commitOf, type Bindings } from '../env.ts';
+import { platformKernel } from '../kernel.ts';
 import { INGEST_QUEUE_KEY } from '../queue/consumer.ts';
 import { readWatermark, type Watermark } from '../queue/watermarks.ts';
 import type { Timers } from '../timers.ts';
+import type { HubHealth } from './hub.ts';
 
 const DATABASE_AMBER_MS = 500;
 export const DATABASE_TIMEOUT_MS = 2000;
@@ -31,7 +33,11 @@ async function withTimeout<T>(work: Promise<T>, timers: Timers): Promise<T> {
   }
 }
 
-type Probe = { readonly clock: () => number; readonly timers: Timers };
+type Probe = {
+  readonly clock: () => number;
+  readonly timers: Timers;
+  readonly hubHealth: HubHealth;
+};
 
 async function databaseIndicator(
   handle: Pick<DatabaseHandle, 'ping'> | null,
@@ -115,10 +121,12 @@ export async function healthReport(
   probe: Probe,
 ): Promise<HealthReport> {
   const commit = commitOf(env);
-  const [database, queue] = await Promise.all([
+  const kernel = handle ? platformKernel(handle) : null;
+  const [database, queue, liveHub] = await Promise.all([
     databaseIndicator(handle, probe),
     queueIndicator(env, handle, probe),
+    probe.hubHealth(env, kernel, probe.timers),
   ]);
-  const indicators = [commitIndicator(commit), database, queue];
+  const indicators = [commitIndicator(commit), database, queue, liveHub];
   return { status: overallStatus(indicators), commit, indicators };
 }

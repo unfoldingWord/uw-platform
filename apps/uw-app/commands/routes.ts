@@ -1,6 +1,7 @@
 import { Hono, type Context } from 'hono';
 import type { AppDeps, AppEnv } from '../deps.ts';
 import { answer, readJson } from '../http/commands.ts';
+import { connectLive } from '../live/connect.ts';
 import { hubOf } from '../ports/hub.ts';
 import { requestLogger } from '../request-logger.ts';
 import { executeCommand } from './dispatch.ts';
@@ -39,5 +40,6 @@ export function harnessRoutes(deps: Pick<AppDeps, 'clock'>, person: PersonDeps):
   routes.get('/:harness/stages/:stage/items', stageItems);
   routes.get('/:harness/events', harnessEvents);
   routes.get('/:harness/gates/:item', gateView);
+  routes.get('/:harness/live', connectLive);
   return routes;
 }

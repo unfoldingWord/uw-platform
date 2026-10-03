@@ -11,7 +11,15 @@ const kernelHosts = [
 ] as const;
 
 const hubBinding = /\bHARNESS_HUB\b/;
-const bindingReaders = ['apps/uw-app/env.ts', 'apps/uw-app/ports/hub.ts'];
+const bindingReaders = [
+  'apps/uw-app/env.ts',
+  'apps/uw-app/ports/hub.ts',
+  'apps/uw-app/live/connect.ts',
+  'apps/uw-app/health/hub.ts',
+];
+const socketPath = /\/connect\b(?!\.ts)/;
+const socketOpener = 'apps/uw-app/live/connect.ts';
+const hubCore = 'apps/uw-app/live/hub-core.ts';
 
 function isAppSource(file: string): boolean {
   return (
@@ -27,6 +35,13 @@ function bindingStrays(files: readonly string[], read: (file: string) => string)
     .filter(isAppSource)
     .filter((file) => !bindingReaders.includes(file))
     .filter((file) => hubBinding.test(read(file)));
+}
+
+function socketStrays(files: readonly string[], read: (file: string) => string): string[] {
+  return files
+    .filter(isAppSource)
+    .filter((file) => file !== socketOpener && file !== hubCore)
+    .filter((file) => socketPath.test(read(file)));
 }
 
 describe('WB-3 the command, MCP, queue and cron kernels are wired with the hub of their environment', () => {
@@ -50,6 +65,24 @@ describe('the hub Durable Object is reached only through the platform Hub adapte
     ]);
     expect(bindingStrays([...planted.keys()], (file) => planted.get(file) ?? '')).toEqual([
       'apps/uw-app/commands/routes.ts',
+    ]);
+  });
+});
+
+describe('only the live route opens a socket to the hub', () => {
+  it('finds the hub connect path named only by the live route and the hub itself', () => {
+    expect(socketStrays(repoFiles(), (file) => readFileSync(file, 'utf8'))).toEqual([]);
+  });
+
+  it('flags a planted connect outside the live route', () => {
+    const planted = new Map([
+      ['apps/uw-app/health/hub.ts', "stub.fetch('https://hub.internal/connect');"],
+      ['apps/uw-app/live/connect.ts', "stub.fetch('https://hub.internal/connect');"],
+      ['apps/uw-app/live/connect.pg.test.ts', "'/connect'"],
+      ['apps/uw-app/commands/routes.ts', "import { connectLive } from '../live/connect.ts';"],
+    ]);
+    expect(socketStrays([...planted.keys()], (file) => planted.get(file) ?? '')).toEqual([
+      'apps/uw-app/health/hub.ts',
     ]);
   });
 });
