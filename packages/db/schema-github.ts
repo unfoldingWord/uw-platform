@@ -175,6 +175,9 @@ export const ghReviews = declareTable(
     commitId: text('commit_id').notNull(),
     state: text('state').notNull(),
     provider: text('provider'),
+    findings: jsonb('findings')
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     submittedAt: instant('submitted_at'),
     freshAt: instant('fresh_at').notNull(),
   },
@@ -183,5 +186,6 @@ export const ghReviews = declareTable(
     index('gh_reviews_pr').on(t.prId),
     check('gh_reviews_commit_id_form', matches(t.commitId, FULL_SHA_PATTERN)),
     check('gh_reviews_state_known', oneOf(t.state, githubReviewStates)),
+    check('gh_reviews_findings_array', sql`jsonb_typeof(${t.findings}) = 'array'`),
   ],
 );
