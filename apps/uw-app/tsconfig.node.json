@@ -5,6 +5,11 @@
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx"
   },
-  "include": ["**/*.pg.test.ts", "testing/postgres.ts", "testing/commands.ts"],
+  "include": [
+    "**/*.pg.test.ts",
+    "testing/postgres.ts",
+    "testing/commands.ts",
+    "testing/harness-reads.ts"
+  ],
   "exclude": ["node_modules"]
 }
