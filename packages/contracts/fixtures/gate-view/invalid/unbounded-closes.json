@@ -86,6 +86,7 @@
       "riskDomains": ["acl"]
     }
   },
+  "reviews": [],
   "ship": {
     "input": {
       "pullRequest": {

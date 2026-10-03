@@ -34,3 +34,29 @@ describe('the gate view is bounded', () => {
     );
   });
 });
+
+describe('the gate view carries each Reviewer review', () => {
+  const review = {
+    reviewer: 'codex-bot',
+    commit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    state: 'changes_requested',
+    provider: 'openai',
+    findings: ['The lock is taken late'],
+  };
+  const withReviews = (reviews: readonly unknown[]) => ({ ...view, reviews });
+
+  it("carries each Reviewer's latest review with its findings, bounded", () => {
+    expect(gateViewSchema.safeParse(withReviews([review])).success).toBe(true);
+    const long = { ...review, findings: ['x'.repeat(501)] };
+    const many = { ...review, findings: Array.from({ length: 51 }, (_, n) => `finding ${n}`) };
+    const unknown = { ...review, state: 'commented' };
+    expect(gateViewSchema.safeParse(withReviews([long])).success).toBe(false);
+    expect(gateViewSchema.safeParse(withReviews([many])).success).toBe(false);
+    expect(gateViewSchema.safeParse(withReviews([unknown])).success).toBe(false);
+  });
+
+  it('reads an 11.0.0 gate view without reviews as having none', () => {
+    const older = Object.fromEntries(Object.entries(view).filter(([key]) => key !== 'reviews'));
+    expect(gateViewSchema.parse(older).reviews).toEqual([]);
+  });
+});
