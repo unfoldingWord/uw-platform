@@ -3,6 +3,7 @@ import { createClient, type Database } from '@uw/db/client';
 import { lockWaiters } from '@uw/db/store';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
 import {
+  notWiredCall,
   software,
   type Caller,
   type Clock,
@@ -148,6 +149,7 @@ function scriptedConnectors(script: Script): Connectors {
     },
     outcomeOf: async (request) =>
       merged.has(keyOf(request)) ? { outcome: 'succeeded', detail: {} } : null,
+    review: () => notWiredCall('connectors', 'review'),
   };
 }
 
@@ -259,6 +261,7 @@ function recoverOn(db: Database, race: Race, hold: Hold | null = null) {
       hold?.holdNext();
       return race.connectors.outcomeOf(request);
     },
+    review: race.connectors.review,
   };
   const kernel = kernelOn(db, laterClock, {
     connectors,
