@@ -59,7 +59,10 @@ function counted(tally: Tally, result: TurnResult): void {
     outputTokens: usage.outputTokens + result.usage.outputTokens,
     costMicros: summed(usage.costMicros, result.usage.costMicros),
   };
-  for (const call of result.toolCalls) {
+}
+
+function calling(tally: Tally, calls: readonly ToolCall[]): void {
+  for (const call of calls) {
     if (!tally.tools.includes(call.verb)) tally.tools.push(call.verb);
   }
 }
@@ -86,13 +89,14 @@ export async function runToolLoop(
   const messages: TurnMessage[] = [{ role: 'user', text: prompt }];
   const usage = { inputTokens: 0, outputTokens: 0, costMicros: 0 };
   const tally: Tally = { usage, provider: null, model: request.model, tools: [], turns: 0 };
-  while (tally.turns < TURN_LIMIT) {
+  for (;;) {
     const result = await turn({ ...rest, messages: [...messages] });
     counted(tally, result);
     await onTurn();
     if (result.toolCalls.length === 0) return finished(tally, 'ended', result.text);
+    if (tally.turns >= TURN_LIMIT) return finished(tally, 'turn_limit', null);
+    calling(tally, result.toolCalls);
     messages.push({ role: 'assistant', text: result.text, toolCalls: result.toolCalls });
     for (const call of result.toolCalls) messages.push(await answer(tools, call));
   }
-  return finished(tally, 'turn_limit', null);
 }

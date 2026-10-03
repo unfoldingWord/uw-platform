@@ -65,7 +65,10 @@ function recording(answer: (verb: VerbName) => ToolReply | Error): ToolCaller & 
   };
 }
 
-const ok = recording(() => ({ output: { fine: true }, isError: false }));
+function fine(): ToolCaller & { readonly calls: VerbName[] } {
+  return recording(() => ({ output: { fine: true }, isError: false }));
+}
+
 const noop = async (): Promise<void> => undefined;
 
 async function answersEachCall(): Promise<void> {
@@ -130,15 +133,20 @@ async function toolThrowAnswered(): Promise<void> {
 }
 
 async function stopsAtTurnLimit(): Promise<void> {
-  const { turn, requests } = scripted([result({ toolCalls: [call('a', 'read_page')] })]);
+  const reading = result({ toolCalls: [call('a', 'read_page')] });
+  const last = result({ toolCalls: [call('z', 'get_health')] });
+  const { turn, requests } = scripted([...Array.from({ length: 39 }, () => reading), last]);
+  const tools = fine();
   let turns = 0;
-  const loop = await runToolLoop(turn, ok, request, async () => {
+  const loop = await runToolLoop(turn, tools, request, async () => {
     turns += 1;
   });
   expect(TURN_LIMIT).toBe(40);
   expect(loop).toMatchObject({ outcome: 'turn_limit', text: null, turns: 40 });
   expect(requests).toHaveLength(40);
   expect(turns).toBe(40);
+  expect(tools.calls).toEqual(Array.from({ length: 39 }, () => 'read_page'));
+  expect(loop.toolsCalled).toEqual(['read_page']);
 }
 
 async function providerChangeFails(): Promise<void> {
@@ -146,7 +154,7 @@ async function providerChangeFails(): Promise<void> {
     result({ toolCalls: [call('a', 'read_page')] }),
     result({ resolvedProvider: 'deepinfra' }),
   ]);
-  const failed = runToolLoop(turn, ok, request, noop);
+  const failed = runToolLoop(turn, fine(), request, noop);
   await expect(failed).rejects.toBeInstanceOf(ProviderMismatchError);
   await expect(failed).rejects.toMatchObject({ pinned: 'z-ai', resolved: 'deepinfra' });
 }
@@ -157,7 +165,7 @@ async function usageSummed(): Promise<void> {
     result({ toolCalls: [call('c', 'get_health')] }),
     result({ resolvedModel: 'z-ai/glm-5.3-flash-0930' }),
   ]);
-  const loop = await runToolLoop(turn, ok, request, noop);
+  const loop = await runToolLoop(turn, fine(), request, noop);
   expect(loop.usage).toEqual({ inputTokens: 30, outputTokens: 15, costMicros: 300 });
   expect(loop.toolsCalled).toEqual(['read_page', 'get_health']);
   expect(loop.resolvedProvider).toBe('z-ai');
@@ -170,12 +178,12 @@ async function unknownCostIsNull(): Promise<void> {
     result({ toolCalls: [call('a', 'read_page')] }),
     result({ usage: { ...unknown, costBasis: 'metered' } }),
   ]);
-  expect((await runToolLoop(turn, ok, request, noop)).usage.costMicros).toBeNull();
+  expect((await runToolLoop(turn, fine(), request, noop)).usage.costMicros).toBeNull();
 }
 
 async function refusalsEndTheLoop(): Promise<void> {
   const outside = scripted([new ToolOutsideToolsetError('merge')]);
-  await expect(runToolLoop(outside.turn, ok, request, noop)).rejects.toBeInstanceOf(
+  await expect(runToolLoop(outside.turn, fine(), request, noop)).rejects.toBeInstanceOf(
     ToolOutsideToolsetError,
   );
   const tools = recording(() => ({ output: null, isError: false }));
