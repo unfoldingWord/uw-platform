@@ -8,7 +8,7 @@ const appRoot = 'apps/uw-app/';
 const handlerRoots = ['apps/uw-app/commands/handlers/', 'apps/uw-app/commands/person/'];
 const dispatcher = 'apps/uw-app/commands/dispatch.ts';
 const commandRoutes = 'apps/uw-app/commands/routes.ts';
-const commandReads = 'apps/uw-app/commands/reads.ts';
+const commandsRoot = 'apps/uw-app/commands/';
 const routeFiles = [
   'apps/uw-app/app.tsx',
   commandRoutes,
@@ -38,6 +38,7 @@ const arrowCall = /^\(\w+\)\s*=>\s*(\w+)\(/;
 const namedArgument = /^(\w+)\s*\)/;
 const topLevelFunction = /\n(?=export function |export async function |async function |function )/;
 const functionName = /\bfunction (\w+)\(/;
+const localImport = /\bfrom\s+'\.\/([\w./-]+\.ts)'/g;
 const guardedEntry =
   /\bexecuteCommand\s*\(|\bkernel\s*\.\s*reads\s*\.\s*\w+\s*\(|\bkernel\s*\.\s*events\s*\.\s*read\s*\(|\bkernel\s*\.\s*gates\s*\.\s*view\s*\(/;
 
@@ -135,6 +136,13 @@ function unguardedRoutes(text: string, handlers: string = text): string[] {
   return [...unguarded, ...Array.from({ length: unresolved }, () => '<inline handler>')];
 }
 
+function handlerSources(routesText: string, read: Read): string {
+  const imported = [...routesText.matchAll(localImport)].map(
+    (match) => `${commandsRoot}${match[1]}`,
+  );
+  return [routesText, ...imported.map(read)].join('\n');
+}
+
 function plantedRead(texts: Readonly<Record<string, string>>): Read {
   return (file) => texts[file] ?? '';
 }
@@ -160,9 +168,8 @@ describe('WB-1 the command routes are checked', () => {
 
   it('WB-1 every route in the command routes reaches the dispatcher or a kernel read', () => {
     const text = readReal(commandRoutes);
-    const handlers = `${text}\n${readReal(commandReads)}`;
-    expect(handlerNames(text).length).toBeGreaterThan(1);
-    expect(unguardedRoutes(text, handlers)).toEqual([]);
+    expect(handlerNames(text).length).toBeGreaterThan(3);
+    expect(unguardedRoutes(text, handlerSources(text, readReal))).toEqual([]);
   });
 
   it('WB-1 flags a planted handler without a builder, a planted action that is not a literal, and a planted route file', () => {
@@ -199,5 +206,27 @@ describe('the command route checks catch planted mistakes', () => {
       'async function readSneak(c) {\n  return kernel.reads.inStage(caller, input);\n}';
     expect(unguardedRoutes(route, sneak)).toEqual(['readSneak']);
     expect(unguardedRoutes(route, guarded)).toEqual([]);
+  });
+
+  it('reads each handler from the module the command routes import it from', () => {
+    const routes = [
+      "import { gateView } from './person/gate-view.ts';",
+      "import { harnessEvents } from './reads.ts';",
+      "routes.get('/:harness/events', harnessEvents);",
+      "routes.get('/:harness/gates/:item', gateView);",
+    ].join('\n');
+    const guardedView =
+      'export async function gateView(c) {\n  return c.json(await kernel.gates.view(caller, input));\n}';
+    const bareView = 'export async function gateView(c) {\n  return c.json(await viewOf(c));\n}';
+    const events =
+      'export async function harnessEvents(c) {\n  return kernel.events.read(caller, query);\n}';
+    const files = (view: string) =>
+      plantedRead({
+        'apps/uw-app/commands/person/gate-view.ts': view,
+        'apps/uw-app/commands/reads.ts': events,
+      });
+    expect(unguardedRoutes(routes, handlerSources(routes, files(guardedView)))).toEqual([]);
+    expect(unguardedRoutes(routes, handlerSources(routes, files(bareView)))).toEqual(['gateView']);
+    expect(unguardedRoutes(routes, routes)).toEqual(['harnessEvents', 'gateView']);
   });
 });
