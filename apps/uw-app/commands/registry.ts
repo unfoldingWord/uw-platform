@@ -10,6 +10,13 @@ import {
   tweakPackageCommand,
 } from './handlers/items.ts';
 import { notWiredCommand } from './not-wired.ts';
+import {
+  approveCommand,
+  overrideCommand,
+  recoverConnectorsCommand,
+  rejectCommand,
+  takeOverCommand,
+} from './person/gates.ts';
 
 export function commandRegistryOf(
   handlers: readonly CommandHandler[],
@@ -35,10 +42,10 @@ export const commandRegistry = commandRegistryOf([
   claimCommand,
   releaseCommand,
   submitCommand,
-  notWiredCommand('approve', 'admin'),
-  notWiredCommand('reject', 'admin'),
-  notWiredCommand('take_over', 'admin'),
-  notWiredCommand('override', 'admin'),
+  approveCommand,
+  rejectCommand,
+  takeOverCommand,
+  overrideCommand,
   notWiredCommand('prompt_run', 'write'),
   notWiredCommand('stop_run', 'write'),
   notWiredCommand('pause', 'admin'),
@@ -46,7 +53,7 @@ export const commandRegistry = commandRegistryOf([
   tweakPackageCommand,
   notWiredCommand('schedule_regular_tweak', 'admin'),
   notWiredCommand('revoke_delegation', 'admin'),
-  notWiredCommand('recover_connectors', 'admin'),
+  recoverConnectorsCommand,
   notWiredCommand('activate_template', 'admin', 'new_harness'),
   notWiredCommand('create_stage', 'admin'),
   notWiredCommand('update_stage', 'admin'),

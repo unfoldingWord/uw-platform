@@ -25,7 +25,7 @@ import { fixtureGitHub, type FixtureGitHub } from './fixture-github.ts';
 const ianId = '00000000-0000-4000-8000-000000000001';
 const kimId = '00000000-0000-4000-8000-000000000106';
 export const instant = new Date('2026-10-02T09:00:00.000Z');
-const clock: Clock = { now: () => instant };
+export const clock: Clock = { now: () => instant };
 export const pullRequest = { repo: 'unfoldingWord/uw-platform', number: 7 };
 export const pulls = '/repos/unfoldingWord/uw-platform/pulls/7';
 export const movedBase = '1'.repeat(40);
@@ -73,7 +73,7 @@ async function enqueued(kernel: Kernel, ian: Principal): Promise<string> {
   return itemId;
 }
 
-async function parkAtShip(kernel: Kernel, ian: Principal): Promise<ItemState> {
+export async function parkAtShip(kernel: Kernel, ian: Principal): Promise<ItemState> {
   const itemId = await enqueued(kernel, ian);
   const agent = agentOf(ian, 'builder');
   await passStage(kernel, ian, itemId, false);
@@ -95,7 +95,7 @@ export function pullBasedOn(itemId: string, sha: string, updatedAt: string) {
   };
 }
 
-async function storedOnTheOldBase(db: Database, itemId: string): Promise<void> {
+export async function storedOnTheOldBase(db: Database, itemId: string): Promise<void> {
   const pull = pullBasedOn(itemId, base, '2026-10-02T08:00:00Z');
   const repo = repoFromRest(pull.base.repo);
   const batch = repo === null ? null : factsFromPull(repo, pull);
@@ -108,12 +108,7 @@ function listing(paths: readonly string[]) {
   return { status: 200, body: { status: 'ahead', files: paths.map((filename) => ({ filename })) } };
 }
 
-function retargetedOnGitHub(itemId: string): FixtureGitHub {
-  const github = fixtureGitHub();
-  github.on('GET', pulls, {
-    status: 200,
-    body: pullBasedOn(itemId, movedBase, '2026-10-02T08:50:00Z'),
-  });
+export function reviewedAndGreen(github: FixtureGitHub): void {
   github.on('GET', `${pulls}/reviews`, { status: 200, body: restReviews });
   github.on('GET', `/repos/unfoldingWord/uw-platform/commits/${head}/check-runs`, {
     status: 200,
@@ -128,12 +123,21 @@ function retargetedOnGitHub(itemId: string): FixtureGitHub {
       })),
     },
   });
+}
+
+function retargetedOnGitHub(itemId: string): FixtureGitHub {
+  const github = fixtureGitHub();
+  github.on('GET', pulls, {
+    status: 200,
+    body: pullBasedOn(itemId, movedBase, '2026-10-02T08:50:00Z'),
+  });
+  reviewedAndGreen(github);
   github.on('GET', compare(base), listing(oldPaths));
   github.on('GET', compare(movedBase), listing(newPaths));
   return github;
 }
 
-async function people(db: Database) {
+export async function people(db: Database) {
   await seedPerson(db, { id: kimId, email: 'person6@unfoldingword.org' });
   await seedGrant(db, {
     id: '00000000-0000-4000-8000-000000020600',

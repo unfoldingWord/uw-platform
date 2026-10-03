@@ -7,6 +7,7 @@ export type SourceFiles = { readonly files: readonly string[]; read(file: string
 
 const appRoot = 'apps/uw-app/';
 const mcpRoot = 'apps/uw-app/mcp/';
+export const personSurface = 'apps/uw-app/commands/person/';
 const entryPoints = ['apps/uw-app/app.tsx', 'apps/uw-app/index.ts'];
 const verbsRoot = 'apps/uw-app/mcp/verbs/';
 const verbsIndex = 'apps/uw-app/mcp/verbs/index.ts';
@@ -36,6 +37,12 @@ const gateReach = [
   /\bdelegations\s*\??\.?\s*\[\s*['"`](?:grant|revoke|write)['"`]\s*\]/,
   /\{[^{}]*\b(?:gates|repair|connectors)\b[^{}]*\}\s*=(?![=>])/,
   /\{[^{}]*\b(?:grant|revoke|write)\b[^{}]*\}\s*=\s*[\w.?]*delegations\b/,
+];
+
+const personSurfaceCalls = [
+  /\bkernel\s*\??\.\s*gates\s*\??\.\s*\w+\s*\(/g,
+  /\bkernel\s*\??\.\s*stages\s*\??\.\s*\w+\s*\(/g,
+  /\bkernel\s*\??\.\s*delegations\s*\??\.\s*(?:grant|revoke)\s*\(/g,
 ];
 
 const handlerBuilder = /\b(?:gatedHandler|rowFilteredHandler)\s*\(/;
@@ -76,9 +83,9 @@ function isSeed(file: string): boolean {
   return file.startsWith(mcpRoot) || entryPoints.includes(file);
 }
 
-export function agentReachable(sources: SourceFiles): string[] {
+function reachableFrom(sources: SourceFiles, seed: (file: string) => boolean): string[] {
   const known = new Set(sources.files.filter((file) => file.startsWith(appRoot) && isSource(file)));
-  const pending = [...known].filter(isSeed);
+  const pending = [...known].filter(seed);
   const reached = new Set(pending);
   for (let file = pending.pop(); file !== undefined; file = pending.pop()) {
     for (const target of importsOf(file, sources.read(file))) {
@@ -89,6 +96,14 @@ export function agentReachable(sources: SourceFiles): string[] {
     }
   }
   return [...reached].sort();
+}
+
+export function agentReachable(sources: SourceFiles): string[] {
+  return reachableFrom(sources, isSeed);
+}
+
+export function mcpReachable(sources: SourceFiles): string[] {
+  return reachableFrom(sources, (file) => file.startsWith(mcpRoot));
 }
 
 export function importsLeavingApp(sources: SourceFiles, files: readonly string[]): string[] {
@@ -103,10 +118,15 @@ function withoutModulePaths(text: string): string {
   return moduleSpecifiers.reduce((stripped, pattern) => stripped.replaceAll(pattern, "$1''"), text);
 }
 
+function withoutPersonSurfaceCalls(file: string, text: string): string {
+  if (!file.startsWith(personSurface)) return text;
+  return personSurfaceCalls.reduce((stripped, pattern) => stripped.replaceAll(pattern, '('), text);
+}
+
 export function gateTouches(sources: SourceFiles, files: readonly string[]): string[] {
   return files
     .filter((file) => {
-      const text = withoutModulePaths(sources.read(file));
+      const text = withoutPersonSurfaceCalls(file, withoutModulePaths(sources.read(file)));
       return gateReach.some((pattern) => pattern.test(text));
     })
     .sort();
