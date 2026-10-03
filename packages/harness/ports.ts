@@ -194,6 +194,7 @@ export type PullRequestFacts = {
   readonly headRef: string;
   readonly headRepo: string | null;
   readonly base: string;
+  readonly baseRef: string;
   readonly checks: readonly CheckFact[];
   readonly reviews: readonly ReviewFact[];
   readonly files: ChangedFiles | null;
@@ -206,6 +207,7 @@ export type GitHubFacts = {
 };
 
 export type EffectConnector = Exclude<Connector, 'none'>;
+export type DecidedBase = { readonly sha: string; readonly ref: string };
 export type ConnectorRequest = {
   readonly connector: EffectConnector;
   readonly harnessId: string;
@@ -213,9 +215,10 @@ export type ConnectorRequest = {
   readonly traceId: string;
   readonly pullRequest: PullRequestRef | null;
   readonly expectedHead: string | null;
-  readonly expectedBase: string | null;
+  readonly expectedBase: DecidedBase | null;
   readonly repository: string | null;
-  readonly message: string;
+  readonly title: string;
+  readonly overrideReason: string | null;
 };
 export type ConnectorOutcome =
   | { readonly outcome: 'succeeded'; readonly detail: Readonly<Record<string, string>> }
