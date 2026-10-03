@@ -16,6 +16,10 @@ import { principalSchema } from './principal.ts';
 
 const fixtureRoot = join(import.meta.dirname, 'fixtures');
 
+function without(body: Record<string, unknown>, key: string): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(body).filter(([name]) => name !== key));
+}
+
 function loadFixtures(schemaName: string, kind: 'valid' | 'invalid'): [string, unknown][] {
   const dir = join(fixtureRoot, schemaName, kind);
   return readdirSync(dir).map((file) => [
@@ -110,12 +114,9 @@ describe('commands and outcomes', () => {
     };
     expect(commandSchema.safeParse(base).success).toBe(false);
     expect(commandSchema.safeParse({ ...base, reason: 'ok' }).success).toBe(true);
-    const { itemId, ...withoutItem } = base;
-    expect(itemId).toBe(base.itemId);
-    expect(commandSchema.safeParse({ ...withoutItem, reason: 'ok' }).success).toBe(false);
-    const { head, ...withoutHead } = base;
-    expect(head).toBe(base.head);
-    expect(commandSchema.safeParse({ ...withoutHead, reason: 'ok' }).success).toBe(false);
+    const body = { ...base, reason: 'ok' };
+    expect(commandSchema.safeParse(without(body, 'itemId')).success).toBe(false);
+    expect(commandSchema.safeParse(without(body, 'head')).success).toBe(false);
   });
 
   it('carries a reason that says a command is not wired', () => {

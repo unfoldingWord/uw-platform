@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { eventEvidenceSchemas } from './event-evidence.ts';
 import { eventNameSchema, eventSchema, newEventSchema } from './events.ts';
 
+function without(body: Record<string, unknown>, key: string): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(body).filter(([name]) => name !== key));
+}
+
 const base = {
   eventId: '00000000-0000-4000-8000-0000000000e1',
   harnessId: '00000000-0000-4000-8000-0000000000a1',
@@ -126,8 +130,7 @@ describe('KN-3 item_reordered and stage_removed carry what changed', () => {
       },
     };
     expect(eventSchema.safeParse(removed).success).toBe(true);
-    const { before, ...withoutBefore } = removed.evidence;
-    expect(before.position).toBe(30);
+    const withoutBefore = without(removed.evidence, 'before');
     expect(eventSchema.safeParse({ ...removed, evidence: withoutBefore }).success).toBe(false);
   });
 });
