@@ -11,6 +11,12 @@ describe('WB-11 money is formatted once from integer minor units', () => {
     expect(formatMoney({ amountMinor: 5, currency: 'USD' })).toBe('$0.05');
   });
 
+  it('WB-11 formats a three-decimal currency and a negative zero-decimal one', () => {
+    expect(formatMoney({ amountMinor: 1234567, currency: 'BHD' })).toBe('BHD\u00a01,234.567');
+    expect(formatMoney({ amountMinor: -1, currency: 'BHD' })).toBe('-BHD\u00a00.001');
+    expect(formatMoney({ amountMinor: -5, currency: 'JPY' })).toBe('-¥5');
+  });
+
   it('WB-11 formats a negative amount and zero without a negative zero', () => {
     expect(formatMoney({ amountMinor: -125000, currency: 'USD' })).toBe('-$1,250.00');
     expect(formatMoney({ amountMinor: -5, currency: 'USD' })).toBe('-$0.05');

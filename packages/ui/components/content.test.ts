@@ -2,6 +2,8 @@ import axe from 'axe-core';
 import { jsx } from 'hono/jsx';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
+import Color from 'colorjs.io';
+import { resolveToken, themeTokens } from '../../../tools/ui/css-tokens.ts';
 import { Badge } from './badge.tsx';
 import { Card } from './card.tsx';
 import { Chip } from './chip.tsx';
@@ -61,6 +63,24 @@ describe('WB-11 the badge', () => {
       expect(markup).not.toMatch(/red|#[0-9a-f]{3}/i);
     },
   );
+});
+
+describe('the badge text is readable on its background', () => {
+  const tones = ['neutral', 'info', 'success', 'held'] as const;
+
+  it.each(
+    tones.flatMap((tone) => (['light', 'dark'] as const).map((theme) => [tone, theme] as const)),
+  )('the %s badge meets 4.5:1 in %s', async (tone, theme) => {
+    const markup = await html(jsx(Badge, { tone, children: 'x' }));
+    const ground = /\bbg-([a-z-]+)/.exec(markup)?.[1];
+    const ink = /\btext-([a-z-]+)/.exec(markup.replace('text-xs', ''))?.[1];
+    expect(ground).toBeDefined();
+    expect(ink).toBeDefined();
+    const tokens = themeTokens(theme);
+    const background = new Color(resolveToken(`--uw-${ground}`, tokens));
+    const foreground = new Color(resolveToken(`--uw-${ink}`, tokens));
+    expect(foreground.contrast(background, 'WCAG21')).toBeGreaterThanOrEqual(4.5);
+  });
 });
 
 describe('WB-11 the chip', () => {
@@ -170,6 +190,13 @@ describe('WB-11 the note', () => {
 });
 
 describe('WB-11 the evidence label', () => {
+  it('the visible word is the label and the definition is also text a screen reader and a keyboard user reach', async () => {
+    const document = await dom(jsx(EvidenceLabel, { label: 'observed' }));
+    expect(document.querySelector('.sr-only')?.textContent).toContain(
+      'Seen directly in a system or a record.',
+    );
+  });
+
   it.each([
     ['observed', 'Seen directly in a system or a record.'],
     ['confirmed', 'Checked by a person or a second source.'],
@@ -180,7 +207,7 @@ describe('WB-11 the evidence label', () => {
     async (label, title) => {
       const document = await dom(jsx(EvidenceLabel, { label }));
       const element = document.querySelector('[title]');
-      expect(element?.textContent).toBe(label);
+      expect(element?.textContent).toContain(label);
       expect(element?.getAttribute('title')).toBe(title);
     },
   );
