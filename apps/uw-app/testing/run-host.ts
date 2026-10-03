@@ -41,7 +41,10 @@ export type HostRig = {
   readonly reviews: ReviewRequest[];
   facts: PullRequestFacts | null;
   spentMinor: number;
+  afterReview: AfterReview;
 };
+
+type AfterReview = (request: ReviewRequest, reviewId: number) => Promise<void>;
 
 export type RigOptions = {
   readonly toolset?: readonly VerbName[];
@@ -92,13 +95,18 @@ function factsPort(rig: { facts: PullRequestFacts | null }): GitHubFacts {
   };
 }
 
-function recordingConnectors(reviews: ReviewRequest[]): Connectors {
+function recordingConnectors(
+  reviews: ReviewRequest[],
+  rig: { afterReview: AfterReview },
+): Connectors {
   return {
     run: async () => ({ outcome: 'refused', reason: 'not_wired' }),
     outcomeOf: async () => ({ outcome: 'refused', reason: 'not_wired' }),
     review: async (request) => {
       reviews.push(request);
-      return { outcome: 'posted', reviewId: 9500000000 + reviews.length };
+      const reviewId = 9500000000 + reviews.length;
+      await rig.afterReview(request, reviewId);
+      return { outcome: 'posted', reviewId };
     },
   };
 }
@@ -146,15 +154,16 @@ export async function hostRig(
   const clock = clockFrom(Date.now());
   const binding = fakeWorkflowBinding();
   const reviews: ReviewRequest[] = [];
-  const holder: { facts: PullRequestFacts | null; spentMinor: number } = {
+  const holder: { facts: PullRequestFacts | null; spentMinor: number; afterReview: AfterReview } = {
     facts: null,
     spentMinor: 0,
+    afterReview: () => Promise.resolve(),
   };
   const kernel = kernelOn(db, clock, {
     modelEngine: spendPort(holder),
     runs: platformRuns(binding),
     githubFacts: factsPort(holder),
-    connectors: recordingConnectors(reviews),
+    connectors: recordingConnectors(reviews, holder),
   });
   const { harnessId } = await softwareHarness(db);
   const admin = await ian(db);

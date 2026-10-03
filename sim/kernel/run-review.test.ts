@@ -128,6 +128,35 @@ async function secondIdentity(scene: ReviewWorld): Promise<void> {
   expect((await lastRunEvent(scene))?.evidence).toMatchObject({ result: 'review_withheld' });
 }
 
+async function ownReviewReused(scene: ReviewWorld): Promise<void> {
+  const elsewhere = approvedBy('uw-reviewer[bot]', 'DeepInfra', 'b'.repeat(40), 9300000003);
+  const own = approvedBy('uw-reviewer[bot]', 'DeepInfra', reviewHead, 9300000002);
+  scene.world.adapters.githubFacts.given(
+    greenFacts(scene.world, { itemId: scene.itemId, head: reviewHead, reviews: [elsewhere, own] }),
+  );
+  value(await post(scene));
+  expect(scene.world.adapters.connectors.reviews()).toEqual([]);
+  expect((await lastRunEvent(scene))?.evidence).toMatchObject({
+    result: 'review_posted',
+    review: {
+      reviewer: 'uw-reviewer',
+      provider: 'deepinfra',
+      model: 'z-ai/glm-5.3',
+      verdict: 'approve',
+      reviewId: 9300000002,
+    },
+  });
+}
+
+async function otherHeadNotReused(scene: ReviewWorld): Promise<void> {
+  const elsewhere = approvedBy('uw-reviewer[bot]', 'DeepInfra', 'b'.repeat(40), 9300000003);
+  scene.world.adapters.githubFacts.given(
+    greenFacts(scene.world, { itemId: scene.itemId, head: reviewHead, reviews: [elsewhere] }),
+  );
+  value(await post(scene));
+  expect(scene.world.adapters.connectors.reviews()).toHaveLength(1);
+}
+
 async function notAReviewRun(scene: ReviewWorld): Promise<void> {
   const before = (await itemEvents(scene, scene.itemId)).length;
   const posted = await post(scene);
@@ -172,6 +201,12 @@ describe('a review run reads the diff at the head and posts or withholds its rev
 
   it('HE-4 a run that is not a review run cannot post one', () =>
     inWorld(notAReviewRun, { capability: 'build' }));
+
+  it('a review run whose Reviewer already reviewed the head reuses that review and posts none', () =>
+    inWorld(ownReviewReused));
+
+  it("a review run posts when its Reviewer's only review is on another head", () =>
+    inWorld(otherHeadNotReused));
 
   it('the beat does not start a second review of a head its Reviewer already reviewed', () =>
     inWorld(noSecondReview));

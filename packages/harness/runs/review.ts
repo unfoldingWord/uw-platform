@@ -187,17 +187,41 @@ function plannedFrom(grounds: Grounds, input: PostReviewInput): Planned {
   };
 }
 
-async function plan(
-  ports: ReviewPorts,
-  scene: RunScene,
-  input: PostReviewInput,
-): Promise<Planned | null> {
+function ownReview(facts: PullRequestFacts, grounds: Grounds): ReviewFact | null {
+  let own: ReviewFact | null = null;
+  for (const review of facts.reviews) {
+    if (reviewerOf(review.reviewer) !== grounds.reviewer) continue;
+    if (fullSha(review.commit) !== grounds.target.head) continue;
+    if (own === null || review.reviewId > own.reviewId) own = review;
+  }
+  return own;
+}
+
+type Plan =
+  | { readonly kind: 'withhold' }
+  | { readonly kind: 'reuse'; readonly planned: Planned; readonly reviewId: number }
+  | { readonly kind: 'post'; readonly planned: Planned };
+
+const withhold: Plan = { kind: 'withhold' };
+
+async function plan(ports: ReviewPorts, scene: RunScene, input: PostReviewInput): Promise<Plan> {
   const grounds = groundsOf(scene, input);
-  if (grounds === null) return null;
+  if (grounds === null) return withhold;
   const facts = await ports.githubFacts.pullRequest(grounds.target.ref);
-  if (facts === null) return null;
+  if (facts === null) return withhold;
+  const own = ownReview(facts, grounds);
+  if (own !== null) {
+    return { kind: 'reuse', planned: plannedFrom(grounds, input), reviewId: own.reviewId };
+  }
   const taken = providerTaken(facts, grounds.reviewer, grounds.target, grounds.provider);
-  return taken ? null : plannedFrom(grounds, input);
+  return taken ? withhold : { kind: 'post', planned: plannedFrom(grounds, input) };
+}
+
+async function postedId(ports: ReviewPorts, planned: Plan): Promise<number | null> {
+  if (planned.kind === 'reuse') return planned.reviewId;
+  if (planned.kind !== 'post') return null;
+  const outcome = await ports.connectors.review(planned.planned.request);
+  return outcome.outcome === 'posted' ? outcome.reviewId : null;
 }
 
 export async function postReview(
@@ -209,13 +233,12 @@ export async function postReview(
   const scene = await reviewScene(ports, caller, runId);
   if (scene.status !== 'accepted') return scene;
   const planned = await plan(ports, scene.value, input);
-  if (planned === null) {
+  if (planned.kind === 'withhold') {
     return complete(ports, caller, runId, { result: 'review_withheld', review: null });
   }
-  const outcome = await ports.connectors.review(planned.request);
-  const posted = outcome.outcome === 'posted';
+  const reviewId = await postedId(ports, planned);
   return complete(ports, caller, runId, {
-    result: posted ? 'review_posted' : 'review_withheld',
-    review: { ...planned.record, reviewId: posted ? outcome.reviewId : null },
+    result: reviewId === null ? 'review_withheld' : 'review_posted',
+    review: { ...planned.planned.record, reviewId },
   });
 }
