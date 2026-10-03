@@ -37,12 +37,19 @@ function logged<A extends unknown[], R>(log: string[], name: string, call: (...a
   };
 }
 
+const breakerKey = 'harness-breaker';
+
 function instrument(tx: StoreTransaction, log: string[]): void {
-  const lock = tx.lock;
+  const { lock, lockShared } = tx;
   Object.assign(tx, {
     lock: (key: string) => {
       if (key.startsWith('harness-stage')) log.push('stage');
+      if (key === breakerKey) log.push('breaker exclusive');
       return lock(key);
+    },
+    lockShared: (key: string) => {
+      log.push(key === breakerKey ? 'breaker shared' : 'shared');
+      return lockShared(key);
     },
   });
   const { harnessItems, harnessRuns, delegations, harnessEvents } = tx;
@@ -145,6 +152,49 @@ async function lapsedScene(scene: RunWorld, logs: Logs): Promise<void> {
   expect(seen).toEqual(['item', 'delegation', 'run', 'append']);
 }
 
+async function transactionsDuring(logs: Logs, work: () => Promise<unknown>) {
+  const before = logs.length;
+  await work();
+  return logs.slice(before).map(firstSeen);
+}
+
+function decide(scene: RunWorld) {
+  return async () =>
+    scene.world.kernel.gates.decide(simCaller(scene.world, scene.admin), {
+      itemId: scene.itemId,
+      decision: 'approve',
+      reason: null,
+      findings: [],
+      seenHead: await simSeenHead(scene.world, scene.itemId),
+    });
+}
+
+function checkAt(scene: RunWorld, percent: number) {
+  return async () => {
+    scene.world.adapters.modelEngine.setSpend({ spentMinor: 1250 * percent, currency: 'USD' });
+    const since = scene.world.adapters.clock.now();
+    return value(
+      await scene.world.kernel.breaker.check(systemCaller(scene), {
+        capMinor: 125_000,
+        currency: 'USD',
+        since,
+      }),
+    );
+  };
+}
+
+async function breakerPaths(scene: RunWorld, logs: Logs): Promise<void> {
+  const parked = await parkedRun(scene);
+  value(await scene.world.kernel.runs.hibernateAtGate(systemCaller(scene), parked.runId));
+  const resume = ['breaker shared', 'item', 'run', 'append'];
+  const record = ['breaker exclusive', 'append'];
+  expect(await transactionsDuring(logs, checkAt(scene, 95))).toContainEqual(record);
+  expect(await transactionsDuring(logs, decide(scene))).toContainEqual(resume);
+  const reopened = await transactionsDuring(logs, checkAt(scene, 0));
+  expect(reopened).toContainEqual(record);
+  expect(reopened).toContainEqual(resume);
+}
+
 async function gatePaths(scene: RunWorld): Promise<void> {
   const parked = await parkedRun(scene);
   const runs = scene.world.kernel.runs;
@@ -196,6 +246,9 @@ describe('run-host lock order', () => {
 
   it('a hibernation that finds the delegation lapsed marks it before it locks the run row', () =>
     inSpied(gateWorld, lapsedHibernate));
+
+  it('the breaker takes its lock exclusive and every resume takes it shared, before any other lock', () =>
+    inSpied(gateWorld, breakerPaths));
 
   it('held premise, halt and fail keep the order', () =>
     inSpied(runWorld, (scene) => endingPaths(scene)));

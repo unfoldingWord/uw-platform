@@ -1,5 +1,6 @@
 import type { ItemState, RunHibernation } from '@uw/contracts';
 import { draft, recordItemEvents, type RecordContext } from '../items/record.ts';
+import { lockKeys } from '../lock-keys.ts';
 import type { Ports, RunRow, StoreTransaction } from '../ports.ts';
 import { currentLevel } from './breaker-level.ts';
 import { underPause } from './suspend.ts';
@@ -31,6 +32,7 @@ async function wakeIn(tx: StoreTransaction, locked: Locked, why: RunHibernation)
 
 async function resumeOne(ports: ResumePorts, runId: string, why: RunHibernation): Promise<boolean> {
   return ports.store.transaction(async (tx) => {
+    await tx.lockShared(lockKeys.breaker());
     const seen = await tx.harnessRuns.read.byId(runId);
     if (seen === null) return false;
     const item = await tx.harnessItems.read.lock(seen.itemId);
