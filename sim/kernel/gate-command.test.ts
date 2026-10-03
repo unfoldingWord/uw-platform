@@ -8,7 +8,14 @@ import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { revokeSeededGrant } from '@uw/db/test-seed';
 import { readAllEvents, software, type KernelOutcome } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, simAgent, simCaller, simParkedAtCheck, simPerson } from '../fixtures.ts';
+import {
+  createSimHarness,
+  simAgent,
+  simCaller,
+  simParkedAtCheck,
+  simPerson,
+  simSeenHead,
+} from '../fixtures.ts';
 import { readWorldLog } from '../runner/log.ts';
 import { greenFacts, simSha } from '../ship-fixtures.ts';
 import { createWorld, type World } from '../world.ts';
@@ -31,6 +38,7 @@ type Decide = {
   readonly reason?: string | null;
   readonly findings?: readonly string[];
   readonly itemId?: string;
+  readonly seenHead?: string | null;
 };
 
 function value<T>(outcome: KernelOutcome<T>): T {
@@ -60,12 +68,14 @@ function sceneIt(title: string, work: (scene: Scene) => Promise<void>): void {
   it(title, () => inScene(work));
 }
 
-function decideAs(scene: Scene, actor: Principal, input: Decide) {
+async function decideAs(scene: Scene, actor: Principal, input: Decide) {
+  const itemId = input.itemId ?? scene.itemId;
   return scene.world.kernel.gates.decide(simCaller(scene.world, actor), {
-    itemId: input.itemId ?? scene.itemId,
+    itemId,
     decision: input.decision,
     reason: input.reason ?? null,
     findings: input.findings ?? [],
+    seenHead: 'seenHead' in input ? input.seenHead : await simSeenHead(scene.world, itemId),
   });
 }
 

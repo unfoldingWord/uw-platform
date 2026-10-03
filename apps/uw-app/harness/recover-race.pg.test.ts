@@ -219,6 +219,7 @@ function approve(kernel: Kernel, race: Omit<Race, 'connectors'>) {
     decision: 'approve',
     reason: null,
     findings: [],
+    seenHead: race.item.expectedHead,
   });
 }
 

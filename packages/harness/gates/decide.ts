@@ -115,6 +115,9 @@ function trimmedOrNull(text: string | null): string | null {
 }
 
 function normalised(input: DecideInput): DecideInput | Refused {
+  if (advancing.has(input.decision) && input.seenHead === undefined) {
+    return refused('malformed_command', { why: 'seen_head_required' });
+  }
   const reason = trimmedOrNull(input.reason);
   if (input.decision === 'override' && reason === null) {
     return refused('reason_required', { decision: input.decision });
@@ -153,8 +156,7 @@ async function placed(tx: StoreTransaction, itemId: string): Promise<Placed | Re
 }
 
 function notTheHeadSeen(input: DecideInput, item: ItemState): boolean {
-  if (input.seenHead === undefined || !advancing.has(input.decision)) return false;
-  return input.seenHead !== item.expectedHead;
+  return advancing.has(input.decision) && input.seenHead !== item.expectedHead;
 }
 
 async function standing(

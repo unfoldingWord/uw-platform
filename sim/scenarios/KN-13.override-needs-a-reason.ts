@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import type { GateDecision, Principal } from '@uw/contracts';
 import { software } from '@uw/harness';
-import { createSimHarness, simCaller, simPerson } from '../fixtures.ts';
+import { createSimHarness, simCaller, simPerson, simSeenHead } from '../fixtures.ts';
 import { readWorldLog } from '../runner/log.ts';
 import { defineScenario } from '../scenario.ts';
 import {
@@ -31,6 +31,7 @@ async function decideAs(lane: Lane, itemId: string, decision: GateDecision, why:
     decision,
     reason: why,
     findings: [],
+    seenHead: await simSeenHead(lane.world, itemId),
   });
   assert.deepEqual((await readWorldLog(lane.world.adapters.store)).drift, []);
   return outcome;

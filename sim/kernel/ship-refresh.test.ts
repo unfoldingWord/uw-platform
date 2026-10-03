@@ -9,7 +9,7 @@ import {
   type Store,
 } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, simCaller, simPerson } from '../fixtures.ts';
+import { createSimHarness, simCaller, simPerson, simSeenHead } from '../fixtures.ts';
 import { readWorldLog } from '../runner/log.ts';
 import {
   approvedBy,
@@ -95,6 +95,7 @@ async function approveWith(scene: Scene, githubFacts: GitHubFacts, store?: Store
     decision: 'approve',
     reason: null,
     findings: [],
+    seenHead: await simSeenHead(scene.world, scene.itemId),
   });
   const after = await itemLog(scene.world, scene.harnessId, scene.itemId);
   return { outcome, names: namesSince(before, after), decisions: after.decisions };

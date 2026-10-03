@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import type { Principal } from '@uw/contracts';
 import { readAllEvents, software, type KernelOutcome } from '@uw/harness';
-import { createSimHarness, simAdvance, simAgent, simCaller, simPerson } from '../fixtures.ts';
+import {
+  createSimHarness,
+  simAdvance,
+  simAgent,
+  simCaller,
+  simPerson,
+  simSeenHead,
+} from '../fixtures.ts';
 import { defineScenario } from '../scenario.ts';
 import type { World } from '../world.ts';
 
@@ -51,12 +58,13 @@ async function parkedTweak(world: World): Promise<Cast> {
   return { world, harnessId: harness.id, itemId, ian: admin, max };
 }
 
-function approveAs(scene: Cast, person: Principal) {
+async function approveAs(scene: Cast, person: Principal) {
   return scene.world.kernel.gates.decide(simCaller(scene.world, person), {
     itemId: scene.itemId,
     decision: 'approve',
     reason: null,
     findings: [],
+    seenHead: await simSeenHead(scene.world, scene.itemId),
   });
 }
 

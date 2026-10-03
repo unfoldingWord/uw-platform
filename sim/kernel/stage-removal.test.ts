@@ -2,7 +2,14 @@ import type { Harness, Principal } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { readAllEvents, software, type KernelOutcome } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, simAgent, simCaller, simParkedAtCheck, simPerson } from '../fixtures.ts';
+import {
+  createSimHarness,
+  simAgent,
+  simCaller,
+  simParkedAtCheck,
+  simPerson,
+  simSeenHead,
+} from '../fixtures.ts';
 import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -67,6 +74,7 @@ async function approvedPastCheck(scene: Scene): Promise<void> {
     decision: 'approve',
     reason: null,
     findings: [],
+    seenHead: await simSeenHead(world, parked.itemId),
   });
   expect(approved.status === 'accepted' && approved.value.item.stageKey).toBe('ship');
 }

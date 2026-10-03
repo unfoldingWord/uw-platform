@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import type { Principal } from '@uw/contracts';
 import { software, type KernelOutcome, type PullRequestFacts } from '@uw/harness';
-import { createSimHarness, simAgent, simCaller, simPerson } from '../fixtures.ts';
+import { createSimHarness, simAgent, simCaller, simPerson, simSeenHead } from '../fixtures.ts';
 import { readWorldLog } from '../runner/log.ts';
 import { defineScenario } from '../scenario.ts';
 import {
@@ -57,6 +57,7 @@ async function approveAs(
     decision: 'approve',
     reason: null,
     findings: [],
+    seenHead: await simSeenHead(world, itemId),
   });
   assert.deepEqual((await readWorldLog(world.adapters.store)).drift, []);
   return { outcome, names: namesSince(before, await itemLog(world, harnessId, itemId)) };

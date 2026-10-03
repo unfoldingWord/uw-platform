@@ -120,13 +120,15 @@ export async function harnessScene(
   return accepted({ harness, stages: await tx.harnessStages.read.forHarness(harness.id) });
 }
 
-export async function itemScene(
+type StagedItemScene = ItemScene & { readonly stages: readonly Stage[] };
+
+export async function stagedItemScene(
   ports: ScenePorts,
   tx: StoreTransaction,
   caller: Caller,
   itemId: string,
   at: Date,
-): Promise<KernelOutcome<ItemScene>> {
+): Promise<KernelOutcome<StagedItemScene>> {
   const item = await tx.harnessItems.read.byId(itemId);
   const harness =
     item === null ? null : await readableHarness(ports, tx, caller, item.harnessId, at);
@@ -134,6 +136,19 @@ export async function itemScene(
   const stages = await tx.harnessStages.read.forHarness(harness.id);
   const stage = stages.find((candidate) => candidate.key === item.stageKey);
   if (stage === undefined) return refused('stage_not_found', { stageKey: item.stageKey });
+  return accepted({ item, harness, stage, stages });
+}
+
+export async function itemScene(
+  ports: ScenePorts,
+  tx: StoreTransaction,
+  caller: Caller,
+  itemId: string,
+  at: Date,
+): Promise<KernelOutcome<ItemScene>> {
+  const scene = await stagedItemScene(ports, tx, caller, itemId, at);
+  if (scene.status !== 'accepted') return scene;
+  const { item, harness, stage } = scene.value;
   return accepted({ item, harness, stage });
 }
 

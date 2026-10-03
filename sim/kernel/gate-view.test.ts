@@ -1,11 +1,20 @@
 import {
   gateViewSchema,
+  identitySchema,
+  principalSchema,
+  type GateDecision,
   type GateView,
   type Principal,
   type PullRequestDeclaration,
 } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
-import { createKernel, software, type GitHubFacts, type KernelOutcome } from '@uw/harness';
+import {
+  createKernel,
+  software,
+  type GitHubFacts,
+  type KernelOutcome,
+  type PullRequestFacts,
+} from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createSimHarness, simAgent, simCaller, simParkedAtCheck, simPerson } from '../fixtures.ts';
 import {
@@ -90,6 +99,24 @@ async function lastRiskDerived(scene: Scene): Promise<Record<string, unknown>> {
   return found.evidence;
 }
 
+const missingId = '00000000-0000-4000-8000-0000000000ff';
+
+function agentOf(owner: Principal, identity: string, interactive: boolean): Principal {
+  return principalSchema.parse({ ...owner, identity, kind: 'agent', email: null, interactive });
+}
+
+async function hiddenLikeMissing(scene: Scene, actor: Principal): Promise<void> {
+  const caller = simCaller(scene.world, actor);
+  const hidden = await scene.world.kernel.gates.view(caller, { itemId: scene.itemId });
+  const missing = await scene.world.kernel.gates.view(caller, { itemId: missingId });
+  expect(missing).toEqual({
+    status: 'error',
+    reason: 'item_not_found',
+    detail: { itemId: missingId },
+  });
+  expect(JSON.stringify(hidden).replace(scene.itemId, missingId)).toBe(JSON.stringify(missing));
+}
+
 type ShipOutcome = NonNullable<GateView['ship']>['outcome'];
 
 function asOutcome(decided: KernelOutcome<unknown>): ShipOutcome {
@@ -128,7 +155,7 @@ describe('GH-5 the gate view shows the parsed declaration, the derived tier and 
   });
 });
 
-describe('GH-5 the gate view never reads GitHub', () => {
+describe('the gate view answers from the read model', () => {
   sceneIt('makes no refresh call', async (scene) => {
     const sim = scene.world.adapters.githubFacts;
     let refreshes = 0;
@@ -148,23 +175,31 @@ describe('GH-5 the gate view never reads GitHub', () => {
   });
 });
 
-describe('GH-5 the gate view of a hidden item is item_not_found like a missing one', () => {
+describe('the gate view of a hidden item is item_not_found like a missing one', () => {
   sceneIt('answers a stranger as it answers an unknown item', async (scene) => {
-    const stranger = await simPerson(scene.world, 3, []);
-    const missingId = '00000000-0000-4000-8000-0000000000ff';
-    const caller = simCaller(scene.world, stranger);
-    const hidden = await scene.world.kernel.gates.view(caller, { itemId: scene.itemId });
-    const missing = await scene.world.kernel.gates.view(caller, { itemId: missingId });
-    expect(hidden).toEqual({
-      status: 'error',
-      reason: 'item_not_found',
-      detail: { itemId: scene.itemId },
-    });
-    expect(JSON.stringify(hidden).replace(scene.itemId, missingId)).toBe(JSON.stringify(missing));
+    await hiddenLikeMissing(scene, await simPerson(scene.world, 3, []));
+  });
+
+  sceneIt('answers every agent form that may not read the harness as missing', async (scene) => {
+    const { ian } = scene;
+    const runner = agentOf(ian, `agent:${ian.personId ?? ''}/runner`, false);
+    const persona = agentOf(ian, 'agent:builder', true);
+    const lapsed = agentOf(
+      ian,
+      `agent:${ian.personId ?? ''}/laptop as builder via delegation:${missingId}`,
+      false,
+    );
+    const foreign: Principal = {
+      ...ian,
+      identity: identitySchema.parse(`agent:${missingId}/laptop`),
+      kind: 'agent',
+      email: null,
+    };
+    for (const actor of [runner, persona, lapsed, foreign]) await hiddenLikeMissing(scene, actor);
   });
 });
 
-describe('GH-5 the gate view of an item not at a connector stage has ship null', () => {
+describe('the gate view of an item not at a connector stage has ship null', () => {
   it('shows a parked item at Check without a ship preview', async () => {
     const world = await createWorld();
     try {
@@ -192,5 +227,112 @@ describe('the gate view is a read for people', () => {
     });
     expect(outcome).toMatchObject({ status: 'error', reason: 'not_permitted' });
     expect(await itemLog(scene.world, scene.harnessId, scene.itemId)).toEqual(before);
+  });
+});
+
+function factsClosing(scene: Scene, count: number): PullRequestFacts {
+  const closes = [...Array.from({ length: count }).keys()].map((index) => `#${index + 1}`);
+  const reviews = [approvedBy('uw-reviewer[bot]', 'anthropic', head, 9100000101)];
+  return greenFacts(scene.world, {
+    itemId: scene.itemId,
+    head,
+    reviews,
+    paths: aclChange.paths,
+    declaration: { ...parsedDeclaration, closes },
+  });
+}
+
+describe('GH-5 a declaration closing more issues than the limit counts as undeclared in the view and at Ship', () => {
+  sceneIt('shows no declaration and the same refusal an approve records', async (scene) => {
+    scene.world.adapters.githubFacts.given(factsClosing(scene, 51));
+    const caller = simCaller(scene.world, scene.ian);
+    const view = viewOf(await scene.world.kernel.gates.view(caller, { itemId: scene.itemId }));
+    expect(view.facts?.declaration).toBeNull();
+    expect(view.ship?.outcome).toMatchObject({ verdict: 'refuse' });
+    expect(view.ship?.outcome).toEqual(
+      expect.objectContaining({ reasons: expect.arrayContaining(['risk_tier_undeclared']) }),
+    );
+    const decided = await scene.world.kernel.gates.decide(caller, {
+      itemId: scene.itemId,
+      decision: 'approve',
+      reason: null,
+      findings: [],
+      seenHead: head,
+    });
+    expect(decided).toMatchObject({ status: 'error', reason: 'risk_tier_undeclared' });
+    expect(view.ship?.outcome).toEqual(asOutcome(decided));
+  });
+
+  sceneIt('shows a declaration closing exactly the limit', async (scene) => {
+    scene.world.adapters.githubFacts.given(factsClosing(scene, 50));
+    const caller = simCaller(scene.world, scene.ian);
+    const view = viewOf(await scene.world.kernel.gates.view(caller, { itemId: scene.itemId }));
+    expect(view.facts?.declaration?.closes).toHaveLength(50);
+  });
+});
+
+async function decideSeeing(
+  scene: Scene,
+  decision: GateDecision,
+  seenHead: string | null | undefined,
+) {
+  const before = await itemLog(scene.world, scene.harnessId, scene.itemId);
+  const outcome = await scene.world.kernel.gates.decide(simCaller(scene.world, scene.ian), {
+    itemId: scene.itemId,
+    decision,
+    reason: decision === 'override' ? 'known risk' : null,
+    findings: decision === 'reject' ? ['not yet'] : [],
+    ...(seenHead === undefined ? {} : { seenHead }),
+  });
+  const after = await itemLog(scene.world, scene.harnessId, scene.itemId);
+  return { outcome, wrote: after.events.length > before.events.length, after };
+}
+
+const otherHead = simSha('0b0e');
+
+describe('KN-13 an approve or override must name the head the person saw', () => {
+  sceneIt('refuses an approve that names no head and writes nothing', async (scene) => {
+    const { outcome, wrote, after } = await decideSeeing(scene, 'approve', undefined);
+    expect(outcome).toEqual({
+      status: 'error',
+      reason: 'malformed_command',
+      detail: { why: 'seen_head_required' },
+    });
+    expect(wrote).toBe(false);
+    expect(after.decisions).toEqual([]);
+  });
+
+  sceneIt('refuses an override that names no head and writes nothing', async (scene) => {
+    const { outcome, wrote } = await decideSeeing(scene, 'override', undefined);
+    expect(outcome).toMatchObject({ status: 'error', reason: 'malformed_command' });
+    expect(wrote).toBe(false);
+  });
+
+  sceneIt(
+    'refuses an override naming another head head_mismatch and writes nothing',
+    async (scene) => {
+      const { outcome, wrote, after } = await decideSeeing(scene, 'override', otherHead);
+      expect(outcome).toEqual({
+        status: 'error',
+        reason: 'head_mismatch',
+        detail: { why: 'not_the_head_you_saw', expectedHead: head },
+      });
+      expect(wrote).toBe(false);
+      expect(after.decisions).toEqual([]);
+    },
+  );
+});
+
+describe('a reject or take-over does not depend on a seen head', () => {
+  sceneIt('records a reject whatever head it names', async (scene) => {
+    const { outcome, after } = await decideSeeing(scene, 'reject', otherHead);
+    expect(outcome.status).toBe('accepted');
+    expect(after.decisions).toEqual(['reject']);
+  });
+
+  sceneIt('records a take-over that names no head', async (scene) => {
+    const { outcome, after } = await decideSeeing(scene, 'take_over', undefined);
+    expect(outcome.status).toBe('accepted');
+    expect(after.decisions).toEqual(['take_over']);
   });
 });

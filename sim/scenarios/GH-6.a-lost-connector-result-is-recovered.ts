@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import type { Principal } from '@uw/contracts';
 import { software, type Kernel } from '@uw/harness';
-import { createSimHarness, simCaller, simPerson } from '../fixtures.ts';
+import { createSimHarness, simCaller, simPerson, simSeenHead } from '../fixtures.ts';
 import { kernelThatLosesTheExit } from '../lost-exit.ts';
 import { defineScenario } from '../scenario.ts';
 import {
@@ -45,12 +45,13 @@ async function parked(scene: Scene, title: string, change: ShipChange): Promise<
   return item.itemId;
 }
 
-function approve(scene: Scene, kernel: Kernel, itemId: string) {
+async function approve(scene: Scene, kernel: Kernel, itemId: string) {
   return kernel.gates.decide(simCaller(scene.world, scene.ian), {
     itemId,
     decision: 'approve',
     reason: null,
     findings: [],
+    seenHead: await simSeenHead(scene.world, itemId),
   });
 }
 

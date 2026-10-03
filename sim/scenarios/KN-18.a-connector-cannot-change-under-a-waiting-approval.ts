@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import type { Principal } from '@uw/contracts';
 import { software, type KernelOutcome } from '@uw/harness';
-import { createSimHarness, simCaller, simPerson } from '../fixtures.ts';
+import { createSimHarness, simCaller, simPerson, simSeenHead } from '../fixtures.ts';
 import { kernelThatLosesTheExit } from '../lost-exit.ts';
 import { defineScenario } from '../scenario.ts';
 import { approvedBy, greenFacts, simParkedAtShip, standardChange } from '../ship-fixtures.ts';
@@ -36,11 +36,13 @@ async function waitingApproval(scene: Scene, max: Principal): Promise<string> {
     greenFacts(world, { itemId: item.itemId, head: standardChange.head, reviews }),
   );
   const losing = kernelThatLosesTheExit(world, { effectHappened: true });
+  const seenHead = await simSeenHead(world, item.itemId);
   const approval = losing.gates.decide(simCaller(world, scene.ian), {
     itemId: item.itemId,
     decision: 'approve',
     reason: null,
     findings: [],
+    seenHead,
   });
   await assert.rejects(approval, { name: 'ExitLost' });
   return item.itemId;

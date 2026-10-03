@@ -257,3 +257,31 @@ describe('WB-3 an event read on a harness the caller may not read answers harnes
     });
   });
 });
+
+describe('the kernel refuses a malformed event query before reading', () => {
+  const malformed: readonly (readonly [string, Partial<Query>])[] = [
+    ['a negative cursor', { after: -1 }],
+    ['a fractional cursor', { after: 1.5 }],
+    ['an empty page', { limit: 0 }],
+    ['a page over the limit', { limit: 101 }],
+    ['an item that is not an id', { itemId: 'not-an-id' }],
+  ];
+  it.each(malformed)('answers %s malformed_command', async (_name, change) => {
+    await withLog(async (world, ian) => {
+      expect(await readAs(world, ian, { ...everything, ...change })).toMatchObject({
+        status: 'error',
+        reason: 'malformed_command',
+      });
+    });
+  });
+
+  it('answers a harness that is not an id as it answers a missing harness', async () => {
+    await withLog(async (world, ian) => {
+      expect(await readAs(world, ian, { ...everything, harnessId: 'not-an-id' })).toEqual({
+        status: 'error',
+        reason: 'harness_not_found',
+        detail: { harnessId: 'not-an-id' },
+      });
+    });
+  });
+});

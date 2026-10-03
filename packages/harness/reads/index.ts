@@ -46,7 +46,7 @@ export type KernelReads = {
     input: { readonly githubId: number },
   ): Promise<KernelOutcome<boolean>>;
   namesInstructions(input: { readonly pageId: string }): Promise<boolean>;
-  harnessIds(): Promise<readonly string[]>;
+  harnessIdsForHealth(): Promise<readonly string[]>;
 };
 
 type ReadPorts = Pick<Ports, 'clock' | 'grants' | 'store'>;
@@ -78,7 +78,7 @@ export function createKernelReads(ports: ReadPorts): KernelReads {
       ports.store.transaction((tx) => issueImported(tx, caller, input.githubId)),
     namesInstructions: (input) =>
       ports.store.transaction((tx) => tx.harnessStages.read.namesInstructions(input.pageId)),
-    harnessIds: () =>
+    harnessIdsForHealth: () =>
       ports.store.transaction(async (tx) =>
         (await tx.harnesses.read.list()).map((harness) => harness.id),
       ),
