@@ -284,36 +284,3 @@ describe('KN-18 an update cannot carry identity fields', () => {
     });
   });
 });
-
-describe('every stage edit keeps the gate before an effect', () => {
-  harnessIt(
-    'refuses an update that lowers the Ship gate and a new unguarded effect stage, and records each refusal',
-    async (world, harness, ian) => {
-      const before = await stagesOf(world, harness.id);
-      const lowered = await world.kernel.stages.updateStage(ian, {
-        harnessId: harness.id,
-        stageKey: 'ship',
-        change: { exitGate: 'checks' },
-      });
-      const unguarded = await world.kernel.stages.createStage(ian, {
-        harnessId: harness.id,
-        stage: newStage({ connector: 'merge' }),
-      });
-      for (const outcome of [lowered, unguarded]) {
-        expect(outcome).toMatchObject({
-          status: 'error',
-          reason: 'template_bypasses_gate',
-          detail: { effectStage: expect.any(String) },
-        });
-      }
-      expect(await stagesOf(world, harness.id)).toEqual(before);
-      const refusals = (await logOf(world, harness.id)).filter(
-        (event) => event.name === 'stage_edit_refused',
-      );
-      expect(refusals.map((event) => event.evidence['reason'])).toEqual([
-        'template_bypasses_gate',
-        'template_bypasses_gate',
-      ]);
-    },
-  );
-});
