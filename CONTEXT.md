@@ -86,6 +86,10 @@ _Avoid_: API key, agent account, allow-list
 The first step of a Builder run: verify the item's premise against current code and data before building. In v1 it is a step, not a persona.
 _Avoid_: Scout (as a persona name in v1), explorer, triage
 
+**Scout verdict**:
+The fenced `harness-scout` block that ends a scout step: the premise holds or is held, with a one-line reason. Anything else is a held premise.
+_Avoid_: scout result, triage outcome
+
 **Delegation**:
 A row that lets unattended work run: a person holding `admin` on the harness's area grants a persona one capability word for a bounded time. Every **beat** (an unattended claim, on any host) presents a live delegation or is refused.
 _Avoid_: schedule, cron, impersonation, service token (that is how a routine authenticates; the delegation is what lets it act)
@@ -159,6 +163,30 @@ _Avoid_: background jobs, cheap tier, batch
 **Run step**:
 One recorded unit inside a run: read, scout, work, submit. Each renews the lease and reports its tokens.
 _Avoid_: checkpoint, task, action
+
+**Run scene**:
+What a hosted step acts as: the run, its item and the beat principal derived from its delegation at that step. Each step derives it afresh.
+_Avoid_: session, run context
+
+**Engine descriptor**:
+The kernel's data about one engine: availability, kind, run shapes, default provider, whether it needs hosted Builder, and its reviewer identity. The kernel reads the descriptor and never branches on an engine key.
+_Avoid_: engine config, engine settings
+
+**Hosted Builder**:
+The per-harness switch that lets Builder run on `claude-code-sandbox`. Off by default; turning it off does not stop a run already started.
+_Avoid_: sandbox mode, cloud Builder
+
+**Breaker**:
+The spend guard over AI Gateway's cost: it holds new hosted claims at 75 percent of the cap and hibernates running hosted runs at 90.
+_Avoid_: budget, limiter
+
+**Egress proxy**:
+The platform hook a sandbox's outbound traffic passes through: it injects the model key, routes the MCP host, and refuses everything else.
+_Avoid_: firewall, gateway (that is a Store gateway or AI Gateway)
+
+**Review verdict**:
+The fenced `harness-verdict` block that ends a review run's work: approve or request changes, then the findings.
+_Avoid_: review result, approval (only a person approves a gate)
 
 **Verb**:
 One tool on the MCP surface, from the one registry published by `packages/contracts`. `approve`, `merge`, `deploy`, `publish` and advancing past a human gate are not verbs; they do not exist for any agent identity.

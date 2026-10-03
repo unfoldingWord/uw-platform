@@ -263,7 +263,7 @@ Requirement identifiers are stable. **Must** is a v1 requirement. **Later** is d
 
 | ID | Requirement | Priority | Source |
 |---|---|---|---|
-| PE-1 | **Persona as a page type.** Frontmatter: `identity`, `owner`, `harness`, `toolset`, `run_shape`, `engine`, `model`, `budget`, `capability`, `requires_tools`, `status`. The schema rejects a value outside the verb registry, the run-shape registry or the six engine keys. "New page, type: persona" creates one; there is no special screen. The markdown body is the persona's instructions in agentskills.io format and is what a run's read step loads. | Must | #59, D15 |
+| PE-1 | **Persona as a page type.** Frontmatter: `identity`, `owner`, `harness`, `toolset`, `run_shape`, `engine`, `model`, `provider` (the pinned provider slug, or null for the engine's default), `budget`, `capability`, `requires_tools`, `status`. The schema rejects a value outside the verb registry, the run-shape registry or the six engine keys. "New page, type: persona" creates one; there is no special screen. The markdown body is the persona's instructions in agentskills.io format and is what a run's read step loads. | Must | #59, D15 |
 | PE-2 | The toolset form offers only registry verbs the creator holds and never a forbidden verb. `requires_tools` is derived and cannot be edited by hand. A persona drafted by an agent lands `suggested`. | Must | #59 |
 | PE-3 | Activation is shown only to a person holding `admin` on the harness's area. It runs the tool check (AB-8) and a dry run, then flips `status` to `active`. An agent identity's attempt through `write_page` is refused and logged. | Must | #59 |
 | PE-4 | The persona page's default view is its dashboard: runs today, spend, escalation rate, gate refusals, writes, hosts, the last play-by-plays, and the delegations it runs under. | Must | #59 |
@@ -305,7 +305,7 @@ Every table declares its classification and offline eligibility. Every table has
 | `harness_stages` | harness, key, title, position, bracket (P31), agent_pickup, exit_gate, connector, wip_limit, instructions_page_id, validators[], feeds[], paused | the stage command |
 | `harness_items` | harness, stage, title, page, claimed_by, claimant_kind, delegation, lease_expires, priority, due, gate status, gate target, risk_tier, risk_domains[], expected_head, branch_state, pull request repository and `pr_number`, the wrapped issue (`issue_repo`, `issue_number`, `issue_github_id`, all or none, unique on the GitHub id; GH-3), zulip_topic, created at | the kernel |
 | `harness_events` | see KN-3 | the kernel, append-only |
-| `harness_runs` | item, persona, run shape (the run shape names the host; there is no separate host column), engine, model, resolved provider, steps with tokens, cost and cost basis, trace id, outcome | the run shape |
+| `harness_runs` | item, persona, persona page, delegation, run shape (the run shape names the host), engine, model, pinned and resolved provider, steps with tokens, cost, compute cost and cost basis, gates met, pending prompts, trace id, outcome and why it hibernated or failed | the run shape |
 | `gate_decisions` | harness, item, stage, actor, decision, reason, evidence, trace id | the gate command, human principals only |
 | `delegations` | id, person, persona, harness, capability, granted at, expires at, revoked at, lapsed at, supersedes (P14), trace id | the delegation command |
 | `measurements` | item, source, name, value, as of | the Validate stage |
@@ -347,11 +347,17 @@ Every table declares its classification and offline eligibility. Every table has
 | capability word | `none`, `iterate`, `build`, `review` |
 | stage bracket | `product_package`, `build_package`, `deploy_package`, `iterate` |
 | task status | `suggested`, `open`, `done`, `dismissed` |
-| persona activation refusal | `unknown_verb`, `forbidden_verb`, `not_permitted` |
+| persona activation refusal | `unknown_verb`, `forbidden_verb`, `not_permitted`, `engine_not_available` |
 | gate status | `working`, `parked`, `checks_failed`, `done` |
 | branch state | `none`, `active`, `abandoned` |
 | run outcome | `running`, `hibernated`, `stopped`, `completed`, `failed` |
 | delegation lapse | `expired`, `revoked`, `grant_lost` |
+| run hibernation | `gate`, `paused`, `breaker` |
+| run stop | `stopped_by_person`, `released`, `lease_expired`, `delegation_lapsed`, `gate_wait_expired` |
+| run failure | `retries_exhausted`, `provider_mismatch`, `start_failed`, `turn_limit` |
+| run result | `submitted`, `premise_held`, `decided`, `review_posted`, `review_withheld`, `review_refused` |
+| breaker level | `open`, `holding`, `pausing` |
+| review verdict | `approve`, `request_changes` |
 | CI job | `security-audit`, `lint`, `typecheck`, `architecture`, `test`, `build` |
 | check conclusion | `success`, `failure`, `neutral`, `cancelled`, `skipped`, `timed_out`, `action_required`, `stale` |
 
@@ -376,18 +382,21 @@ Added in step 3: `harness_not_found`, `harness_exists`, `stage_not_found`, `item
 
 Added in step 6: `request_in_flight` (a command whose `requestId` is still running), `issue_not_found` (an import the read model does not hold), `stage_not_empty` (P17).
 
+Added in step 7: `run_not_found` (a run id the kernel does not hold, or one the caller may not see).
+
 ### 8.6 Event vocabulary
 
 ```
 item_created  item_claimed  item_released  item_reordered  lease_renewed  lease_expired
 branch_abandoned  branch_adopted  stage_advanced  loop_edge_taken  premise_held  risk_derived
 label_removed  run_started  run_step_recorded  run_failed  run_hibernated  run_resumed  run_stopped
+run_completed  run_prompted
 submitted_to_gate  checks_passed  checks_failed  gate_approved  gate_rejected
 gate_taken_over  gate_overridden  gate_refused_to_agent  ship_refused
 connector_succeeded  connector_refused
 delegation_granted  delegation_revoked  delegation_lapsed  delegation_required
 stage_edit_refused  stage_edited  stage_removed  template_activated  harness_paused
-harness_resumed  learning_attached  nothing_learned  comment_recorded
+harness_resumed  hosted_builder_set  learning_attached  nothing_learned  comment_recorded
 breaker_holding  breaker_pausing  breaker_open
 persona_activation_failed  persona_activated
 ```
@@ -397,6 +406,8 @@ persona_activation_failed  persona_activated
 `stage_edited` (contract 3.2.0) records every accepted stage create, update and reorder: the stage id, its key, and before/after limited to the columns the edit changed (before is null for a creation; a reorder writes one per stage whose position changed). It is a harness-level event and changes no item.
 
 `item_reordered` (contract 10.0.0) records an item's new priority and, for the moved item, the item it was placed before. `stage_removed` records a removed stage's id, key and columns. `harness_paused` and `harness_resumed` name the lane, or null for the whole harness. Every event carries the `requestId` of the command that appended it, or null.
+
+`run_started`, `run_hibernated`, `run_resumed`, `run_stopped`, `run_failed`, `run_completed` and `run_prompted` (contract 11.0.0) record a run's life with closed-set reasons; `breaker_*` carry the spend reading; `hosted_builder_set` records the switch. `run_step_recorded` gains the step's cost, compute cost, model, resolved provider, the tools it called and its write count; a step recorded before 11.0.0 reads them as null, null, null, null, none and 0. A lost lease has one reason everywhere: the run stops `lease_expired`.
 
 ---
 
