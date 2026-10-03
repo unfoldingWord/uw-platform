@@ -1,7 +1,8 @@
-import { notWiredCall, type ModelEngine } from '@uw/harness';
+import type { EngineConfig } from '../config.ts';
 import { messageWork, type EngineAdapter } from '../seam.ts';
+import { openrouterMessagesTurn } from './turn.ts';
 
-export function openrouterMessagesEngine(): EngineAdapter {
-  const turn: ModelEngine['turn'] = () => notWiredCall('modelEngine', 'turn');
+export function openrouterMessagesEngine(config: EngineConfig): EngineAdapter {
+  const turn = openrouterMessagesTurn(config);
   return { key: 'openrouter-messages', turn, work: messageWork('openrouter-messages', turn) };
 }
