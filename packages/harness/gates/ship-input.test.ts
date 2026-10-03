@@ -80,6 +80,7 @@ const facts: PullRequestFacts = {
   draft: false,
   head,
   headRef: `harness/${itemId}`,
+  headRepo: 'unfoldingWord/uw-platform',
   base,
   checks: ciJobSchema.options.map((name) => check(name)),
   reviews: [review()],
@@ -217,6 +218,8 @@ describe('GH-5 GH-4 facts from another repository or branch are not the pull req
     const elsewhere = { ref: { repo: 'unfoldingWord/other', number: 42 } };
     expect(assembled({ facts: elsewhere })).toMatchObject(unusable);
     expect(assembled({ facts: { headRef: 'feature/x' } })).toMatchObject(unusable);
+    expect(assembled({ facts: { headRepo: 'someone/uw-platform' } })).toMatchObject(unusable);
+    expect(assembled({ facts: { headRepo: null } })).toMatchObject(unusable);
     expect(assembled({ facts: { head: 'abc123' } })).toMatchObject(unusable);
     expect(assembled({ facts: { ref: { ...ref, number: 43 } } })).toMatchObject(unusable);
   });

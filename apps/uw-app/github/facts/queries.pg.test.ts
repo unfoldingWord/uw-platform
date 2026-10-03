@@ -33,6 +33,7 @@ const expectedFacts = {
   draft: false,
   head,
   headRef,
+  headRepo: 'unfoldingWord/uw-platform',
   base,
   checks: [
     {

@@ -124,6 +124,7 @@ const pullColumns = {
   draft: ghPrs.draft,
   headSha: ghPrs.headSha,
   headRef: ghPrs.headRef,
+  headRepo: ghPrs.headRepo,
   baseRef: ghPrs.baseRef,
   baseSha: ghPrs.baseSha,
   milestoneId: ghPrs.milestoneId,

@@ -26,6 +26,8 @@ type ExitInput = {
   readonly next: Stage | null;
   readonly decisionId: string;
   readonly overrideReason: string | null;
+  readonly repository: string | null;
+  readonly expectedBase: string | null;
 };
 
 const REASON_LIMIT = 500;
@@ -64,6 +66,8 @@ function requestOf(context: RecordContext, input: ExitInput): ConnectorRequest {
     traceId: context.traceId,
     pullRequest: item.pullRequest,
     expectedHead: item.expectedHead,
+    expectedBase: input.expectedBase,
+    repository: input.repository,
     message: messageOf(item.title, input.overrideReason),
   };
 }

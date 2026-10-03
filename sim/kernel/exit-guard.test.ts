@@ -60,6 +60,8 @@ function exitWith(scene: Scene, crafted: Crafted): Promise<boolean> {
       next: stageOf(scene, 'validate'),
       decisionId: crafted.decisionId ?? world.adapters.ids.next(),
       overrideReason: null,
+      repository: 'unfoldingWord/uw-platform',
+      expectedBase: null,
     },
   );
 }

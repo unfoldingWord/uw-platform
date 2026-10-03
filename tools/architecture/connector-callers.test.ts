@@ -13,15 +13,19 @@ const shipRuleCall = /\bshipRule\s*\(/;
 const shipRuleReference = /\bshipRule\b/;
 const assemblerCall = /\bassembleShipInput\s*\(/;
 const connectorExitCall = /\bexitThroughConnector\s*\(/;
+const mergeCall = /\bwrites\s*\??\.\s*merge\s*\(|\bmergeHandler\s*\(/;
+const shipWritesCall = /\bcreateShipWrites\s*\(/;
+const outcomeOfCall = /connectors\s*\??\.\s*outcomeOf\b/;
+const shipWiring =
+  /\b(?:platformConnectors|mergeHandler|createShipWrites|ShipGitHub|MergeGitHub)\b/;
+const threeArguments = /\bplatform(?:Kernel|Ports)\s*\(\s*[^,()]*,\s*[^,()]*,/;
+const mergeModule = 'apps/uw-app/github/merge.ts';
+const connectorsAdapter = 'apps/uw-app/ports/connectors.ts';
+const mergeRig = 'apps/uw-app/github/testing/merge-rig.ts';
+const readOnlyRoots = ['apps/uw-app/queue/', 'apps/uw-app/cron/'];
 
 const exitModule = 'packages/harness/gates/exit.ts';
-const wiring = [
-  'apps/uw-app/kernel.ts',
-  'apps/uw-app/ports/connectors.not-wired.ts',
-  exitModule,
-  'packages/harness/ports.ts',
-  'sim/world.ts',
-];
+const wiring = ['apps/uw-app/kernel.ts', exitModule, 'packages/harness/ports.ts', 'sim/world.ts'];
 
 function sourcesAmong(files: readonly string[]): string[] {
   return files.filter(
@@ -104,6 +108,46 @@ describe('the connectors port runs only from the kernel stage-exit path', () => 
     expect(filesMatching(connectorExitCall, sources())).toEqual([
       'packages/harness/gates/approve-at-ship.ts',
       exitModule,
+    ]);
+  });
+});
+
+function readOnlyRootFiles(files: readonly string[]): string[] {
+  return files.filter((file) => readOnlyRoots.some((root) => file.startsWith(root)));
+}
+
+describe('GH-6 the merge connector runs only from the kernel stage-exit path', () => {
+  it('finds the merge written and its handler built only in the merge module, the connectors adapter and the test rig', () => {
+    expect(filesMatching(mergeCall, sources())).toEqual([mergeModule, mergeRig, connectorsAdapter]);
+    expect(filesMatching(shipWritesCall, sources())).toEqual([
+      mergeModule,
+      'apps/uw-app/github/ship-writes.ts',
+    ]);
+  });
+
+  it('finds no source asking the connectors port for an earlier outcome', () => {
+    expect(filesMatching(outcomeOfCall, sources())).toEqual([]);
+  });
+
+  it('gives the queue and cron roots a kernel with no ship GitHub', () => {
+    const roots = readOnlyRootFiles(sources());
+    expect(roots.length).toBeGreaterThan(0);
+    expect(filesMatching(shipWiring, roots)).toEqual([]);
+    expect(filesMatching(threeArguments, roots)).toEqual([]);
+  });
+
+  it('flags a planted merge call, outcome read and ship wiring', () => {
+    const merge = plant('apps/uw-app/github/m.ts', 'await writes.merge(repo, 1, change);');
+    const handler = plant('apps/uw-app/x/h.ts', 'const effects = mergeHandler(github);');
+    const outcome = plant('apps/uw-app/x/o.ts', 'await ports.connectors?.outcomeOf(request);');
+    const wired = plant('apps/uw-app/queue/w.ts', 'platformKernel(database, clock, ship);');
+    const named = plant('apps/uw-app/cron/n.ts', 'const effects = platformConnectors(ship);');
+    expect(filesMatching(mergeCall, [merge, handler])).toEqual([merge, handler].sort());
+    expect(filesMatching(outcomeOfCall, [outcome])).toEqual([outcome]);
+    expect(filesMatching(threeArguments, [wired])).toEqual([wired]);
+    expect(filesMatching(shipWiring, [named])).toEqual([named]);
+    expect(readOnlyRootFiles(['apps/uw-app/queue/worker.ts', 'apps/uw-app/kernel.ts'])).toEqual([
+      'apps/uw-app/queue/worker.ts',
     ]);
   });
 });

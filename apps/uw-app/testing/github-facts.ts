@@ -23,6 +23,7 @@ export async function seedPullRequest(db: Database, seed: PullRequestSeed): Prom
       number: seed.number,
       headSha: seed.head,
       headRef: seed.headRef,
+      headRepo: seed.repo,
       baseSha: base,
     },
   ];

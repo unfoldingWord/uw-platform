@@ -275,8 +275,9 @@ function pendingExit(
   gate: Gate,
   decided: Decided,
   route: ShipRoute,
-  input: DecideInput,
+  request: Request,
 ): PendingExit {
+  const { input, snapshot } = request;
   return {
     item: decided.item,
     stage: gate.stage,
@@ -284,6 +285,8 @@ function pendingExit(
     next: route.exit.to,
     decisionId: decided.decisionId,
     overrideReason: input.decision === 'override' ? input.reason : null,
+    repository: gate.harness.repository,
+    expectedBase: snapshot?.facts?.base ?? null,
     context: gate.context,
   };
 }
@@ -331,7 +334,7 @@ async function decideIn(
   const decided = recorded.value;
   const pending =
     connector !== null && exit !== null
-      ? pendingExit(gate, decided, { exit, connector }, input)
+      ? pendingExit(gate, decided, { exit, connector }, request)
       : null;
   return accepted({ decided, pending });
 }

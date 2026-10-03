@@ -42,6 +42,7 @@ function usableHead(
 ): string | null {
   if (facts === null || item.pullRequest === null) return null;
   if (!sameRepository(facts.ref.repo, harness.repository)) return null;
+  if (facts.headRepo === null || !sameRepository(facts.headRepo, harness.repository)) return null;
   if (!sameRepository(facts.ref.repo, item.pullRequest.repo)) return null;
   if (facts.ref.number !== item.pullRequest.number) return null;
   if (facts.headRef !== branchFor(item.itemId)) return null;

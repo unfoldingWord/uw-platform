@@ -1,10 +1,10 @@
 import type { Harness, Stage } from '@uw/contracts';
 import { allowed, isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
-import { connectorRegistered } from '../connectors/registry.ts';
+import { connectorRegistered, connectorRegistry } from '../connectors/registry.ts';
 import { refused, type Refused } from '../outcome.ts';
 import { validatorRegistry } from '../validators/registry.ts';
-import type { Ports, StoreTransaction } from '../ports.ts';
+import type { EffectConnector, Ports, StoreTransaction } from '../ports.ts';
 import type { TemplateStage } from '../templates/types.ts';
 
 export function agentRefusal(caller: Caller): Refused | null {
@@ -28,22 +28,30 @@ export async function adminRefusal(
     : refused('not_permitted', { jdArea: harness.jdArea });
 }
 
-function problemOf(stage: Stage, keys: ReadonlySet<string>): Refused | null {
+type Registries = {
+  readonly keys: ReadonlySet<string>;
+  readonly registry: ReadonlySet<EffectConnector>;
+};
+
+function problemOf(stage: Stage, { keys, registry }: Registries): Refused | null {
   const validator = stage.validators.find((key) => !validatorRegistry.has(key));
   if (validator !== undefined) {
     return refused('unknown_validator', { stage: stage.key, validator });
   }
-  if (!connectorRegistered(stage.connector)) {
+  if (!connectorRegistered(stage.connector, registry)) {
     return refused('connector_not_registered', { stage: stage.key, connector: stage.connector });
   }
   const target = stage.feeds.find((feed) => !keys.has(feed));
   return target === undefined ? null : refused('unknown_feed_target', { stage: stage.key, target });
 }
 
-export function stageProblems(stages: readonly Stage[]): Refused | null {
-  const keys = new Set(stages.map((stage) => stage.key));
+export function stageProblems(
+  stages: readonly Stage[],
+  registry: ReadonlySet<EffectConnector> = connectorRegistry,
+): Refused | null {
+  const registries = { keys: new Set(stages.map((stage) => stage.key)), registry };
   for (const stage of stages) {
-    const problem = problemOf(stage, keys);
+    const problem = problemOf(stage, registries);
     if (problem !== null) return problem;
   }
   return null;

@@ -53,6 +53,8 @@ export type PendingExit = {
   readonly next: Stage | null;
   readonly decisionId: string;
   readonly overrideReason: string | null;
+  readonly repository: string | null;
+  readonly expectedBase: string | null;
   readonly context: RecordContext;
 };
 

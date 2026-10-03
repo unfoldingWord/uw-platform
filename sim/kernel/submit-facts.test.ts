@@ -145,6 +145,21 @@ function recordingFacts(scene: Scene): { port: GitHubFacts; calls: PullRequestRe
   return { port, calls };
 }
 
+describe('KN-17 submit derives no risk from a pull request whose head is in a fork', () => {
+  sceneIt('derives nothing when the head is in a fork', async (scene) => {
+    const itemId = await heldAtScope(scene);
+    const headRepo = 'someone/uw-platform';
+    scene.world.adapters.githubFacts.given({ ...factsFor(scene, itemId), headRepo });
+    await expectNoRiskButSubmitted(scene, itemId);
+  });
+
+  sceneIt('derives nothing when the head is in a deleted fork', async (scene) => {
+    const itemId = await heldAtScope(scene);
+    scene.world.adapters.githubFacts.given({ ...factsFor(scene, itemId), headRepo: null });
+    await expectNoRiskButSubmitted(scene, itemId);
+  });
+});
+
 describe('KN-17 submit derives risk from the changed files and declaration GitHub holds at the head', () => {
   sceneIt('derives the tier from the changed files and declaration GitHub holds', async (scene) => {
     const itemId = await heldAtScope(scene);

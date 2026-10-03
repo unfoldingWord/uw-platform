@@ -52,6 +52,7 @@ export type PullRequestRecord = {
   readonly draft: boolean;
   readonly headSha: string;
   readonly headRef: string;
+  readonly headRepo: string | null;
   readonly baseRef: string;
   readonly baseSha: string;
   readonly milestoneId: number | null;

@@ -17,6 +17,7 @@ const githubFiles = [
   'token',
   'ship-writes',
   'comments',
+  'merge',
 ];
 
 function write(root: string, path: string, source: string): void {
@@ -141,6 +142,24 @@ const refusals: [string, string, string, string][] = [
     'github-merge-writes-only-in-merge',
   ],
   [
+    'the queue root building the merge connector',
+    'apps/uw-app/queue/worker.ts',
+    "import '../github/merge.ts';",
+    'merge-handler-only-in-the-connectors-adapter',
+  ],
+  [
+    'the kernel root building the merge connector itself',
+    'apps/uw-app/kernel.ts',
+    "import './github/merge.ts';",
+    'merge-handler-only-in-the-connectors-adapter',
+  ],
+  [
+    'another GitHub module building the merge connector',
+    'apps/uw-app/github/sweep.ts',
+    "import './merge.ts';",
+    'merge-handler-only-in-the-connectors-adapter',
+  ],
+  [
     'the queue root taking the comment writer',
     'apps/uw-app/queue/worker.ts',
     "import '../github/comments.ts';",
@@ -219,6 +238,16 @@ describe('the GitHub dependency rules allow', () => {
         'apps/uw-app/github/client.ts': "import './session.ts';",
         'apps/uw-app/github/comments.ts': "import './session.ts';",
         'apps/uw-app/github/ship-writes.ts': "import './session.ts';",
+      }),
+    ).toEqual([]);
+  });
+
+  it('the connectors adapter, a GitHub test helper and a test on the merge connector', async () => {
+    expect(
+      await violations({
+        'apps/uw-app/ports/connectors.ts': "import '../github/merge.ts';",
+        'apps/uw-app/github/testing/merge-rig.ts': "import '../merge.ts';",
+        'apps/uw-app/github/b.test.ts': "import './merge.ts';",
       }),
     ).toEqual([]);
   });

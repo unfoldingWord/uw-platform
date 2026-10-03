@@ -35,6 +35,7 @@ function greenFacts(itemId: string): PullRequestFacts {
     draft: false,
     head,
     headRef: `harness/${itemId}`,
+    headRepo: pullRequest.repo,
     base: '0'.repeat(40),
     checks: ciJobSchema.options.map((name, index) => ({
       checkId: 9100000001 + index,

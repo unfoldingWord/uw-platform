@@ -130,7 +130,7 @@ const standardDeclaration: PullRequestDeclaration = {
   riskDomains: [],
 };
 
-const shipBase = simSha('ba5e');
+export const shipBase = simSha('ba5e');
 
 export function greenFacts(world: World, input: FactsInput): PullRequestFacts {
   const { head } = input;
@@ -140,6 +140,7 @@ export function greenFacts(world: World, input: FactsInput): PullRequestFacts {
     draft: false,
     head,
     headRef: `harness/${input.itemId}`,
+    headRepo: (input.ref ?? shipPullRequest).repo,
     base: shipBase,
     checks: ciJobSchema.options.map((name, index) => ({
       checkId: 9100000001 + index,

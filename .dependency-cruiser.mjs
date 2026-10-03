@@ -263,6 +263,14 @@ export default {
       to: { path: github('ship-writes') },
     },
     {
+      name: 'merge-handler-only-in-the-connectors-adapter',
+      comment:
+        'The merge connector is built only by the platform connectors adapter, so a merge runs only through the connectors port from the kernel stage exit.',
+      severity: 'error',
+      from: { pathNot: ['^apps/uw-app/ports/connectors\\.ts$', appTesting, testFile] },
+      to: { path: github('merge') },
+    },
+    {
       name: 'github-comments-only-in-github',
       comment: 'The cross-reference comment is written only from apps/uw-app/github.',
       severity: 'error',
