@@ -59,7 +59,39 @@ const pieces: readonly Piece[] = [
     owner: `${components}evidence-label.tsx`,
     marks: [/\bfunction\s+EvidenceLabel\b/, /\bconst\s+EvidenceLabel\b/],
   },
+  {
+    owner: `${components}human-action.tsx`,
+    marks: [
+      /value="(?:approve|reject|take_over|override)"/,
+      /\bfunction\s+HumanActionButton\b/,
+      /\bconst\s+HumanActionButton\b/,
+      /\bfunction\s+HumanGateMark\b/,
+      /\bconst\s+HumanGateMark\b/,
+    ],
+  },
+  {
+    owner: `${components}gate-callout.tsx`,
+    marks: [
+      /\bfunction\s+GateCallout\b/,
+      /\bconst\s+GateCallout\b/,
+      /\bfunction\s+GateFacts\b/,
+      /\bconst\s+GateFacts\b/,
+    ],
+  },
+  {
+    owner: `${components}lane.tsx`,
+    marks: [/\bfunction\s+Lane\b/, /\bconst\s+Lane\b/],
+  },
+  {
+    owner: `${components}kanban-card.tsx`,
+    marks: [/<article\b/, /\bfunction\s+KanbanCard\b/, /\bconst\s+KanbanCard\b/],
+  },
 ];
+
+const sharedMarks = new Map<string, readonly RegExp[]>([
+  [`${components}gate-callout.tsx`, [/<dt\b/]],
+  [`${components}kanban-card.tsx`, [/<dt\b/]],
+]);
 
 const beforeTheShell = new Map<string, readonly RegExp[]>([
   ['apps/uw-app/health/routes.tsx', [/<html\b/, /<main\b/, /<h1\b/]],
@@ -71,7 +103,11 @@ function scanned(path: string): boolean {
 }
 
 function secondPieces(path: string, text: string): string[] {
-  const allowed = new Set((beforeTheShell.get(path) ?? []).map((mark) => mark.source));
+  const allowed = new Set(
+    [...(beforeTheShell.get(path) ?? []), ...(sharedMarks.get(path) ?? [])].map(
+      (mark) => mark.source,
+    ),
+  );
   return pieces
     .filter((piece) => piece.owner !== path)
     .flatMap((piece) => piece.marks)
@@ -79,8 +115,34 @@ function secondPieces(path: string, text: string): string[] {
     .map((mark) => `${path}: ${mark.source}`);
 }
 
+const planted: readonly (readonly [string, string])[] = [
+  [
+    'apps/uw-app/pages/screen.tsx',
+    '<div class="bg-ocean-panel"><nav aria-label="Main"></nav></div>',
+  ],
+  ['apps/uw-app/pages/screen.tsx', '<header><nav aria-label="Breadcrumb"></nav></header>'],
+  ['apps/uw-app/pages/screen.tsx', '<h1 class="text-2xl">Board</h1>'],
+  ['apps/uw-app/pages/screen.tsx', 'export function PageHead() { return null; }'],
+  ['apps/uw-app/pages/screen.tsx', '<input type="radio" name="view" />'],
+  ['packages/ui/components/card.tsx', 'export const Sidebar = () => null;'],
+  ['apps/uw-app/pages/spend.tsx', 'export function Badge() { return null; }'],
+  ['apps/uw-app/pages/spend.tsx', '<table><caption>Spend</caption></table>'],
+  ['apps/uw-app/pages/spend.tsx', '<p role="note">Hand-rolled note</p>'],
+  ['apps/uw-app/pages/spend.tsx', 'export const Kpi = () => null;'],
+  ['apps/uw-app/health/routes.tsx', '<nav aria-label="Main">second sidebar</nav>'],
+  ['apps/uw-app/pages/gate.tsx', '<button type="submit" name="decision" value="approve">'],
+  ['apps/uw-app/pages/gate.tsx', 'export function HumanActionButton() { return null; }'],
+  ['packages/ui/components/lane.tsx', 'export const HumanGateMark = () => null;'],
+  ['apps/uw-app/pages/gate.tsx', 'export function GateCallout() { return null; }'],
+  ['apps/uw-app/pages/gate.tsx', 'export const GateFacts = () => null;'],
+  ['apps/uw-app/pages/board.tsx', 'export function Lane() { return null; }'],
+  ['apps/uw-app/pages/board.tsx', '<article class="rounded-lg">card</article>'],
+  ['packages/ui/components/lane.tsx', 'export const KanbanCard = () => null;'],
+  ['apps/uw-app/pages/board.tsx', '<dl><dt>Stage</dt><dd>Build</dd></dl>'],
+];
+
 describe('WB-11 each shell piece exists once', () => {
-  it('WB-11 no file outside its owner defines a second shell, sidebar, top bar, page head, segmented control, theme switch, card, badge, chip, table, KPI, note or evidence label', () => {
+  it('WB-11 no file outside its owner defines a second shell, sidebar, top bar, page head, segmented control, theme switch, card, badge, chip, table, KPI, note, evidence label, human action, gate callout, lane or kanban card', () => {
     const offenders = repoFiles()
       .filter(scanned)
       .flatMap((path) => secondPieces(path, readFileSync(path, 'utf8')));
@@ -104,24 +166,17 @@ describe('WB-11 each shell piece exists once', () => {
     }
   });
 
-  it.each([
-    [
-      'apps/uw-app/pages/screen.tsx',
-      '<div class="bg-ocean-panel"><nav aria-label="Main"></nav></div>',
-    ],
-    ['apps/uw-app/pages/screen.tsx', '<header><nav aria-label="Breadcrumb"></nav></header>'],
-    ['apps/uw-app/pages/screen.tsx', '<h1 class="text-2xl">Board</h1>'],
-    ['apps/uw-app/pages/screen.tsx', 'export function PageHead() { return null; }'],
-    ['apps/uw-app/pages/screen.tsx', '<input type="radio" name="view" />'],
-    ['packages/ui/components/card.tsx', 'export const Sidebar = () => null;'],
-    ['apps/uw-app/pages/spend.tsx', 'export function Badge() { return null; }'],
-    ['apps/uw-app/pages/spend.tsx', '<table><caption>Spend</caption></table>'],
-    ['apps/uw-app/pages/spend.tsx', '<p role="note">Hand-rolled note</p>'],
-    ['apps/uw-app/pages/spend.tsx', 'export const Kpi = () => null;'],
-    ['apps/uw-app/health/routes.tsx', '<nav aria-label="Main">second sidebar</nav>'],
-  ])('flags a planted second piece in %s: %s', (path, text) => {
+  it.each(planted)('flags a planted second piece in %s: %s', (path, text) => {
     expect(scanned(path)).toBe(true);
     expect(secondPieces(path, text)).not.toEqual([]);
+  });
+
+  it('lets only the gate facts and the kanban card share the KPI description term', () => {
+    expect(secondPieces(`${components}kanban-card.tsx`, '<dl><dt>Stage</dt></dl>')).toEqual([]);
+    expect(secondPieces(`${components}gate-callout.tsx`, '<dl><dt>Tier</dt></dl>')).toEqual([]);
+    expect(
+      secondPieces(`${components}kanban-card.tsx`, 'export const Kpi = () => null;'),
+    ).not.toEqual([]);
   });
 
   it('passes a page that renders inside the shell', () => {
