@@ -324,6 +324,21 @@ async function malformedEnds({ scene }: Watched): Promise<void> {
   expect((await runOf(scene.world, runId))?.outcome).toBe('running');
 }
 
+async function haltsLapsedLease({ scene }: Watched): Promise<void> {
+  const { runId } = value(await startOn(scene));
+  const { kernel, caller } = host(scene);
+  const lapsedAt = (await itemOf(scene.world, scene.itemId))?.leaseExpiresAt;
+  scene.world.adapters.clock.advance(16 * 60_000);
+  const before = await countOf(scene);
+  value(await kernel.halt(caller, runId, 'lease_expired'));
+  const after = await eventsSince(scene, before);
+  expect(names(after)).toEqual(['lease_expired', 'run_stopped']);
+  expect(after[0]?.evidence).toEqual({ holder: 'agent:builder', leaseExpiresAt: lapsedAt });
+  expect(after[0]?.actor).toBe('agent:builder');
+  expect(after[1]?.evidence).toEqual({ runId, why: 'lease_expired' });
+  expect((await itemOf(scene.world, scene.itemId))?.holder).toBeNull();
+}
+
 function gateIt(title: string, work: (watched: Watched) => Promise<void>): void {
   it(title, () => inWorld(gateWorld, work));
 }
@@ -357,14 +372,16 @@ describe('kernel.runs lifecycle', () => {
     }
   });
 
-  scopeIt('HE-1 a run that fails releases its item', failReleases);
+  scopeIt('a run that fails releases its item', failReleases);
 
   scopeIt(
-    'HE-1 a held premise records premise_held, releases the item and leaves it in its stage',
+    'a held premise records premise_held, releases the item and leaves it in its stage',
     premiseHeld,
   );
 
-  scopeIt('HE-1 a completed run accepts no other transition', completedIsFinal);
+  scopeIt('a completed run accepts no other transition', completedIsFinal);
+
+  scopeIt('a halt for an expired lease records the lease expiry, not a release', haltsLapsedLease);
 
   gateIt('HE-1 the run records each gate it met', gatesMet);
 
