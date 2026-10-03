@@ -9,6 +9,7 @@ import {
 } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import {
+  notWiredCall,
   createKernel,
   software,
   type GitHubFacts,
@@ -27,7 +28,6 @@ import {
   type ShipChange,
 } from '../ship-fixtures.ts';
 import { createWorld, type World } from '../world.ts';
-import { unwiredDiff } from '../adapters/unwired.ts';
 
 afterAll(closeEmbeddedTemplate);
 
@@ -166,7 +166,7 @@ describe('the gate view answers from the read model', () => {
         refreshes += 1;
         return sim.refresh(ref);
       },
-      diff: unwiredDiff,
+      diff: () => notWiredCall('githubFacts', 'diff'),
     };
     const kernel = createKernel({ ...scene.world.adapters, githubFacts });
     const view = viewOf(

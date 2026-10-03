@@ -1,6 +1,7 @@
 import type { Principal } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import {
+  notWiredCall,
   createKernel,
   FactsUnavailableError,
   software,
@@ -20,7 +21,6 @@ import {
   standardChange,
 } from '../ship-fixtures.ts';
 import { createWorld, type World } from '../world.ts';
-import { unwiredDiff } from '../adapters/unwired.ts';
 
 afterAll(closeEmbeddedTemplate);
 
@@ -131,7 +131,7 @@ describe('GH-5 an approve at Ship decides on facts refreshed from GitHub before 
         seen.push(watched.open());
         return approved(scene);
       },
-      diff: unwiredDiff,
+      diff: () => notWiredCall('githubFacts', 'diff'),
     };
     const { outcome } = await approveWith(scene, githubFacts, watched.store);
     expect(outcome.status).toBe('accepted');
@@ -143,7 +143,7 @@ function factsAnswering(
   pullRequest: GitHubFacts['pullRequest'],
   refresh: GitHubFacts['refresh'],
 ): GitHubFacts {
-  return { pullRequest, refresh, diff: unwiredDiff };
+  return { pullRequest, refresh, diff: () => notWiredCall('githubFacts', 'diff') };
 }
 
 describe('GH-5 an approve at Ship fails closed on stale or missing GitHub facts', () => {
@@ -205,7 +205,7 @@ describe('GH-5 an approve at Ship fails closed when GitHub cannot be read again'
       refresh: async () => {
         throw new FactsUnavailableError('server_error');
       },
-      diff: unwiredDiff,
+      diff: () => notWiredCall('githubFacts', 'diff'),
     };
     const { outcome, names, decisions } = await approveWith(scene, githubFacts);
     expect(outcome).toMatchObject({

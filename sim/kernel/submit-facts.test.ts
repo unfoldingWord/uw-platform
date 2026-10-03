@@ -1,6 +1,7 @@
 import type { HarnessEvent, PullRequestDeclaration } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import {
+  notWiredCall,
   createKernel,
   PortNotWiredError,
   readAllEvents,
@@ -17,7 +18,6 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { createSimHarness, simAgent, simCaller, simPerson } from '../fixtures.ts';
 import { greenFacts, shipBase, shipPullRequest, simSha } from '../ship-fixtures.ts';
 import { createWorld, type World } from '../world.ts';
-import { unwiredDiff } from '../adapters/unwired.ts';
 
 afterAll(closeEmbeddedTemplate);
 
@@ -142,7 +142,7 @@ function recordingFacts(scene: Scene): { port: GitHubFacts; calls: PullRequestRe
       calls.push(ref);
       return facts.refresh(ref);
     },
-    diff: unwiredDiff,
+    diff: () => notWiredCall('githubFacts', 'diff'),
   };
   return { port, calls };
 }
@@ -325,7 +325,7 @@ describe('a submit whose GitHub facts are not wired is refused', () => {
     const unwired = {
       pullRequest: () => Promise.reject(new PortNotWiredError('githubFacts', 'pullRequest')),
       refresh: () => Promise.reject(new PortNotWiredError('githubFacts', 'refresh')),
-      diff: unwiredDiff,
+      diff: () => notWiredCall('githubFacts', 'diff'),
     };
     const kernel = createKernel({ ...scene.world.adapters, githubFacts: unwired });
     const before = await eventsOf(scene, itemId);
