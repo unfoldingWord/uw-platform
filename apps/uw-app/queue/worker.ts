@@ -9,7 +9,13 @@ import { hubWiring, platformKernel } from '../kernel.ts';
 import { systemClock } from '../ports/clock.ts';
 import { hubOf } from '../ports/hub.ts';
 import { unitHub, type UnitHub } from '../unit-hub.ts';
-import { consumeBatch, notWiredHandlers, QUEUE_ROUTE, type IngestHandler } from './consumer.ts';
+import {
+  batchTraceId,
+  consumeBatch,
+  notWiredHandlers,
+  QUEUE_ROUTE,
+  type IngestHandler,
+} from './consumer.ts';
 import { postgresWatermarks } from './watermarks.ts';
 
 function clientOf(env: Bindings, now: () => Date): GitHubClient | null {
@@ -32,9 +38,10 @@ function handlersFor(
   ]);
 }
 
-function hubLogger(env: Bindings, sink: LogSink): Logger {
+function hubLogger(env: Bindings, sink: LogSink, batch: MessageBatch<unknown>): Logger {
+  const traceId = batchTraceId(batch.messages, () => crypto.randomUUID());
   return createLogger(
-    { traceId: crypto.randomUUID(), commit: commitOf(env), route: QUEUE_ROUTE, principal: null },
+    { traceId, commit: commitOf(env), route: QUEUE_ROUTE, principal: null },
     sink,
   );
 }
@@ -46,7 +53,7 @@ export async function consumeIngestBatch(
   const database = hyperdriveDatabase(env);
   const now = () => new Date();
   const sink = (line: string) => console.log(line);
-  const unit = unitHub(hubOf(env, hubLogger(env, sink)));
+  const unit = unitHub(hubOf(env, hubLogger(env, sink, batch)));
   try {
     await consumeBatch(batch.messages, {
       handlers: handlersFor(database, env, now, unit),

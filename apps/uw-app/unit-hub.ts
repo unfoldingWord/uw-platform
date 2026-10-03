@@ -1,8 +1,8 @@
 import type { Hub } from '@uw/harness';
 
-export type UnitHub = { readonly hub: Hub; flush(): Promise<number> };
+export type UnitHub = { readonly hub: Hub; owed(): number; flush(): Promise<void> };
 
-export function unitHub(target: Hub, reserved = Number.POSITIVE_INFINITY): UnitHub {
+export function unitHub(target: Hub): UnitHub {
   const pending = new Set<string>();
   let flushed = false;
   return {
@@ -12,13 +12,12 @@ export function unitHub(target: Hub, reserved = Number.POSITIVE_INFINITY): UnitH
         pending.add(harnessId);
       },
     },
+    owed: () => pending.size,
     flush: async () => {
       flushed = true;
       const woken = [...pending];
       pending.clear();
-      const kept = woken.slice(0, reserved);
-      await Promise.allSettled(kept.map(async (harnessId) => target.wake(harnessId)));
-      return woken.length - kept.length;
+      await Promise.allSettled(woken.map(async (harnessId) => target.wake(harnessId)));
     },
   };
 }

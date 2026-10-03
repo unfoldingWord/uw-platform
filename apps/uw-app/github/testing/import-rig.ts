@@ -20,7 +20,7 @@ export const commentId = 9100000701;
 export const commentsPath = `/repos/${platform}/issues/${issueNumber}/comments`;
 export const delivered = new Date('2026-10-02T09:00:00.000Z');
 const ianId = '00000000-0000-4000-8000-000000000001';
-const harnessId = '00000000-0000-4000-8000-000000008701';
+export const harnessId = '00000000-0000-4000-8000-000000008701';
 
 export function valueOf<T>(outcome: KernelOutcome<T>): T {
   if (outcome.status !== 'accepted') throw new Error(`refused: ${outcome.reason}`);

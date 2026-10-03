@@ -6,6 +6,17 @@ export const INGEST_QUEUE_KEY = 'ingest';
 
 export const QUEUE_ROUTE = 'queue ingest';
 
+export function batchTraceId(
+  messages: readonly Pick<ConsumerMessage, 'body'>[],
+  newId: () => string,
+): string {
+  for (const message of messages) {
+    const parsed = ingestEnvelopeSchema.safeParse(message.body);
+    if (parsed.success) return parsed.data.traceId;
+  }
+  return newId();
+}
+
 export type ConsumerMessage = {
   readonly body: unknown;
   readonly timestamp: Date;

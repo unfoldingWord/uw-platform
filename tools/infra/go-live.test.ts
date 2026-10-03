@@ -37,6 +37,17 @@ function withoutGoLiveBindings(config: Block): Block {
   return { ...omit(config, goLiveOnly), env: stripped };
 }
 
+function goLiveKeysIn(config: Block): string[] {
+  const blocks: [string, Block][] = [
+    ['top level', config],
+    ...Object.entries(environments(config)),
+  ];
+  return blocks.flatMap(([name, block]) => [
+    ...goLiveOnly.filter((key) => key in block).map((key) => `${name}: ${key}`),
+    ...accessVars.filter((key) => key in varsOf(block)).map((key) => `${name}: vars.${key}`),
+  ]);
+}
+
 function environment(app: string, name: string, file: string): Block {
   return environments(load(`infra/${app}/${file}`))[name] ?? {};
 }
@@ -80,12 +91,28 @@ describe('FD-12 the go-live config is the live config plus the bindings whose re
   });
 
   it.each(apps)('%s live file declares none of the go-live bindings', (app) => {
-    const config = load(`infra/${app}/${live}`);
-    const blocks = [config, ...Object.values(environments(config))];
-    for (const block of blocks) {
-      expect(goLiveOnly.filter((key) => key in block)).toEqual([]);
-      expect(accessVars.filter((key) => key in varsOf(block))).toEqual([]);
-    }
+    expect(goLiveKeysIn(load(`infra/${app}/${live}`))).toEqual([]);
+  });
+
+  it('flags a live file that declares a Durable Object binding or a migration', () => {
+    const planted = parse(
+      [
+        'name = "uw-app"',
+        '[[migrations]]',
+        'tag = "v1"',
+        'new_sqlite_classes = ["HarnessHub"]',
+        '[[env.staging.durable_objects.bindings]]',
+        'name = "HARNESS_HUB"',
+        'class_name = "HarnessHub"',
+        '[env.production.vars]',
+        'ACCESS_AUD = "x"',
+      ].join('\n'),
+    ) as Block;
+    expect(goLiveKeysIn(planted)).toEqual([
+      'top level: migrations',
+      'staging: durable_objects',
+      'production: vars.ACCESS_AUD',
+    ]);
   });
 });
 

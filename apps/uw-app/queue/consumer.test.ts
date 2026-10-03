@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ingestEnvelopeSchema, type IngestEnvelope } from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
 import {
+  batchTraceId,
   consumeBatch,
   INGEST_QUEUE_KEY,
   notWiredHandlers,
@@ -331,5 +332,21 @@ describe('FD-10 the github handler', () => {
         delivery_id: 'd-1',
       }),
     ]);
+  });
+});
+
+describe('the trace id of a queue batch', () => {
+  it('is the trace id of the first well-formed envelope in the batch', () => {
+    const second = { ...validEnvelope, traceId: '3f1d7c1e-8c53-4a53-9d6e-0a9b6a0f4d12' };
+    const messages = [
+      fakeMessage({ not: 'an envelope' }),
+      fakeMessage(validEnvelope),
+      fakeMessage(second),
+    ];
+    expect(batchTraceId(messages, () => 'minted')).toBe(validEnvelope.traceId);
+  });
+
+  it('is a minted id when no envelope in the batch is well formed', () => {
+    expect(batchTraceId([fakeMessage({ not: 'an envelope' })], () => 'minted')).toBe('minted');
   });
 });
