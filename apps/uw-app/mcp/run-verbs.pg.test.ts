@@ -1,8 +1,8 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { newEventSchema, type Principal } from '@uw/contracts';
+import type { Principal } from '@uw/contracts';
 import { createClient } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
-import { seedGrant, seedPerson } from '@uw/db/test-seed';
+import { seedBreakerReading, seedGrant, seedPerson } from '@uw/db/test-seed';
 import { readAllEvents, software, type Caller, type KernelOutcome } from '@uw/harness';
 import { createApp } from '../app.tsx';
 import { platformStore } from '../ports/store.ts';
@@ -142,26 +142,12 @@ async function seedReading(
   harnessId: string,
   reading: { readonly name: 'breaker_open' | 'breaker_holding'; readonly percent: number },
 ): Promise<void> {
-  await platformStore(r.db).transaction((tx) =>
-    tx.harnessEvents.write.append([
-      newEventSchema.parse({
-        eventId: crypto.randomUUID(),
-        harnessId,
-        itemId: null,
-        name: reading.name,
-        at: r.clock.now().toISOString(),
-        actor: 'agent:system',
-        evidence: {
-          spentMinor: reading.percent * 1250,
-          capMinor: 125_000,
-          currency: 'USD',
-          percent: reading.percent,
-        },
-        traceId: crypto.randomUUID(),
-        requestId: null,
-      }),
-    ]),
-  );
+  await seedBreakerReading(r.db, {
+    harnessId,
+    at: r.clock.now(),
+    actor: 'agent:system',
+    ...reading,
+  });
 }
 
 async function breakerHealth(): Promise<void> {

@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { newEventSchema, principalSchema, type Principal } from '@uw/contracts';
+import { principalSchema, type Principal } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
-import { seedHostedRun } from '@uw/db/test-seed';
+import { seedBreakerReading, seedHostedRun } from '@uw/db/test-seed';
 import type { Caller } from '@uw/harness';
 import { platformRuns } from '../ports/runs.ts';
 import { platformStore } from '../ports/store.ts';
@@ -44,21 +44,6 @@ function personaOf(admin: Principal): Principal {
   });
 }
 
-async function seedSpendReading(db: Database, harnessId: string, at: Date): Promise<void> {
-  const reading = newEventSchema.parse({
-    eventId: crypto.randomUUID(),
-    harnessId,
-    itemId: null,
-    name: 'breaker_open',
-    at: at.toISOString(),
-    actor: 'agent:system',
-    evidence: { spentMinor: 0, capMinor: 125_000, currency: 'USD', percent: 0 },
-    traceId: crypto.randomUUID(),
-    requestId: null,
-  });
-  await platformStore(db).transaction((tx) => tx.harnessEvents.write.append([reading]));
-}
-
 async function hostedRun(db: Database): Promise<Hosted> {
   const scene = await softwareHarness(db);
   const admin = await ian(db);
@@ -81,7 +66,7 @@ async function hostedRun(db: Database): Promise<Hosted> {
     await kernel.delegations.beat(callerOf(personaOf(admin)), { delegationId: delegation.id }),
   );
   const beatCaller = callerOf(beat.principal);
-  await seedSpendReading(db, harnessId, new Date());
+  await seedBreakerReading(db, { harnessId, at: new Date(), actor: 'agent:system' });
   accepted(await kernel.items.claim(beatCaller, { itemId, delegationId: delegation.id }));
   const runId = randomUUID();
   const run = { id: runId, harnessId, itemId, delegationId: delegation.id };

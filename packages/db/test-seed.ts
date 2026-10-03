@@ -145,6 +145,31 @@ export async function seedEvent(db: AnyExecutor, event: SeedEvent): Promise<void
   });
 }
 
+export type SeedBreakerReading = {
+  readonly harnessId: string;
+  readonly at: Date;
+  readonly actor: string;
+  readonly name?: 'breaker_open' | 'breaker_holding';
+  readonly percent?: number;
+};
+
+export async function seedBreakerReading(
+  db: AnyExecutor,
+  reading: SeedBreakerReading,
+): Promise<void> {
+  const percent = reading.percent ?? 0;
+  await db.insert(harnessEvents).values({
+    id: crypto.randomUUID(),
+    harnessId: reading.harnessId,
+    itemId: null,
+    name: reading.name ?? 'breaker_open',
+    actor: reading.actor,
+    evidence: { spentMinor: percent * 1250, capMinor: 125_000, currency: 'USD', percent },
+    traceId: crypto.randomUUID(),
+    at: reading.at,
+  });
+}
+
 export type SeedPage = {
   readonly id: string;
   readonly type: PageType;
