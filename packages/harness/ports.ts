@@ -213,6 +213,7 @@ export type HarnessRunsGateway = {
 
 export type StoreTransaction = {
   lock(key: string): Promise<void>;
+  lockShared(key: string): Promise<void>;
   readonly harnesses: HarnessesGateway;
   readonly harnessStages: HarnessStagesGateway;
   readonly harnessItems: HarnessItemsGateway;
