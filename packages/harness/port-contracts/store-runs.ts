@@ -243,6 +243,23 @@ function describeLatestNamed(subject: RunsSubject): void {
       empty: null,
     });
   });
+
+  it('breaks a tie at one instant across harnesses by the lowest harness id, then the newest position', async () => {
+    const latest = await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0x3b00, 'gateway-runs-tie-low');
+      await seedHarness(tx, 0x3c00, 'gateway-runs-tie-high');
+      const { append } = tx.harnessEvents.write;
+      await append([
+        breakerEvent(0x3c00, 1, 'breaker_open', 50),
+        breakerEvent(0x3c00, 2, 'breaker_open', 55),
+      ]);
+      await append([breakerEvent(0x3b00, 1, 'breaker_open', 60)]);
+      await append([breakerEvent(0x3c00, 3, 'breaker_open', 60)]);
+      await append([breakerEvent(0x3b00, 2, 'breaker_holding', 60)]);
+      return tx.harnessEvents.read.latestNamed(['breaker_open', 'breaker_holding'], null);
+    });
+    expect(latest?.eventId).toBe(uid(0x3b42));
+  });
 }
 
 const personaFrontmatter = {

@@ -106,7 +106,7 @@ export function latestNamedQuery(
         harnessId === null ? undefined : eq(harnessEvents.harnessId, harnessId),
       ),
     )
-    .orderBy(desc(harnessEvents.at), desc(harnessEvents.position))
+    .orderBy(desc(harnessEvents.at), asc(harnessEvents.harnessId), desc(harnessEvents.position))
     .limit(1);
 }
 
