@@ -17,6 +17,8 @@ import { testServer, withAppDatabase } from '../testing/postgres.ts';
 const missingItem = '00000000-0000-4000-8000-0000000000ef';
 const strangerEmail = 'stranger@unfoldingword.org';
 
+const edgeIdentities = ['agent:system', 'agent:ingest'];
+
 function gatePath(harnessId: string, itemId: string): string {
   return `/api/harness/${harnessId}/gates/${itemId}`;
 }
@@ -120,7 +122,7 @@ async function hiddenItem(db: Database): Promise<void> {
 async function agentsDecideNoGate(db: Database): Promise<void> {
   const parked = await parkedAtShip(db);
   const { itemId, harnessId } = parked.item;
-  const forms = await agentForms(db, parked.ian, harnessId);
+  const forms = await agentForms(db, parked.ian, harnessId, edgeIdentities);
   for (const agent of forms.readable) {
     const sent = await readAs(db, agent, gatePath(harnessId, itemId));
     expect(sent.status).toBe(403);

@@ -47,6 +47,7 @@ export async function agentForms(
   db: Database,
   owner: Principal,
   harnessId: string,
+  edgeIdentities: readonly string[],
 ): Promise<AgentForms> {
   const kernel = kernelOn(db, { now: () => new Date() });
   const delegation = accepted(
@@ -67,8 +68,7 @@ export async function agentForms(
       agent(delegatedIdentity(device, 'builder', delegation.id), owner, owner.personId, false),
     ],
     hidden: [
-      agent('agent:system', { ...owner, grants: [] }, null, false),
-      agent('agent:ingest', owner, null, false),
+      ...edgeIdentities.map((identity) => agent(identity, { ...owner, grants: [] }, null, false)),
       agent('agent:reviewer', owner, owner.personId, false),
       agent(`agent:${owner.personId}/runner`, owner, owner.personId, false),
       agent(lapsed, owner, owner.personId, false),

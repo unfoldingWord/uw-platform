@@ -16,6 +16,8 @@ import { testServer, withAppDatabase } from '../testing/postgres.ts';
 
 const missingHarness = '00000000-0000-4000-8000-0000000000ee';
 
+const edgeIdentities = ['agent:system', 'agent:ingest'];
+
 function eventsPath(harnessId: string, query = ''): string {
   return `/api/harness/${harnessId}/events${query}`;
 }
@@ -115,7 +117,7 @@ async function agentsSeeWhatTheyActOn(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   await enqueued(db, scene.harnessId, 'Show the agents');
   const owner = await ian(db);
-  const forms = await agentForms(db, owner, scene.harnessId);
+  const forms = await agentForms(db, owner, scene.harnessId, edgeIdentities);
   const stored = await allEvents(db, scene.harnessId);
   for (const agent of forms.readable) {
     const page = pageOf(await readAs(db, agent, eventsPath(scene.harnessId)));
