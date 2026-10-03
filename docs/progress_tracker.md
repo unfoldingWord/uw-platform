@@ -556,6 +556,7 @@ Choices the PRD, the spec and `AGENTS.md` left open. One row each.
 | 2026-10-03 | `axe-core` `^4.13.0` (resolved 4.13.0, MPL-2.0, `packages/ui` devDependency) | Hand-written accessibility checks of the rendered pieces (roles, names, landmarks) |
 | 2026-10-03 | `jsdom` `^30.1.1` (resolved 30.1.1, MIT) and `@types/jsdom` (`packages/ui` devDependencies) | A hand-written DOM for running `axe-core` over the rendered pieces in Node |
 | 2026-10-03 | `@uw/ui` workspace link in `uw-app` | Not a replacement: the app renders the shell and serves the stylesheet from it |
+| 2026-10-03 | `@anthropic-ai/sdk` `^0.131.0` (resolved 0.131.0, MIT, `apps/uw-app`, imported only in `apps/uw-app/engines/claude-messages/`) | A hand-written Messages API client for the `claude-messages` engine (HE-3), sent through AI Gateway with `maxRetries: 0` |
 
 ## Not verified
 
@@ -624,6 +625,9 @@ Work that is built and whose verification did not run, with the reason.
 | 2026-10-03 | WB-11 WB-12 | The evidence label's definition is in a `title` and a screen-reader-only text, so a sighted touch user who cannot hover does not see it | Found in the Task 19 review as a minor residual; step 8 decides how a view shows it |
 | 2026-10-03 | WB-3 FD-11 | The `/health` `live_hub` cache is per isolate (30 seconds), so probes served by different isolates may report different values; tested with an injected clock in one process | Bounding the fan-out mattered more than one answer across isolates (S6-R39) |
 | 2026-10-03 | WB-1 | The `command_requests` retention has run only against the local Postgres (`apps/uw-app/cron/request-retention.pg.test.ts`) and the nightly composition only without a database (`apps/uw-app/cron/registry.test.ts`) | The cron trigger is in `wrangler.go-live.toml` only; no Worker runs it before go-live |
+| 2026-10-03 | HE-3 HE-5 | The AI Gateway paths and the spend query: the `anthropic` base path `https://gateway.ai.cloudflare.com/v1/<account>/<gateway>/anthropic`, and the GraphQL dataset `aiGatewayRequestsAdaptiveGroups` with `sum { cost }` filtered by `gateway` and `datetime_geq`/`datetime_lt`, are taken from Cloudflare's documentation; the spend reader and the `claude-messages` turn are proven only against recorded-shape fixtures and a fake `fetch` | No AI Gateway exists yet (DX-8) |
+| 2026-10-03 | HE-3 | The per-token prices in `apps/uw-app/engines/claude-messages/prices.ts` (micro-USD per token for `claude-opus-4-1`, `claude-sonnet-4-5`, `claude-haiku-4-5`, from Anthropic's public price list); a model not in the table reports `costMicros: null`. The breaker reads AI Gateway's cost, not these | No invoice yet; the table is the run record's estimate only |
+| 2026-10-03 | HE-3 | That `wrangler deploy --dry-run` bundles `@anthropic-ai/sdk`: the engine registry is not yet reachable from the Worker's entry, so `pnpm build` does not include it until the run host (step 7 Task 18) imports it | The run host is a later task |
 
 ## Waiting on a person
 

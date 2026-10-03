@@ -35,6 +35,7 @@ const platform = {
   'apps/uw-app/mcp/server.ts': leaf,
   'apps/uw-app/engines/registry.ts': "import './claude-messages/index.ts';",
   'apps/uw-app/engines/seam.ts': leaf,
+  'apps/uw-app/engines/gateway/spend.ts': leaf,
   'apps/uw-app/engines/claude-messages/index.ts': "import './turn.ts';",
   'apps/uw-app/engines/codex-sandbox/index.ts': leaf,
   'packages/db/index.ts': leaf,
@@ -68,6 +69,12 @@ const reaches: [string, string, string, string][] = [
     'apps/uw-app/runs/run-core.ts',
     "import '../engines/claude-messages/index.ts';",
     'engines-only-from-the-seam',
+  ],
+  [
+    'the spend reader from outside the roots',
+    'apps/uw-app/mcp/verbs/get-health.ts',
+    "import '../../engines/gateway/spend.ts';",
+    'engines-gateway-only-from-the-roots',
   ],
   [
     'a vendor SDK outside the six engine directories',

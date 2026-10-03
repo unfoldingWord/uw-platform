@@ -392,6 +392,20 @@ export default {
       to: { path: engineDirectory, pathNot: '^apps/uw-app/engines/$1/' },
     },
     {
+      name: 'engines-gateway-only-from-the-roots',
+      comment:
+        'The AI Gateway spend reader is imported only by the composition roots that build the breaker and by tests.',
+      severity: 'error',
+      from: {
+        pathNot: [
+          '^apps/uw-app/engines/gateway/',
+          '^apps/uw-app/(kernel|cron/minute|runs/deps)\\.ts$',
+          testFile,
+        ],
+      },
+      to: { path: '^apps/uw-app/engines/gateway/' },
+    },
+    {
       name: 'engines-reach-only-the-tool-caller',
       comment:
         'An engine reaches the platform only through the MCP tool caller it is handed: never the database, the kernel, a port, the MCP surface or GitHub.',
