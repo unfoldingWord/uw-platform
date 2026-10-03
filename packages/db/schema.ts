@@ -13,9 +13,11 @@ import {
   unique,
   uniqueIndex,
   uuid,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import {
   agentPickupSchema,
+  breakerLevelSchema,
   branchStateSchema,
   capabilityWordSchema,
   connectorSchema,
@@ -29,6 +31,8 @@ import {
   principalKindSchema,
   riskDomainSchema,
   riskTierSchema,
+  runFailureSchema,
+  runHibernationSchema,
   runOutcomeSchema,
   runShapeSchema,
   stageBracketSchema,
@@ -55,6 +59,10 @@ export * from './schema-github.ts';
 const internalSync = { classification: 'internal', offlineEligibility: 'sync' } as const;
 const restrictedNever = { classification: 'restricted', offlineEligibility: 'never' } as const;
 const emptyText = sql`'{}'::text[]`;
+const breakerEventNames = breakerLevelSchema.options.map((level) => `breaker_${level}`);
+const live = (outcome: AnyPgColumn) => sql`${outcome} IN ('running', 'hibernated')`;
+const boundedArray = (column: AnyPgColumn, most: number) =>
+  sql`jsonb_typeof(${column}) = 'array' AND jsonb_array_length(${column}) <= ${sql.raw(String(most))}`;
 
 export const harnesses = declareTable(
   'harnesses',
@@ -246,6 +254,18 @@ export const harnessRuns = declareTable(
     outcome: text('outcome').notNull(),
     startedAt: instant('started_at').notNull(),
     endedAt: instant('ended_at'),
+    personaPageId: uuid('persona_page_id').references(() => pages.id),
+    delegationId: uuid('delegation_id').references(() => delegations.id),
+    pinnedProvider: text('pinned_provider'),
+    computeMinor: bigint('compute_minor', { mode: 'number' }),
+    hibernatedFor: text('hibernated_for'),
+    failure: text('failure'),
+    gates: jsonb('gates')
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    prompts: jsonb('prompts')
+      .notNull()
+      .default(sql`'[]'::jsonb`),
   },
   { classification: 'internal', offlineEligibility: 'never' },
   (t) => [
@@ -259,7 +279,28 @@ export const harnessRuns = declareTable(
     check('harness_runs_engine_known', oneOf(t.engine, engineSchema.options)),
     check('harness_runs_cost_basis_known', oneOf(t.costBasis, costBasisSchema.options)),
     check('harness_runs_outcome_known', oneOf(t.outcome, runOutcomeSchema.options)),
+    check(
+      'harness_runs_hibernated_for_known',
+      oneOf(t.hibernatedFor, runHibernationSchema.options),
+    ),
+    check(
+      'harness_runs_hibernated_has_why',
+      sql`(${t.outcome} = 'hibernated') = (${t.hibernatedFor} IS NOT NULL)`,
+    ),
+    check('harness_runs_failure_known', oneOf(t.failure, runFailureSchema.options)),
+    check(
+      'harness_runs_subscription_has_no_cost',
+      sql`${t.costBasis} <> 'subscription' OR (${t.costMinor} IS NULL AND ${t.computeMinor} IS NULL)`,
+    ),
+    check(
+      'harness_runs_shape_matches_engine',
+      sql`(${t.runShape} = 'external-run') = (${t.engine} = 'external')`,
+    ),
+    check('harness_runs_steps_bounded', boundedArray(t.steps, 200)),
+    check('harness_runs_prompts_bounded', boundedArray(t.prompts, 20)),
     index('harness_runs_item').on(t.itemId),
+    uniqueIndex('harness_runs_one_live_per_item').on(t.itemId).where(live(t.outcome)),
+    index('harness_runs_live').on(t.harnessId).where(live(t.outcome)),
   ],
 );
 
@@ -372,5 +413,8 @@ export const harnessEvents = declareTable(
       .on(t.actor, t.requestId)
       .where(sql`${t.name} = 'item_created' AND ${t.requestId} IS NOT NULL`),
     index('harness_events_item').on(t.itemId, t.position),
+    index('harness_events_breaker_latest')
+      .on(t.harnessId, t.at, t.position)
+      .where(oneOf(t.name, breakerEventNames)),
   ],
 );
