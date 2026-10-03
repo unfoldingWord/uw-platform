@@ -308,7 +308,7 @@ export default {
       to: { path: '^apps/uw-app/github/', pathNot: [github('import'), github('facts/queries')] },
     },
     {
-      name: 'gate-kernel-only-in-gate-commands',
+      name: 'gate-kernel-only-in-capabilities',
       comment:
         'Only the command capabilities build the kernel that holds the GitHub reader and the ship writes, and they hand it only to a person on a gate command.',
       severity: 'error',
@@ -316,19 +316,11 @@ export default {
       to: { path: gateKernel },
     },
     {
-      name: 'gate-kernel-only-in-gate-commands',
+      name: 'gate-github-only-in-person-deps',
       comment: 'Only the person deps open the gate GitHub, for the gate commands.',
       severity: 'error',
       from: { pathNot: ['^apps/uw-app/commands/person-deps\\.ts$', testFile] },
       to: { path: gateGitHub },
-    },
-    {
-      name: 'gate-kernel-only-in-gate-commands',
-      comment:
-        'The person deps open the gate GitHub for the gate commands and never build the gate kernel.',
-      severity: 'error',
-      from: { path: '^apps/uw-app/commands/person-deps\\.ts$' },
-      to: { path: gateKernel },
     },
     {
       name: 'person-deps-only-in-app-and-routes',
@@ -360,7 +352,7 @@ export default {
       '^apps/uw-app/commands/',
     ),
     {
-      name: 'agent-hosts-never-import-commands',
+      name: 'cron-imports-only-the-request-ledger',
       comment:
         'The cron imports nothing of the command API but the request ledger, whose old rows it prunes, so it never reaches the gate kernel.',
       severity: 'error',
