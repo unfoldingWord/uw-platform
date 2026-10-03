@@ -9,7 +9,6 @@ import type { HarnessScene } from '../reads/scene.ts';
 import { activateTemplate, type Activated, type ActivateInput } from './activate.ts';
 import { editInTransaction, type EditWork } from './edit.ts';
 import { setPause, type PauseInput } from './pause.ts';
-import { bypassRefusal, stageProblems } from './rules.ts';
 
 type StagePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
@@ -138,8 +137,6 @@ function removeWork(stageKey: string): EditWork<readonly Stage[]> {
     const refusal = await removalRefusal(tx, harness, stage);
     if (refusal !== null) return refusal;
     const resulting = stages.filter((entry) => entry.id !== stage.id);
-    const bypass = stageProblems(resulting) === null ? bypassRefusal(resulting) : null;
-    if (bypass !== null) return bypass;
     return {
       stageKey,
       resulting,
