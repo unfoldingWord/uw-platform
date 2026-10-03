@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { identitySchema } from '@uw/contracts';
-import type { Store } from '../ports.ts';
-import { at, itemOf, refusedBy, seedHarness, uid } from './store-gateway-fixtures.ts';
+import type { Store, StoreTransaction } from '../ports.ts';
+import { at, itemOf, refusedBy, seedHarness, uid, type Stages } from './store-gateway-fixtures.ts';
 
 type RemovalSubject = () => { readonly store: Store };
 
@@ -55,23 +55,40 @@ export function describeStageRemoval(subject: RemovalSubject): void {
 
   it('DX-3 refuses to remove a stage with gate decisions, naming gate_decisions_stage_fk', async () => {
     const outcome = await refusedBy(async (tx) => {
-      const { review } = await seedHarness(tx, 0x2800, 'gateway-remove-decided');
-      const item = itemOf(0x2800, 1);
-      await tx.harnessItems.write.insert(item, at);
-      await tx.gateDecisions.write.insert({
-        id: uid(0x2881),
-        harnessId: uid(0x2800),
-        itemId: item.itemId,
-        stageId: review.id,
-        actor: identitySchema.parse('human:ian'),
-        decision: 'approve',
-        reason: null,
-        evidence: { findings: [], gateTarget: null },
-        traceId: uid(0x2891),
-        decidedAt: at,
-      });
+      const { review } = await seedDecision(tx, 0x2800, 'gateway-remove-decided');
       await tx.harnessStages.write.remove(review.id);
     }, subject().store);
     expect(outcome).toMatchObject({ code: '23503', constraint: 'gate_decisions_stage_fk' });
   });
+
+  it('DX-3 answers whether a stage has any gate decision', async () => {
+    const seen = await subject().store.transaction(async (tx) => {
+      const { build, review } = await seedDecision(tx, 0x2900, 'gateway-stage-history');
+      return [
+        await tx.gateDecisions.read.anyForStage(review.id),
+        await tx.gateDecisions.read.anyForStage(build.id),
+        await tx.gateDecisions.read.anyForStage(uid(0x29fe)),
+      ];
+    });
+    expect(seen).toEqual([true, false, false]);
+  });
+}
+
+async function seedDecision(tx: StoreTransaction, base: number, key: string): Promise<Stages> {
+  const stages = await seedHarness(tx, base, key);
+  const item = itemOf(base, 1);
+  await tx.harnessItems.write.insert(item, at);
+  await tx.gateDecisions.write.insert({
+    id: uid(base + 0x81),
+    harnessId: uid(base),
+    itemId: item.itemId,
+    stageId: stages.review.id,
+    actor: identitySchema.parse('human:ian'),
+    decision: 'approve',
+    reason: null,
+    evidence: { findings: [], gateTarget: null },
+    traceId: uid(base + 0x91),
+    decidedAt: at,
+  });
+  return stages;
 }
