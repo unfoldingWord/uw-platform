@@ -252,6 +252,7 @@ export type ReviewFact = {
   readonly commit: string;
   readonly state: ReviewState;
   readonly provider: string | null;
+  readonly findings: readonly string[];
   readonly submittedAt: Date | null;
 };
 export type ChangedFiles = {
