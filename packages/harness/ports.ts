@@ -140,7 +140,10 @@ export type GateDecisionRow = {
   readonly decidedAt: Date;
 };
 export type GateDecisionsGateway = {
-  readonly read: { forItem(itemId: string): Promise<readonly GateDecisionRow[]> };
+  readonly read: {
+    forItem(itemId: string): Promise<readonly GateDecisionRow[]>;
+    anyForStage(stageId: string): Promise<boolean>;
+  };
   readonly write: { insert(decision: GateDecisionRow): Promise<void> };
 };
 
