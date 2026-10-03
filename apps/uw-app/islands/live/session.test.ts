@@ -246,9 +246,10 @@ describe('a session whose access is gone', () => {
         reads += 1;
         throw new EventReadRefused(reason);
       };
-      const { socket } = start(4, read);
+      const { socket, session } = start(4, read);
       await vi.advanceTimersByTimeAsync(POLL_MS);
       expect(socket.closed()).toBe(true);
+      expect(session.status()).toBe('access_lost');
       socket.emit('open');
       socket.emit('message', wake());
       await vi.advanceTimersByTimeAsync(POLL_MS * 4);
@@ -266,6 +267,49 @@ describe('a session whose access is gone', () => {
     await vi.advanceTimersByTimeAsync(POLL_MS * 3);
     expect(reads).toBe(3);
     expect(socket.closed()).toBe(false);
+    expect(session.status()).toBe('live');
+    session.close();
+  });
+
+  it('stops with a closed error state after 20 failed reads in a row, counting again after a success', async () => {
+    let reads = 0;
+    const read = async (): Promise<EventPageReply> => {
+      reads += 1;
+      if (reads === 19) return { events: [], next: null };
+      throw new EventReadRefused('unauthenticated');
+    };
+    const { socket, session } = start(0, read);
+    await vi.advanceTimersByTimeAsync(POLL_MS * 38);
+    expect(session.status()).toBe('live');
+    await vi.advanceTimersByTimeAsync(POLL_MS);
+    expect(reads).toBe(39);
+    expect(session.status()).toBe('read_failed');
+    expect(socket.closed()).toBe(true);
+    await vi.advanceTimersByTimeAsync(POLL_MS * 4);
+    expect(reads).toBe(39);
+  });
+});
+
+describe('a failed read while the socket is open', () => {
+  it('polls again until a read succeeds, then stops polling', async () => {
+    const log = eventLog(100);
+    let failing = true;
+    const read = async (after: number) => {
+      if (failing) {
+        failing = false;
+        throw new Error('network down');
+      }
+      return log.read(after);
+    };
+    const { socket, delivered, session } = start(0, read);
+    log.append(2);
+    socket.emit('open');
+    await settle();
+    expect(delivered).toEqual([]);
+    await vi.advanceTimersByTimeAsync(POLL_MS);
+    expect(delivered).toEqual([1, 2]);
+    await vi.advanceTimersByTimeAsync(POLL_MS * 4);
+    expect(log.asked).toEqual([0]);
     session.close();
   });
 });
@@ -313,7 +357,7 @@ function latest(): FakeWebSocket {
   return socket;
 }
 
-describe('the reconnecting socket', () => {
+function useFakeWebSocket(): void {
   beforeEach(() => {
     FakeWebSocket.made = [];
     vi.stubGlobal('WebSocket', FakeWebSocket);
@@ -322,6 +366,10 @@ describe('the reconnecting socket', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
+}
+
+describe('the reconnecting socket', () => {
+  useFakeWebSocket();
 
   it('retries a failing connection after 1 second, doubling each time, and never waits past 30 seconds', async () => {
     const socket = reconnectingSocket(liveUrl);
@@ -338,23 +386,36 @@ describe('the reconnecting socket', () => {
       reconnectionDelayGrowFactor: 2,
     });
   });
+});
 
-  it('reconnects within 1 second when the hub closes an hour-old socket normally, and tells the session', async () => {
-    const socket = reconnectingSocket(liveUrl);
-    const seen: string[] = [];
-    socket.addEventListener('open', () => {
-      seen.push('open');
-    });
-    socket.addEventListener('close', () => {
-      seen.push('close');
+describe('the reconnecting socket under a live session', () => {
+  useFakeWebSocket();
+
+  it('reconnects 1 second after the hub closes a long-lived socket normally, even after failed connects, and the session catches up', async () => {
+    const log = eventLog(100);
+    const delivered: number[] = [];
+    const session = startLiveSession({
+      harnessId,
+      cursor: 0,
+      read: log.read,
+      connect: () => reconnectingSocket(liveUrl),
+      onEvents: (events) => delivered.push(...events.map((event) => event.position)),
+      timers,
     });
     await settle();
+    for (const delay of [1_000, 2_000, 4_000]) {
+      latest().drop(1006);
+      await expectReconnectAfter(delay);
+    }
+    log.append(1);
     latest().open();
-    await vi.advanceTimersByTimeAsync(3_600_000);
+    await vi.advanceTimersByTimeAsync(5_001);
     latest().drop(1000);
+    log.append(2);
     await expectReconnectAfter(1_000);
     latest().open();
-    expect(seen).toEqual(['open', 'close', 'open']);
-    socket.close();
+    await settle();
+    expect(delivered).toEqual([1, 2, 3]);
+    session.close();
   });
 });

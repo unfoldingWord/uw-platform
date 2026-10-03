@@ -24,7 +24,11 @@ export type LiveSessionOptions = {
   readonly timers: LiveTimers;
 };
 
-export type LiveSession = { cursor(): number; close(): void };
+export type LiveSession = {
+  cursor(): number;
+  status(): 'live' | 'access_lost' | 'read_failed' | 'closed';
+  close(): void;
+};
 
 export const POLL_MS = 15_000;
 
@@ -35,6 +39,7 @@ export const BACKOFF = {
 } as const;
 
 const CONNECTION_TIMEOUT_MS = 10_000;
+const MAX_FAILED_READS = 20;
 const accessGone = new Set(['harness_not_found', 'item_not_found']);
 
 type State = {
@@ -43,7 +48,9 @@ type State = {
   reading: boolean;
   again: boolean;
   poll: unknown;
-  closed: boolean;
+  open: boolean;
+  failures: number;
+  status: ReturnType<LiveSession['status']>;
   socket: LiveSocket | null;
 };
 
@@ -61,7 +68,7 @@ function freshEvents(events: readonly HarnessEvent[], cursor: number): HarnessEv
 async function drain(state: State): Promise<void> {
   for (;;) {
     const page = await state.options.read(state.cursor);
-    if (state.closed) return;
+    if (state.status !== 'live') return;
     const fresh = freshEvents(page.events, state.cursor);
     const last = fresh.at(-1);
     if (last === undefined) return;
@@ -78,12 +85,13 @@ function stopPolling(state: State): void {
 }
 
 function startPolling(state: State): void {
-  if (state.closed || state.poll !== null) return;
+  if (state.status !== 'live' || state.poll !== null) return;
   state.poll = state.options.timers.setInterval(() => void pull(state), POLL_MS);
 }
 
-function stop(state: State): void {
-  state.closed = true;
+function stop(state: State, status: ReturnType<LiveSession['status']>): void {
+  if (state.status !== 'live') return;
+  state.status = status;
   stopPolling(state);
   state.socket?.close();
 }
@@ -92,8 +100,20 @@ function revoked(error: unknown): boolean {
   return error instanceof EventReadRefused && error.reason !== null && accessGone.has(error.reason);
 }
 
+function succeeded(state: State): void {
+  state.failures = 0;
+  if (state.open) stopPolling(state);
+}
+
+function failed(state: State, error: unknown): void {
+  state.failures += 1;
+  if (revoked(error)) stop(state, 'access_lost');
+  else if (state.failures >= MAX_FAILED_READS) stop(state, 'read_failed');
+  else startPolling(state);
+}
+
 async function pull(state: State): Promise<void> {
-  if (state.closed) return;
+  if (state.status !== 'live') return;
   if (state.reading) {
     state.again = true;
     return;
@@ -103,9 +123,10 @@ async function pull(state: State): Promise<void> {
     do {
       state.again = false;
       await drain(state);
-    } while (state.again && !state.closed);
+    } while (state.again && state.status === 'live');
+    succeeded(state);
   } catch (error) {
-    if (revoked(error)) stop(state);
+    failed(state, error);
   } finally {
     state.reading = false;
   }
@@ -123,11 +144,15 @@ function isWake(data: unknown, harnessId: string): boolean {
 
 function listen(state: State, socket: LiveSocket): void {
   socket.addEventListener('open', () => {
-    if (state.closed) return;
+    state.open = true;
+    if (state.status !== 'live') return;
     stopPolling(state);
     void pull(state);
   });
-  socket.addEventListener('close', () => startPolling(state));
+  socket.addEventListener('close', () => {
+    state.open = false;
+    startPolling(state);
+  });
   socket.addEventListener('message', (event) => {
     if (isWake(event.data, state.options.harnessId)) void pull(state);
   });
@@ -140,13 +165,19 @@ export function startLiveSession(options: LiveSessionOptions): LiveSession {
     reading: false,
     again: false,
     poll: null,
-    closed: false,
+    open: false,
+    failures: 0,
+    status: 'live',
     socket: null,
   };
   startPolling(state);
   state.socket = options.connect();
   listen(state, state.socket);
-  return { cursor: () => state.cursor, close: () => stop(state) };
+  return {
+    cursor: () => state.cursor,
+    status: () => state.status,
+    close: () => stop(state, 'closed'),
+  };
 }
 
 export function reconnectingSocket(url: string): LiveSocket {
