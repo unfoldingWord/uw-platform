@@ -557,6 +557,7 @@ Choices the PRD, the spec and `AGENTS.md` left open. One row each.
 | 2026-10-03 | `jsdom` `^30.1.1` (resolved 30.1.1, MIT) and `@types/jsdom` (`packages/ui` devDependencies) | A hand-written DOM for running `axe-core` over the rendered pieces in Node |
 | 2026-10-03 | `@uw/ui` workspace link in `uw-app` | Not a replacement: the app renders the shell and serves the stylesheet from it |
 | 2026-10-03 | `@anthropic-ai/sdk` `^0.131.0` (resolved 0.131.0, MIT, `apps/uw-app`, imported only in `apps/uw-app/engines/claude-messages/`) | A hand-written Messages API client for the `claude-messages` engine (HE-3), sent through AI Gateway with `maxRetries: 0` |
+| 2026-10-03 | `openai` `^7.27.0` (resolved 7.27.0, Apache-2.0, `apps/uw-app`, imported only in `apps/uw-app/engines/openrouter-messages/`) | A hand-written Chat Completions client for the `openrouter-messages` engine (HE-4), sent through AI Gateway's `openrouter` path with `maxRetries: 0` and explicit `apiKey`, `baseURL`, `organization` and `project`, so the SDK reads nothing from the environment |
 
 ## Not verified
 
@@ -628,6 +629,8 @@ Work that is built and whose verification did not run, with the reason.
 | 2026-10-03 | HE-3 HE-5 | The AI Gateway paths and the spend query: the `anthropic` base path `https://gateway.ai.cloudflare.com/v1/<account>/<gateway>/anthropic`, and the GraphQL dataset `aiGatewayRequestsAdaptiveGroups` with `sum { cost }` filtered by `gateway` and `datetime_geq`/`datetime_lt`, are taken from Cloudflare's documentation; the spend reader and the `claude-messages` turn are proven only against recorded-shape fixtures and a fake `fetch` | No AI Gateway exists yet (DX-8) |
 | 2026-10-03 | HE-3 | The per-token prices in `apps/uw-app/engines/claude-messages/prices.ts` (micro-USD per token for `claude-opus-4-1`, `claude-sonnet-4-5`, `claude-haiku-4-5`, from Anthropic's public price list); a model not in the table reports `costMicros: null`. The breaker reads AI Gateway's cost, not these | No invoice yet; the table is the run record's estimate only |
 | 2026-10-03 | HE-3 | That `wrangler deploy --dry-run` bundles `@anthropic-ai/sdk`: the engine registry is not yet reachable from the Worker's entry, so `pnpm build` does not include it until the run host (step 7 Task 18) imports it | The run host is a later task |
+| 2026-10-03 | HE-4 | OpenRouter's `provider` field is a display name (for example `Z.AI`, `DeepInfra`); `openrouter-messages` compares it with the pin after NFKC, lowercasing and dropping every character outside `a-z0-9` on both sides (S7-R53), and records the pin when they agree, else fails `ProviderMismatchError` with the NFKC-lowercased name. Proven only against recorded-shape fixtures | No OpenRouter key yet (DX-8); a provider whose slug and display name differ by more than punctuation fails every run until the persona names a matching pin |
+| 2026-10-03 | HE-5 | That AI Gateway reports a cost for OpenRouter requests, so one cap covers Anthropic, OpenAI and OpenRouter (S7-R52). The engine records OpenRouter's own `usage.cost` on the run step; whether to send it to AI Gateway as a custom cost is left to go-live | No AI Gateway exists yet (DX-8) |
 
 ## Waiting on a person
 
