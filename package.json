@@ -13,6 +13,7 @@
     "lint:fix": "eslint . --fix --max-warnings 0",
     "lint:dates": "node tools/lint/check-dates.ts",
     "lint:vendor": "node tools/lint/check-vendor-sdk.ts",
+    "skill:sync": "node tools/skills/sync-harness-skill.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "knip": "knip",
