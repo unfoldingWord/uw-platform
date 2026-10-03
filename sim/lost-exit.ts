@@ -1,5 +1,4 @@
-import { createKernel, type Connectors, type Kernel, type Store } from '@uw/harness';
-import { unwiredReview } from './adapters/unwired.ts';
+import { notWiredCall, createKernel, type Connectors, type Kernel, type Store } from '@uw/harness';
 import type { World } from './world.ts';
 
 type LostExit = { readonly effectHappened: boolean };
@@ -22,7 +21,7 @@ export function kernelThatLosesTheExit(world: World, options: LostExit): Kernel 
       return outcome;
     },
     outcomeOf: async () => null,
-    review: unwiredReview,
+    review: () => notWiredCall('connectors', 'review'),
   };
   const store: Store = {
     transaction: (work) => {

@@ -23,7 +23,6 @@ import {
   standardChange,
 } from '../ship-fixtures.ts';
 import { createWorld, type World } from '../world.ts';
-import { unwiredDiff, unwiredReview } from '../adapters/unwired.ts';
 
 afterAll(closeEmbeddedTemplate);
 
@@ -110,7 +109,7 @@ describe('KN-13 a connector that refuses or is not wired leaves the decision and
       connectors: {
         run: () => notWiredCall('connectors', 'run'),
         outcomeOf: () => notWiredCall('connectors', 'outcomeOf'),
-        review: unwiredReview,
+        review: () => notWiredCall('connectors', 'review'),
       },
     });
     await expectParkedAfterRefusal(scene, kernel, 'not_wired');
@@ -121,7 +120,11 @@ describe('KN-13 a connector that refuses or is not wired leaves the decision and
     await expectParkedAfterRefusal(
       scene,
       kernelWith(scene, {
-        connectors: { run, outcomeOf: async () => null, review: unwiredReview },
+        connectors: {
+          run,
+          outcomeOf: async () => null,
+          review: () => notWiredCall('connectors', 'review'),
+        },
       }),
       'connector_error: TypeError',
     );
@@ -133,7 +136,7 @@ describe('KN-13 approve at Ship reads the GitHub facts before its transaction', 
     const githubFacts: GitHubFacts = {
       pullRequest: () => notWiredCall('githubFacts', 'pullRequest'),
       refresh: () => notWiredCall('githubFacts', 'refresh'),
-      diff: unwiredDiff,
+      diff: () => notWiredCall('githubFacts', 'diff'),
     };
     const before = await itemLog(scene.world, scene.harnessId, scene.itemId);
     const outcome = await approve(scene, kernelWith(scene, { githubFacts }));
@@ -151,7 +154,11 @@ describe('KN-13 approve at Ship reads the GitHub facts before its transaction', 
         const reviews = [approvedBy('uw-reviewer[bot]', 'anthropic', onNew, 9100000102)];
         return greenFacts(scene.world, { itemId: scene.itemId, head: onNew, reviews });
       };
-      const githubFacts: GitHubFacts = { pullRequest: moved, refresh: moved, diff: unwiredDiff };
+      const githubFacts: GitHubFacts = {
+        pullRequest: moved,
+        refresh: moved,
+        diff: () => notWiredCall('githubFacts', 'diff'),
+      };
       const before = await itemLog(scene.world, scene.harnessId, scene.itemId);
       const outcome = await approve(scene, kernelWith(scene, { githubFacts }));
       expect(outcome).toEqual({
@@ -218,7 +225,7 @@ function gatedConnectors(scene: Scene): Gate {
       return scene.world.adapters.connectors.run(request);
     },
     outcomeOf: (request) => scene.world.adapters.connectors.outcomeOf(request),
-    review: unwiredReview,
+    review: () => notWiredCall('connectors', 'review'),
   };
   return { running, release, connectors };
 }
@@ -298,7 +305,7 @@ describe('KN-13 the stage exit advances the parking that was approved', () => {
         return { outcome: 'succeeded', detail: {} };
       },
       outcomeOf: async () => null,
-      review: unwiredReview,
+      review: () => notWiredCall('connectors', 'review'),
     };
     const before = await itemLog(scene.world, scene.harnessId, scene.itemId);
     const decided = value(await approve(scene, kernelWith(scene, { connectors })));
@@ -321,7 +328,11 @@ describe('KN-13 approve at Ship reads GitHub only for an admin and never throws 
       reads += 1;
       return scene.world.adapters.githubFacts.pullRequest(ref);
     };
-    const githubFacts: GitHubFacts = { pullRequest: counted, refresh: counted, diff: unwiredDiff };
+    const githubFacts: GitHubFacts = {
+      pullRequest: counted,
+      refresh: counted,
+      diff: () => notWiredCall('githubFacts', 'diff'),
+    };
     const kernel = kernelWith(scene, { githubFacts });
     const outcome = await kernel.gates.decide(simCaller(scene.world, scene.max), {
       itemId: scene.itemId,
@@ -336,7 +347,11 @@ describe('KN-13 approve at Ship reads GitHub only for an admin and never throws 
 
   sceneIt('refuses internal_error and writes nothing when the read fails', async (scene) => {
     const limited = () => Promise.reject(new RangeError('rate limited'));
-    const githubFacts: GitHubFacts = { pullRequest: limited, refresh: limited, diff: unwiredDiff };
+    const githubFacts: GitHubFacts = {
+      pullRequest: limited,
+      refresh: limited,
+      diff: () => notWiredCall('githubFacts', 'diff'),
+    };
     const before = await itemLog(scene.world, scene.harnessId, scene.itemId);
     const outcome = await approve(scene, kernelWith(scene, { githubFacts }));
     expect(outcome).toMatchObject({ status: 'error', reason: 'internal_error' });

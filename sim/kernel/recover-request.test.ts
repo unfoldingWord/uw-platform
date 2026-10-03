@@ -1,6 +1,6 @@
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { rewriteHarnessRepository } from '@uw/db/test-seed';
-import { createKernel, software, type ConnectorRequest } from '@uw/harness';
+import { notWiredCall, createKernel, software, type ConnectorRequest } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createSimHarness, simCaller, simPerson } from '../fixtures.ts';
 import { kernelThatLosesTheExit } from '../lost-exit.ts';
@@ -13,7 +13,6 @@ import {
   standardChange,
 } from '../ship-fixtures.ts';
 import { createWorld } from '../world.ts';
-import { unwiredReview } from '../adapters/unwired.ts';
 
 afterAll(closeEmbeddedTemplate);
 
@@ -52,7 +51,7 @@ describe('GH-6 a recovery asks about the merge the decision made', () => {
             asked.push(request);
             return world.adapters.connectors.outcomeOf(request);
           },
-          review: unwiredReview,
+          review: () => notWiredCall('connectors', 'review'),
         },
       });
       const recovered = await kernel.gates.recoverConnectors(simCaller(world, admin), {
