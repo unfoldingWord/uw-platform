@@ -9,7 +9,16 @@ type Queues = {
   producers?: Binding[];
 };
 
-const goLiveOnly = ['logpush', 'hyperdrive', 'queues', 'triggers', 'durable_objects', 'migrations'];
+const goLiveOnly = [
+  'logpush',
+  'hyperdrive',
+  'queues',
+  'triggers',
+  'durable_objects',
+  'migrations',
+  'workflows',
+  'containers',
+];
 const accessVars = ['ACCESS_TEAM_DOMAIN', 'ACCESS_AUD', 'ACCESS_MCP_AUD'];
 const apps = ['uw-app', 'uw-ingest'] as const;
 const deployedEnvironments = ['staging', 'production'] as const;
@@ -138,6 +147,67 @@ describe('WB-3 the live hub Durable Object is declared for go-live only', () => 
     expect(hubBindingsOf(config)).toEqual([{ name: 'HARNESS_HUB', class_name: 'HarnessHub' }]);
     expect(config['migrations'] as Migration[]).toEqual([
       { tag: 'v1', new_sqlite_classes: ['HarnessHub'] },
+    ]);
+  });
+});
+
+type WorkflowBlock = { name?: string; binding?: string; class_name?: string };
+
+function workflowSites(config: Block): string[] {
+  const blocks: [string, Block][] = [
+    ['top level', config],
+    ...Object.entries(environments(config)),
+  ];
+  return blocks.flatMap(([name, block]) =>
+    ((block['workflows'] ?? []) as WorkflowBlock[]).map(
+      (flow) => `${name}: ${flow.binding ?? ''} ${flow.name ?? ''} ${flow.class_name ?? ''}`,
+    ),
+  );
+}
+
+function strayWorkflows(config: Block): string[] {
+  return workflowSites(config).filter(
+    (site) => !deployedEnvironments.some((name) => site.startsWith(`${name}: `)),
+  );
+}
+
+describe('HE-1 the HarnessRun Workflow is declared for go-live only, in staging and production', () => {
+  it('binds HARNESS_RUN to the HarnessRun class under staging and production only', () => {
+    expect(workflowSites(load(`infra/uw-app/${goLive}`))).toEqual([
+      'staging: HARNESS_RUN harness-run-staging HarnessRun',
+      'production: HARNESS_RUN harness-run-production HarnessRun',
+    ]);
+  });
+
+  it('declares no Workflow in the live file', () => {
+    expect(workflowSites(load(`infra/uw-app/${live}`))).toEqual([]);
+  });
+
+  it('flags a planted Workflow under preview, at the top level, or in the live file', () => {
+    const planted = parse(
+      [
+        '[[workflows]]',
+        'name = "harness-run"',
+        'binding = "HARNESS_RUN"',
+        'class_name = "HarnessRun"',
+        '[[env.preview.workflows]]',
+        'name = "harness-run-preview"',
+        'binding = "HARNESS_RUN"',
+        'class_name = "HarnessRun"',
+        '[[env.staging.workflows]]',
+        'name = "harness-run-staging"',
+        'binding = "HARNESS_RUN"',
+        'class_name = "HarnessRun"',
+      ].join('\n'),
+    ) as Block;
+    expect(strayWorkflows(planted)).toEqual([
+      'top level: HARNESS_RUN harness-run HarnessRun',
+      'preview: HARNESS_RUN harness-run-preview HarnessRun',
+    ]);
+    expect(goLiveKeysIn(planted)).toEqual([
+      'top level: workflows',
+      'preview: workflows',
+      'staging: workflows',
     ]);
   });
 });
