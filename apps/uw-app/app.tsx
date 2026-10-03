@@ -4,6 +4,8 @@ import { aclRoutes } from './acl/routes.ts';
 import { agentRoutes } from './agents/routes.ts';
 import { meRoutes } from './auth/me.ts';
 import { withPrincipal } from './auth/principal-middleware.ts';
+import { noGateGitHub, type PersonDeps } from './commands/person-deps.ts';
+import { harnessRoutes } from './commands/routes.ts';
 import { withDatabase } from './database.ts';
 import { platformDeps, type AppDeps, type AppEnv } from './deps.ts';
 import { commitOf } from './env.ts';
@@ -13,7 +15,10 @@ import { observe } from './observe.ts';
 import { pageRoutes } from './pages/routes.ts';
 import { requestLogger } from './request-logger.ts';
 
-export function createApp(deps: AppDeps = platformDeps): Hono<AppEnv> {
+export function createApp(
+  deps: AppDeps = platformDeps,
+  person: PersonDeps = noGateGitHub,
+): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
   app.use(observe(deps));
@@ -35,6 +40,7 @@ export function createApp(deps: AppDeps = platformDeps): Hono<AppEnv> {
   app.route('/api/acl', aclRoutes());
   app.route('/api/agents', agentRoutes());
   app.route('/api/pages', pageRoutes());
+  app.route('/api/harness', harnessRoutes(deps, person));
   app.route('/mcp', mcpRoutes(deps));
 
   app.get('/', (c) => {

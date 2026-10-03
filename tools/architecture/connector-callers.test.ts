@@ -8,7 +8,7 @@ const sourceRoots = ['apps/', 'packages/', 'sim/'];
 
 const connectorRun =
   /connectors\s*\??\.\s*run\b|connectors\s*\??\.?\s*\[\s*['"`]run['"`]\s*\]|\brun\s*[,}][^=]*=\s*[\w.?]*connectors\b/;
-const connectorsReference = /\bconnectors\b(?!\/)/;
+const connectorsReference = /\bconnectors\b(?!\/|\.ts['"])/;
 const shipRuleCall = /\bshipRule\s*\(/;
 const shipRuleReference = /\bshipRule\b/;
 const assemblerCall = /\bassembleShipInput\s*\(/;
@@ -101,7 +101,8 @@ describe('the connectors port runs only from the kernel stage-exit path', () => 
   it('flags a planted file that only references the connectors port', () => {
     const passed = plant('pass-along.ts', 'const effects = ports.connectors;');
     const imported = plant('registry.ts', "import { x } from '../connectors/registry.ts';");
-    expect(filesMatching(connectorsReference, [passed, imported])).toEqual([passed]);
+    const adapter = plant('ship.ts', "import type { ShipGitHub } from '../ports/connectors.ts';");
+    expect(filesMatching(connectorsReference, [passed, imported, adapter])).toEqual([passed]);
   });
 
   it('finds connectors.run only in the stage-exit module and the lost-exit sim helper', () => {
