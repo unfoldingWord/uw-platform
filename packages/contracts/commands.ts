@@ -55,9 +55,18 @@ const nonBlank = (max: number) =>
 const body = <Name extends CommandName, Shape extends z.ZodRawShape>(name: Name, shape: Shape) =>
   z.strictObject({ command: z.literal(name), requestId, ...shape });
 
-const stageInputSchema = stageSchema.omit({ id: true, harnessId: true, paused: true });
+const stageBounds = {
+  wipLimit: z.number().int().min(1).max(1000),
+  validators: stageSchema.shape.validators.pipe(z.array(z.string().max(100)).max(50)),
+  feeds: stageSchema.shape.feeds.pipe(z.array(stageKeySchema).max(50)),
+};
+
+const stageInputSchema = stageSchema
+  .omit({ id: true, harnessId: true, paused: true })
+  .extend(stageBounds);
 const stageChangeSchema = stageSchema
   .omit({ id: true, harnessId: true, key: true, paused: true })
+  .extend(stageBounds)
   .partial()
   .strict()
   .refine((change) => Object.keys(change).length > 0, 'a change names at least one column');
@@ -115,7 +124,7 @@ export const harnessCommandSchemas = {
   }),
   create_stage: body('create_stage', { stage: stageInputSchema }),
   update_stage: body('update_stage', { stageKey: stageKeySchema, change: stageChangeSchema }),
-  reorder_stages: body('reorder_stages', { order: z.array(stageKeySchema).min(1) }),
+  reorder_stages: body('reorder_stages', { order: z.array(stageKeySchema).min(1).max(50) }),
   remove_stage: body('remove_stage', { stageKey: stageKeySchema }),
 } as const satisfies Record<CommandName, z.ZodType>;
 

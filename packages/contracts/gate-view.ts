@@ -5,14 +5,14 @@ import {
   riskDomainsSchema,
   riskTierSchema,
 } from './closed-sets.ts';
-import { pullRequestDeclarationSchema } from './github.ts';
+import { issueReferenceSchema, pullRequestDeclarationSchema } from './github.ts';
 import { pullRequestRefSchema, stageKeySchema } from './harness.ts';
 import {
   checkConclusionSchema,
   fullShaSchema,
   riskDeclarationSchema,
+  shipRefusalSchema,
   shipRuleInputSchema,
-  shipRuleOutcomeSchema,
 } from './ship-rule.ts';
 
 const sha = z.string().min(1).max(64);
@@ -38,8 +38,22 @@ const factsSchema = z.strictObject({
   draft: z.boolean(),
   baseRef: z.string().min(1).max(255),
   freshAt: z.iso.datetime(),
-  declaration: pullRequestDeclarationSchema.nullable(),
+  declaration: pullRequestDeclarationSchema
+    .extend({ closes: z.array(issueReferenceSchema).max(50) })
+    .nullable(),
 });
+
+const outcomeSchema = z.discriminatedUnion('verdict', [
+  z.strictObject({ verdict: z.literal('advance') }),
+  z.strictObject({
+    verdict: z.literal('refuse'),
+    reasons: z
+      .array(shipRefusalSchema)
+      .min(1)
+      .max(shipRefusalSchema.options.length)
+      .refine((reasons) => new Set(reasons).size === reasons.length, 'each refusal once'),
+  }),
+]);
 
 const shipInputSchema = shipRuleInputSchema.omit({ approver: true }).extend({
   checks: z
@@ -75,7 +89,7 @@ export const gateViewSchema = z.strictObject({
   ship: z
     .strictObject({
       input: shipInputSchema,
-      outcome: shipRuleOutcomeSchema,
+      outcome: outcomeSchema,
       derived: derivedSchema.nullable(),
     })
     .nullable(),

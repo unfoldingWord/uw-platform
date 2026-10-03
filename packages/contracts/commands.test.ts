@@ -1,5 +1,20 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { commandNames, commandSchema, harnessCommandSchemas } from './commands.ts';
+
+function validBody(name: string): Record<string, unknown> {
+  const file = join(
+    import.meta.dirname,
+    'fixtures/command/valid',
+    `${name.replaceAll('_', '-')}.json`,
+  );
+  return JSON.parse(readFileSync(file, 'utf8'));
+}
+
+function without(body: Record<string, unknown>, key: string): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(body).filter(([name]) => name !== key));
+}
 
 const requestId = '00000000-0000-4000-8000-0000000000aa';
 const itemId = '00000000-0000-4000-8000-0000000000bb';
@@ -10,9 +25,11 @@ describe('WB-1 every control is a command with a requestId', () => {
     expect(Object.keys(harnessCommandSchemas).sort()).toEqual([...commandNames].sort());
   });
 
-  it('refuses every command body without a requestId', () => {
+  it('refuses each valid command body once its requestId is removed', () => {
     for (const name of commandNames) {
-      expect(commandSchema.safeParse({ command: name }).success).toBe(false);
+      const body = validBody(name);
+      expect(commandSchema.safeParse(body).success, name).toBe(true);
+      expect(commandSchema.safeParse(without(body, 'requestId')).success, name).toBe(false);
     }
   });
 });
@@ -58,5 +75,31 @@ describe('WB-2 reorder names the item to place before, never an index', () => {
     expect(commandSchema.safeParse({ ...base, beforeItemId: null }).success).toBe(true);
     expect(commandSchema.safeParse({ ...base, beforeItemId: itemId }).success).toBe(true);
     expect(commandSchema.safeParse({ ...base, position: 2 }).success).toBe(false);
+  });
+});
+
+describe('stage command bodies are bounded', () => {
+  const stage = validBody('create_stage');
+  const stageOf = (change: Record<string, unknown>) => ({
+    ...stage,
+    stage: { ...(stage['stage'] as Record<string, unknown>), ...change },
+  });
+  const many = (count: number) => Array.from({ length: count }, (_, n) => `v${n}`);
+
+  it('caps validators, feeds, validator names and the WIP limit on a new stage', () => {
+    expect(commandSchema.safeParse(stageOf({ validators: many(50) })).success).toBe(true);
+    expect(commandSchema.safeParse(stageOf({ validators: many(51) })).success).toBe(false);
+    expect(commandSchema.safeParse(stageOf({ feeds: many(51) })).success).toBe(false);
+    expect(commandSchema.safeParse(stageOf({ validators: ['v'.repeat(101)] })).success).toBe(false);
+    expect(commandSchema.safeParse(stageOf({ wipLimit: 1001 })).success).toBe(false);
+  });
+
+  it('caps the same columns on a stage change and the stage order', () => {
+    const update = validBody('update_stage');
+    expect(commandSchema.safeParse({ ...update, change: { feeds: many(51) } }).success).toBe(false);
+    expect(commandSchema.safeParse({ ...update, change: { wipLimit: 1001 } }).success).toBe(false);
+    const reorder = validBody('reorder_stages');
+    expect(commandSchema.safeParse({ ...reorder, order: many(50) }).success).toBe(true);
+    expect(commandSchema.safeParse({ ...reorder, order: many(51) }).success).toBe(false);
   });
 });

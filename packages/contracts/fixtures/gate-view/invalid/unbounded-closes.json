@@ -1,0 +1,126 @@
+{
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "stageKey": "ship",
+  "gateStatus": "parked",
+  "connector": "merge",
+  "expectedHead": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "pullRequest": {
+    "repo": "unfoldingWord/uw-platform",
+    "number": 7
+  },
+  "recorded": {
+    "riskTier": "standard",
+    "riskDomains": ["acl"],
+    "floorDomains": ["acl"],
+    "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "declaration": {
+      "riskTier": "standard",
+      "riskDomains": ["acl"]
+    },
+    "refusal": null
+  },
+  "facts": {
+    "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "state": "open",
+    "draft": false,
+    "baseRef": "main",
+    "freshAt": "2026-10-03T09:00:00.000Z",
+    "declaration": {
+      "closes": [
+        "#1",
+        "#2",
+        "#3",
+        "#4",
+        "#5",
+        "#6",
+        "#7",
+        "#8",
+        "#9",
+        "#10",
+        "#11",
+        "#12",
+        "#13",
+        "#14",
+        "#15",
+        "#16",
+        "#17",
+        "#18",
+        "#19",
+        "#20",
+        "#21",
+        "#22",
+        "#23",
+        "#24",
+        "#25",
+        "#26",
+        "#27",
+        "#28",
+        "#29",
+        "#30",
+        "#31",
+        "#32",
+        "#33",
+        "#34",
+        "#35",
+        "#36",
+        "#37",
+        "#38",
+        "#39",
+        "#40",
+        "#41",
+        "#42",
+        "#43",
+        "#44",
+        "#45",
+        "#46",
+        "#47",
+        "#48",
+        "#49",
+        "#50",
+        "#51"
+      ],
+      "risks": "The gate view could show stale facts",
+      "touches": "packages/contracts",
+      "riskTier": "standard",
+      "riskDomains": ["acl"]
+    }
+  },
+  "ship": {
+    "input": {
+      "pullRequest": {
+        "open": true,
+        "draft": false,
+        "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "expectedHead": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "checks": [
+        {
+          "name": "test",
+          "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "conclusion": "success"
+        }
+      ],
+      "approvals": [
+        {
+          "reviewer": "codex-bot",
+          "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "provider": "openai"
+        }
+      ],
+      "riskTier": "standard",
+      "riskDomains": ["acl"],
+      "area": "80-89",
+      "at": "2026-10-03T09:00:00.000Z",
+      "override": false
+    },
+    "outcome": {
+      "verdict": "advance"
+    },
+    "derived": {
+      "riskTier": "standard",
+      "riskDomains": ["acl"],
+      "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  }
+}
