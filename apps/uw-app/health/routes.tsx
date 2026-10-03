@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { HealthReport } from '@uw/contracts';
 import type { AppDeps, AppEnv } from '../deps.ts';
+import { cachedHubHealth } from './hub.ts';
 import { healthReport } from './indicators.ts';
 
 function HealthScreen({ report }: { readonly report: HealthReport }) {
@@ -29,10 +30,11 @@ function HealthScreen({ report }: { readonly report: HealthReport }) {
   );
 }
 
-export function healthRoutes(deps: Pick<AppDeps, 'timers'>): Hono<AppEnv> {
+export function healthRoutes(deps: Pick<AppDeps, 'clock' | 'timers'>): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
+  const hubHealth = cachedHubHealth(() => deps.clock.now().getTime());
   routes.get('/', async (c) => {
-    const probe = { clock: () => Date.now(), timers: deps.timers };
+    const probe = { clock: () => Date.now(), timers: deps.timers, hubHealth };
     const report = await healthReport(c.env, c.get('database'), probe);
     if (c.req.header('accept')?.includes('text/html'))
       return c.html(<HealthScreen report={report} />);

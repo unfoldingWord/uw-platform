@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { posix } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { commandRegistry } from '../../apps/uw-app/commands/registry.ts';
 import { commandNames } from '../../packages/contracts/index.ts';
@@ -38,7 +39,7 @@ const arrowCall = /^\(\w+\)\s*=>\s*(\w+)\(/;
 const namedArgument = /^(\w+)\s*\)/;
 const topLevelFunction = /\n(?=export function |export async function |async function |function )/;
 const functionName = /\bfunction (\w+)\(/;
-const localImport = /\bimport\s*\{([^}]*)\}\s*from\s+'\.\/([\w./-]+\.ts)'/g;
+const localImport = /\bimport\s*\{([^}]*)\}\s*from\s+'(\.\.?\/[\w./-]+\.ts)'/g;
 const guardedEntry =
   /\bexecuteCommand\s*\(|\bkernel\s*\.\s*reads\s*\.\s*\w+\s*\(|\bkernel\s*\.\s*events\s*\.\s*read\s*\(|\bkernel\s*\.\s*gates\s*\.\s*view\s*\(/;
 
@@ -148,7 +149,7 @@ function importedNames(list: string): string[] {
 function handlerSources(routesText: string, read: Read): ReadonlyMap<string, string> {
   const functions = new Map(functionsIn(routesText));
   for (const [, list = '', module = ''] of routesText.matchAll(localImport)) {
-    const inModule = functionsIn(read(`${commandsRoot}${module}`));
+    const inModule = functionsIn(read(posix.join(commandsRoot, module)));
     for (const name of importedNames(list)) functions.set(name, inModule.get(name) ?? '');
   }
   return functions;
@@ -253,5 +254,20 @@ describe('the command route checks catch planted mistakes', () => {
         'export async function gateView(c) {\n  return kernel.gates.view(caller, input);\n}',
     });
     expect(unguardedRoutes(routes, handlerSources(routes, read))).toEqual(['gateView']);
+  });
+});
+
+describe('the command route check follows imports outside the commands directory', () => {
+  it('reads a handler from a module outside the commands directory by its relative path', () => {
+    const routes = [
+      "import { connectLive } from '../live/connect.ts';",
+      "routes.get('/:harness/live', connectLive);",
+    ].join('\n');
+    const guarded =
+      'export async function connectLive(c) {\n  return kernel.reads.harness(caller, input);\n}';
+    const bare = 'export async function connectLive(c) {\n  return stub.fetch(url);\n}';
+    const files = (live: string) => plantedRead({ 'apps/uw-app/live/connect.ts': live });
+    expect(unguardedRoutes(routes, handlerSources(routes, files(guarded)))).toEqual([]);
+    expect(unguardedRoutes(routes, handlerSources(routes, files(bare)))).toEqual(['connectLive']);
   });
 });
