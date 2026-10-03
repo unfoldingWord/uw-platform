@@ -142,6 +142,7 @@ export function greenFacts(world: World, input: FactsInput): PullRequestFacts {
     headRef: `harness/${input.itemId}`,
     headRepo: (input.ref ?? shipPullRequest).repo,
     base: shipBase,
+    baseRef: 'main',
     checks: ciJobSchema.options.map((name, index) => ({
       checkId: 9100000001 + index,
       name,

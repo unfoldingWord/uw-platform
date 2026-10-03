@@ -10,6 +10,7 @@ export type ConnectorsSubject = {
 const effectConnectors = connectorSchema.options.filter(
   (connector): connector is EffectConnector => connector !== 'none',
 );
+const notWiredConnectors = effectConnectors.filter((connector) => connector !== 'merge');
 
 export const contractRequest = {
   harnessId: 'b1000000-0000-4000-8000-000000000001',
@@ -17,9 +18,10 @@ export const contractRequest = {
   traceId: 'b1000000-0000-4000-8000-000000000003',
   pullRequest: { repo: 'unfoldingWord/uw-platform', number: 7 },
   expectedHead: 'f'.repeat(40),
-  expectedBase: 'e'.repeat(40),
+  expectedBase: { sha: 'e'.repeat(40), ref: 'main' },
   repository: 'unfoldingWord/uw-platform',
-  message: 'connector contract fixture',
+  title: 'connector contract fixture',
+  overrideReason: null,
 } as const;
 
 function request(connector: EffectConnector): ConnectorRequest {
@@ -32,6 +34,14 @@ function describeRuns(open: () => Promise<ConnectorsSubject>): void {
   it.each(effectConnectors)('%s resolves to an outcome and never rejects', async (connector) => {
     const subject = await open();
     expect(await subject.connectors.run(request(connector))).toMatchObject(anOutcome);
+  });
+
+  it.each(notWiredConnectors)('%s answers refused not_wired', async (connector) => {
+    const subject = await open();
+    expect(await subject.connectors.run(request(connector))).toEqual({
+      outcome: 'refused',
+      reason: 'not_wired',
+    });
   });
 
   it('runs the merge connector to success', async () => {
@@ -72,6 +82,12 @@ function describeOutcomes(open: () => Promise<ConnectorsSubject>): void {
     expect(await subject.connectors.outcomeOf(request('merge'))).toMatchObject({
       outcome: 'succeeded',
     });
+  });
+
+  it.each(notWiredConnectors)('%s answers no earlier outcome', async (connector) => {
+    const subject = await open();
+    await subject.connectors.run(request(connector));
+    expect(await subject.connectors.outcomeOf(request(connector))).toBeNull();
   });
 
   it.each(effectConnectors)('%s answers its outcome and never rejects', async (connector) => {

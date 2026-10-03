@@ -71,6 +71,12 @@ describe('GH-6 the merge connector re-checks the pull request it merges at merge
     expect(writesOf(github)).toEqual([]);
   });
 
+  it('refuses a pull request retargeted to another base branch at the same commit', async () => {
+    const github = openGitHub(pullAt({ baseRef: 'release' }));
+    expect(await mergeOver(app, github).run(request)).toEqual(refusedFor('base_mismatch'));
+    expect(writesOf(github)).toEqual([]);
+  });
+
   it('refuses a merge whose decision recorded no base', async () => {
     const github = openGitHub();
     const outcome = await mergeOver(app, github).run({ ...request, expectedBase: null });

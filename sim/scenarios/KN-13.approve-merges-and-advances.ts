@@ -81,9 +81,10 @@ async function approveAndMerge(scene: Scene): Promise<void> {
     traceId: after.events.at(-1)?.traceId,
     pullRequest: shipPullRequest,
     expectedHead: standardChange.head,
-    expectedBase: shipBase,
+    expectedBase: { sha: shipBase, ref: 'main' },
     repository: 'unfoldingWord/uw-platform',
-    message: 'Show the board',
+    title: 'Show the board',
+    overrideReason: null,
   });
 }
 

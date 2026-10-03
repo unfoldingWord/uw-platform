@@ -17,7 +17,13 @@ import {
 } from '../items/record.ts';
 import { resolveExit } from '../items/transitions.ts';
 import { refused, type Refused } from '../outcome.ts';
-import type { EffectConnector, Ports, PullRequestFacts, StoreTransaction } from '../ports.ts';
+import type {
+  DecidedBase,
+  EffectConnector,
+  Ports,
+  PullRequestFacts,
+  StoreTransaction,
+} from '../ports.ts';
 import { shipRule } from '../ship-rule.ts';
 import { exitThroughConnector, type ExitPorts } from './exit.ts';
 import { factsFailure } from './facts-failure.ts';
@@ -54,7 +60,7 @@ export type PendingExit = {
   readonly decisionId: string;
   readonly overrideReason: string | null;
   readonly repository: string | null;
-  readonly expectedBase: string | null;
+  readonly expectedBase: DecidedBase | null;
   readonly context: RecordContext;
 };
 

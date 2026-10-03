@@ -17,7 +17,8 @@ const connectorRequest = (
   expectedHead: null,
   expectedBase: null,
   repository: null,
-  message,
+  title: message,
+  overrideReason: null,
 });
 
 const engineRequest: TurnRequest = {
@@ -39,6 +40,7 @@ const pullRequestFacts: PullRequestFacts = {
   headRef: 'harness/b1000000-0000-4000-8000-000000000003',
   headRepo: 'unfoldingWord/uw-platform',
   base: '0'.repeat(40),
+  baseRef: 'main',
   checks: [],
   reviews: [],
   files: null,
@@ -52,11 +54,11 @@ describe('DX-4 the recording sim adapters', () => {
     await connectors.run(connectorRequest('merge', 'first'));
     await connectors.run(connectorRequest('deploy', 'second'));
     const listed = connectors.calls() as ConnectorRequest[];
-    expect(listed.map((call) => call.message)).toEqual(['first', 'second']);
+    expect(listed.map((call) => call.title)).toEqual(['first', 'second']);
     listed.pop();
     const [head] = listed;
-    if (head) Object.assign(head, { message: 'changed' });
-    expect(connectors.calls().map((call) => call.message)).toEqual(['first', 'second']);
+    if (head) Object.assign(head, { title: 'changed' });
+    expect(connectors.calls().map((call) => call.title)).toEqual(['first', 'second']);
   });
 
   it('applies a refusal once, then the connector succeeds again', async () => {
@@ -94,5 +96,24 @@ describe('DX-4 the recording sim adapters', () => {
     engine.respondNextWith(scripted);
     engine.respondNextWith(scripted);
     expect(engine.pending()).toBe(2);
+  });
+});
+
+describe('DX-4 the recording sim connectors answer not wired where the platform does', () => {
+  it('answers not_wired for the four unwired connectors until a test programs a success', async () => {
+    const connectors = createSimConnectors();
+    for (const connector of ['deploy', 'publish', 'send', 'post'] as const) {
+      expect(await connectors.run(connectorRequest(connector, 'a'))).toEqual({
+        outcome: 'refused',
+        reason: 'not_wired',
+      });
+    }
+    connectors.succeedNext('send');
+    expect(await connectors.run(connectorRequest('send', 'b'))).toMatchObject({
+      outcome: 'succeeded',
+    });
+    expect(await connectors.run(connectorRequest('send', 'c'))).toMatchObject({
+      outcome: 'refused',
+    });
   });
 });

@@ -26,7 +26,7 @@ function pullReply(merged: boolean) {
       merged,
       merge_commit_sha: merged ? mergeSha : null,
       head: { ...restPull.head, sha: contractRequest.expectedHead },
-      base: { ...restPull.base, sha: contractRequest.expectedBase },
+      base: { ...restPull.base, ...contractRequest.expectedBase },
     },
   };
 }

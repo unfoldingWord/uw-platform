@@ -70,7 +70,7 @@ async function overridesTheMissingReview(lane: Lane): Promise<readonly GateDecis
     reason,
   });
   const [call] = world.adapters.connectors.calls();
-  assert.equal(call?.message, `Fix the outage\n\nOverride: ${reason}`);
+  assert.deepEqual([call?.title, call?.overrideReason], ['Fix the outage', reason]);
   return decisions;
 }
 

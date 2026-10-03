@@ -17,6 +17,7 @@ function factsFor(repo: string, number: number, head: string): PullRequestFacts 
     headRef: 'harness/b1000000-0000-4000-8000-000000000002',
     headRepo: repo,
     base: '0'.repeat(40),
+    baseRef: 'main',
     checks: [
       {
         checkId: 9100000001,
@@ -103,6 +104,7 @@ function shapeCases(open: () => Promise<GithubFactsSubject>): void {
     expect(answer?.declaration).toEqual(known.declaration);
     expect(answer?.headRef).toBe(known.headRef);
     expect(answer?.headRepo).toBe(known.headRepo);
+    expect(answer?.baseRef).toBe(known.baseRef);
     expect(answer?.checks).toEqual(known.checks);
     expect(answer?.reviews).toEqual(known.reviews);
   });

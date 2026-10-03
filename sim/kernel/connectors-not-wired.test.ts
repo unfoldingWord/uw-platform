@@ -93,12 +93,11 @@ describe('GH-7 deploy, publish, send and post are registered and answer not wire
       }
     }));
 
-  it('records connector_refused not_wired for an approved item at a send stage and keeps it parked', () =>
+  it('records connector_refused not_wired from the sim send connector for an approved item and keeps it parked', () =>
     inScene(async (scene) => {
       const { world, harness } = scene;
       const ian = simCaller(world, scene.ian);
       const itemId = await parkedAtSendStage(scene, ian);
-      world.adapters.connectors.refuseNext('send', 'not_wired');
       const before = await itemLog(world, harness.id, itemId);
       const decided = value(
         await world.kernel.gates.decide(ian, {

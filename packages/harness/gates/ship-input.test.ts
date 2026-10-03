@@ -82,6 +82,7 @@ const facts: PullRequestFacts = {
   headRef: `harness/${itemId}`,
   headRepo: 'unfoldingWord/uw-platform',
   base,
+  baseRef: 'main',
   checks: ciJobSchema.options.map((name) => check(name)),
   reviews: [review()],
   files: { head, base, paths: ['apps/uw-app/board.tsx'] },

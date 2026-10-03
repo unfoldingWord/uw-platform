@@ -44,7 +44,10 @@ describe('the merge tag is idempotent on its sha', () => {
 
   it('mints one token for the merge and the tag of one connector run', async () => {
     const github = fixtureGitHub();
-    github.on('PUT', '/repos/o/r/pulls/2/merge', { status: 200, body: { sha: 'c'.repeat(40) } });
+    github.on('PUT', '/repos/o/r/pulls/2/merge', {
+      status: 200,
+      body: { sha: 'c'.repeat(40), merged: true },
+    });
     github.on('POST', '/repos/o/r/git/refs', { status: 201, body: {} });
     const writes = createShipWrites(app, fixtureTransport(github));
     await writes.merge('o/r', 2, { sha, title: 't', message: 'm' });
