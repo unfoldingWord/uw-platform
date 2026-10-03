@@ -143,15 +143,23 @@ describe('DX-3 a message engine turn runs the modelEngine contract beside it', (
   const turnTest =
     "import { describeModelEngineContract } from '@uw/harness/port-contracts/model-engine'; import { claudeTurn } from './turn.ts'; describeModelEngineContract('x', async () => ({ engine: { turn: claudeTurn } }));";
 
+  const engineImport =
+    "import { describeModelEngineContract } from '@uw/harness/port-contracts/model-engine';";
+  const engineAdapters = {
+    'apps/uw-app/ports/model-engine.ts': '',
+    'apps/uw-app/ports/model-engine.contract.test.ts': `${engineImport} import { platformModelEngine } from './model-engine.ts'; describeModelEngineContract('x', async () => ({ engine: platformModelEngine }));`,
+    'sim/adapters/model-engine.ts': '',
+    'sim/adapters/model-engine.contract.test.ts': `${engineImport} import { createSimModelEngine } from './model-engine.ts'; describeModelEngineContract('x', async () => ({ engine: createSimModelEngine() }));`,
+  };
+
   it('accepts a turn with a contract test beside it', () => {
     const files = {
       ...engineSuite,
+      ...engineAdapters,
       [turnFile]: '',
       'apps/uw-app/engines/claude-messages/turn.contract.test.ts': turnTest,
     };
-    expect(portContractViolations(['modelEngine'], tree(files))).not.toContain(
-      `${turnFile}: no contract test beside it runs it against the modelEngine contract`,
-    );
+    expect(portContractViolations(['modelEngine'], tree(files))).toEqual([]);
   });
 
   it('fails on a turn no contract test beside it runs', () => {
