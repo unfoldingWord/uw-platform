@@ -252,7 +252,8 @@ async function parkAtGate(deps: RunDeps, runId: string): Promise<Submitted | Hal
 
 async function submitHeld(deps: RunDeps, runId: string): Promise<Submitted | Halted> {
   const sent = await within(deps, runId, null, async (open) => {
-    await recordStep(open, { step: 'submit', tokensIn: 0, tokensOut: 0 });
+    const recorded = open.scene.run.steps.some((step) => step.step === 'submit');
+    if (!recorded) await recordStep(open, { step: 'submit', tokensIn: 0, tokensOut: 0 });
     const reply = await callCore(open.core, 'submit_to_gate', {
       itemId: open.scene.item.itemId,
       evidence: {},

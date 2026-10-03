@@ -40,6 +40,7 @@ export type HostRig = {
   readonly binding: FakeWorkflowBinding;
   readonly reviews: ReviewRequest[];
   facts: PullRequestFacts | null;
+  spentMinor: number;
 };
 
 export type RigOptions = {
@@ -71,10 +72,17 @@ function clockFrom(start: number): TestClock {
   return { now: () => new Date(current), advance: (ms) => void (current += ms) };
 }
 
-const zeroSpend: ModelEngine = {
-  turn: () => Promise.reject(new Error('the rig serves no model turn')),
-  spend: async (since) => ({ spentMinor: 0, currency: 'USD', since, asOf: new Date() }),
-};
+function spendPort(rig: { spentMinor: number }): ModelEngine {
+  return {
+    turn: () => Promise.reject(new Error('the rig serves no model turn')),
+    spend: async (since) => ({
+      spentMinor: rig.spentMinor,
+      currency: 'USD',
+      since,
+      asOf: new Date(),
+    }),
+  };
+}
 
 function factsPort(rig: { facts: PullRequestFacts | null }): GitHubFacts {
   return {
@@ -138,9 +146,12 @@ export async function hostRig(
   const clock = clockFrom(Date.now());
   const binding = fakeWorkflowBinding();
   const reviews: ReviewRequest[] = [];
-  const holder: { facts: PullRequestFacts | null } = { facts: null };
+  const holder: { facts: PullRequestFacts | null; spentMinor: number } = {
+    facts: null,
+    spentMinor: 0,
+  };
   const kernel = kernelOn(db, clock, {
-    modelEngine: zeroSpend,
+    modelEngine: spendPort(holder),
     runs: platformRuns(binding),
     githubFacts: factsPort(holder),
     connectors: recordingConnectors(reviews),
@@ -249,6 +260,7 @@ export type FakeSteps = StepRunner & {
   readonly crashed: Promise<void>;
   crashAfter: string | null;
   onWait: (name: string) => Promise<'resumed' | 'timed_out'>;
+  beforeStep: (name: string) => Promise<void>;
 };
 
 async function attempts<T extends Json>(retries: number, body: () => Promise<T>): Promise<string> {
@@ -275,11 +287,13 @@ export function fakeSteps(): FakeSteps {
     crashed,
     crashAfter: null,
     onWait: () => Promise.resolve('timed_out'),
+    beforeStep: () => Promise.resolve(),
     do: async <T extends Json>(
       name: string,
       config: { retries: number },
       body: () => Promise<T>,
     ) => {
+      if (!cache.has(name)) await steps.beforeStep(name);
       const held = cache.get(name) ?? (await attempts(config.retries, body));
       if (!cache.has(name)) {
         cache.set(name, held);
