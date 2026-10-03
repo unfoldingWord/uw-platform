@@ -5,7 +5,7 @@ import { createMigratedDatabase, testServer } from '@uw/db/test-database';
 import { seedGrant, seedPage, seedPerson } from '@uw/db/test-seed';
 import { kernelOn, personOn } from '../testing/kernel.ts';
 import { writePageAsAgent } from './agent-write.ts';
-import { createPage } from './store.ts';
+import { createPage, updatePage } from './store.ts';
 
 const EDITOR = {
   id: '00000000-0000-4000-8000-000000001461',
@@ -167,7 +167,60 @@ async function ingestWrites(rig: () => Rig): Promise<void> {
     status: 'active' as const,
   };
   const written = await createPage(db, ingest, command, crypto.randomUUID(), new Date());
-  expect(written).toMatchObject({ ok: true, page: { type: 'issue', status: 'active' } });
+  expect(written).toEqual(refusal);
+  expect(await stored(db, pageId)).toBeUndefined();
+}
+
+function personCommand(pageId: string) {
+  return {
+    command: 'create_page' as const,
+    requestId: crypto.randomUUID(),
+    pageId,
+    type: 'issue',
+    jdArea: '80-89',
+    slug: `issue-${pageId.slice(-4)}`,
+    title: 'Planted by a person',
+    parentId: null,
+    frontmatter: { ...mirrored, url: 'https://example.com/elsewhere' },
+    bodyMd: 'Not the issue.',
+    status: 'active' as const,
+  };
+}
+
+async function personCreates(rig: () => Rig): Promise<void> {
+  const { db } = rig();
+  const person = await personOn(db, EDITOR.id, EDITOR.email, new Date());
+  const pageId = crypto.randomUUID();
+  const written = await createPage(
+    db,
+    person,
+    personCommand(pageId),
+    crypto.randomUUID(),
+    new Date(),
+  );
+  expect(written).toEqual(refusal);
+  expect(await stored(db, pageId)).toBeUndefined();
+}
+
+async function personEdits(rig: () => Rig): Promise<void> {
+  const { db } = rig();
+  const person = await personOn(db, EDITOR.id, EDITOR.email, new Date());
+  const pageId = await seedMirror(db);
+  const before = await stored(db, pageId);
+  const command = {
+    command: 'update_page' as const,
+    requestId: crypto.randomUUID(),
+    pageId,
+    slug: `issue-${pageId.slice(-4)}`,
+    title: 'Rewritten by a person',
+    parentId: null,
+    frontmatter: mirrored,
+    bodyMd: 'Changed.',
+    status: 'active' as const,
+    expectedVersion: 1,
+  };
+  expect(await updatePage(db, person, command, crypto.randomUUID(), new Date())).toEqual(refusal);
+  expect(await stored(db, pageId)).toEqual(before);
 }
 
 describe.skipIf(!testServer)('only the issue import writes issue pages (S5-R45 SECURITY)', () => {
@@ -195,6 +248,11 @@ describe.skipIf(!testServer)('only the issue import writes issue pages (S5-R45 S
   it('refuses an agent edit that names another type for an issue page', () =>
     editAsAnotherType(rig));
 
-  it('still lets the page store write an active issue page under the ingest identity', () =>
+  it('refuses the page store writing an issue page, even under the ingest identity with grants', () =>
     ingestWrites(rig));
+
+  it("refuses a person's create of an issue page (S5-R47)", () => personCreates(rig));
+
+  it("refuses a person's edit of an issue page, which stays unchanged (S5-R47)", () =>
+    personEdits(rig));
 });

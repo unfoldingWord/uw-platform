@@ -110,9 +110,12 @@ async function lostAfterPosting(db: Database): Promise<void> {
   await deliver(depsOn(db, app, github), issuesLabeled);
   const itemId = await onlyOne(db, github);
   await setClaim(db, new Date(delivered.getTime() - lapse - 1));
-  const ours = { id: commentId, body: crossReferenceBody(itemId), user: { type: 'Bot' } };
-  const planted = { id: commentId - 1, body: crossReferenceBody(itemId), user: { type: 'User' } };
-  github.on('GET', commentsPath, { status: 200, body: [planted, ours] });
+  const body = crossReferenceBody(itemId);
+  const bot = { type: 'Bot', login: 'github-actions[bot]' };
+  const ours = { id: commentId, body, performed_via_github_app: { id: Number(app.appId) } };
+  const planted = { id: commentId - 1, body, user: { type: 'User' } };
+  const otherApp = { id: commentId - 2, body, user: bot, performed_via_github_app: { id: 15368 } };
+  github.on('GET', commentsPath, { status: 200, body: [otherApp, planted, ours] });
   const lines = await deliver(depsOn(db, app, github), issuesLabeled);
   expect(lines).toContainEqual(expect.objectContaining({ outcome: 'cross_reference_found' }));
   await onlyOne(db, github);

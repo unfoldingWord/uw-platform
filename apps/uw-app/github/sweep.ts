@@ -1,6 +1,6 @@
 import { errorFields, type Logger } from '@uw/core/log';
 import type { GitHubAppConfig } from './app-config.ts';
-import { createGitHubReads, type GitHubReads } from './client.ts';
+import { createGitHubReads, LIST_PAGES, type GitHubReads } from './client.ts';
 import { createIssueComments, type IssueComments } from './comments.ts';
 import type { GitHubDeps } from './deps.ts';
 import { failed, type GitHubFailure, type GitHubResult } from './failures.ts';
@@ -83,7 +83,7 @@ const overlapMs = 10 * 60_000;
 const defaultPages = 30;
 const defaultSubrequests = 900;
 const perPullRequest = 8;
-const perCrossReference = 3;
+const perCrossReference = LIST_PAGES + 2;
 const repositoryStart = 2;
 const noRepairs: RepairCounts = {
   repos: 0,
@@ -149,7 +149,12 @@ function affordable(pass: Pass): boolean {
 
 function githubDeps(pass: Pass): GitHubDeps {
   const { db, kernel, now } = pass.run.deps;
-  return { db, kernel, now, client: { reads: () => pass.reads, comments: () => pass.comments } };
+  const client = {
+    appId: pass.run.deps.app.appId,
+    reads: () => pass.reads,
+    comments: () => pass.comments,
+  };
+  return { db, kernel, now, client };
 }
 
 async function upsertAndFollow(pass: Pass, batch: FactBatch): Promise<void> {

@@ -48,6 +48,14 @@ const activationRequired: PageRefusal = {
   detail: { why: 'activation_required' },
 };
 
+const ISSUE_MIRROR = 'issue';
+
+const issueMirror: PageRefusal = {
+  ok: false,
+  reason: 'not_permitted',
+  detail: { why: 'issue_mirror' },
+};
+
 function activates(type: string, from: PageStatus | null, to: PageStatus): boolean {
   return to === 'active' && from !== 'active' && isGatedType(type);
 }
@@ -143,6 +151,7 @@ export async function createPage(
   traceId: string,
   at: Date,
 ): Promise<PageResult | PageRefusal> {
+  if (command.type === ISSUE_MIRROR) return issueMirror;
   const check = checkFrontmatter(command.type, command.frontmatter);
   if (!check.ok) return refused(check.reason);
   if (activates(command.type, null, command.status)) return activationRequired;
@@ -291,7 +300,11 @@ export async function updatePage(
   traceId: string,
   at: Date,
 ): Promise<PageResult | PageRefusal> {
-  const statusFor = (stored: Page): PageStatus | PageRefusal =>
-    activates(stored.type, stored.status, command.status) ? activationRequired : command.status;
+  const statusFor = (stored: Page): PageStatus | PageRefusal => {
+    if (stored.type === ISSUE_MIRROR) return issueMirror;
+    return activates(stored.type, stored.status, command.status)
+      ? activationRequired
+      : command.status;
+  };
   return saveChecked(db, { actor, checked: { command, statusFor }, traceId, at });
 }

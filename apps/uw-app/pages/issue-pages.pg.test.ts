@@ -41,7 +41,7 @@ async function writtenOnce(db: Database): Promise<void> {
   const ids = counting();
   const first = await ensure(db, ids);
   const again = await ensure(db, ids);
-  expect(first).toEqual({ ok: true, pageId: '00000000-0000-4000-8000-000000001701' });
+  expect(first).toMatchObject({ ok: true, pageId: '00000000-0000-4000-8000-000000001701' });
   expect(again).toEqual(first);
   expect(ids.issued()).toBe(1);
   const [page] = await db.$client`
@@ -108,6 +108,35 @@ async function squatted(db: Database): Promise<void> {
   expect(await ensure(db, counting())).toEqual({ ok: false, reason: 'slug_taken' });
 }
 
+async function preplaced(db: Database, editSource: string, link: string): Promise<void> {
+  const id = '00000000-0000-4000-8000-000000001798';
+  const frontmatter = { repo: issue.repo, number: 12, github_id: issue.githubId, url: link };
+  await seedPage(db, {
+    id,
+    type: 'issue',
+    status: 'active',
+    jdArea: '80-89',
+    slug: 'issue-9100000101',
+    title: 'Pre-placed',
+    bodyMd: 'Not written by the import.',
+    frontmatter,
+  });
+  await db.$client`
+    INSERT INTO page_versions (page_id, version, type, jd_area, slug, title, frontmatter, body_md, status, edit_source)
+    VALUES (${id}, 1, 'issue', '80-89', 'issue-9100000101', 'Pre-placed', ${JSON.stringify(frontmatter)}::jsonb,
+      'Not written by the import.', 'active', ${editSource})`;
+}
+
+async function personPlaced(db: Database): Promise<void> {
+  await preplaced(db, 'human:00000000-0000-4000-8000-000000000001', url);
+  expect(await ensure(db, counting())).toEqual({ ok: false, reason: 'slug_taken' });
+}
+
+async function foreignLink(db: Database): Promise<void> {
+  await preplaced(db, editor, 'https://example.com/elsewhere');
+  expect(await ensure(db, counting())).toEqual({ ok: false, reason: 'slug_taken' });
+}
+
 describe.skipIf(!testServer)('GH-3 the issue page links to the issue and is written once', () => {
   it('returns one page id for two calls, with one ingest-written version', () =>
     withAppDatabase(writtenOnce));
@@ -119,6 +148,12 @@ describe.skipIf(!testServer)('GH-3 the issue page links to the issue and is writ
 
 describe.skipIf(!testServer)('an issue page is never one another page already holds', () => {
   it('refuses a slug held by a page that is not this issue', () => withAppDatabase(squatted));
+
+  it('refuses an issue page with this github_id that the import did not write (S5-R47)', () =>
+    withAppDatabase(personPlaced));
+
+  it('refuses an import-written issue page whose link is not this issue (S5-R47)', () =>
+    withAppDatabase(foreignLink));
 });
 
 describe('issue titles are bounded to the page and item title limit', () => {

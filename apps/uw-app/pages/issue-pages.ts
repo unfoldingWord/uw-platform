@@ -13,12 +13,12 @@ export type IssuePageInput = {
 };
 
 export type IssuePage =
-  | { readonly ok: true; readonly pageId: string }
+  | { readonly ok: true; readonly pageId: string; readonly createdAt: Date }
   | { readonly ok: false; readonly reason: 'slug_taken' };
 
 const ISSUE_PAGE = 'issue';
 const titleLimit = 200;
-const mirrorOf = z.object({ github_id: z.number() });
+const mirrorOf = z.object({ github_id: z.number(), url: z.string() });
 
 export function boundedTitle(title: string, fallback: string): string {
   const trimmed = title.trim();
@@ -30,16 +30,34 @@ export function boundedTitle(title: string, fallback: string): string {
   return kept.length === 0 ? fallback : kept;
 }
 
+async function firstEditor(tx: Transaction, pageId: string): Promise<string | null> {
+  const [row] = await tx
+    .select({ editSource: pageVersions.editSource })
+    .from(pageVersions)
+    .where(and(eq(pageVersions.pageId, pageId), eq(pageVersions.version, 1)));
+  return row?.editSource ?? null;
+}
+
 async function existing(tx: Transaction, input: IssuePageInput, slug: string) {
   const [row] = await tx
-    .select({ id: pages.id, type: pages.type, frontmatter: pages.frontmatter })
+    .select({
+      id: pages.id,
+      type: pages.type,
+      frontmatter: pages.frontmatter,
+      createdAt: pages.createdAt,
+    })
     .from(pages)
     .where(and(eq(pages.jdArea, input.jdArea), eq(pages.slug, slug)));
   if (row === undefined) return null;
   const mirror = mirrorOf.safeParse(row.frontmatter);
-  const same = row.type === ISSUE_PAGE && mirror.success;
-  return same && mirror.data.github_id === input.issue.githubId
-    ? { ok: true as const, pageId: row.id }
+  const matches =
+    row.type === ISSUE_PAGE &&
+    mirror.success &&
+    mirror.data.github_id === input.issue.githubId &&
+    mirror.data.url === input.url;
+  const ours = matches && (await firstEditor(tx, row.id)) === input.editor;
+  return ours
+    ? { ok: true as const, pageId: row.id, createdAt: row.createdAt }
     : { ok: false as const, reason: 'slug_taken' as const };
 }
 
@@ -79,13 +97,13 @@ export function ensureIssuePage(
       .insert(pages)
       .values(page)
       .onConflictDoNothing({ target: [pages.jdArea, pages.slug] })
-      .returning({ id: pages.id });
+      .returning({ id: pages.id, createdAt: pages.createdAt });
     if (row === undefined)
       return (await existing(tx, input, slug)) ?? { ok: false, reason: 'slug_taken' };
     const { id, ...snapshot } = page;
     await tx
       .insert(pageVersions)
       .values({ ...snapshot, pageId: id, editSource: input.editor, traceId });
-    return { ok: true, pageId: id };
+    return { ok: true, pageId: id, createdAt: row.createdAt };
   });
 }

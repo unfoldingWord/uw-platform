@@ -24,7 +24,7 @@ export type GitHubReads = {
     since: Date | null,
     maxPages: number,
   ): Promise<GitHubResult<IssueListing>>;
-  issueComments(repo: string, number: number): Promise<GitHubResult<List>>;
+  issueComments(repo: string, number: number, since: Date): Promise<GitHubResult<List>>;
 };
 
 const readPermissions = {
@@ -36,7 +36,8 @@ const readPermissions = {
 } as const;
 const perPage = 100;
 const listedFiles = 300;
-const listPages = 10;
+export const LIST_PAGES = 10;
+const listPages = LIST_PAGES;
 const array = z.array(z.unknown());
 const checkRunPage = z.object({ check_runs: array }).transform((page) => page.check_runs);
 const repositoryPage = z.object({ repositories: array }).transform((page) => page.repositories);
@@ -211,13 +212,13 @@ function issueReads(session: GitHubSession) {
   return {
     issuesSince: (repo: string, since: Date | null, maxPages: number) =>
       refusedUnless(isCount(maxPages), () => keysetIssues(session, repo, since, maxPages)),
-    issueComments: (repo: string, number: number) =>
-      refusedUnless(isCount(number), () =>
+    issueComments: (repo: string, number: number, since: Date) =>
+      refusedUnless(isCount(number) && !Number.isNaN(since.getTime()), () =>
         whole(
           session,
           listOf(
             'GET /repos/{owner}/{repo}/issues/{issue_number}/comments',
-            { issue_number: number },
+            { issue_number: number, since: since.toISOString() },
             repo,
           ),
         ),
