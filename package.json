@@ -35,6 +35,8 @@
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.22.0",
     "@eslint/js": "^10.0.1",
+    "@tailwindcss/node": "^4.3.3",
+    "@tailwindcss/oxide": "^4.3.3",
     "@types/estree": "^1.0.9",
     "@types/node": "^22.20.4",
     "dependency-cruiser": "^18.4.0",
