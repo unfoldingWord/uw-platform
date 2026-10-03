@@ -8,6 +8,7 @@ const appRoot = 'apps/uw-app/';
 const handlerRoots = ['apps/uw-app/commands/handlers/', 'apps/uw-app/commands/person/'];
 const dispatcher = 'apps/uw-app/commands/dispatch.ts';
 const commandRoutes = 'apps/uw-app/commands/routes.ts';
+const commandReads = 'apps/uw-app/commands/reads.ts';
 const routeFiles = [
   'apps/uw-app/app.tsx',
   commandRoutes,
@@ -125,8 +126,8 @@ function handlerNames(text: string): string[] {
   return lines.map(handlerOf).filter((name): name is string => name !== null);
 }
 
-function unguardedRoutes(text: string): string[] {
-  const functions = functionsIn(text);
+function unguardedRoutes(text: string, handlers: string = text): string[] {
+  const functions = functionsIn(handlers);
   const names = handlerNames(text);
   const registered = [...text.matchAll(routeCalls)].length;
   const unguarded = names.filter((name) => !guardedEntry.test(functions.get(name) ?? ''));
@@ -159,8 +160,9 @@ describe('WB-1 the command routes are checked', () => {
 
   it('WB-1 every route in the command routes reaches the dispatcher or a kernel read', () => {
     const text = readReal(commandRoutes);
-    expect(handlerNames(text).length).toBeGreaterThan(0);
-    expect(unguardedRoutes(text)).toEqual([]);
+    const handlers = `${text}\n${readReal(commandReads)}`;
+    expect(handlerNames(text).length).toBeGreaterThan(1);
+    expect(unguardedRoutes(text, handlers)).toEqual([]);
   });
 
   it('WB-1 flags a planted handler without a builder, a planted action that is not a literal, and a planted route file', () => {
@@ -191,5 +193,11 @@ describe('the command route checks catch planted mistakes', () => {
 
   it('flags planted routes that skip the dispatcher and the kernel reads', () => {
     expect(unguardedRoutes(plantedRoutes)).toEqual(['handleSneak', '<inline handler>']);
+    const route = "routes.get('/:harness/x', readSneak);";
+    const sneak = 'async function readSneak(c) {\n  return c.json({});\n}';
+    const guarded =
+      'async function readSneak(c) {\n  return kernel.reads.inStage(caller, input);\n}';
+    expect(unguardedRoutes(route, sneak)).toEqual(['readSneak']);
+    expect(unguardedRoutes(route, guarded)).toEqual([]);
   });
 });

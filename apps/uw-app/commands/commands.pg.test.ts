@@ -1,15 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
-import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import {
-  callerOf,
   command,
   enqueued,
   eventCount,
   eventsNamed,
-  ian,
+  itemState,
   post,
   responseSchema,
   softwareHarness,
@@ -17,14 +15,6 @@ import {
 
 function enqueueBody(requestId: string) {
   return { requestId, title: 'Draw the board', pageId: null, due: null };
-}
-
-async function itemState(db: Database, itemId: string) {
-  const scene = await kernelOn(db, { now: () => new Date() }).reads.item(callerOf(await ian(db)), {
-    itemId,
-  });
-  if (scene.status !== 'accepted') throw new Error(scene.reason);
-  return scene.value.item;
 }
 
 async function enqueueStampsTheEvent(db: Database): Promise<void> {
