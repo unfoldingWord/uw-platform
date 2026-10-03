@@ -320,6 +320,21 @@ export default {
       to: { path: gateKernel },
     },
     {
+      name: 'person-deps-only-in-app-and-routes',
+      comment:
+        'The person deps hold the gate GitHub opener, so only the app, the command routes, the app test helpers and tests import them.',
+      severity: 'error',
+      from: {
+        pathNot: [
+          '^apps/uw-app/app\\.tsx$',
+          '^apps/uw-app/commands/routes\\.ts$',
+          appTesting,
+          testFile,
+        ],
+      },
+      to: { path: '^apps/uw-app/commands/person-deps\\.ts$' },
+    },
+    {
       name: 'person-surface-only-from-commands',
       comment:
         'The person surface is imported only from apps/uw-app/commands/, the app test helpers and tests.',
