@@ -17,7 +17,9 @@ type RecordedSession = {
 
 export type FakeContainerHost = ContainerHost & { readonly sessions: RecordedSession[] };
 
-export function fakeContainerHost(replies: readonly (ExecResult | Error)[]): FakeContainerHost {
+type Scripted = ExecResult | Error | ((egress: McpHandler) => Promise<ExecResult>);
+
+export function fakeContainerHost(replies: readonly Scripted[]): FakeContainerHost {
   const queue = [...replies];
   const sessions: RecordedSession[] = [];
   return {
@@ -34,7 +36,7 @@ export function fakeContainerHost(replies: readonly (ExecResult | Error)[]): Fak
           const reply = queue.shift();
           if (reply === undefined) throw new Error('no reply scripted for the fake container');
           if (reply instanceof Error) throw reply;
-          return reply;
+          return typeof reply === 'function' ? reply(egress) : reply;
         },
         destroy: async () => {
           session.destroyed = true;

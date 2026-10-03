@@ -14,6 +14,7 @@ export type ModelRoute = {
 export type EgressRoutes = {
   readonly model: ModelRoute;
   readonly mcp: McpHandler;
+  readonly admit: () => Promise<boolean>;
   readonly refused: (host: string, path: string) => void;
 };
 
@@ -63,5 +64,6 @@ export async function egress(
   if (url.hostname !== routes.model.host || !inference(request, url, routes.model)) {
     return refusal(routes, url);
   }
+  if (!(await routes.admit())) return new Response('run halted', { status: 403 });
   return fetcher(await forwarded(request, url, routes.model));
 }
