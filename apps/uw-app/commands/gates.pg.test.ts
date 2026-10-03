@@ -3,15 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { HarnessEvent, ItemState } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
 import { revokeSeededGrant, seedGrant, seedPerson } from '@uw/db/test-seed';
-import { createLogger } from '@uw/core/log';
-import { createKernel, type Connectors, type Kernel, type Store } from '@uw/harness';
-import { createGitHubReads } from '../github/client.ts';
-import { fixtureApp } from '../github/testing/app-key.ts';
 import { otherHead } from '../github/testing/merge-rig.ts';
-import { platformPorts } from '../kernel.ts';
-import { platformGitHubFacts } from '../ports/github-facts.ts';
-import { platformStore } from '../ports/store.ts';
-import { clock, decisionRows, pulls } from '../github/testing/ship-rig.ts';
+import { decisionRows, pulls } from '../github/testing/ship-rig.ts';
 import {
   alreadyShipped,
   gateDeps,
@@ -33,6 +26,7 @@ import {
   post,
   type Sent,
 } from '../testing/commands.ts';
+import { kernelThatLosesTheExit } from '../testing/lost-exit.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { noGateGitHub, type PersonDeps } from './person-deps.ts';
 
@@ -331,40 +325,6 @@ describe.skipIf(!testServer)('WB-1 only a person with admin decides a gate', () 
   it('a replayed gate decision is checked again, and a revoked person gets the refusal', () =>
     withAppDatabase(replayRechecks));
 });
-
-function losingAfterTheConnector(db: Database, ran: () => boolean): Store {
-  const real = platformStore(db);
-  return {
-    transaction: (work) =>
-      ran() ? Promise.reject(new Error('the exit was lost')) : real.transaction(work),
-    appliedMigrations: () => real.appliedMigrations(),
-  };
-}
-
-async function kernelThatLosesTheExit(db: Database, itemId: string): Promise<Kernel> {
-  const github = readyToShip(itemId);
-  const app = await fixtureApp();
-  const logger = createLogger(
-    { traceId: randomUUID(), commit: 'test', route: 'lost', principal: null },
-    () => undefined,
-  );
-  const open = () => createGitHubReads(app, { fetch: github.fetch, now: clock.now });
-  let ran = false;
-  const connectors: Connectors = {
-    run: async () => {
-      ran = true;
-      return { outcome: 'succeeded', detail: {} };
-    },
-    outcomeOf: async () => null,
-  };
-  const handle = { db, ping: async () => undefined, release: async () => undefined };
-  return createKernel({
-    ...platformPorts(handle, clock),
-    githubFacts: platformGitHubFacts(db, { open, logger }, clock),
-    connectors,
-    store: losingAfterTheConnector(db, () => ran),
-  });
-}
 
 async function lostAfterTheMerge(db: Database, parked: ParkedAtShip): Promise<void> {
   const lost = await kernelThatLosesTheExit(db, parked.item.itemId);

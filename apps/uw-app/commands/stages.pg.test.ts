@@ -2,10 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
 import { seedGrant, seedPerson } from '@uw/db/test-seed';
-import { createLogger } from '@uw/core/log';
-import { bml, createKernel, software, type Connectors, type Kernel, type Store } from '@uw/harness';
-import { createGitHubReads } from '../github/client.ts';
-import { fixtureApp } from '../github/testing/app-key.ts';
+import { bml, software } from '@uw/harness';
 import {
   gateDeps,
   kimEmail,
@@ -14,11 +11,9 @@ import {
   shipWrites,
   type ParkedAtShip,
 } from '../github/testing/gate-rig.ts';
-import { clock, decisionRows } from '../github/testing/ship-rig.ts';
-import { platformPorts } from '../kernel.ts';
-import { platformGitHubFacts } from '../ports/github-facts.ts';
-import { platformStore } from '../ports/store.ts';
+import { decisionRows } from '../github/testing/ship-rig.ts';
 import { agentOf, kernelOn, personOn } from '../testing/kernel.ts';
+import { kernelThatLosesTheExit } from '../testing/lost-exit.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import {
   accepted,
@@ -243,7 +238,9 @@ async function createsAndReorders(db: Database): Promise<void> {
 async function noEditBypassesShip(db: Database): Promise<void> {
   const { harnessId } = await softwareHarness(db);
   const before = await sceneOf(db, harnessId);
-  const lowered = await send(db, IAN, harnessId, 'update_stage', {
+  const requestId = randomUUID();
+  const lowered = await command(db, IAN, harnessId, 'update_stage', {
+    requestId,
     stageKey: 'ship',
     change: { exitGate: 'checks' },
   });
@@ -254,6 +251,16 @@ async function noEditBypassesShip(db: Database): Promise<void> {
     expect(sent.body).toMatchObject({ status: 'error', reason: 'stage_edit_refused' });
   }
   expect((await sceneOf(db, harnessId)).stages).toEqual(before.stages);
+  const [recorded] = await eventsNamed(db, harnessId, 'stage_edit_refused');
+  expect(recorded).toMatchObject({
+    actor: `human:${IAN_ID}`,
+    requestId,
+    evidence: {
+      stage: 'ship',
+      reason: 'stage_edit_refused',
+      constraint: 'harness_stages_effect_needs_human_gate',
+    },
+  });
   const paused = await send(db, IAN, harnessId, 'update_stage', {
     stageKey: 'build',
     change: { paused: true },
@@ -285,40 +292,6 @@ async function agentsRefused(db: Database): Promise<void> {
   }
   expect(await eventCount(db, harnessId)).toBe(before);
   expect(await harnessCount(db)).toBe(2);
-}
-
-function losingAfterTheConnector(db: Database, ran: () => boolean): Store {
-  const real = platformStore(db);
-  return {
-    transaction: (work) =>
-      ran() ? Promise.reject(new Error('the exit was lost')) : real.transaction(work),
-    appliedMigrations: () => real.appliedMigrations(),
-  };
-}
-
-async function kernelThatLosesTheExit(db: Database, itemId: string): Promise<Kernel> {
-  const github = readyToShip(itemId);
-  const app = await fixtureApp();
-  const logger = createLogger(
-    { traceId: randomUUID(), commit: 'test', route: 'lost', principal: null },
-    () => undefined,
-  );
-  const open = () => createGitHubReads(app, { fetch: github.fetch, now: clock.now });
-  let ran = false;
-  const connectors: Connectors = {
-    run: async () => {
-      ran = true;
-      return { outcome: 'succeeded', detail: {} };
-    },
-    outcomeOf: async () => null,
-  };
-  const handle = { db, ping: async () => undefined, release: async () => undefined };
-  return createKernel({
-    ...platformPorts(handle, clock),
-    githubFacts: platformGitHubFacts(db, { open, logger }, clock),
-    connectors,
-    store: losingAfterTheConnector(db, () => ran),
-  });
 }
 
 async function shipStage(db: Database, parked: ParkedAtShip) {

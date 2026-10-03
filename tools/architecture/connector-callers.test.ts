@@ -35,6 +35,7 @@ const recoverModule = 'packages/harness/gates/recover.ts';
 const lostExit = 'sim/lost-exit.ts';
 const wiring = [
   'apps/uw-app/kernel.ts',
+  'apps/uw-app/testing/lost-exit.ts',
   exitModule,
   recoverModule,
   'packages/harness/ports.ts',
