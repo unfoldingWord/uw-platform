@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { templateKeySchema } from '@uw/contracts';
 import { connectorRegistered, connectorRegistry } from '../connectors/registry.ts';
+import { templates } from '../templates.ts';
 import { validatorRegistry } from '../validators/registry.ts';
 import { bml } from './bml.ts';
 import { software } from './software.ts';
@@ -61,5 +63,11 @@ describe('KN-15 every connector a template names is registered', () => {
   it.each([software, bml])('$key', (template) => {
     for (const stage of template.stages)
       expect(connectorRegistered(stage.connector, connectorRegistry)).toBe(true);
+  });
+});
+
+describe('the template keys a command may name are the templates registry', () => {
+  it('lists exactly the registered template keys', () => {
+    expect([...templateKeySchema.options].sort()).toEqual([...templates.keys()].sort());
   });
 });
