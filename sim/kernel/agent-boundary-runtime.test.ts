@@ -167,29 +167,34 @@ async function everyFormIsBuilt({ attempts }: Scene): Promise<void> {
 
 const shared = sharedScene();
 
-const STAGE_BYPASS_TIMEOUT_MS = 120_000;
+const SCENE_TAKES_OVER_30S_ON_CI_TIMEOUT_MS = 120_000;
 
-describe('AB-7 the runtime check fails on a planted gate command that lets an agent decide', () => {
-  it('names the attempts a planted decide that launders the agent into a person lets through', () =>
-    inScene(bypassIsCaught));
+describe(
+  'AB-7 the runtime check fails on a planted gate command that lets an agent decide',
+  { timeout: SCENE_TAKES_OVER_30S_ON_CI_TIMEOUT_MS },
+  () => {
+    it('names the attempts a planted decide that launders the agent into a person lets through', () =>
+      inScene(bypassIsCaught));
 
-  it('names every attempt a planted decide accepts without writing anything', () =>
-    acceptanceIsCaught(shared()));
+    it('names every attempt a planted decide accepts without writing anything', () =>
+      acceptanceIsCaught(shared()));
 
-  it('flags a planted decide that refuses not_permitted and records no event', () =>
-    silenceIsCaught(shared()));
+    it('flags a planted decide that refuses not_permitted and records no event', () =>
+      silenceIsCaught(shared()));
 
-  it('flags attempts whose pinned readability disagrees with what the harness read allows', () =>
-    mispinnedReadabilityIsCaught(shared()));
+    it('flags attempts whose pinned readability disagrees with what the harness read allows', () =>
+      mispinnedReadabilityIsCaught(shared()));
 
-  it(
-    'flags a planted stage command that lets a laundered agent lower a gate',
-    () => inScene(stageBypassIsCaught),
-    STAGE_BYPASS_TIMEOUT_MS,
-  );
-});
+    it('flags a planted stage command that lets a laundered agent lower a gate', () =>
+      inScene(stageBypassIsCaught));
+  },
+);
 
-describe('the runtime boundary check builds every grant combination and identity form', () => {
-  it('builds four identity forms per grant set plus delegated, beat and revoked identities', () =>
-    everyFormIsBuilt(shared()));
-});
+describe(
+  'the runtime boundary check builds every grant combination and identity form',
+  { timeout: SCENE_TAKES_OVER_30S_ON_CI_TIMEOUT_MS },
+  () => {
+    it('builds four identity forms per grant set plus delegated, beat and revoked identities', () =>
+      everyFormIsBuilt(shared()));
+  },
+);
