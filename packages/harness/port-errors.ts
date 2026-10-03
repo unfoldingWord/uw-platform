@@ -47,13 +47,12 @@ export class ToolOutsideToolsetError extends Error {
 }
 
 export class ProviderMismatchError extends Error {
-  readonly pinned: string;
+  readonly pinned: string | null;
   readonly resolved: string | null;
 
-  constructor(pinned: string, resolved: string | null) {
-    super(
-      `the run pins provider ${pinned}, but the turn was served by ${resolved ?? 'no provider'}`,
-    );
+  constructor(pinned: string | null, resolved: string | null) {
+    const pin = pinned === null ? 'no provider' : `provider ${pinned}`;
+    super(`the run pins ${pin}, but the turn was served by ${resolved ?? 'no provider'}`);
     this.name = 'ProviderMismatchError';
     this.pinned = pinned;
     this.resolved = resolved;

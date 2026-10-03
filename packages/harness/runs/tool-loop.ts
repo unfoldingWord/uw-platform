@@ -48,7 +48,7 @@ function summed(a: number | null, b: number | null): number | null {
 
 function counted(tally: Tally, result: TurnResult): void {
   if (tally.turns > 0 && result.resolvedProvider !== tally.provider) {
-    throw new ProviderMismatchError(tally.provider ?? 'none', result.resolvedProvider);
+    throw new ProviderMismatchError(tally.provider, result.resolvedProvider);
   }
   if (tally.turns === 0) tally.provider = result.resolvedProvider;
   tally.turns += 1;
