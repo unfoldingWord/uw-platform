@@ -88,6 +88,7 @@ function eventsGateway(log: string[], appended: HarnessEvent[]): HarnessEventsGa
   return {
     read: {
       createdFor: unused,
+      latestNamed: unused,
       page: async (query) => {
         const matching = appended.filter(
           (event) => event.position > query.after && event.harnessId === query.harnessId,

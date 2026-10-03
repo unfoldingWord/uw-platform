@@ -106,6 +106,14 @@ const expectedColumns: Record<string, string[]> = {
     'outcome',
     'started_at',
     'ended_at',
+    'persona_page_id',
+    'delegation_id',
+    'pinned_provider',
+    'compute_minor',
+    'hibernated_for',
+    'failure',
+    'gates',
+    'prompts',
   ],
   gate_decisions: [
     'id',
@@ -336,6 +344,75 @@ function delegationRules(db: () => Db): void {
   });
 }
 
+type RunColumns = {
+  shape?: string;
+  engine?: string;
+  outcome?: string;
+  hibernatedFor?: string;
+  failure?: string;
+  steps?: string;
+  prompts?: string;
+};
+
+function insertRun(db: Db, id: string, columns: RunColumns = {}) {
+  return db.execute(sql`INSERT INTO harness_runs
+    (id, harness_id, item_id, persona, run_shape, engine, model, cost_basis, trace_id, outcome,
+     hibernated_for, failure, steps, prompts, started_at)
+    VALUES (${id}, ${harnessA}, ${itemA}, 'agent:builder', ${columns.shape ?? 'workflow-run'},
+      ${columns.engine ?? 'claude-messages'}, 'm', 'metered', ${trace},
+      ${columns.outcome ?? 'stopped'}, ${columns.hibernatedFor ?? null}, ${columns.failure ?? null},
+      ${columns.steps ?? '[]'}::jsonb, ${columns.prompts ?? '[]'}::jsonb, ${atText}::timestamptz)`);
+}
+
+function jsonArrayOf(length: number): string {
+  return JSON.stringify(Array.from({ length }, () => 'x'));
+}
+
+const runRefusals: readonly (readonly [string, RunColumns, string])[] = [
+  [
+    'a hibernation reason outside the closed set',
+    { outcome: 'hibernated', hibernatedFor: 'nap' },
+    'harness_runs_hibernated_for_known',
+  ],
+  [
+    'a reason on a run that is not hibernated',
+    { hibernatedFor: 'gate' },
+    'harness_runs_hibernated_has_why',
+  ],
+  ['a failure outside the closed set', { failure: 'lease_lost' }, 'harness_runs_failure_known'],
+  [
+    'an external run on a hosted engine',
+    { shape: 'external-run' },
+    'harness_runs_shape_matches_engine',
+  ],
+  [
+    'a hosted run on the external engine',
+    { engine: 'external' },
+    'harness_runs_shape_matches_engine',
+  ],
+  ['more than 200 steps', { steps: jsonArrayOf(201) }, 'harness_runs_steps_bounded'],
+  ['steps that are not an array', { steps: '{}' }, 'harness_runs_steps_bounded'],
+  ['more than 20 prompts', { prompts: jsonArrayOf(21) }, 'harness_runs_prompts_bounded'],
+];
+
+function runRules(db: () => Db): void {
+  it.each(runRefusals)('refuses %s', async (_title, columns, constraint) => {
+    expect(await refusal(insertRun(db(), idOf(0x7f), columns))).toEqual({
+      code: '23514',
+      constraint,
+    });
+  });
+
+  it('takes 200 steps, 20 prompts and empty gates by default', async () => {
+    await insertRun(db(), idOf(0x71), { steps: jsonArrayOf(200), prompts: jsonArrayOf(20) });
+    const rows = await db()
+      .select({ gates: schema.harnessRuns.gates })
+      .from(schema.harnessRuns)
+      .where(eq(schema.harnessRuns.id, idOf(0x71)));
+    expect(rows).toEqual([{ gates: [] }]);
+  });
+}
+
 function describeTarget(target: DatabaseTarget): void {
   const db = openDatabase(target);
   tableShape(db);
@@ -343,6 +420,7 @@ function describeTarget(target: DatabaseTarget): void {
     gateDecisionRules(db));
   describe('harness_items refuses a contradictory row', () => itemRules(db));
   describe('KN-16 delegations are renewed at most once each', () => delegationRules(db));
+  describe('harness_runs refuses a contradictory run', () => runRules(db));
 }
 
 describe('KN-1 the harness tables', () => {

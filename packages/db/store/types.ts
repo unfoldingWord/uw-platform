@@ -1,5 +1,8 @@
 import type {
   CapabilityWord,
+  CostBasis,
+  Engine,
+  EventName,
   GateDecision,
   Harness,
   HarnessEvent,
@@ -9,6 +12,11 @@ import type {
   PageStatus,
   PageType,
   PrincipalKind,
+  RunFailure,
+  RunHibernation,
+  RunOutcome,
+  RunShape,
+  RunStepRecord,
   Stage,
 } from '@uw/contracts';
 
@@ -80,7 +88,10 @@ export type HarnessItemsGateway = {
   };
 };
 export type PagesGateway = {
-  readonly read: { facts(pageIds: readonly string[]): Promise<readonly PageFacts[]> };
+  readonly read: {
+    facts(pageIds: readonly string[]): Promise<readonly PageFacts[]>;
+    activePersona(identity: Identity, harnessId: string): Promise<PageFacts | null>;
+  };
 };
 export type EventQuery = {
   readonly harnessId: string;
@@ -93,6 +104,10 @@ export type HarnessEventsGateway = {
   readonly read: {
     page(query: EventQuery): Promise<EventPage>;
     createdFor(actor: string, requestId: string): Promise<string | null>;
+    latestNamed(
+      names: readonly EventName[],
+      harnessId: string | null,
+    ): Promise<HarnessEvent | null>;
   };
   readonly write: { append(events: readonly NewHarnessEvent[]): Promise<readonly HarnessEvent[]> };
 };
@@ -146,12 +161,51 @@ export type GateDecisionsGateway = {
   readonly write: { insert(decision: GateDecisionRow): Promise<void> };
 };
 
+export type RunRow = {
+  readonly id: string;
+  readonly harnessId: string;
+  readonly itemId: string;
+  readonly persona: Identity;
+  readonly personaPageId: string | null;
+  readonly delegationId: string | null;
+  readonly runShape: RunShape;
+  readonly engine: Engine;
+  readonly model: string;
+  readonly pinnedProvider: string | null;
+  readonly resolvedProvider: string | null;
+  readonly steps: readonly RunStepRecord[];
+  readonly costMinor: number | null;
+  readonly computeMinor: number | null;
+  readonly costBasis: CostBasis;
+  readonly traceId: string;
+  readonly outcome: RunOutcome;
+  readonly hibernatedFor: RunHibernation | null;
+  readonly failure: RunFailure | null;
+  readonly gates: readonly string[];
+  readonly prompts: readonly string[];
+  readonly startedAt: Date;
+  readonly endedAt: Date | null;
+};
+export type HarnessRunsGateway = {
+  readonly read: {
+    byId(runId: string): Promise<RunRow | null>;
+    lock(runId: string): Promise<RunRow | null>;
+    liveForItem(itemId: string): Promise<RunRow | null>;
+    live(harnessId: string | null): Promise<readonly RunRow[]>;
+  };
+  readonly write: {
+    insert(run: RunRow): Promise<void>;
+    update(run: RunRow): Promise<boolean>;
+  };
+};
+
 export type DrizzleTransaction = {
   lock(key: string): Promise<void>;
   readonly harnesses: HarnessesGateway;
   readonly harnessStages: HarnessStagesGateway;
   readonly harnessItems: HarnessItemsGateway;
   readonly harnessEvents: HarnessEventsGateway;
+  readonly harnessRuns: HarnessRunsGateway;
   readonly gateDecisions: GateDecisionsGateway;
   readonly delegations: DelegationsGateway;
   readonly pages: PagesGateway;
