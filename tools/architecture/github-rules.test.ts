@@ -199,6 +199,7 @@ const gateGitHubFile = 'apps/uw-app/commands/person/gate-github.ts';
 const personSurface = {
   [gateKernelFile]: leaf,
   [gateGitHubFile]: leaf,
+  'apps/uw-app/commands/person-deps.ts': leaf,
   'apps/uw-app/commands/person/x.ts': leaf,
   'apps/uw-app/commands/dispatch.ts': leaf,
 };
@@ -226,6 +227,42 @@ const surfaceRefusals: [string, string, string, string][] = [
     'the MCP routes building the gate kernel',
     'apps/uw-app/mcp/routes.ts',
     "import '../commands/person/gate-kernel.ts';",
+    'gate-kernel-only-in-gate-commands',
+  ],
+  [
+    'a non-gate person command reaching the person deps',
+    'apps/uw-app/commands/person/stages.ts',
+    "import { platformPersonDeps } from '../person-deps.ts';",
+    'person-deps-only-in-app-and-routes',
+  ],
+  [
+    'a page module reaching the person deps',
+    'apps/uw-app/pages/a.ts',
+    "import { platformPersonDeps } from '../commands/person-deps.ts';",
+    'person-deps-only-in-app-and-routes',
+  ],
+  [
+    'the dispatcher reaching the person deps',
+    'apps/uw-app/commands/dispatch.ts',
+    "import type { PersonDeps } from './person-deps.ts';",
+    'person-deps-only-in-app-and-routes',
+  ],
+  [
+    'a page module opening the gate GitHub',
+    'apps/uw-app/pages/a.ts',
+    "import { platformGateGitHub } from '../commands/person/gate-github.ts';",
+    'gate-kernel-only-in-gate-commands',
+  ],
+  [
+    'a type-only import of the gate kernel from another person command',
+    'apps/uw-app/commands/person/stages.ts',
+    "import type { gateKernel } from './gate-kernel.ts';",
+    'gate-kernel-only-in-gate-commands',
+  ],
+  [
+    'a dynamic import of the gate GitHub from the dispatcher',
+    'apps/uw-app/commands/dispatch.ts',
+    "export const opener = () => import('./person/gate-github.ts');",
     'gate-kernel-only-in-gate-commands',
   ],
   [
@@ -284,9 +321,10 @@ describe('the person gate kernel and the person surface', () => {
       'apps/uw-app/commands/person/gates.ts':
         "import './gate-kernel.ts'; import './gate-github.ts'; import './x.ts';",
       'apps/uw-app/commands/person-deps.ts': "import './person/gate-github.ts';",
-      'apps/uw-app/commands/routes.ts': "import './person/x.ts';",
+      'apps/uw-app/commands/routes.ts': "import './person/x.ts'; import './person-deps.ts';",
       'apps/uw-app/commands/person/gate-kernel.test.ts': "import './gate-kernel.ts';",
-      'apps/uw-app/testing/commands.ts': "import '../commands/person/x.ts';",
+      'apps/uw-app/testing/commands.ts':
+        "import '../commands/person/x.ts'; import '../commands/person-deps.ts';",
       'apps/uw-app/app.tsx': "import './commands/person-deps.ts';",
     });
     expect(found).toEqual([]);
