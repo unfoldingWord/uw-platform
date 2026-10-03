@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { findVerb, recordRunStepReplySchema, type VerbName } from '@uw/contracts';
 import type { Detail, RunScene, ToolCaller } from '@uw/harness';
+import { boundedText } from '../http/body.ts';
 import { connectInProcess, type OpenStep } from '../mcp/in-process.ts';
 
 export type { OpenStep };
@@ -152,22 +153,51 @@ export type CountedHttp = {
   called(): readonly VerbName[];
 };
 
-async function calledVerb(request: Request): Promise<VerbName | null> {
-  const body: unknown = await request.json().catch(() => null);
-  const call = toolCallSchema.safeParse(body);
+const toolResultSchema = z.object({
+  result: z.object({ isError: z.boolean().optional() }),
+});
+
+async function calledVerb(
+  request: Request,
+  served: ReadonlySet<VerbName>,
+): Promise<VerbName | null> {
+  const text = await boundedText(request);
+  if (text === null) return null;
+  const call = toolCallSchema.safeParse(parsedJson(text));
   if (!call.success) return null;
-  return findVerb(call.data.params.name)?.name ?? null;
+  const verb = findVerb(call.data.params.name)?.name ?? null;
+  return verb !== null && served.has(verb) ? verb : null;
 }
 
-export function countedHttp(serve: (request: Request) => Promise<Response>): CountedHttp {
+function parsedJson(text: string): unknown {
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+async function succeeded(response: Response): Promise<boolean> {
+  if (!response.ok) return false;
+  const reply = toolResultSchema.safeParse(await response.json().catch(() => null));
+  return reply.success && reply.data.result.isError !== true;
+}
+
+export function countedHttp(
+  serve: (request: Request) => Promise<Response>,
+  served: ReadonlySet<VerbName>,
+): CountedHttp {
   const called: VerbName[] = [];
   let writes = 0;
   return {
     handle: async (request) => {
-      const verb = await calledVerb(request.clone());
-      if (verb !== null && !called.includes(verb)) called.push(verb);
-      if (verb !== null && findVerb(verb)?.grant?.role === 'editor') writes += 1;
-      return serve(request);
+      const verb = await calledVerb(request.clone(), served);
+      const response = await serve(request);
+      if (verb === null) return response;
+      if (!called.includes(verb)) called.push(verb);
+      const editor = findVerb(verb)?.grant?.role === 'editor';
+      if (editor && (await succeeded(response.clone()))) writes += 1;
+      return response;
     },
     writes: () => writes,
     called: () => [...called],

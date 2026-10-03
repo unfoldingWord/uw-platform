@@ -149,10 +149,10 @@ function merged(first: readonly VerbName[], second: readonly VerbName[]): VerbNa
 async function modelRun(deps: RunDeps, open: OpenStep, plan: ModelPlan): Promise<ModelDone> {
   const { run, item, persona } = open.scene;
   const tools = countedTools(open.client);
-  const http = countedHttp(open.http);
   const toolset = persona.toolset.filter(
     (verb) => verb !== 'record_run_step' && (plan.step === 'work' || readOnly.has(verb)),
   );
+  const http = countedHttp(open.http, new Set(toolset));
   const refused = (host: string, path: string) =>
     deps.logger.warn('sandbox egress refused', { outcome: 'egress_refused', host, path });
   const result = await engineWork(deps, plan.engine, {
