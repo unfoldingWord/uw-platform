@@ -1,6 +1,6 @@
 import type { Bindings } from '../env.ts';
 
-export type EngineFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+export type EngineFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
 type EngineSettingName =
   | 'AI_GATEWAY_ACCOUNT_ID'

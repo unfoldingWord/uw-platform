@@ -21,6 +21,7 @@ function deps(lines: Line[]): CronDeps {
     sink: (line) => lines.push(JSON.parse(line) as Line),
     newId: () => randomUUID(),
     commit: 'c',
+    engines: { fetch: () => Promise.reject(new Error('the retention reads no spend')) },
   };
 }
 

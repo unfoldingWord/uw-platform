@@ -8,6 +8,7 @@ const kernelHosts = [
   ['apps/uw-app/mcp/routes.ts', 'hubWiring(hubOf(c.env'],
   ['apps/uw-app/queue/worker.ts', 'unitHub(hubOf(env'],
   ['apps/uw-app/cron/github-sweep.ts', 'unitHub(hubOf(env'],
+  ['apps/uw-app/cron/minute.ts', 'unitHub(hubOf(env'],
 ] as const;
 
 const hubBinding = /\bHARNESS_HUB\b/;

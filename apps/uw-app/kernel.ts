@@ -29,8 +29,10 @@ type KernelWiring = {
   readonly modelEngine: ModelEngine;
 };
 
-export function hubWiring(hub: Hub): KernelWiring {
-  return { hub, reads: null, ship: null, modelEngine: modelEngineNotWired };
+type HostWiring = Partial<Pick<KernelWiring, 'modelEngine'>>;
+
+export function hubWiring(hub: Hub, host: HostWiring = {}): KernelWiring {
+  return { hub, reads: null, ship: null, modelEngine: modelEngineNotWired, ...host };
 }
 
 const idle = hubWiring(hubNotWired);

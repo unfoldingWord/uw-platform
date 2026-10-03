@@ -3,7 +3,8 @@ import type { Bindings } from '../env.ts';
 import worker from '../index.ts';
 import { sweepGitHubJob } from './github-sweep.ts';
 import type { CronDeps } from './job.ts';
-import { cronJobs, GITHUB_SWEEP_CRON } from './registry.ts';
+import { minuteJob } from './minute.ts';
+import { cronJobs, GITHUB_SWEEP_CRON, MINUTE_CRON } from './registry.ts';
 import { runScheduled } from './scheduled.ts';
 
 type Line = Record<string, unknown>;
@@ -32,6 +33,7 @@ function recordingDeps(): { readonly deps: CronDeps; readonly lines: Line[]; sen
       sink: (line: string) => lines.push(JSON.parse(line) as Line),
       newId: () => '00000000-0000-4000-8000-000000000001',
       commit: 'c',
+      engines: { fetch: () => Promise.reject(new Error('no spend is read')) },
     },
   };
   return state;
@@ -42,8 +44,25 @@ afterEach(() => {
 });
 
 describe('GH-2 the sweep is registered as a nightly cron', () => {
-  it('registers exactly the nightly cron', () => {
-    expect([...cronJobs.keys()]).toEqual([GITHUB_SWEEP_CRON]);
+  it('registers exactly the nightly cron and the minute cron', () => {
+    expect([...cronJobs.keys()]).toEqual([GITHUB_SWEEP_CRON, MINUTE_CRON]);
+  });
+
+  it('registers the minute job every minute', () => {
+    expect(MINUTE_CRON).toBe('* * * * *');
+    expect(cronJobs.get(MINUTE_CRON)).toBe(minuteJob);
+  });
+
+  it('logs database_not_configured once from the minute job when there is no database', async () => {
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    await runScheduled(controller(MINUTE_CRON), {});
+    expect(logged(spy)).toEqual([
+      expect.objectContaining({
+        outcome: 'database_not_configured',
+        principal: 'agent:system',
+        route: 'cron minute',
+      }),
+    ]);
   });
 
   it('exports the scheduled handler from the worker entry', () => {
