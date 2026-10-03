@@ -41,6 +41,7 @@ const pullRequestFacts: PullRequestFacts = {
   headRepo: 'unfoldingWord/uw-platform',
   base: '0'.repeat(40),
   baseRef: 'main',
+  defaultBranch: 'main',
   checks: [],
   reviews: [],
   files: null,

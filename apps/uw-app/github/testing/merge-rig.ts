@@ -39,6 +39,7 @@ type PullChange = {
   readonly headRepo?: string | null;
   readonly base?: string;
   readonly baseRef?: string;
+  readonly defaultBranch?: string;
   readonly state?: 'open' | 'closed';
   readonly merged?: boolean;
   readonly mergeSha?: string | null;
@@ -62,7 +63,12 @@ function sidesOf(change: PullChange) {
       ref: change.ref ?? tagName,
       repo: headRepositoryOf(change.headRepo),
     },
-    base: { ...restPull.base, sha: change.base ?? base, ref: change.baseRef ?? 'main' },
+    base: {
+      ...restPull.base,
+      sha: change.base ?? base,
+      ref: change.baseRef ?? 'main',
+      repo: { ...restPull.base.repo, default_branch: change.defaultBranch ?? 'main' },
+    },
   };
 }
 

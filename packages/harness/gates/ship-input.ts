@@ -46,6 +46,7 @@ function usableHead(
   if (!sameRepository(facts.ref.repo, item.pullRequest.repo)) return null;
   if (facts.ref.number !== item.pullRequest.number) return null;
   if (facts.headRef !== branchFor(item.itemId)) return null;
+  if (facts.baseRef !== facts.defaultBranch) return null;
   return fullSha(facts.head);
 }
 

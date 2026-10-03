@@ -151,3 +151,42 @@ describe.skipIf(!testServer)(
     it('refuses when GitHub no longer has the pull request', () => withAppDatabase(gone));
   },
 );
+
+function basedAt(ref: string, defaultBranch: string) {
+  return (github: FixtureGitHub, itemId: string): void => {
+    const pull = pullBasedOn(itemId, movedBase, '2026-10-02T08:50:00Z');
+    const repo = { ...pull.base.repo, default_branch: defaultBranch };
+    github.on('GET', pulls, { status: 200, body: { ...pull, base: { ...pull.base, ref, repo } } });
+  };
+}
+
+async function retargetedAwayFromTheDefault(db: Database): Promise<void> {
+  const shipped = await attemptShip(db, app, basedAt('release', 'main'));
+  expect(shipped.outcome).toMatchObject({ status: 'error' });
+  expect(await decisionRows(db, shipped.item)).toBe(0);
+  expect(await riskAtShip(db, shipped.item)).toEqual([]);
+  const writes = shipped.github
+    .requests()
+    .filter((sent) => sent.method !== 'GET' && !sent.path.endsWith('/access_tokens'));
+  expect(writes).toEqual([]);
+}
+
+async function defaultBranchRenamed(db: Database): Promise<void> {
+  const shipped = await attemptShip(db, app, basedAt('trunk', 'trunk'));
+  expect(await pullRequestFacts(db, pullRequest)).toMatchObject({
+    baseRef: 'trunk',
+    defaultBranch: 'trunk',
+  });
+  expect(await riskAtShip(db, shipped.item)).toEqual([expect.objectContaining({ head })]);
+}
+
+describe.skipIf(!testServer)(
+  'GH-5 Ship takes a pull request only into its repository’s default branch',
+  () => {
+    it('refuses and records no decision for a pull request retargeted to another branch', () =>
+      withAppDatabase(retargetedAwayFromTheDefault));
+
+    it('reads a renamed default branch again from GitHub and ships into it', () =>
+      withAppDatabase(defaultBranchRenamed));
+  },
+);

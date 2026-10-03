@@ -125,7 +125,7 @@ function filesOf(pull: PullRow): ChangedFiles | null {
 
 async function pullNamed(db: Executor, ref: PullRequestRef) {
   const [row] = await db
-    .select({ pull: ghPrs, repo: ghRepos.fullName })
+    .select({ pull: ghPrs, repo: ghRepos.fullName, defaultBranch: ghRepos.defaultBranch })
     .from(ghPrs)
     .innerJoin(ghRepos, eq(ghRepos.githubId, ghPrs.repoId))
     .where(and(sql`lower(${ghRepos.fullName}) = lower(${ref.repo})`, eq(ghPrs.number, ref.number)))
@@ -140,7 +140,7 @@ export async function pullRequestFacts(
   const found = await pullNamed(db, ref);
   const state = pullState.safeParse(found?.pull.state);
   if (found === null || !state.success) return null;
-  const { pull, repo } = found;
+  const { pull, repo, defaultBranch } = found;
   const declaration = pullRequestDeclarationSchema.safeParse(pull.declaration);
   return {
     ref: { repo, number: pull.number },
@@ -151,6 +151,7 @@ export async function pullRequestFacts(
     headRepo: pull.headRepo,
     base: pull.baseSha,
     baseRef: pull.baseRef,
+    defaultBranch,
     checks: await checksAt(db, pull),
     reviews: await reviewsOf(db, pull),
     files: filesOf(pull),

@@ -83,6 +83,7 @@ const facts: PullRequestFacts = {
   headRepo: 'unfoldingWord/uw-platform',
   base,
   baseRef: 'main',
+  defaultBranch: 'main',
   checks: ciJobSchema.options.map((name) => check(name)),
   reviews: [review()],
   files: { head, base, paths: ['apps/uw-app/board.tsx'] },
@@ -239,6 +240,22 @@ describe('GH-5 GH-4 facts from another repository or branch are not the pull req
 
   it('assembles nothing without facts', () => {
     expect(assembled({ facts: null })).toMatchObject(unusable);
+  });
+});
+
+describe('GH-5 a pull request counts only into its repository’s default branch', () => {
+  it('reads nothing from a pull request retargeted to another branch', () => {
+    expect(assembled({ facts: { baseRef: 'release' } })).toMatchObject(unusable);
+    expect(riskDerivedAtShip(sourceOf({ facts: { baseRef: 'release' } }))).toBeNull();
+  });
+
+  it('reads nothing when the default branch was renamed away from the base', () => {
+    expect(assembled({ facts: { defaultBranch: 'trunk' } })).toMatchObject(unusable);
+  });
+
+  it('reads the pull request into a renamed default branch', () => {
+    const renamed = { baseRef: 'trunk', defaultBranch: 'trunk' };
+    expect(assembled({ facts: renamed }).approvals).toEqual(theApproval);
   });
 });
 

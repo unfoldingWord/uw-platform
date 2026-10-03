@@ -38,6 +38,7 @@ function greenFacts(itemId: string): PullRequestFacts {
     headRepo: pullRequest.repo,
     base: '0'.repeat(40),
     baseRef: 'main',
+    defaultBranch: 'main',
     checks: ciJobSchema.options.map((name, index) => ({
       checkId: 9100000001 + index,
       name,
