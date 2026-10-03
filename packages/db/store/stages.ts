@@ -88,6 +88,10 @@ export function bindStages(executor: AnyExecutor): HarnessStagesGateway {
         }),
       reposition: (harnessId, positions) =>
         refusing(() => reposition(executor, harnessId, positions)),
+      remove: (stageId) =>
+        refusing(async () => {
+          await executor.delete(harnessStages).where(eq(harnessStages.id, stageId));
+        }),
     },
   };
 }

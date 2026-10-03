@@ -49,7 +49,7 @@ function harnessesGateway(harness: Harness): HarnessesGateway {
       byRepository: unused,
       list: unused,
     },
-    write: { insert: unused },
+    write: { insert: unused, setPaused: unused },
   };
 }
 

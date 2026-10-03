@@ -12,7 +12,9 @@ const requestId = '00000000-0000-4000-8000-0000000000a1';
 const harnessId = '00000000-0000-4000-8000-0000000000b1';
 const traceId = '00000000-0000-4000-8000-0000000000e1';
 
-const claimed = {
+type Claim = typeof commandRequests.$inferInsert;
+
+const claimed: Claim = {
   actor: 'human:00000000-0000-4000-8000-000000000001',
   requestId,
   command: 'approve',
@@ -40,7 +42,7 @@ function describeTarget(target: DatabaseTarget): void {
     opened = await target.open();
   }, 60_000);
   afterAll(() => opened?.close());
-  const insert = (row: Partial<typeof claimed>) => {
+  const insert = (row: Partial<Claim>) => {
     if (!opened) throw new Error('the database did not open');
     return opened.db.insert(commandRequests).values({ ...claimed, ...row });
   };
