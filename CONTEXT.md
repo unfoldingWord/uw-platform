@@ -169,8 +169,20 @@ The remote MCP server inside `uw-app` that serves the verb registry. The only wa
 _Avoid_: API (that is the command API people use), agent API, gateway
 
 **Command**:
-An action a person takes on the harness through the command API: kickstart, enqueue, reorder, claim, release, submit, approve, reject, take over, override, prompt run, stop run, pause, resume, tweak package, schedule regular tweak. Every command carries a `requestId` and returns `accepted` or `error`.
+An action a person takes on the harness through the command API: kickstart, enqueue, import, reorder, claim, release, submit, approve, reject, take over, override, prompt run, stop run, pause, resume, tweak package, schedule regular tweak, revoke delegation, recover connectors, and the stage command: activate template, create, update, reorder and remove stage. Every command carries a `requestId` and returns `accepted` or `error`.
 _Avoid_: verb (that is the agent's word), action, mutation, endpoint
+
+**Person surface**:
+The command handlers that decide gates, edit stages and grant or revoke delegations: `apps/uw-app/commands/person/`. Only a person's command reaches them; nothing the MCP surface reaches imports them.
+_Avoid_: admin API, privileged routes
+
+**Gate view**:
+What a person deciding a gate is shown: the parsed PR declaration, the tier and domains with the head they were derived at, every ship-rule input and the rule's answer for them. Read from the read model; the decision refreshes.
+_Avoid_: gate page, approval screen
+
+**Request ledger**:
+The `command_requests` table: one row per person and `requestId`, so a repeated command replays its first outcome.
+_Avoid_: idempotency cache, dedupe table
 
 **Event**:
 One row of `harness_events`: a typed, append-only record of something that happened to a harness, from a closed vocabulary. The item's state is a fold over its events; replay equals record.
@@ -263,6 +275,14 @@ _Avoid_: inbox, to-do, notifications
 **Indicator**:
 One named line of `/health`: a status from `ok`, `amber`, `red`, `not_configured`, `not_wired` and a short detail. The overall status is the worst indicator.
 _Avoid_: metric, check (that is a CI job or a validator), alarm
+
+**Token**:
+One CSS custom property in `packages/ui/tokens/*.css`, the only source of a colour, size or radius.
+_Avoid_: variable, style constant
+
+**Shell**:
+The page frame every screen renders inside: sidebar, top bar and content, fluid from phone width up.
+_Avoid_: layout, chrome, template (that is a stage graph)
 
 ## The repo and the build
 
