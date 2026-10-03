@@ -27,7 +27,6 @@ type OpenRouterBody = ChatCompletionCreateParamsNonStreaming & {
 };
 
 const MICROS_PER_UNIT = 1_000_000;
-const NO_PIN = 'none';
 const nonAlphanumeric = /[^a-z0-9]/gu;
 
 const finishReasons: ReadonlyMap<string, StopReason> = new Map([
@@ -129,7 +128,7 @@ function comparable(provider: string): string {
 
 function resolvedProvider(served: string | undefined, pin: string | null): string {
   const resolved = served?.normalize('NFKC').trim().toLowerCase() ?? '';
-  if (resolved === '') throw new ProviderMismatchError(pin ?? NO_PIN, null);
+  if (resolved === '') throw new ProviderMismatchError(pin, null);
   if (pin === null) return resolved;
   if (comparable(resolved) !== comparable(pin)) throw new ProviderMismatchError(pin, resolved);
   return pin;

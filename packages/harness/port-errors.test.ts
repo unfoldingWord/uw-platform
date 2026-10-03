@@ -55,6 +55,12 @@ describe('DX-1 port errors', () => {
       'the run pins provider anthropic, but the turn was served by no provider',
     );
   });
+
+  it('ProviderMismatchError carries no pin when the turn was not pinned', () => {
+    const error = new ProviderMismatchError(null, 'together');
+    expect(error.pinned).toBeNull();
+    expect(error.message).toBe('the run pins no provider, but the turn was served by together');
+  });
 });
 
 describe('DX-1 run transitions out of the terminal states', () => {
