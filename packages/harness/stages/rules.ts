@@ -3,6 +3,7 @@ import { allowed, isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { connectorRegistered, connectorRegistry } from '../connectors/registry.ts';
 import { refused, type Refused } from '../outcome.ts';
+import { describeViolation, templateProperty } from '../template-property.ts';
 import { validatorRegistry } from '../validators/registry.ts';
 import type { EffectConnector, Ports, StoreTransaction } from '../ports.ts';
 import type { TemplateStage } from '../templates/types.ts';
@@ -55,6 +56,16 @@ export function stageProblems(
     if (problem !== null) return problem;
   }
   return null;
+}
+
+export function bypassRefusal(stages: readonly Stage[]): Refused | null {
+  const violation = templateProperty(stages)[0];
+  if (violation === undefined) return null;
+  return refused('template_bypasses_gate', {
+    path: violation.path,
+    effectStage: violation.effectStage,
+    message: describeViolation(violation),
+  });
 }
 
 export function stageFromTemplate(template: TemplateStage, harnessId: string, id: string): Stage {

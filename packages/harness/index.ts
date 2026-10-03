@@ -31,6 +31,7 @@ export { foldItem, notReplayed, replay, ReplayError } from './items/fold.ts';
 export type { FoldableEvent } from './items/fold.ts';
 export type { Activated, ActivateInput } from './stages/activate.ts';
 export type { StageChange, StageCommands, StageInput } from './stages/commands.ts';
+export type { PauseInput } from './stages/pause.ts';
 export type { EnqueueInput } from './items/enqueue.ts';
 export type { ItemCommands } from './items/commands.ts';
 export type {
