@@ -10,14 +10,6 @@ describe('HE-2 the engine registry names every engine key once, as data', () => 
     for (const key of engineSchema.options) expect(engineDescriptor(key).key).toBe(key);
   });
 
-  it('HE-2 no descriptor lets a reserved engine host a run', () => {
-    expect(hostable('claude-managed-agent', 'workflow-run')).toBe(false);
-    expect(hostable('external', 'workflow-run')).toBe(false);
-    expect(hostable('external', 'external-run')).toBe(true);
-    expect(hostable('openrouter-messages', 'workflow-run')).toBe(true);
-    expect(hostable('openrouter-messages', 'external-run')).toBe(false);
-  });
-
   it('refuses a key that is not an engine', () => {
     expect(() => engineDescriptor('gpt-sandbox' as never)).toThrow();
   });
@@ -39,6 +31,14 @@ describe('HE-10 the reserved engine', () => {
     expect(engineDescriptor('claude-managed-agent').availability).toBe('reserved');
     const reserved = engineDescriptors().filter((d) => d.availability === 'reserved');
     expect(reserved.map((d) => d.key)).toEqual(['claude-managed-agent']);
+  });
+
+  it('HE-10 no descriptor lets a reserved engine host a run', () => {
+    expect(hostable('claude-managed-agent', 'workflow-run')).toBe(false);
+    expect(hostable('external', 'workflow-run')).toBe(false);
+    expect(hostable('external', 'external-run')).toBe(true);
+    expect(hostable('openrouter-messages', 'workflow-run')).toBe(true);
+    expect(hostable('openrouter-messages', 'external-run')).toBe(false);
   });
 });
 
