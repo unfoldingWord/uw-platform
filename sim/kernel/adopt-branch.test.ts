@@ -126,9 +126,27 @@ async function refusedWithNothingRecorded(
   expect(await eventsOf(scene)).toEqual(before);
 }
 
-function freshAtShifted(scene: Scene, milliseconds: number): PullRequestFacts {
-  const freshAt = new Date(scene.world.adapters.clock.now().getTime() + milliseconds);
-  return tipFacts(scene, { freshAt });
+function freshAt(at: Date, milliseconds: number): PullRequestFacts['freshAt'] {
+  return new Date(at.getTime() + milliseconds);
+}
+
+async function leaseEnd(scene: Scene): Promise<Date> {
+  const item = await scene.world.adapters.store.transaction((tx) =>
+    tx.harnessItems.read.byId(scene.itemId),
+  );
+  if (item?.leaseExpiresAt == null) throw new Error('the item holds no lease');
+  return new Date(item.leaseExpiresAt);
+}
+
+async function releasedAfterLapse(scene: Scene): Promise<Date> {
+  scene.world.adapters.clock.advance(60 * minute);
+  const first = device(scene, scene.owner, 'first');
+  const input = { itemId: scene.itemId, delegationId: null };
+  const released = value(await scene.world.kernel.items.release(first, input));
+  expect(released.branchState).toBe('abandoned');
+  const abandoned = (await eventsOf(scene)).findLast((event) => event.name === 'branch_abandoned');
+  if (abandoned === undefined) throw new Error('no branch_abandoned was recorded');
+  return new Date(abandoned.at);
 }
 
 function stale(freshAt: string | null) {
@@ -161,19 +179,6 @@ describe('GH-4 adopting takes only the tip of the item’s own branch on a pull 
     await refusedWithNothingRecorded(scene, answering(null), stale(null));
   });
 
-  sceneIt('answers facts_stale for facts more than a minute either side of now', async (scene) => {
-    for (const shift of [-61_000, 61_000]) {
-      const facts = freshAtShifted(scene, shift);
-      const refusal = stale(facts.freshAt.toISOString());
-      await refusedWithNothingRecorded(scene, answering(facts), refusal);
-    }
-  });
-
-  sceneIt('adopts facts read within the minute', async (scene) => {
-    const claimed = value(await adoptWith(scene, answering(freshAtShifted(scene, -59_000))));
-    expect(claimed.branch.adopted).toBe(true);
-  });
-
   sceneIt('refuses the branch of a closed or merged pull request', async (scene) => {
     for (const state of ['closed', 'merged'] as const) {
       await refusedWithNothingRecorded(scene, answering(tipFacts(scene, { state })));
@@ -198,6 +203,44 @@ describe('GH-4 adopting takes only the tip of the item’s own branch on a pull 
       detail: { port: 'githubFacts' },
     });
   });
+});
+
+describe('GH-4 adopting takes only facts GitHub reported after the branch was abandoned', () => {
+  sceneIt(
+    'answers facts_stale for facts read no later than the lapse the claim records',
+    async (scene) => {
+      const lapsed = await leaseEnd(scene);
+      for (const shift of [-1_000, 0]) {
+        const facts = tipFacts(scene, { freshAt: freshAt(lapsed, shift) });
+        await refusedWithNothingRecorded(
+          scene,
+          answering(facts),
+          stale(facts.freshAt.toISOString()),
+        );
+      }
+    },
+  );
+
+  sceneIt('adopts facts read after the lapse, however long before the claim', async (scene) => {
+    const lapsed = await leaseEnd(scene);
+    scene.world.adapters.clock.advance(60 * minute);
+    const facts = tipFacts(scene, { freshAt: freshAt(lapsed, 1_000) });
+    const claimed = value(await adoptWith(scene, answering(facts)));
+    expect(claimed.branch).toMatchObject({ startFrom: tip, adopted: true });
+  });
+
+  sceneIt(
+    'measures from a recorded abandonment, not from the lease it lapsed from',
+    async (scene) => {
+      const lapsed = await leaseEnd(scene);
+      const abandoned = await releasedAfterLapse(scene);
+      const between = tipFacts(scene, { freshAt: freshAt(lapsed, 1_000) });
+      const refusal = stale(between.freshAt.toISOString());
+      await refusedWithNothingRecorded(scene, answering(between), refusal);
+      const after = tipFacts(scene, { freshAt: freshAt(abandoned, 1_000) });
+      expect(value(await adoptWith(scene, answering(after))).branch.adopted).toBe(true);
+    },
+  );
 });
 
 describe('adoption reads GitHub facts outside the claim transaction', () => {

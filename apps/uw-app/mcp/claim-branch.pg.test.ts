@@ -7,6 +7,7 @@ import { seedGrant, seedPerson } from '@uw/db/test-seed';
 import { readAllEvents, software, type Caller, type Kernel } from '@uw/harness';
 import { systemClock } from '../ports/clock.ts';
 import { platformStore } from '../ports/store.ts';
+import { seedPullRequest } from '../testing/github-facts.ts';
 import { agentOf, kernelOn, personOn } from '../testing/kernel.ts';
 import type { VerbContext } from './context.ts';
 import { callVerb } from './dispatch.ts';
@@ -101,13 +102,14 @@ async function atScope(r: Rig, change: { pullRequest: typeof pullRequest; head: 
   return itemId;
 }
 
-function contextFor(r: Rig): VerbContext {
+function contextFor(r: Rig, over: Partial<VerbContext> = {}): VerbContext {
   return {
     principal: r.agent,
     host: 'external',
     at: new Date(),
     traceId: crypto.randomUUID(),
     kernel: r.kernel,
+    ...over,
     db: r.db,
     commit: 'test-commit',
     logger: createLogger(
@@ -117,8 +119,12 @@ function contextFor(r: Rig): VerbContext {
   };
 }
 
-async function claimed(r: Rig, args: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const result = await callVerb(contextFor(r), 'claim_item', args, verbHandlers);
+async function claimed(
+  r: Rig,
+  args: Record<string, unknown>,
+  over: Partial<VerbContext> = {},
+): Promise<Record<string, unknown>> {
+  const result = await callVerb(contextFor(r, over), 'claim_item', args, verbHandlers);
   const block = result.content[0];
   return block?.type === 'text' ? JSON.parse(block.text) : {};
 }
@@ -158,5 +164,61 @@ describe.skipIf(!testServer)(
       });
       expect(await eventsOf(r, itemId)).toEqual(before);
     });
+  },
+);
+
+const TIP = 'c'.repeat(40);
+const minute = 60_000;
+
+type Stepped = { readonly clock: { now: () => Date }; advance(ms: number): Date };
+
+function steppedClock(start: Date): Stepped {
+  let now = start;
+  return {
+    clock: { now: () => now },
+    advance: (ms) => {
+      now = new Date(now.getTime() + ms);
+      return now;
+    },
+  };
+}
+
+async function pushedTip(r: Rig, itemId: string, freshAt: Date): Promise<void> {
+  await seedPullRequest(r.db, {
+    repoId: 9100003201,
+    pullRequestId: 9100003301,
+    repo: pullRequest.repo,
+    number: pullRequest.number,
+    head: TIP,
+    headRef: `harness/${itemId}`,
+    paths: ['apps/uw-app/board.tsx'],
+    freshAt,
+  });
+}
+
+async function adoptionAfterAWebhook(r: Rig): Promise<void> {
+  const time = steppedClock(new Date('2026-10-02T09:00:00.000Z'));
+  const kernel = kernelOn(r.db, time.clock);
+  const itemId = await atScope({ ...r, kernel }, { pullRequest, head: HEAD });
+  const first = { kernel, principal: r.agent, at: time.clock.now() };
+  expect(await claimed(r, { itemId, delegationId: null }, first)).toMatchObject({ itemId });
+  await pushedTip(r, itemId, time.clock.now());
+  const desk = { kernel, principal: agentOf(r.ian, 'desk'), at: time.advance(60 * minute) };
+  const adopt = { itemId, delegationId: null, adoptBranch: true };
+  const before = await eventsOf(r, itemId);
+  expect(await claimed(r, adopt, desk)).toMatchObject({ status: 'error', reason: 'facts_stale' });
+  expect(await eventsOf(r, itemId)).toEqual(before);
+  await pushedTip(r, itemId, time.advance(minute));
+  const later = { ...desk, at: time.advance(30 * minute) };
+  expect(await claimed(r, adopt, later)).toMatchObject({
+    branch: { name: `harness/${itemId}`, startFrom: TIP, adopted: true },
+  });
+}
+
+describe.skipIf(!testServer)(
+  'GH-4 claim_item adopts from the read model only facts GitHub reported after the abandonment',
+  () => {
+    it('refuses facts from before the lapse, then adopts half an hour after a webhook', () =>
+      rig().then(adoptionAfterAWebhook));
   },
 );

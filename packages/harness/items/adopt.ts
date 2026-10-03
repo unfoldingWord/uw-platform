@@ -1,10 +1,11 @@
 import type { Harness, ItemState } from '@uw/contracts';
 import { factsFailure } from '../gates/facts-failure.ts';
-import { isStale, staleRefusal } from '../gates/facts-fresh.ts';
+import { staleRefusal } from '../gates/facts-fresh.ts';
 import { branchFor, fullSha, sameRepository } from '../github/identifiers.ts';
 import { refused, type Refused } from '../outcome.ts';
-import type { Ports, PullRequestFacts, PullRequestRef } from '../ports.ts';
-import { lapseDrafts } from './leases.ts';
+import type { Ports, PullRequestFacts, PullRequestRef, StoreTransaction } from '../ports.ts';
+import { leaseLapsed } from './leases.ts';
+import { readAllEvents } from './record.ts';
 
 type TipPorts = Pick<Ports, 'githubFacts' | 'store'>;
 
@@ -47,36 +48,46 @@ function tipOf(item: ItemState, ref: PullRequestRef, facts: PullRequestFacts): s
   return fullSha(facts.head);
 }
 
+function reportedAfter(facts: PullRequestFacts, abandoned: Date): boolean {
+  return facts.freshAt.getTime() > abandoned.getTime();
+}
+
 function adoptedTip(
   item: ItemState,
   harness: Harness,
   tip: BranchTip,
-  at: Date,
+  abandoned: Date,
 ): Adoption | Refused {
   if ('refusal' in tip) return tip.refusal;
   const ref = item.pullRequest;
   if (ref === null || !sameRepository(ref.repo, harness.repository)) return notAdoptable;
-  if (tip.facts === null || isStale(tip.facts, at)) return staleRefusal(tip.facts);
+  if (tip.facts === null || !reportedAfter(tip.facts, abandoned)) return staleRefusal(tip.facts);
   const head = tipOf(item, ref, tip.facts);
   return head === null ? notAdoptable : { head };
 }
 
-function abandonedBy(item: ItemState, at: Date): boolean {
-  if (item.branchState === 'abandoned') return true;
-  return lapseDrafts(item, at).some((entry) => entry.name === 'branch_abandoned');
+async function abandonedAt(tx: StoreTransaction, item: ItemState, at: Date): Promise<Date | null> {
+  if (leaseLapsed(item, at) && item.branchState === 'active') {
+    return new Date(item.leaseExpiresAt);
+  }
+  if (item.branchState !== 'abandoned') return null;
+  const events = await readAllEvents(tx, item.harnessId, item.itemId);
+  const abandoned = events.findLast((event) => event.name === 'branch_abandoned');
+  return abandoned === undefined ? null : new Date(abandoned.at);
 }
 
-export function adoptionOf(
-  item: ItemState,
-  harness: Harness,
+export async function adoptionOf(
+  tx: StoreTransaction,
+  scene: { readonly item: ItemState; readonly harness: Harness },
   tip: BranchTip | null,
   at: Date,
-): Adoption | Refused {
+): Promise<Adoption | Refused> {
   if (tip === null) return { head: null };
-  if (!abandonedBy(item, at)) {
+  const abandoned = await abandonedAt(tx, scene.item, at);
+  if (abandoned === null) {
     return refused('malformed_command', { adoptBranch: true, why: 'no_abandoned_branch' });
   }
-  return adoptedTip(item, harness, tip, at);
+  return adoptedTip(scene.item, scene.harness, tip, abandoned);
 }
 
 export function claimedBranch(item: ItemState, adoption: Adoption): ClaimedBranch {
