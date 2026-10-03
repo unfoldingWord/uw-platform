@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { IssueRef, JdArea } from '@uw/contracts';
+import type { ErrorReason, IssueRef, JdArea } from '@uw/contracts';
 import type { Logger } from '@uw/core/log';
 import { ingestPrincipal } from '@uw/core/principal';
 import type { Caller } from '@uw/harness';
@@ -21,6 +21,10 @@ function issueOf(change: IssueChange): IssueRef {
   return { repo: change.repo, number: change.number, githubId: change.githubId };
 }
 
+export type ImportResult =
+  | { readonly ok: true; readonly created: boolean }
+  | { readonly ok: false; readonly reason: ErrorReason };
+
 async function wrapPage(deps: GitHubDeps, caller: Caller, change: IssueChange, jdArea: JdArea) {
   const issue = issueOf(change);
   return ensureIssuePage(
@@ -30,15 +34,23 @@ async function wrapPage(deps: GitHubDeps, caller: Caller, change: IssueChange, j
       issue,
       title: change.title,
       url: `https://github.com/${issue.repo}/issues/${issue.number}`,
-      editor: caller.actor.identity,
+      editor: ingestPrincipal().identity,
     },
     randomIds,
     caller.traceId,
   );
 }
 
-async function importLabelled(deps: GitHubDeps, change: IssueChange, logger: Logger) {
-  const caller = callerFor(logger);
+export function isImportable(change: IssueChange): boolean {
+  return change.open && carriesHarnessLabel(change.labels);
+}
+
+export async function importStoredIssue(
+  deps: GitHubDeps,
+  caller: Caller,
+  change: IssueChange,
+  logger: Logger,
+): Promise<ImportResult> {
   const fields = { repository: change.repo, issue: change.number };
   const target = await deps.kernel.reads.importTarget(caller, { repository: change.repo });
   if (target.status !== 'accepted') {
@@ -46,7 +58,7 @@ async function importLabelled(deps: GitHubDeps, change: IssueChange, logger: Log
       outcome: 'no_harness_for_repository',
       ...fields,
     });
-    return;
+    return { ok: false, reason: 'not_permitted' };
   }
   const page = await wrapPage(deps, caller, change, target.value.jdArea);
   if (!page.ok) {
@@ -54,7 +66,7 @@ async function importLabelled(deps: GitHubDeps, change: IssueChange, logger: Log
       outcome: 'issue_page_slug_taken',
       ...fields,
     });
-    return;
+    return { ok: false, reason: 'slug_taken' };
   }
   const imported = await deps.kernel.items.importIssue(caller, {
     harnessId: target.value.harnessId,
@@ -68,19 +80,20 @@ async function importLabelled(deps: GitHubDeps, change: IssueChange, logger: Log
       ...fields,
       reason: imported.reason,
     });
-    return;
+    return { ok: false, reason: imported.reason };
   }
   const { item, created } = imported.value;
   logger.info('labelled issue imported', {
     outcome: created ? 'issue_imported' : 'issue_already_imported',
     ...fields,
   });
-  await ensureCrossReference(
-    deps,
-    change,
-    { itemId: item.itemId, pageCreatedAt: page.createdAt },
-    logger,
-  );
+  const reference = { itemId: item.itemId, pageCreatedAt: page.createdAt };
+  await ensureCrossReference(deps, change, reference, logger);
+  return { ok: true, created };
+}
+
+async function importLabelled(deps: GitHubDeps, change: IssueChange, logger: Logger) {
+  await importStoredIssue(deps, callerFor(logger), change, logger);
 }
 
 async function recordRemoval(deps: GitHubDeps, change: IssueChange, logger: Logger) {

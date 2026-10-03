@@ -9,6 +9,7 @@ import {
   submitCommand,
   tweakPackageCommand,
 } from './handlers/items.ts';
+import { importCommand } from './handlers/import.ts';
 import { notWiredCommand } from './not-wired.ts';
 import { revokeDelegationCommand, scheduleRegularTweakCommand } from './person/delegations.ts';
 import {
@@ -47,7 +48,7 @@ export function commandRegistryOf(
 export const commandRegistry = commandRegistryOf([
   kickstartCommand,
   enqueueCommand,
-  notWiredCommand('import', 'write'),
+  importCommand,
   reorderCommand,
   claimCommand,
   releaseCommand,
