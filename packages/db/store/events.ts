@@ -1,11 +1,11 @@
 import { and, asc, desc, eq, gt, isNotNull } from 'drizzle-orm';
-import type { EventName, HarnessEvent, NewHarnessEvent } from '@uw/contracts';
+import type { HarnessEvent, NewHarnessEvent } from '@uw/contracts';
 import type { AnyExecutor } from '../any-database.ts';
 import { oneOf } from '../checks.ts';
 import { harnessEvents } from '../schema.ts';
 import { refusing } from './refusal.ts';
 import { toEvent } from './rows.ts';
-import type { EventPage, EventQuery, HarnessEventsGateway } from './types.ts';
+import type { BreakerEventName, EventPage, EventQuery, HarnessEventsGateway } from './types.ts';
 
 const maxPage = 100;
 
@@ -94,7 +94,7 @@ async function createdFor(
 
 export function latestNamedQuery(
   executor: AnyExecutor,
-  names: readonly EventName[],
+  names: readonly BreakerEventName[],
   harnessId: string | null,
 ) {
   return executor
@@ -112,7 +112,7 @@ export function latestNamedQuery(
 
 async function latestNamed(
   executor: AnyExecutor,
-  names: readonly EventName[],
+  names: readonly BreakerEventName[],
   harnessId: string | null,
 ): Promise<HarnessEvent | null> {
   if (names.length === 0) return null;

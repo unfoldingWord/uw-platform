@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { newEventSchema, type EventName, type Identity } from '@uw/contracts';
-import type { RunRow, Store, StoreTransaction } from '../ports.ts';
+import { newEventSchema, type Identity } from '@uw/contracts';
+import type { BreakerEventName, RunRow, Store, StoreTransaction } from '../ports.ts';
 import type { SeededPage } from './store-gateways.ts';
 import { at, hour, itemOf, refusedBy, seedHarness, uid } from './store-gateway-fixtures.ts';
 
@@ -131,11 +131,31 @@ function describeRefusals(subject: RunsSubject): void {
     expect(live).toBe(uid(0x3300 + 0x62));
   });
 
-  it('refuses a subscription run that carries a cost', async () => {
+  it('refuses a hibernated run that does not say why', async () => {
+    const outcome = await refusedBy(async (tx) => {
+      await seedItems(tx, 0x3500, 'gateway-runs-hibernated', 1);
+      await tx.harnessRuns.write.insert(runOf(0x3500, 1, 1, { outcome: 'hibernated' }));
+    }, subject().store);
+    expect(outcome).toMatchObject({ code: '23514', constraint: 'harness_runs_hibernated_has_why' });
+  });
+}
+
+const costs: readonly (readonly [string, Partial<RunRow>])[] = [
+  ['a model cost', { costMinor: 7 }],
+  ['a compute cost', { computeMinor: 4 }],
+];
+
+const unknownLinks: readonly (readonly [string, Partial<RunRow>, string])[] = [
+  ['delegation', { delegationId: uid(0x34fe) }, 'harness_runs_delegation_id_delegations_id_fk'],
+  ['persona page', { personaPageId: uid(0x34ff) }, 'harness_runs_persona_page_id_pages_id_fk'],
+];
+
+function describeLinkAndCostRefusals(subject: RunsSubject): void {
+  it.each(costs)('refuses a subscription run that carries %s', async (_cost, carried) => {
     const outcome = await refusedBy(async (tx) => {
       await seedItems(tx, 0x3400, 'gateway-runs-subscription', 1);
       await tx.harnessRuns.write.insert(
-        runOf(0x3400, 1, 1, { costBasis: 'subscription', computeMinor: 4 }),
+        runOf(0x3400, 1, 1, { costBasis: 'subscription', ...carried }),
       );
     }, subject().store);
     expect(outcome).toMatchObject({
@@ -144,12 +164,12 @@ function describeRefusals(subject: RunsSubject): void {
     });
   });
 
-  it('refuses a hibernated run that does not say why', async () => {
+  it.each(unknownLinks)('refuses a run naming an unknown %s', async (_link, named, constraint) => {
     const outcome = await refusedBy(async (tx) => {
-      await seedItems(tx, 0x3500, 'gateway-runs-hibernated', 1);
-      await tx.harnessRuns.write.insert(runOf(0x3500, 1, 1, { outcome: 'hibernated' }));
+      await seedItems(tx, 0x3400, 'gateway-runs-links', 1);
+      await tx.harnessRuns.write.insert(runOf(0x3400, 1, 1, named));
     }, subject().store);
-    expect(outcome).toMatchObject({ code: '23514', constraint: 'harness_runs_hibernated_has_why' });
+    expect(outcome).toMatchObject({ code: '23503', constraint });
   });
 }
 
@@ -183,7 +203,7 @@ function describeLive(subject: RunsSubject): void {
   });
 }
 
-function breakerEvent(base: number, n: number, name: EventName, minute: number) {
+function breakerEvent(base: number, n: number, name: BreakerEventName, minute: number) {
   return newEventSchema.parse({
     eventId: uid(base + 0x40 + n),
     harnessId: uid(base),
@@ -199,7 +219,7 @@ function breakerEvent(base: number, n: number, name: EventName, minute: number) 
 
 function describeLatestNamed(subject: RunsSubject): void {
   it('answers the newest event with one of the names, in one harness or in any, and null when none', async () => {
-    const names: readonly EventName[] = ['breaker_holding', 'breaker_open'];
+    const names: readonly BreakerEventName[] = ['breaker_holding', 'breaker_open'];
     const result = await subject().store.transaction(async (tx) => {
       await seedHarness(tx, 0x3800, 'gateway-runs-latest-a');
       await seedHarness(tx, 0x3900, 'gateway-runs-latest-b');
@@ -212,7 +232,7 @@ function describeLatestNamed(subject: RunsSubject): void {
       return {
         harness: (await read.latestNamed(names, uid(0x3800)))?.eventId,
         any: (await read.latestNamed(names, null))?.eventId,
-        none: await read.latestNamed(['hosted_builder_set'], uid(0x3800)),
+        none: await read.latestNamed(['breaker_pausing'], uid(0x3900)),
         empty: await read.latestNamed([], null),
       };
     });
@@ -225,6 +245,20 @@ function describeLatestNamed(subject: RunsSubject): void {
   });
 }
 
+const personaFrontmatter = {
+  identity: 'agent:builder',
+  owner: 'human:00000000-0000-4000-8000-000000000001',
+  harness: uid(0x3a00),
+  toolset: ['read_page', 'claim_item'],
+  run_shape: 'workflow-run',
+  engine: 'claude-messages',
+  model: 'claude-sonnet-4-5',
+  provider: null,
+  budget: { monthly_minor: 5000, currency: 'USD' },
+  capability: 'build',
+  requires_tools: [],
+};
+
 function personaPage(n: number, overrides: Partial<SeededPage>, frontmatter: object): SeededPage {
   return {
     id: uid(0x3a00 + 0x20 + n),
@@ -235,24 +269,34 @@ function personaPage(n: number, overrides: Partial<SeededPage>, frontmatter: obj
     bodyMd: 'body',
     slug: `gateway-runs-persona-${n}`,
     ...overrides,
-    frontmatter: { identity: 'agent:builder', harness: uid(0x3a00), ...frontmatter },
+    frontmatter: { ...personaFrontmatter, ...frontmatter },
   };
 }
 
+async function seedPersonas(subject: RunsSubject): Promise<void> {
+  await subject().store.transaction((tx) => seedHarness(tx, 0x3a00, 'gateway-runs-persona'));
+  await subject().seedPage(personaPage(1, {}, {}));
+  await subject().seedPage(
+    personaPage(2, { status: 'suggested' }, { identity: 'agent:suggested' }),
+  );
+  await subject().seedPage(personaPage(3, {}, { identity: 'agent:twin' }));
+  await subject().seedPage(personaPage(4, {}, { identity: 'agent:twin' }));
+  await subject().seedPage(personaPage(5, {}, { identity: 'agent:broken', toolset: 'all' }));
+}
+
 function describeActivePersona(subject: RunsSubject): void {
-  it('finds the active persona page by identity and harness, and null otherwise', async () => {
-    await subject().store.transaction((tx) => seedHarness(tx, 0x3a00, 'gateway-runs-persona'));
-    await subject().seedPage(personaPage(1, {}, {}));
-    await subject().seedPage(
-      personaPage(2, { status: 'suggested' }, { identity: 'agent:suggested' }),
-    );
+  it('finds the one active persona page by identity and harness, and null when none, several or malformed', async () => {
+    await seedPersonas(subject);
     const result = await subject().store.transaction(async (tx) => {
-      const read = tx.pages.read;
+      const read = (identity: string, harnessId = uid(0x3a00)) =>
+        tx.pages.read.activePersona(identity as Identity, harnessId);
       return {
-        found: (await read.activePersona(builder, uid(0x3a00)))?.id,
-        suggested: await read.activePersona('agent:suggested' as Identity, uid(0x3a00)),
-        otherHarness: await read.activePersona(builder, uid(0x3aff)),
-        otherIdentity: await read.activePersona('agent:other' as Identity, uid(0x3a00)),
+        found: (await read('agent:builder'))?.id,
+        suggested: await read('agent:suggested'),
+        otherHarness: await read('agent:builder', uid(0x3aff)),
+        otherIdentity: await read('agent:other'),
+        ambiguous: await read('agent:twin'),
+        malformed: await read('agent:broken'),
       };
     });
     expect(result).toEqual({
@@ -260,6 +304,8 @@ function describeActivePersona(subject: RunsSubject): void {
       suggested: null,
       otherHarness: null,
       otherIdentity: null,
+      ambiguous: null,
+      malformed: null,
     });
   });
 }
@@ -268,6 +314,7 @@ export function describeStoreRuns(adapter: string, subject: RunsSubject): void {
   describe(`DX-3 store runs gateway on ${adapter}`, () => {
     describeRoundTrip(subject);
     describeRefusals(subject);
+    describeLinkAndCostRefusals(subject);
     describeLive(subject);
     describeLatestNamed(subject);
     describeActivePersona(subject);

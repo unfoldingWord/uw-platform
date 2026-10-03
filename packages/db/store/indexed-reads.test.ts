@@ -1,13 +1,18 @@
-import { sql } from 'drizzle-orm';
+import { sql, type SQL } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { AnyExecutor } from '../any-database.ts';
 import { closeEmbeddedTemplate } from '../embedded.ts';
 import { databaseTargets, type DatabaseTarget, type OpenedDatabase } from '../test-targets.ts';
 import { latestNamedQuery } from './events.ts';
+import { liveRuns, runsQuery } from './runs.ts';
 
 afterAll(closeEmbeddedTemplate);
 
 const harness = '00000000-0000-4000-8000-0000000000b1';
+const item = '00000000-0000-4000-8000-0000000000d1';
+
+const breakers = (harnessId: string | null) => (tx: AnyExecutor) =>
+  latestNamedQuery(tx, ['breaker_holding', 'breaker_open'], harnessId);
 
 function rowsOf(result: unknown): readonly unknown[] {
   if (Array.isArray(result)) return result;
@@ -18,11 +23,12 @@ function rowsOf(result: unknown): readonly unknown[] {
   return [];
 }
 
-async function planOf(db: AnyExecutor, harnessId: string | null): Promise<string> {
+type Planned = { getSQL(): SQL };
+
+async function planOf(db: AnyExecutor, query: (tx: AnyExecutor) => Planned): Promise<string> {
   return db.transaction(async (tx) => {
     await tx.execute(sql`SET LOCAL enable_seqscan = off`);
-    const query = latestNamedQuery(tx, ['breaker_holding', 'breaker_open'], harnessId);
-    const result: unknown = await tx.execute(sql`EXPLAIN ${query.getSQL()}`);
+    const result: unknown = await tx.execute(sql`EXPLAIN ${query(tx).getSQL()}`);
     return rowsOf(result)
       .map((row) => JSON.stringify(row))
       .join('\n');
@@ -41,15 +47,25 @@ function describeTarget(target: DatabaseTarget): void {
   afterAll(() => opened?.close());
 
   it('reads the newest breaker event across every harness through the breaker index', async () => {
-    expect(await planOf(db(), null)).toContain('harness_events_breaker_latest');
+    expect(await planOf(db(), breakers(null))).toContain('harness_events_breaker_latest');
   });
 
   it('reads the newest breaker event of one harness through the breaker index', async () => {
-    expect(await planOf(db(), harness)).toContain('harness_events_breaker_latest');
+    expect(await planOf(db(), breakers(harness))).toContain('harness_events_breaker_latest');
+  });
+
+  it('reads the live runs of one harness through the live-run index', async () => {
+    const plan = await planOf(db(), (tx) => runsQuery(tx, liveRuns({ harnessId: harness })));
+    expect(plan).toContain('harness_runs_live');
+  });
+
+  it('reads the live run of one item through an index on the item', async () => {
+    const plan = await planOf(db(), (tx) => runsQuery(tx, liveRuns({ itemId: item })));
+    expect(plan).toMatch(/Index Scan using harness_runs_(one_live_per_item|item)\b/);
   });
 }
 
-describe('latestNamed does not scan the whole event log', () => {
+describe('the breaker and live-run reads do not scan their tables', () => {
   describe.each(databaseTargets.map((target) => [target.name, target] as const))(
     'on the %s database',
     (_name, target) => describeTarget(target),
