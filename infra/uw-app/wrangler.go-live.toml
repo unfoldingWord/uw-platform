@@ -52,6 +52,11 @@ queue = "uw-ingest-events-staging-dlq"
 name = "HARNESS_HUB"
 class_name = "HarnessHub"
 
+[[env.staging.workflows]]
+name = "harness-run-staging"
+binding = "HARNESS_RUN"
+class_name = "HarnessRun"
+
 [env.production]
 name = "uw-app"
 workers_dev = false
@@ -85,6 +90,11 @@ queue = "uw-ingest-events-production-dlq"
 [[env.production.durable_objects.bindings]]
 name = "HARNESS_HUB"
 class_name = "HarnessHub"
+
+[[env.production.workflows]]
+name = "harness-run-production"
+binding = "HARNESS_RUN"
+class_name = "HarnessRun"
 
 [env.preview]
 workers_dev = true
