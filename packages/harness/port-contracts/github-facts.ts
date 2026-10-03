@@ -192,6 +192,11 @@ function diffCases(open: () => Promise<GithubFactsSubject>): void {
     }
   });
 
+  diffBudgetCases(open);
+  diffRangeCases(open);
+}
+
+function diffBudgetCases(open: () => Promise<GithubFactsSubject>): void {
   it('answers too large, without the text, when the diff exceeds the budget', async () => {
     const subject = await open();
     await subject.givenDiff(diffRef, diffRange, diffText);
@@ -203,6 +208,18 @@ function diffCases(open: () => Promise<GithubFactsSubject>): void {
     }
   });
 
+  it('answers too large, without the text, for a budget that is not a non-negative safe integer', async () => {
+    const subject = await open();
+    await subject.givenDiff(diffRef, diffRange, diffText);
+    for (const budget of [Number.NaN, Infinity, -Infinity, -1, diffBytes + 0.5, 2 ** 53]) {
+      const answer = await subject.facts.diff(diffRef, diffRange, budget);
+      expect(answer.kind).toBe('too_large');
+      expect(answer).not.toHaveProperty('text');
+    }
+  });
+}
+
+function diffRangeCases(open: () => Promise<GithubFactsSubject>): void {
   it('answers the diff of the range asked, not of another head', async () => {
     const subject = await open();
     await subject.givenDiff(diffRef, diffRange, diffText);

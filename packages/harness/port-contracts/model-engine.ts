@@ -184,6 +184,8 @@ function describeSpend(open: () => Promise<ModelEngineSubject>): void {
     const reading = await subject.engine.spend(since);
     expect(reading.spentMinor).toBe(0);
     expect(Number.isNaN(reading.asOf.getTime())).toBe(false);
+    expect(reading.asOf.getTime()).toBeGreaterThanOrEqual(since.getTime());
+    expect(reading.asOf.getTime()).toBeLessThanOrEqual(subject.now().getTime());
   });
 }
 
