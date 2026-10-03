@@ -10,12 +10,19 @@ export function describeHarnessPause(subject: RemovalSubject): void {
     const seen = await subject().store.transaction(async (tx) => {
       await seedHarness(tx, 0x2500, 'gateway-pause');
       const pausedOf = async () => (await tx.harnesses.read.byId(uid(0x2500)))?.paused;
-      await tx.harnesses.write.setPaused(uid(0x2500), true);
+      const set = await tx.harnesses.write.setPaused(uid(0x2500), true);
       const paused = await pausedOf();
-      await tx.harnesses.write.setPaused(uid(0x2500), false);
-      return [paused, await pausedOf()];
+      const unset = await tx.harnesses.write.setPaused(uid(0x2500), false);
+      return [set, paused, unset, await pausedOf()];
     });
-    expect(seen).toEqual([true, false]);
+    expect(seen).toEqual([true, true, true, false]);
+  });
+
+  it('DX-3 reports that no harness was paused when the id names none', async () => {
+    const found = await subject().store.transaction((tx) =>
+      tx.harnesses.write.setPaused(uid(0x25fe), true),
+    );
+    expect(found).toBe(false);
   });
 }
 
@@ -23,10 +30,18 @@ export function describeStageRemoval(subject: RemovalSubject): void {
   it('DX-3 removes a stage that holds no item', async () => {
     const keys = await subject().store.transaction(async (tx) => {
       const { review } = await seedHarness(tx, 0x2600, 'gateway-remove');
-      await tx.harnessStages.write.remove(review.id);
-      return (await tx.harnessStages.read.forHarness(uid(0x2600))).map((stage) => stage.key);
+      const removed = await tx.harnessStages.write.remove(review.id);
+      const left = await tx.harnessStages.read.forHarness(uid(0x2600));
+      return { removed, keys: left.map((stage) => stage.key) };
     });
-    expect(keys).toEqual(['build', 'ship']);
+    expect(keys).toEqual({ removed: true, keys: ['build', 'ship'] });
+  });
+
+  it('DX-3 reports that no stage was removed when the id names none', async () => {
+    const removed = await subject().store.transaction((tx) =>
+      tx.harnessStages.write.remove(uid(0x26fe)),
+    );
+    expect(removed).toBe(false);
   });
 
   it('DX-3 refuses to remove a stage that holds an item, naming harness_items_stage_fk', async () => {
