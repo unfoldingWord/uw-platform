@@ -13,6 +13,7 @@ import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
 import { lapseDrafts, LEASE_MS, leaseLapsed } from './leases.ts';
+import { pausedRefusal } from './paused.ts';
 import { draft, recordContext, recordItemEvents, type RecordContext } from './record.ts';
 
 type ClaimPorts = Pick<Ports, 'clock' | 'githubFacts' | 'grants' | 'ids' | 'store'>;
@@ -62,7 +63,8 @@ function pickupRefusal(caller: Caller, stage: Stage): Refused | null {
 
 function lockedGuards(scene: Scene, item: ItemState): Refused | null {
   if (item.stageKey !== scene.stage.key) return refused('not_permitted', { why: 'moved' });
-  return gateRefusal(item) ?? pickupRefusal(scene.caller, scene.stage);
+  const { caller, harness, stage } = scene;
+  return gateRefusal(item) ?? pickupRefusal(caller, stage) ?? pausedRefusal(caller, harness, stage);
 }
 
 async function actingGuard(
@@ -158,10 +160,12 @@ async function claimIn(
   await tx.lock(lockKeys.stageClaims(scene.stage.id));
   const item = await tx.harnessItems.read.lock(input.itemId);
   if (item === null) return refused('item_not_found', { itemId: input.itemId });
-  const stages = await tx.harnessStages.read.forHarness(scene.harness.id);
+  const harness = await tx.harnesses.read.byId(scene.harness.id);
+  if (harness === null) return refused('harness_not_found', { harnessId: scene.harness.id });
+  const stages = await tx.harnessStages.read.forHarness(harness.id);
   const stage = stages.find((entry) => entry.id === scene.stage.id);
   if (stage === undefined) return refused('stage_not_found', { stage: scene.stage.key });
-  const locked = { ...scene, stage };
+  const locked = { ...scene, harness, stage };
   const stale = lockedGuards(locked, item);
   if (stale !== null) return stale;
   const denied = await actingGuard(tx, ports, locked, item, input.delegationId);

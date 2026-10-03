@@ -6,6 +6,7 @@ import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.
 import type { Ports, StoreTransaction } from '../ports.ts';
 import { expireLapsedLease, LEASE_MS, LEASE_WARNING_MS, leaseLapsed } from './leases.ts';
 import { draft, recordContext, recordItemEvents, type RecordContext } from './record.ts';
+import { pausedRefusal } from './paused.ts';
 import { holdsClaim } from './release.ts';
 
 type RunStep = EventEvidence['run_step_recorded']['step'];
@@ -57,6 +58,18 @@ export async function heldStanding(
   return refused('not_permitted', { harnessId: harness.id });
 }
 
+async function stepPaused(
+  tx: StoreTransaction,
+  caller: Caller,
+  item: ItemState,
+): Promise<Refused | null> {
+  const harness = await tx.harnesses.read.byId(item.harnessId);
+  const stages = await tx.harnessStages.read.forHarness(item.harnessId);
+  const stage = stages.find((entry) => entry.key === item.stageKey);
+  if (harness === null || stage === undefined) return null;
+  return pausedRefusal(caller, harness, stage);
+}
+
 function stepDraft(input: RunStepInput | null, leaseExpiresAt: string) {
   if (input === null) return draft('lease_renewed', { leaseExpiresAt });
   return draft('run_step_recorded', {
@@ -86,6 +99,8 @@ async function renewIn(
   const context = recordContext(ports, caller, at);
   const notHolder = await holderRefusal(tx, caller, item);
   if (notHolder !== null) return notHolder;
+  const halted = input === null ? null : await stepPaused(tx, caller, item);
+  if (halted !== null) return halted;
   const standing = await heldStanding(tx, ports, context, { caller, item });
   if (standing !== null) return standing;
   if (leaseLapsed(item, at)) {
