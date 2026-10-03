@@ -21,6 +21,7 @@ import {
   type RunWorld,
 } from '../runs.ts';
 import { createWorld, type World } from '../world.ts';
+import { readWorldLog } from '../runner/log.ts';
 
 afterAll(closeEmbeddedTemplate);
 
@@ -33,6 +34,7 @@ async function inWorld(make: Make, work: (watched: Watched) => Promise<void>): P
   try {
     const { world, calls } = watchingRuns(base);
     await work({ scene: await make(world), calls });
+    expect((await readWorldLog(base.adapters.store)).drift).toEqual([]);
   } finally {
     await base.close();
   }
@@ -278,6 +280,26 @@ async function notParked({ scene }: Watched): Promise<void> {
   expect((await runOf(scene.world, runId))?.outcome).toBe('running');
 }
 
+async function parkedByAnother({ scene }: Watched): Promise<void> {
+  const parked = await parkedRun(scene);
+  value(await decide(parked, 'take_over'));
+  const person = simCaller(scene.world, scene.admin);
+  const resubmitted = await scene.world.kernel.items.submit(person, {
+    itemId: scene.itemId,
+    to: null,
+    evidence: {},
+    change: null,
+  });
+  expect(value(resubmitted).result).toBe('parked');
+  const { kernel, caller } = host(scene);
+  const before = await countOf(scene);
+  const outcome = await kernel.hibernateAtGate(caller, parked.runId);
+  expect(reasonOf(outcome)).toBe('not_permitted');
+  expect(detailOf(outcome)).toEqual({ why: 'not_parked' });
+  expect(await countOf(scene)).toBe(before);
+  expect((await runOf(scene.world, parked.runId))?.outcome).toBe('running');
+}
+
 async function onlyTheRunHost({ scene }: Watched): Promise<void> {
   const parked = await parkedRun(scene);
   const kernel = scene.world.kernel.runs;
@@ -388,6 +410,8 @@ describe('kernel.runs lifecycle', () => {
   scopeIt('a submit at a checks gate is noted on the run', scopeGateMet);
 
   scopeIt('a run whose item is not parked is refused not_parked', notParked);
+
+  gateIt('a run whose item a person parked is refused not_parked', parkedByAnother);
 
   gateIt('refuses every host member to any caller but the run host', onlyTheRunHost);
 
