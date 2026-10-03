@@ -51,3 +51,15 @@ export function backingOff(events: readonly HarnessEvent[], persona: Identity, a
   const window = Math.min(FIRST_BACKOFF_MS * 2 ** (streak.count - 1), BACKOFF_CAP_MS);
   return at.getTime() - new Date(streak.last).getTime() < window;
 }
+
+const reviewed: ReadonlySet<unknown> = new Set(['review_posted', 'review_withheld']);
+
+function reviewedNext(done: boolean, event: HarnessEvent, persona: Identity): boolean {
+  if (setsHead(event)) return false;
+  if (event.actor !== persona || event.name !== 'run_completed') return done;
+  return done || reviewed.has(event.evidence['result']);
+}
+
+export function reviewedAtHead(events: readonly HarnessEvent[], persona: Identity): boolean {
+  return events.reduce<boolean>((done, event) => reviewedNext(done, event, persona), false);
+}

@@ -14,6 +14,9 @@ export function platformGitHubFacts(
       github === null
         ? notWiredCall('githubFacts', 'refresh')
         : refreshPullRequest(github, db, ref, clock.now()),
-    diff: async () => ({ kind: 'unavailable', reason: 'not_wired' }),
+    diff: async (ref, range, budgetBytes) =>
+      github === null
+        ? { kind: 'unavailable', reason: 'not_wired' }
+        : github.open().diff(ref.repo, range.base, range.head, budgetBytes),
   };
 }

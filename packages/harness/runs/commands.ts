@@ -14,11 +14,15 @@ import {
   type FailInput,
   type HaltReason,
 } from './lifecycle.ts';
+import { postReview, reviewDiff, type PostReviewInput, type ReviewDiff } from './review.ts';
 import { runScene } from './scene.ts';
 import { startRun } from './start.ts';
 import type { RunScene, StartedRun, StartRunInput } from './types.ts';
 
-type RunPorts = Pick<Ports, 'clock' | 'githubFacts' | 'grants' | 'ids' | 'store' | 'runs'>;
+type RunPorts = Pick<
+  Ports,
+  'clock' | 'connectors' | 'githubFacts' | 'grants' | 'ids' | 'store' | 'runs'
+>;
 
 type RunOutcome = Promise<KernelOutcome<RunRow>>;
 
@@ -33,6 +37,8 @@ export type RunCommands = {
   stop(caller: Caller, input: StopInput): RunOutcome;
   prompt(caller: Caller, input: PromptInput): RunOutcome;
   beat(caller: Caller, input: BeatInput): Promise<KernelOutcome<Beaten>>;
+  reviewDiff(caller: Caller, runId: string): Promise<KernelOutcome<ReviewDiff>>;
+  postReview(caller: Caller, runId: string, input: PostReviewInput): RunOutcome;
 };
 
 type HostMember<A extends readonly unknown[], R> = (
@@ -63,5 +69,9 @@ export function createRunCommands(ports: RunPorts): RunCommands {
     stop: (caller, input) => stop(ports, caller, input),
     prompt: (caller, input) => prompt(ports, caller, input),
     beat: hostOnly((caller, input: BeatInput) => beat(ports, caller, input)),
+    reviewDiff: hostOnly((caller, runId: string) => reviewDiff(ports, caller, runId)),
+    postReview: hostOnly((caller, runId: string, input: PostReviewInput) =>
+      postReview(ports, caller, runId, input),
+    ),
   };
 }

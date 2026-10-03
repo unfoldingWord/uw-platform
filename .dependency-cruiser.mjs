@@ -33,8 +33,13 @@ const appTesting = '^apps/(uw-app|uw-ingest)/(github/)?testing/';
 const gateKernel = '^apps/uw-app/commands/person/gate-kernel\\.ts$';
 const gateGitHub = '^apps/uw-app/commands/person/gate-github\\.ts$';
 const commandCapabilities = '^apps/uw-app/commands/capabilities\\.ts$';
-const readRoots = ['^apps/uw-app/queue/worker\\.ts$', gateKernel, gateGitHub];
-const appConfigRoots = ['^apps/uw-app/(queue/worker|cron/github-sweep)\\.ts$', gateGitHub];
+const runHostDeps = '^apps/uw-app/runs/deps\\.ts$';
+const readRoots = ['^apps/uw-app/queue/worker\\.ts$', gateKernel, gateGitHub, runHostDeps];
+const appConfigRoots = [
+  '^apps/uw-app/(queue/worker|cron/github-sweep)\\.ts$',
+  gateGitHub,
+  runHostDeps,
+];
 
 const engineKeys =
   '(claude-messages|openrouter-messages|claude-code-sandbox|codex-sandbox|claude-managed-agent|external)';
@@ -224,7 +229,7 @@ export default {
     {
       name: 'github-reads-only-in-github-and-composition-roots',
       comment:
-        'The read-only GitHub client and its transport are imported only under apps/uw-app/github, by the queue root, and by the person gate kernel and its GitHub opener.',
+        'The read-only GitHub client and its transport are imported only under apps/uw-app/github, by the queue root, by the person gate kernel and its GitHub opener, and by the run host deps.',
       severity: 'error',
       from: { pathNot: ['^apps/uw-app/github/', ...readRoots, testFile] },
       to: { path: github('(client|transport)') },
@@ -240,10 +245,25 @@ export default {
     {
       name: 'github-session-only-in-the-github-clients',
       comment:
-        'Only the read client, the comment writer and the ship writes open a GitHub session.',
+        'Only the read client and its diff read, the comment writer, the ship writes and the Reviewer review writes open a GitHub session.',
       severity: 'error',
-      from: { pathNot: [github('(client|comments|ship-writes)'), testFile] },
+      from: { pathNot: [github('(client|diff|comments|ship-writes|review-writes)'), testFile] },
       to: { path: github('session') },
+    },
+    {
+      name: 'review-writes-only-in-the-connectors-adapter',
+      comment:
+        'The Reviewer review writes are built only by the platform connectors adapter, which posts only for a kernel wired with the Reviewer Apps (the run host).',
+      severity: 'error',
+      from: { pathNot: ['^apps/uw-app/ports/connectors\\.ts$', testFile] },
+      to: { path: github('review-writes') },
+    },
+    {
+      name: 'reviewer-apps-only-in-the-run-host',
+      comment: 'Only the run host reads the Reviewer App configuration.',
+      severity: 'error',
+      from: { pathNot: [runHostDeps, testFile] },
+      to: { path: github('reviewer-apps') },
     },
     {
       name: 'github-token-and-octokit-only-in-the-session',

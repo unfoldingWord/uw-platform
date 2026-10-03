@@ -9,6 +9,7 @@ type RecordedRequest = {
   readonly path: string;
   readonly search: string;
   readonly authorization: string | null;
+  readonly accept: string | null;
   readonly body: unknown;
 };
 
@@ -74,6 +75,7 @@ export function fixtureGitHub(): FixtureGitHub {
       path: url.pathname,
       search: url.search,
       authorization: new Headers(init?.headers).get('authorization'),
+      accept: new Headers(init?.headers).get('accept'),
       body: bodyOf(init),
     });
     return Promise.resolve(responseOf(next(`${method} ${url.pathname}`)));

@@ -4,7 +4,7 @@ import { readAllEvents } from '../items/record.ts';
 import { accepted, refused, type KernelOutcome } from '../outcome.ts';
 import type { Delegation, Ports, StoreTransaction } from '../ports.ts';
 import { pollQueue } from '../reads/poll.ts';
-import { backingOff } from './backoff.ts';
+import { backingOff, reviewedAtHead } from './backoff.ts';
 import { personaPageOf } from './persona.ts';
 import { startRun } from './start.ts';
 import type { StartedRun } from './types.ts';
@@ -59,7 +59,8 @@ async function firstItem(
   if (polled.status !== 'accepted') return null;
   for (const item of polled.value) {
     const events = await readAllEvents(tx, item.harnessId, item.itemId);
-    if (!backingOff(events, delegation.persona, at)) return item.itemId;
+    const { persona } = delegation;
+    if (!backingOff(events, persona, at) && !reviewedAtHead(events, persona)) return item.itemId;
   }
   return null;
 }

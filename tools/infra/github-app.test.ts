@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { parse } from 'smol-toml';
 import { describe, expect, it } from 'vitest';
 import manifest from '../../infra/github/app-manifest.json' with { type: 'json' };
+import { reviewerIdentities } from '../../packages/harness/github/reviewers.ts';
 
 const secrets = [
   'GITHUB_APP_ID',
@@ -67,5 +68,31 @@ describe('GH-1 the GitHub App is declared with least privilege', () => {
     for (const name of secrets) {
       expect(readme).toContain(`wrangler secret put ${name} --env <name>`);
     }
+  });
+});
+
+const reviewerManifests = [
+  ['infra/github/reviewer-app-manifest.json', 'uw-reviewer'],
+  ['infra/github/reviewer-codex-app-manifest.json', 'uw-reviewer-codex'],
+] as const;
+
+type ReviewerManifest = {
+  readonly name: string;
+  readonly public: boolean;
+  readonly default_permissions: Record<string, string>;
+  readonly default_events: readonly string[];
+  readonly hook_attributes?: unknown;
+};
+
+describe('HE-4 HE-9 each Reviewer identity is its own App with pull request write and nothing else', () => {
+  it.each(reviewerManifests)('%s registers %s', (file, slug) => {
+    const declared = JSON.parse(readFileSync(file, 'utf8')) as ReviewerManifest;
+    expect(declared.name).toBe(slug);
+    expect(reviewerIdentities.map((entry) => entry.reviewer)).toContain(slug);
+    expect(declared.default_permissions).toEqual({ metadata: 'read', pull_requests: 'write' });
+    expect(declared.default_events).toEqual([]);
+    expect(declared.hook_attributes).toBeUndefined();
+    expect(declared.public).toBe(false);
+    expect(secretText.test(readFileSync(file, 'utf8'))).toBe(false);
   });
 });
