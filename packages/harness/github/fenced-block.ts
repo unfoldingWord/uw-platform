@@ -62,11 +62,13 @@ function closingIndex(raw: readonly string[]): number | 'ambiguous' {
   return -1;
 }
 
+export function readsAsBlockLine(line: string, keys: readonly string[]): boolean {
+  const detected = detectionForm(line);
+  return isCandidate(detected) || isKeyLine(detected, keys);
+}
+
 function strayAfter(raw: readonly string[], end: number, keys: readonly string[]): boolean {
-  return raw
-    .slice(end + 1)
-    .map(detectionForm)
-    .some((line) => isCandidate(line) || isKeyLine(line, keys));
+  return raw.slice(end + 1).some((line) => readsAsBlockLine(line, keys));
 }
 
 function headBlock(raw: readonly string[], opening: string, keys: readonly string[]): BlockRead {

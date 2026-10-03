@@ -48,7 +48,7 @@ function refused(problem: DeclarationProblem): {
   return { ok: false, problem };
 }
 
-function readFields(lines: readonly string[]): Read<Fields> {
+export function readFields(lines: readonly string[]): Read<Fields> {
   const fields = new Map<string, string>();
   for (const line of lines) {
     if (line === '') continue;
