@@ -1,17 +1,30 @@
 import type { CapabilityWord, Harness, ItemState, Principal, RunOutcome } from '@uw/contracts';
-import { allowed, isSystemPrincipal } from '../access.ts';
+import { allowed } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { beatPrincipal } from '../delegations/beat.ts';
-import { assertDelegationLive, recordLapse, type Liveness } from '../delegations/live.ts';
+import { assertDelegationLive, markLapse, type Liveness } from '../delegations/live.ts';
 import { lapseDrafts, leaseLapsed } from '../items/leases.ts';
-import { draft, recordContext, recordItemEvents, type RecordContext } from '../items/record.ts';
+import {
+  draft,
+  recordContext,
+  recordHarnessEvents,
+  recordItemEvents,
+  type RecordContext,
+} from '../items/record.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { Ports, RunRow, StoreTransaction } from '../ports.ts';
-import { personaOfPage } from './persona.ts';
+import { pinnedPersonaOf } from './persona.ts';
 import { ended, heldByRun } from './rows.ts';
 import type { RunScene } from './types.ts';
 
 type ScenePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
+
+type HeldItem = {
+  readonly item: ItemState;
+  readonly seen: RunRow;
+  readonly delegationId: string;
+  readonly outcomes: readonly RunOutcome[];
+};
 
 export type Locked = {
   readonly item: ItemState;
@@ -21,7 +34,7 @@ export type Locked = {
 
 type Lapsed = Extract<Liveness, { readonly live: false }>;
 
-type Standing = {
+type Standing = Locked & {
   readonly principal: Principal;
   readonly harness: Harness;
   readonly capability: CapabilityWord;
@@ -29,39 +42,64 @@ type Standing = {
 
 const runningOnly: readonly RunOutcome[] = ['running'];
 
-export async function lockedRun(
+function outcomeRefusal(run: RunRow, outcomes: readonly RunOutcome[]): Refused | null {
+  if (outcomes.includes(run.outcome)) return null;
+  return refused('not_permitted', { why: `run_${run.outcome}` });
+}
+
+export async function heldItem(
   tx: StoreTransaction,
   runId: string,
   outcomes: readonly RunOutcome[] = runningOnly,
-): Promise<Locked | Refused> {
+): Promise<HeldItem | Refused> {
   const missing = refused('run_not_found', { runId });
   const seen = await tx.harnessRuns.read.byId(runId);
-  if (seen === null || seen.runShape !== 'workflow-run') return missing;
-  const item = await tx.harnessItems.read.lock(seen.itemId);
-  const run = await tx.harnessRuns.read.lock(runId);
-  if (item === null || run === null || run.delegationId === null) return missing;
-  if (!outcomes.includes(run.outcome)) {
-    return refused('not_permitted', { why: `run_${run.outcome}` });
+  if (seen === null || seen.runShape !== 'workflow-run' || seen.delegationId === null) {
+    return missing;
   }
-  return { item, run, delegationId: run.delegationId };
+  const early = outcomeRefusal(seen, outcomes);
+  if (early !== null) return early;
+  const item = await tx.harnessItems.read.lock(seen.itemId);
+  if (item === null) return missing;
+  return { item, seen, delegationId: seen.delegationId, outcomes };
+}
+
+async function lockRun(tx: StoreTransaction, held: HeldItem): Promise<Locked | Refused> {
+  const run = await tx.harnessRuns.read.lock(held.seen.id);
+  if (run === null) return refused('run_not_found', { runId: held.seen.id });
+  return outcomeRefusal(run, held.outcomes) ?? { ...held, run };
+}
+
+export async function lockedRun(
+  tx: StoreTransaction,
+  runId: string,
+  outcomes: readonly RunOutcome[],
+): Promise<Locked | Refused> {
+  const held = await heldItem(tx, runId, outcomes);
+  return 'status' in held ? held : lockRun(tx, held);
 }
 
 async function stopForLapse(
   tx: StoreTransaction,
   context: RecordContext,
-  { item, run, delegationId }: Locked,
-  liveness: Lapsed,
+  held: HeldItem,
+  { delegation, why }: Lapsed,
 ): Promise<Refused> {
-  await tx.harnessRuns.write.update(ended(run, { outcome: 'stopped' }, context.at));
-  if (liveness.delegation !== null && liveness.why !== null) {
-    await recordLapse(tx, context, liveness.delegation, liveness.why);
+  const lapse =
+    delegation !== null && why !== null ? await markLapse(tx, context.at, delegation, why) : [];
+  const locked = await lockRun(tx, held);
+  if (!('status' in locked)) {
+    await tx.harnessRuns.write.update(ended(locked.run, { outcome: 'stopped' }, context.at));
   }
+  if (delegation !== null) await recordHarnessEvents(tx, context, delegation.harnessId, lapse);
+  if ('status' in locked) return locked;
+  const { item, run } = locked;
   const released = heldByRun(item, run) ? [draft('item_released', { holder: run.persona })] : [];
   await recordItemEvents(tx, context, item.itemId, [
     draft('run_stopped', { runId: run.id, why: 'delegation_lapsed' }),
     ...released,
   ]);
-  return refused('delegation_lapsed', { delegationId, why: liveness.why });
+  return refused('delegation_lapsed', { delegationId: held.delegationId, why });
 }
 
 function leaseLive(item: ItemState, run: RunRow, at: Date): boolean {
@@ -86,18 +124,20 @@ export async function standingOf(
   ports: ScenePorts,
   tx: StoreTransaction,
   context: RecordContext,
-  locked: Locked,
+  held: HeldItem,
 ): Promise<Standing | Refused> {
-  const { run, delegationId } = locked;
+  const { seen, delegationId } = held;
   const liveness = await assertDelegationLive(tx, ports, delegationId, context.at);
-  if (!liveness.live) return stopForLapse(tx, context, locked, liveness);
-  const harness = await tx.harnesses.read.byId(run.harnessId);
-  if (harness === null) return refused('harness_not_found', { harnessId: run.harnessId });
+  if (!liveness.live) return stopForLapse(tx, context, held, liveness);
+  const harness = await tx.harnesses.read.byId(seen.harnessId);
+  if (harness === null) return refused('harness_not_found', { harnessId: seen.harnessId });
   const principal = beatPrincipal(liveness.delegation, liveness.grants, harness.jdArea, context.at);
   if (!allowed(principal, 'write', harness, context.at)) {
     return refused('not_permitted', { harnessId: harness.id });
   }
-  return { principal, harness, capability: liveness.delegation.capability };
+  const locked = await lockRun(tx, held);
+  if ('status' in locked) return locked;
+  return { ...locked, principal, harness, capability: liveness.delegation.capability };
 }
 
 export async function sceneWithin(
@@ -106,17 +146,20 @@ export async function sceneWithin(
   caller: RecordContext,
   runId: string,
 ): Promise<KernelOutcome<RunScene>> {
-  const locked = await lockedRun(tx, runId);
-  if ('status' in locked) return locked;
-  const { item, run } = locked;
-  const context = { ...caller, traceId: run.traceId };
-  const standing = await standingOf(ports, tx, context, locked);
-  if ('status' in standing) return standing;
-  if (!leaseLive(item, run, context.at)) return stopForLease(tx, context, locked);
-  const [facts] = await tx.pages.read.facts(run.personaPageId === null ? [] : [run.personaPageId]);
-  const persona = personaOfPage(facts);
+  const held = await heldItem(tx, runId);
+  if ('status' in held) return held;
+  const { seen } = held;
+  const [facts] = await tx.pages.read.facts(
+    seen.personaPageId === null ? [] : [seen.personaPageId],
+  );
+  const persona = pinnedPersonaOf(seen, facts);
   if ('status' in persona) return persona;
-  return accepted({ run, item, persona, ...standing });
+  const context = { ...caller, traceId: seen.traceId };
+  const standing = await standingOf(ports, tx, context, held);
+  if ('status' in standing) return standing;
+  const { item, run, principal, harness, capability } = standing;
+  if (!leaseLive(item, run, context.at)) return stopForLease(tx, context, standing);
+  return accepted({ run, item, persona, principal, harness, capability });
 }
 
 export async function runScene(
@@ -124,9 +167,6 @@ export async function runScene(
   caller: Caller,
   runId: string,
 ): Promise<KernelOutcome<RunScene>> {
-  if (!isSystemPrincipal(caller.actor)) {
-    return refused('not_permitted', { actor: caller.actor.identity });
-  }
   const context = recordContext(ports, caller, ports.clock.now());
   return ports.store.transaction((tx) => sceneWithin(ports, tx, context, runId));
 }

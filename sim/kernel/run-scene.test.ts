@@ -1,7 +1,9 @@
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
+import { rewritePageFrontmatter } from '@uw/db/test-seed';
 import { afterAll, describe, expect, it } from 'vitest';
 import { simCaller } from '../fixtures.ts';
 import {
+  builderFrontmatter,
   detailOf,
   harnessNames,
   itemEvents,
@@ -129,6 +131,38 @@ async function stopsOnLapsedLease(scene: Started): Promise<void> {
   expect((await itemOf(scene.world, scene.itemId))?.holder).toBeNull();
 }
 
+function rewritePage(scene: Started, change: Readonly<Record<string, unknown>>) {
+  const frontmatter = builderFrontmatter(scene, change);
+  return rewritePageFrontmatter(scene.world.database.db, scene.pageId, frontmatter);
+}
+
+async function answersThePin(scene: Started): Promise<void> {
+  await rewritePage(scene, { engine: 'codex-sandbox', model: 'gpt-5.5', provider: 'openai' });
+  const found = value(await sceneOf(scene));
+  expect(found.persona).toMatchObject({
+    identity: 'agent:builder',
+    engine: 'claude-messages',
+    model: 'claude-sonnet-5',
+    provider: 'anthropic',
+  });
+  expect(await newNames(scene)).toEqual([]);
+}
+
+async function refusesAnotherPage(scene: Started): Promise<void> {
+  const harnessesBefore = await harnessNames(scene);
+  const changes = [{ identity: 'agent:reviewer' }, { harness: scene.world.adapters.ids.next() }];
+  scene.world.adapters.clock.advance(16 * 60_000);
+  for (const change of changes) {
+    await rewritePage(scene, change);
+    const outcome = await sceneOf(scene);
+    expect(reasonOf(outcome)).toBe('not_permitted');
+    expect(detailOf(outcome)).toEqual({ why: 'run_elsewhere' });
+  }
+  expect(await newNames(scene)).toEqual([]);
+  expect(await harnessNames(scene)).toEqual(harnessesBefore);
+  expect((await runOf(scene.world, scene.runId))?.outcome).toBe('running');
+}
+
 describe('kernel.runs.scene', () => {
   startedIt(
     "HE-1 a step's principal is the delegation's beat principal at the step's instant",
@@ -136,6 +170,16 @@ describe('kernel.runs.scene', () => {
   );
 
   startedIt('refuses any caller but the run host, and an unknown run', onlyTheRunHost);
+
+  startedIt(
+    "HE-4 a scene answers the run's pinned engine, model and provider after the page changes",
+    answersThePin,
+  );
+
+  startedIt(
+    'a page now naming another identity or harness is refused run_elsewhere before the lease check and records nothing',
+    refusesAnotherPage,
+  );
 
   startedIt('HE-1 a scene for a hibernated run is refused run_hibernated', refusesHibernated);
 

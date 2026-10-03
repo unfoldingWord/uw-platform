@@ -1,4 +1,4 @@
-import { deviceOwnerSegment, type Harness, type ItemState } from '@uw/contracts';
+import { deviceOwnerSegment, type Harness, type ItemState, type Principal } from '@uw/contracts';
 import { allowed, isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { draft, recordContext, recordItemEvents, type RecordContext } from '../items/record.ts';
@@ -20,8 +20,8 @@ type Controlled = {
 
 type Scene = {
   readonly itemId: string;
+  readonly actor: Principal;
   readonly harness: Harness;
-  readonly run: RunRow | null;
   readonly at: Date;
 };
 
@@ -43,22 +43,14 @@ async function liveRun(tx: StoreTransaction, itemId: string): Promise<RunRow | n
   return stillLive ? run : null;
 }
 
-async function judged(
-  ports: ControlPorts,
-  tx: StoreTransaction,
-  caller: Caller,
-  scene: Scene,
-): Promise<RunRow | Refused> {
-  const { itemId, harness, run, at } = scene;
-  const personId = caller.actor.personId;
-  const grants = personId === null ? [] : await ports.grants.lockAndReread(tx, personId, at);
-  const actor = { ...caller.actor, grants: [...grants] };
-  if (!allowed(actor, 'read', harness, at)) return refused('item_not_found', { itemId });
+async function judged(tx: StoreTransaction, scene: Scene): Promise<RunRow | Refused> {
+  const { itemId, actor, harness, at } = scene;
+  const run = await liveRun(tx, itemId);
   if (run === null) return refused('run_not_found', { itemId });
   if (!allowed(actor, 'write', harness, at)) {
     return refused('not_permitted', { harnessId: harness.id });
   }
-  const owns = personId !== null && (await ownerOf(tx, run)) === personId;
+  const owns = actor.personId !== null && (await ownerOf(tx, run)) === actor.personId;
   if (owns || allowed(actor, 'admin', harness, at)) return run;
   return refused('not_permitted', { harnessId: harness.id });
 }
@@ -74,8 +66,11 @@ async function controlled(
   if (item === null) return refused('item_not_found', { itemId });
   const harness = await tx.harnesses.read.byId(item.harnessId);
   if (harness === null) return refused('item_not_found', { itemId });
-  const run = await liveRun(tx, itemId);
-  const judgement = await judged(ports, tx, caller, { itemId, harness, run, at });
+  const personId = caller.actor.personId;
+  const grants = personId === null ? [] : await ports.grants.lockAndReread(tx, personId, at);
+  const actor = { ...caller.actor, grants: [...grants] };
+  if (!allowed(actor, 'read', harness, at)) return refused('item_not_found', { itemId });
+  const judgement = await judged(tx, { itemId, actor, harness, at });
   if ('status' in judgement) return judgement;
   return { item, run: judgement, context: recordContext(ports, caller, at) };
 }

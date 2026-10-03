@@ -7,7 +7,6 @@ import type {
   RunResult,
   RunStop,
 } from '@uw/contracts';
-import { isSystemPrincipal } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import {
   draft,
@@ -20,7 +19,7 @@ import {
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { Ports, RunRow, StoreTransaction } from '../ports.ts';
 import { ended, heldByRun } from './rows.ts';
-import { lockedRun, sceneWithin, standingOf, type Locked } from './scene.ts';
+import { heldItem, lockedRun, sceneWithin, standingOf, type Locked } from './scene.ts';
 
 type HostPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
@@ -44,12 +43,6 @@ const PRINTABLE = /^[ -~]{1,500}$/;
 const REASON_LIMIT = 200;
 const LINE_BREAK = /[\r\n]/;
 
-function hostRefusal(caller: Caller): Refused | null {
-  return isSystemPrincipal(caller.actor)
-    ? null
-    : refused('not_permitted', { actor: caller.actor.identity });
-}
-
 function runContext(caller: RecordContext, run: RunRow): RecordContext {
   return { ...caller, actor: run.persona, traceId: run.traceId };
 }
@@ -60,8 +53,6 @@ function onRun(
   target: { readonly runId: string; readonly outcomes: readonly RunOutcome[] },
   work: Work,
 ): Promise<KernelOutcome<RunRow>> {
-  const denied = hostRefusal(caller);
-  if (denied !== null) return Promise.resolve(denied);
   const base = recordContext(ports, caller, ports.clock.now());
   return ports.store.transaction(async (tx) => {
     const locked = await lockedRun(tx, target.runId, target.outcomes);
@@ -100,15 +91,18 @@ export function hibernateAtGate(
   caller: Caller,
   runId: string,
 ): Promise<KernelOutcome<RunRow>> {
-  return onRun(ports, caller, { runId, outcomes: runningOnly }, async (tx, held) => {
-    const standing = await standingOf(ports, tx, held.context, held);
+  const base = recordContext(ports, caller, ports.clock.now());
+  return ports.store.transaction(async (tx) => {
+    const held = await heldItem(tx, runId, runningOnly);
+    if ('status' in held) return held;
+    const context = runContext(base, held.seen);
+    const standing = await standingOf(ports, tx, context, held);
     if ('status' in standing) return standing;
-    if (!(await parkedByRun(tx, held.item, held.run))) {
-      return refused('not_permitted', { why: 'not_parked' });
-    }
-    const next: RunRow = { ...held.run, outcome: 'hibernated', hibernatedFor: 'gate' };
+    const { item, run } = standing;
+    if (!(await parkedByRun(tx, item, run))) return refused('not_permitted', { why: 'not_parked' });
+    const next: RunRow = { ...run, outcome: 'hibernated', hibernatedFor: 'gate' };
     await tx.harnessRuns.write.update(next);
-    await recordItemEvents(tx, held.context, held.item.itemId, [
+    await recordItemEvents(tx, context, item.itemId, [
       draft('run_hibernated', { runId, why: 'gate' }),
     ]);
     return accepted(next);
@@ -143,8 +137,7 @@ export function fail(
   runId: string,
   input: FailInput,
 ): Promise<KernelOutcome<RunRow>> {
-  const malformed = input.detail !== null && !PRINTABLE.test(input.detail);
-  if (malformed && hostRefusal(caller) === null) {
+  if (input.detail !== null && !PRINTABLE.test(input.detail)) {
     return Promise.resolve(refused('malformed_command', { why: 'detail' }));
   }
   return onRun(ports, caller, { runId, outcomes: live }, (tx, held) => {
@@ -179,7 +172,7 @@ export async function holdPremise(
   runId: string,
   input: { readonly reason: string },
 ): Promise<KernelOutcome<RunRow>> {
-  const denied = hostRefusal(caller) ?? reasonRefusal(input.reason);
+  const denied = reasonRefusal(input.reason);
   if (denied !== null) return denied;
   const base = recordContext(ports, caller, ports.clock.now());
   return ports.store.transaction(async (tx) => {

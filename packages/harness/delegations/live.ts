@@ -1,5 +1,10 @@
 import type { DelegationLapse, Grant } from '@uw/contracts';
-import { draft, recordHarnessEvents, type RecordContext } from '../items/record.ts';
+import {
+  draft,
+  recordHarnessEvents,
+  type EventDraft,
+  type RecordContext,
+} from '../items/record.ts';
 import type { Delegation, Ports, StoreTransaction } from '../ports.ts';
 import { adminGrantOn } from './beat.ts';
 
@@ -51,14 +56,22 @@ export async function livenessOf(
   return { live: true, delegation, grants };
 }
 
+export async function markLapse(
+  tx: StoreTransaction,
+  at: Date,
+  delegation: Delegation,
+  why: DelegationLapse,
+): Promise<readonly EventDraft[]> {
+  if (!(await tx.delegations.write.markLapsed(delegation.id, at))) return [];
+  return [draft('delegation_lapsed', { delegationId: delegation.id, why })];
+}
+
 export async function recordLapse(
   tx: StoreTransaction,
   context: RecordContext,
   delegation: Delegation,
   why: DelegationLapse,
 ): Promise<void> {
-  if (!(await tx.delegations.write.markLapsed(delegation.id, context.at))) return;
-  await recordHarnessEvents(tx, context, delegation.harnessId, [
-    draft('delegation_lapsed', { delegationId: delegation.id, why }),
-  ]);
+  const drafts = await markLapse(tx, context.at, delegation, why);
+  await recordHarnessEvents(tx, context, delegation.harnessId, drafts);
 }
