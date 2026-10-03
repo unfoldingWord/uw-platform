@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, inArray, or, sql, type SQL } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import type { Database, Executor, Transaction } from '@uw/db/client';
 import { ghCheckRuns, ghIssues, ghMilestones, ghPrs, ghRepos, ghReviews } from '@uw/db/schema';
@@ -161,8 +161,40 @@ const sameComparison =
 const sameHeadOr = (column: string) =>
   sql.raw(`CASE WHEN ${sameComparison} THEN gh_prs.${column} END`);
 
+function placeholderFor(held: { readonly githubId: number; readonly fullName: string }): string {
+  const [owner] = held.fullName.split('/');
+  return `${owner}/moved.${held.githubId}`;
+}
+
+async function releaseNames(tx: Transaction, repos: readonly RepoRecord[]): Promise<void> {
+  const claimants = new Map(repos.map((repo) => [repo.fullName.toLowerCase(), repo.githubId]));
+  const holders = await tx
+    .select({ githubId: ghRepos.githubId, fullName: ghRepos.fullName })
+    .from(ghRepos)
+    .where(
+      or(
+        inArray(
+          ghRepos.githubId,
+          repos.map((repo) => repo.githubId),
+        ),
+        inArray(sql`lower(${ghRepos.fullName})`, [...claimants.keys()]),
+      ),
+    )
+    .orderBy(asc(ghRepos.githubId))
+    .for('update');
+  for (const held of holders) {
+    const claimant = claimants.get(held.fullName.toLowerCase());
+    if (claimant === undefined || claimant === held.githubId) continue;
+    await tx
+      .update(ghRepos)
+      .set({ fullName: placeholderFor(held) })
+      .where(eq(ghRepos.githubId, held.githubId));
+  }
+}
+
 async function upsertRepos(tx: Transaction, repos: readonly RepoRecord[], freshAt: Date) {
   if (repos.length === 0) return 0;
+  await releaseNames(tx, repos);
   const rows = await tx
     .insert(ghRepos)
     .values(repos.map((repo) => ({ ...repo, freshAt })))
