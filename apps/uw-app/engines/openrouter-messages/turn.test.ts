@@ -154,5 +154,5 @@ describe('openrouter-messages', () => {
 
   it("HE-4 calls go to AI Gateway's openrouter path", gatewayPath);
 
-  it("HE-4 the turn's cost comes from OpenRouter's usage in micro-units", costInMicros);
+  it("the turn's cost comes from OpenRouter's usage in micro-units", costInMicros);
 });
