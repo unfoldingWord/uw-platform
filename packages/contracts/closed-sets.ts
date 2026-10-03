@@ -65,3 +65,35 @@ export type GateStatus = z.infer<typeof gateStatusSchema>;
 export type BranchState = z.infer<typeof branchStateSchema>;
 export type RunOutcome = z.infer<typeof runOutcomeSchema>;
 export type DelegationLapse = z.infer<typeof delegationLapseSchema>;
+
+export const runHibernationSchema = z.enum(['gate', 'paused', 'breaker']);
+export const runStopSchema = z.enum([
+  'stopped_by_person',
+  'released',
+  'lease_expired',
+  'delegation_lapsed',
+  'gate_wait_expired',
+]);
+export const runFailureSchema = z.enum([
+  'retries_exhausted',
+  'provider_mismatch',
+  'start_failed',
+  'turn_limit',
+]);
+export const runResultSchema = z.enum([
+  'submitted',
+  'premise_held',
+  'decided',
+  'review_posted',
+  'review_withheld',
+  'review_refused',
+]);
+export const breakerLevelSchema = z.enum(['open', 'holding', 'pausing']);
+export const reviewVerdictSchema = z.enum(['approve', 'request_changes']);
+
+export type RunHibernation = z.infer<typeof runHibernationSchema>;
+export type RunStop = z.infer<typeof runStopSchema>;
+export type RunFailure = z.infer<typeof runFailureSchema>;
+export type RunResult = z.infer<typeof runResultSchema>;
+export type BreakerLevel = z.infer<typeof breakerLevelSchema>;
+export type ReviewVerdict = z.infer<typeof reviewVerdictSchema>;

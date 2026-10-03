@@ -103,3 +103,13 @@ describe('stage command bodies are bounded', () => {
     expect(commandSchema.safeParse({ ...reorder, order: many(51) }).success).toBe(false);
   });
 });
+
+describe('hosted Builder is turned on through a command', () => {
+  it('takes set_hosted_builder with a boolean enabled and nothing else', () => {
+    const base = { command: 'set_hosted_builder', requestId };
+    expect(commandSchema.safeParse({ ...base, enabled: true }).success).toBe(true);
+    expect(commandSchema.safeParse({ ...base, enabled: false }).success).toBe(true);
+    expect(commandSchema.safeParse(base).success).toBe(false);
+    expect(commandSchema.safeParse({ ...base, enabled: 'yes' }).success).toBe(false);
+  });
+});

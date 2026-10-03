@@ -4,10 +4,16 @@ import {
   connectorSchema,
   costBasisSchema,
   delegationLapseSchema,
+  engineSchema,
   gateDecisionSchema,
   principalKindSchema,
   riskDomainsSchema,
   riskTierSchema,
+  runFailureSchema,
+  runHibernationSchema,
+  runResultSchema,
+  runShapeSchema,
+  runStopSchema,
 } from './closed-sets.ts';
 import {
   issueRefSchema,
@@ -20,13 +26,15 @@ import {
 import { identitySchema } from './identity.ts';
 import { errorReasonSchema } from './outcomes.ts';
 import { slugSchema } from './pages.ts';
+import { reviewRecordSchema, runStepCosts, runStepSchema } from './runs.ts';
 import { fullShaSchema, riskDeclarationSchema, shipRefusalSchema } from './ship-rule.ts';
-import { runStepSchema, submitToGateResultSchema } from './verb-io.ts';
+import { submitToGateResultSchema } from './verb-io.ts';
 
 export const personaActivationRefusalSchema = z.enum([
   'unknown_verb',
   'forbidden_verb',
   'not_permitted',
+  'engine_not_available',
 ]);
 
 const id = z.uuid();
@@ -55,6 +63,51 @@ const oneLine = z
   .string()
   .max(200)
   .refine((value) => value.trim().length > 0 && !/[\r\n]/.test(value), 'one line of reason');
+
+const breakerEvidence = z.strictObject({
+  spentMinor: z.number().int().min(0),
+  capMinor: z.number().int().min(1),
+  currency: z.string().regex(/^[A-Z]{3}$/),
+  percent: z.number().int().min(0).max(100_000),
+});
+const hibernation = z.strictObject({ runId: id, why: runHibernationSchema });
+
+const runEvidence = {
+  run_started: z.strictObject({
+    runId: id,
+    persona: identitySchema,
+    runShape: runShapeSchema,
+    engine: engineSchema,
+    model: z.string().min(1).max(200),
+    delegationId: id.nullable(),
+  }),
+  run_step_recorded: z.strictObject({
+    runId: id,
+    step: runStepSchema,
+    tokensIn: tokens,
+    tokensOut: tokens,
+    costBasis: costBasisSchema,
+    leaseExpiresAt: instant,
+    ...runStepCosts,
+  }),
+  run_hibernated: hibernation,
+  run_resumed: hibernation,
+  run_stopped: z.strictObject({ runId: id, why: runStopSchema }),
+  run_failed: z.strictObject({
+    runId: id,
+    step: runStepSchema.nullable(),
+    why: runFailureSchema,
+    detail: z.string().max(500).nullable(),
+  }),
+  run_completed: z.strictObject({
+    runId: id,
+    result: runResultSchema,
+    gates: z.array(stage).max(20),
+    review: reviewRecordSchema.nullable(),
+  }),
+  run_prompted: z.strictObject({ runId: id, message: z.string().min(1).max(4000) }),
+  premise_held: z.strictObject({ runId: id.nullable(), reason: oneLine }),
+};
 
 const itemEvidence = {
   item_created: z.strictObject({
@@ -94,14 +147,6 @@ const itemEvidence = {
     head: head.nullable().default(null),
     repository: repositorySchema.nullable().default(null),
     base: decidedBase.nullable().default(null),
-  }),
-  run_step_recorded: z.strictObject({
-    runId: id,
-    step: runStepSchema,
-    tokensIn: tokens,
-    tokensOut: tokens,
-    costBasis: costBasisSchema,
-    leaseExpiresAt: instant,
   }),
   learning_attached: z.strictObject({ pageId: id }),
   nothing_learned: z.strictObject({ reason: oneLine }),
@@ -158,10 +203,18 @@ const harnessEvidence = {
   stage_removed: z.strictObject({ stageId: id, key: stage, before: stageColumns }),
   harness_paused: z.strictObject({ stage: stage.nullable() }),
   harness_resumed: z.strictObject({ stage: stage.nullable() }),
+  hosted_builder_set: z.strictObject({ enabled: z.boolean() }),
+  breaker_holding: breakerEvidence,
+  breaker_pausing: breakerEvidence,
+  breaker_open: breakerEvidence,
   persona_activation_failed: z.strictObject({
     pageId: id,
     persona: personaIdentitySchema,
-    verb: z.string().regex(/^[a-z][a-z_]*$/),
+    verb: z
+      .string()
+      .regex(/^[a-z][a-z_]*$/)
+      .nullable(),
+    engine: engineSchema.nullable().default(null),
     reason: personaActivationRefusalSchema,
     message: text,
     itemId: id.nullable(),
@@ -173,7 +226,12 @@ const harnessEvidence = {
   }),
 };
 
-export const eventEvidenceSchemas = { ...itemEvidence, ...gateEvidence, ...harnessEvidence };
+export const eventEvidenceSchemas = {
+  ...itemEvidence,
+  ...runEvidence,
+  ...gateEvidence,
+  ...harnessEvidence,
+};
 
 export type EvidenceName = keyof typeof eventEvidenceSchemas;
 export type EventEvidence = {

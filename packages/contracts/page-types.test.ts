@@ -96,3 +96,11 @@ describe('GH-3 an issue page links to the issue it mirrors', () => {
     expect(issueFrontmatterSchema.safeParse({ ...issue, repo: 'uw-platform' }).success).toBe(false);
   });
 });
+
+describe('a persona pins its provider', () => {
+  it('reads a persona without a provider as null and takes a provider slug', () => {
+    expect(personaFrontmatterSchema.parse(persona).provider).toBeNull();
+    expect(acceptsPersona({ provider: 'z-ai' })).toBe(true);
+    expect(acceptsPersona({ provider: 'Z AI' })).toBe(false);
+  });
+});

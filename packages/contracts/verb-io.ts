@@ -3,6 +3,7 @@ import { jdAreaSchema } from './areas.ts';
 import { costBasisSchema, evidenceLabelSchema } from './closed-sets.ts';
 import { healthReportSchema } from './health.ts';
 import { pullRequestRefSchema, stageKeySchema } from './harness.ts';
+import { runStepCosts, runStepSchema } from './runs.ts';
 import { fullShaSchema } from './ship-rule.ts';
 import {
   frontmatterSchema,
@@ -14,7 +15,6 @@ import {
 import type { VerbName } from './verb-names.ts';
 
 export const submitToGateResultSchema = z.enum(['advanced', 'parked', 'checks_failed']);
-export const runStepSchema = z.enum(['read', 'scout', 'work', 'submit']);
 
 const json = z.record(z.string(), z.json());
 const limit = z.number().int().min(1).max(50);
@@ -29,6 +29,10 @@ const pageSummary = pageSchema.pick({
 const lease = z.object({
   leaseExpiresAt: z.iso.datetime().nullable(),
   leaseWarning: z.boolean(),
+});
+
+export const recordRunStepReplySchema = lease.extend({
+  prompts: z.array(z.string().min(1).max(4000)).max(20),
 });
 
 export const verbIo = {
@@ -159,8 +163,9 @@ export const verbIo = {
       tokensIn: z.number().int().min(0),
       tokensOut: z.number().int().min(0),
       costBasis: costBasisSchema,
+      ...runStepCosts,
     }),
-    output: lease,
+    output: recordRunStepReplySchema,
   },
   get_health: {
     input: z.object({ harnessId: z.uuid() }),
