@@ -301,6 +301,10 @@ export const harnessRuns = declareTable(
     index('harness_runs_item').on(t.itemId),
     uniqueIndex('harness_runs_one_live_per_item').on(t.itemId).where(live(t.outcome)),
     index('harness_runs_live').on(t.harnessId).where(live(t.outcome)),
+    index('harness_runs_started_at').on(t.startedAt),
+    index('harness_runs_failed_ended')
+      .on(t.endedAt)
+      .where(sql`${t.outcome} = 'failed'`),
   ],
 );
 
@@ -413,6 +417,7 @@ export const harnessEvents = declareTable(
       .on(t.actor, t.requestId)
       .where(sql`${t.name} = 'item_created' AND ${t.requestId} IS NOT NULL`),
     index('harness_events_item').on(t.itemId, t.position),
+    index('harness_events_at').on(t.at),
     index('harness_events_breaker_latest')
       .on(t.harnessId, t.at, t.position)
       .where(oneOf(t.name, breakerEventNames)),
