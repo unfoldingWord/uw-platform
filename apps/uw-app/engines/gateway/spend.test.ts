@@ -11,6 +11,8 @@ const configured = {
   AI_GATEWAY_ANALYTICS_TOKEN: 'analytics-token',
 };
 
+const noGroups = { aiGatewayRequestsAdaptiveGroups: [] };
+
 type SentQuery = { readonly query: string; readonly variables: Readonly<Record<string, string>> };
 
 async function summedCost(): Promise<void> {
@@ -32,7 +34,10 @@ async function summedCost(): Promise<void> {
     until: now.toISOString(),
   });
   const empty = fakeFetch();
-  empty.respondNext(200, { data: { viewer: { accounts: [] } }, errors: null });
+  empty.respondNext(200, {
+    data: { viewer: { accounts: [{ aiGatewayRequestsAdaptiveGroups: [] }] } },
+    errors: null,
+  });
   const none = await gatewaySpend({ ...configured, fetch: empty.fetch }, () => now)(since);
   expect(none.spentMinor).toBe(0);
 }
@@ -54,6 +59,8 @@ async function unconfiguredOrUnreadable(): Promise<void> {
     [503, { secret: 'upstream body with analytics-token' }],
     [200, { data: null, errors: [{ message: 'unknown field cost with analytics-token' }] }],
     [200, { data: { viewer: { accounts: [{ aiGatewayRequestsAdaptiveGroups: 'x' }] } } }],
+    [200, { data: { viewer: { accounts: [] } }, errors: null }],
+    [200, { data: { viewer: { accounts: [noGroups, noGroups] } }, errors: null }],
   ];
   for (const [status, body] of failing) {
     const analytics = fakeFetch();
@@ -70,7 +77,7 @@ describe('the AI Gateway spend reader', () => {
   it("HE-5 the spend is AI Gateway's summed cost for the month in minor units", summedCost);
 
   it(
-    'HE-5 an unconfigured reader is not_wired and an error reply is unreadable without its body',
+    'an unconfigured reader is not_wired, and an error reply or a reply without exactly one account is unreadable without its body',
     unconfiguredOrUnreadable,
   );
 });
