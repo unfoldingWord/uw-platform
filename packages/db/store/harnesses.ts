@@ -35,6 +35,10 @@ export function bindHarnesses(executor: AnyExecutor): HarnessesGateway {
         refusing(async () => {
           await executor.insert(harnesses).values({ ...harness, createdAt: at });
         }),
+      setPaused: (harnessId, paused) =>
+        refusing(async () => {
+          await executor.update(harnesses).set({ paused }).where(eq(harnesses.id, harnessId));
+        }),
     },
   };
 }

@@ -46,6 +46,21 @@ function describeAppend(subject: EventsSubject): void {
   });
 }
 
+function describeRequestIds(subject: EventsSubject): void {
+  it('DX-3 keeps the requestId an event was appended with, and null when none', async () => {
+    const requestId = uid(0x2400 + 0xc0);
+    const stamped = newEventSchema.parse({ ...eventOf(0x2400, 1, null), requestId });
+    const bare = newEventSchema.parse(eventOf(0x2400, 2, null));
+    const read = await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0x2400, 'gateway-events-request');
+      await tx.harnessEvents.write.append([stamped, bare]);
+      const query = { harnessId: uid(0x2400), itemId: null, after: 0, limit: 100 };
+      return (await tx.harnessEvents.read.page(query)).events;
+    });
+    expect(read.map((event) => event.requestId)).toEqual([requestId, null]);
+  });
+}
+
 function describePaging(subject: EventsSubject): void {
   it('DX-3 KN-4 pages a harness and an item in cursor order and resumes after a cursor', async () => {
     const itemX = itemOf(0xf20, 1);
@@ -142,6 +157,7 @@ function describeRefusals(subject: EventsSubject): void {
 
 export function describeEvents(subject: EventsSubject): void {
   describeAppend(subject);
+  describeRequestIds(subject);
   describePaging(subject);
   describeIsolation(subject);
   describePageBounds(subject);

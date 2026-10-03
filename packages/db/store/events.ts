@@ -31,6 +31,7 @@ async function appendAll(
         actor: event.actor,
         evidence: event.evidence,
         traceId: event.traceId,
+        requestId: event.requestId,
         at: new Date(event.at),
       })
       .returning();

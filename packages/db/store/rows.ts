@@ -95,6 +95,7 @@ export function toEvent(row: typeof harnessEvents.$inferSelect): HarnessEvent {
     actor: row.actor,
     evidence: row.evidence,
     traceId: row.traceId,
+    requestId: row.requestId,
     position: row.position,
   });
 }
