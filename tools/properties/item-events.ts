@@ -31,6 +31,7 @@ const operations = [
   'riskDerived',
   'abandonBranch',
   'adoptBranch',
+  'reorder',
   'irrelevant',
 ] as const;
 
@@ -39,6 +40,7 @@ type Step = { readonly operation: Operation; readonly pick: number };
 
 type Expected = {
   stageKey: string;
+  priority: number;
   holder: string | null;
   claimantKind: 'agent' | 'person' | null;
   delegationId: null;
@@ -275,6 +277,13 @@ function adoptBranch(model: Model): boolean {
   return true;
 }
 
+function reorder(model: Model, pick: number): boolean {
+  const priority = (pick % 7) * 10;
+  emit(model, 'item_reordered', { priority, before: pick % 2 === 0 ? null : itemId });
+  model.expected.priority = priority;
+  return true;
+}
+
 function irrelevant(model: Model, pick: number): boolean {
   if (pick % 2 === 0) emit(model, 'comment_recorded', {});
   else emit(model, 'checks_passed', { stage: stageKey(model.stage), validators: [] });
@@ -296,12 +305,14 @@ const handlers: ReadonlyMap<Operation, Handler> = new Map<Operation, Handler>([
   ['riskDerived', riskDerived],
   ['abandonBranch', abandonBranch],
   ['adoptBranch', adoptBranch],
+  ['reorder', reorder],
   ['irrelevant', irrelevant],
 ]);
 
 function startModel(start: number): Model {
   const expected: Expected = {
     stageKey: stageKey(start),
+    priority: 0,
     holder: null,
     claimantKind: null,
     delegationId: null,
