@@ -22,6 +22,7 @@ function trackingEvents(events: HarnessEventsGateway, appended: Set<string>): Ha
 function tracking(tx: StoreTransaction, appended: Set<string>): StoreTransaction {
   const tracked: StoreTransaction = {
     lock: (key) => tx.lock(key),
+    lockShared: (key) => tx.lockShared(key),
     harnesses: tx.harnesses,
     harnessStages: tx.harnessStages,
     harnessItems: tx.harnessItems,

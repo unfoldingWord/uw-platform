@@ -27,6 +27,7 @@ const transactionMembers = [
   'harnessStages',
   'harnesses',
   'lock',
+  'lockShared',
   'pages',
 ];
 
@@ -52,10 +53,15 @@ async function workThenRecord(order: string[], work: () => Promise<void>): Promi
   return null;
 }
 
+type SecondLock = (tx: StoreTransaction) => Promise<void>;
+
+const exclusive: SecondLock = (tx) => tx.lock('store-contract-race');
+
 export async function race(
   store: Store,
   waiters: LockWaiters | undefined,
   firstWork: () => Promise<void>,
+  secondLock: SecondLock = exclusive,
 ): Promise<string[]> {
   const order: string[] = [];
   let signal: () => void = () => undefined;
@@ -81,7 +87,7 @@ export async function race(
     });
   await held;
   const second = store.transaction(async (tx) => {
-    await tx.lock('store-contract-race');
+    await secondLock(tx);
     order.push('second locked');
   });
   await Promise.all([first, second]);
@@ -102,6 +108,42 @@ function describeRace(subject: () => StoreSubject): void {
     );
     expect(order).toEqual(['first failed', 'second locked']);
   });
+
+  it('holds a shared lock behind an exclusive hold of the same key until the first commits', async () => {
+    const shared: SecondLock = (tx) => tx.lockShared('store-contract-race');
+    const order = await race(subject().store, subject().lockWaiters, async () => undefined, shared);
+    expect(order).toEqual(['first finished', 'second locked']);
+  });
+
+  it('lets two transactions hold one key shared at once', async () => {
+    expect(await sharedTogether(subject().store)).toEqual(['second shared', 'first finished']);
+  });
+}
+
+async function sharedTogether(store: Store): Promise<string[]> {
+  const order: string[] = [];
+  let signal: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => {
+    signal = resolve;
+  });
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const first = store.transaction(async (tx) => {
+    await tx.lockShared('store-contract-shared');
+    signal();
+    await gate;
+    order.push('first finished');
+  });
+  await held;
+  await store.transaction(async (tx) => {
+    await tx.lockShared('store-contract-shared');
+    order.push('second shared');
+  });
+  release();
+  await first;
+  return order;
 }
 
 export async function escapedAfter(
@@ -126,10 +168,10 @@ export async function escapedAfter(
   return escaped.outcomes;
 }
 
-async function locksHeldAround(subject: StoreSubject): Promise<number[]> {
+async function locksHeldAround(subject: StoreSubject, take: SecondLock): Promise<number[]> {
   return subject.store.transaction(async (tx) => {
     const before = await subject.advisoryLocksHeld(tx);
-    await tx.lock('store-contract-visible');
+    await take(tx);
     return [before, await subject.advisoryLocksHeld(tx)];
   });
 }
@@ -138,7 +180,15 @@ function describeExclusion(subject: () => StoreSubject, shape: StoreShape): void
   if (shape.concurrentConnections) describeRace(subject);
 
   it('holds the advisory lock in the database while the transaction runs, and frees it at commit', async () => {
-    expect(await locksHeldAround(subject())).toEqual([0, 1]);
+    expect(await locksHeldAround(subject(), (tx) => tx.lock('store-contract-visible'))).toEqual([
+      0, 1,
+    ]);
+    expect(await subject().store.transaction((tx) => subject().advisoryLocksHeld(tx))).toBe(0);
+  });
+
+  it('holds a shared advisory lock in the database while the transaction runs, and frees it at commit', async () => {
+    const shared = (tx: StoreTransaction) => tx.lockShared('store-contract-visible');
+    expect(await locksHeldAround(subject(), shared)).toEqual([0, 1]);
     expect(await subject().store.transaction((tx) => subject().advisoryLocksHeld(tx))).toBe(0);
   });
 
@@ -175,7 +225,7 @@ function describeExclusion(subject: () => StoreSubject, shape: StoreShape): void
     ]);
   });
 
-  it('DX-3 does not nest transactions: the work gets only lock and the gateways, so pass the transaction along', async () => {
+  it('DX-3 does not nest transactions: the work gets only the two locks and the gateways, so pass the transaction along', async () => {
     const members = await subject().store.transaction(async (tx) => Object.keys(tx).sort());
     expect(members).toEqual(transactionMembers);
   });
