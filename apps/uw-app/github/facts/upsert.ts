@@ -154,6 +154,7 @@ const reviewColumns = {
   commitId: ghReviews.commitId,
   state: ghReviews.state,
   provider: ghReviews.provider,
+  findings: ghReviews.findings,
   submittedAt: ghReviews.submittedAt,
 };
 const sameComparison =

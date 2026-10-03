@@ -60,6 +60,7 @@ function readModelGets(rig: HostRig, request: ReviewRequest, reviewId: number): 
     commit: request.head,
     state: 'approved' as const,
     provider: 'openai',
+    findings: [],
     submittedAt: rig.clock.now(),
   };
   rig.facts = { ...facts, reviews: [...facts.reviews, fact] };

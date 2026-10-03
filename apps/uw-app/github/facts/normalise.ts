@@ -3,6 +3,7 @@ import { checkConclusionSchema, repositorySchema as repositoryName } from '@uw/c
 import {
   fullSha,
   parseDeclaration,
+  parseReviewFindings,
   parseReviewProvider,
   type CheckConclusion,
   type ReviewState,
@@ -148,6 +149,7 @@ function reviewOf(
     commitId,
     state,
     provider: parseReviewProvider(review.body ?? null),
+    findings: parseReviewFindings(review.body ?? null),
     submittedAt: review.submitted_at ?? null,
   };
 }

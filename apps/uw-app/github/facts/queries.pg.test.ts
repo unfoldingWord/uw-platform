@@ -53,6 +53,7 @@ const expectedFacts = {
       commit: head,
       state: 'approved',
       provider: 'anthropic',
+      findings: [],
       submittedAt: new Date('2026-10-02T08:10:00.000Z'),
     },
   ],

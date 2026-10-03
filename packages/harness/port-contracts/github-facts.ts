@@ -44,6 +44,7 @@ function factsFor(repo: string, number: number, head: string): PullRequestFacts 
         commit: head,
         state: 'approved',
         provider: 'fixture-provider',
+        findings: [],
         submittedAt: new Date('2026-10-01T08:59:00.000Z'),
       },
     ],

@@ -3,8 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { gateViewSchema, type HarnessEvent } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
 import { seedGrant, seedPerson } from '@uw/db/test-seed';
-import { software } from '@uw/harness';
+import { reviewBody, software } from '@uw/harness';
 import restPull from '../github/fixtures/rest-pull.json' with { type: 'json' };
+import restReviews from '../github/fixtures/rest-reviews.json' with { type: 'json' };
+import { repoFromRest, reviewsFromRest } from '../github/facts/normalise.ts';
+import { emptyBatch } from '../github/facts/records.ts';
+import { upsertFacts } from '../github/facts/upsert.ts';
 import { fixtureApp } from '../github/testing/app-key.ts';
 import { head } from '../github/testing/facts-fixtures.ts';
 import { kimEmail, parkedAtShip, type ParkedAtShip } from '../github/testing/gate-rig.ts';
@@ -165,6 +169,41 @@ async function overLongReference(db: Database): Promise<void> {
   expect(view.facts?.declaration).toBeNull();
   expect(hidden.text).not.toContain(over);
 }
+
+const reviewerFindings = ['The lease is not renewed', 'A typo in the copy'];
+
+async function storedFindings(db: Database): Promise<void> {
+  const parked = await parkedAtShip(db);
+  const repo = repoFromRest(restPull.base.repo);
+  if (repo === null) throw new TypeError('the fixture repository is malformed');
+  const body = reviewBody({
+    provider: 'anthropic',
+    model: 'claude',
+    verdict: 'request_changes',
+    findings: reviewerFindings,
+  });
+  const reviews = reviewsFromRest(repo, restPull.id, [
+    { ...restReviews[0], body, state: 'CHANGES_REQUESTED', submitted_at: '2026-10-02T08:30:00Z' },
+  ]);
+  await upsertFacts(db, { ...emptyBatch, reviews }, new Date('2026-10-02T08:30:00.000Z'));
+  const sent = await viewAs(db, kimEmail, gatePath(parked.item.harnessId, parked.item.itemId));
+  expect(sent.status).toBe(200);
+  const view = gateViewSchema.parse(sent.body);
+  expect(view.reviews).toEqual([
+    {
+      reviewer: 'uw-reviewer',
+      commit: head,
+      state: 'changes_requested',
+      provider: 'anthropic',
+      findings: reviewerFindings,
+    },
+  ]);
+}
+
+describe.skipIf(!testServer)('WB-6 the gate route answers the Reviewer findings', () => {
+  it('WB-6 the gate route answers the Reviewer findings stored from the review body', () =>
+    withAppDatabase(storedFindings));
+});
 
 describe.skipIf(!testServer)('GH-5 the gate view route', () => {
   it('GH-5 the gate view route shows the parsed declaration, the tier and domains and the head they were derived at', () =>

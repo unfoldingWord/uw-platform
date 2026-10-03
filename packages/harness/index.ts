@@ -75,5 +75,6 @@ export { parseDeclaration, parseReviewProvider } from './github/declaration.ts';
 export { fullSha, sameRepository } from './github/identifiers.ts';
 export { parseReviewVerdict, parseScoutVerdict } from './github/verdicts.ts';
 export { reviewBody } from './github/review-body.ts';
+export { parseReviewFindings } from './github/review-findings.ts';
 export { runToolLoop, TURN_LIMIT } from './runs/tool-loop.ts';
 export type { LoopResult, ToolCaller, ToolReply } from './runs/tool-loop.ts';

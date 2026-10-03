@@ -110,7 +110,15 @@ export function approvedBy(
   reviewId: number,
   submittedAt: Date | null = null,
 ): ReviewFact {
-  return { reviewId, reviewer: login, commit, state: 'approved', provider, submittedAt };
+  return {
+    reviewId,
+    reviewer: login,
+    commit,
+    state: 'approved',
+    provider,
+    findings: [],
+    submittedAt,
+  };
 }
 
 type FactsInput = {

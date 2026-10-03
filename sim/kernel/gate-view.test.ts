@@ -15,6 +15,7 @@ import {
   type GitHubFacts,
   type KernelOutcome,
   type PullRequestFacts,
+  type ReviewFact,
 } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createSimHarness, simAgent, simCaller, simParkedAtCheck, simPerson } from '../fixtures.ts';
@@ -336,5 +337,61 @@ describe('a reject or take-over does not depend on a seen head', () => {
     const { outcome, after } = await decideSeeing(scene, 'take_over', undefined);
     expect(outcome.status).toBe('accepted');
     expect(after.decisions).toEqual(['take_over']);
+  });
+});
+
+function reviewBy(
+  reviewer: string,
+  commit: string,
+  reviewId: number,
+  change: Partial<ReviewFact>,
+): ReviewFact {
+  const submittedAt = new Date(Date.UTC(2026, 9, 1, 9, reviewId % 100));
+  return { ...approvedBy(reviewer, 'openai', commit, reviewId, submittedAt), ...change };
+}
+
+const reviewerHistory: readonly ReviewFact[] = [
+  reviewBy('uw-reviewer[bot]', head, 9100000201, { provider: 'Anthropic' }),
+  reviewBy('uw-reviewer[bot]', head, 9100000202, {
+    state: 'changes_requested',
+    provider: 'Anthropic',
+    findings: ['The grant is read after the append', 'A title names the wrong requirement'],
+  }),
+  reviewBy('uw-reviewer[bot]', head, 9100000203, { state: 'commented', findings: ['a remark'] }),
+  reviewBy('uw-reviewer-codex[bot]', head, 9100000204, { findings: ['A nit in the copy'] }),
+  reviewBy('uw-reviewer-codex[bot]', simSha('01d'), 9100000205, { state: 'changes_requested' }),
+  reviewBy('someone-else[bot]', head, 9100000206, { state: 'changes_requested' }),
+];
+
+describe("WB-6 the gate view lists each Reviewer's latest review on the head with its findings", () => {
+  sceneIt('keeps one decisive review per Reviewer identity on the usable head', async (scene) => {
+    const { itemId } = scene;
+    scene.world.adapters.githubFacts.given(
+      greenFacts(scene.world, {
+        itemId,
+        head,
+        reviews: reviewerHistory,
+        paths: aclChange.paths,
+        declaration: parsedDeclaration,
+      }),
+    );
+    const caller = simCaller(scene.world, scene.ian);
+    const view = viewOf(await scene.world.kernel.gates.view(caller, { itemId }));
+    expect(view.reviews).toEqual([
+      {
+        reviewer: 'uw-reviewer',
+        commit: head,
+        state: 'changes_requested',
+        provider: 'anthropic',
+        findings: ['The grant is read after the append', 'A title names the wrong requirement'],
+      },
+      {
+        reviewer: 'uw-reviewer-codex',
+        commit: head,
+        state: 'approved',
+        provider: 'openai',
+        findings: ['A nit in the copy'],
+      },
+    ]);
   });
 });

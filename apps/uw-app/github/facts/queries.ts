@@ -28,6 +28,7 @@ const pullState = z.enum(['open', 'closed', 'merged']);
 const reviewState = z.enum(['approved', 'changes_requested', 'commented', 'dismissed']);
 const conclusion = checkConclusionSchema.nullable();
 const paths = z.array(z.string());
+const findings = z.array(z.string().min(1).max(500)).max(50);
 const attempted = z.object({ attemptedAt: z.iso.datetime({ offset: true }).nullable() });
 
 export type SweepState = { readonly sweptThrough: Date | null; readonly attemptedAt: Date | null };
@@ -111,6 +112,7 @@ async function reviewsOf(db: Executor, pull: PullRow): Promise<readonly ReviewFa
         commit: row.commitId,
         state: state.data,
         provider: row.provider,
+        findings: findings.safeParse(row.findings).data ?? [],
         submittedAt: row.submittedAt,
       },
     ];
