@@ -53,7 +53,7 @@ export type HarnessesGateway = {
   };
   readonly write: {
     insert(harness: Harness, at: Date): Promise<void>;
-    setPaused(harnessId: string, paused: boolean): Promise<void>;
+    setPaused(harnessId: string, paused: boolean): Promise<boolean>;
   };
 };
 export type HarnessStagesGateway = {
@@ -65,7 +65,7 @@ export type HarnessStagesGateway = {
     insert(stage: Stage): Promise<void>;
     update(stage: Stage): Promise<void>;
     reposition(harnessId: string, positions: readonly StagePosition[]): Promise<void>;
-    remove(stageId: string): Promise<void>;
+    remove(stageId: string): Promise<boolean>;
   };
 };
 export type HarnessItemsGateway = {
