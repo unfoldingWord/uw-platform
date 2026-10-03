@@ -130,6 +130,19 @@ async function backsOff(scene: RunWorld): Promise<void> {
   expect(await freshBeat(scene)).toHaveLength(1);
 }
 
+async function backsOffLapsedLease(scene: RunWorld): Promise<void> {
+  const [started] = await freshBeat(scene);
+  if (started === undefined) throw new Error('the beat started nothing');
+  scene.world.adapters.clock.advance(31 * minute);
+  const swept = await scene.world.kernel.items.expireLeases(systemCaller(scene), { limit: 10 });
+  expect(value(swept).expired).toEqual([started.itemId]);
+  expect(await freshBeat(scene)).toEqual([]);
+  scene.world.adapters.clock.advance(14 * minute);
+  expect(await freshBeat(scene)).toEqual([]);
+  scene.world.adapters.clock.advance(2 * minute);
+  expect(await freshBeat(scene)).toHaveLength(1);
+}
+
 describe('the hosted beat', () => {
   it('HE-1 the beat starts one run per live delegation whose active persona is a workflow-run', () =>
     inWorld(startsOne));
@@ -144,4 +157,7 @@ describe('the hosted beat', () => {
 
   it('the beat backs off a persona from an item whose run held its premise, doubling from fifteen minutes', () =>
     inWorld(backsOff));
+
+  it('the beat backs off a persona from an item whose run was stopped by a lapsed lease', () =>
+    inWorld(backsOffLapsedLease));
 });

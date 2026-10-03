@@ -39,8 +39,8 @@ const breakerStatus = {
 } as const satisfies Record<BreakerState['level'], HealthIndicator['status']>;
 
 function breakerIndicator(breaker: BreakerState): HealthIndicator {
-  if (breaker.reading === null) {
-    return { name: 'breaker', status: 'amber', detail: 'no reading yet, hosted runs are held' };
+  if (breaker.reading === null || (!breaker.fresh && breaker.level !== 'pausing')) {
+    return { name: 'breaker', status: 'amber', detail: 'no fresh reading' };
   }
   const status = breakerStatus[breaker.level];
   const detail = `${breaker.reading.percent.toString()} percent of the cap spent`;
@@ -84,7 +84,7 @@ export const getHealth = gatedHandler({
   },
   run: async (context, _input, scene: HarnessScene) => {
     const health = await context.kernel.health();
-    const breaker = await context.kernel.breaker.state();
+    const breaker = await context.kernel.breaker.state(context.at);
     const readings = { health, breaker, commit: context.commit };
     return { status: 'accepted', output: reportOf(scene, readings) };
   },

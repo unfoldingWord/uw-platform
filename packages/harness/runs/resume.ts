@@ -1,10 +1,33 @@
-import type { RunHibernation } from '@uw/contracts';
-import { draft, recordItemEvents } from '../items/record.ts';
+import type { ItemState, RunHibernation } from '@uw/contracts';
+import { draft, recordItemEvents, type RecordContext } from '../items/record.ts';
 import type { Ports, RunRow, StoreTransaction } from '../ports.ts';
+import { currentLevel } from './breaker-level.ts';
+import { underPause } from './suspend.ts';
 
 type ResumePorts = Pick<Ports, 'clock' | 'ids' | 'store' | 'runs'>;
 
 type RunSelect = (tx: StoreTransaction) => Promise<readonly RunRow[]>;
+
+type Locked = { readonly item: ItemState; readonly run: RunRow; readonly context: RecordContext };
+
+async function holdForBreaker(tx: StoreTransaction, locked: Locked): Promise<false> {
+  const { item, run, context } = locked;
+  if (run.hibernatedFor === 'breaker') return false;
+  await tx.harnessRuns.write.update({ ...run, hibernatedFor: 'breaker' });
+  await recordItemEvents(tx, context, item.itemId, [
+    draft('run_hibernated', { runId: run.id, why: 'breaker' }),
+  ]);
+  return false;
+}
+
+async function wakeIn(tx: StoreTransaction, locked: Locked, why: RunHibernation) {
+  const { item, run, context } = locked;
+  if (why !== 'gate' && (await underPause(tx, item))) return false;
+  if ((await currentLevel(tx)) === 'pausing') return holdForBreaker(tx, locked);
+  await tx.harnessRuns.write.update({ ...run, outcome: 'running', hibernatedFor: null });
+  await recordItemEvents(tx, context, item.itemId, [draft('run_resumed', { runId: run.id, why })]);
+  return true;
+}
 
 async function resumeOne(ports: ResumePorts, runId: string, why: RunHibernation): Promise<boolean> {
   return ports.store.transaction(async (tx) => {
@@ -14,7 +37,6 @@ async function resumeOne(ports: ResumePorts, runId: string, why: RunHibernation)
     const run = await tx.harnessRuns.read.lock(runId);
     if (item === null || run === null) return false;
     if (run.outcome !== 'hibernated' || run.hibernatedFor !== why) return false;
-    await tx.harnessRuns.write.update({ ...run, outcome: 'running', hibernatedFor: null });
     const context = {
       actor: run.persona,
       at: ports.clock.now(),
@@ -22,8 +44,7 @@ async function resumeOne(ports: ResumePorts, runId: string, why: RunHibernation)
       requestId: null,
       ids: ports.ids,
     };
-    await recordItemEvents(tx, context, item.itemId, [draft('run_resumed', { runId, why })]);
-    return true;
+    return wakeIn(tx, { item, run, context }, why);
   });
 }
 

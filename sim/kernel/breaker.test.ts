@@ -254,13 +254,23 @@ async function malformed(scene: Breaking): Promise<void> {
 
 async function stateReads(scene: Breaking): Promise<void> {
   const { breaker } = scene.world.kernel;
-  expect(await breaker.state()).toEqual({ level: 'open', reading: null, at: null });
+  const { clock } = scene.world.adapters;
+  expect(await breaker.state(clock.now())).toEqual({
+    level: 'open',
+    reading: null,
+    at: null,
+    fresh: false,
+  });
   await checkAt(scene, 80);
-  expect(await breaker.state()).toEqual({
+  const read = clock.now().toISOString();
+  expect(await breaker.state(clock.now())).toEqual({
     level: 'holding',
     reading: { level: 'holding', spentMinor: 100_000, capMinor, currency: 'USD', percent: 80 },
-    at: scene.world.adapters.clock.now().toISOString(),
+    at: read,
+    fresh: true,
   });
+  clock.advance(10 * minute);
+  expect(await breaker.state(clock.now())).toMatchObject({ at: read, fresh: false });
 }
 
 describe('the spend breaker', () => {
