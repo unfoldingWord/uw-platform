@@ -9,6 +9,7 @@
     "./dates": "./dates.ts",
     "./log": "./log.ts",
     "./modules": "./modules.ts",
+    "./money": "./money.ts",
     "./principal": "./principal.ts",
     "./trace": "./trace.ts"
   },
