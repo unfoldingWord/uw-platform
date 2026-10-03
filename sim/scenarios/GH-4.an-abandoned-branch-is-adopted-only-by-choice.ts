@@ -126,8 +126,32 @@ async function declined(scene: Cast, itemId: string): Promise<void> {
   assert.equal(second.claimed.item.branchState, 'abandoned');
 }
 
+async function refusedOnFactsFromBeforeTheAbandonment(
+  scene: Cast,
+  third: Caller,
+  itemId: string,
+): Promise<void> {
+  const before = await itemLog(scene.world, scene.harnessId, itemId);
+  const abandoned = before.events.findLast((event) => event.name === 'branch_abandoned');
+  assert.ok(abandoned);
+  const facts = greenFacts(scene.world, { itemId, head: pushedTip, reviews: [] });
+  scene.world.adapters.githubFacts.given({ ...facts, freshAt: new Date(abandoned.at) });
+  const outcome = await scene.world.kernel.items.claim(third, {
+    itemId,
+    delegationId: null,
+    adoptBranch: true,
+  });
+  assert.deepEqual(outcome, {
+    status: 'error',
+    reason: 'facts_stale',
+    detail: { freshAt: abandoned.at },
+  });
+  assert.deepEqual(await itemLog(scene.world, scene.harnessId, itemId), before);
+}
+
 async function adopted(scene: Cast, third: Caller, itemId: string): Promise<void> {
   scene.world.adapters.clock.advance(16 * minute);
+  await refusedOnFactsFromBeforeTheAbandonment(scene, third, itemId);
   scene.world.adapters.githubFacts.given(
     greenFacts(scene.world, { itemId, head: pushedTip, reviews: [] }),
   );
@@ -159,7 +183,7 @@ async function abandonedAgain(scene: Cast, fourth: Caller, itemId: string): Prom
 export const scenario = defineScenario({
   id: 'GH-4',
   title:
-    'a lapsed lease abandons the branch; the next claim starts from the expected head unless it adopts the branch tip GitHub holds, and adopting is an event',
+    'a lapsed lease abandons the branch; the next claim starts from the expected head unless it adopts the branch tip GitHub reported after the abandonment, and adopting is an event',
   run: async (world) => {
     const scene = await cast(world);
     const itemId = await heldAtScope(scene, scene.device('first'));

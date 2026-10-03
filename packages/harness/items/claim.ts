@@ -93,7 +93,7 @@ async function takeClaim(
   if (item.holder !== null && !leaseLapsed(item, at)) {
     return refused('lease_held', { holder: item.holder, leaseExpiresAt: item.leaseExpiresAt });
   }
-  const adoption = adoptionOf(item, harness, tip, at);
+  const adoption = await adoptionOf(tx, { item, harness }, tip, at);
   if ('status' in adoption) return adoption;
   const held = await tx.harnessItems.read.heldInStage(harness.id, stage.key, at);
   if (held >= stage.wipLimit) {
