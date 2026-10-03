@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { commandNameSchema } from '@uw/contracts';
 import { declarationOf } from './declarations.ts';
 import { closeEmbeddedTemplate } from './embedded.ts';
 import { pgConstraint, pgErrorCode } from './errors.ts';
@@ -55,6 +56,19 @@ function describeOutcomeBound(insert: Insert): void {
   });
 }
 
+function describeCommandNames(insert: Insert): void {
+  it('admits every command name the contract names', async () => {
+    const names = commandNameSchema.options;
+    for (const [n, command] of names.entries()) {
+      await insert({
+        requestId: `00000000-0000-4000-8000-0000000001${String(n).padStart(2, '0')}`,
+        command,
+      });
+    }
+    expect(names).toContain('set_hosted_builder');
+  });
+}
+
 function describeTarget(target: DatabaseTarget): void {
   let opened: OpenedDatabase | undefined;
   beforeAll(async () => {
@@ -66,6 +80,7 @@ function describeTarget(target: DatabaseTarget): void {
     return opened.db.insert(commandRequests).values({ ...claimed, ...row });
   };
   describeOutcomeBound(insert);
+  describeCommandNames(insert);
 
   it('keeps one row per actor and requestId, and lets another actor use the same requestId', async () => {
     await insert({});
