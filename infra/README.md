@@ -106,6 +106,29 @@ Each unit therefore spends one subrequest on the token plus one per GitHub reque
 
 The nightly sweep (`apps/uw-app/github/sweep.ts`, cron `17 3 * * *`) is one invocation over every repository. It spends one subrequest on the installation token that lists the repositories and one on each repository's own token, so it mints once per repository per run. It starts the repository it attempted least recently first, so a busy repository cannot starve the others. Per repository it reads 100 issues per request, each request starting from the greatest `updated_at` seen so far (keyset, so an item updated mid-listing or tied at a boundary is never skipped), then, for each pull request in that listing or still open in the read model, the pull request, its reviews, the check runs on its head and, when the files at that head and base are not stored, one comparison: 4 subrequests in the usual case and up to 23 with long review or check lists. The sweep counts every subrequest it sends and never sends more than its bound (`maxSubrequests`, 900 by default). It starts a pull request only while 8 remain, starts a repository only while its token, one listing page and one pull request fit, and shrinks the listing's page limit to what remains. A pull request it does not reach, or cannot read, waits for the next night: the watermark moves only to the greatest `updated_at` it listed and stored, never past the first listed pull request it did not store, and never back. Every run records its outcome (`ok`, `capped`, `stalled`, `deferred` or `failed`), the hold point and the reason in `gh_repos.last_sweep`. The bound must stay under the plan's per-invocation limit, which a person confirms before the cron trigger is switched on.
 
+## Reviewer Apps (HE-4, HE-9)
+
+Each Reviewer identity is its own GitHub App, so a review it posts is attributed to that identity and nothing else can post as it: `github/reviewer-app-manifest.json` declares `uw-reviewer` (the message engines' Reviewer) and `github/reviewer-codex-app-manifest.json` declares `uw-reviewer-codex` (the Codex engine's). Both are private, ask for `pull_requests` write and `metadata` read and nothing else, and subscribe to no event: the harness reads their reviews back through the harness App's `pull_request_review` webhook, which counts a review toward Ship only when its login (`uw-reviewer[bot]`, `uw-reviewer-codex[bot]`, `packages/harness/github/reviewers.ts`) is a Reviewer identity.
+
+Only the run host's kernel (`apps/uw-app/runs/`) holds these Apps. It mints one token per review, scoped to the one repository and to `pull_requests` write and `metadata` read, and posts `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews` with the head commit as `commit_id`. The MCP, queue, cron and command kernels never receive them.
+
+An org owner of `unfoldingWord` registers each App once, awaiting go-live:
+
+1. Register the App from its manifest with the same "Register a GitHub App from a manifest" flow as the harness App (above), adding a `redirect_url`. The App name must stay `uw-reviewer` or `uw-reviewer-codex`, since its slug is its Reviewer login; confirm GitHub kept the slug.
+2. Install it on `unfoldingWord/uw-platform` only, and note the installation id.
+3. Convert the key to PKCS#8 as above, then set the secrets for `uw-app` (from `infra/uw-app`):
+
+   ```
+   wrangler secret put REVIEWER_GITHUB_APP_ID --env <name>
+   wrangler secret put REVIEWER_GITHUB_APP_INSTALLATION_ID --env <name>
+   wrangler secret put REVIEWER_GITHUB_APP_PRIVATE_KEY --env <name>
+   wrangler secret put REVIEWER_CODEX_GITHUB_APP_ID --env <name>
+   wrangler secret put REVIEWER_CODEX_GITHUB_APP_INSTALLATION_ID --env <name>
+   wrangler secret put REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY --env <name>
+   ```
+
+Until a Reviewer's three secrets are set, its review answers `not_wired` and the run completes `review_withheld`.
+
 ## Logs (FD-11)
 
 Workers Logs is on for both Workers, in the top-level block and in `staging` and `production`, because wrangler does not carry top-level observability into an environment.
