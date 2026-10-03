@@ -9,6 +9,7 @@ import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.
 import { PortNotWiredError, storeRefusalOf } from '../port-errors.ts';
 import type { Ports, RunRow, StoreTransaction } from '../ports.ts';
 import { spendRefusal } from './breaker-level.ts';
+import { isFailureDetail } from './evidence-rules.ts';
 import { personaOfPage, personaPageOf, type PersonaPage } from './persona.ts';
 import { ended, heldByRun, newHostedRun } from './rows.ts';
 import type { RunPersona, StartedRun, StartRunInput } from './types.ts';
@@ -31,7 +32,6 @@ type Target = { readonly item: ItemState; readonly harness: Harness };
 type Opened = { readonly started: StartedRun; readonly context: RecordContext };
 
 const ONE_LIVE_RUN = 'harness_runs_one_live_per_item';
-const PRINTABLE = /^[ -~]{1,500}$/;
 
 async function targetOf(tx: StoreTransaction, input: StartRunInput): Promise<Target | Refused> {
   const item = await tx.harnessItems.read.byId(input.itemId);
@@ -174,7 +174,7 @@ async function opened(ports: StartPorts, start: Start): Promise<KernelOutcome<Op
 
 function detailOf(error: unknown): string {
   const name = error instanceof Error ? error.name : 'Error';
-  return PRINTABLE.test(name) ? name : 'Error';
+  return isFailureDetail(name) ? name : 'Error';
 }
 
 async function failStart(ports: StartPorts, open: Opened, error: unknown): Promise<void> {

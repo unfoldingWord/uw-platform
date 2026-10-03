@@ -19,6 +19,7 @@ import {
 } from '../items/record.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { Ports, RunRow, StoreTransaction } from '../ports.ts';
+import { isFailureDetail, isPremiseReason } from './evidence-rules.ts';
 import { ended, heldByRun } from './rows.ts';
 import { heldItem, lockedRun, sceneWithin, standingOf, type Locked } from './scene.ts';
 
@@ -40,9 +41,6 @@ export type HaltReason = Extract<RunStop, 'gate_wait_expired' | 'lease_expired'>
 
 const live: readonly RunOutcome[] = ['running', 'hibernated'];
 const runningOnly: readonly RunOutcome[] = ['running'];
-const PRINTABLE = /^[ -~]{1,500}$/;
-const REASON_LIMIT = 200;
-const LINE_BREAK = /[\r\n]/;
 
 function runContext(caller: RecordContext, run: RunRow): RecordContext {
   return { ...caller, actor: run.persona, traceId: run.traceId };
@@ -152,7 +150,7 @@ export function fail(
   runId: string,
   input: FailInput,
 ): Promise<KernelOutcome<RunRow>> {
-  if (input.detail !== null && !PRINTABLE.test(input.detail)) {
+  if (input.detail !== null && !isFailureDetail(input.detail)) {
     return Promise.resolve(refused('malformed_command', { why: 'detail' }));
   }
   return onRun(ports, caller, { runId, outcomes: live }, (tx, held) => {
@@ -180,9 +178,7 @@ export function halt(
 }
 
 function reasonRefusal(reason: string): Refused | null {
-  const blank = reason.trim().length === 0;
-  if (!blank && reason.length <= REASON_LIMIT && !LINE_BREAK.test(reason)) return null;
-  return refused('malformed_command', { why: 'reason' });
+  return isPremiseReason(reason) ? null : refused('malformed_command', { why: 'reason' });
 }
 
 export async function holdPremise(
