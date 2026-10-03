@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { EngineConfig } from '../config.ts';
+import type { ExecResult } from '../sandbox/host.ts';
 import { MCP_HOST, MODEL_HOST, type ModelRoute } from '../sandbox/egress.ts';
 import {
   gatewayHeaders,
@@ -78,16 +79,17 @@ function counted(usage: Usage, event: unknown): void {
   usage.outputTokens += found.output_tokens;
 }
 
-function read(stdout: string): SandboxReading {
+function read(ran: ExecResult): SandboxReading {
+  if (ran.exitCode !== 0) throw new Error(`codex exited ${ran.exitCode.toString()}`);
   const usage: Usage = { inputTokens: 0, outputTokens: 0 };
   let text: string | null = null;
-  for (const event of eventsOf(stdout)) {
+  for (const event of eventsOf(ran.stdout)) {
     const message = messageSchema.safeParse(event);
     if (message.success) text = message.data.text ?? message.data.message ?? text;
     counted(usage, event);
   }
   if (text === null) throw new Error('codex answered no message');
-  return { outcome: 'ended', text, ...usage, costMicros: null };
+  return { outcome: 'ended', text, ...usage, costMicros: null, model: null };
 }
 
 export function codexPlan(config: EngineConfig): SandboxPlan {
