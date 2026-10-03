@@ -355,10 +355,18 @@ export default {
     },
     forbidden(
       'agent-hosts-never-import-commands',
-      'Nothing an agent, a model process, the queue or the cron reaches imports the command API, so none of them reaches the gate kernel.',
-      '^apps/uw-app/(mcp|engines|queue|cron)/',
+      'Nothing an agent, a model process or the queue reaches imports the command API, so none of them reaches the gate kernel.',
+      '^apps/uw-app/(mcp|engines|queue)/',
       '^apps/uw-app/commands/',
     ),
+    {
+      name: 'agent-hosts-never-import-commands',
+      comment:
+        'The cron imports nothing of the command API but the request ledger, whose old rows it prunes, so it never reaches the gate kernel.',
+      severity: 'error',
+      from: { path: '^apps/uw-app/cron/' },
+      to: { path: '^apps/uw-app/commands/', pathNot: '^apps/uw-app/commands/requests\\.ts$' },
+    },
     forbidden(
       'github-never-in-mcp-or-engines',
       'Nothing an agent or a model process reaches imports the GitHub client, so no token reaches either.',

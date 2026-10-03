@@ -1,4 +1,4 @@
-import { and, eq, isNull, lt } from 'drizzle-orm';
+import { and, eq, isNotNull, isNull, lt, or } from 'drizzle-orm';
 import { z } from 'zod';
 import {
   acceptedOutcomeSchema,
@@ -128,4 +128,17 @@ export async function releaseRequest(
     .where(
       and(keyed(key), isNull(commandRequests.settledAt), eq(commandRequests.traceId, traceId)),
     );
+}
+
+export async function pruneRequests(db: Database, before: Date): Promise<number> {
+  const deleted = await db
+    .delete(commandRequests)
+    .where(
+      or(
+        and(isNotNull(commandRequests.settledAt), lt(commandRequests.settledAt, before)),
+        and(isNull(commandRequests.settledAt), lt(commandRequests.claimedAt, before)),
+      ),
+    )
+    .returning({ requestId: commandRequests.requestId });
+  return deleted.length;
 }
