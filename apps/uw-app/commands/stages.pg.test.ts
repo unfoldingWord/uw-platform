@@ -401,7 +401,7 @@ describe.skipIf(!testServer)('WB-1 KN-18 the stage command on the person surface
   it('KN-18 create_stage and reorder_stages through the command API are the stage command', () =>
     withAppDatabase(createsAndReorders));
 
-  it('no stage edit through the command API lowers the gate before an effect, and update_stage cannot pause', () =>
+  it("update_stage lowering Ship's exit to checks and create_stage adding a merge stage without a gate are both refused stage_edit_refused, and update_stage cannot pause", () =>
     withAppDatabase(noEditBypassesShip));
 
   it('the stage command refuses an agent on every route and records nothing', () =>
