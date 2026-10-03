@@ -4,7 +4,7 @@ import type { KernelOutcome } from '../outcome.ts';
 import type { Ports } from '../ports.ts';
 import type { ImportTarget } from '../items/import.ts';
 import { pollQueue, type PollInput, type PollItem } from './poll.ts';
-import { importTarget } from './repository.ts';
+import { importTarget, issueImported } from './repository.ts';
 import {
   harnessScene,
   itemScene,
@@ -41,6 +41,10 @@ export type KernelReads = {
     input: { readonly repository: string },
     options?: ReadOptions,
   ): Promise<KernelOutcome<ImportTarget>>;
+  issueImported(
+    caller: Caller,
+    input: { readonly githubId: number },
+  ): Promise<KernelOutcome<boolean>>;
   namesInstructions(input: { readonly pageId: string }): Promise<boolean>;
 };
 
@@ -69,6 +73,8 @@ export function createKernelReads(ports: ReadPorts): KernelReads {
       const at = instant(options);
       return ports.store.transaction((tx) => importTarget(ports, tx, caller, input.repository, at));
     },
+    issueImported: (caller, input) =>
+      ports.store.transaction((tx) => issueImported(tx, caller, input.githubId)),
     namesInstructions: (input) =>
       ports.store.transaction((tx) => tx.harnessStages.read.namesInstructions(input.pageId)),
   };

@@ -194,6 +194,7 @@ export async function issuesAwaitingCrossReference(
       and(
         eq(ghIssues.repoId, repoId),
         isNull(ghIssues.xrefCommentId),
+        eq(ghIssues.state, 'open'),
         sql`EXISTS (SELECT 1 FROM unnest(${ghIssues.labels}) AS label WHERE lower(label) = ${HARNESS_LABEL})`,
       ),
     )
@@ -203,6 +204,7 @@ export async function issuesAwaitingCrossReference(
     githubId: issue.githubId,
     number: issue.number,
     title: issue.title,
+    open: true,
     labels: issue.labels,
     hadLabels: null,
     githubUpdatedAt: issue.githubUpdatedAt,

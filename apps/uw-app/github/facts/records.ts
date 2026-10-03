@@ -37,6 +37,7 @@ export type IssueChange = {
   readonly githubId: number;
   readonly number: number;
   readonly title: string;
+  readonly open: boolean;
   readonly labels: readonly string[];
   readonly hadLabels: readonly string[] | null;
   readonly githubUpdatedAt: Date;

@@ -322,6 +322,7 @@ async function storedIssues(
     githubId: issue.githubId,
     number: issue.number,
     title: issue.title,
+    open: issue.state === 'open',
     labels: issue.labels,
     hadLabels: had.get(issue.githubId) ?? null,
     githubUpdatedAt: issue.githubUpdatedAt,
