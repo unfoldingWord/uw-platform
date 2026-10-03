@@ -4,6 +4,7 @@ import { beatWithin } from '../delegations/commands.ts';
 import { engineDescriptor, hostable } from '../engines.ts';
 import { claimWithin } from '../items/claim.ts';
 import { draft, recordContext, recordItemEvents, type RecordContext } from '../items/record.ts';
+import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import { PortNotWiredError, storeRefusalOf } from '../port-errors.ts';
 import type { Ports, RunRow, StoreTransaction } from '../ports.ts';
@@ -20,7 +21,10 @@ type Start = {
   readonly runId: string;
   readonly traceId: string;
   readonly at: Date;
+  readonly solo: boolean;
 };
+
+type StartOptions = { readonly solo: boolean };
 
 type Target = { readonly item: ItemState; readonly harness: Harness };
 
@@ -131,13 +135,27 @@ async function openRun(
   return accepted({ started: startedOf(run, recorded.item.leaseExpiresAt), context });
 }
 
+async function soloRefusal(
+  tx: StoreTransaction,
+  start: Start,
+  harnessId: string,
+): Promise<Refused | null> {
+  if (!start.solo) return null;
+  const persona = start.caller.actor.identity;
+  const live = await tx.harnessRuns.read.live(harnessId);
+  return live.some((run) => run.persona === persona) ? refused('lease_held', { persona }) : null;
+}
+
 async function startIn(
   ports: StartPorts,
   tx: StoreTransaction,
   start: Start,
 ): Promise<KernelOutcome<Opened>> {
+  if (start.solo) await tx.lock(lockKeys.runPersona(start.caller.actor.identity));
   const target = await targetOf(tx, start.input);
   if ('status' in target) return target;
+  const busy = await soloRefusal(tx, start, target.harness.id);
+  if (busy !== null) return busy;
   const persona = await personaFor(tx, start, target.harness);
   if ('status' in persona) return persona;
   const held = await spendRefusal(tx, start.at);
@@ -184,9 +202,10 @@ export async function startRun(
   ports: StartPorts,
   caller: Caller,
   input: StartRunInput,
+  options: StartOptions = { solo: false },
 ): Promise<KernelOutcome<StartedRun>> {
   const start = { caller, input, runId: ports.ids.next(), traceId: ports.ids.next() };
-  const outcome = await opened(ports, { ...start, at: ports.clock.now() });
+  const outcome = await opened(ports, { ...start, at: ports.clock.now(), solo: options.solo });
   if (outcome.status !== 'accepted') return outcome;
   const { started, context } = outcome.value;
   try {

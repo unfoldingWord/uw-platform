@@ -137,17 +137,26 @@ async function externalRun(): Promise<void> {
   expect(events.filter((event) => event.name === 'run_step_recorded')).toHaveLength(3);
 }
 
-async function seedHolding(r: Rig, harnessId: string): Promise<void> {
+async function seedReading(
+  r: Rig,
+  harnessId: string,
+  reading: { readonly name: 'breaker_open' | 'breaker_holding'; readonly percent: number },
+): Promise<void> {
   await platformStore(r.db).transaction((tx) =>
     tx.harnessEvents.write.append([
       newEventSchema.parse({
         eventId: crypto.randomUUID(),
         harnessId,
         itemId: null,
-        name: 'breaker_holding',
+        name: reading.name,
         at: r.clock.now().toISOString(),
         actor: 'agent:system',
-        evidence: { spentMinor: 100_000, capMinor: 125_000, currency: 'USD', percent: 80 },
+        evidence: {
+          spentMinor: reading.percent * 1250,
+          capMinor: 125_000,
+          currency: 'USD',
+          percent: reading.percent,
+        },
         traceId: crypto.randomUUID(),
         requestId: null,
       }),
@@ -173,9 +182,21 @@ async function breakerHealth(): Promise<void> {
     expect(await breaker()).toEqual({
       name: 'breaker',
       status: 'amber',
-      detail: 'no reading yet, hosted runs are held',
+      detail: 'no fresh reading',
     });
-    await seedHolding(r, harnessId);
+    await seedReading(r, harnessId, { name: 'breaker_open', percent: 10 });
+    expect(await breaker()).toEqual({
+      name: 'breaker',
+      status: 'ok',
+      detail: '10 percent of the cap spent',
+    });
+    r.clock.advance(11 * 60_000);
+    expect(await breaker()).toEqual({
+      name: 'breaker',
+      status: 'amber',
+      detail: 'no fresh reading',
+    });
+    await seedReading(r, harnessId, { name: 'breaker_holding', percent: 80 });
     expect(await breaker()).toEqual({
       name: 'breaker',
       status: 'amber',

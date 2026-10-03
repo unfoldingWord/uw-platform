@@ -32,11 +32,14 @@ export async function currentLevel(tx: StoreTransaction): Promise<BreakerLevel> 
   return levelOfEvent(await latestReading(tx, null));
 }
 
+export function freshAt(latest: HarnessEvent, at: Date): boolean {
+  return at.getTime() - new Date(latest.at).getTime() < BREAKER_STALE_MS;
+}
+
 export async function spendRefusal(tx: StoreTransaction, at: Date): Promise<Refused | null> {
   const latest = await latestReading(tx, null);
   if (latest === null) return refused('spend_held', { level: 'open', why: 'no_reading' });
   const level = levelOfEvent(latest);
   if (level !== 'open') return refused('spend_held', { level });
-  const age = at.getTime() - new Date(latest.at).getTime();
-  return age < BREAKER_STALE_MS ? null : refused('spend_held', { level, why: 'no_fresh_reading' });
+  return freshAt(latest, at) ? null : refused('spend_held', { level, why: 'no_fresh_reading' });
 }

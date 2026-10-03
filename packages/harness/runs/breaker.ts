@@ -5,9 +5,9 @@ import { draft, recordContext, recordHarnessEvents, type RecordContext } from '.
 import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { Ports, RunRow, StoreTransaction } from '../ports.ts';
-import { currentLevel, latestReading, levelOfEvent } from './breaker-level.ts';
+import { currentLevel, freshAt, latestReading, levelOfEvent } from './breaker-level.ts';
 import { resumeRunsWhere } from './resume.ts';
-import { hibernateRunsWhere } from './suspend.ts';
+import { hibernateRunsWhere, underPause } from './suspend.ts';
 
 const BREAKER_HOLD_PERCENT = 75;
 const BREAKER_PAUSE_PERCENT = 90;
@@ -28,6 +28,7 @@ export type BreakerState = {
   readonly level: BreakerLevel;
   readonly reading: BreakerReading | null;
   readonly at: string | null;
+  readonly fresh: boolean;
 };
 type BreakerCheck = BreakerReading & {
   readonly previous: BreakerLevel;
@@ -42,7 +43,7 @@ type BreakerCheckInput = {
 };
 export type BreakerCommands = {
   check(caller: Caller, input: BreakerCheckInput): Promise<KernelOutcome<BreakerCheck>>;
-  state(): Promise<BreakerState>;
+  state(at: Date): Promise<BreakerState>;
 };
 
 type BreakerPorts = Pick<Ports, 'clock' | 'ids' | 'store' | 'runs' | 'modelEngine'>;
@@ -106,11 +107,8 @@ async function runningHosted(tx: StoreTransaction): Promise<RunRow[]> {
 }
 
 async function unpaused(tx: StoreTransaction, run: RunRow): Promise<boolean> {
-  const harness = await tx.harnesses.read.byId(run.harnessId);
   const item = await tx.harnessItems.read.byId(run.itemId);
-  if (harness === null || item === null || harness.paused) return false;
-  const stages = await tx.harnessStages.read.forHarness(run.harnessId);
-  return stages.some((stage) => stage.key === item.stageKey && !stage.paused);
+  return item !== null && !(await underPause(tx, item));
 }
 
 async function breakerHibernated(tx: StoreTransaction): Promise<RunRow[]> {
@@ -163,15 +161,16 @@ function readingFrom(event: HarnessEvent): BreakerReading | null {
   return parsed.success ? { level: levelOfEvent(event), ...parsed.data } : null;
 }
 
-async function state(ports: BreakerPorts): Promise<BreakerState> {
+async function state(ports: BreakerPorts, at: Date): Promise<BreakerState> {
   const latest = await ports.store.transaction((tx) => latestReading(tx, null));
-  if (latest === null) return { level: 'open', reading: null, at: null };
-  return { level: levelOfEvent(latest), reading: readingFrom(latest), at: latest.at };
+  if (latest === null) return { level: 'open', reading: null, at: null, fresh: false };
+  const level = levelOfEvent(latest);
+  return { level, reading: readingFrom(latest), at: latest.at, fresh: freshAt(latest, at) };
 }
 
 export function createBreakerCommands(ports: BreakerPorts): BreakerCommands {
   return {
     check: (caller, input) => check(ports, caller, input),
-    state: () => state(ports),
+    state: (at) => state(ports, at),
   };
 }

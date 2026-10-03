@@ -109,7 +109,7 @@ export async function beat(
     if (started.length >= limit || busy.has(key)) continue;
     const seed: Caller = { actor: seedOf(delegation), traceId: caller.traceId, requestId: null };
     const input = { itemId, delegationId: delegation.id, personaPageId: pageId };
-    const outcome = await startRun(ports, seed, input);
+    const outcome = await startRun(ports, seed, input, { solo: true });
     if (outcome.status !== 'accepted') {
       skipped.push({ delegationId: delegation.id, reason: outcome.reason });
       continue;

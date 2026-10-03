@@ -15,7 +15,7 @@ export type RunEnd =
 
 export type RunEnding = { readonly drafts: readonly EventDraft[]; readonly hosted: string | null };
 
-type LapsePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
+type LapsePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store' | 'runs'>;
 
 const nothing: RunEnding = { drafts: [], hosted: null };
 
@@ -63,24 +63,30 @@ export async function stopWorkflows(
   }
 }
 
-export function stopLapsedRun(ports: LapsePorts, caller: Caller, itemId: string): Promise<void> {
+export async function stopLapsedRun(
+  ports: LapsePorts,
+  caller: Caller,
+  itemId: string,
+): Promise<void> {
   const context = recordContext(ports, caller, ports.clock.now());
-  return ports.store.transaction(async (tx) => {
+  const hosted = await ports.store.transaction(async (tx) => {
     const item = await tx.harnessItems.read.lock(itemId);
     if (item === null || item.holder !== caller.actor.identity || item.delegationId === null) {
-      return;
+      return null;
     }
     const liveness = await assertDelegationLive(tx, ports, item.delegationId, context.at);
-    if (liveness.live) return;
+    if (liveness.live) return null;
     const ending = await endRunDrafts(tx, item, {
       outcome: 'stopped',
       why: 'delegation_lapsed',
       at: context.at,
     });
-    if (ending.drafts.length === 0) return;
+    if (ending.drafts.length === 0) return null;
     await recordItemEvents(tx, context, itemId, [
       ...ending.drafts,
       draft('item_released', { holder: item.holder }),
     ]);
+    return ending.hosted;
   });
+  await stopWorkflows(ports, [hosted]);
 }
