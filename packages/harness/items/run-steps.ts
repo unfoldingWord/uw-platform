@@ -79,6 +79,12 @@ function stepDraft(input: RunStepInput | null, leaseExpiresAt: string) {
     tokensOut: input.tokensOut,
     costBasis: input.costBasis,
     leaseExpiresAt,
+    costMinor: null,
+    computeMinor: null,
+    model: null,
+    resolvedProvider: null,
+    toolsCalled: [],
+    writes: 0,
   });
 }
 

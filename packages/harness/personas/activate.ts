@@ -162,6 +162,7 @@ async function recordFailure(
       pageId,
       persona: persona.frontmatter.identity,
       verb,
+      engine: null,
       reason,
       message,
       itemId,
