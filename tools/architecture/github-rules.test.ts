@@ -179,6 +179,49 @@ const refusals: [string, string, string, string][] = [
   ],
 ];
 
+const moduleRefusals: [string, string, string][] = [
+  [
+    'a route reaching the read client factory',
+    'apps/uw-app/http/a.ts',
+    "import '../github/deps.ts';",
+  ],
+  ['a route reaching the sweep', 'apps/uw-app/http/a.ts', "import '../github/sweep.ts';"],
+  ['a page module reaching the import', 'apps/uw-app/pages/a.ts', "import '../github/import.ts';"],
+  [
+    'the scheduled root reaching the sweep',
+    'apps/uw-app/cron/scheduled.ts',
+    "import '../github/sweep.ts';",
+  ],
+];
+
+describe('the GitHub module is imported only by the platform adapters and the queue and cron roots', () => {
+  it.each(moduleRefusals)('refuses %s', async (_name, path, source) => {
+    const found = await violations({
+      'apps/uw-app/github/deps.ts': leaf,
+      'apps/uw-app/github/sweep.ts': leaf,
+      'apps/uw-app/github/import.ts': leaf,
+      [path]: source,
+    });
+    expect(found.map((violation) => violation.rule)).toContain(
+      'github-module-only-in-ports-and-roots',
+    );
+  });
+
+  it('allows the adapters, the queue and cron sweep roots, the module itself and tests', async () => {
+    const found = await violations({
+      'apps/uw-app/github/deps.ts': leaf,
+      'apps/uw-app/github/sweep.ts': "import './deps.ts';",
+      'apps/uw-app/ports/github-facts.ts': "import '../github/sweep.ts';",
+      'apps/uw-app/queue/worker.ts': "import '../github/deps.ts';",
+      'apps/uw-app/cron/github-sweep.ts': "import '../github/sweep.ts';",
+      'apps/uw-app/http/a.test.ts': "import '../github/deps.ts';",
+    });
+    expect(found.map((violation) => violation.rule)).not.toContain(
+      'github-module-only-in-ports-and-roots',
+    );
+  });
+});
+
 describe('the GitHub dependency rules refuse', () => {
   it.each(refusals)('%s', async (_name, path, source, rule) => {
     const found = await violations({ [path]: source });
