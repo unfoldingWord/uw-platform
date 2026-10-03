@@ -13,7 +13,7 @@ const pieces: readonly Piece[] = [
   },
   {
     owner: `${components}sidebar.tsx`,
-    marks: [/<aside\b/, /aria-label="Main"/, /\bfunction\s+Sidebar\b/, /\bconst\s+Sidebar\b/],
+    marks: [/aria-label="Main"/, /\bfunction\s+Sidebar\b/, /\bconst\s+Sidebar\b/],
   },
   {
     owner: `${components}top-bar.tsx`,
@@ -79,14 +79,14 @@ describe('WB-11 each shell piece exists once', () => {
   it.each([
     [
       'apps/uw-app/pages/screen.tsx',
-      '<aside class="bg-ocean-panel"><nav aria-label="Main"></nav></aside>',
+      '<div class="bg-ocean-panel"><nav aria-label="Main"></nav></div>',
     ],
     ['apps/uw-app/pages/screen.tsx', '<header><nav aria-label="Breadcrumb"></nav></header>'],
     ['apps/uw-app/pages/screen.tsx', '<h1 class="text-2xl">Board</h1>'],
     ['apps/uw-app/pages/screen.tsx', 'export function PageHead() { return null; }'],
     ['apps/uw-app/pages/screen.tsx', '<input type="radio" name="view" />'],
     ['packages/ui/components/card.tsx', 'export const Sidebar = () => null;'],
-    ['apps/uw-app/health/routes.tsx', '<aside>second sidebar</aside>'],
+    ['apps/uw-app/health/routes.tsx', '<nav aria-label="Main">second sidebar</nav>'],
   ])('flags a planted second piece in %s: %s', (path, text) => {
     expect(scanned(path)).toBe(true);
     expect(secondPieces(path, text)).not.toEqual([]);

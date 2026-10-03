@@ -31,7 +31,7 @@ function documentOf(html: string): Document {
 }
 
 describe('WB-11 the shell', () => {
-  it('WB-11 the shell renders one main landmark, a labelled navigation and a skip link', async () => {
+  it('the shell renders one main landmark, a labelled navigation and a skip link', async () => {
     const html = await render();
     expect(html.match(/<main id="main"/g)).toHaveLength(1);
     expect(html.match(/<nav aria-label="Main"/g)).toHaveLength(1);
@@ -45,14 +45,14 @@ describe('WB-11 the shell', () => {
     expect(html).not.toMatch(/\b(?:min-|max-)?w-\[\d/);
     expect(html).not.toMatch(/\bw-\d{3,}/);
     const document = documentOf(html);
-    const summary = document.querySelector('details > summary');
-    expect(summary?.textContent).toBe('Menu');
-    expect(summary?.getAttribute('class')).toContain('md:hidden');
-    expect(document.querySelector('details nav[aria-label="Main"]')).not.toBeNull();
+    const disclosure = document.querySelector('details');
+    expect(disclosure?.querySelector('summary')?.textContent).toBe('Menu');
+    expect(disclosure?.getAttribute('class')).toContain('md:hidden');
+    expect(document.querySelectorAll('nav[aria-label="Main"]')).toHaveLength(1);
     expect(html).toContain('md:grid-cols-[var(--uw-sidebar)_1fr]');
   });
 
-  it('WB-11 the current page is marked aria-current="page"', async () => {
+  it('the current page is marked aria-current="page"', async () => {
     const document = documentOf(await render({ current: '/health' }));
     const current = [...document.querySelectorAll('nav[aria-label="Main"] a[aria-current]')];
     expect(
@@ -72,7 +72,7 @@ describe('WB-11 the shell', () => {
     expect(html).toContain('<meta name="color-scheme" content="light dark"');
   });
 
-  it('WB-11 copy says unfoldingWord in camelCase and has no exclamation marks', async () => {
+  it('WB-12 copy says unfoldingWord in camelCase and has no exclamation marks', async () => {
     const document = documentOf(await render());
     for (const script of document.querySelectorAll('script')) script.remove();
     const text = document.body.textContent ?? '';
@@ -95,6 +95,51 @@ describe('the shell escapes the text it is given', () => {
     expect(html).not.toContain('<img');
     expect(html).not.toContain('"onmouseover=');
     expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+  });
+
+  it('renders no link for a nav or crumb href that is not a relative path or https', async () => {
+    const document = documentOf(
+      await render({
+        nav: [
+          { href: 'javascript:alert(1)', label: 'Sneak' },
+          { href: '/', label: 'Home' },
+        ],
+        crumbs: [{ label: 'Trail', href: 'data:text/html,x' }],
+      }),
+    );
+    const hrefs = [...document.querySelectorAll('a[href]')].map((link) =>
+      link.getAttribute('href'),
+    );
+    expect(hrefs).toEqual(['#main', '/']);
+    expect(document.body.textContent).toContain('Trail');
+  });
+});
+
+describe('the head theme script', () => {
+  async function run(stored: string | null) {
+    const dom = new JSDOM(await render(), {
+      url: 'https://uw.example/',
+      runScripts: 'outside-only',
+    });
+    const { window } = dom;
+    if (stored !== null) window.localStorage.setItem(THEME_KEY, stored);
+    const script = window.document.head.querySelector('script')?.textContent ?? '';
+    window.eval(script);
+    return window;
+  }
+
+  it('WB-11 sets data-theme from the persisted choice before the stylesheet loads', async () => {
+    const window = await run('dark');
+    expect(window.document.documentElement.dataset.theme).toBe('dark');
+    window.close();
+  });
+
+  it('WB-11 leaves data-theme unset for a junk or missing value, so the system setting rules', async () => {
+    for (const stored of ['purple', '<script>', null]) {
+      const window = await run(stored);
+      expect(window.document.documentElement.hasAttribute('data-theme')).toBe(false);
+      window.close();
+    }
   });
 });
 
