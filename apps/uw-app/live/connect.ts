@@ -18,6 +18,7 @@ export async function connectLive(c: Context<AppEnv>): Promise<Response> {
   if (database === null) return refuse(c, 'database_not_configured');
   const actor = c.get('principal');
   if (actor === null) return refuse(c, 'unauthenticated');
+  if (c.req.method !== 'GET') return refuse(c, 'malformed_command');
   if (!asksForSocket(c)) {
     c.set('outcome', 'malformed_command');
     return c.json({ status: 'error', reason: 'malformed_command' }, UPGRADE_REQUIRED);
@@ -28,10 +29,11 @@ export async function connectLive(c: Context<AppEnv>): Promise<Response> {
   const kernel = platformKernel(database, { now: () => at });
   const caller: Caller = { actor, traceId: c.get('traceId') };
   const scene = await kernel.reads.harness(caller, { harnessId: harness.data }, { at });
-  if (scene.status !== 'accepted') return refuse(c, 'harness_not_found');
+  if (scene.status !== 'accepted' || actor.personId === null) return refuse(c, 'harness_not_found');
   const namespace = c.env.HARNESS_HUB;
   if (namespace === undefined) return refuse(c, 'not_wired');
   c.set('outcome', 'accepted');
   const stub = namespace.get(namespace.idFromName(scene.value.harness.id));
-  return stub.fetch(HUB_CONNECT_URL, { method: 'GET', headers: { Upgrade: 'websocket' } });
+  const headers = { Upgrade: 'websocket', 'x-hub-person': actor.personId };
+  return stub.fetch(HUB_CONNECT_URL, { method: 'GET', headers });
 }

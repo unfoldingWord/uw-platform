@@ -3,8 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { healthReportSchema, type HealthIndicator } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
 import { createApp } from '../app.tsx';
+import { platformKernel } from '../kernel.ts';
 import type { HubNamespace } from '../env.ts';
-import { softwareHarness } from '../testing/commands.ts';
+import { software } from '@uw/harness';
+import { accepted, callerOf, ian, softwareHarness } from '../testing/commands.ts';
+import { kernelOn } from '../testing/kernel.ts';
 import { recordingDeps } from '../testing/deps.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { systemTimers, type Timers } from '../timers.ts';
@@ -152,7 +155,8 @@ async function cachedWindow(db: Database): Promise<void> {
   let now = new Date('2026-10-03T12:00:00.000Z');
   const app = healthApp(db, { clock: { now: () => now } });
   const env = { HARNESS_HUB: hub.namespace };
-  const reads = await Promise.all([1, 2, 3].map(() => liveHubOf(app, env)));
+  const reads = [await liveHubOf(app, env)];
+  reads.push(...(await Promise.all([1, 2, 3].map(() => liveHubOf(app, env)))));
   now = new Date(now.getTime() + HUB_HEALTH_CACHE_MS - 1);
   reads.push(await liveHubOf(app, env));
   expect(new Set(reads.map((indicator) => indicator?.detail))).toEqual(
@@ -189,6 +193,44 @@ describe.skipIf(!testServer)('the live hub indicator when a hub fails', () => {
     });
     expect(hub.asked).toEqual([]);
   });
+});
+
+async function concurrentMisses(db: Database): Promise<void> {
+  await softwareHarness(db);
+  const hub = answering(oneConnection);
+  const app = healthApp(db, {});
+  const env = { HARNESS_HUB: hub.namespace };
+  await Promise.all([liveHubOf(app, env), liveHubOf(app, env)]);
+  expect(hub.asked).toHaveLength(4);
+}
+
+async function idsInOrder(db: Database): Promise<void> {
+  const descending = Array.from({ length: 4 }, () => randomUUID())
+    .sort()
+    .reverse();
+  const kernel = kernelOn(db, { now: () => new Date() });
+  const caller = callerOf(await ian(db));
+  for (const [index, harnessId] of descending.entries()) {
+    const input = {
+      harnessId,
+      harnessKey: `ordered-${index}`,
+      jdArea: '80-89',
+      template: software,
+      repository: `unfoldingWord/ordered-${index}`,
+    };
+    accepted(await kernel.stages.activate(caller, input));
+  }
+  const handle = { db, ping: async () => undefined, release: async () => undefined };
+  const ids = await platformKernel(handle).reads.harnessIdsForHealth();
+  expect(ids).toEqual([...descending].reverse());
+}
+
+describe.skipIf(!testServer)('the live hub indicator never shares an unsettled poll', () => {
+  it('polls once per miss when two reads miss the cache together', () =>
+    withAppDatabase(concurrentMisses));
+
+  it('takes the harnesses in id order, so the first 50 are the same on every probe', () =>
+    withAppDatabase(idsInOrder));
 });
 
 describe('the live hub indicator bounds its work', () => {

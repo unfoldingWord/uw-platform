@@ -18,6 +18,11 @@ import {
 
 type ReadOptions = { readonly at: Date };
 
+function byId(left: string, right: string): number {
+  if (left === right) return 0;
+  return left < right ? -1 : 1;
+}
+
 export type KernelReads = {
   harness(
     caller: Caller,
@@ -94,7 +99,7 @@ export function createKernelReads(ports: ReadPorts): KernelReads {
       ports.store.transaction((tx) => tx.harnessStages.read.namesInstructions(input.pageId)),
     harnessIdsForHealth: () =>
       ports.store.transaction(async (tx) =>
-        (await tx.harnesses.read.list()).map((harness) => harness.id),
+        (await tx.harnesses.read.list()).map((harness) => harness.id).sort(byId),
       ),
   };
 }

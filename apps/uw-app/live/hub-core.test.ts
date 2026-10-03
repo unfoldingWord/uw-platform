@@ -2,8 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { hubWakeSchema } from '@uw/contracts';
 import * as entry from '../index.ts';
 import { closeNormally, HarnessHub, openHub } from './harness-hub.ts';
-import { createHubCore, hubFetch } from './hub-core.ts';
-import { fakeHubState, fakeSocket, manualTimers, wakeInstant } from './testing.ts';
+import { createHubCore, hubFetch, SOCKET_MAX_AGE_MS, SOCKETS_PER_PERSON } from './hub-core.ts';
+import {
+  fakeHubState,
+  fakeSocket,
+  manualTimers,
+  socketOwner,
+  wakeInstant,
+  type FakeSocket,
+} from './testing.ts';
 
 const first = 'b3000000-0000-4000-8000-000000000001';
 const second = 'b3000000-0000-4000-8000-000000000002';
@@ -114,7 +121,7 @@ describe('WB-3 the hub answers only its three internal paths', () => {
     const answer = await hubFetch(
       core,
       state,
-      hubRequest('/connect', { headers: { Upgrade: 'websocket' } }),
+      hubRequest('/connect', { headers: { Upgrade: 'websocket', 'x-hub-person': socketOwner } }),
     );
     expect(answer.status).toBe(101);
     expect(answer.webSocket).not.toBeNull();
@@ -158,7 +165,12 @@ function hubContext(recorded: WebSocketRequestResponsePair[]) {
   return {
     acceptWebSocket: state.acceptWebSocket,
     getWebSockets: () => [],
-    storage: { get: async () => undefined, put: async () => undefined },
+    storage: {
+      get: async () => undefined,
+      put: async () => undefined,
+      getAlarm: async () => null,
+      setAlarm: async () => undefined,
+    },
     setWebSocketAutoResponse: (pair?: WebSocketRequestResponsePair) => {
       if (pair) recorded.push(pair);
     },
@@ -180,5 +192,72 @@ describe('the HarnessHub Durable Object', () => {
     const closed: [number | undefined, string | undefined][] = [];
     closeNormally({ close: (code, reason) => void closed.push([code, reason]) });
     expect(closed).toEqual([[1000, 'closed']]);
+  });
+});
+
+const start = wakeInstant.getTime();
+const stranger = 'b3000000-0000-4000-8000-0000000000bb';
+
+function openedAt(minutes: number, person = socketOwner): FakeSocket {
+  return fakeSocket(false, { openedAt: start + minutes * 60_000, person });
+}
+
+function clockAt(minutes: number): () => Date {
+  return () => new Date(start + minutes * 60_000);
+}
+
+describe('the hub closes sockets older than an hour so every session re-checks access', () => {
+  it('closes an hour-old socket with 1000 on the alarm, counting from its accept even after hibernation', async () => {
+    const socket = fakeSocket(false, null);
+    const state = fakeHubState([socket]);
+    await createHubCore(state, manualTimers(), clockAt(0)).admit(socket, socketOwner);
+    expect(state.alarm()).toBe(start + SOCKET_MAX_AGE_MS);
+    const young = openedAt(30);
+    const woken = fakeHubState([socket, young]);
+    await createHubCore(woken, manualTimers(), clockAt(59)).shed();
+    expect(socket.closed).toEqual([]);
+    await createHubCore(woken, manualTimers(), clockAt(60)).shed();
+    expect(socket.closed).toEqual([[1000, 'closed']]);
+    expect(young.closed).toEqual([]);
+    expect(woken.alarm()).toBe(start + 30 * 60_000 + SOCKET_MAX_AGE_MS);
+  });
+
+  it('closes old and untagged sockets before a wake, so they get no message', async () => {
+    const old = openedAt(0);
+    const untagged = fakeSocket(false, null);
+    const fresh = openedAt(45);
+    const timers = manualTimers();
+    const core = createHubCore(fakeHubState([old, untagged, fresh]), timers, clockAt(61));
+    core.wake(first);
+    await timers.runAll();
+    expect(old.closed).toEqual([[1000, 'closed']]);
+    expect(untagged.closed).toEqual([[1000, 'closed']]);
+    expect([old.sent, untagged.sent, fresh.sent]).toEqual([[], [], [wakeOf(first)]]);
+    expect(await core.stats()).toMatchObject({ connections: 1 });
+  });
+});
+
+describe('the hub holds at most 100 sockets from one person', () => {
+  it('closes the oldest socket of that person when a new one would pass the cap', async () => {
+    const own = Array.from({ length: SOCKETS_PER_PERSON }, (_, index) => openedAt(index / 10));
+    const other = openedAt(0, stranger);
+    const newest = fakeSocket(false, null);
+    const state = fakeHubState([...own, other, newest]);
+    await createHubCore(state, manualTimers(), clockAt(20)).admit(newest, socketOwner);
+    expect(own[0]?.closed).toEqual([[1000, 'closed']]);
+    expect(own.slice(1).every((socket) => socket.closed.length === 0)).toBe(true);
+    expect(other.closed).toEqual([]);
+    expect(newest.closed).toEqual([]);
+  });
+
+  it('refuses a connect that names no person', async () => {
+    const { core, state } = hubWith([]);
+    const answer = await hubFetch(
+      core,
+      state,
+      hubRequest('/connect', { headers: { Upgrade: 'websocket' } }),
+    );
+    expect(answer.status).toBe(400);
+    expect(state.getWebSockets()).toHaveLength(0);
   });
 });

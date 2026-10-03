@@ -95,15 +95,15 @@ export function hubIndicator(
 }
 
 export function cachedHubHealth(now: () => number): HubHealth {
-  let held: { readonly at: number; readonly indicator: Promise<HealthIndicator> } | null = null;
-  return (env, kernel, timers) => {
+  let held: { readonly at: number; readonly indicator: HealthIndicator } | null = null;
+  return async (env, kernel, timers) => {
     if (env.HARNESS_HUB === undefined || kernel === null) return hubIndicator(env, kernel, timers);
-    const at = now();
-    if (held !== null && at >= held.at && at - held.at < HUB_HEALTH_CACHE_MS) {
+    const asked = now();
+    if (held !== null && asked >= held.at && asked - held.at < HUB_HEALTH_CACHE_MS) {
       return held.indicator;
     }
-    const indicator = hubIndicator(env, kernel, timers);
-    held = { at, indicator };
+    const indicator = await hubIndicator(env, kernel, timers);
+    held = { at: asked, indicator };
     return indicator;
   };
 }
