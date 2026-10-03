@@ -12,6 +12,7 @@ import {
   itemsInStage,
   type HarnessScene,
   type ItemScene,
+  type StageItemsInput,
 } from './scene.ts';
 
 type ReadOptions = { readonly at: Date };
@@ -34,7 +35,7 @@ export type KernelReads = {
   ): Promise<KernelOutcome<{ readonly harnessId: string }>>;
   inStage(
     caller: Caller,
-    input: { readonly harnessId: string; readonly stageKey: string },
+    input: StageItemsInput,
     options?: ReadOptions,
   ): Promise<KernelOutcome<readonly ItemState[]>>;
   poll(

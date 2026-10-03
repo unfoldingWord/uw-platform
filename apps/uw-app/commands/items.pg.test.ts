@@ -69,12 +69,15 @@ async function moveTo(db: Database, itemId: string, stageKey: string): Promise<v
 async function kickstartWrapsThePage(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const { pageId, title } = await createdPage(db, scene.editor, 'product');
-  const sent = await send(db, scene, 'kickstart', { pageId });
-  expect(sent.body).toMatchObject({ status: 'accepted' });
+  const requestId = randomUUID();
+  const sent = await send(db, scene, 'kickstart', { requestId, pageId });
+  expect(sent.body).toEqual({ status: 'accepted', requestId });
   const created = await eventsNamed(db, scene.harnessId, 'item_created');
   expect(created).toHaveLength(1);
   expect(created[0]).toMatchObject({
     actor: `human:${scene.editor.id}`,
+    requestId,
+    traceId: sent.traceId,
     evidence: { pageId, title, stage: 'package' },
   });
 }
@@ -204,6 +207,7 @@ async function runsNotWired(db: Database): Promise<void> {
 async function agentsActOnNothing(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const itemId = await enqueued(db, scene.harnessId, 'Pause the board');
+  const { pageId } = await createdPage(db, scene.editor, 'product');
   const kernel = kernelOn(db, { now: () => new Date() });
   const admin = await ian(db);
   accepted(await kernel.items.claim(callerOf(admin), { itemId, delegationId: null }));
@@ -214,6 +218,8 @@ async function agentsActOnNothing(db: Database): Promise<void> {
   const agent = agentOf(admin, 'builder');
   const scope = dispatchScope(db);
   const attempts = [
+    ['kickstart', { pageId }],
+    ['enqueue', { title: 'Sneak an item', pageId: null, due: null }],
     ['submit_to_gate', { itemId, to: null, pullRequest: null, head: null }],
     ['prompt_run', { itemId, message: 'Keep going' }],
     ['stop_run', { itemId }],
@@ -273,7 +279,7 @@ describe.skipIf(!testServer)('WB-1 submit and tweak package through the command 
   it('WB-1 tweak_package parks an item for a person’s decision on the occasional tweak', () =>
     withAppDatabase(tweakParks));
 
-  it('WB-1 tweak_package naming an item of another harness answers item_not_found', () =>
+  it('tweak_package naming an item of another harness answers item_not_found', () =>
     withAppDatabase(tweakForeignItem));
 });
 
@@ -283,7 +289,7 @@ describe.skipIf(!testServer)('WB-1 prompt and stop run through the command API',
 });
 
 describe.skipIf(!testServer)('the item commands keep the kernel’s guards', () => {
-  it('an agent is refused submit, prompt, stop, tweak and reorder on a paused harness, and a person still submits', () =>
+  it('an agent is refused every item command before any state, and a person still submits on a paused harness', () =>
     withAppDatabase(agentsActOnNothing));
 
   it('a grant revoked after the principal was resolved is caught by the re-read in the transaction', () =>

@@ -44,10 +44,11 @@ const openTasksQuery = entityQuery(z.object({ jdArea: jdAreaSchema }), async (co
 const stageItemsQuery = entityQuery(
   z.object({ harnessId: z.uuid(), stageKey: stageKeySchema }),
   async (context, params) => {
-    const items = await context.kernel.reads.inStage(callerOf(context), params, { at: context.at });
+    const input = { ...params, limit: STAGE_ITEM_LIMIT };
+    const items = await context.kernel.reads.inStage(callerOf(context), input, { at: context.at });
     if (items.status === 'error') return refusal(items.reason, items.detail);
     const areaOf = await harnessAreas(context, [params.harnessId]);
-    return items.value.slice(0, STAGE_ITEM_LIMIT).map((item) => ({
+    return items.value.map((item) => ({
       row: rowSchema.parse(item),
       resource: areaOf(item.harnessId),
     }));

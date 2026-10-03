@@ -1,4 +1,3 @@
-import type { Stage } from '@uw/contracts';
 import { readPage } from '../../pages/store.ts';
 import { commandHandler, fromKernel, type CommandContext } from '../handler.ts';
 
@@ -99,28 +98,11 @@ export const reorderCommand = commandHandler({
     ),
 });
 
-async function ownStages(
-  context: CommandContext,
-  itemId: string,
-): Promise<readonly Stage[] | null> {
-  const options = { at: at(context) };
-  const item = await context.kernel.reads.item(context.caller, { itemId }, options);
-  if (item.status !== 'accepted' || item.value.harness.id !== context.harnessId) return null;
-  const scene = await context.kernel.reads.harness(
-    context.caller,
-    { harnessId: item.value.harness.id },
-    options,
-  );
-  return scene.status === 'accepted' ? scene.value.stages : null;
-}
-
 export const tweakPackageCommand = commandHandler({
   name: 'tweak_package',
   action: 'write',
   run: async (context, body) => {
-    const stages = await ownStages(context, body.itemId);
-    if (stages === null) return { ok: false, reason: 'item_not_found' };
-    const first = [...stages].sort((a, b) => a.position - b.position)[0];
+    const first = [...context.stages].sort((a, b) => a.position - b.position)[0];
     if (first === undefined) return { ok: false, reason: 'stage_not_found' };
     return fromKernel(
       await context.kernel.items.submit(context.caller, {

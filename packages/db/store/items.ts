@@ -1,10 +1,25 @@
-import { and, asc, eq, isNotNull, isNull, lte, or, count, gt, type SQL, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gt,
+  isNotNull,
+  isNull,
+  lt,
+  lte,
+  ne,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 import type { IssueRef, ItemState } from '@uw/contracts';
 import type { AnyExecutor } from '../any-database.ts';
 import { harnessItems, harnessStages } from '../schema.ts';
 import { refusing } from './refusal.ts';
 import { toItemState } from './rows.ts';
-import type { HarnessItemsGateway, ItemClaim } from './types.ts';
+import type { HarnessItemsGateway, ItemClaim, StageCursor, StagePage } from './types.ts';
 
 const stageOf = (harnessId: string, stageKey: string) =>
   sql`(SELECT id FROM harness_stages WHERE harness_id = ${harnessId} AND key = ${stageKey})`;
@@ -96,6 +111,34 @@ async function heldInStage(
   return rows[0]?.held ?? 0;
 }
 
+function afterCursor(after: StageCursor | null): SQL | undefined {
+  if (after === null) return undefined;
+  return or(
+    lt(harnessItems.priority, after.priority),
+    and(eq(harnessItems.priority, after.priority), gt(harnessItems.id, after.itemId)),
+  );
+}
+
+async function openInStage(
+  executor: AnyExecutor,
+  harnessId: string,
+  stageKey: string,
+  page: StagePage,
+): Promise<readonly ItemState[]> {
+  const rows = await selectItems(executor)
+    .where(
+      and(
+        eq(harnessItems.harnessId, harnessId),
+        eq(harnessStages.key, stageKey),
+        ne(harnessItems.gateStatus, 'done'),
+        afterCursor(page.after),
+      ),
+    )
+    .orderBy(desc(harnessItems.priority), asc(harnessItems.id))
+    .limit(page.limit);
+  return rows.map((row) => toItemState(row.item, row.stageKey));
+}
+
 function bindReads(executor: AnyExecutor): HarnessItemsGateway['read'] {
   return {
     byId: async (itemId) => {
@@ -123,6 +166,7 @@ function bindReads(executor: AnyExecutor): HarnessItemsGateway['read'] {
       return rows.map((row) => toItemState(row.item, row.stageKey));
     },
     heldInStage: (harnessId, stageKey, at) => heldInStage(executor, harnessId, stageKey, at),
+    openInStage: (harnessId, stageKey, page) => openInStage(executor, harnessId, stageKey, page),
     lapsedLeases: async (at, limit) => {
       const rows = await executor
         .select({ id: harnessItems.id })

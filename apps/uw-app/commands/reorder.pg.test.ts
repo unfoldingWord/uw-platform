@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
+import { platformStore } from '../ports/store.ts';
 import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import {
@@ -113,6 +114,37 @@ async function hiddenStageItems(db: Database): Promise<void> {
   expect(noStage.body).toEqual({ status: 'error', reason: 'stage_not_found' });
 }
 
+async function markedDone(db: Database, itemId: string): Promise<void> {
+  await platformStore(db).transaction(async (tx) => {
+    const item = await tx.harnessItems.read.lock(itemId);
+    if (item === null) throw new Error('item vanished');
+    await tx.harnessItems.write.project({ ...item, gateStatus: 'done' });
+  });
+}
+
+async function pagedStageItems(db: Database): Promise<void> {
+  const scene = await softwareHarness(db);
+  const ids: string[] = [];
+  for (let n = 0; n < 52; n += 1) ids.push(await enqueued(db, scene.harnessId, `Item ${n}`));
+  const done = ids[7] ?? '';
+  await markedDone(db, done);
+  const reader = { email: scene.viewer.email };
+  const first = await get(db, reader, itemsPath(scene.harnessId, 'package'));
+  const firstItems = first.body['items'] as readonly { readonly itemId: string }[];
+  expect(firstItems).toHaveLength(50);
+  const next = first.body['next'];
+  expect(typeof next).toBe('string');
+  const after = `${itemsPath(scene.harnessId, 'package')}?after=${String(next)}`;
+  const second = await get(db, reader, after);
+  const secondItems = second.body['items'] as readonly { readonly itemId: string }[];
+  expect(second.body['next']).toBeNull();
+  const read = [...firstItems, ...secondItems].map((item) => item.itemId);
+  expect(read).toEqual(ids.filter((itemId) => itemId !== done).sort());
+  const malformed = await get(db, reader, `${itemsPath(scene.harnessId, 'package')}?after=x`);
+  expect(malformed.status).toBe(400);
+  expect(malformed.body).toEqual({ status: 'error', reason: 'malformed_command' });
+}
+
 async function serviceTokenReadsNothing(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   await enqueued(db, scene.harnessId, 'Hidden');
@@ -136,6 +168,9 @@ describe.skipIf(!testServer)('WB-2 reorder through the command API', () => {
 describe.skipIf(!testServer)('the stage’s items read', () => {
   it('a harness the caller may not read, a missing one and a malformed id answer harness_not_found byte-identically; a missing stage answers stage_not_found', () =>
     withAppDatabase(hiddenStageItems));
+
+  it('WB-2 the stage’s items read pages fifty at a time with a cursor in the server’s order and leaves done items out', () =>
+    withAppDatabase(pagedStageItems));
 
   it('an agent service token reads no stage through the person route', () =>
     withAppDatabase(serviceTokenReadsNothing));
