@@ -12,6 +12,7 @@ import { createBreakerCommands, type BreakerCommands } from './runs/breaker.ts';
 import { createRunCommands, type RunCommands } from './runs/commands.ts';
 import { createStageCommands, type StageCommands } from './stages/commands.ts';
 import { templateProperty } from './template-property.ts';
+import { createViewReads, type ViewReads } from './views/index.ts';
 import { walk, type WalkPath, type WalkStage } from './walk.ts';
 
 export type KernelHealth = { readonly now: Date; readonly appliedMigrations: readonly number[] };
@@ -22,6 +23,7 @@ export type Kernel = {
   readonly replay: typeof replay;
   readonly events: EventReads;
   readonly reads: KernelReads;
+  readonly views: ViewReads;
   readonly items: ItemCommands;
   readonly repair: RepairCommands;
   readonly stages: StageCommands;
@@ -45,6 +47,7 @@ export function createKernel(ports: Ports): Kernel {
     replay,
     events: createEventReads(live),
     reads: createKernelReads(live),
+    views: createViewReads(live),
     items: createItemCommands(live),
     repair: createRepairCommands(live),
     stages: createStageCommands(live),

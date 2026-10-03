@@ -4,6 +4,17 @@ export { portNames } from './ports.ts';
 export type * from './ports.ts';
 export { createKernel } from './kernel.ts';
 export type { Kernel, KernelHealth } from './kernel.ts';
+export type { ViewReads } from './views/index.ts';
+export type {
+  BoardCard,
+  BoardColumn,
+  BoardInput,
+  BoardView,
+  CardHost,
+  CostTotals,
+  FlowStage,
+  FlowView,
+} from './views/types.ts';
 export { engineDescriptor, engineDescriptors, hostable, SCOUT_ENGINE } from './engines.ts';
 export type { EngineDescriptor } from './engines.ts';
 export { runShapes, workflowRunSteps } from './runs/shapes.ts';
