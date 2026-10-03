@@ -1,10 +1,10 @@
-import { stageSchema, type Harness, type Stage } from '@uw/contracts';
+import { stageSchema, type Harness, type ItemState, type Stage } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
 import { approvalsAwaitingOutcome } from '../gates/parking.ts';
 import { readAllEvents } from '../items/record.ts';
 import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
-import type { Ports, StoreTransaction } from '../ports.ts';
+import type { Ports, StageCursor, StoreTransaction } from '../ports.ts';
 import type { HarnessScene } from '../reads/scene.ts';
 import { activateTemplate, type Activated, type ActivateInput } from './activate.ts';
 import { editInTransaction, type EditWork } from './edit.ts';
@@ -83,20 +83,39 @@ function createWork(ports: StagePorts, stage: StageInput): EditWork<Stage> {
   };
 }
 
+const inFlightPage = 50;
+
+async function awaitingOutcome(
+  tx: StoreTransaction,
+  harness: Harness,
+  items: readonly ItemState[],
+): Promise<ItemState | null> {
+  for (const item of items) {
+    const events = await readAllEvents(tx, harness.id, item.itemId);
+    if (approvalsAwaitingOutcome(events).length > 0) return item;
+  }
+  return null;
+}
+
 async function connectorInFlight(
   tx: StoreTransaction,
   harness: Harness,
   stage: Stage,
 ): Promise<Refused | null> {
   await tx.lock(lockKeys.stageClaims(stage.id));
-  const items = await tx.harnessItems.read.forHarness(harness.id);
-  for (const item of items.filter((entry) => entry.stageKey === stage.key)) {
-    const events = await readAllEvents(tx, harness.id, item.itemId);
-    if (approvalsAwaitingOutcome(events).length > 0) {
-      return refused('decision_in_flight', { stage: stage.key, itemId: item.itemId });
+  for (let after: StageCursor | null = null; ;) {
+    const page = await tx.harnessItems.read.openInStage(harness.id, stage.key, {
+      after,
+      limit: inFlightPage,
+    });
+    const waiting = await awaitingOutcome(tx, harness, page);
+    if (waiting !== null) {
+      return refused('decision_in_flight', { stage: stage.key, itemId: waiting.itemId });
     }
+    const last = page.at(-1);
+    if (page.length < inFlightPage || last === undefined) return null;
+    after = { priority: last.priority, itemId: last.itemId };
   }
-  return null;
 }
 
 function updateWork(stageKey: string, change: StageChange): EditWork<Stage> {

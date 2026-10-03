@@ -13,6 +13,7 @@ import {
 } from '../github/testing/gate-rig.ts';
 import { decisionRows } from '../github/testing/ship-rig.ts';
 import { agentOf, kernelOn, personOn } from '../testing/kernel.ts';
+import { platformStore } from '../ports/store.ts';
 import { kernelThatLosesTheExit } from '../testing/lost-exit.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import {
@@ -334,6 +335,26 @@ async function connectorHeldWhileApprovalWaits(db: Database): Promise<void> {
   expect(renamed.body).toMatchObject({ status: 'accepted' });
 }
 
+async function onlyOpenItemsHoldTheConnector(db: Database): Promise<void> {
+  const parked = await parkedAtShip(db);
+  const lost = await kernelThatLosesTheExit(db, parked.item.itemId);
+  await expect(
+    lost.gates.decide(callerOf(parked.kim), {
+      itemId: parked.item.itemId,
+      decision: 'approve',
+      reason: null,
+      findings: [],
+      seenHead: parked.item.expectedHead,
+    }),
+  ).rejects.toThrow('the exit was lost');
+  await platformStore(db).transaction(async (tx) => {
+    const row = await tx.harnessItems.read.lock(parked.item.itemId);
+    if (row === null) throw new Error('the parked item vanished');
+    await tx.harnessItems.write.project({ ...row, gateStatus: 'done' });
+  });
+  expect((await unshipped(db, parked)).body).toMatchObject({ status: 'accepted' });
+}
+
 async function shippedThrough(db: Database, parked: ParkedAtShip): Promise<void> {
   const github = readyToShip(parked.item.itemId);
   const path = `/api/harness/${parked.item.harnessId}/commands/approve`;
@@ -388,6 +409,9 @@ describe.skipIf(!testServer)('WB-1 KN-18 the stage command on the person surface
 
   it('KN-18 update_stage refuses decision_in_flight while an approval waits for its connector', () =>
     withAppDatabase(connectorHeldWhileApprovalWaits));
+
+  it('the connector guard reads only the open items at the stage, so a done item does not hold the connector', () =>
+    withAppDatabase(onlyOpenItemsHoldTheConnector));
 
   it('KN-18 remove_stage refuses an effect stage, and a stage with gate decision history once it holds no item', () =>
     withAppDatabase(historyHoldsAStage));
