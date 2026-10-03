@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import type { Principal } from '@uw/contracts';
+import { newEventSchema, type Principal } from '@uw/contracts';
 import { createClient } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
 import { seedGrant, seedPerson } from '@uw/db/test-seed';
@@ -137,6 +137,53 @@ async function externalRun(): Promise<void> {
   expect(events.filter((event) => event.name === 'run_step_recorded')).toHaveLength(3);
 }
 
+async function seedHolding(r: Rig, harnessId: string): Promise<void> {
+  await platformStore(r.db).transaction((tx) =>
+    tx.harnessEvents.write.append([
+      newEventSchema.parse({
+        eventId: crypto.randomUUID(),
+        harnessId,
+        itemId: null,
+        name: 'breaker_holding',
+        at: r.clock.now().toISOString(),
+        actor: 'agent:system',
+        evidence: { spentMinor: 100_000, capMinor: 125_000, currency: 'USD', percent: 80 },
+        traceId: crypto.randomUUID(),
+        requestId: null,
+      }),
+    ]),
+  );
+}
+
+async function breakerHealth(): Promise<void> {
+  const r = await openRig();
+  const { harnessId } = await itemOn(r);
+  const token = await r.fixture.signForMcp({ email: EDITOR.email });
+  const app = createApp(postgresDeps(r.db, r.fixture, undefined, r.clock));
+  const laptop = await httpClient(app, {
+    'cf-access-jwt-assertion': token,
+    'x-uw-device': 'laptop',
+  });
+  const breaker = async () => {
+    const { body } = await callTool(laptop, 'get_health', { harnessId });
+    const indicators = body['indicators'] as readonly Body[];
+    return indicators.find((indicator) => indicator['name'] === 'breaker');
+  };
+  try {
+    expect(await breaker()).toEqual({ name: 'breaker', status: 'ok', detail: 'no reading yet' });
+    await seedHolding(r, harnessId);
+    expect(await breaker()).toEqual({
+      name: 'breaker',
+      status: 'amber',
+      detail: '80 percent of the cap spent',
+    });
+  } finally {
+    await laptop.close();
+  }
+}
+
 describe.skipIf(!testServer)('record_run_step from an external runner', () => {
   it('HE-6 record_run_step over HTTP answers prompts and creates the external run', externalRun);
+
+  it('HE-5 get_health shows the breaker as an indicator', breakerHealth);
 });

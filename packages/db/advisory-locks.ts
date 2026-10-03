@@ -11,6 +11,7 @@ export const lockKeyPrefixes: readonly string[] = [
   'harness_events:',
   'github-issue:',
   'persona-activation:',
+  'harness-breaker',
 ];
 
 export function advisoryLock(key: string): SQL {

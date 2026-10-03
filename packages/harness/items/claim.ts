@@ -1,5 +1,5 @@
 import type { Harness, ItemState, Stage } from '@uw/contracts';
-import { allowed, isAgent } from '../access.ts';
+import { allowed, bareAgent, isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { actingPrincipal, isRefusal, recordDelegationRequired } from '../delegations/acting.ts';
 import {
@@ -12,6 +12,7 @@ import {
 import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
+import { spendRefusal } from '../runs/breaker-level.ts';
 import { endRunDrafts, stopWorkflows } from '../runs/ends.ts';
 import { lapseDrafts, LEASE_MS, leaseLapsed } from './leases.ts';
 import { pausedRefusal } from './paused.ts';
@@ -78,6 +79,15 @@ function lockedGuards(scene: Scene, item: ItemState): Refused | null {
   if (item.stageKey !== scene.stage.key) return refused('not_permitted', { why: 'moved' });
   const { caller, harness, stage } = scene;
   return gateRefusal(item) ?? pickupRefusal(caller, stage) ?? pausedRefusal(caller, harness, stage);
+}
+
+async function bareRefusal(
+  tx: StoreTransaction,
+  caller: Caller,
+  at: Date,
+): Promise<Refused | null> {
+  if (!bareAgent(caller.actor.identity)) return null;
+  return spendRefusal(tx, at);
 }
 
 async function actingGuard(
@@ -183,7 +193,7 @@ async function claimIn(
   const stage = stages.find((entry) => entry.id === scene.stage.id);
   if (stage === undefined) return refused('stage_not_found', { stage: scene.stage.key });
   const locked = { ...scene, harness, stage };
-  const stale = lockedGuards(locked, item);
+  const stale = lockedGuards(locked, item) ?? (await bareRefusal(tx, caller, at));
   if (stale !== null) return stale;
   const denied = await actingGuard(tx, ports, locked, item, input.delegationId);
   if (denied !== null) return denied;
