@@ -18,6 +18,7 @@ import type { ShipGitHub } from '../ports/connectors.ts';
 import { hubNotWired } from '../ports/hub.not-wired.ts';
 import {
   isBuiltCommand,
+  isHumanPrincipal,
   opensGateGitHub,
   type CommandContext,
   type CommandHandler,
@@ -135,10 +136,7 @@ async function runOnce(command: Admitted, context: CommandContext): Promise<Outc
 }
 
 function opensGitHub(command: Admitted): boolean {
-  const { principal } = command;
-  const person = principal.kind === 'person' && principal.personId !== null;
-  const human = person && principal.identity === `human:${principal.personId}`;
-  return human && opensGateGitHub(command.handler);
+  return isHumanPrincipal(command.principal) && opensGateGitHub(command.handler);
 }
 
 function contextOf(

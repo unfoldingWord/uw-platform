@@ -1,19 +1,10 @@
 import type { CommandBody } from '@uw/contracts';
 import type { DecideInput, Kernel } from '@uw/harness';
-import { commandHandler, fromKernel, type CommandContext } from '../handler.ts';
+import { commandHandler, fromKernel, isHumanPrincipal, type CommandContext } from '../handler.ts';
 import { gateKernel } from './gate-kernel.ts';
 
-function isHuman(context: CommandContext): boolean {
-  const { actor } = context.caller;
-  return (
-    actor.kind === 'person' &&
-    actor.personId !== null &&
-    actor.identity === `human:${actor.personId}`
-  );
-}
-
 function kernelFor(context: CommandContext): Kernel {
-  if (!isHuman(context)) return context.kernel;
+  if (!isHumanPrincipal(context.caller.actor)) return context.kernel;
   const github = context.gateGitHub();
   return gateKernel(context.database, context.clock, github, context.hub, context.logger);
 }

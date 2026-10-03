@@ -4,6 +4,7 @@ import {
   type CommandBody,
   type CommandName,
   type Harness,
+  type Principal,
   type Stage,
 } from '@uw/contracts';
 import type { AclAction } from '@uw/core/acl';
@@ -73,6 +74,11 @@ function brandCommand(handler: CommandHandler): CommandHandler {
 
 export function isBuiltCommand(handler: CommandHandler): boolean {
   return built.has(handler);
+}
+
+export function isHumanPrincipal(principal: Principal): boolean {
+  const { kind, personId, identity } = principal;
+  return kind === 'person' && personId !== null && identity === `human:${personId}`;
 }
 
 export function opensGateGitHub(handler: CommandHandler): boolean {

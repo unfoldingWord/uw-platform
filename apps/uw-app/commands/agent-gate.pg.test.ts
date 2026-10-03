@@ -251,7 +251,7 @@ describe.skipIf(!testServer)('WB-1 an agent principal on the command API decides
   it('WB-1 an agent principal on a gate command reaches the kernel, which records gate_refused_to_agent and decides nothing', () =>
     withAppDatabase(agentsRecorded));
 
-  it('WB-1 an agent principal on any other command is not_permitted and appends nothing', () =>
+  it('WB-1 an agent principal on any other command is refused (not_permitted, or harness_not_found when it cannot read the harness) and appends nothing', () =>
     withAppDatabase(agentsRefusedElsewhere));
 
   it('WB-1 an agent that cannot read the harness gets harness_not_found and nothing is recorded', () =>
