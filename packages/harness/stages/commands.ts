@@ -137,10 +137,10 @@ function updateWork(stageKey: string, change: StageChange): EditWork<Stage> {
     return {
       stageKey,
       resulting: replaceOne(stages, next),
-      apply: async (write) => {
-        await write.harnessStages.write.update(next);
-        return accepted(next);
-      },
+      apply: async (write) =>
+        (await write.harnessStages.write.update(next))
+          ? accepted(next)
+          : refused('stage_not_found', { stage: stageKey }),
     };
   };
 }
