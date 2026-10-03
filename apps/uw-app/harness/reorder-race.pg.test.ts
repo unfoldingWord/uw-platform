@@ -163,8 +163,7 @@ async function raceRound(
     Array(connectionCount).fill('accepted'),
   );
   const { items, replayed } = await settled(connectionAt(connections, 0), harnessId);
-  const priorities = items.map((item) => item.priority).sort((a, b) => a - b);
-  expect(priorities).toEqual(Array.from({ length: connectionCount }, (_, n) => (n + 1) * 10));
+  expect(items).toHaveLength(connectionCount);
   expect(replayed).toBe(true);
 }
 
@@ -218,21 +217,102 @@ async function entersStage(connections: readonly Database[]): Promise<void> {
   const order = accepted(outcome).map((item) => item.itemId);
   expect(order).toHaveLength(itemIds.length + 1);
   expect(order).toContain(entering.itemId);
-  const { items } = await settled(connectionAt(connections, 0), harnessId);
-  const priorities = items
+  expect(order.indexOf(second)).toBe(order.indexOf(first) - 1);
+  const { items, replayed } = await settled(connectionAt(connections, 0), harnessId);
+  const read = items
     .filter((item) => item.stageKey === 'package')
-    .map((item) => item.priority)
-    .sort((a, b) => a - b);
-  expect(priorities).toEqual(order.map((_, n) => (n + 1) * 10));
+    .sort((x, y) => y.priority - x.priority || x.itemId.localeCompare(y.itemId))
+    .map((item) => item.itemId);
+  expect(read).toEqual(order);
+  expect(replayed).toBe(true);
+}
+
+async function markDone(connection: Database, itemIds: readonly string[]): Promise<void> {
+  await platformStore(connection).transaction(async (tx) => {
+    for (const itemId of itemIds) {
+      const row = await tx.harnessItems.read.lock(itemId);
+      if (row === null) throw new Error('no row to finish');
+      await tx.harnessItems.write.project({ ...row, gateStatus: 'done' });
+    }
+  });
+}
+
+async function reorderedEvents(connection: Database, harnessId: string) {
+  const events = await platformStore(connection).transaction((tx) =>
+    readAllEvents(tx, harnessId, null),
+  );
+  return events.filter((event) => event.name === 'item_reordered');
+}
+
+function holdRow(connection: Database, itemId: string) {
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => void (release = resolve));
+  let locked: () => void = () => undefined;
+  const ready = new Promise<void>((resolve) => void (locked = resolve));
+  const holder = platformStore(connection).transaction(async (tx) => {
+    await tx.harnessItems.read.lock(itemId);
+    locked();
+    await gate;
+  });
+  return { ready, release, holder };
+}
+
+async function reorderPastHeld(
+  connections: readonly Database[],
+  ian: Principal,
+  held: string,
+  input: { readonly itemId: string; readonly beforeItemId: string },
+) {
+  const holding = holdRow(connectionAt(connections, 1), held);
+  await holding.ready;
+  const kernel = kernelOn(connectionAt(connections, 2), clock);
+  const pending = kernel.items.reorder(caller(ian), input);
+  const timeout = new Promise<'blocked'>((resolve) => setTimeout(() => resolve('blocked'), 3000));
+  const raced = await Promise.race([pending, timeout]);
+  holding.release();
+  await holding.holder;
+  expect(raced).not.toBe('blocked');
+  return accepted(await pending).map((item) => item.itemId);
+}
+
+async function skipsDoneRows(connections: readonly Database[]): Promise<void> {
+  const { ian, harnessId, itemIds } = await heldStage(connections);
+  const done = itemIds.slice(2, 5);
+  const open = itemIds.filter((itemId) => !done.includes(itemId)).sort();
+  const [top, , bottom] = open;
+  const [doneItem] = done;
+  if (top === undefined || bottom === undefined || doneItem === undefined)
+    throw new Error('no items');
+  await markDone(connectionAt(connections, 0), done);
+  const order = await reorderPastHeld(connections, ian, doneItem, {
+    itemId: bottom,
+    beforeItemId: top,
+  });
+  expect(order).toEqual([bottom, ...open.filter((itemId) => itemId !== bottom)]);
+  const reordered = await reorderedEvents(connectionAt(connections, 0), harnessId);
+  expect(reordered.map((event) => event.itemId)).toEqual([bottom]);
+  const input = { itemId: top, beforeItemId: doneItem };
+  const kernel = kernelOn(connectionAt(connections, 0), clock);
+  const doneBefore = await kernel.items.reorder(caller(ian), input);
+  expect(doneBefore.status === 'error' && doneBefore.reason).toBe('malformed_command');
+  const { items } = await settled(connectionAt(connections, 0), harnessId);
+  const events = await platformStore(connectionAt(connections, 0)).transaction((tx) =>
+    readAllEvents(tx, harnessId, null),
+  );
+  const openRows = items.filter((item) => open.includes(item.itemId));
+  expect(openRows.every((item) => agrees(events, item))).toBe(true);
 }
 
 describe.skipIf(!testServer)('reorders race on separate connections', () => {
-  it('leaves one distinct renumbering of the stage that replay agrees with', () =>
+  it('leaves every reorder accepted and a stage order that replay agrees with', () =>
     withShared(raceRounds));
 
   it('answers stale_version for an item that leaves the stage while the reorder waits', () =>
     withShared(leavesStage));
 
-  it('renumbers an item that enters the stage while the reorder waits', () =>
+  it('places among an item that enters the stage while the reorder waits', () =>
     withShared(entersStage));
+
+  it('a reorder in a lane holding done items locks only the open rows, moves one priority and appends one event', () =>
+    withShared(skipsDoneRows));
 });
