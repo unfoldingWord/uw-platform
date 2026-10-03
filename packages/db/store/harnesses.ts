@@ -37,7 +37,12 @@ export function bindHarnesses(executor: AnyExecutor): HarnessesGateway {
         }),
       setPaused: (harnessId, paused) =>
         refusing(async () => {
-          await executor.update(harnesses).set({ paused }).where(eq(harnesses.id, harnessId));
+          const rows = await executor
+            .update(harnesses)
+            .set({ paused })
+            .where(eq(harnesses.id, harnessId))
+            .returning({ id: harnesses.id });
+          return rows.length > 0;
         }),
     },
   };
