@@ -5,7 +5,7 @@ import { principalSchema, refusalSchema, type HarnessEvent, type Principal } fro
 import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
-import { revokeSeededGrant, seedGrant, seedPerson } from '@uw/db/test-seed';
+import { revokeSeededGrant, seedGrant, seedHostedRun, seedPerson } from '@uw/db/test-seed';
 import { LEASE_MS, readAllEvents, software, type Caller, type Kernel } from '@uw/harness';
 import { bindServiceToken } from '../agents/service-tokens.ts';
 import { createApp } from '../app.tsx';
@@ -308,7 +308,14 @@ async function stepsInProcess(): Promise<void> {
   const h = await harnessWith(r, 'software-workflow', [1]);
   expect((await claim(await runner(r, 'laptop'), at(h, 0))).isError).toBe(false);
   const device = workflowContext(r, devicePrincipal(r.editor));
-  const args = (costBasis: string) => ({ ...gatedArgs['record_run_step']?.(at(h, 0)), costBasis });
+  const runId = crypto.randomUUID();
+  const run = { id: runId, harnessId: h.harnessId, itemId: at(h, 0), delegationId: null };
+  await seedHostedRun(r.db, { ...run, persona: device.principal.identity });
+  const args = (costBasis: string) => ({
+    ...gatedArgs['record_run_step']?.(at(h, 0)),
+    runId,
+    costBasis,
+  });
   const wrong = await callVerb(device, 'record_run_step', args('subscription'), verbHandlers);
   expect(JSON.parse(textOf(wrong))).toEqual({
     status: 'error',

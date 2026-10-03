@@ -2,6 +2,7 @@ import type { ItemState } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
 import type { KernelOutcome } from '../outcome.ts';
 import type { Ports } from '../ports.ts';
+import type { RunStepInput } from '../runs/types.ts';
 import { claim, type Claimed, type ClaimInput } from './claim.ts';
 import { enqueue, type EnqueueInput } from './enqueue.ts';
 import {
@@ -27,7 +28,7 @@ import {
   renewLease,
   type LeaseOutcome,
   type RenewInput,
-  type RunStepInput,
+  type StepOutcome,
   type SweepInput,
   type Swept,
 } from './run-steps.ts';
@@ -42,7 +43,7 @@ export type ItemCommands = {
   release(caller: Caller, input: ReleaseInput): Promise<KernelOutcome<ItemState>>;
   reorder(caller: Caller, input: ReorderInput): Promise<KernelOutcome<readonly ItemState[]>>;
   renewLease(caller: Caller, input: RenewInput): Promise<KernelOutcome<LeaseOutcome>>;
-  recordRunStep(caller: Caller, input: RunStepInput): Promise<KernelOutcome<LeaseOutcome>>;
+  recordRunStep(caller: Caller, input: RunStepInput): Promise<KernelOutcome<StepOutcome>>;
   expireLeases(caller: Caller, input: SweepInput): Promise<KernelOutcome<Swept>>;
   submit(caller: Caller, input: SubmitInput): Promise<KernelOutcome<Submitted>>;
   attachLearning(caller: Caller, input: AttachLearningInput): Promise<KernelOutcome<ItemState>>;

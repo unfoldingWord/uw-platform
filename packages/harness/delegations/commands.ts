@@ -176,7 +176,7 @@ function boundTo(caller: Caller, delegation: Delegation): boolean {
   );
 }
 
-async function beatIn(
+export async function beatWithin(
   ports: DelegationPorts,
   tx: StoreTransaction,
   caller: Caller,
@@ -237,7 +237,7 @@ export function createDelegationCommands(ports: DelegationPorts): DelegationComm
     },
     beat: async (caller, input) => {
       const at = ports.clock.now();
-      return ports.store.transaction((tx) => beatIn(ports, tx, caller, input.delegationId, at));
+      return ports.store.transaction((tx) => beatWithin(ports, tx, caller, input.delegationId, at));
     },
   };
 }

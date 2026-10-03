@@ -8,6 +8,7 @@ import { callVerb } from '../dispatch.ts';
 import { verbHandlers } from './index.ts';
 
 const lease = { leaseExpiresAt: '2026-10-03T09:15:00.000Z', leaseWarning: false };
+const prompts = ['Look at the failing check first.'];
 
 function stepContext(host: McpHost, reached: unknown[]): VerbContext {
   const context = testContext(testAgent([areaGrant('editor', '80-89')]));
@@ -17,7 +18,7 @@ function stepContext(host: McpHost, reached: unknown[]): VerbContext {
       ...context.kernel.items,
       recordRunStep: async (_caller, input) => {
         reached.push(input);
-        return { status: 'accepted', value: lease };
+        return { status: 'accepted', value: { ...lease, prompts } };
       },
     },
   };
@@ -61,12 +62,12 @@ describe('an external runner cannot set its own cost or provider', () => {
     expect(reached).toEqual([]);
   });
 
-  it('records a step that reports tokens, a model and tools, and answers no prompts yet', async () => {
+  it('records a step that reports tokens, a model and tools, and answers the run prompts', async () => {
     const reached: unknown[] = [];
     const input = stepInput('subscription', { model: 'claude-opus', toolsCalled: ['read_page'] });
     expect(await recordRunStep.run(stepContext('external', reached), input, null)).toEqual({
       status: 'accepted',
-      output: { ...lease, prompts: [] },
+      output: { ...lease, prompts },
     });
     expect(reached).toEqual([input]);
   });

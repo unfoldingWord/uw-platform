@@ -31,6 +31,10 @@ export const recordRunStep = gatedHandler({
     const refused = hostOnlyRefusal(context.host, input);
     if (refused !== null) return refused;
     const recorded = await context.kernel.items.recordRunStep(callerOf(context), input);
-    return fromKernel(recorded, (lease) => ({ ...lease, prompts: [] }));
+    return fromKernel(recorded, (step) => ({
+      leaseExpiresAt: step.leaseExpiresAt,
+      leaseWarning: step.leaseWarning,
+      prompts: [...step.prompts],
+    }));
   },
 });

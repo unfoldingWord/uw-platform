@@ -48,7 +48,15 @@ export type { Claimed, ClaimInput } from './items/claim.ts';
 export type { ReorderInput } from './items/reorder.ts';
 export type { SubmitChange, Submitted, SubmitInput } from './items/submit.ts';
 export { expireLapsedLease, LEASE_MS, LEASE_WARNING_MS } from './items/leases.ts';
-export type { LeaseOutcome } from './items/run-steps.ts';
+export type { LeaseOutcome, StepOutcome } from './items/run-steps.ts';
+export type { RunCommands } from './runs/commands.ts';
+export type {
+  RunPersona,
+  RunScene,
+  RunStepInput,
+  StartedRun,
+  StartRunInput,
+} from './runs/types.ts';
 export type { Rebuilt, RepairCommands } from './items/repair.ts';
 export type { DelegationCommands, GrantInput } from './delegations/commands.ts';
 export type { GateCommands } from './gates/commands.ts';

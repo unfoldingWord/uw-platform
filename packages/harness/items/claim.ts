@@ -14,7 +14,13 @@ import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.
 import type { Ports, StoreTransaction } from '../ports.ts';
 import { lapseDrafts, LEASE_MS, leaseLapsed } from './leases.ts';
 import { pausedRefusal } from './paused.ts';
-import { draft, recordContext, recordItemEvents, type RecordContext } from './record.ts';
+import {
+  draft,
+  recordContext,
+  recordItemEvents,
+  type EventDraft,
+  type RecordContext,
+} from './record.ts';
 
 type ClaimPorts = Pick<Ports, 'clock' | 'githubFacts' | 'grants' | 'ids' | 'store'>;
 
@@ -29,6 +35,11 @@ export type ClaimInput = {
   readonly itemId: string;
   readonly delegationId: string | null;
   readonly adoptBranch?: boolean;
+};
+
+export type ClaimTaken = {
+  readonly drafts: readonly EventDraft[];
+  readonly branch: ClaimedBranch;
 };
 
 type Taking = { readonly delegationId: string | null; readonly tip: BranchTip | null };
@@ -89,7 +100,7 @@ async function takeClaim(
   scene: Scene,
   item: ItemState,
   { delegationId, tip }: Taking,
-): Promise<KernelOutcome<Claimed>> {
+): Promise<KernelOutcome<ClaimTaken>> {
   const { caller, harness, stage, context } = scene;
   const { at } = context;
   if (item.holder !== null && !leaseLapsed(item, at)) {
@@ -111,20 +122,17 @@ async function takeClaim(
     at,
   });
   if (!won) return refused('lease_held', { holder: item.holder });
-  const recorded = await recordItemEvents(tx, context, item.itemId, [
-    ...lapseDrafts(item, at),
-    draft('item_claimed', {
-      holder: caller.actor.identity,
-      claimantKind: caller.actor.kind,
-      delegationId,
-      leaseExpiresAt: leaseExpiresAt === null ? null : leaseExpiresAt.toISOString(),
-    }),
-    ...(adoption.head === null ? [] : [draft('branch_adopted', { head: adoption.head })]),
-  ]);
   return accepted({
-    item: recorded.item,
-    leaseExpiresAt: recorded.item.leaseExpiresAt,
-    leaseWarning: false,
+    drafts: [
+      ...lapseDrafts(item, at),
+      draft('item_claimed', {
+        holder: caller.actor.identity,
+        claimantKind: caller.actor.kind,
+        delegationId,
+        leaseExpiresAt: leaseExpiresAt === null ? null : leaseExpiresAt.toISOString(),
+      }),
+      ...(adoption.head === null ? [] : [draft('branch_adopted', { head: adoption.head })]),
+    ],
     branch: claimedBranch(item, adoption),
   });
 }
@@ -150,7 +158,7 @@ async function claimIn(
   caller: Caller,
   { input, tip }: { readonly input: ClaimInput; readonly tip: BranchTip | null },
   at: Date,
-): Promise<KernelOutcome<Claimed>> {
+): Promise<KernelOutcome<ClaimTaken>> {
   const pre = await tx.harnessItems.read.byId(input.itemId);
   if (pre === null) return refused('item_not_found', { itemId: input.itemId });
   const scene = await sceneOf(ports, tx, caller, pre, at);
@@ -173,6 +181,16 @@ async function claimIn(
   return takeClaim(tx, locked, item, { delegationId: input.delegationId, tip });
 }
 
+export function claimWithin(
+  ports: ClaimPorts,
+  tx: StoreTransaction,
+  caller: Caller,
+  input: ClaimInput,
+  at: Date,
+): Promise<KernelOutcome<ClaimTaken>> {
+  return claimIn(ports, tx, caller, { input, tip: null }, at);
+}
+
 export async function claim(
   ports: ClaimPorts,
   caller: Caller,
@@ -180,5 +198,16 @@ export async function claim(
 ): Promise<KernelOutcome<Claimed>> {
   const tip = input.adoptBranch === true ? await readBranchTip(ports, input.itemId) : null;
   const at = ports.clock.now();
-  return ports.store.transaction((tx) => claimIn(ports, tx, caller, { input, tip }, at));
+  return ports.store.transaction(async (tx) => {
+    const taken = await claimIn(ports, tx, caller, { input, tip }, at);
+    if (taken.status !== 'accepted') return taken;
+    const context = recordContext(ports, caller, at);
+    const recorded = await recordItemEvents(tx, context, input.itemId, taken.value.drafts);
+    return accepted({
+      item: recorded.item,
+      leaseExpiresAt: recorded.item.leaseExpiresAt,
+      leaseWarning: false,
+      branch: taken.value.branch,
+    });
+  });
 }

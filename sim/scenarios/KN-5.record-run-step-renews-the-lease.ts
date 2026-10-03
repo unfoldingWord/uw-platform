@@ -68,10 +68,10 @@ export const scenario = defineScenario({
       });
     world.adapters.clock.advance(13 * minute);
     const near = valueOf(await step());
-    assert.deepEqual(near, { leaseExpiresAt: at(28), leaseWarning: true });
+    assert.deepEqual(near, { leaseExpiresAt: at(28), leaseWarning: true, prompts: [] });
     world.adapters.clock.advance(5 * minute);
     const fresh = valueOf(await step());
-    assert.deepEqual(fresh, { leaseExpiresAt: at(33), leaseWarning: false });
+    assert.deepEqual(fresh, { leaseExpiresAt: at(33), leaseWarning: false, prompts: [] });
     world.adapters.clock.advance(32 * minute);
     const late = await step();
     assert.equal(late.status === 'error' && late.reason, 'lease_expired');
@@ -79,6 +79,7 @@ export const scenario = defineScenario({
     assert.deepEqual(names, [
       'item_created',
       'item_claimed',
+      'run_started',
       'run_step_recorded',
       'run_step_recorded',
       'lease_expired',

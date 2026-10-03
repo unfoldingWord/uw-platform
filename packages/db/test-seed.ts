@@ -6,6 +6,7 @@ import {
   grantAudit,
   harnessEvents,
   harnessItems,
+  harnessRuns,
   harnessStages,
   harnesses,
   pages,
@@ -162,4 +163,27 @@ export async function dropDecisionNext(db: AnyExecutor, itemId: string): Promise
   await db.execute(
     sql`ALTER TABLE gate_decisions ENABLE TRIGGER gate_decisions_no_update_or_delete`,
   );
+}
+
+export type SeedRun = {
+  readonly id: string;
+  readonly harnessId: string;
+  readonly itemId: string;
+  readonly persona: string;
+  readonly delegationId: string | null;
+};
+
+export async function seedHostedRun(db: AnyExecutor, run: SeedRun): Promise<void> {
+  await db.insert(harnessRuns).values({
+    ...run,
+    runShape: 'workflow-run',
+    engine: 'claude-messages',
+    model: 'claude-sonnet-5',
+    costBasis: 'metered',
+    costMinor: 0,
+    computeMinor: 0,
+    traceId: seededTrace,
+    outcome: 'running',
+    startedAt: seededAt,
+  });
 }
