@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import type { Principal } from '@uw/contracts';
 import { readAllEvents, software, type KernelOutcome } from '@uw/harness';
-import { createSimHarness, simAgent, simCaller, simPerson } from '../fixtures.ts';
+import { createSimHarness, simAdvance, simAgent, simCaller, simPerson } from '../fixtures.ts';
 import { defineScenario } from '../scenario.ts';
 import type { World } from '../world.ts';
 
@@ -85,10 +85,41 @@ async function refusals(scene: Scene): Promise<readonly string[]> {
   ];
 }
 
+async function agentStopped(scene: Scene): Promise<readonly string[]> {
+  const enqueued = await scene.world.kernel.items.enqueue(simCaller(scene.world, scene.admin), {
+    harnessId: scene.harnessId,
+    title: 'Scope the board',
+    pageId: null,
+    priority: 1,
+    due: null,
+    delegationId: null,
+  });
+  assert.equal(enqueued.status, 'accepted');
+  if (enqueued.status !== 'accepted') throw new Error('unreachable');
+  const { itemId } = enqueued.value;
+  const worker = scene.admin;
+  await simAdvance(scene.world, {
+    harnessId: scene.harnessId,
+    itemId,
+    worker,
+    through: ['package'],
+  });
+  const agent = simCaller(
+    scene.world,
+    simAgent(scene.admin, `${scene.admin.personId}/builder`, { interactive: true }),
+  );
+  const claim = () => scene.world.kernel.items.claim(agent, { itemId, delegationId: null });
+  await control(scene, scene.admin, 'pause', 'scope');
+  const paused = await claim();
+  assert.deepEqual(paused.status === 'error' && paused.detail, { why: 'paused', stage: 'scope' });
+  await control(scene, scene.admin, 'resume', 'scope');
+  return [reasonOf(paused), reasonOf(await claim())];
+}
+
 export const scenario = defineScenario({
   id: 'WB-1',
   title:
-    'pause and resume record harness_paused and harness_resumed for a lane and for the harness, change the paused flags, and a repeat records nothing',
+    "pause and resume record harness_paused and harness_resumed for a lane and for the harness, change the paused flags, a repeat records nothing, and a paused lane refuses an agent's claim until it resumes",
   run: async (world) => {
     const { harness, admin } = await createSimHarness(world, software);
     const scene = { world, harnessId: harness.id, admin };
@@ -103,14 +134,18 @@ export const scenario = defineScenario({
       'stage_not_found',
       'malformed_command',
     ]);
+    const claims = await agentStopped(scene);
+    assert.deepEqual(claims, ['not_permitted', 'accepted']);
     const log = await controlLog(scene);
     assert.deepEqual(log, [
       ['harness_paused', 'build'],
       ['harness_resumed', 'build'],
       ['harness_paused', null],
       ['harness_resumed', null],
+      ['harness_paused', 'scope'],
+      ['harness_resumed', 'scope'],
     ]);
     assert.deepEqual(await flags(scene), { harness: false, lanes: [] });
-    return { state: { log, refused } };
+    return { state: { log, refused, claims } };
   },
 });

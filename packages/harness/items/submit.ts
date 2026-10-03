@@ -27,6 +27,7 @@ import {
 } from './record.ts';
 import { holdsClaim } from './release.ts';
 import { applyDeclaration, carryForward, floorFromPaths } from '../risk/derive.ts';
+import { pausedRefusal } from './paused.ts';
 import { heldStanding } from './run-steps.ts';
 import { actingPrincipal, isRefusal, recordDelegationRequired } from '../delegations/acting.ts';
 import { pathsComparedAt } from '../github/changed-files.ts';
@@ -264,6 +265,8 @@ async function submitIn(
   const stages = await tx.harnessStages.read.forHarness(harness.id);
   const stage = stages.find((entry) => entry.key === item.stageKey);
   if (stage === undefined) return refused('stage_not_found', { stage: item.stageKey });
+  const halted = pausedRefusal(caller, harness, stage);
+  if (halted !== null) return halted;
   const context = recordContext(ports, caller, at);
   const denied = await standingRefusal(tx, ports, { caller, item, harness, stage, context });
   if (denied !== null) return denied;
