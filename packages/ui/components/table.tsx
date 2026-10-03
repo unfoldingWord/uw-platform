@@ -8,10 +8,6 @@ function cellClasses(column: Column): string {
   return column.numeric === true ? numericClasses : 'text-left';
 }
 
-function cellOf(row: Readonly<Record<string, Child>>, key: string): Child {
-  return new Map(Object.entries(row)).get(key) ?? null;
-}
-
 export function Table(props: {
   readonly caption: string;
   readonly columns: readonly Column[];
@@ -34,13 +30,18 @@ export function Table(props: {
           </tr>
         </thead>
         <tbody>
-          {props.rows.map((row) => (
-            <tr class="border-b border-line last:border-b-0">
-              {props.columns.map((column) => (
-                <td class={`px-3 py-2 ${cellClasses(column)}`}>{cellOf(row, column.key)}</td>
-              ))}
-            </tr>
-          ))}
+          {props.rows.map((row) => {
+            const cells = new Map(Object.entries(row));
+            return (
+              <tr class="border-b border-line last:border-b-0">
+                {props.columns.map((column) => (
+                  <td class={`px-3 py-2 ${cellClasses(column)}`}>
+                    {cells.get(column.key) ?? null}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

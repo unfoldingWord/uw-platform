@@ -31,6 +31,34 @@ const pieces: readonly Piece[] = [
     owner: `${components}theme-switch.tsx`,
     marks: [/\bfunction\s+ThemeSwitch\b/, /\bconst\s+ThemeSwitch\b/],
   },
+  {
+    owner: `${components}card.tsx`,
+    marks: [/\bfunction\s+Card\b/, /\bconst\s+Card\b/],
+  },
+  {
+    owner: `${components}badge.tsx`,
+    marks: [/\bfunction\s+Badge\b/, /\bconst\s+Badge\b/],
+  },
+  {
+    owner: `${components}chip.tsx`,
+    marks: [/aria-pressed=/, /\bfunction\s+Chip\b/, /\bconst\s+Chip\b/],
+  },
+  {
+    owner: `${components}table.tsx`,
+    marks: [/<table\b/, /scope="col"/, /\bfunction\s+Table\b/, /\bconst\s+Table\b/],
+  },
+  {
+    owner: `${components}kpi.tsx`,
+    marks: [/<dt\b/, /\bfunction\s+Kpi\b/, /\bconst\s+Kpi\b/],
+  },
+  {
+    owner: `${components}note.tsx`,
+    marks: [/role="note"/, /\bfunction\s+Note\b/, /\bconst\s+Note\b/],
+  },
+  {
+    owner: `${components}evidence-label.tsx`,
+    marks: [/\bfunction\s+EvidenceLabel\b/, /\bconst\s+EvidenceLabel\b/],
+  },
 ];
 
 const beforeTheShell = new Map<string, readonly RegExp[]>([
@@ -52,7 +80,7 @@ function secondPieces(path: string, text: string): string[] {
 }
 
 describe('WB-11 each shell piece exists once', () => {
-  it('WB-11 no file outside its owner defines a second shell, sidebar, top bar, page head, segmented control or theme switch', () => {
+  it('WB-11 no file outside its owner defines a second shell, sidebar, top bar, page head, segmented control, theme switch, card, badge, chip, table, KPI, note or evidence label', () => {
     const offenders = repoFiles()
       .filter(scanned)
       .flatMap((path) => secondPieces(path, readFileSync(path, 'utf8')));
@@ -86,6 +114,10 @@ describe('WB-11 each shell piece exists once', () => {
     ['apps/uw-app/pages/screen.tsx', 'export function PageHead() { return null; }'],
     ['apps/uw-app/pages/screen.tsx', '<input type="radio" name="view" />'],
     ['packages/ui/components/card.tsx', 'export const Sidebar = () => null;'],
+    ['apps/uw-app/pages/spend.tsx', 'export function Badge() { return null; }'],
+    ['apps/uw-app/pages/spend.tsx', '<table><caption>Spend</caption></table>'],
+    ['apps/uw-app/pages/spend.tsx', '<p role="note">Hand-rolled note</p>'],
+    ['apps/uw-app/pages/spend.tsx', 'export const Kpi = () => null;'],
     ['apps/uw-app/health/routes.tsx', '<nav aria-label="Main">second sidebar</nav>'],
   ])('flags a planted second piece in %s: %s', (path, text) => {
     expect(scanned(path)).toBe(true);
