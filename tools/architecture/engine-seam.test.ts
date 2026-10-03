@@ -29,34 +29,50 @@ const engineFile = 'apps/uw-app/engines/claude-messages/turn.ts';
 const platform = {
   'apps/uw-app/kernel.ts': leaf,
   'apps/uw-app/database.ts': leaf,
+  'apps/uw-app/deps.ts': "import './kernel.ts';\nimport './database.ts';",
+  'apps/uw-app/env.ts':
+    'export type Bindings = { readonly value: string };\nexport const value = 1;',
   'apps/uw-app/ports/store.ts': leaf,
   'apps/uw-app/ports/model-engine.ts': "import '../engines/registry.ts';",
   'apps/uw-app/github/client.ts': leaf,
   'apps/uw-app/mcp/server.ts': leaf,
   'apps/uw-app/engines/registry.ts': "import './claude-messages/index.ts';",
   'apps/uw-app/engines/seam.ts': leaf,
+  'apps/uw-app/engines/config.ts': leaf,
+  'apps/uw-app/engines/tool-schemas.ts': leaf,
   'apps/uw-app/engines/gateway/spend.ts': leaf,
   'apps/uw-app/engines/claude-messages/index.ts': "import './turn.ts';",
+  'apps/uw-app/engines/claude-messages/prices.ts': leaf,
   'apps/uw-app/engines/codex-sandbox/index.ts': leaf,
   'packages/db/index.ts': leaf,
 };
 
+const toolCaller = 'engines-reach-only-the-tool-caller';
+
 const reaches: [string, string, string, string][] = [
-  ['the kernel', engineFile, "import '../../kernel.ts';", 'engines-reach-only-the-tool-caller'],
-  ['the database', engineFile, "import '../../database.ts';", 'engines-reach-only-the-tool-caller'],
-  ['a port', engineFile, "import '../../ports/store.ts';", 'engines-reach-only-the-tool-caller'],
-  ['GitHub', engineFile, "import '../../github/client.ts';", 'engines-reach-only-the-tool-caller'],
+  ['the kernel', engineFile, "import '../../kernel.ts';", toolCaller],
+  ['the database', engineFile, "import '../../database.ts';", toolCaller],
+  ['a port', engineFile, "import '../../ports/store.ts';", toolCaller],
+  ['GitHub', engineFile, "import '../../github/client.ts';", toolCaller],
+  ['the MCP surface', engineFile, "import '../../mcp/server.ts';", toolCaller],
+  ['@uw/db by its package name', engineFile, "import '@uw/db/client';", toolCaller],
   [
-    'the MCP surface',
+    'a module that holds the kernel and the database',
     engineFile,
-    "import '../../mcp/server.ts';",
-    'engines-reach-only-the-tool-caller',
+    "import '../../deps.ts';",
+    toolCaller,
   ],
   [
-    '@uw/db',
+    'the environment as a value',
     engineFile,
-    "import '../../../../packages/db/index.ts';",
-    'engines-reach-only-the-tool-caller',
+    "import { value } from '../../env.ts';",
+    'engines-read-the-environment-as-types-only',
+  ],
+  [
+    'a module that holds the kernel, from the seam',
+    'apps/uw-app/engines/seam.ts',
+    "import '../deps.ts';",
+    'engine-seam-reaches-only-the-engines',
   ],
   [
     'another engine',
@@ -71,18 +87,23 @@ const reaches: [string, string, string, string][] = [
     'engines-only-from-the-seam',
   ],
   [
-    'the spend reader from outside the roots',
-    'apps/uw-app/mcp/verbs/get-health.ts',
-    "import '../../engines/gateway/spend.ts';",
-    'engines-gateway-only-from-the-roots',
-  ],
-  [
     'a vendor SDK outside the six engine directories',
     'apps/uw-app/engines/gateway/spend.ts',
     "import '@anthropic-ai/sdk';",
     'vendor-sdk-only-in-engines',
   ],
 ];
+
+const allowedEngine = [
+  "import '@uw/harness';",
+  "import '@uw/contracts';",
+  "import 'zod';",
+  "import '../seam.ts';",
+  "import '../config.ts';",
+  "import '../tool-schemas.ts';",
+  "import type { Bindings } from '../../env.ts';",
+  "import './prices.ts';",
+].join('\n');
 
 describe('the engine seam', () => {
   it('HE-2 no file outside apps/uw-app/engines/ names an engine key in a branch', () => {
@@ -108,5 +129,19 @@ describe('the engine seam', () => {
 
   it('allows the registry, the port adapter and an engine reaching its own files', async () => {
     expect(await violations({ ...platform, [engineFile]: leaf })).toEqual([]);
+  });
+
+  it('allows an engine the harness, the contracts, zod, the seam files, its own directory and the environment as types', async () => {
+    expect(await violations({ ...platform, [engineFile]: allowedEngine })).toEqual([]);
+  });
+
+  it('refuses the spend reader from outside the roots', async () => {
+    const found = await violations({
+      ...platform,
+      'apps/uw-app/mcp/verbs/get-health.ts': "import '../../engines/gateway/spend.ts';",
+    });
+    expect(found.map((violation) => violation.rule)).toContain(
+      'engines-gateway-only-from-the-roots',
+    );
   });
 });
