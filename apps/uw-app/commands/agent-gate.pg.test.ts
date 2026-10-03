@@ -1,12 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import {
-  commandNameSchema,
-  delegatedIdentity,
-  principalSchema,
-  type Principal,
-} from '@uw/contracts';
-import { createLogger } from '@uw/core/log';
+import { delegatedIdentity, principalSchema, type Principal } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
 import { decisionRows } from '../github/testing/ship-rig.ts';
 import { parkedAtShip, type ParkedAtShip } from '../github/testing/gate-rig.ts';
@@ -21,8 +15,6 @@ import {
 } from '../testing/commands.ts';
 import { agentOf, kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
-import { hubNotWired } from '../ports/hub.not-wired.ts';
-import { commandRegistry } from './registry.ts';
 
 function agent(
   identity: string,
@@ -188,61 +180,31 @@ async function unreadableHarness(db: Database): Promise<void> {
   expect(opener.opened()).toBe(0);
 }
 
-function directContext(db: Database, parked: ParkedAtShip, opened: () => void) {
-  const clock = { now: () => new Date() };
-  return {
-    kernel: kernelOn(db, clock),
-    harnessId: parked.item.harnessId,
-    harness: null,
-    stages: [],
-    database: { db, ping: async () => undefined, release: async () => undefined },
-    gateGitHub: () => {
-      opened();
-      return null;
-    },
-    hub: hubNotWired,
-    clock,
-    logger: createLogger(
-      { traceId: randomUUID(), commit: 'test', route: 'direct', principal: null },
-      () => undefined,
-    ),
-  };
-}
-
-function handlerOf(name: string) {
-  const parsed = commandNameSchema.parse(name);
-  const handler = commandRegistry.get(parsed);
-  if (handler === undefined) throw new Error(`no handler for ${name}`);
-  return handler;
-}
-
 async function handlersOpenNothingForAgents(db: Database): Promise<void> {
   const parked = await parkedAtShip(db);
-  let calls = 0;
-  const context = directContext(db, parked, () => (calls += 1));
+  const opener = countingOpener(db);
   const commands = [...gateAttempts(parked.item.expectedHead), ['recover_connectors', {}] as const];
   for (const actor of await readingAgents(db, parked)) {
     for (const [name, extra] of commands) {
-      const requestId = randomUUID();
-      const caller = { actor, traceId: randomUUID(), requestId };
-      const body = { command: name, requestId, itemId: parked.item.itemId, ...extra };
-      const run = name === 'recover_connectors' ? { command: name, requestId } : body;
-      const result = await handlerOf(name).run({ ...context, caller }, run);
-      expect(result).toMatchObject({ ok: false });
+      const body = name === 'recover_connectors' ? { requestId: randomUUID() } : null;
+      const outcome =
+        body === null
+          ? (await attempt(parked, actor, opener, [name, extra])).outcome
+          : await dispatchAs(actor, parked.item.harnessId, name, body, opener.scope);
+      expect(outcome).toMatchObject({ status: 'error' });
     }
   }
-  expect(calls).toBe(0);
+  expect(opener.opened()).toBe(0);
   expect(await decisionRows(db, parked.item)).toBe(0);
-  const caller = { actor: parked.kim, traceId: randomUUID(), requestId: randomUUID() };
-  const body = { command: 'take_over', requestId: caller.requestId, itemId: parked.item.itemId };
-  expect(await handlerOf('take_over').run({ ...context, caller }, body)).toEqual({ ok: true });
-  expect(calls).toBe(1);
+  const taken = await attempt(parked, parked.kim, opener, ['take_over', {}]);
+  expect(taken.outcome).toEqual({ status: 'accepted', requestId: taken.requestId });
+  expect(opener.opened()).toBe(1);
 }
 
 describe.skipIf(!testServer)(
   'the gate commands build a kernel with GitHub only for a person',
   () => {
-    it('never opens the gate GitHub for an agent caller, even when the context offers it', () =>
+    it('never opens the gate GitHub for an agent caller on any gate command, and opens it once for a person', () =>
       withAppDatabase(handlersOpenNothingForAgents));
   },
 );

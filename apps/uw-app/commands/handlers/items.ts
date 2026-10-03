@@ -1,9 +1,4 @@
-import { readPage } from '../../pages/store.ts';
-import { commandHandler, fromKernel, type CommandContext } from '../handler.ts';
-
-function at(context: CommandContext): Date {
-  return context.clock.now();
-}
+import { commandHandler, fromKernel } from '../handler.ts';
 
 export const enqueueCommand = commandHandler({
   name: 'enqueue',
@@ -46,12 +41,7 @@ export const kickstartCommand = commandHandler({
   name: 'kickstart',
   action: 'write',
   run: async (context, body) => {
-    const page = await readPage(
-      context.database.db,
-      context.caller.actor,
-      body.pageId,
-      at(context),
-    );
+    const page = await context.pages.read(body.pageId);
     if (page === null) return { ok: false, reason: 'page_not_found' };
     if (page.type !== 'product' || page.jdArea !== context.harness?.jdArea) {
       return { ok: false, reason: 'malformed_command' };

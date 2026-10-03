@@ -32,7 +32,7 @@ const octokitWebhookSignatures = npm('@octokit/webhooks-methods');
 const appTesting = '^apps/(uw-app|uw-ingest)/(github/)?testing/';
 const gateKernel = '^apps/uw-app/commands/person/gate-kernel\\.ts$';
 const gateGitHub = '^apps/uw-app/commands/person/gate-github\\.ts$';
-const importCommand = '^apps/uw-app/commands/handlers/import\\.ts$';
+const commandCapabilities = '^apps/uw-app/commands/capabilities\\.ts$';
 const readRoots = ['^apps/uw-app/queue/worker\\.ts$', gateKernel, gateGitHub];
 const appConfigRoots = ['^apps/uw-app/(queue/worker|cron/github-sweep)\\.ts$', gateGitHub];
 
@@ -291,7 +291,7 @@ export default {
           '^apps/uw-app/ports/',
           '^apps/uw-app/kernel\\.ts$',
           gateKernel,
-          importCommand,
+          commandCapabilities,
           ...appConfigRoots,
           appTesting,
           testFile,
@@ -302,24 +302,25 @@ export default {
     {
       name: 'import-command-only-on-the-import-path',
       comment:
-        'The person import command reads issues from the read model and imports them through the import path; it reaches nothing else under apps/uw-app/github.',
+        'The command capabilities read issues from the read model and import them through the import path for the person import command; they reach nothing else under apps/uw-app/github.',
       severity: 'error',
-      from: { path: importCommand },
+      from: { path: commandCapabilities },
       to: { path: '^apps/uw-app/github/', pathNot: [github('import'), github('facts/queries')] },
     },
     {
       name: 'gate-kernel-only-in-gate-commands',
       comment:
-        'Only the person gate commands build the kernel that holds the GitHub reader and the ship writes; the person deps alone may also open the gate GitHub.',
+        'Only the command capabilities build the kernel that holds the GitHub reader and the ship writes, and they hand it only to a person on a gate command.',
       severity: 'error',
-      from: {
-        pathNot: [
-          '^apps/uw-app/commands/person/gates\\.ts$',
-          '^apps/uw-app/commands/person-deps\\.ts$',
-          testFile,
-        ],
-      },
-      to: { path: [gateKernel, gateGitHub] },
+      from: { pathNot: [commandCapabilities, testFile] },
+      to: { path: gateKernel },
+    },
+    {
+      name: 'gate-kernel-only-in-gate-commands',
+      comment: 'Only the person deps open the gate GitHub, for the gate commands.',
+      severity: 'error',
+      from: { pathNot: ['^apps/uw-app/commands/person-deps\\.ts$', testFile] },
+      to: { path: gateGitHub },
     },
     {
       name: 'gate-kernel-only-in-gate-commands',
