@@ -185,6 +185,31 @@ export async function sweepStates(
   );
 }
 
+export async function issueByNumber(
+  db: Executor,
+  repository: string,
+  number: number,
+): Promise<IssueChange | null> {
+  const [row] = await db
+    .select({ issue: ghIssues, repo: ghRepos.fullName })
+    .from(ghIssues)
+    .innerJoin(ghRepos, eq(ghRepos.githubId, ghIssues.repoId))
+    .where(and(sql`lower(${ghRepos.fullName}) = lower(${repository})`, eq(ghIssues.number, number)))
+    .limit(1);
+  if (row === undefined) return null;
+  const { issue, repo } = row;
+  return {
+    repo,
+    githubId: issue.githubId,
+    number: issue.number,
+    title: issue.title,
+    open: issue.state === 'open',
+    labels: issue.labels,
+    hadLabels: null,
+    githubUpdatedAt: issue.githubUpdatedAt,
+  };
+}
+
 export async function issuesAwaitingCrossReference(
   db: Executor,
   repoId: number,
