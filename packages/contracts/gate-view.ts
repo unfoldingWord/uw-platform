@@ -76,6 +76,14 @@ const shipInputSchema = shipRuleInputSchema.omit({ approver: true }).extend({
     .max(100),
 });
 
+const reviewSchema = z.strictObject({
+  reviewer: z.string().min(1).max(100),
+  commit: sha,
+  state: z.enum(['approved', 'changes_requested', 'dismissed']),
+  provider: z.string().min(1).max(100).nullable(),
+  findings: z.array(z.string().min(1).max(500)).max(50),
+});
+
 export const gateViewSchema = z.strictObject({
   itemId: z.uuid(),
   harnessId: z.uuid(),
@@ -86,6 +94,7 @@ export const gateViewSchema = z.strictObject({
   pullRequest: pullRequestRefSchema.nullable(),
   recorded: recordedSchema.nullable(),
   facts: factsSchema.nullable(),
+  reviews: z.array(reviewSchema).max(100).default([]),
   ship: z
     .strictObject({
       input: shipInputSchema,
