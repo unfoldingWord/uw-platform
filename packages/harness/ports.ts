@@ -51,7 +51,10 @@ export type HarnessesGateway = {
     byRepository(repository: string): Promise<Harness | null>;
     list(): Promise<readonly Harness[]>;
   };
-  readonly write: { insert(harness: Harness, at: Date): Promise<void> };
+  readonly write: {
+    insert(harness: Harness, at: Date): Promise<void>;
+    setPaused(harnessId: string, paused: boolean): Promise<void>;
+  };
 };
 export type HarnessStagesGateway = {
   readonly read: {
@@ -62,6 +65,7 @@ export type HarnessStagesGateway = {
     insert(stage: Stage): Promise<void>;
     update(stage: Stage): Promise<void>;
     reposition(harnessId: string, positions: readonly StagePosition[]): Promise<void>;
+    remove(stageId: string): Promise<void>;
   };
 };
 export type HarnessItemsGateway = {
