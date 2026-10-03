@@ -12,6 +12,7 @@ import {
 import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
+import { endRunDrafts, stopWorkflows } from '../runs/ends.ts';
 import { lapseDrafts, LEASE_MS, leaseLapsed } from './leases.ts';
 import { pausedRefusal } from './paused.ts';
 import {
@@ -22,7 +23,7 @@ import {
   type RecordContext,
 } from './record.ts';
 
-type ClaimPorts = Pick<Ports, 'clock' | 'githubFacts' | 'grants' | 'ids' | 'store'>;
+type ClaimPorts = Pick<Ports, 'clock' | 'githubFacts' | 'grants' | 'ids' | 'store' | 'runs'>;
 
 export type Claimed = {
   readonly item: ItemState;
@@ -40,6 +41,7 @@ export type ClaimInput = {
 export type ClaimTaken = {
   readonly drafts: readonly EventDraft[];
   readonly branch: ClaimedBranch;
+  readonly hosted: string | null;
 };
 
 type Taking = { readonly delegationId: string | null; readonly tip: BranchTip | null };
@@ -122,9 +124,16 @@ async function takeClaim(
     at,
   });
   if (!won) return refused('lease_held', { holder: item.holder });
+  const lapse = lapseDrafts(item, at);
+  const ending =
+    lapse.length === 0
+      ? { drafts: [], hosted: null }
+      : await endRunDrafts(tx, item, { outcome: 'stopped', why: 'lease_expired', at });
   return accepted({
+    hosted: ending.hosted,
     drafts: [
-      ...lapseDrafts(item, at),
+      ...lapse,
+      ...ending.drafts,
       draft('item_claimed', {
         holder: caller.actor.identity,
         claimantKind: caller.actor.kind,
@@ -198,16 +207,20 @@ export async function claim(
 ): Promise<KernelOutcome<Claimed>> {
   const tip = input.adoptBranch === true ? await readBranchTip(ports, input.itemId) : null;
   const at = ports.clock.now();
-  return ports.store.transaction(async (tx) => {
+  const outcome = await ports.store.transaction(async (tx) => {
     const taken = await claimIn(ports, tx, caller, { input, tip }, at);
     if (taken.status !== 'accepted') return taken;
     const context = recordContext(ports, caller, at);
     const recorded = await recordItemEvents(tx, context, input.itemId, taken.value.drafts);
-    return accepted({
+    const claimed: Claimed = {
       item: recorded.item,
       leaseExpiresAt: recorded.item.leaseExpiresAt,
       leaseWarning: false,
       branch: taken.value.branch,
-    });
+    };
+    return accepted({ claimed, hosted: taken.value.hosted });
   });
+  if (outcome.status !== 'accepted') return outcome;
+  await stopWorkflows(ports, [outcome.value.hosted]);
+  return accepted(outcome.value.claimed);
 }

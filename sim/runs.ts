@@ -254,13 +254,17 @@ export async function parkedRun(scene: RunWorld): Promise<ParkedRun> {
   return { ...scene, runId, beat };
 }
 
-export type RunsCalls = { readonly resume: string[]; readonly stop: string[] };
+export type RunsCalls = {
+  readonly resume: string[];
+  readonly stop: string[];
+  readonly hibernate: string[];
+};
 
 export function watchingRuns(
   world: World,
   change: Partial<Runs> = {},
 ): { readonly world: World; readonly calls: RunsCalls } {
-  const calls: RunsCalls = { resume: [], stop: [] };
+  const calls: RunsCalls = { resume: [], stop: [], hibernate: [] };
   const base = world.adapters.runs;
   const runs: Runs = {
     ...base,
@@ -271,6 +275,10 @@ export function watchingRuns(
     stop: (runId) => {
       calls.stop.push(runId);
       return base.stop(runId);
+    },
+    hibernate: (runId) => {
+      calls.hibernate.push(runId);
+      return base.hibernate(runId);
     },
     ...change,
   };

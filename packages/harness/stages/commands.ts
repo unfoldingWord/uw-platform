@@ -10,7 +10,7 @@ import { activateTemplate, type Activated, type ActivateInput } from './activate
 import { editInTransaction, type EditWork } from './edit.ts';
 import { setPause, type PauseInput } from './pause.ts';
 
-type StagePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
+type StagePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store' | 'runs'>;
 
 export type StageInput = Omit<Stage, 'id' | 'harnessId' | 'paused'>;
 type StageColumns = Omit<Stage, 'id' | 'harnessId' | 'key' | 'paused'>;
