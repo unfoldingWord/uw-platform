@@ -7,3 +7,4 @@ docs
 *.html
 .claude
 dist
+packages/ui/generated/

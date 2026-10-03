@@ -26,6 +26,10 @@
       "entry": ["**/*.test.ts", "bin/*.ts", "fixtures/*/schema.ts"],
       "project": ["**/*.ts"]
     },
+    "packages/ui": {
+      "entry": ["**/*.test.ts"],
+      "project": ["**/*.ts", "**/*.tsx"]
+    },
     "sim": {
       "entry": ["cli/*.ts", "scenarios/*.ts", "**/*.test.ts"],
       "project": ["**/*.ts"]

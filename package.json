@@ -29,7 +29,8 @@
     "build": "pnpm -r --if-present run build",
     "audit:prod": "pnpm audit --prod --audit-level high",
     "audit:all": "pnpm audit --audit-level high",
-    "verify": "pnpm check && pnpm lint && pnpm lint:dates && pnpm lint:vendor && pnpm format:check && pnpm knip && pnpm architecture && pnpm walk:all && pnpm trace:built && pnpm test && pnpm sim:all && pnpm build"
+    "verify": "pnpm check && pnpm lint && pnpm lint:dates && pnpm lint:vendor && pnpm format:check && pnpm knip && pnpm architecture && pnpm walk:all && pnpm trace:built && pnpm test && pnpm sim:all && pnpm build",
+    "ui:css": "node tools/ui/build-css.ts"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.22.0",
