@@ -32,6 +32,7 @@ const octokitWebhookSignatures = npm('@octokit/webhooks-methods');
 const appTesting = '^apps/(uw-app|uw-ingest)/(github/)?testing/';
 const gateKernel = '^apps/uw-app/commands/person/gate-kernel\\.ts$';
 const gateGitHub = '^apps/uw-app/commands/person/gate-github\\.ts$';
+const importCommand = '^apps/uw-app/commands/handlers/import\\.ts$';
 const readRoots = ['^apps/uw-app/queue/worker\\.ts$', gateKernel, gateGitHub];
 const appConfigRoots = ['^apps/uw-app/(queue/worker|cron/github-sweep)\\.ts$', gateGitHub];
 
@@ -290,12 +291,21 @@ export default {
           '^apps/uw-app/ports/',
           '^apps/uw-app/kernel\\.ts$',
           gateKernel,
+          importCommand,
           ...appConfigRoots,
           appTesting,
           testFile,
         ],
       },
       to: { path: '^apps/uw-app/github/' },
+    },
+    {
+      name: 'import-command-only-on-the-import-path',
+      comment:
+        'The person import command reads issues from the read model and imports them through the import path; it reaches nothing else under apps/uw-app/github.',
+      severity: 'error',
+      from: { path: importCommand },
+      to: { path: '^apps/uw-app/github/', pathNot: [github('import'), github('facts/queries')] },
     },
     {
       name: 'gate-kernel-only-in-gate-commands',

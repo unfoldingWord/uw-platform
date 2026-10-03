@@ -369,6 +369,57 @@ describe('the GitHub module is imported only by the platform adapters and the qu
   });
 });
 
+const importCommandFile = 'apps/uw-app/commands/handlers/import.ts';
+const importPath = {
+  'apps/uw-app/github/import.ts': leaf,
+  'apps/uw-app/github/facts/queries.ts': leaf,
+  'apps/uw-app/github/cross-reference.ts': leaf,
+  'apps/uw-app/github/sweep.ts': leaf,
+};
+
+const importCommandRefusals: [string, string, string, string][] = [
+  [
+    'the import command reaching the cross-reference writer',
+    importCommandFile,
+    "import '../../github/cross-reference.ts';",
+    'import-command-only-on-the-import-path',
+  ],
+  [
+    'the import command reaching the sweep',
+    importCommandFile,
+    "import '../../github/sweep.ts';",
+    'import-command-only-on-the-import-path',
+  ],
+  [
+    'the import command reaching the read client',
+    importCommandFile,
+    "import '../../github/client.ts';",
+    'github-reads-only-in-github-and-composition-roots',
+  ],
+  [
+    'another command reaching the import path',
+    'apps/uw-app/commands/handlers/items.ts',
+    "import '../../github/import.ts';",
+    'github-module-only-in-ports-and-roots',
+  ],
+];
+
+describe('the person import command', () => {
+  it.each(importCommandRefusals)('refuses %s', async (_name, path, source, rule) => {
+    const found = await violations({ ...importPath, [path]: source });
+    expect(found.map((violation) => violation.rule)).toContain(rule);
+  });
+
+  it('allows the import command on the import path and the issue read', async () => {
+    const found = await violations({
+      ...importPath,
+      [importCommandFile]:
+        "import '../../github/import.ts'; import '../../github/facts/queries.ts';",
+    });
+    expect(found).toEqual([]);
+  });
+});
+
 describe('the GitHub dependency rules refuse', () => {
   it.each(refusals)('%s', async (_name, path, source, rule) => {
     const found = await violations({ [path]: source });
