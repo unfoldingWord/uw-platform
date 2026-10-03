@@ -16,7 +16,8 @@ packages/contracts/     commands, events, outcomes and the verb registry as Zod;
 packages/db/            Drizzle schema (the source of truth), migrations, constraints
 packages/db/store/      the one Drizzle implementation of Store and Grants that both adapters bind
 packages/core/          acl (can, principal), dates, modules registry, shared Zod schemas
-packages/ui/            design tokens as CSS and the Tailwind theme built from them
+packages/ui/            design tokens as CSS (tokens/), the Tailwind 4 theme over them (app.css)
+                        and the built stylesheet committed as generated/app-css.ts (pnpm ui:css)
 sim/                    test adapters for every port, fixture harnesses, scenarios, CLI
 sim/adapters/           test adapters, one file per port, each beside its contract test
 infra/                  wrangler configs, Access policies, environments; declared, never clicked
@@ -196,6 +197,14 @@ PRD WB-3 and P23. `HarnessHub` (`apps/uw-app/live/harness-hub.ts`, exported from
 **Who wakes it.** The kernel wakes the hub after each committed transaction that appended events, once per harness, and drops a failed wake (S6-D17). The adapter bounds each wake at 2 seconds; a wake that times out (`hub_wake_timed_out`) or that the hub refuses (`hub_wake_refused`) is logged and never fails the command. The command, MCP, queue and cron kernels build their hub with `hubOf(env, logger)`, which falls back to the not-wired hub while the binding is absent. The queue and cron kernels wake each harness once at the end of their unit of work (`apps/uw-app/unit-hub.ts`). The sweep counts the wakes it owes inside its 900-subrequest bound (S6-R54): every GitHub call and every repository start leaves room for the wakes already owed plus one for the repository in hand (a repository names at most one harness), so when the bound cannot cover them the sweep defers the remaining repositories, as it does when GitHub calls run out, and never skips a wake for a change it stored.
 
 **Where it is declared.** The binding and its `v1` migration (`new_sqlite_classes = ["HarnessHub"]`) are in `infra/uw-app/wrangler.go-live.toml` only, for staging, production and preview (S6-R38): a Durable Object migration cannot be undone by a redeploy, so it waits for the go-live switch-on. Until then the live client polls.
+
+## The design tokens
+
+PRD WB-11 and ADR 0007. The five brand colours are `--uw-brand-*` in `packages/ui/tokens/brand.css` with the brand guide's values. `theme.css` maps them to semantic tokens for light, system dark and forced dark (`data-theme`); `type.css` and `layout.css` hold the type scale, spacing, radii, breakpoints and sidebar width. `packages/ui/app.css` resets Tailwind's default colours, fonts, sizes, radii, shadows and breakpoints and declares a theme whose every value is one of these tokens, scanning only `packages/ui/components/**/*.tsx` and `apps/uw-app/**/*.tsx`. `pnpm ui:css` (`tools/ui/build-css.ts`, through the `@uw/ui` `css` script) builds it and commits the result as `packages/ui/generated/app-css.ts` with a hashed path (S6-D23).
+
+**Contrast.** Inspire on white is 2.56:1, so Inspire is never a text colour on a light surface: links are Ocean in light and Inspire in dark, and text on Inspire, Cultivate or Kindle is `--uw-on-accent` (S6-D21). The focus ring is `#0095ca` in light (Inspire's hue, darker), not Ocean: the sidebar is the Ocean panel, and the ring must reach 3:1 against the panel, the page and the surface in both themes (S6-R47); Ocean on the panel is 1:1. `packages/ui/tokens/contrast.test.ts` holds every text pair to 4.5:1 and the focus ring and Kindle to 3:1, in both themes.
+
+**Checks.** `tools/ui/tokens-agree.test.ts` (every theme value is a token; every semantic colour has a theme colour), `tools/ui/no-hex.test.ts` (no hex literal or colour function in `apps/` or `packages/` outside the token files and the generated stylesheet), `tools/ui/generated-css.test.ts` (the committed stylesheet is the current build and names no colour outside the theme) and `packages/ui/tokens/tokens.test.ts` (brand values; light and dark define the same tokens).
 
 ## GitHub facts
 

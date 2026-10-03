@@ -1,0 +1,23 @@
+{
+  "name": "@uw/ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./components/*": "./components/*",
+    "./generated/app-css": "./generated/app-css.ts"
+  },
+  "scripts": {
+    "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+    "css": "tailwindcss -i app.css -o dist/app.css --minify"
+  },
+  "dependencies": {
+    "hono": "^4.13.11"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.0",
+    "@types/node": "^22.20.4",
+    "colorjs.io": "^0.5.2",
+    "tailwindcss": "^4.1.0"
+  }
+}

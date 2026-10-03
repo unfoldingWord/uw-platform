@@ -1,0 +1,64 @@
+:root {
+  color-scheme: light;
+  --uw-bg: #f4f8fa;
+  --uw-surface: #ffffff;
+  --uw-ink: var(--uw-brand-tech);
+  --uw-muted: #5a6e7a;
+  --uw-line: #c4d3db;
+  --uw-ocean: var(--uw-brand-ocean);
+  --uw-ocean-panel: var(--uw-brand-ocean);
+  --uw-ocean-panel-ink: #e8f4fa;
+  --uw-inspire: var(--uw-brand-inspire);
+  --uw-inspire-soft: #e3f3fb;
+  --uw-cultivate: #4fa9ac;
+  --uw-cultivate-soft: #e4f4f4;
+  --uw-kindle: #c97f14;
+  --uw-kindle-soft: #fbefdc;
+  --uw-on-accent: #04222f;
+  --uw-link: var(--uw-brand-ocean);
+  --uw-focus: #0095ca;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --uw-bg: #0b171e;
+    --uw-surface: #11222c;
+    --uw-ink: #e6eef2;
+    --uw-muted: #94aab5;
+    --uw-line: #2c4756;
+    --uw-ocean: #7fc3e8;
+    --uw-ocean-panel: #0e2c3c;
+    --uw-ocean-panel-ink: #d9edf8;
+    --uw-inspire: var(--uw-brand-inspire);
+    --uw-inspire-soft: #10303f;
+    --uw-cultivate: var(--uw-brand-cultivate);
+    --uw-cultivate-soft: #0f2e30;
+    --uw-kindle: var(--uw-brand-kindle);
+    --uw-kindle-soft: #33270f;
+    --uw-on-accent: #04222f;
+    --uw-link: var(--uw-brand-inspire);
+    --uw-focus: var(--uw-brand-inspire);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --uw-bg: #0b171e;
+  --uw-surface: #11222c;
+  --uw-ink: #e6eef2;
+  --uw-muted: #94aab5;
+  --uw-line: #2c4756;
+  --uw-ocean: #7fc3e8;
+  --uw-ocean-panel: #0e2c3c;
+  --uw-ocean-panel-ink: #d9edf8;
+  --uw-inspire: var(--uw-brand-inspire);
+  --uw-inspire-soft: #10303f;
+  --uw-cultivate: var(--uw-brand-cultivate);
+  --uw-cultivate-soft: #0f2e30;
+  --uw-kindle: var(--uw-brand-kindle);
+  --uw-kindle-soft: #33270f;
+  --uw-on-accent: #04222f;
+  --uw-link: var(--uw-brand-inspire);
+  --uw-focus: var(--uw-brand-inspire);
+}

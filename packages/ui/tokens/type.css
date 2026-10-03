@@ -1,0 +1,10 @@
+:root {
+  --uw-font-sans: 'Nunito Sans', 'Avenir', 'Avenir Next', system-ui, sans-serif;
+  --uw-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --uw-text-xs: 0.75rem;
+  --uw-text-sm: 0.875rem;
+  --uw-text-base: 1rem;
+  --uw-text-lg: 1.125rem;
+  --uw-text-xl: 1.375rem;
+  --uw-text-2xl: 1.75rem;
+}

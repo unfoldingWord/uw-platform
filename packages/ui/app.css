@@ -1,0 +1,61 @@
+@import 'tailwindcss' source(none);
+@import './tokens/brand.css';
+@import './tokens/theme.css';
+@import './tokens/type.css';
+@import './tokens/layout.css';
+
+@source './components/**/*.tsx';
+@source '../../apps/uw-app/**/*.tsx';
+@source not './dist';
+@source not '../../apps/uw-app/dist';
+
+@theme {
+  --color-*: initial;
+  --font-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --breakpoint-*: initial;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+}
+
+@theme inline {
+  --color-bg: var(--uw-bg);
+  --color-surface: var(--uw-surface);
+  --color-ink: var(--uw-ink);
+  --color-muted: var(--uw-muted);
+  --color-line: var(--uw-line);
+  --color-ocean: var(--uw-ocean);
+  --color-ocean-panel: var(--uw-ocean-panel);
+  --color-ocean-panel-ink: var(--uw-ocean-panel-ink);
+  --color-inspire: var(--uw-inspire);
+  --color-inspire-soft: var(--uw-inspire-soft);
+  --color-cultivate: var(--uw-cultivate);
+  --color-cultivate-soft: var(--uw-cultivate-soft);
+  --color-kindle: var(--uw-kindle);
+  --color-kindle-soft: var(--uw-kindle-soft);
+  --color-on-accent: var(--uw-on-accent);
+  --color-link: var(--uw-link);
+  --color-focus: var(--uw-focus);
+  --font-sans: var(--uw-font-sans);
+  --font-mono: var(--uw-font-mono);
+  --text-xs: var(--uw-text-xs);
+  --text-sm: var(--uw-text-sm);
+  --text-base: var(--uw-text-base);
+  --text-lg: var(--uw-text-lg);
+  --text-xl: var(--uw-text-xl);
+  --text-2xl: var(--uw-text-2xl);
+  --radius-sm: var(--uw-radius-sm);
+  --radius-md: var(--uw-radius-md);
+  --radius-lg: var(--uw-radius-lg);
+  --spacing: var(--uw-space);
+}
+
+@layer base {
+  body {
+    background: var(--uw-bg);
+    color: var(--uw-ink);
+    font-family: var(--uw-font-sans);
+  }
+}
