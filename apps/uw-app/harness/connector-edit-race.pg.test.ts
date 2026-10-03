@@ -93,7 +93,7 @@ async function editWhileADecisionHoldsTheStage(race: Race) {
 describe.skipIf(!testServer)(
   'KN-18 DX-6 a connector edit and a gate decision on one stage, on real connections',
   () => {
-    it('waits on the stage-claims lock a gate decision holds before it reads the approvals', () =>
+    it('waits on the stage-claims lock a gate decision holds', () =>
       withRace(async (race) => {
         const outcome = await editWhileADecisionHoldsTheStage(race);
         expect(outcome.status).toBe('accepted');

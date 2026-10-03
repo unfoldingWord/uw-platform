@@ -35,14 +35,8 @@ const activations = [
   { label: 'the software template', template: software },
 ];
 
-function structural(world: World, harnessId: string, stages: readonly Stage[]): readonly Edit[] {
-  const [first] = stages;
-  const order = stages.map((stage) => stage.key).reverse();
+function controls(harnessId: string): readonly Edit[] {
   return [
-    {
-      label: 'reorderStages reversed',
-      run: (commands, caller) => commands.reorderStages(caller, { harnessId, order }),
-    },
     {
       label: 'removeStage plan',
       run: (commands, caller) => commands.removeStage(caller, { harnessId, stageKey: 'plan' }),
@@ -51,6 +45,22 @@ function structural(world: World, harnessId: string, stages: readonly Stage[]): 
       label: 'pause a lane',
       run: (commands, caller) => commands.pause(caller, { harnessId, stageKey: 'build' }),
     },
+    {
+      label: 'resume a lane',
+      run: (commands, caller) => commands.resume(caller, { harnessId, stageKey: 'build' }),
+    },
+  ];
+}
+
+function structural(world: World, harnessId: string, stages: readonly Stage[]): readonly Edit[] {
+  const [first] = stages;
+  const order = stages.map((stage) => stage.key).reverse();
+  return [
+    {
+      label: 'reorderStages reversed',
+      run: (commands, caller) => commands.reorderStages(caller, { harnessId, order }),
+    },
+    ...controls(harnessId),
     {
       label: 'createStage ungated',
       run: (commands, caller) => {
