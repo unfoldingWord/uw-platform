@@ -1,10 +1,11 @@
-import { and, asc, eq, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, sql, type SQL } from 'drizzle-orm';
+import { engineSchema, runShapeSchema } from '@uw/contracts';
 import type { AnyExecutor } from '../any-database.ts';
 import { oneOf } from '../checks.ts';
 import { harnessRuns } from '../schema.ts';
 import { refusing } from './refusal.ts';
 import { toRun } from './rows.ts';
-import type { HarnessRunsGateway, RunRow } from './types.ts';
+import type { HarnessRunsGateway, RunCount, RunRow, RunSpend } from './types.ts';
 
 const liveOutcomes = ['running', 'hibernated'];
 
@@ -64,6 +65,78 @@ async function update(executor: AnyExecutor, run: RunRow): Promise<boolean> {
   return rows.length === 1;
 }
 
+const maxRuns = 5000;
+
+function checkedLimit(limit: number): number {
+  if (!Number.isInteger(limit) || limit < 1 || limit > maxRuns) {
+    throw new RangeError(`a run read holds 1 to ${maxRuns} runs, not ${limit}`);
+  }
+  return limit;
+}
+
+async function forItems(executor: AnyExecutor, itemIds: readonly string[]): Promise<RunRow[]> {
+  if (itemIds.length === 0) return [];
+  const rows = await executor
+    .select()
+    .from(harnessRuns)
+    .where(inArray(harnessRuns.itemId, [...itemIds]))
+    .orderBy(asc(harnessRuns.startedAt), asc(harnessRuns.id));
+  return rows.map(toRun);
+}
+
+export function startedSinceQuery(executor: AnyExecutor, since: Date, limit: number) {
+  return executor
+    .select()
+    .from(harnessRuns)
+    .where(gte(harnessRuns.startedAt, since))
+    .orderBy(asc(harnessRuns.startedAt), asc(harnessRuns.id))
+    .limit(checkedLimit(limit));
+}
+
+export function failedSinceQuery(executor: AnyExecutor, since: Date, limit: number) {
+  return executor
+    .select()
+    .from(harnessRuns)
+    .where(and(eq(harnessRuns.outcome, 'failed'), gte(harnessRuns.endedAt, since)))
+    .orderBy(desc(harnessRuns.endedAt), asc(harnessRuns.id))
+    .limit(checkedLimit(limit));
+}
+
+const stepTokens = sql`(SELECT coalesce(sum((step->>'tokensIn')::bigint + (step->>'tokensOut')::bigint), 0) FROM jsonb_array_elements(${harnessRuns.steps}) AS step)`;
+
+async function spendSince(executor: AnyExecutor, since: Date): Promise<RunSpend> {
+  const metered = sql`${harnessRuns.costBasis} = 'metered'`;
+  const subscription = sql`${harnessRuns.costBasis} = 'subscription'`;
+  const [row] = await executor
+    .select({
+      meteredMinor:
+        sql`coalesce(sum(${harnessRuns.costMinor}) FILTER (WHERE ${metered}), 0)`.mapWith(Number),
+      computeMinor:
+        sql`coalesce(sum(${harnessRuns.computeMinor}) FILTER (WHERE ${metered}), 0)`.mapWith(
+          Number,
+        ),
+      subscriptionTokens:
+        sql`coalesce(sum(${stepTokens}) FILTER (WHERE ${subscription}), 0)`.mapWith(Number),
+    })
+    .from(harnessRuns)
+    .where(gte(harnessRuns.startedAt, since));
+  return row ?? { meteredMinor: 0, computeMinor: 0, subscriptionTokens: 0 };
+}
+
+async function runCountsSince(executor: AnyExecutor, since: Date): Promise<readonly RunCount[]> {
+  const rows = await executor
+    .select({ runShape: harnessRuns.runShape, engine: harnessRuns.engine, count: count() })
+    .from(harnessRuns)
+    .where(gte(harnessRuns.startedAt, since))
+    .groupBy(harnessRuns.runShape, harnessRuns.engine)
+    .orderBy(asc(harnessRuns.runShape), asc(harnessRuns.engine));
+  return rows.map((row) => ({
+    runShape: runShapeSchema.parse(row.runShape),
+    engine: engineSchema.parse(row.engine),
+    count: row.count,
+  }));
+}
+
 export function bindRuns(executor: AnyExecutor): HarnessRunsGateway {
   return {
     read: {
@@ -71,6 +144,13 @@ export function bindRuns(executor: AnyExecutor): HarnessRunsGateway {
       lock: (runId) => lock(executor, runId),
       liveForItem: (itemId) => firstWhere(executor, liveRuns({ itemId })),
       live: (harnessId) => runsWhere(executor, liveRuns({ harnessId })),
+      forItems: (itemIds) => forItems(executor, itemIds),
+      startedSince: async (since, limit) =>
+        (await startedSinceQuery(executor, since, limit)).map(toRun),
+      failedSince: async (since, limit) =>
+        (await failedSinceQuery(executor, since, limit)).map(toRun),
+      spendSince: (since) => spendSince(executor, since),
+      runCountsSince: (since) => runCountsSince(executor, since),
     },
     write: {
       insert: (run) =>

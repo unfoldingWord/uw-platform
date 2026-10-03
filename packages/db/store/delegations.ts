@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, isNull, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, isNull, lte, or, sql, type SQL } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
 import { delegations } from '../schema.ts';
 import { refusing } from './refusal.ts';
@@ -32,6 +32,27 @@ async function stamp(
   return rows.length === 1;
 }
 
+async function lapsedFor(executor: AnyExecutor, personId: string, since: Date, at: Date) {
+  const rows = await executor
+    .select()
+    .from(delegations)
+    .where(
+      and(
+        eq(delegations.personId, personId),
+        isNull(delegations.revokedAt),
+        or(
+          gte(delegations.lapsedAt, since),
+          and(gte(delegations.expiresAt, since), lte(delegations.expiresAt, at)),
+        ),
+      ),
+    )
+    .orderBy(
+      desc(sql`coalesce(${delegations.lapsedAt}, ${delegations.expiresAt})`),
+      asc(delegations.id),
+    );
+  return rows.map(toDelegation);
+}
+
 export function bindDelegations(executor: AnyExecutor): DelegationsGateway {
   return {
     read: {
@@ -50,6 +71,7 @@ export function bindDelegations(executor: AnyExecutor): DelegationsGateway {
           .orderBy(asc(delegations.grantedAt), asc(delegations.id));
         return rows.map(toDelegation);
       },
+      lapsedFor: (personId, since, at) => lapsedFor(executor, personId, since, at),
     },
     write: {
       insert: (delegation, traceId) =>

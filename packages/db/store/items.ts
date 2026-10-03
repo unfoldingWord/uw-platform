@@ -159,6 +159,13 @@ async function lowestOpenPriority(
   return lowest === null || lowest === undefined ? null : Number(lowest);
 }
 
+async function parked(executor: AnyExecutor, harnessId: string): Promise<readonly ItemState[]> {
+  const rows = await selectItems(executor)
+    .where(and(eq(harnessItems.harnessId, harnessId), eq(harnessItems.gateStatus, 'parked')))
+    .orderBy(desc(harnessItems.priority), asc(harnessItems.id));
+  return rows.map((row) => toItemState(row.item, row.stageKey));
+}
+
 function bindReads(executor: AnyExecutor): HarnessItemsGateway['read'] {
   return {
     byId: async (itemId) => {
@@ -197,6 +204,7 @@ function bindReads(executor: AnyExecutor): HarnessItemsGateway['read'] {
         .limit(limit);
       return rows.map((row) => row.id);
     },
+    parked: (harnessId) => parked(executor, harnessId),
   };
 }
 
