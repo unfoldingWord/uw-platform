@@ -156,7 +156,7 @@ describe('the sandbox egress proxy', () => {
   it('HE-8 every other host is refused, GitHub included', othersRefused);
 
   it(
-    'HE-8 the model route forwards only POST to its inference paths, logged by host and path',
+    'the model route forwards only POST to its inference paths, logged by host and path',
     inferenceOnly,
   );
 });

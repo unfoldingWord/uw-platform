@@ -125,9 +125,9 @@ async function stoppedMidSession(db: Database): Promise<void> {
 }
 
 describe.skipIf(!testServer)('a sandbox step checks the run at every model request', () => {
-  it('HE-8 a sandbox session longer than five minutes renews the lease through its model requests', () =>
+  it('a sandbox session longer than five minutes renews the lease through its model requests', () =>
     withAppDatabase(leaseRenewed));
 
-  it('HE-8 a run stopped mid-session refuses the next model request and halts the step', () =>
+  it('HE-1 a sandbox run stopped mid-session refuses its next model request and is aborted', () =>
     withAppDatabase(stoppedMidSession));
 });
