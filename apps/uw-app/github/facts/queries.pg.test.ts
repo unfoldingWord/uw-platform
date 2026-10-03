@@ -36,6 +36,7 @@ const expectedFacts = {
   headRepo: 'unfoldingWord/uw-platform',
   base,
   baseRef: 'main',
+  defaultBranch: 'main',
   checks: [
     {
       checkId: 9100000401,

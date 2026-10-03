@@ -35,13 +35,20 @@ type Live = {
   readonly headRepo: string | null;
   readonly base: string | null;
   readonly baseRef: string;
+  readonly defaultBranch: string | null;
   readonly mergeSha: string | null;
 };
 
 type Refusal = Extract<ConnectorOutcome, { outcome: 'refused' }>;
 
 const kernelId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const livePull = pullSchema.extend({ merge_commit_sha: z.string().nullable().optional() });
+const liveBase = pullSchema.shape.base.extend({
+  repo: z.object({ default_branch: z.string() }).nullable().optional(),
+});
+const livePull = pullSchema.extend({
+  base: liveBase,
+  merge_commit_sha: z.string().nullable().optional(),
+});
 const racedFailures: ReadonlySet<GitHubFailure> = new Set<GitHubFailure>([
   'conflict',
   'not_mergeable',
@@ -89,6 +96,7 @@ function liveOf(answer: unknown): Live | null {
     headRepo: pull.head.repo?.full_name ?? null,
     base: fullSha(pull.base.sha),
     baseRef: pull.base.ref,
+    defaultBranch: pull.base.repo?.default_branch ?? null,
     mergeSha: fullSha(pull.merge_commit_sha ?? ''),
   };
 }
@@ -111,14 +119,20 @@ function identityRefusal(target: Target, live: Live): Refusal | null {
   return null;
 }
 
+function intoDefaultBranch(live: Live): boolean {
+  return live.defaultBranch !== null && live.baseRef === live.defaultBranch;
+}
+
 function mergedAtHead(target: Target, live: Live): boolean {
-  return live.merged && live.head === target.head;
+  if (!live.merged || live.head !== target.head || !intoDefaultBranch(live)) return false;
+  return target.base === null || live.baseRef === target.base.ref;
 }
 
 function readyRefusal(target: Target, live: Live): Refusal | null {
   if (live.merged) return refusal('head_mismatch');
   if (!live.open) return refusal('pr_not_open');
   if (live.head !== target.head) return refusal('head_mismatch');
+  if (!intoDefaultBranch(live)) return refusal('base_not_default_branch');
   const { base } = target;
   if (base === null || live.base !== base.sha || live.baseRef !== base.ref) {
     return refusal('base_mismatch');

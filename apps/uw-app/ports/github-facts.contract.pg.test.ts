@@ -65,17 +65,17 @@ function bodyOf(declaration: PullRequestDeclaration | null): string | null {
   ].join('\n');
 }
 
-function restRepository(fullName: string) {
+function restRepository(fullName: string, defaultBranch: string) {
   return {
     id: idFor(repoIds, fullName.toLowerCase(), 9100000001),
     full_name: fullName,
-    default_branch: 'main',
+    default_branch: defaultBranch,
     private: true,
   };
 }
 
 function restPull(facts: PullRequestFacts, updatedAt: string) {
-  const repository = restRepository(facts.ref.repo);
+  const repository = restRepository(facts.ref.repo, facts.defaultBranch);
   return {
     id: idFor(pullIds, `${facts.ref.repo.toLowerCase()}#${facts.ref.number}`, 9100000201),
     number: facts.ref.number,

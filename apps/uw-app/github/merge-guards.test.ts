@@ -73,7 +73,9 @@ describe('GH-6 the merge connector re-checks the pull request it merges at merge
 
   it('refuses a pull request retargeted to another base branch at the same commit', async () => {
     const github = openGitHub(pullAt({ baseRef: 'release' }));
-    expect(await mergeOver(app, github).run(request)).toEqual(refusedFor('base_mismatch'));
+    expect(await mergeOver(app, github).run(request)).toEqual(
+      refusedFor('base_not_default_branch'),
+    );
     expect(writesOf(github)).toEqual([]);
   });
 
@@ -95,6 +97,39 @@ describe('GH-6 the merge connector re-checks the pull request it merges at merge
       refusedFor('github_malformed_response'),
     );
     expect(writesOf(github)).toEqual([]);
+  });
+});
+
+describe('GH-6 the merge connector merges only into the repository’s default branch', () => {
+  it.each([
+    [
+      'a decision on a base that is not the default branch',
+      pullAt({ baseRef: 'release' }),
+      { expectedBase: { sha: '0'.repeat(40), ref: 'release' } },
+    ],
+    ['a default branch renamed after the decision', pullAt({ defaultBranch: 'trunk' }), {}],
+  ])('refuses %s and merges nothing', async (_name, pull, change) => {
+    const github = openGitHub(pull);
+    const outcome = await mergeOver(app, github).run({ ...request, ...change });
+    expect(outcome).toEqual(refusedFor('base_not_default_branch'));
+    expect(writesOf(github)).toEqual([]);
+  });
+
+  it('never answers success for a pull request a person merged at the head into another base', async () => {
+    const pull = pullAt({ merged: true, baseRef: 'release' });
+    const decidedThere = { ...request, expectedBase: { sha: '0'.repeat(40), ref: 'release' } };
+    for (const asked of [request, decidedThere]) {
+      const github = openGitHub(pull);
+      expect(await mergeOver(app, github).outcomeOf(asked)).toBeNull();
+      expect(await mergeOver(app, github).run(asked)).toMatchObject({ outcome: 'refused' });
+      expect(writesOf(github)).toEqual([]);
+    }
+  });
+
+  it('answers no outcome for a merge into the default branch when the decision named another base', async () => {
+    const github = openGitHub(pullAt({ merged: true }));
+    const elsewhere = { ...request, expectedBase: { sha: '0'.repeat(40), ref: 'release' } };
+    expect(await mergeOver(app, github).outcomeOf(elsewhere)).toBeNull();
   });
 });
 

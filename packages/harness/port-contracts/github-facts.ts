@@ -18,6 +18,7 @@ function factsFor(repo: string, number: number, head: string): PullRequestFacts 
     headRepo: repo,
     base: '0'.repeat(40),
     baseRef: 'main',
+    defaultBranch: 'main',
     checks: [
       {
         checkId: 9100000001,
@@ -80,6 +81,7 @@ export function describeGithubFactsContract(
     });
 
     shapeCases(open);
+    defaultBranchCases(open);
 
     it('answers the latest facts after the head moves', async () => {
       const subject = await open();
@@ -143,6 +145,22 @@ function shapeCases(open: () => Promise<GithubFactsSubject>): void {
     expect(
       await subject.facts.refresh({ repo: 'unfoldingWord/uw-platform', number: 405 }),
     ).toBeNull();
+  });
+}
+
+function defaultBranchCases(open: () => Promise<GithubFactsSubject>): void {
+  it('answers the repository’s default branch after it is renamed', async () => {
+    const subject = await open();
+    const known = factsFor('unfoldingWord/uw-platform', 13, 'd'.repeat(40));
+    await subject.given(known);
+    expect((await subject.facts.pullRequest(known.ref))?.defaultBranch).toBe('main');
+    const renamed = { ...known, baseRef: 'trunk', defaultBranch: 'trunk' };
+    await subject.given(renamed);
+    expect(await subject.facts.pullRequest(known.ref)).toMatchObject({
+      baseRef: 'trunk',
+      defaultBranch: 'trunk',
+    });
+    expect((await subject.facts.refresh(known.ref))?.defaultBranch).toBe('trunk');
   });
 }
 
