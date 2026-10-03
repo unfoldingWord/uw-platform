@@ -1,5 +1,5 @@
 import { ProviderMismatchError, ToolOutsideToolsetError, type TurnRequest } from '@uw/harness';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fakeFetch } from '../../testing/engine-fetch.ts';
 import endTurn from '../fixtures/anthropic-end-turn.json' with { type: 'json' };
 import toolUse from '../fixtures/anthropic-tool-use.json' with { type: 'json' };
@@ -120,8 +120,7 @@ async function otherPin(): Promise<void> {
 }
 
 async function noAmbientToken(): Promise<void> {
-  const ambient = process.env;
-  ambient['ANTHROPIC_AUTH_TOKEN'] = 'ambient-subscription-token';
+  vi.stubEnv('ANTHROPIC_AUTH_TOKEN', 'ambient-subscription-token');
   try {
     const { gateway, turn } = gatewayWith(endTurn);
     await turn(request);
@@ -129,7 +128,7 @@ async function noAmbientToken(): Promise<void> {
     expect(sent?.headers['authorization']).toBeUndefined();
     expect(JSON.stringify(sent?.headers)).not.toContain('ambient-subscription-token');
   } finally {
-    delete ambient['ANTHROPIC_AUTH_TOKEN'];
+    vi.unstubAllEnvs();
   }
 }
 
