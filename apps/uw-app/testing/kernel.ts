@@ -2,6 +2,7 @@ import { principalSchema, type Principal } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
 import {
   createKernel,
+  notWiredCall,
   type Clock,
   type GitHubFacts,
   type Grants,
@@ -20,7 +21,11 @@ export function kernelOn(db: Database, clock: Clock, overrides: Partial<Ports> =
 }
 
 export function fixedFacts(facts: PullRequestFacts): GitHubFacts {
-  return { pullRequest: async () => facts, refresh: async () => facts };
+  return {
+    pullRequest: async () => facts,
+    refresh: async () => facts,
+    diff: () => notWiredCall('githubFacts', 'diff'),
+  };
 }
 
 export function pausingGrants(grants: Grants, onLocked: () => void, pauseMs: number): Grants {

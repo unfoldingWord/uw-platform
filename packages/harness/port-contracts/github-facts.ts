@@ -1,12 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import type { GitHubFacts, PullRequestFacts } from '../ports.ts';
+import type { DiffRange, GitHubFacts, PullRequestFacts, PullRequestRef } from '../ports.ts';
 import { describeNotWired } from './not-wired-cases.ts';
 
 export type GithubFactsSubject = {
   readonly facts: GitHubFacts;
   given(facts: PullRequestFacts): Promise<void>;
+  givenDiff(ref: PullRequestRef, range: DiffRange, text: string): Promise<void>;
   now(): Date;
 };
+
+const diffRef: PullRequestRef = { repo: 'unfoldingWord/uw-platform', number: 21 };
+const diffRange: DiffRange = { base: '0'.repeat(40), head: 'a'.repeat(40) };
+const diffText = 'diff --git a/board.tsx b/board.tsx\n+const title = ’Board’;\n';
+const diffBytes = [...diffText].reduce((total, character) => {
+  const point = character.codePointAt(0) ?? 0;
+  return total + (point < 0x80 ? 1 : point < 0x800 ? 2 : point < 0x10000 ? 3 : 4);
+}, 0);
 
 function factsFor(repo: string, number: number, head: string): PullRequestFacts {
   return {
@@ -50,9 +59,12 @@ function factsFor(repo: string, number: number, head: string): PullRequestFacts 
   };
 }
 
+type DiffReads = 'scripted' | 'not_wired';
+
 export function describeGithubFactsContract(
   adapter: string,
   open: () => Promise<GithubFactsSubject>,
+  diffs: DiffReads,
 ): void {
   describe(`DX-3 githubFacts port contract on ${adapter}`, () => {
     it('answers null for a pull request it has no facts for', async () => {
@@ -82,6 +94,8 @@ export function describeGithubFactsContract(
 
     shapeCases(open);
     defaultBranchCases(open);
+    if (diffs === 'scripted') diffCases(open);
+    else diffNotWiredCases(open);
 
     it('answers the latest facts after the head moves', async () => {
       const subject = await open();
@@ -164,9 +178,69 @@ function defaultBranchCases(open: () => Promise<GithubFactsSubject>): void {
   });
 }
 
+function diffCases(open: () => Promise<GithubFactsSubject>): void {
+  it('answers the diff with its UTF-8 byte length when it fits the budget, the budget itself included', async () => {
+    const subject = await open();
+    await subject.givenDiff(diffRef, diffRange, diffText);
+    expect(diffBytes).toBeGreaterThan(diffText.length);
+    for (const budget of [diffBytes, diffBytes + 1]) {
+      expect(await subject.facts.diff(diffRef, diffRange, budget)).toEqual({
+        kind: 'diff',
+        text: diffText,
+        bytes: diffBytes,
+      });
+    }
+  });
+
+  it('answers too large, without the text, when the diff exceeds the budget', async () => {
+    const subject = await open();
+    await subject.givenDiff(diffRef, diffRange, diffText);
+    const answer = await subject.facts.diff(diffRef, diffRange, diffBytes - 1);
+    expect(answer.kind).toBe('too_large');
+    expect(answer).not.toHaveProperty('text');
+    if (answer.kind === 'too_large' && answer.bytes !== null) {
+      expect(answer.bytes).toBeGreaterThan(diffBytes - 1);
+    }
+  });
+
+  it('answers the diff of the range asked, not of another head', async () => {
+    const subject = await open();
+    await subject.givenDiff(diffRef, diffRange, diffText);
+    await subject.givenDiff(
+      diffRef,
+      { ...diffRange, head: 'b'.repeat(40) },
+      'diff --git a/x b/x\n',
+    );
+    expect(await subject.facts.diff(diffRef, diffRange, 80_000)).toMatchObject({
+      text: diffText,
+    });
+  });
+
+  it('answers unavailable with a reason, never throws, for a range it holds no diff for', async () => {
+    const subject = await open();
+    const answer = await subject.facts.diff(
+      diffRef,
+      { ...diffRange, head: 'c'.repeat(40) },
+      80_000,
+    );
+    expect(answer).toMatchObject({ kind: 'unavailable', reason: expect.any(String) });
+  });
+}
+
+function diffNotWiredCases(open: () => Promise<GithubFactsSubject>): void {
+  it('answers unavailable not_wired for every diff until the diff read is wired', async () => {
+    const subject = await open();
+    expect(await subject.facts.diff(diffRef, diffRange, 80_000)).toEqual({
+      kind: 'unavailable',
+      reason: 'not_wired',
+    });
+  });
+}
+
 export function describeGithubFactsNotWired(adapter: string, facts: GitHubFacts): void {
   describeNotWired('githubFacts', adapter, facts, {
     pullRequest: true,
     refresh: true,
+    diff: true,
   } satisfies Record<keyof GitHubFacts, true>);
 }

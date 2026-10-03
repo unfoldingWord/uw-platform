@@ -45,19 +45,25 @@ function openPullRequest(): FixtureGitHub {
   return { ...github, fetch: send };
 }
 
-describeConnectorsContract('the platform connectors over a fixture GitHub', async () => {
-  const github = openPullRequest();
-  const connectors = platformConnectors({ app, transport: fixtureTransport(github) });
-  return {
-    connectors,
-    refuseNext: async (connector, reason) => {
-      if (connector !== 'merge' || reason !== 'head_mismatch') {
-        throw new Error(`the fixture GitHub cannot refuse ${connector} with ${reason}`);
-      }
-      github.on('PUT', mergePath, [
-        { status: 409, body: { message: 'Head branch was modified' } },
-        { status: 200, body: { sha: mergeSha, merged: true } },
-      ]);
-    },
-  };
-});
+describeConnectorsContract(
+  'the platform connectors over a fixture GitHub',
+  async () => {
+    const github = openPullRequest();
+    const connectors = platformConnectors({ app, transport: fixtureTransport(github) });
+    return {
+      connectors,
+      refuseNext: async (connector, reason) => {
+        if (connector !== 'merge' || reason !== 'head_mismatch') {
+          throw new Error(`the fixture GitHub cannot refuse ${connector} with ${reason}`);
+        }
+        github.on('PUT', mergePath, [
+          { status: 409, body: { message: 'Head branch was modified' } },
+          { status: 200, body: { sha: mergeSha, merged: true } },
+        ]);
+      },
+      refuseNextReview: () =>
+        Promise.reject(new Error('the platform review write is not wired yet')),
+    };
+  },
+  'not_wired',
+);

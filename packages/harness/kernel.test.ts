@@ -19,12 +19,17 @@ function notWiredPorts(): Ports {
     githubFacts: {
       pullRequest: () => notWiredCall('githubFacts', 'pullRequest'),
       refresh: () => notWiredCall('githubFacts', 'refresh'),
+      diff: () => notWiredCall('githubFacts', 'diff'),
     },
     connectors: {
       run: () => notWiredCall('connectors', 'run'),
       outcomeOf: () => notWiredCall('connectors', 'outcomeOf'),
+      review: () => notWiredCall('connectors', 'review'),
     },
-    modelEngine: { turn: () => notWiredCall('modelEngine', 'turn') },
+    modelEngine: {
+      turn: () => notWiredCall('modelEngine', 'turn'),
+      spend: () => notWiredCall('modelEngine', 'spend'),
+    },
     hub: { wake: () => notWiredCall('hub', 'wake') },
     notifier: { notify: () => notWiredCall('notifier', 'notify') },
     runs: {
@@ -46,9 +51,9 @@ function throwingPorts(): Ports {
     ids: { next: refuse },
     store: { transaction: refuse, appliedMigrations: refuse },
     grants: { resolve: refuse, resolveIn: refuse, lockAndReread: refuse },
-    githubFacts: { pullRequest: refuse, refresh: refuse },
-    connectors: { run: refuse, outcomeOf: refuse },
-    modelEngine: { turn: refuse },
+    githubFacts: { pullRequest: refuse, refresh: refuse, diff: refuse },
+    connectors: { run: refuse, outcomeOf: refuse, review: refuse },
+    modelEngine: { turn: refuse, spend: refuse },
     hub: { wake: refuse },
     notifier: { notify: refuse },
     runs: { start: refuse, hibernate: refuse, resume: refuse, stop: refuse, status: refuse },

@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import type { ModelEngine, ToolCall, TurnRequest, TurnResult } from '../ports.ts';
+import type { ModelEngine, Spend, ToolCall, TurnRequest, TurnResult } from '../ports.ts';
 import { describeNotWired } from './not-wired-cases.ts';
 
 export type ModelEngineSubject = {
   readonly engine: ModelEngine;
   respondNextWith(result: TurnResult): Promise<void>;
+  setSpend(amount: Pick<Spend, 'spentMinor' | 'currency'>): Promise<void>;
+  now(): Date;
 };
+
+const dayMs = 86_400_000;
 
 const turnRequest: TurnRequest = {
   engine: 'openrouter-messages',
@@ -27,7 +31,7 @@ function turnCalling(verb: ToolCall['verb']): TurnResult {
     toolCalls: [callOf(verb)],
     text: null,
     stopReason: 'tool_use',
-    usage: { inputTokens: 120, outputTokens: 30, costMinor: 1, costBasis: 'metered' },
+    usage: { inputTokens: 120, outputTokens: 30, costMicros: 10_000, costBasis: 'metered' },
     resolvedProvider: 'fixture-provider',
     resolvedModel: 'fixture-model',
   };
@@ -70,13 +74,22 @@ function describeToolset(open: () => Promise<ModelEngineSubject>): void {
 }
 
 function describeReporting(open: () => Promise<ModelEngineSubject>): void {
-  it('reports usage as non-negative whole numbers with a cost basis', async () => {
+  it('reports usage as non-negative whole numbers, cost in micro-units or null, and a cost basis', async () => {
     const subject = await open();
     await subject.respondNextWith(turnCalling('read_page'));
     const { usage } = await subject.engine.turn(turnRequest);
     expect(Number.isInteger(usage.inputTokens) && usage.inputTokens >= 0).toBe(true);
     expect(Number.isInteger(usage.outputTokens) && usage.outputTokens >= 0).toBe(true);
     expect(['metered', 'subscription']).toContain(usage.costBasis);
+    const micros = usage.costMicros;
+    expect(micros === null || (Number.isSafeInteger(micros) && micros >= 0)).toBe(true);
+  });
+
+  it('reports a turn whose cost is unknown with null micro-units, never zero', async () => {
+    const subject = await open();
+    const scripted = turnCalling('read_page');
+    await subject.respondNextWith({ ...scripted, usage: { ...scripted.usage, costMicros: null } });
+    expect((await subject.engine.turn(turnRequest)).usage.costMicros).toBeNull();
   });
 
   it('reports the provider and model that served the turn and why it stopped', async () => {
@@ -151,6 +164,29 @@ function describePinning(open: () => Promise<ModelEngineSubject>): void {
   });
 }
 
+function describeSpend(open: () => Promise<ModelEngineSubject>): void {
+  it('answers spend as whole minor units in a three-letter currency, read at or after since', async () => {
+    const subject = await open();
+    await subject.setSpend({ spentMinor: 4321, currency: 'USD' });
+    const since = new Date(subject.now().getTime() - dayMs);
+    const reading = await subject.engine.spend(since);
+    expect(reading).toMatchObject({ spentMinor: 4321, currency: 'USD', since });
+    expect(Number.isSafeInteger(reading.spentMinor)).toBe(true);
+    expect(reading.currency).toMatch(/^[A-Z]{3}$/u);
+    expect(reading.asOf.getTime()).toBeGreaterThanOrEqual(since.getTime());
+    expect(reading.asOf.getTime()).toBeLessThanOrEqual(subject.now().getTime());
+  });
+
+  it('answers zero spend as a reading that names when it was read', async () => {
+    const subject = await open();
+    await subject.setSpend({ spentMinor: 0, currency: 'USD' });
+    const since = new Date(subject.now().getTime() - dayMs);
+    const reading = await subject.engine.spend(since);
+    expect(reading.spentMinor).toBe(0);
+    expect(Number.isNaN(reading.asOf.getTime())).toBe(false);
+  });
+}
+
 export function describeModelEngineContract(
   adapter: string,
   open: () => Promise<ModelEngineSubject>,
@@ -159,11 +195,12 @@ export function describeModelEngineContract(
     describeToolset(open);
     describeReporting(open);
     describePinning(open);
+    describeSpend(open);
   });
 }
 
 export function describeModelEngineNotWired(adapter: string, engine: ModelEngine): void {
-  describeNotWired('modelEngine', adapter, engine, { turn: true } satisfies Record<
+  describeNotWired('modelEngine', adapter, engine, { turn: true, spend: true } satisfies Record<
     keyof ModelEngine,
     true
   >);

@@ -1,5 +1,5 @@
 import type { Database } from '@uw/db/client';
-import { createKernel, type Connectors, type Kernel, type Store } from '@uw/harness';
+import { createKernel, notWiredCall, type Connectors, type Kernel, type Store } from '@uw/harness';
 import { readyToShipFacts } from '../github/testing/gate-rig.ts';
 import { clock } from '../github/testing/ship-rig.ts';
 import { platformPorts } from '../kernel.ts';
@@ -22,6 +22,7 @@ export async function kernelThatLosesTheExit(db: Database, itemId: string): Prom
       return { outcome: 'succeeded', detail: {} };
     },
     outcomeOf: async () => null,
+    review: () => notWiredCall('connectors', 'review'),
   };
   const handle = { db, ping: async () => undefined, release: async () => undefined };
   return createKernel({

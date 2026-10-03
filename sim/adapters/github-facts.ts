@@ -1,11 +1,30 @@
-import type { Clock, GitHubFacts, PullRequestFacts, PullRequestRef } from '@uw/harness';
+import type {
+  Clock,
+  DiffRange,
+  DiffRead,
+  GitHubFacts,
+  PullRequestFacts,
+  PullRequestRef,
+} from '@uw/harness';
 
-export type SimGitHubFacts = GitHubFacts & { given(facts: PullRequestFacts): void };
+export type SimGitHubFacts = GitHubFacts & {
+  given(facts: PullRequestFacts): void;
+  setDiff(ref: PullRequestRef, range: DiffRange, text: string): void;
+};
 
 const keyOf = (ref: PullRequestRef): string => `${ref.repo.toLowerCase()}#${ref.number}`;
+const diffKeyOf = (ref: PullRequestRef, range: DiffRange): string =>
+  JSON.stringify([keyOf(ref), range.base, range.head]);
+
+function readDiff(text: string | undefined, budgetBytes: number): DiffRead {
+  if (text === undefined) return { kind: 'unavailable', reason: 'no_diff' };
+  const bytes = new TextEncoder().encode(text).length;
+  return bytes > budgetBytes ? { kind: 'too_large', bytes } : { kind: 'diff', text, bytes };
+}
 
 export function createSimGitHubFacts(clock: Clock): SimGitHubFacts {
   const known = new Map<string, PullRequestFacts>();
+  const diffs = new Map<string, string>();
   const answer = async (ref: PullRequestRef): Promise<PullRequestFacts | null> => {
     const found = known.get(keyOf(ref));
     return found ? structuredClone(found) : null;
@@ -16,8 +35,13 @@ export function createSimGitHubFacts(clock: Clock): SimGitHubFacts {
       const found = await answer(ref);
       return found === null ? null : { ...found, freshAt: clock.now() };
     },
+    diff: async (ref, range, budgetBytes) =>
+      readDiff(diffs.get(diffKeyOf(ref, range)), budgetBytes),
     given: (facts) => {
       known.set(keyOf(facts.ref), structuredClone(facts));
+    },
+    setDiff: (ref, range, text) => {
+      diffs.set(diffKeyOf(ref, range), text);
     },
   };
 }

@@ -150,16 +150,21 @@ async function given(db: Database, github: FixtureGitHub, facts: PullRequestFact
 }
 
 describe.skipIf(!testServer)('DX-3 the platform GitHub facts on Postgres', () => {
-  describeGithubFactsContract('the platform GitHub facts over the read model', async () => {
-    const database = await createMigratedDatabase(testServer ?? '');
-    const db = createClient(database.connectionString);
-    opened.push({ db, drop: () => database.drop() });
-    const github = fixtureGitHub();
-    const reads = () => createGitHubReads(app, { fetch: github.fetch, now: systemClock.now });
-    return {
-      facts: platformGitHubFacts(db, { open: reads, logger: silent }, systemClock),
-      given: (facts) => given(db, github, facts),
-      now: systemClock.now,
-    };
-  });
+  describeGithubFactsContract(
+    'the platform GitHub facts over the read model',
+    async () => {
+      const database = await createMigratedDatabase(testServer ?? '');
+      const db = createClient(database.connectionString);
+      opened.push({ db, drop: () => database.drop() });
+      const github = fixtureGitHub();
+      const reads = () => createGitHubReads(app, { fetch: github.fetch, now: systemClock.now });
+      return {
+        facts: platformGitHubFacts(db, { open: reads, logger: silent }, systemClock),
+        given: (facts) => given(db, github, facts),
+        givenDiff: () => Promise.reject(new Error('the platform diff read is not wired yet')),
+        now: systemClock.now,
+      };
+    },
+    'not_wired',
+  );
 });

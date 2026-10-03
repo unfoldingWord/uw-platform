@@ -1,14 +1,19 @@
 import {
   ProviderMismatchError,
   ToolOutsideToolsetError,
+  type Clock,
   type ModelEngine,
+  type Spend,
   type TurnRequest,
   type TurnResult,
 } from '@uw/harness';
 
+type SpendAmount = Pick<Spend, 'spentMinor' | 'currency'>;
+
 export type SimModelEngine = ModelEngine & {
   respondNextWith(result: TurnResult): void;
   pending(): number;
+  setSpend(amount: SpendAmount): void;
 };
 
 function idle(request: TurnRequest): TurnResult {
@@ -16,7 +21,7 @@ function idle(request: TurnRequest): TurnResult {
     toolCalls: [],
     text: null,
     stopReason: 'end_turn',
-    usage: { inputTokens: 0, outputTokens: 0, costMinor: 0, costBasis: 'metered' },
+    usage: { inputTokens: 0, outputTokens: 0, costMicros: 0, costBasis: 'metered' },
     resolvedProvider: request.pinnedProvider,
     resolvedModel: request.model,
   };
@@ -32,8 +37,9 @@ function assertToolResultsAnswerCalls(request: TurnRequest): void {
   }
 }
 
-export function createSimModelEngine(): SimModelEngine {
+export function createSimModelEngine(clock: Clock): SimModelEngine {
   const script: TurnResult[] = [];
+  let spent: SpendAmount = { spentMinor: 0, currency: 'USD' };
   return {
     turn: async (request) => {
       assertToolResultsAnswerCalls(request);
@@ -50,5 +56,9 @@ export function createSimModelEngine(): SimModelEngine {
       script.push(structuredClone(result));
     },
     pending: () => script.length,
+    spend: async (since) => ({ ...spent, since: new Date(since), asOf: clock.now() }),
+    setSpend: (amount) => {
+      spent = { spentMinor: amount.spentMinor, currency: amount.currency };
+    },
   };
 }
