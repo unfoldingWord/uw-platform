@@ -354,6 +354,7 @@ export const harnessEvents = declareTable(
     actor: text('actor').notNull(),
     evidence: jsonb('evidence').notNull(),
     traceId: uuid('trace_id').notNull(),
+    requestId: uuid('request_id'),
     at: instant('at').notNull(),
   },
   internalSync,
