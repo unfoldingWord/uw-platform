@@ -13,7 +13,10 @@ import { setPause, type PauseInput } from './pause.ts';
 type StagePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
 export type StageInput = Omit<Stage, 'id' | 'harnessId' | 'paused'>;
-export type StageChange = Partial<Omit<Stage, 'id' | 'harnessId' | 'key' | 'paused'>>;
+type StageColumns = Omit<Stage, 'id' | 'harnessId' | 'key' | 'paused'>;
+export type StageChange = {
+  readonly [Column in keyof StageColumns]?: StageColumns[Column] | undefined;
+};
 
 export type StageCommands = {
   activate(caller: Caller, input: ActivateInput): Promise<KernelOutcome<Activated>>;
