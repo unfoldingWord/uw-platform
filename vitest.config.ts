@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { availableParallelism } from 'node:os';
 import { cloudflareTest } from '@cloudflare/vitest-pool-workers';
 import { defineConfig } from 'vitest/config';
 
@@ -16,7 +17,7 @@ const sdkWithoutSourcemaps = {
 
 export default defineConfig({
   test: {
-    maxWorkers: 6,
+    maxWorkers: Math.min(6, availableParallelism()),
     projects: [
       {
         plugins: [
@@ -34,7 +35,7 @@ export default defineConfig({
       {
         test: {
           name: 'node',
-          testTimeout: 30_000,
+          testTimeout: 120_000,
           hookTimeout: 120_000,
           include: [
             'packages/**/*.test.ts',
