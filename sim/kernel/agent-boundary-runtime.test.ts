@@ -100,6 +100,7 @@ function bypassingStages(world: World): StageCommands {
     removeStage: (caller, input) => stages.removeStage(laundered(caller), input),
     pause: (caller, input) => stages.pause(laundered(caller), input),
     resume: (caller, input) => stages.resume(laundered(caller), input),
+    setHostedBuilder: (caller, input) => stages.setHostedBuilder(laundered(caller), input),
   };
 }
 

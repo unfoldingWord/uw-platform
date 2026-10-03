@@ -49,6 +49,10 @@ function controls(harnessId: string): readonly Edit[] {
       label: 'resume a lane',
       run: (commands, caller) => commands.resume(caller, { harnessId, stageKey: 'build' }),
     },
+    {
+      label: 'turn hosted Builder on',
+      run: (commands, caller) => commands.setHostedBuilder(caller, { harnessId, enabled: true }),
+    },
   ];
 }
 
