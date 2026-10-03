@@ -33,7 +33,7 @@ import {
   type Swept,
 } from './run-steps.ts';
 
-type ItemPorts = Pick<Ports, 'clock' | 'githubFacts' | 'grants' | 'ids' | 'store'>;
+type ItemPorts = Pick<Ports, 'clock' | 'githubFacts' | 'grants' | 'ids' | 'store' | 'runs'>;
 
 export type ItemCommands = {
   enqueue(caller: Caller, input: EnqueueInput): Promise<KernelOutcome<ItemState>>;

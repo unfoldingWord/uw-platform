@@ -14,6 +14,7 @@ import { factsFailure } from '../gates/facts-failure.ts';
 import { riskDeclarationOf } from '../github/declaration.ts';
 import { branchFor, fullSha, sameRepository } from '../github/identifiers.ts';
 import type { Ports, PullRequestFacts, PullRequestRef, StoreTransaction } from '../ports.ts';
+import { endRunDrafts } from '../runs/ends.ts';
 import { noteGateMet } from '../runs/gates-met.ts';
 import { runValidators } from '../validators/registry.ts';
 import { attachedPageIds } from '../validators/learning-attached.ts';
@@ -287,12 +288,30 @@ async function submitIn(
     tweak: isOccasionalTweak(exit),
     input,
   });
-  await noteGateMet(tx, item, stage.key);
+  const ending = await submittedRun(tx, { item, stage, decision, at });
   const recorded = await recordItemEvents(tx, context, item.itemId, [
     ...riskDraft(command, item),
     ...decision.drafts,
+    ...ending,
   ]);
   return accepted({ item: recorded.item, result: decision.result, failures: decision.failures });
+}
+
+type Outcome = {
+  readonly item: ItemState;
+  readonly stage: Stage;
+  readonly decision: Decision;
+  readonly at: Date;
+};
+
+async function submittedRun(
+  tx: StoreTransaction,
+  { item, stage, decision, at }: Outcome,
+): Promise<readonly EventDraft[]> {
+  await noteGateMet(tx, item, stage.key);
+  if (decision.result === 'checks_failed') return [];
+  const ending = await endRunDrafts(tx, item, { outcome: 'completed', result: 'submitted', at });
+  return ending.drafts;
 }
 
 type FactsRead = { readonly facts: PullRequestFacts | null } | { readonly refusal: Refused };

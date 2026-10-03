@@ -221,7 +221,6 @@ async function runElsewhere(scene: Started): Promise<void> {
     [laptop, stepOf(second, scene.runId)],
     [desk, stepOf(first, runId)],
     [desk, stepOf(first, scene.runId)],
-    [desk, stepOf(first, scene.world.adapters.ids.next())],
   ];
   const counts = [await countOf(scene, first), await countOf(scene, second)];
   for (const [caller, input] of attempts) {
@@ -232,6 +231,9 @@ async function runElsewhere(scene: Started): Promise<void> {
   expect([await countOf(scene, first), await countOf(scene, second)]).toEqual(counts);
   expect((await runOf(scene.world, runId))?.steps).toHaveLength(1);
   expect((await runOf(scene.world, scene.runId))?.steps).toEqual([]);
+  const fresh = scene.world.adapters.ids.next();
+  value(await stepAs(scene, desk, stepOf(first, fresh)));
+  expect((await runOf(scene.world, fresh))?.persona).toBe(desk.actor.identity);
 }
 
 async function hostedRunOnLaptop(scene: Started): Promise<void> {

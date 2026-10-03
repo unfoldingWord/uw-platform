@@ -83,6 +83,7 @@ export const scenario = defineScenario({
       'run_step_recorded',
       'run_step_recorded',
       'lease_expired',
+      'run_stopped',
     ]);
     return { state: { near, fresh, late: 'lease_expired' } };
   },

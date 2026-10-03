@@ -3,11 +3,13 @@ import type { Caller } from '../caller.ts';
 import { draft, recordContext, recordHarnessEvents } from '../items/record.ts';
 import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
-import type { Ports, StoreTransaction } from '../ports.ts';
+import type { Ports, RunRow, StoreTransaction } from '../ports.ts';
 import type { HarnessScene } from '../reads/scene.ts';
+import { resumeRunsWhere } from '../runs/resume.ts';
+import { hibernateRunsWhere } from '../runs/suspend.ts';
 import { adminRefusal, agentRefusal } from './rules.ts';
 
-type PausePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
+type PausePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store' | 'runs'>;
 
 export type PauseInput = { readonly harnessId: string; readonly stageKey: string | null };
 
@@ -46,6 +48,46 @@ async function sceneOf(
   return accepted({ harness, stages: await tx.harnessStages.read.forHarness(harnessId) });
 }
 
+async function stageOfRun(tx: StoreTransaction, run: RunRow): Promise<string | null> {
+  const item = await tx.harnessItems.read.byId(run.itemId);
+  return item?.stageKey ?? null;
+}
+
+async function runsToHibernate(tx: StoreTransaction, input: PauseInput): Promise<RunRow[]> {
+  const live = await tx.harnessRuns.read.live(input.harnessId);
+  const chosen: RunRow[] = [];
+  for (const run of live) {
+    if (run.outcome !== 'running' || run.runShape !== 'workflow-run') continue;
+    if (input.stageKey === null || (await stageOfRun(tx, run)) === input.stageKey) {
+      chosen.push(run);
+    }
+  }
+  return chosen;
+}
+
+async function runsToResume(tx: StoreTransaction, harnessId: string): Promise<RunRow[]> {
+  const harness = await tx.harnesses.read.byId(harnessId);
+  if (harness === null || harness.paused) return [];
+  const stages = await tx.harnessStages.read.forHarness(harnessId);
+  const paused = new Set(stages.filter((stage) => stage.paused).map((stage) => stage.key));
+  const live = await tx.harnessRuns.read.live(harnessId);
+  const chosen: RunRow[] = [];
+  for (const run of live) {
+    if (run.outcome !== 'hibernated' || run.hibernatedFor !== 'paused') continue;
+    const stageKey = await stageOfRun(tx, run);
+    if (stageKey !== null && !paused.has(stageKey)) chosen.push(run);
+  }
+  return chosen;
+}
+
+async function settleRuns(ports: PausePorts, input: PauseInput, paused: boolean): Promise<void> {
+  if (paused) {
+    await hibernateRunsWhere(ports, (tx) => runsToHibernate(tx, input), 'paused');
+    return;
+  }
+  await resumeRunsWhere(ports, (tx) => runsToResume(tx, input.harnessId), 'paused');
+}
+
 export async function setPause(
   ports: PausePorts,
   caller: Caller,
@@ -55,7 +97,7 @@ export async function setPause(
   const agent = agentRefusal(caller);
   if (agent !== null) return agent;
   const at = ports.clock.now();
-  return ports.store.transaction(async (tx) => {
+  const outcome = await ports.store.transaction(async (tx) => {
     await tx.lock(lockKeys.harnessStages(input.harnessId));
     const harness = await tx.harnesses.read.byId(input.harnessId);
     if (harness === null) return refused('harness_not_found', { harnessId: input.harnessId });
@@ -71,4 +113,6 @@ export async function setPause(
     }
     return sceneOf(tx, harness.id);
   });
+  if (outcome.status === 'accepted') await settleRuns(ports, input, paused);
+  return outcome;
 }

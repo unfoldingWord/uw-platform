@@ -4,14 +4,21 @@ import type { Caller } from '../caller.ts';
 import { actingPrincipal, isRefusal } from '../delegations/acting.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
+import { stopLapsedRun, stopWorkflows } from '../runs/ends.ts';
 import { recordStepIn } from '../runs/steps.ts';
 import type { RunStepInput } from '../runs/types.ts';
-import { expireLapsedLease, LEASE_MS, LEASE_WARNING_MS, leaseLapsed } from './leases.ts';
+import {
+  expireLapsedLease,
+  lapseLease,
+  LEASE_MS,
+  LEASE_WARNING_MS,
+  leaseLapsed,
+} from './leases.ts';
 import { draft, recordContext, recordItemEvents, type RecordContext } from './record.ts';
 import { pausedRefusal } from './paused.ts';
 import { holdsClaim } from './release.ts';
 
-type StepPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
+type StepPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store' | 'runs'>;
 
 export type LeaseOutcome = { readonly leaseExpiresAt: string; readonly leaseWarning: boolean };
 export type StepOutcome = LeaseOutcome & { readonly prompts: readonly string[] };
@@ -34,7 +41,7 @@ async function holderRefusal(
 
 export async function heldStanding(
   tx: StoreTransaction,
-  ports: StepPorts,
+  ports: Pick<Ports, 'grants'>,
   context: RecordContext,
   scene: { readonly caller: Caller; readonly item: ItemState },
 ): Promise<Refused | null> {
@@ -124,15 +131,24 @@ async function renewIn(
   return accepted({ leaseExpiresAt, leaseWarning, prompts: step.prompts });
 }
 
+async function renewedWith(
+  ports: StepPorts,
+  renewal: Renewal,
+): Promise<KernelOutcome<StepOutcome>> {
+  const outcome = await ports.store.transaction((tx) => renewIn(ports, tx, renewal));
+  if (outcome.status === 'error' && outcome.reason === 'delegation_lapsed') {
+    await stopLapsedRun(ports, renewal.caller, renewal.itemId);
+  }
+  return outcome;
+}
+
 export async function renewLease(
   ports: StepPorts,
   caller: Caller,
   input: RenewInput,
 ): Promise<KernelOutcome<LeaseOutcome>> {
   const at = ports.clock.now();
-  const renewed = await ports.store.transaction((tx) =>
-    renewIn(ports, tx, { caller, itemId: input.itemId, input: null, at }),
-  );
+  const renewed = await renewedWith(ports, { caller, itemId: input.itemId, input: null, at });
   if (renewed.status !== 'accepted') return renewed;
   const { leaseExpiresAt, leaseWarning } = renewed.value;
   return accepted({ leaseExpiresAt, leaseWarning });
@@ -144,20 +160,20 @@ export function recordRunStep(
   input: RunStepInput,
 ): Promise<KernelOutcome<StepOutcome>> {
   const at = ports.clock.now();
-  return ports.store.transaction((tx) =>
-    renewIn(ports, tx, { caller, itemId: input.itemId, input, at }),
-  );
+  return renewedWith(ports, { caller, itemId: input.itemId, input, at });
 }
+
+type Expired = { readonly expired: boolean; readonly hosted: string | null };
 
 async function expireOne(
   tx: StoreTransaction,
   context: RecordContext,
   itemId: string,
-): Promise<boolean> {
+): Promise<Expired> {
   const item = await tx.harnessItems.read.lock(itemId);
-  if (item === null || !leaseLapsed(item, context.at)) return false;
-  await expireLapsedLease(tx, context, item);
-  return true;
+  if (item === null || !leaseLapsed(item, context.at)) return { expired: false, hosted: null };
+  const lapsed = await lapseLease(tx, context, item);
+  return { expired: true, hosted: lapsed.hosted };
 }
 
 export async function expireLeases(
@@ -175,9 +191,9 @@ export async function expireLeases(
   );
   const expired: string[] = [];
   for (const itemId of lapsed) {
-    if (await ports.store.transaction((tx) => expireOne(tx, context, itemId))) {
-      expired.push(itemId);
-    }
+    const one = await ports.store.transaction((tx) => expireOne(tx, context, itemId));
+    if (one.expired) expired.push(itemId);
+    await stopWorkflows(ports, [one.hosted]);
   }
   return accepted({ expired });
 }
