@@ -9,13 +9,14 @@ function routesWith(refused: string[], mcpSeen: Request[]): EgressRoutes {
       host: MODEL_HOST,
       upstream: 'https://gateway.ai.cloudflare.com/v1/account-1/harness-gateway/anthropic',
       headers: { 'x-api-key': 'organization-key', 'cf-aig-authorization': 'Bearer gateway-token' },
+      paths: ['/v1/messages', '/v1/messages/count_tokens'],
     },
     mcp: async (request) => {
       mcpSeen.push(request);
       return Response.json({ jsonrpc: '2.0', id: 1, result: { tools: [] } });
     },
-    refused: (host) => {
-      refused.push(host);
+    refused: (host, path) => {
+      refused.push(`${host}${path}`);
     },
   };
 }
@@ -37,7 +38,15 @@ async function keyInjected(): Promise<void> {
       authorization: 'Bearer sandbox-token',
       'cf-aig-authorization': 'Bearer forged',
       cookie: 'session=1',
+      'cf-aig-custom-cost': '{"total_cost":0}',
+      'cf-aig-collect-log': 'false',
+      'cf-aig-cache-ttl': '3600',
+      'x-forwarded-for': '10.0.0.1',
       'content-type': 'application/json',
+      accept: 'application/json',
+      'anthropic-version': '2023-06-01',
+      'anthropic-beta': 'tools-2025',
+      'user-agent': 'claude-cli/2.0',
     },
     body: JSON.stringify({ model: 'claude-sonnet-5' }),
   });
@@ -50,8 +59,49 @@ async function keyInjected(): Promise<void> {
         'x-api-key': 'organization-key',
         'cf-aig-authorization': 'Bearer gateway-token',
         'content-type': 'application/json',
+        accept: 'application/json',
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'tools-2025',
+        'user-agent': 'claude-cli/2.0',
       },
     },
+  ]);
+}
+
+async function inferenceOnly(): Promise<void> {
+  const seen: Seen[] = [];
+  const refused: string[] = [];
+  const asked: readonly (readonly [string, string])[] = [
+    ['GET', '/v1/files'],
+    ['POST', '/v1/files'],
+    ['POST', '/v1/messages/batches'],
+    ['GET', '/v1/messages'],
+    ['POST', '/v1/models'],
+    ['POST', '/v1/messages/../files'],
+  ];
+  for (const [method, path] of asked) {
+    const body = method === 'POST' ? '{}' : null;
+    const request = new Request(`http://${MODEL_HOST}${path}`, { method, body });
+    const response = await egress(request, routesWith(refused, []), upstream(seen));
+    expect(response.status).toBe(403);
+    expect(await response.text()).toBe('egress refused');
+  }
+  expect(seen).toEqual([]);
+  expect(refused).toEqual([
+    `${MODEL_HOST}/v1/files`,
+    `${MODEL_HOST}/v1/files`,
+    `${MODEL_HOST}/v1/messages/batches`,
+    `${MODEL_HOST}/v1/messages`,
+    `${MODEL_HOST}/v1/models`,
+    `${MODEL_HOST}/v1/files`,
+  ]);
+  const counted = new Request(`http://${MODEL_HOST}/v1/messages/count_tokens`, {
+    method: 'POST',
+    body: '{}',
+  });
+  expect((await egress(counted, routesWith(refused, []), upstream(seen))).status).toBe(200);
+  expect(seen.map((request) => request.url)).toEqual([
+    'https://gateway.ai.cloudflare.com/v1/account-1/harness-gateway/anthropic/v1/messages/count_tokens',
   ]);
 }
 
@@ -86,11 +136,11 @@ async function othersRefused(): Promise<void> {
   }
   expect(seen).toEqual([]);
   expect(refused).toEqual([
-    'api.github.com',
-    'github.com',
-    'api.anthropic.com',
-    '169.254.169.254',
-    `${MODEL_HOST}.evil.example`,
+    'api.github.com/repos/unfoldingWord/uw-platform/pulls',
+    'github.com/unfoldingWord/uw-platform.git/info/refs',
+    'api.anthropic.com/v1/messages',
+    '169.254.169.254/latest/meta-data/',
+    `${MODEL_HOST}.evil.example/v1/messages`,
   ]);
 }
 
@@ -103,4 +153,9 @@ describe('the sandbox egress proxy', () => {
   it("HE-8 the MCP host reaches the step's in-process surface as the run's principal", mcpRouted);
 
   it('HE-8 every other host is refused, GitHub included', othersRefused);
+
+  it(
+    'HE-8 the model route forwards only POST to its inference paths, logged by host and path',
+    inferenceOnly,
+  );
 });

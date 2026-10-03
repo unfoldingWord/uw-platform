@@ -16,6 +16,7 @@ import type { EngineWork } from '../seam.ts';
 const PROVIDER = 'anthropic';
 const MCP_CONFIG = `${WORKSPACE}/.mcp.json`;
 const SERVER = 'uw-platform';
+const INFERENCE_PATHS = ['/v1/messages', '/v1/messages/count_tokens'];
 const SCRIPT = `exec claude -p "$(cat ${WORKSPACE}/PROMPT.md)" "$@"`;
 
 const resultSchema = z.object({
@@ -32,7 +33,8 @@ function modelRoute(config: EngineConfig): ModelRoute | null {
   const upstream = gatewayUpstream(config, PROVIDER);
   const key = config.ANTHROPIC_API_KEY;
   if (upstream === null || !key) return null;
-  return { host: MODEL_HOST, upstream, headers: { ...gatewayHeaders(config), 'x-api-key': key } };
+  const headers = { ...gatewayHeaders(config), 'x-api-key': key };
+  return { host: MODEL_HOST, upstream, headers, paths: INFERENCE_PATHS };
 }
 
 function files(input: EngineWork) {
