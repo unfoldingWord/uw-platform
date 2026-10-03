@@ -9,12 +9,13 @@ import {
 } from '@uw/contracts';
 import { isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
+import { declarationWithinLimit } from '../github/declaration.ts';
 import { readAllEvents } from '../items/record.ts';
 import { resolveExit } from '../items/transitions.ts';
 import { accepted, refused, type KernelOutcome } from '../outcome.ts';
 import { FactsUnavailableError } from '../port-errors.ts';
 import type { Ports, PullRequestFacts, StoreTransaction } from '../ports.ts';
-import { itemScene } from '../reads/scene.ts';
+import { stagedItemScene } from '../reads/scene.ts';
 import { effectOf, shipPreview } from './approve-at-ship.ts';
 
 type ViewPorts = Pick<Ports, 'clock' | 'githubFacts' | 'grants' | 'store'>;
@@ -26,8 +27,6 @@ type Seen = {
   readonly atConnectorExit: boolean;
   readonly recorded: GateView['recorded'];
 };
-
-const CLOSES_SHOWN = 50;
 
 function recordedOf(events: readonly HarnessEvent[]): GateView['recorded'] {
   const last = events.findLast((event) => event.name === 'risk_derived');
@@ -55,11 +54,10 @@ async function seenIn(
   caller: Caller,
   input: { readonly itemId: string; readonly at: Date },
 ): Promise<KernelOutcome<Seen>> {
-  const scene = await itemScene(ports, tx, caller, input.itemId, input.at);
+  const scene = await stagedItemScene(ports, tx, caller, input.itemId, input.at);
   if (scene.status !== 'accepted') return scene;
   if (isAgent(caller.actor)) return refused('not_permitted', { actor: caller.actor.identity });
-  const { item, harness, stage } = scene.value;
-  const stages = await tx.harnessStages.read.forHarness(harness.id);
+  const { item, harness, stage, stages } = scene.value;
   const events = await readAllEvents(tx, harness.id, item.itemId);
   const atConnectorExit = connectorExit(item, stages, stage);
   return accepted({ item, harness, stage, atConnectorExit, recorded: recordedOf(events) });
@@ -77,15 +75,13 @@ async function readModelFacts(ports: ViewPorts, item: ItemState): Promise<PullRe
 
 function factsShown(facts: PullRequestFacts | null): GateView['facts'] {
   if (facts === null) return null;
-  const { declaration } = facts;
   return {
     head: facts.head,
     state: facts.state,
     draft: facts.draft,
     baseRef: facts.baseRef,
     freshAt: facts.freshAt.toISOString(),
-    declaration:
-      declaration !== null && declaration.closes.length <= CLOSES_SHOWN ? declaration : null,
+    declaration: declarationWithinLimit(facts.declaration),
   };
 }
 

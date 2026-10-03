@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import type { ItemState, Principal } from '@uw/contracts';
 import { seedPage } from '@uw/db/test-seed';
 import { software, type KernelOutcome } from '@uw/harness';
-import { createSimHarness, simCaller, simPerson } from '../fixtures.ts';
+import { createSimHarness, simCaller, simPerson, simSeenHead } from '../fixtures.ts';
 import { readWorldLog } from '../runner/log.ts';
 import { defineScenario } from '../scenario.ts';
 import {
@@ -56,6 +56,7 @@ async function approveAndMerge(scene: Scene): Promise<void> {
       decision: 'approve',
       reason: null,
       findings: [],
+      seenHead: await simSeenHead(world, itemId),
     }),
   );
   assert.deepEqual((await readWorldLog(world.adapters.store)).drift, []);

@@ -188,6 +188,10 @@ export async function attemptShip(
   const githubFacts = platformGitHubFacts(db, { open, logger }, clock);
   const decider = kernelOn(db, clock, { githubFacts });
   const decision = { itemId: item.itemId, decision: 'approve' as const, reason: null };
-  const outcome = await decider.gates.decide(caller(kim), { ...decision, findings: [] });
+  const outcome = await decider.gates.decide(caller(kim), {
+    ...decision,
+    findings: [],
+    seenHead: item.expectedHead,
+  });
   return { outcome, github, lines, item };
 }

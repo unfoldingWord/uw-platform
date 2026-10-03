@@ -3,7 +3,14 @@ import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { revokeSeededGrant } from '@uw/db/test-seed';
 import { createKernel, software, type Connectors, type Kernel } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, simAgent, simCaller, simPerson, simSystem } from '../fixtures.ts';
+import {
+  createSimHarness,
+  simAgent,
+  simCaller,
+  simPerson,
+  simSystem,
+  simSeenHead,
+} from '../fixtures.ts';
 import { kernelThatLosesTheExit } from '../lost-exit.ts';
 import { readWorldLog } from '../runner/log.ts';
 import {
@@ -61,12 +68,13 @@ function sceneIt(title: string, work: (scene: Scene) => Promise<void>): void {
   it(title, () => inScene(work));
 }
 
-function decide(scene: Scene, kernel: Kernel, decision: 'approve' | 'take_over') {
+async function decide(scene: Scene, kernel: Kernel, decision: 'approve' | 'take_over') {
   return kernel.gates.decide(simCaller(scene.world, scene.ian), {
     itemId: scene.itemId,
     decision,
     reason: null,
     findings: [],
+    seenHead: await simSeenHead(scene.world, scene.itemId),
   });
 }
 

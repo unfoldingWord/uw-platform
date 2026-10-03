@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import type { GateDecision, HarnessEvent, Principal } from '@uw/contracts';
 import { readAllEvents, software, type Caller, type KernelOutcome } from '@uw/harness';
-import { createSimHarness, simAgent, simCaller, simParkedAtCheck, simPerson } from '../fixtures.ts';
+import {
+  createSimHarness,
+  simAgent,
+  simCaller,
+  simParkedAtCheck,
+  simPerson,
+  simSeenHead,
+} from '../fixtures.ts';
 import { readWorldLog } from '../runner/log.ts';
 import { defineScenario } from '../scenario.ts';
 import type { World } from '../world.ts';
@@ -41,6 +48,7 @@ async function decide(scene: Cast, decision: GateDecision, findings: readonly st
     decision,
     reason: null,
     findings,
+    seenHead: await simSeenHead(scene.world, scene.itemId),
   });
   const { drift } = await readWorldLog(scene.world.adapters.store);
   assert.deepEqual(drift, [], `the projection drifted after ${decision}`);

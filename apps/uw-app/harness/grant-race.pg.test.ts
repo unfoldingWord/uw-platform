@@ -174,7 +174,13 @@ async function withRace(work: (race: Race) => Promise<void>): Promise<void> {
 }
 
 function approve(item: ItemState) {
-  return { itemId: item.itemId, decision: 'approve' as const, reason: null, findings: [] };
+  return {
+    itemId: item.itemId,
+    decision: 'approve' as const,
+    reason: null,
+    findings: [],
+    seenHead: item.expectedHead,
+  };
 }
 
 function revokeKim(race: Race): Promise<unknown> {

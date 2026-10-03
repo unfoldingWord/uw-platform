@@ -35,7 +35,8 @@ describe('GH-6 a recovery asks about the merge the decision made', () => {
       const reviews = [approvedBy('uw-reviewer[bot]', 'anthropic', head, 9100000101)];
       world.adapters.githubFacts.given(greenFacts(world, { itemId, head, reviews }));
       const losing = kernelThatLosesTheExit(world, { effectHappened: true });
-      const decision = { itemId, decision: 'approve' as const, reason: null, findings: [] };
+      const approve = { decision: 'approve' as const, reason: null, findings: [] };
+      const decision = { ...approve, itemId, seenHead: head };
       await expect(losing.gates.decide(simCaller(world, admin), decision)).rejects.toMatchObject({
         name: 'ExitLost',
       });

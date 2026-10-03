@@ -2,7 +2,7 @@ import type { Harness, Principal } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { software, type Caller, type EffectConnector, type KernelOutcome } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, simCaller, simPerson } from '../fixtures.ts';
+import { createSimHarness, simCaller, simPerson, simSeenHead } from '../fixtures.ts';
 import { readWorldLog } from '../runner/log.ts';
 import {
   approvedBy,
@@ -105,6 +105,7 @@ describe('GH-7 deploy, publish, send and post are registered and answer not wire
           decision: 'approve',
           reason: null,
           findings: [],
+          seenHead: await simSeenHead(world, itemId),
         }),
       );
       expect(decided).toMatchObject({

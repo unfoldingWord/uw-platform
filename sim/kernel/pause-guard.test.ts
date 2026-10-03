@@ -9,6 +9,7 @@ import {
   simCaller,
   simParkedAtCheck,
   simPerson,
+  simSeenHead,
 } from '../fixtures.ts';
 import { createWorld, type World } from '../world.ts';
 
@@ -138,6 +139,7 @@ describe('WB-1 a paused harness or lane stops agents and never people', () => {
       decision: 'approve',
       reason: null,
       findings: [],
+      seenHead: await simSeenHead(world, parked.itemId),
     });
     expect(decided.status === 'accepted' && decided.value.item.stageKey).toBe('ship');
   });

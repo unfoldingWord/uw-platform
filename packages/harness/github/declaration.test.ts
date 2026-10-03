@@ -1,6 +1,7 @@
 import type { PullRequestDeclaration } from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
 import {
+  DECLARED_CLOSES_LIMIT,
   parseDeclaration,
   parseReviewProvider,
   riskDeclarationOf,
@@ -137,6 +138,21 @@ describe('P16 a harness block with a wrong line declares nothing', () => {
     );
     const noSpace = replaced('risk_tier', 'risk_tier:standard');
     expect(parseDeclaration(bodyWith(noSpace))).toEqual(failure('invalid_value'));
+  });
+
+  it('takes as many distinct closed issues as the limit and refuses one more', () => {
+    const issues = (count: number): string[] =>
+      [...Array.from({ length: count }).keys()].map((index) => `#${index + 1}`);
+    const atLimit = replaced('closes', `closes: ${issues(DECLARED_CLOSES_LIMIT).join(', ')}`);
+    expect(parseDeclaration(bodyWith(atLimit))).toEqual(
+      success({ ...parsed, closes: issues(DECLARED_CLOSES_LIMIT) }),
+    );
+    const over = replaced('closes', `closes: ${issues(DECLARED_CLOSES_LIMIT + 1).join(', ')}`);
+    expect(parseDeclaration(bodyWith(over))).toEqual(failure('invalid_value'));
+    const repeated = [...issues(DECLARED_CLOSES_LIMIT), '#1'].join(', ');
+    expect(parseDeclaration(bodyWith(replaced('closes', `closes: ${repeated}`)))).toEqual(
+      success({ ...parsed, closes: issues(DECLARED_CLOSES_LIMIT) }),
+    );
   });
 
   it('refuses an empty value', () => {

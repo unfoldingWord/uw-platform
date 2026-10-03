@@ -467,7 +467,7 @@ describe('AB-4 a non-interactive device without a delegation reads no harness, i
 describe('the kernel lists the ids of every harness', () => {
   it('names each activated harness once', () =>
     inScene(async (scene) => {
-      const ids = await scene.world.kernel.reads.harnessIds();
+      const ids = await scene.world.kernel.reads.harnessIdsForHealth();
       expect([...ids].sort()).toEqual([scene.firstId, scene.secondId].sort());
     }));
 });

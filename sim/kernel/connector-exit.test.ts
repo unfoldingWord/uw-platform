@@ -11,7 +11,7 @@ import {
   type PullRequestRef,
 } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, simCaller, simPerson } from '../fixtures.ts';
+import { createSimHarness, simCaller, simPerson, simSeenHead } from '../fixtures.ts';
 import { readWorldLog } from '../runner/log.ts';
 import {
   approvedBy,
@@ -63,12 +63,13 @@ function sceneIt(title: string, work: (scene: Scene) => Promise<void>): void {
   it(title, () => inScene(work));
 }
 
-function approve(scene: Scene, kernel: Kernel = scene.world.kernel) {
+async function approve(scene: Scene, kernel: Kernel = scene.world.kernel) {
   return kernel.gates.decide(simCaller(scene.world, scene.ian), {
     itemId: scene.itemId,
     decision: 'approve',
     reason: null,
     findings: [],
+    seenHead: await simSeenHead(scene.world, scene.itemId),
   });
 }
 
@@ -148,10 +149,14 @@ describe('KN-13 approve at Ship reads the GitHub facts before its transaction', 
       const githubFacts: GitHubFacts = { pullRequest: moved, refresh: moved };
       const before = await itemLog(scene.world, scene.harnessId, scene.itemId);
       const outcome = await approve(scene, kernelWith(scene, { githubFacts }));
-      expect(outcome).toMatchObject({ status: 'error', reason: 'head_mismatch' });
+      expect(outcome).toEqual({
+        status: 'error',
+        reason: 'head_mismatch',
+        detail: { why: 'not_the_head_you_saw', expectedHead: ianSubmitsAnotherHead },
+      });
       const after = await itemLog(scene.world, scene.harnessId, scene.itemId);
-      expect(namesSince(before, after).slice(-1)).toEqual(['ship_refused']);
-      expect(after.events.at(-1)?.evidence).toEqual({ stage: 'ship', reasons: ['head_mismatch'] });
+      expect(namesSince(before, after)).not.toContain('ship_refused');
+      expect(namesSince(before, after)).not.toContain('gate_approved');
       expect(after.decisions).toEqual(['take_over']);
       expect(scene.world.adapters.connectors.calls()).toEqual([]);
     },
@@ -237,6 +242,7 @@ async function decideWith(scene: Scene, decision: GateDecision) {
     decision,
     reason: null,
     findings: decision === 'reject' ? ['not yet'] : [],
+    seenHead: await simSeenHead(scene.world, scene.itemId),
   });
 }
 
@@ -315,6 +321,7 @@ describe('KN-13 approve at Ship reads GitHub only for an admin and never throws 
       decision: 'approve',
       reason: null,
       findings: [],
+      seenHead: await simSeenHead(scene.world, scene.itemId),
     });
     expect(outcome).toMatchObject({ status: 'error', reason: 'not_permitted' });
     expect(reads).toBe(0);

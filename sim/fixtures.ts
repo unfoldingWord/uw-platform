@@ -246,3 +246,8 @@ export async function simHeldAtCheck(world: World, input: HeldInput): Promise<It
     throw new Error(`claiming check was refused: ${claimed.reason}`);
   return claimed.value.item;
 }
+
+export async function simSeenHead(world: World, itemId: string): Promise<string | null> {
+  const item = await world.adapters.store.transaction((tx) => tx.harnessItems.read.byId(itemId));
+  return item?.expectedHead ?? null;
+}
