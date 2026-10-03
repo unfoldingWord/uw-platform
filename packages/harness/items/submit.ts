@@ -14,6 +14,7 @@ import { factsFailure } from '../gates/facts-failure.ts';
 import { riskDeclarationOf } from '../github/declaration.ts';
 import { branchFor, fullSha, sameRepository } from '../github/identifiers.ts';
 import type { Ports, PullRequestFacts, PullRequestRef, StoreTransaction } from '../ports.ts';
+import { noteGateMet } from '../runs/gates-met.ts';
 import { runValidators } from '../validators/registry.ts';
 import { attachedPageIds } from '../validators/learning-attached.ts';
 import { expireLapsedLease, leaseLapsed } from './leases.ts';
@@ -286,8 +287,11 @@ async function submitIn(
     tweak: isOccasionalTweak(exit),
     input,
   });
-  const risk = riskDraft(command, item);
-  const recorded = await recordItemEvents(tx, context, item.itemId, [...risk, ...decision.drafts]);
+  await noteGateMet(tx, item, stage.key);
+  const recorded = await recordItemEvents(tx, context, item.itemId, [
+    ...riskDraft(command, item),
+    ...decision.drafts,
+  ]);
   return accepted({ item: recorded.item, result: decision.result, failures: decision.failures });
 }
 

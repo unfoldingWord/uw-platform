@@ -2,6 +2,8 @@ import type { GateView } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
 import type { KernelOutcome } from '../outcome.ts';
 import { decide, type Decided, type DecideInput, type GatePorts } from './decide.ts';
+import { resumeRunsWhere } from '../runs/resume.ts';
+import type { RunRow, StoreTransaction } from '../ports.ts';
 import { recoverConnectors, type Recovered } from './recover.ts';
 import { gateView } from './view.ts';
 
@@ -18,9 +20,28 @@ export type GateCommands = {
   ): Promise<KernelOutcome<Recovered>>;
 };
 
+function gateWaiting(itemId: string) {
+  return async (tx: StoreTransaction): Promise<readonly RunRow[]> => {
+    const run = await tx.harnessRuns.read.liveForItem(itemId);
+    return run?.hibernatedFor === 'gate' ? [run] : [];
+  };
+}
+
+async function decideAndResume(
+  ports: GatePorts,
+  caller: Caller,
+  input: DecideInput,
+): Promise<KernelOutcome<Decided>> {
+  const outcome = await decide(ports, caller, input);
+  if (outcome.status === 'accepted') {
+    await resumeRunsWhere(ports, gateWaiting(input.itemId), 'gate');
+  }
+  return outcome;
+}
+
 export function createGateCommands(ports: GatePorts): GateCommands {
   return {
-    decide: (caller, input) => decide(ports, caller, input),
+    decide: (caller, input) => decideAndResume(ports, caller, input),
     view: (caller, input, options) => gateView(ports, caller, input, options),
     recoverConnectors: (caller, input) => recoverConnectors(ports, caller, input),
   };
