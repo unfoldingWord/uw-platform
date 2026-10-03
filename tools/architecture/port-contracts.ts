@@ -109,9 +109,25 @@ function rootViolations(ports: readonly string[], tree: SourceTree, root: string
   return [...unnamed, ...missing, ...unrun];
 }
 
+const engineTurn =
+  /^apps\/uw-app\/engines\/(?:claude-messages|openrouter-messages|claude-code-sandbox|codex-sandbox|claude-managed-agent|external)\/turn\.ts$/;
+
+function engineTurnViolations(ports: readonly string[], tree: SourceTree): string[] {
+  if (!ports.includes('modelEngine')) return [];
+  return tree.paths
+    .filter((path) => engineTurn.test(path))
+    .filter((file) => {
+      const directory = file.slice(0, file.lastIndexOf('/') + 1);
+      const tests = directlyIn(tree, directory).filter((path) => contractTest.test(path));
+      return !tests.some((test) => runsAdapter(tree.read(test), file, 'modelEngine'));
+    })
+    .map((file) => `${file}: no contract test beside it runs it against the modelEngine contract`);
+}
+
 export function portContractViolations(ports: readonly string[], tree: SourceTree): string[] {
   return [
     ...suiteViolations(ports, tree),
     ...adapterRoots.flatMap((root) => rootViolations(ports, tree, root)),
+    ...engineTurnViolations(ports, tree),
   ];
 }

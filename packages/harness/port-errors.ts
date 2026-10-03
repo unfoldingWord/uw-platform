@@ -60,6 +60,16 @@ export class ProviderMismatchError extends Error {
   }
 }
 
+export class EngineNotAvailableError extends Error {
+  readonly engine: string;
+
+  constructor(engine: string) {
+    super(`the engine ${engine} is not available on the platform`);
+    this.name = 'EngineNotAvailableError';
+    this.engine = engine;
+  }
+}
+
 export function notWiredCall(port: PortName, method: string): Promise<never> {
   return Promise.reject(new PortNotWiredError(port, method));
 }

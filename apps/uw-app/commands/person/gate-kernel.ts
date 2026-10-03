@@ -8,7 +8,7 @@ import type { ShipGitHub } from '../../ports/connectors.ts';
 export function gateWiring(github: ShipGitHub | null, hub: Hub, logger: Logger) {
   if (github === null) return hubWiring(hub);
   const reads = { open: () => createGitHubReads(github.app, github.transport), logger };
-  return { hub, reads, ship: github };
+  return { ...hubWiring(hub), reads, ship: github };
 }
 
 export function gateKernel(
