@@ -28,12 +28,15 @@ type Named = { readonly harnessId: string; readonly body: unknown };
 
 const newHarnessArea = z.object({ jdArea: jdAreaSchema });
 const optionalId = z.uuid().nullable().optional();
+const instructions = z.object({ instructionsPageId: optionalId }).optional();
 const namedTargets = z.object({
   itemId: optionalId,
   beforeItemId: optionalId,
   delegationId: optionalId,
   supersedes: optionalId,
   pageId: optionalId,
+  stage: instructions,
+  change: instructions,
 });
 
 export async function sceneOf(
@@ -90,6 +93,13 @@ async function foreignItem(lookup: Lookup, harnessId: string, ids: readonly stri
   return false;
 }
 
+async function foreignPage(lookup: Lookup, area: JdArea, ids: readonly string[]) {
+  for (const pageId of ids) {
+    if (!(await pageIn(lookup, area, pageId))) return true;
+  }
+  return false;
+}
+
 async function foreignDelegation(lookup: Lookup, harnessId: string, ids: readonly string[]) {
   for (const delegationId of ids) {
     if (!(await delegationIn(lookup, harnessId, delegationId))) return true;
@@ -107,9 +117,11 @@ export async function foreignTarget(
   if (await foreignItem(lookup, named.harnessId, items)) return 'item_not_found';
   const delegations = present([targets.delegationId, targets.supersedes]);
   if (await foreignDelegation(lookup, named.harnessId, delegations)) return 'delegation_not_found';
-  const pageId = targets.pageId;
-  if (typeof pageId === 'string' && !(await pageIn(lookup, scene.area, pageId))) {
-    return 'page_not_found';
-  }
+  const pages = present([
+    targets.pageId,
+    targets.stage?.instructionsPageId,
+    targets.change?.instructionsPageId,
+  ]);
+  if (await foreignPage(lookup, scene.area, pages)) return 'page_not_found';
   return null;
 }

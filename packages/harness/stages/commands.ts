@@ -53,12 +53,25 @@ function replaceOne(stages: readonly Stage[], next: Stage): readonly Stage[] {
   return stages.map((stage) => (stage.key === next.key ? next : stage));
 }
 
+async function instructionsRefusal(
+  tx: StoreTransaction,
+  harness: Harness,
+  pageId: string | null | undefined,
+): Promise<Refused | null> {
+  if (pageId === null || pageId === undefined) return null;
+  const [page] = await tx.pages.read.facts([pageId]);
+  const usable = page !== undefined && page.type !== 'issue' && page.jdArea === harness.jdArea;
+  return usable ? null : refused('page_not_found', { pageId });
+}
+
 function createWork(ports: StagePorts, stage: StageInput): EditWork<Stage> {
-  return async (_tx, harness, stages) => {
+  return async (tx, harness, stages) => {
     const created: Stage = { ...stage, id: ports.ids.next(), harnessId: harness.id, paused: false };
     if (!stageSchema.safeParse(created).success) {
       return refused('malformed_command', { stage: stage.key });
     }
+    const page = await instructionsRefusal(tx, harness, created.instructionsPageId);
+    if (page !== null) return page;
     return {
       stageKey: created.key,
       resulting: [...stages, created],
@@ -96,6 +109,8 @@ function updateWork(stageKey: string, change: StageChange): EditWork<Stage> {
     if (!stageSchema.safeParse(next).success) {
       return refused('malformed_command', { stage: stageKey });
     }
+    const page = await instructionsRefusal(tx, harness, parsed.data.instructionsPageId);
+    if (page !== null) return page;
     if (next.connector !== current.connector) {
       const inFlight = await connectorInFlight(tx, harness, current);
       if (inFlight !== null) return inFlight;
