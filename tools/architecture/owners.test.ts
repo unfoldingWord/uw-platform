@@ -11,6 +11,7 @@ import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { owns as acl } from '../../apps/uw-app/acl/grant-commands.ts';
 import { owns as serviceTokens } from '../../apps/uw-app/agents/service-tokens.ts';
+import { owns as commandRequests } from '../../apps/uw-app/commands/requests.ts';
 import { owns as githubFacts } from '../../apps/uw-app/github/facts/owns.ts';
 import { owns as pages } from '../../apps/uw-app/pages/store.ts';
 import { owns as people } from '../../apps/uw-app/people/directory.ts';
@@ -38,6 +39,7 @@ const owners: Owner[] = [
   { dir: 'apps/uw-app/queue/', tables: queue },
   { dir: 'apps/uw-app/tasks/', tables: tasks },
   { dir: 'apps/uw-app/agents/', tables: serviceTokens },
+  { dir: 'apps/uw-app/commands/', tables: commandRequests },
   { dir: 'apps/uw-app/github/facts/', tables: githubFacts },
   { dir: 'apps/uw-ingest/deliveries/', tables: deliveries },
   { dir: 'packages/harness/stages/', tables: stages },

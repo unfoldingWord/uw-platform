@@ -148,6 +148,13 @@
       "when": 1791002208025,
       "tag": "0020_harness_events_reordered_removed",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791003372274,
+      "tag": "0021_command_requests",
+      "breakpoints": true
     }
   ]
 }

@@ -12,6 +12,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import {
+  commandNameSchema,
   ingestSourceSchema,
   pageStatusSchema,
   pageTypeSchema,
@@ -233,5 +234,29 @@ export const serviceTokens = declareTable(
     uniqueIndex('service_tokens_one_live_client')
       .on(t.clientId)
       .where(sql`${t.revokedAt} IS NULL`),
+  ],
+);
+
+export const commandRequests = declareTable(
+  'command_requests',
+  {
+    actor: text('actor').notNull(),
+    requestId: uuid('request_id').notNull(),
+    command: text('command').notNull(),
+    harnessId: uuid('harness_id').notNull(),
+    outcome: jsonb('outcome'),
+    traceId: uuid('trace_id').notNull(),
+    claimedAt: instant('claimed_at').notNull(),
+    settledAt: instant('settled_at'),
+  },
+  { classification: 'internal', offlineEligibility: 'never' },
+  (t) => [
+    primaryKey({ name: 'command_requests_pkey', columns: [t.actor, t.requestId] }),
+    check('command_requests_command_known', oneOf(t.command, commandNameSchema.options)),
+    check('command_requests_actor_is_identity', matches(t.actor, IDENTITY_PATTERN)),
+    check(
+      'command_requests_settled_with_outcome',
+      sql`(${t.outcome} IS NULL) = (${t.settledAt} IS NULL)`,
+    ),
   ],
 );
