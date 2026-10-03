@@ -33,7 +33,7 @@ ACCESS_MCP_AUD = "set-at-go-live"
 enabled = true
 
 [env.staging.triggers]
-crons = ["17 3 * * *"]
+crons = ["17 3 * * *", "* * * * *"]
 
 [[env.staging.hyperdrive]]
 binding = "HYPERDRIVE"
@@ -67,7 +67,7 @@ ACCESS_MCP_AUD = "set-at-go-live"
 enabled = true
 
 [env.production.triggers]
-crons = ["17 3 * * *"]
+crons = ["17 3 * * *", "* * * * *"]
 
 [[env.production.hyperdrive]]
 binding = "HYPERDRIVE"
