@@ -32,6 +32,16 @@ export type IssueRecord = {
   readonly githubUpdatedAt: Date;
 };
 
+export type IssueChange = {
+  readonly repo: string;
+  readonly githubId: number;
+  readonly number: number;
+  readonly title: string;
+  readonly labels: readonly string[];
+  readonly hadLabels: readonly string[] | null;
+  readonly githubUpdatedAt: Date;
+};
+
 export type PullRequestRecord = {
   readonly githubId: number;
   readonly repoId: number;

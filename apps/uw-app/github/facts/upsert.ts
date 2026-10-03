@@ -6,6 +6,7 @@ import type {
   CheckRunRecord,
   FactBatch,
   FilesRecord,
+  IssueChange,
   IssueRecord,
   MilestoneRecord,
   PullRequestRecord,
@@ -22,16 +23,6 @@ export type RepairCounts = {
   readonly checkRuns: number;
   readonly reviews: number;
   readonly files: number;
-};
-
-type IssueChange = {
-  readonly repo: string;
-  readonly githubId: number;
-  readonly number: number;
-  readonly title: string;
-  readonly labels: readonly string[];
-  readonly hadLabels: readonly string[] | null;
-  readonly githubUpdatedAt: Date;
 };
 
 export type UpsertReport = {

@@ -1,6 +1,8 @@
 import { errorFields, type Logger } from '@uw/core/log';
 import type { GitHubAppConfig } from './app-config.ts';
 import { createGitHubReads, type GitHubReads } from './client.ts';
+import { createIssueComments, type IssueComments } from './comments.ts';
+import type { GitHubDeps } from './deps.ts';
 import { failed, type GitHubFailure, type GitHubResult } from './failures.ts';
 import { fetchFilesAtHead } from './facts/files.ts';
 import {
@@ -10,10 +12,16 @@ import {
   repoFromRest,
   reviewsFromRest,
 } from './facts/normalise.ts';
-import { openPullRequests, sweepStates, type SweepState } from './facts/queries.ts';
+import {
+  issuesAwaitingCrossReference,
+  openPullRequests,
+  sweepStates,
+  type SweepState,
+} from './facts/queries.ts';
 import { emptyBatch, type FactBatch, type RepoRecord } from './facts/records.ts';
 import { recordSweep, upsertFacts, type RepairCounts, type SweepRecord } from './facts/upsert.ts';
-import { followUpserts, type GitHubDeps } from './follow-up.ts';
+import { followUpserts } from './follow-up.ts';
+import { followIssue } from './import.ts';
 import { issueSchema } from './payloads.ts';
 import type { GitHubTransport } from './transport.ts';
 
@@ -60,7 +68,9 @@ type Pass = {
   readonly repo: RepoRecord;
   readonly state: SweepState;
   readonly reads: GitHubReads;
+  readonly comments: IssueComments;
   readonly swept: Set<number>;
+  readonly followed: Set<number>;
   repaired: RepairCounts;
   unparsed: number;
   capped: boolean;
@@ -73,6 +83,7 @@ const overlapMs = 10 * 60_000;
 const defaultPages = 30;
 const defaultSubrequests = 900;
 const perPullRequest = 8;
+const perCrossReference = 3;
 const repositoryStart = 2;
 const noRepairs: RepairCounts = {
   repos: 0,
@@ -138,13 +149,23 @@ function affordable(pass: Pass): boolean {
 
 function githubDeps(pass: Pass): GitHubDeps {
   const { db, kernel, now } = pass.run.deps;
-  return { db, kernel, now, client: () => pass.reads };
+  return { db, kernel, now, client: { reads: () => pass.reads, comments: () => pass.comments } };
 }
 
 async function upsertAndFollow(pass: Pass, batch: FactBatch): Promise<void> {
   const report = await upsertFacts(pass.run.deps.db, batch, pass.run.deps.now());
   pass.repaired = plus(pass.repaired, report.repaired);
+  for (const issue of report.issues) pass.followed.add(issue.githubId);
   await followUpserts(githubDeps(pass), report, pass.run.logger);
+}
+
+async function followAwaiting(pass: Pass): Promise<void> {
+  const awaiting = await issuesAwaitingCrossReference(pass.run.deps.db, pass.repo.githubId);
+  for (const change of awaiting) {
+    if (pass.followed.has(change.githubId)) continue;
+    if (remaining(pass.run.budget) < perCrossReference) return;
+    await followIssue(githubDeps(pass), change, pass.run.logger);
+  }
 }
 
 async function storePull(pass: Pass, batch: FactBatch): Promise<GitHubResult<true>> {
@@ -294,6 +315,7 @@ async function passOver(pass: Pass): Promise<RepositorySweep> {
   pass.unparsed += listing.value.unparsed;
   await sweepListing(pass, listing.value.issues);
   await sweepOpen(pass);
+  await followAwaiting(pass);
   const candidate = pass.heldAt ?? pass.through;
   return recorded(pass, sweepOf(pass, outcomeOf(pass, candidate), candidate, pass.reason));
 }
@@ -367,7 +389,9 @@ async function sweepRepository(
     repo,
     state,
     reads: createGitHubReads(run.deps.app, run.transport),
+    comments: createIssueComments(run.deps.app, run.transport),
     swept: new Set(),
+    followed: new Set(),
     repaired: noRepairs,
     unparsed: 0,
     capped: false,

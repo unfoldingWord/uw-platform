@@ -1,7 +1,8 @@
 import type { IngestHandler } from '../queue/consumer.ts';
 import { factsFromWebhook } from './facts/normalise.ts';
 import { upsertFacts, type UpsertReport } from './facts/upsert.ts';
-import { followUpserts, type GitHubDeps } from './follow-up.ts';
+import type { GitHubDeps } from './deps.ts';
+import { followUpserts } from './follow-up.ts';
 
 function repairedFields({ repaired }: UpsertReport): Readonly<Record<string, number>> {
   return {

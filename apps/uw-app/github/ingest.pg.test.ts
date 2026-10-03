@@ -7,14 +7,13 @@ import { systemClock } from '../ports/clock.ts';
 import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import type { GitHubAppConfig } from './app-config.ts';
-import { createGitHubReads } from './client.ts';
 import { pullRequestFacts } from './facts/queries.ts';
 import checkRunCompleted from './fixtures/check-run-completed.json' with { type: 'json' };
 import pullRequestOpened from './fixtures/pull-request-opened.json' with { type: 'json' };
 import pullRequestReviewSubmitted from './fixtures/pull-request-review-submitted.json' with { type: 'json' };
 import pullRequestSynchronize from './fixtures/pull-request-synchronize.json' with { type: 'json' };
 import restFiles from './fixtures/rest-files.json' with { type: 'json' };
-import type { GitHubDeps } from './follow-up.ts';
+import { githubClient, type GitHubDeps } from './deps.ts';
 import { githubIngestHandler } from './ingest.ts';
 import { fixtureApp, fixtureTransport } from './testing/app-key.ts';
 import { base, changedPaths, head, nextHead } from './testing/facts-fixtures.ts';
@@ -69,7 +68,7 @@ function depsOn(db: Database, github: FixtureGitHub | null): GitHubDeps {
   return {
     db,
     kernel: kernelOn(db, systemClock),
-    client: github === null ? null : () => createGitHubReads(app, fixtureTransport(github)),
+    client: github === null ? null : githubClient(app, fixtureTransport(github)),
     now: () => at,
   };
 }

@@ -1,23 +1,22 @@
 import { commitOf, type Bindings } from '../env.ts';
 import { hyperdriveDatabase, type DatabaseHandle } from '../database.ts';
 import { githubAppOf } from '../github/app-config.ts';
-import { createGitHubReads } from '../github/client.ts';
+import { githubClient, type GitHubClient } from '../github/deps.ts';
 import { githubIngestHandler } from '../github/ingest.ts';
-import type { OpenReads } from '../github/refresh.ts';
 import { platformGitHubTransport } from '../github/transport.ts';
 import { platformKernel } from '../kernel.ts';
 import { consumeBatch, notWiredHandlers, type IngestHandler } from './consumer.ts';
 import { postgresWatermarks } from './watermarks.ts';
 
-function readsOf(env: Bindings, now: () => Date): OpenReads | null {
+function clientOf(env: Bindings, now: () => Date): GitHubClient | null {
   const config = githubAppOf(env);
   if (config === null) return null;
-  return () => createGitHubReads(config, platformGitHubTransport(now));
+  return githubClient(config, platformGitHubTransport(now));
 }
 
 function handlersFor(database: DatabaseHandle | null, env: Bindings, now: () => Date) {
   if (database === null) return notWiredHandlers;
-  const client = readsOf(env, now);
+  const client = clientOf(env, now);
   const kernel = platformKernel(database);
   return new Map<'github', IngestHandler>([
     ['github', githubIngestHandler({ db: database.db, kernel, client, now })],

@@ -1,8 +1,8 @@
-import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import { checkConclusionSchema, pullRequestDeclarationSchema } from '@uw/contracts';
 import type { Executor } from '@uw/db/client';
-import { ghCheckRuns, ghPrs, ghRepos, ghReviews } from '@uw/db/schema';
+import { ghCheckRuns, ghIssues, ghPrs, ghRepos, ghReviews } from '@uw/db/schema';
 import type {
   ChangedFiles,
   CheckFact,
@@ -10,6 +10,8 @@ import type {
   PullRequestRef,
   ReviewFact,
 } from '@uw/harness';
+import { HARNESS_LABEL } from '../harness-label.ts';
+import type { IssueChange } from './records.ts';
 
 export type PullRequestChange = {
   readonly repo: string;
@@ -178,4 +180,31 @@ export async function sweepStates(
       ];
     }),
   );
+}
+
+export async function issuesAwaitingCrossReference(
+  db: Executor,
+  repoId: number,
+): Promise<readonly IssueChange[]> {
+  const rows = await db
+    .select({ issue: ghIssues, repo: ghRepos.fullName })
+    .from(ghIssues)
+    .innerJoin(ghRepos, eq(ghRepos.githubId, ghIssues.repoId))
+    .where(
+      and(
+        eq(ghIssues.repoId, repoId),
+        isNull(ghIssues.xrefCommentId),
+        sql`EXISTS (SELECT 1 FROM unnest(${ghIssues.labels}) AS label WHERE lower(label) = ${HARNESS_LABEL})`,
+      ),
+    )
+    .orderBy(asc(ghIssues.githubId));
+  return rows.map(({ issue, repo }) => ({
+    repo,
+    githubId: issue.githubId,
+    number: issue.number,
+    title: issue.title,
+    labels: issue.labels,
+    hadLabels: null,
+    githubUpdatedAt: issue.githubUpdatedAt,
+  }));
 }
