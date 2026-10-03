@@ -4,7 +4,8 @@ import { answer, readJson } from '../http/commands.ts';
 import { requestLogger } from '../request-logger.ts';
 import { executeCommand } from './dispatch.ts';
 import type { PersonDeps } from './person-deps.ts';
-import { stageItems } from './reads.ts';
+import { gateView } from './person/gate-view.ts';
+import { harnessEvents, stageItems } from './reads.ts';
 import { commandRegistry } from './registry.ts';
 
 async function handleCommand(
@@ -33,5 +34,7 @@ export function harnessRoutes(deps: Pick<AppDeps, 'clock'>, person: PersonDeps):
   const routes = new Hono<AppEnv>();
   routes.post('/:harness/commands/:name', (c) => handleCommand(c, deps, person));
   routes.get('/:harness/stages/:stage/items', stageItems);
+  routes.get('/:harness/events', harnessEvents);
+  routes.get('/:harness/gates/:item', gateView);
   return routes;
 }
