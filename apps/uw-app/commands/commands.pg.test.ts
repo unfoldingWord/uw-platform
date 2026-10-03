@@ -98,15 +98,15 @@ async function unknownIsNotWired(db: Database): Promise<void> {
   expect(response.body).toEqual({ status: 'error', reason: 'not_wired' });
 }
 
-async function notWiredAfterCan(db: Database): Promise<void> {
+async function kernelAfterCan(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const itemId = await enqueued(db, scene.harnessId, 'Prompt the board');
   const requestId = randomUUID();
   const body = { requestId, itemId, message: 'Look again' };
-  const unwired = await command(db, scene.editor, scene.harnessId, 'prompt_run', body);
   const viewer = await command(db, scene.viewer, scene.harnessId, 'prompt_run', body);
-  expect(unwired.body).toEqual({ status: 'error', requestId, reason: 'not_wired' });
+  const editor = await command(db, scene.editor, scene.harnessId, 'prompt_run', body);
   expect(viewer.body).toEqual({ status: 'error', requestId, reason: 'not_permitted' });
+  expect(editor.body).toEqual({ status: 'error', requestId, reason: 'run_not_found' });
 }
 
 async function mismatchedCommand(db: Database): Promise<void> {
@@ -202,8 +202,8 @@ describe.skipIf(!testServer)('WB-1 the command API', () => {
 
   it('WB-1 an unknown command answers not_wired', () => withAppDatabase(unknownIsNotWired));
 
-  it('WB-1 a command that is not wired yet answers not_wired after can()', () =>
-    withAppDatabase(notWiredAfterCan));
+  it('WB-1 a command reaches the kernel only after can(): a viewer is refused, an editor gets the kernel answer', () =>
+    withAppDatabase(kernelAfterCan));
 
   it('WB-1 a body whose command names another command is malformed_command', () =>
     withAppDatabase(mismatchedCommand));

@@ -179,7 +179,7 @@ async function tweakForeignItem(db: Database): Promise<void> {
   expect(await eventCount(db, scene.otherHarnessId)).toBe(before);
 }
 
-async function runsNotWired(db: Database): Promise<void> {
+async function runsAfterCan(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const itemId = await enqueued(db, scene.harnessId, 'Run the board');
   const admin = await ian(db);
@@ -199,7 +199,7 @@ async function runsNotWired(db: Database): Promise<void> {
     const viewer = await command(db, scene.viewer, scene.harnessId, name, body);
     expect(viewer.body).toEqual({ status: 'error', requestId, reason: 'not_permitted' });
     const editor = await command(db, scene.editor, scene.harnessId, name, body);
-    expect(editor.body).toEqual({ status: 'error', requestId, reason: 'not_wired' });
+    expect(editor.body).toEqual({ status: 'error', requestId, reason: 'run_not_found' });
   }
   expect(await eventCount(db, scene.harnessId)).toBe(before);
 }
@@ -283,9 +283,9 @@ describe.skipIf(!testServer)('WB-1 submit and tweak package through the command 
     withAppDatabase(tweakForeignItem));
 });
 
-describe.skipIf(!testServer)('WB-1 prompt and stop run through the command API', () => {
-  it('WB-1 prompt_run and stop_run answer not_wired after can(): a viewer gets not_permitted, an editor not_wired, even on a run another person holds', () =>
-    withAppDatabase(runsNotWired));
+describe.skipIf(!testServer)('prompt and stop run through the command API', () => {
+  it('WB-1 prompt_run and stop_run run can() before the kernel: a viewer gets not_permitted, an editor the kernel’s run_not_found on an item with no live run', () =>
+    withAppDatabase(runsAfterCan));
 });
 
 describe.skipIf(!testServer)('the item commands keep the kernel’s guards', () => {
