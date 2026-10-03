@@ -44,6 +44,15 @@ export function bindHarnesses(executor: AnyExecutor): HarnessesGateway {
             .returning({ id: harnesses.id });
           return rows.length > 0;
         }),
+      setHostedBuilder: (harnessId, enabled) =>
+        refusing(async () => {
+          const rows = await executor
+            .update(harnesses)
+            .set({ hostedBuilderEnabled: enabled })
+            .where(eq(harnesses.id, harnessId))
+            .returning({ id: harnesses.id });
+          return rows.length > 0;
+        }),
     },
   };
 }
