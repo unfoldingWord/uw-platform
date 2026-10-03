@@ -42,7 +42,7 @@ export function diffRead(session: GitHubSession) {
     const parameters = { basehead: `${base}...${head}` };
     const answer = await session.stream(COMPARE, parameters, repo, DIFF_MEDIA);
     if (!answer.ok) return { kind: 'unavailable', reason: answer.failure };
-    if (answer.value.body === null) return { kind: 'diff', text: '', bytes: 0 };
+    if (answer.value.body === null) return { kind: 'unavailable', reason: 'malformed_response' };
     const read = await readCapped(answer.value.body, budget);
     if (read.over) return { kind: 'too_large', bytes: null };
     return { kind: 'diff', ...textOf(read.chunks) };
