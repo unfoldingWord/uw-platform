@@ -1,9 +1,7 @@
-import type { Connectors, EffectConnector } from '@uw/harness';
+import type { Connectors, EffectConnector, EffectHandler } from '@uw/harness';
 import { mergeHandler, type MergeGitHub } from '../github/merge.ts';
 
 export type ShipGitHub = MergeGitHub;
-
-type EffectHandler = Omit<Connectors, 'review'>;
 
 const notWiredConnector: EffectHandler = {
   run: async () => ({ outcome: 'refused', reason: 'not_wired' }),

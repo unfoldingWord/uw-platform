@@ -4,8 +4,8 @@ import {
   sameRepository,
   type ConnectorOutcome,
   type ConnectorRequest,
-  type Connectors,
   type DecidedBase,
+  type EffectHandler,
 } from '@uw/harness';
 import type { GitHubAppConfig } from './app-config.ts';
 import type { GitHubFailure, GitHubResult } from './failures.ts';
@@ -218,7 +218,7 @@ async function mergeAlreadyMade(
   return alreadyMerged(writes, target, live, true);
 }
 
-export function mergeHandler(github: MergeGitHub): Omit<Connectors, 'review'> {
+export function mergeHandler(github: MergeGitHub): EffectHandler {
   const writesFor = () => createShipWrites(github.app, github.transport);
   return {
     run: async (request) => {

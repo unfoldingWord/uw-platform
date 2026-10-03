@@ -1,7 +1,7 @@
 import type { Principal } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { revokeSeededGrant } from '@uw/db/test-seed';
-import { notWiredCall, createKernel, type Connectors, type Kernel } from '@uw/harness';
+import { notWiredCall, createKernel, type EffectHandler, type Kernel } from '@uw/harness';
 import { afterAll, describe, expect } from 'vitest';
 import { simAgent, simCaller, simPerson, simSystem } from '../fixtures.ts';
 import { namesSince, simSha, standardChange } from '../ship-fixtures.ts';
@@ -21,7 +21,7 @@ const movedHead = simSha('fff999');
 
 afterAll(closeEmbeddedTemplate);
 
-function withConnectors(scene: Scene, effects: Omit<Connectors, 'review'>): Kernel {
+function withConnectors(scene: Scene, effects: EffectHandler): Kernel {
   return createKernel({
     ...scene.world.adapters,
     connectors: { ...effects, review: () => notWiredCall('connectors', 'review') },
