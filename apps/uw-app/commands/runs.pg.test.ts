@@ -193,6 +193,28 @@ async function stopReachesTheWorkflow(db: Database): Promise<void> {
   expect(await runs.status(scene.runId)).toBe('stopped');
 }
 
+async function foreignRoute(db: Database): Promise<void> {
+  const scene = await hostedRun(db);
+  const before = [
+    await eventCount(db, scene.harnessId),
+    await eventCount(db, scene.otherHarnessId),
+  ];
+  for (const [name, extra] of [
+    ['stop_run', {}],
+    ['prompt_run', { message: 'Look again' }],
+  ] as const) {
+    const requestId = randomUUID();
+    const body = { requestId, itemId: scene.itemId, ...extra };
+    const sent = await command(db, { email: IAN_EMAIL }, scene.otherHarnessId, name, body);
+    expect(sent.body).toEqual({ status: 'error', requestId, reason: 'item_not_found' });
+  }
+  expect([
+    await eventCount(db, scene.harnessId),
+    await eventCount(db, scene.otherHarnessId),
+  ]).toEqual(before);
+  expect(await runOf(db, scene.runId)).toMatchObject({ outcome: 'running', prompts: [] });
+}
+
 describe.skipIf(!testServer)('the run and hosted Builder commands', () => {
   it('HE-8 an admin turns hosted Builder on through set_hosted_builder; an editor is refused not_permitted', () =>
     withAppDatabase(hostedBuilderSwitch));
@@ -212,4 +234,7 @@ describe.skipIf(!testServer)('the run and hosted Builder commands', () => {
 
   it("stop_run through the command route stops the run's Workflow on the platform Runs adapter", () =>
     withAppDatabase(stopReachesTheWorkflow));
+
+  it('stop_run and prompt_run naming an item of another harness answer item_not_found', () =>
+    withAppDatabase(foreignRoute));
 });
