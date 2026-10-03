@@ -84,7 +84,7 @@ export function bindStages(executor: AnyExecutor): HarnessStagesGateway {
             .set(columnsOf(stage))
             .where(eq(harnessStages.id, stage.id))
             .returning({ id: harnessStages.id });
-          if (rows.length === 0) throw new Error(`no stage ${stage.id} to update`);
+          return rows.length > 0;
         }),
       reposition: (harnessId, positions) =>
         refusing(() => reposition(executor, harnessId, positions)),

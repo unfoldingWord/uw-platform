@@ -142,17 +142,12 @@ function describeInstructions(subject: () => GatewaySubject): void {
 }
 
 function describeMissingStage(subject: () => GatewaySubject): void {
-  it('DX-3 refuses to update a stage that does not exist', async () => {
+  it('DX-3 reports that no row changed when the stage to update does not exist', async () => {
     const missing = stageOf(0x1100, 1, 'build', 1);
-    const outcome = await subject()
-      .store.transaction(async (tx) => {
-        await tx.harnessStages.write.update(missing);
-      })
-      .then(
-        () => 'resolved',
-        (error: unknown) => (error instanceof Error ? error.message : 'rejected'),
-      );
-    expect(outcome).toBe(`no stage ${missing.id} to update`);
+    const changed = await subject().store.transaction((tx) =>
+      tx.harnessStages.write.update(missing),
+    );
+    expect(changed).toBe(false);
   });
 }
 

@@ -29,8 +29,8 @@ async function flipLane(tx: StoreTransaction, flip: Flip, stageKey: string) {
   const stage = stages.find((entry) => entry.key === stageKey);
   if (stage === undefined) return refused('stage_not_found', { stage: stageKey });
   if (stage.paused === flip.paused) return false;
-  await tx.harnessStages.write.update({ ...stage, paused: flip.paused });
-  return true;
+  const changed = await tx.harnessStages.write.update({ ...stage, paused: flip.paused });
+  return changed || refused('stage_not_found', { stage: stageKey });
 }
 
 function flipIn(tx: StoreTransaction, flip: Flip): Promise<boolean | Refused> {
