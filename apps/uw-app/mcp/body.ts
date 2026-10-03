@@ -1,4 +1,4 @@
-export const MAX_BODY_BYTES = 256 * 1024;
+import { boundedText, MAX_BODY_BYTES } from '../http/body.ts';
 
 type BodyRefusal = { readonly status: 400 | 413; readonly code: number; readonly message: string };
 type Body =
@@ -15,24 +15,6 @@ const batch: BodyRefusal = {
   code: -32600,
   message: 'Invalid Request: batch requests are not accepted',
 };
-
-async function boundedText(request: Request): Promise<string | null> {
-  if (Number(request.headers.get('content-length')) > MAX_BODY_BYTES) return null;
-  if (request.body === null) return '';
-  const reader = request.body.getReader();
-  const decoder = new TextDecoder();
-  let received = 0;
-  let text = '';
-  for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
-    received += chunk.value.byteLength;
-    if (received > MAX_BODY_BYTES) {
-      await reader.cancel();
-      return null;
-    }
-    text += decoder.decode(chunk.value, { stream: true });
-  }
-  return text + decoder.decode();
-}
 
 function parsedJson(text: string): { readonly value: unknown } | null {
   try {

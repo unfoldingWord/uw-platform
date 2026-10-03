@@ -193,20 +193,22 @@ describe.skipIf(!testServer)(
   () => {
     it('WB-1 a settled request is not replayed to a caller whose grant was revoked: the refusal answers', () =>
       withAppDatabase(revokedNotReplayed));
-
-    it('WB-1 an item of another harness answers item_not_found, byte-identical to a missing item', () =>
-      withAppDatabase(foreignItem));
-
-    it('WB-1 a delegation of another harness answers delegation_not_found, byte-identical to a missing one', () =>
-      withAppDatabase(foreignDelegation));
-
-    it('WB-1 a harness id that is not a uuid answers harness_not_found, byte-identical to a missing one', () =>
-      withAppDatabase(malformedHarnessId));
-
-    it('WB-1 an agent principal is refused not_permitted on the item commands and nothing is appended', () =>
-      withAppDatabase(agentRefused));
   },
 );
+
+describe.skipIf(!testServer)('the command API answers hidden and foreign as missing', () => {
+  it('an item of another harness answers item_not_found, byte-identical to a missing item', () =>
+    withAppDatabase(foreignItem));
+
+  it('a delegation of another harness answers delegation_not_found, byte-identical to a missing one', () =>
+    withAppDatabase(foreignDelegation));
+
+  it('a harness id that is not a uuid answers harness_not_found, byte-identical to a missing one', () =>
+    withAppDatabase(malformedHarnessId));
+
+  it('an agent principal is refused not_permitted on the item commands and nothing is appended', () =>
+    withAppDatabase(agentRefused));
+});
 
 describe.skipIf(!testServer)('the command context', () => {
   it('carries no environment, and opens the gate GitHub client only for a gate command', () =>

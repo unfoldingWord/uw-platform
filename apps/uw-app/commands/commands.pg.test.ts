@@ -13,16 +13,7 @@ import {
   post,
   responseSchema,
   softwareHarness,
-  type Sent,
 } from '../testing/commands.ts';
-
-const seen: Sent[] = [];
-
-async function sent(response: Promise<Sent>): Promise<Sent> {
-  const done = await response;
-  seen.push(done);
-  return done;
-}
 
 function enqueueBody(requestId: string) {
   return { requestId, title: 'Draw the board', pageId: null, due: null };
@@ -39,8 +30,12 @@ async function itemState(db: Database, itemId: string) {
 async function enqueueStampsTheEvent(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const requestId = randomUUID();
-  const response = await sent(
-    command(db, scene.editor, scene.harnessId, 'enqueue', enqueueBody(requestId)),
+  const response = await command(
+    db,
+    scene.editor,
+    scene.harnessId,
+    'enqueue',
+    enqueueBody(requestId),
   );
   expect(response.status).toBe(200);
   expect(response.body).toEqual({ status: 'accepted', requestId });
@@ -55,9 +50,9 @@ async function enqueueStampsTheEvent(db: Database): Promise<void> {
 async function repeatReplays(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const body = enqueueBody(randomUUID());
-  const first = await sent(command(db, scene.editor, scene.harnessId, 'enqueue', body));
+  const first = await command(db, scene.editor, scene.harnessId, 'enqueue', body);
   const events = await eventCount(db, scene.harnessId);
-  const second = await sent(command(db, scene.editor, scene.harnessId, 'enqueue', body));
+  const second = await command(db, scene.editor, scene.harnessId, 'enqueue', body);
   expect(second.status).toBe(first.status);
   expect(second.text).toBe(first.text);
   expect(await eventCount(db, scene.harnessId)).toBe(events);
@@ -68,11 +63,9 @@ async function reuseIsMalformed(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const itemId = await enqueued(db, scene.harnessId, 'Hold the board');
   const requestId = randomUUID();
-  await sent(command(db, scene.editor, scene.harnessId, 'enqueue', enqueueBody(requestId)));
+  await command(db, scene.editor, scene.harnessId, 'enqueue', enqueueBody(requestId));
   const events = await eventCount(db, scene.harnessId);
-  const reused = await sent(
-    command(db, scene.editor, scene.harnessId, 'claim', { requestId, itemId }),
-  );
+  const reused = await command(db, scene.editor, scene.harnessId, 'claim', { requestId, itemId });
   expect(reused.status).toBe(400);
   expect(reused.body).toEqual({ status: 'error', requestId, reason: 'malformed_command' });
   expect(await eventCount(db, scene.harnessId)).toBe(events);
@@ -82,8 +75,12 @@ async function viewerRefused(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const events = await eventCount(db, scene.harnessId);
   const requestId = randomUUID();
-  const refused = await sent(
-    command(db, scene.viewer, scene.harnessId, 'enqueue', enqueueBody(requestId)),
+  const refused = await command(
+    db,
+    scene.viewer,
+    scene.harnessId,
+    'enqueue',
+    enqueueBody(requestId),
   );
   expect(refused.status).toBe(403);
   expect(refused.body).toEqual({ status: 'error', requestId, reason: 'not_permitted' });
@@ -93,8 +90,8 @@ async function viewerRefused(db: Database): Promise<void> {
 async function hiddenIsMissing(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const body = enqueueBody(randomUUID());
-  const hidden = await sent(command(db, scene.stranger, scene.harnessId, 'enqueue', body));
-  const missing = await sent(command(db, scene.stranger, randomUUID(), 'enqueue', body));
+  const hidden = await command(db, scene.stranger, scene.harnessId, 'enqueue', body);
+  const missing = await command(db, scene.stranger, randomUUID(), 'enqueue', body);
   expect(hidden.status).toBe(404);
   expect(hidden.body).toMatchObject({ reason: 'harness_not_found' });
   expect(hidden.status).toBe(missing.status);
@@ -104,9 +101,9 @@ async function hiddenIsMissing(db: Database): Promise<void> {
 
 async function unknownIsNotWired(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
-  const response = await sent(
-    command(db, scene.editor, scene.harnessId, 'merge_now', { requestId: randomUUID() }),
-  );
+  const response = await command(db, scene.editor, scene.harnessId, 'merge_now', {
+    requestId: randomUUID(),
+  });
   expect(response.status).toBe(404);
   expect(response.body).toEqual({ status: 'error', reason: 'not_wired' });
 }
@@ -116,8 +113,8 @@ async function notWiredAfterCan(db: Database): Promise<void> {
   const itemId = await enqueued(db, scene.harnessId, 'Prompt the board');
   const requestId = randomUUID();
   const body = { requestId, itemId, message: 'Look again' };
-  const unwired = await sent(command(db, scene.editor, scene.harnessId, 'prompt_run', body));
-  const viewer = await sent(command(db, scene.viewer, scene.harnessId, 'prompt_run', body));
+  const unwired = await command(db, scene.editor, scene.harnessId, 'prompt_run', body);
+  const viewer = await command(db, scene.viewer, scene.harnessId, 'prompt_run', body);
   expect(unwired.body).toEqual({ status: 'error', requestId, reason: 'not_wired' });
   expect(viewer.body).toEqual({ status: 'error', requestId, reason: 'not_permitted' });
 }
@@ -125,11 +122,14 @@ async function notWiredAfterCan(db: Database): Promise<void> {
 async function mismatchedCommand(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const requestId = randomUUID();
-  const response = await sent(
-    post(db, scene.editor.email, `/api/harness/${scene.harnessId}/commands/enqueue`, {
+  const response = await post(
+    db,
+    scene.editor.email,
+    `/api/harness/${scene.harnessId}/commands/enqueue`,
+    {
       command: 'claim',
       ...enqueueBody(requestId),
-    }),
+    },
   );
   expect(response.status).toBe(400);
   expect(response.body).toEqual({ status: 'error', requestId, reason: 'malformed_command' });
@@ -139,18 +139,20 @@ async function mismatchedCommand(db: Database): Promise<void> {
 async function claimAndRelease(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const itemId = await enqueued(db, scene.harnessId, 'Claim the board');
-  const claimed = await sent(
-    command(db, scene.editor, scene.harnessId, 'claim', { requestId: randomUUID(), itemId }),
-  );
+  const claimed = await command(db, scene.editor, scene.harnessId, 'claim', {
+    requestId: randomUUID(),
+    itemId,
+  });
   expect(claimed.body).toMatchObject({ status: 'accepted' });
   expect(await itemState(db, itemId)).toMatchObject({
     holder: `human:${scene.editor.id}`,
     claimantKind: 'person',
     leaseExpiresAt: null,
   });
-  const released = await sent(
-    command(db, scene.editor, scene.harnessId, 'release', { requestId: randomUUID(), itemId }),
-  );
+  const released = await command(db, scene.editor, scene.harnessId, 'release', {
+    requestId: randomUUID(),
+    itemId,
+  });
   expect(released.body).toMatchObject({ status: 'accepted' });
   expect(await itemState(db, itemId)).toMatchObject({ holder: null, leaseExpiresAt: null });
 }
@@ -158,16 +160,39 @@ async function claimAndRelease(db: Database): Promise<void> {
 async function closedResponses(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const requestId = randomUUID();
-  await sent(command(db, scene.editor, scene.harnessId, 'enqueue', enqueueBody(requestId)));
-  await sent(command(db, scene.viewer, scene.harnessId, 'enqueue', enqueueBody(randomUUID())));
-  await sent(command(db, scene.editor, scene.harnessId, 'nothing', {}));
-  await sent(command(db, scene.editor, scene.harnessId, 'enqueue', { requestId }));
-  await sent(command(db, scene.editor, 'not-a-uuid', 'enqueue', enqueueBody(randomUUID())));
-  expect(seen.length).toBeGreaterThanOrEqual(5);
-  for (const response of seen) {
-    expect(() => responseSchema.parse(response.body)).not.toThrow();
+  const harness = scene.harnessId;
+  const shapes = [
+    await command(db, scene.editor, harness, 'enqueue', enqueueBody(requestId)),
+    await command(db, scene.editor, harness, 'enqueue', enqueueBody(requestId)),
+    await command(db, scene.viewer, harness, 'enqueue', enqueueBody(randomUUID())),
+    await command(db, scene.editor, harness, 'nothing', {}),
+    await command(db, scene.editor, harness, 'enqueue', { requestId: randomUUID() }),
+    await command(db, scene.editor, harness, 'enqueue', {}),
+    await command(db, scene.editor, 'not-a-uuid', 'enqueue', enqueueBody(randomUUID())),
+    await command(db, scene.stranger, harness, 'enqueue', enqueueBody(randomUUID())),
+    await command(db, scene.editor, harness, 'claim', { requestId, itemId: randomUUID() }),
+  ];
+  expect(shapes.map((shape) => shape.status)).toEqual([
+    200, 200, 403, 404, 400, 400, 404, 404, 404,
+  ]);
+  for (const shape of shapes) {
+    expect(() => responseSchema.parse(shape.body)).not.toThrow();
   }
 }
+
+async function oversizedBody(db: Database): Promise<void> {
+  const scene = await softwareHarness(db);
+  const body = { ...enqueueBody(randomUUID()), title: 'x'.repeat(300 * 1024) };
+  const response = await command(db, scene.editor, scene.harnessId, 'enqueue', body);
+  expect(response.status).toBe(400);
+  expect(response.body).toEqual({ status: 'error', reason: 'malformed_command' });
+  expect(await eventsNamed(db, scene.harnessId, 'item_created')).toEqual([]);
+}
+
+describe.skipIf(!testServer)('the person body bound', () => {
+  it('a 300 KiB command body is refused malformed_command before it is parsed', () =>
+    withAppDatabase(oversizedBody));
+});
 
 describe.skipIf(!testServer)('WB-1 the command API', () => {
   it('WB-1 enqueue appends item_created with the actor, the requestId and the trace id', () =>

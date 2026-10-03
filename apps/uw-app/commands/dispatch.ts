@@ -16,7 +16,12 @@ import { malformedOutcome, toOutcome } from '../http/commands.ts';
 import { platformKernel } from '../kernel.ts';
 import type { ShipGitHub } from '../ports/connectors.ts';
 import { hubNotWired } from '../ports/hub.not-wired.ts';
-import { opensGateGitHub, type CommandContext, type CommandHandler } from './handler.ts';
+import {
+  isBuiltCommand,
+  opensGateGitHub,
+  type CommandContext,
+  type CommandHandler,
+} from './handler.ts';
 import { claimRequest, priorRequest, releaseRequest, settleRequest } from './requests.ts';
 import { foreignTarget, sceneOf, type Scene } from './scope.ts';
 
@@ -57,7 +62,11 @@ function error(requestId: string, reason: ErrorReason): Outcome {
 
 function handlerFor(scope: DispatchScope, name: string): CommandHandler | null {
   const parsed = commandNameSchema.safeParse(name);
-  return parsed.success ? (scope.registry.get(parsed.data) ?? null) : null;
+  const handler = parsed.success ? (scope.registry.get(parsed.data) ?? null) : null;
+  if (handler !== null && !isBuiltCommand(handler)) {
+    throw new TypeError(`the ${handler.name} command handler was not built by commandHandler`);
+  }
+  return handler;
 }
 
 function admitted(
@@ -105,7 +114,7 @@ async function runClaimed(command: Admitted, context: CommandContext): Promise<O
     throw thrown;
   });
   const outcome = toOutcome(command.requestId, result);
-  await settleRequest(db, key, outcome, command.at);
+  await settleRequest(db, key, { outcome, traceId: command.traceId, at: command.at });
   return outcome;
 }
 
@@ -155,11 +164,11 @@ async function dispatchAdmitted(command: Admitted, scope: DispatchScope): Promis
   const clock: Clock = { now: () => command.at };
   const kernel = platformKernel(command.database, clock);
   const caller: Caller = { actor: command.principal, traceId: command.traceId };
-  const lookup = { kernel, caller, at: command.at };
+  const lookup = { kernel, caller, at: command.at, db: command.database.db };
   const scene = await sceneOf(lookup, command.handler, command.harnessId, command.body);
   if (typeof scene === 'string') return error(command.requestId, scene);
   if (!permitted(command, scene)) return error(command.requestId, 'not_permitted');
-  const foreign = await foreignTarget(lookup, command.harnessId, command.body);
+  const foreign = await foreignTarget(lookup, scene, command);
   if (foreign !== null) return error(command.requestId, foreign);
   return runOnce(command, contextOf(command, scope, kernel, scene, clock));
 }

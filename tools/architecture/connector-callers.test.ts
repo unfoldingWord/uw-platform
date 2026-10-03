@@ -8,7 +8,8 @@ const sourceRoots = ['apps/', 'packages/', 'sim/'];
 
 const connectorRun =
   /connectors\s*\??\.\s*run\b|connectors\s*\??\.?\s*\[\s*['"`]run['"`]\s*\]|\brun\s*[,}][^=]*=\s*[\w.?]*connectors\b/;
-const connectorsReference = /\bconnectors\b(?!\/|\.ts['"])/;
+const connectorsReference = /\bconnectors\b(?!\/)/;
+const shipTypeImport = /^import type \{ ShipGitHub \} from '[./]+ports\/connectors\.ts';$/gm;
 const shipRuleCall = /\bshipRule\s*\(/;
 const shipRuleReference = /\bshipRule\b/;
 const assemblerCall = /\bassembleShipInput\s*\(/;
@@ -57,6 +58,15 @@ function filesMatching(pattern: RegExp, files: readonly string[]): string[] {
   return files.filter((file) => pattern.test(readFileSync(file, 'utf8'))).sort();
 }
 
+function filesReferencingConnectors(files: readonly string[]): string[] {
+  return files
+    .filter((file) => {
+      const text = readFileSync(file, 'utf8').replace(shipTypeImport, '');
+      return connectorsReference.test(text);
+    })
+    .sort();
+}
+
 const planted = mkdtempSync(join(tmpdir(), 'connector-callers-'));
 
 afterAll(() => {
@@ -101,8 +111,7 @@ describe('the connectors port runs only from the kernel stage-exit path', () => 
   it('flags a planted file that only references the connectors port', () => {
     const passed = plant('pass-along.ts', 'const effects = ports.connectors;');
     const imported = plant('registry.ts', "import { x } from '../connectors/registry.ts';");
-    const adapter = plant('ship.ts', "import type { ShipGitHub } from '../ports/connectors.ts';");
-    expect(filesMatching(connectorsReference, [passed, imported, adapter])).toEqual([passed]);
+    expect(filesReferencingConnectors([passed, imported])).toEqual([passed]);
   });
 
   it('finds connectors.run only in the stage-exit module and the lost-exit sim helper', () => {
@@ -110,7 +119,7 @@ describe('the connectors port runs only from the kernel stage-exit path', () => 
   });
 
   it('finds the connectors port referenced only by the stage exit, the recovery, the wiring and scenarios', () => {
-    const outside = filesMatching(connectorsReference, sources()).filter(
+    const outside = filesReferencingConnectors(sources()).filter(
       (file) => !file.startsWith('sim/scenarios/'),
     );
     expect(outside).toEqual([...wiring].sort());
@@ -127,6 +136,27 @@ describe('the connectors port runs only from the kernel stage-exit path', () => 
 function readOnlyRootFiles(files: readonly string[]): string[] {
   return files.filter((file) => readOnlyRoots.some((root) => file.startsWith(root)));
 }
+
+describe('the connectors adapter type import', () => {
+  it('exempts only a type import of ShipGitHub from the connectors adapter', () => {
+    const typeOnly = plant('ship.ts', "import type { ShipGitHub } from '../ports/connectors.ts';");
+    const value = plant(
+      'value.ts',
+      "import { platformConnectors } from '../ports/connectors.ts';\nconst c = platformConnectors(gh);",
+    );
+    const mixed = plant(
+      'mixed.ts',
+      "import { platformConnectors, type ShipGitHub } from '../ports/connectors.ts';",
+    );
+    const otherType = plant(
+      'other.ts',
+      "import type { ShipGitHub, Other } from '../ports/connectors.ts';",
+    );
+    expect(filesReferencingConnectors([typeOnly, value, mixed, otherType])).toEqual(
+      [value, mixed, otherType].sort(),
+    );
+  });
+});
 
 describe('GH-6 the merge connector runs only from the kernel stage-exit path', () => {
   it('finds the merge written and its handler built only in the merge module, the connectors adapter and the test rig', () => {

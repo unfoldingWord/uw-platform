@@ -6,7 +6,9 @@ import {
   type JdArea,
   type Stage,
 } from '@uw/contracts';
+import type { Database } from '@uw/db/client';
 import type { Caller, Kernel } from '@uw/harness';
+import { readPage } from '../pages/store.ts';
 import type { CommandHandler } from './handler.ts';
 
 export type Scene = {
@@ -16,7 +18,13 @@ export type Scene = {
 };
 
 type Reads = Pick<Kernel, 'reads'>;
-type Lookup = { readonly kernel: Reads; readonly caller: Caller; readonly at: Date };
+type Lookup = {
+  readonly kernel: Reads;
+  readonly caller: Caller;
+  readonly at: Date;
+  readonly db: Database;
+};
+type Named = { readonly harnessId: string; readonly body: unknown };
 
 const newHarnessArea = z.object({ jdArea: jdAreaSchema });
 const optionalId = z.uuid().nullable().optional();
@@ -25,6 +33,7 @@ const namedTargets = z.object({
   beforeItemId: optionalId,
   delegationId: optionalId,
   supersedes: optionalId,
+  pageId: optionalId,
 });
 
 export async function sceneOf(
@@ -69,17 +78,38 @@ async function delegationIn(
   return read.status === 'accepted' && read.value.harnessId === harnessId;
 }
 
+async function pageIn(lookup: Lookup, area: JdArea, pageId: string): Promise<boolean> {
+  const page = await readPage(lookup.db, lookup.caller.actor, pageId, lookup.at);
+  return page !== null && page.jdArea === area;
+}
+
+async function foreignItem(lookup: Lookup, harnessId: string, ids: readonly string[]) {
+  for (const itemId of ids) {
+    if (!(await itemIn(lookup, harnessId, itemId))) return true;
+  }
+  return false;
+}
+
+async function foreignDelegation(lookup: Lookup, harnessId: string, ids: readonly string[]) {
+  for (const delegationId of ids) {
+    if (!(await delegationIn(lookup, harnessId, delegationId))) return true;
+  }
+  return false;
+}
+
 export async function foreignTarget(
   lookup: Lookup,
-  harnessId: string,
-  body: unknown,
+  scene: Scene,
+  named: Named,
 ): Promise<ErrorReason | null> {
-  const targets = namedTargets.parse(body);
-  for (const itemId of present([targets.itemId, targets.beforeItemId])) {
-    if (!(await itemIn(lookup, harnessId, itemId))) return 'item_not_found';
-  }
-  for (const delegationId of present([targets.delegationId, targets.supersedes])) {
-    if (!(await delegationIn(lookup, harnessId, delegationId))) return 'delegation_not_found';
+  const targets = namedTargets.parse(named.body);
+  const items = present([targets.itemId, targets.beforeItemId]);
+  if (await foreignItem(lookup, named.harnessId, items)) return 'item_not_found';
+  const delegations = present([targets.delegationId, targets.supersedes]);
+  if (await foreignDelegation(lookup, named.harnessId, delegations)) return 'delegation_not_found';
+  const pageId = targets.pageId;
+  if (typeof pageId === 'string' && !(await pageIn(lookup, scene.area, pageId))) {
+    return 'page_not_found';
   }
   return null;
 }

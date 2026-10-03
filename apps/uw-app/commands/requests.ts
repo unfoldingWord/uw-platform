@@ -98,17 +98,24 @@ export async function claimRequest(db: Database, key: RequestKey, claim: Claim):
   return inserted.length > 0 || retake(db, key, claim);
 }
 
+type Settlement = { readonly outcome: Outcome; readonly traceId: string; readonly at: Date };
+
 export async function settleRequest(
   db: Database,
   key: RequestKey,
-  outcome: Outcome,
-  at: Date,
+  settlement: Settlement,
 ): Promise<void> {
-  const stored = storedOutcomeSchema.parse(outcome);
+  const stored = storedOutcomeSchema.parse(settlement.outcome);
   await db
     .update(commandRequests)
-    .set({ outcome: stored, settledAt: at })
-    .where(and(keyed(key), isNull(commandRequests.settledAt)));
+    .set({ outcome: stored, settledAt: settlement.at })
+    .where(
+      and(
+        keyed(key),
+        isNull(commandRequests.settledAt),
+        eq(commandRequests.traceId, settlement.traceId),
+      ),
+    );
 }
 
 export async function releaseRequest(
