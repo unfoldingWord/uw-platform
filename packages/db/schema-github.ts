@@ -107,6 +107,7 @@ export const ghPrs = declareTable(
     draft: boolean('draft').notNull(),
     headSha: text('head_sha').notNull(),
     headRef: text('head_ref').notNull(),
+    headRepo: text('head_repo'),
     baseRef: text('base_ref').notNull(),
     baseSha: text('base_sha').notNull(),
     milestoneId: githubId('milestone_id'),
@@ -126,6 +127,7 @@ export const ghPrs = declareTable(
     check('gh_prs_head_sha_form', matches(t.headSha, FULL_SHA_PATTERN)),
     check('gh_prs_files_head_form', matches(t.filesHead, FULL_SHA_PATTERN)),
     check('gh_prs_base_sha_form', matches(t.baseSha, FULL_SHA_PATTERN)),
+    check('gh_prs_head_repo_form', matches(t.headRepo, REPOSITORY_PATTERN)),
     check('gh_prs_files_base_form', matches(t.filesBase, FULL_SHA_PATTERN)),
     check(
       'gh_prs_one_declaration_outcome',

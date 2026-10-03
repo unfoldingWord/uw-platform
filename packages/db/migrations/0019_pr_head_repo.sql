@@ -1,0 +1,2 @@
+ALTER TABLE "gh_prs" ADD COLUMN "head_repo" text;--> statement-breakpoint
+ALTER TABLE "gh_prs" ADD CONSTRAINT "gh_prs_head_repo_form" CHECK ("gh_prs"."head_repo" ~ '^(?!-)(?![A-Za-z0-9-]*-/)[A-Za-z0-9-]{1,39}/(?!\.\.?$)[A-Za-z0-9._-]{1,100}$');
