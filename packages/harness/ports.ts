@@ -192,6 +192,7 @@ export type PullRequestFacts = {
   readonly draft: boolean;
   readonly head: string;
   readonly headRef: string;
+  readonly headRepo: string | null;
   readonly base: string;
   readonly checks: readonly CheckFact[];
   readonly reviews: readonly ReviewFact[];
@@ -212,12 +213,17 @@ export type ConnectorRequest = {
   readonly traceId: string;
   readonly pullRequest: PullRequestRef | null;
   readonly expectedHead: string | null;
+  readonly expectedBase: string | null;
+  readonly repository: string | null;
   readonly message: string;
 };
 export type ConnectorOutcome =
   | { readonly outcome: 'succeeded'; readonly detail: Readonly<Record<string, string>> }
   | { readonly outcome: 'refused'; readonly reason: string };
-export type Connectors = { run(request: ConnectorRequest): Promise<ConnectorOutcome> };
+export type Connectors = {
+  run(request: ConnectorRequest): Promise<ConnectorOutcome>;
+  outcomeOf(request: ConnectorRequest): Promise<ConnectorOutcome | null>;
+};
 
 export type ToolCall = {
   readonly callId: string;
