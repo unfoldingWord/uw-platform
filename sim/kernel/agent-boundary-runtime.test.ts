@@ -97,6 +97,9 @@ function bypassingStages(world: World): StageCommands {
     createStage: (caller, input) => stages.createStage(laundered(caller), input),
     updateStage: (caller, input) => stages.updateStage(laundered(caller), input),
     reorderStages: (caller, input) => stages.reorderStages(laundered(caller), input),
+    removeStage: (caller, input) => stages.removeStage(laundered(caller), input),
+    pause: (caller, input) => stages.pause(laundered(caller), input),
+    resume: (caller, input) => stages.resume(laundered(caller), input),
   };
 }
 

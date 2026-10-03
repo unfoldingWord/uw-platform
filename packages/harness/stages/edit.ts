@@ -2,7 +2,7 @@ import type { Harness, HarnessEvent, Stage } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
 import { recordContext, recordHarnessEvents, draft, type EventDraft } from '../items/record.ts';
 import { lockKeys } from '../lock-keys.ts';
-import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
+import { refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import { storeRefusalOf } from '../port-errors.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
 import { adminRefusal, agentRefusal, stageProblems } from './rules.ts';
@@ -12,10 +12,14 @@ type StagePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 type EditPlan<T> = {
   readonly stageKey: string | null;
   readonly resulting: readonly Stage[];
-  apply(tx: StoreTransaction): Promise<T>;
+  apply(tx: StoreTransaction): Promise<KernelOutcome<T>>;
 };
 
-export type EditWork<T> = (harness: Harness, stages: readonly Stage[]) => EditPlan<T> | Refused;
+export type EditWork<T> = (
+  tx: StoreTransaction,
+  harness: Harness,
+  stages: readonly Stage[],
+) => Promise<EditPlan<T> | Refused>;
 
 async function authorize(
   ports: StagePorts,
@@ -100,7 +104,13 @@ function editDraft(previous: Stage | undefined, next: Stage): EventDraft | null 
 
 function editDrafts(before: readonly Stage[], after: readonly Stage[]): readonly EventDraft[] {
   const previous = new Map(before.map((stage) => [stage.id, stage]));
-  return after.flatMap((stage) => editDraft(previous.get(stage.id), stage) ?? []);
+  const kept = new Set(after.map((stage) => stage.id));
+  const removed = before
+    .filter((stage) => !kept.has(stage.id))
+    .map((stage) =>
+      draft('stage_removed', { stageId: stage.id, key: stage.key, before: columnsOf(stage) }),
+    );
+  return [...after.flatMap((stage) => editDraft(previous.get(stage.id), stage) ?? []), ...removed];
 }
 
 export async function editInTransaction<T>(
@@ -117,15 +127,16 @@ export async function editInTransaction<T>(
       const harness = await authorize(ports, tx, caller, harnessId, at);
       if ('status' in harness) return harness;
       const current = await tx.harnessStages.read.forHarness(harness.id);
-      const plan = work(harness, current);
+      const plan = await work(tx, harness, current);
       if ('status' in plan) return plan;
       planned = plan.stageKey;
       const problem = stageProblems(plan.resulting);
       if (problem === null) {
-        const value = await plan.apply(tx);
+        const applied = await plan.apply(tx);
+        if (applied.status !== 'accepted') return applied;
         const context = recordContext(ports, caller, at);
         await recordHarnessEvents(tx, context, harness.id, editDrafts(current, plan.resulting));
-        return accepted(value);
+        return applied;
       }
       await recordRefusal(
         ports,

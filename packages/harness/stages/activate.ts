@@ -5,9 +5,14 @@ import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import { storeRefusalOf } from '../port-errors.ts';
 import type { Ports } from '../ports.ts';
-import { describeViolation, templateProperty } from '../template-property.ts';
 import type { Template } from '../templates/types.ts';
-import { adminRefusal, agentRefusal, stageFromTemplate, stageProblems } from './rules.ts';
+import {
+  adminRefusal,
+  agentRefusal,
+  bypassRefusal,
+  stageFromTemplate,
+  stageProblems,
+} from './rules.ts';
 
 type StagePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
@@ -22,15 +27,7 @@ export type ActivateInput = {
 export type Activated = { readonly harness: Harness; readonly stages: readonly Stage[] };
 
 function templateRefusal(stages: readonly Stage[]): Refused | null {
-  const problem = stageProblems(stages);
-  if (problem !== null) return problem;
-  const violation = templateProperty(stages)[0];
-  if (violation === undefined) return null;
-  return refused('template_bypasses_gate', {
-    path: violation.path,
-    effectStage: violation.effectStage,
-    message: describeViolation(violation),
-  });
+  return stageProblems(stages) ?? bypassRefusal(stages);
 }
 
 async function insertAll(

@@ -44,6 +44,14 @@ function structural(world: World, harnessId: string, stages: readonly Stage[]): 
       run: (commands, caller) => commands.reorderStages(caller, { harnessId, order }),
     },
     {
+      label: 'removeStage plan',
+      run: (commands, caller) => commands.removeStage(caller, { harnessId, stageKey: 'plan' }),
+    },
+    {
+      label: 'pause a lane',
+      run: (commands, caller) => commands.pause(caller, { harnessId, stageKey: 'build' }),
+    },
+    {
       label: 'createStage ungated',
       run: (commands, caller) => {
         if (first === undefined) throw new Error('the harness has no stages');
