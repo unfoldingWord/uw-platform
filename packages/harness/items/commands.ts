@@ -18,6 +18,7 @@ import {
   type AttachLearningInput,
   type NothingLearnedInput,
 } from './learning.ts';
+import { reorder, type ReorderInput } from './reorder.ts';
 import { release, type ReleaseInput } from './release.ts';
 import { submit, type Submitted, type SubmitInput } from './submit.ts';
 import {
@@ -39,6 +40,7 @@ export type ItemCommands = {
   labelRemoved(caller: Caller, input: LabelRemovedInput): Promise<KernelOutcome<LabelRemoved>>;
   claim(caller: Caller, input: ClaimInput): Promise<KernelOutcome<Claimed>>;
   release(caller: Caller, input: ReleaseInput): Promise<KernelOutcome<ItemState>>;
+  reorder(caller: Caller, input: ReorderInput): Promise<KernelOutcome<readonly ItemState[]>>;
   renewLease(caller: Caller, input: RenewInput): Promise<KernelOutcome<LeaseOutcome>>;
   recordRunStep(caller: Caller, input: RunStepInput): Promise<KernelOutcome<LeaseOutcome>>;
   expireLeases(caller: Caller, input: SweepInput): Promise<KernelOutcome<Swept>>;
@@ -54,6 +56,7 @@ export function createItemCommands(ports: ItemPorts): ItemCommands {
     labelRemoved: (caller, input) => labelRemoved(ports, caller, input),
     claim: (caller, input) => claim(ports, caller, input),
     release: (caller, input) => release(ports, caller, input),
+    reorder: (caller, input) => reorder(ports, caller, input),
     renewLease: (caller, input) => renewLease(ports, caller, input),
     recordRunStep: (caller, input) => recordRunStep(ports, caller, input),
     expireLeases: (caller, input) => expireLeases(ports, caller, input),

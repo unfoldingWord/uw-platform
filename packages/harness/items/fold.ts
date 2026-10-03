@@ -139,6 +139,11 @@ function takeOver(state: ItemState, event: FoldableEvent): ItemState {
   };
 }
 
+function reorder(state: ItemState, event: FoldableEvent): ItemState {
+  const evidence = eventEvidenceSchemas.item_reordered.parse(event.evidence);
+  return { ...state, priority: evidence.priority };
+}
+
 function deriveRisk(state: ItemState, event: FoldableEvent): ItemState {
   const evidence = eventEvidenceSchemas.risk_derived.parse(event.evidence);
   const held = { tier: state.riskTier, domains: state.riskDomains };
@@ -161,10 +166,10 @@ const steps: ReadonlyMap<EventName, Step> = new Map<EventName, Step>([
   ['gate_rejected', reject],
   ['gate_taken_over', takeOver],
   ['risk_derived', deriveRisk],
+  ['item_reordered', reorder],
 ]);
 
 export const unchangedNames: ReadonlySet<EventName> = new Set<EventName>([
-  'item_reordered',
   'premise_held',
   'label_removed',
   'run_started',
