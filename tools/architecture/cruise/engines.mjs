@@ -1,4 +1,13 @@
-import { vendorSdk, testFile, engineKeys, engineDirectory } from './shared.mjs';
+import { npm, vendorSdk, testFile, engineKeys, engineDirectory } from './shared.mjs';
+
+const environment = '^apps/uw-app/env\\.ts$';
+const enginesMayImport = [
+  '^packages/(harness|contracts)/',
+  npm('zod'),
+  ...vendorSdk,
+  '^apps/uw-app/engines/(seam|config|tool-schemas)\\.ts$',
+  environment,
+];
 
 export const engineRules = [
   {
@@ -40,15 +49,25 @@ export const engineRules = [
   {
     name: 'engines-reach-only-the-tool-caller',
     comment:
-      'An engine reaches the platform only through the MCP tool caller it is handed: never the database, the kernel, a port, the MCP surface or GitHub.',
+      'An engine reaches the platform only through the MCP tool caller it is handed: it imports the harness, the contracts, zod, the vendor SDKs, the shared seam files and its own directory, and nothing else, so no chain of imports reaches the database, the kernel, a port, the MCP surface or GitHub.',
+    severity: 'error',
+    from: { path: '^apps/uw-app/engines/([^/]+)/', pathNot: testFile },
+    to: { pathNot: [...enginesMayImport, '^apps/uw-app/engines/$1/'] },
+  },
+  {
+    name: 'engine-seam-reaches-only-the-engines',
+    comment:
+      'The seam files at the top of apps/uw-app/engines/ import what an engine may, plus the engine directories, and nothing else.',
+    severity: 'error',
+    from: { path: '^apps/uw-app/engines/[^/]+\\.ts$', pathNot: testFile },
+    to: { pathNot: [...enginesMayImport, '^apps/uw-app/engines/'] },
+  },
+  {
+    name: 'engines-read-the-environment-as-types-only',
+    comment:
+      'An engine names the Worker environment only as a type; its values come through the engine configuration.',
     severity: 'error',
     from: { path: '^apps/uw-app/engines/', pathNot: testFile },
-    to: {
-      path: [
-        '^packages/db/',
-        '^apps/uw-app/(kernel|database)\\.ts$',
-        '^apps/uw-app/(ports|mcp|github)/',
-      ],
-    },
+    to: { path: environment, dependencyTypesNot: ['type-only'] },
   },
 ];
