@@ -1,6 +1,11 @@
 import type { Engine, VerbName } from '@uw/contracts';
 import { runToolLoop, type ModelEngine, type ToolCaller } from '@uw/harness';
 
+type EngineEgress = {
+  readonly mcp: (request: Request) => Promise<Response>;
+  refused(host: string): void;
+};
+
 export type EngineWork = {
   readonly runId: string;
   readonly itemId: string;
@@ -13,6 +18,7 @@ export type EngineWork = {
   readonly toolset: readonly VerbName[];
   readonly tools: ToolCaller;
   readonly onTurn: () => Promise<void>;
+  readonly egress: EngineEgress;
 };
 
 export type EngineWorkResult = {

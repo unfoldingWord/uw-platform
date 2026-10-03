@@ -12,6 +12,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
     "@cfworker/json-schema": "^4.1.1",
+    "@cloudflare/containers": "0.3.7",
     "@modelcontextprotocol/sdk": "^1.31.0",
     "@octokit/core": "^7.0.8",
     "@uw/contracts": "workspace:*",

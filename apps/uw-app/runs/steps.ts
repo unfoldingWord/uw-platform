@@ -141,6 +141,39 @@ export function countedTools(client: Client): CountedTools {
   };
 }
 
+const toolCallSchema = z.object({
+  method: z.literal('tools/call'),
+  params: z.object({ name: z.string() }),
+});
+
+export type CountedHttp = {
+  readonly handle: (request: Request) => Promise<Response>;
+  writes(): number;
+  called(): readonly VerbName[];
+};
+
+async function calledVerb(request: Request): Promise<VerbName | null> {
+  const body: unknown = await request.json().catch(() => null);
+  const call = toolCallSchema.safeParse(body);
+  if (!call.success) return null;
+  return findVerb(call.data.params.name)?.name ?? null;
+}
+
+export function countedHttp(serve: (request: Request) => Promise<Response>): CountedHttp {
+  const called: VerbName[] = [];
+  let writes = 0;
+  return {
+    handle: async (request) => {
+      const verb = await calledVerb(request.clone());
+      if (verb !== null && !called.includes(verb)) called.push(verb);
+      if (verb !== null && findVerb(verb)?.grant?.role === 'editor') writes += 1;
+      return serve(request);
+    },
+    writes: () => writes,
+    called: () => [...called],
+  };
+}
+
 export function sceneCaller(scene: RunScene) {
   return { actor: scene.principal, traceId: scene.run.traceId };
 }

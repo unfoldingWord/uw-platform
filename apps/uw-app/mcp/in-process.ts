@@ -1,10 +1,12 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { CfWorkerJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/cfworker';
 import { CONTRACT_VERSION, type VerbName } from '@uw/contracts';
 import type { Logger } from '@uw/core/log';
 import type { Database } from '@uw/db/client';
 import type { Caller, Kernel, KernelOutcome, RunScene } from '@uw/harness';
+import { MAX_BODY_BYTES } from '../http/body.ts';
 import type { VerbContext } from './context.ts';
 import { refusal, type VerbHandler, type VerbRefusal } from './handler.ts';
 import { createVerbServer, type ServedLimits } from './server.ts';
@@ -24,6 +26,7 @@ export type RunStepConnection = {
 
 export type OpenStep = {
   readonly client: Client;
+  readonly http: (request: Request) => Promise<Response>;
   readonly core: Client;
   readonly scene: RunScene;
   close(): Promise<void>;
@@ -73,6 +76,22 @@ async function linked(context: VerbContext, verbs: ReadonlySet<string>, limits: 
   };
 }
 
+function overHttp(context: VerbContext, verbs: ReadonlySet<string>, limits: ServedLimits) {
+  return async (request: Request): Promise<Response> => {
+    const server = createVerbServer(context, servedOnly(verbs), limits);
+    const transport = new WebStandardStreamableHTTPServerTransport({
+      enableJsonResponse: true,
+      maxRequestBodySize: MAX_BODY_BYTES,
+    });
+    try {
+      await server.connect(transport);
+      return await transport.handleRequest(request);
+    } finally {
+      await server.close();
+    }
+  };
+}
+
 export async function connectInProcess(
   connection: RunStepConnection,
 ): Promise<KernelOutcome<OpenStep>> {
@@ -90,7 +109,8 @@ export async function connectInProcess(
     logger: connection.logger,
   };
   const verbs = modelVerbs(scene, connection.within);
-  const model = await linked(context, verbs, { tools: verbs, guard: sceneGuard(connection) });
+  const modelLimits = { tools: verbs, guard: sceneGuard(connection) };
+  const model = await linked(context, verbs, modelLimits);
   const core = await linked(context, coreVerbs, {
     tools: coreVerbs,
     guard: () => Promise.resolve(null),
@@ -99,6 +119,7 @@ export async function connectInProcess(
     status: 'accepted',
     value: {
       client: model.client,
+      http: overHttp(context, verbs, modelLimits),
       core: core.client,
       scene,
       close: async () => {

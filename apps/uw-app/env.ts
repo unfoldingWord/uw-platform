@@ -16,12 +16,28 @@ export type WorkflowBinding = {
   get(id: string): Promise<WorkflowInstance>;
 };
 
+type SandboxExec = { readonly exitCode: number; readonly stdout: string; readonly stderr: string };
+export type SandboxStub = {
+  bindEgress(egress: (request: Request) => Promise<Response>): Promise<void>;
+  egressFetch(request: Request): Promise<Response>;
+  writeFile(path: string, content: string): Promise<void>;
+  exec(command: string[], env: Record<string, string>, timeoutMs: number): Promise<SandboxExec>;
+  destroy(): Promise<void>;
+};
+export type SandboxNamespace = {
+  idFromName(name: string): unknown;
+  idFromString(id: string): unknown;
+  get(id: unknown): SandboxStub;
+};
+
 export type Bindings = {
   AI_GATEWAY_ACCOUNT_ID?: string;
   AI_GATEWAY_ANALYTICS_TOKEN?: string;
   AI_GATEWAY_ID?: string;
   AI_GATEWAY_TOKEN?: string;
   AI_SPEND_CAP_MINOR?: string;
+  CLAUDE_CODE_SANDBOX?: SandboxNamespace;
+  CODEX_SANDBOX?: SandboxNamespace;
   ALWAYS_ON_MODEL?: string;
   ALWAYS_ON_PROVIDER?: string;
   ANTHROPIC_API_KEY?: string;

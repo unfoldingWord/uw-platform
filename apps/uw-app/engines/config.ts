@@ -1,4 +1,5 @@
-import type { Bindings } from '../env.ts';
+import type { Bindings, SandboxNamespace } from '../env.ts';
+import { sandboxHost, type ContainerHost } from './sandbox/host.ts';
 
 export type EngineFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
@@ -17,7 +18,20 @@ type EngineSettingName =
 
 type EngineSettings = { readonly [Name in EngineSettingName]?: string | undefined };
 
-export type EngineConfig = EngineSettings & { readonly fetch: EngineFetch };
+type SandboxHosts = {
+  readonly claudeCode: ContainerHost | null;
+  readonly codex: ContainerHost | null;
+};
+
+export type EngineConfig = EngineSettings & {
+  readonly fetch: EngineFetch;
+  readonly sandboxes?: SandboxHosts;
+  readonly now?: () => Date;
+};
+
+function hostOf(namespace: SandboxNamespace | undefined): ContainerHost | null {
+  return namespace === undefined ? null : sandboxHost(namespace);
+}
 
 export function engineConfigOf(env: Bindings, fetch: EngineFetch): EngineConfig {
   return {
@@ -33,5 +47,6 @@ export function engineConfigOf(env: Bindings, fetch: EngineFetch): EngineConfig 
     ALWAYS_ON_PROVIDER: env.ALWAYS_ON_PROVIDER,
     SANDBOX_MINOR_PER_HOUR: env.SANDBOX_MINOR_PER_HOUR,
     fetch,
+    sandboxes: { claudeCode: hostOf(env.CLAUDE_CODE_SANDBOX), codex: hostOf(env.CODEX_SANDBOX) },
   };
 }
