@@ -30,7 +30,7 @@ export function giveFacts(world: World, itemId: string, onHead: string, reviewId
   world.adapters.githubFacts.given(greenFacts(world, { itemId, head: onHead, reviews }));
 }
 
-export async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
+async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
   const world = await createWorld();
   try {
     const { harness, admin } = await createSimHarness(world, software);
