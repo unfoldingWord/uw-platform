@@ -1,4 +1,4 @@
-import { advisoryLock } from '../advisory-locks.ts';
+import { advisoryLock, advisoryLockShared } from '../advisory-locks.ts';
 import type { AnyDatabase, AnyExecutor } from '../any-database.ts';
 import { appliedMigrations } from '../migration-ledger.ts';
 import { bindDelegations } from './delegations.ts';
@@ -29,6 +29,9 @@ function bind(executor: AnyExecutor): DrizzleTransaction {
   const tx: DrizzleTransaction = {
     lock: async (key) => {
       await executor.execute(advisoryLock(key));
+    },
+    lockShared: async (key) => {
+      await executor.execute(advisoryLockShared(key));
     },
     harnesses: bindHarnesses(executor),
     harnessStages: bindStages(executor),

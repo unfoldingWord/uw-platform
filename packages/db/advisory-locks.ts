@@ -18,3 +18,7 @@ export const lockKeyPrefixes: readonly string[] = [
 export function advisoryLock(key: string): SQL {
   return sql`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
 }
+
+export function advisoryLockShared(key: string): SQL {
+  return sql`SELECT pg_advisory_xact_lock_shared(hashtextextended(${key}, 0))`;
+}
