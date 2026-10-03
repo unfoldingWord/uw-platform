@@ -68,3 +68,25 @@ describe('the review diff read', () => {
     });
   });
 });
+
+describe('the review diff body', () => {
+  it('HE-4 answers unavailable, never an empty diff, when the compare answer carries no readable body', async () => {
+    const github = fixtureGitHub();
+    github.on('GET', comparePath, { status: 200 });
+    const reads = createGitHubReads(app, fixtureTransport(github));
+    expect(await reads.diff('o/r', base, head, 80_000)).toEqual({
+      kind: 'unavailable',
+      reason: 'malformed_response',
+    });
+    expect(compareRequests(github)).toHaveLength(1);
+  });
+
+  it('reads an empty compare body as an empty diff', async () => {
+    const reads = createGitHubReads(app, fixtureTransport(serving('')));
+    expect(await reads.diff('o/r', base, head, 80_000)).toEqual({
+      kind: 'diff',
+      text: '',
+      bytes: 0,
+    });
+  });
+});
