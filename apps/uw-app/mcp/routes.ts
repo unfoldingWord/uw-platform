@@ -5,7 +5,7 @@ import { commitOf } from '../env.ts';
 import { MAX_BODY_BYTES } from '../http/body.ts';
 import { refuse } from '../http/outcomes.ts';
 import { hubWiring, platformKernel } from '../kernel.ts';
-import { hubNotWired } from '../ports/hub.not-wired.ts';
+import { hubOf } from '../ports/hub.ts';
 import { requestLogger } from '../request-logger.ts';
 import { jsonRpcError, singleMessage } from './body.ts';
 import { withAgentPrincipal } from './mint.ts';
@@ -21,15 +21,16 @@ async function serve(c: Context<AppEnv>, deps: Pick<AppDeps, 'clock'>): Promise<
     c.set('outcome', 'malformed_command');
     return jsonRpcError(body);
   }
+  const logger = requestLogger(c);
   const server = createVerbServer({
     principal,
     host: 'external',
     at: c.get('now'),
     traceId: c.get('traceId'),
-    kernel: platformKernel(database, deps.clock, hubWiring(hubNotWired)),
+    kernel: platformKernel(database, deps.clock, hubWiring(hubOf(c.env, logger))),
     db: database.db,
     commit: commitOf(c.env),
-    logger: requestLogger(c),
+    logger,
   });
   const transport = new WebStandardStreamableHTTPServerTransport({
     enableJsonResponse: true,

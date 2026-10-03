@@ -10,12 +10,11 @@ import {
 } from '@uw/contracts';
 import { can } from '@uw/core/acl';
 import type { Logger } from '@uw/core/log';
-import type { Caller, Clock, Kernel } from '@uw/harness';
+import type { Caller, Clock, Hub, Kernel } from '@uw/harness';
 import type { DatabaseHandle } from '../database.ts';
 import { malformedOutcome, toOutcome } from '../http/commands.ts';
 import { hubWiring, platformKernel } from '../kernel.ts';
 import type { ShipGitHub } from '../ports/connectors.ts';
-import { hubNotWired } from '../ports/hub.not-wired.ts';
 import {
   isBuiltCommand,
   isHumanPrincipal,
@@ -39,6 +38,7 @@ export type DispatchScope = {
   readonly database: DatabaseHandle | null;
   readonly registry: ReadonlyMap<CommandName, CommandHandler>;
   readonly gateGitHub: () => ShipGitHub | null;
+  readonly hub: Hub;
   readonly logger: Logger;
 };
 
@@ -178,7 +178,7 @@ function contextOf(
     stages: scene.stages,
     database: command.database,
     gateGitHub: opensGitHub(command) ? scope.gateGitHub : () => null,
-    hub: hubNotWired,
+    hub: scope.hub,
     clock,
     logger: scope.logger,
   };
@@ -186,7 +186,7 @@ function contextOf(
 
 async function dispatchAdmitted(command: Admitted, scope: DispatchScope): Promise<Outcome> {
   const clock: Clock = { now: () => command.at };
-  const kernel = platformKernel(command.database, clock, hubWiring(hubNotWired));
+  const kernel = platformKernel(command.database, clock, hubWiring(scope.hub));
   const caller: Caller = { actor: command.principal, traceId: command.traceId };
   const lookup = { kernel, caller, at: command.at, db: command.database.db };
   const scene = await sceneOf(lookup, command.handler, command.harnessId, command.body);

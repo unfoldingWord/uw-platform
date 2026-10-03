@@ -1,5 +1,7 @@
 type HyperdriveBinding = { readonly connectionString: string };
 export type QueueProducer<Body> = { send(body: Body): Promise<void> };
+type HubStub = { fetch(input: string, init?: RequestInit): Promise<Response> };
+export type HubNamespace = { idFromName(name: string): unknown; get(id: unknown): HubStub };
 
 export type Bindings = {
   COMMIT_SHA?: string;
@@ -10,6 +12,7 @@ export type Bindings = {
   GITHUB_APP_ID?: string;
   GITHUB_APP_INSTALLATION_ID?: string;
   GITHUB_APP_PRIVATE_KEY?: string;
+  HARNESS_HUB?: HubNamespace;
   HYPERDRIVE?: HyperdriveBinding;
   INGEST_DLQ?: QueueProducer<unknown>;
 };

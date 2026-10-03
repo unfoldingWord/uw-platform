@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { commandNames } from '@uw/contracts';
+import { hubNotWired } from '../ports/hub.not-wired.ts';
 import { executeCommand } from './dispatch.ts';
 import { commandHandler, type CommandHandler } from './handler.ts';
 import { notWiredCommand } from './not-wired.ts';
@@ -122,7 +123,13 @@ describe('the command builders guard the agent rule and the brand', () => {
       traceId: crypto.randomUUID(),
       at: new Date(),
     };
-    const scope = { database: null, registry, gateGitHub: () => null, logger: {} as never };
+    const scope = {
+      database: null,
+      registry,
+      gateGitHub: () => null,
+      hub: hubNotWired,
+      logger: {} as never,
+    };
     await expect(executeCommand(request, scope)).rejects.toThrow(/claim/);
   });
 });

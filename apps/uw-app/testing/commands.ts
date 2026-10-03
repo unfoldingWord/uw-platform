@@ -29,6 +29,7 @@ import { executeCommand, type DispatchScope } from '../commands/dispatch.ts';
 import type { PersonDeps } from '../commands/person-deps.ts';
 import { noGateGitHub } from '../commands/person-deps.ts';
 import { commandRegistry } from '../commands/registry.ts';
+import { hubNotWired } from '../ports/hub.not-wired.ts';
 
 const IAN = 'ian.lindsley@unfoldingword.org';
 const IAN_ID = '00000000-0000-4000-8000-000000000001';
@@ -224,6 +225,7 @@ export function dispatchScope(db: Database, overrides: Partial<DispatchScope> = 
     database: handleOn(db),
     registry: commandRegistry,
     gateGitHub: () => null,
+    hub: hubNotWired,
     logger: createLogger(
       { traceId: randomUUID(), commit: 'test', route: 'POST', principal: null },
       () => undefined,

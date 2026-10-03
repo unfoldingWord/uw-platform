@@ -53,7 +53,18 @@ describe('the queue and cron hub wakes each harness once per unit of work', () =
     const unit = unitHub(failing);
     await unit.hub.wake(first);
     await unit.hub.wake(second);
-    await expect(unit.flush()).resolves.toBeUndefined();
+    await expect(unit.flush()).resolves.toBe(0);
     expect(woken).toEqual([second]);
+  });
+});
+
+describe('the sweep reserves a bounded number of hub wakes', () => {
+  it('wakes at most the reserved number of harnesses and reports how many it skipped', async () => {
+    const target = recording();
+    const unit = unitHub(target.hub, 1);
+    await unit.hub.wake(first);
+    await unit.hub.wake(second);
+    await expect(unit.flush()).resolves.toBe(1);
+    expect(target.woken).toEqual([first]);
   });
 });
