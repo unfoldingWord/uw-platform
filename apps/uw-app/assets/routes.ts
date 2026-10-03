@@ -8,6 +8,7 @@ export function assetRoutes(): Hono<AppEnv> {
     c.body(appCss, 200, {
       'content-type': 'text/css; charset=utf-8',
       'cache-control': 'public, max-age=31536000, immutable',
+      'x-content-type-options': 'nosniff',
     }),
   );
   return routes;

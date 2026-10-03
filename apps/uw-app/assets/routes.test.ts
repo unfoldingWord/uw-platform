@@ -10,10 +10,11 @@ describe('WB-11 the stylesheet route', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('text/css; charset=utf-8');
     expect(response.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff');
     expect(await response.text()).toBe(appCss);
   });
 
-  it('WB-11 any other asset path is 404', async () => {
+  it('any other asset path is 404', async () => {
     const stale = appCssPath.replace(/app-\w+\.css$/, 'app-000000000000.css');
     for (const path of [
       stale,
@@ -34,7 +35,12 @@ describe('WB-11 the stylesheet route', () => {
   });
 
   it('serves only GET and HEAD', async () => {
-    const response = await assetRoutes().request(appCssPath, { method: 'POST' });
-    expect(response.status).toBe(404);
+    const head = await assetRoutes().request(appCssPath, { method: 'HEAD' });
+    expect(head.status).toBe(200);
+    expect(head.headers.get('content-type')).toBe('text/css; charset=utf-8');
+    expect(await head.text()).toBe('');
+    for (const method of ['POST', 'PUT', 'DELETE']) {
+      expect((await assetRoutes().request(appCssPath, { method })).status, method).toBe(404);
+    }
   });
 });

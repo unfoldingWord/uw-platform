@@ -27,9 +27,9 @@ export function Shell(props: {
       <body class="min-h-dvh bg-bg font-sans text-base text-ink">
         <a
           href="#main"
-          class="sr-only bg-surface p-2 text-link outline-offset-2 outline-focus focus-visible:not-sr-only focus-visible:absolute focus-visible:outline-2"
+          class="sr-only bg-surface text-link outline-offset-2 outline-focus focus-visible:not-sr-only focus-visible:absolute focus-visible:outline-2"
         >
-          Skip to content
+          <span class="block p-2">Skip to content</span>
         </a>
         <div class="grid min-h-dvh md:grid-cols-[var(--uw-sidebar)_1fr]">
           <Sidebar items={props.nav} current={props.current} />

@@ -13,9 +13,9 @@ const switchScript = `(function(){var root=document.documentElement;var key='${T
 
 export function ThemeSwitch() {
   return (
-    <form id="uw-theme-switch" class="m-0">
+    <div id="uw-theme-switch">
       <SegmentedControl name="theme" legend="Colour theme" choices={choices} selected="system" />
       <script>{raw(switchScript)}</script>
-    </form>
+    </div>
   );
 }

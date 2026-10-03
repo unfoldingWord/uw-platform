@@ -1,3 +1,4 @@
+import { safeHref } from './href.ts';
 import { ThemeSwitch } from './theme-switch.tsx';
 
 export type Crumb = { readonly label: string; readonly href?: string };
@@ -7,12 +8,13 @@ const link =
 
 function CrumbItem(props: { readonly crumb: Crumb; readonly last: boolean }) {
   const { crumb, last } = props;
+  const href = crumb.href === undefined ? undefined : safeHref(crumb.href);
   return (
     <li class="flex items-center gap-2">
-      {crumb.href === undefined ? (
+      {href === undefined ? (
         <span aria-current={last ? 'page' : undefined}>{crumb.label}</span>
       ) : (
-        <a href={crumb.href} class={link}>
+        <a href={href} class={link}>
           {crumb.label}
         </a>
       )}
