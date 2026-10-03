@@ -36,6 +36,7 @@ export function createSimConnectors(): SimConnectors {
       return structuredClone(outcome);
     },
     outcomeOf: async (request) => {
+      if (!wired.has(request.connector)) return { outcome: 'refused', reason: 'not_wired' };
       const outcome = effects.get(effectKey(request));
       return outcome === undefined ? null : structuredClone(outcome);
     },

@@ -1,5 +1,6 @@
 import type { Principal } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
+import { revokeSeededGrant } from '@uw/db/test-seed';
 import { createKernel, software, type Connectors, type Kernel } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createSimHarness, simAgent, simCaller, simPerson, simSystem } from '../fixtures.ts';
@@ -178,6 +179,22 @@ describe('GH-6 a recovery that cannot read GitHub records nothing', () => {
     expect(await recoverAs(scene, scene.ian, kernel)).toMatchObject({
       status: 'error',
       reason: 'facts_stale',
+      detail: { itemId: scene.itemId, why: 'github_unreadable' },
+    });
+    expect(await logOf(scene)).toEqual(before);
+  });
+
+  sceneIt('refuses not_wired and records nothing when the merge is not wired', async (scene) => {
+    await lostApproval(scene, true);
+    scene.world.adapters.clock.advance(sixteenMinutes);
+    const kernel = withConnectors(scene, {
+      run: async () => ({ outcome: 'refused', reason: 'not_wired' }),
+      outcomeOf: async () => ({ outcome: 'refused', reason: 'not_wired' }),
+    });
+    const before = await logOf(scene);
+    expect(await recoverAs(scene, scene.ian, kernel)).toMatchObject({
+      status: 'error',
+      reason: 'not_wired',
     });
     expect(await logOf(scene)).toEqual(before);
   });
@@ -330,4 +347,55 @@ describe('GH-6 a recovery and the late exit record one outcome between them', ()
     const shipExits = events.filter((event) => event.evidence['from'] === 'ship');
     expect(shipExits.map((event) => event.name)).toEqual(['stage_advanced']);
   });
+});
+
+describe('GH-6 a recovery records connector_lost when the request could never have merged', () => {
+  sceneIt('records connector_lost for a request the connector refuses outright', async (scene) => {
+    await lostApproval(scene, true);
+    scene.world.adapters.clock.advance(sixteenMinutes);
+    const kernel = withConnectors(scene, {
+      run: (request) => scene.world.adapters.connectors.run(request),
+      outcomeOf: async () => ({ outcome: 'refused', reason: 'repository_mismatch' }),
+    });
+    expect(await recoverAs(scene, scene.ian, kernel)).toEqual({
+      status: 'accepted',
+      value: { items: [{ itemId: scene.itemId, outcome: 'lost' }] },
+    });
+    const last = (await logOf(scene)).events.at(-1);
+    expect([last?.name, last?.evidence]).toEqual([
+      'connector_refused',
+      { connector: 'merge', reason: 'connector_lost' },
+    ]);
+  });
+});
+
+describe('GH-6 a recovery re-reads the admin grant before it records', () => {
+  sceneIt(
+    'refuses and records nothing when the admin is revoked during the read',
+    async (scene) => {
+      const kim = await simPerson(scene.world, 3, [
+        { role: 'admin', scopeKind: 'jd_area', scopeArea: '80-89' },
+      ]);
+      await lostApproval(scene, true);
+      scene.world.adapters.clock.advance(sixteenMinutes);
+      const kernel = withConnectors(scene, {
+        run: (request) => scene.world.adapters.connectors.run(request),
+        outcomeOf: async (request) => {
+          const kimGrant = '00000000-0000-4000-8000-000000020300';
+          await revokeSeededGrant(
+            scene.world.database.db,
+            kimGrant,
+            scene.world.adapters.clock.now(),
+          );
+          return scene.world.adapters.connectors.outcomeOf(request);
+        },
+      });
+      const before = await logOf(scene);
+      expect(await recoverAs(scene, kim, kernel)).toMatchObject({
+        status: 'error',
+        reason: 'not_permitted',
+      });
+      expect(await logOf(scene)).toEqual(before);
+    },
+  );
 });

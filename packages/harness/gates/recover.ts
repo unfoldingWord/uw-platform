@@ -19,7 +19,11 @@ export type Recovered = { readonly items: readonly RecoveredItem[] };
 
 type Place = { readonly harness: Harness; readonly stages: readonly Stage[]; readonly at: Date };
 
-type Scan = { readonly stuck: readonly ExitInput[]; readonly context: RecordContext };
+type Scan = {
+  readonly harness: Harness;
+  readonly stuck: readonly ExitInput[];
+  readonly context: RecordContext;
+};
 
 const CONNECTOR_TIMEOUT_MS = 15 * 60_000;
 
@@ -81,11 +85,16 @@ async function scanIn(
   for (const item of await tx.harnessItems.read.forHarness(harnessId)) {
     stuck.push(...stuckIn(await readAllEvents(tx, harnessId, item.itemId), place));
   }
-  return { stuck, context: recordContext(ports, caller, at) };
+  return { harness, stuck, context: recordContext(ports, caller, at) };
 }
 
 function unread(input: ExitInput, why: string): Refused {
   return refused('facts_stale', { itemId: input.item.itemId, why });
+}
+
+function refusalOf(input: ExitInput, reason: string): Refused | null {
+  if (reason === 'not_wired') return refused('not_wired', { port: 'connectors' });
+  return reason.startsWith('github_') ? unread(input, reason) : null;
 }
 
 async function provenOutcome(
@@ -95,13 +104,13 @@ async function provenOutcome(
 ): Promise<ExitEntry | Refused> {
   try {
     const answer = await ports.connectors.outcomeOf(requestOf(context, input));
-    if (answer === null) return { input, outcome: lost };
-    return answer.outcome === 'succeeded'
-      ? { input, outcome: answer }
-      : unread(input, answer.reason);
+    if (answer === null || answer.outcome === 'succeeded') {
+      return { input, outcome: answer ?? lost };
+    }
+    return refusalOf(input, answer.reason) ?? { input, outcome: lost };
   } catch (error) {
     if (error instanceof PortNotWiredError) return refused('not_wired', { port: error.port });
-    return unread(input, error instanceof Error ? error.name : 'unknown');
+    return unread(input, 'github_unreadable');
   }
 }
 
@@ -156,9 +165,12 @@ export async function recoverConnectors(
   const entries = await provenOutcomes(ports, scan);
   if (isRefused(entries)) return entries;
   const items: RecoveredItem[] = [];
+  const standing = (tx: StoreTransaction) =>
+    adminRefusal(ports, tx, caller, scan.harness, scan.context.at);
   for (const group of byItem(entries).values()) {
-    const { recorded } = await recordExitOutcomes(ports, scan.context, group);
-    items.push(...recorded.map(recoveredOf));
+    const record = await recordExitOutcomes(ports, scan.context, group, standing);
+    if (record.refusal !== null) return record.refusal;
+    items.push(...record.recorded.map(recoveredOf));
   }
   return accepted({ items });
 }

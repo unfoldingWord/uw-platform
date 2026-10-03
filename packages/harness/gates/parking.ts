@@ -55,12 +55,12 @@ function exitedInItsDecision(events: readonly HarnessEvent[], index: number): bo
 }
 
 export function approvalsAwaitingOutcome(events: readonly HarnessEvent[]): readonly number[] {
-  const lastOutcome = events.findLastIndex((event) => connectorOutcomes.has(event.name));
-  return events.flatMap((event, index) =>
-    index > lastOutcome && approvals.has(event.name) && !exitedInItsDecision(events, index)
-      ? [index]
-      : [],
-  );
+  return events.flatMap((event, index) => {
+    if (!approvals.has(event.name) || exitedInItsDecision(events, index)) return [];
+    const decisionId = event.evidence['decisionId'];
+    if (typeof decisionId !== 'string') return [];
+    return outcomeRecordedSince(events, decisionId) ? [] : [index];
+  });
 }
 
 export function sameChange(before: ItemState, after: ItemState): boolean {

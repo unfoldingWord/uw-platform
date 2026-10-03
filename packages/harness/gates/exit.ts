@@ -7,6 +7,7 @@ import {
   type RecordContext,
 } from '../items/record.ts';
 import { exitDrafts } from '../items/transitions.ts';
+import type { Refused } from '../outcome.ts';
 import { PortNotWiredError } from '../port-errors.ts';
 import type {
   ConnectorOutcome,
@@ -72,9 +73,17 @@ export function requestOf(context: RecordContext, input: ExitInput): ConnectorRe
 
 export type ExitEntry = { readonly input: ExitInput; readonly outcome: ConnectorOutcome };
 
-type ExitRecord = { readonly recorded: readonly ExitEntry[]; readonly advanced: boolean };
+type ExitRecord = {
+  readonly recorded: readonly ExitEntry[];
+  readonly advanced: boolean;
+  readonly refusal: Refused | null;
+};
 
-const nothingRecorded: ExitRecord = { recorded: [], advanced: false };
+type Standing = (tx: StoreTransaction) => Promise<Refused | null>;
+
+const nothingRecorded: ExitRecord = { recorded: [], advanced: false, refusal: null };
+
+const standsAlways: Standing = async () => null;
 
 function stillApproved(events: readonly HarnessEvent[], input: ExitInput, locked: ItemState) {
   const { item, stage, decisionId } = input;
@@ -93,9 +102,12 @@ async function recordIn(
   context: RecordContext,
   itemId: string,
   entries: readonly ExitEntry[],
+  standing: Standing,
 ): Promise<ExitRecord> {
   const locked = await tx.harnessItems.read.lock(itemId);
   if (locked === null) return nothingRecorded;
+  const refusal = await standing(tx);
+  if (refusal !== null) return { ...nothingRecorded, refusal };
   const events = await readAllEvents(tx, locked.harnessId, itemId);
   const open = entries.filter((entry) => !outcomeRecordedSince(events, entry.input.decisionId));
   if (open.length === 0) return nothingRecorded;
@@ -108,19 +120,20 @@ async function recordIn(
       : exitDrafts({ kind: 'forward', from: advancing.input.stage, to: advancing.input.next });
   const outcomes = open.map((entry) => outcomeDraft(entry.input.connector, entry.outcome));
   await recordItemEvents(tx, context, itemId, [...outcomes, ...exit]);
-  return { recorded: open, advanced: advancing !== undefined };
+  return { recorded: open, advanced: advancing !== undefined, refusal: null };
 }
 
 export async function recordExitOutcomes(
   ports: Pick<Ports, 'store'>,
   context: RecordContext,
   entries: readonly ExitEntry[],
+  standing: Standing = standsAlways,
 ): Promise<ExitRecord> {
   const [first] = entries;
   if (first === undefined) return nothingRecorded;
   const { itemId } = first.input.item;
   const same = entries.filter((entry) => entry.input.item.itemId === itemId);
-  return ports.store.transaction((tx) => recordIn(tx, context, itemId, same));
+  return ports.store.transaction((tx) => recordIn(tx, context, itemId, same, standing));
 }
 
 export async function exitThroughConnector(
