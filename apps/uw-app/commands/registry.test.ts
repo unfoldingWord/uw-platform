@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { commandNames } from '@uw/contracts';
+import { executeCommand } from './dispatch.ts';
 import { commandHandler, type CommandHandler } from './handler.ts';
 import { notWiredCommand } from './not-wired.ts';
 import { commandRegistry, commandRegistryOf } from './registry.ts';
@@ -79,5 +80,37 @@ describe('WB-1 the command registry', () => {
       ok: false,
       reason: 'not_wired',
     });
+  });
+});
+
+describe('the command builders guard the agent rule and the brand', () => {
+  it('lets only the four gate decisions reach the kernel for an agent', () => {
+    const run = async () => ({ ok: true }) as const;
+    for (const name of ['approve', 'reject', 'take_over', 'override'] as const) {
+      expect(() =>
+        commandHandler({ name, action: 'admin', agents: 'recorded', run }),
+      ).not.toThrow();
+    }
+    expect(() =>
+      commandHandler({ name: 'claim', action: 'write', agents: 'recorded', run }),
+    ).toThrow(/claim/);
+    expect(() =>
+      commandHandler({ name: 'recover_connectors', action: 'admin', agents: 'recorded', run }),
+    ).toThrow(/recover_connectors/);
+  });
+
+  it('refuses to dispatch to a handler no builder made, even from a hand-made registry', async () => {
+    const built = notWiredCommand('claim', 'write');
+    const registry = new Map([['claim' as const, { ...built }]]);
+    const request = {
+      name: 'claim',
+      harness: crypto.randomUUID(),
+      body: null,
+      principal: null,
+      traceId: crypto.randomUUID(),
+      at: new Date(),
+    };
+    const scope = { database: null, registry, gateGitHub: () => null, logger: {} as never };
+    await expect(executeCommand(request, scope)).rejects.toThrow(/claim/);
   });
 });

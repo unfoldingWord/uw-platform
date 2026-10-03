@@ -158,9 +158,13 @@ async function settlesParsed(db: Database): Promise<void> {
   };
   expect(await claimRequest(db, key, claim)).toBe(true);
   const junk = { status: 'accepted', requestId: key.requestId, extra: 'x' } as Outcome;
-  await expect(settleRequest(db, key, junk, at)).rejects.toThrow();
+  await expect(
+    settleRequest(db, key, { outcome: junk, traceId: claim.traceId, at }),
+  ).rejects.toThrow();
   const outcome: Outcome = { status: 'error', requestId: key.requestId, reason: 'not_holder' };
-  await settleRequest(db, key, outcome, at);
+  await settleRequest(db, key, { outcome, traceId: randomUUID(), at });
+  expect(await priorRequest(db, key)).toMatchObject({ kind: 'pending' });
+  await settleRequest(db, key, { outcome, traceId: claim.traceId, at });
   expect(await priorRequest(db, key)).toEqual({
     kind: 'settled',
     command: 'enqueue',
@@ -185,6 +189,6 @@ describe.skipIf(!testServer)('WB-1 the request ledger', () => {
   it("the ledger keys requests by actor, so another person's requestId is not replayed to you", () =>
     withAppDatabase(keyedByActor));
 
-  it('settles only an outcome the contract accepts, and reads it back parsed', () =>
+  it('settles only an outcome the contract accepts, only for the claim that holds it, and reads it back parsed', () =>
     withAppDatabase(settlesParsed));
 });

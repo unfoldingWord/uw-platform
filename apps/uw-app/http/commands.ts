@@ -2,6 +2,7 @@ import type { Context } from 'hono';
 import { z } from 'zod';
 import type { ErrorReason, Outcome, Refusal } from '@uw/contracts';
 import type { AppEnv } from '../deps.ts';
+import { boundedJson } from './body.ts';
 import { refuse, reply } from './outcomes.ts';
 
 export type CommandResult =
@@ -10,11 +11,8 @@ export type CommandResult =
 const requestIdOnly = z.object({ requestId: z.uuid() });
 
 export async function readJson(c: Context<AppEnv>): Promise<unknown> {
-  try {
-    return await c.req.json();
-  } catch {
-    return null;
-  }
+  const read = await boundedJson(c.req.raw);
+  return read.ok ? read.value : null;
 }
 
 export function malformedOutcome(body: unknown): Outcome | Refusal {

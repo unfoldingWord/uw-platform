@@ -56,6 +56,13 @@ const gateCommands: ReadonlySet<CommandName> = new Set<CommandName>([
 type BodySchemas = { readonly [Name in CommandName]: z.ZodType<CommandBody<Name>> };
 const bodySchemas: BodySchemas = harnessCommandSchemas;
 
+const agentRecorded: ReadonlySet<CommandName> = new Set<CommandName>([
+  'approve',
+  'reject',
+  'take_over',
+  'override',
+]);
+
 const built = new WeakSet<CommandHandler>();
 
 function brandCommand(handler: CommandHandler): CommandHandler {
@@ -74,6 +81,9 @@ export function opensGateGitHub(handler: CommandHandler): boolean {
 
 export function commandHandler<Name extends CommandName>(spec: CommandSpec<Name>): CommandHandler {
   const schema = bodySchemas[spec.name];
+  if (spec.agents === 'recorded' && !agentRecorded.has(spec.name)) {
+    throw new TypeError(`the ${spec.name} command may not let an agent reach the kernel`);
+  }
   return brandCommand({
     name: spec.name,
     action: spec.action,

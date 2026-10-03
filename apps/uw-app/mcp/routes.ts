@@ -2,10 +2,11 @@ import { Hono, type Context } from 'hono';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import type { AppDeps, AppEnv } from '../deps.ts';
 import { commitOf } from '../env.ts';
+import { MAX_BODY_BYTES } from '../http/body.ts';
 import { refuse } from '../http/outcomes.ts';
 import { platformKernel } from '../kernel.ts';
 import { requestLogger } from '../request-logger.ts';
-import { jsonRpcError, MAX_BODY_BYTES, singleMessage } from './body.ts';
+import { jsonRpcError, singleMessage } from './body.ts';
 import { withAgentPrincipal } from './mint.ts';
 import { createVerbServer } from './server.ts';
 
