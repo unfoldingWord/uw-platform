@@ -32,9 +32,16 @@ A binding is added by a diff to `uw-app/wrangler.toml`, once in `[env.staging]` 
 | Queue producer | `[[env.<name>.queues.producers]]` with `binding`, `queue` | #10 |
 | Durable Objects | `[[env.<name>.durable_objects.bindings]]` with `name`, `class_name`, plus `[[env.<name>.migrations]]` | live hub |
 | Workflows | `[[env.<name>.workflows]]` with `name`, `binding`, `class_name` | runs |
+| Containers | `[[env.<name>.containers]]` with `class_name`, `image`, `max_instances`, plus a Durable Object binding per class and a migration | sandbox engines |
 | Crons | `[env.<name>.triggers]` with `crons` | later |
 
 Ids that are not secret (a Hyperdrive id) may be committed. A secret is set with `wrangler secret put --env <name>` and appears in the file nowhere.
+
+### Sandbox containers (HE-8, HE-9)
+
+`containers/claude-code/Dockerfile` and `containers/codex/Dockerfile` are the images the two sandbox engines run: Cloudflare's sandbox base image at a pinned tag, the one CLI installed globally at a pinned version, and a non-root `runner` user whose home is `/workspace`. Neither image holds a key, a token or a login: the CLI gets a placeholder key and a base URL of `http://model.internal`, and the Worker's egress proxy swaps in the organization's key on the way to AI Gateway (S7-R48). `tools/infra/containers.test.ts` refuses an `ENV` or `ARG` named like a credential, an unpinned base and an image that ends as root.
+
+The classes `ClaudeCodeSandbox` and `CodexSandbox` (`apps/uw-app/engines/sandbox/classes.ts`) start with the internet off and send every outbound HTTP request through one handler, which answers `403 egress refused` for anything but the model host and `mcp.internal` (S7-R47). `wrangler.go-live.toml` declares them for staging and production only: two `[[env.<name>.containers]]` blocks, the `CLAUDE_CODE_SANDBOX` and `CODEX_SANDBOX` Durable Object bindings, and the top-level `v2` migration that adds both as SQLite classes. A deploy with these blocks needs Docker on the runner to build the images.
 
 ## Access (FD-7)
 

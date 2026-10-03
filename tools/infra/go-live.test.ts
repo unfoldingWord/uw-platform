@@ -136,18 +136,20 @@ describe('WB-3 the live hub Durable Object is declared for go-live only', () => 
   it.each(['staging', 'production', 'preview'])(
     '%s binds HARNESS_HUB to the HarnessHub class',
     (name) => {
-      expect(hubBindingsOf(environment('uw-app', name, goLive))).toEqual([
-        { name: 'HARNESS_HUB', class_name: 'HarnessHub' },
-      ]);
+      expect(hubBindingsOf(environment('uw-app', name, goLive))).toContainEqual({
+        name: 'HARNESS_HUB',
+        class_name: 'HarnessHub',
+      });
     },
   );
 
   it('binds HARNESS_HUB at the top level and declares HarnessHub as a SQLite class', () => {
     const config = load(`infra/uw-app/${goLive}`);
     expect(hubBindingsOf(config)).toEqual([{ name: 'HARNESS_HUB', class_name: 'HarnessHub' }]);
-    expect(config['migrations'] as Migration[]).toEqual([
-      { tag: 'v1', new_sqlite_classes: ['HarnessHub'] },
-    ]);
+    expect(config['migrations'] as Migration[]).toContainEqual({
+      tag: 'v1',
+      new_sqlite_classes: ['HarnessHub'],
+    });
   });
 });
 
@@ -208,6 +210,80 @@ describe('HE-1 the HarnessRun Workflow is declared for go-live only, in staging 
       'top level: workflows',
       'preview: workflows',
       'staging: workflows',
+    ]);
+  });
+});
+
+type ContainerBlock = { class_name?: string; image?: string; max_instances?: number };
+
+const sandboxClasses = ['ClaudeCodeSandbox', 'CodexSandbox'];
+const sandboxBindings = ['CLAUDE_CODE_SANDBOX', 'CODEX_SANDBOX'];
+
+function sandboxSites(config: Block): string[] {
+  const blocks: [string, Block][] = [
+    ['top level', config],
+    ...Object.entries(environments(config)),
+  ];
+  return blocks.flatMap(([name, block]) => [
+    ...((block['containers'] ?? []) as ContainerBlock[]).map(
+      (box) => `${name}: container ${box.class_name ?? ''} ${box.image ?? ''}`,
+    ),
+    ...hubBindingsOf(block)
+      .filter((binding) => sandboxBindings.includes(binding.name ?? ''))
+      .map((binding) => `${name}: binding ${binding.name ?? ''} ${binding.class_name ?? ''}`),
+  ]);
+}
+
+function straySandboxes(config: Block): string[] {
+  return sandboxSites(config).filter(
+    (site) => !deployedEnvironments.some((name) => site.startsWith(`${name}: `)),
+  );
+}
+
+describe('the sandbox containers are declared for go-live only, in staging and production', () => {
+  it('binds both sandbox classes and their images under staging and production only', () => {
+    const sites = deployedEnvironments.flatMap((name) => [
+      `${name}: container ClaudeCodeSandbox ../containers/claude-code/Dockerfile`,
+      `${name}: container CodexSandbox ../containers/codex/Dockerfile`,
+      `${name}: binding CLAUDE_CODE_SANDBOX ClaudeCodeSandbox`,
+      `${name}: binding CODEX_SANDBOX CodexSandbox`,
+    ]);
+    expect(sandboxSites(load(`infra/uw-app/${goLive}`)).sort()).toEqual(sites.sort());
+    const config = load(`infra/uw-app/${goLive}`);
+    expect(config['migrations'] as Migration[]).toContainEqual({
+      tag: 'v2',
+      new_sqlite_classes: sandboxClasses,
+    });
+  });
+
+  it('declares no container, sandbox binding or migration in the live file', () => {
+    const config = load(`infra/uw-app/${live}`);
+    expect(sandboxSites(config)).toEqual([]);
+    expect(config['migrations']).toBeUndefined();
+  });
+
+  it('flags a planted sandbox under preview, at the top level, or in the live file', () => {
+    const planted = parse(
+      [
+        '[[containers]]',
+        'class_name = "ClaudeCodeSandbox"',
+        'image = "../containers/claude-code/Dockerfile"',
+        '[[env.preview.durable_objects.bindings]]',
+        'name = "CODEX_SANDBOX"',
+        'class_name = "CodexSandbox"',
+        '[[env.staging.containers]]',
+        'class_name = "CodexSandbox"',
+        'image = "../containers/codex/Dockerfile"',
+      ].join('\n'),
+    ) as Block;
+    expect(straySandboxes(planted)).toEqual([
+      'top level: container ClaudeCodeSandbox ../containers/claude-code/Dockerfile',
+      'preview: binding CODEX_SANDBOX CodexSandbox',
+    ]);
+    expect(goLiveKeysIn(planted)).toEqual([
+      'top level: containers',
+      'preview: durable_objects',
+      'staging: containers',
     ]);
   });
 });

@@ -18,6 +18,10 @@ class_name = "HarnessHub"
 tag = "v1"
 new_sqlite_classes = ["HarnessHub"]
 
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["ClaudeCodeSandbox", "CodexSandbox"]
+
 [env.staging]
 name = "uw-app-staging"
 workers_dev = true
@@ -57,6 +61,24 @@ name = "harness-run-staging"
 binding = "HARNESS_RUN"
 class_name = "HarnessRun"
 
+[[env.staging.containers]]
+class_name = "ClaudeCodeSandbox"
+image = "../containers/claude-code/Dockerfile"
+max_instances = 4
+
+[[env.staging.containers]]
+class_name = "CodexSandbox"
+image = "../containers/codex/Dockerfile"
+max_instances = 4
+
+[[env.staging.durable_objects.bindings]]
+name = "CLAUDE_CODE_SANDBOX"
+class_name = "ClaudeCodeSandbox"
+
+[[env.staging.durable_objects.bindings]]
+name = "CODEX_SANDBOX"
+class_name = "CodexSandbox"
+
 [env.production]
 name = "uw-app"
 workers_dev = false
@@ -95,6 +117,24 @@ class_name = "HarnessHub"
 name = "harness-run-production"
 binding = "HARNESS_RUN"
 class_name = "HarnessRun"
+
+[[env.production.containers]]
+class_name = "ClaudeCodeSandbox"
+image = "../containers/claude-code/Dockerfile"
+max_instances = 4
+
+[[env.production.containers]]
+class_name = "CodexSandbox"
+image = "../containers/codex/Dockerfile"
+max_instances = 4
+
+[[env.production.durable_objects.bindings]]
+name = "CLAUDE_CODE_SANDBOX"
+class_name = "ClaudeCodeSandbox"
+
+[[env.production.durable_objects.bindings]]
+name = "CODEX_SANDBOX"
+class_name = "CodexSandbox"
 
 [env.preview]
 workers_dev = true
