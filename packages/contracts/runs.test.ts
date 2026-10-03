@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { runFailureSchema, runStopSchema } from './closed-sets.ts';
 import { eventEvidenceSchemas } from './event-evidence.ts';
 import { eventSchema } from './events.ts';
-import { providerIdSchema, reviewRecordSchema, runStepRecordSchema } from './runs.ts';
+import {
+  modelIdSchema,
+  providerIdSchema,
+  reviewRecordSchema,
+  runStepRecordSchema,
+} from './runs.ts';
 import { recordRunStepReplySchema, verbIo } from './verb-io.ts';
 
 const runId = '00000000-0000-4000-8000-0000000000a1';
@@ -138,5 +143,74 @@ describe('a provider id is a slug', () => {
     };
     expect(reviewRecordSchema.safeParse(record).success).toBe(true);
     expect(reviewRecordSchema.safeParse({ ...record, verdict: 'merge' }).success).toBe(false);
+  });
+});
+
+describe('run text fields are narrow', () => {
+  const runId = '00000000-0000-4000-8000-0000000000a1';
+
+  it('takes a model id of the model charset and refuses newlines, spaces and markup', () => {
+    expect(modelIdSchema.safeParse('z-ai/glm-5.3-flash').success).toBe(true);
+    expect(modelIdSchema.safeParse('anthropic:claude-opus@2026+beta').success).toBe(true);
+    for (const forged of ['glm\nflash', 'glm flash', '<b>glm</b>', '', 'm'.repeat(201)]) {
+      expect(modelIdSchema.safeParse(forged).success, forged).toBe(false);
+    }
+    const step = { step: 'work', tokensIn: 1, tokensOut: 1, at: base.at };
+    expect(runStepRecordSchema.safeParse({ ...step, model: 'glm\nflash' }).success).toBe(false);
+    const started = {
+      runId,
+      persona: 'agent:builder',
+      runShape: 'workflow-run',
+      engine: 'claude-messages',
+      model: 'claude opus',
+      delegationId: null,
+    };
+    expect(eventSchema.safeParse({ ...base, name: 'run_started', evidence: started }).success).toBe(
+      false,
+    );
+  });
+
+  it('keeps a failure detail to one printable line', () => {
+    const failed = (detail: string | null) =>
+      eventSchema.safeParse({
+        ...base,
+        name: 'run_failed',
+        evidence: { runId, step: 'work', why: 'provider_mismatch', detail },
+      }).success;
+    expect(failed('z-ai/deepinfra')).toBe(true);
+    expect(failed(null)).toBe(true);
+    expect(failed('first\nsecond')).toBe(false);
+    expect(failed('bell\u0007')).toBe(false);
+    expect(failed('x'.repeat(501))).toBe(false);
+  });
+});
+
+describe('review ids and step input keys', () => {
+  const runId = '00000000-0000-4000-8000-0000000000a1';
+
+  it('refuses a review id below one', () => {
+    const record = {
+      reviewer: 'uw-reviewer',
+      provider: 'z-ai',
+      model: 'glm',
+      verdict: 'approve',
+      reviewId: 1,
+    };
+    expect(reviewRecordSchema.safeParse(record).success).toBe(true);
+    expect(reviewRecordSchema.safeParse({ ...record, reviewId: 0 }).success).toBe(false);
+    expect(reviewRecordSchema.safeParse({ ...record, reviewId: -7 }).success).toBe(false);
+  });
+
+  it('refuses a record_run_step input key it does not name', () => {
+    const input = {
+      itemId: base.itemId,
+      runId,
+      step: 'work',
+      tokensIn: 1,
+      tokensOut: 1,
+      costBasis: 'subscription',
+    };
+    expect(verbIo.record_run_step.input.safeParse(input).success).toBe(true);
+    expect(verbIo.record_run_step.input.safeParse({ ...input, cost_minor: 4 }).success).toBe(false);
   });
 });

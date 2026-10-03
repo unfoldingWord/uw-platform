@@ -8,14 +8,17 @@ export const providerIdSchema = z.string().regex(/^[a-z0-9._-]{1,64}$/);
 export type ProviderId = z.infer<typeof providerIdSchema>;
 
 const minor = z.number().int().min(0);
-const model = z.string().min(1).max(200);
+export const modelIdSchema = z.string().regex(/^[A-Za-z0-9._:/@+-]{1,200}$/);
+export type ModelId = z.infer<typeof modelIdSchema>;
+
+const model = modelIdSchema;
 
 export const reviewRecordSchema = z.strictObject({
   reviewer: z.string().regex(/^[a-z0-9-]{1,64}$/),
   provider: providerIdSchema,
   model,
   verdict: reviewVerdictSchema,
-  reviewId: z.number().int().nullable(),
+  reviewId: z.number().int().min(1).nullable(),
 });
 export type ReviewRecord = z.infer<typeof reviewRecordSchema>;
 
