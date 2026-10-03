@@ -162,6 +162,13 @@
       "when": 1791035848560,
       "tag": "0022_item_created_once_per_request",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791042523453,
+      "tag": "0023_contract_11_checks",
+      "breakpoints": true
     }
   ]
 }

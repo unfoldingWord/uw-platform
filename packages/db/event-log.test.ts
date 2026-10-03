@@ -108,6 +108,13 @@ function appendOnlyRules(db: () => AnyDatabase): void {
     ).toEqual(unknown);
   });
 
+  it('admits the run and hosted Builder names contract 11.0.0 adds', async () => {
+    const names = ['run_completed', 'run_prompted', 'hosted_builder_set'];
+    for (const [k, name] of names.entries()) {
+      await seedEvent(db(), { harnessId: harnessA, n: 95 + k, name });
+    }
+  });
+
   it('refuses an actor that is not an identity', async () => {
     const stranger = seedEvent(db(), { harnessId: harnessA, n: 94, actor: 'nobody' });
     expect(await refusal(stranger)).toEqual({
