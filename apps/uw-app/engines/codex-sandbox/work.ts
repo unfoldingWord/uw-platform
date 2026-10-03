@@ -12,6 +12,7 @@ import {
 import type { EngineWork } from '../seam.ts';
 
 const PROVIDER = 'openai';
+const INFERENCE_PATHS = ['/responses'];
 const SCRIPT = `exec codex exec --json --skip-git-repo-check --cd ${WORKSPACE} "$(cat ${WORKSPACE}/PROMPT.md)"`;
 
 const usageSchema = z.object({
@@ -33,7 +34,7 @@ function modelRoute(config: EngineConfig): ModelRoute | null {
   const key = config.OPENAI_API_KEY;
   if (upstream === null || !key) return null;
   const headers = { ...gatewayHeaders(config), authorization: `Bearer ${key}` };
-  return { host: MODEL_HOST, upstream, headers };
+  return { host: MODEL_HOST, upstream, headers, paths: INFERENCE_PATHS };
 }
 
 function configToml(input: EngineWork): string {

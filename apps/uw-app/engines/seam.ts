@@ -3,7 +3,7 @@ import { runToolLoop, type ModelEngine, type ToolCaller } from '@uw/harness';
 
 type EngineEgress = {
   readonly mcp: (request: Request) => Promise<Response>;
-  refused(host: string): void;
+  refused(host: string, path: string): void;
 };
 
 export type EngineWork = {

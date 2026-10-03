@@ -153,8 +153,8 @@ async function modelRun(deps: RunDeps, open: OpenStep, plan: ModelPlan): Promise
   const toolset = persona.toolset.filter(
     (verb) => verb !== 'record_run_step' && (plan.step === 'work' || readOnly.has(verb)),
   );
-  const refused = (host: string) =>
-    deps.logger.warn('sandbox egress refused', { outcome: 'egress_refused', host });
+  const refused = (host: string, path: string) =>
+    deps.logger.warn('sandbox egress refused', { outcome: 'egress_refused', host, path });
   const result = await engineWork(deps, plan.engine, {
     runId: run.id,
     itemId: item.itemId,
