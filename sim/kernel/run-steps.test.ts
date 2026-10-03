@@ -17,6 +17,7 @@ import {
   type RunWorld,
 } from '../runs.ts';
 import { createWorld } from '../world.ts';
+import { readWorldLog } from '../runner/log.ts';
 
 afterAll(closeEmbeddedTemplate);
 
@@ -28,6 +29,7 @@ async function inStarted(work: (scene: Started) => Promise<void>): Promise<void>
     const scene = await runWorld(world);
     const { runId } = value(await startOn(scene));
     await work({ ...scene, runId, beat: await beatOf(scene) });
+    expect((await readWorldLog(world.adapters.store)).drift).toEqual([]);
   } finally {
     await world.close();
   }
