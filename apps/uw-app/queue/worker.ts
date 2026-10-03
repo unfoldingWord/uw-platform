@@ -4,7 +4,10 @@ import { githubAppOf } from '../github/app-config.ts';
 import { githubClient, type GitHubClient } from '../github/deps.ts';
 import { githubIngestHandler } from '../github/ingest.ts';
 import { platformGitHubTransport } from '../github/transport.ts';
-import { platformKernel } from '../kernel.ts';
+import { hubWiring, platformKernel } from '../kernel.ts';
+import { systemClock } from '../ports/clock.ts';
+import { hubNotWired } from '../ports/hub.not-wired.ts';
+import { unitHub } from '../unit-hub.ts';
 import { consumeBatch, notWiredHandlers, type IngestHandler } from './consumer.ts';
 import { postgresWatermarks } from './watermarks.ts';
 
@@ -14,13 +17,26 @@ function clientOf(env: Bindings, now: () => Date): GitHubClient | null {
   return githubClient(config, platformGitHubTransport(now));
 }
 
+function deliveryHandler(
+  database: DatabaseHandle,
+  client: GitHubClient | null,
+  now: () => Date,
+): IngestHandler {
+  return async (envelope, logger) => {
+    const unit = unitHub(hubNotWired);
+    const kernel = platformKernel(database, systemClock, hubWiring(unit.hub));
+    try {
+      return await githubIngestHandler({ db: database.db, kernel, client, now })(envelope, logger);
+    } finally {
+      await unit.flush();
+    }
+  };
+}
+
 function handlersFor(database: DatabaseHandle | null, env: Bindings, now: () => Date) {
   if (database === null) return notWiredHandlers;
   const client = clientOf(env, now);
-  const kernel = platformKernel(database);
-  return new Map<'github', IngestHandler>([
-    ['github', githubIngestHandler({ db: database.db, kernel, client, now })],
-  ]);
+  return new Map<'github', IngestHandler>([['github', deliveryHandler(database, client, now)]]);
 }
 
 export async function consumeIngestBatch(

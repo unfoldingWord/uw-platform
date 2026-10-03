@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { createLogger } from '@uw/core/log';
+import type { Database } from '@uw/db/client';
+import type { Hub } from '@uw/harness';
 import { contractRequest } from '@uw/harness/port-contracts/connectors';
-import { platformKernel, platformPorts } from './kernel.ts';
+import type { DatabaseHandle } from './database.ts';
+import { createGitHubReads } from './github/client.ts';
+import { fixtureApp, fixtureTransport } from './github/testing/app-key.ts';
+import { fixtureGitHub } from './github/testing/fixture-github.ts';
+import { hubWiring, platformKernel, platformPorts } from './kernel.ts';
 import { systemClock } from './ports/clock.ts';
 import { githubFactsNotWired } from './ports/github-facts.not-wired.ts';
 import { grantsNotWired } from './ports/grants.not-wired.ts';
@@ -36,11 +43,34 @@ const expected = {
   runs: runsNotWired,
 };
 
+const pulls = '/repos/unfoldingWord/uw-platform/pulls/7';
+const silentLogger = createLogger(
+  { traceId: 'trace', commit: 'test-commit', route: 'kernel', principal: null },
+  () => undefined,
+);
+const untouched: DatabaseHandle = {
+  db: {} as Database,
+  ping: async () => undefined,
+  release: async () => undefined,
+};
+const recordingHub: Hub = { wake: async () => undefined };
+
 function mismatched(): Record<string, unknown> {
   const ports = platformPorts(null);
   return Object.fromEntries(
     Object.entries(expected).filter(([name, adapter]) => Reflect.get(ports, name) !== adapter),
   );
+}
+
+async function fixtureWiring() {
+  const github = fixtureGitHub();
+  const ship = { app: await fixtureApp(), transport: fixtureTransport(github) };
+  const reads = { open: () => createGitHubReads(ship.app, ship.transport), logger: silentLogger };
+  return { github, wiring: { hub: recordingHub, reads, ship } };
+}
+
+function pullReads(github: ReturnType<typeof fixtureGitHub>): number {
+  return github.requests().filter((request) => request.path === pulls).length;
 }
 
 describe('DX-1 the Worker builds the kernel over platform adapters', () => {
@@ -49,18 +79,46 @@ describe('DX-1 the Worker builds the kernel over platform adapters', () => {
     expect(mismatched()).toEqual({});
   });
 
-  it('answers the merge as not wired when the kernel is given no ship GitHub', async () => {
-    const { connectors } = platformPorts(null);
-    expect(await connectors.run({ ...contractRequest, connector: 'merge' })).toEqual({
-      outcome: 'refused',
-      reason: 'not_wired',
-    });
-  });
-
   it('reports a Worker with no database as a store that is not wired', async () => {
     await expect(platformKernel(null).health()).rejects.toMatchObject({
       name: 'PortNotWiredError',
       port: 'store',
     });
+  });
+});
+
+describe('GH-6 platformPorts wires the merge connector only when given the ship GitHub, and refresh only when given a read client', () => {
+  it('answers the merge as not wired and refuses the refresh with the hub wiring alone', async () => {
+    const { connectors, githubFacts } = platformPorts(
+      untouched,
+      systemClock,
+      hubWiring(recordingHub),
+    );
+    expect(await connectors.run({ ...contractRequest, connector: 'merge' })).toEqual({
+      outcome: 'refused',
+      reason: 'not_wired',
+    });
+    await expect(githubFacts.refresh(contractRequest.pullRequest)).rejects.toMatchObject({
+      name: 'PortNotWiredError',
+      port: 'githubFacts',
+    });
+  });
+
+  it('reaches GitHub through the merge connector and the refresh when given both', async () => {
+    const { github, wiring } = await fixtureWiring();
+    const { connectors, githubFacts } = platformPorts(untouched, systemClock, wiring);
+    await connectors.run({ ...contractRequest, connector: 'merge' });
+    expect(pullReads(github)).toBe(1);
+    expect(await githubFacts.refresh(contractRequest.pullRequest)).toBeNull();
+    expect(pullReads(github)).toBe(2);
+  });
+});
+
+describe('every platform kernel is given the hub it is wired with', () => {
+  it('passes the wired hub to the ports, and the not-wired hub when no wiring is given', async () => {
+    const { wiring } = await fixtureWiring();
+    expect(platformPorts(null, systemClock, hubWiring(recordingHub)).hub).toBe(recordingHub);
+    expect(platformPorts(untouched, systemClock, wiring).hub).toBe(recordingHub);
+    expect(platformPorts(untouched).hub).toBe(hubNotWired);
   });
 });
