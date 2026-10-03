@@ -23,6 +23,7 @@ export type RecordContext = {
   readonly actor: Identity;
   readonly at: Date;
   readonly traceId: string;
+  readonly requestId: string | null;
   readonly ids: Ids;
 };
 
@@ -59,7 +60,13 @@ export function draft<N extends EvidenceName>(name: N, evidence: EventEvidence[N
 }
 
 export function recordContext(ports: Pick<Ports, 'ids'>, caller: Caller, at: Date): RecordContext {
-  return { actor: caller.actor.identity, at, traceId: caller.traceId, ids: ports.ids };
+  return {
+    actor: caller.actor.identity,
+    at,
+    traceId: caller.traceId,
+    requestId: caller.requestId ?? null,
+    ids: ports.ids,
+  };
 }
 
 function stamp(
@@ -77,6 +84,7 @@ function stamp(
     actor: context.actor,
     evidence: event.evidence,
     traceId: context.traceId,
+    requestId: context.requestId,
   });
 }
 

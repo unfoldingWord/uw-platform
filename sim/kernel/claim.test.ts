@@ -333,6 +333,7 @@ describe('KN-5 a lapsed lease is released once', () => {
       actor: builder.actor.identity,
       at: scene.world.adapters.clock.now(),
       traceId: builder.traceId,
+      requestId: null,
       ids: scene.world.adapters.ids,
     };
     const run = (at: Date, item: ItemState) =>

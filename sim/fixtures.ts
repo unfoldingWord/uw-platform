@@ -111,8 +111,8 @@ export function simIngest(): Principal {
   });
 }
 
-export function simCaller(world: World, actor: Principal): Caller {
-  return { actor, traceId: world.adapters.ids.next() };
+export function simCaller(world: World, actor: Principal, requestId: string | null = null): Caller {
+  return { actor, traceId: world.adapters.ids.next(), requestId };
 }
 
 type SimHarnessOptions = {

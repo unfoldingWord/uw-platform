@@ -1,5 +1,6 @@
 import { createDelegationCommands, type DelegationCommands } from './delegations/commands.ts';
 import { createGateCommands, type GateCommands } from './gates/commands.ts';
+import { wakingGrants, wakingStore } from './hub-wakes.ts';
 import { createEventReads, type EventReads } from './items/events.ts';
 import { createItemCommands, type ItemCommands } from './items/commands.ts';
 import { replay } from './items/fold.ts';
@@ -29,21 +30,26 @@ export type Kernel = {
 };
 
 export function createKernel(ports: Ports): Kernel {
+  const live: Ports = {
+    ...ports,
+    store: wakingStore(ports.store, ports.hub),
+    grants: wakingGrants(ports.grants),
+  };
   return {
     walk,
     templateProperty,
     replay,
-    events: createEventReads(ports),
-    reads: createKernelReads(ports),
-    items: createItemCommands(ports),
-    repair: createRepairCommands(ports),
-    stages: createStageCommands(ports),
-    delegations: createDelegationCommands(ports),
-    gates: createGateCommands(ports),
-    personas: createPersonaCommands(ports),
+    events: createEventReads(live),
+    reads: createKernelReads(live),
+    items: createItemCommands(live),
+    repair: createRepairCommands(live),
+    stages: createStageCommands(live),
+    delegations: createDelegationCommands(live),
+    gates: createGateCommands(live),
+    personas: createPersonaCommands(live),
     health: async () => ({
-      now: ports.clock.now(),
-      appliedMigrations: await ports.store.appliedMigrations(),
+      now: live.clock.now(),
+      appliedMigrations: await live.store.appliedMigrations(),
     }),
   };
 }

@@ -51,6 +51,7 @@ function exitWith(scene: Scene, crafted: Crafted): Promise<boolean> {
       actor: scene.ian.identity,
       at: world.adapters.clock.now(),
       traceId: world.adapters.ids.next(),
+      requestId: null,
       ids: world.adapters.ids,
     },
     {

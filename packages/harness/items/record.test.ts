@@ -131,6 +131,7 @@ function contextFor(actor: string): RecordContext {
     actor: identitySchema.parse(actor),
     at,
     traceId,
+    requestId: null,
     ids: {
       next: () => {
         count += 1;
