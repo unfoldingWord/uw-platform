@@ -62,7 +62,6 @@ const pieces: readonly Piece[] = [
   {
     owner: `${components}human-action.tsx`,
     marks: [
-      /value="(?:approve|reject|take_over|override)"/,
       /\bfunction\s+HumanActionButton\b/,
       /\bconst\s+HumanActionButton\b/,
       /\bfunction\s+HumanGateMark\b/,
@@ -102,6 +101,24 @@ function scanned(path: string): boolean {
   return /^(apps|packages)\//.test(path) && /\.tsx?$/.test(path) && !/\.test\.tsx?$/.test(path);
 }
 
+const humanAction = `${components}human-action.tsx`;
+
+const decisionAttribute = /\b(?:name|value)=\{?\s*["'`](?:approve|reject|take_over|override)["'`]/g;
+
+function enclosingTag(text: string, index: number): string | null {
+  const before = text.slice(0, index);
+  const opening = before.lastIndexOf('<');
+  if (opening < 0) return null;
+  return /^<([A-Za-z][\w.]*)/.exec(before.slice(opening))?.[1] ?? null;
+}
+
+function handRolledDecisions(path: string, text: string): string[] {
+  if (path === humanAction) return [];
+  return [...text.matchAll(decisionAttribute)]
+    .filter((match) => enclosingTag(text, match.index) !== 'HumanActionButton')
+    .map((match) => `${path}: ${match[0]}`);
+}
+
 function secondPieces(path: string, text: string): string[] {
   const allowed = new Set(
     [...(beforeTheShell.get(path) ?? []), ...(sharedMarks.get(path) ?? [])].map(
@@ -130,7 +147,6 @@ const planted: readonly (readonly [string, string])[] = [
   ['apps/uw-app/pages/spend.tsx', '<p role="note">Hand-rolled note</p>'],
   ['apps/uw-app/pages/spend.tsx', 'export const Kpi = () => null;'],
   ['apps/uw-app/health/routes.tsx', '<nav aria-label="Main">second sidebar</nav>'],
-  ['apps/uw-app/pages/gate.tsx', '<button type="submit" name="decision" value="approve">'],
   ['apps/uw-app/pages/gate.tsx', 'export function HumanActionButton() { return null; }'],
   ['packages/ui/components/lane.tsx', 'export const HumanGateMark = () => null;'],
   ['apps/uw-app/pages/gate.tsx', 'export function GateCallout() { return null; }'],
@@ -146,6 +162,13 @@ describe('WB-11 each shell piece exists once', () => {
     const offenders = repoFiles()
       .filter(scanned)
       .flatMap((path) => secondPieces(path, readFileSync(path, 'utf8')));
+    expect(offenders).toEqual([]);
+  });
+
+  it('WB-11 no file outside the human action offers a gate decision with a control of its own', () => {
+    const offenders = repoFiles()
+      .filter(scanned)
+      .flatMap((path) => handRolledDecisions(path, readFileSync(path, 'utf8')));
     expect(offenders).toEqual([]);
   });
 
@@ -182,5 +205,32 @@ describe('WB-11 each shell piece exists once', () => {
   it('passes a page that renders inside the shell', () => {
     const page = '<Shell title="Board"><PageHead title="Board" /><p>Items</p></Shell>';
     expect(secondPieces('apps/uw-app/pages/board.tsx', page)).toEqual([]);
+  });
+});
+
+describe('the human action is the only gate decision control', () => {
+  it.each([
+    '<button type="submit" name="decision" value="approve">Approve</button>',
+    "<button type='submit' name='decision' value='reject'>Reject</button>",
+    "<button value={'take_over'}>Take over</button>",
+    '<button value={`override`}>Override</button>',
+    '<input type="hidden" name="approve" />',
+    '<HumanActionButton itemId={id} label="Approve" name="decision" value="approve" /><button value="approve">x</button>',
+    '<form><Button variant="primary" value="approve" /></form>',
+  ])('flags a planted hand-rolled decision control: %s', (text) => {
+    expect(handRolledDecisions('apps/uw-app/pages/gate.tsx', text)).not.toEqual([]);
+  });
+
+  it.each([
+    '<HumanActionButton itemId={id} label="Approve" name="decision" value="approve" />',
+    "<HumanActionButton\n  itemId={id}\n  label='Reject'\n  name='decision'\n  value={'reject'}\n/>",
+    "const decision = command === 'approve';",
+    '<button type="submit" name="decision" value={decision}>Go</button>',
+  ])('passes the human action and code that names no decision control: %s', (text) => {
+    expect(handRolledDecisions('apps/uw-app/pages/gate.tsx', text)).toEqual([]);
+  });
+
+  it('lets the human action itself carry decision values', () => {
+    expect(handRolledDecisions(humanAction, '<button value="approve">')).toEqual([]);
   });
 });

@@ -3,13 +3,14 @@ import { Badge } from './badge.tsx';
 import { domId } from './text.ts';
 
 export function Lane(props: {
+  readonly stageKey: string;
   readonly title: string;
   readonly count: number;
   readonly wipLimit: number;
   readonly paused?: boolean;
   readonly children?: Child;
 }) {
-  const headingId = domId('lane', props.title);
+  const headingId = domId('lane', props.stageKey);
   return (
     <section
       aria-labelledby={headingId}

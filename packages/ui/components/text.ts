@@ -6,11 +6,16 @@ export function reasonText(reason: string): string {
   return `${words.charAt(0).toUpperCase()}${words.slice(1)}`;
 }
 
-export function domId(...parts: readonly string[]): string {
-  return parts
-    .join('-')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80);
+function encoded(part: string): string {
+  let out = '';
+  for (const character of part) {
+    out += /^[A-Za-z0-9]$/.test(character)
+      ? character
+      : `_${(character.codePointAt(0) ?? 0).toString(16)}_`;
+  }
+  return out;
+}
+
+export function domId(...keys: readonly string[]): string {
+  return keys.map(encoded).join('-');
 }
