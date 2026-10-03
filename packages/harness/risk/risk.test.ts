@@ -81,6 +81,49 @@ describe('KN-17 the protected-directory map is robust and protects itself', () =
     expect(domainOf('packages/harness/github/reviewers.ts')).toBe('acl');
     expect(domainOf('apps/uw-app/github/merge.ts')).toBe('acl');
   });
+});
+
+describe('KN-17 the protected-directory map covers the code that decides what Ship sees and what merges', () => {
+  it('protects the whole GitHub module under acl: the App client, the merge and the ship writes', () => {
+    for (const file of ['client.ts', 'merge.ts', 'ship-writes.ts', 'session.ts', 'deps.ts']) {
+      expect(domainOf(`apps/uw-app/github/${file}`)).toBe('acl');
+    }
+    expect(domainOf('apps/uw-app/github/facts/upsert.ts')).toBe('acl');
+  });
+
+  it('protects every platform adapter under acl, the connectors and the GitHub facts among them', () => {
+    expect(domainOf('apps/uw-app/ports/connectors.ts')).toBe('acl');
+    expect(domainOf('apps/uw-app/ports/github-facts.ts')).toBe('acl');
+    expect(domainOf('apps/uw-app/ports/grants.ts')).toBe('acl');
+  });
+
+  it('protects the kernel composition root under acl', () => {
+    expect(domainOf('apps/uw-app/kernel.ts')).toBe('acl');
+    expect(domainOf('apps/uw-app/kernel.test.ts')).toBeNull();
+  });
+
+  it('protects the ship rule contract (CI jobs and refusals) under acl', () => {
+    expect(domainOf('packages/contracts/ship-rule.ts')).toBe('acl');
+    expect(domainOf('packages/contracts/ship-rule.test.ts')).toBeNull();
+  });
+});
+
+describe('KN-17 the protected-directory map covers the checks and the CI that enforce the rules', () => {
+  it('protects the dependency rules and the architecture checks under infra', () => {
+    expect(domainOf('.dependency-cruiser.mjs')).toBe('infra');
+    expect(domainOf('tools/architecture/connector-callers.test.ts')).toBe('infra');
+    expect(domainOf('tools/architecture/github-rules.test.ts')).toBe('infra');
+  });
+
+  it('protects all of .github under infra: workflows, issue templates and actions', () => {
+    expect(domainOf('.github/workflows/ci.yml')).toBe('infra');
+    expect(domainOf('.github/ISSUE_TEMPLATE/task.yml')).toBe('infra');
+    expect(domainOf('.github/actions/setup/action.yml')).toBe('infra');
+  });
+
+  it('protects infra under infra', () => {
+    expect(domainOf('infra/github/app-manifest.json')).toBe('infra');
+  });
 
   it('protects the gate decision path that assembles and applies the ship rule under acl', () => {
     expect(domainOf('packages/harness/gates/ship-input.ts')).toBe('acl');
