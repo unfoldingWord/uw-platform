@@ -1,27 +1,21 @@
-import type { CostBasis, EventEvidence, ItemState } from '@uw/contracts';
+import type { ItemState } from '@uw/contracts';
 import { allowed, isAgent, isSystemPrincipal } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { actingPrincipal, isRefusal } from '../delegations/acting.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
+import { recordStepIn } from '../runs/steps.ts';
+import type { RunStepInput } from '../runs/types.ts';
 import { expireLapsedLease, LEASE_MS, LEASE_WARNING_MS, leaseLapsed } from './leases.ts';
 import { draft, recordContext, recordItemEvents, type RecordContext } from './record.ts';
 import { pausedRefusal } from './paused.ts';
 import { holdsClaim } from './release.ts';
 
-type RunStep = EventEvidence['run_step_recorded']['step'];
 type StepPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
 export type LeaseOutcome = { readonly leaseExpiresAt: string; readonly leaseWarning: boolean };
+export type StepOutcome = LeaseOutcome & { readonly prompts: readonly string[] };
 export type RenewInput = { readonly itemId: string };
-export type RunStepInput = {
-  readonly itemId: string;
-  readonly runId: string;
-  readonly step: RunStep;
-  readonly tokensIn: number;
-  readonly tokensOut: number;
-  readonly costBasis: CostBasis;
-};
 export type SweepInput = { readonly limit: number };
 export type Swept = { readonly expired: readonly string[] };
 
@@ -79,12 +73,12 @@ function stepDraft(input: RunStepInput | null, leaseExpiresAt: string) {
     tokensOut: input.tokensOut,
     costBasis: input.costBasis,
     leaseExpiresAt,
-    costMinor: null,
-    computeMinor: null,
-    model: null,
-    resolvedProvider: null,
-    toolsCalled: [],
-    writes: 0,
+    costMinor: input.costMinor ?? null,
+    computeMinor: input.computeMinor ?? null,
+    model: input.model ?? null,
+    resolvedProvider: input.resolvedProvider ?? null,
+    toolsCalled: [...(input.toolsCalled ?? [])],
+    writes: input.writes ?? 0,
   });
 }
 
@@ -95,11 +89,19 @@ type Renewal = {
   readonly at: Date;
 };
 
+const noStep = { drafts: [], prompts: [] } as const;
+
+function stepIn(tx: StoreTransaction, context: RecordContext, scene: Renewal, item: ItemState) {
+  const { caller, input } = scene;
+  return input === null ? noStep : recordStepIn(tx, context, { caller, item, input });
+}
+
 async function renewIn(
   ports: StepPorts,
   tx: StoreTransaction,
-  { caller, itemId, input, at }: Renewal,
-): Promise<KernelOutcome<LeaseOutcome>> {
+  renewal: Renewal,
+): Promise<KernelOutcome<StepOutcome>> {
+  const { caller, itemId, input, at } = renewal;
   const item = await tx.harnessItems.read.lock(itemId);
   if (item === null) return refused('item_not_found', { itemId });
   const context = recordContext(ports, caller, at);
@@ -113,28 +115,34 @@ async function renewIn(
     await expireLapsedLease(tx, context, item);
     return refused('lease_expired', { itemId, leaseExpiresAt: item.leaseExpiresAt });
   }
+  const step = await stepIn(tx, context, renewal, item);
+  if ('status' in step) return step;
   const remaining = new Date(item.leaseExpiresAt ?? at).getTime() - at.getTime();
   const leaseExpiresAt = new Date(at.getTime() + LEASE_MS).toISOString();
-  await recordItemEvents(tx, context, itemId, [stepDraft(input, leaseExpiresAt)]);
-  return accepted({ leaseExpiresAt, leaseWarning: remaining <= LEASE_WARNING_MS });
+  await recordItemEvents(tx, context, itemId, [...step.drafts, stepDraft(input, leaseExpiresAt)]);
+  const leaseWarning = remaining <= LEASE_WARNING_MS;
+  return accepted({ leaseExpiresAt, leaseWarning, prompts: step.prompts });
 }
 
-export function renewLease(
+export async function renewLease(
   ports: StepPorts,
   caller: Caller,
   input: RenewInput,
 ): Promise<KernelOutcome<LeaseOutcome>> {
   const at = ports.clock.now();
-  return ports.store.transaction((tx) =>
+  const renewed = await ports.store.transaction((tx) =>
     renewIn(ports, tx, { caller, itemId: input.itemId, input: null, at }),
   );
+  if (renewed.status !== 'accepted') return renewed;
+  const { leaseExpiresAt, leaseWarning } = renewed.value;
+  return accepted({ leaseExpiresAt, leaseWarning });
 }
 
 export function recordRunStep(
   ports: StepPorts,
   caller: Caller,
   input: RunStepInput,
-): Promise<KernelOutcome<LeaseOutcome>> {
+): Promise<KernelOutcome<StepOutcome>> {
   const at = ports.clock.now();
   return ports.store.transaction((tx) =>
     renewIn(ports, tx, { caller, itemId: input.itemId, input, at }),

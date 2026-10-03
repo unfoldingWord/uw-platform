@@ -13,7 +13,7 @@ import {
 import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
-import { seedGrant, seedPage, seedPerson } from '@uw/db/test-seed';
+import { seedGrant, seedHostedRun, seedPage, seedPerson } from '@uw/db/test-seed';
 import { software, type Caller, type Kernel } from '@uw/harness';
 import { createApp } from '../app.tsx';
 import { createAccessFixture, type AccessFixture } from '../testing/access-keys.ts';
@@ -65,6 +65,7 @@ type Scene = {
   readonly delegationId: string;
   readonly beat: Principal;
   readonly pageId: string;
+  readonly workflowRunId: string;
 };
 
 let rigged: Promise<Rig> | null = null;
@@ -178,10 +179,15 @@ async function openScene(r: Rig): Promise<Scene> {
   const hidden = await harnessIn(r, `software-hidden-${scenes}`, '30-39');
   const undelegated = await harnessIn(r, `software-undelegated-${scenes}`, '80-89');
   const { delegationId, beat } = await delegated(r, harnessId);
+  const workflowItem = await enqueue(r, harnessId, 'workflow item');
+  const workflowRunId = crypto.randomUUID();
+  const run = { id: workflowRunId, harnessId, itemId: workflowItem, delegationId };
+  await seedHostedRun(r.db, { ...run, persona: beat.identity });
   return {
     harnessId,
     laptopItem: await enqueue(r, harnessId, 'laptop item'),
-    workflowItem: await enqueue(r, harnessId, 'workflow item'),
+    workflowItem,
+    workflowRunId,
     hiddenItem: await enqueue(r, hidden, 'hidden item'),
     hiddenHarness: hidden,
     undelegatedHarness: undelegated,
@@ -263,7 +269,8 @@ function pageArgs(host: McpHost): Body {
 function itemCalls(host: McpHost, scene: Scene): Call[] {
   const itemId = itemOn(host, scene);
   const delegationId = host === 'external' ? null : scene.delegationId;
-  const run = { runId: crypto.randomUUID(), step: 'work', tokensIn: 1, tokensOut: 1 };
+  const runId = host === 'external' ? crypto.randomUUID() : scene.workflowRunId;
+  const run = { runId, step: 'work', tokensIn: 1, tokensOut: 1 };
   return [
     { verb: 'poll_queue', args: { harnessId: scene.harnessId, limit: 5 } },
     { verb: 'claim_item', args: { itemId, delegationId } },
@@ -353,8 +360,8 @@ async function body(client: Client, name: string, args: Body): Promise<Body> {
   return JSON.parse(textOf(await outcomeOf(client, name, args)));
 }
 
-function step(itemId: string, costBasis: CostBasis): Body {
-  return { itemId, runId: crypto.randomUUID(), step: 'work', tokensIn: 1, tokensOut: 1, costBasis };
+function step(itemId: string, costBasis: CostBasis, runId: string = crypto.randomUUID()): Body {
+  return { itemId, runId, step: 'work', tokensIn: 1, tokensOut: 1, costBasis };
 }
 
 function basisRefusal(expected: CostBasis): Body {
@@ -394,7 +401,7 @@ async function hostSetsCostBasis(r: Rig, scene: Scene, hosts: Hosts): Promise<vo
   const workflow = await body(
     hosts.workflow,
     'record_run_step',
-    step(scene.workflowItem, 'metered'),
+    step(scene.workflowItem, 'metered', scene.workflowRunId),
   );
   expect(workflow['leaseWarning']).toBe(false);
   await overriddenHost(r, scene);

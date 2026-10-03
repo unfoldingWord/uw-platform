@@ -8,6 +8,7 @@ import { createRepairCommands, type RepairCommands } from './items/repair.ts';
 import { createPersonaCommands, type PersonaCommands } from './personas/commands.ts';
 import type { Ports } from './ports.ts';
 import { createKernelReads, type KernelReads } from './reads/index.ts';
+import { createRunCommands, type RunCommands } from './runs/commands.ts';
 import { createStageCommands, type StageCommands } from './stages/commands.ts';
 import { templateProperty } from './template-property.ts';
 import { walk, type WalkPath, type WalkStage } from './walk.ts';
@@ -26,6 +27,7 @@ export type Kernel = {
   readonly delegations: DelegationCommands;
   readonly gates: GateCommands;
   readonly personas: PersonaCommands;
+  readonly runs: RunCommands;
   readonly health: () => Promise<KernelHealth>;
 };
 
@@ -47,6 +49,7 @@ export function createKernel(ports: Ports): Kernel {
     delegations: createDelegationCommands(live),
     gates: createGateCommands(live),
     personas: createPersonaCommands(live),
+    runs: createRunCommands(live),
     health: async () => ({
       now: live.clock.now(),
       appliedMigrations: await live.store.appliedMigrations(),
