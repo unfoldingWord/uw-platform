@@ -108,6 +108,12 @@ describe('KN-17 the protected-directory map covers the code that decides what Sh
     expect(domainOf('apps/uw-app/commands/person/gate-kernel.test.ts')).toBeNull();
   });
 
+  it('protects the dispatcher that decides who gets the gate GitHub opener, and the person deps that hold it, under acl', () => {
+    expect(domainOf('apps/uw-app/commands/dispatch.ts')).toBe('acl');
+    expect(domainOf('apps/uw-app/commands/person-deps.ts')).toBe('acl');
+    expect(domainOf('apps/uw-app/commands/registry.ts')).toBeNull();
+  });
+
   it('protects the ship rule contract (CI jobs and refusals) under acl', () => {
     expect(domainOf('packages/contracts/ship-rule.ts')).toBe('acl');
     expect(domainOf('packages/contracts/ship-rule.test.ts')).toBeNull();
