@@ -1,0 +1,9 @@
+{
+  "itemId": "00000000-0000-4000-8000-000000000002",
+  "runId": "00000000-0000-4000-8000-000000000006",
+  "step": "work",
+  "tokensIn": 10,
+  "tokensOut": 5,
+  "costBasis": "metered",
+  "model": "gpt\n5"
+}

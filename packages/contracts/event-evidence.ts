@@ -26,7 +26,7 @@ import {
 import { identitySchema } from './identity.ts';
 import { errorReasonSchema } from './outcomes.ts';
 import { slugSchema } from './pages.ts';
-import { reviewRecordSchema, runStepCosts, runStepSchema } from './runs.ts';
+import { modelIdSchema, reviewRecordSchema, runStepCosts, runStepSchema } from './runs.ts';
 import { fullShaSchema, riskDeclarationSchema, shipRefusalSchema } from './ship-rule.ts';
 import { submitToGateResultSchema } from './verb-io.ts';
 
@@ -78,7 +78,7 @@ const runEvidence = {
     persona: identitySchema,
     runShape: runShapeSchema,
     engine: engineSchema,
-    model: z.string().min(1).max(200),
+    model: modelIdSchema,
     delegationId: id.nullable(),
   }),
   run_step_recorded: z.strictObject({
@@ -97,7 +97,10 @@ const runEvidence = {
     runId: id,
     step: runStepSchema.nullable(),
     why: runFailureSchema,
-    detail: z.string().max(500).nullable(),
+    detail: z
+      .string()
+      .regex(/^[ -~]{1,500}$/)
+      .nullable(),
   }),
   run_completed: z.strictObject({
     runId: id,

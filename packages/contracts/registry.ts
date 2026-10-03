@@ -71,6 +71,7 @@ import {
 import { platformCommandNameSchema } from './platform-commands.ts';
 import { grantSchema, principalSchema } from './principal.ts';
 import {
+  modelIdSchema,
   providerIdSchema,
   reviewRecordSchema,
   runStepRecordSchema,
@@ -170,6 +171,7 @@ export const schemaRegistry: Record<string, ZodType> = {
   'breaker-level': closedSets.breakerLevelSchema,
   'review-verdict': closedSets.reviewVerdictSchema,
   'provider-id': providerIdSchema,
+  'model-id': modelIdSchema,
   'review-record': reviewRecordSchema,
   'run-step-record': runStepRecordSchema,
   'record-run-step-reply': recordRunStepReplySchema,

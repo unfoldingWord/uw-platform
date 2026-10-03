@@ -156,7 +156,7 @@ export const verbIo = {
     }),
   },
   record_run_step: {
-    input: z.object({
+    input: z.strictObject({
       itemId: z.uuid(),
       runId: z.uuid(),
       step: runStepSchema,
