@@ -4,6 +4,7 @@ import { McpError } from '@modelcontextprotocol/sdk/types.js';
 import {
   delegatedIdentity,
   isForbiddenVerbName,
+  newEventSchema,
   principalSchema,
   verbRegistry,
   type CostBasis,
@@ -23,7 +24,8 @@ import {
   type CallResult,
   type ToolSurface,
 } from '../testing/conformance.ts';
-import { kernelOn, personOn, seedSpendReading } from '../testing/kernel.ts';
+import { kernelOn, personOn } from '../testing/kernel.ts';
+import { platformStore } from '../ports/store.ts';
 import { httpClient } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
 import type { McpHost, VerbContext } from './context.ts';
@@ -80,6 +82,21 @@ function grantRow(id: string, personId: string, role: 'admin' | 'editor') {
   const grantedAt = new Date('2026-01-01T00:00:00.000Z');
   const scope = { scopeKind: 'jd_area' as const, scopeArea: '80-89' };
   return { id, personId, role, ...scope, grantedAt, expiresAt: null };
+}
+
+async function seedSpendReading(db: Database, harnessId: string, at: Date): Promise<void> {
+  const reading = newEventSchema.parse({
+    eventId: crypto.randomUUID(),
+    harnessId,
+    itemId: null,
+    name: 'breaker_open',
+    at: at.toISOString(),
+    actor: 'agent:system',
+    evidence: { spentMinor: 0, capMinor: 125_000, currency: 'USD', percent: 0 },
+    traceId: crypto.randomUUID(),
+    requestId: null,
+  });
+  await platformStore(db).transaction((tx) => tx.harnessEvents.write.append([reading]));
 }
 
 async function openRig(): Promise<Rig> {

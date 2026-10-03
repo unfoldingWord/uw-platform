@@ -1,4 +1,4 @@
-import { newEventSchema, principalSchema, type Principal } from '@uw/contracts';
+import { principalSchema, type Principal } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
 import {
   createKernel,
@@ -12,7 +12,6 @@ import {
 } from '@uw/harness';
 import { platformPorts } from '../kernel.ts';
 import { platformGrants } from '../ports/grants.ts';
-import { platformStore } from '../ports/store.ts';
 
 declare function setTimeout(handler: () => void, milliseconds: number): unknown;
 
@@ -68,19 +67,4 @@ export function agentOf(owner: Principal, persona: string): Principal {
     grants: owner.grants,
     interactive: true,
   });
-}
-
-export async function seedSpendReading(db: Database, harnessId: string, at: Date): Promise<void> {
-  const reading = newEventSchema.parse({
-    eventId: crypto.randomUUID(),
-    harnessId,
-    itemId: null,
-    name: 'breaker_open',
-    at: at.toISOString(),
-    actor: 'agent:system',
-    evidence: { spentMinor: 0, capMinor: 125_000, currency: 'USD', percent: 0 },
-    traceId: crypto.randomUUID(),
-    requestId: null,
-  });
-  await platformStore(db).transaction((tx) => tx.harnessEvents.write.append([reading]));
 }
