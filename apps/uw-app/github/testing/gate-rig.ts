@@ -1,7 +1,10 @@
 import type { ItemState, Principal } from '@uw/contracts';
+import { createLogger } from '@uw/core/log';
 import type { Database } from '@uw/db/client';
 import type { PersonDeps } from '../../commands/person-deps.ts';
+import { platformGitHubFacts } from '../../ports/github-facts.ts';
 import { kernelOn } from '../../testing/kernel.ts';
+import { createGitHubReads } from '../client.ts';
 import { fixtureApp, fixtureTransport } from './app-key.ts';
 import { base } from './facts-fixtures.ts';
 import { fixtureGitHub, type FixtureGitHub } from './fixture-github.ts';
@@ -79,4 +82,15 @@ export function shipWrites(github: FixtureGitHub): string[] {
     .requests()
     .filter((sent) => sent.method !== 'GET' && !sent.path.endsWith('/access_tokens'))
     .map((sent) => `${sent.method} ${sent.path}`);
+}
+
+export async function readyToShipFacts(db: Database, itemId: string) {
+  const github = readyToShip(itemId);
+  const app = await fixtureApp();
+  const logger = createLogger(
+    { traceId: crypto.randomUUID(), commit: 'test', route: 'lost', principal: null },
+    () => undefined,
+  );
+  const open = () => createGitHubReads(app, { fetch: github.fetch, now: clock.now });
+  return platformGitHubFacts(db, { open, logger }, clock);
 }
