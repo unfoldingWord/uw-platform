@@ -5,6 +5,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { readSpend, simCaller } from '../fixtures.ts';
 import { readWorldLog } from '../runner/log.ts';
 import {
+  beatOf,
   builderFrontmatter,
   detailOf,
   itemInScope,
@@ -143,6 +144,23 @@ async function backsOffLapsedLease(scene: RunWorld): Promise<void> {
   expect(await freshBeat(scene)).toHaveLength(1);
 }
 
+async function releaseNoBackOff(scene: RunWorld): Promise<void> {
+  const [started] = await freshBeat(scene);
+  if (started === undefined) throw new Error('the beat started nothing');
+  const holder = await beatOf(scene);
+  value(
+    await scene.world.kernel.items.release(holder, {
+      itemId: started.itemId,
+      delegationId: scene.delegationId,
+    }),
+  );
+  const stopped = await scene.world.adapters.store.transaction((tx) =>
+    tx.harnessRuns.read.byId(started.runId),
+  );
+  expect(stopped).toMatchObject({ outcome: 'stopped' });
+  expect(await freshBeat(scene)).toHaveLength(1);
+}
+
 describe('the hosted beat', () => {
   it('HE-1 the beat starts one run per live delegation whose active persona is a workflow-run', () =>
     inWorld(startsOne));
@@ -160,4 +178,7 @@ describe('the hosted beat', () => {
 
   it('the beat backs off a persona from an item whose run was stopped by a lapsed lease', () =>
     inWorld(backsOffLapsedLease));
+
+  it('the beat does not back off a persona from an item whose run was released', () =>
+    inWorld(releaseNoBackOff));
 });
