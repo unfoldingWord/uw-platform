@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { createLogger } from '@uw/core/log';
 import type { Database } from '@uw/db/client';
 import { createKernel, type Connectors, type Kernel, type Store } from '@uw/harness';
@@ -23,7 +22,7 @@ export async function kernelThatLosesTheExit(db: Database, itemId: string): Prom
   const github = readyToShip(itemId);
   const app = await fixtureApp();
   const logger = createLogger(
-    { traceId: randomUUID(), commit: 'test', route: 'lost', principal: null },
+    { traceId: crypto.randomUUID(), commit: 'test', route: 'lost', principal: null },
     () => undefined,
   );
   const open = () => createGitHubReads(app, { fetch: github.fetch, now: clock.now });
