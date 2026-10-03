@@ -7,7 +7,12 @@ export type ModelEngineSubject = {
   respondNextWith(result: TurnResult): Promise<void>;
   setSpend(amount: Pick<Spend, 'spentMinor' | 'currency'>): Promise<void>;
   now(): Date;
+  readonly servedBy?: string;
 };
+
+function served(subject: ModelEngineSubject): string {
+  return subject.servedBy ?? 'fixture-provider';
+}
 
 const dayMs = 86_400_000;
 
@@ -97,10 +102,10 @@ function describeReporting(open: () => Promise<ModelEngineSubject>): void {
     await subject.respondNextWith(turnCalling('read_page'));
     const result = await subject.engine.turn({
       ...turnRequest,
-      pinnedProvider: 'fixture-provider',
+      pinnedProvider: served(subject),
     });
     expect(result).toMatchObject({
-      resolvedProvider: 'fixture-provider',
+      resolvedProvider: served(subject),
       resolvedModel: 'fixture-model',
       stopReason: 'tool_use',
     });
@@ -124,9 +129,9 @@ function describePinning(open: () => Promise<ModelEngineSubject>): void {
     await subject.respondNextWith(turnCalling('read_page'));
     const result = await subject.engine.turn({
       ...turnRequest,
-      pinnedProvider: 'fixture-provider',
+      pinnedProvider: served(subject),
     });
-    expect(result.resolvedProvider).toBe('fixture-provider');
+    expect(result.resolvedProvider).toBe(served(subject));
   });
 
   it('rejects with both provider names when another provider served a pinned turn', async () => {
@@ -137,7 +142,7 @@ function describePinning(open: () => Promise<ModelEngineSubject>): void {
     ).rejects.toMatchObject({
       name: 'ProviderMismatchError',
       pinned: 'pinned-provider',
-      resolved: 'fixture-provider',
+      resolved: served(subject),
     });
   });
 
@@ -148,7 +153,7 @@ function describePinning(open: () => Promise<ModelEngineSubject>): void {
       resolvedProvider: 'other-provider',
     });
     const result = await subject.engine.turn(turnRequest);
-    expect(result.resolvedProvider).toBe('other-provider');
+    expect(result.resolvedProvider).toBe(subject.servedBy ?? 'other-provider');
   });
 
   it('rejects a history whose tool result answers no earlier tool call', async () => {
