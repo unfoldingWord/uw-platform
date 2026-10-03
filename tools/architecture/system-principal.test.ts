@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { repoFiles } from '../repo-files.ts';
 
-const composition = ['sim/', 'apps/uw-app/cron/'];
+const composition = ['sim/', 'apps/uw-app/cron/', 'apps/uw-app/runs/deps.ts'];
 
 const named = new Set([
   'packages/contracts/identity.ts',

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { McpError } from '@modelcontextprotocol/sdk/types.js';
 import { areaGrant, testAgent, testContext } from '../testing/mcp.ts';
 import type { VerbHandler } from './handler.ts';
-import { connectInProcess } from './in-process.ts';
+import { serveVerbsForTest } from '../testing/in-process.ts';
 import { searchPagesVerb } from './verbs/search-pages.ts';
 
 function viewer() {
@@ -30,18 +30,18 @@ async function rejection(work: Promise<unknown>): Promise<unknown> {
   return null;
 }
 
-describe('AB-3 the in-process host builds its server through createVerbServer', () => {
+describe('AB-3 an in-process verb server is built through createVerbServer', () => {
   it('refuses an unbranded handler before it connects', async () => {
-    await expect(connectInProcess(viewer(), served(handBuilt()))).rejects.toThrow(/search_pages/);
+    await expect(serveVerbsForTest(viewer(), served(handBuilt()))).rejects.toThrow(/search_pages/);
   });
 
   it('refuses a spread copy of a built handler before it connects', async () => {
     const copy: VerbHandler = { ...searchPagesVerb };
-    await expect(connectInProcess(viewer(), served(copy))).rejects.toThrow(/search_pages/);
+    await expect(serveVerbsForTest(viewer(), served(copy))).rejects.toThrow(/search_pages/);
   });
 
   it('answers an unserved name with the unknown-tool error', async () => {
-    const client = await connectInProcess(viewer());
+    const client = await serveVerbsForTest(viewer());
     const error = await rejection(client.callTool({ name: 'approve_item', arguments: {} }));
     await client.close();
     expect(error instanceof McpError && error.code).toBe(-32602);

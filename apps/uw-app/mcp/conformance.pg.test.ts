@@ -29,7 +29,7 @@ import { platformStore } from '../ports/store.ts';
 import { httpClient } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
 import type { McpHost, VerbContext } from './context.ts';
-import { connectInProcess } from './in-process.ts';
+import { serveVerbsForTest } from '../testing/in-process.ts';
 import { verbHandlers } from './verbs/index.ts';
 
 const IAN_ID = '00000000-0000-4000-8000-000000000001';
@@ -242,7 +242,7 @@ async function hostsOf(
     'x-uw-device': 'laptop',
     ...headers,
   });
-  const workflow = await connectInProcess(workflowContext(r, inProcess));
+  const workflow = await serveVerbsForTest(workflowContext(r, inProcess));
   return { external, workflow };
 }
 
@@ -427,7 +427,7 @@ async function hostSetsCostBasis(r: Rig, scene: Scene, hosts: Hosts): Promise<vo
 
 async function overriddenHost(r: Rig, scene: Scene): Promise<void> {
   const context: VerbContext = { ...workflowContext(r, scene.beat), host: 'external' };
-  const client = await connectInProcess(context);
+  const client = await serveVerbsForTest(context);
   try {
     expect(await body(client, 'record_run_step', step(scene.workflowItem, 'subscription'))).toEqual(
       basisRefusal('metered'),

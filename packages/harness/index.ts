@@ -4,7 +4,7 @@ export { portNames } from './ports.ts';
 export type * from './ports.ts';
 export { createKernel } from './kernel.ts';
 export type { Kernel, KernelHealth } from './kernel.ts';
-export { engineDescriptor, engineDescriptors, hostable } from './engines.ts';
+export { engineDescriptor, engineDescriptors, hostable, SCOUT_ENGINE } from './engines.ts';
 export type { EngineDescriptor } from './engines.ts';
 export { runShapes, workflowRunSteps } from './runs/shapes.ts';
 export type { PollItem } from './reads/poll.ts';

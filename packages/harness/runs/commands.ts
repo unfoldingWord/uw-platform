@@ -14,6 +14,7 @@ import {
   type FailInput,
   type HaltReason,
 } from './lifecycle.ts';
+import { runProgress, type RunProgress } from './progress.ts';
 import { postReview, reviewDiff, type PostReviewInput, type ReviewDiff } from './review.ts';
 import { runScene } from './scene.ts';
 import { startRun } from './start.ts';
@@ -39,6 +40,7 @@ export type RunCommands = {
   beat(caller: Caller, input: BeatInput): Promise<KernelOutcome<Beaten>>;
   reviewDiff(caller: Caller, runId: string): Promise<KernelOutcome<ReviewDiff>>;
   postReview(caller: Caller, runId: string, input: PostReviewInput): RunOutcome;
+  progress(caller: Caller, runId: string): Promise<KernelOutcome<RunProgress>>;
 };
 
 type HostMember<A extends readonly unknown[], R> = (
@@ -73,5 +75,6 @@ export function createRunCommands(ports: RunPorts): RunCommands {
     postReview: hostOnly((caller, runId: string, input: PostReviewInput) =>
       postReview(ports, caller, runId, input),
     ),
+    progress: hostOnly((_caller, runId: string) => runProgress(ports, runId)),
   };
 }

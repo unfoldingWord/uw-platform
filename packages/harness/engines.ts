@@ -68,6 +68,8 @@ const descriptors: Readonly<Record<Engine, EngineDescriptor>> = {
   },
 };
 
+export const SCOUT_ENGINE: Engine = 'openrouter-messages';
+
 const byKey: ReadonlyMap<Engine, EngineDescriptor> = new Map(
   Object.values(descriptors).map((descriptor) => [descriptor.key, descriptor]),
 );
