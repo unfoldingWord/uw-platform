@@ -10,6 +10,7 @@ import {
   tweakPackageCommand,
 } from './handlers/items.ts';
 import { notWiredCommand } from './not-wired.ts';
+import { revokeDelegationCommand, scheduleRegularTweakCommand } from './person/delegations.ts';
 import {
   approveCommand,
   overrideCommand,
@@ -17,6 +18,15 @@ import {
   rejectCommand,
   takeOverCommand,
 } from './person/gates.ts';
+import {
+  activateTemplateCommand,
+  createStageCommand,
+  pauseCommand,
+  removeStageCommand,
+  reorderStagesCommand,
+  resumeCommand,
+  updateStageCommand,
+} from './person/stages.ts';
 
 export function commandRegistryOf(
   handlers: readonly CommandHandler[],
@@ -48,15 +58,15 @@ export const commandRegistry = commandRegistryOf([
   overrideCommand,
   notWiredCommand('prompt_run', 'write'),
   notWiredCommand('stop_run', 'write'),
-  notWiredCommand('pause', 'admin'),
-  notWiredCommand('resume', 'admin'),
+  pauseCommand,
+  resumeCommand,
   tweakPackageCommand,
-  notWiredCommand('schedule_regular_tweak', 'admin'),
-  notWiredCommand('revoke_delegation', 'admin'),
+  scheduleRegularTweakCommand,
+  revokeDelegationCommand,
   recoverConnectorsCommand,
-  notWiredCommand('activate_template', 'admin', 'new_harness'),
-  notWiredCommand('create_stage', 'admin'),
-  notWiredCommand('update_stage', 'admin'),
-  notWiredCommand('reorder_stages', 'admin'),
-  notWiredCommand('remove_stage', 'admin'),
+  activateTemplateCommand,
+  createStageCommand,
+  updateStageCommand,
+  reorderStagesCommand,
+  removeStageCommand,
 ]);
