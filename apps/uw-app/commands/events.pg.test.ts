@@ -141,6 +141,8 @@ const malformedQueries = [
   '?after=1e3',
   '?after=0x10',
   '?after=99999999999999999999',
+  '?after=9999999999999999',
+  '?after=9007199254740992',
   '?limit=0',
   '?limit=101',
   '?limit=abc',
@@ -158,6 +160,12 @@ async function malformedCursor(db: Database): Promise<void> {
       body: { status: 'error', reason: 'malformed_command' },
     });
   }
+  const largest = await read(
+    db,
+    scene.viewer,
+    eventsPath(scene.harnessId, '?after=9007199254740991'),
+  );
+  expect(pageOf(largest)).toEqual({ events: [], next: null });
   const unread = await read(db, scene.stranger, eventsPath(scene.harnessId, '?after=abc'));
   const absent = await read(db, scene.stranger, eventsPath(missingHarness, '?after=abc'));
   expect(unread.text).toBe(absent.text);

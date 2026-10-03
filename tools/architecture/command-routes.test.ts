@@ -38,7 +38,7 @@ const arrowCall = /^\(\w+\)\s*=>\s*(\w+)\(/;
 const namedArgument = /^(\w+)\s*\)/;
 const topLevelFunction = /\n(?=export function |export async function |async function |function )/;
 const functionName = /\bfunction (\w+)\(/;
-const localImport = /\bfrom\s+'\.\/([\w./-]+\.ts)'/g;
+const localImport = /\bimport\s*\{([^}]*)\}\s*from\s+'\.\/([\w./-]+\.ts)'/g;
 const guardedEntry =
   /\bexecuteCommand\s*\(|\bkernel\s*\.\s*reads\s*\.\s*\w+\s*\(|\bkernel\s*\.\s*events\s*\.\s*read\s*\(|\bkernel\s*\.\s*gates\s*\.\s*view\s*\(/;
 
@@ -127,8 +127,10 @@ function handlerNames(text: string): string[] {
   return lines.map(handlerOf).filter((name): name is string => name !== null);
 }
 
-function unguardedRoutes(text: string, handlers: string = text): string[] {
-  const functions = functionsIn(handlers);
+function unguardedRoutes(
+  text: string,
+  functions: ReadonlyMap<string, string> = functionsIn(text),
+): string[] {
   const names = handlerNames(text);
   const registered = [...text.matchAll(routeCalls)].length;
   const unguarded = names.filter((name) => !guardedEntry.test(functions.get(name) ?? ''));
@@ -136,11 +138,20 @@ function unguardedRoutes(text: string, handlers: string = text): string[] {
   return [...unguarded, ...Array.from({ length: unresolved }, () => '<inline handler>')];
 }
 
-function handlerSources(routesText: string, read: Read): string {
-  const imported = [...routesText.matchAll(localImport)].map(
-    (match) => `${commandsRoot}${match[1]}`,
-  );
-  return [routesText, ...imported.map(read)].join('\n');
+function importedNames(list: string): string[] {
+  return list
+    .split(',')
+    .map((name) => name.trim())
+    .filter((name) => name !== '' && !name.startsWith('type '));
+}
+
+function handlerSources(routesText: string, read: Read): ReadonlyMap<string, string> {
+  const functions = new Map(functionsIn(routesText));
+  for (const [, list = '', module = ''] of routesText.matchAll(localImport)) {
+    const inModule = functionsIn(read(`${commandsRoot}${module}`));
+    for (const name of importedNames(list)) functions.set(name, inModule.get(name) ?? '');
+  }
+  return functions;
 }
 
 function plantedRead(texts: Readonly<Record<string, string>>): Read {
@@ -204,8 +215,8 @@ describe('the command route checks catch planted mistakes', () => {
     const sneak = 'async function readSneak(c) {\n  return c.json({});\n}';
     const guarded =
       'async function readSneak(c) {\n  return kernel.reads.inStage(caller, input);\n}';
-    expect(unguardedRoutes(route, sneak)).toEqual(['readSneak']);
-    expect(unguardedRoutes(route, guarded)).toEqual([]);
+    expect(unguardedRoutes(route, functionsIn(sneak))).toEqual(['readSneak']);
+    expect(unguardedRoutes(route, functionsIn(guarded))).toEqual([]);
   });
 
   it('reads each handler from the module the command routes import it from', () => {
@@ -227,6 +238,20 @@ describe('the command route checks catch planted mistakes', () => {
       });
     expect(unguardedRoutes(routes, handlerSources(routes, files(guardedView)))).toEqual([]);
     expect(unguardedRoutes(routes, handlerSources(routes, files(bareView)))).toEqual(['gateView']);
-    expect(unguardedRoutes(routes, routes)).toEqual(['harnessEvents', 'gateView']);
+    expect(unguardedRoutes(routes)).toEqual(['harnessEvents', 'gateView']);
+  });
+
+  it('reads a handler only from its own module, never from a same-named function elsewhere', () => {
+    const routes = [
+      "import { gateView } from './person/gate-view.ts';",
+      "routes.get('/:harness/gates/:item', gateView);",
+    ].join('\n');
+    const read = plantedRead({
+      'apps/uw-app/commands/person/gate-view.ts':
+        'export async function gateView(c) {\n  return c.json(await viewOf(c));\n}',
+      'apps/uw-app/commands/reads.ts':
+        'export async function gateView(c) {\n  return kernel.gates.view(caller, input);\n}',
+    });
+    expect(unguardedRoutes(routes, handlerSources(routes, read))).toEqual(['gateView']);
   });
 });
