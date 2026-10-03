@@ -36,7 +36,14 @@ export function platformHub(namespace: HubNamespace, logger: Logger, timers: Tim
         });
         return;
       }
-      if (answer.status !== 202) throw new Error(`hub wake answered ${answer.status}`);
+      if (answer.status !== 202) {
+        logger.warn('hub wake refused', {
+          outcome: 'hub_wake_refused',
+          harness_id: harnessId,
+          status: answer.status,
+        });
+        throw new Error(`hub wake answered ${answer.status}`);
+      }
     },
   };
 }

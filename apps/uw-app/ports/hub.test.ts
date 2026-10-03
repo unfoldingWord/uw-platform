@@ -37,11 +37,18 @@ describe('the platform hub adapter', () => {
     ]);
   });
 
-  it('rejects a wake the hub refuses, and logs nothing for one it takes', async () => {
+  it('logs and rejects a wake the hub refuses', async () => {
     const { logger, lines } = recordingLogger();
     const refusing = namespaceAnswering(async () => new Response(null, { status: 400 }));
-    const taking = namespaceAnswering(async () => new Response(null, { status: 202 }));
     await expect(platformHub(refusing, logger, never).wake(harnessId)).rejects.toThrow('400');
+    expect(lines).toMatchObject([
+      { level: 'warn', outcome: 'hub_wake_refused', harness_id: harnessId, status: 400 },
+    ]);
+  });
+
+  it('logs nothing for a wake the hub takes', async () => {
+    const { logger, lines } = recordingLogger();
+    const taking = namespaceAnswering(async () => new Response(null, { status: 202 }));
     await expect(platformHub(taking, logger, never).wake(harnessId)).resolves.toBeUndefined();
     expect(lines).toEqual([]);
   });

@@ -53,3 +53,44 @@ describe('the hub Durable Object is reached only through the platform Hub adapte
     ]);
   });
 });
+
+const cloudflareImport = /(?:from\s*|import\s*\(?\s*)['"](cloudflare[^'"]*)['"]/g;
+const runtimeModuleHost = 'apps/uw-app/live/harness-hub.ts';
+
+function isSource(file: string): boolean {
+  return (
+    ['apps/', 'packages/', 'sim/', 'tools/'].some((root) => file.startsWith(root)) &&
+    /\.(?:tsx?|m?js)$/.test(file) &&
+    !file.includes('node_modules')
+  );
+}
+
+function cloudflareStrays(files: readonly string[], read: (file: string) => string): string[] {
+  return files.filter(isSource).flatMap((file) =>
+    [...read(file).matchAll(cloudflareImport)]
+      .map((match) => match[1] ?? '')
+      .filter((specifier) => file !== runtimeModuleHost || specifier !== 'cloudflare:workers')
+      .map((specifier) => `${file} imports ${specifier}`),
+  );
+}
+
+describe('the Workers runtime module is imported only by the hub Durable Object', () => {
+  it('finds cloudflare imported only as cloudflare:workers and only from the HarnessHub file', () => {
+    const others = repoFiles().filter((file) => file !== 'tools/architecture/hub-wiring.test.ts');
+    expect(cloudflareStrays(others, (file) => readFileSync(file, 'utf8'))).toEqual([]);
+  });
+
+  it('flags the cloudflare package, and the runtime module outside the hub file', () => {
+    const planted = new Map([
+      [runtimeModuleHost, "import { DurableObject } from 'cloudflare:workers';"],
+      ['apps/uw-app/live/other.ts', "import { DurableObject } from 'cloudflare:workers';"],
+      ['apps/uw-app/ports/sdk.ts', "import Cloudflare from 'cloudflare';"],
+      ['apps/uw-app/ports/lazy.ts', "const sdk = await import('cloudflare/resources');"],
+    ]);
+    expect(cloudflareStrays([...planted.keys()], (file) => planted.get(file) ?? '')).toEqual([
+      'apps/uw-app/live/other.ts imports cloudflare:workers',
+      'apps/uw-app/ports/sdk.ts imports cloudflare',
+      'apps/uw-app/ports/lazy.ts imports cloudflare/resources',
+    ]);
+  });
+});

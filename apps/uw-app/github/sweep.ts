@@ -30,7 +30,11 @@ type SweepDeps = Omit<GitHubDeps, 'client'> & {
   readonly transport: GitHubTransport;
 };
 
-export type SweepOptions = { readonly maxPages?: number; readonly maxSubrequests?: number };
+export type SweepOptions = {
+  readonly maxPages?: number;
+  readonly maxSubrequests?: number;
+  readonly wakesOwed?: () => number;
+};
 
 type Outcome = SweepRecord['outcome'];
 type Reason = GitHubFailure | 'budget_exhausted' | 'page_limit' | 'pull_request_not_swept';
@@ -52,7 +56,12 @@ export type SweepReport = {
   readonly subrequests: number;
 };
 
-type Budget = { spent: number; exhausted: boolean; readonly limit: number };
+type Budget = {
+  spent: number;
+  exhausted: boolean;
+  readonly limit: number;
+  readonly reserved: () => number;
+};
 
 type Run = {
   readonly deps: SweepDeps;
@@ -85,6 +94,7 @@ const defaultSubrequests = 900;
 const perPullRequest = 8;
 const perCrossReference = LIST_PAGES + 2;
 const repositoryStart = 2;
+const wakesPerRepository = 1;
 const noRepairs: RepairCounts = {
   repos: 0,
   milestones: 0,
@@ -98,7 +108,12 @@ const unswept: SweepState = { sweptThrough: null, attemptedAt: null };
 const listedSchema = issueSchema.pick({ number: true, updated_at: true, pull_request: true });
 
 function remaining(budget: Budget): number {
-  return budget.limit - budget.spent;
+  return budget.limit - budget.spent - budget.reserved();
+}
+
+function reservedFor(wakesOwed: (() => number) | undefined): () => number {
+  if (wakesOwed === undefined) return () => 0;
+  return () => wakesOwed() + wakesPerRepository;
 }
 
 function metered(transport: GitHubTransport, budget: Budget): GitHubTransport {
@@ -439,6 +454,7 @@ function runOf(deps: SweepDeps, logger: Logger, options: SweepOptions): Run {
     spent: 0,
     exhausted: false,
     limit: options.maxSubrequests ?? defaultSubrequests,
+    reserved: reservedFor(options.wakesOwed),
   };
   return {
     deps,

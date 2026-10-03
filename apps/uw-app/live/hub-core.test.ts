@@ -81,6 +81,21 @@ describe('the live hub between ticks', () => {
   });
 });
 
+describe('the live hub when its storage fails', () => {
+  it('still wakes its sessions and leaves no rejection unhandled when the last wake time cannot be stored', async () => {
+    const socket = fakeSocket();
+    const state = fakeHubState([socket]);
+    const failing = {
+      ...state,
+      storage: { ...state.storage, put: () => Promise.reject(new Error('storage down')) },
+    };
+    const timers = manualTimers();
+    createHubCore(failing, timers, () => wakeInstant).wake(first);
+    await timers.runAll();
+    expect(socket.sent).toEqual([wakeOf(first)]);
+  });
+});
+
 describe('WB-3 the hub answers only its three internal paths', () => {
   it('WB-3 /connect without an Upgrade header is 426; /wake with a malformed body is 400; an unknown path is 404', async () => {
     const { core, state } = hubWith([]);

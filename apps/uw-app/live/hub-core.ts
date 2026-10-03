@@ -40,7 +40,7 @@ export function createHubCore(state: HubState, timers: HubTimers, now: () => Dat
     const woken = [...pending];
     pending.clear();
     for (const harnessId of woken) broadcast(state, harnessId);
-    await state.storage.put(LAST_WAKE, now().toISOString());
+    await state.storage.put(LAST_WAKE, now().toISOString()).catch(() => undefined);
   };
   return {
     wake: (harnessId) => {

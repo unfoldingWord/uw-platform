@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import type { Database } from '@uw/db/client';
+import type { Hub } from '@uw/harness';
 import { cronLogger } from '../../cron/job.ts';
 import { ghRepos } from '@uw/db/schema';
 import { systemClock } from '../../ports/clock.ts';
@@ -97,6 +98,7 @@ export async function sweepOnce(
     readonly at: Date;
     readonly options?: SweepOptions;
     readonly now?: () => Date;
+    readonly hub?: Hub;
   },
 ): Promise<Sweeping> {
   const lines: Line[] = [];
@@ -112,7 +114,7 @@ export async function sweepOnce(
   );
   const deps = {
     db,
-    kernel: kernelOn(db, systemClock),
+    kernel: kernelOn(db, systemClock, run.hub ? { hub: run.hub } : {}),
     now: run.now ?? (() => run.at),
     app,
     transport: fixtureTransport(run.github),
