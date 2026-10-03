@@ -34,6 +34,7 @@ const instant = z.iso.datetime();
 const stage = stageKeySchema;
 const text = z.string().min(1).max(500);
 const head = fullShaSchema;
+const decidedBase = z.strictObject({ sha: fullShaSchema, ref: z.string().min(1).max(255) });
 const effect = connectorSchema.exclude(['none']);
 const stageColumnSchema = z.strictObject(
   stageSchema.omit({ id: true, harnessId: true }).partial().shape,
@@ -90,6 +91,8 @@ const itemEvidence = {
     riskDomains: riskDomainsSchema,
     refusal: z.literal('risk_tier_undeclared').nullable(),
     head: head.nullable().default(null),
+    repository: repositorySchema.nullable().default(null),
+    base: decidedBase.nullable().default(null),
   }),
   run_step_recorded: z.strictObject({
     runId: id,
