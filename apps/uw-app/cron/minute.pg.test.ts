@@ -34,7 +34,7 @@ const PERSONA_PAGE = '00000000-0000-4000-8000-000000009701';
 const MINUTE = 60_000;
 
 function costReply(cost: number): Response {
-  const groups = [{ sum: { cost } }];
+  const groups = [{ count: 1, sum: { cost } }];
   const body = { data: { viewer: { accounts: [{ aiGatewayRequestsAdaptiveGroups: groups }] } } };
   return Response.json(body);
 }

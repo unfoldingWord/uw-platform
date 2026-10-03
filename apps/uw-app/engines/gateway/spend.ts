@@ -13,6 +13,7 @@ const SPEND_QUERY = `query Spend($account: string!, $gateway: string!, $since: T
         limit: 1
         filter: { gateway: $gateway, datetime_geq: $since, datetime_lt: $until }
       ) {
+        count
         sum { cost }
       }
     }
@@ -25,7 +26,10 @@ const replySchema = z.object({
       accounts: z.tuple([
         z.object({
           aiGatewayRequestsAdaptiveGroups: z.array(
-            z.object({ sum: z.object({ cost: z.number().nonnegative().nullable() }) }),
+            z.object({
+              count: z.number().int().nonnegative(),
+              sum: z.object({ cost: z.number().nonnegative().nullable() }),
+            }),
           ),
         }),
       ]),
@@ -44,12 +48,14 @@ export class SpendUnreadableError extends Error {
   }
 }
 
-function costOf(reply: z.infer<typeof replySchema>): number {
+function costOf(reply: z.infer<typeof replySchema>): number | null {
   const [account] = reply.data.viewer.accounts;
-  return account.aiGatewayRequestsAdaptiveGroups.reduce(
-    (total, group) => total + (group.sum.cost ?? 0),
-    0,
-  );
+  let total = 0;
+  for (const group of account.aiGatewayRequestsAdaptiveGroups) {
+    if (group.sum.cost === null && group.count > 0) return null;
+    total += group.sum.cost ?? 0;
+  }
+  return total;
 }
 
 export function gatewaySpend(config: EngineConfig, now: () => Date): ModelEngine['spend'] {
@@ -67,8 +73,9 @@ export function gatewaySpend(config: EngineConfig, now: () => Date): ModelEngine
     });
     if (!response.ok) throw new SpendUnreadableError(response.status);
     const parsed = replySchema.safeParse(await response.json().catch(() => null));
-    if (!parsed.success) throw new SpendUnreadableError(response.status);
-    const spentMinor = Math.round(costOf(parsed.data) * MINOR_PER_UNIT);
+    const cost = parsed.success ? costOf(parsed.data) : null;
+    if (cost === null) throw new SpendUnreadableError(response.status);
+    const spentMinor = Math.round(cost * MINOR_PER_UNIT);
     return { spentMinor, currency: CURRENCY, since, asOf };
   };
 }
