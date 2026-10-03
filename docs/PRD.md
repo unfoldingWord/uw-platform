@@ -314,6 +314,7 @@ Every table declares its classification and offline eligibility. Every table has
 | `push_subscriptions`, `push_cooldowns` | per person and device; per person | the notifier |
 | `tasks` | id, jd_area, title, page, due, status (task status), created_by, trace id, created at | the tasks module, through `create_task` |
 | `service_tokens` | client id, person, device, bound by, bound at, revoked at, trace id | the service-token command, org admin only |
+| `command_requests` | actor, request id, command, harness, outcome, trace id, claimed at, settled at; primary key on actor and request id | the command API's request ledger (`apps/uw-app/commands/requests.ts`) |
 
 ### 8.2 The verb registry
 
@@ -373,18 +374,20 @@ Added in step 1: `malformed_command`, `unauthenticated`, `access_not_configured`
 
 Added in step 3: `harness_not_found`, `harness_exists`, `stage_not_found`, `item_not_found`, `delegation_not_found`, `delegation_lapsed`, `not_holder`, `transition_not_allowed`, `unknown_feed_target`, `connector_not_registered`, `template_bypasses_gate`, `stage_edit_refused`, `item_not_at_gate`, `reason_not_one_line`, `decision_in_flight` (an approve or override at a connector stage while an earlier approval of the same parking still awaits its connector outcome).
 
+Added in step 6: `request_in_flight` (a command whose `requestId` is still running), `issue_not_found` (an import the read model does not hold), `stage_not_empty` (P17).
+
 ### 8.6 Event vocabulary
 
 ```
-item_created  item_claimed  item_released  lease_renewed  lease_expired  branch_abandoned
-branch_adopted  stage_advanced  loop_edge_taken  premise_held  risk_derived  label_removed
-run_started  run_step_recorded  run_failed  run_hibernated  run_resumed  run_stopped
+item_created  item_claimed  item_released  item_reordered  lease_renewed  lease_expired
+branch_abandoned  branch_adopted  stage_advanced  loop_edge_taken  premise_held  risk_derived
+label_removed  run_started  run_step_recorded  run_failed  run_hibernated  run_resumed  run_stopped
 submitted_to_gate  checks_passed  checks_failed  gate_approved  gate_rejected
 gate_taken_over  gate_overridden  gate_refused_to_agent  ship_refused
 connector_succeeded  connector_refused
 delegation_granted  delegation_revoked  delegation_lapsed  delegation_required
-stage_edit_refused  stage_edited  template_activated  harness_paused  harness_resumed
-learning_attached  nothing_learned  comment_recorded
+stage_edit_refused  stage_edited  stage_removed  template_activated  harness_paused
+harness_resumed  learning_attached  nothing_learned  comment_recorded
 breaker_holding  breaker_pausing  breaker_open
 persona_activation_failed  persona_activated
 ```
@@ -392,6 +395,8 @@ persona_activation_failed  persona_activated
 `packages/contracts` on `main` carries four placeholder names (`gate_approved`, `lease_expired`, `delegation_lapsed`, `abandoned`). The list above replaces them; `abandoned` becomes `branch_abandoned`.
 
 `stage_edited` (contract 3.2.0) records every accepted stage create, update and reorder: the stage id, its key, and before/after limited to the columns the edit changed (before is null for a creation; a reorder writes one per stage whose position changed). It is a harness-level event and changes no item.
+
+`item_reordered` (contract 10.0.0) records an item's new priority and, for the moved item, the item it was placed before. `stage_removed` records a removed stage's id, key and columns. `harness_paused` and `harness_resumed` name the lane, or null for the whole harness. Every event carries the `requestId` of the command that appended it, or null.
 
 ---
 
