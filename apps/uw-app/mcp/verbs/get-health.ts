@@ -39,11 +39,11 @@ const breakerStatus = {
 } as const satisfies Record<BreakerState['level'], HealthIndicator['status']>;
 
 function breakerIndicator(breaker: BreakerState): HealthIndicator {
+  if (breaker.reading === null) {
+    return { name: 'breaker', status: 'amber', detail: 'no reading yet, hosted runs are held' };
+  }
   const status = breakerStatus[breaker.level];
-  const detail =
-    breaker.reading === null
-      ? 'no reading yet'
-      : `${breaker.reading.percent.toString()} percent of the cap spent`;
+  const detail = `${breaker.reading.percent.toString()} percent of the cap spent`;
   return { name: 'breaker', status, detail };
 }
 

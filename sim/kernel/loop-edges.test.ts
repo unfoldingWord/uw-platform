@@ -2,7 +2,7 @@ import type { HarnessEvent, ItemState, Principal, Stage } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { readAllEvents, software, type Caller, type KernelOutcome } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, simAgent, simCaller, simPerson } from '../fixtures.ts';
+import { createSimHarness, readSpend, simAgent, simCaller, simPerson } from '../fixtures.ts';
 import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -31,6 +31,7 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
   const world = await createWorld();
   try {
     const { harness, admin } = await createSimHarness(world, software);
+    await readSpend(world);
     const max = await simPerson(world, 6, [{ role: 'editor', ...area }]);
     await work({
       world,

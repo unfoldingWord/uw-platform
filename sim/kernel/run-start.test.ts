@@ -3,6 +3,7 @@ import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { rewritePageFrontmatter } from '@uw/db/test-seed';
 import { createKernel, PortNotWiredError } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
+import { readSpend } from '../fixtures.ts';
 import {
   builderFrontmatter,
   detailOf,
@@ -204,6 +205,7 @@ async function refusesSecondStart(scene: RunWorld): Promise<void> {
 async function refusesOverStaleRun(scene: RunWorld): Promise<void> {
   const first = value(await startOn(scene));
   scene.world.adapters.clock.advance(16 * 60_000);
+  await readSpend(scene.world);
   const second = await startOn(scene);
   expect(reasonOf(second)).toBe('lease_held');
   expect((await liveRuns(scene)).map((run) => run.id)).toEqual([first.runId]);

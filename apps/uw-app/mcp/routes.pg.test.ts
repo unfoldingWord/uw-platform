@@ -171,15 +171,16 @@ describe.skipIf(!testServer)('AB-1 /mcp is a Streamable HTTP endpoint behind Acc
       await client.close();
     }));
 
-  it('answers get_health on a harness in 80-89 with every indicator, the WB-10 ones but the breaker not wired', () =>
+  it('answers get_health on a harness in 80-89 with every indicator, the WB-10 ones but the breaker not wired and the breaker amber before its first reading', () =>
     withAppDatabase(async (db) => {
       await seed(db);
       const body = await healthOverHttp(db);
       const indicators = indicatorsOf(body);
       expect(namesOf(indicators)).toEqual(INDICATORS);
       expect(namesOf(withStatus(indicators, 'not_wired'))).toEqual(NOT_WIRED);
-      expect(namesOf(withStatus(indicators, 'ok'))).toEqual(['harness', 'database', 'breaker']);
-      expect(body['status']).toBe('ok');
+      expect(namesOf(withStatus(indicators, 'ok'))).toEqual(['harness', 'database']);
+      expect(namesOf(withStatus(indicators, 'amber'))).toEqual(['breaker']);
+      expect(body['status']).toBe('amber');
     }));
 
   it('answers GET and DELETE 405 with Allow: POST', () =>

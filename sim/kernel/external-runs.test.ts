@@ -2,7 +2,7 @@ import { delegatedIdentity, principalSchema, type Principal } from '@uw/contract
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import type { Caller } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { simAgent, simCaller, simPerson, simSystem } from '../fixtures.ts';
+import { readSpend, simAgent, simCaller, simPerson, simSystem } from '../fixtures.ts';
 import { readWorldLog } from '../runner/log.ts';
 import {
   itemEvents,
@@ -178,6 +178,7 @@ async function hostedLapse(scene: Watched): Promise<void> {
   expect(names).toEqual(['lease_expired', 'run_stopped']);
   expect((await runOf(scene.world, runId))?.outcome).toBe('stopped');
   expect(scene.calls.stop).toEqual([runId]);
+  await readSpend(scene.world);
   value(await startOn(scene));
 }
 

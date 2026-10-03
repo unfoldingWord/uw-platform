@@ -170,7 +170,11 @@ async function breakerHealth(): Promise<void> {
     return indicators.find((indicator) => indicator['name'] === 'breaker');
   };
   try {
-    expect(await breaker()).toEqual({ name: 'breaker', status: 'ok', detail: 'no reading yet' });
+    expect(await breaker()).toEqual({
+      name: 'breaker',
+      status: 'amber',
+      detail: 'no reading yet, hosted runs are held',
+    });
     await seedHolding(r, harnessId);
     expect(await breaker()).toEqual({
       name: 'breaker',
