@@ -276,7 +276,11 @@ async function stepsOverHttp(): Promise<void> {
   const claimed = await claim(laptop, at(h, 0));
   r.clock.advance(MINUTE);
   const recorded = await step(laptop, at(h, 0), 'subscription');
-  expect(recorded.body).toEqual({ leaseExpiresAt: expect.any(String), leaseWarning: false });
+  expect(recorded.body).toEqual({
+    leaseExpiresAt: expect.any(String),
+    leaseWarning: false,
+    prompts: [],
+  });
   expect(Date.parse(String(recorded.body['leaseExpiresAt']))).toBeGreaterThan(
     Date.parse(String(claimed.body['leaseExpiresAt'])),
   );
