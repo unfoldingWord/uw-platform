@@ -53,6 +53,7 @@ function greenFacts(itemId: string): PullRequestFacts {
         commit: head,
         state: 'approved',
         provider: 'anthropic',
+        findings: [],
         submittedAt: instant,
       },
     ],

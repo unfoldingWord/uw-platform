@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { reviewBody } from '@uw/harness';
 import checkRunCompleted from '../fixtures/check-run-completed.json' with { type: 'json' };
 import issuesLabeled from '../fixtures/issues-labeled.json' with { type: 'json' };
 import issuesUnlabeled from '../fixtures/issues-unlabeled.json' with { type: 'json' };
@@ -112,6 +113,28 @@ describe('GH-2 GitHub review, check run and push webhooks become fact records', 
 
   it('carries only the repository from a push', () => {
     expect(factsFromWebhook('push', push)).toEqual(batchOf({}));
+  });
+});
+
+const reviewedBody = reviewBody({
+  provider: 'anthropic',
+  model: 'claude',
+  verdict: 'request_changes',
+  findings: ['The lease is not renewed', 'A typo in the copy'],
+});
+
+describe('Reviewer findings in a review payload', () => {
+  it("a review payload's findings are parsed from its body", () => {
+    const payload = {
+      ...reviewSubmitted,
+      review: { ...reviewSubmitted.review, body: reviewedBody },
+    };
+    const delivered = factsFromWebhook('pull_request_review', payload);
+    const reviews = delivered.kind === 'facts' ? delivered.batch.reviews : [];
+    expect(reviews.map((review) => review.findings)).toEqual([
+      ['The lease is not renewed', 'A typo in the copy'],
+    ]);
+    expect(reviewsFromRest(repo, openedPull.githubId, restReviews)[0]?.findings).toEqual([]);
   });
 });
 

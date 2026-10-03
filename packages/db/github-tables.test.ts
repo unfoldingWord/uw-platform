@@ -272,6 +272,19 @@ function factRules(db: () => Db): void {
     await insertReview(db(), 9100000402, 9100000204);
   });
 
+  it('stores no review findings by default and refuses findings that are not a list', async () => {
+    await db().insert(schema.ghPrs).values(prRow(9100000208));
+    await insertReview(db(), 9100000403, 9100000208);
+    const [stored] = await db()
+      .select({ findings: schema.ghReviews.findings })
+      .from(schema.ghReviews)
+      .where(eq(schema.ghReviews.githubId, 9100000403));
+    expect(stored?.findings).toEqual([]);
+    expect(
+      await refusal(insertReview(db(), 9100000404, 9100000208, { findings: { first: 'x' } })),
+    ).toEqual({ code: '23514', constraint: 'gh_reviews_findings_array' });
+  });
+
   it('refuses a repository name with no owner', async () => {
     expect(await refusal(insertRepo(db(), 9100000002, 'no-slash'))).toEqual({
       code: '23514',

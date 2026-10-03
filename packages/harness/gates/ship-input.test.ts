@@ -69,6 +69,7 @@ function review(over: Partial<ReviewFact> = {}): ReviewFact {
     commit: head,
     state: 'approved',
     provider: 'Anthropic',
+    findings: [],
     submittedAt: at,
     ...over,
   };

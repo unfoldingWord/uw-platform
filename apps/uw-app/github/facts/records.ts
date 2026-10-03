@@ -89,6 +89,7 @@ export type ReviewRecord = {
   readonly commitId: string;
   readonly state: ReviewState;
   readonly provider: string | null;
+  readonly findings: readonly string[];
   readonly submittedAt: Date | null;
 };
 

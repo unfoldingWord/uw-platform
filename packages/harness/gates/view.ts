@@ -17,6 +17,7 @@ import { FactsUnavailableError } from '../port-errors.ts';
 import type { Ports, PullRequestFacts, StoreTransaction } from '../ports.ts';
 import { stagedItemScene } from '../reads/scene.ts';
 import { effectOf, shipPreview } from './approve-at-ship.ts';
+import { reviewsOn, usableHead } from './ship-input.ts';
 
 type ViewPorts = Pick<Ports, 'clock' | 'githubFacts' | 'grants' | 'store'>;
 
@@ -85,6 +86,11 @@ function factsShown(facts: PullRequestFacts | null): GateView['facts'] {
   };
 }
 
+function reviewsShown(seen: Seen, facts: PullRequestFacts | null): GateView['reviews'] {
+  const head = usableHead(facts, seen.item, seen.harness);
+  return facts === null || head === null ? [] : reviewsOn(facts, head);
+}
+
 function viewOf(caller: Caller, seen: Seen, facts: PullRequestFacts | null, at: Date): GateView {
   const { item, harness, stage } = seen;
   const source = { facts, item, harness, approver: caller.actor, at, override: false };
@@ -98,6 +104,7 @@ function viewOf(caller: Caller, seen: Seen, facts: PullRequestFacts | null, at: 
     pullRequest: item.pullRequest,
     recorded: seen.recorded,
     facts: factsShown(facts),
+    reviews: reviewsShown(seen, facts),
     ship: seen.atConnectorExit ? shipPreview(source) : null,
   });
 }

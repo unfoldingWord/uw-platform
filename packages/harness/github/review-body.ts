@@ -9,8 +9,8 @@ type ReviewBodySource = {
 };
 
 const MODEL_LIMIT = 200;
-const FINDING_LIMIT = 500;
-const FINDINGS_LIMIT = 50;
+export const FINDING_LIMIT = 500;
+export const FINDINGS_LIMIT = 50;
 const UNREPORTED_MODEL = 'unreported';
 const FINDING_PREFIX = 'Finding: ';
 const providerKeys: readonly string[] = ['provider'];
@@ -26,11 +26,11 @@ const sentences: Readonly<Record<ReviewVerdict, string>> = {
   request_changes: 'Changes requested.',
 };
 
-function cut(text: string, limit: number): string {
+export function cut(text: string, limit: number): string {
   return Array.from(text).slice(0, limit).join('').trimEnd();
 }
 
-function oneLine(text: string): string {
+export function oneLine(text: string): string {
   const visible = text.replace(invisible, '').replaceAll(nul, '');
   return visible.replace(lineBreaking, ' ').replace(spaces, ' ').trim();
 }

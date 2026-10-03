@@ -1,6 +1,7 @@
 import {
   ciJobSchema,
   type EventEvidence,
+  type GateView,
   type Harness,
   type ItemState,
   type Principal,
@@ -28,14 +29,17 @@ type RiskDerived = EventEvidence['risk_derived'];
 
 export const GITHUB_ACTIONS_APP = 'github-actions';
 
-const decisive: ReadonlySet<ReviewState> = new Set<ReviewState>([
+type DecisiveState = Exclude<ReviewState, 'commented'>;
+type DecisiveReview = ReviewFact & { readonly state: DecisiveState };
+
+const decisive: ReadonlySet<ReviewState> = new Set<DecisiveState>([
   'approved',
   'changes_requested',
   'dismissed',
 ]);
 const ciJobs: ReadonlySet<string> = new Set(ciJobSchema.options);
 
-function usableHead(
+export function usableHead(
   facts: PullRequestFacts | null,
   item: ItemState,
   harness: ShipHarness,
@@ -74,22 +78,40 @@ function later(a: ReviewFact, b: ReviewFact): boolean {
   return left === right ? a.reviewId > b.reviewId : left > right;
 }
 
-function approvalsOn(facts: PullRequestFacts, head: string): ShipRuleInput['approvals'] {
-  const latest = new Map<string, ReviewFact>();
+function isDecisive(review: ReviewFact): review is DecisiveReview {
+  return decisive.has(review.state);
+}
+
+function latestDecisive(facts: PullRequestFacts, head: string): Map<string, DecisiveReview> {
+  const latest = new Map<string, DecisiveReview>();
   for (const review of facts.reviews) {
     const reviewer = reviewerOf(review.reviewer);
-    if (reviewer === null || fullSha(review.commit) !== head || !decisive.has(review.state)) {
-      continue;
-    }
+    if (reviewer === null || fullSha(review.commit) !== head || !isDecisive(review)) continue;
     const seen = latest.get(reviewer);
     if (seen === undefined || later(review, seen)) latest.set(reviewer, review);
   }
-  return [...latest.entries()]
+  return latest;
+}
+
+function providerOf(review: ReviewFact): string | null {
+  return review.provider === null ? null : normalisedIdentifier(review.provider);
+}
+
+function approvalsOn(facts: PullRequestFacts, head: string): ShipRuleInput['approvals'] {
+  return [...latestDecisive(facts, head).entries()]
     .filter(([, review]) => review.state === 'approved')
+    .map(([reviewer, review]) => ({ reviewer, commit: head, provider: providerOf(review) }));
+}
+
+export function reviewsOn(facts: PullRequestFacts, head: string): GateView['reviews'] {
+  return [...latestDecisive(facts, head).entries()]
+    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
     .map(([reviewer, review]) => ({
       reviewer,
       commit: head,
-      provider: review.provider === null ? null : normalisedIdentifier(review.provider),
+      state: review.state,
+      provider: providerOf(review),
+      findings: [...review.findings],
     }));
 }
 
