@@ -6,6 +6,7 @@ import { createMigratedDatabase } from '@uw/db/test-database';
 import { seedPage } from '@uw/db/test-seed';
 import type { EngineConfig, EngineFetch } from '../engines/config.ts';
 import type { Bindings } from '../env.ts';
+import { fakeWorkflowBinding } from '../runs/testing.ts';
 import { agentOf, kernelOn } from '../testing/kernel.ts';
 import { testServer } from '../testing/postgres.ts';
 import {
@@ -175,21 +176,49 @@ async function unreadableSpend(rig: Rig): Promise<void> {
 
 async function beatsAsSystem(rig: Rig): Promise<void> {
   const itemId = await delegatedPersona(rig);
+  const binding = fakeWorkflowBinding();
+  const env: Bindings = { ...rig.env, HARNESS_RUN: binding };
+  await minuteJob(
+    env,
+    depsOf(rig, () => Promise.resolve(costReply(0))),
+  );
+  expect(outcomeOf(rig, 'beat')).toMatchObject({
+    outcome: 'beat_finished',
+    principal: 'agent:system',
+    started: 1,
+    skipped: 0,
+  });
+  const [started] = await named(rig, 'run_started');
+  expect(started).toMatchObject({ itemId, actor: 'agent:builder' });
+  const runId = String(started?.evidence['runId']);
+  expect(binding.instances.get(runId)?.params).toMatchObject({
+    runId,
+    itemId,
+    persona: 'agent:builder',
+  });
+  await minuteJob(
+    env,
+    depsOf(rig, () => Promise.resolve(costReply(0))),
+  );
+  expect(binding.instances.size).toBe(1);
+}
+
+async function startFailsUnbound(rig: Rig): Promise<void> {
+  const itemId = await delegatedPersona(rig);
   await minuteJob(
     rig.env,
     depsOf(rig, () => Promise.resolve(costReply(0))),
   );
   expect(outcomeOf(rig, 'beat')).toMatchObject({
     outcome: 'beat_finished',
-    principal: 'agent:system',
     started: 0,
     skipped: 1,
   });
-  const started = (await allEvents(rig.db, rig.harnessId)).filter(
+  const runs = (await allEvents(rig.db, rig.harnessId)).filter(
     (event) => event.itemId === itemId && event.name.startsWith('run_'),
   );
-  expect(started.map((event) => event.name)).toEqual(['run_started', 'run_failed']);
-  expect(started[1]?.evidence).toMatchObject({ why: 'start_failed', detail: 'PortNotWiredError' });
+  expect(runs.map((event) => event.name)).toEqual(['run_started', 'run_failed']);
+  expect(runs[1]?.evidence).toMatchObject({ why: 'start_failed', detail: 'PortNotWiredError' });
 }
 
 async function sweepsLapsedLease(rig: Rig): Promise<void> {
@@ -224,4 +253,7 @@ describe.skipIf(!testServer)('the minute cron', () => {
     withRig(beatsAsSystem));
 
   it('the lease sweep expires a lapsed lease once a minute', () => withRig(sweepsLapsedLease));
+
+  it('a beat start without the Workflow binding fails start_failed and releases the item', () =>
+    withRig(startFailsUnbound));
 });

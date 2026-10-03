@@ -4,13 +4,17 @@ import { newEventSchema, principalSchema, type Principal } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
 import { seedHostedRun } from '@uw/db/test-seed';
 import type { Caller } from '@uw/harness';
+import { platformRuns } from '../ports/runs.ts';
 import { platformStore } from '../ports/store.ts';
+import { fakeWorkflowBinding } from '../runs/testing.ts';
 import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import {
   accepted,
   callerOf,
   command,
+  dispatchAs,
+  dispatchScope,
   enqueued,
   eventCount,
   eventsNamed,
@@ -181,6 +185,29 @@ async function replayedStop(db: Database): Promise<void> {
   expect(await eventsNamed(db, scene.harnessId, 'run_stopped')).toHaveLength(1);
 }
 
+async function stopReachesTheWorkflow(db: Database): Promise<void> {
+  const scene = await hostedRun(db);
+  const binding = fakeWorkflowBinding();
+  const runs = platformRuns(binding);
+  await runs.start({
+    runId: scene.runId,
+    harnessId: scene.harnessId,
+    itemId: scene.itemId,
+    persona: 'agent:builder',
+    runShape: 'workflow-run',
+    engine: 'claude-messages',
+    traceId: randomUUID(),
+  });
+  const body = { requestId: randomUUID(), itemId: scene.itemId };
+  const outcome = await dispatchAs(scene.admin, scene.harnessId, 'stop_run', body, {
+    ...dispatchScope(db),
+    runs,
+  });
+  expect(outcome).toMatchObject({ status: 'accepted' });
+  expect(binding.calls).toEqual([`create ${scene.runId}`, `terminate ${scene.runId}`]);
+  expect(await runs.status(scene.runId)).toBe('stopped');
+}
+
 describe.skipIf(!testServer)('the run and hosted Builder commands', () => {
   it('HE-8 an admin turns hosted Builder on through set_hosted_builder; an editor is refused not_permitted', () =>
     withAppDatabase(hostedBuilderSwitch));
@@ -197,4 +224,7 @@ describe.skipIf(!testServer)('the run and hosted Builder commands', () => {
   it('stop_run on an item with no live run is run_not_found', () => withAppDatabase(noLiveRun));
 
   it('a repeated requestId replays the first stop outcome', () => withAppDatabase(replayedStop));
+
+  it("stop_run through the command route stops the run's Workflow on the platform Runs adapter", () =>
+    withAppDatabase(stopReachesTheWorkflow));
 });

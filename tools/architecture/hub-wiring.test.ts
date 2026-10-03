@@ -4,7 +4,7 @@ import { repoFiles } from '../repo-files.ts';
 
 const kernelHosts = [
   ['apps/uw-app/commands/routes.ts', 'hubOf(c.env'],
-  ['apps/uw-app/commands/dispatch.ts', 'hubWiring(scope.hub)'],
+  ['apps/uw-app/commands/dispatch.ts', 'hubWiring(scope.hub, { runs: scope.runs })'],
   ['apps/uw-app/mcp/routes.ts', 'hubWiring(hubOf(c.env'],
   ['apps/uw-app/queue/worker.ts', 'unitHub(hubOf(env'],
   ['apps/uw-app/cron/github-sweep.ts', 'unitHub(hubOf(env'],

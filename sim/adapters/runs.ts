@@ -9,7 +9,7 @@ type Transition = { readonly from: readonly (RunState | null)[]; readonly to: Ru
 const transitions: ReadonlyMap<RunAction, Transition> = new Map<RunAction, Transition>([
   ['start', { from: [null], to: 'running' }],
   ['hibernate', { from: ['running'], to: 'hibernated' }],
-  ['resume', { from: ['hibernated'], to: 'running' }],
+  ['resume', { from: ['hibernated', 'running'], to: 'running' }],
   ['stop', { from: ['running', 'hibernated'], to: 'stopped' }],
 ]);
 
