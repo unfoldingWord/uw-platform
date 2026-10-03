@@ -288,6 +288,43 @@ async function mismatch(db: Database): Promise<void> {
   expect(rig.reviews).toEqual([]);
 }
 
+const codexVerdict = '```harness-verdict\nverdict: approve\n```\n- The change is small and tested.';
+
+async function codexReview(db: Database): Promise<void> {
+  const rig = await hostRig(db, host, {
+    engine: 'codex-sandbox',
+    provider: 'openai',
+    capability: 'review',
+  });
+  await onPullRequest(rig);
+  const runId = await startedRun(rig);
+  const calls: Calls = { scout: 0, work: 0, works: [], scouts: [] };
+  const engines = scriptedEngines({
+    'openrouter-messages': scout(calls),
+    'codex-sandbox': worker(calls, async () =>
+      ended(codexVerdict, { resolvedProvider: 'openai', resolvedModel: 'gpt-5.5-codex' }),
+    ),
+  });
+  const start: RunStart = {
+    runId,
+    harnessId: rig.harnessId,
+    itemId: rig.itemId,
+    persona: personaPrincipal(rig).identity,
+    runShape: 'workflow-run',
+    engine: 'codex-sandbox',
+    traceId: randomUUID(),
+  };
+  expect(await runWorkflow(start, fakeSteps(), runDepsFor(rig, host, engines))).toBe('reviewed');
+  expect(rig.reviews).toHaveLength(1);
+  expect(rig.reviews[0]).toMatchObject({
+    reviewer: 'uw-reviewer-codex',
+    head,
+    pullRequest: { repo: 'unfoldingWord/uw-platform', number: 7 },
+    verdict: 'approve',
+  });
+  expect(rig.reviews[0]?.body).toContain('provider: openai');
+}
+
 async function heldPremise(db: Database): Promise<void> {
   const r = await running(db, {}, done, held);
   expect(await r.run()).toBe('premise_held');
@@ -366,6 +403,9 @@ describe.skipIf(!testServer)('the run core', () => {
 
   it('HE-8 a Builder on claude-code-sandbox runs only where hosted Builder is on', () =>
     withAppDatabase(hostedBuilderOnly));
+
+  it('HE-9 a review run on codex-sandbox posts its verdict as uw-reviewer-codex on the head commit', () =>
+    withAppDatabase(codexReview));
 
   it('HE-1 a held premise ends the run without a work step', () => withAppDatabase(heldPremise));
 
