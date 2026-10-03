@@ -1,6 +1,7 @@
 import {
   connectorSchema,
   eventEvidenceSchemas,
+  stageKeySchema,
   type Harness,
   type HarnessEvent,
   type Stage,
@@ -31,7 +32,11 @@ export type Recovered = { readonly items: readonly RecoveredItem[] };
 
 type Place = { readonly harness: Harness; readonly stages: readonly Stage[]; readonly at: Date };
 
-type Decided = ReadonlyMap<string, EffectConnector>;
+type DecidedRoute = {
+  readonly connector: EffectConnector;
+  readonly next: string | null | undefined;
+};
+type Decided = ReadonlyMap<string, DecidedRoute>;
 
 type Scan = {
   readonly harness: Harness;
@@ -68,10 +73,20 @@ function decidedOn(events: readonly HarnessEvent[], index: number): DecidedOn {
   return { repository: parsed.data.repository, expectedBase: parsed.data.base };
 }
 
-function connectorAt(stage: Stage | undefined, decided: Decided, decisionId: unknown) {
-  const recorded = typeof decisionId === 'string' ? decided.get(decisionId) : undefined;
-  if (recorded !== undefined) return recorded;
+function decidedRoute(decided: Decided, decisionId: unknown): DecidedRoute | undefined {
+  return typeof decisionId === 'string' ? decided.get(decisionId) : undefined;
+}
+
+function connectorAt(stage: Stage | undefined, recorded: DecidedRoute | undefined) {
+  if (recorded !== undefined) return recorded.connector;
   return stage === undefined ? null : effectOf(stage.connector);
+}
+
+function nextAt(place: Place, stage: Stage, recorded: DecidedRoute | undefined): Stage | null {
+  const key = recorded?.next;
+  if (key === null) return null;
+  const fixed = key === undefined ? undefined : place.stages.find((entry) => entry.key === key);
+  return fixed ?? resolveExit(place.stages, stage, null)?.to ?? null;
 }
 
 function stuckAt(
@@ -85,17 +100,26 @@ function stuckAt(
   if (approval === undefined || item === null || !timedOut(approval, place.at)) return null;
   const decisionId = approval.evidence['decisionId'];
   const stage = place.stages.find((entry) => entry.key === item.stageKey);
-  const connector = connectorAt(stage, scope.decided, decisionId);
+  const recorded = decidedRoute(scope.decided, decisionId);
+  const connector = connectorAt(stage, recorded);
   if (typeof decisionId !== 'string' || stage === undefined || connector === null) return null;
   return {
     item,
     stage,
     connector,
-    next: resolveExit(place.stages, stage, null)?.to ?? null,
+    next: nextAt(place, stage, recorded),
     decisionId,
     overrideReason: overrideReasonOf(approval),
     ...decidedOn(events, index),
   };
+}
+
+const recordedNext = stageKeySchema.nullable();
+
+function nextOf(row: GateDecisionRow): string | null | undefined {
+  if (!Object.hasOwn(row.evidence, 'next')) return undefined;
+  const parsed = recordedNext.safeParse(row.evidence['next']);
+  return parsed.success ? parsed.data : undefined;
 }
 
 function decidedConnectors(rows: readonly GateDecisionRow[]): Decided {
@@ -103,7 +127,7 @@ function decidedConnectors(rows: readonly GateDecisionRow[]): Decided {
     rows.flatMap((row) => {
       const parsed = connectorSchema.safeParse(row.evidence['connector']);
       const connector = parsed.success ? effectOf(parsed.data) : null;
-      return connector === null ? [] : [[row.id, connector] as const];
+      return connector === null ? [] : [[row.id, { connector, next: nextOf(row) }] as const];
     }),
   );
 }

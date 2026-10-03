@@ -459,3 +459,47 @@ describe('GH-6 a recovery uses the connector in force when the person decided', 
     },
   );
 });
+
+async function spareAfterShip(scene: Scene): Promise<void> {
+  const stages = await scene.world.adapters.store.transaction((tx) =>
+    tx.harnessStages.read.forHarness(scene.harnessId),
+  );
+  const ship = stages.find((stage) => stage.key === 'ship');
+  if (ship === undefined) throw new Error('no ship stage');
+  const created = await scene.world.kernel.stages.createStage(simCaller(scene.world, scene.ian), {
+    harnessId: scene.harnessId,
+    stage: {
+      key: 'spare',
+      title: 'Spare',
+      position: ship.position + 5,
+      bracket: 'iterate',
+      agentPickup: 'allowed',
+      exitGate: 'checks',
+      connector: 'none',
+      wipLimit: 3,
+      instructionsPageId: null,
+      validators: [],
+      feeds: [],
+    },
+  });
+  expect(created.status).toBe('accepted');
+}
+
+describe('GH-6 a recovery advances to the stage the decision routed to', () => {
+  sceneIt(
+    'takes the item to the next stage fixed at the decision after a stage is inserted after Ship',
+    async (scene) => {
+      await lostApproval(scene, true);
+      await spareAfterShip(scene);
+      scene.world.adapters.clock.advance(sixteenMinutes);
+      expect(await recoverAs(scene, scene.ian)).toEqual({
+        status: 'accepted',
+        value: { items: [{ itemId: scene.itemId, outcome: 'succeeded' }] },
+      });
+      const advanced = (await logOf(scene)).events.findLast(
+        (event) => event.name === 'stage_advanced',
+      );
+      expect(advanced?.evidence).toMatchObject({ from: 'ship', to: 'validate' });
+    },
+  );
+});

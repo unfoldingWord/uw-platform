@@ -241,6 +241,7 @@ type Decision = {
   readonly input: DecideInput;
   readonly exit: Exit | null;
   readonly connector: EffectConnector | null;
+  readonly next: string | null;
   readonly before: readonly EventDraft[];
 };
 
@@ -266,6 +267,7 @@ async function recordDecision(
       findings: [...input.findings],
       gateTarget: item.gateTarget,
       connector: decision.connector,
+      next: decision.next,
     },
     traceId: context.traceId,
     decidedAt: context.at,
@@ -334,6 +336,12 @@ async function checkedRoute(
   return { refusal: await approverRefusal(tx, gate, decision), drafts: [] };
 }
 
+function decisionOf(input: DecideInput, route: Route, before: readonly EventDraft[]): Decision {
+  const { exit, connector } = route;
+  if (connector === null) return { input, exit, connector, next: null, before };
+  return { input, exit: null, connector, next: exit?.to?.key ?? null, before };
+}
+
 async function decideIn(
   ports: GatePorts,
   tx: StoreTransaction,
@@ -349,12 +357,7 @@ async function decideIn(
   const full = await wipRefusal(tx, gate, input.decision);
   if (full !== null) return full;
   const { exit, connector } = route;
-  const recorded = await recordDecision(tx, gate, {
-    input,
-    exit: connector === null ? exit : null,
-    connector,
-    before: ship.drafts,
-  });
+  const recorded = await recordDecision(tx, gate, decisionOf(input, route, ship.drafts));
   if (recorded.status !== 'accepted') return recorded;
   const decided = recorded.value;
   const pending =
