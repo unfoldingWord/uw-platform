@@ -11,7 +11,8 @@
     },
     "apps/uw-app": {
       "entry": ["index.ts", "**/*.test.ts"],
-      "project": ["**/*.ts", "**/*.tsx"]
+      "project": ["**/*.ts", "**/*.tsx"],
+      "ignoreDependencies": ["cloudflare"]
     },
     "apps/uw-ingest": {
       "entry": ["index.ts", "**/*.test.ts"],

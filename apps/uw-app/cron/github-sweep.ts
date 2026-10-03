@@ -5,9 +5,11 @@ import { githubAppOf } from '../github/app-config.ts';
 import { sweepGitHub } from '../github/sweep.ts';
 import { hubWiring, platformKernel } from '../kernel.ts';
 import { systemClock } from '../ports/clock.ts';
-import { hubNotWired } from '../ports/hub.not-wired.ts';
-import { unitHub } from '../unit-hub.ts';
+import { hubOf } from '../ports/hub.ts';
+import { unitHub, type UnitHub } from '../unit-hub.ts';
 import { cronLogger, type CronDeps, type CronJob } from './job.ts';
+
+const SWEEP_HUB_WAKES = 50;
 
 async function sweepWith(
   database: DatabaseHandle,
@@ -22,18 +24,32 @@ async function sweepWith(
     });
     return;
   }
-  const unit = unitHub(hubNotWired);
+  const unit = unitHub(hubOf(env, logger), SWEEP_HUB_WAKES);
   const kernel = platformKernel(database, systemClock, hubWiring(unit.hub));
   const transport = { fetch: deps.fetch, now: deps.now };
-  const report = await sweepGitHub(
-    { db: database.db, kernel, now: deps.now, app, transport },
-    logger,
-  ).finally(() => unit.flush());
-  logger.info('github sweep finished', {
-    outcome: report.failure ?? 'finished',
-    repositories: report.repositories.length,
-    subrequests: report.subrequests,
-  });
+  try {
+    const report = await sweepGitHub(
+      { db: database.db, kernel, now: deps.now, app, transport },
+      logger,
+    );
+    logger.info('github sweep finished', {
+      outcome: report.failure ?? 'finished',
+      repositories: report.repositories.length,
+      subrequests: report.subrequests,
+    });
+  } finally {
+    await flushWakes(unit, logger);
+  }
+}
+
+async function flushWakes(unit: UnitHub, logger: Logger): Promise<void> {
+  const skipped = await unit.flush();
+  if (skipped > 0) {
+    logger.warn('hub wakes past the sweep reserve skipped', {
+      outcome: 'hub_wakes_skipped',
+      skipped,
+    });
+  }
 }
 
 async function released(database: DatabaseHandle, logger: Logger): Promise<void> {

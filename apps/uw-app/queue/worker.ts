@@ -1,3 +1,4 @@
+import { createLogger, type Logger, type LogSink } from '@uw/core/log';
 import { commitOf, type Bindings } from '../env.ts';
 import { hyperdriveDatabase, type DatabaseHandle } from '../database.ts';
 import { githubAppOf } from '../github/app-config.ts';
@@ -6,9 +7,9 @@ import { githubIngestHandler } from '../github/ingest.ts';
 import { platformGitHubTransport } from '../github/transport.ts';
 import { hubWiring, platformKernel } from '../kernel.ts';
 import { systemClock } from '../ports/clock.ts';
-import { hubNotWired } from '../ports/hub.not-wired.ts';
+import { hubOf } from '../ports/hub.ts';
 import { unitHub, type UnitHub } from '../unit-hub.ts';
-import { consumeBatch, notWiredHandlers, type IngestHandler } from './consumer.ts';
+import { consumeBatch, notWiredHandlers, QUEUE_ROUTE, type IngestHandler } from './consumer.ts';
 import { postgresWatermarks } from './watermarks.ts';
 
 function clientOf(env: Bindings, now: () => Date): GitHubClient | null {
@@ -31,19 +32,27 @@ function handlersFor(
   ]);
 }
 
+function hubLogger(env: Bindings, sink: LogSink): Logger {
+  return createLogger(
+    { traceId: crypto.randomUUID(), commit: commitOf(env), route: QUEUE_ROUTE, principal: null },
+    sink,
+  );
+}
+
 export async function consumeIngestBatch(
   batch: MessageBatch<unknown>,
   env: Bindings,
 ): Promise<void> {
   const database = hyperdriveDatabase(env);
   const now = () => new Date();
-  const unit = unitHub(hubNotWired);
+  const sink = (line: string) => console.log(line);
+  const unit = unitHub(hubOf(env, hubLogger(env, sink)));
   try {
     await consumeBatch(batch.messages, {
       handlers: handlersFor(database, env, now, unit),
       deadLetter: env.INGEST_DLQ ?? null,
       watermarks: database ? postgresWatermarks(database.db) : null,
-      sink: (line) => console.log(line),
+      sink,
       commit: commitOf(env),
       newId: () => crypto.randomUUID(),
       now,

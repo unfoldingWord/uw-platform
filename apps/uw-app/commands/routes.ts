@@ -1,6 +1,7 @@
 import { Hono, type Context } from 'hono';
 import type { AppDeps, AppEnv } from '../deps.ts';
 import { answer, readJson } from '../http/commands.ts';
+import { hubOf } from '../ports/hub.ts';
 import { requestLogger } from '../request-logger.ts';
 import { executeCommand } from './dispatch.ts';
 import type { PersonDeps } from './person-deps.ts';
@@ -21,11 +22,13 @@ async function handleCommand(
     traceId: c.get('traceId'),
     at: c.get('now'),
   };
+  const logger = requestLogger(c);
   const outcome = await executeCommand(request, {
     database: c.get('database'),
     registry: commandRegistry,
     gateGitHub: () => person.gateGitHub(c.env, () => deps.clock.now()),
-    logger: requestLogger(c),
+    hub: hubOf(c.env, logger),
+    logger,
   });
   return answer(c, outcome);
 }

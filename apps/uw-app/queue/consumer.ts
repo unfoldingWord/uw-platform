@@ -4,7 +4,7 @@ import type { QueueProducer } from '../env.ts';
 
 export const INGEST_QUEUE_KEY = 'ingest';
 
-const QUEUE_ROUTE = 'queue ingest';
+export const QUEUE_ROUTE = 'queue ingest';
 
 export type ConsumerMessage = {
   readonly body: unknown;
