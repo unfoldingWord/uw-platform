@@ -42,7 +42,7 @@ function simAdapters(database: EmbeddedDatabase, start: Date): SimAdapters {
     grants: createSimGrants(database),
     githubFacts: createSimGitHubFacts(clock),
     connectors: createSimConnectors(),
-    modelEngine: createSimModelEngine(),
+    modelEngine: createSimModelEngine(clock),
     hub: createSimHub(),
     notifier: createSimNotifier(),
     runs: createSimRuns(),

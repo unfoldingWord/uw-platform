@@ -1,4 +1,4 @@
-import type { ConnectorRequest, PullRequestFacts, TurnRequest } from '@uw/harness';
+import type { ConnectorRequest, PullRequestFacts, ReviewRequest, TurnRequest } from '@uw/harness';
 import { describe, expect, it } from 'vitest';
 import { createSimClock } from './clock.ts';
 import { createSimConnectors } from './connectors.ts';
@@ -30,6 +30,16 @@ const engineRequest: TurnRequest = {
   tools: ['read_page'],
   messages: [{ role: 'user', text: 'begin' }],
   traceId: 'b2000000-0000-4000-8000-000000000001',
+};
+
+const reviewRequest: ReviewRequest = {
+  reviewer: 'uw-reviewer',
+  repository: 'unfoldingWord/uw-platform',
+  pullRequest: { repo: 'unfoldingWord/uw-platform', number: 3 },
+  head: 'a'.repeat(40),
+  verdict: 'approve',
+  body: 'recording fixture',
+  traceId: 'b2000000-0000-4000-8000-000000000002',
 };
 
 const pullRequestFacts: PullRequestFacts = {
@@ -83,12 +93,12 @@ describe('DX-4 the recording sim adapters', () => {
   });
 
   it('idles when nothing is scripted and counts the scripted turns', async () => {
-    const engine = createSimModelEngine();
+    const engine = createSimModelEngine(createSimClock(new Date('2026-10-01T09:30:00.000Z')));
     expect(await engine.turn(engineRequest)).toEqual({
       toolCalls: [],
       text: null,
       stopReason: 'end_turn',
-      usage: { inputTokens: 0, outputTokens: 0, costMinor: 0, costBasis: 'metered' },
+      usage: { inputTokens: 0, outputTokens: 0, costMicros: 0, costBasis: 'metered' },
       resolvedProvider: null,
       resolvedModel: 'fixture-model',
     });
@@ -115,6 +125,31 @@ describe('DX-4 the recording sim connectors answer not wired where the platform 
     });
     expect(await connectors.run(connectorRequest('send', 'c'))).toMatchObject({
       outcome: 'refused',
+    });
+  });
+});
+
+describe('the review and spend sim adapters', () => {
+  it('lists every posted review, never a refused one, out of reach of the caller', async () => {
+    const connectors = createSimConnectors();
+    connectors.refuseNextReview('head_moved');
+    await connectors.review({ ...reviewRequest, body: 'refused' });
+    await connectors.review({ ...reviewRequest, body: 'posted' });
+    const listed = connectors.reviews() as ReviewRequest[];
+    expect(listed.map((review) => review.body)).toEqual(['posted']);
+    listed.pop();
+    expect(connectors.reviews()).toHaveLength(1);
+  });
+
+  it('answers zero US cents of spend until a spend is set, read at the sim clock', async () => {
+    const clock = createSimClock(new Date('2026-10-01T09:30:00.000Z'));
+    const engine = createSimModelEngine(clock);
+    const since = new Date('2026-10-01T00:00:00.000Z');
+    expect(await engine.spend(since)).toEqual({
+      spentMinor: 0,
+      currency: 'USD',
+      since,
+      asOf: clock.now(),
     });
   });
 });

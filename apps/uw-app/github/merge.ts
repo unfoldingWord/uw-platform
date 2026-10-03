@@ -218,7 +218,7 @@ async function mergeAlreadyMade(
   return alreadyMerged(writes, target, live, true);
 }
 
-export function mergeHandler(github: MergeGitHub): Connectors {
+export function mergeHandler(github: MergeGitHub): Omit<Connectors, 'review'> {
   const writesFor = () => createShipWrites(github.app, github.transport);
   return {
     run: async (request) => {

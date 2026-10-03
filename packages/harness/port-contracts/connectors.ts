@@ -1,11 +1,14 @@
 import { connectorSchema } from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
-import type { ConnectorRequest, Connectors, EffectConnector } from '../ports.ts';
+import type { ConnectorRequest, Connectors, EffectConnector, ReviewRequest } from '../ports.ts';
 
 export type ConnectorsSubject = {
   readonly connectors: Connectors;
   refuseNext(connector: EffectConnector, reason: string): Promise<void>;
+  refuseNextReview(reason: string): Promise<void>;
 };
+
+type ReviewWrites = 'scripted' | 'not_wired';
 
 const effectConnectors = connectorSchema.options.filter(
   (connector): connector is EffectConnector => connector !== 'none',
@@ -23,6 +26,18 @@ export const contractRequest = {
   title: 'connector contract fixture',
   overrideReason: null,
 } as const;
+
+const contractReview: ReviewRequest = {
+  reviewer: 'uw-reviewer',
+  repository: 'unfoldingWord/uw-platform',
+  pullRequest: { repo: 'unfoldingWord/uw-platform', number: 7 },
+  head: 'f'.repeat(40),
+  verdict: 'request_changes',
+  body: ['```harness-review', 'provider: fixture-provider', 'model: fixture-model', '```'].join(
+    '\n',
+  ),
+  traceId: 'b1000000-0000-4000-8000-000000000004',
+};
 
 function request(connector: EffectConnector): ConnectorRequest {
   return { ...contractRequest, connector };
@@ -103,12 +118,58 @@ function describeOutcomes(open: () => Promise<ConnectorsSubject>): void {
   });
 }
 
+function describeReviews(open: () => Promise<ConnectorsSubject>): void {
+  it('posts a review and answers its whole-number id', async () => {
+    const subject = await open();
+    const answer = await subject.connectors.review(contractReview);
+    expect(answer.outcome).toBe('posted');
+    if (answer.outcome === 'posted') {
+      expect(Number.isSafeInteger(answer.reviewId) && answer.reviewId > 0).toBe(true);
+    }
+  });
+
+  it('returns a refused review as an outcome carrying its reason, not as an exception', async () => {
+    const subject = await open();
+    await subject.refuseNextReview('head_moved');
+    expect(await subject.connectors.review(contractReview)).toEqual({
+      outcome: 'refused',
+      reason: 'head_moved',
+    });
+    expect(await subject.connectors.review(contractReview)).toMatchObject({ outcome: 'posted' });
+  });
+
+  it('refuses a review whose pull request is outside the repository it names', async () => {
+    const subject = await open();
+    const elsewhere = {
+      ...contractReview,
+      pullRequest: { repo: 'unfoldingWord/other', number: 7 },
+    };
+    expect(await subject.connectors.review(elsewhere)).toEqual({
+      outcome: 'refused',
+      reason: 'repository_mismatch',
+    });
+  });
+}
+
+function describeReviewsNotWired(open: () => Promise<ConnectorsSubject>): void {
+  it('answers every review refused not_wired until the review write is wired', async () => {
+    const subject = await open();
+    expect(await subject.connectors.review(contractReview)).toEqual({
+      outcome: 'refused',
+      reason: 'not_wired',
+    });
+  });
+}
+
 export function describeConnectorsContract(
   adapter: string,
   open: () => Promise<ConnectorsSubject>,
+  reviews: ReviewWrites,
 ): void {
   describe(`DX-3 connectors port contract on ${adapter}`, () => {
     describeRuns(open);
     describeOutcomes(open);
+    if (reviews === 'scripted') describeReviews(open);
+    else describeReviewsNotWired(open);
   });
 }

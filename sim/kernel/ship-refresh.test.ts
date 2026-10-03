@@ -20,6 +20,7 @@ import {
   standardChange,
 } from '../ship-fixtures.ts';
 import { createWorld, type World } from '../world.ts';
+import { unwiredDiff } from '../adapters/unwired.ts';
 
 afterAll(closeEmbeddedTemplate);
 
@@ -109,10 +110,10 @@ describe('GH-5 an approve at Ship decides on facts refreshed from GitHub before 
   sceneIt(
     'refuses a review GitHub dismissed that the read model still shows approved',
     async (scene) => {
-      const githubFacts: GitHubFacts = {
-        pullRequest: async () => approved(scene),
-        refresh: async () => dismissed(scene),
-      };
+      const githubFacts = factsAnswering(
+        async () => approved(scene),
+        async () => dismissed(scene),
+      );
       const { outcome, names, decisions } = await approveWith(scene, githubFacts);
       expect(outcome).toMatchObject({ status: 'error', reason: 'no_reviewer_approval' });
       expect(names).toEqual(['risk_derived', 'ship_refused']);
@@ -130,6 +131,7 @@ describe('GH-5 an approve at Ship decides on facts refreshed from GitHub before 
         seen.push(watched.open());
         return approved(scene);
       },
+      diff: unwiredDiff,
     };
     const { outcome } = await approveWith(scene, githubFacts, watched.store);
     expect(outcome.status).toBe('accepted');
@@ -137,14 +139,21 @@ describe('GH-5 an approve at Ship decides on facts refreshed from GitHub before 
   });
 });
 
+function factsAnswering(
+  pullRequest: GitHubFacts['pullRequest'],
+  refresh: GitHubFacts['refresh'],
+): GitHubFacts {
+  return { pullRequest, refresh, diff: unwiredDiff };
+}
+
 describe('GH-5 an approve at Ship fails closed on stale or missing GitHub facts', () => {
   sceneIt('refuses facts older than a minute without deciding or recording', async (scene) => {
     const at = scene.world.adapters.clock.now();
     const stale = approved(scene, new Date(at.getTime() - 60_001));
-    const githubFacts: GitHubFacts = {
-      pullRequest: async () => approved(scene),
-      refresh: async () => stale,
-    };
+    const githubFacts = factsAnswering(
+      async () => approved(scene),
+      async () => stale,
+    );
     const { outcome, names, decisions } = await approveWith(scene, githubFacts);
     expect(outcome).toMatchObject({ status: 'error', reason: 'facts_stale' });
     expect(names).toEqual([]);
@@ -155,10 +164,10 @@ describe('GH-5 an approve at Ship fails closed on stale or missing GitHub facts'
   sceneIt('refuses facts stamped more than a minute after the decision', async (scene) => {
     const at = scene.world.adapters.clock.now();
     const ahead = approved(scene, new Date(at.getTime() + 60_001));
-    const githubFacts: GitHubFacts = {
-      pullRequest: async () => approved(scene),
-      refresh: async () => ahead,
-    };
+    const githubFacts = factsAnswering(
+      async () => approved(scene),
+      async () => ahead,
+    );
     const { outcome, names, decisions } = await approveWith(scene, githubFacts);
     expect(outcome).toMatchObject({ status: 'error', reason: 'facts_stale' });
     expect(names).toEqual([]);
@@ -168,20 +177,20 @@ describe('GH-5 an approve at Ship fails closed on stale or missing GitHub facts'
   sceneIt('accepts facts refreshed within the minute', async (scene) => {
     const at = scene.world.adapters.clock.now();
     const recent = approved(scene, new Date(at.getTime() - 60_000));
-    const githubFacts: GitHubFacts = {
-      pullRequest: async () => null,
-      refresh: async () => recent,
-    };
+    const githubFacts = factsAnswering(
+      async () => null,
+      async () => recent,
+    );
     const { outcome, decisions } = await approveWith(scene, githubFacts);
     expect(outcome.status).toBe('accepted');
     expect(decisions).toEqual(['approve']);
   });
 
   sceneIt('refuses when GitHub has no facts for the pull request', async (scene) => {
-    const githubFacts: GitHubFacts = {
-      pullRequest: async () => approved(scene),
-      refresh: async () => null,
-    };
+    const githubFacts = factsAnswering(
+      async () => approved(scene),
+      async () => null,
+    );
     const { outcome, names, decisions } = await approveWith(scene, githubFacts);
     expect(outcome).toMatchObject({ status: 'error', reason: 'pr_not_open' });
     expect(names).toEqual(['ship_refused']);
@@ -196,6 +205,7 @@ describe('GH-5 an approve at Ship fails closed when GitHub cannot be read again'
       refresh: async () => {
         throw new FactsUnavailableError('server_error');
       },
+      diff: unwiredDiff,
     };
     const { outcome, names, decisions } = await approveWith(scene, githubFacts);
     expect(outcome).toMatchObject({

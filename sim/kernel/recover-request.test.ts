@@ -13,6 +13,7 @@ import {
   standardChange,
 } from '../ship-fixtures.ts';
 import { createWorld } from '../world.ts';
+import { unwiredReview } from '../adapters/unwired.ts';
 
 afterAll(closeEmbeddedTemplate);
 
@@ -51,6 +52,7 @@ describe('GH-6 a recovery asks about the merge the decision made', () => {
             asked.push(request);
             return world.adapters.connectors.outcomeOf(request);
           },
+          review: unwiredReview,
         },
       });
       const recovered = await kernel.gates.recoverConnectors(simCaller(world, admin), {

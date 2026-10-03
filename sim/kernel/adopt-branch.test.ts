@@ -20,6 +20,7 @@ import {
 } from '../fixtures.ts';
 import { greenFacts, shipPullRequest, simSha } from '../ship-fixtures.ts';
 import { createWorld, type World } from '../world.ts';
+import { unwiredDiff } from '../adapters/unwired.ts';
 
 afterAll(closeEmbeddedTemplate);
 
@@ -94,7 +95,7 @@ function eventsOf(scene: Scene): Promise<readonly HarnessEvent[]> {
 }
 
 function answering(facts: PullRequestFacts | null): GitHubFacts {
-  return { pullRequest: async () => facts, refresh: async () => facts };
+  return { pullRequest: async () => facts, refresh: async () => facts, diff: unwiredDiff };
 }
 
 async function adoptWith(scene: Scene, port: GitHubFacts, caller?: Caller) {
@@ -193,6 +194,7 @@ describe('GH-4 adopting takes only the tip of the item’s own branch on a pull 
     const failing: GitHubFacts = {
       pullRequest: () => Promise.reject(new Error('down')),
       refresh: () => Promise.reject(new Error('down')),
+      diff: unwiredDiff,
     };
     const stranger = await simPerson(scene.world, 3, []);
     const outsider = await adoptWith(scene, failing, device(scene, stranger, 'outsider'));
@@ -296,6 +298,7 @@ describe('adoption reads GitHub facts outside the claim transaction', () => {
         return tipFacts(scene);
       },
       refresh: async () => null,
+      diff: unwiredDiff,
     };
     const claimed = value(await adoptWith(scene, port));
     expect(claimed.branch).toEqual({

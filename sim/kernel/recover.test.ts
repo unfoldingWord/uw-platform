@@ -16,13 +16,17 @@ import {
   sixteenMinutes,
   type Scene,
 } from './recover-scene.ts';
+import { unwiredReview } from '../adapters/unwired.ts';
 
 const movedHead = simSha('fff999');
 
 afterAll(closeEmbeddedTemplate);
 
-function withConnectors(scene: Scene, connectors: Connectors): Kernel {
-  return createKernel({ ...scene.world.adapters, connectors });
+function withConnectors(scene: Scene, effects: Omit<Connectors, 'review'>): Kernel {
+  return createKernel({
+    ...scene.world.adapters,
+    connectors: { ...effects, review: unwiredReview },
+  });
 }
 
 async function expectNothingRecorded(scene: Scene, who: Principal, reason: string) {
