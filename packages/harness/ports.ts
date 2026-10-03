@@ -65,7 +65,7 @@ export type HarnessStagesGateway = {
   };
   readonly write: {
     insert(stage: Stage): Promise<void>;
-    update(stage: Stage): Promise<void>;
+    update(stage: Stage): Promise<boolean>;
     reposition(harnessId: string, positions: readonly StagePosition[]): Promise<void>;
     remove(stageId: string): Promise<boolean>;
   };
