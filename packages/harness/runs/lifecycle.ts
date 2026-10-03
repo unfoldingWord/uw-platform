@@ -111,11 +111,13 @@ export function hibernateAtGate(
   });
 }
 
-export function complete(
+export type LeadingDrafts = (item: ItemState) => readonly EventDraft[];
+
+export function completeAfter(
   ports: HostPorts,
   caller: Caller,
   runId: string,
-  input: CompleteInput,
+  input: CompleteInput & { readonly before: LeadingDrafts },
 ): Promise<KernelOutcome<RunRow>> {
   return onRun(ports, caller, { runId, outcomes: runningOnly }, (tx, held) => {
     if (input.result === 'decided' && held.item.gateStatus === 'parked') {
@@ -123,6 +125,7 @@ export function complete(
     }
     const { run, context } = held;
     return endRun(tx, held, ended(run, { outcome: 'completed' }, context.at), [
+      ...input.before(held.item),
       draft('run_completed', {
         runId,
         result: input.result,
@@ -132,6 +135,15 @@ export function complete(
       ...released(held.item, run),
     ]);
   });
+}
+
+export function complete(
+  ports: HostPorts,
+  caller: Caller,
+  runId: string,
+  input: CompleteInput,
+): Promise<KernelOutcome<RunRow>> {
+  return completeAfter(ports, caller, runId, { ...input, before: () => [] });
 }
 
 export function fail(

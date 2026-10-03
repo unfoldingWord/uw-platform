@@ -16,6 +16,7 @@ import { engineDescriptor } from '../engines.ts';
 import { spendRefusal } from '../runs/breaker-level.ts';
 import { personaPageOf } from '../runs/persona.ts';
 import { endRunDrafts, stopWorkflows } from '../runs/ends.ts';
+import { personHoldRefusal } from './held-for-person.ts';
 import { lapseDrafts, LEASE_MS, leaseLapsed } from './leases.ts';
 import { pausedRefusal } from './paused.ts';
 import {
@@ -100,6 +101,14 @@ async function bareRefusal(tx: StoreTransaction, scene: Scene): Promise<Refused 
   const { caller, harness, context } = scene;
   if (!bareAgent(caller.actor.identity)) return null;
   return (await hostedBuilderRefusal(tx, caller, harness)) ?? (await spendRefusal(tx, context.at));
+}
+
+async function heldRefusal(
+  tx: StoreTransaction,
+  scene: Scene,
+  item: ItemState,
+): Promise<Refused | null> {
+  return (await bareRefusal(tx, scene)) ?? (await personHoldRefusal(tx, scene.caller, item));
 }
 
 async function actingGuard(
@@ -205,7 +214,7 @@ async function claimIn(
   const stage = stages.find((entry) => entry.id === scene.stage.id);
   if (stage === undefined) return refused('stage_not_found', { stage: scene.stage.key });
   const locked = { ...scene, harness, stage };
-  const stale = lockedGuards(locked, item) ?? (await bareRefusal(tx, locked));
+  const stale = lockedGuards(locked, item) ?? (await heldRefusal(tx, locked, item));
   if (stale !== null) return stale;
   const denied = await actingGuard(tx, ports, locked, item, input.delegationId);
   if (denied !== null) return denied;

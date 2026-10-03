@@ -7,7 +7,7 @@ import type { DatabaseHandle } from './database.ts';
 import { createGitHubReads } from './github/client.ts';
 import { fixtureApp, fixtureTransport } from './github/testing/app-key.ts';
 import { fixtureGitHub } from './github/testing/fixture-github.ts';
-import { hubWiring, platformKernel, platformPorts } from './kernel.ts';
+import { hubWiring, platformKernel, platformPorts, runWiring } from './kernel.ts';
 import { systemClock } from './ports/clock.ts';
 import { githubFactsNotWired } from './ports/github-facts.not-wired.ts';
 import { grantsNotWired } from './ports/grants.not-wired.ts';
@@ -120,5 +120,41 @@ describe('every platform kernel is given the hub it is wired with', () => {
     expect(platformPorts(null, systemClock, hubWiring(recordingHub)).hub).toBe(recordingHub);
     expect(platformPorts(untouched, systemClock, wiring).hub).toBe(recordingHub);
     expect(platformPorts(untouched).hub).toBe(hubNotWired);
+  });
+});
+
+const contractReview = {
+  reviewer: 'uw-reviewer',
+  repository: 'unfoldingWord/uw-platform',
+  pullRequest: { repo: 'unfoldingWord/uw-platform', number: 7 },
+  head: 'f'.repeat(40),
+  verdict: 'approve' as const,
+  body: 'Approved.',
+  traceId: 'b1000000-0000-4000-8000-000000000004',
+};
+
+describe('HE-4 only the run wiring holds the Reviewer review writes', () => {
+  it('posts a review through the run wiring and answers not_wired through the hub wiring', async () => {
+    const github = fixtureGitHub();
+    github.on('POST', '/repos/unfoldingWord/uw-platform/pulls/7/reviews', {
+      status: 200,
+      body: { id: 9400000003 },
+    });
+    const reviews = {
+      apps: new Map([['uw-reviewer', await fixtureApp()]]),
+      transport: fixtureTransport(github),
+    };
+    const host = { hub: recordingHub, runs: runsNotWired, modelEngine: modelEngineNotWired };
+    const run = platformPorts(untouched, systemClock, runWiring(host, null, reviews));
+    expect(await run.connectors.review(contractReview)).toEqual({
+      outcome: 'posted',
+      reviewId: 9400000003,
+    });
+    const hub = platformPorts(untouched, systemClock, hubWiring(recordingHub));
+    expect(await hub.connectors.review(contractReview)).toEqual({
+      outcome: 'refused',
+      reason: 'not_wired',
+    });
+    expect(hubWiring(recordingHub).reviews).toBeNull();
   });
 });

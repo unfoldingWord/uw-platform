@@ -1,3 +1,4 @@
+import { heldForPerson } from '../items/held-for-person.ts';
 import {
   delegationIdOf,
   type Grant,
@@ -100,7 +101,11 @@ async function claimableIn(
 ): Promise<readonly ItemState[]> {
   const stages = await tx.harnessStages.read.forHarness(harness.id);
   const items = await tx.harnessItems.read.forHarness(harness.id);
-  return items.filter((item) => claimable(stages, item, at));
+  const open: ItemState[] = [];
+  for (const item of items.filter((candidate) => claimable(stages, candidate, at))) {
+    if (!(await heldForPerson(tx, item))) open.push(item);
+  }
+  return open;
 }
 
 function polledItem(item: ItemState): PollItem {

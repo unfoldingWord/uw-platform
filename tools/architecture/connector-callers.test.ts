@@ -29,12 +29,21 @@ const mergeModule = 'apps/uw-app/github/merge.ts';
 const connectorsAdapter = 'apps/uw-app/ports/connectors.ts';
 const mergeRig = 'apps/uw-app/github/testing/merge-rig.ts';
 const readOnlyRoots = ['apps/uw-app/queue/', 'apps/uw-app/cron/'];
+const reviewlessRoots = [
+  'apps/uw-app/mcp/',
+  'apps/uw-app/queue/',
+  'apps/uw-app/cron/',
+  'apps/uw-app/commands/',
+];
+const reviewWiring = /\breviews\s*:|\brunWiring\s*\(|\breviewerAppsOf\b|\bcreateReviewWrites\b/;
 
 const exitModule = 'packages/harness/gates/exit.ts';
 const recoverModule = 'packages/harness/gates/recover.ts';
 const lostExit = 'sim/lost-exit.ts';
 const wiring = [
   'apps/uw-app/kernel.ts',
+  'packages/harness/runs/commands.ts',
+  'packages/harness/runs/review.ts',
   'apps/uw-app/testing/lost-exit.ts',
   exitModule,
   recoverModule,
@@ -291,5 +300,30 @@ describe("GH-5 the assembler is the ship rule's only caller", () => {
     );
     expect(strays(shipRuleReference, shipRuleNames, [aliased])).toEqual([aliased]);
     expect(strays(assemblerCall, assemblerCallers, [assembler])).toEqual([assembler]);
+  });
+});
+
+function reviewlessRootFiles(files: readonly string[]): string[] {
+  return files.filter((file) => reviewlessRoots.some((root) => file.startsWith(root)));
+}
+
+describe('HE-4 only the run host kernel holds the Reviewer review writes', () => {
+  it('finds no Reviewer wiring in the MCP, queue, cron or command kernels', () => {
+    const roots = reviewlessRootFiles(sources());
+    expect(roots.length).toBeGreaterThan(0);
+    expect(filesMatching(reviewWiring, roots)).toEqual([]);
+  });
+
+  it('flags a planted Reviewer wiring in an MCP, queue, cron or command root', () => {
+    const planted = [
+      plant('apps/uw-app/mcp/r.ts', 'hubWiring(hub, { reviews: apps });'),
+      plant('apps/uw-app/queue/r.ts', 'platformKernel(db, clock, runWiring(host, reads, writes));'),
+      plant('apps/uw-app/cron/r.ts', 'const apps = reviewerAppsOf(env);'),
+      plant('apps/uw-app/commands/r.ts', 'const writes = createReviewWrites(app, transport);'),
+    ];
+    expect(filesMatching(reviewWiring, planted)).toEqual([...planted].sort());
+    expect(reviewlessRootFiles(['apps/uw-app/runs/deps.ts', 'apps/uw-app/mcp/server.ts'])).toEqual([
+      'apps/uw-app/mcp/server.ts',
+    ]);
   });
 });

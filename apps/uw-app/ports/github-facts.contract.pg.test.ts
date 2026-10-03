@@ -161,10 +161,16 @@ describe.skipIf(!testServer)('DX-3 the platform GitHub facts on Postgres', () =>
       return {
         facts: platformGitHubFacts(db, { open: reads, logger: silent }, systemClock),
         given: (facts) => given(db, github, facts),
-        givenDiff: () => Promise.reject(new Error('the platform diff read is not wired yet')),
+        givenDiff: async (ref, range, text) => {
+          github.on('GET', `/repos/${ref.repo}/compare/${range.base}...${range.head}`, {
+            status: 200,
+            body: text,
+            headers: { 'content-type': 'text/plain; charset=utf-8' },
+          });
+        },
         now: systemClock.now,
       };
     },
-    'not_wired',
+    'scripted',
   );
 });

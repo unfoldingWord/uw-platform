@@ -17,6 +17,9 @@ const githubFiles = [
   'ship-writes',
   'comments',
   'merge',
+  'diff',
+  'review-writes',
+  'reviewer-apps',
 ];
 
 function write(root: string, path: string, source: string): void {

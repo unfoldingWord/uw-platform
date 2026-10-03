@@ -65,6 +65,24 @@ const refusals: [string, string, string, string][] = [
     'github-token-and-octokit-only-in-the-session',
   ],
   [
+    'the queue root taking the Reviewer review writes',
+    'apps/uw-app/queue/worker.ts',
+    "import '../github/review-writes.ts';",
+    'review-writes-only-in-the-connectors-adapter',
+  ],
+  [
+    'the MCP surface taking the Reviewer review writes',
+    'apps/uw-app/mcp/server.ts',
+    "import '../github/review-writes.ts';",
+    'review-writes-only-in-the-connectors-adapter',
+  ],
+  [
+    'the kernel root reading the Reviewer App configuration',
+    'apps/uw-app/kernel.ts',
+    "import './github/reviewer-apps.ts';",
+    'reviewer-apps-only-in-the-run-host',
+  ],
+  [
     'the queue root taking the merge and tag writes',
     'apps/uw-app/queue/worker.ts',
     "import '../github/ship-writes.ts';",
@@ -278,6 +296,19 @@ describe('the GitHub dependency rules allow', () => {
         'apps/uw-app/github/client.ts': "import './session.ts';",
         'apps/uw-app/github/comments.ts': "import './session.ts';",
         'apps/uw-app/github/ship-writes.ts': "import './session.ts';",
+        'apps/uw-app/github/review-writes.ts': "import './session.ts';",
+        'apps/uw-app/github/diff.ts': "import './session.ts';",
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('the Reviewer dependency rules allow', () => {
+  it('the connectors adapter on the Reviewer review writes and the run host on the Reviewer Apps', async () => {
+    expect(
+      await violations({
+        'apps/uw-app/ports/connectors.ts': "import '../github/review-writes.ts';",
+        'apps/uw-app/runs/deps.ts': "import '../github/reviewer-apps.ts';",
       }),
     ).toEqual([]);
   });

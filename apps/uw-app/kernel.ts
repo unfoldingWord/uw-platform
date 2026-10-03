@@ -10,7 +10,7 @@ import {
 import type { DatabaseHandle } from './database.ts';
 import type { GitHubAccess } from './github/refresh.ts';
 import { systemClock } from './ports/clock.ts';
-import { platformConnectors, type ShipGitHub } from './ports/connectors.ts';
+import { platformConnectors, type ReviewGitHub, type ShipGitHub } from './ports/connectors.ts';
 import { platformGitHubFacts } from './ports/github-facts.ts';
 import { githubFactsNotWired } from './ports/github-facts.not-wired.ts';
 import { platformGrants } from './ports/grants.ts';
@@ -27,6 +27,7 @@ type KernelWiring = {
   readonly hub: Hub;
   readonly reads: GitHubAccess | null;
   readonly ship: ShipGitHub | null;
+  readonly reviews: ReviewGitHub | null;
   readonly modelEngine: ModelEngine;
   readonly runs: Runs;
 };
@@ -40,10 +41,21 @@ export function hubWiring(hub: Hub, host: HostWiring = {}): KernelWiring {
     hub,
     reads: null,
     ship: null,
+    reviews: null,
     modelEngine: modelEngineNotWired,
     runs: runsNotWired,
     ...host,
   };
+}
+
+type RunHostWiring = LiveWiring & { readonly modelEngine: ModelEngine };
+
+export function runWiring(
+  host: RunHostWiring,
+  reads: GitHubAccess | null,
+  reviews: ReviewGitHub | null,
+): KernelWiring {
+  return { ...hubWiring(host.hub, host), reads, reviews };
 }
 
 const idle = hubWiring(hubNotWired);
@@ -61,7 +73,7 @@ export function platformPorts(
     githubFacts: database
       ? platformGitHubFacts(database.db, wiring.reads, clock)
       : githubFactsNotWired,
-    connectors: platformConnectors(wiring.ship),
+    connectors: platformConnectors(wiring.ship, wiring.reviews),
     modelEngine: wiring.modelEngine,
     hub: wiring.hub,
     notifier: notifierNotWired,

@@ -12,12 +12,23 @@ type Permissions = TokenScope['permissions'];
 type Minted = { readonly octokit: Octokit; readonly expiresAt: Date };
 type Minter = () => Promise<GitHubResult<Minted>>;
 
+type StreamedAnswer = {
+  readonly status: number;
+  readonly body: ReadableStream<Uint8Array> | null;
+};
+
 export type GitHubSession = {
   request(
     route: string,
     parameters: Parameters,
     repository: string | null,
   ): Promise<GitHubResult<Answer>>;
+  stream(
+    route: string,
+    parameters: Parameters,
+    repository: string,
+    accept: string,
+  ): Promise<GitHubResult<StreamedAnswer>>;
 };
 
 const apiVersion = { 'x-github-api-version': '2022-11-28' };
@@ -124,6 +135,29 @@ async function send(
   }
 }
 
+async function streamed(
+  mint: Minter,
+  route: string,
+  parameters: Parameters,
+  accept: string,
+): Promise<GitHubResult<StreamedAnswer>> {
+  try {
+    const minted = await mint();
+    if (!minted.ok) return minted;
+    const response = await minted.value.octokit.request(route, {
+      ...parameters,
+      headers: { ...apiVersion, accept },
+      request: { parseSuccessResponseBody: false },
+    });
+    const body = response.data instanceof ReadableStream ? response.data : null;
+    return { ok: true, value: { status: response.status, body } };
+  } catch (error) {
+    return refused(error);
+  }
+}
+
+type Scoped = { readonly mint: Minter; readonly parts: { owner: string; repo: string } };
+
 export function openSession(
   config: GitHubAppConfig,
   transport: GitHubTransport,
@@ -134,15 +168,24 @@ export function openSession(
     permissions: installationPermissions,
   });
   let scoped: { readonly name: string; readonly mint: Minter } | null = null;
+  const scopeOf = (repository: string): Scoped | null => {
+    const parts = split(repository);
+    if (!parts) return null;
+    const name = repository.toLowerCase();
+    scoped ??= { name, mint: minter(config, transport, { repository: parts.repo, permissions }) };
+    return scoped.name === name ? { mint: scoped.mint, parts } : null;
+  };
   return {
     async request(route, parameters, repository) {
       if (repository === null) return send(installation, route, parameters);
-      const parts = split(repository);
-      if (!parts) return refusedInput;
-      const name = repository.toLowerCase();
-      scoped ??= { name, mint: minter(config, transport, { repository: parts.repo, permissions }) };
-      if (scoped.name !== name) return refusedInput;
-      return send(scoped.mint, route, { ...parameters, ...parts });
+      const scope = scopeOf(repository);
+      if (scope === null) return refusedInput;
+      return send(scope.mint, route, { ...parameters, ...scope.parts });
+    },
+    async stream(route, parameters, repository, accept) {
+      const scope = scopeOf(repository);
+      if (scope === null) return refusedInput;
+      return streamed(scope.mint, route, { ...parameters, ...scope.parts }, accept);
     },
   };
 }

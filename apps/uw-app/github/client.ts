@@ -1,5 +1,7 @@
 import { z } from 'zod';
+import type { DiffRead } from '@uw/harness';
 import type { GitHubAppConfig } from './app-config.ts';
+import { diffRead } from './diff.ts';
 import { failed, type GitHubResult } from './failures.ts';
 import { isCount, isFullSha, refusedInput } from './inputs.ts';
 import { openSession, shaped, type GitHubSession } from './session.ts';
@@ -25,6 +27,7 @@ export type GitHubReads = {
     maxPages: number,
   ): Promise<GitHubResult<IssueListing>>;
   issueComments(repo: string, number: number, since: Date): Promise<GitHubResult<List>>;
+  diff(repo: string, base: string, head: string, budgetBytes: number): Promise<DiffRead>;
 };
 
 const readPermissions = {
@@ -242,5 +245,6 @@ export function createGitHubReads(
       }),
     ...pullRequestReads(session),
     ...issueReads(session),
+    diff: diffRead(session),
   };
 }
