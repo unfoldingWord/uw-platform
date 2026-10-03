@@ -122,6 +122,34 @@ async function decisionWhilePausing({ scene, calls }: Watched): Promise<void> {
   await wokenOnce(scene, parked.runId, calls);
 }
 
+async function decisionOnPausedHarness({ scene, calls }: Watched): Promise<void> {
+  const parked = await parkedRun(scene);
+  value(await scene.world.kernel.runs.hibernateAtGate(systemCaller(scene), parked.runId));
+  const caller = simCaller(scene.world, scene.admin);
+  const harness = { harnessId: scene.harnessId, stageKey: null };
+  value(await scene.world.kernel.stages.pause(caller, harness));
+  const decided = await scene.world.kernel.gates.decide(caller, {
+    itemId: scene.itemId,
+    decision: 'approve',
+    reason: null,
+    findings: [],
+    seenHead: await simSeenHead(scene.world, scene.itemId),
+  });
+  expect(decided.status).toBe('accepted');
+  expect(await runOf(scene.world, parked.runId)).toMatchObject({
+    outcome: 'hibernated',
+    hibernatedFor: 'paused',
+  });
+  const last = (await runLog(scene)).at(-1);
+  expect(last).toMatchObject({ name: 'run_hibernated', evidence: { why: 'paused' } });
+  expect(calls.resume).toEqual([]);
+  value(await scene.world.kernel.stages.resume(caller, harness));
+  expect(await runOf(scene.world, parked.runId)).toMatchObject({ outcome: 'running' });
+  const resumed = (await runLog(scene)).filter((event) => event.name === 'run_resumed');
+  expect(resumed.map((event) => event.evidence)).toEqual([{ runId: parked.runId, why: 'paused' }]);
+  expect(calls.resume).toEqual([parked.runId]);
+}
+
 async function lapsedHostedRun({ scene, calls }: Watched): Promise<void> {
   const { runId } = value(await startOn(scene));
   const beat = await beatOf(scene);
@@ -199,6 +227,9 @@ describe('a hosted run wakes only when nothing still holds it', () => {
 
   it('HE-5 a gate decided while the breaker is pausing commits and leaves the run hibernated for the breaker until it opens', () =>
     inWorld(gateWorld, decisionWhilePausing));
+
+  it('HE-1 a gate decided on a paused harness leaves the run hibernated for the pause until the harness resumes', () =>
+    inWorld(gateWorld, decisionOnPausedHarness));
 
   it('a hosted run stopped for a lapsed delegation has its Workflow stopped', () =>
     inWorld(runWorld, lapsedHostedRun));

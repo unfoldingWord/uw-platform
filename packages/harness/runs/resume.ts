@@ -11,20 +11,20 @@ type RunSelect = (tx: StoreTransaction) => Promise<readonly RunRow[]>;
 
 type Locked = { readonly item: ItemState; readonly run: RunRow; readonly context: RecordContext };
 
-async function holdForBreaker(tx: StoreTransaction, locked: Locked): Promise<false> {
+async function holdFor(tx: StoreTransaction, locked: Locked, why: RunHibernation): Promise<false> {
   const { item, run, context } = locked;
-  if (run.hibernatedFor === 'breaker') return false;
-  await tx.harnessRuns.write.update({ ...run, hibernatedFor: 'breaker' });
+  if (run.hibernatedFor === why) return false;
+  await tx.harnessRuns.write.update({ ...run, hibernatedFor: why });
   await recordItemEvents(tx, context, item.itemId, [
-    draft('run_hibernated', { runId: run.id, why: 'breaker' }),
+    draft('run_hibernated', { runId: run.id, why }),
   ]);
   return false;
 }
 
 async function wakeIn(tx: StoreTransaction, locked: Locked, why: RunHibernation) {
   const { item, run, context } = locked;
-  if (why !== 'gate' && (await underPause(tx, item))) return false;
-  if ((await currentLevel(tx)) === 'pausing') return holdForBreaker(tx, locked);
+  if (await underPause(tx, item)) return holdFor(tx, locked, 'paused');
+  if ((await currentLevel(tx)) === 'pausing') return holdFor(tx, locked, 'breaker');
   await tx.harnessRuns.write.update({ ...run, outcome: 'running', hibernatedFor: null });
   await recordItemEvents(tx, context, item.itemId, [draft('run_resumed', { runId: run.id, why })]);
   return true;
