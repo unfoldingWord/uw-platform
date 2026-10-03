@@ -492,6 +492,7 @@ Work a build step found that belongs to a later step. Each is a build note, not 
 
 | Date | From | To step | What |
 |---|---|---|---|
+| 2026-10-02 | Step 5 Task 15 (GH-6) | 6 | A lost approval at a stage whose connector is later edited to `none` is stranded: recovery reads the stage's current connector, skips the approval, and the item stays `decision_in_flight` with no recovery path. Either refuse a connector edit to `none` while an approval at that stage awaits its outcome, or let recovery use the connector the approval was decided under |
 | 2026-10-02 | Step 5 Task 3 (S5-R40) | 6 and 8 | The gate view shows the deciding person the PARSED declaration (tier, domains, closes, risks, touches), the path-derived tier and the resolved review providers, never GitHub's rendering of the PR body, and the person decides on that |
 | 2026-10-01 | Step 1 | Step 10 | Persona frontmatter lacks `status` (PE-1); a learning lacks a contradiction flag (PE-8) |
 | 2026-10-01 | Step 2 | Step 5 | Index `webhook_deliveries.received_at` before GH-2 traffic |

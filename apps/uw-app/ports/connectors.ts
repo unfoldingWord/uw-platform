@@ -5,7 +5,7 @@ export type ShipGitHub = MergeGitHub;
 
 const notWiredConnector: Connectors = {
   run: async () => ({ outcome: 'refused', reason: 'not_wired' }),
-  outcomeOf: async () => null,
+  outcomeOf: async () => ({ outcome: 'refused', reason: 'not_wired' }),
 };
 
 function handlersFor(github: ShipGitHub | null): ReadonlyMap<EffectConnector, Connectors> {

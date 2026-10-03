@@ -84,11 +84,17 @@ function describeOutcomes(open: () => Promise<ConnectorsSubject>): void {
     });
   });
 
-  it.each(notWiredConnectors)('%s answers no earlier outcome', async (connector) => {
-    const subject = await open();
-    await subject.connectors.run(request(connector));
-    expect(await subject.connectors.outcomeOf(request(connector))).toBeNull();
-  });
+  it.each(notWiredConnectors)(
+    '%s answers its outcome read refused not_wired, never no outcome',
+    async (connector) => {
+      const subject = await open();
+      await subject.connectors.run(request(connector));
+      expect(await subject.connectors.outcomeOf(request(connector))).toEqual({
+        outcome: 'refused',
+        reason: 'not_wired',
+      });
+    },
+  );
 
   it.each(effectConnectors)('%s answers its outcome and never rejects', async (connector) => {
     const subject = await open();

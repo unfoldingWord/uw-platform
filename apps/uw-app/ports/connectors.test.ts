@@ -14,18 +14,27 @@ beforeAll(async () => {
 });
 
 describe('GH-7 deploy, publish, send and post answer not wired on the platform adapter', () => {
-  it.each(notWired)('%s answers refused not_wired and no earlier outcome', async (connector) => {
-    for (const connectors of [platformConnectors(null), platformConnectors(ship)]) {
-      const request = { ...contractRequest, connector };
-      expect(await connectors.run(request)).toEqual({ outcome: 'refused', reason: 'not_wired' });
-      expect(await connectors.outcomeOf(request)).toBeNull();
-    }
-  });
+  it.each(notWired)(
+    '%s answers refused not_wired for the run and for the outcome read',
+    async (connector) => {
+      for (const connectors of [platformConnectors(null), platformConnectors(ship)]) {
+        const request = { ...contractRequest, connector };
+        expect(await connectors.run(request)).toEqual({ outcome: 'refused', reason: 'not_wired' });
+        expect(await connectors.outcomeOf(request)).toEqual({
+          outcome: 'refused',
+          reason: 'not_wired',
+        });
+      }
+    },
+  );
 
-  it('answers the merge not_wired when the adapter holds no ship GitHub', async () => {
+  it('answers the merge and its outcome read not_wired when the adapter holds no ship GitHub', async () => {
     const connectors = platformConnectors(null);
     const request = { ...contractRequest, connector: 'merge' } as const;
     expect(await connectors.run(request)).toEqual({ outcome: 'refused', reason: 'not_wired' });
-    expect(await connectors.outcomeOf(request)).toBeNull();
+    expect(await connectors.outcomeOf(request)).toEqual({
+      outcome: 'refused',
+      reason: 'not_wired',
+    });
   });
 });

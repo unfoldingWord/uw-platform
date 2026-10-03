@@ -112,6 +112,7 @@ describe('sameChange', () => {
 });
 
 const looped = event('loop_edge_taken');
+const later = event('gate_overridden', { decisionId: '00000000-0000-4000-8000-0000000000d2' });
 const exitedElsewhere = {
   ...event('stage_advanced'),
   traceId: '00000000-0000-4000-8000-0000000000c2',
@@ -137,7 +138,8 @@ describe('approvalsAwaitingOutcome', () => {
     ['an approval behind a later parking', [parked, approved, parked], [1]],
     ['an approval that took its exit in its own decision', [parked, approved, looped], []],
     ['an approval followed by an exit of another trace', [parked, approved, exitedElsewhere], [1]],
-    ['an answered approval and a later one', [parked, approved, merged, parked, overridden], [4]],
+    ['an answered approval and a later one', [parked, approved, merged, parked, later], [4]],
+    ['two approvals answered by one late outcome', [parked, approved, later, merged], []],
   ])('%s', (_title, events, expected) => {
     expect(approvalsAwaitingOutcome(events)).toEqual(expected);
   });
