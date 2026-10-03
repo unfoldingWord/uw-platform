@@ -30,5 +30,5 @@
     "@types/node": "^22.20.4",
     "wrangler": "^4.144.0"
   },
-  "contractVersion": "10.0.0"
+  "contractVersion": "11.0.0"
 }

@@ -9,6 +9,7 @@ import {
 } from './closed-sets.ts';
 import { repositorySchema } from './harness.ts';
 import { identitySchema, isPersonaIdentity } from './identity.ts';
+import { providerIdSchema } from './runs.ts';
 import { slugSchema, type PageType } from './pages.ts';
 import { verbNameSchema } from './verb-names.ts';
 
@@ -39,6 +40,7 @@ export const personaFrontmatterSchema = z.strictObject({
   run_shape: runShapeSchema,
   engine: engineSchema,
   model: z.string().min(1).max(200),
+  provider: providerIdSchema.nullable().default(null),
   budget: z.strictObject({
     monthly_minor: z.number().int().min(0),
     currency: z.string().regex(/^[A-Z]{3}$/),

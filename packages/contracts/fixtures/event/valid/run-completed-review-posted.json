@@ -1,0 +1,23 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000e1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "name": "run_completed",
+  "position": 1,
+  "at": "2026-10-03T09:00:00.000Z",
+  "actor": "agent:builder",
+  "evidence": {
+    "runId": "00000000-0000-4000-8000-0000000000f1",
+    "result": "review_posted",
+    "gates": [],
+    "review": {
+      "reviewer": "uw-reviewer",
+      "provider": "z-ai",
+      "model": "z-ai/glm-5.3-flash",
+      "verdict": "request_changes",
+      "reviewId": 7
+    }
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
+}

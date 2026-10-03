@@ -65,6 +65,7 @@ export const errorReasonSchema = z.enum([
   'request_in_flight',
   'issue_not_found',
   'stage_not_empty',
+  'run_not_found',
 ]);
 
 export const refusalSchema = z.object({

@@ -1,0 +1,14 @@
+{
+  "itemId": "00000000-0000-4000-8000-000000000002",
+  "runId": "00000000-0000-4000-8000-000000000006",
+  "step": "work",
+  "tokensIn": 10,
+  "tokensOut": 5,
+  "costBasis": "metered",
+  "costMinor": 4,
+  "computeMinor": null,
+  "model": "claude-sonnet-4-5",
+  "resolvedProvider": "anthropic",
+  "toolsCalled": ["read_page", "write_page"],
+  "writes": 1
+}

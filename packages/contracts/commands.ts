@@ -36,6 +36,7 @@ export const commandNames = [
   'update_stage',
   'reorder_stages',
   'remove_stage',
+  'set_hosted_builder',
 ] as const;
 
 export const commandNameSchema = z.enum(commandNames);
@@ -126,6 +127,7 @@ export const harnessCommandSchemas = {
   update_stage: body('update_stage', { stageKey: stageKeySchema, change: stageChangeSchema }),
   reorder_stages: body('reorder_stages', { order: z.array(stageKeySchema).min(1).max(50) }),
   remove_stage: body('remove_stage', { stageKey: stageKeySchema }),
+  set_hosted_builder: body('set_hosted_builder', { enabled: z.boolean() }),
 } as const satisfies Record<CommandName, z.ZodType>;
 
 export const commandSchema = z.discriminatedUnion('command', [
@@ -153,6 +155,7 @@ export const commandSchema = z.discriminatedUnion('command', [
   harnessCommandSchemas.update_stage,
   harnessCommandSchemas.reorder_stages,
   harnessCommandSchemas.remove_stage,
+  harnessCommandSchemas.set_hosted_builder,
 ]);
 
 export type Command = z.infer<typeof commandSchema>;

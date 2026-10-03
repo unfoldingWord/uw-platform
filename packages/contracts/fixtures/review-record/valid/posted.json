@@ -1,0 +1,7 @@
+{
+  "reviewer": "uw-reviewer",
+  "provider": "z-ai",
+  "model": "z-ai/glm-5.3-flash",
+  "verdict": "approve",
+  "reviewId": 7
+}

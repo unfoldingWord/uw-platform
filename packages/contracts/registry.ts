@@ -71,6 +71,12 @@ import {
 import { platformCommandNameSchema } from './platform-commands.ts';
 import { grantSchema, principalSchema } from './principal.ts';
 import {
+  providerIdSchema,
+  reviewRecordSchema,
+  runStepRecordSchema,
+  runStepSchema,
+} from './runs.ts';
+import {
   checkConclusionSchema,
   ciJobSchema,
   fullShaSchema,
@@ -79,7 +85,7 @@ import {
   shipRuleInputSchema,
   shipRuleOutcomeSchema,
 } from './ship-rule.ts';
-import { runStepSchema, submitToGateResultSchema } from './verb-io.ts';
+import { recordRunStepReplySchema, submitToGateResultSchema } from './verb-io.ts';
 import { forbiddenVerbSchema, verbNameSchema } from './verb-names.ts';
 import { verbGrantSchema, verbGroupSchema } from './verbs.ts';
 
@@ -157,6 +163,16 @@ export const schemaRegistry: Record<string, ZodType> = {
   'branch-state': closedSets.branchStateSchema,
   'run-outcome': closedSets.runOutcomeSchema,
   'delegation-lapse': closedSets.delegationLapseSchema,
+  'run-hibernation': closedSets.runHibernationSchema,
+  'run-stop': closedSets.runStopSchema,
+  'run-failure': closedSets.runFailureSchema,
+  'run-result': closedSets.runResultSchema,
+  'breaker-level': closedSets.breakerLevelSchema,
+  'review-verdict': closedSets.reviewVerdictSchema,
+  'provider-id': providerIdSchema,
+  'review-record': reviewRecordSchema,
+  'run-step-record': runStepRecordSchema,
+  'record-run-step-reply': recordRunStepReplySchema,
   'stage-key': stageKeySchema,
   'persona-identity': personaIdentitySchema,
   'pull-request-ref': pullRequestRefSchema,

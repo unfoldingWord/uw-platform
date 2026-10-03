@@ -28,8 +28,8 @@ const claimed = {
 };
 
 describe('KN-3 the event vocabulary is PRD section 8.6', () => {
-  it('has the forty-eight names and none of the placeholders it replaces', () => {
-    expect(eventNameSchema.options).toHaveLength(48);
+  it('has the fifty-one names and none of the placeholders it replaces', () => {
+    expect(eventNameSchema.options).toHaveLength(51);
     expect(eventNameSchema.safeParse('stage_edited').success).toBe(true);
     expect(eventNameSchema.options[0]).toBe('item_created');
     expect(eventNameSchema.options.at(-1)).toBe('persona_activated');
@@ -145,5 +145,49 @@ describe('an event carries the requestId of the command that appended it, or nul
     const requestId = '00000000-0000-4000-8000-0000000000f1';
     expect(eventSchema.parse({ ...claimed, requestId }).requestId).toBe(requestId);
     expect(eventSchema.safeParse({ ...claimed, requestId: 'x' }).success).toBe(false);
+  });
+});
+
+describe('breaker, switch, premise and activation evidence', () => {
+  const parse = (name: string, evidence: object) =>
+    eventSchema.safeParse({ ...base, itemId: null, name, evidence }).success;
+
+  it('needs the spend reading on every breaker event', () => {
+    const reading = { spentMinor: 94_000, capMinor: 125_000, currency: 'USD', percent: 75 };
+    for (const name of ['breaker_holding', 'breaker_pausing', 'breaker_open']) {
+      expect(parse(name, reading), name).toBe(true);
+      expect(parse(name, without(reading, 'percent')), name).toBe(false);
+    }
+    expect(parse('breaker_holding', { ...reading, capMinor: 0 })).toBe(false);
+    expect(parse('breaker_holding', { ...reading, currency: 'usd' })).toBe(false);
+  });
+
+  it('needs enabled on hosted_builder_set', () => {
+    expect(parse('hosted_builder_set', { enabled: true })).toBe(true);
+    expect(parse('hosted_builder_set', {})).toBe(false);
+  });
+
+  it('needs a run id or null and a one-line reason on premise_held', () => {
+    const runId = '00000000-0000-4000-8000-0000000000f2';
+    expect(parse('premise_held', { runId, reason: 'the issue is already fixed' })).toBe(true);
+    expect(parse('premise_held', { runId: null, reason: 'no scout verdict' })).toBe(true);
+    expect(parse('premise_held', { runId, reason: 'two\nlines' })).toBe(false);
+    expect(parse('premise_held', { runId })).toBe(false);
+  });
+
+  it('takes a persona activation that failed on its engine, with no verb', () => {
+    const evidence = {
+      pageId: '00000000-0000-4000-8000-0000000000d2',
+      persona: 'agent:builder',
+      verb: null,
+      engine: 'claude-managed-agent',
+      reason: 'engine_not_available',
+      message: 'engine claude-managed-agent is not available',
+      itemId: null,
+    };
+    expect(parse('persona_activation_failed', evidence)).toBe(true);
+    const older = { ...evidence, verb: 'read_page', reason: 'unknown_verb' };
+    const parsed = eventEvidenceSchemas.persona_activation_failed.parse(without(older, 'engine'));
+    expect(parsed.engine).toBeNull();
   });
 });

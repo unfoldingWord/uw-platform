@@ -1,0 +1,12 @@
+{
+  "step": "read",
+  "tokensIn": 10,
+  "tokensOut": 2,
+  "costMinor": null,
+  "computeMinor": null,
+  "model": null,
+  "resolvedProvider": null,
+  "toolsCalled": [],
+  "writes": 0,
+  "at": "2026-10-03T09:00:00.000Z"
+}
