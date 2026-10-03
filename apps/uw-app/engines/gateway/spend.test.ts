@@ -27,6 +27,7 @@ async function summedCost(): Promise<void> {
   const body = sent?.body as SentQuery;
   expect(body.query).toContain('aiGatewayRequestsAdaptiveGroups');
   expect(body.query).toContain('sum { cost }');
+  expect(body.query).toMatch(/\bcount\b/);
   expect(body.variables).toEqual({
     account: 'account-1',
     gateway: 'harness-gateway',
@@ -40,6 +41,18 @@ async function summedCost(): Promise<void> {
   });
   const none = await gatewaySpend({ ...configured, fetch: empty.fetch }, () => now)(since);
   expect(none.spentMinor).toBe(0);
+  const idle = fakeFetch();
+  idle.respondNext(200, groupsReply([{ count: 0, sum: { cost: null } }]));
+  expect(
+    (await gatewaySpend({ ...configured, fetch: idle.fetch }, () => now)(since)).spentMinor,
+  ).toBe(0);
+}
+
+function groupsReply(groups: readonly unknown[]) {
+  return {
+    data: { viewer: { accounts: [{ aiGatewayRequestsAdaptiveGroups: groups }] } },
+    errors: null,
+  };
 }
 
 async function unconfiguredOrUnreadable(): Promise<void> {
@@ -61,6 +74,8 @@ async function unconfiguredOrUnreadable(): Promise<void> {
     [200, { data: { viewer: { accounts: [{ aiGatewayRequestsAdaptiveGroups: 'x' }] } } }],
     [200, { data: { viewer: { accounts: [] } }, errors: null }],
     [200, { data: { viewer: { accounts: [noGroups, noGroups] } }, errors: null }],
+    [200, groupsReply([{ count: 3, sum: { cost: null } }])],
+    [200, groupsReply([{ sum: { cost: 1.5 } }])],
   ];
   for (const [status, body] of failing) {
     const analytics = fakeFetch();
@@ -77,7 +92,7 @@ describe('the AI Gateway spend reader', () => {
   it("HE-5 the spend is AI Gateway's summed cost for the month in minor units", summedCost);
 
   it(
-    'an unconfigured reader is not_wired, and an error reply or a reply without exactly one account is unreadable without its body',
+    'an unconfigured reader is not_wired, and an error reply, a reply without exactly one account or a null cost on requests is unreadable without its body',
     unconfiguredOrUnreadable,
   );
 });
