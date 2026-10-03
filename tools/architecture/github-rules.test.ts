@@ -194,6 +194,115 @@ const moduleRefusals: [string, string, string][] = [
   ],
 ];
 
+const gateKernelFile = 'apps/uw-app/commands/person/gate-kernel.ts';
+const gateGitHubFile = 'apps/uw-app/commands/person/gate-github.ts';
+const personSurface = {
+  [gateKernelFile]: leaf,
+  [gateGitHubFile]: leaf,
+  'apps/uw-app/commands/person/x.ts': leaf,
+  'apps/uw-app/commands/dispatch.ts': leaf,
+};
+
+const surfaceRefusals: [string, string, string, string][] = [
+  [
+    'the dispatcher building the gate kernel',
+    'apps/uw-app/commands/dispatch.ts',
+    "import './person/gate-kernel.ts';",
+    'gate-kernel-only-in-gate-commands',
+  ],
+  [
+    'the person deps building the gate kernel',
+    'apps/uw-app/commands/person-deps.ts',
+    "import './person/gate-kernel.ts';",
+    'gate-kernel-only-in-gate-commands',
+  ],
+  [
+    'another person command opening the gate GitHub',
+    'apps/uw-app/commands/person/stages.ts',
+    "import './gate-github.ts';",
+    'gate-kernel-only-in-gate-commands',
+  ],
+  [
+    'the MCP routes building the gate kernel',
+    'apps/uw-app/mcp/routes.ts',
+    "import '../commands/person/gate-kernel.ts';",
+    'gate-kernel-only-in-gate-commands',
+  ],
+  [
+    'a route reaching the person surface',
+    'apps/uw-app/http/a.ts',
+    "import '../commands/person/x.ts';",
+    'person-surface-only-from-commands',
+  ],
+  [
+    'the MCP routes reaching the person surface',
+    'apps/uw-app/mcp/routes.ts',
+    "import '../commands/person/x.ts';",
+    'person-surface-only-from-commands',
+  ],
+  [
+    'the MCP routes reaching the command API',
+    'apps/uw-app/mcp/routes.ts',
+    "import '../commands/dispatch.ts';",
+    'agent-hosts-never-import-commands',
+  ],
+  [
+    'an MCP test reaching the gate kernel',
+    'apps/uw-app/mcp/a.test.ts',
+    "import '../commands/person/gate-kernel.ts';",
+    'agent-hosts-never-import-commands',
+  ],
+  [
+    'an engine reaching the command API',
+    'apps/uw-app/engines/e/a.ts',
+    "import '../../commands/dispatch.ts';",
+    'agent-hosts-never-import-commands',
+  ],
+  [
+    'the queue root reaching the command API',
+    'apps/uw-app/queue/worker.ts',
+    "import '../commands/dispatch.ts';",
+    'agent-hosts-never-import-commands',
+  ],
+  [
+    'the cron root reaching the gate GitHub',
+    'apps/uw-app/cron/github-sweep.ts',
+    "import '../commands/person/gate-github.ts';",
+    'agent-hosts-never-import-commands',
+  ],
+];
+
+describe('the person gate kernel and the person surface', () => {
+  it.each(surfaceRefusals)('refuse %s', async (_name, path, source, rule) => {
+    const found = await violations({ ...personSurface, [path]: source });
+    expect(found.map((violation) => violation.rule)).toContain(rule);
+  });
+
+  it('allow the gate commands, the person deps on the gate GitHub, the command API and tests', async () => {
+    const found = await violations({
+      ...personSurface,
+      'apps/uw-app/commands/person/gates.ts':
+        "import './gate-kernel.ts'; import './gate-github.ts'; import './x.ts';",
+      'apps/uw-app/commands/person-deps.ts': "import './person/gate-github.ts';",
+      'apps/uw-app/commands/routes.ts': "import './person/x.ts';",
+      'apps/uw-app/commands/person/gate-kernel.test.ts': "import './gate-kernel.ts';",
+      'apps/uw-app/testing/commands.ts': "import '../commands/person/x.ts';",
+      'apps/uw-app/app.tsx': "import './commands/person-deps.ts';",
+    });
+    expect(found).toEqual([]);
+  });
+
+  it('allow the gate kernel on the read client, and the gate GitHub on the transport and the App configuration', async () => {
+    const found = await violations({
+      [gateKernelFile]: "import '../../github/client.ts';",
+      [gateGitHubFile]: "import '../../github/transport.ts'; import '../../github/app-config.ts';",
+      'apps/uw-app/kernel.ts': "import './github/refresh.ts';",
+      'apps/uw-app/github/refresh.ts': leaf,
+    });
+    expect(found).toEqual([]);
+  });
+});
+
 describe('the GitHub module is imported only by the platform adapters and the queue and cron roots', () => {
   it.each(moduleRefusals)('refuses %s', async (_name, path, source) => {
     const found = await violations({

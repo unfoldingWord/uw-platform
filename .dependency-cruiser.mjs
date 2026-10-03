@@ -30,8 +30,10 @@ const simMayImport = [
 const github = (file) => `^apps/uw-app/github/${file}\\.ts$`;
 const octokitWebhookSignatures = npm('@octokit/webhooks-methods');
 const appTesting = '^apps/(uw-app|uw-ingest)/(github/)?testing/';
-const readRoots = '^apps/uw-app/queue/worker\\.ts$';
-const appConfigRoots = '^apps/uw-app/(queue/worker|cron/github-sweep)\\.ts$';
+const gateKernel = '^apps/uw-app/commands/person/gate-kernel\\.ts$';
+const gateGitHub = '^apps/uw-app/commands/person/gate-github\\.ts$';
+const readRoots = ['^apps/uw-app/queue/worker\\.ts$', gateKernel, gateGitHub];
+const appConfigRoots = ['^apps/uw-app/(queue/worker|cron/github-sweep)\\.ts$', gateGitHub];
 
 const forbidden = (name, comment, from, to) => ({
   name,
@@ -217,17 +219,17 @@ export default {
     {
       name: 'github-reads-only-in-github-and-composition-roots',
       comment:
-        'The read-only GitHub client and its transport are imported only under apps/uw-app/github and by the queue root.',
+        'The read-only GitHub client and its transport are imported only under apps/uw-app/github, by the queue root, and by the person gate kernel and its GitHub opener.',
       severity: 'error',
-      from: { pathNot: ['^apps/uw-app/github/', readRoots, testFile] },
+      from: { pathNot: ['^apps/uw-app/github/', ...readRoots, testFile] },
       to: { path: github('(client|transport)') },
     },
     {
       name: 'github-app-config-only-in-github-and-composition-roots',
       comment:
-        'The GitHub App configuration is read only under apps/uw-app/github and by the queue and cron sweep roots.',
+        'The GitHub App configuration is read only under apps/uw-app/github, by the queue and cron sweep roots, and by the person gate GitHub opener.',
       severity: 'error',
-      from: { pathNot: ['^apps/uw-app/github/', appConfigRoots, testFile] },
+      from: { pathNot: ['^apps/uw-app/github/', ...appConfigRoots, testFile] },
       to: { path: github('app-config') },
     },
     {
@@ -280,19 +282,57 @@ export default {
     {
       name: 'github-module-only-in-ports-and-roots',
       comment:
-        'Only the platform adapters, the queue root and the cron sweep root import apps/uw-app/github, so no other module reaches the read client, the comment writer or the sweep.',
+        'Only the platform adapters, the queue root, the cron sweep root, the kernel composition root (for the read-client type) and the person gate kernel import apps/uw-app/github, so no other module reaches the read client, the comment writer or the sweep.',
       severity: 'error',
       from: {
         pathNot: [
           '^apps/uw-app/github/',
           '^apps/uw-app/ports/',
-          appConfigRoots,
+          '^apps/uw-app/kernel\\.ts$',
+          gateKernel,
+          ...appConfigRoots,
           appTesting,
           testFile,
         ],
       },
       to: { path: '^apps/uw-app/github/' },
     },
+    {
+      name: 'gate-kernel-only-in-gate-commands',
+      comment:
+        'Only the person gate commands build the kernel that holds the GitHub reader and the ship writes; the person deps alone may also open the gate GitHub.',
+      severity: 'error',
+      from: {
+        pathNot: [
+          '^apps/uw-app/commands/person/gates\\.ts$',
+          '^apps/uw-app/commands/person-deps\\.ts$',
+          testFile,
+        ],
+      },
+      to: { path: [gateKernel, gateGitHub] },
+    },
+    {
+      name: 'gate-kernel-only-in-gate-commands',
+      comment:
+        'The person deps open the gate GitHub for the gate commands and never build the gate kernel.',
+      severity: 'error',
+      from: { path: '^apps/uw-app/commands/person-deps\\.ts$' },
+      to: { path: gateKernel },
+    },
+    {
+      name: 'person-surface-only-from-commands',
+      comment:
+        'The person surface is imported only from apps/uw-app/commands/, the app test helpers and tests.',
+      severity: 'error',
+      from: { pathNot: ['^apps/uw-app/commands/', appTesting, testFile] },
+      to: { path: '^apps/uw-app/commands/person/' },
+    },
+    forbidden(
+      'agent-hosts-never-import-commands',
+      'Nothing an agent, a model process, the queue or the cron reaches imports the command API, so none of them reaches the gate kernel.',
+      '^apps/uw-app/(mcp|engines|queue|cron)/',
+      '^apps/uw-app/commands/',
+    ),
     forbidden(
       'github-never-in-mcp-or-engines',
       'Nothing an agent or a model process reaches imports the GitHub client, so no token reaches either.',
