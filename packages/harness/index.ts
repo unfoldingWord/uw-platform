@@ -10,6 +10,7 @@ export { runShapes, workflowRunSteps } from './runs/shapes.ts';
 export type { PollItem } from './reads/poll.ts';
 export { stagePageLimit, unattendedWithoutDelegation } from './reads/scene.ts';
 export {
+  EngineNotAvailableError,
   FactsUnavailableError,
   notWiredCall,
   PortNotWiredError,

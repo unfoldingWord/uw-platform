@@ -36,6 +36,10 @@ const commandCapabilities = '^apps/uw-app/commands/capabilities\\.ts$';
 const readRoots = ['^apps/uw-app/queue/worker\\.ts$', gateKernel, gateGitHub];
 const appConfigRoots = ['^apps/uw-app/(queue/worker|cron/github-sweep)\\.ts$', gateGitHub];
 
+const engineKeys =
+  '(claude-messages|openrouter-messages|claude-code-sandbox|codex-sandbox|claude-managed-agent|external)';
+const engineDirectory = `^apps/uw-app/engines/${engineKeys}/`;
+
 const forbidden = (name, comment, from, to) => ({
   name,
   comment,
@@ -367,10 +371,39 @@ export default {
     ),
     {
       name: 'vendor-sdk-only-in-engines',
-      comment: 'A vendor SDK is imported only inside apps/uw-app/engines/<engine>/.',
+      comment: 'A vendor SDK is imported only inside one of the six apps/uw-app/engines/<key>/.',
       severity: 'error',
-      from: { path: '^(apps|packages|sim|tests)/', pathNot: '^apps/uw-app/engines/[^/]+/' },
+      from: { path: '^(apps|packages|sim|tests)/', pathNot: engineDirectory },
       to: { path: vendorSdk },
+    },
+    {
+      name: 'engines-only-from-the-seam',
+      comment:
+        'An engine directory is imported only by the engine registry, its own files and tests, so the platform reaches an engine only through the seam.',
+      severity: 'error',
+      from: { pathNot: ['^apps/uw-app/engines/registry\\.ts$', engineDirectory, testFile] },
+      to: { path: engineDirectory },
+    },
+    {
+      name: 'engines-never-import-another-engine',
+      comment: 'An engine imports nothing from another engine directory.',
+      severity: 'error',
+      from: { path: `^apps/uw-app/engines/${engineKeys}/` },
+      to: { path: engineDirectory, pathNot: '^apps/uw-app/engines/$1/' },
+    },
+    {
+      name: 'engines-reach-only-the-tool-caller',
+      comment:
+        'An engine reaches the platform only through the MCP tool caller it is handed: never the database, the kernel, a port, the MCP surface or GitHub.',
+      severity: 'error',
+      from: { path: '^apps/uw-app/engines/', pathNot: testFile },
+      to: {
+        path: [
+          '^packages/db/',
+          '^apps/uw-app/(kernel|database)\\.ts$',
+          '^apps/uw-app/(ports|mcp|github)/',
+        ],
+      },
     },
   ],
   options: {

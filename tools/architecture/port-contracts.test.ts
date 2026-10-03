@@ -133,3 +133,31 @@ describe('DX-3 the contract is called with the adapter', () => {
     );
   });
 });
+
+describe('DX-3 a message engine turn runs the modelEngine contract beside it', () => {
+  const engineSuite = {
+    'packages/harness/port-contracts/model-engine.ts':
+      'export function describeModelEngineContract(',
+  };
+  const turnFile = 'apps/uw-app/engines/claude-messages/turn.ts';
+  const turnTest =
+    "import { describeModelEngineContract } from '@uw/harness/port-contracts/model-engine'; import { claudeTurn } from './turn.ts'; describeModelEngineContract('x', async () => ({ engine: { turn: claudeTurn } }));";
+
+  it('accepts a turn with a contract test beside it', () => {
+    const files = {
+      ...engineSuite,
+      [turnFile]: '',
+      'apps/uw-app/engines/claude-messages/turn.contract.test.ts': turnTest,
+    };
+    expect(portContractViolations(['modelEngine'], tree(files))).not.toContain(
+      `${turnFile}: no contract test beside it runs it against the modelEngine contract`,
+    );
+  });
+
+  it('fails on a turn no contract test beside it runs', () => {
+    const files = { ...engineSuite, [turnFile]: '' };
+    expect(portContractViolations(['modelEngine'], tree(files))).toContain(
+      `${turnFile}: no contract test beside it runs it against the modelEngine contract`,
+    );
+  });
+});

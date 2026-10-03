@@ -1,4 +1,11 @@
-import { createKernel, type Clock, type Hub, type Kernel, type Ports } from '@uw/harness';
+import {
+  createKernel,
+  type Clock,
+  type Hub,
+  type Kernel,
+  type ModelEngine,
+  type Ports,
+} from '@uw/harness';
 import type { DatabaseHandle } from './database.ts';
 import type { GitHubAccess } from './github/refresh.ts';
 import { systemClock } from './ports/clock.ts';
@@ -19,10 +26,11 @@ type KernelWiring = {
   readonly hub: Hub;
   readonly reads: GitHubAccess | null;
   readonly ship: ShipGitHub | null;
+  readonly modelEngine: ModelEngine;
 };
 
 export function hubWiring(hub: Hub): KernelWiring {
-  return { hub, reads: null, ship: null };
+  return { hub, reads: null, ship: null, modelEngine: modelEngineNotWired };
 }
 
 const idle = hubWiring(hubNotWired);
@@ -41,7 +49,7 @@ export function platformPorts(
       ? platformGitHubFacts(database.db, wiring.reads, clock)
       : githubFactsNotWired,
     connectors: platformConnectors(wiring.ship),
-    modelEngine: modelEngineNotWired,
+    modelEngine: wiring.modelEngine,
     hub: wiring.hub,
     notifier: notifierNotWired,
     runs: runsNotWired,

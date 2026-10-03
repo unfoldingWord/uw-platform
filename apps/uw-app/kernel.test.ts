@@ -66,7 +66,7 @@ async function fixtureWiring() {
   const github = fixtureGitHub();
   const ship = { app: await fixtureApp(), transport: fixtureTransport(github) };
   const reads = { open: () => createGitHubReads(ship.app, ship.transport), logger: silentLogger };
-  return { github, wiring: { hub: recordingHub, reads, ship } };
+  return { github, wiring: { ...hubWiring(recordingHub), reads, ship } };
 }
 
 function pullReads(github: ReturnType<typeof fixtureGitHub>): number {

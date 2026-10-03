@@ -6,7 +6,7 @@ import { contractRequest } from '@uw/harness/port-contracts/connectors';
 import type { DatabaseHandle } from '../../database.ts';
 import { fixtureApp, fixtureTransport } from '../../github/testing/app-key.ts';
 import { fixtureGitHub } from '../../github/testing/fixture-github.ts';
-import { platformPorts } from '../../kernel.ts';
+import { hubWiring, platformPorts } from '../../kernel.ts';
 import { systemClock } from '../../ports/clock.ts';
 import { platformPersonDeps } from '../person-deps.ts';
 import { platformGateGitHub } from './gate-github.ts';
@@ -48,7 +48,7 @@ describe('GH-6 the gate kernel opens the read client and the ship writes from on
 
   it('wires neither the read client nor the ship writes without a GitHub App configuration', async () => {
     const wiring = gateWiring(null, hub, logger);
-    expect(wiring).toEqual({ hub, reads: null, ship: null });
+    expect(wiring).toEqual(hubWiring(hub));
     const ports = platformPorts(untouched, systemClock, wiring);
     expect(await ports.connectors.run({ ...contractRequest, connector: 'merge' })).toEqual({
       outcome: 'refused',

@@ -4,6 +4,14 @@ type HubStub = { fetch(input: string, init?: RequestInit): Promise<Response> };
 export type HubNamespace = { idFromName(name: string): unknown; get(id: unknown): HubStub };
 
 export type Bindings = {
+  AI_GATEWAY_ACCOUNT_ID?: string;
+  AI_GATEWAY_ANALYTICS_TOKEN?: string;
+  AI_GATEWAY_ID?: string;
+  AI_GATEWAY_TOKEN?: string;
+  AI_SPEND_CAP_MINOR?: string;
+  ALWAYS_ON_MODEL?: string;
+  ALWAYS_ON_PROVIDER?: string;
+  ANTHROPIC_API_KEY?: string;
   COMMIT_SHA?: string;
   ACCESS_TEAM_DOMAIN?: string;
   ACCESS_AUD?: string;
@@ -15,6 +23,9 @@ export type Bindings = {
   HARNESS_HUB?: HubNamespace;
   HYPERDRIVE?: HyperdriveBinding;
   INGEST_DLQ?: QueueProducer<unknown>;
+  OPENAI_API_KEY?: string;
+  OPENROUTER_API_KEY?: string;
+  SANDBOX_MINOR_PER_HOUR?: string;
 };
 
 const UNKNOWN_COMMIT = 'unknown';
