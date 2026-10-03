@@ -1,4 +1,4 @@
-import type { Harness, ItemState } from '@uw/contracts';
+import type { Harness, HarnessEvent, ItemState } from '@uw/contracts';
 import { factsFailure } from '../gates/facts-failure.ts';
 import { staleRefusal } from '../gates/facts-fresh.ts';
 import { branchFor, fullSha, sameRepository } from '../github/identifiers.ts';
@@ -66,14 +66,32 @@ function adoptedTip(
   return head === null ? notAdoptable : { head };
 }
 
-async function abandonedAt(tx: StoreTransaction, item: ItemState, at: Date): Promise<Date | null> {
-  if (leaseLapsed(item, at) && item.branchState === 'active') {
-    return new Date(item.leaseExpiresAt);
+function lastInstant(events: readonly HarnessEvent[]): Date | null {
+  let latest: number | null = null;
+  for (const event of events) {
+    const lapsedAt = event.evidence['leaseExpiresAt'];
+    const instant =
+      event.name === 'branch_abandoned'
+        ? Date.parse(event.at)
+        : event.name === 'lease_expired' && typeof lapsedAt === 'string'
+          ? Date.parse(lapsedAt)
+          : null;
+    if (instant !== null && (latest === null || instant > latest)) latest = instant;
   }
+  return latest === null ? null : new Date(latest);
+}
+
+function later(left: Date | null, right: Date | null): Date | null {
+  if (left === null || right === null) return left ?? right;
+  return left.getTime() >= right.getTime() ? left : right;
+}
+
+async function abandonedAt(tx: StoreTransaction, item: ItemState, at: Date): Promise<Date | null> {
+  const lapsingNow = leaseLapsed(item, at) ? new Date(item.leaseExpiresAt) : null;
+  if (lapsingNow !== null && item.branchState === 'active') return lapsingNow;
   if (item.branchState !== 'abandoned') return null;
   const events = await readAllEvents(tx, item.harnessId, item.itemId);
-  const abandoned = events.findLast((event) => event.name === 'branch_abandoned');
-  return abandoned === undefined ? null : new Date(abandoned.at);
+  return later(lastInstant(events), lapsingNow);
 }
 
 export async function adoptionOf(

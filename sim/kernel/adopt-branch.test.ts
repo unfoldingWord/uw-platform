@@ -243,6 +243,49 @@ describe('GH-4 adopting takes only facts GitHub reported after the branch was ab
   );
 });
 
+describe('GH-4 adopting measures from the last lapse, not only the first abandonment', () => {
+  sceneIt(
+    'refuses facts stamped before a declining holder’s own lease lapsed, then adopts after it',
+    async (scene) => {
+      const second = device(scene, scene.owner, 'second');
+      const declined = value(
+        await scene.world.kernel.items.claim(second, { itemId: scene.itemId, delegationId: null }),
+      );
+      expect(declined.branch.adopted).toBe(false);
+      const pushedAt = freshAt(scene.world.adapters.clock.now(), 5 * minute);
+      const lapsed = await leaseEnd(scene);
+      scene.world.adapters.clock.advance(16 * minute);
+      const beforeLapse = tipFacts(scene, { freshAt: pushedAt });
+      await refusedWithNothingRecorded(
+        scene,
+        answering(beforeLapse),
+        stale(pushedAt.toISOString()),
+      );
+      const afterLapse = tipFacts(scene, { freshAt: freshAt(lapsed, 1_000) });
+      expect(value(await adoptWith(scene, answering(afterLapse))).branch.adopted).toBe(true);
+    },
+  );
+
+  sceneIt('counts a lapse recorded by an earlier command', async (scene) => {
+    const second = device(scene, scene.owner, 'second');
+    value(
+      await scene.world.kernel.items.claim(second, { itemId: scene.itemId, delegationId: null }),
+    );
+    const pushedAt = freshAt(scene.world.adapters.clock.now(), 5 * minute);
+    const lapsed = await leaseEnd(scene);
+    scene.world.adapters.clock.advance(16 * minute);
+    const input = { itemId: scene.itemId, delegationId: null };
+    expect((await scene.world.kernel.items.release(second, input)).status).toBe('accepted');
+    await refusedWithNothingRecorded(
+      scene,
+      answering(tipFacts(scene, { freshAt: pushedAt })),
+      stale(pushedAt.toISOString()),
+    );
+    const afterLapse = tipFacts(scene, { freshAt: freshAt(lapsed, 1_000) });
+    expect(value(await adoptWith(scene, answering(afterLapse))).branch.adopted).toBe(true);
+  });
+});
+
 describe('adoption reads GitHub facts outside the claim transaction', () => {
   sceneIt('reads GitHub facts before the claim transaction opens', async (scene) => {
     const port: GitHubFacts = {
