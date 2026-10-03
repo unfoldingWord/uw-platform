@@ -25,7 +25,7 @@ import {
 } from './approve-at-ship.ts';
 import type { ExitPorts } from './exit.ts';
 
-export type GatePorts = Pick<Ports, 'clock' | 'githubFacts' | 'grants' | 'ids' | 'store'> &
+export type GatePorts = Pick<Ports, 'clock' | 'githubFacts' | 'grants' | 'ids' | 'store' | 'runs'> &
   ExitPorts;
 
 export type DecideInput = {

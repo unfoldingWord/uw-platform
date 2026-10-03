@@ -1,12 +1,15 @@
 import { principalSchema, type HarnessEvent, type ItemState, type Principal } from '@uw/contracts';
 import { seedPage } from '@uw/db/test-seed';
 import {
+  createKernel,
   readAllEvents,
   software,
   type Caller,
   type KernelOutcome,
   type RunRow,
+  type Runs,
   type StartedRun,
+  type Template,
 } from '@uw/harness';
 import { createSimHarness, simAdvance, simCaller, simPerson, simSystem } from './fixtures.ts';
 import type { World } from './world.ts';
@@ -109,8 +112,29 @@ function personaPrincipal(owner: Principal): Principal {
   });
 }
 
-export async function runWorld(world: World): Promise<RunWorld> {
-  const { harness, admin } = await createSimHarness(world, software);
+type Delegated = Pick<RunWorld, 'world' | 'harnessId' | 'admin' | 'owner' | 'delegationId'>;
+
+const signOff: Template = {
+  key: 'sign-off',
+  title: 'Sign-off',
+  stages: [
+    {
+      key: 'sign_off',
+      title: 'Sign-off',
+      position: 10,
+      bracket: 'build_package',
+      agentPickup: 'allowed',
+      exitGate: 'human_approval',
+      connector: 'none',
+      wipLimit: 3,
+      validators: [],
+      feeds: [],
+    },
+  ],
+};
+
+async function delegated(world: World, template: Template): Promise<Delegated> {
+  const { harness, admin } = await createSimHarness(world, template);
   const owner = await simPerson(world, 4, [
     { role: 'admin', scopeKind: 'jd_area', scopeArea: '80-89' },
   ]);
@@ -121,16 +145,32 @@ export async function runWorld(world: World): Promise<RunWorld> {
     expiresAt: null,
     supersedes: null,
   });
-  const scene = { world, harnessId: harness.id, admin, owner };
+  return { world, harnessId: harness.id, admin, owner, delegationId: value(granted).id };
+}
+
+function withPersona(scene: Delegated, itemId: string): RunWorld {
+  return { ...scene, itemId, pageId: defaultPageId, persona: personaPrincipal(scene.owner) };
+}
+
+export async function runWorld(world: World): Promise<RunWorld> {
+  const scene = await delegated(world, software);
   const itemId = await itemInScope(scene, 'Wire the run host');
   await seedPersona(scene, { id: defaultPageId });
-  return {
-    ...scene,
-    itemId,
-    delegationId: value(granted).id,
-    pageId: defaultPageId,
-    persona: personaPrincipal(owner),
-  };
+  return withPersona(scene, itemId);
+}
+
+export async function gateWorld(world: World): Promise<RunWorld> {
+  const scene = await delegated(world, signOff);
+  const enqueued = await world.kernel.items.enqueue(simCaller(world, scene.admin), {
+    harnessId: scene.harnessId,
+    title: 'Sign off the release notes',
+    pageId: null,
+    priority: 1,
+    due: null,
+    delegationId: null,
+  });
+  await seedPersona(scene, { id: defaultPageId });
+  return withPersona(scene, value(enqueued).itemId);
 }
 
 export function personaCaller(scene: RunWorld): Caller {
@@ -179,4 +219,60 @@ export async function harnessNames(scene: RunWorld): Promise<readonly string[]> 
     readAllEvents(tx, scene.harnessId, null),
   );
   return events.filter((event) => event.itemId === null).map((event) => event.name);
+}
+
+export type ParkedRun = RunWorld & { readonly runId: string; readonly beat: Caller };
+
+export function stepOn(
+  scene: Pick<RunWorld, 'world' | 'itemId'>,
+  beat: Caller,
+  input: { readonly runId: string; readonly step: 'read' | 'scout' | 'work' | 'submit' },
+) {
+  return scene.world.kernel.items.recordRunStep(beat, {
+    itemId: scene.itemId,
+    runId: input.runId,
+    step: input.step,
+    tokensIn: 100,
+    tokensOut: 20,
+    costBasis: 'metered',
+    costMinor: 3,
+  });
+}
+
+export async function parkedRun(scene: RunWorld): Promise<ParkedRun> {
+  const { runId } = value(await startOn(scene));
+  const beat = await beatOf(scene);
+  value(await stepOn(scene, beat, { runId, step: 'read' }));
+  value(await stepOn(scene, beat, { runId, step: 'submit' }));
+  const submitted = await scene.world.kernel.items.submit(beat, {
+    itemId: scene.itemId,
+    to: null,
+    evidence: {},
+    change: null,
+  });
+  if (value(submitted).result !== 'parked') throw new Error('the submit did not park');
+  return { ...scene, runId, beat };
+}
+
+export type RunsCalls = { readonly resume: string[]; readonly stop: string[] };
+
+export function watchingRuns(
+  world: World,
+  change: Partial<Runs> = {},
+): { readonly world: World; readonly calls: RunsCalls } {
+  const calls: RunsCalls = { resume: [], stop: [] };
+  const base = world.adapters.runs;
+  const runs: Runs = {
+    ...base,
+    resume: (runId) => {
+      calls.resume.push(runId);
+      return base.resume(runId);
+    },
+    stop: (runId) => {
+      calls.stop.push(runId);
+      return base.stop(runId);
+    },
+    ...change,
+  };
+  return { world: { ...world, kernel: createKernel({ ...world.adapters, runs }) }, calls };
 }
