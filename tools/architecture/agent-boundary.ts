@@ -32,12 +32,15 @@ const gateReach = [
   /\.repair\s*\??\./,
   /\.delegations\s*\??\.\s*(?:grant|revoke|write)\b/,
   /\.personas\s*\??\.\s*activate\b/,
+  /\bkernel\s*\??\.\s*personas\b/,
   /\bexitThroughConnector\b/,
   /\bconnectors\s*\??\./,
-  /\[\s*['"`](?:gates|stages|repair|connectors)['"`]\s*\]/,
+  /\[\s*['"`](?:gates|stages|repair|connectors|personas)['"`]\s*\]/,
   /\bdelegations\s*\??\.?\s*\[\s*['"`](?:grant|revoke|write)['"`]\s*\]/,
-  /\{[^{}]*\b(?:gates|repair|connectors)\b[^{}]*\}\s*=(?![=>])/,
+  /\bpersonas\s*\??\.?\s*\[\s*['"`]activate['"`]\s*\]/,
+  /\{[^{}]*\b(?:gates|repair|connectors|personas)\b[^{}]*\}\s*=(?![=>])/,
   /\{[^{}]*\b(?:grant|revoke|write)\b[^{}]*\}\s*=\s*[\w.?]*delegations\b/,
+  /\{[^{}]*\bactivate\b[^{}]*\}\s*=\s*[\w.?]*personas\b/,
 ];
 
 const personSurfaceCalls = [
