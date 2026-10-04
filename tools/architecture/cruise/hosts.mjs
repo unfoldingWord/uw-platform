@@ -105,6 +105,14 @@ export const hostRules = [
     '^apps/uw-app/commands/',
   ),
   {
+    name: 'confirm-page-only-from-page-routes',
+    comment:
+      'Confirmation turns a learning or a skill active, which only a person does, so only the page routes and tests import it and no agent host reaches it.',
+    severity: 'error',
+    from: { pathNot: ['^apps/uw-app/pages/routes\\.ts$', testFile] },
+    to: { path: '^apps/uw-app/pages/confirm\\.ts$' },
+  },
+  {
     name: 'cron-imports-only-the-request-ledger',
     comment:
       'The cron imports nothing of the command API but the request ledger, whose old rows it prunes, so it never reaches the gate kernel.',
