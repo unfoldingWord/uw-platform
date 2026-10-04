@@ -3,6 +3,7 @@ import { engineSchema, runShapeSchema } from '@uw/contracts';
 import type { AnyExecutor } from '../any-database.ts';
 import { oneOf } from '../checks.ts';
 import { delegations, harnessItems, harnessRuns } from '../schema.ts';
+import { personaDay } from './persona-day.ts';
 import { refusing } from './refusal.ts';
 import { toRun } from './rows.ts';
 import type {
@@ -234,6 +235,7 @@ export function bindRuns(executor: AnyExecutor): HarnessRunsGateway {
       runCountsSince: (since) => runCountsSince(executor, since),
       costsByItem: (itemIds) => costsByItem(executor, itemIds),
       forPersona: (query) => forPersona(executor, query),
+      personaDay: (query) => personaDay(executor, query),
     },
     write: {
       insert: (run) =>

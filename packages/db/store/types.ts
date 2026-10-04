@@ -277,9 +277,24 @@ export type PersonaRunQuery = {
   readonly since: Date | null;
   readonly limit: number;
 };
+export type PersonaDayQuery = {
+  readonly identity: Identity;
+  readonly harnessId: string;
+  readonly since: Date;
+};
+export type PersonaDay = {
+  readonly counts: readonly RunCount[];
+  readonly meteredMinor: number;
+  readonly computeMinor: number;
+  readonly subscriptionTokens: number;
+  readonly writes: number;
+  readonly ended: number;
+  readonly escalated: number;
+};
 export type HarnessRunsGateway = {
   readonly read: {
     forPersona(query: PersonaRunQuery): Promise<readonly RunRow[]>;
+    personaDay(query: PersonaDayQuery): Promise<PersonaDay>;
     byId(runId: string): Promise<RunRow | null>;
     lock(runId: string): Promise<RunRow | null>;
     liveForItem(itemId: string): Promise<RunRow | null>;
