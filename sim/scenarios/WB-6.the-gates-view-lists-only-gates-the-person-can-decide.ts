@@ -5,7 +5,7 @@ import { defineScenario } from '../scenario.ts';
 import { gatesWorld, type GatesWorld } from '../views.ts';
 
 async function titlesFor(scene: GatesWorld, actor: Principal): Promise<readonly string[]> {
-  const rows = await scene.world.kernel.views.gates(simCaller(scene.world, actor));
+  const { rows } = await scene.world.kernel.views.gates(simCaller(scene.world, actor));
   return rows.filter((row) => row.stage.key === 'ship').map((row) => row.item.title);
 }
 

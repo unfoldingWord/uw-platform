@@ -1,5 +1,6 @@
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
-import { FAILED_RUNS_LIMIT, software, type RunRow } from '@uw/harness';
+import { seedLapsedDelegations } from '@uw/db/test-seed';
+import { FAILED_RUNS_LIMIT, VIEW_LIMIT, software, type RunRow } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createSimHarness, simCaller, simPerson } from '../fixtures.ts';
 import { itemInScope, runOf } from '../runs.ts';
@@ -93,6 +94,20 @@ async function unreadableTakeNoSlot(scene: Waiting): Promise<void> {
   });
 }
 
+async function lapsedCapSaysSo(scene: Waiting): Promise<void> {
+  const caller = simCaller(scene.world, scene.owner);
+  expect((await scene.world.kernel.views.waitingOn(caller)).lapsedCapped).toBe(false);
+  const now = scene.world.adapters.clock.now();
+  await seedLapsedDelegations(scene.world.database.db, {
+    personId: scene.owner.personId ?? '',
+    harnessId: scene.harnessId,
+    persona: 'agent:scout',
+    count: VIEW_LIMIT,
+    lapsedAt: new Date(now.getTime() - 60_000),
+  });
+  expect((await scene.world.kernel.views.waitingOn(caller)).lapsedCapped).toBe(true);
+}
+
 describe('failed runs on Home', () => {
   it('WB-9 a person still sees their own older failed run after more than 200 newer failures across the organisation', () =>
     inWaiting(ownOlderFailureShows));
@@ -100,4 +115,6 @@ describe('failed runs on Home', () => {
     inWaiting(capsAndSaysSo));
   it('failed runs on a harness the person cannot read take no place in the 50', () =>
     inWaiting(unreadableTakeNoSlot));
+  it('Home says it is capped when more delegations lapsed than the read takes', () =>
+    inWaiting(lapsedCapSaysSo));
 });

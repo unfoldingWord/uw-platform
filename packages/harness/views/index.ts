@@ -15,7 +15,7 @@ import type {
   BoardView,
   DecideAbility,
   FlowView,
-  GateRow,
+  GateList,
   HarnessCursor,
   PlaneIndicator,
   PlaneRow,
@@ -41,7 +41,7 @@ export type ViewReads = {
     input: BoardInput,
     options?: ReadOptions,
   ): Promise<KernelOutcome<BoardView>>;
-  gates(caller: Caller, options?: ReadOptions): Promise<readonly GateRow[]>;
+  gates(caller: Caller, options?: ReadOptions): Promise<GateList>;
   gate(
     caller: Caller,
     input: { readonly itemId: string },

@@ -6,6 +6,7 @@ import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import type { AppEnv } from '../../deps.ts';
+import { lapsedCapNote, parkedCapNote } from '../parts/caps.ts';
 import { liveCursors } from '../parts/cursors.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { flowPath, gatePath, homePath, itemPath } from '../parts/paths.ts';
@@ -50,6 +51,20 @@ function lede(count: number, capped: boolean): string {
 
 const cappedNote = `At least ${formatCount(FAILED_RUNS_LIMIT)} runs failed on your items in the last 7 days. The newest ${formatCount(FAILED_RUNS_LIMIT)} are listed.`;
 
+type Caps = {
+  readonly failedRunsCapped: boolean;
+  readonly gatesCapped: boolean;
+  readonly lapsedCapped: boolean;
+};
+
+function capNotes(waiting: Caps): readonly string[] {
+  const notes: string[] = [];
+  if (waiting.failedRunsCapped) notes.push(cappedNote);
+  if (waiting.gatesCapped) notes.push(parkedCapNote);
+  if (waiting.lapsedCapped) notes.push(lapsedCapNote);
+  return notes;
+}
+
 function WaitingList(props: { readonly rows: readonly Shown[] }) {
   return (
     <ul class="m-0 flex list-none flex-col gap-2 p-0">
@@ -70,6 +85,7 @@ export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
   const cursors = await screen.kernel.views.cursors(screen.caller, { at: screen.at });
   const waiting = await screen.kernel.views.waitingOn(screen.caller, { at: screen.at });
   const rows = waiting.rows.map(shown);
+  const notes = capNotes(waiting);
   const harnesses = liveCursors(
     cursors,
     rows.map((row) => row.harnessId),
@@ -83,16 +99,21 @@ export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
     spec,
-    rows.length === 0 ? (
+    rows.length === 0 && notes.length === 0 ? (
       <>
         <PageHead title="Waiting on you" />
         <Note>Nothing is waiting on you right now.</Note>
       </>
     ) : (
       <>
-        <PageHead title="Waiting on you" lede={lede(rows.length, waiting.failedRunsCapped)} />
-        {waiting.failedRunsCapped ? <Note>{cappedNote}</Note> : null}
-        <WaitingList rows={rows} />
+        <PageHead
+          title="Waiting on you"
+          {...(rows.length === 0 ? {} : { lede: lede(rows.length, notes.length > 0) })}
+        />
+        {notes.map((note) => (
+          <Note>{note}</Note>
+        ))}
+        {rows.length === 0 ? null : <WaitingList rows={rows} />}
       </>
     ),
   );

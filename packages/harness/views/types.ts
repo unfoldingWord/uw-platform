@@ -56,6 +56,7 @@ export type GateRow = {
   readonly stage: Stage;
   readonly item: ItemState;
 };
+export type GateList = { readonly rows: readonly GateRow[]; readonly capped: boolean };
 export type WaitingRow =
   | { readonly kind: 'gate'; readonly gate: GateRow }
   | {
@@ -72,6 +73,8 @@ export type WaitingRow =
 export type Waiting = {
   readonly rows: readonly WaitingRow[];
   readonly failedRunsCapped: boolean;
+  readonly gatesCapped: boolean;
+  readonly lapsedCapped: boolean;
 };
 export type DecideAbility =
   | { readonly can: true }

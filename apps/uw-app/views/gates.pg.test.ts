@@ -2,8 +2,14 @@ import { randomUUID } from 'node:crypto';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
-import { revokeSeededGrant, rewriteItem, seedGrant, seedPerson } from '@uw/db/test-seed';
-import { software, type Template } from '@uw/harness';
+import {
+  revokeSeededGrant,
+  rewriteItem,
+  seedGrant,
+  seedOpenItems,
+  seedPerson,
+} from '@uw/db/test-seed';
+import { VIEW_LIMIT, software, type Template } from '@uw/harness';
 import { commandBody } from '../islands/browser/command-body.ts';
 import { clock, decisionRows } from '../github/testing/ship-rig.ts';
 import { activatedHarness, advanced, enqueuedItem } from '../testing/board-world.ts';
@@ -337,6 +343,23 @@ async function decidedGate(world: GateWorld): Promise<void> {
   );
 }
 
+async function parkedCapSaysAtLeast(world: GateWorld): Promise<void> {
+  await seedOpenItems(world.db, {
+    harnessId: world.item.harnessId,
+    stageKey: 'build',
+    count: VIEW_LIMIT,
+    gateStatus: 'parked',
+    priority: -1,
+  });
+  const document = await documentOf(world, world.kimEmail, gatesPath());
+  expect(document.querySelector('main h1 + p')?.textContent).toBe(
+    'At least 1 gate is waiting for you to decide',
+  );
+  expect(document.querySelector('main [role="note"]')?.textContent).toBe(
+    'A harness has at least 5,000 parked items. Gates are read from the 5,000 with the highest priority on each harness.',
+  );
+}
+
 async function noProblems(world: GateWorld): Promise<void> {
   for (const email of [world.kimEmail, world.viewerEmail]) {
     for (const path of [gatesPath(), deepLink(world)]) {
@@ -374,5 +397,7 @@ describe.skipIf(!testServer)('the Gates view and its deep link', () => {
     inGates(notAtPersonGate));
   it('a gate deep link says the gate has been decided only once a decision is recorded', () =>
     inGates(decidedGate));
+  it('the gates view says at least when a harness has more parked items than it reads', () =>
+    inGates(parkedCapSaysAtLeast));
   it('the gates view and a gate render with no screen problems', () => inGates(noProblems));
 });

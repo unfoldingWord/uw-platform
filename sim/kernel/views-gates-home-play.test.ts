@@ -1,6 +1,7 @@
 import type { Principal } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
-import type { Caller, KernelOutcome } from '@uw/harness';
+import { seedOpenItems } from '@uw/db/test-seed';
+import { VIEW_LIMIT, type Caller, type KernelOutcome } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import { readSpend, simAgent, simCaller, simPerson } from '../fixtures.ts';
 import { startOn, value } from '../runs.ts';
@@ -37,7 +38,7 @@ function callerOf(scene: GatesWorld, actor: Principal): Caller {
 }
 
 async function gateIds(scene: GatesWorld, actor: Principal): Promise<readonly string[]> {
-  const rows = await scene.world.kernel.views.gates(callerOf(scene, actor));
+  const { rows } = await scene.world.kernel.views.gates(callerOf(scene, actor));
   return rows.map((row) => row.item.itemId);
 }
 
@@ -46,7 +47,7 @@ function byId(ids: readonly string[]): readonly string[] {
 }
 
 async function decideOf(scene: GatesWorld, actor: Principal, itemId: string) {
-  const rows = await scene.world.kernel.views.gates(callerOf(scene, scene.ian));
+  const { rows } = await scene.world.kernel.views.gates(callerOf(scene, scene.ian));
   const row = rows.find((entry) => entry.item.itemId === itemId);
   if (row === undefined) throw new Error(`no gate for ${itemId}`);
   return scene.world.kernel.views.decideAbility(callerOf(scene, actor), row);
@@ -57,7 +58,7 @@ function reasonOf(outcome: KernelOutcome<unknown>): string {
 }
 
 async function decidableListed(scene: GatesWorld): Promise<void> {
-  const rows = await scene.world.kernel.views.gates(callerOf(scene, scene.areaAdmin));
+  const { rows } = await scene.world.kernel.views.gates(callerOf(scene, scene.areaAdmin));
   expect(rows.map((row) => row.item.itemId)).toEqual(byId([scene.standard, scene.atCheck]));
   expect(rows.map((row) => [row.harness.id, row.stage.key, row.stage.exitGate])).toEqual(
     rows.map((row) => [scene.harnessId, row.item.stageKey, 'human_approval']),
@@ -117,7 +118,7 @@ async function notAtPersonGate(scene: GatesWorld): Promise<void> {
     item: parked,
   });
   expect(asViewer).toEqual(notAtGate);
-  const rows = await scene.world.kernel.views.gates(caller);
+  const { rows } = await scene.world.kernel.views.gates(caller);
   const row = rows.find((entry) => entry.item.itemId === scene.standard);
   if (row === undefined) throw new Error('no gate for the standard item');
   expect(ability(row)).toEqual({ can: true });
@@ -133,6 +134,24 @@ async function oneGate(scene: GatesWorld): Promise<void> {
   );
   const stranger = callerOf(scene, await simPerson(scene.world, 3, []));
   expect(reasonOf(await scene.world.kernel.views.gate(stranger, input))).toBe('item_not_found');
+}
+
+async function parkedCapSaysSo(scene: GatesWorld): Promise<void> {
+  const caller = callerOf(scene, scene.areaAdmin);
+  const before = await scene.world.kernel.views.gates(caller);
+  expect(before.capped).toBe(false);
+  expect((await scene.world.kernel.views.waitingOn(caller)).gatesCapped).toBe(false);
+  await seedOpenItems(scene.world.database.db, {
+    harnessId: scene.harnessId,
+    stageKey: 'build',
+    count: VIEW_LIMIT,
+    gateStatus: 'parked',
+    priority: -1,
+  });
+  const after = await scene.world.kernel.views.gates(caller);
+  expect(after.capped).toBe(true);
+  expect(after.rows.map((row) => row.item.itemId)).toEqual(byId([scene.standard, scene.atCheck]));
+  expect((await scene.world.kernel.views.waitingOn(caller)).gatesCapped).toBe(true);
 }
 
 async function decidedOnce(scene: GatesWorld): Promise<void> {
@@ -165,6 +184,10 @@ describe('the gates a person can decide', () => {
     notAtPersonGate,
   );
   gatesIt('the views gate read answers the gate view of one item', oneGate);
+  gatesIt(
+    'the gates list and Home say they are capped when a harness has more parked items than the read takes',
+    parkedCapSaysSo,
+  );
   gatesIt('the decided read is true once a decision is recorded on a readable item', decidedOnce);
 });
 
