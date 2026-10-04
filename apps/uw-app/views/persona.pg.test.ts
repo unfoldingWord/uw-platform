@@ -244,6 +244,37 @@ async function editorSaveStopsTheRuns(db: Database): Promise<void> {
   });
 }
 
+async function delegationsCapped(db: Database): Promise<void> {
+  const { scene: made, pageId } = await scene(db);
+  const admin = await ian(db);
+  const now = new Date();
+  await platformStore(db).transaction(async (tx) => {
+    for (let n = 1; n <= 52; n += 1) {
+      await tx.delegations.write.insert(
+        {
+          id: randomUUID(),
+          personId: admin.personId ?? '',
+          persona: identitySchema.parse('agent:builder'),
+          harnessId: made.harnessId,
+          capability: 'build',
+          grantedAt: new Date(now.getTime() - 60_000 + n),
+          expiresAt: new Date(now.getTime() + 86_400_000),
+          revokedAt: null,
+          lapsedAt: null,
+          supersedes: null,
+        },
+        randomUUID(),
+      );
+    }
+  });
+  const document = documentOf((await getHtml(db, IAN, `/personas/${pageId}`)).text);
+  const table = [...document.querySelectorAll('table')].find((element) =>
+    element.querySelector('caption')?.textContent?.includes('live delegations'),
+  );
+  expect(table?.querySelectorAll('tbody tr')).toHaveLength(50);
+  expect(document.body.textContent).toContain('and 2 more live delegations');
+}
+
 async function crossSite(db: Database): Promise<void> {
   const { pageId } = await scene(db);
   const form = toolsetForm(['read_page'], 1);
@@ -280,6 +311,8 @@ describe.skipIf(!testServer)('the persona view', () => {
     withAppDatabase(savesToolset));
   it("an editor's toolset save on an active persona lands it suggested, and neither the beat nor a claim works for it", () =>
     withAppDatabase(editorSaveStopsTheRuns));
+  it('the persona view lists 50 live delegations and names how many more there are', () =>
+    withAppDatabase(delegationsCapped));
   it('a toolset post from another origin, or with no origin, is refused', () =>
     withAppDatabase(crossSite));
 });

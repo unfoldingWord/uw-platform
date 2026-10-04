@@ -82,6 +82,7 @@ type Scene = {
 };
 
 const LAST_RUNS = 5;
+const SHOWN_DELEGATIONS = 50;
 const DAY_MS = 86_400_000;
 const counted: readonly EventName[] = [
   'gate_refused_to_agent',
@@ -147,16 +148,16 @@ async function delegationsOf(tx: StoreTransaction, scene: Scene, at: Date) {
     persona: scene.frontmatter.identity,
     harnessId: scene.harness.id,
   };
-  const live = await tx.delegations.read.live(filter, at);
-  const shown = allowed(scene.principal, 'admin', scene.harness, at)
-    ? live.map((delegation) => ({
-        id: delegation.id,
-        personId: delegation.personId,
-        capability: delegation.capability,
-        expiresAt: delegation.expiresAt.toISOString(),
-      }))
-    : null;
-  return { count: live.length, live: shown };
+  const count = await tx.delegations.read.countLive(filter, at);
+  if (!allowed(scene.principal, 'admin', scene.harness, at)) return { count, live: null };
+  const live = await tx.delegations.read.firstLive(filter, at, SHOWN_DELEGATIONS);
+  const shown = live.map((delegation) => ({
+    id: delegation.id,
+    personId: delegation.personId,
+    capability: delegation.capability,
+    expiresAt: delegation.expiresAt.toISOString(),
+  }));
+  return { count, live: shown };
 }
 
 function abilities(scene: Scene, at: Date) {

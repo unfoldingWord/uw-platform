@@ -74,6 +74,24 @@ async function expiredUnlapsed(executor: AnyExecutor, at: Date, limit: number) {
   return rows.map(toDelegation);
 }
 
+async function countLive(executor: AnyExecutor, filter: DelegationFilter, at: Date) {
+  const rows = await executor
+    .select({ count: sql<number>`count(*)::int` })
+    .from(delegations)
+    .where(matching(filter, at));
+  return rows[0]?.count ?? 0;
+}
+
+async function firstLive(executor: AnyExecutor, filter: DelegationFilter, at: Date, limit: number) {
+  const rows = await executor
+    .select()
+    .from(delegations)
+    .where(matching(filter, at))
+    .orderBy(asc(delegations.grantedAt), asc(delegations.id))
+    .limit(checkedRows(limit, 'live delegation'));
+  return rows.map(toDelegation);
+}
+
 export function bindDelegations(executor: AnyExecutor): DelegationsGateway {
   return {
     read: {
@@ -92,6 +110,8 @@ export function bindDelegations(executor: AnyExecutor): DelegationsGateway {
           .orderBy(asc(delegations.grantedAt), asc(delegations.id));
         return rows.map(toDelegation);
       },
+      countLive: (filter, at) => countLive(executor, filter, at),
+      firstLive: (filter, at, limit) => firstLive(executor, filter, at, limit),
       lapsedFor: (personId, since, at, limit) => lapsedFor(executor, personId, since, at, limit),
       expiredUnlapsed: (at, limit) => expiredUnlapsed(executor, at, limit),
     },
