@@ -169,3 +169,51 @@ describe('release criterion 6, the part a local run can check: the race suites e
     expect(testJob).toContain('image: postgres:16');
   });
 });
+
+type HandOffKey = string;
+
+const datedRow = /^\| \d{4}-\d{2}-\d{2} \|/;
+const handOffRow = /^\| (?:Not verified|Waiting on a person) \|/;
+
+function sectionLines(tracker: string, heading: string): string[] {
+  const lines = tracker.split('\n');
+  const start = lines.indexOf(heading);
+  if (start === -1) return [];
+  const rest = lines.slice(start + 1);
+  const end = rest.findIndex((line) => line.startsWith('## '));
+  return end === -1 ? rest : rest.slice(0, end);
+}
+
+function cells(row: string): string[] {
+  return row
+    .split('|')
+    .slice(1, -1)
+    .map((cell) => cell.trim());
+}
+
+function sourceKeys(tracker: string, heading: string, label: string): HandOffKey[] {
+  return sectionLines(tracker, heading)
+    .filter((line) => datedRow.test(line))
+    .map((row) => {
+      const [date, requirement] = cells(row);
+      return `${label} | ${date ?? ''} | ${requirement ?? ''}`;
+    });
+}
+
+function handOffKeys(tracker: string): HandOffKey[] {
+  return sectionLines(tracker, '## Go-live hand-off')
+    .filter((line) => handOffRow.test(line))
+    .map((line) => cells(line).slice(0, 3).join(' | '));
+}
+
+describe('the go-live hand-off names every row a person must still close', () => {
+  it('lists each Not verified and each Waiting on a person row once, by its section, date and requirement', () => {
+    const tracker = source('docs/progress_tracker.md');
+    const expected = [
+      ...sourceKeys(tracker, '## Not verified', 'Not verified'),
+      ...sourceKeys(tracker, '## Waiting on a person', 'Waiting on a person'),
+    ].sort();
+    expect(expected.length).toBeGreaterThan(0);
+    expect(handOffKeys(tracker).sort()).toEqual(expected);
+  });
+});
