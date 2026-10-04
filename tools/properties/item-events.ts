@@ -286,8 +286,18 @@ function reorder(model: Model, pick: number): boolean {
   return true;
 }
 
+const comment = {
+  source: 'zulip',
+  messageId: 1,
+  topic: 'software/uw-platform#1',
+  personId: null,
+  email: 'ana@example.org',
+  text: 'approve',
+  truncated: false,
+};
+
 function irrelevant(model: Model, pick: number): boolean {
-  if (pick % 2 === 0) emit(model, 'comment_recorded', {});
+  if (pick % 2 === 0) emit(model, 'comment_recorded', comment);
   else emit(model, 'checks_passed', { stage: stageKey(model.stage), validators: [] });
   return true;
 }

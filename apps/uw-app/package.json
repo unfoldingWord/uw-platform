@@ -37,5 +37,5 @@
     "jsdom": "^30.1.1",
     "wrangler": "^4.144.0"
   },
-  "contractVersion": "11.1.0"
+  "contractVersion": "12.0.0"
 }

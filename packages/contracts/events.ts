@@ -49,6 +49,7 @@ export const eventNames = [
   'learning_attached',
   'nothing_learned',
   'comment_recorded',
+  'zulip_topic_linked',
   'breaker_holding',
   'breaker_pausing',
   'breaker_open',

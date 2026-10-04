@@ -28,8 +28,8 @@ const claimed = {
 };
 
 describe('KN-3 the event vocabulary is PRD section 8.6', () => {
-  it('has the fifty-one names and none of the placeholders it replaces', () => {
-    expect(eventNameSchema.options).toHaveLength(51);
+  it('has the fifty-two names and none of the placeholders it replaces', () => {
+    expect(eventNameSchema.options).toHaveLength(52);
     expect(eventNameSchema.safeParse('stage_edited').success).toBe(true);
     expect(eventNameSchema.options[0]).toBe('item_created');
     expect(eventNameSchema.options.at(-1)).toBe('persona_activated');

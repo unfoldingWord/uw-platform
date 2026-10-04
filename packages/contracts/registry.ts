@@ -42,6 +42,13 @@ import {
 } from './ingest.ts';
 import { eventPageReplySchema, eventQuerySchema, hubWakeSchema } from './live.ts';
 import {
+  deepLinkSchema,
+  pushEndpointSchema,
+  pushPayloadSchema,
+  pushSubscribeSchema,
+  pushUnsubscribeSchema,
+} from './notify.ts';
+import {
   acceptedOutcomeSchema,
   errorOutcomeSchema,
   errorReasonSchema,
@@ -89,6 +96,7 @@ import {
 import { recordRunStepReplySchema, submitToGateResultSchema } from './verb-io.ts';
 import { forbiddenVerbSchema, verbNameSchema } from './verb-names.ts';
 import { verbGrantSchema, verbGroupSchema } from './verbs.ts';
+import { zulipMessageSchema, zulipOutgoingSchema, zulipTopicSchema } from './zulip.ts';
 
 export const schemaRegistry: Record<string, ZodType> = {
   command: commandSchema,
@@ -202,4 +210,14 @@ export const schemaRegistry: Record<string, ZodType> = {
   'event-page-reply': eventPageReplySchema,
   'event-read-query': eventQuerySchema,
   'gate-view': gateViewSchema,
+  'wake-reason': closedSets.wakeReasonSchema,
+  'live-screen': closedSets.liveScreenSchema,
+  'deep-link': deepLinkSchema,
+  'push-payload': pushPayloadSchema,
+  'push-endpoint': pushEndpointSchema,
+  'push-subscribe': pushSubscribeSchema,
+  'push-unsubscribe': pushUnsubscribeSchema,
+  'zulip-topic': zulipTopicSchema,
+  'zulip-outgoing': zulipOutgoingSchema,
+  'zulip-message': zulipMessageSchema,
 };
