@@ -178,13 +178,13 @@ describe('KN-8 an unattended traversal of a loop edge is refused without a deleg
       const delegation = value(
         await simDelegate(scene.world, kim, {
           harnessId: scene.harnessId,
-          persona: 'agent:iterate',
-          capability: 'iterate',
+          persona: 'agent:builder',
+          capability: 'build',
           expiresAt: null,
           supersedes: null,
         }),
       );
-      const bare = simCaller(scene.world, simAgent(kim, 'iterate', { interactive: false }));
+      const bare = simCaller(scene.world, simAgent(kim, 'builder', { interactive: false }));
       const itemId = await enqueueAt(scene, 'plan');
       value(await scene.world.kernel.items.claim(bare, { itemId, delegationId: delegation.id }));
       const looped = value(await submitTo(scene, bare, itemId, 'scope'));

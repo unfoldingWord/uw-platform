@@ -2,6 +2,7 @@ import type { Harness, ItemState, Stage } from '@uw/contracts';
 import { allowed, bareAgent, isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { actingPrincipal, isRefusal, recordDelegationRequired } from '../delegations/acting.ts';
+import { capabilityReaches, pageAgrees } from '../delegations/capability.ts';
 import {
   adoptionOf,
   claimedBranch,
@@ -122,6 +123,22 @@ async function inactivePersonaRefusal(
   return refused('not_permitted', { why: 'persona_not_active' });
 }
 
+async function capabilityRefusal(
+  tx: StoreTransaction,
+  scene: Scene,
+  delegationId: string | null,
+): Promise<Refused | null> {
+  if (delegationId === null) return null;
+  const delegation = await tx.delegations.read.byId(delegationId);
+  if (delegation === null) return null;
+  const { harness, stage } = scene;
+  const page = await activePersonaOn(tx, delegation.persona, harness.id);
+  if (capabilityReaches(delegation.capability, stage.bracket) && pageAgrees(page, delegation)) {
+    return null;
+  }
+  return refused('pickup_not_allowed', { stage: stage.key, capability: delegation.capability });
+}
+
 async function actingGuard(
   tx: StoreTransaction,
   ports: ClaimPorts,
@@ -136,7 +153,10 @@ async function actingGuard(
     return recordDelegationRequired(tx, context, item.itemId, stage.key);
   }
   if (allowed(acting, 'write', harness, context.at)) {
-    return inactivePersonaRefusal(tx, caller, harness);
+    return (
+      (await inactivePersonaRefusal(tx, caller, harness)) ??
+      (await capabilityRefusal(tx, scene, delegationId))
+    );
   }
   return refused('not_permitted', { harnessId: harness.id, delegationId });
 }

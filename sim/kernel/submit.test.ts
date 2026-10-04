@@ -335,7 +335,7 @@ describe('KN-16 a submit under a delegation re-checks it', () => {
       await simDelegate(scene.world, scene.kim, {
         harnessId: scene.harnessId,
         persona: 'agent:builder',
-        capability: 'iterate',
+        capability: 'build',
         expiresAt: null,
         supersedes: null,
       }),

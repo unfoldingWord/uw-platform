@@ -152,7 +152,7 @@ async function sceneOf(r: Rig, key: string, count: number): Promise<Scene> {
     repository: `unfoldingWord/${key}`,
   };
   value(await r.kernel.stages.activate(caller(r.ian), activate));
-  const change = { agentPickup: 'allowed' as const };
+  const change = { agentPickup: 'allowed' as const, bracket: 'iterate' as const };
   value(
     await r.kernel.stages.updateStage(caller(r.ian), { harnessId, stageKey: 'package', change }),
   );
@@ -180,7 +180,11 @@ async function delegate(
   const person = await personOn(r.db, owner.id, owner.email, r.clock.now());
   const input = { harnessId, persona: 'agent:iterate', expiresAt: null, supersedes: null };
   const granted = value(await r.kernel.delegations.grant(caller(person), { ...input, capability }));
-  await seedActivePersona(r.db, { identity: 'agent:iterate', harnessId });
+  await seedActivePersona(r.db, {
+    identity: 'agent:iterate',
+    harnessId,
+    frontmatter: { capability: 'iterate' },
+  });
   return granted.id;
 }
 

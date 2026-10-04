@@ -141,10 +141,10 @@ async function seedPersona(db: Database, harnessId: string, owner: Principal, op
   await projectSeededPersona(db, personaPageId);
 }
 
+const pickup = { agentPickup: 'allowed' as const, bracket: 'build_package' as const };
+
 async function stageFor(kernel: Kernel, admin: Principal, harnessId: string, gate: boolean) {
-  const change = gate
-    ? { agentPickup: 'allowed' as const, exitGate: 'human_approval' as const }
-    : { agentPickup: 'allowed' as const };
+  const change = gate ? { ...pickup, exitGate: 'human_approval' as const } : pickup;
   accepted(
     await kernel.stages.updateStage(callerOf(admin), { harnessId, stageKey: 'package', change }),
   );

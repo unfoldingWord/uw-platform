@@ -18,6 +18,7 @@ export const submitToGate = gatedHandler({
       to: input.to,
       evidence: input.evidence,
       change: changeOf(input),
+      attach: input.attach,
     });
     return fromKernel(submitted, (value) => ({
       itemId: value.item.itemId,

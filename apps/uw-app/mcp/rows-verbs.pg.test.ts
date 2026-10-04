@@ -298,3 +298,43 @@ describe.skipIf(!testServer)(
     });
   },
 );
+
+async function measuredAtClose(r: Rig, area: Area, values: readonly number[]): Promise<string> {
+  const harnessId = r.harnesses[area];
+  const itemId = r.items[area];
+  const change = { feeds: ['close'] };
+  value(
+    await r.kernel.stages.updateStage(caller(r.ian), { harnessId, stageKey: 'package', change }),
+  );
+  value(await r.kernel.items.claim(caller(r.ian), { itemId, delegationId: null }));
+  const moved = { itemId, to: 'close', evidence: {}, change: null };
+  value(await r.kernel.items.submit(caller(r.ian), moved));
+  for (const [n, reading] of values.entries()) {
+    const asOf = `2026-01-0${String(n + 1)}`;
+    const input = { itemId, source: 'manual' as const, name: 'readers', value: reading, asOf };
+    value(await r.kernel.measurements.record(caller(r.ian), input));
+  }
+  return itemId;
+}
+
+async function measurementsOf(tool: Tool, itemId: string): Promise<unknown[] | Body> {
+  const body = await tool('query_entities', {
+    query: 'measurements_for_item',
+    params: { itemId },
+  });
+  return listed(body, 'rows', 'value');
+}
+
+describe.skipIf(!testServer)('query_entities measurements_for_item', () => {
+  it("PE-7 query_entities measurements_for_item answers the item's measurements, newest first, and nothing for an item the caller cannot read", async () => {
+    const r = rig();
+    const ours = await measuredAtClose(r, '80-89', [10, 20]);
+    const theirs = await measuredAtClose(r, '30-39', [30]);
+    const reader = (await agentOn(r, VIEWER_80)).tool;
+    expect(await measurementsOf(reader, ours)).toEqual([20, 10]);
+    expect(await measurementsOf(reader, theirs)).toEqual([]);
+    expect(await measurementsOf(reader, crypto.randomUUID())).toEqual([]);
+    const all = (await agentOn(r, ORG_VIEWER)).tool;
+    expect(await measurementsOf(all, theirs)).toEqual([30]);
+  });
+});

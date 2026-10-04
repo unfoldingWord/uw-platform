@@ -34,7 +34,7 @@ async function sceneOf(world: World, enqueuer: Principal): Promise<Scene> {
   await world.kernel.stages.updateStage(simCaller(world, ian), {
     harnessId: harness.id,
     stageKey: 'package',
-    change: { agentPickup: 'allowed' },
+    change: { agentPickup: 'allowed', bracket: 'iterate' },
   });
   const item = await world.kernel.items.enqueue(simCaller(world, enqueuer), {
     harnessId: harness.id,

@@ -10,7 +10,7 @@ import {
   tweakPackageCommand,
 } from './handlers/items.ts';
 import { importCommand } from './handlers/import.ts';
-import { notWiredCommand } from './not-wired.ts';
+import { recordMeasurementCommand } from './handlers/measurements.ts';
 import { promptRunCommand, stopRunCommand } from './handlers/runs.ts';
 import { revokeDelegationCommand, scheduleRegularTweakCommand } from './person/delegations.ts';
 import { activatePersonaCommand } from './person/personas.ts';
@@ -75,5 +75,5 @@ export const commandRegistry = commandRegistryOf([
   removeStageCommand,
   setHostedBuilderCommand,
   activatePersonaCommand,
-  notWiredCommand('record_measurement', 'write'),
+  recordMeasurementCommand,
 ]);
