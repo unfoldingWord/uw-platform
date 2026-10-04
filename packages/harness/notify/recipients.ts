@@ -51,6 +51,12 @@ export function deciders(
     .map((holder) => holder.personId);
 }
 
+function readers(scope: RecipientScope): ReadonlySet<string> {
+  const { holders, harness, at } = scope;
+  const reading = holders.filter((holder) => allowed(principalOf(holder), 'read', harness, at));
+  return new Set(reading.map((holder) => holder.personId));
+}
+
 export function areaAdmins(
   holders: readonly GrantHolder[],
   harness: Pick<Harness, 'jdArea'>,
@@ -92,26 +98,33 @@ function delegationLapsed(scope: RecipientScope): Named {
   return admins.includes(personId) ? [personId] : admins.filter((admin) => admin !== personId);
 }
 
-function runFailed(scope: RecipientScope): Named {
+function runFailedPerson(scope: RecipientScope): string | null {
   const { run, delegationPerson } = scope;
   const held = holderPerson(scope.item?.prior ?? null, delegationPerson);
-  if (held !== null || run === null) return [held];
+  if (held !== null || run === null) return held;
   const delegated = run.delegationId === null ? null : delegationPerson(run.delegationId);
-  return [delegated ?? deviceOwnerSegment(run.persona)];
+  return delegated ?? deviceOwnerSegment(run.persona);
 }
 
-function stageAdvanced(scope: RecipientScope): Named {
+function stageAdvancedPerson(scope: RecipientScope): string | null {
   const prior = scope.item?.prior ?? null;
   const held = holderPerson(prior, scope.delegationPerson);
-  if (held !== null || prior?.gateStatus !== 'parked') return [held];
-  return [personBehind(scope.item?.parkedBy ?? null, scope.delegationPerson)];
+  if (held !== null || prior?.gateStatus !== 'parked') return held;
+  return personBehind(scope.item?.parkedBy ?? null, scope.delegationPerson);
+}
+
+function readerOnly(named: (scope: RecipientScope) => string | null) {
+  return (scope: RecipientScope): Named => {
+    const personId = named(scope);
+    return personId !== null && readers(scope).has(personId) ? [personId] : [];
+  };
 }
 
 const byReason: ReadonlyMap<WakeReason, (scope: RecipientScope) => Named> = new Map([
   ['gate_waiting', gateWaiting],
   ['delegation_lapsed', delegationLapsed],
-  ['run_failed', runFailed],
-  ['stage_advanced', stageAdvanced],
+  ['run_failed', readerOnly(runFailedPerson)],
+  ['stage_advanced', readerOnly(stageAdvancedPerson)],
 ]);
 
 function selfOf(actor: string): string | null {

@@ -31,8 +31,6 @@ type Draft = Omit<Wake, 'recipients'> & {
 
 export type PlannedWake = { readonly wake: Wake; readonly unlinked: boolean };
 
-const needsHolders: ReadonlySet<string> = new Set(['gate_waiting', 'delegation_lapsed']);
-
 async function holdersFor(
   ports: WakePlanPorts,
   triggers: readonly Trigger[],
@@ -40,9 +38,9 @@ async function holdersFor(
   at: Date,
 ): Promise<Holders> {
   const areas = new Set<JdArea>();
-  for (const { event, reason } of triggers) {
+  for (const { event } of triggers) {
     const harness = context.harnesses.get(event.harnessId);
-    if (harness !== undefined && needsHolders.has(reason)) areas.add(harness.jdArea);
+    if (harness !== undefined) areas.add(harness.jdArea);
   }
   const holders = new Map<JdArea, readonly GrantHolder[]>();
   for (const area of areas) holders.set(area, await ports.grants.holders(area, at));
