@@ -2,7 +2,8 @@ import { jsx } from 'hono/jsx';
 import { JSDOM, type DOMWindow } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import { SegmentedControl } from './segmented-control.tsx';
-import { THEME_KEY, ThemeSwitch } from './theme-switch.tsx';
+import { THEME_KEY } from './inline-scripts.ts';
+import { ThemeSwitch } from './theme-switch.tsx';
 
 const choices = [
   { value: 'board', label: 'Board' },

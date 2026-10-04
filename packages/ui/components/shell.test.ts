@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveToken, themeTokens, type ThemeName } from '../../../tools/ui/css-tokens.ts';
 import { PageHead } from './page-head.tsx';
 import { Shell } from './shell.tsx';
-import { THEME_KEY } from './theme-switch.tsx';
+import { THEME_KEY } from './inline-scripts.ts';
 
 const nav = [
   { href: '/', label: 'Home' },

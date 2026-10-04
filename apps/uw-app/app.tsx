@@ -10,6 +10,7 @@ import { meRoutes } from './auth/me.ts';
 import { withPrincipal } from './auth/principal-middleware.ts';
 import { platformPersonDeps, type PersonDeps } from './commands/person-deps.ts';
 import { harnessRoutes } from './commands/routes.ts';
+import { securityHeaders } from './http/security-headers.ts';
 import { withDatabase } from './database.ts';
 import { platformDeps, type AppDeps, type AppEnv } from './deps.ts';
 import { commitOf } from './env.ts';
@@ -25,6 +26,7 @@ export function createApp(
 ): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
+  app.use(securityHeaders());
   app.use(observe(deps));
   app.use(withDatabase(deps));
 

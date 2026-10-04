@@ -10,7 +10,15 @@ export type CommandResult =
 
 const requestIdOnly = z.object({ requestId: z.uuid() });
 
+function jsonFromThisSite(request: Request): boolean {
+  const type = request.headers.get('content-type') ?? '';
+  const mediaType = type.split(';')[0]?.trim().toLowerCase();
+  const site = request.headers.get('sec-fetch-site');
+  return mediaType === 'application/json' && (site === null || site === 'same-origin');
+}
+
 export async function readJson(c: Context<AppEnv>): Promise<unknown> {
+  if (!jsonFromThisSite(c.req.raw)) return null;
   const read = await boundedJson(c.req.raw);
   return read.ok ? read.value : null;
 }

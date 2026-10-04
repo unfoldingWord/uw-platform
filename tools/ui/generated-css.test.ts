@@ -1,7 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { appCss, appCssPath } from '../../packages/ui/generated/app-css.ts';
+import { appCss, appCssPath, manifestColours } from '../../packages/ui/generated/app-css.ts';
+import { resolveToken, themeTokens } from './css-tokens.ts';
 
 const themeColours = [
   'bg',
@@ -39,5 +40,15 @@ describe('WB-11 the stylesheet is built from the tokens', () => {
   it('WB-11 the stylesheet has no red and no Tailwind default colour', () => {
     expect(appCss).not.toContain('--color-red');
     expect(colourNames(appCss).filter((name) => !themeColours.includes(name))).toEqual([]);
+  });
+
+  it('manifestColours are the light ocean and background tokens', () => {
+    const light = themeTokens('light');
+    expect(manifestColours).toEqual({
+      theme: resolveToken('--uw-ocean', light),
+      background: resolveToken('--uw-bg', light),
+      panel: resolveToken('--uw-ocean-panel', light),
+      panelInk: resolveToken('--uw-ocean-panel-ink', light),
+    });
   });
 });

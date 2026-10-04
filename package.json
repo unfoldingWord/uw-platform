@@ -31,7 +31,8 @@
     "audit:prod": "pnpm audit --prod --audit-level high",
     "audit:all": "pnpm audit --audit-level high",
     "verify": "pnpm check && pnpm lint && pnpm lint:dates && pnpm lint:vendor && pnpm format:check && pnpm knip && pnpm architecture && pnpm walk:all && pnpm trace:built && pnpm test && pnpm sim:all && pnpm build",
-    "ui:css": "node tools/ui/build-css.ts"
+    "ui:css": "node tools/ui/build-css.ts",
+    "ui:islands": "node tools/ui/build-islands.ts"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.22.0",
@@ -41,6 +42,7 @@
     "@types/estree": "^1.0.9",
     "@types/node": "^22.20.4",
     "dependency-cruiser": "^18.4.0",
+    "esbuild": "0.28.1",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-security": "^4.1.0",
