@@ -12,6 +12,7 @@ import {
   type AccessFixture,
 } from '../testing/access-keys.ts';
 import { postgresDeps, testServer, withAppDatabase } from '../testing/postgres.ts';
+import { screenProblems } from '../testing/screen-checks.ts';
 
 const IAN_ID = '00000000-0000-4000-8000-000000000001';
 const IAN_GRANT_ID = '00000000-0000-4000-8000-000000000101';
@@ -121,7 +122,7 @@ describe.skipIf(!testServer)('FD-7 the principal minted at the edge', () => {
       expect(reply.status).toBe(403);
       expect(reply.raw.headers.get('content-type')).toContain('text/html');
       const html = await reply.raw.text();
-      expect(html).toContain('<h1>Your sign-in is waiting for approval</h1>');
+      expect(html).toMatch(/<h1[^>]*>Your sign-in is waiting for approval<\/h1>/);
       expect(html).toContain(
         '<p>An unfoldingWord admin needs to approve your account before you can continue.</p>',
       );
@@ -129,6 +130,19 @@ describe.skipIf(!testServer)('FD-7 the principal minted at the edge', () => {
         '<meta name="viewport" content="width=device-width, initial-scale=1"/>',
       );
       expect(html).toContain('<meta name="color-scheme" content="light dark"/>');
+    }));
+});
+
+describe.skipIf(!testServer)('the pending page', () => {
+  it('the pending page renders in the shell with status 403', () =>
+    withAppDatabase(async (db) => {
+      const reply = await me(db, 'someone@gmail.com', 'text/html');
+      expect(reply.status).toBe(403);
+      const html = await reply.raw.text();
+      expect(html.startsWith('<!DOCTYPE html>')).toBe(true);
+      expect(html).toContain('<main id="main"');
+      expect(html).toContain('uw-theme');
+      expect(await screenProblems(html)).toEqual([]);
     }));
 });
 

@@ -105,11 +105,6 @@ const sharedMarks = new Map<string, readonly RegExp[]>([
   [`${components}lane.tsx`, [/<dt\b/]],
 ]);
 
-const beforeTheShell = new Map<string, readonly RegExp[]>([
-  ['apps/uw-app/health/routes.tsx', [/<html\b/, /<main\b/, /<h1\b/]],
-  ['apps/uw-app/auth/pending-approval.tsx', [/<html\b/, /<h1\b/]],
-]);
-
 function scanned(path: string): boolean {
   return /^(apps|packages)\//.test(path) && /\.tsx?$/.test(path) && !/\.test\.tsx?$/.test(path);
 }
@@ -133,11 +128,7 @@ function handRolledDecisions(path: string, text: string): string[] {
 }
 
 function secondPieces(path: string, text: string): string[] {
-  const allowed = new Set(
-    [...(beforeTheShell.get(path) ?? []), ...(sharedMarks.get(path) ?? [])].map(
-      (mark) => mark.source,
-    ),
-  );
+  const allowed = new Set((sharedMarks.get(path) ?? []).map((mark) => mark.source));
   return pieces
     .filter((piece) => piece.owner !== path)
     .flatMap((piece) => piece.marks)
@@ -192,13 +183,6 @@ describe('WB-11 each shell piece exists once', () => {
         piece.marks.some((mark) => mark.test(text)),
         piece.owner,
       ).toBe(true);
-    }
-  });
-
-  it('the pages written before the shell still carry the markup they are excused for, so the list only shrinks', () => {
-    for (const [path, marks] of beforeTheShell) {
-      const text = readFileSync(path, 'utf8');
-      for (const mark of marks) expect(mark.test(text), `${path}: ${mark.source}`).toBe(true);
     }
   });
 

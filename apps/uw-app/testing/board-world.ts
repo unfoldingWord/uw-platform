@@ -120,7 +120,7 @@ function stepOf(tokensIn: number, tokensOut: number, at: Date) {
 
 type RunSeed = { readonly harnessId: string; readonly itemId: string; readonly at: Date };
 
-async function subscriptionRun(db: Database, seed: RunSeed, persona: string) {
+export async function subscriptionRun(db: Database, seed: RunSeed, persona: string) {
   await seedRunRow(db, {
     id: randomUUID(),
     harnessId: seed.harnessId,
@@ -138,7 +138,7 @@ async function subscriptionRun(db: Database, seed: RunSeed, persona: string) {
   });
 }
 
-async function meteredRun(db: Database, seed: RunSeed, outcome: 'running' | 'completed') {
+export async function meteredRun(db: Database, seed: RunSeed, outcome: 'running' | 'completed') {
   await seedRunRow(db, {
     id: randomUUID(),
     harnessId: seed.harnessId,
