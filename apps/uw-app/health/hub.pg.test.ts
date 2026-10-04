@@ -72,7 +72,7 @@ async function liveHubOf(
   app: ReturnType<typeof createApp>,
   env: Probe['env'],
 ): Promise<HealthIndicator | undefined> {
-  const response = await app.request('/health', {}, env);
+  const response = await app.request('/health/probe', {}, env);
   expect(response.status).toBe(200);
   const report = healthReportSchema.parse(await response.json());
   return report.indicators.find((indicator) => indicator.name === 'live_hub');

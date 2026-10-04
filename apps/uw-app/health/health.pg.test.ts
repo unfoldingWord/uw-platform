@@ -23,7 +23,7 @@ async function report(db: Database, withQueue: boolean) {
   };
   const env = withQueue ? { INGEST_DLQ: { send: async () => undefined } } : {};
   const response = await createApp({ ...deps, openDatabase: () => handle }).request(
-    '/health',
+    '/health/probe',
     {},
     env,
   );
@@ -74,7 +74,7 @@ async function stalledReport(timers: Timers): Promise<HealthIndicator[]> {
   const env = { INGEST_DLQ: { send: async () => undefined } };
   try {
     const response = await createApp({ ...deps, timers, openDatabase: () => handle }).request(
-      '/health',
+      '/health/probe',
       {},
       env,
     );

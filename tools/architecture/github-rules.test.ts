@@ -237,6 +237,38 @@ describe('the person import command', () => {
   });
 });
 
+const agentPlaneFile = 'apps/uw-app/health/agent-plane.ts';
+
+describe('the agent plane', () => {
+  it('reads the sweep state through the read model queries', async () => {
+    const found = await violations({
+      ...importPath,
+      [agentPlaneFile]: "import '../github/facts/queries.ts';",
+    });
+    expect(found).toEqual([]);
+  });
+
+  it('refuses any other module under apps/uw-app/github', async () => {
+    const found = await violations({
+      ...importPath,
+      [agentPlaneFile]: "import '../github/sweep.ts';",
+    });
+    expect(found.map((violation) => violation.rule)).toEqual([
+      'agent-plane-only-on-the-sweep-queries',
+    ]);
+  });
+
+  it('leaves the rest of health off the GitHub module', async () => {
+    const found = await violations({
+      ...importPath,
+      'apps/uw-app/health/hub.ts': "import '../github/facts/queries.ts';",
+    });
+    expect(found.map((violation) => violation.rule)).toContain(
+      'github-module-only-in-ports-and-roots',
+    );
+  });
+});
+
 describe('the GitHub dependency rules refuse', () => {
   it.each(refusals)('%s', async (_name, path, source, rule) => {
     const found = await violations({ [path]: source });

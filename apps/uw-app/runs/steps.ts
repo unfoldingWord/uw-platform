@@ -72,6 +72,7 @@ export async function openStep(
     at: deps.clock.now(),
     db: deps.db,
     commit: deps.commit,
+    cap: deps.cap,
     logger: deps.logger,
     within,
   });

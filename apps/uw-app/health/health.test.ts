@@ -3,6 +3,7 @@ import { createClient } from '@uw/db/client';
 import { healthReportSchema, type HealthIndicator } from '@uw/contracts';
 import { createApp } from '../app.tsx';
 import type { DatabaseHandle } from '../database.ts';
+import { fixtureAccessEnv } from '../testing/access-keys.ts';
 import { recordingDeps } from '../testing/deps.ts';
 import { systemTimers, type Timers } from '../timers.ts';
 import { DATABASE_TIMEOUT_MS, overallStatus } from './indicators.ts';
@@ -25,7 +26,7 @@ async function getHealth(
 ) {
   const { deps } = recordingDeps();
   return createApp({ ...deps, openDatabase, timers }).request(
-    '/health',
+    '/health/probe',
     { headers },
     { COMMIT_SHA: commit },
   );
@@ -84,18 +85,24 @@ describe('FD-11 and FD-12 the health report', () => {
     expect(statusOf(report.indicators, 'database')).toBe('red');
     expect(calls).toEqual([DATABASE_TIMEOUT_MS]);
   });
+});
 
-  it('renders a screen when html is accepted', async () => {
+describe('the probe is public and /health is not', () => {
+  it('answers the probe as JSON even when html is accepted', async () => {
     const response = await getHealth(() => null, { accept: 'text/html' });
     expect(response.status).toBe(200);
-    expect(response.headers.get('content-type')).toContain('text/html');
-    const html = await response.text();
-    expect(html).toContain('<h1>Health</h1>');
-    expect(html).toContain('database');
-    expect(html).toContain('not_configured');
-    expect(html).toContain('name="viewport"');
-    expect(html).toContain('name="color-scheme" content="light dark"');
-    expect(html).not.toMatch(/#[0-9a-f]{3,8}\b|style=/i);
+    expect(response.headers.get('content-type')).toContain('application/json');
+    expect(healthReportSchema.parse(await response.json()).commit).toBe(commit);
+  });
+
+  it('refuses /health itself without a principal', async () => {
+    const { deps } = recordingDeps();
+    const app = createApp({ ...deps, openDatabase: () => null });
+    const unconfigured = await app.request('/health', {}, { COMMIT_SHA: commit });
+    expect(unconfigured.status).toBe(503);
+    const unsigned = await app.request('/health', {}, { ...fixtureAccessEnv, COMMIT_SHA: commit });
+    expect(unsigned.status).toBe(401);
+    expect(await unsigned.json()).toEqual({ status: 'error', reason: 'unauthenticated' });
   });
 });
 

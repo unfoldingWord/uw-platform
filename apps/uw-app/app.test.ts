@@ -8,7 +8,7 @@ const commit = '0123456789abcdef0123456789abcdef01234567';
 describe('uw-app shell', () => {
   it('reports the deployed commit on the health route', async () => {
     const response = await createApp(recordingDeps().deps).request(
-      '/health',
+      '/health/probe',
       {},
       { COMMIT_SHA: commit },
     );
@@ -17,7 +17,7 @@ describe('uw-app shell', () => {
   });
 
   it('reports an unknown commit when none was deployed', async () => {
-    const response = await createApp(recordingDeps().deps).request('/health', {}, {});
+    const response = await createApp(recordingDeps().deps).request('/health/probe', {}, {});
     expect(await response.json()).toMatchObject({ status: 'ok', commit: 'unknown' });
   });
 });

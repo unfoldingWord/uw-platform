@@ -13,7 +13,7 @@ import { harnessRoutes } from './commands/routes.ts';
 import { withDatabase } from './database.ts';
 import { platformDeps, type AppDeps, type AppEnv } from './deps.ts';
 import { commitOf } from './env.ts';
-import { healthRoutes } from './health/routes.tsx';
+import { healthScreenRoutes, probeRoutes } from './health/routes.tsx';
 import { mcpRoutes } from './mcp/routes.ts';
 import { observe } from './observe.ts';
 import { pageRoutes } from './pages/routes.ts';
@@ -37,7 +37,7 @@ export function createApp(
     return c.json({ status: 'error', reason: 'internal_error' }, 500);
   });
 
-  app.route('/health', healthRoutes(deps));
+  app.route('/health/probe', probeRoutes(deps));
   app.route('/', assetRoutes());
 
   app.use(withPrincipal(deps));
@@ -47,6 +47,7 @@ export function createApp(
   app.route('/api/pages', pageRoutes());
   app.route('/api/harness', harnessRoutes(deps, person));
   app.route('/mcp', mcpRoutes(deps));
+  app.route('/health', healthScreenRoutes(deps));
 
   app.get('/', (c) => {
     const commit = commitOf(c.env).slice(0, 7);

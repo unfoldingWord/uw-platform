@@ -4,7 +4,7 @@ import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
 import { seedGrant, seedPerson } from '@uw/db/test-seed';
-import { readAllEvents, software, type Caller, type Kernel } from '@uw/harness';
+import { DEFAULT_SPEND_CAP, readAllEvents, software, type Caller, type Kernel } from '@uw/harness';
 import { systemClock } from '../ports/clock.ts';
 import { platformStore } from '../ports/store.ts';
 import { seedPullRequest } from '../testing/github-facts.ts';
@@ -112,6 +112,7 @@ function contextFor(r: Rig, over: Partial<VerbContext> = {}): VerbContext {
     ...over,
     db: r.db,
     commit: 'test-commit',
+    cap: DEFAULT_SPEND_CAP,
     logger: createLogger(
       { traceId: 'trace', commit: 'test-commit', route: 'POST /mcp', principal: null },
       () => undefined,

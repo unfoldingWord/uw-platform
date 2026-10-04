@@ -4,7 +4,7 @@ import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
 import { seedGrant, seedPage, seedPerson, type SeedPage } from '@uw/db/test-seed';
-import { software, type Caller, type Kernel } from '@uw/harness';
+import { DEFAULT_SPEND_CAP, software, type Caller, type Kernel } from '@uw/harness';
 import { createApp } from '../app.tsx';
 import { createTask } from '../tasks/store.ts';
 import { createAccessFixture, type AccessFixture } from '../testing/access-keys.ts';
@@ -262,6 +262,7 @@ async function viewer(
       kernel: r.kernel,
       db: r.db,
       commit: 'test-commit',
+      cap: DEFAULT_SPEND_CAP,
       logger,
     };
     const [block] = (await callVerb(context, name, args, verbHandlers)).content;

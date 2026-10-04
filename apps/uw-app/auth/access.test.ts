@@ -49,8 +49,8 @@ function tamper(token: string): string {
 }
 
 describe('FD-7 the Access JWT is verified on every request', () => {
-  it('serves /health with no token and no Access configuration', async () => {
-    const response = await call('/health', undefined, {}).response;
+  it('serves /health/probe with no token and no Access configuration', async () => {
+    const response = await call('/health/probe', undefined, {}).response;
     expect(response.status).toBe(200);
   });
 

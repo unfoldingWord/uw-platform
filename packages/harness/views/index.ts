@@ -6,6 +6,8 @@ import type { Ports } from '../ports.ts';
 import { boardView } from './board.ts';
 import { flowView } from './flow.ts';
 import { decidableGates, decideAbility } from './gates.ts';
+import { planeList } from './plane-list.ts';
+import { planeTotals } from './plane.ts';
 import { playByPlay, type PlayInput } from './play.ts';
 import { readableHarnesses } from './readable.ts';
 import type {
@@ -14,6 +16,9 @@ import type {
   DecideAbility,
   FlowView,
   GateRow,
+  PlaneIndicator,
+  PlaneRow,
+  PlaneTotals,
   PlayByPlay,
   WaitingRow,
 } from './types.ts';
@@ -48,6 +53,12 @@ export type ViewReads = {
     input: PlayInput,
     options?: ReadOptions,
   ): Promise<KernelOutcome<PlayByPlay>>;
+  planeTotals(options?: ReadOptions): Promise<PlaneTotals>;
+  planeList(
+    caller: Caller,
+    indicator: PlaneIndicator,
+    options?: ReadOptions,
+  ): Promise<readonly PlaneRow[]>;
 };
 
 export function createViewReads(ports: ViewPorts): ViewReads {
@@ -79,6 +90,14 @@ export function createViewReads(ports: ViewPorts): ViewReads {
     playByPlay: (caller, input, options) => {
       const at = instant(options);
       return store.transaction((tx) => playByPlay(ports, tx, caller, input, at));
+    },
+    planeTotals: (options) => {
+      const at = instant(options);
+      return store.transaction((tx) => planeTotals(tx, at));
+    },
+    planeList: (caller, indicator, options) => {
+      const at = instant(options);
+      return store.transaction((tx) => planeList({ ports, tx, caller, at }, indicator));
     },
   };
 }

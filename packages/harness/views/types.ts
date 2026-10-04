@@ -1,5 +1,6 @@
 import type {
   CostBasis,
+  Engine,
   EvidenceLabel,
   Harness,
   HarnessEvent,
@@ -76,3 +77,37 @@ export type PlayByPlay = {
 };
 export const WAITING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 export const PLAY_PAGE = 100;
+export type PlaneTotals = {
+  readonly at: Date;
+  readonly spend: {
+    readonly meteredMinor: number;
+    readonly computeMinor: number;
+    readonly subscriptionTokens: number;
+    readonly currency: 'USD';
+    readonly since: Date;
+  };
+  readonly runsToday: {
+    readonly byShape: Readonly<Record<RunShape, number>>;
+    readonly byEngine: Readonly<Partial<Record<Engine, number>>>;
+    readonly since: Date;
+  };
+  readonly liveDelegations: { readonly count: number; readonly soonestExpiry: Date | null };
+  readonly gateRefusals: {
+    readonly byReason: Readonly<Record<string, number>>;
+    readonly capped: boolean;
+  };
+  readonly agentWrites: { readonly count: number; readonly capped: boolean };
+  readonly staleLearnings: { readonly count: number; readonly capped: boolean };
+};
+export type PlaneIndicator =
+  | 'spend'
+  | 'runs_today'
+  | 'live_delegations'
+  | 'gate_refusals_week'
+  | 'agent_writes'
+  | 'stale_learnings';
+export type PlaneRow = {
+  readonly harnessId: string | null;
+  readonly cells: Readonly<Record<string, string | number | null>>;
+};
+export const PLANE_LIMIT = 5000;

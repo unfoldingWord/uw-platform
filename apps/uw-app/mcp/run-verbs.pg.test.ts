@@ -174,7 +174,7 @@ async function breakerHealth(): Promise<void> {
     expect(await breaker()).toEqual({
       name: 'breaker',
       status: 'ok',
-      detail: '10 percent of the cap spent',
+      detail: '10 percent of $1,250.00 spent',
     });
     r.clock.advance(11 * 60_000);
     expect(await breaker()).toEqual({
@@ -186,7 +186,7 @@ async function breakerHealth(): Promise<void> {
     expect(await breaker()).toEqual({
       name: 'breaker',
       status: 'amber',
-      detail: '80 percent of the cap spent',
+      detail: '80 percent of $1,250.00 spent',
     });
   } finally {
     await laptop.close();
