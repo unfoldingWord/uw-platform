@@ -210,6 +210,46 @@ async function revokedAfterLoad(world: GateWorld): Promise<void> {
   expect(await decisionRows(world.db, { ...world.item, itemId })).toBe(0);
 }
 
+function formFields(document: Document): Record<string, string> {
+  const form = document.querySelector('main form[data-command="decide"]');
+  return Object.fromEntries(
+    [...(form?.querySelectorAll('input[name], textarea[name]') ?? [])].map((control) => [
+      control.getAttribute('name') ?? '',
+      (control as HTMLInputElement).value,
+    ]),
+  );
+}
+
+const typed: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  reject: { findings: 'The release notes miss the date' },
+  take_over: {},
+  override: { reason: 'The reviewer is down and the notes are urgent' },
+};
+
+async function decidedFromForm(world: GateWorld, decision: string): Promise<void> {
+  const { harnessId, itemId } = await parkedAtSignOff(world);
+  const path = gatePath(harnessId, itemId);
+  const before = await documentOf(world, world.ianEmail, path);
+  const named = [...before.querySelectorAll('main button[name="decision"]')].map((button) =>
+    button.getAttribute('value'),
+  );
+  expect(named).toContain(decision);
+  const fields = { ...formFields(before), ...typed[decision] };
+  const body = commandBody(decision, fields, randomUUID());
+  expect(body).not.toBeNull();
+  const sent = await post(
+    world.db,
+    world.ianEmail,
+    `/api/harness/${harnessId}/commands/${decision}`,
+    body,
+  );
+  expect([decision, sent.status, sent.body['status']]).toEqual([decision, 200, 'accepted']);
+  expect(await decisionRows(world.db, { ...world.item, itemId })).toBe(1);
+  const after = await documentOf(world, world.ianEmail, path);
+  expect(after.querySelectorAll('main button[name="decision"]')).toHaveLength(0);
+  expect(after.querySelector('main [role="note"]')?.textContent).toBe('This gate has been decided');
+}
+
 async function kindleOnButtons(world: GateWorld): Promise<void> {
   const document = await documentOf(world, world.kimEmail, gatesPath());
   const kindled = [...document.querySelectorAll('main [class*="kindle"]')];
@@ -387,6 +427,10 @@ describe.skipIf(!testServer)('the Gates view and its deep link', () => {
     inGates(stableDeepLink));
   it('WB-6 a viewer opening the deep link sees the facts with every decision refused not_permitted', () =>
     inGates(viewerRefused));
+  it.each(['reject', 'take_over', 'override'])(
+    'WB-6 %s posted from the rendered gate form issues the gate command and the gate shows its outcome',
+    (decision) => inGates((world) => decidedFromForm(world, decision)),
+  );
   it('WB-7 the Gates view and a gate deep link stack below md, their tables scroll in their own wrapper, their controls wrap and nothing sets a fixed width', () =>
     inGates(phoneWidth));
   it('WB-7 a gate deep link is live from the latest event cursor and refreshes every minute', () =>
