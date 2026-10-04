@@ -34,6 +34,8 @@ const actions = {
   reorder_stages: 'admin',
   remove_stage: 'admin',
   set_hosted_builder: 'admin',
+  activate_persona: 'admin',
+  record_measurement: 'write',
 } as const;
 
 describe('WB-1 the command registry', () => {
