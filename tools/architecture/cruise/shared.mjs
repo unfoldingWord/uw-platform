@@ -17,7 +17,7 @@ export const impure = [
   '^(node:)?(http|https|http2|net|tls|dns|dgram)$',
 ];
 
-export const harnessMayImport = '^packages/(harness|contracts|core)/';
+export const harnessMayImport = ['^packages/(harness|contracts|core)/', npm('yaml')];
 export const contractsMayImport = ['^packages/contracts/', npm('zod')];
 export const testFile = '\\.test\\.ts$';
 export const portContracts = '^packages/harness/port-contracts/';
