@@ -13,6 +13,13 @@ import {
   type WaitingRow,
 } from './types.ts';
 
+const nothingWaiting: Waiting = {
+  rows: [],
+  failedRunsCapped: false,
+  gatesCapped: false,
+  lapsedCapped: false,
+};
+
 type FailedRows = { readonly rows: readonly WaitingRow[]; readonly capped: boolean };
 
 type Scope = {
@@ -41,7 +48,9 @@ function latestPerPersona(delegations: readonly Delegation[]): readonly Delegati
   });
 }
 
-async function lapsedRows(scope: Scope): Promise<readonly WaitingRow[]> {
+type LapsedRows = { readonly rows: readonly WaitingRow[]; readonly capped: boolean };
+
+async function lapsedRows(scope: Scope): Promise<LapsedRows> {
   const since = new Date(scope.at.getTime() - WAITING_WINDOW_MS);
   const { read } = scope.tx.delegations;
   const lapsed = await read.lapsedFor(scope.personId, since, scope.at, VIEW_LIMIT);
@@ -51,7 +60,7 @@ async function lapsedRows(scope: Scope): Promise<readonly WaitingRow[]> {
     if (harness === undefined || (await renewed(scope, delegation))) continue;
     rows.push({ kind: 'delegation_lapsed', harness, delegation });
   }
-  return rows;
+  return { rows, capped: lapsed.length === VIEW_LIMIT };
 }
 
 async function failedRows(scope: Scope): Promise<FailedRows> {
@@ -82,15 +91,18 @@ export async function waitingOn(
   at: Date,
 ): Promise<Waiting> {
   const { personId } = caller.actor;
-  if (personId === null || isAgent(caller.actor)) return { rows: [], failedRunsCapped: false };
+  if (personId === null || isAgent(caller.actor)) return nothingWaiting;
   const gates = await decidableGates(ports, tx, caller, at);
   const shown = await readableHarnesses(ports, tx, caller, at);
   const readable = new Map(shown.map((harness) => [harness.id, harness]));
   const scope = { tx, personId, readable, at };
   const lapsed = await lapsedRows(scope);
   const failed = await failedRows(scope);
+  const gateRows = gates.rows.map((gate): WaitingRow => ({ kind: 'gate', gate }));
   return {
-    rows: [...gates.map((gate): WaitingRow => ({ kind: 'gate', gate })), ...lapsed, ...failed.rows],
+    rows: [...gateRows, ...lapsed.rows, ...failed.rows],
     failedRunsCapped: failed.capped,
+    gatesCapped: gates.capped,
+    lapsedCapped: lapsed.capped,
   };
 }

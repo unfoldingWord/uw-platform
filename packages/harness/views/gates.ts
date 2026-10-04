@@ -5,7 +5,7 @@ import type { StoreTransaction } from '../ports.ts';
 import { itemScene, type ScenePorts } from '../reads/scene.ts';
 import { approverCovers } from '../risk/domain-grants.ts';
 import { readableHarnesses } from './readable.ts';
-import { VIEW_LIMIT, type DecideAbility, type GateRow } from './types.ts';
+import { VIEW_LIMIT, type DecideAbility, type GateList, type GateRow } from './types.ts';
 
 type Gate = { readonly harness: Harness; readonly stage: Stage; readonly item: ItemState };
 
@@ -32,21 +32,22 @@ async function gatesIn(
   actor: Principal,
   harness: Harness,
   at: Date,
-): Promise<readonly GateRow[]> {
-  if (!allowed(actor, 'admin', harness, at)) return [];
+): Promise<GateList> {
+  if (!allowed(actor, 'admin', harness, at)) return { rows: [], capped: false };
   const stages = await tx.harnessStages.read.forHarness(harness.id);
   const human = new Map(
     stages
       .filter((stage) => stage.exitGate === 'human_approval')
       .map((stage) => [stage.key, stage]),
   );
+  const parked = await tx.harnessItems.read.parked(harness.id, VIEW_LIMIT);
   const rows: GateRow[] = [];
-  for (const item of await tx.harnessItems.read.parked(harness.id, VIEW_LIMIT)) {
+  for (const item of parked) {
     const stage = human.get(item.stageKey);
     if (stage === undefined) continue;
     if (decideAbility(actor, { harness, stage, item }, at).can) rows.push({ harness, stage, item });
   }
-  return rows;
+  return { rows, capped: parked.length === VIEW_LIMIT };
 }
 
 export async function decidableGates(
@@ -54,13 +55,16 @@ export async function decidableGates(
   tx: StoreTransaction,
   caller: Caller,
   at: Date,
-): Promise<readonly GateRow[]> {
-  if (!decider(caller.actor)) return [];
+): Promise<GateList> {
+  if (!decider(caller.actor)) return { rows: [], capped: false };
   const rows: GateRow[] = [];
+  let capped = false;
   for (const harness of await readableHarnesses(ports, tx, caller, at)) {
-    rows.push(...(await gatesIn(tx, caller.actor, harness, at)));
+    const listed = await gatesIn(tx, caller.actor, harness, at);
+    rows.push(...listed.rows);
+    capped ||= listed.capped;
   }
-  return rows;
+  return { rows, capped };
 }
 
 export async function gateDecided(

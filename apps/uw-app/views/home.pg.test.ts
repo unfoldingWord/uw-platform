@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest';
 import type { ItemState, Principal } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
 import { harnessItems, harnessRuns } from '@uw/db/schema';
-import { seedGrant, seedPerson } from '@uw/db/test-seed';
+import { seedGrant, seedLapsedDelegations, seedOpenItems, seedPerson } from '@uw/db/test-seed';
+import { VIEW_LIMIT } from '@uw/harness';
 import { clock, instant, parkAtShip, people } from '../github/testing/ship-rig.ts';
 import { accepted, callerOf } from '../testing/commands.ts';
 import { kernelOn } from '../testing/kernel.ts';
@@ -139,6 +140,35 @@ async function cappedSaysAtLeast(db: Database): Promise<void> {
   expect(linksOf(page.text)).toHaveLength(52);
 }
 
+async function notesOf(db: Database): Promise<readonly (string | null)[]> {
+  const { document } = new JSDOM((await homeOf(db, IAN)).text).window;
+  return [document.querySelector('main h1 + p')?.textContent ?? null].concat(
+    [...document.querySelectorAll('main [role="note"]')].map((note) => note.textContent),
+  );
+}
+
+async function parkedAndLapsedCaps(db: Database): Promise<void> {
+  const home = await seeded(db);
+  const { harnessId } = home.item;
+  const parked = { harnessId, stageKey: 'build', count: VIEW_LIMIT, priority: -1 };
+  await seedOpenItems(db, { ...parked, gateStatus: 'parked' });
+  expect(await notesOf(db)).toEqual([
+    'At least 3 things are waiting on you',
+    'A harness has at least 5,000 parked items. Gates are read from the 5,000 with the highest priority on each harness.',
+  ]);
+  await seedLapsedDelegations(db, {
+    personId: home.ian.personId ?? '',
+    harnessId,
+    persona: 'agent:builder',
+    count: VIEW_LIMIT,
+    lapsedAt: earlier(2),
+  });
+  expect((await notesOf(db)).slice(1)).toEqual([
+    'A harness has at least 5,000 parked items. Gates are read from the 5,000 with the highest priority on each harness.',
+    'At least 5,000 of your delegations lapsed in the last 7 days. The latest 5,000 are read.',
+  ]);
+}
+
 async function seedViewer(db: Database): Promise<void> {
   await seedPerson(db, VIEWER);
   await seedGrant(db, {
@@ -205,6 +235,8 @@ describe.skipIf(!testServer)('Home', () => {
     withAppDatabase(countIsRows));
   it('WB-9 Home says at least when the failed runs it lists stop at 50', () =>
     withAppDatabase(cappedSaysAtLeast));
+  it('Home says at least when the parked items or lapsed delegations it reads stop at 5,000', () =>
+    withAppDatabase(parkedAndLapsedCaps));
   it('WB-9 an empty Home says nothing is waiting', () => withAppDatabase(emptyHome));
   it('WB-9 a high item the person lacks the domain grant for is not on Home', () =>
     withAppDatabase(highItemHidden));

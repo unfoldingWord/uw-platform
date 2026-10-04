@@ -279,12 +279,37 @@ export async function seedEventRows(db: AnyExecutor, rows: readonly SeedEventRow
     .values(rows.map((row) => ({ ...row, evidence: { ...row.evidence } })));
 }
 
-export async function seedOpenItems(
-  db: AnyExecutor,
-  stage: { readonly harnessId: string; readonly stageKey: string; readonly count: number },
-): Promise<void> {
-  await db.execute(sql`INSERT INTO harness_items (id, harness_id, stage_id, title, created_at)
-    SELECT gen_random_uuid(), ${stage.harnessId}, harness_stages.id, 'Seeded item ' || n, ${seededAt.toISOString()}::timestamptz
+type OpenItems = {
+  readonly harnessId: string;
+  readonly stageKey: string;
+  readonly count: number;
+  readonly gateStatus?: 'working' | 'parked';
+  readonly priority?: number;
+};
+
+export async function seedOpenItems(db: AnyExecutor, stage: OpenItems): Promise<void> {
+  const gateStatus = stage.gateStatus ?? 'working';
+  const priority = stage.priority ?? 0;
+  await db.execute(sql`INSERT INTO harness_items (id, harness_id, stage_id, title, created_at, gate_status, priority)
+    SELECT gen_random_uuid(), ${stage.harnessId}, harness_stages.id, 'Seeded item ' || n, ${seededAt.toISOString()}::timestamptz, ${gateStatus}, ${priority}
     FROM harness_stages, generate_series(1, ${stage.count}) AS n
     WHERE harness_stages.harness_id = ${stage.harnessId} AND harness_stages.key = ${stage.stageKey}`);
+}
+
+type LapsedDelegations = {
+  readonly personId: string;
+  readonly harnessId: string;
+  readonly persona: string;
+  readonly count: number;
+  readonly lapsedAt: Date;
+};
+
+export async function seedLapsedDelegations(
+  db: AnyExecutor,
+  seed: LapsedDelegations,
+): Promise<void> {
+  const lapsedAt = seed.lapsedAt.toISOString();
+  await db.execute(sql`INSERT INTO delegations (id, person_id, persona, harness_id, capability, granted_at, expires_at, lapsed_at, trace_id)
+    SELECT gen_random_uuid(), ${seed.personId}, ${seed.persona}, ${seed.harnessId}, 'build', ${lapsedAt}::timestamptz - interval '1 hour', ${lapsedAt}::timestamptz + interval '1 day', ${lapsedAt}::timestamptz, gen_random_uuid()
+    FROM generate_series(1, ${seed.count})`);
 }
