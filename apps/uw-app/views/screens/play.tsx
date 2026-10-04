@@ -88,6 +88,7 @@ export async function playScreen(c: Context<AppEnv>): Promise<Response> {
   if (play === null) return notFound(c);
   const { harness, item, stage } = play;
   const learnings = new Map(Object.entries(play.learnings));
+  const personaPages = new Map(Object.entries(play.personaPages));
   const zulipUrl = itemTopicUrl(zulipConfigOf(c.env), harness.jdArea, item.zulipTopic);
   const spec = {
     title: item.title,
@@ -111,7 +112,7 @@ export async function playScreen(c: Context<AppEnv>): Promise<Response> {
       <Links play={play} zulipUrl={zulipUrl} />
       <ol class="m-0 flex list-none flex-col gap-2 p-0">
         {play.events.map((event) => (
-          <PlayRow event={event} learnings={learnings} />
+          <PlayRow event={event} learnings={learnings} personaPages={personaPages} />
         ))}
       </ol>
       {play.next === null ? null : (

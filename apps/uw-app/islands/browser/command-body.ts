@@ -18,6 +18,10 @@ type Shape = (given: ReadonlyMap<string, string>) => Readonly<Record<string, unk
 
 const itemOnly: Shape = (given) => ({ itemId: given.get('itemId') });
 
+function versionOf(raw: string | undefined): number | null {
+  return raw === undefined || raw === '' ? null : Number(raw);
+}
+
 const shapes: ReadonlyMap<string, Shape> = new Map<string, Shape>([
   ['enqueue', (given) => ({ title: given.get('title'), pageId: null, due: null })],
   [
@@ -31,6 +35,13 @@ const shapes: ReadonlyMap<string, Shape> = new Map<string, Shape>([
   [
     'reject',
     (given) => ({ itemId: given.get('itemId'), findings: findingsOf(given.get('findings')) }),
+  ],
+  [
+    'activate_persona',
+    (given) => ({
+      pageId: given.get('pageId'),
+      expectedVersion: versionOf(given.get('expectedVersion')),
+    }),
   ],
   [
     'override',

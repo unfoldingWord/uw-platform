@@ -16,6 +16,7 @@ export const OUTCOME_TEXT: Readonly<Record<string, string>> = {
   reject: 'Rejected',
   take_over: 'You hold this item now',
   override: 'Overridden',
+  activate_persona: 'Done.',
 };
 
 const outcomes: ReadonlyMap<string, string> = new Map(Object.entries(OUTCOME_TEXT));

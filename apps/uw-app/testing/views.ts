@@ -14,6 +14,7 @@ type HtmlRequest = {
   readonly headers: Readonly<Record<string, string>>;
   readonly clock: Clock;
   readonly env: Readonly<Record<string, string>>;
+  readonly form?: URLSearchParams;
 };
 
 async function htmlRequest(
@@ -26,11 +27,16 @@ async function htmlRequest(
   const keys = await fixture;
   const token = await keys.sign({ email });
   const app = createApp(postgresDeps(db, keys, undefined, request.clock), noGateGitHub);
-  const response = await app.request(
-    path,
-    { headers: { 'cf-access-jwt-assertion': token, accept: 'text/html', ...request.headers } },
-    { ...fixtureAccessEnv, ...request.env },
-  );
+  const headers = { 'cf-access-jwt-assertion': token, accept: 'text/html', ...request.headers };
+  const init =
+    request.form === undefined
+      ? { headers }
+      : {
+          method: 'POST',
+          headers: { ...headers, 'content-type': 'application/x-www-form-urlencoded' },
+          body: request.form.toString(),
+        };
+  const response = await app.request(path, init, { ...fixtureAccessEnv, ...request.env });
   return { status: response.status, text: await response.text(), headers: response.headers };
 }
 
@@ -52,4 +58,14 @@ export function getHtmlWithEnv(
   clock: Clock = systemClock,
 ): Promise<Html> {
   return htmlRequest(db, email, path, { headers: {}, clock, env });
+}
+
+export function postForm(
+  db: Database,
+  email: string,
+  path: string,
+  form: URLSearchParams,
+  headers: Readonly<Record<string, string>>,
+): Promise<Html> {
+  return htmlRequest(db, email, path, { headers, clock: systemClock, env: {}, form });
 }

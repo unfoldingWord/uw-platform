@@ -27,7 +27,9 @@ function shown(verb: string): string {
   return verb.slice(0, SHOWN_VERB_MAX);
 }
 
-function reaches(input: ToolCheckInput, definition: VerbDefinition): boolean {
+type Reach = Pick<ToolCheckInput, 'activator' | 'area' | 'at'>;
+
+export function reaches(input: Reach, definition: VerbDefinition): boolean {
   const { grant } = definition;
   if (grant === null) return true;
   const area = grant.scope === 'fixed_area' ? grant.area : input.area;

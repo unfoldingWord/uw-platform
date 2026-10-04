@@ -2,6 +2,7 @@ import { evidenceLabelSchema, type EvidenceLabel, type HarnessEvent } from '@uw/
 import { allowed } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { readEventPage } from '../items/events.ts';
+import { activePersonaOn, personaIdentityFor } from '../personas/projection.ts';
 import { accepted, type KernelOutcome } from '../outcome.ts';
 import type { StoreTransaction } from '../ports.ts';
 import { itemScene, type ScenePorts } from '../reads/scene.ts';
@@ -33,6 +34,23 @@ async function learningsOf(
   return Object.fromEntries(labels);
 }
 
+async function personaPagesOf(
+  tx: StoreTransaction,
+  caller: Caller,
+  events: readonly HarnessEvent[],
+  at: Date,
+): Promise<Readonly<Record<string, string>>> {
+  const pages: [string, string][] = [];
+  for (const actor of new Set(events.map((event) => event.actor))) {
+    const persona = personaIdentityFor(actor);
+    const harnessId = events[0]?.harnessId;
+    if (persona === null || harnessId === undefined) continue;
+    const page = await activePersonaOn(tx, persona, harnessId);
+    if (page !== null && allowed(caller.actor, 'read', page, at)) pages.push([actor, page.id]);
+  }
+  return Object.fromEntries(pages);
+}
+
 export async function playByPlay(
   ports: ScenePorts,
   tx: StoreTransaction,
@@ -53,5 +71,6 @@ export async function playByPlay(
   if (page.status !== 'accepted') return page;
   const { events, next } = page.value;
   const learnings = await learningsOf(tx, caller, events, at);
-  return accepted({ harness, stage, item, events, next, learnings });
+  const personaPages = await personaPagesOf(tx, caller, events, at);
+  return accepted({ harness, stage, item, events, next, learnings, personaPages });
 }

@@ -5,7 +5,7 @@ import { CommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
 import { SelectField } from '@uw/ui/components/field.tsx';
 import { KanbanCard } from '@uw/ui/components/kanban-card.tsx';
 import { costText } from './costs.ts';
-import { itemPath } from './paths.ts';
+import { itemPath, personaPath } from './paths.ts';
 
 export type CardViewer = { readonly identity: string; readonly admin: boolean };
 
@@ -96,6 +96,19 @@ function ReorderForm(props: ItemForm & { readonly others: readonly BoardCard[] }
   );
 }
 
+function PersonaLink(props: { readonly card: BoardCard }) {
+  const pageId = props.card.liveRun?.personaPageId ?? null;
+  if (pageId === null) return null;
+  return (
+    <a
+      href={personaPath(pageId)}
+      class="text-sm text-link underline outline-offset-2 outline-focus focus-visible:outline-2"
+    >
+      See the persona running this item
+    </a>
+  );
+}
+
 export function BoardCardView(props: {
   readonly harnessId: string;
   readonly card: BoardCard;
@@ -112,6 +125,7 @@ export function BoardCardView(props: {
       meta={metaOf(card)}
       actions={
         <>
+          <PersonaLink card={card} />
           {holdAction(card, harnessId, props.viewer)}
           <ReorderForm harnessId={harnessId} itemId={itemId} others={others} />
         </>

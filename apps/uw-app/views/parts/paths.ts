@@ -28,6 +28,10 @@ export function itemPath(harnessId: string, itemId: string): string {
   return `${flowPath(harnessId)}/items/${segment(itemId)}`;
 }
 
+export function personaPath(pageId: string): string {
+  return `/personas/${segment(pageId)}`;
+}
+
 export function healthPath(indicator?: string): string {
   return indicator === undefined ? '/health' : `/health/${segment(indicator)}`;
 }

@@ -1,6 +1,7 @@
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import { harnessCommandSchemas } from '@uw/contracts';
+import { reasonText } from '@uw/ui/components/text.ts';
 import { commandBody } from './command-body.ts';
 import { OUTCOME_TEXT, wireCommandForms } from './command-form.ts';
 
@@ -161,6 +162,33 @@ describe('the command form island', () => {
     dirtyKeptOnRefusal,
   );
   it('the harness id is encoded into the command path', harnessEncoded);
+});
+
+describe('the Activate form', () => {
+  it('builds the activate_persona body and shows a stale version beside the button', async () => {
+    const pageId = itemId;
+    expect(commandBody('activate_persona', { pageId, expectedVersion: '3' }, requestId)).toEqual({
+      command: 'activate_persona',
+      requestId,
+      pageId,
+      expectedVersion: 3,
+    });
+    expect(commandBody('activate_persona', { pageId, expectedVersion: '' }, requestId)).toBeNull();
+    const markup = `<form data-command="activate_persona" data-harness="${harnessId}" method="post" action="#"><input type="hidden" name="pageId" value="${pageId}"><input type="hidden" name="expectedVersion" value="1"><button type="submit">Activate</button><p data-outcome role="status"></p></form>`;
+    const stale = wired(page(markup), async () =>
+      Response.json({ status: 'error', reason: 'stale_version' }, { status: 409 }),
+    );
+    submit(stale.document);
+    await settled();
+    expect(stale.sent[0]?.url).toBe(`/api/harness/${harnessId}/commands/activate_persona`);
+    expect(stale.document.querySelector('[data-outcome]')?.textContent).toBe(
+      reasonText('stale_version'),
+    );
+    const done = wired(page(markup), async () => Response.json({ status: 'accepted' }));
+    submit(done.document);
+    await settled();
+    expect(done.document.querySelector('[data-outcome]')?.textContent).toBe('Done.');
+  });
 });
 
 describe('the command bodies', () => {
