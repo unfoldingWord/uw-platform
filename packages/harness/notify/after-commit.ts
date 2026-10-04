@@ -17,9 +17,30 @@ async function deliver(ports: Ports, { wake, unlinked }: PlannedWake): Promise<v
   });
 }
 
+type Addressed = {
+  readonly wake: { readonly recipients: readonly { readonly personId: string }[] };
+};
+
+export async function inPersonOrder<T extends Addressed>(
+  wakes: readonly T[],
+  send: (wake: T) => Promise<void>,
+): Promise<void> {
+  const latest = new Map<string, Promise<unknown>>();
+  const sends = wakes.map((planned) => {
+    const people = planned.wake.recipients.map(({ personId }) => personId);
+    const before = people.flatMap((personId) => latest.get(personId) ?? []);
+    const sent =
+      before.length === 0 ? send(planned) : Promise.allSettled(before).then(() => send(planned));
+    const settled = Promise.allSettled([sent]);
+    for (const personId of people) latest.set(personId, settled);
+    return settled;
+  });
+  await Promise.all(sends);
+}
+
 async function sendAll(ports: Ports, events: readonly HarnessEvent[]): Promise<void> {
   const wakes = await planWakes(ports, events);
-  await Promise.allSettled(wakes.map((wake) => deliver(ports, wake)));
+  await inPersonOrder(wakes, (wake) => deliver(ports, wake));
 }
 
 export function notifyCommitted(ports: Ports): AfterCommit {
