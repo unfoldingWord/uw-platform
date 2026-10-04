@@ -7,6 +7,7 @@ export type IngestBindings = {
   GITHUB_WEBHOOK_SECRET?: string;
   HYPERDRIVE?: { readonly connectionString: string };
   INGEST_QUEUE?: { send(body: IngestEnvelope, options?: QueueSendOptions): Promise<void> };
+  ZULIP_WEBHOOK_TOKEN?: string;
 };
 
 export type VerifiedDelivery = { readonly deliveryId: string; readonly event: string };
@@ -18,6 +19,8 @@ export type WebhookSource = {
     rawBody: string,
     secret: string,
   ): Promise<VerifiedDelivery | IngestRefusal>;
+  redact?(payload: unknown): unknown;
+  readonly accepted?: Readonly<Record<string, boolean>>;
 };
 
 const UNKNOWN_COMMIT = 'unknown';

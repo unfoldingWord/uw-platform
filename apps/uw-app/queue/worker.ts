@@ -8,6 +8,8 @@ import { platformGitHubTransport } from '../github/transport.ts';
 import { hubWiring, platformKernel } from '../kernel.ts';
 import { systemClock } from '../ports/clock.ts';
 import { hubOf } from '../ports/hub.ts';
+import { zulipConfigOf } from '../notify/zulip/config.ts';
+import { zulipIngestHandler } from '../notify/zulip/inbound.ts';
 import { unitHub, type UnitHub } from '../unit-hub.ts';
 import {
   batchTraceId,
@@ -33,8 +35,9 @@ function handlersFor(
   if (database === null) return notWiredHandlers;
   const client = clientOf(env, now);
   const kernel = platformKernel(database, systemClock, hubWiring(unit.hub));
-  return new Map<'github', IngestHandler>([
+  return new Map<'github' | 'zulip', IngestHandler>([
     ['github', githubIngestHandler({ db: database.db, kernel, client, now })],
+    ['zulip', zulipIngestHandler({ db: database.db, kernel, config: zulipConfigOf(env), now })],
   ]);
 }
 
