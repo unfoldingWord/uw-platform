@@ -53,3 +53,56 @@ describe('the platform hub adapter', () => {
     expect(lines).toEqual([]);
   });
 });
+
+const query = {
+  harnessId,
+  personId: 'b3000000-0000-4000-8000-000000000003',
+  screen: 'item' as const,
+  itemId: 'b3000000-0000-4000-8000-000000000004',
+};
+
+function presenceOf(answer: () => Promise<Response>, timers: Timers = never) {
+  const { logger, lines } = recordingLogger();
+  const asked: string[] = [];
+  const namespace: HubNamespace = {
+    idFromName: (name) => name,
+    get: () => ({
+      fetch: (input) => {
+        asked.push(String(input));
+        return answer();
+      },
+    }),
+  };
+  return { hub: platformHub(namespace, logger, timers), lines, asked };
+}
+
+describe('the platform hub answers presence', () => {
+  it("answers the hub's boolean for the person, screen and item", async () => {
+    const { hub, lines, asked } = presenceOf(async () => Response.json({ present: true }));
+    expect(await hub.present(query)).toBe(true);
+    expect(asked).toEqual([
+      `https://hub.internal/presence?person=${query.personId}&screen=item&item=${query.itemId}`,
+    ]);
+    expect(lines).toEqual([]);
+    const gates = presenceOf(async () => Response.json({ present: false }));
+    expect(await gates.hub.present({ ...query, screen: 'gates', itemId: null })).toBe(false);
+    expect(gates.asked).toEqual([
+      `https://hub.internal/presence?person=${query.personId}&screen=gates`,
+    ]);
+  });
+
+  it.each([
+    ['a timeout', () => new Promise<Response>(() => undefined), expired],
+    ['a 500', async () => new Response(null, { status: 500 }), never],
+    ['a malformed body', async () => Response.json({ present: 'yes', extra: 1 }), never],
+  ] as const)(
+    'answers false and logs hub_presence_unknown on %s',
+    async (_label, answer, timers) => {
+      const { hub, lines } = presenceOf(answer, timers);
+      expect(await hub.present(query)).toBe(false);
+      expect(lines).toMatchObject([
+        { level: 'warn', outcome: 'hub_presence_unknown', harness_id: harnessId },
+      ]);
+    },
+  );
+});

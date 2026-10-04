@@ -21,6 +21,8 @@ type Forwarded = {
   readonly upgrade: string | null;
   readonly credential: string | null;
   readonly person: string | null;
+  readonly screen: string | null;
+  readonly item: string | null;
 };
 
 type RecordingHub = { readonly namespace: HubNamespace; readonly seen: Forwarded[] };
@@ -34,6 +36,8 @@ type Ask = {
   readonly hub?: RecordingHub;
   readonly audience?: 'app' | 'mcp';
   readonly method?: string;
+  readonly query?: string;
+  readonly device?: string;
 };
 
 let fixture: Promise<AccessFixture> | null = null;
@@ -57,6 +61,8 @@ function recordingHub(): RecordingHub {
           upgrade: request.headers.get('upgrade'),
           credential: request.headers.get('cf-access-jwt-assertion'),
           person: request.headers.get('x-hub-person'),
+          screen: request.headers.get('x-hub-screen'),
+          item: request.headers.get('x-hub-item'),
         });
         return new Response(null, { status: 200, headers: { 'x-hub': 'connected' } });
       },
@@ -72,9 +78,10 @@ async function connect(db: Database, ask: Ask): Promise<Answer> {
   const upgrade = ask.upgrade === undefined ? 'websocket' : ask.upgrade;
   const headers: Record<string, string> = { 'cf-access-jwt-assertion': token };
   if (upgrade !== null) headers.Upgrade = upgrade;
+  if (ask.device !== undefined) headers['x-uw-device'] = ask.device;
   const env = ask.hub ? { ...fixtureAccessEnv, HARNESS_HUB: ask.hub.namespace } : fixtureAccessEnv;
   const raw = await createApp(postgresDeps(db, keys), noGateGitHub).request(
-    `/api/harness/${ask.harnessId}/live`,
+    `/api/harness/${ask.harnessId}/live${ask.query ?? ''}`,
     { method: ask.method ?? 'GET', headers },
     env,
   );
@@ -100,6 +107,8 @@ describe.skipIf(!testServer)('WB-3 the live socket connects through can()', () =
         upgrade: 'websocket',
         credential: null,
         person: scene.viewer.id,
+        screen: null,
+        item: null,
       };
       expect(hub.seen).toEqual([forwarded, forwarded]);
     }));
@@ -188,4 +197,39 @@ describe.skipIf(!testServer)('the live socket route opens only on GET', () => {
       expect(answer).toMatchObject({ status: 400, hub: null });
       expect(hub.seen).toEqual([]);
     }));
+});
+
+const itemId = '00000000-0000-4000-8000-0000000000c1';
+
+async function forwardsWatched(db: Database): Promise<void> {
+  const scene = await softwareHarness(db);
+  const hub = recordingHub();
+  const base = { claims: { email: scene.viewer.email }, harnessId: scene.harnessId, hub };
+  expect((await connect(db, { ...base, query: '?screen=gates' })).status).toBe(200);
+  const onItem = { ...base, query: `?screen=item&item=${itemId}` };
+  expect((await connect(db, onItem)).status).toBe(200);
+  expect(hub.seen.map((seen) => [seen.screen, seen.item])).toEqual([
+    ['gates', null],
+    ['item', itemId],
+  ]);
+}
+
+async function refusesBadWatch(db: Database): Promise<void> {
+  const scene = await softwareHarness(db);
+  const hub = recordingHub();
+  const base = { claims: { email: scene.viewer.email }, harnessId: scene.harnessId, hub };
+  const queries = ['?screen=nowhere', `?item=${itemId}`, '?screen=item', '?screen=item&item=x'];
+  const reasons: unknown[] = [];
+  for (const query of queries) {
+    reasons.push(JSON.parse((await connect(db, { ...base, query })).text).reason);
+  }
+  expect(reasons).toEqual(queries.map(() => 'malformed_command'));
+  expect(hub.seen).toEqual([]);
+}
+
+describe.skipIf(!testServer)('the live socket names the screen and item it watches', () => {
+  it('forwards the screen and item of a person session to the hub', () =>
+    withAppDatabase(forwardsWatched));
+  it('refuses an unknown screen, or an item without the item screen, before the hub', () =>
+    withAppDatabase(refusesBadWatch));
 });

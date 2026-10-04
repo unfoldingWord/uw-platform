@@ -130,7 +130,7 @@ function specOf(view: Shown, cursor: number) {
       { label: harness.key, href: flowPath(harness.id) },
       { label: 'Board' },
     ],
-    live: { harnesses: [{ harnessId: harness.id, cursor }] },
+    live: { screen: 'board' as const, harnesses: [{ harnessId: harness.id, cursor }] },
   };
 }
 

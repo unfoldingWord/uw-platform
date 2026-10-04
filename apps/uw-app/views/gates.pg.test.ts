@@ -304,6 +304,7 @@ async function liveFromCursor(world: GateWorld): Promise<void> {
     harnessId: world.item.harnessId,
   });
   expect(marker?.getAttribute('data-live-harness')).toBe(world.item.harnessId);
+  expect(marker?.getAttribute('data-live-screen')).toBe('gates');
   expect(marker?.getAttribute('data-cursor')).toBe(String(cursor));
   expect(cursor).toBeGreaterThan(0);
   expect(marker?.getAttribute('data-refresh-every')).toBe('60000');

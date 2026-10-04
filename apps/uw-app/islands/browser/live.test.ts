@@ -111,7 +111,26 @@ async function refreshWhileVisible(): Promise<void> {
   expect(refreshed).toBe(1);
 }
 
+async function namesTheScreen(): Promise<void> {
+  const dom = new JSDOM(
+    `<!DOCTYPE html><body><main id="main"><div data-live data-live-harness="${harnessA}" data-live-screen="gates" data-cursor="1"></div><div data-live data-live-harness="${harnessB}" data-live-screen="item" data-live-item="${itemId}" data-cursor="2"></div></main></body>`,
+    { url: 'https://uw.example/' },
+  );
+  const sockets = new Map<string, Map<string, Listener>>();
+  startLive(dom.window.document, {
+    fetch: (async () => Response.json({ events: [], next: null })) as typeof fetch,
+    connect: (url) => fakeSocket(sockets, url),
+    timers: timers([]),
+    refresher: { refresh: async () => undefined },
+  });
+  expect([...sockets.keys()]).toEqual([
+    `wss://uw.example/api/harness/${harnessA}/live?screen=gates`,
+    `wss://uw.example/api/harness/${harnessB}/live?screen=item&item=${itemId}`,
+  ]);
+}
+
 describe('the live islands', () => {
+  it('each session tells the hub the screen and item it watches', namesTheScreen);
   it(
     'one session per harness on the page reads from its cursor and refreshes on new events',
     oneSessionPerHarness,

@@ -8,8 +8,6 @@ export type HubSubject = {
   enter(query: PresenceQuery): Promise<void>;
 };
 
-export type HubContractOptions = { readonly presence: boolean };
-
 const firstHarness = 'b3000000-0000-4000-8000-000000000001';
 const secondHarness = 'b3000000-0000-4000-8000-000000000002';
 const person = 'b3000000-0000-4000-8000-000000000003';
@@ -47,21 +45,18 @@ function describeWakes(subject: () => Promise<HubSubject>): void {
   });
 }
 
-function describePresence(subject: () => Promise<HubSubject>, presence: boolean): void {
-  it.skipIf(!presence)(
-    'present answers false with no session and true for the person, screen and item that connected',
-    async () => {
-      const opened = await subject();
-      expect(await opened.hub.present(gates)).toBe(false);
-      await opened.enter(gates);
-      expect(await opened.hub.present(gates)).toBe(true);
-      expect(await opened.hub.present({ ...gates, personId: otherPerson })).toBe(false);
-      expect(await opened.hub.present({ ...gates, screen: 'home' })).toBe(false);
-      expect(await opened.hub.present({ ...gates, harnessId: secondHarness })).toBe(false);
-    },
-  );
+function describePresence(subject: () => Promise<HubSubject>): void {
+  it('present answers false with no session and true for the person, screen and item that connected', async () => {
+    const opened = await subject();
+    expect(await opened.hub.present(gates)).toBe(false);
+    await opened.enter(gates);
+    expect(await opened.hub.present(gates)).toBe(true);
+    expect(await opened.hub.present({ ...gates, personId: otherPerson })).toBe(false);
+    expect(await opened.hub.present({ ...gates, screen: 'home' })).toBe(false);
+    expect(await opened.hub.present({ ...gates, harnessId: secondHarness })).toBe(false);
+  });
 
-  it.skipIf(!presence)('an item screen session is presence for that item only', async () => {
+  it('an item screen session is presence for that item only', async () => {
     const opened = await subject();
     await opened.enter(onItem);
     expect(await opened.hub.present(onItem)).toBe(true);
@@ -70,14 +65,10 @@ function describePresence(subject: () => Promise<HubSubject>, presence: boolean)
   });
 }
 
-export function describeHubContract(
-  adapter: string,
-  open: () => Promise<HubSubject>,
-  options: HubContractOptions = { presence: true },
-): void {
+export function describeHubContract(adapter: string, open: () => Promise<HubSubject>): void {
   describe(`DX-3 hub port contract on ${adapter}`, () => {
     describeWakes(open);
-    describePresence(open, options.presence);
+    describePresence(open);
   });
 }
 

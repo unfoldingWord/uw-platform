@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { hubWakeSchema } from '@uw/contracts';
+import { hubWakeSchema, liveScreenSchema, type LiveScreen } from '@uw/contracts';
 
 export type HubSocket = {
   readonly readyState: number;
@@ -24,10 +24,17 @@ export type HubTimers = { setTimeout(run: () => void, ms: number): unknown };
 
 type HubStats = { readonly connections: number; readonly lastWakeAt: string | null };
 
+type Watching = {
+  readonly person: string;
+  readonly screen: LiveScreen | null;
+  readonly itemId: string | null;
+};
+
 type HubCore = {
   wake(harnessId: string): void;
   stats(): Promise<HubStats>;
-  admit(socket: HubSocket, person: string): Promise<void>;
+  admit(socket: HubSocket, watching: Watching): Promise<void>;
+  present(watching: Watching): boolean;
   shed(): Promise<void>;
 };
 
@@ -38,9 +45,22 @@ const LAST_WAKE = 'lastWakeAt';
 const OPEN = 1;
 const NORMAL_CLOSURE = 1000;
 const PERSON_HEADER = 'x-hub-person';
+const SCREEN_HEADER = 'x-hub-screen';
+const ITEM_HEADER = 'x-hub-item';
 const wakeRequestSchema = z.strictObject({ harnessId: z.uuid() });
-const tagSchema = z.strictObject({ openedAt: z.number().int().nonnegative(), person: z.uuid() });
-const personSchema = z.uuid();
+const tagSchema = z.strictObject({
+  openedAt: z.number().int().nonnegative(),
+  person: z.uuid(),
+  screen: liveScreenSchema.nullable().default(null),
+  itemId: z.uuid().nullable().default(null),
+});
+const watchingSchema = z
+  .strictObject({
+    person: z.uuid(),
+    screen: liveScreenSchema.nullable(),
+    itemId: z.uuid().nullable(),
+  })
+  .refine((watching) => (watching.screen === 'item') === (watching.itemId !== null));
 
 type Tag = z.infer<typeof tagSchema>;
 type Tagged = { readonly socket: HubSocket; readonly tag: Tag };
@@ -97,6 +117,20 @@ async function shedOld(state: HubState, at: number): Promise<void> {
   await scheduleShed(state, live, at).catch(() => undefined);
 }
 
+function watches(tag: Tag, watching: Watching): boolean {
+  if (tag.screen === null || tag.person !== watching.person || tag.screen !== watching.screen) {
+    return false;
+  }
+  return tag.screen !== 'item' || tag.itemId === watching.itemId;
+}
+
+function presentIn(state: HubState, watching: Watching, at: number): boolean {
+  return openSockets(state).some((socket) => {
+    const tag = tagOf(socket);
+    return tag !== null && at - tag.openedAt < SOCKET_MAX_AGE_MS && watches(tag, watching);
+  });
+}
+
 function capPerson(state: HubState, person: string): void {
   const own = openSockets(state)
     .map((socket) => ({ socket, tag: tagOf(socket) }))
@@ -130,11 +164,12 @@ export function createHubCore(state: HubState, timers: HubTimers, now: () => Dat
         lastWakeAt: typeof last === 'string' ? last : null,
       };
     },
-    admit: async (socket, person) => {
-      socket.serializeAttachment({ openedAt: now().getTime(), person });
-      capPerson(state, person);
+    admit: async (socket, watching) => {
+      socket.serializeAttachment({ openedAt: now().getTime(), ...watching });
+      capPerson(state, watching.person);
       await shed();
     },
+    present: (watching) => presentIn(state, watching, now().getTime()),
     shed,
   };
 }
@@ -143,12 +178,27 @@ async function connect(core: HubCore, state: HubState, request: Request): Promis
   if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') {
     return new Response(null, { status: 426 });
   }
-  const person = personSchema.safeParse(request.headers.get(PERSON_HEADER));
-  if (!person.success) return new Response(null, { status: 400 });
+  const watching = watchingSchema.safeParse({
+    person: request.headers.get(PERSON_HEADER),
+    screen: request.headers.get(SCREEN_HEADER),
+    itemId: request.headers.get(ITEM_HEADER),
+  });
+  if (!watching.success) return new Response(null, { status: 400 });
   const pair = new WebSocketPair();
   state.acceptWebSocket(pair[1]);
-  await core.admit(pair[1], person.data);
+  await core.admit(pair[1], watching.data);
   return new Response(null, { status: 101, webSocket: pair[0] });
+}
+
+function presence(core: HubCore, request: Request): Response {
+  const query = new URL(request.url).searchParams;
+  const watching = watchingSchema.safeParse({
+    person: query.get('person'),
+    screen: query.get('screen') ?? 'missing',
+    itemId: query.get('item'),
+  });
+  if (!watching.success) return new Response(null, { status: 400 });
+  return Response.json({ present: core.present(watching.data) });
 }
 
 async function wake(core: HubCore, request: Request): Promise<Response> {
@@ -168,5 +218,6 @@ export async function hubFetch(
   if (route === 'GET /connect') return connect(core, state, request);
   if (route === 'POST /wake') return wake(core, request);
   if (route === 'GET /stats') return Response.json(await core.stats());
+  if (route === 'GET /presence') return presence(core, request);
   return new Response(null, { status: 404 });
 }

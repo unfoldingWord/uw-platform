@@ -292,6 +292,7 @@ async function liveOnItem(world: Played): Promise<void> {
   const marker = (await documentOf(world)).querySelector('main [data-live]');
   expect(marker?.getAttribute('data-live-harness')).toBe(world.item.harnessId);
   expect(marker?.getAttribute('data-live-item')).toBe(world.item.itemId);
+  expect(marker?.getAttribute('data-live-screen')).toBe('item');
   expect(Number(marker?.getAttribute('data-cursor'))).toBeGreaterThan(0);
 }
 

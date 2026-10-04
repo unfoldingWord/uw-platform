@@ -71,7 +71,11 @@ export async function gateScreen(c: Context<AppEnv>): Promise<Response> {
       { label: harness.key, href: flowPath(harness.id) },
       { label: 'Gate' },
     ],
-    live: { harnesses: [{ harnessId: harness.id, cursor }], refreshEveryMs: REFRESH_EVERY_MS },
+    live: {
+      screen: 'gates' as const,
+      harnesses: [{ harnessId: harness.id, cursor }],
+      refreshEveryMs: REFRESH_EVERY_MS,
+    },
   };
   return renderScreen(
     c,

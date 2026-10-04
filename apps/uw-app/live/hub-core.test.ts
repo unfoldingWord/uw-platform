@@ -103,7 +103,7 @@ describe('the live hub when its storage fails', () => {
   });
 });
 
-describe('WB-3 the hub answers only its three internal paths', () => {
+describe('WB-3 the hub answers only its internal paths', () => {
   it('WB-3 /connect without an Upgrade header is 426; /wake with a malformed body is 400; an unknown path is 404', async () => {
     const { core, state } = hubWith([]);
     const connect = await hubFetch(core, state, hubRequest('/connect'));
@@ -197,6 +197,7 @@ describe('the HarnessHub Durable Object', () => {
 
 const start = wakeInstant.getTime();
 const stranger = 'b3000000-0000-4000-8000-0000000000bb';
+const unwatched = { person: socketOwner, screen: null, itemId: null };
 
 function openedAt(minutes: number, person = socketOwner): FakeSocket {
   return fakeSocket(false, { openedAt: start + minutes * 60_000, person });
@@ -210,7 +211,7 @@ describe('the hub closes sockets older than an hour so every session re-checks a
   it('closes an hour-old socket with 1000 on the alarm, counting from its accept even after hibernation', async () => {
     const socket = fakeSocket(false, null);
     const state = fakeHubState([socket]);
-    await createHubCore(state, manualTimers(), clockAt(0)).admit(socket, socketOwner);
+    await createHubCore(state, manualTimers(), clockAt(0)).admit(socket, unwatched);
     expect(state.alarm()).toBe(start + SOCKET_MAX_AGE_MS);
     const young = openedAt(30);
     const woken = fakeHubState([socket, young]);
@@ -243,7 +244,7 @@ describe('the hub holds at most 100 sockets from one person', () => {
     const other = openedAt(0, stranger);
     const newest = fakeSocket(false, null);
     const state = fakeHubState([...own, other, newest]);
-    await createHubCore(state, manualTimers(), clockAt(20)).admit(newest, socketOwner);
+    await createHubCore(state, manualTimers(), clockAt(20)).admit(newest, unwatched);
     expect(own[0]?.closed).toEqual([[1000, 'closed']]);
     expect(own.slice(1).every((socket) => socket.closed.length === 0)).toBe(true);
     expect(other.closed).toEqual([]);
@@ -258,6 +259,107 @@ describe('the hub holds at most 100 sockets from one person', () => {
       hubRequest('/connect', { headers: { Upgrade: 'websocket' } }),
     );
     expect(answer.status).toBe(400);
+    expect(state.getWebSockets()).toHaveLength(0);
+  });
+});
+
+const item = 'b3000000-0000-4000-8000-0000000000c1';
+const otherItem = 'b3000000-0000-4000-8000-0000000000c2';
+
+function watching(screen: string | null, itemId: string | null = null, person = socketOwner) {
+  return fakeSocket(false, { openedAt: start, person, screen, itemId });
+}
+
+async function presence(sockets: FakeSocket[], query: string) {
+  const { core, state } = hubWith(sockets);
+  const answer = await hubFetch(core, state, hubRequest(`/presence?${query}`));
+  return { status: answer.status, body: answer.status === 200 ? await answer.json() : null };
+}
+
+describe('the hub knows which screen and item each session watches', () => {
+  it('a person is present on the screen and item their session connected for', async () => {
+    const sockets = [watching('gates'), watching('item', item)];
+    const ask = (query: string) => presence(sockets, query);
+    expect(await ask(`person=${socketOwner}&screen=gates`)).toEqual({
+      status: 200,
+      body: { present: true },
+    });
+    expect((await ask(`person=${socketOwner}&screen=item&item=${item}`)).body).toEqual({
+      present: true,
+    });
+    expect((await ask(`person=${socketOwner}&screen=item&item=${otherItem}`)).body).toEqual({
+      present: false,
+    });
+    expect((await ask(`person=${socketOwner}&screen=home`)).body).toEqual({ present: false });
+    expect((await ask(`person=${stranger}&screen=gates`)).body).toEqual({ present: false });
+  });
+
+  it('a socket accepted before this change, with no screen in its attachment, stays open and is never presence', async () => {
+    const before = fakeSocket(false, { openedAt: start, person: socketOwner });
+    const state = fakeHubState([before]);
+    const core = createHubCore(state, manualTimers(), clockAt(1));
+    await core.shed();
+    expect(before.closed).toEqual([]);
+    expect(core.present({ person: socketOwner, screen: 'home', itemId: null })).toBe(false);
+  });
+
+  it('presence ignores closed sockets', async () => {
+    const closed = watching('gates');
+    closed.close(1000, 'closed');
+    expect((await presence([closed], `person=${socketOwner}&screen=gates`)).body).toEqual({
+      present: false,
+    });
+  });
+
+  it('GET /presence with a malformed person or screen answers 400', async () => {
+    const asked = await Promise.all(
+      [
+        'person=nobody&screen=gates',
+        `person=${socketOwner}&screen=nowhere`,
+        `person=${socketOwner}`,
+        `person=${socketOwner}&screen=item`,
+        `person=${socketOwner}&screen=gates&item=${item}`,
+        `person=${socketOwner}&screen=item&item=not-an-item`,
+      ].map((query) => presence([], query)),
+    );
+    expect(asked.map((answer) => answer.status)).toEqual([400, 400, 400, 400, 400, 400]);
+  });
+});
+
+describe('the hub tags each socket with what its connect named', () => {
+  it('tags a socket with the screen and item its connect named', async () => {
+    const { core, state } = hubWith([]);
+    const headers = {
+      Upgrade: 'websocket',
+      'x-hub-person': socketOwner,
+      'x-hub-screen': 'item',
+      'x-hub-item': item,
+    };
+    expect((await hubFetch(core, state, hubRequest('/connect', { headers }))).status).toBe(101);
+    const [socket] = state.getWebSockets();
+    expect(socket?.deserializeAttachment()).toEqual({
+      openedAt: wakeInstant.getTime(),
+      person: socketOwner,
+      screen: 'item',
+      itemId: item,
+    });
+  });
+
+  it('refuses a connect that names an unknown screen, or an item without the item screen', async () => {
+    const { core, state } = hubWith([]);
+    const base = { Upgrade: 'websocket', 'x-hub-person': socketOwner };
+    const asks = [
+      { ...base, 'x-hub-screen': 'nowhere' },
+      { ...base, 'x-hub-screen': 'gates', 'x-hub-item': item },
+      { ...base, 'x-hub-screen': 'item' },
+    ];
+    const statuses = await Promise.all(
+      asks.map(
+        async (headers) =>
+          (await hubFetch(core, state, hubRequest('/connect', { headers }))).status,
+      ),
+    );
+    expect(statuses).toEqual([400, 400, 400]);
     expect(state.getWebSockets()).toHaveLength(0);
   });
 });

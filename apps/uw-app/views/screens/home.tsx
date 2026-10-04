@@ -104,7 +104,7 @@ export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
     title: 'Home',
     current: homePath(),
     crumbs: [{ label: 'Home' }],
-    live: { harnesses, refreshEveryMs: REFRESH_EVERY_MS },
+    live: { screen: 'home' as const, harnesses, refreshEveryMs: REFRESH_EVERY_MS },
   };
   return renderScreen(
     c,

@@ -1,3 +1,4 @@
+import type { PresenceQuery } from '@uw/harness';
 import type { HubNamespace } from '../env.ts';
 import {
   createHubCore,
@@ -86,27 +87,41 @@ export function manualTimers(): ManualTimers {
   };
 }
 
-export function fakeHubNamespace(): { readonly namespace: HubNamespace; sent(): string[] } {
-  const sockets = new Map<string, FakeSocket>();
-  const hubs = new Map<string, (request: Request) => Promise<Response>>();
-  const hubNamed = (name: string) => {
+type FakeHub = {
+  readonly served: (request: Request) => Promise<Response>;
+  readonly sockets: FakeSocket[];
+};
+
+export type FakeHubNamespace = {
+  readonly namespace: HubNamespace;
+  sent(): string[];
+  enter(query: PresenceQuery): void;
+};
+
+export function fakeHubNamespace(): FakeHubNamespace {
+  const hubs = new Map<string, FakeHub>();
+  const hubNamed = (name: string): FakeHub => {
     const known = hubs.get(name);
     if (known !== undefined) return known;
-    const socket = fakeSocket();
-    sockets.set(name, socket);
-    const state = fakeHubState([socket]);
+    const sockets = [fakeSocket()];
+    const state = fakeHubState(sockets);
     const core = createHubCore(state, { setTimeout }, () => wakeInstant);
-    const served = (request: Request) => hubFetch(core, state, request);
-    hubs.set(name, served);
-    return served;
+    const hub = { served: (request: Request) => hubFetch(core, state, request), sockets };
+    hubs.set(name, hub);
+    return hub;
   };
   return {
     namespace: {
       idFromName: (name) => name,
       get: (id) => ({
-        fetch: (input, init) => hubNamed(String(id))(new Request(input, init)),
+        fetch: (input, init) => hubNamed(String(id)).served(new Request(input, init)),
       }),
     },
-    sent: () => [...sockets.values()].flatMap((socket) => socket.sent),
+    sent: () => [...hubs.values()].flatMap((hub) => hub.sockets[0]?.sent ?? []),
+    enter: (query) => {
+      const { personId: person, screen, itemId } = query;
+      const tag = { openedAt: wakeInstant.getTime(), person, screen, itemId };
+      hubNamed(query.harnessId).sockets.push(fakeSocket(false, tag));
+    },
   };
 }
