@@ -67,8 +67,16 @@ One row of `grant_audit`: who granted or revoked which grant, when, the row befo
 _Avoid_: access log, history
 
 **Persona**:
-A job an agent does, defined as configuration: an identity, a harness subscription, an instructions page, a toolset picked from the verb registry, a run shape and an engine. Three in v1: Builder, Reviewer, Iterate. A persona is a page of type `persona`.
+A job an agent does, defined as configuration: an identity, a harness subscription, an instructions page, a toolset picked from the verb registry, a run shape and an engine. Three jobs in v1: Builder, Reviewer, Iterate. A persona is a page of type `persona`; it runs only once **activated**. The template fixtures hold five: `agent:builder` (external run), `agent:builder-hosted` (workflow run on `claude-code-sandbox`), `agent:reviewer`, `agent:reviewer-codex` (a second Reviewer on `codex-sandbox`) and `agent:iterate`.
 _Avoid_: agent (an agent is the identity a persona runs as), bot, worker, role
+
+**Activation**:
+A person with `admin` on the harness's area turning a `suggested` persona page `active`, at the version they saw, after the tool check and the **dry run**. The only way a persona runs. It flips the page's status, writes the `personas` projection and records `persona_activated` in one transaction.
+_Avoid_: enable, publish, deploy (those are gate words), confirm (that is for learnings and skills)
+
+**Dry run**:
+The check activation runs before the flip: the persona's instructions are an agentskills document named for it, its engine hosts its run shape, it resolves a provider, a `review` persona holds no `write_page`, and one fixture turn runs through the tool loop with every tool refused. Pure: it writes nothing and calls no port. A failure records `persona_activation_failed` with `dry_run_failed`.
+_Avoid_: test run, smoke test, rehearsal
 
 **Agent identity**:
 The principal a persona runs as: `agent:<persona>` for a platform-hosted run, `agent:<person>/<device>` for a run on a person's own machine, suffixed `as <persona>` and, when unattended, `via delegation:<id>`. Its grants never exceed its owner's.
@@ -188,6 +196,14 @@ _Avoid_: firewall, gateway (that is a Store gateway or AI Gateway)
 The fenced `harness-verdict` block that ends a review run's work: approve or request changes, then the findings.
 _Avoid_: review result, approval (only a person approves a gate)
 
+**Review round**:
+One review a Reviewer posts on an item. The third `request_changes` from one Reviewer since the item last entered its stage ends the rounds and causes a **hand-off**.
+_Avoid_: iteration, pass, cycle
+
+**Hand-off**:
+The kernel giving an item to a named person, with no lease, so no agent can claim it; recorded as `handed_to_person` with the reason and the round count.
+_Avoid_: escalation (that is the dashboard's rate), reassignment, takeover (that is a gate decision)
+
 **Verb**:
 One tool on the MCP surface, from the one registry published by `packages/contracts`. `approve`, `merge`, `deploy`, `publish` and advancing past a human gate are not verbs; they do not exist for any agent identity.
 _Avoid_: tool (as the noun in prose; tool is the MCP wire word), command (that is a person's action), capability (that is the delegation's word)
@@ -236,6 +252,18 @@ _Avoid_: approval (that is one kind of decision), sign-off, review
 A page of type `learning`: a measured fact or working rule with a confidence label (`observed`, `confirmed`, `inferred`, `assumed`), an as-of date and what it supersedes (plan §6). Close refuses an item that attaches neither a learning nor a signed `nothing_learned`.
 _Avoid_: note, insight, lesson, memory (the plan's phrase is institutional memory; a learning is one unit of it)
 
+**Confirmation**:
+A person turning a `suggested` learning or skill page `active` at the version they read, with `write` on its area. Agents cannot confirm. A persona is not confirmed but activated.
+_Avoid_: approval (that is a gate decision), activation (that is for personas), sign-off
+
+**Contradiction**:
+A learning whose `supersedes` names a learning that is not retired. The flag `contradicts` sits on the newer learning, derived by the page writer on every write; the older one carries no mark.
+_Avoid_: conflict, clash, override
+
+**Stale learning**:
+A `suggested` or `active` learning labelled `assumed` or `inferred` whose review date (`review_by`, else `as_of` plus 90 days) has passed. Counted by the `stale_learnings` indicator and listed by the stale-confidence report.
+_Avoid_: expired learning, outdated, old
+
 **Skill**:
 A page of type `skill`: a procedure in the agentskills.io format that any compliant runner can load. Per-stage instructions pages are skills. The **synced harness skill** is checked into the repo so a local session knows the flow.
 _Avoid_: prompt, playbook, instructions (as a noun; an instructions page is a skill)
@@ -243,6 +271,10 @@ _Avoid_: prompt, playbook, instructions (as a noun; an instructions page is a sk
 **Measurement**:
 A row of `measurements` read at Validate: web analytics, list aggregates, manual entries. In v1 nothing that carries donor identity.
 _Avoid_: metric, KPI, analytics (that is a source of measurements)
+
+**Revision**:
+A page an Iterate run drafts to change the Product Package (a `product`, `system_goal`, `product_strategy` or `data_sources` page), attached to the item and routed along a `feeds` edge. Every claim in it carries an evidence label.
+_Avoid_: change request, proposal, patch, edit
 
 **Trace id**:
 The UUID minted at the edge of each Worker for one request or delivery, carried in the `x-trace-id` header, on every log line, in every envelope and on the audit row it produces.
@@ -347,6 +379,10 @@ _Avoid_: ticket, tile
 **Agent plane**:
 The indicators on `/health` about agents: spend, breaker, runs, delegations, gate refusals, agent writes, stale learnings and the GitHub sweep, each with a drill-through.
 _Avoid_: ops dashboard, metrics
+
+**Persona view**:
+A persona page's default view: its dashboard, with runs and spend today, the escalation rate, gate refusals, its writes, where it runs, its last runs and its delegations, and Activate for an `admin`.
+_Avoid_: persona page (that is the page itself), profile, agent card
 
 **Drill-through**:
 The list behind one indicator, filtered by `can()`.
