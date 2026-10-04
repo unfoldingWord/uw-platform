@@ -327,6 +327,36 @@ function describeActivePersona(subject: RunsSubject): void {
   });
 }
 
+function describeForPersona(subject: RunsSubject): void {
+  it("a persona's runs on a harness come newest first, since an instant", async () => {
+    const later = (hours: number) => new Date(at.getTime() + hours * hour);
+    const runs = [
+      runOf(0x6400, 1, 1, { startedAt: at }),
+      runOf(0x6400, 2, 2, { startedAt: later(2) }),
+      runOf(0x6400, 3, 3, { startedAt: later(1) }),
+      runOf(0x6400, 4, 4, { startedAt: later(3), persona: 'agent:reviewer' as Identity }),
+      runOf(0x6480, 1, 1, { startedAt: later(4) }),
+    ];
+    const read = await subject().store.transaction(async (tx) => {
+      await seedItems(tx, 0x6400, 'gateway-runs-for-persona', 4);
+      await seedItems(tx, 0x6480, 'gateway-runs-for-persona-other', 1);
+      for (const run of runs) await tx.harnessRuns.write.insert(run);
+      const ids = (rows: readonly RunRow[]) => rows.map((row) => row.id);
+      const query = { identity: builder, harnessId: uid(0x6400) };
+      return {
+        since: ids(await tx.harnessRuns.read.forPersona({ ...query, since: later(1), limit: 10 })),
+        all: ids(await tx.harnessRuns.read.forPersona({ ...query, since: null, limit: 10 })),
+        newest: ids(await tx.harnessRuns.read.forPersona({ ...query, since: null, limit: 1 })),
+      };
+    });
+    expect(read).toEqual({
+      since: [runs[1]?.id, runs[2]?.id],
+      all: [runs[1]?.id, runs[2]?.id, runs[0]?.id],
+      newest: [runs[1]?.id],
+    });
+  });
+}
+
 export function describeStoreRuns(adapter: string, subject: RunsSubject): void {
   describe(`DX-3 store runs gateway on ${adapter}`, () => {
     describeRoundTrip(subject);
@@ -335,5 +365,6 @@ export function describeStoreRuns(adapter: string, subject: RunsSubject): void {
     describeLive(subject);
     describeLatestNamed(subject);
     describeActivePersona(subject);
+    describeForPersona(subject);
   });
 }

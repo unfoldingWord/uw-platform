@@ -32,6 +32,15 @@ import { repoFiles } from '../repo-files.ts';
 
 type Owner = { dir: string; tables: readonly string[] };
 type Entry = { exportName: string; table: string };
+type NarrowWrite = { readonly dir: string; readonly table: string; readonly call: RegExp };
+
+const narrowWrites: readonly NarrowWrite[] = [
+  {
+    dir: 'packages/harness/personas/',
+    table: 'pages',
+    call: /\btx\.pages\.write\.activatePersona\(/g,
+  },
+];
 
 const owners: Owner[] = [
   { dir: 'apps/uw-app/people/', tables: people },
@@ -93,16 +102,29 @@ function writes(source: string, entry: Entry): boolean {
   ].some((pattern) => pattern.test(source));
 }
 
+function writesBeyondNarrow(
+  file: string,
+  source: string,
+  entry: Entry,
+  allowed: readonly NarrowWrite[],
+): boolean {
+  const narrow = allowed.find((write) => write.table === entry.table && file.startsWith(write.dir));
+  return writes(narrow === undefined ? source : source.replace(narrow.call, ''), entry);
+}
+
 function writersOutsideOwner(
   base: string,
   sources: string[],
   entry: Entry,
   ownerList: Owner[],
+  allowed: readonly NarrowWrite[] = narrowWrites,
 ): string[] {
   const owner = ownerList.find((candidate) => candidate.tables.includes(entry.table));
   return sources
     .filter((file) => !file.startsWith(owner?.dir ?? '\0'))
-    .filter((file) => writes(readFileSync(join(base, file), 'utf8'), entry));
+    .filter((file) =>
+      writesBeyondNarrow(file, readFileSync(join(base, file), 'utf8'), entry, allowed),
+    );
 }
 
 function claimProblems(ownerList: Owner[], tableNames: string[]): string[] {
@@ -290,5 +312,39 @@ describe('AGENTS.md rule 3: a gateway write is a write', () => {
       { dir: 'packages/harness/stages/', tables: ['harness_stages'] },
     ]);
     expect(found).toEqual(['packages/harness/items/stray.ts']);
+  });
+});
+
+function plantedNarrowWrites(): string {
+  const base = mkdtempSync(join(tmpdir(), 'uw-owners-'));
+  mkdirSync(join(base, 'packages/harness/personas'), { recursive: true });
+  mkdirSync(join(base, 'packages/harness/items'), { recursive: true });
+  const planted: Record<string, string> = {
+    'personas/flip.ts': 'const flipped = await tx.pages.write.activatePersona(activation);',
+    'personas/other.ts': 'await tx.pages.write.other(row);',
+    'personas/raw.ts': 'await db.update(pages).set(row);',
+    'personas/both.ts':
+      'await tx.pages.write.activatePersona(activation);\nawait tx.pages.write.other(row);',
+    'items/flip.ts': 'await tx.pages.write.activatePersona(activation);',
+  };
+  for (const [file, source] of Object.entries(planted)) {
+    writeFileSync(join(base, 'packages/harness', file), source);
+  }
+  return base;
+}
+
+describe('AGENTS.md rule 3: the persona flip is the one narrow write to pages', () => {
+  const pages_: Entry = { exportName: 'pages', table: 'pages' };
+
+  it('allows activatePersona from the personas module and nothing else of pages anywhere', () => {
+    const base = plantedNarrowWrites();
+    const found = writersOutsideOwner(base, sourcesUnder(base, ['packages/harness']), pages_, [
+      { dir: 'apps/uw-app/pages/', tables: ['pages'] },
+    ]);
+    expect(found.sort()).toEqual(
+      ['items/flip.ts', 'personas/both.ts', 'personas/other.ts', 'personas/raw.ts'].map(
+        (file) => `packages/harness/${file}`,
+      ),
+    );
   });
 });

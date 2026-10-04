@@ -1,5 +1,25 @@
-import { and, asc, desc, eq, gt, gte, inArray, isNotNull, max, notLike } from 'drizzle-orm';
-import type { HarnessEvent, NewHarnessEvent } from '@uw/contracts';
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNotNull,
+  max,
+  notLike,
+  or,
+  sql,
+} from 'drizzle-orm';
+import {
+  eventNameSchema,
+  personaSlugSchema,
+  type EventName,
+  type HarnessEvent,
+  type NewHarnessEvent,
+} from '@uw/contracts';
 import type { AnyExecutor } from '../any-database.ts';
 import { oneOf } from '../checks.ts';
 import { harnessEvents } from '../schema.ts';
@@ -11,6 +31,7 @@ import type {
   EventQuery,
   HarnessEventsGateway,
   HarnessPosition,
+  PersonaEventCount,
   RecentEvents,
   StageEntry,
 } from './types.ts';
@@ -29,6 +50,7 @@ export function bindEvents(executor: AnyExecutor): HarnessEventsGateway {
       recent: (query) => recent(executor, query),
       lastPosition: (harnessId) => lastPosition(executor, harnessId),
       lastPositions: (harnessIds) => lastPositions(executor, harnessIds),
+      countForPersona: (query) => countForPersona(executor, query),
     },
     write: { append: (events) => refusing(() => appendAll(executor, events)) },
   };
@@ -206,4 +228,29 @@ async function lastPositions(
   return rows.flatMap((row) =>
     row.position === null ? [] : [{ harnessId: row.harnessId, position: row.position }],
   );
+}
+
+async function countForPersona(
+  executor: AnyExecutor,
+  query: PersonaEventCount,
+): Promise<ReadonlyMap<EventName, number>> {
+  const slug = personaSlugSchema.safeParse(query.personaSlug);
+  if (!slug.success || query.names.length === 0) return new Map();
+  const delegated = `^agent:[^ ]+ as ${slug.data} via delegation:[0-9a-f-]{36}$`;
+  const rows = await executor
+    .select({ name: harnessEvents.name, count: count() })
+    .from(harnessEvents)
+    .where(
+      and(
+        eq(harnessEvents.harnessId, query.harnessId),
+        gte(harnessEvents.at, query.since),
+        inArray(harnessEvents.name, [...query.names]),
+        or(
+          eq(harnessEvents.actor, `agent:${slug.data}`),
+          sql`${harnessEvents.actor} ~ ${delegated}`,
+        ),
+      ),
+    )
+    .groupBy(harnessEvents.name);
+  return new Map(rows.map((row) => [eventNameSchema.parse(row.name), row.count]));
 }

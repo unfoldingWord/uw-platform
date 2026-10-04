@@ -69,6 +69,8 @@ describe('DX-2 executorOf', () => {
       gateDecisions: untouched(),
       delegations: untouched(),
       pages: untouched(),
+      personas: untouched(),
+      measurements: untouched(),
     };
     expect(() => executorOf(foreign)).toThrow('not a transaction of the Drizzle store');
   });

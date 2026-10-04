@@ -7,7 +7,9 @@ import { bindGateDecisions } from './gate-decisions.ts';
 import { bindHarnesses } from './harnesses.ts';
 import { bindItems } from './items.ts';
 import { insideOpenTransaction, outsideOpenTransaction } from './open-transactions.ts';
+import { bindMeasurements } from './measurements.ts';
 import { bindPages } from './pages.ts';
+import { bindPersonas } from './personas.ts';
 import { bindRuns } from './runs.ts';
 import { bindStages } from './stages.ts';
 import type { DrizzleTransaction } from './types.ts';
@@ -41,6 +43,8 @@ function bind(executor: AnyExecutor): DrizzleTransaction {
     gateDecisions: bindGateDecisions(executor),
     delegations: bindDelegations(executor),
     pages: bindPages(executor),
+    personas: bindPersonas(executor),
+    measurements: bindMeasurements(executor),
   };
   executors.set(tx, executor);
   return tx;

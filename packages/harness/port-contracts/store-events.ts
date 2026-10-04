@@ -176,6 +176,62 @@ function describeRefusals(subject: EventsSubject): void {
   });
 }
 
+const countedNames = ['gate_refused_to_agent', 'checks_failed'] as const;
+
+function countEventOf(n: number, harness: number, actor: string, name: string, hours = 0) {
+  const evidence =
+    name === 'checks_failed'
+      ? { stage: 'build', failures: ['tests'] }
+      : { decision: 'approve', stage: 'build' };
+  return newEventSchema.parse({
+    ...eventOf(harness, n, null, name),
+    actor,
+    evidence,
+    at: new Date(at.getTime() + hours * 3_600_000).toISOString(),
+  });
+}
+
+function describeCountForPersona(subject: EventsSubject): void {
+  it('counts events per persona across its bare and delegated identities', async () => {
+    const delegated = (slug: string) =>
+      `agent:00000000-0000-4000-8000-000000000001/laptop as ${slug} via delegation:${uid(0x66f0)}`;
+    const events = [
+      countEventOf(1, 0x6600, 'agent:builder', 'gate_refused_to_agent'),
+      countEventOf(2, 0x6600, delegated('builder'), 'checks_failed'),
+      countEventOf(3, 0x6600, delegated('builder'), 'gate_refused_to_agent', 1),
+      countEventOf(4, 0x6600, 'agent:builder-hosted', 'gate_refused_to_agent'),
+      countEventOf(5, 0x6600, delegated('builder-hosted'), 'checks_failed'),
+      countEventOf(6, 0x6600, 'agent:builder', 'gate_refused_to_agent', -1),
+      countEventOf(7, 0x6600, 'human:00000000-0000-4000-8000-000000000001', 'checks_failed'),
+      countEventOf(1, 0x6680, 'agent:builder', 'gate_refused_to_agent'),
+    ];
+    const counts = await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0x6600, 'gateway-events-persona');
+      await seedHarness(tx, 0x6680, 'gateway-events-persona-other');
+      await tx.harnessEvents.write.append(events);
+      return tx.harnessEvents.read.countForPersona({
+        harnessId: uid(0x6600),
+        personaSlug: 'builder',
+        names: [...countedNames, 'premise_held'],
+        since: at,
+      });
+    });
+    expect(Object.fromEntries(counts)).toEqual({ gate_refused_to_agent: 2, checks_failed: 1 });
+  });
+
+  it('answers no counts for a slug that is not a persona slug', async () => {
+    const counts = await subject().store.transaction(async (tx) =>
+      tx.harnessEvents.read.countForPersona({
+        harnessId: uid(0x6600),
+        personaSlug: 'build%',
+        names: [...countedNames],
+        since: new Date(0),
+      }),
+    );
+    expect(counts.size).toBe(0);
+  });
+}
+
 export function describeEvents(subject: EventsSubject): void {
   describeAppend(subject);
   describeRequestIds(subject);
@@ -184,4 +240,5 @@ export function describeEvents(subject: EventsSubject): void {
   describeIsolation(subject);
   describePageBounds(subject);
   describeRefusals(subject);
+  describeCountForPersona(subject);
 }
