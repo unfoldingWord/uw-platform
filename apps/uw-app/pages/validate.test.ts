@@ -30,12 +30,12 @@ describe('FD-9 frontmatter is validated by page type', () => {
     expect(checkFrontmatter('persona', persona)).toEqual({
       ok: true,
       type: 'persona',
-      frontmatter: { ...persona, provider: null },
+      frontmatter: { ...persona, provider: null, status: 'suggested' },
     });
   });
 
-  it('refuses a persona whose toolset holds a verb that does not exist', () => {
-    expect(checkFrontmatter('persona', { ...persona, toolset: ['approve'] })).toEqual({
+  it('refuses a persona whose toolset holds a name that is not verb-shaped', () => {
+    expect(checkFrontmatter('persona', { ...persona, toolset: ['Approve'] })).toEqual({
       ok: false,
       reason: 'invalid_frontmatter',
     });

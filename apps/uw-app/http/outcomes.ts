@@ -9,6 +9,7 @@ const statusByReason = new Map<ErrorReason, ContentfulStatusCode>([
   ['unauthenticated', 401],
   ['not_permitted', 403],
   ['pending_approval', 403],
+  ['activation_required', 403],
   ['person_not_found', 404],
   ['grant_not_found', 404],
   ['page_not_found', 404],

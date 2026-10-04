@@ -216,7 +216,7 @@ describe.skipIf(!testServer)('FD-9 create_page refusals', () => {
       const unknown = await create(db, ED, { type: 'policy' });
       const invalid = await create(db, ED, {
         type: 'persona',
-        frontmatter: { ...personaFrontmatter, toolset: ['approve'] },
+        frontmatter: { ...personaFrontmatter, toolset: ['Approve'] },
       });
       expect(reasonOf(unknown)).toEqual([422, 'unknown_page_type']);
       expect(reasonOf(invalid)).toEqual([422, 'invalid_frontmatter']);
@@ -400,16 +400,19 @@ describe.skipIf(!testServer)('FD-9 update_page parents', () => {
 });
 
 describe.skipIf(!testServer)('AB-5 the page routes never activate a gated page', () => {
-  it('answers create_page and update_page into active not_permitted, writing nothing', () =>
+  it('answers create_page and update_page into active activation_required, writing nothing', () =>
     withAppDatabase(async (db) => {
       await seedPeople(db);
       const before = await pageCount(db);
-      expect(reasonOf(await create(db, ED, { status: 'active' }))).toEqual([403, 'not_permitted']);
+      expect(reasonOf(await create(db, ED, { status: 'active' }))).toEqual([
+        403,
+        'activation_required',
+      ]);
       expect(await pageCount(db)).toBe(before);
       const pageId = await seeded(db);
       expect(reasonOf(await update(db, ED, pageId, { status: 'active' }))).toEqual([
         403,
-        'not_permitted',
+        'activation_required',
       ]);
       expect(await versionNumbers(db, pageId)).toEqual([1]);
     }));

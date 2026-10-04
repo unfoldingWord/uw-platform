@@ -13,6 +13,7 @@ import { advisoryLock, advisoryLocks } from '@uw/db/advisory-locks';
 import type { Database, Executor, Transaction } from '@uw/db/client';
 import { pages, pageVersions } from '@uw/db/schema';
 import { pgConstraint, pgErrorCode } from '@uw/db/errors';
+import { derivedFrontmatter, personaLanding } from './derive.ts';
 import { isGatedType } from './gating.ts';
 import { checkFrontmatter } from './validate.ts';
 
@@ -42,11 +43,7 @@ function refused(reason: ErrorReason): PageResult {
   return { ok: false, reason };
 }
 
-const activationRequired: PageRefusal = {
-  ok: false,
-  reason: 'not_permitted',
-  detail: { why: 'activation_required' },
-};
+const activationRequired: PageRefusal = { ok: false, reason: 'activation_required', detail: {} };
 
 const ISSUE_MIRROR = 'issue';
 
@@ -60,7 +57,7 @@ function activates(type: string, from: PageStatus | null, to: PageStatus): boole
   return to === 'active' && from !== 'active' && isGatedType(type);
 }
 
-function toPage(row: PageRow): Page {
+export function toPage(row: PageRow): Page {
   return pageSchema.parse({
     id: row.id,
     type: row.type,
@@ -87,7 +84,7 @@ export async function readPage(
   return can(actor, 'read', { kind: 'area', area: page.jdArea }, at) ? page : null;
 }
 
-async function snapshot(tx: Transaction, row: PageRow, actor: Principal, traceId: string) {
+export async function snapshot(tx: Transaction, row: PageRow, actor: Principal, traceId: string) {
   await tx.insert(pageVersions).values({
     pageId: row.id,
     version: row.version,
@@ -162,7 +159,18 @@ export async function createPage(
     return refused('parent_not_found');
   }
   try {
-    return await db.transaction((tx) => insertPage(tx, actor, command, traceId));
+    return await db.transaction(async (tx) => {
+      const landing = { status: command.status, stored: null };
+      const derived = await derivedFrontmatter(
+        tx,
+        check.type,
+        check.frontmatter,
+        command.frontmatter,
+        landing,
+      );
+      if (!derived.ok) return refused(derived.reason);
+      return insertPage(tx, actor, { ...command, frontmatter: derived.frontmatter }, traceId);
+    });
   } catch (error) {
     return refusalOrThrow(error);
   }
@@ -221,7 +229,7 @@ async function writeUpdate(
   return { ok: true, page: toPage(row) };
 }
 
-async function lockedPage(
+export async function lockedPage(
   tx: Transaction,
   actor: Principal,
   pageId: string,
@@ -245,6 +253,27 @@ async function movesParent(
   return row?.parentId !== command.parentId;
 }
 
+async function derivedSave(
+  tx: Transaction,
+  stored: Page,
+  chosen: PageStatus,
+  command: CheckedSave['command'],
+): Promise<UpdatePageCommand | PageResult> {
+  const check = checkFrontmatter(stored.type, command.frontmatter);
+  if (!check.ok) return refused(check.reason);
+  const status = personaLanding(stored, chosen, check.frontmatter, command.bodyMd);
+  const landing = { status, stored: stored.status };
+  const derived = await derivedFrontmatter(
+    tx,
+    check.type,
+    check.frontmatter,
+    command.frontmatter,
+    landing,
+  );
+  if (!derived.ok) return refused(derived.reason);
+  return { ...command, command: 'update_page', frontmatter: derived.frontmatter, status };
+}
+
 type Save = {
   readonly actor: Principal;
   readonly checked: CheckedSave;
@@ -265,11 +294,10 @@ async function updateInTransaction(tx: Transaction, save: Save): Promise<PageRes
   if (!can(actor, 'write', { kind: 'area', area: stored.jdArea }, at)) {
     return refused('not_permitted');
   }
-  const status = checked.statusFor(stored);
-  if (typeof status !== 'string') return status;
-  const check = checkFrontmatter(stored.type, command.frontmatter);
-  if (!check.ok) return refused(check.reason);
-  const full = { ...command, status };
+  const chosen = checked.statusFor(stored);
+  if (typeof chosen !== 'string') return chosen;
+  const full = await derivedSave(tx, stored, chosen, command);
+  if ('ok' in full) return full;
   const blocked = await parentRefusal(tx, actor, full, at);
   if (blocked !== null) return refused(blocked);
   return writeUpdate(tx, actor, full, traceId);
