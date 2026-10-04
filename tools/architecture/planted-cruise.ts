@@ -31,7 +31,7 @@ function write(root: string, path: string, source: string): void {
 const workspacePackages: Record<string, Record<string, string>> = {
   contracts: { '.': './index.ts' },
   db: { './client': './client.ts' },
-  harness: { '.': './index.ts' },
+  harness: { '.': './index.ts', './persona-activation': './persona-activation.ts' },
 };
 
 function linkWorkspace(root: string): void {

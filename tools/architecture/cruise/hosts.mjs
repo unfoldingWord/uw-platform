@@ -7,6 +7,8 @@ import {
   forbidden,
 } from './shared.mjs';
 
+const personActivation = '^apps/uw-app/commands/person/persona-activation\\.ts$';
+
 export const hostRules = [
   {
     name: 'in-process-host-only-in-run-steps',
@@ -67,6 +69,31 @@ export const hostRules = [
     severity: 'error',
     from: { pathNot: [commandCapabilities, testFile] },
     to: { path: gateKernel },
+  },
+  {
+    name: 'persona-activation-only-in-the-person-surface',
+    comment:
+      'Only an admin makes a persona active, so the kernel and its package index carry no activation: the activation module is built only by the person activation, the app test helpers, the simulator and tests (S10-R18).',
+    severity: 'error',
+    from: {
+      pathNot: [
+        personActivation,
+        '^packages/harness/persona-activation\\.ts$',
+        '^packages/harness/personas/(commands|activate)\\.ts$',
+        appTesting,
+        '^sim/',
+        testFile,
+      ],
+    },
+    to: { path: '^packages/harness/(persona-activation|personas/(commands|activate|flip))\\.ts$' },
+  },
+  {
+    name: 'persona-activation-only-in-capabilities',
+    comment:
+      'Only the command capabilities build the persona activation, and they build it only for the activate_persona command, which refuses an agent.',
+    severity: 'error',
+    from: { pathNot: [commandCapabilities, testFile] },
+    to: { path: personActivation },
   },
   {
     name: 'gate-github-only-in-person-deps',
