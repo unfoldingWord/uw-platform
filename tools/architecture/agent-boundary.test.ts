@@ -72,12 +72,25 @@ const gateCalls = [
   'await tx.delegations?.["write"].insert(row);',
 ];
 
+const personaActivations = [
+  'const { personas } = context.kernel; await personas.activate(caller, input);',
+  "await kernel['personas'].activate(caller, input);",
+  "await kernel.personas['activate'](caller, input);",
+  'const { activate } = kernel.personas; await activate(caller, input);',
+  "await kernel['personas']['activate'](caller, input);",
+  "await personas['activate'](caller, input);",
+  'const p = kernel.personas; await p.activate(caller, input);',
+  'const { personas: p } = context?.kernel; await p.activate(caller, input);',
+];
+
 const harmless = [
   "import { registry } from '../../connectors/registry.ts';",
   "export { registry } from './connectors/registry.ts';",
   "const loaded = await import('../../connectors/registry.ts');",
   'const keys = scene.stages.map((stage) => stage.key);',
   'const beat = await context.kernel.delegations.beat(caller, { delegationId });',
+  'const dashboard = await kernel.views.persona(caller, input);',
+  "routes.get('/personas/:pageId', personaScreen);",
 ];
 
 describe('AB-7 no file an agent principal can reach touches a gate decision or a stage row', () => {
@@ -154,6 +167,13 @@ describe('AB-7 the static check fails on a planted handler', () => {
     },
   );
 
+  it.each(personaActivations)(
+    'flags a planted verb that reaches persona activation as %s',
+    (text) => {
+      expect(touchedWith({ [sneakVerb]: text })).toEqual([sneakVerb]);
+    },
+  );
+
   it.each(harmless)('passes a planted verb whose only near miss is %s', (text) => {
     expect(touchedWith({ [sneakVerb]: text })).toEqual([]);
   });
@@ -195,6 +215,7 @@ const notCarvedOut = [
   'await tx.delegations.write.insert(row);',
   'await stages.removeStage(caller, input);',
   'const activate = kernel.personas.activate;',
+  ...personaActivations,
 ];
 
 const personSneak = 'apps/uw-app/commands/person/sneak.ts';
@@ -255,6 +276,16 @@ describe('AB-7 a planted gate touch outside the person surface fails, and a plan
     expect(reached).toContain('apps/uw-app/commands/person/gate-kernel.ts');
     expect(reached).not.toContain('apps/uw-app/commands/person-deps.ts');
   });
+});
+
+describe('persona activation is reached only from the person surface, in every syntactic form', () => {
+  it.each(personaActivations)(
+    'flags a command handler outside the person surface that reaches it as %s',
+    (text) => {
+      const file = 'apps/uw-app/commands/handlers/activate.ts';
+      expect(touchedWith(underRegistry(file, text))).toEqual([file]);
+    },
+  );
 });
 
 describe('AB-7 the static check fails on a planted route or a way out of the app', () => {
