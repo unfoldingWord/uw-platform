@@ -131,7 +131,7 @@ async function outageDropsTheWake(world: World): Promise<void> {
   world.adapters.notifier.enableZulip();
   world.adapters.notifier.subscribe(scene.areaAdmin.personId ?? '');
   const itemId = await gatedCheck(scene, 'Check the copy');
-  world.adapters.notifier.failNext();
+  world.adapters.notifier.failZulipNext();
   const caller = simCaller(world, scene.ian);
   value(await world.kernel.items.claim(caller, { itemId, delegationId: null }));
   const submitted = await world.kernel.items.submit(caller, {
@@ -144,7 +144,7 @@ async function outageDropsTheWake(world: World): Promise<void> {
   expect(world.adapters.notifier.posts()).toEqual([]);
   expect(await linkedOn(scene, itemId)).toEqual([]);
   const decisions = world.adapters.notifier.decisions().map((found) => found.decision);
-  expect(decisions).toEqual(['dropped']);
+  expect(decisions).toEqual(['sent']);
 }
 
 async function replyIsComment(world: World): Promise<void> {
@@ -227,12 +227,12 @@ async function shareTopic(world: World, holder: string, other: string): Promise<
 describe('the Zulip topic and replies', () => {
   it('NT-3 one topic per item is created on the first wake, stored on the item and kept', () =>
     inWorld(oneTopicPerItem));
-  it('NT-3 a harness-level wake posts to the harness topic', () => inWorld(lapsePostsToHarness));
+  it('a harness-level wake posts to the harness topic', () => inWorld(lapsePostsToHarness));
   it('an item whose topic and fallback are both taken posts to the harness topic and links none', () =>
     inWorld(takenTopicsPostToHarness));
   it('linking a topic holds the harness topic lock, so two items cannot take one topic', () =>
     inWorld(linkingTakesTheTopicLock));
-  it('NT-3 a Zulip outage drops the wake and nothing else fails', () =>
+  it('NT-3 a Zulip outage drops the post, the push still sends and nothing else fails', () =>
     inWorld(outageDropsTheWake));
   it('a reply is recorded as a comment with the person id it is given, or none', () =>
     inWorld(replyIsComment));

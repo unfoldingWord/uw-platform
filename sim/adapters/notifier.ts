@@ -24,6 +24,7 @@ type SimPost = {
 export type SimNotifier = Notifier & {
   delivered(): readonly Wake[];
   failNext(): void;
+  failZulipNext(): void;
   subscribe(personId: string): void;
   enableZulip(): void;
   decisions(): readonly SimDecision[];
@@ -37,6 +38,7 @@ type SimState = {
   readonly decisions: SimDecision[];
   readonly posts: SimPost[];
   failing: boolean;
+  zulipFailing: boolean;
   zulip: boolean;
 };
 
@@ -68,15 +70,16 @@ function zulipDecision(state: SimState, wake: Wake, failing: boolean): ZulipDeci
 
 function notifyIn(state: SimState): Notifier['notify'] {
   return async (wake) => {
-    const failing = state.failing;
+    const { failing, zulipFailing } = state;
     state.failing = false;
+    state.zulipFailing = false;
     state.delivered.push(structuredClone(wake));
     const push = wake.recipients.map((recipient) => {
       const decision = pushDecision(state, wake, recipient, failing);
       state.decisions.push({ traceId: wake.traceId, personId: recipient.personId, decision });
       return { personId: recipient.personId, decision };
     });
-    return { push, zulip: zulipDecision(state, wake, failing) };
+    return { push, zulip: zulipDecision(state, wake, failing || zulipFailing) };
   };
 }
 
@@ -88,6 +91,7 @@ export function createSimNotifier(): SimNotifier {
     decisions: [],
     posts: [],
     failing: false,
+    zulipFailing: false,
     zulip: false,
   };
   return {
@@ -95,6 +99,9 @@ export function createSimNotifier(): SimNotifier {
     delivered: () => state.delivered.map((wake) => structuredClone(wake)),
     failNext: () => {
       state.failing = true;
+    },
+    failZulipNext: () => {
+      state.zulipFailing = true;
     },
     subscribe: (personId) => {
       state.devices.add(personId);
