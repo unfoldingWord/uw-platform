@@ -2,8 +2,9 @@ import type { Harness } from '@uw/contracts';
 import { isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import type { Delegation, StoreTransaction } from '../ports.ts';
-import { readableHarness, type ScenePorts } from '../reads/scene.ts';
+import type { ScenePorts } from '../reads/scene.ts';
 import { decidableGates } from './gates.ts';
+import { readableHarnesses } from './readable.ts';
 import {
   FAILED_RUNS_LIMIT,
   VIEW_LIMIT,
@@ -15,16 +16,11 @@ import {
 type FailedRows = { readonly rows: readonly WaitingRow[]; readonly capped: boolean };
 
 type Scope = {
-  readonly ports: ScenePorts;
   readonly tx: StoreTransaction;
-  readonly caller: Caller;
   readonly personId: string;
+  readonly readable: ReadonlyMap<string, Harness>;
   readonly at: Date;
 };
-
-function readable(scope: Scope, harnessId: string): Promise<Harness | null> {
-  return readableHarness(scope.ports, scope.tx, scope.caller, harnessId, scope.at);
-}
 
 async function renewed(scope: Scope, delegation: Delegation): Promise<boolean> {
   const filter = {
@@ -51,42 +47,27 @@ async function lapsedRows(scope: Scope): Promise<readonly WaitingRow[]> {
   const lapsed = await read.lapsedFor(scope.personId, since, scope.at, VIEW_LIMIT);
   const rows: WaitingRow[] = [];
   for (const delegation of latestPerPersona(lapsed)) {
-    const harness = await readable(scope, delegation.harnessId);
-    if (harness === null || (await renewed(scope, delegation))) continue;
+    const harness = scope.readable.get(delegation.harnessId);
+    if (harness === undefined || (await renewed(scope, delegation))) continue;
     rows.push({ kind: 'delegation_lapsed', harness, delegation });
   }
   return rows;
 }
 
-async function readableOf(
-  scope: Scope,
-  harnessIds: readonly string[],
-): Promise<ReadonlyMap<string, Harness>> {
-  const shown = new Map<string, Harness>();
-  for (const harnessId of new Set(harnessIds)) {
-    const harness = await readable(scope, harnessId);
-    if (harness !== null) shown.set(harnessId, harness);
-  }
-  return shown;
-}
-
 async function failedRows(scope: Scope): Promise<FailedRows> {
   const since = new Date(scope.at.getTime() - WAITING_WINDOW_MS);
   const { read } = scope.tx.harnessRuns;
-  const runs = await read.failedFor(scope.personId, since, FAILED_RUNS_LIMIT);
+  const harnessIds = [...scope.readable.keys()];
+  const runs = await read.failedFor(scope.personId, harnessIds, since, FAILED_RUNS_LIMIT);
   const items = new Map(
     (await scope.tx.harnessItems.read.byIds(runs.map((run) => run.itemId))).map((item) => [
       item.itemId,
       item,
     ]),
   );
-  const harnesses = await readableOf(
-    scope,
-    runs.map((run) => run.harnessId),
-  );
   const rows = runs.flatMap((run): WaitingRow[] => {
     const item = items.get(run.itemId);
-    const harness = harnesses.get(run.harnessId);
+    const harness = scope.readable.get(run.harnessId);
     return item === undefined || harness === undefined
       ? []
       : [{ kind: 'run_failed', harness, item, run }];
@@ -103,7 +84,9 @@ export async function waitingOn(
   const { personId } = caller.actor;
   if (personId === null || isAgent(caller.actor)) return { rows: [], failedRunsCapped: false };
   const gates = await decidableGates(ports, tx, caller, at);
-  const scope = { ports, tx, caller, personId, at };
+  const shown = await readableHarnesses(ports, tx, caller, at);
+  const readable = new Map(shown.map((harness) => [harness.id, harness]));
+  const scope = { tx, personId, readable, at };
   const lapsed = await lapsedRows(scope);
   const failed = await failedRows(scope);
   return {

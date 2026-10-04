@@ -84,7 +84,9 @@ async function failedFor(subject: FailedForSubject, base: number, seed: Seed) {
   return subject().store.transaction(async (tx) => {
     await seeded(tx, base, seed);
     const ids = async (personId: string, limit: number) =>
-      (await tx.harnessRuns.read.failedFor(personId, sinceOf(base), limit)).map((run) => run.id);
+      (await tx.harnessRuns.read.failedFor(personId, [uid(base)], sinceOf(base), limit)).map(
+        (run) => run.id,
+      );
     return { mine: await ids(person, 50), stranger: await ids(strangerOf(base), 50) };
   });
 }
@@ -149,7 +151,9 @@ function describeWindow(subject: FailedForSubject): void {
     const read = await subject().store.transaction(async (tx) => {
       await seeded(tx, base, { items: [{}, {}, {}, {}], runs: windowRuns });
       const ids = async (limit: number) =>
-        (await tx.harnessRuns.read.failedFor(person, sinceOf(base), limit)).map((run) => run.id);
+        (await tx.harnessRuns.read.failedFor(person, [uid(base)], sinceOf(base), limit)).map(
+          (run) => run.id,
+        );
       return { all: await ids(50), one: await ids(1) };
     });
     expect(read).toEqual({ all: [uid(base + 0x62), uid(base + 0x61)], one: [uid(base + 0x62)] });
@@ -159,10 +163,35 @@ function describeWindow(subject: FailedForSubject): void {
     for (const limit of [0, 5001]) {
       await expect(
         subject().store.transaction((tx) =>
-          tx.harnessRuns.read.failedFor(uid(1), sinceOf(0x4b00), limit),
+          tx.harnessRuns.read.failedFor(uid(1), [uid(0x4b00)], sinceOf(0x4b00), limit),
         ),
       ).rejects.toBeInstanceOf(RangeError);
     }
+  });
+}
+
+function describeHarnesses(subject: FailedForSubject): void {
+  it('failedFor answers only runs on the harnesses it is given, and nothing for none', async () => {
+    const [first, second] = [0x5400, 0x5500];
+    const seed = (base: number) => onePath(base, { delegationId: uid(base + 0xd1) });
+    const read = await subject().store.transaction(async (tx) => {
+      await seeded(tx, first, seed(first));
+      await seeded(tx, second, seed(second));
+      const ids = async (harnessIds: readonly string[]) =>
+        (await tx.harnessRuns.read.failedFor(person, harnessIds, sinceOf(first), 50)).map(
+          (run) => run.id,
+        );
+      return {
+        one: await ids([uid(first)]),
+        both: await ids([uid(first), uid(second)]),
+        none: await ids([]),
+      };
+    });
+    expect(read).toEqual({
+      one: [uid(first + 0x61)],
+      both: [uid(second + 0x61), uid(first + 0x61)],
+      none: [],
+    });
   });
 }
 
@@ -170,5 +199,6 @@ export function describeStoreFailedFor(adapter: string, subject: FailedForSubjec
   describe(`failed runs of one person on ${adapter}`, () => {
     describeOwnership(subject);
     describeWindow(subject);
+    describeHarnesses(subject);
   });
 }

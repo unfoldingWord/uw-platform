@@ -1,7 +1,7 @@
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
-import { FAILED_RUNS_LIMIT, type RunRow } from '@uw/harness';
+import { FAILED_RUNS_LIMIT, software, type RunRow } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { simCaller } from '../fixtures.ts';
+import { createSimHarness, simCaller, simPerson } from '../fixtures.ts';
 import { itemInScope, runOf } from '../runs.ts';
 import { waitingScene, type Waiting } from '../views.ts';
 import { createWorld } from '../world.ts';
@@ -54,9 +54,50 @@ async function capsAndSaysSo(scene: Waiting): Promise<void> {
   expect(shown.failed).not.toContain(scene.failedRun);
 }
 
+async function unreadableTakeNoSlot(scene: Waiting): Promise<void> {
+  const template = await runOf(scene.world, scene.failedRun);
+  if (template === null) throw new Error('no failed run');
+  const viewer = await simPerson(scene.world, 7, [
+    { role: 'viewer', scopeKind: 'jd_area', scopeArea: '80-89' },
+  ]);
+  const elsewhere = await createSimHarness(scene.world, software, {
+    key: 'elsewhere',
+    jdArea: '20-29',
+    repository: null,
+  });
+  const hiddenItem = await itemInScope(
+    { world: scene.world, harnessId: elsewhere.harness.id, admin: scene.admin },
+    'Fail out of sight',
+  );
+  const shownItem = await itemInScope(scene, 'Fail in sight');
+  const { ids, clock, store } = scene.world.adapters;
+  const now = clock.now();
+  const device = `agent:${viewer.personId ?? ''}/laptop` as RunRow['persona'];
+  const runOn = (harnessId: string, itemId: string, endedAt: Date): RunRow => {
+    const id = ids.next();
+    const base = { ...template, id, traceId: id, delegationId: null, persona: device };
+    return { ...base, harnessId, itemId, startedAt: endedAt, endedAt };
+  };
+  const shown = runOn(scene.harnessId, shownItem, new Date(now.getTime() - 60_000));
+  const hidden = Array.from({ length: FAILED_RUNS_LIMIT }, () =>
+    runOn(elsewhere.harness.id, hiddenItem, now),
+  );
+  await store.transaction(async (tx) => {
+    for (const run of [shown, ...hidden]) await tx.harnessRuns.write.insert(run);
+  });
+  const waiting = await scene.world.kernel.views.waitingOn(simCaller(scene.world, viewer));
+  const failed = waiting.rows.flatMap((row) => (row.kind === 'run_failed' ? [row.run.id] : []));
+  expect({ failed, capped: waiting.failedRunsCapped }).toEqual({
+    failed: [shown.id],
+    capped: false,
+  });
+}
+
 describe('failed runs on Home', () => {
   it('WB-9 a person still sees their own older failed run after more than 200 newer failures across the organisation', () =>
     inWaiting(ownOlderFailureShows));
   it('Home lists at most 50 failed runs and says the list is capped', () =>
     inWaiting(capsAndSaysSo));
+  it('failed runs on a harness the person cannot read take no place in the 50', () =>
+    inWaiting(unreadableTakeNoSlot));
 });
