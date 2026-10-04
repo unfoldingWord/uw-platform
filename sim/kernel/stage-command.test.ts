@@ -1,6 +1,6 @@
-import type { Harness, Stage } from '@uw/contracts';
+import type { Harness, PageType, Stage } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
-import { revokeSeededGrant } from '@uw/db/test-seed';
+import { revokeSeededGrant, seedPage } from '@uw/db/test-seed';
 import { readAllEvents, software, type Caller } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createSimHarness, simAgent, simCaller, simPerson } from '../fixtures.ts';
@@ -283,4 +283,55 @@ describe('KN-18 an update cannot carry identity fields', () => {
       expect(await stagesOf(world, harness.id)).toEqual(before);
     });
   });
+});
+
+async function seedInstructions(world: World, type: PageType, jdArea = '80-89'): Promise<string> {
+  const id = world.adapters.ids.next();
+  const frontmatter = type === 'skill' ? { name: 'build', description: 'Build the item.' } : {};
+  await seedPage(world.database.db, {
+    id,
+    type,
+    status: 'active',
+    jdArea,
+    slug: `instructions-${id.slice(-8)}`,
+    title: 'Instructions',
+    bodyMd: 'Do the work.',
+    frontmatter,
+  });
+  return id;
+}
+
+describe('a stage names its instructions', () => {
+  harnessIt(
+    "PE-8 a stage's instructions page must be a skill page",
+    async (world, harness, ian) => {
+      const create = (instructionsPageId: string) =>
+        world.kernel.stages.createStage(ian, {
+          harnessId: harness.id,
+          stage: newStage({ key: `s${instructionsPageId.slice(-6)}`, instructionsPageId }),
+        });
+      const skill = await seedInstructions(world, 'skill');
+      expect((await create(skill)).status).toBe('accepted');
+      const product = await seedInstructions(world, 'product');
+      expect(await create(product)).toMatchObject({
+        status: 'error',
+        reason: 'malformed_command',
+        detail: { why: 'instructions_not_skill' },
+      });
+      const other = await seedInstructions(world, 'skill', '20-29');
+      const issue = await seedInstructions(world, 'issue');
+      for (const pageId of [other, issue, world.adapters.ids.next()]) {
+        expect(await create(pageId)).toMatchObject({
+          reason: 'page_not_found',
+          detail: { pageId },
+        });
+      }
+      const updated = await world.kernel.stages.updateStage(ian, {
+        harnessId: harness.id,
+        stageKey: 'build',
+        change: { instructionsPageId: product },
+      });
+      expect(updated).toMatchObject({ reason: 'malformed_command' });
+    },
+  );
 });

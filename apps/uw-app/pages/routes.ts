@@ -1,6 +1,7 @@
 import { Hono, type Context } from 'hono';
 import { z } from 'zod';
 import {
+  confirmPageCommandSchema,
   createPageCommandSchema,
   pageSchema,
   updatePageCommandSchema,
@@ -12,6 +13,7 @@ import type { Principal } from '@uw/core/principal';
 import type { AppEnv } from '../deps.ts';
 import { malformed, readJson, toOutcome, type CommandResult } from '../http/commands.ts';
 import { refuse, reply } from '../http/outcomes.ts';
+import { confirmPage } from './confirm.ts';
 import { createPage, readPage, updatePage, type PageRefusal, type PageResult } from './store.ts';
 
 type Run = (
@@ -45,6 +47,15 @@ const handlers = new Map<string, Run>([
       const command: UpdatePageCommand = parsed.data;
       const result = await updatePage(db, actor, command, traceId, at);
       return { requestId: command.requestId, result: summarise(result) };
+    },
+  ],
+  [
+    'confirm_page',
+    async (db, actor, body, traceId, at) => {
+      const parsed = confirmPageCommandSchema.safeParse(body);
+      if (!parsed.success) return null;
+      const result = await confirmPage(db, actor, parsed.data, traceId, at);
+      return { requestId: parsed.data.requestId, result: summarise(result) };
     },
   ],
 ]);

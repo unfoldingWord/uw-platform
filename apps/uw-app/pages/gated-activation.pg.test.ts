@@ -35,11 +35,7 @@ const frontmatterByType = new Map<PageType, CreatePageCommand['frontmatter']>([
 ]);
 
 const gated: readonly PageType[] = ['persona', 'learning', 'skill'];
-const activationRequired = {
-  ok: false,
-  reason: 'not_permitted',
-  detail: { why: 'activation_required' },
-};
+const activationRequired = { ok: false, reason: 'activation_required', detail: {} };
 
 function frontmatterOf(type: PageType): CreatePageCommand['frontmatter'] {
   const frontmatter = frontmatterByType.get(type);

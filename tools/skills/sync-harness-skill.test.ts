@@ -2,7 +2,11 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { skillFrontmatterSchema } from '../../packages/contracts/index.ts';
+import {
+  pageTypeDefinition,
+  skillFrontmatterSchema,
+  verbIo,
+} from '../../packages/contracts/index.ts';
 import { skillPageOf } from './skill-file.ts';
 import { syncSkill } from './sync-harness-skill.ts';
 
@@ -83,5 +87,17 @@ describe('the synced harness skill', () => {
     expect(warning).toContain('leaseWarning: true');
     expect(warning).toContain('`wip: <item>`');
     expect(warning).toContain('push it to `harness/<item>` with your own git credentials');
+  });
+});
+
+describe('the synced harness skill as a page', () => {
+  it('PE-8 the synced harness skill validates as a skill page', () => {
+    const page = skillPageOf(readFileSync(repoCopy, 'utf8'));
+    const check = pageTypeDefinition('skill')?.frontmatter.safeParse(page.frontmatter);
+    expect(check?.success).toBe(true);
+    const exported = verbIo.read_page.output.parse(JSON.parse(readFileSync(pageFixture, 'utf8')));
+    expect(exported.page.type).toBe('skill');
+    expect(exported.page.frontmatter).toEqual(page.frontmatter);
+    expect(page.bodyMd.trim().length).toBeGreaterThan(0);
   });
 });

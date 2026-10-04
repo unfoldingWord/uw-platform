@@ -56,6 +56,7 @@ const learningFrontmatter = {
   supersedes: [],
   review_by: null,
 };
+const skillFrontmatter = { name: 'stage-instructions', description: 'How the stage works.' };
 const personaFrontmatter = {
   identity: 'agent:builder',
   owner: `human:${EDITOR.id}`,
@@ -424,7 +425,7 @@ function personSave(r: Rig, page: Body) {
         slug: String(page['slug']),
         title: 'Edited by a person',
         parentId: null,
-        frontmatter: productFrontmatter,
+        frontmatter: skillFrontmatter,
         bodyMd: 'A person edits the instructions.',
         status: 'active',
       },
@@ -445,33 +446,75 @@ describe.skipIf(!testServer)(
   () => {
     const rig = freshRig();
 
-    it('refuses the agent on an active product page and accepts a person', async () => {
+    it('refuses the agent on an active skill page and accepts a person', async () => {
       const r = rig();
       const pageId = crypto.randomUUID();
-      await seedPage(r.db, seeded(pageId, { status: 'active', slug: 'stage-instructions' }));
+      const skill = { type: 'skill' as const, frontmatter: skillFrontmatter };
+      await seedPage(
+        r.db,
+        seeded(pageId, { ...skill, status: 'active', slug: 'stage-instructions' }),
+      );
       await nameAsInstructions(r, 'package', pageId);
-      const save = newPage('stage-instructions', { pageId, expectedVersion: 1 });
+      const save = newPage('stage-instructions', { ...skill, pageId, expectedVersion: 1 });
       expect((await write(await runner(r, EDITOR.email), save)).body).toEqual(instructionsRefusal);
       expect(await storedPage(r, pageId)).toEqual({ status: 'active', version: 1, versions: 0 });
       expect((await personSave(r, save)).ok).toBe(true);
     });
 
-    it('refuses the agent on a suggested learning page too', async () => {
+    it('refuses the agent on a suggested skill page too', async () => {
       const r = rig();
       const pageId = crypto.randomUUID();
-      const learning = { type: 'learning' as const, status: 'suggested' as const };
+      const skill = { type: 'skill' as const, status: 'suggested' as const };
       await seedPage(
         r.db,
-        seeded(pageId, { ...learning, frontmatter: learningFrontmatter, slug: 'stage-learning' }),
+        seeded(pageId, { ...skill, frontmatter: skillFrontmatter, slug: 'stage-skill' }),
       );
       await nameAsInstructions(r, 'check', pageId);
-      const save = newPage('stage-learning', {
+      const save = newPage('stage-skill', {
         pageId,
-        type: 'learning',
-        frontmatter: learningFrontmatter,
+        type: 'skill',
+        frontmatter: skillFrontmatter,
         expectedVersion: 1,
       });
       expect((await write(await runner(r, EDITOR.email), save)).body).toEqual(instructionsRefusal);
     });
   },
 );
+
+describe.skipIf(!testServer)('an agent never activates a persona', () => {
+  const rig = freshRig();
+
+  it("PE-3 an agent's attempt to activate a persona through write_page is refused and logged", async () => {
+    const r = rig();
+    const lines: string[] = [];
+    const token = await r.fixture.signForMcp({ email: EDITOR.email });
+    const app = createApp(postgresDeps(r.db, r.fixture, (line) => lines.push(line)));
+    const client = await httpClient(app, {
+      'cf-access-jwt-assertion': token,
+      'x-uw-device': 'laptop',
+    });
+    const page = newPage('persona-drafted', { type: 'persona', frontmatter: personaFrontmatter });
+    try {
+      expect((await callTool(client, 'write_page', page)).body).toMatchObject({
+        status: 'suggested',
+      });
+      const active = { ...personaFrontmatter, status: 'active' };
+      const attempt = { ...page, frontmatter: active, expectedVersion: 1 };
+      expect((await callTool(client, 'write_page', attempt)).body).toMatchObject({
+        status: 'error',
+        reason: 'activation_required',
+      });
+    } finally {
+      await client.close();
+    }
+    const calls = lines
+      .map((line) => bodyOf(line))
+      .filter((line) => line['message'] === 'verb call');
+    expect(calls.map((call) => call['outcome'])).toEqual(['accepted', 'activation_required']);
+    expect(await storedPage(r, String(page['pageId']))).toEqual({
+      status: 'suggested',
+      version: 1,
+      versions: 1,
+    });
+  });
+});

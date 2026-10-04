@@ -2,7 +2,14 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { healthReportSchema, type HealthIndicator } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
 import { ghRepos, harnessRuns } from '@uw/db/schema';
-import { seedBreakerReading, seedGrant, seedHarness, seedItem, seedPerson } from '@uw/db/test-seed';
+import {
+  seedBreakerReading,
+  seedGrant,
+  seedHarness,
+  seedItem,
+  seedPage,
+  seedPerson,
+} from '@uw/db/test-seed';
 import { DEFAULT_SPEND_CAP, PLANE_LIMIT, type Clock, type PlaneTotals } from '@uw/harness';
 import { createApp } from '../app.tsx';
 import { platformKernel } from '../kernel.ts';
@@ -11,6 +18,7 @@ import {
   fixtureAccessEnv,
   type AccessFixture,
 } from '../testing/access-keys.ts';
+import { personOn } from '../testing/kernel.ts';
 import { callTool, httpClient } from '../testing/mcp.ts';
 import { postgresDeps, testServer, withAppDatabase } from '../testing/postgres.ts';
 import { AGENT_PLANE_INDICATORS, agentPlaneIndicators } from './agent-plane.ts';
@@ -309,4 +317,123 @@ describe.skipIf(!testServer)('the agent plane indicators', () => {
     withAppDatabase(sameAtOneInstant));
   it('/health/probe answers the platform indicators without a principal, and /health needs one', () =>
     withAppDatabase(probeAndScreen));
+});
+
+const learningSeeds: readonly [string, string, string, Record<string, unknown>][] = [
+  ['Assumed since July', '80-89', 'active', { confidence: 'assumed', as_of: '2026-07-01' }],
+  ['Inferred in August', '80-89', 'suggested', { confidence: 'inferred', as_of: '2026-08-01' }],
+  ['Observed', '80-89', 'active', { confidence: 'observed', review_by: '2026-09-01' }],
+  ['Due this month', '80-89', 'active', { confidence: 'inferred', review_by: '2026-10-01' }],
+  ['Elsewhere', '20-29', 'active', { confidence: 'assumed', review_by: '2026-09-01' }],
+  ['Retired', '80-89', 'retired', { confidence: 'assumed', review_by: '2026-09-01' }],
+];
+
+async function seedLearnings(db: Database): Promise<void> {
+  await seed(db);
+  for (const [index, [title, jdArea, status, frontmatter]] of learningSeeds.entries()) {
+    await seedPage(db, {
+      id: `00000000-0000-4000-8000-0000000055a${index}`,
+      type: 'learning',
+      status: status === 'retired' ? 'retired' : status === 'active' ? 'active' : 'suggested',
+      jdArea,
+      slug: `stale-${index}`,
+      title,
+      bodyMd: 'What we think.',
+      frontmatter: { as_of: '2026-06-01', supersedes: [], review_by: null, ...frontmatter },
+    });
+  }
+}
+
+const VIEWER = {
+  id: '00000000-0000-4000-8000-000000005313',
+  email: 'plane-viewer@unfoldingword.org',
+};
+
+async function seedViewer(db: Database): Promise<void> {
+  await seedPerson(db, VIEWER);
+  await seedGrant(db, {
+    id: '00000000-0000-4000-8000-000000005314',
+    personId: VIEWER.id,
+    role: 'viewer',
+    scopeKind: 'jd_area',
+    scopeArea: '80-89',
+    grantedAt: new Date('2026-01-01T00:00:00.000Z'),
+    expiresAt: null,
+  });
+}
+
+async function staleRows(db: Database, person = EDITOR) {
+  const handle = { db, ping: async () => undefined, release: async () => undefined };
+  const actor = await personOn(db, person.id, person.email, at);
+  const caller = { actor, traceId: crypto.randomUUID(), requestId: null };
+  const rows = await platformKernel(handle, clock).views.planeList(caller, 'stale_learnings', {
+    at,
+  });
+  return rows.map((row) => row.cells);
+}
+
+async function staleReport(db: Database): Promise<void> {
+  await seedLearnings(db);
+  const rows = await staleRows(db);
+  expect(rows).toEqual(
+    expect.arrayContaining([
+      { title: 'Assumed since July', confidence: 'assumed', 'review by': '2026-09-29' },
+      { title: 'Due this month', confidence: 'inferred', 'review by': '2026-10-01' },
+      { title: 'Elsewhere', confidence: 'assumed', 'review by': '2026-09-01' },
+    ]),
+  );
+  expect(rows.map((row) => row['title'])).not.toEqual(
+    expect.arrayContaining(['Inferred in August']),
+  );
+  expect(rows).toHaveLength(3);
+}
+
+async function staleReadable(db: Database): Promise<void> {
+  await seedLearnings(db);
+  await seedViewer(db);
+  const titles = (await staleRows(db, VIEWER)).map((row) => row['title']);
+  expect(titles.toSorted()).toEqual(['Assumed since July', 'Due this month']);
+  expect(named(await indicatorsOn(db), 'stale_learnings')).toMatchObject({
+    detail: '3 past their review date',
+  });
+}
+
+async function staleIndicators(db: Database): Promise<void> {
+  await seedLearnings(db);
+  const app = createApp(postgresDeps(db, fixture, undefined, clock));
+  const token = await fixture.sign({ email: EDITOR.email });
+  const response = await app.request(
+    '/health',
+    { headers: { 'cf-access-jwt-assertion': token } },
+    fixtureAccessEnv,
+  );
+  const screen = named(
+    healthReportSchema.parse(await response.json()).indicators,
+    'stale_learnings',
+  );
+  expect(screen).toEqual({
+    name: 'stale_learnings',
+    status: 'amber',
+    detail: '3 past their review date',
+  });
+  const mcpToken = await fixture.signForMcp({ email: EDITOR.email });
+  const laptop = await httpClient(app, {
+    'cf-access-jwt-assertion': mcpToken,
+    'x-uw-device': 'laptop',
+  });
+  try {
+    const { body } = await callTool(laptop, 'get_health', { harnessId: HARNESS });
+    expect(named(healthReportSchema.parse(body).indicators, 'stale_learnings')).toEqual(screen);
+  } finally {
+    await laptop.close();
+  }
+}
+
+describe.skipIf(!testServer)('stale learnings', () => {
+  it('PE-8 the stale-confidence report lists assumed and inferred learnings past their review date, defaulting to 90 days after as_of', () =>
+    withAppDatabase(staleReport));
+  it('PE-8 the report shows only learnings the caller may read', () =>
+    withAppDatabase(staleReadable));
+  it('PE-8 the stale_learnings indicator counts them on get_health and on /health', () =>
+    withAppDatabase(staleIndicators));
 });

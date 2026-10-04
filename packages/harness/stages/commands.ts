@@ -62,8 +62,11 @@ async function instructionsRefusal(
 ): Promise<Refused | null> {
   if (pageId === null || pageId === undefined) return null;
   const [page] = await tx.pages.read.facts([pageId]);
-  const usable = page !== undefined && page.type !== 'issue' && page.jdArea === harness.jdArea;
-  return usable ? null : refused('page_not_found', { pageId });
+  const readable = page !== undefined && page.type !== 'issue' && page.jdArea === harness.jdArea;
+  if (!readable) return refused('page_not_found', { pageId });
+  return page.type === 'skill'
+    ? null
+    : refused('malformed_command', { why: 'instructions_not_skill' });
 }
 
 function createWork(ports: StagePorts, stage: StageInput): EditWork<Stage> {
