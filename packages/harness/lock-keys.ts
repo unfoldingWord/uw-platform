@@ -6,4 +6,5 @@ export const lockKeys = {
   personaActivation: (pageId: string) => `persona-activation:${pageId}`,
   breaker: () => 'harness-breaker',
   runPersona: (persona: string) => `harness-run-persona:${persona}`,
+  zulipTopics: (harnessId: string) => `zulip-topics:${harnessId}`,
 };

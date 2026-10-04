@@ -1,5 +1,5 @@
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
-import { readAllEvents, replay } from '@uw/harness';
+import { createKernel, readAllEvents, replay, type Store } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import { simCaller, simIngest } from '../fixtures.ts';
 import { detailOf, itemEvents, reasonOf, runWorld, value } from '../runs.ts';
@@ -65,6 +65,49 @@ async function oneTopicPerItem(world: World): Promise<void> {
   expect(world.adapters.notifier.posts().map((post) => post.reason)).not.toContain(
     'stage_advanced',
   );
+}
+
+async function takenTopicsPostToHarness(world: World): Promise<void> {
+  const scene = await topicScene(world);
+  world.adapters.notifier.enableZulip();
+  await parkAtCheck(scene, 'Check the copy');
+  await parkAtCheck(scene, 'Check the icon');
+  const third = await parkAtCheck(scene, 'Check the footer');
+  expect(world.adapters.notifier.posts().map((post) => post.topic)).toEqual([
+    'software/item-00000000',
+    'software/item-000000000000',
+    'software',
+  ]);
+  expect(await topicOf(world, third)).toBeNull();
+  expect(await linkedOn(scene, third)).toEqual([]);
+}
+
+function lockRecording(store: Store, keys: string[]): Store {
+  return {
+    appliedMigrations: () => store.appliedMigrations(),
+    transaction: (work) =>
+      store.transaction(async (tx) => {
+        const lock = tx.lock;
+        Object.assign(tx, {
+          lock: async (key: string) => {
+            keys.push(key);
+            await lock(key);
+          },
+        });
+        return work(tx);
+      }),
+  };
+}
+
+async function linkingTakesTheTopicLock(world: World): Promise<void> {
+  const keys: string[] = [];
+  const store = lockRecording(world.adapters.store, keys);
+  const kernel = createKernel({ ...world.adapters, store });
+  const scene = await topicScene({ ...world, kernel });
+  world.adapters.notifier.enableZulip();
+  const itemId = await parkAtCheck(scene, 'Check the copy');
+  expect(await linkedOn(scene, itemId)).toHaveLength(1);
+  expect(keys).toContain(`zulip-topics:${scene.harnessId}`);
 }
 
 async function lapsePostsToHarness(world: World): Promise<void> {
@@ -185,6 +228,10 @@ describe('the Zulip topic and replies', () => {
   it('NT-3 one topic per item is created on the first wake, stored on the item and kept', () =>
     inWorld(oneTopicPerItem));
   it('NT-3 a harness-level wake posts to the harness topic', () => inWorld(lapsePostsToHarness));
+  it('an item whose topic and fallback are both taken posts to the harness topic and links none', () =>
+    inWorld(takenTopicsPostToHarness));
+  it('linking a topic holds the harness topic lock, so two items cannot take one topic', () =>
+    inWorld(linkingTakesTheTopicLock));
   it('NT-3 a Zulip outage drops the wake and nothing else fails', () =>
     inWorld(outageDropsTheWake));
   it('a reply is recorded as a comment with the person id it is given, or none', () =>

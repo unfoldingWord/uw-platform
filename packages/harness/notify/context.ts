@@ -2,7 +2,7 @@ import type { Harness, HarnessEvent, Identity, ItemState } from '@uw/contracts';
 import { replay } from '../items/fold.ts';
 import { readAllEvents } from '../items/record.ts';
 import type { Delegation, RunRow, StoreTransaction } from '../ports.ts';
-import { freeTopic, itemRefOf, topicFor } from './topic.ts';
+import { freeTopic, topicFor } from './topic.ts';
 import type { Trigger } from './triggers.ts';
 
 export type ItemContext = {
@@ -10,6 +10,7 @@ export type ItemContext = {
   readonly prior: ItemState | null;
   readonly parkedBy: Identity | null;
   readonly topic: string;
+  readonly linkable: boolean;
 };
 
 export type WakeContext = {
@@ -39,9 +40,16 @@ function lastParker(events: readonly HarnessEvent[]): Identity | null {
   return parked.at(-1)?.actor ?? null;
 }
 
-async function topicOf(tx: StoreTransaction, item: ItemState, harness: Harness): Promise<string> {
-  if (item.zulipTopic !== null) return item.zulipTopic;
-  return (await freeTopic(tx, item, harness.key)) ?? topicFor(harness.key, itemRefOf(item));
+async function topicOf(
+  tx: StoreTransaction,
+  item: ItemState,
+  harness: Harness,
+): Promise<{ readonly topic: string; readonly linkable: boolean }> {
+  if (item.zulipTopic !== null) return { topic: item.zulipTopic, linkable: false };
+  const free = await freeTopic(tx, item, harness.key);
+  return free === null
+    ? { topic: topicFor(harness.key, null), linkable: false }
+    : { topic: free, linkable: true };
 }
 
 async function itemContext(
@@ -54,7 +62,7 @@ async function itemContext(
   const all = await readAllEvents(tx, item.harnessId, item.itemId);
   const earlier = all.filter((event) => event.position < before);
   const topic = await topicOf(tx, item, harness);
-  return { item, prior: replay(earlier), parkedBy: lastParker(earlier), topic };
+  return { item, prior: replay(earlier), parkedBy: lastParker(earlier), ...topic };
 }
 
 async function readEach<T>(
