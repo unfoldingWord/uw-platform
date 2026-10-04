@@ -32,5 +32,6 @@ export function postgresDeps(
     sink,
     clock,
     timers: systemTimers,
+    fetch: () => Promise.reject(new Error('no network in this test')),
   };
 }

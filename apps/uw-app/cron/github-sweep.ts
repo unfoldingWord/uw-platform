@@ -6,6 +6,7 @@ import { sweepGitHub } from '../github/sweep.ts';
 import { hubWiring, platformKernel } from '../kernel.ts';
 import { systemClock } from '../ports/clock.ts';
 import { hubOf } from '../ports/hub.ts';
+import { notifierOf } from '../ports/notifier.ts';
 import { unitHub } from '../unit-hub.ts';
 import { cronLogger, type CronDeps, type CronJob } from './job.ts';
 
@@ -23,7 +24,8 @@ async function sweepWith(
     return;
   }
   const unit = unitHub(hubOf(env, logger));
-  const kernel = platformKernel(database, systemClock, hubWiring(unit.hub));
+  const notifier = notifierOf(env, database, deps.sink, deps.fetch);
+  const kernel = platformKernel(database, systemClock, hubWiring(unit.hub, { notifier }));
   const transport = { fetch: deps.fetch, now: deps.now };
   try {
     const report = await sweepGitHub(

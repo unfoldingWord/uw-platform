@@ -7,6 +7,7 @@ import type { Bindings } from '../env.ts';
 import { spendCapOf } from '../health/spend-cap.ts';
 import { hubWiring, platformKernel } from '../kernel.ts';
 import { hubOf } from '../ports/hub.ts';
+import { notifierOf } from '../ports/notifier.ts';
 import { spendOnlyEngine } from '../ports/model-engine.ts';
 import { runsOf } from '../ports/runs.ts';
 import { unitHub } from '../unit-hub.ts';
@@ -118,7 +119,11 @@ async function minuteWith(
   const kernel = platformKernel(
     database,
     { now: deps.now },
-    hubWiring(unit.hub, { modelEngine, runs: runsOf(env) }),
+    hubWiring(unit.hub, {
+      modelEngine,
+      runs: runsOf(env),
+      notifier: notifierOf(env, database, deps.sink, deps.fetch),
+    }),
   );
   const caller: Caller = { actor: systemPrincipal(), traceId: deps.newId(), requestId: null };
   const minute = { kernel, caller, deps, logger };

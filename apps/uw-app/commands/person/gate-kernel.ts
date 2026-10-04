@@ -6,7 +6,7 @@ import { hubWiring, platformKernel, type LiveWiring } from '../../kernel.ts';
 import type { ShipGitHub } from '../../ports/connectors.ts';
 
 export function gateWiring(github: ShipGitHub | null, live: LiveWiring, logger: Logger) {
-  const wiring = hubWiring(live.hub, { runs: live.runs });
+  const wiring = hubWiring(live.hub, { runs: live.runs, notifier: live.notifier });
   if (github === null) return wiring;
   const reads = { open: () => createGitHubReads(github.app, github.transport), logger };
   return { ...wiring, reads, ship: github };

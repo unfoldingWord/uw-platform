@@ -4,11 +4,23 @@ import { repoFiles } from '../repo-files.ts';
 
 const kernelHosts = [
   ['apps/uw-app/commands/routes.ts', 'hubOf(c.env'],
-  ['apps/uw-app/commands/dispatch.ts', 'hubWiring(scope.hub, { runs: scope.runs })'],
+  [
+    'apps/uw-app/commands/dispatch.ts',
+    'hubWiring(scope.hub, { runs: scope.runs, notifier: scope.notifier })',
+  ],
   ['apps/uw-app/mcp/routes.ts', 'hubWiring(hubOf(c.env'],
   ['apps/uw-app/queue/worker.ts', 'unitHub(hubOf(env'],
   ['apps/uw-app/cron/github-sweep.ts', 'unitHub(hubOf(env'],
   ['apps/uw-app/cron/minute.ts', 'unitHub(hubOf(env'],
+] as const;
+
+const notifierHosts = [
+  'apps/uw-app/commands/routes.ts',
+  'apps/uw-app/mcp/routes.ts',
+  'apps/uw-app/queue/worker.ts',
+  'apps/uw-app/cron/github-sweep.ts',
+  'apps/uw-app/cron/minute.ts',
+  'apps/uw-app/runs/deps.ts',
 ] as const;
 
 const hubBinding = /\bHARNESS_HUB\b/;
@@ -50,6 +62,20 @@ describe('WB-3 the command, MCP, queue and cron kernels are wired with the hub o
     const source = readFileSync(file, 'utf8');
     expect(source).toContain(call);
     expect(source).not.toContain('hubNotWired');
+  });
+});
+
+describe('every kernel that appends events is wired with the notifier of its environment', () => {
+  it.each(notifierHosts)('%s builds its notifier with notifierOf', (file) => {
+    const source = readFileSync(file, 'utf8');
+    expect(source).toContain('notifierOf(');
+    expect(source).not.toContain('notifierNotWired');
+  });
+
+  it('the dispatcher and the gate kernel pass the scope notifier on', () => {
+    expect(readFileSync('apps/uw-app/commands/person/gate-kernel.ts', 'utf8')).toContain(
+      'notifier: live.notifier',
+    );
   });
 });
 

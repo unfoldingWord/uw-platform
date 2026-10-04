@@ -13,6 +13,7 @@ export function recordingDeps() {
     sink: (line) => lines.push(JSON.parse(line)),
     clock: systemClock,
     timers: systemTimers,
+    fetch: () => Promise.reject(new Error('no network in this test')),
   };
   return { deps, lines };
 }

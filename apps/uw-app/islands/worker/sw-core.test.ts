@@ -3,6 +3,7 @@ import {
   DEFAULT_PUSH_TITLE,
   PUSH_TITLES,
   isShellAsset,
+  pushNotification,
   pushPayload,
   pushTitle,
   safeLink,
@@ -86,5 +87,26 @@ describe('the worker cache name', () => {
       'other',
       shellCacheName(assets),
     ]);
+  });
+});
+
+describe('the notification a push shows', () => {
+  it('NT-1 a push opens straight to its deep link, names its harness, and replaces an earlier one for the same link', () => {
+    const link = '/harnesses/h/gates/i';
+    const shown = pushNotification(
+      pushPayload({ harness: 'software', reason: 'gate_waiting', link }),
+    );
+    expect(shown).toEqual({
+      title: PUSH_TITLES['gate_waiting'],
+      options: { body: 'In software.', tag: link, data: { link } },
+    });
+    expect(pushNotification(pushPayload('not json'))).toEqual({
+      title: DEFAULT_PUSH_TITLE,
+      options: { tag: '/', data: { link: '/' } },
+    });
+    const odd = pushNotification(
+      pushPayload({ harness: 'Not A Key!', reason: 'run_failed', link }),
+    );
+    expect(odd.options).toEqual({ tag: link, data: { link } });
   });
 });

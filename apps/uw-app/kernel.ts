@@ -4,6 +4,7 @@ import {
   type Hub,
   type Kernel,
   type ModelEngine,
+  type Notifier,
   type Ports,
   type Runs,
 } from '@uw/harness';
@@ -30,11 +31,12 @@ type KernelWiring = {
   readonly reviews: ReviewGitHub | null;
   readonly modelEngine: ModelEngine;
   readonly runs: Runs;
+  readonly notifier: Notifier;
 };
 
-export type LiveWiring = { readonly hub: Hub; readonly runs: Runs };
+export type LiveWiring = { readonly hub: Hub; readonly runs: Runs; readonly notifier: Notifier };
 
-type HostWiring = Partial<Pick<KernelWiring, 'modelEngine' | 'runs'>>;
+type HostWiring = Partial<Pick<KernelWiring, 'modelEngine' | 'runs' | 'notifier'>>;
 
 export function hubWiring(hub: Hub, host: HostWiring = {}): KernelWiring {
   return {
@@ -44,6 +46,7 @@ export function hubWiring(hub: Hub, host: HostWiring = {}): KernelWiring {
     reviews: null,
     modelEngine: host.modelEngine ?? modelEngineNotWired,
     runs: host.runs ?? runsNotWired,
+    notifier: host.notifier ?? notifierNotWired,
   };
 }
 
@@ -75,7 +78,7 @@ export function platformPorts(
     connectors: platformConnectors(wiring.ship, wiring.reviews),
     modelEngine: wiring.modelEngine,
     hub: wiring.hub,
-    notifier: notifierNotWired,
+    notifier: wiring.notifier,
     runs: wiring.runs,
   };
 }

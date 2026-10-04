@@ -8,6 +8,7 @@ import { platformGitHubTransport } from '../github/transport.ts';
 import { hubWiring, platformKernel } from '../kernel.ts';
 import { systemClock } from '../ports/clock.ts';
 import { hubOf } from '../ports/hub.ts';
+import { notifierOf } from '../ports/notifier.ts';
 import { zulipConfigOf } from '../notify/zulip/config.ts';
 import { zulipIngestHandler } from '../notify/zulip/inbound.ts';
 import { unitHub, type UnitHub } from '../unit-hub.ts';
@@ -26,15 +27,14 @@ function clientOf(env: Bindings, now: () => Date): GitHubClient | null {
   return githubClient(config, platformGitHubTransport(now));
 }
 
-function handlersFor(
-  database: DatabaseHandle | null,
-  env: Bindings,
-  now: () => Date,
-  unit: UnitHub,
-) {
+type HandlerHost = { readonly unit: UnitHub; readonly sink: LogSink; readonly now: () => Date };
+
+function handlersFor(database: DatabaseHandle | null, env: Bindings, host: HandlerHost) {
   if (database === null) return notWiredHandlers;
+  const { unit, sink, now } = host;
   const client = clientOf(env, now);
-  const kernel = platformKernel(database, systemClock, hubWiring(unit.hub));
+  const notifier = notifierOf(env, database, sink);
+  const kernel = platformKernel(database, systemClock, hubWiring(unit.hub, { notifier }));
   return new Map<'github' | 'zulip', IngestHandler>([
     ['github', githubIngestHandler({ db: database.db, kernel, client, now })],
     ['zulip', zulipIngestHandler({ db: database.db, kernel, config: zulipConfigOf(env), now })],
@@ -59,7 +59,7 @@ export async function consumeIngestBatch(
   const unit = unitHub(hubOf(env, hubLogger(env, sink, batch)));
   try {
     await consumeBatch(batch.messages, {
-      handlers: handlersFor(database, env, now, unit),
+      handlers: handlersFor(database, env, { unit, sink, now }),
       deadLetter: env.INGEST_DLQ ?? null,
       watermarks: database ? postgresWatermarks(database.db) : null,
       sink,

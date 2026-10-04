@@ -1,4 +1,4 @@
-import { createLogger, type Logger } from '@uw/core/log';
+import { createLogger, type Logger, type LogSink } from '@uw/core/log';
 import { systemPrincipal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
 import type { Caller, Clock, Kernel } from '@uw/harness';
@@ -15,6 +15,7 @@ import { platformGitHubTransport } from '../github/transport.ts';
 import { hubWiring, platformKernel, runWiring } from '../kernel.ts';
 import { systemClock } from '../ports/clock.ts';
 import { hubOf } from '../ports/hub.ts';
+import { notifierOf } from '../ports/notifier.ts';
 import { platformModelEngine } from '../ports/model-engine.ts';
 import { runsOf } from '../ports/runs.ts';
 
@@ -36,6 +37,8 @@ export type OpenedRunDeps = { readonly deps: RunDeps; release(): Promise<void> }
 const ALWAYS_ON_MODEL = 'z-ai/glm-5.3-flash';
 const ALWAYS_ON_PROVIDER = 'z-ai';
 
+const consoleSink: LogSink = (line) => console.log(line);
+
 function loggerOf(env: Bindings, traceId: string): Logger {
   const context = {
     traceId,
@@ -43,7 +46,7 @@ function loggerOf(env: Bindings, traceId: string): Logger {
     route: 'workflow harness-run',
     principal: systemPrincipal().identity,
   };
-  return createLogger(context, (line) => console.log(line));
+  return createLogger(context, consoleSink);
 }
 
 function runKernelOf(env: Bindings, database: DatabaseHandle, logger: Logger) {
@@ -57,7 +60,8 @@ function runKernelOf(env: Bindings, database: DatabaseHandle, logger: Logger) {
   const reviews = apps.size === 0 ? null : { apps, transport };
   const engines = engineRegistryOf(config);
   const modelEngine = platformModelEngine(engines, gatewaySpend(config, now));
-  const host = { hub: hubOf(env, logger), runs: runsOf(env), modelEngine };
+  const notifier = notifierOf(env, database, consoleSink);
+  const host = { hub: hubOf(env, logger), runs: runsOf(env), modelEngine, notifier };
   const kernel = platformKernel(database, systemClock, runWiring(host, reads, reviews));
   return { kernel, engines };
 }
@@ -68,7 +72,11 @@ export function runDepsOf(env: Bindings, traceId: string): OpenedRunDeps {
   const logger = loggerOf(env, traceId);
   const { kernel, engines } = runKernelOf(env, database, logger);
   const deps: RunDeps = {
-    verbKernel: platformKernel(database, systemClock, hubWiring(hubOf(env, logger))),
+    verbKernel: platformKernel(
+      database,
+      systemClock,
+      hubWiring(hubOf(env, logger), { notifier: notifierOf(env, database, consoleSink) }),
+    ),
     runKernel: kernel,
     host: { actor: systemPrincipal(), traceId, requestId: null },
     db: database.db,

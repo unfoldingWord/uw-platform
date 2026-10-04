@@ -8,6 +8,7 @@ import { fixtureApp, fixtureTransport } from '../../github/testing/app-key.ts';
 import { fixtureGitHub } from '../../github/testing/fixture-github.ts';
 import { hubWiring, platformPorts } from '../../kernel.ts';
 import { systemClock } from '../../ports/clock.ts';
+import { notifierNotWired } from '../../ports/notifier.not-wired.ts';
 import { runsNotWired } from '../../ports/runs.not-wired.ts';
 import { platformPersonDeps } from '../person-deps.ts';
 import { platformGateGitHub } from './gate-github.ts';
@@ -18,7 +19,7 @@ const logger = createLogger(
   () => undefined,
 );
 const hub: Hub = { wake: async () => undefined, present: async () => false };
-const live = { hub, runs: runsNotWired };
+const live = { hub, runs: runsNotWired, notifier: notifierNotWired };
 const untouched: DatabaseHandle = {
   db: {} as Database,
   ping: async () => undefined,
@@ -50,7 +51,7 @@ describe('GH-6 the gate kernel opens the read client and the ship writes from on
 
   it('wires neither the read client nor the ship writes without a GitHub App configuration', async () => {
     const wiring = gateWiring(null, live, logger);
-    expect(wiring).toEqual(hubWiring(hub, { runs: runsNotWired }));
+    expect(wiring).toEqual(hubWiring(hub, { runs: runsNotWired, notifier: notifierNotWired }));
     const ports = platformPorts(untouched, systemClock, wiring);
     expect(await ports.connectors.run({ ...contractRequest, connector: 'merge' })).toEqual({
       outcome: 'refused',

@@ -1,4 +1,10 @@
-import { isShellAsset, pushPayload, pushTitle, shellCacheName, staleCaches } from './sw-core.ts';
+import {
+  isShellAsset,
+  pushNotification,
+  pushPayload,
+  shellCacheName,
+  staleCaches,
+} from './sw-core.ts';
 
 declare const UW_SHELL_ASSETS: readonly string[];
 declare const self: ServiceWorkerGlobalScope;
@@ -47,13 +53,8 @@ function payloadOf(event: PushEvent): unknown {
 }
 
 self.addEventListener('push', (event) => {
-  const payload = pushPayload(payloadOf(event));
-  event.waitUntil(
-    self.registration.showNotification(pushTitle(payload), {
-      data: { link: payload.link },
-      tag: 'uw-wake',
-    }),
-  );
+  const shown = pushNotification(pushPayload(payloadOf(event)));
+  event.waitUntil(self.registration.showNotification(shown.title, shown.options));
 });
 
 async function openLink(link: string): Promise<void> {
