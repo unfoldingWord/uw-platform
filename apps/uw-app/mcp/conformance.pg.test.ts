@@ -14,6 +14,7 @@ import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
 import {
+  seedActivePersona,
   seedBreakerReading,
   seedGrant,
   seedHostedRun,
@@ -173,6 +174,7 @@ async function delegated(r: Rig, harnessId: string) {
       supersedes: null,
     }),
   );
+  await seedActivePersona(r.db, { identity: 'agent:builder', harnessId });
   const beat = value(
     await r.kernel.delegations.beat(caller(builder(r.owner)), { delegationId: delegation.id }),
   );

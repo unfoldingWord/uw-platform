@@ -13,6 +13,7 @@ import { importCommand } from './handlers/import.ts';
 import { notWiredCommand } from './not-wired.ts';
 import { promptRunCommand, stopRunCommand } from './handlers/runs.ts';
 import { revokeDelegationCommand, scheduleRegularTweakCommand } from './person/delegations.ts';
+import { activatePersonaCommand } from './person/personas.ts';
 import {
   approveCommand,
   overrideCommand,
@@ -73,6 +74,6 @@ export const commandRegistry = commandRegistryOf([
   reorderStagesCommand,
   removeStageCommand,
   setHostedBuilderCommand,
-  notWiredCommand('activate_persona', 'admin'),
+  activatePersonaCommand,
   notWiredCommand('record_measurement', 'write'),
 ]);

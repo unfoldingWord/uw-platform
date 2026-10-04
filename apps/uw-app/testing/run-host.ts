@@ -8,7 +8,7 @@ import {
 } from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
 import type { Database } from '@uw/db/client';
-import { seedPage } from '@uw/db/test-seed';
+import { projectSeededPersona, seedPage } from '@uw/db/test-seed';
 import type {
   Caller,
   Connectors,
@@ -138,6 +138,7 @@ async function seedPersona(db: Database, harnessId: string, owner: Principal, op
       requires_tools: [],
     },
   });
+  await projectSeededPersona(db, personaPageId);
 }
 
 async function stageFor(kernel: Kernel, admin: Principal, harnessId: string, gate: boolean) {

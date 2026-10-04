@@ -1,7 +1,14 @@
 import type { Principal } from '@uw/contracts';
 import { seedPage } from '@uw/db/test-seed';
 import { software, type Caller } from '@uw/harness';
-import { createSimHarness, readSpend, simAgent, simCaller, simPerson } from './fixtures.ts';
+import {
+  createSimHarness,
+  readSpend,
+  simAgent,
+  simCaller,
+  simDelegate,
+  simPerson,
+} from './fixtures.ts';
 import {
   beatOf,
   itemInScope,
@@ -64,7 +71,7 @@ async function elsewhereDelegation(scene: RunWorld): Promise<string> {
     key: 'elsewhere',
     jdArea: '20-29',
   });
-  const granted = await scene.world.kernel.delegations.grant(simCaller(scene.world, admin), {
+  const granted = await simDelegate(scene.world, admin, {
     harnessId: harness.id,
     persona: 'agent:scout',
     capability: 'build',

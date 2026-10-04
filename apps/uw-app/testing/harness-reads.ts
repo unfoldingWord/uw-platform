@@ -1,3 +1,4 @@
+import { seedActivePersona } from '@uw/db/test-seed';
 import { randomUUID } from 'node:crypto';
 import { Hono } from 'hono';
 import { delegatedIdentity, identitySchema, principalSchema, type Principal } from '@uw/contracts';
@@ -64,6 +65,7 @@ export async function agentForms(
       supersedes: null,
     }),
   );
+  await seedActivePersona(db, { identity: 'agent:builder', harnessId });
   const device = `agent:${owner.personId}/laptop`;
   const lapsed = delegatedIdentity(device, 'builder', randomUUID());
   return {

@@ -11,6 +11,7 @@ import {
   readSpend,
   simAgent,
   simCaller,
+  simDelegate,
   simIan,
   simPerson,
 } from '../fixtures.ts';
@@ -90,7 +91,7 @@ async function cast(world: World): Promise<Cast> {
 }
 
 async function delegate(scene: Cast): Promise<string> {
-  const granted = await scene.world.kernel.delegations.grant(simCaller(scene.world, scene.kim), {
+  const granted = await simDelegate(scene.world, scene.kim, {
     harnessId: scene.harnessId,
     persona: 'agent:iterate',
     capability: 'iterate',

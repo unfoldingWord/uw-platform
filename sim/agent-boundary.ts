@@ -10,7 +10,7 @@ import {
   type Role,
 } from '@uw/contracts';
 import { readAllEvents, type Kernel, type KernelOutcome } from '@uw/harness';
-import { simAgent, simCaller, simPerson, type SimGrant } from './fixtures.ts';
+import { simAgent, simCaller, simDelegate, type SimGrant, simPerson } from './fixtures.ts';
 import type { World } from './world.ts';
 
 export type Decide = Kernel['gates']['decide'];
@@ -124,7 +124,7 @@ async function delegationOf(
   owner: Principal,
   persona: string,
 ): Promise<string> {
-  const granted = await world.kernel.delegations.grant(simCaller(world, owner), {
+  const granted = await simDelegate(world, owner, {
     harnessId,
     persona: `agent:${persona}`,
     capability: 'iterate',

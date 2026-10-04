@@ -1,5 +1,6 @@
 import {
   ingestIdentity,
+  type CapabilityWord,
   principalSchema,
   systemIdentity,
   type Harness,
@@ -10,7 +11,7 @@ import {
   type Scope,
   type Stage,
 } from '@uw/contracts';
-import { seedGrant, seedPerson } from '@uw/db/test-seed';
+import { seedActivePersona, seedGrant, seedPerson } from '@uw/db/test-seed';
 import { DEFAULT_SPEND_CAP, type Caller, type Template } from '@uw/harness';
 import type { World } from './world.ts';
 
@@ -260,4 +261,20 @@ export async function readSpend(world: World): Promise<void> {
   if (outcome.status !== 'accepted') {
     throw new Error(`the spend reading was refused: ${outcome.reason}`);
   }
+}
+
+type GrantInput = {
+  readonly harnessId: string;
+  readonly persona: string;
+  readonly capability: CapabilityWord;
+  readonly expiresAt: Date | null;
+  readonly supersedes: string | null;
+};
+
+export async function simDelegate(world: World, actor: Principal, input: GrantInput) {
+  const granted = await world.kernel.delegations.grant(simCaller(world, actor), input);
+  if (granted.status !== 'accepted') return granted;
+  const projected = { identity: input.persona, harnessId: input.harnessId };
+  await seedActivePersona(world.database.db, projected);
+  return granted;
 }

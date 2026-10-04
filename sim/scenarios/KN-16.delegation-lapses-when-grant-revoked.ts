@@ -2,14 +2,14 @@ import assert from 'node:assert/strict';
 import type { Principal } from '@uw/contracts';
 import { revokeSeededGrant } from '@uw/db/test-seed';
 import { readAllEvents, software, type Delegation, type KernelOutcome } from '@uw/harness';
-import { createSimHarness, simAgent, simCaller, simPerson } from '../fixtures.ts';
+import { createSimHarness, simAgent, simCaller, simDelegate, simPerson } from '../fixtures.ts';
 import { defineScenario } from '../scenario.ts';
 import type { World } from '../world.ts';
 
 const ninetyDays = 90 * 24 * 60 * 60 * 1000;
 
 async function grantIterate(world: World, harnessId: string, kim: Principal): Promise<Delegation> {
-  const granted = await world.kernel.delegations.grant(simCaller(world, kim), {
+  const granted = await simDelegate(world, kim, {
     harnessId,
     persona: 'agent:iterate',
     capability: 'iterate',

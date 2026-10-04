@@ -14,6 +14,7 @@ import {
   readSpend,
   simAgent,
   simCaller,
+  simDelegate,
   simIan,
   simPerson,
   simSystem,
@@ -331,7 +332,7 @@ describe('an advance releases the holder, so a full stage is not overfilled', ()
 describe('KN-16 a submit under a delegation re-checks it', () => {
   sceneIt('refuses once the grant is revoked and writes one delegation_lapsed', async (scene) => {
     const delegation = value(
-      await scene.world.kernel.delegations.grant(simCaller(scene.world, scene.kim), {
+      await simDelegate(scene.world, scene.kim, {
         harnessId: scene.harnessId,
         persona: 'agent:builder',
         capability: 'iterate',

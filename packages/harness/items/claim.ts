@@ -14,6 +14,7 @@ import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.
 import type { Ports, StoreTransaction } from '../ports.ts';
 import { engineDescriptor } from '../engines.ts';
 import { spendRefusal } from '../runs/breaker-level.ts';
+import { activePersonaOn, personaIdentityFor } from '../personas/projection.ts';
 import { personaPageOf } from '../runs/persona.ts';
 import { endRunDrafts, stopWorkflows } from '../runs/ends.ts';
 import { personHoldRefusal } from './held-for-person.ts';
@@ -91,7 +92,7 @@ async function hostedBuilderRefusal(
 ): Promise<Refused | null> {
   if (harness.hostedBuilderEnabled) return null;
   const page = personaPageOf(
-    (await tx.pages.read.activePersona(caller.actor.identity, harness.id)) ?? undefined,
+    (await activePersonaOn(tx, caller.actor.identity, harness.id)) ?? undefined,
   );
   if (page === null || !engineDescriptor(page.frontmatter.engine).needsHostedBuilder) return null;
   return refused('hosted_builder_off', { harnessId: harness.id });
@@ -111,6 +112,16 @@ async function heldRefusal(
   return (await bareRefusal(tx, scene)) ?? (await personHoldRefusal(tx, scene.caller, item));
 }
 
+async function inactivePersonaRefusal(
+  tx: StoreTransaction,
+  caller: Caller,
+  harness: Harness,
+): Promise<Refused | null> {
+  const persona = personaIdentityFor(caller.actor.identity);
+  if (persona === null || (await activePersonaOn(tx, persona, harness.id)) !== null) return null;
+  return refused('not_permitted', { why: 'persona_not_active' });
+}
+
 async function actingGuard(
   tx: StoreTransaction,
   ports: ClaimPorts,
@@ -124,7 +135,9 @@ async function actingGuard(
     if (acting.reason !== 'delegation_required') return acting;
     return recordDelegationRequired(tx, context, item.itemId, stage.key);
   }
-  if (allowed(acting, 'write', harness, context.at)) return null;
+  if (allowed(acting, 'write', harness, context.at)) {
+    return inactivePersonaRefusal(tx, caller, harness);
+  }
   return refused('not_permitted', { harnessId: harness.id, delegationId });
 }
 

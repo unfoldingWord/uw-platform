@@ -15,6 +15,7 @@ import {
   readSpend,
   simAgent,
   simCaller,
+  simDelegate,
   simIan,
   simPerson,
 } from '../fixtures.ts';
@@ -91,15 +92,13 @@ function delegate(
   scene: Scene,
   options: { harnessId?: string; capability?: CapabilityWord; expiresAt?: Date } = {},
 ) {
-  return scene.world.kernel.delegations
-    .grant(simCaller(scene.world, scene.kim), {
-      harnessId: options.harnessId ?? scene.harnessId,
-      persona: 'agent:builder',
-      capability: options.capability ?? 'iterate',
-      expiresAt: options.expiresAt ?? null,
-      supersedes: null,
-    })
-    .then((outcome) => value(outcome).id);
+  return simDelegate(scene.world, scene.kim, {
+    harnessId: options.harnessId ?? scene.harnessId,
+    persona: 'agent:builder',
+    capability: options.capability ?? 'iterate',
+    expiresAt: options.expiresAt ?? null,
+    supersedes: null,
+  }).then((outcome) => value(outcome).id);
 }
 
 async function eventsOf(scene: Scene): Promise<readonly HarnessEvent[]> {

@@ -2,7 +2,7 @@ import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { rewritePageFrontmatter } from '@uw/db/test-seed';
 import type { Caller } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { readSpend, simCaller } from '../fixtures.ts';
+import { readSpend, simCaller, simDelegate } from '../fixtures.ts';
 import { readWorldLog } from '../runner/log.ts';
 import {
   beatOf,
@@ -42,7 +42,7 @@ async function delegateTo(
   persona: string,
   capability: 'build' | 'none',
 ): Promise<string> {
-  const granted = await scene.world.kernel.delegations.grant(simCaller(scene.world, scene.owner), {
+  const granted = await simDelegate(scene.world, scene.owner, {
     harnessId: scene.harnessId,
     persona,
     capability,

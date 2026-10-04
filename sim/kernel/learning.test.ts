@@ -284,6 +284,8 @@ describe('KN-7 only suggested learnings attach', () => {
       readAllEvents(tx, scene.harnessId, scene.itemId),
     );
     const attached = events.filter((event) => event.name === 'learning_attached');
-    expect(attached.map((event) => event.evidence)).toEqual([{ pageId: learningId }]);
+    expect(attached.map((event) => event.evidence)).toEqual([
+      { pageId: learningId, kind: 'learning' },
+    ]);
   });
 });

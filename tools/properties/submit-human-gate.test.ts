@@ -7,6 +7,7 @@ import {
   createSimHarness,
   simAgent,
   simCaller,
+  simDelegate,
   simHeldAtCheck,
   simPerson,
 } from '../../sim/fixtures.ts';
@@ -71,7 +72,7 @@ const examples: [Case][] = actorKinds.flatMap((actor) =>
 let setup: Setup | null = null;
 
 async function delegated(world: World, owner: Principal, harnessId: string): Promise<Actor> {
-  const granted = await world.kernel.delegations.grant(simCaller(world, owner), {
+  const granted = await simDelegate(world, owner, {
     harnessId,
     persona: 'agent:builder',
     capability: 'iterate',

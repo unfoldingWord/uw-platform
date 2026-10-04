@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { principalSchema, type Principal } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
-import { seedBreakerReading, seedHostedRun } from '@uw/db/test-seed';
+import { seedActivePersona, seedBreakerReading, seedHostedRun } from '@uw/db/test-seed';
 import type { Caller } from '@uw/harness';
 import { platformRuns } from '../ports/runs.ts';
 import { platformStore } from '../ports/store.ts';
@@ -62,6 +62,7 @@ async function hostedRun(db: Database): Promise<Hosted> {
       supersedes: null,
     }),
   );
+  await seedActivePersona(db, { identity: 'agent:builder', harnessId });
   const beat = accepted(
     await kernel.delegations.beat(callerOf(personaOf(admin)), { delegationId: delegation.id }),
   );

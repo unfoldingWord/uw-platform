@@ -1,5 +1,5 @@
 import { principalSchema, type HarnessEvent, type ItemState, type Principal } from '@uw/contracts';
-import { seedPage } from '@uw/db/test-seed';
+import { projectSeededPersona, seedPage } from '@uw/db/test-seed';
 import {
   createKernel,
   readAllEvents,
@@ -16,6 +16,7 @@ import {
   readSpend,
   simAdvance,
   simCaller,
+  simDelegate,
   simPerson,
   simSystem,
 } from './fixtures.ts';
@@ -88,6 +89,7 @@ export async function seedPersona(
     bodyMd: 'Builder turns an approved plan into commits.',
     frontmatter: page.frontmatter ?? builderFrontmatter(scene),
   });
+  await projectSeededPersona(scene.world.database.db, page.id);
 }
 
 export async function itemInScope(
@@ -152,7 +154,7 @@ async function delegated(
   const owner = await simPerson(world, 4, [
     { role: 'admin', scopeKind: 'jd_area', scopeArea: '80-89' },
   ]);
-  const granted = await world.kernel.delegations.grant(simCaller(world, owner), {
+  const granted = await simDelegate(world, owner, {
     harnessId: harness.id,
     persona: personaIdentity,
     capability: 'build',

@@ -1,7 +1,14 @@
 import type { ItemState, Principal } from '@uw/contracts';
 import { seedPage } from '@uw/db/test-seed';
 import { software, type Caller } from '@uw/harness';
-import { createSimHarness, simAgent, simCaller, simParkedAtCheck, simPerson } from './fixtures.ts';
+import {
+  createSimHarness,
+  simAgent,
+  simCaller,
+  simDelegate,
+  simParkedAtCheck,
+  simPerson,
+} from './fixtures.ts';
 import { shipPullRequest, simParkedAtShip, simSha, standardChange } from './ship-fixtures.ts';
 import {
   beatOf,
@@ -153,7 +160,7 @@ export type Waiting = RunWorld & { readonly editor: Principal; readonly failedRu
 const hour = 3_600_000;
 
 export async function grantScout(scene: RunWorld, expiresAt: Date | null) {
-  const granted = await scene.world.kernel.delegations.grant(simCaller(scene.world, scene.owner), {
+  const granted = await simDelegate(scene.world, scene.owner, {
     harnessId: scene.harnessId,
     persona: 'agent:scout',
     capability: 'build',

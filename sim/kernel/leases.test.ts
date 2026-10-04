@@ -8,6 +8,7 @@ import {
   readSpend,
   simAgent,
   simCaller,
+  simDelegate,
   simIan,
   simPerson,
 } from '../fixtures.ts';
@@ -92,7 +93,7 @@ function eventsOf(scene: Scene): Promise<readonly HarnessEvent[]> {
 
 async function claimBare(scene: Scene): Promise<{ caller: Caller; delegationId: string }> {
   const delegation = value(
-    await scene.world.kernel.delegations.grant(simCaller(scene.world, scene.kim), {
+    await simDelegate(scene.world, scene.kim, {
       harnessId: scene.harnessId,
       persona: 'agent:builder',
       capability: 'iterate',

@@ -10,6 +10,7 @@ import {
 import { allowed, bareAgent, isAgent, ownerBound } from '../access.ts';
 import { beatPrincipal } from '../delegations/beat.ts';
 import { leaseLapsed } from '../items/leases.ts';
+import { activePersonaOn } from '../personas/projection.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { Delegation, StoreTransaction } from '../ports.ts';
 import {
@@ -46,6 +47,7 @@ async function judgedBy(
 ): Promise<Judged | null> {
   const harness = await tx.harnesses.read.byId(delegation.harnessId);
   if (harness === null) return null;
+  if ((await activePersonaOn(tx, delegation.persona, harness.id)) === null) return null;
   return { harness, principal: beatPrincipal(delegation, grants, harness.jdArea, at) };
 }
 

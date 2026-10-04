@@ -7,6 +7,7 @@ import { seedPage } from '@uw/db/test-seed';
 import {
   bml,
   software,
+  type ActivatedPersona,
   type Caller,
   type Clock,
   type Grants,
@@ -141,10 +142,15 @@ async function secondBlockedOrArrived(scene: Scene, second: Gate): Promise<boole
   return expect.fail('the second activation neither waited on a lock nor reached the grants');
 }
 
-function activateOn(scene: Scene, db: Database, gate: Gate): Promise<KernelOutcome<never>> {
+function activateOn(
+  scene: Scene,
+  db: Database,
+  gate: Gate,
+): Promise<KernelOutcome<ActivatedPersona>> {
   return kernelOn(db, clock, { grants: gate.grants }).personas.activate(caller(scene.ian), {
     pageId,
     expectedVersion: 1,
+    harnessId: scene.bmlId,
   });
 }
 

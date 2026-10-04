@@ -1,7 +1,7 @@
 import type { Principal } from '@uw/contracts';
 import { revokeSeededGrant } from '@uw/db/test-seed';
 import { software, type Delegation, type KernelOutcome, type Wake } from '@uw/harness';
-import { createSimHarness, simAgent, simCaller, simPerson } from './fixtures.ts';
+import { createSimHarness, simAgent, simCaller, simDelegate, simPerson } from './fixtures.ts';
 import { value } from './runs.ts';
 import { simParkedAtShip, standardChange, type ShipChange } from './ship-fixtures.ts';
 import type { World } from './world.ts';
@@ -64,7 +64,7 @@ export async function grantPersona(
   person: Principal,
   persona: string,
 ): Promise<Delegation> {
-  const granted = await world.kernel.delegations.grant(simCaller(world, person), {
+  const granted = await simDelegate(world, person, {
     harnessId,
     persona,
     capability: 'build',

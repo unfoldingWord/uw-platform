@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@uw/contracts": "workspace:*",
-    "@uw/core": "workspace:*"
+    "@uw/core": "workspace:*",
+    "yaml": "^2.9.1"
   }
 }

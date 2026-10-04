@@ -2,7 +2,14 @@ import { identitySchema, type CapabilityWord, type Principal } from '@uw/contrac
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { readAllEvents, software, type Caller, type KernelOutcome } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, readSpend, simAgent, simCaller, simPerson } from '../fixtures.ts';
+import {
+  createSimHarness,
+  readSpend,
+  simAgent,
+  simCaller,
+  simDelegate,
+  simPerson,
+} from '../fixtures.ts';
 import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -146,7 +153,7 @@ async function delegate(
   persona: string,
 ): Promise<string> {
   const capability: CapabilityWord = 'iterate';
-  const granted = await world.kernel.delegations.grant(simCaller(world, granter), {
+  const granted = await simDelegate(world, granter, {
     harnessId,
     persona,
     capability,
