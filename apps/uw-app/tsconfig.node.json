@@ -13,7 +13,8 @@
     "testing/run-host.ts",
     "testing/views.ts",
     "testing/screen-checks.ts",
-    "testing/board-world.ts"
+    "testing/board-world.ts",
+    "testing/gate-world.ts"
   ],
   "exclude": ["node_modules"]
 }

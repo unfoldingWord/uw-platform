@@ -1,4 +1,4 @@
-import type { Harness, ItemState, Principal } from '@uw/contracts';
+import type { Harness, ItemState, Principal, Stage } from '@uw/contracts';
 import { allowed, isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import type { StoreTransaction } from '../ports.ts';
@@ -7,16 +7,20 @@ import { approverCovers } from '../risk/domain-grants.ts';
 import { readableHarnesses } from './readable.ts';
 import type { DecideAbility, GateRow } from './types.ts';
 
-type Gate = { readonly harness: Harness; readonly item: ItemState };
+type Gate = { readonly harness: Harness; readonly stage: Stage; readonly item: ItemState };
 
 function decider(actor: Principal): boolean {
   return !isAgent(actor) && actor.personId !== null;
 }
 
 export function decideAbility(actor: Principal, gate: Gate, at: Date): DecideAbility {
-  const { harness, item } = gate;
+  const { harness, stage, item } = gate;
   const admin = decider(actor) && allowed(actor, 'admin', harness, at);
-  if (!admin || item.gateStatus !== 'parked') return { can: false, reason: 'not_permitted' };
+  if (!admin) return { can: false, reason: 'not_permitted' };
+  const atPersonGate = stage.exitGate === 'human_approval' && stage.key === item.stageKey;
+  if (!atPersonGate || item.gateStatus !== 'parked') {
+    return { can: false, reason: 'item_not_at_gate' };
+  }
   if (!approverCovers(actor, harness.jdArea, item.riskDomains, at)) {
     return { can: false, reason: 'approver_lacks_domain_grant' };
   }
@@ -40,7 +44,7 @@ async function gatesIn(
   for (const item of await tx.harnessItems.read.parked(harness.id)) {
     const stage = human.get(item.stageKey);
     if (stage === undefined) continue;
-    if (decideAbility(actor, { harness, item }, at).can) rows.push({ harness, stage, item });
+    if (decideAbility(actor, { harness, stage, item }, at).can) rows.push({ harness, stage, item });
   }
   return rows;
 }

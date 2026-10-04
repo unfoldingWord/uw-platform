@@ -213,6 +213,19 @@ describe('WB-11 the evidence label', () => {
   );
 });
 
+describe('the evidence label with its definition shown', () => {
+  it('shows the definition as visible muted text beside the word, with no title', async () => {
+    const document = await dom(jsx(EvidenceLabel, { label: 'inferred', showDefinition: true }));
+    expect(document.querySelector('[title]')).toBeNull();
+    expect(document.querySelector('.sr-only')).toBeNull();
+    const definition = document.querySelector('.text-muted:not(.font-bold)');
+    expect(definition?.textContent).toBe('Concluded from other evidence, not seen directly.');
+    expect(document.body.textContent).toBe(
+      'inferredConcluded from other evidence, not seen directly.',
+    );
+  });
+});
+
 describe('the content pieces pass axe-core', () => {
   it('has no axe-core violations across every piece', async () => {
     const parts = [

@@ -70,7 +70,10 @@ export type Waiting = {
 };
 export type DecideAbility =
   | { readonly can: true }
-  | { readonly can: false; readonly reason: 'not_permitted' | 'approver_lacks_domain_grant' };
+  | {
+      readonly can: false;
+      readonly reason: 'not_permitted' | 'item_not_at_gate' | 'approver_lacks_domain_grant';
+    };
 export type PlayByPlay = {
   readonly harness: Harness;
   readonly stage: Stage;

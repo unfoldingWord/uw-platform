@@ -1,4 +1,4 @@
-import type { GateView, Harness, ItemState } from '@uw/contracts';
+import type { GateView, Harness, ItemState, Stage } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
 import { gateView } from '../gates/view.ts';
 import type { KernelOutcome } from '../outcome.ts';
@@ -27,7 +27,7 @@ import { waitingOn } from './waiting.ts';
 
 type ReadOptions = { readonly at: Date };
 type ViewPorts = Pick<Ports, 'clock' | 'githubFacts' | 'grants' | 'store'>;
-type Gate = { readonly harness: Harness; readonly item: ItemState };
+type Gate = { readonly harness: Harness; readonly stage: Stage; readonly item: ItemState };
 
 export type ViewReads = {
   harnesses(caller: Caller, options?: ReadOptions): Promise<readonly Harness[]>;

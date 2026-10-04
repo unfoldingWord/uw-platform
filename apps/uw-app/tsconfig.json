@@ -16,6 +16,7 @@
     "testing/views.ts",
     "testing/screen-checks.ts",
     "testing/board-world.ts",
+    "testing/gate-world.ts",
     "islands/browser/**",
     "islands/worker/**"
   ]

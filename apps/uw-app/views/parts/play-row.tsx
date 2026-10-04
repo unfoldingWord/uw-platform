@@ -1,0 +1,67 @@
+import { deviceOwnerSegment, type EvidenceLabel as Label, type HarnessEvent } from '@uw/contracts';
+import { formatInstant } from '@uw/core/dates';
+import { EvidenceLabel } from '@uw/ui/components/evidence-label.tsx';
+import { reasonText } from '@uw/ui/components/text.ts';
+import { evidenceOf } from './play-evidence.ts';
+
+function hostOf(identity: string): string {
+  if (identity.startsWith('human:')) return 'Person';
+  return deviceOwnerSegment(identity) === null ? 'Platform' : 'Own machine';
+}
+
+function Learning(props: {
+  readonly event: HarnessEvent;
+  readonly learnings: ReadonlyMap<string, Label>;
+}) {
+  const pageId = props.event.evidence['pageId'];
+  const label = typeof pageId === 'string' ? props.learnings.get(pageId) : undefined;
+  if (label === undefined) return <p class="m-0 text-sm text-muted">A learning you cannot read</p>;
+  return <EvidenceLabel label={label} showDefinition />;
+}
+
+function Evidence(props: { readonly event: HarnessEvent }) {
+  const shown = evidenceOf(props.event);
+  return (
+    <>
+      {shown.facts.length === 0 ? null : (
+        <ul class="m-0 flex list-none flex-col gap-1 p-0 text-sm">
+          {shown.facts.map((fact) => (
+            <li class="flex flex-wrap gap-x-2">
+              <span class="text-muted">{fact.label}</span>
+              <span class="break-words text-ink">{fact.value}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {shown.list.length === 0 ? null : (
+        <ul class="m-0 pl-5 text-sm">
+          {shown.list.map((entry) => (
+            <li class="break-words">{entry}</li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+export function PlayRow(props: {
+  readonly event: HarnessEvent;
+  readonly learnings: ReadonlyMap<string, Label>;
+}) {
+  const { event } = props;
+  return (
+    <li class="flex flex-col gap-2 rounded-md border border-line bg-surface p-3">
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span class="font-bold text-ink">{reasonText(event.name)}</span>
+        <span class="text-sm text-muted">{formatInstant(new Date(event.at))}</span>
+        <code class="break-all font-mono text-sm text-ink">{event.actor}</code>
+        <span class="text-sm text-muted">{hostOf(event.actor)}</span>
+      </div>
+      {event.name === 'learning_attached' ? (
+        <Learning event={event} learnings={props.learnings} />
+      ) : (
+        <Evidence event={event} />
+      )}
+    </li>
+  );
+}
