@@ -2,7 +2,7 @@ import type { Context } from 'hono';
 import type { PlayByPlay } from '@uw/harness';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
-import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
+import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { idParam } from '../parts/params.ts';
 import {
   checksUrl,
@@ -55,27 +55,24 @@ function Links(props: { readonly play: PlayByPlay }) {
   );
 }
 
-async function playOf(c: Context<AppEnv>) {
-  const screen = screenKernel(c);
-  if (screen === null) return { screen, play: null, cursor: 0 };
-  const harnessId = idParam(c.req.param('harnessId'));
+async function playOf(c: Context<AppEnv>, screen: ScreenKernel, harnessId: string | null) {
   const itemId = idParam(c.req.param('itemId'));
   const after = afterOf(c.req.query('after'));
-  if (harnessId === null || itemId === null || after === null) {
-    return { screen, play: null, cursor: 0 };
-  }
+  if (harnessId === null || itemId === null || after === null) return null;
   const read = { at: screen.at };
-  const cursor = await screen.kernel.views.cursor(screen.caller, { harnessId }, read);
   const outcome = await screen.kernel.views.playByPlay(screen.caller, { itemId, after }, read);
-  if (outcome.status !== 'accepted' || outcome.value.harness.id !== harnessId) {
-    return { screen, play: null, cursor };
-  }
-  return { screen, play: outcome.value, cursor };
+  if (outcome.status !== 'accepted' || outcome.value.harness.id !== harnessId) return null;
+  return outcome.value;
 }
 
 export async function playScreen(c: Context<AppEnv>): Promise<Response> {
-  const { screen, play, cursor } = await playOf(c);
+  const screen = screenKernel(c);
   if (screen === null) return screenRefusal(c);
+  const harnessId = idParam(c.req.param('harnessId'));
+  const read = { at: screen.at };
+  const cursor =
+    harnessId === null ? 0 : await screen.kernel.views.cursor(screen.caller, { harnessId }, read);
+  const play = await playOf(c, screen, harnessId);
   if (play === null) return notFound(c);
   const { harness, item, stage } = play;
   const learnings = new Map(Object.entries(play.learnings));
