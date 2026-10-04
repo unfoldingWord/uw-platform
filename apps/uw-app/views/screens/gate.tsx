@@ -15,12 +15,17 @@ type ItemScene = { readonly item: ItemState; readonly harness: Harness; readonly
 const REFRESH_EVERY_MS = 60_000;
 const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
 
-function noticeOf(scene: ItemScene, gate: PanelGate): string | null {
-  if (scene.item.gateStatus !== 'parked') return 'This gate has been decided';
-  if (!gate.ability.can && gate.ability.reason === 'item_not_at_gate') {
-    return 'This item is not waiting at a gate a person decides';
-  }
-  return null;
+function notAtGate(gate: PanelGate): boolean {
+  return !gate.ability.can && gate.ability.reason === 'item_not_at_gate';
+}
+
+async function noticeOf(screen: ScreenKernel, scene: ItemScene, gate: PanelGate) {
+  if (!notAtGate(gate)) return null;
+  const input = { itemId: scene.item.itemId };
+  const decided = await screen.kernel.views.decided(screen.caller, input, { at: screen.at });
+  return decided
+    ? 'This gate has been decided'
+    : 'This item is not waiting at a gate a person decides';
 }
 
 async function sceneOf(c: Context<AppEnv>, screen: ScreenKernel): Promise<ItemScene | null> {
@@ -57,7 +62,7 @@ export async function gateScreen(c: Context<AppEnv>): Promise<Response> {
   const gate = scene === null ? null : await gateOf(screen, scene);
   if (scene === null || gate === null) return notFound(c);
   const { harness, item } = scene;
-  const notice = noticeOf(scene, gate);
+  const notice = await noticeOf(screen, scene, gate);
   const spec = {
     title: `${item.title} gate`,
     current: gatePath(harness.id, item.itemId),

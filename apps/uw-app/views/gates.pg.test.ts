@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
-import { revokeSeededGrant, rewriteItem, seedGrant } from '@uw/db/test-seed';
+import { revokeSeededGrant, rewriteItem, seedGrant, seedPerson } from '@uw/db/test-seed';
 import { software, type Template } from '@uw/harness';
 import { commandBody } from '../islands/browser/command-body.ts';
 import { clock, decisionRows } from '../github/testing/ship-rig.ts';
@@ -277,21 +277,64 @@ async function hiddenIsMissing(world: GateWorld): Promise<void> {
   expect(elsewhere.text).toBe(absent.text);
 }
 
+async function editorOn80s(world: GateWorld): Promise<string> {
+  const id = randomUUID();
+  const email = 'gate-editor@unfoldingword.org';
+  await seedPerson(world.db, { id, email });
+  await seedGrant(world.db, {
+    id: randomUUID(),
+    personId: id,
+    role: 'editor',
+    scopeKind: 'jd_area',
+    scopeArea: '80-89',
+    grantedAt: new Date('2026-01-01T00:00:00.000Z'),
+    expiresAt: null,
+  });
+  return email;
+}
+
+const notWaiting = 'This item is not waiting at a gate a person decides';
+
+async function noDecideControls(world: GateWorld, email: string, path: string): Promise<void> {
+  const document = await documentOf(world, email, path);
+  expect(document.querySelector('main form[data-command="decide"]')).toBeNull();
+  expect(document.querySelectorAll('main button[name="decision"]')).toHaveLength(0);
+  expect(document.querySelectorAll('main [class*="kindle"]')).toHaveLength(0);
+  expect(document.querySelector('main [role="note"]')?.textContent).toBe(notWaiting);
+}
+
 async function notAtPersonGate(world: GateWorld): Promise<void> {
   const kernel = kernelOn(world.db, clock);
   const harnessId = await activatedHarness(kernel, world.ian, software, 'software-backlog');
   const itemId = await enqueuedItem(kernel, world.ian, harnessId, 'Parked at the backlog');
   await rewriteItem(world.db, itemId, { gateStatus: 'parked' });
-  const parked = await documentOf(world, world.ianEmail, gatePath(harnessId, itemId));
-  expect(parked.querySelector('main form[data-command="decide"]')).toBeNull();
-  expect(parked.querySelectorAll('main button[name="decision"]')).toHaveLength(0);
-  expect(parked.querySelector('main [role="note"]')?.textContent).toBe(
-    'This item is not waiting at a gate a person decides',
-  );
+  const editorEmail = await editorOn80s(world);
+  for (const email of [world.ianEmail, editorEmail, world.viewerEmail]) {
+    await noDecideControls(world, email, gatePath(harnessId, itemId));
+  }
   const other = await enqueuedItem(kernel, world.ian, harnessId, 'Still in the backlog');
   accepted(await kernel.items.claim(callerOf(world.ian), { itemId: other, delegationId: null }));
-  const working = await documentOf(world, world.ianEmail, gatePath(harnessId, other));
-  expect(working.querySelectorAll('main button[name="decision"]')).toHaveLength(0);
+  for (const email of [world.ianEmail, editorEmail, world.viewerEmail]) {
+    await noDecideControls(world, email, gatePath(harnessId, other));
+  }
+}
+
+async function decidedGate(world: GateWorld): Promise<void> {
+  const { harnessId, itemId } = await parkedAtSignOff(world);
+  const kernel = kernelOn(world.db, clock);
+  const decision = {
+    itemId,
+    decision: 'approve' as const,
+    reason: null,
+    findings: [],
+    seenHead: null,
+  };
+  accepted(await kernel.gates.decide(callerOf(world.ian), decision));
+  const document = await documentOf(world, world.ianEmail, gatePath(harnessId, itemId));
+  expect(document.querySelectorAll('main button[name="decision"]')).toHaveLength(0);
+  expect(document.querySelector('main [role="note"]')?.textContent).toBe(
+    'This gate has been decided',
+  );
 }
 
 async function noProblems(world: GateWorld): Promise<void> {
@@ -327,7 +370,9 @@ describe.skipIf(!testServer)('the Gates view and its deep link', () => {
     inGates(liveFromCursor));
   it('a hidden item deep link renders the same not-found page as a missing one', () =>
     inGates(hiddenIsMissing));
-  it('WB-6 an item that is not parked at a stage a person decides shows no decide controls', () =>
+  it('WB-6 an item that is not parked at a stage a person decides shows no decide controls to an admin, an editor or a viewer', () =>
     inGates(notAtPersonGate));
+  it('a gate deep link says the gate has been decided only once a decision is recorded', () =>
+    inGates(decidedGate));
   it('the gates view and a gate render with no screen problems', () => inGates(noProblems));
 });
