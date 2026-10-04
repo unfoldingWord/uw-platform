@@ -69,6 +69,9 @@ function problemsIn(text: string): readonly string[] {
     if (match[0] !== 'unfoldingWord') problems.push(`unfoldingWord written ${match[0]}`);
   }
   if (titleCase(text)) problems.push('Title Case');
+  for (const match of text.matchAll(/\b(?:I|[Ww]e|[Oo]urs?|[Uu]s|[Mm]y|[Mm]e|the user)\b/g)) {
+    problems.push(`first or third person: ${match[0]}`);
+  }
   return problems;
 }
 
@@ -84,10 +87,13 @@ const planted: readonly (readonly [string, string])[] = [
   ['Unfoldingword admins', 'unfoldingWord written Unfoldingword'],
   ['UnfoldingWord admins', 'unfoldingWord written UnfoldingWord'],
   ['Waiting On You', 'Title Case'],
+  ['We sent the gate', 'first or third person: We'],
+  ['Your gate is in our queue', 'first or third person: our'],
+  ['Tell the user it lapsed', 'first or third person: the user'],
 ];
 
 describe('the screen copy', () => {
-  it('WB-12 screen copy is sentence case with no exclamation marks and no emoji, and unfoldingWord is camelCase', () => {
+  it('WB-12 screen copy is sentence case with no exclamation marks, no emoji and no first person or "the user", and unfoldingWord is camelCase', () => {
     const files = repoFiles().filter(scanned);
     expect(files.length).toBeGreaterThan(20);
     const problems = files.flatMap((path) => copyProblems(path, readFileSync(path, 'utf8')));
