@@ -61,7 +61,8 @@ export const layerRules = [
   ),
   {
     name: 'harness-imports-contracts-and-core-only',
-    comment: 'packages/harness imports packages/contracts and packages/core and nothing else.',
+    comment:
+      'packages/harness imports packages/contracts, packages/core and yaml (the agentskills header parser) and nothing else.',
     severity: 'error',
     from: { path: '^packages/harness/', pathNot: [testFile, portContracts] },
     to: { pathNot: harnessMayImport },
@@ -71,7 +72,7 @@ export const layerRules = [
     comment: 'A port contract suite imports what the harness may, plus Vitest.',
     severity: 'error',
     from: { path: portContracts },
-    to: { pathNot: [harnessMayImport, npm('vitest')] },
+    to: { pathNot: [...harnessMayImport, npm('vitest')] },
   },
   {
     name: 'port-contracts-only-in-tests',
@@ -110,7 +111,7 @@ export const layerRules = [
     comment: 'A packages/harness test imports what the harness may, plus Vitest.',
     severity: 'error',
     from: { path: `^packages/harness/.*${testFile}` },
-    to: { pathNot: [harnessMayImport, npm('vitest')] },
+    to: { pathNot: [...harnessMayImport, npm('vitest')] },
   },
   forbidden(
     'harness-is-pure',

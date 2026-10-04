@@ -21,6 +21,7 @@ function tree(files: Record<string, string>): string {
     'eslint',
     'vitest',
     'zod',
+    'yaml',
     '@electric-sql/pglite',
     '@block65/webcrypto-web-push',
   ];
@@ -369,6 +370,13 @@ describe('the dependency rules', () => {
 });
 
 describe('the dependency rules allow', () => {
+  it('the harness on yaml, and nothing else from npm', async () => {
+    expect(await violations({ 'packages/harness/a.ts': "import 'yaml';" })).toEqual([]);
+    expect(await violations({ 'packages/harness/a.ts': "import 'zod';" })).toContain(
+      'harness-imports-contracts-and-core-only',
+    );
+  });
+
   it('a harness test that imports Vitest and core', async () => {
     expect(
       await violations({
