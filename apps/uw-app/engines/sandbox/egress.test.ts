@@ -12,6 +12,7 @@ function routesWith(refused: string[], mcpSeen: Request[]): EgressRoutes {
       paths: ['/v1/messages', '/v1/messages/count_tokens'],
     },
     admit: async () => true,
+    github: null,
     mcp: async (request) => {
       mcpSeen.push(request);
       return Response.json({ jsonrpc: '2.0', id: 1, result: { tools: [] } });

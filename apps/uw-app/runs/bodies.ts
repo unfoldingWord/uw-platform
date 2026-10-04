@@ -8,6 +8,7 @@ import {
 } from '@uw/harness';
 import { engineAdapter } from '../engines/registry.ts';
 import type { EngineWork, EngineWorkResult } from '../engines/seam.ts';
+import { builderAccess, pulledChange } from './builder-github.ts';
 import type { RunDeps } from './deps.ts';
 import {
   contextText,
@@ -155,6 +156,7 @@ async function modelRun(deps: RunDeps, open: OpenStep, plan: ModelPlan): Promise
   const http = countedHttp(open.http, new Set(toolset));
   const refused = (host: string, path: string) =>
     deps.logger.warn('sandbox egress refused', { outcome: 'egress_refused', host, path });
+  const access = await builderAccess(deps, open.scene, plan.step);
   const result = await engineWork(deps, plan.engine, {
     runId: run.id,
     itemId: item.itemId,
@@ -165,9 +167,10 @@ async function modelRun(deps: RunDeps, open: OpenStep, plan: ModelPlan): Promise
     instructions: persona.instructions,
     prompt: plan.prompt,
     toolset,
+    checkout: access.checkout,
     tools,
     onTurn: onTurnOf(deps, open),
-    egress: { mcp: http.handle, refused },
+    egress: { mcp: http.handle, github: access.github, refused },
   });
   await recordStep(open, {
     step: plan.step,
@@ -254,12 +257,13 @@ async function submitHeld(deps: RunDeps, runId: string): Promise<Submitted | Hal
   const sent = await within(deps, runId, null, async (open) => {
     const recorded = open.scene.run.steps.some((step) => step.step === 'submit');
     if (!recorded) await recordStep(open, { step: 'submit', tokensIn: 0, tokensOut: 0 });
+    const change = await pulledChange(deps, open.scene);
     const reply = await callCore(open.core, 'submit_to_gate', {
       itemId: open.scene.item.itemId,
       evidence: {},
       to: null,
-      pullRequest: null,
-      head: null,
+      pullRequest: change?.pullRequest ?? null,
+      head: change?.head ?? null,
     });
     const { result } = verbIo.submit_to_gate.output.parse(reply);
     return { kind: 'submitted' as const, result };

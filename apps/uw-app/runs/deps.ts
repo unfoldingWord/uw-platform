@@ -8,6 +8,8 @@ import { gatewaySpend } from '../engines/gateway/spend.ts';
 import { engineRegistryOf, type EngineRegistry } from '../engines/registry.ts';
 import { commitOf, type Bindings } from '../env.ts';
 import { githubAppOf } from '../github/app-config.ts';
+import { builderAppOf, builderTokens } from '../github/builder-app.ts';
+import { defaultBranchOf, openPullRequestFrom } from '../github/facts/queries.ts';
 import { spendCapOf, type SpendCap } from '../health/spend-cap.ts';
 import { createGitHubReads } from '../github/client.ts';
 import { reviewerAppsOf } from '../github/reviewer-apps.ts';
@@ -18,6 +20,15 @@ import { hubOf } from '../ports/hub.ts';
 import { notifierOf } from '../ports/notifier.ts';
 import { platformModelEngine } from '../ports/model-engine.ts';
 import { runsOf } from '../ports/runs.ts';
+
+export type BuilderGitHub = {
+  readonly defaultBranch: (repository: string) => Promise<string | null>;
+  readonly token: (repository: string) => () => Promise<string | null>;
+  readonly openPullRequest: (
+    repository: string,
+    branch: string,
+  ) => Promise<{ readonly number: number; readonly head: string } | null>;
+};
 
 export type RunDeps = {
   readonly verbKernel: Kernel;
@@ -30,6 +41,7 @@ export type RunDeps = {
   readonly clock: Clock;
   readonly engines: EngineRegistry;
   readonly scout: { readonly model: string; readonly provider: string };
+  readonly builder: BuilderGitHub;
 };
 
 export type OpenedRunDeps = { readonly deps: RunDeps; release(): Promise<void> };
@@ -66,6 +78,15 @@ function runKernelOf(env: Bindings, database: DatabaseHandle, logger: Logger) {
   return { kernel, engines };
 }
 
+function builderOf(env: Bindings, db: Database): BuilderGitHub {
+  const transport = platformGitHubTransport(() => systemClock.now());
+  return {
+    defaultBranch: (repository) => defaultBranchOf(db, repository),
+    token: builderTokens(builderAppOf(env), transport),
+    openPullRequest: (repository, branch) => openPullRequestFrom(db, repository, branch),
+  };
+}
+
 export function runDepsOf(env: Bindings, traceId: string): OpenedRunDeps {
   const database = hyperdriveDatabase(env);
   if (database === null) throw new Error('the run host has no database');
@@ -89,6 +110,7 @@ export function runDepsOf(env: Bindings, traceId: string): OpenedRunDeps {
       model: env.ALWAYS_ON_MODEL ?? ALWAYS_ON_MODEL,
       provider: env.ALWAYS_ON_PROVIDER ?? ALWAYS_ON_PROVIDER,
     },
+    builder: builderOf(env, database.db),
   };
   return { deps, release: () => database.release() };
 }

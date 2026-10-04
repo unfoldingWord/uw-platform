@@ -24,10 +24,12 @@ const work: EngineWork = {
   instructions: 'Work.',
   prompt: 'Begin.',
   toolset: ['read_page'],
+  checkout: null,
   tools: { call: () => Promise.reject(new Error('no tools')) },
   onTurn: async () => undefined,
   egress: {
     mcp: () => Promise.reject(new Error('no MCP surface')),
+    github: null,
     refused: () => undefined,
   },
 };
@@ -156,12 +158,16 @@ describe('the engine registry', () => {
       | 'instructions'
       | 'prompt'
       | 'toolset'
+      | 'checkout'
       | 'tools'
       | 'onTurn'
       | 'egress'
     >();
     expectTypeOf<EngineWork['tools']>().toEqualTypeOf<ToolCaller>();
-    expectTypeOf<keyof EngineWork['egress']>().toEqualTypeOf<'mcp' | 'refused'>();
+    expectTypeOf<keyof EngineWork['egress']>().toEqualTypeOf<'mcp' | 'github' | 'refused'>();
+    expectTypeOf<keyof NonNullable<EngineWork['egress']['github']>>().toEqualTypeOf<
+      'token' | 'unwired'
+    >();
     expectTypeOf<EngineAdapter['work']>().parameters.toEqualTypeOf<[EngineWork]>();
   });
 });

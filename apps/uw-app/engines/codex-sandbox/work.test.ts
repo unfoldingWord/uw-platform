@@ -20,10 +20,12 @@ const work: EngineWork = {
   instructions: 'You review the pull request.',
   prompt: 'Review the diff.',
   toolset: ['read_page', 'search_pages'],
+  checkout: null,
   tools: { call: () => Promise.reject(new Error('the sandbox calls tools over MCP')) },
   onTurn: async () => undefined,
   egress: {
     mcp: async () => Response.json({ jsonrpc: '2.0', id: 1, result: {} }),
+    github: null,
     refused: () => undefined,
   },
 };

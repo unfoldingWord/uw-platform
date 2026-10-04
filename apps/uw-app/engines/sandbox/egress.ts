@@ -1,3 +1,5 @@
+import { githubEgress, type GitHubEgress } from './github-egress.ts';
+
 export const MCP_HOST = 'mcp.internal';
 export const MODEL_HOST = 'model.internal';
 
@@ -14,6 +16,7 @@ export type ModelRoute = {
 export type EgressRoutes = {
   readonly model: ModelRoute;
   readonly mcp: McpHandler;
+  readonly github: GitHubEgress | null;
   readonly admit: () => Promise<boolean>;
   readonly refused: (host: string, path: string) => void;
 };
@@ -61,6 +64,8 @@ export async function egress(
 ): Promise<Response> {
   const url = new URL(request.url);
   if (url.hostname === MCP_HOST) return routes.mcp(request);
+  const github = await githubEgress(request, routes, fetcher);
+  if (github !== null) return github;
   if (url.hostname !== routes.model.host || !inference(request, url, routes.model)) {
     return refusal(routes, url);
   }

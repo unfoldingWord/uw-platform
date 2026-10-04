@@ -1,8 +1,21 @@
 import type { Engine, VerbName } from '@uw/contracts';
 import { runToolLoop, type ModelEngine, type ToolCaller } from '@uw/harness';
 
+export type Checkout = {
+  readonly repository: string;
+  readonly branch: string;
+  readonly defaultBranch: string;
+  readonly expectedHead: string | null;
+};
+
+type GitHubAccess = {
+  readonly token: () => Promise<string | null>;
+  readonly unwired: (host: string, path: string) => void;
+};
+
 type EngineEgress = {
   readonly mcp: (request: Request) => Promise<Response>;
+  readonly github: GitHubAccess | null;
   refused(host: string, path: string): void;
 };
 
@@ -16,6 +29,7 @@ export type EngineWork = {
   readonly instructions: string;
   readonly prompt: string;
   readonly toolset: readonly VerbName[];
+  readonly checkout: Checkout | null;
   readonly tools: ToolCaller;
   readonly onTurn: () => Promise<void>;
   readonly egress: EngineEgress;

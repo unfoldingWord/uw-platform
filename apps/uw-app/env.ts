@@ -36,6 +36,9 @@ export type Bindings = {
   AI_GATEWAY_ID?: string;
   AI_GATEWAY_TOKEN?: string;
   AI_SPEND_CAP_MINOR?: string;
+  BUILDER_GITHUB_APP_ID?: string;
+  BUILDER_GITHUB_APP_INSTALLATION_ID?: string;
+  BUILDER_GITHUB_APP_PRIVATE_KEY?: string;
   CLAUDE_CODE_SANDBOX?: SandboxNamespace;
   CODEX_SANDBOX?: SandboxNamespace;
   ALWAYS_ON_MODEL?: string;

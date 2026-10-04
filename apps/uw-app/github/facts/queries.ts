@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import { checkConclusionSchema, pullRequestDeclarationSchema } from '@uw/contracts';
 import type { Executor } from '@uw/db/client';
@@ -71,6 +71,36 @@ export async function repoByName(
     .select({ githubId: ghRepos.githubId, sweptThrough: ghRepos.sweptThrough })
     .from(ghRepos)
     .where(sql`lower(${ghRepos.fullName}) = lower(${fullName})`)
+    .limit(1);
+  return row ?? null;
+}
+
+export async function defaultBranchOf(db: Executor, fullName: string): Promise<string | null> {
+  const [row] = await db
+    .select({ defaultBranch: ghRepos.defaultBranch })
+    .from(ghRepos)
+    .where(sql`lower(${ghRepos.fullName}) = lower(${fullName})`)
+    .limit(1);
+  return row?.defaultBranch ?? null;
+}
+
+export async function openPullRequestFrom(
+  db: Executor,
+  fullName: string,
+  branch: string,
+): Promise<{ readonly number: number; readonly head: string } | null> {
+  const [row] = await db
+    .select({ number: ghPrs.number, head: ghPrs.headSha })
+    .from(ghPrs)
+    .innerJoin(ghRepos, eq(ghRepos.githubId, ghPrs.repoId))
+    .where(
+      and(
+        sql`lower(${ghRepos.fullName}) = lower(${fullName})`,
+        eq(ghPrs.headRef, branch),
+        eq(ghPrs.state, 'open'),
+      ),
+    )
+    .orderBy(desc(ghPrs.number))
     .limit(1);
   return row ?? null;
 }
