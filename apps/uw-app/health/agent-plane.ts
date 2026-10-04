@@ -211,3 +211,10 @@ export async function agentPlaneIndicators(
     sweepIndicator(repos, at),
   ];
 }
+
+export async function sweepsBacking(
+  db: Executor,
+  repositories: ReadonlySet<string>,
+): Promise<readonly SweepHealth[]> {
+  return (await sweepHealth(db)).filter((repo) => repositories.has(repo.fullName));
+}

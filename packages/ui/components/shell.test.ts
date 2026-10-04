@@ -72,7 +72,7 @@ describe('WB-11 the shell', () => {
     expect(html).toContain('<meta name="color-scheme" content="light dark"');
   });
 
-  it('the shell copy writes unfoldingWord in camelCase with no exclamation marks (part of WB-12)', async () => {
+  it('WB-12 the shell copy writes unfoldingWord in camelCase with no exclamation marks', async () => {
     const document = documentOf(await render());
     for (const script of document.querySelectorAll('script')) script.remove();
     const text = document.body.textContent ?? '';
