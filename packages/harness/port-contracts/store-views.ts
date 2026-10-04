@@ -76,6 +76,17 @@ function describeParked(subject: ViewsSubject): void {
     });
     expect(ids).toEqual([uid(0x4000 + 12), uid(0x4000 + 14), uid(0x4000 + 11)]);
   });
+
+  it('byIds answers the named items in id order and nothing for an empty list', async () => {
+    const base = 0x4f00;
+    const read = await subject().store.transaction(async (tx) => {
+      await seedItems(tx, base, 'gateway-views-by-ids', 3);
+      const ids = async (itemIds: readonly string[]) =>
+        (await tx.harnessItems.read.byIds(itemIds)).map((item) => item.itemId);
+      return { two: await ids([uid(base + 13), uid(base + 11), uid(0x4fff)]), none: await ids([]) };
+    });
+    expect(read).toEqual({ two: [uid(base + 11), uid(base + 13)], none: [] });
+  });
 }
 
 function describeEntered(subject: ViewsSubject): void {
@@ -278,7 +289,7 @@ function ids(runs: readonly RunRow[]): string[] {
 }
 
 function describeRuns(subject: ViewsSubject): void {
-  it('forItems, startedSince and failedSince answer the runs they name in order', async () => {
+  it('forItems and startedSince answer the runs they name in order', async () => {
     const since = new Date('2031-02-01T00:00:00.000Z');
     const runs = seededRuns(0x4400, since);
     const [first, second, third, earlier] = ids(runs);
@@ -290,7 +301,6 @@ function describeRuns(subject: ViewsSubject): void {
         noItems: ids(await reads.forItems([])),
         started: ids(await reads.startedSince(since, 10)),
         startedTwo: ids(await reads.startedSince(since, 2)),
-        failed: ids(await reads.failedSince(since, 10)),
         all: ids(await reads.startedSince(later(since, -2 * day), 10)),
       };
     });
@@ -299,7 +309,6 @@ function describeRuns(subject: ViewsSubject): void {
       noItems: [],
       started: [first, third, second],
       startedTwo: [first, third],
-      failed: [third, first],
       all: [earlier, first, third, second],
     });
   });
@@ -326,13 +335,10 @@ function describeRuns(subject: ViewsSubject): void {
 }
 
 function describeRunLimits(subject: ViewsSubject): void {
-  it('startedSince and failedSince refuse a limit outside 1 to 5000', async () => {
+  it('startedSince refuses a limit outside 1 to 5000', async () => {
     for (const limit of [0, 5001]) {
       await expect(
         subject().store.transaction((tx) => tx.harnessRuns.read.startedSince(at, limit)),
-      ).rejects.toBeInstanceOf(RangeError);
-      await expect(
-        subject().store.transaction((tx) => tx.harnessRuns.read.failedSince(at, limit)),
       ).rejects.toBeInstanceOf(RangeError);
     }
   });
@@ -404,6 +410,8 @@ const learnings: readonly SeededPage[] = [
   learningOf(4, 'retired', { confidence: 'assumed', ...reviewed }),
   learningOf(5, 'active', { confidence: 'inferred', ...reviewed, review_by: '2026-12-01' }),
   learningOf(6, 'active', { confidence: 'assumed', as_of: '2026-07-10' }),
+  learningOf(7, 'active', { confidence: 'assumed', as_of: 'last spring', review_by: 'soon' }),
+  learningOf(8, 'active', { confidence: 'inferred', as_of: '2026-02-31' }),
 ];
 
 function describeStaleLearnings(subject: ViewsSubject): void {

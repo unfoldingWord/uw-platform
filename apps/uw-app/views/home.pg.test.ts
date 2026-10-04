@@ -59,6 +59,28 @@ async function failedRun(db: Database, home: Home): Promise<void> {
   });
 }
 
+async function manyFailedRuns(db: Database, home: Home): Promise<void> {
+  const runs = Array.from({ length: 50 }, (_, n) => {
+    const tail = (0x7400 + n).toString(16).padStart(12, '0');
+    return {
+      id: `00000000-0000-4000-8000-${tail}`,
+      harnessId: home.item.harnessId,
+      itemId: home.item.itemId,
+      persona: `agent:${home.ian.personId ?? ''}/laptop`,
+      runShape: 'external-run',
+      engine: 'external',
+      model: 'claude-sonnet-5',
+      costBasis: 'subscription',
+      traceId: '00000000-0000-4000-8000-000000007311',
+      outcome: 'failed',
+      failure: 'retries_exhausted',
+      startedAt: earlier(2),
+      endedAt: earlier(1.5),
+    };
+  });
+  await db.insert(harnessRuns).values(runs);
+}
+
 async function seeded(db: Database): Promise<Home> {
   const { ian } = await people(db);
   const item = await parkAtShip(kernelOn(db, clock), ian);
@@ -101,6 +123,20 @@ async function countIsRows(db: Database): Promise<void> {
   expect(document.querySelector('main h1')?.textContent).toBe('Waiting on you');
   expect(document.querySelector('main h1 + p')?.textContent).toBe('3 things are waiting on you');
   expect(linksOf(page.text)).toHaveLength(3);
+}
+
+async function cappedSaysAtLeast(db: Database): Promise<void> {
+  const home = await seeded(db);
+  await manyFailedRuns(db, home);
+  const page = await homeOf(db, IAN);
+  const { document } = new JSDOM(page.text).window;
+  expect(document.querySelector('main h1 + p')?.textContent).toBe(
+    'At least 52 things are waiting on you',
+  );
+  expect(document.querySelector('main [role="note"]')?.textContent).toBe(
+    'At least 50 runs failed on your items in the last 7 days. The newest 50 are listed.',
+  );
+  expect(linksOf(page.text)).toHaveLength(52);
 }
 
 async function seedViewer(db: Database): Promise<void> {
@@ -167,6 +203,8 @@ describe.skipIf(!testServer)('Home', () => {
     withAppDatabase(listsInOrder));
   it('WB-9 the count Home shows is the number of rows it lists', () =>
     withAppDatabase(countIsRows));
+  it('WB-9 Home says at least when the failed runs it lists stop at 50', () =>
+    withAppDatabase(cappedSaysAtLeast));
   it('WB-9 an empty Home says nothing is waiting', () => withAppDatabase(emptyHome));
   it('WB-9 a high item the person lacks the domain grant for is not on Home', () =>
     withAppDatabase(highItemHidden));

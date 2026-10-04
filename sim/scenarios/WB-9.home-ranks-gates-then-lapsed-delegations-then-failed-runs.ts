@@ -9,7 +9,7 @@ export const scenario = defineScenario({
     'Home ranks the gates a person can decide, then their delegations that lapsed unrenewed, then failed runs on items they ran, and the count is the list',
   run: async (world) => {
     const scene = await waitingScene(world);
-    const rows = await world.kernel.views.waitingOn(simCaller(world, scene.owner));
+    const { rows } = await world.kernel.views.waitingOn(simCaller(world, scene.owner));
     const kinds = rows.map((row) => row.kind);
     assert.deepEqual(kinds, ['gate', 'delegation_lapsed', 'run_failed']);
     return { state: { kinds, count: rows.length } };

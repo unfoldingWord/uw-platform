@@ -1,12 +1,12 @@
-import { deviceOwnerSegment, type Harness, type ItemState } from '@uw/contracts';
+import type { Harness } from '@uw/contracts';
 import { isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
-import type { Delegation, RunRow, StoreTransaction } from '../ports.ts';
+import type { Delegation, StoreTransaction } from '../ports.ts';
 import { readableHarness, type ScenePorts } from '../reads/scene.ts';
 import { decidableGates } from './gates.ts';
-import { WAITING_WINDOW_MS, type WaitingRow } from './types.ts';
+import { FAILED_RUNS_LIMIT, WAITING_WINDOW_MS, type Waiting, type WaitingRow } from './types.ts';
 
-const FAILED_RUNS_READ = 200;
+type FailedRows = { readonly rows: readonly WaitingRow[]; readonly capped: boolean };
 
 type Scope = {
   readonly ports: ScenePorts;
@@ -44,40 +44,40 @@ async function lapsedRows(scope: Scope): Promise<readonly WaitingRow[]> {
   return rows;
 }
 
-function theirs(personId: string, identity: string | null): boolean {
-  if (identity === null) return false;
-  return identity === `human:${personId}` || deviceOwnerSegment(identity) === personId;
-}
-
-async function ranOrHolds(scope: Scope, run: RunRow, item: ItemState): Promise<boolean> {
-  if (theirs(scope.personId, run.persona) || theirs(scope.personId, item.holder)) return true;
-  if (run.delegationId === null) return false;
-  const delegation = await scope.tx.delegations.read.byId(run.delegationId);
-  return delegation?.personId === scope.personId;
-}
-
-async function retried(scope: Scope, run: RunRow): Promise<boolean> {
-  const ended = run.endedAt?.getTime() ?? run.startedAt.getTime();
-  const runs = await scope.tx.harnessRuns.read.forItems([run.itemId]);
-  return runs.some((other) => other.id !== run.id && other.startedAt.getTime() > ended);
-}
-
-async function failedRow(scope: Scope, run: RunRow): Promise<WaitingRow | null> {
-  const item = await scope.tx.harnessItems.read.byId(run.itemId);
-  if (item === null || !(await ranOrHolds(scope, run, item))) return null;
-  const harness = await readable(scope, run.harnessId);
-  if (harness === null || (await retried(scope, run))) return null;
-  return { kind: 'run_failed', harness, item, run };
-}
-
-async function failedRows(scope: Scope): Promise<readonly WaitingRow[]> {
-  const since = new Date(scope.at.getTime() - WAITING_WINDOW_MS);
-  const rows: WaitingRow[] = [];
-  for (const run of await scope.tx.harnessRuns.read.failedSince(since, FAILED_RUNS_READ)) {
-    const row = await failedRow(scope, run);
-    if (row !== null) rows.push(row);
+async function readableOf(
+  scope: Scope,
+  harnessIds: readonly string[],
+): Promise<ReadonlyMap<string, Harness>> {
+  const shown = new Map<string, Harness>();
+  for (const harnessId of new Set(harnessIds)) {
+    const harness = await readable(scope, harnessId);
+    if (harness !== null) shown.set(harnessId, harness);
   }
-  return rows;
+  return shown;
+}
+
+async function failedRows(scope: Scope): Promise<FailedRows> {
+  const since = new Date(scope.at.getTime() - WAITING_WINDOW_MS);
+  const { read } = scope.tx.harnessRuns;
+  const runs = await read.failedFor(scope.personId, since, FAILED_RUNS_LIMIT);
+  const items = new Map(
+    (await scope.tx.harnessItems.read.byIds(runs.map((run) => run.itemId))).map((item) => [
+      item.itemId,
+      item,
+    ]),
+  );
+  const harnesses = await readableOf(
+    scope,
+    runs.map((run) => run.harnessId),
+  );
+  const rows = runs.flatMap((run): WaitingRow[] => {
+    const item = items.get(run.itemId);
+    const harness = harnesses.get(run.harnessId);
+    return item === undefined || harness === undefined
+      ? []
+      : [{ kind: 'run_failed', harness, item, run }];
+  });
+  return { rows, capped: runs.length === FAILED_RUNS_LIMIT };
 }
 
 export async function waitingOn(
@@ -85,14 +85,15 @@ export async function waitingOn(
   tx: StoreTransaction,
   caller: Caller,
   at: Date,
-): Promise<readonly WaitingRow[]> {
+): Promise<Waiting> {
   const { personId } = caller.actor;
-  if (personId === null || isAgent(caller.actor)) return [];
+  if (personId === null || isAgent(caller.actor)) return { rows: [], failedRunsCapped: false };
   const gates = await decidableGates(ports, tx, caller, at);
   const scope = { ports, tx, caller, personId, at };
-  return [
-    ...gates.map((gate): WaitingRow => ({ kind: 'gate', gate })),
-    ...(await lapsedRows(scope)),
-    ...(await failedRows(scope)),
-  ];
+  const lapsed = await lapsedRows(scope);
+  const failed = await failedRows(scope);
+  return {
+    rows: [...gates.map((gate): WaitingRow => ({ kind: 'gate', gate })), ...lapsed, ...failed.rows],
+    failedRunsCapped: failed.capped,
+  };
 }

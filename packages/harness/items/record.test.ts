@@ -70,6 +70,7 @@ function itemsGateway(log: string[], rows: Map<string, ItemState>): HarnessItems
       lowestOpenPriority: unused,
       lapsedLeases: unused,
       parked: unused,
+      byIds: unused,
     },
     write: {
       insert: async (item) => {
