@@ -4,6 +4,7 @@ import { awaitBlocked, type LockWaiters } from './lock-wait.ts';
 import { describeNotWired } from './not-wired-cases.ts';
 import { describeStoreGateways, type SeededPage } from './store-gateways.ts';
 import { describeStoreRuns } from './store-runs.ts';
+import { describeStoreBoundedReads } from './store-bounded-reads.ts';
 import { describeStoreFailedFor } from './store-failed-for.ts';
 import { describeStoreViews } from './store-views.ts';
 
@@ -274,6 +275,7 @@ export function describeStoreContract(
     describeStoreRuns(adapter, subject);
     describeStoreViews(adapter, subject);
     describeStoreFailedFor(adapter, subject);
+    describeStoreBoundedReads(adapter, subject);
   });
 }
 

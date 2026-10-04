@@ -72,7 +72,7 @@ function describeParked(subject: ViewsSubject): void {
       await tx.harnessItems.write.insert(itemOf(0x4000, 3, { priority: 9 }), at);
       await tx.harnessItems.write.insert(itemOf(0x4000, 4, { ...parked, priority: 5 }), at);
       await tx.harnessItems.write.insert(itemOf(0x4100, 1, parked), at);
-      return (await tx.harnessItems.read.parked(uid(0x4000))).map((item) => item.itemId);
+      return (await tx.harnessItems.read.parked(uid(0x4000), 50)).map((item) => item.itemId);
     });
     expect(ids).toEqual([uid(0x4000 + 12), uid(0x4000 + 14), uid(0x4000 + 11)]);
   });
@@ -369,10 +369,11 @@ const delegationsSeeded: readonly Delegation[] = [
   delegationOf(4, { lapsedAt: later(lapseNow, -10 * day), expiresAt: later(lapseNow, -10 * day) }),
   delegationOf(5, { lapsedAt: later(lapseNow, -hour), revokedAt: later(lapseNow, -2 * hour) }),
   delegationOf(6, { lapsedAt: later(lapseNow, -2 * day), expiresAt: later(lapseNow, 5 * day) }),
+  delegationOf(7, { lapsedAt: later(lapseNow, -9 * day), expiresAt: later(lapseNow, -day) }),
 ];
 
 function describeLapsed(subject: ViewsSubject): void {
-  it('lapsedFor answers only the person lapsed delegations since the instant', async () => {
+  it('lapsedFor answers the person delegations whose lapse or expiry falls in the window, newest first, up to the limit', async () => {
     const since = later(lapseNow, -7 * day);
     const read = await subject().store.transaction(async (tx) => {
       await seedHarness(tx, 0x4700, 'gateway-views-lapsed');
@@ -380,11 +381,21 @@ function describeLapsed(subject: ViewsSubject): void {
         await tx.delegations.write.insert(delegation, uid(0x4780 + n));
       }
       const lapsed = async (who: string) =>
-        (await tx.delegations.read.lapsedFor(who, since, lapseNow)).map((row) => row.id);
-      return { mine: await lapsed(person), theirs: await lapsed(uid(0x47ff)) };
+        (await tx.delegations.read.lapsedFor(who, since, lapseNow, 50)).map((row) => row.id);
+      const newest = (await tx.delegations.read.lapsedFor(person, since, lapseNow, 2)).map(
+        (row) => row.id,
+      );
+      return { mine: await lapsed(person), theirs: await lapsed(uid(0x47ff)), newest };
     });
     const [first, second, , , , sixth] = delegationsSeeded.map((delegation) => delegation.id);
-    expect(read).toEqual({ mine: [first, sixth, second], theirs: [] });
+    expect(read).toEqual({ mine: [first, sixth, second], theirs: [], newest: [first, sixth] });
+    for (const limit of [0, 5001]) {
+      await expect(
+        subject().store.transaction((tx) =>
+          tx.delegations.read.lapsedFor(person, since, lapseNow, limit),
+        ),
+      ).rejects.toBeInstanceOf(RangeError);
+    }
   });
 }
 

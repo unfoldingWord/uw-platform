@@ -65,6 +65,7 @@ function itemsGateway(inserted: ItemState[]): HarnessItemsGateway {
       lowestOpenPriority: unused,
       lapsedLeases: unused,
       parked: unused,
+      openFor: unused,
       byIds: unused,
     },
     write: {
@@ -86,6 +87,7 @@ function eventsGateway(appended: HarnessEvent[]): HarnessEventsGateway {
       enteredStage: unused,
       recent: unused,
       lastPosition: unused,
+      lastPositions: unused,
     },
     write: {
       append: async (events: readonly NewHarnessEvent[]) => {

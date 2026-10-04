@@ -18,6 +18,7 @@ import {
 import type { IssueRef, ItemState } from '@uw/contracts';
 import type { AnyExecutor } from '../any-database.ts';
 import { harnessItems, harnessStages } from '../schema.ts';
+import { checkedRows } from './limits.ts';
 import { refusing } from './refusal.ts';
 import { toItemState } from './rows.ts';
 import type { HarnessItemsGateway, ItemClaim, StageCursor, StagePage } from './types.ts';
@@ -160,10 +161,27 @@ async function lowestOpenPriority(
   return lowest === null || lowest === undefined ? null : Number(lowest);
 }
 
-async function parked(executor: AnyExecutor, harnessId: string): Promise<readonly ItemState[]> {
+async function parked(
+  executor: AnyExecutor,
+  harnessId: string,
+  limit: number,
+): Promise<readonly ItemState[]> {
   const rows = await selectItems(executor)
     .where(and(eq(harnessItems.harnessId, harnessId), eq(harnessItems.gateStatus, 'parked')))
-    .orderBy(desc(harnessItems.priority), asc(harnessItems.id));
+    .orderBy(desc(harnessItems.priority), asc(harnessItems.id))
+    .limit(checkedRows(limit, 'parked item'));
+  return rows.map((row) => toItemState(row.item, row.stageKey));
+}
+
+async function openFor(
+  executor: AnyExecutor,
+  harnessId: string,
+  limit: number,
+): Promise<readonly ItemState[]> {
+  const rows = await selectItems(executor)
+    .where(and(eq(harnessItems.harnessId, harnessId), ne(harnessItems.gateStatus, 'done')))
+    .orderBy(desc(harnessItems.priority), asc(harnessItems.id))
+    .limit(checkedRows(limit, 'open item'));
   return rows.map((row) => toItemState(row.item, row.stageKey));
 }
 
@@ -216,7 +234,8 @@ function bindReads(executor: AnyExecutor): HarnessItemsGateway['read'] {
         .limit(limit);
       return rows.map((row) => row.id);
     },
-    parked: (harnessId) => parked(executor, harnessId),
+    parked: (harnessId, limit) => parked(executor, harnessId, limit),
+    openFor: (harnessId, limit) => openFor(executor, harnessId, limit),
     byIds: (itemIds) => byIds(executor, itemIds),
   };
 }

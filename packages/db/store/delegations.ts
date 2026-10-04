@@ -1,6 +1,7 @@
-import { and, asc, desc, eq, gt, gte, isNull, lte, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, isNull, sql, type SQL } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
 import { delegations } from '../schema.ts';
+import { checkedRows } from './limits.ts';
 import { refusing } from './refusal.ts';
 import { toDelegation } from './rows.ts';
 import type { DelegationFilter, DelegationsGateway } from './types.ts';
@@ -32,7 +33,15 @@ async function stamp(
   return rows.length === 1;
 }
 
-async function lapsedFor(executor: AnyExecutor, personId: string, since: Date, at: Date) {
+const endedAt = sql`coalesce(${delegations.lapsedAt}, ${delegations.expiresAt})`;
+
+async function lapsedFor(
+  executor: AnyExecutor,
+  personId: string,
+  since: Date,
+  at: Date,
+  limit: number,
+) {
   const rows = await executor
     .select()
     .from(delegations)
@@ -40,16 +49,12 @@ async function lapsedFor(executor: AnyExecutor, personId: string, since: Date, a
       and(
         eq(delegations.personId, personId),
         isNull(delegations.revokedAt),
-        or(
-          gte(delegations.lapsedAt, since),
-          and(gte(delegations.expiresAt, since), lte(delegations.expiresAt, at)),
-        ),
+        sql`${endedAt} >= ${since.toISOString()}::timestamptz`,
+        sql`${endedAt} <= ${at.toISOString()}::timestamptz`,
       ),
     )
-    .orderBy(
-      desc(sql`coalesce(${delegations.lapsedAt}, ${delegations.expiresAt})`),
-      asc(delegations.id),
-    );
+    .orderBy(desc(endedAt), asc(delegations.id))
+    .limit(checkedRows(limit, 'lapsed delegation'));
   return rows.map(toDelegation);
 }
 
@@ -71,7 +76,7 @@ export function bindDelegations(executor: AnyExecutor): DelegationsGateway {
           .orderBy(asc(delegations.grantedAt), asc(delegations.id));
         return rows.map(toDelegation);
       },
-      lapsedFor: (personId, since, at) => lapsedFor(executor, personId, since, at),
+      lapsedFor: (personId, since, at, limit) => lapsedFor(executor, personId, since, at, limit),
     },
     write: {
       insert: (delegation, traceId) =>
