@@ -33,7 +33,11 @@ async function record(
     return;
   }
   const { harnessId, itemId, jdArea } = target.value;
-  if (deps.config === null || deps.config.channels.get(jdArea) !== message.display_recipient) {
+  if (deps.config === null) {
+    logger.warn('zulip not configured', { outcome: 'zulip_not_configured', ...fields });
+    return;
+  }
+  if (deps.config.channels.get(jdArea) !== message.display_recipient) {
     logger.warn('zulip channel mismatch', { outcome: 'zulip_channel_mismatch', ...fields });
     return;
   }
