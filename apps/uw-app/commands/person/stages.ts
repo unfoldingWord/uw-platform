@@ -6,12 +6,16 @@ export const activateTemplateCommand = commandHandler({
   name: 'activate_template',
   action: 'admin',
   scope: 'new_harness',
-  run: async ({ kernel, caller, harnessId }, body: CommandBody<'activate_template'>) => {
+  run: async ({ kernel, caller, harnessId, pages }, body: CommandBody<'activate_template'>) => {
     const template = templates.get(body.template);
     if (template === undefined) return { ok: false, reason: 'malformed_command' };
     const { harnessKey, jdArea, repository } = body;
     const input = { harnessId, harnessKey, jdArea, template, repository };
-    return fromKernel(await kernel.stages.activate(caller, input));
+    const activated = await kernel.stages.activate(caller, input);
+    if (activated.status === 'accepted') {
+      await pages.draftPersonas(body.template, activated.value.harness);
+    }
+    return fromKernel(activated);
   },
 });
 

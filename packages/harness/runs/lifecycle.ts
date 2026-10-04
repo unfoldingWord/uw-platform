@@ -109,19 +109,27 @@ export function hibernateAtGate(
   });
 }
 
-export type LeadingDrafts = (item: ItemState) => readonly EventDraft[];
+type LeadingDrafts = (item: ItemState) => readonly EventDraft[];
+
+export type TrailingDrafts = (
+  tx: StoreTransaction,
+  held: { readonly item: ItemState; readonly run: RunRow },
+) => Promise<readonly EventDraft[]>;
+
+type Surrounding = { readonly before: LeadingDrafts; readonly after?: TrailingDrafts };
 
 export function completeAfter(
   ports: HostPorts,
   caller: Caller,
   runId: string,
-  input: CompleteInput & { readonly before: LeadingDrafts },
+  input: CompleteInput & Surrounding,
 ): Promise<KernelOutcome<RunRow>> {
-  return onRun(ports, caller, { runId, outcomes: runningOnly }, (tx, held) => {
+  return onRun(ports, caller, { runId, outcomes: runningOnly }, async (tx, held) => {
     if (input.result === 'decided' && held.item.gateStatus === 'parked') {
-      return Promise.resolve(refused('not_permitted', { why: 'item_parked' }));
+      return refused('not_permitted', { why: 'item_parked' });
     }
     const { run, context } = held;
+    const after = input.after === undefined ? [] : await input.after(tx, held);
     return endRun(tx, held, ended(run, { outcome: 'completed' }, context.at), [
       ...input.before(held.item),
       draft('run_completed', {
@@ -131,6 +139,7 @@ export function completeAfter(
         review: input.review,
       }),
       ...released(held.item, run),
+      ...after,
     ]);
   });
 }

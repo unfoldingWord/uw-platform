@@ -120,11 +120,17 @@ function readerOnly(named: (scope: RecipientScope) => string | null) {
   };
 }
 
+function handedPerson(scope: RecipientScope): string | null {
+  const personId = scope.trigger.event.evidence['personId'];
+  return typeof personId === 'string' ? personId : null;
+}
+
 const byReason: ReadonlyMap<WakeReason, (scope: RecipientScope) => Named> = new Map([
   ['gate_waiting', gateWaiting],
   ['delegation_lapsed', delegationLapsed],
   ['run_failed', readerOnly(runFailedPerson)],
   ['stage_advanced', readerOnly(stageAdvancedPerson)],
+  ['handed_to_person', readerOnly(handedPerson)],
 ]);
 
 function selfOf(actor: string): string | null {

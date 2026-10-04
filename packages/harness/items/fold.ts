@@ -1,5 +1,6 @@
 import {
   eventEvidenceSchemas,
+  identitySchema,
   type EventName,
   type HarnessEvent,
   type ItemState,
@@ -137,6 +138,17 @@ function takeOver(state: ItemState, event: FoldableEvent): ItemState {
   };
 }
 
+function handToPerson(state: ItemState, event: FoldableEvent): ItemState {
+  const evidence = eventEvidenceSchemas.handed_to_person.parse(event.evidence);
+  return {
+    ...state,
+    holder: identitySchema.parse(`human:${evidence.personId}`),
+    claimantKind: 'person',
+    delegationId: null,
+    leaseExpiresAt: null,
+  };
+}
+
 function reorder(state: ItemState, event: FoldableEvent): ItemState {
   const evidence = eventEvidenceSchemas.item_reordered.parse(event.evidence);
   return { ...state, priority: evidence.priority };
@@ -171,6 +183,7 @@ const steps: ReadonlyMap<EventName, Step> = new Map<EventName, Step>([
   ['risk_derived', deriveRisk],
   ['item_reordered', reorder],
   ['zulip_topic_linked', linkTopic],
+  ['handed_to_person', handToPerson],
 ]);
 
 export const unchangedNames: ReadonlySet<EventName> = new Set<EventName>([
@@ -210,7 +223,6 @@ export const unchangedNames: ReadonlySet<EventName> = new Set<EventName>([
   'persona_activation_failed',
   'persona_activated',
   'measurement_recorded',
-  'handed_to_person',
 ]);
 
 export const steppedNames: readonly EventName[] = [...steps.keys()];
