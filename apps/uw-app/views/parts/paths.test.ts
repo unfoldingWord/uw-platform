@@ -1,3 +1,4 @@
+import { gateLink, homeLink, itemLink } from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
 import {
   boardPath,
@@ -30,6 +31,12 @@ describe('the view paths', () => {
     expect(boardPath(harness, 'build')).toBe(`/harnesses/${harness}/board?stage=build`);
     expect(gatePath(harness, item)).toBe(`/harnesses/${harness}/gates/${item}`);
     expect(itemPath(harness, item)).toBe(`/harnesses/${harness}/items/${item}`);
+  });
+
+  it('agrees with the deep links a wake carries', () => {
+    expect(gatePath(harness, item)).toBe(gateLink(harness, item));
+    expect(itemPath(harness, item)).toBe(itemLink(harness, item));
+    expect(homePath()).toBe(homeLink);
   });
 
   it('links a pull request, its checks, its reviews and an issue on GitHub', () => {
