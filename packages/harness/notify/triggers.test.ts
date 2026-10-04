@@ -17,7 +17,7 @@ function event(
     name,
     position,
     at: '2026-10-03T09:00:00.000Z',
-    actor: 'agent:system',
+    actor: 'agent:builder',
     evidence,
     traceId: '00000000-0000-4000-8000-0000000000c1',
     requestId: null,

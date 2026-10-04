@@ -25,7 +25,7 @@ export type WakePlanPorts = Pick<Ports, 'store' | 'grants' | 'hub' | 'clock'>;
 
 type Holders = ReadonlyMap<JdArea, readonly GrantHolder[]>;
 type Draft = Omit<Wake, 'recipients'> & {
-  readonly people: readonly string[];
+  readonly personIds: readonly string[];
   readonly unlinked: boolean;
 };
 
@@ -87,11 +87,11 @@ function draftOf(trigger: Trigger, context: WakeContext, holders: Holders, at: D
   const itemId = item === null ? null : item.item.itemId;
   const link = linkOf(trigger, harness, itemId);
   if (link === null) return null;
-  const people = peopleFor(trigger, context, holders, { harness, item, at });
+  const personIds = peopleFor(trigger, context, holders, { harness, item, at });
   const base = { harnessId: harness.id, harnessKey: harness.key, jdArea: harness.jdArea };
   const unlinked = item !== null && item.item.zulipTopic === null;
   const identity = { itemId, ...where(harness, item), reason, link, unlinked };
-  return { ...base, ...identity, people, at, traceId: event.traceId };
+  return { ...base, ...identity, personIds, at, traceId: event.traceId };
 }
 
 const screens: ReadonlyMap<string, LiveScreen> = new Map<string, LiveScreen>([
@@ -115,13 +115,15 @@ async function presentOn(hub: Hub, draft: Draft, personId: string): Promise<Wake
 }
 
 async function plannedOf(hub: Hub, draft: Draft): Promise<PlannedWake> {
-  const { people, unlinked, ...wake } = draft;
-  const recipients = await Promise.all(people.map((personId) => presentOn(hub, draft, personId)));
+  const { personIds, unlinked, ...wake } = draft;
+  const recipients = await Promise.all(
+    personIds.map((personId) => presentOn(hub, draft, personId)),
+  );
   return { wake: { ...wake, recipients }, unlinked };
 }
 
 function worthSending(draft: Draft | null): draft is Draft {
-  return draft !== null && (draft.people.length > 0 || POSTING_REASONS.has(draft.reason));
+  return draft !== null && (draft.personIds.length > 0 || POSTING_REASONS.has(draft.reason));
 }
 
 export async function planWakes(
