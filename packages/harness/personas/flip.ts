@@ -36,10 +36,15 @@ async function dryRunRefusal(
 
 async function identityInUse(tx: StoreTransaction, persona: Persona): Promise<boolean> {
   const { identity } = persona.frontmatter;
+  await tx.lock(lockKeys.personaIdentity(identity));
   const row = await tx.personas.read.byIdentity(identity);
   if (row === null || row.pageId === persona.page.id) return false;
   const [holder] = await tx.pages.read.facts([row.pageId]);
-  return holder?.status === 'active' && holder.frontmatter['identity'] === identity;
+  return (
+    holder?.type === 'persona' &&
+    holder.status === 'active' &&
+    holder.frontmatter['identity'] === identity
+  );
 }
 
 async function flip(

@@ -4,6 +4,7 @@ export const lockKeys = {
   harnessEvents: (harnessId: string) => `harness_events:${harnessId}`,
   githubIssue: (githubId: number) => `github-issue:${githubId}`,
   personaActivation: (pageId: string) => `persona-activation:${pageId}`,
+  personaIdentity: (identity: string) => `persona-identity:${identity}`,
   breaker: () => 'harness-breaker',
   runPersona: (persona: string) => `harness-run-persona:${persona}`,
   zulipTopics: (harnessId: string) => `zulip-topics:${harnessId}`,
