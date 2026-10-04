@@ -1,5 +1,12 @@
 import { createEmbeddedDatabase, type EmbeddedDatabase } from '@uw/db/embedded';
-import { createKernel, type Grants, type Kernel, type Runs, type Store } from '@uw/harness';
+import {
+  createKernel,
+  type ConnectorRequest,
+  type Grants,
+  type Kernel,
+  type Runs,
+  type Store,
+} from '@uw/harness';
 import { createSimClock, type SimClock } from './adapters/clock.ts';
 import { createSimConnectors, type SimConnectors } from './adapters/connectors.ts';
 import { createSimGitHubFacts, type SimGitHubFacts } from './adapters/github-facts.ts';
@@ -53,4 +60,8 @@ export async function createWorld(start: Date = worldStart): Promise<World> {
   const database = await createEmbeddedDatabase();
   const adapters = simAdapters(database, start);
   return { adapters, database, kernel: createKernel(adapters), close: () => database.close() };
+}
+
+export function effectCalls(world: World): readonly ConnectorRequest[] {
+  return world.adapters.connectors.calls();
 }
