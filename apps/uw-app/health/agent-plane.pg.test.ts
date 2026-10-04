@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { healthReportSchema, type HealthIndicator } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
 import { ghRepos, harnessRuns } from '@uw/db/schema';
-import { seedGrant, seedHarness, seedItem, seedPerson } from '@uw/db/test-seed';
+import { seedBreakerReading, seedGrant, seedHarness, seedItem, seedPerson } from '@uw/db/test-seed';
 import { DEFAULT_SPEND_CAP, PLANE_LIMIT, type Clock, type PlaneTotals } from '@uw/harness';
 import { createApp } from '../app.tsx';
 import { platformKernel } from '../kernel.ts';
@@ -120,7 +120,15 @@ async function statusesFollowTotals(db: Database): Promise<void> {
     status: 'ok',
     detail: 'None live',
   });
-  await meteredRun(db, 2, 20_000);
+  await meteredRun(db, 3, 1_250);
+  expect(named(await indicatorsOn(db), 'spend')).toEqual({
+    name: 'spend',
+    status: 'amber',
+    detail: '$937.50 metered of $1,250.00 this month; 0 subscription tokens reported',
+  });
+  await meteredRun(db, 4, 17_500);
+  expect(named(await indicatorsOn(db), 'spend')).toMatchObject({ status: 'amber' });
+  await meteredRun(db, 2, 1_250);
   expect(named(await indicatorsOn(db), 'spend')).toMatchObject({ status: 'red' });
   const capped = await indicatorsOn(db, cappedTotals);
   expect(capped.map((indicator) => [indicator.name, indicator.status, indicator.detail])).toEqual([
@@ -137,6 +145,38 @@ async function statusesFollowTotals(db: Database): Promise<void> {
     ['stale_learnings', 'amber', 'at least 5,000 past their review date'],
     ['github_sweep', 'not_configured', 'No repositories installed'],
   ]);
+}
+
+async function breakerAndCap(db: Database): Promise<void> {
+  await seed(db);
+  const stale = new Date(at.getTime() - 11 * 60_000);
+  await seedBreakerReading(db, {
+    harnessId: HARNESS,
+    at: stale,
+    actor: 'agent:system',
+    percent: 10,
+  });
+  const old = await indicatorsOn(db);
+  expect(named(old, 'breaker')).toEqual({
+    name: 'breaker',
+    status: 'amber',
+    detail: 'no fresh reading',
+  });
+  expect(named(old, 'spend').detail).not.toContain('breaker');
+  await seedBreakerReading(db, {
+    harnessId: HARNESS,
+    at,
+    actor: 'agent:system',
+    name: 'breaker_holding',
+    percent: 80,
+  });
+  const fresh = await indicatorsOn(db);
+  expect(named(fresh, 'breaker')).toEqual({
+    name: 'breaker',
+    status: 'amber',
+    detail: '80 percent of $1,250.00 spent',
+  });
+  expect(named(fresh, 'spend').detail).toContain('the breaker reads 80 percent');
 }
 
 type Repo = {
@@ -243,6 +283,7 @@ async function probeAndScreen(db: Database): Promise<void> {
   const token = await fixture.sign({ email: EDITOR.email });
   const headers = { 'cf-access-jwt-assertion': token };
   const signed = await app.request('/health', { headers }, fixtureAccessEnv);
+  expect(signed.headers.get('cache-control')).toBe('no-store');
   const full = healthReportSchema.parse(await signed.json());
   expect(full.indicators.map((indicator) => indicator.name)).toEqual([
     ...PLATFORM,
@@ -260,6 +301,8 @@ async function probeAndScreen(db: Database): Promise<void> {
 describe.skipIf(!testServer)('the agent plane indicators', () => {
   it("WB-10 each indicator's status and detail follow its totals", () =>
     withAppDatabase(statusesFollowTotals));
+  it('WB-10 the breaker indicator shows its state against the cap, and spend names the breaker only while its reading is fresh', () =>
+    withAppDatabase(breakerAndCap));
   it('WB-10 the GitHub sweep indicator is red for a failed or stale sweep and amber for a capped, deferred or stalled one', () =>
     withAppDatabase(sweepStatuses));
   it('WB-10 get_health answers the same agent-plane indicators as /health at one instant', () =>

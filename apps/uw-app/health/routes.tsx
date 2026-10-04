@@ -44,7 +44,7 @@ export function healthScreenRoutes(deps: HealthDeps): Hono<AppEnv> {
     if (c.req.header('accept')?.includes('text/html')) {
       return healthScreen(c, report);
     }
-    return c.json(report);
+    return c.json(report, 200, { 'cache-control': 'no-store' });
   });
   routes.get(drillThrough, healthListScreen);
   return routes;

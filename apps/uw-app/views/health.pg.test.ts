@@ -73,6 +73,16 @@ async function readableRows(world: BoardWorld): Promise<void> {
   expect(unknown.status).toBe(404);
 }
 
+async function sameForEveryone(world: BoardWorld): Promise<void> {
+  const admin = kpis(await documentOf(world));
+  expect(admin.find(([label]) => label === 'Runs today')?.[2]).not.toBe(
+    '0 on the platform, 0 on own machines',
+  );
+  for (const email of [world.viewer.email, world.stranger.email]) {
+    expect(kpis(await documentOf(world, healthPath(), email))).toEqual(admin);
+  }
+}
+
 async function inTheShell(world: BoardWorld): Promise<void> {
   const page = await getHtml(world.db, world.ianEmail, healthPath(), {}, clock);
   const document = new JSDOM(page.text).window.document;
@@ -94,6 +104,8 @@ describe.skipIf(!testServer)('/health and its drill-through', () => {
   it('WB-10 spend shows metered cost and reported subscription tokens side by side', () =>
     inHealth(spendSideBySide));
   it('WB-10 an indicator whose source is not built says not wired', () => inHealth(notWired));
+  it('WB-10 every person sees the same aggregates, whatever their grants', () =>
+    inHealth(sameForEveryone));
   it('WB-10 a drill-through lists only rows the person can read', () => inHealth(readableRows));
   it('WB-10 /health renders in the shell with no screen problems', () => inHealth(inTheShell));
 });
