@@ -41,6 +41,7 @@ export type Bindings = {
   ALWAYS_ON_MODEL?: string;
   ALWAYS_ON_PROVIDER?: string;
   ANTHROPIC_API_KEY?: string;
+  APP_ORIGIN?: string;
   COMMIT_SHA?: string;
   ACCESS_TEAM_DOMAIN?: string;
   ACCESS_AUD?: string;
@@ -62,6 +63,9 @@ export type Bindings = {
   REVIEWER_GITHUB_APP_INSTALLATION_ID?: string;
   REVIEWER_GITHUB_APP_PRIVATE_KEY?: string;
   SANDBOX_MINOR_PER_HOUR?: string;
+  VAPID_PRIVATE_JWK?: string;
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_SUBJECT?: string;
 };
 
 const UNKNOWN_COMMIT = 'unknown';

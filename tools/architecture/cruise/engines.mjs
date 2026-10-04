@@ -2,6 +2,7 @@ import { npm, vendorSdk, testFile, engineKeys, engineDirectory } from './shared.
 
 const environment = '^apps/uw-app/env\\.ts$';
 const containers = npm('@cloudflare/containers');
+const webPush = npm('@block65/webcrypto-web-push');
 const sandbox = '^apps/uw-app/engines/sandbox/';
 const enginesMayImport = [
   '^packages/(harness|contracts)/',
@@ -73,6 +74,14 @@ export const engineRules = [
     severity: 'error',
     from: { path: '^apps/uw-app/engines/', pathNot: testFile },
     to: { path: environment, dependencyTypesNot: ['type-only'] },
+  },
+  {
+    name: 'web-push-only-in-push-transport',
+    comment:
+      'The web push library is imported only by apps/uw-app/notify/push/transport.ts, so every push leaves through one seam.',
+    severity: 'error',
+    from: { pathNot: '^apps/uw-app/notify/push/transport\\.ts$' },
+    to: { path: webPush },
   },
   {
     name: 'containers-only-in-the-sandbox',
