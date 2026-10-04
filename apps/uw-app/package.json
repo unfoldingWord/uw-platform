@@ -23,6 +23,7 @@
     "@uw/uw-ingest": "workspace:*",
     "drizzle-orm": "^0.45.3",
     "hono": "^4.13.11",
+    "idiomorph": "0.8.0",
     "jose": "^6.2.12",
     "openai": "^7.27.0",
     "partysocket": "^1.3.0",
@@ -30,7 +31,10 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260930.1",
+    "@types/jsdom": "^30.0.0",
     "@types/node": "^22.20.4",
+    "axe-core": "^4.13.0",
+    "jsdom": "^30.1.1",
     "wrangler": "^4.144.0"
   },
   "contractVersion": "11.1.0"

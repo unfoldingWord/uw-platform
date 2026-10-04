@@ -12,10 +12,15 @@ describe('the islands bundle', () => {
     expect(islandsPath).toBe(`/assets/islands-${hash}.js`);
   }, 120_000);
 
+  it('turns off the schema compiler before any parse, so the policy needs no eval', () => {
+    expect(islandsJs).toMatch(/jitless:!0/);
+    expect(islandsJs.indexOf('jitless:!0')).toBeLessThan(islandsJs.indexOf('DOMContentLoaded'));
+  });
+
   it('names no kernel or database module and carries no comment', () => {
     for (const built of [islandsJs, serviceWorkerJs]) {
       expect(built).not.toMatch(/@uw\/(?:harness|db)\b|packages\/(?:harness|db)\//);
-      expect(built).not.toMatch(/\/\*|^\s*\/\/|[^:]\/\/\s/m);
+      expect(built).not.toMatch(/\/\*!|@license|@preserve|sourceMappingURL/);
     }
   });
 

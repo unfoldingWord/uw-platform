@@ -13,6 +13,8 @@
     "testing/commands.ts",
     "testing/harness-reads.ts",
     "testing/run-host.ts",
+    "testing/views.ts",
+    "testing/screen-checks.ts",
     "islands/browser/**",
     "islands/worker/**"
   ]

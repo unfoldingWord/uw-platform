@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { build } from 'esbuild';
+import { dirname } from 'node:path';
+import { build, type Plugin } from 'esbuild';
 
 const generated = new URL('../../apps/uw-app/generated/islands.ts', import.meta.url);
 const shared = {
@@ -12,8 +13,24 @@ const shared = {
   logLevel: 'silent',
 } as const;
 
+const englishMessagesOnly: Plugin = {
+  name: 'zod-english-messages-only',
+  setup(builder) {
+    builder.onLoad({ filter: /[\\/]zod[\\/]v4[\\/]locales[\\/]index\.js$/ }, (args) => ({
+      contents: "export { default as en } from './en.js';",
+      resolveDir: dirname(args.path),
+      loader: 'js',
+    }));
+  },
+};
+
 async function bundled(entry: string, format: 'esm' | 'iife'): Promise<string> {
-  const result = await build({ ...shared, entryPoints: [entry], format });
+  const result = await build({
+    ...shared,
+    entryPoints: [entry],
+    format,
+    plugins: [englishMessagesOnly],
+  });
   return result.outputFiles[0]?.text ?? '';
 }
 
