@@ -136,6 +136,26 @@ An org owner of `unfoldingWord` registers each App once, awaiting go-live:
 
 Until a Reviewer's three secrets are set, its review answers `not_wired` and the run completes `review_withheld`.
 
+## The Builder GitHub App (PE-5)
+
+The hosted Builder pushes its work and opens its pull request as its own GitHub App, `uw-builder` (`github/builder-app-manifest.json`): private, `contents` write, `pull_requests` write, `metadata` read, no webhook and no event. It has no `workflows` permission, so GitHub refuses a push that touches `.github/workflows/`. Its login is `uw-builder[bot]` (`packages/harness/github/builder.ts`), which never counts as a Reviewer.
+
+The sandbox never holds its token. The container reaches GitHub only over plain HTTP to `http://github.internal` and `http://api.github.internal`; the egress proxy in the run host (`apps/uw-app/engines/sandbox/github-egress.ts`) allows a clone and fetch of the harness's one repository, a push whose one ref update targets `refs/heads/harness/<item>` and deletes nothing, and a pull request from that branch into the default branch whose body opens with the `harness` declaration. It then mints one installation token per work step, scoped to that repository (`apps/uw-app/github/builder-app.ts`), and sets it on the forwarded request. Everything else is `403 egress refused`.
+
+An org owner of `unfoldingWord` registers the App once, awaiting go-live:
+
+1. Register the App from its manifest with the same "Register a GitHub App from a manifest" flow as the harness App (above), adding a `redirect_url`. Keep the name `uw-builder` and confirm GitHub kept the slug, since the slug is the Builder login.
+2. Install it on `unfoldingWord/uw-platform` only, and note the installation id.
+3. Convert the key to PKCS#8 as above, then set the secrets for `uw-app` (from `infra/uw-app`):
+
+   ```
+   wrangler secret put BUILDER_GITHUB_APP_ID --env <name>
+   wrangler secret put BUILDER_GITHUB_APP_INSTALLATION_ID --env <name>
+   wrangler secret put BUILDER_GITHUB_APP_PRIVATE_KEY --env <name>
+   ```
+
+Until the three secrets are set, every GitHub request from the sandbox answers `503 egress not configured` and is logged `github_egress_not_wired` with its host and path.
+
 ## The notifier: web push and Zulip (NT-1, NT-3)
 
 The notifier reads its configuration from `uw-app`'s variables and secrets. With any piece missing or malformed, that channel answers `not_configured` and logs; nothing fails at startup.
