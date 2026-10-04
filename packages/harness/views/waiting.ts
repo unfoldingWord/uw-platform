@@ -4,7 +4,13 @@ import type { Caller } from '../caller.ts';
 import type { Delegation, StoreTransaction } from '../ports.ts';
 import { readableHarness, type ScenePorts } from '../reads/scene.ts';
 import { decidableGates } from './gates.ts';
-import { FAILED_RUNS_LIMIT, WAITING_WINDOW_MS, type Waiting, type WaitingRow } from './types.ts';
+import {
+  FAILED_RUNS_LIMIT,
+  VIEW_LIMIT,
+  WAITING_WINDOW_MS,
+  type Waiting,
+  type WaitingRow,
+} from './types.ts';
 
 type FailedRows = { readonly rows: readonly WaitingRow[]; readonly capped: boolean };
 
@@ -29,14 +35,22 @@ async function renewed(scope: Scope, delegation: Delegation): Promise<boolean> {
   return (await scope.tx.delegations.read.live(filter, scope.at)).length > 0;
 }
 
+function latestPerPersona(delegations: readonly Delegation[]): readonly Delegation[] {
+  const seen = new Set<string>();
+  return delegations.filter((delegation) => {
+    const key = JSON.stringify([delegation.persona, delegation.harnessId]);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 async function lapsedRows(scope: Scope): Promise<readonly WaitingRow[]> {
   const since = new Date(scope.at.getTime() - WAITING_WINDOW_MS);
+  const { read } = scope.tx.delegations;
+  const lapsed = await read.lapsedFor(scope.personId, since, scope.at, VIEW_LIMIT);
   const rows: WaitingRow[] = [];
-  for (const delegation of await scope.tx.delegations.read.lapsedFor(
-    scope.personId,
-    since,
-    scope.at,
-  )) {
+  for (const delegation of latestPerPersona(lapsed)) {
     const harness = await readable(scope, delegation.harnessId);
     if (harness === null || (await renewed(scope, delegation))) continue;
     rows.push({ kind: 'delegation_lapsed', harness, delegation });

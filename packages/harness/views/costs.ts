@@ -1,6 +1,6 @@
 import { costBasisSchema, type CostBasis, type ItemState } from '@uw/contracts';
 import { bareAgent } from '../access.ts';
-import type { RunRow } from '../ports.ts';
+import type { ItemCost, RunRow } from '../ports.ts';
 import type { CardHost, CostTotals } from './types.ts';
 
 export const ZERO_COST: CostTotals = {
@@ -29,6 +29,20 @@ function withRun(total: CostTotals, run: RunRow): CostTotals {
 
 export function costOf(runs: readonly RunRow[]): CostTotals {
   return runs.reduce(withRun, ZERO_COST);
+}
+
+function withItem(total: CostTotals, item: ItemCost): CostTotals {
+  return {
+    ...total,
+    meteredMinor: total.meteredMinor + item.meteredMinor,
+    computeMinor: total.computeMinor + item.computeMinor,
+    meteredTokens: total.meteredTokens + item.meteredTokens,
+    subscriptionTokens: total.subscriptionTokens + item.subscriptionTokens,
+  };
+}
+
+export function costOfItems(items: readonly ItemCost[]): CostTotals {
+  return items.reduce(withItem, ZERO_COST);
 }
 
 export function basesOf(runs: readonly RunRow[]): readonly CostBasis[] {

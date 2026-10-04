@@ -95,6 +95,17 @@ async function delegationAdmits(
   return delegation.harnessId === harness.id && delegation.capability !== 'none';
 }
 
+export async function admitsHarness(
+  ports: ScenePorts,
+  tx: StoreTransaction,
+  caller: Caller,
+  harness: Harness,
+  at: Date,
+): Promise<boolean> {
+  if (!ownerBound(caller.actor) || !allowed(caller.actor, 'read', harness, at)) return false;
+  return delegationAdmits(ports, tx, caller.actor, harness, at);
+}
+
 export async function readableHarness(
   ports: ScenePorts,
   tx: StoreTransaction,
@@ -104,8 +115,8 @@ export async function readableHarness(
 ): Promise<Harness | null> {
   if (!ownerBound(caller.actor)) return null;
   const harness = await tx.harnesses.read.byId(harnessId);
-  if (harness === null || !allowed(caller.actor, 'read', harness, at)) return null;
-  return (await delegationAdmits(ports, tx, caller.actor, harness, at)) ? harness : null;
+  if (harness === null) return null;
+  return (await admitsHarness(ports, tx, caller, harness, at)) ? harness : null;
 }
 
 export async function harnessScene(

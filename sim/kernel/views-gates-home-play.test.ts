@@ -187,6 +187,15 @@ async function retriedLeaves(scene: Waiting): Promise<void> {
   expect(await kindsFor(scene, scene.owner)).toEqual(['gate', 'delegation_lapsed']);
 }
 
+async function lapsedTwiceShownOnce(scene: Waiting): Promise<void> {
+  const { clock } = scene.world.adapters;
+  const second = await grantScout(scene, new Date(clock.now().getTime() + 60_000));
+  clock.advance(2 * 60_000);
+  const { rows } = await scene.world.kernel.views.waitingOn(simCaller(scene.world, scene.owner));
+  const lapsed = rows.flatMap((row) => (row.kind === 'delegation_lapsed' ? [row.delegation] : []));
+  expect(lapsed.map((delegation) => delegation.id)).toEqual([second.id]);
+}
+
 async function nothingWaiting(scene: Waiting): Promise<void> {
   expect(await kindsFor(scene, scene.editor)).toEqual([]);
   const agent = simAgent(scene.owner, 'builder', { interactive: true });
@@ -197,6 +206,8 @@ describe('waiting on me', () => {
   it('WB-9 waiting on me ranks gates, then lapsed delegations, then failed runs', () =>
     inWaiting(ranked));
   it('WB-9 a lapsed delegation that was renewed leaves the list', () => inWaiting(renewedLeaves));
+  it('two lapsed delegations for the same persona and harness show as one row, the latest', () =>
+    inWaiting(lapsedTwiceShownOnce));
   it('WB-9 a failed run on an item the person ran or holds is listed, and leaves when a later run starts', () =>
     inWaiting(retriedLeaves));
   it('WB-9 nothing waiting answers an empty list', () => inWaiting(nothingWaiting));

@@ -25,7 +25,12 @@ export type FlowStage = {
   readonly oldestEnteredAt: Date | null;
   readonly cost: CostTotals;
 };
-export type FlowView = { readonly harness: Harness; readonly stages: readonly FlowStage[] };
+export type FlowView = {
+  readonly harness: Harness;
+  readonly stages: readonly FlowStage[];
+  readonly capped: boolean;
+};
+export type HarnessCursor = { readonly harnessId: string; readonly cursor: number };
 export type BoardCard = {
   readonly item: ItemState;
   readonly host: CardHost;
@@ -83,6 +88,7 @@ export type PlayByPlay = {
   readonly learnings: Readonly<Record<string, EvidenceLabel>>;
 };
 export const FAILED_RUNS_LIMIT = 50;
+export const VIEW_LIMIT = 5000;
 export const WAITING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 export const PLAY_PAGE = 100;
 export type PlaneTotals = {
