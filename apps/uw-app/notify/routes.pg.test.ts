@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { principalSchema, type Principal } from '@uw/contracts';
 import { serviceTokenPrincipal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
 import { createApp } from '../app.tsx';
@@ -93,11 +94,11 @@ async function refusesStrangeEndpoints(db: Database): Promise<void> {
   expect(await endpoints(db)).toEqual([]);
 }
 
-function agentApp(db: Database): Hono<AppEnv> {
+function agentApp(db: Database, principal: Principal): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
   app.use(async (c, next) => {
     c.set('database', { db, ping: async () => undefined, release: async () => undefined });
-    c.set('principal', serviceTokenPrincipal('svc-push'));
+    c.set('principal', principal);
     c.set('now', new Date('2026-10-04T09:00:00.000Z'));
     await next();
   });
@@ -109,19 +110,29 @@ async function refusesAgents(db: Database): Promise<void> {
   const token = await send(db, { common_name: 'svc-push' }, '/key');
   expect(token.body).toEqual({ status: 'error', reason: 'unauthenticated' });
   const device = await subscription(endpointFor('agent'));
-  const answer = await agentApp(db).request(
-    '/api/push/subscriptions',
-    {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(device),
-    },
-    vapid.env,
-  );
-  expect({ status: answer.status, body: await answer.json() }).toEqual({
-    status: 403,
-    body: { status: 'error', reason: 'not_permitted' },
+  const deviceAgent = principalSchema.parse({
+    identity: 'agent:c9000000-0000-4000-8000-000000000001/laptop',
+    kind: 'agent',
+    personId: 'c9000000-0000-4000-8000-000000000001',
+    email: null,
+    grants: [],
+    interactive: true,
   });
+  for (const principal of [serviceTokenPrincipal('svc-push'), deviceAgent]) {
+    const answer = await agentApp(db, principal).request(
+      '/api/push/subscriptions',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(device),
+      },
+      vapid.env,
+    );
+    expect({ status: answer.status, body: await answer.json() }).toEqual({
+      status: 403,
+      body: { status: 'error', reason: 'not_permitted' },
+    });
+  }
   expect(await endpoints(db)).toEqual([]);
 }
 
@@ -140,6 +151,6 @@ describe.skipIf(!testServer)('the push routes', () => {
   it('answers not_wired for the key with no VAPID configuration', () =>
     withAppDatabase(keyNotWired));
 
-  it('refuses a service token at the edge and an agent principal in the route', () =>
+  it('refuses a service token at the edge, and in the route an agent principal, a device agent with a person included', () =>
     withAppDatabase(refusesAgents));
 });
