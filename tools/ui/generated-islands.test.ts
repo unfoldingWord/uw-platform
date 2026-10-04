@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
+import { eventNameSchema, harnessCommandSchemas } from '../../packages/contracts/index.ts';
 import { islandsJs, islandsPath, serviceWorkerJs } from '../../apps/uw-app/generated/islands.ts';
 
 describe('the islands bundle', () => {
@@ -12,9 +13,12 @@ describe('the islands bundle', () => {
     expect(islandsPath).toBe(`/assets/islands-${hash}.js`);
   }, 120_000);
 
-  it('turns off the schema compiler before any parse, so the policy needs no eval', () => {
+  it('turns off the schema compiler before the first contract schema is built, so the policy needs no eval', () => {
+    const names = [...Object.keys(harnessCommandSchemas), ...eventNameSchema.options];
+    const built = names.map((name) => islandsJs.indexOf(`"${name}"`)).filter((at) => at >= 0);
+    expect(built.length).toBeGreaterThan(0);
     expect(islandsJs).toMatch(/jitless:!0/);
-    expect(islandsJs.indexOf('jitless:!0')).toBeLessThan(islandsJs.indexOf('DOMContentLoaded'));
+    expect(islandsJs.indexOf('jitless:!0')).toBeLessThan(Math.min(...built));
   });
 
   it('names no kernel or database module and carries no comment', () => {

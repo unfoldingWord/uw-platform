@@ -57,27 +57,62 @@ async function morphsTheFragment(): Promise<void> {
   expect(morphed).toEqual(['main:<p>new</p>']);
 }
 
-async function newerWins(): Promise<void> {
+async function queuedAfterTheFlight(): Promise<void> {
   const dom = page('<p>old</p>');
-  const answers = [deferred(), deferred()];
+  const answers = [deferred(), deferred(), deferred()];
+  const log: string[] = [];
   let call = 0;
   const morphed: string[] = [];
   const refresher = createRefresher({
     document: dom.window.document,
-    fetch: (async () => (answers[call++] ?? deferred()).promise) as typeof fetch,
+    fetch: (async () => {
+      log.push(`fetch ${call + 1}`);
+      return (answers[call++] ?? deferred()).promise;
+    }) as typeof fetch,
     morph: (_target, text) => {
       morphed.push(text);
     },
   });
   const first = refresher.refresh();
+  log.push('trigger after the first fetch');
   const second = refresher.refresh();
   const third = refresher.refresh();
-  answers[1]?.resolve(html('newer'));
-  await second;
-  answers[0]?.resolve(html('older'));
-  await Promise.all([first, third]);
+  expect(call).toBe(1);
+  answers[0]?.resolve(html('before the change'));
+  await first;
+  await Promise.resolve();
   expect(call).toBe(2);
-  expect(morphed).toEqual(['newer']);
+  answers[1]?.resolve(html('after the change'));
+  await Promise.all([second, third]);
+  expect(log).toEqual(['fetch 1', 'trigger after the first fetch', 'fetch 2']);
+  expect(morphed).toEqual(['before the change', 'after the change']);
+  expect(call).toBe(2);
+}
+
+async function failedFlightStillQueues(): Promise<void> {
+  const dom = page('<p>old</p>');
+  let call = 0;
+  const morphed: string[] = [];
+  const failing = deferred();
+  const refresher = createRefresher({
+    document: dom.window.document,
+    fetch: (async () => {
+      call += 1;
+      if (call === 1) return failing.promise;
+      return html('after');
+    }) as typeof fetch,
+    morph: (_target, text) => {
+      morphed.push(text);
+    },
+  });
+  const first = refresher.refresh();
+  const queued = refresher.refresh();
+  failing.resolve(new Response('no', { status: 500 }));
+  await Promise.all([first, queued]);
+  expect(call).toBe(2);
+  expect(morphed).toEqual(['after']);
+  await refresher.refresh();
+  expect(call).toBe(3);
 }
 
 async function dirtyFormSurvives(): Promise<void> {
@@ -108,6 +143,10 @@ async function dirtyFormSurvives(): Promise<void> {
 
 describe('the fragment refresh', () => {
   it('a refresh asks for the main fragment and morphs it in', morphsTheFragment);
-  it('an older answer never replaces a newer one', newerWins);
+  it(
+    'a trigger during a refresh sends exactly one more request after it settles',
+    queuedAfterTheFlight,
+  );
+  it('a refresh that fails still sends the one queued after it', failedFlightStillQueues);
   it('a dirty form survives a refresh', dirtyFormSurvives);
 });

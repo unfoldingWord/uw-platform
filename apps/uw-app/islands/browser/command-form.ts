@@ -60,9 +60,9 @@ function goBusy(form: HTMLFormElement): readonly Element[] {
   return quiet;
 }
 
-function settle(form: HTMLFormElement, quieted: readonly Element[]): void {
+function settle(form: HTMLFormElement, quieted: readonly Element[], accepted: boolean): void {
   form.removeAttribute('aria-busy');
-  form.removeAttribute('data-dirty');
+  if (accepted) form.removeAttribute('data-dirty');
   for (const button of quieted) button.removeAttribute('aria-disabled');
 }
 
@@ -85,7 +85,7 @@ async function send(form: HTMLFormElement, command: string, deps: CommandDeps): 
   }
   const harness = form.getAttribute('data-harness') ?? '';
   const response = await deps
-    .fetch(`/api/harness/${harness}/commands/${command}`, {
+    .fetch(`/api/harness/${encodeURIComponent(harness)}/commands/${encodeURIComponent(command)}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'application/json' },
       body: JSON.stringify(body),
@@ -108,7 +108,7 @@ async function onSubmit(event: SubmitEvent, deps: CommandDeps): Promise<void> {
   if (command === null) return;
   const quieted = goBusy(form);
   const accepted = await send(form, command, deps);
-  settle(form, quieted);
+  settle(form, quieted, accepted);
   if (accepted) deps.afterAccepted();
 }
 

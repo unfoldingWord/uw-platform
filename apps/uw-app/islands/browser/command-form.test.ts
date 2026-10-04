@@ -124,6 +124,27 @@ async function dirtyCleared(): Promise<void> {
   expect(run.document.querySelector('form')?.hasAttribute('data-dirty')).toBe(false);
 }
 
+async function dirtyKeptOnRefusal(): Promise<void> {
+  const dom = page(claimForm());
+  const run = wired(dom, async () =>
+    Response.json({ status: 'error', requestId, reason: 'stale_head' }, { status: 409 }),
+  );
+  const input = run.document.querySelector('input[name="note"]');
+  input?.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  submit(run.document, run.document.querySelector('button'));
+  await settled();
+  expect(run.document.querySelector('form')?.hasAttribute('data-dirty')).toBe(true);
+  expect(run.document.querySelector('form')?.hasAttribute('aria-busy')).toBe(false);
+}
+
+async function harnessEncoded(): Promise<void> {
+  const dom = page(claimForm().replace(`data-harness="${harnessId}"`, 'data-harness="a/../b?c"'));
+  const run = wired(dom, async () => Response.json({ status: 'accepted', requestId }));
+  submit(run.document, run.document.querySelector('button'));
+  await settled();
+  expect(run.sent.map((sent) => sent.url)).toEqual(['/api/harness/a%2F..%2Fb%3Fc/commands/claim']);
+}
+
 describe('the command form island', () => {
   it(
     'the form goes busy before the request and shows the accepted outcome in place',
@@ -134,7 +155,12 @@ describe('the command form island', () => {
     'a gate form sends the command its submitter names, and a refused submitter sends nothing',
     submitterNamesCommand,
   );
-  it('an edited form is marked dirty and cleared after its outcome', dirtyCleared);
+  it('an edited form is marked dirty and cleared after an accepted outcome', dirtyCleared);
+  it(
+    'an edited form stays dirty after a refusal, so a refresh keeps what the person typed',
+    dirtyKeptOnRefusal,
+  );
+  it('the harness id is encoded into the command path', harnessEncoded);
 });
 
 describe('the command bodies', () => {

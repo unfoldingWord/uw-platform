@@ -6,6 +6,8 @@ import {
   pushPayload,
   pushTitle,
   safeLink,
+  shellCacheName,
+  staleCaches,
 } from './sw-core.ts';
 
 const assets = [
@@ -16,7 +18,7 @@ const assets = [
 ];
 
 describe('the service worker core', () => {
-  it('WB-7 a push opens its same-origin link and nothing else', () => {
+  it('a push opens its same-origin link and nothing else', () => {
     expect(safeLink('/harnesses/a/gates/b')).toBe('/harnesses/a/gates/b');
     for (const unsafe of [
       'https://evil.example/x',
@@ -38,7 +40,7 @@ describe('the service worker core', () => {
 });
 
 describe('the push notification', () => {
-  it("WB-7 a push's title follows its reason and never its content", () => {
+  it("a push's title follows its reason and never its content", () => {
     const sent = {
       harness: 'h',
       reason: 'gate_waiting',
@@ -67,10 +69,22 @@ describe('the push notification', () => {
 });
 
 describe('the worker cache', () => {
-  it('WB-7 the worker caches only the shell assets', () => {
+  it('the worker caches only the shell assets', () => {
     for (const path of assets) expect(isShellAsset(path, assets)).toBe(true);
     for (const path of ['/', '/gates', '/api/harness/x/events', '/sw.js', '/assets/other.js']) {
       expect(isShellAsset(path, assets)).toBe(false);
     }
+  });
+});
+
+describe('the worker cache name', () => {
+  it('follows the shell assets, so a new build leaves the old cache to be deleted', () => {
+    const next = ['/assets/app-ba9876543210.css', ...assets.slice(1)];
+    expect(shellCacheName(assets)).toBe(shellCacheName([...assets]));
+    expect(shellCacheName(next)).not.toBe(shellCacheName(assets));
+    expect(staleCaches(['other', shellCacheName(assets), shellCacheName(next)], next)).toEqual([
+      'other',
+      shellCacheName(assets),
+    ]);
   });
 });
