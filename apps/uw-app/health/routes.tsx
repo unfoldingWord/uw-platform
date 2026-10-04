@@ -4,12 +4,14 @@ import { refuse } from '../http/outcomes.ts';
 import { healthListScreen } from '../views/screens/health-list.tsx';
 import { healthScreen } from '../views/screens/health.tsx';
 import { platformKernel } from '../kernel.ts';
-import { agentPlaneIndicators } from './agent-plane.ts';
+import { AGENT_PLANE_INDICATORS, agentPlaneIndicators } from './agent-plane.ts';
 import { cachedHubHealth, type HubHealth } from './hub.ts';
 import { healthReport, overallStatus } from './indicators.ts';
 import { spendCapOf } from './spend-cap.ts';
 
 type HealthDeps = Pick<AppDeps, 'clock' | 'timers'>;
+
+const drillThrough = `/:indicator{${AGENT_PLANE_INDICATORS.join('|')}}`;
 
 function platformReport(c: Context<AppEnv>, deps: HealthDeps, hubHealth: HubHealth) {
   const probe = { clock: () => Date.now(), timers: deps.timers, hubHealth };
@@ -44,6 +46,6 @@ export function healthScreenRoutes(deps: HealthDeps): Hono<AppEnv> {
     }
     return c.json(report);
   });
-  routes.get('/:indicator', healthListScreen);
+  routes.get(drillThrough, healthListScreen);
   return routes;
 }
