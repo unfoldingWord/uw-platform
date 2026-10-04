@@ -1,7 +1,7 @@
 import type { Context } from 'hono';
 import type { Child } from 'hono/jsx';
 import { formatInstant } from '@uw/core/dates';
-import { formatMoney } from '@uw/core/money';
+import { formatCount, formatMoney } from '@uw/core/money';
 import type { PlaneIndicator } from '@uw/harness';
 import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
@@ -34,7 +34,7 @@ function isPlane(name: string): name is PlaneIndicator {
 
 function cellText(value: string | number | null): string {
   if (value === null) return 'None';
-  return typeof value === 'number' ? String(value) : value;
+  return typeof value === 'number' ? formatCount(value) : value;
 }
 
 async function planeListing(screen: ScreenKernel, indicator: PlaneIndicator): Promise<Listing> {

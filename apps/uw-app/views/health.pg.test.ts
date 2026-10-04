@@ -71,6 +71,19 @@ async function readableRows(world: BoardWorld): Promise<void> {
   );
 }
 
+async function countsFormatted(world: BoardWorld): Promise<void> {
+  const document = await documentOf(world, healthPath('runs_today'));
+  const headers = [...document.querySelectorAll('main table thead th')].map(
+    (cell) => cell.textContent,
+  );
+  const column = headers.indexOf('Tokens');
+  expect(column).toBeGreaterThan(-1);
+  const tokens = [...document.querySelectorAll('main table tbody tr')].map(
+    (row) => row.querySelectorAll('td, th')[column]?.textContent,
+  );
+  expect([...tokens].sort()).toEqual(['1,200', '3,000']);
+}
+
 async function unknownIndicators(world: BoardWorld): Promise<void> {
   const page = (path: string) => getHtml(world.db, world.ianEmail, path, {}, clock);
   const missing = await page(healthPath('nowhere'));
@@ -118,6 +131,8 @@ describe.skipIf(!testServer)('/health and its drill-through', () => {
   it('WB-10 every person sees the same aggregates, whatever their grants', () =>
     inHealth(sameForEveryone));
   it('WB-10 a drill-through lists only rows the person can read', () => inHealth(readableRows));
+  it('a drill-through writes its counts with thousands separators', () =>
+    inHealth(countsFormatted));
   it('an unknown indicator, even one that starts or ends with a known name, answers the not-found page', () =>
     inHealth(unknownIndicators));
   it('WB-10 /health renders in the shell with no screen problems', () => inHealth(inTheShell));
