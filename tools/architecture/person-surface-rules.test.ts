@@ -149,6 +149,30 @@ const surfaceRefusals: [string, string, string, string][] = [
   ],
 ];
 
+describe('confirmation is reached only from the page routes', () => {
+  const confirm = { 'apps/uw-app/pages/confirm.ts': leaf };
+
+  it.each([
+    ['the MCP verbs', 'apps/uw-app/mcp/verbs/write-page.ts', "import '../../pages/confirm.ts';"],
+    ['the agent page writer', 'apps/uw-app/pages/agent-write.ts', "import './confirm.ts';"],
+    ['the command API', 'apps/uw-app/commands/dispatch.ts', "import '../pages/confirm.ts';"],
+  ])('refuses %s importing it', async (_name, path, source) => {
+    const found = await violations({ ...confirm, [path]: source });
+    expect(found.map((violation) => violation.rule)).toContain(
+      'confirm-page-only-from-page-routes',
+    );
+  });
+
+  it('allows the page routes and a test', async () => {
+    const found = await violations({
+      ...confirm,
+      'apps/uw-app/pages/routes.ts': "import './confirm.ts';",
+      'apps/uw-app/pages/confirm.pg.test.ts': "import './confirm.ts';",
+    });
+    expect(found).toEqual([]);
+  });
+});
+
 describe('the person gate kernel and the person surface', () => {
   it.each(surfaceRefusals)('refuse %s', async (_name, path, source, rule) => {
     const found = await violations({ ...personSurface, [path]: source });
