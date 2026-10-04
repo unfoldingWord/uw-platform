@@ -31,6 +31,7 @@ const gateReach = [
   /\b(?:createStage|updateStage|reorderStages|removeStage)\s*\(/,
   /\.repair\s*\??\./,
   /\.delegations\s*\??\.\s*(?:grant|revoke|write)\b/,
+  /\.personas\s*\??\.\s*activate\b/,
   /\bexitThroughConnector\b/,
   /\bconnectors\s*\??\./,
   /\[\s*['"`](?:gates|stages|repair|connectors)['"`]\s*\]/,
@@ -43,6 +44,7 @@ const personSurfaceCalls = [
   /\bkernel\s*\??\.\s*gates\s*\??\.\s*\w+\s*\(/g,
   /\bkernel\s*\??\.\s*stages\s*\??\.\s*\w+\s*\(/g,
   /\bkernel\s*\??\.\s*delegations\s*\??\.\s*(?:grant|revoke)\s*\(/g,
+  /\bkernel\s*\??\.\s*personas\s*\??\.\s*activate\s*\(/g,
 ];
 
 const handlerBuilder = /\b(?:gatedHandler|rowFilteredHandler)\s*\(/;

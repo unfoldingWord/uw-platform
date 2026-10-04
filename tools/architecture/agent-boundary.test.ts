@@ -180,6 +180,7 @@ const carvedOut = [
   'await context.kernel.stages.createStage(caller, input);',
   'await kernel.delegations.grant(caller, input);',
   'await kernel.delegations.revoke(caller, input);',
+  'await context.kernel.personas.activate(caller, input);',
 ];
 
 const notCarvedOut = [
@@ -193,6 +194,7 @@ const notCarvedOut = [
   'await exitThroughConnector(ports, context, pending);',
   'await tx.delegations.write.insert(row);',
   'await stages.removeStage(caller, input);',
+  'const activate = kernel.personas.activate;',
 ];
 
 const personSneak = 'apps/uw-app/commands/person/sneak.ts';
@@ -201,6 +203,12 @@ describe('AB-7 a planted gate touch outside the person surface fails, and a plan
   it('flags a gate decision in a command handler outside the person surface', () => {
     const file = 'apps/uw-app/commands/handlers/sneak.ts';
     expect(touchedWith(underRegistry(file, carvedOut[0] ?? ''))).toEqual([file]);
+  });
+
+  it('flags a persona activation in a command handler outside the person surface', () => {
+    const file = 'apps/uw-app/commands/handlers/activate.ts';
+    const text = 'await kernel.personas.activate(caller, input);';
+    expect(touchedWith(underRegistry(file, text))).toEqual([file]);
   });
 
   it('flags a gate decision in a file that only shares the person surface prefix', () => {
