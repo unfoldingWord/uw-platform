@@ -47,12 +47,16 @@ async function gateOf(screen: ScreenKernel, scene: ItemScene): Promise<PanelGate
 export async function gateScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   if (screen === null) return screenRefusal(c);
+  const named = idParam(c.req.param('harnessId'));
+  const read = { at: screen.at };
+  const cursor =
+    named === null
+      ? 0
+      : await screen.kernel.views.cursor(screen.caller, { harnessId: named }, read);
   const scene = await sceneOf(c, screen);
   const gate = scene === null ? null : await gateOf(screen, scene);
   if (scene === null || gate === null) return notFound(c);
   const { harness, item } = scene;
-  const read = { at: screen.at };
-  const cursor = await screen.kernel.views.cursor(screen.caller, { harnessId: harness.id }, read);
   const notice = noticeOf(scene, gate);
   const spec = {
     title: `${item.title} gate`,

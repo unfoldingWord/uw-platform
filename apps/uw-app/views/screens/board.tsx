@@ -141,6 +141,7 @@ export async function boardScreen(c: Context<AppEnv>): Promise<Response> {
   const input = harnessId === null ? null : boardInput(c, harnessId);
   if (harnessId === null || input === null) return notFound(c);
   const read = { at: screen.at };
+  const cursor = await screen.kernel.views.cursor(screen.caller, { harnessId }, read);
   const outcome = await screen.kernel.views.board(screen.caller, input, read);
   if (outcome.status !== 'accepted') return notFound(c);
   const board = outcome.value;
@@ -150,7 +151,6 @@ export async function boardScreen(c: Context<AppEnv>): Promise<Response> {
     ...board,
     stages: [...stages].sort((left, right) => left.position - right.position),
   };
-  const cursor = await screen.kernel.views.cursor(screen.caller, { harnessId }, read);
   const viewer = viewerOf(screen.caller.actor, view, screen.at);
   const firstKey = view.stages[0]?.key;
   return renderScreen(

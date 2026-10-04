@@ -6,6 +6,7 @@ import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { showsDecisions } from '../parts/decider.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
+import { liveCursors } from '../parts/cursors.ts';
 import { GatePanel, type PanelGate } from '../parts/gate-panel.tsx';
 import { gatePath, gatesPath, homePath } from '../parts/paths.ts';
 
@@ -27,16 +28,6 @@ async function panelsOf(screen: ScreenKernel, rows: readonly GateRow[]): Promise
     shown.push({ row, gate: { view: view.value, title, ability, decides } });
   }
   return shown;
-}
-
-async function cursorsOf(screen: ScreenKernel, harnessIds: readonly string[]) {
-  const harnesses = [];
-  for (const harnessId of new Set(harnessIds)) {
-    const read = { at: screen.at };
-    const cursor = await screen.kernel.views.cursor(screen.caller, { harnessId }, read);
-    harnesses.push({ harnessId, cursor });
-  }
-  return harnesses;
 }
 
 function lede(count: number): string {
@@ -68,10 +59,11 @@ function GateList(props: { readonly shown: readonly Shown[] }) {
 export async function gatesScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   if (screen === null) return screenRefusal(c);
+  const cursors = await screen.kernel.views.cursors(screen.caller, { at: screen.at });
   const rows = await screen.kernel.views.gates(screen.caller, { at: screen.at });
   const shown = await panelsOf(screen, rows);
-  const harnesses = await cursorsOf(
-    screen,
+  const harnesses = liveCursors(
+    cursors,
     shown.map(({ row }) => row.harness.id),
   );
   const spec = {
