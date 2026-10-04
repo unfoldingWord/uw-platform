@@ -178,11 +178,12 @@ async function seedHolders(subject: GrantsSubject): Promise<void> {
   await given(subject, person(24), [areaGrant(25, person(24), 'admin', '30-39')]);
   await subject.revoke(grantId(25), new Date('2029-05-01T00:00:00.000Z'));
   await given(subject, person(25), [areaGrant(26, person(25), 'admin', '40-49')]);
+  await given(subject, person(27), [areaGrant(28, person(27), 'viewer', '40-49')]);
   await subject.seedPerson(person(26), 'pending');
   await subject.seedGrant(areaGrant(27, person(26), 'admin', '30-39'));
 }
 
-const holderIds = new Set([21, 22, 23, 24, 25, 26].map(person));
+const holderIds = new Set([21, 22, 23, 24, 25, 26, 27].map(person));
 
 function mineOf(holders: readonly GrantHolder[]): readonly GrantHolder[] {
   return holders.filter((holder) => holderIds.has(holder.personId));
@@ -190,12 +191,13 @@ function mineOf(holders: readonly GrantHolder[]): readonly GrantHolder[] {
 
 function describeGrantsHolders(adapter: string, subject: () => GrantsSubject): void {
   describe(`DX-3 grants port contract on ${adapter}: an area's holders`, () => {
-    it('holders lists every active person with a live grant on the area or the org, with all their live grants', async () => {
+    it('holders lists every active person whose live grants can read the area, with all their live grants', async () => {
       await seedHolders(subject());
       const holders = mineOf(await subject().grants.holders('30-39', at));
       expect(holders.map((holder) => [holder.personId, ids(holder.grants)])).toEqual([
         [person(21), [grantId(21), grantId(22)]],
         [person(22), [grantId(23)]],
+        [person(25), [grantId(26)]],
       ]);
       expect(holders[0]?.email).toBe(`${person(21)}@fixture.unfoldingword.org`);
     });

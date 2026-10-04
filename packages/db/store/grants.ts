@@ -1,5 +1,7 @@
 import { and, asc, eq, gt, isNull, or, type SQL } from 'drizzle-orm';
 import { grantSchema, type Grant, type JdArea } from '@uw/contracts';
+import { can } from '@uw/core/acl';
+import { personPrincipal } from '@uw/core/principal';
 import type { AnyDatabase, AnyExecutor } from '../any-database.ts';
 import { people, roleGrants } from '../schema.ts';
 import { outsideOpenTransaction } from './open-transactions.ts';
@@ -45,11 +47,9 @@ type GrantHolder = {
   readonly grants: readonly Grant[];
 };
 
-function onArea(area: JdArea): SQL | undefined {
-  return or(
-    eq(roleGrants.scopeKind, 'org'),
-    and(eq(roleGrants.scopeKind, 'jd_area'), eq(roleGrants.scopeArea, area)),
-  );
+function readerOf(area: JdArea, at: Date) {
+  return (holder: GrantHolder): boolean =>
+    can(personPrincipal({ ...holder, interactive: true }), 'read', { kind: 'area', area }, at);
 }
 
 async function areaHolders(db: AnyExecutor, area: JdArea, at: Date): Promise<GrantHolder[]> {
@@ -57,13 +57,13 @@ async function areaHolders(db: AnyExecutor, area: JdArea, at: Date): Promise<Gra
     .selectDistinct({ personId: people.id, email: people.email })
     .from(roleGrants)
     .innerJoin(people, eq(people.id, roleGrants.personId))
-    .where(and(eq(people.status, 'active'), liveGrant(at), onArea(area)))
+    .where(and(eq(people.status, 'active'), liveGrant(at)))
     .orderBy(asc(people.id));
   const holders: GrantHolder[] = [];
   for (const row of rows) {
     holders.push({ ...row, grants: await resolveGrants(db, row.personId, { at }) });
   }
-  return holders;
+  return holders.filter(readerOf(area, at));
 }
 
 export type DrizzleGrants = {
