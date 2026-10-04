@@ -7,6 +7,8 @@ import { describeStoreRuns } from './store-runs.ts';
 import { describeStoreBoundedReads } from './store-bounded-reads.ts';
 import { describeStoreFailedFor } from './store-failed-for.ts';
 import { describeStoreViews } from './store-views.ts';
+import { describeStoreMeasurements } from './store-measurements.ts';
+import { describeStorePersonas, type PageVersionRow } from './store-personas.ts';
 
 export type StoreShape = { readonly concurrentConnections: boolean };
 
@@ -14,6 +16,7 @@ export type StoreSubject = {
   readonly store: Store;
   readonly expectedMigrations: readonly number[];
   seedPage(page: SeededPage): Promise<void>;
+  pageVersions(pageId: string): Promise<readonly PageVersionRow[]>;
   advisoryLocksHeld(tx: StoreTransaction): Promise<number>;
   readonly lockWaiters?: LockWaiters;
   close(): Promise<void>;
@@ -31,7 +34,9 @@ const transactionMembers = [
   'harnesses',
   'lock',
   'lockShared',
+  'measurements',
   'pages',
+  'personas',
 ];
 
 function outcomeOf(result: PromiseSettledResult<unknown>): string {
@@ -276,6 +281,8 @@ export function describeStoreContract(
     describeStoreViews(adapter, subject);
     describeStoreFailedFor(adapter, subject);
     describeStoreBoundedReads(adapter, subject);
+    describeStorePersonas(adapter, subject);
+    describeStoreMeasurements(adapter, subject);
   });
 }
 

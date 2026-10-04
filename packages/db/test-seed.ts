@@ -10,6 +10,7 @@ import {
   harnessStages,
   harnesses,
   pages,
+  pageVersions,
   people,
   roleGrants,
 } from './schema.ts';
@@ -184,6 +185,21 @@ export type SeedPage = {
 
 export async function seedPage(db: AnyExecutor, page: SeedPage): Promise<void> {
   await db.insert(pages).values({ parentId: null, frontmatter: {}, ...page, version: 1 });
+}
+
+export async function pageVersionsOf(db: AnyExecutor, pageId: string) {
+  const rows = await db
+    .select({
+      version: pageVersions.version,
+      status: pageVersions.status,
+      editSource: pageVersions.editSource,
+      traceId: pageVersions.traceId,
+      frontmatterStatus: sql<unknown>`${pageVersions.frontmatter}->'status'`,
+    })
+    .from(pageVersions)
+    .where(eq(pageVersions.pageId, pageId))
+    .orderBy(pageVersions.version);
+  return rows;
 }
 
 export async function dropDecisionNext(db: AnyExecutor, itemId: string): Promise<void> {

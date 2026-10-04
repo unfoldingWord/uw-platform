@@ -5,7 +5,14 @@ import { oneOf } from '../checks.ts';
 import { delegations, harnessItems, harnessRuns } from '../schema.ts';
 import { refusing } from './refusal.ts';
 import { toRun } from './rows.ts';
-import type { HarnessRunsGateway, ItemCost, RunCount, RunRow, RunSpend } from './types.ts';
+import type {
+  HarnessRunsGateway,
+  ItemCost,
+  PersonaRunQuery,
+  RunCount,
+  RunRow,
+  RunSpend,
+} from './types.ts';
 
 const liveOutcomes = ['running', 'hibernated'];
 
@@ -91,6 +98,22 @@ export function startedSinceQuery(executor: AnyExecutor, since: Date, limit: num
     .where(gte(harnessRuns.startedAt, since))
     .orderBy(asc(harnessRuns.startedAt), asc(harnessRuns.id))
     .limit(checkedLimit(limit));
+}
+
+async function forPersona(executor: AnyExecutor, query: PersonaRunQuery): Promise<RunRow[]> {
+  const rows = await executor
+    .select()
+    .from(harnessRuns)
+    .where(
+      and(
+        eq(harnessRuns.persona, query.identity),
+        eq(harnessRuns.harnessId, query.harnessId),
+        query.since === null ? undefined : gte(harnessRuns.startedAt, query.since),
+      ),
+    )
+    .orderBy(desc(harnessRuns.startedAt), asc(harnessRuns.id))
+    .limit(checkedLimit(query.limit));
+  return rows.map(toRun);
 }
 
 function ownedBy(personId: string): SQL {
@@ -210,6 +233,7 @@ export function bindRuns(executor: AnyExecutor): HarnessRunsGateway {
       spendSince: (since) => spendSince(executor, since),
       runCountsSince: (since) => runCountsSince(executor, since),
       costsByItem: (itemIds) => costsByItem(executor, itemIds),
+      forPersona: (query) => forPersona(executor, query),
     },
     write: {
       insert: (run) =>

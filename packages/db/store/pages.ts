@@ -8,10 +8,10 @@ import {
 } from '@uw/contracts';
 import { isoDateSchema } from '@uw/core/dates';
 import type { AnyExecutor } from '../any-database.ts';
-import { pages } from '../schema.ts';
-import type { PageFacts, PagesGateway } from './types.ts';
+import { pages, pageVersions } from '../schema.ts';
+import type { PageFacts, PagesGateway, PersonaActivation } from './types.ts';
 
-const factColumns = {
+export const factColumns = {
   id: pages.id,
   type: pages.type,
   status: pages.status,
@@ -24,9 +24,13 @@ const factColumns = {
 
 type FactRow = { [K in keyof typeof factColumns]: (typeof factColumns)[K]['_']['data'] };
 
-function toFacts(row: FactRow): PageFacts {
+export function toFacts(row: FactRow): PageFacts {
   return {
-    ...row,
+    id: row.id,
+    jdArea: row.jdArea,
+    title: row.title,
+    bodyMd: row.bodyMd,
+    version: row.version,
     type: pageTypeSchema.parse(row.type),
     status: pageStatusSchema.parse(row.status),
     frontmatter: frontmatterSchema.parse(row.frontmatter),
@@ -100,6 +104,45 @@ async function staleLearnings(
   return rows.map(toFacts);
 }
 
+async function activatePersona(
+  executor: AnyExecutor,
+  activation: PersonaActivation,
+): Promise<PageFacts | null> {
+  const [row] = await executor
+    .update(pages)
+    .set({
+      status: 'active',
+      version: sql`${pages.version} + 1`,
+      frontmatter: sql`jsonb_set(${pages.frontmatter}, '{status}', '"active"')`,
+      updatedAt: sql`now()`,
+    })
+    .where(
+      and(
+        eq(pages.id, activation.pageId),
+        eq(pages.type, 'persona'),
+        eq(pages.status, 'suggested'),
+        eq(pages.version, activation.expectedVersion),
+      ),
+    )
+    .returning();
+  if (row === undefined) return null;
+  await executor.insert(pageVersions).values({
+    pageId: row.id,
+    version: row.version,
+    type: row.type,
+    jdArea: row.jdArea,
+    slug: row.slug,
+    title: row.title,
+    parentId: row.parentId,
+    frontmatter: row.frontmatter,
+    bodyMd: row.bodyMd,
+    status: row.status,
+    editSource: activation.editSource,
+    traceId: activation.traceId,
+  });
+  return toFacts(row);
+}
+
 export function bindPages(executor: AnyExecutor): PagesGateway {
   return {
     read: {
@@ -110,5 +153,6 @@ export function bindPages(executor: AnyExecutor): PagesGateway {
       activePersona: (identity, harnessId) => activePersona(executor, identity, harnessId),
       staleLearnings: (today, limit) => staleLearnings(executor, today, limit),
     },
+    write: { activatePersona: (activation) => activatePersona(executor, activation) },
   };
 }

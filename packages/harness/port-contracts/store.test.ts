@@ -17,6 +17,8 @@ const refusingTransaction: StoreTransaction = {
   gateDecisions: untouched(),
   delegations: untouched(),
   pages: untouched(),
+  personas: untouched(),
+  measurements: untouched(),
 };
 
 const lockRefused: Store = {

@@ -36,6 +36,8 @@ function tracking(tx: StoreTransaction, appended: HarnessEvent[]): StoreTransact
     gateDecisions: tx.gateDecisions,
     delegations: tx.delegations,
     pages: tx.pages,
+    personas: tx.personas,
+    measurements: tx.measurements,
   };
   originals.set(tracked, tx);
   return tracked;

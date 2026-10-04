@@ -2,6 +2,8 @@ import type {
   CapabilityWord,
   CostBasis,
   Engine,
+  EventEvidence,
+  EventName,
   BreakerLevel,
   GateDecision,
   Harness,
@@ -19,6 +21,8 @@ import type {
   RunStepRecord,
   Stage,
 } from '@uw/contracts';
+
+type DataSourceKind = EventEvidence['measurement_recorded']['source'];
 
 export type ItemClaim = {
   readonly itemId: string;
@@ -91,12 +95,45 @@ export type HarnessItemsGateway = {
     project(item: ItemState): Promise<void>;
   };
 };
+export type PersonaActivation = {
+  readonly pageId: string;
+  readonly expectedVersion: number;
+  readonly editSource: Identity;
+  readonly traceId: string;
+};
 export type PagesGateway = {
   readonly read: {
     facts(pageIds: readonly string[]): Promise<readonly PageFacts[]>;
     activePersona(identity: Identity, harnessId: string): Promise<PageFacts | null>;
     staleLearnings(today: string, limit: number): Promise<readonly PageFacts[]>;
   };
+  readonly write: { activatePersona(activation: PersonaActivation): Promise<PageFacts | null> };
+};
+export type PersonaRow = {
+  readonly identity: Identity;
+  readonly harnessId: string;
+  readonly pageId: string;
+};
+export type PersonasGateway = {
+  readonly read: {
+    byIdentity(identity: Identity): Promise<PersonaRow | null>;
+    active(identity: Identity, harnessId: string): Promise<PageFacts | null>;
+  };
+  readonly write: { upsert(row: PersonaRow): Promise<void> };
+};
+export type MeasurementRow = {
+  readonly id: string;
+  readonly harnessId: string;
+  readonly itemId: string;
+  readonly source: DataSourceKind;
+  readonly name: string;
+  readonly value: number;
+  readonly asOf: string;
+  readonly recordedAt: Date;
+};
+export type MeasurementsGateway = {
+  readonly read: { forItem(itemId: string, limit: number): Promise<readonly MeasurementRow[]> };
+  readonly write: { insert(row: MeasurementRow): Promise<void> };
 };
 export type BreakerEventName = `breaker_${BreakerLevel}`;
 export type EventQuery = {
@@ -114,8 +151,15 @@ export type RecentEvents = {
   readonly agentsOnly: boolean;
   readonly limit: number;
 };
+export type PersonaEventCount = {
+  readonly harnessId: string;
+  readonly personaSlug: string;
+  readonly names: readonly EventName[];
+  readonly since: Date;
+};
 export type HarnessEventsGateway = {
   readonly read: {
+    countForPersona(query: PersonaEventCount): Promise<ReadonlyMap<EventName, number>>;
     page(query: EventQuery): Promise<EventPage>;
     createdFor(actor: string, requestId: string): Promise<string | null>;
     latestNamed(
@@ -228,8 +272,15 @@ export type RunCount = {
   readonly engine: Engine;
   readonly count: number;
 };
+export type PersonaRunQuery = {
+  readonly identity: Identity;
+  readonly harnessId: string;
+  readonly since: Date | null;
+  readonly limit: number;
+};
 export type HarnessRunsGateway = {
   readonly read: {
+    forPersona(query: PersonaRunQuery): Promise<readonly RunRow[]>;
     byId(runId: string): Promise<RunRow | null>;
     lock(runId: string): Promise<RunRow | null>;
     liveForItem(itemId: string): Promise<RunRow | null>;
@@ -263,4 +314,6 @@ export type DrizzleTransaction = {
   readonly gateDecisions: GateDecisionsGateway;
   readonly delegations: DelegationsGateway;
   readonly pages: PagesGateway;
+  readonly personas: PersonasGateway;
+  readonly measurements: MeasurementsGateway;
 };

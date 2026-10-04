@@ -88,6 +88,7 @@ function eventsGateway(appended: HarnessEvent[]): HarnessEventsGateway {
       recent: unused,
       lastPosition: unused,
       lastPositions: unused,
+      countForPersona: unused,
     },
     write: {
       append: async (events: readonly NewHarnessEvent[]) => {

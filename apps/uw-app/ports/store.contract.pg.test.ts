@@ -3,7 +3,7 @@ import { createClient } from '@uw/db/client';
 import { migrationTimestamps } from '@uw/db/journal';
 import { advisoryLocksHeld, lockWaiters } from '@uw/db/store';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
-import { seedPage } from '@uw/db/test-seed';
+import { pageVersionsOf, seedPage } from '@uw/db/test-seed';
 import { describeStoreContract } from '@uw/harness/port-contracts/store';
 import { platformStore } from './store.ts';
 
@@ -17,6 +17,7 @@ describe.skipIf(!testServer)('DX-3 the platform store on Postgres', () => {
         store: platformStore(db),
         expectedMigrations: migrationTimestamps,
         seedPage: (page) => seedPage(db, page),
+        pageVersions: (pageId) => pageVersionsOf(db, pageId),
         advisoryLocksHeld,
         lockWaiters: () => lockWaiters(db),
         close: async () => {
