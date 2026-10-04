@@ -5,6 +5,7 @@ import { createEventReads, type EventReads } from './items/events.ts';
 import { createItemCommands, type ItemCommands } from './items/commands.ts';
 import { replay } from './items/fold.ts';
 import { createRepairCommands, type RepairCommands } from './items/repair.ts';
+import { createMeasurementCommands, type MeasurementCommands } from './measurements/commands.ts';
 import { createPersonaCommands, type PersonaCommands } from './personas/commands.ts';
 import type { Ports } from './ports.ts';
 import { notifyCommitted, type AfterCommit } from './notify/after-commit.ts';
@@ -31,6 +32,7 @@ export type Kernel = {
   readonly delegations: DelegationCommands;
   readonly gates: GateCommands;
   readonly personas: PersonaCommands;
+  readonly measurements: MeasurementCommands;
   readonly runs: RunCommands;
   readonly breaker: BreakerCommands;
   readonly health: () => Promise<KernelHealth>;
@@ -62,6 +64,7 @@ export function createKernel(ports: Ports): Kernel {
     delegations: createDelegationCommands(live),
     gates: createGateCommands(live),
     personas: createPersonaCommands(live),
+    measurements: createMeasurementCommands(live),
     runs: createRunCommands(live),
     breaker: createBreakerCommands(live),
     health: async () => ({

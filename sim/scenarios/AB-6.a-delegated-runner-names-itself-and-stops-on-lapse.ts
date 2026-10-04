@@ -72,7 +72,7 @@ async function cast(world: World): Promise<Cast> {
     await world.kernel.stages.updateStage(simCaller(world, admin), {
       harnessId: harness.id,
       stageKey: 'package',
-      change: { agentPickup: 'allowed' },
+      change: { agentPickup: 'allowed', bracket: 'iterate' },
     }),
   );
   const kim = await simPerson(world, 4, [

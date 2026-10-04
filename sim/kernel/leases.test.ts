@@ -43,7 +43,7 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
     await world.kernel.stages.updateStage(simCaller(world, await simIan(world)), {
       harnessId: harness.id,
       stageKey: 'package',
-      change: { agentPickup: 'allowed' },
+      change: { agentPickup: 'allowed', bracket: 'iterate' },
     });
     const kim = await simPerson(world, 4, [{ role: 'admin', ...area }]);
     const max = await simPerson(world, 6, [{ role: 'editor', ...area }]);

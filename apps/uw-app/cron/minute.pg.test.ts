@@ -77,7 +77,7 @@ async function agentItem(rig: Rig, title: string): Promise<string> {
   const admin = await ian(rig.db);
   const kernel = kernelOn(rig.db, { now: () => new Date() });
   const { harnessId } = rig;
-  const change = { agentPickup: 'allowed' as const };
+  const change = { agentPickup: 'allowed' as const, bracket: 'build_package' as const };
   accepted(
     await kernel.stages.updateStage(callerOf(admin), { harnessId, stageKey: 'package', change }),
   );

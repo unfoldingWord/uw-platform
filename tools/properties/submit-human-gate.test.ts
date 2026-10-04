@@ -75,7 +75,7 @@ async function delegated(world: World, owner: Principal, harnessId: string): Pro
   const granted = await simDelegate(world, owner, {
     harnessId,
     persona: 'agent:builder',
-    capability: 'iterate',
+    capability: 'build',
     expiresAt: null,
     supersedes: null,
   });

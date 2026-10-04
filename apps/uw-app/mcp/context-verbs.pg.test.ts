@@ -486,7 +486,7 @@ describe.skipIf(!testServer)(
 
     it('refuses a query outside the whitelist and parameters that do not parse', async () => {
       const tool = await runner(rig(), EDITOR.email);
-      for (const query of ['drop_tables', 'measurements_for_item', 'constructor']) {
+      for (const query of ['drop_tables', 'measurements', 'constructor']) {
         const refused = await tool('query_entities', { query, params: {} });
         expect(refused).toEqual(malformed({ why: 'unknown_query' }));
       }

@@ -60,7 +60,7 @@ async function harnesses(world: World): Promise<readonly [string, string]> {
   await world.kernel.stages.updateStage(simCaller(world, await simIan(world)), {
     harnessId: harness.id,
     stageKey: 'package',
-    change: { agentPickup: 'allowed' },
+    change: { agentPickup: 'allowed', bracket: 'iterate' },
   });
   return [harness.id, other.harness.id];
 }
@@ -90,7 +90,11 @@ async function sceneOf(world: World): Promise<Scene> {
     none: await delegate(world, kim, harnessId, 'none'),
     other: await delegate(world, kim, otherHarnessId, 'iterate'),
   };
-  await seedActivePersona(world.database.db, { identity: 'agent:builder', harnessId });
+  await seedActivePersona(world.database.db, {
+    identity: 'agent:builder',
+    harnessId,
+    frontmatter: { capability: 'iterate' },
+  });
   const agent = simCaller(world, simAgent(kim, 'builder', { interactive: false }));
   return { world, harnessId, otherHarnessId, itemId: value(item).itemId, agent, delegations };
 }

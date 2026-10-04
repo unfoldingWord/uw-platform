@@ -1,6 +1,7 @@
 import { heldForPerson } from '../items/held-for-person.ts';
 import {
   delegationIdOf,
+  type CapabilityWord,
   type Grant,
   type Harness,
   type ItemState,
@@ -9,6 +10,7 @@ import {
 } from '@uw/contracts';
 import { allowed, bareAgent, isAgent, ownerBound } from '../access.ts';
 import { beatPrincipal } from '../delegations/beat.ts';
+import { capabilityReaches, pageAgrees } from '../delegations/capability.ts';
 import { leaseLapsed } from '../items/leases.ts';
 import { activePersonaOn } from '../personas/projection.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
@@ -31,7 +33,11 @@ export type PollItem = {
 export type PollInput = { readonly harnessId: string | null; readonly limit: number };
 
 type Form = 'delegated' | 'persona' | 'other';
-type Judged = { readonly harness: Harness; readonly principal: Principal };
+type Judged = {
+  readonly harness: Harness;
+  readonly principal: Principal;
+  readonly reach: ReadonlySet<CapabilityWord> | null;
+};
 type Subscription = (
   ports: ScenePorts,
   tx: StoreTransaction,
@@ -47,8 +53,16 @@ async function judgedBy(
 ): Promise<Judged | null> {
   const harness = await tx.harnesses.read.byId(delegation.harnessId);
   if (harness === null) return null;
-  if ((await activePersonaOn(tx, delegation.persona, harness.id)) === null) return null;
-  return { harness, principal: beatPrincipal(delegation, grants, harness.jdArea, at) };
+  const page = await activePersonaOn(tx, delegation.persona, harness.id);
+  if (page === null || !pageAgrees(page, delegation)) return null;
+  const principal = beatPrincipal(delegation, grants, harness.jdArea, at);
+  return { harness, principal, reach: new Set([delegation.capability]) };
+}
+
+function joined(earlier: Judged | undefined, found: Judged): Judged {
+  if (earlier === undefined) return found;
+  if (earlier.reach === null || found.reach === null) return earlier;
+  return { ...earlier, reach: new Set([...earlier.reach, ...found.reach]) };
 }
 
 const delegated: Subscription = async (ports, tx, actor, at) => {
@@ -62,9 +76,8 @@ const delegated: Subscription = async (ports, tx, actor, at) => {
 const persona: Subscription = async (ports, tx, actor, at) => {
   const judged = new Map<string, Judged>();
   for (const { delegation, grants } of await workingDelegations(ports, tx, actor, null, at)) {
-    if (judged.has(delegation.harnessId)) continue;
     const found = await judgedBy(tx, delegation, grants, at);
-    if (found !== null) judged.set(found.harness.id, found);
+    if (found !== null) judged.set(found.harness.id, joined(judged.get(found.harness.id), found));
   }
   return [...judged.values()];
 };
@@ -75,7 +88,7 @@ const other: Subscription = async (ports, tx, actor, at) => {
     actor.personId === null ? [] : await ports.grants.resolveIn(tx, actor.personId, at);
   const principal = { ...actor, grants: [...grants] };
   const harnesses = await tx.harnesses.read.list();
-  return harnesses.map((harness) => ({ harness, principal }));
+  return harnesses.map((harness) => ({ harness, principal, reach: null }));
 };
 
 const subscriptions: ReadonlyMap<Form, Subscription> = new Map<Form, Subscription>([
@@ -89,22 +102,29 @@ function formOf(actor: Principal): Form {
   return bareAgent(actor.identity) ? 'persona' : 'other';
 }
 
-function claimable(stages: readonly Stage[], item: ItemState, at: Date): boolean {
+function reachable(stage: Stage, reach: ReadonlySet<CapabilityWord> | null): boolean {
+  if (reach === null) return true;
+  return [...reach].some((capability) => capabilityReaches(capability, stage.bracket));
+}
+
+function claimable(stages: readonly Stage[], item: ItemState, judged: Judged, at: Date): boolean {
   const stage = stages.find((candidate) => candidate.key === item.stageKey);
   if (stage === undefined || stage.paused || stage.agentPickup === 'none') return false;
+  if (!reachable(stage, judged.reach)) return false;
   const open = item.gateStatus === 'working' || item.gateStatus === 'checks_failed';
   return open && (item.holder === null || leaseLapsed(item, at));
 }
 
 async function claimableIn(
   tx: StoreTransaction,
-  harness: Harness,
+  judged: Judged,
   at: Date,
 ): Promise<readonly ItemState[]> {
+  const { harness } = judged;
   const stages = await tx.harnessStages.read.forHarness(harness.id);
   const items = await tx.harnessItems.read.forHarness(harness.id);
   const open: ItemState[] = [];
-  for (const item of items.filter((candidate) => claimable(stages, candidate, at))) {
+  for (const item of items.filter((candidate) => claimable(stages, candidate, judged, at))) {
     if (!(await heldForPerson(tx, item))) open.push(item);
   }
   return open;
@@ -140,8 +160,8 @@ export async function pollQueue(
   const subscribed = await subscribe(ports, tx, actor, at);
   if ('status' in subscribed) return subscribed;
   const items: ItemState[] = [];
-  for (const { harness } of subscribed.filter(workable(input, at))) {
-    items.push(...(await claimableIn(tx, harness, at)));
+  for (const judged of subscribed.filter(workable(input, at))) {
+    items.push(...(await claimableIn(tx, judged, at)));
   }
   return accepted(items.sort(byPriorityThenId).slice(0, input.limit).map(polledItem));
 }

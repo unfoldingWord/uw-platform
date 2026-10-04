@@ -1,7 +1,7 @@
 import type { ItemState } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
-import type { KernelOutcome } from '../outcome.ts';
-import type { Ports } from '../ports.ts';
+import { accepted, type KernelOutcome } from '../outcome.ts';
+import type { MeasurementRow, Ports } from '../ports.ts';
 import type { ImportTarget } from '../items/import.ts';
 import { pollQueue, type PollInput, type PollItem } from './poll.ts';
 import { importTarget, issueImported } from './repository.ts';
@@ -18,6 +18,8 @@ import {
 } from './scene.ts';
 
 type ReadOptions = { readonly at: Date };
+
+const MEASUREMENT_LIMIT = 50;
 
 function byId(left: string, right: string): number {
   if (left === right) return 0;
@@ -63,6 +65,11 @@ export type KernelReads = {
     caller: Caller,
     input: { readonly topic: string },
   ): Promise<KernelOutcome<ZulipTarget>>;
+  measurements(
+    caller: Caller,
+    input: { readonly itemId: string },
+    options?: ReadOptions,
+  ): Promise<KernelOutcome<readonly MeasurementRow[]>>;
   namesInstructions(input: { readonly pageId: string }): Promise<boolean>;
   harnessIdsForHealth(): Promise<readonly string[]>;
 };
@@ -102,6 +109,14 @@ export function createKernelReads(ports: ReadPorts): KernelReads {
       ports.store.transaction((tx) => issueImported(tx, caller, input.githubId)),
     zulipTarget: (caller, input) =>
       ports.store.transaction((tx) => zulipTarget(tx, caller, input.topic)),
+    measurements: (caller, input, options) => {
+      const at = instant(options);
+      return ports.store.transaction(async (tx) => {
+        const scene = await itemScene(ports, tx, caller, input.itemId, at);
+        if (scene.status !== 'accepted') return scene;
+        return accepted(await tx.measurements.read.forItem(input.itemId, MEASUREMENT_LIMIT));
+      });
+    },
     namesInstructions: (input) =>
       ports.store.transaction((tx) => tx.harnessStages.read.namesInstructions(input.pageId)),
     harnessIdsForHealth: () =>

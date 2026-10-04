@@ -1,11 +1,17 @@
-import type { ItemState } from '@uw/contracts';
+import type { Harness, ItemState, PageStatus, PageType } from '@uw/contracts';
 import { allowed, isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { actingPrincipal, isRefusal } from '../delegations/acting.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
 import { expireLapsedLease, leaseLapsed } from './leases.ts';
-import { draft, recordContext, recordItemEvents, type RecordContext } from './record.ts';
+import {
+  draft,
+  recordContext,
+  recordItemEvents,
+  type EventDraft,
+  type RecordContext,
+} from './record.ts';
 import { holdsClaim } from './release.ts';
 
 type LearningPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
@@ -22,7 +28,37 @@ const lineBreak = /[\r\n]/;
 
 type Standing = {
   readonly item: ItemState;
+  readonly harness: Harness;
 };
+
+const learningTypes: ReadonlySet<PageType> = new Set<PageType>(['learning', 'skill']);
+const revisionTypes: ReadonlySet<PageType> = new Set<PageType>([
+  'product',
+  'system_goal',
+  'product_strategy',
+  'data_sources',
+]);
+const revisionStatuses: ReadonlySet<PageStatus> = new Set<PageStatus>(['draft', 'suggested']);
+
+export async function attachWithin(
+  tx: StoreTransaction,
+  harness: Pick<Harness, 'jdArea'>,
+  pageId: string,
+): Promise<Refused | EventDraft> {
+  const [page] = await tx.pages.read.facts([pageId]);
+  if (page?.jdArea !== harness.jdArea) return refused('page_not_found', { pageId });
+  if (learningTypes.has(page.type) && page.status === 'suggested') {
+    return draft('learning_attached', { pageId: page.id, kind: 'learning' });
+  }
+  if (revisionTypes.has(page.type) && revisionStatuses.has(page.status)) {
+    return draft('learning_attached', { pageId: page.id, kind: 'revision' });
+  }
+  return refused('malformed_command', { pageId: page.id, type: page.type, status: page.status });
+}
+
+export function isAttachRefusal(value: Refused | EventDraft): value is Refused {
+  return 'status' in value;
+}
 
 async function presentedDelegation(
   tx: StoreTransaction,
@@ -72,8 +108,8 @@ async function standing(
   if (!allowed(actor, 'write', harness, at)) {
     return refused('not_permitted', { harnessId: harness.id });
   }
-  if (!isAgent(caller.actor)) return { item };
-  return (await lapsedLeaseRefusal(tx, context, item)) ?? { item };
+  if (!isAgent(caller.actor)) return { item, harness };
+  return (await lapsedLeaseRefusal(tx, context, item)) ?? { item, harness };
 }
 
 function isStandingRefusal(value: Refused | Standing): value is Refused {
@@ -89,21 +125,13 @@ export function attachLearning(
   return ports.store.transaction(async (tx) => {
     const scene = await standing(ports, tx, caller, input, at);
     if (isStandingRefusal(scene)) return scene;
-    const [page] = await tx.pages.read.facts([input.pageId]);
-    if (page === undefined) return refused('page_not_found', { pageId: input.pageId });
-    const learning = page.type === 'learning' || page.type === 'skill';
-    if (!learning || page.status !== 'suggested') {
-      return refused('malformed_command', {
-        pageId: page.id,
-        type: page.type,
-        status: page.status,
-      });
-    }
+    const attached = await attachWithin(tx, scene.harness, input.pageId);
+    if (isAttachRefusal(attached)) return attached;
     const recorded = await recordItemEvents(
       tx,
       recordContext(ports, caller, at),
       scene.item.itemId,
-      [draft('learning_attached', { pageId: page.id, kind: 'learning' })],
+      [attached],
     );
     return accepted(recorded.item);
   });

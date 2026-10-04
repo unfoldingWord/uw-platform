@@ -30,7 +30,7 @@ async function seedPages(world: World): Promise<void> {
   const { db } = world.database;
   await seedPage(db, { ...base, id: learningId, type: 'learning', status: 'suggested', slug: 'a' });
   await seedPage(db, { ...base, id: activeId, type: 'learning', status: 'active', slug: 'b' });
-  await seedPage(db, { ...base, id: productId, type: 'product', status: 'suggested', slug: 'd' });
+  await seedPage(db, { ...base, id: productId, type: 'product', status: 'active', slug: 'd' });
 }
 
 async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
@@ -254,7 +254,7 @@ describe("KN-7 attaching a learning is the holder's act, or a person's with writ
 });
 
 describe('KN-7 only suggested learnings attach', () => {
-  sceneIt('KN-7 a page that is not a suggested learning or skill is refused', async (scene) => {
+  sceneIt('KN-7 an active learning or an active product page is refused', async (scene) => {
     const { attachLearning } = scene.world.kernel.items;
     const active = await attachLearning(scene.editor, {
       itemId: scene.itemId,

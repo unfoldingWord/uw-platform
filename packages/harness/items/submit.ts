@@ -1,11 +1,12 @@
-import type {
-  EventEvidence,
-  ExitGate,
-  Harness,
-  HarnessEvent,
-  ItemState,
-  Stage,
-  submitToGateResultSchema,
+import {
+  eventEvidenceSchemas,
+  type EventEvidence,
+  type ExitGate,
+  type Harness,
+  type HarnessEvent,
+  type ItemState,
+  type Stage,
+  type submitToGateResultSchema,
 } from '@uw/contracts';
 import { allowed } from '../access.ts';
 import type { Caller } from '../caller.ts';
@@ -17,7 +18,9 @@ import type { Ports, PullRequestFacts, PullRequestRef, StoreTransaction } from '
 import { endRunDrafts } from '../runs/ends.ts';
 import { noteGateMet } from '../runs/gates-met.ts';
 import { runValidators } from '../validators/registry.ts';
+import type { Attachment } from '../validators/context.ts';
 import { attachedPageIds } from '../validators/learning-attached.ts';
+import { attachWithin, isAttachRefusal } from './learning.ts';
 import { expireLapsedLease, leaseLapsed } from './leases.ts';
 import {
   draft,
@@ -51,6 +54,7 @@ export type SubmitInput = {
   readonly to: string | null;
   readonly evidence: HarnessEvent['evidence'];
   readonly change: SubmitChange | null;
+  readonly attach?: readonly string[];
 };
 
 export type Submitted = {
@@ -71,6 +75,7 @@ type Submission = {
   readonly exit: Exit;
   readonly tweak: boolean;
   readonly input: SubmitInput;
+  readonly attaching: readonly Attachment[];
 };
 
 type Command = {
@@ -161,10 +166,11 @@ async function passThrough(_tx: StoreTransaction, submission: Submission): Promi
 
 async function runChecks(tx: StoreTransaction, submission: Submission): Promise<Decision> {
   const { item, stage } = submission;
+  const { attaching } = submission;
   const events = await readAllEvents(tx, item.harnessId, item.itemId);
-  const facts = await tx.pages.read.facts(attachedPageIds(events));
+  const facts = await tx.pages.read.facts(attachedPageIds(events, attaching));
   const pages = new Map(facts.map((page) => [page.id, page]));
-  const failures = runValidators(stage.validators, { item, events, pages });
+  const failures = runValidators(stage.validators, { item, events, pages, attaching });
   if (failures.length > 0) {
     return {
       result: 'checks_failed',
@@ -254,26 +260,68 @@ function repositoryRefusal(input: SubmitInput, harness: Harness): Refused | null
   return refused('not_permitted', { why: 'repository_mismatch' });
 }
 
+async function attachments(
+  tx: StoreTransaction,
+  { item, harness }: { readonly item: ItemState; readonly harness: Harness },
+  pageIds: readonly string[],
+): Promise<readonly Attachment[] | Refused> {
+  if (pageIds.length === 0) return [];
+  const earlier = new Set(attachedPageIds(await readAllEvents(tx, item.harnessId, item.itemId)));
+  const attaching: Attachment[] = [];
+  for (const pageId of pageIds.filter((id) => !earlier.has(id))) {
+    const attached = await attachWithin(tx, harness, pageId);
+    if (isAttachRefusal(attached)) return attached;
+    attaching.push(eventEvidenceSchemas.learning_attached.parse(attached.evidence));
+  }
+  return attaching;
+}
+
+type SubmitScene = {
+  readonly item: ItemState;
+  readonly harness: Harness;
+  readonly stages: readonly Stage[];
+  readonly stage: Stage;
+};
+
+async function submitScene(tx: StoreTransaction, itemId: string): Promise<SubmitScene | Refused> {
+  const item = await tx.harnessItems.read.lock(itemId);
+  if (item === null) return refused('item_not_found', { itemId });
+  const harness = await tx.harnesses.read.byId(item.harnessId);
+  if (harness === null) return refused('harness_not_found', { harnessId: item.harnessId });
+  const stages = await tx.harnessStages.read.forHarness(harness.id);
+  const stage = stages.find((entry) => entry.key === item.stageKey);
+  if (stage === undefined) return refused('stage_not_found', { stage: item.stageKey });
+  return { item, harness, stages, stage };
+}
+
+async function submitGuards(
+  tx: StoreTransaction,
+  ports: SubmitPorts,
+  standing: Standing,
+  input: SubmitInput,
+): Promise<Refused | null> {
+  const { caller, harness, stage } = standing;
+  return (
+    pausedRefusal(caller, harness, stage) ??
+    (await standingRefusal(tx, ports, standing)) ??
+    repositoryRefusal(input, harness)
+  );
+}
+
 async function submitIn(
   ports: SubmitPorts,
   tx: StoreTransaction,
   command: Command,
 ): Promise<KernelOutcome<Submitted>> {
   const { caller, input, at } = command;
-  const item = await tx.harnessItems.read.lock(input.itemId);
-  if (item === null) return refused('item_not_found', { itemId: input.itemId });
-  const harness = await tx.harnesses.read.byId(item.harnessId);
-  if (harness === null) return refused('harness_not_found', { harnessId: item.harnessId });
-  const stages = await tx.harnessStages.read.forHarness(harness.id);
-  const stage = stages.find((entry) => entry.key === item.stageKey);
-  if (stage === undefined) return refused('stage_not_found', { stage: item.stageKey });
-  const halted = pausedRefusal(caller, harness, stage);
-  if (halted !== null) return halted;
+  const scene = await submitScene(tx, input.itemId);
+  if ('status' in scene) return scene;
+  const { item, harness, stages, stage } = scene;
   const context = recordContext(ports, caller, at);
-  const denied = await standingRefusal(tx, ports, { caller, item, harness, stage, context });
+  const denied = await submitGuards(tx, ports, { caller, item, harness, stage, context }, input);
   if (denied !== null) return denied;
-  const mismatch = repositoryRefusal(input, harness);
-  if (mismatch !== null) return mismatch;
+  const attaching = await attachments(tx, { item, harness }, input.attach ?? []);
+  if ('status' in attaching) return attaching;
   const exit = resolveExit(stages, stage, input.to);
   if (exit === null) return refused('transition_not_allowed', { from: stage.key, to: input.to });
   if (unattendedLoop(exit, caller.actor, item.delegationId)) {
@@ -281,16 +329,12 @@ async function submitIn(
   }
   const handler = gates.get(stage.exitGate);
   if (handler === undefined) return refused('malformed_command', { exitGate: stage.exitGate });
-  const decision = await handler(tx, {
-    item,
-    stage,
-    exit,
-    tweak: isOccasionalTweak(exit),
-    input,
-  });
+  const tweak = isOccasionalTweak(exit);
+  const decision = await handler(tx, { item, stage, exit, tweak, input, attaching });
   const ending = await submittedRun(tx, { item, stage, decision, at });
   const recorded = await recordItemEvents(tx, context, item.itemId, [
     ...riskDraft(command, item),
+    ...attaching.map((attachment) => draft('learning_attached', attachment)),
     ...decision.drafts,
     ...ending,
   ]);

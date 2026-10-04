@@ -44,7 +44,7 @@ async function openPackage(world: World, ian: Principal, harnessId: string): Pro
     await world.kernel.stages.updateStage(caller, {
       harnessId,
       stageKey: 'package',
-      change: { agentPickup: 'allowed' },
+      change: { agentPickup: 'allowed', bracket: 'iterate' },
     }),
   );
   const item = await world.kernel.items.enqueue(caller, {

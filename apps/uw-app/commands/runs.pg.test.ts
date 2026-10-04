@@ -49,7 +49,7 @@ async function hostedRun(db: Database): Promise<Hosted> {
   const admin = await ian(db);
   const kernel = kernelOn(db, { now: () => new Date() });
   const as = callerOf(admin);
-  const change = { agentPickup: 'allowed' as const };
+  const change = { agentPickup: 'allowed' as const, bracket: 'build_package' as const };
   const { harnessId } = scene;
   accepted(await kernel.stages.updateStage(as, { harnessId, stageKey: 'package', change }));
   const itemId = await enqueued(db, harnessId, 'Run the board');

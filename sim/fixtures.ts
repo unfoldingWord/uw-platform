@@ -274,7 +274,11 @@ type GrantInput = {
 export async function simDelegate(world: World, actor: Principal, input: GrantInput) {
   const granted = await world.kernel.delegations.grant(simCaller(world, actor), input);
   if (granted.status !== 'accepted') return granted;
-  const projected = { identity: input.persona, harnessId: input.harnessId };
+  const projected = {
+    identity: input.persona,
+    harnessId: input.harnessId,
+    frontmatter: { capability: input.capability },
+  };
   await seedActivePersona(world.database.db, projected);
   return granted;
 }

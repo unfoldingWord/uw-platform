@@ -134,7 +134,7 @@ async function harnessIn(r: Rig, key: string, area: string): Promise<string> {
     repository: `unfoldingWord/${key}`,
   };
   value(await r.kernel.stages.activate(caller(r.ian), activate));
-  const change = { agentPickup: 'allowed' as const };
+  const change = { agentPickup: 'allowed' as const, bracket: 'build_package' as const };
   value(
     await r.kernel.stages.updateStage(caller(r.ian), { harnessId, stageKey: 'package', change }),
   );

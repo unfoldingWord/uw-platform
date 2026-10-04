@@ -103,6 +103,17 @@ export async function rewritePageStatus(
     .where(eq(pages.id, pageId));
 }
 
+export async function rewritePageBody(
+  db: AnyExecutor,
+  pageId: string,
+  bodyMd: string,
+): Promise<void> {
+  await db
+    .update(pages)
+    .set({ bodyMd, version: sql`${pages.version} + 1` })
+    .where(eq(pages.id, pageId));
+}
+
 export async function resaveSeededPage(db: AnyExecutor, pageId: string): Promise<void> {
   await db
     .update(pages)

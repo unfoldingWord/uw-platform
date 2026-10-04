@@ -60,7 +60,7 @@ export async function agentForms(
     await kernel.delegations.grant(callerOf(owner), {
       harnessId,
       persona: 'agent:builder',
-      capability: 'iterate',
+      capability: 'build',
       expiresAt: null,
       supersedes: null,
     }),

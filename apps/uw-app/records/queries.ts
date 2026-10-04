@@ -55,7 +55,29 @@ const stageItemsQuery = entityQuery(
   },
 );
 
+const measurementsQuery = entityQuery(z.object({ itemId: z.uuid() }), async (context, params) => {
+  const read = await context.kernel.reads.measurements(callerOf(context), params, {
+    at: context.at,
+  });
+  if (read.status === 'error') {
+    return read.reason === 'item_not_found' ? [] : refusal(read.reason, read.detail);
+  }
+  const areaOf = await harnessAreas(context, [...new Set(read.value.map((row) => row.harnessId))]);
+  return read.value.map((measurement) => ({
+    row: rowSchema.parse({
+      measurementId: measurement.id,
+      itemId: measurement.itemId,
+      source: measurement.source,
+      name: measurement.name,
+      value: measurement.value,
+      asOf: measurement.asOf,
+    }),
+    resource: areaOf(measurement.harnessId),
+  }));
+});
+
 export const entityQueries: ReadonlyMap<string, EntityQuery> = new Map([
   ['open_tasks', openTasksQuery],
   ['stage_items', stageItemsQuery],
+  ['measurements_for_item', measurementsQuery],
 ]);

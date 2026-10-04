@@ -66,7 +66,7 @@ function contextOf(
 ): ValidationContext {
   const item = replay(events);
   if (item === null) throw new Error('no item');
-  return { item, events, pages: new Map(pages.map((p) => [p.id, p])) };
+  return { item, events, pages: new Map(pages.map((p) => [p.id, p])), attaching: [] };
 }
 
 function failures(events: readonly HarnessEvent[], pages: readonly PageFacts[] = []) {

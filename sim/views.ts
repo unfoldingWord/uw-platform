@@ -1,5 +1,5 @@
 import type { ItemState, Principal } from '@uw/contracts';
-import { seedPage } from '@uw/db/test-seed';
+import { seedEventRows, seedPage } from '@uw/db/test-seed';
 import { software, type Caller } from '@uw/harness';
 import {
   createSimHarness,
@@ -256,8 +256,19 @@ export async function playedScene(world: World): Promise<Played> {
     simAgent(editor, `${editor.personId ?? ''}/laptop`, { interactive: true }),
   );
   await steppedItem(world, laptop, itemId);
-  for (const pageId of [shownLearning, elsewhereLearning]) {
-    value(await world.kernel.items.attachLearning(caller, { itemId, pageId, delegationId: null }));
-  }
+  const pageId = shownLearning;
+  value(await world.kernel.items.attachLearning(caller, { itemId, pageId, delegationId: null }));
+  await seedEventRows(world.database.db, [
+    {
+      id: world.adapters.ids.next(),
+      harnessId: harness.id,
+      itemId,
+      name: 'learning_attached',
+      actor: editor.identity,
+      evidence: { pageId: elsewhereLearning, kind: 'learning' },
+      traceId: world.adapters.ids.next(),
+      at: world.adapters.clock.now(),
+    },
+  ]);
   return { world, itemId, editor, laptop };
 }
