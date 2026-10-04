@@ -69,6 +69,18 @@ const pieces: readonly Piece[] = [
     ],
   },
   {
+    owner: `${components}field.tsx`,
+    marks: [
+      /\bfunction\s+TextField\b/,
+      /\bfunction\s+TextAreaField\b/,
+      /\bfunction\s+SelectField\b/,
+    ],
+  },
+  {
+    owner: `${components}command-form.tsx`,
+    marks: [/data-command=/, /\bfunction\s+CommandForm\b/],
+  },
+  {
     owner: `${components}gate-callout.tsx`,
     marks: [
       /\bfunction\s+GateCallout\b/,

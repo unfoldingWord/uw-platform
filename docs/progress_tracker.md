@@ -646,6 +646,9 @@ Choices the PRD, the spec and `AGENTS.md` left open. One row each.
 | 2026-10-03 | `@cloudflare/containers` `0.3.7` (pinned, MIT OR Apache-2.0, no dependencies, `apps/uw-app`, imported only in `apps/uw-app/engines/sandbox/`) | A hand-written Durable Object wrapper over the Workers Container API for the two sandbox engines (HE-8, HE-9). S7-R46: chosen over `@cloudflare/sandbox` 1.0.0, which exports no `Sandbox`, `exec` or `writeFile`. The classes start with `enableInternet = false` and send every outbound HTTP request through one catch-all handler (S7-R47) |
 | 2026-10-03 | `@anthropic-ai/claude-code` `2.1.288` (pinned, image only: installed in `infra/containers/claude-code/Dockerfile`, never a repository dependency; licence "SEE LICENSE IN README.md", Anthropic's commercial terms, not open source) | Nothing: the Claude Code CLI is what the `claude-code-sandbox` engine runs (HE-8). AGENTS.md section 5 asks for a permissive licence; this one is not, so it is recorded here and its terms wait on a person (S7-R58) |
 | 2026-10-03 | `@openai/codex` `0.160.0` (pinned, image only: installed in `infra/containers/codex/Dockerfile`, Apache-2.0) | Nothing: the Codex CLI is what the `codex-sandbox` engine runs (HE-9) |
+| 2026-10-03 | `esbuild` `0.28.1` (MIT, root devDependency) | A hand-written bundler for the browser islands and the service worker (`tools/ui/build-islands.ts`, S8-D14) |
+| 2026-10-03 | `idiomorph` `0.8.0` (0BSD, `apps/uw-app`) | A hand-written DOM morph for the fragment refresh that keeps an edited form (S8-D2) |
+| 2026-10-03 | `jsdom` `^30.1.1`, `@types/jsdom` and `axe-core` `^4.13.0` (`apps/uw-app` devDependencies) | Not a replacement: the island tests and the screen checks (`apps/uw-app/testing/screen-checks.ts`, S8-D18) use the same packages `packages/ui` already tests with |
 
 ## Not verified
 

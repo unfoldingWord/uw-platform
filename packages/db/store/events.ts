@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, gte, inArray, isNotNull, notLike } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, inArray, isNotNull, max, notLike } from 'drizzle-orm';
 import type { HarnessEvent, NewHarnessEvent } from '@uw/contracts';
 import type { AnyExecutor } from '../any-database.ts';
 import { oneOf } from '../checks.ts';
@@ -26,6 +26,7 @@ export function bindEvents(executor: AnyExecutor): HarnessEventsGateway {
       latestNamed: (names, harnessId) => latestNamed(executor, names, harnessId),
       enteredStage: (harnessId, itemIds) => enteredStage(executor, harnessId, itemIds),
       recent: (query) => recent(executor, query),
+      lastPosition: (harnessId) => lastPosition(executor, harnessId),
     },
     write: { append: (events) => refusing(() => appendAll(executor, events)) },
   };
@@ -179,4 +180,12 @@ async function recent(
   const rows = recentQuery(executor, query);
   if (query.names !== null && query.names.length === 0) return [];
   return (await rows).map(toEvent);
+}
+
+async function lastPosition(executor: AnyExecutor, harnessId: string): Promise<number> {
+  const [row] = await executor
+    .select({ last: max(harnessEvents.position) })
+    .from(harnessEvents)
+    .where(eq(harnessEvents.harnessId, harnessId));
+  return row?.last ?? 0;
 }

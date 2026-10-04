@@ -23,9 +23,11 @@ async function reasonOf(response: Response): Promise<string | null> {
 export function readEvents(
   fetcher: typeof fetch,
   harnessId: string,
+  itemId: string | null = null,
 ): (after: number) => Promise<EventPageReply> {
+  const item = itemId === null ? '' : `&item=${encodeURIComponent(itemId)}`;
   return async (after) => {
-    const response = await fetcher(`/api/harness/${harnessId}/events?after=${after}`, {
+    const response = await fetcher(`/api/harness/${harnessId}/events?after=${after}${item}`, {
       headers: { accept: 'application/json' },
     });
     if (response.status !== OK) throw new EventReadRefused(await reasonOf(response));

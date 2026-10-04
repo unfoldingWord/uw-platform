@@ -9,7 +9,7 @@ const appRoot = 'apps/uw-app/';
 const handlerRoots = ['apps/uw-app/commands/handlers/', 'apps/uw-app/commands/person/'];
 const dispatcher = 'apps/uw-app/commands/dispatch.ts';
 const commandRoutes = 'apps/uw-app/commands/routes.ts';
-const commandsRoot = 'apps/uw-app/commands/';
+const viewRoutes = 'apps/uw-app/views/routes.tsx';
 const routeFiles = [
   'apps/uw-app/app.tsx',
   commandRoutes,
@@ -20,6 +20,7 @@ const routeFiles = [
   'apps/uw-app/health/routes.tsx',
   'apps/uw-app/auth/me.ts',
   'apps/uw-app/assets/routes.ts',
+  viewRoutes,
 ];
 
 const sourceFile = /\.tsx?$/;
@@ -39,9 +40,9 @@ const arrowCall = /^\(\w+\)\s*=>\s*(\w+)\(/;
 const namedArgument = /^(\w+)\s*\)/;
 const topLevelFunction = /\n(?=export function |export async function |async function |function )/;
 const functionName = /\bfunction (\w+)\(/;
-const localImport = /\bimport\s*\{([^}]*)\}\s*from\s+'(\.\.?\/[\w./-]+\.ts)'/g;
+const localImport = /\bimport\s*\{([^}]*)\}\s*from\s+'(\.\.?\/[\w./-]+\.tsx?)'/g;
 const guardedEntry =
-  /\bexecuteCommand\s*\(|\bkernel\s*\.\s*reads\s*\.\s*\w+\s*\(|\bkernel\s*\.\s*events\s*\.\s*read\s*\(|\bkernel\s*\.\s*gates\s*\.\s*view\s*\(/;
+  /\bexecuteCommand\s*\(|\bkernel\s*\.\s*reads\s*\.\s*\w+\s*\(|\bkernel\s*\.\s*events\s*\.\s*read\s*\(|\bkernel\s*\.\s*gates\s*\.\s*view\s*\(|\bkernel\s*\.\s*views\s*\.\s*\w+\s*\(/;
 
 type Read = (file: string) => string;
 const readReal: Read = (file) => readFileSync(file, 'utf8');
@@ -146,10 +147,15 @@ function importedNames(list: string): string[] {
     .filter((name) => name !== '' && !name.startsWith('type '));
 }
 
-function handlerSources(routesText: string, read: Read): ReadonlyMap<string, string> {
+function handlerSources(
+  routesText: string,
+  read: Read,
+  routeFile: string = commandRoutes,
+): ReadonlyMap<string, string> {
   const functions = new Map(functionsIn(routesText));
+  const directory = posix.dirname(routeFile);
   for (const [, list = '', module = ''] of routesText.matchAll(localImport)) {
-    const inModule = functionsIn(read(posix.join(commandsRoot, module)));
+    const inModule = functionsIn(read(posix.join(directory, module)));
     for (const name of importedNames(list)) functions.set(name, inModule.get(name) ?? '');
   }
   return functions;
@@ -182,6 +188,12 @@ describe('WB-1 the command routes are checked', () => {
     const text = readReal(commandRoutes);
     expect(handlerNames(text).length).toBeGreaterThan(3);
     expect(unguardedRoutes(text, handlerSources(text, readReal))).toEqual([]);
+  });
+
+  it('every route in the view routes reaches a guarded view read', () => {
+    const text = readReal(viewRoutes);
+    expect(handlerNames(text).length).toBeGreaterThan(0);
+    expect(unguardedRoutes(text, handlerSources(text, readReal, viewRoutes))).toEqual([]);
   });
 
   it('WB-1 flags a planted handler without a builder, a planted action that is not a literal, and a planted route file', () => {
@@ -269,5 +281,25 @@ describe('the command route check follows imports outside the commands directory
     const files = (live: string) => plantedRead({ 'apps/uw-app/live/connect.ts': live });
     expect(unguardedRoutes(routes, handlerSources(routes, files(guarded)))).toEqual([]);
     expect(unguardedRoutes(routes, handlerSources(routes, files(bare)))).toEqual(['connectLive']);
+  });
+});
+
+describe('the view route check', () => {
+  it('reads a screen handler from the screens folder and flags one that skips the view reads', () => {
+    const routes = [
+      "import { homeScreen } from './screens/home.tsx';",
+      "import { sneakScreen } from './screens/x.tsx';",
+      "routes.get('/', homeScreen);",
+      "routes.get('/x', sneakScreen);",
+    ].join('\n');
+    const read = plantedRead({
+      'apps/uw-app/views/screens/home.tsx':
+        'export async function homeScreen(c) {\n  return c.html(await screen.kernel.views.waitingOn(caller));\n}',
+      'apps/uw-app/views/screens/x.tsx':
+        'export async function sneakScreen(c) {\n  return c.html(await store.items());\n}',
+    });
+    expect(unguardedRoutes(routes, handlerSources(routes, read, viewRoutes))).toEqual([
+      'sneakScreen',
+    ]);
   });
 });

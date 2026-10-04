@@ -1,8 +1,5 @@
 import { Hono } from 'hono';
 import { errorFields } from '@uw/core/log';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
-import { Shell } from '@uw/ui/components/shell.tsx';
-import { appCssPath } from '@uw/ui/generated/app-css';
 import { aclRoutes } from './acl/routes.ts';
 import { agentRoutes } from './agents/routes.ts';
 import { assetRoutes } from './assets/routes.ts';
@@ -13,12 +10,13 @@ import { harnessRoutes } from './commands/routes.ts';
 import { securityHeaders } from './http/security-headers.ts';
 import { withDatabase } from './database.ts';
 import { platformDeps, type AppDeps, type AppEnv } from './deps.ts';
-import { commitOf } from './env.ts';
 import { healthScreenRoutes, probeRoutes } from './health/routes.tsx';
 import { mcpRoutes } from './mcp/routes.ts';
 import { observe } from './observe.ts';
 import { pageRoutes } from './pages/routes.ts';
 import { requestLogger } from './request-logger.ts';
+import { viewRoutes } from './views/routes.tsx';
+import { notFound } from './views/screens/not-found.tsx';
 
 export function createApp(
   deps: AppDeps = platformDeps,
@@ -51,24 +49,12 @@ export function createApp(
   app.route('/mcp', mcpRoutes(deps));
   app.route('/health', healthScreenRoutes(deps));
 
-  app.get('/', (c) => {
-    const commit = commitOf(c.env).slice(0, 7);
-    return c.html(
-      <Shell
-        title="unfoldingWord"
-        nav={[
-          { href: '/', label: 'Home' },
-          { href: '/health', label: 'Health' },
-        ]}
-        current="/"
-        crumbs={[{ label: 'Home' }]}
-        stylesheet={appCssPath}
-      >
-        <PageHead title="unfoldingWord" />
-        <p>Deployed commit {commit}.</p>
-      </Shell>,
-    );
-  });
+  app.route('/', viewRoutes());
+  app.notFound((c) =>
+    c.req.method === 'GET' && !c.req.path.startsWith('/api/')
+      ? notFound(c)
+      : c.text('404 Not Found', 404),
+  );
 
   return app;
 }

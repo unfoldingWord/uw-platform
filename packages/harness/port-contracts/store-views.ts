@@ -124,6 +124,27 @@ function describeEntered(subject: ViewsSubject): void {
   });
 }
 
+function describeLastPosition(subject: ViewsSubject): void {
+  it('lastPosition answers the latest event position of one harness, and 0 for none', async () => {
+    const base = 0x4a00;
+    const read = await subject().store.transaction(async (tx) => {
+      await seedItems(tx, base, 'gateway-views-last', 1);
+      await seedItems(tx, base + 0x80, 'gateway-views-last-other', 1);
+      const before = await tx.harnessEvents.read.lastPosition(uid(base));
+      await tx.harnessEvents.write.append([
+        eventOf(base, { n: 1, item: 1, name: 'item_created', when: at, actor: human }),
+        eventOf(base, { n: 2, item: 1, name: 'item_claimed', when: at, actor: builder }),
+      ]);
+      return {
+        before,
+        after: await tx.harnessEvents.read.lastPosition(uid(base)),
+        other: await tx.harnessEvents.read.lastPosition(uid(base + 0x80)),
+      };
+    });
+    expect(read).toEqual({ before: 0, after: 2, other: 0 });
+  });
+}
+
 const recentSince = new Date('2031-01-01T00:00:00.000Z');
 
 const recentEvents: readonly Seeded[] = [
@@ -406,6 +427,7 @@ export function describeStoreViews(adapter: string, subject: ViewsSubject): void
   describe(`store reads for the views on ${adapter}`, () => {
     describeParked(subject);
     describeEntered(subject);
+    describeLastPosition(subject);
     describeRecent(subject);
     describeRecentLimits(subject);
     describeRuns(subject);

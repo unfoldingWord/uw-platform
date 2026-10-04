@@ -43,6 +43,18 @@ describe('WB-3 readEvents reads the one event route', () => {
   });
 });
 
+describe('an item-filtered event read', () => {
+  it('asks the one read route for the item named', async () => {
+    const asked: Asked[] = [];
+    const itemId = 'b4000000-0000-4000-8000-0000000000b1';
+    const read = readEvents(fakeFetch(200, { events: [], next: null }, asked), harnessId, itemId);
+    await read(3);
+    expect(asked.map((each) => each.url)).toEqual([
+      `/api/harness/${harnessId}/events?after=3&item=${itemId}`,
+    ]);
+  });
+});
+
 describe('a refused event read', () => {
   it('rejects with the refusal reason the route answered', async () => {
     const body = { status: 'error', reason: 'harness_not_found' };
