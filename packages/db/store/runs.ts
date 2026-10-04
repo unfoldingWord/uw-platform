@@ -104,25 +104,34 @@ function ownedBy(personId: string): SQL {
 
 const notRetried = sql`NOT EXISTS (SELECT 1 FROM harness_runs AS later_run WHERE later_run.item_id = ${harnessRuns.itemId} AND later_run.started_at > coalesce(${harnessRuns.endedAt}, ${harnessRuns.startedAt}))`;
 
-export function failedForQuery(
-  executor: AnyExecutor,
-  personId: string,
-  since: Date,
-  limit: number,
-) {
+type FailedForInput = {
+  readonly personId: string;
+  readonly harnessIds: readonly string[];
+  readonly since: Date;
+  readonly limit: number;
+};
+
+export function failedForQuery(executor: AnyExecutor, input: FailedForInput) {
   return executor
     .select()
     .from(harnessRuns)
     .where(
       and(
         eq(harnessRuns.outcome, 'failed'),
-        gte(harnessRuns.endedAt, since),
-        ownedBy(personId),
+        gte(harnessRuns.endedAt, input.since),
+        inArray(harnessRuns.harnessId, [...input.harnessIds]),
+        ownedBy(input.personId),
         notRetried,
       ),
     )
     .orderBy(desc(harnessRuns.endedAt), asc(harnessRuns.id))
-    .limit(checkedLimit(limit));
+    .limit(checkedLimit(input.limit));
+}
+
+async function failedFor(executor: AnyExecutor, input: FailedForInput): Promise<RunRow[]> {
+  checkedLimit(input.limit);
+  if (input.harnessIds.length === 0) return [];
+  return (await failedForQuery(executor, input)).map(toRun);
 }
 
 const stepTokens = sql`(SELECT coalesce(sum((step->>'tokensIn')::bigint + (step->>'tokensOut')::bigint), 0) FROM jsonb_array_elements(${harnessRuns.steps}) AS step)`;
@@ -196,8 +205,8 @@ export function bindRuns(executor: AnyExecutor): HarnessRunsGateway {
       forItems: (itemIds) => forItems(executor, itemIds),
       startedSince: async (since, limit) =>
         (await startedSinceQuery(executor, since, limit)).map(toRun),
-      failedFor: async (personId, since, limit) =>
-        (await failedForQuery(executor, personId, since, limit)).map(toRun),
+      failedFor: (personId, harnessIds, since, limit) =>
+        failedFor(executor, { personId, harnessIds, since, limit }),
       spendSince: (since) => spendSince(executor, since),
       runCountsSince: (since) => runCountsSince(executor, since),
       costsByItem: (itemIds) => costsByItem(executor, itemIds),

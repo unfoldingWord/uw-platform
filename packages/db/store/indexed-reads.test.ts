@@ -72,7 +72,8 @@ function describeTarget(target: DatabaseTarget): void {
     expect(await planOf(db(), recent)).toContain('harness_events_at');
     const started = (tx: AnyExecutor) => startedSinceQuery(tx, since, 100);
     expect(await planOf(db(), started)).toContain('harness_runs_started_at');
-    const failed = (tx: AnyExecutor) => failedForQuery(tx, item, since, 50);
+    const input = { personId: item, harnessIds: [harness], since, limit: 50 };
+    const failed = (tx: AnyExecutor) => failedForQuery(tx, input);
     expect(await planOf(db(), failed)).toContain('harness_runs_failed_ended');
   });
 }

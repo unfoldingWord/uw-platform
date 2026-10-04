@@ -235,7 +235,12 @@ export type HarnessRunsGateway = {
     live(harnessId: string | null): Promise<readonly RunRow[]>;
     forItems(itemIds: readonly string[]): Promise<readonly RunRow[]>;
     startedSince(since: Date, limit: number): Promise<readonly RunRow[]>;
-    failedFor(personId: string, since: Date, limit: number): Promise<readonly RunRow[]>;
+    failedFor(
+      personId: string,
+      harnessIds: readonly string[],
+      since: Date,
+      limit: number,
+    ): Promise<readonly RunRow[]>;
     spendSince(since: Date): Promise<RunSpend>;
     runCountsSince(since: Date): Promise<readonly RunCount[]>;
     costsByItem(itemIds: readonly string[]): Promise<readonly ItemCost[]>;
