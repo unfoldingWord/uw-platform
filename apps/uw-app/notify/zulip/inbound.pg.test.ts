@@ -66,7 +66,7 @@ async function world(db: Database): Promise<World> {
   return { ...gate, key, topic };
 }
 
-async function deliver(world: World, message: Message) {
+async function deliver(world: World, message: Message, zulip: typeof config = config) {
   const lines: Record<string, unknown>[] = [];
   const logger = createLogger(
     { traceId: randomUUID(), commit: 'test', route: 'queue ingest', principal: null },
@@ -75,7 +75,7 @@ async function deliver(world: World, message: Message) {
   const handler = zulipIngestHandler({
     db: world.db,
     kernel: kernelOn(world.db, clock),
-    config,
+    config: zulip,
     now: () => clock.now(),
   });
   const outcome = await handler(envelopeOf(message), logger);
@@ -141,6 +141,13 @@ async function recordsNothing(db: Database): Promise<void> {
   expect(await comments(db)).toEqual([]);
 }
 
+async function notConfigured(db: Database): Promise<void> {
+  const w = await world(db);
+  const sent = await deliver(w, { subject: w.topic }, null);
+  expect(sent).toMatchObject({ outcome: 'handled', outcomes: ['zulip_not_configured'] });
+  expect(await comments(db)).toEqual([]);
+}
+
 async function harnessComment(db: Database): Promise<void> {
   const w = await world(db);
   await deliver(w, { subject: w.key });
@@ -158,6 +165,8 @@ describe.skipIf(!testServer)('Zulip replies become comments', () => {
     withAppDatabase(approveIsAComment));
   it('a private message, a topic in another area channel and an unknown topic record nothing', () =>
     withAppDatabase(recordsNothing));
+  it('a reply with no Zulip configuration is logged not configured and records nothing', () =>
+    withAppDatabase(notConfigured));
   it('a reply in the harness own topic is a harness-level comment', () =>
     withAppDatabase(harnessComment));
 });
