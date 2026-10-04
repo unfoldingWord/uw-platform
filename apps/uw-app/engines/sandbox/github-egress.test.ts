@@ -225,7 +225,38 @@ async function credentialsDropped(): Promise<void> {
   expect(JSON.stringify(r.refused)).not.toContain(TOKEN);
 }
 
+function encoded(request: Request, encoding: string): Request {
+  const headers = new Headers(request.headers);
+  headers.set('content-encoding', encoding);
+  return new Request(request, { headers });
+}
+
+async function encodedBodiesRefused(): Promise<void> {
+  const r = rig();
+  const update = `${old} ${next} refs/heads/${branch}`;
+  for (const encoding of ['gzip', 'deflate', 'br', 'identity, gzip']) {
+    expect(await statusOf(r, encoded(push(update), encoding))).toBe(403);
+    expect(await statusOf(r, encoded(pulls(opened), encoding))).toBe(403);
+  }
+  expect(r.sent).toEqual([]);
+  expect(r.admitted).toEqual([]);
+  expect(await statusOf(r, encoded(push(update), 'identity'))).toBe(200);
+  expect(await statusOf(r, encoded(pulls(opened), 'identity'))).toBe(200);
+  expect(r.sent.map((sent) => sent.headers['content-encoding'])).toEqual([undefined, undefined]);
+  const upload = new Request(`http://${GITHUB_HOST}/${repository}.git/git-upload-pack`, {
+    method: 'POST',
+    headers: { 'content-encoding': 'gzip' },
+    body: '0000',
+  });
+  expect(await statusOf(r, upload)).toBe(200);
+  expect(r.sent[2]?.headers['content-encoding']).toBe('gzip');
+}
+
 describe('the GitHub egress for a hosted Builder', () => {
+  it(
+    'a pushed or pull request body with a content encoding is refused, and only upload-pack forwards one',
+    encodedBodiesRefused,
+  );
   it('PE-5 a push to harness/<item> is forwarded with the Builder token injected', pushForwarded);
   it('PE-5 a push naming another ref, a second ref or a delete is refused', pushRefused);
   it(

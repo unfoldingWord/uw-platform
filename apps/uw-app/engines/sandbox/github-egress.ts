@@ -30,8 +30,8 @@ type Allowed = {
 
 const ZERO = '0'.repeat(40);
 const API_VERSION = '2022-11-28';
-const baseHeaders = ['content-type', 'accept', 'user-agent', 'content-encoding'];
-const uploadHeaders = [...baseHeaders, 'git-protocol'];
+const baseHeaders = ['content-type', 'accept', 'user-agent'];
+const uploadHeaders = [...baseHeaders, 'content-encoding', 'git-protocol'];
 const upstreams: ReadonlyMap<Upstream, string> = new Map([
   ['git', 'https://github.com'],
   ['api', 'https://api.github.com'],
@@ -71,11 +71,28 @@ function gitPath(url: URL, route: GitHubEgress): string | null {
   return path.toLowerCase().startsWith(prefix) ? path.slice(prefix.length) : null;
 }
 
+function plainBody(request: Request): boolean {
+  const encoding = request.headers.get('content-encoding');
+  return encoding === null || encoding.trim().toLowerCase() === 'identity';
+}
+
 function pushesOnlyBranch(body: ArrayBuffer, route: GitHubEgress): boolean {
   const updates = parseRefUpdates(new Uint8Array(body));
   if (updates?.length !== 1) return false;
   const [update] = updates;
   return update?.ref === `refs/heads/${route.branch}` && update.new !== ZERO;
+}
+
+async function pushAllowed(
+  request: Request,
+  url: URL,
+  route: GitHubEgress,
+): Promise<Allowed | null> {
+  if (!plainBody(request)) return null;
+  const body = await request.arrayBuffer();
+  return pushesOnlyBranch(body, route)
+    ? { upstream: 'git', url, method: 'POST', body, headers: baseHeaders }
+    : null;
 }
 
 async function gitAllowed(
@@ -97,11 +114,7 @@ async function gitAllowed(
     const body = await request.arrayBuffer();
     return { ...git, method: 'POST', body, headers: uploadHeaders };
   }
-  if (rest !== 'git-receive-pack') return null;
-  const body = await request.arrayBuffer();
-  return pushesOnlyBranch(body, route)
-    ? { ...git, method: 'POST', body, headers: baseHeaders }
-    : null;
+  return rest === 'git-receive-pack' ? pushAllowed(request, url, route) : null;
 }
 
 function listsBranch(url: URL, route: GitHubEgress): boolean {
@@ -135,7 +148,7 @@ async function apiAllowed(
   if (request.method === 'GET') {
     return listsBranch(url, route) ? { ...api, method: 'GET', body: null } : null;
   }
-  if (request.method !== 'POST' || url.search !== '') return null;
+  if (request.method !== 'POST' || url.search !== '' || !plainBody(request)) return null;
   const body = await request.arrayBuffer();
   return (await opensPullRequest(body, route)) ? { ...api, method: 'POST', body } : null;
 }
