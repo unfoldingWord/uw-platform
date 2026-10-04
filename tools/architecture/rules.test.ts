@@ -22,6 +22,7 @@ function tree(files: Record<string, string>): string {
     'vitest',
     'zod',
     '@electric-sql/pglite',
+    '@block65/webcrypto-web-push',
   ];
   for (const name of stubs) {
     files[`node_modules/${name}/index.js`] = 'export default 1;';
@@ -299,6 +300,12 @@ const refusals: [string, string, string, string][] = [
     "import '@openrouter/sdk';",
     'vendor-sdk-only-in-engines',
   ],
+  [
+    'the web push library outside the push transport',
+    'apps/uw-app/notify/push/send.ts',
+    "import '@block65/webcrypto-web-push';",
+    'web-push-only-in-push-transport',
+  ],
 ];
 
 describe('the islands rules', () => {
@@ -413,6 +420,14 @@ describe('the run host dependency rules allow', () => {
       await violations({
         'apps/uw-app/mcp/in-process.ts': leaf,
         'apps/uw-app/mcp/a.test.ts': "import './in-process.ts';",
+      }),
+    ).toEqual([]);
+  });
+
+  it('the web push library inside the push transport', async () => {
+    expect(
+      await violations({
+        'apps/uw-app/notify/push/transport.ts': "import '@block65/webcrypto-web-push';",
       }),
     ).toEqual([]);
   });

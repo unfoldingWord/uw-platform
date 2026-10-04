@@ -12,6 +12,7 @@ import { withDatabase } from './database.ts';
 import { platformDeps, type AppDeps, type AppEnv } from './deps.ts';
 import { healthScreenRoutes, probeRoutes } from './health/routes.tsx';
 import { mcpRoutes } from './mcp/routes.ts';
+import { pushRoutes } from './notify/routes.ts';
 import { observe } from './observe.ts';
 import { pageRoutes } from './pages/routes.ts';
 import { requestLogger } from './request-logger.ts';
@@ -45,6 +46,7 @@ export function createApp(
   app.route('/api/acl', aclRoutes());
   app.route('/api/agents', agentRoutes());
   app.route('/api/pages', pageRoutes());
+  app.route('/api/push', pushRoutes());
   app.route('/api/harness', harnessRoutes(deps, person));
   app.route('/mcp', mcpRoutes(deps));
   app.route('/health', healthScreenRoutes(deps));
