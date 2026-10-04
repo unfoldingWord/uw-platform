@@ -18,6 +18,7 @@ import type {
   PullRequestFacts,
   ReviewRequest,
 } from '@uw/harness';
+import { DEFAULT_SPEND_CAP } from '@uw/harness';
 import type { EngineRegistry } from '../engines/registry.ts';
 import type { EngineAdapter, EngineWork, EngineWorkResult } from '../engines/seam.ts';
 import { platformRuns } from '../ports/runs.ts';
@@ -253,6 +254,7 @@ export function runDepsFor(rig: HostRig, host: Caller, engines: EngineRegistry):
     host,
     db: rig.db,
     commit: 'test-commit',
+    cap: DEFAULT_SPEND_CAP,
     logger: createLogger(
       { traceId: randomUUID(), commit: 'test-commit', route: 'workflow', principal: null },
       () => undefined,

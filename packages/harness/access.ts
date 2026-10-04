@@ -48,3 +48,7 @@ export function isIngestPrincipal(actor: Principal): boolean {
     !actor.interactive
   );
 }
+
+export function platformIdentity(identity: string): boolean {
+  return identity === systemIdentity || identity === ingestIdentity;
+}

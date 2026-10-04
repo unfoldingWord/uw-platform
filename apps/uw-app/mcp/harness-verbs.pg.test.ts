@@ -354,6 +354,7 @@ function workflowContext(r: Rig, principal: Principal): VerbContext {
     kernel: r.kernel,
     db: r.db,
     commit: 'test-commit',
+    cap: { capMinor: 125_000, currency: 'USD' },
     logger: createLogger(
       { traceId: 'trace', commit: 'test-commit', route: 'workflow', principal: null },
       () => undefined,

@@ -20,7 +20,7 @@ import {
   seedPage,
   seedPerson,
 } from '@uw/db/test-seed';
-import { software, type Caller, type Kernel } from '@uw/harness';
+import { DEFAULT_SPEND_CAP, software, type Caller, type Kernel } from '@uw/harness';
 import { createApp } from '../app.tsx';
 import { createAccessFixture, type AccessFixture } from '../testing/access-keys.ts';
 import {
@@ -212,6 +212,7 @@ function workflowContext(r: Rig, principal: Principal): Omit<VerbContext, 'host'
     kernel: r.kernel,
     db: r.db,
     commit: 'test-commit',
+    cap: DEFAULT_SPEND_CAP,
     logger: createLogger(
       { traceId: 'trace', commit: 'test-commit', route: 'workflow', principal: null },
       () => undefined,

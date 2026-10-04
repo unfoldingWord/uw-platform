@@ -3,6 +3,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import type { AppDeps, AppEnv } from '../deps.ts';
 import { commitOf } from '../env.ts';
 import { MAX_BODY_BYTES } from '../http/body.ts';
+import { spendCapOf } from '../health/spend-cap.ts';
 import { refuse } from '../http/outcomes.ts';
 import { hubWiring, platformKernel } from '../kernel.ts';
 import { hubOf } from '../ports/hub.ts';
@@ -30,6 +31,7 @@ async function serve(c: Context<AppEnv>, deps: Pick<AppDeps, 'clock'>): Promise<
     kernel: platformKernel(database, deps.clock, hubWiring(hubOf(c.env, logger))),
     db: database.db,
     commit: commitOf(c.env),
+    cap: spendCapOf(c.env),
     logger,
   });
   const transport = new WebStandardStreamableHTTPServerTransport({

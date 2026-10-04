@@ -10,7 +10,7 @@ import {
   seedPerson,
   type SeedPage,
 } from '@uw/db/test-seed';
-import { software } from '@uw/harness';
+import { DEFAULT_SPEND_CAP, software } from '@uw/harness';
 import { createApp } from '../app.tsx';
 import { updatePage } from '../pages/store.ts';
 import { createAccessFixture, type AccessFixture } from '../testing/access-keys.ts';
@@ -197,6 +197,7 @@ async function viewer(r: Rig): Promise<Tool> {
       kernel: kernelOn(r.db, clock),
       db: r.db,
       commit: 'test-commit',
+      cap: DEFAULT_SPEND_CAP,
       logger,
     };
     const [block] = (await callVerb(context, name, args, verbHandlers)).content;

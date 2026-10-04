@@ -28,7 +28,7 @@ async function queueIndicator(db: Database): Promise<HealthIndicator> {
   const { deps } = recordingDeps();
   const handle = { db, ping: async () => undefined, release: async () => undefined };
   const response = await createApp({ ...deps, openDatabase: () => handle }).request(
-    '/health',
+    '/health/probe',
     {},
     { INGEST_DLQ: { send: async () => undefined } },
   );

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { principalSchema, type Principal } from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
-import { createClient } from '@uw/db/client';
+import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
-import { software, type Caller, type Kernel } from '@uw/harness';
+import { DEFAULT_SPEND_CAP, software, type Caller, type Kernel } from '@uw/harness';
 import { kernelOn, personOn } from '../testing/kernel.ts';
 import type { VerbContext } from './context.ts';
 import { callVerb } from './dispatch.ts';
@@ -38,15 +38,16 @@ function laptopUntil(until: Date): Principal {
   });
 }
 
-function contextOf(kernel: Kernel, principal: Principal): VerbContext {
+function contextOf(kernel: Kernel, db: Database, principal: Principal): VerbContext {
   return {
     principal,
     host: 'external',
     at: requestAt,
     traceId: crypto.randomUUID(),
     kernel,
-    db: createClient('postgres://unused@127.0.0.1:1/unused'),
+    db,
     commit: 'test-commit',
+    cap: DEFAULT_SPEND_CAP,
     logger: createLogger(
       { traceId: 'trace', commit: 'test-commit', route: 'POST /mcp', principal: null },
       () => undefined,
@@ -70,7 +71,7 @@ describe.skipIf(!testServer)('a verb call judges the kernel read at the request 
         repository: 'unfoldingWord/uw-platform',
       };
       expect((await kernel.stages.activate(caller(ian), activate)).status).toBe('accepted');
-      const context = contextOf(kernel, laptopUntil(expiresAt));
+      const context = contextOf(kernel, db, laptopUntil(expiresAt));
       const result = await callVerb(context, 'get_health', { harnessId }, verbHandlers);
       expect(result.isError).toBeUndefined();
     } finally {

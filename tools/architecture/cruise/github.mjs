@@ -12,6 +12,8 @@ import {
   forbidden,
 } from './shared.mjs';
 
+const agentPlane = '^apps/uw-app/health/agent-plane\\.ts$';
+
 export const githubRules = [
   {
     name: 'github-reads-only-in-github-and-composition-roots',
@@ -103,12 +105,21 @@ export const githubRules = [
         '^apps/uw-app/kernel\\.ts$',
         gateKernel,
         commandCapabilities,
+        agentPlane,
         ...appConfigRoots,
         appTesting,
         testFile,
       ],
     },
     to: { path: '^apps/uw-app/github/' },
+  },
+  {
+    name: 'agent-plane-only-on-the-sweep-queries',
+    comment:
+      'The agent plane reads the sweep state of each repository from the read model queries and reaches nothing else under apps/uw-app/github.',
+    severity: 'error',
+    from: { path: agentPlane },
+    to: { path: '^apps/uw-app/github/', pathNot: [github('facts/queries')] },
   },
   {
     name: 'import-command-only-on-the-import-path',

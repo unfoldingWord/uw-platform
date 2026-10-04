@@ -11,6 +11,7 @@ import {
   type Role,
 } from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
+import { DEFAULT_SPEND_CAP } from '@uw/harness';
 import { createClient } from '@uw/db/client';
 import type { AppEnv } from '../deps.ts';
 import { platformKernel } from '../kernel.ts';
@@ -96,6 +97,7 @@ export function testContext(principal: Principal, lines: string[] = []): VerbCon
     kernel: platformKernel(null),
     db: createClient('postgres://unused@127.0.0.1:1/unused'),
     commit: 'test-commit',
+    cap: DEFAULT_SPEND_CAP,
     logger: createLogger(
       { traceId: 'trace', commit: 'test-commit', route: 'POST /mcp', principal: null },
       (line) => lines.push(line),

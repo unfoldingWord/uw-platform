@@ -240,3 +240,30 @@ export async function issuesAwaitingCrossReference(
     githubUpdatedAt: issue.githubUpdatedAt,
   }));
 }
+
+const lastSweep = z.object({
+  at: z.iso.datetime({ offset: true }),
+  outcome: z.string(),
+  reason: z.string().nullable(),
+});
+
+export type SweepHealth = {
+  readonly fullName: string;
+  readonly sweptThrough: Date | null;
+  readonly lastSweep: z.infer<typeof lastSweep> | null;
+};
+
+export async function sweepHealth(db: Executor): Promise<readonly SweepHealth[]> {
+  const rows = await db
+    .select({
+      fullName: ghRepos.fullName,
+      sweptThrough: ghRepos.sweptThrough,
+      lastSweep: ghRepos.lastSweep,
+    })
+    .from(ghRepos)
+    .orderBy(asc(ghRepos.fullName));
+  return rows.map((row) => {
+    const parsed = lastSweep.safeParse(row.lastSweep);
+    return { ...row, lastSweep: parsed.success ? parsed.data : null };
+  });
+}

@@ -1,9 +1,10 @@
 import { errorFields, type Logger } from '@uw/core/log';
 import { systemPrincipal } from '@uw/core/principal';
-import { DEFAULT_SPEND_CAP, PortNotWiredError, type Caller, type Kernel } from '@uw/harness';
+import { PortNotWiredError, type Caller, type Kernel } from '@uw/harness';
 import { hyperdriveDatabase, type DatabaseHandle } from '../database.ts';
 import { gatewaySpend } from '../engines/gateway/spend.ts';
 import type { Bindings } from '../env.ts';
+import { spendCapOf } from '../health/spend-cap.ts';
 import { hubWiring, platformKernel } from '../kernel.ts';
 import { hubOf } from '../ports/hub.ts';
 import { spendOnlyEngine } from '../ports/model-engine.ts';
@@ -13,7 +14,6 @@ import { cronLogger, type CronDeps, type CronJob } from './job.ts';
 
 const SWEEP_LIMIT = 200;
 const BEAT_LIMIT = 10;
-const POSITIVE_INTEGER = /^[1-9]\d{0,14}$/;
 
 type Minute = {
   readonly kernel: Kernel;
@@ -21,11 +21,6 @@ type Minute = {
   readonly deps: CronDeps;
   readonly logger: Logger;
 };
-
-function capOf(deps: CronDeps): number {
-  const configured = deps.engines.AI_SPEND_CAP_MINOR ?? '';
-  return POSITIVE_INTEGER.test(configured) ? Number(configured) : DEFAULT_SPEND_CAP.capMinor;
-}
 
 function monthStart(now: Date): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
@@ -45,9 +40,8 @@ async function sweep({ kernel, caller, logger }: Minute): Promise<void> {
 }
 
 async function checkBreaker({ kernel, caller, deps, logger }: Minute): Promise<void> {
-  const capMinor = capOf(deps);
   const since = monthStart(deps.now());
-  const checked = await kernel.breaker.check(caller, { capMinor, currency: 'USD', since });
+  const checked = await kernel.breaker.check(caller, { ...spendCapOf(deps.engines), since });
   if (checked.status !== 'accepted') {
     logger.warn('breaker check refused', { step: 'breaker', outcome: checked.reason });
     return;

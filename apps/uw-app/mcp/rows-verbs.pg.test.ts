@@ -4,7 +4,7 @@ import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
 import { seedGrant, seedPage, seedPerson } from '@uw/db/test-seed';
-import { software, type Caller, type Kernel } from '@uw/harness';
+import { DEFAULT_SPEND_CAP, software, type Caller, type Kernel } from '@uw/harness';
 import { createTask } from '../tasks/store.ts';
 import { kernelOn, personOn } from '../testing/kernel.ts';
 import { callVerb } from './dispatch.ts';
@@ -167,6 +167,7 @@ async function agentOn(r: Rig, person: { id: string; email: string }, kernel = r
       kernel,
       db: r.db,
       commit: 'test-commit',
+      cap: DEFAULT_SPEND_CAP,
       logger,
     };
     const [block] = (await callVerb(context, name, args, verbHandlers)).content;

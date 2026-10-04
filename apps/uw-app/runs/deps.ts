@@ -8,6 +8,7 @@ import { gatewaySpend } from '../engines/gateway/spend.ts';
 import { engineRegistryOf, type EngineRegistry } from '../engines/registry.ts';
 import { commitOf, type Bindings } from '../env.ts';
 import { githubAppOf } from '../github/app-config.ts';
+import { spendCapOf, type SpendCap } from '../health/spend-cap.ts';
 import { createGitHubReads } from '../github/client.ts';
 import { reviewerAppsOf } from '../github/reviewer-apps.ts';
 import { platformGitHubTransport } from '../github/transport.ts';
@@ -23,6 +24,7 @@ export type RunDeps = {
   readonly host: Caller;
   readonly db: Database;
   readonly commit: string;
+  readonly cap: SpendCap;
   readonly logger: Logger;
   readonly clock: Clock;
   readonly engines: EngineRegistry;
@@ -71,6 +73,7 @@ export function runDepsOf(env: Bindings, traceId: string): OpenedRunDeps {
     host: { actor: systemPrincipal(), traceId, requestId: null },
     db: database.db,
     commit: commitOf(env),
+    cap: spendCapOf(env),
     logger,
     clock: systemClock,
     engines,

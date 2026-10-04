@@ -3,6 +3,7 @@ import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { McpError } from '@modelcontextprotocol/sdk/types.js';
 import { principalSchema, verbRegistry, type Principal } from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
+import { DEFAULT_SPEND_CAP } from '@uw/harness';
 import type { Database } from '@uw/db/client';
 import { seedGrant, seedHarness, seedPerson } from '@uw/db/test-seed';
 import { createApp } from '../app.tsx';
@@ -38,8 +39,9 @@ const INDICATORS = [
   'gate_refusals_week',
   'agent_writes',
   'stale_learnings',
+  'github_sweep',
 ];
-const NOT_WIRED = INDICATORS.slice(2).filter((name) => name !== 'breaker');
+const QUIET = INDICATORS.filter((name) => name !== 'breaker' && name !== 'github_sweep');
 
 let fixture: AccessFixture;
 
@@ -171,15 +173,16 @@ describe.skipIf(!testServer)('AB-1 /mcp is a Streamable HTTP endpoint behind Acc
       await client.close();
     }));
 
-  it('answers get_health on a harness in 80-89 with every indicator, the WB-10 ones but the breaker not wired and the breaker amber before its first reading', () =>
+  it('answers get_health on a harness in 80-89 with every indicator, the breaker amber before its first reading and the GitHub sweep not configured with no repositories', () =>
     withAppDatabase(async (db) => {
       await seed(db);
       const body = await healthOverHttp(db);
       const indicators = indicatorsOf(body);
       expect(namesOf(indicators)).toEqual(INDICATORS);
-      expect(namesOf(withStatus(indicators, 'not_wired'))).toEqual(NOT_WIRED);
-      expect(namesOf(withStatus(indicators, 'ok'))).toEqual(['harness', 'database']);
+      expect(namesOf(withStatus(indicators, 'not_wired'))).toEqual([]);
+      expect(namesOf(withStatus(indicators, 'ok'))).toEqual(QUIET);
       expect(namesOf(withStatus(indicators, 'amber'))).toEqual(['breaker']);
+      expect(namesOf(withStatus(indicators, 'not_configured'))).toEqual(['github_sweep']);
       expect(body['status']).toBe('amber');
     }));
 
@@ -240,6 +243,7 @@ async function healthAs(db: Database, principal: Principal) {
     kernel: platformKernel(handle),
     db,
     commit: 'test-commit',
+    cap: DEFAULT_SPEND_CAP,
     logger: createLogger(
       { traceId: 't', commit: 'c', route: 'mcp', principal: null },
       () => undefined,

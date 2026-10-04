@@ -6,6 +6,7 @@ import { CONTRACT_VERSION, type VerbName } from '@uw/contracts';
 import type { Logger } from '@uw/core/log';
 import type { Database } from '@uw/db/client';
 import type { Caller, Kernel, KernelOutcome, RunScene } from '@uw/harness';
+import type { SpendCap } from '../health/spend-cap.ts';
 import { MAX_BODY_BYTES } from '../http/body.ts';
 import type { VerbContext } from './context.ts';
 import { refusal, type VerbHandler, type VerbRefusal } from './handler.ts';
@@ -20,6 +21,7 @@ export type RunStepConnection = {
   readonly at: Date;
   readonly db: Database;
   readonly commit: string;
+  readonly cap: SpendCap;
   readonly logger: Logger;
   readonly within: ReadonlySet<VerbName> | null;
 };
@@ -106,6 +108,7 @@ export async function connectInProcess(
     kernel: connection.verbKernel,
     db: connection.db,
     commit: connection.commit,
+    cap: connection.cap,
     logger: connection.logger,
   };
   const verbs = modelVerbs(scene, connection.within);

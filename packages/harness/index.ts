@@ -16,10 +16,13 @@ export type {
   FlowStage,
   FlowView,
   GateRow,
+  PlaneIndicator,
+  PlaneRow,
+  PlaneTotals,
   PlayByPlay,
   WaitingRow,
 } from './views/types.ts';
-export { PLAY_PAGE, WAITING_WINDOW_MS } from './views/types.ts';
+export { PLANE_LIMIT, PLAY_PAGE, WAITING_WINDOW_MS } from './views/types.ts';
 export { engineDescriptor, engineDescriptors, hostable, SCOUT_ENGINE } from './engines.ts';
 export type { EngineDescriptor } from './engines.ts';
 export { runShapes, workflowRunSteps } from './runs/shapes.ts';
