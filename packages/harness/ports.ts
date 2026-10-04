@@ -91,7 +91,8 @@ export type HarnessItemsGateway = {
     ): Promise<readonly ItemState[]>;
     lowestOpenPriority(harnessId: string, stageKey: string): Promise<number | null>;
     lapsedLeases(at: Date, limit: number): Promise<readonly string[]>;
-    parked(harnessId: string): Promise<readonly ItemState[]>;
+    parked(harnessId: string, limit: number): Promise<readonly ItemState[]>;
+    openFor(harnessId: string, limit: number): Promise<readonly ItemState[]>;
     byIds(itemIds: readonly string[]): Promise<readonly ItemState[]>;
   };
   readonly write: {
@@ -116,6 +117,7 @@ export type EventQuery = {
 };
 export type EventPage = { readonly events: readonly HarnessEvent[]; readonly next: number | null };
 export type StageEntry = { readonly itemId: string; readonly at: Date };
+export type HarnessPosition = { readonly harnessId: string; readonly position: number };
 export type RecentEvents = {
   readonly since: Date;
   readonly names: readonly HarnessEvent['name'][] | null;
@@ -133,6 +135,7 @@ export type HarnessEventsGateway = {
     enteredStage(harnessId: string, itemIds: readonly string[]): Promise<readonly StageEntry[]>;
     recent(query: RecentEvents): Promise<readonly HarnessEvent[]>;
     lastPosition(harnessId: string): Promise<number>;
+    lastPositions(harnessIds: readonly string[]): Promise<readonly HarnessPosition[]>;
   };
   readonly write: { append(events: readonly NewHarnessEvent[]): Promise<readonly HarnessEvent[]> };
 };
@@ -158,7 +161,12 @@ export type DelegationsGateway = {
   readonly read: {
     byId(delegationId: string): Promise<Delegation | null>;
     live(filter: DelegationFilter, at: Date): Promise<readonly Delegation[]>;
-    lapsedFor(personId: string, since: Date, at: Date): Promise<readonly Delegation[]>;
+    lapsedFor(
+      personId: string,
+      since: Date,
+      at: Date,
+      limit: number,
+    ): Promise<readonly Delegation[]>;
   };
   readonly write: {
     insert(delegation: Delegation, traceId: string): Promise<void>;
@@ -217,6 +225,13 @@ export type RunSpend = {
   readonly computeMinor: number;
   readonly subscriptionTokens: number;
 };
+export type ItemCost = {
+  readonly itemId: string;
+  readonly meteredMinor: number;
+  readonly computeMinor: number;
+  readonly meteredTokens: number;
+  readonly subscriptionTokens: number;
+};
 export type RunCount = {
   readonly runShape: RunShape;
   readonly engine: Engine;
@@ -233,6 +248,7 @@ export type HarnessRunsGateway = {
     failedFor(personId: string, since: Date, limit: number): Promise<readonly RunRow[]>;
     spendSince(since: Date): Promise<RunSpend>;
     runCountsSince(since: Date): Promise<readonly RunCount[]>;
+    costsByItem(itemIds: readonly string[]): Promise<readonly ItemCost[]>;
   };
   readonly write: {
     insert(run: RunRow): Promise<void>;
