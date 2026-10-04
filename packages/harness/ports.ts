@@ -131,6 +131,7 @@ export type HarnessEventsGateway = {
     ): Promise<HarnessEvent | null>;
     enteredStage(harnessId: string, itemIds: readonly string[]): Promise<readonly StageEntry[]>;
     recent(query: RecentEvents): Promise<readonly HarnessEvent[]>;
+    lastPosition(harnessId: string): Promise<number>;
   };
   readonly write: { append(events: readonly NewHarnessEvent[]): Promise<readonly HarnessEvent[]> };
 };
