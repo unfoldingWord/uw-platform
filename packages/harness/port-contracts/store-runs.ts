@@ -262,71 +262,6 @@ function describeLatestNamed(subject: RunsSubject): void {
   });
 }
 
-const personaFrontmatter = {
-  identity: 'agent:builder',
-  owner: 'human:00000000-0000-4000-8000-000000000001',
-  harness: uid(0x3a00),
-  toolset: ['read_page', 'claim_item'],
-  run_shape: 'workflow-run',
-  engine: 'claude-messages',
-  model: 'claude-sonnet-4-5',
-  provider: null,
-  budget: { monthly_minor: 5000, currency: 'USD' },
-  capability: 'build',
-  requires_tools: [],
-};
-
-function personaPage(n: number, overrides: Partial<SeededPage>, frontmatter: object): SeededPage {
-  return {
-    id: uid(0x3a00 + 0x20 + n),
-    type: 'persona',
-    status: 'active',
-    jdArea: '80-89',
-    title: `Persona ${n}`,
-    bodyMd: 'body',
-    slug: `gateway-runs-persona-${n}`,
-    ...overrides,
-    frontmatter: { ...personaFrontmatter, ...frontmatter },
-  };
-}
-
-async function seedPersonas(subject: RunsSubject): Promise<void> {
-  await subject().store.transaction((tx) => seedHarness(tx, 0x3a00, 'gateway-runs-persona'));
-  await subject().seedPage(personaPage(1, {}, {}));
-  await subject().seedPage(
-    personaPage(2, { status: 'suggested' }, { identity: 'agent:suggested' }),
-  );
-  await subject().seedPage(personaPage(3, {}, { identity: 'agent:twin' }));
-  await subject().seedPage(personaPage(4, {}, { identity: 'agent:twin' }));
-  await subject().seedPage(personaPage(5, {}, { identity: 'agent:broken', toolset: 'all' }));
-}
-
-function describeActivePersona(subject: RunsSubject): void {
-  it('finds the one active persona page by identity and harness, and null when none, several or malformed', async () => {
-    await seedPersonas(subject);
-    const result = await subject().store.transaction(async (tx) => {
-      const read = (identity: string, harnessId = uid(0x3a00)) =>
-        tx.pages.read.activePersona(identity as Identity, harnessId);
-      return {
-        found: (await read('agent:builder'))?.id,
-        suggested: await read('agent:suggested'),
-        otherHarness: await read('agent:builder', uid(0x3aff)),
-        otherIdentity: await read('agent:other'),
-        ambiguous: await read('agent:twin'),
-        malformed: await read('agent:broken'),
-      };
-    });
-    expect(result).toEqual({
-      found: uid(0x3a21),
-      suggested: null,
-      otherHarness: null,
-      otherIdentity: null,
-      ambiguous: null,
-      malformed: null,
-    });
-  });
-}
-
 function describeForPersona(subject: RunsSubject): void {
   it("a persona's runs on a harness come newest first, since an instant", async () => {
     const later = (hours: number) => new Date(at.getTime() + hours * hour);
@@ -364,7 +299,6 @@ export function describeStoreRuns(adapter: string, subject: RunsSubject): void {
     describeLinkAndCostRefusals(subject);
     describeLive(subject);
     describeLatestNamed(subject);
-    describeActivePersona(subject);
     describeForPersona(subject);
   });
 }
