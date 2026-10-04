@@ -104,7 +104,37 @@ function describeConditionalWrites(subject: DelegationsSubject): void {
   });
 }
 
+function describeExpired(subject: DelegationsSubject): void {
+  it('DX-3 KN-16 lists the expired delegations not yet revoked or lapsed, oldest expiry first', async () => {
+    const first = delegationOf(0x5c00, 1, { expiresAt: new Date(at.getTime() + hour) });
+    const second = delegationOf(0x5c00, 2, { expiresAt: new Date(at.getTime() + 2 * hour) });
+    const revoked = delegationOf(0x5c00, 3, { revokedAt: at });
+    const lapsed = delegationOf(0x5c00, 4, { lapsedAt: at });
+    const running = delegationOf(0x5c00, 5, { expiresAt: new Date(at.getTime() + 9 * hour) });
+    const mine = new Set([first, second, revoked, lapsed, running].map((row) => row.id));
+    const later = new Date(at.getTime() + 3 * hour);
+    const result = await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0x5c00, 'gateway-delegations-expired');
+      for (const [n, row] of [first, second, revoked, lapsed, running].entries()) {
+        await tx.delegations.write.insert(row, uid(0x5c80 + n));
+      }
+      const ids = async (limit: number) =>
+        (await tx.delegations.read.expiredUnlapsed(later, limit))
+          .map((row) => row.id)
+          .filter((id) => mine.has(id));
+      return {
+        all: await ids(500),
+        atExpiry: (await tx.delegations.read.expiredUnlapsed(first.expiresAt, 500)).some(
+          (row) => row.id === first.id,
+        ),
+      };
+    });
+    expect(result).toEqual({ all: [first.id, second.id], atExpiry: true });
+  });
+}
+
 export function describeDelegations(subject: DelegationsSubject): void {
   describeLive(subject);
   describeConditionalWrites(subject);
+  describeExpired(subject);
 }

@@ -131,6 +131,24 @@ async function lapseAndFailureShow(world: World): Promise<void> {
   expect(stop?.evidence['why']).toBe('delegation_lapsed');
 }
 
+async function expiryWakesItsPerson(world: World): Promise<void> {
+  const scene = await runWorld(world);
+  const sweep = () => world.kernel.delegations.lapseExpired(systemCaller(scene), { limit: 50 });
+  expect(value(await sweep()).lapsed).toEqual([]);
+  expect(lapseWakes(world)).toEqual([]);
+  world.adapters.clock.advance(91 * day);
+  expect(value(await sweep()).lapsed).toEqual([scene.delegationId]);
+  expect(lapseWakes(world).map((wake) => [recipientIds(wake), wake.link])).toEqual([
+    [[personOf(scene.owner)], homeLink],
+  ]);
+  expect(value(await sweep()).lapsed).toEqual([]);
+  expect(lapseWakes(world)).toHaveLength(1);
+  const refused = await world.kernel.delegations.lapseExpired(simCaller(world, scene.owner), {
+    limit: 50,
+  });
+  expect(refused.status).toBe('error');
+}
+
 async function lostGrantShowsOtherAdmins(world: World): Promise<void> {
   const scene = await runWorld(world);
   const kim = await simPerson(world, 9, [
@@ -228,6 +246,8 @@ describe('wakes after commit', () => {
     inWorld(lapseAndFailureShow));
   it('NT-4 a lapsed delegation whose person lost the grant appears on Home for every other admin on the area', () =>
     inWorld(lostGrantShowsOtherAdmins));
+  it('NT-4 an expired delegation is marked lapsed by the sweep and wakes its person once', () =>
+    inWorld(expiryWakesItsPerson));
   it('NT-1 a stage advance wakes only the item holder', () => inWorld(advanceWakesHolder));
   it('a notifier or hub failure after commit leaves the command accepted', () =>
     inWorld(failureAfterCommit));

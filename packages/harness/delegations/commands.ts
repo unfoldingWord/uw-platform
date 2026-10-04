@@ -13,6 +13,7 @@ import { storeRefusalOf } from '../port-errors.ts';
 import type { Delegation, DelegationFilter, Ports, StoreTransaction } from '../ports.ts';
 import { adminRefusal, agentRefusal } from '../stages/rules.ts';
 import { beatPrincipal, personaMatches } from './beat.ts';
+import { lapseExpired, type Expired, type ExpiryInput } from './expiry.ts';
 import { assertDelegationLive, recordLapse } from './live.ts';
 
 type DelegationPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
@@ -38,6 +39,7 @@ export type DelegationCommands = {
     caller: Caller,
     input: { readonly delegationId: string },
   ): Promise<KernelOutcome<{ readonly delegation: Delegation; readonly principal: Principal }>>;
+  lapseExpired(caller: Caller, input: ExpiryInput): Promise<KernelOutcome<Expired>>;
 };
 
 async function supersession(
@@ -239,5 +241,6 @@ export function createDelegationCommands(ports: DelegationPorts): DelegationComm
       const at = ports.clock.now();
       return ports.store.transaction((tx) => beatWithin(ports, tx, caller, input.delegationId, at));
     },
+    lapseExpired: (caller, input) => lapseExpired(ports, caller, input),
   };
 }

@@ -242,6 +242,32 @@ async function sweepsLapsedLease(rig: Rig): Promise<void> {
   expect(outcomeOf(rig, 'sweep')).toMatchObject({ outcome: 'leases_swept', expired: 0 });
 }
 
+async function lapsesExpiredDelegation(rig: Rig): Promise<void> {
+  const admin = await ian(rig.db);
+  const kernel = kernelOn(rig.db, { now: () => new Date() });
+  const expiresAt = new Date(Date.now() + 5 * MINUTE);
+  const granted = accepted(
+    await kernel.delegations.grant(callerOf(admin), {
+      harnessId: rig.harnessId,
+      persona: 'agent:builder',
+      capability: 'build',
+      expiresAt,
+      supersedes: null,
+    }),
+  );
+  const spend = () => Promise.resolve(costReply(0));
+  await minuteJob(rig.env, depsOf(rig, spend));
+  expect(outcomeOf(rig, 'expiry')).toMatchObject({ outcome: 'delegations_lapsed', lapsed: 0 });
+  rig.lines.length = 0;
+  rig.clock.offset = 6 * MINUTE;
+  await minuteJob(rig.env, depsOf(rig, spend));
+  expect(outcomeOf(rig, 'expiry')).toMatchObject({ outcome: 'delegations_lapsed', lapsed: 1 });
+  const lapsed = await named(rig, 'delegation_lapsed');
+  expect(lapsed.map((event) => [event.evidence, event.actor])).toEqual([
+    [{ delegationId: granted.id, why: 'expired' }, 'agent:system'],
+  ]);
+}
+
 describe.skipIf(!testServer)('the minute cron', () => {
   it('HE-5 the minute cron checks the breaker against the configured cap', () =>
     withRig(checksTheCap));
@@ -253,6 +279,8 @@ describe.skipIf(!testServer)('the minute cron', () => {
     withRig(beatsAsSystem));
 
   it('the lease sweep expires a lapsed lease once a minute', () => withRig(sweepsLapsedLease));
+  it('NT-4 the minute cron records the lapse of a delegation once it expires', () =>
+    withRig(lapsesExpiredDelegation));
 
   it('a beat start without the Workflow binding fails start_failed and releases the item', () =>
     withRig(startFailsUnbound));
