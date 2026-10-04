@@ -292,6 +292,84 @@ function describeForPersona(subject: RunsSubject): void {
   });
 }
 
+function stepOf(writes: number, tokens: number): RunRow['steps'][number] {
+  const step = { step: 'work' as const, tokensIn: tokens, tokensOut: tokens, costMinor: null };
+  const empty = { computeMinor: null, model: null, resolvedProvider: null, toolsCalled: [] };
+  return { ...step, ...empty, writes, at: at.toISOString() };
+}
+
+function completedAs(base: number, n: number, run: RunRow, result: string) {
+  return newEventSchema.parse({
+    eventId: uid(base + 0x40 + n),
+    harnessId: run.harnessId,
+    itemId: run.itemId,
+    name: 'run_completed',
+    at: at.toISOString(),
+    actor: builder,
+    evidence: { runId: run.id, result, gates: [], review: null },
+    traceId: run.traceId,
+    requestId: null,
+  });
+}
+
+function dayRuns(): readonly RunRow[] {
+  const later = (hours: number) => new Date(at.getTime() + hours * hour);
+  const ended = { outcome: 'completed' as const, endedAt: later(2) };
+  return [
+    runOf(0x6500, 1, 1, {
+      ...ended,
+      costMinor: 100,
+      computeMinor: 7,
+      steps: [stepOf(2, 0)],
+    }),
+    runOf(0x6500, 2, 2, {
+      runShape: 'external-run',
+      engine: 'external',
+      costBasis: 'subscription',
+      outcome: 'failed',
+      failure: 'retries_exhausted',
+      endedAt: later(1),
+      steps: [stepOf(1, 5)],
+    }),
+    runOf(0x6500, 3, 3, { ...ended, costMinor: 50 }),
+    runOf(0x6500, 4, 4, { ...ended, startedAt: later(-3) }),
+    runOf(0x6500, 5, 5, {}),
+    runOf(0x6500, 6, 6, { ...ended, persona: 'agent:reviewer' as Identity, costMinor: 9 }),
+  ];
+}
+
+function describePersonaDay(subject: RunsSubject): void {
+  it("a persona's day on a harness is summed in the store, escalations included", async () => {
+    const runs = dayRuns();
+    const day = await subject().store.transaction(async (tx) => {
+      await seedItems(tx, 0x6500, 'gateway-runs-persona-day', 6);
+      await seedItems(tx, 0x6580, 'gateway-runs-persona-day-other', 1);
+      for (const run of runs) await tx.harnessRuns.write.insert(run);
+      await tx.harnessRuns.write.insert(runOf(0x6580, 1, 1, { costMinor: 1000 }));
+      const [, , third, fourth] = runs;
+      if (third === undefined || fourth === undefined) throw new Error('no runs');
+      await tx.harnessEvents.write.append([
+        completedAs(0x6500, 1, third, 'premise_held'),
+        completedAs(0x6500, 2, fourth, 'review_refused'),
+      ]);
+      const query = { identity: builder, harnessId: uid(0x6500), since: at };
+      return tx.harnessRuns.read.personaDay(query);
+    });
+    expect(day).toEqual({
+      counts: [
+        { runShape: 'external-run', engine: 'external', count: 1 },
+        { runShape: 'workflow-run', engine: 'claude-messages', count: 3 },
+      ],
+      meteredMinor: 150,
+      computeMinor: 7,
+      subscriptionTokens: 10,
+      writes: 3,
+      ended: 4,
+      escalated: 3,
+    });
+  });
+}
+
 export function describeStoreRuns(adapter: string, subject: RunsSubject): void {
   describe(`DX-3 store runs gateway on ${adapter}`, () => {
     describeRoundTrip(subject);
@@ -300,5 +378,6 @@ export function describeStoreRuns(adapter: string, subject: RunsSubject): void {
     describeLive(subject);
     describeLatestNamed(subject);
     describeForPersona(subject);
+    describePersonaDay(subject);
   });
 }
