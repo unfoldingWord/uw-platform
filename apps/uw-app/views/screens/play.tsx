@@ -57,26 +57,27 @@ function Links(props: { readonly play: PlayByPlay }) {
 
 async function playOf(c: Context<AppEnv>) {
   const screen = screenKernel(c);
-  if (screen === null) return { screen, play: null };
+  if (screen === null) return { screen, play: null, cursor: 0 };
   const harnessId = idParam(c.req.param('harnessId'));
   const itemId = idParam(c.req.param('itemId'));
   const after = afterOf(c.req.query('after'));
-  if (harnessId === null || itemId === null || after === null) return { screen, play: null };
+  if (harnessId === null || itemId === null || after === null) {
+    return { screen, play: null, cursor: 0 };
+  }
   const read = { at: screen.at };
+  const cursor = await screen.kernel.views.cursor(screen.caller, { harnessId }, read);
   const outcome = await screen.kernel.views.playByPlay(screen.caller, { itemId, after }, read);
   if (outcome.status !== 'accepted' || outcome.value.harness.id !== harnessId) {
-    return { screen, play: null };
+    return { screen, play: null, cursor };
   }
-  return { screen, play: outcome.value };
+  return { screen, play: outcome.value, cursor };
 }
 
 export async function playScreen(c: Context<AppEnv>): Promise<Response> {
-  const { screen, play } = await playOf(c);
+  const { screen, play, cursor } = await playOf(c);
   if (screen === null) return screenRefusal(c);
   if (play === null) return notFound(c);
   const { harness, item, stage } = play;
-  const read = { at: screen.at };
-  const cursor = await screen.kernel.views.cursor(screen.caller, { harnessId: harness.id }, read);
   const learnings = new Map(Object.entries(play.learnings));
   const spec = {
     title: item.title,

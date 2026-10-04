@@ -1,8 +1,9 @@
 import type { Context } from 'hono';
 import { formatDuration } from '@uw/core/dates';
 import { formatCount } from '@uw/core/money';
-import type { FlowStage, FlowView } from '@uw/harness';
+import { VIEW_LIMIT, type FlowStage, type FlowView } from '@uw/harness';
 import { HumanGateMark } from '@uw/ui/components/human-action.tsx';
+import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
 import type { AppEnv } from '../../deps.ts';
@@ -14,6 +15,8 @@ import { boardPath, flowPath, homePath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 
 const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
+
+const cappedNote = `This harness has at least ${formatCount(VIEW_LIMIT)} open items. The counts and costs cover the ${formatCount(VIEW_LIMIT)} with the highest priority.`;
 
 const columns = [
   { key: 'stage', label: 'Stage' },
@@ -60,10 +63,10 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
   const harnessId = idParam(c.req.param('harnessId'));
   if (harnessId === null) return notFound(c);
   const read = { at: screen.at };
+  const cursor = await screen.kernel.views.cursor(screen.caller, { harnessId }, read);
   const outcome = await screen.kernel.views.flow(screen.caller, { harnessId }, read);
   if (outcome.status !== 'accepted') return notFound(c);
   const view = outcome.value;
-  const cursor = await screen.kernel.views.cursor(screen.caller, { harnessId }, read);
   const spec = {
     title: `${view.harness.key} flow`,
     current: flowPath(harnessId),
@@ -80,6 +83,7 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
         lede={`Built from the ${view.harness.template} template`}
       />
       <div class="flex flex-col gap-6">
+        {view.capped ? <Note>{cappedNote}</Note> : null}
         <FlowDiagram harnessId={harnessId} harnessKey={view.harness.key} stages={view.stages} />
         <Table
           caption="Stages"

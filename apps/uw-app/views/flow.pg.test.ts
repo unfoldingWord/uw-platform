@@ -1,7 +1,8 @@
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
-import type { Clock, Template } from '@uw/harness';
+import { seedOpenItems } from '@uw/db/test-seed';
+import { VIEW_LIMIT, type Clock, type Template } from '@uw/harness';
 import {
   activatedHarness,
   boardWorld,
@@ -221,6 +222,20 @@ async function foreignTemplate(world: BoardWorld): Promise<void> {
   expect(document.querySelector('main [data-stage="listen"] [class*="kindle"]')).not.toBeNull();
 }
 
+async function cappedSaysAtLeast(world: BoardWorld): Promise<void> {
+  const before = documentOf((await flowOf(world)).text);
+  expect(before.querySelector('main [role="note"]')).toBeNull();
+  await seedOpenItems(world.db, {
+    harnessId: world.harnessId,
+    stageKey: 'build',
+    count: VIEW_LIMIT,
+  });
+  const after = documentOf((await flowOf(world)).text);
+  expect(after.querySelector('main [role="note"]')?.textContent).toBe(
+    'This harness has at least 5,000 open items. The counts and costs cover the 5,000 with the highest priority.',
+  );
+}
+
 async function noProblems(world: BoardWorld): Promise<void> {
   expect(await screenProblems((await flowOf(world)).text)).toEqual([]);
   expect(await screenProblems((await flowOf(world, world.viewer.email)).text)).toEqual([]);
@@ -240,5 +255,7 @@ describe.skipIf(!testServer)('the Flow view', () => {
     inFlow(hiddenIsMissing));
   it('WB-4 a harness with stage keys and brackets of neither template is drawn from its rows', () =>
     inFlow(foreignTemplate));
+  it('the flow view says at least when the harness has more open items than it reads', () =>
+    inFlow(cappedSaysAtLeast));
   it('the flow view renders with no screen problems', () => inFlow(noProblems));
 });

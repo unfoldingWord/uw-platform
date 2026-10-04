@@ -6,7 +6,8 @@ import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import type { AppEnv } from '../../deps.ts';
-import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
+import { liveCursors } from '../parts/cursors.ts';
+import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { flowPath, gatePath, homePath, itemPath } from '../parts/paths.ts';
 
 const REFRESH_EVERY_MS = 60_000;
@@ -63,26 +64,14 @@ function WaitingList(props: { readonly rows: readonly Shown[] }) {
   );
 }
 
-async function cursorsOf(screen: ScreenKernel, harnessIds: readonly string[]) {
-  const harnesses = [];
-  for (const harnessId of new Set(harnessIds)) {
-    const cursor = await screen.kernel.views.cursor(
-      screen.caller,
-      { harnessId },
-      { at: screen.at },
-    );
-    harnesses.push({ harnessId, cursor });
-  }
-  return harnesses;
-}
-
 export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   if (screen === null) return screenRefusal(c);
+  const cursors = await screen.kernel.views.cursors(screen.caller, { at: screen.at });
   const waiting = await screen.kernel.views.waitingOn(screen.caller, { at: screen.at });
   const rows = waiting.rows.map(shown);
-  const harnesses = await cursorsOf(
-    screen,
+  const harnesses = liveCursors(
+    cursors,
     rows.map((row) => row.harnessId),
   );
   const spec = {

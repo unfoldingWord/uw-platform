@@ -74,12 +74,14 @@ async function readableRows(world: BoardWorld): Promise<void> {
 }
 
 async function sameForEveryone(world: BoardWorld): Promise<void> {
-  const admin = kpis(await documentOf(world));
+  const plane = async (email: string) =>
+    kpis(await documentOf(world, healthPath(), email)).slice(PLATFORM.length);
+  const admin = await plane(world.ianEmail);
   expect(admin.find(([label]) => label === 'Runs today')?.[2]).not.toBe(
     '0 on the platform, 0 on own machines',
   );
   for (const email of [world.viewer.email, world.stranger.email]) {
-    expect(kpis(await documentOf(world, healthPath(), email))).toEqual(admin);
+    expect(await plane(email)).toEqual(admin);
   }
 }
 
