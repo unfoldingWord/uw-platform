@@ -4,6 +4,7 @@ import { awaitBlocked, type LockWaiters } from './lock-wait.ts';
 import { describeNotWired } from './not-wired-cases.ts';
 import { describeStoreGateways, type SeededPage } from './store-gateways.ts';
 import { describeStoreRuns } from './store-runs.ts';
+import { describeStoreFailedFor } from './store-failed-for.ts';
 import { describeStoreViews } from './store-views.ts';
 
 export type StoreShape = { readonly concurrentConnections: boolean };
@@ -272,6 +273,7 @@ export function describeStoreContract(
     describeStoreGateways(adapter, subject, shape.concurrentConnections);
     describeStoreRuns(adapter, subject);
     describeStoreViews(adapter, subject);
+    describeStoreFailedFor(adapter, subject);
   });
 }
 

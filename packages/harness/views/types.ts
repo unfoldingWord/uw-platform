@@ -64,6 +64,10 @@ export type WaitingRow =
       readonly item: ItemState;
       readonly run: RunRow;
     };
+export type Waiting = {
+  readonly rows: readonly WaitingRow[];
+  readonly failedRunsCapped: boolean;
+};
 export type DecideAbility =
   | { readonly can: true }
   | { readonly can: false; readonly reason: 'not_permitted' | 'approver_lacks_domain_grant' };
@@ -75,6 +79,7 @@ export type PlayByPlay = {
   readonly next: number | null;
   readonly learnings: Readonly<Record<string, EvidenceLabel>>;
 };
+export const FAILED_RUNS_LIMIT = 50;
 export const WAITING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 export const PLAY_PAGE = 100;
 export type PlaneTotals = {

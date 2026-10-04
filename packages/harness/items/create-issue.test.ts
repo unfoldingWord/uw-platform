@@ -65,6 +65,7 @@ function itemsGateway(inserted: ItemState[]): HarnessItemsGateway {
       lowestOpenPriority: unused,
       lapsedLeases: unused,
       parked: unused,
+      byIds: unused,
     },
     write: {
       insert: async (item) => {

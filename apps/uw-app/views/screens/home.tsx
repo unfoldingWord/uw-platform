@@ -1,7 +1,7 @@
 import type { Context } from 'hono';
 import { formatInstant } from '@uw/core/dates';
 import { formatCount } from '@uw/core/money';
-import type { WaitingRow } from '@uw/harness';
+import { FAILED_RUNS_LIMIT, type WaitingRow } from '@uw/harness';
 import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
@@ -40,11 +40,14 @@ function shown(row: WaitingRow): Shown {
   };
 }
 
-function lede(count: number): string {
+function lede(count: number, capped: boolean): string {
+  if (capped) return `At least ${formatCount(count)} things are waiting on you`;
   return count === 1
     ? '1 thing is waiting on you'
     : `${formatCount(count)} things are waiting on you`;
 }
+
+const cappedNote = `At least ${formatCount(FAILED_RUNS_LIMIT)} runs failed on your items in the last 7 days. The newest ${formatCount(FAILED_RUNS_LIMIT)} are listed.`;
 
 function WaitingList(props: { readonly rows: readonly Shown[] }) {
   return (
@@ -77,7 +80,7 @@ export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   if (screen === null) return screenRefusal(c);
   const waiting = await screen.kernel.views.waitingOn(screen.caller, { at: screen.at });
-  const rows = waiting.map(shown);
+  const rows = waiting.rows.map(shown);
   const harnesses = await cursorsOf(
     screen,
     rows.map((row) => row.harnessId),
@@ -98,7 +101,8 @@ export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
       </>
     ) : (
       <>
-        <PageHead title="Waiting on you" lede={lede(rows.length)} />
+        <PageHead title="Waiting on you" lede={lede(rows.length, waiting.failedRunsCapped)} />
+        {waiting.failedRunsCapped ? <Note>{cappedNote}</Note> : null}
         <WaitingList rows={rows} />
       </>
     ),

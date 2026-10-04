@@ -21,7 +21,7 @@ import type {
   PlaneRow,
   PlaneTotals,
   PlayByPlay,
-  WaitingRow,
+  Waiting,
 } from './types.ts';
 import { waitingOn } from './waiting.ts';
 
@@ -48,7 +48,7 @@ export type ViewReads = {
     options?: ReadOptions,
   ): Promise<KernelOutcome<GateView>>;
   decideAbility(caller: Caller, gate: Gate, options?: ReadOptions): DecideAbility;
-  waitingOn(caller: Caller, options?: ReadOptions): Promise<readonly WaitingRow[]>;
+  waitingOn(caller: Caller, options?: ReadOptions): Promise<Waiting>;
   playByPlay(
     caller: Caller,
     input: PlayInput,

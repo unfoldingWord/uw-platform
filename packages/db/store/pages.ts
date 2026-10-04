@@ -66,6 +66,12 @@ async function activePersona(
 }
 
 const maxLearnings = 5000;
+const isoDayPattern = '^[0-9]{4}-[0-9]{2}-[0-9]{2}$';
+
+function dateField(field: 'review_by' | 'as_of'): SQL {
+  const text = sql`(${pages.frontmatter}->>${field})`;
+  return sql`CASE WHEN ${text} ~ ${isoDayPattern} AND pg_input_is_valid(${text}, 'date') THEN ${text}::date END`;
+}
 
 async function staleLearnings(
   executor: AnyExecutor,
@@ -77,7 +83,7 @@ async function staleLearnings(
   if (!Number.isInteger(limit) || limit < 1 || limit > maxLearnings) {
     throw new RangeError(`a learning read holds 1 to ${maxLearnings} pages, not ${limit}`);
   }
-  const reviewBy = sql`coalesce((${pages.frontmatter}->>'review_by')::date, (${pages.frontmatter}->>'as_of')::date + 90)`;
+  const reviewBy = sql`coalesce(${dateField('review_by')}, ${dateField('as_of')} + 90)`;
   const rows = await executor
     .select(factColumns)
     .from(pages)

@@ -5,6 +5,7 @@ import {
   desc,
   eq,
   gt,
+  inArray,
   isNotNull,
   isNull,
   lt,
@@ -166,6 +167,17 @@ async function parked(executor: AnyExecutor, harnessId: string): Promise<readonl
   return rows.map((row) => toItemState(row.item, row.stageKey));
 }
 
+async function byIds(
+  executor: AnyExecutor,
+  itemIds: readonly string[],
+): Promise<readonly ItemState[]> {
+  if (itemIds.length === 0) return [];
+  const rows = await selectItems(executor)
+    .where(inArray(harnessItems.id, [...itemIds]))
+    .orderBy(asc(harnessItems.id));
+  return rows.map((row) => toItemState(row.item, row.stageKey));
+}
+
 function bindReads(executor: AnyExecutor): HarnessItemsGateway['read'] {
   return {
     byId: async (itemId) => {
@@ -205,6 +217,7 @@ function bindReads(executor: AnyExecutor): HarnessItemsGateway['read'] {
       return rows.map((row) => row.id);
     },
     parked: (harnessId) => parked(executor, harnessId),
+    byIds: (itemIds) => byIds(executor, itemIds),
   };
 }
 

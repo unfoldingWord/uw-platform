@@ -131,12 +131,12 @@ async function inWaiting(work: (scene: Waiting) => Promise<void>): Promise<void>
 }
 
 async function kindsFor(scene: Waiting, actor: Principal): Promise<readonly string[]> {
-  const rows = await scene.world.kernel.views.waitingOn(simCaller(scene.world, actor));
+  const { rows } = await scene.world.kernel.views.waitingOn(simCaller(scene.world, actor));
   return rows.map((row) => row.kind);
 }
 
 async function ranked(scene: Waiting): Promise<void> {
-  const rows = await scene.world.kernel.views.waitingOn(simCaller(scene.world, scene.owner));
+  const { rows } = await scene.world.kernel.views.waitingOn(simCaller(scene.world, scene.owner));
   expect(rows.map((row) => row.kind)).toEqual(['gate', 'delegation_lapsed', 'run_failed']);
   const [, lapsed, failed] = rows;
   expect(lapsed?.kind === 'delegation_lapsed' && lapsed.delegation.persona).toBe('agent:scout');

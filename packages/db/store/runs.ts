@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gte, inArray, sql, type SQL } from 'drizzle-
 import { engineSchema, runShapeSchema } from '@uw/contracts';
 import type { AnyExecutor } from '../any-database.ts';
 import { oneOf } from '../checks.ts';
-import { harnessRuns } from '../schema.ts';
+import { delegations, harnessItems, harnessRuns } from '../schema.ts';
 import { refusing } from './refusal.ts';
 import { toRun } from './rows.ts';
 import type { HarnessRunsGateway, RunCount, RunRow, RunSpend } from './types.ts';
@@ -93,11 +93,34 @@ export function startedSinceQuery(executor: AnyExecutor, since: Date, limit: num
     .limit(checkedLimit(limit));
 }
 
-export function failedSinceQuery(executor: AnyExecutor, since: Date, limit: number) {
+function ownedBy(personId: string): SQL {
+  const human = `human:${personId}`;
+  const device = `agent:${personId}/`;
+  return sql`(${harnessRuns.persona} = ${human}
+    OR starts_with(${harnessRuns.persona}, ${device})
+    OR EXISTS (SELECT 1 FROM ${delegations} WHERE ${delegations.id} = ${harnessRuns.delegationId} AND ${delegations.personId} = ${personId})
+    OR EXISTS (SELECT 1 FROM ${harnessItems} WHERE ${harnessItems.id} = ${harnessRuns.itemId} AND (${harnessItems.claimedBy} = ${human} OR starts_with(${harnessItems.claimedBy}, ${device}))))`;
+}
+
+const notRetried = sql`NOT EXISTS (SELECT 1 FROM harness_runs AS later_run WHERE later_run.item_id = ${harnessRuns.itemId} AND later_run.started_at > coalesce(${harnessRuns.endedAt}, ${harnessRuns.startedAt}))`;
+
+export function failedForQuery(
+  executor: AnyExecutor,
+  personId: string,
+  since: Date,
+  limit: number,
+) {
   return executor
     .select()
     .from(harnessRuns)
-    .where(and(eq(harnessRuns.outcome, 'failed'), gte(harnessRuns.endedAt, since)))
+    .where(
+      and(
+        eq(harnessRuns.outcome, 'failed'),
+        gte(harnessRuns.endedAt, since),
+        ownedBy(personId),
+        notRetried,
+      ),
+    )
     .orderBy(desc(harnessRuns.endedAt), asc(harnessRuns.id))
     .limit(checkedLimit(limit));
 }
@@ -147,8 +170,8 @@ export function bindRuns(executor: AnyExecutor): HarnessRunsGateway {
       forItems: (itemIds) => forItems(executor, itemIds),
       startedSince: async (since, limit) =>
         (await startedSinceQuery(executor, since, limit)).map(toRun),
-      failedSince: async (since, limit) =>
-        (await failedSinceQuery(executor, since, limit)).map(toRun),
+      failedFor: async (personId, since, limit) =>
+        (await failedForQuery(executor, personId, since, limit)).map(toRun),
       spendSince: (since) => spendSince(executor, since),
       runCountsSince: (since) => runCountsSince(executor, since),
     },
