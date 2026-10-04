@@ -177,13 +177,33 @@ function gateWakesFor(cast: Cast, itemId: string) {
     .filter((wake) => wake.itemId === itemId && wake.reason === 'gate_waiting');
 }
 
-function wokeOnlyDeciders(cast: Cast, itemId: string, earlier: number): void {
+function wokeOnlyDeciders(cast: Cast, itemId: string, earlier: number): string {
   const wakes = gateWakesFor(cast, itemId);
   assert.equal(wakes.length - earlier, 1);
   const wake = wakes.at(-1);
   const deciders = [cast.ian.personId, cast.kim.personId].toSorted();
   assert.deepEqual(wake?.recipients.map((recipient) => recipient.personId).toSorted(), deciders);
   assert.equal(wake.link, gateLink(cast.harnessId, itemId));
+  return wake.traceId;
+}
+
+async function reachedIanAndTheTopic(cast: Cast, itemId: string, traceId: string): Promise<void> {
+  const { notifier } = cast.world.adapters;
+  const pushed = notifier
+    .decisions()
+    .filter((decision) => decision.traceId === traceId)
+    .map((decision) => [decision.personId, decision.decision]);
+  const expected = [
+    [cast.ian.personId, 'sent'],
+    [cast.kim.personId, 'no_device'],
+  ];
+  assert.deepEqual(pushed.toSorted(), expected.toSorted());
+  const posts = notifier.posts().filter((post) => post.traceId === traceId);
+  assert.deepEqual(
+    posts.map((post) => post.reason),
+    ['gate_waiting'],
+  );
+  assert.equal((await itemNow(cast, itemId)).zulipTopic, posts[0]?.topic);
 }
 
 async function parkAtShip(cast: Cast, itemId: string): Promise<void> {
@@ -201,12 +221,15 @@ async function parkAtShip(cast: Cast, itemId: string): Promise<void> {
   const max = callerFor(cast, cast.max);
   value(await world.kernel.items.claim(max, { itemId, delegationId: null }));
   const earlier = gateWakesFor(cast, itemId).length;
+  world.adapters.notifier.subscribe(cast.ian.personId ?? '');
+  world.adapters.notifier.enableZulip();
   const parked = value(
     await world.kernel.items.submit(max, { itemId, to: null, evidence: {}, change: null }),
   );
   assert.equal(parked.result, 'parked');
   assert.deepEqual([parked.item.stageKey, parked.item.gateStatus], ['ship', 'parked']);
-  wokeOnlyDeciders(cast, itemId, earlier);
+  const traceId = wokeOnlyDeciders(cast, itemId, earlier);
+  await reachedIanAndTheTopic(cast, itemId, traceId);
 }
 
 export async function travelToShip(world: World): Promise<Journey> {

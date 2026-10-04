@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import type { HarnessEvent } from '@uw/contracts';
 import type { Caller, PullRequestFacts } from '@uw/harness';
-import { simSeenHead } from '../fixtures.ts';
+import { simIngest, simSeenHead } from '../fixtures.ts';
 import { readWorldLog } from '../runner/log.ts';
 import { beatOf, itemOf, reasonOf, value } from '../runs.ts';
 import { approvedBy, greenFacts, itemLog, namesSince, shipPullRequest } from '../ship-fixtures.ts';
@@ -75,6 +75,29 @@ async function refusedOnTheFacts(journey: Journey): Promise<void> {
   const later = approvedBy(reviewer, 'anthropic', heads.pushed, 9100000301);
   const pushed = { itemId, head: heads.pushed, reviews: [later] };
   await refusedOver(journey, greenFacts(world, pushed), ['head_mismatch']);
+}
+
+async function repliedOnZulip(journey: Journey): Promise<void> {
+  const { cast, itemId } = journey;
+  const { world, harnessId, kim } = cast;
+  const item = await itemOf(world, itemId);
+  const before = await itemLog(world, harnessId, itemId);
+  const reply = {
+    harnessId,
+    itemId,
+    messageId: 7001,
+    topic: item?.zulipTopic ?? '',
+    personId: kim.personId,
+    email: kim.email ?? '',
+    text: 'approve',
+  };
+  value(await world.kernel.items.recordComment(callerFor(cast, simIngest()), reply));
+  const after = await itemLog(world, harnessId, itemId);
+  assert.deepEqual(namesSince(before, after), ['comment_recorded']);
+  assert.equal(after.events.at(-1)?.evidence['personId'], kim.personId);
+  await nothingDecidedOrMerged(journey);
+  const parked = await itemOf(world, itemId);
+  assert.deepEqual([parked?.stageKey, parked?.gateStatus], ['ship', 'parked']);
 }
 
 async function attemptAsAgent(journey: Journey, attempt: Caller): Promise<void> {
@@ -153,6 +176,7 @@ async function approvedAndMerged(journey: Journey): Promise<void> {
 }
 
 export async function travelThroughShip(journey: Journey): Promise<void> {
+  await repliedOnZulip(journey);
   await refusedOnTheFacts(journey);
   await refusedForAgents(journey);
   await approvedAndMerged(journey);
