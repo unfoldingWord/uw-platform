@@ -173,6 +173,86 @@ describe('confirmation is reached only from the page routes', () => {
   });
 });
 
+const appActivation = 'apps/uw-app/commands/person/persona-activation.ts';
+const activationFiles = {
+  [appActivation]: leaf,
+  'packages/harness/personas/commands.ts': leaf,
+  'packages/harness/personas/activate.ts': leaf,
+  'packages/harness/personas/flip.ts': leaf,
+};
+
+const activationRefusals: [string, string, string, string][] = [
+  [
+    'the package index re-exporting the activation',
+    'packages/harness/index.ts',
+    "export * from './persona-activation.ts';",
+    'persona-activation-only-in-the-person-surface',
+  ],
+  [
+    'the kernel building the persona commands',
+    'packages/harness/kernel.ts',
+    "import './personas/commands.ts';",
+    'persona-activation-only-in-the-person-surface',
+  ],
+  [
+    'another kernel module reaching the flip',
+    'packages/harness/runs/beat.ts',
+    "import '../personas/flip.ts';",
+    'persona-activation-only-in-the-person-surface',
+  ],
+  [
+    'an MCP verb building the activation',
+    'apps/uw-app/mcp/verbs/a.ts',
+    "import { createPersonaActivation } from '@uw/harness/persona-activation';",
+    'persona-activation-only-in-the-person-surface',
+  ],
+  [
+    'the agent page writer building the activation',
+    'apps/uw-app/pages/agent-write.ts',
+    "import '@uw/harness/persona-activation';",
+    'persona-activation-only-in-the-person-surface',
+  ],
+  [
+    'the command capabilities building the activation from the kernel package',
+    'apps/uw-app/commands/capabilities.ts',
+    "import '@uw/harness/persona-activation';",
+    'persona-activation-only-in-the-person-surface',
+  ],
+  [
+    'the dispatcher reaching the person activation',
+    'apps/uw-app/commands/dispatch.ts',
+    "import './person/persona-activation.ts';",
+    'persona-activation-only-in-capabilities',
+  ],
+  [
+    'another person command reaching the person activation',
+    'apps/uw-app/commands/person/gates.ts',
+    "import './persona-activation.ts';",
+    'persona-activation-only-in-capabilities',
+  ],
+];
+
+describe('persona activation is built only for the person activation command', () => {
+  it.each(activationRefusals)('refuses %s', async (_name, path, source, rule) => {
+    const found = await violations({ ...activationFiles, [path]: source });
+    expect(found.map((violation) => violation.rule)).toContain(rule);
+  });
+
+  it('allows the capabilities, the person activation, the activation module, the app test helpers and a test', async () => {
+    const found = await violations({
+      ...activationFiles,
+      'apps/uw-app/commands/capabilities.ts': "import './person/persona-activation.ts';",
+      [appActivation]: "import '@uw/harness/persona-activation';",
+      'packages/harness/persona-activation.ts': "import './personas/commands.ts';",
+      'packages/harness/personas/commands.ts': "import './activate.ts';",
+      'packages/harness/personas/activate.ts': "import './flip.ts';",
+      'apps/uw-app/testing/kernel.ts': "import '@uw/harness/persona-activation';",
+      'apps/uw-app/harness/a.pg.test.ts': "import '@uw/harness/persona-activation';",
+    });
+    expect(found).toEqual([]);
+  });
+});
+
 describe('the person gate kernel and the person surface', () => {
   it.each(surfaceRefusals)('refuse %s', async (_name, path, source, rule) => {
     const found = await violations({ ...personSurface, [path]: source });
