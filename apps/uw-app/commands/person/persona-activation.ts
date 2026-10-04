@@ -8,6 +8,6 @@ export function personaActivation(
   clock: Clock,
   live: LiveWiring,
 ): PersonaCommands {
-  const wiring = hubWiring(live.hub, { runs: live.runs, notifier: live.notifier });
-  return createPersonaActivation(platformPorts(database, clock, wiring));
+  const host = { runs: live.runs, notifier: live.notifier };
+  return createPersonaActivation(platformPorts(database, clock, hubWiring(live.hub, host)));
 }
