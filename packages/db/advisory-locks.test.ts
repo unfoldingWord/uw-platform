@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { advisoryLocks, lockKeyPrefixes } from './advisory-locks.ts';
+import { advisoryLocks, githubRepoKey, lockKeyPrefixes } from './advisory-locks.ts';
 
 function clashes(keys: readonly string[]): string[] {
   return keys.flatMap((key, index) =>
@@ -23,12 +23,18 @@ describe('FD-8 FD-9 advisory lock keys live in one registry, in one key space', 
       'harness-stages:',
       'harness_events:',
       'github-issue:',
+      'github-repo:',
       'persona-activation:',
       'persona-identity:',
       'harness-breaker',
       'harness-run-persona:',
       'zulip-topics:',
     ]);
+  });
+
+  it('builds the GitHub repository key under its registered prefix', () => {
+    expect(githubRepoKey(9100000001)).toBe('github-repo:9100000001');
+    expect(lockKeyPrefixes).toContain(githubRepoKey(9100000001).replace(/\d+$/, ''));
   });
 
   it('keeps every key distinct from, and no prefix of, another', () => {
