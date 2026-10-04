@@ -1,6 +1,12 @@
 import type { HarnessEvent, ItemState, PageStatus, PageType, Principal, Role } from '@uw/contracts';
 import { seedPage } from '@uw/db/test-seed';
-import { bml, readAllEvents, software, type KernelOutcome } from '@uw/harness';
+import {
+  bml,
+  readAllEvents,
+  software,
+  type ActivatedPersona,
+  type KernelOutcome,
+} from '@uw/harness';
 import { createSimHarness, simCaller, simPerson } from './fixtures.ts';
 import type { World } from './world.ts';
 
@@ -18,6 +24,8 @@ export type PersonaPage = {
   readonly status?: PageStatus;
   readonly jdArea?: string;
   readonly frontmatter?: Readonly<Record<string, unknown>>;
+  readonly bodyMd?: string;
+  readonly slug?: string;
 };
 
 export type SceneOptions = { readonly ownerRole?: Role; readonly software?: boolean };
@@ -53,11 +61,22 @@ export function personaFrontmatter(
     run_shape: 'workflow-run',
     engine: 'openrouter-messages',
     model: 'glm-5.3-flash',
+    provider: 'z-ai',
     budget: { monthly_minor: 0, currency: 'USD' },
     capability: 'iterate',
     requires_tools: ['search_pages', 'summarise_measurements'],
     ...change,
   };
+}
+
+export function personaBody(slug = 'iterate'): string {
+  return [
+    '---',
+    `name: ${slug}`,
+    'description: Iterate tunes a product from its measurements.',
+    '---',
+    'Read the measurements, then draft a labelled revision.',
+  ].join('\n');
 }
 
 export async function seedPersonaPage(scene: PersonaScene, page: PersonaPage): Promise<void> {
@@ -66,20 +85,28 @@ export async function seedPersonaPage(scene: PersonaScene, page: PersonaPage): P
     type: page.type ?? 'persona',
     status: page.status ?? 'suggested',
     jdArea: page.jdArea ?? '30-39',
-    slug: `persona-${page.id.slice(-4)}`,
+    slug: page.slug ?? `persona-${page.id.slice(-4)}`,
     title: 'Iterate',
-    bodyMd: 'Iterate tunes a product from its measurements.',
+    bodyMd: page.bodyMd ?? personaBody(),
     frontmatter: page.frontmatter ?? personaFrontmatter(scene),
   });
 }
 
-export function activatePersona(
+async function frontmatterHarness(world: World, pageId: string): Promise<string> {
+  const [facts] = await world.adapters.store.transaction((tx) => tx.pages.read.facts([pageId]));
+  const harness = facts?.frontmatter['harness'];
+  return typeof harness === 'string' ? harness : world.adapters.ids.next();
+}
+
+export async function activatePersona(
   world: World,
   actor: Principal,
   pageId: string,
   expectedVersion = 1,
-): Promise<KernelOutcome<never>> {
-  return world.kernel.personas.activate(simCaller(world, actor), { pageId, expectedVersion });
+): Promise<KernelOutcome<ActivatedPersona>> {
+  const harnessId = await frontmatterHarness(world, pageId);
+  const input = { pageId, expectedVersion, harnessId };
+  return world.kernel.personas.activate(simCaller(world, actor), input);
 }
 
 export function harnessLog(world: World, harnessId: string): Promise<readonly HarnessEvent[]> {

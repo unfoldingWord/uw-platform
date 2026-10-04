@@ -2,7 +2,14 @@ import type { HarnessEvent, ItemState, Principal, Stage } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { readAllEvents, software, type Caller, type KernelOutcome } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, readSpend, simAgent, simCaller, simPerson } from '../fixtures.ts';
+import {
+  createSimHarness,
+  readSpend,
+  simAgent,
+  simCaller,
+  simDelegate,
+  simPerson,
+} from '../fixtures.ts';
 import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -169,7 +176,7 @@ describe('KN-8 an unattended traversal of a loop edge is refused without a deleg
       await feed(scene, 'plan', ['scope']);
       const kim = await simPerson(scene.world, 4, [{ role: 'admin', ...area }]);
       const delegation = value(
-        await scene.world.kernel.delegations.grant(simCaller(scene.world, kim), {
+        await simDelegate(scene.world, kim, {
           harnessId: scene.harnessId,
           persona: 'agent:iterate',
           capability: 'iterate',

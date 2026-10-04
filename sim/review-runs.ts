@@ -6,6 +6,7 @@ import {
   simAdvance,
   simAgent,
   simCaller,
+  simDelegate,
   simPerson,
 } from './fixtures.ts';
 import { builderFrontmatter, seedPersona, systemCaller, value, type RunWorld } from './runs.ts';
@@ -59,7 +60,7 @@ async function delegatedReviewer(world: World, capability: 'review' | 'build') {
   const owner = await simPerson(world, 4, [
     { role: 'admin', scopeKind: 'jd_area', scopeArea: '80-89' },
   ]);
-  const granted = await world.kernel.delegations.grant(simCaller(world, owner), {
+  const granted = await simDelegate(world, owner, {
     harnessId: harness.id,
     persona: reviewer,
     capability,

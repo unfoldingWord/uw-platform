@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, ne, sql } from 'drizzle-orm';
 import type { CapabilityWord, PageStatus, PageType, Role, Scope } from '@uw/contracts';
 import type { AnyExecutor } from './any-database.ts';
 import {
@@ -12,6 +12,7 @@ import {
   pages,
   pageVersions,
   people,
+  personas,
   roleGrants,
 } from './schema.ts';
 
@@ -88,6 +89,24 @@ export async function activateSeededPage(db: AnyExecutor, pageId: string): Promi
   await db
     .update(pages)
     .set({ status: 'active', version: sql`${pages.version} + 1` })
+    .where(eq(pages.id, pageId));
+}
+
+export async function rewritePageStatus(
+  db: AnyExecutor,
+  pageId: string,
+  status: PageStatus,
+): Promise<void> {
+  await db
+    .update(pages)
+    .set({ status, version: sql`${pages.version} + 1` })
+    .where(eq(pages.id, pageId));
+}
+
+export async function resaveSeededPage(db: AnyExecutor, pageId: string): Promise<void> {
+  await db
+    .update(pages)
+    .set({ version: sql`${pages.version} + 1` })
     .where(eq(pages.id, pageId));
 }
 
@@ -341,4 +360,78 @@ export async function seedGrantLostLapses(db: AnyExecutor, seed: GrantLostLapses
   await db.execute(sql`INSERT INTO harness_events (id, harness_id, name, actor, evidence, trace_id, at)
     SELECT gen_random_uuid(), ${seed.harnessId}, 'delegation_lapsed', 'agent:scout', jsonb_build_object('delegationId', gen_random_uuid()::text, 'why', 'grant_lost'), gen_random_uuid(), ${at}::timestamptz
     FROM generate_series(1, ${seed.count})`);
+}
+
+async function upsertProjection(
+  db: AnyExecutor,
+  row: { readonly identity: string; readonly harnessId: string; readonly pageId: string },
+): Promise<void> {
+  await db
+    .delete(personas)
+    .where(and(eq(personas.pageId, row.pageId), ne(personas.identity, row.identity)));
+  await db
+    .insert(personas)
+    .values(row)
+    .onConflictDoUpdate({
+      target: personas.identity,
+      set: { harnessId: row.harnessId, pageId: row.pageId },
+    });
+}
+
+export async function projectSeededPersona(db: AnyExecutor, pageId: string): Promise<void> {
+  const [page] = await db.select().from(pages).where(eq(pages.id, pageId));
+  if (page?.type !== 'persona' || page.status !== 'active') return;
+  const frontmatter = page.frontmatter as Record<string, unknown>;
+  const { identity, harness } = frontmatter;
+  if (typeof identity !== 'string' || typeof harness !== 'string') return;
+  const [known] = await db.select().from(harnesses).where(eq(harnesses.id, harness));
+  if (known === undefined) return;
+  await upsertProjection(db, { identity, harnessId: harness, pageId });
+}
+
+export type SeedActivePersona = {
+  readonly identity: string;
+  readonly harnessId: string;
+  readonly pageId?: string;
+  readonly frontmatter?: Readonly<Record<string, unknown>>;
+};
+
+function seededPersonaFrontmatter(seed: SeedActivePersona): Record<string, unknown> {
+  return {
+    identity: seed.identity,
+    owner: seededActor,
+    harness: seed.harnessId,
+    toolset: ['poll_queue', 'claim_item', 'record_run_step', 'submit_to_gate'],
+    run_shape: 'external-run',
+    engine: 'external',
+    model: 'external',
+    provider: null,
+    budget: { monthly_minor: 0, currency: 'USD' },
+    capability: 'build',
+    requires_tools: ['poll_queue', 'claim_item', 'record_run_step', 'submit_to_gate'],
+    ...seed.frontmatter,
+    status: 'active',
+  };
+}
+
+export async function seedActivePersona(db: AnyExecutor, seed: SeedActivePersona): Promise<void> {
+  const [held] = await db.select().from(personas).where(eq(personas.identity, seed.identity));
+  if (held?.harnessId === seed.harnessId && seed.pageId === undefined) return;
+  const [harness] = await db.select().from(harnesses).where(eq(harnesses.id, seed.harnessId));
+  if (harness === undefined) throw new Error(`no harness ${seed.harnessId} to seed a persona on`);
+  const pageId = seed.pageId ?? crypto.randomUUID();
+  const slug = seed.identity.slice('agent:'.length);
+  await db.insert(pages).values({
+    id: pageId,
+    type: 'persona',
+    jdArea: harness.jdArea,
+    slug: `persona-${slug}-${pageId.slice(0, 8)}`,
+    title: `Persona ${slug}`,
+    parentId: null,
+    frontmatter: seededPersonaFrontmatter(seed),
+    bodyMd: `---\nname: ${slug}\ndescription: A seeded persona.\n---\nWork the item.`,
+    version: 1,
+    status: 'active',
+  });
+  await upsertProjection(db, { identity: seed.identity, harnessId: seed.harnessId, pageId });
 }

@@ -4,12 +4,16 @@ import type { KernelOutcome } from '../outcome.ts';
 import type { Ports } from '../ports.ts';
 import { agentRefusal } from '../stages/rules.ts';
 import { activateIn } from './activate.ts';
+import type { ActivatedPersona } from './types.ts';
+
+type ActivateInput = {
+  readonly pageId: string;
+  readonly expectedVersion: number;
+  readonly harnessId: string;
+};
 
 export type PersonaCommands = {
-  activate(
-    caller: Caller,
-    input: { readonly pageId: string; readonly expectedVersion: number },
-  ): Promise<KernelOutcome<never>>;
+  activate(caller: Caller, input: ActivateInput): Promise<KernelOutcome<ActivatedPersona>>;
 };
 
 export function createPersonaCommands(
@@ -21,8 +25,7 @@ export function createPersonaCommands(
       const at = ports.clock.now();
       const agent = agentRefusal(caller);
       if (agent !== null) return agent;
-      const { pageId, expectedVersion } = input;
-      const activation = { caller, pageId, expectedVersion, at, registry };
+      const activation = { caller, ...input, at, registry };
       return ports.store.transaction((tx) => activateIn(ports, tx, activation));
     },
   };

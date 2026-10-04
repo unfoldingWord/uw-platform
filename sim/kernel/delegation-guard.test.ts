@@ -1,6 +1,6 @@
 import type { CapabilityWord, Principal } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
-import { rewriteDelegation, seedPage } from '@uw/db/test-seed';
+import { rewriteDelegation, seedActivePersona, seedPage } from '@uw/db/test-seed';
 import { software, type Caller, type KernelOutcome } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
@@ -8,6 +8,7 @@ import {
   readSpend,
   simAgent,
   simCaller,
+  simDelegate,
   simIan,
   simPerson,
 } from '../fixtures.ts';
@@ -42,7 +43,7 @@ async function delegate(
   harnessId: string,
   capability: CapabilityWord,
 ): Promise<string> {
-  const granted = await world.kernel.delegations.grant(simCaller(world, kim), {
+  const granted = await simDelegate(world, kim, {
     harnessId,
     persona: 'agent:builder',
     capability,
@@ -89,6 +90,7 @@ async function sceneOf(world: World): Promise<Scene> {
     none: await delegate(world, kim, harnessId, 'none'),
     other: await delegate(world, kim, otherHarnessId, 'iterate'),
   };
+  await seedActivePersona(world.database.db, { identity: 'agent:builder', harnessId });
   const agent = simCaller(world, simAgent(kim, 'builder', { interactive: false }));
   return { world, harnessId, otherHarnessId, itemId: value(item).itemId, agent, delegations };
 }

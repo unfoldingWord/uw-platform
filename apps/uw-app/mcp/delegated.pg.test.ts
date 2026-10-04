@@ -9,7 +9,7 @@ import {
 } from '@uw/contracts';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
-import { revokeSeededGrant, seedGrant, seedPerson } from '@uw/db/test-seed';
+import { revokeSeededGrant, seedActivePersona, seedGrant, seedPerson } from '@uw/db/test-seed';
 import { readAllEvents, software, type Caller, type Kernel } from '@uw/harness';
 import { bindServiceToken } from '../agents/service-tokens.ts';
 import { createApp } from '../app.tsx';
@@ -179,7 +179,9 @@ async function delegate(
 ): Promise<string> {
   const person = await personOn(r.db, owner.id, owner.email, r.clock.now());
   const input = { harnessId, persona: 'agent:iterate', expiresAt: null, supersedes: null };
-  return value(await r.kernel.delegations.grant(caller(person), { ...input, capability })).id;
+  const granted = value(await r.kernel.delegations.grant(caller(person), { ...input, capability }));
+  await seedActivePersona(r.db, { identity: 'agent:iterate', harnessId });
+  return granted.id;
 }
 
 async function revoke(r: Rig, owner: Owner, delegationId: string): Promise<void> {

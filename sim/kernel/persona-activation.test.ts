@@ -1,6 +1,7 @@
-import { verbRegistry, type Principal, type VerbDefinition } from '@uw/contracts';
+import { verbRegistry, type Identity, type Principal, type VerbDefinition } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
-import { createPersonaCommands, type KernelOutcome } from '@uw/harness';
+import { resaveSeededPage } from '@uw/db/test-seed';
+import { createPersonaCommands, type ActivatedPersona, type KernelOutcome } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import { simAgent, simCaller, simPerson } from '../fixtures.ts';
 import {
@@ -26,14 +27,14 @@ const unreachable =
   "persona iterate requires verb list_gifts, which the activating person's grants do not reach";
 
 type Seen = {
-  readonly outcome: KernelOutcome<never>;
+  readonly outcome: KernelOutcome<ActivatedPersona>;
   readonly failures: readonly unknown[];
   readonly items: number;
   readonly created: number;
   readonly status: string | null;
 };
 
-type Activate = (scene: PersonaScene) => Promise<KernelOutcome<never>>;
+type Activate = (scene: PersonaScene) => Promise<KernelOutcome<ActivatedPersona>>;
 
 async function createdIn(world: World, harnessIds: readonly (string | null)[]): Promise<number> {
   let created = 0;
@@ -90,7 +91,8 @@ function servedListGifts(): readonly VerbDefinition[] {
 const withFixtureRegistry: Activate = async (scene) => {
   const kim: Principal = await simPerson(scene.world, 5, admin3039);
   const personas = createPersonaCommands(scene.world.adapters, servedListGifts());
-  return personas.activate(simCaller(scene.world, kim), { pageId, expectedVersion: 1 });
+  const input = { pageId, expectedVersion: 1, harnessId: scene.bmlId };
+  return personas.activate(simCaller(scene.world, kim), input);
 };
 
 describe('AB-8 activation refuses a forbidden verb and an unreachable verb', () => {
@@ -132,11 +134,7 @@ describe('AB-8 activation refuses a forbidden verb and an unreachable verb', () 
     const seen = await inScene(requiring(['claim_item'], ['claim_item']), byIan, {
       ownerRole: 'viewer',
     });
-    expect(seen.outcome).toEqual({
-      status: 'error',
-      reason: 'not_wired',
-      detail: { step: 'PE-3' },
-    });
+    expect(seen.outcome).toMatchObject({ status: 'accepted' });
     expect(seen.failures).toEqual([]);
   });
 });
@@ -171,7 +169,7 @@ describe('HE-10 activation refuses a persona on the reserved engine', () => {
   });
 });
 
-describe('persona activation refuses a caller who may not activate, and stops short of PE-3 when every verb passes', () => {
+describe('persona activation refuses a caller who may not activate', () => {
   it('refuses an editor who is not an admin of the harness area, with no event', async () => {
     const editor = byPerson([{ role: 'editor', scopeKind: 'jd_area', scopeArea: '30-39' }]);
     const seen = await inScene(requiring(['approve']), editor);
@@ -204,16 +202,6 @@ describe('persona activation refuses a caller who may not activate, and stops sh
       detail: { actor: 'agent:iterate' },
     });
     expect(seen.failures).toEqual([]);
-  });
-
-  it('answers an all-served toolset not_wired until PE-3, with no event and the page still suggested', async () => {
-    const seen = await inScene(requiring(['search_pages', 'read_page']), byIan);
-    expect(seen.outcome).toEqual({
-      status: 'error',
-      reason: 'not_wired',
-      detail: { step: 'PE-3' },
-    });
-    expect([seen.failures, seen.items, seen.status]).toEqual([[], 0, 'suggested']);
   });
 
   it('answers a page that is not a persona page_not_found', async () => {
@@ -309,5 +297,174 @@ describe('persona activation acts on the page version the person read', () => {
       detail: { pageId, version: 1 },
     });
     expect([seen.failures, seen.items, seen.status]).toEqual([[], 0, 'suggested']);
+  });
+});
+
+const secondPage = '00000000-0000-4000-8000-000000008302';
+
+async function withScene(work: (scene: PersonaScene) => Promise<void>): Promise<void> {
+  const world = await createWorld();
+  try {
+    await work(await personaScene(world));
+  } finally {
+    await world.close();
+  }
+}
+
+function projected(scene: PersonaScene, identity = 'agent:iterate') {
+  return scene.world.adapters.store.transaction(async (tx) => {
+    const page = await tx.personas.read.active(identity as Identity, scene.bmlId);
+    return page === null ? null : { id: page.id, status: page.frontmatter['status'] };
+  });
+}
+
+async function namesIn(scene: PersonaScene): Promise<readonly string[]> {
+  return (await harnessLog(scene.world, scene.bmlId)).map((event) => event.name);
+}
+
+async function seedServed(
+  scene: PersonaScene,
+  id = pageId,
+  slug = `persona-${id.slice(-4)}`,
+): Promise<void> {
+  await seedPersonaPage(scene, { id, slug, ...requiring(['search_pages'])(scene) });
+}
+
+async function activatesAndProjects(scene: PersonaScene): Promise<void> {
+  await seedServed(scene);
+  const before = await namesIn(scene);
+  const outcome = await activatePersona(scene.world, scene.ian, pageId);
+  expect(outcome).toEqual({
+    status: 'accepted',
+    value: { pageId, persona: 'agent:iterate', harnessId: scene.bmlId, version: 2 },
+  });
+  expect(await pageStatus(scene.world, pageId)).toBe('active');
+  expect(await projected(scene)).toEqual({ id: pageId, status: 'active' });
+  const log = await harnessLog(scene.world, scene.bmlId);
+  expect(log.map((event) => event.name).slice(before.length)).toEqual(['persona_activated']);
+  expect(log.at(-1)?.evidence).toEqual({ pageId, persona: 'agent:iterate', version: 2 });
+}
+
+async function frontmatterReadsActive(scene: PersonaScene): Promise<void> {
+  await seedServed(scene);
+  await activatePersona(scene.world, scene.ian, pageId);
+  const [facts] = await scene.world.adapters.store.transaction((tx) =>
+    tx.pages.read.facts([pageId]),
+  );
+  expect([facts?.status, facts?.version, facts?.frontmatter['status']]).toEqual([
+    'active',
+    2,
+    'active',
+  ]);
+}
+
+async function dryRunFailureRecorded(scene: PersonaScene): Promise<void> {
+  await seedPersonaPage(scene, {
+    id: pageId,
+    bodyMd: 'Iterate tunes a product from its measurements.',
+    ...requiring(['search_pages'])(scene),
+  });
+  const message =
+    'persona iterate instructions are not an agentskills document: no agentskills header';
+  expect(await activatePersona(scene.world, scene.ian, pageId)).toEqual({
+    status: 'error',
+    reason: 'dry_run_failed',
+    detail: { message },
+  });
+  expect(failuresIn(await harnessLog(scene.world, scene.bmlId)).map((e) => e.evidence)).toEqual([
+    {
+      pageId,
+      persona: 'agent:iterate',
+      verb: null,
+      engine: null,
+      reason: 'dry_run_failed',
+      message,
+      itemId: null,
+    },
+  ]);
+  expect([await pageStatus(scene.world, pageId), await projected(scene)]).toEqual([
+    'suggested',
+    null,
+  ]);
+}
+
+async function editorAndAgentRefused(scene: PersonaScene): Promise<void> {
+  await seedServed(scene);
+  const before = await namesIn(scene);
+  const editor = await simPerson(scene.world, 5, [
+    { role: 'editor', scopeKind: 'jd_area', scopeArea: '30-39' },
+  ]);
+  const agent = simAgent(scene.ian, 'iterate', { interactive: true });
+  for (const actor of [editor, agent]) {
+    expect(await activatePersona(scene.world, actor, pageId)).toMatchObject({
+      status: 'error',
+      reason: 'not_permitted',
+    });
+  }
+  expect(await namesIn(scene)).toEqual(before);
+  expect([await pageStatus(scene.world, pageId), await projected(scene)]).toEqual([
+    'suggested',
+    null,
+  ]);
+}
+
+async function staleVersionRecordsNothing(scene: PersonaScene): Promise<void> {
+  await seedServed(scene);
+  await resaveSeededPage(scene.world.database.db, pageId);
+  const before = await namesIn(scene);
+  expect(await activatePersona(scene.world, scene.ian, pageId, 1)).toEqual({
+    status: 'error',
+    reason: 'stale_version',
+    detail: { pageId, version: 2 },
+  });
+  expect(await namesIn(scene)).toEqual(before);
+  expect([await pageStatus(scene.world, pageId), await projected(scene)]).toEqual([
+    'suggested',
+    null,
+  ]);
+}
+
+async function identityInUseRefused(scene: PersonaScene): Promise<void> {
+  await seedServed(scene);
+  await seedServed(scene, secondPage, 'persona-iterate-again');
+  expect((await activatePersona(scene.world, scene.ian, pageId)).status).toBe('accepted');
+  const before = await namesIn(scene);
+  expect(await activatePersona(scene.world, scene.ian, secondPage)).toEqual({
+    status: 'error',
+    reason: 'not_permitted',
+    detail: { why: 'identity_in_use' },
+  });
+  expect(await namesIn(scene)).toEqual(before);
+  expect(await pageStatus(scene.world, secondPage)).toBe('suggested');
+  expect(await projected(scene)).toEqual({ id: pageId, status: 'active' });
+}
+
+describe('PE-3 an admin activates a persona after the tool check and a dry run', () => {
+  it('PE-3 activation runs the tool check and a dry run, then flips the persona to active and writes the projection', () =>
+    withScene(activatesAndProjects));
+
+  it("PE-1 an activated persona's frontmatter reads status active", () =>
+    withScene(frontmatterReadsActive));
+
+  it('PE-3 a dry run failure records persona_activation_failed and leaves the persona suggested', () =>
+    withScene(dryRunFailureRecorded));
+
+  it('PE-3 an editor and an agent cannot activate', () => withScene(editorAndAgentRefused));
+
+  it('PE-3 activation at a stale version is refused and records nothing', () =>
+    withScene(staleVersionRecordsNothing));
+
+  it('PE-3 a persona whose identity another active page holds is refused identity_in_use', () =>
+    withScene(identityInUseRefused));
+
+  it('PE-2 activation checks the derived requires_tools: a missing verb opens one item and leaves the persona suggested', async () => {
+    const tools = ['search_pages', 'summarise_measurements'];
+    const seen = await inScene(requiring(tools, tools), byIan);
+    expect(seen.outcome).toMatchObject({
+      status: 'error',
+      reason: 'unknown_verb',
+      detail: { verb: 'summarise_measurements' },
+    });
+    expect([seen.items, seen.status]).toEqual([1, 'suggested']);
   });
 });

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { HarnessEvent } from '@uw/contracts';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase } from '@uw/db/test-database';
-import { seedPage } from '@uw/db/test-seed';
+import { projectSeededPersona, seedPage } from '@uw/db/test-seed';
 import type { EngineConfig, EngineFetch } from '../engines/config.ts';
 import type { Bindings } from '../env.ts';
 import { fakeWorkflowBinding } from '../runs/testing.ts';
@@ -120,6 +120,7 @@ async function delegatedPersona(rig: Rig): Promise<string> {
       requires_tools: [],
     },
   });
+  await projectSeededPersona(rig.db, PERSONA_PAGE);
   return itemId;
 }
 

@@ -86,11 +86,12 @@ function page(id: string, overrides: Partial<SeedPage>): SeedPage {
   };
 }
 
+const scopeSkill = { name: 'scope', description: 'How to scope an item.' };
 const strategyFrontmatter = { niche: 'Translators', hypothesis: 'They need help.' };
 
 const seededPages: readonly SeedPage[] = [
   page(PAGE.item, {}),
-  page(PAGE.instructions, {}),
+  page(PAGE.instructions, { type: 'skill', frontmatter: scopeSkill }),
   page(PAGE.strategy, {
     type: 'product_strategy',
     parentId: PAGE.item,
@@ -305,7 +306,7 @@ describe.skipIf(!testServer)(
       const [itemId] = r.itemIds;
       const reader = await viewer(r, VIEWER_80);
       expect(await reader('resolve_context', { itemId })).toEqual({
-        instructions: summary(PAGE.instructions),
+        instructions: summary(PAGE.instructions, 'skill'),
         package: [summary(PAGE.item), summary(PAGE.strategy, 'product_strategy')],
         learnings: [itemLearning, ...laterTiers],
       });

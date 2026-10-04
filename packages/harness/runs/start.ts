@@ -10,6 +10,7 @@ import { PortNotWiredError, storeRefusalOf } from '../port-errors.ts';
 import type { Ports, RunRow, StoreTransaction } from '../ports.ts';
 import { spendRefusal } from './breaker-level.ts';
 import { isFailureDetail } from './evidence-rules.ts';
+import { activePersonaOn } from '../personas/projection.ts';
 import { personaOfPage, personaPageOf, type PersonaPage } from './persona.ts';
 import { ended, heldByRun, newHostedRun } from './rows.ts';
 import type { RunPersona, StartedRun, StartRunInput } from './types.ts';
@@ -47,8 +48,8 @@ async function boundPage(
   harness: Harness,
 ): Promise<PersonaPage | Refused> {
   const { caller, input } = start;
-  const [facts] = await tx.pages.read.facts([input.personaPageId]);
-  const page = personaPageOf(facts);
+  const facts = await activePersonaOn(tx, caller.actor.identity, harness.id);
+  const page = facts?.id === input.personaPageId ? personaPageOf(facts) : null;
   const delegation = await tx.delegations.read.byId(input.delegationId);
   const identity = page?.frontmatter.identity;
   const bound =

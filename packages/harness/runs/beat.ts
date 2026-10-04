@@ -5,6 +5,7 @@ import { accepted, refused, type KernelOutcome } from '../outcome.ts';
 import type { Delegation, Ports, StoreTransaction } from '../ports.ts';
 import { pollQueue } from '../reads/poll.ts';
 import { backingOff, reviewedAtHead } from './backoff.ts';
+import { activePersonaOn } from '../personas/projection.ts';
 import { personaPageOf } from './persona.ts';
 import { startRun } from './start.ts';
 import type { StartedRun } from './types.ts';
@@ -38,7 +39,7 @@ function seedOf(delegation: Delegation): Principal {
 }
 
 async function workflowPage(tx: StoreTransaction, delegation: Delegation): Promise<string | null> {
-  const facts = await tx.pages.read.activePersona(delegation.persona, delegation.harnessId);
+  const facts = await activePersonaOn(tx, delegation.persona, delegation.harnessId);
   const page = personaPageOf(facts ?? undefined);
   return page?.frontmatter.run_shape === 'workflow-run' ? page.facts.id : null;
 }

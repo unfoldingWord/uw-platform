@@ -15,7 +15,7 @@ import {
   type PollItem,
 } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, simAgent, simCaller, simPerson } from '../fixtures.ts';
+import { createSimHarness, simAgent, simCaller, simDelegate, simPerson } from '../fixtures.ts';
 import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -89,7 +89,7 @@ async function delegate(
   persona: string,
   options: DelegateOptions = {},
 ): Promise<string> {
-  const granted = await scene.world.kernel.delegations.grant(simCaller(scene.world, by), {
+  const granted = await simDelegate(scene.world, by, {
     harnessId: scene.firstId,
     persona,
     capability: options.capability ?? 'iterate',

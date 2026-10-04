@@ -5,11 +5,9 @@ import {
   type Harness,
   type JdArea,
   type Principal,
-  type VerbDefinition,
 } from '@uw/contracts';
 import { allowed } from '../access.ts';
 import { engineDescriptor } from '../engines.ts';
-import type { Caller } from '../caller.ts';
 import { lockKeys } from '../lock-keys.ts';
 import {
   createItem,
@@ -20,29 +18,19 @@ import {
   type NewItem,
 } from '../items/record.ts';
 import { refused, type KernelOutcome, type Refused } from '../outcome.ts';
-import type { PageFacts, Ports, StoreTransaction } from '../ports.ts';
+import type { PageFacts, StoreTransaction } from '../ports.ts';
 import { agentRefusal } from '../stages/rules.ts';
+import { dryRunThenFlip } from './flip.ts';
 import { toolCheck, type ToolCheckFailure } from './tool-check.ts';
-
-type PersonaPorts = Pick<Ports, 'grants' | 'ids'>;
-
-type Frontmatter = ReturnType<typeof personaFrontmatterSchema.parse>;
-
-type Persona = {
-  readonly page: PageFacts;
-  readonly frontmatter: Frontmatter;
-  readonly harness: Harness;
-};
+import type {
+  ActivatedPersona,
+  Activation,
+  Persona,
+  PersonaFrontmatter,
+  PersonaPorts,
+} from './types.ts';
 
 type Opening = { readonly itemId: string; readonly create: NewItem | null };
-
-type Activation = {
-  readonly caller: Caller;
-  readonly pageId: string;
-  readonly expectedVersion: number;
-  readonly at: Date;
-  readonly registry: readonly VerbDefinition[];
-};
 
 const SOFTWARE_HARNESS_KEY = 'software';
 const SOFTWARE_HARNESS_MISSING = 'software_harness_missing';
@@ -76,9 +64,14 @@ async function readablePage(
   return { page, area: area.data, activator };
 }
 
-async function personaOf(tx: StoreTransaction, page: PageFacts): Promise<Persona | Refused> {
+async function personaOf(
+  tx: StoreTransaction,
+  page: PageFacts,
+  harnessId: string,
+): Promise<Persona | Refused> {
   const parsed = personaFrontmatterSchema.safeParse(page.frontmatter);
   if (!parsed.success) return refused('invalid_frontmatter', { pageId: page.id });
+  if (parsed.data.harness !== harnessId) return refused('page_not_found', { pageId: page.id });
   const harness = await tx.harnesses.read.byId(parsed.data.harness);
   if (harness === null) return refused('harness_not_found', { harnessId: parsed.data.harness });
   return { page, frontmatter: parsed.data, harness };
@@ -200,7 +193,7 @@ async function refuseReservedEngine(
   return refused('engine_not_available', { engine });
 }
 
-function verbsOf(frontmatter: Frontmatter): readonly string[] {
+function verbsOf(frontmatter: PersonaFrontmatter): readonly string[] {
   return [...new Set([...frontmatter.requires_tools, ...frontmatter.toolset])];
 }
 
@@ -208,11 +201,11 @@ export async function activateIn(
   ports: PersonaPorts,
   tx: StoreTransaction,
   activation: Activation,
-): Promise<KernelOutcome<never>> {
+): Promise<KernelOutcome<ActivatedPersona>> {
   await tx.lock(lockKeys.personaActivation(activation.pageId));
   const readable = await readablePage(ports, tx, activation);
   if ('status' in readable) return readable;
-  const persona = await personaOf(tx, readable.page);
+  const persona = await personaOf(tx, readable.page, activation.harnessId);
   if ('status' in persona) return persona;
   const denied = authorised(readable, persona.harness, activation.at);
   if (denied !== null) return denied;
@@ -236,5 +229,5 @@ export async function activateIn(
     activation.registry,
   );
   if (failure !== null) return recordFailure(ports, tx, activation, persona, failure);
-  return refused('not_wired', { step: 'PE-3' });
+  return dryRunThenFlip(ports, tx, activation, persona);
 }

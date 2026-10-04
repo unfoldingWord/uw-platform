@@ -3,7 +3,7 @@ import { delegatedIdentity, principalSchema, type Principal } from '@uw/contract
 import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
-import { seedGrant, seedPerson } from '@uw/db/test-seed';
+import { seedActivePersona, seedGrant, seedPerson } from '@uw/db/test-seed';
 import { DEFAULT_SPEND_CAP, software, type Caller, type Kernel } from '@uw/harness';
 import { systemClock } from '../ports/clock.ts';
 import { agentOf, kernelOn, personOn } from '../testing/kernel.ts';
@@ -54,11 +54,12 @@ async function gatedHarness(kernel: Kernel, ian: Principal): Promise<string> {
   return harnessId;
 }
 
-async function actorsOf(kernel: Kernel, owner: Principal, harnessId: string) {
+async function actorsOf(db: Database, kernel: Kernel, owner: Principal, harnessId: string) {
   const input = { harnessId, persona: 'agent:builder', capability: 'iterate' as const };
   const delegation = value(
     await kernel.delegations.grant(caller(owner), { ...input, expiresAt: null, supersedes: null }),
   );
+  await seedActivePersona(db, { identity: 'agent:builder', harnessId });
   const delegated = principalSchema.parse({
     ...agentOf(owner, 'laptop'),
     identity: delegatedIdentity(`agent:${OWNER.id}/laptop`, 'builder', delegation.id),
@@ -86,7 +87,7 @@ async function openRig(): Promise<Rig> {
   const ian = await personOn(db, IAN_ID, 'ian.lindsley@unfoldingword.org', new Date());
   const owner = await personOn(db, OWNER.id, OWNER.email, new Date());
   const harnessId = await gatedHarness(kernel, ian);
-  const actors = await actorsOf(kernel, owner, harnessId);
+  const actors = await actorsOf(db, kernel, owner, harnessId);
   const drop = async () => {
     await db.$client.end();
     await database.drop();

@@ -102,12 +102,18 @@ describe('AB-8 a missing verb opens one item per persona page and verb', () => {
     expect(seen.items.map((item) => item.gateStatus).sort()).toEqual(['done', 'working']);
   });
 
-  it('records a 300-character missing verb as an event and one item, never an internal error', async () => {
-    const seen = await attempts(['a'.repeat(300)], []);
+  it('records a 64-character missing verb as an event and one item, and refuses a longer name invalid_frontmatter, never an internal error', async () => {
+    const seen = await attempts(['a'.repeat(64)], []);
     expect(seen.reasons).toEqual(['unknown_verb']);
     expect(seen.failures.map((event) => event.evidence)).toEqual([
       expect.objectContaining({ verb: 'a'.repeat(64), message: missing('a'.repeat(64)) }),
     ]);
     expect(seen.items.map((item) => item.title)).toEqual([missing('a'.repeat(64))]);
+    const longer = await attempts(['a'.repeat(300)], []);
+    expect([longer.reasons, longer.failures, longer.items]).toEqual([
+      ['invalid_frontmatter'],
+      [],
+      [],
+    ]);
   });
 });

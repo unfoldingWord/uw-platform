@@ -83,7 +83,8 @@ describe.skipIf(!testServer)('persona activation is pinned to the version the pe
     try {
       const { ian, harnessId, kernel } = await scene(db);
       expect(await agentWidens(db, ian, harnessId)).toMatchObject({ ok: true });
-      const outcome = await kernel.personas.activate(caller(ian), { pageId, expectedVersion: 1 });
+      const input = { pageId, expectedVersion: 1, harnessId };
+      const outcome = await kernel.personas.activate(caller(ian), input);
       expect(outcome).toEqual({
         status: 'error',
         reason: 'stale_version',
