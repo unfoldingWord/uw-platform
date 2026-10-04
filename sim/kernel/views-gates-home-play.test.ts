@@ -93,6 +93,31 @@ async function abilityReasons(scene: GatesWorld): Promise<void> {
   expect(await decideOf(scene, agent, scene.standard)).toEqual(notPermitted);
 }
 
+async function notAtPersonGate(scene: GatesWorld): Promise<void> {
+  const caller = callerOf(scene, scene.ian);
+  const enqueued = await scene.world.kernel.items.enqueue(caller, {
+    harnessId: scene.harnessId,
+    title: 'Park me at the backlog',
+    pageId: null,
+    priority: 1,
+    due: null,
+    delegationId: null,
+  });
+  const { itemId } = value(enqueued);
+  const read = value(await scene.world.kernel.reads.item(caller, { itemId }));
+  const parked = { ...read.item, gateStatus: 'parked' as const };
+  await scene.world.adapters.store.transaction((tx) => tx.harnessItems.write.project(parked));
+  const notAtGate = { can: false, reason: 'item_not_at_gate' };
+  const ability = (gate: Parameters<typeof scene.world.kernel.views.decideAbility>[1]) =>
+    scene.world.kernel.views.decideAbility(caller, gate);
+  expect(ability({ harness: read.harness, stage: read.stage, item: parked })).toEqual(notAtGate);
+  const rows = await scene.world.kernel.views.gates(caller);
+  const row = rows.find((entry) => entry.item.itemId === scene.standard);
+  if (row === undefined) throw new Error('no gate for the standard item');
+  expect(ability(row)).toEqual({ can: true });
+  expect(ability({ ...row, item: { ...row.item, gateStatus: 'working' } })).toEqual(notAtGate);
+}
+
 async function oneGate(scene: GatesWorld): Promise<void> {
   const caller = callerOf(scene, scene.areaAdmin);
   const input = { itemId: scene.standard };
@@ -117,6 +142,10 @@ describe('the gates a person can decide', () => {
   gatesIt(
     'WB-6 decide ability names approver_lacks_domain_grant when only a domain grant is missing and not_permitted otherwise',
     abilityReasons,
+  );
+  gatesIt(
+    'WB-6 decide ability refuses item_not_at_gate unless the item is parked at a stage a person decides',
+    notAtPersonGate,
   );
   gatesIt('the views gate read answers the gate view of one item', oneGate);
 });
