@@ -279,7 +279,7 @@ describe.skipIf(!testServer)('the minute cron', () => {
     withRig(beatsAsSystem));
 
   it('the lease sweep expires a lapsed lease once a minute', () => withRig(sweepsLapsedLease));
-  it('NT-4 the minute cron records the lapse of a delegation once it expires', () =>
+  it('the minute cron records the lapse of a delegation once it expires', () =>
     withRig(lapsesExpiredDelegation));
 
   it('a beat start without the Workflow binding fails start_failed and releases the item', () =>
