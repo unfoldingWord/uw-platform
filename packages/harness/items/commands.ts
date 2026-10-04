@@ -4,6 +4,7 @@ import type { KernelOutcome } from '../outcome.ts';
 import type { Ports } from '../ports.ts';
 import type { RunStepInput } from '../runs/types.ts';
 import { claim, type Claimed, type ClaimInput } from './claim.ts';
+import { recordComment, type Commented, type CommentInput } from './comments.ts';
 import { enqueue, type EnqueueInput } from './enqueue.ts';
 import {
   importIssue,
@@ -48,6 +49,7 @@ export type ItemCommands = {
   submit(caller: Caller, input: SubmitInput): Promise<KernelOutcome<Submitted>>;
   attachLearning(caller: Caller, input: AttachLearningInput): Promise<KernelOutcome<ItemState>>;
   markNothingLearned(caller: Caller, input: NothingLearnedInput): Promise<KernelOutcome<ItemState>>;
+  recordComment(caller: Caller, input: CommentInput): Promise<KernelOutcome<Commented>>;
 };
 
 export function createItemCommands(ports: ItemPorts): ItemCommands {
@@ -64,5 +66,6 @@ export function createItemCommands(ports: ItemPorts): ItemCommands {
     submit: (caller, input) => submit(ports, caller, input),
     attachLearning: (caller, input) => attachLearning(ports, caller, input),
     markNothingLearned: (caller, input) => markNothingLearned(ports, caller, input),
+    recordComment: (caller, input) => recordComment(ports, caller, input),
   };
 }

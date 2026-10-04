@@ -138,10 +138,11 @@ describe('KN-4 DX-4 the runner reads the log and fails a scenario whose projecti
   );
 
   it(
-    'does not call a topic the log cannot rebuild drift',
+    'calls a topic the log does not hold drift, like any other field',
     async () => {
       const result = await runScenario(topical, () => createWorld());
-      expect(result.failure).toBeNull();
+      expect(result.failure).toContain('projection drift');
+      expect(result.failure).toContain('zulipTopic');
     },
     worldTimeout,
   );

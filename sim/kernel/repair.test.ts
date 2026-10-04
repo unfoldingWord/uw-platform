@@ -67,10 +67,10 @@ const restoresTitle: Case = async (world, _harness, ian, item) => {
   expect(await rebuild(world, ian, item.itemId)).toEqual([]);
 };
 
-const keepsTopic: Case = async (world, _harness, ian, item) => {
+const restoresTopic: Case = async (world, _harness, ian, item) => {
   await project(world, { ...item, title: 'drifted', zulipTopic: 'topic one' });
-  expect(await rebuild(world, ian, item.itemId)).toEqual(['title']);
-  expect(await rowOf(world, item.itemId)).toEqual({ ...item, zulipTopic: 'topic one' });
+  expect(await rebuild(world, ian, item.itemId)).toEqual(['title', 'zulipTopic']);
+  expect(await rowOf(world, item.itemId)).toEqual(item);
 };
 
 const restoresEveryColumn: Case = async (world, _harness, ian, item) => {
@@ -123,8 +123,7 @@ const refusesEditor: Case = async (world, _harness, ian, item) => {
 describe('KN-4 the repair routine rebuilds a projection from the log', () => {
   it('restores a drifted field, reports it, and finds nothing the second time', () =>
     withItem(restoresTitle));
-  it('keeps a topic the log cannot rebuild and reports only the drift it can', () =>
-    withItem(keepsTopic));
+  it('restores a topic the log does not hold, like any other field', () => withItem(restoresTopic));
   it('lists every differing field and restores every column', () => withItem(restoresEveryColumn));
   it('fails loudly for a row whose log is empty', () => withItem(failsOnEmptyLog));
   it('leaves the log unchanged', () => withItem(leavesLog));

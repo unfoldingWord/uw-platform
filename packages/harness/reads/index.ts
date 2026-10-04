@@ -5,6 +5,7 @@ import type { Ports } from '../ports.ts';
 import type { ImportTarget } from '../items/import.ts';
 import { pollQueue, type PollInput, type PollItem } from './poll.ts';
 import { importTarget, issueImported } from './repository.ts';
+import { zulipTarget, type ZulipTarget } from './zulip-target.ts';
 import {
   delegationHarness,
   type DelegationScene,
@@ -58,6 +59,10 @@ export type KernelReads = {
     caller: Caller,
     input: { readonly githubId: number },
   ): Promise<KernelOutcome<boolean>>;
+  zulipTarget(
+    caller: Caller,
+    input: { readonly topic: string },
+  ): Promise<KernelOutcome<ZulipTarget>>;
   namesInstructions(input: { readonly pageId: string }): Promise<boolean>;
   harnessIdsForHealth(): Promise<readonly string[]>;
 };
@@ -95,6 +100,8 @@ export function createKernelReads(ports: ReadPorts): KernelReads {
     },
     issueImported: (caller, input) =>
       ports.store.transaction((tx) => issueImported(tx, caller, input.githubId)),
+    zulipTarget: (caller, input) =>
+      ports.store.transaction((tx) => zulipTarget(tx, caller, input.topic)),
     namesInstructions: (input) =>
       ports.store.transaction((tx) => tx.harnessStages.read.namesInstructions(input.pageId)),
     harnessIdsForHealth: () =>

@@ -7,6 +7,8 @@ import {
 } from '@uw/contracts';
 import { can, type AclAction } from '@uw/core/acl';
 
+export const topicLinkIdentity = systemIdentity;
+
 export function allowed(
   actor: Principal,
   action: AclAction,

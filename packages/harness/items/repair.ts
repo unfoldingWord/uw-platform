@@ -3,7 +3,7 @@ import type { Caller } from '../caller.ts';
 import { accepted, refused, type KernelOutcome } from '../outcome.ts';
 import type { Ports } from '../ports.ts';
 import { adminRefusal } from '../stages/rules.ts';
-import { notReplayed, replay } from './fold.ts';
+import { replay } from './fold.ts';
 import { readAllEvents, RecordError } from './record.ts';
 
 type RepairPorts = Pick<Ports, 'clock' | 'grants' | 'store'>;
@@ -17,7 +17,6 @@ export type RepairCommands = {
 function differing(row: ItemState, replayed: ItemState): string[] {
   return Object.keys(replayed).filter(
     (field) =>
-      !notReplayed.some((kept) => kept === field) &&
       JSON.stringify(Reflect.get(row, field)) !== JSON.stringify(Reflect.get(replayed, field)),
   );
 }
@@ -39,7 +38,6 @@ async function rebuildItem(
     if (replayed === null) throw new RecordError('the item has no events to rebuild from', itemId);
     const repaired = differing(row, replayed);
     const rebuilt: ItemState = { ...replayed };
-    for (const field of notReplayed) Object.assign(rebuilt, { [field]: Reflect.get(row, field) });
     if (repaired.length > 0) await tx.harnessItems.write.project(rebuilt);
     return accepted({ item: rebuilt, repaired });
   });
