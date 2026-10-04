@@ -55,6 +55,8 @@ export const eventNames = [
   'breaker_open',
   'persona_activation_failed',
   'persona_activated',
+  'measurement_recorded',
+  'handed_to_person',
 ] as const;
 
 export const eventNameSchema = z.enum(eventNames);

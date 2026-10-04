@@ -10,13 +10,16 @@ import {
 import { repositorySchema } from './harness.ts';
 import { identitySchema, isPersonaIdentity } from './identity.ts';
 import { providerIdSchema } from './runs.ts';
-import { slugSchema, type PageType } from './pages.ts';
-import { verbNameSchema } from './verb-names.ts';
+import { pageStatusSchema, slugSchema, type PageType } from './pages.ts';
 
 const text = z.string().min(1).max(2000);
 const distinct = <T>(values: readonly T[]) => new Set(values).size === values.length;
 const humanIdentity = identitySchema.refine((value) => value.startsWith('human:'));
 const agentIdentity = identitySchema.refine(isPersonaIdentity);
+const verbShaped = z
+  .string()
+  .regex(/^[a-z][a-z_]*$/)
+  .max(64);
 
 export const dataSourceKindSchema = z.enum(['web_analytics', 'mailing_list', 'manual']);
 
@@ -30,13 +33,14 @@ export const learningFrontmatterSchema = z.strictObject({
   as_of: z.iso.date(),
   supersedes: z.array(z.uuid()),
   review_by: z.iso.date().nullable(),
+  contradicts: z.boolean().default(false),
 });
 
 export const personaFrontmatterSchema = z.strictObject({
   identity: agentIdentity,
   owner: humanIdentity,
   harness: z.uuid(),
-  toolset: z.array(verbNameSchema).refine(distinct, 'a toolset names each verb once'),
+  toolset: z.array(verbShaped).max(50).refine(distinct, 'a toolset names each verb once'),
   run_shape: runShapeSchema,
   engine: engineSchema,
   model: z.string().min(1).max(200),
@@ -46,7 +50,8 @@ export const personaFrontmatterSchema = z.strictObject({
     currency: z.string().regex(/^[A-Z]{3}$/),
   }),
   capability: capabilityWordSchema,
-  requires_tools: z.array(z.string().regex(/^[a-z][a-z_]*$/)).refine(distinct),
+  requires_tools: z.array(verbShaped).max(50).refine(distinct).default([]),
+  status: pageStatusSchema.default('suggested'),
 });
 
 export const productFrontmatterSchema = z.strictObject({ owner: humanIdentity, summary: text });

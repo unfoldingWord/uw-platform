@@ -144,6 +144,11 @@ export const verbIo = {
           .string()
           .regex(/^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$/)
           .nullable(),
+        attach: z
+          .array(z.uuid())
+          .max(10)
+          .refine((pages) => new Set(pages).size === pages.length, 'each page is attached once')
+          .default([]),
       })
       .refine(
         (input) => (input.pullRequest === null) === (input.head === null),

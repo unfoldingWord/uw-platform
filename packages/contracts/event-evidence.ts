@@ -26,6 +26,7 @@ import {
 import { identitySchema } from './identity.ts';
 import { errorReasonSchema } from './outcomes.ts';
 import { slugSchema } from './pages.ts';
+import { dataSourceKindSchema } from './page-types.ts';
 import { modelIdSchema, reviewRecordSchema, runStepCosts, runStepSchema } from './runs.ts';
 import { fullShaSchema, riskDeclarationSchema, shipRefusalSchema } from './ship-rule.ts';
 import { submitToGateResultSchema } from './verb-io.ts';
@@ -36,7 +37,10 @@ export const personaActivationRefusalSchema = z.enum([
   'forbidden_verb',
   'not_permitted',
   'engine_not_available',
+  'dry_run_failed',
 ]);
+export const learningAttachedKindSchema = z.enum(['learning', 'revision']);
+export const handOffReasonSchema = z.enum(['review_rounds_exhausted']);
 
 const id = z.uuid();
 const instant = z.iso.datetime();
@@ -152,7 +156,10 @@ const itemEvidence = {
     repository: repositorySchema.nullable().default(null),
     base: decidedBase.nullable().default(null),
   }),
-  learning_attached: z.strictObject({ pageId: id }),
+  learning_attached: z.strictObject({
+    pageId: id,
+    kind: learningAttachedKindSchema.default('learning'),
+  }),
   nothing_learned: z.strictObject({ reason: oneLine }),
   zulip_topic_linked: z.strictObject({ topic: zulipTopicSchema }),
 };
@@ -232,6 +239,23 @@ const harnessEvidence = {
     reason: personaActivationRefusalSchema,
     message: text,
     itemId: id.nullable(),
+  }),
+  persona_activated: z.strictObject({
+    pageId: id,
+    persona: personaIdentitySchema,
+    version: z.number().int().min(1),
+  }),
+  measurement_recorded: z.strictObject({
+    measurementId: id,
+    source: dataSourceKindSchema,
+    name: z.string().min(1).max(100),
+    value: z.number().finite(),
+    asOf: z.iso.date(),
+  }),
+  handed_to_person: z.strictObject({
+    personId: id,
+    why: handOffReasonSchema,
+    rounds: z.number().int().min(1),
   }),
   template_activated: z.strictObject({
     template: slugSchema,

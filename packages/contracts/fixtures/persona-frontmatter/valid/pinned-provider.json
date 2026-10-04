@@ -12,5 +12,6 @@
     "currency": "USD"
   },
   "capability": "build",
-  "requires_tools": ["read_page", "open_pull_request"]
+  "requires_tools": ["read_page", "open_pull_request"],
+  "status": "suggested"
 }

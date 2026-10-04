@@ -3,6 +3,7 @@ import { classificationSchema, offlineEligibilitySchema } from './closed-sets.ts
 import {
   dataSourceKindSchema,
   issueFrontmatterSchema,
+  learningFrontmatterSchema,
   pageTypeDefinition,
   pageTypeRegistry,
   personaFrontmatterSchema,
@@ -48,9 +49,9 @@ describe('FD-9 the page-type registry', () => {
 });
 
 describe('FD-9 the persona frontmatter', () => {
-  it('refuses a toolset verb outside the registry, and an engine outside the six', () => {
+  it('refuses a toolset name that is not verb-shaped, and an engine outside the six', () => {
     expect(acceptsPersona({})).toBe(true);
-    expect(acceptsPersona({ toolset: ['approve'] })).toBe(false);
+    expect(acceptsPersona({ toolset: ['Approve'] })).toBe(false);
     expect(acceptsPersona({ engine: 'gpt-5' })).toBe(false);
   });
 
@@ -102,5 +103,41 @@ describe('a persona pins its provider', () => {
     expect(personaFrontmatterSchema.parse(persona).provider).toBeNull();
     expect(acceptsPersona({ provider: 'z-ai' })).toBe(true);
     expect(acceptsPersona({ provider: 'Z AI' })).toBe(false);
+  });
+});
+
+describe('the persona status and the derived tools', () => {
+  it("carries the page's status, defaulting to suggested", () => {
+    expect(personaFrontmatterSchema.parse(persona).status).toBe('suggested');
+    expect(acceptsPersona({ status: 'active' })).toBe(true);
+    expect(acceptsPersona({ status: 'live' })).toBe(false);
+  });
+
+  it('lets a toolset name a verb that does not exist yet, and defaults requires_tools to empty', () => {
+    expect(acceptsPersona({ toolset: ['summarise_measurements'] })).toBe(true);
+    expect(acceptsPersona({ toolset: ['Bad'] })).toBe(false);
+    expect(acceptsPersona({ toolset: ['a'.repeat(65)] })).toBe(false);
+    expect(acceptsPersona({ toolset: ['a'.repeat(64)] })).toBe(true);
+    const many = Array.from({ length: 51 }, (_, index) => `verb_${'x'.repeat(index + 1)}`);
+    expect(acceptsPersona({ toolset: many })).toBe(false);
+    expect(acceptsPersona({ toolset: many.slice(0, 50) })).toBe(true);
+    const withoutRequired = Object.fromEntries(
+      Object.entries(persona).filter(([key]) => key !== 'requires_tools'),
+    );
+    expect(personaFrontmatterSchema.parse(withoutRequired).requires_tools).toEqual([]);
+  });
+});
+
+describe('the learning contradiction flag', () => {
+  const learning = { confidence: 'assumed', as_of: '2026-10-01', supersedes: [], review_by: null };
+
+  it('is false by default and takes a boolean', () => {
+    expect(learningFrontmatterSchema.parse(learning).contradicts).toBe(false);
+    expect(learningFrontmatterSchema.parse({ ...learning, contradicts: true }).contradicts).toBe(
+      true,
+    );
+    expect(learningFrontmatterSchema.safeParse({ ...learning, contradicts: 'yes' }).success).toBe(
+      false,
+    );
   });
 });

@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { commandNames, commandSchema, harnessCommandSchemas } from './commands.ts';
+import { confirmPageCommandSchema } from './pages.ts';
+import { platformCommandNameSchema } from './platform-commands.ts';
 
 function validBody(name: string): Record<string, unknown> {
   const file = join(
@@ -111,5 +113,45 @@ describe('hosted Builder is turned on through a command', () => {
     expect(commandSchema.safeParse({ ...base, enabled: false }).success).toBe(true);
     expect(commandSchema.safeParse(base).success).toBe(false);
     expect(commandSchema.safeParse({ ...base, enabled: 'yes' }).success).toBe(false);
+  });
+});
+
+describe('activation, measurement and confirmation bodies', () => {
+  const pageId = '00000000-0000-4000-8000-0000000000cc';
+
+  it('takes activate_persona with the page and the version the person saw, and nothing else', () => {
+    const base = { command: 'activate_persona', requestId, pageId, expectedVersion: 1 };
+    expect(commandSchema.safeParse(base).success).toBe(true);
+    expect(commandSchema.safeParse({ ...base, expectedVersion: 0 }).success).toBe(false);
+    expect(commandSchema.safeParse(without(base, 'expectedVersion')).success).toBe(false);
+    expect(commandSchema.safeParse({ ...base, status: 'active' }).success).toBe(false);
+  });
+
+  it('refuses a record_measurement whose value is not finite', () => {
+    const base = {
+      command: 'record_measurement',
+      requestId,
+      itemId,
+      source: 'manual',
+      name: 'signups',
+      value: 12,
+      asOf: '2026-10-01',
+    };
+    expect(commandSchema.safeParse(base).success).toBe(true);
+    expect(commandSchema.safeParse({ ...base, value: Number.POSITIVE_INFINITY }).success).toBe(
+      false,
+    );
+    expect(commandSchema.safeParse({ ...base, value: Number.NaN }).success).toBe(false);
+    expect(commandSchema.safeParse({ ...base, name: '   ' }).success).toBe(false);
+    expect(commandSchema.safeParse({ ...base, source: 'survey' }).success).toBe(false);
+  });
+
+  it('takes confirm_page with the page and the version the person read', () => {
+    const base = { command: 'confirm_page', requestId, pageId, expectedVersion: 3 };
+    expect(confirmPageCommandSchema.safeParse(base).success).toBe(true);
+    expect(confirmPageCommandSchema.safeParse(without(base, 'expectedVersion')).success).toBe(
+      false,
+    );
+    expect(platformCommandNameSchema.safeParse('confirm_page').success).toBe(true);
   });
 });

@@ -152,3 +152,26 @@ describe.each(verbNames)('CT-2 %s fixtures', (name) => {
     judge(name, 'output');
   });
 });
+
+describe('submit_to_gate attachments', () => {
+  const input = verbIo.submit_to_gate.input;
+  const base = {
+    itemId: '00000000-0000-4000-8000-000000000002',
+    evidence: {},
+    to: null,
+    pullRequest: null,
+    head: null,
+  };
+  const pages = Array.from(
+    { length: 11 },
+    (_, index) => `00000000-0000-4000-8000-0000000001${String(index).padStart(2, '0')}`,
+  );
+
+  it('may attach up to ten distinct pages and defaults to none', () => {
+    expect(input.parse(base).attach).toEqual([]);
+    expect(input.safeParse({ ...base, attach: pages.slice(0, 10) }).success).toBe(true);
+    expect(input.safeParse({ ...base, attach: pages }).success).toBe(false);
+    expect(input.safeParse({ ...base, attach: [pages[0], pages[0]] }).success).toBe(false);
+    expect(input.safeParse({ ...base, attach: ['not-a-page'] }).success).toBe(false);
+  });
+});

@@ -28,11 +28,11 @@ const claimed = {
 };
 
 describe('KN-3 the event vocabulary is PRD section 8.6', () => {
-  it('has the fifty-two names and none of the placeholders it replaces', () => {
-    expect(eventNameSchema.options).toHaveLength(52);
+  it('has the fifty-four names and none of the placeholders it replaces', () => {
+    expect(eventNameSchema.options).toHaveLength(54);
     expect(eventNameSchema.safeParse('stage_edited').success).toBe(true);
     expect(eventNameSchema.options[0]).toBe('item_created');
-    expect(eventNameSchema.options.at(-1)).toBe('persona_activated');
+    expect(eventNameSchema.options.at(-1)).toBe('handed_to_person');
     expect(eventNameSchema.safeParse('abandoned').success).toBe(false);
     expect(eventNameSchema.safeParse('branch_abandoned').success).toBe(true);
   });
@@ -189,5 +189,65 @@ describe('breaker, switch, premise and activation evidence', () => {
     const older = { ...evidence, verb: 'read_page', reason: 'unknown_verb' };
     const parsed = eventEvidenceSchemas.persona_activation_failed.parse(without(older, 'engine'));
     expect(parsed.engine).toBeNull();
+  });
+});
+
+describe('hand-off, measurement, activation and attachment evidence', () => {
+  const parse = (name: string, evidence: object) =>
+    eventSchema.safeParse({ ...base, name, evidence }).success;
+  const personId = '00000000-0000-4000-8000-0000000000f3';
+  const pageId = '00000000-0000-4000-8000-0000000000d3';
+
+  it('names the person, the reason and the round count on handed_to_person', () => {
+    const evidence = { personId, why: 'review_rounds_exhausted', rounds: 3 };
+    expect(parse('handed_to_person', evidence)).toBe(true);
+    expect(parse('handed_to_person', { ...evidence, why: 'tired' })).toBe(false);
+    expect(parse('handed_to_person', { ...evidence, rounds: 0 })).toBe(false);
+    expect(parse('handed_to_person', without(evidence, 'personId'))).toBe(false);
+  });
+
+  it('carries the source, name, value and date on measurement_recorded', () => {
+    const evidence = {
+      measurementId: '00000000-0000-4000-8000-0000000000f4',
+      source: 'web_analytics',
+      name: 'weekly visitors',
+      value: 412.5,
+      asOf: '2026-10-01',
+    };
+    expect(parse('measurement_recorded', evidence)).toBe(true);
+    expect(parse('measurement_recorded', { ...evidence, source: 'survey' })).toBe(false);
+    expect(parse('measurement_recorded', { ...evidence, name: '' })).toBe(false);
+    expect(parse('measurement_recorded', { ...evidence, extra: 1 })).toBe(false);
+  });
+
+  it('names the page, the persona and the new version on persona_activated', () => {
+    const evidence = { pageId, persona: 'agent:iterate', version: 2 };
+    expect(parse('persona_activated', evidence)).toBe(true);
+    expect(parse('persona_activated', { ...evidence, version: 0 })).toBe(false);
+    expect(parse('persona_activated', { ...evidence, persona: 'human:ian' })).toBe(false);
+    expect(parse('persona_activated', { ...evidence, extra: true })).toBe(false);
+  });
+
+  it('reads a learning attachment without a kind as a learning and takes a revision', () => {
+    const parsed = eventEvidenceSchemas.learning_attached.parse({ pageId });
+    expect(parsed.kind).toBe('learning');
+    expect(parse('learning_attached', { pageId, kind: 'revision' })).toBe(true);
+    expect(parse('learning_attached', { pageId, kind: 'draft' })).toBe(false);
+  });
+});
+
+describe('a dry run failure', () => {
+  it('is a persona activation refusal', () => {
+    const evidence = {
+      pageId: '00000000-0000-4000-8000-0000000000d3',
+      persona: 'agent:iterate',
+      verb: null,
+      engine: null,
+      reason: 'dry_run_failed',
+      message: 'persona iterate failed its dry run turn',
+      itemId: null,
+    };
+    const event = { ...base, itemId: null, name: 'persona_activation_failed', evidence };
+    expect(eventSchema.safeParse(event).success).toBe(true);
   });
 });

@@ -5,6 +5,7 @@ export const platformCommandNameSchema = z.enum([
   'revoke_role',
   'create_page',
   'update_page',
+  'confirm_page',
   'bind_service_token',
   'revoke_service_token',
 ]);
