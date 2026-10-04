@@ -323,6 +323,6 @@ type GrantLostLapses = {
 export async function seedGrantLostLapses(db: AnyExecutor, seed: GrantLostLapses): Promise<void> {
   const at = seed.at.toISOString();
   await db.execute(sql`INSERT INTO harness_events (id, harness_id, name, actor, evidence, trace_id, at)
-    SELECT gen_random_uuid(), ${seed.harnessId}, 'delegation_lapsed', 'agent:system', jsonb_build_object('delegationId', gen_random_uuid()::text, 'why', 'grant_lost'), gen_random_uuid(), ${at}::timestamptz
+    SELECT gen_random_uuid(), ${seed.harnessId}, 'delegation_lapsed', 'agent:scout', jsonb_build_object('delegationId', gen_random_uuid()::text, 'why', 'grant_lost'), gen_random_uuid(), ${at}::timestamptz
     FROM generate_series(1, ${seed.count})`);
 }
