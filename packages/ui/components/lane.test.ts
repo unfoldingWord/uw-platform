@@ -60,6 +60,40 @@ describe('WB-11 the lane', () => {
   });
 });
 
+describe('the lane facts', () => {
+  it('a lane lists its facts under its heading', async () => {
+    const document = await dom(
+      jsx(Lane, {
+        stageKey: 'build',
+        title: 'Build',
+        count: 1,
+        wipLimit: 3,
+        facts: [
+          { label: 'Agent pickup', value: 'Agents may pick up' },
+          { label: 'Exit', value: 'Checks' },
+        ],
+        children: card('one'),
+      }),
+    );
+    const lane = found(document.querySelector('section'));
+    const list = found(lane.querySelector(':scope > dl'));
+    const pairs = [...list.querySelectorAll('dt')].map((term) => [
+      term.textContent,
+      term.nextElementSibling?.textContent,
+    ]);
+    expect(pairs).toEqual([
+      ['Agent pickup', 'Agents may pick up'],
+      ['Exit', 'Checks'],
+    ]);
+    expect(found(lane.querySelector('h2')).compareDocumentPosition(list)).toBe(
+      document.defaultView?.Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(list.compareDocumentPosition(found(lane.querySelector('article')))).toBe(
+      document.defaultView?.Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+});
+
 describe('the lane ids and keyboard order', () => {
   it('lanes with colliding or non-Latin titles each label themselves with their own heading', async () => {
     const lanes = [

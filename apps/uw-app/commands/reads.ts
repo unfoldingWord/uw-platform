@@ -27,7 +27,7 @@ function eventQueryOf(raw: Readonly<Record<string, string>>) {
   return numeric && parsed.success ? parsed.data : null;
 }
 
-function cursorOf(raw: string | undefined): StageCursor | null | 'malformed' {
+export function cursorOf(raw: string | undefined): StageCursor | null | 'malformed' {
   if (raw === undefined) return null;
   const match = cursorShape.exec(raw);
   const itemId = cursorId.safeParse(match?.[2]);

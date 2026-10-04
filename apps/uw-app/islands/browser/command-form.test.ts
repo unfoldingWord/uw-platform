@@ -1,7 +1,8 @@
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import { harnessCommandSchemas } from '@uw/contracts';
-import { commandBody, OUTCOME_TEXT, wireCommandForms } from './command-form.ts';
+import { commandBody } from './command-body.ts';
+import { OUTCOME_TEXT, wireCommandForms } from './command-form.ts';
 
 const harnessId = 'c7000000-0000-4000-8000-000000000001';
 const itemId = 'c7000000-0000-4000-8000-000000000002';

@@ -15,6 +15,7 @@
     "testing/run-host.ts",
     "testing/views.ts",
     "testing/screen-checks.ts",
+    "testing/board-world.ts",
     "islands/browser/**",
     "islands/worker/**"
   ]
