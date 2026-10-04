@@ -34,9 +34,12 @@ const body = [
   'Claim the item, do the work, submit it.',
 ].join('\n');
 
-async function personaPage(db: Database, harnessId: string): Promise<string> {
+async function personaPage(
+  db: Database,
+  harnessId: string,
+  toolset: readonly string[] = ['read_page', 'claim_item'],
+): Promise<string> {
   const pageId = randomUUID();
-  const toolset = ['read_page', 'claim_item'];
   await seedPage(db, {
     id: pageId,
     type: 'persona',
@@ -149,8 +152,8 @@ async function savesToolset(db: Database): Promise<void> {
   expect(await pageRow(db, pageId)).toEqual({
     status: 'suggested',
     version: 2,
-    toolset: ['search_pages', 'read_page'],
-    requires: ['search_pages', 'read_page'],
+    toolset: ['read_page', 'search_pages'],
+    requires: ['read_page', 'search_pages'],
   });
   const stale = await postForm(db, IAN, `/personas/${pageId}/toolset`, toolsetForm([], 1), ORIGIN);
   expect(stale.text).toContain('Stale version');
@@ -275,6 +278,22 @@ async function delegationsCapped(db: Database): Promise<void> {
   expect(document.body.textContent).toContain('and 2 more live delegations');
 }
 
+async function keepsUnofferedEntries(db: Database): Promise<void> {
+  const made = await softwareHarness(db);
+  const stored = ['read_page', 'list_gifts', 'draft_release', 'claim_item'];
+  const pageId = await personaPage(db, made.harnessId, stored);
+  const form = toolsetForm(['read_page', 'search_pages', 'list_gifts'], 1);
+  const saved = await postForm(db, made.editor.email, `/personas/${pageId}/toolset`, form, ORIGIN);
+  expect(saved.text).toContain('Done.');
+  const kept = ['read_page', 'list_gifts', 'draft_release', 'search_pages'];
+  expect(await pageRow(db, pageId)).toEqual({
+    status: 'suggested',
+    version: 2,
+    toolset: kept,
+    requires: kept,
+  });
+}
+
 async function crossSite(db: Database): Promise<void> {
   const { pageId } = await scene(db);
   const form = toolsetForm(['read_page'], 1);
@@ -313,6 +332,8 @@ describe.skipIf(!testServer)('the persona view', () => {
     withAppDatabase(editorSaveStopsTheRuns));
   it('the persona view lists 50 live delegations and names how many more there are', () =>
     withAppDatabase(delegationsCapped));
+  it('a toolset save keeps the stored entries the editor is not offered, in their stored order', () =>
+    withAppDatabase(keepsUnofferedEntries));
   it('a toolset post from another origin, or with no origin, is refused', () =>
     withAppDatabase(crossSite));
 });

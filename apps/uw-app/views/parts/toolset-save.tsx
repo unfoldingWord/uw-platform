@@ -19,6 +19,21 @@ function postedOf(body: Record<string, unknown>): Posted {
   };
 }
 
+function chosenToolset(
+  stored: unknown,
+  options: readonly string[],
+  posted: readonly string[],
+): string[] {
+  const offered = new Set(options);
+  const picked = new Set(options.filter((verb) => posted.includes(verb)));
+  const before = Array.isArray(stored)
+    ? stored.filter((entry): entry is string => typeof entry === 'string')
+    : [];
+  const kept = before.filter((entry) => !offered.has(entry) || picked.has(entry));
+  const added = options.filter((verb) => picked.has(verb) && !before.includes(verb));
+  return [...kept, ...added];
+}
+
 async function save(
   c: Context<AppEnv>,
   screen: ScreenKernel,
@@ -31,7 +46,7 @@ async function save(
   const { actor } = screen.caller;
   const page = await readPage(database.db, actor, dashboard.page.id, screen.at);
   if (page === null) return { reason: 'page_not_found' };
-  const chosen = options.filter((verb) => posted.verbs.includes(verb));
+  const chosen = chosenToolset(page.frontmatter['toolset'], options, posted.verbs);
   const command = updatePageCommandSchema.safeParse({
     command: 'update_page',
     requestId: posted.fields.get('requestId'),
