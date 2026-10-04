@@ -8,6 +8,8 @@ import {
   revokeSeededGrant,
   seedGrant,
   seedLapsedDelegations,
+  rewriteItem,
+  seedEventRows,
   seedOpenItems,
   seedPerson,
 } from '@uw/db/test-seed';
@@ -97,6 +99,26 @@ async function seeded(db: Database): Promise<Home> {
   return home;
 }
 
+async function handedOffToIan(db: Database): Promise<ItemState> {
+  const { ian } = await people(db);
+  const item = await parkAtShip(kernelOn(db, clock), ian);
+  const personId = ian.personId ?? '';
+  await rewriteItem(db, item.itemId, { claimedBy: `human:${personId}`, claimantKind: 'person' });
+  await seedEventRows(db, [
+    {
+      id: '00000000-0000-4000-8000-000000007320',
+      harnessId: item.harnessId,
+      itemId: item.itemId,
+      name: 'handed_to_person',
+      actor: 'agent:system',
+      evidence: { personId, why: 'review_rounds_exhausted', rounds: 3 },
+      traceId: '00000000-0000-4000-8000-000000007321',
+      at: earlier(1),
+    },
+  ]);
+  return item;
+}
+
 function homeOf(db: Database, email: string, headers: Readonly<Record<string, string>> = {}) {
   return getHtml(db, email, '/', headers, clock);
 }
@@ -107,6 +129,17 @@ function linksOf(html: string): readonly [string | null, string][] {
     link.getAttribute('href'),
     link.textContent ?? '',
   ]);
+}
+
+async function handOffShows(db: Database): Promise<void> {
+  const item = await handedOffToIan(db);
+  const ian = linksOf((await homeOf(db, IAN)).text);
+  expect(ian).toContainEqual([
+    itemPath(item.harnessId, item.itemId),
+    'Show the board was handed to you after three review rounds',
+  ]);
+  const kim = linksOf((await homeOf(db, KIM)).text);
+  expect(kim.map(([, text]) => text).filter((text) => text.includes('handed to you'))).toEqual([]);
 }
 
 async function listsInOrder(db: Database): Promise<void> {
@@ -293,6 +326,8 @@ describe.skipIf(!testServer)('Home', () => {
   it('the main fragment answers only the main content with no shell', () =>
     withAppDatabase(fragmentOnly));
   it('Home renders with no screen problems', () => withAppDatabase(noProblems));
+  it('Home lists an item handed to the person after three review rounds, for that person only', () =>
+    withAppDatabase(handOffShows));
   it('Home offers a control to turn notifications on for this device', () =>
     withAppDatabase(pushControl));
 });

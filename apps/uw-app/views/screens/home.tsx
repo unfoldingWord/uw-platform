@@ -7,7 +7,7 @@ import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import type { AppEnv } from '../../deps.ts';
-import { lapsedCapNote, parkedCapNote } from '../parts/caps.ts';
+import { handedCapNote, lapsedCapNote, parkedCapNote } from '../parts/caps.ts';
 import { liveCursors } from '../parts/cursors.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { flowPath, gatePath, homePath, itemPath } from '../parts/paths.ts';
@@ -29,6 +29,12 @@ function lapsedText(
   return `A delegation to ${delegation.persona} on ${harness.key} lapsed ${lapsed} because its person no longer holds admin`;
 }
 
+const roundWords: ReadonlyMap<number, string> = new Map([[3, 'three']]);
+
+function roundsText(rounds: number): string {
+  return roundWords.get(rounds) ?? formatCount(rounds);
+}
+
 function shown(row: WaitingRow, viewer: string | null): Shown {
   if (row.kind === 'gate') {
     const { harness, stage, item } = row.gate;
@@ -42,6 +48,13 @@ function shown(row: WaitingRow, viewer: string | null): Shown {
     return {
       href: flowPath(row.harness.id),
       text: lapsedText(row, viewer),
+      harnessId: row.harness.id,
+    };
+  }
+  if (row.kind === 'handed_to_person') {
+    return {
+      href: itemPath(row.harness.id, row.item.itemId),
+      text: `${row.item.title} was handed to you after ${roundsText(row.rounds)} review rounds`,
       harnessId: row.harness.id,
     };
   }
@@ -66,6 +79,7 @@ type Caps = {
   readonly failedRunsCapped: boolean;
   readonly gatesCapped: boolean;
   readonly lapsedCapped: boolean;
+  readonly handedCapped: boolean;
 };
 
 function capNotes(waiting: Caps): readonly string[] {
@@ -73,6 +87,7 @@ function capNotes(waiting: Caps): readonly string[] {
   if (waiting.failedRunsCapped) notes.push(cappedNote);
   if (waiting.gatesCapped) notes.push(parkedCapNote);
   if (waiting.lapsedCapped) notes.push(lapsedCapNote);
+  if (waiting.handedCapped) notes.push(handedCapNote);
   return notes;
 }
 

@@ -1,4 +1,4 @@
-import type { Harness } from '@uw/contracts';
+import { eventEvidenceSchemas, type Harness } from '@uw/contracts';
 import { allowed, isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import type { Delegation, StoreTransaction } from '../ports.ts';
@@ -18,6 +18,7 @@ const nothingWaiting: Waiting = {
   failedRunsCapped: false,
   gatesCapped: false,
   lapsedCapped: false,
+  handedCapped: false,
 };
 
 type FailedRows = { readonly rows: readonly WaitingRow[]; readonly capped: boolean };
@@ -118,6 +119,43 @@ async function failedRows(scope: Scope): Promise<FailedRows> {
   return { rows, capped: runs.length === FAILED_RUNS_LIMIT };
 }
 
+type HandOff = { readonly itemId: string; readonly harness: Harness; readonly rounds: number };
+
+async function handOffsTo(
+  scope: Scope,
+): Promise<{ readonly found: readonly HandOff[]; readonly capped: boolean }> {
+  const since = new Date(scope.at.getTime() - WAITING_WINDOW_MS);
+  const query = {
+    since,
+    names: ['handed_to_person'] as const,
+    agentsOnly: false,
+    limit: VIEW_LIMIT,
+  };
+  const events = await scope.tx.harnessEvents.read.recent(query);
+  const found = new Map<string, HandOff>();
+  for (const event of events) {
+    const evidence = eventEvidenceSchemas.handed_to_person.parse(event.evidence);
+    const harness = scope.readable.get(event.harnessId);
+    if (event.itemId === null || harness === undefined || found.has(event.itemId)) continue;
+    if (evidence.personId !== scope.personId) continue;
+    found.set(event.itemId, { itemId: event.itemId, harness, rounds: evidence.rounds });
+  }
+  return { found: [...found.values()], capped: events.length === VIEW_LIMIT };
+}
+
+async function handedRows(scope: Scope): Promise<LapsedRows> {
+  const { found, capped } = await handOffsTo(scope);
+  const items = await scope.tx.harnessItems.read.byIds(found.map((handOff) => handOff.itemId));
+  const byId = new Map(items.map((item) => [item.itemId, item]));
+  const holder = `human:${scope.personId}`;
+  const rows = found.flatMap((handOff): WaitingRow[] => {
+    const item = byId.get(handOff.itemId);
+    if (item === undefined || item.holder !== holder || item.gateStatus === 'done') return [];
+    return [{ kind: 'handed_to_person', harness: handOff.harness, item, rounds: handOff.rounds }];
+  });
+  return { rows, capped };
+}
+
 export async function waitingOn(
   ports: ScenePorts,
   tx: StoreTransaction,
@@ -137,11 +175,13 @@ export async function waitingOn(
   const orphaned = await orphanedRows(scope);
   const lapsed = { rows: [...own.rows, ...orphaned.rows], capped: own.capped || orphaned.capped };
   const failed = await failedRows(scope);
+  const handed = await handedRows(scope);
   const gateRows = gates.rows.map((gate): WaitingRow => ({ kind: 'gate', gate }));
   return {
-    rows: [...gateRows, ...lapsed.rows, ...failed.rows],
+    rows: [...gateRows, ...lapsed.rows, ...failed.rows, ...handed.rows],
     failedRunsCapped: failed.capped,
     gatesCapped: gates.capped,
     lapsedCapped: lapsed.capped,
+    handedCapped: handed.capped,
   };
 }

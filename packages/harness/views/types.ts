@@ -69,12 +69,19 @@ export type WaitingRow =
       readonly harness: Harness;
       readonly item: ItemState;
       readonly run: RunRow;
+    }
+  | {
+      readonly kind: 'handed_to_person';
+      readonly harness: Harness;
+      readonly item: ItemState;
+      readonly rounds: number;
     };
 export type Waiting = {
   readonly rows: readonly WaitingRow[];
   readonly failedRunsCapped: boolean;
   readonly gatesCapped: boolean;
   readonly lapsedCapped: boolean;
+  readonly handedCapped: boolean;
 };
 export type DecideAbility =
   | { readonly can: true }
