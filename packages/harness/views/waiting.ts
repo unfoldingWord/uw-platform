@@ -74,6 +74,7 @@ async function orphanedDelegations(scope: Scope): Promise<Orphaned> {
     names: ['delegation_lapsed'] as const,
     agentsOnly: false,
     limit: VIEW_LIMIT,
+    harnessIds: [...scope.administered.keys()],
   };
   const lapses = await scope.tx.harnessEvents.read.recent(query);
   const found = new Map<string, Delegation>();
@@ -130,6 +131,8 @@ async function handOffsTo(
     names: ['handed_to_person'] as const,
     agentsOnly: false,
     limit: VIEW_LIMIT,
+    harnessIds: [...scope.readable.keys()],
+    evidencePerson: scope.personId,
   };
   const events = await scope.tx.harnessEvents.read.recent(query);
   const found = new Map<string, HandOff>();
@@ -137,7 +140,6 @@ async function handOffsTo(
     const evidence = eventEvidenceSchemas.handed_to_person.parse(event.evidence);
     const harness = scope.readable.get(event.harnessId);
     if (event.itemId === null || harness === undefined || found.has(event.itemId)) continue;
-    if (evidence.personId !== scope.personId) continue;
     found.set(event.itemId, { itemId: event.itemId, harness, rounds: evidence.rounds });
   }
   return { found: [...found.values()], capped: events.length === VIEW_LIMIT };

@@ -373,6 +373,20 @@ export async function seedGrantLostLapses(db: AnyExecutor, seed: GrantLostLapses
     FROM generate_series(1, ${seed.count})`);
 }
 
+type HandOffs = {
+  readonly harnessId: string;
+  readonly personId: string;
+  readonly count: number;
+  readonly at: Date;
+};
+
+export async function seedHandOffs(db: AnyExecutor, seed: HandOffs): Promise<void> {
+  const at = seed.at.toISOString();
+  await db.execute(sql`INSERT INTO harness_events (id, harness_id, name, actor, evidence, trace_id, at)
+    SELECT gen_random_uuid(), ${seed.harnessId}, 'handed_to_person', 'agent:reviewer', jsonb_build_object('personId', ${seed.personId}::text, 'why', 'review_rounds_exhausted', 'rounds', 3), gen_random_uuid(), ${at}::timestamptz
+    FROM generate_series(1, ${seed.count})`);
+}
+
 async function upsertProjection(
   db: AnyExecutor,
   row: { readonly identity: string; readonly harnessId: string; readonly pageId: string },

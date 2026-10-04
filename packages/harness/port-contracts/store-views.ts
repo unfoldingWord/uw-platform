@@ -195,6 +195,57 @@ function describeRecent(subject: ViewsSubject): void {
   });
 }
 
+const kim = '00000000-0000-4000-8000-000000000004';
+
+function handedTo(base: number, n: number, harness: number, personId: string) {
+  return newEventSchema.parse({
+    eventId: uid(base + 0x40 + n),
+    harnessId: uid(harness),
+    itemId: uid(harness + 11),
+    name: 'handed_to_person',
+    at: later(recentSince, n * hour).toISOString(),
+    actor: builder,
+    evidence: { personId, why: 'review_rounds_exhausted', rounds: 3 },
+    traceId: uid(base + 0x80),
+    requestId: null,
+  });
+}
+
+function describeRecentScope(subject: ViewsSubject): void {
+  it('recent keeps to the named harnesses and to the person the evidence names', async () => {
+    const [base, other] = [0x6a00, 0x6b00];
+    const read = await subject().store.transaction(async (tx) => {
+      await seedItems(tx, base, 'gateway-views-scoped', 1);
+      await seedItems(tx, other, 'gateway-views-hidden', 1);
+      await tx.harnessEvents.write.append([
+        handedTo(base, 1, base, person),
+        handedTo(base, 2, base, kim),
+        handedTo(base, 3, other, person),
+      ]);
+      const query = { since: recentSince, names: ['handed_to_person' as const], agentsOnly: false };
+      const ids = async (scope: { harnessIds?: string[]; evidencePerson?: string }) =>
+        (await tx.harnessEvents.read.recent({ ...query, ...scope, limit: 10 })).map(
+          (event) => event.eventId,
+        );
+      return {
+        everywhere: await ids({}),
+        here: await ids({ harnessIds: [uid(base)] }),
+        mine: await ids({ evidencePerson: person }),
+        mineHere: await ids({ harnessIds: [uid(base)], evidencePerson: person }),
+        nowhere: await ids({ harnessIds: [] }),
+      };
+    });
+    const [mineHere, kims, hidden] = [1, 2, 3].map((n) => uid(0x6a00 + 0x40 + n));
+    expect(read).toEqual({
+      everywhere: [hidden, kims, mineHere],
+      here: [kims, mineHere],
+      mine: [hidden, mineHere],
+      mineHere: [mineHere],
+      nowhere: [],
+    });
+  });
+}
+
 function describeRecentLimits(subject: ViewsSubject): void {
   it('recent refuses a limit outside 1 to 5000', async () => {
     const query = { since: at, names: null, agentsOnly: false };
@@ -448,6 +499,7 @@ export function describeStoreViews(adapter: string, subject: ViewsSubject): void
     describeEntered(subject);
     describeLastPosition(subject);
     describeRecent(subject);
+    describeRecentScope(subject);
     describeRecentLimits(subject);
     describeRuns(subject);
     describeRunLimits(subject);
