@@ -136,6 +136,33 @@ An org owner of `unfoldingWord` registers each App once, awaiting go-live:
 
 Until a Reviewer's three secrets are set, its review answers `not_wired` and the run completes `review_withheld`.
 
+## The notifier: web push and Zulip (NT-1, NT-3)
+
+The notifier reads its configuration from `uw-app`'s variables and secrets. With any piece missing or malformed, that channel answers `not_configured` and logs; nothing fails at startup.
+
+Variables, in `infra/uw-app/wrangler.go-live.toml` under staging and production only (`set-at-go-live` until then):
+
+| Variable | Value |
+|---|---|
+| `APP_ORIGIN` | The app's `https://` origin with no path; a Zulip post's link starts with it |
+| `VAPID_PUBLIC_KEY` | The VAPID public key, base64url, 87 characters |
+| `VAPID_SUBJECT` | `mailto:` an address that answers, or an `https://` page |
+| `ZULIP_SITE` | The Zulip realm's `https://` origin |
+| `ZULIP_BOT_EMAIL` | The bot's email address |
+| `ZULIP_CHANNELS` | A JSON object from area to channel name, for example `{"80-89":"80-89 Technology"}`; an area with no channel drops its Zulip wakes |
+
+Secrets, set with `wrangler secret put <name> --env <name>` and written in no file:
+
+```bash
+# uw-app (from infra/uw-app)
+wrangler secret put VAPID_PRIVATE_JWK --env <name>   # the VAPID private key as JWK JSON (kty EC, crv P-256, d, x, y)
+wrangler secret put ZULIP_BOT_API_KEY --env <name>
+# uw-ingest (from infra/uw-ingest)
+wrangler secret put ZULIP_WEBHOOK_TOKEN --env <name>
+```
+
+The Zulip bot is an outgoing-webhook bot. Its endpoint URL is `https://<uw-ingest host>/webhooks/zulip`, its payload format is Zulip's own, and its token is `ZULIP_WEBHOOK_TOKEN`. `uw-ingest` answers an accepted delivery with no `content` and `"response_not_required": true`, so the bot posts nothing back.
+
 ## Logs (FD-11)
 
 Workers Logs is on for both Workers, in the top-level block and in `staging` and `production`, because wrangler does not carry top-level observability into an environment.

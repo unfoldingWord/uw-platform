@@ -32,6 +32,12 @@ COMMIT_SHA = "unknown"
 ACCESS_TEAM_DOMAIN = "https://set-at-go-live.cloudflareaccess.com"
 ACCESS_AUD = "set-at-go-live"
 ACCESS_MCP_AUD = "set-at-go-live"
+APP_ORIGIN = "set-at-go-live"
+VAPID_PUBLIC_KEY = "set-at-go-live"
+VAPID_SUBJECT = "set-at-go-live"
+ZULIP_SITE = "set-at-go-live"
+ZULIP_BOT_EMAIL = "set-at-go-live"
+ZULIP_CHANNELS = "{}"
 
 [env.staging.observability]
 enabled = true
@@ -89,6 +95,12 @@ COMMIT_SHA = "unknown"
 ACCESS_TEAM_DOMAIN = "https://set-at-go-live.cloudflareaccess.com"
 ACCESS_AUD = "set-at-go-live"
 ACCESS_MCP_AUD = "set-at-go-live"
+APP_ORIGIN = "set-at-go-live"
+VAPID_PUBLIC_KEY = "set-at-go-live"
+VAPID_SUBJECT = "set-at-go-live"
+ZULIP_SITE = "set-at-go-live"
+ZULIP_BOT_EMAIL = "set-at-go-live"
+ZULIP_CHANNELS = "{}"
 
 [env.production.observability]
 enabled = true

@@ -19,7 +19,17 @@ const goLiveOnly = [
   'workflows',
   'containers',
 ];
-const accessVars = ['ACCESS_TEAM_DOMAIN', 'ACCESS_AUD', 'ACCESS_MCP_AUD'];
+const goLiveVars = [
+  'ACCESS_TEAM_DOMAIN',
+  'ACCESS_AUD',
+  'ACCESS_MCP_AUD',
+  'APP_ORIGIN',
+  'VAPID_PUBLIC_KEY',
+  'VAPID_SUBJECT',
+  'ZULIP_SITE',
+  'ZULIP_BOT_EMAIL',
+  'ZULIP_CHANNELS',
+];
 const apps = ['uw-app', 'uw-ingest'] as const;
 const deployedEnvironments = ['staging', 'production'] as const;
 const placeholder = 'set-at-go-live';
@@ -40,7 +50,7 @@ function withoutGoLiveBindings(config: Block): Block {
   const stripped = Object.fromEntries(
     Object.entries(environments(config)).map(([name, block]) => [
       name,
-      { ...omit(block, goLiveOnly), vars: omit((block['vars'] ?? {}) as Block, accessVars) },
+      { ...omit(block, goLiveOnly), vars: omit((block['vars'] ?? {}) as Block, goLiveVars) },
     ]),
   );
   return { ...omit(config, goLiveOnly), env: stripped };
@@ -53,7 +63,7 @@ function goLiveKeysIn(config: Block): string[] {
   ];
   return blocks.flatMap(([name, block]) => [
     ...goLiveOnly.filter((key) => key in block).map((key) => `${name}: ${key}`),
-    ...accessVars.filter((key) => key in varsOf(block)).map((key) => `${name}: vars.${key}`),
+    ...goLiveVars.filter((key) => key in varsOf(block)).map((key) => `${name}: vars.${key}`),
   ]);
 }
 
@@ -103,7 +113,7 @@ describe('FD-12 the go-live config is the live config plus the bindings whose re
     expect(goLiveKeysIn(load(`infra/${app}/${live}`))).toEqual([]);
   });
 
-  it('flags a live file that declares a Durable Object binding or a migration', () => {
+  it('flags a live file that declares a Durable Object binding, a migration or a go-live variable', () => {
     const planted = parse(
       [
         'name = "uw-app"',
@@ -113,6 +123,8 @@ describe('FD-12 the go-live config is the live config plus the bindings whose re
         '[[env.staging.durable_objects.bindings]]',
         'name = "HARNESS_HUB"',
         'class_name = "HarnessHub"',
+        '[env.staging.vars]',
+        'VAPID_SUBJECT = "mailto:x@example.org"',
         '[env.production.vars]',
         'ACCESS_AUD = "x"',
       ].join('\n'),
@@ -120,6 +132,7 @@ describe('FD-12 the go-live config is the live config plus the bindings whose re
     expect(goLiveKeysIn(planted)).toEqual([
       'top level: migrations',
       'staging: durable_objects',
+      'staging: vars.VAPID_SUBJECT',
       'production: vars.ACCESS_AUD',
     ]);
   });
