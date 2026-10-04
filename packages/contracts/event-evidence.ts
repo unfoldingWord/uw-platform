@@ -29,6 +29,7 @@ import { slugSchema } from './pages.ts';
 import { modelIdSchema, reviewRecordSchema, runStepCosts, runStepSchema } from './runs.ts';
 import { fullShaSchema, riskDeclarationSchema, shipRefusalSchema } from './ship-rule.ts';
 import { submitToGateResultSchema } from './verb-io.ts';
+import { ZULIP_TEXT_LIMIT, zulipTopicSchema } from './zulip.ts';
 
 export const personaActivationRefusalSchema = z.enum([
   'unknown_verb',
@@ -153,6 +154,7 @@ const itemEvidence = {
   }),
   learning_attached: z.strictObject({ pageId: id }),
   nothing_learned: z.strictObject({ reason: oneLine }),
+  zulip_topic_linked: z.strictObject({ topic: zulipTopicSchema }),
 };
 
 const gateEvidence = {
@@ -207,6 +209,15 @@ const harnessEvidence = {
   harness_paused: z.strictObject({ stage: stage.nullable() }),
   harness_resumed: z.strictObject({ stage: stage.nullable() }),
   hosted_builder_set: z.strictObject({ enabled: z.boolean() }),
+  comment_recorded: z.strictObject({
+    source: z.literal('zulip'),
+    messageId: z.number().int().min(1),
+    topic: zulipTopicSchema,
+    personId: id.nullable(),
+    email: z.string().min(3).max(254),
+    text: z.string().max(ZULIP_TEXT_LIMIT),
+    truncated: z.boolean(),
+  }),
   breaker_holding: breakerEvidence,
   breaker_pausing: breakerEvidence,
   breaker_open: breakerEvidence,

@@ -39,8 +39,8 @@ describe('FD-10 the ingest envelope', () => {
     expect(ingestEnvelopeSchema.safeParse({ ...envelope, envelopeVersion: 2 }).success).toBe(false);
   });
 
-  it('knows one source and eleven refusal reasons', () => {
-    expect(ingestSourceSchema.options).toEqual(['github']);
+  it('knows two sources and eleven refusal reasons', () => {
+    expect(ingestSourceSchema.options).toEqual(['github', 'zulip']);
     expect(ingestRefusalSchema.options).toHaveLength(11);
     expect(ingestRefusalSchema.options.at(0)).toBe('unknown_source');
     expect(ingestRefusalSchema.options.at(-1)).toBe('payload_too_large');

@@ -27,6 +27,13 @@ export const capabilityWordSchema = z.enum(['none', 'iterate', 'build', 'review'
 export const gateDecisionSchema = z.enum(['approve', 'reject', 'take_over', 'override']);
 export const personStatusSchema = z.enum(['active', 'pending']);
 export const principalKindSchema = z.enum(['person', 'agent']);
+export const wakeReasonSchema = z.enum([
+  'gate_waiting',
+  'delegation_lapsed',
+  'run_failed',
+  'stage_advanced',
+]);
+export const liveScreenSchema = z.enum(['home', 'flow', 'board', 'gates', 'item']);
 
 export type Connector = z.infer<typeof connectorSchema>;
 export type ExitGate = z.infer<typeof exitGateSchema>;
@@ -46,6 +53,8 @@ export type CapabilityWord = z.infer<typeof capabilityWordSchema>;
 export type GateDecision = z.infer<typeof gateDecisionSchema>;
 export type PersonStatus = z.infer<typeof personStatusSchema>;
 export type PrincipalKind = z.infer<typeof principalKindSchema>;
+export type WakeReason = z.infer<typeof wakeReasonSchema>;
+export type LiveScreen = z.infer<typeof liveScreenSchema>;
 
 export const stageBracketSchema = z.enum([
   'product_package',

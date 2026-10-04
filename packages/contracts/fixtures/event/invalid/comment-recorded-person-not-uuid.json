@@ -1,0 +1,20 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000e1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "name": "comment_recorded",
+  "position": 1,
+  "at": "2026-10-01T09:00:00.000Z",
+  "actor": "agent:ingest",
+  "evidence": {
+    "source": "zulip",
+    "messageId": 1201,
+    "topic": "software/uw-platform#42",
+    "personId": "ana",
+    "email": "ana@example.org",
+    "text": "approve",
+    "truncated": false
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
+}

@@ -303,7 +303,15 @@ describe('KN-4 replay leaves state alone for events that do not fold', () => {
       decisionId: '00000000-0000-4000-8000-0000000000d1',
       stage: 'ship',
     });
-    const commented = event(8, 'comment_recorded', {});
+    const commented = event(8, 'comment_recorded', {
+      source: 'zulip',
+      messageId: 1,
+      topic: 'software/uw-platform#1',
+      personId: null,
+      email: 'ana@example.org',
+      text: 'approve',
+      truncated: false,
+    });
     expect(replay([...base(), approved, commented])).toEqual(replay(base()));
   });
 

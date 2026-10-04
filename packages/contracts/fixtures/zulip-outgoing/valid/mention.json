@@ -1,0 +1,12 @@
+{
+  "token": "xyzzy",
+  "trigger": "mention",
+  "message": {
+    "id": 1201,
+    "sender_email": "ana@example.org",
+    "type": "stream",
+    "display_recipient": "80-89 Technology",
+    "subject": "software/uw-platform#42",
+    "content": "@**harness** approve"
+  }
+}

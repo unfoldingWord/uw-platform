@@ -3,7 +3,7 @@ import { principalSchema } from './principal.ts';
 
 export const INGEST_PAYLOAD_LIMIT_BYTES = 120_000;
 
-export const ingestSourceSchema = z.enum(['github']);
+export const ingestSourceSchema = z.enum(['github', 'zulip']);
 
 export const ingestRefusalSchema = z.enum([
   'unknown_source',
