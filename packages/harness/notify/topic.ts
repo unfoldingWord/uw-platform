@@ -1,6 +1,7 @@
 import { identitySchema, zulipTopicSchema, type ItemState } from '@uw/contracts';
 import { topicLinkIdentity } from '../access.ts';
 import { draft, recordItemEvents } from '../items/record.ts';
+import { lockKeys } from '../lock-keys.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
 
 export function itemRefOf(item: Pick<ItemState, 'itemId' | 'issue'>): string {
@@ -53,6 +54,7 @@ export async function linkTopic(
     if (item === null || item.zulipTopic !== null) return;
     const harness = await tx.harnesses.read.byId(item.harnessId);
     if (harness === null) return;
+    await tx.lock(lockKeys.zulipTopics(harness.id));
     const topic = await freeTopic(tx, item, harness.key, input.topic);
     if (topic === null) return;
     const context = {

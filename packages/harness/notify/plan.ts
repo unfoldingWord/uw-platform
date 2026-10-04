@@ -87,7 +87,7 @@ function draftOf(trigger: Trigger, context: WakeContext, holders: Holders, at: D
   if (link === null) return null;
   const personIds = peopleFor(trigger, context, holders, { harness, item, at });
   const base = { harnessId: harness.id, harnessKey: harness.key, jdArea: harness.jdArea };
-  const unlinked = item !== null && item.item.zulipTopic === null;
+  const unlinked = item !== null && item.linkable;
   const identity = { itemId, ...where(harness, item), reason, link, unlinked };
   return { ...base, ...identity, personIds, at, traceId: event.traceId };
 }
