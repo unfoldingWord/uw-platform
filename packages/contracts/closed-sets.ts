@@ -32,6 +32,7 @@ export const wakeReasonSchema = z.enum([
   'delegation_lapsed',
   'run_failed',
   'stage_advanced',
+  'handed_to_person',
 ]);
 export const liveScreenSchema = z.enum(['home', 'flow', 'board', 'gates', 'item']);
 

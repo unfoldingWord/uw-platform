@@ -9,6 +9,7 @@ import {
   stageSchema,
 } from './harness.ts';
 import { slugSchema } from './pages.ts';
+import { dataSourceKindSchema } from './page-types.ts';
 import { fullShaSchema } from './ship-rule.ts';
 
 export const commandNames = [
@@ -37,6 +38,8 @@ export const commandNames = [
   'reorder_stages',
   'remove_stage',
   'set_hosted_builder',
+  'activate_persona',
+  'record_measurement',
 ] as const;
 
 export const commandNameSchema = z.enum(commandNames);
@@ -128,6 +131,17 @@ export const harnessCommandSchemas = {
   reorder_stages: body('reorder_stages', { order: z.array(stageKeySchema).min(1).max(50) }),
   remove_stage: body('remove_stage', { stageKey: stageKeySchema }),
   set_hosted_builder: body('set_hosted_builder', { enabled: z.boolean() }),
+  activate_persona: body('activate_persona', {
+    pageId: z.uuid(),
+    expectedVersion: z.number().int().min(1),
+  }),
+  record_measurement: body('record_measurement', {
+    itemId,
+    source: dataSourceKindSchema,
+    name: nonBlank(100),
+    value: z.number().finite(),
+    asOf: z.iso.date(),
+  }),
 } as const satisfies Record<CommandName, z.ZodType>;
 
 export const commandSchema = z.discriminatedUnion('command', [
@@ -156,6 +170,8 @@ export const commandSchema = z.discriminatedUnion('command', [
   harnessCommandSchemas.reorder_stages,
   harnessCommandSchemas.remove_stage,
   harnessCommandSchemas.set_hosted_builder,
+  harnessCommandSchemas.activate_persona,
+  harnessCommandSchemas.record_measurement,
 ]);
 
 export type Command = z.infer<typeof commandSchema>;

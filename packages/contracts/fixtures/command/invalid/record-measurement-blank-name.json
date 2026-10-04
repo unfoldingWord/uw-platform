@@ -1,0 +1,9 @@
+{
+  "command": "record_measurement",
+  "requestId": "00000000-0000-4000-8000-0000000000aa",
+  "itemId": "00000000-0000-4000-8000-0000000000bb",
+  "source": "manual",
+  "name": "  ",
+  "value": 1,
+  "asOf": "2026-10-01"
+}

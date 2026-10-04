@@ -13,7 +13,11 @@ import {
   overrideCommandSchema,
   templateKeySchema,
 } from './commands.ts';
-import { personaActivationRefusalSchema } from './event-evidence.ts';
+import {
+  handOffReasonSchema,
+  learningAttachedKindSchema,
+  personaActivationRefusalSchema,
+} from './event-evidence.ts';
 import { eventNameSchema, eventSchema, newEventSchema } from './events.ts';
 import { gateViewSchema } from './gate-view.ts';
 import { issueReferenceSchema, pullRequestDeclarationSchema } from './github.ts';
@@ -56,6 +60,7 @@ import {
   refusalSchema,
 } from './outcomes.ts';
 import {
+  confirmPageCommandSchema,
   createPageCommandSchema,
   frontmatterSchema,
   pageSchema,
@@ -148,6 +153,7 @@ export const schemaRegistry: Record<string, ZodType> = {
   page: pageSchema,
   'create-page-command': createPageCommandSchema,
   'update-page-command': updatePageCommandSchema,
+  'confirm-page-command': confirmPageCommandSchema,
   'verb-name': verbNameSchema,
   'forbidden-verb': forbiddenVerbSchema,
   'verb-group': verbGroupSchema,
@@ -200,6 +206,8 @@ export const schemaRegistry: Record<string, ZodType> = {
   'ship-rule-outcome': shipRuleOutcomeSchema,
   'task-status': closedSets.taskStatusSchema,
   'persona-activation-refusal': personaActivationRefusalSchema,
+  'learning-attached-kind': learningAttachedKindSchema,
+  'hand-off-reason': handOffReasonSchema,
   'service-client-id': serviceClientIdSchema,
   'bind-service-token-command': bindServiceTokenCommandSchema,
   'revoke-service-token-command': revokeServiceTokenCommandSchema,

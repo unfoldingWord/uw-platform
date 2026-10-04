@@ -68,8 +68,16 @@ export const updatePageCommandSchema = z.object({
   ...editable,
 });
 
+export const confirmPageCommandSchema = z.object({
+  command: z.literal('confirm_page'),
+  requestId: z.uuid(),
+  pageId: z.uuid(),
+  expectedVersion: z.number().int().min(1),
+});
+
 export type PageType = z.infer<typeof pageTypeSchema>;
 export type PageStatus = z.infer<typeof pageStatusSchema>;
 export type Page = z.infer<typeof pageSchema>;
 export type CreatePageCommand = z.infer<typeof createPageCommandSchema>;
 export type UpdatePageCommand = z.infer<typeof updatePageCommandSchema>;
+export type ConfirmPageCommand = z.infer<typeof confirmPageCommandSchema>;
