@@ -2,12 +2,14 @@ import type { Harness, HarnessEvent, Identity, ItemState } from '@uw/contracts';
 import { replay } from '../items/fold.ts';
 import { readAllEvents } from '../items/record.ts';
 import type { Delegation, RunRow, StoreTransaction } from '../ports.ts';
+import { freeTopic, itemRefOf, topicFor } from './topic.ts';
 import type { Trigger } from './triggers.ts';
 
 export type ItemContext = {
   readonly item: ItemState;
   readonly prior: ItemState | null;
   readonly parkedBy: Identity | null;
+  readonly topic: string;
 };
 
 export type WakeContext = {
@@ -37,15 +39,22 @@ function lastParker(events: readonly HarnessEvent[]): Identity | null {
   return parked.at(-1)?.actor ?? null;
 }
 
+async function topicOf(tx: StoreTransaction, item: ItemState, harness: Harness): Promise<string> {
+  if (item.zulipTopic !== null) return item.zulipTopic;
+  return (await freeTopic(tx, item, harness.key)) ?? topicFor(harness.key, itemRefOf(item));
+}
+
 async function itemContext(
   tx: StoreTransaction,
   item: ItemState,
+  harness: Harness,
   batch: readonly HarnessEvent[],
 ): Promise<ItemContext> {
   const before = firstPosition(batch, item.itemId);
   const all = await readAllEvents(tx, item.harnessId, item.itemId);
   const earlier = all.filter((event) => event.position < before);
-  return { item, prior: replay(earlier), parkedBy: lastParker(earlier) };
+  const topic = await topicOf(tx, item, harness);
+  return { item, prior: replay(earlier), parkedBy: lastParker(earlier), topic };
 }
 
 async function readEach<T>(
@@ -63,13 +72,17 @@ async function readEach<T>(
 async function itemsOf(
   tx: StoreTransaction,
   triggers: readonly Trigger[],
+  harnesses: ReadonlyMap<string, Harness>,
   batch: readonly HarnessEvent[],
 ): Promise<ReadonlyMap<string, ItemContext>> {
   const items = await readEach(unique(triggers.map(({ event }) => event.itemId)), (id) =>
     tx.harnessItems.read.byId(id),
   );
   const contexts = new Map<string, ItemContext>();
-  for (const [itemId, item] of items) contexts.set(itemId, await itemContext(tx, item, batch));
+  for (const [itemId, item] of items) {
+    const harness = harnesses.get(item.harnessId);
+    if (harness !== undefined) contexts.set(itemId, await itemContext(tx, item, harness, batch));
+  }
   return contexts;
 }
 
@@ -82,7 +95,7 @@ export async function readWakeContext(
   const harnesses = await readEach(unique(events.map((event) => event.harnessId)), (id) =>
     tx.harnesses.read.byId(id),
   );
-  const items = await itemsOf(tx, triggers, batch);
+  const items = await itemsOf(tx, triggers, harnesses, batch);
   const runs = await readEach(unique(events.map((event) => evidenceId(event, 'runId'))), (id) =>
     tx.harnessRuns.read.byId(id),
   );

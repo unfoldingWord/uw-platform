@@ -7,8 +7,6 @@ import {
 } from '@uw/contracts';
 import { carryForward } from '../risk/derive.ts';
 
-export const notReplayed: readonly (keyof ItemState)[] = ['zulipTopic'];
-
 export type FoldableEvent = NewHarnessEvent | HarnessEvent;
 
 export class ReplayError extends Error {
@@ -151,6 +149,11 @@ function deriveRisk(state: ItemState, event: FoldableEvent): ItemState {
   return { ...state, riskTier: floored.tier, riskDomains: [...floored.domains] };
 }
 
+function linkTopic(state: ItemState, event: FoldableEvent): ItemState {
+  const evidence = eventEvidenceSchemas.zulip_topic_linked.parse(event.evidence);
+  return { ...state, zulipTopic: evidence.topic };
+}
+
 const steps: ReadonlyMap<EventName, Step> = new Map<EventName, Step>([
   ['item_claimed', claim],
   ['item_released', release],
@@ -167,6 +170,7 @@ const steps: ReadonlyMap<EventName, Step> = new Map<EventName, Step>([
   ['gate_taken_over', takeOver],
   ['risk_derived', deriveRisk],
   ['item_reordered', reorder],
+  ['zulip_topic_linked', linkTopic],
 ]);
 
 export const unchangedNames: ReadonlySet<EventName> = new Set<EventName>([
@@ -200,7 +204,6 @@ export const unchangedNames: ReadonlySet<EventName> = new Set<EventName>([
   'learning_attached',
   'nothing_learned',
   'comment_recorded',
-  'zulip_topic_linked',
   'breaker_holding',
   'breaker_pausing',
   'breaker_open',

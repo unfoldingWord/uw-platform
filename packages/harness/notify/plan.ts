@@ -24,7 +24,12 @@ import { triggersOf, type Trigger } from './triggers.ts';
 export type WakePlanPorts = Pick<Ports, 'store' | 'grants' | 'hub' | 'clock'>;
 
 type Holders = ReadonlyMap<JdArea, readonly GrantHolder[]>;
-type Draft = Omit<Wake, 'recipients'> & { readonly people: readonly string[] };
+type Draft = Omit<Wake, 'recipients'> & {
+  readonly people: readonly string[];
+  readonly unlinked: boolean;
+};
+
+export type PlannedWake = { readonly wake: Wake; readonly unlinked: boolean };
 
 const needsHolders: ReadonlySet<string> = new Set(['gate_waiting', 'delegation_lapsed']);
 
@@ -54,29 +59,38 @@ function linkOf(trigger: Trigger, harness: Harness, itemId: string | null): Deep
 
 function where(harness: Harness, item: ItemContext | null) {
   if (item === null) return { itemRef: null, topic: topicFor(harness.key, null) };
-  const itemRef = itemRefOf(item.item);
-  return { itemRef, topic: item.item.zulipTopic ?? topicFor(harness.key, itemRef) };
+  return { itemRef: itemRefOf(item.item), topic: item.topic };
+}
+
+function peopleFor(
+  trigger: Trigger,
+  context: WakeContext,
+  holders: Holders,
+  scope: { readonly harness: Harness; readonly item: ItemContext | null; readonly at: Date },
+): readonly string[] {
+  const { event } = trigger;
+  return recipientsOf({
+    trigger,
+    ...scope,
+    run: triggerRun(context, event),
+    delegation: triggerDelegation(context, event),
+    holders: holders.get(scope.harness.jdArea) ?? [],
+    delegationPerson: (id) => context.delegations.get(id)?.personId ?? null,
+  });
 }
 
 function draftOf(trigger: Trigger, context: WakeContext, holders: Holders, at: Date): Draft | null {
   const { event, reason } = trigger;
   const harness = context.harnesses.get(event.harnessId);
-  const item = event.itemId === null ? null : (context.items.get(event.itemId) ?? null);
   if (harness === undefined) return null;
-  const link = linkOf(trigger, harness, item?.item.itemId ?? null);
+  const item = event.itemId === null ? null : (context.items.get(event.itemId) ?? null);
+  const itemId = item === null ? null : item.item.itemId;
+  const link = linkOf(trigger, harness, itemId);
   if (link === null) return null;
-  const people = recipientsOf({
-    trigger,
-    harness,
-    item,
-    run: triggerRun(context, event),
-    delegation: triggerDelegation(context, event),
-    holders: holders.get(harness.jdArea) ?? [],
-    delegationPerson: (id) => context.delegations.get(id)?.personId ?? null,
-    at,
-  });
+  const people = peopleFor(trigger, context, holders, { harness, item, at });
   const base = { harnessId: harness.id, harnessKey: harness.key, jdArea: harness.jdArea };
-  const identity = { itemId: item?.item.itemId ?? null, ...where(harness, item), reason, link };
+  const unlinked = item !== null && item.item.zulipTopic === null;
+  const identity = { itemId, ...where(harness, item), reason, link, unlinked };
   return { ...base, ...identity, people, at, traceId: event.traceId };
 }
 
@@ -100,10 +114,10 @@ async function presentOn(hub: Hub, draft: Draft, personId: string): Promise<Wake
   }
 }
 
-async function wakeOf(hub: Hub, draft: Draft): Promise<Wake> {
-  const { people, ...wake } = draft;
+async function plannedOf(hub: Hub, draft: Draft): Promise<PlannedWake> {
+  const { people, unlinked, ...wake } = draft;
   const recipients = await Promise.all(people.map((personId) => presentOn(hub, draft, personId)));
-  return { ...wake, recipients };
+  return { wake: { ...wake, recipients }, unlinked };
 }
 
 function worthSending(draft: Draft | null): draft is Draft {
@@ -113,12 +127,12 @@ function worthSending(draft: Draft | null): draft is Draft {
 export async function planWakes(
   ports: WakePlanPorts,
   events: readonly HarnessEvent[],
-): Promise<readonly Wake[]> {
+): Promise<readonly PlannedWake[]> {
   const triggers = triggersOf(events);
   if (triggers.length === 0) return [];
   const at = ports.clock.now();
   const context = await ports.store.transaction((tx) => readWakeContext(tx, triggers, events));
   const holders = await holdersFor(ports, triggers, context, at);
   const drafts = triggers.map((trigger) => draftOf(trigger, context, holders, at));
-  return Promise.all(drafts.filter(worthSending).map((draft) => wakeOf(ports.hub, draft)));
+  return Promise.all(drafts.filter(worthSending).map((draft) => plannedOf(ports.hub, draft)));
 }
