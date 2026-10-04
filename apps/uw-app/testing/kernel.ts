@@ -10,6 +10,7 @@ import {
   type Ports,
   type PullRequestFacts,
 } from '@uw/harness';
+import { createPersonaActivation, type PersonaCommands } from '@uw/harness/persona-activation';
 import { platformPorts } from '../kernel.ts';
 import { platformGrants } from '../ports/grants.ts';
 
@@ -18,6 +19,15 @@ declare function setTimeout(handler: () => void, milliseconds: number): unknown;
 export function kernelOn(db: Database, clock: Clock, overrides: Partial<Ports> = {}): Kernel {
   const handle = { db, ping: async () => undefined, release: async () => undefined };
   return createKernel({ ...platformPorts(handle), clock, ...overrides });
+}
+
+export function personasOn(
+  db: Database,
+  clock: Clock,
+  overrides: Partial<Ports> = {},
+): PersonaCommands {
+  const handle = { db, ping: async () => undefined, release: async () => undefined };
+  return createPersonaActivation({ ...platformPorts(handle), clock, ...overrides });
 }
 
 export function fixedFacts(facts: PullRequestFacts): GitHubFacts {

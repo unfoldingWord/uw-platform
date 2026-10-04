@@ -14,11 +14,14 @@ import { createPage, readPage } from '../pages/store.ts';
 import type { LiveWiring } from '../kernel.ts';
 import type { ShipGitHub } from '../ports/connectors.ts';
 import { gateKernel } from './person/gate-kernel.ts';
+import { personaActivation } from './person/persona-activation.ts';
 
 type StoredIssue = NonNullable<Awaited<ReturnType<typeof issueByNumber>>>;
 type Imported = { readonly ok: true } | { readonly ok: false; readonly reason: ErrorReason };
 
 export type GateAccess = 'none' | 'ordinary' | 'github';
+
+type PersonaCommands = ReturnType<typeof personaActivation>;
 
 type Drafted = { readonly drafted: number; readonly skipped: number };
 type DraftPersonas = (template: TemplateKey, harness: Harness) => Promise<Drafted>;
@@ -33,6 +36,7 @@ export type CommandCapabilities = {
   };
   readonly importIssue: (issue: StoredIssue) => Promise<Imported>;
   readonly gateKernel: () => Kernel;
+  readonly personaActivation: () => PersonaCommands;
 };
 
 export type CapabilityGrounds = {
@@ -55,6 +59,14 @@ function gateKernelOf(grounds: CapabilityGrounds): () => Kernel {
   }
   return () => {
     throw new TypeError(`the ${command} command builds no gate kernel`);
+  };
+}
+
+function personaActivationOf(grounds: CapabilityGrounds): () => PersonaCommands {
+  const { command, database, clock, live } = grounds;
+  if (command === 'activate_persona') return () => personaActivation(database, clock, live);
+  return () => {
+    throw new TypeError(`the ${command} command builds no persona activation`);
   };
 }
 
@@ -112,5 +124,6 @@ export function commandCapabilities(grounds: CapabilityGrounds): CommandCapabili
     githubIssues: { byNumber: (repository, number) => issueByNumber(db, repository, number) },
     importIssue: importerOf(grounds),
     gateKernel: gateKernelOf(grounds),
+    personaActivation: personaActivationOf(grounds),
   };
 }

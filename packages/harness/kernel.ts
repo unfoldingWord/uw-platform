@@ -6,7 +6,6 @@ import { createItemCommands, type ItemCommands } from './items/commands.ts';
 import { replay } from './items/fold.ts';
 import { createRepairCommands, type RepairCommands } from './items/repair.ts';
 import { createMeasurementCommands, type MeasurementCommands } from './measurements/commands.ts';
-import { createPersonaCommands, type PersonaCommands } from './personas/commands.ts';
 import type { Ports } from './ports.ts';
 import { notifyCommitted, type AfterCommit } from './notify/after-commit.ts';
 import { createKernelReads, type KernelReads } from './reads/index.ts';
@@ -31,14 +30,13 @@ export type Kernel = {
   readonly stages: StageCommands;
   readonly delegations: DelegationCommands;
   readonly gates: GateCommands;
-  readonly personas: PersonaCommands;
   readonly measurements: MeasurementCommands;
   readonly runs: RunCommands;
   readonly breaker: BreakerCommands;
   readonly health: () => Promise<KernelHealth>;
 };
 
-function livePorts(ports: Ports): Ports {
+export function livePorts(ports: Ports): Ports {
   const wiring: { notify: AfterCommit } = { notify: async () => undefined };
   const live: Ports = {
     ...ports,
@@ -63,7 +61,6 @@ export function createKernel(ports: Ports): Kernel {
     stages: createStageCommands(live),
     delegations: createDelegationCommands(live),
     gates: createGateCommands(live),
-    personas: createPersonaCommands(live),
     measurements: createMeasurementCommands(live),
     runs: createRunCommands(live),
     breaker: createBreakerCommands(live),

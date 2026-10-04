@@ -15,7 +15,7 @@ import {
 } from '@uw/harness';
 import { describe, expect, it } from 'vitest';
 import { platformGrants } from '../ports/grants.ts';
-import { kernelOn, personOn } from '../testing/kernel.ts';
+import { kernelOn, personasOn, personOn } from '../testing/kernel.ts';
 
 const ianId = '00000000-0000-4000-8000-000000000001';
 const pageId = '00000000-0000-4000-8000-000000008401';
@@ -147,7 +147,7 @@ function activateOn(
   db: Database,
   gate: Gate,
 ): Promise<KernelOutcome<ActivatedPersona>> {
-  return kernelOn(db, clock, { grants: gate.grants }).personas.activate(caller(scene.ian), {
+  return personasOn(db, clock, { grants: gate.grants }).activate(caller(scene.ian), {
     pageId,
     expectedVersion: 1,
     harnessId: scene.bmlId,

@@ -94,7 +94,6 @@ export type {
 export type { Rebuilt, RepairCommands } from './items/repair.ts';
 export type { DelegationCommands, GrantInput } from './delegations/commands.ts';
 export type { GateCommands } from './gates/commands.ts';
-export { createPersonaCommands } from './personas/commands.ts';
 export type { ActivatedPersona } from './personas/types.ts';
 export type { PersonaDashboard, PersonaRunSummary } from './views/persona.ts';
 export type { Decided, DecideInput } from './gates/decide.ts';
