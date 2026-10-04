@@ -313,3 +313,16 @@ export async function seedLapsedDelegations(
     SELECT gen_random_uuid(), ${seed.personId}, ${seed.persona}, ${seed.harnessId}, 'build', ${lapsedAt}::timestamptz - interval '1 hour', ${lapsedAt}::timestamptz + interval '1 day', ${lapsedAt}::timestamptz, gen_random_uuid()
     FROM generate_series(1, ${seed.count})`);
 }
+
+type GrantLostLapses = {
+  readonly harnessId: string;
+  readonly count: number;
+  readonly at: Date;
+};
+
+export async function seedGrantLostLapses(db: AnyExecutor, seed: GrantLostLapses): Promise<void> {
+  const at = seed.at.toISOString();
+  await db.execute(sql`INSERT INTO harness_events (id, harness_id, name, actor, evidence, trace_id, at)
+    SELECT gen_random_uuid(), ${seed.harnessId}, 'delegation_lapsed', 'agent:system', jsonb_build_object('delegationId', gen_random_uuid()::text, 'why', 'grant_lost'), gen_random_uuid(), ${at}::timestamptz
+    FROM generate_series(1, ${seed.count})`);
+}
