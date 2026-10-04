@@ -5,7 +5,6 @@ import { simIngest, simSeenHead } from '../fixtures.ts';
 import { readWorldLog } from '../runner/log.ts';
 import { beatOf, itemOf, reasonOf, value } from '../runs.ts';
 import { approvedBy, greenFacts, itemLog, namesSince, shipPullRequest } from '../ship-fixtures.ts';
-import { effectCalls } from '../world.ts';
 import { callerFor, heads, hostedOn, type Journey } from './cast.ts';
 
 const reviewer = 'uw-reviewer[bot]';
@@ -40,7 +39,7 @@ async function nothingDecidedOrMerged(journey: Journey): Promise<void> {
   const { world, harnessId } = journey.cast;
   const after = await itemLog(world, harnessId, journey.itemId);
   assert.deepEqual(after.decisions, []);
-  assert.deepEqual(effectCalls(world), []);
+  assert.deepEqual(world.adapters.connectors.calls(), []);
   assert.deepEqual((await readWorldLog(world.adapters.store)).drift, []);
 }
 
@@ -134,7 +133,7 @@ async function refusedForAgents(journey: Journey): Promise<void> {
 }
 
 function mergeCallOf(journey: Journey): Readonly<Record<string, unknown>> {
-  const calls = effectCalls(journey.cast.world);
+  const calls = journey.cast.world.adapters.connectors.calls();
   assert.equal(calls.length, 1);
   const picked: ReadonlySet<string> = new Set(mergeKeys);
   return Object.fromEntries(Object.entries(calls[0] ?? {}).filter(([key]) => picked.has(key)));
