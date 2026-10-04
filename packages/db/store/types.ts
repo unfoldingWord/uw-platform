@@ -104,7 +104,6 @@ export type PersonaActivation = {
 export type PagesGateway = {
   readonly read: {
     facts(pageIds: readonly string[]): Promise<readonly PageFacts[]>;
-    activePersona(identity: Identity, harnessId: string): Promise<PageFacts | null>;
     staleLearnings(today: string, limit: number): Promise<readonly PageFacts[]>;
   };
   readonly write: { activatePersona(activation: PersonaActivation): Promise<PageFacts | null> };

@@ -1,11 +1,5 @@
 import { and, asc, eq, inArray, ne, sql, type SQL } from 'drizzle-orm';
-import {
-  frontmatterSchema,
-  pageStatusSchema,
-  pageTypeSchema,
-  personaFrontmatterSchema,
-  type Identity,
-} from '@uw/contracts';
+import { frontmatterSchema, pageStatusSchema, pageTypeSchema } from '@uw/contracts';
 import { isoDateSchema } from '@uw/core/dates';
 import type { AnyExecutor } from '../any-database.ts';
 import { pages, pageVersions } from '../schema.ts';
@@ -40,33 +34,6 @@ export function toFacts(row: FactRow): PageFacts {
 async function factsWhere(executor: AnyExecutor, where: SQL | undefined) {
   const rows = await executor.select(factColumns).from(pages).where(where).orderBy(asc(pages.id));
   return rows.map(toFacts);
-}
-
-async function activePersona(
-  executor: AnyExecutor,
-  identity: Identity,
-  harnessId: string,
-): Promise<PageFacts | null> {
-  const rows = await executor
-    .select(factColumns)
-    .from(pages)
-    .where(
-      and(
-        eq(pages.type, 'persona'),
-        eq(pages.status, 'active'),
-        eq(sql`${pages.frontmatter}->>'identity'`, identity),
-        eq(sql`${pages.frontmatter}->>'harness'`, harnessId),
-      ),
-    )
-    .orderBy(asc(pages.id))
-    .limit(2);
-  const [row] = rows;
-  if (rows.length !== 1 || row === undefined) return null;
-  const frontmatter = frontmatterSchema.safeParse(row.frontmatter);
-  if (!frontmatter.success || !personaFrontmatterSchema.safeParse(row.frontmatter).success) {
-    return null;
-  }
-  return { ...row, type: 'persona', status: 'active', frontmatter: frontmatter.data };
 }
 
 const maxLearnings = 5000;
@@ -150,7 +117,6 @@ export function bindPages(executor: AnyExecutor): PagesGateway {
         if (pageIds.length === 0) return [];
         return factsWhere(executor, inArray(pages.id, [...pageIds]));
       },
-      activePersona: (identity, harnessId) => activePersona(executor, identity, harnessId),
       staleLearnings: (today, limit) => staleLearnings(executor, today, limit),
     },
     write: { activatePersona: (activation) => activatePersona(executor, activation) },
