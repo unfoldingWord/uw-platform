@@ -263,7 +263,7 @@ Requirement identifiers are stable. **Must** is a v1 requirement. **Later** is d
 
 | ID | Requirement | Priority | Source |
 |---|---|---|---|
-| PE-1 | **Persona as a page type.** Frontmatter: `identity`, `owner`, `harness`, `toolset`, `run_shape`, `engine`, `model`, `provider` (the pinned provider slug, or null for the engine's default), `budget`, `capability`, `requires_tools`, `status`. The schema rejects a value outside the verb registry, the run-shape registry or the six engine keys. "New page, type: persona" creates one; there is no special screen. The markdown body is the persona's instructions in agentskills.io format and is what a run's read step loads. | Must | #59, D15 |
+| PE-1 | **Persona as a page type.** Frontmatter: `identity`, `owner`, `harness`, `toolset`, `run_shape`, `engine`, `model`, `provider` (the pinned provider slug, or null for the engine's default), `budget`, `capability`, `requires_tools`, `status`. The schema rejects a value outside the run-shape registry or the six engine keys; a toolset name outside the verb registry is accepted, and activation turns it into AB-8's missing-verb item. "New page, type: persona" creates one; there is no special screen. The markdown body is the persona's instructions in agentskills.io format and is what a run's read step loads. | Must | #59, D15 |
 | PE-2 | The toolset form offers only registry verbs the creator holds and never a forbidden verb. `requires_tools` is derived and cannot be edited by hand. A persona drafted by an agent lands `suggested`. | Must | #59 |
 | PE-3 | Activation is shown only to a person holding `admin` on the harness's area. It runs the tool check (AB-8) and a dry run, then flips `status` to `active`. An agent identity's attempt through `write_page` is refused and logged. | Must | #59 |
 | PE-4 | The persona page's default view is its dashboard: runs today, spend, escalation rate, gate refusals, writes, hosts, the last play-by-plays, and the delegations it runs under. | Must | #59 |
@@ -308,7 +308,7 @@ Every table declares its classification and offline eligibility. Every table has
 | `harness_runs` | item, persona, persona page, delegation, run shape (the run shape names the host), engine, model, pinned and resolved provider, steps with tokens, cost, compute cost and cost basis, gates met, pending prompts, trace id, outcome and why it hibernated or failed | the run shape |
 | `gate_decisions` | harness, item, stage, actor, decision, reason, evidence, trace id | the gate command, human principals only |
 | `delegations` | id, person, persona, harness, capability, granted at, expires at, revoked at, lapsed at, supersedes (P14), trace id | the delegation command |
-| `measurements` | item, source, name, value, as of | the Validate stage |
+| `measurements` | item, source, name, value, as of | the measurements module, through `record_measurement` |
 | `personas` | identity, harness, page | a projection of persona pages |
 | `gh_repos`, `gh_issues`, `gh_prs`, `gh_milestones`, `gh_check_runs`, `gh_reviews` | the GitHub id (primary key) on every table; the facts (repository full name, default branch; issue and milestone number, title, state, labels; pull request head SHA, head ref, head repository, base ref and base SHA, the parsed declaration or its problem, the changed files with the head and base they were compared at; check run head SHA, name, app, status, conclusion; review login, commit, state, provider); freshness (`fresh_at` on every row, GitHub's `updated_at` on issues, milestones and pull requests, the sweep watermark `swept_through` and `last_sweep` on `gh_repos`); on `gh_issues` the cross-reference claim (`xref_claimed_at`, `xref_comment_id`) | the read-model module `apps/uw-app/github/facts/`, called by the queue consumer and the nightly sweep |
 | `push_subscriptions` | endpoint (primary key, `https:` on a known push service), person, p256dh key, auth secret, expires at, created at; at most 20 per person, the oldest removed first | the notifier (`apps/uw-app/notify/push/`) |
@@ -348,7 +348,7 @@ Every table declares its classification and offline eligibility. Every table has
 | capability word | `none`, `iterate`, `build`, `review` |
 | stage bracket | `product_package`, `build_package`, `deploy_package`, `iterate` |
 | task status | `suggested`, `open`, `done`, `dismissed` |
-| persona activation refusal | `unknown_verb`, `forbidden_verb`, `not_permitted`, `engine_not_available` |
+| persona activation refusal | `unknown_verb`, `forbidden_verb`, `not_permitted`, `engine_not_available`, `dry_run_failed` |
 | gate status | `working`, `parked`, `checks_failed`, `done` |
 | branch state | `none`, `active`, `abandoned` |
 | run outcome | `running`, `hibernated`, `stopped`, `completed`, `failed` |
@@ -361,7 +361,7 @@ Every table declares its classification and offline eligibility. Every table has
 | review verdict | `approve`, `request_changes` |
 | CI job | `security-audit`, `lint`, `typecheck`, `architecture`, `test`, `build` |
 | check conclusion | `success`, `failure`, `neutral`, `cancelled`, `skipped`, `timed_out`, `action_required`, `stale` |
-| wake reason | `gate_waiting`, `delegation_lapsed`, `run_failed`, `stage_advanced` |
+| wake reason | `gate_waiting`, `delegation_lapsed`, `run_failed`, `stage_advanced`, `handed_to_person` |
 | live screen | `home`, `flow`, `board`, `gates`, `item` |
 
 ### 8.4 Identity strings
@@ -387,6 +387,8 @@ Added in step 6: `request_in_flight` (a command whose `requestId` is still runni
 
 Added in step 7: `run_not_found` (a run id the kernel does not hold, or one the caller may not see).
 
+Added in step 10: `activation_required` (a write that would make a gated page active, which only activation or confirmation does), `dry_run_failed` (a persona whose dry run found a problem).
+
 ### 8.6 Event vocabulary
 
 ```
@@ -403,9 +405,12 @@ harness_resumed  hosted_builder_set  learning_attached  nothing_learned  comment
 zulip_topic_linked
 breaker_holding  breaker_pausing  breaker_open
 persona_activation_failed  persona_activated
+measurement_recorded  handed_to_person
 ```
 
 Since contract 12.0.0 (step 9), `comment_recorded` carries strict evidence `{ source: 'zulip', messageId, topic, personId, email, text, truncated }` (the text cut at 10,000 characters), and `zulip_topic_linked` `{ topic }` sets the item's Zulip topic in the fold.
+
+Since contract 12.1.0 (step 10), `persona_activated` carries `{ pageId, persona, version }` (the version the flip wrote); `measurement_recorded` carries `{ measurementId, source, name, value, asOf }`; `handed_to_person` carries `{ personId, why: 'review_rounds_exhausted', rounds }`; and `learning_attached` gains `kind` (`learning`, the default, or `revision`).
 
 `packages/contracts` on `main` carries four placeholder names (`gate_approved`, `lease_expired`, `delegation_lapsed`, `abandoned`). The list above replaces them; `abandoned` becomes `branch_abandoned`.
 
