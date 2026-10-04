@@ -1,5 +1,6 @@
 import { and, asc, eq, inArray, or, sql, type SQL } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
+import { advisoryLock, githubRepoKey } from '@uw/db/advisory-locks';
 import type { Database, Executor, Transaction } from '@uw/db/client';
 import { ghCheckRuns, ghIssues, ghMilestones, ghPrs, ghRepos, ghReviews } from '@uw/db/schema';
 import type {
@@ -323,6 +324,24 @@ async function stampAll(tx: Transaction, table: string, records: readonly Keyed[
   );
 }
 
+function reposNamed(batch: FactBatch): readonly number[] {
+  const ids = new Set<number>([
+    ...batch.repos.map((repo) => repo.githubId),
+    ...[
+      ...batch.milestones,
+      ...batch.issues,
+      ...batch.pullRequests,
+      ...batch.checkRuns,
+      ...batch.reviews,
+    ].map((record) => record.repoId),
+  ]);
+  return [...ids].sort((a, b) => a - b);
+}
+
+async function lockRepos(tx: Transaction, ids: readonly number[]) {
+  for (const id of ids) await tx.execute(advisoryLock(githubRepoKey(id)));
+}
+
 async function lockedLabels(tx: Transaction, ids: readonly number[]) {
   if (ids.length === 0) return new Map<number, readonly string[]>();
   const rows = await tx
@@ -389,7 +408,8 @@ async function recordFilesIn(db: Executor, files: FilesRecord): Promise<boolean>
 
 async function recordAllFiles(tx: Transaction, files: readonly FilesRecord[]) {
   let landed = 0;
-  for (const record of files) if (await recordFilesIn(tx, record)) landed += 1;
+  const ordered = [...files].sort((a, b) => a.pullRequestId - b.pullRequestId);
+  for (const record of ordered) if (await recordFilesIn(tx, record)) landed += 1;
   return landed;
 }
 
@@ -421,6 +441,7 @@ export function upsertFacts(db: Database, batch: FactBatch, freshAt: Date): Prom
   const issueIds = inIdOrder(batch.issues).map((issue) => issue.githubId);
   const pullIds = inIdOrder(batch.pullRequests).map((pull) => pull.githubId);
   return db.transaction(async (tx) => {
+    await lockRepos(tx, reposNamed(batch));
     const had = await lockedLabels(tx, issueIds);
     await lockPulls(tx, pullsTouched(batch));
     const repaired = await writeRecords(tx, batch, freshAt);

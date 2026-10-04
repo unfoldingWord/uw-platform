@@ -10,12 +10,17 @@ export const lockKeyPrefixes: readonly string[] = [
   'harness-stages:',
   'harness_events:',
   'github-issue:',
+  'github-repo:',
   'persona-activation:',
   'persona-identity:',
   'harness-breaker',
   'harness-run-persona:',
   'zulip-topics:',
 ];
+
+export function githubRepoKey(repoId: number): string {
+  return `github-repo:${repoId}`;
+}
 
 export function advisoryLock(key: string): SQL {
   return sql`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
