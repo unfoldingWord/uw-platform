@@ -25,4 +25,12 @@ describe('the notifier configuration', () => {
       expect(notifyConfigOf({ APP_ORIGIN: origin }).appOrigin).toBeNull();
     }
   });
+
+  it('answers null when the public key is not the private key pair', async () => {
+    const vapid = await vapidFixture();
+    const other = await vapidFixture();
+    const mismatched = { ...vapid.env, VAPID_PUBLIC_KEY: other.env.VAPID_PUBLIC_KEY };
+    expect(notifyConfigOf(mismatched).push).toBeNull();
+    expect(notifyConfigOf(vapid.env).push).not.toBeNull();
+  });
 });
