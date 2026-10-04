@@ -1,10 +1,8 @@
 import { raw } from 'hono/html';
 import type { Child } from 'hono/jsx';
 import { Sidebar, type NavItem } from './sidebar.tsx';
-import { THEME_KEY } from './theme-switch.tsx';
+import { themeScript } from './inline-scripts.ts';
 import { TopBar, type Crumb } from './top-bar.tsx';
-
-const themeScript = `(function(){try{var t=localStorage.getItem('${THEME_KEY}');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}})();`;
 
 export function Shell(props: {
   readonly title: string;
@@ -12,6 +10,7 @@ export function Shell(props: {
   readonly current: string;
   readonly crumbs: readonly Crumb[];
   readonly stylesheet: string;
+  readonly script?: string;
   readonly children?: Child;
 }) {
   return (
@@ -23,6 +22,9 @@ export function Shell(props: {
         <title>{props.title}</title>
         <script>{raw(themeScript)}</script>
         <link rel="stylesheet" href={props.stylesheet} />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="icon" href="/assets/icon.svg" type="image/svg+xml" />
+        {props.script === undefined ? null : <script type="module" src={props.script}></script>}
       </head>
       <body class="min-h-dvh bg-bg font-sans text-base text-ink">
         <a

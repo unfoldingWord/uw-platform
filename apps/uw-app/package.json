@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+    "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p islands/browser/tsconfig.json && tsc --noEmit -p islands/worker/tsconfig.json",
     "build": "wrangler deploy --dry-run --config ../../infra/uw-app/wrangler.toml --env staging --outdir \"$PWD/dist\"",
     "dev": "wrangler dev --config ../../infra/uw-app/wrangler.toml --env staging",
     "deploy:staging": "wrangler deploy --config ../../infra/uw-app/wrangler.toml --env staging --var COMMIT_SHA:$(git rev-parse HEAD)"

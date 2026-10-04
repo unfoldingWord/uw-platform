@@ -29,7 +29,12 @@ export default defineConfig({
         test: {
           name: 'workers',
           include: workerPackages.map((path) => `${path}/**/*.test.ts`),
-          exclude: ['**/*.pg.test.ts', '**/node_modules/**'],
+          exclude: [
+            '**/*.pg.test.ts',
+            '**/node_modules/**',
+            'apps/uw-app/islands/browser/**',
+            'apps/uw-app/islands/worker/**',
+          ],
         },
       },
       {
@@ -42,6 +47,8 @@ export default defineConfig({
             'tools/**/*.test.ts',
             'sim/**/*.test.ts',
             'apps/**/*.pg.test.ts',
+            'apps/uw-app/islands/browser/**/*.test.ts',
+            'apps/uw-app/islands/worker/**/*.test.ts',
           ],
         },
       },

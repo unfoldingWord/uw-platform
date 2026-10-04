@@ -12,6 +12,8 @@
     "testing/postgres.ts",
     "testing/commands.ts",
     "testing/harness-reads.ts",
-    "testing/run-host.ts"
+    "testing/run-host.ts",
+    "islands/browser/**",
+    "islands/worker/**"
   ]
 }

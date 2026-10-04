@@ -252,6 +252,24 @@ const refusals: [string, string, string, string][] = [
     'islands-never-call-the-kernel',
   ],
   [
+    'a browser island into the database',
+    'apps/uw-app/islands/browser/a.ts',
+    "import '../../../../packages/db/b.ts';",
+    'islands-never-call-the-kernel',
+  ],
+  [
+    'the service worker into a route module',
+    'apps/uw-app/islands/worker/a.ts',
+    "import '../../commands/routes.ts';",
+    'islands-never-call-the-kernel',
+  ],
+  [
+    'a route module into the built islands bundle',
+    'apps/uw-app/commands/a.ts',
+    "import '../generated/islands.ts';",
+    'islands-bundle-only-in-assets-and-views',
+  ],
+  [
     'a Worker file into the embedded database',
     'apps/uw-app/a.ts',
     "import '../../packages/db/embedded.ts';",
@@ -283,6 +301,23 @@ const refusals: [string, string, string, string][] = [
   ],
 ];
 
+describe('the islands rules', () => {
+  it('lets an island import another island, the contracts and the ui text, and the assets import the bundle', async () => {
+    expect(
+      await violations({
+        'packages/contracts/index.ts': leaf,
+        'packages/ui/components/text.ts': leaf,
+        'apps/uw-app/islands/live/session.ts': leaf,
+        'apps/uw-app/generated/islands.ts': leaf,
+        'apps/uw-app/islands/browser/a.ts':
+          "import '../live/session.ts'; import '../../../../packages/contracts/index.ts'; import '../../../../packages/ui/components/text.ts';",
+        'apps/uw-app/assets/routes.ts': "import '../generated/islands.ts';",
+        'apps/uw-app/views/frame.tsx': "import '../generated/islands.ts';",
+      }),
+    ).toEqual([]);
+  });
+});
+
 describe('the dependency rules', () => {
   it('accepts an import that follows the DAG', async () => {
     expect(
@@ -309,6 +344,8 @@ describe('the dependency rules', () => {
         'apps/uw-app/mcp/in-process.ts': leaf,
         'apps/uw-app/mcp/server.ts': leaf,
         'apps/uw-app/runs/b.ts': leaf,
+        'apps/uw-app/commands/routes.ts': leaf,
+        'apps/uw-app/generated/islands.ts': leaf,
         'apps/uw-app/types.d.ts': 'export type Value = number;',
       }),
     ).toContain(rule);
