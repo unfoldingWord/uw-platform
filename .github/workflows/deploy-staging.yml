@@ -62,8 +62,8 @@ jobs:
         run: >-
           pnpm exec wrangler deploy --config ../../infra/uw-app/wrangler.toml --env staging
           --var "COMMIT_SHA:$SHA"
-      - name: Confirm /health reports the deployed commit
-        run: bash .github/scripts/await-health.sh "$STAGING_URL" "$SHA"
+      - name: Confirm /health/probe reports the deployed commit
+        run: bash .github/scripts/await-health.sh "$STAGING_URL/health/probe" "$SHA"
 
   deploy-ingest-staging:
     name: deploy-ingest-staging
@@ -97,4 +97,4 @@ jobs:
           --var "COMMIT_SHA:$SHA"
       - name: Confirm /health reports the deployed commit
         if: steps.gate.outputs.configured == 'true'
-        run: bash .github/scripts/await-health.sh "$INGEST_URL" "$SHA"
+        run: bash .github/scripts/await-health.sh "$INGEST_URL/health" "$SHA"
