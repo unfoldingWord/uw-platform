@@ -311,7 +311,8 @@ Every table declares its classification and offline eligibility. Every table has
 | `measurements` | item, source, name, value, as of | the Validate stage |
 | `personas` | identity, harness, page | a projection of persona pages |
 | `gh_repos`, `gh_issues`, `gh_prs`, `gh_milestones`, `gh_check_runs`, `gh_reviews` | the GitHub id (primary key) on every table; the facts (repository full name, default branch; issue and milestone number, title, state, labels; pull request head SHA, head ref, head repository, base ref and base SHA, the parsed declaration or its problem, the changed files with the head and base they were compared at; check run head SHA, name, app, status, conclusion; review login, commit, state, provider); freshness (`fresh_at` on every row, GitHub's `updated_at` on issues, milestones and pull requests, the sweep watermark `swept_through` and `last_sweep` on `gh_repos`); on `gh_issues` the cross-reference claim (`xref_claimed_at`, `xref_comment_id`) | the read-model module `apps/uw-app/github/facts/`, called by the queue consumer and the nightly sweep |
-| `push_subscriptions`, `push_cooldowns` | per person and device; per person | the notifier |
+| `push_subscriptions` | endpoint (primary key, `https:` on a known push service), person, p256dh key, auth secret, expires at, created at; at most 20 per person, the oldest removed first | the notifier (`apps/uw-app/notify/push/`) |
+| `push_cooldowns` | person (primary key), window started at, rank (1 to 3) | the notifier (`apps/uw-app/notify/push/`) |
 | `tasks` | id, jd_area, title, page, due, status (task status), created_by, trace id, created at | the tasks module, through `create_task` |
 | `service_tokens` | client id, person, device, bound by, bound at, revoked at, trace id | the service-token command, org admin only |
 | `command_requests` | actor, request id, command, harness, outcome, trace id, claimed at, settled at; primary key on actor and request id | the command API's request ledger (`apps/uw-app/commands/requests.ts`) |
@@ -360,6 +361,8 @@ Every table declares its classification and offline eligibility. Every table has
 | review verdict | `approve`, `request_changes` |
 | CI job | `security-audit`, `lint`, `typecheck`, `architecture`, `test`, `build` |
 | check conclusion | `success`, `failure`, `neutral`, `cancelled`, `skipped`, `timed_out`, `action_required`, `stale` |
+| wake reason | `gate_waiting`, `delegation_lapsed`, `run_failed`, `stage_advanced` |
+| live screen | `home`, `flow`, `board`, `gates`, `item` |
 
 ### 8.4 Identity strings
 
@@ -397,9 +400,12 @@ connector_succeeded  connector_refused
 delegation_granted  delegation_revoked  delegation_lapsed  delegation_required
 stage_edit_refused  stage_edited  stage_removed  template_activated  harness_paused
 harness_resumed  hosted_builder_set  learning_attached  nothing_learned  comment_recorded
+zulip_topic_linked
 breaker_holding  breaker_pausing  breaker_open
 persona_activation_failed  persona_activated
 ```
+
+Since contract 12.0.0 (step 9), `comment_recorded` carries strict evidence `{ source: 'zulip', messageId, topic, personId, email, text, truncated }` (the text cut at 10,000 characters), and `zulip_topic_linked` `{ topic }` sets the item's Zulip topic in the fold.
 
 `packages/contracts` on `main` carries four placeholder names (`gate_approved`, `lease_expired`, `delegation_lapsed`, `abandoned`). The list above replaces them; `abandoned` becomes `branch_abandoned`.
 
