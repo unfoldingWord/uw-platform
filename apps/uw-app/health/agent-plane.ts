@@ -57,6 +57,10 @@ function byCountThenName(counts: Readonly<Record<string, number>>): readonly str
     .map(([name, count]) => `${name} ${formatCount(count)}`);
 }
 
+function shownReading(breaker: BreakerState): BreakerState['reading'] {
+  return breaker.fresh || breaker.level === 'pausing' ? breaker.reading : null;
+}
+
 function spendStatus(percent: number): IndicatorStatus {
   if (percent >= SPEND_RED_PERCENT) return 'red';
   return percent >= SPEND_AMBER_PERCENT ? 'amber' : 'ok';
@@ -71,10 +75,11 @@ function spendIndicator(
   const spentMinor = meteredMinor + computeMinor;
   const percent = Math.floor((spentMinor * 100) / cap.capMinor);
   const status = spendStatus(percent);
+  const reading = shownReading(breaker);
   const parts = [
     `${usd(spentMinor)} metered of ${usd(cap.capMinor)} this month`,
     `${formatCount(subscriptionTokens)} subscription tokens reported`,
-    ...(breaker.reading === null ? [] : [`the breaker reads ${breaker.reading.percent} percent`]),
+    ...(reading === null ? [] : [`the breaker reads ${reading.percent} percent`]),
   ];
   return { name: 'spend', status, detail: parts.join('; ') };
 }
@@ -86,8 +91,8 @@ const breakerStatus = {
 } as const satisfies Record<BreakerState['level'], IndicatorStatus>;
 
 function breakerIndicator(breaker: BreakerState): HealthIndicator {
-  const { reading } = breaker;
-  if (reading === null || (!breaker.fresh && breaker.level !== 'pausing')) {
+  const reading = shownReading(breaker);
+  if (reading === null) {
     return { name: 'breaker', status: 'amber', detail: 'no fresh reading' };
   }
   const cap = formatMoney({ amountMinor: reading.capMinor, currency: reading.currency });

@@ -237,15 +237,17 @@ async function viewerRefused(world: GateWorld): Promise<void> {
 }
 
 async function phoneWidth(world: GateWorld): Promise<void> {
-  const page = await pageOf(world, world.kimEmail, deepLink(world));
-  const document = new JSDOM(page.text).window.document;
-  const stack = document.querySelector('main section .flex-col.md\\:flex-row');
-  expect(stack).not.toBeNull();
-  const table = document.querySelector('main table');
-  expect(table?.parentElement?.getAttribute('class')).toContain('overflow-x-auto');
-  const controls = document.querySelector('main button[name="decision"]')?.closest('.flex-wrap');
-  expect(controls).not.toBeNull();
-  expect(await screenProblems(page.text)).toEqual([]);
+  for (const path of [gatesPath(), deepLink(world)]) {
+    const page = await pageOf(world, world.kimEmail, path);
+    const document = new JSDOM(page.text).window.document;
+    const stack = document.querySelector('main section .flex-col.md\\:flex-row');
+    expect(stack).not.toBeNull();
+    const table = document.querySelector('main table');
+    expect(table?.parentElement?.getAttribute('class')).toContain('overflow-x-auto');
+    const controls = document.querySelector('main button[name="decision"]')?.closest('.flex-wrap');
+    expect(controls).not.toBeNull();
+    expect(await screenProblems(page.text)).toEqual([]);
+  }
 }
 
 async function liveFromCursor(world: GateWorld): Promise<void> {
@@ -319,7 +321,7 @@ describe.skipIf(!testServer)('the Gates view and its deep link', () => {
     inGates(stableDeepLink));
   it('WB-6 a viewer opening the deep link sees the facts with every decision refused not_permitted', () =>
     inGates(viewerRefused));
-  it('WB-7 the gate deep link stacks below md, its table scrolls in its own wrapper, its controls wrap and nothing sets a fixed width', () =>
+  it('WB-7 the Gates view and a gate deep link stack below md, their tables scroll in their own wrapper, their controls wrap and nothing sets a fixed width', () =>
     inGates(phoneWidth));
   it('WB-7 a gate deep link is live from the latest event cursor and refreshes every minute', () =>
     inGates(liveFromCursor));
