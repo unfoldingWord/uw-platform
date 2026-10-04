@@ -2,6 +2,7 @@ import type {
   CapabilityWord,
   Connector,
   CostBasis,
+  DeepLink,
   Engine,
   BreakerLevel,
   GateDecision,
@@ -10,6 +11,8 @@ import type {
   HarnessEvent,
   Identity,
   ItemState,
+  JdArea,
+  LiveScreen,
   NewHarnessEvent,
   PageStatus,
   PageType,
@@ -24,7 +27,12 @@ import type {
   ShipRuleInput,
   Stage,
   VerbName,
+  WakeReason,
 } from '@uw/contracts';
+import type { GrantHolder, WakeDelivery } from './notify/types.ts';
+
+export type { DeepLink, LiveScreen, WakeReason } from '@uw/contracts';
+export type { GrantHolder, PushDecision, WakeDelivery, ZulipDecision } from './notify/types.ts';
 
 export type Clock = { now(): Date };
 
@@ -283,6 +291,7 @@ export type Grants = {
   resolve(personId: string, at: Date): Promise<readonly Grant[]>;
   resolveIn(tx: StoreTransaction, personId: string, at: Date): Promise<readonly Grant[]>;
   lockAndReread(tx: StoreTransaction, personId: string, at: Date): Promise<readonly Grant[]>;
+  holders(area: JdArea, at: Date): Promise<readonly GrantHolder[]>;
 };
 
 export type PullRequestRef = NonNullable<ItemState['pullRequest']>;
@@ -428,19 +437,32 @@ export type ModelEngine = {
   spend(since: Date): Promise<Spend>;
 };
 
-export type Hub = { wake(harnessId: string): Promise<void> };
-
-export type WakeReason = 'gate_waiting' | 'delegation_lapsed' | 'run_failed' | 'stage_advanced';
-export type Wake = {
-  readonly personId: string;
+export type PresenceQuery = {
   readonly harnessId: string;
+  readonly personId: string;
+  readonly screen: LiveScreen;
   readonly itemId: string | null;
+};
+export type Hub = {
+  wake(harnessId: string): Promise<void>;
+  present(query: PresenceQuery): Promise<boolean>;
+};
+
+export type WakeRecipient = { readonly personId: string; readonly present: boolean };
+export type Wake = {
+  readonly harnessId: string;
+  readonly harnessKey: string;
+  readonly jdArea: JdArea;
+  readonly itemId: string | null;
+  readonly itemRef: string | null;
+  readonly topic: string;
   readonly reason: WakeReason;
-  readonly link: string;
+  readonly link: DeepLink;
+  readonly recipients: readonly WakeRecipient[];
+  readonly at: Date;
   readonly traceId: string;
 };
-export type NotifyOutcome = 'sent' | 'dropped';
-export type Notifier = { notify(wake: Wake): Promise<NotifyOutcome> };
+export type Notifier = { notify(wake: Wake): Promise<WakeDelivery> };
 
 export type RunState = 'running' | 'hibernated' | 'stopped' | 'completed' | 'failed';
 export type RunAction = 'start' | 'hibernate' | 'resume' | 'stop';
