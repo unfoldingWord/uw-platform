@@ -149,7 +149,7 @@ export async function createCast(world: World): Promise<Cast> {
   return cast;
 }
 
-function freshSpend(cast: Pick<Cast, 'world'>): Promise<void> {
+export function freshSpend(cast: Pick<Cast, 'world'>): Promise<void> {
   return readSpend(cast.world);
 }
 

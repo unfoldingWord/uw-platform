@@ -2,6 +2,7 @@ import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { afterAll, describe, expect, it } from 'vitest';
 import { travelThroughShip } from './at-ship.ts';
 import { heads } from './cast.ts';
+import { travelToClose } from './to-close.ts';
 import { travelToShip } from './to-ship.ts';
 import { itemOf } from '../runs.ts';
 import { createWorld, type World } from '../world.ts';
@@ -40,5 +41,17 @@ describe('the end-to-end journey on the software template', () => {
       const item = await itemOf(world, journey.itemId);
       expect(item).toMatchObject({ stageKey: 'validate', gateStatus: 'working', holder: null });
       expect(world.adapters.connectors.calls()).toHaveLength(1);
+    }));
+
+  it('lets Iterate move Validate to Close, refuses Close without a learning, stops Iterate when its delegation is revoked, and closes with the learning it drafted', () =>
+    inWorld(async (world) => {
+      const journey = await travelToShip(world);
+      await travelThroughShip(journey);
+      const closed = await travelToClose(journey);
+      expect(closed.lapses).toBe(1);
+      expect(await itemOf(world, journey.itemId)).toMatchObject({
+        stageKey: 'close',
+        gateStatus: 'done',
+      });
     }));
 });
