@@ -11,7 +11,7 @@ import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml } from '../testing/views.ts';
-import { flowPath, gatePath, itemPath } from './paths.ts';
+import { flowPath, gatePath, itemPath } from './parts/paths.ts';
 
 const HOUR = 3_600_000;
 const IAN = 'ian.lindsley@unfoldingword.org';

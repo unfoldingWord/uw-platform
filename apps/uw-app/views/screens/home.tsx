@@ -6,8 +6,8 @@ import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import type { AppEnv } from '../../deps.ts';
-import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../frame.tsx';
-import { flowPath, gatePath, homePath, itemPath } from '../paths.ts';
+import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
+import { flowPath, gatePath, homePath, itemPath } from '../parts/paths.ts';
 
 const REFRESH_EVERY_MS = 60_000;
 const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
