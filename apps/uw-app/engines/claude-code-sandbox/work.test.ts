@@ -20,10 +20,12 @@ const work: EngineWork = {
   instructions: 'You build the item.',
   prompt: 'Work the item.',
   toolset: ['read_page', 'claim_item'],
+  checkout: null,
   tools: { call: () => Promise.reject(new Error('the sandbox calls tools over MCP')) },
   onTurn: async () => undefined,
   egress: {
     mcp: async () => Response.json({ jsonrpc: '2.0', id: 1, result: {} }),
+    github: null,
     refused: () => undefined,
   },
 };
@@ -224,7 +226,71 @@ async function servedModel(): Promise<void> {
   expect((await engineOn(odd).engine.work(work)).resolvedModel).toBe('claude-sonnet-5');
 }
 
+const BUILDER_TOKEN = 'ghs_builder_minted_at_the_host';
+const head = 'c'.repeat(40);
+const checkout = {
+  repository: 'unfoldingWord/uw-platform',
+  branch: 'harness/item-1',
+  defaultBranch: 'main',
+  expectedHead: head,
+};
+
+function pushed(): Request {
+  const update = `${'a'.repeat(40)} ${'b'.repeat(40)} refs/heads/harness/item-1\0report-status\n`;
+  const body = `${(update.length + 4).toString(16).padStart(4, '0')}${update}0000PACK`;
+  return new Request('http://github.internal/unfoldingWord/uw-platform.git/git-receive-pack', {
+    method: 'POST',
+    body,
+  });
+}
+
+function expectClone(session: Session | undefined): void {
+  const [run] = session?.commands ?? [];
+  const script = run?.command[2] ?? '';
+  expect(script).toContain('git clone --no-tags "$UW_CLONE_URL" /workspace/repo');
+  expect(script).toContain('git -C /workspace/repo checkout -B "$UW_BRANCH" "$UW_START"');
+  expect(run?.env).toMatchObject({
+    UW_CLONE_URL: 'http://github.internal/unfoldingWord/uw-platform.git',
+    UW_BRANCH: 'harness/item-1',
+    UW_START: head,
+  });
+  expect(run?.command.join(' ')).toContain(
+    'mcp__uw-platform__read_page,mcp__uw-platform__submit_to_gate,Read,Edit,Write,Glob,Grep,Bash(git *),Bash(curl *)',
+  );
+  const prompt = session?.files.find((file) => file.path === '/workspace/PROMPT.md')?.content;
+  expect(prompt).toContain('git push origin HEAD:refs/heads/harness/item-1');
+  expect(prompt).toContain('http://api.github.internal/repos/unfoldingWord/uw-platform/pulls');
+}
+
+async function hostedBuilder(): Promise<void> {
+  const statuses: number[] = [];
+  const host = fakeContainerHost([
+    async (egress) => {
+      statuses.push((await egress(pushed())).status);
+      return reply(result);
+    },
+  ]);
+  const { engine, sent } = engineOn(host);
+  const github = { token: async () => BUILDER_TOKEN, unwired: () => undefined };
+  const toolset = ['read_page', 'submit_to_gate'] as const;
+  await engine.work({ ...work, toolset, checkout, egress: { ...work.egress, github } });
+  expect(statuses).toEqual([200]);
+  expect(sent.map((request) => request.headers.get('authorization'))).toEqual([
+    `Basic ${btoa(`x-access-token:${BUILDER_TOKEN}`)}`,
+  ]);
+  expectClone(host.sessions[0]);
+  expect(JSON.stringify(host.sessions)).not.toContain(BUILDER_TOKEN);
+  const fresh = fakeContainerHost([reply(result)]);
+  await engineOn(fresh).engine.work({ ...work, checkout: { ...checkout, expectedHead: null } });
+  expect(fresh.sessions[0]?.commands[0]?.env['UW_START']).toBe('origin/main');
+}
+
 describe('claude-code-sandbox', () => {
+  it(
+    'PE-5 a hosted Builder clones from the expected head onto harness/<item> with no token in its environment, files or commands',
+    hostedBuilder,
+  );
+
   it(
     'a Claude Code session that exits non-zero or answers an error fails the step',
     failedRunsFail,

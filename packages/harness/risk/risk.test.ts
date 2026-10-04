@@ -118,6 +118,12 @@ describe('KN-17 the protected-directory map covers the code that decides what Sh
     expect(domainOf('apps/uw-app/commands/capabilities.ts')).toBe('acl');
   });
 
+  it('KN-17 the sandbox egress is in the acl domain', () => {
+    for (const file of ['egress.ts', 'github-egress.ts', 'pkt-line.ts']) {
+      expect(domainOf(`apps/uw-app/engines/sandbox/${file}`)).toBe('acl');
+    }
+  });
+
   it('protects the ship rule contract (CI jobs and refusals) under acl', () => {
     expect(domainOf('packages/contracts/ship-rule.ts')).toBe('acl');
     expect(domainOf('packages/contracts/ship-rule.test.ts')).toBeNull();

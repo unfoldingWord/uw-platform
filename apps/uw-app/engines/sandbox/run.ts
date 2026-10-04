@@ -2,6 +2,7 @@ import { notWiredCall, ProviderMismatchError } from '@uw/harness';
 import type { EngineConfig } from '../config.ts';
 import type { EngineWork, EngineWorkResult } from '../seam.ts';
 import { egress, type EgressRoutes, type ModelRoute } from './egress.ts';
+import { GITHUB_HOST, type GitHubEgress } from './github-egress.ts';
 import type { ContainerHost, ExecResult } from './host.ts';
 import { SandboxNotWiredError } from './not-wired.ts';
 import {
@@ -27,12 +28,14 @@ export type SandboxPlan = {
   readonly model: ModelRoute | null;
   readonly provider: string;
   readonly env: Readonly<Record<string, string>>;
+  readonly clones: boolean;
   files(input: EngineWork): readonly SessionFile[];
   command(input: EngineWork): readonly string[];
   read(ran: ExecResult): SandboxReading;
 };
 
 export const WORKSPACE = '/workspace';
+export const REPOSITORY_DIR = `${WORKSPACE}/repo`;
 export const PLACEHOLDER_KEY = 'sk-placeholder-replaced-at-the-egress-proxy';
 const SESSION_TIMEOUT_MS = 25 * 60 * 1000;
 
@@ -102,6 +105,25 @@ async function guardedSession(
   }
 }
 
+function envOf(plan: SandboxPlan, input: EngineWork): Readonly<Record<string, string>> {
+  const { checkout } = input;
+  if (!plan.clones || checkout === null) return plan.env;
+  return {
+    ...plan.env,
+    UW_CLONE_URL: `http://${GITHUB_HOST}/${checkout.repository}.git`,
+    UW_BRANCH: checkout.branch,
+    UW_START: checkout.expectedHead ?? `origin/${checkout.defaultBranch}`,
+  };
+}
+
+function githubOf(plan: SandboxPlan, input: EngineWork): GitHubEgress | null {
+  const { checkout } = input;
+  const access = input.egress.github;
+  if (!plan.clones || checkout === null || access === null) return null;
+  const { repository, branch, defaultBranch } = checkout;
+  return { repository, branch, defaultBranch, ...access };
+}
+
 export async function sandboxWork(
   config: EngineConfig,
   plan: SandboxPlan,
@@ -112,12 +134,12 @@ export async function sandboxWork(
   if (input.pinnedProvider !== plan.provider) {
     throw new ProviderMismatchError(input.pinnedProvider, plan.provider);
   }
-  const routes = { model: plan.model, ...input.egress };
+  const routes = { ...input.egress, model: plan.model, github: githubOf(plan, input) };
   const spec = {
     sessionId: sessionIdOf(input.runId),
     files: plan.files(input),
     command: plan.command(input),
-    env: plan.env,
+    env: envOf(plan, input),
     timeoutMs: SESSION_TIMEOUT_MS,
   };
   const ran = await guardedSession(plan.host, spec, routes, config, input.onTurn);

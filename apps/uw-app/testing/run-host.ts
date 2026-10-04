@@ -23,7 +23,8 @@ import { DEFAULT_SPEND_CAP } from '@uw/harness';
 import type { EngineRegistry } from '../engines/registry.ts';
 import type { EngineAdapter, EngineWork, EngineWorkResult } from '../engines/seam.ts';
 import { platformRuns } from '../ports/runs.ts';
-import type { RunDeps } from '../runs/deps.ts';
+import { defaultBranchOf, openPullRequestFrom } from '../github/facts/queries.ts';
+import type { BuilderGitHub, RunDeps } from '../runs/deps.ts';
 import type { Json, StepRunner } from '../runs/step-runner.ts';
 import { fakeWorkflowBinding, type FakeWorkflowBinding } from '../runs/testing.ts';
 import { accepted, callerOf, enqueued, ian, softwareHarness } from './commands.ts';
@@ -251,7 +252,20 @@ export function ended(
   };
 }
 
-export function runDepsFor(rig: HostRig, host: Caller, engines: EngineRegistry): RunDeps {
+function readModelBuilder(rig: Pick<HostRig, 'db'>): BuilderGitHub {
+  return {
+    defaultBranch: (repository) => defaultBranchOf(rig.db, repository),
+    token: () => async () => null,
+    openPullRequest: (repository, branch) => openPullRequestFrom(rig.db, repository, branch),
+  };
+}
+
+export function runDepsFor(
+  rig: HostRig,
+  host: Caller,
+  engines: EngineRegistry,
+  builder: BuilderGitHub = readModelBuilder(rig),
+): RunDeps {
   return {
     verbKernel: rig.kernel,
     runKernel: rig.kernel,
@@ -266,6 +280,7 @@ export function runDepsFor(rig: HostRig, host: Caller, engines: EngineRegistry):
     clock: rig.clock,
     engines,
     scout: { model: 'z-ai/glm-5.3-flash', provider: 'z-ai' },
+    builder,
   };
 }
 

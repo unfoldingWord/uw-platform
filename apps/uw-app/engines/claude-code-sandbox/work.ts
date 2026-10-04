@@ -4,11 +4,13 @@ import { TURN_LIMIT } from '@uw/harness';
 import type { EngineConfig } from '../config.ts';
 import type { ExecResult } from '../sandbox/host.ts';
 import { MCP_HOST, MODEL_HOST, type ModelRoute } from '../sandbox/egress.ts';
+import { GITHUB_API_HOST } from '../sandbox/github-egress.ts';
 import {
   gatewayHeaders,
   gatewayUpstream,
   PLACEHOLDER_KEY,
   promptFile,
+  REPOSITORY_DIR,
   WORKSPACE,
   type SandboxPlan,
   type SandboxReading,
@@ -20,6 +22,14 @@ const MCP_CONFIG = `${WORKSPACE}/.mcp.json`;
 const SERVER = 'uw-platform';
 const INFERENCE_PATHS = ['/v1/messages', '/v1/messages/count_tokens'];
 const SCRIPT = `exec claude -p "$(cat ${WORKSPACE}/PROMPT.md)" "$@"`;
+const BUILD_SCRIPT = [
+  'set -e',
+  `git clone --no-tags "$UW_CLONE_URL" ${REPOSITORY_DIR}`,
+  `git -C ${REPOSITORY_DIR} checkout -B "$UW_BRANCH" "$UW_START"`,
+  `cd ${REPOSITORY_DIR}`,
+  SCRIPT,
+].join('\n');
+const BUILD_TOOLS = ['Read', 'Edit', 'Write', 'Glob', 'Grep', 'Bash(git *)', 'Bash(curl *)'];
 
 const servedSchema = z.object({ outputTokens: z.number().int().nonnegative() });
 const resultSchema = z.object({
@@ -43,20 +53,38 @@ function modelRoute(config: EngineConfig): ModelRoute | null {
   return { host: MODEL_HOST, upstream, headers, paths: INFERENCE_PATHS };
 }
 
+function repositorySection(input: EngineWork): string {
+  const { checkout } = input;
+  if (checkout === null) return '';
+  const pulls = `http://${GITHUB_API_HOST}/repos/${checkout.repository}/pulls`;
+  return [
+    '',
+    '',
+    '## Repository',
+    `You work in ${REPOSITORY_DIR} on the branch ${checkout.branch}.`,
+    `Push with \`git push origin HEAD:refs/heads/${checkout.branch}\` and push nothing else.`,
+    `Open the pull request into ${checkout.defaultBranch} with \`curl -X POST ${pulls}\` and a JSON body naming title, head, base and body; the body opens with the fenced \`harness\` declaration.`,
+    'Then call submit_to_gate with the pull request and the head you pushed.',
+  ].join('\n');
+}
+
 function files(input: EngineWork) {
   const servers = { [SERVER]: { type: 'http', url: `http://${MCP_HOST}/mcp` } };
+  const prompt = promptFile(input);
   return [
     { path: MCP_CONFIG, content: JSON.stringify({ mcpServers: servers }) },
-    promptFile(input),
+    { ...prompt, content: `${prompt.content}${repositorySection(input)}` },
   ];
 }
 
 function command(input: EngineWork): readonly string[] {
-  const allowed = input.toolset.map((verb) => `mcp__${SERVER}__${verb}`).join(',');
+  const verbs = input.toolset.map((verb) => `mcp__${SERVER}__${verb}`);
+  const building = input.checkout !== null;
+  const allowed = [...verbs, ...(building ? BUILD_TOOLS : [])].join(',');
   return [
     'sh',
     '-c',
-    SCRIPT,
+    building ? BUILD_SCRIPT : SCRIPT,
     'claude',
     '--output-format',
     'json',
@@ -116,6 +144,7 @@ export function claudeCodePlan(config: EngineConfig): SandboxPlan {
     host: config.sandboxes?.claudeCode ?? null,
     model: modelRoute(config),
     provider: PROVIDER,
+    clones: true,
     env: {
       ANTHROPIC_BASE_URL: `http://${MODEL_HOST}`,
       ANTHROPIC_API_KEY: PLACEHOLDER_KEY,
