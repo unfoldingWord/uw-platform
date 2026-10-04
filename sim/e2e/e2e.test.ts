@@ -43,7 +43,7 @@ describe('the end-to-end journey on the software template', () => {
       expect(world.adapters.connectors.calls()).toHaveLength(1);
     }));
 
-  it('lets Iterate move Validate to Close, refuses Close without a learning, stops Iterate when its delegation is revoked, and closes with the learning it drafted', () =>
+  it('lets Iterate move Validate to Close, refuses Close without a learning, stops Iterate when its delegation is revoked, and closes with the learning attached under its beat', () =>
     inWorld(async (world) => {
       const journey = await travelToShip(world);
       await travelThroughShip(journey);

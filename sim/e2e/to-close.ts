@@ -83,6 +83,7 @@ async function iterateRefusedWithoutDelegation(journey: Journey): Promise<void> 
   const { cast, itemId } = journey;
   await freshSpend(cast);
   const bare = simCaller(cast.world, simAgent(cast.kim, 'iterate', { interactive: false }));
+  assert.equal(bare.actor.identity, cast.iterate.identity);
   const outcome = await cast.world.kernel.items.claim(bare, { itemId, delegationId: null });
   assert.equal(reasonOf(outcome), 'delegation_required');
   assert.equal((await lastEvent(journey))?.name, 'delegation_required');
