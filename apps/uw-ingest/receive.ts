@@ -102,7 +102,8 @@ async function verifiedDelivery(c: Context<IngestEnv>): Promise<Verified | Inges
   if (typeof delivery === 'string') return delivery;
   const parsed = parseJson(rawBody);
   if (!parsed) return 'malformed_payload';
-  return { source: name.data, delivery, rawBody, payload: parsed.value };
+  const payload = source.redact ? source.redact(parsed.value) : parsed.value;
+  return { source: name.data, delivery, rawBody, payload };
 }
 
 async function admit(
@@ -126,6 +127,11 @@ async function admit(
   return enqueue(ledger, queue, envelope.data);
 }
 
+function acceptedFields(c: Context<IngestEnv>): Readonly<Record<string, boolean>> {
+  const name = ingestSourceSchema.safeParse(c.req.param('source'));
+  return (name.success ? webhookSources.get(name.data)?.accepted : undefined) ?? {};
+}
+
 export function receive(deps: IngestDeps) {
   return async (c: Context<IngestEnv>): Promise<Response> => {
     c.set('logger', c.get('logger').with({ principal: ingestPrincipal().identity }));
@@ -134,7 +140,7 @@ export function receive(deps: IngestDeps) {
       const reason = await admit(c, deps, handle?.ledger);
       if (reason === null) {
         c.set('outcome', 'accepted');
-        return c.json({ status: 'accepted' }, 202);
+        return c.json({ ...acceptedFields(c), status: 'accepted' }, 202);
       }
       c.set('outcome', reason);
       return c.json({ status: 'error', reason }, refusalStatus.get(reason) ?? 503);

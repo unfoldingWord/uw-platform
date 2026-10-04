@@ -335,6 +335,19 @@ describe('FD-10 the github handler', () => {
   });
 });
 
+describe('the handlers before the database is configured', () => {
+  it('log a Zulip delivery as not wired and handle it', async () => {
+    const lines: Record<string, unknown>[] = [];
+    const logger = createLogger(
+      { traceId: validEnvelope.traceId, commit: COMMIT, route: 'queue ingest', principal: null },
+      (line) => lines.push(JSON.parse(line)),
+    );
+    const zulip = { ...validEnvelope, source: 'zulip' as const, event: 'message' };
+    expect(await notWiredHandlers.get('zulip')?.(zulip, logger)).toBe('handled');
+    expect(lines).toEqual([expect.objectContaining({ outcome: 'not_wired', event: 'message' })]);
+  });
+});
+
 describe('the trace id of a queue batch', () => {
   it('is the trace id of the first well-formed envelope in the batch', () => {
     const second = { ...validEnvelope, traceId: '3f1d7c1e-8c53-4a53-9d6e-0a9b6a0f4d12' };

@@ -50,6 +50,11 @@ export async function personById(db: Executor, personId: string): Promise<Person
   return { personId: row.id, email: row.email, status: personStatusSchema.parse(row.status) };
 }
 
+export async function personByEmail(db: Executor, email: string): Promise<PersonRecord | null> {
+  const found = await selectByEmail(db, normaliseEmail(email));
+  return found?.status === 'active' ? found : null;
+}
+
 export async function lockPerson(db: Executor, personId: string): Promise<PersonRecord | null> {
   const [row] = await db.select().from(people).where(eq(people.id, personId)).for('update');
   if (!row) return null;
