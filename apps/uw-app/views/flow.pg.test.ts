@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
@@ -236,6 +237,17 @@ async function cappedSaysAtLeast(world: BoardWorld): Promise<void> {
   );
 }
 
+async function scrollsAtPhoneWidth(world: BoardWorld): Promise<void> {
+  const document = documentOf((await flowOf(world)).text);
+  const svg = document.querySelector('main svg[role="group"]');
+  const classes = (svg?.getAttribute('class') ?? '').split(' ');
+  expect(classes).toContain('min-w-[var(--uw-flow-diagram)]');
+  expect(classes).not.toContain('min-w-0');
+  expect(svg?.parentElement?.getAttribute('class')).toContain('overflow-x-auto');
+  const layout = readFileSync('packages/ui/tokens/layout.css', 'utf8');
+  expect(layout).toMatch(/--uw-flow-diagram: \d+rem;/);
+}
+
 async function noProblems(world: BoardWorld): Promise<void> {
   expect(await screenProblems((await flowOf(world)).text)).toEqual([]);
   expect(await screenProblems((await flowOf(world, world.viewer.email)).text)).toEqual([]);
@@ -257,5 +269,7 @@ describe.skipIf(!testServer)('the Flow view', () => {
     inFlow(foreignTemplate));
   it('the flow view says at least when the harness has more open items than it reads', () =>
     inFlow(cappedSaysAtLeast));
+  it('the flow diagram keeps a minimum width from a size token and scrolls inside its own wrapper', () =>
+    inFlow(scrollsAtPhoneWidth));
   it('the flow view renders with no screen problems', () => inFlow(noProblems));
 });
