@@ -91,7 +91,7 @@ describe('the worker cache name', () => {
 });
 
 describe('the notification a push shows', () => {
-  it('NT-1 a push opens straight to its deep link, names its harness, and replaces an earlier one for the same link', () => {
+  it('the notification a push shows carries its deep link, names its harness, and is tagged by the link', () => {
     const link = '/harnesses/h/gates/i';
     const shown = pushNotification(
       pushPayload({ harness: 'software', reason: 'gate_waiting', link }),
