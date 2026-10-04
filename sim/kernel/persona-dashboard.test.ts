@@ -132,6 +132,33 @@ async function delegationsShown(scene: RunWorld): Promise<void> {
   expect(value(await dashboardOf(scene, editor)).delegations).toEqual({ count: 1, live: null });
 }
 
+async function manyDelegations(scene: RunWorld): Promise<void> {
+  const now = scene.world.adapters.clock.now();
+  await scene.world.adapters.store.transaction(async (tx) => {
+    for (let n = 1; n <= 52; n += 1) {
+      await tx.delegations.write.insert(
+        {
+          id: scene.world.adapters.ids.next(),
+          personId: scene.owner.personId ?? '',
+          persona: builder,
+          harnessId: scene.harnessId,
+          capability: 'build',
+          grantedAt: new Date(now.getTime() + n),
+          expiresAt: new Date(now.getTime() + 86_400_000),
+          revokedAt: null,
+          lapsedAt: null,
+          supersedes: null,
+        },
+        scene.world.adapters.ids.next(),
+      );
+    }
+  });
+  const admin = value(await dashboardOf(scene, scene.owner));
+  expect(admin.delegations.count).toBe(53);
+  expect(admin.delegations.live).toHaveLength(50);
+  expect(admin.delegations.live?.[0]?.id).toBe(scene.delegationId);
+}
+
 async function hidden(scene: RunWorld): Promise<void> {
   const stranger = await simPerson(scene.world, 7, [
     { role: 'viewer', scopeKind: 'jd_area', scopeArea: '30-39' },
@@ -198,6 +225,8 @@ describe('the persona dashboard', () => {
     inWorld(figures));
   it('PE-4 the dashboard lists the delegations the persona runs under to an admin and counts them for others', () =>
     inWorld(delegationsShown));
+  it('the dashboard lists at most 50 live delegations and counts them all', () =>
+    inWorld(manyDelegations));
   it('PE-4 a persona page the caller cannot read, or of a harness they cannot read, is page_not_found', () =>
     inWorld(hidden));
   it('PE-5 held premises are counted per persona on its dashboard', () => inWorld(premisesCounted));

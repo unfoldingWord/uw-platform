@@ -99,6 +99,7 @@ export function Delegations(props: { readonly dashboard: PersonaDashboard }) {
     capability: delegation.capability,
     expires: formatInstant(new Date(delegation.expiresAt)),
   }));
+  const more = count - live.length;
   return (
     <div class="mb-6">
       <Table
@@ -106,6 +107,9 @@ export function Delegations(props: { readonly dashboard: PersonaDashboard }) {
         columns={delegationColumns}
         rows={rows}
       />
+      {more > 0 ? (
+        <p class="mt-2 text-sm text-muted">{`and ${formatCount(more)} more live delegations`}</p>
+      ) : null}
     </div>
   );
 }

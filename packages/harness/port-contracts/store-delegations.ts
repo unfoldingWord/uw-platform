@@ -133,8 +133,46 @@ function describeExpired(subject: DelegationsSubject): void {
   });
 }
 
+function describeBoundedLive(subject: DelegationsSubject): void {
+  it('counts the live delegations by filter in SQL and lists only the first ones up to the limit', async () => {
+    const rows = [1, 2, 3].map((n) =>
+      delegationOf(0x5d00, n, { grantedAt: new Date(at.getTime() + n * 60_000) }),
+    );
+    const revoked = delegationOf(0x5d00, 4, { revokedAt: at });
+    const other = delegationOf(0x5d00, 5, { persona: 'agent:two' as Identity });
+    const filter = { ...unfiltered, persona: 'agent:one', harnessId: uid(0x5d00) };
+    const later = new Date(at.getTime() + 5 * 60_000);
+    const result = await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0x5d00, 'gateway-delegations-bounded');
+      for (const [n, row] of [...rows, revoked, other].entries()) {
+        await tx.delegations.write.insert(row, uid(0x5d80 + n));
+      }
+      return {
+        count: await tx.delegations.read.countLive(filter, later),
+        first: (await tx.delegations.read.firstLive(filter, later, 2)).map((row) => row.id),
+        all: (await tx.delegations.read.firstLive(filter, later, 50)).map((row) => row.id),
+        none: await tx.delegations.read.countLive({ ...filter, harnessId: uid(0x5dff) }, later),
+      };
+    });
+    expect(result).toEqual({
+      count: 3,
+      first: [rows[0]?.id, rows[1]?.id],
+      all: rows.map((row) => row.id),
+      none: 0,
+    });
+    await Promise.all(
+      [0, 5001, 1.5].map((limit) =>
+        expect(
+          subject().store.transaction((tx) => tx.delegations.read.firstLive(filter, later, limit)),
+        ).rejects.toBeInstanceOf(RangeError),
+      ),
+    );
+  });
+}
+
 export function describeDelegations(subject: DelegationsSubject): void {
   describeLive(subject);
+  describeBoundedLive(subject);
   describeConditionalWrites(subject);
   describeExpired(subject);
 }
