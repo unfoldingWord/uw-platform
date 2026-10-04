@@ -11,6 +11,7 @@ export const lockKeyPrefixes: readonly string[] = [
   'harness_events:',
   'github-issue:',
   'persona-activation:',
+  'persona-identity:',
   'harness-breaker',
   'harness-run-persona:',
   'zulip-topics:',
