@@ -7,6 +7,7 @@ import { replay } from './items/fold.ts';
 import { createRepairCommands, type RepairCommands } from './items/repair.ts';
 import { createPersonaCommands, type PersonaCommands } from './personas/commands.ts';
 import type { Ports } from './ports.ts';
+import { notifyCommitted, type AfterCommit } from './notify/after-commit.ts';
 import { createKernelReads, type KernelReads } from './reads/index.ts';
 import { createBreakerCommands, type BreakerCommands } from './runs/breaker.ts';
 import { createRunCommands, type RunCommands } from './runs/commands.ts';
@@ -35,12 +36,19 @@ export type Kernel = {
   readonly health: () => Promise<KernelHealth>;
 };
 
-export function createKernel(ports: Ports): Kernel {
+function livePorts(ports: Ports): Ports {
+  const wiring: { notify: AfterCommit } = { notify: async () => undefined };
   const live: Ports = {
     ...ports,
-    store: wakingStore(ports.store, ports.hub),
+    store: wakingStore(ports.store, ports.hub, (events) => wiring.notify(events)),
     grants: wakingGrants(ports.grants),
   };
+  wiring.notify = notifyCommitted(live);
+  return live;
+}
+
+export function createKernel(ports: Ports): Kernel {
+  const live = livePorts(ports);
   return {
     walk,
     templateProperty,

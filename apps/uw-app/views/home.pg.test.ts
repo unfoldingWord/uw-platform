@@ -1,14 +1,20 @@
 import { eq } from 'drizzle-orm';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
-import type { ItemState, Principal } from '@uw/contracts';
+import { principalSchema, type ItemState, type Principal } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
 import { harnessItems, harnessRuns } from '@uw/db/schema';
-import { seedGrant, seedLapsedDelegations, seedOpenItems, seedPerson } from '@uw/db/test-seed';
+import {
+  revokeSeededGrant,
+  seedGrant,
+  seedLapsedDelegations,
+  seedOpenItems,
+  seedPerson,
+} from '@uw/db/test-seed';
 import { VIEW_LIMIT } from '@uw/harness';
 import { clock, instant, parkAtShip, people } from '../github/testing/ship-rig.ts';
 import { accepted, callerOf } from '../testing/commands.ts';
-import { kernelOn } from '../testing/kernel.ts';
+import { kernelOn, personOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml } from '../testing/views.ts';
@@ -228,6 +234,37 @@ async function noProblems(db: Database): Promise<void> {
   expect(await screenProblems((await homeOf(db, VIEWER.email)).text)).toEqual([]);
 }
 
+const KIM_ADMIN_GRANT = '00000000-0000-4000-8000-000000020600';
+
+async function kimLosesAdmin(db: Database): Promise<void> {
+  const { item } = await seeded(db);
+  const kim = await personOn(db, '00000000-0000-4000-8000-000000000106', KIM, instant);
+  const kernel = kernelOn(db, clock);
+  const delegation = accepted(
+    await kernel.delegations.grant(callerOf(kim), {
+      harnessId: item.harnessId,
+      persona: 'agent:scout',
+      capability: 'build',
+      expiresAt: null,
+      supersedes: null,
+    }),
+  );
+  await revokeSeededGrant(db, KIM_ADMIN_GRANT, instant);
+  const scout = principalSchema.parse({
+    identity: 'agent:scout',
+    kind: 'agent',
+    personId: kim.personId,
+    email: null,
+    grants: [],
+    interactive: false,
+  });
+  await kernel.delegations.beat(callerOf(scout), { delegationId: delegation.id });
+  expect(linksOf((await homeOf(db, IAN)).text)).toContainEqual([
+    flowPath(item.harnessId),
+    'A delegation to agent:scout on software lapsed 2026-10-02 09:00 UTC because its person no longer holds admin',
+  ]);
+}
+
 describe.skipIf(!testServer)('Home', () => {
   it('WB-9 Home lists the gates the person can decide, then lapsed delegations, then failed runs, each deep-linked', () =>
     withAppDatabase(listsInOrder));
@@ -240,6 +277,8 @@ describe.skipIf(!testServer)('Home', () => {
   it('WB-9 an empty Home says nothing is waiting', () => withAppDatabase(emptyHome));
   it('WB-9 a high item the person lacks the domain grant for is not on Home', () =>
     withAppDatabase(highItemHidden));
+  it('NT-4 Home shows another admin a delegation that lapsed because its person lost admin', () =>
+    withAppDatabase(kimLosesAdmin));
   it('the main fragment answers only the main content with no shell', () =>
     withAppDatabase(fragmentOnly));
   it('Home renders with no screen problems', () => withAppDatabase(noProblems));
