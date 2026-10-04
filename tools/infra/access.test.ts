@@ -8,6 +8,7 @@ type Application = {
   domain: string;
   destinations?: { uri: string }[];
   allowed_idps: string[];
+  same_site_cookie_attribute?: string;
 };
 type Declaration = {
   application: Application;
@@ -36,13 +37,17 @@ describe('FD-7 Cloudflare Access in front of uw-app, declared in infra', () => {
     ]);
   });
 
-  it('bypasses Access for /health only, on staging and on every per-PR Worker', () => {
+  it('sends the app session cookie same-site lax, so a cross-site form post carries none', () => {
+    expect(declaration.application.same_site_cookie_attribute).toBe('lax');
+  });
+
+  it('bypasses Access for the deploy probe at /health/probe only, on staging and on every per-PR Worker', () => {
     expect(declaration.health_bypass.application.domain).toBe(
-      'uw-app-staging.unfoldingword.workers.dev/health',
+      'uw-app-staging.unfoldingword.workers.dev/health/probe',
     );
     expect(declaration.health_bypass.application.destinations?.map((d) => d.uri)).toEqual([
-      'uw-app-staging.unfoldingword.workers.dev/health',
-      'uw-app-pr-*.unfoldingword.workers.dev/health',
+      'uw-app-staging.unfoldingword.workers.dev/health/probe',
+      'uw-app-pr-*.unfoldingword.workers.dev/health/probe',
     ]);
     expect(declaration.health_bypass.policies).toEqual([
       { name: 'Deploy health probe', decision: 'bypass', include: [{ everyone: {} }] },
