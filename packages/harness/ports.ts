@@ -92,6 +92,7 @@ export type HarnessItemsGateway = {
     lowestOpenPriority(harnessId: string, stageKey: string): Promise<number | null>;
     lapsedLeases(at: Date, limit: number): Promise<readonly string[]>;
     parked(harnessId: string): Promise<readonly ItemState[]>;
+    byIds(itemIds: readonly string[]): Promise<readonly ItemState[]>;
   };
   readonly write: {
     insert(item: ItemState, at: Date): Promise<void>;
@@ -229,7 +230,7 @@ export type HarnessRunsGateway = {
     live(harnessId: string | null): Promise<readonly RunRow[]>;
     forItems(itemIds: readonly string[]): Promise<readonly RunRow[]>;
     startedSince(since: Date, limit: number): Promise<readonly RunRow[]>;
-    failedSince(since: Date, limit: number): Promise<readonly RunRow[]>;
+    failedFor(personId: string, since: Date, limit: number): Promise<readonly RunRow[]>;
     spendSince(since: Date): Promise<RunSpend>;
     runCountsSince(since: Date): Promise<readonly RunCount[]>;
   };
