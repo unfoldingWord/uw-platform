@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { CapabilityWord, PageStatus, PageType, Role, Scope } from '@uw/contracts';
 import type { AnyExecutor } from './any-database.ts';
 import {
@@ -219,4 +219,62 @@ export async function seedHostedRun(db: AnyExecutor, run: SeedRun): Promise<void
     outcome: 'running',
     startedAt: seededAt,
   });
+}
+
+export type SeedRunRow = typeof harnessRuns.$inferInsert;
+
+export async function seedRunRow(db: AnyExecutor, run: SeedRunRow): Promise<void> {
+  await db.insert(harnessRuns).values(run);
+}
+
+export type ItemRewrite = Partial<
+  Pick<
+    typeof harnessItems.$inferInsert,
+    | 'claimedBy'
+    | 'claimantKind'
+    | 'leaseExpires'
+    | 'riskTier'
+    | 'riskDomains'
+    | 'gateStatus'
+    | 'prRepo'
+    | 'prNumber'
+    | 'zulipTopic'
+  >
+>;
+
+export async function rewriteItem(
+  db: AnyExecutor,
+  itemId: string,
+  change: ItemRewrite,
+): Promise<void> {
+  await db.update(harnessItems).set(change).where(eq(harnessItems.id, itemId));
+}
+
+export async function rewriteStagePaused(
+  db: AnyExecutor,
+  stage: { readonly harnessId: string; readonly key: string },
+  paused: boolean,
+): Promise<void> {
+  await db
+    .update(harnessStages)
+    .set({ paused })
+    .where(and(eq(harnessStages.harnessId, stage.harnessId), eq(harnessStages.key, stage.key)));
+}
+
+export type SeedEventRow = {
+  readonly id: string;
+  readonly harnessId: string;
+  readonly itemId: string;
+  readonly name: string;
+  readonly actor: string;
+  readonly evidence: Readonly<Record<string, unknown>>;
+  readonly traceId: string;
+  readonly at: Date;
+};
+
+export async function seedEventRows(db: AnyExecutor, rows: readonly SeedEventRow[]): Promise<void> {
+  if (rows.length === 0) return;
+  await db
+    .insert(harnessEvents)
+    .values(rows.map((row) => ({ ...row, evidence: { ...row.evidence } })));
 }

@@ -1,9 +1,13 @@
 import { randomUUID } from 'node:crypto';
-import { and, eq } from 'drizzle-orm';
 import type { Principal } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
-import { harnessItems, harnessRuns, harnessStages } from '@uw/db/schema';
-import { seedGrant, seedPerson } from '@uw/db/test-seed';
+import {
+  rewriteItem,
+  rewriteStagePaused,
+  seedGrant,
+  seedPerson,
+  seedRunRow,
+} from '@uw/db/test-seed';
 import { software, type Clock, type Kernel, type Template } from '@uw/harness';
 import { accepted, callerOf } from './commands.ts';
 import { agentOf, kernelOn, personOn } from './kernel.ts';
@@ -117,7 +121,7 @@ function stepOf(tokensIn: number, tokensOut: number, at: Date) {
 type RunSeed = { readonly harnessId: string; readonly itemId: string; readonly at: Date };
 
 async function subscriptionRun(db: Database, seed: RunSeed, persona: string) {
-  await db.insert(harnessRuns).values({
+  await seedRunRow(db, {
     id: randomUUID(),
     harnessId: seed.harnessId,
     itemId: seed.itemId,
@@ -135,7 +139,7 @@ async function subscriptionRun(db: Database, seed: RunSeed, persona: string) {
 }
 
 async function meteredRun(db: Database, seed: RunSeed, outcome: 'running' | 'completed') {
-  await db.insert(harnessRuns).values({
+  await seedRunRow(db, {
     id: randomUUID(),
     harnessId: seed.harnessId,
     itemId: seed.itemId,
@@ -161,17 +165,11 @@ export async function heldByAgent(
   holder: string,
   until: Date,
 ): Promise<void> {
-  await db
-    .update(harnessItems)
-    .set({ claimedBy: holder, claimantKind: 'agent', leaseExpires: until })
-    .where(eq(harnessItems.id, itemId));
+  await rewriteItem(db, itemId, { claimedBy: holder, claimantKind: 'agent', leaseExpires: until });
 }
 
 async function pausedStage(db: Database, harnessId: string, key: string): Promise<void> {
-  await db
-    .update(harnessStages)
-    .set({ paused: true })
-    .where(and(eq(harnessStages.harnessId, harnessId), eq(harnessStages.key, key)));
+  await rewriteStagePaused(db, { harnessId, key }, true);
 }
 
 export function ianOn(db: Database, at: Date): Promise<Principal> {
