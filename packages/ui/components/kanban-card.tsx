@@ -1,3 +1,4 @@
+import type { Child } from 'hono/jsx';
 import { safeHref } from './href.ts';
 
 const titleLink =
@@ -7,6 +8,7 @@ export function KanbanCard(props: {
   readonly title: string;
   readonly href: string;
   readonly meta: readonly { readonly label: string; readonly value: string }[];
+  readonly actions?: Child;
 }) {
   const href = safeHref(props.href);
   return (
@@ -29,6 +31,9 @@ export function KanbanCard(props: {
             </>
           ))}
         </dl>
+      )}
+      {props.actions === undefined ? null : (
+        <div class="mt-3 flex flex-col gap-2">{props.actions}</div>
       )}
     </article>
   );

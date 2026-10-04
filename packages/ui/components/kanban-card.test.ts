@@ -64,6 +64,24 @@ describe('WB-11 the kanban card', () => {
   });
 });
 
+describe('the kanban card actions', () => {
+  it('a card renders its actions after its facts', async () => {
+    const actions = jsx(
+      'form',
+      { 'aria-label': 'Claim' },
+      jsx('button', { type: 'submit' }, 'Claim'),
+    );
+    const document = await dom(jsx(KanbanCard, { ...props, actions }));
+    const article = document.querySelector('article');
+    const form = article?.querySelector('form');
+    expect(form?.textContent).toBe('Claim');
+    const list = article?.querySelector('dl');
+    expect(list?.compareDocumentPosition(form as Node)).toBe(
+      document.defaultView?.Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+});
+
 describe('the kanban card passes axe-core', () => {
   it('has no axe-core violations', async () => {
     const window = new JSDOM(

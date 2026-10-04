@@ -1,5 +1,7 @@
 import { domId, reasonText } from './text.ts';
 
+export const humanGateSvg = 'fill-kindle-soft stroke-kindle';
+
 const action =
   'inline-flex items-center rounded-md bg-kindle px-4 py-2 text-sm font-bold text-on-accent outline-offset-2 outline-focus focus-visible:outline-2 aria-disabled:cursor-not-allowed aria-disabled:bg-kindle-soft aria-disabled:text-ink';
 

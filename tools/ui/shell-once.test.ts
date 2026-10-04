@@ -102,6 +102,7 @@ const pieces: readonly Piece[] = [
 const sharedMarks = new Map<string, readonly RegExp[]>([
   [`${components}gate-callout.tsx`, [/<dt\b/]],
   [`${components}kanban-card.tsx`, [/<dt\b/]],
+  [`${components}lane.tsx`, [/<dt\b/]],
 ]);
 
 const beforeTheShell = new Map<string, readonly RegExp[]>([
@@ -206,8 +207,9 @@ describe('WB-11 each shell piece exists once', () => {
     expect(secondPieces(path, text)).not.toEqual([]);
   });
 
-  it('lets only the gate facts and the kanban card share the KPI description term', () => {
+  it('lets only the gate facts, the kanban card and the lane share the KPI description term', () => {
     expect(secondPieces(`${components}kanban-card.tsx`, '<dl><dt>Stage</dt></dl>')).toEqual([]);
+    expect(secondPieces(`${components}lane.tsx`, '<dl><dt>Exit</dt></dl>')).toEqual([]);
     expect(secondPieces(`${components}gate-callout.tsx`, '<dl><dt>Tier</dt></dl>')).toEqual([]);
     expect(
       secondPieces(`${components}kanban-card.tsx`, 'export const Kpi = () => null;'),
