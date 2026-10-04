@@ -6,7 +6,13 @@ import { traceExitCode } from '../trace/trace.ts';
 
 const callArguments = /\.(?:each|skipIf|runIf)\([^()]*\)/g;
 const titlePattern = /\b(?:describe|it|test)[.\w]*\(\s*(?:'([^']*)'|"([^"]*)"|`([^`]*)`)/g;
-const weakeners = /\b(?:describe|it|test)[.\w]*\.(?:skip|todo|fails|only)\b|\.skipIf\(\s*true\s*\)/;
+const weakeners = /\b(?:describe|it|test|suite)[.\w]*\.(?:skip|todo|fails|only)\b|\.skip\(/;
+const conditions = /\.(skipIf|runIf)\(([^)]*)\)/g;
+const allowedConditions = new Set([
+  'skipIf !testServer',
+  'runIf testServer',
+  "skipIf process.env['CI'] !== 'true'",
+]);
 
 const staticCheck = 'tools/architecture/agent-boundary.test.ts';
 const runtimeCheck = 'sim/kernel/agent-boundary-runtime.test.ts';
@@ -37,7 +43,18 @@ function hasTitle(text: string, prefix: string): boolean {
 }
 
 function isWeakened(text: string): boolean {
-  return weakeners.test(text);
+  const conditional = [...text.matchAll(conditions)].some(
+    ([, kind, condition]) => !allowedConditions.has(`${kind ?? ''} ${(condition ?? '').trim()}`),
+  );
+  return conditional || weakeners.test(text);
+}
+
+function jobBlock(workflow: string, job: string): string {
+  const start = workflow.indexOf(`\n  ${job}:`);
+  if (start === -1) return '';
+  const rest = workflow.slice(start + 1);
+  const next = rest.slice(1).search(/\n {2}[\w-]+:/);
+  return next === -1 ? rest : rest.slice(0, next + 1);
 }
 
 function expectTitle(path: string, prefix: string): void {
@@ -55,6 +72,24 @@ describe('the release guard catches a weakened proof', () => {
     expect(isWeakened("it.concurrent.only('a planted case', () => {})")).toBe(true);
     expect(isWeakened("describe.skipIf(true)('a planted suite', () => {})")).toBe(true);
     expect(isWeakened("test.todo('a planted case')")).toBe(true);
+    expect(isWeakened("suite.skip('a planted suite', () => {})")).toBe(true);
+    expect(isWeakened("it('a planted case', (ctx) => { ctx.skip(); })")).toBe(true);
+  });
+
+  it('flags a suite run or skipped on any condition but the test server', () => {
+    expect(isWeakened("describe.runIf(false)('a planted suite', () => {})")).toBe(true);
+    expect(isWeakened("describe.skipIf(process.env.CI)('a planted suite', () => {})")).toBe(true);
+    expect(isWeakened("describe.skipIf(isCi())('a planted suite', () => {})")).toBe(true);
+    expect(isWeakened("describe.skipIf(1)('a planted suite', () => {})")).toBe(true);
+    expect(isWeakened("describe.runIf(testServer)('a planted suite', () => {})")).toBe(false);
+  });
+
+  it('reads a CI job only up to the next job', () => {
+    const workflow =
+      'jobs:\n  test:\n    runs-on: x\n  later:\n    services:\n      image: postgres:16\n';
+    expect(jobBlock(workflow, 'test')).not.toContain('postgres:16');
+    expect(jobBlock(workflow, 'later')).toContain('postgres:16');
+    expect(jobBlock(workflow, 'missing')).toBe('');
   });
 
   it('leaves a suite gated on the test server alone and reads its title across lines', () => {
@@ -95,8 +130,10 @@ describe('release criterion 2: every Must requirement has a scenario or a test n
 
 describe('release criterion 3, by structure: the DX-7 scenario and its coverage module exist (pnpm sim:all in item 1 runs it)', () => {
   it('keeps the scenario file named for DX-7 and the whole-journey checks', () => {
-    expect(source('sim/scenarios/DX-7.software-template-end-to-end.ts')).toContain("id: 'DX-7'");
-    expect(existsSync('sim/e2e/coverage.ts')).toBe(true);
+    const scenario = source('sim/scenarios/DX-7.software-template-end-to-end.ts');
+    expect(scenario).toContain("id: 'DX-7'");
+    expect(scenario).toContain('await everyGateCrossed(journey)');
+    expect(source('sim/e2e/coverage.ts')).toContain('export async function everyGateCrossed(');
   });
 });
 
@@ -165,8 +202,7 @@ describe('release criterion 6, the part a local run can check: the race suites e
     }
     expect(source('vitest.config.ts')).toContain("'apps/**/*.pg.test.ts'");
     const workflow = source('.github/workflows/ci.yml');
-    const testJob = workflow.slice(workflow.indexOf('\n  test:'));
-    expect(testJob).toContain('image: postgres:16');
+    expect(jobBlock(workflow, 'test')).toContain('image: postgres:16');
   });
 });
 
@@ -206,6 +242,14 @@ function handOffKeys(tracker: string): HandOffKey[] {
     .map((line) => cells(line).slice(0, 3).join(' | '));
 }
 
+const cutShort = ['(and the rest of the source row)', 'Check on the live service:'];
+
+function wholeAction(row: readonly string[]): boolean {
+  const [, , , action = '', who = ''] = row;
+  const written = action.replace(/^[^:]*:/, '').trim().length > 0;
+  return written && who.length > 0 && cutShort.every((marker) => !action.includes(marker));
+}
+
 describe('the go-live hand-off names every row a person must still close', () => {
   it('lists each Not verified and each Waiting on a person row once, by its section, date and requirement', () => {
     const tracker = source('docs/progress_tracker.md');
@@ -215,5 +259,14 @@ describe('the go-live hand-off names every row a person must still close', () =>
     ].sort();
     expect(expected.length).toBeGreaterThan(0);
     expect(handOffKeys(tracker).sort()).toEqual(expected);
+  });
+
+  it('gives every row a whole action and someone who acts', () => {
+    const tracker = source('docs/progress_tracker.md');
+    const rows = sectionLines(tracker, '## Go-live hand-off')
+      .filter((line) => handOffRow.test(line))
+      .map(cells);
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.filter((row) => !wholeAction(row))).toEqual([]);
   });
 });
