@@ -5,7 +5,7 @@ import { oneOf } from '../checks.ts';
 import { delegations, harnessItems, harnessRuns } from '../schema.ts';
 import { refusing } from './refusal.ts';
 import { toRun } from './rows.ts';
-import type { HarnessRunsGateway, RunCount, RunRow, RunSpend } from './types.ts';
+import type { HarnessRunsGateway, ItemCost, RunCount, RunRow, RunSpend } from './types.ts';
 
 const liveOutcomes = ['running', 'hibernated'];
 
@@ -146,6 +146,32 @@ async function spendSince(executor: AnyExecutor, since: Date): Promise<RunSpend>
   return row ?? { meteredMinor: 0, computeMinor: 0, subscriptionTokens: 0 };
 }
 
+async function costsByItem(
+  executor: AnyExecutor,
+  itemIds: readonly string[],
+): Promise<readonly ItemCost[]> {
+  if (itemIds.length === 0) return [];
+  const metered = sql`${harnessRuns.costBasis} = 'metered'`;
+  const subscription = sql`${harnessRuns.costBasis} = 'subscription'`;
+  return executor
+    .select({
+      itemId: harnessRuns.itemId,
+      meteredMinor:
+        sql`coalesce(sum(${harnessRuns.costMinor}) FILTER (WHERE ${metered}), 0)`.mapWith(Number),
+      computeMinor:
+        sql`coalesce(sum(${harnessRuns.computeMinor}) FILTER (WHERE ${metered}), 0)`.mapWith(
+          Number,
+        ),
+      meteredTokens: sql`coalesce(sum(${stepTokens}) FILTER (WHERE ${metered}), 0)`.mapWith(Number),
+      subscriptionTokens:
+        sql`coalesce(sum(${stepTokens}) FILTER (WHERE ${subscription}), 0)`.mapWith(Number),
+    })
+    .from(harnessRuns)
+    .where(inArray(harnessRuns.itemId, [...itemIds]))
+    .groupBy(harnessRuns.itemId)
+    .orderBy(asc(harnessRuns.itemId));
+}
+
 async function runCountsSince(executor: AnyExecutor, since: Date): Promise<readonly RunCount[]> {
   const rows = await executor
     .select({ runShape: harnessRuns.runShape, engine: harnessRuns.engine, count: count() })
@@ -174,6 +200,7 @@ export function bindRuns(executor: AnyExecutor): HarnessRunsGateway {
         (await failedForQuery(executor, personId, since, limit)).map(toRun),
       spendSince: (since) => spendSince(executor, since),
       runCountsSince: (since) => runCountsSince(executor, since),
+      costsByItem: (itemIds) => costsByItem(executor, itemIds),
     },
     write: {
       insert: (run) =>

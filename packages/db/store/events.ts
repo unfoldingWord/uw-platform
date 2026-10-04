@@ -10,6 +10,7 @@ import type {
   EventPage,
   EventQuery,
   HarnessEventsGateway,
+  HarnessPosition,
   RecentEvents,
   StageEntry,
 } from './types.ts';
@@ -27,6 +28,7 @@ export function bindEvents(executor: AnyExecutor): HarnessEventsGateway {
       enteredStage: (harnessId, itemIds) => enteredStage(executor, harnessId, itemIds),
       recent: (query) => recent(executor, query),
       lastPosition: (harnessId) => lastPosition(executor, harnessId),
+      lastPositions: (harnessIds) => lastPositions(executor, harnessIds),
     },
     write: { append: (events) => refusing(() => appendAll(executor, events)) },
   };
@@ -188,4 +190,20 @@ async function lastPosition(executor: AnyExecutor, harnessId: string): Promise<n
     .from(harnessEvents)
     .where(eq(harnessEvents.harnessId, harnessId));
   return row?.last ?? 0;
+}
+
+async function lastPositions(
+  executor: AnyExecutor,
+  harnessIds: readonly string[],
+): Promise<readonly HarnessPosition[]> {
+  if (harnessIds.length === 0) return [];
+  const rows = await executor
+    .select({ harnessId: harnessEvents.harnessId, position: max(harnessEvents.position) })
+    .from(harnessEvents)
+    .where(inArray(harnessEvents.harnessId, [...harnessIds]))
+    .groupBy(harnessEvents.harnessId)
+    .orderBy(asc(harnessEvents.harnessId));
+  return rows.flatMap((row) =>
+    row.position === null ? [] : [{ harnessId: row.harnessId, position: row.position }],
+  );
 }

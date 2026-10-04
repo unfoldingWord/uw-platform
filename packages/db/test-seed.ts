@@ -278,3 +278,13 @@ export async function seedEventRows(db: AnyExecutor, rows: readonly SeedEventRow
     .insert(harnessEvents)
     .values(rows.map((row) => ({ ...row, evidence: { ...row.evidence } })));
 }
+
+export async function seedOpenItems(
+  db: AnyExecutor,
+  stage: { readonly harnessId: string; readonly stageKey: string; readonly count: number },
+): Promise<void> {
+  await db.execute(sql`INSERT INTO harness_items (id, harness_id, stage_id, title, created_at)
+    SELECT gen_random_uuid(), ${stage.harnessId}, harness_stages.id, 'Seeded item ' || n, ${seededAt.toISOString()}::timestamptz
+    FROM harness_stages, generate_series(1, ${stage.count}) AS n
+    WHERE harness_stages.harness_id = ${stage.harnessId} AND harness_stages.key = ${stage.stageKey}`);
+}
