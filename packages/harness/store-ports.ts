@@ -194,6 +194,8 @@ export type DelegationsGateway = {
   readonly read: {
     byId(delegationId: string): Promise<Delegation | null>;
     live(filter: DelegationFilter, at: Date): Promise<readonly Delegation[]>;
+    countLive(filter: DelegationFilter, at: Date): Promise<number>;
+    firstLive(filter: DelegationFilter, at: Date, limit: number): Promise<readonly Delegation[]>;
     lapsedFor(
       personId: string,
       since: Date,
