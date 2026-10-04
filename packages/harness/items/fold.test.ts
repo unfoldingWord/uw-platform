@@ -275,6 +275,26 @@ describe('KN-17 replay never lowers risk', () => {
   });
 });
 
+describe('the hand-off to a person', () => {
+  it('PE-6 handed_to_person makes the person the holder with no lease', () => {
+    const personId = '00000000-0000-4000-8000-000000000044';
+    const handed = event(7, 'handed_to_person', {
+      personId,
+      why: 'review_rounds_exhausted',
+      rounds: 3,
+    });
+    const state = replay([created('check'), claimed(builder, 'agent', lease), handed]);
+    expect(state).toMatchObject({
+      holder: `human:${personId}`,
+      claimantKind: 'person',
+      delegationId: null,
+      leaseExpiresAt: null,
+      stageKey: 'check',
+      gateStatus: 'working',
+    });
+  });
+});
+
 describe('KN-4 replay folds a submit by its result', () => {
   it('records the pull request and keeps the holder on a submit that is not parked', () => {
     const request = { repo: 'unfoldingWord/uw-platform', number: 7 };

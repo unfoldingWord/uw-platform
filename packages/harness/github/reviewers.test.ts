@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { engineDescriptor } from '../engines.ts';
+import { templatePersonas } from '../templates/personas.ts';
+import { builderIdentity } from './builder.ts';
 import { normalisedIdentifier } from './identifiers.ts';
 import { reviewerIdentities, reviewerOf } from './reviewers.ts';
 
@@ -28,5 +31,26 @@ describe('the Reviewer identity list', () => {
     }
     const logins = reviewerIdentities.map((entry) => entry.login.toLowerCase());
     expect(new Set(logins).size).toBe(logins.length);
+  });
+});
+
+const reviewers = templatePersonas.software.filter((persona) => persona.capability === 'review');
+
+function loginOf(engine: (typeof reviewers)[number]['engine']): string | null {
+  const reviewer = engineDescriptor(engine).reviewer;
+  return reviewerIdentities.find((entry) => entry.reviewer === reviewer)?.login ?? null;
+}
+
+describe('the Reviewer personas and their GitHub identities', () => {
+  it("PE-6 each Reviewer persona has its own GitHub identity, distinct from Builder's, and the engine descriptors agree with the table", () => {
+    const logins = reviewers.map((persona) => loginOf(persona.engine));
+    expect(logins).toEqual(['uw-reviewer[bot]', 'uw-reviewer-codex[bot]']);
+    expect(logins).not.toContain(builderIdentity.login);
+    expect(builderIdentity).toEqual({ login: 'uw-builder[bot]', app: 'uw-builder' });
+  });
+
+  it("PE-6 a review by the Builder's login never counts as a Reviewer's", () => {
+    expect(reviewerOf(builderIdentity.login)).toBeNull();
+    expect(reviewerOf(builderIdentity.login.toUpperCase())).toBeNull();
   });
 });

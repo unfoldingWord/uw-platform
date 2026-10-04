@@ -10,7 +10,7 @@ import { fullSha, normalisedIdentifier } from '../github/identifiers.ts';
 import { reviewBody } from '../github/review-body.ts';
 import { reviewerOf } from '../github/reviewers.ts';
 import { OVER_REVIEW_BUDGET } from '../items/held-for-person.ts';
-import { draft } from '../items/record.ts';
+import { draft, readAllEvents } from '../items/record.ts';
 import { accepted, refused, type KernelOutcome } from '../outcome.ts';
 import type {
   Ports,
@@ -21,7 +21,8 @@ import type {
   RunRow,
 } from '../ports.ts';
 import { isFailureDetail } from './evidence-rules.ts';
-import { complete, completeAfter, fail } from './lifecycle.ts';
+import { complete, completeAfter, fail, type TrailingDrafts } from './lifecycle.ts';
+import { roundsAfter } from './rounds.ts';
 import { runScene } from './scene.ts';
 import type { RunScene } from './types.ts';
 
@@ -237,8 +238,31 @@ export async function postReview(
     return complete(ports, caller, runId, { result: 'review_withheld', review: null });
   }
   const reviewId = await postedId(ports, planned);
-  return complete(ports, caller, runId, {
-    result: reviewId === null ? 'review_withheld' : 'review_posted',
-    review: { ...planned.planned.record, reviewId },
+  const review = { ...planned.planned.record, reviewId };
+  if (reviewId === null)
+    return complete(ports, caller, runId, { result: 'review_withheld', review });
+  return completeAfter(ports, caller, runId, {
+    result: 'review_posted',
+    review,
+    before: () => [],
+    after: handOff(review),
   });
+}
+
+function handOff(review: ReviewRecord): TrailingDrafts {
+  return async (tx, { item, run }) => {
+    if (run.delegationId === null) return [];
+    const events = await readAllEvents(tx, item.harnessId, item.itemId);
+    const rounds = roundsAfter(events, item.stageKey, review);
+    const delegation = rounds === null ? null : await tx.delegations.read.byId(run.delegationId);
+    if (rounds === null || delegation === null) return [];
+    return [
+      draft('checks_failed', { stage: item.stageKey, failures: ['review_rounds_exhausted'] }),
+      draft('handed_to_person', {
+        personId: delegation.personId,
+        why: 'review_rounds_exhausted',
+        rounds,
+      }),
+    ];
+  };
 }

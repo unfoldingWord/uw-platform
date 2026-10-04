@@ -1,6 +1,26 @@
-import { eventSchema, type EventName, type HarnessEvent } from '@uw/contracts';
+import {
+  eventSchema,
+  harnessSchema,
+  type EventName,
+  type Grant,
+  type Harness,
+  type HarnessEvent,
+} from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
+import { recipientsOf } from './recipients.ts';
 import { triggersOf } from './triggers.ts';
+
+function harnessOf(jdArea: string): Harness {
+  return harnessSchema.parse({
+    id: harnessId,
+    key: 'software',
+    jdArea,
+    template: 'software',
+    repository: null,
+    paused: false,
+    hostedBuilderEnabled: false,
+  });
+}
 
 const harnessId = '00000000-0000-4000-8000-0000000000a1';
 const itemId = '00000000-0000-4000-8000-0000000000b1';
@@ -72,5 +92,37 @@ describe('the events that wake a person', () => {
       event(3, 'item_released', { holder: 'human:ian' }),
     ];
     expect(triggersOf(quiet)).toEqual([]);
+  });
+});
+
+describe('the hand-off wake', () => {
+  const personId = '00000000-0000-4000-8000-000000000301';
+  const handed = event(9, 'handed_to_person', {
+    personId,
+    why: 'review_rounds_exhausted',
+    rounds: 3,
+  });
+  const scope = (grants: readonly Grant[]) => ({
+    trigger: { event: handed, reason: 'handed_to_person' as const },
+    harness: harnessOf('80-89'),
+    item: null,
+    run: null,
+    delegation: null,
+    holders: [{ personId, email: 'p@example.org', grants: [...grants] }],
+    delegationPerson: () => null,
+    at: new Date('2026-10-03T09:00:00.000Z'),
+  });
+
+  it('PE-6 a hand-off wakes the person it names, when they can still read the harness', () => {
+    expect(triggersOf([handed]).map((trigger) => trigger.reason)).toEqual(['handed_to_person']);
+    const reader: Grant = {
+      grantId: personId,
+      role: 'viewer',
+      scopeKind: 'jd_area',
+      scopeArea: '80-89',
+      expiresAt: null,
+    };
+    expect(recipientsOf(scope([reader]))).toEqual([personId]);
+    expect(recipientsOf(scope([]))).toEqual([]);
   });
 });

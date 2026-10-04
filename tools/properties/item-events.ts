@@ -36,6 +36,7 @@ const operations = [
   'irrelevant',
   'runEvent',
   'linkTopic',
+  'handOff',
 ] as const;
 
 type Operation = (typeof operations)[number];
@@ -225,6 +226,14 @@ function takeOver(model: Model): boolean {
   return true;
 }
 
+function handOff(model: Model, pick: number): boolean {
+  if (model.expected.gateStatus === 'parked') return false;
+  const personId = '00000000-0000-4000-8000-000000000001';
+  emit(model, 'handed_to_person', { personId, why: 'review_rounds_exhausted', rounds: 3 + pick });
+  Object.assign(model.expected, { holder: person, claimantKind: 'person', leaseExpiresAt: null });
+  return true;
+}
+
 function loopEdge(model: Model, pick: number): boolean {
   if (held(model)) return false;
   const to = pick % stageKeys.length;
@@ -352,6 +361,7 @@ const handlers: ReadonlyMap<Operation, Handler> = new Map<Operation, Handler>([
   ['checksFailed', checksFailed],
   ['reject', reject],
   ['takeOver', takeOver],
+  ['handOff', handOff],
   ['loopEdge', loopEdge],
   ['riskDerived', riskDerived],
   ['abandonBranch', abandonBranch],

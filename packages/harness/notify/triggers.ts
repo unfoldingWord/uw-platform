@@ -7,6 +7,7 @@ const direct: ReadonlyMap<string, WakeReason> = new Map<string, WakeReason>([
   ['delegation_lapsed', 'delegation_lapsed'],
   ['run_failed', 'run_failed'],
   ['stage_advanced', 'stage_advanced'],
+  ['handed_to_person', 'handed_to_person'],
 ]);
 
 function reasonOf(event: HarnessEvent): WakeReason | null {

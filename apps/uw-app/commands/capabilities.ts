@@ -1,10 +1,16 @@
-import type { ErrorReason, Page } from '@uw/contracts';
+import {
+  createPageCommandSchema,
+  type ErrorReason,
+  type Harness,
+  type Page,
+  type TemplateKey,
+} from '@uw/contracts';
 import type { Logger } from '@uw/core/log';
-import type { Caller, Clock, Kernel } from '@uw/harness';
+import { personaPageDraft, personasOf, type Caller, type Clock, type Kernel } from '@uw/harness';
 import type { DatabaseHandle } from '../database.ts';
 import { issueByNumber } from '../github/facts/queries.ts';
 import { importStoredIssue, isImportable } from '../github/import.ts';
-import { readPage } from '../pages/store.ts';
+import { createPage, readPage } from '../pages/store.ts';
 import type { LiveWiring } from '../kernel.ts';
 import type { ShipGitHub } from '../ports/connectors.ts';
 import { gateKernel } from './person/gate-kernel.ts';
@@ -14,8 +20,14 @@ type Imported = { readonly ok: true } | { readonly ok: false; readonly reason: E
 
 export type GateAccess = 'none' | 'ordinary' | 'github';
 
+type Drafted = { readonly drafted: number; readonly skipped: number };
+type DraftPersonas = (template: TemplateKey, harness: Harness) => Promise<Drafted>;
+
 export type CommandCapabilities = {
-  readonly pages: { readonly read: (pageId: string) => Promise<Page | null> };
+  readonly pages: {
+    readonly read: (pageId: string) => Promise<Page | null>;
+    readonly draftPersonas: DraftPersonas;
+  };
   readonly githubIssues: {
     readonly byNumber: (repository: string, number: number) => Promise<StoredIssue | null>;
   };
@@ -56,11 +68,47 @@ function importerOf(grounds: CapabilityGrounds): CommandCapabilities['importIssu
   };
 }
 
+function drafterOf(grounds: CapabilityGrounds): DraftPersonas {
+  const { db } = grounds.database;
+  const { actor, traceId } = grounds.caller;
+  return async (template, harness) => {
+    let drafted = 0;
+    const fixtures = personasOf(template);
+    for (const fixture of fixtures) {
+      const draft = personaPageDraft(fixture, harness, actor.identity);
+      const command = createPageCommandSchema.parse({
+        command: 'create_page',
+        requestId: crypto.randomUUID(),
+        pageId: crypto.randomUUID(),
+        type: 'persona',
+        jdArea: harness.jdArea,
+        parentId: null,
+        status: 'suggested',
+        ...draft,
+      });
+      const created = await createPage(db, actor, command, traceId, grounds.clock.now());
+      if (created.ok) drafted += 1;
+      else if (created.reason !== 'slug_taken') {
+        const fields = {
+          outcome: 'persona_draft_refused',
+          slug: draft.slug,
+          reason: created.reason,
+        };
+        grounds.logger.warn('a template persona was not drafted', fields);
+      }
+    }
+    return { drafted, skipped: fixtures.length - drafted };
+  };
+}
+
 export function commandCapabilities(grounds: CapabilityGrounds): CommandCapabilities {
   const { db } = grounds.database;
   const { actor } = grounds.caller;
   return {
-    pages: { read: (pageId) => readPage(db, actor, pageId, grounds.clock.now()) },
+    pages: {
+      read: (pageId) => readPage(db, actor, pageId, grounds.clock.now()),
+      draftPersonas: drafterOf(grounds),
+    },
     githubIssues: { byNumber: (repository, number) => issueByNumber(db, repository, number) },
     importIssue: importerOf(grounds),
     gateKernel: gateKernelOf(grounds),
