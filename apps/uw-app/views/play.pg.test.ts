@@ -7,7 +7,9 @@ import { clock } from '../github/testing/ship-rig.ts';
 import { gateWorld, type GateWorld } from '../testing/gate-world.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
-import { getHtml } from '../testing/views.ts';
+import { getHtml, getHtmlWithEnv } from '../testing/views.ts';
+import { zulipEnv } from '../notify/testing.ts';
+import { zulipTopicUrl } from '../notify/zulip/links.ts';
 import { checksUrl, itemPath, pullRequestUrl, reviewUrl } from './parts/paths.ts';
 
 const learningId = randomUUID();
@@ -263,11 +265,47 @@ async function links(world: Played): Promise<void> {
     ['Reviews', reviewUrl(pull)],
   ]);
   expect(nav?.textContent).toContain('No Zulip topic yet');
-  await rewriteItem(world.db, world.item.itemId, { zulipTopic: 'harness > Show the board' });
-  const topic = await documentOf(world);
-  expect(topic.querySelector('main nav')?.textContent).toContain(
-    'Zulip topic: harness > Show the board',
+}
+
+const channels = { '80-89': '80-89 Technology' };
+
+async function zulipLink(world: Played): Promise<void> {
+  const topic = 'software/uw-platform#42';
+  const env = zulipEnv(channels);
+  const before = await getHtmlWithEnv(world.db, world.ianEmail, pathOf(world), env, clock);
+  const empty = new JSDOM(before.text).window.document.querySelector('main nav');
+  expect(empty?.textContent).toContain('No Zulip topic yet');
+  await rewriteItem(world.db, world.item.itemId, { zulipTopic: topic });
+  const page = await getHtmlWithEnv(world.db, world.ianEmail, pathOf(world), env, clock);
+  const document = new JSDOM(page.text).window.document;
+  const link = [...document.querySelectorAll('main nav a')].find(
+    (a) => a.textContent === 'Open the Zulip topic',
   );
+  expect(link?.getAttribute('href')).toBe(
+    zulipTopicUrl(env['ZULIP_SITE'] ?? '', '80-89 Technology', topic),
+  );
+  expect(await screenProblems(page.text)).toEqual([]);
+}
+
+async function zulipReply(world: Played): Promise<void> {
+  await seedEventRows(world.db, [
+    rowOf(world, 'comment_recorded', 'agent:ingest', {
+      source: 'zulip',
+      messageId: 41,
+      topic: 'software/uw-platform#42',
+      personId: null,
+      email: 'reader@partner.example',
+      text: '<b>approve</b> this',
+      truncated: true,
+    }),
+  ]);
+  const page = await getHtml(world.db, world.ianEmail, pathOf(world), {}, clock);
+  const row = rowsNamed(new JSDOM(page.text).window.document, 'Comment recorded')[0];
+  expect(factsOf(row)).toMatchObject({ Author: 'reader@partner.example', Source: 'Zulip' });
+  expect(row?.querySelector('blockquote')?.textContent).toBe('<b>approve</b> this');
+  expect(row?.querySelector('b')).toBeNull();
+  expect(row?.textContent).toContain('Cut at 10,000 characters');
+  expect(await screenProblems(page.text)).toEqual([]);
 }
 
 async function pages(world: Played): Promise<void> {
@@ -320,6 +358,9 @@ describe.skipIf(!testServer)('the play-by-play', () => {
     inPlay(learningLabel));
   it('WB-8 links go to the pull request, its checks and its reviews, with a slot for the Zulip topic', () =>
     inPlay(links));
+  it('NT-3 the play-by-play links the item Zulip topic in its area channel', () =>
+    inPlay(zulipLink));
+  it('NT-3 a reply appears on the play-by-play with its author', () => inPlay(zulipReply));
   it('WB-8 the play-by-play reads 100 events at a time and links to the later ones', () =>
     inPlay(pages));
   it('WB-8 the play-by-play is live on its harness filtered to the item', () => inPlay(liveOnItem));

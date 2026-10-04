@@ -44,6 +44,29 @@ function Evidence(props: { readonly event: HarnessEvent }) {
   );
 }
 
+function Comment(props: { readonly event: HarnessEvent }) {
+  const text = props.event.evidence['text'];
+  return (
+    <>
+      <Evidence event={props.event} />
+      <blockquote class="m-0 whitespace-pre-wrap break-words border-l-2 border-line pl-3 text-ink">
+        {typeof text === 'string' ? text : ''}
+      </blockquote>
+    </>
+  );
+}
+
+function Detail(props: {
+  readonly event: HarnessEvent;
+  readonly learnings: ReadonlyMap<string, Label>;
+}) {
+  if (props.event.name === 'learning_attached') {
+    return <Learning event={props.event} learnings={props.learnings} />;
+  }
+  if (props.event.name === 'comment_recorded') return <Comment event={props.event} />;
+  return <Evidence event={props.event} />;
+}
+
 export function PlayRow(props: {
   readonly event: HarnessEvent;
   readonly learnings: ReadonlyMap<string, Label>;
@@ -57,11 +80,7 @@ export function PlayRow(props: {
         <code class="break-all font-mono text-sm text-ink">{event.actor}</code>
         <span class="text-sm text-muted">{hostOf(event.actor)}</span>
       </div>
-      {event.name === 'learning_attached' ? (
-        <Learning event={event} learnings={props.learnings} />
-      ) : (
-        <Evidence event={event} />
-      )}
+      <Detail event={event} learnings={props.learnings} />
     </li>
   );
 }

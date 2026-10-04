@@ -98,6 +98,15 @@ function branch(fields: Fields, event: HarnessEvent): Shown {
   );
 }
 
+function comment(fields: Fields): Shown {
+  const shown = [
+    { label: 'Author', value: text(fields, 'email') ?? 'Unknown' },
+    { label: 'Source', value: 'Zulip' },
+  ];
+  if (fields.get('truncated') !== true) return facts(...shown);
+  return facts(...shown, { label: 'Length', value: 'Cut at 10,000 characters' });
+}
+
 const describers: ReadonlyMap<string, Describe> = new Map<string, Describe>([
   ['run_step_recorded', runStep],
   ['run_started', runStarted],
@@ -175,7 +184,7 @@ const describers: ReadonlyMap<string, Describe> = new Map<string, Describe>([
     'delegation_required',
     (fields) => facts({ label: 'Stage', value: text(fields, 'stage') ?? 'None' }),
   ],
-  ['comment_recorded', (_fields, event) => facts({ label: 'Author', value: event.actor })],
+  ['comment_recorded', comment],
 ]);
 
 export function evidenceOf(event: HarnessEvent): Shown {

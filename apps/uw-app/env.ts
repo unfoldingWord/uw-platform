@@ -66,6 +66,10 @@ export type Bindings = {
   VAPID_PRIVATE_JWK?: string;
   VAPID_PUBLIC_KEY?: string;
   VAPID_SUBJECT?: string;
+  ZULIP_BOT_API_KEY?: string;
+  ZULIP_BOT_EMAIL?: string;
+  ZULIP_CHANNELS?: string;
+  ZULIP_SITE?: string;
 };
 
 const UNKNOWN_COMMIT = 'unknown';

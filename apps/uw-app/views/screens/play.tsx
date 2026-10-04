@@ -15,6 +15,8 @@ import {
 } from '../parts/paths.ts';
 import { PlayRow } from '../parts/play-row.tsx';
 import { notFound } from './not-found.tsx';
+import { zulipConfigOf } from '../../notify/zulip/config.ts';
+import { itemTopicUrl } from '../../notify/zulip/links.ts';
 
 const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
 const link = `text-link underline ${focus}`;
@@ -25,7 +27,19 @@ function afterOf(raw: string | undefined): number | null {
   return wholeNumber.test(raw) ? Number(raw) : null;
 }
 
-function Links(props: { readonly play: PlayByPlay }) {
+function ZulipSlot(props: { readonly topic: string | null; readonly url: string | null }) {
+  if (props.url !== null) {
+    return (
+      <a href={props.url} class={link}>
+        Open the Zulip topic
+      </a>
+    );
+  }
+  const text = props.topic === null ? 'No Zulip topic yet' : `Zulip topic: ${props.topic}`;
+  return <span class="text-sm text-muted">{text}</span>;
+}
+
+function Links(props: { readonly play: PlayByPlay; readonly zulipUrl: string | null }) {
   const { item } = props.play;
   const pull = item.pullRequest;
   return (
@@ -48,9 +62,7 @@ function Links(props: { readonly play: PlayByPlay }) {
           Issue
         </a>
       )}
-      <span class="text-sm text-muted">
-        {item.zulipTopic === null ? 'No Zulip topic yet' : `Zulip topic: ${item.zulipTopic}`}
-      </span>
+      <ZulipSlot topic={item.zulipTopic} url={props.zulipUrl} />
     </nav>
   );
 }
@@ -76,6 +88,7 @@ export async function playScreen(c: Context<AppEnv>): Promise<Response> {
   if (play === null) return notFound(c);
   const { harness, item, stage } = play;
   const learnings = new Map(Object.entries(play.learnings));
+  const zulipUrl = itemTopicUrl(zulipConfigOf(c.env), harness.jdArea, item.zulipTopic);
   const spec = {
     title: item.title,
     current: itemPath(harness.id, item.itemId),
@@ -95,7 +108,7 @@ export async function playScreen(c: Context<AppEnv>): Promise<Response> {
     spec,
     <>
       <PageHead eyebrow="Item" title={item.title} lede={`At ${stage.title} on ${harness.key}`} />
-      <Links play={play} />
+      <Links play={play} zulipUrl={zulipUrl} />
       <ol class="m-0 flex list-none flex-col gap-2 p-0">
         {play.events.map((event) => (
           <PlayRow event={event} learnings={learnings} />
