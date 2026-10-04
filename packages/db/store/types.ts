@@ -149,6 +149,8 @@ export type RecentEvents = {
   readonly names: readonly HarnessEvent['name'][] | null;
   readonly agentsOnly: boolean;
   readonly limit: number;
+  readonly harnessIds?: readonly string[];
+  readonly evidencePerson?: string;
 };
 export type PersonaEventCount = {
   readonly harnessId: string;

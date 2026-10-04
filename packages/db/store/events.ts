@@ -193,6 +193,12 @@ export function recentQuery(executor: AnyExecutor, query: RecentEvents) {
         gte(harnessEvents.at, query.since),
         query.names === null ? undefined : inArray(harnessEvents.name, [...query.names]),
         query.agentsOnly ? notLike(harnessEvents.actor, 'human:%') : undefined,
+        query.harnessIds === undefined || query.harnessIds.length === 0
+          ? undefined
+          : inArray(harnessEvents.harnessId, [...query.harnessIds]),
+        query.evidencePerson === undefined
+          ? undefined
+          : sql`${harnessEvents.evidence}->>'personId' = ${query.evidencePerson}`,
       ),
     )
     .orderBy(desc(harnessEvents.at), asc(harnessEvents.harnessId), desc(harnessEvents.position))
@@ -205,6 +211,7 @@ async function recent(
 ): Promise<readonly HarnessEvent[]> {
   const rows = recentQuery(executor, query);
   if (query.names !== null && query.names.length === 0) return [];
+  if (query.harnessIds?.length === 0) return [];
   return (await rows).map(toEvent);
 }
 

@@ -108,7 +108,7 @@ async function lapsedCapSaysSo(scene: Waiting): Promise<void> {
   expect((await scene.world.kernel.views.waitingOn(caller)).lapsedCapped).toBe(true);
 }
 
-async function orphanCapSaysSo(scene: Waiting): Promise<void> {
+async function orphansElsewhereTakeNoSlot(scene: Waiting): Promise<void> {
   const caller = simCaller(scene.world, scene.owner);
   expect((await scene.world.kernel.views.waitingOn(caller)).lapsedCapped).toBe(false);
   const elsewhere = await createSimHarness(scene.world, software, {
@@ -120,7 +120,7 @@ async function orphanCapSaysSo(scene: Waiting): Promise<void> {
     count: VIEW_LIMIT,
     at: new Date(scene.world.adapters.clock.now().getTime() - 60_000),
   });
-  expect((await scene.world.kernel.views.waitingOn(caller)).lapsedCapped).toBe(true);
+  expect((await scene.world.kernel.views.waitingOn(caller)).lapsedCapped).toBe(false);
 }
 
 describe('failed runs on Home', () => {
@@ -132,6 +132,6 @@ describe('failed runs on Home', () => {
     inWaiting(unreadableTakeNoSlot));
   it('Home says it is capped when more delegations lapsed than the read takes', () =>
     inWaiting(lapsedCapSaysSo));
-  it('Home says it is capped when lapses on other harnesses fill the read for other admins', () =>
-    inWaiting(orphanCapSaysSo));
+  it('lapses on harnesses the admin does not administer take no place in the orphan read', () =>
+    inWaiting(orphansElsewhereTakeNoSlot));
 });
