@@ -219,7 +219,7 @@ async function fragmentOnly(db: Database): Promise<void> {
   expect(page.headers.get('cache-control')).toBe('no-store');
   expect(page.headers.get('vary')).toBe('x-uw-fragment');
   expect(page.text).not.toMatch(/<html|<main|<nav|<!DOCTYPE/i);
-  const marker = `<div data-live="" data-live-harness="${item.harnessId}" data-cursor="`;
+  const marker = `<div data-live="" data-live-harness="${item.harnessId}" data-live-screen="home" data-cursor="`;
   expect(page.text.startsWith(marker)).toBe(true);
   expect(page.text.slice(marker.length)).toMatch(/^[1-9]\d*" data-refresh-every="60000"><\/div>/);
   expect(page.text).toContain('data-refresh-every="60000"');

@@ -12,6 +12,7 @@ type LiveDeps = {
 type Watched = {
   readonly harnessId: string;
   readonly itemId: string | null;
+  readonly screen: string | null;
   readonly cursor: number;
 };
 
@@ -26,15 +27,24 @@ function watchedOf(markers: readonly Element[]): readonly Watched[] {
     seen.set(harnessId, {
       harnessId,
       itemId: marker.getAttribute('data-live-item'),
+      screen: marker.getAttribute('data-live-screen'),
       cursor: wholeNumber.test(cursor) ? Number(cursor) : 0,
     });
   }
   return [...seen.values()];
 }
 
-function liveUrl(location: Location, harnessId: string): string {
+function watchQuery(watched: Watched): string {
+  if (watched.screen === null) return '';
+  const params = new URLSearchParams({ screen: watched.screen });
+  if (watched.screen === 'item' && watched.itemId !== null) params.set('item', watched.itemId);
+  return `?${params.toString()}`;
+}
+
+function liveUrl(location: Location, watched: Watched): string {
   const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${scheme}//${location.host}/api/harness/${encodeURIComponent(harnessId)}/live`;
+  const path = `/api/harness/${encodeURIComponent(watched.harnessId)}/live`;
+  return `${scheme}//${location.host}${path}${watchQuery(watched)}`;
 }
 
 function refreshEvery(root: Document, markers: readonly Element[], deps: LiveDeps): void {
@@ -54,7 +64,7 @@ export function startLive(root: Document, deps: LiveDeps): void {
       harnessId: watched.harnessId,
       cursor: watched.cursor,
       read: readEvents(deps.fetch, watched.harnessId, watched.itemId),
-      connect: () => deps.connect(liveUrl(root.location, watched.harnessId)),
+      connect: () => deps.connect(liveUrl(root.location, watched)),
       onEvents: () => void deps.refresher.refresh(),
       timers: deps.timers,
     });

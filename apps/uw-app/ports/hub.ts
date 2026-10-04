@@ -1,5 +1,6 @@
+import { z } from 'zod';
 import type { Logger } from '@uw/core/log';
-import type { Hub } from '@uw/harness';
+import type { Hub, PresenceQuery } from '@uw/harness';
 import type { Bindings, HubNamespace } from '../env.ts';
 import { systemTimers, type Timers } from '../timers.ts';
 import { hubNotWired } from './hub.not-wired.ts';
@@ -14,6 +15,26 @@ async function bounded(answer: Promise<Response>, timers: Timers): Promise<Respo
   } finally {
     stop.abort();
   }
+}
+
+const presenceSchema = z.strictObject({ present: z.boolean() });
+
+function presenceUrl(query: PresenceQuery): string {
+  const params = new URLSearchParams({ person: query.personId, screen: query.screen });
+  if (query.itemId !== null) params.set('item', query.itemId);
+  return `https://hub.internal/presence?${params.toString()}`;
+}
+
+async function presentOn(
+  namespace: HubNamespace,
+  timers: Timers,
+  query: PresenceQuery,
+): Promise<boolean | null> {
+  const stub = namespace.get(namespace.idFromName(query.harnessId));
+  const answer = await bounded(stub.fetch(presenceUrl(query), { method: 'GET' }), timers);
+  if (answer === 'timed_out' || answer.status !== 200) return null;
+  const parsed = presenceSchema.safeParse(await answer.json().catch(() => null));
+  return parsed.success ? parsed.data.present : null;
 }
 
 export function platformHub(namespace: HubNamespace, logger: Logger, timers: Timers): Hub {
@@ -45,7 +66,15 @@ export function platformHub(namespace: HubNamespace, logger: Logger, timers: Tim
         throw new Error(`hub wake answered ${answer.status}`);
       }
     },
-    present: async () => false,
+    present: async (query) => {
+      const present = await presentOn(namespace, timers, query).catch(() => null);
+      if (present !== null) return present;
+      logger.warn('hub presence unknown', {
+        outcome: 'hub_presence_unknown',
+        harness_id: query.harnessId,
+      });
+      return false;
+    },
   };
 }
 

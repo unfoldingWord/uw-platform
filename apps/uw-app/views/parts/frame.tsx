@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import type { Child } from 'hono/jsx';
+import type { LiveScreen } from '@uw/contracts';
 import type { Caller, Kernel } from '@uw/harness';
 import { Shell } from '@uw/ui/components/shell.tsx';
 import type { Crumb } from '@uw/ui/components/top-bar.tsx';
@@ -17,6 +18,7 @@ export type ScreenSpec = {
   readonly current: string;
   readonly crumbs: readonly Crumb[];
   readonly live?: {
+    readonly screen: LiveScreen;
     readonly harnesses: readonly LiveHarness[];
     readonly itemId?: string;
     readonly refreshEveryMs?: number;
@@ -64,6 +66,7 @@ function LiveMarkers(props: { readonly live: ScreenSpec['live'] }) {
         <div
           data-live=""
           data-live-harness={harness.harnessId}
+          data-live-screen={live.screen}
           data-live-item={live.itemId}
           data-cursor={harness.cursor}
           data-refresh-every={every}

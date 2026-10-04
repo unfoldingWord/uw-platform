@@ -74,7 +74,7 @@ export async function gatesScreen(c: Context<AppEnv>): Promise<Response> {
     title: 'Gates',
     current: gatesPath(),
     crumbs: [{ label: 'Home', href: homePath() }, { label: 'Gates' }],
-    live: { harnesses, refreshEveryMs: REFRESH_EVERY_MS },
+    live: { screen: 'gates' as const, harnesses, refreshEveryMs: REFRESH_EVERY_MS },
   };
   return renderScreen(
     c,

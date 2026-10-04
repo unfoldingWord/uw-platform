@@ -71,7 +71,7 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
     title: `${view.harness.key} flow`,
     current: flowPath(harnessId),
     crumbs: [{ label: 'Home', href: homePath() }, { label: view.harness.key }],
-    live: { harnesses: [{ harnessId, cursor }] },
+    live: { screen: 'flow' as const, harnesses: [{ harnessId, cursor }] },
   };
   return renderScreen(
     c,

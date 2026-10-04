@@ -84,7 +84,11 @@ export async function playScreen(c: Context<AppEnv>): Promise<Response> {
       { label: harness.key, href: flowPath(harness.id) },
       { label: 'Item' },
     ],
-    live: { harnesses: [{ harnessId: harness.id, cursor }], itemId: item.itemId },
+    live: {
+      screen: 'item' as const,
+      harnesses: [{ harnessId: harness.id, cursor }],
+      itemId: item.itemId,
+    },
   };
   return renderScreen(
     c,
