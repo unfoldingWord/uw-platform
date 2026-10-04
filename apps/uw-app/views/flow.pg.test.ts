@@ -172,7 +172,7 @@ async function hiddenIsMissing(world: BoardWorld): Promise<void> {
   expect([hidden.status, absent.status, malformed.status]).toEqual([404, 404, 404]);
   expect(hidden.text).toBe(absent.text);
   expect(malformed.text).toBe(absent.text);
-  expect(hidden.text).toContain('We could not find that page');
+  expect(hidden.text).toContain('You cannot open that page');
 }
 
 const loop: Template = {

@@ -11,7 +11,7 @@ export function notFound(c: Context<AppEnv>): Promise<Response> {
     c,
     { title: 'Not found', current: '', crumbs: [{ label: 'Not found' }], status: 404 },
     <>
-      <PageHead title="We could not find that page" />
+      <PageHead title="You cannot open that page" />
       <p>
         <a href={homePath()} class={`text-link underline ${focus}`}>
           Go to Home

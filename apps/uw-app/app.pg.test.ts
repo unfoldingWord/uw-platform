@@ -52,7 +52,7 @@ describe.skipIf(!testServer)('uw-app shell for a signed-in person', () => {
     withAppDatabase(async (db) => {
       const response = await signedIn(db, '/nowhere');
       expect(response.status).toBe(404);
-      expect(await response.text()).toContain('We could not find that page');
+      expect(await response.text()).toContain('You cannot open that page');
       expect((await signedIn(db, '/api/nowhere')).status).toBe(404);
     }));
 });
