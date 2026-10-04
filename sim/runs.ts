@@ -110,9 +110,9 @@ export async function itemInScope(
   return itemId;
 }
 
-function personaPrincipal(owner: Principal): Principal {
+export function personaPrincipal(owner: Principal, identity: string = personaIdentity): Principal {
   return principalSchema.parse({
-    identity: personaIdentity,
+    identity,
     kind: 'agent',
     personId: owner.personId,
     email: null,
