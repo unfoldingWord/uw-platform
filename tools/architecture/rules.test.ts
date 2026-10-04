@@ -312,7 +312,7 @@ describe('the islands rules', () => {
         'apps/uw-app/islands/browser/a.ts':
           "import '../live/session.ts'; import '../../../../packages/contracts/index.ts'; import '../../../../packages/ui/components/text.ts';",
         'apps/uw-app/assets/routes.ts': "import '../generated/islands.ts';",
-        'apps/uw-app/views/frame.tsx': "import '../generated/islands.ts';",
+        'apps/uw-app/views/parts/frame.tsx': "import '../../generated/islands.ts';",
       }),
     ).toEqual([]);
   });

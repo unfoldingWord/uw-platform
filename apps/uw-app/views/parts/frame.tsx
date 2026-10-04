@@ -4,10 +4,10 @@ import type { Caller, Kernel } from '@uw/harness';
 import { Shell } from '@uw/ui/components/shell.tsx';
 import type { Crumb } from '@uw/ui/components/top-bar.tsx';
 import { appCssPath } from '@uw/ui/generated/app-css';
-import type { AppEnv } from '../deps.ts';
-import { islandsPath } from '../generated/islands.ts';
-import { refuse } from '../http/outcomes.ts';
-import { platformKernel } from '../kernel.ts';
+import type { AppEnv } from '../../deps.ts';
+import { islandsPath } from '../../generated/islands.ts';
+import { refuse } from '../../http/outcomes.ts';
+import { platformKernel } from '../../kernel.ts';
 import { flowPath, gatesPath, healthPath, homePath } from './paths.ts';
 
 type LiveHarness = { readonly harnessId: string; readonly cursor: number };

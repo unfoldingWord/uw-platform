@@ -1,8 +1,8 @@
 import type { Context } from 'hono';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
-import { renderScreen } from '../frame.tsx';
-import { homePath } from '../paths.ts';
+import { renderScreen } from '../parts/frame.tsx';
+import { homePath } from '../parts/paths.ts';
 
 const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
 
