@@ -11,7 +11,7 @@ import { spendCapOf } from './spend-cap.ts';
 
 type HealthDeps = Pick<AppDeps, 'clock' | 'timers'>;
 
-const drillThrough = `/:indicator{${AGENT_PLANE_INDICATORS.join('|')}}`;
+const drillThrough = `/:indicator{(?:${AGENT_PLANE_INDICATORS.join('|')})$}`;
 
 function platformReport(c: Context<AppEnv>, deps: HealthDeps, hubHealth: HubHealth) {
   const probe = { clock: () => Date.now(), timers: deps.timers, hubHealth };
