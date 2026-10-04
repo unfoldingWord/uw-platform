@@ -16,7 +16,19 @@ const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
 
 type Shown = { readonly href: string; readonly text: string; readonly harnessId: string };
 
-function shown(row: WaitingRow): Shown {
+function lapsedText(
+  row: Extract<WaitingRow, { kind: 'delegation_lapsed' }>,
+  viewer: string | null,
+): string {
+  const { harness, delegation } = row;
+  const lapsed = formatInstant(delegation.lapsedAt ?? delegation.expiresAt);
+  if (delegation.personId === viewer) {
+    return `Your delegation to ${delegation.persona} on ${harness.key} lapsed ${lapsed}`;
+  }
+  return `A delegation to ${delegation.persona} on ${harness.key} lapsed ${lapsed} because its person no longer holds admin`;
+}
+
+function shown(row: WaitingRow, viewer: string | null): Shown {
   if (row.kind === 'gate') {
     const { harness, stage, item } = row.gate;
     return {
@@ -26,12 +38,10 @@ function shown(row: WaitingRow): Shown {
     };
   }
   if (row.kind === 'delegation_lapsed') {
-    const { harness, delegation } = row;
-    const lapsed = formatInstant(delegation.lapsedAt ?? delegation.expiresAt);
     return {
-      href: flowPath(harness.id),
-      text: `Your delegation to ${delegation.persona} on ${harness.key} lapsed ${lapsed}`,
-      harnessId: harness.id,
+      href: flowPath(row.harness.id),
+      text: lapsedText(row, viewer),
+      harnessId: row.harness.id,
     };
   }
   const why = reasonText(row.run.failure ?? 'run_failed');
@@ -84,7 +94,7 @@ export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
   if (screen === null) return screenRefusal(c);
   const cursors = await screen.kernel.views.cursors(screen.caller, { at: screen.at });
   const waiting = await screen.kernel.views.waitingOn(screen.caller, { at: screen.at });
-  const rows = waiting.rows.map(shown);
+  const rows = waiting.rows.map((row) => shown(row, screen.caller.actor.personId));
   const notes = capNotes(waiting);
   const harnesses = liveCursors(
     cursors,
