@@ -175,6 +175,7 @@ export type DelegationsGateway = {
       at: Date,
       limit: number,
     ): Promise<readonly Delegation[]>;
+    expiredUnlapsed(at: Date, limit: number): Promise<readonly Delegation[]>;
   };
   readonly write: {
     insert(delegation: Delegation, traceId: string): Promise<void>;
