@@ -12,6 +12,8 @@ const milestones = [
   'lease_expired',
   'branch_abandoned',
   'submitted_to_gate',
+  'zulip_topic_linked',
+  'comment_recorded',
   'ship_refused',
   'ship_refused',
   'gate_refused_to_agent',

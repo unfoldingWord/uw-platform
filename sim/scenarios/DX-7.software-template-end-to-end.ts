@@ -11,7 +11,7 @@ import { itemLog } from '../ship-fixtures.ts';
 export const scenario = defineScenario({
   id: 'DX-7',
   title:
-    'one kickstarted item travels the software template from Package to Close with a hosted run and an external runner: a claim, a held premise, the lease warning and expiry, the PR declaration, the ship rule refusing, agents refused at the gate, a person approving, the merge connector, a measurement at Validate, a refused Close, a Close with a learning, and an Iterate beat under a delegation that lapses',
+    'one kickstarted item travels the software template from Package to Close with a hosted run and an external runner: a claim, a held premise, the lease warning and expiry, the PR declaration, a gate wake reaching only the people who can decide and a Zulip reply that decides nothing, the ship rule refusing, agents refused at the gate, a person approving, the merge connector, a measurement at Validate, a refused Close, a Close with a learning, and an Iterate beat under a delegation that lapses',
   run: async (world) => {
     const journey = await travelToShip(world);
     await travelThroughShip(journey);
