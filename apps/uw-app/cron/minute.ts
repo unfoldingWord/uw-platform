@@ -14,6 +14,7 @@ import { cronLogger, type CronDeps, type CronJob } from './job.ts';
 
 const SWEEP_LIMIT = 200;
 const BEAT_LIMIT = 10;
+const EXPIRY_LIMIT = 200;
 
 type Minute = {
   readonly kernel: Kernel;
@@ -36,6 +37,19 @@ async function sweep({ kernel, caller, logger }: Minute): Promise<void> {
     step: 'sweep',
     outcome: 'leases_swept',
     expired: swept.value.expired.length,
+  });
+}
+
+async function expire({ kernel, caller, logger }: Minute): Promise<void> {
+  const swept = await kernel.delegations.lapseExpired(caller, { limit: EXPIRY_LIMIT });
+  if (swept.status !== 'accepted') {
+    logger.warn('delegation expiry refused', { step: 'expiry', outcome: swept.reason });
+    return;
+  }
+  logger.info('delegations lapsed', {
+    step: 'expiry',
+    outcome: 'delegations_lapsed',
+    lapsed: swept.value.lapsed.length,
   });
 }
 
@@ -110,6 +124,7 @@ async function minuteWith(
   const minute = { kernel, caller, deps, logger };
   try {
     await guarded(minute, 'sweep', sweep);
+    await guarded(minute, 'expiry', expire);
     await guarded(minute, 'breaker', checkBreaker);
     await guarded(minute, 'beat', beat);
   } finally {
