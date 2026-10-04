@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, isNull, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, isNull, lte, sql, type SQL } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
 import { delegations } from '../schema.ts';
 import { checkedRows } from './limits.ts';
@@ -58,6 +58,22 @@ async function lapsedFor(
   return rows.map(toDelegation);
 }
 
+async function expiredUnlapsed(executor: AnyExecutor, at: Date, limit: number) {
+  const rows = await executor
+    .select()
+    .from(delegations)
+    .where(
+      and(
+        isNull(delegations.revokedAt),
+        isNull(delegations.lapsedAt),
+        lte(delegations.expiresAt, at),
+      ),
+    )
+    .orderBy(asc(delegations.expiresAt), asc(delegations.id))
+    .limit(checkedRows(limit, 'expired delegation'));
+  return rows.map(toDelegation);
+}
+
 export function bindDelegations(executor: AnyExecutor): DelegationsGateway {
   return {
     read: {
@@ -77,6 +93,7 @@ export function bindDelegations(executor: AnyExecutor): DelegationsGateway {
         return rows.map(toDelegation);
       },
       lapsedFor: (personId, since, at, limit) => lapsedFor(executor, personId, since, at, limit),
+      expiredUnlapsed: (at, limit) => expiredUnlapsed(executor, at, limit),
     },
     write: {
       insert: (delegation, traceId) =>
