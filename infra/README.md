@@ -19,7 +19,7 @@ pnpm --filter @uw/uw-app deploy:staging
 
 `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` come from the shell or from the CI secret store. They are never written to a wrangler file. The token is scoped to Workers Scripts edit on the one account.
 
-The deployed commit reaches the Worker as the `COMMIT_SHA` var, set on the deploy command line. The value in the file is the placeholder `unknown`, which `/health` reports when nothing was passed.
+The deployed commit reaches the Worker as the `COMMIT_SHA` var, set on the deploy command line. The value in the file is the placeholder `unknown`, which `/health/probe` reports when nothing was passed.
 
 ### Where each later binding goes
 
@@ -45,7 +45,7 @@ The classes `ClaudeCodeSandbox` and `CodexSandbox` (`apps/uw-app/engines/sandbox
 
 ## Access (FD-7)
 
-`access/uw-app.json` declares Cloudflare Access in front of `uw-app` on staging and every per-PR Worker, as three applications. The app application covers the host: people sign in with Google, and no service token is admitted. The `mcp` application covers `/mcp` alone with its own AUD tag: people sign their agents in with Google (through `cloudflared access`), and any valid service token passes as a non-identity request and becomes a non-interactive agent principal. Because the two applications have different audiences, a token an agent holds for `/mcp` is refused on every other path, and a browser session is refused on `/mcp` (R34). `/health` alone is bypassed, on staging and on every per-PR Worker, so the deploy jobs (`deploy-staging.yml` and `deploy-pr.yml`, through `await-health.sh`) can read the deployed commit.
+`access/uw-app.json` declares Cloudflare Access in front of `uw-app` on staging and every per-PR Worker, as three applications. The app application covers the host: people sign in with Google, and no service token is admitted. The `mcp` application covers `/mcp` alone with its own AUD tag: people sign their agents in with Google (through `cloudflared access`), and any valid service token passes as a non-identity request and becomes a non-interactive agent principal. Because the two applications have different audiences, a token an agent holds for `/mcp` is refused on every other path, and a browser session is refused on `/mcp` (R34). `/health/probe` alone is bypassed, on staging and on every per-PR Worker, so the deploy jobs (`deploy-staging.yml` and `deploy-pr.yml`, through `await-health.sh`) can read the deployed commit; `/health` itself shows the agent plane and needs a signed-in person. The app application sends its session cookie `SameSite=Lax`, so a form posted from another site carries no session. Applying either change on Cloudflare is a person's (Waiting on a person).
 
 The allow policy admits any Google account on purpose. A person outside `@unfoldingword.org` must reach the app to be recorded as pending (FD-7). Authorization is the grants table, not Access.
 
@@ -172,4 +172,4 @@ Then, with Cloudflare access:
 - Replace every `set-at-go-live` with the real Hyperdrive id, Access AUD tag and Access team domain.
 - Once every resource exists, copy each `wrangler.go-live.toml` over its `wrangler.toml` in one reviewed PR.
 
-Until that PR, the per-PR and staging Workers run with no database and no queue, `/health` says so, and every go-live job logs a notice and stays green. After it, per-PR Workers bind to staging's Hyperdrive (P33).
+Until that PR, the per-PR and staging Workers run with no database and no queue, `/health/probe` says so, and every go-live job logs a notice and stays green. After it, per-PR Workers bind to staging's Hyperdrive (P33).

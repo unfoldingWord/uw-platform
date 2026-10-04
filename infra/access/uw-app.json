@@ -15,7 +15,8 @@
     ],
     "allowed_idps": ["<google-idp-id>"],
     "auto_redirect_to_identity": true,
-    "session_duration": "24h"
+    "session_duration": "24h",
+    "same_site_cookie_attribute": "lax"
   },
   "policies": [
     {
@@ -34,15 +35,15 @@
     "application": {
       "name": "uw-app health probe",
       "type": "self_hosted",
-      "domain": "uw-app-staging.unfoldingword.workers.dev/health",
+      "domain": "uw-app-staging.unfoldingword.workers.dev/health/probe",
       "destinations": [
         {
           "type": "public",
-          "uri": "uw-app-staging.unfoldingword.workers.dev/health"
+          "uri": "uw-app-staging.unfoldingword.workers.dev/health/probe"
         },
         {
           "type": "public",
-          "uri": "uw-app-pr-*.unfoldingword.workers.dev/health"
+          "uri": "uw-app-pr-*.unfoldingword.workers.dev/health/probe"
         }
       ],
       "allowed_idps": []
