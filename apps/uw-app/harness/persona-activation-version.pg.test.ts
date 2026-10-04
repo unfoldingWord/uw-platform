@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { writePageAsAgent } from '../pages/agent-write.ts';
 import { platformStore } from '../ports/store.ts';
 import { systemClock } from '../ports/clock.ts';
-import { agentOf, kernelOn, personOn } from '../testing/kernel.ts';
+import { agentOf, kernelOn, personasOn, personOn } from '../testing/kernel.ts';
 
 const ianId = '00000000-0000-4000-8000-000000000001';
 const pageId = '00000000-0000-4000-8000-000000008451';
@@ -53,7 +53,7 @@ async function scene(db: Database) {
     bodyMd: 'Iterate tunes a product from its measurements.',
     frontmatter: persona(ian, harnessId, ['search_pages']),
   });
-  return { ian, harnessId, kernel };
+  return { ian, harnessId };
 }
 
 async function agentWidens(db: Database, ian: Principal, harnessId: string) {
@@ -81,10 +81,10 @@ describe.skipIf(!testServer)('persona activation is pinned to the version the pe
     const database = await createMigratedDatabase(testServer ?? '');
     const db = createClient(database.connectionString);
     try {
-      const { ian, harnessId, kernel } = await scene(db);
+      const { ian, harnessId } = await scene(db);
       expect(await agentWidens(db, ian, harnessId)).toMatchObject({ ok: true });
       const input = { pageId, expectedVersion: 1, harnessId };
-      const outcome = await kernel.personas.activate(caller(ian), input);
+      const outcome = await personasOn(db, systemClock).activate(caller(ian), input);
       expect(outcome).toEqual({
         status: 'error',
         reason: 'stale_version',

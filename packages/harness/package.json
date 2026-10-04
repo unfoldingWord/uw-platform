@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./index.ts",
+    "./persona-activation": "./persona-activation.ts",
     "./port-contracts/*": "./port-contracts/*.ts",
     "./testing": "./testing.ts"
   },

@@ -7,6 +7,7 @@ import {
   type ActivatedPersona,
   type KernelOutcome,
 } from '@uw/harness';
+import { createPersonaActivation } from '@uw/harness/persona-activation';
 import { createSimHarness, simCaller, simPerson } from './fixtures.ts';
 import type { World } from './world.ts';
 
@@ -106,7 +107,7 @@ export async function activatePersona(
 ): Promise<KernelOutcome<ActivatedPersona>> {
   const harnessId = await frontmatterHarness(world, pageId);
   const input = { pageId, expectedVersion, harnessId };
-  return world.kernel.personas.activate(simCaller(world, actor), input);
+  return createPersonaActivation(world.adapters).activate(simCaller(world, actor), input);
 }
 
 export function harnessLog(world: World, harnessId: string): Promise<readonly HarnessEvent[]> {

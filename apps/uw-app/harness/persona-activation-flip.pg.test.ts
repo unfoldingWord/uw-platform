@@ -7,7 +7,7 @@ import { software, type Caller, type Grants, type KernelOutcome } from '@uw/harn
 import { awaitBlocked } from '@uw/harness/port-contracts/lock-wait';
 import { describe, expect, it } from 'vitest';
 import { platformGrants } from '../ports/grants.ts';
-import { kernelOn, personOn } from '../testing/kernel.ts';
+import { kernelOn, personasOn, personOn } from '../testing/kernel.ts';
 
 const ianId = '00000000-0000-4000-8000-000000000001';
 const pageId = '00000000-0000-4000-8000-000000009901';
@@ -98,13 +98,13 @@ async function activateTwice(flip: Flip): Promise<readonly KernelOutcome<unknown
   const atLock = new Promise<void>((resolve) => void (reached = resolve));
   let resume = (): void => undefined;
   const resumed = new Promise<void>((resolve) => void (resume = resolve));
-  const paused = kernelOn(flip.first, clock, {
+  const paused = personasOn(flip.first, clock, {
     grants: heldGrants(platformGrants(flip.first), reached, resumed),
   });
   const input = { pageId, expectedVersion: 1, harnessId: flip.harnessId };
-  const held = paused.personas.activate(caller(flip.ian), input);
+  const held = paused.activate(caller(flip.ian), input);
   await atLock;
-  const other = kernelOn(flip.second, clock).personas.activate(caller(flip.ian), input);
+  const other = personasOn(flip.second, clock).activate(caller(flip.ian), input);
   await awaitBlocked(() => lockWaiters(flip.first));
   resume();
   return Promise.all([held, other]);

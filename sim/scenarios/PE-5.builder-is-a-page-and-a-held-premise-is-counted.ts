@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { personaSlugOf, type HarnessEvent, type Identity } from '@uw/contracts';
 import { seedPage } from '@uw/db/test-seed';
 import { personaPageDraft, readAllEvents, software, templatePersonas } from '@uw/harness';
+import { createPersonaActivation } from '@uw/harness/persona-activation';
 import {
   createSimHarness,
   readSpend,
@@ -63,7 +64,7 @@ export const scenario = defineScenario({
     await draftPersonas(world, harness, admin.identity);
     const pageId = pageIds.get('builder-hosted') ?? '';
     const input = { pageId, expectedVersion: 1, harnessId: harness.id };
-    value(await world.kernel.personas.activate(ian, input));
+    value(await createPersonaActivation(world.adapters).activate(ian, input));
     value(
       await world.kernel.stages.setHostedBuilder(ian, { harnessId: harness.id, enabled: true }),
     );

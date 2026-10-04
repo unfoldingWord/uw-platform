@@ -1,7 +1,8 @@
 import { verbRegistry, type Identity, type Principal, type VerbDefinition } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { resaveSeededPage } from '@uw/db/test-seed';
-import { createPersonaCommands, type ActivatedPersona, type KernelOutcome } from '@uw/harness';
+import type { ActivatedPersona, KernelOutcome } from '@uw/harness';
+import { createPersonaActivation } from '@uw/harness/persona-activation';
 import { afterAll, describe, expect, it } from 'vitest';
 import { simAgent, simCaller, simPerson } from '../fixtures.ts';
 import {
@@ -90,7 +91,7 @@ function servedListGifts(): readonly VerbDefinition[] {
 
 const withFixtureRegistry: Activate = async (scene) => {
   const kim: Principal = await simPerson(scene.world, 5, admin3039);
-  const personas = createPersonaCommands(scene.world.adapters, servedListGifts());
+  const personas = createPersonaActivation(scene.world.adapters, servedListGifts());
   const input = { pageId, expectedVersion: 1, harnessId: scene.bmlId };
   return personas.activate(simCaller(scene.world, kim), input);
 };

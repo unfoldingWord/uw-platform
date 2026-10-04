@@ -32,6 +32,7 @@ const capabilityKeys = [
   'importIssue',
   'kernel',
   'pages',
+  'personaActivation',
   'stages',
 ];
 
@@ -68,6 +69,9 @@ async function contextWithoutEnv(db: Database): Promise<void> {
   expect(Object.keys(enqueue ?? {}).sort()).toEqual(capabilityKeys);
   expect(Object.keys(approved ?? {}).sort()).toEqual(capabilityKeys);
   expect(() => enqueue?.gateKernel()).toThrow(/enqueue/);
+  expect(() => enqueue?.personaActivation()).toThrow(/enqueue/);
+  expect(() => approved?.personaActivation()).toThrow(/approve/);
+  expect(Object.keys(enqueue?.kernel ?? {})).not.toContain('personas');
   expect(github.opened()).toBe(0);
   expect(approved?.gateKernel()).not.toBe(approved?.kernel);
   expect(github.opened()).toBe(1);
