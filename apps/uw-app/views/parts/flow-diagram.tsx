@@ -164,7 +164,7 @@ export function FlowDiagram(props: {
         role="group"
         aria-labelledby={`${titleId} ${descId}`}
         viewBox={`0 0 ${width} ${height}`}
-        class="h-auto w-full min-w-0"
+        class="h-auto w-full min-w-[var(--uw-flow-diagram)]"
       >
         <title id={titleId}>{`${props.harnessKey} as the build, measure, learn loop`}</title>
         <desc id={descId}>{`Stages in order: ${placed.join(', then ')}`}</desc>
