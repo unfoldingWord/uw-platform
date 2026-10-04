@@ -5,7 +5,7 @@ import type { KernelOutcome } from '../outcome.ts';
 import type { Ports } from '../ports.ts';
 import { boardView } from './board.ts';
 import { flowView } from './flow.ts';
-import { decidableGates, decideAbility } from './gates.ts';
+import { decidableGates, decideAbility, gateDecided } from './gates.ts';
 import { planeList } from './plane-list.ts';
 import { planeTotals } from './plane.ts';
 import { playByPlay, type PlayInput } from './play.ts';
@@ -48,6 +48,11 @@ export type ViewReads = {
     options?: ReadOptions,
   ): Promise<KernelOutcome<GateView>>;
   decideAbility(caller: Caller, gate: Gate, options?: ReadOptions): DecideAbility;
+  decided(
+    caller: Caller,
+    input: { readonly itemId: string },
+    options?: ReadOptions,
+  ): Promise<boolean>;
   waitingOn(caller: Caller, options?: ReadOptions): Promise<Waiting>;
   playByPlay(
     caller: Caller,
@@ -90,6 +95,8 @@ export function createViewReads(ports: ViewPorts): ViewReads {
     },
     gate: (caller, input, options) => gateView(ports, caller, input, { at: instant(options) }),
     decideAbility: (caller, gate, options) => decideAbility(caller.actor, gate, instant(options)),
+    decided: (caller, { itemId }, options) =>
+      store.transaction((tx) => gateDecided(ports, tx, caller, itemId, instant(options))),
     waitingOn: (caller, options) => {
       const at = instant(options);
       return store.transaction((tx) => waitingOn(ports, tx, caller, at));

@@ -111,6 +111,12 @@ async function notAtPersonGate(scene: GatesWorld): Promise<void> {
   const ability = (gate: Parameters<typeof scene.world.kernel.views.decideAbility>[1]) =>
     scene.world.kernel.views.decideAbility(caller, gate);
   expect(ability({ harness: read.harness, stage: read.stage, item: parked })).toEqual(notAtGate);
+  const asViewer = scene.world.kernel.views.decideAbility(callerOf(scene, scene.viewer), {
+    harness: read.harness,
+    stage: read.stage,
+    item: parked,
+  });
+  expect(asViewer).toEqual(notAtGate);
   const rows = await scene.world.kernel.views.gates(caller);
   const row = rows.find((entry) => entry.item.itemId === scene.standard);
   if (row === undefined) throw new Error('no gate for the standard item');
@@ -129,6 +135,17 @@ async function oneGate(scene: GatesWorld): Promise<void> {
   expect(reasonOf(await scene.world.kernel.views.gate(stranger, input))).toBe('item_not_found');
 }
 
+async function decidedOnce(scene: GatesWorld): Promise<void> {
+  const admin = callerOf(scene, scene.areaAdmin);
+  const input = { itemId: scene.standard };
+  expect(await scene.world.kernel.views.decided(admin, input)).toBe(false);
+  const decision = { ...input, decision: 'reject' as const, reason: null, findings: [] };
+  expect(reasonOf(await scene.world.kernel.gates.decide(admin, decision))).toBe('accepted');
+  expect(await scene.world.kernel.views.decided(admin, input)).toBe(true);
+  const stranger = callerOf(scene, await simPerson(scene.world, 3, []));
+  expect(await scene.world.kernel.views.decided(stranger, input)).toBe(false);
+}
+
 describe('the gates a person can decide', () => {
   gatesIt(
     'WB-6 the gates list holds parked items at human-approval stages the person can decide',
@@ -144,10 +161,11 @@ describe('the gates a person can decide', () => {
     abilityReasons,
   );
   gatesIt(
-    'WB-6 decide ability refuses item_not_at_gate unless the item is parked at a stage a person decides',
+    'WB-6 decide ability refuses item_not_at_gate to an admin and a viewer alike unless the item is parked at a stage a person decides',
     notAtPersonGate,
   );
   gatesIt('the views gate read answers the gate view of one item', oneGate);
+  gatesIt('the decided read is true once a decision is recorded on a readable item', decidedOnce);
 });
 
 async function inWaiting(work: (scene: Waiting) => Promise<void>): Promise<void> {
