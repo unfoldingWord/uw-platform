@@ -1,5 +1,6 @@
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { afterAll, describe, expect, it } from 'vitest';
+import { travelThroughShip } from './at-ship.ts';
 import { heads } from './cast.ts';
 import { travelToShip } from './to-ship.ts';
 import { itemOf } from '../runs.ts';
@@ -30,5 +31,14 @@ describe('the end-to-end journey on the software template', () => {
       });
       const wrong = await itemOf(world, journey.wrongItemId);
       expect(wrong).toMatchObject({ stageKey: 'scope', holder: null, gateStatus: 'working' });
+    }));
+
+  it('refuses the approve on the facts and for every agent, then a person approves and the merge connector runs once', () =>
+    inWorld(async (world) => {
+      const journey = await travelToShip(world);
+      await travelThroughShip(journey);
+      const item = await itemOf(world, journey.itemId);
+      expect(item).toMatchObject({ stageKey: 'validate', gateStatus: 'working', holder: null });
+      expect(world.adapters.connectors.calls()).toHaveLength(1);
     }));
 });
