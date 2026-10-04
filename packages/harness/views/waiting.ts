@@ -64,7 +64,9 @@ async function lapsedRows(scope: Scope): Promise<LapsedRows> {
   return { rows, capped: lapsed.length === VIEW_LIMIT };
 }
 
-async function orphanedDelegations(scope: Scope): Promise<readonly Delegation[]> {
+type Orphaned = { readonly delegations: readonly Delegation[]; readonly capped: boolean };
+
+async function orphanedDelegations(scope: Scope): Promise<Orphaned> {
   const since = new Date(scope.at.getTime() - WAITING_WINDOW_MS);
   const query = {
     since,
@@ -81,18 +83,18 @@ async function orphanedDelegations(scope: Scope): Promise<readonly Delegation[]>
     const delegation = await scope.tx.delegations.read.byId(id);
     if (delegation !== null && delegation.personId !== scope.personId) found.set(id, delegation);
   }
-  return [...found.values()];
+  return { delegations: [...found.values()], capped: lapses.length === VIEW_LIMIT };
 }
 
 async function orphanedRows(scope: Scope): Promise<LapsedRows> {
-  const delegations = await orphanedDelegations(scope);
+  const { delegations, capped } = await orphanedDelegations(scope);
   const rows: WaitingRow[] = [];
   for (const delegation of delegations) {
     const harness = scope.administered.get(delegation.harnessId);
     if (harness === undefined || (await renewed(scope, delegation))) continue;
     rows.push({ kind: 'delegation_lapsed', harness, delegation });
   }
-  return { rows, capped: false };
+  return { rows, capped };
 }
 
 async function failedRows(scope: Scope): Promise<FailedRows> {
@@ -133,7 +135,7 @@ export async function waitingOn(
   const scope = { tx, personId, readable, administered, at };
   const own = await lapsedRows(scope);
   const orphaned = await orphanedRows(scope);
-  const lapsed = { rows: [...own.rows, ...orphaned.rows], capped: own.capped };
+  const lapsed = { rows: [...own.rows, ...orphaned.rows], capped: own.capped || orphaned.capped };
   const failed = await failedRows(scope);
   const gateRows = gates.rows.map((gate): WaitingRow => ({ kind: 'gate', gate }));
   return {

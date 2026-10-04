@@ -1,5 +1,5 @@
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
-import { seedLapsedDelegations } from '@uw/db/test-seed';
+import { seedGrantLostLapses, seedLapsedDelegations } from '@uw/db/test-seed';
 import { FAILED_RUNS_LIMIT, VIEW_LIMIT, software, type RunRow } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createSimHarness, simCaller, simPerson } from '../fixtures.ts';
@@ -108,6 +108,21 @@ async function lapsedCapSaysSo(scene: Waiting): Promise<void> {
   expect((await scene.world.kernel.views.waitingOn(caller)).lapsedCapped).toBe(true);
 }
 
+async function orphanCapSaysSo(scene: Waiting): Promise<void> {
+  const caller = simCaller(scene.world, scene.owner);
+  expect((await scene.world.kernel.views.waitingOn(caller)).lapsedCapped).toBe(false);
+  const elsewhere = await createSimHarness(scene.world, software, {
+    key: 'elsewhere',
+    jdArea: '20-29',
+  });
+  await seedGrantLostLapses(scene.world.database.db, {
+    harnessId: elsewhere.harness.id,
+    count: VIEW_LIMIT,
+    at: new Date(scene.world.adapters.clock.now().getTime() - 60_000),
+  });
+  expect((await scene.world.kernel.views.waitingOn(caller)).lapsedCapped).toBe(true);
+}
+
 describe('failed runs on Home', () => {
   it('WB-9 a person still sees their own older failed run after more than 200 newer failures across the organisation', () =>
     inWaiting(ownOlderFailureShows));
@@ -117,4 +132,6 @@ describe('failed runs on Home', () => {
     inWaiting(unreadableTakeNoSlot));
   it('Home says it is capped when more delegations lapsed than the read takes', () =>
     inWaiting(lapsedCapSaysSo));
+  it('Home says it is capped when lapses on other harnesses fill the read for other admins', () =>
+    inWaiting(orphanCapSaysSo));
 });
