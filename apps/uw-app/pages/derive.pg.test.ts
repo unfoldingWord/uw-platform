@@ -223,38 +223,39 @@ async function retiredSupersedingDoesNotFlag(db: Database): Promise<void> {
   expect(nothing.frontmatter['contradicts']).toBe(false);
 }
 
-async function activeEditReturnsToSuggested(db: Database): Promise<void> {
-  const person = await editor(db);
-  const id = crypto.randomUUID();
-  const active = { ...persona, requires_tools: persona.toolset, status: 'active' };
-  await seedPage(db, {
-    id,
-    type: 'persona',
-    status: 'active',
-    jdArea: AREA,
-    slug: 'persona-active',
-    title: 'Active',
-    bodyMd: 'Instructions.',
-    frontmatter: active,
-  });
+const activePersona = { ...persona, requires_tools: persona.toolset, status: 'active' };
+
+async function seededActive(db: Database, slug: string): Promise<Page> {
   const page: Page = {
-    id,
+    id: crypto.randomUUID(),
     type: 'persona',
     jdArea: AREA,
-    slug: 'persona-active',
+    slug,
     title: 'Active',
     parentId: null,
-    frontmatter: active,
+    frontmatter: activePersona,
     bodyMd: 'Instructions.',
     version: 1,
     status: 'active',
   };
+  const { id, type, status, jdArea, title, bodyMd, frontmatter } = page;
+  await seedPage(db, { id, type, status, jdArea, slug, title, bodyMd, frontmatter });
+  return page;
+}
+
+async function activeEditReturnsToSuggested(db: Database): Promise<void> {
+  const person = await editor(db);
+  const page = await seededActive(db, 'persona-active');
   const retitled = pageOf(await update(db, person, page, { title: 'Still active' }));
   expect(retitled.status).toBe('active');
-  const widened = { ...active, toolset: [...persona.toolset, 'write_page'] };
+  const widened = { ...activePersona, toolset: [...persona.toolset, 'write_page'] };
   const saved = pageOf(await update(db, person, retitled, { frontmatter: widened }));
   expect(saved.status).toBe('suggested');
   expect(saved.frontmatter['status']).toBe('suggested');
+  const other = await seededActive(db, 'persona-instructed');
+  const instructed = pageOf(await update(db, person, other, { bodyMd: 'New instructions.' }));
+  expect(instructed.status).toBe('suggested');
+  expect(instructed.frontmatter['status']).toBe('suggested');
 }
 
 describe.skipIf(!testServer)('the page writer derives persona and learning fields', () => {
