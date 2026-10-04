@@ -12,14 +12,16 @@ const properNouns: ReadonlySet<string> = new Set([
 ]);
 const emoji = /\p{Extended_Pictographic}/u;
 const scannedFiles = [
-  /^apps\/uw-app\/views\/.+\.tsx$/,
-  /^apps\/uw-app\/auth\/[^/]+\.tsx$/,
-  /^apps\/uw-app\/health\/[^/]+\.tsx$/,
-  /^packages\/ui\/components\/[^/]+\.tsx$/,
+  /^apps\/uw-app\/views\/.+\.tsx?$/,
+  /^apps\/uw-app\/auth\/[^/]+\.tsx?$/,
+  /^apps\/uw-app\/health\/[^/]+\.tsx?$/,
+  /^packages\/ui\/components\/[^/]+\.tsx?$/,
 ];
+const scriptSources: ReadonlySet<string> = new Set(['packages/ui/components/inline-scripts.ts']);
 
 function scanned(path: string): boolean {
-  return !path.endsWith('.test.tsx') && scannedFiles.some((pattern) => pattern.test(path));
+  if (scriptSources.has(path) || /\.test\.tsx?$/.test(path)) return false;
+  return scannedFiles.some((pattern) => pattern.test(path));
 }
 
 function isModuleSpecifier(node: ts.Node): boolean {
@@ -97,6 +99,21 @@ describe('the screen copy', () => {
     expect(copyProblems('apps/uw-app/views/screens/planted.tsx', source)).toEqual([
       `apps/uw-app/views/screens/planted.tsx: ${problem}: ${text}`,
     ]);
+  });
+
+  it('reads the copy in the .ts parts beside the screens, and never a test file or an inline script', () => {
+    const parts = [
+      'apps/uw-app/views/parts/health-words.ts',
+      'apps/uw-app/views/parts/play-evidence.ts',
+      'apps/uw-app/views/parts/costs.ts',
+      'packages/ui/components/text.ts',
+    ];
+    expect(parts.filter(scanned)).toEqual(parts);
+    const skipped = [
+      'packages/ui/components/text.test.ts',
+      'packages/ui/components/inline-scripts.ts',
+    ];
+    expect(skipped.filter(scanned)).toEqual([]);
   });
 
   it('lets a heading of proper nouns stand, and reads string literals as well as JSX text', () => {
