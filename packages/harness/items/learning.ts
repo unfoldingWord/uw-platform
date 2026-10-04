@@ -103,7 +103,7 @@ export function attachLearning(
       tx,
       recordContext(ports, caller, at),
       scene.item.itemId,
-      [draft('learning_attached', { pageId: page.id })],
+      [draft('learning_attached', { pageId: page.id, kind: 'learning' })],
     );
     return accepted(recorded.item);
   });

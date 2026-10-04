@@ -5,12 +5,14 @@ export const POSTING_REASONS: ReadonlySet<WakeReason> = new Set<WakeReason>([
   'gate_waiting',
   'delegation_lapsed',
   'run_failed',
+  'handed_to_person',
 ]);
 export const wakeRank: Readonly<Record<WakeReason, 1 | 2 | 3>> = {
   gate_waiting: 3,
   delegation_lapsed: 3,
   run_failed: 2,
   stage_advanced: 1,
+  handed_to_person: 3,
 };
 
 export function rankOf(reason: WakeReason): 1 | 2 | 3 {

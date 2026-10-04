@@ -1,4 +1,9 @@
-import { modelIdSchema, personaFrontmatterSchema } from '@uw/contracts';
+import {
+  modelIdSchema,
+  personaFrontmatterSchema,
+  verbNameSchema,
+  type VerbName,
+} from '@uw/contracts';
 import { engineDescriptor } from '../engines.ts';
 import { refused, type Refused } from '../outcome.ts';
 import type { PageFacts, RunRow } from '../ports.ts';
@@ -6,13 +11,21 @@ import type { RunPersona } from './types.ts';
 
 type PersonaFrontmatter = ReturnType<typeof personaFrontmatterSchema.parse>;
 
-export type PersonaPage = { readonly facts: PageFacts; readonly frontmatter: PersonaFrontmatter };
+export type PersonaPage = {
+  readonly facts: PageFacts;
+  readonly frontmatter: PersonaFrontmatter;
+  readonly toolset: readonly VerbName[];
+};
+
+const servedToolset = verbNameSchema.array();
 
 export function personaPageOf(facts: PageFacts | undefined): PersonaPage | null {
   if (facts === undefined || facts.type !== 'persona' || facts.status !== 'active') return null;
   const parsed = personaFrontmatterSchema.safeParse(facts.frontmatter);
   if (!parsed.success || !modelIdSchema.safeParse(parsed.data.model).success) return null;
-  return { facts, frontmatter: parsed.data };
+  const toolset = servedToolset.safeParse(parsed.data.toolset);
+  if (!toolset.success) return null;
+  return { facts, frontmatter: parsed.data, toolset: toolset.data };
 }
 
 export function personaOfPage(facts: PageFacts | undefined): RunPersona | Refused {
@@ -27,7 +40,7 @@ export function personaOfPage(facts: PageFacts | undefined): RunPersona | Refuse
     engine: frontmatter.engine,
     model: frontmatter.model,
     provider,
-    toolset: frontmatter.toolset,
+    toolset: page.toolset,
     instructions: page.facts.bodyMd,
   };
 }
@@ -47,7 +60,7 @@ export function pinnedPersonaOf(run: RunRow, facts: PageFacts | undefined): RunP
     engine: run.engine,
     model: run.model,
     provider: run.pinnedProvider,
-    toolset: frontmatter.toolset,
+    toolset: page.toolset,
     instructions: page.facts.bodyMd,
   };
 }
