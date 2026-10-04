@@ -227,7 +227,7 @@ describe('the persona dashboard', () => {
     inWorld(delegationsShown));
   it('the dashboard lists at most 50 live delegations and counts them all', () =>
     inWorld(manyDelegations));
-  it('PE-4 a persona page the caller cannot read, or of a harness they cannot read, is page_not_found', () =>
+  it('a persona page the caller cannot read, or of a harness they cannot read, is page_not_found', () =>
     inWorld(hidden));
   it('PE-5 held premises are counted per persona on its dashboard', () => inWorld(premisesCounted));
   it("PE-3 Activate is offered only to a person holding admin on the harness's area, and only while the persona is suggested", () =>

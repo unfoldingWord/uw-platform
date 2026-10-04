@@ -60,6 +60,6 @@ async function personsWrite(db: Database): Promise<void> {
 }
 
 describe.skipIf(!testServer)('the record_measurement command', () => {
-  it("PE-7 record_measurement is a person's write and is refused to agents", () =>
+  it("record_measurement is a person's write and is refused to agents", () =>
     withAppDatabase(personsWrite));
 });

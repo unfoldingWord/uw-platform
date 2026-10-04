@@ -113,7 +113,7 @@ describe('the hand-off wake', () => {
     at: new Date('2026-10-03T09:00:00.000Z'),
   });
 
-  it('PE-6 a hand-off wakes the person it names, when they can still read the harness', () => {
+  it('a hand-off wakes the person it names, when they can still read the harness', () => {
     expect(triggersOf([handed]).map((trigger) => trigger.reason)).toEqual(['handed_to_person']);
     const reader: Grant = {
       grantId: personId,
