@@ -6,12 +6,11 @@ type RefreshDeps = {
   readonly morph: (target: Element, html: string) => void;
 };
 
-const OUTSTANDING_LIMIT = 2;
-
 export function createRefresher(deps: RefreshDeps): Refresher {
   let issued = 0;
   let applied = 0;
-  const outstanding: Promise<void>[] = [];
+  let inFlight: Promise<void> | null = null;
+  let queued: Promise<void> | null = null;
 
   async function fetchAndApply(sequence: number): Promise<void> {
     const response = await deps
@@ -20,23 +19,34 @@ export function createRefresher(deps: RefreshDeps): Refresher {
       })
       .catch(() => null);
     if (response === null || !response.ok) return;
-    const html = await response.text();
+    const html = await response.text().catch(() => null);
     const target = deps.document.getElementById('main');
-    if (target === null || sequence <= applied) return;
+    if (html === null || target === null || sequence <= applied) return;
     applied = sequence;
     deps.morph(target, html);
   }
 
+  function start(): Promise<void> {
+    issued += 1;
+    const running = fetchAndApply(issued).finally(() => {
+      inFlight = null;
+    });
+    inFlight = running;
+    return running;
+  }
+
   return {
     refresh: () => {
-      const latest = outstanding.at(-1);
-      if (outstanding.length >= OUTSTANDING_LIMIT && latest !== undefined) return latest;
-      issued += 1;
-      const running = fetchAndApply(issued).finally(() => {
-        outstanding.splice(outstanding.indexOf(running), 1);
-      });
-      outstanding.push(running);
-      return running;
+      if (inFlight === null) return start();
+      if (queued === null) {
+        queued = inFlight
+          .catch(() => undefined)
+          .then(() => {
+            queued = null;
+            return start();
+          });
+      }
+      return queued;
     },
   };
 }

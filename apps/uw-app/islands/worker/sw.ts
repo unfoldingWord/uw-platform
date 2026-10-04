@@ -1,9 +1,9 @@
-import { isShellAsset, pushPayload, pushTitle } from './sw-core.ts';
+import { isShellAsset, pushPayload, pushTitle, shellCacheName, staleCaches } from './sw-core.ts';
 
 declare const UW_SHELL_ASSETS: readonly string[];
 declare const self: ServiceWorkerGlobalScope;
 
-const CACHE = 'uw-shell-v1';
+const CACHE = shellCacheName(UW_SHELL_ASSETS);
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -19,7 +19,7 @@ self.addEventListener('activate', (event) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))),
+        Promise.all(staleCaches(keys, UW_SHELL_ASSETS).map((key) => caches.delete(key))),
       )
       .then(() => self.clients.claim()),
   );

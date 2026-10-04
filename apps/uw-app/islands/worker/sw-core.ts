@@ -57,3 +57,12 @@ export function pushTitle(payload: PushPayload): string {
 export function isShellAsset(pathname: string, assets: readonly string[]): boolean {
   return assets.includes(pathname);
 }
+
+export function shellCacheName(assets: readonly string[]): string {
+  return `uw-shell ${assets.join(' ')}`;
+}
+
+export function staleCaches(keys: readonly string[], assets: readonly string[]): readonly string[] {
+  const current = shellCacheName(assets);
+  return keys.filter((key) => key !== current);
+}
