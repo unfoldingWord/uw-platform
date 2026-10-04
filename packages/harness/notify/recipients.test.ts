@@ -37,7 +37,7 @@ describe('the person behind an identity', () => {
     [`agent:${person(2)}/laptop`, person(2)],
     [`agent:${person(3)}/laptop as builder via delegation:${delegationId}`, person(3)],
     ['agent:builder', null],
-    ['agent:system', null],
+    ['agent:reviewer', null],
   ])('%s is %s', (identity, expected) => {
     expect(personBehind(identity, lookup)).toBe(expected);
   });

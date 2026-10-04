@@ -24,6 +24,7 @@ export const scenario = defineScenario({
       [topic],
     );
     const ingest = simCaller(world, simIngest());
+    const actor = ingest.actor.identity;
     const reply = { text: 'approve', topic: topic ?? '' };
     value(
       await commentOn(scene, ingest, itemId, { ...reply, personId: personOf(scene.areaAdmin) }),
@@ -36,8 +37,8 @@ export const scenario = defineScenario({
       .filter((event) => event.name === 'comment_recorded')
       .map((event) => ({ actor: event.actor, personId: event.evidence['personId'] ?? null }));
     assert.deepEqual(comments, [
-      { actor: 'agent:ingest', personId: personOf(scene.areaAdmin) },
-      { actor: 'agent:ingest', personId: null },
+      { actor, personId: personOf(scene.areaAdmin) },
+      { actor, personId: null },
     ]);
     return { state: { topic, comments, gateStatus: after.item?.gateStatus ?? null } };
   },

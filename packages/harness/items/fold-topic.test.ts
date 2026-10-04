@@ -13,7 +13,7 @@ function event(n: number, name: EventName, evidence: Record<string, unknown>): N
     itemId,
     name,
     at: new Date(start + n * 1000).toISOString(),
-    actor: 'agent:system',
+    actor: 'agent:builder',
     evidence,
     traceId: '00000000-0000-4000-8000-0000000000e1',
     requestId: null,
