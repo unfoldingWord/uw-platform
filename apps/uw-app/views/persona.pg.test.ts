@@ -2,9 +2,23 @@ import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
+import { identitySchema, principalSchema, type Principal } from '@uw/contracts';
+import { systemPrincipal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
-import { seedPage } from '@uw/db/test-seed';
-import { command, softwareHarness, type Scene } from '../testing/commands.ts';
+import { seedBreakerReading, seedPage } from '@uw/db/test-seed';
+import { platformRuns } from '../ports/runs.ts';
+import { platformStore } from '../ports/store.ts';
+import { fakeWorkflowBinding } from '../runs/testing.ts';
+import {
+  accepted,
+  callerOf,
+  command,
+  enqueued,
+  ian,
+  softwareHarness,
+  type Scene,
+} from '../testing/commands.ts';
+import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml, postForm } from '../testing/views.ts';
@@ -143,6 +157,93 @@ async function savesToolset(db: Database): Promise<void> {
   expect((await pageRow(db, pageId))?.version).toBe(2);
 }
 
+function builderOf(admin: Principal): Principal {
+  return principalSchema.parse({
+    identity: 'agent:builder',
+    kind: 'agent',
+    personId: admin.personId,
+    email: null,
+    grants: [],
+    interactive: false,
+  });
+}
+
+function projected(db: Database, harnessId: string) {
+  const builder = identitySchema.parse('agent:builder');
+  return platformStore(db).transaction((tx) => tx.personas.read.active(builder, harnessId));
+}
+
+async function workingPersona(db: Database) {
+  const { scene: made, pageId } = await scene(db);
+  const { harnessId } = made;
+  const admin = await ian(db);
+  const kernel = kernelOn(
+    db,
+    { now: () => new Date() },
+    { runs: platformRuns(fakeWorkflowBinding()) },
+  );
+  const change = { agentPickup: 'allowed' as const, bracket: 'build_package' as const };
+  accepted(
+    await kernel.stages.updateStage(callerOf(admin), { harnessId, stageKey: 'package', change }),
+  );
+  const itemId = await enqueued(db, harnessId, 'Work for the builder');
+  const delegation = accepted(
+    await kernel.delegations.grant(callerOf(admin), {
+      harnessId,
+      persona: 'agent:builder',
+      capability: 'build',
+      expiresAt: null,
+      supersedes: null,
+    }),
+  );
+  const activated = await command(db, { email: IAN }, harnessId, 'activate_persona', {
+    requestId: randomUUID(),
+    pageId,
+    expectedVersion: 1,
+  });
+  expect(activated.body['status']).toBe('accepted');
+  await seedBreakerReading(db, { harnessId, at: new Date(), actor: 'agent:system' });
+  const beat = accepted(
+    await kernel.delegations.beat(callerOf(builderOf(admin)), { delegationId: delegation.id }),
+  );
+  return {
+    made,
+    pageId,
+    kernel,
+    itemId,
+    delegationId: delegation.id,
+    runner: callerOf(beat.principal),
+  };
+}
+
+async function editorSaveStopsTheRuns(db: Database): Promise<void> {
+  const { made, pageId, kernel, itemId, delegationId, runner } = await workingPersona(db);
+  const { harnessId } = made;
+  expect(await pageRow(db, pageId)).toMatchObject({ status: 'active', version: 2 });
+  expect((await projected(db, harnessId))?.id).toBe(pageId);
+  const polled = accepted(await kernel.reads.poll(runner, { harnessId, limit: 50 }));
+  expect(polled.map((item) => item.itemId)).toContain(itemId);
+  const form = toolsetForm(['read_page', 'claim_item', 'search_pages'], 2);
+  const saved = await postForm(db, made.editor.email, `/personas/${pageId}/toolset`, form, ORIGIN);
+  expect(saved.status).toBe(200);
+  expect(saved.text).toContain('Done.');
+  const row = await pageRow(db, pageId);
+  expect(row).toMatchObject({ status: 'suggested', version: 3 });
+  expect(row?.toolset).toContain('search_pages');
+  expect(await projected(db, harnessId)).toBeNull();
+  const system = callerOf(systemPrincipal());
+  expect(accepted(await kernel.runs.beat(system, { limit: 10 }))).toEqual({
+    started: [],
+    skipped: [],
+  });
+  const claimed = await kernel.items.claim(runner, { itemId, delegationId });
+  expect(claimed).toEqual({
+    status: 'error',
+    reason: 'not_permitted',
+    detail: { why: 'persona_not_active' },
+  });
+}
+
 async function crossSite(db: Database): Promise<void> {
   const { pageId } = await scene(db);
   const form = toolsetForm(['read_page'], 1);
@@ -177,6 +278,8 @@ describe.skipIf(!testServer)('the persona view', () => {
     withAppDatabase(activates));
   it('PE-2 the toolset form saves only offered verbs and requires_tools follows', () =>
     withAppDatabase(savesToolset));
+  it("an editor's toolset save on an active persona lands it suggested, and neither the beat nor a claim works for it", () =>
+    withAppDatabase(editorSaveStopsTheRuns));
   it('a toolset post from another origin, or with no origin, is refused', () =>
     withAppDatabase(crossSite));
 });
