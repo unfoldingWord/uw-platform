@@ -38,6 +38,7 @@ export function pausingGrants(grants: Grants, onLocked: () => void, pauseMs: num
       await new Promise<void>((resolve) => setTimeout(resolve, pauseMs));
       return locked;
     },
+    holders: (area, at) => grants.holders(area, at),
   };
 }
 

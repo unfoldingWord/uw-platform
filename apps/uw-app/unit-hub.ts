@@ -11,6 +11,7 @@ export function unitHub(target: Hub): UnitHub {
         if (flushed) return target.wake(harnessId);
         pending.add(harnessId);
       },
+      present: (query) => target.present(query),
     },
     owed: () => pending.size,
     flush: async () => {

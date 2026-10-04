@@ -45,6 +45,7 @@ export function platformHub(namespace: HubNamespace, logger: Logger, timers: Tim
         throw new Error(`hub wake answered ${answer.status}`);
       }
     },
+    present: async () => false,
   };
 }
 

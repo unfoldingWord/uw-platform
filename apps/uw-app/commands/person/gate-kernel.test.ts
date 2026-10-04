@@ -17,7 +17,7 @@ const logger = createLogger(
   { traceId: 'trace', commit: 'test-commit', route: 'gate', principal: null },
   () => undefined,
 );
-const hub: Hub = { wake: async () => undefined };
+const hub: Hub = { wake: async () => undefined, present: async () => false };
 const live = { hub, runs: runsNotWired };
 const untouched: DatabaseHandle = {
   db: {} as Database,

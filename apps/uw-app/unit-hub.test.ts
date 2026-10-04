@@ -7,7 +7,10 @@ const second = 'b3000000-0000-4000-8000-000000000002';
 
 function recording(): { readonly hub: Hub; readonly woken: string[] } {
   const woken: string[] = [];
-  return { hub: { wake: async (harnessId) => void woken.push(harnessId) }, woken };
+  return {
+    hub: { wake: async (harnessId) => void woken.push(harnessId), present: async () => false },
+    woken,
+  };
 }
 
 describe('the queue and cron hub wakes each harness once per unit of work', () => {
@@ -49,6 +52,7 @@ describe('the queue and cron hub wakes each harness once per unit of work', () =
         if (harnessId === first) throw new Error('hub down');
         woken.push(harnessId);
       },
+      present: async () => false,
     };
     const unit = unitHub(failing);
     await unit.hub.wake(first);

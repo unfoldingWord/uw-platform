@@ -38,6 +38,7 @@ function recordingHub(failing = false): Hub & { readonly woken: string[] } {
       woken.push(harnessId);
       if (failing) throw new Error('hub down');
     },
+    present: async () => false,
   };
 }
 
@@ -54,6 +55,7 @@ function recordingGrants(): Grants & { readonly seen: StoreTransaction[] } {
       seen.push(tx);
       return [];
     },
+    holders: async () => [],
   };
 }
 
@@ -97,6 +99,7 @@ describe('WB-3 the kernel wakes the hub after a committed append', () => {
       wake: () => {
         throw new Error('hub down');
       },
+      present: async () => false,
     };
     const store = wakingStore(storeAppending(['h1']), hub);
     const answer = store.transaction(async (tx) => {

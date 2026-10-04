@@ -1,6 +1,6 @@
 import { grantSchema, type Grant, type JdArea, type Role, type Scope } from '@uw/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { Grants, Store } from '../ports.ts';
+import type { GrantHolder, Grants, Store } from '../ports.ts';
 import { describeNotWired } from './not-wired-cases.ts';
 import { escapedAfter } from './store.ts';
 
@@ -17,7 +17,7 @@ export type SeedGrantInput = {
 export type GrantsSubject = {
   readonly grants: Grants;
   readonly store: Store;
-  seedPerson(id: string): Promise<void>;
+  seedPerson(id: string, status?: 'active' | 'pending'): Promise<void>;
   seedGrant(grant: SeedGrantInput): Promise<void>;
   revoke(grantId: string, at: Date): Promise<void>;
   close(): Promise<void>;
@@ -151,6 +151,65 @@ function describeGrantsInTransaction(adapter: string, subject: () => GrantsSubje
   });
 }
 
+function areaGrant(n: number, personId: string, role: Role, area: JdArea): SeedGrantInput {
+  return {
+    id: grantId(n),
+    personId,
+    role,
+    scopeKind: 'jd_area',
+    scopeArea: area,
+    grantedAt: new Date('2029-04-01T00:00:00.000Z'),
+    expiresAt: null,
+  };
+}
+
+async function seedHolders(subject: GrantsSubject): Promise<void> {
+  await given(subject, person(21), [
+    orgAdmin(21, person(21)),
+    areaGrant(22, person(21), 'viewer', '10-19'),
+  ]);
+  await given(subject, person(22), [areaGrant(23, person(22), 'editor', '30-39')]);
+  await given(subject, person(23), [
+    {
+      ...areaGrant(24, person(23), 'admin', '30-39'),
+      expiresAt: new Date('2029-12-01T00:00:00.000Z'),
+    },
+  ]);
+  await given(subject, person(24), [areaGrant(25, person(24), 'admin', '30-39')]);
+  await subject.revoke(grantId(25), new Date('2029-05-01T00:00:00.000Z'));
+  await given(subject, person(25), [areaGrant(26, person(25), 'admin', '40-49')]);
+  await subject.seedPerson(person(26), 'pending');
+  await subject.seedGrant(areaGrant(27, person(26), 'admin', '30-39'));
+}
+
+const holderIds = new Set([21, 22, 23, 24, 25, 26].map(person));
+
+function mineOf(holders: readonly GrantHolder[]): readonly GrantHolder[] {
+  return holders.filter((holder) => holderIds.has(holder.personId));
+}
+
+function describeGrantsHolders(adapter: string, subject: () => GrantsSubject): void {
+  describe(`DX-3 grants port contract on ${adapter}: an area's holders`, () => {
+    it('holders lists every active person with a live grant on the area or the org, with all their live grants', async () => {
+      await seedHolders(subject());
+      const holders = mineOf(await subject().grants.holders('30-39', at));
+      expect(holders.map((holder) => [holder.personId, ids(holder.grants)])).toEqual([
+        [person(21), [grantId(21), grantId(22)]],
+        [person(22), [grantId(23)]],
+      ]);
+      expect(holders[0]?.email).toBe(`${person(21)}@fixture.unfoldingword.org`);
+    });
+
+    it(
+      'holders refuses inside an open transaction',
+      async () => {
+        expect(await holdersInsideTransaction(subject())).toBe('CallOutsideOpenTransactionError');
+      },
+      refusalTimeout,
+    );
+  });
+}
+
 function nameOfRefusal(error: unknown): string {
   return error instanceof Error ? error.name : 'rejected';
 }
@@ -161,6 +220,10 @@ function resolveInsideTransaction({ grants, store }: GrantsSubject): Promise<str
   return store.transaction(() =>
     grants.resolve(person(8), at).then(() => 'resolved', nameOfRefusal),
   );
+}
+
+function holdersInsideTransaction({ grants, store }: GrantsSubject): Promise<string> {
+  return store.transaction(() => grants.holders('30-39', at).then(() => 'resolved', nameOfRefusal));
 }
 
 function describeGrantsOutsideTransaction(adapter: string, subject: () => GrantsSubject): void {
@@ -202,6 +265,7 @@ export function describeGrantsContract(adapter: string, open: () => Promise<Gran
   describeGrantsInTransaction(adapter, subject);
   describeGrantsOutsideTransaction(adapter, subject);
   describeGrantsAfterTransaction(adapter, subject);
+  describeGrantsHolders(adapter, subject);
 }
 
 export function describeGrantsNotWired(adapter: string, grants: Grants): void {
@@ -209,5 +273,6 @@ export function describeGrantsNotWired(adapter: string, grants: Grants): void {
     resolve: true,
     resolveIn: true,
     lockAndReread: true,
+    holders: true,
   } satisfies Record<keyof Grants, true>);
 }

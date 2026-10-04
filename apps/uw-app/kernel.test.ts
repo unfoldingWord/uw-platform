@@ -53,7 +53,7 @@ const untouched: DatabaseHandle = {
   ping: async () => undefined,
   release: async () => undefined,
 };
-const recordingHub: Hub = { wake: async () => undefined };
+const recordingHub: Hub = { wake: async () => undefined, present: async () => false };
 
 function mismatched(): Record<string, unknown> {
   const ports = platformPorts(null);

@@ -24,7 +24,7 @@ beforeAll(async () => {
 
 function recordingHub(): { readonly hub: Hub; readonly woken: string[] } {
   const woken: string[] = [];
-  return { hub: { wake: async (id) => void woken.push(id) }, woken };
+  return { hub: { wake: async (id) => void woken.push(id), present: async () => false }, woken };
 }
 
 function twoRepositories() {

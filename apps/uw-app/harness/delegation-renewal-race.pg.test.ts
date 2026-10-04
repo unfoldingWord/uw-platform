@@ -82,6 +82,7 @@ function heldGrants(grants: Grants, reached: () => void, resume: Promise<void>):
       await resume;
       return locked;
     },
+    holders: (area, at) => grants.holders(area, at),
   };
 }
 

@@ -69,6 +69,7 @@ function gated(db: Database, release: Promise<void>): Gate {
         await release;
         return grants;
       },
+      holders: (area, at) => inner.holders(area, at),
     },
   };
 }

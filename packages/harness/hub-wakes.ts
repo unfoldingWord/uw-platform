@@ -53,5 +53,6 @@ export function wakingGrants(grants: Grants): Grants {
     resolve: (personId, at) => grants.resolve(personId, at),
     resolveIn: (tx, personId, at) => grants.resolveIn(originalOf(tx), personId, at),
     lockAndReread: (tx, personId, at) => grants.lockAndReread(originalOf(tx), personId, at),
+    holders: (area, at) => grants.holders(area, at),
   };
 }
