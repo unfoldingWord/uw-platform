@@ -12,7 +12,11 @@ export const wakeRank: Readonly<Record<WakeReason, 1 | 2 | 3>> = {
   run_failed: 2,
   stage_advanced: 1,
 };
-const rankByReason: ReadonlyMap<string, number> = new Map(Object.entries(wakeRank));
+
+export function rankOf(reason: WakeReason): 1 | 2 | 3 {
+  const { [reason]: rank } = wakeRank;
+  return rank;
+}
 
 export type CooldownWindow = { readonly startedAt: Date; readonly rank: number };
 export type CooldownChoice =
@@ -24,7 +28,7 @@ export function chooseInWindow(
   reason: WakeReason,
   at: Date,
 ): CooldownChoice {
-  const rank = rankByReason.get(reason) ?? 1;
+  const rank = rankOf(reason);
   const open = window !== null && at.getTime() - window.startedAt.getTime() < COOLDOWN_MS;
   if (open && rank <= window.rank) return { decision: 'coalesce' };
   return { decision: 'send', window: { startedAt: at, rank } };
