@@ -76,11 +76,12 @@ function touchingPorts(touched: string[]): Ports {
       resolve: touch('grants'),
       resolveIn: touch('grants'),
       lockAndReread: touch('grants'),
+      holders: touch('grants'),
     },
     githubFacts: { pullRequest: touch('facts'), refresh: touch('facts'), diff: touch('facts') },
     connectors: { run: touch('connectors'), outcomeOf: touch('connectors'), review: touch('c') },
     modelEngine: { turn: touch('modelEngine'), spend: touch('modelEngine') },
-    hub: { wake: touch('hub') },
+    hub: { wake: touch('hub'), present: touch('hub') },
     notifier: { notify: touch('notifier') },
     runs: {
       start: touch('runs'),

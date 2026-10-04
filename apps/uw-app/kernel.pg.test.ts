@@ -31,6 +31,7 @@ async function wakesTheWiredHub(db: Database): Promise<void> {
   const woken: string[] = [];
   const outcome = await enqueueWith(db, scene.harnessId, {
     wake: async (harnessId) => void woken.push(harnessId),
+    present: async () => false,
   });
   expect(outcome.status).toBe('accepted');
   expect(woken).toEqual([scene.harnessId]);

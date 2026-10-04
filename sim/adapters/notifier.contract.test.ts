@@ -5,7 +5,9 @@ describeNotifierContract('the recording sim notifier', async () => {
   const notifier = createSimNotifier();
   return {
     notifier,
-    delivered: async () => notifier.delivered(),
+    subscribe: async (personId) => notifier.subscribe(personId),
+    enableZulip: async () => notifier.enableZulip(),
     failNext: async () => notifier.failNext(),
+    posts: async () => notifier.posts().map(({ topic, reason }) => ({ topic, reason })),
   };
 });

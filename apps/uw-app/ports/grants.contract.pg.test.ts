@@ -13,7 +13,12 @@ describe.skipIf(!testServer)('DX-3 the platform grants on Postgres', () => {
     return {
       grants: platformGrants(db),
       store: platformStore(db),
-      seedPerson: (id) => seedPerson(db, { id, email: `${id}@fixture.unfoldingword.org` }),
+      seedPerson: (id, status) =>
+        seedPerson(db, {
+          id,
+          email: `${id}@fixture.unfoldingword.org`,
+          ...(status ? { status } : {}),
+        }),
       seedGrant: (grant) => seedGrant(db, grant),
       revoke: (id, at) => revokeSeededGrant(db, id, at),
       close: async () => {

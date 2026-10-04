@@ -12,7 +12,12 @@ describeGrantsContract('the embedded Postgres grants', async () => {
   return {
     grants: createSimGrants(database),
     store: createSimStore(database),
-    seedPerson: (id) => seedPerson(database.db, { id, email: `${id}@fixture.unfoldingword.org` }),
+    seedPerson: (id, status) =>
+      seedPerson(database.db, {
+        id,
+        email: `${id}@fixture.unfoldingword.org`,
+        ...(status ? { status } : {}),
+      }),
     seedGrant: (grant) => seedGrant(database.db, grant),
     revoke: (id, at) => revokeSeededGrant(database.db, id, at),
     close: () => database.close(),
