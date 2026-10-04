@@ -272,6 +272,8 @@ Green CI is not a guard on its own. Code in a pull request runs in CI, and a wor
 
 `sim/` is the kernel on test adapters. `createWorld()` gives a scenario one clone of an embedded Postgres migrated once per process, the ten test adapters, one settable clock starting `2026-10-01T09:00:00.000Z`, and `createKernel` over them; `createSimHarness(template, fixture)` builds a harness from a template. Scenarios in `sim/scenarios/` are named for the PRD requirement they prove: `KN-10.activation-refuses-a-bypass.ts`, `KN-13.agent-cannot-write-decision.ts`, `KN-16.delegation-lapses-when-grant-revoked.ts`, `DX-7.software-template-end-to-end.ts`. Assertions are on the event log and the folded item state.
 
+The DX-7 scenario is composed from the journey modules in `sim/e2e/`: `cast.ts` (the harness, the people, the two runner devices and the two hosted personas, drafted from the template fixtures and activated by a person), `to-ship.ts`, `at-ship.ts`, `to-close.ts` and `coverage.ts`. Each journey asserts as it goes. `sim/e2e/e2e.test.ts` drives them separately, so a failure names its stretch of the road. The scenario adds the checks only the whole journey can make: every exit gate kind crossed on a path the walker enumerates, the merge only after a person's approval, the DX-7 milestones in order, and replay equal to the record.
+
 The cockpit (PRD DX-4, DX-5):
 
 ```
