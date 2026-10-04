@@ -1,5 +1,5 @@
 import type { HarnessEvent, WakeReason } from '@uw/contracts';
-import { wakeRank } from './rank.ts';
+import { rankOf } from './rank.ts';
 
 export type Trigger = { readonly event: HarnessEvent; readonly reason: WakeReason };
 
@@ -16,16 +16,12 @@ function reasonOf(event: HarnessEvent): WakeReason | null {
   return direct.get(event.name) ?? null;
 }
 
-const ranks: ReadonlyMap<string, number> = new Map(Object.entries(wakeRank));
-
-function rankOf(trigger: Trigger): number {
-  return ranks.get(trigger.reason) ?? 0;
-}
-
 export function triggersOf(events: readonly HarnessEvent[]): readonly Trigger[] {
   const triggers = events.flatMap((event): Trigger[] => {
     const reason = reasonOf(event);
     return reason === null ? [] : [{ event, reason }];
   });
-  return triggers.toSorted((a, b) => rankOf(b) - rankOf(a) || a.event.position - b.event.position);
+  return triggers.toSorted(
+    (a, b) => rankOf(b.reason) - rankOf(a.reason) || a.event.position - b.event.position,
+  );
 }
