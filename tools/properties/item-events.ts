@@ -35,6 +35,7 @@ const operations = [
   'reorder',
   'irrelevant',
   'runEvent',
+  'linkTopic',
 ] as const;
 
 type Operation = (typeof operations)[number];
@@ -54,6 +55,7 @@ type Expected = {
   pullRequest: { repo: string; number: number } | null;
   riskTier: 'low' | 'standard' | 'high' | null;
   riskDomains: string[];
+  zulipTopic: string | null;
 };
 
 export type ItemSequence = { readonly events: NewHarnessEvent[]; readonly expected: Expected };
@@ -324,6 +326,14 @@ const runEvents: readonly (readonly [EventName, Evidence])[] = [
   ['run_completed', { runId, result: 'submitted', gates: [], review: null }],
 ];
 
+function linkTopic(model: Model, pick: number): boolean {
+  if (model.expected.zulipTopic !== null) return false;
+  const topic = `software/item-${pick.toString(16).padStart(8, '0')}`;
+  emit(model, 'zulip_topic_linked', { topic });
+  model.expected.zulipTopic = topic;
+  return true;
+}
+
 function runEvent(model: Model, pick: number): boolean {
   const [name, evidence] = runEvents[pick % runEvents.length] ?? runEvents[0] ?? [];
   if (name === undefined || evidence === undefined) return false;
@@ -349,6 +359,7 @@ const handlers: ReadonlyMap<Operation, Handler> = new Map<Operation, Handler>([
   ['reorder', reorder],
   ['irrelevant', irrelevant],
   ['runEvent', runEvent],
+  ['linkTopic', linkTopic],
 ]);
 
 function startModel(start: number): Model {
@@ -366,6 +377,7 @@ function startModel(start: number): Model {
     pullRequest: null,
     riskTier: null,
     riskDomains: [],
+    zulipTopic: null,
   };
   const model: Model = { stage: start, count: 0, expected, events: [] };
   emit(model, 'item_created', {
