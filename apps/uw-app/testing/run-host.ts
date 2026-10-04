@@ -15,6 +15,7 @@ import type {
   GitHubFacts,
   Kernel,
   ModelEngine,
+  Notifier,
   PullRequestFacts,
   ReviewRequest,
 } from '@uw/harness';
@@ -53,6 +54,7 @@ export type RigOptions = {
   readonly provider?: string | null;
   readonly capability?: 'build' | 'review';
   readonly gate?: boolean;
+  readonly notifier?: Notifier;
 };
 
 const personaPageId = '00000000-0000-4000-8000-000000009901';
@@ -165,6 +167,7 @@ export async function hostRig(
     runs: platformRuns(binding),
     githubFacts: factsPort(holder),
     connectors: recordingConnectors(reviews, holder),
+    ...(options.notifier === undefined ? {} : { notifier: options.notifier }),
   });
   const { harnessId } = await softwareHarness(db);
   const admin = await ian(db);
