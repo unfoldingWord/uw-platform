@@ -1,5 +1,13 @@
-import type { CostBasis, Harness, ItemState, RunShape, Stage } from '@uw/contracts';
-import type { RunRow } from '../ports.ts';
+import type {
+  CostBasis,
+  EvidenceLabel,
+  Harness,
+  HarnessEvent,
+  ItemState,
+  RunShape,
+  Stage,
+} from '@uw/contracts';
+import type { Delegation, RunRow } from '../ports.ts';
 
 export type CostTotals = {
   readonly meteredMinor: number;
@@ -37,3 +45,34 @@ export type BoardInput = {
   readonly stageKey: string | null;
   readonly after: { readonly priority: number; readonly itemId: string } | null;
 };
+export type GateRow = {
+  readonly harness: Harness;
+  readonly stage: Stage;
+  readonly item: ItemState;
+};
+export type WaitingRow =
+  | { readonly kind: 'gate'; readonly gate: GateRow }
+  | {
+      readonly kind: 'delegation_lapsed';
+      readonly harness: Harness;
+      readonly delegation: Delegation;
+    }
+  | {
+      readonly kind: 'run_failed';
+      readonly harness: Harness;
+      readonly item: ItemState;
+      readonly run: RunRow;
+    };
+export type DecideAbility =
+  | { readonly can: true }
+  | { readonly can: false; readonly reason: 'not_permitted' | 'approver_lacks_domain_grant' };
+export type PlayByPlay = {
+  readonly harness: Harness;
+  readonly stage: Stage;
+  readonly item: ItemState;
+  readonly events: readonly HarnessEvent[];
+  readonly next: number | null;
+  readonly learnings: Readonly<Record<string, EvidenceLabel>>;
+};
+export const WAITING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+export const PLAY_PAGE = 100;
