@@ -130,7 +130,7 @@ A durable value is anything in Postgres.
 Adding a persona, an engine, a validator, a connector or a screen means adding a folder or a registry row, and touching shared roots only at reserved discovery points.
 
 - Discovery is by registry, never by editing a switch. An `if (engineName)` or `if (personaName)` branch in shared code is the smell this rule forbids.
-- The shared roots are `packages/db/schema.ts`, `packages/db/schema-*.ts`, `packages/contracts/`, `packages/harness/ports.ts`, `packages/core/acl.ts`, `infra/`, `.github/workflows/`, `AGENTS.md`, `CONTEXT.md` and `docs/adr/`. A change to one goes in its own commit, never mixed with feature code, and the commit message names the shared root and why it changed.
+- The shared roots are `packages/db/schema.ts`, `packages/db/schema-*.ts`, `packages/contracts/`, `packages/harness/ports.ts`, `packages/harness/store-ports.ts`, `packages/core/acl.ts`, `infra/`, `.github/workflows/`, `AGENTS.md`, `CONTEXT.md` and `docs/adr/`. A change to one goes in its own commit, never mixed with feature code, and the commit message names the shared root and why it changed.
 - `ui-design/` and `design-system/` are produced in Claude Design and synced here. Code reads them and never hand-edits them.
 
 ### Rule 5. Exceptions are narrow, explicit, and recorded
