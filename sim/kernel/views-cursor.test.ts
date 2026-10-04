@@ -31,3 +31,21 @@ describe('the live cursor a screen starts from', () => {
     }
   });
 });
+
+describe('the live cursors a screen with many harnesses starts from', () => {
+  it('cursors answers each readable harness with its latest event position, and nothing for a stranger', async () => {
+    const world = await createWorld();
+    try {
+      const scene = await flowWorld(world);
+      const positions = await positionsOf(world, scene.harnessId);
+      const reader = simCaller(world, scene.editor);
+      expect(await world.kernel.views.cursors(reader)).toEqual([
+        { harnessId: scene.harnessId, cursor: Math.max(...positions) },
+      ]);
+      const stranger = simCaller(world, await simPerson(world, 9, []));
+      expect(await world.kernel.views.cursors(stranger)).toEqual([]);
+    } finally {
+      await world.close();
+    }
+  });
+});

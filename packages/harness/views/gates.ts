@@ -5,7 +5,7 @@ import type { StoreTransaction } from '../ports.ts';
 import type { ScenePorts } from '../reads/scene.ts';
 import { approverCovers } from '../risk/domain-grants.ts';
 import { readableHarnesses } from './readable.ts';
-import type { DecideAbility, GateRow } from './types.ts';
+import { VIEW_LIMIT, type DecideAbility, type GateRow } from './types.ts';
 
 type Gate = { readonly harness: Harness; readonly stage: Stage; readonly item: ItemState };
 
@@ -41,7 +41,7 @@ async function gatesIn(
       .map((stage) => [stage.key, stage]),
   );
   const rows: GateRow[] = [];
-  for (const item of await tx.harnessItems.read.parked(harness.id)) {
+  for (const item of await tx.harnessItems.read.parked(harness.id, VIEW_LIMIT)) {
     const stage = human.get(item.stageKey);
     if (stage === undefined) continue;
     if (decideAbility(actor, { harness, stage, item }, at).can) rows.push({ harness, stage, item });

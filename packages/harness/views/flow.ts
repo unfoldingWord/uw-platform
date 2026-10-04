@@ -1,15 +1,15 @@
 import type { ItemState, Stage } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
 import { accepted, type KernelOutcome } from '../outcome.ts';
-import type { RunRow, StageEntry, StoreTransaction } from '../ports.ts';
+import type { ItemCost, StageEntry, StoreTransaction } from '../ports.ts';
 import { harnessScene, type ScenePorts } from '../reads/scene.ts';
-import { costOf } from './costs.ts';
-import type { FlowStage, FlowView } from './types.ts';
+import { costOfItems } from './costs.ts';
+import { VIEW_LIMIT, type FlowStage, type FlowView } from './types.ts';
 
 type StageFacts = {
   readonly open: readonly ItemState[];
   readonly entries: readonly StageEntry[];
-  readonly runs: readonly RunRow[];
+  readonly costs: readonly ItemCost[];
 };
 
 function oldestOf(ids: ReadonlySet<string>, entries: readonly StageEntry[]): Date | null {
@@ -25,7 +25,7 @@ function stageRow(stage: Stage, held: number, facts: StageFacts): FlowStage {
     count: here.length,
     held,
     oldestEnteredAt: oldestOf(ids, facts.entries),
-    cost: costOf(facts.runs.filter((run) => ids.has(run.itemId))),
+    cost: costOfItems(facts.costs.filter((cost) => ids.has(cost.itemId))),
   };
 }
 
@@ -43,18 +43,17 @@ export async function flowView(
   const scene = await harnessScene(ports, tx, caller, harnessId, at);
   if (scene.status !== 'accepted') return scene;
   const { harness, stages } = scene.value;
-  const items = await tx.harnessItems.read.forHarness(harness.id);
-  const open = items.filter((item) => item.gateStatus !== 'done');
+  const open = await tx.harnessItems.read.openFor(harness.id, VIEW_LIMIT);
   const ids = open.map((item) => item.itemId);
   const facts = {
     open,
     entries: await tx.harnessEvents.read.enteredStage(harness.id, ids),
-    runs: await tx.harnessRuns.read.forItems(ids),
+    costs: await tx.harnessRuns.read.costsByItem(ids),
   };
   const rows: FlowStage[] = [];
   for (const stage of byPosition(stages)) {
     const held = await tx.harnessItems.read.heldInStage(harness.id, stage.key, at);
     rows.push(stageRow(stage, held, facts));
   }
-  return accepted({ harness, stages: rows });
+  return accepted({ harness, stages: rows, capped: open.length === VIEW_LIMIT });
 }

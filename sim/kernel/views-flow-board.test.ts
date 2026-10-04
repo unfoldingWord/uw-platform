@@ -85,24 +85,34 @@ describe('the Flow view', () => {
 
 describe('the Flow view and the Board hide what the caller cannot read', () => {
   flowIt(
-    'a harness the caller cannot read is harness_not_found on the flow and the board, the same as a missing one',
+    'a harness the caller cannot read is harness_not_found on the flow and the board, byte for byte the same as a missing one',
     async (scene) => {
       const stranger = simCaller(scene.world, await simPerson(scene.world, 3, []));
+      const elsewhere = simCaller(
+        scene.world,
+        await simPerson(scene.world, 5, [
+          { role: 'viewer', scopeKind: 'jd_area', scopeArea: '20-29' },
+        ]),
+      );
       const { views } = scene.world.kernel;
       const hidden = { harnessId: scene.harnessId };
       const missing = { harnessId: missingId };
       const board = { stageKey: null, after: null };
-      const answers = [
-        await views.flow(stranger, hidden),
-        await views.flow(stranger, missing),
-        await views.board(stranger, { ...hidden, ...board }),
-        await views.board(stranger, { ...missing, ...board }),
-      ];
-      expect(answers.map(reasonOf)).toEqual(Array(4).fill('harness_not_found'));
-      const [flowHidden, flowMissing] = answers;
-      expect(JSON.stringify(flowHidden).replace(scene.harnessId, missingId)).toBe(
-        JSON.stringify(flowMissing),
-      );
+      for (const caller of [stranger, elsewhere]) {
+        const pairs = [
+          [await views.flow(caller, hidden), await views.flow(caller, missing)],
+          [
+            await views.board(caller, { ...hidden, ...board }),
+            await views.board(caller, { ...missing, ...board }),
+          ],
+        ];
+        for (const [shown, absent] of pairs) {
+          expect(reasonOf(shown as KernelOutcome<unknown>)).toBe('harness_not_found');
+          expect(JSON.stringify(shown).replaceAll(scene.harnessId, missingId)).toBe(
+            JSON.stringify(absent),
+          );
+        }
+      }
     },
   );
 });

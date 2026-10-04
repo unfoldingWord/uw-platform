@@ -9,14 +9,14 @@ import { decidableGates, decideAbility } from './gates.ts';
 import { planeList } from './plane-list.ts';
 import { planeTotals } from './plane.ts';
 import { playByPlay, type PlayInput } from './play.ts';
-import { readableHarness } from '../reads/scene.ts';
-import { readableHarnesses } from './readable.ts';
+import { harnessCursor, harnessCursors, readableHarnesses } from './readable.ts';
 import type {
   BoardInput,
   BoardView,
   DecideAbility,
   FlowView,
   GateRow,
+  HarnessCursor,
   PlaneIndicator,
   PlaneRow,
   PlaneTotals,
@@ -59,6 +59,7 @@ export type ViewReads = {
     input: { readonly harnessId: string },
     options?: ReadOptions,
   ): Promise<number>;
+  cursors(caller: Caller, options?: ReadOptions): Promise<readonly HarnessCursor[]>;
   planeTotals(options?: ReadOptions): Promise<PlaneTotals>;
   planeList(
     caller: Caller,
@@ -99,10 +100,11 @@ export function createViewReads(ports: ViewPorts): ViewReads {
     },
     cursor: (caller, input, options) => {
       const at = instant(options);
-      return store.transaction(async (tx) => {
-        const harness = await readableHarness(ports, tx, caller, input.harnessId, at);
-        return harness === null ? 0 : tx.harnessEvents.read.lastPosition(harness.id);
-      });
+      return store.transaction((tx) => harnessCursor(ports, tx, caller, input.harnessId, at));
+    },
+    cursors: (caller, options) => {
+      const at = instant(options);
+      return store.transaction((tx) => harnessCursors(ports, tx, caller, at));
     },
     planeTotals: (options) => {
       const at = instant(options);
