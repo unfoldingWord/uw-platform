@@ -75,7 +75,7 @@ The principal a persona runs as: `agent:<persona>` for a platform-hosted run, `a
 _Avoid_: service account, bot user, machine user
 
 **Device**:
-The second segment of `agent:<person>/<device>`: a lowercase name a person gives one of their machines or routines (`laptop`, `hourly-routine`). The first segment is the person's id, so a device identity always names its owner. A person's login names the device in the `x-uw-device` header; a service token's device comes from its binding.
+The second segment of `agent:<person>/<device>`: a lowercase name a person gives one of their machines or routines (`laptop`, `hourly-routine`). The first segment is the person's id, so a device identity always names its owner. A person's login names the device in the `x-uw-device` header; a service token's device comes from its binding. In web push, a device is one browser install holding one push subscription, kept by its endpoint.
 _Avoid_: host (that is where a run executes), machine id, client
 
 **Service token binding**:
@@ -299,6 +299,22 @@ _Avoid_: debounce, rate limit, digest
 **Waiting on you**:
 The Home view and the wake for gates the current person can decide, their delegations that lapsed and were not renewed, and failed runs on items they hold or ran.
 _Avoid_: inbox, to-do, notifications
+
+**Presence**:
+A person's open live session on one screen of a harness. A wake for that screen is suppressed. Only a person's own session counts, never an agent's.
+_Avoid_: online, active
+
+**Screen**:
+The view a live session watches: `home`, `flow`, `board`, `gates` or `item`. An `item` session also names its item.
+_Avoid_: page (that is a content page), route
+
+**Zulip topic**:
+The one topic per item, `<harness key>/<item ref>`, posted to in the area's channel and named on the item by `zulip_topic_linked`. A harness-level wake posts to the topic `<harness key>`.
+_Avoid_: thread, stream
+
+**Item ref**:
+`<repository name>#<number>` for an item that wraps an issue, else `item-<first 8 hex of the item id>`.
+_Avoid_: item key, slug
 
 **Indicator**:
 One named line of `/health`: a status from `ok`, `amber`, `red`, `not_configured`, `not_wired` and a short detail. The overall status is the worst indicator.
