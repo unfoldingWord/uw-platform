@@ -110,6 +110,20 @@ async function linkingTakesTheTopicLock(world: World): Promise<void> {
   expect(keys).toContain(`zulip-topics:${scene.harnessId}`);
 }
 
+async function wakeCarriesNoTitle(world: World): Promise<void> {
+  const scene = await topicScene(world);
+  world.adapters.notifier.enableZulip();
+  const itemId = await parkAtCheck(scene, 'Quietly retire the partner portal');
+  const wakes = world.adapters.notifier.delivered().filter((wake) => wake.itemId === itemId);
+  expect(wakes.map((wake) => [wake.reason, wake.itemRef, wake.topic])).toContainEqual([
+    'gate_waiting',
+    'item-00000000',
+    'software/item-00000000',
+  ]);
+  expect(JSON.stringify(wakes)).not.toContain('partner portal');
+  expect(JSON.stringify(world.adapters.notifier.posts())).not.toContain('partner portal');
+}
+
 async function lapsePostsToHarness(world: World): Promise<void> {
   const scene = await runWorld(world);
   world.adapters.notifier.enableZulip();
@@ -228,6 +242,8 @@ describe('the Zulip topic and replies', () => {
   it('NT-3 one topic per item is created on the first wake, stored on the item and kept', () =>
     inWorld(oneTopicPerItem));
   it('a harness-level wake posts to the harness topic', () => inWorld(lapsePostsToHarness));
+  it('a wake and its Zulip topic carry the item ref and never the item title', () =>
+    inWorld(wakeCarriesNoTitle));
   it('an item whose topic and fallback are both taken posts to the harness topic and links none', () =>
     inWorld(takenTopicsPostToHarness));
   it('linking a topic holds the harness topic lock, so two items cannot take one topic', () =>
