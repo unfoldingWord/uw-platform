@@ -89,6 +89,7 @@ export type PlayByPlay = {
   readonly events: readonly HarnessEvent[];
   readonly next: number | null;
   readonly learnings: Readonly<Record<string, EvidenceLabel>>;
+  readonly personaPages: Readonly<Record<string, string>>;
 };
 export const FAILED_RUNS_LIMIT = 50;
 export const VIEW_LIMIT = 5000;

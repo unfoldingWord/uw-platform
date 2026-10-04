@@ -12,6 +12,8 @@ import {
   notLike,
   or,
   sql,
+  type Column,
+  type SQL,
 } from 'drizzle-orm';
 import {
   eventNameSchema,
@@ -228,6 +230,16 @@ async function lastPositions(
   return rows.flatMap((row) =>
     row.position === null ? [] : [{ harnessId: row.harnessId, position: row.position }],
   );
+}
+
+type RunColumns = { readonly id: Column; readonly harnessId: Column; readonly itemId: Column };
+
+export function completedWith(run: RunColumns, results: readonly string[]): SQL {
+  const named = sql.join(
+    results.map((result) => sql`${result}`),
+    sql`, `,
+  );
+  return sql`EXISTS (SELECT 1 FROM ${harnessEvents} WHERE ${harnessEvents.harnessId} = ${run.harnessId} AND ${harnessEvents.itemId} = ${run.itemId} AND ${harnessEvents.name} = 'run_completed' AND ${harnessEvents.evidence}->>'runId' = ${run.id}::text AND ${harnessEvents.evidence}->>'result' IN (${named}))`;
 }
 
 async function countForPersona(

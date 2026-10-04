@@ -53,14 +53,44 @@ async function seededWorld(db: Database): Promise<GateWorld> {
     frontmatter: { confidence: 'assumed', as_of: '2026-01-01', supersedes: [], review_by: null },
     slug: 'screens-stale-learning',
   });
+  await seedPage(db, {
+    id: personaPageId,
+    type: 'persona',
+    status: 'suggested',
+    jdArea: '80-89',
+    title: 'Builder',
+    bodyMd: '---\nname: builder\ndescription: Builder builds.\n---\nBuild the item.',
+    frontmatter: personaFrontmatter(harnessId),
+    slug: 'screens-persona',
+  });
   return world;
+}
+
+const personaPageId = '00000000-0000-4000-8000-00000000be11';
+
+function personaFrontmatter(harnessId: string) {
+  return {
+    identity: 'agent:builder',
+    owner: 'human:00000000-0000-4000-8000-000000000001',
+    harness: harnessId,
+    toolset: ['read_page'],
+    run_shape: 'workflow-run',
+    engine: 'claude-messages',
+    model: 'claude-sonnet-5',
+    provider: 'anthropic',
+    budget: { monthly_minor: 0, currency: 'USD' },
+    capability: 'build',
+    requires_tools: ['read_page'],
+    status: 'suggested',
+  };
 }
 
 function pathOf(entry: ScreenEntry, world: GateWorld): string {
   return entry.path
     .replace(':harnessId', world.item.harnessId)
     .replace(':itemId', world.item.itemId)
-    .replace(':indicator', 'spend');
+    .replace(':indicator', 'spend')
+    .replace(':pageId', personaPageId);
 }
 
 async function renderAll(world: GateWorld): Promise<readonly Rendered[]> {

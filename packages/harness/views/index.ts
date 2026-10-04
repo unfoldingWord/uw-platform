@@ -8,6 +8,7 @@ import { flowView } from './flow.ts';
 import { decidableGates, decideAbility, gateDecided } from './gates.ts';
 import { planeList } from './plane-list.ts';
 import { planeTotals } from './plane.ts';
+import { personaView, type PersonaDashboard } from './persona.ts';
 import { playByPlay, type PlayInput } from './play.ts';
 import { harnessCursor, harnessCursors, readableHarnesses } from './readable.ts';
 import type {
@@ -65,6 +66,11 @@ export type ViewReads = {
     options?: ReadOptions,
   ): Promise<number>;
   cursors(caller: Caller, options?: ReadOptions): Promise<readonly HarnessCursor[]>;
+  persona(
+    caller: Caller,
+    input: { readonly pageId: string },
+    options?: ReadOptions,
+  ): Promise<KernelOutcome<PersonaDashboard>>;
   planeTotals(options?: ReadOptions): Promise<PlaneTotals>;
   planeList(
     caller: Caller,
@@ -72,6 +78,10 @@ export type ViewReads = {
     options?: ReadOptions,
   ): Promise<readonly PlaneRow[]>;
 };
+
+function personaOf(ports: ViewPorts, caller: Caller, pageId: string, at: Date) {
+  return ports.store.transaction((tx) => personaView(ports, tx, caller, pageId, at));
+}
 
 export function createViewReads(ports: ViewPorts): ViewReads {
   const instant = (options?: ReadOptions): Date => options?.at ?? ports.clock.now();
@@ -113,10 +123,8 @@ export function createViewReads(ports: ViewPorts): ViewReads {
       const at = instant(options);
       return store.transaction((tx) => harnessCursors(ports, tx, caller, at));
     },
-    planeTotals: (options) => {
-      const at = instant(options);
-      return store.transaction((tx) => planeTotals(tx, at));
-    },
+    persona: (caller, input, options) => personaOf(ports, caller, input.pageId, instant(options)),
+    planeTotals: (options) => store.transaction((tx) => planeTotals(tx, instant(options))),
     planeList: (caller, indicator, options) => {
       const at = instant(options);
       return store.transaction((tx) => planeList({ ports, tx, caller, at }, indicator));

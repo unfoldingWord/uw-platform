@@ -1,12 +1,13 @@
 import { and, asc, count, eq, gte, sql } from 'drizzle-orm';
 import { engineSchema, runShapeSchema } from '@uw/contracts';
 import type { AnyExecutor } from '../any-database.ts';
-import { harnessEvents, harnessRuns } from '../schema.ts';
+import { harnessRuns } from '../schema.ts';
+import { completedWith } from './events.ts';
 import type { PersonaDay, PersonaDayQuery, RunCount } from './types.ts';
 
 const stepTokens = sql`(SELECT coalesce(sum((step->>'tokensIn')::bigint + (step->>'tokensOut')::bigint), 0) FROM jsonb_array_elements(${harnessRuns.steps}) AS step)`;
 const stepWrites = sql`(SELECT coalesce(sum((step->>'writes')::bigint), 0) FROM jsonb_array_elements(${harnessRuns.steps}) AS step)`;
-const escalatedResult = sql`EXISTS (SELECT 1 FROM ${harnessEvents} WHERE ${harnessEvents.harnessId} = ${harnessRuns.harnessId} AND ${harnessEvents.itemId} = ${harnessRuns.itemId} AND ${harnessEvents.name} = 'run_completed' AND ${harnessEvents.evidence}->>'runId' = ${harnessRuns.id}::text AND ${harnessEvents.evidence}->>'result' IN ('premise_held', 'review_refused'))`;
+const escalatedResult = completedWith(harnessRuns, ['premise_held', 'review_refused']);
 
 function persona(query: PersonaDayQuery) {
   return and(eq(harnessRuns.persona, query.identity), eq(harnessRuns.harnessId, query.harnessId));

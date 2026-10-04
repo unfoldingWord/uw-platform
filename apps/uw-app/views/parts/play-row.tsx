@@ -2,6 +2,7 @@ import { deviceOwnerSegment, type EvidenceLabel as Label, type HarnessEvent } fr
 import { formatInstant } from '@uw/core/dates';
 import { EvidenceLabel } from '@uw/ui/components/evidence-label.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
+import { personaPath } from './paths.ts';
 import { evidenceOf } from './play-evidence.ts';
 
 function hostOf(identity: string): string {
@@ -67,9 +68,22 @@ function Detail(props: {
   return <Evidence event={props.event} />;
 }
 
+const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
+
+function Actor(props: { readonly actor: string; readonly pageId: string | undefined }) {
+  const name = <code class="break-all font-mono text-sm text-ink">{props.actor}</code>;
+  if (props.pageId === undefined) return name;
+  return (
+    <a href={personaPath(props.pageId)} class={`text-link underline ${focus}`}>
+      {name}
+    </a>
+  );
+}
+
 export function PlayRow(props: {
   readonly event: HarnessEvent;
   readonly learnings: ReadonlyMap<string, Label>;
+  readonly personaPages: ReadonlyMap<string, string>;
 }) {
   const { event } = props;
   return (
@@ -77,7 +91,7 @@ export function PlayRow(props: {
       <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <span class="font-bold text-ink">{reasonText(event.name)}</span>
         <span class="text-sm text-muted">{formatInstant(new Date(event.at))}</span>
-        <code class="break-all font-mono text-sm text-ink">{event.actor}</code>
+        <Actor actor={event.actor} pageId={props.personaPages.get(event.actor)} />
         <span class="text-sm text-muted">{hostOf(event.actor)}</span>
       </div>
       <Detail event={event} learnings={props.learnings} />
