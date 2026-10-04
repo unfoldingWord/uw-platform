@@ -200,6 +200,17 @@ async function emptyHome(db: Database): Promise<void> {
   );
 }
 
+async function pushControl(db: Database): Promise<void> {
+  await seeded(db);
+  await seedViewer(db);
+  const { document } = new JSDOM((await homeOf(db, VIEWER.email)).text).window;
+  const control = document.querySelector('main [data-push]');
+  const button = control?.querySelector('button[data-push-toggle]');
+  expect(button?.textContent?.trim()).toBe('Turn on notifications on this device');
+  expect(button?.getAttribute('class')).not.toContain('kindle');
+  expect(control?.querySelector('[data-push-outcome][role="status"]')).not.toBeNull();
+}
+
 async function highItemHidden(db: Database): Promise<void> {
   const { item } = await seeded(db);
   const gate = gatePath(item.harnessId, item.itemId);
@@ -282,4 +293,6 @@ describe.skipIf(!testServer)('Home', () => {
   it('the main fragment answers only the main content with no shell', () =>
     withAppDatabase(fragmentOnly));
   it('Home renders with no screen problems', () => withAppDatabase(noProblems));
+  it('Home offers a control to turn notifications on for this device', () =>
+    withAppDatabase(pushControl));
 });

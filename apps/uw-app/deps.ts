@@ -15,6 +15,7 @@ export type AppDeps = {
   readonly sink: LogSink;
   readonly clock: Clock;
   readonly timers: Timers;
+  readonly fetch: typeof fetch;
 };
 
 export type AppEnv = {
@@ -37,4 +38,5 @@ export const platformDeps: AppDeps = {
   sink: (line) => console.log(line),
   clock: systemClock,
   timers: systemTimers,
+  fetch: (input, init) => fetch(input, init),
 };

@@ -3,6 +3,7 @@ import type { AppDeps, AppEnv } from '../deps.ts';
 import { answer, readJson } from '../http/commands.ts';
 import { connectLive } from '../live/connect.ts';
 import { hubOf } from '../ports/hub.ts';
+import { notifierOf } from '../ports/notifier.ts';
 import { runsOf } from '../ports/runs.ts';
 import { requestLogger } from '../request-logger.ts';
 import { executeCommand } from './dispatch.ts';
@@ -13,7 +14,7 @@ import { commandRegistry } from './registry.ts';
 
 async function handleCommand(
   c: Context<AppEnv>,
-  deps: Pick<AppDeps, 'clock'>,
+  deps: Pick<AppDeps, 'clock' | 'sink' | 'fetch'>,
   person: PersonDeps,
 ): Promise<Response> {
   const request = {
@@ -31,12 +32,16 @@ async function handleCommand(
     gateGitHub: () => person.gateGitHub(c.env, () => deps.clock.now()),
     hub: hubOf(c.env, logger),
     runs: runsOf(c.env),
+    notifier: notifierOf(c.env, c.get('database'), deps.sink, deps.fetch),
     logger,
   });
   return answer(c, outcome);
 }
 
-export function harnessRoutes(deps: Pick<AppDeps, 'clock'>, person: PersonDeps): Hono<AppEnv> {
+export function harnessRoutes(
+  deps: Pick<AppDeps, 'clock' | 'sink' | 'fetch'>,
+  person: PersonDeps,
+): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
   routes.post('/:harness/commands/:name', (c) => handleCommand(c, deps, person));
   routes.get('/:harness/stages/:stage/items', stageItems);

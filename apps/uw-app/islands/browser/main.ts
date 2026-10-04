@@ -3,6 +3,7 @@ import { reconnectingSocket, type LiveTimers } from '../live/session.ts';
 import { wireCommandForms } from './command-form.ts';
 import { startLive } from './live.ts';
 import { morphMain } from './morph.ts';
+import { browserPush, wirePushControl } from './push-subscribe.ts';
 import { createRefresher } from './refresh.ts';
 import { registerWorker } from './register.ts';
 
@@ -21,4 +22,5 @@ document.addEventListener('DOMContentLoaded', () => {
     afterAccepted: () => void refresher.refresh(),
   });
   startLive(document, { fetch: send, connect: reconnectingSocket, timers, refresher });
+  wirePushControl(document, { fetch: send, push: browserPush(navigator) });
 });

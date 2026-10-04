@@ -144,7 +144,12 @@ describe('HE-4 only the run wiring holds the Reviewer review writes', () => {
       apps: new Map([['uw-reviewer', await fixtureApp()]]),
       transport: fixtureTransport(github),
     };
-    const host = { hub: recordingHub, runs: runsNotWired, modelEngine: modelEngineNotWired };
+    const host = {
+      hub: recordingHub,
+      runs: runsNotWired,
+      modelEngine: modelEngineNotWired,
+      notifier: notifierNotWired,
+    };
     const run = platformPorts(untouched, systemClock, runWiring(host, null, reviews));
     expect(await run.connectors.review(contractReview)).toEqual({
       outcome: 'posted',

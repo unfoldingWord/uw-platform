@@ -54,6 +54,26 @@ export function pushTitle(payload: PushPayload): string {
   return (payload.reason === null ? undefined : titles.get(payload.reason)) ?? DEFAULT_PUSH_TITLE;
 }
 
+const harnessKey = /^[a-z0-9][a-z0-9-]{0,63}$/;
+
+export type ShownPush = {
+  readonly title: string;
+  readonly options: {
+    readonly body?: string;
+    readonly tag: string;
+    readonly data: { readonly link: string };
+  };
+};
+
+export function pushNotification(payload: PushPayload): ShownPush {
+  const named = payload.harness !== null && harnessKey.test(payload.harness);
+  const body = named ? { body: `In ${payload.harness}.` } : {};
+  return {
+    title: pushTitle(payload),
+    options: { ...body, tag: payload.link, data: { link: payload.link } },
+  };
+}
+
 export function isShellAsset(pathname: string, assets: readonly string[]): boolean {
   return assets.includes(pathname);
 }

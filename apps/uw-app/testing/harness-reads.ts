@@ -25,7 +25,12 @@ export async function readAs(db: Database, principal: Principal, path: string): 
     c.set('outcome', null);
     await next();
   });
-  app.route('/api/harness', harnessRoutes({ clock: systemClock }, noGateGitHub));
+  const deps = {
+    clock: systemClock,
+    sink: () => undefined,
+    fetch: () => Promise.reject(new Error('no network in this test')),
+  };
+  app.route('/api/harness', harnessRoutes(deps, noGateGitHub));
   const raw = await app.request(path, { method: 'GET' });
   const text = await raw.text();
   const body = JSON.parse(text) as Record<string, unknown>;

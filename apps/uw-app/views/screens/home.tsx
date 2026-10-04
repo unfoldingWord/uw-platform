@@ -2,6 +2,7 @@ import type { Context } from 'hono';
 import { formatInstant } from '@uw/core/dates';
 import { formatCount } from '@uw/core/money';
 import { FAILED_RUNS_LIMIT, type WaitingRow } from '@uw/harness';
+import { commandButton } from '@uw/ui/components/command-form.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
@@ -89,6 +90,22 @@ function WaitingList(props: { readonly rows: readonly Shown[] }) {
   );
 }
 
+function PushControl() {
+  return (
+    <section data-push aria-labelledby="push-heading" class="mt-6 flex flex-col gap-2">
+      <h2 id="push-heading" class="m-0 text-base font-bold text-ink">
+        Notifications
+      </h2>
+      <div>
+        <button type="button" data-push-toggle class={commandButton}>
+          Turn on notifications on this device
+        </button>
+      </div>
+      <p data-push-outcome role="status" class="m-0 text-sm text-muted"></p>
+    </section>
+  );
+}
+
 export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   if (screen === null) return screenRefusal(c);
@@ -113,6 +130,7 @@ export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
       <>
         <PageHead title="Waiting on you" />
         <Note>Nothing is waiting on you right now.</Note>
+        <PushControl />
       </>
     ) : (
       <>
@@ -124,6 +142,7 @@ export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
           <Note>{note}</Note>
         ))}
         {rows.length === 0 ? null : <WaitingList rows={rows} />}
+        <PushControl />
       </>
     ),
   );

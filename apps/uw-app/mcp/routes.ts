@@ -7,12 +7,15 @@ import { spendCapOf } from '../health/spend-cap.ts';
 import { refuse } from '../http/outcomes.ts';
 import { hubWiring, platformKernel } from '../kernel.ts';
 import { hubOf } from '../ports/hub.ts';
+import { notifierOf } from '../ports/notifier.ts';
 import { requestLogger } from '../request-logger.ts';
 import { jsonRpcError, singleMessage } from './body.ts';
 import { withAgentPrincipal } from './mint.ts';
 import { createVerbServer } from './server.ts';
 
-async function serve(c: Context<AppEnv>, deps: Pick<AppDeps, 'clock'>): Promise<Response> {
+type McpDeps = Pick<AppDeps, 'clock' | 'sink' | 'fetch'>;
+
+async function serve(c: Context<AppEnv>, deps: McpDeps): Promise<Response> {
   const database = c.get('database');
   if (database === null) return refuse(c, 'database_not_configured');
   const principal = c.get('principal');
@@ -23,12 +26,13 @@ async function serve(c: Context<AppEnv>, deps: Pick<AppDeps, 'clock'>): Promise<
     return jsonRpcError(body);
   }
   const logger = requestLogger(c);
+  const notifier = notifierOf(c.env, database, deps.sink, deps.fetch);
   const server = createVerbServer({
     principal,
     host: 'external',
     at: c.get('now'),
     traceId: c.get('traceId'),
-    kernel: platformKernel(database, deps.clock, hubWiring(hubOf(c.env, logger))),
+    kernel: platformKernel(database, deps.clock, hubWiring(hubOf(c.env, logger), { notifier })),
     db: database.db,
     commit: commitOf(c.env),
     cap: spendCapOf(c.env),
@@ -54,7 +58,7 @@ function postOnly(c: Context<AppEnv>): Response {
   return c.json({ status: 'error', reason: 'not_wired' }, 405);
 }
 
-export function mcpRoutes(deps: Pick<AppDeps, 'clock'>): Hono<AppEnv> {
+export function mcpRoutes(deps: McpDeps): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
   routes.use('*', withAgentPrincipal());
   routes.post('/', (c) => serve(c, deps));
