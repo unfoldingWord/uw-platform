@@ -69,8 +69,17 @@ async function readableRows(world: BoardWorld): Promise<void> {
   expect(theirs.querySelector('main [role="note"]')?.textContent).toBe(
     'Nothing to list for you here.',
   );
-  const unknown = await getHtml(world.db, world.ianEmail, healthPath('nowhere'), {}, clock);
-  expect(unknown.status).toBe(404);
+}
+
+async function unknownIndicators(world: BoardWorld): Promise<void> {
+  const page = (path: string) => getHtml(world.db, world.ianEmail, path, {}, clock);
+  const missing = await page(healthPath('nowhere'));
+  expect(missing.status).toBe(404);
+  for (const path of ['/health/spendx', '/health/xbreaker', '/health/spend/x']) {
+    const answer = await page(path);
+    expect([path, answer.status]).toEqual([path, 404]);
+    expect(answer.text).toBe(missing.text);
+  }
 }
 
 async function sameForEveryone(world: BoardWorld): Promise<void> {
@@ -109,5 +118,7 @@ describe.skipIf(!testServer)('/health and its drill-through', () => {
   it('WB-10 every person sees the same aggregates, whatever their grants', () =>
     inHealth(sameForEveryone));
   it('WB-10 a drill-through lists only rows the person can read', () => inHealth(readableRows));
+  it('an unknown indicator, even one that starts or ends with a known name, answers the not-found page', () =>
+    inHealth(unknownIndicators));
   it('WB-10 /health renders in the shell with no screen problems', () => inHealth(inTheShell));
 });
