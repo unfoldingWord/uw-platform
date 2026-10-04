@@ -20,6 +20,7 @@ const githubFiles = [
   'diff',
   'review-writes',
   'reviewer-apps',
+  'builder-app',
 ];
 
 function write(root: string, path: string, source: string): void {

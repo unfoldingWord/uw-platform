@@ -55,11 +55,19 @@ export const githubRules = [
     to: { path: github('reviewer-apps') },
   },
   {
+    name: 'builder-app-only-in-the-run-host',
+    comment:
+      'Only the run host reads the Builder App configuration and mints the Builder token, which reaches the sandbox egress as a callback and never the sandbox.',
+    severity: 'error',
+    from: { pathNot: [runHostDeps, testFile] },
+    to: { path: github('builder-app') },
+  },
+  {
     name: 'github-token-and-octokit-only-in-the-session',
     comment:
-      'Only the session mints an installation token or reaches any Octokit package but the webhook signature check, so no other module holds a token.',
+      'Only the session and the Builder App mint an installation token, and only the session reaches any Octokit package but the webhook signature check, so no other module holds a token.',
     severity: 'error',
-    from: { pathNot: [github('session'), testFile] },
+    from: { pathNot: [github('session'), github('builder-app'), testFile] },
     to: { path: [github('token'), npm('@octokit')], pathNot: octokitWebhookSignatures },
   },
   {
