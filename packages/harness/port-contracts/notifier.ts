@@ -86,58 +86,51 @@ function describePush(open: () => Promise<NotifierSubject>): void {
   });
 }
 
-function describeZulip(open: () => Promise<NotifierSubject>, zulip: boolean): void {
+function describeZulip(open: () => Promise<NotifierSubject>): void {
   it('answers not_configured for Zulip while it is off', async () => {
     const subject = await open();
     expect((await subject.notifier.notify(wakeFor([]))).zulip).toBe('not_configured');
   });
 
-  it.skipIf(!zulip)(
-    'posts a gate wake once to its topic whatever the recipient count, and never a stage advance',
-    async () => {
-      const subject = await open();
-      await subject.enableZulip();
-      const many = [recipient(freshPerson()), recipient(freshPerson())];
-      expect((await subject.notifier.notify(wakeFor([]))).zulip).toBe('posted');
-      expect((await subject.notifier.notify(wakeFor(many))).zulip).toBe('posted');
-      expect((await subject.notifier.notify(wakeFor(many, 'stage_advanced'))).zulip).toBe(
-        'not_posted',
-      );
-      expect(await subject.posts()).toEqual([
-        { topic: 'software/item-b4000000', reason: 'gate_waiting' },
-        { topic: 'software/item-b4000000', reason: 'gate_waiting' },
-      ]);
-    },
-  );
+  it('posts a gate wake once to its topic whatever the recipient count, and never a stage advance', async () => {
+    const subject = await open();
+    await subject.enableZulip();
+    const many = [recipient(freshPerson()), recipient(freshPerson())];
+    expect((await subject.notifier.notify(wakeFor([]))).zulip).toBe('posted');
+    expect((await subject.notifier.notify(wakeFor(many))).zulip).toBe('posted');
+    expect((await subject.notifier.notify(wakeFor(many, 'stage_advanced'))).zulip).toBe(
+      'not_posted',
+    );
+    expect(await subject.posts()).toEqual([
+      { topic: 'software/item-b4000000', reason: 'gate_waiting' },
+      { topic: 'software/item-b4000000', reason: 'gate_waiting' },
+    ]);
+  });
 }
 
-function describeFailure(open: () => Promise<NotifierSubject>, zulip: boolean): void {
-  it.skipIf(!zulip)(
-    'answers dropped for push and Zulip after a failure, and does not retry it',
-    async () => {
-      const subject = await open();
-      await subject.enableZulip();
-      const ana = await subscribed(subject);
-      await subject.failNext();
-      const failed = await subject.notifier.notify(wakeFor([recipient(ana)]));
-      expect(failed).toEqual({ push: [{ personId: ana, decision: 'dropped' }], zulip: 'dropped' });
-      expect(await subject.posts()).toEqual([]);
-      const next = await subject.notifier.notify(wakeFor([recipient(ana)], 'gate_waiting', 10));
-      expect(next).toEqual({ push: [{ personId: ana, decision: 'sent' }], zulip: 'posted' });
-      expect(await subject.posts()).toHaveLength(1);
-    },
-  );
+function describeFailure(open: () => Promise<NotifierSubject>): void {
+  it('answers dropped for push and Zulip after a failure, and does not retry it', async () => {
+    const subject = await open();
+    await subject.enableZulip();
+    const ana = await subscribed(subject);
+    await subject.failNext();
+    const failed = await subject.notifier.notify(wakeFor([recipient(ana)]));
+    expect(failed).toEqual({ push: [{ personId: ana, decision: 'dropped' }], zulip: 'dropped' });
+    expect(await subject.posts()).toEqual([]);
+    const next = await subject.notifier.notify(wakeFor([recipient(ana)], 'gate_waiting', 10));
+    expect(next).toEqual({ push: [{ personId: ana, decision: 'sent' }], zulip: 'posted' });
+    expect(await subject.posts()).toHaveLength(1);
+  });
 }
 
 export function describeNotifierContract(
   adapter: string,
   open: () => Promise<NotifierSubject>,
-  zulip = true,
 ): void {
   describe(`DX-3 notifier port contract on ${adapter}`, () => {
     describePush(open);
-    describeZulip(open, zulip);
-    describeFailure(open, zulip);
+    describeZulip(open);
+    describeFailure(open);
   });
 }
 

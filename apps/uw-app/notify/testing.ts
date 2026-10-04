@@ -106,3 +106,32 @@ export function recordingFetch(answer: FetchAnswer): RecordingFetch {
 export function endpointFor(name: string): string {
   return `https://fcm.googleapis.com/fcm/send/${name}`;
 }
+
+export const zulipSite = 'https://chat.example.org';
+export const appOrigin = 'https://app.example.org';
+
+export function zulipEnv(channels: Readonly<Record<string, string>>): Record<string, string> {
+  return {
+    ZULIP_SITE: zulipSite,
+    ZULIP_BOT_EMAIL: 'harness-bot@chat.example.org',
+    ZULIP_BOT_API_KEY: 'fixture-api-key',
+    ZULIP_CHANNELS: JSON.stringify(channels),
+  };
+}
+
+export type ZulipForm = { readonly to: string; readonly topic: string; readonly content: string };
+
+export function zulipFormOf(body: unknown): ZulipForm {
+  const form = new URLSearchParams(typeof body === 'string' ? body : '');
+  return {
+    to: form.get('to') ?? '',
+    topic: form.get('topic') ?? '',
+    content: form.get('content') ?? '',
+  };
+}
+
+export function zulipForms(calls: readonly FetchCall[]): ZulipForm[] {
+  return calls
+    .filter((call) => call.url.startsWith(zulipSite))
+    .map((call) => zulipFormOf(call.body));
+}

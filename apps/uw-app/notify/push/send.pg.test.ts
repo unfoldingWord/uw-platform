@@ -54,8 +54,9 @@ async function notifierWith(db: Database, setup: Setup) {
   const lines: Record<string, unknown>[] = [];
   const notifier = platformNotifier({
     db,
-    config: { appOrigin: null, push: vapid.config },
+    config: { appOrigin: null, push: vapid.config, zulip: null },
     push: webPushTransport(vapid.config, recorded.fetcher, systemTimers),
+    zulip: null,
     sink: (line) => lines.push(JSON.parse(line) as Record<string, unknown>),
     commit: 'test',
   });
@@ -64,8 +65,12 @@ async function notifierWith(db: Database, setup: Setup) {
 
 const here: WakeRecipient = { personId: ana, present: false };
 
+function pushLines(lines: readonly Record<string, unknown>[]): Record<string, unknown>[] {
+  return lines.filter((line) => String(line['outcome']).startsWith('push_'));
+}
+
 function outcomes(lines: readonly Record<string, unknown>[]): unknown[] {
-  return lines.map((line) => line['outcome']);
+  return pushLines(lines).map((line) => line['outcome']);
 }
 
 async function everyDevice(db: Database): Promise<void> {
@@ -98,10 +103,12 @@ async function spentWindow(db: Database): Promise<void> {
 }
 
 async function loggedDecisions(db: Database): Promise<void> {
-  const { notifier, lines } = await notifierWith(db, { devices: ['p1'], statuses: { p1: 201 } });
+  const rig = await notifierWith(db, { devices: ['p1'], statuses: { p1: 201 } });
+  const { notifier } = rig;
   await notifier.notify(wake([here]));
   await notifier.notify(wake([here], 1));
   await notifier.notify(wake([{ personId: ana, present: true }], 2));
+  const lines = pushLines(rig.lines);
   expect(lines.map((line) => [line['outcome'], line['trace_id'], line['route']])).toEqual([
     ['push_sent', traceId, 'notifier'],
     ['push_coalesced', traceId, 'notifier'],
@@ -122,15 +129,23 @@ async function unconfiguredAndBare(db: Database): Promise<void> {
   await seedPerson(db, { id: ana, email: 'send-ana@unfoldingword.org' });
   const lines: Record<string, unknown>[] = [];
   const sink = (line: string) => lines.push(JSON.parse(line) as Record<string, unknown>);
-  const config = { appOrigin: null, push: null };
-  const unconfigured = platformNotifier({ db, config, push: null, sink, commit: 'test' });
+  const config = { appOrigin: null, push: null, zulip: null };
+  const unconfigured = platformNotifier({
+    db,
+    config,
+    push: null,
+    zulip: null,
+    sink,
+    commit: 'test',
+  });
   expect((await unconfigured.notify(wake([here]))).push[0]?.decision).toBe('not_configured');
   const vapid = await vapidFixture();
   const fetcher = recordingFetch(() => new Response()).fetcher;
   const bare = platformNotifier({
     db,
-    config: { appOrigin: null, push: vapid.config },
+    config: { appOrigin: null, push: vapid.config, zulip: null },
     push: webPushTransport(vapid.config, fetcher, systemTimers),
+    zulip: null,
     sink,
     commit: 'test',
   });

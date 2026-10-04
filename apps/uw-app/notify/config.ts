@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import type { Bindings } from '../env.ts';
+import { httpsOrigin } from './origin.ts';
+import { zulipConfigOf, type ZulipConfig } from './zulip/config.ts';
 
 export type PushConfig = {
   readonly publicKey: string;
@@ -10,6 +12,7 @@ export type PushConfig = {
 export type NotifyConfig = {
   readonly appOrigin: string | null;
   readonly push: PushConfig | null;
+  readonly zulip: ZulipConfig | null;
 };
 
 const publicKeyPattern = /^[A-Za-z0-9_-]{87}$/;
@@ -43,14 +46,10 @@ function pushConfigOf(env: Bindings): PushConfig | null {
   return { publicKey, subject, privateJwk: { kty, crv, d, x, y } };
 }
 
-function httpsOrigin(value: string | undefined): string | null {
-  if (value === undefined || !URL.canParse(value)) return null;
-  const url = new URL(value);
-  const bare = value === url.origin || value === `${url.origin}/`;
-  if (url.protocol !== 'https:' || !bare) return null;
-  return url.origin;
-}
-
 export function notifyConfigOf(env: Bindings): NotifyConfig {
-  return { appOrigin: httpsOrigin(env.APP_ORIGIN), push: pushConfigOf(env) };
+  return {
+    appOrigin: httpsOrigin(env.APP_ORIGIN),
+    push: pushConfigOf(env),
+    zulip: zulipConfigOf(env),
+  };
 }
