@@ -83,6 +83,24 @@ const refusals: [string, string, string, string][] = [
     'reviewer-apps-only-in-the-run-host',
   ],
   [
+    'the kernel root reading the Builder App',
+    'apps/uw-app/kernel.ts',
+    "import './github/builder-app.ts';",
+    'builder-app-only-in-the-run-host',
+  ],
+  [
+    'a run body minting the Builder token itself',
+    'apps/uw-app/runs/bodies.ts',
+    "import '../github/builder-app.ts';",
+    'builder-app-only-in-the-run-host',
+  ],
+  [
+    'the sandbox egress reaching the Builder App',
+    'apps/uw-app/engines/sandbox/github-egress.ts',
+    "import '../../github/builder-app.ts';",
+    'builder-app-only-in-the-run-host',
+  ],
+  [
     'the queue root taking the merge and tag writes',
     'apps/uw-app/queue/worker.ts',
     "import '../github/ship-writes.ts';",
@@ -341,6 +359,15 @@ describe('the Reviewer dependency rules allow', () => {
       await violations({
         'apps/uw-app/ports/connectors.ts': "import '../github/review-writes.ts';",
         'apps/uw-app/runs/deps.ts': "import '../github/reviewer-apps.ts';",
+      }),
+    ).toEqual([]);
+  });
+
+  it('the run host on the Builder App, and the Builder App on the token', async () => {
+    expect(
+      await violations({
+        'apps/uw-app/runs/deps.ts': "import '../github/builder-app.ts';",
+        'apps/uw-app/github/builder-app.ts': "import './token.ts';",
       }),
     ).toEqual([]);
   });
