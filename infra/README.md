@@ -149,7 +149,7 @@ Variables, in `infra/uw-app/wrangler.go-live.toml` under staging and production 
 | `VAPID_SUBJECT` | `mailto:` an address that answers, or an `https://` page |
 | `ZULIP_SITE` | The Zulip realm's `https://` origin |
 | `ZULIP_BOT_EMAIL` | The bot's email address |
-| `ZULIP_CHANNELS` | A JSON object from area to channel name, for example `{"80-89":"80-89 Technology"}`; an area with no channel drops its Zulip wakes |
+| `ZULIP_CHANNELS` | A JSON object from area to channel name, for example `{"80-89":"80-89 Technology"}`; an area with no channel drops its Zulip wakes. Each channel must be private, with members exactly the people who can read that area (see below) |
 
 Secrets, set with `wrangler secret put <name> --env <name>` and written in no file:
 
@@ -162,6 +162,8 @@ wrangler secret put ZULIP_WEBHOOK_TOKEN --env <name>
 ```
 
 The Zulip bot is an outgoing-webhook bot. Its endpoint URL is `https://<uw-ingest host>/webhooks/zulip`, its payload format is Zulip's own, and its token is `ZULIP_WEBHOOK_TOKEN`. `uw-ingest` answers an accepted delivery with no `content` and `"response_not_required": true`, so the bot posts nothing back.
+
+A post reaches everyone in its channel, and the platform does not check who that is. Every channel in `ZULIP_CHANNELS` must therefore be a private channel (never public or web-public) whose members are exactly the people who can read that area: anyone with a live grant on the area, an org grant, or an editor or admin grant on any area. Whoever configures the realm keeps membership in step with grants: a person granted read on an area joins its channel, and a person whose grant is revoked or expires leaves it. Otherwise a person who cannot read the area sees its harness key, its repository names and issue numbers, and that a gate, a lapse or a failed run is waiting. The post carries only the harness key, the item ref, one fixed sentence and the link, never an item's title or body.
 
 ## Logs (FD-11)
 
