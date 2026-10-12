@@ -1,0 +1,20 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000e2",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "name": "label_removed",
+  "position": 2,
+  "at": "2026-10-01T09:00:00.000Z",
+  "actor": "agent:ingest",
+  "evidence": {
+    "issue": {
+      "repo": "unfoldingWord/uw-platform",
+      "number": 42,
+      "githubId": 9100000001
+    },
+    "label": "harness",
+    "githubUpdatedAt": "2026-10-01T09:30:00.000Z"
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
+}

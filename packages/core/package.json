@@ -4,13 +4,20 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./acl": "./acl.ts",
+    "./database-error": "./database-error.ts",
     "./dates": "./dates.ts",
-    "./modules": "./modules.ts"
+    "./log": "./log.ts",
+    "./modules": "./modules.ts",
+    "./money": "./money.ts",
+    "./principal": "./principal.ts",
+    "./trace": "./trace.ts"
   },
   "scripts": {
     "check": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@uw/contracts": "workspace:*",
     "zod": "^4.6.5"
   }
 }

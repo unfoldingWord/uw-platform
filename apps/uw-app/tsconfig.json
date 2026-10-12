@@ -6,5 +6,18 @@
     "jsxImportSource": "hono/jsx"
   },
   "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "**/*.pg.test.ts",
+    "testing/postgres.ts",
+    "testing/commands.ts",
+    "testing/harness-reads.ts",
+    "testing/run-host.ts",
+    "testing/views.ts",
+    "testing/screen-checks.ts",
+    "testing/board-world.ts",
+    "testing/gate-world.ts",
+    "islands/browser/**",
+    "islands/worker/**"
+  ]
 }

@@ -1,8 +1,11 @@
 {
-  "eventId": "3f1d7c1e-8c53-4a53-9d6e-0a9b6a0f4d11",
-  "harnessId": "3f1d7c1e-8c53-4a53-9d6e-0a9b6a0f4d11",
+  "eventId": "00000000-0000-4000-8000-0000000000e1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
   "name": "merged",
-  "at": "2026-09-30T04:00:00Z",
-  "actor": "human:ian",
-  "payload": {}
+  "position": 1,
+  "at": "2026-10-01T09:00:00.000Z",
+  "actor": "agent:builder",
+  "evidence": {},
+  "traceId": "00000000-0000-4000-8000-0000000000c1"
 }

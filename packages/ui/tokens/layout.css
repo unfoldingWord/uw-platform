@@ -1,0 +1,10 @@
+:root {
+  --uw-space: 0.25rem;
+  --uw-radius-sm: 4px;
+  --uw-radius-md: 6px;
+  --uw-radius-lg: 10px;
+  --uw-breakpoint-md: 48rem;
+  --uw-breakpoint-lg: 64rem;
+  --uw-sidebar: 16rem;
+  --uw-flow-diagram: 48rem;
+}

@@ -1,0 +1,11 @@
+{
+  "name": "uw-builder",
+  "url": "https://github.com/unfoldingWord/uw-platform",
+  "public": false,
+  "default_permissions": {
+    "metadata": "read",
+    "contents": "write",
+    "pull_requests": "write"
+  },
+  "default_events": []
+}

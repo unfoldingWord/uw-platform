@@ -1,14 +1,107 @@
 import type { ZodType } from 'zod';
+import { grantRoleCommandSchema, revokeRoleCommandSchema } from './acl-commands.ts';
+import {
+  bindServiceTokenCommandSchema,
+  revokeServiceTokenCommandSchema,
+  serviceClientIdSchema,
+} from './agent-commands.ts';
+import { jdAreaSchema } from './areas.ts';
 import * as closedSets from './closed-sets.ts';
-import { commandNameSchema, commandSchema, overrideCommandSchema } from './commands.ts';
-import { eventNameSchema, eventSchema } from './events.ts';
-import { identitySchema } from './identity.ts';
+import {
+  commandNameSchema,
+  commandSchema,
+  overrideCommandSchema,
+  templateKeySchema,
+} from './commands.ts';
+import {
+  handOffReasonSchema,
+  learningAttachedKindSchema,
+  personaActivationRefusalSchema,
+} from './event-evidence.ts';
+import { eventNameSchema, eventSchema, newEventSchema } from './events.ts';
+import { gateViewSchema } from './gate-view.ts';
+import { issueReferenceSchema, pullRequestDeclarationSchema } from './github.ts';
+import {
+  healthIndicatorSchema,
+  healthReportSchema,
+  indicatorStatusSchema,
+  overallStatusSchema,
+} from './health.ts';
+import {
+  harnessSchema,
+  issueRefSchema,
+  itemStateSchema,
+  personaIdentitySchema,
+  pullRequestRefSchema,
+  repositorySchema,
+  stageKeySchema,
+  stageSchema,
+} from './harness.ts';
+import { deviceSegmentSchema, identitySchema, personaSlugSchema } from './identity.ts';
+import {
+  ingestEnvelopeSchema,
+  ingestRefusalSchema,
+  ingestResponseSchema,
+  ingestSourceSchema,
+} from './ingest.ts';
+import { eventPageReplySchema, eventQuerySchema, hubWakeSchema } from './live.ts';
+import {
+  deepLinkSchema,
+  pushEndpointSchema,
+  pushPayloadSchema,
+  pushSubscribeSchema,
+  pushUnsubscribeSchema,
+} from './notify.ts';
 import {
   acceptedOutcomeSchema,
   errorOutcomeSchema,
   errorReasonSchema,
   outcomeSchema,
+  refusalSchema,
 } from './outcomes.ts';
+import {
+  confirmPageCommandSchema,
+  createPageCommandSchema,
+  frontmatterSchema,
+  pageSchema,
+  pageStatusSchema,
+  pageTypeSchema,
+  slugSchema,
+  updatePageCommandSchema,
+} from './pages.ts';
+import {
+  dataSourceKindSchema,
+  dataSourcesFrontmatterSchema,
+  issueFrontmatterSchema,
+  learningFrontmatterSchema,
+  personaFrontmatterSchema,
+  productFrontmatterSchema,
+  productStrategyFrontmatterSchema,
+  skillFrontmatterSchema,
+  systemGoalFrontmatterSchema,
+} from './page-types.ts';
+import { platformCommandNameSchema } from './platform-commands.ts';
+import { grantSchema, principalSchema } from './principal.ts';
+import {
+  modelIdSchema,
+  providerIdSchema,
+  reviewRecordSchema,
+  runStepRecordSchema,
+  runStepSchema,
+} from './runs.ts';
+import {
+  checkConclusionSchema,
+  ciJobSchema,
+  fullShaSchema,
+  riskDeclarationSchema,
+  shipRefusalSchema,
+  shipRuleInputSchema,
+  shipRuleOutcomeSchema,
+} from './ship-rule.ts';
+import { recordRunStepReplySchema, submitToGateResultSchema } from './verb-io.ts';
+import { forbiddenVerbSchema, verbNameSchema } from './verb-names.ts';
+import { verbGrantSchema, verbGroupSchema } from './verbs.ts';
+import { zulipMessageSchema, zulipOutgoingSchema, zulipTopicSchema } from './zulip.ts';
 
 export const schemaRegistry: Record<string, ZodType> = {
   command: commandSchema,
@@ -20,7 +113,10 @@ export const schemaRegistry: Record<string, ZodType> = {
   'error-reason': errorReasonSchema,
   event: eventSchema,
   'event-name': eventNameSchema,
+  'new-event': newEventSchema,
   identity: identitySchema,
+  'device-segment': deviceSegmentSchema,
+  'persona-slug': personaSlugSchema,
   connector: closedSets.connectorSchema,
   'exit-gate': closedSets.exitGateSchema,
   'agent-pickup': closedSets.agentPickupSchema,
@@ -35,4 +131,101 @@ export const schemaRegistry: Record<string, ZodType> = {
   'run-shape': closedSets.runShapeSchema,
   engine: closedSets.engineSchema,
   'cost-basis': closedSets.costBasisSchema,
+  refusal: refusalSchema,
+  'capability-word': closedSets.capabilityWordSchema,
+  'gate-decision': closedSets.gateDecisionSchema,
+  'person-status': closedSets.personStatusSchema,
+  'principal-kind': closedSets.principalKindSchema,
+  'jd-area': jdAreaSchema,
+  grant: grantSchema,
+  principal: principalSchema,
+  'platform-command-name': platformCommandNameSchema,
+  'grant-role-command': grantRoleCommandSchema,
+  'revoke-role-command': revokeRoleCommandSchema,
+  'indicator-status': indicatorStatusSchema,
+  'overall-status': overallStatusSchema,
+  'health-indicator': healthIndicatorSchema,
+  'health-report': healthReportSchema,
+  'page-type': pageTypeSchema,
+  'page-status': pageStatusSchema,
+  slug: slugSchema,
+  frontmatter: frontmatterSchema,
+  page: pageSchema,
+  'create-page-command': createPageCommandSchema,
+  'update-page-command': updatePageCommandSchema,
+  'confirm-page-command': confirmPageCommandSchema,
+  'verb-name': verbNameSchema,
+  'forbidden-verb': forbiddenVerbSchema,
+  'verb-group': verbGroupSchema,
+  'verb-grant': verbGrantSchema,
+  'submit-to-gate-result': submitToGateResultSchema,
+  'run-step': runStepSchema,
+  'skill-frontmatter': skillFrontmatterSchema,
+  'learning-frontmatter': learningFrontmatterSchema,
+  'persona-frontmatter': personaFrontmatterSchema,
+  'product-frontmatter': productFrontmatterSchema,
+  'system-goal-frontmatter': systemGoalFrontmatterSchema,
+  'product-strategy-frontmatter': productStrategyFrontmatterSchema,
+  'data-sources-frontmatter': dataSourcesFrontmatterSchema,
+  'issue-frontmatter': issueFrontmatterSchema,
+  'data-source-kind': dataSourceKindSchema,
+  'ingest-source': ingestSourceSchema,
+  'ingest-refusal': ingestRefusalSchema,
+  'ingest-envelope': ingestEnvelopeSchema,
+  'ingest-response': ingestResponseSchema,
+  'stage-bracket': closedSets.stageBracketSchema,
+  'gate-status': closedSets.gateStatusSchema,
+  'branch-state': closedSets.branchStateSchema,
+  'run-outcome': closedSets.runOutcomeSchema,
+  'delegation-lapse': closedSets.delegationLapseSchema,
+  'run-hibernation': closedSets.runHibernationSchema,
+  'run-stop': closedSets.runStopSchema,
+  'run-failure': closedSets.runFailureSchema,
+  'run-result': closedSets.runResultSchema,
+  'breaker-level': closedSets.breakerLevelSchema,
+  'review-verdict': closedSets.reviewVerdictSchema,
+  'provider-id': providerIdSchema,
+  'model-id': modelIdSchema,
+  'review-record': reviewRecordSchema,
+  'run-step-record': runStepRecordSchema,
+  'record-run-step-reply': recordRunStepReplySchema,
+  'stage-key': stageKeySchema,
+  'persona-identity': personaIdentitySchema,
+  'pull-request-ref': pullRequestRefSchema,
+  'issue-ref': issueRefSchema,
+  repository: repositorySchema,
+  harness: harnessSchema,
+  stage: stageSchema,
+  'item-state': itemStateSchema,
+  'ci-job': ciJobSchema,
+  'check-conclusion': checkConclusionSchema,
+  'ship-refusal': shipRefusalSchema,
+  'risk-declaration': riskDeclarationSchema,
+  'full-sha': fullShaSchema,
+  'ship-rule-input': shipRuleInputSchema,
+  'ship-rule-outcome': shipRuleOutcomeSchema,
+  'task-status': closedSets.taskStatusSchema,
+  'persona-activation-refusal': personaActivationRefusalSchema,
+  'learning-attached-kind': learningAttachedKindSchema,
+  'hand-off-reason': handOffReasonSchema,
+  'service-client-id': serviceClientIdSchema,
+  'bind-service-token-command': bindServiceTokenCommandSchema,
+  'revoke-service-token-command': revokeServiceTokenCommandSchema,
+  'issue-reference': issueReferenceSchema,
+  'pull-request-declaration': pullRequestDeclarationSchema,
+  'template-key': templateKeySchema,
+  'hub-wake': hubWakeSchema,
+  'event-page-reply': eventPageReplySchema,
+  'event-read-query': eventQuerySchema,
+  'gate-view': gateViewSchema,
+  'wake-reason': closedSets.wakeReasonSchema,
+  'live-screen': closedSets.liveScreenSchema,
+  'deep-link': deepLinkSchema,
+  'push-payload': pushPayloadSchema,
+  'push-endpoint': pushEndpointSchema,
+  'push-subscribe': pushSubscribeSchema,
+  'push-unsubscribe': pushUnsubscribeSchema,
+  'zulip-topic': zulipTopicSchema,
+  'zulip-outgoing': zulipOutgoingSchema,
+  'zulip-message': zulipMessageSchema,
 };

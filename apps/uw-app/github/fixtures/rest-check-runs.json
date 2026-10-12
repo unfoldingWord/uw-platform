@@ -1,0 +1,26 @@
+{
+  "total_count": 1,
+  "check_runs": [
+    {
+      "id": 9100000401,
+      "head_sha": "c0ffee0000000000000000000000000000000000",
+      "external_id": "",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-02T08:01:00Z",
+      "completed_at": "2026-10-02T08:05:00Z",
+      "name": "test",
+      "app": {
+        "id": 15368,
+        "slug": "github-actions",
+        "name": "GitHub Actions"
+      },
+      "pull_requests": [
+        {
+          "number": 7,
+          "id": 9100000201
+        }
+      ]
+    }
+  ]
+}

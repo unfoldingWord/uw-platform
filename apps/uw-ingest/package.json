@@ -3,12 +3,26 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./deliveries/backlog": "./deliveries/backlog.ts"
+  },
   "scripts": {
-    "check": "tsc --noEmit -p tsconfig.json"
+    "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+    "build": "wrangler deploy --dry-run --config ../../infra/uw-ingest/wrangler.toml --env staging --outdir \"$PWD/dist\"",
+    "deploy:staging": "wrangler deploy --config ../../infra/uw-ingest/wrangler.toml --env staging --var COMMIT_SHA:$(git rev-parse HEAD)"
   },
   "dependencies": {
+    "@octokit/webhooks-methods": "^6.0.0",
     "@uw/contracts": "workspace:*",
-    "@uw/core": "workspace:*"
+    "@uw/core": "workspace:*",
+    "@uw/db": "workspace:*",
+    "drizzle-orm": "^0.45.3",
+    "hono": "^4.13.11"
   },
-  "contractVersion": "1.0.0"
+  "contractVersion": "12.1.0",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260930.1",
+    "@types/node": "^22.20.4",
+    "wrangler": "^4.144.0"
+  }
 }

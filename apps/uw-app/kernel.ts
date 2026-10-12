@@ -1,0 +1,92 @@
+import {
+  createKernel,
+  type Clock,
+  type Hub,
+  type Kernel,
+  type ModelEngine,
+  type Notifier,
+  type Ports,
+  type Runs,
+} from '@uw/harness';
+import type { DatabaseHandle } from './database.ts';
+import type { GitHubAccess } from './github/refresh.ts';
+import { systemClock } from './ports/clock.ts';
+import { platformConnectors, type ReviewGitHub, type ShipGitHub } from './ports/connectors.ts';
+import { platformGitHubFacts } from './ports/github-facts.ts';
+import { githubFactsNotWired } from './ports/github-facts.not-wired.ts';
+import { platformGrants } from './ports/grants.ts';
+import { grantsNotWired } from './ports/grants.not-wired.ts';
+import { hubNotWired } from './ports/hub.not-wired.ts';
+import { randomIds } from './ports/ids.ts';
+import { modelEngineNotWired } from './ports/model-engine.not-wired.ts';
+import { notifierNotWired } from './ports/notifier.not-wired.ts';
+import { runsNotWired } from './ports/runs.not-wired.ts';
+import { platformStore } from './ports/store.ts';
+import { storeNotWired } from './ports/store.not-wired.ts';
+
+type KernelWiring = {
+  readonly hub: Hub;
+  readonly reads: GitHubAccess | null;
+  readonly ship: ShipGitHub | null;
+  readonly reviews: ReviewGitHub | null;
+  readonly modelEngine: ModelEngine;
+  readonly runs: Runs;
+  readonly notifier: Notifier;
+};
+
+export type LiveWiring = { readonly hub: Hub; readonly runs: Runs; readonly notifier: Notifier };
+
+type HostWiring = Partial<Pick<KernelWiring, 'modelEngine' | 'runs' | 'notifier'>>;
+
+export function hubWiring(hub: Hub, host: HostWiring = {}): KernelWiring {
+  return {
+    hub,
+    reads: null,
+    ship: null,
+    reviews: null,
+    modelEngine: host.modelEngine ?? modelEngineNotWired,
+    runs: host.runs ?? runsNotWired,
+    notifier: host.notifier ?? notifierNotWired,
+  };
+}
+
+type RunHostWiring = LiveWiring & { readonly modelEngine: ModelEngine };
+
+export function runWiring(
+  host: RunHostWiring,
+  reads: GitHubAccess | null,
+  reviews: ReviewGitHub | null,
+): KernelWiring {
+  return { ...hubWiring(host.hub, host), reads, reviews };
+}
+
+const idle = hubWiring(hubNotWired);
+
+export function platformPorts(
+  database: DatabaseHandle | null,
+  clock: Clock = systemClock,
+  wiring: KernelWiring = idle,
+): Ports {
+  return {
+    clock,
+    ids: randomIds,
+    store: database ? platformStore(database.db) : storeNotWired,
+    grants: database ? platformGrants(database.db) : grantsNotWired,
+    githubFacts: database
+      ? platformGitHubFacts(database.db, wiring.reads, clock)
+      : githubFactsNotWired,
+    connectors: platformConnectors(wiring.ship, wiring.reviews),
+    modelEngine: wiring.modelEngine,
+    hub: wiring.hub,
+    notifier: wiring.notifier,
+    runs: wiring.runs,
+  };
+}
+
+export function platformKernel(
+  database: DatabaseHandle | null,
+  clock: Clock = systemClock,
+  wiring: KernelWiring = idle,
+): Kernel {
+  return createKernel(platformPorts(database, clock, wiring));
+}

@@ -10,8 +10,15 @@ import { outcomeSchema } from './outcomes.ts';
 import { eventNameSchema } from './events.ts';
 import * as closedSets from './closed-sets.ts';
 import * as contracts from './index.ts';
+import { jdAreaSchema } from './areas.ts';
+import { errorReasonSchema } from './outcomes.ts';
+import { principalSchema } from './principal.ts';
 
 const fixtureRoot = join(import.meta.dirname, 'fixtures');
+
+function without(body: Record<string, unknown>, key: string): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(body).filter(([name]) => name !== key));
+}
 
 function loadFixtures(schemaName: string, kind: 'valid' | 'invalid'): [string, unknown][] {
   const dir = join(fixtureRoot, schemaName, kind);
@@ -98,21 +105,27 @@ describe('commands and outcomes', () => {
     expect(commandSchema.safeParse({ command: 'pause' }).success).toBe(false);
   });
 
-  it('requires a reason on override', () => {
-    const requestId = '3f1d7c1e-8c53-4a53-9d6e-0a9b6a0f4d11';
-    expect(commandSchema.safeParse({ command: 'override', requestId }).success).toBe(false);
-    expect(commandSchema.safeParse({ command: 'override', requestId, reason: 'ok' }).success).toBe(
-      true,
-    );
+  it('requires a reason, the item and the seen head on override', () => {
+    const base = {
+      command: 'override',
+      requestId: '3f1d7c1e-8c53-4a53-9d6e-0a9b6a0f4d11',
+      itemId: '00000000-0000-4000-8000-0000000000bb',
+      head: 'a'.repeat(40),
+    };
+    expect(commandSchema.safeParse(base).success).toBe(false);
+    expect(commandSchema.safeParse({ ...base, reason: 'ok' }).success).toBe(true);
+    const body = { ...base, reason: 'ok' };
+    expect(commandSchema.safeParse(without(body, 'itemId')).success).toBe(false);
+    expect(commandSchema.safeParse(without(body, 'head')).success).toBe(false);
   });
 
   it('carries a reason that says a command is not wired', () => {
     const outcome = outcomeSchema.parse({
       status: 'error',
       requestId: '3f1d7c1e-8c53-4a53-9d6e-0a9b6a0f4d11',
-      reason: 'command_not_wired',
+      reason: 'not_wired',
     });
-    expect(outcome.status === 'error' && outcome.reason).toBe('command_not_wired');
+    expect(outcome.status === 'error' && outcome.reason).toBe('not_wired');
   });
 });
 
@@ -162,6 +175,20 @@ describe('closed sets', () => {
   });
 });
 
+describe('closed sets of the principal and the gate', () => {
+  it('holds the capability, gate, person and principal sets', () => {
+    expect(closedSets.capabilityWordSchema.options).toEqual(['none', 'iterate', 'build', 'review']);
+    expect(closedSets.gateDecisionSchema.options).toEqual([
+      'approve',
+      'reject',
+      'take_over',
+      'override',
+    ]);
+    expect(closedSets.personStatusSchema.options).toEqual(['active', 'pending']);
+    expect(closedSets.principalKindSchema.options).toEqual(['person', 'agent']);
+  });
+});
+
 describe('refusal reasons and events', () => {
   it('names the spec refusal reasons and events', () => {
     const reasons = [
@@ -179,9 +206,54 @@ describe('refusal reasons and events', () => {
         }).success,
       ).toBe(true);
     }
-    for (const name of ['gate_approved', 'lease_expired', 'delegation_lapsed', 'abandoned']) {
+    for (const name of [
+      'gate_approved',
+      'lease_expired',
+      'delegation_lapsed',
+      'branch_abandoned',
+    ]) {
       expect(eventNameSchema.safeParse(name).success).toBe(true);
     }
+    expect(eventNameSchema.safeParse('abandoned').success).toBe(false);
+  });
+});
+
+const shipRuleReasons = [
+  'pr_not_open',
+  'pr_is_draft',
+  'head_mismatch',
+  'checks_not_green',
+  'no_reviewer_approval',
+  'risk_tier_undeclared',
+  'reviewer_count_below_tier',
+  'reviewer_providers_not_distinct',
+  'approver_lacks_domain_grant',
+];
+
+function personFixture(): unknown {
+  const [first] = loadFixtures('principal', 'valid');
+  return first?.[1];
+}
+
+describe('FD-7 FD-8 the principal and grants as contract data', () => {
+  it('round-trips a person principal through JSON, as a queue message carries it', () => {
+    const principal = principalSchema.parse(personFixture());
+    expect(principalSchema.parse(JSON.parse(JSON.stringify(principal)))).toEqual(principal);
+  });
+
+  it('refuses a JD area whose two decades differ', () => {
+    expect(jdAreaSchema.safeParse('80-89').success).toBe(true);
+    expect(jdAreaSchema.safeParse('80-19').success).toBe(false);
+  });
+
+  it('accepts every decade from 00-09 to 90-99', () => {
+    const areas = Array.from({ length: 10 }, (_, digit) => `${digit}0-${digit}9`);
+    expect(areas.filter((area) => !jdAreaSchema.safeParse(area).success)).toEqual([]);
+  });
+
+  it('carries the PRD section 8.5 reasons in order, ship rule first', () => {
+    expect(errorReasonSchema.options.slice(0, 9)).toEqual(shipRuleReasons);
+    expect(errorReasonSchema.options).not.toContain('command_not_wired');
   });
 });
 

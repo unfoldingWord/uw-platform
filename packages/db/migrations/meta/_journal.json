@@ -1,1 +1,209 @@
-{ "version": "7", "dialect": "postgresql", "entries": [] }
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790888360629,
+      "tag": "0000_foundation_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790888361390,
+      "tag": "0001_grant_audit_append_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790888362144,
+      "tag": "0002_bootstrap_admins",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790888531209,
+      "tag": "0003_page_versions_checks",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790904727593,
+      "tag": "0004_harness_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790904728379,
+      "tag": "0005_gate_decisions_append_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790905557924,
+      "tag": "0006_harness_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790905558712,
+      "tag": "0007_harness_events_append_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790927078899,
+      "tag": "0008_harness_events_stage_edited",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790928036357,
+      "tag": "0009_delegations_supersedes_once",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790935623184,
+      "tag": "0010_agent_boundary_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790957652927,
+      "tag": "0011_service_tokens_rebind",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790957852800,
+      "tag": "0012_identity_checks_follow_the_device_rule",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790961624661,
+      "tag": "0013_github_read_model",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790963402010,
+      "tag": "0014_harness_repository",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1790976534056,
+      "tag": "0015_pr_base_sha",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790982852910,
+      "tag": "0016_item_issue",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790982857453,
+      "tag": "0017_stage_instructions_not_issue",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790983934262,
+      "tag": "0018_page_type_fixed",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790988566392,
+      "tag": "0019_pr_head_repo",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791002208025,
+      "tag": "0020_harness_events_reordered_removed",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791003907625,
+      "tag": "0021_command_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791035848560,
+      "tag": "0022_item_created_once_per_request",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791042523453,
+      "tag": "0023_contract_11_checks",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791044567215,
+      "tag": "0024_runs",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791070130975,
+      "tag": "0025_review_findings",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791070771573,
+      "tag": "0026_view_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1791084642827,
+      "tag": "0027_notify",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1791094985118,
+      "tag": "0028_contract_12_1_checks",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+name = "uw-ingest"
+main = "../../apps/uw-ingest/index.ts"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+
+[vars]
+COMMIT_SHA = "unknown"
+
+[observability]
+enabled = true
+
+[env.staging]
+name = "uw-ingest-staging"
+workers_dev = true
+logpush = true
+
+[env.staging.vars]
+COMMIT_SHA = "unknown"
+
+[env.staging.observability]
+enabled = true
+
+[[env.staging.hyperdrive]]
+binding = "HYPERDRIVE"
+id = "set-at-go-live"
+
+[[env.staging.queues.producers]]
+binding = "INGEST_QUEUE"
+queue = "uw-ingest-events-staging"
+
+[env.production]
+name = "uw-ingest"
+workers_dev = false
+logpush = true
+
+[env.production.vars]
+COMMIT_SHA = "unknown"
+
+[env.production.observability]
+enabled = true
+
+[[env.production.hyperdrive]]
+binding = "HYPERDRIVE"
+id = "set-at-go-live"
+
+[[env.production.queues.producers]]
+binding = "INGEST_QUEUE"
+queue = "uw-ingest-events-production"

@@ -21,3 +21,25 @@ export function parseDate(text: string): Date {
   }
   return new Date(`${parsed.data}T00:00:00.000Z`);
 }
+
+const MINUTE_MS = 60_000;
+const HOUR_MINUTES = 60;
+const DAY_HOURS = 24;
+
+function twoDigits(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+export function formatInstant(instant: Date): string {
+  const time = `${twoDigits(instant.getUTCHours())}:${twoDigits(instant.getUTCMinutes())}`;
+  return `${formatDate(instant)} ${time} UTC`;
+}
+
+export function formatDuration(ms: number): string {
+  const minutes = Math.max(0, Math.floor(ms / MINUTE_MS));
+  const hours = Math.floor(minutes / HOUR_MINUTES);
+  if (hours === 0) return `${minutes} min`;
+  const days = Math.floor(hours / DAY_HOURS);
+  if (days === 0) return `${hours} h ${minutes % HOUR_MINUTES} min`;
+  return `${days} d ${hours % DAY_HOURS} h`;
+}

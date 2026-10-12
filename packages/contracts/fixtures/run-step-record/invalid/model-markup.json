@@ -1,0 +1,12 @@
+{
+  "step": "work",
+  "tokensIn": 1200,
+  "tokensOut": 300,
+  "costMinor": 4,
+  "computeMinor": null,
+  "model": "claude <script>",
+  "resolvedProvider": "anthropic",
+  "toolsCalled": ["read_page", "write_page"],
+  "writes": 1,
+  "at": "2026-10-03T09:05:00.000Z"
+}

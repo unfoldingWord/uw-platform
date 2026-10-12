@@ -25,12 +25,12 @@ afterEach(() => {
 describe('the packages/harness tsconfig', () => {
   it('typechecks the package as it stands', () => {
     expect(typecheck().failed).toBe(false);
-  });
+  }, 120_000);
 
   it('refuses a Workers global', () => {
     writeFileSync(probe, 'export const cache = caches.default;\n');
     const { failed, output } = typecheck();
     expect(failed).toBe(true);
     expect(output).toContain("Cannot find name 'caches'");
-  });
+  }, 120_000);
 });

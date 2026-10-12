@@ -1,0 +1,7 @@
+{
+  "closes": ["#12", "unfoldingWord/uw-platform#14"],
+  "risks": "the board renders slower on phones",
+  "touches": "apps/uw-app/board",
+  "riskTier": "standard",
+  "riskDomains": []
+}

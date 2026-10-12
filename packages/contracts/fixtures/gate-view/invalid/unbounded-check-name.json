@@ -1,0 +1,75 @@
+{
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "stageKey": "ship",
+  "gateStatus": "parked",
+  "connector": "merge",
+  "expectedHead": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "pullRequest": {
+    "repo": "unfoldingWord/uw-platform",
+    "number": 7
+  },
+  "recorded": {
+    "riskTier": "standard",
+    "riskDomains": ["acl"],
+    "floorDomains": ["acl"],
+    "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "declaration": {
+      "riskTier": "standard",
+      "riskDomains": ["acl"]
+    },
+    "refusal": null
+  },
+  "facts": {
+    "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "state": "open",
+    "draft": false,
+    "baseRef": "main",
+    "freshAt": "2026-10-03T09:00:00.000Z",
+    "declaration": {
+      "closes": ["#7"],
+      "risks": "The gate view could show stale facts",
+      "touches": "packages/contracts",
+      "riskTier": "standard",
+      "riskDomains": ["acl"]
+    }
+  },
+  "reviews": [],
+  "ship": {
+    "input": {
+      "pullRequest": {
+        "open": true,
+        "draft": false,
+        "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "expectedHead": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "checks": [
+        {
+          "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "conclusion": "success"
+        }
+      ],
+      "approvals": [
+        {
+          "reviewer": "codex-bot",
+          "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "provider": "openai"
+        }
+      ],
+      "riskTier": "standard",
+      "riskDomains": ["acl"],
+      "area": "80-89",
+      "at": "2026-10-03T09:00:00.000Z",
+      "override": false
+    },
+    "outcome": {
+      "verdict": "advance"
+    },
+    "derived": {
+      "riskTier": "standard",
+      "riskDomains": ["acl"],
+      "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  }
+}

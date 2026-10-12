@@ -1,0 +1,16 @@
+{
+  "status": "ok",
+  "commit": "unknown",
+  "indicators": [
+    {
+      "name": "commit",
+      "status": "ok",
+      "detail": "unknown"
+    },
+    {
+      "name": "database",
+      "status": "not_configured",
+      "detail": "no Hyperdrive binding"
+    }
+  ]
+}

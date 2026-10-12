@@ -158,7 +158,7 @@ Requirement identifiers are stable. **Must** is a v1 requirement. **Later** is d
 | FD-12 | **Go-live wiring, written during the build and switched on after it.** A CI job that creates a Neon branch per PR and drops it; a migrate-staging job on merge to `main` after CI is green; a migrate-production job on a tagged release; the Hyperdrive binding for staging and production. Each job skips cleanly, and stays green, while its secret is absent. A binding is added to a wrangler file only when the resource it names exists, so a deploy never fails on a missing one; until then `uw-app` starts without a database and `/health` reports the database indicator as not configured. A test asserts each job skips when its secret is absent. | Must | #79 |
 | FD-7 | Cloudflare Access with Google as the identity provider sits in front of `uw-app`, declared in `infra/`. Hono middleware verifies the Access JWT on every request (signature, audience, expiry), maps the email to a `people` row, auto-provisions `@unfoldingword.org` addresses and marks anyone else pending with an explicit "pending approval" response. A typed `Principal` (person or agent id, resolved grants, an `interactive` flag) is exported from `packages/core`, available to every handler, and serialisable into a queue message. A service-token JWT yields a non-interactive principal. A tampered, expired or wrong-audience JWT gets 401. | Must | #6 |
 | FD-8 | `role_grants(person_id, role, scope_kind, scope_area, granted_by, granted_at, expires_at, revoked_at)` with roles `admin`, `editor`, `viewer` at scope `org` or `jd_area`, declared `restricted` and `never`. `can(actor, verb, resource)` in `packages/core/acl.ts` is pure over the grants already resolved on the principal and takes no database handle. Org-scope admin is allowed everything an area admin is; `editor` on one area reads every area and writes only its own; `viewer` reads only its own. Grants resolve from the table on every request with no cross-request cache. Grant and revoke are commands that require `admin` in the target scope and write an audit record with the actor, the time and the before and after row. A bootstrap migration grants org admin to Ian and Jesse. | Must | #8 |
-| FD-9 | `pages(id, type, jd_area, slug, title, parent_id, frontmatter jsonb, body_md, version, status)` and `page_versions` (a full snapshot per save with `edit_source` of `human:<id>` or `agent:<id>`), declared `internal` and `sync`. A page-type registry in code gives each type a Zod frontmatter schema, a classification and an offline eligibility. Registered types: `skill`, `learning`, `persona`, `product`, `system_goal`, `product_strategy`, `data_sources`. Create, read and update handlers validate frontmatter, refuse unknown types, write one version per save, and check `can()` with the page's `jd_area`. No editor UI. Stage rows are not pages. | Must | #9 |
+| FD-9 | `pages(id, type, jd_area, slug, title, parent_id, frontmatter jsonb, body_md, version, status)` and `page_versions` (a full snapshot per save with `edit_source` of `human:<id>` or `agent:<id>`), declared `internal` and `sync`. A page-type registry in code gives each type a Zod frontmatter schema, a classification and an offline eligibility. Registered types: `skill`, `learning`, `persona`, `product`, `system_goal`, `product_strategy`, `data_sources`, `issue` (GH-3: an imported issue's page). Create, read and update handlers validate frontmatter, refuse unknown types, write one version per save, and check `can()` with the page's `jd_area`. No editor UI. Stage rows are not pages. | Must | #9 |
 | FD-10 | `uw-ingest` is a second Hono Worker, not behind Access, with its own wrangler config and deploy job. It verifies each source's signature over the raw body, rejects unsigned, badly signed and replayed deliveries with a logged refusal and no queue message, mints a trace id, and enqueues a Zod-validated envelope to one Cloudflare Queue. `uw-app` consumes it, sends a malformed message to a declared dead-letter queue, and tolerates duplicates. | Must | #10 |
 | FD-11 | One trace id follows a request, webhook, queue message and run step from the edge to the database write. A structured JSON logger in `packages/core` writes `trace_id`, `principal`, `route`, `latency_ms`, `outcome` and the deployed commit on every line, in both Workers. Log shipping and 30-day retention are declared in `infra/`. `/health` returns JSON with a named list of indicators and an overall status, and renders a screen: deployed commit, database reachability, queue depth. An unreachable database turns its indicator amber or red and never errors the route. | Must | #11 |
 
@@ -210,7 +210,7 @@ Requirement identifiers are stable. **Must** is a v1 requirement. **Later** is d
 
 | ID | Requirement | Priority | Source |
 |---|---|---|---|
-| GH-1 | A GitHub App with least-privilege permissions (issues, pull requests, checks, reviews, contents, merge) and subscribed events (issues, pull_request, pull_request_review, check_run, push), both recorded in `infra/`. Its webhook points at `uw-ingest`. The private key, installation id and webhook secret live only in Worker secrets. Installation tokens are minted in the host step per call and never reach a model process or an MCP response. Write-back is limited to link labels, cross-reference comments and the merge. | Must | #33, D1, D12 |
+| GH-1 | A GitHub App with least-privilege permissions (issues, pull requests, checks, reviews, contents, merge) and subscribed events (issues, pull_request, pull_request_review, check_run, push), both recorded in `infra/`. Its webhook points at `uw-ingest`. The private key, installation id and webhook secret live only in Worker secrets. Installation tokens are minted in the host step once per unit of work (a webhook delivery, a sweep run, a connector run), each scoped to that unit's one repository and to its client kind's permissions (read, comment, or the merge and tag), and never reach a model process or an MCP response. Write-back is limited to link labels, cross-reference comments and the merge. | Must | #33, D1, D12 |
 | GH-2 | Read-model tables `gh_repos`, `gh_issues`, `gh_prs`, `gh_milestones`, `gh_check_runs`, `gh_reviews`, keyed on the GitHub id so a redelivery is an idempotent upsert, each with a classification and a freshness timestamp. One upsert path is used by the queue consumer and by a nightly sweep that repairs missed webhooks from a watermark and records what it repaired. For a PR the model answers from its own tables: is it open, what is the head, what are the check conclusions on that head, who approved that head. | Must | #34 |
 | GH-3 | An issue carrying the harness label becomes one `harness_items` row in Package of the software harness, wrapping a page that links to the issue, idempotent on the issue id whether a webhook or the sweep finds it first. Removing the label records an event and does not delete the item. Exactly one cross-reference comment lands on the issue. Manual enqueue and import share one code path and one event shape. | Must | #35 |
 | GH-4 | Builder work lands on branch `harness/<item>`. The item records the expected head commit at `submit_to_gate`; a later submit replaces it. On `lease_expired` the kernel records `branch_abandoned`; the next claim starts from the expected head unless the claim explicitly adopts the abandoned branch, and that choice is an event. | Must | #36, D12 |
@@ -263,7 +263,7 @@ Requirement identifiers are stable. **Must** is a v1 requirement. **Later** is d
 
 | ID | Requirement | Priority | Source |
 |---|---|---|---|
-| PE-1 | **Persona as a page type.** Frontmatter: `identity`, `owner`, `harness`, `toolset`, `run_shape`, `engine`, `model`, `budget`, `capability`, `requires_tools`, `status`. The schema rejects a value outside the verb registry, the run-shape registry or the six engine keys. "New page, type: persona" creates one; there is no special screen. The markdown body is the persona's instructions in agentskills.io format and is what a run's read step loads. | Must | #59, D15 |
+| PE-1 | **Persona as a page type.** Frontmatter: `identity`, `owner`, `harness`, `toolset`, `run_shape`, `engine`, `model`, `provider` (the pinned provider slug, or null for the engine's default), `budget`, `capability`, `requires_tools`, `status`. The schema rejects a value outside the run-shape registry or the six engine keys; a toolset name outside the verb registry is accepted, and activation turns it into AB-8's missing-verb item. "New page, type: persona" creates one; there is no special screen. The markdown body is the persona's instructions in agentskills.io format and is what a run's read step loads. | Must | #59, D15 |
 | PE-2 | The toolset form offers only registry verbs the creator holds and never a forbidden verb. `requires_tools` is derived and cannot be edited by hand. A persona drafted by an agent lands `suggested`. | Must | #59 |
 | PE-3 | Activation is shown only to a person holding `admin` on the harness's area. It runs the tool check (AB-8) and a dry run, then flips `status` to `active`. An agent identity's attempt through `write_page` is refused and logged. | Must | #59 |
 | PE-4 | The persona page's default view is its dashboard: runs today, spend, escalation rate, gate refusals, writes, hosts, the last play-by-plays, and the delegations it runs under. | Must | #59 |
@@ -277,10 +277,10 @@ Requirement identifiers are stable. **Must** is a v1 requirement. **Later** is d
 | ID | Requirement | Priority | Source |
 |---|---|---|---|
 | DX-1 | **The kernel.** Every harness behaviour is a call on `createKernel(ports)` in `packages/harness`, pure TypeScript that imports nothing from Workers, Drizzle, a vendor SDK or the network. `apps/uw-app` constructs it with platform adapters; the sim constructs it with test adapters. | Must | #82, ADR 0001 |
-| DX-2 | **The Store test adapter is real Postgres.** In the sim, the Store port is the same Drizzle adapter over an embedded Postgres (PGlite) running the real migrations from `packages/db`. No hand-written in-memory tables. `sim/` may import `packages/harness`, `packages/contracts` and `packages/db`, and nothing else. | Must | #82 |
+| DX-2 | **The Store test adapter is real Postgres.** In the sim, the Store port is the same Drizzle adapter over an embedded Postgres (PGlite) running the real migrations from `packages/db`. No hand-written in-memory tables. The one Drizzle implementation of the Store and Grants ports lives in `packages/db/store`, and the platform adapter and the sim's test adapter both bind it. `sim/` may import `packages/harness`, `packages/contracts`, `packages/db` and the Node built-ins `fs`, `fs/promises`, `path`, `url`, `process`, `assert` and `assert/strict` (`os` and `child_process` only in its tests, CLI and runner), and its tests Vitest, and nothing else. | Must | #82 |
 | DX-3 | **A contract test per port.** One shared test suite per port, run against every adapter of that port. A check fails on a port without one. | Must | #82 |
 | DX-4 | **The sim.** `pnpm sim -- <scenario>` runs one scenario and prints the event log and the folded state; `pnpm sim -- all` runs every scenario. Scenarios live in `sim/scenarios/`, are named for the requirement ID they prove, and assert on the event log and folded state. | Must | architecture.md |
-| DX-5 | **Every Must requirement in this document that is not marked Built has a scenario or a test that fails without it.** `pnpm trace` fails on a requirement ID with neither. `pnpm walk -- <template>` prints every path from Package to an external effect and the gate each crosses. Both join `pnpm verify`. | Must | architecture.md |
+| DX-5 | **Every Must requirement in this document that is not marked Built has a scenario or a test that fails without it.** `pnpm trace` fails on a requirement ID with neither. `pnpm walk -- <template>` prints every path from Package to an external effect and the gate each crosses. Both join `pnpm verify`; during the build verify runs `pnpm trace:built`, which equals `pnpm trace` once the last build step is Built. | Must | architecture.md |
 | DX-6 | **What only separate connections can prove** runs on the Postgres service container in CI (FD-6), and locally whenever `TEST_DATABASE_URL` points at a Postgres server: the grant re-read race (KN-14), N concurrent claims on one item, and two claims racing one WIP slot (KN-5). The constraint and trigger tests (KN-2, KN-3) run on both the embedded Postgres and the service container. | Must | #82, #17, #21 |
 | DX-8 | **The build needs no live account.** Every Must requirement is proven against test adapters, fixture keys and recorded fixtures: Access JWTs signed by a fixture key pair, GitHub webhooks and API responses from fixtures, model turns scripted, AI Gateway cost data from fixtures, push and Zulip sends recorded. Each platform adapter is written, passes its port's contract test where the contract can run without the live service, and is listed in `docs/progress_tracker.md` as awaiting live verification. Nothing a requirement needs may be reachable only with a secret. | Must | section 15 |
 | DX-7 | **Figure 2 end to end in the sim.** One scenario takes a fixture item from kickstart to Close on the software template with scripted personas and fixture GitHub facts, covering the claim, a held premise, the lease warning and expiry, the PR declaration, the ship rule's refusals, an agent's refused gate attempt, the approve, the merge connector, a refused Close, a Close with a learning, and an Iterate beat under a delegation that then lapses. It is the machine-checkable half of the release criteria. | Must | #64 |
@@ -299,17 +299,23 @@ Every table declares its classification and offline eligibility. Every table has
 | `role_grants` | person, role, scope kind, scope area, granted by, granted at, expires at, revoked at | the grants command |
 | `grant_audit` | actor, time, before, after | the grants command |
 | `pages`, `page_versions` | see FD-9 | the page API and `write_page` |
-| `harnesses` | id, key, template, jd_area, hosted_builder_enabled, paused | the stage command |
-| `harness_stages` | harness, key, position, agent_pickup, exit_gate, connector, wip_limit, instructions_page_id, validators[], feeds[], paused | the stage command |
-| `harness_items` | harness, stage, title, page, claimed_by, claimant_kind, lease_expires, priority, due, risk_tier, risk_domains[], expected_head, branch_state, pr_number, zulip_topic | the kernel |
+| `webhook_deliveries` | source, delivery id, received at; primary key on source and delivery id | the `uw-ingest` delivery ledger |
+| `queue_watermarks` | queue, last enqueued at, last consumed at | the queue consumer in `uw-app` |
+| `harnesses` | id, key, template, jd_area, repository (`owner/name` or null, unique case-insensitively; GH-6), hosted_builder_enabled, paused, created at | the stage command |
+| `harness_stages` | harness, key, title, position, bracket (P31), agent_pickup, exit_gate, connector, wip_limit, instructions_page_id, validators[], feeds[], paused | the stage command |
+| `harness_items` | harness, stage, title, page, claimed_by, claimant_kind, delegation, lease_expires, priority, due, gate status, gate target, risk_tier, risk_domains[], expected_head, branch_state, pull request repository and `pr_number`, the wrapped issue (`issue_repo`, `issue_number`, `issue_github_id`, all or none, unique on the GitHub id; GH-3), zulip_topic, created at | the kernel |
 | `harness_events` | see KN-3 | the kernel, append-only |
-| `harness_runs` | item, persona, host, run shape, engine, model, resolved provider, steps with tokens, cost and cost basis, trace id, outcome | the run shape |
-| `gate_decisions` | item, stage, actor, decision, reason, evidence | the gate command, human principals only |
-| `delegations` | id, person, persona, harness, capability, granted at, expires at, revoked at | the delegation command |
-| `measurements` | item, source, name, value, as of | the Validate stage |
+| `harness_runs` | item, persona, persona page, delegation, run shape (the run shape names the host), engine, model, pinned and resolved provider, steps with tokens, cost, compute cost and cost basis, gates met, pending prompts, trace id, outcome and why it hibernated or failed | the run shape |
+| `gate_decisions` | harness, item, stage, actor, decision, reason, evidence, trace id | the gate command, human principals only |
+| `delegations` | id, person, persona, harness, capability, granted at, expires at, revoked at, lapsed at, supersedes (P14), trace id | the delegation command |
+| `measurements` | item, source, name, value, as of | the measurements module, through `record_measurement` |
 | `personas` | identity, harness, page | a projection of persona pages |
-| `gh_repos`, `gh_issues`, `gh_prs`, `gh_milestones`, `gh_check_runs`, `gh_reviews` | GitHub id, facts, freshness | the read-model module |
-| `push_subscriptions`, `push_cooldowns` | per person and device; per person | the notifier |
+| `gh_repos`, `gh_issues`, `gh_prs`, `gh_milestones`, `gh_check_runs`, `gh_reviews` | the GitHub id (primary key) on every table; the facts (repository full name, default branch; issue and milestone number, title, state, labels; pull request head SHA, head ref, head repository, base ref and base SHA, the parsed declaration or its problem, the changed files with the head and base they were compared at; check run head SHA, name, app, status, conclusion; review login, commit, state, provider); freshness (`fresh_at` on every row, GitHub's `updated_at` on issues, milestones and pull requests, the sweep watermark `swept_through` and `last_sweep` on `gh_repos`); on `gh_issues` the cross-reference claim (`xref_claimed_at`, `xref_comment_id`) | the read-model module `apps/uw-app/github/facts/`, called by the queue consumer and the nightly sweep |
+| `push_subscriptions` | endpoint (primary key, `https:` on a known push service), person, p256dh key, auth secret, expires at, created at; at most 20 per person, the oldest removed first | the notifier (`apps/uw-app/notify/push/`) |
+| `push_cooldowns` | person (primary key), window started at, rank (1 to 3) | the notifier (`apps/uw-app/notify/push/`) |
+| `tasks` | id, jd_area, title, page, due, status (task status), created_by, trace id, created at | the tasks module, through `create_task` |
+| `service_tokens` | client id, person, device, bound by, bound at, revoked at, trace id | the service-token command, org admin only |
+| `command_requests` | actor, request id, command, harness, outcome, trace id, claimed at, settled at; primary key on actor and request id | the command API's request ledger (`apps/uw-app/commands/requests.ts`) |
 
 ### 8.2 The verb registry
 
@@ -340,6 +346,23 @@ Every table declares its classification and offline eligibility. Every table has
 | cost basis | `metered`, `subscription` |
 | gate decision | `approve`, `reject`, `take_over`, `override` |
 | capability word | `none`, `iterate`, `build`, `review` |
+| stage bracket | `product_package`, `build_package`, `deploy_package`, `iterate` |
+| task status | `suggested`, `open`, `done`, `dismissed` |
+| persona activation refusal | `unknown_verb`, `forbidden_verb`, `not_permitted`, `engine_not_available`, `dry_run_failed` |
+| gate status | `working`, `parked`, `checks_failed`, `done` |
+| branch state | `none`, `active`, `abandoned` |
+| run outcome | `running`, `hibernated`, `stopped`, `completed`, `failed` |
+| delegation lapse | `expired`, `revoked`, `grant_lost` |
+| run hibernation | `gate`, `paused`, `breaker` |
+| run stop | `stopped_by_person`, `released`, `lease_expired`, `delegation_lapsed`, `gate_wait_expired` |
+| run failure | `retries_exhausted`, `provider_mismatch`, `start_failed`, `turn_limit` |
+| run result | `submitted`, `premise_held`, `decided`, `review_posted`, `review_withheld`, `review_refused` |
+| breaker level | `open`, `holding`, `pausing` |
+| review verdict | `approve`, `request_changes` |
+| CI job | `security-audit`, `lint`, `typecheck`, `architecture`, `test`, `build` |
+| check conclusion | `success`, `failure`, `neutral`, `cancelled`, `skipped`, `timed_out`, `action_required`, `stale` |
+| wake reason | `gate_waiting`, `delegation_lapsed`, `run_failed`, `stage_advanced`, `handed_to_person` |
+| live screen | `home`, `flow`, `board`, `gates`, `item` |
 
 ### 8.4 Identity strings
 
@@ -356,23 +379,46 @@ Ship rule: `pr_not_open`, `pr_is_draft`, `head_mismatch`, `checks_not_green`, `n
 
 Elsewhere: `not_permitted`, `not_wired`, `wip_limit_reached`, `lease_held`, `lease_expired`, `pickup_not_allowed`, `validator_failed`, `unknown_validator`, `delegation_required`, `gate_refused_to_agent`, `reason_required`, `spend_held`, `hosted_builder_off`, `engine_not_available`, `diff_exceeds_review_budget`, `unknown_verb`, `forbidden_verb`.
 
+Added in step 1: `malformed_command`, `unauthenticated`, `access_not_configured`, `database_not_configured`, `internal_error`, `pending_approval`, `person_not_found`, `grant_not_found`, `grant_exists`, `last_org_admin`, `expiry_in_past`, `unknown_page_type`, `invalid_frontmatter`, `page_not_found`, `page_exists`, `slug_taken`, `stale_version`, `parent_not_found`, `parent_cycle`.
+
+Added in step 3: `harness_not_found`, `harness_exists`, `stage_not_found`, `item_not_found`, `delegation_not_found`, `delegation_lapsed`, `not_holder`, `transition_not_allowed`, `unknown_feed_target`, `connector_not_registered`, `template_bypasses_gate`, `stage_edit_refused`, `item_not_at_gate`, `reason_not_one_line`, `decision_in_flight` (an approve or override at a connector stage while an earlier approval of the same parking still awaits its connector outcome).
+
+Added in step 6: `request_in_flight` (a command whose `requestId` is still running), `issue_not_found` (an import the read model does not hold), `stage_not_empty` (P17).
+
+Added in step 7: `run_not_found` (a run id the kernel does not hold, or one the caller may not see).
+
+Added in step 10: `activation_required` (a write that would make a gated page active, which only activation or confirmation does), `dry_run_failed` (a persona whose dry run found a problem).
+
 ### 8.6 Event vocabulary
 
 ```
-item_created  item_claimed  item_released  lease_renewed  lease_expired  branch_abandoned
-branch_adopted  stage_advanced  loop_edge_taken  premise_held  risk_derived  label_removed
-run_started  run_step_recorded  run_failed  run_hibernated  run_resumed  run_stopped
+item_created  item_claimed  item_released  item_reordered  lease_renewed  lease_expired
+branch_abandoned  branch_adopted  stage_advanced  loop_edge_taken  premise_held  risk_derived
+label_removed  run_started  run_step_recorded  run_failed  run_hibernated  run_resumed  run_stopped
+run_completed  run_prompted
 submitted_to_gate  checks_passed  checks_failed  gate_approved  gate_rejected
 gate_taken_over  gate_overridden  gate_refused_to_agent  ship_refused
 connector_succeeded  connector_refused
 delegation_granted  delegation_revoked  delegation_lapsed  delegation_required
-stage_edit_refused  template_activated  harness_paused  harness_resumed
-learning_attached  nothing_learned  comment_recorded
+stage_edit_refused  stage_edited  stage_removed  template_activated  harness_paused
+harness_resumed  hosted_builder_set  learning_attached  nothing_learned  comment_recorded
+zulip_topic_linked
 breaker_holding  breaker_pausing  breaker_open
 persona_activation_failed  persona_activated
+measurement_recorded  handed_to_person
 ```
 
+Since contract 12.0.0 (step 9), `comment_recorded` carries strict evidence `{ source: 'zulip', messageId, topic, personId, email, text, truncated }` (the text cut at 10,000 characters), and `zulip_topic_linked` `{ topic }` sets the item's Zulip topic in the fold.
+
+Since contract 12.1.0 (step 10), `persona_activated` carries `{ pageId, persona, version }` (the version the flip wrote); `measurement_recorded` carries `{ measurementId, source, name, value, asOf }`; `handed_to_person` carries `{ personId, why: 'review_rounds_exhausted', rounds }`; and `learning_attached` gains `kind` (`learning`, the default, or `revision`).
+
 `packages/contracts` on `main` carries four placeholder names (`gate_approved`, `lease_expired`, `delegation_lapsed`, `abandoned`). The list above replaces them; `abandoned` becomes `branch_abandoned`.
+
+`stage_edited` (contract 3.2.0) records every accepted stage create, update and reorder: the stage id, its key, and before/after limited to the columns the edit changed (before is null for a creation; a reorder writes one per stage whose position changed). It is a harness-level event and changes no item.
+
+`item_reordered` (contract 10.0.0) records an item's new priority and, for the moved item, the item it was placed before. `stage_removed` records a removed stage's id, key and columns. `harness_paused` and `harness_resumed` name the lane, or null for the whole harness. Every event carries the `requestId` of the command that appended it, or null.
+
+`run_started`, `run_hibernated`, `run_resumed`, `run_stopped`, `run_failed`, `run_completed` and `run_prompted` (contract 11.0.0) record a run's life with closed-set reasons; `breaker_*` carry the spend reading; `hosted_builder_set` records the switch. `run_step_recorded` gains the step's cost, compute cost, model, resolved provider, the tools it called and its write count; a step recorded before 11.0.0 reads them as null, null, null, null, none and 0. A lost lease has one reason everywhere: the run stops `lease_expired`.
 
 ---
 
@@ -611,7 +657,7 @@ The issues left these as "decide in the PR". They are decided here so the build 
 | P12 | Override may bypass `no_reviewer_approval` and open review findings only. It never bypasses a head mismatch, red checks, an undeclared tier, the `high` reviewer rules, or the grant check. |
 | P13 | The locked re-read refusal uses `approver_lacks_domain_grant`. Take over releases any lease and sets the person as holder. Reject findings are a list of text entries on the event. |
 | P14 | Capability words are `none`, `iterate`, `build`, `review`. `none` opens nothing. Renewal writes a new delegation row that names the one it supersedes. The beat check does not take a row lock. |
-| P15 | Protected directories: `packages/db/migrations/` is `migration`; `packages/core/acl.ts` and the grants command are `acl`; `infra/` and `.github/workflows/` are `infra`; a future `packages/ledger/` is `ledger`. The map is a file in `packages/harness`. Derivation runs at every `submit_to_gate`. |
+| P15 | Protected directories: `packages/db/migrations/` is `migration`; `packages/core/acl.ts` and the grants command are `acl`, and so are the code that decides what Ship sees and what merges (the risk map, the ship rule and its contract, the gate path, the GitHub identity and merge code, the platform adapters and the kernel composition root); `infra/`, all of `.github/`, the dependency rules and the architecture checks are `infra`; a future `packages/ledger/` is `ledger`. The map is a file in `packages/harness`. Derivation runs at every `submit_to_gate`. |
 | P16 | The PR declaration is a fenced block in the PR body headed `harness`, with `closes`, `risks`, `touches`, `risk_tier` and `risk_domains` lines. Its parsed shape is a contract schema. |
 | P17 | Default `agent_pickup` per stage: Package `none`, Scope to Check `allowed`, Ship `none`, Validate and Close `allowed`. Default WIP limit is 3 per stage. Stage positions are gapped by 10. A stage holding an item cannot be removed. |
 | P18 | Trace ids are UUIDs, carried in an `x-trace-id` header and on every event row. Request and response bodies are never logged. Queue depth on `/health` is consumer lag. |
@@ -631,6 +677,7 @@ The issues left these as "decide in the PR". They are decided here so the build 
 | P32 | The interim tokens live in `packages/ui/tokens/`. The tested phone width is 390 pixels. The service worker caches the shell only and holds no harness data. |
 | P33 | Once FD-12 is on, per-PR Workers bind to shared staging's database through its Hyperdrive config; only CI's Neon job uses the per-PR Neon branch. Until then a per-PR Worker runs with no database. |
 | P34 | The engine seam's loop caps at 40 turns. A tool error is returned to the model as the tool result. |
+| P35 | **The shared Store implementation lives in `packages/db/store`.** `sim/` may not import `apps/` and `apps/` may not import `sim/`, so the one Drizzle implementation of the Store and Grants ports that DX-2 requires sits in `packages/db`, and both adapters bind it. `sim/` may also import the Node built-ins DX-2 names, and its tests Vitest. `pnpm verify` runs `pnpm trace:built` during the build, which equals `pnpm trace` once the last step is Built (DX-5). |
 
 ---
 

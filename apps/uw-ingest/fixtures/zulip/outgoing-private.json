@@ -1,0 +1,30 @@
+{
+  "bot_email": "harness-bot@chat.example.org",
+  "bot_full_name": "Harness",
+  "data": "approve it",
+  "message": {
+    "avatar_url": "https://chat.example.org/avatar/7",
+    "client": "website",
+    "content": "approve it",
+    "display_recipient": [
+      { "email": "harness-bot@chat.example.org", "full_name": "Harness", "id": 30 },
+      { "email": "reader@partner.example", "full_name": "A reader", "id": 25 }
+    ],
+    "id": 113,
+    "is_me_message": false,
+    "reactions": [],
+    "recipient_id": 21,
+    "rendered_content": "<p>approve it</p>",
+    "sender_email": "reader@partner.example",
+    "sender_full_name": "A reader",
+    "sender_id": 25,
+    "sender_realm_str": "chat",
+    "subject": "",
+    "submessages": [],
+    "timestamp": 1790000001,
+    "topic_links": [],
+    "type": "private"
+  },
+  "token": "fixture-zulip-token",
+  "trigger": "direct_message"
+}

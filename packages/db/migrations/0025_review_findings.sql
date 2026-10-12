@@ -1,0 +1,2 @@
+ALTER TABLE "gh_reviews" ADD COLUMN "findings" jsonb DEFAULT '[]'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "gh_reviews" ADD CONSTRAINT "gh_reviews_findings_array" CHECK (jsonb_typeof("gh_reviews"."findings") = 'array');

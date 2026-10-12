@@ -1,0 +1,22 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000e1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "position": 1,
+  "at": "2026-10-01T09:00:00.000Z",
+  "actor": "human:00000000-0000-4000-8000-000000000001",
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "name": "submitted_to_gate",
+  "evidence": {
+    "stage": "check",
+    "result": "parked",
+    "to": null,
+    "expectedHead": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "pullRequest": {
+      "repo": "unfoldingWord/uw-platform",
+      "number": 7
+    },
+    "evidence": {}
+  },
+  "requestId": null
+}

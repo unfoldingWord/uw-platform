@@ -1,0 +1,22 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000e1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "name": "risk_derived",
+  "position": 1,
+  "at": "2026-10-01T09:00:00.000Z",
+  "actor": "human:00000000-0000-4000-8000-000000000001",
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "evidence": {
+    "paths": ["packages/db/migrations/0013.sql"],
+    "declaration": {
+      "riskTier": "low",
+      "riskDomains": []
+    },
+    "floorDomains": ["migration"],
+    "riskTier": "high",
+    "riskDomains": ["migration"],
+    "refusal": null,
+    "head": "abc123"
+  }
+}

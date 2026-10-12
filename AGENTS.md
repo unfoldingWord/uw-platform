@@ -35,7 +35,7 @@ These are settled. Work inside them; changing one is an architecture change (sec
 | Truth | `harness_events` is append-only and the source of truth; state is a fold; replay equals record (ADR 0004) |
 | Unattended work | Runs only on a delegation, on every host (ADR 0005) |
 | Hosts, engines, billing | Two hosts, one verb registry, six engines each in its own directory, billing by host (ADR 0006) |
-| Schema | Drizzle in `packages/db/schema.ts` is the only schema; migrations in `packages/db/migrations/`; every table declares `classification` and `offline_eligibility` (plan §2.6) |
+| Schema | Drizzle in `packages/db/schema.ts` is the only schema; it re-exports one `packages/db/schema-<domain>.ts` file per domain (platform, and later GitHub) so no file passes 500 lines; migrations in `packages/db/migrations/`; every table declares `classification` and `offline_eligibility` (plan §2.6) |
 | Authorization | Plan §4: `role_grants` with `admin | editor | viewer` at `org` or `jd_area` scope, one `can(actor, verb, resource)`, a principal minted at the edge on every request. The harness derives from it and adds nothing beside it |
 | Conventions | Plan §0: dates `YYYY-MM-DD` through one `formatDate`/`parseDate` pair, money in integer minor units, UUID ids with slugs, Zod at every boundary |
 | Contracts | `packages/contracts` publishes commands, events, outcomes and the verb registry as Zod, one live version, golden fixtures, a conformance test (spec D4) |
@@ -50,13 +50,14 @@ These are settled. Work inside them; changing one is an architecture change (sec
 
 ## 2. The cockpit
 
-The commands a worker drives the system with. `sim`, `walk` and `trace` do not exist yet; building them is PRD DX-4 and DX-5, and until then they are the contract for what must be provided.
+The commands a worker drives the system with. `pnpm verify` runs `pnpm walk:all`, `pnpm trace:built` and `pnpm sim:all`; `trace:built` fails only on an unproven Must requirement whose build-order step the progress tracker marks Built, and `pnpm trace` lists every unproven one.
 
 ```
 pnpm sim -- <scenario>     run one scenario; print the event log and the folded state
 pnpm sim -- all            every scenario
 pnpm walk -- <template>    every path from Package to an external effect, and the gate each crosses
 pnpm trace                 PRD requirement IDs with neither a scenario nor a test
+pnpm trace:built           the same list; fails only on requirements whose step is marked Built
 pnpm check                 lint, format, typecheck
 pnpm verify                the whole chain, the same one CI runs
 pnpm db:generate           generate a migration from the schema
@@ -87,12 +88,12 @@ These behaviors are predictable inputs. The repository is shaped so that the con
 Every kind of work has one template. Copy the template, fill the blanks, stop.
 
 - New kernel module: a function on the module's interface in `packages/harness`, a test at that interface, a scenario named for the requirement ID.
-- New port: `packages/harness/ports.ts`, then the platform adapter, the test adapter and the port's contract test together, never one without the others.
+- New port: `packages/harness/ports.ts`, then the platform adapter in `apps/uw-app/ports/`, the test adapter in `sim/adapters/` and the port's contract suite in `packages/harness/port-contracts/` with a contract test beside each adapter, together, never one without the others. A port whose service is built in a later step gets a platform adapter that is not wired, and its contract test proves that.
 - New event: the enum in `packages/contracts`, its fixtures, and the folds that should count it.
 - New verb: the registry in `packages/contracts`, the MCP handler, the persona toolsets that may hold it.
 - New engine: a directory under `apps/uw-app/engines/<key>/`; the vendor SDK imported there and nowhere else.
 - New validator or connector: a registry entry and a handler; a stage row picks it by key.
-- New table or column: `packages/db/schema.ts` with its classification, and a migration.
+- New table or column: the `packages/db/schema.ts` file for its domain (`schema.ts` for the harness, `schema-platform.ts` for the platform) with its classification, and a migration.
 - New command: `packages/contracts`, the Hono route with `can()`, a scenario.
 - New screen: one island, one route, one scenario, tokens only.
 - New word: `CONTEXT.md` first.
@@ -106,10 +107,11 @@ The build enforces these. A violation is a red build, not a judgment call.
 - `packages/harness/*` imports nothing from Workers, Drizzle, a vendor SDK or the network. It is pure TypeScript and runs in plain Node. This is what lets the sim exist.
 - `packages/contracts/*` and `packages/db/*` import nothing from `apps/*`.
 - A vendor SDK (`@anthropic-ai/*`, `openai`, OpenRouter) is imported only inside `apps/uw-app/engines/<key>/`.
-- Application code reaches Postgres, GitHub, a model, the hub or a notifier only through a port; nothing outside `apps/uw-app` and `sim/adapters` implements one.
+- Application code reaches Postgres, GitHub, a model, the hub or a notifier only through a port; nothing outside `apps/uw-app`, `sim/adapters` and `packages/db/store` implements one. `packages/db/store` holds the one Drizzle implementation of the Store and Grants ports, which the platform adapter and the sim's test adapter both bind, because both must run the same queries (PRD DX-2).
 - No route, tool handler or Workflow step reachable by an agent identity writes `gate_decisions` or `harness_stages`.
 - Islands never call the kernel directly; they call the command API.
-- `sim/*` imports `packages/harness`, `packages/contracts` and `packages/db` and nothing else. It imports `packages/db` because the Store test adapter runs the real migrations on an embedded Postgres (PRD DX-2).
+- `sim/*` imports `packages/harness`, `packages/contracts`, `packages/db` and the Node built-ins `node:fs`, `node:fs/promises`, `node:path`, `node:url`, `node:process`, `node:assert` and `node:assert/strict`, its tests also Vitest, and nothing else. `node:os` and `node:child_process` appear only in sim tests, `sim/cli` and `sim/runner`. It imports `packages/db` because the Store test adapter runs the real migrations on an embedded Postgres (PRD DX-2), and never imports Drizzle or PGlite itself.
+- A port's contract suite lives in `packages/harness/port-contracts/`; those files are the only non-test harness code that imports Vitest, and no non-test file in `apps/`, `sim/` or `packages/` imports them.
 
 Enforced by dependency-cruiser, ESLint `no-restricted-imports` and `no-restricted-globals`, a tsconfig for `packages/harness` with no Workers types, and the static route test. When you hit the wall, the fix is to move the code, not to relax the rule.
 
@@ -120,6 +122,7 @@ A durable value is anything in Postgres.
 - Each table is written by exactly one module, named in PRD section 8.1; `harness_events` is append-only and the database refuses UPDATE and DELETE on it.
 - Every other module reads through the owner's exported functions.
 - The writer exports an `owns` constant listing every table it owns; a check fails on any table claimed twice or written elsewhere.
+- A kernel table is written through its Store gateway's `write` half (`tx.<table>.write.*`), named after the table's Drizzle export; only the table's owner module calls it, and `tools/architecture/owners.test.ts` treats that call as a write.
 - `gate_decisions` is written only by the gate command, only for a human principal, inside a transaction that locks and re-reads the approver's grants.
 
 ### Rule 4. New work adds isolated files rather than branches in shared roots
@@ -127,7 +130,7 @@ A durable value is anything in Postgres.
 Adding a persona, an engine, a validator, a connector or a screen means adding a folder or a registry row, and touching shared roots only at reserved discovery points.
 
 - Discovery is by registry, never by editing a switch. An `if (engineName)` or `if (personaName)` branch in shared code is the smell this rule forbids.
-- The shared roots are `packages/db/schema.ts`, `packages/contracts/`, `packages/harness/ports.ts`, `packages/core/acl.ts`, `infra/`, `.github/workflows/`, `AGENTS.md`, `CONTEXT.md` and `docs/adr/`. A change to one goes in its own commit, never mixed with feature code, and the commit message names the shared root and why it changed.
+- The shared roots are `packages/db/schema.ts`, `packages/db/schema-*.ts`, `packages/contracts/`, `packages/harness/ports.ts`, `packages/harness/store-ports.ts`, `packages/core/acl.ts`, `infra/`, `.github/workflows/`, `AGENTS.md`, `CONTEXT.md` and `docs/adr/`. A change to one goes in its own commit, never mixed with feature code, and the commit message names the shared root and why it changed.
 - `ui-design/` and `design-system/` are produced in Claude Design and synced here. Code reads them and never hand-edits them.
 
 ### Rule 5. Exceptions are narrow, explicit, and recorded

@@ -46,10 +46,10 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: >-
           pnpm exec wrangler deploy "$RUNNER_TEMP/pr-worker/index.js" --no-bundle
-          --config ../../infra/uw-app/wrangler.toml --env staging
+          --config ../../infra/uw-app/wrangler.toml --env preview
           --name "$WORKER_NAME" --var "COMMIT_SHA:$HEAD_SHA"
-      - name: Confirm /health reports the PR head
-        run: bash .github/scripts/await-health.sh "$WORKER_URL" "$HEAD_SHA"
+      - name: Confirm /health/probe reports the PR head
+        run: bash .github/scripts/await-health.sh "$WORKER_URL/health/probe" "$HEAD_SHA"
       - name: Post the Worker URL on the PR
         uses: actions/github-script@v7
         with:

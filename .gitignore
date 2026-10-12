@@ -25,3 +25,7 @@ coverage/
 # Logs and temp
 *.log
 *.tmp
+
+# Files tests plant and remove while they run
+sim/runner/fixtures/
+packages/harness/workers-global-probe.ts

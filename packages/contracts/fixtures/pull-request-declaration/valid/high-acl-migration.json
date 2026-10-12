@@ -1,0 +1,7 @@
+{
+  "closes": [],
+  "risks": "a grant migration could lock out an editor",
+  "touches": "packages/db/migrations",
+  "riskTier": "high",
+  "riskDomains": ["acl", "migration"]
+}

@@ -1,0 +1,113 @@
+import {
+  ciJobSchema,
+  shipRefusalSchema,
+  type ShipRefusal,
+  type ShipRuleInput,
+  type ShipRuleOutcome,
+} from '@uw/contracts';
+import { normalisedIdentifier } from './github/identifiers.ts';
+import { approverCovers } from './risk/domain-grants.ts';
+
+type Predicate = (input: ShipRuleInput) => boolean;
+
+function headOf(input: ShipRuleInput): string | null {
+  return input.pullRequest === null ? null : input.pullRequest.head;
+}
+
+function approvalsOnHead(input: ShipRuleInput): ShipRuleInput['approvals'] {
+  const head = headOf(input);
+  return head === null ? [] : input.approvals.filter((approval) => approval.commit === head);
+}
+
+function providersByReviewer(input: ShipRuleInput): ReadonlyMap<string, ReadonlySet<string>> {
+  const byReviewer = new Map<string, Set<string>>();
+  for (const approval of approvalsOnHead(input)) {
+    const reviewer = normalisedIdentifier(approval.reviewer);
+    if (reviewer === null) continue;
+    const providers = byReviewer.get(reviewer) ?? new Set<string>();
+    const provider = approval.provider === null ? null : normalisedIdentifier(approval.provider);
+    if (provider !== null) providers.add(provider);
+    byReviewer.set(reviewer, providers);
+  }
+  return byReviewer;
+}
+
+function reviewersOnHead(input: ShipRuleInput): number {
+  return providersByReviewer(input).size;
+}
+
+function resolvedProviders(input: ShipRuleInput): ReadonlySet<string> {
+  const resolved = new Set<string>();
+  for (const providers of providersByReviewer(input).values()) {
+    const [only] = providers;
+    if (providers.size === 1 && only !== undefined) resolved.add(only);
+  }
+  return resolved;
+}
+
+function pullRequestNotOpen(input: ShipRuleInput): boolean {
+  return input.pullRequest === null || !input.pullRequest.open;
+}
+
+function pullRequestIsDraft(input: ShipRuleInput): boolean {
+  return input.pullRequest !== null && input.pullRequest.draft;
+}
+
+function headMismatch(input: ShipRuleInput): boolean {
+  const head = headOf(input);
+  return head === null || input.expectedHead === null || head !== input.expectedHead;
+}
+
+function jobIsGreen(input: ShipRuleInput, head: string, job: string): boolean {
+  const runs = input.checks.filter((check) => check.name === job && check.headSha === head);
+  return runs.length > 0 && runs.every((check) => check.conclusion === 'success');
+}
+
+function checksNotGreen(input: ShipRuleInput): boolean {
+  const head = headOf(input);
+  if (head === null) return true;
+  return !ciJobSchema.options.every((job) => jobIsGreen(input, head, job));
+}
+
+function noReviewerApproval(input: ShipRuleInput): boolean {
+  return !input.override && reviewersOnHead(input) === 0;
+}
+
+function riskTierUndeclared(input: ShipRuleInput): boolean {
+  return input.riskTier === null;
+}
+
+function reviewerCountBelowTier(input: ShipRuleInput): boolean {
+  return input.riskTier === 'high' && reviewersOnHead(input) < 2;
+}
+
+function reviewerProvidersNotDistinct(input: ShipRuleInput): boolean {
+  return (
+    input.riskTier === 'high' && reviewersOnHead(input) >= 2 && resolvedProviders(input).size < 2
+  );
+}
+
+function approverLacksDomainGrant(input: ShipRuleInput): boolean {
+  return !approverCovers(input.approver, input.area, input.riskDomains, new Date(input.at));
+}
+
+const failing: ReadonlyMap<ShipRefusal, Predicate> = new Map<ShipRefusal, Predicate>([
+  ['pr_not_open', pullRequestNotOpen],
+  ['pr_is_draft', pullRequestIsDraft],
+  ['head_mismatch', headMismatch],
+  ['checks_not_green', checksNotGreen],
+  ['no_reviewer_approval', noReviewerApproval],
+  ['risk_tier_undeclared', riskTierUndeclared],
+  ['reviewer_count_below_tier', reviewerCountBelowTier],
+  ['reviewer_providers_not_distinct', reviewerProvidersNotDistinct],
+  ['approver_lacks_domain_grant', approverLacksDomainGrant],
+]);
+
+function fails(input: ShipRuleInput): (reason: ShipRefusal) => boolean {
+  return (reason) => failing.get(reason)?.(input) ?? true;
+}
+
+export function shipRule(input: ShipRuleInput): ShipRuleOutcome {
+  const reasons = shipRefusalSchema.options.filter(fails(input));
+  return reasons.length === 0 ? { verdict: 'advance' } : { verdict: 'refuse', reasons };
+}

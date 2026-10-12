@@ -10,8 +10,13 @@
       "project": ["**/*.ts"]
     },
     "apps/uw-app": {
+      "entry": ["index.ts", "**/*.test.ts", "islands/browser/main.ts", "islands/worker/sw.ts"],
+      "project": ["**/*.ts", "**/*.tsx"],
+      "ignoreDependencies": ["cloudflare"]
+    },
+    "apps/uw-ingest": {
       "entry": ["index.ts", "**/*.test.ts"],
-      "project": ["**/*.ts", "**/*.tsx"]
+      "project": ["**/*.ts"]
     },
     "packages/*": {
       "entry": ["**/*.test.ts"],
@@ -19,6 +24,14 @@
     },
     "packages/db": {
       "entry": ["**/*.test.ts", "bin/*.ts", "fixtures/*/schema.ts"],
+      "project": ["**/*.ts"]
+    },
+    "packages/ui": {
+      "entry": ["**/*.test.ts"],
+      "project": ["**/*.ts", "**/*.tsx", "**/*.css"]
+    },
+    "sim": {
+      "entry": ["cli/*.ts", "scenarios/*.ts", "**/*.test.ts"],
       "project": ["**/*.ts"]
     }
   }

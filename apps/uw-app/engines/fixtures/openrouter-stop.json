@@ -1,0 +1,21 @@
+{
+  "id": "gen-1759490060-QrStUvWxYzAbCdEf",
+  "provider": "Z.AI",
+  "model": "z-ai/glm-5.3-flash",
+  "object": "chat.completion",
+  "created": 1759490060,
+  "choices": [
+    {
+      "index": 0,
+      "logprobs": null,
+      "finish_reason": "stop",
+      "native_finish_reason": "stop",
+      "message": {
+        "role": "assistant",
+        "content": "```harness-scout\npremise: holds\nreason: the issue still reproduces\n```",
+        "refusal": null
+      }
+    }
+  ],
+  "usage": { "prompt_tokens": 1404, "completion_tokens": 31, "total_tokens": 1435, "cost": 0.0002 }
+}

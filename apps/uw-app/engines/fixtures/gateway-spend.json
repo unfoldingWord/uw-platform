@@ -1,0 +1,10 @@
+{
+  "data": {
+    "viewer": {
+      "accounts": [
+        { "aiGatewayRequestsAdaptiveGroups": [{ "count": 1840, "sum": { "cost": 412.3456 } }] }
+      ]
+    }
+  },
+  "errors": null
+}

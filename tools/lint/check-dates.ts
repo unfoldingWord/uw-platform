@@ -1,14 +1,9 @@
-import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { findDateViolations, isScanned } from './date-grep.ts';
+import { repoFiles } from '../repo-files.ts';
 
-const listed = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], {
-  encoding: 'utf8',
-});
-
-const violations = listed
-  .split('\n')
-  .filter((path) => isScanned(path) && existsSync(path))
+const violations = repoFiles()
+  .filter((path) => isScanned(path))
   .flatMap((path) => findDateViolations(path, readFileSync(path, 'utf8')));
 
 for (const { path, line, text } of violations) {

@@ -1,0 +1,135 @@
+{
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "stageKey": "ship",
+  "gateStatus": "parked",
+  "connector": "merge",
+  "expectedHead": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "pullRequest": {
+    "repo": "unfoldingWord/uw-platform",
+    "number": 7
+  },
+  "recorded": {
+    "riskTier": "standard",
+    "riskDomains": ["acl"],
+    "floorDomains": ["acl"],
+    "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "declaration": {
+      "riskTier": "standard",
+      "riskDomains": ["acl"]
+    },
+    "refusal": null
+  },
+  "facts": {
+    "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "state": "open",
+    "draft": false,
+    "baseRef": "main",
+    "freshAt": "2026-10-03T09:00:00.000Z",
+    "declaration": {
+      "closes": ["#7"],
+      "risks": "The gate view could show stale facts",
+      "touches": "packages/contracts",
+      "riskTier": "standard",
+      "riskDomains": ["acl"]
+    }
+  },
+  "reviews": [
+    {
+      "reviewer": "claude-bot",
+      "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "state": "changes_requested",
+      "provider": "anthropic",
+      "findings": [
+        "Finding 1",
+        "Finding 2",
+        "Finding 3",
+        "Finding 4",
+        "Finding 5",
+        "Finding 6",
+        "Finding 7",
+        "Finding 8",
+        "Finding 9",
+        "Finding 10",
+        "Finding 11",
+        "Finding 12",
+        "Finding 13",
+        "Finding 14",
+        "Finding 15",
+        "Finding 16",
+        "Finding 17",
+        "Finding 18",
+        "Finding 19",
+        "Finding 20",
+        "Finding 21",
+        "Finding 22",
+        "Finding 23",
+        "Finding 24",
+        "Finding 25",
+        "Finding 26",
+        "Finding 27",
+        "Finding 28",
+        "Finding 29",
+        "Finding 30",
+        "Finding 31",
+        "Finding 32",
+        "Finding 33",
+        "Finding 34",
+        "Finding 35",
+        "Finding 36",
+        "Finding 37",
+        "Finding 38",
+        "Finding 39",
+        "Finding 40",
+        "Finding 41",
+        "Finding 42",
+        "Finding 43",
+        "Finding 44",
+        "Finding 45",
+        "Finding 46",
+        "Finding 47",
+        "Finding 48",
+        "Finding 49",
+        "Finding 50",
+        "Finding 51"
+      ]
+    }
+  ],
+  "ship": {
+    "input": {
+      "pullRequest": {
+        "open": true,
+        "draft": false,
+        "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "expectedHead": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "checks": [
+        {
+          "name": "test",
+          "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "conclusion": "success"
+        }
+      ],
+      "approvals": [
+        {
+          "reviewer": "codex-bot",
+          "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "provider": "openai"
+        }
+      ],
+      "riskTier": "standard",
+      "riskDomains": ["acl"],
+      "area": "80-89",
+      "at": "2026-10-03T09:00:00.000Z",
+      "override": false
+    },
+    "outcome": {
+      "verdict": "advance"
+    },
+    "derived": {
+      "riskTier": "standard",
+      "riskDomains": ["acl"],
+      "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  }
+}

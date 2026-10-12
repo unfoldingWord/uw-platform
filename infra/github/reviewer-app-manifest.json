@@ -1,0 +1,10 @@
+{
+  "name": "uw-reviewer",
+  "url": "https://github.com/unfoldingWord/uw-platform",
+  "public": false,
+  "default_permissions": {
+    "metadata": "read",
+    "pull_requests": "write"
+  },
+  "default_events": []
+}

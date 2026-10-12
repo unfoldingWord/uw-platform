@@ -1,0 +1,16 @@
+{
+  "id": "00000000-0000-4000-8000-0000000000b1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "key": "ship",
+  "title": "Ship",
+  "position": 60,
+  "bracket": "deploy_package",
+  "agentPickup": "none",
+  "exitGate": "human_approval",
+  "connector": "merge",
+  "wipLimit": 3,
+  "instructionsPageId": null,
+  "validators": [],
+  "feeds": [],
+  "paused": false
+}
