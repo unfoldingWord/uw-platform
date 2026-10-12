@@ -1,0 +1,20 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000e1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": null,
+  "name": "persona_activation_failed",
+  "position": 1,
+  "at": "2026-10-03T09:00:00.000Z",
+  "actor": "agent:builder",
+  "evidence": {
+    "pageId": "00000000-0000-4000-8000-0000000000d2",
+    "persona": "agent:builder",
+    "verb": null,
+    "engine": "claude-managed-agent",
+    "reason": "engine_not_available",
+    "message": "engine claude-managed-agent is not available",
+    "itemId": null
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
+}

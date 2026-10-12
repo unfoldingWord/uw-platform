@@ -5,6 +5,7 @@ import {
   declarationOf,
   declareTable,
   offlineEligibilities,
+  tableEntries,
   undeclaredTables,
   type Classification,
   type OfflineEligibility,
@@ -53,5 +54,12 @@ describe('table declarations (plan §2.6)', () => {
         offlineEligibility: unknownValue as OfflineEligibility,
       }),
     ).toThrow('leaky: offlineEligibility must be one of sync, cache_readonly, never');
+  });
+});
+
+describe('tableEntries', () => {
+  it('names each exported table by its export and its table name', () => {
+    const mixed = { probes: ordered.probes, note: 1 };
+    expect(tableEntries(mixed)).toEqual([{ exportName: 'probes', table: 'probes' }]);
   });
 });

@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "hono/jsx"
+  },
+  "include": [
+    "**/*.pg.test.ts",
+    "testing/postgres.ts",
+    "testing/commands.ts",
+    "testing/harness-reads.ts",
+    "testing/run-host.ts",
+    "testing/views.ts",
+    "testing/screen-checks.ts",
+    "testing/board-world.ts",
+    "testing/gate-world.ts"
+  ],
+  "exclude": ["node_modules"]
+}

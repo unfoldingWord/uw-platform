@@ -1,0 +1,5 @@
+ALTER TABLE "page_versions" ADD CONSTRAINT "page_versions_type_known" CHECK ("page_versions"."type" IN ('skill', 'learning', 'persona', 'product', 'system_goal', 'product_strategy', 'data_sources'));--> statement-breakpoint
+ALTER TABLE "page_versions" ADD CONSTRAINT "page_versions_status_known" CHECK ("page_versions"."status" IN ('draft', 'suggested', 'active', 'retired'));--> statement-breakpoint
+ALTER TABLE "page_versions" ADD CONSTRAINT "page_versions_area_form" CHECK ("page_versions"."jd_area" ~ '^([0-9])0-\1[9]$');--> statement-breakpoint
+ALTER TABLE "page_versions" ADD CONSTRAINT "page_versions_slug_form" CHECK ("page_versions"."slug" ~ '^[a-z0-9]+(-[a-z0-9]+)*$');--> statement-breakpoint
+ALTER TABLE "page_versions" ADD CONSTRAINT "page_versions_version_positive" CHECK ("page_versions"."version" >= 1);

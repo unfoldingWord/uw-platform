@@ -1,0 +1,17 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000e1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "name": "run_failed",
+  "position": 1,
+  "at": "2026-10-03T09:00:00.000Z",
+  "actor": "agent:builder",
+  "evidence": {
+    "runId": "00000000-0000-4000-8000-0000000000f1",
+    "step": "work",
+    "why": "provider_mismatch",
+    "detail": "z-ai/deepinfra"
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
+}

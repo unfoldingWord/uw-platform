@@ -1,0 +1,11 @@
+{
+  "status": "ok",
+  "commit": "abc1234",
+  "indicators": [
+    {
+      "name": "database",
+      "status": "ok",
+      "detail": "reachable"
+    }
+  ]
+}

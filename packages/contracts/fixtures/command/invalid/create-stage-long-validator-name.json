@@ -1,0 +1,19 @@
+{
+  "command": "create_stage",
+  "requestId": "3f1d7c1e-8c53-4a53-9d6e-0a9b6a0f4d11",
+  "stage": {
+    "key": "review",
+    "title": "Review",
+    "position": 30,
+    "bracket": "build_package",
+    "agentPickup": "allowed",
+    "exitGate": "human_approval",
+    "connector": "none",
+    "wipLimit": 3,
+    "instructionsPageId": null,
+    "validators": [
+      "vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"
+    ],
+    "feeds": []
+  }
+}

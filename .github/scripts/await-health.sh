@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-url="$1/health"
+url="$1"
 sha="$2"
 
 for attempt in $(seq 1 24); do

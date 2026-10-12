@@ -4,7 +4,8 @@ const vendorSdkImport =
   /(?:from|import|require\(|import\()\s*['"](?:@anthropic-ai\/|openai(?:\/|['"])|@openrouter\/|openrouter)/;
 
 const scannedExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
-const engineDirectory = /^apps\/uw-app\/engines\/[^/]+\//;
+const engineDirectory =
+  /^apps\/uw-app\/engines\/(?:claude-messages|openrouter-messages|claude-code-sandbox|codex-sandbox|claude-managed-agent|external)\//;
 const scannedRoot = /^(?:apps|packages|sim|tests)\//;
 
 export function isVendorScanned(path: string): boolean {

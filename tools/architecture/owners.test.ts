@@ -1,0 +1,350 @@
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { owns as acl } from '../../apps/uw-app/acl/grant-commands.ts';
+import { owns as serviceTokens } from '../../apps/uw-app/agents/service-tokens.ts';
+import { owns as commandRequests } from '../../apps/uw-app/commands/requests.ts';
+import { owns as githubFacts } from '../../apps/uw-app/github/facts/owns.ts';
+import { owns as notify } from '../../apps/uw-app/notify/push/owns.ts';
+import { owns as pages } from '../../apps/uw-app/pages/store.ts';
+import { owns as people } from '../../apps/uw-app/people/directory.ts';
+import { owns as queue } from '../../apps/uw-app/queue/watermarks.ts';
+import { owns as tasks } from '../../apps/uw-app/tasks/store.ts';
+import { owns as deliveries } from '../../apps/uw-ingest/deliveries/ledger.ts';
+import { owns as delegations } from '../../packages/harness/delegations/owns.ts';
+import { owns as gates } from '../../packages/harness/gates/owns.ts';
+import { owns as items } from '../../packages/harness/items/owns.ts';
+import { owns as measurements } from '../../packages/harness/measurements/owns.ts';
+import { owns as personas } from '../../packages/harness/personas/owns.ts';
+import { owns as runs } from '../../packages/harness/runs/owns.ts';
+import { owns as stages } from '../../packages/harness/stages/owns.ts';
+import { tableEntries } from '../../packages/db/declarations.ts';
+import * as schema from '../../packages/db/schema.ts';
+import { repoFiles } from '../repo-files.ts';
+
+type Owner = { dir: string; tables: readonly string[] };
+type Entry = { exportName: string; table: string };
+type NarrowWrite = { readonly dir: string; readonly table: string; readonly call: RegExp };
+
+const narrowWrites: readonly NarrowWrite[] = [
+  {
+    dir: 'packages/harness/personas/',
+    table: 'pages',
+    call: /\btx\.pages\.write\.activatePersona\(/g,
+  },
+];
+
+const owners: Owner[] = [
+  { dir: 'apps/uw-app/people/', tables: people },
+  { dir: 'apps/uw-app/acl/', tables: acl },
+  { dir: 'apps/uw-app/pages/', tables: pages },
+  { dir: 'apps/uw-app/queue/', tables: queue },
+  { dir: 'apps/uw-app/tasks/', tables: tasks },
+  { dir: 'apps/uw-app/agents/', tables: serviceTokens },
+  { dir: 'apps/uw-app/commands/', tables: commandRequests },
+  { dir: 'apps/uw-app/github/facts/', tables: githubFacts },
+  { dir: 'apps/uw-app/notify/push/', tables: notify },
+  { dir: 'apps/uw-ingest/deliveries/', tables: deliveries },
+  { dir: 'packages/harness/stages/', tables: stages },
+  { dir: 'packages/harness/items/', tables: items },
+  { dir: 'packages/harness/gates/', tables: gates },
+  { dir: 'packages/harness/delegations/', tables: delegations },
+  { dir: 'packages/harness/runs/', tables: runs },
+  { dir: 'packages/harness/measurements/', tables: measurements },
+  { dir: 'packages/harness/personas/', tables: personas },
+];
+
+const entries = tableEntries(schema);
+
+const PORT_CONTRACTS = 'packages/harness/port-contracts/';
+
+function isScannedSource(file: string): boolean {
+  return (
+    /\.(?:tsx?|m?js)$/.test(file) &&
+    !/\.test\.(?:tsx?|m?js)$/.test(file) &&
+    !file.includes('node_modules') &&
+    !file.includes(PORT_CONTRACTS)
+  );
+}
+
+function sourcesUnder(base: string, roots: string[]): string[] {
+  return roots.flatMap((root) =>
+    readdirSync(join(base, root), { recursive: true, encoding: 'utf8' })
+      .map((file) => join(root, file))
+      .filter(isScannedSource),
+  );
+}
+
+function repoSourcesUnder(roots: readonly string[]): string[] {
+  return repoFiles().filter(
+    (file) => isScannedSource(file) && roots.some((root) => file.startsWith(`${root}/`)),
+  );
+}
+
+function writes(source: string, entry: Entry): boolean {
+  const name = entry.exportName;
+  return [
+    new RegExp(`\\.(insert|update|delete)\\(\\s*(?:\\w+\\.)?${name}\\b`),
+    new RegExp(`\\b(INSERT INTO|UPDATE|DELETE FROM)\\s+(?:"?\\w+"?\\.)?"?${entry.table}"?\\b`, 'i'),
+    new RegExp(`\\b${name}\\s*\\.\\s*write\\b`),
+    new RegExp(`\\b${name}\\s*\\[\\s*['"\`]write['"\`]\\s*\\]`),
+    new RegExp(`\\[\\s*['"\`]${name}['"\`]\\s*\\]`),
+    new RegExp(`=\\s*(?:\\w+\\.)?${name}\\s*[;,)\\n]`),
+    new RegExp(`\\{[^{}]*\\b${name}\\b[^{}]*\\}\\s*=(?!>)`),
+  ].some((pattern) => pattern.test(source));
+}
+
+function writesBeyondNarrow(
+  file: string,
+  source: string,
+  entry: Entry,
+  allowed: readonly NarrowWrite[],
+): boolean {
+  const narrow = allowed.find((write) => write.table === entry.table && file.startsWith(write.dir));
+  return writes(narrow === undefined ? source : source.replace(narrow.call, ''), entry);
+}
+
+function writersOutsideOwner(
+  base: string,
+  sources: string[],
+  entry: Entry,
+  ownerList: Owner[],
+  allowed: readonly NarrowWrite[] = narrowWrites,
+): string[] {
+  const owner = ownerList.find((candidate) => candidate.tables.includes(entry.table));
+  return sources
+    .filter((file) => !file.startsWith(owner?.dir ?? '\0'))
+    .filter((file) =>
+      writesBeyondNarrow(file, readFileSync(join(base, file), 'utf8'), entry, allowed),
+    );
+}
+
+function claimProblems(ownerList: Owner[], tableNames: string[]): string[] {
+  const claimed = ownerList.flatMap((owner) => owner.tables);
+  const twice = claimed.filter((table, index) => claimed.indexOf(table) !== index);
+  const unclaimed = tableNames.filter((table) => !claimed.includes(table));
+  const unknown = claimed.filter((table) => !tableNames.includes(table));
+  return [
+    ...twice.map((table) => `${table} is claimed twice`),
+    ...unclaimed.map((table) => `${table} is claimed by no module`),
+    ...unknown.map((table) => `${table} is claimed but is not a table`),
+  ];
+}
+
+function exportingOwns(base: string, sources: string[]): string[] {
+  return sources
+    .filter((file) => /export const owns\b/.test(readFileSync(join(base, file), 'utf8')))
+    .map((file) => `${dirname(file)}/`);
+}
+
+const UNSCANNED_PACKAGE = 'db';
+
+function packageRoots(base: string): string[] {
+  if (!existsSync(join(base, 'packages'))) return [];
+  return readdirSync(join(base, 'packages'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name !== UNSCANNED_PACKAGE)
+    .map((entry) => `packages/${entry.name}`)
+    .sort();
+}
+
+function scanRoots(base: string): string[] {
+  return ['apps/uw-app', 'apps/uw-ingest', ...packageRoots(base), 'sim'].filter((root) =>
+    existsSync(join(base, root)),
+  );
+}
+
+const repoRoot = join(import.meta.dirname, '..', '..');
+const sources = repoSourcesUnder(scanRoots(repoRoot));
+
+describe('AGENTS.md rule 3: every table has one writer', () => {
+  it('has every schema table owned by exactly one module', () => {
+    expect(
+      claimProblems(
+        owners,
+        entries.map((entry) => entry.table),
+      ),
+    ).toEqual([]);
+  });
+
+  it('finds every module that exports owns', () => {
+    expect(exportingOwns(repoRoot, sources).sort()).toEqual(
+      owners.map((owner) => owner.dir).sort(),
+    );
+  });
+
+  it.each(entries)('$table is written only inside its owner', (entry) => {
+    expect(writersOutsideOwner(repoRoot, sources, entry, owners)).toEqual([]);
+  });
+});
+
+function plantedTree(): string {
+  const base = mkdtempSync(join(tmpdir(), 'uw-owners-'));
+  mkdirSync(join(base, 'apps/uw-app/people'), { recursive: true });
+  mkdirSync(join(base, 'apps/uw-app/acl'), { recursive: true });
+  writeFileSync(join(base, 'apps/uw-app/people/directory.ts'), 'db.insert(people).values(row);');
+  writeFileSync(join(base, 'apps/uw-app/acl/stray.ts'), 'await db.insert(people).values(row);');
+  writeFileSync(join(base, 'apps/uw-app/acl/raw.ts'), 'sql`UPDATE people SET status = 1`;');
+  return base;
+}
+
+function plantedOutsideApps(): string {
+  const base = mkdtempSync(join(tmpdir(), 'uw-owners-'));
+  mkdirSync(join(base, 'apps/uw-app/people'), { recursive: true });
+  mkdirSync(join(base, 'packages/harness'), { recursive: true });
+  mkdirSync(join(base, 'packages/db'), { recursive: true });
+  mkdirSync(join(base, 'sim/adapters'), { recursive: true });
+  writeFileSync(join(base, 'apps/uw-app/people/directory.ts'), 'db.insert(people).values(row);');
+  writeFileSync(join(base, 'apps/uw-app/namespaced.ts'), 'tx.insert(schema.people);');
+  writeFileSync(join(base, 'packages/harness/store.ts'), 'await db.update(people).set(row);');
+  writeFileSync(join(base, 'packages/db/schema.ts'), 'db.insert(people).values(row);');
+  writeFileSync(join(base, 'sim/adapters/store.ts'), 'await tx.delete(schema.people);');
+  return base;
+}
+
+describe('AGENTS.md rule 3: the check scans packages and the sim', () => {
+  const people_: Entry = { exportName: 'people', table: 'people' };
+
+  it('scans every package except packages/db, and the sim when present', () => {
+    const base = plantedOutsideApps();
+    expect(scanRoots(base)).toEqual(['apps/uw-app', 'packages/harness', 'sim']);
+  });
+
+  it('catches a namespaced write in an app, a package and the sim', () => {
+    const base = plantedOutsideApps();
+    const found = writersOutsideOwner(base, sourcesUnder(base, scanRoots(base)), people_, [
+      { dir: 'apps/uw-app/people/', tables: ['people'] },
+    ]);
+    expect(found.sort()).toEqual([
+      'apps/uw-app/namespaced.ts',
+      'packages/harness/store.ts',
+      'sim/adapters/store.ts',
+    ]);
+  });
+});
+
+describe('AGENTS.md rule 3: the check itself fails on a violation', () => {
+  const people_: Entry = { exportName: 'people', table: 'people' };
+
+  it('fails when a table is claimed by two modules', () => {
+    const doubled = [...owners, { dir: 'apps/uw-app/acl/', tables: ['people'] }];
+    expect(claimProblems(doubled, ['people'])).toContain('people is claimed twice');
+  });
+
+  it('fails when a table is claimed by no module', () => {
+    expect(claimProblems([], ['people'])).toContain('people is claimed by no module');
+  });
+
+  it('fails when a module outside the owner writes the table', () => {
+    const base = plantedTree();
+    const found = writersOutsideOwner(base, sourcesUnder(base, ['apps/uw-app']), people_, [
+      { dir: 'apps/uw-app/people/', tables: ['people'] },
+    ]);
+    expect(found.sort()).toEqual(['apps/uw-app/acl/raw.ts', 'apps/uw-app/acl/stray.ts']);
+  });
+});
+
+function plantedGateway(): string {
+  const base = mkdtempSync(join(tmpdir(), 'uw-owners-'));
+  mkdirSync(join(base, 'packages/harness/items'), { recursive: true });
+  mkdirSync(join(base, 'packages/harness/stages'), { recursive: true });
+  mkdirSync(join(base, 'packages/harness/port-contracts'), { recursive: true });
+  const line = 'await tx.harnessStages.write.insert(row);';
+  writeFileSync(join(base, 'packages/harness/items/stray.ts'), line);
+  writeFileSync(join(base, 'packages/harness/stages/ok.ts'), line);
+  writeFileSync(join(base, 'packages/harness/port-contracts/store.ts'), line);
+  return base;
+}
+
+function plantedEvasions(): string {
+  const base = mkdtempSync(join(tmpdir(), 'uw-owners-'));
+  mkdirSync(join(base, 'packages/harness/items'), { recursive: true });
+  mkdirSync(join(base, 'packages/harness/stages'), { recursive: true });
+  const planted: Record<string, string> = {
+    'items/aliased.ts': 'const g = tx.harnessStages;\nawait g.write.insert(row);',
+    'items/destructured.ts':
+      'const { harnessStages } = tx;\nawait harnessStages.write.insert(row);',
+    'items/bracketed.ts': "await tx['harnessStages'].write.insert(row);",
+    'items/spaced.ts': 'await tx.harnessStages\n  .write.insert(row);',
+    'items/plain.js': 'await tx.harnessStages.write.insert(row);',
+    'items/module.mjs': 'await tx.harnessStages.write.insert(row);',
+    'items/qualified.ts': 'sql`UPDATE public.harness_stages SET title = 1`;',
+    'items/reads.ts': 'await tx.harnessStages.read.forHarness(id);',
+    'stages/owner.ts': 'const g = tx.harnessStages;\nawait g.write.insert(row);',
+  };
+  for (const [file, source] of Object.entries(planted)) {
+    writeFileSync(join(base, 'packages/harness', file), source);
+  }
+  return base;
+}
+
+describe('AGENTS.md rule 3: a gateway write is a write', () => {
+  const stages_: Entry = { exportName: 'harnessStages', table: 'harness_stages' };
+
+  it('catches an aliased, destructured, bracketed or qualified write and a .js or .mjs file', () => {
+    const base = plantedEvasions();
+    const found = writersOutsideOwner(base, sourcesUnder(base, ['packages/harness']), stages_, [
+      { dir: 'packages/harness/stages/', tables: ['harness_stages'] },
+    ]);
+    expect(found.sort()).toEqual(
+      [
+        'aliased.ts',
+        'bracketed.ts',
+        'destructured.ts',
+        'module.mjs',
+        'plain.js',
+        'qualified.ts',
+        'spaced.ts',
+      ].map((file) => `packages/harness/items/${file}`),
+    );
+  });
+
+  it('reports a gateway write outside the owner and not inside it', () => {
+    const base = plantedGateway();
+    const found = writersOutsideOwner(base, sourcesUnder(base, ['packages/harness']), stages_, [
+      { dir: 'packages/harness/stages/', tables: ['harness_stages'] },
+    ]);
+    expect(found).toEqual(['packages/harness/items/stray.ts']);
+  });
+});
+
+function plantedNarrowWrites(): string {
+  const base = mkdtempSync(join(tmpdir(), 'uw-owners-'));
+  mkdirSync(join(base, 'packages/harness/personas'), { recursive: true });
+  mkdirSync(join(base, 'packages/harness/items'), { recursive: true });
+  const planted: Record<string, string> = {
+    'personas/flip.ts': 'const flipped = await tx.pages.write.activatePersona(activation);',
+    'personas/other.ts': 'await tx.pages.write.other(row);',
+    'personas/raw.ts': 'await db.update(pages).set(row);',
+    'personas/both.ts':
+      'await tx.pages.write.activatePersona(activation);\nawait tx.pages.write.other(row);',
+    'items/flip.ts': 'await tx.pages.write.activatePersona(activation);',
+  };
+  for (const [file, source] of Object.entries(planted)) {
+    writeFileSync(join(base, 'packages/harness', file), source);
+  }
+  return base;
+}
+
+describe('AGENTS.md rule 3: the persona flip is the one narrow write to pages', () => {
+  const pages_: Entry = { exportName: 'pages', table: 'pages' };
+
+  it('allows activatePersona from the personas module and nothing else of pages anywhere', () => {
+    const base = plantedNarrowWrites();
+    const found = writersOutsideOwner(base, sourcesUnder(base, ['packages/harness']), pages_, [
+      { dir: 'apps/uw-app/pages/', tables: ['pages'] },
+    ]);
+    expect(found.sort()).toEqual(
+      ['items/flip.ts', 'personas/both.ts', 'personas/other.ts', 'personas/raw.ts'].map(
+        (file) => `packages/harness/${file}`,
+      ),
+    );
+  });
+});

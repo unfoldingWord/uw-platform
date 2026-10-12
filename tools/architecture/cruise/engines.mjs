@@ -1,0 +1,117 @@
+import { npm, vendorSdk, testFile, engineKeys, engineDirectory } from './shared.mjs';
+
+const environment = '^apps/uw-app/env\\.ts$';
+const containers = npm('@cloudflare/containers');
+const webPush = npm('@block65/webcrypto-web-push');
+const sandbox = '^apps/uw-app/engines/sandbox/';
+const enginesMayImport = [
+  '^packages/(harness|contracts)/',
+  npm('zod'),
+  ...vendorSdk,
+  containers,
+  '^apps/uw-app/engines/(seam|config|tool-schemas)\\.ts$',
+  sandbox,
+  environment,
+];
+
+export const engineRules = [
+  {
+    name: 'vendor-sdk-only-in-engines',
+    comment: 'A vendor SDK is imported only inside one of the six apps/uw-app/engines/<key>/.',
+    severity: 'error',
+    from: { path: '^(apps|packages|sim|tests)/', pathNot: engineDirectory },
+    to: { path: vendorSdk },
+  },
+  {
+    name: 'engines-only-from-the-seam',
+    comment:
+      'An engine directory is imported only by the engine registry, its own files and tests, so the platform reaches an engine only through the seam.',
+    severity: 'error',
+    from: { pathNot: ['^apps/uw-app/engines/registry\\.ts$', engineDirectory, testFile] },
+    to: { path: engineDirectory },
+  },
+  {
+    name: 'engines-never-import-another-engine',
+    comment: 'An engine imports nothing from another engine directory.',
+    severity: 'error',
+    from: { path: `^apps/uw-app/engines/${engineKeys}/` },
+    to: { path: engineDirectory, pathNot: '^apps/uw-app/engines/$1/' },
+  },
+  {
+    name: 'engines-gateway-only-from-the-roots',
+    comment:
+      'The AI Gateway spend reader is imported only by the composition roots that build the breaker and by tests.',
+    severity: 'error',
+    from: {
+      pathNot: [
+        '^apps/uw-app/engines/gateway/',
+        '^apps/uw-app/(kernel|cron/minute|runs/deps)\\.ts$',
+        testFile,
+      ],
+    },
+    to: { path: '^apps/uw-app/engines/gateway/' },
+  },
+  {
+    name: 'engines-reach-only-the-tool-caller',
+    comment:
+      'An engine reaches the platform only through the MCP tool caller it is handed: it imports the harness, the contracts, zod, the vendor SDKs, the shared seam files and its own directory, and nothing else, so no chain of imports reaches the database, the kernel, a port, the MCP surface or GitHub.',
+    severity: 'error',
+    from: { path: '^apps/uw-app/engines/([^/]+)/', pathNot: testFile },
+    to: { pathNot: [...enginesMayImport, '^apps/uw-app/engines/$1/'] },
+  },
+  {
+    name: 'engine-seam-reaches-only-the-engines',
+    comment:
+      'The seam files at the top of apps/uw-app/engines/ import what an engine may, plus the engine directories, and nothing else.',
+    severity: 'error',
+    from: { path: '^apps/uw-app/engines/[^/]+\\.ts$', pathNot: testFile },
+    to: { pathNot: [...enginesMayImport, '^apps/uw-app/engines/'] },
+  },
+  {
+    name: 'engines-read-the-environment-as-types-only',
+    comment:
+      'An engine names the Worker environment only as a type; its values come through the engine configuration.',
+    severity: 'error',
+    from: { path: '^apps/uw-app/engines/', pathNot: testFile },
+    to: { path: environment, dependencyTypesNot: ['type-only'] },
+  },
+  {
+    name: 'web-push-only-in-push-transport',
+    comment:
+      'The web push library is imported only by apps/uw-app/notify/push/transport.ts, so every push leaves through one seam.',
+    severity: 'error',
+    from: { pathNot: '^apps/uw-app/notify/push/transport\\.ts$' },
+    to: { path: webPush },
+  },
+  {
+    name: 'containers-only-in-the-sandbox',
+    comment: 'The Containers package is imported only under apps/uw-app/engines/sandbox/.',
+    severity: 'error',
+    from: { pathNot: sandbox },
+    to: { path: containers },
+  },
+  {
+    name: 'sandbox-only-from-the-sandbox-engines',
+    comment:
+      'The shared sandbox files are imported only by the two sandbox engines, the engine configuration, the Worker entry (for the classes) and tests.',
+    severity: 'error',
+    from: {
+      pathNot: [
+        sandbox,
+        '^apps/uw-app/engines/(claude-code-sandbox|codex-sandbox)/',
+        '^apps/uw-app/engines/config\\.ts$',
+        '^apps/uw-app/index\\.ts$',
+        testFile,
+      ],
+    },
+    to: { path: sandbox },
+  },
+  {
+    name: 'sandbox-classes-only-in-the-worker-entry',
+    comment:
+      'The sandbox Durable Object classes, which need the Workers runtime, are imported only by the Worker entry and tests, so nothing a Node test imports reaches them.',
+    severity: 'error',
+    from: { pathNot: ['^apps/uw-app/index\\.ts$', testFile] },
+    to: { path: `${sandbox}classes\\.ts$` },
+  },
+];

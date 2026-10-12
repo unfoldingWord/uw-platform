@@ -1,0 +1,10 @@
+{
+  "memo": "Accrual",
+  "lines": [
+    {
+      "account": "1000",
+      "amountMinor": 1000,
+      "currency": "USD"
+    }
+  ]
+}

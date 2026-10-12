@@ -1,0 +1,16 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000e1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "name": "item_claimed",
+  "position": 0,
+  "at": "2026-10-01T09:00:00.000Z",
+  "actor": "agent:builder",
+  "evidence": {
+    "holder": "agent:builder",
+    "claimantKind": "agent",
+    "delegationId": null,
+    "leaseExpiresAt": "2026-10-01T09:15:00.000Z"
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1"
+}

@@ -1,0 +1,7 @@
+{
+  "step": "work",
+  "tokensIn": 1,
+  "tokensOut": 1,
+  "toolsCalled": ["merge"],
+  "at": "2026-10-03T09:00:00.000Z"
+}

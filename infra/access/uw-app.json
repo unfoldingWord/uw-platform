@@ -1,0 +1,105 @@
+{
+  "application": {
+    "name": "uw-app",
+    "type": "self_hosted",
+    "domain": "uw-app-staging.unfoldingword.workers.dev",
+    "destinations": [
+      {
+        "type": "public",
+        "uri": "uw-app-staging.unfoldingword.workers.dev"
+      },
+      {
+        "type": "public",
+        "uri": "uw-app-pr-*.unfoldingword.workers.dev"
+      }
+    ],
+    "allowed_idps": ["<google-idp-id>"],
+    "auto_redirect_to_identity": true,
+    "session_duration": "24h",
+    "same_site_cookie_attribute": "lax"
+  },
+  "policies": [
+    {
+      "name": "Anyone signed in with Google",
+      "decision": "allow",
+      "include": [
+        {
+          "login_method": {
+            "id": "<google-idp-id>"
+          }
+        }
+      ]
+    }
+  ],
+  "health_bypass": {
+    "application": {
+      "name": "uw-app health probe",
+      "type": "self_hosted",
+      "domain": "uw-app-staging.unfoldingword.workers.dev/health/probe",
+      "destinations": [
+        {
+          "type": "public",
+          "uri": "uw-app-staging.unfoldingword.workers.dev/health/probe"
+        },
+        {
+          "type": "public",
+          "uri": "uw-app-pr-*.unfoldingword.workers.dev/health/probe"
+        }
+      ],
+      "allowed_idps": []
+    },
+    "policies": [
+      {
+        "name": "Deploy health probe",
+        "decision": "bypass",
+        "include": [
+          {
+            "everyone": {}
+          }
+        ]
+      }
+    ]
+  },
+  "mcp": {
+    "application": {
+      "name": "uw-app MCP surface",
+      "type": "self_hosted",
+      "domain": "uw-app-staging.unfoldingword.workers.dev/mcp",
+      "destinations": [
+        {
+          "type": "public",
+          "uri": "uw-app-staging.unfoldingword.workers.dev/mcp"
+        },
+        {
+          "type": "public",
+          "uri": "uw-app-pr-*.unfoldingword.workers.dev/mcp"
+        }
+      ],
+      "allowed_idps": ["<google-idp-id>"],
+      "auto_redirect_to_identity": true,
+      "session_duration": "24h"
+    },
+    "policies": [
+      {
+        "name": "Agents signed in with Google",
+        "decision": "allow",
+        "include": [
+          {
+            "login_method": {
+              "id": "<google-idp-id>"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Agent service tokens",
+        "decision": "non_identity",
+        "include": [
+          {
+            "any_valid_service_token": {}
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,3 +1,4 @@
+import { pageTypeRegistry, verbRegistry } from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
 import { moduleSchema, modules } from './modules.ts';
 
@@ -35,6 +36,12 @@ describe('the module registry', () => {
   it('lets no two modules claim the same table', () => {
     const tables = modules.flatMap((declared) => [...declared.tables]);
     expect(new Set(tables).size).toBe(tables.length);
+  });
+
+  it('declares the registered page types and verbs under agents', () => {
+    const agents = modules.find((declared) => declared.key === 'agents');
+    expect(agents?.page_types).toEqual(Object.keys(pageTypeRegistry));
+    expect(agents?.mcp_tools).toEqual(verbRegistry.map((entry) => entry.name));
   });
 
   it('refuses a module outside the §14 shape', () => {

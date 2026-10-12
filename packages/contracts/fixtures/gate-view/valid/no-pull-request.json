@@ -1,0 +1,13 @@
+{
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "stageKey": "review",
+  "gateStatus": "parked",
+  "connector": "none",
+  "expectedHead": null,
+  "pullRequest": null,
+  "recorded": null,
+  "facts": null,
+  "reviews": [],
+  "ship": null
+}

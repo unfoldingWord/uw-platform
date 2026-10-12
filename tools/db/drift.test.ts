@@ -19,6 +19,8 @@ describe('schema drift (drizzle-kit generate against the committed migrations)',
   });
 
   it('reports a table added to a schema without a migration', { timeout }, () => {
-    expect(unmigratedChanges(db('fixtures/drifted/schema.ts'), migrations)).toHaveLength(1);
+    expect(
+      unmigratedChanges(db('fixtures/drifted/schema.ts'), db('fixtures/drifted/migrations')),
+    ).toHaveLength(1);
   });
 });

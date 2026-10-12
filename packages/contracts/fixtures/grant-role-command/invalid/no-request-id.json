@@ -1,0 +1,8 @@
+{
+  "command": "grant_role",
+  "personId": "00000000-0000-4000-8000-000000000002",
+  "role": "editor",
+  "scopeKind": "jd_area",
+  "scopeArea": "80-89",
+  "expiresAt": null
+}

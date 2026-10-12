@@ -1,0 +1,11 @@
+{
+  "trigger": "private_message",
+  "message": {
+    "id": 1201,
+    "sender_email": "ana@example.org",
+    "type": "private",
+    "display_recipient": [],
+    "subject": "software/uw-platform#42",
+    "content": "@**harness** approve"
+  }
+}

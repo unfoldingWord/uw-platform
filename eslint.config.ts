@@ -121,7 +121,11 @@ export default defineConfig([
     },
   },
   {
-    files: ['tools/lint/date-patterns.ts'],
+    files: ['sim/runner/**', 'sim/cli/**', 'vitest.config.ts'],
+    rules: { 'security/detect-non-literal-fs-filename': 'off' },
+  },
+  {
+    files: ['tools/lint/date-patterns.ts', 'tools/architecture/owners.test.ts'],
     rules: { 'security/detect-non-literal-regexp': 'off' },
   },
   {

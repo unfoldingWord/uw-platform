@@ -21,6 +21,9 @@ function tree(files: Record<string, string>): string {
     'eslint',
     'vitest',
     'zod',
+    'yaml',
+    '@electric-sql/pglite',
+    '@block65/webcrypto-web-push',
   ];
   for (const name of stubs) {
     files[`node_modules/${name}/index.js`] = 'export default 1;';
@@ -161,6 +164,84 @@ const refusals: [string, string, string, string][] = [
     'sim-imports-harness-contracts-and-db-only',
   ],
   [
+    'sim into an npm package',
+    'sim/a.ts',
+    "import 'zod';",
+    'sim-imports-harness-contracts-db-and-node-only',
+  ],
+  [
+    'sim into Drizzle',
+    'sim/a.ts',
+    "import 'drizzle-orm';",
+    'sim-imports-harness-contracts-db-and-node-only',
+  ],
+  [
+    'a sim adapter into node:os',
+    'sim/adapters/a.ts',
+    "import 'node:os';",
+    'sim-os-and-child-process-only-in-tests-cli-and-runner',
+  ],
+  [
+    'a sim adapter into node:child_process',
+    'sim/adapters/a.ts',
+    "import 'node:child_process';",
+    'sim-os-and-child-process-only-in-tests-cli-and-runner',
+  ],
+  [
+    'a sim non-test file into Vitest',
+    'sim/a.ts',
+    "import 'vitest';",
+    'sim-non-test-files-never-import-vitest',
+  ],
+  [
+    'a port contract into a root dependency',
+    'packages/harness/port-contracts/a.ts',
+    "import 'eslint';",
+    'harness-port-contracts-import-the-harness-and-vitest-only',
+  ],
+  [
+    'a non-test package file into a port contract',
+    'packages/harness/index.ts',
+    "import './port-contracts/b.ts';",
+    'port-contracts-only-in-tests',
+  ],
+  [
+    'a non-test app file into a port contract',
+    'apps/uw-app/a.ts',
+    "import '../../packages/harness/port-contracts/b.ts';",
+    'port-contracts-only-in-tests',
+  ],
+  [
+    'a non-test app file into the in-process host',
+    'apps/uw-app/a.ts',
+    "import './mcp/in-process.ts';",
+    'in-process-host-only-in-run-steps',
+  ],
+  [
+    'the run core into the in-process host past the run steps',
+    'apps/uw-app/runs/run-core.ts',
+    "import '../mcp/in-process.ts';",
+    'in-process-host-only-in-run-steps',
+  ],
+  [
+    'an app module into the run host',
+    'apps/uw-app/cron/a.ts',
+    "import '../runs/b.ts';",
+    'run-host-only-from-the-workflow',
+  ],
+  [
+    'the MCP surface into the run host',
+    'apps/uw-app/mcp/a.test.ts',
+    "import '../runs/b.ts';",
+    'mcp-never-imports-the-run-host',
+  ],
+  [
+    'an app module into the verb server',
+    'apps/uw-app/commands/a.ts',
+    "import '../mcp/server.ts';",
+    'verb-server-only-in-the-hosts',
+  ],
+  [
     'ingest into the kernel',
     'apps/uw-ingest/a.ts',
     "import '../../packages/harness/b.ts';",
@@ -171,6 +252,36 @@ const refusals: [string, string, string, string][] = [
     'apps/uw-app/islands/a.ts',
     "import '../../../packages/harness/b.ts';",
     'islands-never-call-the-kernel',
+  ],
+  [
+    'a browser island into the database',
+    'apps/uw-app/islands/browser/a.ts',
+    "import '../../../../packages/db/b.ts';",
+    'islands-never-call-the-kernel',
+  ],
+  [
+    'the service worker into a route module',
+    'apps/uw-app/islands/worker/a.ts',
+    "import '../../commands/routes.ts';",
+    'islands-never-call-the-kernel',
+  ],
+  [
+    'a route module into the built islands bundle',
+    'apps/uw-app/commands/a.ts',
+    "import '../generated/islands.ts';",
+    'islands-bundle-only-in-assets-and-views',
+  ],
+  [
+    'a Worker file into the embedded database',
+    'apps/uw-app/a.ts',
+    "import '../../packages/db/embedded.ts';",
+    'apps-never-import-the-embedded-database',
+  ],
+  [
+    'a Worker file into PGlite',
+    'apps/uw-app/a.ts',
+    "import '@electric-sql/pglite';",
+    'apps-never-import-the-embedded-database',
   ],
   [
     'a vendor SDK outside an engine',
@@ -190,7 +301,30 @@ const refusals: [string, string, string, string][] = [
     "import '@openrouter/sdk';",
     'vendor-sdk-only-in-engines',
   ],
+  [
+    'the web push library outside the push transport',
+    'apps/uw-app/notify/push/send.ts',
+    "import '@block65/webcrypto-web-push';",
+    'web-push-only-in-push-transport',
+  ],
 ];
+
+describe('the islands rules', () => {
+  it('lets an island import another island, the contracts and the ui text, and the assets import the bundle', async () => {
+    expect(
+      await violations({
+        'packages/contracts/index.ts': leaf,
+        'packages/ui/components/text.ts': leaf,
+        'apps/uw-app/islands/live/session.ts': leaf,
+        'apps/uw-app/generated/islands.ts': leaf,
+        'apps/uw-app/islands/browser/a.ts':
+          "import '../live/session.ts'; import '../../../../packages/contracts/index.ts'; import '../../../../packages/ui/components/text.ts';",
+        'apps/uw-app/assets/routes.ts': "import '../generated/islands.ts';",
+        'apps/uw-app/views/parts/frame.tsx': "import '../../generated/islands.ts';",
+      }),
+    ).toEqual([]);
+  });
+});
 
 describe('the dependency rules', () => {
   it('accepts an import that follows the DAG', async () => {
@@ -211,8 +345,15 @@ describe('the dependency rules', () => {
         [path]: source,
         'apps/uw-app/b.ts': leaf,
         'packages/db/b.ts': leaf,
+        'packages/db/embedded.ts': leaf,
         'packages/core/b.ts': leaf,
         'packages/harness/b.ts': leaf,
+        'packages/harness/port-contracts/b.ts': leaf,
+        'apps/uw-app/mcp/in-process.ts': leaf,
+        'apps/uw-app/mcp/server.ts': leaf,
+        'apps/uw-app/runs/b.ts': leaf,
+        'apps/uw-app/commands/routes.ts': leaf,
+        'apps/uw-app/generated/islands.ts': leaf,
         'apps/uw-app/types.d.ts': 'export type Value = number;',
       }),
     ).toContain(rule);
@@ -229,6 +370,13 @@ describe('the dependency rules', () => {
 });
 
 describe('the dependency rules allow', () => {
+  it('the harness on yaml, and nothing else from npm', async () => {
+    expect(await violations({ 'packages/harness/a.ts': "import 'yaml';" })).toEqual([]);
+    expect(await violations({ 'packages/harness/a.ts': "import 'zod';" })).toContain(
+      'harness-imports-contracts-and-core-only',
+    );
+  });
+
   it('a harness test that imports Vitest and core', async () => {
     expect(
       await violations({
@@ -259,6 +407,38 @@ describe('the dependency rules allow', () => {
       }),
     ).toEqual([]);
   });
+});
+
+describe('the run host dependency rules allow', () => {
+  it('the run steps on the in-process host, the Worker entry on the run host, and the hosts on the verb server', async () => {
+    expect(
+      await violations({
+        'apps/uw-app/mcp/server.ts': leaf,
+        'apps/uw-app/mcp/in-process.ts': "import './server.ts';",
+        'apps/uw-app/mcp/routes.ts': "import './server.ts';",
+        'apps/uw-app/runs/steps.ts': "import '../mcp/in-process.ts';",
+        'apps/uw-app/runs/workflow.ts': "import './steps.ts';",
+        'apps/uw-app/index.ts': "import './runs/workflow.ts';",
+      }),
+    ).toEqual([]);
+  });
+
+  it('a test that connects the in-process host', async () => {
+    expect(
+      await violations({
+        'apps/uw-app/mcp/in-process.ts': leaf,
+        'apps/uw-app/mcp/a.test.ts': "import './in-process.ts';",
+      }),
+    ).toEqual([]);
+  });
+
+  it('the web push library inside the push transport', async () => {
+    expect(
+      await violations({
+        'apps/uw-app/notify/push/transport.ts': "import '@block65/webcrypto-web-push';",
+      }),
+    ).toEqual([]);
+  });
 
   it('a vendor SDK inside an engine directory', async () => {
     expect(
@@ -266,6 +446,58 @@ describe('the dependency rules allow', () => {
         'apps/uw-app/engines/claude-messages/a.ts': "import '@anthropic-ai/sdk';",
       }),
     ).toEqual([]);
+  });
+});
+
+describe('the dependency rules allow the sim and port contracts', () => {
+  it('a port contract on Vitest and the ports', async () => {
+    expect(
+      await violations({
+        'packages/harness/index.ts': leaf,
+        'packages/harness/port-contracts/a.ts': "import 'vitest'; import '../index.ts';",
+      }),
+    ).toEqual([]);
+  });
+
+  it('the sim on Node built-ins, and a sim test on Vitest', async () => {
+    expect(
+      await violations({
+        'sim/a.ts':
+          "import 'node:fs'; import 'node:path'; import 'node:url'; import 'node:assert/strict'; import 'node:fs/promises'; import 'fs/promises';",
+        'sim/a.test.ts': "import 'vitest'; import 'node:os'; import './a.ts';",
+      }),
+    ).toEqual([]);
+  });
+
+  it('node:os and node:child_process in the sim cli and runner', async () => {
+    expect(
+      await violations({
+        'sim/cli/a.ts': "import 'node:os'; import 'node:child_process';",
+        'sim/runner/a.ts': "import 'node:os'; import 'node:child_process';",
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('the store executor rule', () => {
+  const store = 'export const executorOf = 1;';
+
+  it('refuses an import of the store module from outside packages/db/store', async () => {
+    expect(
+      await violations({
+        'packages/db/store/store.ts': store,
+        'apps/uw-app/x.ts': "import '../../packages/db/store/store.ts';",
+      }),
+    ).toContain('store-executor-stays-in-the-store');
+  });
+
+  it('allows a sibling inside packages/db/store', async () => {
+    expect(
+      await violations({
+        'packages/db/store/store.ts': store,
+        'packages/db/store/y.ts': "import './store.ts';",
+      }),
+    ).not.toContain('store-executor-stays-in-the-store');
   });
 });
 

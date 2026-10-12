@@ -59,3 +59,11 @@ export function undeclaredTables(schema: Record<string, unknown>): string[] {
     .filter((table) => !declarations.has(table))
     .map((table) => getTableName(table));
 }
+
+export function tableEntries(
+  schema: Record<string, unknown>,
+): { exportName: string; table: string }[] {
+  return Object.entries(schema).flatMap(([exportName, value]) =>
+    is(value, PgTable) ? [{ exportName, table: getTableName(value) }] : [],
+  );
+}

@@ -1,0 +1,26 @@
+{
+  "itemId": "00000000-0000-4000-8000-0000000000c1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "stageKey": "package",
+  "title": "Add the ledger export",
+  "pageId": null,
+  "priority": 0,
+  "due": null,
+  "holder": null,
+  "claimantKind": null,
+  "delegationId": null,
+  "leaseExpiresAt": null,
+  "gateStatus": "working",
+  "gateTarget": null,
+  "branchState": "none",
+  "expectedHead": null,
+  "riskTier": null,
+  "riskDomains": [],
+  "pullRequest": null,
+  "issue": {
+    "repo": "unfoldingWord/uw-platform",
+    "number": 42,
+    "githubId": 9100000001
+  },
+  "zulipTopic": null
+}

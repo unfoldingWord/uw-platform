@@ -1,0 +1,169 @@
+name = "uw-app"
+main = "../../apps/uw-app/index.ts"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+
+[vars]
+COMMIT_SHA = "unknown"
+
+[observability]
+enabled = true
+
+[[durable_objects.bindings]]
+name = "HARNESS_HUB"
+class_name = "HarnessHub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["HarnessHub"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["ClaudeCodeSandbox", "CodexSandbox"]
+
+[env.staging]
+name = "uw-app-staging"
+workers_dev = true
+logpush = true
+
+[env.staging.vars]
+COMMIT_SHA = "unknown"
+ACCESS_TEAM_DOMAIN = "https://set-at-go-live.cloudflareaccess.com"
+ACCESS_AUD = "set-at-go-live"
+ACCESS_MCP_AUD = "set-at-go-live"
+APP_ORIGIN = "set-at-go-live"
+VAPID_PUBLIC_KEY = "set-at-go-live"
+VAPID_SUBJECT = "set-at-go-live"
+ZULIP_SITE = "set-at-go-live"
+ZULIP_BOT_EMAIL = "set-at-go-live"
+ZULIP_CHANNELS = "{}"
+
+[env.staging.observability]
+enabled = true
+
+[env.staging.triggers]
+crons = ["17 3 * * *", "* * * * *"]
+
+[[env.staging.hyperdrive]]
+binding = "HYPERDRIVE"
+id = "set-at-go-live"
+
+[[env.staging.queues.consumers]]
+queue = "uw-ingest-events-staging"
+max_retries = 3
+dead_letter_queue = "uw-ingest-events-staging-dlq"
+
+[[env.staging.queues.producers]]
+binding = "INGEST_DLQ"
+queue = "uw-ingest-events-staging-dlq"
+
+[[env.staging.durable_objects.bindings]]
+name = "HARNESS_HUB"
+class_name = "HarnessHub"
+
+[[env.staging.workflows]]
+name = "harness-run-staging"
+binding = "HARNESS_RUN"
+class_name = "HarnessRun"
+
+[[env.staging.containers]]
+class_name = "ClaudeCodeSandbox"
+image = "../containers/claude-code/Dockerfile"
+max_instances = 4
+
+[[env.staging.containers]]
+class_name = "CodexSandbox"
+image = "../containers/codex/Dockerfile"
+max_instances = 4
+
+[[env.staging.durable_objects.bindings]]
+name = "CLAUDE_CODE_SANDBOX"
+class_name = "ClaudeCodeSandbox"
+
+[[env.staging.durable_objects.bindings]]
+name = "CODEX_SANDBOX"
+class_name = "CodexSandbox"
+
+[env.production]
+name = "uw-app"
+workers_dev = false
+logpush = true
+
+[env.production.vars]
+COMMIT_SHA = "unknown"
+ACCESS_TEAM_DOMAIN = "https://set-at-go-live.cloudflareaccess.com"
+ACCESS_AUD = "set-at-go-live"
+ACCESS_MCP_AUD = "set-at-go-live"
+APP_ORIGIN = "set-at-go-live"
+VAPID_PUBLIC_KEY = "set-at-go-live"
+VAPID_SUBJECT = "set-at-go-live"
+ZULIP_SITE = "set-at-go-live"
+ZULIP_BOT_EMAIL = "set-at-go-live"
+ZULIP_CHANNELS = "{}"
+
+[env.production.observability]
+enabled = true
+
+[env.production.triggers]
+crons = ["17 3 * * *", "* * * * *"]
+
+[[env.production.hyperdrive]]
+binding = "HYPERDRIVE"
+id = "set-at-go-live"
+
+[[env.production.queues.consumers]]
+queue = "uw-ingest-events-production"
+max_retries = 3
+dead_letter_queue = "uw-ingest-events-production-dlq"
+
+[[env.production.queues.producers]]
+binding = "INGEST_DLQ"
+queue = "uw-ingest-events-production-dlq"
+
+[[env.production.durable_objects.bindings]]
+name = "HARNESS_HUB"
+class_name = "HarnessHub"
+
+[[env.production.workflows]]
+name = "harness-run-production"
+binding = "HARNESS_RUN"
+class_name = "HarnessRun"
+
+[[env.production.containers]]
+class_name = "ClaudeCodeSandbox"
+image = "../containers/claude-code/Dockerfile"
+max_instances = 4
+
+[[env.production.containers]]
+class_name = "CodexSandbox"
+image = "../containers/codex/Dockerfile"
+max_instances = 4
+
+[[env.production.durable_objects.bindings]]
+name = "CLAUDE_CODE_SANDBOX"
+class_name = "ClaudeCodeSandbox"
+
+[[env.production.durable_objects.bindings]]
+name = "CODEX_SANDBOX"
+class_name = "CodexSandbox"
+
+[env.preview]
+workers_dev = true
+
+[env.preview.vars]
+COMMIT_SHA = "unknown"
+ACCESS_TEAM_DOMAIN = "https://set-at-go-live.cloudflareaccess.com"
+ACCESS_AUD = "set-at-go-live"
+ACCESS_MCP_AUD = "set-at-go-live"
+
+[env.preview.observability]
+enabled = true
+
+[[env.preview.hyperdrive]]
+binding = "HYPERDRIVE"
+id = "set-at-go-live"
+
+[[env.preview.durable_objects.bindings]]
+name = "HARNESS_HUB"
+class_name = "HarnessHub"

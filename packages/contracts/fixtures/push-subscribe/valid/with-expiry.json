@@ -1,0 +1,8 @@
+{
+  "endpoint": "https://fcm.googleapis.com/fcm/send/abc",
+  "keys": {
+    "p256dh": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+    "auth": "aaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "expirationTime": 1790000000000
+}

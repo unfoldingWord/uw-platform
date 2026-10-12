@@ -1,0 +1,16 @@
+ALTER TABLE "delegations" DROP CONSTRAINT "delegations_persona_form";--> statement-breakpoint
+ALTER TABLE "harness_events" DROP CONSTRAINT "harness_events_actor_is_identity";--> statement-breakpoint
+ALTER TABLE "harness_items" DROP CONSTRAINT "harness_items_claimed_by_is_identity";--> statement-breakpoint
+ALTER TABLE "harness_runs" DROP CONSTRAINT "harness_runs_persona_form";--> statement-breakpoint
+ALTER TABLE "personas" DROP CONSTRAINT "personas_identity_form";--> statement-breakpoint
+ALTER TABLE "grant_audit" DROP CONSTRAINT "grant_audit_actor_is_identity";--> statement-breakpoint
+ALTER TABLE "page_versions" DROP CONSTRAINT "page_versions_edit_source_is_identity";--> statement-breakpoint
+ALTER TABLE "tasks" DROP CONSTRAINT "tasks_created_by_is_identity";--> statement-breakpoint
+ALTER TABLE "delegations" ADD CONSTRAINT "delegations_persona_form" CHECK ("delegations"."persona" ~ '^agent:[a-z0-9][a-z0-9_-]*$');--> statement-breakpoint
+ALTER TABLE "harness_events" ADD CONSTRAINT "harness_events_actor_is_identity" CHECK ("harness_events"."actor" ~ '^(?:human:[A-Za-z0-9][A-Za-z0-9_-]*|agent:[a-z0-9][a-z0-9_-]*|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31}|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31} as [a-z0-9][a-z0-9_-]* via delegation:[A-Za-z0-9][A-Za-z0-9_-]*)$');--> statement-breakpoint
+ALTER TABLE "harness_items" ADD CONSTRAINT "harness_items_claimed_by_is_identity" CHECK ("harness_items"."claimed_by" ~ '^(?:human:[A-Za-z0-9][A-Za-z0-9_-]*|agent:[a-z0-9][a-z0-9_-]*|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31}|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31} as [a-z0-9][a-z0-9_-]* via delegation:[A-Za-z0-9][A-Za-z0-9_-]*)$');--> statement-breakpoint
+ALTER TABLE "harness_runs" ADD CONSTRAINT "harness_runs_persona_form" CHECK ("harness_runs"."persona" ~ '^(?:human:[A-Za-z0-9][A-Za-z0-9_-]*|agent:[a-z0-9][a-z0-9_-]*|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31}|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31} as [a-z0-9][a-z0-9_-]* via delegation:[A-Za-z0-9][A-Za-z0-9_-]*)$');--> statement-breakpoint
+ALTER TABLE "personas" ADD CONSTRAINT "personas_identity_form" CHECK ("personas"."identity" ~ '^agent:[a-z0-9][a-z0-9_-]*$');--> statement-breakpoint
+ALTER TABLE "grant_audit" ADD CONSTRAINT "grant_audit_actor_is_identity" CHECK ("grant_audit"."actor" ~ '^(?:human:[A-Za-z0-9][A-Za-z0-9_-]*|agent:[a-z0-9][a-z0-9_-]*|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31}|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31} as [a-z0-9][a-z0-9_-]* via delegation:[A-Za-z0-9][A-Za-z0-9_-]*)$');--> statement-breakpoint
+ALTER TABLE "page_versions" ADD CONSTRAINT "page_versions_edit_source_is_identity" CHECK ("page_versions"."edit_source" ~ '^(?:human:[A-Za-z0-9][A-Za-z0-9_-]*|agent:[a-z0-9][a-z0-9_-]*|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31}|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31} as [a-z0-9][a-z0-9_-]* via delegation:[A-Za-z0-9][A-Za-z0-9_-]*)$');--> statement-breakpoint
+ALTER TABLE "tasks" ADD CONSTRAINT "tasks_created_by_is_identity" CHECK ("tasks"."created_by" ~ '^(?:human:[A-Za-z0-9][A-Za-z0-9_-]*|agent:[a-z0-9][a-z0-9_-]*|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31}|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31} as [a-z0-9][a-z0-9_-]* via delegation:[A-Za-z0-9][A-Za-z0-9_-]*)$');

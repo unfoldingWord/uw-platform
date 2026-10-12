@@ -28,6 +28,8 @@ describe('the vendor SDK text gate', () => {
     expect(isVendorScanned('packages/harness/a.ts')).toBe(true);
     expect(isVendorScanned('sim/a.ts')).toBe(true);
     expect(isVendorScanned('apps/uw-app/engines/claude-messages/a.ts')).toBe(false);
+    expect(isVendorScanned('apps/uw-app/engines/gateway/spend.ts')).toBe(true);
+    expect(isVendorScanned('apps/uw-app/engines/registry.ts')).toBe(true);
     expect(isVendorScanned('tools/lint/vendor-sdk.ts')).toBe(false);
   });
 

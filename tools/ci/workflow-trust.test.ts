@@ -3,7 +3,12 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 
-type Step = { uses?: string; with?: { ref?: string } };
+type Step = {
+  uses?: string;
+  run?: string;
+  'working-directory'?: string;
+  with?: { ref?: string; path?: string; 'persist-credentials'?: boolean };
+};
 type Job = { if?: string; steps?: Step[] };
 type Workflow = { file: string; triggers: string[]; tree: unknown; jobs: Record<string, Job> };
 
@@ -12,10 +17,11 @@ const defaultBranch = '${{ github.event.repository.default_branch }}';
 const workflowRunHead = '${{ github.event.workflow_run.head_sha }}';
 
 const trustedCheckoutRefs: Record<string, (string | null)[]> = {
-  'cleanup-pr.yml': [defaultBranch],
+  'cleanup-pr.yml': [defaultBranch, defaultBranch],
   'deploy-pr.yml': [null],
-  'deploy-production.yml': [null, null],
-  'deploy-staging.yml': [workflowRunHead],
+  'deploy-production.yml': [null, null, null, null],
+  'deploy-staging.yml': [workflowRunHead, workflowRunHead, workflowRunHead],
+  'neon-pr.yml': [null, workflowRunHead],
   'main-alarm.yml': [],
 };
 
@@ -80,7 +86,7 @@ describe('workflows that can hold a secret', () => {
     );
   });
 
-  it('check out only the listed refs, never PR code', () => {
+  it('check out only the listed refs, and read PR code only as data, never execute it', () => {
     const actual = Object.fromEntries(
       trusted.map((workflow) => [workflow.file, checkoutRefs(workflow)]),
     );
@@ -96,5 +102,29 @@ describe('workflows that can hold a secret', () => {
     const guards = Object.values(staging.jobs).map((job) => job.if ?? '');
     expect(guards.length).toBeGreaterThan(0);
     expect(guards.every(isGreenPushToMain)).toBe(true);
+  });
+});
+
+describe('neon-pr reads the PR head only as data', () => {
+  const steps = load('neon-pr.yml').jobs['neon-branch']?.steps ?? [];
+  const prCheckouts = steps.filter((step) => step.with?.ref === workflowRunHead);
+  const mentionsPr = (step: Step): boolean => /\bpr\//.test(JSON.stringify(step));
+
+  it('checks the PR head out beside main, without credentials', () => {
+    expect(prCheckouts).toHaveLength(1);
+    expect(prCheckouts[0]?.with?.path).toBe('pr');
+    expect(prCheckouts[0]?.with?.['persist-credentials']).toBe(false);
+  });
+
+  it('runs nothing inside the PR checkout', () => {
+    const inside = steps.filter((step) => (step['working-directory'] ?? '').startsWith('pr'));
+    expect(inside).toEqual([]);
+  });
+
+  it('references pr/ only in the one step that copies the migration files', () => {
+    const referencing = steps.filter(mentionsPr);
+    expect(referencing).toHaveLength(1);
+    expect(referencing[0]?.run).toContain('cp -R pr/packages/db/migrations');
+    expect(referencing[0]?.run).toContain('-type l');
   });
 });

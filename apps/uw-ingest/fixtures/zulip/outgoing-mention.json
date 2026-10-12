@@ -1,0 +1,28 @@
+{
+  "bot_email": "harness-bot@chat.example.org",
+  "bot_full_name": "Harness",
+  "data": "@**Harness** looks good to me",
+  "message": {
+    "avatar_url": "https://chat.example.org/avatar/7",
+    "client": "website",
+    "content": "@**Harness** looks good to me",
+    "display_recipient": "80-89 Technology",
+    "id": 112,
+    "is_me_message": false,
+    "reactions": [],
+    "recipient_id": 20,
+    "rendered_content": "<p>looks good to me</p>",
+    "sender_email": "Reader@Partner.example",
+    "sender_full_name": "A reader",
+    "sender_id": 25,
+    "sender_realm_str": "chat",
+    "stream_id": 5,
+    "subject": "software/uw-platform#42",
+    "submessages": [],
+    "timestamp": 1790000000,
+    "topic_links": [],
+    "type": "stream"
+  },
+  "token": "fixture-zulip-token",
+  "trigger": "mention"
+}
