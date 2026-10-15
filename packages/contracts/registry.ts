@@ -28,6 +28,8 @@ import {
   overallStatusSchema,
 } from './health.ts';
 import {
+  externalReviewerIdentitiesSchema,
+  githubLoginSchema,
   harnessSchema,
   issueRefSchema,
   itemStateSchema,
@@ -75,6 +77,7 @@ import {
   issueFrontmatterSchema,
   learningFrontmatterSchema,
   personaFrontmatterSchema,
+  platformFrontmatterSchema,
   productFrontmatterSchema,
   productStrategyFrontmatterSchema,
   skillFrontmatterSchema,
@@ -98,6 +101,7 @@ import {
   shipRuleInputSchema,
   shipRuleOutcomeSchema,
 } from './ship-rule.ts';
+import { shadowComparisonSchema, shadowRowSchema, shadowVerdictValueSchema } from './shadow.ts';
 import { recordRunStepReplySchema, submitToGateResultSchema } from './verb-io.ts';
 import { forbiddenVerbSchema, verbNameSchema } from './verb-names.ts';
 import { verbGrantSchema, verbGroupSchema } from './verbs.ts';
@@ -196,6 +200,12 @@ export const schemaRegistry: Record<string, ZodType> = {
   'pull-request-ref': pullRequestRefSchema,
   'issue-ref': issueRefSchema,
   repository: repositorySchema,
+  'github-login': githubLoginSchema,
+  'platform-frontmatter': platformFrontmatterSchema,
+  'external-reviewer-identities': externalReviewerIdentitiesSchema,
+  'shadow-comparison': shadowComparisonSchema,
+  'shadow-row': shadowRowSchema,
+  'shadow-verdict-value': shadowVerdictValueSchema,
   harness: harnessSchema,
   stage: stageSchema,
   'item-state': itemStateSchema,

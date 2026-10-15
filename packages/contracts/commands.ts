@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { jdAreaSchema } from './areas.ts';
 import { capabilityWordSchema } from './closed-sets.ts';
 import {
+  externalReviewerIdentitiesSchema,
   personaIdentitySchema,
   pullRequestRefSchema,
   repositorySchema,
@@ -40,6 +41,7 @@ export const commandNames = [
   'set_hosted_builder',
   'activate_persona',
   'record_measurement',
+  'set_shadow',
 ] as const;
 
 export const commandNameSchema = z.enum(commandNames);
@@ -125,6 +127,8 @@ export const harnessCommandSchemas = {
     jdArea: jdAreaSchema,
     template: templateKeySchema,
     repository: repositorySchema.nullable(),
+    shadow: z.boolean().default(false),
+    externalReviewerIdentities: externalReviewerIdentitiesSchema.default([]),
   }),
   create_stage: body('create_stage', { stage: stageInputSchema }),
   update_stage: body('update_stage', { stageKey: stageKeySchema, change: stageChangeSchema }),
@@ -142,6 +146,7 @@ export const harnessCommandSchemas = {
     value: z.number().finite(),
     asOf: z.iso.date(),
   }),
+  set_shadow: body('set_shadow', { shadow: z.literal(false) }),
 } as const satisfies Record<CommandName, z.ZodType>;
 
 export const commandSchema = z.discriminatedUnion('command', [
@@ -172,6 +177,7 @@ export const commandSchema = z.discriminatedUnion('command', [
   harnessCommandSchemas.set_hosted_builder,
   harnessCommandSchemas.activate_persona,
   harnessCommandSchemas.record_measurement,
+  harnessCommandSchemas.set_shadow,
 ]);
 
 export type Command = z.infer<typeof commandSchema>;

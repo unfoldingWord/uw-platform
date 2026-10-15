@@ -7,6 +7,7 @@ import {
   engineSchema,
   gateDecisionSchema,
   principalKindSchema,
+  reviewVerdictSchema,
   riskDomainsSchema,
   riskTierSchema,
   runFailureSchema,
@@ -27,7 +28,14 @@ import { identitySchema } from './identity.ts';
 import { errorReasonSchema } from './outcomes.ts';
 import { slugSchema } from './pages.ts';
 import { dataSourceKindSchema } from './page-types.ts';
-import { modelIdSchema, reviewRecordSchema, runStepCosts, runStepSchema } from './runs.ts';
+import {
+  modelIdSchema,
+  providerIdSchema,
+  reviewRecordSchema,
+  runStepCosts,
+  runStepSchema,
+} from './runs.ts';
+import { shadowVerdictValueSchema } from './shadow.ts';
 import { fullShaSchema, riskDeclarationSchema, shipRefusalSchema } from './ship-rule.ts';
 import { submitToGateResultSchema } from './verb-io.ts';
 import { ZULIP_TEXT_LIMIT, zulipTopicSchema } from './zulip.ts';
@@ -118,14 +126,21 @@ const runEvidence = {
 };
 
 const itemEvidence = {
-  item_created: z.strictObject({
-    stage,
-    title: z.string().min(1).max(200),
-    pageId: id.nullable(),
-    priority: z.number().int(),
-    due: z.iso.date().nullable(),
-    issue: issueRefSchema.nullable().default(null),
-  }),
+  item_created: z
+    .strictObject({
+      stage,
+      title: z.string().min(1).max(200),
+      pageId: id.nullable(),
+      priority: z.number().int(),
+      due: z.iso.date().nullable(),
+      issue: issueRefSchema.nullable().default(null),
+      pullRequest: pullRequestRefSchema.nullable().default(null),
+      expectedHead: head.nullable().default(null),
+    })
+    .refine(
+      (created) => (created.pullRequest === null) === (created.expectedHead === null),
+      'a joined pull request comes with its head',
+    ),
   item_claimed: z.strictObject({
     holder: identitySchema,
     claimantKind: principalKindSchema,
@@ -186,6 +201,20 @@ const gateEvidence = {
     detail: z.record(z.string(), z.string()),
   }),
   connector_refused: z.strictObject({ connector: effect, reason: text }),
+  review_verdict_recorded: z.strictObject({
+    runId: id,
+    head,
+    reviewer: z.string().regex(/^[a-z0-9-]{1,64}$/),
+    provider: providerIdSchema,
+    model: modelIdSchema,
+    verdict: reviewVerdictSchema,
+    findings: z.array(text).max(50),
+  }),
+  shadow_verdict: z.strictObject({
+    head: head.nullable(),
+    verdict: shadowVerdictValueSchema,
+    reasons: z.array(shipRefusalSchema).max(shipRefusalSchema.options.length),
+  }),
 };
 
 const harnessEvidence = {
@@ -261,7 +290,9 @@ const harnessEvidence = {
     template: slugSchema,
     stages: z.array(stage).min(1),
     repository: repositorySchema.nullable(),
+    shadow: z.boolean().default(false),
   }),
+  shadow_lifted: z.strictObject({}),
 };
 
 export const eventEvidenceSchemas = {

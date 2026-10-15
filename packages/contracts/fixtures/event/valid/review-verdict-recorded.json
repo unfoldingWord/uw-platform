@@ -1,0 +1,20 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000e2",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "name": "review_verdict_recorded",
+  "position": 2,
+  "at": "2026-10-15T09:00:00.000Z",
+  "actor": "agent:reviewer",
+  "evidence": {
+    "runId": "00000000-0000-4000-8000-0000000000d1",
+    "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "reviewer": "uw-reviewer",
+    "provider": "deepinfra",
+    "model": "z-ai/glm-5.3",
+    "verdict": "approve",
+    "findings": ["The form validates as it should."]
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
+}

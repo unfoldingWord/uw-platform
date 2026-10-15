@@ -13,6 +13,11 @@ import * as contracts from './index.ts';
 import { jdAreaSchema } from './areas.ts';
 import { errorReasonSchema } from './outcomes.ts';
 import { principalSchema } from './principal.ts';
+import { eventEvidenceSchemas } from './event-evidence.ts';
+import { harnessSchema } from './harness.ts';
+import { pageTypeSchema } from './pages.ts';
+import { platformFrontmatterSchema } from './page-types.ts';
+import { shadowComparisonSchema } from './shadow.ts';
 
 const fixtureRoot = join(import.meta.dirname, 'fixtures');
 
@@ -304,5 +309,112 @@ describe('package purity', () => {
       const text = readFileSync(join(import.meta.dirname, file), 'utf8');
       expect(text, file).not.toMatch(/from ['"](node:|cloudflare:|@cloudflare)/);
     }
+  });
+});
+
+const requestId = '00000000-0000-4000-8000-0000000000aa';
+const head = 'a'.repeat(40);
+
+describe('GL-2 GL-4 the contracts for shadow and refusals', () => {
+  it('names the four refusals joining and dispatch need', () => {
+    expect(errorReasonSchema.options.slice(-4)).toEqual([
+      'template_has_no_package',
+      'no_harness_for_repo',
+      'repository_not_dispatchable',
+      'dispatch_list_unavailable',
+    ]);
+  });
+
+  it('lifts shadow and never sets it on a live harness', () => {
+    const lift = { command: 'set_shadow', requestId, shadow: false };
+    expect(commandSchema.safeParse(lift).success).toBe(true);
+    expect(commandSchema.safeParse({ ...lift, shadow: true }).success).toBe(false);
+  });
+
+  it('activates a harness in shadow with external reviewers, and defaults both off', () => {
+    const base = {
+      command: 'activate_template',
+      requestId,
+      harnessKey: 'tc-admin-app',
+      jdArea: '80-89',
+      template: 'check-only',
+      repository: 'unfoldingWord/tc-admin-app',
+    };
+    expect(commandSchema.parse(base)).toMatchObject({
+      shadow: false,
+      externalReviewerIdentities: [],
+    });
+    const shadowed = { ...base, shadow: true, externalReviewerIdentities: ['uwreview[bot]'] };
+    expect(commandSchema.safeParse(shadowed).success).toBe(true);
+    const twice = { ...base, externalReviewerIdentities: ['uwreview[bot]', 'UWReview[bot]'] };
+    expect(commandSchema.safeParse(twice).success).toBe(false);
+  });
+
+  it('reads an older harness row as not in shadow with no external reviewers', () => {
+    const older = {
+      id: '00000000-0000-4000-8000-0000000000a1',
+      key: 'software',
+      template: 'software',
+      jdArea: '80-89',
+      repository: 'unfoldingWord/uw-platform',
+      hostedBuilderEnabled: false,
+      paused: false,
+    };
+    expect(harnessSchema.parse(older)).toMatchObject({
+      shadow: false,
+      externalReviewerIdentities: [],
+    });
+  });
+});
+
+describe('GL-3 the contracts for a joined pull request', () => {
+  it('carries a joined pull request and its head on item_created, together or not at all', () => {
+    const created = {
+      stage: 'check',
+      title: 'Fix the login form',
+      pageId: null,
+      priority: 0,
+      due: null,
+    };
+    const pullRequest = { repo: 'unfoldingWord/tc-admin-app', number: 12 };
+    const schema = eventEvidenceSchemas.item_created;
+    expect(schema.parse(created)).toMatchObject({ pullRequest: null, expectedHead: null });
+    expect(schema.safeParse({ ...created, pullRequest, expectedHead: head }).success).toBe(true);
+    expect(schema.safeParse({ ...created, pullRequest, expectedHead: null }).success).toBe(false);
+  });
+
+  it('knows the platform page type and its dispatch list', () => {
+    expect(pageTypeSchema.options).toContain('platform');
+    const list = { dispatch_allowed: ['unfoldingWord/tc-admin-app'] };
+    expect(platformFrontmatterSchema.safeParse(list).success).toBe(true);
+    const repeated = { dispatch_allowed: ['unfoldingWord/a', 'UNFOLDINGWORD/A'] };
+    expect(platformFrontmatterSchema.safeParse(repeated).success).toBe(false);
+  });
+});
+
+describe('OB-3 PI-1 the shadow comparison', () => {
+  it('bounds a shadow comparison row', () => {
+    const row = {
+      itemId: '00000000-0000-4000-8000-0000000000b1',
+      title: 'Fix the login form',
+      pullRequest: { repo: 'unfoldingWord/tc-admin-app', number: 12 },
+      head,
+      shadow: { verdict: 'refuse', reasons: ['checks_not_green'] },
+      reviewer: { reviewer: 'uw-reviewer', verdict: 'approve', findings: [] },
+      github: [{ reviewer: 'uwreview[bot]', state: 'changes_requested' }],
+      disagrees: true,
+    };
+    const comparison = {
+      harnessId: '00000000-0000-4000-8000-0000000000a1',
+      harnessKey: 'tc-admin-app',
+      shadow: true,
+      capped: false,
+      rows: [row],
+    };
+    expect(shadowComparisonSchema.safeParse(comparison).success).toBe(true);
+    const commented = { ...row, github: [{ reviewer: 'x', state: 'commented' }] };
+    expect(shadowComparisonSchema.safeParse({ ...comparison, rows: [commented] }).success).toBe(
+      false,
+    );
   });
 });

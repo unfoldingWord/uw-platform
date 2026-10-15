@@ -89,6 +89,18 @@ export type PageTypeDefinition = {
   readonly offlineEligibility: OfflineEligibility;
 };
 
+export const platformPageSlug = 'platform';
+
+const distinctRepositories = (values: readonly string[]) =>
+  new Set(values.map((value) => value.toLowerCase())).size === values.length;
+
+export const platformFrontmatterSchema = z.strictObject({
+  dispatch_allowed: z
+    .array(repositorySchema)
+    .max(200)
+    .refine(distinctRepositories, 'each repository once, in any case'),
+});
+
 const internalSync = { classification: 'internal', offlineEligibility: 'sync' } as const;
 
 export const pageTypeRegistry = {
@@ -100,6 +112,7 @@ export const pageTypeRegistry = {
   product_strategy: { frontmatter: productStrategyFrontmatterSchema, ...internalSync },
   data_sources: { frontmatter: dataSourcesFrontmatterSchema, ...internalSync },
   issue: { frontmatter: issueFrontmatterSchema, ...internalSync },
+  platform: { frontmatter: platformFrontmatterSchema, ...internalSync },
 } as const satisfies Record<PageType, PageTypeDefinition>;
 
 const byType = new Map<string, PageTypeDefinition>(Object.entries(pageTypeRegistry));

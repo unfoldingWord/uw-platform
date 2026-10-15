@@ -45,6 +45,19 @@ export const issueRefSchema = z.strictObject({
   githubId: z.number().int().min(1),
 });
 
+export const githubLoginPattern = '^[A-Za-z0-9][A-Za-z0-9-]{0,38}(?:\\[bot\\])?$';
+export const githubLoginSchema = z
+  .string()
+  .regex(new RegExp(githubLoginPattern), 'a GitHub login, with [bot] for an app');
+
+const distinctInAnyCase = (values: readonly string[]) =>
+  new Set(values.map((value) => value.toLowerCase())).size === values.length;
+
+export const externalReviewerIdentitiesSchema = z
+  .array(githubLoginSchema)
+  .max(20)
+  .refine(distinctInAnyCase, 'each login once, in any case');
+
 export const harnessSchema = z.strictObject({
   id: z.uuid(),
   key: slugSchema,
@@ -53,6 +66,8 @@ export const harnessSchema = z.strictObject({
   repository: repositorySchema.nullable(),
   hostedBuilderEnabled: z.boolean(),
   paused: z.boolean(),
+  shadow: z.boolean().default(false),
+  externalReviewerIdentities: externalReviewerIdentitiesSchema.default([]),
 });
 
 export const stageSchema = z.strictObject({

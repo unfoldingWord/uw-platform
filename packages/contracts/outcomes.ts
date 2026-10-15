@@ -68,6 +68,10 @@ export const errorReasonSchema = z.enum([
   'run_not_found',
   'activation_required',
   'dry_run_failed',
+  'template_has_no_package',
+  'no_harness_for_repo',
+  'repository_not_dispatchable',
+  'dispatch_list_unavailable',
 ]);
 
 export const refusalSchema = z.object({
