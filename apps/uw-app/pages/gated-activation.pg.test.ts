@@ -5,6 +5,7 @@ import type { Database } from '@uw/db/client';
 import { seedGrant, seedPage, seedPerson } from '@uw/db/test-seed';
 import { personOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
+import { confirmPage } from './confirm.ts';
 import { createPage, updatePage } from './store.ts';
 
 const EDITOR = {
@@ -31,10 +32,11 @@ const frontmatterByType = new Map<PageType, CreatePageCommand['frontmatter']>([
       requires_tools: ['read_page'],
     },
   ],
+  ['platform', { dispatch_allowed: ['unfoldingWord/tc-admin-app'] }],
   ['product', { owner: `human:${EDITOR.id}`, summary: 'A product page.' }],
 ]);
 
-const gated: readonly PageType[] = ['persona', 'learning', 'skill'];
+const gated: readonly PageType[] = ['persona', 'learning', 'skill', 'platform'];
 const activationRequired = { ok: false, reason: 'activation_required', detail: {} };
 
 function frontmatterOf(type: PageType): CreatePageCommand['frontmatter'] {
@@ -166,3 +168,23 @@ describe.skipIf(!testServer)('AB-5 the page API still writes gated pages short o
       expect((await create(db, person, 'product', 'active').created).ok).toBe(true);
     }));
 });
+
+describe.skipIf(!testServer)(
+  'GL-6 the platform page is activated only by a person confirming it',
+  () => {
+    it('creates a platform page short of active and lets an area editor confirm it', () =>
+      withAppDatabase(async (db) => {
+        const person = await editor(db);
+        const { pageId, created } = create(db, person, 'platform', 'suggested');
+        expect(await created).toMatchObject({ ok: true });
+        const confirmed = await confirmPage(
+          db,
+          person,
+          { command: 'confirm_page', requestId: crypto.randomUUID(), pageId, expectedVersion: 1 },
+          crypto.randomUUID(),
+          new Date(),
+        );
+        expect(confirmed).toMatchObject({ ok: true, page: { status: 'active' } });
+      }));
+  },
+);

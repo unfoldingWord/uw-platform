@@ -18,6 +18,7 @@ import { spendRefusal } from '../runs/breaker-level.ts';
 import { activePersonaOn, personaIdentityFor } from '../personas/projection.ts';
 import { personaPageOf } from '../runs/persona.ts';
 import { endRunDrafts, stopWorkflows } from '../runs/ends.ts';
+import { dispatchRefusal } from './dispatch.ts';
 import { personHoldRefusal } from './held-for-person.ts';
 import { lapseDrafts, LEASE_MS, leaseLapsed } from './leases.ts';
 import { pausedRefusal } from './paused.ts';
@@ -105,12 +106,20 @@ async function bareRefusal(tx: StoreTransaction, scene: Scene): Promise<Refused 
   return (await hostedBuilderRefusal(tx, caller, harness)) ?? (await spendRefusal(tx, context.at));
 }
 
+async function dispatchGuard(tx: StoreTransaction, scene: Scene): Promise<Refused | null> {
+  return isAgent(scene.caller.actor) ? dispatchRefusal(tx, scene.harness) : null;
+}
+
 async function heldRefusal(
   tx: StoreTransaction,
   scene: Scene,
   item: ItemState,
 ): Promise<Refused | null> {
-  return (await bareRefusal(tx, scene)) ?? (await personHoldRefusal(tx, scene.caller, item));
+  return (
+    (await bareRefusal(tx, scene)) ??
+    (await personHoldRefusal(tx, scene.caller, item)) ??
+    (await dispatchGuard(tx, scene))
+  );
 }
 
 async function inactivePersonaRefusal(
