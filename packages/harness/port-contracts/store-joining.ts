@@ -44,6 +44,19 @@ function describeByPullRequest(subject: JoiningSubject): void {
     });
     expect(found).toEqual({ same: joined, other: null, elsewhere: null });
   });
+
+  it('DX-3 returns the earliest-created item when two items sit on one pull request', async () => {
+    const head = 'a'.repeat(40);
+    const later = itemOf(0x7110, 1, { pullRequest, expectedHead: head });
+    const earlier = itemOf(0x7110, 2, { pullRequest, expectedHead: head });
+    const found = await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0x7110, 'gateway-twice');
+      await tx.harnessItems.write.insert(later, new Date(at.getTime() + 60_000));
+      await tx.harnessItems.write.insert(earlier, at);
+      return tx.harnessItems.read.byPullRequest(uid(0x7110), pullRequest);
+    });
+    expect(found).toEqual(earlier);
+  });
 }
 
 function describePlatformFor(subject: JoiningSubject): void {
@@ -60,6 +73,12 @@ function describePlatformFor(subject: JoiningSubject): void {
       frontmatter: { dispatch_allowed: [pullRequest.repo] },
     });
     expect(read.other).toBeNull();
+  });
+
+  it('DX-3 reads the platform page whatever its status', async () => {
+    await subject().seedPage({ ...platformPage('50-59'), id: uid(0x7002), status: 'suggested' });
+    const read = await subject().store.transaction((tx) => tx.pages.read.platformFor('50-59'));
+    expect(read).toMatchObject({ id: uid(0x7002), type: 'platform', status: 'suggested' });
   });
 }
 
