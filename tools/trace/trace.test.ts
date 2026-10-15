@@ -255,3 +255,43 @@ describe('DX-5 the repository passes trace in built mode', () => {
     expect(traceExitCode(report, 'built')).toBe(0);
   });
 });
+
+describe('DX-9 the trace reads the v0.2.0 requirements', () => {
+  const v2Prefixes = ['GL', 'MD', 'FL', 'UC', 'EI', 'SR', 'GD', 'RV', 'OB', 'PI'];
+  const isV2 = (id: string) =>
+    v2Prefixes.includes(id.slice(0, 2)) || id === 'DX-9' || id === 'DX-10';
+
+  it('parses every section 7.11 row, Must and Should, without counting a Should as a Must', () => {
+    const requirements = parseRequirements(realPrd());
+    const v2 = requirements.filter((requirement) => isV2(requirement.id));
+    expect(v2.length).toBe(43);
+    expect(v2.filter((requirement) => requirement.priority === 'Should').map((r) => r.id)).toEqual([
+      'GL-5',
+      'UC-5',
+      'EI-5',
+      'RV-3',
+      'OB-4',
+    ]);
+    expect(v2.filter((requirement) => requirement.priority === 'Must').length).toBe(38);
+  });
+
+  it('places every v0.2.0 ID in a step from 12 to 20 and none in steps 1 to 11', () => {
+    const steps = parseBuildOrder(realPrd());
+    const placedSteps: number[] = [];
+    for (const step of steps) {
+      for (const id of step.ids) if (isV2(id)) placedSteps.push(step.step);
+    }
+    expect(placedSteps.length).toBe(43);
+    for (const step of placedSteps) expect(step).toBeGreaterThanOrEqual(12);
+    for (const step of placedSteps) expect(step).toBeLessThanOrEqual(20);
+    expect(idsOfStep(12)).toEqual(['DX-9']);
+    expect(idsOfStep(20)).toEqual(['DX-10', 'GL-1']);
+  });
+
+  it('reports an unproven v0.2.0 Must as not yet due while its step is not built', () => {
+    const report = repositoryTrace();
+    const v2Unproven = report.unproven.filter((entry) => isV2(entry.id));
+    for (const entry of v2Unproven) expect(entry.due).toBe(false);
+    expect(traceExitCode(report, 'built')).toBe(0);
+  });
+});
