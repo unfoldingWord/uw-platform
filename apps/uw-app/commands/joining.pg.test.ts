@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
+import { seedPage } from '@uw/db/test-seed';
 import { command, eventsNamed, person } from '../testing/commands.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 
@@ -47,3 +49,33 @@ describe.skipIf(!testServer)('GL-4 shadow through the command API', () => {
       expect(on.status).toBe(400);
     }));
 });
+
+describe.skipIf(!testServer)(
+  'GL-2 kickstart refuses a check-only harness, which has no Package page',
+  () => {
+    it('refuses template_has_no_package and leaves the harness without an item or a Package stage', () =>
+      withAppDatabase(async (db) => {
+        const harnessId = await checkOnlyHarness(db, false);
+        const pageId = randomUUID();
+        await seedPage(db, {
+          id: pageId,
+          type: 'product',
+          status: 'active',
+          jdArea: '80-89',
+          slug: 'a-product',
+          title: 'A product',
+          bodyMd: 'A product page in the area.',
+        });
+        const kicked = await command(db, IAN, harnessId, 'kickstart', {
+          requestId: randomUUID(),
+          pageId,
+        });
+        expect(kicked.body).toMatchObject({ status: 'error', reason: 'template_has_no_package' });
+        expect(await eventsNamed(db, harnessId, 'item_created')).toHaveLength(0);
+        const packages = await db.execute<{ n: number }>(
+          sql`SELECT count(*)::int AS n FROM harness_stages WHERE harness_id = ${harnessId} AND bracket = 'product_package'`,
+        );
+        expect(packages[0]?.n).toBe(0);
+      }));
+  },
+);

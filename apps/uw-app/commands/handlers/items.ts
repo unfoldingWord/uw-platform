@@ -1,3 +1,4 @@
+import { hasPackageStage } from '@uw/harness';
 import { commandHandler, fromKernel } from '../handler.ts';
 
 export const enqueueCommand = commandHandler({
@@ -41,6 +42,7 @@ export const kickstartCommand = commandHandler({
   name: 'kickstart',
   action: 'write',
   run: async (context, body) => {
+    if (!hasPackageStage(context.stages)) return { ok: false, reason: 'template_has_no_package' };
     const page = await context.pages.read(body.pageId);
     if (page === null) return { ok: false, reason: 'page_not_found' };
     if (page.type !== 'product' || page.jdArea !== context.harness?.jdArea) {
