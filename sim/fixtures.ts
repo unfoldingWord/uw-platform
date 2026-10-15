@@ -120,6 +120,8 @@ type SimHarnessOptions = {
   readonly key?: string;
   readonly jdArea?: JdArea;
   readonly repository?: string | null;
+  readonly shadow?: boolean;
+  readonly externalReviewerIdentities?: readonly string[];
 };
 
 function defaultRepository(template: Template, key: string): string | null {
@@ -147,6 +149,8 @@ export async function createSimHarness(
       options.repository === undefined
         ? defaultRepository(template, harnessKey)
         : options.repository,
+    shadow: options.shadow ?? false,
+    externalReviewerIdentities: options.externalReviewerIdentities ?? [],
   });
   if (outcome.status !== 'accepted') {
     throw new Error(`activating ${template.key} was refused: ${outcome.reason}`);

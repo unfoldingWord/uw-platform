@@ -113,3 +113,4 @@ export { runToolLoop, TURN_LIMIT } from './runs/tool-loop.ts';
 export type { LoopResult, ToolCaller, ToolReply } from './runs/tool-loop.ts';
 export { promptText, renderUntrusted, scanFences, untrusted } from './untrusted.ts';
 export type { PromptText, UntrustedContent } from './untrusted.ts';
+export { EXTERNAL_PROVIDER, requestsPlatformReviewer } from './github/reviewers.ts';
