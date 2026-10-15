@@ -139,7 +139,7 @@ describe('release criterion 3, by structure: the DX-7 scenario and its coverage 
 
 describe('release criterion 4: both templates pass the property and the negative fixture fails it', () => {
   it('passes software and bml, fails the fixture that bypasses Ship, and keeps both KN-10 cases', () => {
-    expect([...templates.keys()].sort()).toEqual(['bml', 'software']);
+    expect([...templates.keys()].sort()).toEqual(['bml', 'check-only', 'software']);
     for (const template of templates.values()) {
       expect(templateProperty(template.stages)).toEqual([]);
     }
