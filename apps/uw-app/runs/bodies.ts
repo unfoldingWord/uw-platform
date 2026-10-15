@@ -89,7 +89,7 @@ async function within<T>(
   }
 }
 
-async function readContext(open: OpenStep): Promise<string> {
+export async function readContext(open: OpenStep): Promise<string> {
   const reply = await callCore(open.core, 'resolve_context', { itemId: open.scene.item.itemId });
   return contextText(JSON.stringify(reply));
 }
