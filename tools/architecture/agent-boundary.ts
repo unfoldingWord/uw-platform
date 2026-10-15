@@ -71,13 +71,13 @@ function isSource(file: string): boolean {
   return sourceFile.test(file) && !testFile.test(file) && !file.includes('node_modules/');
 }
 
-function specifiersOf(text: string): string[] {
+export function specifiersOf(text: string): string[] {
   return moduleSpecifiers.flatMap((pattern) =>
     [...text.matchAll(pattern)].map((match) => match[3] ?? ''),
   );
 }
 
-function importsOf(file: string, text: string): string[] {
+export function importsOf(file: string, text: string): string[] {
   const directory = posix.dirname(file);
   return specifiersOf(text)
     .filter((specifier) => relativePath.test(specifier))
