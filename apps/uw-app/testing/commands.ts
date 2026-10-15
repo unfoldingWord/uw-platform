@@ -198,13 +198,18 @@ export async function softwareHarness(db: Database): Promise<Scene> {
   };
 }
 
-export async function enqueued(db: Database, harnessId: string, title: string): Promise<string> {
+export async function enqueued(
+  db: Database,
+  harnessId: string,
+  title: string,
+  pageId: string | null = null,
+): Promise<string> {
   const kernel = kernelOn(db, { now: () => new Date() });
   const item = accepted(
     await kernel.items.enqueue(callerOf(await ian(db)), {
       harnessId,
       title,
-      pageId: null,
+      pageId,
       priority: 0,
       due: null,
       delegationId: null,
