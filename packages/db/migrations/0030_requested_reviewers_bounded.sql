@@ -1,0 +1,1 @@
+ALTER TABLE "gh_prs" ADD CONSTRAINT "gh_prs_requested_reviewers_bounded" CHECK (cardinality("gh_prs"."requested_reviewers") <= 100);
