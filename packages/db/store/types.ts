@@ -43,6 +43,7 @@ export type PageFacts = {
   readonly version: number;
 };
 export type StagePosition = { readonly id: string; readonly position: number };
+export type PullRequestKey = { readonly repo: string; readonly number: number };
 export type StageCursor = { readonly priority: number; readonly itemId: string };
 export type StagePage = { readonly after: StageCursor | null; readonly limit: number };
 
@@ -57,6 +58,7 @@ export type HarnessesGateway = {
     insert(harness: Harness, at: Date): Promise<void>;
     setPaused(harnessId: string, paused: boolean): Promise<boolean>;
     setHostedBuilder(harnessId: string, enabled: boolean): Promise<boolean>;
+    setShadow(harnessId: string, shadow: boolean): Promise<boolean>;
   };
 };
 export type HarnessStagesGateway = {
@@ -75,6 +77,7 @@ export type HarnessItemsGateway = {
   readonly read: {
     byId(itemId: string): Promise<ItemState | null>;
     byIssue(githubId: number): Promise<ItemState | null>;
+    byPullRequest(harnessId: string, pullRequest: PullRequestKey): Promise<ItemState | null>;
     lock(itemId: string): Promise<ItemState | null>;
     forHarness(harnessId: string): Promise<readonly ItemState[]>;
     heldInStage(harnessId: string, stageKey: string, at: Date): Promise<number>;
@@ -105,6 +108,7 @@ export type PagesGateway = {
   readonly read: {
     facts(pageIds: readonly string[]): Promise<readonly PageFacts[]>;
     staleLearnings(today: string, limit: number): Promise<readonly PageFacts[]>;
+    platformFor(jdArea: string): Promise<PageFacts | null>;
   };
   readonly write: { activatePersona(activation: PersonaActivation): Promise<PageFacts | null> };
 };
