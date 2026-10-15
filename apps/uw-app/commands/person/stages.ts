@@ -9,8 +9,16 @@ export const activateTemplateCommand = commandHandler({
   run: async ({ kernel, caller, harnessId, pages }, body: CommandBody<'activate_template'>) => {
     const template = templates.get(body.template);
     if (template === undefined) return { ok: false, reason: 'malformed_command' };
-    const { harnessKey, jdArea, repository } = body;
-    const input = { harnessId, harnessKey, jdArea, template, repository };
+    const { harnessKey, jdArea, repository, shadow, externalReviewerIdentities } = body;
+    const input = {
+      harnessId,
+      harnessKey,
+      jdArea,
+      template,
+      repository,
+      shadow,
+      externalReviewerIdentities,
+    };
     const activated = await kernel.stages.activate(caller, input);
     if (activated.status === 'accepted') {
       await pages.draftPersonas(body.template, activated.value.harness);
@@ -68,4 +76,11 @@ export const setHostedBuilderCommand = commandHandler({
   action: 'admin',
   run: async ({ kernel, caller, harnessId }, body: CommandBody<'set_hosted_builder'>) =>
     fromKernel(await kernel.stages.setHostedBuilder(caller, { harnessId, enabled: body.enabled })),
+});
+
+export const setShadowCommand = commandHandler({
+  name: 'set_shadow',
+  action: 'admin',
+  run: async ({ kernel, caller, harnessId }) =>
+    fromKernel(await kernel.stages.liftShadow(caller, { harnessId })),
 });

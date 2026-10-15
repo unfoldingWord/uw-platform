@@ -1,5 +1,12 @@
-import { repositorySchema, type Harness, type JdArea, type Stage } from '@uw/contracts';
+import {
+  harnessSchema,
+  repositorySchema,
+  type Harness,
+  type JdArea,
+  type Stage,
+} from '@uw/contracts';
 import type { Caller } from '../caller.ts';
+import { namesPlatformReviewer } from '../github/reviewers.ts';
 import { draft, recordContext, recordHarnessEvents } from '../items/record.ts';
 import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
@@ -22,12 +29,42 @@ export type ActivateInput = {
   readonly jdArea: JdArea;
   readonly template: Template;
   readonly repository: string | null;
+  readonly shadow?: boolean;
+  readonly externalReviewerIdentities?: readonly string[];
 };
 
 export type Activated = { readonly harness: Harness; readonly stages: readonly Stage[] };
 
 function templateRefusal(stages: readonly Stage[]): Refused | null {
   return stageProblems(stages) ?? bypassRefusal(stages);
+}
+
+function externalRefusal(external: readonly string[]): Refused | null {
+  const parsed = harnessSchema.shape.externalReviewerIdentities.safeParse(external);
+  if (parsed.success && !external.some(namesPlatformReviewer)) return null;
+  return refused('malformed_command', { why: 'external_reviewer_identities' });
+}
+
+function inputRefusal(input: ActivateInput, external: readonly string[]): Refused | null {
+  const { repository } = input;
+  if (repository !== null && !repositorySchema.safeParse(repository).success) {
+    return refused('malformed_command', { repository });
+  }
+  return externalRefusal(external);
+}
+
+function harnessOf(input: ActivateInput, external: string[]): Harness {
+  return {
+    id: input.harnessId,
+    key: input.harnessKey,
+    template: input.template.key,
+    jdArea: input.jdArea,
+    repository: input.repository,
+    hostedBuilderEnabled: false,
+    paused: false,
+    shadow: input.shadow ?? false,
+    externalReviewerIdentities: external,
+  };
 }
 
 async function insertAll(
@@ -72,20 +109,10 @@ export async function activateTemplate(
   const agent = agentRefusal(caller);
   if (agent !== null) return agent;
   const { repository } = input;
-  if (repository !== null && !repositorySchema.safeParse(repository).success) {
-    return refused('malformed_command', { repository });
-  }
-  const harness: Harness = {
-    id: input.harnessId,
-    key: input.harnessKey,
-    template: input.template.key,
-    jdArea: input.jdArea,
-    repository,
-    hostedBuilderEnabled: false,
-    paused: false,
-    shadow: false,
-    externalReviewerIdentities: [],
-  };
+  const external = [...(input.externalReviewerIdentities ?? [])];
+  const malformed = inputRefusal(input, external);
+  if (malformed !== null) return malformed;
+  const harness = harnessOf(input, external);
   const stages = input.template.stages.map((stage) =>
     stageFromTemplate(stage, harness.id, ports.ids.next()),
   );

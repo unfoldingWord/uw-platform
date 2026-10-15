@@ -10,6 +10,7 @@ import { activateTemplate, type Activated, type ActivateInput } from './activate
 import { editInTransaction, type EditWork } from './edit.ts';
 import { setHostedBuilder, type HostedBuilderInput } from './hosted-builder.ts';
 import { setPause, type PauseInput } from './pause.ts';
+import { liftShadow, type LiftShadowInput } from './shadow.ts';
 
 type StagePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store' | 'runs'>;
 
@@ -44,6 +45,7 @@ export type StageCommands = {
   pause(caller: Caller, input: PauseInput): Promise<KernelOutcome<HarnessScene>>;
   resume(caller: Caller, input: PauseInput): Promise<KernelOutcome<HarnessScene>>;
   setHostedBuilder(caller: Caller, input: HostedBuilderInput): Promise<KernelOutcome<HarnessScene>>;
+  liftShadow(caller: Caller, input: LiftShadowInput): Promise<KernelOutcome<HarnessScene>>;
 };
 
 const stageChangeSchema = stageSchema
@@ -228,5 +230,6 @@ export function createStageCommands(ports: StagePorts): StageCommands {
     pause: (caller, input) => setPause(ports, caller, input, true),
     resume: (caller, input) => setPause(ports, caller, input, false),
     setHostedBuilder: (caller, input) => setHostedBuilder(ports, caller, input),
+    liftShadow: (caller, input) => liftShadow(ports, caller, input),
   };
 }
