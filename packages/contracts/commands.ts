@@ -45,7 +45,7 @@ export const commandNames = [
 export const commandNameSchema = z.enum(commandNames);
 export type CommandName = z.infer<typeof commandNameSchema>;
 
-export const templateKeySchema = z.enum(['software', 'bml']);
+export const templateKeySchema = z.enum(['software', 'bml', 'check-only']);
 export type TemplateKey = z.infer<typeof templateKeySchema>;
 
 const requestId = z.uuid();

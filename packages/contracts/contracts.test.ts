@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { CONTRACT_VERSION, assertLiveContractVersion } from './version.ts';
 import { schemaRegistry } from './registry.ts';
 import { identitySchema } from './identity.ts';
-import { commandSchema } from './commands.ts';
+import { commandSchema, templateKeySchema } from './commands.ts';
 import { outcomeSchema } from './outcomes.ts';
 import { eventNameSchema } from './events.ts';
 import * as closedSets from './closed-sets.ts';
@@ -205,6 +205,10 @@ describe('closed sets added for v0.2.0', () => {
       'review_comment',
       'page_from_agent',
     ]);
+  });
+
+  it('names the check-only template', () => {
+    expect(templateKeySchema.options).toEqual(['software', 'bml', 'check-only']);
   });
 
   it('still refuses a capability word outside the set on a delegation grant', () => {
