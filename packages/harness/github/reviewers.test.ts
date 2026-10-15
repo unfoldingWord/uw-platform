@@ -3,7 +3,13 @@ import { engineDescriptor } from '../engines.ts';
 import { templatePersonas } from '../templates/personas.ts';
 import { builderIdentity } from './builder.ts';
 import { normalisedIdentifier } from './identifiers.ts';
-import { reviewerIdentities, reviewerOf } from './reviewers.ts';
+import {
+  countedReviewer,
+  namesPlatformReviewer,
+  requestsPlatformReviewer,
+  reviewerIdentities,
+  reviewerOf,
+} from './reviewers.ts';
 
 describe('GH-5 only listed Reviewer identities are reviewers', () => {
   it('maps each listed bot login to its reviewer, whatever its case', () => {
@@ -52,5 +58,27 @@ describe('the Reviewer personas and their GitHub identities', () => {
   it("PE-6 a review by the Builder's login never counts as a Reviewer's", () => {
     expect(reviewerOf(builderIdentity.login)).toBeNull();
     expect(reviewerOf(builderIdentity.login.toUpperCase())).toBeNull();
+  });
+});
+
+describe('PI-1 external reviewers count by configuration', () => {
+  it('counts a platform Reviewer as its own and an external login by its folded key', () => {
+    expect(countedReviewer('UW-Reviewer[bot]', [])).toEqual({
+      reviewer: 'uw-reviewer',
+      external: false,
+    });
+    expect(countedReviewer('UWReview[bot]', ['uwreview[bot]'])).toEqual({
+      reviewer: 'uwreview',
+      external: true,
+    });
+    expect(countedReviewer('stranger', ['uwreview[bot]'])).toBeNull();
+  });
+
+  it('knows a login that names a platform Reviewer with or without its bot suffix', () => {
+    expect(namesPlatformReviewer('uw-reviewer')).toBe(true);
+    expect(namesPlatformReviewer('UW-Reviewer-Codex[bot]')).toBe(true);
+    expect(namesPlatformReviewer('uwreview[bot]')).toBe(false);
+    expect(requestsPlatformReviewer(['someone', 'uw-reviewer[bot]'])).toBe(true);
+    expect(requestsPlatformReviewer(['someone'])).toBe(false);
   });
 });

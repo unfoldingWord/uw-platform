@@ -21,7 +21,7 @@ export function reviewerOf(login: string): string | null {
 
 export const EXTERNAL_PROVIDER = 'external';
 
-export type CountedReviewer = { readonly reviewer: string; readonly external: boolean };
+type CountedReviewer = { readonly reviewer: string; readonly external: boolean };
 
 const botSuffix = /\[bot\]$/u;
 
