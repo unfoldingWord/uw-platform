@@ -285,6 +285,103 @@ Requirement identifiers are stable. **Must** is a v1 requirement. **Later** is d
 | DX-8 | **The build needs no live account.** Every Must requirement is proven against test adapters, fixture keys and recorded fixtures: Access JWTs signed by a fixture key pair, GitHub webhooks and API responses from fixtures, model turns scripted, AI Gateway cost data from fixtures, push and Zulip sends recorded. Each platform adapter is written, passes its port's contract test where the contract can run without the live service, and is listed in `docs/progress_tracker.md` as awaiting live verification. Nothing a requirement needs may be reachable only with a secret. | Must | section 15 |
 | DX-7 | **Figure 2 end to end in the sim.** One scenario takes a fixture item from kickstart to Close on the software template with scripted personas and fixture GitHub facts, covering the claim, a held premise, the lease warning and expiry, the PR declaration, the ship rule's refusals, an agent's refused gate attempt, the approve, the merge connector, a refused Close, a Close with a learning, and an Iterate beat under a delegation that then lapses. It is the machine-checkable half of the release criteria. | Must | #64 |
 
+### 7.11 v0.2.0 (the design is `docs/superpowers/specs/2026-10-15-harness-v0-2-0-design.md`)
+
+Every row follows this document's conventions: a stable ID, Must or Should, a scenario or test named for the ID, no live account or secret needed to prove it. Each row ends with its cost by the toggle test: *toggle* means a value on a harness or stage row, a preset or a persona-page line; *additive* means new files and registry rows with no rule changed; *shared root* means a change to a shared root in its own commit, naming which; *fixed decision* means an ADR as well.
+
+#### 7.11.1 Go-live and joining (GL)
+
+| ID | Requirement | Priority | Source |
+|---|---|---|---|
+| GL-1 | **Go-live wiring switched on.** Every FD-12 job and binding runs when its secret exists; the tracker's "Waiting on a person" rows for FD-6, FD-7, FD-10 and FD-12 are closed by a live run or restated with what is still missing. Nothing new is written; this is the switch. The release gate for this ID is the staging health probe answering through Hyperdrive Cost: additive. | Must | PRD section 14 items 7 to 9 |
+| GL-2 | **A check-only template.** A third template fixture, `check-only`, with Check and Ship as its only stages, Ship exiting through `human_approval`, and no Package. It passes the template property test (KN-10). A harness built from it has no Package page and `kickstart` refuses it with `template_has_no_package` Cost: additive; shared root `packages/contracts` for the template fixture. | Must | Seth, Q1 and scale check; artifact "opt-in by requesting uwreview" |
+| GL-3 | **Joining by review request.** When the GitHub facts show the Reviewer identity requested as a reviewer on a pull request in a check-only harness's repository, the sweep enqueues an item at Check for that pull request, once, with the head as its expected head and no `harness/<item>` branch. A pull request on a repository with no harness enqueues nothing and logs `no_harness_for_repo` Cost: additive. | Must | Seth Q1; artifact table |
+| GL-4 | **Shadow mode.** A harness column `shadow` (default `false`). While true: the Reviewer's verdict is recorded as a `review_verdict_recorded` event and no GitHub review is posted; the ship rule is evaluated on every head change and recorded as `shadow_verdict`; no connector runs; the Gates view shows the verdict with the label "shadow". Lifting it is an admin command recorded as `shadow_lifted`. A test proves that in shadow mode no GitHub write port method is called Cost: toggle; shared root `packages/db/schema.ts` for the column. | Must | Seth Q1 |
+| GL-5 | **Template change on a live harness.** An admin may replace a check-only harness's template with the software template; items in Check and Ship keep their stage, and the new stages start empty. Any other template change is refused `template_change_not_allowed` Cost: additive. | Should | Section 4 step 6 |
+| GL-6 | **Ownership gate on dispatch.** A harness names its repository (exists) and a `dispatch_allowed` list of repositories lives on the platform page for the area. A claim or a sweep on a repository not on the list is refused `repository_not_dispatchable`; if the list cannot be read, every claim is refused `dispatch_list_unavailable`. Fail closed, as Seth's incident Cost: additive. | Must | Seth, "things the comparison doesn't cover" |
+
+#### 7.11.2 Merge delegation (MD)
+
+| ID | Requirement | Priority | Source |
+|---|---|---|---|
+| MD-1 | **ADR 0010, merge under delegation.** Records what changes from ADR 0002 and 0003 and what was rejected (an agent `merge` verb; a per-repo flag without a grantor). Changes the spec's Decisions table (D8, D18) and PRD section 18 in the same commit Cost: fixed decision. | Must | V2-1 |
+| MD-2 | **The `merge` capability word.** Added to the closed set. A delegation with it carries `max_tier` (`low` or `standard`; `high` is refused `tier_not_delegable`) and the existing harness, persona, expiry and revocation. Granting it needs `admin` on the area; the grant is an event naming the grantor Cost: shared root `packages/contracts`, `packages/db/schema.ts`. | Must | Seth non-negotiable 4; Jesse comment |
+| MD-3 | **Ship under delegation.** When `submit_to_gate` at Ship carries a live merge delegation, the kernel evaluates the ship rule with the delegation as an input. If it advances, the kernel writes one `gate_decisions` row whose approver is the granting person, whose actor is the agent identity, and whose `delegation_id` names the delegation, inside the transaction that locks and re-reads the delegation; then the merge connector runs. The Postgres check "approver is a human principal" is unchanged; a new check requires `delegation_id` whenever the actor is an agent identity Cost: shared root `packages/db/schema.ts`; fixed decision (MD-1). | Must | V2-1, V2-7 |
+| MD-4 | **What a delegation never covers.** The ship rule refuses `protected_path_needs_person` when any changed file is under a protected directory, `tier_above_delegation` when the item's tier exceeds `max_tier`, and `delegation_required` when an agent submits at Ship without one. Deploy and publish connectors never run from a delegated exit: a template property test fails if any path reaches them without a human decision row that has no `delegation_id` Cost: shared root `packages/contracts` for the refusal reasons. | Must | Seth non-negotiable 4 |
+| MD-5 | **The agent-boundary checks learn the one path.** AB-7's static check that no agent-reachable code writes `gate_decisions` is amended to allow exactly the kernel's delegated Ship exit, by name, and to fail on any second path. The planted fixtures gain a second delegated writer, which must fail Cost: shared root `tools/architecture` rules. | Must | ADR 0003 |
+| MD-6 | **Delegated merges are visible.** The Gates view and the play-by-play show "merged under a delegation granted by *person* until *expiry*"; `/health` lists live merge delegations beside the others; the notifier sends `delegated_merge` at rank 2 to the grantor Cost: additive. | Must | Seth non-negotiable 4 |
+
+#### 7.11.3 The fix claim (FL)
+
+| ID | Requirement | Priority | Source |
+|---|---|---|---|
+| FL-1 | **The `fix` capability word** and a harness column `fix_claim` (default `false`). While false the Builder is never offered a fix claim and the behaviour equals v0.1.0 Cost: toggle; shared root `packages/contracts`, `packages/db/schema.ts`. | Must | V2-2 |
+| FL-2 | **When the Builder may claim.** After a review round records findings of weight `real` or `plausible` and the item's claim is free (released or expired), `poll_queue` offers the item to the Builder persona on a harness with `fix_claim` true, and `claim_item` with a live `fix` delegation takes it. One identity holds the branch at a time, as KN-5 already enforces Cost: additive. | Must | Seth Q4 |
+| FL-3 | **Two validators on a fix.** `fix_size_cap`: the fix changes at most 25% of the pull request's changed lines and touches only files the pull request already touches, plus tests and docs; `fix_keeps_purpose`: the PR declaration is unchanged. Both in the validator registry, both run at `submit_to_gate` from a fix claim, both refuse with their own reason and release the claim Cost: additive. | Must | Seth, "cap the fix size, and never change what the PR is for" |
+| FL-4 | **Run what you fix.** The Builder's fix work spec installs and runs the repository's declared checks before pushing; if the repository declares none or they fail, the run ends `run_failed` with `checks_not_run_locally` and pushes nothing Cost: additive. | Must | Seth, "run what you fix" |
+
+#### 7.11.4 Untrusted content and clearance (UC)
+
+| ID | Requirement | Priority | Source |
+|---|---|---|---|
+| UC-1 | **One wrapper.** `packages/harness/untrusted.ts` exports the only constructor of `UntrustedContent`: a branded type carrying the text, its source (`pr_diff`, `issue_body`, `review_comment`, `page_from_agent`, and a closed set to extend) and the item. A prompt builder accepts platform text or `UntrustedContent` and renders the latter inside a fence that names the source and says it is data Cost: additive; shared root `CONTEXT.md` for the word. | Must | Jesse's review item 3; Seth's leak lesson |
+| UC-2 | **The two sites that exist.** The Reviewer's `reviewPrompt` wraps the diff; the Builder's work prompt wraps the issue body and the review comments it reads. A test renders each prompt and asserts every outside string sits inside a fence Cost: additive. | Must | UC-1 |
+| UC-3 | **Reads carry the run's principal.** Every read a hosted run makes to build a prompt goes through the kernel's read functions with the run's agent principal, so `can()` filters it as it filters an MCP read. A test gives a run an agent identity lacking `read` on a page and asserts the page is absent from the prompt Cost: additive. | Must | Seth, "redact before the prompt" |
+| UC-4 | **The build check.** An ESLint rule or architecture test fails when a prompt builder is called with a string sourced from a GitHub facts column, an issue or review table, or a page written by an agent identity, unless wrapped by UC-1. A planted fixture fails it Cost: shared root `tools/architecture` rules. | Must | V2-3 |
+| UC-5 | **Caches keyed by clearance.** Any cache of model output (none exists in v0.1.0; this binds future ones) includes the reading principal's grant set in its key. Recorded as a rule in `docs/architecture.md` and checked by the same rule as UC-4 when a cache module appears Cost: additive. | Should | Seth, "key any cache by clearance" |
+
+#### 7.11.5 Epic intake (EI)
+
+| ID | Requirement | Priority | Source |
+|---|---|---|---|
+| EI-1 | **Sub-issues in the GitHub facts.** `gh_issues` gains `parent_issue_id` and the sweep and import read GitHub's sub-issue list. An issue with sub-issues is an epic Cost: shared root `packages/db/schema.ts`. | Must | Birch |
+| EI-2 | **Done-when is required.** Intake (import, `kickstart`, and EI-3) refuses an issue whose body has no `Done when` heading with at least one line under it, with `done_when_missing`, and records the refusal as an event on the harness so the Board shows which issues are not ready. An epic's done-when is the union of its sub-issues' Cost: additive. | Must | Seth, "most issues lacked a clear done-when"; V2-4 |
+| EI-3 | **Enqueue an epic.** `enqueue_epic` (a person command, not an agent verb) reads the epic, creates one item per sub-issue in sub-issue order, and records blockers from `Blocked by: #N` lines in each body, the convention the cross-repo dependency map already uses. A blocked item is not offered by `poll_queue` until every blocker's item has passed Ship. The epic itself becomes no item Cost: additive. | Must | Birch; the lasker `xrepo-deps` convention |
+| EI-4 | **Parallel claims respect the WIP limit.** Independent sub-issue items may be claimed concurrently up to the stage's WIP limit (exists). A scenario enqueues an epic of four with one blocker chain and shows two claims live and two waiting Cost: additive. | Must | Birch |
+| EI-5 | **The Board shows the epic.** Items from one epic group under its title, with the blocker edges drawn Cost: additive. | Should | Birch |
+
+#### 7.11.6 Ship rule and gate decisions (SR, GD)
+
+| ID | Requirement | Priority | Source |
+|---|---|---|---|
+| SR-1 | **Five more inputs, five more refusals.** `behind_by` from the pull request's comparison with its base (`base_behind`); a quoted or unquoted closing keyword that would auto-close an issue the item does not wrap (`auto_close_keyword`); a `[skip ci]` marker in any commit on the head (`skip_ci_marker`); a required check that has never run on this head (`required_check_never_ran`); the harness frozen (`harness_frozen`, GD-2). Each is a GitHub fact or a harness column, never a value planted on the item Cost: shared root `packages/contracts`. | Must | Seth Q5 |
+| SR-2 | **Approval across base-only updates.** `gh_prs` gains `patch_id` per head (the stable hash of the diff against the merge base). An approval counts when its commit equals the head, or when the patch id at its commit equals the patch id at the head and the only change between them is a merge from base. The ship rule's record names both heads. A scenario pushes a base merge after approval and advances; another pushes a code change and refuses `head_mismatch` Cost: shared root `packages/contracts`, `packages/db/schema.ts`. | Must | V2-6; Seth follow-up section 3 |
+| SR-3 | **The script's exit code is the gate.** The merge connector runs the ship rule in-process and merges only on `advance`; the `--match-head-commit` equivalent is the head the rule evaluated. A test plants a stale verdict from another item and shows it is never read Cost: additive. | Must | Seth Q5 and follow-up section 4 |
+| GD-1 | **Batch gate decisions.** One person command, `decide_gates`, takes a list of (item, head, decision) and writes one `gate_decisions` row per item in one transaction, each still pinned to its own head and checked by the same rule; any refusal fails the whole batch with the refusing item named. The Gates view offers "approve all shown" over its filtered list Cost: additive. | Must | Seth follow-up, the ruling ledger; V2-8 |
+| GD-2 | **Freeze.** Harness columns `frozen` (default `false`) and `freeze_allow` (item ids). An admin command sets or lifts it, recorded as `freeze_changed`. Ship refuses `harness_frozen` for any item not in the list Cost: toggle; shared root `packages/db/schema.ts`. | Must | Seth follow-up section 4 |
+| GD-3 | **Refusals are never routed around.** A `run_failed` whose reason is an engine's own refusal (`engine_refused`) is never re-dispatched to another engine or persona by the kernel; the item is handed to a person. A test plants a refusing engine and asserts no second run starts Cost: additive. | Must | Seth follow-up section 5 |
+
+#### 7.11.7 Review verdicts (RV)
+
+| ID | Requirement | Priority | Source |
+|---|---|---|---|
+| RV-1 | **Finding weight.** Each finding in a Reviewer verdict carries `weight` from the closed set `real`, `plausible`, `theoretical`. A verdict with only `theoretical` findings is recorded and does not count as a review round; "no findings" is recorded as a success. The Reviewer persona page's instructions ask for the weight; a verdict without it is refused `finding_weight_missing` Cost: shared root `packages/contracts` for the field. | Must | Seth follow-up section 8 |
+| RV-2 | **Refute rate per reviewer.** A finding a person marks `refuted` on the Gates view (a new, person-only action recorded as an event) feeds a measurement per Reviewer identity: findings, refuted, rate, over 30 days; shown on the persona view and `/health` Cost: additive. | Must | Seth Q3 |
+| RV-3 | **Reviewer strictness preset.** A persona-page line, `approve_at`: `zero_findings` or `no_real_or_plausible` (default). Dimension Z's rule is the first; the bench's and the platform's is the second Cost: toggle. | Should | Comparison, "what a finding looks like" |
+
+#### 7.11.8 Observability (OB)
+
+| ID | Requirement | Priority | Source |
+|---|---|---|---|
+| OB-1 | **Silence alarm.** A `/health` indicator: red when any item has waited in Check for 90 minutes with no review run step recorded on the harness in that time; amber at 45. It sends `silence_alarm` at rank 3 to the harness's admins once per cooldown. Its query is the indicator's drill-through Cost: additive. | Must | Seth non-negotiable 5 |
+| OB-2 | **Who holds the ball.** The item card and the Board show the holder (claimant, Reviewer, or the person a gate waits on) and how long they have held it; `/health` shows "with a person over 24 hours" and "with an agent over 2 hours" as counts with drill-through Cost: additive. | Must | Seth follow-up, "measure who holds the ball" |
+| OB-3 | **Shadow comparison.** The Gates view, on a harness in shadow mode, lists each head's shadow verdict beside the GitHub review state the bench or any other reviewer posted on the same head, and marks disagreements. An export of the list is one read route Cost: additive. | Must | Seth Q1 |
+| OB-4 | **Honest counts.** Every count of items or pull requests on Home, the Board and `/health` excludes pull requests whose author is a bot account the harness lists (`bot_authors`, default `dependabot[bot]`) and says so in the label Cost: toggle. | Should | Seth follow-up, "numbers lie until you clean them" |
+
+#### 7.11.9 Plug-in hooks for the bench (PI)
+
+| ID | Requirement | Priority | Source |
+|---|---|---|---|
+| PI-1 | **A second reviewer's approval counts by configuration.** A harness lists `external_reviewer_identities` (GitHub logins, default empty). An approval on the head by one of them counts toward the tier's reviewer count with its provider recorded as `external`; distinctness still applies. This is how the bench's `uwreview` approvals reach the ship rule Cost: toggle; shared root `packages/db/schema.ts`. | Must | V2-5; Seth Q1 |
+| PI-2 | **Rulings land as suggested learnings.** The page API accepts a `learning` page from an external runner on a delegation with capability `review`, landing `suggested` as AB-5 already requires, with `source: external` and the pull request it came from. The bench's weekly patterns can be posted this way; nothing reads the bench's own store Cost: additive. | Must | V2-5; Seth Q6 |
+
+#### 7.11.10 Proof (DX)
+
+| ID | Requirement | Priority | Source |
+|---|---|---|---|
+| DX-9 | **The trace knows v0.2.0.** `pnpm trace` reads the v0.2.0 IDs (GL, MD, FL, UC, EI, SR, GD, RV, OB, PI, DX-9, DX-10) from PRD section 7.11 and reports them as it reports v1's; an unproven Must fails `pnpm test` Cost: additive. | Must | DX-5 |
+| DX-10 | **The joining journey.** One scenario drives section 4 end to end in the sim: a check-only harness in shadow mode, a review request, a Reviewer verdict recorded and not posted, a shadow verdict, shadow lifted, a posted review, Ship waiting on a person, then a merge under a delegation on a second item, refused on a third for a protected path Cost: additive. | Must | Section 4 |
+
 ---
 
 ## 8. Data and contracts
@@ -363,6 +460,9 @@ Every table declares its classification and offline eligibility. Every table has
 | check conclusion | `success`, `failure`, `neutral`, `cancelled`, `skipped`, `timed_out`, `action_required`, `stale` |
 | wake reason | `gate_waiting`, `delegation_lapsed`, `run_failed`, `stage_advanced`, `handed_to_person` |
 | live screen | `home`, `flow`, `board`, `gates`, `item` |
+| capability word (v0.2.0) | adds `merge`, `fix` |
+| finding weight (v0.2.0) | `real`, `plausible`, `theoretical` |
+| untrusted source (v0.2.0) | `pr_diff`, `issue_body`, `review_comment`, `page_from_agent` |
 
 ### 8.4 Identity strings
 
@@ -389,6 +489,8 @@ Added in step 7: `run_not_found` (a run id the kernel does not hold, or one the 
 
 Added in step 10: `activation_required` (a write that would make a gated page active, which only activation or confirmation does), `dry_run_failed` (a persona whose dry run found a problem).
 
+Added in v0.2.0: ship rule `base_behind`, `auto_close_keyword`, `skip_ci_marker`, `required_check_never_ran`, `harness_frozen`, `protected_path_needs_person`, `tier_above_delegation`; elsewhere `template_has_no_package`, `no_harness_for_repo`, `template_change_not_allowed`, `repository_not_dispatchable`, `dispatch_list_unavailable`, `tier_not_delegable`, `checks_not_run_locally`, `done_when_missing`, `finding_weight_missing`, `engine_refused`.
+
 ### 8.6 Event vocabulary
 
 ```
@@ -407,6 +509,8 @@ breaker_holding  breaker_pausing  breaker_open
 persona_activation_failed  persona_activated
 measurement_recorded  handed_to_person
 ```
+
+Added in v0.2.0: `review_verdict_recorded`, `shadow_verdict`, `shadow_lifted`, `freeze_changed`, `epic_enqueued`, `finding_refuted`, `silence_alarm`, `delegated_merge`. Wake reasons gain `silence_alarm` (rank 3) and `delegated_merge` (rank 2).
 
 Since contract 12.0.0 (step 9), `comment_recorded` carries strict evidence `{ source: 'zulip', messageId, topic, personId, email, text, truncated }` (the text cut at 10,000 characters), and `zulip_topic_linked` `{ topic }` sets the item's Zulip topic in the fold.
 
@@ -523,6 +627,18 @@ Each step needs the ones above it. Within a step, order is free.
 9. **Reaching a person.** NT-1 to NT-4.
 10. **Personas.** PE-1 to PE-8.
 11. **The end-to-end scenario.** DX-7.
+
+**v0.2.0.** Each step needs the ones above it and all of v1. One plan per step under `docs/superpowers/plans/`.
+
+12. **Words and contracts.** Section 2 into `CONTEXT.md`; closed sets, finding weight and the check-only fixture into `packages/contracts` at 13.0.0; DX-9.
+13. **Untrusted content.** UC-1 to UC-5. First because every later prompt site inherits it.
+14. **Joining.** GL-2, GL-3, GL-4, GL-6, OB-3, PI-1. The pilot's path.
+15. **Ship rule and gates.** SR-1, SR-2, SR-3, GD-1, GD-2, GD-3, RV-1, RV-2, RV-3.
+16. **Merge delegation.** MD-1 to MD-6. After step 4 so the rule it extends is final.
+17. **The fix claim.** FL-1 to FL-4.
+18. **Epic intake.** EI-1 to EI-5.
+19. **Observability and hooks.** OB-1, OB-2, OB-4, PI-2, GL-5.
+20. **The joining journey and the switch.** DX-10; GL-1 last, because it is the only step that touches a live service and it is a person's to run.
 
 `packages/db/schema.ts`, `packages/contracts/` and the event vocabulary are the files most likely to conflict; change them in small commits.
 
@@ -678,6 +794,21 @@ The issues left these as "decide in the PR". They are decided here so the build 
 | P33 | Once FD-12 is on, per-PR Workers bind to shared staging's database through its Hyperdrive config; only CI's Neon job uses the per-PR Neon branch. Until then a per-PR Worker runs with no database. |
 | P34 | The engine seam's loop caps at 40 turns. A tool error is returned to the model as the tool result. |
 | P35 | **The shared Store implementation lives in `packages/db/store`.** `sim/` may not import `apps/` and `apps/` may not import `sim/`, so the one Drizzle implementation of the Store and Grants ports that DX-2 requires sits in `packages/db`, and both adapters bind it. `sim/` may also import the Node built-ins DX-2 names, and its tests Vitest. `pnpm verify` runs `pnpm trace:built` during the build, which equals `pnpm trace` once the last step is Built (DX-5). |
+
+### 18.3 Decisions for v0.2.0
+
+Made on 2026-10-15 between Ian and Claude; the design is `docs/superpowers/specs/2026-10-15-harness-v0-2-0-design.md`.
+
+| # | Decision | Cost if wrong |
+|---|---|---|
+| V2-1 | **Merge delegation is in, default off on every harness.** A person grants it; it is scoped to one harness and a maximum tier of `standard`; it never covers deploy, publish, protected paths or `high`; every merge under it is a gate decision whose approver is the granting person and whose actor is the agent, with the delegation id on the row. The Postgres rule "the approver is a human principal" stays | A repo that opts in merges a change nobody read, bounded by the tier and the expiry. The record names who granted it |
+| V2-2 | **The fix claim is in, off by default on every harness.** The bench-style second writer, pushing while the author holds the claim, is not built | A Builder fix lands that the author did not want; bounded by the 25% cap and `git revert` |
+| V2-3 | **Untrusted content is a rule plus a check, not a defence system.** The two prompt sites that exist are wrapped; prompt reads use the run's own principal; a static check fails the build on an unwrapped outside read. No new content sources are built | A connector in v0.3.0 inherits a rule that turns out to be the wrong shape and is reworked once |
+| V2-4 | **Epic intake is in; lessons with statuses wait for v0.3.0.** Intake refuses an issue without a done-when. The v0.3.0 design for lessons is recorded in section 17 | The pilot's queue runs dry anyway, because the epics lack done-whens; or the pilot produces lessons we cannot file for six weeks |
+| V2-5 | **The platform is the record's home.** Ian tells Seth this week, framed as plug-in; Jesse is told afterwards. v0.2.0 carries the two hooks the bench needs: its approvals read as Reviewer verdicts, its rulings land as `suggested` learnings | Seth declines and two stores grow; the hooks still serve any later reconciliation |
+| V2-6 | **An approval survives a base-only update.** The ship rule accepts a Reviewer approval on an earlier head when the pull request's patch identity (the diff against its merge base) is unchanged between that head and the current one; the record names both heads. This reconciles Seth's "approvals on the exact head" with his "carry an approval across base-only updates" | An approval is honoured on a head the reviewer never saw whose diff is byte-identical; the exposure is a changed merge base, which CI re-runs on and the rule still requires green |
+| V2-7 | **No agent verb is added.** A merge under delegation and a fix claim both ride on `submit_to_gate` and `claim_item`; the delegation on the call changes what the kernel does with it. `approve`, `merge`, `deploy`, `publish` and `advance` remain forbidden verbs | None; this is the shape that keeps ADR 0002 |
+| V2-8 | **Built for uW's volume.** Seth's ruling ledger as a GitHub comment protocol, re-approval churn machinery and anything sized for a hundred pull requests a day are not built. The shapes that are toggles are taken | The pilot shows a click bottleneck at five pull requests a day, which is unlikely, and batch gate decisions (GD-1) already answer it |
 
 ---
 
