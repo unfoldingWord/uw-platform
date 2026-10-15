@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { closeEmbeddedTemplate } from './embedded.ts';
 import { pgConstraint, pgErrorCode } from './errors.ts';
 import { harnesses } from './schema.ts';
+import { ghPrs, ghRepos } from './schema-github.ts';
 import { databaseTargets, type DatabaseTarget, type OpenedDatabase } from './test-targets.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -86,9 +87,52 @@ function joiningColumns(db: () => Db): void {
   });
 }
 
+function requestedReviewersBound(db: () => Db): void {
+  it('GL-3 refuses more than a hundred requested reviewers by gh_prs_requested_reviewers_bounded', async () => {
+    const freshAt = new Date('2026-10-02T09:00:00.000Z');
+    const sha = 'abcdef0123456789abcdef0123456789abcdef01';
+    await db().insert(ghRepos).values({
+      githubId: 9200000001,
+      fullName: 'unfoldingWord/bounded',
+      defaultBranch: 'main',
+      private: false,
+      freshAt,
+    });
+    const many = Array.from({ length: 101 }, (_, n) => `reviewer${n}`);
+    const row = {
+      githubId: 9200000101,
+      repoId: 9200000001,
+      number: 1,
+      title: 'Many reviewers',
+      state: 'open',
+      draft: false,
+      headSha: sha,
+      headRef: 'branch',
+      baseRef: 'main',
+      baseSha: sha,
+      githubUpdatedAt: freshAt,
+      freshAt,
+    };
+    const refused = await refusal(
+      db()
+        .insert(ghPrs)
+        .values({ ...row, requestedReviewers: many }),
+    );
+    expect(refused).toEqual({ code: '23514', constraint: 'gh_prs_requested_reviewers_bounded' });
+    const kept = db()
+      .insert(ghPrs)
+      .values({ ...row, requestedReviewers: many.slice(1) });
+    await expect(kept).resolves.toBeDefined();
+  });
+}
+
 describe('the joining columns', () => {
   describe.each(databaseTargets.map((target) => [target.name, target] as const))(
     'on the %s database',
-    (_name, target) => joiningColumns(openDatabase(target)),
+    (_name, target) => {
+      const db = openDatabase(target);
+      joiningColumns(db);
+      requestedReviewersBound(db);
+    },
   );
 });
