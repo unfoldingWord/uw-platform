@@ -38,6 +38,8 @@ export function toHarness(row: typeof harnesses.$inferSelect): Harness {
     repository: row.repository,
     hostedBuilderEnabled: row.hostedBuilderEnabled,
     paused: row.paused,
+    shadow: row.shadow,
+    externalReviewerIdentities: row.externalReviewerIdentities,
   });
 }
 

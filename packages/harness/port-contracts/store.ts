@@ -8,6 +8,7 @@ import { describeStoreBoundedReads } from './store-bounded-reads.ts';
 import { describeStoreFailedFor } from './store-failed-for.ts';
 import { describeStoreViews } from './store-views.ts';
 import { describeStoreMeasurements } from './store-measurements.ts';
+import { describeStoreJoining } from './store-joining.ts';
 import { describeStorePersonas, type PageVersionRow } from './store-personas.ts';
 
 export type StoreShape = { readonly concurrentConnections: boolean };
@@ -283,6 +284,7 @@ export function describeStoreContract(
     describeStoreBoundedReads(adapter, subject);
     describeStorePersonas(adapter, subject);
     describeStoreMeasurements(adapter, subject);
+    describeStoreJoining(adapter, subject);
   });
 }
 

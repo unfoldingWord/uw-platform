@@ -6,6 +6,21 @@ import { refusing } from './refusal.ts';
 import { toHarness } from './rows.ts';
 import type { HarnessesGateway } from './types.ts';
 
+function updateHarness(
+  executor: AnyExecutor,
+  harnessId: string,
+  change: Partial<typeof harnesses.$inferInsert>,
+): Promise<boolean> {
+  return refusing(async () => {
+    const rows = await executor
+      .update(harnesses)
+      .set(change)
+      .where(eq(harnesses.id, harnessId))
+      .returning({ id: harnesses.id });
+    return rows.length > 0;
+  });
+}
+
 export function bindHarnesses(executor: AnyExecutor): HarnessesGateway {
   return {
     read: {
@@ -35,24 +50,10 @@ export function bindHarnesses(executor: AnyExecutor): HarnessesGateway {
         refusing(async () => {
           await executor.insert(harnesses).values({ ...harness, createdAt: at });
         }),
-      setPaused: (harnessId, paused) =>
-        refusing(async () => {
-          const rows = await executor
-            .update(harnesses)
-            .set({ paused })
-            .where(eq(harnesses.id, harnessId))
-            .returning({ id: harnesses.id });
-          return rows.length > 0;
-        }),
+      setPaused: (harnessId, paused) => updateHarness(executor, harnessId, { paused }),
       setHostedBuilder: (harnessId, enabled) =>
-        refusing(async () => {
-          const rows = await executor
-            .update(harnesses)
-            .set({ hostedBuilderEnabled: enabled })
-            .where(eq(harnesses.id, harnessId))
-            .returning({ id: harnesses.id });
-          return rows.length > 0;
-        }),
+        updateHarness(executor, harnessId, { hostedBuilderEnabled: enabled }),
+      setShadow: (harnessId, shadow) => updateHarness(executor, harnessId, { shadow }),
     },
   };
 }
