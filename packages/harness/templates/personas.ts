@@ -186,6 +186,7 @@ const iterate: PersonaFixture = {
 export const templatePersonas: Readonly<Record<TemplateKey, readonly PersonaFixture[]>> = {
   software: [builder, builderHosted, reviewer, reviewerCodex],
   bml: [iterate],
+  'check-only': [reviewer, reviewerCodex],
 };
 
 const byTemplate: ReadonlyMap<TemplateKey, readonly PersonaFixture[]> = new Map(
