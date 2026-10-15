@@ -30,6 +30,7 @@ import {
   type CallResult,
   type ToolSurface,
 } from '../testing/conformance.ts';
+import { listForDispatch } from '../testing/dispatch.ts';
 import { kernelOn, personOn } from '../testing/kernel.ts';
 import { httpClient } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
@@ -134,6 +135,7 @@ async function harnessIn(r: Rig, key: string, area: string): Promise<string> {
     repository: `unfoldingWord/${key}`,
   };
   value(await r.kernel.stages.activate(caller(r.ian), activate));
+  await listForDispatch(r.db, activate.repository, area);
   const change = { agentPickup: 'allowed' as const, bracket: 'build_package' as const };
   value(
     await r.kernel.stages.updateStage(caller(r.ian), { harnessId, stageKey: 'package', change }),

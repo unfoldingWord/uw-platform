@@ -8,6 +8,7 @@ import { DEFAULT_SPEND_CAP, readAllEvents, software, type Caller, type Kernel } 
 import { systemClock } from '../ports/clock.ts';
 import { platformStore } from '../ports/store.ts';
 import { seedPullRequest } from '../testing/github-facts.ts';
+import { listForDispatch } from '../testing/dispatch.ts';
 import { agentOf, kernelOn, personOn } from '../testing/kernel.ts';
 import type { VerbContext } from './context.ts';
 import { callVerb } from './dispatch.ts';
@@ -71,6 +72,7 @@ async function openRig(): Promise<Rig> {
       repository: 'unfoldingWord/uw-platform',
     }),
   );
+  await listForDispatch(db, 'unfoldingWord/uw-platform');
   const drop = async () => {
     await db.$client.end();
     await database.drop();

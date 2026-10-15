@@ -15,6 +15,7 @@ import { bindServiceToken } from '../agents/service-tokens.ts';
 import { createApp } from '../app.tsx';
 import { platformStore } from '../ports/store.ts';
 import { createAccessFixture, type AccessFixture } from '../testing/access-keys.ts';
+import { listForDispatch } from '../testing/dispatch.ts';
 import { kernelOn, personOn } from '../testing/kernel.ts';
 import { callTool, httpClient } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
@@ -152,6 +153,7 @@ async function sceneOf(r: Rig, key: string, count: number): Promise<Scene> {
     repository: `unfoldingWord/${key}`,
   };
   value(await r.kernel.stages.activate(caller(r.ian), activate));
+  await listForDispatch(r.db, activate.repository);
   const change = { agentPickup: 'allowed' as const, bracket: 'iterate' as const };
   value(
     await r.kernel.stages.updateStage(caller(r.ian), { harnessId, stageKey: 'package', change }),

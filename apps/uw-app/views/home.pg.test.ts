@@ -92,7 +92,7 @@ async function manyFailedRuns(db: Database, home: Home): Promise<void> {
 
 async function seeded(db: Database): Promise<Home> {
   const { ian } = await people(db);
-  const item = await parkAtShip(kernelOn(db, clock), ian);
+  const item = await parkAtShip(db, kernelOn(db, clock), ian);
   const home = { item, ian };
   await lapsedDelegation(db, home);
   await failedRun(db, home);
@@ -101,7 +101,7 @@ async function seeded(db: Database): Promise<Home> {
 
 async function handedOffToIan(db: Database): Promise<ItemState> {
   const { ian } = await people(db);
-  const item = await parkAtShip(kernelOn(db, clock), ian);
+  const item = await parkAtShip(db, kernelOn(db, clock), ian);
   const personId = ian.personId ?? '';
   await rewriteItem(db, item.itemId, { claimedBy: `human:${personId}`, claimantKind: 'person' });
   await seedEventRows(db, [

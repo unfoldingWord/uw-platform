@@ -33,7 +33,7 @@ export type ParkedAtShip = {
 
 export async function parkedAtShip(db: Database): Promise<ParkedAtShip> {
   const { ian, kim } = await people(db);
-  const item = await parkAtShip(kernelOn(db, clock), ian);
+  const item = await parkAtShip(db, kernelOn(db, clock), ian);
   await storedOnTheOldBase(db, item.itemId);
   return { item, ian, kim };
 }

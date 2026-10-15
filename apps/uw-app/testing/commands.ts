@@ -23,6 +23,7 @@ import {
 import { createApp } from '../app.tsx';
 import type { DatabaseHandle } from '../database.ts';
 import { createAccessFixture, fixtureAccessEnv, type AccessFixture } from './access-keys.ts';
+import { listForDispatch } from './dispatch.ts';
 import { kernelOn, personOn } from './kernel.ts';
 import { postgresDeps } from './postgres.ts';
 import { executeCommand, type DispatchScope } from '../commands/dispatch.ts';
@@ -185,6 +186,7 @@ async function activated(db: Database, harnessKey: string, repository: string): 
       repository,
     }),
   );
+  await listForDispatch(db, repository);
   return harnessId;
 }
 

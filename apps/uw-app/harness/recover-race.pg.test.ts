@@ -18,6 +18,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import { awaitBlocked } from '../../../packages/harness/port-contracts/lock-wait.ts';
 import { platformStore } from '../ports/store.ts';
+import { listForDispatch } from '../testing/dispatch.ts';
 import { agentOf, fixedFacts, kernelOn, personOn } from '../testing/kernel.ts';
 
 const ianId = '00000000-0000-4000-8000-000000000001';
@@ -98,7 +99,12 @@ async function passStage(kernel: Kernel, worker: Principal, itemId: string, chan
   return accepted(submitted, 'submit').item;
 }
 
-async function parkAtShip(kernel: Kernel, ian: Principal, harnessId: string): Promise<ItemState> {
+async function parkAtShip(
+  db: Database,
+  kernel: Kernel,
+  ian: Principal,
+  harnessId: string,
+): Promise<ItemState> {
   accepted(
     await kernel.stages.activate(caller(ian), {
       harnessId,
@@ -109,6 +115,7 @@ async function parkAtShip(kernel: Kernel, ian: Principal, harnessId: string): Pr
     }),
     'activate',
   );
+  await listForDispatch(db, 'unfoldingWord/uw-platform');
   const { itemId } = accepted(
     await kernel.items.enqueue(caller(ian), {
       harnessId,
@@ -212,7 +219,7 @@ async function withConnections(work: (connections: Connections) => Promise<void>
 async function parkedOn(connections: Connections): Promise<Omit<Race, 'connectors'>> {
   const { one } = connections;
   const ian = await personOn(one, ianId, 'ian.lindsley@unfoldingword.org', instant);
-  const item = await parkAtShip(kernelOn(one, decidedClock), ian, crypto.randomUUID());
+  const item = await parkAtShip(one, kernelOn(one, decidedClock), ian, crypto.randomUUID());
   return { connections, ian, item };
 }
 

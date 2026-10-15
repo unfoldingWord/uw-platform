@@ -6,6 +6,7 @@ import { createMigratedDatabase, testServer } from '@uw/db/test-database';
 import { software, type Caller, type Clock, type Kernel, type KernelOutcome } from '@uw/harness';
 import { describe, expect, it } from 'vitest';
 import { awaitBlocked } from '../../../packages/harness/port-contracts/lock-wait.ts';
+import { listForDispatch } from '../testing/dispatch.ts';
 import { agentOf, kernelOn, personOn } from '../testing/kernel.ts';
 
 const ianId = '00000000-0000-4000-8000-000000000001';
@@ -45,6 +46,7 @@ async function sceneOn(actor: Database, mover: Database, observer: Database): Pr
     }),
     'activate',
   );
+  await listForDispatch(actor, 'unfoldingWord/uw-platform');
   return { actor, mover, observer, kernel, ian, harnessId };
 }
 

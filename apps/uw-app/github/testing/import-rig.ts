@@ -4,6 +4,7 @@ import { ingestPrincipal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
 import { software, type KernelOutcome } from '@uw/harness';
 import { systemClock } from '../../ports/clock.ts';
+import { listForDispatch } from '../../testing/dispatch.ts';
 import { kernelOn, personOn } from '../../testing/kernel.ts';
 import type { GitHubAppConfig } from '../app-config.ts';
 import { githubClient, type GitHubDeps } from '../deps.ts';
@@ -41,6 +42,7 @@ export async function seedSoftwareHarness(db: Database): Promise<void> {
       },
     ),
   );
+  await listForDispatch(db, platform);
 }
 
 export function withComments(
