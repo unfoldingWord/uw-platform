@@ -13,6 +13,7 @@ describe('AB-5 every page type is classified as gated or open', () => {
       ['product_strategy', 'open'],
       ['data_sources', 'open'],
       ['issue', 'open'],
+      ['platform', 'gated'],
     ]);
   });
 

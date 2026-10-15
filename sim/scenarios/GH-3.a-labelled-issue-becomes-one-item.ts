@@ -67,6 +67,8 @@ async function importsOnce(world: World, harnessId: string, editor: Caller) {
     priority: 0,
     due: null,
     issue,
+    pullRequest: null,
+    expectedHead: null,
   });
   const again = valueOf(await importAs(world, simCaller(world, simIngest()), harnessId));
   assert.deepEqual(again, { item: first.item, created: false });
@@ -113,6 +115,8 @@ async function manualShape(world: World, harnessId: string, editor: Caller) {
     priority: 1,
     due: null,
     issue: null,
+    pullRequest: null,
+    expectedHead: null,
   });
   assert.deepEqual(Object.keys(evidence).sort(), Object.keys(created[0]?.evidence ?? {}).sort());
 }
