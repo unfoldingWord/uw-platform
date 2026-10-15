@@ -49,7 +49,7 @@ function harnessesGateway(harness: Harness): HarnessesGateway {
       byRepository: unused,
       list: unused,
     },
-    write: { insert: unused, setPaused: unused, setHostedBuilder: unused },
+    write: { insert: unused, setPaused: unused, setHostedBuilder: unused, setShadow: unused },
   };
 }
 
@@ -58,6 +58,7 @@ function itemsGateway(inserted: ItemState[]): HarnessItemsGateway {
     read: {
       byId: unused,
       byIssue: unused,
+      byPullRequest: unused,
       lock: unused,
       forHarness: unused,
       heldInStage: unused,
