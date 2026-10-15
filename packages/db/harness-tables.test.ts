@@ -47,6 +47,8 @@ const expectedColumns: Record<string, string[]> = {
     'paused',
     'created_at',
     'repository',
+    'shadow',
+    'external_reviewer_identities',
   ],
   harness_stages: [
     'id',
