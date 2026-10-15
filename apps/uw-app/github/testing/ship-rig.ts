@@ -12,6 +12,7 @@ import {
 } from '@uw/harness';
 import { platformGitHubFacts } from '../../ports/github-facts.ts';
 import { platformStore } from '../../ports/store.ts';
+import { listForDispatch } from '../../testing/dispatch.ts';
 import { agentOf, kernelOn, personOn } from '../../testing/kernel.ts';
 import type { GitHubAppConfig } from '../app-config.ts';
 import { createGitHubReads } from '../client.ts';
@@ -54,11 +55,12 @@ async function passStage(kernel: Kernel, worker: Principal, itemId: string, chan
   return accepted(submitted, 'submit').item;
 }
 
-async function enqueued(kernel: Kernel, ian: Principal): Promise<string> {
+async function enqueued(db: Database, kernel: Kernel, ian: Principal): Promise<string> {
   const harnessId = crypto.randomUUID();
   const repository = pullRequest.repo;
   const harness = { harnessId, harnessKey: 'software', jdArea: '80-89', template: software };
   accepted(await kernel.stages.activate(caller(ian), { ...harness, repository }), 'activate');
+  await listForDispatch(db, repository);
   const { itemId } = accepted(
     await kernel.items.enqueue(caller(ian), {
       harnessId,
@@ -73,8 +75,8 @@ async function enqueued(kernel: Kernel, ian: Principal): Promise<string> {
   return itemId;
 }
 
-export async function parkAtShip(kernel: Kernel, ian: Principal): Promise<ItemState> {
-  const itemId = await enqueued(kernel, ian);
+export async function parkAtShip(db: Database, kernel: Kernel, ian: Principal): Promise<ItemState> {
+  const itemId = await enqueued(db, kernel, ian);
   const agent = agentOf(ian, 'builder');
   await passStage(kernel, ian, itemId, false);
   for (const change of [false, false, true, true]) await passStage(kernel, agent, itemId, change);
@@ -183,7 +185,7 @@ export async function attemptShip(
   change: (github: FixtureGitHub, itemId: string) => void = () => undefined,
 ) {
   const { ian, kim } = await people(db);
-  const item = await parkAtShip(kernelOn(db, clock), ian);
+  const item = await parkAtShip(db, kernelOn(db, clock), ian);
   await storedOnTheOldBase(db, item.itemId);
   const github = retargetedOnGitHub(item.itemId);
   change(github, item.itemId);

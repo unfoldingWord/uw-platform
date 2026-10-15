@@ -7,6 +7,7 @@ import { readAllEvents, software, type Caller, type KernelOutcome } from '@uw/ha
 import { createApp } from '../app.tsx';
 import { platformStore } from '../ports/store.ts';
 import { createAccessFixture } from '../testing/access-keys.ts';
+import { listForDispatch } from '../testing/dispatch.ts';
 import { kernelOn, personOn } from '../testing/kernel.ts';
 import { callTool, httpClient } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
@@ -72,6 +73,7 @@ async function itemOn(r: Rig): Promise<{ readonly harnessId: string; readonly it
       repository: 'unfoldingWord/software-runs',
     }),
   );
+  await listForDispatch(r.db, 'unfoldingWord/software-runs');
   const change = { agentPickup: 'allowed' as const };
   value(await r.kernel.stages.updateStage(as, { harnessId, stageKey: 'package', change }));
   const input = { harnessId, title: 'Run it', pageId: null, priority: 1, due: null };
