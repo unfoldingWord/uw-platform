@@ -33,6 +33,7 @@ describe('UC-1 one wrapper carries outside text as data', () => {
       '```untrusted issue_body',
       'Please fix the board.',
       '```',
+      'End of untrusted content from issue_body.',
     ]);
   });
 
@@ -58,8 +59,8 @@ describe('UC-1 the fence cannot be closed from inside', () => {
   });
 
   it('UC-1 renders the same bytes for the same content', () => {
-    const content = untrusted({ source: 'page_from_agent', itemId, text: 'a `b` c' });
-    expect(renderUntrusted(content)).toBe(renderUntrusted(content));
+    const input = { source: 'page_from_agent', itemId, text: 'a `b` c' } as const;
+    expect(renderUntrusted(untrusted(input))).toBe(renderUntrusted(untrusted(input)));
   });
 });
 

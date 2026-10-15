@@ -60,6 +60,7 @@ export function renderUntrusted(content: UntrustedContent): string {
     `${fence}untrusted ${content.source}`,
     content.text,
     fence,
+    `End of untrusted content from ${content.source}.`,
   ].join('\n');
 }
 
