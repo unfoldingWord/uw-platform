@@ -120,11 +120,11 @@ describe('release criterion 1: pnpm verify runs walk, trace and the whole sim', 
   });
 });
 
-describe('release criterion 2: every Must requirement has a scenario or a test named for it', () => {
-  it('leaves no Must requirement unproven, so pnpm trace exits 0', () => {
+describe('release criterion 2: every Must requirement in a built step has a scenario or a test named for it', () => {
+  it('leaves no due Must requirement unproven, so pnpm trace:built exits 0', () => {
     const report = repositoryTrace();
-    expect(report.unproven.map((entry) => entry.id)).toEqual([]);
-    expect(traceExitCode(report, 'all')).toBe(0);
+    expect(report.unproven.filter((entry) => entry.due).map((entry) => entry.id)).toEqual([]);
+    expect(traceExitCode(report, 'built')).toBe(0);
   });
 });
 

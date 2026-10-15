@@ -1,12 +1,13 @@
-type Priority = 'Must' | 'Later' | 'Built';
+type Priority = 'Must' | 'Should' | 'Later' | 'Built';
 export type Requirement = { readonly id: string; readonly priority: Priority };
 export type BuildStep = { readonly step: number; readonly ids: readonly string[] };
 
-const requirementRow = /^\| ([A-Z]{2}-\d+) \|.*\| (Must|Later|Built) \| [^|]* \|$/;
+const requirementRow = /^\| ([A-Z]{2}-\d+) \|.*\| (Must|Should|Later|Built) \| [^|]* \|$/;
 const stepLine = /^(\d+)\. \*\*[^*]+\*\*\s*(.*)$/;
 const requirementId = /\b([A-Z]{2})-(\d+)\b/g;
 const priorities: ReadonlyMap<string, Priority> = new Map<string, Priority>([
   ['Must', 'Must'],
+  ['Should', 'Should'],
   ['Later', 'Later'],
   ['Built', 'Built'],
 ]);
