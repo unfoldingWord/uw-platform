@@ -45,6 +45,7 @@ describe('UC-4 the tree passes the untrusted content check', () => {
 });
 
 const unwrapped = [
+  "import { workPrompt as build } from './prompts.ts';\nexport const p = build({ ...source, title: issue.title });",
   'export const p = reviewPrompt({ ...source, diff: (await deps.runKernel.runs.reviewDiff(host, runId)).diff });',
   'export const p = reviewPrompt({ ...source, diff: (await ports.githubFacts.diff(ref, range, 1)).text });',
   'export const p = workPrompt({ ...source, title: issue.title });',
@@ -75,6 +76,7 @@ describe('UC-4 the check fails on a planted call with an unwrapped outside read'
 });
 
 const leakyBuilders = [
+  'export const sneakPrompt = (source: { readonly diff: string }): string => source.diff;',
   'export function sneakPrompt(source: { readonly diff: string }): string { return source.diff; }',
   "export function sneakPrompt(source: { readonly context?: string }): string { return source.context ?? ''; }",
   "export function sneakPrompt(source: { readonly reviewComments: readonly string[] }): string { return source.reviewComments.join(' '); }",
@@ -112,6 +114,8 @@ const forged = [
   "class UntrustedContent { readonly text = ''; }",
   "const wrapped = new UntrustedContent({ source: 'pr_diff', itemId: null, text: diff });",
   "const wrapped = new (known.constructor)({ source: 'pr_diff', itemId: null, text: diff });",
+  "const Made = known.constructor as new (input: object) => object;\nconst wrapped = new Made({ source: 'pr_diff', itemId: null, text: diff });",
+  "const wrapped = Reflect.construct(known.constructor, [{ source: 'pr_diff', itemId: null, text: diff }]);",
   "const wrapped = known.constructor({ source: 'pr_diff', itemId: null, text: diff });",
 ];
 

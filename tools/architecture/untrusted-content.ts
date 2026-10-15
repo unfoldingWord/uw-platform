@@ -8,8 +8,9 @@ const sourceFile = /\.[cm]?[jt]sx?$/;
 const testFile = /\.test\.[cm]?[jt]sx?$/;
 const testingHelper = /(?:^|\/)testing(?:\/|\.ts$)/;
 
-const builderDeclaration = /\bexport\s+function\s+(\w+Prompt)\s*\(/g;
-const builderCall = /\b(\w+Prompt)\s*\(/g;
+const builderDeclaration = /\bexport\s+(?:function\s+(\w+Prompt)\s*\(|const\s+(\w+Prompt)\s*=)/g;
+const builderAlias = /\b(\w+Prompt)\s+as\s+(\w+)/g;
+const anyCall = /\b(\w+)\s*\(/g;
 const wrapperCall = /\buntrusted\s*\(/;
 
 const forgeries = [
@@ -17,7 +18,7 @@ const forgeries = [
   /<\s*UntrustedContent\s*>/,
   /\bnew\s+UntrustedContent\b/,
   /\bclass\s+UntrustedContent\b/,
-  /\.constructor\s*\)?\s*\(/,
+  /\.constructor\b/,
 ];
 
 const outsideReads = [
@@ -50,7 +51,7 @@ function scannedFiles(sources: SourceFiles): string[] {
 }
 
 function buildersIn(text: string): string[] {
-  return [...text.matchAll(builderDeclaration)].map((match) => match[1] ?? '');
+  return [...text.matchAll(builderDeclaration)].map((match) => match[1] ?? match[2] ?? '');
 }
 
 function closingParen(text: string, open: number): number {
@@ -64,7 +65,7 @@ function closingParen(text: string, open: number): number {
 }
 
 function callsIn(text: string): Call[] {
-  return [...text.matchAll(builderCall)].map((match) => {
+  return [...text.matchAll(anyCall)].map((match) => {
     const open = (match.index ?? 0) + match[0].length - 1;
     return { name: match[1] ?? '', args: text.slice(open, closingParen(text, open) + 1) };
   });
@@ -77,6 +78,14 @@ function withoutWrapped(text: string): string {
     kept = kept.slice(0, found.index) + kept.slice(closingParen(kept, open) + 1);
   }
   return kept;
+}
+
+function boundBuilders(text: string, names: ReadonlySet<string>): ReadonlyMap<string, string> {
+  const bound = new Map([...names].map((name) => [name, name]));
+  for (const match of text.matchAll(builderAlias)) {
+    if (names.has(match[1] ?? '')) bound.set(match[2] ?? '', match[1] ?? '');
+  }
+  return bound;
 }
 
 function readsOutside(text: string): boolean {
@@ -112,9 +121,12 @@ export function unwrappedBuilderCalls(sources: SourceFiles): string[] {
   const names = builderNames(sources);
   const found: string[] = [];
   for (const file of scannedFiles(sources)) {
-    for (const call of callsIn(sources.read(file))) {
-      if (names.has(call.name) && readsOutside(withoutWrapped(call.args))) {
-        found.push(`${file}: ${call.name}`);
+    const text = sources.read(file);
+    const bound = boundBuilders(text, names);
+    for (const call of callsIn(text)) {
+      const builder = bound.get(call.name);
+      if (builder !== undefined && readsOutside(withoutWrapped(call.args))) {
+        found.push(`${file}: ${builder}`);
       }
     }
   }
@@ -136,7 +148,8 @@ function buildsPrompts(
 ): boolean {
   if (builders.includes(file)) return true;
   const text = sources.read(file);
-  if (callsIn(text).some((call) => names.has(call.name))) return true;
+  const bound = boundBuilders(text, names);
+  if (callsIn(text).some((call) => bound.has(call.name))) return true;
   return importsOf(file, text).some((target) => builders.includes(target));
 }
 
