@@ -450,6 +450,10 @@ _Avoid_: fix lane (the bench's word for a second writer)
 Text that entered the platform from outside it: a pull request diff, an issue body, a review comment, and later a transcript or an invoice. Carried as data, never as instructions, and marked so at the boundary.
 _Avoid_: user input, external text
 
+**Clearance**:
+What a principal may read at an instant: the set of areas its live grants let it read. A cache of model output keys each entry on the reading principal's clearance, so text one reader's prompt held never reaches a reader who could not have read it.
+_Avoid_: security level, permission set (that is the grants themselves)
+
 **Epic**:
 A GitHub issue with sub-issues. Intake reads it as an ordered set of items with blockers.
 _Avoid_: parent issue, milestone (that is a GitHub milestone)
