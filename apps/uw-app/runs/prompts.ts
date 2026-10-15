@@ -1,8 +1,13 @@
+import { promptText, renderUntrusted, type PromptText, type UntrustedContent } from '@uw/harness';
+
 export type PromptSource = {
-  readonly title: string;
-  readonly context: string;
+  readonly title: PromptText;
+  readonly context: UntrustedContent;
   readonly prompts: readonly string[];
+  readonly related: readonly UntrustedContent[];
 };
+
+export type ReviewSource = PromptSource & { readonly diff: UntrustedContent };
 
 const CONTEXT_LIMIT = 60_000;
 
@@ -11,12 +16,22 @@ function promptLines(prompts: readonly string[]): readonly string[] {
   return ['', 'Messages from the people who own this run:', ...prompts.map((text) => `- ${text}`)];
 }
 
+function relatedLines(related: readonly UntrustedContent[]): readonly string[] {
+  if (related.length === 0) return [];
+  return [
+    '',
+    'Text from outside the platform that this item refers to:',
+    ...related.map((content) => renderUntrusted(content)),
+  ];
+}
+
 function framed(source: PromptSource): readonly string[] {
   return [
-    `Item: ${source.title}`,
+    `Item: ${promptText(source.title)}`,
     '',
     'Context:',
-    source.context.slice(0, CONTEXT_LIMIT),
+    renderUntrusted(source.context),
+    ...relatedLines(source.related),
     ...promptLines(source.prompts),
   ];
 }
@@ -45,12 +60,12 @@ export function workPrompt(source: PromptSource): string {
   );
 }
 
-export function reviewPrompt(source: PromptSource & { readonly diff: string }): string {
+export function reviewPrompt(source: ReviewSource): string {
   return [
     ...framed(source),
     '',
     'The change to review, as a diff of the head against its base:',
-    source.diff,
+    renderUntrusted(source.diff),
     '',
     'Open your answer with this block and nothing before it, then one finding per line:',
     '```harness-verdict',

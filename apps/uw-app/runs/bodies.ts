@@ -10,13 +10,8 @@ import { engineAdapter } from '../engines/registry.ts';
 import type { EngineWork, EngineWorkResult } from '../engines/seam.ts';
 import { builderAccess, pulledChange } from './builder-github.ts';
 import type { RunDeps } from './deps.ts';
-import {
-  contextText,
-  reviewPrompt,
-  scoutPrompt,
-  workPrompt,
-  type PromptSource,
-} from './prompts.ts';
+import { contextText, reviewPrompt, scoutPrompt, workPrompt } from './prompts.ts';
+import { promptSourceOf, reviewSourceOf, type ReadText } from './prompt-source.ts';
 import {
   callCore,
   countedHttp,
@@ -32,11 +27,8 @@ import {
   type OpenStep,
 } from './steps.ts';
 
-export type ReadDone = {
+export type ReadDone = ReadText & {
   readonly kind: 'read';
-  readonly title: string;
-  readonly context: string;
-  readonly prompts: readonly string[];
   readonly review: boolean;
 };
 
@@ -97,15 +89,21 @@ async function within<T>(
   }
 }
 
+async function readContext(open: OpenStep): Promise<string> {
+  const reply = await callCore(open.core, 'resolve_context', { itemId: open.scene.item.itemId });
+  return contextText(JSON.stringify(reply));
+}
+
 export function readBody(deps: RunDeps, runId: string): Promise<ReadDone | Halted> {
   return within(deps, runId, null, async (open) => {
     const { item, capability } = open.scene;
-    const reply = await callCore(open.core, 'resolve_context', { itemId: item.itemId });
+    const context = await readContext(open);
     const prompts = await recordStep(open, { step: 'read', tokensIn: 0, tokensOut: 0 });
     return {
       kind: 'read',
       title: item.title,
-      context: contextText(JSON.stringify(reply)),
+      fromIssue: item.issue !== null,
+      context,
       prompts: [...prompts],
       review: capability === 'review',
     };
@@ -215,10 +213,14 @@ function scoutPlan(deps: RunDeps, open: OpenStep, prompt: string): ModelPlan {
 export function scoutBody(
   deps: RunDeps,
   runId: string,
-  read: PromptSource,
+  read: ReadText,
 ): Promise<ScoutDone | Mismatch | Halted> {
   return within(deps, runId, readOnly, async (open) => {
-    const done = await guardedModelRun(deps, open, scoutPlan(deps, open, scoutPrompt(read)));
+    const done = await guardedModelRun(
+      deps,
+      open,
+      scoutPlan(deps, open, scoutPrompt(promptSourceOf(read, open.scene.item.itemId))),
+    );
     if (done.kind === 'mismatch') return done;
     const verdict = parseScoutVerdict(done.text);
     if (!verdict.ok) return { kind: 'scout', holds: false, reason: NO_VERDICT };
@@ -230,12 +232,15 @@ export function scoutBody(
 export function workBody(
   deps: RunDeps,
   runId: string,
-  read: PromptSource & { readonly diff: string | null },
+  read: ReadText & { readonly diff: string | null },
 ): Promise<ModelDone | Mismatch | Halted> {
   return within(deps, runId, null, (open) => {
-    const { persona } = open.scene;
+    const { persona, item } = open.scene;
     const { diff } = read;
-    const prompt = diff === null ? workPrompt(read) : reviewPrompt({ ...read, diff });
+    const prompt =
+      diff === null
+        ? workPrompt(promptSourceOf(read, item.itemId))
+        : reviewPrompt(reviewSourceOf(read, item.itemId, diff));
     return guardedModelRun(deps, open, {
       step: 'work',
       engine: persona.engine,
