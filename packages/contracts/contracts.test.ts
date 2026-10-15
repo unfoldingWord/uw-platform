@@ -331,25 +331,6 @@ describe('GL-2 GL-4 the contracts for shadow and refusals', () => {
     expect(commandSchema.safeParse({ ...lift, shadow: true }).success).toBe(false);
   });
 
-  it('activates a harness in shadow with external reviewers, and defaults both off', () => {
-    const base = {
-      command: 'activate_template',
-      requestId,
-      harnessKey: 'tc-admin-app',
-      jdArea: '80-89',
-      template: 'check-only',
-      repository: 'unfoldingWord/tc-admin-app',
-    };
-    expect(commandSchema.parse(base)).toMatchObject({
-      shadow: false,
-      externalReviewerIdentities: [],
-    });
-    const shadowed = { ...base, shadow: true, externalReviewerIdentities: ['uwreview[bot]'] };
-    expect(commandSchema.safeParse(shadowed).success).toBe(true);
-    const twice = { ...base, externalReviewerIdentities: ['uwreview[bot]', 'UWReview[bot]'] };
-    expect(commandSchema.safeParse(twice).success).toBe(false);
-  });
-
   it('reads an older harness row as not in shadow with no external reviewers', () => {
     const older = {
       id: '00000000-0000-4000-8000-0000000000a1',
@@ -382,17 +363,9 @@ describe('GL-3 the contracts for a joined pull request', () => {
     expect(schema.safeParse({ ...created, pullRequest, expectedHead: head }).success).toBe(true);
     expect(schema.safeParse({ ...created, pullRequest, expectedHead: null }).success).toBe(false);
   });
-
-  it('knows the platform page type and its dispatch list', () => {
-    expect(pageTypeSchema.options).toContain('platform');
-    const list = { dispatch_allowed: ['unfoldingWord/tc-admin-app'] };
-    expect(platformFrontmatterSchema.safeParse(list).success).toBe(true);
-    const repeated = { dispatch_allowed: ['unfoldingWord/a', 'UNFOLDINGWORD/A'] };
-    expect(platformFrontmatterSchema.safeParse(repeated).success).toBe(false);
-  });
 });
 
-describe('OB-3 PI-1 the shadow comparison', () => {
+describe('OB-3 the shadow comparison', () => {
   it('bounds a shadow comparison row', () => {
     const row = {
       itemId: '00000000-0000-4000-8000-0000000000b1',
@@ -416,5 +389,36 @@ describe('OB-3 PI-1 the shadow comparison', () => {
     expect(shadowComparisonSchema.safeParse({ ...comparison, rows: [commented] }).success).toBe(
       false,
     );
+  });
+});
+
+describe('PI-1 the contracts for external reviewers at activation', () => {
+  it('activates a harness in shadow with external reviewers, and defaults both off', () => {
+    const base = {
+      command: 'activate_template',
+      requestId,
+      harnessKey: 'tc-admin-app',
+      jdArea: '80-89',
+      template: 'check-only',
+      repository: 'unfoldingWord/tc-admin-app',
+    };
+    expect(commandSchema.parse(base)).toMatchObject({
+      shadow: false,
+      externalReviewerIdentities: [],
+    });
+    const shadowed = { ...base, shadow: true, externalReviewerIdentities: ['uwreview[bot]'] };
+    expect(commandSchema.safeParse(shadowed).success).toBe(true);
+    const twice = { ...base, externalReviewerIdentities: ['uwreview[bot]', 'UWReview[bot]'] };
+    expect(commandSchema.safeParse(twice).success).toBe(false);
+  });
+});
+
+describe('GL-6 the contracts for the platform page', () => {
+  it('knows the platform page type and its dispatch list', () => {
+    expect(pageTypeSchema.options).toContain('platform');
+    const list = { dispatch_allowed: ['unfoldingWord/tc-admin-app'] };
+    expect(platformFrontmatterSchema.safeParse(list).success).toBe(true);
+    const repeated = { dispatch_allowed: ['unfoldingWord/a', 'UNFOLDINGWORD/A'] };
+    expect(platformFrontmatterSchema.safeParse(repeated).success).toBe(false);
   });
 });
