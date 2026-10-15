@@ -181,6 +181,12 @@ The build is finished when PRD section 14 items 1 to 6 hold. Items 1 to 5 hold; 
 | Not verified | 2026-10-02 | GH-6 | None: closed by step 6 (`d01a4b0`, `a043f0e`, `e988063`): a connector change is `decision_in_flight` while an approval at the stage waits, and recovery runs the connector recorded on the decision. | Nobody (closed) |
 | Not verified | 2026-10-03 | WB-11 | None: closed by `61e0a66`, which builds the CSS through Tailwind's programmatic API, so `braces` left the tree and `pnpm audit:all` is clean. | Nobody (closed) |
 | Not verified | 2026-10-03 | WB-11 WB-12 | None: closed by S8-D17 (`eae58e0`): the play-by-play shows the evidence label's definition as visible text. | Nobody (closed) |
+| Not verified | 2026-10-15 | UC-1 UC-2 | Ian: when a staging model run exists, give one hosted run a prompt that holds an injection line inside a fenced diff or page, and record whether the model treats the fence as data. | Ian |
+| Not verified | 2026-10-15 | UC-2 | Ian: when a staging run exists, replay one in-flight run across the step 13 deploy and note that an imported item's title renders as platform text if its stored read predates `fromIssue`; drain such runs before the deploy instead. | Ian |
+| Not verified | 2026-10-15 | UC-2 UC-3 | Ian: none; the red-once observation for Task 5 Step 3 was done and recorded, nothing is left to run. | Ian |
+| Not verified | 2026-10-15 | UC-3 | Ian: decide at step 17 whether tool replies read during a model loop (`read_page`, `search_pages`) should be fenced (S13-R11). | Ian |
+| Not verified | 2026-10-15 | UC-3 | Ian: decide whether UC-3's filter should hide pages from agents that an editor grant can read, which is an FD-8 change (S13-R5). | Ian |
+| Not verified | 2026-10-15 | UC-4 | Ian: when a prompt site reaches the title through a variable named elsewhere, add that name to the UC-4 check (S13-R8). | Ian |
 
 ### Open carries
 
