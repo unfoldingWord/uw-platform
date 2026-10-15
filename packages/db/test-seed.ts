@@ -1,4 +1,5 @@
 import { and, eq, ne, sql } from 'drizzle-orm';
+import { platformFrontmatterSchema, platformPageSlug } from '@uw/contracts';
 import type { CapabilityWord, PageStatus, PageType, Role, Scope } from '@uw/contracts';
 import type { AnyExecutor } from './any-database.ts';
 import {
@@ -215,6 +216,36 @@ export type SeedPage = {
 
 export async function seedPage(db: AnyExecutor, page: SeedPage): Promise<void> {
   await db.insert(pages).values({ parentId: null, frontmatter: {}, ...page, version: 1 });
+}
+
+export type SeedPlatformPage = {
+  readonly id: string;
+  readonly jdArea: string;
+  readonly repositories: readonly string[];
+};
+
+export async function seedPlatformPage(db: AnyExecutor, seed: SeedPlatformPage): Promise<void> {
+  const [held] = await db
+    .select({ id: pages.id, frontmatter: pages.frontmatter })
+    .from(pages)
+    .where(and(eq(pages.jdArea, seed.jdArea), eq(pages.slug, platformPageSlug)));
+  const listed = platformFrontmatterSchema.safeParse(held?.frontmatter);
+  const before = listed.success ? listed.data.dispatch_allowed : [];
+  const frontmatter = { dispatch_allowed: [...new Set([...before, ...seed.repositories])] };
+  if (held !== undefined) {
+    await db.update(pages).set({ frontmatter }).where(eq(pages.id, held.id));
+    return;
+  }
+  await seedPage(db, {
+    id: seed.id,
+    type: 'platform',
+    status: 'active',
+    jdArea: seed.jdArea,
+    slug: platformPageSlug,
+    title: 'Platform',
+    bodyMd: 'The repositories the platform may dispatch work onto.',
+    frontmatter,
+  });
 }
 
 export async function pageVersionsOf(db: AnyExecutor, pageId: string) {

@@ -11,7 +11,7 @@ import {
   type Scope,
   type Stage,
 } from '@uw/contracts';
-import { seedActivePersona, seedGrant, seedPerson } from '@uw/db/test-seed';
+import { seedActivePersona, seedGrant, seedPerson, seedPlatformPage } from '@uw/db/test-seed';
 import { DEFAULT_SPEND_CAP, type Caller, type Template } from '@uw/harness';
 import type { World } from './world.ts';
 
@@ -122,7 +122,21 @@ type SimHarnessOptions = {
   readonly repository?: string | null;
   readonly shadow?: boolean;
   readonly externalReviewerIdentities?: readonly string[];
+  readonly dispatchable?: boolean;
 };
+
+export function platformPageIdOf(jdArea: JdArea): string {
+  return `00000000-0000-4000-8000-${`a${jdArea.replace('-', '')}`.padStart(12, '0')}`;
+}
+
+async function seedDispatch(world: World, harness: Harness): Promise<void> {
+  if (harness.repository === null) return;
+  await seedPlatformPage(world.database.db, {
+    id: platformPageIdOf(harness.jdArea),
+    jdArea: harness.jdArea,
+    repositories: [harness.repository],
+  });
+}
 
 function defaultRepository(template: Template, key: string): string | null {
   if (template.key !== 'software') return null;
@@ -155,6 +169,7 @@ export async function createSimHarness(
   if (outcome.status !== 'accepted') {
     throw new Error(`activating ${template.key} was refused: ${outcome.reason}`);
   }
+  if (options.dispatchable !== false) await seedDispatch(world, outcome.value.harness);
   return { harness: outcome.value.harness, stages: outcome.value.stages, admin };
 }
 
