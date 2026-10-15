@@ -76,9 +76,18 @@ export const harnesses = declareTable(
     paused: boolean('paused').notNull().default(false),
     createdAt: instant('created_at').notNull(),
     repository: text('repository'),
+    shadow: boolean('shadow').notNull().default(false),
+    externalReviewerIdentities: text('external_reviewer_identities')
+      .array()
+      .notNull()
+      .default(emptyText),
   },
   internalSync,
   (t) => [
+    check(
+      'harnesses_external_reviewers_bounded',
+      sql`cardinality(${t.externalReviewerIdentities}) <= 20`,
+    ),
     check('harnesses_area_form', matches(t.jdArea, JD_AREA_PATTERN)),
     check('harnesses_key_form', matches(t.key, SLUG_PATTERN)),
     check('harnesses_template_form', matches(t.template, SLUG_PATTERN)),

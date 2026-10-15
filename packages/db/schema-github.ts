@@ -117,6 +117,7 @@ export const ghPrs = declareTable(
     filesHead: text('files_head'),
     filesBase: text('files_base'),
     filesProblem: text('files_problem'),
+    requestedReviewers: text('requested_reviewers').array().notNull().default(emptyText),
     githubUpdatedAt: instant('github_updated_at').notNull(),
     freshAt: instant('fresh_at').notNull(),
   },
