@@ -36,6 +36,7 @@ const actions = {
   set_hosted_builder: 'admin',
   activate_persona: 'admin',
   record_measurement: 'write',
+  set_shadow: 'admin',
 } as const;
 
 describe('WB-1 the command registry', () => {

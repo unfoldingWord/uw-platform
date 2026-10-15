@@ -56,6 +56,7 @@ async function insertAll(
         template: template.key,
         stages: [...stages].sort((a, b) => a.position - b.position).map((stage) => stage.key),
         repository: harness.repository,
+        shadow: harness.shadow,
       }),
     ]);
     return accepted(activated);
@@ -82,6 +83,8 @@ export async function activateTemplate(
     repository,
     hostedBuilderEnabled: false,
     paused: false,
+    shadow: false,
+    externalReviewerIdentities: [],
   };
   const stages = input.template.stages.map((stage) =>
     stageFromTemplate(stage, harness.id, ports.ids.next()),
