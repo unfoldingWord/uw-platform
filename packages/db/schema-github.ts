@@ -130,6 +130,7 @@ export const ghPrs = declareTable(
     check('gh_prs_base_sha_form', matches(t.baseSha, FULL_SHA_PATTERN)),
     check('gh_prs_head_repo_form', matches(t.headRepo, REPOSITORY_PATTERN)),
     check('gh_prs_files_base_form', matches(t.filesBase, FULL_SHA_PATTERN)),
+    check('gh_prs_requested_reviewers_bounded', sql`cardinality(${t.requestedReviewers}) <= 100`),
     check(
       'gh_prs_one_declaration_outcome',
       sql`${t.declaration} IS NULL OR ${t.declarationProblem} IS NULL`,
