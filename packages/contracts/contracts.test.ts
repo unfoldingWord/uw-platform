@@ -177,7 +177,14 @@ describe('closed sets', () => {
 
 describe('closed sets of the principal and the gate', () => {
   it('holds the capability, gate, person and principal sets', () => {
-    expect(closedSets.capabilityWordSchema.options).toEqual(['none', 'iterate', 'build', 'review']);
+    expect(closedSets.capabilityWordSchema.options).toEqual([
+      'none',
+      'iterate',
+      'build',
+      'review',
+      'merge',
+      'fix',
+    ]);
     expect(closedSets.gateDecisionSchema.options).toEqual([
       'approve',
       'reject',
@@ -186,6 +193,31 @@ describe('closed sets of the principal and the gate', () => {
     ]);
     expect(closedSets.personStatusSchema.options).toEqual(['active', 'pending']);
     expect(closedSets.principalKindSchema.options).toEqual(['person', 'agent']);
+  });
+});
+
+describe('closed sets added for v0.2.0', () => {
+  it('holds the finding weights and the untrusted sources the design names', () => {
+    expect(closedSets.findingWeightSchema.options).toEqual(['real', 'plausible', 'theoretical']);
+    expect(closedSets.untrustedSourceSchema.options).toEqual([
+      'pr_diff',
+      'issue_body',
+      'review_comment',
+      'page_from_agent',
+    ]);
+  });
+
+  it('still refuses a capability word outside the set on a delegation grant', () => {
+    const grant = {
+      command: 'schedule_regular_tweak',
+      requestId: '3f1d7c1e-8c53-4a53-9d6e-0a9b6a0f4d11',
+      persona: 'agent:builder',
+      capability: 'deploy',
+      expiresAt: '2026-10-16T00:00:00.000Z',
+      supersedes: null,
+    };
+    expect(commandSchema.safeParse(grant).success).toBe(false);
+    expect(commandSchema.safeParse({ ...grant, capability: 'merge' }).success).toBe(true);
   });
 });
 

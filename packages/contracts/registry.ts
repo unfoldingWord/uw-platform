@@ -184,6 +184,8 @@ export const schemaRegistry: Record<string, ZodType> = {
   'run-result': closedSets.runResultSchema,
   'breaker-level': closedSets.breakerLevelSchema,
   'review-verdict': closedSets.reviewVerdictSchema,
+  'finding-weight': closedSets.findingWeightSchema,
+  'untrusted-source': closedSets.untrustedSourceSchema,
   'provider-id': providerIdSchema,
   'model-id': modelIdSchema,
   'review-record': reviewRecordSchema,
