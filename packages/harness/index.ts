@@ -55,6 +55,7 @@ export type { TemplateViolation } from './template-property.ts';
 export type { TemplateStage } from './templates/types.ts';
 export { software } from './templates/software.ts';
 export { bml } from './templates/bml.ts';
+export { checkOnly } from './templates/check-only.ts';
 export { personaPageDraft, personasOf, templatePersonas } from './templates/personas.ts';
 export { bypassesShip } from './templates/fixtures/bypasses-ship.ts';
 export type { Caller } from './caller.ts';
