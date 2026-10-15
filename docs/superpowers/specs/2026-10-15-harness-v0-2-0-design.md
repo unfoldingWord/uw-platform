@@ -1,6 +1,6 @@
 # Harness v0.2.0: the version a real repository can use
 
-Status: approved in conversation on 2026-10-15; awaiting Ian's review of this written form. The spec for the v0.2.0 build. `docs/PRD.md` stays the list of work: section 5 below is written into the PRD as section 7.11, section 3 as 18.3 and section 8 into section 13, in the same commit that approves this spec, so `pnpm trace` sees every ID.
+Status: approved by Ian on 2026-10-15. The design for the v0.2.0 build. `docs/PRD.md` stays the list of work: section 5 below is PRD section 7.11, section 3 is 18.3 and section 8 is in section 13 (commit `b8e031f`), so `pnpm trace` sees every ID. Where this document and PRD section 7.11 disagree on design, this document wins and the PRD is corrected.
 
 ## 1. Why this version exists
 

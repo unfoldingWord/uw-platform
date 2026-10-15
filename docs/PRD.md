@@ -1,10 +1,10 @@
-# unfoldingWord Platform, Harness v1: Product Requirements Document
+# unfoldingWord Platform, Harness: Product Requirements Document
 
 | | |
 |---|---|
-| Status | Draft for review |
-| Version | 0.1 |
-| Date | 2026-10-01 |
+| Status | Approved. v1 (sections 7.1 to 7.10) was built as v0.1.0, merge commit `83e3f64`, tagged 2026-10-12. v0.2.0 (section 7.11) was approved on 2026-10-15 and is the next build |
+| Version | 0.2 |
+| Date | 2026-10-15 (v1 text dated 2026-10-01) |
 | Owner | Ian Lindsley |
 | Sponsor | Jesse Griffin |
 | Repository | https://github.com/unfoldingWord/uw-platform |
@@ -286,6 +286,8 @@ Requirement identifiers are stable. **Must** is a v1 requirement. **Later** is d
 | DX-7 | **Figure 2 end to end in the sim.** One scenario takes a fixture item from kickstart to Close on the software template with scripted personas and fixture GitHub facts, covering the claim, a held premise, the lease warning and expiry, the PR declaration, the ship rule's refusals, an agent's refused gate attempt, the approve, the merge connector, a refused Close, a Close with a learning, and an Iterate beat under a delegation that then lapses. It is the machine-checkable half of the release criteria. | Must | #64 |
 
 ### 7.11 v0.2.0 (the design is `docs/superpowers/specs/2026-10-15-harness-v0-2-0-design.md`)
+
+This section is the list of work for v0.2.0 and the design document is why. Where they disagree on design, the design wins and this section is corrected, as section 1 says of the v1 architecture spec.
 
 Every row follows this document's conventions: a stable ID, Must or Should, a scenario or test named for the ID, no live account or secret needed to prove it. Each row ends with its cost by the toggle test: *toggle* means a value on a harness or stage row, a preset or a persona-page line; *additive* means new files and registry rows with no rule changed; *shared root* means a change to a shared root in its own commit, naming which; *fixed decision* means an ADR as well.
 
@@ -646,7 +648,7 @@ Each step needs the ones above it. Within a step, order is free.
 
 ## 14. Release criteria
 
-v1 is ready when all of these are true. There is no date.
+v1 is ready when all of these are true. There is no date. v0.2.0's release list is section 9 of its design document; items 1 to 6 below hold for it unchanged.
 
 **Provable by the build, with no person, no account and no secret**
 
