@@ -143,6 +143,8 @@ export async function createItem(
       priority: initial.priority,
       due: initial.due,
       issue: initial.issue,
+      pullRequest: null,
+      expectedHead: null,
     }),
   );
   const item = foldItem(null, event);

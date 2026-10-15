@@ -10,6 +10,7 @@ import {
   tweakPackageCommand,
 } from './handlers/items.ts';
 import { importCommand } from './handlers/import.ts';
+import { notWiredCommand } from './not-wired.ts';
 import { recordMeasurementCommand } from './handlers/measurements.ts';
 import { promptRunCommand, stopRunCommand } from './handlers/runs.ts';
 import { revokeDelegationCommand, scheduleRegularTweakCommand } from './person/delegations.ts';
@@ -76,4 +77,5 @@ export const commandRegistry = commandRegistryOf([
   setHostedBuilderCommand,
   activatePersonaCommand,
   recordMeasurementCommand,
+  notWiredCommand('set_shadow', 'admin'),
 ]);
