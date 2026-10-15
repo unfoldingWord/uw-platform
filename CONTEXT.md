@@ -425,3 +425,51 @@ _Avoid_: build, test (one part of it), lint (one part of it)
 **Go-live wiring**:
 The CI jobs, bindings and declarations that need an account or a secret (PRD FD-12). Written during the build, they skip or stay out of the deployed wrangler file until the resource exists.
 _Avoid_: production setup, deployment config
+
+**Platform**:
+The whole product in `uw-platform`. The comparison called it "the shared harness"; in this repository a harness is one row.
+_Avoid_: the shared harness, the system
+
+**Shadow mode**:
+A harness setting under which the ship rule is evaluated and recorded as an event on every head, and nothing is posted to GitHub and no connector runs.
+_Avoid_: dry run (that is a persona check), read-only mode
+
+**Check-only harness**:
+A harness whose template activates only Check and Ship, joined by a repository requesting the Reviewer identity on a pull request.
+_Avoid_: review service, opt-in review
+
+**Merge delegation**:
+A delegation whose capability word is `merge`: a person lends an agent the Ship exit on one harness, up to one risk tier, until an expiry, recorded.
+_Avoid_: auto-merge, robot merge
+
+**Fix claim**:
+A claim the Builder takes on an item after a review round with findings, under a delegation whose capability word is `fix`, when no other claim is live.
+_Avoid_: fix lane (the bench's word for a second writer)
+
+**Untrusted content**:
+Text that entered the platform from outside it: a pull request diff, an issue body, a review comment, and later a transcript or an invoice. Carried as data, never as instructions, and marked so at the boundary.
+_Avoid_: user input, external text
+
+**Epic**:
+A GitHub issue with sub-issues. Intake reads it as an ordered set of items with blockers.
+_Avoid_: parent issue, milestone (that is a GitHub milestone)
+
+**Done-when**:
+The sentence in an issue that says what finished looks like. Intake refuses an issue without one.
+_Avoid_: acceptance criteria, definition of done
+
+**Holder**:
+Who has the ball on an item right now: the claimant, the Reviewer, or a person waiting to decide.
+_Avoid_: owner (that is the repository's), assignee
+
+**Freeze**:
+A harness setting under which Ship refuses every item except those a person named when setting it.
+_Avoid_: code freeze, lock
+
+**Finding weight**:
+A Reviewer's rating of one finding as `real`, `plausible` or `theoretical`. Only the first two count toward a review round.
+_Avoid_: severity (that is the finding's impact), confidence (that is a learning's label)
+
+**Silence alarm**:
+The health indicator that goes red when items wait in Check and no review step has run for 90 minutes.
+_Avoid_: watchdog
