@@ -192,17 +192,17 @@ Each in its own commit whose message names the root and why (rule 4).
 
 ## 8. Build order
 
-Each step needs the ones above it. Within a step, order is free. One plan per step under `docs/superpowers/plans/`, written against the code at that moment.
+Numbered after v1's eleven so the trace reads them as steps not yet built. Each step needs the ones above it and all of v1. Within a step, order is free. One plan per step under `docs/superpowers/plans/`, written against the code at that moment.
 
-1. **Words and contracts.** Section 2 into `CONTEXT.md`; closed sets, finding weight and the check-only fixture into `packages/contracts` at 13.0.0; DX-9.
-2. **Untrusted content.** UC-1 to UC-5. First because every later prompt site inherits it.
-3. **Joining.** GL-2, GL-3, GL-4, GL-6, OB-3, PI-1. The pilot's path.
-4. **Ship rule and gates.** SR-1, SR-2, SR-3, GD-1, GD-2, GD-3, RV-1, RV-2, RV-3.
-5. **Merge delegation.** MD-1 to MD-6. After step 4 so the rule it extends is final.
-6. **The fix claim.** FL-1 to FL-4.
-7. **Epic intake.** EI-1 to EI-5.
-8. **Observability and hooks.** OB-1, OB-2, OB-4, PI-2, GL-5.
-9. **The joining journey and the switch.** DX-10; GL-1 last, because it is the only step that touches a live service and it is a person's to run.
+12. **Words and contracts.** Section 2 into `CONTEXT.md`; closed sets, finding weight and the check-only fixture into `packages/contracts` at 13.0.0; DX-9.
+13. **Untrusted content.** UC-1 to UC-5. First because every later prompt site inherits it.
+14. **Joining.** GL-2, GL-3, GL-4, GL-6, OB-3, PI-1. The pilot's path.
+15. **Ship rule and gates.** SR-1, SR-2, SR-3, GD-1, GD-2, GD-3, RV-1, RV-2, RV-3.
+16. **Merge delegation.** MD-1 to MD-6. After step 4 so the rule it extends is final.
+17. **The fix claim.** FL-1 to FL-4.
+18. **Epic intake.** EI-1 to EI-5.
+19. **Observability and hooks.** OB-1, OB-2, OB-4, PI-2, GL-5.
+20. **The joining journey and the switch.** DX-10; GL-1 last, because it is the only step that touches a live service and it is a person's to run.
 
 ## 9. Release
 
