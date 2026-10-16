@@ -253,6 +253,13 @@
       "when": 1792131155996,
       "tag": "0035_delegated_exit_claimed",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1792133448500,
+      "tag": "0036_fix_claim",
+      "breakpoints": true
     }
   ]
 }

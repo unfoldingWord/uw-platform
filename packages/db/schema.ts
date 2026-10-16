@@ -91,6 +91,7 @@ export const harnesses = declareTable(
       .notNull()
       .default(sql`'[]'::jsonb`),
     protectedPaths: text('protected_paths').array().notNull().default(emptyText),
+    fixClaim: boolean('fix_claim').notNull().default(false),
   },
   internalSync,
   (t) => [
