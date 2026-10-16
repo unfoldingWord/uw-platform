@@ -65,7 +65,8 @@ export function fixPrompt(source: PromptSource): string {
     ...framed(source),
     '',
     'A review of this item found the defects quoted above. Fix them on the branch you are given and change nothing else.',
-    "Keep the change within a quarter of the pull request's changed lines, in the files it already touches, plus tests and docs.",
+    "Keep the change within a quarter of the pull request's changed lines, in the files it already touches. Beside them you may add or change only test files (named .test. or .spec., or under a test, tests or __tests__ directory at the repository root or a package root under packages/ or apps/) and markdown under docs/ or a README or CHANGELOG.",
+    'Never touch AGENTS.md, CLAUDE.md, SKILL.md, or anything under .claude/, .github/, skills/ or a persona directory unless the pull request already does.',
     'Do not change what the pull request declares. Commit your fix and do not push: the platform runs the repository declared checks and pushes when they pass.',
   ].join('\n');
 }
