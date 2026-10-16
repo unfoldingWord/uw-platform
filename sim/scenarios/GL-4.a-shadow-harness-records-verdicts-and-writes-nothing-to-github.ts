@@ -27,6 +27,7 @@ export const scenario = defineScenario({
       seenHead: joinedHead,
     });
     assert.equal(approve.status, 'error');
+    assert.equal(approve.status === 'error' ? approve.detail['why'] : null, 'shadow');
     assert.deepEqual(world.adapters.connectors.calls(), []);
     assert.deepEqual(world.adapters.connectors.reviews(), []);
     return { state: { refused: approve.status === 'error' ? approve.reason : null } };

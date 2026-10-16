@@ -91,14 +91,17 @@ describe('GL-4 shadow mode writes nothing', () => {
         through: ['check', 'ship'],
       });
       expect(parked).toMatchObject({ stageKey: 'ship', gateStatus: 'parked' });
-      const approved = await world.kernel.gates.decide(simCaller(world, admin), {
-        itemId,
-        decision: 'approve',
-        reason: null,
-        findings: [],
-        seenHead: joinedHead,
-      });
-      expect(reasonOf(approved)).toBe('not_permitted');
+      for (const decision of ['approve', 'override'] as const) {
+        const refused = await world.kernel.gates.decide(simCaller(world, admin), {
+          itemId,
+          decision,
+          reason: decision === 'override' ? 'The owner accepts the risk.' : null,
+          findings: [],
+          seenHead: joinedHead,
+        });
+        expect(reasonOf(refused)).toBe('not_permitted');
+        expect(refused).toMatchObject({ detail: { why: 'shadow' } });
+      }
       expect(world.adapters.connectors.calls()).toEqual([]);
       expect(world.adapters.connectors.reviews()).toEqual([]);
       expect((await itemLog(world, harnessId, itemId)).decisions).toEqual([]);
