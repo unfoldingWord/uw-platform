@@ -77,11 +77,13 @@ async function meteredRun(db: Database, n: number, costMinor: number): Promise<v
   });
 }
 
-function indicatorsOn(db: Database, totals?: PlaneTotals) {
+async function indicatorsOn(db: Database, totals?: PlaneTotals) {
   const handle = { db, ping: async () => undefined, release: async () => undefined };
   const kernel = platformKernel(handle, clock);
   const views = totals ? { ...kernel.views, planeTotals: async () => totals } : kernel.views;
-  return agentPlaneIndicators({ kernel: { ...kernel, views }, db, at, cap: DEFAULT_SPEND_CAP });
+  const caller = { actor: await personOn(db, EDITOR.id, EDITOR.email, at), traceId: ITEM };
+  const source = { kernel: { ...kernel, views }, caller, db, at, cap: DEFAULT_SPEND_CAP };
+  return agentPlaneIndicators(source);
 }
 
 function named(indicators: readonly HealthIndicator[], name: string): HealthIndicator {
@@ -184,6 +186,9 @@ async function statusesFollowTotals(db: Database): Promise<void> {
       'amber',
       'Refuted findings in 30 days; agent:reviewer on software 2 of 8 refuted, agent:reviewer-codex on software 0 of 3 refuted, agent:reviewer on courses 1 of 4 refuted',
     ],
+    ['silence_alarm', 'ok', 'No item has waited in Check over 45 minutes without a review step'],
+    ['held_by_person', 'ok', 'None over 24 hours'],
+    ['held_by_agent', 'ok', 'None over 2 hours'],
   ]);
 }
 

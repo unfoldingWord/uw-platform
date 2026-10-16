@@ -115,6 +115,7 @@ export type { RefuteInput, Refuted } from './gates/refute.ts';
 export type { RefuteTally } from './views/refutes.ts';
 export { AGENT_HOLD_MS, PERSON_HOLD_MS, heldTooLong, holderOf } from './views/holder.ts';
 export type { Holder, HolderRole } from './views/holder.ts';
+export type { HeldRow, Holds } from './views/holds.ts';
 export { listsAuthor, pullRequestKey, uncountedItems } from './views/bots.ts';
 export type { CountScope } from './views/bots.ts';
 export { SILENCE_AMBER_MS, SILENCE_RED_MS, silenceLevel } from './alarms/silence.ts';

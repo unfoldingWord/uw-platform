@@ -29,6 +29,7 @@ async function reportOf(
 ): Promise<HealthReport> {
   const plane = await agentPlaneIndicators({
     kernel: context.kernel,
+    caller: { actor: context.principal, traceId: context.traceId },
     db: context.db,
     at: context.at,
     cap: context.cap,

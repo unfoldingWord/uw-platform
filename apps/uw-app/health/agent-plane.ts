@@ -2,8 +2,9 @@ import type { HealthIndicator, IndicatorStatus } from '@uw/contracts';
 import { formatInstant } from '@uw/core/dates';
 import { formatCount, formatMoney } from '@uw/core/money';
 import type { Executor } from '@uw/db/client';
-import type { BreakerState, Kernel, PlaneTotals } from '@uw/harness';
+import type { BreakerState, Caller, Kernel, PlaneTotals } from '@uw/harness';
 import { sweepHealth, type SweepHealth } from '../github/facts/queries.ts';
+import { BALL_INDICATORS, heldIndicator, silenceIndicator } from './ball.ts';
 import type { SpendCap } from './spend-cap.ts';
 
 export const AGENT_PLANE_INDICATORS = [
@@ -16,10 +17,12 @@ export const AGENT_PLANE_INDICATORS = [
   'stale_learnings',
   'github_sweep',
   'reviewer_refutes',
+  ...BALL_INDICATORS,
 ] as const;
 
 export type AgentPlaneSource = {
   readonly kernel: Kernel;
+  readonly caller: Caller;
   readonly db: Executor;
   readonly at: Date;
   readonly cap: SpendCap;
@@ -224,6 +227,10 @@ export async function agentPlaneIndicators(
   const totals = await kernel.views.planeTotals({ at });
   const breaker = await kernel.breaker.state(at);
   const repos = await sweepHealth(source.db);
+  const readable = await kernel.views.harnesses(source.caller, { at });
+  const scoped = { at, harnessIds: readable.map((harness) => harness.id) };
+  const found = await kernel.views.silence(scoped);
+  const holds = await kernel.views.holds(scoped);
   return [
     spendIndicator(totals, source.cap, breaker),
     breakerIndicator(breaker),
@@ -234,6 +241,9 @@ export async function agentPlaneIndicators(
     staleIndicator(totals),
     sweepIndicator(repos, at),
     refutesIndicator(totals),
+    silenceIndicator(found, at),
+    heldIndicator('held_by_person', holds),
+    heldIndicator('held_by_agent', holds),
   ];
 }
 

@@ -31,10 +31,12 @@ export function healthScreenRoutes(deps: HealthDeps): Hono<AppEnv> {
   routes.get('/', async (c) => {
     const database = c.get('database');
     if (database === null) return refuse(c, 'database_not_configured');
-    if (c.get('principal') === null) return refuse(c, 'unauthenticated');
+    const principal = c.get('principal');
+    if (principal === null) return refuse(c, 'unauthenticated');
     const platform = await platformReport(c, deps, hubHealth);
     const plane = await agentPlaneIndicators({
       kernel: platformKernel(database, deps.clock),
+      caller: { actor: principal, traceId: c.get('traceId') },
       db: database.db,
       at: c.get('now'),
       cap: spendCapOf(c.env),

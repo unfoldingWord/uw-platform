@@ -336,6 +336,7 @@ export type ItemRewrite = Partial<
     | 'prRepo'
     | 'prNumber'
     | 'zulipTopic'
+    | 'heldSince'
   >
 >;
 
