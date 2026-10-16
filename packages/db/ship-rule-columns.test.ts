@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { defaultCiChecks, requiredChecksSchema } from '@uw/contracts';
 import { eq, inArray, sql } from 'drizzle-orm';
 import { harnesses } from './schema.ts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -94,4 +97,15 @@ describe('the ship rule and gate columns', () => {
     'on the %s database',
     (_name, target) => shipRuleColumns(openDatabase(target)),
   );
+});
+
+describe('SR-1 the S15-R1 backfill names the six CI jobs', () => {
+  it('SR-1 writes defaultCiChecks on the uw-platform harness', () => {
+    const migration = join(import.meta.dirname, 'migrations', '0032_ship_rule_and_gates.sql');
+    const text = readFileSync(migration, 'utf8');
+    const literal = /SET "required_checks" = '([^']*)'::jsonb/u.exec(text)?.[1] ?? null;
+    expect(literal).not.toBeNull();
+    const parsed = requiredChecksSchema.parse(JSON.parse(literal ?? 'null'));
+    expect(parsed).toEqual(defaultCiChecks);
+  });
 });
