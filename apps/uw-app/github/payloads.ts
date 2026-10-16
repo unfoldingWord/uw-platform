@@ -35,6 +35,12 @@ export const issueSchema = z.object({
   milestone: milestoneSchema.nullable().optional(),
   updated_at: instant,
   pull_request: z.object({}).optional(),
+  body: z.string().nullable().optional(),
+  sub_issues_summary: z
+    .object({ total: z.number().int().min(0) })
+    .nullable()
+    .optional(),
+  repository_url: z.string().optional(),
 });
 
 export const pullSchema = z.object({

@@ -18,6 +18,7 @@ import type {
 } from '@uw/harness';
 import { HARNESS_LABEL } from '../harness-label.ts';
 import type { IssueChange } from './records.ts';
+import { issueChangeOf } from './issues.ts';
 
 export type PullRequestChange = {
   readonly repo: string;
@@ -277,17 +278,7 @@ export async function issueByNumber(
     .where(and(sql`lower(${ghRepos.fullName}) = lower(${repository})`, eq(ghIssues.number, number)))
     .limit(1);
   if (row === undefined) return null;
-  const { issue, repo } = row;
-  return {
-    repo,
-    githubId: issue.githubId,
-    number: issue.number,
-    title: issue.title,
-    open: issue.state === 'open',
-    labels: issue.labels,
-    hadLabels: null,
-    githubUpdatedAt: issue.githubUpdatedAt,
-  };
+  return issueChangeOf(row.issue, row.repo, null);
 }
 
 export async function issuesAwaitingCrossReference(
@@ -307,16 +298,7 @@ export async function issuesAwaitingCrossReference(
       ),
     )
     .orderBy(asc(ghIssues.githubId));
-  return rows.map(({ issue, repo }) => ({
-    repo,
-    githubId: issue.githubId,
-    number: issue.number,
-    title: issue.title,
-    open: true,
-    labels: issue.labels,
-    hadLabels: null,
-    githubUpdatedAt: issue.githubUpdatedAt,
-  }));
+  return rows.map(({ issue, repo }) => issueChangeOf(issue, repo, null));
 }
 
 const lastSweep = z.object({

@@ -14,6 +14,7 @@ import type {
   ReviewRecord,
 } from './records.ts';
 import { recordAllFiles } from './heads.ts';
+import { lockedLabels, storedIssues } from './issues.ts';
 import { pullRequestChanges, type PullRequestChange } from './queries.ts';
 
 export type RepairCounts = {
@@ -121,6 +122,9 @@ const issueColumns = {
   labels: ghIssues.labels,
   milestoneId: ghIssues.milestoneId,
   githubUpdatedAt: ghIssues.githubUpdatedAt,
+  subIssues: ghIssues.subIssues,
+  doneWhen: ghIssues.doneWhen,
+  blockedBy: ghIssues.blockedBy,
 };
 const pullColumns = {
   repoId: ghPrs.repoId,
@@ -233,7 +237,15 @@ async function upsertIssues(tx: Transaction, issues: readonly IssueRecord[], fre
   if (issues.length === 0) return 0;
   const rows = await tx
     .insert(ghIssues)
-    .values(issues.map((issue) => ({ ...issue, labels: [...issue.labels], freshAt })))
+    .values(
+      issues.map((issue) => ({
+        ...issue,
+        labels: [...issue.labels],
+        doneWhen: [...issue.doneWhen],
+        blockedBy: [...issue.blockedBy],
+        freshAt,
+      })),
+    )
     .onConflictDoUpdate({
       target: ghIssues.githubId,
       set: excluded(issueColumns),
@@ -349,17 +361,6 @@ async function lockRepos(tx: Transaction, ids: readonly number[]) {
   for (const id of ids) await tx.execute(advisoryLock(githubRepoKey(id)));
 }
 
-async function lockedLabels(tx: Transaction, ids: readonly number[]) {
-  if (ids.length === 0) return new Map<number, readonly string[]>();
-  const rows = await tx
-    .select({ githubId: ghIssues.githubId, labels: ghIssues.labels })
-    .from(ghIssues)
-    .where(inArray(ghIssues.githubId, [...ids]))
-    .orderBy(asc(ghIssues.githubId))
-    .for('update');
-  return new Map(rows.map((row) => [row.githubId, row.labels]));
-}
-
 async function lockPulls(tx: Transaction, ids: readonly number[]) {
   if (ids.length === 0) return;
   await tx
@@ -368,30 +369,6 @@ async function lockPulls(tx: Transaction, ids: readonly number[]) {
     .where(inArray(ghPrs.githubId, [...ids]))
     .orderBy(asc(ghPrs.githubId))
     .for('update');
-}
-
-async function storedIssues(
-  tx: Transaction,
-  ids: readonly number[],
-  had: ReadonlyMap<number, readonly string[]>,
-) {
-  if (ids.length === 0) return [];
-  const rows = await tx
-    .select({ issue: ghIssues, repo: ghRepos.fullName })
-    .from(ghIssues)
-    .innerJoin(ghRepos, eq(ghRepos.githubId, ghIssues.repoId))
-    .where(inArray(ghIssues.githubId, [...ids]))
-    .orderBy(asc(ghIssues.githubId));
-  return rows.map(({ issue, repo }): IssueChange => ({
-    repo,
-    githubId: issue.githubId,
-    number: issue.number,
-    title: issue.title,
-    open: issue.state === 'open',
-    labels: issue.labels,
-    hadLabels: had.get(issue.githubId) ?? null,
-    githubUpdatedAt: issue.githubUpdatedAt,
-  }));
 }
 
 async function writeRecords(

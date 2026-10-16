@@ -30,6 +30,9 @@ export type IssueRecord = {
   readonly labels: readonly string[];
   readonly milestoneId: number | null;
   readonly githubUpdatedAt: Date;
+  readonly subIssues: number;
+  readonly doneWhen: readonly string[];
+  readonly blockedBy: readonly number[];
 };
 
 export type IssueChange = {
@@ -41,6 +44,9 @@ export type IssueChange = {
   readonly labels: readonly string[];
   readonly hadLabels: readonly string[] | null;
   readonly githubUpdatedAt: Date;
+  readonly subIssues: number;
+  readonly doneWhen: readonly string[];
+  readonly blockedBy: readonly number[];
 };
 
 export type PullRequestRecord = {
