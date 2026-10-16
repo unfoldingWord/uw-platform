@@ -1,8 +1,9 @@
 import { isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
+import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { StoreTransaction } from '../ports.ts';
-import { exitAfterDecision, readShipFacts, type ShipSnapshot } from './approve-at-ship.ts';
+import { exitReporting, readShipFacts, type ShipSnapshot } from './approve-at-ship.ts';
 import {
   decideIn,
   normalised,
@@ -18,7 +19,10 @@ export type BatchEntry = {
   readonly decision: 'approve' | 'reject';
 };
 export type BatchInput = { readonly harnessId: string; readonly entries: readonly BatchEntry[] };
-export type BatchDecided = { readonly decided: readonly Decided[] };
+export type BatchDecided = {
+  readonly decided: readonly Decided[];
+  readonly waitingForBase: readonly string[];
+};
 
 type Planned = { readonly input: DecideInput; readonly snapshot: ShipSnapshot | null };
 type Batch = { readonly caller: Caller; readonly harnessId: string; readonly at: Date };
@@ -102,6 +106,21 @@ async function oneIn(
   return outcome.value;
 }
 
+async function lockStagesInOrder(
+  tx: StoreTransaction,
+  batch: Batch,
+  plans: readonly Planned[],
+): Promise<void> {
+  const stages = await tx.harnessStages.read.forHarness(batch.harnessId);
+  const keys = new Set<string>();
+  for (const plan of plans) {
+    const item = await tx.harnessItems.read.byId(plan.input.itemId);
+    const stage = stages.find((entry) => entry.key === item?.stageKey);
+    if (stage !== undefined) keys.add(lockKeys.stageClaims(stage.id));
+  }
+  for (const key of [...keys].sort()) await tx.lock(key);
+}
+
 async function committedAll(
   ports: GatePorts,
   batch: Batch,
@@ -109,6 +128,7 @@ async function committedAll(
 ): Promise<readonly Committed[] | Refused> {
   try {
     return await ports.store.transaction(async (tx) => {
+      await lockStagesInOrder(tx, batch, plans);
       const all: Committed[] = [];
       for (const plan of plans) all.push(await oneIn(ports, tx, batch, plan));
       return all;
@@ -133,8 +153,15 @@ export async function decideGates(
   const committed = await committedAll(ports, batch, plans);
   if ('status' in committed) return committed;
   const decided: Decided[] = [];
+  const waitingForBase: string[] = [];
   for (const { decided: one, pending } of committed) {
-    decided.push(pending === null ? one : { ...one, ...(await exitAfterDecision(ports, pending)) });
+    if (pending === null) {
+      decided.push(one);
+      continue;
+    }
+    const { item, advanced, refusals } = await exitReporting(ports, pending);
+    decided.push({ ...one, item, advanced });
+    if (refusals.includes('base_behind')) waitingForBase.push(item.itemId);
   }
-  return accepted({ decided });
+  return accepted({ decided, waitingForBase });
 }
