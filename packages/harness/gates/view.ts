@@ -88,7 +88,9 @@ function factsShown(facts: PullRequestFacts | null): GateView['facts'] {
 
 function reviewsShown(seen: Seen, facts: PullRequestFacts | null): GateView['reviews'] {
   const head = usableHead(facts, seen.item, seen.harness);
-  return facts === null || head === null ? [] : reviewsOn(facts, head);
+  return facts === null || head === null
+    ? []
+    : reviewsOn(facts, head, seen.harness.externalReviewerIdentities);
 }
 
 function viewOf(caller: Caller, seen: Seen, facts: PullRequestFacts | null, at: Date): GateView {
