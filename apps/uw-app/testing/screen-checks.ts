@@ -41,9 +41,49 @@ function visibleBody(document: Document): HTMLElement {
   return body;
 }
 
+const blockTags: ReadonlySet<string> = new Set([
+  'ADDRESS',
+  'ARTICLE',
+  'ASIDE',
+  'BLOCKQUOTE',
+  'BR',
+  'DD',
+  'DETAILS',
+  'DIV',
+  'DL',
+  'DT',
+  'FIELDSET',
+  'FIGCAPTION',
+  'FIGURE',
+  'FOOTER',
+  'FORM',
+  'H1',
+  'H2',
+  'H3',
+  'H4',
+  'H5',
+  'H6',
+  'HEADER',
+  'HR',
+  'LI',
+  'MAIN',
+  'NAV',
+  'OL',
+  'P',
+  'PRE',
+  'SECTION',
+  'SUMMARY',
+  'TABLE',
+  'TD',
+  'TH',
+  'TR',
+  'UL',
+]);
+
 function textNodes(node: Node): string[] {
   if (node.nodeType === node.TEXT_NODE) return [node.textContent ?? ''];
-  return [...node.childNodes].flatMap(textNodes);
+  const inner = [...node.childNodes].flatMap(textNodes);
+  return blockTags.has(node.nodeName) ? [' ', ...inner, ' '] : inner;
 }
 
 function proseOf(body: HTMLElement): string {
@@ -60,7 +100,8 @@ function copyProblems(document: Document): string[] {
   if (emoji.test(text)) problems.push('an emoji in the copy');
   const prose = proseOf(body);
   for (const match of prose.matchAll(/unfolding\s*word/gi)) {
-    if (match[0] !== 'unfoldingWord') problems.push(`unfoldingWord written ${match[0]}`);
+    const written = match[0].replaceAll(/\s+/g, ' ');
+    if (written !== 'unfoldingWord') problems.push(`unfoldingWord written ${written}`);
   }
   return problems;
 }

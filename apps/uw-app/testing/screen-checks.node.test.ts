@@ -25,4 +25,10 @@ describe('WB-12 the copy check reads the brand beside an address', () => {
   it('WB-12 passes the brand written right across inline elements', async () => {
     expect(await brandProblems('<p>unfolding<b>Word</b> helps</p>')).toEqual([]);
   });
+
+  it('WB-12 reads block elements apart as a browser renders them, never as one joined word', async () => {
+    expect(await brandProblems('<ul><li>unfolding</li><li>word</li></ul>')).toEqual([
+      'unfoldingWord written unfolding word',
+    ]);
+  });
 });
