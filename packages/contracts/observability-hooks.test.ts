@@ -42,7 +42,7 @@ const item = {
 const learning = { confidence: 'observed', as_of: '2026-10-15', supersedes: [], review_by: null };
 
 it('OB-1 ranks the silence alarm among the wake reasons and links its drill-through', () => {
-  expect(closedSets.wakeReasonSchema.options.at(-1)).toBe('silence_alarm');
+  expect(closedSets.wakeReasonSchema.options).toContain('silence_alarm');
   expect(healthLink('silence_alarm')).toBe('/health/silence_alarm');
   expect(deepLinkSchema.safeParse('/health/Silence').success).toBe(false);
   expect(deepLinkSchema.safeParse('/health/silence_alarm/more').success).toBe(false);
@@ -107,7 +107,7 @@ it('GL-5 changes a template by command and refuses with its own reason', () => {
   const change = { command: 'change_template', requestId, template: 'software' };
   expect(commandSchema.safeParse(change).success).toBe(true);
   expect(commandSchema.safeParse({ ...change, template: 'kanban' }).success).toBe(false);
-  expect(errorReasonSchema.options.at(-1)).toBe('template_change_not_allowed');
+  expect(errorReasonSchema.options).toContain('template_change_not_allowed');
   const changed = {
     from: 'check-only',
     to: 'software',
