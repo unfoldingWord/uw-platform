@@ -46,6 +46,7 @@ export function toHarness(row: typeof harnesses.$inferSelect): Harness {
     requiredChecks: row.requiredChecks,
     protectedPaths: row.protectedPaths,
     fixClaim: row.fixClaim,
+    botAuthors: row.botAuthors,
   });
 }
 
@@ -100,6 +101,7 @@ export function toItemState(row: typeof harnessItems.$inferSelect, stageKey: str
     zulipTopic: row.zulipTopic,
     epic: row.epic,
     blockedBy: row.blockedBy,
+    heldSince: row.heldSince?.toISOString() ?? null,
   });
 }
 
