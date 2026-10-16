@@ -74,6 +74,15 @@ function greenFacts(itemId: string): PullRequestFacts {
       riskTier: 'standard',
       riskDomains: [],
     },
+    closes: [],
+    comparison: {
+      head,
+      base: '0'.repeat(40),
+      behindBy: 0,
+      patchId: 'b'.repeat(64),
+      commits: [{ sha: head, merge: false, skipCi: false, closes: [] }],
+      patchIds: { [head]: 'b'.repeat(64) },
+    },
     freshAt: instant,
   };
 }

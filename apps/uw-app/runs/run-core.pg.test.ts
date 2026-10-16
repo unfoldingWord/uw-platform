@@ -236,6 +236,8 @@ function factsFor(itemId: string): PullRequestFacts {
     reviews: [],
     files: null,
     declaration: null,
+    closes: [],
+    comparison: null,
     freshAt: new Date(),
   };
 }

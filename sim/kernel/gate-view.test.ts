@@ -355,10 +355,18 @@ const reviewerHistory: readonly ReviewFact[] = [
   reviewBy('uw-reviewer[bot]', head, 9100000202, {
     state: 'changes_requested',
     provider: 'Anthropic',
-    findings: ['The grant is read after the append', 'A title names the wrong requirement'],
+    findings: [
+      { text: 'The grant is read after the append', weight: null },
+      { text: 'A title names the wrong requirement', weight: null },
+    ],
   }),
-  reviewBy('uw-reviewer[bot]', head, 9100000203, { state: 'commented', findings: ['a remark'] }),
-  reviewBy('uw-reviewer-codex[bot]', head, 9100000204, { findings: ['A nit in the copy'] }),
+  reviewBy('uw-reviewer[bot]', head, 9100000203, {
+    state: 'commented',
+    findings: [{ text: 'a remark', weight: null }],
+  }),
+  reviewBy('uw-reviewer-codex[bot]', head, 9100000204, {
+    findings: [{ text: 'A nit in the copy', weight: null }],
+  }),
   reviewBy('uw-reviewer-codex[bot]', simSha('01d'), 9100000205, { state: 'changes_requested' }),
   reviewBy('someone-else[bot]', head, 9100000206, { state: 'changes_requested' }),
 ];

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   acceptedOutcomeSchema,
   errorOutcomeSchema,
+  defaultCiChecks,
   refusalSchema,
   type HarnessEvent,
   type ItemState,
@@ -184,6 +185,7 @@ async function activated(db: Database, harnessKey: string, repository: string): 
       jdArea: AREA,
       template: software,
       repository,
+      requiredChecks: defaultCiChecks,
     }),
   );
   await listForDispatch(db, repository);

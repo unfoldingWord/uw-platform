@@ -3,6 +3,7 @@ import {
   repositorySchema,
   type Harness,
   type JdArea,
+  type RequiredCheck,
   type Stage,
 } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
@@ -31,6 +32,7 @@ export type ActivateInput = {
   readonly repository: string | null;
   readonly shadow?: boolean;
   readonly externalReviewerIdentities?: readonly string[];
+  readonly requiredChecks?: readonly RequiredCheck[];
 };
 
 export type Activated = { readonly harness: Harness; readonly stages: readonly Stage[] };
@@ -66,7 +68,7 @@ function harnessOf(input: ActivateInput, external: string[]): Harness {
     externalReviewerIdentities: external,
     frozen: false,
     freezeAllow: [],
-    requiredChecks: [],
+    requiredChecks: [...(input.requiredChecks ?? [])],
   };
 }
 

@@ -54,6 +54,8 @@ export function bindHarnesses(executor: AnyExecutor): HarnessesGateway {
       setHostedBuilder: (harnessId, enabled) =>
         updateHarness(executor, harnessId, { hostedBuilderEnabled: enabled }),
       setShadow: (harnessId, shadow) => updateHarness(executor, harnessId, { shadow }),
+      setFreeze: (harnessId, frozen, allow) =>
+        updateHarness(executor, harnessId, { frozen, freezeAllow: [...allow] }),
     },
   };
 }

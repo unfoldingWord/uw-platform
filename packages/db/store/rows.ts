@@ -40,6 +40,9 @@ export function toHarness(row: typeof harnesses.$inferSelect): Harness {
     paused: row.paused,
     shadow: row.shadow,
     externalReviewerIdentities: row.externalReviewerIdentities,
+    frozen: row.frozen,
+    freezeAllow: row.freezeAllow,
+    requiredChecks: row.requiredChecks,
   });
 }
 

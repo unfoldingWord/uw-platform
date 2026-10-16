@@ -100,6 +100,8 @@ const facts: PullRequestFacts = {
   reviews: [review()],
   files: { head, base, paths: ['apps/uw-app/board.tsx'] },
   declaration: declared('standard'),
+  closes: [],
+  comparison: null,
   freshAt: at,
 };
 
