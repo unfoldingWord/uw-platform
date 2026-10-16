@@ -71,6 +71,19 @@ describe('MD-5 a planted second delegated writer fails', () => {
   });
 });
 
+describe('MD-5 a write after the delegated writer is not credited to it', () => {
+  it('MD-5 flags a write in a default export or after a let that follows recordDelegatedDecision', () => {
+    const tail = [
+      'let later = 0;',
+      'export default async (tx: Tx, row: Row) => {',
+      '  await tx.gateDecisions.write.insert(row);',
+      '};',
+    ].join('\n');
+    const planted = { [delegatedShip]: `${real.read(delegatedShip)}\n${tail}\n` };
+    expect(violationsWith(planted)).toContain(`${delegatedShip} writes gate_decisions in <module>`);
+  });
+});
+
 describe('MD-5 a planted write in any form fails', () => {
   it.each([
     ['aliased', 'const decisions = tx.gateDecisions;\n  await decisions.write.insert(row);'],
