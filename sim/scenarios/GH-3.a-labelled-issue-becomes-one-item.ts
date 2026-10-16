@@ -41,6 +41,7 @@ function importAs(world: World, caller: Caller, harnessId: string) {
     issue,
     title: 'Wire the board',
     pageId,
+    doneWhen: ['The board lists every stage.'],
   });
 }
 

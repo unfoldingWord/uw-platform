@@ -44,6 +44,7 @@ export async function topicScene(world: World): Promise<TopicScene> {
         issue,
         title: 'Wire the board',
         pageId: null,
+        doneWhen: ['The board lists every stage.'],
       });
       const { itemId } = value(imported).item;
       await simAdvance(world, { harnessId, itemId, worker: ian, through: [...toCheck, 'check'] });

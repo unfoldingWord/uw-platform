@@ -7,14 +7,21 @@ import {
   type JdArea,
   type Principal,
 } from '@uw/contracts';
-import { allowed, isAgent, isIngestPrincipal, isSystemPrincipal } from '../access.ts';
+import { isAgent, isIngestPrincipal, isSystemPrincipal } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { sameRepository } from '../github/identifiers.ts';
 import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome } from '../outcome.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
 import { enqueueIn } from './enqueue.ts';
-import { draft, readAllEvents, recordContext, recordItemEvents } from './record.ts';
+import { intakeWriter, notReadyRefusal, recordNotReadyIn } from './not-ready.ts';
+import {
+  draft,
+  readAllEvents,
+  recordContext,
+  recordItemEvents,
+  type RecordContext,
+} from './record.ts';
 
 type ImportPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
@@ -23,6 +30,7 @@ export type ImportIssueInput = {
   readonly issue: IssueRef;
   readonly title: string;
   readonly pageId: string | null;
+  readonly doneWhen: readonly string[];
 };
 export type Imported = { readonly item: ItemState; readonly created: boolean };
 export type LabelRemovedInput = {
@@ -37,17 +45,27 @@ export function isImportPrincipal(actor: Principal): boolean {
   return isIngestPrincipal(actor) || isSystemPrincipal(actor);
 }
 
-async function mayWrite(
-  ports: ImportPorts,
+async function importNew(
   tx: StoreTransaction,
-  actor: Principal,
+  context: RecordContext,
   harness: Harness,
-  at: Date,
-): Promise<boolean> {
-  if (isImportPrincipal(actor)) return true;
-  if (actor.personId === null) return false;
-  const grants = await ports.grants.resolveIn(tx, actor.personId, at);
-  return allowed({ ...actor, grants: [...grants] }, 'write', harness, at);
+  input: ImportIssueInput,
+): Promise<KernelOutcome<Imported>> {
+  const { issue, title, pageId } = input;
+  if (input.doneWhen.length === 0) {
+    const subject = { via: 'import' as const, issue, pageId: null, title };
+    await recordNotReadyIn(tx, context, harness.id, subject);
+    return notReadyRefusal(subject);
+  }
+  const recorded = await enqueueIn(tx, context, harness, {
+    title,
+    pageId,
+    priority: 0,
+    due: null,
+    issue,
+  });
+  if (recorded.status !== 'accepted') return recorded;
+  return accepted({ item: recorded.value.item, created: true });
 }
 
 export async function importIssue(
@@ -64,7 +82,7 @@ export async function importIssue(
     await tx.lock(lockKeys.githubIssue(issue.githubId));
     const harness = await tx.harnesses.read.byId(harnessId);
     if (harness === null) return refused('harness_not_found', { harnessId });
-    if (!(await mayWrite(ports, tx, caller.actor, harness, at))) {
+    if (!(await intakeWriter(ports, tx, caller.actor, harness, at))) {
       return refused('not_permitted', { harnessId });
     }
     if (!sameRepository(issue.repo, harness.repository)) {
@@ -75,17 +93,7 @@ export async function importIssue(
       return refused('not_permitted', { harnessId, why: 'repository_mismatch' });
     }
     if (existing !== null) return accepted({ item: existing, created: false });
-    const context = recordContext(ports, caller, at);
-    const { title, pageId } = input;
-    const recorded = await enqueueIn(tx, context, harness, {
-      title,
-      pageId,
-      priority: 0,
-      due: null,
-      issue,
-    });
-    if (recorded.status !== 'accepted') return recorded;
-    return accepted({ item: recorded.value.item, created: true });
+    return importNew(tx, recordContext(ports, caller, at), harness, input);
   });
 }
 
