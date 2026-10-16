@@ -456,7 +456,7 @@ Every table declares its classification and offline eligibility. Every table has
 | run stop | `stopped_by_person`, `released`, `lease_expired`, `delegation_lapsed`, `gate_wait_expired` |
 | run failure | `retries_exhausted`, `provider_mismatch`, `start_failed`, `turn_limit` |
 | approve at (v0.2.0) | `zero_findings`, `no_real_or_plausible` |
-| run failure (v0.2.0) | adds `engine_refused`, `finding_weight_missing` |
+| run failure (v0.2.0) | adds `engine_refused`, `finding_weight_missing`, `checks_not_run_locally` |
 | run result | `submitted`, `premise_held`, `decided`, `review_posted`, `review_withheld`, `review_refused` |
 | breaker level | `open`, `holding`, `pausing` |
 | review verdict | `approve`, `request_changes` |
@@ -467,6 +467,7 @@ Every table declares its classification and offline eligibility. Every table has
 | capability word (v0.2.0) | adds `merge`, `fix` |
 | finding weight (v0.2.0) | `real`, `plausible`, `theoretical` |
 | untrusted source (v0.2.0) | `pr_diff`, `issue_body`, `review_comment`, `page_from_agent` |
+| submit result (v0.2.0) | `advanced`, `parked`, `checks_failed`, `awaiting_review` (a fix that passes its validators and waits at its stage for the next review round) |
 
 ### 8.4 Identity strings
 
@@ -493,7 +494,7 @@ Added in step 7: `run_not_found` (a run id the kernel does not hold, or one the 
 
 Added in step 10: `activation_required` (a write that would make a gated page active, which only activation or confirmation does), `dry_run_failed` (a persona whose dry run found a problem).
 
-Added in v0.2.0: ship rule `base_behind`, `auto_close_keyword`, `skip_ci_marker`, `required_check_never_ran`, `harness_frozen`, `protected_path_needs_person`, `tier_above_delegation`; elsewhere `template_has_no_package`, `no_harness_for_repo`, `template_change_not_allowed`, `repository_not_dispatchable`, `dispatch_list_unavailable`, `tier_not_delegable`, `checks_not_run_locally`, `done_when_missing`, `finding_weight_missing`.
+Added in v0.2.0: ship rule `base_behind`, `auto_close_keyword`, `skip_ci_marker`, `required_check_never_ran`, `harness_frozen`, `protected_path_needs_person`, `tier_above_delegation`; elsewhere `template_has_no_package`, `no_harness_for_repo`, `template_change_not_allowed`, `repository_not_dispatchable`, `dispatch_list_unavailable`, `tier_not_delegable`, `fix_size_cap`, `fix_keeps_purpose`, `checks_not_run_locally`, `done_when_missing`, `finding_weight_missing`.
 
 `protected_path_needs_person` and `tier_above_delegation` are refused only on a delegated Ship exit; the item stays parked for a person. `tier_not_delegable` refuses a merge grant naming `high`. `delegation_required` is also recorded when an agent claims or submits at a merge Ship stage without a merge delegation (S16-R2).
 
@@ -518,7 +519,7 @@ persona_activation_failed  persona_activated
 measurement_recorded  handed_to_person
 ```
 
-Added in v0.2.0: `review_verdict_recorded`, `shadow_verdict`, `shadow_lifted`, `freeze_changed`, `epic_enqueued`, `finding_refuted`, `silence_alarm`, `delegated_merge`, `delegated_exit_claimed`. Wake reasons gain `silence_alarm` (rank 3) and `delegated_merge` (rank 2).
+Added in v0.2.0: `review_verdict_recorded`, `shadow_verdict`, `shadow_lifted`, `freeze_changed`, `epic_enqueued`, `finding_refuted`, `silence_alarm`, `delegated_merge`, `delegated_exit_claimed`, `fix_claimed` (an item event: the delegation, the head the fix starts from and the pull request's declaration, FL-2), `fix_claim_set` (a harness event: `{ enabled }`, FL-1). The person command `set_fix_claim` switches a harness's fix claim (admin). Wake reasons gain `silence_alarm` (rank 3) and `delegated_merge` (rank 2).
 
 `delegated_merge` is recorded with `connector_succeeded` when a delegated exit merged, and carries the decision, the delegation, the grantor's id and email, the persona, the expiry and the tier (S16-R9). `delegation_granted` gains `maxTier` (null before contract 13.1.0). `delegated_exit_claimed` (`decisionId`) is the minute job's claim on a delegated decision, recorded under the item lock before the merge connector runs, so two overlapping runs never both take one decision to the connector; a claim with no outcome is left to a person's recovery after 15 minutes.
 
