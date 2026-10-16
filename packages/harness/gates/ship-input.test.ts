@@ -22,11 +22,15 @@ const head = 'a'.repeat(40);
 const older = 'b'.repeat(40);
 const base = '0'.repeat(40);
 const itemId = '00000000-0000-4000-8000-000000000301';
-const harness: { jdArea: string; repository: string; externalReviewerIdentities: string[] } = {
+const harness = {
   jdArea: '80-89',
   repository: 'unfoldingWord/uw-platform',
-  externalReviewerIdentities: [],
+  externalReviewerIdentities: [] as string[],
+  requiredChecks: [...defaultCiChecks],
+  frozen: false,
+  freezeAllow: [] as string[],
 };
+const patchId = '1'.repeat(64);
 
 const item: ItemState = {
   itemId,
@@ -101,7 +105,14 @@ const facts: PullRequestFacts = {
   files: { head, base, paths: ['apps/uw-app/board.tsx'] },
   declaration: declared('standard'),
   closes: [],
-  comparison: null,
+  comparison: {
+    head,
+    base,
+    behindBy: 0,
+    patchId,
+    commits: [{ sha: head, merge: false, skipCi: false, closes: [] }],
+    patchIds: { [head]: patchId },
+  },
   freshAt: at,
 };
 
@@ -191,17 +202,19 @@ describe('GH-5 the assembler builds the ship rule input from GitHub facts', () =
   });
 });
 
-describe('GH-5 only the CI jobs from GitHub Actions on the head count', () => {
-  it('ignores a check named like a CI job from another app', () => {
-    const foreign = check('test', { app: 'some-other-app' });
-    const others = ciJobSchema.options.filter((name) => name !== 'test').map((name) => check(name));
-    const names = withChecks(...others, foreign).map((entry) => entry.name);
-    expect(names).toHaveLength(5);
-    expect(names).not.toContain('test');
+describe('GH-5 SR-1 every check on the head counts, apart by app and name', () => {
+  it('keeps a check named like a CI job from another app apart from the job', () => {
+    const foreign = check('test', { checkId: 9100000077, app: 'some-other-app' });
+    const read = withChecks(check('test'), foreign).map((entry) => [entry.app, entry.name]);
+    expect(read).toEqual([
+      ['github-actions', 'test'],
+      ['some-other-app', 'test'],
+    ]);
   });
 
-  it('ignores checks that are not CI jobs and checks on another head', () => {
-    expect(withChecks(check('deploy-preview'), check('lint', { headSha: older }))).toEqual([]);
+  it('reads a check that is not a CI job and ignores checks on another head', () => {
+    const read = withChecks(check('deploy-preview'), check('lint', { headSha: older }));
+    expect(read.map((entry) => entry.name)).toEqual(['deploy-preview']);
   });
 
   it('lets the latest run of a job on the head decide', () => {
@@ -372,6 +385,82 @@ describe('PI-1 the provider of an external approval is external', () => {
     expect(shown.map((entry) => [entry.reviewer, entry.provider])).toEqual([
       ['uw-reviewer', 'anthropic'],
       ['uwreview', 'external'],
+    ]);
+  });
+});
+
+describe('SR-1 SR-2 the assembler reads the comparison, the closing references, the required checks and the freeze', () => {
+  const source = { facts, item, harness, approver, at, override: false };
+  const compared = facts.comparison ?? {
+    head,
+    base,
+    behindBy: 0,
+    patchId,
+    commits: [],
+    patchIds: {},
+  };
+
+  it('SR-1 reads behind_by and the skip-ci markers from the comparison at this head and base', () => {
+    const behind = { ...facts, comparison: { ...compared, behindBy: 2 } };
+    expect(assembleShipInput({ ...source, facts: behind }).pullRequest).toMatchObject({
+      behindBy: 2,
+      skipCi: false,
+    });
+    const elsewhere = { ...facts, comparison: { ...compared, base: older } };
+    expect(assembleShipInput({ ...source, facts: elsewhere }).pullRequest).toMatchObject({
+      behindBy: null,
+      skipCi: null,
+    });
+    const unread = { ...facts, comparison: { ...compared, commits: null } };
+    expect(assembleShipInput({ ...source, facts: unread }).pullRequest?.skipCi).toBeNull();
+  });
+
+  it('SR-1 joins the body and commit closing references once each, and wraps the item issue', () => {
+    const ref = { repo: 'unfoldingWord/uw-platform', number: 12 };
+    const commits = [
+      { sha: head, merge: false, skipCi: false, closes: [ref, { ...ref, number: 13 }] },
+    ];
+    const closing = { ...facts, closes: [ref], comparison: { ...compared, commits } };
+    const input = assembleShipInput({ ...source, facts: closing });
+    expect(input.closes).toEqual([ref, { ...ref, number: 13 }]);
+    expect(input.wraps).toBeNull();
+    const wrapping = { ...item, issue: { ...ref, githubId: 7 } };
+    expect(assembleShipInput({ ...source, item: wrapping }).wraps).toEqual(ref);
+    const unreadable = { ...closing, closes: null };
+    expect(assembleShipInput({ ...source, facts: unreadable }).closes).toBeNull();
+  });
+
+  it('SR-1 GD-2 takes the required checks from the harness and the freeze unless the item is allowed', () => {
+    expect(assembleShipInput(source).requiredChecks).toEqual(defaultCiChecks);
+    const frozen = { ...harness, frozen: true };
+    expect(assembleShipInput({ ...source, harness: frozen }).frozen).toBe(true);
+    const allowed = { ...frozen, freezeAllow: [itemId] };
+    expect(assembleShipInput({ ...source, harness: allowed }).frozen).toBe(false);
+  });
+});
+
+describe('SR-2 the assembler carries an approval across a merge from base', () => {
+  const source = { facts, item, harness, approver, at, override: false };
+
+  it('SR-2 counts an approval on a carried commit with the commit it was given on', () => {
+    const merged = 'd'.repeat(40);
+    const commits = [
+      { sha: head, merge: false, skipCi: false, closes: [] },
+      { sha: merged, merge: true, skipCi: false, closes: [] },
+    ];
+    const patchIds = { [head]: patchId, [merged]: patchId };
+    const comparison = { head: merged, base, behindBy: 0, patchId, commits, patchIds };
+    const moved: PullRequestFacts = {
+      ...facts,
+      head: merged,
+      comparison,
+      checks: facts.checks.map((one) => ({ ...one, headSha: merged })),
+      files: { head: merged, base, paths: ['apps/uw-app/board.tsx'] },
+    };
+    const input = assembleShipInput({ ...source, facts: moved });
+    expect(input.carries).toEqual([head]);
+    expect(input.approvals).toEqual([
+      { reviewer: 'uw-reviewer', commit: head, provider: 'anthropic' },
     ]);
   });
 });

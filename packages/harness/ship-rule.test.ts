@@ -10,7 +10,7 @@ import {
   type ShipRuleInput,
 } from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
-import { shipRule } from './ship-rule.ts';
+import { countedApprovals, shipRule } from './ship-rule.ts';
 
 type Held = { readonly role: Role; readonly area: JdArea | null };
 
@@ -96,8 +96,8 @@ describe('KN-11 each fact refuses with its reason', () => {
     const moved = { open: true, draft: false, head: 'def456', behindBy: 0, skipCi: false };
     expect(refusedWith({ ...green(), pullRequest: moved })).toEqual([
       'head_mismatch',
-      'checks_not_green',
       'no_reviewer_approval',
+      'required_check_never_ran',
     ]);
     expect(refusedWith({ ...green(), expectedHead: null })).toEqual(['head_mismatch']);
   });
@@ -109,7 +109,7 @@ describe('KN-11 each fact refuses with its reason (checks)', () => {
       { name, app: 'github-actions', headSha, conclusion },
     ];
     const missing = withChecks((name) => (name === 'lint' ? [] : run(name, 'abc123', 'success')));
-    expect(refusedWith({ ...green(), checks: missing })).toEqual(['checks_not_green']);
+    expect(refusedWith({ ...green(), checks: missing })).toEqual(['required_check_never_ran']);
     const red = withChecks((name) => run(name, 'abc123', name === 'test' ? 'failure' : 'success'));
     expect(refusedWith({ ...green(), checks: red })).toEqual(['checks_not_green']);
     const pending = withChecks((name) => run(name, 'abc123', name === 'build' ? null : 'success'));
@@ -117,7 +117,7 @@ describe('KN-11 each fact refuses with its reason (checks)', () => {
     const stale = withChecks((name) =>
       run(name, name === 'build' ? 'old999' : 'abc123', 'success'),
     );
-    expect(refusedWith({ ...green(), checks: stale })).toEqual(['checks_not_green']);
+    expect(refusedWith({ ...green(), checks: stale })).toEqual(['required_check_never_ran']);
   });
 
   it('ignores a seventh unrelated check', () => {
@@ -272,7 +272,11 @@ describe('KN-11 P11 every failing reason is reported, in section 8.5 order', () 
     const everything: ShipRuleInput = {
       ...green(),
       pullRequest: { open: true, draft: true, head: 'def456', behindBy: 0, skipCi: false },
-      checks: green().checks.map((check) => ({ ...check, conclusion: 'failure' as const })),
+      checks: green().checks.map((check) => ({
+        ...check,
+        headSha: 'def456',
+        conclusion: 'failure' as const,
+      })),
       approvals: [],
       riskTier: null,
       riskDomains: ['acl'],
@@ -302,7 +306,7 @@ describe('KN-12 P12 override bypasses no_reviewer_approval and nothing else', ()
     const bare = { ...green(), approvals: [] };
     expect(refusedWith(override({ ...bare, pullRequest: moved }))).toEqual([
       'head_mismatch',
-      'checks_not_green',
+      'required_check_never_ran',
     ]);
     expect(refusedWith(override({ ...bare, checks: red }))).toEqual(['checks_not_green']);
     expect(refusedWith(override({ ...bare, riskTier: null }))).toEqual(['risk_tier_undeclared']);
@@ -316,5 +320,118 @@ describe('KN-12 P12 override bypasses no_reviewer_approval and nothing else', ()
     expect(refusedWith(high)).toEqual(['reviewer_count_below_tier']);
     const same = [approval('r1', 'anthropic'), approval('r2', 'anthropic')];
     expect(refusedWith({ ...high, approvals: same })).toEqual(['reviewer_providers_not_distinct']);
+  });
+});
+
+function onPullRequest(over: Partial<NonNullable<ShipRuleInput['pullRequest']>>): ShipRuleInput {
+  const pullRequest = { open: true, draft: false, head: 'abc123', behindBy: 0, skipCi: false };
+  return { ...green(), pullRequest: { ...pullRequest, ...over } };
+}
+
+describe('SR-1 the ship rule refuses on the comparison and the closing references', () => {
+  it('SR-1 refuses base_behind when the head is behind its base or the distance is unknown', () => {
+    expect(refusedWith(onPullRequest({ behindBy: 3 }))).toEqual(['base_behind']);
+    expect(refusedWith(onPullRequest({ behindBy: null }))).toEqual(['base_behind']);
+  });
+
+  it('SR-1 refuses auto_close_keyword for a closing reference to an issue the item does not wrap', () => {
+    const wrapped = { repo: 'unfoldingWord/uw-platform', number: 12 };
+    const shouted = { repo: 'UNFOLDINGWORD/UW-PLATFORM', number: 12 };
+    expect(refusedWith({ ...green(), closes: [wrapped], wraps: wrapped })).toEqual([]);
+    expect(refusedWith({ ...green(), closes: [shouted], wraps: wrapped })).toEqual([]);
+    const other = { ...green(), closes: [{ ...wrapped, number: 13 }], wraps: wrapped };
+    expect(refusedWith(other)).toEqual(['auto_close_keyword']);
+    expect(refusedWith({ ...green(), closes: [wrapped], wraps: null })).toEqual([
+      'auto_close_keyword',
+    ]);
+    expect(refusedWith({ ...green(), closes: null, wraps: wrapped })).toEqual([
+      'auto_close_keyword',
+    ]);
+  });
+
+  it('SR-1 refuses skip_ci_marker on a marked commit or unknown commits', () => {
+    expect(refusedWith(onPullRequest({ skipCi: true }))).toEqual(['skip_ci_marker']);
+    expect(refusedWith(onPullRequest({ skipCi: null }))).toEqual(['skip_ci_marker']);
+  });
+
+  it('SR-1 keeps the v0.1.0 reasons alone when there is no usable pull request', () => {
+    const none = {
+      ...green(),
+      pullRequest: null,
+      closes: [{ repo: 'unfoldingWord/uw-platform', number: 9 }],
+    };
+    expect(refusedWith(none)).toEqual([
+      'pr_not_open',
+      'head_mismatch',
+      'checks_not_green',
+      'no_reviewer_approval',
+    ]);
+  });
+});
+
+describe('SR-1 GD-2 the ship rule refuses on required checks and the freeze', () => {
+  it('SR-1 refuses required_check_never_ran for a required check with no run on the head, and checks_not_green for one that failed', () => {
+    const missing = { ...green(), checks: green().checks.filter((check) => check.name !== 'lint') };
+    expect(refusedWith(missing)).toEqual(['required_check_never_ran']);
+    const failed = {
+      ...green(),
+      checks: green().checks.map((check) =>
+        check.name === 'lint' ? { ...check, conclusion: 'failure' as const } : check,
+      ),
+    };
+    expect(refusedWith(failed)).toEqual(['checks_not_green']);
+  });
+
+  it('SR-1 with no required checks needs every check that ran to pass and at least one to have run', () => {
+    const open = { ...green(), requiredChecks: [] };
+    expect(refusedWith(open)).toEqual([]);
+    expect(refusedWith({ ...open, checks: [] })).toEqual(['checks_not_green']);
+    const codecov = {
+      name: 'codecov',
+      app: 'codecov',
+      headSha: 'abc123',
+      conclusion: 'failure' as const,
+    };
+    expect(refusedWith({ ...open, checks: [...green().checks, codecov] })).toEqual([
+      'checks_not_green',
+    ]);
+  });
+
+  it('SR-1 counts a required check only from its own app', () => {
+    const impostor = green().checks.map((check) =>
+      check.name === 'lint' ? { ...check, app: 'someone-else' } : check,
+    );
+    expect(refusedWith({ ...green(), checks: impostor })).toEqual(['required_check_never_ran']);
+  });
+
+  it('GD-2 refuses harness_frozen while the harness is frozen for this item', () => {
+    expect(refusedWith({ ...green(), frozen: true })).toEqual(['harness_frozen']);
+  });
+});
+
+describe('SR-2 the ship rule counts a carried approval and a carried expected head', () => {
+  const merged = 'def456';
+  const atMerged = (carries: string[]): ShipRuleInput => ({
+    ...onPullRequest({ head: merged }),
+    carries,
+    checks: green().checks.map((check) => ({ ...check, headSha: merged })),
+  });
+
+  it('advances on a head carried from the approved, expected head', () => {
+    const carried = atMerged(['abc123']);
+    expect(shipRule(carried)).toEqual({ verdict: 'advance' });
+    expect(countedApprovals(carried)).toEqual([
+      { reviewer: 'reviewer-openrouter', commit: 'abc123', head: merged },
+    ]);
+  });
+
+  it('refuses head_mismatch and counts no approval when nothing is carried', () => {
+    const moved = atMerged([]);
+    expect(refusedWith(moved)).toEqual(['head_mismatch', 'no_reviewer_approval']);
+    expect(countedApprovals(moved)).toEqual([]);
+  });
+
+  it('counts no approval without a pull request', () => {
+    expect(countedApprovals({ ...green(), pullRequest: null })).toEqual([]);
   });
 });
