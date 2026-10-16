@@ -4,7 +4,7 @@ import { TURN_LIMIT } from '@uw/harness';
 import type { EngineConfig } from '../config.ts';
 import type { ExecResult } from '../sandbox/host.ts';
 import { MCP_HOST, MODEL_HOST, type ModelRoute } from '../sandbox/egress.ts';
-import { fixFinish, readDeclaredChecks } from '../sandbox/fix-checks.ts';
+import { fixFinish } from '../sandbox/fix-checks.ts';
 import { GITHUB_API_HOST } from '../sandbox/github-egress.ts';
 import {
   gatewayHeaders,
@@ -31,14 +31,7 @@ const BUILD_SCRIPT = [
   SCRIPT,
 ].join('\n');
 const BUILD_TOOLS = ['Read', 'Edit', 'Write', 'Glob', 'Grep', 'Bash(git *)', 'Bash(curl *)'];
-const FIX_SCRIPT = [
-  'set -e',
-  `git clone --no-tags "$UW_CLONE_URL" ${REPOSITORY_DIR}`,
-  `git -C ${REPOSITORY_DIR} checkout -B "$UW_BRANCH" "$UW_START"`,
-  readDeclaredChecks,
-  `cd ${REPOSITORY_DIR}`,
-  SCRIPT,
-].join('\n');
+const FIX_SCRIPT = [`cd ${REPOSITORY_DIR}`, SCRIPT].join('\n');
 const FIX_TOOLS = ['Read', 'Edit', 'Write', 'Glob', 'Grep', 'Bash(git *)'];
 
 type Script = { readonly script: string; readonly tools: readonly string[] };
