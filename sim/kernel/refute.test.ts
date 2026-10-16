@@ -1,6 +1,6 @@
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { afterAll, describe, expect, it } from 'vitest';
-import { simAgent, simCaller } from '../fixtures.ts';
+import { simAgent, simCaller, simPerson } from '../fixtures.ts';
 import { reviewWorld, type ReviewWorld } from '../review-runs.ts';
 import { itemEvents, reasonOf, value } from '../runs.ts';
 import { createWorld } from '../world.ts';
@@ -29,9 +29,41 @@ async function reviewed(work: (scene: ReviewWorld) => Promise<void>): Promise<vo
   }
 }
 
-function refute(scene: ReviewWorld, finding: number, actor = scene.admin) {
-  const input = { itemId: scene.itemId, runId: scene.runId, finding };
+function refute(scene: ReviewWorld, finding: number, actor = scene.admin, itemId = scene.itemId) {
+  const input = { itemId, runId: scene.runId, finding };
   return scene.world.kernel.gates.refuteFinding(simCaller(scene.world, actor), input);
+}
+
+async function marks(scene: ReviewWorld, itemId: string) {
+  return (await itemEvents(scene, itemId)).filter((event) => event.name === 'finding_refuted');
+}
+
+async function outsiderRefused(scene: ReviewWorld): Promise<void> {
+  const viewer = await simPerson(scene.world, 9, [
+    { role: 'viewer', scopeKind: 'jd_area', scopeArea: '80-89' },
+  ]);
+  const elsewhere = await simPerson(scene.world, 10, [
+    { role: 'editor', scopeKind: 'jd_area', scopeArea: '10-19' },
+  ]);
+  expect(reasonOf(await refute(scene, 1, viewer))).toBe('not_permitted');
+  expect(reasonOf(await refute(scene, 1, elsewhere))).toBe('not_permitted');
+  expect(await marks(scene, scene.itemId)).toEqual([]);
+}
+
+async function foreignRunRefused(scene: ReviewWorld): Promise<void> {
+  const { world, admin, harnessId } = scene;
+  const enqueued = await world.kernel.items.enqueue(simCaller(world, admin), {
+    harnessId,
+    title: 'Show the flow',
+    pageId: null,
+    priority: 2,
+    due: null,
+    delegationId: null,
+  });
+  const other = value(enqueued).itemId;
+  expect(reasonOf(await refute(scene, 1, admin, other))).toBe('malformed_command');
+  expect(await marks(scene, other)).toEqual([]);
+  expect(await marks(scene, scene.itemId)).toEqual([]);
 }
 
 async function recordedOnce(scene: ReviewWorld): Promise<void> {
@@ -80,6 +112,12 @@ describe('RV-2 a person marks a finding refuted', () => {
       expect(reasonOf(await refute(scene, 1, agent))).toBe('not_permitted');
       expect(reasonOf(await refute(scene, 7))).toBe('malformed_command');
     }));
+
+  it("RV-2 refuses a person without write on the item's area, a viewer or an editor elsewhere", () =>
+    reviewed(outsiderRefused));
+
+  it('RV-2 refuses a run that belongs to another item and records nothing on either', () =>
+    reviewed(foreignRunRefused));
 
   it('RV-2 shows the 30-day refute rate on the persona view and in the agent plane, counting a finding refuted twice once', () =>
     reviewed(rateShown));
