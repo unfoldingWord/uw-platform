@@ -19,7 +19,17 @@ function counting(tallies: Map<string, Counting>, harnessId: string, persona: st
   return held;
 }
 
-function count(tallies: Map<string, Counting>, event: HarnessEvent): void {
+function reviewedRuns(events: readonly HarnessEvent[]): ReadonlySet<string> {
+  const runs = new Set<string>();
+  for (const event of events) {
+    if (event.name !== 'run_completed') continue;
+    const { runId, review } = eventEvidenceSchemas.run_completed.parse(event.evidence);
+    if (review !== null) runs.add(runId);
+  }
+  return runs;
+}
+
+function count(tallies: Map<string, Counting>, event: HarnessEvent, runs: ReadonlySet<string>) {
   if (event.name === 'run_completed') {
     const { review } = eventEvidenceSchemas.run_completed.parse(event.evidence);
     if (review !== null) {
@@ -27,14 +37,15 @@ function count(tallies: Map<string, Counting>, event: HarnessEvent): void {
     }
   }
   if (event.name === 'finding_refuted') {
-    const { persona } = eventEvidenceSchemas.finding_refuted.parse(event.evidence);
-    counting(tallies, event.harnessId, persona).refuted += 1;
+    const { persona, runId } = eventEvidenceSchemas.finding_refuted.parse(event.evidence);
+    if (runs.has(runId)) counting(tallies, event.harnessId, persona).refuted += 1;
   }
 }
 
 export function refuteTallies(events: readonly HarnessEvent[]): readonly RefuteTally[] {
   const tallies = new Map<string, Counting>();
-  for (const event of events) count(tallies, event);
+  const runs = reviewedRuns(events);
+  for (const event of events) count(tallies, event, runs);
   return [...tallies.values()]
     .filter((tally) => tally.findings > 0 || tally.refuted > 0)
     .sort(
