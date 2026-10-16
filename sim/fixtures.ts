@@ -9,6 +9,7 @@ import {
   type JdArea,
   type Principal,
   type RequiredCheck,
+  type RiskTier,
   type Role,
   type Scope,
   type Stage,
@@ -126,6 +127,7 @@ type SimHarnessOptions = {
   readonly externalReviewerIdentities?: readonly string[];
   readonly requiredChecks?: readonly RequiredCheck[];
   readonly dispatchable?: boolean;
+  readonly protectedPaths?: readonly string[];
 };
 
 export function platformPageIdOf(jdArea: JdArea): string {
@@ -146,18 +148,9 @@ function defaultRepository(template: Template, key: string): string | null {
   return key === template.key ? 'unfoldingWord/uw-platform' : `unfoldingWord/${key}`;
 }
 
-export async function createSimHarness(
-  world: World,
-  template: Template,
-  options: SimHarnessOptions = {},
-): Promise<{
-  readonly harness: Harness;
-  readonly stages: readonly Stage[];
-  readonly admin: Principal;
-}> {
-  const admin = await simIan(world);
+function activationOf(world: World, template: Template, options: SimHarnessOptions) {
   const harnessKey = options.key ?? template.key;
-  const outcome = await world.kernel.stages.activate(simCaller(world, admin), {
+  return {
     harnessId: world.adapters.ids.next(),
     harnessKey,
     jdArea: options.jdArea ?? '80-89',
@@ -169,7 +162,24 @@ export async function createSimHarness(
     shadow: options.shadow ?? false,
     externalReviewerIdentities: options.externalReviewerIdentities ?? [],
     requiredChecks: options.requiredChecks ?? defaultCiChecks,
-  });
+    protectedPaths: options.protectedPaths ?? [],
+  };
+}
+
+export async function createSimHarness(
+  world: World,
+  template: Template,
+  options: SimHarnessOptions = {},
+): Promise<{
+  readonly harness: Harness;
+  readonly stages: readonly Stage[];
+  readonly admin: Principal;
+}> {
+  const admin = await simIan(world);
+  const outcome = await world.kernel.stages.activate(
+    simCaller(world, admin),
+    activationOf(world, template, options),
+  );
   if (outcome.status !== 'accepted') {
     throw new Error(`activating ${template.key} was refused: ${outcome.reason}`);
   }
@@ -290,12 +300,16 @@ type GrantInput = {
   readonly harnessId: string;
   readonly persona: string;
   readonly capability: CapabilityWord;
+  readonly maxTier?: RiskTier | null;
   readonly expiresAt: Date | null;
   readonly supersedes: string | null;
 };
 
 export async function simDelegate(world: World, actor: Principal, input: GrantInput) {
-  const granted = await world.kernel.delegations.grant(simCaller(world, actor), input);
+  const granted = await world.kernel.delegations.grant(simCaller(world, actor), {
+    ...input,
+    maxTier: input.maxTier ?? null,
+  });
   if (granted.status !== 'accepted') return granted;
   const projected = {
     identity: input.persona,

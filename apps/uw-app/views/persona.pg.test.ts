@@ -192,6 +192,7 @@ async function workingPersona(db: Database) {
   const itemId = await enqueued(db, harnessId, 'Work for the builder');
   const delegation = accepted(
     await kernel.delegations.grant(callerOf(admin), {
+      maxTier: null,
       harnessId,
       persona: 'agent:builder',
       capability: 'build',

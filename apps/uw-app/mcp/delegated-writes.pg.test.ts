@@ -115,7 +115,9 @@ async function delegate(
 ): Promise<string> {
   const person = await personOn(r.db, owner.id, owner.email, new Date());
   const input = { harnessId, persona: 'agent:iterate', expiresAt: null, supersedes: null };
-  return value(await r.kernel.delegations.grant(caller(person), { ...input, capability })).id;
+  return value(
+    await r.kernel.delegations.grant(caller(person), { ...input, capability, maxTier: null }),
+  ).id;
 }
 
 async function login(

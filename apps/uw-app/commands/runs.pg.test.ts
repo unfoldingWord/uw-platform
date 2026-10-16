@@ -55,6 +55,7 @@ async function hostedRun(db: Database): Promise<Hosted> {
   const itemId = await enqueued(db, harnessId, 'Run the board');
   const delegation = accepted(
     await kernel.delegations.grant(as, {
+      maxTier: null,
       harnessId,
       persona: 'agent:builder',
       capability: 'build',

@@ -105,6 +105,7 @@ async function hire(scene: Hiring, wanted: Hire): Promise<Hosted> {
     harnessId: scene.harnessId,
     persona: identity,
     capability: wanted.capability,
+    maxTier: null,
     expiresAt: null,
     supersedes: null,
   });

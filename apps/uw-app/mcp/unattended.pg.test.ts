@@ -106,6 +106,7 @@ async function openScene(r: Rig): Promise<Scene> {
   const enqueued = await r.kernel.items.enqueue(caller(r.ian), { ...input, delegationId: null });
   const grant = { harnessId, persona: 'agent:iterate', capability: 'iterate' as const };
   const delegation = await r.kernel.delegations.grant(caller(r.owner), {
+    maxTier: null,
     ...grant,
     expiresAt: null,
     supersedes: null,

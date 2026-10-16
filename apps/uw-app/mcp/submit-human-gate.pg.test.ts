@@ -60,7 +60,12 @@ async function gatedHarness(db: Database, kernel: Kernel, ian: Principal): Promi
 async function actorsOf(db: Database, kernel: Kernel, owner: Principal, harnessId: string) {
   const input = { harnessId, persona: 'agent:builder', capability: 'build' as const };
   const delegation = value(
-    await kernel.delegations.grant(caller(owner), { ...input, expiresAt: null, supersedes: null }),
+    await kernel.delegations.grant(caller(owner), {
+      ...input,
+      maxTier: null,
+      expiresAt: null,
+      supersedes: null,
+    }),
   );
   await seedActivePersona(db, { identity: 'agent:builder', harnessId });
   const delegated = principalSchema.parse({

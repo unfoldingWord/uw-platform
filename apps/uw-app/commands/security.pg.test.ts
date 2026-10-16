@@ -175,6 +175,7 @@ async function foreignDelegation(db: Database): Promise<void> {
   const grant = { persona: 'agent:iterate', capability: 'iterate' as const };
   const delegation = accepted(
     await kernel.delegations.grant(callerOf(await ian(db)), {
+      maxTier: null,
       ...grant,
       harnessId: scene.otherHarnessId,
       expiresAt: null,
