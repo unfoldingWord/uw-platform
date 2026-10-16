@@ -1,6 +1,8 @@
 import {
   connectorSchema,
+  delegatedMergeSchema,
   eventEvidenceSchemas,
+  type DelegatedMerge,
   stageKeySchema,
   type Harness,
   type HarnessEvent,
@@ -36,6 +38,7 @@ type DecidedRoute = {
   readonly connector: EffectConnector;
   readonly next: string | null | undefined;
   readonly head: string | null;
+  readonly delegated: DelegatedMerge | null;
 };
 type Decided = ReadonlyMap<string, DecidedRoute>;
 
@@ -45,7 +48,7 @@ type Scan = {
   readonly context: RecordContext;
 };
 
-const CONNECTOR_TIMEOUT_MS = 15 * 60_000;
+export const CONNECTOR_TIMEOUT_MS = 15 * 60_000;
 
 const lost: ConnectorOutcome = { outcome: 'refused', reason: 'connector_lost' };
 
@@ -112,9 +115,14 @@ function stuckAt(
     decisionId,
     overrideReason: overrideReasonOf(approval),
     ...decidedOn(events, index),
-    evaluatedHead: recorded?.head ?? null,
-    delegated: null,
+    ...decidedAt(recorded),
   };
+}
+
+function decidedAt(
+  recorded: DecidedRoute | undefined,
+): Pick<ExitInput, 'evaluatedHead' | 'delegated'> {
+  return { evaluatedHead: recorded?.head ?? null, delegated: recorded?.delegated ?? null };
 }
 
 const recordedNext = stageKeySchema.nullable();
@@ -130,13 +138,25 @@ function headOf(row: GateDecisionRow): string | null {
   return typeof head === 'string' ? head : null;
 }
 
+function delegatedOf(row: GateDecisionRow): DelegatedMerge | null {
+  if (row.delegationId === null) return null;
+  const parsed = delegatedMergeSchema.safeParse(row.evidence['delegation']);
+  return parsed.success ? parsed.data : null;
+}
+
 function decidedConnectors(rows: readonly GateDecisionRow[]): Decided {
   return new Map(
     rows.flatMap((row) => {
       const parsed = connectorSchema.safeParse(row.evidence['connector']);
       const connector = parsed.success ? effectOf(parsed.data) : null;
       if (connector === null) return [];
-      return [[row.id, { connector, next: nextOf(row), head: headOf(row) }] as const];
+      const route = {
+        connector,
+        next: nextOf(row),
+        head: headOf(row),
+        delegated: delegatedOf(row),
+      };
+      return [[row.id, route] as const];
     }),
   );
 }

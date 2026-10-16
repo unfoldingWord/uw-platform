@@ -3,6 +3,7 @@ import type { Caller } from '../caller.ts';
 import type { KernelOutcome } from '../outcome.ts';
 import { decide, type Decided, type DecideInput, type GatePorts } from './decide.ts';
 import { decideGates, type BatchDecided, type BatchInput } from './decide-batch.ts';
+import { exitDelegated, type DelegatedExits } from './delegated-exits.ts';
 import { resumeRunsWhere } from '../runs/resume.ts';
 import type { RunRow, StoreTransaction } from '../ports.ts';
 import { recoverConnectors, type Recovered } from './recover.ts';
@@ -27,6 +28,10 @@ export type GateCommands = {
     input: ShadowInput,
   ): Promise<KernelOutcome<readonly ItemState[]>>;
   refuteFinding(caller: Caller, input: RefuteInput): Promise<KernelOutcome<Refuted>>;
+  exitDelegated(
+    caller: Caller,
+    input: { readonly limit: number },
+  ): Promise<KernelOutcome<DelegatedExits>>;
 };
 
 function gateWaiting(itemId: string) {
@@ -69,5 +74,6 @@ export function createGateCommands(ports: GatePorts): GateCommands {
     recoverConnectors: (caller, input) => recoverConnectors(ports, caller, input),
     recordShadowVerdicts: (caller, input) => recordShadowVerdicts(ports, caller, input),
     refuteFinding: (caller, input) => refuteFinding(ports, caller, input),
+    exitDelegated: (caller, input) => exitDelegated(ports, caller, input),
   };
 }

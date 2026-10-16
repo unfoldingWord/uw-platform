@@ -127,7 +127,9 @@ async function recordIn(
       ? []
       : exitDrafts({ kind: 'forward', from: advancing.input.stage, to: advancing.input.next });
   const outcomes = open.map((entry) => outcomeDraft(entry.input.connector, entry.outcome));
-  await recordItemEvents(tx, context, itemId, [...outcomes, ...exit]);
+  const merged = advancing?.input.delegated ?? null;
+  const told = merged === null ? [] : [draft('delegated_merge', { ...merged })];
+  await recordItemEvents(tx, context, itemId, [...outcomes, ...told, ...exit]);
   return { recorded: open, advanced: advancing !== undefined, refusal: null };
 }
 
