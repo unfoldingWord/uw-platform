@@ -11,7 +11,7 @@ const minute = 60_000;
 export const scenario = defineScenario({
   id: 'OB-1',
   title:
-    'an item waiting in Check with no review step turns the harness amber at 45 minutes and red at 90; the red alarm wakes the area admins once per cooldown with a link to its drill-through',
+    'an item waiting in Check with no review step turns the harness amber at 45 minutes and red at 90; the red alarm wakes the area admins once per cooldown (not at exactly 10 minutes, again at 11) with a link to its drill-through',
   run: async (world) => {
     const { harness, admin } = await createSimHarness(world, software);
     world.adapters.notifier.subscribe(personOf(admin));
@@ -35,7 +35,7 @@ export const scenario = defineScenario({
     const system = simCaller(world, simSystem());
     const levels: string[] = [];
     const sounded: number[] = [];
-    for (const minutes of [46, 45, 1, 10]) {
+    for (const minutes of [46, 45, 1, 9, 1]) {
       world.adapters.clock.advance(minutes * minute);
       const silences = await world.kernel.views.silence();
       levels.push(
@@ -45,8 +45,8 @@ export const scenario = defineScenario({
         value(await world.kernel.alarms.soundSilence(system, { limit: 10 })).sounded.length,
       );
     }
-    assert.deepEqual(levels, ['amber', 'red', 'red', 'red']);
-    assert.deepEqual(sounded, [0, 1, 0, 1]);
+    assert.deepEqual(levels, ['amber', 'red', 'red', 'red', 'red']);
+    assert.deepEqual(sounded, [0, 1, 0, 0, 1]);
     const wakes = world.adapters.notifier
       .delivered()
       .filter((wake) => wake.reason === 'silence_alarm')

@@ -31,18 +31,31 @@ function waited(ms: number) {
   return [{ item, enteredAt: new Date(at.getTime() - ms) }];
 }
 
+function stepAgo(minutes: number): Date {
+  return new Date(at.getTime() - minutes * minute);
+}
+
 describe('OB-1 the silence alarm level', () => {
-  it('OB-1 is ok with nothing waiting, amber at 45 minutes and red at 90 with no review step', () => {
+  it('OB-1 is ok with nothing waiting, amber from 45 minutes and red from 90 with no review step', () => {
     expect(silenceLevel([], null, at)).toBe('ok');
-    expect(silenceLevel(waited(SILENCE_AMBER_MS - minute), null, at)).toBe('ok');
-    expect(silenceLevel(waited(SILENCE_AMBER_MS), null, at)).toBe('amber');
-    expect(silenceLevel(waited(SILENCE_RED_MS), null, at)).toBe('red');
+    expect(silenceLevel(waited(44 * minute), null, at)).toBe('ok');
+    expect(silenceLevel(waited(45 * minute), null, at)).toBe('amber');
+    expect(silenceLevel(waited(89 * minute), null, at)).toBe('amber');
+    expect(silenceLevel(waited(90 * minute), null, at)).toBe('red');
   });
 
-  it('OB-1 a review step in the window keeps it from going red, or from amber when recent', () => {
-    const tenAgo = new Date(at.getTime() - 10 * minute);
-    const sixtyAgo = new Date(at.getTime() - 60 * minute);
-    expect(silenceLevel(waited(SILENCE_RED_MS + minute), tenAgo, at)).toBe('ok');
-    expect(silenceLevel(waited(SILENCE_RED_MS + minute), sixtyAgo, at)).toBe('amber');
+  it('OB-1 the constants are the PRD thresholds', () => {
+    expect([SILENCE_AMBER_MS, SILENCE_RED_MS]).toEqual([45 * minute, 90 * minute]);
+  });
+
+  it('OB-1 a review step in the last 90 minutes keeps a long wait amber, one 90 minutes ago does not', () => {
+    expect(silenceLevel(waited(90 * minute), stepAgo(89), at)).toBe('amber');
+    expect(silenceLevel(waited(90 * minute), stepAgo(90), at)).toBe('red');
+  });
+
+  it('OB-1 a review step in the last 45 minutes keeps it ok', () => {
+    expect(silenceLevel(waited(91 * minute), stepAgo(10), at)).toBe('ok');
+    expect(silenceLevel(waited(91 * minute), stepAgo(44), at)).toBe('ok');
+    expect(silenceLevel(waited(91 * minute), stepAgo(45), at)).toBe('amber');
   });
 });

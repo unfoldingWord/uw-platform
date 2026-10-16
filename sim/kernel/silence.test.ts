@@ -1,9 +1,10 @@
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { afterAll, describe, expect, it } from 'vitest';
 import { simAdvance, simCaller, simSystem } from '../fixtures.ts';
-import { reviewWorld, type ReviewWorld } from '../review-runs.ts';
-import { beatOf, stepOn, value } from '../runs.ts';
-import { createWorld } from '../world.ts';
+import { reviewHead, reviewWorld, type ReviewWorld } from '../review-runs.ts';
+import { beatOf, itemOf, stepOn, value } from '../runs.ts';
+import { shipPullRequest } from '../ship-fixtures.ts';
+import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
 
@@ -55,6 +56,66 @@ async function withScene(
   }
 }
 
+const approve = {
+  verdict: 'approve' as const,
+  findings: [{ text: 'The board change reads well.', weight: 'theoretical' as const }],
+  resolvedProvider: 'deepinfra',
+  resolvedModel: 'z-ai/glm-5.3',
+};
+
+async function inReviewWorld(work: (scene: ReviewWorld) => Promise<void>): Promise<void> {
+  const world: World = await createWorld();
+  try {
+    await work(await reviewWorld(world));
+  } finally {
+    await world.close();
+  }
+}
+
+async function reviewed(scene: ReviewWorld): Promise<void> {
+  value(await scene.world.kernel.runs.postReview(scene.host, scene.runId, approve));
+  expect((await itemOf(scene.world, scene.itemId))?.holder).toBeNull();
+}
+
+async function sounded(scene: ReviewWorld): Promise<readonly string[]> {
+  const system = simCaller(scene.world, simSystem());
+  return value(await scene.world.kernel.alarms.soundSilence(system, { limit: 10 })).sounded;
+}
+
+async function reviewedNotWaiting(scene: ReviewWorld): Promise<void> {
+  await reviewed(scene);
+  scene.world.adapters.clock.advance(91 * minute);
+  expect(await waitingIn(scene)).toEqual([]);
+  expect(await levelOf(scene)).toBe('ok');
+  expect(await sounded(scene)).toEqual([]);
+}
+
+async function backToCheck(scene: ReviewWorld): Promise<void> {
+  const { world, harnessId, admin, itemId } = scene;
+  const caller = simCaller(world, admin);
+  const change = { feeds: ['build'] };
+  value(await world.kernel.stages.updateStage(caller, { harnessId, stageKey: 'check', change }));
+  value(await world.kernel.items.claim(caller, { itemId, delegationId: null }));
+  value(
+    await world.kernel.items.submit(caller, { itemId, to: 'build', evidence: {}, change: null }),
+  );
+  world.adapters.clock.advance(minute);
+  value(await world.kernel.items.claim(caller, { itemId, delegationId: null }));
+  const pull = { pullRequest: shipPullRequest, head: reviewHead };
+  value(await world.kernel.items.submit(caller, { itemId, to: null, evidence: {}, change: pull }));
+}
+
+async function reviewedBeforeReentry(scene: ReviewWorld): Promise<void> {
+  const beside = await waitingBeside(scene);
+  await reviewed(scene);
+  await backToCheck(scene);
+  expect((await itemOf(scene.world, scene.itemId))?.stageKey).toBe('check');
+  scene.world.adapters.clock.advance(91 * minute);
+  expect([...(await waitingIn(scene))].sort()).toEqual([beside, scene.itemId].sort());
+  expect(await levelOf(scene)).toBe('red');
+  expect(await sounded(scene)).toEqual([scene.harnessId]);
+}
+
 describe('OB-1 only review steps quiet the alarm', () => {
   it('OB-1 a Reviewer stepping every ten minutes keeps a waiting item from going red, and silence turns it red', () =>
     withScene({}, async (scene) => {
@@ -80,12 +141,9 @@ describe('OB-1 only review steps quiet the alarm', () => {
       expect(await levelOf(scene)).toBe('red');
     }));
 
-  it('OB-1 an item reviewed since it entered Check is not waiting', () =>
-    withScene({}, async (scene, waiting) => {
-      expect(await waitingIn(scene)).toEqual([waiting]);
-      const system = simCaller(scene.world, simSystem());
-      expect(
-        value(await scene.world.kernel.alarms.soundSilence(system, { limit: 10 })).sounded,
-      ).toEqual([]);
-    }));
+  it('OB-1 an item reviewed since it entered Check is not waiting, and nothing sounds', () =>
+    inReviewWorld(reviewedNotWaiting));
+
+  it('OB-1 a review completed before the item came back to Check does not quiet it', () =>
+    inReviewWorld(reviewedBeforeReentry));
 });
