@@ -11,6 +11,8 @@ import type {
 import type { Delegation, RunRow } from '../ports.ts';
 import type { RefuteTally } from './refutes.ts';
 
+export type KeyedRefuteTally = RefuteTally & { readonly harnessKey: string };
+
 export type CostTotals = {
   readonly meteredMinor: number;
   readonly computeMinor: number;
@@ -125,7 +127,7 @@ export type PlaneTotals = {
   readonly agentWrites: { readonly count: number; readonly capped: boolean };
   readonly staleLearnings: { readonly count: number; readonly capped: boolean };
   readonly reviewerRefutes: {
-    readonly tallies: readonly RefuteTally[];
+    readonly tallies: readonly KeyedRefuteTally[];
     readonly capped: boolean;
   };
 };

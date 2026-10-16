@@ -27,6 +27,7 @@ const at = new Date('2026-10-15T12:00:00.000Z');
 const clock: Clock = { now: () => at };
 const HOUR = 3_600_000;
 const HARNESS = '00000000-0000-4000-8000-000000005301';
+const OTHER = '00000000-0000-4000-8000-000000005399';
 const ITEM = '00000000-0000-4000-8000-000000005302';
 const EDITOR = { id: '00000000-0000-4000-8000-000000005311', email: 'plane@unfoldingword.org' };
 const PLATFORM = ['commit', 'database', 'queue', 'live_hub'];
@@ -112,8 +113,27 @@ const cappedTotals: PlaneTotals = {
   staleLearnings: { count: PLANE_LIMIT, capped: true },
   reviewerRefutes: {
     tallies: [
-      { harnessId: HARNESS, persona: 'agent:reviewer', findings: 8, refuted: 2 },
-      { harnessId: HARNESS, persona: 'agent:reviewer-codex', findings: 3, refuted: 0 },
+      {
+        harnessId: HARNESS,
+        harnessKey: 'software',
+        persona: 'agent:reviewer',
+        findings: 8,
+        refuted: 2,
+      },
+      {
+        harnessId: HARNESS,
+        harnessKey: 'software',
+        persona: 'agent:reviewer-codex',
+        findings: 3,
+        refuted: 0,
+      },
+      {
+        harnessId: OTHER,
+        harnessKey: 'courses',
+        persona: 'agent:reviewer',
+        findings: 4,
+        refuted: 1,
+      },
     ],
     capped: true,
   },
@@ -162,7 +182,7 @@ async function statusesFollowTotals(db: Database): Promise<void> {
     [
       'reviewer_refutes',
       'amber',
-      'Refuted findings in 30 days; agent:reviewer 2 of 8 refuted, agent:reviewer-codex 0 of 3 refuted',
+      'Refuted findings in 30 days; agent:reviewer on software 2 of 8 refuted, agent:reviewer-codex on software 0 of 3 refuted, agent:reviewer on courses 1 of 4 refuted',
     ],
   ]);
 }

@@ -60,7 +60,13 @@ async function rateShown(scene: ReviewWorld): Promise<void> {
   expect(dashboard.refutes).toEqual({ findings: 2, refuted: 1, capped: false });
   const totals = await scene.world.kernel.views.planeTotals();
   expect(totals.reviewerRefutes.tallies).toEqual([
-    { harnessId: scene.harnessId, persona: 'agent:reviewer', findings: 2, refuted: 1 },
+    {
+      harnessId: scene.harnessId,
+      harnessKey: 'software',
+      persona: 'agent:reviewer',
+      findings: 2,
+      refuted: 1,
+    },
   ]);
 }
 

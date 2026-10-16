@@ -99,7 +99,14 @@ async function refuteTotals(
     agentsOnly: false,
     limit: PLANE_LIMIT,
   });
-  return { tallies: refuteTallies(events), capped: events.length === PLANE_LIMIT };
+  const keys = new Map<string, string>();
+  const tallies = [];
+  for (const tally of refuteTallies(events)) {
+    const key = keys.get(tally.harnessId) ?? (await tx.harnesses.read.byId(tally.harnessId))?.key;
+    keys.set(tally.harnessId, key ?? tally.harnessId);
+    tallies.push({ ...tally, harnessKey: key ?? tally.harnessId });
+  }
+  return { tallies, capped: events.length === PLANE_LIMIT };
 }
 
 export async function planeTotals(tx: StoreTransaction, at: Date): Promise<PlaneTotals> {
