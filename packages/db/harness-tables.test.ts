@@ -53,6 +53,7 @@ const expectedColumns: Record<string, string[]> = {
     'freeze_allow',
     'required_checks',
     'protected_paths',
+    'fix_claim',
   ],
   harness_stages: [
     'id',
