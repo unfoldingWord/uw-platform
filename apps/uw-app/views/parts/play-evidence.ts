@@ -107,6 +107,11 @@ function comment(fields: Fields): Shown {
   return facts(...shown, { label: 'Length', value: 'Cut at 10,000 characters' });
 }
 
+function delegatedExitClaimed(fields: Fields): Shown {
+  const decision = shortId(text(fields, 'decisionId'));
+  return { facts: [], list: [`The minute job took the delegated exit for decision ${decision}`] };
+}
+
 function delegatedMerge(fields: Fields): Shown {
   const by = text(fields, 'email') ?? 'a person no longer named';
   return {
@@ -199,6 +204,7 @@ const describers: ReadonlyMap<string, Describe> = new Map<string, Describe>([
   ],
   ['comment_recorded', comment],
   ['delegated_merge', delegatedMerge],
+  ['delegated_exit_claimed', delegatedExitClaimed],
 ]);
 
 export function evidenceOf(event: HarnessEvent): Shown {

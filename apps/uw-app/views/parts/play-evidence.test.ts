@@ -32,4 +32,23 @@ describe('MD-6 the play-by-play shows a delegated merge', () => {
     ]);
     expect(shown.facts).toContainEqual({ label: 'Persona', value: 'agent:shipper' });
   });
+
+  it('MD-6 says the minute job took the delegated exit for the decision', () => {
+    const event = eventSchema.parse({
+      eventId: '00000000-0000-4000-8000-0000000000f1',
+      harnessId: '00000000-0000-4000-8000-0000000000e2',
+      itemId: '00000000-0000-4000-8000-0000000000e3',
+      name: 'delegated_exit_claimed',
+      position: 6,
+      at: '2026-10-15T09:00:30.000Z',
+      actor: 'agent:system',
+      evidence: { decisionId: 'abcdef01-0000-4000-8000-0000000000e4' },
+      traceId: '00000000-0000-4000-8000-0000000000e6',
+      requestId: null,
+    });
+    expect(evidenceOf(event)).toEqual({
+      facts: [],
+      list: ['The minute job took the delegated exit for decision abcdef01'],
+    });
+  });
 });
