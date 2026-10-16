@@ -46,6 +46,13 @@ async function belowTheirAction(db: Database): Promise<void> {
     expect(sent.status).toBe(403);
     expect(sent.body).toMatchObject({ status: 'error', reason: 'not_permitted' });
   }
+  const wired = await command(db, scene.editor, scene.harnessId, 'refute_finding', {
+    requestId: randomUUID(),
+    itemId: randomUUID(),
+    runId: randomUUID(),
+    finding: 0,
+  });
+  expect(wired.body).toMatchObject({ status: 'error', reason: 'item_not_found' });
 }
 
 async function batchMerges(db: Database): Promise<void> {
@@ -83,7 +90,7 @@ describe.skipIf(!testServer)('the ship and gate commands on the command API', ()
   it('GD-1 decide_gates refuses an agent principal at the command API and records nothing', () =>
     withAppDatabase(agentBatchRefused));
 
-  it('GD-1 GD-2 RV-2 decide_gates and set_freeze need admin and refute_finding needs write on the area', () =>
+  it('GD-1 GD-2 RV-2 decide_gates and set_freeze need admin and refute_finding needs write on the area, past which its wired handler answers', () =>
     withAppDatabase(belowTheirAction));
 
   it('GD-1 decide_gates approves a gate at Ship on the command API and merges it', () =>
