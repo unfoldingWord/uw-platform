@@ -4,6 +4,8 @@ import type {
   EvidenceLabel,
   Harness,
   HarnessEvent,
+  IntakeVia,
+  IssueRef,
   ItemState,
   RunShape,
   Stage,
@@ -48,7 +50,34 @@ export type BoardColumn = {
   readonly cards: readonly BoardCard[];
   readonly next: string | null;
 };
-export type BoardView = { readonly harness: Harness; readonly columns: readonly BoardColumn[] };
+export type EpicNode = {
+  readonly itemId: string;
+  readonly title: string;
+  readonly issue: IssueRef | null;
+  readonly stageKey: string;
+  readonly position: number;
+  readonly blockedBy: readonly string[];
+  readonly waiting: boolean;
+  readonly passedShip: boolean;
+};
+export type EpicGroup = {
+  readonly epic: IssueRef;
+  readonly title: string;
+  readonly nodes: readonly EpicNode[];
+};
+export type NotReady = {
+  readonly via: IntakeVia;
+  readonly issue: IssueRef | null;
+  readonly pageId: string | null;
+  readonly title: string;
+  readonly at: Date;
+};
+export type BoardView = {
+  readonly harness: Harness;
+  readonly columns: readonly BoardColumn[];
+  readonly epics: readonly EpicGroup[];
+  readonly notReady: readonly NotReady[];
+};
 export type BoardInput = {
   readonly harnessId: string;
   readonly stageKey: string | null;
