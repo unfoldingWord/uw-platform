@@ -54,6 +54,7 @@ const expectedColumns: Record<string, string[]> = {
     'required_checks',
     'protected_paths',
     'fix_claim',
+    'bot_authors',
   ],
   harness_stages: [
     'id',
@@ -98,6 +99,7 @@ const expectedColumns: Record<string, string[]> = {
     'issue_github_id',
     'epic',
     'blocked_by',
+    'held_since',
   ],
   harness_runs: [
     'id',
