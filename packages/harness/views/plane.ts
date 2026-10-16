@@ -2,6 +2,7 @@ import type { HarnessEvent, RunShape } from '@uw/contracts';
 import { formatDate } from '@uw/core/dates';
 import { platformIdentity } from '../access.ts';
 import type { RunCount, StoreTransaction } from '../ports.ts';
+import { refuteNames, refuteSince, refuteTallies } from './refutes.ts';
 import { PLANE_LIMIT, type PlaneTotals } from './types.ts';
 
 const HOUR_MS = 3_600_000;
@@ -88,6 +89,19 @@ async function eventTotals(tx: StoreTransaction, at: Date) {
   };
 }
 
+async function refuteTotals(
+  tx: StoreTransaction,
+  at: Date,
+): Promise<PlaneTotals['reviewerRefutes']> {
+  const events = await tx.harnessEvents.read.recent({
+    since: refuteSince(at),
+    names: refuteNames,
+    agentsOnly: false,
+    limit: PLANE_LIMIT,
+  });
+  return { tallies: refuteTallies(events), capped: events.length === PLANE_LIMIT };
+}
+
 export async function planeTotals(tx: StoreTransaction, at: Date): Promise<PlaneTotals> {
   const month = monthStart(at);
   const today = dayStart(at);
@@ -101,5 +115,6 @@ export async function planeTotals(tx: StoreTransaction, at: Date): Promise<Plane
     liveDelegations: await liveDelegations(tx, at),
     ...(await eventTotals(tx, at)),
     staleLearnings: { count: stale.length, capped: stale.length === PLANE_LIMIT },
+    reviewerRefutes: await refuteTotals(tx, at),
   };
 }

@@ -15,6 +15,7 @@ export const AGENT_PLANE_INDICATORS = [
   'agent_writes',
   'stale_learnings',
   'github_sweep',
+  'reviewer_refutes',
 ] as const;
 
 export type AgentPlaneSource = {
@@ -198,6 +199,22 @@ function sweepIndicator(repos: readonly SweepHealth[], at: Date): HealthIndicato
   return { name: 'github_sweep', status, detail };
 }
 
+function refutesIndicator({ reviewerRefutes }: PlaneTotals): HealthIndicator {
+  const { tallies, capped } = reviewerRefutes;
+  if (tallies.length === 0) {
+    return { name: 'reviewer_refutes', status: 'ok', detail: 'No Reviewer findings in 30 days' };
+  }
+  const parts = tallies.map(
+    (tally) =>
+      `${tally.persona} ${formatCount(tally.refuted)} of ${formatCount(tally.findings)} refuted`,
+  );
+  return {
+    name: 'reviewer_refutes',
+    status: capped ? 'amber' : 'ok',
+    detail: fitted('Refuted findings in 30 days', parts),
+  };
+}
+
 export async function agentPlaneIndicators(
   source: AgentPlaneSource,
 ): Promise<readonly HealthIndicator[]> {
@@ -214,6 +231,7 @@ export async function agentPlaneIndicators(
     writesIndicator(totals),
     staleIndicator(totals),
     sweepIndicator(repos, at),
+    refutesIndicator(totals),
   ];
 }
 

@@ -14,6 +14,7 @@ export const OUTCOME_TEXT: Readonly<Record<string, string>> = {
   release: 'Released',
   approve: 'Approved',
   decide_gates: 'Approved',
+  refute_finding: 'Marked refuted',
   reject: 'Rejected',
   take_over: 'You hold this item now',
   override: 'Overridden',

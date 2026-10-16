@@ -19,7 +19,6 @@ import {
   gateWorld,
   greenChecks,
   recordedRisk,
-  reviewerFindings,
   type GateWorld,
 } from '../testing/gate-world.ts';
 import { kernelOn } from '../testing/kernel.ts';
@@ -97,7 +96,7 @@ async function shipInputs(world: GateWorld): Promise<void> {
   const findings = [...document.querySelectorAll('main h3 + ul li ul li')].map(
     (item) => item.textContent,
   );
-  expect(findings).toEqual(reviewerFindings.map((finding) => finding.text));
+  expect(findings).toEqual(['Real: The lease is not renewed', 'Theoretical: A typo in the copy']);
   expect(document.body.textContent).toContain('uw-reviewer (anthropic): Approved');
 }
 

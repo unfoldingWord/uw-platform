@@ -6,6 +6,7 @@ import { decideGates, type BatchDecided, type BatchInput } from './decide-batch.
 import { resumeRunsWhere } from '../runs/resume.ts';
 import type { RunRow, StoreTransaction } from '../ports.ts';
 import { recoverConnectors, type Recovered } from './recover.ts';
+import { refuteFinding, type RefuteInput, type Refuted } from './refute.ts';
 import { recordShadowVerdicts, type ShadowInput } from './shadow.ts';
 import { gateView } from './view.ts';
 
@@ -25,6 +26,7 @@ export type GateCommands = {
     caller: Caller,
     input: ShadowInput,
   ): Promise<KernelOutcome<readonly ItemState[]>>;
+  refuteFinding(caller: Caller, input: RefuteInput): Promise<KernelOutcome<Refuted>>;
 };
 
 function gateWaiting(itemId: string) {
@@ -66,5 +68,6 @@ export function createGateCommands(ports: GatePorts): GateCommands {
     view: (caller, input, options) => gateView(ports, caller, input, options),
     recoverConnectors: (caller, input) => recoverConnectors(ports, caller, input),
     recordShadowVerdicts: (caller, input) => recordShadowVerdicts(ports, caller, input),
+    refuteFinding: (caller, input) => refuteFinding(ports, caller, input),
   };
 }

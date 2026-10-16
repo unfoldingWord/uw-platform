@@ -11,7 +11,7 @@ import restReviews from '../github/fixtures/rest-reviews.json' with { type: 'jso
 import { head } from '../github/testing/facts-fixtures.ts';
 import { kimEmail, parkedAtShip } from '../github/testing/gate-rig.ts';
 
-export const reviewerFindings = [
+const reviewerFindings = [
   { text: 'The lease is not renewed', weight: 'real' as const },
   { text: 'A typo in the copy', weight: 'theoretical' as const },
 ];

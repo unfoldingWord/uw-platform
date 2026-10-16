@@ -9,6 +9,7 @@ import type {
   Stage,
 } from '@uw/contracts';
 import type { Delegation, RunRow } from '../ports.ts';
+import type { RefuteTally } from './refutes.ts';
 
 export type CostTotals = {
   readonly meteredMinor: number;
@@ -123,6 +124,10 @@ export type PlaneTotals = {
   };
   readonly agentWrites: { readonly count: number; readonly capped: boolean };
   readonly staleLearnings: { readonly count: number; readonly capped: boolean };
+  readonly reviewerRefutes: {
+    readonly tallies: readonly RefuteTally[];
+    readonly capped: boolean;
+  };
 };
 export type PlaneIndicator =
   | 'spend'
@@ -130,7 +135,8 @@ export type PlaneIndicator =
   | 'live_delegations'
   | 'gate_refusals_week'
   | 'agent_writes'
-  | 'stale_learnings';
+  | 'stale_learnings'
+  | 'reviewer_refutes';
 export type PlaneRow = {
   readonly harnessId: string | null;
   readonly cells: Readonly<Record<string, string | number | null>>;

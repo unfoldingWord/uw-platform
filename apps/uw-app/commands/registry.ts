@@ -1,6 +1,5 @@
 import type { CommandName } from '@uw/contracts';
 import { isBuiltCommand, type CommandHandler } from './handler.ts';
-import { notWiredCommand } from './not-wired.ts';
 import {
   claimCommand,
   enqueueCommand,
@@ -18,6 +17,7 @@ import { activatePersonaCommand } from './person/personas.ts';
 import {
   approveCommand,
   decideGatesCommand,
+  refuteFindingCommand,
   overrideCommand,
   recoverConnectorsCommand,
   rejectCommand,
@@ -83,5 +83,5 @@ export const commandRegistry = commandRegistryOf([
   setShadowCommand,
   setFreezeCommand,
   decideGatesCommand,
-  notWiredCommand('refute_finding', 'write'),
+  refuteFindingCommand,
 ]);

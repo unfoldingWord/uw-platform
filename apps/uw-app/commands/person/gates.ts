@@ -75,3 +75,12 @@ export const decideGatesCommand = commandHandler({
     return fromKernel(await kernel.gates.decideGates(context.caller, input));
   },
 });
+
+export const refuteFindingCommand = commandHandler({
+  name: 'refute_finding',
+  action: 'write',
+  run: async ({ kernel, caller }, body: CommandBody<'refute_finding'>) => {
+    const input = { itemId: body.itemId, runId: body.runId, finding: body.finding };
+    return fromKernel(await kernel.gates.refuteFinding(caller, input));
+  },
+});
