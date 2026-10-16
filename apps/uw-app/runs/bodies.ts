@@ -1,4 +1,4 @@
-import { verbIo, type Engine, type VerbName } from '@uw/contracts';
+import { verbIo, type Engine, type submitToGateResultSchema, type VerbName } from '@uw/contracts';
 import { errorFields } from '@uw/core/log';
 import {
   parseScoutVerdict,
@@ -50,7 +50,7 @@ export type ScoutDone = {
 
 export type Submitted = {
   readonly kind: 'submitted';
-  readonly result: 'advanced' | 'parked' | 'checks_failed' | 'awaiting_review';
+  readonly result: (typeof submitToGateResultSchema.options)[number];
 };
 
 type ModelPlan = {
