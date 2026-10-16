@@ -311,3 +311,21 @@ describe('a check value outside the stored closed sets never reaches a CHECK con
     expect(checkRunsFromRest(repo.githubId, [{ ...run, head_sha: 'c0ffee' }])).toEqual([]);
   });
 });
+
+describe('GL-3 the facts carry the requested reviewers', () => {
+  it('reads the requested logins from a pull request, once each, and none when absent', () => {
+    const requested = {
+      ...restPull,
+      requested_reviewers: [
+        { login: 'uw-reviewer[bot]' },
+        { login: 'seth-k' },
+        { login: 'seth-k' },
+      ],
+    };
+    expect(factsFromPull(repo, requested)?.pullRequests[0]?.requestedReviewers).toEqual([
+      'uw-reviewer[bot]',
+      'seth-k',
+    ]);
+    expect(factsFromPull(repo, restPull)?.pullRequests[0]?.requestedReviewers).toEqual([]);
+  });
+});

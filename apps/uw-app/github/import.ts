@@ -12,7 +12,7 @@ import { carriesHarnessLabel, HARNESS_LABEL } from './harness-label.ts';
 
 const traceIdSchema = z.uuid();
 
-function callerFor(logger: Logger): Caller {
+export function callerFor(logger: Logger): Caller {
   const trace = traceIdSchema.safeParse(logger.context.traceId);
   return { actor: ingestPrincipal(), traceId: trace.success ? trace.data : crypto.randomUUID() };
 }

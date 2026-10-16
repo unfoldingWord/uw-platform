@@ -110,6 +110,13 @@ function headRepositoryOf(pull: Pull): string | null {
   return parsed.success ? parsed.data : null;
 }
 
+const REQUESTED_LIMIT = 100;
+
+function requestedOf(pull: Pull): readonly string[] {
+  const logins = (pull.requested_reviewers ?? []).map((user) => user.login);
+  return [...new Set(logins)].slice(0, REQUESTED_LIMIT);
+}
+
 function pullOf(repoId: number, pull: Pull): PullRequestRecord | null {
   const headSha = fullSha(pull.head.sha);
   const baseSha = fullSha(pull.base.sha);
@@ -128,6 +135,7 @@ function pullOf(repoId: number, pull: Pull): PullRequestRecord | null {
     baseRef: pull.base.ref,
     baseSha,
     milestoneId: pull.milestone?.id ?? null,
+    requestedReviewers: requestedOf(pull),
     ...declarationOf(pull.body),
     githubUpdatedAt: pull.updated_at,
   };

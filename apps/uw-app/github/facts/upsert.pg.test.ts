@@ -187,6 +187,9 @@ describe.skipIf(!testServer)('the upsert reports what it stored', () => {
           number: 7,
           head,
           baseSha: base,
+          title: 'Show the board',
+          open: true,
+          requestedReviewers: [],
           filesKnown: false,
         },
       ]);

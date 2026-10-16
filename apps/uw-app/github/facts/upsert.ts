@@ -134,6 +134,7 @@ const pullColumns = {
   baseRef: ghPrs.baseRef,
   baseSha: ghPrs.baseSha,
   milestoneId: ghPrs.milestoneId,
+  requestedReviewers: ghPrs.requestedReviewers,
   declaration: ghPrs.declaration,
   declarationProblem: ghPrs.declarationProblem,
   githubUpdatedAt: ghPrs.githubUpdatedAt,
@@ -245,7 +246,9 @@ async function upsertPulls(tx: Transaction, pulls: readonly PullRequestRecord[],
   if (pulls.length === 0) return 0;
   const rows = await tx
     .insert(ghPrs)
-    .values(pulls.map((pull) => ({ ...pull, freshAt })))
+    .values(
+      pulls.map((pull) => ({ ...pull, requestedReviewers: [...pull.requestedReviewers], freshAt })),
+    )
     .onConflictDoUpdate({
       target: ghPrs.githubId,
       set: {
