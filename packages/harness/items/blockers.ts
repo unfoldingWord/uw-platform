@@ -22,13 +22,19 @@ export function passedShip(item: ItemState, stages: readonly Stage[]): boolean {
   return ship !== null && at !== undefined && at.position > ship.position;
 }
 
+export type ItemIndex = ReadonlyMap<string, ItemState>;
+
+export function itemIndex(items: readonly ItemState[]): ItemIndex {
+  return new Map(items.map((entry) => [entry.itemId, entry]));
+}
+
 export function openBlockers(
   item: ItemState,
-  items: readonly ItemState[],
+  items: readonly ItemState[] | ItemIndex,
   stages: readonly Stage[],
 ): readonly string[] {
   if (item.blockedBy.length === 0) return [];
-  const byId = new Map(items.map((entry) => [entry.itemId, entry]));
+  const byId = 'get' in items ? items : itemIndex(items);
   return item.blockedBy.filter((blockerId) => {
     const blocker = byId.get(blockerId);
     return blocker === undefined || !passedShip(blocker, stages);
