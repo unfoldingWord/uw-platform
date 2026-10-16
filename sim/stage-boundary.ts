@@ -53,6 +53,10 @@ function controls(harnessId: string): readonly Edit[] {
       label: 'turn hosted Builder on',
       run: (commands, caller) => commands.setHostedBuilder(caller, { harnessId, enabled: true }),
     },
+    {
+      label: 'freeze the harness',
+      run: (commands, caller) => commands.setFreeze(caller, { harnessId, frozen: true, allow: [] }),
+    },
   ];
 }
 

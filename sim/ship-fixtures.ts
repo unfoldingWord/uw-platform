@@ -45,6 +45,12 @@ export const standardChange: ShipChange = {
   declaration: { riskTier: 'standard', riskDomains: [] },
 };
 
+export const secondChange: ShipChange = {
+  ...standardChange,
+  pullRequest: { repo: 'unfoldingWord/uw-platform', number: 43 },
+  head: simSha('def456'),
+};
+
 function accepted<T>(outcome: KernelOutcome<T>, what: string): T {
   if (outcome.status !== 'accepted') throw new Error(`${what} was refused: ${outcome.reason}`);
   return outcome.value;
