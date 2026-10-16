@@ -1,5 +1,5 @@
 import { repositorySchema } from '@uw/contracts';
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
 import { harnesses } from '../schema.ts';
 import { refusing } from './refusal.ts';
@@ -56,6 +56,15 @@ export function bindHarnesses(executor: AnyExecutor): HarnessesGateway {
       setShadow: (harnessId, shadow) => updateHarness(executor, harnessId, { shadow }),
       setFixClaim: (harnessId, enabled) =>
         updateHarness(executor, harnessId, { fixClaim: enabled }),
+      setTemplate: (harnessId, from, to) =>
+        refusing(async () => {
+          const rows = await executor
+            .update(harnesses)
+            .set({ template: to })
+            .where(and(eq(harnesses.id, harnessId), eq(harnesses.template, from)))
+            .returning({ id: harnesses.id });
+          return rows.length > 0;
+        }),
       setFreeze: (harnessId, frozen, allow) =>
         updateHarness(executor, harnessId, { frozen, freezeAllow: [...allow] }),
     },

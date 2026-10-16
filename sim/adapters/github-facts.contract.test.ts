@@ -12,6 +12,7 @@ describeGithubFactsContract(
       given: async (known) => facts.given(known),
       givenDiff: async (ref, range, text) => facts.setDiff(ref, range, text),
       givenEpic: async (epic) => facts.givenEpic(epic),
+      givenAuthor: async (ref, author) => facts.givenAuthor(ref, author),
       now: () => clock.now(),
     };
   },

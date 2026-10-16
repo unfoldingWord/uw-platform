@@ -5,4 +5,5 @@ export const githubFactsNotWired: GitHubFacts = {
   refresh: () => notWiredCall('githubFacts', 'refresh'),
   diff: () => notWiredCall('githubFacts', 'diff'),
   epic: () => notWiredCall('githubFacts', 'epic'),
+  authors: () => notWiredCall('githubFacts', 'authors'),
 };

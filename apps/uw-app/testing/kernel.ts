@@ -37,6 +37,7 @@ export function fixedFacts(facts: PullRequestFacts): GitHubFacts {
     refresh: async () => facts,
     diff: () => notWiredCall('githubFacts', 'diff'),
     epic: async () => null,
+    authors: async () => [],
   };
 }
 
@@ -46,6 +47,7 @@ export function answeringEpic(epic: EpicFacts | null): GitHubFacts {
     refresh: async () => null,
     diff: () => notWiredCall('githubFacts', 'diff'),
     epic: async () => epic,
+    authors: async () => [],
   };
 }
 

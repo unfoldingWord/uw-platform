@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe } from 'vitest';
 import type { PullRequestDeclaration } from '@uw/contracts';
 import { createClient, type Database } from '@uw/db/client';
@@ -210,6 +211,11 @@ describe.skipIf(!testServer)('DX-3 the platform GitHub facts on Postgres', () =>
           });
         },
         givenEpic: (epic) => givenEpic(db, epic),
+        givenAuthor: async (ref, author) => {
+          await db.execute(sql`UPDATE gh_prs SET author_login = ${author} FROM gh_repos
+            WHERE gh_repos.github_id = gh_prs.repo_id AND lower(gh_repos.full_name) = lower(${ref.repo})
+            AND gh_prs.number = ${ref.number}`);
+        },
         now: systemClock.now,
       };
     },
