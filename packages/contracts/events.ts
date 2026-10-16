@@ -66,6 +66,8 @@ export const eventNames = [
   'delegated_exit_claimed',
   'fix_claimed',
   'fix_claim_set',
+  'epic_enqueued',
+  'done_when_missing',
 ] as const;
 
 export const eventNameSchema = z.enum(eventNames);

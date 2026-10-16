@@ -83,6 +83,7 @@ export const errorReasonSchema = z.enum([
   'tier_not_delegable',
   'fix_size_cap',
   'fix_keeps_purpose',
+  'done_when_missing',
 ]);
 
 export const refusalSchema = z.object({
