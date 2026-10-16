@@ -39,6 +39,10 @@ const decisive: ReadonlySet<ReviewState> = new Set<DecisiveState>([
 ]);
 const ciJobs: ReadonlySet<string> = new Set(ciJobSchema.options);
 
+function onItemBranch(facts: PullRequestFacts, item: ItemState): boolean {
+  return item.branchState === 'none' || facts.headRef === branchFor(item.itemId);
+}
+
 export function usableHead(
   facts: PullRequestFacts | null,
   item: ItemState,
@@ -49,7 +53,7 @@ export function usableHead(
   if (facts.headRepo === null || !sameRepository(facts.headRepo, harness.repository)) return null;
   if (!sameRepository(facts.ref.repo, item.pullRequest.repo)) return null;
   if (facts.ref.number !== item.pullRequest.number) return null;
-  if (facts.headRef !== branchFor(item.itemId)) return null;
+  if (!onItemBranch(facts, item)) return null;
   if (facts.baseRef !== facts.defaultBranch) return null;
   return fullSha(facts.head);
 }

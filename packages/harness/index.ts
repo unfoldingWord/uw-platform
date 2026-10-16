@@ -115,3 +115,4 @@ export { promptText, renderUntrusted, scanFences, untrusted } from './untrusted.
 export type { PromptText, UntrustedContent } from './untrusted.ts';
 export { EXTERNAL_PROVIDER, requestsPlatformReviewer } from './github/reviewers.ts';
 export { hasPackageStage } from './stages/package.ts';
+export type { Joined, JoinInput } from './items/join.ts';
