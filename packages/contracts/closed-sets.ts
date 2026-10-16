@@ -105,6 +105,7 @@ export const runFailureSchema = z.enum([
   'turn_limit',
   'engine_refused',
   'finding_weight_missing',
+  'checks_not_run_locally',
 ]);
 export const runResultSchema = z.enum([
   'submitted',

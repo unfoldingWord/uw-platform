@@ -46,6 +46,7 @@ export const commandNames = [
   'set_freeze',
   'decide_gates',
   'refute_finding',
+  'set_fix_claim',
 ] as const;
 
 export const commandNameSchema = z.enum(commandNames);
@@ -158,6 +159,7 @@ export const harnessCommandSchemas = {
   reorder_stages: body('reorder_stages', { order: z.array(stageKeySchema).min(1).max(50) }),
   remove_stage: body('remove_stage', { stageKey: stageKeySchema }),
   set_hosted_builder: body('set_hosted_builder', { enabled: z.boolean() }),
+  set_fix_claim: body('set_fix_claim', { enabled: z.boolean() }),
   activate_persona: body('activate_persona', {
     pageId: z.uuid(),
     expectedVersion: z.number().int().min(1),
@@ -220,6 +222,7 @@ export const commandSchema = z.discriminatedUnion('command', [
   harnessCommandSchemas.set_freeze,
   harnessCommandSchemas.decide_gates,
   harnessCommandSchemas.refute_finding,
+  harnessCommandSchemas.set_fix_claim,
 ]);
 
 export type Command = z.infer<typeof commandSchema>;

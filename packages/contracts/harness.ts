@@ -81,6 +81,7 @@ export const harnessSchema = z.strictObject({
   freezeAllow: z.array(z.uuid()).max(100).default([]),
   requiredChecks: requiredChecksSchema.default([]),
   protectedPaths: protectedPathsSchema.default([]),
+  fixClaim: z.boolean().default(false),
 });
 
 export const stageSchema = z.strictObject({

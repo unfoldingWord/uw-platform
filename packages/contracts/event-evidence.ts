@@ -41,6 +41,7 @@ import {
 import { shadowVerdictValueSchema } from './shadow.ts';
 import { fullShaSchema, riskDeclarationSchema, shipRefusalSchema } from './ship-rule.ts';
 import { submitToGateResultSchema } from './verb-io.ts';
+import { pullRequestDeclarationSchema } from './github.ts';
 import { ZULIP_TEXT_LIMIT, zulipTopicSchema } from './zulip.ts';
 
 export const personaActivationRefusalSchema = z.enum([
@@ -217,6 +218,11 @@ const gateEvidence = {
   connector_refused: z.strictObject({ connector: effect, reason: text }),
   delegated_merge: delegatedMergeSchema,
   delegated_exit_claimed: z.strictObject({ decisionId: id }),
+  fix_claimed: z.strictObject({
+    delegationId: id,
+    head,
+    declaration: pullRequestDeclarationSchema.nullable(),
+  }),
   review_verdict_recorded: z.strictObject({
     runId: id,
     head,
@@ -271,6 +277,7 @@ const harnessEvidence = {
   harness_paused: z.strictObject({ stage: stage.nullable() }),
   harness_resumed: z.strictObject({ stage: stage.nullable() }),
   hosted_builder_set: z.strictObject({ enabled: z.boolean() }),
+  fix_claim_set: z.strictObject({ enabled: z.boolean() }),
   comment_recorded: z.strictObject({
     source: z.literal('zulip'),
     messageId: z.number().int().min(1),
