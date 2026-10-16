@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ItemState, Stage } from '@uw/contracts';
 import { software } from '../templates/software.ts';
-import { blockerCycle, openBlockers, passedShip } from './blockers.ts';
+import { blockerCycle, itemIndex, openBlockers, passedShip } from './blockers.ts';
 
 const harnessId = '00000000-0000-4000-8000-0000000000a1';
 const stages: readonly Stage[] = software.stages.map((stage, index) => ({
@@ -57,6 +57,8 @@ describe('EI-3 a blocker holds its dependants until its item has passed Ship', (
     expect(openBlockers(waiting, [blocker], stages)).toEqual([blocker.itemId, unread]);
     const passed = [item(1, 'validate'), item(9, 'close', { gateStatus: 'done' })];
     expect(openBlockers(waiting, passed, stages)).toEqual([]);
+    expect(openBlockers(waiting, itemIndex(passed), stages)).toEqual([]);
+    expect(openBlockers(waiting, itemIndex([blocker]), stages)).toEqual([blocker.itemId, unread]);
   });
 
   it('passes a blocker only when done on a harness with no connector stage', () => {
