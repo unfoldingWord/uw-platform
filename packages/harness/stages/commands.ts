@@ -13,6 +13,7 @@ import { setFreeze, type FreezeInput } from './freeze.ts';
 import { setHostedBuilder, type HostedBuilderInput } from './hosted-builder.ts';
 import { setPause, type PauseInput } from './pause.ts';
 import { liftShadow, type LiftShadowInput } from './shadow.ts';
+import { changeTemplate, type ChangeTemplateInput } from './template-change.ts';
 
 type StagePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store' | 'runs'>;
 
@@ -50,6 +51,7 @@ export type StageCommands = {
   setFixClaim(caller: Caller, input: FixClaimInput): Promise<KernelOutcome<HarnessScene>>;
   setFreeze(caller: Caller, input: FreezeInput): Promise<KernelOutcome<HarnessScene>>;
   liftShadow(caller: Caller, input: LiftShadowInput): Promise<KernelOutcome<HarnessScene>>;
+  changeTemplate(caller: Caller, input: ChangeTemplateInput): Promise<KernelOutcome<HarnessScene>>;
 };
 
 const stageChangeSchema = stageSchema
@@ -237,5 +239,6 @@ export function createStageCommands(ports: StagePorts): StageCommands {
     setFixClaim: (caller, input) => setFixClaim(ports, caller, input),
     setFreeze: (caller, input) => setFreeze(ports, caller, input),
     liftShadow: (caller, input) => liftShadow(ports, caller, input),
+    changeTemplate: (caller, input) => changeTemplate(ports, caller, input),
   };
 }

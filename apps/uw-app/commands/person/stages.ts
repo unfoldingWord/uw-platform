@@ -30,6 +30,21 @@ export const activateTemplateCommand = commandHandler({
   },
 });
 
+export const changeTemplateCommand = commandHandler({
+  name: 'change_template',
+  action: 'admin',
+  run: async ({ kernel, caller, harnessId, pages }, body: CommandBody<'change_template'>) => {
+    const changed = await kernel.stages.changeTemplate(caller, {
+      harnessId,
+      template: body.template,
+    });
+    if (changed.status === 'accepted') {
+      await pages.draftPersonas(body.template, changed.value.harness);
+    }
+    return fromKernel(changed);
+  },
+});
+
 export const createStageCommand = commandHandler({
   name: 'create_stage',
   action: 'admin',
