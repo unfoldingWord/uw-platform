@@ -11,7 +11,16 @@ import {
   refs,
   shipWrites,
 } from '../github/testing/gate-rig.ts';
-import { command, post, softwareHarness } from '../testing/commands.ts';
+import {
+  command,
+  dispatchAs,
+  dispatchScope,
+  eventCount,
+  ian,
+  post,
+  softwareHarness,
+} from '../testing/commands.ts';
+import { agentOf } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 
 const head = 'a'.repeat(40);
@@ -54,7 +63,26 @@ async function batchMerges(db: Database): Promise<void> {
   expect(shipWrites(github)).toEqual([`PUT ${mergePath}`, `POST ${refs}`]);
 }
 
+async function agentBatchRefused(db: Database): Promise<void> {
+  const parked = await parkedAtShip(db);
+  const { harnessId } = parked.item;
+  const agent = agentOf(await ian(db), 'builder');
+  const before = await eventCount(db, harnessId);
+  const requestId = randomUUID();
+  const entries = [
+    { itemId: parked.item.itemId, head: parked.item.expectedHead, decision: 'approve' },
+  ];
+  const body = { requestId, entries };
+  const outcome = await dispatchAs(agent, harnessId, 'decide_gates', body, dispatchScope(db));
+  expect(outcome).toEqual({ status: 'error', requestId, reason: 'not_permitted' });
+  expect(await decisionRows(db, parked.item)).toBe(0);
+  expect(await eventCount(db, harnessId)).toBe(before);
+}
+
 describe.skipIf(!testServer)('the ship and gate commands on the command API', () => {
+  it('GD-1 decide_gates refuses an agent principal at the command API and records nothing', () =>
+    withAppDatabase(agentBatchRefused));
+
   it('GD-1 GD-2 RV-2 decide_gates and set_freeze need admin and refute_finding needs write on the area', () =>
     withAppDatabase(belowTheirAction));
 
