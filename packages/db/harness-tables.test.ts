@@ -134,6 +134,7 @@ const expectedColumns: Record<string, string[]> = {
     'decided_at',
     'agent_actor',
     'delegation_id',
+    'delegated_capability',
   ],
   delegations: [
     'id',
