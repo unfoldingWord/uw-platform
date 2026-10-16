@@ -21,4 +21,8 @@ describe('WB-12 the copy check reads the brand beside an address', () => {
     expect(await brandProblems('<p>Write to help@unfoldingword.org</p>')).toEqual([]);
     expect(await brandProblems('<p>unfoldingWord</p><i>help@unfoldingword.org</i>')).toEqual([]);
   });
+
+  it('WB-12 passes the brand written right across inline elements', async () => {
+    expect(await brandProblems('<p>unfolding<b>Word</b> helps</p>')).toEqual([]);
+  });
 });
