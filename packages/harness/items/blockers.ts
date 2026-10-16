@@ -1,4 +1,8 @@
 import type { ItemState, Stage } from '@uw/contracts';
+import { isAgent } from '../access.ts';
+import type { Caller } from '../caller.ts';
+import { refused, type Refused } from '../outcome.ts';
+import type { StoreTransaction } from '../ports.ts';
 
 type Mark = 'visiting' | 'done';
 
@@ -57,4 +61,16 @@ export function blockerCycle(edges: ReadonlyMap<number, readonly number[]>): rea
     if (found.length > 0) return [...found].sort((a, b) => a - b);
   }
   return [];
+}
+
+export async function blockedRefusal(
+  tx: StoreTransaction,
+  caller: Caller,
+  item: ItemState,
+): Promise<Refused | null> {
+  if (!isAgent(caller.actor) || item.blockedBy.length === 0) return null;
+  const blockers = await tx.harnessItems.read.byIds(item.blockedBy);
+  const stages = await tx.harnessStages.read.forHarness(item.harnessId);
+  const open = openBlockers(item, blockers, stages);
+  return open.length === 0 ? null : refused('not_permitted', { why: 'blocked', blockers: open });
 }

@@ -1,3 +1,4 @@
+import { openBlockers } from '../items/blockers.ts';
 import { heldForPerson } from '../items/held-for-person.ts';
 import {
   delegationIdOf,
@@ -129,8 +130,12 @@ async function claimableIn(
   const { harness } = judged;
   const stages = await tx.harnessStages.read.forHarness(harness.id);
   const items = await tx.harnessItems.read.forHarness(harness.id);
+  const waiting = (item: ItemState) => openBlockers(item, items, stages).length > 0;
+  const candidates = items.filter(
+    (candidate) => claimable(stages, candidate, judged, at) && !waiting(candidate),
+  );
   const open: ItemState[] = [];
-  for (const item of items.filter((candidate) => claimable(stages, candidate, judged, at))) {
+  for (const item of candidates) {
     if (await heldForPerson(tx, item)) continue;
     if (await offeredForFix(tx, harness, judged.reach, stages, item)) open.push(item);
   }
