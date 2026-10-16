@@ -1,0 +1,5 @@
+ALTER TABLE "gate_decisions" DROP CONSTRAINT "gate_decisions_delegated_approves_merge";--> statement-breakpoint
+ALTER TABLE "gate_decisions" ADD COLUMN "delegated_capability" text GENERATED ALWAYS AS (CASE WHEN "delegation_id" IS NOT NULL THEN 'merge' END) STORED;--> statement-breakpoint
+CREATE UNIQUE INDEX "delegations_lent_binding" ON "delegations" USING btree ("id","harness_id","persona","capability");--> statement-breakpoint
+ALTER TABLE "gate_decisions" ADD CONSTRAINT "gate_decisions_lent_binding_fk" FOREIGN KEY ("delegation_id","harness_id","agent_actor","delegated_capability") REFERENCES "public"."delegations"("id","harness_id","persona","capability") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "gate_decisions" ADD CONSTRAINT "gate_decisions_delegated_approves_merge" CHECK ("gate_decisions"."delegation_id" IS NULL OR ("gate_decisions"."decision" = 'approve' AND "gate_decisions"."evidence" ->> 'connector' IS NOT DISTINCT FROM 'merge'));

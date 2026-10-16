@@ -239,6 +239,13 @@
       "when": 1792125065271,
       "tag": "0033_merge_delegation",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1792127044952,
+      "tag": "0034_delegated_decision_binding",
+      "breakpoints": true
     }
   ]
 }

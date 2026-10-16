@@ -111,11 +111,14 @@ function delegatedDecisionChecks(db: () => Db): void {
     ]);
     expect(text).toContain('(agent_actor IS NULL) = (delegation_id IS NULL)');
     expect(text).toContain("'^agent:");
-    expect(text).toContain("(evidence ->> 'connector'::text) = 'merge'::text");
+    expect(text).toContain("NOT ((evidence ->> 'connector'::text) IS DISTINCT FROM 'merge'::text)");
     expect(text).toContain("decision = 'approve'::text");
     expect(text).toContain("'^human:");
     expect(await definitions(db(), ['gate_decisions_delegation_fk'])).toBe(
       'FOREIGN KEY (delegation_id, harness_id) REFERENCES delegations(id, harness_id)',
+    );
+    expect(await definitions(db(), ['gate_decisions_lent_binding_fk'])).toBe(
+      'FOREIGN KEY (delegation_id, harness_id, agent_actor, delegated_capability) REFERENCES delegations(id, harness_id, persona, capability)',
     );
   });
 

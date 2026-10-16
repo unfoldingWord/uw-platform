@@ -186,6 +186,7 @@ export const delegations = declareTable(
       sql`(${t.capability} = 'merge') = (${t.maxTier} IS NOT NULL)`,
     ),
     uniqueIndex('delegations_id_harness').on(t.id, t.harnessId),
+    uniqueIndex('delegations_lent_binding').on(t.id, t.harnessId, t.persona, t.capability),
     index('delegations_person').on(t.personId),
     index('delegations_harness').on(t.harnessId),
     uniqueIndex('delegations_supersedes_once')
@@ -356,6 +357,9 @@ export const gateDecisions = declareTable(
     decidedAt: instant('decided_at').notNull(),
     agentActor: text('agent_actor'),
     delegationId: uuid('delegation_id'),
+    delegatedCapability: text('delegated_capability').generatedAlwaysAs(
+      sql`CASE WHEN "delegation_id" IS NOT NULL THEN 'merge' END`,
+    ),
   },
   restrictedNever,
   (t) => [
@@ -374,6 +378,16 @@ export const gateDecisions = declareTable(
       columns: [t.delegationId, t.harnessId],
       foreignColumns: [delegations.id, delegations.harnessId],
     }),
+    foreignKey({
+      name: 'gate_decisions_lent_binding_fk',
+      columns: [t.delegationId, t.harnessId, t.agentActor, t.delegatedCapability],
+      foreignColumns: [
+        delegations.id,
+        delegations.harnessId,
+        delegations.persona,
+        delegations.capability,
+      ],
+    }),
     check(
       'gate_decisions_agent_with_delegation',
       sql`(${t.agentActor} IS NULL) = (${t.delegationId} IS NULL)`,
@@ -384,7 +398,7 @@ export const gateDecisions = declareTable(
     ),
     check(
       'gate_decisions_delegated_approves_merge',
-      sql`${t.delegationId} IS NULL OR (${t.decision} = 'approve' AND ${t.evidence} ->> 'connector' = 'merge')`,
+      sql`${t.delegationId} IS NULL OR (${t.decision} = 'approve' AND ${t.evidence} ->> 'connector' IS NOT DISTINCT FROM 'merge')`,
     ),
     check('gate_decisions_decision_known', oneOf(t.decision, gateDecisionSchema.options)),
     check('gate_decisions_actor_is_human', matches(t.actor, HUMAN_IDENTITY_PATTERN)),
