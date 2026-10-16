@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { EpicGroup, EpicNode } from '@uw/harness';
-import { epicLayout, GAP_X, NODE_WIDTH, PAD } from './epic-layout.ts';
+import { epicLayout, GAP_X, LABEL_CHARS, NODE_WIDTH, nodeLabel, PAD } from './epic-layout.ts';
 
 function node(n: number, blockedBy: readonly string[] = []): EpicNode {
   return {
@@ -42,5 +42,14 @@ describe('EI-5 the epic drawing places each item after its blockers', () => {
     ]);
     expect(laid.width).toBeGreaterThan(0);
     expect(laid.height).toBeGreaterThan(0);
+  });
+});
+
+describe('EI-5 a node label fits its box', () => {
+  it('keeps a short name and cuts a long title to the label length with an ellipsis', () => {
+    expect(nodeLabel('#42')).toBe('#42');
+    const cut = nodeLabel('Read every sub-issue of the epic and enqueue them');
+    expect(cut).toHaveLength(LABEL_CHARS);
+    expect(cut.endsWith('…')).toBe(true);
   });
 });

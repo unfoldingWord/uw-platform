@@ -6,7 +6,15 @@ import { upsertFacts } from '../github/facts/upsert.ts';
 import { emptyBatch, type IssueRecord } from '../github/facts/records.ts';
 import { labelledIssue, repo } from '../github/testing/facts-fixtures.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
-import { command, eventsNamed, softwareHarness } from '../testing/commands.ts';
+import {
+  command,
+  dispatchAs,
+  dispatchScope,
+  eventsNamed,
+  ian,
+  softwareHarness,
+} from '../testing/commands.ts';
+import { agentOf } from '../testing/kernel.ts';
 
 const platform = 'unfoldingWord/uw-platform';
 const seededAt = new Date('2026-10-15T08:00:00.000Z');
@@ -86,6 +94,24 @@ describe.skipIf(!testServer)('EI-3 enqueue_epic through the command API', () => 
         number: 41,
       });
       expect(lone.body).toMatchObject({ status: 'error', reason: 'not_permitted' });
+      expect(await epicItems(db)).toEqual([]);
+    }));
+});
+
+describe.skipIf(!testServer)('EI-3 enqueue_epic is a person command', () => {
+  it('refuses an agent caller, even one acting for an editor', () =>
+    withAppDatabase(async (db) => {
+      const { harnessId } = await softwareHarness(db);
+      await seedEpic(db);
+      const owner = await ian(db);
+      const sent = await dispatchAs(
+        agentOf(owner, 'laptop'),
+        harnessId,
+        'enqueue_epic',
+        { requestId: randomUUID(), repository: platform, number: 40 },
+        dispatchScope(db),
+      );
+      expect(sent).toMatchObject({ status: 'error', reason: 'not_permitted' });
       expect(await epicItems(db)).toEqual([]);
     }));
 });

@@ -93,6 +93,17 @@ describe.skipIf(!testServer)('EI-5 the Board screen draws an epic', () => {
     );
   });
 
+  it('draws the epic at its natural size with its links out of the tab order', async () => {
+    const document = new JSDOM(await epicBoardHtml()).window.document;
+    const svg = document.querySelector('[data-epic="40"] svg');
+    if (svg === null) throw new Error('no epic drawing');
+    const [, , width, height] = (svg.getAttribute('viewBox') ?? '').split(' ');
+    expect([svg.getAttribute('width'), svg.getAttribute('height')]).toEqual([width, height]);
+    expect(svg.getAttribute('class')?.split(' ')).not.toContain('w-full');
+    const drawn = [...svg.querySelectorAll('a')].map((link) => link.getAttribute('tabindex'));
+    expect(drawn).toEqual(['-1', '-1', '-1']);
+  });
+
   it('renders with no screen problems: tokens only, focus, names, phone width, light and dark', async () => {
     expect(await screenProblems(await epicBoardHtml())).toEqual([]);
   });
