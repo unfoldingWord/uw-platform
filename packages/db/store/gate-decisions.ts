@@ -1,23 +1,11 @@
-import { and, asc, eq, gte, isNotNull, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, isNotNull } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
 import { gateDecisions } from '../schema.ts';
+import { exitNotTaken } from './events.ts';
 import { checkedRows } from './limits.ts';
 import { refusing } from './refusal.ts';
 import { toGateDecision } from './rows.ts';
 import type { GateDecisionsGateway } from './types.ts';
-
-const notTaken = sql`NOT EXISTS (
-  SELECT 1 FROM harness_events approval
-  JOIN harness_events later
-    ON later.harness_id = approval.harness_id
-   AND later.item_id = approval.item_id
-   AND later.position > approval.position
-  WHERE approval.harness_id = ${gateDecisions.harnessId}
-    AND approval.item_id = ${gateDecisions.itemId}
-    AND approval.name = 'gate_approved'
-    AND approval.evidence ->> 'decisionId' = ${gateDecisions.id}::text
-    AND later.name IN ('connector_succeeded', 'connector_refused', 'delegated_exit_claimed')
-)`;
 
 export function bindGateDecisions(executor: AnyExecutor): GateDecisionsGateway {
   return {
@@ -46,7 +34,7 @@ export function bindGateDecisions(executor: AnyExecutor): GateDecisionsGateway {
             and(
               isNotNull(gateDecisions.delegationId),
               gte(gateDecisions.decidedAt, since),
-              notTaken,
+              exitNotTaken(gateDecisions),
             ),
           )
           .orderBy(asc(gateDecisions.decidedAt), asc(gateDecisions.id))
