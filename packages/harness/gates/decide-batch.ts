@@ -50,6 +50,11 @@ function inputOf(entry: BatchEntry): DecideInput {
   return { itemId, decision, reason: null, findings: [], seenHead: head };
 }
 
+async function inHarness(ports: GatePorts, batch: Batch, itemId: string): Promise<boolean> {
+  const item = await ports.store.transaction((tx) => tx.harnessItems.read.byId(itemId));
+  return item !== null && item.harnessId === batch.harnessId;
+}
+
 async function planned(
   ports: GatePorts,
   batch: Batch,
@@ -59,6 +64,9 @@ async function planned(
   for (const entry of [...entries].sort((a, b) => a.itemId.localeCompare(b.itemId))) {
     const input = normalised(inputOf(entry));
     if ('status' in input) return naming(input, entry.itemId);
+    if (!(await inHarness(ports, batch, entry.itemId))) {
+      return refused('item_not_found', { itemId: entry.itemId });
+    }
     const request = {
       actor: batch.caller.actor,
       at: batch.at,
