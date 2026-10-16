@@ -141,6 +141,33 @@ const cappedTotals: PlaneTotals = {
   },
 };
 
+const cappedReadings = [
+  ['spend', 'ok', '$0.00 metered of $1,250.00 this month; 0 subscription tokens reported'],
+  ['breaker', 'amber', 'no fresh reading'],
+  ['runs_today', 'ok', '3 on the platform, 1 on own machines; claude-messages 3, external 1'],
+  ['live_delegations', 'amber', '2 live; next expiry 2026-10-15 14:00 UTC'],
+  [
+    'gate_refusals_week',
+    'amber',
+    'at least 5,000 in 7 days; gate_refused_to_agent 4,998, no_reviewer_approval 2',
+  ],
+  ['agent_writes', 'amber', 'at least 5,000 events by agents in 24 hours'],
+  ['stale_learnings', 'amber', 'at least 5,000 past their review date'],
+  ['github_sweep', 'not_configured', 'No repositories installed'],
+  [
+    'reviewer_refutes',
+    'amber',
+    'Refuted findings in 30 days; agent:reviewer on software 2 of 8 refuted, agent:reviewer-codex on software 0 of 3 refuted, agent:reviewer on courses 1 of 4 refuted',
+  ],
+  [
+    'silence_alarm',
+    'ok',
+    'No item has waited in Check over 45 minutes without a review step in the harnesses you can read',
+  ],
+  ['held_by_person', 'ok', 'None over 24 hours'],
+  ['held_by_agent', 'ok', 'None over 2 hours'],
+];
+
 async function statusesFollowTotals(db: Database): Promise<void> {
   await seed(db);
   await meteredRun(db, 1, 92_500);
@@ -168,28 +195,9 @@ async function statusesFollowTotals(db: Database): Promise<void> {
   await meteredRun(db, 2, 1_250);
   expect(named(await indicatorsOn(db), 'spend')).toMatchObject({ status: 'red' });
   const capped = await indicatorsOn(db, cappedTotals);
-  expect(capped.map((indicator) => [indicator.name, indicator.status, indicator.detail])).toEqual([
-    ['spend', 'ok', '$0.00 metered of $1,250.00 this month; 0 subscription tokens reported'],
-    ['breaker', 'amber', 'no fresh reading'],
-    ['runs_today', 'ok', '3 on the platform, 1 on own machines; claude-messages 3, external 1'],
-    ['live_delegations', 'amber', '2 live; next expiry 2026-10-15 14:00 UTC'],
-    [
-      'gate_refusals_week',
-      'amber',
-      'at least 5,000 in 7 days; gate_refused_to_agent 4,998, no_reviewer_approval 2',
-    ],
-    ['agent_writes', 'amber', 'at least 5,000 events by agents in 24 hours'],
-    ['stale_learnings', 'amber', 'at least 5,000 past their review date'],
-    ['github_sweep', 'not_configured', 'No repositories installed'],
-    [
-      'reviewer_refutes',
-      'amber',
-      'Refuted findings in 30 days; agent:reviewer on software 2 of 8 refuted, agent:reviewer-codex on software 0 of 3 refuted, agent:reviewer on courses 1 of 4 refuted',
-    ],
-    ['silence_alarm', 'ok', 'No item has waited in Check over 45 minutes without a review step'],
-    ['held_by_person', 'ok', 'None over 24 hours'],
-    ['held_by_agent', 'ok', 'None over 2 hours'],
-  ]);
+  expect(capped.map((indicator) => [indicator.name, indicator.status, indicator.detail])).toEqual(
+    cappedReadings,
+  );
 }
 
 async function noRefutesYet(db: Database): Promise<void> {

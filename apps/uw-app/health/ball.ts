@@ -33,7 +33,7 @@ export function silenceIndicator(found: readonly Silence[], at: Date): HealthInd
   const bots = botWords(found.reduce((sum, silence) => sum + silence.uncounted, 0));
   const worst = loudest(found);
   if (worst === null || worst.level === 'ok') {
-    const detail = `No item has waited in Check over 45 minutes without a review step${bots}`;
+    const detail = `No item has waited in Check over 45 minutes without a review step in the harnesses you can read${bots}`;
     return { name: 'silence_alarm', status: 'ok', detail: detail.slice(0, DETAIL_LIMIT) };
   }
   const loud = found.filter((silence) => silence.level !== 'ok');
