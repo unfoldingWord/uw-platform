@@ -1,5 +1,6 @@
 import type { ItemState, Principal, Stage } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
+import { revokeSeededGrant, rewriteRequiredChecks } from '@uw/db/test-seed';
 import { readAllEvents, software } from '@uw/harness';
 import { exitAfterDecision, type PendingExit } from '@uw/harness/testing';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -168,6 +169,40 @@ async function frozenAfterDecision(scene: Scene): Promise<void> {
   );
 }
 
+function approvedFacts(scene: Scene): void {
+  const { world } = scene;
+  const reviews = [approvedBy('uw-reviewer[bot]', 'deepinfra', standardChange.head, 9300000001)];
+  world.adapters.githubFacts.given(
+    greenFacts(world, { itemId: scene.item.itemId, head: standardChange.head, reviews }),
+  );
+}
+
+async function adminRevokedAfterDecision(scene: Scene): Promise<void> {
+  const { world, admin } = scene;
+  approvedFacts(scene);
+  for (const grant of admin.grants) {
+    await revokeSeededGrant(world.database.db, grant.grantId, world.adapters.clock.now());
+  }
+  expect((await exitAfterDecision(world.adapters, pendingFor(scene))).advanced).toBe(false);
+  expect(world.adapters.connectors.calls()).toEqual([]);
+  expect((await lastEvent(scene))?.evidence['reason']).toBe('ship_rule_refused: not_permitted');
+}
+
+async function checksChangedAfterDecision(scene: Scene): Promise<void> {
+  const { world } = scene;
+  approvedFacts(scene);
+  const added = { app: 'github-actions', name: 'release-gate' };
+  await rewriteRequiredChecks(world.database.db, scene.harness.id, [
+    ...scene.harness.requiredChecks,
+    added,
+  ]);
+  expect((await exitAfterDecision(world.adapters, pendingFor(scene))).advanced).toBe(false);
+  expect(world.adapters.connectors.calls()).toEqual([]);
+  expect((await lastEvent(scene))?.evidence['reason']).toMatch(
+    /^ship_rule_refused: .*required_check_never_ran/,
+  );
+}
+
 function calledItems(world: World): readonly string[] {
   return world.adapters.connectors.calls().map((call) => call.itemId);
 }
@@ -188,4 +223,10 @@ describe('SR-3 the merge connector runs the ship rule in-process', () => {
 
   it('SR-3 re-reads the harness at the merge: a freeze set after the decision stops it, and no connector is called', () =>
     inScene(frozenAfterDecision));
+
+  it('SR-3 re-reads the approver at the merge: an admin grant revoked after the decision stops it', () =>
+    inScene(adminRevokedAfterDecision));
+
+  it('SR-3 re-reads the required checks at the merge: a check added after the decision that never ran stops it', () =>
+    inScene(checksChangedAfterDecision));
 });

@@ -58,6 +58,17 @@ export async function rewriteHarnessRepository(
   await db.update(harnesses).set({ repository }).where(eq(harnesses.id, harnessId));
 }
 
+export async function rewriteRequiredChecks(
+  db: AnyExecutor,
+  harnessId: string,
+  requiredChecks: readonly { readonly app: string; readonly name: string }[],
+): Promise<void> {
+  await db
+    .update(harnesses)
+    .set({ requiredChecks: [...requiredChecks] })
+    .where(eq(harnesses.id, harnessId));
+}
+
 export async function rewriteGrantAudit(db: AnyExecutor, actor: string): Promise<void> {
   await db.update(grantAudit).set({ actor });
 }
