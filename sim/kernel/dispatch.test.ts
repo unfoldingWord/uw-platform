@@ -14,10 +14,18 @@ import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
 
-type Scene = { readonly world: World; readonly itemId: string; claim(): Promise<string | null> };
+type Scene = {
+  readonly world: World;
+  readonly itemId: string;
+  claim(): Promise<string | null>;
+  personClaim(): Promise<string | null>;
+};
 
-async function atScope(world: World): Promise<Scene> {
-  const { harness, admin } = await createSimHarness(world, software, { dispatchable: false });
+async function atScope(world: World, repository?: null): Promise<Scene> {
+  const { harness, admin } = await createSimHarness(world, software, {
+    dispatchable: false,
+    ...(repository === undefined ? {} : { repository }),
+  });
   const caller = simCaller(world, admin);
   const { itemId } = value(
     await world.kernel.items.enqueue(caller, {
@@ -35,13 +43,17 @@ async function atScope(world: World): Promise<Scene> {
     reasonOf(
       await world.kernel.items.claim(simCaller(world, agent), { itemId, delegationId: null }),
     );
-  return { world, itemId, claim };
+  const personClaim = async () =>
+    reasonOf(
+      await world.kernel.items.claim(simCaller(world, admin), { itemId, delegationId: null }),
+    );
+  return { world, itemId, claim, personClaim };
 }
 
-async function inWorld(work: (scene: Scene) => Promise<void>): Promise<void> {
+async function inWorld(work: (scene: Scene) => Promise<void>, repository?: null): Promise<void> {
   const world = await createWorld();
   try {
-    await work(await atScope(world));
+    await work(await atScope(world, repository));
   } finally {
     await world.close();
   }
@@ -91,4 +103,21 @@ describe('GL-6 ownership gate on dispatch', () => {
       });
       expect(await scene.claim()).toBeNull();
     }));
+});
+
+describe('GL-6 the dispatch gate leaves person claims and repository-less harnesses alone', () => {
+  it('does not gate a person claim on a repository the list leaves out', () =>
+    inWorld(async (scene) => {
+      await seedPlatformPage(scene.world.database.db, {
+        id: pageId,
+        jdArea: '80-89',
+        repositories: ['unfoldingWord/other'],
+      });
+      expect(await scene.personClaim()).toBeNull();
+    }));
+
+  it('does not gate an agent claim on a harness that names no repository', () =>
+    inWorld(async (scene) => {
+      expect(await scene.claim()).toBeNull();
+    }, null));
 });
