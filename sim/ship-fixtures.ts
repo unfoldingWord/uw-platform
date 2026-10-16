@@ -9,6 +9,7 @@ import {
 } from '@uw/contracts';
 import {
   readAllEvents,
+  type BaseComparison,
   type KernelOutcome,
   type PullRequestFacts,
   type PullRequestRef,
@@ -140,6 +141,23 @@ const standardDeclaration: PullRequestDeclaration = {
 
 export const shipBase = simSha('ba5e');
 
+export function simPatchId(seed: string): string {
+  return seed.padEnd(64, '0');
+}
+
+export function comparedAt(head: string, change: Partial<BaseComparison> = {}): BaseComparison {
+  const patchId = simPatchId('9a7c');
+  return {
+    head,
+    base: shipBase,
+    behindBy: 0,
+    patchId,
+    commits: [{ sha: head, merge: false, skipCi: false, closes: [] }],
+    patchIds: { [head]: patchId },
+    ...change,
+  };
+}
+
 export function greenFacts(world: World, input: FactsInput): PullRequestFacts {
   const { head } = input;
   return {
@@ -162,6 +180,8 @@ export function greenFacts(world: World, input: FactsInput): PullRequestFacts {
     reviews: [...input.reviews],
     files: { head, base: shipBase, paths: [...(input.paths ?? ['apps/uw-app/board.tsx'])] },
     declaration: input.declaration === undefined ? standardDeclaration : input.declaration,
+    closes: [],
+    comparison: comparedAt(head),
     freshAt: world.adapters.clock.now(),
   };
 }

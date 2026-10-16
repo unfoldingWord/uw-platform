@@ -2,11 +2,13 @@ import {
   ingestIdentity,
   type CapabilityWord,
   principalSchema,
+  defaultCiChecks,
   systemIdentity,
   type Harness,
   type ItemState,
   type JdArea,
   type Principal,
+  type RequiredCheck,
   type Role,
   type Scope,
   type Stage,
@@ -122,6 +124,7 @@ type SimHarnessOptions = {
   readonly repository?: string | null;
   readonly shadow?: boolean;
   readonly externalReviewerIdentities?: readonly string[];
+  readonly requiredChecks?: readonly RequiredCheck[];
   readonly dispatchable?: boolean;
 };
 
@@ -165,6 +168,7 @@ export async function createSimHarness(
         : options.repository,
     shadow: options.shadow ?? false,
     externalReviewerIdentities: options.externalReviewerIdentities ?? [],
+    requiredChecks: options.requiredChecks ?? defaultCiChecks,
   });
   if (outcome.status !== 'accepted') {
     throw new Error(`activating ${template.key} was refused: ${outcome.reason}`);

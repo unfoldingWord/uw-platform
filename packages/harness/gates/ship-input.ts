@@ -134,7 +134,7 @@ export function reviewsOn(
       commit: head,
       state: counted.review.state,
       provider: providerOf(counted),
-      findings: counted.review.findings.map((text) => ({ text, weight: null })),
+      findings: [...counted.review.findings],
     }));
 }
 

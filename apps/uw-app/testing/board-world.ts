@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { Principal } from '@uw/contracts';
+import { defaultCiChecks, type Principal } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
 import {
   rewriteItem,
@@ -67,6 +67,7 @@ export async function activatedHarness(
       jdArea: '80-89',
       template,
       repository: null,
+      requiredChecks: template.key === 'software' ? defaultCiChecks : [],
     }),
   );
   return harnessId;

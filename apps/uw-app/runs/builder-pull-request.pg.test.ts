@@ -40,6 +40,8 @@ function factsFor(itemId: string): PullRequestFacts {
     reviews: [],
     files: { head, base, paths: ['apps/uw-app/board.tsx'] },
     declaration: null,
+    closes: [],
+    comparison: null,
     freshAt: new Date(),
   };
 }

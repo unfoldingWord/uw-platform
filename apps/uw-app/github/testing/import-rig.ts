@@ -1,4 +1,4 @@
-import { ingestEnvelopeSchema, type IngestEnvelope } from '@uw/contracts';
+import { defaultCiChecks, ingestEnvelopeSchema, type IngestEnvelope } from '@uw/contracts';
 import { createLogger, type Logger } from '@uw/core/log';
 import { ingestPrincipal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
@@ -39,6 +39,7 @@ export async function seedSoftwareHarness(db: Database): Promise<void> {
         jdArea: '80-89',
         template: software,
         repository: platform,
+        requiredChecks: defaultCiChecks,
       },
     ),
   );

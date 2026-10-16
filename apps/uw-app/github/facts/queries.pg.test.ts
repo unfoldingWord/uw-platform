@@ -59,6 +59,8 @@ const expectedFacts = {
   ],
   files: { head, base, paths: changedPaths },
   declaration,
+  closes: [],
+  comparison: null,
   freshAt: at,
 };
 

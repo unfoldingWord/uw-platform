@@ -1,4 +1,4 @@
-import { ciJobSchema, type ItemState, type Principal } from '@uw/contracts';
+import { ciJobSchema, defaultCiChecks, type ItemState, type Principal } from '@uw/contracts';
 import { createLogger, type Logger } from '@uw/core/log';
 import type { Database } from '@uw/db/client';
 import { seedGrant, seedPerson } from '@uw/db/test-seed';
@@ -58,7 +58,13 @@ async function passStage(kernel: Kernel, worker: Principal, itemId: string, chan
 async function enqueued(db: Database, kernel: Kernel, ian: Principal): Promise<string> {
   const harnessId = crypto.randomUUID();
   const repository = pullRequest.repo;
-  const harness = { harnessId, harnessKey: 'software', jdArea: '80-89', template: software };
+  const harness = {
+    harnessId,
+    harnessKey: 'software',
+    jdArea: '80-89',
+    template: software,
+    requiredChecks: defaultCiChecks,
+  };
   accepted(await kernel.stages.activate(caller(ian), { ...harness, repository }), 'activate');
   await listForDispatch(db, repository);
   const { itemId } = accepted(

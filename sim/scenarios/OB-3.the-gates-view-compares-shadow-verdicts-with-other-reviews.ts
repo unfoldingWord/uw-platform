@@ -19,7 +19,7 @@ export const scenario = defineScenario({
             commit: joinedHead,
             state: 'changes_requested',
             provider: null,
-            findings: ['The form posts twice.'],
+            findings: [{ text: 'The form posts twice.', weight: 'real' }],
             submittedAt: world.adapters.clock.now(),
           },
         ],

@@ -18,6 +18,7 @@ export const activateTemplateCommand = commandHandler({
       repository,
       shadow,
       externalReviewerIdentities,
+      requiredChecks: body.requiredChecks,
     };
     const activated = await kernel.stages.activate(caller, input);
     if (activated.status === 'accepted') {
