@@ -2,6 +2,12 @@ import type { EpicGroup } from '@uw/harness';
 
 export const NODE_WIDTH = 176;
 export const NODE_HEIGHT = 56;
+export const LABEL_CHARS = 20;
+
+export function nodeLabel(name: string): string {
+  return name.length <= LABEL_CHARS ? name : `${name.slice(0, LABEL_CHARS - 1)}…`;
+}
+
 export const GAP_X = 48;
 const GAP_Y = 16;
 export const PAD = 16;

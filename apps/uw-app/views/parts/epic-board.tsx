@@ -1,6 +1,6 @@
 import type { EpicGroup, EpicNode, NotReady } from '@uw/harness';
 import { domId } from '@uw/ui/components/text.ts';
-import { epicLayout, NODE_HEIGHT, NODE_WIDTH, type EpicLayout } from './epic-layout.ts';
+import { epicLayout, NODE_HEIGHT, NODE_WIDTH, nodeLabel, type EpicLayout } from './epic-layout.ts';
 import { issueUrl, itemPath } from './paths.ts';
 
 const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
@@ -64,6 +64,7 @@ function Node(props: {
     <a
       href={itemPath(props.harnessId, node.itemId)}
       aria-label={`${nameOf(node)} ${node.title}, ${stateWords(node)}${waitsOn(node, props.group)}`}
+      tabindex="-1"
       class={focus}
     >
       <rect
@@ -77,7 +78,7 @@ function Node(props: {
         class={nodeClass(node)}
       />
       <text x={at.x + 12} y={at.y + 22} class="fill-ink text-xs font-bold">
-        {nameOf(node)}
+        {nodeLabel(nameOf(node))}
       </text>
       <text x={at.x + 12} y={at.y + 42} class="fill-muted text-xs">
         {stateWords(node)}
@@ -103,7 +104,9 @@ function Drawing(props: {
         role="group"
         aria-labelledby={`${titleId} ${descId}`}
         viewBox={`0 0 ${laid.width} ${laid.height}`}
-        class="h-auto w-full"
+        width={laid.width}
+        height={laid.height}
+        class="max-w-none"
       >
         <title id={titleId}>{`#${group.epic.number} ${group.title} as items and blockers`}</title>
         <desc id={descId}>
