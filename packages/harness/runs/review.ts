@@ -185,7 +185,7 @@ function plannedFrom(grounds: Grounds, input: PostReviewInput): Planned {
       body: reviewBody({ provider, model, verdict, findings }),
       traceId: scene.run.traceId,
     },
-    record: { reviewer, provider, model, verdict },
+    record: { reviewer, provider, model, verdict, findings: [] },
   };
 }
 
@@ -226,16 +226,6 @@ async function postedId(ports: ReviewPorts, planned: Plan): Promise<number | nul
   return outcome.outcome === 'posted' ? outcome.reviewId : null;
 }
 
-const FINDINGS_LIMIT = 50;
-const FINDING_LENGTH = 500;
-
-function boundedFindings(findings: readonly string[]): string[] {
-  return findings
-    .map((finding) => finding.trim().slice(0, FINDING_LENGTH))
-    .filter((finding) => finding !== '')
-    .slice(0, FINDINGS_LIMIT);
-}
-
 async function shadowReview(
   ports: ReviewPorts,
   caller: Caller,
@@ -255,7 +245,7 @@ async function shadowReview(
         runId,
         head: grounds.target.head,
         ...record,
-        findings: boundedFindings(input.review.findings),
+        findings: [],
       }),
     ],
   });

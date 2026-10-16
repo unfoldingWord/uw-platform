@@ -43,6 +43,7 @@ type CommandSpec<Name extends CommandName> = {
 
 const gateCommands: ReadonlySet<CommandName> = new Set<CommandName>([
   'approve',
+  'decide_gates',
   'reject',
   'take_over',
   'override',

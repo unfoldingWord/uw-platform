@@ -64,6 +64,9 @@ function harnessOf(input: ActivateInput, external: string[]): Harness {
     paused: false,
     shadow: input.shadow ?? false,
     externalReviewerIdentities: external,
+    frozen: false,
+    freezeAllow: [],
+    requiredChecks: [],
   };
 }
 

@@ -1,5 +1,6 @@
 import {
   ciJobSchema,
+  defaultCiChecks,
   principalSchema,
   shipRuleInputSchema,
   type JdArea,
@@ -35,19 +36,25 @@ const orgAdmin = approverOf({ role: 'admin', area: null });
 
 function green(): ShipRuleInput {
   return shipRuleInputSchema.parse({
-    pullRequest: { open: true, draft: false, head: 'abc123' },
+    pullRequest: { open: true, draft: false, head: 'abc123', behindBy: 0, skipCi: false },
     expectedHead: 'abc123',
+    carries: [],
     checks: ciJobSchema.options.map((name) => ({
       name,
+      app: 'github-actions',
       headSha: 'abc123',
       conclusion: 'success',
     })),
+    requiredChecks: [...defaultCiChecks],
     approvals: [{ reviewer: 'reviewer-openrouter', commit: 'abc123', provider: 'anthropic' }],
+    closes: [],
+    wraps: null,
     riskTier: 'standard',
     riskDomains: [],
     area: '80-89',
     approver: areaAdmin,
     at: '2026-10-01T09:00:00.000Z',
+    frozen: false,
     override: false,
   });
 }
@@ -79,14 +86,14 @@ describe('KN-11 each fact refuses with its reason', () => {
       'checks_not_green',
       'no_reviewer_approval',
     ]);
-    const closed = { open: false, draft: false, head: 'abc123' };
+    const closed = { open: false, draft: false, head: 'abc123', behindBy: 0, skipCi: false };
     expect(refusedWith({ ...green(), pullRequest: closed })).toEqual(['pr_not_open']);
-    const draft = { open: true, draft: true, head: 'abc123' };
+    const draft = { open: true, draft: true, head: 'abc123', behindBy: 0, skipCi: false };
     expect(refusedWith({ ...green(), pullRequest: draft })).toEqual(['pr_is_draft']);
   });
 
   it('refuses a head that is not the expected commit, or an unknown expected commit', () => {
-    const moved = { open: true, draft: false, head: 'def456' };
+    const moved = { open: true, draft: false, head: 'def456', behindBy: 0, skipCi: false };
     expect(refusedWith({ ...green(), pullRequest: moved })).toEqual([
       'head_mismatch',
       'checks_not_green',
@@ -98,28 +105,25 @@ describe('KN-11 each fact refuses with its reason', () => {
 
 describe('KN-11 each fact refuses with its reason (checks)', () => {
   it('refuses a missing, red, pending or off-head check', () => {
-    const missing = withChecks((name) =>
-      name === 'lint' ? [] : [{ name, headSha: 'abc123', conclusion: 'success' }],
-    );
+    const run = (name: string, headSha: string, conclusion: 'success' | 'failure' | null) => [
+      { name, app: 'github-actions', headSha, conclusion },
+    ];
+    const missing = withChecks((name) => (name === 'lint' ? [] : run(name, 'abc123', 'success')));
     expect(refusedWith({ ...green(), checks: missing })).toEqual(['checks_not_green']);
-    const red = withChecks((name) => [
-      { name, headSha: 'abc123', conclusion: name === 'test' ? 'failure' : 'success' },
-    ]);
+    const red = withChecks((name) => run(name, 'abc123', name === 'test' ? 'failure' : 'success'));
     expect(refusedWith({ ...green(), checks: red })).toEqual(['checks_not_green']);
-    const pending = withChecks((name) => [
-      { name, headSha: 'abc123', conclusion: name === 'build' ? null : 'success' },
-    ]);
+    const pending = withChecks((name) => run(name, 'abc123', name === 'build' ? null : 'success'));
     expect(refusedWith({ ...green(), checks: pending })).toEqual(['checks_not_green']);
-    const stale = withChecks((name) => [
-      { name, headSha: name === 'build' ? 'old999' : 'abc123', conclusion: 'success' },
-    ]);
+    const stale = withChecks((name) =>
+      run(name, name === 'build' ? 'old999' : 'abc123', 'success'),
+    );
     expect(refusedWith({ ...green(), checks: stale })).toEqual(['checks_not_green']);
   });
 
   it('ignores a seventh unrelated check', () => {
     const extra = [
       ...green().checks,
-      { name: 'codecov', headSha: 'abc123', conclusion: 'failure' as const },
+      { name: 'codecov', app: 'github-actions', headSha: 'abc123', conclusion: 'failure' as const },
     ];
     expect(shipRule({ ...green(), checks: extra })).toEqual({ verdict: 'advance' });
   });
@@ -127,7 +131,7 @@ describe('KN-11 each fact refuses with its reason (checks)', () => {
   it('refuses a failure re-run beside a success of the same job', () => {
     const rerun = [
       ...green().checks,
-      { name: 'lint', headSha: 'abc123', conclusion: 'failure' as const },
+      { name: 'lint', app: 'github-actions', headSha: 'abc123', conclusion: 'failure' as const },
     ];
     expect(refusedWith({ ...green(), checks: rerun })).toEqual(['checks_not_green']);
   });
@@ -267,7 +271,7 @@ describe('KN-11 P11 every failing reason is reported, in section 8.5 order', () 
   it('returns every failing reason in schema order', () => {
     const everything: ShipRuleInput = {
       ...green(),
-      pullRequest: { open: true, draft: true, head: 'def456' },
+      pullRequest: { open: true, draft: true, head: 'def456', behindBy: 0, skipCi: false },
       checks: green().checks.map((check) => ({ ...check, conclusion: 'failure' as const })),
       approvals: [],
       riskTier: null,
@@ -293,7 +297,7 @@ describe('KN-12 P12 override bypasses no_reviewer_approval and nothing else', ()
   });
 
   it('still refuses head mismatch, red checks, undeclared tier and the grant check', () => {
-    const moved = { open: true, draft: false, head: 'def456' };
+    const moved = { open: true, draft: false, head: 'def456', behindBy: 0, skipCi: false };
     const red = green().checks.map((check) => ({ ...check, conclusion: 'failure' as const }));
     const bare = { ...green(), approvals: [] };
     expect(refusedWith(override({ ...bare, pullRequest: moved }))).toEqual([

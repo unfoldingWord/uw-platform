@@ -74,7 +74,7 @@ export type WaitingRow =
       readonly kind: 'handed_to_person';
       readonly harness: Harness;
       readonly item: ItemState;
-      readonly rounds: number;
+      readonly rounds: number | null;
     };
 export type Waiting = {
   readonly rows: readonly WaitingRow[];

@@ -54,7 +54,10 @@ function shown(row: WaitingRow, viewer: string | null): Shown {
   if (row.kind === 'handed_to_person') {
     return {
       href: itemPath(row.harness.id, row.item.itemId),
-      text: `${row.item.title} was handed to you after ${roundsText(row.rounds)} review rounds`,
+      text:
+        row.rounds === null
+          ? `${row.item.title} was handed to you because an engine refused it`
+          : `${row.item.title} was handed to you after ${roundsText(row.rounds)} review rounds`,
       harnessId: row.harness.id,
     };
   }

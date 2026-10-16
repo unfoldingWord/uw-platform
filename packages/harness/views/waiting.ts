@@ -120,7 +120,11 @@ async function failedRows(scope: Scope): Promise<FailedRows> {
   return { rows, capped: runs.length === FAILED_RUNS_LIMIT };
 }
 
-type HandOff = { readonly itemId: string; readonly harness: Harness; readonly rounds: number };
+type HandOff = {
+  readonly itemId: string;
+  readonly harness: Harness;
+  readonly rounds: number | null;
+};
 
 async function handOffsTo(
   scope: Scope,

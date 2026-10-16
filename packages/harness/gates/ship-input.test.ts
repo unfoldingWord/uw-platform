@@ -1,5 +1,6 @@
 import {
   ciJobSchema,
+  defaultCiChecks,
   principalSchema,
   type ItemState,
   type PullRequestDeclaration,
@@ -140,15 +141,25 @@ const unusable = { pullRequest: null, checks: [], approvals: [], riskTier: null 
 describe('GH-5 the assembler builds the ship rule input from GitHub facts', () => {
   it('reads the pull request, six CI checks and one Reviewer approval on the head', () => {
     expect(assembled()).toEqual({
-      pullRequest: { open: true, draft: false, head },
+      pullRequest: { open: true, draft: false, head, behindBy: 0, skipCi: false },
       expectedHead: head,
-      checks: ciJobSchema.options.map((name) => ({ name, headSha: head, conclusion: 'success' })),
+      carries: [],
+      checks: ciJobSchema.options.map((name) => ({
+        name,
+        app: 'github-actions',
+        headSha: head,
+        conclusion: 'success',
+      })),
+      requiredChecks: [...defaultCiChecks],
       approvals: theApproval,
+      closes: [],
+      wraps: null,
       riskTier: 'standard',
       riskDomains: [],
       area: '80-89',
       approver,
       at: at.toISOString(),
+      frozen: false,
       override: false,
     });
   });
@@ -195,14 +206,14 @@ describe('GH-5 only the CI jobs from GitHub Actions on the head count', () => {
     const failed = check('test', { checkId: 1, conclusion: 'failure' });
     const green = check('test', { checkId: 2, conclusion: 'success' });
     expect(withChecks(failed, green)).toEqual([
-      { name: 'test', headSha: head, conclusion: 'success' },
+      { name: 'test', app: 'github-actions', headSha: head, conclusion: 'success' },
     ]);
     const reversed = [
       { ...failed, checkId: 2 },
       { ...green, checkId: 1 },
     ];
     expect(withChecks(...reversed)).toEqual([
-      { name: 'test', headSha: head, conclusion: 'failure' },
+      { name: 'test', app: 'github-actions', headSha: head, conclusion: 'failure' },
     ]);
   });
 

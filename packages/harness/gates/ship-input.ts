@@ -1,5 +1,6 @@
 import {
   ciJobSchema,
+  defaultCiChecks,
   type EventEvidence,
   type GateView,
   type Harness,
@@ -68,6 +69,7 @@ function latestChecks(facts: PullRequestFacts, head: string): ShipRuleInput['che
   }
   return [...latest.values()].map((check) => ({
     name: check.name,
+    app: check.app,
     headSha: head,
     conclusion: check.conclusion,
   }));
@@ -132,7 +134,7 @@ export function reviewsOn(
       commit: head,
       state: counted.review.state,
       provider: providerOf(counted),
-      findings: [...counted.review.findings],
+      findings: counted.review.findings.map((text) => ({ text, weight: null })),
     }));
 }
 
@@ -182,22 +184,35 @@ function riskAtHead(
 
 function fromFacts(
   source: ShipInputSource,
-): Pick<ShipRuleInput, 'pullRequest' | 'checks' | 'approvals' | 'riskTier' | 'riskDomains'> {
+): Pick<
+  ShipRuleInput,
+  'pullRequest' | 'carries' | 'checks' | 'approvals' | 'closes' | 'riskTier' | 'riskDomains'
+> {
   const { facts, item } = source;
   const head = usableHead(facts, item, source.harness);
   if (facts === null || head === null) {
     return {
       pullRequest: null,
+      carries: [],
       checks: [],
       approvals: [],
+      closes: [],
       riskTier: null,
       riskDomains: [...item.riskDomains],
     };
   }
   return {
-    pullRequest: { open: facts.state === 'open', draft: facts.draft, head },
+    pullRequest: {
+      open: facts.state === 'open',
+      draft: facts.draft,
+      head,
+      behindBy: 0,
+      skipCi: false,
+    },
+    carries: [],
     checks: latestChecks(facts, head),
     approvals: approvalsOn(facts, head, source.harness.externalReviewerIdentities),
+    closes: [],
     ...riskAtHead(facts, source, head),
   };
 }
@@ -208,8 +223,11 @@ export function assembleShipInput(source: ShipInputSource): ShipRuleInput {
     ...fromFacts(source),
     expectedHead: item.expectedHead === null ? null : fullSha(item.expectedHead),
     area: source.harness.jdArea,
+    wraps: null,
+    requiredChecks: [...defaultCiChecks],
     approver: source.approver,
     at: source.at.toISOString(),
+    frozen: false,
     override: source.override,
   };
 }

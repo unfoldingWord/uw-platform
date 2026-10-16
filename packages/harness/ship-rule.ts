@@ -91,6 +91,8 @@ function approverLacksDomainGrant(input: ShipRuleInput): boolean {
   return !approverCovers(input.approver, input.area, input.riskDomains, new Date(input.at));
 }
 
+const notYetRead: Predicate = () => false;
+
 const failing: ReadonlyMap<ShipRefusal, Predicate> = new Map<ShipRefusal, Predicate>([
   ['pr_not_open', pullRequestNotOpen],
   ['pr_is_draft', pullRequestIsDraft],
@@ -101,6 +103,11 @@ const failing: ReadonlyMap<ShipRefusal, Predicate> = new Map<ShipRefusal, Predic
   ['reviewer_count_below_tier', reviewerCountBelowTier],
   ['reviewer_providers_not_distinct', reviewerProvidersNotDistinct],
   ['approver_lacks_domain_grant', approverLacksDomainGrant],
+  ['base_behind', notYetRead],
+  ['auto_close_keyword', notYetRead],
+  ['skip_ci_marker', notYetRead],
+  ['required_check_never_ran', notYetRead],
+  ['harness_frozen', notYetRead],
 ]);
 
 function fails(input: ShipRuleInput): (reason: ShipRefusal) => boolean {

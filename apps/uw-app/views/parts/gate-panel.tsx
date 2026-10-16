@@ -82,7 +82,7 @@ function Findings(props: { readonly view: GateView }) {
               ) : (
                 <ul class="m-0 pl-5">
                   {review.findings.map((finding) => (
-                    <li class="break-words">{finding}</li>
+                    <li class="break-words">{finding.text}</li>
                   ))}
                 </ul>
               )}
