@@ -289,9 +289,10 @@ describe("GH-5 the assembler is the ship rule's only caller", () => {
     expect(filesMatching(assemblerCall, sources())).toEqual(assemblerCallers);
   });
 
-  it('finds the ship preview defined beside the approve-at-Ship path and called only from the gate view', () => {
+  it('finds the ship preview defined beside the approve-at-Ship path and called only from the gate view and the shadow verdict', () => {
     expect(filesMatching(previewCall, sources())).toEqual([
       approveAtShip,
+      'packages/harness/gates/shadow-verdict.ts',
       'packages/harness/gates/view.ts',
     ]);
   });
