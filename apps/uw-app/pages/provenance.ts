@@ -45,7 +45,7 @@ function firstRefusal(
   given: Provenance,
   writer: ExternalWriter | null,
 ): Refusal | null {
-  if (source === PLATFORM) return null;
+  if (source === PLATFORM) return given.pullRequest === null ? null : 'malformed_command';
   if (given.pullRequest === null) return 'malformed_command';
   const repository = writer?.repository ?? null;
   const same = repository !== null && sameRepository(repository, given.pullRequest.repo);
@@ -53,7 +53,7 @@ function firstRefusal(
 }
 
 function laterRefusal(prior: Provenance, given: Provenance): Refusal | null {
-  if (prior.source === PLATFORM) return null;
+  if (prior.source === PLATFORM && given.pullRequest !== null) return 'malformed_command';
   return samePullRequest(prior.pullRequest, given.pullRequest) ? null : 'malformed_command';
 }
 

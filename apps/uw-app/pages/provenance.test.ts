@@ -64,3 +64,19 @@ describe('PI-2 where a learning came from', () => {
     });
   });
 });
+
+describe('PI-2 a platform learning names no pull request', () => {
+  it('PI-2 a platform learning carries no pull request, written or edited', () => {
+    const named = { ...base, pull_request: pull };
+    const raw = { pull_request: pull };
+    expect(learningProvenance({ parsed: named, raw, prior: null, writer: null })).toEqual({
+      ok: false,
+      reason: 'malformed_command',
+    });
+    const prior = { source: 'platform' as const, pullRequest: null };
+    expect(learningProvenance({ parsed: named, raw, prior, writer: null })).toEqual({
+      ok: false,
+      reason: 'malformed_command',
+    });
+  });
+});
