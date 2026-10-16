@@ -216,6 +216,7 @@ const gateEvidence = {
   }),
   connector_refused: z.strictObject({ connector: effect, reason: text }),
   delegated_merge: delegatedMergeSchema,
+  delegated_exit_claimed: z.strictObject({ decisionId: id }),
   review_verdict_recorded: z.strictObject({
     runId: id,
     head,

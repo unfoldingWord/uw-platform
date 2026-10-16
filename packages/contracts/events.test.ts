@@ -28,11 +28,11 @@ const claimed = {
 };
 
 describe('KN-3 the event vocabulary is PRD section 8.6', () => {
-  it('has the sixty names and none of the placeholders it replaces', () => {
-    expect(eventNameSchema.options).toHaveLength(60);
+  it('has the sixty-one names and none of the placeholders it replaces', () => {
+    expect(eventNameSchema.options).toHaveLength(61);
     expect(eventNameSchema.safeParse('stage_edited').success).toBe(true);
     expect(eventNameSchema.options[0]).toBe('item_created');
-    expect(eventNameSchema.options.at(-1)).toBe('delegated_merge');
+    expect(eventNameSchema.options.at(-1)).toBe('delegated_exit_claimed');
     expect(eventNameSchema.safeParse('abandoned').success).toBe(false);
     expect(eventNameSchema.safeParse('branch_abandoned').success).toBe(true);
   });
