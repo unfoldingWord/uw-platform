@@ -246,6 +246,13 @@
       "when": 1792127044952,
       "tag": "0034_delegated_decision_binding",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1792131155996,
+      "tag": "0035_delegated_exit_claimed",
+      "breakpoints": true
     }
   ]
 }
