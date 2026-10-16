@@ -4,7 +4,7 @@ import { REGISTRY_HOST } from './registry-egress.ts';
 import type { SessionFinish, SessionTools } from './session.ts';
 
 export const NO_CHECKS_EXIT = 78;
-export const RENEW_EVERY_MS = 60_000;
+const RENEW_EVERY_MS = 60_000;
 
 const DECLARED_CHECKS = '.harness/checks.sh';
 const SAFE_GIT =
