@@ -477,3 +477,19 @@ _Avoid_: severity (that is the finding's impact), confidence (that is a learning
 **Silence alarm**:
 The health indicator that goes red when items wait in Check and no review step has run for 90 minutes.
 _Avoid_: watchdog
+
+**Required check**:
+A check a harness names, by GitHub App and check name, that must have run on the head and passed before Ship. A harness that names none requires every check that ran on the head to have passed, and at least one to have run.
+_Avoid_: required status, CI gate, branch protection (that is GitHub's)
+
+**Carried approval**:
+A Reviewer approval on an earlier head that counts on the current head because every commit since it is a merge and the change against the merge base is byte-identical (the same patch id). The gate decision names both heads.
+_Avoid_: sticky approval, inherited review
+
+**Refuted finding**:
+A Reviewer finding a person marked wrong on the Gates view. The share of a Reviewer's findings refuted over 30 days is its refute rate.
+_Avoid_: rejected finding (a gate is rejected), false positive
+
+**Strictness preset**:
+The persona-page line `approve_at`: `zero_findings` approves only with no findings at all; `no_real_or_plausible`, the default, approves when every finding is `theoretical`.
+_Avoid_: threshold, severity level
