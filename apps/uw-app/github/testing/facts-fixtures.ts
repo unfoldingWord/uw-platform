@@ -62,6 +62,7 @@ export const openedPull: PullRequestRecord = {
   baseRef: 'main',
   baseSha: base,
   milestoneId: null,
+  requestedReviewers: [],
   declaration,
   declarationProblem: null,
   githubUpdatedAt: new Date('2026-10-02T08:00:00.000Z'),

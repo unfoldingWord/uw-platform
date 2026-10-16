@@ -56,6 +56,7 @@ export type PullRequestRecord = {
   readonly baseRef: string;
   readonly baseSha: string;
   readonly milestoneId: number | null;
+  readonly requestedReviewers: readonly string[];
   readonly declaration: PullRequestDeclaration | null;
   readonly declarationProblem: string | null;
   readonly githubUpdatedAt: Date;

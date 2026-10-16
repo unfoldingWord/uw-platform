@@ -19,6 +19,9 @@ export type PullRequestChange = {
   readonly number: number;
   readonly head: string;
   readonly baseSha: string;
+  readonly title: string;
+  readonly open: boolean;
+  readonly requestedReviewers: readonly string[];
   readonly filesKnown: boolean;
 };
 
@@ -49,6 +52,9 @@ export async function pullRequestChanges(
     number: pull.number,
     head: pull.headSha,
     baseSha: pull.baseSha,
+    title: pull.title,
+    open: pull.state === 'open',
+    requestedReviewers: [...pull.requestedReviewers],
     filesKnown: pull.filesHead === pull.headSha && pull.filesBase === pull.baseSha,
   }));
 }

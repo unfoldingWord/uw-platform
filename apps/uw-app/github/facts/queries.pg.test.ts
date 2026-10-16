@@ -164,6 +164,9 @@ describe.skipIf(!testServer)('the read model lists a repository and its open pul
           number: 7,
           head,
           baseSha: base,
+          title: 'Show the board',
+          open: true,
+          requestedReviewers: [],
           filesKnown: true,
         },
       ]);
