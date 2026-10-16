@@ -1,11 +1,13 @@
 import type { ItemState, Principal } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
-import { software, type BatchEntry } from '@uw/harness';
+import { software, type BatchEntry, type Connectors } from '@uw/harness';
+import { decideGates } from '@uw/harness/testing';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createSimHarness, simAgent, simCaller } from '../fixtures.ts';
 import { detailOf, reasonOf, value } from '../runs.ts';
 import {
   approvedBy,
+  comparedAt,
   greenFacts,
   itemLog,
   type ItemLog,
@@ -135,7 +137,42 @@ async function shapesRefused(scene: Scene): Promise<void> {
   expect(reasonOf(await batch(scene, [entry(scene.first)], agent))).toBe('not_permitted');
 }
 
+function behindOnceOtherMerges(scene: Scene): Connectors {
+  const { world } = scene;
+  return {
+    ...world.adapters.connectors,
+    run: async (request) => {
+      const outcome = await world.adapters.connectors.run(request);
+      const [item, change] =
+        request.itemId === scene.first.itemId
+          ? [scene.second, secondChange]
+          : [scene.first, standardChange];
+      const facts = factsFor(world, item, change, true);
+      world.adapters.githubFacts.given({
+        ...facts,
+        comparison: comparedAt(change.head, { behindBy: 1 }),
+      });
+      return outcome;
+    },
+  };
+}
+
+async function secondWaitsForBase(scene: Scene): Promise<void> {
+  const { world } = scene;
+  const ports = { ...world.adapters, connectors: behindOnceOtherMerges(scene) };
+  const input = { harnessId: scene.harnessId, entries: [entry(scene.first), entry(scene.second)] };
+  const decided = value(await decideGates(ports, simCaller(world, scene.admin), input));
+  expect(decided.decided.map((one) => one.advanced)).toEqual([true, false]);
+  const waiting = decided.decided[1]?.item.itemId;
+  expect(decided.waitingForBase).toEqual([waiting]);
+  expect(decisionsOf(await logs(scene))).toEqual([['approve'], ['approve']]);
+  expect(world.adapters.connectors.calls()).toHaveLength(1);
+}
+
 describe('GD-1 decide_gates', () => {
+  it('GD-1 approves both, merges the first, and names the second approved and waiting for a base update when the merge put it behind', () =>
+    inScene(true, secondWaitsForBase));
+
   it('GD-1 writes one gate decision per item in one call, each pinned to its own head, and merges each', () =>
     inScene(true, bothMerge));
 
