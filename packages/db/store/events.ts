@@ -181,6 +181,20 @@ async function enteredStage(
   return rows.flatMap((row) => (row.itemId === null ? [] : [{ itemId: row.itemId, at: row.at }]));
 }
 
+function evidenceFilters(query: RecentEvents) {
+  return [
+    query.evidencePerson === undefined
+      ? undefined
+      : sql`${harnessEvents.evidence}->>'personId' = ${query.evidencePerson}`,
+    query.evidenceIssue === undefined
+      ? undefined
+      : sql`${harnessEvents.evidence}->'issue'->>'githubId' = ${String(query.evidenceIssue)}`,
+    query.evidencePage === undefined
+      ? undefined
+      : sql`${harnessEvents.evidence}->>'pageId' = ${query.evidencePage}`,
+  ];
+}
+
 export function recentQuery(executor: AnyExecutor, query: RecentEvents) {
   if (!Number.isInteger(query.limit) || query.limit < 1 || query.limit > maxRecent) {
     throw new RangeError(`a recent read holds 1 to ${maxRecent} events, not ${query.limit}`);
@@ -196,9 +210,7 @@ export function recentQuery(executor: AnyExecutor, query: RecentEvents) {
         query.harnessIds === undefined || query.harnessIds.length === 0
           ? undefined
           : inArray(harnessEvents.harnessId, [...query.harnessIds]),
-        query.evidencePerson === undefined
-          ? undefined
-          : sql`${harnessEvents.evidence}->>'personId' = ${query.evidencePerson}`,
+        ...evidenceFilters(query),
       ),
     )
     .orderBy(desc(harnessEvents.at), asc(harnessEvents.harnessId), desc(harnessEvents.position))

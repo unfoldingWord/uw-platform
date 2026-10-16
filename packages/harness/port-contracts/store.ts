@@ -12,6 +12,7 @@ import { describeStoreFreeze } from './store-freeze.ts';
 import { describeStoreFixClaim } from './store-fix-claim.ts';
 import { describeStoreJoining } from './store-joining.ts';
 import { describeStoreItemsEpic } from './store-items-epic.ts';
+import { describeStoreNotReady } from './store-not-ready.ts';
 import { describeStorePersonas, type PageVersionRow } from './store-personas.ts';
 
 export type StoreShape = { readonly concurrentConnections: boolean };
@@ -291,6 +292,7 @@ export function describeStoreContract(
     describeStoreFreeze(adapter, subject);
     describeStoreFixClaim(adapter, subject);
     describeStoreItemsEpic(adapter, subject);
+    describeStoreNotReady(adapter, subject);
   });
 }
 
