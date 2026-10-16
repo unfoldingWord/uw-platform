@@ -49,7 +49,7 @@ function textNodes(node: Node): string[] {
 function proseOf(body: HTMLElement): string {
   return textNodes(body)
     .map((text) => text.replaceAll(/\S+@\S+/g, ' '))
-    .join(' ');
+    .join('');
 }
 
 function copyProblems(document: Document): string[] {
