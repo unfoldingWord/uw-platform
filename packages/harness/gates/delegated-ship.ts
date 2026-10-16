@@ -108,7 +108,7 @@ function delegatedMergeOf(decisionId: string, found: Lent): DelegatedMerge {
 
 type Decided = { readonly found: Lent; readonly ship: ShipCheck };
 
-export async function recordDelegatedDecision(
+async function recordDelegatedDecision(
   tx: StoreTransaction,
   scene: DelegatedScene,
   decided: Decided,

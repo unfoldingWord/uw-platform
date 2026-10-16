@@ -1,4 +1,4 @@
-import type { DelegatedMerge, Principal } from '@uw/contracts';
+import type { Principal } from '@uw/contracts';
 import { personPrincipal } from '@uw/core/principal';
 import { livenessOf, recordLapse } from '../delegations/live.ts';
 import type { RecordContext } from '../items/record.ts';
@@ -52,24 +52,4 @@ export async function lentInDecision(
     interactive: false,
   });
   return lentOf(delegation, approver);
-}
-
-export async function lentAtExit(
-  ports: Pick<Ports, 'grants' | 'store'>,
-  delegated: DelegatedMerge,
-  at: Date,
-): Promise<Lent | NotLent> {
-  return ports.store.transaction(async (tx) => {
-    const delegation = await tx.delegations.read.byId(delegated.delegationId);
-    if (delegation === null || delegation.capability !== 'merge') return 'delegation_lapsed';
-    const liveness = await livenessOf(tx, ports, delegation, at);
-    if (!liveness.live) return 'delegation_lapsed';
-    const approver = personPrincipal({
-      personId: delegation.personId,
-      email: delegated.email,
-      grants: liveness.grants,
-      interactive: false,
-    });
-    return lentOf(delegation, approver);
-  });
 }
