@@ -493,3 +493,11 @@ _Avoid_: rejected finding (a gate is rejected), false positive
 **Strictness preset**:
 The persona-page line `approve_at`: `zero_findings` approves only with no findings at all; `no_real_or_plausible`, the default, approves when every finding is `theoretical`.
 _Avoid_: threshold, severity level
+
+**Delegated Ship exit**:
+A merge delegation used: an agent holding one submits an item at a merge Ship stage, and the kernel records a gate decision whose approver is the person who granted the delegation, whose actor is the agent, and which names the delegation. The merge runs afterwards from the minute job.
+_Avoid_: auto-merge, auto-approve, robot merge
+
+**Protected path**:
+A changed file a delegation never covers: one under the kernel's protected directories (which also raise the risk tier to `high`) or under a path the harness lists in `protected_paths`. Ship refuses a delegated exit that touches one with `protected_path_needs_person`.
+_Avoid_: sensitive file, locked path
