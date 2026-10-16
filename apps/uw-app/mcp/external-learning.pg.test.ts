@@ -4,14 +4,20 @@ import { sql } from 'drizzle-orm';
 import {
   createPageCommandSchema,
   defaultCiChecks,
+  delegatedIdentity,
+  principalSchema,
   type CapabilityWord,
   type Principal,
 } from '@uw/contracts';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
 import { seedActivePersona, seedGrant, seedPerson } from '@uw/db/test-seed';
-import { software, type Caller, type Kernel } from '@uw/harness';
+import { createLogger } from '@uw/core/log';
+import { DEFAULT_SPEND_CAP, software, type Caller, type Kernel } from '@uw/harness';
 import { createApp } from '../app.tsx';
+import type { VerbContext } from './context.ts';
+import { callVerb } from './dispatch.ts';
+import { verbHandlers } from './verbs/index.ts';
 import { createPage } from '../pages/store.ts';
 import { systemClock } from '../ports/clock.ts';
 import { createAccessFixture, type AccessFixture } from '../testing/access-keys.ts';
@@ -93,14 +99,15 @@ async function benchHarness(r: Rig): Promise<Bench> {
   return { harnessId, repository };
 }
 
-async function runner(
+type Delegated = { readonly seth: Principal; readonly delegationId: string };
+
+async function delegated(
   r: Rig,
   bench: Bench,
   capability: CapabilityWord,
-  persona: string,
-): Promise<Client> {
+  identity: string,
+): Promise<Delegated> {
   const seth = await personOn(r.db, SETH.id, SETH.email, new Date());
-  const identity = `agent:${persona}`;
   const grant = {
     harnessId: bench.harnessId,
     persona: identity,
@@ -115,13 +122,49 @@ async function runner(
     harnessId: bench.harnessId,
     frontmatter: { capability },
   });
+  return { seth, delegationId: delegation.id };
+}
+
+async function runner(
+  r: Rig,
+  bench: Bench,
+  capability: CapabilityWord,
+  persona: string,
+): Promise<Client> {
+  const { delegationId } = await delegated(r, bench, capability, `agent:${persona}`);
   const token = await r.fixture.signForMcp({ email: SETH.email });
   return httpClient(createApp(postgresDeps(r.db, r.fixture)), {
     'cf-access-jwt-assertion': token,
     'x-uw-device': 'bench',
     'x-uw-persona': persona,
-    'x-uw-delegation': delegation.id,
+    'x-uw-delegation': delegationId,
   });
+}
+
+function platformHost(r: Rig, found: Delegated): VerbContext {
+  const identity = delegatedIdentity(`agent:${SETH.id}/bench`, 'reviewer', found.delegationId);
+  const principal = principalSchema.parse({
+    identity,
+    kind: 'agent',
+    personId: SETH.id,
+    email: null,
+    grants: found.seth.grants,
+    interactive: false,
+  });
+  return {
+    principal,
+    host: 'workflow',
+    at: new Date(),
+    traceId: crypto.randomUUID(),
+    kernel: r.kernel,
+    db: r.db,
+    commit: 'test-commit',
+    cap: DEFAULT_SPEND_CAP,
+    logger: createLogger(
+      { traceId: 'trace', commit: 'test-commit', route: 'workflow', principal: null },
+      () => undefined,
+    ),
+  };
 }
 
 function pageOf(pageId: string, frontmatter: Frontmatter) {
@@ -226,6 +269,19 @@ async function editKeepsProvenance(): Promise<void> {
   });
 }
 
+async function platformHostIsPlatform(): Promise<void> {
+  const r = await rig();
+  const bench = await benchHarness(r);
+  const context = platformHost(r, await delegated(r, bench, 'review', 'agent:reviewer'));
+  const pageId = crypto.randomUUID();
+  const written = await callVerb(context, 'write_page', learning(pageId, {}), verbHandlers);
+  expect(written.isError).toBeUndefined();
+  expect(await stored(r, pageId)).toMatchObject({
+    status: 'suggested',
+    frontmatter: { source: 'platform' },
+  });
+}
+
 async function personCannotClaim(): Promise<void> {
   const r = await rig();
   const page = pageOf(crypto.randomUUID(), {
@@ -254,6 +310,10 @@ describe.skipIf(!testServer)('PI-2 the bench posts its rulings as suggested lear
   it(
     'PI-2 a runner on another capability writes a platform learning and cannot claim external',
     otherCapabilityIsPlatform,
+  );
+  it(
+    'PI-2 a runner on a review delegation on the platform host writes a platform learning with no pull request',
+    platformHostIsPlatform,
   );
   it('PI-2 an edit keeps the source and the pull request', editKeepsProvenance);
   it('PI-2 a person cannot mark a learning external through the page API', personCannotClaim);
