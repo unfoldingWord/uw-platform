@@ -65,6 +65,7 @@ async function delegationRows(scope: ListScope): Promise<readonly PlaneRow[]> {
       persona: delegation.persona,
       person: delegation.personId,
       capability: delegation.capability,
+      'max tier': delegation.maxTier,
       expires: formatInstant(delegation.expiresAt),
     },
   }));

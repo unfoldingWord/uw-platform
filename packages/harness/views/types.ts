@@ -119,7 +119,11 @@ export type PlaneTotals = {
     readonly byEngine: Readonly<Partial<Record<Engine, number>>>;
     readonly since: Date;
   };
-  readonly liveDelegations: { readonly count: number; readonly soonestExpiry: Date | null };
+  readonly liveDelegations: {
+    readonly count: number;
+    readonly merge: number;
+    readonly soonestExpiry: Date | null;
+  };
   readonly gateRefusals: {
     readonly byReason: Readonly<Record<string, number>>;
     readonly capped: boolean;

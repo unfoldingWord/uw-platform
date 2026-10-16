@@ -8,18 +8,27 @@ const direct: ReadonlyMap<string, WakeReason> = new Map<string, WakeReason>([
   ['run_failed', 'run_failed'],
   ['stage_advanced', 'stage_advanced'],
   ['handed_to_person', 'handed_to_person'],
+  ['delegated_merge', 'delegated_merge'],
 ]);
 
-function reasonOf(event: HarnessEvent): WakeReason | null {
-  if (event.name === 'submitted_to_gate') {
-    return event.evidence['result'] === 'parked' ? 'gate_waiting' : null;
-  }
-  return direct.get(event.name) ?? null;
+function approvedItems(events: readonly HarnessEvent[]): ReadonlySet<string> {
+  return new Set(
+    events.flatMap((event) =>
+      event.name === 'gate_approved' && event.itemId !== null ? [event.itemId] : [],
+    ),
+  );
+}
+
+function reasonOf(event: HarnessEvent, approved: ReadonlySet<string>): WakeReason | null {
+  if (event.name !== 'submitted_to_gate') return direct.get(event.name) ?? null;
+  if (event.evidence['result'] !== 'parked') return null;
+  return event.itemId !== null && approved.has(event.itemId) ? null : 'gate_waiting';
 }
 
 export function triggersOf(events: readonly HarnessEvent[]): readonly Trigger[] {
+  const approved = approvedItems(events);
   const triggers = events.flatMap((event): Trigger[] => {
-    const reason = reasonOf(event);
+    const reason = reasonOf(event, approved);
     return reason === null ? [] : [{ event, reason }];
   });
   return triggers.toSorted(

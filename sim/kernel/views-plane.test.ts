@@ -57,7 +57,7 @@ async function runsToday(scene: PlaneWorld): Promise<void> {
 
 async function liveDelegations(scene: PlaneWorld): Promise<void> {
   const { liveDelegations: live } = await totalsOf(scene.world);
-  expect(live).toEqual({ count: 3, soonestExpiry: scene.scoutExpiry });
+  expect(live).toEqual({ count: 3, merge: 0, soonestExpiry: scene.scoutExpiry });
 }
 
 async function decide(scene: GatesWorld, actor: Principal, itemId: string): Promise<void> {

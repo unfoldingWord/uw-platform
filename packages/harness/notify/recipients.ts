@@ -125,12 +125,17 @@ function handedPerson(scope: RecipientScope): string | null {
   return typeof personId === 'string' ? personId : null;
 }
 
+function grantorOf(scope: RecipientScope): string | null {
+  return scope.delegation?.personId ?? null;
+}
+
 const byReason: ReadonlyMap<WakeReason, (scope: RecipientScope) => Named> = new Map([
   ['gate_waiting', gateWaiting],
   ['delegation_lapsed', delegationLapsed],
   ['run_failed', readerOnly(runFailedPerson)],
   ['stage_advanced', readerOnly(stageAdvancedPerson)],
   ['handed_to_person', readerOnly(handedPerson)],
+  ['delegated_merge', readerOnly(grantorOf)],
 ]);
 
 function selfOf(actor: string): string | null {
