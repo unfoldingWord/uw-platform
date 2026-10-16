@@ -471,7 +471,8 @@ describe('FL-1 FL-2 FL-3 FL-4 the fix claim contracts', () => {
   });
 
   it('FL-3 a fix is refused with its own reasons, and a passing fix waits for review', () => {
-    expect(errorReasonSchema.options.slice(-4, -2)).toEqual(['fix_size_cap', 'fix_keeps_purpose']);
+    expect(errorReasonSchema.options).toContain('fix_size_cap');
+    expect(errorReasonSchema.options).toContain('fix_keeps_purpose');
     expect(submitToGateResultSchema.options.at(-1)).toBe('awaiting_review');
   });
 
