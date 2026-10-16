@@ -7,7 +7,7 @@ import { draft, readAllEvents, type EventDraft } from './record.ts';
 
 type FixPorts = Pick<Ports, 'githubFacts' | 'store'>;
 
-export type FixStart = { readonly declared: PullRequestDeclaration | null };
+type FixStart = { readonly declared: PullRequestDeclaration | null };
 export type FixRead = FixStart | { readonly refusal: Refused } | null;
 
 type Target = { readonly ref: PullRequestRef | null };

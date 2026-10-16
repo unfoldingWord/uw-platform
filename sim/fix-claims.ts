@@ -6,7 +6,7 @@ import { builderFrontmatter, seedPersona, value } from './runs.ts';
 import { greenFacts, shipBase, shipPullRequest, simSha } from './ship-fixtures.ts';
 import type { World } from './world.ts';
 
-export const fixerPage = '00000000-0000-4000-8000-000000017001';
+const fixerPage = '00000000-0000-4000-8000-000000017001';
 export const fixHead = simSha('f1ed');
 const roundText = 'The board drops its empty state.';
 
@@ -14,7 +14,7 @@ export type FixWorld = ReviewWorld & { readonly fixer: Principal; readonly fixId
 
 export type FixOptions = { readonly fixClaim?: boolean; readonly weight?: FindingWeight };
 
-export async function reviewedRound(scene: ReviewWorld, weight: FindingWeight): Promise<void> {
+async function reviewedRound(scene: ReviewWorld, weight: FindingWeight): Promise<void> {
   const input = {
     verdict: 'request_changes' as const,
     findings: [{ text: roundText, weight }],
@@ -60,7 +60,7 @@ export async function offeredTo(scene: FixWorld, actor: Principal): Promise<read
   return value(polled).map((entry) => entry.itemId);
 }
 
-export function diffText(files: Readonly<Record<string, number>>): string {
+function diffText(files: Readonly<Record<string, number>>): string {
   const blocks = Object.entries(files).map(([path, lines]) =>
     [
       `diff --git a/${path} b/${path}`,
