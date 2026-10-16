@@ -39,6 +39,13 @@ describe('RV-1 every finding carries a weight', () => {
     expect(postedVerdict('zero_findings', [])).toBe('approve');
   });
 
+  it('records the text GitHub shows: one line, at most 500 characters counted as code points', () => {
+    const long = { text: `${'é'.repeat(600)}\nsecond`, weight: 'real' as const };
+    expect(weighedFindings([long])).toEqual([{ text: 'é'.repeat(500), weight: 'real' }]);
+    const astral = { text: '𝔸'.repeat(600), weight: 'real' as const };
+    expect(Array.from(weighedFindings([astral])?.[0]?.text ?? '')).toHaveLength(500);
+  });
+
   it('counts a review round only for request_changes with a real or plausible finding', () => {
     expect(countsAsRound(record('request_changes', [real]))).toBe(true);
     expect(countsAsRound(record('request_changes', [plausible, theoretical]))).toBe(true);

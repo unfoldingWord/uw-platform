@@ -71,7 +71,7 @@ function findingLimits(): void {
     .split('\n')
     .slice(7);
   expect(lines).toHaveLength(50);
-  expect(lines.every((line) => line === `- real: ${'x'.repeat(494)}`)).toBe(true);
+  expect(lines.every((line) => line === `- real: ${'x'.repeat(500)}`)).toBe(true);
 }
 
 describe('the review body', () => {
@@ -84,5 +84,8 @@ describe('the review body', () => {
 
   it('a model is stripped to its safe characters and a provider must be a slug', modelAndProvider);
 
-  it('a finding is one line of at most 500 characters and at most 50 are kept', findingLimits);
+  it(
+    "a finding's text is one line of at most 500 characters and at most 50 are kept",
+    findingLimits,
+  );
 });

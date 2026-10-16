@@ -35,16 +35,17 @@ export function oneLine(text: string): string {
   return visible.replace(lineBreaking, ' ').replace(spaces, ' ').trim();
 }
 
+export function shownFinding(text: string): string {
+  const neutral = text.replace(fenceCharacters, '').replaceAll('<', '‹').replaceAll('&', '＆');
+  return cut(oneLine(neutral), FINDING_LIMIT);
+}
+
 function findingLine(finding: ReviewFinding): string {
-  const neutral = finding.text
-    .replace(fenceCharacters, '')
-    .replaceAll('<', '‹')
-    .replaceAll('&', '＆');
-  const folded = cut(oneLine(neutral), FINDING_LIMIT);
+  const folded = shownFinding(finding.text);
   const safe = readsAsBlockLine(`- ${folded}`, providerKeys)
     ? `${FINDING_PREFIX}${folded}`
     : folded;
-  return safe === '' ? '' : cut(`${finding.weight}: ${safe}`, FINDING_LIMIT);
+  return safe === '' ? '' : `${finding.weight}: ${safe}`;
 }
 
 function modelLine(model: string): string {
