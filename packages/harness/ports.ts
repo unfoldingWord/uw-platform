@@ -92,7 +92,7 @@ export type PullRequestFacts = {
   readonly reviews: readonly ReviewFact[];
   readonly files: ChangedFiles | null;
   readonly declaration: PullRequestDeclaration | null;
-  readonly closes: readonly ClosingRef[];
+  readonly closes: readonly ClosingRef[] | null;
   readonly comparison: BaseComparison | null;
   readonly freshAt: Date;
 };
