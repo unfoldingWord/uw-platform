@@ -21,6 +21,7 @@ import { personaPageOf } from '../runs/persona.ts';
 import { endRunDrafts, stopWorkflows } from '../runs/ends.ts';
 import { dispatchRefusal } from './dispatch.ts';
 import { fixClaiming, readFixStart, type FixRead } from './fix-claim.ts';
+import { blockedRefusal } from './blockers.ts';
 import { personHoldRefusal } from './held-for-person.ts';
 import { lapseDrafts, LEASE_MS, leaseLapsed } from './leases.ts';
 import { pausedRefusal } from './paused.ts';
@@ -142,6 +143,7 @@ async function heldRefusal(
   return (
     (await bareRefusal(tx, scene)) ??
     (await personHoldRefusal(tx, scene.caller, item)) ??
+    (await blockedRefusal(tx, scene.caller, item)) ??
     (await dispatchGuard(tx, scene))
   );
 }
