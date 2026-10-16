@@ -56,7 +56,7 @@ describe('KN-1 the harness closed sets', () => {
 });
 
 describe('KN-12 the ship rule refusal set is section 8.5, in its order', () => {
-  it('lists the fourteen ship-rule reasons, each an error reason', () => {
+  it('lists the sixteen ship-rule reasons, each an error reason', () => {
     expect(shipRefusalSchema.options).toEqual([
       'pr_not_open',
       'pr_is_draft',
@@ -72,6 +72,8 @@ describe('KN-12 the ship rule refusal set is section 8.5, in its order', () => {
       'skip_ci_marker',
       'required_check_never_ran',
       'harness_frozen',
+      'protected_path_needs_person',
+      'tier_above_delegation',
     ]);
     for (const reason of shipRefusalSchema.options) {
       expect(errorReasonSchema.safeParse(reason).success).toBe(true);
@@ -107,6 +109,7 @@ describe('KN-11 the ship rule input has no field for the narrative', () => {
         'carries',
         'checks',
         'closes',
+        'delegation',
         'expectedHead',
         'frozen',
         'override',

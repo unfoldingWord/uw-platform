@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import { jdAreaSchema } from './areas.ts';
-import { capabilityWordSchema } from './closed-sets.ts';
+import { capabilityWordSchema, riskTierSchema } from './closed-sets.ts';
 import {
   externalReviewerIdentitiesSchema,
   personaIdentitySchema,
+  protectedPathsSchema,
   pullRequestRefSchema,
   repositorySchema,
   stageKeySchema,
@@ -138,6 +139,7 @@ export const harnessCommandSchemas = {
     capability: capabilityWordSchema,
     expiresAt: z.iso.datetime().nullable(),
     supersedes: z.uuid().nullable(),
+    maxTier: riskTierSchema.nullable().default(null),
   }),
   revoke_delegation: body('revoke_delegation', { delegationId: z.uuid() }),
   recover_connectors: body('recover_connectors', {}),
@@ -149,6 +151,7 @@ export const harnessCommandSchemas = {
     shadow: z.boolean().default(false),
     externalReviewerIdentities: externalReviewerIdentitiesSchema.default([]),
     requiredChecks: requiredChecksSchema.default([]),
+    protectedPaths: protectedPathsSchema.default([]),
   }),
   create_stage: body('create_stage', { stage: stageInputSchema }),
   update_stage: body('update_stage', { stageKey: stageKeySchema, change: stageChangeSchema }),

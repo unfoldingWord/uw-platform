@@ -7,5 +7,6 @@
   "repository": "unfoldingWord/tc-admin-app",
   "shadow": true,
   "externalReviewerIdentities": ["uwreview[bot]"],
-  "requiredChecks": []
+  "requiredChecks": [],
+  "protectedPaths": []
 }

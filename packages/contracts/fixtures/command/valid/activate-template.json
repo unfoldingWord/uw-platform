@@ -7,5 +7,6 @@
   "repository": "unfoldingWord/uw-platform",
   "shadow": false,
   "externalReviewerIdentities": [],
-  "requiredChecks": []
+  "requiredChecks": [],
+  "protectedPaths": []
 }

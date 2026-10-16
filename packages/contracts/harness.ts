@@ -58,6 +58,15 @@ export const externalReviewerIdentitiesSchema = z
   .max(20)
   .refine(distinctInAnyCase, 'each login once, in any case');
 
+const protectedPathPattern = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))[^\s\\]{1,200}$/;
+export const protectedPathSchema = z
+  .string()
+  .regex(protectedPathPattern, 'a protected path is repository-relative, with no dot-dot segment');
+export const protectedPathsSchema = z
+  .array(protectedPathSchema)
+  .max(50)
+  .refine(distinct, 'each protected path once');
+
 export const harnessSchema = z.strictObject({
   id: z.uuid(),
   key: slugSchema,
@@ -71,6 +80,7 @@ export const harnessSchema = z.strictObject({
   frozen: z.boolean().default(false),
   freezeAllow: z.array(z.uuid()).max(100).default([]),
   requiredChecks: requiredChecksSchema.default([]),
+  protectedPaths: protectedPathsSchema.default([]),
 });
 
 export const stageSchema = z.strictObject({

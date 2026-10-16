@@ -62,6 +62,7 @@ export const eventNames = [
   'shadow_lifted',
   'freeze_changed',
   'finding_refuted',
+  'delegated_merge',
 ] as const;
 
 export const eventNameSchema = z.enum(eventNames);

@@ -4,6 +4,7 @@ export const connectorSchema = z.enum(['none', 'merge', 'deploy', 'publish', 'se
 export const exitGateSchema = z.enum(['none', 'checks', 'human_approval']);
 export const agentPickupSchema = z.enum(['none', 'allowed', 'auto']);
 export const riskTierSchema = z.enum(['low', 'standard', 'high']);
+export const delegableTierSchema = z.enum(['low', 'standard']);
 export const riskDomainSchema = z.enum(['ledger', 'acl', 'infra', 'migration']);
 export const riskDomainsSchema = z
   .array(riskDomainSchema)
@@ -41,6 +42,7 @@ export const wakeReasonSchema = z.enum([
   'run_failed',
   'stage_advanced',
   'handed_to_person',
+  'delegated_merge',
 ]);
 export const liveScreenSchema = z.enum(['home', 'flow', 'board', 'gates', 'item']);
 
@@ -48,6 +50,7 @@ export type Connector = z.infer<typeof connectorSchema>;
 export type ExitGate = z.infer<typeof exitGateSchema>;
 export type AgentPickup = z.infer<typeof agentPickupSchema>;
 export type RiskTier = z.infer<typeof riskTierSchema>;
+export type DelegableTier = z.infer<typeof delegableTierSchema>;
 export type RiskDomain = z.infer<typeof riskDomainSchema>;
 export type RiskDomains = z.infer<typeof riskDomainsSchema>;
 export type EvidenceLabel = z.infer<typeof evidenceLabelSchema>;

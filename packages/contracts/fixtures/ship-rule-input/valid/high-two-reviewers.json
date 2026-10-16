@@ -107,5 +107,6 @@
   ],
   "closes": [],
   "wraps": null,
-  "frozen": false
+  "frozen": false,
+  "delegation": null
 }

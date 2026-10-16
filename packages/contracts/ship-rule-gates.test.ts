@@ -21,7 +21,7 @@ describe('SR-1 SR-2 the contracts for the ship rule', () => {
       'required_check_never_ran',
       'harness_frozen',
     ];
-    expect(shipRefusalSchema.options.slice(-5)).toEqual(added);
+    expect(shipRefusalSchema.options.slice(9, 14)).toEqual(added);
     for (const reason of added) expect(errorReasonSchema.options).toContain(reason);
     expect(errorReasonSchema.options).toContain('finding_weight_missing');
   });

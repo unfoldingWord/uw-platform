@@ -75,6 +75,7 @@
       "area": "80-89",
       "at": "2026-10-03T09:00:00.000Z",
       "frozen": false,
+      "delegation": null,
       "override": false
     },
     "outcome": {
