@@ -6,8 +6,13 @@ import { SelectField } from '@uw/ui/components/field.tsx';
 import { KanbanCard } from '@uw/ui/components/kanban-card.tsx';
 import { costText } from './costs.ts';
 import { itemPath, personaPath } from './paths.ts';
+import { holderText } from './holder-words.ts';
 
-export type CardViewer = { readonly identity: string; readonly admin: boolean };
+export type CardViewer = {
+  readonly identity: string;
+  readonly admin: boolean;
+  readonly at: Date;
+};
 
 const hostWords = new Map<CardHost, string>([
   ['workflow-run', 'Platform'],
@@ -28,7 +33,7 @@ function riskWords(card: BoardCard): string {
   return `${riskTier} · ${riskDomains.length === 0 ? 'No domains' : riskDomains.join(', ')}`;
 }
 
-function metaOf(card: BoardCard) {
+function metaOf(card: BoardCard, at: Date) {
   const { item } = card;
   const cost = costText(card.cost);
   const lease =
@@ -40,7 +45,7 @@ function metaOf(card: BoardCard) {
       label: 'Issue',
       value: item.issue === null ? 'None' : `${item.issue.repo}#${item.issue.number}`,
     },
-    { label: 'Holder', value: item.holder ?? 'Nobody' },
+    { label: 'Holder', value: holderText(card.holder, at) },
     { label: 'Host', value: hostWords.get(card.host) ?? 'Nobody' },
     ...lease,
     { label: 'Risk', value: riskWords(card) },
@@ -122,7 +127,7 @@ export function BoardCardView(props: {
     <KanbanCard
       title={card.item.title}
       href={itemPath(harnessId, itemId)}
-      meta={metaOf(card)}
+      meta={metaOf(card, props.viewer.at)}
       actions={
         <>
           <PersonaLink card={card} />

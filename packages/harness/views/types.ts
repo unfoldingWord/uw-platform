@@ -1,3 +1,4 @@
+import type { Holder } from './holder.ts';
 import type {
   CostBasis,
   Engine,
@@ -43,6 +44,7 @@ export type BoardCard = {
   readonly bases: readonly CostBasis[];
   readonly cost: CostTotals;
   readonly liveRun: RunRow | null;
+  readonly holder: Holder | null;
 };
 export type BoardColumn = {
   readonly stage: Stage;
@@ -129,6 +131,7 @@ export type PlayByPlay = {
   readonly next: number | null;
   readonly learnings: Readonly<Record<string, EvidenceLabel>>;
   readonly personaPages: Readonly<Record<string, string>>;
+  readonly holder: Holder | null;
 };
 export const FAILED_RUNS_LIMIT = 50;
 export const VIEW_LIMIT = 5000;

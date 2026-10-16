@@ -52,7 +52,7 @@ function created(event: FoldableEvent): ItemState {
     zulipTopic: null,
     epic: evidence.epic,
     blockedBy: evidence.blockedBy,
-    heldSince: null,
+    heldSince: event.at,
   };
 }
 
@@ -247,6 +247,15 @@ function ownedBy(state: ItemState, event: FoldableEvent): boolean {
   return event.itemId === state.itemId && event.harnessId === state.harnessId;
 }
 
+function moved(before: ItemState, after: ItemState, event: FoldableEvent): boolean {
+  return (
+    event.name === 'item_claimed' ||
+    before.holder !== after.holder ||
+    before.gateStatus !== after.gateStatus ||
+    before.stageKey !== after.stageKey
+  );
+}
+
 export function foldItem(state: ItemState | null, event: FoldableEvent): ItemState {
   if (event.name === 'item_created') {
     if (state !== null) throw new ReplayError('item_created twice', event.eventId);
@@ -256,7 +265,8 @@ export function foldItem(state: ItemState | null, event: FoldableEvent): ItemSta
   if (!ownedBy(state, event))
     throw new ReplayError(`${event.name} for another item`, event.eventId);
   const step = steps.get(event.name);
-  return step === undefined ? state : step(state, event);
+  const next = step === undefined ? state : step(state, event);
+  return moved(state, next, event) ? { ...next, heldSince: event.at } : next;
 }
 
 export function replay(events: readonly FoldableEvent[]): ItemState | null {

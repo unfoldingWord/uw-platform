@@ -6,6 +6,7 @@ import { activePersonaOn, personaIdentityFor } from '../personas/projection.ts';
 import { accepted, type KernelOutcome } from '../outcome.ts';
 import type { StoreTransaction } from '../ports.ts';
 import { itemScene, type ScenePorts } from '../reads/scene.ts';
+import { holderOf, reviewingIds } from './holder.ts';
 import { PLAY_PAGE, type PlayByPlay } from './types.ts';
 
 export type PlayInput = { readonly itemId: string; readonly after: number };
@@ -72,5 +73,7 @@ export async function playByPlay(
   const { events, next } = page.value;
   const learnings = await learningsOf(tx, caller, events, at);
   const personaPages = await personaPagesOf(tx, caller, events, at);
-  return accepted({ harness, stage, item, events, next, learnings, personaPages });
+  const reviewing = await reviewingIds(tx, [item]);
+  const holder = holderOf(item, stage, reviewing.has(item.itemId));
+  return accepted({ harness, stage, item, events, next, learnings, personaPages, holder });
 }
