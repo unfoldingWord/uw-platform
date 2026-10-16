@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { parse } from 'smol-toml';
 import { describe, expect, it } from 'vitest';
+import { goLiveSwitchedOn } from './switch.ts';
 
 type Block = Record<string, unknown>;
 
@@ -57,8 +58,11 @@ describe('GH-2 the deployed crons are the registered ones', () => {
     expect(registeredCron(minute)).toBe('* * * * *');
   });
 
-  it('finds no cron anywhere in the live file', () => {
-    expect(everyCron(readFileSync('infra/uw-app/wrangler.toml', 'utf8'))).toEqual([]);
+  it('finds a cron in the live file only once the switch is on', () => {
+    const twin = goLiveSwitchedOn()
+      ? readFileSync('infra/uw-app/wrangler.go-live.toml', 'utf8')
+      : '';
+    expect(everyCron(readFileSync('infra/uw-app/wrangler.toml', 'utf8'))).toEqual(everyCron(twin));
   });
 
   it('flags a planted minute cron in the live file, at the top or under an environment', () => {
@@ -69,9 +73,13 @@ describe('GH-2 the deployed crons are the registered ones', () => {
     expect(cronsOf(environmentIn(staged, 'staging'))).toEqual(['* * * * *']);
   });
 
-  it.each(deployed)('the live %s environment triggers no cron until go-live', (name) => {
-    expect(environment('wrangler.toml', name)['triggers']).toBeUndefined();
-  });
+  it.each(deployed)(
+    'the live %s environment triggers its crons only once the switch is on',
+    (name) => {
+      const twin = goLiveSwitchedOn() ? environment('wrangler.go-live.toml', name) : {};
+      expect(environment('wrangler.toml', name)['triggers']).toEqual(twin['triggers']);
+    },
+  );
 
   it.each(['wrangler.toml', 'wrangler.go-live.toml'])('%s preview triggers no cron', (file) => {
     expect(environment(file, 'preview')['triggers']).toBeUndefined();

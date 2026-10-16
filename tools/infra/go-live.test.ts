@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { parse } from 'smol-toml';
 import { describe, expect, it } from 'vitest';
+import { goLiveSwitchedOn } from './switch.ts';
 
 type Block = Record<string, unknown>;
 type Binding = { binding?: string; queue?: string; id?: string };
@@ -109,8 +110,9 @@ describe('FD-12 the go-live config is the live config plus the bindings whose re
     expect(withBindings).toEqual(deployed);
   });
 
-  it.each(apps)('%s live file declares none of the go-live bindings', (app) => {
-    expect(goLiveKeysIn(load(`infra/${app}/${live}`))).toEqual([]);
+  it.each(apps)('%s live file declares the go-live bindings only once the switch is on', (app) => {
+    const twin = goLiveSwitchedOn() ? load(`infra/${app}/${goLive}`) : {};
+    expect(goLiveKeysIn(load(`infra/${app}/${live}`))).toEqual(goLiveKeysIn(twin));
   });
 
   it('flags a live file that declares a Durable Object binding, a migration or a go-live variable', () => {
@@ -194,8 +196,9 @@ describe('HE-1 the HarnessRun Workflow is declared for go-live only, in staging 
     ]);
   });
 
-  it('declares no Workflow in the live file', () => {
-    expect(workflowSites(load(`infra/uw-app/${live}`))).toEqual([]);
+  it('declares a Workflow in the live file only once the switch is on', () => {
+    const twin = goLiveSwitchedOn() ? load(`infra/uw-app/${goLive}`) : {};
+    expect(workflowSites(load(`infra/uw-app/${live}`))).toEqual(workflowSites(twin));
   });
 
   it('flags a planted Workflow under preview, at the top level, or in the live file', () => {
@@ -269,10 +272,11 @@ describe('the sandbox containers are declared for go-live only, in staging and p
     });
   });
 
-  it('declares no container, sandbox binding or migration in the live file', () => {
+  it('declares a container, sandbox binding or migration in the live file only once the switch is on', () => {
     const config = load(`infra/uw-app/${live}`);
-    expect(sandboxSites(config)).toEqual([]);
-    expect(config['migrations']).toBeUndefined();
+    const twin = goLiveSwitchedOn() ? load(`infra/uw-app/${goLive}`) : {};
+    expect(sandboxSites(config)).toEqual(sandboxSites(twin));
+    expect(config['migrations']).toEqual(twin['migrations']);
   });
 
   it('flags a planted sandbox under preview, at the top level, or in the live file', () => {
