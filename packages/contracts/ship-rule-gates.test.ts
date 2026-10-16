@@ -59,6 +59,7 @@ describe('SR-1 SR-2 the contracts for the ship rule', () => {
     expect(shipRuleInputSchema.safeParse(input).success).toBe(true);
     const unfrozen = Object.fromEntries(Object.entries(input).filter(([key]) => key !== 'frozen'));
     expect(shipRuleInputSchema.safeParse(unfrozen).success).toBe(false);
+    expect(shipRuleInputSchema.safeParse({ ...input, closes: null }).success).toBe(true);
   });
 });
 

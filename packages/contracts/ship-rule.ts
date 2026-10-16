@@ -101,7 +101,7 @@ export const shipRuleInputSchema = z.strictObject({
       provider: z.string().min(1).nullable(),
     }),
   ),
-  closes: z.array(closingRefSchema).max(100),
+  closes: z.array(closingRefSchema).max(100).nullable(),
   wraps: closingRefSchema.nullable(),
   riskTier: riskTierSchema.nullable(),
   riskDomains: riskDomainsSchema,
