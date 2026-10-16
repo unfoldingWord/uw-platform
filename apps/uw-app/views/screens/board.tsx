@@ -11,6 +11,7 @@ import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { cursorOf } from '../../commands/reads.ts';
 import type { AppEnv } from '../../deps.ts';
 import { BoardCardView, type CardViewer } from '../parts/board-card.tsx';
+import { EpicGroups, NotReadyList } from '../parts/epic-board.tsx';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { idParam } from '../parts/params.ts';
 import { boardPath, flowPath, homePath } from '../parts/paths.ts';
@@ -167,6 +168,8 @@ export async function boardScreen(c: Context<AppEnv>): Promise<Response> {
         }
       />
       <StageChips view={view} stageKey={input.stageKey} />
+      <EpicGroups harnessId={harnessId} epics={board.epics} />
+      <NotReadyList harnessId={harnessId} entries={board.notReady} />
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         {board.columns.map((column) => (
           <ColumnView

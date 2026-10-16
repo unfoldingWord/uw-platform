@@ -4,6 +4,7 @@ import { accepted, refused, type KernelOutcome } from '../outcome.ts';
 import type { RunRow, StoreTransaction } from '../ports.ts';
 import { harnessScene, stagePageLimit, type ScenePorts } from '../reads/scene.ts';
 import { basesOf, costOf, hostOf } from './costs.ts';
+import { epicBoard } from './epics.ts';
 import { byPosition } from './flow.ts';
 import type { BoardCard, BoardColumn, BoardInput, BoardView } from './types.ts';
 
@@ -77,5 +78,7 @@ export async function boardView(
   }
   const ids = listed.flatMap((column) => column.items.map((item) => item.itemId));
   const runs = await tx.harnessRuns.read.forItems(ids);
-  return accepted({ harness, columns: listed.map((column) => columnOf(column, runs)) });
+  const whole = input.stageKey === null && input.after === null;
+  const extras = whole ? await epicBoard(tx, harness.id, stages, at) : { epics: [], notReady: [] };
+  return accepted({ harness, columns: listed.map((column) => columnOf(column, runs)), ...extras });
 }
