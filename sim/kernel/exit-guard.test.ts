@@ -63,6 +63,7 @@ function exitWith(scene: Scene, crafted: Crafted): Promise<boolean> {
       overrideReason: null,
       repository: 'unfoldingWord/uw-platform',
       expectedBase: null,
+      evaluatedHead: null,
     },
   );
 }

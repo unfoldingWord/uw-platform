@@ -35,6 +35,7 @@ type Place = { readonly harness: Harness; readonly stages: readonly Stage[]; rea
 type DecidedRoute = {
   readonly connector: EffectConnector;
   readonly next: string | null | undefined;
+  readonly head: string | null;
 };
 type Decided = ReadonlyMap<string, DecidedRoute>;
 
@@ -111,6 +112,7 @@ function stuckAt(
     decisionId,
     overrideReason: overrideReasonOf(approval),
     ...decidedOn(events, index),
+    evaluatedHead: recorded?.head ?? null,
   };
 }
 
@@ -122,12 +124,18 @@ function nextOf(row: GateDecisionRow): string | null | undefined {
   return parsed.success ? parsed.data : undefined;
 }
 
+function headOf(row: GateDecisionRow): string | null {
+  const head = row.evidence['head'];
+  return typeof head === 'string' ? head : null;
+}
+
 function decidedConnectors(rows: readonly GateDecisionRow[]): Decided {
   return new Map(
     rows.flatMap((row) => {
       const parsed = connectorSchema.safeParse(row.evidence['connector']);
       const connector = parsed.success ? effectOf(parsed.data) : null;
-      return connector === null ? [] : [[row.id, { connector, next: nextOf(row) }] as const];
+      if (connector === null) return [];
+      return [[row.id, { connector, next: nextOf(row), head: headOf(row) }] as const];
     }),
   );
 }

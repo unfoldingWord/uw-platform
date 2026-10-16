@@ -28,8 +28,8 @@ import type {
   PullRequestFacts,
   StoreTransaction,
 } from '../ports.ts';
-import { shipRule } from '../ship-rule.ts';
-import { exitThroughConnector, type ExitPorts } from './exit.ts';
+import { countedApprovals, shipRule, type CountedApproval } from '../ship-rule.ts';
+import { exitThroughConnector, type ExitGuard, type ExitPorts } from './exit.ts';
 import { factsFailure } from './facts-failure.ts';
 import { isStale, staleRefusal } from './facts-fresh.ts';
 import { decisionInFlight, sameChange } from './parking.ts';
@@ -65,7 +65,16 @@ export type PendingExit = {
   readonly overrideReason: string | null;
   readonly repository: string | null;
   readonly expectedBase: DecidedBase | null;
+  readonly evaluatedHead: string | null;
+  readonly harness: Harness;
+  readonly approver: Principal;
+  readonly override: boolean;
   readonly context: RecordContext;
+};
+
+export type Shipped = {
+  readonly head: string | null;
+  readonly approvals: readonly CountedApproval[];
 };
 
 const shipDecisions: ReadonlySet<GateDecision> = new Set<GateDecision>(['approve', 'override']);
@@ -140,11 +149,13 @@ export async function inFlightRefusal(
 export type ShipCheck = {
   readonly refusal: Refused | null;
   readonly drafts: readonly EventDraft[];
+  readonly shipped: Shipped | null;
 };
 
 type ShipVerdict = {
   readonly reasons: readonly ShipRefusal[];
   readonly derived: readonly EventDraft[];
+  readonly shipped: Shipped | null;
 };
 
 function shipVerdict(
@@ -153,7 +164,7 @@ function shipVerdict(
   snapshot: ShipSnapshot | null,
 ): ShipVerdict {
   if (snapshot === null || !sameChange(snapshot.item, gate.item)) {
-    return { reasons: ['head_mismatch'], derived: [] };
+    return { reasons: ['head_mismatch'], derived: [], shipped: null };
   }
   const source = {
     facts: snapshot.facts,
@@ -163,11 +174,13 @@ function shipVerdict(
     at: gate.context.at,
     override: decision === 'override',
   };
-  const outcome = shipRule(assembleShipInput(source));
+  const input = assembleShipInput(source);
+  const outcome = shipRule(input);
   const evidence = riskDerivedAtShip(source);
   return {
     reasons: outcome.verdict === 'advance' ? [] : outcome.reasons,
     derived: evidence === null ? [] : [draft('risk_derived', evidence)],
+    shipped: { head: input.pullRequest?.head ?? null, approvals: countedApprovals(input) },
   };
 }
 
@@ -177,22 +190,48 @@ export async function shipCheck(
   decision: GateDecision,
   snapshot: ShipSnapshot | null,
 ): Promise<ShipCheck> {
-  const { reasons, derived } = shipVerdict(gate, decision, snapshot);
+  const { reasons, derived, shipped } = shipVerdict(gate, decision, snapshot);
   const [first] = reasons;
-  if (first === undefined) return { refusal: null, drafts: derived };
+  if (first === undefined) return { refusal: null, drafts: derived, shipped };
   const stage = gate.stage.key;
   await recordItemEvents(tx, gate.context, gate.item.itemId, [
     ...derived,
     draft('ship_refused', { stage, reasons: [...reasons] }),
   ]);
-  return { refusal: refused(first, { stage, reasons }), drafts: [] };
+  return { refusal: refused(first, { stage, reasons }), drafts: [], shipped: null };
+}
+
+type FactsAtExit = PullRequestFacts | null | 'unavailable';
+
+async function factsAtExit(ports: ShipPorts, item: ItemState): Promise<FactsAtExit> {
+  if (item.pullRequest === null) return null;
+  try {
+    return await ports.githubFacts.refresh(item.pullRequest);
+  } catch {
+    return 'unavailable';
+  }
+}
+
+function exitGuard(ports: ShipPorts, pending: PendingExit): ExitGuard {
+  return async () => {
+    const facts = await factsAtExit(ports, pending.item);
+    if (facts === 'unavailable') return { refused: 'ship_rule_unavailable' };
+    const { item, harness, approver, override, context } = pending;
+    const input = assembleShipInput({ facts, item, harness, approver, at: context.at, override });
+    const outcome = shipRule(input);
+    if (outcome.verdict === 'refuse') {
+      return { refused: `ship_rule_refused: ${outcome.reasons.join(', ')}` };
+    }
+    return { head: input.pullRequest?.head ?? null };
+  };
 }
 
 export async function exitAfterDecision(
   ports: ShipPorts,
   pending: PendingExit,
 ): Promise<{ readonly item: ItemState; readonly advanced: boolean }> {
-  const advanced = await exitThroughConnector(ports, pending.context, pending);
+  const guard = exitGuard(ports, pending);
+  const advanced = await exitThroughConnector(ports, pending.context, pending, guard);
   const now = await ports.store.transaction((tx) => tx.harnessItems.read.byId(pending.item.itemId));
   return { item: now ?? pending.item, advanced };
 }

@@ -147,11 +147,11 @@ const standardDeclaration: PullRequestDeclaration = {
 
 export const shipBase = simSha('ba5e');
 
-function simPatchId(seed: string): string {
+export function simPatchId(seed: string): string {
   return seed.padEnd(64, '0');
 }
 
-function comparedAt(head: string, change: Partial<BaseComparison> = {}): BaseComparison {
+export function comparedAt(head: string, change: Partial<BaseComparison> = {}): BaseComparison {
   const patchId = simPatchId('9a7c');
   return {
     head,
