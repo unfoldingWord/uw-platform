@@ -4,7 +4,7 @@ import { readAllEvents } from '../items/record.ts';
 import { accepted, refused, type KernelOutcome } from '../outcome.ts';
 import type { Delegation, Ports, StoreTransaction } from '../ports.ts';
 import { pollQueue } from '../reads/poll.ts';
-import { backingOff, reviewedAtHead } from './backoff.ts';
+import { backingOff, refusedByEngine, reviewedAtHead } from './backoff.ts';
 import { activePersonaOn } from '../personas/projection.ts';
 import { personaPageOf } from './persona.ts';
 import { startRun } from './start.ts';
@@ -61,7 +61,8 @@ async function firstItem(
   for (const item of polled.value) {
     const events = await readAllEvents(tx, item.harnessId, item.itemId);
     const { persona } = delegation;
-    if (!backingOff(events, persona, at) && !reviewedAtHead(events, persona)) return item.itemId;
+    const held = refusedByEngine(events) || backingOff(events, persona, at);
+    if (!held && !reviewedAtHead(events, persona)) return item.itemId;
   }
   return null;
 }

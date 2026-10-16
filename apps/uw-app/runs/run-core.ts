@@ -194,6 +194,7 @@ async function afterWork(flow: Flow, read: ReadDone, diff: string | null): Promi
     workBody(deps, runId, { ...read, diff }),
   );
   if (work.kind !== 'model') return settled(flow, 'work', work);
+  if (work.outcome === 'refused') return failRun(flow, 'work', 'engine_refused', null);
   if (work.outcome === 'turn_limit') return failRun(flow, 'work', 'turn_limit', null);
   if (read.review) return postReview(flow, work);
   return closeAfterSubmit(flow);

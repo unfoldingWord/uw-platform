@@ -63,3 +63,12 @@ function reviewedNext(done: boolean, event: HarnessEvent, persona: Identity): bo
 export function reviewedAtHead(events: readonly HarnessEvent[], persona: Identity): boolean {
   return events.reduce<boolean>((done, event) => reviewedNext(done, event, persona), false);
 }
+
+export function refusedByEngine(events: readonly HarnessEvent[]): boolean {
+  const refusal = events.findLastIndex(
+    (event) => event.name === 'run_failed' && event.evidence['why'] === 'engine_refused',
+  );
+  return (
+    refusal !== -1 && !events.slice(refusal + 1).some((event) => event.actor.startsWith('human:'))
+  );
+}
