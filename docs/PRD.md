@@ -746,7 +746,7 @@ Each row is ratified in the spec's Decisions table; the spec holds the full text
 | D5 | Two first-class hosts in v1, a platform Workflow and a person's own Claude Code over remote MCP, with one verb registry and one test that both see identical verbs. |
 | D6 | `feeds` on each stage for loop edges; unattended traversal only under a delegation. |
 | D7 | `harness_events` is the source of truth; replay equals record. |
-| D8 | The ship rule is a pure function with a closed refusal set. Ship exits only on human approval, enforced by a null-safe Postgres check and a property test over every path. |
+| D8 | The ship rule is a pure function with a closed refusal set. Ship exits only on human approval, enforced by a null-safe Postgres check and a property test over every path. Since v0.2.0 a merge delegation may take the Ship exit for a merge up to standard, with the grantor as approver (ADR 0010). |
 | D10 | The Product Package is three typed pages under a product page. |
 | D11 | External runs self-report tokens, labelled subscription; the breaker never counts them. No token ledger of our own. |
 | D12 | On a laptop the person's own git credentials are present. Accepted, guarded by the branch convention and the head check. |
@@ -755,7 +755,7 @@ Each row is ratified in the spec's Decisions table; the spec holds the full text
 | D15 | A persona is a page type, activated by a person after a tool check and a dry run. |
 | D16 | Six engines behind one seam; a vendor SDK is named in one directory. |
 | D17 | Billing follows the host. One cap across vendors. Hosted Builder off by default. |
-| D18 | A `delegations` table: one capability word, required expiry, revocable, checked at every beat. |
+| D18 | A `delegations` table: one capability word, required expiry, revocable, checked at every beat. The `merge` word carries a maximum tier (ADR 0010). |
 | D19 | Risk tier and domains on every item; `high` needs two reviewers on distinct providers and an approver holding each domain's grant. |
 | D20 | Close is a validator: a learning, a skill, or a signed "nothing learned". Evidence labels from day one. |
 | D21 | `openrouter-messages` is the always-on tier and the platform's baseline model service. |
@@ -809,7 +809,7 @@ Made on 2026-10-15 between Ian and Claude; the design is `docs/superpowers/specs
 
 | # | Decision | Cost if wrong |
 |---|---|---|
-| V2-1 | **Merge delegation is in, default off on every harness.** A person grants it; it is scoped to one harness and a maximum tier of `standard`; it never covers deploy, publish, protected paths or `high`; every merge under it is a gate decision whose approver is the granting person and whose actor is the agent, with the delegation id on the row. The Postgres rule "the approver is a human principal" stays | A repo that opts in merges a change nobody read, bounded by the tier and the expiry. The record names who granted it |
+| V2-1 | **Merge delegation is in, default off on every harness.** A person grants it; it is scoped to one harness and a maximum tier of `standard`; it never covers deploy, publish, protected paths or `high`; every merge under it is a gate decision whose approver is the granting person and whose actor is the agent, with the delegation id on the row. The Postgres rule "the approver is a human principal" stays Recorded in ADR 0010. | A repo that opts in merges a change nobody read, bounded by the tier and the expiry. The record names who granted it |
 | V2-2 | **The fix claim is in, off by default on every harness.** The bench-style second writer, pushing while the author holds the claim, is not built | A Builder fix lands that the author did not want; bounded by the 25% cap and `git revert` |
 | V2-3 | **Untrusted content is a rule plus a check, not a defence system.** The two prompt sites that exist are wrapped; prompt reads use the run's own principal; a static check fails the build on an unwrapped outside read. No new content sources are built | A connector in v0.3.0 inherits a rule that turns out to be the wrong shape and is reworked once |
 | V2-4 | **Epic intake is in; lessons with statuses wait for v0.3.0.** Intake refuses an issue without a done-when. The v0.3.0 design for lessons is recorded in section 17 | The pilot's queue runs dry anyway, because the epics lack done-whens; or the pilot produces lessons we cannot file for six weeks |
