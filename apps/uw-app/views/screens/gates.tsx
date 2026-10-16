@@ -37,10 +37,12 @@ function approvable(shown: readonly Shown[]): readonly Approvable[] {
       harnessId: harness.id,
       harnessKey: harness.key,
       entries: [],
+      total: 0,
     };
     byHarness.set(harness.id, {
       ...held,
       entries: [...held.entries, { itemId: item.itemId, head }],
+      total: held.total + 1,
     });
   }
   return [...byHarness.values()].map((batch) => ({
