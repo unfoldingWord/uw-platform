@@ -267,6 +267,13 @@
       "when": 1792138730111,
       "tag": "0037_epic_intake",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1792162956566,
+      "tag": "0038_observability_and_hooks",
+      "breakpoints": true
     }
   ]
 }

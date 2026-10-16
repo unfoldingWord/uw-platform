@@ -132,6 +132,7 @@ export const ghPrs = declareTable(
     filesBase: text('files_base'),
     filesProblem: text('files_problem'),
     requestedReviewers: text('requested_reviewers').array().notNull().default(emptyText),
+    authorLogin: text('author_login'),
     closes: jsonb('closes')
       .notNull()
       .default(sql`'[]'::jsonb`),

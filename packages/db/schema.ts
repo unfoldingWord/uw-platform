@@ -92,11 +92,16 @@ export const harnesses = declareTable(
       .default(sql`'[]'::jsonb`),
     protectedPaths: text('protected_paths').array().notNull().default(emptyText),
     fixClaim: boolean('fix_claim').notNull().default(false),
+    botAuthors: text('bot_authors')
+      .array()
+      .notNull()
+      .default(sql`'{dependabot[bot]}'::text[]`),
   },
   internalSync,
   (t) => [
     check('harnesses_freeze_allow_bounded', sql`cardinality(${t.freezeAllow}) <= 100`),
     check('harnesses_protected_paths_bounded', sql`cardinality(${t.protectedPaths}) <= 50`),
+    check('harnesses_bot_authors_bounded', sql`cardinality(${t.botAuthors}) <= 20`),
     check('harnesses_required_checks_array', sql`jsonb_typeof(${t.requiredChecks}) = 'array'`),
     check(
       'harnesses_external_reviewers_bounded',
@@ -229,6 +234,7 @@ export const harnessItems = declareTable(
       .array()
       .notNull()
       .default(sql`'{}'::uuid[]`),
+    heldSince: instant('held_since'),
     createdAt: instant('created_at').notNull(),
   },
   internalSync,
