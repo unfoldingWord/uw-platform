@@ -1,6 +1,6 @@
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { readAllEvents } from '@uw/harness';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import { simAdvance, simCaller, simPerson } from '../fixtures.ts';
 import {
   approveVerdict,
@@ -119,9 +119,16 @@ describe('GL-4 shadow mode ends at the lift', () => {
       expect(await named(scene, 'review_verdict_recorded')).toEqual([]);
     }));
 
-  it('records no shadow verdict on a harness that is not in shadow', () =>
+  it('records no shadow verdict and reads no GitHub facts on a harness that is not in shadow, or for a repository with no harness', () =>
     inShadow(async (scene) => {
+      const read = vi.spyOn(scene.world.adapters.githubFacts, 'pullRequest');
       expect(value(await recordVerdicts(scene))).toEqual([]);
+      const elsewhere = { repo: 'unfoldingWord/elsewhere', number: joinedPull.number };
+      const gates = scene.world.kernel.gates;
+      expect(
+        value(await gates.recordShadowVerdicts(scene.ingest, { pullRequest: elsewhere })),
+      ).toEqual([]);
+      expect(read).not.toHaveBeenCalled();
     }, false));
 });
 
