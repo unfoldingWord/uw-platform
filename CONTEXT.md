@@ -466,6 +466,14 @@ _Avoid_: parent issue, milestone (that is a GitHub milestone)
 The sentence in an issue that says what finished looks like. Intake refuses an issue without one.
 _Avoid_: acceptance criteria, definition of done
 
+**Blocker**:
+An item another item in the same epic waits on: the item for an issue named on a `Blocked by:` line in the waiting item's issue. A blocked item is offered to no one until every blocker's item has passed Ship; a person may still claim it.
+_Avoid_: dependency, prerequisite, parent
+
+**Not ready**:
+An issue or product page intake refused because it has no done-when. The refusal is recorded on the harness and the Board lists it until it becomes an item.
+_Avoid_: invalid, rejected (that is a gate decision), backlog
+
 **Holder**:
 Who has the ball on an item right now: the claimant, the Reviewer, or a person waiting to decide.
 _Avoid_: owner (that is the repository's), assignee
