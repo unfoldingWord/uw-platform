@@ -6,7 +6,7 @@ import { defineScenario } from '../scenario.ts';
 
 const changes = {
   verdict: 'request_changes' as const,
-  findings: ['The board change drops the empty state.'],
+  findings: [{ text: 'The board change drops the empty state.', weight: 'real' as const }],
   resolvedProvider: 'deepinfra',
   resolvedModel: 'z-ai/glm-5.3',
 };

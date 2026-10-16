@@ -33,7 +33,7 @@ import { isOpen, openStep } from './steps.ts';
 const host: Caller = { actor: systemPrincipal(), traceId: randomUUID(), requestId: null };
 const head = `c0ffee${'0'.repeat(34)}`;
 const holds = '```harness-scout\npremise: holds\nreason: the plan still stands\n```';
-const verdict = '```harness-verdict\nverdict: approve\n```\n- The change is small.';
+const verdict = '```harness-verdict\nverdict: approve\n```\n- theoretical: The change is small.';
 const PAGE = {
   item: '00000000-0000-4000-8000-000000013301',
   readable: '00000000-0000-4000-8000-000000013302',

@@ -290,7 +290,8 @@ async function mismatch(db: Database): Promise<void> {
   expect(rig.reviews).toEqual([]);
 }
 
-const codexVerdict = '```harness-verdict\nverdict: approve\n```\n- The change is small and tested.';
+const codexVerdict =
+  '```harness-verdict\nverdict: approve\n```\n- theoretical: The change is small and tested.';
 
 async function codexReview(db: Database): Promise<void> {
   const rig = await hostRig(db, host, {

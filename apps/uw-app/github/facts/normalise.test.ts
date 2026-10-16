@@ -120,11 +120,14 @@ const reviewedBody = reviewBody({
   provider: 'anthropic',
   model: 'claude',
   verdict: 'request_changes',
-  findings: ['The lease is not renewed', 'A typo in the copy'],
+  findings: [
+    { text: 'The lease is not renewed', weight: 'real' },
+    { text: 'A typo in the copy', weight: 'theoretical' },
+  ],
 });
 
 describe('Reviewer findings in a review payload', () => {
-  it("a review payload's findings are parsed from its body", () => {
+  it("RV-1 a review payload's findings are parsed from its body with their weights", () => {
     const payload = {
       ...reviewSubmitted,
       review: { ...reviewSubmitted.review, body: reviewedBody },
@@ -132,7 +135,10 @@ describe('Reviewer findings in a review payload', () => {
     const delivered = factsFromWebhook('pull_request_review', payload);
     const reviews = delivered.kind === 'facts' ? delivered.batch.reviews : [];
     expect(reviews.map((review) => review.findings)).toEqual([
-      ['The lease is not renewed', 'A typo in the copy'],
+      [
+        { text: 'The lease is not renewed', weight: 'real' },
+        { text: 'A typo in the copy', weight: 'theoretical' },
+      ],
     ]);
     expect(reviewsFromRest(repo, openedPull.githubId, restReviews)[0]?.findings).toEqual([]);
   });

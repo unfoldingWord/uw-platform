@@ -88,7 +88,7 @@ function codexReview() {
         provider: 'openai',
         model: 'gpt-5.5-codex',
         verdict: 'approve',
-        findings: ['The migration is reversible.'],
+        findings: [{ text: 'The migration is reversible.', weight: 'theoretical' as const }],
       }),
       submitted_at: '2026-10-02T08:20:00Z',
     },

@@ -42,6 +42,7 @@ export function personaOfPage(facts: PageFacts | undefined): RunPersona | Refuse
     provider,
     toolset: page.toolset,
     instructions: page.facts.bodyMd,
+    approveAt: frontmatter.approve_at,
   };
 }
 
@@ -62,5 +63,6 @@ export function pinnedPersonaOf(run: RunRow, facts: PageFacts | undefined): RunP
     provider: run.pinnedProvider,
     toolset: page.toolset,
     instructions: page.facts.bodyMd,
+    approveAt: frontmatter.approve_at,
   };
 }

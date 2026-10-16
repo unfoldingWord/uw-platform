@@ -28,6 +28,15 @@ describe('UC-2 the Reviewer prompt fences every outside string', () => {
   });
 });
 
+describe('RV-1 the Reviewer prompt asks for the weight of every finding', () => {
+  it('RV-1 names the three weights on the finding lines', () => {
+    const scan = scanFences(reviewPrompt(reviewSourceOf(fromIssue, itemId, diff)));
+    expect(scan.outside).toContain('- real: <a defect you are sure of>');
+    expect(scan.outside).toContain('- plausible: <a defect that may be real>');
+    expect(scan.outside).toContain('- theoretical: <a defect that only could be real>');
+  });
+});
+
 describe('UC-2 the Builder work prompt fences every outside string', () => {
   it('UC-2 renders the issue title and the context inside fences, the person messages outside', () => {
     const scan = scanFences(workPrompt(promptSourceOf(fromIssue, itemId)));
