@@ -9,6 +9,7 @@ import { engineDescriptor } from '../engines.ts';
 import { fullSha, normalisedIdentifier } from '../github/identifiers.ts';
 import { reviewBody } from '../github/review-body.ts';
 import { reviewerOf } from '../github/reviewers.ts';
+import { recordShadowVerdicts } from '../gates/shadow.ts';
 import { OVER_REVIEW_BUDGET } from '../items/held-for-person.ts';
 import { draft, readAllEvents } from '../items/record.ts';
 import { accepted, refused, type KernelOutcome } from '../outcome.ts';
@@ -225,6 +226,44 @@ async function postedId(ports: ReviewPorts, planned: Plan): Promise<number | nul
   return outcome.outcome === 'posted' ? outcome.reviewId : null;
 }
 
+const FINDINGS_LIMIT = 50;
+const FINDING_LENGTH = 500;
+
+function boundedFindings(findings: readonly string[]): string[] {
+  return findings
+    .map((finding) => finding.trim().slice(0, FINDING_LENGTH))
+    .filter((finding) => finding !== '')
+    .slice(0, FINDINGS_LIMIT);
+}
+
+async function shadowReview(
+  ports: ReviewPorts,
+  caller: Caller,
+  runId: string,
+  input: { readonly scene: RunScene; readonly review: PostReviewInput },
+): Promise<KernelOutcome<RunRow>> {
+  const grounds = groundsOf(input.scene, input.review);
+  if (grounds === null) {
+    return complete(ports, caller, runId, { result: 'review_withheld', review: null });
+  }
+  const { record } = plannedFrom(grounds, input.review);
+  const done = await completeAfter(ports, caller, runId, {
+    result: 'review_withheld',
+    review: { ...record, reviewId: null },
+    before: () => [
+      draft('review_verdict_recorded', {
+        runId,
+        head: grounds.target.head,
+        ...record,
+        findings: boundedFindings(input.review.findings),
+      }),
+    ],
+  });
+  if (done.status !== 'accepted') return done;
+  await recordShadowVerdicts(ports, caller, { pullRequest: grounds.target.ref });
+  return done;
+}
+
 export async function postReview(
   ports: ReviewPorts,
   caller: Caller,
@@ -233,6 +272,9 @@ export async function postReview(
 ): Promise<KernelOutcome<RunRow>> {
   const scene = await reviewScene(ports, caller, runId);
   if (scene.status !== 'accepted') return scene;
+  if (scene.value.harness.shadow) {
+    return shadowReview(ports, caller, runId, { scene: scene.value, review: input });
+  }
   const planned = await plan(ports, scene.value, input);
   if (planned.kind === 'withhold') {
     return complete(ports, caller, runId, { result: 'review_withheld', review: null });

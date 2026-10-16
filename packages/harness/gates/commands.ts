@@ -1,10 +1,11 @@
-import type { GateView } from '@uw/contracts';
+import type { GateView, ItemState } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
 import type { KernelOutcome } from '../outcome.ts';
 import { decide, type Decided, type DecideInput, type GatePorts } from './decide.ts';
 import { resumeRunsWhere } from '../runs/resume.ts';
 import type { RunRow, StoreTransaction } from '../ports.ts';
 import { recoverConnectors, type Recovered } from './recover.ts';
+import { recordShadowVerdicts, type ShadowInput } from './shadow.ts';
 import { gateView } from './view.ts';
 
 export type GateCommands = {
@@ -18,6 +19,10 @@ export type GateCommands = {
     caller: Caller,
     input: { readonly harnessId: string },
   ): Promise<KernelOutcome<Recovered>>;
+  recordShadowVerdicts(
+    caller: Caller,
+    input: ShadowInput,
+  ): Promise<KernelOutcome<readonly ItemState[]>>;
 };
 
 function gateWaiting(itemId: string) {
@@ -44,5 +49,6 @@ export function createGateCommands(ports: GatePorts): GateCommands {
     decide: (caller, input) => decideAndResume(ports, caller, input),
     view: (caller, input, options) => gateView(ports, caller, input, options),
     recoverConnectors: (caller, input) => recoverConnectors(ports, caller, input),
+    recordShadowVerdicts: (caller, input) => recordShadowVerdicts(ports, caller, input),
   };
 }
