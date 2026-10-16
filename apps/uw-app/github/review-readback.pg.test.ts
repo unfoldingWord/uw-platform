@@ -141,7 +141,14 @@ async function readsBack(db: Database): Promise<void> {
   const input = assembleShipInput({
     facts,
     item,
-    harness: { jdArea: '80-89', repository: ref.repo, externalReviewerIdentities: [] },
+    harness: {
+      jdArea: '80-89',
+      repository: ref.repo,
+      externalReviewerIdentities: [],
+      requiredChecks: [],
+      frozen: false,
+      freezeAllow: [],
+    },
     approver,
     at,
     override: false,

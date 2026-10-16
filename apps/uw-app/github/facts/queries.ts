@@ -234,7 +234,7 @@ export async function pullRequestFacts(
     reviews: await reviewsOf(db, pull),
     files: filesOf(pull),
     declaration: declaration.success ? declaration.data : null,
-    closes: closesRow.safeParse(pull.closes).data ?? [],
+    closes: closesRow.safeParse(pull.closes).data ?? null,
     comparison: comparisonOf(pull),
     freshAt: pull.freshAt,
   };

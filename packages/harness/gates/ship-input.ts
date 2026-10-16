@@ -1,6 +1,5 @@
 import {
-  ciJobSchema,
-  defaultCiChecks,
+  type ClosingRef,
   type EventEvidence,
   type GateView,
   type Harness,
@@ -12,10 +11,25 @@ import { pathsComparedAt } from '../github/changed-files.ts';
 import { riskDeclarationOf } from '../github/declaration.ts';
 import { branchFor, fullSha, normalisedIdentifier, sameRepository } from '../github/identifiers.ts';
 import { countedReviewer, EXTERNAL_PROVIDER } from '../github/reviewers.ts';
-import type { CheckFact, PullRequestFacts, ReviewFact, ReviewState } from '../ports.ts';
+import type {
+  BaseComparison,
+  CheckFact,
+  PullRequestFacts,
+  ReviewFact,
+  ReviewState,
+} from '../ports.ts';
 import { applyDeclaration, carryForward, floorFromPaths } from '../risk/derive.ts';
+import { carriedCommits } from './carry.ts';
 
-type ShipHarness = Pick<Harness, 'jdArea' | 'repository' | 'externalReviewerIdentities'>;
+type ShipHarness = Pick<
+  Harness,
+  | 'jdArea'
+  | 'repository'
+  | 'externalReviewerIdentities'
+  | 'requiredChecks'
+  | 'frozen'
+  | 'freezeAllow'
+>;
 
 export type ShipInputSource = {
   readonly facts: PullRequestFacts | null;
@@ -38,7 +52,7 @@ const decisive: ReadonlySet<ReviewState> = new Set<DecisiveState>([
   'changes_requested',
   'dismissed',
 ]);
-const ciJobs: ReadonlySet<string> = new Set(ciJobSchema.options);
+const CLOSES_LIMIT = 100;
 
 function onItemBranch(facts: PullRequestFacts, item: ItemState): boolean {
   return item.branchState === 'none' || facts.headRef === branchFor(item.itemId);
@@ -63,9 +77,9 @@ function latestChecks(facts: PullRequestFacts, head: string): ShipRuleInput['che
   const latest = new Map<string, CheckFact>();
   for (const check of facts.checks) {
     if (fullSha(check.headSha) !== head) continue;
-    if (check.app !== GITHUB_ACTIONS_APP || !ciJobs.has(check.name)) continue;
-    const seen = latest.get(check.name);
-    if (seen === undefined || check.checkId > seen.checkId) latest.set(check.name, check);
+    const key = `${check.app ?? ''} ${check.name}`;
+    const seen = latest.get(key);
+    if (seen === undefined || check.checkId > seen.checkId) latest.set(key, check);
   }
   return [...latest.values()].map((check) => ({
     name: check.name,
@@ -92,13 +106,14 @@ type Counted = { readonly review: DecisiveReview; readonly external: boolean };
 
 function latestDecisive(
   facts: PullRequestFacts,
-  head: string,
+  heads: ReadonlySet<string>,
   external: readonly string[],
 ): Map<string, Counted> {
   const latest = new Map<string, Counted>();
   for (const review of facts.reviews) {
     const counted = countedReviewer(review.reviewer, external);
-    if (counted === null || fullSha(review.commit) !== head || !isDecisive(review)) continue;
+    const onHead = heads.has(fullSha(review.commit) ?? '');
+    if (counted === null || !onHead || !isDecisive(review)) continue;
     const seen = latest.get(counted.reviewer);
     if (seen === undefined || later(review, seen.review)) {
       latest.set(counted.reviewer, { review, external: counted.external });
@@ -114,12 +129,16 @@ function providerOf({ review, external }: Counted): string | null {
 
 function approvalsOn(
   facts: PullRequestFacts,
-  head: string,
+  heads: ReadonlySet<string>,
   external: readonly string[],
 ): ShipRuleInput['approvals'] {
-  return [...latestDecisive(facts, head, external).entries()]
+  return [...latestDecisive(facts, heads, external).entries()]
     .filter(([, counted]) => counted.review.state === 'approved')
-    .map(([reviewer, counted]) => ({ reviewer, commit: head, provider: providerOf(counted) }));
+    .map(([reviewer, counted]) => ({
+      reviewer,
+      commit: fullSha(counted.review.commit) ?? counted.review.commit,
+      provider: providerOf(counted),
+    }));
 }
 
 export function reviewsOn(
@@ -127,7 +146,7 @@ export function reviewsOn(
   head: string,
   external: readonly string[],
 ): GateView['reviews'] {
-  return [...latestDecisive(facts, head, external).entries()]
+  return [...latestDecisive(facts, new Set([head]), external).entries()]
     .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
     .map(([reviewer, counted]) => ({
       reviewer,
@@ -182,12 +201,56 @@ function riskAtHead(
   };
 }
 
-function fromFacts(
-  source: ShipInputSource,
-): Pick<
+function comparisonAt(facts: PullRequestFacts, head: string): BaseComparison | null {
+  const compared = facts.comparison;
+  if (compared === null || compared.head !== head) return null;
+  return compared.base === fullSha(facts.base) ? compared : null;
+}
+
+function skipCiOf(compared: BaseComparison | null): boolean | null {
+  if (compared === null || compared.commits === null) return null;
+  return compared.commits.some((commit) => commit.skipCi);
+}
+
+function sameRef(left: ClosingRef, right: ClosingRef): boolean {
+  return left.number === right.number && left.repo.toLowerCase() === right.repo.toLowerCase();
+}
+
+function closesOf(facts: PullRequestFacts, compared: BaseComparison | null): ClosingRef[] | null {
+  if (facts.closes === null) return null;
+  const fromCommits = (compared?.commits ?? []).flatMap((commit) => commit.closes);
+  const all = [...facts.closes, ...fromCommits];
+  return all
+    .filter((ref, index) => all.findIndex((other) => sameRef(ref, other)) === index)
+    .slice(0, CLOSES_LIMIT);
+}
+
+type FromFacts = Pick<
   ShipRuleInput,
   'pullRequest' | 'carries' | 'checks' | 'approvals' | 'closes' | 'riskTier' | 'riskDomains'
-> {
+>;
+
+function fromUsableHead(source: ShipInputSource, facts: PullRequestFacts, head: string): FromFacts {
+  const compared = comparisonAt(facts, head);
+  const carries = compared === null ? [] : [...carriedCommits(compared, head)];
+  const external = source.harness.externalReviewerIdentities;
+  return {
+    pullRequest: {
+      open: facts.state === 'open',
+      draft: facts.draft,
+      head,
+      behindBy: compared?.behindBy ?? null,
+      skipCi: skipCiOf(compared),
+    },
+    carries,
+    checks: latestChecks(facts, head),
+    approvals: approvalsOn(facts, new Set([head, ...carries]), external),
+    closes: closesOf(facts, compared),
+    ...riskAtHead(facts, source, head),
+  };
+}
+
+function fromFacts(source: ShipInputSource): FromFacts {
   const { facts, item } = source;
   const head = usableHead(facts, item, source.harness);
   if (facts === null || head === null) {
@@ -201,33 +264,20 @@ function fromFacts(
       riskDomains: [...item.riskDomains],
     };
   }
-  return {
-    pullRequest: {
-      open: facts.state === 'open',
-      draft: facts.draft,
-      head,
-      behindBy: 0,
-      skipCi: false,
-    },
-    carries: [],
-    checks: latestChecks(facts, head),
-    approvals: approvalsOn(facts, head, source.harness.externalReviewerIdentities),
-    closes: [],
-    ...riskAtHead(facts, source, head),
-  };
+  return fromUsableHead(source, facts, head);
 }
 
 export function assembleShipInput(source: ShipInputSource): ShipRuleInput {
-  const { item } = source;
+  const { item, harness } = source;
   return {
     ...fromFacts(source),
     expectedHead: item.expectedHead === null ? null : fullSha(item.expectedHead),
-    area: source.harness.jdArea,
-    wraps: null,
-    requiredChecks: [...defaultCiChecks],
+    requiredChecks: [...harness.requiredChecks],
+    wraps: item.issue === null ? null : { repo: item.issue.repo, number: item.issue.number },
+    area: harness.jdArea,
     approver: source.approver,
     at: source.at.toISOString(),
-    frozen: false,
+    frozen: harness.frozen && !harness.freezeAllow.includes(item.itemId),
     override: source.override,
   };
 }
