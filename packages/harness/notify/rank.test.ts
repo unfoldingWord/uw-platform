@@ -54,5 +54,6 @@ describe('a weaker wake never spends the window a stronger one needs', () => {
       'handed_to_person',
       'run_failed',
     ]);
+    expect(POSTING_REASONS.has('delegated_merge')).toBe(false);
   });
 });
