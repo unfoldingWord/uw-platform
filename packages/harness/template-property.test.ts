@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { bml } from './templates/bml.ts';
 import {
   bypassesShip,
+  delegationProperty,
+  describeDelegationViolation,
   describeViolation,
   templateProperty,
   templates,
@@ -53,5 +56,22 @@ describe('KN-10 an earlier approval does not cover a later effect stage on a sec
     const reported = templateProperty(stages);
     expect(reported.map((violation) => violation.effectStage)).toEqual(['e']);
     expect(reported[0]?.path).toEqual(['p', 'a', 'b', 'e']);
+  });
+});
+
+describe('MD-4 no path reaches a deploy or publish connector through an exit a delegation can take', () => {
+  it('MD-4 every registered template passes', () => {
+    for (const template of templates.values())
+      expect(delegationProperty(template.stages)).toEqual([]);
+  });
+
+  it('MD-4 a delegation that could take any human exit fails on the publish stage, naming it', () => {
+    const permissive = (stage: { readonly exitGate: string }) =>
+      stage.exitGate === 'human_approval';
+    const [violation] = delegationProperty(bml.stages, permissive);
+    expect(violation?.effectStage).toBe('ship');
+    expect(violation && describeDelegationViolation(violation)).toBe(
+      `path ${violation?.path.join(' > ')} reaches ship, whose connector is not merge, through an exit a delegation could take`,
+    );
   });
 });

@@ -29,6 +29,7 @@ const harness = {
   requiredChecks: [...defaultCiChecks],
   frozen: false,
   freezeAllow: [] as string[],
+  protectedPaths: [] as string[],
 };
 const patchId = '1'.repeat(64);
 
@@ -496,5 +497,40 @@ describe('SR-2 the assembler carries an approval across a merge from base', () =
     expect(shown.map((entry) => [entry.reviewer, entry.commit])).toEqual([['uw-reviewer', head]]);
     const rebased = { ...moved, comparison: { ...comparison, commits: commits.slice(1) } };
     expect(reviewsOn(rebased, merged, [])).toEqual([]);
+  });
+});
+
+describe('MD-4 the ship-rule input carries the delegation and the protected paths the change touches', () => {
+  const lent = {
+    delegationId: '00000000-0000-4000-8000-0000000000d1',
+    maxTier: 'standard' as const,
+  };
+
+  it('MD-4 a person approval carries no delegation', () => {
+    expect(assembled().delegation).toBeNull();
+  });
+
+  it('MD-4 a delegated exit carries the tier and an empty list for an unprotected change', () => {
+    expect(assembleShipInput({ ...sourceOf({}), delegation: lent }).delegation).toEqual({
+      ...lent,
+      protectedTouched: [],
+    });
+  });
+
+  it('MD-4 names the changed paths the harness protects', () => {
+    const source = sourceOf({});
+    const guarded = {
+      ...source,
+      harness: { ...source.harness, protectedPaths: ['apps/uw-app/'] },
+      delegation: lent,
+    };
+    expect(assembleShipInput(guarded).delegation?.protectedTouched).toEqual([
+      'apps/uw-app/board.tsx',
+    ]);
+  });
+
+  it('MD-4 fails closed when the facts cannot name the changed paths at the head', () => {
+    const unknown = { ...sourceOf({ facts: { files: null } }), delegation: lent };
+    expect(assembleShipInput(unknown).delegation?.protectedTouched).toBeNull();
   });
 });

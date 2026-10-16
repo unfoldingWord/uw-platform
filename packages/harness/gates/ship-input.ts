@@ -1,5 +1,6 @@
 import {
   type ClosingRef,
+  type DelegableTier,
   type EventEvidence,
   type GateView,
   type Harness,
@@ -19,6 +20,7 @@ import type {
   ReviewState,
 } from '../ports.ts';
 import { applyDeclaration, carryForward, floorFromPaths } from '../risk/derive.ts';
+import { protectedAmong } from '../risk/protected-paths.ts';
 import { carriedCommits } from './carry.ts';
 
 type ShipHarness = Pick<
@@ -29,7 +31,10 @@ type ShipHarness = Pick<
   | 'requiredChecks'
   | 'frozen'
   | 'freezeAllow'
+  | 'protectedPaths'
 >;
+
+export type ShipDelegation = { readonly delegationId: string; readonly maxTier: DelegableTier };
 
 export type ShipInputSource = {
   readonly facts: PullRequestFacts | null;
@@ -38,6 +43,7 @@ export type ShipInputSource = {
   readonly approver: Principal;
   readonly at: Date;
   readonly override: boolean;
+  readonly delegation?: ShipDelegation | null;
 };
 
 type RiskDerived = EventEvidence['risk_derived'];
@@ -276,6 +282,17 @@ function fromFacts(source: ShipInputSource): FromFacts {
   return fromUsableHead(source, facts, head);
 }
 
+function delegationAt(source: ShipInputSource): ShipRuleInput['delegation'] {
+  const lent = source.delegation ?? null;
+  if (lent === null) return null;
+  const { facts, item, harness } = source;
+  const head = usableHead(facts, item, harness);
+  const paths = facts === null || head === null ? null : pathsComparedAt(facts, head);
+  const protectedTouched =
+    paths === null ? null : [...protectedAmong(paths, harness.protectedPaths)];
+  return { ...lent, protectedTouched };
+}
+
 export function assembleShipInput(source: ShipInputSource): ShipRuleInput {
   const { item, harness } = source;
   return {
@@ -287,7 +304,7 @@ export function assembleShipInput(source: ShipInputSource): ShipRuleInput {
     approver: source.approver,
     at: source.at.toISOString(),
     frozen: harness.frozen && !harness.freezeAllow.includes(item.itemId),
-    delegation: null,
+    delegation: delegationAt(source),
     override: source.override,
   };
 }
