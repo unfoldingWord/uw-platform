@@ -10,5 +10,6 @@
   "externalReviewerIdentities": [],
   "frozen": false,
   "freezeAllow": [],
-  "requiredChecks": []
+  "requiredChecks": [],
+  "protectedPaths": []
 }

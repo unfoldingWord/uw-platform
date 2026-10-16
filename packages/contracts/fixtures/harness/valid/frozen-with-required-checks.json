@@ -15,5 +15,6 @@
       "app": "github-actions",
       "name": "lint"
     }
-  ]
+  ],
+  "protectedPaths": []
 }

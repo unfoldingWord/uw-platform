@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { jdAreaSchema } from './areas.ts';
-import { riskDomainsSchema, riskTierSchema } from './closed-sets.ts';
+import { delegableTierSchema, riskDomainsSchema, riskTierSchema } from './closed-sets.ts';
 import { principalSchema } from './principal.ts';
 
 export const ciJobSchema = z.enum([
@@ -38,6 +38,8 @@ export const shipRefusalSchema = z.enum([
   'skip_ci_marker',
   'required_check_never_ran',
   'harness_frozen',
+  'protected_path_needs_person',
+  'tier_above_delegation',
 ]);
 
 export const riskDeclarationSchema = z.strictObject({
@@ -71,6 +73,12 @@ export const defaultCiChecks: readonly z.infer<typeof requiredCheckSchema>[] =
 export const closingRefSchema = z.strictObject({
   repo: z.string().regex(/^[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}$/),
   number: z.number().int().min(1),
+});
+
+export const delegatedShipSchema = z.strictObject({
+  delegationId: z.uuid(),
+  maxTier: delegableTierSchema,
+  protectedTouched: z.array(z.string().min(1).max(500)).max(100).nullable(),
 });
 
 export const shipRuleInputSchema = z.strictObject({
@@ -109,6 +117,7 @@ export const shipRuleInputSchema = z.strictObject({
   approver: principalSchema,
   at: z.iso.datetime(),
   frozen: z.boolean(),
+  delegation: delegatedShipSchema.nullable().default(null),
   override: z.boolean(),
 });
 
@@ -122,5 +131,6 @@ export type RequiredCheck = z.infer<typeof requiredCheckSchema>;
 export type ClosingRef = z.infer<typeof closingRefSchema>;
 export type ShipRefusal = z.infer<typeof shipRefusalSchema>;
 export type RiskDeclaration = z.infer<typeof riskDeclarationSchema>;
+export type DelegatedShip = z.infer<typeof delegatedShipSchema>;
 export type ShipRuleInput = z.infer<typeof shipRuleInputSchema>;
 export type ShipRuleOutcome = z.infer<typeof shipRuleOutcomeSchema>;

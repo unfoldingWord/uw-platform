@@ -3,6 +3,7 @@ import {
   capabilityWordSchema,
   connectorSchema,
   costBasisSchema,
+  delegableTierSchema,
   delegationLapseSchema,
   engineSchema,
   findingWeightSchema,
@@ -127,6 +128,17 @@ const runEvidence = {
   premise_held: z.strictObject({ runId: id.nullable(), reason: oneLine }),
 };
 
+export const delegatedMergeSchema = z.strictObject({
+  decisionId: id,
+  delegationId: id,
+  personId: id,
+  email: z.email(),
+  persona: personaIdentitySchema,
+  expiresAt: instant,
+  maxTier: delegableTierSchema,
+});
+export type DelegatedMerge = z.infer<typeof delegatedMergeSchema>;
+
 const itemEvidence = {
   item_created: z
     .strictObject({
@@ -203,6 +215,7 @@ const gateEvidence = {
     detail: z.record(z.string(), z.string()),
   }),
   connector_refused: z.strictObject({ connector: effect, reason: text }),
+  delegated_merge: delegatedMergeSchema,
   review_verdict_recorded: z.strictObject({
     runId: id,
     head,
@@ -236,6 +249,7 @@ const harnessEvidence = {
     capability: capabilityWordSchema,
     expiresAt: instant,
     supersedes: id.nullable(),
+    maxTier: delegableTierSchema.nullable().default(null),
   }),
   delegation_revoked: z.strictObject({ delegationId: id }),
   delegation_lapsed: z.strictObject({ delegationId: id, why: delegationLapseSchema }),

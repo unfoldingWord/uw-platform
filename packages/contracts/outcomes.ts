@@ -78,6 +78,9 @@ export const errorReasonSchema = z.enum([
   'required_check_never_ran',
   'harness_frozen',
   'finding_weight_missing',
+  'protected_path_needs_person',
+  'tier_above_delegation',
+  'tier_not_delegable',
 ]);
 
 export const refusalSchema = z.object({
