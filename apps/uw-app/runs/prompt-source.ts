@@ -7,6 +7,7 @@ export type ReadText = {
   readonly fromIssue: boolean;
   readonly context: string;
   readonly prompts: readonly string[];
+  readonly comments: readonly string[];
 };
 
 export function promptSourceOf(read: ReadText, itemId: string): PromptSource {
@@ -15,7 +16,7 @@ export function promptSourceOf(read: ReadText, itemId: string): PromptSource {
     title: read.fromIssue ? wrapped('issue_body', read.title) : read.title,
     context: wrapped('page_from_agent', read.context),
     prompts: read.prompts,
-    related: [],
+    related: read.comments.map((text) => wrapped('review_comment', text)),
   };
 }
 

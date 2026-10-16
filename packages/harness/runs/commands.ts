@@ -4,6 +4,7 @@ import { refused, type KernelOutcome } from '../outcome.ts';
 import type { Ports, RunRow } from '../ports.ts';
 import { beat, type BeatInput, type Beaten } from './beat.ts';
 import { prompt, stop, type PromptInput, type StopInput } from './control.ts';
+import { reviewComments, type ReviewComments } from './fix-comments.ts';
 import {
   complete,
   fail,
@@ -40,6 +41,7 @@ export type RunCommands = {
   beat(caller: Caller, input: BeatInput): Promise<KernelOutcome<Beaten>>;
   reviewDiff(caller: Caller, runId: string): Promise<KernelOutcome<ReviewDiff>>;
   postReview(caller: Caller, runId: string, input: PostReviewInput): RunOutcome;
+  reviewComments(caller: Caller, runId: string): Promise<KernelOutcome<ReviewComments>>;
   progress(caller: Caller, runId: string): Promise<KernelOutcome<RunProgress>>;
 };
 
@@ -75,6 +77,7 @@ export function createRunCommands(ports: RunPorts): RunCommands {
     postReview: hostOnly((caller, runId: string, input: PostReviewInput) =>
       postReview(ports, caller, runId, input),
     ),
+    reviewComments: hostOnly((caller, runId: string) => reviewComments(ports, caller, runId)),
     progress: hostOnly((_caller, runId: string) => runProgress(ports, runId)),
   };
 }

@@ -189,7 +189,13 @@ async function contextPrompt(rig: HostRig, runId: string, as: Principal | null):
   if (!isOpen(open)) throw new Error(`the step did not open: ${JSON.stringify(open)}`);
   try {
     const context = await readContext(open);
-    const read = { title: open.scene.item.title, fromIssue: false, context, prompts: [] };
+    const read = {
+      title: open.scene.item.title,
+      fromIssue: false,
+      context,
+      prompts: [],
+      comments: [],
+    };
     return scoutPrompt(promptSourceOf(read, rig.itemId));
   } finally {
     await open.close();

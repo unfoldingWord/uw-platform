@@ -80,3 +80,10 @@ describe('RV-1 a step halted by an unweighted Reviewer finding', () => {
     });
   });
 });
+
+describe('FL-3 a step halted by a refused fix', () => {
+  it('FL-3 treats fix_size_cap and fix_keeps_purpose as an ending: the kernel released the claim and stopped the run', () => {
+    expect(haltedBy('fix_size_cap', { lines: 9 })).toEqual({ kind: 'ended' });
+    expect(haltedBy('fix_keeps_purpose', {})).toEqual({ kind: 'ended' });
+  });
+});
