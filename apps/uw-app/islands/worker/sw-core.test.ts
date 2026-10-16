@@ -66,6 +66,7 @@ describe('the push notification', () => {
       'A delegation you gave has lapsed',
       'An item you hold moved on',
       'An agent merged under a delegation you gave',
+      'Items wait in Check and no review has run',
     ]);
   });
 });
