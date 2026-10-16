@@ -493,9 +493,9 @@ Added in step 7: `run_not_found` (a run id the kernel does not hold, or one the 
 
 Added in step 10: `activation_required` (a write that would make a gated page active, which only activation or confirmation does), `dry_run_failed` (a persona whose dry run found a problem).
 
-Added in v0.2.0: ship rule `base_behind`, `auto_close_keyword`, `skip_ci_marker`, `required_check_never_ran`, `harness_frozen`, `protected_path_needs_person`, `tier_above_delegation`; elsewhere `template_has_no_package`, `no_harness_for_repo`, `template_change_not_allowed`, `repository_not_dispatchable`, `dispatch_list_unavailable`, `tier_not_delegable`, `checks_not_run_locally`, `done_when_missing`, `finding_weight_missing`, `engine_refused`.
+Added in v0.2.0: ship rule `base_behind`, `auto_close_keyword`, `skip_ci_marker`, `required_check_never_ran`, `harness_frozen`, `protected_path_needs_person`, `tier_above_delegation`; elsewhere `template_has_no_package`, `no_harness_for_repo`, `template_change_not_allowed`, `repository_not_dispatchable`, `dispatch_list_unavailable`, `tier_not_delegable`, `checks_not_run_locally`, `done_when_missing`, `finding_weight_missing`.
 
-`engine_refused` and `finding_weight_missing` are also run-failure values; `engine_refused` is recorded as a run failure only and is never returned as a command refusal (S15-R12).
+`finding_weight_missing` is also a run-failure value. `engine_refused` is not an error reason: it is a run-failure value and a hand-off reason only, never returned as a command refusal (S15-R12).
 
 ### 8.6 Event vocabulary
 
