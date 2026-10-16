@@ -82,11 +82,11 @@ describe('EI-2 a done-when ignores what a reader never sees', () => {
 
   it('parses hostile lines in linear time', () => {
     const reps = 100_000;
-    const started = performance.now();
+    const started = Date.now();
     expect(doneWhenOf(`# ${' #'.repeat(reps)}x\nIt ships.`)).toEqual([]);
     expect(doneWhenOf(`## Done when\n- ${'<!--'.repeat(reps)}`)).toEqual([]);
     expect(blockedByOf(`Blocked by: #${'.'.repeat(reps)}x`, repository)).toEqual([]);
-    expect(performance.now() - started).toBeLessThan(2_000);
+    expect(Date.now() - started).toBeLessThan(2_000);
   });
 });
 
