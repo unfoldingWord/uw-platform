@@ -1,0 +1,77 @@
+import type { PullRequestDeclaration } from '@uw/contracts';
+import { describe, expect, it } from 'vitest';
+import type { FixContext, ValidationContext } from './context.ts';
+import { fixKeepsPurpose, fixSizeCap, sameDeclaration, testOrDoc } from './fix.ts';
+import { FIX_VALIDATORS, runValidators, validatorRegistry } from './registry.ts';
+
+const declaration: PullRequestDeclaration = {
+  closes: ['#12', '#14'],
+  risks: 'the board renders slower on phones',
+  touches: 'apps/uw-app/board',
+  riskTier: 'standard',
+  riskDomains: [],
+};
+
+const fits: FixContext = {
+  pull: { lines: 40, paths: ['apps/board.tsx', 'apps/lane.tsx'] },
+  fix: { lines: 10, paths: ['apps/board.tsx', 'apps/board.test.tsx', 'docs/board.md'] },
+  declared: declaration,
+  declaration,
+  claimed: true,
+};
+
+function context(fix: FixContext | null): ValidationContext {
+  const item = {} as never;
+  return { item, events: [], pages: new Map(), attaching: [], fix };
+}
+
+describe('FL-3 fix_size_cap and fix_keeps_purpose', () => {
+  it('FL-3 both are in the validator registry and pass a fix that keeps to the rules', () => {
+    expect(FIX_VALIDATORS.every((key) => validatorRegistry.has(key))).toBe(true);
+    expect(runValidators(FIX_VALIDATORS, context(fits))).toEqual([]);
+  });
+
+  it('FL-3 fix_size_cap refuses more than a quarter of the pull request lines', () => {
+    const over = { ...fits, fix: { ...fits.fix, lines: 11 } } as FixContext;
+    expect(fixSizeCap(context(over))).toEqual([
+      "fix_size_cap: the fix changes 11 lines, more than a quarter of the pull request's 40",
+    ]);
+  });
+
+  it('FL-3 fix_size_cap refuses a file the pull request does not touch, but not a test or a doc', () => {
+    const wider = { ...fits, fix: { lines: 4, paths: ['apps/billing.ts', 'apps/x.spec.ts'] } };
+    expect(fixSizeCap(context(wider))).toEqual([
+      'fix_size_cap: the fix touches apps/billing.ts, which the pull request does not',
+    ]);
+    for (const path of [
+      'tests/board.ts',
+      'src/__tests__/a.ts',
+      'a.pg.test.ts',
+      'docs/a.txt',
+      'README.md',
+    ]) {
+      expect(testOrDoc(path)).toBe(true);
+    }
+    expect(testOrDoc('apps/contest.ts')).toBe(false);
+  });
+
+  it('FL-3 fix_size_cap refuses a fix it cannot measure', () => {
+    expect(fixSizeCap(context({ ...fits, fix: null }))).toHaveLength(1);
+    expect(fixSizeCap(context({ ...fits, pull: null }))[0]).toMatch(/^fix_size_cap: /);
+  });
+
+  it('FL-3 fix_keeps_purpose refuses a changed declaration and reads closes as a set', () => {
+    const reordered = { ...declaration, closes: ['#14', '#12'] };
+    expect(sameDeclaration(declaration, reordered)).toBe(true);
+    const changed = { ...fits, declaration: { ...declaration, touches: 'apps/uw-app/billing' } };
+    expect(fixKeepsPurpose(context(changed))).toEqual([
+      'fix_keeps_purpose: the pull request declaration changed since the fix was claimed',
+    ]);
+    expect(fixKeepsPurpose(context({ ...fits, declared: null, declaration: null }))).toEqual([]);
+    expect(fixKeepsPurpose(context({ ...fits, claimed: false }))).toHaveLength(1);
+  });
+
+  it('FL-3 outside a fix both validators pass', () => {
+    expect(runValidators(FIX_VALIDATORS, context(null))).toEqual([]);
+  });
+});
