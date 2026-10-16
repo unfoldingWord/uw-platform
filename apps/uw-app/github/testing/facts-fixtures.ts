@@ -65,6 +65,7 @@ export const openedPull: PullRequestRecord = {
   requestedReviewers: [],
   declaration,
   declarationProblem: null,
+  closes: [{ repo: 'unfoldingWord/uw-platform', number: 12 }],
   githubUpdatedAt: new Date('2026-10-02T08:00:00.000Z'),
 };
 

@@ -119,3 +119,4 @@ export { EXTERNAL_PROVIDER, requestsPlatformReviewer } from './github/reviewers.
 export { hasPackageStage } from './stages/package.ts';
 export type { Joined, JoinInput } from './items/join.ts';
 export type { ShadowInput } from './gates/shadow.ts';
+export { closingReferences, hasSkipCiMarker } from './github/closing-keywords.ts';

@@ -1,9 +1,21 @@
 {
   "status": "ahead",
-  "ahead_by": 2,
+  "ahead_by": 1,
   "behind_by": 0,
-  "total_commits": 2,
-  "commits": [],
+  "total_commits": 1,
+  "commits": [
+    {
+      "sha": "c0ffee0000000000000000000000000000000000",
+      "commit": {
+        "message": "Show the board"
+      },
+      "parents": [
+        {
+          "sha": "0000000000000000000000000000000000000000"
+        }
+      ]
+    }
+  ],
   "files": [
     {
       "sha": "1111111111111111111111111111111111111111",
@@ -11,7 +23,8 @@
       "status": "modified",
       "additions": 4,
       "deletions": 1,
-      "changes": 5
+      "changes": 5,
+      "patch": "@@ -1 +1 @@\n-a\n+b"
     },
     {
       "sha": "2222222222222222222222222222222222222222",
@@ -20,7 +33,8 @@
       "status": "renamed",
       "additions": 0,
       "deletions": 0,
-      "changes": 0
+      "changes": 0,
+      "patch": "@@ -1 +1 @@\n-a\n+b"
     },
     {
       "sha": "3333333333333333333333333333333333333333",
@@ -28,7 +42,8 @@
       "status": "added",
       "additions": 3,
       "deletions": 0,
-      "changes": 3
+      "changes": 3,
+      "patch": "@@ -1 +1 @@\n-a\n+b"
     }
   ]
 }

@@ -11,14 +11,16 @@ type List = readonly unknown[];
 type Page = { readonly items: List; readonly capped: boolean };
 type IssueListing = { readonly issues: List; readonly capped: boolean; readonly unparsed: number };
 
+export type Compared = {
+  readonly files: List | 'too_many_files';
+  readonly behindBy: number | null;
+  readonly commits: List | null;
+};
+
 export type GitHubReads = {
   installationRepositories(): Promise<GitHubResult<List>>;
   pullRequest(repo: string, number: number): Promise<GitHubResult<unknown>>;
-  changedFiles(
-    repo: string,
-    base: string,
-    head: string,
-  ): Promise<GitHubResult<List | 'too_many_files'>>;
+  changedFiles(repo: string, base: string, head: string): Promise<GitHubResult<Compared>>;
   pullRequestReviews(repo: string, number: number): Promise<GitHubResult<List>>;
   checkRuns(repo: string, sha: string): Promise<GitHubResult<List>>;
   issuesSince(
@@ -49,10 +51,26 @@ const keyed = z.object({
   id: z.number().int().positive(),
   updated_at: z.iso.datetime({ offset: true }),
 });
+const commitsPerPage = 100;
 const comparison = z
-  .object({ status: z.string().optional(), files: array.optional() })
+  .object({
+    status: z.string().optional(),
+    files: array.optional(),
+    behind_by: z.number().int().min(0).optional(),
+    total_commits: z.number().int().min(0).optional(),
+    commits: array.optional(),
+  })
   .refine((answer) => answer.files !== undefined || answer.status === 'identical')
-  .transform((answer) => answer.files ?? []);
+  .transform((answer) => ({
+    files: answer.files ?? [],
+    behindBy: answer.behind_by ?? null,
+    commits:
+      answer.commits !== undefined &&
+      answer.total_commits !== undefined &&
+      answer.commits.length >= answer.total_commits
+        ? answer.commits
+        : null,
+  }));
 
 type Lister = {
   readonly route: string;
@@ -103,16 +121,20 @@ function pullRequestReads(session: GitHubSession) {
     changedFiles: (repo: string, base: string, head: string) =>
       refusedUnless(
         isFullSha(base) && isFullSha(head),
-        async (): Promise<GitHubResult<List | 'too_many_files'>> => {
+        async (): Promise<GitHubResult<Compared>> => {
           const route = 'GET /repos/{owner}/{repo}/compare/{basehead}';
-          const parameters = { basehead: `${base}...${head}`, per_page: 1, page: 1 };
+          const parameters = { basehead: `${base}...${head}`, per_page: commitsPerPage, page: 1 };
           const answer = await session.request(route, parameters, repo);
           if (!answer.ok) return answer;
-          const files = shaped(comparison, answer.value);
-          if (!files.ok) return files;
+          const compared = shaped(comparison, answer.value);
+          if (!compared.ok) return compared;
+          const { files } = compared.value;
           return {
             ok: true,
-            value: files.value.length >= listedFiles ? 'too_many_files' : files.value,
+            value: {
+              ...compared.value,
+              files: files.length >= listedFiles ? 'too_many_files' : files,
+            },
           };
         },
       ),

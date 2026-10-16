@@ -13,7 +13,9 @@ import {
   repoFromRest,
   reviewsFromRest,
 } from '../github/facts/normalise.ts';
-import { recordFiles, upsertFacts } from '../github/facts/upsert.ts';
+import { recordFiles } from '../github/facts/heads.ts';
+import { unknownHead } from '../github/facts/records.ts';
+import { upsertFacts } from '../github/facts/upsert.ts';
 import { fixtureApp } from '../github/testing/app-key.ts';
 import { fixtureGitHub, type FixtureGitHub } from '../github/testing/fixture-github.ts';
 import { systemClock } from './clock.ts';
@@ -127,6 +129,10 @@ function programme(github: FixtureGitHub, facts: PullRequestFacts, pull: unknown
     status: 200,
     body: { total_count: facts.checks.length, check_runs: facts.checks.map(restCheck) },
   });
+  if (facts.files === null) return;
+  const listed = facts.files.paths.map((filename) => ({ filename }));
+  const compare = `/repos/${facts.ref.repo}/compare/${facts.files.base}...${facts.files.head}`;
+  github.on('GET', compare, { status: 200, body: { status: 'ahead', files: listed } });
 }
 
 async function given(db: Database, github: FixtureGitHub, facts: PullRequestFacts) {
@@ -146,7 +152,7 @@ async function given(db: Database, github: FixtureGitHub, facts: PullRequestFact
     facts.freshAt,
   );
   if (facts.files === null) return;
-  await recordFiles(db, { pullRequestId: pull.id, ...facts.files, problem: null });
+  await recordFiles(db, { pullRequestId: pull.id, ...facts.files, problem: null, ...unknownHead });
 }
 
 describe.skipIf(!testServer)('DX-3 the platform GitHub facts on Postgres', () => {
