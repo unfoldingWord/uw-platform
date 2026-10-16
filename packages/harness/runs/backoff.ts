@@ -12,7 +12,7 @@ type Streak = {
 
 const none: Streak = { count: 0, last: null, runs: new Set() };
 
-function setsHead(event: HarnessEvent): boolean {
+export function setsHead(event: HarnessEvent): boolean {
   if (event.name === 'branch_adopted') return true;
   return event.name === 'submitted_to_gate' && event.evidence['expectedHead'] != null;
 }

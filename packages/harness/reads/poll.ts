@@ -12,6 +12,7 @@ import { allowed, bareAgent, isAgent, ownerBound } from '../access.ts';
 import { beatPrincipal } from '../delegations/beat.ts';
 import { capabilityReaches, pageAgrees } from '../delegations/capability.ts';
 import { delegableExit } from '../gates/delegable.ts';
+import { offeredForFix } from '../items/fix-offer.ts';
 import { leaseLapsed } from '../items/leases.ts';
 import { activePersonaOn } from '../personas/projection.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
@@ -130,7 +131,8 @@ async function claimableIn(
   const items = await tx.harnessItems.read.forHarness(harness.id);
   const open: ItemState[] = [];
   for (const item of items.filter((candidate) => claimable(stages, candidate, judged, at))) {
-    if (!(await heldForPerson(tx, item))) open.push(item);
+    if (await heldForPerson(tx, item)) continue;
+    if (await offeredForFix(tx, harness, judged.reach, stages, item)) open.push(item);
   }
   return open;
 }

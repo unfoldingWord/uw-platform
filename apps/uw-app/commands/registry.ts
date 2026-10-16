@@ -1,6 +1,5 @@
 import type { CommandName } from '@uw/contracts';
 import { isBuiltCommand, type CommandHandler } from './handler.ts';
-import { notWiredCommand } from './not-wired.ts';
 import {
   claimCommand,
   enqueueCommand,
@@ -32,6 +31,7 @@ import {
   reorderStagesCommand,
   resumeCommand,
   setHostedBuilderCommand,
+  setFixClaimCommand,
   setFreezeCommand,
   setShadowCommand,
   updateStageCommand,
@@ -83,7 +83,7 @@ export const commandRegistry = commandRegistryOf([
   recordMeasurementCommand,
   setShadowCommand,
   setFreezeCommand,
+  setFixClaimCommand,
   decideGatesCommand,
   refuteFindingCommand,
-  notWiredCommand('set_fix_claim', 'admin'),
 ]);

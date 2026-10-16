@@ -8,6 +8,7 @@ import type { Ports, StageCursor, StoreTransaction } from '../ports.ts';
 import type { HarnessScene } from '../reads/scene.ts';
 import { activateTemplate, type Activated, type ActivateInput } from './activate.ts';
 import { editInTransaction, type EditWork } from './edit.ts';
+import { setFixClaim, type FixClaimInput } from './fix-claim.ts';
 import { setFreeze, type FreezeInput } from './freeze.ts';
 import { setHostedBuilder, type HostedBuilderInput } from './hosted-builder.ts';
 import { setPause, type PauseInput } from './pause.ts';
@@ -46,6 +47,7 @@ export type StageCommands = {
   pause(caller: Caller, input: PauseInput): Promise<KernelOutcome<HarnessScene>>;
   resume(caller: Caller, input: PauseInput): Promise<KernelOutcome<HarnessScene>>;
   setHostedBuilder(caller: Caller, input: HostedBuilderInput): Promise<KernelOutcome<HarnessScene>>;
+  setFixClaim(caller: Caller, input: FixClaimInput): Promise<KernelOutcome<HarnessScene>>;
   setFreeze(caller: Caller, input: FreezeInput): Promise<KernelOutcome<HarnessScene>>;
   liftShadow(caller: Caller, input: LiftShadowInput): Promise<KernelOutcome<HarnessScene>>;
 };
@@ -232,6 +234,7 @@ export function createStageCommands(ports: StagePorts): StageCommands {
     pause: (caller, input) => setPause(ports, caller, input, true),
     resume: (caller, input) => setPause(ports, caller, input, false),
     setHostedBuilder: (caller, input) => setHostedBuilder(ports, caller, input),
+    setFixClaim: (caller, input) => setFixClaim(ports, caller, input),
     setFreeze: (caller, input) => setFreeze(ports, caller, input),
     liftShadow: (caller, input) => liftShadow(ports, caller, input),
   };
