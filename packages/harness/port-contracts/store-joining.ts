@@ -47,7 +47,7 @@ function describeByPullRequest(subject: JoiningSubject): void {
 
   it('DX-3 returns the earliest-created item when two items sit on one pull request', async () => {
     const head = 'a'.repeat(40);
-    const later = itemOf(0x7110, 1, { pullRequest, expectedHead: head });
+    const later = itemOf(0x7110, 1, { pullRequest, expectedHead: head, branchState: 'active' });
     const earlier = itemOf(0x7110, 2, { pullRequest, expectedHead: head });
     const found = await subject().store.transaction(async (tx) => {
       await seedHarness(tx, 0x7110, 'gateway-twice');
