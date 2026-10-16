@@ -239,6 +239,9 @@ export const harnessItems = declareTable(
     uniqueIndex('harness_items_issue_once')
       .on(t.issueGithubId)
       .where(sql`${t.issueGithubId} IS NOT NULL`),
+    uniqueIndex('harness_items_joined_once')
+      .on(t.harnessId, sql`lower(${t.prRepo})`, t.prNumber)
+      .where(sql`${t.prNumber} IS NOT NULL AND ${t.branchState} = 'none'`),
     index('harness_items_stage').on(t.harnessId, t.stageId),
     index('harness_items_lease').on(t.leaseExpires),
   ],
