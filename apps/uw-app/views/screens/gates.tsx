@@ -1,7 +1,7 @@
 import type { Context } from 'hono';
 import type { ShadowComparison } from '@uw/contracts';
 import { formatCount } from '@uw/core/money';
-import type { DelegatedMergeRow, GateRow } from '@uw/harness';
+import type { DelegatedMergeList, GateRow } from '@uw/harness';
 import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
@@ -114,7 +114,7 @@ type Body = {
   readonly shown: readonly Shown[];
   readonly capped: boolean;
   readonly comparisons: readonly ShadowComparison[];
-  readonly merged: readonly DelegatedMergeRow[];
+  readonly merged: DelegatedMergeList;
 };
 
 function GatesBody(props: Body) {
@@ -127,7 +127,7 @@ function GatesBody(props: Body) {
         <PageHead title="Gates" />
         {note ?? <Note>No gate is waiting for you to decide.</Note>}
         {lists}
-        <DelegatedMerges rows={merged} />
+        <DelegatedMerges merged={merged} />
       </>
     );
   }
@@ -140,7 +140,7 @@ function GatesBody(props: Body) {
       ))}
       <GateList shown={shown} />
       {lists}
-      <DelegatedMerges rows={merged} />
+      <DelegatedMerges merged={merged} />
     </>
   );
 }

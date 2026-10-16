@@ -7,4 +7,6 @@ export const parkedCapNote = `A harness has at least ${limit} parked items. Gate
 
 export const lapsedCapNote = `At least ${limit} of your delegations lapsed in the last 7 days. The latest ${limit} are read.`;
 
+export const mergedCapNote = `At least ${limit} items merged under a delegation in the last 7 days. The latest ${limit} are read.`;
+
 export const handedCapNote = `At least ${limit} items were handed to people in the last 7 days. The latest ${limit} are read.`;
