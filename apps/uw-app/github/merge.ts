@@ -25,6 +25,7 @@ type Target = {
   readonly repository: string;
   readonly title: string;
   readonly overrideReason: string | null;
+  readonly joined: boolean;
 };
 
 type Live = {
@@ -81,7 +82,16 @@ function targetOf(request: ConnectorRequest): Target | Refusal {
   if (head === null) return refusal('head_mismatch');
   const base = decidedBase(request.expectedBase);
   const { title, overrideReason } = request;
-  return { ...pullRequest, itemId, head, base, repository, title, overrideReason };
+  return {
+    ...pullRequest,
+    itemId,
+    head,
+    base,
+    repository,
+    title,
+    overrideReason,
+    joined: request.joined,
+  };
 }
 
 function liveOf(answer: unknown): Live | null {
@@ -115,7 +125,7 @@ function identityRefusal(target: Target, live: Live): Refusal | null {
   if (live.headRepo === null || !sameRepository(live.headRepo, target.repository)) {
     return refusal('head_repository_mismatch');
   }
-  if (live.headRef !== tagOf(target)) return refusal('head_ref_mismatch');
+  if (!target.joined && live.headRef !== tagOf(target)) return refusal('head_ref_mismatch');
   return null;
 }
 

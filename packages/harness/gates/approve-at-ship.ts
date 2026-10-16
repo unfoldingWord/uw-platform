@@ -33,6 +33,7 @@ import { countedApprovals, shipRule, type CountedApproval } from '../ship-rule.t
 import { exitThroughConnector, type ExitGuard, type ExitPorts } from './exit.ts';
 import { factsFailure } from './facts-failure.ts';
 import { isStale, staleRefusal } from './facts-fresh.ts';
+import { lentAtExit, type NotLent } from './lent.ts';
 import { decisionInFlight, sameChange } from './parking.ts';
 import {
   assembleShipInput,
@@ -236,17 +237,31 @@ function liveGrounds(ports: ShipPorts, pending: PendingExit): Promise<LiveGround
 
 type GuardNotes = { refusals: readonly ShipRefusal[] };
 
+type ExitStanding = { readonly approver: Principal; readonly delegation: ShipDelegation | null };
+
+async function standingAtExit(
+  ports: ShipPorts,
+  pending: PendingExit,
+): Promise<ExitStanding | NotLent> {
+  if (pending.delegated === null) return { approver: pending.approver, delegation: null };
+  const found = await lentAtExit(ports, pending.delegated, pending.context.at);
+  return typeof found === 'string' ? found : { approver: found.approver, delegation: found.lent };
+}
+
 function exitGuard(ports: ShipPorts, pending: PendingExit, notes: GuardNotes): ExitGuard {
   return async () => {
     const facts = await factsAtExit(ports, pending.item);
     if (facts === 'unavailable') return { refused: 'ship_rule_unavailable' };
-    const live = await liveGrounds(ports, pending);
+    const standing = await standingAtExit(ports, pending);
+    if (typeof standing === 'string') return { refused: standing };
+    const live = await liveGrounds(ports, { ...pending, approver: standing.approver });
     const { item, override, context } = pending;
     if (live === null || !allowed(live.approver, 'admin', live.harness, context.at)) {
       return { refused: 'ship_rule_refused: not_permitted' };
     }
     const { harness, approver } = live;
-    const input = assembleShipInput({ facts, item, harness, approver, at: context.at, override });
+    const source = { facts, item, harness, approver, at: context.at, override };
+    const input = assembleShipInput({ ...source, delegation: standing.delegation });
     const outcome = shipRule(input);
     if (outcome.verdict === 'refuse') {
       notes.refusals = outcome.reasons;
