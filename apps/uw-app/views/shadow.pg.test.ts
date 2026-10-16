@@ -29,6 +29,7 @@ async function shadowHarness(db: Database): Promise<string> {
       jdArea: '80-89',
       template: checkOnly,
       repository,
+      requiredChecks: [],
       shadow: true,
       externalReviewerIdentities: [],
     }),

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { gateViewSchema, type HarnessEvent } from '@uw/contracts';
+import { gateViewSchema, type HarnessEvent, defaultCiChecks } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
 import { seedGrant, seedPerson } from '@uw/db/test-seed';
 import { reviewBody, software } from '@uw/harness';
@@ -55,6 +55,7 @@ async function otherHarness(db: Database, parked: ParkedAtShip): Promise<string>
       jdArea: '80-89',
       template: software,
       repository: 'unfoldingWord/uw-other',
+      requiredChecks: [...defaultCiChecks],
     }),
   );
   return harnessId;

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { principalSchema, type Principal } from '@uw/contracts';
+import { defaultCiChecks, principalSchema, type Principal } from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
@@ -175,7 +175,8 @@ async function itemInPackage(
 
 function activationOf(harnessId: string, harnessKey: string) {
   const repository = harnessKey === 'software' ? 'unfoldingWord/uw-platform' : null;
-  return { harnessId, harnessKey, jdArea: '80-89', template: software, repository };
+  const requiredChecks = harnessKey === 'software' ? [...defaultCiChecks] : [];
+  return { harnessId, harnessKey, jdArea: '80-89', template: software, repository, requiredChecks };
 }
 
 async function seedHarness(kernel: Kernel, ian: Principal) {

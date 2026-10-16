@@ -1,3 +1,4 @@
+import { defaultCiChecks } from '@uw/contracts';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { Principal } from '@uw/contracts';
 import { createClient } from '@uw/db/client';
@@ -71,6 +72,7 @@ async function itemOn(r: Rig): Promise<{ readonly harnessId: string; readonly it
       jdArea: '80-89',
       template: software,
       repository: 'unfoldingWord/software-runs',
+      requiredChecks: [...defaultCiChecks],
     }),
   );
   await listForDispatch(r.db, 'unfoldingWord/software-runs');

@@ -52,6 +52,7 @@ async function checkOnlyOn(db: Database, shadow: boolean): Promise<string> {
       jdArea: '80-89',
       template: checkOnly,
       repository: platform,
+      requiredChecks: [],
       shadow,
       externalReviewerIdentities: [],
     }),

@@ -1,4 +1,4 @@
-import { ciJobSchema, type ItemState, type Principal } from '@uw/contracts';
+import { ciJobSchema, type ItemState, type Principal, defaultCiChecks } from '@uw/contracts';
 import { createClient, type Database } from '@uw/db/client';
 import { lockWaiters } from '@uw/db/store';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
@@ -121,6 +121,7 @@ async function parkAtShip(
       jdArea: '80-89',
       template: software,
       repository: 'unfoldingWord/uw-platform',
+      requiredChecks: [...defaultCiChecks],
     }),
     'activate',
   );

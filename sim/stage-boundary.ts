@@ -94,6 +94,7 @@ function structural(world: World, harnessId: string, stages: readonly Stage[]): 
           jdArea: '80-89',
           template,
           repository: null,
+          requiredChecks: [],
         }),
     })),
   ];

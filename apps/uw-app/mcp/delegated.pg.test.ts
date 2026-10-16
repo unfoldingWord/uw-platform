@@ -6,6 +6,7 @@ import {
   type CapabilityWord,
   type HarnessEvent,
   type Principal,
+  defaultCiChecks,
 } from '@uw/contracts';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
@@ -151,6 +152,7 @@ async function sceneOf(r: Rig, key: string, count: number): Promise<Scene> {
     jdArea: '80-89',
     template: software,
     repository: `unfoldingWord/${key}`,
+    requiredChecks: [...defaultCiChecks],
   };
   value(await r.kernel.stages.activate(caller(r.ian), activate));
   await listForDispatch(r.db, activate.repository);

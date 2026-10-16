@@ -1,3 +1,4 @@
+import { defaultCiChecks } from '@uw/contracts';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { HarnessEvent, Principal } from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
@@ -69,6 +70,7 @@ async function openRig(): Promise<Rig> {
       jdArea: '80-89',
       template: software,
       repository: 'unfoldingWord/uw-platform',
+      requiredChecks: [...defaultCiChecks],
     }),
   );
   await listForDispatch(db, 'unfoldingWord/uw-platform');

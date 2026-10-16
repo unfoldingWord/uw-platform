@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { healthReportSchema, type HealthIndicator } from '@uw/contracts';
+import { healthReportSchema, type HealthIndicator, defaultCiChecks } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
 import { createApp } from '../app.tsx';
 import { platformKernel } from '../kernel.ts';
@@ -217,6 +217,7 @@ async function idsInOrder(db: Database): Promise<void> {
       jdArea: '80-89',
       template: software,
       repository: `unfoldingWord/ordered-${index}`,
+      requiredChecks: [...defaultCiChecks],
     };
     accepted(await kernel.stages.activate(caller, input));
   }

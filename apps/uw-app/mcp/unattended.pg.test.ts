@@ -1,3 +1,4 @@
+import { defaultCiChecks } from '@uw/contracts';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { Principal } from '@uw/contracts';
@@ -91,6 +92,7 @@ async function harnessIn(r: Rig, key: string): Promise<string> {
     jdArea: '80-89',
     template: software,
     repository: `unfoldingWord/${key}`,
+    requiredChecks: [...defaultCiChecks],
   };
   value(await r.kernel.stages.activate(caller(r.ian), activate));
   return harnessId;

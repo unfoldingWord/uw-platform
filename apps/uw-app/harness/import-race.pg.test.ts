@@ -1,3 +1,4 @@
+import { defaultCiChecks } from '@uw/contracts';
 import type { IssueRef } from '@uw/contracts';
 import { ingestPrincipal } from '@uw/core/principal';
 import { createClient, type Database } from '@uw/db/client';
@@ -45,6 +46,7 @@ async function seedHarness(db: Database): Promise<void> {
         jdArea: '80-89',
         template: software,
         repository: 'unfoldingWord/uw-platform',
+        requiredChecks: [...defaultCiChecks],
       },
     ),
   );
