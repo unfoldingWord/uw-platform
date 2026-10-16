@@ -16,5 +16,6 @@
       "name": "lint"
     }
   ],
-  "protectedPaths": []
+  "protectedPaths": [],
+  "fixClaim": false
 }

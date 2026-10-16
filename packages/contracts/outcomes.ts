@@ -81,6 +81,8 @@ export const errorReasonSchema = z.enum([
   'protected_path_needs_person',
   'tier_above_delegation',
   'tier_not_delegable',
+  'fix_size_cap',
+  'fix_keeps_purpose',
 ]);
 
 export const refusalSchema = z.object({

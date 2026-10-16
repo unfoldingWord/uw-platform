@@ -18,6 +18,7 @@ import { harnessSchema } from './harness.ts';
 import { pageTypeSchema } from './pages.ts';
 import { platformFrontmatterSchema } from './page-types.ts';
 import { shadowComparisonSchema } from './shadow.ts';
+import { submitToGateResultSchema } from './verb-io.ts';
 
 const fixtureRoot = join(import.meta.dirname, 'fixtures');
 
@@ -422,5 +423,59 @@ describe('GL-6 the contracts for the platform page', () => {
     expect(platformFrontmatterSchema.safeParse(list).success).toBe(true);
     const repeated = { dispatch_allowed: ['unfoldingWord/a', 'UNFOLDINGWORD/A'] };
     expect(platformFrontmatterSchema.safeParse(repeated).success).toBe(false);
+  });
+});
+
+describe('FL-1 FL-2 FL-3 FL-4 the fix claim contracts', () => {
+  const requestId = '3f1d7c1e-8c53-4a53-9d6e-0a9b6a0f4d11';
+  const delegationId = '00000000-0000-4000-8000-0000000000f1';
+  const head = 'c'.repeat(40);
+
+  it('FL-1 a harness starts with the fix claim off, and an admin command switches it', () => {
+    const older = {
+      id: delegationId,
+      key: 'tc-admin-app',
+      template: 'software',
+      jdArea: '80-89',
+      repository: 'unfoldingWord/tc-admin-app',
+      hostedBuilderEnabled: false,
+      paused: false,
+    };
+    expect(harnessSchema.parse(older)).toMatchObject({ fixClaim: false });
+    expect(harnessSchema.parse({ ...older, fixClaim: true })).toMatchObject({ fixClaim: true });
+    const command = { command: 'set_fix_claim', requestId, enabled: true };
+    expect(commandSchema.parse(command)).toEqual(command);
+    expect(commandSchema.safeParse({ command: 'set_fix_claim', requestId }).success).toBe(false);
+    expect(eventEvidenceSchemas.fix_claim_set.parse({ enabled: false })).toEqual({
+      enabled: false,
+    });
+  });
+
+  it('FL-2 a fix claim records its delegation, its start head and the declaration', () => {
+    const claimed = { delegationId, head, declaration: null };
+    expect(eventEvidenceSchemas.fix_claimed.parse(claimed)).toEqual(claimed);
+    const declared = {
+      ...claimed,
+      declaration: {
+        closes: ['#12'],
+        risks: 'the board renders slower on phones',
+        touches: 'apps/uw-app/board',
+        riskTier: 'standard',
+        riskDomains: [],
+      },
+    };
+    expect(eventEvidenceSchemas.fix_claimed.parse(declared)).toEqual(declared);
+    expect(eventEvidenceSchemas.fix_claimed.safeParse({ ...claimed, head: 'abc' }).success).toBe(
+      false,
+    );
+  });
+
+  it('FL-3 a fix is refused with its own reasons, and a passing fix waits for review', () => {
+    expect(errorReasonSchema.options.slice(-2)).toEqual(['fix_size_cap', 'fix_keeps_purpose']);
+    expect(submitToGateResultSchema.options.at(-1)).toBe('awaiting_review');
+  });
+
+  it('FL-4 a run that ran no declared checks fails checks_not_run_locally', () => {
+    expect(closedSets.runFailureSchema.options.at(-1)).toBe('checks_not_run_locally');
   });
 });

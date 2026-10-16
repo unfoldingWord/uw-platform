@@ -11,5 +11,6 @@
   "frozen": false,
   "freezeAllow": [],
   "requiredChecks": [],
-  "protectedPaths": []
+  "protectedPaths": [],
+  "fixClaim": false
 }

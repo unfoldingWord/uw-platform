@@ -64,6 +64,8 @@ export const eventNames = [
   'finding_refuted',
   'delegated_merge',
   'delegated_exit_claimed',
+  'fix_claimed',
+  'fix_claim_set',
 ] as const;
 
 export const eventNameSchema = z.enum(eventNames);

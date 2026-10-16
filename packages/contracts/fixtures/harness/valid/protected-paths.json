@@ -11,5 +11,6 @@
   "frozen": false,
   "freezeAllow": [],
   "requiredChecks": [],
-  "protectedPaths": ["src/billing/", "deploy.sh"]
+  "protectedPaths": ["src/billing/", "deploy.sh"],
+  "fixClaim": false
 }
