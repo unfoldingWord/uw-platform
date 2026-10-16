@@ -1,6 +1,5 @@
 import type { CommandName } from '@uw/contracts';
 import { isBuiltCommand, type CommandHandler } from './handler.ts';
-import { notWiredCommand } from './not-wired.ts';
 import {
   claimCommand,
   enqueueCommand,
@@ -14,6 +13,7 @@ import { importCommand } from './handlers/import.ts';
 import { recordMeasurementCommand } from './handlers/measurements.ts';
 import { promptRunCommand, stopRunCommand } from './handlers/runs.ts';
 import { revokeDelegationCommand, scheduleRegularTweakCommand } from './person/delegations.ts';
+import { enqueueEpicCommand } from './person/epics.ts';
 import { activatePersonaCommand } from './person/personas.ts';
 import {
   approveCommand,
@@ -87,5 +87,5 @@ export const commandRegistry = commandRegistryOf([
   setFixClaimCommand,
   decideGatesCommand,
   refuteFindingCommand,
-  notWiredCommand('enqueue_epic', 'write'),
+  enqueueEpicCommand,
 ]);
