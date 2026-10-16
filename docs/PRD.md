@@ -518,9 +518,9 @@ persona_activation_failed  persona_activated
 measurement_recorded  handed_to_person
 ```
 
-Added in v0.2.0: `review_verdict_recorded`, `shadow_verdict`, `shadow_lifted`, `freeze_changed`, `epic_enqueued`, `finding_refuted`, `silence_alarm`, `delegated_merge`. Wake reasons gain `silence_alarm` (rank 3) and `delegated_merge` (rank 2).
+Added in v0.2.0: `review_verdict_recorded`, `shadow_verdict`, `shadow_lifted`, `freeze_changed`, `epic_enqueued`, `finding_refuted`, `silence_alarm`, `delegated_merge`, `delegated_exit_claimed`. Wake reasons gain `silence_alarm` (rank 3) and `delegated_merge` (rank 2).
 
-`delegated_merge` is recorded with `connector_succeeded` when a delegated exit merged, and carries the decision, the delegation, the grantor's id and email, the persona, the expiry and the tier (S16-R9). `delegation_granted` gains `maxTier` (null before contract 13.1.0).
+`delegated_merge` is recorded with `connector_succeeded` when a delegated exit merged, and carries the decision, the delegation, the grantor's id and email, the persona, the expiry and the tier (S16-R9). `delegation_granted` gains `maxTier` (null before contract 13.1.0). `delegated_exit_claimed` (`decisionId`) is the minute job's claim on a delegated decision, recorded under the item lock before the merge connector runs, so two overlapping runs never both take one decision to the connector; a claim with no outcome is left to a person's recovery after 15 minutes.
 
 `handed_to_person` gains the reason `engine_refused`, whose `rounds` is null (contract 13.0.0). `run_completed`'s review record carries its weighted findings.
 
