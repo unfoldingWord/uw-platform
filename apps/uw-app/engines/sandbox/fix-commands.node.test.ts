@@ -45,6 +45,28 @@ function committed(repo: string): string {
   return git(repo, 'rev-parse', 'HEAD');
 }
 
+function sessionOf(pid: string): number | null {
+  try {
+    const stat = readFileSync(join('/proc', pid, 'stat'), 'utf8');
+    const fields = stat.slice(stat.lastIndexOf(') ') + 2).split(' ');
+    return fields[3] === undefined ? null : Number(fields[3]);
+  } catch {
+    return null;
+  }
+}
+
+function inSession(sid: number): readonly string[] {
+  return readdirSync('/proc').filter((pid) => /^\d+$/u.test(pid) && sessionOf(pid) === sid);
+}
+
+function settled(sid: number): readonly string[] {
+  const pause = new Int32Array(new SharedArrayBuffer(4));
+  for (let tries = 0; tries < 20 && inSession(sid).length > 0; tries += 1) {
+    Atomics.wait(pause, 0, 0, 100);
+  }
+  return inSession(sid);
+}
+
 function runIn(
   repo: string,
   command: readonly string[],
@@ -135,10 +157,9 @@ describe('FL-4 the model session is killed whole, on a real shell', () => {
     const ran = spawnSync(command ?? 'setsid', args, { encoding: 'utf8', timeout: 20_000 });
     const sid = modelSession(ran.stderr);
     expect(sid).not.toBeNull();
-    const left = (): string =>
-      spawnSync('pgrep', ['-s', String(sid)], { encoding: 'utf8' }).stdout.trim();
-    expect(left()).not.toBe('');
+    const left = (): readonly string[] => inSession(sid ?? 0);
+    expect(left()).not.toEqual([]);
     expect(runIn(repo, inspectCommand(sid ?? 0)).status).toBe(0);
-    expect(left()).toBe('');
+    expect(settled(sid ?? 0)).toEqual([]);
   });
 });
