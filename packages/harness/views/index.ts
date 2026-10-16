@@ -27,6 +27,7 @@ import type {
   Waiting,
 } from './types.ts';
 import { waitingOn } from './waiting.ts';
+import { silences, type Silence } from '../alarms/silence.ts';
 
 type ReadOptions = { readonly at: Date };
 type ViewPorts = Pick<Ports, 'clock' | 'githubFacts' | 'grants' | 'store'>;
@@ -63,6 +64,7 @@ export type ViewReads = {
     options?: ReadOptions,
   ): Promise<boolean>;
   waitingOn(caller: Caller, options?: ReadOptions): Promise<Waiting>;
+  silence(options?: ReadOptions): Promise<readonly Silence[]>;
   playByPlay(
     caller: Caller,
     input: PlayInput,
@@ -121,10 +123,9 @@ export function createViewReads(ports: ViewPorts): ViewReads {
     decideAbility: (caller, gate, options) => decideAbility(caller.actor, gate, instant(options)),
     decided: (caller, { itemId }, options) =>
       store.transaction((tx) => gateDecided(ports, tx, caller, itemId, instant(options))),
-    waitingOn: (caller, options) => {
-      const at = instant(options);
-      return store.transaction((tx) => waitingOn(ports, tx, caller, at));
-    },
+    waitingOn: (caller, options) =>
+      store.transaction((tx) => waitingOn(ports, tx, caller, instant(options))),
+    silence: (options) => store.transaction((tx) => silences(ports, tx, instant(options))),
     playByPlay: (caller, input, options) => {
       const at = instant(options);
       return store.transaction((tx) => playByPlay(ports, tx, caller, input, at));

@@ -117,6 +117,9 @@ export { AGENT_HOLD_MS, PERSON_HOLD_MS, heldTooLong, holderOf } from './views/ho
 export type { Holder, HolderRole } from './views/holder.ts';
 export { listsAuthor, pullRequestKey, uncountedItems } from './views/bots.ts';
 export type { CountScope } from './views/bots.ts';
+export { SILENCE_AMBER_MS, SILENCE_RED_MS, silenceLevel } from './alarms/silence.ts';
+export type { Silence, SilenceLevel, WaitingInCheck } from './alarms/silence.ts';
+export type { AlarmCommands, Sounded } from './alarms/commands.ts';
 export { applyDeclaration, domainOf, floorFromPaths } from './risk/derive.ts';
 export type { RiskFloor, RiskResult } from './risk/derive.ts';
 export { approverCovers, domainGrants, requiredResources } from './risk/domain-grants.ts';

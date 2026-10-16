@@ -1,5 +1,6 @@
 import {
   gateLink,
+  healthLink,
   homeLink,
   itemLink,
   type DeepLink,
@@ -48,6 +49,7 @@ async function holdersFor(
 }
 
 function linkOf(trigger: Trigger, harness: Harness, itemId: string | null): DeepLink | null {
+  if (trigger.reason === 'silence_alarm') return healthLink('silence_alarm');
   if (trigger.reason === 'delegation_lapsed') return homeLink;
   if (itemId === null) return null;
   return trigger.reason === 'gate_waiting'

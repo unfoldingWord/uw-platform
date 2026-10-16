@@ -17,6 +17,7 @@ import { cronLogger, type CronDeps, type CronJob } from './job.ts';
 const SWEEP_LIMIT = 200;
 const BEAT_LIMIT = 10;
 const EXPIRY_LIMIT = 200;
+const SILENCE_LIMIT = 200;
 
 type Minute = {
   readonly kernel: Kernel;
@@ -87,6 +88,19 @@ async function beat({ kernel, caller, logger }: Minute): Promise<void> {
   });
 }
 
+async function silence({ kernel, caller, logger }: Minute): Promise<void> {
+  const sounded = await kernel.alarms.soundSilence(caller, { limit: SILENCE_LIMIT });
+  if (sounded.status !== 'accepted') {
+    logger.warn('silence alarm refused', { step: 'silence', outcome: sounded.reason });
+    return;
+  }
+  logger.info('silence checked', {
+    step: 'silence',
+    outcome: 'silence_checked',
+    sounded: sounded.value.sounded.length,
+  });
+}
+
 function failureOf(step: string, error: unknown): string {
   if (step === 'breaker' && error instanceof PortNotWiredError) return 'breaker_not_configured';
   if (step === 'breaker') return 'breaker_unreadable';
@@ -130,6 +144,7 @@ async function minuteWith(
     await guarded(minute, 'expiry', expire);
     await guarded(minute, 'breaker', checkBreaker);
     await guarded(minute, 'beat', beat);
+    await guarded(minute, 'silence', silence);
     await runDelegatedExits({
       database,
       env,
