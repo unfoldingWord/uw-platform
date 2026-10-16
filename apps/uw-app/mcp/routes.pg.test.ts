@@ -40,6 +40,7 @@ const INDICATORS = [
   'agent_writes',
   'stale_learnings',
   'github_sweep',
+  'reviewer_refutes',
 ];
 const QUIET = INDICATORS.filter((name) => name !== 'breaker' && name !== 'github_sweep');
 
