@@ -81,6 +81,7 @@ async function approveAndMerge(scene: Scene): Promise<void> {
     itemId,
     traceId: after.events.at(-1)?.traceId,
     pullRequest: shipPullRequest,
+    joined: false,
     expectedHead: standardChange.head,
     expectedBase: { sha: shipBase, ref: 'main' },
     repository: 'unfoldingWord/uw-platform',
