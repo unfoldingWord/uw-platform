@@ -346,6 +346,16 @@ describe('GL-3 the facts carry the requested reviewers', () => {
   });
 });
 
+describe('OB-4 the facts carry the pull request author', () => {
+  it('reads the author login, and none when the payload has no user', () => {
+    const authored = { ...restPull, user: { login: 'dependabot[bot]' } };
+    expect(factsFromPull(repo, authored)?.pullRequests[0]?.authorLogin).toBe('dependabot[bot]');
+    expect(
+      factsFromPull(repo, { ...restPull, user: null })?.pullRequests[0]?.authorLogin,
+    ).toBeNull();
+  });
+});
+
 describe('EI-1 the facts read sub-issues and the body facts intake needs', () => {
   const batchIssue = (delivery: unknown) => {
     const batch = factsFromWebhook('issues', delivery);

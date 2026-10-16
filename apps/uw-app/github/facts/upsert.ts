@@ -139,6 +139,7 @@ const pullColumns = {
   baseSha: ghPrs.baseSha,
   milestoneId: ghPrs.milestoneId,
   requestedReviewers: ghPrs.requestedReviewers,
+  authorLogin: ghPrs.authorLogin,
   declaration: ghPrs.declaration,
   declarationProblem: ghPrs.declarationProblem,
   closes: ghPrs.closes,

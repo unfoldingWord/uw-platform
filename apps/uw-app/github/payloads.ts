@@ -60,6 +60,7 @@ export const pullSchema = z.object({
   body: z.string().nullable().optional(),
   milestone: milestoneSchema.nullable().optional(),
   requested_reviewers: z.array(z.object({ login: name })).optional(),
+  user: z.object({ login: name }).nullable().optional(),
   updated_at: instant,
 });
 

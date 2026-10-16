@@ -1,4 +1,5 @@
 import {
+  botAuthorsSchema,
   defaultBotAuthors,
   harnessSchema,
   repositorySchema,
@@ -33,6 +34,7 @@ export type ActivateInput = {
   readonly repository: string | null;
   readonly shadow?: boolean;
   readonly externalReviewerIdentities?: readonly string[];
+  readonly botAuthors?: readonly string[];
   readonly requiredChecks: readonly RequiredCheck[];
   readonly protectedPaths?: readonly string[];
 };
@@ -49,10 +51,17 @@ function externalRefusal(external: readonly string[]): Refused | null {
   return refused('malformed_command', { why: 'external_reviewer_identities' });
 }
 
+function botsOf(input: ActivateInput): string[] {
+  return [...(input.botAuthors ?? defaultBotAuthors)];
+}
+
 function inputRefusal(input: ActivateInput, external: readonly string[]): Refused | null {
   const { repository } = input;
   if (repository !== null && !repositorySchema.safeParse(repository).success) {
     return refused('malformed_command', { repository });
+  }
+  if (!botAuthorsSchema.safeParse(botsOf(input)).success) {
+    return refused('malformed_command', { field: 'botAuthors' });
   }
   return externalRefusal(external);
 }
@@ -68,7 +77,7 @@ function harnessOf(input: ActivateInput, external: string[]): Harness {
     paused: false,
     shadow: input.shadow ?? false,
     externalReviewerIdentities: external,
-    botAuthors: [...defaultBotAuthors],
+    botAuthors: botsOf(input),
     frozen: false,
     freezeAllow: [],
     requiredChecks: [...input.requiredChecks],

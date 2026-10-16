@@ -125,6 +125,7 @@ type SimHarnessOptions = {
   readonly repository?: string | null;
   readonly shadow?: boolean;
   readonly externalReviewerIdentities?: readonly string[];
+  readonly botAuthors?: readonly string[];
   readonly requiredChecks?: readonly RequiredCheck[];
   readonly dispatchable?: boolean;
   readonly protectedPaths?: readonly string[];
@@ -161,6 +162,7 @@ function activationOf(world: World, template: Template, options: SimHarnessOptio
         : options.repository,
     shadow: options.shadow ?? false,
     externalReviewerIdentities: options.externalReviewerIdentities ?? [],
+    ...(options.botAuthors === undefined ? {} : { botAuthors: options.botAuthors }),
     requiredChecks: options.requiredChecks ?? defaultCiChecks,
     protectedPaths: options.protectedPaths ?? [],
   };

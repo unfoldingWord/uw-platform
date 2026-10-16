@@ -51,6 +51,7 @@ export type BoardColumn = {
   readonly held: number;
   readonly cards: readonly BoardCard[];
   readonly next: string | null;
+  readonly uncounted: number;
 };
 export type EpicNode = {
   readonly itemId: string;
@@ -112,6 +113,7 @@ export type WaitingRow =
     };
 export type Waiting = {
   readonly rows: readonly WaitingRow[];
+  readonly uncounted: number;
   readonly failedRunsCapped: boolean;
   readonly gatesCapped: boolean;
   readonly lapsedCapped: boolean;
