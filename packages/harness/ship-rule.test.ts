@@ -435,3 +435,46 @@ describe('SR-2 the ship rule counts a carried approval and a carried expected he
     expect(countedApprovals({ ...green(), pullRequest: null })).toEqual([]);
   });
 });
+
+describe('MD-4 a delegation never covers a protected path or a tier above its own', () => {
+  const lent = (maxTier: 'low' | 'standard', protectedTouched: string[] | null = []) => ({
+    delegationId: '00000000-0000-4000-8000-0000000000d1',
+    maxTier,
+    protectedTouched,
+  });
+  const standard = (): ShipRuleInput => ({ ...green(), riskTier: 'standard', riskDomains: [] });
+
+  it('MD-4 advances a standard change under a standard delegation that touches no protected path', () => {
+    expect(shipRule({ ...standard(), delegation: lent('standard') })).toEqual({
+      verdict: 'advance',
+    });
+  });
+
+  it('MD-4 refuses tier_above_delegation for a standard change under a low delegation', () => {
+    expect(refusedWith({ ...standard(), delegation: lent('low') })).toEqual([
+      'tier_above_delegation',
+    ]);
+  });
+
+  it('MD-4 refuses protected_path_needs_person when the change touches one', () => {
+    const touched = { ...standard(), delegation: lent('standard', ['src/billing/rates.ts']) };
+    expect(refusedWith(touched)).toEqual(['protected_path_needs_person']);
+  });
+
+  it('MD-4 fails closed when the changed paths are unknown', () => {
+    expect(refusedWith({ ...standard(), delegation: lent('standard', null) })).toEqual([
+      'protected_path_needs_person',
+    ]);
+  });
+
+  it('MD-4 a high change under a standard delegation is above its tier', () => {
+    const high = { ...standard(), riskTier: 'high' as const, delegation: lent('standard') };
+    expect(refusedWith(high)).toContain('tier_above_delegation');
+  });
+
+  it('MD-4 a person approval carries no delegation and is refused for neither', () => {
+    const reasons = refusedWith({ ...standard(), riskTier: 'high', delegation: null });
+    expect(reasons).not.toContain('tier_above_delegation');
+    expect(reasons).not.toContain('protected_path_needs_person');
+  });
+});

@@ -13,6 +13,7 @@ export const wakeRank: Readonly<Record<WakeReason, 1 | 2 | 3>> = {
   run_failed: 2,
   stage_advanced: 1,
   handed_to_person: 3,
+  delegated_merge: 2,
 };
 
 export function rankOf(reason: WakeReason): 1 | 2 | 3 {

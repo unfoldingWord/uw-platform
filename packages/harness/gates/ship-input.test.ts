@@ -173,6 +173,7 @@ describe('GH-5 the assembler builds the ship rule input from GitHub facts', () =
       approver,
       at: at.toISOString(),
       frozen: false,
+      delegation: null,
       override: false,
     });
   });

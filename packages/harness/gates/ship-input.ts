@@ -283,6 +283,7 @@ export function assembleShipInput(source: ShipInputSource): ShipRuleInput {
     approver: source.approver,
     at: source.at.toISOString(),
     frozen: harness.frozen && !harness.freezeAllow.includes(item.itemId),
+    delegation: null,
     override: source.override,
   };
 }
