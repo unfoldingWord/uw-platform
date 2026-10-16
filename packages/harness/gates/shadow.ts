@@ -66,6 +66,11 @@ export async function recordShadowVerdicts(
   if (!pullRequestRefSchema.safeParse(input.pullRequest).success) {
     return refused('malformed_command', { field: 'pullRequest' });
   }
+  const inShadow = await ports.store.transaction(async (tx) => {
+    const harness = await tx.harnesses.read.byRepository(input.pullRequest.repo);
+    return harness !== null && harness.shadow;
+  });
+  if (!inShadow) return accepted([]);
   const facts = await readFacts(ports, input.pullRequest);
   const context = recordContext(ports, caller, ports.clock.now());
   const seen = { facts, pullRequest: input.pullRequest, approver };
