@@ -4,11 +4,42 @@ import type { FixContext, ValidationContext } from './context.ts';
 
 const QUARTERS = 4;
 const NAMED_PATHS = 5;
-const testPath = /(?:^|\/)(?:test|tests|__tests__|spec)\/|\.(?:test|spec)\.[a-z]+$/u;
-const docPath = /^docs\/|\.md$/u;
+const testName = /\.(?:test|spec)\.[a-z]+$/u;
+const releaseNotes = /^(?:README|CHANGELOG)/u;
+const testDirectories: ReadonlySet<string> = new Set(['__tests__', 'test', 'tests']);
+const guardedDirectories: ReadonlySet<string> = new Set([
+  '.claude',
+  '.github',
+  'skills',
+  'personas',
+  'persona',
+]);
+const guardedNames: ReadonlySet<string> = new Set(['AGENTS.md', 'CLAUDE.md', 'SKILL.md']);
+const PACKAGE_DEPTH = 2;
+
+function guarded(segments: readonly string[], name: string): boolean {
+  return (
+    guardedNames.has(name) || segments.slice(0, -1).some((part) => guardedDirectories.has(part))
+  );
+}
+
+function underTests(segments: readonly string[], depth: number): boolean {
+  return segments.length > depth + 1 && testDirectories.has(segments.at(depth) ?? '');
+}
+
+function testFile(segments: readonly string[], name: string): boolean {
+  return testName.test(name) || underTests(segments, 0) || underTests(segments, PACKAGE_DEPTH);
+}
+
+function docFile(segments: readonly string[], name: string): boolean {
+  return (segments[0] === 'docs' && name.endsWith('.md')) || releaseNotes.test(name);
+}
 
 export function testOrDoc(path: string): boolean {
-  return testPath.test(path) || docPath.test(path);
+  const segments = path.split('/');
+  const name = segments.at(-1) ?? '';
+  if (guarded(segments, name)) return false;
+  return testFile(segments, name) || docFile(segments, name);
 }
 
 function outside(pull: DiffStat, fix: DiffStat): readonly string[] {
@@ -21,6 +52,7 @@ function sizeFailures(fix: FixContext): readonly string[] {
     return ['fix_size_cap: the fix could not be measured against the pull request'];
   }
   const { pull } = fix;
+  if (fix.fix.paths.length === 0) return ['fix_size_cap: the fix changes nothing'];
   const lines = fix.fix.lines;
   const over =
     lines * QUARTERS > pull.lines
@@ -64,6 +96,9 @@ export function sameDeclaration(
 export function fixKeepsPurpose(context: ValidationContext): readonly string[] {
   const { fix } = context;
   if (fix === undefined || fix === null) return [];
+  if (!fix.samePullRequest) {
+    return ["fix_keeps_purpose: the fix names a pull request other than the item's"];
+  }
   if (!fix.claimed) return ['fix_keeps_purpose: the fix claim recorded no declaration'];
   return sameDeclaration(fix.declared, fix.declaration)
     ? []
