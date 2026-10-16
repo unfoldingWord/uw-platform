@@ -57,6 +57,8 @@ risk_tier: <low, medium or high>
 risk_domains: <the risk domains, comma-separated, or none>
 ```
 
+Write `closes: #<issue>` for the item's own issue, or `closes: none` when the item wraps no issue. A pull request that closes any other issue, in its body or in a commit message, is refused at Ship.
+
 ## Submit
 
 Call `submit_to_gate` with the `itemId`, your `evidence`, `to: null`, the `pullRequest` (`repo` and `number`) and the `head` commit you pushed. The item moves on, or parks for a person to decide.
