@@ -1,7 +1,8 @@
 import type { ItemState, Principal } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
+import { revokeSeededGrant } from '@uw/db/test-seed';
 import { software } from '@uw/harness';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import {
   createSimHarness,
   readSpend,
@@ -285,6 +286,61 @@ async function shadowHarness(scene: Scene): Promise<void> {
   expect(await rows(scene)).toEqual([]);
 }
 
+async function loopTargetHeldBack(scene: Scene): Promise<void> {
+  const loan = await simLendMerge(scene.world, scene.admin, {
+    harnessId: scene.harnessId,
+    maxTier: 'standard',
+  });
+  const edited = await scene.world.kernel.stages.updateStage(simCaller(scene.world, scene.admin), {
+    harnessId: scene.harnessId,
+    stageKey: 'ship',
+    change: { feeds: ['build'] },
+  });
+  expect(edited.status).toBe('accepted');
+  expect((await claim(scene, loan.agent, loan.delegationId)).status).toBe('accepted');
+  const input = { itemId: scene.item.itemId, to: 'build', evidence: {}, change: null };
+  const submitted = await scene.world.kernel.items.submit(
+    simCaller(scene.world, loan.agent),
+    input,
+  );
+  expect(submitted).toMatchObject({ status: 'accepted', value: { failures: ['gate_target'] } });
+  expect(await rows(scene)).toEqual([]);
+}
+
+async function grantorLostAdminAfterClaim(scene: Scene): Promise<void> {
+  const loan = await simLendMerge(scene.world, scene.admin, {
+    harnessId: scene.harnessId,
+    maxTier: 'standard',
+  });
+  expect((await claim(scene, loan.agent, loan.delegationId)).status).toBe('accepted');
+  for (const grant of scene.admin.grants) {
+    const at = scene.world.adapters.clock.now();
+    await revokeSeededGrant(scene.world.database.db, grant.grantId, at);
+  }
+  const submitted = await submit(scene, loan.agent);
+  expect(submitted).toMatchObject({
+    status: 'error',
+    reason: 'delegation_lapsed',
+    detail: { delegationId: loan.delegationId, why: 'grant_lost' },
+  });
+  expect(await rows(scene)).toEqual([]);
+}
+
+async function grantorNotAHolder(scene: Scene): Promise<void> {
+  const loan = await simLendMerge(scene.world, scene.admin, {
+    harnessId: scene.harnessId,
+    maxTier: 'standard',
+  });
+  expect((await claim(scene, loan.agent, loan.delegationId)).status).toBe('accepted');
+  vi.spyOn(scene.world.adapters.grants, 'holders').mockResolvedValue([]);
+  const submitted = await submit(scene, loan.agent);
+  expect(submitted).toMatchObject({
+    status: 'accepted',
+    value: { result: 'parked', failures: ['delegation_lapsed'] },
+  });
+  expect(await rows(scene)).toEqual([]);
+}
+
 describe('MD-3 an agent under a merge delegation takes the Ship exit, and the record names the grantor', () => {
   it('MD-3 writes one decision: the grantor approves, the agent acts, the delegation is named; nothing merges yet', () =>
     inScene({}, writesOneDecision));
@@ -299,6 +355,15 @@ describe('MD-3 an agent under a merge delegation takes the Ship exit, and the re
 
   it('MD-3 poll_queue offers the Ship item under a merge delegation and not under a build one', () =>
     inScene({}, pollOffersShip));
+
+  it('MD-3 a submit naming a loop target parks for a person with failures gate_target and writes nothing', () =>
+    inScene({}, loopTargetHeldBack));
+
+  it('MD-3 a grantor who lost admin after the claim refuses the submit delegation_lapsed and writes nothing', () =>
+    inScene({}, grantorLostAdminAfterClaim));
+
+  it('MD-3 a grantor missing from the area holders refuses the submit delegation_lapsed and writes nothing', () =>
+    inScene({}, grantorNotAHolder));
 });
 
 describe('MD-4 what a merge delegation never covers', () => {
