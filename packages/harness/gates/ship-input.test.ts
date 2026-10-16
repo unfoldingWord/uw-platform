@@ -10,6 +10,7 @@ import {
   assembleShipInput,
   GITHUB_ACTIONS_APP,
   riskDerivedAtShip,
+  reviewsOn,
   usableHead,
 } from './ship-input.ts';
 
@@ -20,7 +21,11 @@ const head = 'a'.repeat(40);
 const older = 'b'.repeat(40);
 const base = '0'.repeat(40);
 const itemId = '00000000-0000-4000-8000-000000000301';
-const harness = { jdArea: '80-89', repository: 'unfoldingWord/uw-platform' } as const;
+const harness: { jdArea: string; repository: string; externalReviewerIdentities: string[] } = {
+  jdArea: '80-89',
+  repository: 'unfoldingWord/uw-platform',
+  externalReviewerIdentities: [],
+};
 
 const item: ItemState = {
   itemId,
@@ -341,5 +346,19 @@ describe('GL-3 a joined item counts its head without a harness branch', () => {
     const foreign = { ...facts, headRef: 'feature/login-form' };
     expect(usableHead(foreign, joined, harness)).toBe(head);
     expect(usableHead(foreign, item, harness)).toBeNull();
+  });
+});
+
+describe('PI-1 the provider of an external approval is external', () => {
+  it('lists the external reviewer beside the platform Reviewer in the gate view reviews', () => {
+    const reviews = [
+      review({ reviewId: 1 }),
+      review({ reviewId: 2, reviewer: 'uwreview[bot]', provider: null }),
+    ];
+    const shown = reviewsOn({ ...facts, reviews }, head, ['uwreview[bot]']);
+    expect(shown.map((entry) => [entry.reviewer, entry.provider])).toEqual([
+      ['uw-reviewer', 'anthropic'],
+      ['uwreview', 'external'],
+    ]);
   });
 });

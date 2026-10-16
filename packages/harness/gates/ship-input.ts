@@ -10,11 +10,11 @@ import {
 import { pathsComparedAt } from '../github/changed-files.ts';
 import { riskDeclarationOf } from '../github/declaration.ts';
 import { branchFor, fullSha, normalisedIdentifier, sameRepository } from '../github/identifiers.ts';
-import { reviewerOf } from '../github/reviewers.ts';
+import { countedReviewer, EXTERNAL_PROVIDER } from '../github/reviewers.ts';
 import type { CheckFact, PullRequestFacts, ReviewFact, ReviewState } from '../ports.ts';
 import { applyDeclaration, carryForward, floorFromPaths } from '../risk/derive.ts';
 
-type ShipHarness = Pick<Harness, 'jdArea' | 'repository'>;
+type ShipHarness = Pick<Harness, 'jdArea' | 'repository' | 'externalReviewerIdentities'>;
 
 export type ShipInputSource = {
   readonly facts: PullRequestFacts | null;
@@ -86,36 +86,53 @@ function isDecisive(review: ReviewFact): review is DecisiveReview {
   return decisive.has(review.state);
 }
 
-function latestDecisive(facts: PullRequestFacts, head: string): Map<string, DecisiveReview> {
-  const latest = new Map<string, DecisiveReview>();
+type Counted = { readonly review: DecisiveReview; readonly external: boolean };
+
+function latestDecisive(
+  facts: PullRequestFacts,
+  head: string,
+  external: readonly string[],
+): Map<string, Counted> {
+  const latest = new Map<string, Counted>();
   for (const review of facts.reviews) {
-    const reviewer = reviewerOf(review.reviewer);
-    if (reviewer === null || fullSha(review.commit) !== head || !isDecisive(review)) continue;
-    const seen = latest.get(reviewer);
-    if (seen === undefined || later(review, seen)) latest.set(reviewer, review);
+    const counted = countedReviewer(review.reviewer, external);
+    if (counted === null || fullSha(review.commit) !== head || !isDecisive(review)) continue;
+    const seen = latest.get(counted.reviewer);
+    if (seen === undefined || later(review, seen.review)) {
+      latest.set(counted.reviewer, { review, external: counted.external });
+    }
   }
   return latest;
 }
 
-function providerOf(review: ReviewFact): string | null {
+function providerOf({ review, external }: Counted): string | null {
+  if (external) return EXTERNAL_PROVIDER;
   return review.provider === null ? null : normalisedIdentifier(review.provider);
 }
 
-function approvalsOn(facts: PullRequestFacts, head: string): ShipRuleInput['approvals'] {
-  return [...latestDecisive(facts, head).entries()]
-    .filter(([, review]) => review.state === 'approved')
-    .map(([reviewer, review]) => ({ reviewer, commit: head, provider: providerOf(review) }));
+function approvalsOn(
+  facts: PullRequestFacts,
+  head: string,
+  external: readonly string[],
+): ShipRuleInput['approvals'] {
+  return [...latestDecisive(facts, head, external).entries()]
+    .filter(([, counted]) => counted.review.state === 'approved')
+    .map(([reviewer, counted]) => ({ reviewer, commit: head, provider: providerOf(counted) }));
 }
 
-export function reviewsOn(facts: PullRequestFacts, head: string): GateView['reviews'] {
-  return [...latestDecisive(facts, head).entries()]
+export function reviewsOn(
+  facts: PullRequestFacts,
+  head: string,
+  external: readonly string[],
+): GateView['reviews'] {
+  return [...latestDecisive(facts, head, external).entries()]
     .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
-    .map(([reviewer, review]) => ({
+    .map(([reviewer, counted]) => ({
       reviewer,
       commit: head,
-      state: review.state,
-      provider: providerOf(review),
-      findings: [...review.findings],
+      state: counted.review.state,
+      provider: providerOf(counted),
+      findings: [...counted.review.findings],
     }));
 }
 
@@ -180,7 +197,7 @@ function fromFacts(
   return {
     pullRequest: { open: facts.state === 'open', draft: facts.draft, head },
     checks: latestChecks(facts, head),
-    approvals: approvalsOn(facts, head),
+    approvals: approvalsOn(facts, head, source.harness.externalReviewerIdentities),
     ...riskAtHead(facts, source, head),
   };
 }
