@@ -143,6 +143,7 @@ function recordingFacts(scene: Scene): { port: GitHubFacts; calls: PullRequestRe
       return facts.refresh(ref);
     },
     diff: () => notWiredCall('githubFacts', 'diff'),
+    epic: async () => null,
   };
   return { port, calls };
 }
@@ -326,6 +327,7 @@ describe('a submit whose GitHub facts are not wired is refused', () => {
       pullRequest: () => Promise.reject(new PortNotWiredError('githubFacts', 'pullRequest')),
       refresh: () => Promise.reject(new PortNotWiredError('githubFacts', 'refresh')),
       diff: () => notWiredCall('githubFacts', 'diff'),
+      epic: async () => null,
     };
     const kernel = createKernel({ ...scene.world.adapters, githubFacts: unwired });
     const before = await eventsOf(scene, itemId);

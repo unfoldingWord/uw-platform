@@ -21,6 +21,7 @@ function notWiredPorts(): Ports {
       pullRequest: () => notWiredCall('githubFacts', 'pullRequest'),
       refresh: () => notWiredCall('githubFacts', 'refresh'),
       diff: () => notWiredCall('githubFacts', 'diff'),
+      epic: () => notWiredCall('githubFacts', 'epic'),
     },
     connectors: {
       run: () => notWiredCall('connectors', 'run'),
@@ -52,7 +53,7 @@ function throwingPorts(): Ports {
     ids: { next: refuse },
     store: { transaction: refuse, appliedMigrations: refuse },
     grants: { resolve: refuse, resolveIn: refuse, lockAndReread: refuse, holders: refuse },
-    githubFacts: { pullRequest: refuse, refresh: refuse, diff: refuse },
+    githubFacts: { pullRequest: refuse, refresh: refuse, diff: refuse, epic: refuse },
     connectors: { run: refuse, outcomeOf: refuse, review: refuse },
     modelEngine: { turn: refuse, spend: refuse },
     hub: { wake: refuse, present: refuse },

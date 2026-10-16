@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import type { DiffRange, GitHubFacts, PullRequestFacts, PullRequestRef } from '../ports.ts';
+import type {
+  DiffRange,
+  EpicFacts,
+  GitHubFacts,
+  IssueFact,
+  PullRequestFacts,
+  PullRequestRef,
+} from '../ports.ts';
 import { describeNotWired } from './not-wired-cases.ts';
 
 export type GithubFactsSubject = {
   readonly facts: GitHubFacts;
   given(facts: PullRequestFacts): Promise<void>;
   givenDiff(ref: PullRequestRef, range: DiffRange, text: string): Promise<void>;
+  givenEpic(epic: EpicFacts): Promise<void>;
   now(): Date;
 };
 
@@ -64,6 +72,64 @@ function factsFor(repo: string, number: number, head: string): PullRequestFacts 
 
 type DiffReads = 'scripted' | 'not_wired';
 
+function issueFact(number: number, options: Partial<IssueFact> = {}): IssueFact {
+  return {
+    issue: { repo: 'unfoldingWord/uw-platform', number, githubId: 9100000300 + number },
+    title: `Issue ${number}`,
+    open: true,
+    doneWhen: [`Issue ${number} ships.`],
+    blockedBy: [],
+    ...options,
+  };
+}
+
+function epicOf(subIssues: readonly IssueFact[], number = 40): EpicFacts {
+  return {
+    epic: issueFact(number, { doneWhen: [] }),
+    subIssueCount: subIssues.length,
+    subIssues,
+  };
+}
+
+function epicCases(open: () => Promise<GithubFactsSubject>): void {
+  it('EI-3 answers null for an issue it has no facts for', async () => {
+    const subject = await open();
+    expect(await subject.facts.epic({ repo: 'unfoldingWord/uw-platform', number: 404 })).toBeNull();
+  });
+
+  it('EI-3 answers an epic with its sub-issues in order, their done-whens and blockers', async () => {
+    const subject = await open();
+    const known = epicOf([
+      issueFact(42),
+      issueFact(41, { blockedBy: [42] }),
+      issueFact(43, { open: false, doneWhen: [] }),
+    ]);
+    await subject.givenEpic(known);
+    expect(await subject.facts.epic({ repo: 'UNFOLDINGWORD/uw-platform', number: 40 })).toEqual(
+      known,
+    );
+  });
+
+  it('EI-3 answers an issue with no sub-issues as an epic of none', async () => {
+    const subject = await open();
+    const lone = epicOf([], 50);
+    await subject.givenEpic(lone);
+    expect(await subject.facts.epic({ repo: 'unfoldingWord/uw-platform', number: 50 })).toEqual(
+      lone,
+    );
+  });
+
+  it('EI-3 answers the latest list after a sub-issue leaves the epic', async () => {
+    const subject = await open();
+    await subject.givenEpic(epicOf([issueFact(61), issueFact(62)], 60));
+    const shrunk = epicOf([issueFact(62)], 60);
+    await subject.givenEpic(shrunk);
+    expect(await subject.facts.epic({ repo: 'unfoldingWord/uw-platform', number: 60 })).toEqual(
+      shrunk,
+    );
+  });
+}
+
 export function describeGithubFactsContract(
   adapter: string,
   open: () => Promise<GithubFactsSubject>,
@@ -97,6 +163,7 @@ export function describeGithubFactsContract(
 
     shapeCases(open);
     defaultBranchCases(open);
+    epicCases(open);
     if (diffs === 'scripted') diffCases(open);
     else diffNotWiredCases(open);
 
@@ -262,5 +329,6 @@ export function describeGithubFactsNotWired(adapter: string, facts: GitHubFacts)
     pullRequest: true,
     refresh: true,
     diff: true,
+    epic: true,
   } satisfies Record<keyof GitHubFacts, true>);
 }

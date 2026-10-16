@@ -168,6 +168,7 @@ describe('the gate view answers from the read model', () => {
         return sim.refresh(ref);
       },
       diff: () => notWiredCall('githubFacts', 'diff'),
+      epic: async () => null,
     };
     const kernel = createKernel({ ...scene.world.adapters, githubFacts });
     const view = viewOf(
