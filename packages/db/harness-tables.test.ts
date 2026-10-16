@@ -96,6 +96,8 @@ const expectedColumns: Record<string, string[]> = {
     'issue_repo',
     'issue_number',
     'issue_github_id',
+    'epic',
+    'blocked_by',
   ],
   harness_runs: [
     'id',

@@ -224,6 +224,11 @@ export const harnessItems = declareTable(
     issueNumber: integer('issue_number'),
     issueGithubId: bigint('issue_github_id', { mode: 'number' }),
     zulipTopic: text('zulip_topic'),
+    epic: jsonb('epic'),
+    blockedBy: uuid('blocked_by')
+      .array()
+      .notNull()
+      .default(sql`'{}'::uuid[]`),
     createdAt: instant('created_at').notNull(),
   },
   internalSync,
@@ -253,6 +258,7 @@ export const harnessItems = declareTable(
     check('harness_items_branch_state_known', oneOf(t.branchState, branchStateSchema.options)),
     check('harness_items_risk_tier_known', oneOf(t.riskTier, riskTierSchema.options)),
     check('harness_items_risk_domains_known', subsetOf(t.riskDomains, riskDomainSchema.options)),
+    check('harness_items_blocked_by_bounded', sql`cardinality(${t.blockedBy}) <= 50`),
     check('harness_items_pr_whole', sql`(${t.prRepo} IS NULL) = (${t.prNumber} IS NULL)`),
     check(
       'harness_items_issue_whole',
