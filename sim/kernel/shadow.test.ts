@@ -55,6 +55,7 @@ describe('GL-4 shadow mode', () => {
         head: joinedHead,
         reviewer: 'uw-reviewer',
         verdict: 'approve',
+        findings: [{ text: 'The form validates as it should.', weight: 'theoretical' }],
       });
       const [completed] = await named(scene, 'run_completed');
       expect(completed?.evidence).toMatchObject({
