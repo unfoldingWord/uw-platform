@@ -55,6 +55,7 @@ function harnessesGateway(harness: Harness): HarnessesGateway {
       setHostedBuilder: unused,
       setShadow: unused,
       setFreeze: unused,
+      setFixClaim: unused,
     },
   };
 }

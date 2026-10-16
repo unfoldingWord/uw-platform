@@ -9,6 +9,7 @@ import { describeStoreFailedFor } from './store-failed-for.ts';
 import { describeStoreViews } from './store-views.ts';
 import { describeStoreMeasurements } from './store-measurements.ts';
 import { describeStoreFreeze } from './store-freeze.ts';
+import { describeStoreFixClaim } from './store-fix-claim.ts';
 import { describeStoreJoining } from './store-joining.ts';
 import { describeStorePersonas, type PageVersionRow } from './store-personas.ts';
 
@@ -287,6 +288,7 @@ export function describeStoreContract(
     describeStoreMeasurements(adapter, subject);
     describeStoreJoining(adapter, subject);
     describeStoreFreeze(adapter, subject);
+    describeStoreFixClaim(adapter, subject);
   });
 }
 
