@@ -2,11 +2,11 @@ import { importsOf, type SourceFiles } from './agent-boundary.ts';
 
 export type WriteSite = { readonly file: string; readonly fn: string };
 
-export const PERSON_WRITER: WriteSite = {
+const PERSON_WRITER: WriteSite = {
   file: 'packages/harness/gates/decide.ts',
   fn: 'recordDecision',
 };
-export const DELEGATED_WRITER: WriteSite = {
+const DELEGATED_WRITER: WriteSite = {
   file: 'packages/harness/gates/delegated-ship.ts',
   fn: 'recordDelegatedDecision',
 };
