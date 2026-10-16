@@ -494,7 +494,7 @@ Added in step 7: `run_not_found` (a run id the kernel does not hold, or one the 
 
 Added in step 10: `activation_required` (a write that would make a gated page active, which only activation or confirmation does), `dry_run_failed` (a persona whose dry run found a problem).
 
-Added in v0.2.0: ship rule `base_behind`, `auto_close_keyword`, `skip_ci_marker`, `required_check_never_ran`, `harness_frozen`, `protected_path_needs_person`, `tier_above_delegation`; elsewhere `template_has_no_package`, `no_harness_for_repo`, `template_change_not_allowed`, `repository_not_dispatchable`, `dispatch_list_unavailable`, `tier_not_delegable`, `fix_size_cap`, `fix_keeps_purpose`, `checks_not_run_locally`, `done_when_missing`, `finding_weight_missing`.
+Added in v0.2.0: ship rule `base_behind`, `auto_close_keyword`, `skip_ci_marker`, `required_check_never_ran`, `harness_frozen`, `protected_path_needs_person`, `tier_above_delegation`; elsewhere `template_has_no_package`, `no_harness_for_repo`, `template_change_not_allowed`, `repository_not_dispatchable`, `dispatch_list_unavailable`, `tier_not_delegable`, `fix_size_cap`, `fix_keeps_purpose`, `done_when_missing`, `finding_weight_missing`.
 
 `protected_path_needs_person` and `tier_above_delegation` are refused only on a delegated Ship exit; the item stays parked for a person. `tier_not_delegable` refuses a merge grant naming `high`. `delegation_required` is also recorded when an agent claims or submits at a merge Ship stage without a merge delegation (S16-R2).
 
