@@ -104,7 +104,7 @@ export type { DelegationCommands, GrantInput } from './delegations/commands.ts';
 export type { GateCommands } from './gates/commands.ts';
 export type { ActivatedPersona } from './personas/types.ts';
 export type { PersonaDashboard, PersonaRunSummary } from './views/persona.ts';
-export type { DelegatedMergeRow } from './views/delegated-merges.ts';
+export type { DelegatedMergeList, DelegatedMergeRow } from './views/delegated-merges.ts';
 export type { Decided, DecideInput } from './gates/decide.ts';
 export type { BatchDecided, BatchEntry, BatchInput } from './gates/decide-batch.ts';
 export type { DelegatedExits } from './gates/delegated-exits.ts';

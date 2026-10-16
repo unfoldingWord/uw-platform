@@ -4,7 +4,7 @@ import { gateView } from '../gates/view.ts';
 import type { KernelOutcome } from '../outcome.ts';
 import type { Ports } from '../ports.ts';
 import { boardView } from './board.ts';
-import { delegatedMerges, type DelegatedMergeRow } from './delegated-merges.ts';
+import { delegatedMerges, type DelegatedMergeList } from './delegated-merges.ts';
 import { flowView } from './flow.ts';
 import { decidableGates, decideAbility, gateDecided } from './gates.ts';
 import { planeList } from './plane-list.ts';
@@ -45,7 +45,7 @@ export type ViewReads = {
     options?: ReadOptions,
   ): Promise<KernelOutcome<BoardView>>;
   gates(caller: Caller, options?: ReadOptions): Promise<GateList>;
-  delegatedMerges(caller: Caller, options?: ReadOptions): Promise<readonly DelegatedMergeRow[]>;
+  delegatedMerges(caller: Caller, options?: ReadOptions): Promise<DelegatedMergeList>;
   gate(
     caller: Caller,
     input: { readonly itemId: string },

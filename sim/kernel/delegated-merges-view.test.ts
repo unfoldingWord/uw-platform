@@ -40,13 +40,17 @@ async function mergeUnderDelegation(world: World): Promise<Merged> {
 
 async function showsTheMerge(world: World): Promise<void> {
   const { admin, agent, itemId } = await mergeUnderDelegation(world);
-  const rows = await world.kernel.views.delegatedMerges(simCaller(world, admin));
-  expect(rows).toMatchObject([{ itemId, title: 'Show the board', email: admin.email }]);
+  const merged = await world.kernel.views.delegatedMerges(simCaller(world, admin));
+  expect(merged).toMatchObject({
+    rows: [{ itemId, title: 'Show the board', email: admin.email }],
+    capped: false,
+  });
   const viewer = await simPerson(world, 9, [
     { role: 'viewer', scopeKind: 'jd_area', scopeArea: '80-89' },
   ]);
-  expect(await world.kernel.views.delegatedMerges(simCaller(world, viewer))).toEqual([]);
-  expect(await world.kernel.views.delegatedMerges(simCaller(world, agent))).toEqual([]);
+  const none = { rows: [], capped: false };
+  expect(await world.kernel.views.delegatedMerges(simCaller(world, viewer))).toEqual(none);
+  expect(await world.kernel.views.delegatedMerges(simCaller(world, agent))).toEqual(none);
   const totals = await world.kernel.views.planeTotals({ at: world.adapters.clock.now() });
   expect(totals.liveDelegations).toMatchObject({ count: 1, merge: 1 });
   const listed = await world.kernel.views.planeList(simCaller(world, admin), 'live_delegations');

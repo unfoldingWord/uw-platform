@@ -22,6 +22,13 @@ export type DelegatedMergeRow = {
   readonly at: Date;
 };
 
+export type DelegatedMergeList = {
+  readonly rows: readonly DelegatedMergeRow[];
+  readonly capped: boolean;
+};
+
+const none: DelegatedMergeList = { rows: [], capped: false };
+
 function rowOf(
   event: HarnessEvent,
   harnesses: ReadonlyMap<string, Harness>,
@@ -59,9 +66,9 @@ export async function delegatedMerges(
   tx: StoreTransaction,
   caller: Caller,
   at: Date,
-): Promise<readonly DelegatedMergeRow[]> {
+): Promise<DelegatedMergeList> {
   const harnesses = await administered(ports, tx, caller, at);
-  if (harnesses.size === 0) return [];
+  if (harnesses.size === 0) return none;
   const since = new Date(at.getTime() - DELEGATED_MERGE_WINDOW_MS);
   const events = await tx.harnessEvents.read.recent({
     since,
@@ -74,10 +81,11 @@ export async function delegatedMerges(
   const items = new Map(
     (await tx.harnessItems.read.byIds(itemIds)).map((item) => [item.itemId, item]),
   );
-  return events
+  const rows = events
     .flatMap((event) => {
       const row = rowOf(event, harnesses, items);
       return row === null ? [] : [row];
     })
     .toSorted((left, right) => right.at.getTime() - left.at.getTime());
+  return { rows, capped: events.length === VIEW_LIMIT };
 }
