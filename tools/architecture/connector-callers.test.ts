@@ -26,6 +26,7 @@ const gitHubWired =
   /\bplatform(?:Kernel|Ports)\s*\(\s*(?:[^,()]*|[^,()]*\([^()]*\)[^,()]*),\s*(?:[^,()]*|[^,()]*\([^()]*\)[^,()]*),(?!\s*(?:hubWiring\(|\)))/;
 const gateKernelModule = 'apps/uw-app/commands/person/gate-kernel.ts';
 const kernelRoot = 'apps/uw-app/kernel.ts';
+const delegatedExitRoot = 'apps/uw-app/cron/delegated-exits.ts';
 const mergeModule = 'apps/uw-app/github/merge.ts';
 const connectorsAdapter = 'apps/uw-app/ports/connectors.ts';
 const mergeRig = 'apps/uw-app/github/testing/merge-rig.ts';
@@ -201,18 +202,19 @@ describe('GH-6 the merge connector runs only from the kernel stage-exit path', (
     expect(filesMatching(recordOutcomeCall, sources())).toEqual([exitModule, recoverModule]);
   });
 
-  it('GH-6 the only kernel built with GitHub reads or the ship writes is the gate kernel', () => {
+  it('GH-6 MD-5 the only kernels built with GitHub reads or the ship writes are the gate kernel, the run host and the delegated exit job', () => {
     const app = sources().filter((file) => file.startsWith('apps/uw-app/'));
     expect(app.length).toBeGreaterThan(0);
     expect(filesMatching(gitHubWired, app)).toEqual([
       gateKernelModule,
+      delegatedExitRoot,
       kernelRoot,
       'apps/uw-app/runs/deps.ts',
     ]);
   });
 
   it('GH-6 the queue and cron roots name no ship or read wiring', () => {
-    const roots = readOnlyRootFiles(sources());
+    const roots = readOnlyRootFiles(sources()).filter((file) => file !== delegatedExitRoot);
     expect(roots.length).toBeGreaterThan(0);
     expect(filesMatching(shipWiring, roots)).toEqual([]);
   });
