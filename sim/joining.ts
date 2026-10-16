@@ -1,4 +1,4 @@
-import { principalSchema, type Principal } from '@uw/contracts';
+import { principalSchema, type Principal, type RequiredCheck } from '@uw/contracts';
 import {
   checkOnly,
   type Caller,
@@ -37,7 +37,12 @@ export type JoinedWorld = {
   readonly host: Caller;
 };
 
-type FactsInput = { readonly head?: string; readonly reviews?: readonly ReviewFact[] };
+type FactsInput = {
+  readonly head?: string;
+  readonly reviews?: readonly ReviewFact[];
+  readonly ref?: PullRequestRef;
+  readonly paths?: readonly string[];
+};
 
 export function joinedFacts(world: World, input: FactsInput = {}): PullRequestFacts {
   const head = input.head ?? joinedHead;
@@ -45,7 +50,8 @@ export function joinedFacts(world: World, input: FactsInput = {}): PullRequestFa
     itemId: 'joined',
     head,
     reviews: input.reviews ?? [],
-    ref: joinedPull,
+    ref: input.ref ?? joinedPull,
+    ...(input.paths === undefined ? {} : { paths: input.paths }),
   });
   return { ...facts, headRef: 'feature/login-form' };
 }
@@ -53,6 +59,7 @@ export function joinedFacts(world: World, input: FactsInput = {}): PullRequestFa
 type JoinOverrides = {
   readonly pullRequest?: PullRequestRef;
   readonly head?: string;
+  readonly title?: string;
   readonly requestedReviewers?: readonly string[];
 };
 
@@ -60,7 +67,7 @@ export function joinRequest(world: World, overrides: JoinOverrides = {}) {
   return world.kernel.items.join(simCaller(world, simIngest()), {
     pullRequest: overrides.pullRequest ?? joinedPull,
     head: overrides.head ?? joinedHead,
-    title: 'Fix the login form',
+    title: overrides.title ?? 'Fix the login form',
     requestedReviewers: overrides.requestedReviewers ?? ['uw-reviewer[bot]'],
   });
 }
@@ -79,15 +86,23 @@ function reviewerPrincipal(owner: Principal): Principal {
 type JoinedOptions = {
   readonly shadow: boolean;
   readonly externalReviewerIdentities?: readonly string[];
+  readonly requiredChecks?: readonly RequiredCheck[];
+  readonly protectedPaths?: readonly string[];
 };
 
-export async function joinedWorld(world: World, options: JoinedOptions): Promise<JoinedWorld> {
-  const { harness, admin } = await createSimHarness(world, checkOnly, {
+function harnessOptionsOf(options: JoinedOptions) {
+  return {
     key: 'tc-admin-app',
     repository: joinedRepository,
     shadow: options.shadow,
     externalReviewerIdentities: options.externalReviewerIdentities ?? [],
-  });
+    ...(options.requiredChecks === undefined ? {} : { requiredChecks: options.requiredChecks }),
+    ...(options.protectedPaths === undefined ? {} : { protectedPaths: options.protectedPaths }),
+  };
+}
+
+export async function joinedWorld(world: World, options: JoinedOptions): Promise<JoinedWorld> {
+  const { harness, admin } = await createSimHarness(world, checkOnly, harnessOptionsOf(options));
   await readSpend(world);
   const owner = await simPerson(world, 4, [
     { role: 'admin', scopeKind: 'jd_area', scopeArea: '80-89' },
