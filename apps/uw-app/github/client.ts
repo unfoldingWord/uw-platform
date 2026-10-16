@@ -28,6 +28,7 @@ export type GitHubReads = {
     since: Date | null,
     maxPages: number,
   ): Promise<GitHubResult<IssueListing>>;
+  subIssues(repo: string, number: number): Promise<GitHubResult<List>>;
   issueComments(repo: string, number: number, since: Date): Promise<GitHubResult<List>>;
   diff(repo: string, base: string, head: string, budgetBytes: number): Promise<DiffRead>;
 };
@@ -237,6 +238,17 @@ function issueReads(session: GitHubSession) {
   return {
     issuesSince: (repo: string, since: Date | null, maxPages: number) =>
       refusedUnless(isCount(maxPages), () => keysetIssues(session, repo, since, maxPages)),
+    subIssues: (repo: string, number: number) =>
+      refusedUnless(isCount(number), () =>
+        whole(
+          session,
+          listOf(
+            'GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues',
+            { issue_number: number },
+            repo,
+          ),
+        ),
+      ),
     issueComments: (repo: string, number: number, since: Date) =>
       refusedUnless(isCount(number) && !Number.isNaN(since.getTime()), () =>
         whole(

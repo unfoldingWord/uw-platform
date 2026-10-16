@@ -34,6 +34,7 @@ import {
   issuesFromRest,
   repoFromRest,
   reviewsFromRest,
+  subIssuesFromRest,
 } from './normalise.ts';
 import { emptyBatch, unknownHead, type FactBatch } from './records.ts';
 
@@ -342,5 +343,50 @@ describe('GL-3 the facts carry the requested reviewers', () => {
       'seth-k',
     ]);
     expect(factsFromPull(repo, restPull)?.pullRequests[0]?.requestedReviewers).toEqual([]);
+  });
+});
+
+describe('EI-1 the facts read sub-issues and the body facts intake needs', () => {
+  const batchIssue = (delivery: unknown) => {
+    const batch = factsFromWebhook('issues', delivery);
+    return batch.kind === 'facts' ? batch.batch.issues[0] : undefined;
+  };
+
+  it('reads the sub-issue count, the done-when lines and the blockers from an issue', () => {
+    const issue = {
+      ...issuesLabeled.issue,
+      body: 'Blocked by: #11, other/repo#3\n\n## Done when\n- It ships.',
+      sub_issues_summary: { total: 3, completed: 1, percent_completed: 33 },
+    };
+    expect(batchIssue({ ...issuesLabeled, issue })).toMatchObject({
+      subIssues: 3,
+      doneWhen: ['It ships.'],
+      blockedBy: [11],
+    });
+  });
+
+  it('reads an issue with no body and no summary as no sub-issues, no done-when, no blockers', () => {
+    const issue = { ...issuesLabeled.issue, body: null };
+    expect(batchIssue({ ...issuesLabeled, issue })).toMatchObject({
+      subIssues: 0,
+      doneWhen: [],
+      blockedBy: [],
+    });
+  });
+
+  it('keeps only same-repository sub-issues, in the order GitHub lists them', () => {
+    const child = (id: number, number: number, repository: string) => ({
+      ...issuesLabeled.issue,
+      id,
+      number,
+      body: '## Done when\n- It ships.',
+      repository_url: `https://api.github.com/repos/${repository}`,
+    });
+    const listed = [
+      child(9100000342, 42, repo.fullName),
+      child(9100000999, 9, 'unfoldingWord/other'),
+      child(9100000341, 41, repo.fullName.toUpperCase()),
+    ];
+    expect(subIssuesFromRest(repo, listed).map((record) => record.number)).toEqual([42, 41]);
   });
 });

@@ -19,6 +19,9 @@ const newIssue: IssueRecord = {
   labels: ['harness'],
   milestoneId: null,
   githubUpdatedAt: new Date('2026-10-02T08:00:00.000Z'),
+  subIssues: 0,
+  doneWhen: ['A new issue ships.'],
+  blockedBy: [],
 };
 
 const delivery: FactBatch = { ...emptyBatch, repos: [repo], issues: [newIssue] };

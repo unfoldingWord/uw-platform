@@ -1,7 +1,9 @@
 import type { z } from 'zod';
 import { checkConclusionSchema, repositorySchema as repositoryName } from '@uw/contracts';
 import {
+  blockedByOf,
   closingReferences,
+  doneWhenOf,
   fullSha,
   parseDeclaration,
   parseReviewFindings,
@@ -87,16 +89,22 @@ function milestonesOf(repoId: number, milestone: Milestone | null | undefined) {
   return milestone ? [milestoneOf(repoId, milestone)] : [];
 }
 
-function issueOf(repoId: number, issue: z.infer<typeof issueSchema>): IssueRecord {
+type RepoName = Pick<RepoRecord, 'githubId' | 'fullName'>;
+
+function issueOf(repo: RepoName, issue: z.infer<typeof issueSchema>): IssueRecord {
+  const body = issue.body ?? '';
   return {
     githubId: issue.id,
-    repoId,
+    repoId: repo.githubId,
     number: issue.number,
     title: issue.title,
     state: issue.state,
     labels: issue.labels.map((label) => label.name),
     milestoneId: issue.milestone?.id ?? null,
     githubUpdatedAt: issue.updated_at,
+    subIssues: issue.sub_issues_summary?.total ?? 0,
+    doneWhen: doneWhenOf(body),
+    blockedBy: blockedByOf(body, repo.fullName),
   };
 }
 
@@ -226,7 +234,7 @@ const readers: ReadonlyMap<string, Reader> = new Map([
         ...emptyBatch,
         repos: [repo],
         milestones: milestonesOf(repo.githubId, issue.milestone),
-        issues: issue.pull_request ? [] : [issueOf(repo.githubId, issue)],
+        issues: issue.pull_request ? [] : [issueOf(repo, issue)],
       };
     }),
   ],
@@ -316,9 +324,7 @@ export function issuesFromRest(repo: RepoRecord, issues: readonly unknown[]) {
       milestones.set(issue.milestone.id, milestoneOf(repo.githubId, issue.milestone));
   }
   return {
-    issues: listed
-      .filter((issue) => !issue.pull_request)
-      .map((issue) => issueOf(repo.githubId, issue)),
+    issues: listed.filter((issue) => !issue.pull_request).map((issue) => issueOf(repo, issue)),
     milestones: [...milestones.values()],
     pullRequestNumbers: listed.filter((issue) => issue.pull_request).map((issue) => issue.number),
   };
@@ -327,4 +333,18 @@ export function issuesFromRest(repo: RepoRecord, issues: readonly unknown[]) {
 export function repoFromRest(repo: unknown): RepoRecord | null {
   const parsed = repositorySchema.safeParse(repo);
   return parsed.success ? repoOf(parsed.data) : null;
+}
+
+function inRepository(repo: RepoName, issue: z.infer<typeof issueSchema>): boolean {
+  const url = issue.repository_url?.toLowerCase() ?? '';
+  return url.endsWith(`/repos/${repo.fullName.toLowerCase()}`);
+}
+
+export function subIssuesFromRest(
+  repo: RepoName,
+  listed: readonly unknown[],
+): readonly IssueRecord[] {
+  return eachParsed(issueSchema, listed)
+    .filter((issue) => !issue.pull_request && inRepository(repo, issue))
+    .map((issue) => issueOf(repo, issue));
 }
