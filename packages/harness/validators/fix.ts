@@ -5,7 +5,8 @@ import type { FixContext, ValidationContext } from './context.ts';
 const QUARTERS = 4;
 const NAMED_PATHS = 5;
 const testName = /\.(?:test|spec)\.[a-z]+$/u;
-const releaseNotes = /^(?:README|CHANGELOG)/u;
+const releaseNotes = /^(?:README|CHANGELOG)(?:\.(?:md|txt|rst))?$/u;
+const packageContainers: ReadonlySet<string> = new Set(['packages', 'apps']);
 const testDirectories: ReadonlySet<string> = new Set(['__tests__', 'test', 'tests']);
 const guardedDirectories: ReadonlySet<string> = new Set([
   '.claude',
@@ -28,7 +29,8 @@ function underTests(segments: readonly string[], depth: number): boolean {
 }
 
 function testFile(segments: readonly string[], name: string): boolean {
-  return testName.test(name) || underTests(segments, 0) || underTests(segments, PACKAGE_DEPTH);
+  const inPackage = packageContainers.has(segments[0] ?? '') && underTests(segments, PACKAGE_DEPTH);
+  return testName.test(name) || underTests(segments, 0) || inPackage;
 }
 
 function docFile(segments: readonly string[], name: string): boolean {
