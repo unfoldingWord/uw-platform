@@ -80,6 +80,7 @@ describe.skipIf(!testServer)('OB-3 the shadow comparison export', () => {
       expect(headsOf(comparison)).toEqual([head]);
       const outsider = await person(db, 'shadow-outsider', 'viewer', '20-29');
       const hidden = await get(db, { email: outsider.email }, shadowExportPath(harnessId));
+      expect(hidden.status).toBe(404);
       expect(hidden.body).toMatchObject({ status: 'error', reason: 'harness_not_found' });
     }));
 });
