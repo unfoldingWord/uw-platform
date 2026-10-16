@@ -5,6 +5,7 @@ import type {
   DeepLink,
   Engine,
   Grant,
+  IssueRef,
   ItemState,
   JdArea,
   LiveScreen,
@@ -101,10 +102,24 @@ export type DiffRead =
   | { readonly kind: 'diff'; readonly text: string; readonly bytes: number }
   | { readonly kind: 'too_large'; readonly bytes: number | null }
   | { readonly kind: 'unavailable'; readonly reason: string };
+export type IssueKey = { readonly repo: string; readonly number: number };
+export type IssueFact = {
+  readonly issue: IssueRef;
+  readonly title: string;
+  readonly open: boolean;
+  readonly doneWhen: readonly string[];
+  readonly blockedBy: readonly number[];
+};
+export type EpicFacts = {
+  readonly epic: IssueFact;
+  readonly subIssueCount: number;
+  readonly subIssues: readonly IssueFact[];
+};
 export type GitHubFacts = {
   pullRequest(ref: PullRequestRef): Promise<PullRequestFacts | null>;
   refresh(ref: PullRequestRef): Promise<PullRequestFacts | null>;
   diff(ref: PullRequestRef, range: DiffRange, budgetBytes: number): Promise<DiffRead>;
+  epic(key: IssueKey): Promise<EpicFacts | null>;
 };
 
 export type EffectConnector = Exclude<Connector, 'none'>;
