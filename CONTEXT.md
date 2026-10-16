@@ -33,7 +33,7 @@ What leaving a stage does in the world: `none`, `merge`, `deploy`, `publish`, `s
 _Avoid_: integration, hook, action
 
 **Validator**:
-A check picked by key from a registry and run at a `checks` gate. `learning_attached` is the Close validator.
+A check picked by key from a registry and run at a `checks` gate; `fix_size_cap` and `fix_keeps_purpose` also run at every submit from a **fix claim**, whatever the stage's gate. `learning_attached` is the Close validator.
 _Avoid_: linter, rule, test (validators run on items, tests run on code)
 
 **Feeds**:
@@ -445,6 +445,10 @@ _Avoid_: auto-merge, robot merge
 **Fix claim**:
 A claim the Builder takes on an item after a review round with findings, under a delegation whose capability word is `fix`, when no other claim is live.
 _Avoid_: fix lane (the bench's word for a second writer)
+
+**Declared checks**:
+The commands a repository says prove a change, in the file `.harness/checks.sh` at its root. A fix run reads the file at the commit the fix starts from, runs it after the model has worked, and pushes only when it passes. Not the **required checks** of the ship rule, which are CI checks GitHub reports.
+_Avoid_: local CI, pre-push hook, test script
 
 **Untrusted content**:
 Text that entered the platform from outside it: a pull request diff, an issue body, a review comment, and later a transcript or an invoice. Carried as data, never as instructions, and marked so at the boundary.
