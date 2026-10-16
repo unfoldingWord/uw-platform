@@ -19,9 +19,11 @@ import {
   type SweepState,
 } from './facts/queries.ts';
 import { emptyBatch, type FactBatch, type RepoRecord } from './facts/records.ts';
+import { epicsAwaitingSubIssues } from './facts/sub-issues.ts';
 import { recordSweep, upsertFacts, type RepairCounts, type SweepRecord } from './facts/upsert.ts';
 import { followUpserts } from './follow-up.ts';
 import { followIssue } from './import.ts';
+import { followSubIssues } from './sub-issues.ts';
 import { issueSchema } from './payloads.ts';
 import type { GitHubTransport } from './transport.ts';
 
@@ -188,6 +190,15 @@ async function followAwaiting(pass: Pass): Promise<void> {
   }
 }
 
+async function followUnread(pass: Pass): Promise<void> {
+  const unread = await epicsAwaitingSubIssues(pass.run.deps.db, pass.repo.githubId);
+  for (const change of unread) {
+    if (pass.followed.has(change.githubId)) continue;
+    if (remaining(pass.run.budget) < perCrossReference) return;
+    await followSubIssues(githubDeps(pass), [change], pass.run.logger);
+  }
+}
+
 async function storePull(pass: Pass, batch: FactBatch): Promise<GitHubResult<true>> {
   const { db, now } = pass.run.deps;
   const report = await upsertFacts(db, batch, now());
@@ -336,6 +347,7 @@ async function passOver(pass: Pass): Promise<RepositorySweep> {
   await sweepListing(pass, listing.value.issues);
   await sweepOpen(pass);
   await followAwaiting(pass);
+  await followUnread(pass);
   const candidate = pass.heldAt ?? pass.through;
   return recorded(pass, sweepOf(pass, outcomeOf(pass, candidate), candidate, pass.reason));
 }

@@ -10,6 +10,7 @@ import {
   firstRun,
   issuesOf,
   nextRun,
+  outage,
   platform,
   programmed,
   sweepOnce,
@@ -38,11 +39,17 @@ function issue(number: number, extra: Record<string, unknown> = {}) {
   };
 }
 
-function withEpic(children: readonly unknown[]) {
+function withEpic(
+  children: readonly unknown[],
+  epic: { readonly total?: number; readonly updatedAt?: string; readonly read?: boolean } = {},
+) {
   const github = programmed();
-  const epic = issue(40, { sub_issues_summary: { total: children.length, completed: 0 } });
-  github.on('GET', issuesOf(platform), { status: 200, body: [...restIssues, epic] });
-  github.on('GET', subIssuesPath, { status: 200, body: children });
+  const total = epic.total ?? children.length;
+  const updated = epic.updatedAt === undefined ? {} : { updated_at: epic.updatedAt };
+  const listed = issue(40, { sub_issues_summary: { total, completed: 0 }, ...updated });
+  github.on('GET', issuesOf(platform), { status: 200, body: [...restIssues, listed] });
+  const read = epic.read ?? true;
+  github.on('GET', subIssuesPath, read ? { status: 200, body: children } : outage);
   return github;
 }
 
@@ -96,3 +103,32 @@ describe.skipIf(!testServer)('EI-1 the sweep reads an epic sub-issue list', () =
       expect(await parents(db)).toEqual([[41, epicId, 0]]);
     }));
 });
+
+describe.skipIf(!testServer)(
+  'EI-1 a sub-issue list the facts could not read is never served stale',
+  () => {
+    it('clears the list when a read fails, so a swapped sub-issue is never served stale, and the next sweep reads it again', () =>
+      withAppDatabase(async (db) => {
+        await sweepOnce(db, app, { github: withEpic([issue(41), issue(42)]), at: firstRun });
+        const swapped = [issue(41), issue(43)];
+        const later = '2026-10-03T09:00:00Z';
+        const failed = withEpic(swapped, { updatedAt: later, read: false });
+        await sweepOnce(db, app, { github: failed, at: nextRun });
+        expect(await parents(db)).toEqual([]);
+        const again = new Date(nextRun.getTime() + 86_400_000);
+        await sweepOnce(db, app, { github: withEpic(swapped, { updatedAt: later }), at: again });
+        expect(await parents(db)).toEqual([
+          [41, epicId, 0],
+          [43, epicId, 1],
+        ]);
+      }));
+
+    it('clears every sub-issue of an epic whose count drops to none', () =>
+      withAppDatabase(async (db) => {
+        await sweepOnce(db, app, { github: withEpic([issue(41), issue(42)]), at: firstRun });
+        const none = withEpic([], { total: 0, updatedAt: '2026-10-03T09:00:00Z' });
+        await sweepOnce(db, app, { github: none, at: nextRun });
+        expect(await parents(db)).toEqual([]);
+      }));
+  },
+);

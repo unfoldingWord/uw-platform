@@ -4,7 +4,7 @@ import type { GitHubDeps } from './deps.ts';
 import { subIssuesFromRest } from './facts/normalise.ts';
 import { repoByName } from './facts/queries.ts';
 import { emptyBatch, type IssueChange } from './facts/records.ts';
-import { recordSubIssues } from './facts/sub-issues.ts';
+import { clearSubIssues, recordSubIssues } from './facts/sub-issues.ts';
 import { upsertFacts } from './facts/upsert.ts';
 
 async function followOne(
@@ -19,6 +19,11 @@ async function followOne(
   const listed = await reads.subIssues(change.repo, change.number);
   if (!listed.ok) {
     const { failure, status } = listed;
+    await recordSubIssues(deps.db, {
+      repoId: repo.githubId,
+      parentId: change.githubId,
+      children: [],
+    });
     logger.warn('sub-issues not read', {
       outcome: 'sub_issues_not_read',
       ...fields,
@@ -48,6 +53,11 @@ export async function followSubIssues(
   changes: readonly IssueChange[],
   logger: Logger,
 ): Promise<void> {
+  const lone = changes.filter((change) => change.subIssues === 0);
+  await clearSubIssues(
+    deps.db,
+    lone.map((change) => change.githubId),
+  );
   const epics = changes.filter((change) => change.subIssues > 0);
   if (epics.length === 0) return;
   if (deps.client === null) {
