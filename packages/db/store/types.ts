@@ -60,6 +60,7 @@ export type HarnessesGateway = {
     setPaused(harnessId: string, paused: boolean): Promise<boolean>;
     setHostedBuilder(harnessId: string, enabled: boolean): Promise<boolean>;
     setShadow(harnessId: string, shadow: boolean): Promise<boolean>;
+    setFixClaim(harnessId: string, enabled: boolean): Promise<boolean>;
     setFreeze(harnessId: string, frozen: boolean, allow: readonly string[]): Promise<boolean>;
   };
 };
