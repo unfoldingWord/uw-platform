@@ -1,4 +1,5 @@
 import {
+  riskTierSchema,
   shipRefusalSchema,
   type ClosingRef,
   type RequiredCheck,
@@ -147,6 +148,19 @@ function approverLacksDomainGrant(input: ShipRuleInput): boolean {
   return !approverCovers(input.approver, input.area, input.riskDomains, new Date(input.at));
 }
 
+function protectedPathNeedsPerson(input: ShipRuleInput): boolean {
+  const lent = input.delegation;
+  if (lent === null) return false;
+  return lent.protectedTouched === null || lent.protectedTouched.length > 0;
+}
+
+function tierAboveDelegation(input: ShipRuleInput): boolean {
+  const lent = input.delegation;
+  if (lent === null || input.riskTier === null) return false;
+  const rank = (tier: string) => riskTierSchema.options.findIndex((known) => known === tier);
+  return rank(input.riskTier) > rank(lent.maxTier);
+}
+
 const failing: ReadonlyMap<ShipRefusal, Predicate> = new Map<ShipRefusal, Predicate>([
   ['pr_not_open', pullRequestNotOpen],
   ['pr_is_draft', pullRequestIsDraft],
@@ -162,6 +176,8 @@ const failing: ReadonlyMap<ShipRefusal, Predicate> = new Map<ShipRefusal, Predic
   ['skip_ci_marker', skipCiMarker],
   ['required_check_never_ran', requiredCheckNeverRan],
   ['harness_frozen', harnessFrozen],
+  ['protected_path_needs_person', protectedPathNeedsPerson],
+  ['tier_above_delegation', tierAboveDelegation],
 ]);
 
 function fails(input: ShipRuleInput): (reason: ShipRefusal) => boolean {

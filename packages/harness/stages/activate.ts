@@ -33,6 +33,7 @@ export type ActivateInput = {
   readonly shadow?: boolean;
   readonly externalReviewerIdentities?: readonly string[];
   readonly requiredChecks: readonly RequiredCheck[];
+  readonly protectedPaths?: readonly string[];
 };
 
 export type Activated = { readonly harness: Harness; readonly stages: readonly Stage[] };
@@ -69,6 +70,7 @@ function harnessOf(input: ActivateInput, external: string[]): Harness {
     frozen: false,
     freezeAllow: [],
     requiredChecks: [...input.requiredChecks],
+    protectedPaths: [...(input.protectedPaths ?? [])],
   };
 }
 

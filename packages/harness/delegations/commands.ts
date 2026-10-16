@@ -116,6 +116,7 @@ async function grantIn(
       capability: next.capability,
       expiresAt: next.expiresAt.toISOString(),
       supersedes: next.supersedes,
+      maxTier: null,
     }),
   ]);
   return accepted(next);
