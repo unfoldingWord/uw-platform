@@ -58,6 +58,8 @@ function columnsOf(item: ItemState) {
     prNumber: item.pullRequest?.number ?? null,
     ...issueColumnsOf(item.issue),
     zulipTopic: item.zulipTopic,
+    epic: item.epic,
+    blockedBy: [...item.blockedBy],
   };
 }
 
