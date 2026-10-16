@@ -136,15 +136,17 @@ function createdDraft(initial: NewItem): EventDraft {
     priority: initial.priority,
     due: initial.due,
     issue: initial.issue,
-    epic: null,
-    blockedBy: [],
   };
   const pullRequest = initial.pullRequest ?? null;
   const expectedHead = initial.expectedHead ?? null;
   if (pullRequest === null || expectedHead === null) {
-    return draft('item_created', { ...evidence, pullRequest: null, expectedHead: null });
+    return {
+      name: 'item_created',
+      evidence: { ...evidence, pullRequest: null, expectedHead: null },
+    };
   }
-  return draft('item_created', { ...evidence, pullRequest: { ...pullRequest }, expectedHead });
+  const joined = { ...evidence, pullRequest: { ...pullRequest }, expectedHead };
+  return { name: 'item_created', evidence: joined };
 }
 
 export async function createItem(
