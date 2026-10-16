@@ -17,6 +17,7 @@ import { PlayRow } from '../parts/play-row.tsx';
 import { notFound } from './not-found.tsx';
 import { zulipConfigOf } from '../../notify/zulip/config.ts';
 import { itemTopicUrl } from '../../notify/zulip/links.ts';
+import { holderText } from '../parts/holder-words.ts';
 
 const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
 const link = `text-link underline ${focus}`;
@@ -109,6 +110,7 @@ export async function playScreen(c: Context<AppEnv>): Promise<Response> {
     spec,
     <>
       <PageHead eyebrow="Item" title={item.title} lede={`At ${stage.title} on ${harness.key}`} />
+      <p class="m-0 mb-4 text-sm text-muted">{`Holder: ${holderText(play.holder, screen.at)}`}</p>
       <Links play={play} zulipUrl={zulipUrl} />
       <ol class="m-0 flex list-none flex-col gap-2 p-0">
         {play.events.map((event) => (

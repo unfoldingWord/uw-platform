@@ -45,6 +45,7 @@ function viewerOf(actor: Principal, view: BoardView, at: Date): CardViewer {
   return {
     identity: actor.personId === null ? '' : `human:${actor.personId}`,
     admin: actor.kind === 'person' && can(actor, 'admin', area, at),
+    at,
   };
 }
 
