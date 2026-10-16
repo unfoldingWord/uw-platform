@@ -40,6 +40,7 @@ const actions = {
   set_freeze: 'admin',
   decide_gates: 'admin',
   refute_finding: 'write',
+  set_fix_claim: 'admin',
 } as const;
 
 describe('WB-1 the command registry', () => {

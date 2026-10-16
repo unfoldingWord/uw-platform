@@ -221,6 +221,8 @@ export const unchangedNames: ReadonlySet<EventName> = new Set<EventName>([
   'harness_paused',
   'harness_resumed',
   'hosted_builder_set',
+  'fix_claimed',
+  'fix_claim_set',
   'learning_attached',
   'nothing_learned',
   'comment_recorded',
