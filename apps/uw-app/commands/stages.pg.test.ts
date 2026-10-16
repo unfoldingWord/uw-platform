@@ -297,6 +297,7 @@ function agentAttempts(harnessId: string): ReadonlyArray<readonly [string, strin
     [harnessId, 'remove_stage', { stageKey: 'close' }],
     [harnessId, 'pause', { stageKey: null }],
     [harnessId, 'resume', { stageKey: null }],
+    [harnessId, 'set_freeze', { frozen: true, allow: [] }],
   ];
 }
 
