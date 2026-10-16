@@ -3,7 +3,9 @@ import { wakeReasonSchema } from './closed-sets.ts';
 import { slugSchema } from './pages.ts';
 
 const uuidPart = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
-const deepLinkPattern = new RegExp(`^/(?:harnesses/${uuidPart}/(?:gates|items)/${uuidPart})?$`);
+const deepLinkPattern = new RegExp(
+  `^/(?:harnesses/${uuidPart}/(?:gates|items)/${uuidPart}|health/[a-z][a-z_]{0,63})?$`,
+);
 
 export const deepLinkSchema = z.string().max(100).regex(deepLinkPattern);
 export type DeepLink = z.infer<typeof deepLinkSchema>;
@@ -11,6 +13,9 @@ export type DeepLink = z.infer<typeof deepLinkSchema>;
 export const homeLink: DeepLink = '/';
 export function gateLink(harnessId: string, itemId: string): DeepLink {
   return deepLinkSchema.parse(`/harnesses/${harnessId}/gates/${itemId}`);
+}
+export function healthLink(indicator: string): DeepLink {
+  return deepLinkSchema.parse(`/health/${indicator}`);
 }
 export function itemLink(harnessId: string, itemId: string): DeepLink {
   return deepLinkSchema.parse(`/harnesses/${harnessId}/items/${itemId}`);

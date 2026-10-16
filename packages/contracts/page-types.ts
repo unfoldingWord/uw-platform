@@ -4,11 +4,12 @@ import {
   capabilityWordSchema,
   engineSchema,
   evidenceLabelSchema,
+  learningSourceSchema,
   runShapeSchema,
   type Classification,
   type OfflineEligibility,
 } from './closed-sets.ts';
-import { repositorySchema } from './harness.ts';
+import { pullRequestRefSchema, repositorySchema } from './harness.ts';
 import { identitySchema, isPersonaIdentity } from './identity.ts';
 import { providerIdSchema } from './runs.ts';
 import { pageStatusSchema, slugSchema, type PageType } from './pages.ts';
@@ -35,6 +36,8 @@ export const learningFrontmatterSchema = z.strictObject({
   supersedes: z.array(z.uuid()),
   review_by: z.iso.date().nullable(),
   contradicts: z.boolean().default(false),
+  source: learningSourceSchema.default('platform'),
+  pull_request: pullRequestRefSchema.nullable().default(null),
 });
 
 export const personaFrontmatterSchema = z.strictObject({

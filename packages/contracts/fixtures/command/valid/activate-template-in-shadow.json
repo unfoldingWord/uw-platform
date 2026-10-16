@@ -8,5 +8,6 @@
   "shadow": true,
   "externalReviewerIdentities": ["uwreview[bot]"],
   "requiredChecks": [],
-  "protectedPaths": []
+  "protectedPaths": [],
+  "botAuthors": ["dependabot[bot]"]
 }

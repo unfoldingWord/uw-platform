@@ -84,6 +84,7 @@ export const errorReasonSchema = z.enum([
   'fix_size_cap',
   'fix_keeps_purpose',
   'done_when_missing',
+  'template_change_not_allowed',
 ]);
 
 export const refusalSchema = z.object({

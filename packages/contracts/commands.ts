@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { jdAreaSchema } from './areas.ts';
 import { capabilityWordSchema, riskTierSchema } from './closed-sets.ts';
 import {
+  botAuthorsSchema,
+  defaultBotAuthors,
   externalReviewerIdentitiesSchema,
   personaIdentitySchema,
   protectedPathsSchema,
@@ -48,6 +50,7 @@ export const commandNames = [
   'refute_finding',
   'set_fix_claim',
   'enqueue_epic',
+  'change_template',
 ] as const;
 
 export const commandNameSchema = z.enum(commandNames);
@@ -154,6 +157,7 @@ export const harnessCommandSchemas = {
     externalReviewerIdentities: externalReviewerIdentitiesSchema.default([]),
     requiredChecks: requiredChecksSchema.default([]),
     protectedPaths: protectedPathsSchema.default([]),
+    botAuthors: botAuthorsSchema.default([...defaultBotAuthors]),
   }),
   create_stage: body('create_stage', { stage: stageInputSchema }),
   update_stage: body('update_stage', { stageKey: stageKeySchema, change: stageChangeSchema }),
@@ -161,6 +165,7 @@ export const harnessCommandSchemas = {
   remove_stage: body('remove_stage', { stageKey: stageKeySchema }),
   set_hosted_builder: body('set_hosted_builder', { enabled: z.boolean() }),
   set_fix_claim: body('set_fix_claim', { enabled: z.boolean() }),
+  change_template: body('change_template', { template: templateKeySchema }),
   activate_persona: body('activate_persona', {
     pageId: z.uuid(),
     expectedVersion: z.number().int().min(1),
@@ -229,6 +234,7 @@ export const commandSchema = z.discriminatedUnion('command', [
   harnessCommandSchemas.refute_finding,
   harnessCommandSchemas.set_fix_claim,
   harnessCommandSchemas.enqueue_epic,
+  harnessCommandSchemas.change_template,
 ]);
 
 export type Command = z.infer<typeof commandSchema>;

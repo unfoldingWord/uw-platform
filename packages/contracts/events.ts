@@ -68,6 +68,8 @@ export const eventNames = [
   'fix_claim_set',
   'epic_enqueued',
   'done_when_missing',
+  'silence_alarm',
+  'template_changed',
 ] as const;
 
 export const eventNameSchema = z.enum(eventNames);

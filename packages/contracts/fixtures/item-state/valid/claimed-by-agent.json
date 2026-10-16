@@ -20,5 +20,6 @@
   "issue": null,
   "zulipTopic": null,
   "epic": null,
-  "blockedBy": []
+  "blockedBy": [],
+  "heldSince": null
 }

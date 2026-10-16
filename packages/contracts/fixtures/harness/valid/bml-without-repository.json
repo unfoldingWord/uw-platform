@@ -12,5 +12,6 @@
   "freezeAllow": [],
   "requiredChecks": [],
   "protectedPaths": [],
-  "fixClaim": false
+  "fixClaim": false,
+  "botAuthors": ["dependabot[bot]"]
 }

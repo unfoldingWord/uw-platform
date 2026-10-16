@@ -1,0 +1,12 @@
+{
+  "confidence": "observed",
+  "as_of": "2026-10-15",
+  "supersedes": [],
+  "review_by": null,
+  "source": "external",
+  "pull_request": {
+    "repo": "unfoldingWord/tc-admin-app",
+    "number": 7
+  },
+  "contradicts": false
+}

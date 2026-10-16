@@ -58,6 +58,13 @@ export const externalReviewerIdentitiesSchema = z
   .max(20)
   .refine(distinctInAnyCase, 'each login once, in any case');
 
+export const defaultBotAuthors: readonly string[] = ['dependabot[bot]'];
+
+export const botAuthorsSchema = z
+  .array(githubLoginSchema)
+  .max(20)
+  .refine(distinctInAnyCase, 'each login once, in any case');
+
 const protectedPathPattern = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))[^\s\\]{1,200}$/;
 export const protectedPathSchema = z
   .string()
@@ -77,6 +84,7 @@ export const harnessSchema = z.strictObject({
   paused: z.boolean(),
   shadow: z.boolean().default(false),
   externalReviewerIdentities: externalReviewerIdentitiesSchema.default([]),
+  botAuthors: botAuthorsSchema.default([...defaultBotAuthors]),
   frozen: z.boolean().default(false),
   freezeAllow: z.array(z.uuid()).max(100).default([]),
   requiredChecks: requiredChecksSchema.default([]),
@@ -132,6 +140,7 @@ export const itemStateSchema = z.strictObject({
   zulipTopic: z.string().min(1).nullable(),
   epic: epicPlaceSchema.nullable().default(null),
   blockedBy: z.array(z.uuid()).max(50).default([]),
+  heldSince: z.iso.datetime().nullable().default(null),
 });
 
 export type Harness = z.infer<typeof harnessSchema>;
