@@ -233,6 +233,7 @@ const checkout = {
   branch: 'harness/item-1',
   defaultBranch: 'main',
   expectedHead: head,
+  fix: false,
 };
 
 function pushed(): Request {

@@ -20,12 +20,19 @@ const spec = {
   env: { HOME: '/workspace' },
   timeoutMs: 60_000,
   egress: egressNone,
+  finish: null,
 };
 
 async function destroyedAlways(): Promise<void> {
   const host = fakeContainerHost([{ exitCode: 0, stdout: 'done', stderr: '' }]);
   const ran = await runSession(host, spec, steppingClock([0, 90_000]));
-  expect(ran).toEqual({ exitCode: 0, stdout: 'done', stderr: '', wallMs: 90_000 });
+  expect(ran).toEqual({
+    exitCode: 0,
+    stdout: 'done',
+    stderr: '',
+    wallMs: 90_000,
+    finished: null,
+  });
   expect(host.sessions).toMatchObject([
     {
       id: 'run-1-1',
