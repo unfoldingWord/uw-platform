@@ -20,6 +20,7 @@ export const contractRequest = {
   itemId: 'b1000000-0000-4000-8000-000000000002',
   traceId: 'b1000000-0000-4000-8000-000000000003',
   pullRequest: { repo: 'unfoldingWord/uw-platform', number: 7 },
+  joined: false,
   expectedHead: 'f'.repeat(40),
   expectedBase: { sha: 'e'.repeat(40), ref: 'main' },
   repository: 'unfoldingWord/uw-platform',

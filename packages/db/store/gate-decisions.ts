@@ -1,6 +1,7 @@
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, gte, isNotNull } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
 import { gateDecisions } from '../schema.ts';
+import { checkedRows } from './limits.ts';
 import { refusing } from './refusal.ts';
 import { toGateDecision } from './rows.ts';
 import type { GateDecisionsGateway } from './types.ts';
@@ -23,6 +24,15 @@ export function bindGateDecisions(executor: AnyExecutor): GateDecisionsGateway {
           .where(eq(gateDecisions.stageId, stageId))
           .limit(1);
         return rows.length > 0;
+      },
+      delegatedSince: async (since, limit) => {
+        const rows = await executor
+          .select()
+          .from(gateDecisions)
+          .where(and(isNotNull(gateDecisions.delegationId), gte(gateDecisions.decidedAt, since)))
+          .orderBy(asc(gateDecisions.decidedAt), asc(gateDecisions.id))
+          .limit(checkedRows(limit, 'delegated decision'));
+        return rows.map(toGateDecision);
       },
     },
     write: {

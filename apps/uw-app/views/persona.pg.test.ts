@@ -260,6 +260,7 @@ async function delegationsCapped(db: Database): Promise<void> {
           persona: identitySchema.parse('agent:builder'),
           harnessId: made.harnessId,
           capability: 'build',
+          maxTier: null,
           grantedAt: new Date(now.getTime() - 60_000 + n),
           expiresAt: new Date(now.getTime() + 86_400_000),
           revokedAt: null,

@@ -83,6 +83,7 @@ function draftOf(
     persona: persona.data,
     harnessId: harness.id,
     capability: capability.data,
+    maxTier: null,
     grantedAt: at,
     expiresAt,
     revokedAt: null,
@@ -116,7 +117,7 @@ async function grantIn(
       capability: next.capability,
       expiresAt: next.expiresAt.toISOString(),
       supersedes: next.supersedes,
-      maxTier: null,
+      maxTier: next.maxTier,
     }),
   ]);
   return accepted(next);

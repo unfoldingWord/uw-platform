@@ -113,6 +113,7 @@ function stuckAt(
     overrideReason: overrideReasonOf(approval),
     ...decidedOn(events, index),
     evaluatedHead: recorded?.head ?? null,
+    delegated: null,
   };
 }
 

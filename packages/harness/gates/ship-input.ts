@@ -54,8 +54,12 @@ const decisive: ReadonlySet<ReviewState> = new Set<DecisiveState>([
 ]);
 const CLOSES_LIMIT = 100;
 
+export function joinedPullRequest(item: Pick<ItemState, 'branchState' | 'pullRequest'>): boolean {
+  return item.branchState === 'none' && item.pullRequest !== null;
+}
+
 function onItemBranch(facts: PullRequestFacts, item: ItemState): boolean {
-  return item.branchState === 'none' || facts.headRef === branchFor(item.itemId);
+  return joinedPullRequest(item) || facts.headRef === branchFor(item.itemId);
 }
 
 export function usableHead(

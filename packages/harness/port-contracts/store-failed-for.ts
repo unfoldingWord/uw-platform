@@ -58,6 +58,7 @@ function delegationOf(base: number): Delegation {
     persona: builder,
     harnessId: uid(base),
     capability: 'build',
+    maxTier: null,
     grantedAt: at,
     expiresAt: laterOf(base, 60 * 24 * hour),
     revokedAt: null,

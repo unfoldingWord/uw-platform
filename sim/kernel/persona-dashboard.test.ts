@@ -143,6 +143,7 @@ async function manyDelegations(scene: RunWorld): Promise<void> {
           persona: builder,
           harnessId: scene.harnessId,
           capability: 'build',
+          maxTier: null,
           grantedAt: new Date(now.getTime() + n),
           expiresAt: new Date(now.getTime() + 86_400_000),
           revokedAt: null,

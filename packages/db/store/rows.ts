@@ -1,6 +1,7 @@
 import {
   capabilityWordSchema,
   costBasisSchema,
+  delegableTierSchema,
   engineSchema,
   eventSchema,
   gateDecisionSchema,
@@ -43,6 +44,7 @@ export function toHarness(row: typeof harnesses.$inferSelect): Harness {
     frozen: row.frozen,
     freezeAllow: row.freezeAllow,
     requiredChecks: row.requiredChecks,
+    protectedPaths: row.protectedPaths,
   });
 }
 
@@ -120,6 +122,7 @@ export function toDelegation(row: typeof delegations.$inferSelect): Delegation {
     persona: identitySchema.parse(row.persona),
     harnessId: row.harnessId,
     capability: capabilityWordSchema.parse(row.capability),
+    maxTier: row.maxTier === null ? null : delegableTierSchema.parse(row.maxTier),
     grantedAt: row.grantedAt,
     expiresAt: row.expiresAt,
     revokedAt: row.revokedAt,
@@ -135,6 +138,8 @@ export function toGateDecision(row: typeof gateDecisions.$inferSelect): GateDeci
     itemId: row.itemId,
     stageId: row.stageId,
     actor: identitySchema.parse(row.actor),
+    agentActor: row.agentActor === null ? null : identitySchema.parse(row.agentActor),
+    delegationId: row.delegationId,
     decision: gateDecisionSchema.parse(row.decision),
     reason: row.reason,
     evidence: eventSchema.shape.evidence.parse(row.evidence),

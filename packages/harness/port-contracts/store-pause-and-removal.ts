@@ -99,6 +99,8 @@ async function seedDecision(tx: StoreTransaction, base: number, key: string): Pr
     itemId: item.itemId,
     stageId: stages.review.id,
     actor: identitySchema.parse('human:ian'),
+    agentActor: null,
+    delegationId: null,
     decision: 'approve',
     reason: null,
     evidence: { findings: [], gateTarget: null },
