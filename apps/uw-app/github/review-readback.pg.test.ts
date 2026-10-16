@@ -148,6 +148,7 @@ async function readsBack(db: Database): Promise<void> {
       requiredChecks: [],
       frozen: false,
       freezeAllow: [],
+      protectedPaths: [],
     },
     approver,
     at,

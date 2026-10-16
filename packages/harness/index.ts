@@ -50,7 +50,14 @@ export {
 export type { StoreRefusal } from './port-errors.ts';
 export { templates } from './templates.ts';
 export type { Template } from './templates.ts';
-export { describeViolation, templateProperty } from './template-property.ts';
+export {
+  delegationProperty,
+  describeDelegationViolation,
+  describeViolation,
+  templateProperty,
+} from './template-property.ts';
+export { delegableExit, type ExitShape } from './gates/delegable.ts';
+export { protectedAmong } from './risk/protected-paths.ts';
 export type { TemplateViolation } from './template-property.ts';
 export type { TemplateStage } from './templates/types.ts';
 export { software } from './templates/software.ts';
