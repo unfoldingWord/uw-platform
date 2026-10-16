@@ -1,6 +1,5 @@
 import type { CommandName } from '@uw/contracts';
 import { isBuiltCommand, type CommandHandler } from './handler.ts';
-import { notWiredCommand } from './not-wired.ts';
 import {
   claimCommand,
   enqueueCommand,
@@ -27,6 +26,7 @@ import {
 } from './person/gates.ts';
 import {
   activateTemplateCommand,
+  changeTemplateCommand,
   createStageCommand,
   pauseCommand,
   removeStageCommand,
@@ -89,5 +89,5 @@ export const commandRegistry = commandRegistryOf([
   decideGatesCommand,
   refuteFindingCommand,
   enqueueEpicCommand,
-  notWiredCommand('change_template', 'admin'),
+  changeTemplateCommand,
 ]);

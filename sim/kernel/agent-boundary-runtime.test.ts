@@ -104,6 +104,7 @@ function bypassingStages(world: World): StageCommands {
     setFixClaim: (caller, input) => stages.setFixClaim(laundered(caller), input),
     setFreeze: (caller, input) => stages.setFreeze(laundered(caller), input),
     liftShadow: (caller, input) => stages.liftShadow(laundered(caller), input),
+    changeTemplate: (caller, input) => stages.changeTemplate(laundered(caller), input),
   };
 }
 
