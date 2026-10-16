@@ -14,6 +14,7 @@ import {
   refusalReasons,
   weekBefore,
 } from './plane.ts';
+import { refuteNames, refuteSince, refuteTallies, type RefuteTally } from './refutes.ts';
 import { PLANE_LIMIT, type PlaneIndicator, type PlaneRow } from './types.ts';
 
 const LEARNING_REVIEW_MS = 90 * 24 * 3_600_000;
@@ -125,6 +126,28 @@ async function learningRows(scope: ListScope): Promise<readonly PlaneRow[]> {
     }));
 }
 
+function rateOf(tally: RefuteTally): string | null {
+  return tally.findings === 0 ? null : `${Math.round((tally.refuted / tally.findings) * 100)}%`;
+}
+
+async function refuteRows(scope: ListScope): Promise<readonly PlaneRow[]> {
+  const events = await scope.tx.harnessEvents.read.recent({
+    since: refuteSince(scope.at),
+    names: refuteNames,
+    agentsOnly: false,
+    limit: PLANE_LIMIT,
+  });
+  return refuteTallies(events).map((tally) => ({
+    harnessId: tally.harnessId,
+    cells: {
+      persona: tally.persona,
+      findings: tally.findings,
+      refuted: tally.refuted,
+      rate: rateOf(tally),
+    },
+  }));
+}
+
 type Reader = (scope: ListScope) => Promise<readonly PlaneRow[]>;
 
 const readers: ReadonlyMap<PlaneIndicator, Reader> = new Map<PlaneIndicator, Reader>([
@@ -134,6 +157,7 @@ const readers: ReadonlyMap<PlaneIndicator, Reader> = new Map<PlaneIndicator, Rea
   ['gate_refusals_week', refusalRows],
   ['agent_writes', writeRows],
   ['stale_learnings', learningRows],
+  ['reviewer_refutes', refuteRows],
 ]);
 
 async function readableIds(

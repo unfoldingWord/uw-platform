@@ -26,6 +26,7 @@ const planeIndicators: ReadonlySet<string> = new Set<PlaneIndicator>([
   'gate_refusals_week',
   'agent_writes',
   'stale_learnings',
+  'reviewer_refutes',
 ]);
 
 function isPlane(name: string): name is PlaneIndicator {

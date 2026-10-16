@@ -110,6 +110,13 @@ const cappedTotals: PlaneTotals = {
   },
   agentWrites: { count: PLANE_LIMIT, capped: true },
   staleLearnings: { count: PLANE_LIMIT, capped: true },
+  reviewerRefutes: {
+    tallies: [
+      { harnessId: HARNESS, persona: 'agent:reviewer', findings: 8, refuted: 2 },
+      { harnessId: HARNESS, persona: 'agent:reviewer-codex', findings: 3, refuted: 0 },
+    ],
+    capped: true,
+  },
 };
 
 async function statusesFollowTotals(db: Database): Promise<void> {
@@ -152,7 +159,21 @@ async function statusesFollowTotals(db: Database): Promise<void> {
     ['agent_writes', 'amber', 'at least 5,000 events by agents in 24 hours'],
     ['stale_learnings', 'amber', 'at least 5,000 past their review date'],
     ['github_sweep', 'not_configured', 'No repositories installed'],
+    [
+      'reviewer_refutes',
+      'amber',
+      'Refuted findings in 30 days; agent:reviewer 2 of 8 refuted, agent:reviewer-codex 0 of 3 refuted',
+    ],
   ]);
+}
+
+async function noRefutesYet(db: Database): Promise<void> {
+  await seed(db);
+  expect(named(await indicatorsOn(db), 'reviewer_refutes')).toEqual({
+    name: 'reviewer_refutes',
+    status: 'ok',
+    detail: 'No Reviewer findings in 30 days',
+  });
 }
 
 async function breakerAndCap(db: Database): Promise<void> {
@@ -309,6 +330,8 @@ async function probeAndScreen(db: Database): Promise<void> {
 describe.skipIf(!testServer)('the agent plane indicators', () => {
   it("WB-10 each indicator's status and detail follow its totals", () =>
     withAppDatabase(statusesFollowTotals));
+  it('RV-2 the Reviewer refute rate reads no findings on a plane with no Reviewer run', () =>
+    withAppDatabase(noRefutesYet));
   it('WB-10 the breaker indicator shows its state against the cap, and spend names the breaker only while its reading is fresh', () =>
     withAppDatabase(breakerAndCap));
   it('WB-10 the GitHub sweep indicator is red for a failed or stale sweep and amber for a capped, deferred or stalled one', () =>

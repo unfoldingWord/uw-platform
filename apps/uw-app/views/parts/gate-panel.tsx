@@ -82,7 +82,11 @@ function Findings(props: { readonly view: GateView }) {
               ) : (
                 <ul class="m-0 pl-5">
                   {review.findings.map((finding) => (
-                    <li class="break-words">{finding.text}</li>
+                    <li class="break-words">
+                      {finding.weight === null
+                        ? finding.text
+                        : `${reasonText(finding.weight)}: ${finding.text}`}
+                    </li>
                   ))}
                 </ul>
               )}
@@ -134,6 +138,69 @@ function DecisionForm(props: { readonly gate: PanelGate }) {
   );
 }
 
+type Verdict = GateView['verdicts'][number];
+
+function RefuteForm(props: {
+  readonly view: GateView;
+  readonly runId: string;
+  readonly index: number;
+}) {
+  const { view, runId, index } = props;
+  const scope = `${runId}-${String(index)}`;
+  return (
+    <CommandForm harnessId={view.harnessId} command="refute_finding" itemId={scope}>
+      <input type="hidden" name="itemId" value={view.itemId} />
+      <input type="hidden" name="runId" value={runId} />
+      <input type="hidden" name="finding" value={String(index)} />
+      <HumanActionButton
+        itemId={scope}
+        label={`Mark finding ${String(index + 1)} refuted`}
+        name="refute"
+        value="refute"
+      />
+    </CommandForm>
+  );
+}
+
+function VerdictFindings(props: {
+  readonly view: GateView;
+  readonly verdict: Verdict;
+  readonly refutes: boolean;
+}) {
+  const { view, verdict, refutes } = props;
+  return (
+    <ul class="m-0 flex flex-col gap-2 pl-5">
+      {verdict.findings.map((finding, index) => (
+        <li class="flex flex-wrap items-center gap-2 break-words">
+          <span>{`${reasonText(finding.weight)}: ${finding.text}`}</span>
+          {finding.refuted ? <span class="text-muted">Refuted</span> : null}
+          {refutes && !finding.refuted ? (
+            <RefuteForm view={view} runId={verdict.runId} index={index} />
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Verdicts(props: { readonly view: GateView; readonly refutes: boolean }) {
+  const { view, refutes } = props;
+  if (view.verdicts.length === 0) return null;
+  return (
+    <div class="flex flex-col gap-2">
+      <h3 class="m-0 text-base font-bold text-ink">Reviewer verdicts on this item</h3>
+      <ul class="m-0 flex list-none flex-col gap-3 p-0 text-sm">
+        {view.verdicts.map((verdict) => (
+          <li class="flex flex-col gap-1">
+            <p class="m-0 font-bold">{`${verdict.reviewer}: ${reasonText(verdict.verdict)}`}</p>
+            <VerdictFindings view={view} verdict={verdict} refutes={refutes} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function GatePanel(props: { readonly gate: PanelGate }) {
   const { gate } = props;
   const { view } = gate;
@@ -147,6 +214,7 @@ export function GatePanel(props: { readonly gate: PanelGate }) {
           <Findings view={view} />
         </div>
       )}
+      <Verdicts view={view} refutes={gate.decides} />
     </GateCallout>
   );
 }

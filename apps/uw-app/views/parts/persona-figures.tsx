@@ -26,6 +26,12 @@ const approveAtText: Readonly<Record<ApproveAt, string>> = {
   no_real_or_plausible: 'No real or plausible finding',
 };
 
+function refuteDetail(refutes: NonNullable<PersonaDashboard['refutes']>): string {
+  if (refutes.findings === 0) return 'No findings in 30 days';
+  const rate = `${Math.round((refutes.refuted / refutes.findings) * 100)}% refuted`;
+  return refutes.capped ? `${rate}, at least` : rate;
+}
+
 export function PersonaKpis(props: { readonly dashboard: PersonaDashboard }) {
   const { runsToday, spend } = props.dashboard;
   const escalation = escalationText(props.dashboard);
@@ -51,6 +57,13 @@ export function PersonaKpis(props: { readonly dashboard: PersonaDashboard }) {
           label="Approves at"
           value={approveAtText[props.dashboard.approveAt]}
           detail="The strictness preset on this persona page"
+        />
+      )}
+      {props.dashboard.refutes === null ? null : (
+        <Kpi
+          label="Refuted findings, 30 days"
+          value={`${formatCount(props.dashboard.refutes.refuted)} of ${formatCount(props.dashboard.refutes.findings)}`}
+          detail={refuteDetail(props.dashboard.refutes)}
         />
       )}
     </div>

@@ -20,6 +20,8 @@ import { accepted, refused, type KernelOutcome } from '../outcome.ts';
 import { toolsetOptions } from '../personas/toolset-options.ts';
 import type { PageFacts, PersonaDay, RunRow, StoreTransaction } from '../ports.ts';
 import { readableHarness, type ScenePorts } from '../reads/scene.ts';
+import { refuteNames, refuteSince, refuteTallies } from './refutes.ts';
+import { PLANE_LIMIT } from './types.ts';
 
 export type PersonaRunSummary = {
   readonly runId: string;
@@ -60,6 +62,11 @@ export type PersonaDashboard = {
   readonly premisesHeld: number;
   readonly writes: number;
   readonly approveAt: ApproveAt | null;
+  readonly refutes: {
+    readonly findings: number;
+    readonly refuted: number;
+    readonly capped: boolean;
+  } | null;
   readonly lastRuns: readonly PersonaRunSummary[];
   readonly delegations: {
     readonly count: number;
@@ -193,6 +200,27 @@ async function figures(tx: StoreTransaction, scene: Scene, since: Date) {
   return { day, events, last };
 }
 
+async function refutesOf(
+  tx: StoreTransaction,
+  scene: Scene,
+  at: Date,
+): Promise<PersonaDashboard['refutes']> {
+  if (scene.frontmatter.capability !== 'review') return null;
+  const events = await tx.harnessEvents.read.recent({
+    since: refuteSince(at),
+    names: refuteNames,
+    agentsOnly: false,
+    limit: PLANE_LIMIT,
+    harnessIds: [scene.harness.id],
+  });
+  const mine = refuteTallies(events).find((tally) => tally.persona === scene.frontmatter.identity);
+  return {
+    findings: mine?.findings ?? 0,
+    refuted: mine?.refuted ?? 0,
+    capped: events.length === PLANE_LIMIT,
+  };
+}
+
 export async function personaView(
   ports: ScenePorts,
   tx: StoreTransaction,
@@ -232,6 +260,7 @@ export async function personaView(
     premisesHeld: counts('premise_held'),
     writes: day.writes,
     approveAt: frontmatter.capability === 'review' ? frontmatter.approve_at : null,
+    refutes: await refutesOf(tx, scene, at),
     lastRuns: last.map(summaryOf),
     delegations: await delegationsOf(tx, scene, at),
     ...abilities(scene, at),
