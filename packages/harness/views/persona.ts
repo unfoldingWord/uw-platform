@@ -1,6 +1,7 @@
 import {
   personaFrontmatterSchema,
   personaSlugOf,
+  type ApproveAt,
   type CapabilityWord,
   type Engine,
   type EventName,
@@ -58,6 +59,7 @@ export type PersonaDashboard = {
   readonly gateRefusals: number;
   readonly premisesHeld: number;
   readonly writes: number;
+  readonly approveAt: ApproveAt | null;
   readonly lastRuns: readonly PersonaRunSummary[];
   readonly delegations: {
     readonly count: number;
@@ -229,6 +231,7 @@ export async function personaView(
     gateRefusals: counts('gate_refused_to_agent') + counts('checks_failed'),
     premisesHeld: counts('premise_held'),
     writes: day.writes,
+    approveAt: frontmatter.capability === 'review' ? frontmatter.approve_at : null,
     lastRuns: last.map(summaryOf),
     delegations: await delegationsOf(tx, scene, at),
     ...abilities(scene, at),

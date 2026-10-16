@@ -1,4 +1,4 @@
-import type { ClosingRef, PullRequestDeclaration } from '@uw/contracts';
+import type { ClosingRef, PullRequestDeclaration, ReadFinding } from '@uw/contracts';
 import type { CheckConclusion, HeadCommit, ReviewState } from '@uw/harness';
 
 export type GithubCheckStatus =
@@ -97,7 +97,7 @@ export type ReviewRecord = {
   readonly commitId: string;
   readonly state: ReviewState;
   readonly provider: string | null;
-  readonly findings: readonly string[];
+  readonly findings: readonly ReadFinding[];
   readonly submittedAt: Date | null;
 };
 

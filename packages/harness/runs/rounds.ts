@@ -1,4 +1,5 @@
 import { eventEvidenceSchemas, type HarnessEvent, type ReviewRecord } from '@uw/contracts';
+import { countsAsRound } from './weights.ts';
 
 const REVIEW_ROUND_LIMIT = 3;
 
@@ -14,7 +15,7 @@ function requestedChanges(event: HarnessEvent, reviewer: string): number | null 
   if (event.name !== 'run_completed') return null;
   const { result, review } = eventEvidenceSchemas.run_completed.parse(event.evidence);
   if (result !== 'review_posted' || review === null) return null;
-  if (review.reviewer !== reviewer || review.verdict !== 'request_changes') return null;
+  if (review.reviewer !== reviewer || !countsAsRound(review)) return null;
   return review.reviewId;
 }
 
@@ -37,7 +38,7 @@ export function roundsAfter(
   stageKey: string,
   review: ReviewRecord,
 ): number | null {
-  if (review.verdict !== 'request_changes' || review.reviewId === null) return null;
+  if (!countsAsRound(review) || review.reviewId === null) return null;
   const earlier = roundsSinceEntry(events, stageKey, review.reviewer);
   if (earlier.has(review.reviewId)) return null;
   const rounds = earlier.size + 1;

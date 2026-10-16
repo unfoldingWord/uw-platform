@@ -1,4 +1,5 @@
 import type {
+  ApproveAt,
   CapabilityWord,
   CostBasis,
   Engine,
@@ -19,6 +20,7 @@ export type RunPersona = {
   readonly provider: string;
   readonly toolset: readonly VerbName[];
   readonly instructions: string;
+  readonly approveAt: ApproveAt;
 };
 
 export type StartRunInput = {

@@ -171,7 +171,10 @@ async function overLongReference(db: Database): Promise<void> {
   expect(hidden.text).not.toContain(over);
 }
 
-const reviewerFindings = ['The lease is not renewed', 'A typo in the copy'];
+const reviewerFindings = [
+  { text: 'The lease is not renewed', weight: 'real' as const },
+  { text: 'A typo in the copy', weight: 'theoretical' as const },
+];
 
 async function storedFindings(db: Database): Promise<void> {
   const parked = await parkedAtShip(db);
@@ -196,7 +199,7 @@ async function storedFindings(db: Database): Promise<void> {
       commit: head,
       state: 'changes_requested',
       provider: 'anthropic',
-      findings: reviewerFindings.map((text) => ({ text, weight: null })),
+      findings: reviewerFindings,
     },
   ]);
 }

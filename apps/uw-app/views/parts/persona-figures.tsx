@@ -1,5 +1,6 @@
 import { formatCount, formatMoney } from '@uw/core/money';
 import { formatInstant } from '@uw/core/dates';
+import type { ApproveAt } from '@uw/contracts';
 import type { PersonaDashboard, PersonaRunSummary } from '@uw/harness';
 import { Kpi } from '@uw/ui/components/kpi.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
@@ -19,6 +20,11 @@ function escalationText(dashboard: PersonaDashboard): { value: string; detail: s
   const rate = Math.round((escalated / ended) * 100);
   return { value: `${rate}%`, detail: `${escalated} of ${ended} runs ended today` };
 }
+
+const approveAtText: Readonly<Record<ApproveAt, string>> = {
+  zero_findings: 'Zero findings',
+  no_real_or_plausible: 'No real or plausible finding',
+};
 
 export function PersonaKpis(props: { readonly dashboard: PersonaDashboard }) {
   const { runsToday, spend } = props.dashboard;
@@ -40,6 +46,13 @@ export function PersonaKpis(props: { readonly dashboard: PersonaDashboard }) {
       <Kpi label="Gate refusals today" value={formatCount(props.dashboard.gateRefusals)} />
       <Kpi label="Premises held today" value={formatCount(props.dashboard.premisesHeld)} />
       <Kpi label="Writes today" value={formatCount(props.dashboard.writes)} />
+      {props.dashboard.approveAt === null ? null : (
+        <Kpi
+          label="Approves at"
+          value={approveAtText[props.dashboard.approveAt]}
+          detail="The strictness preset on this persona page"
+        />
+      )}
     </div>
   );
 }

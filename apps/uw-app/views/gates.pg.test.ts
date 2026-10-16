@@ -97,7 +97,7 @@ async function shipInputs(world: GateWorld): Promise<void> {
   const findings = [...document.querySelectorAll('main h3 + ul li ul li')].map(
     (item) => item.textContent,
   );
-  expect(findings).toEqual(reviewerFindings);
+  expect(findings).toEqual(reviewerFindings.map((finding) => finding.text));
   expect(document.body.textContent).toContain('uw-reviewer (anthropic): Approved');
 }
 

@@ -137,7 +137,7 @@ export async function startReview(scene: JoinedWorld): Promise<string> {
 
 export const approveVerdict = {
   verdict: 'approve' as const,
-  findings: ['The form validates as it should.'],
+  findings: [{ text: 'The form validates as it should.', weight: 'theoretical' as const }],
   resolvedProvider: 'deepinfra',
   resolvedModel: 'z-ai/glm-5.3',
 };

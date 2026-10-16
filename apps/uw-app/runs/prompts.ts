@@ -67,11 +67,14 @@ export function reviewPrompt(source: ReviewSource): string {
     'The change to review, as a diff of the head against its base:',
     renderUntrusted(source.diff),
     '',
-    'Open your answer with this block and nothing before it, then one finding per line:',
+    'Open your answer with this block and nothing before it, then one finding per line, each starting with its weight:',
     '```harness-verdict',
     'verdict: approve',
     '```',
-    '- <finding>',
+    '- real: <a defect you are sure of>',
+    '- plausible: <a defect that may be real>',
+    '- theoretical: <a defect that only could be real>',
+    'Write no finding lines when you found nothing.',
     'Write `verdict: request_changes` when the change must not ship as it is.',
   ].join('\n');
 }

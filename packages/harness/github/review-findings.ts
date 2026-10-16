@@ -1,10 +1,12 @@
+import type { ReadFinding } from '@uw/contracts';
 import { parseReviewProvider } from './declaration.ts';
+import { weighedLine } from './finding-line.ts';
 import { FINDING_LIMIT, FINDINGS_LIMIT, cut, oneLine } from './review-body.ts';
 
 const closingFence = '```';
 const findingMark = '- ';
 
-export function parseReviewFindings(body: string | null): readonly string[] {
+export function parseReviewFindings(body: string | null): readonly ReadFinding[] {
   if (body === null || parseReviewProvider(body) === null) return [];
   const lines = body.split(/\r?\n/u);
   const end = lines.indexOf(closingFence, 1);
@@ -13,5 +15,6 @@ export function parseReviewFindings(body: string | null): readonly string[] {
     .filter((line) => line.startsWith(findingMark))
     .map((line) => cut(oneLine(line.slice(findingMark.length)), FINDING_LIMIT))
     .filter((finding) => finding !== '')
-    .slice(0, FINDINGS_LIMIT);
+    .slice(0, FINDINGS_LIMIT)
+    .map(weighedLine);
 }
