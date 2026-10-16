@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { identitySchema } from '@uw/contracts';
+import { identitySchema, newEventSchema, type EventName } from '@uw/contracts';
 import type { Delegation, GateDecisionRow, Store } from '../ports.ts';
 import {
   at,
@@ -58,6 +58,48 @@ function describeDelegatedRead(subject: DelegatedSubject): void {
     expect(found.since.map((entry) => entry.id)).toContain(row.id);
     expect(found.since.every((entry) => entry.delegationId !== null)).toBe(true);
     expect(found.later.map((entry) => entry.id)).not.toContain(row.id);
+  });
+}
+
+function eventOn(base: number, n: number, name: EventName, evidence: Record<string, string>) {
+  return newEventSchema.parse({
+    eventId: uid(base + 0xa0 + n),
+    harnessId: uid(base),
+    itemId: uid(base + 11),
+    name,
+    at: at.toISOString(),
+    actor: 'agent:system',
+    evidence,
+    traceId: uid(base + 0xb0),
+  });
+}
+
+function describeTakenDecisions(subject: DelegatedSubject): void {
+  it('MD-3 lists no delegated decision the minute job has claimed or that has a connector outcome', async () => {
+    const claimed = delegated(0x8d00, 0x8dd0);
+    const second = { ...claimed, id: uid(0x8d00 + 0x82), traceId: uid(0x8d00 + 0x92) };
+    const listed = await subject().store.transaction(async (tx) => {
+      await seedDecisionItem(tx, 0x8d00, 'gateway-delegated-taken');
+      await tx.delegations.write.insert(delegationFor(0x8dd0, 0x8d00), uid(0x8de0));
+      await tx.gateDecisions.write.insert(claimed);
+      await tx.gateDecisions.write.insert(second);
+      const before = await tx.gateDecisions.read.delegatedSince(at, 10);
+      await tx.harnessEvents.write.append([
+        eventOn(0x8d00, 1, 'gate_approved', { decisionId: claimed.id, stage: 'ship' }),
+        eventOn(0x8d00, 2, 'delegated_exit_claimed', { decisionId: claimed.id }),
+        eventOn(0x8d00, 3, 'gate_approved', { decisionId: second.id, stage: 'ship' }),
+      ]);
+      const approvedOnly = await tx.gateDecisions.read.delegatedSince(at, 10);
+      await tx.harnessEvents.write.append([
+        eventOn(0x8d00, 4, 'connector_refused', { connector: 'merge', reason: 'pr_not_open' }),
+      ]);
+      return { before, approvedOnly, after: await tx.gateDecisions.read.delegatedSince(at, 10) };
+    });
+    const ids = (rows: readonly GateDecisionRow[]) => rows.map((row) => row.id);
+    expect(ids(listed.before)).toEqual(expect.arrayContaining([claimed.id, second.id]));
+    expect(ids(listed.approvedOnly)).toContain(second.id);
+    expect(ids(listed.approvedOnly)).not.toContain(claimed.id);
+    expect(ids(listed.after)).not.toContain(second.id);
   });
 }
 
@@ -192,6 +234,7 @@ function describeLentBinding(subject: DelegatedSubject): void {
 
 export function describeDelegatedDecisions(subject: DelegatedSubject): void {
   describeDelegatedRead(subject);
+  describeTakenDecisions(subject);
   describeAgentActorRefusals(subject);
   describeDelegatedRowRefusals(subject);
   describeMergeEvidence(subject);
