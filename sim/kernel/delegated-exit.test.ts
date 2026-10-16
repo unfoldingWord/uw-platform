@@ -15,6 +15,7 @@ import {
   standardChange,
   type MergeLoan,
 } from '../ship-fixtures.ts';
+import { recipientIds, wakesFor } from '../wakes.ts';
 import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -129,6 +130,10 @@ async function mergesNamingTheGrantor(scene: Scene): Promise<void> {
     persona: scene.loan.agent.identity,
     maxTier: 'standard',
   });
+  const told = wakesFor(scene.world, scene.item.itemId).filter(
+    (wake) => wake.reason === 'delegated_merge',
+  );
+  expect(told.map(recipientIds)).toEqual([[scene.admin.personId]]);
 }
 
 async function onlyTheSystem(scene: Scene): Promise<void> {
