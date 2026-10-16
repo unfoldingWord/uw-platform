@@ -327,10 +327,16 @@ describe('KN-13 an approve or override must name the head the person saw', () =>
 });
 
 describe('a reject or take-over does not depend on a seen head', () => {
-  sceneIt('records a reject whatever head it names', async (scene) => {
-    const { outcome, after } = await decideSeeing(scene, 'reject', otherHead);
+  sceneIt('records a reject that names no head', async (scene) => {
+    const { outcome, after } = await decideSeeing(scene, 'reject', undefined);
     expect(outcome.status).toBe('accepted');
     expect(after.decisions).toEqual(['reject']);
+  });
+
+  sceneIt('GD-1 refuses a reject pinned to a head the item does not expect', async (scene) => {
+    const { outcome, after } = await decideSeeing(scene, 'reject', otherHead);
+    expect(outcome).toMatchObject({ status: 'error', reason: 'head_mismatch' });
+    expect(after.decisions).toEqual([]);
   });
 
   sceneIt('records a take-over that names no head', async (scene) => {
