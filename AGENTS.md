@@ -108,7 +108,7 @@ The build enforces these. A violation is a red build, not a judgment call.
 - `packages/contracts/*` and `packages/db/*` import nothing from `apps/*`.
 - A vendor SDK (`@anthropic-ai/*`, `openai`, OpenRouter) is imported only inside `apps/uw-app/engines/<key>/`.
 - Application code reaches Postgres, GitHub, a model, the hub or a notifier only through a port; nothing outside `apps/uw-app`, `sim/adapters` and `packages/db/store` implements one. `packages/db/store` holds the one Drizzle implementation of the Store and Grants ports, which the platform adapter and the sim's test adapter both bind, because both must run the same queries (PRD DX-2).
-- No route, tool handler or Workflow step reachable by an agent identity writes `gate_decisions` or `harness_stages`, except the delegated Ship exit section 10 names.
+- No route, tool handler or Workflow step reachable by an agent identity writes `gate_decisions` or `harness_stages`. The one exception is `gate_decisions` written by the delegated Ship exit section 10 names; `harness_stages` has none.
 - Islands never call the kernel directly; they call the command API.
 - `sim/*` imports `packages/harness`, `packages/contracts`, `packages/db` and the Node built-ins `node:fs`, `node:fs/promises`, `node:path`, `node:url`, `node:process`, `node:assert` and `node:assert/strict`, its tests also Vitest, and nothing else. `node:os` and `node:child_process` appear only in sim tests, `sim/cli` and `sim/runner`. It imports `packages/db` because the Store test adapter runs the real migrations on an embedded Postgres (PRD DX-2), and never imports Drizzle or PGlite itself.
 - A port's contract suite lives in `packages/harness/port-contracts/`; those files are the only non-test harness code that imports Vitest, and no non-test file in `apps/`, `sim/` or `packages/` imports them.
@@ -188,7 +188,7 @@ A change to a shared root (rule 4) or a fixed decision (section 1) goes in its o
 
 ## 10. Things that always hold
 
-- No agent identity can approve, merge, deploy, publish or advance an item past a human gate, on any host, by any route. A change that makes it possible is wrong whatever else it does.
+- No agent identity can approve, merge, deploy, publish or advance an item past a human gate, on any host, by any route, except the delegated Ship exit below, where the approver is the granting person and the database refuses any other agent-written decision. A change that makes it possible otherwise is wrong whatever else it does.
 - The delegated Ship exit (`recordDelegatedDecision` in `packages/harness/gates/delegated-ship.ts`, ADR 0010) is the one agent-reachable path that writes a gate decision. It writes the granting person as approver, the agent as actor and the delegation's id, for a merge only, up to the delegation's tier, never for a protected path, inside the transaction that locks and re-reads the delegation and the grantor's grants; the merge itself runs later from the minute job, which checks it all again. A second such path is wrong whatever else it does.
 - No route, tool or Workflow step is added without `can()` on the harness's area as its scope.
 - No vendor SDK outside its engine directory. No subscription credential stored on the platform. No secret in a wrangler file, a workflow file or the repository.
