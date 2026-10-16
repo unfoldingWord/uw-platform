@@ -118,6 +118,15 @@ export const ghPrs = declareTable(
     filesBase: text('files_base'),
     filesProblem: text('files_problem'),
     requestedReviewers: text('requested_reviewers').array().notNull().default(emptyText),
+    closes: jsonb('closes')
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    behindBy: integer('behind_by'),
+    patchId: text('patch_id'),
+    headCommits: jsonb('head_commits'),
+    patchIds: jsonb('patch_ids')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     githubUpdatedAt: instant('github_updated_at').notNull(),
     freshAt: instant('fresh_at').notNull(),
   },
@@ -130,6 +139,7 @@ export const ghPrs = declareTable(
     check('gh_prs_base_sha_form', matches(t.baseSha, FULL_SHA_PATTERN)),
     check('gh_prs_head_repo_form', matches(t.headRepo, REPOSITORY_PATTERN)),
     check('gh_prs_files_base_form', matches(t.filesBase, FULL_SHA_PATTERN)),
+    check('gh_prs_behind_by_counted', sql`${t.behindBy} IS NULL OR ${t.behindBy} >= 0`),
     check('gh_prs_requested_reviewers_bounded', sql`cardinality(${t.requestedReviewers}) <= 100`),
     check(
       'gh_prs_one_declaration_outcome',

@@ -81,9 +81,19 @@ export const harnesses = declareTable(
       .array()
       .notNull()
       .default(emptyText),
+    frozen: boolean('frozen').notNull().default(false),
+    freezeAllow: uuid('freeze_allow')
+      .array()
+      .notNull()
+      .default(sql`'{}'::uuid[]`),
+    requiredChecks: jsonb('required_checks')
+      .notNull()
+      .default(sql`'[]'::jsonb`),
   },
   internalSync,
   (t) => [
+    check('harnesses_freeze_allow_bounded', sql`cardinality(${t.freezeAllow}) <= 100`),
+    check('harnesses_required_checks_array', sql`jsonb_typeof(${t.requiredChecks}) = 'array'`),
     check(
       'harnesses_external_reviewers_bounded',
       sql`cardinality(${t.externalReviewerIdentities}) <= 20`,
