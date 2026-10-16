@@ -4,6 +4,7 @@ import {
   type ItemState,
   type ShadowRow,
 } from '@uw/contracts';
+import { reviewedLater } from '../gates/ship-input.ts';
 import { fullSha } from '../github/identifiers.ts';
 import { reviewerOf } from '../github/reviewers.ts';
 import type { PullRequestFacts, PullRequestRef, ReviewFact, ReviewState } from '../ports.ts';
@@ -87,8 +88,7 @@ function othersOn(facts: PullRequestFacts | null, head: string): ShadowRow['gith
     }
     const login = review.reviewer.trim().toLowerCase();
     const seen = latest.get(login);
-    if (seen === undefined || review.reviewId > seen.reviewId)
-      latest.set(login, { ...review, state });
+    if (seen === undefined || reviewedLater(review, seen)) latest.set(login, { ...review, state });
   }
   return [...latest.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
