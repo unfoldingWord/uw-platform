@@ -13,7 +13,7 @@
     "provider": "deepinfra",
     "model": "z-ai/glm-5.3",
     "verdict": "approve",
-    "findings": ["The form validates as it should."]
+    "findings": [{ "text": "The form validates as it should.", "weight": "theoretical" }]
   },
   "traceId": "00000000-0000-4000-8000-0000000000c1",
   "requestId": null

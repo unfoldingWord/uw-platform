@@ -41,57 +41,210 @@
       "state": "changes_requested",
       "provider": "anthropic",
       "findings": [
-        "Finding 1",
-        "Finding 2",
-        "Finding 3",
-        "Finding 4",
-        "Finding 5",
-        "Finding 6",
-        "Finding 7",
-        "Finding 8",
-        "Finding 9",
-        "Finding 10",
-        "Finding 11",
-        "Finding 12",
-        "Finding 13",
-        "Finding 14",
-        "Finding 15",
-        "Finding 16",
-        "Finding 17",
-        "Finding 18",
-        "Finding 19",
-        "Finding 20",
-        "Finding 21",
-        "Finding 22",
-        "Finding 23",
-        "Finding 24",
-        "Finding 25",
-        "Finding 26",
-        "Finding 27",
-        "Finding 28",
-        "Finding 29",
-        "Finding 30",
-        "Finding 31",
-        "Finding 32",
-        "Finding 33",
-        "Finding 34",
-        "Finding 35",
-        "Finding 36",
-        "Finding 37",
-        "Finding 38",
-        "Finding 39",
-        "Finding 40",
-        "Finding 41",
-        "Finding 42",
-        "Finding 43",
-        "Finding 44",
-        "Finding 45",
-        "Finding 46",
-        "Finding 47",
-        "Finding 48",
-        "Finding 49",
-        "Finding 50",
-        "Finding 51"
+        {
+          "text": "Finding 1",
+          "weight": null
+        },
+        {
+          "text": "Finding 2",
+          "weight": null
+        },
+        {
+          "text": "Finding 3",
+          "weight": null
+        },
+        {
+          "text": "Finding 4",
+          "weight": null
+        },
+        {
+          "text": "Finding 5",
+          "weight": null
+        },
+        {
+          "text": "Finding 6",
+          "weight": null
+        },
+        {
+          "text": "Finding 7",
+          "weight": null
+        },
+        {
+          "text": "Finding 8",
+          "weight": null
+        },
+        {
+          "text": "Finding 9",
+          "weight": null
+        },
+        {
+          "text": "Finding 10",
+          "weight": null
+        },
+        {
+          "text": "Finding 11",
+          "weight": null
+        },
+        {
+          "text": "Finding 12",
+          "weight": null
+        },
+        {
+          "text": "Finding 13",
+          "weight": null
+        },
+        {
+          "text": "Finding 14",
+          "weight": null
+        },
+        {
+          "text": "Finding 15",
+          "weight": null
+        },
+        {
+          "text": "Finding 16",
+          "weight": null
+        },
+        {
+          "text": "Finding 17",
+          "weight": null
+        },
+        {
+          "text": "Finding 18",
+          "weight": null
+        },
+        {
+          "text": "Finding 19",
+          "weight": null
+        },
+        {
+          "text": "Finding 20",
+          "weight": null
+        },
+        {
+          "text": "Finding 21",
+          "weight": null
+        },
+        {
+          "text": "Finding 22",
+          "weight": null
+        },
+        {
+          "text": "Finding 23",
+          "weight": null
+        },
+        {
+          "text": "Finding 24",
+          "weight": null
+        },
+        {
+          "text": "Finding 25",
+          "weight": null
+        },
+        {
+          "text": "Finding 26",
+          "weight": null
+        },
+        {
+          "text": "Finding 27",
+          "weight": null
+        },
+        {
+          "text": "Finding 28",
+          "weight": null
+        },
+        {
+          "text": "Finding 29",
+          "weight": null
+        },
+        {
+          "text": "Finding 30",
+          "weight": null
+        },
+        {
+          "text": "Finding 31",
+          "weight": null
+        },
+        {
+          "text": "Finding 32",
+          "weight": null
+        },
+        {
+          "text": "Finding 33",
+          "weight": null
+        },
+        {
+          "text": "Finding 34",
+          "weight": null
+        },
+        {
+          "text": "Finding 35",
+          "weight": null
+        },
+        {
+          "text": "Finding 36",
+          "weight": null
+        },
+        {
+          "text": "Finding 37",
+          "weight": null
+        },
+        {
+          "text": "Finding 38",
+          "weight": null
+        },
+        {
+          "text": "Finding 39",
+          "weight": null
+        },
+        {
+          "text": "Finding 40",
+          "weight": null
+        },
+        {
+          "text": "Finding 41",
+          "weight": null
+        },
+        {
+          "text": "Finding 42",
+          "weight": null
+        },
+        {
+          "text": "Finding 43",
+          "weight": null
+        },
+        {
+          "text": "Finding 44",
+          "weight": null
+        },
+        {
+          "text": "Finding 45",
+          "weight": null
+        },
+        {
+          "text": "Finding 46",
+          "weight": null
+        },
+        {
+          "text": "Finding 47",
+          "weight": null
+        },
+        {
+          "text": "Finding 48",
+          "weight": null
+        },
+        {
+          "text": "Finding 49",
+          "weight": null
+        },
+        {
+          "text": "Finding 50",
+          "weight": null
+        },
+        {
+          "text": "Finding 51",
+          "weight": null
+        }
       ]
     }
   ],
@@ -100,14 +253,17 @@
       "pullRequest": {
         "open": true,
         "draft": false,
-        "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "behindBy": 0,
+        "skipCi": false
       },
       "expectedHead": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "checks": [
         {
           "name": "test",
           "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-          "conclusion": "success"
+          "conclusion": "success",
+          "app": "github-actions"
         }
       ],
       "approvals": [
@@ -121,7 +277,17 @@
       "riskDomains": ["acl"],
       "area": "80-89",
       "at": "2026-10-03T09:00:00.000Z",
-      "override": false
+      "override": false,
+      "carries": [],
+      "requiredChecks": [
+        {
+          "app": "github-actions",
+          "name": "test"
+        }
+      ],
+      "closes": [],
+      "wraps": null,
+      "frozen": false
     },
     "outcome": {
       "verdict": "advance"

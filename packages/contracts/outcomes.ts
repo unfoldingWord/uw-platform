@@ -72,6 +72,12 @@ export const errorReasonSchema = z.enum([
   'no_harness_for_repo',
   'repository_not_dispatchable',
   'dispatch_list_unavailable',
+  'base_behind',
+  'auto_close_keyword',
+  'skip_ci_marker',
+  'required_check_never_ran',
+  'harness_frozen',
+  'finding_weight_missing',
 ]);
 
 export const refusalSchema = z.object({

@@ -12,6 +12,7 @@
     "currency": "USD"
   },
   "capability": "build",
+  "approve_at": "no_real_or_plausible",
   "requires_tools": ["read_page", "open_pull_request"],
   "status": "suggested"
 }

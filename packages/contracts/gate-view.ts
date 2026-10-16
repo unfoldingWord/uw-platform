@@ -2,11 +2,14 @@ import { z } from 'zod';
 import {
   connectorSchema,
   gateStatusSchema,
+  reviewVerdictSchema,
   riskDomainsSchema,
   riskTierSchema,
 } from './closed-sets.ts';
 import { issueReferenceSchema, pullRequestDeclarationSchema } from './github.ts';
 import { pullRequestRefSchema, stageKeySchema } from './harness.ts';
+import { identitySchema } from './identity.ts';
+import { readFindingSchema, reviewFindingSchema } from './runs.ts';
 import {
   checkConclusionSchema,
   fullShaSchema,
@@ -60,6 +63,7 @@ const shipInputSchema = shipRuleInputSchema.omit({ approver: true }).extend({
     .array(
       z.strictObject({
         name: z.string().min(1).max(255),
+        app: z.string().min(1).max(100).nullable(),
         headSha: sha,
         conclusion: checkConclusionSchema.nullable(),
       }),
@@ -81,7 +85,15 @@ const reviewSchema = z.strictObject({
   commit: sha,
   state: z.enum(['approved', 'changes_requested', 'dismissed']),
   provider: z.string().min(1).max(100).nullable(),
-  findings: z.array(z.string().min(1).max(500)).max(50),
+  findings: z.array(readFindingSchema).max(50),
+});
+
+const verdictSchema = z.strictObject({
+  runId: z.uuid(),
+  persona: identitySchema,
+  reviewer: z.string().regex(/^[a-z0-9-]{1,64}$/),
+  verdict: reviewVerdictSchema,
+  findings: z.array(reviewFindingSchema.extend({ refuted: z.boolean() })).max(50),
 });
 
 export const gateViewSchema = z.strictObject({
@@ -95,6 +107,7 @@ export const gateViewSchema = z.strictObject({
   recorded: recordedSchema.nullable(),
   facts: factsSchema.nullable(),
   reviews: z.array(reviewSchema).max(100).default([]),
+  verdicts: z.array(verdictSchema).max(20).default([]),
   ship: z
     .strictObject({
       input: shipInputSchema,

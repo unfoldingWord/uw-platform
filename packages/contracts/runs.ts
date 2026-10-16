@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { reviewVerdictSchema } from './closed-sets.ts';
+import { findingWeightSchema, reviewVerdictSchema } from './closed-sets.ts';
 import { verbNameSchema } from './verb-names.ts';
 
 export const runStepSchema = z.enum(['read', 'scout', 'work', 'submit']);
@@ -13,12 +13,25 @@ export type ModelId = z.infer<typeof modelIdSchema>;
 
 const model = modelIdSchema;
 
+const findingText = z.string().min(1).max(500);
+export const reviewFindingSchema = z.strictObject({
+  text: findingText,
+  weight: findingWeightSchema,
+});
+export const readFindingSchema = z.strictObject({
+  text: findingText,
+  weight: findingWeightSchema.nullable(),
+});
+export type ReviewFinding = z.infer<typeof reviewFindingSchema>;
+export type ReadFinding = z.infer<typeof readFindingSchema>;
+
 export const reviewRecordSchema = z.strictObject({
   reviewer: z.string().regex(/^[a-z0-9-]{1,64}$/),
   provider: providerIdSchema,
   model,
   verdict: reviewVerdictSchema,
   reviewId: z.number().int().min(1).nullable(),
+  findings: z.array(reviewFindingSchema).max(50).default([]),
 });
 export type ReviewRecord = z.infer<typeof reviewRecordSchema>;
 

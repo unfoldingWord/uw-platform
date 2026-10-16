@@ -41,14 +41,17 @@ describe('the gate view carries each Reviewer review', () => {
     commit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     state: 'changes_requested',
     provider: 'openai',
-    findings: ['The lock is taken late'],
+    findings: [{ text: 'The lock is taken late', weight: null }],
   };
   const withReviews = (reviews: readonly unknown[]) => ({ ...view, reviews });
 
   it("carries each Reviewer's latest review with its findings, bounded", () => {
     expect(gateViewSchema.safeParse(withReviews([review])).success).toBe(true);
-    const long = { ...review, findings: ['x'.repeat(501)] };
-    const many = { ...review, findings: Array.from({ length: 51 }, (_, n) => `finding ${n}`) };
+    const long = { ...review, findings: [{ text: 'x'.repeat(501), weight: null }] };
+    const many = {
+      ...review,
+      findings: Array.from({ length: 51 }, (_, n) => ({ text: `finding ${n}`, weight: null })),
+    };
     const unknown = { ...review, state: 'commented' };
     expect(gateViewSchema.safeParse(withReviews([long])).success).toBe(false);
     expect(gateViewSchema.safeParse(withReviews([many])).success).toBe(false);
