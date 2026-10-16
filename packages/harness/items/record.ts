@@ -1,5 +1,6 @@
 import {
   newEventSchema,
+  type EpicPlace,
   type EventEvidence,
   type EventName,
   type EvidenceName,
@@ -40,6 +41,8 @@ export type NewItem = {
   readonly issue: IssueRef | null;
   readonly pullRequest?: NonNullable<ItemState['pullRequest']> | null;
   readonly expectedHead?: string | null;
+  readonly epic?: EpicPlace | null;
+  readonly blockedBy?: readonly string[];
 };
 
 export type Recorded = {
@@ -128,6 +131,15 @@ async function assertIssueInHarnessRepository(
   }
 }
 
+function epicKeys(initial: NewItem) {
+  const epic = initial.epic ?? null;
+  if (epic === null) return {};
+  return {
+    epic: { issue: { ...epic.issue }, title: epic.title, position: epic.position },
+    blockedBy: [...(initial.blockedBy ?? [])],
+  };
+}
+
 function createdDraft(initial: NewItem): EventDraft {
   const evidence = {
     stage: initial.stageKey,
@@ -136,6 +148,7 @@ function createdDraft(initial: NewItem): EventDraft {
     priority: initial.priority,
     due: initial.due,
     issue: initial.issue,
+    ...epicKeys(initial),
   };
   const pullRequest = initial.pullRequest ?? null;
   const expectedHead = initial.expectedHead ?? null;

@@ -125,6 +125,8 @@ export { reviewBody } from './github/review-body.ts';
 export { parseReviewFindings } from './github/review-findings.ts';
 export { blockedByOf, doneWhenOf } from './github/issue-body.ts';
 export type { NotReadyInput, NotReadySubject } from './items/not-ready.ts';
+export type { EnqueueEpicInput, EpicEnqueued } from './items/epic.ts';
+export { openBlockers, passedShip } from './items/blockers.ts';
 export { runToolLoop, TURN_LIMIT } from './runs/tool-loop.ts';
 export type { LoopResult, ToolCaller, ToolReply } from './runs/tool-loop.ts';
 export { promptText, renderUntrusted, scanFences, untrusted } from './untrusted.ts';
