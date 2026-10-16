@@ -490,6 +490,14 @@ _Avoid_: severity (that is the finding's impact), confidence (that is a learning
 The health indicator that goes red when items wait in Check and no review step has run for 90 minutes.
 _Avoid_: watchdog
 
+**Bot author**:
+A GitHub account a harness lists in `bot_authors` (by default `dependabot[bot]`). An item whose pull request a bot author opened is shown on every screen and left out of every count of items, and the count says so.
+_Avoid_: bot item, ignored author
+
+**External learning**:
+A learning page an external runner posted on a delegation whose capability is `review`, as the bench posts its weekly patterns. It lands `suggested`, names `source: external` and the pull request it came from, and a person confirms it like any other learning.
+_Avoid_: bench learning, imported learning, ruling (that is the bench's word for a reviewer's decision)
+
 **Required check**:
 A check a harness names, by GitHub App and check name, that must have run on the head and passed before Ship. A harness that names none requires every check that ran on the head to have passed, and at least one to have run.
 _Avoid_: required status, CI gate, branch protection (that is GitHub's)
