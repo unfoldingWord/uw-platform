@@ -1,5 +1,5 @@
 import { errorFields, type Logger } from '@uw/core/log';
-import type { Caller, Clock, Kernel } from '@uw/harness';
+import type { Caller, Clock, GateCommands, Kernel } from '@uw/harness';
 import type { DatabaseHandle } from '../database.ts';
 import type { Bindings } from '../env.ts';
 import { githubAppOf } from '../github/app-config.ts';
@@ -32,7 +32,7 @@ function delegatedExitKernel(run: DelegatedRun, github: ShipGitHub): Kernel {
 }
 
 export async function exitDelegatedMerges(
-  kernel: Kernel,
+  kernel: { readonly gates: Pick<GateCommands, 'exitDelegated'> },
   run: Pick<DelegatedRun, 'caller' | 'logger'>,
 ): Promise<void> {
   const outcome = await kernel.gates.exitDelegated(run.caller, { limit: EXIT_LIMIT });
@@ -40,26 +40,36 @@ export async function exitDelegatedMerges(
     run.logger.warn('delegated exits refused', { step: STEP, outcome: outcome.reason });
     return;
   }
-  const { exited } = outcome.value;
+  const { exited, failed } = outcome.value;
+  for (const entry of failed) {
+    run.logger.error('delegated exit failed', {
+      step: STEP,
+      outcome: 'internal_error',
+      itemId: entry.itemId,
+      decisionId: entry.decisionId,
+      detail: entry.error,
+    });
+  }
   const merged = exited.filter((entry) => entry.advanced).length;
   run.logger.info('delegated exits run', {
     step: STEP,
     outcome: 'delegated_exits_run',
     exited: exited.length,
     merged,
+    failed: failed.length,
   });
 }
 
 export async function runDelegatedExits(run: DelegatedRun): Promise<void> {
-  const github = cronShipGitHub(run.env, run.clock);
-  if (github === null) {
-    run.logger.info('delegated exits skipped: no GitHub App', {
-      step: STEP,
-      outcome: 'github_not_configured',
-    });
-    return;
-  }
   try {
+    const github = cronShipGitHub(run.env, run.clock);
+    if (github === null) {
+      run.logger.info('delegated exits skipped: no GitHub App', {
+        step: STEP,
+        outcome: 'github_not_configured',
+      });
+      return;
+    }
     await exitDelegatedMerges(delegatedExitKernel(run, github), run);
   } catch (error) {
     run.logger.error('minute step failed', {
