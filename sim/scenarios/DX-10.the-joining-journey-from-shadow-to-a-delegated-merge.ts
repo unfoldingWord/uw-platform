@@ -22,9 +22,10 @@ export const scenario = defineScenario({
       requiredChecks: joinedChecks,
       protectedPaths: [protectedDirectory],
     });
-    const shadow = await shadowRound(scene);
+    const posted = () => world.adapters.connectors.reviews();
+    const shadow = await shadowRound(scene, posted);
     assert.deepEqual(shadow, { shadowVerdicts: 2, recorded: 1, compared: 1 });
-    const posted = await liftAndPost(scene);
+    const reviewsPosted = await liftAndPost(scene, posted);
     const waiting = await waitsForAPerson(scene);
     const loan = await simLendMerge(world, scene.admin, {
       harnessId: scene.harnessId,
@@ -35,7 +36,7 @@ export const scenario = defineScenario({
     return {
       state: {
         shadow,
-        posted,
+        posted: reviewsPosted,
         waiting,
         merged: merged.joined,
         grantorApproved: merged.grantor === scene.admin.identity,

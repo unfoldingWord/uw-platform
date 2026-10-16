@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import type { RequiredCheck } from '@uw/contracts';
-import { readAllEvents, type PullRequestRef } from '@uw/harness';
+import { readAllEvents, type PullRequestRef, type ReviewRequest } from '@uw/harness';
 import { simAdvance, simCaller, simSystem } from './fixtures.ts';
 import {
   approveVerdict,
@@ -33,6 +33,8 @@ export type DelegatedMerge = {
   readonly joined: boolean;
   readonly grantor: string;
 };
+
+type PostedReviews = () => readonly ReviewRequest[];
 
 export const protectedDirectory = 'src/auth/';
 
@@ -74,12 +76,12 @@ async function placeOf(scene: JoinedWorld, itemId: string): Promise<string> {
   return `${item?.stageKey ?? 'missing'} ${item?.gateStatus ?? 'missing'}`;
 }
 
-export async function shadowRound(scene: JoinedWorld): Promise<ShadowRound> {
+export async function shadowRound(scene: JoinedWorld, posted: PostedReviews): Promise<ShadowRound> {
   const { world } = scene;
   value(await world.kernel.gates.recordShadowVerdicts(scene.ingest, { pullRequest: joinedPull }));
   const runId = await startReview(scene);
   value(await world.kernel.runs.postReview(scene.host, runId, approveVerdict));
-  assert.deepEqual(world.adapters.connectors.reviews(), []);
+  assert.deepEqual(posted(), []);
   assert.deepEqual(world.adapters.connectors.calls(), []);
   const comparison = value(
     await world.kernel.views.shadow(simCaller(world, scene.admin), { harnessId: scene.harnessId }),
@@ -101,7 +103,7 @@ async function harnessEventNames(scene: JoinedWorld): Promise<readonly string[]>
   return events.map((event) => event.name);
 }
 
-export async function liftAndPost(scene: JoinedWorld): Promise<number> {
+export async function liftAndPost(scene: JoinedWorld, reviews: PostedReviews): Promise<number> {
   const { world } = scene;
   const lift = simCaller(world, scene.admin);
   const lifted = value(await world.kernel.stages.liftShadow(lift, { harnessId: scene.harnessId }));
@@ -109,7 +111,7 @@ export async function liftAndPost(scene: JoinedWorld): Promise<number> {
   assert.equal((await harnessEventNames(scene)).includes('shadow_lifted'), true);
   const runId = await startReview(scene);
   value(await world.kernel.runs.postReview(scene.host, runId, approveVerdict));
-  const posted = world.adapters.connectors.reviews();
+  const posted = reviews();
   assert.deepEqual(
     posted.map((review) => [review.pullRequest, review.head, review.verdict]),
     [[joinedPull, joinedHead, 'approve']],
