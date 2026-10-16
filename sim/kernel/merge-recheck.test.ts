@@ -152,6 +152,21 @@ async function evaluatedHeadMerged(scene: Scene): Promise<void> {
   expect(await lastEvent(scene)).toMatchObject({ name: 'connector_succeeded' });
 }
 
+async function frozenAfterDecision(scene: Scene): Promise<void> {
+  const { world, admin } = scene;
+  const reviews = [approvedBy('uw-reviewer[bot]', 'deepinfra', standardChange.head, 9300000001)];
+  world.adapters.githubFacts.given(
+    greenFacts(world, { itemId: scene.item.itemId, head: standardChange.head, reviews }),
+  );
+  const freeze = { harnessId: scene.harness.id, frozen: true, allow: [] };
+  value(await world.kernel.stages.setFreeze(simCaller(world, admin), freeze));
+  expect((await exitAfterDecision(world.adapters, pendingFor(scene))).advanced).toBe(false);
+  expect(world.adapters.connectors.calls()).toEqual([]);
+  expect((await lastEvent(scene))?.evidence['reason']).toMatch(
+    /^ship_rule_refused: .*harness_frozen/,
+  );
+}
+
 function calledItems(world: World): readonly string[] {
   return world.adapters.connectors.calls().map((call) => call.itemId);
 }
@@ -169,4 +184,7 @@ describe('SR-3 the merge connector runs the ship rule in-process', () => {
 
   it('SR-3 hands the connector the head the rule evaluated, not the one the item expected', () =>
     inScene(evaluatedHeadMerged));
+
+  it('SR-3 re-reads the harness at the merge: a freeze set after the decision stops it, and no connector is called', () =>
+    inScene(frozenAfterDecision));
 });
