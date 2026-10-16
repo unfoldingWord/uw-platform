@@ -136,6 +136,8 @@ function createdDraft(initial: NewItem): EventDraft {
     priority: initial.priority,
     due: initial.due,
     issue: initial.issue,
+    epic: null,
+    blockedBy: [],
   };
   const pullRequest = initial.pullRequest ?? null;
   const expectedHead = initial.expectedHead ?? null;

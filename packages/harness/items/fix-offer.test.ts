@@ -108,6 +108,8 @@ const item = itemStateSchema.parse({
   pullRequest: { repo: 'unfoldingWord/uw-platform', number: 42 },
   issue: null,
   zulipTopic: null,
+  epic: null,
+  blockedBy: [],
 });
 
 describe('FL-2 the rules that open a fix', () => {
