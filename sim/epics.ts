@@ -3,7 +3,7 @@ import type { EpicFacts, IssueFact, IssueKey } from '@uw/harness';
 import { simCaller } from './fixtures.ts';
 import type { World } from './world.ts';
 
-export const epicRepository = 'unfoldingWord/uw-platform';
+const epicRepository = 'unfoldingWord/uw-platform';
 export const epicKey: IssueKey = { repo: epicRepository, number: 40 };
 
 type FactOptions = {
