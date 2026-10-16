@@ -84,7 +84,7 @@ async function viewShown(db: Database): Promise<void> {
   expect(view).toEqual(sent.body);
   expect(view).toMatchObject({ itemId, harnessId, stageKey: 'ship', gateStatus: 'parked' });
   expect(view.facts?.declaration).toEqual({
-    closes: ['#12'],
+    closes: [],
     risks: 'the board renders slower on phones',
     touches: 'apps/uw-app/board',
     riskTier: 'standard',

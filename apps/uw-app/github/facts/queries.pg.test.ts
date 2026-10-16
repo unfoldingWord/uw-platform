@@ -20,8 +20,9 @@ import {
 } from '../testing/facts-fixtures.ts';
 import { testServer, withAppDatabase } from '../../testing/postgres.ts';
 import { openPullRequests, pullRequestFacts, repoByName } from './queries.ts';
-import { emptyBatch } from './records.ts';
-import { recordFiles, upsertFacts } from './upsert.ts';
+import { emptyBatch, unknownHead } from './records.ts';
+import { recordFiles } from './heads.ts';
+import { upsertFacts } from './upsert.ts';
 
 const at = new Date('2026-10-02T09:00:00.000Z');
 const ref = { repo: 'UnfoldingWord/UW-Platform', number: 7 };
@@ -59,8 +60,8 @@ const expectedFacts = {
   ],
   files: { head, base, paths: changedPaths },
   declaration,
-  closes: [],
-  comparison: null,
+  closes: [{ repo: 'unfoldingWord/uw-platform', number: 12 }],
+  comparison: { head, base, behindBy: 0, patchId: null, commits: null, patchIds: {} },
   freshAt: at,
 };
 
@@ -76,6 +77,8 @@ async function seeded(db: Database): Promise<void> {
     base,
     paths: changedPaths,
     problem: null,
+    ...unknownHead,
+    behindBy: 0,
   };
   await recordFiles(db, files);
 }
@@ -97,14 +100,8 @@ describe.skipIf(!testServer)('GH-2 the read model answers for a PR from its own 
         null,
         [expect.objectContaining({ checkId: 9100000409, headSha: nextHead })],
       ]);
-      const files = {
-        pullRequestId: openedPull.githubId,
-        head: nextHead,
-        base,
-        paths: ['a.ts'],
-        problem: null,
-      };
-      await recordFiles(db, files);
+      const files = { pullRequestId: openedPull.githubId, head: nextHead, base, paths: ['a.ts'] };
+      await recordFiles(db, { ...files, problem: null, ...unknownHead });
       expect((await pullRequestFacts(db, ref))?.files).toEqual({
         head: nextHead,
         base,
@@ -121,6 +118,7 @@ describe.skipIf(!testServer)('GH-2 the read model answers for a PR from its own 
         base,
         paths: null,
         problem: 'too_many_files',
+        ...unknownHead,
       };
       await recordFiles(db, files);
       await db

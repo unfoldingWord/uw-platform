@@ -1,5 +1,5 @@
-import type { PullRequestDeclaration } from '@uw/contracts';
-import type { CheckConclusion, ReviewState } from '@uw/harness';
+import type { ClosingRef, PullRequestDeclaration } from '@uw/contracts';
+import type { CheckConclusion, HeadCommit, ReviewState } from '@uw/harness';
 
 export type GithubCheckStatus =
   'queued' | 'in_progress' | 'completed' | 'waiting' | 'requested' | 'pending';
@@ -59,6 +59,7 @@ export type PullRequestRecord = {
   readonly requestedReviewers: readonly string[];
   readonly declaration: PullRequestDeclaration | null;
   readonly declarationProblem: string | null;
+  readonly closes: readonly ClosingRef[];
   readonly githubUpdatedAt: Date;
 };
 
@@ -68,7 +69,13 @@ export type FilesRecord = {
   readonly base: string;
   readonly paths: readonly string[] | null;
   readonly problem: string | null;
+  readonly behindBy: number | null;
+  readonly patchId: string | null;
+  readonly commits: readonly HeadCommit[] | null;
 };
+
+export type HeadFacts = Pick<FilesRecord, 'behindBy' | 'patchId' | 'commits'>;
+export const unknownHead: HeadFacts = { behindBy: null, patchId: null, commits: null };
 
 export type CheckRunRecord = {
   readonly githubId: number;

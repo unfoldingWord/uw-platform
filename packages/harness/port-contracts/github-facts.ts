@@ -56,7 +56,7 @@ function factsFor(repo: string, number: number, head: string): PullRequestFacts 
       riskTier: 'standard',
       riskDomains: [],
     },
-    closes: [],
+    closes: [{ repo, number: 7 }],
     comparison: null,
     freshAt: new Date('2026-10-01T09:00:00.000Z'),
   };

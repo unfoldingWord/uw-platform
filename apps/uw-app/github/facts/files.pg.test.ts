@@ -13,8 +13,9 @@ import { fixtureGitHub, type FixtureGitHub } from '../testing/fixture-github.ts'
 import { testServer, withAppDatabase } from '../../testing/postgres.ts';
 import { fetchFilesAtHead } from './files.ts';
 import { pullRequestFacts } from './queries.ts';
-import type { FactBatch } from './records.ts';
-import { recordFiles, upsertFacts } from './upsert.ts';
+import { recordFiles } from './heads.ts';
+import { unknownHead, type FactBatch } from './records.ts';
+import { upsertFacts } from './upsert.ts';
 
 const ref = { repo: 'unfoldingWord/uw-platform', number: 7 };
 const tokenPath = '/app/installations/77/access_tokens';
@@ -102,6 +103,7 @@ async function headThereAndBack(db: Database): Promise<void> {
     base,
     paths: otherPaths,
     problem: null,
+    ...unknownHead,
   };
   expect(await recordFiles(db, late)).toBe(false);
   expect(await filesNow(db)).toEqual({ head, base, paths: changedPaths });
@@ -123,7 +125,14 @@ async function retargeted(db: Database): Promise<void> {
   expect([facts?.head, facts?.base, facts?.files]).toEqual([head, movedBase, null]);
   const stored = await db.select({ files: ghPrs.files, base: ghPrs.filesBase }).from(ghPrs);
   expect(stored).toEqual([{ files: null, base: null }]);
-  const late = { pullRequestId: 9100000201, head, base: branchBase, paths: [], problem: null };
+  const late = {
+    pullRequestId: 9100000201,
+    head,
+    base: branchBase,
+    paths: [],
+    problem: null,
+    ...unknownHead,
+  };
   expect(await recordFiles(db, late)).toBe(false);
   expect(await filesNow(db)).toBeNull();
   await deliver(db, github, toMain, 2);

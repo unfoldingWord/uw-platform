@@ -35,7 +35,7 @@ import {
   repoFromRest,
   reviewsFromRest,
 } from './normalise.ts';
-import { emptyBatch, type FactBatch } from './records.ts';
+import { emptyBatch, unknownHead, type FactBatch } from './records.ts';
 
 function batchOf(parts: Partial<FactBatch>) {
   return { kind: 'facts', batch: { ...emptyBatch, repos: [repo], ...parts } };
@@ -262,32 +262,41 @@ describe('GH-2 GitHub REST answers become fact records', () => {
 
 describe('GH-5 the changed files at a head include the previous names of renames', () => {
   it('lists every filename and every previous filename once, in first-seen order', () => {
-    expect(filesFromRest(openedPull.githubId, { head, base }, restFiles.files)).toEqual({
+    expect(
+      filesFromRest(openedPull.githubId, { head, base }, restFiles.files, unknownHead),
+    ).toEqual({
       pullRequestId: openedPull.githubId,
       head,
       base,
       paths: ['apps/uw-app/board.tsx', 'apps/uw-app/board/view.tsx', 'apps/uw-app/view.tsx'],
       problem: null,
+      ...unknownHead,
     });
   });
 
   it('records too many files as a problem with no paths', () => {
-    expect(filesFromRest(openedPull.githubId, { head, base }, 'too_many_files')).toEqual({
+    expect(
+      filesFromRest(openedPull.githubId, { head, base }, 'too_many_files', unknownHead),
+    ).toEqual({
       pullRequestId: openedPull.githubId,
       head,
       base,
       paths: null,
       problem: 'too_many_files',
+      ...unknownHead,
     });
   });
 
   it('records a file entry of the wrong shape as a problem with no paths', () => {
-    expect(filesFromRest(openedPull.githubId, { head, base }, [{ status: 'added' }])).toEqual({
+    expect(
+      filesFromRest(openedPull.githubId, { head, base }, [{ status: 'added' }], unknownHead),
+    ).toEqual({
       pullRequestId: openedPull.githubId,
       head,
       base,
       paths: null,
       problem: 'malformed_files',
+      ...unknownHead,
     });
   });
 });

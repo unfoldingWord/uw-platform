@@ -116,7 +116,7 @@ async function gateFacts(world: GateWorld): Promise<void> {
   const facts = factsOf(document);
   expect(facts).toMatchObject({
     'Declared tier': 'standard',
-    Closes: '#12',
+    Closes: 'None',
     'Review providers': 'anthropic',
     'You approve head': world.item.expectedHead ?? '',
   });
@@ -131,7 +131,7 @@ async function gateFacts(world: GateWorld): Promise<void> {
 async function approveFollowsShipRule(world: GateWorld): Promise<void> {
   const refused = buttons(await documentOf(world, world.kimEmail, deepLink(world)));
   expect(refused[0]?.[0]).toBe('Approve');
-  expect(refused[0]?.[1]).toBe('Checks not green, No reviewer approval');
+  expect(refused[0]?.[1]).toBe('No reviewer approval, Required check never ran');
   await greenChecks(world.db);
   await approvedWithFindings(world.db);
   const ready = buttons(await documentOf(world, world.kimEmail, deepLink(world)));

@@ -80,6 +80,15 @@ export const checkRunSchema = z.object({
 export const fileSchema = z.object({
   filename: name,
   previous_filename: name.optional(),
+  status: text.optional(),
+  patch: text.optional(),
+  sha: z.string().nullable().optional(),
+});
+
+export const compareCommitSchema = z.object({
+  sha: z.string(),
+  commit: z.object({ message: text }),
+  parents: z.array(z.object({ sha: z.string() })),
 });
 
 const withRepository = { action: z.string().optional(), repository: repositorySchema };

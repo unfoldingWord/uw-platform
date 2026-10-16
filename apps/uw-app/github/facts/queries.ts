@@ -81,7 +81,7 @@ export async function pullRequestChanges(
     title: pull.title,
     open: pull.state === 'open',
     requestedReviewers: [...pull.requestedReviewers],
-    filesKnown: pull.filesHead === pull.headSha && pull.filesBase === pull.baseSha,
+    filesKnown: comparisonOf(pull) !== null,
   }));
 }
 

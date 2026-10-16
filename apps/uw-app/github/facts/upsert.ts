@@ -1,12 +1,11 @@
-import { and, asc, eq, inArray, or, sql, type SQL } from 'drizzle-orm';
+import { asc, eq, inArray, or, sql, type SQL } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import { advisoryLock, githubRepoKey } from '@uw/db/advisory-locks';
-import type { Database, Executor, Transaction } from '@uw/db/client';
+import type { Database, Transaction } from '@uw/db/client';
 import { ghCheckRuns, ghIssues, ghMilestones, ghPrs, ghRepos, ghReviews } from '@uw/db/schema';
 import type {
   CheckRunRecord,
   FactBatch,
-  FilesRecord,
   IssueChange,
   IssueRecord,
   MilestoneRecord,
@@ -14,6 +13,7 @@ import type {
   RepoRecord,
   ReviewRecord,
 } from './records.ts';
+import { recordAllFiles } from './heads.ts';
 import { pullRequestChanges, type PullRequestChange } from './queries.ts';
 
 export type RepairCounts = {
@@ -137,6 +137,7 @@ const pullColumns = {
   requestedReviewers: ghPrs.requestedReviewers,
   declaration: ghPrs.declaration,
   declarationProblem: ghPrs.declarationProblem,
+  closes: ghPrs.closes,
   githubUpdatedAt: ghPrs.githubUpdatedAt,
 };
 const checkColumns = {
@@ -257,6 +258,9 @@ async function upsertPulls(tx: Transaction, pulls: readonly PullRequestRecord[],
         filesHead: sameHeadOr('files_head'),
         filesBase: sameHeadOr('files_base'),
         filesProblem: sameHeadOr('files_problem'),
+        behindBy: sameHeadOr('behind_by'),
+        patchId: sameHeadOr('patch_id'),
+        headCommits: sameHeadOr('head_commits'),
       },
       setWhere: both(sql.raw(`(${pullMovesForward})`), differs('gh_prs', pullColumns)),
     })
@@ -390,32 +394,6 @@ async function storedIssues(
   }));
 }
 
-async function recordFilesIn(db: Executor, files: FilesRecord): Promise<boolean> {
-  const at = and(
-    eq(ghPrs.githubId, files.pullRequestId),
-    eq(ghPrs.headSha, files.head),
-    eq(ghPrs.baseSha, files.base),
-  );
-  const rows = await db
-    .update(ghPrs)
-    .set({
-      files: files.paths,
-      filesHead: files.head,
-      filesBase: files.base,
-      filesProblem: files.problem,
-    })
-    .where(at)
-    .returning({ githubId: ghPrs.githubId });
-  return rows.length > 0;
-}
-
-async function recordAllFiles(tx: Transaction, files: readonly FilesRecord[]) {
-  let landed = 0;
-  const ordered = [...files].sort((a, b) => a.pullRequestId - b.pullRequestId);
-  for (const record of ordered) if (await recordFilesIn(tx, record)) landed += 1;
-  return landed;
-}
-
 async function writeRecords(
   tx: Transaction,
   batch: FactBatch,
@@ -454,10 +432,6 @@ export function upsertFacts(db: Database, batch: FactBatch, freshAt: Date): Prom
       pullIds.length === 0 ? [] : await pullRequestChanges(tx, inArray(ghPrs.githubId, pullIds));
     return { repaired, issues, pullRequests };
   });
-}
-
-export function recordFiles(db: Database, files: FilesRecord): Promise<boolean> {
-  return recordFilesIn(db, files);
 }
 
 export type SweepRecord = {

@@ -1,6 +1,7 @@
 import type { z } from 'zod';
 import { checkConclusionSchema, repositorySchema as repositoryName } from '@uw/contracts';
 import {
+  closingReferences,
   fullSha,
   parseDeclaration,
   parseReviewFindings,
@@ -28,6 +29,7 @@ import {
   type FactBatch,
   type FilesRecord,
   type GithubCheckStatus,
+  type HeadFacts,
   type IssueRecord,
   type MilestoneRecord,
   type PullRequestRecord,
@@ -117,14 +119,14 @@ function requestedOf(pull: Pull): readonly string[] {
   return [...new Set(logins)].slice(0, REQUESTED_LIMIT);
 }
 
-function pullOf(repoId: number, pull: Pull): PullRequestRecord | null {
+function pullOf(repo: RepoRecord, pull: Pull): PullRequestRecord | null {
   const headSha = fullSha(pull.head.sha);
   const baseSha = fullSha(pull.base.sha);
   if (headSha === null || baseSha === null) return null;
   const merged = pull.merged === true || Boolean(pull.merged_at);
   return {
     githubId: pull.id,
-    repoId,
+    repoId: repo.githubId,
     number: pull.number,
     title: pull.title,
     state: merged ? 'merged' : pull.state,
@@ -137,6 +139,7 @@ function pullOf(repoId: number, pull: Pull): PullRequestRecord | null {
     milestoneId: pull.milestone?.id ?? null,
     requestedReviewers: requestedOf(pull),
     ...declarationOf(pull.body),
+    closes: [...closingReferences(pull.body ?? null, repo.fullName)],
     githubUpdatedAt: pull.updated_at,
   };
 }
@@ -195,7 +198,7 @@ function eachParsed<T>(schema: z.ZodType<T>, values: readonly unknown[]): readon
 }
 
 function pullBatch(repo: RepoRecord, pull: Pull): FactBatch | null {
-  const record = pullOf(repo.githubId, pull);
+  const record = pullOf(repo, pull);
   if (record === null) return null;
   return {
     ...emptyBatch,
@@ -271,19 +274,19 @@ export function filesFromRest(
   pullRequestId: number,
   compared: { readonly head: string; readonly base: string },
   files: readonly unknown[] | 'too_many_files',
+  atHead: HeadFacts,
 ): FilesRecord {
   const { head, base } = compared;
-  if (files === 'too_many_files') return { pullRequestId, head, base, paths: null, problem: files };
+  const at = { pullRequestId, head, base, ...atHead };
+  if (files === 'too_many_files') return { ...at, paths: null, problem: files };
   const parsed = fileSchema.array().safeParse(files);
-  if (!parsed.success) {
-    return { pullRequestId, head, base, paths: null, problem: 'malformed_files' };
-  }
+  if (!parsed.success) return { ...at, paths: null, problem: 'malformed_files' };
   const paths = parsed.data.flatMap((file) =>
     file.previous_filename === undefined
       ? [file.filename]
       : [file.filename, file.previous_filename],
   );
-  return { pullRequestId, head, base, paths: [...new Set(paths)], problem: null };
+  return { ...at, paths: [...new Set(paths)], problem: null };
 }
 
 export function reviewsFromRest(
