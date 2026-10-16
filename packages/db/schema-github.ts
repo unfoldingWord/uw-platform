@@ -30,6 +30,7 @@ const githubReviewStates = ['approved', 'changes_requested', 'commented', 'dismi
 const readModel = { classification: 'internal', offlineEligibility: 'cache_readonly' } as const;
 const githubId = (name: string) => bigint(name, { mode: 'number' });
 const emptyText = sql`'{}'::text[]`;
+const emptyIntegers = sql`'{}'::integer[]`;
 
 export const ghRepos = declareTable(
   'gh_repos',
@@ -85,12 +86,25 @@ export const ghIssues = declareTable(
     githubUpdatedAt: instant('github_updated_at').notNull(),
     xrefClaimedAt: instant('xref_claimed_at'),
     xrefCommentId: githubId('xref_comment_id'),
+    parentIssueId: githubId('parent_issue_id'),
+    parentPosition: integer('parent_position'),
+    subIssues: integer('sub_issues').notNull().default(0),
+    doneWhen: text('done_when').array().notNull().default(emptyText),
+    blockedBy: integer('blocked_by').array().notNull().default(emptyIntegers),
     freshAt: instant('fresh_at').notNull(),
   },
   readModel,
   (t) => [
     unique('gh_issues_repo_number').on(t.repoId, t.number),
     check('gh_issues_state_known', oneOf(t.state, githubIssueStates)),
+    check(
+      'gh_issues_parent_with_place',
+      sql`(${t.parentIssueId} IS NULL) = (${t.parentPosition} IS NULL)`,
+    ),
+    check('gh_issues_sub_issues_counted', sql`${t.subIssues} >= 0`),
+    check('gh_issues_done_when_bounded', sql`cardinality(${t.doneWhen}) <= 20`),
+    check('gh_issues_blocked_by_bounded', sql`cardinality(${t.blockedBy}) <= 50`),
+    index('gh_issues_parent').on(t.parentIssueId, t.parentPosition),
   ],
 );
 
