@@ -124,6 +124,7 @@ export type LoanInput = {
   readonly harnessId: string;
   readonly maxTier: 'low' | 'standard';
   readonly persona?: string;
+  readonly expiresAt?: Date;
 };
 
 export async function simLendMerge(
@@ -137,7 +138,7 @@ export async function simLendMerge(
     persona: `agent:${persona}`,
     capability: 'merge',
     maxTier: input.maxTier,
-    expiresAt: null,
+    expiresAt: input.expiresAt ?? null,
     supersedes: null,
   });
   const delegation = accepted(granted, 'the merge delegation');

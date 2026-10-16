@@ -4,6 +4,7 @@ import { revokeSeededGrant } from '@uw/db/test-seed';
 import { software } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createSimHarness, simCaller, simSystem } from '../fixtures.ts';
+import { kernelThatLosesTheExit } from '../lost-exit.ts';
 import {
   approvedBy,
   greenFacts,
@@ -28,7 +29,10 @@ type Scene = {
 
 const reviews = [approvedBy('uw-reviewer[bot]', 'deepinfra', standardChange.head, 9300000001)];
 
-async function decided(work: (scene: Scene) => Promise<void>): Promise<void> {
+async function decided(
+  work: (scene: Scene) => Promise<void>,
+  expiresInMs: number | null = null,
+): Promise<void> {
   const world = await createWorld();
   try {
     const { harness, admin } = await createSimHarness(world, software);
@@ -42,7 +46,13 @@ async function decided(work: (scene: Scene) => Promise<void>): Promise<void> {
     world.adapters.githubFacts.given(
       greenFacts(world, { itemId: item.itemId, head: standardChange.head, reviews }),
     );
-    const loan = await simLendMerge(world, admin, { harnessId: harness.id, maxTier: 'standard' });
+    const now = world.adapters.clock.now().getTime();
+    const expiry = expiresInMs === null ? {} : { expiresAt: new Date(now + expiresInMs) };
+    const loan = await simLendMerge(world, admin, {
+      harnessId: harness.id,
+      maxTier: 'standard',
+      ...expiry,
+    });
     const caller = simCaller(world, loan.agent);
     await world.kernel.items.claim(caller, {
       itemId: item.itemId,
@@ -79,7 +89,7 @@ function exitedNothingLapsed(scene: Scene) {
   return runExits(scene).then(async (outcome) => {
     expect(outcome).toEqual({
       status: 'accepted',
-      value: { exited: [{ itemId: scene.item.itemId, advanced: false }] },
+      value: { exited: [{ itemId: scene.item.itemId, advanced: false }], failed: [] },
     });
     expect(scene.world.adapters.connectors.calls()).toEqual([]);
     expect(await lastEvent(scene)).toMatchObject({
@@ -92,7 +102,7 @@ function exitedNothingLapsed(scene: Scene) {
 async function mergesNamingTheGrantor(scene: Scene): Promise<void> {
   expect(await runExits(scene)).toEqual({
     status: 'accepted',
-    value: { exited: [{ itemId: scene.item.itemId, advanced: true }] },
+    value: { exited: [{ itemId: scene.item.itemId, advanced: true }], failed: [] },
   });
   const [call, ...more] = scene.world.adapters.connectors.calls();
   expect(more).toEqual([]);
@@ -103,12 +113,15 @@ async function mergesNamingTheGrantor(scene: Scene): Promise<void> {
   });
   const after = await names(scene);
   const merged = after.indexOf('connector_succeeded');
-  expect(after.slice(merged, merged + 3)).toEqual([
+  expect(after.slice(merged - 1, merged + 3)).toEqual([
+    'delegated_exit_claimed',
     'connector_succeeded',
     'delegated_merge',
     'stage_advanced',
   ]);
   const log = await itemLog(scene.world, scene.harnessId, scene.item.itemId);
+  const exitActors = log.events.slice(merged - 1, merged + 3).map((event) => event.actor);
+  expect(exitActors).toEqual(Array.from({ length: 4 }, () => simSystem().identity));
   expect(log.events.find((event) => event.name === 'delegated_merge')?.evidence).toMatchObject({
     delegationId: scene.loan.delegationId,
     personId: scene.admin.personId,
@@ -132,7 +145,10 @@ async function onlyTheSystem(scene: Scene): Promise<void> {
 
 async function secondRunExitsNothing(scene: Scene): Promise<void> {
   await runExits(scene);
-  expect(await runExits(scene)).toEqual({ status: 'accepted', value: { exited: [] } });
+  expect(await runExits(scene)).toEqual({
+    status: 'accepted',
+    value: { exited: [], failed: [] },
+  });
   expect(scene.world.adapters.connectors.calls()).toHaveLength(1);
 }
 
@@ -167,8 +183,52 @@ async function movedHeadRefused(scene: Scene): Promise<void> {
 
 async function pastFifteenMinutes(scene: Scene): Promise<void> {
   scene.world.adapters.clock.advance(16 * 60_000);
-  expect(await runExits(scene)).toEqual({ status: 'accepted', value: { exited: [] } });
+  expect(await runExits(scene)).toEqual({
+    status: 'accepted',
+    value: { exited: [], failed: [] },
+  });
   expect(scene.world.adapters.connectors.calls()).toEqual([]);
+}
+
+const outcomeNames: ReadonlySet<string> = new Set(['connector_succeeded', 'connector_refused']);
+
+async function overlappingRunsMergeOnce(scene: Scene): Promise<void> {
+  const [first, second] = await Promise.all([runExits(scene), runExits(scene)]);
+  const exited = [first, second].flatMap((run) =>
+    run.status === 'accepted' ? run.value.exited : [],
+  );
+  expect(exited).toEqual([{ itemId: scene.item.itemId, advanced: true }]);
+  expect(scene.world.adapters.connectors.calls()).toHaveLength(1);
+  const after = await names(scene);
+  expect(after.filter((name) => outcomeNames.has(name))).toEqual(['connector_succeeded']);
+  expect(after.filter((name) => name === 'delegated_exit_claimed')).toHaveLength(1);
+}
+
+async function expiredStopsTheMerge(scene: Scene): Promise<void> {
+  scene.world.adapters.clock.advance(6 * 60_000);
+  await exitedNothingLapsed(scene);
+}
+
+async function claimedIsRecovered(scene: Scene): Promise<void> {
+  const losing = kernelThatLosesTheExit(scene.world, { effectHappened: true });
+  const lost = await losing.gates.exitDelegated(simCaller(scene.world, simSystem()), {
+    limit: 20,
+  });
+  expect(lost).toMatchObject({ value: { exited: [], failed: [{ itemId: scene.item.itemId }] } });
+  expect(await runExits(scene)).toEqual({
+    status: 'accepted',
+    value: { exited: [], failed: [] },
+  });
+  scene.world.adapters.clock.advance(16 * 60_000);
+  const recovered = await scene.world.kernel.gates.recoverConnectors(
+    simCaller(scene.world, scene.admin),
+    { harnessId: scene.harnessId },
+  );
+  expect(recovered).toMatchObject({
+    value: { items: [{ itemId: scene.item.itemId, outcome: 'succeeded' }] },
+  });
+  expect(await names(scene)).toContain('delegated_merge');
+  expect(scene.world.adapters.connectors.calls()).toHaveLength(1);
 }
 
 describe('MD-3 the minute job merges a delegated decision after running the ship rule again', () => {
@@ -185,4 +245,10 @@ describe('MD-3 the minute job merges a delegated decision after running the ship
     decided(movedHeadRefused));
   it('MD-3 past fifteen minutes the job leaves the decision to a person', () =>
     decided(pastFifteenMinutes));
+  it('MD-3 two overlapping runs take one decision to the connector once, with one outcome', () =>
+    decided(overlappingRunsMergeOnce));
+  it('MD-3 a delegation that expired after the decision stops the merge as a lapsed delegation', () =>
+    decided(expiredStopsTheMerge, 5 * 60_000));
+  it('MD-3 a claimed decision whose exit was lost is left to a person, whose recovery records the merge', () =>
+    decided(claimedIsRecovered));
 });
