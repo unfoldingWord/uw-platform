@@ -132,10 +132,18 @@ function withoutPersonSurfaceCalls(file: string, text: string): string {
   return personSurfaceCalls.reduce((stripped, pattern) => stripped.replaceAll(pattern, '('), text);
 }
 
+const delegatedExitRoot = 'apps/uw-app/cron/delegated-exits.ts';
+const delegatedExitCall = /\bkernel\s*\.\s*gates\s*\.\s*exitDelegated\s*\(/g;
+
+function withoutDelegatedExitCall(file: string, text: string): string {
+  return file === delegatedExitRoot ? text.replaceAll(delegatedExitCall, '(') : text;
+}
+
 export function gateTouches(sources: SourceFiles, files: readonly string[]): string[] {
   return files
     .filter((file) => {
-      const text = withoutPersonSurfaceCalls(file, withoutModulePaths(sources.read(file)));
+      const stripped = withoutPersonSurfaceCalls(file, withoutModulePaths(sources.read(file)));
+      const text = withoutDelegatedExitCall(file, stripped);
       return gateReach.some((pattern) => pattern.test(text));
     })
     .sort();

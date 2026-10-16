@@ -34,9 +34,16 @@ export const gateKernel = '^apps/uw-app/commands/person/gate-kernel\\.ts$';
 export const gateGitHub = '^apps/uw-app/commands/person/gate-github\\.ts$';
 export const commandCapabilities = '^apps/uw-app/commands/capabilities\\.ts$';
 export const runHostDeps = '^apps/uw-app/runs/deps\\.ts$';
-export const readRoots = ['^apps/uw-app/queue/worker\\.ts$', gateKernel, gateGitHub, runHostDeps];
+export const delegatedExitJob = '^apps/uw-app/cron/delegated-exits\\.ts$';
+export const readRoots = [
+  '^apps/uw-app/queue/worker\\.ts$',
+  gateKernel,
+  gateGitHub,
+  runHostDeps,
+  delegatedExitJob,
+];
 export const appConfigRoots = [
-  '^apps/uw-app/(queue/worker|cron/github-sweep)\\.ts$',
+  '^apps/uw-app/(queue/worker|cron/github-sweep|cron/delegated-exits)\\.ts$',
   gateGitHub,
   runHostDeps,
 ];
