@@ -43,12 +43,12 @@ type Standing = {
 async function atDelegableExit(tx: StoreTransaction, itemId: string): Promise<AtExit | null> {
   const item = await tx.harnessItems.read.byId(itemId);
   if (item === null || item.delegationId === null) return null;
+  const delegation = await tx.delegations.read.byId(item.delegationId);
+  if (delegation?.capability !== 'merge') return null;
   const harness = await tx.harnesses.read.byId(item.harnessId);
   const stages = await tx.harnessStages.read.forHarness(item.harnessId);
   const stage = stages.find((entry) => entry.key === item.stageKey);
   if (harness === null || stage === undefined || !delegableExit(stage)) return null;
-  const delegation = await tx.delegations.read.byId(item.delegationId);
-  if (delegation?.capability !== 'merge') return null;
   return { item, harness, personId: delegation.personId };
 }
 
