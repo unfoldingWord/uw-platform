@@ -60,6 +60,16 @@ export function workPrompt(source: PromptSource): string {
   );
 }
 
+export function fixPrompt(source: PromptSource): string {
+  return [
+    ...framed(source),
+    '',
+    'A review of this item found the defects quoted above. Fix them on the branch you are given and change nothing else.',
+    "Keep the change within a quarter of the pull request's changed lines, in the files it already touches, plus tests and docs.",
+    'Do not change what the pull request declares. Commit your fix and do not push: the platform runs the repository declared checks and pushes when they pass.',
+  ].join('\n');
+}
+
 export function reviewPrompt(source: ReviewSource): string {
   return [
     ...framed(source),

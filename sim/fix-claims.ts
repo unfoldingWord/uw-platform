@@ -6,9 +6,9 @@ import { builderFrontmatter, seedPersona, value } from './runs.ts';
 import { greenFacts, shipBase, shipPullRequest, simSha } from './ship-fixtures.ts';
 import type { World } from './world.ts';
 
-const fixerPage = '00000000-0000-4000-8000-000000017001';
+export const fixerPage = '00000000-0000-4000-8000-000000017001';
 export const fixHead = simSha('f1ed');
-const roundText = 'The board drops its empty state.';
+export const roundText = 'The board drops its empty state.';
 
 export type FixWorld = ReviewWorld & { readonly fixer: Principal; readonly fixId: string };
 
