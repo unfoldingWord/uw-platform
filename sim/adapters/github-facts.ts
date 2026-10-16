@@ -67,7 +67,8 @@ export function createSimGitHubFacts(clock: Clock): SimGitHubFacts {
         return found === undefined ? [] : [structuredClone(found)];
       }),
     givenAuthor: (ref, author) => {
-      authors.set(keyOf(ref), { ref: { ...ref }, author });
+      const stored = known.get(keyOf(ref))?.ref ?? ref;
+      authors.set(keyOf(ref), { ref: { repo: stored.repo, number: ref.number }, author });
     },
   };
 }

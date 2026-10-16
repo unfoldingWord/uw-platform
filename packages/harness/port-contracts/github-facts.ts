@@ -100,6 +100,18 @@ function authorCases(open: () => Promise<GithubFactsSubject>): void {
     ]);
     expect(await subject.facts.authors([])).toEqual([]);
   });
+
+  it('OB-4 answers the repository as the read model holds it, whatever case the author was given in', async () => {
+    const subject = await open();
+    await subject.given(factsFor('unfoldingWord/uw-platform', 33, 'd'.repeat(40)));
+    await subject.givenAuthor({ repo: 'UNFOLDINGWORD/uw-platform', number: 33 }, 'renovate[bot]');
+    const authors = await subject.facts.authors([
+      { repo: 'unfoldingword/UW-PLATFORM', number: 33 },
+    ]);
+    expect(authors).toEqual([
+      { ref: { repo: 'unfoldingWord/uw-platform', number: 33 }, author: 'renovate[bot]' },
+    ]);
+  });
 }
 
 function epicOf(subIssues: readonly IssueFact[], number = 40): EpicFacts {
