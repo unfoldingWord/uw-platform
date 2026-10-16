@@ -104,6 +104,8 @@ describe('FL-4 the fix prompt carries the review comments as untrusted content',
     expect(scan.outside).not.toContain(injection);
     expect(scan.outside).not.toContain('The lease lapses');
     expect(scan.outside).toContain('do not push');
+    expect(scan.outside).toContain('markdown under docs/');
+    expect(scan.outside).toContain('Never touch AGENTS.md');
   });
 
   it('FL-4 a build run carries no comment, so its prompt is unchanged', () => {
