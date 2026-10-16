@@ -1,4 +1,4 @@
-import type { GateView, Harness, ItemState, Stage } from '@uw/contracts';
+import type { GateView, Harness, ItemState, ShadowComparison, Stage } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
 import { gateView } from '../gates/view.ts';
 import type { KernelOutcome } from '../outcome.ts';
@@ -10,6 +10,7 @@ import { planeList } from './plane-list.ts';
 import { planeTotals } from './plane.ts';
 import { personaView, type PersonaDashboard } from './persona.ts';
 import { playByPlay, type PlayInput } from './play.ts';
+import { shadowComparison } from './shadow.ts';
 import { harnessCursor, harnessCursors, readableHarnesses } from './readable.ts';
 import type {
   BoardInput,
@@ -49,6 +50,11 @@ export type ViewReads = {
     options?: ReadOptions,
   ): Promise<KernelOutcome<GateView>>;
   decideAbility(caller: Caller, gate: Gate, options?: ReadOptions): DecideAbility;
+  shadow(
+    caller: Caller,
+    input: { readonly harnessId: string },
+    options?: ReadOptions,
+  ): Promise<KernelOutcome<ShadowComparison>>;
   decided(
     caller: Caller,
     input: { readonly itemId: string },
@@ -104,6 +110,7 @@ export function createViewReads(ports: ViewPorts): ViewReads {
       return store.transaction((tx) => decidableGates(ports, tx, caller, at));
     },
     gate: (caller, input, options) => gateView(ports, caller, input, { at: instant(options) }),
+    shadow: (caller, input, options) => shadowComparison(ports, caller, input, instant(options)),
     decideAbility: (caller, gate, options) => decideAbility(caller.actor, gate, instant(options)),
     decided: (caller, { itemId }, options) =>
       store.transaction((tx) => gateDecided(ports, tx, caller, itemId, instant(options))),
