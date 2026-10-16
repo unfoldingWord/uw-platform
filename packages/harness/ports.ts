@@ -1,4 +1,5 @@
 import type {
+  ClosingRef,
   Connector,
   CostBasis,
   DeepLink,
@@ -8,6 +9,7 @@ import type {
   JdArea,
   LiveScreen,
   PullRequestDeclaration,
+  ReadFinding,
   ReviewVerdict,
   RunShape,
   ShipRuleInput,
@@ -54,13 +56,27 @@ export type ReviewFact = {
   readonly commit: string;
   readonly state: ReviewState;
   readonly provider: string | null;
-  readonly findings: readonly string[];
+  readonly findings: readonly ReadFinding[];
   readonly submittedAt: Date | null;
 };
 export type ChangedFiles = {
   readonly head: string;
   readonly base: string;
   readonly paths: readonly string[];
+};
+export type HeadCommit = {
+  readonly sha: string;
+  readonly merge: boolean;
+  readonly skipCi: boolean;
+  readonly closes: readonly ClosingRef[];
+};
+export type BaseComparison = {
+  readonly head: string;
+  readonly base: string;
+  readonly behindBy: number | null;
+  readonly patchId: string | null;
+  readonly commits: readonly HeadCommit[] | null;
+  readonly patchIds: Readonly<Record<string, string>>;
 };
 export type PullRequestFacts = {
   readonly ref: PullRequestRef;
@@ -76,6 +92,8 @@ export type PullRequestFacts = {
   readonly reviews: readonly ReviewFact[];
   readonly files: ChangedFiles | null;
   readonly declaration: PullRequestDeclaration | null;
+  readonly closes: readonly ClosingRef[];
+  readonly comparison: BaseComparison | null;
   readonly freshAt: Date;
 };
 export type DiffRange = { readonly base: string; readonly head: string };
