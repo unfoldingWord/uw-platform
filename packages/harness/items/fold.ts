@@ -44,10 +44,10 @@ function created(event: FoldableEvent): ItemState {
     gateStatus: 'working',
     gateTarget: null,
     branchState: 'none',
-    expectedHead: null,
+    expectedHead: evidence.expectedHead,
     riskTier: null,
     riskDomains: [],
-    pullRequest: null,
+    pullRequest: evidence.pullRequest,
     issue: evidence.issue,
     zulipTopic: null,
   };

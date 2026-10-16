@@ -38,6 +38,8 @@ export type NewItem = {
   readonly priority: number;
   readonly due: string | null;
   readonly issue: IssueRef | null;
+  readonly pullRequest?: NonNullable<ItemState['pullRequest']> | null;
+  readonly expectedHead?: string | null;
 };
 
 export type Recorded = {
@@ -126,27 +128,30 @@ async function assertIssueInHarnessRepository(
   }
 }
 
+function createdDraft(initial: NewItem): EventDraft {
+  const evidence = {
+    stage: initial.stageKey,
+    title: initial.title,
+    pageId: initial.pageId,
+    priority: initial.priority,
+    due: initial.due,
+    issue: initial.issue,
+  };
+  const pullRequest = initial.pullRequest ?? null;
+  const expectedHead = initial.expectedHead ?? null;
+  if (pullRequest === null || expectedHead === null) {
+    return draft('item_created', { ...evidence, pullRequest: null, expectedHead: null });
+  }
+  return draft('item_created', { ...evidence, pullRequest: { ...pullRequest }, expectedHead });
+}
+
 export async function createItem(
   tx: CreateTransaction,
   context: RecordContext,
   initial: NewItem,
 ): Promise<Recorded> {
   await assertIssueInHarnessRepository(tx, initial);
-  const event = stamp(
-    context,
-    initial.harnessId,
-    initial.itemId,
-    draft('item_created', {
-      stage: initial.stageKey,
-      title: initial.title,
-      pageId: initial.pageId,
-      priority: initial.priority,
-      due: initial.due,
-      issue: initial.issue,
-      pullRequest: null,
-      expectedHead: null,
-    }),
-  );
+  const event = stamp(context, initial.harnessId, initial.itemId, createdDraft(initial));
   const item = foldItem(null, event);
   await tx.harnessItems.write.insert(item, context.at);
   const events = await tx.harnessEvents.write.append([event]);

@@ -20,6 +20,7 @@ import {
   type AttachLearningInput,
   type NothingLearnedInput,
 } from './learning.ts';
+import { joinByReviewRequest, type Joined, type JoinInput } from './join.ts';
 import { reorder, type ReorderInput } from './reorder.ts';
 import { release, type ReleaseInput } from './release.ts';
 import { submit, type Submitted, type SubmitInput } from './submit.ts';
@@ -40,6 +41,7 @@ export type ItemCommands = {
   enqueue(caller: Caller, input: EnqueueInput): Promise<KernelOutcome<ItemState>>;
   importIssue(caller: Caller, input: ImportIssueInput): Promise<KernelOutcome<Imported>>;
   labelRemoved(caller: Caller, input: LabelRemovedInput): Promise<KernelOutcome<LabelRemoved>>;
+  join(caller: Caller, input: JoinInput): Promise<KernelOutcome<Joined>>;
   claim(caller: Caller, input: ClaimInput): Promise<KernelOutcome<Claimed>>;
   release(caller: Caller, input: ReleaseInput): Promise<KernelOutcome<ItemState>>;
   reorder(caller: Caller, input: ReorderInput): Promise<KernelOutcome<readonly ItemState[]>>;
@@ -57,6 +59,7 @@ export function createItemCommands(ports: ItemPorts): ItemCommands {
     enqueue: (caller, input) => enqueue(ports, caller, input),
     importIssue: (caller, input) => importIssue(ports, caller, input),
     labelRemoved: (caller, input) => labelRemoved(ports, caller, input),
+    join: (caller, input) => joinByReviewRequest(ports, caller, input),
     claim: (caller, input) => claim(ports, caller, input),
     release: (caller, input) => release(ports, caller, input),
     reorder: (caller, input) => reorder(ports, caller, input),

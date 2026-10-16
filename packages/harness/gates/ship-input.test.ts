@@ -6,7 +6,12 @@ import {
 } from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
 import type { CheckFact, PullRequestFacts, ReviewFact } from '../ports.ts';
-import { assembleShipInput, GITHUB_ACTIONS_APP, riskDerivedAtShip } from './ship-input.ts';
+import {
+  assembleShipInput,
+  GITHUB_ACTIONS_APP,
+  riskDerivedAtShip,
+  usableHead,
+} from './ship-input.ts';
 
 const at = new Date('2026-10-01T09:00:00.000Z');
 const later = new Date('2026-10-01T09:05:00.000Z');
@@ -327,5 +332,14 @@ describe('KN-17 the Ship-time derivation is the evidence of a risk_derived event
     expect(riskDerivedAtShip(sourceOf({ facts: null }))).toBeNull();
     expect(riskDerivedAtShip(sourceOf({ facts: { headRef: 'feature/x' } }))).toBeNull();
     expect(riskDerivedAtShip(sourceOf({ facts: { files: null } }))).toBeNull();
+  });
+});
+
+describe('GL-3 a joined item counts its head without a harness branch', () => {
+  it('reads the head of a joined pull request and still needs the branch once a harness branch exists', () => {
+    const joined = { ...item, branchState: 'none' as const };
+    const foreign = { ...facts, headRef: 'feature/login-form' };
+    expect(usableHead(foreign, joined, harness)).toBe(head);
+    expect(usableHead(foreign, item, harness)).toBeNull();
   });
 });
