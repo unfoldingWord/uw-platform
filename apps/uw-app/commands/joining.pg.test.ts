@@ -79,3 +79,32 @@ describe.skipIf(!testServer)(
       }));
   },
 );
+
+async function activatedWith(db: Database, extra: Record<string, unknown>) {
+  const harnessId = randomUUID();
+  const sent = await command(db, IAN, harnessId, 'activate_template', {
+    requestId: randomUUID(),
+    harnessKey: `bots-${harnessId.slice(0, 8)}`,
+    jdArea: '80-89',
+    template: 'check-only',
+    repository: `${repository}-${harnessId.slice(0, 8)}`,
+    ...extra,
+  });
+  const rows = await db.execute<{ bots: string[] }>(
+    sql`SELECT to_jsonb(bot_authors) AS bots FROM harnesses WHERE id = ${harnessId}`,
+  );
+  return { sent, bots: rows[0]?.bots ?? null };
+}
+
+describe.skipIf(!testServer)('OB-4 activate_template sets the bot authors', () => {
+  it('keeps the listed bot authors, defaults to dependabot and refuses a repeated login', () =>
+    withAppDatabase(async (db) => {
+      const listed = await activatedWith(db, { botAuthors: ['renovate[bot]'] });
+      expect(listed.sent.body).toMatchObject({ status: 'accepted' });
+      expect(listed.bots).toEqual(['renovate[bot]']);
+      expect((await activatedWith(db, {})).bots).toEqual(['dependabot[bot]']);
+      const repeated = await activatedWith(db, { botAuthors: ['a[bot]', 'A[bot]'] });
+      expect(repeated.sent.status).toBe(400);
+      expect(repeated.bots).toBeNull();
+    }));
+});

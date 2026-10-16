@@ -1,8 +1,9 @@
 import type { ItemState, Stage } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
 import { accepted, refused, type KernelOutcome } from '../outcome.ts';
-import type { RunRow, StoreTransaction } from '../ports.ts';
-import { harnessScene, stagePageLimit, type ScenePorts } from '../reads/scene.ts';
+import type { Ports, RunRow, StoreTransaction } from '../ports.ts';
+import { harnessScene, stagePageLimit } from '../reads/scene.ts';
+import { uncountedItems } from './bots.ts';
 import { basesOf, costOf, hostOf } from './costs.ts';
 import { epicBoard } from './epics.ts';
 import { byPosition } from './flow.ts';
@@ -42,7 +43,10 @@ function nextOf(items: readonly ItemState[]): string | null {
   return `${last.priority}.${last.itemId}`;
 }
 
-type Marks = { readonly reviewing: ReadonlySet<string> };
+type Marks = {
+  readonly reviewing: ReadonlySet<string>;
+  readonly uncounted: ReadonlySet<string>;
+};
 
 function columnOf(listed: Listed, runs: readonly RunRow[], marks: Marks): BoardColumn {
   const holder = (item: ItemState) =>
@@ -52,6 +56,7 @@ function columnOf(listed: Listed, runs: readonly RunRow[], marks: Marks): BoardC
     held: listed.held,
     cards: listed.items.map((item) => cardOf(item, runs, holder(item))),
     next: nextOf(listed.items),
+    uncounted: listed.items.filter((item) => marks.uncounted.has(item.itemId)).length,
   };
 }
 
@@ -62,7 +67,7 @@ function shownStages(stages: readonly Stage[], input: BoardInput): readonly Stag
 }
 
 export async function boardView(
-  ports: ScenePorts,
+  ports: Pick<Ports, 'grants' | 'githubFacts'>,
   tx: StoreTransaction,
   caller: Caller,
   input: BoardInput,
@@ -84,7 +89,10 @@ export async function boardView(
   }
   const items = listed.flatMap((column) => column.items);
   const runs = await tx.harnessRuns.read.forItems(items.map((item) => item.itemId));
-  const marks = { reviewing: await reviewingIds(tx, items) };
+  const marks = {
+    reviewing: await reviewingIds(tx, items),
+    uncounted: await uncountedItems(ports.githubFacts, [{ harness, items }]),
+  };
   const whole = input.stageKey === null && input.after === null;
   const extras = whole ? await epicBoard(tx, harness.id, stages, at) : { epics: [], notReady: [] };
   return accepted({

@@ -9,7 +9,7 @@ export const activateTemplateCommand = commandHandler({
   run: async ({ kernel, caller, harnessId, pages }, body: CommandBody<'activate_template'>) => {
     const template = templates.get(body.template);
     if (template === undefined) return { ok: false, reason: 'malformed_command' };
-    const { harnessKey, jdArea, repository, shadow, externalReviewerIdentities } = body;
+    const { harnessKey, jdArea, repository, shadow, externalReviewerIdentities, botAuthors } = body;
     const input = {
       harnessId,
       harnessKey,
@@ -18,6 +18,7 @@ export const activateTemplateCommand = commandHandler({
       repository,
       shadow,
       externalReviewerIdentities,
+      botAuthors,
       requiredChecks: body.requiredChecks,
       protectedPaths: body.protectedPaths,
     };

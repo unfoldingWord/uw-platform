@@ -63,6 +63,7 @@ export type PullRequestRecord = {
   readonly baseSha: string;
   readonly milestoneId: number | null;
   readonly requestedReviewers: readonly string[];
+  readonly authorLogin: string | null;
   readonly declaration: PullRequestDeclaration | null;
   readonly declarationProblem: string | null;
   readonly closes: readonly ClosingRef[];

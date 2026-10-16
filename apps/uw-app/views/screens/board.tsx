@@ -60,6 +60,13 @@ function EnqueueForm(props: { readonly harnessId: string }) {
   );
 }
 
+function itemsText(column: BoardColumn, botAuthors: readonly string[]): string {
+  if (column.next !== null) return '50 or more';
+  const counted = formatCount(column.cards.length - column.uncounted);
+  if (column.uncounted === 0) return counted;
+  return `${counted}, not counting ${formatCount(column.uncounted)} by ${botAuthors.join(', ')}`;
+}
+
 function ColumnView(props: {
   readonly view: Shown;
   readonly column: BoardColumn;
@@ -69,7 +76,7 @@ function ColumnView(props: {
   const { column, view } = props;
   const { stage } = column;
   const harnessId = view.harness.id;
-  const items = column.next === null ? formatCount(column.cards.length) : '50 or more';
+  const items = itemsText(column, view.harness.botAuthors);
   const facts = [
     { label: 'Items', value: items },
     { label: 'Agent pickup', value: pickupWords[stage.agentPickup] },

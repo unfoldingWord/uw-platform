@@ -127,6 +127,10 @@ function requestedOf(pull: Pull): readonly string[] {
   return [...new Set(logins)].slice(0, REQUESTED_LIMIT);
 }
 
+function peopleOf(pull: Pull): Pick<PullRequestRecord, 'requestedReviewers' | 'authorLogin'> {
+  return { requestedReviewers: requestedOf(pull), authorLogin: pull.user?.login ?? null };
+}
+
 function pullOf(repo: RepoRecord, pull: Pull): PullRequestRecord | null {
   const headSha = fullSha(pull.head.sha);
   const baseSha = fullSha(pull.base.sha);
@@ -145,7 +149,7 @@ function pullOf(repo: RepoRecord, pull: Pull): PullRequestRecord | null {
     baseRef: pull.base.ref,
     baseSha,
     milestoneId: pull.milestone?.id ?? null,
-    requestedReviewers: requestedOf(pull),
+    ...peopleOf(pull),
     ...declarationOf(pull.body),
     closes: [...closingReferences(pull.body ?? null, repo.fullName)],
     githubUpdatedAt: pull.updated_at,
