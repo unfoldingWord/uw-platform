@@ -264,7 +264,7 @@ async function shadowReview(
 function weighedReview(scene: RunScene, input: PostReviewInput): Weighed | null {
   const findings = weighedFindings(input.findings);
   if (findings === null) return null;
-  const verdict = postedVerdict(scene.persona.approveAt, input.verdict, findings);
+  const verdict = postedVerdict(scene.persona.approveAt, findings);
   return { ...input, verdict, findings };
 }
 

@@ -35,7 +35,8 @@ describe('RV-1 every finding carries a weight', () => {
   });
 
   it('posts approve for no findings, whatever the model said', () => {
-    expect(postedVerdict('no_real_or_plausible', 'request_changes', [])).toBe('approve');
+    expect(postedVerdict('no_real_or_plausible', [])).toBe('approve');
+    expect(postedVerdict('zero_findings', [])).toBe('approve');
   });
 
   it('counts a review round only for request_changes with a real or plausible finding', () => {
@@ -48,15 +49,13 @@ describe('RV-1 every finding carries a weight', () => {
 });
 
 describe('RV-3 the strictness preset decides what blocks', () => {
-  it('no_real_or_plausible requests changes on a real or plausible finding and keeps the model verdict otherwise', () => {
-    expect(postedVerdict('no_real_or_plausible', 'approve', [plausible])).toBe('request_changes');
-    expect(postedVerdict('no_real_or_plausible', 'approve', [theoretical])).toBe('approve');
-    expect(postedVerdict('no_real_or_plausible', 'request_changes', [theoretical])).toBe(
-      'request_changes',
-    );
+  it('no_real_or_plausible requests changes on a real or plausible finding and approves otherwise', () => {
+    expect(postedVerdict('no_real_or_plausible', [plausible])).toBe('request_changes');
+    expect(postedVerdict('no_real_or_plausible', [real, theoretical])).toBe('request_changes');
+    expect(postedVerdict('no_real_or_plausible', [theoretical])).toBe('approve');
   });
 
   it('zero_findings requests changes on any finding at all', () => {
-    expect(postedVerdict('zero_findings', 'approve', [theoretical])).toBe('request_changes');
+    expect(postedVerdict('zero_findings', [theoretical])).toBe('request_changes');
   });
 });

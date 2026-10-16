@@ -65,6 +65,16 @@ async function theoreticalNeverCounts(scene: ReviewWorld): Promise<void> {
   const names = (await itemEvents(scene, scene.itemId)).map((event) => event.name);
   expect(names.filter((name) => name === 'run_completed')).toHaveLength(3);
   expect(names).not.toContain('handed_to_person');
+  expect(postedVerdicts(scene)).toEqual(['approve', 'approve', 'approve']);
+}
+
+async function theoreticalBlocksUnderZero(scene: ReviewWorld): Promise<void> {
+  value(await post(scene, scene.runId, review('approve', [theoretical])));
+  value(await post(scene, null, review('approve', [theoretical])));
+  value(await post(scene, null, review('approve', [theoretical])));
+  const names = (await itemEvents(scene, scene.itemId)).map((event) => event.name);
+  expect(postedVerdicts(scene)).toEqual(['request_changes', 'request_changes', 'request_changes']);
+  expect(names).not.toContain('handed_to_person');
 }
 
 describe('RV-1 finding weight', () => {
@@ -74,8 +84,11 @@ describe('RV-1 finding weight', () => {
   it('RV-1 posts each finding with its weight and records the findings on the run', () =>
     inWorld('no_real_or_plausible', postsWeighted));
 
-  it('RV-1 records theoretical-only verdicts and never counts them as review rounds', () =>
+  it('RV-1 under the default preset a theoretical-only verdict posts approve and never counts as a review round', () =>
     inWorld('no_real_or_plausible', theoreticalNeverCounts));
+
+  it('RV-1 under zero_findings a theoretical-only verdict posts request_changes and still never counts as a round', () =>
+    inWorld('zero_findings', theoreticalBlocksUnderZero));
 
   it('RV-1 records no findings as a success: approve is posted', () =>
     inWorld('no_real_or_plausible', async (scene) => {
