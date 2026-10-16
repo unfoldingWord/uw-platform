@@ -99,6 +99,7 @@ const screens: ReadonlyMap<string, LiveScreen> = new Map<string, LiveScreen>([
   ['stage_advanced', 'item'],
   ['handed_to_person', 'item'],
   ['delegated_merge', 'item'],
+  ['silence_alarm', 'home'],
 ]);
 
 async function presentOn(hub: Hub, draft: Draft, personId: string): Promise<WakeRecipient> {

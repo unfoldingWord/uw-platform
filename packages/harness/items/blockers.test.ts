@@ -38,6 +38,7 @@ function item(n: number, stageKey: string, extra: Partial<ItemState> = {}): Item
     zulipTopic: null,
     epic: null,
     blockedBy: [],
+    heldSince: null,
     ...extra,
   };
 }

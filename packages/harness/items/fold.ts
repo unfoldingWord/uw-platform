@@ -52,6 +52,7 @@ function created(event: FoldableEvent): ItemState {
     zulipTopic: null,
     epic: evidence.epic,
     blockedBy: evidence.blockedBy,
+    heldSince: null,
   };
 }
 
@@ -197,6 +198,8 @@ export const unchangedNames: ReadonlySet<EventName> = new Set<EventName>([
   'done_when_missing',
   'finding_refuted',
   'delegated_exit_claimed',
+  'silence_alarm',
+  'template_changed',
   'premise_held',
   'label_removed',
   'run_started',

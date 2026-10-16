@@ -1,4 +1,5 @@
 import {
+  defaultBotAuthors,
   harnessSchema,
   repositorySchema,
   type Harness,
@@ -67,6 +68,7 @@ function harnessOf(input: ActivateInput, external: string[]): Harness {
     paused: false,
     shadow: input.shadow ?? false,
     externalReviewerIdentities: external,
+    botAuthors: [...defaultBotAuthors],
     frozen: false,
     freezeAllow: [],
     requiredChecks: [...input.requiredChecks],
