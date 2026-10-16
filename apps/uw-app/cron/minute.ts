@@ -11,6 +11,7 @@ import { notifierOf } from '../ports/notifier.ts';
 import { spendOnlyEngine } from '../ports/model-engine.ts';
 import { runsOf } from '../ports/runs.ts';
 import { unitHub } from '../unit-hub.ts';
+import { runDelegatedExits } from './delegated-exits.ts';
 import { cronLogger, type CronDeps, type CronJob } from './job.ts';
 
 const SWEEP_LIMIT = 200;
@@ -116,14 +117,11 @@ async function minuteWith(
 ): Promise<void> {
   const unit = unitHub(hubOf(env, logger));
   const modelEngine = spendOnlyEngine(gatewaySpend(deps.engines, deps.now));
+  const notifier = notifierOf(env, database, deps.sink, deps.fetch);
   const kernel = platformKernel(
     database,
     { now: deps.now },
-    hubWiring(unit.hub, {
-      modelEngine,
-      runs: runsOf(env),
-      notifier: notifierOf(env, database, deps.sink, deps.fetch),
-    }),
+    hubWiring(unit.hub, { modelEngine, runs: runsOf(env), notifier }),
   );
   const caller: Caller = { actor: systemPrincipal(), traceId: deps.newId(), requestId: null };
   const minute = { kernel, caller, deps, logger };
@@ -132,6 +130,14 @@ async function minuteWith(
     await guarded(minute, 'expiry', expire);
     await guarded(minute, 'breaker', checkBreaker);
     await guarded(minute, 'beat', beat);
+    await runDelegatedExits({
+      database,
+      env,
+      clock: { now: deps.now },
+      live: { hub: unit.hub, runs: runsOf(env), notifier },
+      caller,
+      logger,
+    });
   } finally {
     await unit.flush();
   }

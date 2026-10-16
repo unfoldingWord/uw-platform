@@ -244,6 +244,15 @@ async function sweepsLapsedLease(rig: Rig): Promise<void> {
   expect(outcomeOf(rig, 'sweep')).toMatchObject({ outcome: 'leases_swept', expired: 0 });
 }
 
+async function delegatedExitsWithoutApp(rig: Rig): Promise<void> {
+  await minuteJob(
+    rig.env,
+    depsOf(rig, () => Promise.resolve(costReply(0))),
+  );
+  expect(outcomeOf(rig, 'beat')).toMatchObject({ outcome: 'beat_finished' });
+  expect(outcomeOf(rig, 'delegated_exits')).toMatchObject({ outcome: 'github_not_configured' });
+}
+
 async function lapsesExpiredDelegation(rig: Rig): Promise<void> {
   const admin = await ian(rig.db);
   const kernel = kernelOn(rig.db, { now: () => new Date() });
@@ -284,6 +293,9 @@ describe.skipIf(!testServer)('the minute cron', () => {
   it('the lease sweep expires a lapsed lease once a minute', () => withRig(sweepsLapsedLease));
   it('the minute cron records the lapse of a delegation once it expires', () =>
     withRig(lapsesExpiredDelegation));
+
+  it('MD-3 after the beat the minute cron runs the delegated exits, and without the GitHub App it says so', () =>
+    withRig(delegatedExitsWithoutApp));
 
   it('a beat start without the Workflow binding fails start_failed and releases the item', () =>
     withRig(startFailsUnbound));
