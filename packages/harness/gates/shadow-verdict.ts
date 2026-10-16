@@ -41,7 +41,7 @@ function recordedReviews(event: HarnessEvent): readonly ReviewFact[] {
       commit: recorded.head,
       state: recorded.verdict === 'approve' ? 'approved' : 'changes_requested',
       provider: recorded.provider,
-      findings: [...recorded.findings],
+      findings: recorded.findings.map((finding) => finding.text),
       submittedAt: new Date(event.at),
     },
   ];

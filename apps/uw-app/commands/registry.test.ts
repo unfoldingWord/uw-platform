@@ -37,6 +37,9 @@ const actions = {
   activate_persona: 'admin',
   record_measurement: 'write',
   set_shadow: 'admin',
+  set_freeze: 'admin',
+  decide_gates: 'admin',
+  refute_finding: 'write',
 } as const;
 
 describe('WB-1 the command registry', () => {

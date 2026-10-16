@@ -383,14 +383,17 @@ describe("WB-6 the gate view lists each Reviewer's latest review on the head wit
         commit: head,
         state: 'changes_requested',
         provider: 'anthropic',
-        findings: ['The grant is read after the append', 'A title names the wrong requirement'],
+        findings: [
+          { text: 'The grant is read after the append', weight: null },
+          { text: 'A title names the wrong requirement', weight: null },
+        ],
       },
       {
         reviewer: 'uw-reviewer-codex',
         commit: head,
         state: 'approved',
         provider: 'openai',
-        findings: ['A nit in the copy'],
+        findings: [{ text: 'A nit in the copy', weight: null }],
       },
     ]);
   });
