@@ -50,7 +50,7 @@ describe('GL-4 shadow is set at activation and lifted by an admin', () => {
       const lifted = await world.kernel.stages.liftShadow(simCaller(world, admin), {
         harnessId: harness.id,
       });
-      expect(lifted.status === 'accepted' && lifted.value.harness.shadow).toBe(false);
+      expect(lifted).toMatchObject({ status: 'accepted', value: { harness: { shadow: false } } });
       const again = await world.kernel.stages.liftShadow(simCaller(world, admin), {
         harnessId: harness.id,
       });

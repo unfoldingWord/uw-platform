@@ -228,10 +228,19 @@ export async function seedPlatformPage(db: AnyExecutor, seed: SeedPlatformPage):
   const [held] = await db
     .select({ id: pages.id, frontmatter: pages.frontmatter })
     .from(pages)
-    .where(and(eq(pages.jdArea, seed.jdArea), eq(pages.slug, platformPageSlug)));
+    .where(
+      and(
+        eq(pages.jdArea, seed.jdArea),
+        eq(pages.slug, platformPageSlug),
+        eq(pages.type, 'platform'),
+      ),
+    );
   const listed = platformFrontmatterSchema.safeParse(held?.frontmatter);
   const before = listed.success ? listed.data.dispatch_allowed : [];
-  const frontmatter = { dispatch_allowed: [...new Set([...before, ...seed.repositories])] };
+  const folded = new Map(
+    [...before, ...seed.repositories].map((name) => [name.toLowerCase(), name]),
+  );
+  const frontmatter = { dispatch_allowed: [...folded.values()] };
   if (held !== undefined) {
     await db.update(pages).set({ frontmatter }).where(eq(pages.id, held.id));
     return;
