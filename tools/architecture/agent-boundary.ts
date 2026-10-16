@@ -124,10 +124,10 @@ function withoutModulePaths(text: string): string {
 }
 
 const shadowFollow = 'apps/uw-app/github/join.ts';
-const shadowRecordCall = /\bkernel\s*\??\.\s*gates\s*\??\.\s*recordShadowVerdicts\s*\(/g;
+const shadowRecordCall = /\bkernel\s*\??\.\s*gates\s*\??\.\s*recordShadowVerdicts\s*\(/;
 
 function withoutPersonSurfaceCalls(file: string, text: string): string {
-  if (file === shadowFollow) return text.replaceAll(shadowRecordCall, '(');
+  if (file === shadowFollow) return text.replace(shadowRecordCall, '(');
   if (!file.startsWith(personSurface)) return text;
   return personSurfaceCalls.reduce((stripped, pattern) => stripped.replaceAll(pattern, '('), text);
 }

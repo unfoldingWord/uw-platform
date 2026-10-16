@@ -324,6 +324,14 @@ describe('AB-7 the pull-request follow may record a shadow verdict and nothing e
     const text = `${real.read(file)}\nexport const s = (kernel) => kernel.gates.decide;\n`;
     expect(touchedWith({ [file]: text })).toEqual([file]);
   });
+
+  it('holds exactly one recordShadowVerdicts call in the follow, and flags a second', () => {
+    const file = 'apps/uw-app/github/join.ts';
+    const call = /\bkernel\s*\??\.\s*gates\s*\??\.\s*recordShadowVerdicts\s*\(/gu;
+    expect(real.read(file).match(call)).toHaveLength(1);
+    const text = `${real.read(file)}\nexport const t = (kernel) => kernel.gates.recordShadowVerdicts(null, null);\n`;
+    expect(touchedWith({ [file]: text })).toEqual([file]);
+  });
 });
 
 describe('AB-5 write_page cannot reach a harness_stages row', () => {
