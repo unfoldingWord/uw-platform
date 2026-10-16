@@ -19,10 +19,16 @@ const thirdChange: ShipChange = {
   head: simSha('f00d'),
 };
 
+const fourthChange: ShipChange = {
+  ...standardChange,
+  pullRequest: { repo: 'unfoldingWord/uw-platform', number: 45 },
+  head: simSha('fade'),
+};
+
 export const scenario = defineScenario({
   id: 'GD-1',
   title:
-    'a person approves two gates in one decide_gates and both merge; a batch with one unapproved item records nothing',
+    'a person approves two gates in one decide_gates and both merge; a batch of an approved and an unapproved item is refused whole, names the unapproved item and merges neither',
   run: async (world) => {
     const { harness, admin } = await createSimHarness(world, software);
     const parked = async (title: string, change: ShipChange, approved: boolean) => {
@@ -51,9 +57,11 @@ export const scenario = defineScenario({
     const second = await parked('Show the flow', secondChange, true);
     const advanced = value(await batch([first, second])).decided.map((one) => one.advanced);
     const third = await parked('Show the queue', thirdChange, false);
-    const refusal = await batch([third]);
+    const fourth = await parked('Show the lane', fourthChange, true);
+    const refusal = await batch([fourth, third]);
     const refused = reasonOf(refusal);
     assert.deepEqual(advanced, [true, true]);
+    assert.equal(world.adapters.connectors.calls().length, 2);
     assert.equal(refused, 'no_reviewer_approval');
     assert.deepEqual(detailOf(refusal), {
       stage: 'ship',
