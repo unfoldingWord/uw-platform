@@ -112,7 +112,13 @@ describe('FL-3 what a fix may touch beside the pull request', () => {
     ]) {
       expect(testOrDoc(path)).toBe(true);
     }
-    for (const path of ['docs/a.txt', 'apps/uw-app/notes.md', 'guide.md']) {
+    for (const path of [
+      'docs/a.txt',
+      'apps/uw-app/notes.md',
+      'guide.md',
+      'README.ts',
+      'packages/db/CHANGELOG.mjs',
+    ]) {
       expect(testOrDoc(path)).toBe(false);
     }
   });
