@@ -115,7 +115,7 @@ function trimmedOrNull(text: string | null): string | null {
   return trimmed === '' ? null : trimmed;
 }
 
-function normalised(input: DecideInput): DecideInput | Refused {
+export function normalised(input: DecideInput): DecideInput | Refused {
   if (advancing.has(input.decision) && input.seenHead === undefined) {
     return refused('malformed_command', { why: 'seen_head_required' });
   }
@@ -157,7 +157,8 @@ async function placed(tx: StoreTransaction, itemId: string): Promise<Placed | Re
 }
 
 function notTheHeadSeen(input: DecideInput, item: ItemState): boolean {
-  return advancing.has(input.decision) && input.seenHead !== item.expectedHead;
+  const pinned = advancing.has(input.decision) || input.seenHead !== undefined;
+  return pinned && input.seenHead !== item.expectedHead;
 }
 
 async function standing(
@@ -289,9 +290,9 @@ async function recordDecision(
   return accepted({ decisionId, item: recorded.item, advanced: exit !== null });
 }
 
-type Committed = { readonly decided: Decided; readonly pending: PendingExit | null };
+export type Committed = { readonly decided: Decided; readonly pending: PendingExit | null };
 
-type Request = {
+export type DecideRequest = {
   readonly caller: Caller;
   readonly input: DecideInput;
   readonly at: Date;
@@ -309,7 +310,7 @@ function pendingExit(
   gate: Gate,
   decided: Decided,
   route: ShipRoute,
-  request: Request,
+  request: DecideRequest,
   shipped: Shipped | null,
 ): PendingExit {
   const { input, snapshot } = request;
@@ -361,10 +362,10 @@ function decisionOf(input: DecideInput, route: Route, ship: ShipCheck): Decision
   return { input, exit: null, connector, next: exit?.to?.key ?? null, before, shipped };
 }
 
-async function decideIn(
+export async function decideIn(
   ports: GatePorts,
   tx: StoreTransaction,
-  request: Request,
+  request: DecideRequest,
 ): Promise<KernelOutcome<Committed>> {
   const { input, snapshot } = request;
   const gate = await standing(ports, tx, request.caller, input, request.at);

@@ -2,6 +2,7 @@ import type { GateView, ItemState } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
 import type { KernelOutcome } from '../outcome.ts';
 import { decide, type Decided, type DecideInput, type GatePorts } from './decide.ts';
+import { decideGates, type BatchDecided, type BatchInput } from './decide-batch.ts';
 import { resumeRunsWhere } from '../runs/resume.ts';
 import type { RunRow, StoreTransaction } from '../ports.ts';
 import { recoverConnectors, type Recovered } from './recover.ts';
@@ -10,6 +11,7 @@ import { gateView } from './view.ts';
 
 export type GateCommands = {
   decide(caller: Caller, input: DecideInput): Promise<KernelOutcome<Decided>>;
+  decideGates(caller: Caller, input: BatchInput): Promise<KernelOutcome<BatchDecided>>;
   view(
     caller: Caller,
     input: { readonly itemId: string },
@@ -44,9 +46,23 @@ async function decideAndResume(
   return outcome;
 }
 
+async function decideGatesAndResume(
+  ports: GatePorts,
+  caller: Caller,
+  input: BatchInput,
+): Promise<KernelOutcome<BatchDecided>> {
+  const outcome = await decideGates(ports, caller, input);
+  if (outcome.status !== 'accepted') return outcome;
+  for (const one of outcome.value.decided) {
+    await resumeRunsWhere(ports, gateWaiting(one.item.itemId), 'gate');
+  }
+  return outcome;
+}
+
 export function createGateCommands(ports: GatePorts): GateCommands {
   return {
     decide: (caller, input) => decideAndResume(ports, caller, input),
+    decideGates: (caller, input) => decideGatesAndResume(ports, caller, input),
     view: (caller, input, options) => gateView(ports, caller, input, options),
     recoverConnectors: (caller, input) => recoverConnectors(ports, caller, input),
     recordShadowVerdicts: (caller, input) => recordShadowVerdicts(ports, caller, input),

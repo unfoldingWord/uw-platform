@@ -98,6 +98,7 @@ export type { GateCommands } from './gates/commands.ts';
 export type { ActivatedPersona } from './personas/types.ts';
 export type { PersonaDashboard, PersonaRunSummary } from './views/persona.ts';
 export type { Decided, DecideInput } from './gates/decide.ts';
+export type { BatchDecided, BatchEntry, BatchInput } from './gates/decide-batch.ts';
 export { applyDeclaration, domainOf, floorFromPaths } from './risk/derive.ts';
 export type { RiskFloor, RiskResult } from './risk/derive.ts';
 export { approverCovers, domainGrants, requiredResources } from './risk/domain-grants.ts';

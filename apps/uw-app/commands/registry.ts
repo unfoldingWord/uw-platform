@@ -17,6 +17,7 @@ import { revokeDelegationCommand, scheduleRegularTweakCommand } from './person/d
 import { activatePersonaCommand } from './person/personas.ts';
 import {
   approveCommand,
+  decideGatesCommand,
   overrideCommand,
   recoverConnectorsCommand,
   rejectCommand,
@@ -81,6 +82,6 @@ export const commandRegistry = commandRegistryOf([
   recordMeasurementCommand,
   setShadowCommand,
   setFreezeCommand,
-  notWiredCommand('decide_gates', 'admin'),
+  decideGatesCommand,
   notWiredCommand('refute_finding', 'write'),
 ]);
