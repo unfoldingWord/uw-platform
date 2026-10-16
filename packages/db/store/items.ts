@@ -60,6 +60,7 @@ function columnsOf(item: ItemState) {
     zulipTopic: item.zulipTopic,
     epic: item.epic,
     blockedBy: [...item.blockedBy],
+    heldSince: item.heldSince === null ? null : new Date(item.heldSince),
   };
 }
 
