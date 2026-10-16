@@ -47,9 +47,9 @@ async function missingDoneWhen(
   tx: StoreTransaction,
   context: RecordContext,
   harnessId: string,
-  open: readonly IssueFact[],
+  fresh: readonly IssueFact[],
 ): Promise<Refused | null> {
-  const missing = open.filter((fact) => fact.doneWhen.length === 0);
+  const missing = fresh.filter((fact) => fact.doneWhen.length === 0);
   for (const fact of missing) {
     const subject = {
       via: 'enqueue_epic' as const,
@@ -84,7 +84,32 @@ async function planned(
   return plan;
 }
 
-function edgesOf(plan: readonly Planned[], facts: EpicFacts): Edges {
+async function heldOutside(
+  tx: StoreTransaction,
+  harness: Harness,
+  plan: readonly Planned[],
+): Promise<ReadonlyMap<number, string>> {
+  const inside = new Set(plan.map((entry) => entry.fact.issue.number));
+  const named = new Set(plan.flatMap((entry) => entry.fact.blockedBy));
+  if ([...named].every((number) => inside.has(number))) return new Map();
+  const items = await tx.harnessItems.read.forHarness(harness.id);
+  return new Map(
+    items.flatMap((item) =>
+      item.issue !== null &&
+      named.has(item.issue.number) &&
+      !inside.has(item.issue.number) &&
+      sameRepository(item.issue.repo, harness.repository)
+        ? [[item.issue.number, item.itemId] as const]
+        : [],
+    ),
+  );
+}
+
+function edgesOf(
+  plan: readonly Planned[],
+  facts: EpicFacts,
+  held: ReadonlyMap<number, string>,
+): Edges {
   const itemOf = new Map(plan.map((entry) => [entry.fact.issue.number, entry.itemId]));
   const closed = new Set(
     facts.subIssues.filter((fact) => !fact.open).map((fact) => fact.issue.number),
@@ -93,10 +118,12 @@ function edgesOf(plan: readonly Planned[], facts: EpicFacts): Edges {
   const blockedBy = new Map<number, readonly string[]>();
   for (const { fact } of plan) {
     const named = fact.blockedBy.filter((number) => !closed.has(number));
-    for (const number of named.filter((entry) => !itemOf.has(entry))) outside.add(number);
+    for (const number of named.filter((entry) => !itemOf.has(entry) && !held.has(entry))) {
+      outside.add(number);
+    }
     blockedBy.set(
       fact.issue.number,
-      named.flatMap((number) => itemOf.get(number) ?? []),
+      named.flatMap((number) => itemOf.get(number) ?? held.get(number) ?? []),
     );
   }
   return { blockedBy, outside: [...outside].sort((a, b) => a - b) };
@@ -200,11 +227,11 @@ async function enqueueEpicIn(
   const harness = await admitted(ports, tx, caller, facts, input);
   if ('status' in harness) return harness;
   const context = recordContext(ports, caller, input.at);
-  const open = facts.subIssues.filter((fact) => fact.open);
-  const missing = await missingDoneWhen(tx, context, harness.id, open);
-  if (missing !== null) return missing;
   const plan = await planned(tx, context, harness, facts);
   if ('status' in plan) return plan;
+  const fresh = plan.flatMap((entry) => (entry.existing === null ? [entry.fact] : []));
+  const missing = await missingDoneWhen(tx, context, harness.id, fresh);
+  if (missing !== null) return missing;
   const cycle = cycleIn(plan);
   if (cycle.length > 0) {
     return refused('malformed_command', {
@@ -212,7 +239,7 @@ async function enqueueEpicIn(
       issues: cycle.map((number) => `#${number}`),
     });
   }
-  const work = { facts, plan, edges: edgesOf(plan, facts) };
+  const work = { facts, plan, edges: edgesOf(plan, facts, await heldOutside(tx, harness, plan)) };
   const created = await createAll(tx, context, harness, work);
   if (created.status === 'accepted' && created.value.created > 0) {
     await recordEnqueued(tx, context, harness.id, work);
