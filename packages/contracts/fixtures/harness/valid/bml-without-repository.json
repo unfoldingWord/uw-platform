@@ -7,5 +7,8 @@
   "hostedBuilderEnabled": false,
   "paused": false,
   "shadow": false,
-  "externalReviewerIdentities": []
+  "externalReviewerIdentities": [],
+  "frozen": false,
+  "freezeAllow": [],
+  "requiredChecks": []
 }

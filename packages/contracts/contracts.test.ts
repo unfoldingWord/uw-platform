@@ -317,7 +317,7 @@ const head = 'a'.repeat(40);
 
 describe('GL-2 GL-4 the contracts for shadow and refusals', () => {
   it('names the four refusals joining and dispatch need', () => {
-    expect(errorReasonSchema.options.slice(-4)).toEqual([
+    expect(errorReasonSchema.options.slice(-10, -6)).toEqual([
       'template_has_no_package',
       'no_harness_for_repo',
       'repository_not_dispatchable',

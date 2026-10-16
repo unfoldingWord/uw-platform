@@ -6,5 +6,6 @@
   "template": "software",
   "repository": "unfoldingWord/uw-platform",
   "shadow": false,
-  "externalReviewerIdentities": []
+  "externalReviewerIdentities": [],
+  "requiredChecks": []
 }

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { reviewVerdictSchema } from './closed-sets.ts';
 import { pullRequestRefSchema } from './harness.ts';
 import { slugSchema } from './pages.ts';
+import { reviewFindingSchema } from './runs.ts';
 import { fullShaSchema, shipRefusalSchema } from './ship-rule.ts';
 
 export const shadowVerdictValueSchema = z.enum(['advance', 'refuse']);
@@ -14,7 +15,7 @@ const shadowSchema = z.strictObject({
 const recordedSchema = z.strictObject({
   reviewer: z.string().regex(/^[a-z0-9-]{1,64}$/),
   verdict: reviewVerdictSchema,
-  findings: z.array(z.string().min(1).max(500)).max(50),
+  findings: z.array(reviewFindingSchema).max(50),
 });
 
 const otherReviewSchema = z.strictObject({

@@ -12,7 +12,7 @@ import {
   stageBracketSchema,
 } from './closed-sets.ts';
 import { agentIdentityPattern, identitySchema, isPersonaIdentity } from './identity.ts';
-import { fullShaSchema } from './ship-rule.ts';
+import { fullShaSchema, requiredChecksSchema } from './ship-rule.ts';
 import { slugSchema } from './pages.ts';
 
 const distinct = (values: readonly string[]) => new Set(values).size === values.length;
@@ -68,6 +68,9 @@ export const harnessSchema = z.strictObject({
   paused: z.boolean(),
   shadow: z.boolean().default(false),
   externalReviewerIdentities: externalReviewerIdentitiesSchema.default([]),
+  frozen: z.boolean().default(false),
+  freezeAllow: z.array(z.uuid()).max(100).default([]),
+  requiredChecks: requiredChecksSchema.default([]),
 });
 
 export const stageSchema = z.strictObject({

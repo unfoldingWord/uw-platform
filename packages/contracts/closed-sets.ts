@@ -25,6 +25,7 @@ export const engineSchema = z.enum([
 export const costBasisSchema = z.enum(['metered', 'subscription']);
 export const capabilityWordSchema = z.enum(['none', 'iterate', 'build', 'review', 'merge', 'fix']);
 export const findingWeightSchema = z.enum(['real', 'plausible', 'theoretical']);
+export const approveAtSchema = z.enum(['zero_findings', 'no_real_or_plausible']);
 export const untrustedSourceSchema = z.enum([
   'pr_diff',
   'issue_body',
@@ -59,6 +60,7 @@ export type Engine = z.infer<typeof engineSchema>;
 export type CostBasis = z.infer<typeof costBasisSchema>;
 export type CapabilityWord = z.infer<typeof capabilityWordSchema>;
 export type FindingWeight = z.infer<typeof findingWeightSchema>;
+export type ApproveAt = z.infer<typeof approveAtSchema>;
 export type UntrustedSource = z.infer<typeof untrustedSourceSchema>;
 export type GateDecision = z.infer<typeof gateDecisionSchema>;
 export type PersonStatus = z.infer<typeof personStatusSchema>;
@@ -98,6 +100,8 @@ export const runFailureSchema = z.enum([
   'provider_mismatch',
   'start_failed',
   'turn_limit',
+  'engine_refused',
+  'finding_weight_missing',
 ]);
 export const runResultSchema = z.enum([
   'submitted',

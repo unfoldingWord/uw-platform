@@ -11,7 +11,7 @@ import {
 } from './harness.ts';
 import { slugSchema } from './pages.ts';
 import { dataSourceKindSchema } from './page-types.ts';
-import { fullShaSchema } from './ship-rule.ts';
+import { fullShaSchema, requiredChecksSchema } from './ship-rule.ts';
 
 export const commandNames = [
   'kickstart',
@@ -42,6 +42,9 @@ export const commandNames = [
   'activate_persona',
   'record_measurement',
   'set_shadow',
+  'set_freeze',
+  'decide_gates',
+  'refute_finding',
 ] as const;
 
 export const commandNameSchema = z.enum(commandNames);
@@ -93,6 +96,22 @@ export const overrideCommandSchema = body('override', {
   reason: nonBlank(2000),
 });
 
+const itemIdList = z
+  .array(itemId)
+  .max(100)
+  .refine((ids) => new Set(ids).size === ids.length, 'each item once');
+
+const batchEntrySchema = z.strictObject({
+  itemId,
+  head: fullShaSchema,
+  decision: z.enum(['approve', 'reject']),
+});
+
+const setFreezeSchema = body('set_freeze', { frozen: z.boolean(), allow: itemIdList }).refine(
+  (command) => command.frozen || command.allow.length === 0,
+  'lifting a freeze names no item',
+);
+
 export const harnessCommandSchemas = {
   kickstart: body('kickstart', { pageId: z.uuid() }),
   enqueue: body('enqueue', {
@@ -129,6 +148,7 @@ export const harnessCommandSchemas = {
     repository: repositorySchema.nullable(),
     shadow: z.boolean().default(false),
     externalReviewerIdentities: externalReviewerIdentitiesSchema.default([]),
+    requiredChecks: requiredChecksSchema.default([]),
   }),
   create_stage: body('create_stage', { stage: stageInputSchema }),
   update_stage: body('update_stage', { stageKey: stageKeySchema, change: stageChangeSchema }),
@@ -147,6 +167,22 @@ export const harnessCommandSchemas = {
     asOf: z.iso.date(),
   }),
   set_shadow: body('set_shadow', { shadow: z.literal(false) }),
+  set_freeze: setFreezeSchema,
+  decide_gates: body('decide_gates', {
+    entries: z
+      .array(batchEntrySchema)
+      .min(1)
+      .max(50)
+      .refine(
+        (entries) => new Set(entries.map((entry) => entry.itemId)).size === entries.length,
+        'each item once',
+      ),
+  }),
+  refute_finding: body('refute_finding', {
+    itemId,
+    runId: z.uuid(),
+    finding: z.number().int().min(0).max(49),
+  }),
 } as const satisfies Record<CommandName, z.ZodType>;
 
 export const commandSchema = z.discriminatedUnion('command', [
@@ -178,6 +214,9 @@ export const commandSchema = z.discriminatedUnion('command', [
   harnessCommandSchemas.activate_persona,
   harnessCommandSchemas.record_measurement,
   harnessCommandSchemas.set_shadow,
+  harnessCommandSchemas.set_freeze,
+  harnessCommandSchemas.decide_gates,
+  harnessCommandSchemas.refute_finding,
 ]);
 
 export type Command = z.infer<typeof commandSchema>;

@@ -40,14 +40,17 @@
       "pullRequest": {
         "open": true,
         "draft": false,
-        "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "behindBy": 0,
+        "skipCi": false
       },
       "expectedHead": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "checks": [
         {
           "name": "test",
           "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-          "conclusion": "success"
+          "conclusion": "success",
+          "app": "github-actions"
         }
       ],
       "approvals": [
@@ -64,7 +67,17 @@
       "override": false,
       "approver": {
         "kind": "person"
-      }
+      },
+      "carries": [],
+      "requiredChecks": [
+        {
+          "app": "github-actions",
+          "name": "test"
+        }
+      ],
+      "closes": [],
+      "wraps": null,
+      "frozen": false
     },
     "outcome": {
       "verdict": "advance"

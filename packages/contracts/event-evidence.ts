@@ -5,6 +5,7 @@ import {
   costBasisSchema,
   delegationLapseSchema,
   engineSchema,
+  findingWeightSchema,
   gateDecisionSchema,
   principalKindSchema,
   reviewVerdictSchema,
@@ -31,6 +32,7 @@ import { dataSourceKindSchema } from './page-types.ts';
 import {
   modelIdSchema,
   providerIdSchema,
+  reviewFindingSchema,
   reviewRecordSchema,
   runStepCosts,
   runStepSchema,
@@ -48,7 +50,7 @@ export const personaActivationRefusalSchema = z.enum([
   'dry_run_failed',
 ]);
 export const learningAttachedKindSchema = z.enum(['learning', 'revision']);
-export const handOffReasonSchema = z.enum(['review_rounds_exhausted']);
+export const handOffReasonSchema = z.enum(['review_rounds_exhausted', 'engine_refused']);
 
 const id = z.uuid();
 const instant = z.iso.datetime();
@@ -208,7 +210,15 @@ const gateEvidence = {
     provider: providerIdSchema,
     model: modelIdSchema,
     verdict: reviewVerdictSchema,
-    findings: z.array(text).max(50),
+    findings: z.array(reviewFindingSchema).max(50),
+  }),
+  finding_refuted: z.strictObject({
+    runId: id,
+    persona: identitySchema,
+    reviewer: z.string().regex(/^[a-z0-9-]{1,64}$/),
+    index: z.number().int().min(0).max(49),
+    weight: findingWeightSchema,
+    text,
   }),
   shadow_verdict: z.strictObject({
     head: head.nullable(),
@@ -218,6 +228,7 @@ const gateEvidence = {
 };
 
 const harnessEvidence = {
+  freeze_changed: z.strictObject({ frozen: z.boolean(), allow: z.array(id).max(100) }),
   delegation_granted: z.strictObject({
     delegationId: id,
     personId: id,
@@ -281,11 +292,16 @@ const harnessEvidence = {
     value: z.number().finite(),
     asOf: z.iso.date(),
   }),
-  handed_to_person: z.strictObject({
-    personId: id,
-    why: handOffReasonSchema,
-    rounds: z.number().int().min(1),
-  }),
+  handed_to_person: z
+    .strictObject({
+      personId: id,
+      why: handOffReasonSchema,
+      rounds: z.number().int().min(1).nullable(),
+    })
+    .refine(
+      (handed) => (handed.why === 'review_rounds_exhausted') === (handed.rounds !== null),
+      'only review rounds name a round count',
+    ),
   template_activated: z.strictObject({
     template: slugSchema,
     stages: z.array(stage).min(1),

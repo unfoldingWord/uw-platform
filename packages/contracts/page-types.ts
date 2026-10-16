@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  approveAtSchema,
   capabilityWordSchema,
   engineSchema,
   evidenceLabelSchema,
@@ -50,6 +51,7 @@ export const personaFrontmatterSchema = z.strictObject({
     currency: z.string().regex(/^[A-Z]{3}$/),
   }),
   capability: capabilityWordSchema,
+  approve_at: approveAtSchema.default('no_real_or_plausible'),
   requires_tools: z.array(verbShaped).max(50).refine(distinct).default([]),
   status: pageStatusSchema.default('suggested'),
 });

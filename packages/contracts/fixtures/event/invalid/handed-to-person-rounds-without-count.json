@@ -1,0 +1,16 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000001e3",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "name": "handed_to_person",
+  "position": 3,
+  "at": "2026-10-15T09:00:00.000Z",
+  "actor": "agent:reviewer",
+  "evidence": {
+    "personId": "00000000-0000-4000-8000-000000000001",
+    "why": "review_rounds_exhausted",
+    "rounds": null
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
+}

@@ -35,19 +35,30 @@
     }
   },
   "reviews": [],
+  "verdicts": [],
   "ship": {
     "input": {
       "pullRequest": {
         "open": true,
         "draft": false,
-        "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "behindBy": 0,
+        "skipCi": false
       },
       "expectedHead": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "carries": [],
       "checks": [
         {
           "name": "test",
+          "app": "github-actions",
           "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "conclusion": "success"
+        }
+      ],
+      "requiredChecks": [
+        {
+          "app": "github-actions",
+          "name": "test"
         }
       ],
       "approvals": [
@@ -57,10 +68,13 @@
           "provider": "openai"
         }
       ],
+      "closes": [],
+      "wraps": null,
       "riskTier": "standard",
       "riskDomains": ["acl"],
       "area": "80-89",
       "at": "2026-10-03T09:00:00.000Z",
+      "frozen": false,
       "override": false
     },
     "outcome": {
