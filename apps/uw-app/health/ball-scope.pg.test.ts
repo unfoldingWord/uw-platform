@@ -100,9 +100,11 @@ async function silenceScopedToReadable(db: Database): Promise<void> {
     name: 'silence_alarm',
     status: 'red',
   });
-  expect(await indicatorFor(db, STRANGER, 'silence_alarm')).toMatchObject({
+  expect(await indicatorFor(db, STRANGER, 'silence_alarm')).toEqual({
     name: 'silence_alarm',
     status: 'ok',
+    detail:
+      'No item has waited in Check over 45 minutes without a review step in the harnesses you can read',
   });
 }
 

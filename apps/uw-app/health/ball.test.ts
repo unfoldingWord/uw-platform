@@ -50,7 +50,8 @@ describe('OB-1 the silence alarm indicator', () => {
     expect(silenceIndicator([quiet], at)).toEqual({
       name: 'silence_alarm',
       status: 'ok',
-      detail: 'No item has waited in Check over 45 minutes without a review step',
+      detail:
+        'No item has waited in Check over 45 minutes without a review step in the harnesses you can read',
     });
   });
 
@@ -70,7 +71,7 @@ describe('OB-1 the silence alarm indicator', () => {
 
   it('OB-4 says how many bot pull requests it left out', () => {
     expect(silenceIndicator([{ ...quiet, uncounted: 2 }], at).detail).toBe(
-      'No item has waited in Check over 45 minutes without a review step; not counting 2 by bot accounts',
+      'No item has waited in Check over 45 minutes without a review step in the harnesses you can read; not counting 2 by bot accounts',
     );
   });
 });
