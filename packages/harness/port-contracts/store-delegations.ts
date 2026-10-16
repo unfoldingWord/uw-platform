@@ -14,6 +14,7 @@ function delegationOf(base: number, n: number, overrides: Partial<Delegation> = 
     persona: 'agent:one' as Identity,
     harnessId: uid(base),
     capability: 'iterate',
+    maxTier: null,
     grantedAt: at,
     expiresAt: new Date(at.getTime() + hour),
     revokedAt: null,
@@ -170,9 +171,25 @@ function describeBoundedLive(subject: DelegationsSubject): void {
   });
 }
 
+function describeLockAndTier(subject: DelegationsSubject): void {
+  it('MD-2 MD-3 locks a delegation for share and reads it back with its merge tier', async () => {
+    const merge = delegationOf(0x8700, 1, { capability: 'merge', maxTier: 'low' });
+    const found = await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0x8700, 'gateway-delegations-lock');
+      await tx.delegations.write.insert(merge, uid(0x8780));
+      return {
+        locked: await tx.delegations.read.lock(merge.id),
+        absent: await tx.delegations.read.lock(uid(0x87fe)),
+      };
+    });
+    expect(found).toEqual({ locked: merge, absent: null });
+  });
+}
+
 export function describeDelegations(subject: DelegationsSubject): void {
   describeLive(subject);
   describeBoundedLive(subject);
   describeConditionalWrites(subject);
   describeExpired(subject);
+  describeLockAndTier(subject);
 }

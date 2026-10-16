@@ -61,6 +61,7 @@ function pendingFor(scene: Scene): PendingExit {
     repository: 'unfoldingWord/uw-platform',
     expectedBase: null,
     evaluatedHead: scene.item.expectedHead,
+    delegated: null,
     harness: scene.harness,
     approver: scene.admin,
     override: false,

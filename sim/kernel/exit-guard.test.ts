@@ -64,6 +64,7 @@ function exitWith(scene: Scene, crafted: Crafted): Promise<boolean> {
       repository: 'unfoldingWord/uw-platform',
       expectedBase: null,
       evaluatedHead: null,
+      delegated: null,
     },
   );
 }

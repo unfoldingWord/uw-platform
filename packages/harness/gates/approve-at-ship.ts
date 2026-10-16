@@ -1,5 +1,6 @@
 import type {
   Connector,
+  DelegatedMerge,
   GateDecision,
   Harness,
   ItemState,
@@ -66,6 +67,7 @@ export type PendingExit = {
   readonly repository: string | null;
   readonly expectedBase: DecidedBase | null;
   readonly evaluatedHead: string | null;
+  readonly delegated: DelegatedMerge | null;
   readonly harness: Harness;
   readonly approver: Principal;
   readonly override: boolean;

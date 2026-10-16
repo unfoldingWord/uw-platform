@@ -269,6 +269,8 @@ async function recordDecision(
     itemId: item.itemId,
     stageId: stage.id,
     actor: approver.identity,
+    agentActor: null,
+    delegationId: null,
     decision: input.decision,
     reason: input.reason,
     evidence: {
@@ -324,6 +326,7 @@ function pendingExit(
     repository: gate.harness.repository,
     expectedBase: baseOf(snapshot),
     evaluatedHead: shipped?.head ?? null,
+    delegated: null,
     harness: gate.harness,
     approver: gate.approver,
     override: input.decision === 'override',

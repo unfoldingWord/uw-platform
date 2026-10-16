@@ -12,6 +12,7 @@ function delegationOf(persona: string): Delegation {
     persona: persona as Identity,
     harnessId: '00000000-0000-4000-8000-0000000d0002',
     capability: 'iterate',
+    maxTier: null,
     grantedAt: new Date('2026-10-01T09:00:00.000Z'),
     expiresAt: new Date('2026-12-30T09:00:00.000Z'),
     revokedAt: null,

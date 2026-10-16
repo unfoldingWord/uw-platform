@@ -1,4 +1,4 @@
-import type { HarnessEvent, ItemState, Stage } from '@uw/contracts';
+import type { DelegatedMerge, HarnessEvent, ItemState, Stage } from '@uw/contracts';
 import {
   draft,
   readAllEvents,
@@ -18,6 +18,7 @@ import type {
   StoreTransaction,
 } from '../ports.ts';
 import { outcomeRecordedSince, parkingChangedSince, sameChange } from './parking.ts';
+import { joinedPullRequest } from './ship-input.ts';
 
 export type ExitPorts = Pick<Ports, 'connectors' | 'store'>;
 
@@ -31,6 +32,7 @@ export type ExitInput = {
   readonly repository: string | null;
   readonly expectedBase: DecidedBase | null;
   readonly evaluatedHead: string | null;
+  readonly delegated: DelegatedMerge | null;
 };
 
 export type ExitGuard = () => Promise<
@@ -68,6 +70,7 @@ export function requestOf(context: RecordContext, input: ExitInput): ConnectorRe
     itemId: item.itemId,
     traceId: context.traceId,
     pullRequest: item.pullRequest,
+    joined: joinedPullRequest(item),
     expectedHead: input.evaluatedHead ?? item.expectedHead,
     expectedBase: input.expectedBase,
     repository: input.repository,
