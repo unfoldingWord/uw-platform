@@ -115,8 +115,85 @@ function describeDelegatedRowRefusals(subject: DelegatedSubject): void {
   });
 }
 
+type Planted = {
+  readonly base: number;
+  readonly key: string;
+  readonly delegation?: Partial<Delegation>;
+  readonly row: (row: GateDecisionRow) => GateDecisionRow;
+};
+
+function plantDelegated(subject: DelegatedSubject, planted: Planted) {
+  const { base } = planted;
+  return refusedBy(async (tx) => {
+    await seedDecisionItem(tx, base, planted.key);
+    const delegation = { ...delegationFor(base + 0xd0, base), ...planted.delegation };
+    await tx.delegations.write.insert(delegation, uid(base + 0xe0));
+    await tx.gateDecisions.write.insert(planted.row(delegated(base, base + 0xd0)));
+  }, subject().store);
+}
+
+function withoutConnector(row: GateDecisionRow): GateDecisionRow {
+  const evidence = Object.fromEntries(
+    Object.entries(row.evidence).filter(([key]) => key !== 'connector'),
+  );
+  return { ...row, evidence };
+}
+
+function describeMergeEvidence(subject: DelegatedSubject): void {
+  const approvesMerge = { code: '23514', constraint: 'gate_decisions_delegated_approves_merge' };
+  it('MD-4 refuses a delegated row whose connector is null, naming gate_decisions_delegated_approves_merge', async () => {
+    const outcome = await plantDelegated(subject, {
+      base: 0x8800,
+      key: 'gateway-delegated-null-connector',
+      row: (row) => ({ ...row, evidence: { ...row.evidence, connector: null } }),
+    });
+    expect(outcome).toMatchObject(approvesMerge);
+  });
+
+  it('MD-4 refuses a delegated row that names no connector, naming gate_decisions_delegated_approves_merge', async () => {
+    const outcome = await plantDelegated(subject, {
+      base: 0x8900,
+      key: 'gateway-delegated-no-connector',
+      row: withoutConnector,
+    });
+    expect(outcome).toMatchObject(approvesMerge);
+  });
+}
+
+function describeLentBinding(subject: DelegatedSubject): void {
+  const binding = { code: '23503', constraint: 'gate_decisions_lent_binding_fk' };
+  it('MD-3 refuses a delegated row naming a build delegation, naming gate_decisions_lent_binding_fk', async () => {
+    const outcome = await plantDelegated(subject, {
+      base: 0x8a00,
+      key: 'gateway-delegated-build',
+      delegation: { capability: 'build', maxTier: null },
+      row: (row) => row,
+    });
+    expect(outcome).toMatchObject(binding);
+  });
+
+  it('MD-3 refuses an agent actor other than the delegation persona, the system included', async () => {
+    const outcomes = [];
+    for (const [base, actor] of [
+      [0x8b00, 'agent:builder'],
+      [0x8c00, 'agent:system'],
+    ] as const) {
+      outcomes.push(
+        await plantDelegated(subject, {
+          base,
+          key: `gateway-delegated-${actor.slice(6)}`,
+          row: (row) => ({ ...row, agentActor: identitySchema.parse(actor) }),
+        }),
+      );
+    }
+    expect(outcomes).toMatchObject([binding, binding]);
+  });
+}
+
 export function describeDelegatedDecisions(subject: DelegatedSubject): void {
   describeDelegatedRead(subject);
   describeAgentActorRefusals(subject);
   describeDelegatedRowRefusals(subject);
+  describeMergeEvidence(subject);
+  describeLentBinding(subject);
 }
