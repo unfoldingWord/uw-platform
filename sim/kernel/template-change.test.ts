@@ -1,7 +1,16 @@
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
-import { checkOnly, readAllEvents, software } from '@uw/harness';
+import { seedPage } from '@uw/db/test-seed';
+import {
+  checkOnly,
+  createKernel,
+  readAllEvents,
+  software,
+  type Caller,
+  type Store,
+  type StoreTransaction,
+} from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, simAdvance, simCaller, simPerson } from '../fixtures.ts';
+import { createSimHarness, simAdvance, simAgent, simCaller, simPerson } from '../fixtures.ts';
 import { reasonOf, value } from '../runs.ts';
 import { createWorld, type World } from '../world.ts';
 
@@ -16,6 +25,21 @@ async function inWorld(work: (world: World) => Promise<void>): Promise<void> {
   }
 }
 
+async function seedSkill(world: World): Promise<string> {
+  const id = world.adapters.ids.next();
+  await seedPage(world.database.db, {
+    id,
+    type: 'skill',
+    status: 'active',
+    jdArea: '80-89',
+    slug: `check-${id.slice(-8)}`,
+    title: 'Check the pull request',
+    bodyMd: 'Read the diff and the checks.',
+    frontmatter: { name: 'check', description: 'Check the pull request.' },
+  });
+  return id;
+}
+
 async function joined(world: World) {
   const scene = await createSimHarness(world, checkOnly, {
     key: 'tc-admin-app',
@@ -23,12 +47,13 @@ async function joined(world: World) {
   });
   const caller = simCaller(world, scene.admin);
   const harnessId = scene.harness.id;
-  const exitNone = { exitGate: 'none' as const };
+  const instructionsPageId = await seedSkill(world);
+  const checkChange = { exitGate: 'none' as const, wipLimit: 5, instructionsPageId };
   value(
     await world.kernel.stages.updateStage(caller, {
       harnessId,
       stageKey: 'check',
-      change: exitNone,
+      change: checkChange,
     }),
   );
   const enqueue = (title: string) =>
@@ -43,7 +68,7 @@ async function joined(world: World) {
   const atCheck = value(await enqueue('Stay at Check')).itemId;
   const atShip = value(await enqueue('Move to Ship')).itemId;
   await simAdvance(world, { harnessId, itemId: atShip, worker: scene.admin, through: ['check'] });
-  return { ...scene, caller, atCheck, atShip };
+  return { ...scene, caller, atCheck, atShip, checkChange };
 }
 
 async function keepsCheckAndShip(world: World): Promise<void> {
@@ -60,7 +85,7 @@ async function keepsCheckAndShip(world: World): Promise<void> {
   );
   const kept = changed.stages.filter((stage) => stage.key === 'check' || stage.key === 'ship');
   expect(kept.map((stage) => [stage.key, stage.id])).toEqual(before);
-  expect(kept.find((stage) => stage.key === 'check')?.exitGate).toBe('none');
+  expect(kept.find((stage) => stage.key === 'check')).toMatchObject(scene.checkChange);
   const stored = await world.adapters.store.transaction((tx) =>
     tx.harnessStages.read.forHarness(harnessId),
   );
@@ -121,11 +146,47 @@ async function refusesEditor(world: World): Promise<void> {
   const editor = await simPerson(world, 6, [
     { role: 'editor', scopeKind: 'jd_area', scopeArea: '80-89' },
   ]);
-  const refused = await world.kernel.stages.changeTemplate(simCaller(world, editor), {
-    harnessId: scene.harness.id,
+  const agent = simAgent(scene.admin, 'shipper', { interactive: false });
+  const change = (caller: Caller) =>
+    world.kernel.stages.changeTemplate(caller, {
+      harnessId: scene.harness.id,
+      template: 'software',
+    });
+  expect(reasonOf(await change(simCaller(world, editor)))).toBe('not_permitted');
+  expect(reasonOf(await change(simCaller(world, agent)))).toBe('not_permitted');
+}
+
+function staleTemplate(tx: StoreTransaction): StoreTransaction {
+  const write = { ...tx.harnesses.write, setTemplate: () => Promise.resolve(false) };
+  return Object.assign(tx, { harnesses: { ...tx.harnesses, write } });
+}
+
+function racedStore(store: Store): Store {
+  return {
+    appliedMigrations: () => store.appliedMigrations(),
+    transaction: (work) => store.transaction((tx) => work(staleTemplate(tx))),
+  };
+}
+
+async function refusesStale(world: World): Promise<void> {
+  const scene = await joined(world);
+  const harnessId = scene.harness.id;
+  const raced = createKernel({ ...world.adapters, store: racedStore(world.adapters.store) });
+  const refused = await raced.stages.changeTemplate(scene.caller, {
+    harnessId,
     template: 'software',
   });
-  expect(reasonOf(refused)).toBe('not_permitted');
+  expect(refused).toMatchObject({
+    status: 'error',
+    reason: 'stale_version',
+    detail: { harnessId },
+  });
+  const stored = await world.adapters.store.transaction((tx) =>
+    tx.harnessStages.read.forHarness(harnessId),
+  );
+  expect(stored.map((stage) => stage.key)).toEqual(checkOnly.stages.map((stage) => stage.key));
+  const events = await world.adapters.store.transaction((tx) => readAllEvents(tx, harnessId, null));
+  expect(events.filter((event) => event.name === 'template_changed')).toEqual([]);
 }
 
 describe('GL-5 a template change on a live harness', () => {
@@ -135,5 +196,9 @@ describe('GL-5 a template change on a live harness', () => {
   it('GL-5 refuses any other change, a second change, and a harness whose stages were added to', () =>
     inWorld(refusesOthers));
 
-  it('GL-5 refuses a person who is not an admin on the area', () => inWorld(refusesEditor));
+  it('GL-5 refuses a person who is not an admin on the area, and any agent', () =>
+    inWorld(refusesEditor));
+
+  it('GL-5 refuses stale_version when the template changed underneath, writing nothing', () =>
+    inWorld(refusesStale));
 });
