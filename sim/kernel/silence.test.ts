@@ -84,6 +84,7 @@ async function sounded(scene: ReviewWorld): Promise<readonly string[]> {
 
 async function reviewedNotWaiting(scene: ReviewWorld): Promise<void> {
   await reviewed(scene);
+  expect((await itemOf(scene.world, scene.itemId))?.stageKey).toBe('check');
   scene.world.adapters.clock.advance(91 * minute);
   expect(await waitingIn(scene)).toEqual([]);
   expect(await levelOf(scene)).toBe('ok');
