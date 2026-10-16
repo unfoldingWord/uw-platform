@@ -102,6 +102,7 @@ export type DiffRead =
   | { readonly kind: 'diff'; readonly text: string; readonly bytes: number }
   | { readonly kind: 'too_large'; readonly bytes: number | null }
   | { readonly kind: 'unavailable'; readonly reason: string };
+export type PullRequestAuthor = { readonly ref: PullRequestRef; readonly author: string };
 export type IssueKey = { readonly repo: string; readonly number: number };
 export type IssueFact = {
   readonly issue: IssueRef;
@@ -120,6 +121,7 @@ export type GitHubFacts = {
   refresh(ref: PullRequestRef): Promise<PullRequestFacts | null>;
   diff(ref: PullRequestRef, range: DiffRange, budgetBytes: number): Promise<DiffRead>;
   epic(key: IssueKey): Promise<EpicFacts | null>;
+  authors(refs: readonly PullRequestRef[]): Promise<readonly PullRequestAuthor[]>;
 };
 
 export type EffectConnector = Exclude<Connector, 'none'>;
