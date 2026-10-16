@@ -14,7 +14,7 @@ export type FixWorld = ReviewWorld & { readonly fixer: Principal; readonly fixId
 
 export type FixOptions = { readonly fixClaim?: boolean; readonly weight?: FindingWeight };
 
-async function reviewedRound(scene: ReviewWorld, weight: FindingWeight): Promise<void> {
+export async function reviewedRound(scene: ReviewWorld, weight: FindingWeight): Promise<void> {
   const input = {
     verdict: 'request_changes' as const,
     findings: [{ text: roundText, weight }],
