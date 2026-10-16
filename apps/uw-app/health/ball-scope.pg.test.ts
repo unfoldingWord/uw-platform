@@ -1,7 +1,15 @@
+import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import type { HealthIndicator } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
-import { rewriteItem, seedGrant, seedHarness, seedItem, seedPerson } from '@uw/db/test-seed';
+import {
+  rewriteItem,
+  seedEvent,
+  seedGrant,
+  seedHarness,
+  seedItem,
+  seedPerson,
+} from '@uw/db/test-seed';
 import { DEFAULT_SPEND_CAP, type Clock } from '@uw/harness';
 import { platformKernel } from '../kernel.ts';
 import { personOn } from '../testing/kernel.ts';
@@ -12,6 +20,9 @@ const at = new Date('2026-10-15T12:00:00.000Z');
 const clock: Clock = { now: () => at };
 const HARNESS = '00000000-0000-4000-8000-000000005501';
 const ITEM = '00000000-0000-4000-8000-000000005502';
+const SILENT_HARNESS = '00000000-0000-4000-8000-000000005521';
+const SILENT_ITEM = '00000000-0000-4000-8000-000000005522';
+const SILENT_STAGE = '00000000-0000-4000-8000-000000005523';
 const READER = {
   id: '00000000-0000-4000-8000-000000005511',
   email: 'ball-reader@unfoldingword.org',
@@ -45,12 +56,27 @@ async function seedHeld(db: Database): Promise<void> {
   });
 }
 
-async function heldFor(db: Database, person: typeof READER): Promise<HealthIndicator | undefined> {
+async function seedSilent(db: Database): Promise<void> {
+  await seedHarness(db, { id: SILENT_HARNESS, key: 'ball-silence', jdArea: '80-89' });
+  await seedItem(db, { id: SILENT_ITEM, harnessId: SILENT_HARNESS, stageId: SILENT_STAGE });
+  await db.execute(sql`UPDATE harness_stages SET key = 'check' WHERE id = ${SILENT_STAGE}`);
+  await seedEvent(db, { harnessId: SILENT_HARNESS, n: 1, itemId: SILENT_ITEM });
+}
+
+async function indicatorFor(
+  db: Database,
+  person: typeof READER,
+  name: string,
+): Promise<HealthIndicator | undefined> {
   const handle = { db, ping: async () => undefined, release: async () => undefined };
   const caller = { actor: await personOn(db, person.id, person.email, at), traceId: ITEM };
   const kernel = platformKernel(handle, clock);
   const indicators = await agentPlaneIndicators({ kernel, caller, db, at, cap: DEFAULT_SPEND_CAP });
-  return indicators.find((indicator) => indicator.name === 'held_by_person');
+  return indicators.find((indicator) => indicator.name === name);
+}
+
+function heldFor(db: Database, person: typeof READER): Promise<HealthIndicator | undefined> {
+  return indicatorFor(db, person, 'held_by_person');
 }
 
 async function scopedToReadable(db: Database): Promise<void> {
@@ -67,6 +93,22 @@ async function scopedToReadable(db: Database): Promise<void> {
   });
 }
 
+async function silenceScopedToReadable(db: Database): Promise<void> {
+  await seedHeld(db);
+  await seedSilent(db);
+  expect(await indicatorFor(db, READER, 'silence_alarm')).toMatchObject({
+    name: 'silence_alarm',
+    status: 'red',
+  });
+  expect(await indicatorFor(db, STRANGER, 'silence_alarm')).toMatchObject({
+    name: 'silence_alarm',
+    status: 'ok',
+  });
+}
+
 describe.skipIf(!testServer)('the ball indicators on /health', () => {
   it('OB-2 count only the harnesses the viewer may read', () => withAppDatabase(scopedToReadable));
+
+  it('OB-1 the silence alarm is red for a reader of the silent harness and ok for a stranger', () =>
+    withAppDatabase(silenceScopedToReadable));
 });
