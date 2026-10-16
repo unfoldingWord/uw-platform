@@ -59,12 +59,12 @@ function epicGroupsOf(items: readonly ItemState[], stages: readonly Stage[]): re
     }));
 }
 
-type Subjects = { readonly issues: ReadonlySet<number>; readonly pages: ReadonlySet<string> };
+type Subjects = { readonly issues: ReadonlySet<number>; readonly pageIds: ReadonlySet<string> };
 
 function subjectsOf(items: readonly ItemState[]): Subjects {
   return {
     issues: new Set(items.flatMap((item) => (item.issue === null ? [] : [item.issue.githubId]))),
-    pages: new Set(items.flatMap((item) => (item.pageId === null ? [] : [item.pageId]))),
+    pageIds: new Set(items.flatMap((item) => (item.pageId === null ? [] : [item.pageId]))),
   };
 }
 
@@ -72,7 +72,7 @@ export function notReadyOf(
   events: readonly HarnessEvent[],
   items: readonly ItemState[],
 ): readonly NotReady[] {
-  const { issues, pages } = subjectsOf(items);
+  const { issues, pageIds } = subjectsOf(items);
   const seen = new Set<string>();
   const shown: NotReady[] = [];
   for (const event of events) {
@@ -81,7 +81,7 @@ export function notReadyOf(
     const entry = parsed.data;
     const page = entry.pageId ?? '';
     const key = entry.issue === null ? `page:${page}` : `issue:${entry.issue.githubId}`;
-    const imported = entry.issue === null ? pages.has(page) : issues.has(entry.issue.githubId);
+    const imported = entry.issue === null ? pageIds.has(page) : issues.has(entry.issue.githubId);
     if (seen.has(key) || imported) continue;
     seen.add(key);
     shown.push({ ...entry, at: new Date(event.at) });
