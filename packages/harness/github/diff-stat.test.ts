@@ -31,3 +31,28 @@ describe('FL-3 a diff is measured in changed lines and touched paths', () => {
     expect(diffStat('')).toEqual({ lines: 0, paths: [] });
   });
 });
+
+describe('FL-3 a diff the platform cannot read is not measured', () => {
+  it('FL-3 a quoted file header makes the whole diff unmeasurable', () => {
+    const quoted = [
+      'diff --git a/apps/board.tsx b/apps/board.tsx',
+      '@@ -1 +1 @@',
+      '+one',
+      'diff --git "a/apps/\\303\\251.ts" "b/apps/\\303\\251.ts"',
+      '--- "a/apps/\\303\\251.ts"',
+      '+++ "b/apps/\\303\\251.ts"',
+      '@@ -1 +1 @@',
+      '+two',
+    ].join('\n');
+    expect(diffStat(quoted)).toBeNull();
+  });
+
+  it('FL-3 a binary file counts as one changed line and names its path', () => {
+    const binary = [
+      'diff --git a/apps/logo.png b/apps/logo.png',
+      'index 1111111..2222222 100644',
+      'Binary files a/apps/logo.png and b/apps/logo.png differ',
+    ].join('\n');
+    expect(diffStat(binary)).toEqual({ lines: 1, paths: ['apps/logo.png'] });
+  });
+});
