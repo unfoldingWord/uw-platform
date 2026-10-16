@@ -112,7 +112,7 @@ describe('MD-4 a harness lists its protected paths', () => {
 
 describe('MD-6 a delegated merge wakes its grantor', () => {
   it('MD-6 the grantor is woken by delegated_merge, which names the grantor and the expiry', () => {
-    expect(wakeReasonSchema.options.at(-1)).toBe('delegated_merge');
+    expect(wakeReasonSchema.options).toContain('delegated_merge');
     const merged = {
       decisionId: delegationId,
       delegationId,

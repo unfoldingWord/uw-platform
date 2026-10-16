@@ -222,6 +222,18 @@ const gateEvidence = {
   connector_refused: z.strictObject({ connector: effect, reason: text }),
   delegated_merge: delegatedMergeSchema,
   delegated_exit_claimed: z.strictObject({ decisionId: id }),
+  silence_alarm: z.strictObject({
+    level: z.literal('red'),
+    waiting: z.number().int().min(1),
+    oldestEnteredAt: instant,
+    lastReviewStepAt: instant.nullable(),
+  }),
+  template_changed: z.strictObject({
+    from: slugSchema,
+    to: slugSchema,
+    kept: z.array(stage).min(1),
+    added: z.array(stage).min(1),
+  }),
   fix_claimed: z.strictObject({
     delegationId: id,
     head,

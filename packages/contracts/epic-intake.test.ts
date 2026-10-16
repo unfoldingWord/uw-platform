@@ -10,7 +10,7 @@ describe('EI-1 EI-2 EI-3 the contracts for epic intake', () => {
   const epicIssue = { repo: 'unfoldingWord/uw-platform', number: 40, githubId: 9100000340 };
 
   it('names the refusal and the intake routes', () => {
-    expect(errorReasonSchema.options.at(-1)).toBe('done_when_missing');
+    expect(errorReasonSchema.options).toContain('done_when_missing');
     expect(intakeViaSchema.options).toEqual(['import', 'kickstart', 'enqueue_epic']);
   });
 

@@ -28,6 +28,8 @@ export const capabilityWordSchema = z.enum(['none', 'iterate', 'build', 'review'
 export const intakeViaSchema = z.enum(['import', 'kickstart', 'enqueue_epic']);
 export const findingWeightSchema = z.enum(['real', 'plausible', 'theoretical']);
 export const approveAtSchema = z.enum(['zero_findings', 'no_real_or_plausible']);
+export const learningSourceSchema = z.enum(['platform', 'external']);
+
 export const untrustedSourceSchema = z.enum([
   'pr_diff',
   'issue_body',
@@ -44,6 +46,7 @@ export const wakeReasonSchema = z.enum([
   'stage_advanced',
   'handed_to_person',
   'delegated_merge',
+  'silence_alarm',
 ]);
 export const liveScreenSchema = z.enum(['home', 'flow', 'board', 'gates', 'item']);
 
@@ -67,6 +70,7 @@ export type CapabilityWord = z.infer<typeof capabilityWordSchema>;
 export type FindingWeight = z.infer<typeof findingWeightSchema>;
 export type ApproveAt = z.infer<typeof approveAtSchema>;
 export type UntrustedSource = z.infer<typeof untrustedSourceSchema>;
+export type LearningSource = z.infer<typeof learningSourceSchema>;
 export type GateDecision = z.infer<typeof gateDecisionSchema>;
 export type PersonStatus = z.infer<typeof personStatusSchema>;
 export type PrincipalKind = z.infer<typeof principalKindSchema>;

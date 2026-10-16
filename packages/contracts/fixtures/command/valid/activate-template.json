@@ -8,5 +8,6 @@
   "shadow": false,
   "externalReviewerIdentities": [],
   "requiredChecks": [],
-  "protectedPaths": []
+  "protectedPaths": [],
+  "botAuthors": ["dependabot[bot]"]
 }

@@ -29,6 +29,7 @@ import {
   overallStatusSchema,
 } from './health.ts';
 import {
+  botAuthorsSchema,
   externalReviewerIdentitiesSchema,
   githubLoginSchema,
   harnessSchema,
@@ -201,6 +202,8 @@ export const schemaRegistry: Record<string, ZodType> = {
   'review-verdict': closedSets.reviewVerdictSchema,
   'finding-weight': closedSets.findingWeightSchema,
   'untrusted-source': closedSets.untrustedSourceSchema,
+  'learning-source': closedSets.learningSourceSchema,
+  'bot-authors': botAuthorsSchema,
   'provider-id': providerIdSchema,
   'model-id': modelIdSchema,
   'review-record': reviewRecordSchema,
