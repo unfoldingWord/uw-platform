@@ -33,7 +33,13 @@ export const scenario = defineScenario({
     assert.deepEqual(dashboard.refutes, { findings: 2, refuted: 1, capped: false });
     const totals = await world.kernel.views.planeTotals();
     assert.deepEqual(totals.reviewerRefutes.tallies, [
-      { harnessId: scene.harnessId, persona: 'agent:reviewer', findings: 2, refuted: 1 },
+      {
+        harnessId: scene.harnessId,
+        harnessKey: 'software',
+        persona: 'agent:reviewer',
+        findings: 2,
+        refuted: 1,
+      },
     ]);
     return { state: { refutes: dashboard.refutes } };
   },

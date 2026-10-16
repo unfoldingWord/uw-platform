@@ -206,7 +206,7 @@ function refutesIndicator({ reviewerRefutes }: PlaneTotals): HealthIndicator {
   }
   const parts = tallies.map(
     (tally) =>
-      `${tally.persona} ${formatCount(tally.refuted)} of ${formatCount(tally.findings)} refuted`,
+      `${tally.persona} on ${tally.harnessKey} ${formatCount(tally.refuted)} of ${formatCount(tally.findings)} refuted`,
   );
   return {
     name: 'reviewer_refutes',
