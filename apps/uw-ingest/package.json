@@ -19,7 +19,7 @@
     "drizzle-orm": "^0.45.3",
     "hono": "^4.13.11"
   },
-  "contractVersion": "13.2.0",
+  "contractVersion": "13.3.0",
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260930.1",
     "@types/node": "^22.20.4",

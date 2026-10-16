@@ -71,6 +71,7 @@ function harnessOf(input: ActivateInput, external: string[]): Harness {
     freezeAllow: [],
     requiredChecks: [...input.requiredChecks],
     protectedPaths: [...(input.protectedPaths ?? [])],
+    fixClaim: false,
   };
 }
 

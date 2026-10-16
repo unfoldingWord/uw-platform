@@ -50,7 +50,7 @@ export type ScoutDone = {
 
 export type Submitted = {
   readonly kind: 'submitted';
-  readonly result: 'advanced' | 'parked' | 'checks_failed';
+  readonly result: 'advanced' | 'parked' | 'checks_failed' | 'awaiting_review';
 };
 
 type ModelPlan = {
