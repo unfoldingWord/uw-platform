@@ -18,6 +18,7 @@ import { noteGateMet } from '../runs/gates-met.ts';
 import { runValidators } from '../validators/registry.ts';
 import type { Attachment } from '../validators/context.ts';
 import { attachedPageIds } from '../validators/learning-attached.ts';
+import { fixRefusal, readFixDiffs, type FixDiffs } from './fix-submit.ts';
 import { attachWithin, isAttachRefusal } from './learning.ts';
 import { riskDraft } from './submit-risk.ts';
 import { expireLapsedLease, leaseLapsed } from './leases.ts';
@@ -86,6 +87,7 @@ type Command = {
   readonly input: SubmitInput;
   readonly facts: PullRequestFacts | null;
   readonly lent: DelegatedRead | null;
+  readonly fix: FixDiffs | null;
   readonly at: Date;
 };
 
@@ -159,11 +161,42 @@ async function park(_tx: StoreTransaction, submission: Submission): Promise<Deci
   return { result: 'parked', drafts: [submittedDraft(submission, 'parked')], failures: [] };
 }
 
+async function awaitReview(_tx: StoreTransaction, submission: Submission): Promise<Decision> {
+  const { holder } = submission.item;
+  return {
+    result: 'awaiting_review',
+    drafts: [
+      submittedDraft(submission, 'awaiting_review'),
+      ...(holder === null ? [] : [draft('item_released', { holder })]),
+    ],
+    failures: [],
+  };
+}
+
 const gates: ReadonlyMap<ExitGate, GateHandler> = new Map<ExitGate, GateHandler>([
   ['none', passThrough],
   ['checks', runChecks],
   ['human_approval', park],
 ]);
+
+type Chosen = { readonly handler: GateHandler } | Refused;
+
+type Choosing = {
+  readonly item: ItemState;
+  readonly stage: Stage;
+  readonly context: RecordContext;
+};
+
+async function handlerOf(tx: StoreTransaction, command: Command, scene: Choosing): Promise<Chosen> {
+  if (command.fix !== null) {
+    const unfit = await fixRefusal(tx, { ...scene, diffs: command.fix, facts: command.facts });
+    return unfit ?? { handler: awaitReview };
+  }
+  const handler = gates.get(scene.stage.exitGate);
+  if (handler === undefined)
+    return refused('malformed_command', { exitGate: scene.stage.exitGate });
+  return { handler };
+}
 
 type Standing = {
   readonly caller: Caller;
@@ -285,10 +318,10 @@ async function submitIn(
   if (unattendedLoop(exit, caller.actor, item.delegationId)) {
     return recordDelegationRequired(tx, context, item.itemId, stage.key);
   }
-  const handler = gates.get(stage.exitGate);
-  if (handler === undefined) return refused('malformed_command', { exitGate: stage.exitGate });
+  const chosen = await handlerOf(tx, command, { item, stage, context });
+  if ('status' in chosen) return chosen;
   const tweak = isOccasionalTweak(exit);
-  const decision = await handler(tx, { item, stage, exit, tweak, input, attaching });
+  const decision = await chosen.handler(tx, { item, stage, exit, tweak, input, attaching });
   const recording = { command, scene, context, decision, attaching };
   const recorded = await recordSubmission(tx, recording);
   return accepted(await delegatedAfter(ports, tx, { ...recording, recorded }));
@@ -384,6 +417,14 @@ export async function submit(
   if ('refusal' in read) return read.refusal;
   const lent = await delegatedPreRead(ports, caller, normalised.itemId);
   if (lent !== null && 'status' in lent) return lent;
-  const command = { caller, input: normalised, facts: read.facts, lent, at: ports.clock.now() };
+  const fix = await readFixDiffs(ports, normalised.itemId, normalised.change, read.facts);
+  const command = {
+    caller,
+    input: normalised,
+    facts: read.facts,
+    lent,
+    fix,
+    at: ports.clock.now(),
+  };
   return ports.store.transaction((tx) => submitIn(ports, tx, command));
 }

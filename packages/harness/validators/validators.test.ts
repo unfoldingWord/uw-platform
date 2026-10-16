@@ -74,11 +74,15 @@ function failures(events: readonly HarnessEvent[], pages: readonly PageFacts[] =
 }
 
 describe('KN-6 validators are a registry and an unknown key fails closed', () => {
-  it('names the unknown key, passes an empty list, and registers learning_attached only', () => {
+  it('names the unknown key, passes an empty list, and registers learning_attached and the two fix validators', () => {
     const context = contextOf([created()]);
     expect(runValidators(['nope'], context)).toEqual(['unknown_validator: nope']);
     expect(runValidators([], context)).toEqual([]);
-    expect([...validatorRegistry.keys()]).toEqual(['learning_attached']);
+    expect([...validatorRegistry.keys()]).toEqual([
+      'learning_attached',
+      'fix_size_cap',
+      'fix_keeps_purpose',
+    ]);
   });
 
   it('concatenates the failures of every key', () => {
