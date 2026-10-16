@@ -93,7 +93,7 @@ function submittedTime(review: ReviewFact): number {
   return review.submittedAt?.getTime() ?? 0;
 }
 
-function later(a: ReviewFact, b: ReviewFact): boolean {
+export function reviewedLater(a: ReviewFact, b: ReviewFact): boolean {
   const [left, right] = [submittedTime(a), submittedTime(b)];
   return left === right ? a.reviewId > b.reviewId : left > right;
 }
@@ -115,7 +115,7 @@ function latestDecisive(
     const onHead = heads.has(fullSha(review.commit) ?? '');
     if (counted === null || !onHead || !isDecisive(review)) continue;
     const seen = latest.get(counted.reviewer);
-    if (seen === undefined || later(review, seen.review)) {
+    if (seen === undefined || reviewedLater(review, seen.review)) {
       latest.set(counted.reviewer, { review, external: counted.external });
     }
   }
