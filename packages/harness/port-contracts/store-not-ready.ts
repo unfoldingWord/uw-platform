@@ -16,7 +16,7 @@ function missing(n: number, evidence: Record<string, unknown>) {
     itemId: null,
     name: 'done_when_missing',
     at: new Date(at.getTime() + n * hour).toISOString(),
-    actor: 'agent:ingest',
+    actor: 'agent:builder',
     evidence,
     traceId: uid(base + 0x80),
     requestId: null,
