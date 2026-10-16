@@ -115,6 +115,7 @@ export type ConnectorRequest = {
   readonly itemId: string;
   readonly traceId: string;
   readonly pullRequest: PullRequestRef | null;
+  readonly joined: boolean;
   readonly expectedHead: string | null;
   readonly expectedBase: DecidedBase | null;
   readonly repository: string | null;

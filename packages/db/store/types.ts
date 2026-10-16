@@ -1,6 +1,7 @@
 import type {
   CapabilityWord,
   CostBasis,
+  DelegableTier,
   Engine,
   EventEvidence,
   EventName,
@@ -186,6 +187,7 @@ export type Delegation = {
   readonly persona: Identity;
   readonly harnessId: string;
   readonly capability: CapabilityWord;
+  readonly maxTier: DelegableTier | null;
   readonly grantedAt: Date;
   readonly expiresAt: Date;
   readonly revokedAt: Date | null;
@@ -200,6 +202,7 @@ export type DelegationFilter = {
 export type DelegationsGateway = {
   readonly read: {
     byId(delegationId: string): Promise<Delegation | null>;
+    lock(delegationId: string): Promise<Delegation | null>;
     live(filter: DelegationFilter, at: Date): Promise<readonly Delegation[]>;
     countLive(filter: DelegationFilter, at: Date): Promise<number>;
     firstLive(filter: DelegationFilter, at: Date, limit: number): Promise<readonly Delegation[]>;
@@ -224,6 +227,8 @@ export type GateDecisionRow = {
   readonly itemId: string;
   readonly stageId: string;
   readonly actor: Identity;
+  readonly agentActor: Identity | null;
+  readonly delegationId: string | null;
   readonly decision: GateDecision;
   readonly reason: string | null;
   readonly evidence: HarnessEvent['evidence'];
@@ -234,6 +239,7 @@ export type GateDecisionsGateway = {
   readonly read: {
     forItem(itemId: string): Promise<readonly GateDecisionRow[]>;
     anyForStage(stageId: string): Promise<boolean>;
+    delegatedSince(since: Date, limit: number): Promise<readonly GateDecisionRow[]>;
   };
   readonly write: { insert(decision: GateDecisionRow): Promise<void> };
 };
