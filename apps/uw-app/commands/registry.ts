@@ -30,6 +30,7 @@ import {
   reorderStagesCommand,
   resumeCommand,
   setHostedBuilderCommand,
+  setFreezeCommand,
   setShadowCommand,
   updateStageCommand,
 } from './person/stages.ts';
@@ -79,7 +80,7 @@ export const commandRegistry = commandRegistryOf([
   activatePersonaCommand,
   recordMeasurementCommand,
   setShadowCommand,
-  notWiredCommand('set_freeze', 'admin'),
+  setFreezeCommand,
   notWiredCommand('decide_gates', 'admin'),
   notWiredCommand('refute_finding', 'write'),
 ]);

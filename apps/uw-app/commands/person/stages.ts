@@ -79,6 +79,15 @@ export const setHostedBuilderCommand = commandHandler({
     fromKernel(await kernel.stages.setHostedBuilder(caller, { harnessId, enabled: body.enabled })),
 });
 
+export const setFreezeCommand = commandHandler({
+  name: 'set_freeze',
+  action: 'admin',
+  run: async ({ kernel, caller, harnessId }, body: CommandBody<'set_freeze'>) =>
+    fromKernel(
+      await kernel.stages.setFreeze(caller, { harnessId, frozen: body.frozen, allow: body.allow }),
+    ),
+});
+
 export const setShadowCommand = commandHandler({
   name: 'set_shadow',
   action: 'admin',

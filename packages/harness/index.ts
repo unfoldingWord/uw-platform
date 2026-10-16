@@ -120,3 +120,4 @@ export { hasPackageStage } from './stages/package.ts';
 export type { Joined, JoinInput } from './items/join.ts';
 export type { ShadowInput } from './gates/shadow.ts';
 export { closingReferences, hasSkipCiMarker } from './github/closing-keywords.ts';
+export type { FreezeInput } from './stages/freeze.ts';
