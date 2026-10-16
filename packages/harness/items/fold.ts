@@ -50,6 +50,8 @@ function created(event: FoldableEvent): ItemState {
     pullRequest: evidence.pullRequest,
     issue: evidence.issue,
     zulipTopic: null,
+    epic: evidence.epic,
+    blockedBy: evidence.blockedBy,
   };
 }
 
@@ -191,6 +193,8 @@ export const unchangedNames: ReadonlySet<EventName> = new Set<EventName>([
   'shadow_verdict',
   'shadow_lifted',
   'freeze_changed',
+  'epic_enqueued',
+  'done_when_missing',
   'finding_refuted',
   'delegated_exit_claimed',
   'premise_held',

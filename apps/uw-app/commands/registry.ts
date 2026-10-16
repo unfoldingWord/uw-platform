@@ -1,5 +1,6 @@
 import type { CommandName } from '@uw/contracts';
 import { isBuiltCommand, type CommandHandler } from './handler.ts';
+import { notWiredCommand } from './not-wired.ts';
 import {
   claimCommand,
   enqueueCommand,
@@ -86,4 +87,5 @@ export const commandRegistry = commandRegistryOf([
   setFixClaimCommand,
   decideGatesCommand,
   refuteFindingCommand,
+  notWiredCommand('enqueue_epic', 'write'),
 ]);

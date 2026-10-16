@@ -41,6 +41,7 @@ const actions = {
   decide_gates: 'admin',
   refute_finding: 'write',
   set_fix_claim: 'admin',
+  enqueue_epic: 'write',
 } as const;
 
 describe('WB-1 the command registry', () => {

@@ -27,6 +27,8 @@ const item: ItemState = itemStateSchema.parse({
   pullRequest,
   issue: null,
   zulipTopic: null,
+  epic: null,
+  blockedBy: [],
 });
 
 const context = {

@@ -54,6 +54,8 @@ const item: ItemState = {
   pullRequest: ref,
   issue: null,
   zulipTopic: null,
+  epic: null,
+  blockedBy: [],
 };
 
 const approver = principalSchema.parse({
