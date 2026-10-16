@@ -98,6 +98,8 @@ export function toItemState(row: typeof harnessItems.$inferSelect, stageKey: str
         : { repo: row.prRepo, number: row.prNumber },
     issue: issueOf(row),
     zulipTopic: row.zulipTopic,
+    epic: row.epic,
+    blockedBy: row.blockedBy,
   });
 }
 

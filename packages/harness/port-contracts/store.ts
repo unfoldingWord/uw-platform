@@ -11,6 +11,7 @@ import { describeStoreMeasurements } from './store-measurements.ts';
 import { describeStoreFreeze } from './store-freeze.ts';
 import { describeStoreFixClaim } from './store-fix-claim.ts';
 import { describeStoreJoining } from './store-joining.ts';
+import { describeStoreItemsEpic } from './store-items-epic.ts';
 import { describeStorePersonas, type PageVersionRow } from './store-personas.ts';
 
 export type StoreShape = { readonly concurrentConnections: boolean };
@@ -289,6 +290,7 @@ export function describeStoreContract(
     describeStoreJoining(adapter, subject);
     describeStoreFreeze(adapter, subject);
     describeStoreFixClaim(adapter, subject);
+    describeStoreItemsEpic(adapter, subject);
   });
 }
 
