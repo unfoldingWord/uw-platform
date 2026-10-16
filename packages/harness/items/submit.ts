@@ -1,6 +1,5 @@
 import {
   eventEvidenceSchemas,
-  type EventEvidence,
   type ExitGate,
   type Harness,
   type HarnessEvent,
@@ -12,8 +11,7 @@ import { allowed } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import { factsFailure } from '../gates/facts-failure.ts';
-import { riskDeclarationOf } from '../github/declaration.ts';
-import { branchFor, fullSha, sameRepository } from '../github/identifiers.ts';
+import { fullSha, sameRepository } from '../github/identifiers.ts';
 import type { Ports, PullRequestFacts, PullRequestRef, StoreTransaction } from '../ports.ts';
 import { endRunDrafts } from '../runs/ends.ts';
 import { noteGateMet } from '../runs/gates-met.ts';
@@ -21,6 +19,7 @@ import { runValidators } from '../validators/registry.ts';
 import type { Attachment } from '../validators/context.ts';
 import { attachedPageIds } from '../validators/learning-attached.ts';
 import { attachWithin, isAttachRefusal } from './learning.ts';
+import { riskDraft } from './submit-risk.ts';
 import { expireLapsedLease, leaseLapsed } from './leases.ts';
 import {
   draft,
@@ -31,11 +30,15 @@ import {
   type RecordContext,
 } from './record.ts';
 import { holdsClaim } from './release.ts';
-import { applyDeclaration, carryForward, floorFromPaths } from '../risk/derive.ts';
 import { pausedRefusal } from './paused.ts';
 import { heldStanding } from './run-steps.ts';
 import { actingPrincipal, isRefusal, recordDelegationRequired } from '../delegations/acting.ts';
-import { pathsComparedAt } from '../github/changed-files.ts';
+import {
+  delegatedPreRead,
+  delegationRequiredAtShip,
+  shipUnderDelegation,
+  type DelegatedRead,
+} from '../gates/delegated-ship.ts';
 import {
   exitDrafts,
   isOccasionalTweak,
@@ -82,6 +85,7 @@ type Command = {
   readonly caller: Caller;
   readonly input: SubmitInput;
   readonly facts: PullRequestFacts | null;
+  readonly lent: DelegatedRead | null;
   readonly at: Date;
 };
 
@@ -97,53 +101,6 @@ function submittedDraft(submission: Submission, result: SubmitToGateResult): Eve
     pullRequest: input.change?.pullRequest ?? null,
     evidence: input.evidence,
   });
-}
-
-function samePullRequest(facts: PullRequestFacts, change: SubmitChange): boolean {
-  const { repo, number } = change.pullRequest;
-  return sameRepository(facts.ref.repo, repo) && facts.ref.number === number;
-}
-
-function pathsAtHead(
-  facts: PullRequestFacts | null,
-  change: SubmitChange,
-  item: ItemState,
-): readonly string[] | null {
-  if (facts === null || !samePullRequest(facts, change)) return null;
-  if (facts.headRepo === null || !sameRepository(facts.headRepo, change.pullRequest.repo)) {
-    return null;
-  }
-  if (facts.headRef !== branchFor(item.itemId) || fullSha(facts.head) !== change.head) return null;
-  return pathsComparedAt(facts, change.head);
-}
-
-function baseOf(facts: PullRequestFacts): EventEvidence['risk_derived']['base'] {
-  const sha = fullSha(facts.base);
-  return sha === null ? null : { sha, ref: facts.baseRef };
-}
-
-function riskDraft(command: Command, item: ItemState): readonly EventDraft[] {
-  const { change } = command.input;
-  if (change === null || command.facts === null) return [];
-  const paths = pathsAtHead(command.facts, change, item);
-  if (paths === null) return [];
-  const fresh = floorFromPaths(paths);
-  const floor = carryForward(fresh, { tier: item.riskTier, domains: item.riskDomains });
-  const declaration = riskDeclarationOf(command.facts.declaration);
-  const result = applyDeclaration(floor, declaration);
-  return [
-    draft('risk_derived', {
-      paths: [...paths],
-      declaration,
-      floorDomains: [...floor.domains],
-      riskTier: result.ok ? result.tier : floor.tier,
-      riskDomains: [...result.domains],
-      refusal: result.ok ? null : result.reason,
-      head: change.head,
-      repository: change.pullRequest.repo,
-      base: baseOf(command.facts),
-    }),
-  ];
 }
 
 function withNormalisedHead(input: SubmitInput): SubmitInput | null {
@@ -304,6 +261,7 @@ async function submitGuards(
   return (
     pausedRefusal(caller, harness, stage) ??
     (await standingRefusal(tx, ports, standing)) ??
+    (await delegationRequiredAtShip(tx, standing)) ??
     repositoryRefusal(input, harness)
   );
 }
@@ -331,14 +289,47 @@ async function submitIn(
   if (handler === undefined) return refused('malformed_command', { exitGate: stage.exitGate });
   const tweak = isOccasionalTweak(exit);
   const decision = await handler(tx, { item, stage, exit, tweak, input, attaching });
-  const ending = await submittedRun(tx, { item, stage, decision, at });
+  const recording = { command, scene, context, decision, attaching };
+  const recorded = await recordSubmission(tx, recording);
+  return accepted(await delegatedAfter(ports, tx, { ...recording, recorded }));
+}
+
+type Recording = {
+  readonly command: Command;
+  readonly scene: SubmitScene;
+  readonly context: RecordContext;
+  readonly decision: Decision;
+  readonly attaching: readonly Attachment[];
+};
+
+async function recordSubmission(tx: StoreTransaction, recording: Recording): Promise<ItemState> {
+  const { command, scene, context, decision, attaching } = recording;
+  const { item, stage } = scene;
+  const ending = await submittedRun(tx, { item, stage, decision, at: command.at });
   const recorded = await recordItemEvents(tx, context, item.itemId, [
-    ...riskDraft(command, item),
+    ...riskDraft(command.facts, command.input.change, item),
     ...attaching.map((attachment) => draft('learning_attached', attachment)),
     ...decision.drafts,
     ...ending,
   ]);
-  return accepted({ item: recorded.item, result: decision.result, failures: decision.failures });
+  return recorded.item;
+}
+
+async function delegatedAfter(
+  ports: SubmitPorts,
+  tx: StoreTransaction,
+  after: Recording & { readonly recorded: ItemState },
+): Promise<Submitted> {
+  const { command, scene, context, decision, recorded } = after;
+  const { delegationId } = scene.item;
+  const read = command.lent;
+  const lent = { ...scene, item: recorded, caller: command.caller, context };
+  const shipped =
+    read === null || delegationId === null
+      ? null
+      : await shipUnderDelegation(ports, tx, { ...lent, delegationId, read });
+  const failures = shipped?.failures ?? decision.failures;
+  return { item: shipped?.item ?? recorded, result: decision.result, failures };
 }
 
 type Outcome = {
@@ -391,6 +382,8 @@ export async function submit(
   }
   const read = await readFacts(ports, normalised);
   if ('refusal' in read) return read.refusal;
-  const command = { caller, input: normalised, facts: read.facts, at: ports.clock.now() };
+  const lent = await delegatedPreRead(ports, caller, normalised.itemId);
+  if (lent !== null && 'status' in lent) return lent;
+  const command = { caller, input: normalised, facts: read.facts, lent, at: ports.clock.now() };
   return ports.store.transaction((tx) => submitIn(ports, tx, command));
 }

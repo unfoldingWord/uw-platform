@@ -11,6 +11,7 @@ import {
 import { allowed, bareAgent, isAgent, ownerBound } from '../access.ts';
 import { beatPrincipal } from '../delegations/beat.ts';
 import { capabilityReaches, pageAgrees } from '../delegations/capability.ts';
+import { delegableExit } from '../gates/delegable.ts';
 import { leaseLapsed } from '../items/leases.ts';
 import { activePersonaOn } from '../personas/projection.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
@@ -107,10 +108,14 @@ function reachable(stage: Stage, reach: ReadonlySet<CapabilityWord> | null): boo
   return [...reach].some((capability) => capabilityReaches(capability, stage.bracket));
 }
 
+function pickupOpen(stage: Stage, reach: ReadonlySet<CapabilityWord> | null): boolean {
+  if (delegableExit(stage)) return reach !== null && reach.has('merge');
+  return stage.agentPickup !== 'none' && reachable(stage, reach);
+}
+
 function claimable(stages: readonly Stage[], item: ItemState, judged: Judged, at: Date): boolean {
   const stage = stages.find((candidate) => candidate.key === item.stageKey);
-  if (stage === undefined || stage.paused || stage.agentPickup === 'none') return false;
-  if (!reachable(stage, judged.reach)) return false;
+  if (stage === undefined || stage.paused || !pickupOpen(stage, judged.reach)) return false;
   const open = item.gateStatus === 'working' || item.gateStatus === 'checks_failed';
   return open && (item.holder === null || leaseLapsed(item, at));
 }

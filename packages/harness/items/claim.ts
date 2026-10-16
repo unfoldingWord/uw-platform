@@ -3,6 +3,7 @@ import { allowed, bareAgent, isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { actingPrincipal, isRefusal, recordDelegationRequired } from '../delegations/acting.ts';
 import { capabilityReaches, pageAgrees } from '../delegations/capability.ts';
+import { delegableExit } from '../gates/delegable.ts';
 import {
   adoptionOf,
   claimedBranch,
@@ -12,7 +13,7 @@ import {
 } from './adopt.ts';
 import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
-import type { Ports, StoreTransaction } from '../ports.ts';
+import type { Delegation, Ports, StoreTransaction } from '../ports.ts';
 import { engineDescriptor } from '../engines.ts';
 import { spendRefusal } from '../runs/breaker-level.ts';
 import { activePersonaOn, personaIdentityFor } from '../personas/projection.ts';
@@ -75,10 +76,26 @@ function claimGuards(scene: Scene, item: ItemState): Refused | null {
 }
 
 function pickupRefusal(caller: Caller, stage: Stage): Refused | null {
-  if (isAgent(caller.actor) && stage.agentPickup === 'none') {
+  if (isAgent(caller.actor) && stage.agentPickup === 'none' && !delegableExit(stage)) {
     return refused('pickup_not_allowed', { stage: stage.key });
   }
   return null;
+}
+
+async function unlentRefusal(
+  tx: StoreTransaction,
+  scene: Scene,
+  item: ItemState,
+  delegationId: string | null,
+): Promise<Refused | null> {
+  const { caller, stage, context } = scene;
+  if (!isAgent(caller.actor) || !delegableExit(stage) || delegationId !== null) return null;
+  return recordDelegationRequired(tx, context, item.itemId, stage.key);
+}
+
+function mergeReach(stage: Stage, delegation: Delegation): Refused | null {
+  if (delegation.capability === 'merge' && delegableExit(stage)) return null;
+  return refused('pickup_not_allowed', { stage: stage.key, capability: delegation.capability });
 }
 
 function lockedGuards(scene: Scene, item: ItemState): Refused | null {
@@ -141,6 +158,8 @@ async function capabilityRefusal(
   const delegation = await tx.delegations.read.byId(delegationId);
   if (delegation === null) return null;
   const { harness, stage } = scene;
+  if (delegation.capability === 'merge' || delegableExit(stage))
+    return mergeReach(stage, delegation);
   const page = await activePersonaOn(tx, delegation.persona, harness.id);
   if (capabilityReaches(delegation.capability, stage.bracket) && pageAgrees(page, delegation)) {
     return null;
@@ -234,6 +253,15 @@ async function sceneOf(
   return { caller, harness, stage, context: recordContext(ports, caller, at) };
 }
 
+async function rereadScene(tx: StoreTransaction, scene: Scene): Promise<Scene | Refused> {
+  const harness = await tx.harnesses.read.byId(scene.harness.id);
+  if (harness === null) return refused('harness_not_found', { harnessId: scene.harness.id });
+  const stages = await tx.harnessStages.read.forHarness(harness.id);
+  const stage = stages.find((entry) => entry.id === scene.stage.id);
+  if (stage === undefined) return refused('stage_not_found', { stage: scene.stage.key });
+  return { ...scene, harness, stage };
+}
+
 async function claimIn(
   ports: ClaimPorts,
   tx: StoreTransaction,
@@ -250,13 +278,12 @@ async function claimIn(
   await tx.lock(lockKeys.stageClaims(scene.stage.id));
   const item = await tx.harnessItems.read.lock(input.itemId);
   if (item === null) return refused('item_not_found', { itemId: input.itemId });
-  const harness = await tx.harnesses.read.byId(scene.harness.id);
-  if (harness === null) return refused('harness_not_found', { harnessId: scene.harness.id });
-  const stages = await tx.harnessStages.read.forHarness(harness.id);
-  const stage = stages.find((entry) => entry.id === scene.stage.id);
-  if (stage === undefined) return refused('stage_not_found', { stage: scene.stage.key });
-  const locked = { ...scene, harness, stage };
-  const stale = lockedGuards(locked, item) ?? (await heldRefusal(tx, locked, item));
+  const locked = await rereadScene(tx, scene);
+  if ('status' in locked) return locked;
+  const stale =
+    lockedGuards(locked, item) ??
+    (await heldRefusal(tx, locked, item)) ??
+    (await unlentRefusal(tx, locked, item, input.delegationId));
   if (stale !== null) return stale;
   const denied = await actingGuard(tx, ports, locked, item, input.delegationId);
   if (denied !== null) return denied;
