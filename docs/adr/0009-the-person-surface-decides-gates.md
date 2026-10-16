@@ -4,6 +4,8 @@ date: 2026-10-03
 ---
 # The person surface decides gates
 
+Amended by [ADR 0010](0010-merge-under-delegation.md): the minute job's `apps/uw-app/cron/delegated-exits.ts` is the one file outside the person surface that calls a gate command, `kernel.gates.exitDelegated`, as the system principal.
+
 People approve, reject, take over and override gates, and recover lost connector results, through the command API (`POST /api/harness/:harness/commands/:name`). Those commands call `kernel.gates`; the stage commands call `kernel.stages`; delegation commands call `kernel.delegations.grant` and `revoke`. Before this, the AB-7 static check refused any such call anywhere in the import closure of `apps/uw-app/app.tsx`, because nothing in the app decided a gate.
 
 **Decision.** The person surface is one directory, `apps/uw-app/commands/person/`. It is the only place in `uw-app` that calls `kernel.gates`, `kernel.stages` and `kernel.delegations.grant`/`revoke`.
