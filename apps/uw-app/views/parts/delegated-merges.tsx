@@ -18,7 +18,10 @@ export function DelegatedMerges(props: { readonly merged: DelegatedMergeList }) 
       <ul class="m-0 flex list-none flex-col gap-3 p-0">
         {rows.map((row) => (
           <li class="flex flex-col gap-1">
-            <a href={itemPath(row.harness.id, row.itemId)} class={`text-link underline ${focus}`}>
+            <a
+              href={itemPath(row.harness.id, row.itemId)}
+              class={`break-words text-link underline ${focus}`}
+            >
               {`${row.title} on ${row.harness.key}`}
             </a>
             <span class="break-words text-sm text-muted">
