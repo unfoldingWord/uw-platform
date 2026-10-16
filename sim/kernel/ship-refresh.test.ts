@@ -111,6 +111,7 @@ function factsAnswering(
     refresh,
     diff: () => notWiredCall('githubFacts', 'diff'),
     epic: async () => null,
+    authors: async () => [],
   };
 }
 

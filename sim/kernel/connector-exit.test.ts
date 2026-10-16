@@ -138,6 +138,7 @@ describe('KN-13 approve at Ship reads the GitHub facts before its transaction', 
       refresh: () => notWiredCall('githubFacts', 'refresh'),
       diff: () => notWiredCall('githubFacts', 'diff'),
       epic: async () => null,
+      authors: async () => [],
     };
     const before = await itemLog(scene.world, scene.harnessId, scene.itemId);
     const outcome = await approve(scene, kernelWith(scene, { githubFacts }));
@@ -160,6 +161,7 @@ describe('KN-13 approve at Ship reads the GitHub facts before its transaction', 
         refresh: moved,
         diff: () => notWiredCall('githubFacts', 'diff'),
         epic: async () => null,
+        authors: async () => [],
       };
       const before = await itemLog(scene.world, scene.harnessId, scene.itemId);
       const outcome = await approve(scene, kernelWith(scene, { githubFacts }));
@@ -335,6 +337,7 @@ describe('KN-13 approve at Ship reads GitHub only for an admin and never throws 
       refresh: counted,
       diff: () => notWiredCall('githubFacts', 'diff'),
       epic: async () => null,
+      authors: async () => [],
     };
     const kernel = kernelWith(scene, { githubFacts });
     const outcome = await kernel.gates.decide(simCaller(scene.world, scene.max), {
@@ -355,6 +358,7 @@ describe('KN-13 approve at Ship reads GitHub only for an admin and never throws 
       refresh: limited,
       diff: () => notWiredCall('githubFacts', 'diff'),
       epic: async () => null,
+      authors: async () => [],
     };
     const before = await itemLog(scene.world, scene.harnessId, scene.itemId);
     const outcome = await approve(scene, kernelWith(scene, { githubFacts }));

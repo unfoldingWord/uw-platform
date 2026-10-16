@@ -27,5 +27,24 @@ export function describeStoreObservability(adapter: string, subject: Observabili
       expect(read.projected?.heldSince).toBe('2026-10-01T09:30:00.000Z');
       expect(read.plain).toBeNull();
     });
+
+    it('DX-3 changes a template only from the one it names', async () => {
+      const harness = { ...harnessOf(0x7c00, 'gateway-template'), template: 'check-only' };
+      const read = await subject().store.transaction(async (tx) => {
+        await tx.harnesses.write.insert(harness, at);
+        const wrong = await tx.harnesses.write.setTemplate(harness.id, 'bml', 'software');
+        const changed = await tx.harnesses.write.setTemplate(harness.id, 'check-only', 'software');
+        const again = await tx.harnesses.write.setTemplate(harness.id, 'check-only', 'software');
+        const missing = await tx.harnesses.write.setTemplate(uid(0x7cff), 'check-only', 'software');
+        return { wrong, changed, again, missing, after: await tx.harnesses.read.byId(harness.id) };
+      });
+      expect(read).toEqual({
+        wrong: false,
+        changed: true,
+        again: false,
+        missing: false,
+        after: { ...harness, template: 'software' },
+      });
+    });
   });
 }

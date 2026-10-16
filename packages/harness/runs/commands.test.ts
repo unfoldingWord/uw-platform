@@ -84,6 +84,7 @@ function touchingPorts(touched: string[]): Ports {
       refresh: touch('facts'),
       diff: touch('facts'),
       epic: touch('facts'),
+      authors: touch('facts'),
     },
     connectors: { run: touch('connectors'), outcomeOf: touch('connectors'), review: touch('c') },
     modelEngine: { turn: touch('modelEngine'), spend: touch('modelEngine') },

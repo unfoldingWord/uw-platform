@@ -5,6 +5,7 @@ import type {
   EpicFacts,
   GitHubFacts,
   IssueKey,
+  PullRequestAuthor,
   PullRequestFacts,
   PullRequestRef,
 } from '@uw/harness';
@@ -13,6 +14,7 @@ export type SimGitHubFacts = GitHubFacts & {
   given(facts: PullRequestFacts): void;
   setDiff(ref: PullRequestRef, range: DiffRange, text: string): void;
   givenEpic(epic: EpicFacts): void;
+  givenAuthor(ref: PullRequestRef, author: string): void;
 };
 
 const keyOf = (ref: PullRequestRef): string => `${ref.repo.toLowerCase()}#${ref.number}`;
@@ -33,6 +35,7 @@ export function createSimGitHubFacts(clock: Clock): SimGitHubFacts {
   const known = new Map<string, PullRequestFacts>();
   const diffs = new Map<string, string>();
   const epics = new Map<string, EpicFacts>();
+  const authors = new Map<string, PullRequestAuthor>();
   const answer = async (ref: PullRequestRef): Promise<PullRequestFacts | null> => {
     const found = known.get(keyOf(ref));
     return found ? structuredClone(found) : null;
@@ -57,6 +60,14 @@ export function createSimGitHubFacts(clock: Clock): SimGitHubFacts {
     },
     givenEpic: (epic) => {
       epics.set(issueKeyOf(epic.epic.issue), structuredClone(epic));
+    },
+    authors: async (refs) =>
+      refs.flatMap((ref) => {
+        const found = authors.get(keyOf(ref));
+        return found === undefined ? [] : [structuredClone(found)];
+      }),
+    givenAuthor: (ref, author) => {
+      authors.set(keyOf(ref), { ref: { ...ref }, author });
     },
   };
 }

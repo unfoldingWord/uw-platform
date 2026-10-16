@@ -14,6 +14,7 @@ export type GithubFactsSubject = {
   given(facts: PullRequestFacts): Promise<void>;
   givenDiff(ref: PullRequestRef, range: DiffRange, text: string): Promise<void>;
   givenEpic(epic: EpicFacts): Promise<void>;
+  givenAuthor(ref: PullRequestRef, author: string): Promise<void>;
   now(): Date;
 };
 
@@ -81,6 +82,24 @@ function issueFact(number: number, options: Partial<IssueFact> = {}): IssueFact 
     blockedBy: [],
     ...options,
   };
+}
+
+function authorCases(open: () => Promise<GithubFactsSubject>): void {
+  it('OB-4 answers the author of each pull request it knows, in any case, and nothing for an unknown one', async () => {
+    const subject = await open();
+    await subject.given(factsFor('unfoldingWord/uw-platform', 31, 'b'.repeat(40)));
+    await subject.given(factsFor('unfoldingWord/uw-platform', 32, 'c'.repeat(40)));
+    await subject.givenAuthor({ repo: 'unfoldingWord/uw-platform', number: 31 }, 'dependabot[bot]');
+    const authors = await subject.facts.authors([
+      { repo: 'UNFOLDINGWORD/UW-PLATFORM', number: 31 },
+      { repo: 'unfoldingWord/uw-platform', number: 32 },
+      { repo: 'unfoldingWord/uw-platform', number: 404 },
+    ]);
+    expect(authors).toEqual([
+      { ref: { repo: 'unfoldingWord/uw-platform', number: 31 }, author: 'dependabot[bot]' },
+    ]);
+    expect(await subject.facts.authors([])).toEqual([]);
+  });
 }
 
 function epicOf(subIssues: readonly IssueFact[], number = 40): EpicFacts {
@@ -164,6 +183,7 @@ export function describeGithubFactsContract(
     shapeCases(open);
     defaultBranchCases(open);
     epicCases(open);
+    authorCases(open);
     if (diffs === 'scripted') diffCases(open);
     else diffNotWiredCases(open);
 
@@ -330,5 +350,6 @@ export function describeGithubFactsNotWired(adapter: string, facts: GitHubFacts)
     refresh: true,
     diff: true,
     epic: true,
+    authors: true,
   } satisfies Record<keyof GitHubFacts, true>);
 }

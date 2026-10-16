@@ -169,6 +169,7 @@ describe('the gate view answers from the read model', () => {
       },
       diff: () => notWiredCall('githubFacts', 'diff'),
       epic: async () => null,
+      authors: async () => [],
     };
     const kernel = createKernel({ ...scene.world.adapters, githubFacts });
     const view = viewOf(
