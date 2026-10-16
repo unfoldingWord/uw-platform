@@ -1,4 +1,5 @@
 import { writePageAsAgent } from '../../pages/agent-write.ts';
+import { externalWriter } from './external-writer.ts';
 import { gatedHandler, refusal, type VerbInput, type VerbRefusal } from '../handler.ts';
 import type { VerbContext } from '../context.ts';
 import { hiddenPage, storedPageArea } from './page-scene.ts';
@@ -20,7 +21,8 @@ export const writePageVerb = gatedHandler({
   resource: writeArea,
   run: async (context, input) => {
     const { db, principal, traceId, at, kernel } = context;
-    const request = { traceId, at, instructions: kernel.reads };
+    const writer = input.type === 'learning' ? await externalWriter(context) : null;
+    const request = { traceId, at, instructions: kernel.reads, writer };
     const written = await writePageAsAgent(db, principal, input, request);
     if (!written.ok) {
       if (written.reason === 'page_not_found') return hiddenPage(input);
