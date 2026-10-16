@@ -8,7 +8,7 @@ import {
   type ReviewFinding,
 } from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
-import { fixOffered, fixRound, onlyByFix, roundFindings } from './fix-offer.ts';
+import { fixClosed, fixOffered, fixRound, onlyByFix, roundFindings } from './fix-offer.ts';
 
 const harnessId = '00000000-0000-4000-8000-0000000000a1';
 const itemId = '00000000-0000-4000-8000-0000000000b1';
@@ -157,5 +157,17 @@ describe('FL-2 the rules that open a fix', () => {
       'plausible: The empty state may drop.',
     ]);
     expect(roundFindings([round([real]), submitted])).toEqual([]);
+  });
+});
+
+describe('FL-1 FL-2 why a fix is not offered', () => {
+  it('FL-1 FL-2 a closed offer names its cause', () => {
+    const open = [submitted, round([real])];
+    expect(fixClosed(harness, item, open)).toBeNull();
+    expect(fixClosed({ ...harness, fixClaim: false }, item, open)).toBe('fix_claim_off');
+    expect(fixClosed({ ...harness, shadow: true }, item, open)).toBe('shadow');
+    expect(fixClosed(harness, { ...item, pullRequest: null }, open)).toBe('no_pull_request');
+    expect(fixClosed(harness, { ...item, branchState: 'none' }, open)).toBe('joined_pull_request');
+    expect(fixClosed(harness, item, [round([real]), claimed])).toBe('no_review_round');
   });
 });
