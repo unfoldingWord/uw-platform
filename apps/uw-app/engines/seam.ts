@@ -36,7 +36,7 @@ export type EngineWork = {
 };
 
 export type EngineWorkResult = {
-  readonly outcome: 'ended' | 'turn_limit';
+  readonly outcome: 'ended' | 'turn_limit' | 'refused';
   readonly text: string | null;
   readonly inputTokens: number;
   readonly outputTokens: number;

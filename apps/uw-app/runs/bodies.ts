@@ -35,7 +35,7 @@ export type ReadDone = ReadText & {
 export type ModelDone = {
   readonly kind: 'model';
   readonly text: string | null;
-  readonly outcome: 'ended' | 'turn_limit';
+  readonly outcome: 'ended' | 'turn_limit' | 'refused';
   readonly resolvedProvider: string | null;
   readonly resolvedModel: string;
 };
