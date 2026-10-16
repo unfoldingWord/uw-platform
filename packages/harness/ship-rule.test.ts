@@ -2,6 +2,7 @@ import {
   ciJobSchema,
   defaultCiChecks,
   principalSchema,
+  riskTierSchema,
   shipRuleInputSchema,
   type JdArea,
   type Principal,
@@ -476,5 +477,11 @@ describe('MD-4 a delegation never covers a protected path or a tier above its ow
     const reasons = refusedWith({ ...standard(), riskTier: 'high', delegation: null });
     expect(reasons).not.toContain('tier_above_delegation');
     expect(reasons).not.toContain('protected_path_needs_person');
+  });
+});
+
+describe('MD-4 the tier order the delegation compares against', () => {
+  it('MD-4 riskTierSchema lists low, then standard, then high', () => {
+    expect(riskTierSchema.options).toEqual(['low', 'standard', 'high']);
   });
 });
