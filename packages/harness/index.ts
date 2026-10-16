@@ -116,3 +116,4 @@ export type { PromptText, UntrustedContent } from './untrusted.ts';
 export { EXTERNAL_PROVIDER, requestsPlatformReviewer } from './github/reviewers.ts';
 export { hasPackageStage } from './stages/package.ts';
 export type { Joined, JoinInput } from './items/join.ts';
+export type { ShadowInput } from './gates/shadow.ts';

@@ -326,6 +326,11 @@ async function openRoute(
   return inFlight ?? routeOf(gate, decision);
 }
 
+function shadowRefusal(gate: Gate, route: Route): Refused | null {
+  if (!gate.harness.shadow || route.connector === null) return null;
+  return refused('not_permitted', { why: 'shadow', harnessId: gate.harness.id });
+}
+
 async function checkedRoute(
   tx: StoreTransaction,
   gate: Gate,
@@ -352,6 +357,8 @@ async function decideIn(
   if (isRefused(gate)) return gate;
   const route = await openRoute(tx, gate, input.decision);
   if (isRefused(route)) return route;
+  const shadow = shadowRefusal(gate, route);
+  if (shadow !== null) return shadow;
   const ship = await checkedRoute(tx, gate, input.decision, { route, snapshot });
   if (ship.refusal !== null) return ship.refusal;
   const full = await wipRefusal(tx, gate, input.decision);
