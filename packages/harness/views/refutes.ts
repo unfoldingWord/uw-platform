@@ -1,6 +1,6 @@
 import { eventEvidenceSchemas, type HarnessEvent } from '@uw/contracts';
 
-export const REFUTE_WINDOW_MS = 30 * 24 * 3_600_000;
+const REFUTE_WINDOW_MS = 30 * 24 * 3_600_000;
 export const refuteNames = ['run_completed', 'finding_refuted'] as const;
 
 export type RefuteTally = {
