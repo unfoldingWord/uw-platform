@@ -56,6 +56,13 @@ describe('RV-2 the refute rate per Reviewer identity', () => {
     ]);
   });
 
+  it('counts a refutation only when its run completed inside the window', () => {
+    expect(refuteTallies([refuted])).toEqual([]);
+    expect(refuteTallies([completed, refuted, refuted])).toEqual([
+      { harnessId, persona: 'agent:reviewer', findings: 2, refuted: 2 },
+    ]);
+  });
+
   it('counts nothing for a run with no review', () => {
     const builder = event('run_completed', 'agent:builder', {
       runId,
