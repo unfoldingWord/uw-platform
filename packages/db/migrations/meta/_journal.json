@@ -225,6 +225,13 @@
       "when": 1792110961248,
       "tag": "0031_joined_once",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1792113404531,
+      "tag": "0032_ship_rule_and_gates",
+      "breakpoints": true
     }
   ]
 }

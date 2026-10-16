@@ -49,6 +49,9 @@ const expectedColumns: Record<string, string[]> = {
     'repository',
     'shadow',
     'external_reviewer_identities',
+    'frozen',
+    'freeze_allow',
+    'required_checks',
   ],
   harness_stages: [
     'id',
