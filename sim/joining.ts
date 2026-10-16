@@ -39,7 +39,7 @@ export type JoinedWorld = {
 
 type FactsInput = { readonly head?: string; readonly reviews?: readonly ReviewFact[] };
 
-function joinedFacts(world: World, input: FactsInput = {}): PullRequestFacts {
+export function joinedFacts(world: World, input: FactsInput = {}): PullRequestFacts {
   const head = input.head ?? joinedHead;
   const facts = greenFacts(world, {
     itemId: 'joined',

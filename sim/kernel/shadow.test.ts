@@ -1,7 +1,7 @@
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { readAllEvents } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { simAdvance, simCaller } from '../fixtures.ts';
+import { simAdvance, simCaller, simPerson } from '../fixtures.ts';
 import {
   approveVerdict,
   joinedHead,
@@ -123,4 +123,26 @@ describe('GL-4 shadow mode ends at the lift', () => {
     inShadow(async (scene) => {
       expect(value(await recordVerdicts(scene))).toEqual([]);
     }, false));
+});
+
+describe('OB-3 the shadow comparison', () => {
+  it('shows a recorded verdict with no other review as not compared, and hides the harness from an outsider', () =>
+    inShadow(async (scene) => {
+      const runId = await startReview(scene);
+      value(await scene.world.kernel.runs.postReview(scene.host, runId, approveVerdict));
+      const comparison = value(
+        await scene.world.kernel.views.shadow(simCaller(scene.world, scene.admin), {
+          harnessId: scene.harnessId,
+        }),
+      );
+      expect(comparison).toMatchObject({ shadow: true, capped: false });
+      expect(comparison.rows[0]).toMatchObject({ github: [], disagrees: false });
+      const outsider = await simPerson(scene.world, 9, [
+        { role: 'viewer', scopeKind: 'jd_area', scopeArea: '20-29' },
+      ]);
+      const hidden = await scene.world.kernel.views.shadow(simCaller(scene.world, outsider), {
+        harnessId: scene.harnessId,
+      });
+      expect(reasonOf(hidden)).toBe('harness_not_found');
+    }));
 });
