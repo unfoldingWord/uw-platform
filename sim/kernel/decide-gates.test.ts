@@ -2,7 +2,7 @@ import type { ItemState, Principal } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { software, type BatchEntry } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, simCaller } from '../fixtures.ts';
+import { createSimHarness, simAgent, simCaller } from '../fixtures.ts';
 import { detailOf, reasonOf, value } from '../runs.ts';
 import {
   approvedBy,
@@ -131,7 +131,7 @@ async function shapesRefused(scene: Scene): Promise<void> {
     },
   );
   expect(reasonOf(elsewhere)).toBe('item_not_found');
-  const agent = { ...scene.admin, identity: 'agent:builder', kind: 'agent' as const };
+  const agent = simAgent(scene.admin, 'builder', { interactive: true });
   expect(reasonOf(await batch(scene, [entry(scene.first)], agent))).toBe('not_permitted');
 }
 
