@@ -3,11 +3,11 @@ import type { ContainerHost, ExecResult } from './host.ts';
 
 export type SessionFile = { readonly path: string; readonly content: string };
 
-export type SessionExec = (
+type SessionExec = (
   command: readonly string[],
   env: Readonly<Record<string, string>>,
 ) => Promise<ExecResult>;
-export type FinishEnd = 'pushed' | 'checks_not_run_locally' | 'not_run';
+type FinishEnd = 'pushed' | 'checks_not_run_locally' | 'not_run';
 export type SessionFinish = (ran: ExecResult, exec: SessionExec) => Promise<FinishEnd>;
 
 export type SessionSpec = {
