@@ -59,6 +59,26 @@ function describeByPullRequest(subject: JoiningSubject): void {
   });
 }
 
+function describeJoinedOnce(subject: JoiningSubject): void {
+  it('GL-3 refuses a second joined item on one pull request of a harness, in any case', async () => {
+    const head = 'a'.repeat(40);
+    const first = itemOf(0x7120, 1, { pullRequest, expectedHead: head });
+    const shouted = { repo: 'UNFOLDINGWORD/TC-ADMIN-APP', number: 12 };
+    const second = itemOf(0x7120, 2, { pullRequest: shouted, expectedHead: head });
+    await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0x7120, 'gateway-joined-once');
+      await tx.harnessItems.write.insert(first, at);
+    });
+    const again = subject().store.transaction((tx) => tx.harnessItems.write.insert(second, at));
+    await expect(again).rejects.toThrow();
+    const found = await subject().store.transaction(async (tx) => ({
+      first: await tx.harnessItems.read.byId(first.itemId),
+      second: await tx.harnessItems.read.byId(second.itemId),
+    }));
+    expect(found).toEqual({ first, second: null });
+  });
+}
+
 function describePlatformFor(subject: JoiningSubject): void {
   it('DX-3 reads the platform page of an area by type and slug, and nothing for another area', async () => {
     await subject().seedPage(platformPage('70-79'));
@@ -108,6 +128,7 @@ function describeSetShadow(subject: JoiningSubject): void {
 export function describeStoreJoining(adapter: string, subject: JoiningSubject): void {
   describe(`store reads for joining on ${adapter}`, () => {
     describeByPullRequest(subject);
+    describeJoinedOnce(subject);
     describePlatformFor(subject);
     describeSetShadow(subject);
   });
