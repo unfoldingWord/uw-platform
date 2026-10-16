@@ -35,18 +35,30 @@ function attributeProblems(document: Document): string[] {
   return problems;
 }
 
-function visibleText(document: Document): string {
+function visibleBody(document: Document): HTMLElement {
   const body = document.body.cloneNode(true) as HTMLElement;
   for (const hidden of body.querySelectorAll('script, style, template')) hidden.remove();
-  return body.textContent ?? '';
+  return body;
+}
+
+function textNodes(node: Node): string[] {
+  if (node.nodeType === node.TEXT_NODE) return [node.textContent ?? ''];
+  return [...node.childNodes].flatMap(textNodes);
+}
+
+function proseOf(body: HTMLElement): string {
+  return textNodes(body)
+    .map((text) => text.replaceAll(/\S+@\S+/g, ' '))
+    .join(' ');
 }
 
 function copyProblems(document: Document): string[] {
-  const text = visibleText(document);
+  const body = visibleBody(document);
+  const text = body.textContent ?? '';
   const problems: string[] = [];
   if (text.includes('!')) problems.push('an exclamation mark in the copy');
   if (emoji.test(text)) problems.push('an emoji in the copy');
-  const prose = text.replaceAll(/\S+@\S+/g, ' ');
+  const prose = proseOf(body);
   for (const match of prose.matchAll(/unfolding\s*word/gi)) {
     if (match[0] !== 'unfoldingWord') problems.push(`unfoldingWord written ${match[0]}`);
   }
