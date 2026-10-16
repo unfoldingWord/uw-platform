@@ -89,7 +89,7 @@ function turnGate(onTurn: () => Promise<void>): TurnGate {
 
 async function guardedSession(
   host: ContainerHost,
-  spec: Omit<SessionSpec, 'egress'>,
+  spec: Omit<SessionSpec, 'egress' | 'admit'>,
   routes: Omit<EgressRoutes, 'admit'>,
   config: EngineConfig,
   onTurn: () => Promise<void>,
@@ -99,7 +99,7 @@ async function guardedSession(
   const now = config.now ?? (() => new Date());
   try {
     const egressOf = (request: Request) => egress(request, guarded, config.fetch);
-    const ran = await runSession(host, { ...spec, egress: egressOf }, now);
+    const ran = await runSession(host, { ...spec, egress: egressOf, admit: gate.admit }, now);
     gate.rethrow();
     return ran;
   } catch (error) {
@@ -161,7 +161,7 @@ function sessionOf(plan: Wired, input: EngineWork, finish: Finish | null) {
   const phase = fixPhase(finish !== null);
   const registry = finish === null ? null : { open: phase.installs };
   const github = githubOf(plan, input, phase);
-  const routes = { ...input.egress, model: plan.model, github, registry };
+  const routes = { ...input.egress, model: plan.model, github, registry, thinks: phase.thinks };
   const spec = {
     sessionId: sessionIdOf(input.runId),
     files: plan.files(input),

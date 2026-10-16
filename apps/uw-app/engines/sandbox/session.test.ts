@@ -20,6 +20,7 @@ const spec = {
   env: { HOME: '/workspace' },
   timeoutMs: 60_000,
   egress: egressNone,
+  admit: async () => true,
   finish: null,
 };
 

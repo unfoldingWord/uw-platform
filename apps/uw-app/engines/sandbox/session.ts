@@ -8,7 +8,17 @@ type SessionExec = (
   env: Readonly<Record<string, string>>,
 ) => Promise<ExecResult>;
 type FinishEnd = 'pushed' | 'checks_not_run_locally' | 'not_run';
-export type SessionFinish = (ran: ExecResult, exec: SessionExec) => Promise<FinishEnd>;
+
+export type SessionTools = {
+  readonly exec: SessionExec;
+  readonly writeFile: (path: string, content: string) => Promise<void>;
+  readonly admit: () => Promise<boolean>;
+};
+
+export type SessionFinish = {
+  prepare(tools: SessionTools): Promise<ExecResult | null>;
+  finish(ran: ExecResult, tools: SessionTools): Promise<FinishEnd>;
+};
 
 export type SessionSpec = {
   readonly sessionId: string;
@@ -17,6 +27,7 @@ export type SessionSpec = {
   readonly env: Readonly<Record<string, string>>;
   readonly timeoutMs: number;
   readonly egress: McpHandler;
+  readonly admit: () => Promise<boolean>;
   readonly finish: SessionFinish | null;
 };
 
@@ -24,6 +35,25 @@ export type SessionRun = ExecResult & {
   readonly wallMs: number;
   readonly finished: FinishEnd | null;
 };
+
+type Session = Awaited<ReturnType<ContainerHost['open']>>;
+
+function toolsOf(session: Session, spec: SessionSpec): SessionTools {
+  return {
+    exec: (command, env) => session.exec(command, { ...spec.env, ...env }, spec.timeoutMs),
+    writeFile: (path, content) => session.writeFile(path, content),
+    admit: spec.admit,
+  };
+}
+
+async function ranIn(session: Session, spec: SessionSpec): Promise<Omit<SessionRun, 'wallMs'>> {
+  const tools = toolsOf(session, spec);
+  const stopped = spec.finish === null ? null : await spec.finish.prepare(tools);
+  if (stopped !== null) return { ...stopped, finished: 'checks_not_run_locally' };
+  const ran = await session.exec(spec.command, spec.env, spec.timeoutMs);
+  const finished = spec.finish === null ? null : await spec.finish.finish(ran, tools);
+  return { ...ran, finished };
+}
 
 export async function runSession(
   host: ContainerHost,
@@ -34,11 +64,8 @@ export async function runSession(
   const session = await host.open(spec.sessionId, spec.egress);
   try {
     for (const file of spec.files) await session.writeFile(file.path, file.content);
-    const ran = await session.exec(spec.command, spec.env, spec.timeoutMs);
-    const exec: SessionExec = (command, env) =>
-      session.exec(command, { ...spec.env, ...env }, spec.timeoutMs);
-    const finished = spec.finish === null ? null : await spec.finish(ran, exec);
-    return { ...ran, wallMs: now().getTime() - started, finished };
+    const ran = await ranIn(session, spec);
+    return { ...ran, wallMs: now().getTime() - started };
   } finally {
     await session.destroy();
   }
