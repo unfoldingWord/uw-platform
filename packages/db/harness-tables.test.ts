@@ -52,6 +52,7 @@ const expectedColumns: Record<string, string[]> = {
     'frozen',
     'freeze_allow',
     'required_checks',
+    'protected_paths',
   ],
   harness_stages: [
     'id',
@@ -131,6 +132,8 @@ const expectedColumns: Record<string, string[]> = {
     'evidence',
     'trace_id',
     'decided_at',
+    'agent_actor',
+    'delegation_id',
   ],
   delegations: [
     'id',
@@ -144,6 +147,7 @@ const expectedColumns: Record<string, string[]> = {
     'lapsed_at',
     'supersedes',
     'trace_id',
+    'max_tier',
   ],
   measurements: ['id', 'harness_id', 'item_id', 'source', 'name', 'value', 'as_of', 'recorded_at'],
   personas: ['identity', 'harness_id', 'page_id'],

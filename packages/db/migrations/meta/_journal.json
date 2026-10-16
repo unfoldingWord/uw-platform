@@ -232,6 +232,13 @@
       "when": 1792113404531,
       "tag": "0032_ship_rule_and_gates",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1792125065271,
+      "tag": "0033_merge_delegation",
+      "breakpoints": true
     }
   ]
 }
