@@ -106,7 +106,12 @@ function factsAnswering(
   pullRequest: GitHubFacts['pullRequest'],
   refresh: GitHubFacts['refresh'],
 ): GitHubFacts {
-  return { pullRequest, refresh, diff: () => notWiredCall('githubFacts', 'diff') };
+  return {
+    pullRequest,
+    refresh,
+    diff: () => notWiredCall('githubFacts', 'diff'),
+    epic: async () => null,
+  };
 }
 
 function sceneIt(title: string, work: (scene: Scene) => Promise<void>): void {

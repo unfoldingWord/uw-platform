@@ -6,6 +6,7 @@ import {
   type Clock,
   type GitHubFacts,
   type Grants,
+  type EpicFacts,
   type Kernel,
   type Ports,
   type PullRequestFacts,
@@ -35,6 +36,16 @@ export function fixedFacts(facts: PullRequestFacts): GitHubFacts {
     pullRequest: async () => facts,
     refresh: async () => facts,
     diff: () => notWiredCall('githubFacts', 'diff'),
+    epic: async () => null,
+  };
+}
+
+export function answeringEpic(epic: EpicFacts | null): GitHubFacts {
+  return {
+    pullRequest: async () => null,
+    refresh: async () => null,
+    diff: () => notWiredCall('githubFacts', 'diff'),
+    epic: async () => epic,
   };
 }
 

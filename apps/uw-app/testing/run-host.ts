@@ -97,6 +97,7 @@ function factsPort(rig: { facts: PullRequestFacts | null }): GitHubFacts {
     pullRequest: async () => rig.facts,
     refresh: async () => rig.facts,
     diff: async () => ({ kind: 'diff', text: 'diff --git a/x b/x\n', bytes: 19 }),
+    epic: async () => null,
   };
 }
 

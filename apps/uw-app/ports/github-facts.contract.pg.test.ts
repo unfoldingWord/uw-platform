@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe } from 'vitest';
 import type { PullRequestDeclaration } from '@uw/contracts';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
-import type { CheckFact, PullRequestFacts, ReviewFact } from '@uw/harness';
+import type { CheckFact, EpicFacts, IssueFact, PullRequestFacts, ReviewFact } from '@uw/harness';
 import { describeGithubFactsContract } from '@uw/harness/port-contracts/github-facts';
 import { createLogger } from '@uw/core/log';
 import type { GitHubAppConfig } from '../github/app-config.ts';
@@ -14,7 +14,8 @@ import {
   reviewsFromRest,
 } from '../github/facts/normalise.ts';
 import { recordFiles } from '../github/facts/heads.ts';
-import { unknownHead } from '../github/facts/records.ts';
+import { emptyBatch, type IssueRecord, unknownHead } from '../github/facts/records.ts';
+import { recordSubIssues } from '../github/facts/sub-issues.ts';
 import { upsertFacts } from '../github/facts/upsert.ts';
 import { fixtureApp } from '../github/testing/app-key.ts';
 import { fixtureGitHub, type FixtureGitHub } from '../github/testing/fixture-github.ts';
@@ -155,6 +156,40 @@ async function given(db: Database, github: FixtureGitHub, facts: PullRequestFact
   await recordFiles(db, { pullRequestId: pull.id, ...facts.files, problem: null, ...unknownHead });
 }
 
+function issueRecord(fact: IssueFact, repoId: number, subIssues: number, at: Date): IssueRecord {
+  return {
+    githubId: fact.issue.githubId,
+    repoId,
+    number: fact.issue.number,
+    title: fact.title,
+    state: fact.open ? 'open' : 'closed',
+    labels: [],
+    milestoneId: null,
+    githubUpdatedAt: at,
+    subIssues,
+    doneWhen: [...fact.doneWhen],
+    blockedBy: [...fact.blockedBy],
+  };
+}
+
+async function givenEpic(db: Database, epic: EpicFacts): Promise<void> {
+  updates += 1;
+  const at = new Date(Date.UTC(2026, 9, 1, 8, updates));
+  const fullName = epic.epic.issue.repo;
+  const repoId = idFor(repoIds, fullName.toLowerCase(), 9100000001);
+  const repo = { githubId: repoId, fullName, defaultBranch: 'main', private: true };
+  const issues = [
+    issueRecord(epic.epic, repoId, epic.subIssueCount, at),
+    ...epic.subIssues.map((fact) => issueRecord(fact, repoId, 0, at)),
+  ];
+  await upsertFacts(db, { ...emptyBatch, repos: [repo], issues }, at);
+  await recordSubIssues(db, {
+    repoId,
+    parentId: epic.epic.issue.githubId,
+    children: epic.subIssues.map((fact) => fact.issue.githubId),
+  });
+}
+
 describe.skipIf(!testServer)('DX-3 the platform GitHub facts on Postgres', () => {
   describeGithubFactsContract(
     'the platform GitHub facts over the read model',
@@ -174,6 +209,7 @@ describe.skipIf(!testServer)('DX-3 the platform GitHub facts on Postgres', () =>
             headers: { 'content-type': 'text/plain; charset=utf-8' },
           });
         },
+        givenEpic: (epic) => givenEpic(db, epic),
         now: systemClock.now,
       };
     },

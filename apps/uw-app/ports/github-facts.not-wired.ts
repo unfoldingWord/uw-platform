@@ -4,4 +4,5 @@ export const githubFactsNotWired: GitHubFacts = {
   pullRequest: () => notWiredCall('githubFacts', 'pullRequest'),
   refresh: () => notWiredCall('githubFacts', 'refresh'),
   diff: () => notWiredCall('githubFacts', 'diff'),
+  epic: () => notWiredCall('githubFacts', 'epic'),
 };
