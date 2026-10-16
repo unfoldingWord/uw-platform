@@ -195,7 +195,7 @@ async function storedFindings(db: Database): Promise<void> {
       commit: head,
       state: 'changes_requested',
       provider: 'anthropic',
-      findings: reviewerFindings,
+      findings: reviewerFindings.map((text) => ({ text, weight: null })),
     },
   ]);
 }
