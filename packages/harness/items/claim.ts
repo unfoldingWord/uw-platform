@@ -20,6 +20,7 @@ import { activePersonaOn, personaIdentityFor } from '../personas/projection.ts';
 import { personaPageOf } from '../runs/persona.ts';
 import { endRunDrafts, stopWorkflows } from '../runs/ends.ts';
 import { dispatchRefusal } from './dispatch.ts';
+import { fixClaiming, readFixStart, type FixRead } from './fix-claim.ts';
 import { personHoldRefusal } from './held-for-person.ts';
 import { lapseDrafts, LEASE_MS, leaseLapsed } from './leases.ts';
 import { pausedRefusal } from './paused.ts';
@@ -53,6 +54,12 @@ export type ClaimTaken = {
 };
 
 type Taking = { readonly delegationId: string | null; readonly tip: BranchTip | null };
+
+type Claiming = {
+  readonly input: ClaimInput;
+  readonly tip: BranchTip | null;
+  readonly fix: FixRead;
+};
 
 type Scene = {
   readonly caller: Caller;
@@ -238,6 +245,19 @@ async function takeClaim(
   });
 }
 
+async function takeWithFix(
+  tx: StoreTransaction,
+  scene: Scene,
+  item: ItemState,
+  taking: Taking & { readonly fix: FixRead },
+): Promise<KernelOutcome<ClaimTaken>> {
+  const fixing = await fixClaiming(tx, scene, item, taking);
+  if ('status' in fixing) return fixing;
+  const taken = await takeClaim(tx, scene, item, taking);
+  if (taken.status !== 'accepted') return taken;
+  return accepted({ ...taken.value, drafts: [...taken.value.drafts, ...fixing.drafts] });
+}
+
 async function sceneOf(
   ports: ClaimPorts,
   tx: StoreTransaction,
@@ -266,7 +286,7 @@ async function claimIn(
   ports: ClaimPorts,
   tx: StoreTransaction,
   caller: Caller,
-  { input, tip }: { readonly input: ClaimInput; readonly tip: BranchTip | null },
+  { input, tip, fix }: Claiming,
   at: Date,
 ): Promise<KernelOutcome<ClaimTaken>> {
   const pre = await tx.harnessItems.read.byId(input.itemId);
@@ -287,17 +307,17 @@ async function claimIn(
   if (stale !== null) return stale;
   const denied = await actingGuard(tx, ports, locked, item, input.delegationId);
   if (denied !== null) return denied;
-  return takeClaim(tx, locked, item, { delegationId: input.delegationId, tip });
+  return takeWithFix(tx, locked, item, { delegationId: input.delegationId, tip, fix });
 }
 
 export function claimWithin(
   ports: ClaimPorts,
   tx: StoreTransaction,
   caller: Caller,
-  input: ClaimInput,
-  at: Date,
+  claiming: { readonly input: ClaimInput; readonly at: Date; readonly fix?: FixRead },
 ): Promise<KernelOutcome<ClaimTaken>> {
-  return claimIn(ports, tx, caller, { input, tip: null }, at);
+  const { input, at, fix = null } = claiming;
+  return claimIn(ports, tx, caller, { input, tip: null, fix }, at);
 }
 
 export async function claim(
@@ -306,9 +326,10 @@ export async function claim(
   input: ClaimInput,
 ): Promise<KernelOutcome<Claimed>> {
   const tip = input.adoptBranch === true ? await readBranchTip(ports, input.itemId) : null;
+  const fix = await readFixStart(ports, input.itemId, input.delegationId);
   const at = ports.clock.now();
   const outcome = await ports.store.transaction(async (tx) => {
-    const taken = await claimIn(ports, tx, caller, { input, tip }, at);
+    const taken = await claimIn(ports, tx, caller, { input, tip, fix }, at);
     if (taken.status !== 'accepted') return taken;
     const context = recordContext(ports, caller, at);
     const recorded = await recordItemEvents(tx, context, input.itemId, taken.value.drafts);

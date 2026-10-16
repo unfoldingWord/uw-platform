@@ -80,6 +80,13 @@ export const setHostedBuilderCommand = commandHandler({
     fromKernel(await kernel.stages.setHostedBuilder(caller, { harnessId, enabled: body.enabled })),
 });
 
+export const setFixClaimCommand = commandHandler({
+  name: 'set_fix_claim',
+  action: 'admin',
+  run: async ({ kernel, caller, harnessId }, body: CommandBody<'set_fix_claim'>) =>
+    fromKernel(await kernel.stages.setFixClaim(caller, { harnessId, enabled: body.enabled })),
+});
+
 export const setFreezeCommand = commandHandler({
   name: 'set_freeze',
   action: 'admin',
