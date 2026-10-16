@@ -1,12 +1,13 @@
 import type { Context } from 'hono';
 import type { ShadowComparison } from '@uw/contracts';
 import { formatCount } from '@uw/core/money';
-import type { GateRow } from '@uw/harness';
+import type { DelegatedMergeRow, GateRow } from '@uw/harness';
 import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { ApproveAll, type Approvable } from '../parts/approve-all.tsx';
 import { showsDecisions } from '../parts/decider.ts';
+import { DelegatedMerges } from '../parts/delegated-merges.tsx';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { parkedCapNote } from '../parts/caps.ts';
 import { liveCursors } from '../parts/cursors.ts';
@@ -113,10 +114,11 @@ type Body = {
   readonly shown: readonly Shown[];
   readonly capped: boolean;
   readonly comparisons: readonly ShadowComparison[];
+  readonly merged: readonly DelegatedMergeRow[];
 };
 
 function GatesBody(props: Body) {
-  const { shown, capped, comparisons } = props;
+  const { shown, capped, comparisons, merged } = props;
   const note = capped ? <Note>{parkedCapNote}</Note> : null;
   const lists = comparisons.map((comparison) => <ShadowList comparison={comparison} />);
   if (shown.length === 0) {
@@ -125,6 +127,7 @@ function GatesBody(props: Body) {
         <PageHead title="Gates" />
         {note ?? <Note>No gate is waiting for you to decide.</Note>}
         {lists}
+        <DelegatedMerges rows={merged} />
       </>
     );
   }
@@ -137,6 +140,7 @@ function GatesBody(props: Body) {
       ))}
       <GateList shown={shown} />
       {lists}
+      <DelegatedMerges rows={merged} />
     </>
   );
 }
@@ -148,6 +152,7 @@ export async function gatesScreen(c: Context<AppEnv>): Promise<Response> {
   const { rows, capped } = await screen.kernel.views.gates(screen.caller, { at: screen.at });
   const shown = await panelsOf(screen, rows);
   const comparisons = await shadowComparisons(screen);
+  const merged = await screen.kernel.views.delegatedMerges(screen.caller, { at: screen.at });
   const harnesses = liveCursors(cursors, [
     ...shown.map(({ row }) => row.harness.id),
     ...comparisons.map((comparison) => comparison.harnessId),
@@ -161,6 +166,6 @@ export async function gatesScreen(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
     spec,
-    <GatesBody shown={shown} capped={capped} comparisons={comparisons} />,
+    <GatesBody shown={shown} capped={capped} comparisons={comparisons} merged={merged} />,
   );
 }

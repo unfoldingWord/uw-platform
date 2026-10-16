@@ -118,7 +118,9 @@ function delegationsIndicator({ at, liveDelegations }: PlaneTotals): HealthIndic
     return { name: 'live_delegations', status: 'ok', detail: 'None live' };
   }
   const soon = soonestExpiry.getTime() - at.getTime() < DELEGATION_SOON_MS;
-  const detail = `${formatCount(count)} live; next expiry ${formatInstant(soonestExpiry)}`;
+  const merges =
+    liveDelegations.merge === 0 ? '' : `, ${formatCount(liveDelegations.merge)} of them merge`;
+  const detail = `${formatCount(count)} live${merges}; next expiry ${formatInstant(soonestExpiry)}`;
   return { name: 'live_delegations', status: soon ? 'amber' : 'ok', detail };
 }
 

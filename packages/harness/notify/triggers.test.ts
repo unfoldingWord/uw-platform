@@ -1,12 +1,15 @@
 import {
   eventSchema,
   harnessSchema,
+  identitySchema,
   type EventName,
   type Grant,
   type Harness,
   type HarnessEvent,
 } from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
+import type { Delegation } from '../ports.ts';
+import { rankOf } from './rank.ts';
 import { recipientsOf } from './recipients.ts';
 import { triggersOf } from './triggers.ts';
 
@@ -124,5 +127,69 @@ describe('the hand-off wake', () => {
     };
     expect(recipientsOf(scope([reader]))).toEqual([personId]);
     expect(recipientsOf(scope([]))).toEqual([]);
+  });
+});
+
+const grantorId = '00000000-0000-4000-8000-000000000302';
+const otherId = '00000000-0000-4000-8000-000000000303';
+const merged = () =>
+  event(10, 'delegated_merge', {
+    decisionId: itemId,
+    delegationId: itemId,
+    personId: grantorId,
+    email: 'grantor@example.org',
+    persona: 'agent:shipper',
+    expiresAt: '2026-10-20T00:00:00.000Z',
+    maxTier: 'standard',
+  });
+const mergeDelegation: Delegation = {
+  id: itemId,
+  personId: grantorId,
+  persona: identitySchema.parse('agent:shipper'),
+  harnessId,
+  capability: 'merge',
+  maxTier: 'standard',
+  grantedAt: new Date('2026-10-01T09:00:00.000Z'),
+  expiresAt: new Date('2026-10-20T00:00:00.000Z'),
+  revokedAt: null,
+  lapsedAt: null,
+  supersedes: null,
+};
+const readerOf = (grantId: string): Grant => ({
+  grantId,
+  role: 'viewer',
+  scopeKind: 'jd_area',
+  scopeArea: '80-89',
+  expiresAt: null,
+});
+const mergeScope = (holders: readonly string[]) => ({
+  trigger: { event: merged(), reason: 'delegated_merge' as const },
+  harness: harnessOf('80-89'),
+  item: null,
+  run: null,
+  delegation: mergeDelegation,
+  holders: holders.map((id) => ({
+    personId: id,
+    email: `${id.slice(-3)}@example.org`,
+    grants: [readerOf(id)],
+  })),
+  delegationPerson: () => grantorId,
+  at: new Date('2026-10-03T09:00:00.000Z'),
+});
+
+describe('MD-6 a delegated merge wakes the grantor at rank 2', () => {
+  it('MD-6 delegated_merge is a wake of rank 2 that reaches the grantor alone, while they can read', () => {
+    expect(triggersOf([merged()]).map((trigger) => trigger.reason)).toEqual(['delegated_merge']);
+    expect(rankOf('delegated_merge')).toBe(2);
+    expect(recipientsOf(mergeScope([grantorId, otherId]))).toEqual([grantorId]);
+    expect(recipientsOf(mergeScope([otherId]))).toEqual([]);
+  });
+
+  it('MD-6 a park approved under a delegation in the same commit wakes nobody for the gate', () => {
+    const approved = event(4, 'gate_approved', { decisionId: itemId, stage: 'ship' });
+    expect(triggersOf([submitted(3, 'parked'), approved])).toEqual([]);
+    expect(triggersOf([submitted(3, 'parked')]).map((trigger) => trigger.reason)).toEqual([
+      'gate_waiting',
+    ]);
   });
 });

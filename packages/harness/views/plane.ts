@@ -67,7 +67,8 @@ async function liveDelegations(
   const live = await tx.delegations.read.live(filter, at);
   const expiries = live.map((delegation) => delegation.expiresAt.getTime());
   const soonest = expiries.length === 0 ? null : new Date(Math.min(...expiries));
-  return { count: live.length, soonestExpiry: soonest };
+  const merge = live.filter((delegation) => delegation.capability === 'merge').length;
+  return { count: live.length, merge, soonestExpiry: soonest };
 }
 
 async function eventTotals(tx: StoreTransaction, at: Date) {

@@ -7,6 +7,7 @@ import {
   rewriteItem,
   seedGrant,
   seedOpenItems,
+  seedEventRows,
   seedPerson,
 } from '@uw/db/test-seed';
 import { VIEW_LIMIT, software, type Template } from '@uw/harness';
@@ -430,6 +431,40 @@ async function noProblems(world: GateWorld): Promise<void> {
   }
 }
 
+async function delegatedMergeListed(world: GateWorld): Promise<void> {
+  const { harnessId, itemId, title } = world.item;
+  await seedEventRows(world.db, [
+    {
+      id: randomUUID(),
+      harnessId,
+      itemId,
+      name: 'delegated_merge',
+      actor: 'agent:system',
+      evidence: {
+        decisionId: randomUUID(),
+        delegationId: randomUUID(),
+        personId: randomUUID(),
+        email: 'ian.lindsley@unfoldingword.org',
+        persona: 'agent:shipper',
+        expiresAt: '2026-10-20T00:00:00.000Z',
+        maxTier: 'standard',
+      },
+      traceId: randomUUID(),
+      at: new Date(clock.now().getTime() - 60_000),
+    },
+  ]);
+  const page = await pageOf(world, world.kimEmail, gatesPath());
+  expect(page.text).toContain('Merged under a delegation');
+  expect(page.text).toContain('granted by ian.lindsley@unfoldingword.org until');
+  const document = new JSDOM(page.text).window.document;
+  const link = document.querySelector('#delegated-merges-heading + ul a');
+  expect(link?.getAttribute('href')).toBe(itemPath(harnessId, itemId));
+  expect(link?.textContent).toContain(title);
+  expect(await screenProblems(page.text)).toEqual([]);
+  const viewer = await pageOf(world, world.viewerEmail, gatesPath());
+  expect(viewer.text).not.toContain('Merged under a delegation');
+}
+
 describe.skipIf(!testServer)('the Gates view and its deep link', () => {
   it('WB-6 the gates view lists only the gates the person can decide', () =>
     inGates(onlyDecidable));
@@ -468,4 +503,6 @@ describe.skipIf(!testServer)('the Gates view and its deep link', () => {
   it('the gates view says at least when a harness has more parked items than it reads', () =>
     inGates(parkedCapSaysAtLeast));
   it('the gates view and a gate render with no screen problems', () => inGates(noProblems));
+  it('MD-6 the Gates screen lists a merge under a delegation with its grantor and expiry', () =>
+    inGates(delegatedMergeListed));
 });

@@ -104,7 +104,7 @@ const cappedTotals: PlaneTotals = {
     byEngine: { external: 1, 'claude-messages': 3 },
     since: new Date('2026-10-15T00:00:00.000Z'),
   },
-  liveDelegations: { count: 2, soonestExpiry: new Date(at.getTime() + 2 * HOUR) },
+  liveDelegations: { count: 2, merge: 0, soonestExpiry: new Date(at.getTime() + 2 * HOUR) },
   gateRefusals: {
     byReason: { no_reviewer_approval: 2, gate_refused_to_agent: 4998 },
     capped: true,
@@ -347,9 +347,23 @@ async function probeAndScreen(db: Database): Promise<void> {
   expect(await html.text()).toContain('github_sweep');
 }
 
+async function mergeDelegationsNamed(db: Database): Promise<void> {
+  await seed(db);
+  const liveDelegations = { ...cappedTotals.liveDelegations, merge: 1 };
+  expect(
+    named(await indicatorsOn(db, { ...cappedTotals, liveDelegations }), 'live_delegations'),
+  ).toEqual({
+    name: 'live_delegations',
+    status: 'amber',
+    detail: '2 live, 1 of them merge; next expiry 2026-10-15 14:00 UTC',
+  });
+}
+
 describe.skipIf(!testServer)('the agent plane indicators', () => {
   it("WB-10 each indicator's status and detail follow its totals", () =>
     withAppDatabase(statusesFollowTotals));
+  it('MD-6 the live delegations indicator says how many of them are merge delegations', () =>
+    withAppDatabase(mergeDelegationsNamed));
   it('RV-2 the Reviewer refute rate reads no findings on a plane with no Reviewer run', () =>
     withAppDatabase(noRefutesYet));
   it('WB-10 the breaker indicator shows its state against the cap, and spend names the breaker only while its reading is fresh', () =>
