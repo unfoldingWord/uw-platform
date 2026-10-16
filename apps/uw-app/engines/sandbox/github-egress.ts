@@ -11,6 +11,7 @@ export type GitHubEgress = {
   readonly defaultBranch: string;
   readonly token: () => Promise<string | null>;
   readonly unwired: (host: string, path: string) => void;
+  readonly pushes: () => boolean;
 };
 
 export type GitHubRoute = {
@@ -88,7 +89,7 @@ async function pushAllowed(
   url: URL,
   route: GitHubEgress,
 ): Promise<Allowed | null> {
-  if (!plainBody(request)) return null;
+  if (!route.pushes() || !plainBody(request)) return null;
   const body = await request.arrayBuffer();
   return pushesOnlyBranch(body, route)
     ? { upstream: 'git', url, method: 'POST', body, headers: baseHeaders }

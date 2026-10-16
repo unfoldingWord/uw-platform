@@ -6,6 +6,7 @@ export type Checkout = {
   readonly branch: string;
   readonly defaultBranch: string;
   readonly expectedHead: string | null;
+  readonly fix: boolean;
 };
 
 type GitHubAccess = {

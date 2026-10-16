@@ -92,6 +92,7 @@ async function pullRequestReachesTheItem(db: Database): Promise<void> {
     branch: `harness/${rig.itemId}`,
     defaultBranch: 'main',
     expectedHead: null,
+    fix: false,
   });
   expect(await work?.egress.github?.token()).toBeNull();
   const events = await allEvents(db, rig.harnessId);

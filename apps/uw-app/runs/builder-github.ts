@@ -1,3 +1,4 @@
+import type { CapabilityWord } from '@uw/contracts';
 import { engineDescriptor, type RunScene } from '@uw/harness';
 import type { Checkout } from '../engines/seam.ts';
 import type { RunDeps } from './deps.ts';
@@ -17,6 +18,8 @@ export type PulledChange = {
   readonly head: string;
 };
 
+const building: ReadonlySet<CapabilityWord> = new Set<CapabilityWord>(['build', 'fix']);
+
 const none: BuilderAccess = { checkout: null, github: null };
 
 function branchOf(scene: RunScene): string {
@@ -25,7 +28,9 @@ function branchOf(scene: RunScene): string {
 
 function builds(scene: RunScene): string | null {
   const { harness, capability, persona } = scene;
-  if (capability !== 'build' || !engineDescriptor(persona.engine).needsHostedBuilder) return null;
+  if (!building.has(capability) || !engineDescriptor(persona.engine).needsHostedBuilder) {
+    return null;
+  }
   return harness.repository;
 }
 
@@ -48,7 +53,13 @@ export async function builderAccess(
   const unwired = (host: string, path: string) =>
     deps.logger.warn('github egress not wired', { outcome: 'github_egress_not_wired', host, path });
   return {
-    checkout: { repository, branch, defaultBranch, expectedHead: scene.item.expectedHead },
+    checkout: {
+      repository,
+      branch,
+      defaultBranch,
+      expectedHead: scene.item.expectedHead,
+      fix: scene.capability === 'fix',
+    },
     github: { token: deps.builder.token(repository), unwired },
   };
 }

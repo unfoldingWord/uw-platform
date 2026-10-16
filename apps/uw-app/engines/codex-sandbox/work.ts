@@ -98,6 +98,7 @@ export function codexPlan(config: EngineConfig): SandboxPlan {
     model: modelRoute(config),
     provider: PROVIDER,
     clones: false,
+    finish: null,
     env: { HOME: WORKSPACE },
     files: (input) => [
       { path: `${WORKSPACE}/.codex/config.toml`, content: configToml(input) },

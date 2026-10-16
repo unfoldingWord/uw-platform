@@ -4,6 +4,7 @@ import { TURN_LIMIT } from '@uw/harness';
 import type { EngineConfig } from '../config.ts';
 import type { ExecResult } from '../sandbox/host.ts';
 import { MCP_HOST, MODEL_HOST, type ModelRoute } from '../sandbox/egress.ts';
+import { fixFinish, readDeclaredChecks } from '../sandbox/fix-checks.ts';
 import { GITHUB_API_HOST } from '../sandbox/github-egress.ts';
 import {
   gatewayHeaders,
@@ -15,7 +16,7 @@ import {
   type SandboxPlan,
   type SandboxReading,
 } from '../sandbox/run.ts';
-import type { EngineWork } from '../seam.ts';
+import type { Checkout, EngineWork } from '../seam.ts';
 
 const PROVIDER = 'anthropic';
 const MCP_CONFIG = `${WORKSPACE}/.mcp.json`;
@@ -30,6 +31,17 @@ const BUILD_SCRIPT = [
   SCRIPT,
 ].join('\n');
 const BUILD_TOOLS = ['Read', 'Edit', 'Write', 'Glob', 'Grep', 'Bash(git *)', 'Bash(curl *)'];
+const FIX_SCRIPT = [
+  'set -e',
+  `git clone --no-tags "$UW_CLONE_URL" ${REPOSITORY_DIR}`,
+  `git -C ${REPOSITORY_DIR} checkout -B "$UW_BRANCH" "$UW_START"`,
+  readDeclaredChecks,
+  `cd ${REPOSITORY_DIR}`,
+  SCRIPT,
+].join('\n');
+const FIX_TOOLS = ['Read', 'Edit', 'Write', 'Glob', 'Grep', 'Bash(git *)'];
+
+type Script = { readonly script: string; readonly tools: readonly string[] };
 
 const servedSchema = z.object({ outputTokens: z.number().int().nonnegative() });
 const resultSchema = z.object({
@@ -53,9 +65,27 @@ function modelRoute(config: EngineConfig): ModelRoute | null {
   return { host: MODEL_HOST, upstream, headers, paths: INFERENCE_PATHS };
 }
 
+function scriptOf(checkout: Checkout | null): Script {
+  if (checkout === null) return { script: SCRIPT, tools: [] };
+  return checkout.fix
+    ? { script: FIX_SCRIPT, tools: FIX_TOOLS }
+    : { script: BUILD_SCRIPT, tools: BUILD_TOOLS };
+}
+
+function fixSection(checkout: Checkout): string {
+  return [
+    '',
+    '',
+    '## Repository',
+    `You work in ${REPOSITORY_DIR} on the branch ${checkout.branch}, at the head the review read.`,
+    'Commit your fix on this branch. Do not push and do not open a pull request: the pull request exists, and the platform runs the repository declared checks and pushes your commits only when they pass.',
+  ].join('\n');
+}
+
 function repositorySection(input: EngineWork): string {
   const { checkout } = input;
   if (checkout === null) return '';
+  if (checkout.fix) return fixSection(checkout);
   const pulls = `http://${GITHUB_API_HOST}/repos/${checkout.repository}/pulls`;
   return [
     '',
@@ -79,12 +109,12 @@ function files(input: EngineWork) {
 
 function command(input: EngineWork): readonly string[] {
   const verbs = input.toolset.map((verb) => `mcp__${SERVER}__${verb}`);
-  const building = input.checkout !== null;
-  const allowed = [...verbs, ...(building ? BUILD_TOOLS : [])].join(',');
+  const { script, tools } = scriptOf(input.checkout);
+  const allowed = [...verbs, ...tools].join(',');
   return [
     'sh',
     '-c',
-    building ? BUILD_SCRIPT : SCRIPT,
+    script,
     'claude',
     '--output-format',
     'json',
@@ -139,6 +169,14 @@ function read(ran: ExecResult): SandboxReading {
   };
 }
 
+function ended(ran: ExecResult): boolean {
+  try {
+    return read(ran).outcome === 'ended';
+  } catch {
+    return false;
+  }
+}
+
 export function claudeCodePlan(config: EngineConfig): SandboxPlan {
   return {
     host: config.sandboxes?.claudeCode ?? null,
@@ -154,5 +192,6 @@ export function claudeCodePlan(config: EngineConfig): SandboxPlan {
     files,
     command,
     read,
+    finish: (_input, phase) => fixFinish(phase, ended),
   };
 }
