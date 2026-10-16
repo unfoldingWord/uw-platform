@@ -48,6 +48,48 @@ describe('EI-2 a done-when is a heading with at least one line under it', () => 
   });
 });
 
+describe('EI-2 a done-when ignores what a reader never sees', () => {
+  it('skips a multi-line template comment, and a heading or blocker inside one', () => {
+    const template = [
+      '## Done when',
+      '<!--',
+      'Say what finished looks like.',
+      '- One line each.',
+      '-->',
+      '',
+    ];
+    expect(doneWhenOf(template.join('\n'))).toEqual([]);
+    expect(doneWhenOf('<!--\n## Done when\nIt ships.\n-->\n')).toEqual([]);
+    expect(doneWhenOf('## Done when\n<!-- a\nb --> It ships.\n')).toEqual(['It ships.']);
+    expect(blockedByOf('<!--\nBlocked by: #123\n-->\nBlocked by: #7', repository)).toEqual([7]);
+  });
+
+  it('does not count a Blocked by line as a done-when', () => {
+    expect(doneWhenOf('## Done when\nBlocked by: #4')).toEqual([]);
+    expect(doneWhenOf('## Done when\n- It ships.\n- **Blocked by:** #4')).toEqual(['It ships.']);
+  });
+
+  it('reads only the first Done when heading, even when it is empty', () => {
+    expect(doneWhenOf('## Done when\n\n## Done when\nIt ships.')).toEqual([]);
+  });
+
+  it('reads a body written with CRLF line ends', () => {
+    expect(doneWhenOf('Intro.\r\n## Done when\r\n- It ships.\r\n## Notes\r\nNo.')).toEqual([
+      'It ships.',
+    ]);
+    expect(blockedByOf('Blocked by: #41\r\nBlocked by: #42\r\n', repository)).toEqual([41, 42]);
+  });
+
+  it('parses hostile lines in linear time', () => {
+    const reps = 100_000;
+    const started = performance.now();
+    expect(doneWhenOf(`# ${' #'.repeat(reps)}x\nIt ships.`)).toEqual([]);
+    expect(doneWhenOf(`## Done when\n- ${'<!--'.repeat(reps)}`)).toEqual([]);
+    expect(blockedByOf(`Blocked by: #${'.'.repeat(reps)}x`, repository)).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(2_000);
+  });
+});
+
 describe('EI-3 blockers come from Blocked by lines naming this repository', () => {
   it('reads #N and owner/name#N for this repository, in any case, once each', () => {
     const body = [
