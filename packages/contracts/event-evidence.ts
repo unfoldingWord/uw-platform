@@ -7,6 +7,7 @@ import {
   delegationLapseSchema,
   engineSchema,
   findingWeightSchema,
+  intakeViaSchema,
   gateDecisionSchema,
   principalKindSchema,
   reviewVerdictSchema,
@@ -19,6 +20,7 @@ import {
   runStopSchema,
 } from './closed-sets.ts';
 import {
+  epicPlaceSchema,
   issueRefSchema,
   personaIdentitySchema,
   pullRequestRefSchema,
@@ -151,6 +153,8 @@ const itemEvidence = {
       issue: issueRefSchema.nullable().default(null),
       pullRequest: pullRequestRefSchema.nullable().default(null),
       expectedHead: head.nullable().default(null),
+      epic: epicPlaceSchema.nullable().default(null),
+      blockedBy: z.array(id).max(50).default([]),
     })
     .refine(
       (created) => (created.pullRequest === null) === (created.expectedHead === null),
@@ -331,6 +335,34 @@ const harnessEvidence = {
     shadow: z.boolean().default(false),
   }),
   shadow_lifted: z.strictObject({}),
+  epic_enqueued: z.strictObject({
+    epic: issueRefSchema,
+    title: z.string().min(1).max(200),
+    items: z
+      .array(
+        z.strictObject({
+          itemId: id,
+          issue: issueRefSchema,
+          created: z.boolean(),
+          blockedBy: z.array(id).max(50),
+        }),
+      )
+      .min(1)
+      .max(100),
+    outside: z.array(z.number().int().min(1)).max(50),
+    doneWhen: z.array(text).max(100),
+  }),
+  done_when_missing: z
+    .strictObject({
+      via: intakeViaSchema,
+      issue: issueRefSchema.nullable(),
+      pageId: id.nullable(),
+      title: z.string().min(1).max(200),
+    })
+    .refine(
+      (missing) => (missing.issue === null) !== (missing.pageId === null),
+      'an issue or a page',
+    ),
 };
 
 export const eventEvidenceSchemas = {

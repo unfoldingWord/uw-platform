@@ -103,6 +103,12 @@ export const stageSchema = z.strictObject({
   paused: z.boolean(),
 });
 
+export const epicPlaceSchema = z.strictObject({
+  issue: issueRefSchema,
+  title: z.string().min(1).max(200),
+  position: z.number().int().min(0).max(999),
+});
+
 export const itemStateSchema = z.strictObject({
   itemId: z.uuid(),
   harnessId: z.uuid(),
@@ -124,9 +130,12 @@ export const itemStateSchema = z.strictObject({
   pullRequest: pullRequestRefSchema.nullable(),
   issue: issueRefSchema.nullable(),
   zulipTopic: z.string().min(1).nullable(),
+  epic: epicPlaceSchema.nullable().default(null),
+  blockedBy: z.array(z.uuid()).max(50).default([]),
 });
 
 export type Harness = z.infer<typeof harnessSchema>;
 export type Stage = z.infer<typeof stageSchema>;
 export type ItemState = z.infer<typeof itemStateSchema>;
 export type IssueRef = z.infer<typeof issueRefSchema>;
+export type EpicPlace = z.infer<typeof epicPlaceSchema>;

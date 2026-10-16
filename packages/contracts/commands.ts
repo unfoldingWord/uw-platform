@@ -47,6 +47,7 @@ export const commandNames = [
   'decide_gates',
   'refute_finding',
   'set_fix_claim',
+  'enqueue_epic',
 ] as const;
 
 export const commandNameSchema = z.enum(commandNames);
@@ -188,6 +189,10 @@ export const harnessCommandSchemas = {
     runId: z.uuid(),
     finding: z.number().int().min(0).max(49),
   }),
+  enqueue_epic: body('enqueue_epic', {
+    repository: repositorySchema,
+    number: z.number().int().min(1),
+  }),
 } as const satisfies Record<CommandName, z.ZodType>;
 
 export const commandSchema = z.discriminatedUnion('command', [
@@ -223,6 +228,7 @@ export const commandSchema = z.discriminatedUnion('command', [
   harnessCommandSchemas.decide_gates,
   harnessCommandSchemas.refute_finding,
   harnessCommandSchemas.set_fix_claim,
+  harnessCommandSchemas.enqueue_epic,
 ]);
 
 export type Command = z.infer<typeof commandSchema>;

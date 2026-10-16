@@ -1,0 +1,21 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000f3",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": null,
+  "name": "done_when_missing",
+  "position": 3,
+  "at": "2026-10-15T09:00:00.000Z",
+  "actor": "human:00000000-0000-4000-8000-000000000001",
+  "evidence": {
+    "via": "import",
+    "issue": {
+      "repo": "unfoldingWord/uw-platform",
+      "number": 41,
+      "githubId": 9100000341
+    },
+    "pageId": null,
+    "title": "Read the sub-issues"
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
+}

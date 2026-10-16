@@ -25,6 +25,7 @@ export const engineSchema = z.enum([
 ]);
 export const costBasisSchema = z.enum(['metered', 'subscription']);
 export const capabilityWordSchema = z.enum(['none', 'iterate', 'build', 'review', 'merge', 'fix']);
+export const intakeViaSchema = z.enum(['import', 'kickstart', 'enqueue_epic']);
 export const findingWeightSchema = z.enum(['real', 'plausible', 'theoretical']);
 export const approveAtSchema = z.enum(['zero_findings', 'no_real_or_plausible']);
 export const untrustedSourceSchema = z.enum([
@@ -46,6 +47,7 @@ export const wakeReasonSchema = z.enum([
 ]);
 export const liveScreenSchema = z.enum(['home', 'flow', 'board', 'gates', 'item']);
 
+export type IntakeVia = z.infer<typeof intakeViaSchema>;
 export type Connector = z.infer<typeof connectorSchema>;
 export type ExitGate = z.infer<typeof exitGateSchema>;
 export type AgentPickup = z.infer<typeof agentPickupSchema>;
