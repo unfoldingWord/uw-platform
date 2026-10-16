@@ -1,0 +1,63 @@
+import { randomUUID } from 'node:crypto';
+import { describe, expect, it } from 'vitest';
+import type { Database } from '@uw/db/client';
+import { decisionRows } from '../github/testing/ship-rig.ts';
+import {
+  gateDeps,
+  kimEmail,
+  mergePath,
+  parkedAtShip,
+  readyToShip,
+  refs,
+  shipWrites,
+} from '../github/testing/gate-rig.ts';
+import { command, post, softwareHarness } from '../testing/commands.ts';
+import { testServer, withAppDatabase } from '../testing/postgres.ts';
+
+const head = 'a'.repeat(40);
+
+async function belowTheirAction(db: Database): Promise<void> {
+  const scene = await softwareHarness(db);
+  const batch = await command(db, scene.editor, scene.harnessId, 'decide_gates', {
+    requestId: randomUUID(),
+    entries: [{ itemId: randomUUID(), head, decision: 'approve' }],
+  });
+  const freeze = await command(db, scene.editor, scene.harnessId, 'set_freeze', {
+    requestId: randomUUID(),
+    frozen: true,
+    allow: [],
+  });
+  const refute = await command(db, scene.viewer, scene.harnessId, 'refute_finding', {
+    requestId: randomUUID(),
+    itemId: randomUUID(),
+    runId: randomUUID(),
+    finding: 0,
+  });
+  for (const sent of [batch, freeze, refute]) {
+    expect(sent.status).toBe(403);
+    expect(sent.body).toMatchObject({ status: 'error', reason: 'not_permitted' });
+  }
+}
+
+async function batchMerges(db: Database): Promise<void> {
+  const parked = await parkedAtShip(db);
+  const github = readyToShip(parked.item.itemId);
+  const requestId = randomUUID();
+  const entries = [
+    { itemId: parked.item.itemId, head: parked.item.expectedHead, decision: 'approve' },
+  ];
+  const path = `/api/harness/${parked.item.harnessId}/commands/decide_gates`;
+  const body = { command: 'decide_gates', requestId, entries };
+  const sent = await post(db, kimEmail, path, body, await gateDeps(github));
+  expect(sent.body).toEqual({ status: 'accepted', requestId });
+  expect(await decisionRows(db, parked.item)).toBe(1);
+  expect(shipWrites(github)).toEqual([`PUT ${mergePath}`, `POST ${refs}`]);
+}
+
+describe.skipIf(!testServer)('the ship and gate commands on the command API', () => {
+  it('GD-1 GD-2 RV-2 decide_gates and set_freeze need admin and refute_finding needs write on the area', () =>
+    withAppDatabase(belowTheirAction));
+
+  it('GD-1 decide_gates approves a gate at Ship on the command API and merges it', () =>
+    withAppDatabase(batchMerges));
+});

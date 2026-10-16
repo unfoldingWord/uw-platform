@@ -65,3 +65,13 @@ export const recoverConnectorsCommand = commandHandler({
     return fromKernel(await kernel.gates.recoverConnectors(caller, { harnessId }));
   },
 });
+
+export const decideGatesCommand = commandHandler({
+  name: 'decide_gates',
+  action: 'admin',
+  run: async (context, body: CommandBody<'decide_gates'>) => {
+    const kernel = context.gateKernel();
+    const input = { harnessId: context.harnessId, entries: body.entries };
+    return fromKernel(await kernel.gates.decideGates(context.caller, input));
+  },
+});

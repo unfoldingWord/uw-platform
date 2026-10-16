@@ -13,6 +13,7 @@ export const OUTCOME_TEXT: Readonly<Record<string, string>> = {
   claim: 'You hold this item now',
   release: 'Released',
   approve: 'Approved',
+  decide_gates: 'Approved',
   reject: 'Rejected',
   take_over: 'You hold this item now',
   override: 'Overridden',

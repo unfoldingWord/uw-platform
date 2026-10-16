@@ -401,6 +401,28 @@ async function parkedCapSaysAtLeast(world: GateWorld): Promise<void> {
   );
 }
 
+function approveAllForms(document: Document): readonly (string | null)[] {
+  const forms = [...document.querySelectorAll('main form[data-command="decide_gates"]')];
+  return forms.map(
+    (form) => form.querySelector('input[name="entries"]')?.getAttribute('value') ?? null,
+  );
+}
+
+async function approveAllShown(world: GateWorld): Promise<void> {
+  expect(approveAllForms(await documentOf(world, world.kimEmail, gatesPath()))).toEqual([]);
+  await greenChecks(world.db);
+  await approvedWithFindings(world.db);
+  const document = await documentOf(world, world.kimEmail, gatesPath());
+  expect(approveAllForms(document)).toEqual([
+    `${world.item.itemId}:${world.item.expectedHead ?? ''}`,
+  ]);
+  const button = document.querySelector('main form[data-command="decide_gates"] button');
+  expect(button?.textContent).toMatch(/^Approve the 1 gate shown on /);
+  expect(button?.getAttribute('class')).toContain('bg-kindle');
+  expect(await screenProblems((await pageOf(world, world.kimEmail, gatesPath())).text)).toEqual([]);
+  expect(approveAllForms(await documentOf(world, world.viewerEmail, gatesPath()))).toEqual([]);
+}
+
 async function noProblems(world: GateWorld): Promise<void> {
   for (const email of [world.kimEmail, world.viewerEmail]) {
     for (const path of [gatesPath(), deepLink(world)]) {
@@ -412,6 +434,8 @@ async function noProblems(world: GateWorld): Promise<void> {
 describe.skipIf(!testServer)('the Gates view and its deep link', () => {
   it('WB-6 the gates view lists only the gates the person can decide', () =>
     inGates(onlyDecidable));
+  it('GD-1 the Gates view offers approve all shown over the gates whose ship rule advances', () =>
+    inGates(approveAllShown));
   it('WB-6 each gate shows every ship-rule input with its current value from GitHub facts, the tier and domains, and the Reviewer findings', () =>
     inGates(shipInputs));
   it('WB-6 the gate facts show the parsed declaration, the recorded tier with its head, the tier derived now, the review providers and the head you approve', () =>

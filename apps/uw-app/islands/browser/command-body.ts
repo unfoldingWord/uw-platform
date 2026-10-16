@@ -14,6 +14,16 @@ function findingsOf(text: string | undefined): readonly string[] {
     .filter((line) => line !== '');
 }
 
+function entriesOf(text: string | undefined): readonly Readonly<Record<string, string>>[] {
+  return (text ?? '')
+    .split(',')
+    .filter((pair) => pair !== '')
+    .map((pair) => {
+      const [itemId = '', head = ''] = pair.split(':');
+      return { itemId, head, decision: 'approve' };
+    });
+}
+
 type Shape = (given: ReadonlyMap<string, string>) => Readonly<Record<string, unknown>>;
 
 const itemOnly: Shape = (given) => ({ itemId: given.get('itemId') });
@@ -31,6 +41,7 @@ const shapes: ReadonlyMap<string, Shape> = new Map<string, Shape>([
   ['claim', itemOnly],
   ['release', itemOnly],
   ['take_over', itemOnly],
+  ['decide_gates', (given) => ({ entries: entriesOf(given.get('entries')) })],
   ['approve', (given) => ({ itemId: given.get('itemId'), head: optional(given.get('head')) })],
   [
     'reject',

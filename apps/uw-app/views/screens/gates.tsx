@@ -5,6 +5,7 @@ import type { GateRow } from '@uw/harness';
 import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
+import { ApproveAll, type Approvable } from '../parts/approve-all.tsx';
 import { showsDecisions } from '../parts/decider.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { parkedCapNote } from '../parts/caps.ts';
@@ -17,6 +18,36 @@ const REFRESH_EVERY_MS = 60_000;
 const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
 
 type Shown = { readonly row: GateRow; readonly gate: PanelGate };
+
+const BATCH_LIMIT = 50;
+
+function approvableHead({ row, gate }: Shown): string | null {
+  const advances = gate.view.ship?.outcome.verdict === 'advance';
+  const ready = gate.decides && gate.ability.can && advances && !row.harness.shadow;
+  return ready ? gate.view.expectedHead : null;
+}
+
+function approvable(shown: readonly Shown[]): readonly Approvable[] {
+  const byHarness = new Map<string, Approvable>();
+  for (const one of shown) {
+    const head = approvableHead(one);
+    if (head === null) continue;
+    const { harness, item } = one.row;
+    const held = byHarness.get(harness.id) ?? {
+      harnessId: harness.id,
+      harnessKey: harness.key,
+      entries: [],
+    };
+    byHarness.set(harness.id, {
+      ...held,
+      entries: [...held.entries, { itemId: item.itemId, head }],
+    });
+  }
+  return [...byHarness.values()].map((batch) => ({
+    ...batch,
+    entries: batch.entries.slice(0, BATCH_LIMIT),
+  }));
+}
 
 async function panelsOf(screen: ScreenKernel, rows: readonly GateRow[]): Promise<Shown[]> {
   const shown: Shown[] = [];
@@ -99,6 +130,9 @@ function GatesBody(props: Body) {
     <>
       <PageHead title="Gates" lede={lede(shown.length, capped)} />
       {note}
+      {approvable(shown).map((batch) => (
+        <ApproveAll batch={batch} />
+      ))}
       <GateList shown={shown} />
       {lists}
     </>
