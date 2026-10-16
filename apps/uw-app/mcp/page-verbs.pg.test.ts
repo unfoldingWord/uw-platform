@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { principalSchema, type Principal } from '@uw/contracts';
+import { principalSchema, type Principal, defaultCiChecks } from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
@@ -405,6 +405,7 @@ async function nameAsInstructions(r: Rig, stageKey: string, pageId: string): Pro
     jdArea: '80-89',
     template: software,
     repository: null,
+    requiredChecks: [...defaultCiChecks],
   };
   expect((await kernel.stages.activate(caller, activation)).status).toBe('accepted');
   const change = { instructionsPageId: pageId };

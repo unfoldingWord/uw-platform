@@ -129,6 +129,7 @@ async function harnessWith(r: Rig, key: string, priorities: readonly number[], a
       jdArea: area,
       template,
       repository: repositoryOf(key),
+      requiredChecks: [],
     }),
   );
   await listForDispatch(r.db, repositoryOf(key), area);

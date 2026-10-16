@@ -1,3 +1,4 @@
+import { defaultCiChecks } from '@uw/contracts';
 import { setTimeout as pause } from 'node:timers/promises';
 import type { Principal } from '@uw/contracts';
 import { createClient, type Database } from '@uw/db/client';
@@ -68,6 +69,7 @@ async function raceOn(one: Database, two: Database, holder: Database): Promise<R
     jdArea: '80-89',
     template: software,
     repository: null,
+    requiredChecks: [...defaultCiChecks],
   });
   if (activated.status !== 'accepted') throw new Error(`activate refused: ${activated.reason}`);
   await seedPage(one, builderPage(firstPage, 'persona-builder', harnessId));

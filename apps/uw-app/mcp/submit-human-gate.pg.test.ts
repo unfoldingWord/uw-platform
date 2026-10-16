@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { delegatedIdentity, principalSchema, type Principal } from '@uw/contracts';
+import { delegatedIdentity, principalSchema, type Principal, defaultCiChecks } from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
@@ -48,6 +48,7 @@ async function gatedHarness(db: Database, kernel: Kernel, ian: Principal): Promi
     jdArea: '80-89',
     template: software,
     repository: 'unfoldingWord/uw-platform',
+    requiredChecks: [...defaultCiChecks],
   };
   value(await kernel.stages.activate(caller(ian), activate));
   await listForDispatch(db, activate.repository);

@@ -1,3 +1,4 @@
+import { defaultCiChecks } from '@uw/contracts';
 import type { HarnessEvent, Principal } from '@uw/contracts';
 import { systemPrincipal } from '@uw/core/principal';
 import { createClient, type Database } from '@uw/db/client';
@@ -95,6 +96,7 @@ async function openRound(
       jdArea: '80-89',
       template: software,
       repository: null,
+      requiredChecks: [...defaultCiChecks],
     }),
   );
   accepted(

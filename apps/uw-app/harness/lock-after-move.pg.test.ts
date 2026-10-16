@@ -1,3 +1,4 @@
+import { defaultCiChecks } from '@uw/contracts';
 import type { ItemState, Principal } from '@uw/contracts';
 import { ingestPrincipal } from '@uw/core/principal';
 import { createClient, type Database } from '@uw/db/client';
@@ -43,6 +44,7 @@ async function sceneOn(actor: Database, mover: Database, observer: Database): Pr
       jdArea: '80-89',
       template: software,
       repository: 'unfoldingWord/uw-platform',
+      requiredChecks: [...defaultCiChecks],
     }),
     'activate',
   );

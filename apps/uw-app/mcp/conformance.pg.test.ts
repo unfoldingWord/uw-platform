@@ -9,6 +9,7 @@ import {
   type CostBasis,
   type ErrorReason,
   type Principal,
+  defaultCiChecks,
 } from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
@@ -133,6 +134,7 @@ async function harnessIn(r: Rig, key: string, area: string): Promise<string> {
     jdArea: area,
     template: software,
     repository: `unfoldingWord/${key}`,
+    requiredChecks: [...defaultCiChecks],
   };
   value(await r.kernel.stages.activate(caller(r.ian), activate));
   await listForDispatch(r.db, activate.repository, area);

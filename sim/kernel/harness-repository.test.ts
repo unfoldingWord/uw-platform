@@ -1,3 +1,4 @@
+import { defaultCiChecks } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { bml, readAllEvents, software, type Caller } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -22,6 +23,7 @@ function activateSoftware(world: World, ian: Caller, harnessKey: string, reposit
     jdArea: '80-89',
     template: software,
     repository,
+    requiredChecks: [...defaultCiChecks],
   });
 }
 
@@ -67,6 +69,7 @@ async function activatesWithoutRepository(world: World, ian: Caller): Promise<vo
     jdArea: '30-39',
     template: bml,
     repository: null,
+    requiredChecks: [],
   });
   expect(outcome).toMatchObject({
     status: 'accepted',

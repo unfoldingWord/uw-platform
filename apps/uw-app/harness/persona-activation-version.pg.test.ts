@@ -41,6 +41,7 @@ async function scene(db: Database) {
     jdArea: '30-39',
     template: bml,
     repository: null,
+    requiredChecks: [],
   };
   expect((await kernel.stages.activate(caller(ian), activate)).status).toBe('accepted');
   await seedPage(db, {
