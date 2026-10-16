@@ -106,28 +106,56 @@ async function noChecks(): Promise<void> {
   expect(line(commands, 0)).not.toContain('claude');
 }
 
+type Session = { readonly commands: readonly RecordedCommand[] };
+type RecordedCommand = {
+  readonly command: readonly string[];
+  readonly env: Readonly<Record<string, string>>;
+};
+
+function treeOf(session: Session | undefined): string {
+  const extract = session?.commands[3]?.command.join(' ') ?? '';
+  return /mkdir -p (\/workspace\/checked-[0-9a-f-]+)/u.exec(extract)?.[1] ?? 'missing';
+}
+
 async function startCommitText(): Promise<void> {
-  let filesAtModel = -1;
-  const { engine, host } = engineOn([
-    prepared,
-    async () => {
-      filesAtModel = host.sessions[0]?.files.length ?? -1;
-      return reply(result);
-    },
-    inspected,
-    passed,
-    passed,
-  ]);
+  const { engine, host } = engineOn([prepared, reply(result), inspected, passed, passed, passed]);
+  expect(await engine.work(fixWork)).toMatchObject({ outcome: 'ended' });
+  const session = host.sessions[0];
+  const checks = session?.commands[4];
+  expect(checks?.env).toMatchObject({ UW_CHECKS: declared });
+  expect(checks?.command.join(' ')).toContain('sh -c "$UW_CHECKS"');
+  expect(checks?.env['HOME']).toMatch(/^\/workspace\/home-[0-9a-f-]+$/u);
+  expect(session?.files.some((file) => file.path.includes('checks'))).toBe(false);
+  expect(line(session?.commands ?? [], 1)).not.toContain('checks.sh');
+}
+
+async function checkedIsPushed(): Promise<void> {
+  const { engine, host } = engineOn([prepared, reply(result), inspected, passed, passed, passed]);
   expect(await engine.work(fixWork)).toMatchObject({ outcome: 'ended' });
   const session = host.sessions[0];
   const commands = session?.commands ?? [];
-  const script = session?.files.find((file) => file.path.startsWith('/workspace/declared-checks-'));
-  expect(script?.content).toBe(declared);
-  expect(session?.files.indexOf(script ?? { path: '', content: '' })).toBeGreaterThanOrEqual(
-    filesAtModel,
-  );
-  expect(line(commands, 3)).toContain(`sh ${script?.path ?? 'missing'}`);
-  expect(line(commands, 1)).not.toContain('checks.sh');
+  const tree = treeOf(session);
+  expect(line(commands, 2)).not.toContain('status --porcelain');
+  expect(line(commands, 2)).toContain('--no-replace-objects');
+  expect(line(commands, 3)).toContain(`archive --format=tar --output=${tree}.tar ${checked}`);
+  expect(line(commands, 3)).toContain('GIT_NO_REPLACE_OBJECTS=1');
+  expect(line(commands, 3)).toContain('rm -f .git/info/attributes');
+  expect(line(commands, 4)).toContain(`cd ${tree} && `);
+  expect(line(commands, 5)).toContain(`"${checked}:refs/heads/$UW_BRANCH"`);
+  expect(line(commands, 5)).toContain('--no-replace-objects');
+}
+
+async function leftoversKilled(): Promise<void> {
+  const { engine, host } = engineOn([prepared, reply(result), inspected, passed, passed, passed]);
+  expect(await engine.work(fixWork)).toMatchObject({ outcome: 'ended' });
+  const commands = host.sessions[0]?.commands ?? [];
+  const mark = commands[1]?.env['UW_MODEL_SESSION'] ?? 'missing';
+  expect(mark).toMatch(/^[0-9a-f-]{36}$/u);
+  expect(line(commands, 2)).toContain(`grep -qx 'UW_MODEL_SESSION=${mark}'`);
+  expect(line(commands, 2)).toContain('kill -KILL');
+  for (const index of [0, 2, 3, 4, 5]) {
+    expect(commands[index]?.env['UW_MODEL_SESSION']).toBeUndefined();
+  }
 }
 
 async function failingChecks(): Promise<void> {
@@ -139,6 +167,7 @@ async function failingChecks(): Promise<void> {
       return reply(result);
     },
     inspected,
+    passed,
     async (egress) => {
       statuses.push((await egress(registryGet())).status);
       statuses.push((await egress(inference())).status, (await egress(verb())).status);
@@ -150,7 +179,7 @@ async function failingChecks(): Promise<void> {
     inputTokens: 1200,
   });
   expect(statuses).toEqual([403, 403, 200, 403, 403]);
-  expect(host.sessions[0]?.commands).toHaveLength(4);
+  expect(host.sessions[0]?.commands).toHaveLength(5);
   expect(sent.map((request) => request.url)).toEqual(['https://registry.npmjs.org/react']);
 }
 
@@ -161,6 +190,7 @@ async function passingChecks(): Promise<void> {
     reply(result),
     inspected,
     passed,
+    passed,
     async (egress) => {
       statuses.push((await egress(pushed())).status);
       return passed;
@@ -170,10 +200,10 @@ async function passingChecks(): Promise<void> {
   expect(statuses).toEqual([200]);
   const session = host.sessions[0];
   const commands = session?.commands ?? [];
-  expect(line(commands, 4)).toContain(`push --no-verify --quiet "$UW_CLONE_URL" "${checked}:`);
-  expect(line(commands, 4)).toContain('core.hooksPath=/dev/null');
-  expect(line(commands, 4)).toContain('GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1');
-  expect(session?.commands[3]?.env).toMatchObject({
+  expect(line(commands, 5)).toContain(`push --no-verify --quiet "$UW_CLONE_URL" "${checked}:`);
+  expect(line(commands, 5)).toContain('core.hooksPath=/dev/null');
+  expect(line(commands, 5)).toContain('GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1');
+  expect(session?.commands[4]?.env).toMatchObject({
     npm_config_registry: 'http://registry.internal/',
   });
   expect(line(commands, 1)).not.toContain('Bash(curl *)');
@@ -186,16 +216,14 @@ async function passingChecks(): Promise<void> {
   ]);
 }
 
-async function dirtyTree(): Promise<void> {
+async function unreadHead(): Promise<void> {
   const { engine, host } = engineOn([
     prepared,
     reply(result),
-    { exitCode: 1, stdout: '', stderr: '' },
+    { exitCode: 128, stdout: '', stderr: 'fatal: bad object' },
   ]);
   expect(await engine.work(fixWork)).toMatchObject({ outcome: 'checks_not_run_locally' });
-  const commands = host.sessions[0]?.commands ?? [];
-  expect(commands).toHaveLength(3);
-  expect(line(commands, 2)).toContain('status --porcelain');
+  expect(host.sessions[0]?.commands).toHaveLength(3);
 }
 
 async function headMoved(): Promise<void> {
@@ -204,6 +232,7 @@ async function headMoved(): Promise<void> {
     prepared,
     reply(result),
     inspected,
+    passed,
     passed,
     async (egress) => {
       statuses.push((await egress(pushed('d'.repeat(40)))).status);
@@ -223,6 +252,7 @@ async function leaseRenewed(): Promise<void> {
     prepared,
     reply(result),
     inspected,
+    passed,
     async () => {
       const before = turns;
       await vi.advanceTimersByTimeAsync(3 * 60_000);
@@ -279,7 +309,14 @@ describe('FL-4 the fix work spec runs the declared checks before anything is pus
 });
 
 describe('FL-4 the platform pushes only the commit the checks ran on', () => {
-  it('FL-4 a tree with uncommitted changes runs no checks and pushes nothing', dirtyTree);
+  it('FL-4 a head the host cannot read runs no checks and pushes nothing', unreadHead);
+
+  it(
+    'FL-4 the checks run on a fresh archive of the commit that is pushed, past replaced objects and hidden index entries',
+    checkedIsPushed,
+  );
+
+  it('FL-4 processes the model exec left behind are killed before the checks', leftoversKilled);
 
   it('FL-4 a push of any commit but the checked one is refused at the egress', headMoved);
 

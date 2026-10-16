@@ -16,6 +16,7 @@ export type SessionTools = {
 };
 
 export type SessionFinish = {
+  readonly modelEnv: Readonly<Record<string, string>>;
   prepare(tools: SessionTools): Promise<ExecResult | null>;
   finish(ran: ExecResult, tools: SessionTools): Promise<FinishEnd>;
 };
@@ -50,7 +51,8 @@ async function ranIn(session: Session, spec: SessionSpec): Promise<Omit<SessionR
   const tools = toolsOf(session, spec);
   const stopped = spec.finish === null ? null : await spec.finish.prepare(tools);
   if (stopped !== null) return { ...stopped, finished: 'checks_not_run_locally' };
-  const ran = await session.exec(spec.command, spec.env, spec.timeoutMs);
+  const env = { ...spec.env, ...spec.finish?.modelEnv };
+  const ran = await session.exec(spec.command, env, spec.timeoutMs);
   const finished = spec.finish === null ? null : await spec.finish.finish(ran, tools);
   return { ...ran, finished };
 }
