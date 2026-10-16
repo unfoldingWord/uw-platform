@@ -28,13 +28,10 @@ export function weighedFindings(drafts: readonly ReadFinding[]): readonly Review
 
 export function postedVerdict(
   approveAt: ApproveAt,
-  verdict: ReviewVerdict,
   findings: readonly ReviewFinding[],
 ): ReviewVerdict {
-  if (findings.length === 0) return 'approve';
   const blocks = blocking.get(approveAt) ?? counted;
-  if (findings.some((finding) => blocks.has(finding.weight))) return 'request_changes';
-  return verdict;
+  return findings.some((finding) => blocks.has(finding.weight)) ? 'request_changes' : 'approve';
 }
 
 export function countsAsRound(review: ReviewRecord): boolean {
