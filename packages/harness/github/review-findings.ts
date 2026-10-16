@@ -13,8 +13,9 @@ export function parseReviewFindings(body: string | null): readonly ReadFinding[]
   return lines
     .slice(end + 1)
     .filter((line) => line.startsWith(findingMark))
-    .map((line) => cut(oneLine(line.slice(findingMark.length)), FINDING_LIMIT))
+    .map((line) => oneLine(line.slice(findingMark.length)))
     .filter((finding) => finding !== '')
     .slice(0, FINDINGS_LIMIT)
-    .map(weighedLine);
+    .map(weighedLine)
+    .map((finding) => ({ ...finding, text: cut(finding.text, FINDING_LIMIT) }));
 }

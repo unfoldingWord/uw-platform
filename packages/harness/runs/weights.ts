@@ -6,9 +6,7 @@ import type {
   ReviewRecord,
   ReviewVerdict,
 } from '@uw/contracts';
-
-const FINDING_LIMIT = 500;
-const FINDINGS_LIMIT = 50;
+import { FINDINGS_LIMIT, shownFinding } from '../github/review-body.ts';
 
 const counted: ReadonlySet<FindingWeight> = new Set<FindingWeight>(['real', 'plausible']);
 const blocking: ReadonlyMap<ApproveAt, ReadonlySet<FindingWeight>> = new Map([
@@ -20,7 +18,7 @@ export function weighedFindings(drafts: readonly ReadFinding[]): readonly Review
   const findings: ReviewFinding[] = [];
   for (const draft of drafts.slice(0, FINDINGS_LIMIT)) {
     if (draft.weight === null) return null;
-    const text = draft.text.trim().slice(0, FINDING_LIMIT);
+    const text = shownFinding(draft.text);
     if (text !== '') findings.push({ text, weight: draft.weight });
   }
   return findings;
