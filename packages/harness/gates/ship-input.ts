@@ -217,8 +217,8 @@ function sameRef(left: ClosingRef, right: ClosingRef): boolean {
 }
 
 function closesOf(facts: PullRequestFacts, compared: BaseComparison | null): ClosingRef[] | null {
-  if (facts.closes === null) return null;
-  const fromCommits = (compared?.commits ?? []).flatMap((commit) => commit.closes);
+  if (facts.closes === null || compared === null || compared.commits === null) return null;
+  const fromCommits = compared.commits.flatMap((commit) => commit.closes);
   const all = [...facts.closes, ...fromCommits];
   return all
     .filter((ref, index) => all.findIndex((other) => sameRef(ref, other)) === index)

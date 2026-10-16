@@ -453,6 +453,10 @@ describe('SR-1 SR-2 the assembler reads the comparison, the closing references, 
     expect(assembleShipInput({ ...source, item: wrapping }).wraps).toEqual(ref);
     const unreadable = { ...closing, closes: null };
     expect(assembleShipInput({ ...source, facts: unreadable }).closes).toBeNull();
+    const commitsUnread = { ...closing, comparison: { ...compared, commits: null } };
+    expect(assembleShipInput({ ...source, facts: commitsUnread }).closes).toBeNull();
+    const notCompared = { ...closing, comparison: null };
+    expect(assembleShipInput({ ...source, facts: notCompared }).closes).toBeNull();
   });
 
   it('SR-1 GD-2 takes the required checks from the harness and the freeze unless the item is allowed', () => {
