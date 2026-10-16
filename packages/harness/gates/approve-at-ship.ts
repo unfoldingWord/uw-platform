@@ -34,7 +34,12 @@ import { exitThroughConnector, type ExitGuard, type ExitPorts } from './exit.ts'
 import { factsFailure } from './facts-failure.ts';
 import { isStale, staleRefusal } from './facts-fresh.ts';
 import { decisionInFlight, sameChange } from './parking.ts';
-import { assembleShipInput, riskDerivedAtShip, type ShipInputSource } from './ship-input.ts';
+import {
+  assembleShipInput,
+  riskDerivedAtShip,
+  type ShipDelegation,
+  type ShipInputSource,
+} from './ship-input.ts';
 
 type ShipPorts = Pick<Ports, 'githubFacts' | 'grants' | 'store'> & ExitPorts;
 
@@ -49,7 +54,7 @@ type AtExit = { readonly item: ItemState; readonly harness: Harness };
 
 export type ShipSnapshot = { readonly item: ItemState; readonly facts: PullRequestFacts | null };
 
-type ShipGate = {
+export type ShipGate = {
   readonly item: ItemState;
   readonly harness: Harness;
   readonly stage: Stage;
@@ -164,6 +169,7 @@ function shipVerdict(
   gate: ShipGate,
   decision: GateDecision,
   snapshot: ShipSnapshot | null,
+  delegation: ShipDelegation | null,
 ): ShipVerdict {
   if (snapshot === null || !sameChange(snapshot.item, gate.item)) {
     return { reasons: ['head_mismatch'], derived: [], shipped: null };
@@ -175,6 +181,7 @@ function shipVerdict(
     approver: gate.approver,
     at: gate.context.at,
     override: decision === 'override',
+    delegation,
   };
   const input = assembleShipInput(source);
   const outcome = shipRule(input);
@@ -191,8 +198,9 @@ export async function shipCheck(
   gate: ShipGate,
   decision: GateDecision,
   snapshot: ShipSnapshot | null,
+  delegation: ShipDelegation | null = null,
 ): Promise<ShipCheck> {
-  const { reasons, derived, shipped } = shipVerdict(gate, decision, snapshot);
+  const { reasons, derived, shipped } = shipVerdict(gate, decision, snapshot, delegation);
   const [first] = reasons;
   if (first === undefined) return { refusal: null, drafts: derived, shipped };
   const stage = gate.stage.key;

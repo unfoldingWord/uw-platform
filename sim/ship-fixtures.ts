@@ -15,7 +15,7 @@ import {
   type PullRequestRef,
   type ReviewFact,
 } from '@uw/harness';
-import { simAdvance, simAgent, simCaller } from './fixtures.ts';
+import { readSpend, simAdvance, simAgent, simCaller, simDelegate } from './fixtures.ts';
 import type { World } from './world.ts';
 
 export type ShipChange = {
@@ -84,7 +84,7 @@ function factsOf(world: World, itemId: string, change: ShipChange): PullRequestF
   return greenFacts(world, { itemId, head, reviews: [], paths, declaration, ref });
 }
 
-export async function simParkedAtShip(world: World, input: ShipInput): Promise<ItemState> {
+export async function simAtShip(world: World, input: ShipInput): Promise<ItemState> {
   const editor = simCaller(world, input.editor);
   const { itemId } = accepted(
     await world.kernel.items.enqueue(editor, {
@@ -102,12 +102,47 @@ export async function simParkedAtShip(world: World, input: ShipInput): Promise<I
   const agent = simAgent(input.editor, `${input.editor.personId}/builder`, { interactive: true });
   await simAdvance(world, { harnessId, itemId, worker: agent, through: ['scope', 'plan'] });
   await submitWithChange(world, agent, itemId, input.change);
-  await submitWithChange(world, agent, itemId, input.change);
-  const parked = await submitWithChange(world, input.editor, itemId, null);
+  const atShip = await submitWithChange(world, agent, itemId, input.change);
+  if (atShip.stageKey !== 'ship' || atShip.gateStatus !== 'working') {
+    throw new Error(`the item is ${atShip.gateStatus} at ${atShip.stageKey}, not working at ship`);
+  }
+  return atShip;
+}
+
+export async function simParkedAtShip(world: World, input: ShipInput): Promise<ItemState> {
+  const atShip = await simAtShip(world, input);
+  const parked = await submitWithChange(world, input.editor, atShip.itemId, null);
   if (parked.stageKey !== 'ship' || parked.gateStatus !== 'parked') {
     throw new Error(`the item is ${parked.gateStatus} at ${parked.stageKey}, not parked at ship`);
   }
   return parked;
+}
+
+export type MergeLoan = { readonly delegationId: string; readonly agent: Principal };
+
+export type LoanInput = {
+  readonly harnessId: string;
+  readonly maxTier: 'low' | 'standard';
+  readonly persona?: string;
+};
+
+export async function simLendMerge(
+  world: World,
+  grantor: Principal,
+  input: LoanInput,
+): Promise<MergeLoan> {
+  const persona = input.persona ?? 'shipper';
+  const granted = await simDelegate(world, grantor, {
+    harnessId: input.harnessId,
+    persona: `agent:${persona}`,
+    capability: 'merge',
+    maxTier: input.maxTier,
+    expiresAt: null,
+    supersedes: null,
+  });
+  const delegation = accepted(granted, 'the merge delegation');
+  await readSpend(world);
+  return { delegationId: delegation.id, agent: simAgent(grantor, persona, { interactive: false }) };
 }
 
 export function approvedBy(
