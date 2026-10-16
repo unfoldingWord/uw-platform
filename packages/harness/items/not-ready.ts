@@ -1,13 +1,7 @@
-import {
-  eventEvidenceSchemas,
-  type Harness,
-  type HarnessEvent,
-  type IntakeVia,
-  type IssueRef,
-  type Principal,
-} from '@uw/contracts';
+import type { Harness, IntakeVia, IssueRef, Principal } from '@uw/contracts';
 import { allowed, isAgent, isIngestPrincipal, isSystemPrincipal } from '../access.ts';
 import type { Caller } from '../caller.ts';
+import { lockKeys } from '../lock-keys.ts';
 import { refused, type Refused } from '../outcome.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
 import { draft, recordContext, recordHarnessEvents, type RecordContext } from './record.ts';
@@ -23,7 +17,6 @@ export type NotReadySubject = {
 export type NotReadyInput = NotReadySubject & { readonly harnessId: string };
 
 const DAY_MS = 86_400_000;
-const RECENT_LIMIT = 500;
 const TITLE_LIMIT = 200;
 
 export async function intakeWriter(
@@ -45,11 +38,30 @@ function titled(subject: NotReadySubject): string {
   return subject.issue === null ? 'Untitled page' : `${subject.issue.repo}#${subject.issue.number}`;
 }
 
-function sameSubject(event: HarnessEvent, subject: NotReadySubject): boolean {
-  const parsed = eventEvidenceSchemas.done_when_missing.safeParse(event.evidence);
-  if (!parsed.success) return false;
-  if (subject.issue !== null) return parsed.data.issue?.githubId === subject.issue.githubId;
-  return parsed.data.pageId === subject.pageId;
+async function recordedToday(
+  tx: StoreTransaction,
+  at: Date,
+  harnessId: string,
+  subject: NotReadySubject,
+): Promise<boolean> {
+  const scope =
+    subject.issue === null
+      ? { evidencePage: subject.pageId ?? '' }
+      : { evidenceIssue: subject.issue.githubId };
+  await tx.lock(
+    subject.issue === null
+      ? lockKeys.harnessEvents(harnessId)
+      : lockKeys.githubIssue(subject.issue.githubId),
+  );
+  const found = await tx.harnessEvents.read.recent({
+    since: new Date(at.getTime() - DAY_MS),
+    names: ['done_when_missing'],
+    agentsOnly: false,
+    limit: 1,
+    harnessIds: [harnessId],
+    ...scope,
+  });
+  return found.length > 0;
 }
 
 export async function recordNotReadyIn(
@@ -58,14 +70,7 @@ export async function recordNotReadyIn(
   harnessId: string,
   subject: NotReadySubject,
 ): Promise<boolean> {
-  const recent = await tx.harnessEvents.read.recent({
-    since: new Date(context.at.getTime() - DAY_MS),
-    names: ['done_when_missing'],
-    agentsOnly: false,
-    limit: RECENT_LIMIT,
-    harnessIds: [harnessId],
-  });
-  if (recent.some((event) => sameSubject(event, subject))) return false;
+  if (await recordedToday(tx, context.at, harnessId, subject)) return false;
   const evidence = {
     via: subject.via,
     issue: subject.issue,

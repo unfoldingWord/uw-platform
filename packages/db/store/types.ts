@@ -158,6 +158,8 @@ export type RecentEvents = {
   readonly limit: number;
   readonly harnessIds?: readonly string[];
   readonly evidencePerson?: string;
+  readonly evidenceIssue?: number;
+  readonly evidencePage?: string;
 };
 export type PersonaEventCount = {
   readonly harnessId: string;
