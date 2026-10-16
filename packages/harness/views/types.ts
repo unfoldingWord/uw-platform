@@ -176,7 +176,10 @@ export type PlaneIndicator =
   | 'gate_refusals_week'
   | 'agent_writes'
   | 'stale_learnings'
-  | 'reviewer_refutes';
+  | 'reviewer_refutes'
+  | 'silence_alarm'
+  | 'held_by_person'
+  | 'held_by_agent';
 export type PlaneRow = {
   readonly harnessId: string | null;
   readonly cells: Readonly<Record<string, string | number | null>>;

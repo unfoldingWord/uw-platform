@@ -6,6 +6,7 @@ import type { Ports } from '../ports.ts';
 import { boardView } from './board.ts';
 import { delegatedMerges, type DelegatedMergeList } from './delegated-merges.ts';
 import { flowView } from './flow.ts';
+import { holdsOf, type Holds } from './holds.ts';
 import { decidableGates, decideAbility, gateDecided } from './gates.ts';
 import { planeList } from './plane-list.ts';
 import { planeTotals } from './plane.ts';
@@ -30,6 +31,7 @@ import { waitingOn } from './waiting.ts';
 import { silences, type Silence } from '../alarms/silence.ts';
 
 type ReadOptions = { readonly at: Date };
+type ScopedOptions = { readonly at?: Date; readonly harnessIds?: readonly string[] };
 type ViewPorts = Pick<Ports, 'clock' | 'githubFacts' | 'grants' | 'store'>;
 type Gate = { readonly harness: Harness; readonly stage: Stage; readonly item: ItemState };
 
@@ -64,7 +66,8 @@ export type ViewReads = {
     options?: ReadOptions,
   ): Promise<boolean>;
   waitingOn(caller: Caller, options?: ReadOptions): Promise<Waiting>;
-  silence(options?: ReadOptions): Promise<readonly Silence[]>;
+  silence(options?: ScopedOptions): Promise<readonly Silence[]>;
+  holds(options?: ScopedOptions): Promise<Holds>;
   playByPlay(
     caller: Caller,
     input: PlayInput,
@@ -97,6 +100,20 @@ function mergesOf(ports: ViewPorts, caller: Caller, at: Date) {
   return ports.store.transaction((tx) => delegatedMerges(ports, tx, caller, at));
 }
 
+function withinOf(options?: ScopedOptions): ReadonlySet<string> | null {
+  return options?.harnessIds === undefined ? null : new Set(options.harnessIds);
+}
+
+function scopedReads(ports: ViewPorts): Pick<ViewReads, 'silence' | 'holds'> {
+  const at = (options?: ScopedOptions): Date => options?.at ?? ports.clock.now();
+  return {
+    silence: (options) =>
+      ports.store.transaction((tx) => silences(ports, tx, at(options), withinOf(options))),
+    holds: (options) =>
+      ports.store.transaction((tx) => holdsOf(ports, tx, at(options), withinOf(options))),
+  };
+}
+
 export function createViewReads(ports: ViewPorts): ViewReads {
   const instant = (options?: ReadOptions): Date => options?.at ?? ports.clock.now();
   const { store } = ports;
@@ -125,7 +142,7 @@ export function createViewReads(ports: ViewPorts): ViewReads {
       store.transaction((tx) => gateDecided(ports, tx, caller, itemId, instant(options))),
     waitingOn: (caller, options) =>
       store.transaction((tx) => waitingOn(ports, tx, caller, instant(options))),
-    silence: (options) => store.transaction((tx) => silences(ports, tx, instant(options))),
+    ...scopedReads(ports),
     playByPlay: (caller, input, options) => {
       const at = instant(options);
       return store.transaction((tx) => playByPlay(ports, tx, caller, input, at));

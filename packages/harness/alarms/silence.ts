@@ -150,9 +150,12 @@ export async function silences(
   ports: SilencePorts,
   tx: StoreTransaction,
   at: Date,
+  within: ReadonlySet<string> | null = null,
 ): Promise<readonly Silence[]> {
   const found: Silence[] = [];
-  for (const harness of await tx.harnesses.read.list())
+  for (const harness of await tx.harnesses.read.list()) {
+    if (within !== null && !within.has(harness.id)) continue;
     found.push(await silenceOf(ports, tx, harness, at));
+  }
   return found;
 }

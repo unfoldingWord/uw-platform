@@ -1,10 +1,18 @@
 import type { HarnessEvent } from '@uw/contracts';
 import { can } from '@uw/core/acl';
-import { formatDate, formatInstant, isoDateSchema, parseDate } from '@uw/core/dates';
+import {
+  formatDate,
+  formatDuration,
+  formatInstant,
+  isoDateSchema,
+  parseDate,
+} from '@uw/core/dates';
 import { formatMoney } from '@uw/core/money';
 import type { Caller } from '../caller.ts';
-import type { PageFacts, RunRow, StoreTransaction } from '../ports.ts';
-import { readableHarness, type ScenePorts } from '../reads/scene.ts';
+import { silences } from '../alarms/silence.ts';
+import type { PageFacts, Ports, RunRow, StoreTransaction } from '../ports.ts';
+import { readableHarness } from '../reads/scene.ts';
+import { holdsOf } from './holds.ts';
 import {
   agentWrite,
   dayBefore,
@@ -20,7 +28,7 @@ import { PLANE_LIMIT, type PlaneIndicator, type PlaneRow } from './types.ts';
 const LEARNING_REVIEW_MS = 90 * 24 * 3_600_000;
 
 type ListScope = {
-  readonly ports: ScenePorts;
+  readonly ports: Pick<Ports, 'grants' | 'githubFacts'>;
   readonly tx: StoreTransaction;
   readonly caller: Caller;
   readonly at: Date;
@@ -149,6 +157,45 @@ async function refuteRows(scope: ListScope): Promise<readonly PlaneRow[]> {
   }));
 }
 
+function heldFor(at: Date, since: Date | null): string | null {
+  return since === null ? null : formatDuration(at.getTime() - since.getTime());
+}
+
+async function heldRows(scope: ListScope, kind: 'person' | 'agent'): Promise<readonly PlaneRow[]> {
+  const holds = await holdsOf(scope.ports, scope.tx, scope.at);
+  const rows = kind === 'person' ? holds.person : holds.agent;
+  return rows.map(({ harness, item, holder }) => ({
+    harnessId: harness.id,
+    cells: {
+      item: item.title,
+      harness: harness.key,
+      holder: holder.identity ?? 'A person who may decide',
+      role: holder.role,
+      since: holder.since === null ? null : formatInstant(holder.since),
+      held: heldFor(scope.at, holder.since),
+    },
+  }));
+}
+
+async function silenceRows(scope: ListScope): Promise<readonly PlaneRow[]> {
+  const found = await silences(scope.ports, scope.tx, scope.at);
+  const loud = found.filter((silence) => silence.level !== 'ok');
+  return loud.flatMap((silence) =>
+    silence.waiting.map(({ item, enteredAt }) => ({
+      harnessId: silence.harness.id,
+      cells: {
+        item: item.title,
+        harness: silence.harness.key,
+        level: silence.level,
+        entered: formatInstant(enteredAt),
+        waited: heldFor(scope.at, enteredAt),
+        'last review step':
+          silence.lastReviewStepAt === null ? null : formatInstant(silence.lastReviewStepAt),
+      },
+    })),
+  );
+}
+
 type Reader = (scope: ListScope) => Promise<readonly PlaneRow[]>;
 
 const readers: ReadonlyMap<PlaneIndicator, Reader> = new Map<PlaneIndicator, Reader>([
@@ -159,6 +206,9 @@ const readers: ReadonlyMap<PlaneIndicator, Reader> = new Map<PlaneIndicator, Rea
   ['agent_writes', writeRows],
   ['stale_learnings', learningRows],
   ['reviewer_refutes', refuteRows],
+  ['silence_alarm', silenceRows],
+  ['held_by_person', (scope) => heldRows(scope, 'person')],
+  ['held_by_agent', (scope) => heldRows(scope, 'agent')],
 ]);
 
 async function readableIds(

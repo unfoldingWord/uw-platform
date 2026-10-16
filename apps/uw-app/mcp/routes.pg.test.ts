@@ -41,6 +41,9 @@ const INDICATORS = [
   'stale_learnings',
   'github_sweep',
   'reviewer_refutes',
+  'silence_alarm',
+  'held_by_person',
+  'held_by_agent',
 ];
 const QUIET = INDICATORS.filter((name) => name !== 'breaker' && name !== 'github_sweep');
 
