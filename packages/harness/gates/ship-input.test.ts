@@ -491,5 +491,9 @@ describe('SR-2 the assembler carries an approval across a merge from base', () =
     expect(input.approvals).toEqual([
       { reviewer: 'uw-reviewer', commit: head, provider: 'anthropic' },
     ]);
+    const shown = reviewsOn(moved, merged, []);
+    expect(shown.map((entry) => [entry.reviewer, entry.commit])).toEqual([['uw-reviewer', head]]);
+    const rebased = { ...moved, comparison: { ...comparison, commits: commits.slice(1) } };
+    expect(reviewsOn(rebased, merged, [])).toEqual([]);
   });
 });

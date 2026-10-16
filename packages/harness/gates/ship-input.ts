@@ -141,16 +141,21 @@ function approvalsOn(
     }));
 }
 
+function headsCarrying(facts: PullRequestFacts, head: string): ReadonlySet<string> {
+  const compared = comparisonAt(facts, head);
+  return new Set([head, ...(compared === null ? [] : carriedCommits(compared, head))]);
+}
+
 export function reviewsOn(
   facts: PullRequestFacts,
   head: string,
   external: readonly string[],
 ): GateView['reviews'] {
-  return [...latestDecisive(facts, new Set([head]), external).entries()]
+  return [...latestDecisive(facts, headsCarrying(facts, head), external).entries()]
     .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
     .map(([reviewer, counted]) => ({
       reviewer,
-      commit: head,
+      commit: fullSha(counted.review.commit) ?? counted.review.commit,
       state: counted.review.state,
       provider: providerOf(counted),
       findings: [...counted.review.findings],
