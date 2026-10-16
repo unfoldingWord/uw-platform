@@ -10,7 +10,7 @@ import { silenceOf } from './silence.ts';
 
 type AlarmPorts = Pick<Ports, 'clock' | 'githubFacts' | 'ids' | 'store'>;
 
-export type SoundInput = { readonly limit: number };
+type SoundInput = { readonly limit: number };
 export type Sounded = { readonly sounded: readonly string[] };
 export type AlarmCommands = {
   soundSilence(caller: Caller, input: SoundInput): Promise<KernelOutcome<Sounded>>;
