@@ -91,6 +91,7 @@ async function delegatedPersona(rig: Rig): Promise<string> {
   const itemId = await agentItem(rig, 'Run the minute beat');
   accepted(
     await kernel.delegations.grant(callerOf(admin), {
+      maxTier: null,
       harnessId,
       persona: 'agent:builder',
       capability: 'build',
@@ -249,6 +250,7 @@ async function lapsesExpiredDelegation(rig: Rig): Promise<void> {
   const expiresAt = new Date(Date.now() + 5 * MINUTE);
   const granted = accepted(
     await kernel.delegations.grant(callerOf(admin), {
+      maxTier: null,
       harnessId: rig.harnessId,
       persona: 'agent:builder',
       capability: 'build',

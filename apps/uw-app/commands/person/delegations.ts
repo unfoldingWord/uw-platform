@@ -5,9 +5,9 @@ export const scheduleRegularTweakCommand = commandHandler({
   name: 'schedule_regular_tweak',
   action: 'admin',
   run: async ({ kernel, caller, harnessId }, body: CommandBody<'schedule_regular_tweak'>) => {
-    const { persona, capability, supersedes } = body;
+    const { persona, capability, supersedes, maxTier } = body;
     const expiresAt = body.expiresAt === null ? null : new Date(body.expiresAt);
-    const input = { harnessId, persona, capability, expiresAt, supersedes };
+    const input = { harnessId, persona, capability, maxTier, expiresAt, supersedes };
     return fromKernel(await kernel.delegations.grant(caller, input));
   },
 });

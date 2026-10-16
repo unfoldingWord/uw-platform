@@ -19,6 +19,7 @@ export const activateTemplateCommand = commandHandler({
       shadow,
       externalReviewerIdentities,
       requiredChecks: body.requiredChecks,
+      protectedPaths: body.protectedPaths,
     };
     const activated = await kernel.stages.activate(caller, input);
     if (activated.status === 'accepted') {

@@ -58,6 +58,7 @@ export async function agentForms(
   const kernel = kernelOn(db, { now: () => new Date() });
   const delegation = accepted(
     await kernel.delegations.grant(callerOf(owner), {
+      maxTier: null,
       harnessId,
       persona: 'agent:builder',
       capability: 'build',

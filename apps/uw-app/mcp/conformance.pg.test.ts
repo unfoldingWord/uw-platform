@@ -173,6 +173,7 @@ async function delegated(r: Rig, harnessId: string) {
   const input = { harnessId, persona: 'agent:builder', capability: 'build' as const };
   const delegation = value(
     await r.kernel.delegations.grant(caller(r.owner), {
+      maxTier: null,
       ...input,
       expiresAt: null,
       supersedes: null,

@@ -264,6 +264,7 @@ async function anotherDelegation(scene: Started): Promise<void> {
     harnessId: scene.harnessId,
     persona: 'agent:reviewer',
     capability: 'build',
+    maxTier: null,
     expiresAt: null,
     supersedes: null,
   });

@@ -40,6 +40,7 @@ async function lapsedDelegation(db: Database, home: Home): Promise<void> {
   const kernel = kernelOn(db, { now: () => earlier(3) });
   accepted(
     await kernel.delegations.grant(callerOf(home.ian), {
+      maxTier: null,
       harnessId: home.item.harnessId,
       persona: 'agent:scout',
       capability: 'build',
@@ -286,6 +287,7 @@ async function kimLosesAdmin(db: Database): Promise<void> {
   const kernel = kernelOn(db, clock);
   const delegation = accepted(
     await kernel.delegations.grant(callerOf(kim), {
+      maxTier: null,
       harnessId: item.harnessId,
       persona: 'agent:scout',
       capability: 'build',

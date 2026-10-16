@@ -52,6 +52,7 @@ async function raceOn(first: Database, second: Database): Promise<Race> {
     'activate',
   );
   const granted = await kernel.delegations.grant(caller(ian), {
+    maxTier: null,
     harnessId,
     persona: 'agent:builder',
     capability: 'build',
@@ -93,6 +94,7 @@ function renewal(race: Race) {
     harnessId: race.harnessId,
     persona: 'agent:builder',
     capability: 'build' as const,
+    maxTier: null,
     expiresAt: null,
     supersedes: race.dead,
   };

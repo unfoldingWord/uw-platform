@@ -179,6 +179,7 @@ export async function hostRig(
   const itemId = await enqueued(db, harnessId, title, options.itemPageId ?? null);
   const delegation = accepted(
     await kernel.delegations.grant(callerOf(admin), {
+      maxTier: null,
       harnessId,
       persona: 'agent:builder',
       capability: options.capability ?? 'build',
