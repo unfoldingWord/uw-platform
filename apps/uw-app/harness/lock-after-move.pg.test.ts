@@ -154,7 +154,13 @@ describe.skipIf(!testServer)('an item lock that waited on a stage move finds the
     const imported = accepted(
       await scene.kernel.items.importIssue(
         { actor: ingestPrincipal(), traceId: crypto.randomUUID() },
-        { harnessId: scene.harnessId, issue, title: 'Wire the board', pageId: null },
+        {
+          harnessId: scene.harnessId,
+          issue,
+          title: 'Wire the board',
+          pageId: null,
+          doneWhen: ['The board lists every stage.'],
+        },
       ),
       'import',
     );

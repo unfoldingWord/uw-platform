@@ -21,6 +21,7 @@ import {
   type NothingLearnedInput,
 } from './learning.ts';
 import { joinByReviewRequest, type Joined, type JoinInput } from './join.ts';
+import { recordNotReady, type NotReadyInput } from './not-ready.ts';
 import { reorder, type ReorderInput } from './reorder.ts';
 import { release, type ReleaseInput } from './release.ts';
 import { submit, type Submitted, type SubmitInput } from './submit.ts';
@@ -52,6 +53,7 @@ export type ItemCommands = {
   attachLearning(caller: Caller, input: AttachLearningInput): Promise<KernelOutcome<ItemState>>;
   markNothingLearned(caller: Caller, input: NothingLearnedInput): Promise<KernelOutcome<ItemState>>;
   recordComment(caller: Caller, input: CommentInput): Promise<KernelOutcome<Commented>>;
+  recordNotReady(caller: Caller, input: NotReadyInput): Promise<KernelOutcome<never>>;
 };
 
 export function createItemCommands(ports: ItemPorts): ItemCommands {
@@ -70,5 +72,6 @@ export function createItemCommands(ports: ItemPorts): ItemCommands {
     attachLearning: (caller, input) => attachLearning(ports, caller, input),
     markNothingLearned: (caller, input) => markNothingLearned(ports, caller, input),
     recordComment: (caller, input) => recordComment(ports, caller, input),
+    recordNotReady: (caller, input) => recordNotReady(ports, caller, input),
   };
 }

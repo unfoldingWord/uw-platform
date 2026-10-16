@@ -42,7 +42,7 @@ async function createdPage(db: Database, by: Person, type: string, jdArea = AREA
     title,
     parentId: null,
     frontmatter,
-    bodyMd: 'The board.',
+    bodyMd: 'The board.\n\n## Done when\n\n- People see the board.',
     status: 'draft',
   });
   expect(sent.body).toMatchObject({ status: 'accepted' });
@@ -261,12 +261,39 @@ async function staleGrantsRefused(db: Database): Promise<void> {
   expect(await eventCount(db, scene.harnessId)).toBe(before);
 }
 
+async function kickstartNotReady(db: Database): Promise<void> {
+  const scene = await softwareHarness(db);
+  const pageId = randomUUID();
+  await seedPage(db, {
+    id: pageId,
+    type: 'product',
+    status: 'active',
+    jdArea: AREA,
+    bodyMd: 'People see their harness as a board of stages.',
+    slug: `board-${pageId.slice(0, 8)}`,
+    title: 'Show the board',
+  });
+  const sent = await send(db, scene, 'kickstart', { pageId });
+  expect(sent.body).toMatchObject({ status: 'error', reason: 'done_when_missing' });
+  expect(await eventsNamed(db, scene.harnessId, 'item_created')).toEqual([]);
+  const [recorded] = await eventsNamed(db, scene.harnessId, 'done_when_missing');
+  expect(recorded?.evidence).toEqual({
+    via: 'kickstart',
+    issue: null,
+    pageId,
+    title: 'Show the board',
+  });
+}
+
 describe.skipIf(!testServer)('WB-1 kickstart through the command API', () => {
   it('WB-1 kickstart enqueues one item wrapping the harness’s product page, titled with the page', () =>
     withAppDatabase(kickstartWrapsThePage));
 
   it('WB-1 kickstart refuses a page of another type as malformed_command, and a page in another area or one the person cannot read as page_not_found', () =>
     withAppDatabase(kickstartRefusals));
+
+  it('EI-2 kickstart refuses a product page with no done-when and records it against the page', () =>
+    withAppDatabase(kickstartNotReady));
 });
 
 describe.skipIf(!testServer)('WB-1 submit and tweak package through the command API', () => {

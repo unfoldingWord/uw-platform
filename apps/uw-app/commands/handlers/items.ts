@@ -1,4 +1,4 @@
-import { hasPackageStage } from '@uw/harness';
+import { doneWhenOf, hasPackageStage } from '@uw/harness';
 import { commandHandler, fromKernel } from '../handler.ts';
 
 export const enqueueCommand = commandHandler({
@@ -48,10 +48,22 @@ export const kickstartCommand = commandHandler({
     if (page.type !== 'product' || page.jdArea !== context.harness?.jdArea) {
       return { ok: false, reason: 'malformed_command' };
     }
+    const title = page.title.slice(0, 200);
+    if (doneWhenOf(page.bodyMd).length === 0) {
+      return fromKernel(
+        await context.kernel.items.recordNotReady(context.caller, {
+          harnessId: context.harnessId,
+          via: 'kickstart',
+          issue: null,
+          pageId: page.id,
+          title,
+        }),
+      );
+    }
     return fromKernel(
       await context.kernel.items.enqueue(context.caller, {
         harnessId: context.harnessId,
-        title: page.title.slice(0, 200),
+        title,
         pageId: page.id,
         priority: null,
         due: null,

@@ -60,6 +60,7 @@ function importOn(db: Database, round: number) {
       issue: { ...issue, number: issue.number + round, githubId: issue.githubId + round },
       title: `Wire the board ${round}`,
       pageId: null,
+      doneWhen: ['The board lists every stage.'],
     },
   );
 }
