@@ -55,7 +55,7 @@ export const scenario = defineScenario({
     });
     assert.deepEqual(exits, {
       status: 'accepted',
-      value: { exited: [{ itemId: item.itemId, advanced: true }] },
+      value: { exited: [{ itemId: item.itemId, advanced: true }], failed: [] },
     });
     assert.equal(world.adapters.connectors.calls().length, 1);
     const merged = (await itemLog(world, harness.id, item.itemId)).events.some(

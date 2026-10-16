@@ -249,6 +249,12 @@ export function completedWith(run: RunColumns, results: readonly string[]): SQL 
   return sql`EXISTS (SELECT 1 FROM ${harnessEvents} WHERE ${harnessEvents.harnessId} = ${run.harnessId} AND ${harnessEvents.itemId} = ${run.itemId} AND ${harnessEvents.name} = 'run_completed' AND ${harnessEvents.evidence}->>'runId' = ${run.id}::text AND ${harnessEvents.evidence}->>'result' IN (${named}))`;
 }
 
+type DecisionColumns = { readonly id: Column; readonly harnessId: Column; readonly itemId: Column };
+
+export function exitNotTaken(decision: DecisionColumns): SQL {
+  return sql`NOT EXISTS (SELECT 1 FROM ${harnessEvents} approval JOIN ${harnessEvents} later ON later.harness_id = approval.harness_id AND later.item_id = approval.item_id AND later.position > approval.position WHERE approval.harness_id = ${decision.harnessId} AND approval.item_id = ${decision.itemId} AND approval.name = 'gate_approved' AND approval.evidence ->> 'decisionId' = ${decision.id}::text AND later.name IN ('connector_succeeded', 'connector_refused', 'delegated_exit_claimed'))`;
+}
+
 async function countForPersona(
   executor: AnyExecutor,
   query: PersonaEventCount,
