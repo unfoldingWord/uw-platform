@@ -389,6 +389,31 @@ describe('PI-1 the provider of an external approval is external', () => {
   });
 });
 
+describe('PI-1 an external approval counts once, on the head only', () => {
+  const external = { ...harness, externalReviewerIdentities: ['uwreview', 'uwreview[bot]'] };
+  const approvedWith = (...reviews: ReviewFact[]) =>
+    assembleShipInput({ ...sourceOf({ facts: { reviews } }), harness: external }).approvals;
+
+  it('PI-1 counts no external approval on an older head', () => {
+    const old = review({ reviewId: 3, reviewer: 'uwreview[bot]', provider: null, commit: older });
+    expect(approvedWith(old)).toEqual([]);
+  });
+
+  it('PI-1 collapses the login with and without [bot] into one external reviewer', () => {
+    const plain = review({ reviewId: 3, reviewer: 'uwreview', provider: null });
+    const bot = review({ reviewId: 4, reviewer: 'uwreview[bot]', provider: null });
+    expect(approvedWith(plain, bot)).toEqual([
+      { reviewer: 'uwreview', commit: head, provider: 'external' },
+    ]);
+  });
+
+  it('PI-1 counts the platform Reviewer and an external reviewer as two on a standard change', () => {
+    const outside = review({ reviewId: 3, reviewer: 'uwreview[bot]', provider: null });
+    const counted = approvedWith(review(), outside);
+    expect(counted.map((approval) => approval.reviewer)).toEqual(['uw-reviewer', 'uwreview']);
+  });
+});
+
 describe('SR-1 SR-2 the assembler reads the comparison, the closing references, the required checks and the freeze', () => {
   const source = { facts, item, harness, approver, at, override: false };
   const compared = facts.comparison ?? {
