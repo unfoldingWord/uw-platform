@@ -35,7 +35,7 @@ import { isStale, staleRefusal } from './facts-fresh.ts';
 import { decisionInFlight, sameChange } from './parking.ts';
 import { assembleShipInput, riskDerivedAtShip, type ShipInputSource } from './ship-input.ts';
 
-type ShipPorts = Pick<Ports, 'githubFacts' | 'store'> & ExitPorts;
+type ShipPorts = Pick<Ports, 'githubFacts' | 'grants' | 'store'> & ExitPorts;
 
 export type ShipRequest = {
   readonly actor: Principal;
@@ -212,26 +212,58 @@ async function factsAtExit(ports: ShipPorts, item: ItemState): Promise<FactsAtEx
   }
 }
 
-function exitGuard(ports: ShipPorts, pending: PendingExit): ExitGuard {
+type LiveGrounds = { readonly harness: Harness; readonly approver: Principal };
+
+function liveGrounds(ports: ShipPorts, pending: PendingExit): Promise<LiveGrounds | null> {
+  const { personId } = pending.approver;
+  return ports.store.transaction(async (tx) => {
+    const harness = await tx.harnesses.read.byId(pending.harness.id);
+    if (harness === null || personId === null) return null;
+    const grants = await ports.grants.lockAndReread(tx, personId, pending.context.at);
+    return { harness, approver: { ...pending.approver, grants: [...grants] } };
+  });
+}
+
+type GuardNotes = { refusals: readonly ShipRefusal[] };
+
+function exitGuard(ports: ShipPorts, pending: PendingExit, notes: GuardNotes): ExitGuard {
   return async () => {
     const facts = await factsAtExit(ports, pending.item);
     if (facts === 'unavailable') return { refused: 'ship_rule_unavailable' };
-    const { item, harness, approver, override, context } = pending;
+    const live = await liveGrounds(ports, pending);
+    const { item, override, context } = pending;
+    if (live === null || !allowed(live.approver, 'admin', live.harness, context.at)) {
+      return { refused: 'ship_rule_refused: not_permitted' };
+    }
+    const { harness, approver } = live;
     const input = assembleShipInput({ facts, item, harness, approver, at: context.at, override });
     const outcome = shipRule(input);
     if (outcome.verdict === 'refuse') {
+      notes.refusals = outcome.reasons;
       return { refused: `ship_rule_refused: ${outcome.reasons.join(', ')}` };
     }
     return { head: input.pullRequest?.head ?? null };
   };
 }
 
+export type Exited = {
+  readonly item: ItemState;
+  readonly advanced: boolean;
+  readonly refusals: readonly ShipRefusal[];
+};
+
+export async function exitReporting(ports: ShipPorts, pending: PendingExit): Promise<Exited> {
+  const notes: GuardNotes = { refusals: [] };
+  const guard = exitGuard(ports, pending, notes);
+  const advanced = await exitThroughConnector(ports, pending.context, pending, guard);
+  const now = await ports.store.transaction((tx) => tx.harnessItems.read.byId(pending.item.itemId));
+  return { item: now ?? pending.item, advanced, refusals: notes.refusals };
+}
+
 export async function exitAfterDecision(
   ports: ShipPorts,
   pending: PendingExit,
 ): Promise<{ readonly item: ItemState; readonly advanced: boolean }> {
-  const guard = exitGuard(ports, pending);
-  const advanced = await exitThroughConnector(ports, pending.context, pending, guard);
-  const now = await ports.store.transaction((tx) => tx.harnessItems.read.byId(pending.item.itemId));
-  return { item: now ?? pending.item, advanced };
+  const { item, advanced } = await exitReporting(ports, pending);
+  return { item, advanced };
 }
