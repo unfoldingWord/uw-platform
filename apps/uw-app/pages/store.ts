@@ -15,6 +15,7 @@ import { pages, pageVersions } from '@uw/db/schema';
 import { pgConstraint, pgErrorCode } from '@uw/db/errors';
 import { derivedFrontmatter, personaLanding } from './derive.ts';
 import { isGatedType } from './gating.ts';
+import { provenanceOf, type ExternalWriter } from './provenance.ts';
 import { checkFrontmatter } from './validate.ts';
 
 export const owns = ['pages', 'page_versions'] as const;
@@ -141,13 +142,29 @@ async function insertPage(
   return { ok: true, page: toPage(row) };
 }
 
-export async function createPage(
+export type CreateRequest = {
+  readonly traceId: string;
+  readonly at: Date;
+  readonly writer: ExternalWriter | null;
+};
+
+export function createPage(
   db: Database,
   actor: Principal,
   command: CreatePageCommand,
   traceId: string,
   at: Date,
 ): Promise<PageResult | PageRefusal> {
+  return createPageAs(db, actor, command, { traceId, at, writer: null });
+}
+
+export async function createPageAs(
+  db: Database,
+  actor: Principal,
+  command: CreatePageCommand,
+  request: CreateRequest,
+): Promise<PageResult | PageRefusal> {
+  const { traceId, at } = request;
   if (command.type === ISSUE_MIRROR) return issueMirror;
   const check = checkFrontmatter(command.type, command.frontmatter);
   if (!check.ok) return refused(check.reason);
@@ -160,7 +177,7 @@ export async function createPage(
   }
   try {
     return await db.transaction(async (tx) => {
-      const landing = { status: command.status, stored: null };
+      const landing = { status: command.status, stored: null, prior: null, writer: request.writer };
       const derived = await derivedFrontmatter(
         tx,
         check.type,
@@ -262,7 +279,8 @@ async function derivedSave(
   const check = checkFrontmatter(stored.type, command.frontmatter);
   if (!check.ok) return refused(check.reason);
   const status = personaLanding(stored, chosen, check.frontmatter, command.bodyMd);
-  const landing = { status, stored: stored.status };
+  const prior = stored.type === 'learning' ? provenanceOf(stored.frontmatter) : null;
+  const landing = { status, stored: stored.status, prior, writer: null };
   const derived = await derivedFrontmatter(
     tx,
     check.type,

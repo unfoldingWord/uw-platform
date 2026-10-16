@@ -73,6 +73,7 @@ async function agentWidens(db: Database, ian: Principal, harnessId: string) {
     traceId: crypto.randomUUID(),
     at: new Date(),
     instructions: kernelOn(db, systemClock).reads,
+    writer: null,
   };
   return writePageAsAgent(db, agentOf(ian, 'laptop'), input, request);
 }

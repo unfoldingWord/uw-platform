@@ -189,6 +189,7 @@ async function agentCannotConfirm(db: Database): Promise<void> {
     traceId: crypto.randomUUID(),
     at: new Date(),
     instructions: { namesInstructions: async () => false },
+    writer: null,
   };
   expect(await writePageAsAgent(db, agent, input, request)).toEqual({
     ok: false,
