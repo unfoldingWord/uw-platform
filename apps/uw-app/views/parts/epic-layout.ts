@@ -3,7 +3,7 @@ import type { EpicGroup } from '@uw/harness';
 export const NODE_WIDTH = 176;
 export const NODE_HEIGHT = 56;
 export const GAP_X = 48;
-export const GAP_Y = 16;
+const GAP_Y = 16;
 export const PAD = 16;
 
 type LaidNode = { readonly itemId: string; readonly x: number; readonly y: number };

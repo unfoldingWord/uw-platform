@@ -46,10 +46,7 @@ function grouped(items: readonly ItemState[]): readonly Grouped[] {
   return [...groups.values()];
 }
 
-export function epicGroupsOf(
-  items: readonly ItemState[],
-  stages: readonly Stage[],
-): readonly EpicGroup[] {
+function epicGroupsOf(items: readonly ItemState[], stages: readonly Stage[]): readonly EpicGroup[] {
   const index = itemIndex(items);
   return grouped(items)
     .filter((group) => group.members.some((item) => item.gateStatus !== 'done'))
