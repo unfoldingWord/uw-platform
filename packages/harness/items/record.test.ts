@@ -129,6 +129,7 @@ const harnessesGateway: HarnessesGateway = {
     setHostedBuilder: unused,
     setShadow: unused,
     setFreeze: unused,
+    setFixClaim: unused,
   },
 };
 

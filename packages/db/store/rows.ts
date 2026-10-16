@@ -45,6 +45,7 @@ export function toHarness(row: typeof harnesses.$inferSelect): Harness {
     freezeAllow: row.freezeAllow,
     requiredChecks: row.requiredChecks,
     protectedPaths: row.protectedPaths,
+    fixClaim: row.fixClaim,
   });
 }
 
