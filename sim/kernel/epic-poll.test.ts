@@ -1,6 +1,7 @@
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { rewriteItem } from '@uw/db/test-seed';
-import { software, type ItemState } from '@uw/harness';
+import type { ItemState } from '@uw/contracts';
+import { software } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 import { enqueueEpicAs, epicOfFour } from '../epics.ts';
 import { createSimHarness, simAgent, simCaller, simPerson } from '../fixtures.ts';
