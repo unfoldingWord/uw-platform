@@ -400,16 +400,16 @@ Every table declares its classification and offline eligibility. Every table has
 | `pages`, `page_versions` | see FD-9 | the page API and `write_page` |
 | `webhook_deliveries` | source, delivery id, received at; primary key on source and delivery id | the `uw-ingest` delivery ledger |
 | `queue_watermarks` | queue, last enqueued at, last consumed at | the queue consumer in `uw-app` |
-| `harnesses` | id, key, template, jd_area, repository (`owner/name` or null, unique case-insensitively; GH-6), hosted_builder_enabled, paused, created at | the stage command |
+| `harnesses` | id, key, template, jd_area, repository (`owner/name` or null, unique case-insensitively; GH-6), hosted_builder_enabled, paused, shadow, external_reviewer_identities, frozen, freeze_allow, required_checks, created at | the stage command |
 | `harness_stages` | harness, key, title, position, bracket (P31), agent_pickup, exit_gate, connector, wip_limit, instructions_page_id, validators[], feeds[], paused | the stage command |
 | `harness_items` | harness, stage, title, page, claimed_by, claimant_kind, delegation, lease_expires, priority, due, gate status, gate target, risk_tier, risk_domains[], expected_head, branch_state, pull request repository and `pr_number`, the wrapped issue (`issue_repo`, `issue_number`, `issue_github_id`, all or none, unique on the GitHub id; GH-3), zulip_topic, created at | the kernel |
 | `harness_events` | see KN-3 | the kernel, append-only |
 | `harness_runs` | item, persona, persona page, delegation, run shape (the run shape names the host), engine, model, pinned and resolved provider, steps with tokens, cost, compute cost and cost basis, gates met, pending prompts, trace id, outcome and why it hibernated or failed | the run shape |
-| `gate_decisions` | harness, item, stage, actor, decision, reason, evidence, trace id | the gate command, human principals only |
+| `gate_decisions` | harness, item, stage, actor, decision, reason, evidence (with the evaluated head and the counted approvals at Ship), trace id | the gate command, human principals only |
 | `delegations` | id, person, persona, harness, capability, granted at, expires at, revoked at, lapsed at, supersedes (P14), trace id | the delegation command |
 | `measurements` | item, source, name, value, as of | the measurements module, through `record_measurement` |
 | `personas` | identity, harness, page | a projection of persona pages |
-| `gh_repos`, `gh_issues`, `gh_prs`, `gh_milestones`, `gh_check_runs`, `gh_reviews` | the GitHub id (primary key) on every table; the facts (repository full name, default branch; issue and milestone number, title, state, labels; pull request head SHA, head ref, head repository, base ref and base SHA, the parsed declaration or its problem, the changed files with the head and base they were compared at; check run head SHA, name, app, status, conclusion; review login, commit, state, provider); freshness (`fresh_at` on every row, GitHub's `updated_at` on issues, milestones and pull requests, the sweep watermark `swept_through` and `last_sweep` on `gh_repos`); on `gh_issues` the cross-reference claim (`xref_claimed_at`, `xref_comment_id`) | the read-model module `apps/uw-app/github/facts/`, called by the queue consumer and the nightly sweep |
+| `gh_repos`, `gh_issues`, `gh_prs`, `gh_milestones`, `gh_check_runs`, `gh_reviews` | the GitHub id (primary key) on every table; the facts (repository full name, default branch; issue and milestone number, title, state, labels; pull request head SHA, head ref, head repository, base ref and base SHA, the parsed declaration or its problem, the changed files with the head and base they were compared at; on `gh_prs` the closing references in the body (`closes`), and at the head the comparison with the base (`behind_by`, `patch_id`, `head_commits`) and the patch id of every head seen (`patch_ids`); check run head SHA, name, app, status, conclusion; review login, commit, state, provider); freshness (`fresh_at` on every row, GitHub's `updated_at` on issues, milestones and pull requests, the sweep watermark `swept_through` and `last_sweep` on `gh_repos`); on `gh_issues` the cross-reference claim (`xref_claimed_at`, `xref_comment_id`) | the read-model module `apps/uw-app/github/facts/`, called by the queue consumer and the nightly sweep |
 | `push_subscriptions` | endpoint (primary key, `https:` on a known push service), person, p256dh key, auth secret, expires at, created at; at most 20 per person, the oldest removed first | the notifier (`apps/uw-app/notify/push/`) |
 | `push_cooldowns` | person (primary key), window started at, rank (1 to 3) | the notifier (`apps/uw-app/notify/push/`) |
 | `tasks` | id, jd_area, title, page, due, status (task status), created_by, trace id, created at | the tasks module, through `create_task` |
@@ -455,6 +455,8 @@ Every table declares its classification and offline eligibility. Every table has
 | run hibernation | `gate`, `paused`, `breaker` |
 | run stop | `stopped_by_person`, `released`, `lease_expired`, `delegation_lapsed`, `gate_wait_expired` |
 | run failure | `retries_exhausted`, `provider_mismatch`, `start_failed`, `turn_limit` |
+| approve at (v0.2.0) | `zero_findings`, `no_real_or_plausible` |
+| run failure (v0.2.0) | adds `engine_refused`, `finding_weight_missing` |
 | run result | `submitted`, `premise_held`, `decided`, `review_posted`, `review_withheld`, `review_refused` |
 | breaker level | `open`, `holding`, `pausing` |
 | review verdict | `approve`, `request_changes` |
@@ -493,6 +495,8 @@ Added in step 10: `activation_required` (a write that would make a gated page ac
 
 Added in v0.2.0: ship rule `base_behind`, `auto_close_keyword`, `skip_ci_marker`, `required_check_never_ran`, `harness_frozen`, `protected_path_needs_person`, `tier_above_delegation`; elsewhere `template_has_no_package`, `no_harness_for_repo`, `template_change_not_allowed`, `repository_not_dispatchable`, `dispatch_list_unavailable`, `tier_not_delegable`, `checks_not_run_locally`, `done_when_missing`, `finding_weight_missing`, `engine_refused`.
 
+`engine_refused` and `finding_weight_missing` are also run-failure values; `engine_refused` is recorded as a run failure only and is never returned as a command refusal (S15-R12).
+
 ### 8.6 Event vocabulary
 
 ```
@@ -513,6 +517,8 @@ measurement_recorded  handed_to_person
 ```
 
 Added in v0.2.0: `review_verdict_recorded`, `shadow_verdict`, `shadow_lifted`, `freeze_changed`, `epic_enqueued`, `finding_refuted`, `silence_alarm`, `delegated_merge`. Wake reasons gain `silence_alarm` (rank 3) and `delegated_merge` (rank 2).
+
+`handed_to_person` gains the reason `engine_refused`, whose `rounds` is null (contract 13.0.0). `run_completed`'s review record carries its weighted findings.
 
 Since contract 12.0.0 (step 9), `comment_recorded` carries strict evidence `{ source: 'zulip', messageId, topic, personId, email, text, truncated }` (the text cut at 10,000 characters), and `zulip_topic_linked` `{ topic }` sets the item's Zulip topic in the fold.
 
