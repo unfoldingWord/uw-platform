@@ -37,17 +37,28 @@ export function fixRound(events: readonly HarnessEvent[]): FixRound {
   return events.reduce(nextRound, closed);
 }
 
+export type FixClosed =
+  'fix_claim_off' | 'shadow' | 'no_pull_request' | 'joined_pull_request' | 'no_review_round';
+
+export function fixClosed(
+  harness: Harness,
+  item: ItemState,
+  events: readonly HarnessEvent[],
+): FixClosed | null {
+  if (!harness.fixClaim) return 'fix_claim_off';
+  if (harness.shadow) return 'shadow';
+  if (item.pullRequest === null || item.expectedHead === null) return 'no_pull_request';
+  if (joinedPullRequest(item)) return 'joined_pull_request';
+  const round = fixRound(events);
+  return round.review !== null && !round.claimed ? null : 'no_review_round';
+}
+
 export function fixOffered(
   harness: Harness,
   item: ItemState,
   events: readonly HarnessEvent[],
 ): boolean {
-  if (!harness.fixClaim || harness.shadow) return false;
-  if (item.pullRequest === null || item.expectedHead === null || joinedPullRequest(item)) {
-    return false;
-  }
-  const round = fixRound(events);
-  return round.review !== null && !round.claimed;
+  return fixClosed(harness, item, events) === null;
 }
 
 export function onlyByFix(stage: Stage, reach: ReadonlySet<CapabilityWord> | null): boolean {

@@ -2,7 +2,7 @@ import type { Harness, ItemState, PullRequestDeclaration, Stage } from '@uw/cont
 import { factsFailure } from '../gates/facts-failure.ts';
 import { refused, type Refused } from '../outcome.ts';
 import type { Ports, PullRequestRef, StoreTransaction } from '../ports.ts';
-import { fixOffered } from './fix-offer.ts';
+import { fixClosed } from './fix-offer.ts';
 import { draft, readAllEvents, type EventDraft } from './record.ts';
 
 type FixPorts = Pick<Ports, 'githubFacts' | 'store'>;
@@ -27,7 +27,10 @@ async function fixTarget(
     const delegation = await tx.delegations.read.byId(delegationId);
     if (delegation?.capability !== 'fix') return null;
     const item = await tx.harnessItems.read.byId(itemId);
-    return { ref: item?.pullRequest ?? null };
+    if (item === null) return { ref: null };
+    const harness = await tx.harnesses.read.byId(item.harnessId);
+    if (harness === null || !harness.fixClaim || harness.shadow) return null;
+    return { ref: item.pullRequest };
   });
 }
 
@@ -50,8 +53,7 @@ export async function readFixStart(
   }
 }
 
-function notOffered(scene: FixScene): Refused {
-  const why = scene.harness.fixClaim ? 'no_review_round' : 'fix_claim_off';
+function notOffered(scene: FixScene, why: string): Refused {
   return refused('pickup_not_allowed', { stage: scene.stage.key, capability: 'fix', why });
 }
 
@@ -67,9 +69,9 @@ export async function fixClaiming(
   if (delegation?.capability !== 'fix') return notFixing;
   const head = item.expectedHead;
   const events = await readAllEvents(tx, item.harnessId, item.itemId);
-  if (head === null || !fixOffered(scene.harness, item, events) || fix === null) {
-    return notOffered(scene);
-  }
+  const closed = fixClosed(scene.harness, item, events);
+  if (closed !== null) return notOffered(scene, closed);
+  if (head === null || fix === null) return notOffered(scene, 'no_pull_request');
   if ('refusal' in fix) return fix.refusal;
   return { drafts: [draft('fix_claimed', { delegationId, head, declaration: fix.declared })] };
 }

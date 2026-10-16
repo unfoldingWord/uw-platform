@@ -1,5 +1,5 @@
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import { simAgent, simCaller, simPerson } from '../fixtures.ts';
 import { claimFix, fixWorld, offeredTo, type FixOptions, type FixWorld } from '../fix-claims.ts';
 import { harnessNames, itemEvents, itemOf } from '../runs.ts';
@@ -63,11 +63,13 @@ const onlyAdmins: Work = async (scene) => {
 
 const offWhileOff: Work = async (scene) => {
   expect(await offeredTo(scene, scene.fixer)).not.toContain(scene.itemId);
+  const reads = vi.spyOn(scene.world.adapters.githubFacts, 'pullRequest');
   expect(await claimFix(scene)).toMatchObject({
     status: 'error',
     reason: 'pickup_not_allowed',
     detail: { capability: 'fix', why: 'fix_claim_off' },
   });
+  expect(reads).not.toHaveBeenCalled();
   expect((await names(scene)).some(isFixClaimed)).toBe(false);
 };
 
