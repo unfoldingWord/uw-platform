@@ -1,7 +1,11 @@
-import { and, eq, notInArray } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, notInArray, sql } from 'drizzle-orm';
 import { advisoryLock, githubRepoKey } from '@uw/db/advisory-locks';
-import type { Database } from '@uw/db/client';
-import { ghIssues } from '@uw/db/schema';
+import type { Database, Executor } from '@uw/db/client';
+import { ghIssues, ghRepos } from '@uw/db/schema';
+import { issueChangeOf } from './issues.ts';
+import type { IssueChange } from './records.ts';
+
+const UNREAD_LIMIT = 20;
 
 export type SubIssueList = {
   readonly repoId: number;
@@ -33,4 +37,33 @@ export function recordSubIssues(db: Database, list: SubIssueList): Promise<numbe
     }
     return recorded;
   });
+}
+
+export async function clearSubIssues(db: Executor, parentIds: readonly number[]): Promise<void> {
+  if (parentIds.length === 0) return;
+  await db
+    .update(ghIssues)
+    .set({ parentIssueId: null, parentPosition: null })
+    .where(inArray(ghIssues.parentIssueId, [...parentIds]));
+}
+
+export async function epicsAwaitingSubIssues(
+  db: Executor,
+  repoId: number,
+): Promise<readonly IssueChange[]> {
+  const rows = await db
+    .select({ issue: ghIssues, repo: ghRepos.fullName })
+    .from(ghIssues)
+    .innerJoin(ghRepos, eq(ghRepos.githubId, ghIssues.repoId))
+    .where(
+      and(
+        eq(ghIssues.repoId, repoId),
+        eq(ghIssues.state, 'open'),
+        gt(ghIssues.subIssues, 0),
+        sql`${ghIssues.subIssues} <> (SELECT count(*) FROM gh_issues AS child WHERE child.parent_issue_id = ${ghIssues.githubId})`,
+      ),
+    )
+    .orderBy(asc(ghIssues.githubId))
+    .limit(UNREAD_LIMIT);
+  return rows.map(({ issue, repo }) => issueChangeOf(issue, repo, null));
 }
