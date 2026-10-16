@@ -7,8 +7,12 @@ export const NO_CHECKS_EXIT = 78;
 const RENEW_EVERY_MS = 60_000;
 
 const DECLARED_CHECKS = '.harness/checks.sh';
-const SAFE_GIT =
-  'GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 git -c core.hooksPath=/dev/null -c core.fsmonitor=false';
+const SAFE_GIT = [
+  'GIT_NO_REPLACE_OBJECTS=1 GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1',
+  'git --no-replace-objects -c core.hooksPath=/dev/null -c core.fsmonitor=false',
+  '-c core.attributesFile=/dev/null',
+].join(' ');
+const MODEL_MARK = 'UW_MODEL_SESSION';
 const CLEAN_CONFIG = '[core]\n\trepositoryformatversion = 0\n\tfilemode = true\n\tbare = false\n';
 const GIT_CONFIG = `${REPOSITORY_DIR}/.git/config`;
 const fullSha = /^[0-9a-f]{40}$/u;
@@ -22,11 +26,35 @@ const PREPARE = [
     `git -C ${REPOSITORY_DIR} show "$UW_START:${DECLARED_CHECKS}" 2>/dev/null || exit ${NO_CHECKS_EXIT.toString()}`,
   ].join('\n'),
 ];
-const INSPECT = [
-  'sh',
-  '-c',
-  `cd ${REPOSITORY_DIR} && test -z "$(${SAFE_GIT} status --porcelain)" && ${SAFE_GIT} rev-parse --verify "HEAD^{commit}"`,
-];
+function inspectCommand(mark: string): readonly string[] {
+  const killLeft = [
+    'for e in /proc/[0-9]*/environ; do',
+    `  if tr '\\0' '\\n' < "$e" 2>/dev/null | grep -qx '${MODEL_MARK}=${mark}'; then`,
+    '    p="${e#/proc/}"; kill -KILL "${p%/environ}" 2>/dev/null || true',
+    '  fi',
+    'done',
+  ];
+  const head = `cd ${REPOSITORY_DIR} && ${SAFE_GIT} rev-parse --verify "HEAD^{commit}"`;
+  return ['sh', '-c', [...killLeft, head].join('\n')];
+}
+
+function extractCommand(sha: string, tree: string, home: string): readonly string[] {
+  const archive = `${tree}.tar`;
+  return [
+    'sh',
+    '-c',
+    [
+      'set -e',
+      `mkdir -p ${tree} ${home}`,
+      `cd ${REPOSITORY_DIR}`,
+      'rm -f .git/info/attributes',
+      `${SAFE_GIT} archive --format=tar --output=${archive} ${sha}`,
+      `tar -xf ${archive} -C ${tree}`,
+      `rm -f ${archive}`,
+    ].join('\n'),
+  ];
+}
+
 const checksEnv = {
   npm_config_registry: `http://${REGISTRY_HOST}/`,
   npm_config_replace_registry_host: 'always',
@@ -65,9 +93,9 @@ function pushCommand(sha: string): readonly string[] {
   ];
 }
 
-async function checkedHead(tools: SessionTools): Promise<string | null> {
+async function checkedHead(tools: SessionTools, mark: string): Promise<string | null> {
   await tools.writeFile(GIT_CONFIG, CLEAN_CONFIG);
-  const inspected = await tools.exec(INSPECT, {});
+  const inspected = await tools.exec(inspectCommand(mark), {});
   const sha = inspected.stdout.trim();
   return inspected.exitCode === 0 && fullSha.test(sha) ? sha : null;
 }
@@ -82,10 +110,14 @@ async function heartbeat<T>(tools: SessionTools, work: () => Promise<T>): Promis
   }
 }
 
-async function runChecks(tools: SessionTools, text: string): Promise<boolean> {
-  const file = `${WORKSPACE}/declared-checks-${crypto.randomUUID()}.sh`;
-  await tools.writeFile(file, text);
-  const checked = await tools.exec(['sh', '-c', `cd ${REPOSITORY_DIR} && sh ${file}`], checksEnv);
+async function runChecks(tools: SessionTools, text: string, sha: string): Promise<boolean> {
+  const fresh = crypto.randomUUID();
+  const tree = `${WORKSPACE}/checked-${fresh}`;
+  const home = `${WORKSPACE}/home-${fresh}`;
+  const extracted = await tools.exec(extractCommand(sha, tree, home), {});
+  if (extracted.exitCode !== 0) return false;
+  const env = { ...checksEnv, HOME: home, UW_CHECKS: text };
+  const checked = await tools.exec(['sh', '-c', `cd ${tree} && sh -c "$UW_CHECKS"`], env);
   return checked.exitCode === 0;
 }
 
@@ -97,7 +129,9 @@ async function pushed(tools: SessionTools, sha: string): Promise<boolean> {
 
 export function fixFinish(phase: FixPhase, ended: (ran: ExecResult) => boolean): SessionFinish {
   let declared: string | null = null;
+  const mark = crypto.randomUUID();
   return {
+    modelEnv: { [MODEL_MARK]: mark },
     prepare: async (tools) => {
       const prepared = await tools.exec(PREPARE, {});
       if (prepared.exitCode === NO_CHECKS_EXIT) return prepared;
@@ -111,10 +145,11 @@ export function fixFinish(phase: FixPhase, ended: (ran: ExecResult) => boolean):
     finish: async (ran, tools) => {
       if (declared === null || !ended(ran)) return 'not_run';
       const text = declared;
-      const sha = await checkedHead(tools);
+      const sha = await checkedHead(tools, mark);
       if (sha === null) return 'checks_not_run_locally';
       phase.enter('checks', sha);
-      if (!(await heartbeat(tools, () => runChecks(tools, text)))) return 'checks_not_run_locally';
+      const passed = await heartbeat(tools, () => runChecks(tools, text, sha));
+      if (!passed) return 'checks_not_run_locally';
       phase.enter('push');
       return (await pushed(tools, sha)) ? 'pushed' : 'checks_not_run_locally';
     },
