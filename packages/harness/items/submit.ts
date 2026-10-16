@@ -18,7 +18,7 @@ import { noteGateMet } from '../runs/gates-met.ts';
 import { runValidators } from '../validators/registry.ts';
 import type { Attachment } from '../validators/context.ts';
 import { attachedPageIds } from '../validators/learning-attached.ts';
-import { fixRefusal, readFixDiffs, type FixDiffs } from './fix-submit.ts';
+import { fixRefusal, readFixDiffs, unreadFix, type FixDiffs } from './fix-submit.ts';
 import { attachWithin, isAttachRefusal } from './learning.ts';
 import { riskDraft } from './submit-risk.ts';
 import { expireLapsedLease, leaseLapsed } from './leases.ts';
@@ -187,9 +187,16 @@ type Choosing = {
   readonly context: RecordContext;
 };
 
+async function unreadFixOf(tx: StoreTransaction, item: ItemState): Promise<FixDiffs | null> {
+  if (item.delegationId === null) return null;
+  const delegation = await tx.delegations.read.byId(item.delegationId);
+  return delegation?.capability === 'fix' ? unreadFix : null;
+}
+
 async function handlerOf(tx: StoreTransaction, command: Command, scene: Choosing): Promise<Chosen> {
-  if (command.fix !== null) {
-    const unfit = await fixRefusal(tx, { ...scene, diffs: command.fix, facts: command.facts });
+  const diffs = command.fix ?? (await unreadFixOf(tx, scene.item));
+  if (diffs !== null) {
+    const unfit = await fixRefusal(tx, { ...scene, diffs, facts: command.facts });
     return unfit ?? { handler: awaitReview };
   }
   const handler = gates.get(scene.stage.exitGate);

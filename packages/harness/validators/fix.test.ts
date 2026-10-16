@@ -18,6 +18,7 @@ const fits: FixContext = {
   declared: declaration,
   declaration,
   claimed: true,
+  samePullRequest: true,
 };
 
 function context(fix: FixContext | null): ValidationContext {
@@ -43,16 +44,19 @@ describe('FL-3 fix_size_cap and fix_keeps_purpose', () => {
     expect(fixSizeCap(context(wider))).toEqual([
       'fix_size_cap: the fix touches apps/billing.ts, which the pull request does not',
     ]);
-    for (const path of [
-      'tests/board.ts',
-      'src/__tests__/a.ts',
-      'a.pg.test.ts',
-      'docs/a.txt',
-      'README.md',
-    ]) {
-      expect(testOrDoc(path)).toBe(true);
-    }
     expect(testOrDoc('apps/contest.ts')).toBe(false);
+  });
+
+  it('FL-3 fix_size_cap refuses a fix that changes nothing', () => {
+    expect(fixSizeCap(context({ ...fits, fix: { lines: 0, paths: [] } }))).toEqual([
+      'fix_size_cap: the fix changes nothing',
+    ]);
+  });
+
+  it('FL-3 fix_keeps_purpose refuses a fix that names another pull request', () => {
+    expect(fixKeepsPurpose(context({ ...fits, samePullRequest: false }))).toEqual([
+      "fix_keeps_purpose: the fix names a pull request other than the item's",
+    ]);
   });
 
   it('FL-3 fix_size_cap refuses a fix it cannot measure', () => {
@@ -73,5 +77,74 @@ describe('FL-3 fix_size_cap and fix_keeps_purpose', () => {
 
   it('FL-3 outside a fix both validators pass', () => {
     expect(runValidators(FIX_VALIDATORS, context(null))).toEqual([]);
+  });
+});
+
+describe('FL-3 what a fix may touch beside the pull request', () => {
+  it('FL-3 the test allowance reads a test name, or a tests directory at the root or a package root', () => {
+    for (const path of [
+      'a.pg.test.ts',
+      'apps/uw-app/board.spec.tsx',
+      'tests/board.ts',
+      'test/fixtures/a.json',
+      '__tests__/a.ts',
+      'packages/db/tests/a.ts',
+      'apps/uw-app/__tests__/a.ts',
+    ]) {
+      expect(testOrDoc(path)).toBe(true);
+    }
+    for (const path of [
+      'src/__tests__/a.ts',
+      'apps/uw-app/src/test/a.ts',
+      'tests',
+      'apps/test.ts',
+    ]) {
+      expect(testOrDoc(path)).toBe(false);
+    }
+  });
+
+  it('FL-3 the doc allowance reads markdown under docs/, or a README or CHANGELOG', () => {
+    for (const path of [
+      'docs/board.md',
+      'docs/adr/0001-a.md',
+      'README.md',
+      'packages/db/CHANGELOG.md',
+    ]) {
+      expect(testOrDoc(path)).toBe(true);
+    }
+    for (const path of ['docs/a.txt', 'apps/uw-app/notes.md', 'guide.md']) {
+      expect(testOrDoc(path)).toBe(false);
+    }
+  });
+});
+
+describe('FL-3 what a fix may never touch beside the pull request', () => {
+  it('FL-3 agent instructions, workflows, skills and personas are never allowed beside the pull request', () => {
+    for (const path of [
+      'AGENTS.md',
+      'CLAUDE.md',
+      'apps/uw-app/CLAUDE.md',
+      '.claude/settings.json',
+      '.claude/agents/reviewer.test.md',
+      '.github/workflows/ci.yml',
+      '.github/README.md',
+      'skills/fix/SKILL.md',
+      'docs/skills/fix.md',
+      'docs/personas/builder.md',
+      'tests/personas/builder.md',
+      'packages/x/SKILL.md',
+    ]) {
+      expect(testOrDoc(path)).toBe(false);
+    }
+    const guardedTouch = { ...fits, fix: { lines: 2, paths: ['.github/workflows/ci.yml'] } };
+    expect(fixSizeCap(context(guardedTouch))).toEqual([
+      'fix_size_cap: the fix touches .github/workflows/ci.yml, which the pull request does not',
+    ]);
+    const already = {
+      ...fits,
+      pull: { lines: 40, paths: ['AGENTS.md'] },
+      fix: { lines: 2, paths: ['AGENTS.md'] },
+    };
+    expect(fixSizeCap(context(already))).toEqual([]);
   });
 });

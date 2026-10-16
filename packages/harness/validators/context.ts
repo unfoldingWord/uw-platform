@@ -8,6 +8,7 @@ export type FixContext = {
   readonly declared: PullRequestDeclaration | null;
   readonly declaration: PullRequestDeclaration | null;
   readonly claimed: boolean;
+  readonly samePullRequest: boolean;
 };
 
 export type ValidationContext = {

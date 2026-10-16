@@ -6,6 +6,7 @@ import {
   type Stage,
 } from '@uw/contracts';
 import { diffStat, type DiffStat } from '../github/diff-stat.ts';
+import { sameRepository } from '../github/identifiers.ts';
 import { refused, type Refused } from '../outcome.ts';
 import type {
   DiffRange,
@@ -26,6 +27,7 @@ export type FixDiffs = {
   readonly start: string | null;
   readonly pull: DiffRead | null;
   readonly fix: DiffRead | null;
+  readonly samePullRequest: boolean;
 };
 
 export type FixSubmission = {
@@ -37,7 +39,9 @@ export type FixSubmission = {
 };
 
 const FIX_DIFF_BUDGET = 1_000_000;
-const unread: FixDiffs = { start: null, pull: null, fix: null };
+export const unreadFix: FixDiffs = { start: null, pull: null, fix: null, samePullRequest: true };
+
+type FixChange = { readonly head: string; readonly pullRequest: PullRequestRef };
 
 async function fixClaimOn(ports: DiffPorts, itemId: string): Promise<ItemState | null> {
   return ports.store.transaction(async (tx) => {
@@ -63,20 +67,27 @@ async function readDiff(
 export async function readFixDiffs(
   ports: DiffPorts,
   itemId: string,
-  change: { readonly head: string } | null,
+  change: FixChange | null,
   facts: PullRequestFacts | null,
 ): Promise<FixDiffs | null> {
   const item = await fixClaimOn(ports, itemId);
   if (item === null) return null;
   const start = item.expectedHead;
   const ref = item.pullRequest;
-  if (start === null || ref === null || change === null || facts === null)
-    return { ...unread, start };
+  const samePullRequest = ref === null || change === null || samePull(ref, change.pullRequest);
+  if (start === null || ref === null || change === null || facts === null) {
+    return { ...unreadFix, start, samePullRequest };
+  }
   return {
     start,
+    samePullRequest,
     pull: await readDiff(ports, ref, { base: facts.base, head: start }),
     fix: await readDiff(ports, ref, { base: start, head: change.head }),
   };
+}
+
+function samePull(item: PullRequestRef, named: PullRequestRef): boolean {
+  return sameRepository(named.repo, item.repo) && named.number === item.number;
 }
 
 function measured(read: DiffRead | null): DiffStat | null {
@@ -85,21 +96,23 @@ function measured(read: DiffRead | null): DiffStat | null {
 
 function claimedDeclaration(events: readonly HarnessEvent[]) {
   const claimed = events.findLast((event) => event.name === 'fix_claimed');
-  if (claimed === undefined) return { claimed: false, declared: null };
-  const declared: PullRequestDeclaration | null = eventEvidenceSchemas.fix_claimed.parse(
-    claimed.evidence,
-  ).declaration;
-  return { claimed: true, declared };
+  if (claimed === undefined) return { claimed: false, declared: null, head: null };
+  const evidence = eventEvidenceSchemas.fix_claimed.parse(claimed.evidence);
+  const declared: PullRequestDeclaration | null = evidence.declaration;
+  return { claimed: true, declared, head: evidence.head };
 }
 
 function fixContextOf(submission: FixSubmission, events: readonly HarnessEvent[]): FixContext {
   const { diffs, item, facts } = submission;
-  const same = diffs.start !== null && diffs.start === item.expectedHead;
+  const { claimed, declared, head } = claimedDeclaration(events);
+  const same = diffs.start !== null && diffs.start === head && diffs.start === item.expectedHead;
   return {
     pull: same ? measured(diffs.pull) : null,
     fix: same ? measured(diffs.fix) : null,
     declaration: facts?.declaration ?? null,
-    ...claimedDeclaration(events),
+    claimed,
+    declared,
+    samePullRequest: diffs.samePullRequest,
   };
 }
 
