@@ -65,6 +65,7 @@ describe('the push notification', () => {
       'A run failed on an item you hold',
       'A delegation you gave has lapsed',
       'An item you hold moved on',
+      'An agent merged under a delegation you gave',
     ]);
   });
 });
