@@ -1,7 +1,6 @@
 import type { Context } from 'hono';
 import type { AgentPickup, ExitGate, Principal, Stage } from '@uw/contracts';
 import { can } from '@uw/core/acl';
-import { formatCount } from '@uw/core/money';
 import type { BoardColumn, BoardInput, BoardView } from '@uw/harness';
 import { Chip } from '@uw/ui/components/chip.tsx';
 import { CommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
@@ -13,6 +12,7 @@ import type { AppEnv } from '../../deps.ts';
 import { BoardCardView, type CardViewer } from '../parts/board-card.tsx';
 import { EpicGroups, NotReadyList } from '../parts/epic-board.tsx';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
+import { itemsText } from '../parts/items-count.ts';
 import { idParam } from '../parts/params.ts';
 import { boardPath, flowPath, homePath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
@@ -58,13 +58,6 @@ function EnqueueForm(props: { readonly harnessId: string }) {
       </button>
     </CommandForm>
   );
-}
-
-function itemsText(column: BoardColumn, botAuthors: readonly string[]): string {
-  if (column.next !== null) return '50 or more';
-  const counted = formatCount(column.cards.length - column.uncounted);
-  if (column.uncounted === 0) return counted;
-  return `${counted}, not counting ${formatCount(column.uncounted)} by ${botAuthors.join(', ')}`;
 }
 
 function ColumnView(props: {

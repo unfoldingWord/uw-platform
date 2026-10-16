@@ -46,6 +46,14 @@ function soundOne(ports: AlarmPorts, caller: Caller, harness: Harness, at: Date)
   });
 }
 
+const MINUTE_MS = 60_000;
+
+function turnOf(harnesses: readonly Harness[], limit: number, at: Date): readonly Harness[] {
+  if (harnesses.length <= limit) return harnesses;
+  const start = (Math.floor(at.getTime() / MINUTE_MS) * limit) % harnesses.length;
+  return [...harnesses, ...harnesses].slice(start, start + limit);
+}
+
 async function soundSilence(
   ports: AlarmPorts,
   caller: Caller,
@@ -60,7 +68,7 @@ async function soundSilence(
   const at = ports.clock.now();
   const harnesses = await ports.store.transaction((tx) => tx.harnesses.read.list());
   const sounded: string[] = [];
-  for (const harness of harnesses.slice(0, input.limit)) {
+  for (const harness of turnOf(harnesses, input.limit, at)) {
     if (await soundOne(ports, caller, harness, at)) sounded.push(harness.id);
   }
   return accepted({ sounded });
