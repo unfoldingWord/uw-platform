@@ -103,6 +103,6 @@ describe('GD-2 freeze', () => {
       ]);
       expect(reasonOf(await freeze(scene, editor, true, []))).toBe('not_permitted');
       const agent = simAgent(scene.admin, 'builder', { interactive: true });
-      expect(reasonOf(await freeze(scene, agent, true, []))).not.toBeNull();
+      expect(reasonOf(await freeze(scene, agent, true, []))).toBe('not_permitted');
     }));
 });
