@@ -59,8 +59,14 @@ function engineOn(replies: Parameters<typeof fakeContainerHost>[0]) {
   return { engine: claudeCodeSandboxEngine(config), config, host, sent };
 }
 
+const SID = 4242;
+
 function reply(body: unknown, exitCode = 0) {
-  return { exitCode, stdout: JSON.stringify(body), stderr: '' };
+  return {
+    exitCode,
+    stdout: JSON.stringify(body),
+    stderr: `uw-model-session ${SID.toString()}\nlog`,
+  };
 }
 
 const checked = 'b'.repeat(40);
@@ -137,9 +143,13 @@ async function checkedIsPushed(): Promise<void> {
   const tree = treeOf(session);
   expect(line(commands, 2)).not.toContain('status --porcelain');
   expect(line(commands, 2)).toContain('--no-replace-objects');
-  expect(line(commands, 3)).toContain(`archive --format=tar --output=${tree}.tar ${checked}`);
+  expect(line(commands, 3)).not.toContain('archive');
+  expect(line(commands, 3)).toContain(`ls-tree -r --full-tree ${checked} > ${tree}.list`);
+  expect(line(commands, 3)).toContain('cat-file blob "$3"');
+  expect(line(commands, 3)).toContain('case "$1" in 100644|100755) ;; *) exit 80 ;; esac');
+  expect(line(commands, 3)).toContain('test ! -e .git/commondir || exit 79');
+  expect(line(commands, 3)).toContain('rev-parse --git-common-dir)" = .git || exit 79');
   expect(line(commands, 3)).toContain('GIT_NO_REPLACE_OBJECTS=1');
-  expect(line(commands, 3)).toContain('rm -f .git/info/attributes');
   expect(line(commands, 4)).toContain(`cd ${tree} && `);
   expect(line(commands, 5)).toContain(`"${checked}:refs/heads/$UW_BRANCH"`);
   expect(line(commands, 5)).toContain('--no-replace-objects');
@@ -149,13 +159,35 @@ async function leftoversKilled(): Promise<void> {
   const { engine, host } = engineOn([prepared, reply(result), inspected, passed, passed, passed]);
   expect(await engine.work(fixWork)).toMatchObject({ outcome: 'ended' });
   const commands = host.sessions[0]?.commands ?? [];
-  const mark = commands[1]?.env['UW_MODEL_SESSION'] ?? 'missing';
-  expect(mark).toMatch(/^[0-9a-f-]{36}$/u);
-  expect(line(commands, 2)).toContain(`grep -qx 'UW_MODEL_SESSION=${mark}'`);
+  expect(commands[1]?.command.slice(0, 2)).toEqual(['setsid', '--wait']);
+  expect(line(commands, 1)).toContain('echo "uw-model-session $$" >&2; exec "$@"');
+  expect(line(commands, 1)).toContain('claude');
+  expect(line(commands, 2)).toContain(`if [ "$4" = "${SID.toString()}" ]`);
   expect(line(commands, 2)).toContain('kill -KILL');
+  expect(line(commands, 2).indexOf('kill -KILL')).toBeLessThan(
+    line(commands, 2).indexOf('rev-parse'),
+  );
   for (const index of [0, 2, 3, 4, 5]) {
-    expect(commands[index]?.env['UW_MODEL_SESSION']).toBeUndefined();
+    expect(commands[index]?.command[0]).not.toBe('setsid');
   }
+}
+
+async function noSession(): Promise<void> {
+  const silent = { ...reply(result), stderr: '' };
+  const { engine, host } = engineOn([prepared, silent]);
+  expect(await engine.work(fixWork)).toMatchObject({ outcome: 'checks_not_run_locally' });
+  expect(host.sessions[0]?.commands).toHaveLength(2);
+}
+
+async function extractionRefused(): Promise<void> {
+  const { engine, host } = engineOn([
+    prepared,
+    reply(result),
+    inspected,
+    { exitCode: 80, stdout: '', stderr: '' },
+  ]);
+  expect(await engine.work(fixWork)).toMatchObject({ outcome: 'checks_not_run_locally' });
+  expect(host.sessions[0]?.commands).toHaveLength(4);
 }
 
 async function failingChecks(): Promise<void> {
@@ -312,11 +344,21 @@ describe('FL-4 the platform pushes only the commit the checks ran on', () => {
   it('FL-4 a head the host cannot read runs no checks and pushes nothing', unreadHead);
 
   it(
-    'FL-4 the checks run on a fresh archive of the commit that is pushed, past replaced objects and hidden index entries',
+    'FL-4 the checks run on the raw blobs of the commit that is pushed, past replaced objects, hidden index entries and attributes',
     checkedIsPushed,
   );
 
-  it('FL-4 processes the model exec left behind are killed before the checks', leftoversKilled);
+  it(
+    'FL-4 the model runs in its own session, and every process left in it is killed before the checks',
+    leftoversKilled,
+  );
+
+  it('FL-4 a model exec that did not announce its session runs no checks', noSession);
+
+  it(
+    'FL-4 a refused extraction (a symlink, a submodule, a traversal or a redirected .git) runs no checks',
+    extractionRefused,
+  );
 
   it('FL-4 a push of any commit but the checked one is refused at the egress', headMoved);
 
