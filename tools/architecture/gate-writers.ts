@@ -25,7 +25,8 @@ const writes = [
   /\{[^{}]*\bwrite\b[^{}]*\}\s*=\s*[\w.?]*\bgateDecisions\b/g,
   /=\s*[\w.?]*\bgateDecisions\s*[;,)\n]/g,
 ];
-const declarations = /^(?:export )?(?:async )?function\s+(\w+)|^(?:export )?const\s+(\w+)\s*[=:]/gm;
+const declarations =
+  /^(?:export )?(?:async )?function\s+(\w+)|^(?:export )?const\s+(\w+)\s*[=:]|^(?:export )?(?:default )?(?:let|var|class|function|async)\b/gm;
 
 function scanned(file: string): boolean {
   return (
@@ -41,7 +42,7 @@ function enclosing(text: string, index: number): string {
   let name = '<module>';
   for (const match of text.matchAll(declarations)) {
     if (match.index > index) break;
-    name = match[1] ?? match[2] ?? name;
+    name = match[1] ?? match[2] ?? '<module>';
   }
   return name;
 }
