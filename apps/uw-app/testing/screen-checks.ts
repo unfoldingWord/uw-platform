@@ -46,7 +46,8 @@ function copyProblems(document: Document): string[] {
   const problems: string[] = [];
   if (text.includes('!')) problems.push('an exclamation mark in the copy');
   if (emoji.test(text)) problems.push('an emoji in the copy');
-  for (const match of text.matchAll(/unfolding\s*word/gi)) {
+  const prose = text.replaceAll(/\S+@\S+/g, ' ');
+  for (const match of prose.matchAll(/unfolding\s*word/gi)) {
     if (match[0] !== 'unfoldingWord') problems.push(`unfoldingWord written ${match[0]}`);
   }
   return problems;
