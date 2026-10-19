@@ -35,6 +35,7 @@ export const untrustedSourceSchema = z.enum([
   'issue_body',
   'review_comment',
   'page_from_agent',
+  'pr_title',
 ]);
 export const gateDecisionSchema = z.enum(['approve', 'reject', 'take_over', 'override']);
 export const personStatusSchema = z.enum(['active', 'pending']);

@@ -210,6 +210,7 @@ describe('closed sets added for v0.2.0', () => {
       'issue_body',
       'review_comment',
       'page_from_agent',
+      'pr_title',
     ]);
   });
 
