@@ -1,12 +1,12 @@
 import type { DelegatedMerge, Harness, ItemState, Stage } from '@uw/contracts';
-import { isAgent } from '../access.ts';
+import { allowed, isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { recordDelegationRequired } from '../delegations/acting.ts';
 import { draft, recordItemEvents, type RecordContext } from '../items/record.ts';
 import { resolveExit } from '../items/transitions.ts';
 import type { Refused } from '../outcome.ts';
 import type { Ports, PullRequestFacts, StoreTransaction } from '../ports.ts';
-import { shipCheck, type ShipCheck } from './approve-at-ship.ts';
+import { inFlightRefusal, shipCheck, type ShipCheck } from './approve-at-ship.ts';
 import { delegableExit } from './delegable.ts';
 import { factsFailure } from './facts-failure.ts';
 import { lentInDecision, type Lent } from './lent.ts';
@@ -69,6 +69,23 @@ export async function delegatedPreRead(
   } catch (error) {
     return factsFailure(error);
   }
+}
+
+type AtStage = {
+  readonly item: ItemState;
+  readonly harness: Harness;
+  readonly stage: Stage;
+  readonly context: RecordContext;
+};
+
+export async function agentInFlightRefusal(
+  tx: StoreTransaction,
+  caller: Caller,
+  { item, harness, stage, context }: AtStage,
+): Promise<Refused | null> {
+  if (!isAgent(caller.actor) || !delegableExit(stage)) return null;
+  if (!allowed(caller.actor, 'write', harness, context.at)) return null;
+  return inFlightRefusal(tx, item);
 }
 
 export async function delegationRequiredAtShip(

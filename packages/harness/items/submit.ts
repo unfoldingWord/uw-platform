@@ -35,6 +35,7 @@ import { pausedRefusal } from './paused.ts';
 import { heldStanding } from './run-steps.ts';
 import { actingPrincipal, isRefusal, recordDelegationRequired } from '../delegations/acting.ts';
 import {
+  agentInFlightRefusal,
   delegatedPreRead,
   delegationRequiredAtShip,
   shipUnderDelegation,
@@ -300,6 +301,7 @@ async function submitGuards(
   const { caller, harness, stage } = standing;
   return (
     pausedRefusal(caller, harness, stage) ??
+    (await agentInFlightRefusal(tx, caller, standing)) ??
     (await standingRefusal(tx, ports, standing)) ??
     (await delegationRequiredAtShip(tx, standing)) ??
     repositoryRefusal(input, harness)

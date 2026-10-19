@@ -137,7 +137,7 @@ async function secondSubmitRefused(scene: Scene): Promise<void> {
   await claimAndSubmit(scene, loan);
   expect(await submit(scene, loan.agent)).toMatchObject({
     status: 'error',
-    reason: 'not_permitted',
+    reason: 'decision_in_flight',
   });
   expect(await rows(scene)).toHaveLength(1);
 }
@@ -347,7 +347,7 @@ describe('MD-3 an agent under a merge delegation takes the Ship exit, and the re
 
   it('MD-3 the approver is whoever granted the delegation', () => inScene({}, approverIsGrantor));
 
-  it('MD-3 a second submit is refused not_permitted, holding nothing, and writes no second decision', () =>
+  it('MD-3 a second submit is refused decision_in_flight while its decision waits for the merge, and writes no second decision', () =>
     inScene({}, secondSubmitRefused));
 
   it('MD-3 a delegation revoked after the claim refuses the submit delegation_lapsed and writes nothing', () =>
