@@ -4,6 +4,7 @@ import type { Caller } from '../caller.ts';
 import { actingPrincipal, isRefusal, recordDelegationRequired } from '../delegations/acting.ts';
 import { capabilityReaches, pageAgrees } from '../delegations/capability.ts';
 import { delegableExit } from '../gates/delegable.ts';
+import { agentInFlightRefusal } from '../gates/delegated-ship.ts';
 import {
   adoptionOf,
   claimedBranch,
@@ -75,12 +76,20 @@ function gateRefusal(item: ItemState): Refused | null {
   return null;
 }
 
-function claimGuards(scene: Scene, item: ItemState): Refused | null {
+async function claimGuards(
+  tx: StoreTransaction,
+  scene: Scene,
+  item: ItemState,
+): Promise<Refused | null> {
   const { caller, harness, stage, context } = scene;
   if (!allowed(caller.actor, 'write', harness, context.at)) {
     return refused('not_permitted', { harnessId: harness.id });
   }
-  return gateRefusal(item) ?? pickupRefusal(caller, stage);
+  return (
+    (await agentInFlightRefusal(tx, caller, { item, harness, stage, context })) ??
+    gateRefusal(item) ??
+    pickupRefusal(caller, stage)
+  );
 }
 
 function pickupRefusal(caller: Caller, stage: Stage): Refused | null {
@@ -295,7 +304,7 @@ async function claimIn(
   if (pre === null) return refused('item_not_found', { itemId: input.itemId });
   const scene = await sceneOf(ports, tx, caller, pre, at);
   if ('status' in scene) return scene;
-  const early = claimGuards(scene, pre);
+  const early = await claimGuards(tx, scene, pre);
   if (early !== null) return early;
   await tx.lock(lockKeys.stageClaims(scene.stage.id));
   const item = await tx.harnessItems.read.lock(input.itemId);
