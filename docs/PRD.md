@@ -466,7 +466,8 @@ Every table declares its classification and offline eligibility. Every table has
 | live screen | `home`, `flow`, `board`, `gates`, `item` |
 | capability word (v0.2.0) | adds `merge`, `fix` |
 | finding weight (v0.2.0) | `real`, `plausible`, `theoretical` |
-| untrusted source (v0.2.0) | `pr_diff`, `issue_body`, `review_comment`, `page_from_agent` |
+| untrusted source (v0.2.0) | `pr_diff`, `issue_body`, `review_comment`, `page_from_agent`, `pr_title` (a joined pull request's title) |
+| delegated hold (v0.2.0) | `shadow`, `gate_target`, `delegation_lapsed`, `delegation_required` (why a delegated Ship exit waits for a person, on `gate_refused_to_agent`) |
 | learning source (v0.2.0) | `platform`, `external` |
 | submit result (v0.2.0) | `advanced`, `parked`, `checks_failed`, `awaiting_review` (a fix that passes its validators and waits at its stage for the next review round) |
 
