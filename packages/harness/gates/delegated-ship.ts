@@ -9,6 +9,7 @@ import type { Ports, PullRequestFacts, StoreTransaction } from '../ports.ts';
 import { inFlightRefusal, shipCheck, type ShipCheck } from './approve-at-ship.ts';
 import { delegableExit } from './delegable.ts';
 import { factsFailure } from './facts-failure.ts';
+import { isStale, staleRefusal } from './facts-fresh.ts';
 import { lentInDecision, type Lent } from './lent.ts';
 
 export type DelegatedPorts = Pick<Ports, 'clock' | 'githubFacts' | 'grants' | 'store'>;
@@ -65,7 +66,10 @@ export async function delegatedPreRead(
   const ref = found.item.pullRequest;
   if (ref === null) return { facts: null, email };
   try {
-    return { facts: await ports.githubFacts.pullRequest(ref), email };
+    const facts = await ports.githubFacts.refresh(ref);
+    return facts !== null && isStale(facts, ports.clock.now())
+      ? staleRefusal(facts)
+      : { facts, email };
   } catch (error) {
     return factsFailure(error);
   }

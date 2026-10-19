@@ -1,7 +1,7 @@
 import type { ItemState, Principal } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { revokeSeededGrant } from '@uw/db/test-seed';
-import { software } from '@uw/harness';
+import { createKernel, software, type GitHubFacts } from '@uw/harness';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import {
   createSimHarness,
@@ -341,7 +341,40 @@ async function grantorNotAHolder(scene: Scene): Promise<void> {
   expect(await rows(scene)).toEqual([]);
 }
 
+function factsAt(scene: Scene, freshAt: Date) {
+  const reviews = [approvedBy('uw-reviewer[bot]', 'deepinfra', standardChange.head, 9300000001)];
+  const facts = greenFacts(scene.world, {
+    itemId: scene.item.itemId,
+    head: standardChange.head,
+    reviews,
+  });
+  return { ...facts, freshAt };
+}
+
+async function staleRefreshRefused(scene: Scene): Promise<void> {
+  const loan = await simLendMerge(scene.world, scene.admin, {
+    harnessId: scene.harnessId,
+    maxTier: 'standard',
+  });
+  expect((await claim(scene, loan.agent, loan.delegationId)).status).toBe('accepted');
+  const at = scene.world.adapters.clock.now();
+  const githubFacts: GitHubFacts = {
+    ...scene.world.adapters.githubFacts,
+    refresh: async () => factsAt(scene, new Date(at.getTime() - 60_001)),
+  };
+  const kernel = createKernel({ ...scene.world.adapters, githubFacts });
+  const input = { itemId: scene.item.itemId, to: null, evidence: {}, change: null };
+  expect(await kernel.items.submit(simCaller(scene.world, loan.agent), input)).toMatchObject({
+    status: 'error',
+    reason: 'facts_stale',
+  });
+  expect(await rows(scene)).toEqual([]);
+}
+
 describe('MD-3 an agent under a merge delegation takes the Ship exit, and the record names the grantor', () => {
+  it('MD-3 the delegated exit refreshes the pull request and refuses facts_stale on stale facts, writing nothing', () =>
+    inScene({}, staleRefreshRefused));
+
   it('MD-3 writes one decision: the grantor approves, the agent acts, the delegation is named; nothing merges yet', () =>
     inScene({}, writesOneDecision));
 
