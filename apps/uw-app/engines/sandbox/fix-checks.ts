@@ -1,20 +1,23 @@
 import {
   checksCommand,
-  extractCommand,
   inOwnSession,
   inspectCommand,
+  killSessionCommand,
   modelSession,
   NO_CHECKS_EXIT,
   PREPARE,
   pushCommand,
 } from './fix-commands.ts';
+import { type TreeDirs, treeDirs, verifiedTreeCommand } from './fix-tree.ts';
 import type { ExecResult } from './host.ts';
-import { REPOSITORY_DIR, WORKSPACE } from './paths.ts';
+import { REPOSITORY_DIR } from './paths.ts';
 import { REGISTRY_HOST } from './registry-egress.ts';
 import type { SessionFinish, SessionTools } from './session.ts';
 
 const RENEW_EVERY_MS = 60_000;
 const CLEAN_CONFIG = '[core]\n\trepositoryformatversion = 0\n\tfilemode = true\n\tbare = false\n';
+const CLEAN_BARE_CONFIG =
+  '[core]\n\trepositoryformatversion = 0\n\tfilemode = true\n\tbare = true\n';
 const GIT_CONFIG = `${REPOSITORY_DIR}/.git/config`;
 const fullSha = /^[0-9a-f]{40}$/u;
 const checksEnv = {
@@ -46,9 +49,17 @@ export function fixPhase(fixing: boolean): FixPhase {
   };
 }
 
-async function checkedHead(tools: SessionTools, sid: number): Promise<string | null> {
+async function killedSession(tools: SessionTools, ran: ExecResult): Promise<boolean> {
+  const sid = modelSession(ran.stderr);
+  if (sid === null) return false;
+  const killed = await tools.exec(killSessionCommand(sid), {});
+  if (killed.exitCode !== 0) return false;
   await tools.writeFile(GIT_CONFIG, CLEAN_CONFIG);
-  const inspected = await tools.exec(inspectCommand(sid), {});
+  return true;
+}
+
+async function checkedHead(tools: SessionTools): Promise<string | null> {
+  const inspected = await tools.exec(inspectCommand(), {});
   const sha = inspected.stdout.trim();
   return inspected.exitCode === 0 && fullSha.test(sha) ? sha : null;
 }
@@ -63,21 +74,23 @@ async function heartbeat<T>(tools: SessionTools, work: () => Promise<T>): Promis
   }
 }
 
-async function runChecks(tools: SessionTools, text: string, sha: string): Promise<boolean> {
-  const fresh = crypto.randomUUID();
-  const tree = `${WORKSPACE}/checked-${fresh}`;
-  const home = `${WORKSPACE}/home-${fresh}`;
-  const extracted = await tools.exec(extractCommand(sha, tree, home), {});
+async function runChecks(
+  tools: SessionTools,
+  text: string,
+  sha: string,
+  dirs: TreeDirs,
+): Promise<boolean> {
+  const extracted = await tools.exec(verifiedTreeCommand(sha, dirs), {});
   if (extracted.exitCode !== 0) return false;
-  const env = { ...checksEnv, HOME: home, UW_CHECKS: text };
-  const checked = await tools.exec(checksCommand(tree), env);
+  const env = { ...checksEnv, HOME: dirs.home, UW_CHECKS: text };
+  const checked = await tools.exec(checksCommand(dirs.tree), env);
   return checked.exitCode === 0;
 }
 
-async function pushed(tools: SessionTools, sha: string): Promise<boolean> {
+async function pushed(tools: SessionTools, sha: string, verified: string): Promise<boolean> {
   if (!(await tools.admit())) return false;
-  await tools.writeFile(GIT_CONFIG, CLEAN_CONFIG);
-  return (await tools.exec(pushCommand(sha), {})).exitCode === 0;
+  await tools.writeFile(`${verified}/config`, CLEAN_BARE_CONFIG);
+  return (await tools.exec(pushCommand(sha, verified), {})).exitCode === 0;
 }
 
 export function fixFinish(phase: FixPhase, ended: (ran: ExecResult) => boolean): SessionFinish {
@@ -97,15 +110,15 @@ export function fixFinish(phase: FixPhase, ended: (ran: ExecResult) => boolean):
     finish: async (ran, tools) => {
       if (declared === null || !ended(ran)) return 'not_run';
       const text = declared;
-      const sid = modelSession(ran.stderr);
-      if (sid === null) return 'checks_not_run_locally';
-      const sha = await checkedHead(tools, sid);
+      if (!(await killedSession(tools, ran))) return 'checks_not_run_locally';
+      const sha = await checkedHead(tools);
       if (sha === null) return 'checks_not_run_locally';
+      const dirs = treeDirs(crypto.randomUUID());
       phase.enter('checks', sha);
-      const passed = await heartbeat(tools, () => runChecks(tools, text, sha));
+      const passed = await heartbeat(tools, () => runChecks(tools, text, sha, dirs));
       if (!passed) return 'checks_not_run_locally';
       phase.enter('push');
-      return (await pushed(tools, sha)) ? 'pushed' : 'checks_not_run_locally';
+      return (await pushed(tools, sha, dirs.verified)) ? 'pushed' : 'checks_not_run_locally';
     },
   };
 }

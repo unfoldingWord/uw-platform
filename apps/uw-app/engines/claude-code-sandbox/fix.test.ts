@@ -73,6 +73,7 @@ const checked = 'b'.repeat(40);
 const declared = 'pnpm install --frozen-lockfile\npnpm test\n';
 const prepared = { exitCode: 0, stdout: declared, stderr: '' };
 const inspected = { exitCode: 0, stdout: `${checked}\n`, stderr: '' };
+const killed = { exitCode: 0, stdout: '', stderr: '' };
 const passed = { exitCode: 0, stdout: 'ok', stderr: '' };
 
 function pushed(sha = checked): Request {
@@ -118,16 +119,27 @@ type RecordedCommand = {
   readonly env: Readonly<Record<string, string>>;
 };
 
-function treeOf(session: Session | undefined): string {
-  const extract = session?.commands[3]?.command.join(' ') ?? '';
-  return /mkdir -p (\/workspace\/checked-[0-9a-f-]+)/u.exec(extract)?.[1] ?? 'missing';
+function dirsOf(session: Session | undefined): { tree: string; verified: string } {
+  const extract = session?.commands[4]?.command.join(' ') ?? '';
+  const tree = /mkdir -p (\/workspace\/checked-[0-9a-f-]+)/u.exec(extract)?.[1] ?? 'missing';
+  const verified =
+    /--template= (\/workspace\/verified-[0-9a-f-]+)/u.exec(extract)?.[1] ?? 'missing';
+  return { tree, verified };
 }
 
 async function startCommitText(): Promise<void> {
-  const { engine, host } = engineOn([prepared, reply(result), inspected, passed, passed, passed]);
+  const { engine, host } = engineOn([
+    prepared,
+    reply(result),
+    killed,
+    inspected,
+    passed,
+    passed,
+    passed,
+  ]);
   expect(await engine.work(fixWork)).toMatchObject({ outcome: 'ended' });
   const session = host.sessions[0];
-  const checks = session?.commands[4];
+  const checks = session?.commands[5];
   expect(checks?.env).toMatchObject({ UW_CHECKS: declared });
   expect(checks?.command.join(' ')).toContain('sh -c "$UW_CHECKS"');
   expect(checks?.env['HOME']).toMatch(/^\/workspace\/home-[0-9a-f-]+$/u);
@@ -136,40 +148,82 @@ async function startCommitText(): Promise<void> {
 }
 
 async function checkedIsPushed(): Promise<void> {
-  const { engine, host } = engineOn([prepared, reply(result), inspected, passed, passed, passed]);
+  const { engine, host } = engineOn([
+    prepared,
+    reply(result),
+    killed,
+    inspected,
+    passed,
+    passed,
+    passed,
+  ]);
   expect(await engine.work(fixWork)).toMatchObject({ outcome: 'ended' });
   const session = host.sessions[0];
   const commands = session?.commands ?? [];
-  const tree = treeOf(session);
-  expect(line(commands, 2)).not.toContain('status --porcelain');
-  expect(line(commands, 2)).toContain('--no-replace-objects');
-  expect(line(commands, 3)).not.toContain('archive');
-  expect(line(commands, 3)).toContain(`ls-tree -r --full-tree ${checked} > ${tree}.list`);
-  expect(line(commands, 3)).toContain('cat-file blob "$3"');
-  expect(line(commands, 3)).toContain('case "$1" in 100644|100755) ;; *) exit 80 ;; esac');
-  expect(line(commands, 3)).toContain('test ! -e .git/commondir || exit 79');
-  expect(line(commands, 3)).toContain('rev-parse --git-common-dir)" = .git || exit 79');
-  expect(line(commands, 3)).toContain('GIT_NO_REPLACE_OBJECTS=1');
-  expect(line(commands, 4)).toContain(`cd ${tree} && `);
-  expect(line(commands, 5)).toContain(`"${checked}:refs/heads/$UW_BRANCH"`);
-  expect(line(commands, 5)).toContain('--no-replace-objects');
+  const { tree, verified } = dirsOf(session);
+  const extract = line(commands, 4);
+  expect(line(commands, 3)).toContain('--no-replace-objects');
+  expect(extract).toContain(`init --quiet --bare --template= ${verified}`);
+  expect(extract).toContain(`printf '%s\\n' ${checked} | `);
+  expect(extract).toContain(`pack-objects --revs --stdout | `);
+  expect(extract).toContain(`-C ${verified} index-pack --stdin --fix-thin --strict`);
+  expect(extract).toContain(`-C ${verified} fsck --strict --no-dangling ${checked}`);
+  expect(extract).toContain('test ! -e .git/objects/info/alternates || exit 79');
+  expect(extract).toContain(`-C ${verified} ls-tree -r -z --full-tree ${checked} > ${tree}.list.z`);
+  expect(extract).toContain(`-C ${verified} cat-file blob "$3"`);
+  expect(extract).toContain('case "$1" in 100644|100755) ;; *) exit 80 ;; esac');
+  expect(extract).toContain('test ! -e .git/commondir || exit 79');
+  expect(extract).not.toContain('dirname');
+  expect(extract.indexOf('index-pack')).toBeLessThan(extract.indexOf('ls-tree'));
+  expect(line(commands, 5)).toContain(`cd ${tree} && `);
+  expect(line(commands, 6)).toContain(`-C ${verified} push`);
+  expect(line(commands, 6)).toContain(`"${checked}:refs/heads/$UW_BRANCH"`);
+  expect(line(commands, 6)).toContain('--no-replace-objects');
 }
 
+const repoConfig = '/workspace/repo/.git/config';
+
 async function leftoversKilled(): Promise<void> {
-  const { engine, host } = engineOn([prepared, reply(result), inspected, passed, passed, passed]);
+  const configsAtKill: number[] = [];
+  const { engine, host } = engineOn([
+    prepared,
+    reply(result),
+    async () => {
+      const files = host.sessions[0]?.files ?? [];
+      configsAtKill.push(files.filter((file) => file.path === repoConfig).length);
+      return killed;
+    },
+    inspected,
+    passed,
+    passed,
+    passed,
+  ]);
   expect(await engine.work(fixWork)).toMatchObject({ outcome: 'ended' });
   const commands = host.sessions[0]?.commands ?? [];
   expect(commands[1]?.command.slice(0, 2)).toEqual(['setsid', '--wait']);
   expect(line(commands, 1)).toContain('echo "uw-model-session $$" >&2; exec "$@"');
   expect(line(commands, 1)).toContain('claude');
-  expect(line(commands, 2)).toContain(`if [ "$4" = "${SID.toString()}" ]`);
-  expect(line(commands, 2)).toContain('kill -KILL');
-  expect(line(commands, 2).indexOf('kill -KILL')).toBeLessThan(
-    line(commands, 2).indexOf('rev-parse'),
-  );
-  for (const index of [0, 2, 3, 4, 5]) {
+  expect(line(commands, 2)).toContain('for sig in STOP KILL; do');
+  expect(line(commands, 2)).toContain(`[ "$4" = "${SID.toString()}" ] || continue`);
+  expect(line(commands, 2)).toContain('exit 81');
+  expect(line(commands, 2)).not.toContain('rev-parse');
+  expect(line(commands, 3)).toContain('rev-parse --verify');
+  expect(configsAtKill).toEqual([0]);
+  expect(host.sessions[0]?.files.filter((file) => file.path === repoConfig)).toHaveLength(1);
+  for (const index of [0, 2, 3, 4, 5, 6]) {
     expect(commands[index]?.command[0]).not.toBe('setsid');
   }
+}
+
+async function survivorsRefused(): Promise<void> {
+  const { engine, host } = engineOn([
+    prepared,
+    reply(result),
+    { exitCode: 81, stdout: '', stderr: '' },
+  ]);
+  expect(await engine.work(fixWork)).toMatchObject({ outcome: 'checks_not_run_locally' });
+  expect(host.sessions[0]?.commands).toHaveLength(3);
+  expect(host.sessions[0]?.files.some((file) => file.path === repoConfig)).toBe(false);
 }
 
 async function noSession(): Promise<void> {
@@ -180,14 +234,17 @@ async function noSession(): Promise<void> {
 }
 
 async function extractionRefused(): Promise<void> {
-  const { engine, host } = engineOn([
-    prepared,
-    reply(result),
-    inspected,
-    { exitCode: 80, stdout: '', stderr: '' },
-  ]);
-  expect(await engine.work(fixWork)).toMatchObject({ outcome: 'checks_not_run_locally' });
-  expect(host.sessions[0]?.commands).toHaveLength(4);
+  for (const exitCode of [79, 80, 82]) {
+    const { engine, host } = engineOn([
+      prepared,
+      reply(result),
+      killed,
+      inspected,
+      { exitCode, stdout: '', stderr: '' },
+    ]);
+    expect(await engine.work(fixWork)).toMatchObject({ outcome: 'checks_not_run_locally' });
+    expect(host.sessions[0]?.commands).toHaveLength(5);
+  }
 }
 
 async function failingChecks(): Promise<void> {
@@ -198,6 +255,7 @@ async function failingChecks(): Promise<void> {
       statuses.push((await egress(pushed())).status, (await egress(registryGet())).status);
       return reply(result);
     },
+    killed,
     inspected,
     passed,
     async (egress) => {
@@ -211,8 +269,19 @@ async function failingChecks(): Promise<void> {
     inputTokens: 1200,
   });
   expect(statuses).toEqual([403, 403, 200, 403, 403]);
-  expect(host.sessions[0]?.commands).toHaveLength(5);
+  expect(host.sessions[0]?.commands).toHaveLength(6);
   expect(sent.map((request) => request.url)).toEqual(['https://registry.npmjs.org/react']);
+}
+
+function configsOf(
+  files: readonly { readonly path: string; readonly content: string }[],
+  verified: string,
+): { repo: readonly boolean[]; fresh: readonly boolean[] } {
+  const at = (path: string) => files.filter((file) => file.path === path);
+  return {
+    repo: at(repoConfig).map((file) => file.content.includes('hooksPath')),
+    fresh: at(`${verified}/config`).map((file) => file.content.includes('bare = true')),
+  };
 }
 
 async function passingChecks(): Promise<void> {
@@ -220,6 +289,7 @@ async function passingChecks(): Promise<void> {
   const { engine, host, sent } = engineOn([
     prepared,
     reply(result),
+    killed,
     inspected,
     passed,
     passed,
@@ -232,15 +302,15 @@ async function passingChecks(): Promise<void> {
   expect(statuses).toEqual([200]);
   const session = host.sessions[0];
   const commands = session?.commands ?? [];
-  expect(line(commands, 5)).toContain(`push --no-verify --quiet "$UW_CLONE_URL" "${checked}:`);
-  expect(line(commands, 5)).toContain('core.hooksPath=/dev/null');
-  expect(line(commands, 5)).toContain('GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1');
-  expect(session?.commands[4]?.env).toMatchObject({
+  const { verified } = dirsOf(session);
+  expect(line(commands, 6)).toContain(`push --no-verify --quiet "$UW_CLONE_URL" "${checked}:`);
+  expect(line(commands, 6)).toContain('core.hooksPath=/dev/null');
+  expect(line(commands, 6)).toContain('GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1');
+  expect(session?.commands[5]?.env).toMatchObject({
     npm_config_registry: 'http://registry.internal/',
   });
   expect(line(commands, 1)).not.toContain('Bash(curl *)');
-  const configs = session?.files.filter((file) => file.path === '/workspace/repo/.git/config');
-  expect(configs?.map((file) => file.content.includes('hooksPath'))).toEqual([false, false]);
+  expect(configsOf(session?.files ?? [], verified)).toEqual({ repo: [false], fresh: [true] });
   const prompt = session?.files.find((file) => file.path === '/workspace/PROMPT.md');
   expect(prompt?.content).toContain('Do not push');
   expect(sent.map((request) => request.url)).toEqual([
@@ -252,10 +322,11 @@ async function unreadHead(): Promise<void> {
   const { engine, host } = engineOn([
     prepared,
     reply(result),
+    killed,
     { exitCode: 128, stdout: '', stderr: 'fatal: bad object' },
   ]);
   expect(await engine.work(fixWork)).toMatchObject({ outcome: 'checks_not_run_locally' });
-  expect(host.sessions[0]?.commands).toHaveLength(3);
+  expect(host.sessions[0]?.commands).toHaveLength(4);
 }
 
 async function headMoved(): Promise<void> {
@@ -263,6 +334,7 @@ async function headMoved(): Promise<void> {
   const { engine, sent } = engineOn([
     prepared,
     reply(result),
+    killed,
     inspected,
     passed,
     passed,
@@ -283,6 +355,7 @@ async function leaseRenewed(): Promise<void> {
   const { engine } = engineOn([
     prepared,
     reply(result),
+    killed,
     inspected,
     passed,
     async () => {
@@ -344,19 +417,24 @@ describe('FL-4 the platform pushes only the commit the checks ran on', () => {
   it('FL-4 a head the host cannot read runs no checks and pushes nothing', unreadHead);
 
   it(
-    'FL-4 the checks run on the raw blobs of the commit that is pushed, past replaced objects, hidden index entries and attributes',
+    'FL-4 the checks run on the raw blobs of the pushed commit re-hashed into a fresh repository, and the push leaves from that repository',
     checkedIsPushed,
   );
 
   it(
-    'FL-4 the model runs in its own session, and every process left in it is killed before the checks',
+    'FL-4 the model runs in its own session, every process left in it is stopped then killed, and only then is the config rewritten',
     leftoversKilled,
   );
 
   it('FL-4 a model exec that did not announce its session runs no checks', noSession);
 
   it(
-    'FL-4 a refused extraction (a symlink, a submodule, a traversal or a redirected .git) runs no checks',
+    'FL-4 a session whose members outlast the stop-then-kill passes runs no checks and writes no config',
+    survivorsRefused,
+  );
+
+  it(
+    'FL-4 a refused extraction (a redirected .git or alternates, a refused entry, or a transfer that does not re-hash whole) runs no checks',
     extractionRefused,
   );
 
