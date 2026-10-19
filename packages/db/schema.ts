@@ -63,6 +63,9 @@ const restrictedNever = { classification: 'restricted', offlineEligibility: 'nev
 const emptyText = sql`'{}'::text[]`;
 const breakerEventNames = breakerLevelSchema.options.map((level) => `breaker_${level}`);
 const live = (outcome: AnyPgColumn) => sql`${outcome} IN ('running', 'hibernated')`;
+type Lending = Record<'id' | 'harnessId' | 'persona' | 'capability' | 'grantor', AnyPgColumn>;
+type LentKey = [AnyPgColumn, AnyPgColumn, AnyPgColumn, AnyPgColumn, AnyPgColumn];
+const lentKey = (d: Lending): LentKey => [d.id, d.harnessId, d.persona, d.capability, d.grantor];
 const boundedArray = (column: AnyPgColumn, most: number) =>
   sql`jsonb_typeof(${column}) = 'array' AND jsonb_array_length(${column}) <= ${sql.raw(String(most))}`;
 
@@ -175,6 +178,7 @@ export const delegations = declareTable(
     supersedes: uuid('supersedes'),
     traceId: uuid('trace_id').notNull(),
     maxTier: text('max_tier'),
+    grantor: text('grantor').generatedAlwaysAs(sql`'human:' || "person_id"::text`),
   },
   restrictedNever,
   (t) => [
@@ -192,7 +196,7 @@ export const delegations = declareTable(
       sql`(${t.capability} = 'merge') = (${t.maxTier} IS NOT NULL)`,
     ),
     uniqueIndex('delegations_id_harness').on(t.id, t.harnessId),
-    uniqueIndex('delegations_lent_binding').on(t.id, t.harnessId, t.persona, t.capability),
+    uniqueIndex('delegations_lent_binding').on(...lentKey(t)),
     index('delegations_person').on(t.personId),
     index('delegations_harness').on(t.harnessId),
     uniqueIndex('delegations_supersedes_once')
@@ -393,13 +397,8 @@ export const gateDecisions = declareTable(
     }),
     foreignKey({
       name: 'gate_decisions_lent_binding_fk',
-      columns: [t.delegationId, t.harnessId, t.agentActor, t.delegatedCapability],
-      foreignColumns: [
-        delegations.id,
-        delegations.harnessId,
-        delegations.persona,
-        delegations.capability,
-      ],
+      columns: [t.delegationId, t.harnessId, t.agentActor, t.delegatedCapability, t.actor],
+      foreignColumns: lentKey(delegations),
     }),
     check(
       'gate_decisions_agent_with_delegation',
