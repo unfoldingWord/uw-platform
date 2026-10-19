@@ -116,10 +116,11 @@ async function reviewFenced(db: Database): Promise<void> {
   const ran = await ranPrompts(rig, start, answer);
   expect(ran.result).toBe('reviewed');
   const scan = scanFences(ran.works[0] ?? '');
-  expect(scan.spans.map((span) => span.source)).toEqual(['page_from_agent', 'pr_diff']);
-  expect(scan.spans[1]?.text).toBe('diff --git a/x b/x\n');
+  expect(scan.spans.map((span) => span.source)).toEqual(['pr_title', 'page_from_agent', 'pr_diff']);
+  expect(scan.spans[0]?.text).toBe('Run the hosted Builder');
+  expect(scan.spans[2]?.text).toBe('diff --git a/x b/x\n');
   expect(scan.outside).not.toContain('diff --git');
-  expect(scan.outside).toContain('Item: Run the hosted Builder');
+  expect(scan.outside).not.toContain('Run the hosted Builder');
 }
 
 async function buildFenced(db: Database): Promise<void> {
@@ -137,7 +138,7 @@ async function buildFenced(db: Database): Promise<void> {
 }
 
 describe.skipIf(!testServer)('UC-2 a hosted run fences the outside text it reads', () => {
-  it('UC-2 a review run holds the pull request diff only inside a pr_diff fence', () =>
+  it('UC-2 a review run on an item with a pull request and no issue fences the title as pr_title and the diff as pr_diff', () =>
     withAppDatabase(reviewFenced));
   it('UC-2 a build run holds its context only inside a page_from_agent fence, in scout and work', () =>
     withAppDatabase(buildFenced));
@@ -191,7 +192,7 @@ async function contextPrompt(rig: HostRig, runId: string, as: Principal | null):
     const context = await readContext(open);
     const read = {
       title: open.scene.item.title,
-      fromIssue: false,
+      titleSource: null,
       context,
       prompts: [],
       comments: [],
