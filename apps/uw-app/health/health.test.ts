@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createClient } from '@uw/db/client';
 import { healthReportSchema, type HealthIndicator } from '@uw/contracts';
 import { createApp } from '../app.tsx';
+import type { Bindings } from '../env.ts';
 import { hyperdriveDatabase, type DatabaseHandle } from '../database.ts';
 import { platformDeps } from '../deps.ts';
 import { fixtureAccessEnv } from '../testing/access-keys.ts';
@@ -130,6 +131,13 @@ describe('GL-1 the staging probe answers the database through Hyperdrive', () =>
     });
     expect(bound).not.toBeNull();
     await bound?.release();
+  });
+
+  it('GL-1 a database address without the HYPERDRIVE binding opens nothing', () => {
+    const addressOnly: Bindings & { readonly DATABASE_URL: string } = {
+      DATABASE_URL: 'postgres://unused@127.0.0.1:1/unused',
+    };
+    expect(hyperdriveDatabase(addressOnly)).toBeNull();
   });
 
   it('GL-1 the probe reports the database ok, with its latency, once the binding answers', async () => {
