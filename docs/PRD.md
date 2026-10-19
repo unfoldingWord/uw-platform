@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Approved. v1 (sections 7.1 to 7.10) was built as v0.1.0, merge commit `83e3f64`, tagged 2026-10-12. v0.2.0 (section 7.11) was approved on 2026-10-15 and is the next build |
+| Status | Approved. v1 (sections 7.1 to 7.10) was built as v0.1.0, merge commit `83e3f64`, tagged 2026-10-12. v0.2.0 (section 7.11), approved on 2026-10-15, is built on `build/v0.2.0` (pull request #84) and waits for Ian's Codex review and merge; GL-1's live switch and the week of shadow mode are a person's, on the tag (`docs/progress_tracker.md`, Release criteria, v0.2.0) |
 | Version | 0.2 |
 | Date | 2026-10-15 (v1 text dated 2026-10-01) |
 | Owner | Ian Lindsley |
