@@ -34,7 +34,7 @@ export type DelegatedMerge = {
   readonly grantor: string;
 };
 
-type PostedReviews = () => readonly ReviewRequest[];
+export type PostedReviews = () => readonly ReviewRequest[];
 
 export const protectedDirectory = 'src/auth/';
 
