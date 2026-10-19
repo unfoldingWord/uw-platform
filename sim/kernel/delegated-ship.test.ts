@@ -81,6 +81,14 @@ function lastEvent(scene: Scene) {
   return itemLog(scene.world, scene.harnessId, scene.item.itemId).then((log) => log.events.at(-1));
 }
 
+function heldFor(loan: MergeLoan, reason: string) {
+  return {
+    name: 'gate_refused_to_agent',
+    actor: loan.agent.identity,
+    evidence: { decision: 'approve', stage: 'ship', reason },
+  };
+}
+
 async function writesOneDecision(scene: Scene): Promise<void> {
   const loan = await simLendMerge(scene.world, scene.admin, {
     harnessId: scene.harnessId,
@@ -283,6 +291,7 @@ async function shadowHarness(scene: Scene): Promise<void> {
     status: 'accepted',
     value: { result: 'parked', failures: ['shadow'] },
   });
+  expect(await lastEvent(scene)).toMatchObject(heldFor(loan, 'shadow'));
   expect(await rows(scene)).toEqual([]);
 }
 
@@ -304,6 +313,7 @@ async function loopTargetHeldBack(scene: Scene): Promise<void> {
     input,
   );
   expect(submitted).toMatchObject({ status: 'accepted', value: { failures: ['gate_target'] } });
+  expect(await lastEvent(scene)).toMatchObject(heldFor(loan, 'gate_target'));
   expect(await rows(scene)).toEqual([]);
 }
 
@@ -338,6 +348,7 @@ async function grantorNotAHolder(scene: Scene): Promise<void> {
     status: 'accepted',
     value: { result: 'parked', failures: ['delegation_lapsed'] },
   });
+  expect(await lastEvent(scene)).toMatchObject(heldFor(loan, 'delegation_lapsed'));
   expect(await rows(scene)).toEqual([]);
 }
 
@@ -389,13 +400,13 @@ describe('MD-3 an agent under a merge delegation takes the Ship exit, and the re
   it('MD-3 poll_queue offers the Ship item under a merge delegation and not under a build one', () =>
     inScene({}, pollOffersShip));
 
-  it('MD-3 a submit naming a loop target parks for a person with failures gate_target and writes nothing', () =>
+  it('MD-3 a submit naming a loop target parks for a person with failures gate_target, records the hold and writes no decision', () =>
     inScene({}, loopTargetHeldBack));
 
   it('MD-3 a grantor who lost admin after the claim refuses the submit delegation_lapsed and writes nothing', () =>
     inScene({}, grantorLostAdminAfterClaim));
 
-  it('MD-3 a grantor missing from the area holders refuses the submit delegation_lapsed and writes nothing', () =>
+  it('MD-3 a grantor missing from the area holders parks with failures delegation_lapsed, records the hold and writes no decision', () =>
     inScene({}, grantorNotAHolder));
 });
 
@@ -412,6 +423,6 @@ describe('MD-4 what a merge delegation never covers', () => {
   it('MD-4 a build delegation is refused pickup at Ship, and a merge delegation at a deploy stage', () =>
     inScene({}, buildAndDeploy));
 
-  it('MD-4 a shadow harness never takes the delegated exit', () =>
+  it('MD-4 a shadow harness never takes the delegated exit, and records the hold', () =>
     inScene({ shadow: true }, shadowHarness));
 });

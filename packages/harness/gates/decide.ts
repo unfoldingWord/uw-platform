@@ -103,7 +103,11 @@ function refuseAgent(
     const harness = await tx.harnesses.read.byId(item.harnessId);
     if (harness === null) return notFound;
     await recordItemEvents(tx, recordContext(ports, caller, at), item.itemId, [
-      draft('gate_refused_to_agent', { decision: input.decision, stage: item.stageKey }),
+      draft('gate_refused_to_agent', {
+        decision: input.decision,
+        stage: item.stageKey,
+        reason: null,
+      }),
     ]);
     if (!allowed(caller.actor, 'read', harness, at)) return notFound;
     return refused('gate_refused_to_agent', { actor: caller.actor.identity });

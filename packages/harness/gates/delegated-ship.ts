@@ -1,4 +1,4 @@
-import type { DelegatedMerge, Harness, ItemState, Stage } from '@uw/contracts';
+import type { DelegatedHold, DelegatedMerge, Harness, ItemState, Stage } from '@uw/contracts';
 import { allowed, isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { recordDelegationRequired } from '../delegations/acting.ts';
@@ -104,7 +104,7 @@ export async function delegationRequiredAtShip(
   return recordDelegationRequired(tx, context, item.itemId, stage.key);
 }
 
-function heldBack(scene: DelegatedScene): string | null {
+function heldBack(scene: DelegatedScene): DelegatedHold | null {
   if (scene.harness.shadow) return 'shadow';
   return scene.item.gateTarget === null ? null : 'gate_target';
 }
@@ -170,6 +170,17 @@ async function recordDelegatedDecision(
   return { item: recorded.item, failures: [] };
 }
 
+async function recordHold(
+  tx: StoreTransaction,
+  scene: DelegatedScene,
+  reason: DelegatedHold,
+): Promise<DelegatedOutcome> {
+  const { item, stage, context } = scene;
+  const refusal = draft('gate_refused_to_agent', { decision: 'approve', stage: stage.key, reason });
+  const recorded = await recordItemEvents(tx, context, item.itemId, [refusal]);
+  return { item: recorded.item, failures: [reason] };
+}
+
 export async function shipUnderDelegation(
   ports: DelegatedPorts,
   tx: StoreTransaction,
@@ -178,13 +189,13 @@ export async function shipUnderDelegation(
   const { item, harness, stage, context, read } = scene;
   if (!delegableExit(stage) || item.gateStatus !== 'parked') return null;
   const held = heldBack(scene);
-  if (held !== null) return { item, failures: [held] };
+  if (held !== null) return recordHold(tx, scene, held);
   const found = await lentInDecision(ports, tx, {
     delegationId: scene.delegationId,
     email: read.email,
     context,
   });
-  if (typeof found === 'string') return { item, failures: [found] };
+  if (typeof found === 'string') return recordHold(tx, scene, found);
   const gate = { item, harness, stage, approver: found.approver, context };
   const ship = await shipCheck(tx, gate, 'approve', { item, facts: read.facts }, found.lent);
   if (ship.refusal !== null) return { item, failures: reasonsOf(ship.refusal) };
