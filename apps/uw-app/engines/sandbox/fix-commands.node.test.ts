@@ -64,3 +64,15 @@ describe('FL-4 the model session is killed whole, on a real shell', () => {
     expect(settled(sid)).toEqual([]);
   });
 });
+
+describe('FL-4 the kill pauses between passes', () => {
+  it('FL-4 a pass that still found a process sleeps briefly before the next, so the 100 passes span time', () => {
+    const lines = (killSessionCommand(4242)[2] ?? '').split('\n').map((line) => line.trim());
+    const broke = lines.indexOf('[ "$left" = 0 ] && break');
+    const pause = lines.indexOf('sleep 0.02');
+    const loopEnd = lines.lastIndexOf('done', lines.length - 2);
+    expect(broke).toBeGreaterThan(0);
+    expect(pause).toBeGreaterThan(broke);
+    expect(pause).toBeLessThan(loopEnd);
+  });
+});

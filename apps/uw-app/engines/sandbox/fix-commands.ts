@@ -5,6 +5,7 @@ export const NO_CHECKS_EXIT = 78;
 const DECLARED_CHECKS = '.harness/checks.sh';
 const SESSION_LINE = 'uw-model-session';
 const KILL_PASSES = 100;
+const PASS_PAUSE = '0.02';
 const sessionLine = /^uw-model-session (\d{1,10})$/u;
 export const SAFE_GIT = [
   'GIT_NO_REPLACE_OBJECTS=1 GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1',
@@ -56,6 +57,7 @@ export function killSessionCommand(sid: number): readonly string[] {
       '    [ "$left" = 0 ] && break',
       '    tries=$((tries + 1))',
       `    [ "$tries" -lt ${KILL_PASSES.toString()} ] || exit 81`,
+      `    sleep ${PASS_PAUSE}`,
       '  done',
       'done',
     ].join('\n'),
