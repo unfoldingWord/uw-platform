@@ -230,6 +230,15 @@ function describeLentBinding(subject: DelegatedSubject): void {
     }
     expect(outcomes).toMatchObject([binding, binding]);
   });
+
+  it('MD-3 refuses a delegated row whose approver is not the grantor, naming gate_decisions_lent_binding_fk', async () => {
+    const outcome = await plantDelegated(subject, {
+      base: 0x8e00,
+      key: 'gateway-delegated-other-approver',
+      row: (row) => ({ ...row, actor: identitySchema.parse('human:ian') }),
+    });
+    expect(outcome).toMatchObject(binding);
+  });
 }
 
 export function describeDelegatedDecisions(subject: DelegatedSubject): void {
