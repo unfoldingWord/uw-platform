@@ -11,7 +11,7 @@ import type { EngineWork, EngineWorkResult } from '../engines/seam.ts';
 import { builderAccess, pulledChange } from './builder-github.ts';
 import type { RunDeps } from './deps.ts';
 import { contextText, fixPrompt, reviewPrompt, scoutPrompt, workPrompt } from './prompts.ts';
-import { promptSourceOf, reviewSourceOf, type ReadText } from './prompt-source.ts';
+import { promptSourceOf, reviewSourceOf, titleSourceOf, type ReadText } from './prompt-source.ts';
 import {
   callCore,
   countedHttp,
@@ -103,7 +103,7 @@ export function readBody(deps: RunDeps, runId: string): Promise<ReadDone | Halte
     return {
       kind: 'read',
       title: item.title,
-      fromIssue: item.issue !== null,
+      titleSource: titleSourceOf(item),
       context,
       prompts: [...prompts],
       comments: [],

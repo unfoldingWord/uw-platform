@@ -10,7 +10,7 @@ const context = `{"package":[{"title":"${injection}"}]}`;
 const diff = `diff --git a/x b/x\n+\`\`\`\`\n+${injection}\n`;
 const fromIssue: ReadText = {
   title,
-  fromIssue: true,
+  titleSource: 'issue_body',
   context,
   prompts: ['Keep it small.'],
   comments: [],
@@ -68,12 +68,27 @@ describe('UC-2 the Builder work prompt fences every outside string', () => {
 
   it('UC-2 keeps a title a person wrote as platform text', () => {
     const typed = promptSourceOf(
-      { ...fromIssue, title: 'Tidy the board', fromIssue: false },
+      { ...fromIssue, title: 'Tidy the board', titleSource: null },
       itemId,
     );
     const scan = scanFences(workPrompt(typed));
     expect(scan.spans.map((span) => span.source)).toEqual(['page_from_agent']);
     expect(scan.outside).toContain('Item: Tidy the board');
+  });
+
+  it('UC-2 renders a joined pull request title inside a pr_title fence in every prompt', () => {
+    const joined = promptSourceOf({ ...fromIssue, titleSource: 'pr_title' }, itemId);
+    const prompts = [
+      workPrompt(joined),
+      scoutPrompt(joined),
+      fixPrompt(joined),
+      reviewPrompt({ ...joined, diff: untrusted({ source: 'pr_diff', itemId, text: diff }) }),
+    ];
+    for (const prompt of prompts) {
+      const scan = scanFences(prompt);
+      expect(scan.spans.at(0)).toEqual({ source: 'pr_title', text: title });
+      expect(scan.outside).not.toContain(injection);
+    }
   });
 });
 
