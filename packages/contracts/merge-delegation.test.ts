@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { delegableTierSchema, wakeReasonSchema } from './closed-sets.ts';
+import { delegableTierSchema, delegatedHoldSchema, wakeReasonSchema } from './closed-sets.ts';
 import { commandSchema } from './commands.ts';
 import { eventEvidenceSchemas } from './event-evidence.ts';
 import { harnessSchema } from './harness.ts';
@@ -125,5 +125,23 @@ describe('MD-6 a delegated merge wakes its grantor', () => {
     expect(eventEvidenceSchemas.delegated_merge.parse(merged)).toEqual(merged);
     const high = { ...merged, maxTier: 'high' };
     expect(eventEvidenceSchemas.delegated_merge.safeParse(high).success).toBe(false);
+  });
+});
+
+describe('MD-3 a delegated exit held for a person records why', () => {
+  it('MD-3 gate_refused_to_agent names the closed-set hold, and an earlier event reads with none', () => {
+    expect(delegatedHoldSchema.options).toEqual([
+      'shadow',
+      'gate_target',
+      'delegation_lapsed',
+      'delegation_required',
+    ]);
+    const held = { decision: 'approve', stage: 'ship', reason: 'gate_target' };
+    expect(eventEvidenceSchemas.gate_refused_to_agent.parse(held)).toEqual(held);
+    expect(
+      eventEvidenceSchemas.gate_refused_to_agent.parse({ decision: 'approve', stage: 'ship' }),
+    ).toEqual({ decision: 'approve', stage: 'ship', reason: null });
+    const raw = { ...held, reason: 'Error: grantor missing' };
+    expect(eventEvidenceSchemas.gate_refused_to_agent.safeParse(raw).success).toBe(false);
   });
 });

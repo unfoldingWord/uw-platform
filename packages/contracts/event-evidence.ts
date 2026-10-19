@@ -4,6 +4,7 @@ import {
   connectorSchema,
   costBasisSchema,
   delegableTierSchema,
+  delegatedHoldSchema,
   delegationLapseSchema,
   engineSchema,
   findingWeightSchema,
@@ -213,7 +214,11 @@ const gateEvidence = {
   gate_rejected: z.strictObject({ decisionId: id, stage, findings: z.array(text) }),
   gate_taken_over: z.strictObject({ decisionId: id, stage, holder: identitySchema }),
   gate_overridden: z.strictObject({ decisionId: id, stage, reason: nonBlank }),
-  gate_refused_to_agent: z.strictObject({ decision: gateDecisionSchema, stage }),
+  gate_refused_to_agent: z.strictObject({
+    decision: gateDecisionSchema,
+    stage,
+    reason: delegatedHoldSchema.nullable().default(null),
+  }),
   ship_refused: z.strictObject({ stage, reasons: z.array(shipRefusalSchema).min(1) }),
   connector_succeeded: z.strictObject({
     connector: effect,

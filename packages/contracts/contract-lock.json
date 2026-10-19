@@ -8374,6 +8374,7 @@
         "cost-basis": ["metered", "subscription"],
         "data-source-kind": ["web_analytics", "mailing_list", "manual"],
         "delegable-tier": ["low", "standard"],
+        "delegated-hold": ["shadow", "gate_target", "delegation_lapsed", "delegation_required"],
         "delegation-lapse": ["expired", "revoked", "grant_lost"],
         "engine": [
           "claude-messages",
