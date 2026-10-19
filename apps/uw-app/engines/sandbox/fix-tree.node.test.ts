@@ -54,8 +54,8 @@ function runIn(
   env: Readonly<Record<string, string>> = {},
 ): number | null {
   const script = (command[2] ?? '').replaceAll(REPOSITORY_DIR, repo);
-  return spawnSync('sh', ['-c', script], { encoding: 'utf8', env: { ...process.env, ...env } })
-    .status;
+  const assigned = Object.entries(env).map(([key, value]) => `${key}=${value}`);
+  return spawnSync('env', [...assigned, 'sh', '-c', script], { encoding: 'utf8' }).status;
 }
 
 function extracted(repo: string, sha: string): { status: number | null; dirs: TreeDirs } {
