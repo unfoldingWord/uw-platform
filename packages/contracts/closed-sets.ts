@@ -88,6 +88,12 @@ export const gateStatusSchema = z.enum(['working', 'parked', 'checks_failed', 'd
 export const branchStateSchema = z.enum(['none', 'active', 'abandoned']);
 export const runOutcomeSchema = z.enum(['running', 'hibernated', 'stopped', 'completed', 'failed']);
 export const delegationLapseSchema = z.enum(['expired', 'revoked', 'grant_lost']);
+export const delegatedHoldSchema = z.enum([
+  'shadow',
+  'gate_target',
+  'delegation_lapsed',
+  'delegation_required',
+]);
 
 export const taskStatusSchema = z.enum(['suggested', 'open', 'done', 'dismissed']);
 
@@ -96,6 +102,7 @@ export type GateStatus = z.infer<typeof gateStatusSchema>;
 export type BranchState = z.infer<typeof branchStateSchema>;
 export type RunOutcome = z.infer<typeof runOutcomeSchema>;
 export type DelegationLapse = z.infer<typeof delegationLapseSchema>;
+export type DelegatedHold = z.infer<typeof delegatedHoldSchema>;
 
 export const runHibernationSchema = z.enum(['gate', 'paused', 'breaker']);
 export const runStopSchema = z.enum([

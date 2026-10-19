@@ -194,6 +194,7 @@ export const schemaRegistry: Record<string, ZodType> = {
   'branch-state': closedSets.branchStateSchema,
   'run-outcome': closedSets.runOutcomeSchema,
   'delegation-lapse': closedSets.delegationLapseSchema,
+  'delegated-hold': closedSets.delegatedHoldSchema,
   'run-hibernation': closedSets.runHibernationSchema,
   'run-stop': closedSets.runStopSchema,
   'run-failure': closedSets.runFailureSchema,
