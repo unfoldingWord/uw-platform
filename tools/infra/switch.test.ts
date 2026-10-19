@@ -23,7 +23,9 @@ type Located = { readonly site: string; readonly job: Job };
 
 const workflows = '.github/workflows';
 const gated = "steps.gate.outputs.configured == 'true'";
-const neonName = /\b(?:secrets|vars)\.(NEON_[A-Z_]+)\b/g;
+const secretName = /\bsecrets\.([A-Z][A-Z0-9_]*)\b/g;
+const settingName = /\b(?:secrets|vars)\.([A-Z][A-Z0-9_]*)\b/g;
+const issuedByGitHub = 'GITHUB_TOKEN';
 const gateRun = /^bash \.github\/scripts\/secret-gate\.sh ([A-Z_]+)$/;
 const placeholder = 'set-at-go-live';
 const goLiveFiles = ['infra/uw-app/wrangler.go-live.toml', 'infra/uw-ingest/wrangler.go-live.toml'];
@@ -36,19 +38,37 @@ function jobsIn(file: string): [string, Job][] {
   return Object.entries(workflow.jobs ?? {});
 }
 
-function neonNames(value: unknown): string[] {
-  return [...JSON.stringify(value).matchAll(neonName)].map((match) => match[1] ?? '');
+function namesMatching(value: unknown, pattern: RegExp): string[] {
+  return [...JSON.stringify(value).matchAll(pattern)]
+    .map((match) => match[1] ?? '')
+    .filter((name) => name !== issuedByGitHub);
 }
 
-function neonJobs(): Located[] {
+function secretNames(value: unknown): string[] {
+  return namesMatching(value, secretName);
+}
+
+function secretJobs(): Located[] {
   const files = readdirSync(workflows)
     .filter((file) => file.endsWith('.yml'))
     .sort();
   return files.flatMap((file) =>
     jobsIn(file)
-      .filter(([, job]) => neonNames(job).length > 0)
+      .filter(([, job]) => secretNames(job).length > 0)
       .map(([id, job]) => ({ site: `${file} ${id}`, job })),
   );
+}
+
+function goLiveSettings(): string[] {
+  return [...new Set(secretJobs().flatMap(({ job }) => namesMatching(job, settingName)))].sort();
+}
+
+function gateFaults(job: Job): string[] {
+  const secret = gateSecret(job);
+  const faults = secretNames(job).includes(secret) ? [] : [`gate on ${secret || 'nothing'}`];
+  const loose = ungatedSteps(job).map((index) => `step ${index}`);
+  const early = secretNames(job.env ?? {}).length > 0 ? ['job env'] : [];
+  return [...faults, ...loose, ...early];
 }
 
 function gateSecret(job: Job): string {
@@ -60,7 +80,7 @@ function ungatedSteps(job: Job): number[] {
   const steps = job.steps ?? [];
   const gate = steps.findIndex((step) => step.id === 'gate');
   return steps.flatMap((step, index) => {
-    const early = index < gate && neonNames(step).length > 0;
+    const early = index < gate && secretNames(step).length > 0;
     const loose = index > gate && step.if !== gated;
     return early || loose ? [index] : [];
   });
@@ -118,49 +138,73 @@ function stagingProbe(): string {
   return `${workflow.jobs['deploy-staging']?.env?.['STAGING_URL'] ?? ''}/health/probe`;
 }
 
+function plantedFaultsAreFlagged(): void {
+  const planted: Job = {
+    steps: [
+      { run: 'pnpm db:migrate', env: { DATABASE_URL: 'secrets.NEON_DIRECT_URL_STAGING' } },
+      { id: 'gate', run: 'bash .github/scripts/secret-gate.sh NEON_DIRECT_URL_STAGING' },
+      { run: 'pnpm db:migrate' },
+    ],
+  };
+  expect(gateSecret(planted)).toBe('NEON_DIRECT_URL_STAGING');
+  expect(gateFaults(planted)).toEqual(['step 0', 'step 2']);
+  const deploy = { run: 'wrangler deploy', env: { CLOUDFLARE_API_TOKEN: 'secrets.X_TOKEN' } };
+  expect(gateFaults({ steps: [deploy] })).toEqual(['gate on nothing', 'step 0']);
+  const elsewhere: Job = {
+    steps: [
+      { id: 'gate', run: 'bash .github/scripts/secret-gate.sh NEON_API_KEY' },
+      { ...deploy, if: gated },
+    ],
+  };
+  expect(gateFaults(elsewhere)).toEqual(['gate on NEON_API_KEY']);
+  expect(gateFaults({ env: { TOKEN: 'secrets.X_TOKEN' }, steps: [] })).toEqual([
+    'gate on nothing',
+    'job env',
+  ]);
+  expect(secretNames({ env: { GH: 'secrets.GITHUB_TOKEN' } })).toEqual([]);
+}
+
 describe('GL-1 every go-live job runs when its secret exists and skips while it is absent', () => {
-  it('GL-1 finds every job that reads a Neon secret, each behind a gate on a Neon secret', () => {
-    const jobs = neonJobs();
+  it('GL-1 finds every job that reads a secret GitHub does not issue, each behind a gate on a secret it reads', () => {
+    const jobs = secretJobs();
     expect(jobs.map((found) => found.site)).toEqual([
+      'cleanup-pr.yml cleanup-pr',
       'cleanup-pr.yml drop-neon-branch',
+      'deploy-pr.yml deploy-pr',
       'deploy-production.yml migrate-production',
+      'deploy-production.yml deploy-production',
+      'deploy-production.yml deploy-ingest-production',
       'deploy-staging.yml migrate-staging',
+      'deploy-staging.yml deploy-staging',
+      'deploy-staging.yml deploy-ingest-staging',
       'neon-pr.yml neon-branch',
     ]);
     for (const { site, job } of jobs) {
-      expect(gateSecret(job), site).toMatch(/^NEON_/);
-      expect(ungatedSteps(job), site).toEqual([]);
-      expect(neonNames(job.env ?? {}), site).toEqual([]);
+      expect(gateFaults(job), site).toEqual([]);
       expect(job.if ?? '', site).not.toMatch(/secrets/);
     }
   });
 
   it('GL-1 the gate opens each job when its secret is set and keeps it green when it is not', () => {
-    for (const { job } of neonJobs()) {
+    for (const { job } of secretJobs()) {
       expect(runGate(gateSecret(job), true)).toBe('configured=true\n');
       expect(runGate(gateSecret(job), false)).toBe('configured=false\n');
     }
   });
 
-  it('GL-1 flags a planted job that reads a Neon secret before its gate or runs a step outside it', () => {
-    const planted: Job = {
-      steps: [
-        { run: 'pnpm db:migrate', env: { DATABASE_URL: 'secrets.NEON_DIRECT_URL_STAGING' } },
-        { id: 'gate', run: 'bash .github/scripts/secret-gate.sh NEON_DIRECT_URL_STAGING' },
-        { run: 'pnpm db:migrate' },
-      ],
-    };
-    expect(gateSecret(planted)).toBe('NEON_DIRECT_URL_STAGING');
-    expect(ungatedSteps(planted)).toEqual([0, 2]);
-    expect(ungatedSteps({ steps: [{ run: 'pnpm db:migrate' }] })).toEqual([0]);
-  });
+  it(
+    'GL-1 flags a planted job that reads a secret before its gate, runs a step outside it, or has no gate',
+    plantedFaultsAreFlagged,
+  );
 });
 
 describe('GL-1 the runbook switches on what the go-live files leave unset', () => {
   it('GL-1 names every secret a go-live job reads and every value still set-at-go-live', () => {
     const section = switchSection();
-    const secrets = [...new Set(neonJobs().flatMap(({ job }) => neonNames(job)))].sort();
+    const secrets = goLiveSettings();
     expect(secrets).toEqual([
+      'CLOUDFLARE_ACCOUNT_ID',
+      'CLOUDFLARE_API_TOKEN',
       'NEON_API_KEY',
       'NEON_DIRECT_URL_PRODUCTION',
       'NEON_DIRECT_URL_STAGING',
