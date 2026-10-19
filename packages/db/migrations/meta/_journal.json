@@ -274,6 +274,13 @@
       "when": 1792162956566,
       "tag": "0038_observability_and_hooks",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1792419691458,
+      "tag": "0039_delegated_grantor_binding",
+      "breakpoints": true
     }
   ]
 }

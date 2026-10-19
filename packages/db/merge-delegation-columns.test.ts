@@ -118,7 +118,7 @@ function delegatedDecisionChecks(db: () => Db): void {
       'FOREIGN KEY (delegation_id, harness_id) REFERENCES delegations(id, harness_id)',
     );
     expect(await definitions(db(), ['gate_decisions_lent_binding_fk'])).toBe(
-      'FOREIGN KEY (delegation_id, harness_id, agent_actor, delegated_capability) REFERENCES delegations(id, harness_id, persona, capability)',
+      'FOREIGN KEY (delegation_id, harness_id, agent_actor, delegated_capability, actor) REFERENCES delegations(id, harness_id, persona, capability, grantor)',
     );
   });
 

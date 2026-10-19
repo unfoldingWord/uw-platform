@@ -154,6 +154,7 @@ const expectedColumns: Record<string, string[]> = {
     'supersedes',
     'trace_id',
     'max_tier',
+    'grantor',
   ],
   measurements: ['id', 'harness_id', 'item_id', 'source', 'name', 'value', 'as_of', 'recorded_at'],
   personas: ['identity', 'harness_id', 'page_id'],
