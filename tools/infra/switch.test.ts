@@ -190,3 +190,69 @@ describe('GL-1 the runbook switches on what the go-live files leave unset', () =
     expect(typeof parseSwitch(readFileSync('infra/go-live.json', 'utf8'))).toBe('boolean');
   });
 });
+
+const restatedRequirement = /\bFD-(?:6|7|10|12)\b/;
+const citation = /GL-1 switch, step (\d+)/;
+const closedLive = /None: closed by the live run/;
+const trackerSections = ['## Go-live hand-off', '## Not verified', '## Waiting on a person'];
+
+function sectionRows(tracker: string, heading: string): string[] {
+  const lines = tracker.split('\n');
+  const start = lines.indexOf(heading);
+  if (start === -1) return [];
+  const rest = lines.slice(start + 1);
+  const end = rest.findIndex((line) => line.startsWith('## '));
+  return (end === -1 ? rest : rest.slice(0, end)).filter((line) => line.startsWith('| '));
+}
+
+function requirementOf(row: string): string {
+  const cells = row
+    .split('|')
+    .slice(1, -1)
+    .map((cell) => cell.trim());
+  return /^\d{4}-\d{2}-\d{2}$/.test(cells[0] ?? '') ? (cells[1] ?? '') : (cells[2] ?? '');
+}
+
+function tracker(): string {
+  return readFileSync('docs/progress_tracker.md', 'utf8');
+}
+
+function restatedRows(): string[] {
+  const text = tracker();
+  return trackerSections
+    .flatMap((heading) => sectionRows(text, heading))
+    .filter((row) => restatedRequirement.test(requirementOf(row)));
+}
+
+function uncited(rows: readonly string[], steps: readonly number[]): string[] {
+  return rows.filter(
+    (row) => !closedLive.test(row) && !steps.includes(Number(citation.exec(row)?.[1])),
+  );
+}
+
+describe('GL-1 the tracker restates what FD-6, FD-7, FD-10 and FD-12 still miss', () => {
+  it('GL-1 every hand-off, Not verified and Waiting on a person row for them cites the runbook step that closes it', () => {
+    const rows = restatedRows();
+    expect(rows.length).toBeGreaterThanOrEqual(28);
+    expect(uncited(rows, runbookSteps(switchSection()))).toEqual([]);
+  });
+
+  it('GL-1 waits on a person for the live switch, in its own row and in the hand-off', () => {
+    const text = tracker();
+    const waiting = sectionRows(text, '## Waiting on a person').map(requirementOf);
+    const handOff = sectionRows(text, '## Go-live hand-off').map(requirementOf);
+    expect(waiting).toContain('GL-1');
+    expect(handOff).toContain('GL-1');
+  });
+
+  it('GL-1 flags a row that cites no step or a step the runbook does not have', () => {
+    const rows = [
+      '| 2026-10-01 | FD-7 | x | y |',
+      '| 2026-10-01 | FD-10 | x | see the GL-1 switch, step 9 |',
+      '| 2026-10-01 | FD-12 | x | see the GL-1 switch, step 1 |',
+      '| Not verified | 2026-10-01 | FD-6 FD-10 | None: closed by the live run on 2026-11-01. | x |',
+    ];
+    expect(uncited(rows, [1, 2])).toEqual(rows.slice(0, 2));
+    expect(rows.map(requirementOf)).toEqual(['FD-7', 'FD-10', 'FD-12', 'FD-6 FD-10']);
+  });
+});
