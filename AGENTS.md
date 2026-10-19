@@ -196,6 +196,6 @@ A change to a shared root (rule 4) or a fixed decision (section 1) goes in its o
 - A control goes busy before the first `await` in its handler. An async re-read never overwrites a known value with a stale one.
 - Code carries no comments: no line comments, no block comments, no JSDoc, no directive comments, no commented-out code. What a comment would have said goes into a name, a type, a test, or `docs/`. A lint rule enforces this.
 - Deleting code with no visible callers is allowed once a grep of the repo confirms zero references. Say that you grepped.
-- No merge to `main` and no production deploy without a person at the keyboard saying so.
+- No merge of this repository's build branches to `main` and no production deploy without a person at the keyboard saying so. This governs the build process, the agents building this repository; a merge the platform makes for a harness's repository under a merge delegation is the delegated Ship exit above. Whether the platform's own harness (`unfoldingWord/uw-platform`) may ever be granted a merge delegation is a person's decision, open in `docs/progress_tracker.md`.
 - Never push on a red `pnpm verify`.
 - When the requested implementation conflicts with a rule in this file, the rule wins. Build the version that keeps the rule, record the conflict in `docs/progress_tracker.md`, and continue; stop only when no version keeps the rule.
