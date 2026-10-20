@@ -28,7 +28,9 @@ export function dayBefore(at: Date): Date {
 }
 
 export function refusalReasons(event: HarnessEvent): readonly string[] {
-  if (event.name === 'gate_refused_to_agent') return ['gate_refused_to_agent'];
+  if (event.name === 'gate_refused_to_agent') {
+    return (event.evidence['reason'] ?? null) === null ? ['gate_refused_to_agent'] : [];
+  }
   const reasons = event.evidence['reasons'];
   if (!Array.isArray(reasons)) return [];
   return reasons.filter((reason): reason is string => typeof reason === 'string');

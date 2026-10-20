@@ -267,6 +267,8 @@ export function exitNotTaken(decision: DecisionColumns): SQL {
   return sql`NOT EXISTS (SELECT 1 FROM ${harnessEvents} approval JOIN ${harnessEvents} later ON later.harness_id = approval.harness_id AND later.item_id = approval.item_id AND later.position > approval.position WHERE approval.harness_id = ${decision.harnessId} AND approval.item_id = ${decision.itemId} AND approval.name = 'gate_approved' AND approval.evidence ->> 'decisionId' = ${decision.id}::text AND later.name IN ('connector_succeeded', 'connector_refused', 'delegated_exit_claimed'))`;
 }
 
+const notAHold = sql`NOT (${harnessEvents.name} = 'gate_refused_to_agent' AND ${harnessEvents.evidence} ->> 'reason' IS NOT NULL)`;
+
 async function countForPersona(
   executor: AnyExecutor,
   query: PersonaEventCount,
@@ -282,6 +284,7 @@ async function countForPersona(
         eq(harnessEvents.harnessId, query.harnessId),
         gte(harnessEvents.at, query.since),
         inArray(harnessEvents.name, [...query.names]),
+        notAHold,
         or(
           eq(harnessEvents.actor, `agent:${slug.data}`),
           sql`${harnessEvents.actor} ~ ${delegated}`,
