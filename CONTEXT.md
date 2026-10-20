@@ -411,8 +411,8 @@ _Avoid_: issue, ticket, story, task
 _Avoid_: PRD (that is `docs/PRD.md`), design doc, RFC
 
 **Plan**:
-`prd/An App For Everything - Platform Architecture Plan.md`, Jesse's design for the whole platform. The harness sits one level below it and consumes its ACL, pages and topology.
-_Avoid_: roadmap, vision (that is the Executive Brief)
+`prd/An App For Everything - Platform Architecture Plan.md`, the sponsor's design for the whole platform. The harness sits one level below it and consumes its ACL, pages and topology.
+_Avoid_: roadmap, vision (that is the Executive Brief, which is not in this repository)
 
 **Build-order step**:
 One of the eleven steps in PRD section 13. Each needs the ones before it; the progress tracker reports by step.
