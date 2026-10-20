@@ -15,7 +15,7 @@ Each document has one job. Load the one the task needs; do not restate one insid
 | [`prd/An App For Everything - Platform Architecture Plan.md`](prd/An%20App%20For%20Everything%20-%20Platform%20Architecture%20Plan.md) | The platform the harness sits in: ACL (§4), pages (§2), topology (§1), conventions (§0). Read the section a requirement cites |
 | [`docs/adr/`](docs/adr/) | Why the shape is this way. Read before changing it |
 | [`docs/progress_tracker.md`](docs/progress_tracker.md) | Where the build stands: requirements done, decisions made along the way, what was not verified, what waits on a person |
-| `ui-design/` and, when it lands, `design-system/` | The prototype and the tokens. See ADR 0007 |
+| `packages/ui/tokens/` and, when it lands, `design-system/` | The tokens. See ADR 0007 |
 | `docs/exceptions.md` | Recorded exceptions to the rules |
 
 Where the spec and the PRD disagree on design, the spec wins and the PRD is corrected. Where either disagrees with this file, they win on what and this file wins on how. GitHub issues #4 to #82 are history; the PRD's Appendix B maps each to the requirements that replaced it.
@@ -131,7 +131,7 @@ Adding a persona, an engine, a validator, a connector or a screen means adding a
 
 - Discovery is by registry, never by editing a switch. An `if (engineName)` or `if (personaName)` branch in shared code is the smell this rule forbids.
 - The shared roots are `packages/db/schema.ts`, `packages/db/schema-*.ts`, `packages/contracts/`, `packages/harness/ports.ts`, `packages/harness/store-ports.ts`, `packages/core/acl.ts`, `infra/`, `.github/workflows/`, `AGENTS.md`, `CONTEXT.md` and `docs/adr/`. A change to one goes in its own commit, never mixed with feature code, and the commit message names the shared root and why it changed.
-- `ui-design/` and `design-system/` are produced in Claude Design and synced here. Code reads them and never hand-edits them.
+- `design-system/` is produced in Claude Design and synced here. Code reads it and never hand-edits it.
 
 ### Rule 5. Exceptions are narrow, explicit, and recorded
 
@@ -145,7 +145,7 @@ Before writing a utility, a client, a parser or a component, search for an exist
 
 ## 6. UI rules
 
-- Before any UI work read ADR 0007, then `packages/ui/tokens/`, then the matching screen in `ui-design/` (Development, Agent Queues, Health) or `design-system/` when it exists.
+- Before any UI work read ADR 0007, then `packages/ui/tokens/`, then the existing screens under `apps/uw-app/views/`, or `design-system/` when it exists.
 - Tokens are the only source of a color, size or radius. A value not in the tokens is a design change, not a code change; the tokens-agree check fails the build on a hard-coded hex.
 - Every screen renders correctly in light and dark, at phone width, with visible focus and an accessible name on every control.
 - Every control returns an outcome; an unwired control says so. Never silence.
