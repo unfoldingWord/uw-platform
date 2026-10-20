@@ -155,7 +155,7 @@ A harness can opt into one unattended Ship exit. A person holding `admin` on the
 - An agent `merge` verb. It would put the merge on the MCP surface, where ADR 0002 says a gate verb cannot exist, and every host would serve it.
 - A per-repository auto-merge flag with no grantor. Nobody would be the approver of record, the expiry and revocation of ADR 0005 would not apply, and the Postgres rule would need an exception for a row with no person.
 - Running the merge on the agent's own request. It would put a GitHub write client in a kernel an agent's request builds, which ADR 0009 and the GH-6 checks keep out.
-- Letting a delegation cover `high`, deploy, publish or protected paths. Seth's fourth non-negotiable; those stay a person's at the keyboard.
+- Letting a delegation cover `high`, deploy, publish or protected paths. The bench owner's fourth non-negotiable; those stay a person's at the keyboard.
 
 **Consequences.** A harness that opts in merges a change nobody read, bounded by the tier, the protected paths, the expiry and the ship rule run twice, and the record names who lent the exit. Delegated merges are shown on the Gates screen, in the play-by-play and on `/health`, and wake the grantor. AGENTS.md section 10 names the one agent-reachable writer. Source: design `docs/superpowers/specs/2026-10-15-harness-v0-2-0-design.md` V2-1, V2-7 and section 5.2; PRD MD-1 to MD-6; spec D8, D18.
 ```

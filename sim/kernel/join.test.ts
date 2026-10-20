@@ -52,7 +52,7 @@ describe('GL-3 who may join', () => {
   it('refuses a join from a person or without a platform Reviewer requested', () =>
     inWorld(async (world) => {
       await createSimHarness(world, checkOnly, { repository: joinedRepository });
-      const other = await joinRequest(world, { requestedReviewers: ['seth-k'] });
+      const other = await joinRequest(world, { requestedReviewers: ['outside-reviewer'] });
       expect(reasonOf(other)).toBe('not_permitted');
       const person = simCaller(world, await simIan(world));
       const byPerson = await world.kernel.items.join(person, {

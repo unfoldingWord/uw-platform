@@ -6,13 +6,12 @@ The organization's operating platform, built as modules on one database with one
 
 - [`AGENTS.md`](AGENTS.md): the rules for anyone, human or agent, changing this repository. Read it in full before your first edit.
 - [`CONTEXT.md`](CONTEXT.md): the vocabulary. One word per concept, everywhere.
-- [`prd/Harness v1 - Architecture.md`](prd/Harness%20v1%20-%20Architecture.md): the ratified spec for the harness, with Jesse's review applied. What to build and why.
+- [`prd/Harness v1 - Architecture.md`](prd/Harness%20v1%20-%20Architecture.md): the ratified spec for the harness, with the sponsor's review applied. What to build and why.
 - [`docs/architecture.md`](docs/architecture.md): the shape. A pure kernel over ports, driven headlessly in a sim, with events as the spine.
 - [`docs/adr/`](docs/adr/): why the shape is this way.
 - [`docs/PRD.md`](docs/PRD.md): the work. Every requirement with a stable ID, the build order, the release criteria and the decision log. GitHub issues #4 to #82 are history; the PRD's Appendix B maps each to the requirements that replaced it.
 - [`docs/progress_tracker.md`](docs/progress_tracker.md): where the build stands.
-- [`prd/`](prd/): Jesse's platform corpus, which the harness sits under: the Executive Brief, the Platform Architecture Plan, Key Visuals, the council review, and the review of the harness spec.
-- [`ui-design/`](ui-design/): the Claude Design prototype of the platform; the source of the brand tokens until a `design-system/` folder lands.
+- [`prd/`](prd/): the platform corpus the harness sits under: the Platform Architecture Plan, Key Visuals, the harness spec and its review.
 
 ## Packages
 

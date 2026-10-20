@@ -34,7 +34,7 @@ async function boardLeavesBotOut(world: World): Promise<void> {
 
 async function boardCountsPerson(world: World): Promise<void> {
   const scene = await reviewWorld(world);
-  world.adapters.githubFacts.givenAuthor(shipPullRequest, 'seth-k');
+  world.adapters.githubFacts.givenAuthor(shipPullRequest, 'outside-reviewer');
   const caller = simCaller(world, scene.admin);
   const board = await world.kernel.views.board(caller, {
     harnessId: scene.harnessId,

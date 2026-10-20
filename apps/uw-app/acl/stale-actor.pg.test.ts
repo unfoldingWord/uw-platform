@@ -7,11 +7,11 @@ import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { grantRole, revokeRole } from './grant-commands.ts';
 
 const IAN_ID = '00000000-0000-4000-8000-000000000001';
-const JESSE_ID = '00000000-0000-4000-8000-000000000002';
+const SPONSOR_ID = '00000000-0000-4000-8000-000000000002';
 const KIM_ID = '00000000-0000-4000-8000-000000000003';
 const KIM_GRANT_ID = '00000000-0000-4000-8000-000000000103';
 const IAN_GRANT_ID = '00000000-0000-4000-8000-000000000101';
-const JESSE_GRANT_ID = '00000000-0000-4000-8000-000000000102';
+const SPONSOR_GRANT_ID = '00000000-0000-4000-8000-000000000102';
 
 function orgAdmin(personId: string, email: string, grantId: string): Principal {
   return personPrincipal({
@@ -22,12 +22,12 @@ function orgAdmin(personId: string, email: string, grantId: string): Principal {
   });
 }
 
-async function seedJesse(db: Database): Promise<void> {
+async function seedSponsor(db: Database): Promise<void> {
   await db.execute(
-    sql`INSERT INTO people (id, email, display_name, status) VALUES (${JESSE_ID}, 'jesse@unfoldingword.org', 'Jesse', 'active')`,
+    sql`INSERT INTO people (id, email, display_name, status) VALUES (${SPONSOR_ID}, 'sponsor@unfoldingword.org', 'Sponsor', 'active')`,
   );
   await db.execute(
-    sql`INSERT INTO role_grants (id, person_id, role, scope_kind, granted_by) VALUES (${JESSE_GRANT_ID}, ${JESSE_ID}, 'admin', 'org', ${IAN_ID})`,
+    sql`INSERT INTO role_grants (id, person_id, role, scope_kind, granted_by) VALUES (${SPONSOR_GRANT_ID}, ${SPONSOR_ID}, 'admin', 'org', ${IAN_ID})`,
   );
 }
 
@@ -50,13 +50,13 @@ async function liveGrantCount(db: Database): Promise<number> {
 describe.skipIf(!testServer)('FD-8 a command re-checks the caller under lock', () => {
   it('refuses a grant from a principal whose org admin grant was just revoked', () =>
     withAppDatabase(async (db) => {
-      await seedJesse(db);
-      const staleJesse = orgAdmin(JESSE_ID, 'jesse@unfoldingword.org', JESSE_GRANT_ID);
+      await seedSponsor(db);
+      const staleSponsor = orgAdmin(SPONSOR_ID, 'sponsor@unfoldingword.org', SPONSOR_GRANT_ID);
       const ian = orgAdmin(IAN_ID, 'ian.lindsley@unfoldingword.org', IAN_GRANT_ID);
       const revoked = await revokeRole(
         db,
         ian,
-        { command: 'revoke_role', requestId: randomUUID(), grantId: JESSE_GRANT_ID },
+        { command: 'revoke_role', requestId: randomUUID(), grantId: SPONSOR_GRANT_ID },
         randomUUID(),
         new Date(),
       );
@@ -64,11 +64,11 @@ describe.skipIf(!testServer)('FD-8 a command re-checks the caller under lock', (
       const before = await liveGrantCount(db);
       const result = await grantRole(
         db,
-        staleJesse,
+        staleSponsor,
         {
           command: 'grant_role',
           requestId: randomUUID(),
-          personId: JESSE_ID,
+          personId: SPONSOR_ID,
           role: 'admin',
           scopeKind: 'org',
           scopeArea: null,
@@ -85,20 +85,20 @@ describe.skipIf(!testServer)('FD-8 a command re-checks the caller under lock', (
 describe.skipIf(!testServer)('FD-8 revoke re-checks the caller under lock', () => {
   it('refuses a revoke from a principal whose org admin grant was just revoked', () =>
     withAppDatabase(async (db) => {
-      await seedJesse(db);
+      await seedSponsor(db);
       await seedThirdAdmin(db);
-      const staleJesse = orgAdmin(JESSE_ID, 'jesse@unfoldingword.org', JESSE_GRANT_ID);
+      const staleSponsor = orgAdmin(SPONSOR_ID, 'sponsor@unfoldingword.org', SPONSOR_GRANT_ID);
       const ian = orgAdmin(IAN_ID, 'ian.lindsley@unfoldingword.org', IAN_GRANT_ID);
       await revokeRole(
         db,
         ian,
-        { command: 'revoke_role', requestId: randomUUID(), grantId: JESSE_GRANT_ID },
+        { command: 'revoke_role', requestId: randomUUID(), grantId: SPONSOR_GRANT_ID },
         randomUUID(),
         new Date(),
       );
       const result = await revokeRole(
         db,
-        staleJesse,
+        staleSponsor,
         { command: 'revoke_role', requestId: randomUUID(), grantId: IAN_GRANT_ID },
         randomUUID(),
         new Date(),

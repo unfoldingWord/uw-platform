@@ -492,7 +492,7 @@ write("harness/valid/check-only-in-shadow.json",
 write("harness/invalid/external-reviewer-not-a-login.json",
   { ...harness, externalReviewerIdentities: ["not a login"] });
 write("github-login/valid/app.json", "uwreview[bot]");
-write("github-login/valid/person.json", "seth-k");
+write("github-login/valid/person.json", "outside-reviewer");
 write("github-login/invalid/space.json", "not a login");
 write("platform-frontmatter/valid/one-repository.json", { dispatch_allowed: [pullRequest.repo] });
 write("platform-frontmatter/valid/empty.json", { dispatch_allowed: [] });
@@ -1906,7 +1906,7 @@ describe('GL-3 joining by review request', () => {
   it('joins only when a platform Reviewer is requested, only for ingest, only without a Package stage', () =>
     inWorld(async (world) => {
       await createSimHarness(world, checkOnly, { repository: joinedRepository });
-      expect(reasonOf(await joinRequest(world, { requestedReviewers: ['seth-k'] }))).toBe('not_permitted');
+      expect(reasonOf(await joinRequest(world, { requestedReviewers: ['outside-reviewer'] }))).toBe('not_permitted');
       const person = simCaller(world, await simIan(world));
       const byPerson = await world.kernel.items.join(person, {
         pullRequest: joinedPull,
@@ -2576,11 +2576,11 @@ describe('GL-3 the facts carry the requested reviewers', () => {
   it('reads the requested logins from a pull request, once each, and none when absent', () => {
     const requested = {
       ...restPull,
-      requested_reviewers: [{ login: 'uw-reviewer[bot]' }, { login: 'seth-k' }, { login: 'seth-k' }],
+      requested_reviewers: [{ login: 'uw-reviewer[bot]' }, { login: 'outside-reviewer' }, { login: 'outside-reviewer' }],
     };
     expect(factsFromPull(repo, requested)?.pullRequests[0]?.requestedReviewers).toEqual([
       'uw-reviewer[bot]',
-      'seth-k',
+      'outside-reviewer',
     ]);
     expect(factsFromPull(repo, restPull)?.pullRequests[0]?.requestedReviewers).toEqual([]);
   });

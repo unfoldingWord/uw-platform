@@ -14,8 +14,8 @@ import { owns } from './grant-commands.ts';
 
 const IAN = 'ian.lindsley@unfoldingword.org';
 const IAN_ID = '00000000-0000-4000-8000-000000000001';
-const JESSE_ID = '00000000-0000-4000-8000-000000000002';
-const JESSE_GRANT_ID = '00000000-0000-4000-8000-000000000102';
+const SPONSOR_ID = '00000000-0000-4000-8000-000000000002';
+const SPONSOR_GRANT_ID = '00000000-0000-4000-8000-000000000102';
 const IAN_GRANT_ID = '00000000-0000-4000-8000-000000000101';
 const AREA = '80-89';
 
@@ -300,12 +300,12 @@ describe.skipIf(!testServer)('FD-8 revoke_role', () => {
   it('refuses to remove the last org admin', () =>
     withAppDatabase(async (db) => {
       await db.execute(
-        sql`INSERT INTO people (id, email, display_name, status) VALUES (${JESSE_ID}, 'jesse@unfoldingword.org', 'Jesse', 'active')`,
+        sql`INSERT INTO people (id, email, display_name, status) VALUES (${SPONSOR_ID}, 'sponsor@unfoldingword.org', 'Sponsor', 'active')`,
       );
       await db.execute(
-        sql`INSERT INTO role_grants (id, person_id, role, scope_kind, granted_by) VALUES (${JESSE_GRANT_ID}, ${JESSE_ID}, 'admin', 'org', ${IAN_ID})`,
+        sql`INSERT INTO role_grants (id, person_id, role, scope_kind, granted_by) VALUES (${SPONSOR_GRANT_ID}, ${SPONSOR_ID}, 'admin', 'org', ${IAN_ID})`,
       );
-      const first = await revokeCommand(db, JESSE_GRANT_ID);
+      const first = await revokeCommand(db, SPONSOR_GRANT_ID);
       const second = await revokeCommand(db, IAN_GRANT_ID);
       expect(first.status).toBe(200);
       expect([second.status, second.body['reason']]).toEqual([409, 'last_org_admin']);
