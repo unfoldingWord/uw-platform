@@ -87,8 +87,8 @@ describe('identity strings', () => {
   it.each([
     'human:ian',
     'agent:claude',
-    'agent:jesse/laptop-1',
-    'agent:jesse/laptop-1 as reviewer via delegation:d-42',
+    'agent:avery/laptop-1',
+    'agent:avery/laptop-1 as reviewer via delegation:d-42',
   ])('accepts %s', (value) => {
     expect(identitySchema.safeParse(value).success).toBe(true);
   });
@@ -98,8 +98,8 @@ describe('identity strings', () => {
     'human:',
     'human:a/b',
     'robot:x',
-    'agent:jesse/laptop-1 as reviewer',
-    'agent:jesse as reviewer via delegation:d-42',
+    'agent:avery/laptop-1 as reviewer',
+    'agent:avery as reviewer via delegation:d-42',
     'human:ian as reviewer via delegation:d-42',
   ])('rejects %j', (value) => {
     expect(identitySchema.safeParse(value).success).toBe(false);
