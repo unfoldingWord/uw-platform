@@ -26,9 +26,9 @@ import { callTool, httpClient } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
 
 const IAN_ID = '00000000-0000-4000-8000-000000000001';
-const SETH = {
+const BENCH_OWNER = {
   id: '00000000-0000-4000-8000-000000002701',
-  email: 'bench-seth@unfoldingword.org',
+  email: 'bench-owner@unfoldingword.org',
   grant: '00000000-0000-4000-8000-000000002711',
 };
 
@@ -47,10 +47,10 @@ let rigged: Promise<Rig> | null = null;
 async function openRig(): Promise<Rig> {
   const database = await createMigratedDatabase(testServer ?? '');
   const db = createClient(database.connectionString);
-  await seedPerson(db, { id: SETH.id, email: SETH.email });
+  await seedPerson(db, { id: BENCH_OWNER.id, email: BENCH_OWNER.email });
   await seedGrant(db, {
-    id: SETH.grant,
-    personId: SETH.id,
+    id: BENCH_OWNER.grant,
+    personId: BENCH_OWNER.id,
     role: 'admin',
     scopeKind: 'jd_area',
     scopeArea: '80-89',
@@ -99,7 +99,7 @@ async function benchHarness(r: Rig): Promise<Bench> {
   return { harnessId, repository };
 }
 
-type Delegated = { readonly seth: Principal; readonly delegationId: string };
+type Delegated = { readonly owner: Principal; readonly delegationId: string };
 
 async function delegated(
   r: Rig,
@@ -107,7 +107,7 @@ async function delegated(
   capability: CapabilityWord,
   identity: string,
 ): Promise<Delegated> {
-  const seth = await personOn(r.db, SETH.id, SETH.email, new Date());
+  const owner = await personOn(r.db, BENCH_OWNER.id, BENCH_OWNER.email, new Date());
   const grant = {
     harnessId: bench.harnessId,
     persona: identity,
@@ -115,14 +115,14 @@ async function delegated(
     supersedes: null,
   };
   const delegation = value(
-    await r.kernel.delegations.grant(caller(seth), { ...grant, capability, maxTier: null }),
+    await r.kernel.delegations.grant(caller(owner), { ...grant, capability, maxTier: null }),
   );
   await seedActivePersona(r.db, {
     identity,
     harnessId: bench.harnessId,
     frontmatter: { capability },
   });
-  return { seth, delegationId: delegation.id };
+  return { owner, delegationId: delegation.id };
 }
 
 async function runner(
@@ -132,7 +132,7 @@ async function runner(
   persona: string,
 ): Promise<Client> {
   const { delegationId } = await delegated(r, bench, capability, `agent:${persona}`);
-  const token = await r.fixture.signForMcp({ email: SETH.email });
+  const token = await r.fixture.signForMcp({ email: BENCH_OWNER.email });
   return httpClient(createApp(postgresDeps(r.db, r.fixture)), {
     'cf-access-jwt-assertion': token,
     'x-uw-device': 'bench',
@@ -142,13 +142,17 @@ async function runner(
 }
 
 function platformHost(r: Rig, found: Delegated): VerbContext {
-  const identity = delegatedIdentity(`agent:${SETH.id}/bench`, 'reviewer', found.delegationId);
+  const identity = delegatedIdentity(
+    `agent:${BENCH_OWNER.id}/bench`,
+    'reviewer',
+    found.delegationId,
+  );
   const principal = principalSchema.parse({
     identity,
     kind: 'agent',
-    personId: SETH.id,
+    personId: BENCH_OWNER.id,
     email: null,
-    grants: found.seth.grants,
+    grants: found.owner.grants,
     interactive: false,
   });
   return {

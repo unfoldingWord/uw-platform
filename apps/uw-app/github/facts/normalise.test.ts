@@ -334,13 +334,13 @@ describe('GL-3 the facts carry the requested reviewers', () => {
       ...restPull,
       requested_reviewers: [
         { login: 'uw-reviewer[bot]' },
-        { login: 'seth-k' },
-        { login: 'seth-k' },
+        { login: 'outside-reviewer' },
+        { login: 'outside-reviewer' },
       ],
     };
     expect(factsFromPull(repo, requested)?.pullRequests[0]?.requestedReviewers).toEqual([
       'uw-reviewer[bot]',
-      'seth-k',
+      'outside-reviewer',
     ]);
     expect(factsFromPull(repo, restPull)?.pullRequests[0]?.requestedReviewers).toEqual([]);
   });

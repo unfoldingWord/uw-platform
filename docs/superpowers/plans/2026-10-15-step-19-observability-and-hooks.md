@@ -26,7 +26,7 @@
 | S19-R6. `bot_authors` is a harness column (GitHub logins, at most 20, distinct in any case, default `['dependabot[bot]']`), set at activation (`activate_template.botAuthors`) and kept by a template change; no command edits it on a live harness. An item is a bot's when its pull request's author, read from `gh_prs.author_login`, is listed. The author is captured from the REST pull and the webhook payload's `user.login` on the next upsert of that pull request; an unknown author counts | A Dependabot pull request untouched since the deploy counts until its next webhook or sweep; changing the list needs a re-activation, as S14-R2 |
 | S19-R7. "Every count" is: the Board's per-stage "Items" count, Home's "waiting on you" count, and the `/health` counts of OB-1 and OB-2 (and their drill-through rows, which match the counts). Bot items still appear as cards and rows; only the numbers leave them out. The WIP gauge (`held` of `wipLimit`) stays whole, because the kernel enforces WIP on every claim. The Flow screen is not named by OB-4 and is unchanged. The count's text says so whenever it left at least one item out: "3, not counting 2 by dependabot[bot]" on the Board, ", not counting 2 on pull requests by bot accounts" on Home, "; not counting 2 by bot accounts" on `/health` (the Kpi's detail line is its label text) | A reader who expects the phrase on every count sees it only when something was left out; with nothing left out the number is exact |
 | S19-R8. The author read is a new batch method, `GitHubFacts.authors(refs)`, answering `{ ref, author }` for each pull request the read model knows an author for, grouped by repository in one query each | One more method on a port every adapter implements |
-| S19-R9. PI-2's route is the MCP `write_page` verb: service tokens are refused on `/api/*` (`verifiedIdentity`), so an external runner reaches the platform only through `/mcp`, and `write_page` runs the page API's own create and update. `source` is derived, never trusted: `external` when the verb runs on the external host, the principal is a delegated identity, and its live delegation has capability `review`; `platform` otherwise. An external learning must name `pull_request` in the delegation's harness repository (`malformed_command` without one, `not_permitted` for another repository). On an update, `source` and an external page's `pull_request` stay what they were. A frontmatter naming a `source` other than the derived one is refused `malformed_command` | The bench posts by MCP, not a bare HTTP POST; adding an HTTP route on the MCP surface is one file if Seth asks |
+| S19-R9. PI-2's route is the MCP `write_page` verb: service tokens are refused on `/api/*` (`verifiedIdentity`), so an external runner reaches the platform only through `/mcp`, and `write_page` runs the page API's own create and update. `source` is derived, never trusted: `external` when the verb runs on the external host, the principal is a delegated identity, and its live delegation has capability `review`; `platform` otherwise. An external learning must name `pull_request` in the delegation's harness repository (`malformed_command` without one, `not_permitted` for another repository). On an update, `source` and an external page's `pull_request` stay what they were. A frontmatter naming a `source` other than the derived one is refused `malformed_command` | The bench posts by MCP, not a bare HTTP POST; adding an HTTP route on the MCP surface is one file if the bench owner asks |
 | S19-R10. `change_template { template }` is an admin command. Only `check-only` to `software` is allowed; any other pair, or a check-only harness whose stages are not a subset of the software template's keys, is refused `template_change_not_allowed` (with `why`). The kept stages keep their ids, items, WIP limits, instructions and every other column the admin set, and move to the software template's positions; the six new stages are inserted from the template; the change is recorded as a new harness event `template_changed` plus the `stage_edited` rows `editInTransaction` already records. Shadow, freeze, the external reviewers, protected paths and bot authors are untouched. The command drafts the software template's persona pages, skipping slugs already taken | A harness whose admin added a stage cannot change template until the stage is removed; the refusal says `stages_edited` |
 | S19-R11. The silence alarm reuses `lockKeys.harnessEvents(harnessId)` for its check-and-record, so no lock prefix is added | Two minute jobs on one harness serialise briefly behind persona activation's lock |
 | S19-R12. The contract moves one minor version for the whole step (everything is additive; new fields carry defaults) | None; the lock test enforces the rule |
@@ -1569,7 +1569,7 @@ describe('OB-4 which items no count includes', () => {
     const plain = item(4, null);
     const { facts, asked } = answering([
       { ref: { repo: repo.toUpperCase(), number: 7 }, author: 'Dependabot[bot]' },
-      { ref: { repo, number: 8 }, author: 'seth-k' },
+      { ref: { repo, number: 8 }, author: 'outside-reviewer' },
     ]);
     const harness = { botAuthors: ['dependabot[bot]'] };
     const left = await uncountedItems(facts, [{ harness, items: [bot, person, unknown, plain] }]);
@@ -1630,7 +1630,7 @@ describe('OB-4 counts leave out pull requests a listed bot opened', () => {
   it('OB-4 the Board counts a pull request whose author is not listed', () =>
     inWorld(async (world) => {
       const scene = await reviewWorld(world);
-      world.adapters.githubFacts.givenAuthor(shipPullRequest, 'seth-k');
+      world.adapters.githubFacts.givenAuthor(shipPullRequest, 'outside-reviewer');
       const caller = simCaller(world, scene.admin);
       const board = await world.kernel.views.board(caller, { harnessId: scene.harnessId, stageKey: null, after: null });
       if (board.status !== 'accepted') throw new Error(board.reason);
@@ -2973,9 +2973,9 @@ import { callTool, httpClient } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
 
 const IAN_ID = '00000000-0000-4000-8000-000000000001';
-const SETH = {
+const BENCH_OWNER = {
   id: '00000000-0000-4000-8000-000000002701',
-  email: 'bench-seth@unfoldingword.org',
+  email: 'bench-owner@unfoldingword.org',
   grant: '00000000-0000-4000-8000-000000002711',
 };
 
@@ -2993,10 +2993,10 @@ let rigged: Promise<Rig> | null = null;
 async function openRig(): Promise<Rig> {
   const database = await createMigratedDatabase(testServer ?? '');
   const db = createClient(database.connectionString);
-  await seedPerson(db, { id: SETH.id, email: SETH.email });
+  await seedPerson(db, { id: BENCH_OWNER.id, email: BENCH_OWNER.email });
   await seedGrant(db, {
-    id: SETH.grant,
-    personId: SETH.id,
+    id: BENCH_OWNER.grant,
+    personId: BENCH_OWNER.id,
     role: 'admin',
     scopeKind: 'jd_area',
     scopeArea: '80-89',
@@ -3039,10 +3039,10 @@ async function benchHarness(r: Rig): Promise<Bench> {
 }
 
 async function runner(r: Rig, bench: Bench, capability: CapabilityWord, persona: string): Promise<Client> {
-  const seth = await personOn(r.db, SETH.id, SETH.email, new Date());
+  const owner = await personOn(r.db, BENCH_OWNER.id, BENCH_OWNER.email, new Date());
   const grant = { harnessId: bench.harnessId, persona: `agent:${persona}`, expiresAt: null, supersedes: null };
-  const delegation = value(await r.kernel.delegations.grant(caller(seth), { ...grant, capability }));
-  const token = await r.fixture.signForMcp({ email: SETH.email });
+  const delegation = value(await r.kernel.delegations.grant(caller(owner), { ...grant, capability }));
+  const token = await r.fixture.signForMcp({ email: BENCH_OWNER.email });
   return httpClient(createApp(postgresDeps(r.db, r.fixture)), {
     'cf-access-jwt-assertion': token,
     'x-uw-device': 'bench',

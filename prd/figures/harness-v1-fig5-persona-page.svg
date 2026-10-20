@@ -10,7 +10,7 @@
         </g>
         <g stroke="none" fill="#231F20" font-size="11.5">
           <text x="190" y="80">agent:grant-writer</text><text x="340" y="80" fill="#5A6E7A">token minted on activation · grants ≤ owner's</text>
-          <text x="190" y="102">jesse</text>
+          <text x="190" y="102">avery</text>
           <text x="190" y="124">Grant responses · filter: any funder</text>
           <text x="190" y="146" font-size="10">☑ poll_queue ☑ claim_item ☑ read_page ☑ resolve_context ☑ write_page ☑ submit_to_gate</text>
           <text x="190" y="160" font-size="10">☑ search_pages ☑ query_entities ☐ list_gifts <tspan fill="#5A6E7A">(needs the finance role)</tspan></text>

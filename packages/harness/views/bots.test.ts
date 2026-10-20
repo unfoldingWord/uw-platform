@@ -51,7 +51,7 @@ describe('OB-4 which items no count includes', () => {
     const plain = item(4, null);
     const { facts, asked } = answering([
       { ref: { repo: repo.toUpperCase(), number: 7 }, author: 'Dependabot[bot]' },
-      { ref: { repo, number: 8 }, author: 'seth-k' },
+      { ref: { repo, number: 8 }, author: 'outside-reviewer' },
     ]);
     const harness = { botAuthors: ['dependabot[bot]'] };
     const left = await uncountedItems(facts, [{ harness, items: [bot, person, unknown, plain] }]);

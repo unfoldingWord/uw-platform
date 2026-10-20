@@ -80,7 +80,7 @@ const taskRefusals: [string, Partial<TaskRow>, string, string][] = [
   ],
   [
     'a creator whose device is not lowercase kebab-case',
-    { createdBy: 'agent:jesse/My_Laptop' },
+    { createdBy: 'agent:avery/My_Laptop' },
     '23514',
     'tasks_created_by_is_identity',
   ],
