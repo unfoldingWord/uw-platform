@@ -8,3 +8,4 @@ onlyBuiltDependencies:
 overrides:
   undici: '>=7.29.1'
   sharp: '>=0.35.4'
+  vite: '>=8.3.3'
