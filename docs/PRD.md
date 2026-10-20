@@ -8,7 +8,7 @@
 | Owner | Ian Lindsley |
 | Sponsor | Jesse Griffin |
 | Repository | https://github.com/unfoldingWord/uw-platform |
-| Design | The Claude Design prototype under [`ui-design/`](../ui-design/) and the brand tokens in [`prd/An App For Everything - Key Visuals.html`](../prd/An%20App%20For%20Everything%20-%20Key%20Visuals.html), until a `design-system/` folder lands |
+| Design | The brand tokens in `packages/ui/tokens/`, extracted from the Claude Design prototype (removed from the repository on 2026-10-20) and [`prd/An App For Everything - Key Visuals.html`](../prd/An%20App%20For%20Everything%20-%20Key%20Visuals.html), until a `design-system/` folder lands |
 | Companions | [`prd/Harness v1 - Architecture.md`](../prd/Harness%20v1%20-%20Architecture.md) for the ratified design and its figures, [`prd/An App For Everything - Platform Architecture Plan.md`](../prd/An%20App%20For%20Everything%20-%20Platform%20Architecture%20Plan.md) for the platform it sits in, [`CONTEXT.md`](../CONTEXT.md) for the words, [`architecture.md`](architecture.md) for the shape, [`adr/`](adr/) for why |
 | Sources | The architecture spec v1.1, Jesse's review of it, and GitHub issues #4 to #82 (67 issues: 7 closed, 60 open). Appendix B maps every issue to the requirements that replace it |
 
@@ -553,7 +553,7 @@ Since contract 12.1.0 (step 10), `persona_activated` carries `{ pageId, persona,
 
 ## 10. Design
 
-The source of truth for visual design is the prototype in `ui-design/` (Development, Agent Queues and Health screens) and the token block in the Key Visuals page, until Jesse's `design-system/` handoff lands. When it lands, its `tokens/*.css` replaces the interim extraction and nothing in the islands changes but the import.
+The source of truth for visual design is `packages/ui/tokens/`, extracted from the Claude Design prototype (removed from the repository on 2026-10-20; it remains in git history), and the token block in the Key Visuals page, until the sponsor's `design-system/` handoff lands. When it lands, its `tokens/*.css` replaces the interim extraction and nothing in the islands changes but the import.
 
 | Prototype screen | Harness view |
 |---|---|
