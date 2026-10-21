@@ -46,7 +46,7 @@ These are settled. Work inside them; changing one is an architecture change (sec
 | Lint and format | `pnpm check`; the full chain is `pnpm verify`, the same one CI runs |
 | Code comments | None. Meaning lives in names, types, tests and `docs/`, never in a comment |
 | File length | Under 500 lines; functions under 50 |
-| Commits | Conventional Commits; the agent as sole author with no attribution footer, per `unfoldingWord/uw-dev-skills`; hooks always pass; `--no-verify` unused |
+| Commits | Conventional Commits; the agent as author, per `unfoldingWord/uw-dev-skills`, and an attribution footer is allowed; hooks always pass; `--no-verify` unused |
 
 ## 2. The cockpit
 
