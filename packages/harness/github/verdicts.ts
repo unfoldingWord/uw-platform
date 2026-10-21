@@ -1,6 +1,7 @@
-import { reviewVerdictSchema, type ReviewVerdict } from '@uw/contracts';
+import { reviewVerdictSchema, type ReadFinding, type ReviewVerdict } from '@uw/contracts';
 import { readFields, type DeclarationProblem } from './declaration.ts';
 import { fencedBlock } from './fenced-block.ts';
+import { weighedLine } from './finding-line.ts';
 
 type VerdictProblem = DeclarationProblem;
 
@@ -11,7 +12,7 @@ type VerdictParse<T> =
 type ScoutVerdict = { readonly premise: 'holds' | 'held'; readonly reason: string };
 type ReviewVerdictRead = {
   readonly verdict: ReviewVerdict;
-  readonly findings: readonly string[];
+  readonly findings: readonly ReadFinding[];
 };
 
 const REASON_LIMIT = 200;
@@ -56,12 +57,12 @@ export function parseScoutVerdict(text: string | null): VerdictParse<ScoutVerdic
   return { ok: true, verdict: { premise: premise === 'holds' ? 'holds' : 'held', reason } };
 }
 
-function findingsOf(after: readonly string[]): readonly string[] | null {
-  const findings = after
+function findingsOf(after: readonly string[]): readonly ReadFinding[] | null {
+  const lines = after
     .filter((line) => line.startsWith(findingMark))
     .map((line) => line.slice(findingMark.length).trim());
-  if (findings.length > FINDINGS_LIMIT) return null;
-  return findings.every((finding) => withinLimit(finding, FINDING_LIMIT)) ? findings : null;
+  if (lines.length > FINDINGS_LIMIT) return null;
+  return lines.every((line) => withinLimit(line, FINDING_LIMIT)) ? lines.map(weighedLine) : null;
 }
 
 export function parseReviewVerdict(text: string | null): VerdictParse<ReviewVerdictRead> {

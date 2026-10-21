@@ -20,7 +20,8 @@ import { runWorkflow } from './run-core.ts';
 const host: Caller = { actor: systemPrincipal(), traceId: randomUUID(), requestId: null };
 const head = `c0ffee${'0'.repeat(34)}`;
 const holds = '```harness-scout\npremise: holds\nreason: the plan still stands\n```';
-const verdict = '```harness-verdict\nverdict: approve\n```\n- The change is small and tested.';
+const verdict =
+  '```harness-verdict\nverdict: approve\n```\n- theoretical: The change is small and tested.';
 
 function factsFor(itemId: string): PullRequestFacts {
   return {
@@ -37,6 +38,8 @@ function factsFor(itemId: string): PullRequestFacts {
     reviews: [],
     files: null,
     declaration: null,
+    closes: [],
+    comparison: null,
     freshAt: new Date(),
   };
 }

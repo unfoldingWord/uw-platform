@@ -12,6 +12,7 @@ function delegationOf(persona: string): Delegation {
     persona: persona as Identity,
     harnessId: '00000000-0000-4000-8000-0000000d0002',
     capability: 'iterate',
+    maxTier: null,
     grantedAt: new Date('2026-10-01T09:00:00.000Z'),
     expiresAt: new Date('2026-12-30T09:00:00.000Z'),
     revokedAt: null,
@@ -30,17 +31,17 @@ describe('KN-16 a delegation names the persona that may act under it', () => {
   });
 
   it('matches a device identity acting as the persona via this delegation', () => {
-    expect(matches(`agent:jesse/laptop as iterate via delegation:${delegationId}`)).toBe(true);
+    expect(matches(`agent:avery/laptop as iterate via delegation:${delegationId}`)).toBe(true);
   });
 
   it('does not match another persona', () => {
     expect(matches('agent:builder')).toBe(false);
-    expect(matches(`agent:jesse/laptop as builder via delegation:${delegationId}`)).toBe(false);
+    expect(matches(`agent:avery/laptop as builder via delegation:${delegationId}`)).toBe(false);
   });
 
   it('does not match another delegation, a bare device, or a human', () => {
-    expect(matches('agent:jesse/laptop as iterate via delegation:other')).toBe(false);
-    expect(matches('agent:jesse/laptop')).toBe(false);
+    expect(matches('agent:avery/laptop as iterate via delegation:other')).toBe(false);
+    expect(matches('agent:avery/laptop')).toBe(false);
     expect(matches('human:00000000-0000-4000-8000-000000000104')).toBe(false);
   });
 });

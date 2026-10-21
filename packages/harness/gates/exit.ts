@@ -1,4 +1,4 @@
-import type { HarnessEvent, ItemState, Stage } from '@uw/contracts';
+import type { DelegatedMerge, HarnessEvent, ItemState, Stage } from '@uw/contracts';
 import {
   draft,
   readAllEvents,
@@ -18,6 +18,7 @@ import type {
   StoreTransaction,
 } from '../ports.ts';
 import { outcomeRecordedSince, parkingChangedSince, sameChange } from './parking.ts';
+import { joinedPullRequest } from './ship-input.ts';
 
 export type ExitPorts = Pick<Ports, 'connectors' | 'store'>;
 
@@ -30,7 +31,13 @@ export type ExitInput = {
   readonly overrideReason: string | null;
   readonly repository: string | null;
   readonly expectedBase: DecidedBase | null;
+  readonly evaluatedHead: string | null;
+  readonly delegated: DelegatedMerge | null;
 };
+
+export type ExitGuard = () => Promise<
+  { readonly head: string | null } | { readonly refused: string }
+>;
 
 const REASON_LIMIT = 500;
 
@@ -63,7 +70,8 @@ export function requestOf(context: RecordContext, input: ExitInput): ConnectorRe
     itemId: item.itemId,
     traceId: context.traceId,
     pullRequest: item.pullRequest,
-    expectedHead: item.expectedHead,
+    joined: joinedPullRequest(item),
+    expectedHead: input.evaluatedHead ?? item.expectedHead,
     expectedBase: input.expectedBase,
     repository: input.repository,
     title: item.title,
@@ -119,7 +127,9 @@ async function recordIn(
       ? []
       : exitDrafts({ kind: 'forward', from: advancing.input.stage, to: advancing.input.next });
   const outcomes = open.map((entry) => outcomeDraft(entry.input.connector, entry.outcome));
-  await recordItemEvents(tx, context, itemId, [...outcomes, ...exit]);
+  const merged = advancing?.input.delegated ?? null;
+  const told = merged === null ? [] : [draft('delegated_merge', { ...merged })];
+  await recordItemEvents(tx, context, itemId, [...outcomes, ...told, ...exit]);
   return { recorded: open, advanced: advancing !== undefined, refusal: null };
 }
 
@@ -136,12 +146,22 @@ export async function recordExitOutcomes(
   return ports.store.transaction((tx) => recordIn(tx, context, itemId, same, standing));
 }
 
+function passThrough(input: ExitInput): ExitGuard {
+  return async () => ({ head: input.evaluatedHead });
+}
+
 export async function exitThroughConnector(
   ports: ExitPorts,
   context: RecordContext,
   input: ExitInput,
+  guard: ExitGuard = passThrough(input),
 ): Promise<boolean> {
-  const outcome = await runConnector(ports, requestOf(context, input));
-  const recorded = await recordExitOutcomes(ports, context, [{ input, outcome }]);
-  return recorded.advanced;
+  const guarded = await guard();
+  if ('refused' in guarded) {
+    const outcome: ConnectorOutcome = { outcome: 'refused', reason: guarded.refused };
+    return (await recordExitOutcomes(ports, context, [{ input, outcome }])).advanced;
+  }
+  const evaluated = { ...input, evaluatedHead: guarded.head };
+  const outcome = await runConnector(ports, requestOf(context, evaluated));
+  return (await recordExitOutcomes(ports, context, [{ input: evaluated, outcome }])).advanced;
 }

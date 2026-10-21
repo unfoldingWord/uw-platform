@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "harness_items_joined_once" ON "harness_items" USING btree ("harness_id",lower("pr_repo"),"pr_number") WHERE "harness_items"."pr_number" IS NOT NULL AND "harness_items"."branch_state" = 'none';

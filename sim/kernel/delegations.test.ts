@@ -42,6 +42,7 @@ function grantAs(scene: Scene, actor: Principal, persona = 'agent:iterate', expi
     harnessId: scene.harnessId,
     persona,
     capability: 'iterate',
+    maxTier: null,
     expiresAt: expiresAt ?? null,
     supersedes: null,
   });
@@ -85,6 +86,7 @@ describe('KN-16 who may grant a delegation', () => {
       harnessId: scene.harnessId,
       persona: 'agent:iterate',
       capability: 'iterate',
+      maxTier: null,
       expiresAt: null,
       supersedes: null,
     });
@@ -98,6 +100,7 @@ describe('KN-16 who may grant a delegation', () => {
       harnessId: scene.world.adapters.ids.next(),
       persona: 'agent:iterate',
       capability: 'iterate',
+      maxTier: null,
       expiresAt: null,
       supersedes: null,
     });
@@ -187,6 +190,7 @@ describe('KN-16 renewal supersedes the old delegation', () => {
         harnessId: scene.harnessId,
         persona: 'agent:iterate',
         capability: 'build',
+        maxTier: null,
         expiresAt: null,
         supersedes: old.id,
       }),
@@ -205,6 +209,7 @@ describe('KN-16 renewal supersedes the old delegation', () => {
         harnessId: scene.harnessId,
         persona,
         capability: 'iterate',
+        maxTier: null,
         expiresAt: null,
         supersedes,
       });
@@ -249,6 +254,17 @@ describe('KN-16 a beat checks the delegation and lapses it once', () => {
   );
 });
 
+function grantNone(scene: Scene) {
+  return scene.world.kernel.delegations.grant(simCaller(scene.world, scene.kim), {
+    harnessId: scene.harnessId,
+    persona: 'agent:iterate',
+    capability: 'none',
+    maxTier: null,
+    expiresAt: null,
+    supersedes: null,
+  });
+}
+
 describe('KN-16 a beat binds the delegation to its person and capability', () => {
   sceneIt('lapses a revoked delegation as revoked', async (scene) => {
     const delegation = value(await grantAs(scene, scene.kim));
@@ -263,15 +279,7 @@ describe('KN-16 a beat binds the delegation to its person and capability', () =>
   });
 
   sceneIt('opens nothing under the capability none', async (scene) => {
-    const delegation = value(
-      await scene.world.kernel.delegations.grant(simCaller(scene.world, scene.kim), {
-        harnessId: scene.harnessId,
-        persona: 'agent:iterate',
-        capability: 'none',
-        expiresAt: null,
-        supersedes: null,
-      }),
-    );
+    const delegation = value(await grantNone(scene));
     const beat = value(
       await scene.world.kernel.delegations.beat(agentOf(scene, scene.kim), {
         delegationId: delegation.id,
@@ -337,6 +345,7 @@ describe('KN-16 renewal races and dead rows', () => {
         harnessId: scene.harnessId,
         persona: 'agent:iterate',
         capability: 'iterate',
+        maxTier: null,
         expiresAt: null,
         supersedes: old.id,
       });
@@ -358,6 +367,7 @@ describe('KN-16 renewal races and dead rows', () => {
           harnessId: scene.harnessId,
           persona: 'agent:iterate',
           capability: 'iterate',
+          maxTier: null,
           expiresAt: null,
           supersedes: expiring.id,
         }),

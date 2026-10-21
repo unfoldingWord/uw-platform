@@ -9,6 +9,7 @@ import {
   type CostBasis,
   type ErrorReason,
   type Principal,
+  defaultCiChecks,
 } from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
@@ -30,6 +31,7 @@ import {
   type CallResult,
   type ToolSurface,
 } from '../testing/conformance.ts';
+import { listForDispatch } from '../testing/dispatch.ts';
 import { kernelOn, personOn } from '../testing/kernel.ts';
 import { httpClient } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
@@ -132,8 +134,10 @@ async function harnessIn(r: Rig, key: string, area: string): Promise<string> {
     jdArea: area,
     template: software,
     repository: `unfoldingWord/${key}`,
+    requiredChecks: [...defaultCiChecks],
   };
   value(await r.kernel.stages.activate(caller(r.ian), activate));
+  await listForDispatch(r.db, activate.repository, area);
   const change = { agentPickup: 'allowed' as const, bracket: 'build_package' as const };
   value(
     await r.kernel.stages.updateStage(caller(r.ian), { harnessId, stageKey: 'package', change }),
@@ -169,6 +173,7 @@ async function delegated(r: Rig, harnessId: string) {
   const input = { harnessId, persona: 'agent:builder', capability: 'build' as const };
   const delegation = value(
     await r.kernel.delegations.grant(caller(r.owner), {
+      maxTier: null,
       ...input,
       expiresAt: null,
       supersedes: null,

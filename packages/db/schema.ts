@@ -23,6 +23,7 @@ import {
   connectorSchema,
   costBasisSchema,
   dataSourceKindSchema,
+  delegableTierSchema,
   engineSchema,
   eventNameSchema,
   exitGateSchema,
@@ -62,6 +63,9 @@ const restrictedNever = { classification: 'restricted', offlineEligibility: 'nev
 const emptyText = sql`'{}'::text[]`;
 const breakerEventNames = breakerLevelSchema.options.map((level) => `breaker_${level}`);
 const live = (outcome: AnyPgColumn) => sql`${outcome} IN ('running', 'hibernated')`;
+type Lending = Record<'id' | 'harnessId' | 'persona' | 'capability' | 'grantor', AnyPgColumn>;
+type LentKey = [AnyPgColumn, AnyPgColumn, AnyPgColumn, AnyPgColumn, AnyPgColumn];
+const lentKey = (d: Lending): LentKey => [d.id, d.harnessId, d.persona, d.capability, d.grantor];
 const boundedArray = (column: AnyPgColumn, most: number) =>
   sql`jsonb_typeof(${column}) = 'array' AND jsonb_array_length(${column}) <= ${sql.raw(String(most))}`;
 
@@ -76,9 +80,36 @@ export const harnesses = declareTable(
     paused: boolean('paused').notNull().default(false),
     createdAt: instant('created_at').notNull(),
     repository: text('repository'),
+    shadow: boolean('shadow').notNull().default(false),
+    externalReviewerIdentities: text('external_reviewer_identities')
+      .array()
+      .notNull()
+      .default(emptyText),
+    frozen: boolean('frozen').notNull().default(false),
+    freezeAllow: uuid('freeze_allow')
+      .array()
+      .notNull()
+      .default(sql`'{}'::uuid[]`),
+    requiredChecks: jsonb('required_checks')
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    protectedPaths: text('protected_paths').array().notNull().default(emptyText),
+    fixClaim: boolean('fix_claim').notNull().default(false),
+    botAuthors: text('bot_authors')
+      .array()
+      .notNull()
+      .default(sql`'{dependabot[bot]}'::text[]`),
   },
   internalSync,
   (t) => [
+    check('harnesses_freeze_allow_bounded', sql`cardinality(${t.freezeAllow}) <= 100`),
+    check('harnesses_protected_paths_bounded', sql`cardinality(${t.protectedPaths}) <= 50`),
+    check('harnesses_bot_authors_bounded', sql`cardinality(${t.botAuthors}) <= 20`),
+    check('harnesses_required_checks_array', sql`jsonb_typeof(${t.requiredChecks}) = 'array'`),
+    check(
+      'harnesses_external_reviewers_bounded',
+      sql`cardinality(${t.externalReviewerIdentities}) <= 20`,
+    ),
     check('harnesses_area_form', matches(t.jdArea, JD_AREA_PATTERN)),
     check('harnesses_key_form', matches(t.key, SLUG_PATTERN)),
     check('harnesses_template_form', matches(t.template, SLUG_PATTERN)),
@@ -146,6 +177,8 @@ export const delegations = declareTable(
     lapsedAt: instant('lapsed_at'),
     supersedes: uuid('supersedes'),
     traceId: uuid('trace_id').notNull(),
+    maxTier: text('max_tier'),
+    grantor: text('grantor').generatedAlwaysAs(sql`'human:' || "person_id"::text`),
   },
   restrictedNever,
   (t) => [
@@ -157,6 +190,13 @@ export const delegations = declareTable(
     check('delegations_capability_known', oneOf(t.capability, capabilityWordSchema.options)),
     check('delegations_persona_form', matches(t.persona, PERSONA_IDENTITY_PATTERN)),
     check('delegations_expires_after_grant', sql`${t.expiresAt} > ${t.grantedAt}`),
+    check('delegations_max_tier_known', oneOf(t.maxTier, delegableTierSchema.options)),
+    check(
+      'delegations_merge_has_max_tier',
+      sql`(${t.capability} = 'merge') = (${t.maxTier} IS NOT NULL)`,
+    ),
+    uniqueIndex('delegations_id_harness').on(t.id, t.harnessId),
+    uniqueIndex('delegations_lent_binding').on(...lentKey(t)),
     index('delegations_person').on(t.personId),
     index('delegations_harness').on(t.harnessId),
     uniqueIndex('delegations_supersedes_once')
@@ -193,6 +233,12 @@ export const harnessItems = declareTable(
     issueNumber: integer('issue_number'),
     issueGithubId: bigint('issue_github_id', { mode: 'number' }),
     zulipTopic: text('zulip_topic'),
+    epic: jsonb('epic'),
+    blockedBy: uuid('blocked_by')
+      .array()
+      .notNull()
+      .default(sql`'{}'::uuid[]`),
+    heldSince: instant('held_since'),
     createdAt: instant('created_at').notNull(),
   },
   internalSync,
@@ -222,6 +268,7 @@ export const harnessItems = declareTable(
     check('harness_items_branch_state_known', oneOf(t.branchState, branchStateSchema.options)),
     check('harness_items_risk_tier_known', oneOf(t.riskTier, riskTierSchema.options)),
     check('harness_items_risk_domains_known', subsetOf(t.riskDomains, riskDomainSchema.options)),
+    check('harness_items_blocked_by_bounded', sql`cardinality(${t.blockedBy}) <= 50`),
     check('harness_items_pr_whole', sql`(${t.prRepo} IS NULL) = (${t.prNumber} IS NULL)`),
     check(
       'harness_items_issue_whole',
@@ -230,6 +277,9 @@ export const harnessItems = declareTable(
     uniqueIndex('harness_items_issue_once')
       .on(t.issueGithubId)
       .where(sql`${t.issueGithubId} IS NOT NULL`),
+    uniqueIndex('harness_items_joined_once')
+      .on(t.harnessId, sql`lower(${t.prRepo})`, t.prNumber)
+      .where(sql`${t.prNumber} IS NOT NULL AND ${t.branchState} = 'none'`),
     index('harness_items_stage').on(t.harnessId, t.stageId),
     index('harness_items_lease').on(t.leaseExpires),
   ],
@@ -322,6 +372,11 @@ export const gateDecisions = declareTable(
     evidence: jsonb('evidence').notNull(),
     traceId: uuid('trace_id').notNull(),
     decidedAt: instant('decided_at').notNull(),
+    agentActor: text('agent_actor'),
+    delegationId: uuid('delegation_id'),
+    delegatedCapability: text('delegated_capability').generatedAlwaysAs(
+      sql`CASE WHEN "delegation_id" IS NOT NULL THEN 'merge' END`,
+    ),
   },
   restrictedNever,
   (t) => [
@@ -335,6 +390,28 @@ export const gateDecisions = declareTable(
       columns: [t.harnessId, t.stageId],
       foreignColumns: [harnessStages.harnessId, harnessStages.id],
     }),
+    foreignKey({
+      name: 'gate_decisions_delegation_fk',
+      columns: [t.delegationId, t.harnessId],
+      foreignColumns: [delegations.id, delegations.harnessId],
+    }),
+    foreignKey({
+      name: 'gate_decisions_lent_binding_fk',
+      columns: [t.delegationId, t.harnessId, t.agentActor, t.delegatedCapability, t.actor],
+      foreignColumns: lentKey(delegations),
+    }),
+    check(
+      'gate_decisions_agent_with_delegation',
+      sql`(${t.agentActor} IS NULL) = (${t.delegationId} IS NULL)`,
+    ),
+    check(
+      'gate_decisions_agent_actor_is_agent',
+      sql`${t.agentActor} IS NULL OR ${t.agentActor} ~ '^agent:'`,
+    ),
+    check(
+      'gate_decisions_delegated_approves_merge',
+      sql`${t.delegationId} IS NULL OR (${t.decision} = 'approve' AND ${t.evidence} ->> 'connector' IS NOT DISTINCT FROM 'merge')`,
+    ),
     check('gate_decisions_decision_known', oneOf(t.decision, gateDecisionSchema.options)),
     check('gate_decisions_actor_is_human', matches(t.actor, HUMAN_IDENTITY_PATTERN)),
     check(
@@ -342,6 +419,9 @@ export const gateDecisions = declareTable(
       sql`${t.decision} <> 'override' OR length(btrim(coalesce(${t.reason}, ''))) > 0`,
     ),
     index('gate_decisions_item').on(t.itemId),
+    index('gate_decisions_delegated')
+      .on(t.decidedAt)
+      .where(sql`${t.delegationId} IS NOT NULL`),
   ],
 );
 

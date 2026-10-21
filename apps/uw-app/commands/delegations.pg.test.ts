@@ -53,6 +53,23 @@ async function beat(db: Database, delegationId: string) {
   return kernel.delegations.beat(callerOf(iterate(await ian(db))), { delegationId });
 }
 
+async function mergeTier(db: Database): Promise<void> {
+  const { harnessId } = await softwareHarness(db);
+  const high = await command(
+    db,
+    IAN,
+    harnessId,
+    'schedule_regular_tweak',
+    tweak({ capability: 'merge', maxTier: 'high' }),
+  );
+  expect(high.body).toMatchObject({ status: 'error', reason: 'tier_not_delegable' });
+  const body = tweak({ persona: 'agent:shipper', capability: 'merge', maxTier: 'standard' });
+  const sent = await command(db, IAN, harnessId, 'schedule_regular_tweak', body);
+  expect(sent.body).toEqual({ status: 'accepted', requestId: body.requestId });
+  const [delegation] = await delegationsOf(db, harnessId);
+  expect(delegation).toMatchObject({ capability: 'merge', maxTier: 'standard', personId: IAN_ID });
+}
+
 async function scheduled(db: Database): Promise<void> {
   const { harnessId } = await softwareHarness(db);
   const body = tweak();
@@ -185,6 +202,9 @@ async function ownerRevokesWithoutAdmin(db: Database): Promise<void> {
 describe.skipIf(!testServer)('WB-1 KN-16 the delegation commands on the person surface', () => {
   it('WB-1 schedule_regular_tweak writes a delegation for the admin with the capability word and expiry', () =>
     withAppDatabase(scheduled));
+
+  it('MD-2 schedule_regular_tweak grants merge up to standard and refuses high as tier_not_delegable', () =>
+    withAppDatabase(mergeTier));
 
   it('WB-1 revoke_delegation revokes it and records delegation_revoked, and the next beat lapses', () =>
     withAppDatabase(revoked));

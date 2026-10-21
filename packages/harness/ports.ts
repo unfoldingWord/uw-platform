@@ -1,13 +1,16 @@
 import type {
+  ClosingRef,
   Connector,
   CostBasis,
   DeepLink,
   Engine,
   Grant,
+  IssueRef,
   ItemState,
   JdArea,
   LiveScreen,
   PullRequestDeclaration,
+  ReadFinding,
   ReviewVerdict,
   RunShape,
   ShipRuleInput,
@@ -54,13 +57,27 @@ export type ReviewFact = {
   readonly commit: string;
   readonly state: ReviewState;
   readonly provider: string | null;
-  readonly findings: readonly string[];
+  readonly findings: readonly ReadFinding[];
   readonly submittedAt: Date | null;
 };
 export type ChangedFiles = {
   readonly head: string;
   readonly base: string;
   readonly paths: readonly string[];
+};
+export type HeadCommit = {
+  readonly sha: string;
+  readonly merge: boolean;
+  readonly skipCi: boolean;
+  readonly closes: readonly ClosingRef[];
+};
+export type BaseComparison = {
+  readonly head: string;
+  readonly base: string;
+  readonly behindBy: number | null;
+  readonly patchId: string | null;
+  readonly commits: readonly HeadCommit[] | null;
+  readonly patchIds: Readonly<Record<string, string>>;
 };
 export type PullRequestFacts = {
   readonly ref: PullRequestRef;
@@ -76,6 +93,8 @@ export type PullRequestFacts = {
   readonly reviews: readonly ReviewFact[];
   readonly files: ChangedFiles | null;
   readonly declaration: PullRequestDeclaration | null;
+  readonly closes: readonly ClosingRef[] | null;
+  readonly comparison: BaseComparison | null;
   readonly freshAt: Date;
 };
 export type DiffRange = { readonly base: string; readonly head: string };
@@ -83,10 +102,26 @@ export type DiffRead =
   | { readonly kind: 'diff'; readonly text: string; readonly bytes: number }
   | { readonly kind: 'too_large'; readonly bytes: number | null }
   | { readonly kind: 'unavailable'; readonly reason: string };
+export type PullRequestAuthor = { readonly ref: PullRequestRef; readonly author: string };
+export type IssueKey = { readonly repo: string; readonly number: number };
+export type IssueFact = {
+  readonly issue: IssueRef;
+  readonly title: string;
+  readonly open: boolean;
+  readonly doneWhen: readonly string[];
+  readonly blockedBy: readonly number[];
+};
+export type EpicFacts = {
+  readonly epic: IssueFact;
+  readonly subIssueCount: number;
+  readonly subIssues: readonly IssueFact[];
+};
 export type GitHubFacts = {
   pullRequest(ref: PullRequestRef): Promise<PullRequestFacts | null>;
   refresh(ref: PullRequestRef): Promise<PullRequestFacts | null>;
   diff(ref: PullRequestRef, range: DiffRange, budgetBytes: number): Promise<DiffRead>;
+  epic(key: IssueKey): Promise<EpicFacts | null>;
+  authors(refs: readonly PullRequestRef[]): Promise<readonly PullRequestAuthor[]>;
 };
 
 export type EffectConnector = Exclude<Connector, 'none'>;
@@ -97,6 +132,7 @@ export type ConnectorRequest = {
   readonly itemId: string;
   readonly traceId: string;
   readonly pullRequest: PullRequestRef | null;
+  readonly joined: boolean;
   readonly expectedHead: string | null;
   readonly expectedBase: DecidedBase | null;
   readonly repository: string | null;

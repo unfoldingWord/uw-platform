@@ -39,13 +39,15 @@ describe('a weaker wake never spends the window a stronger one needs', () => {
     });
   });
 
-  it('ranks gates, lapses and hand-offs above run failures above stage advances, and posts all but advances', () => {
+  it('MD-6 ranks gates, lapses and hand-offs above run failures and delegated merges above stage advances, and posts neither advances nor delegated merges', () => {
     expect(wakeRank).toEqual({
       gate_waiting: 3,
       delegation_lapsed: 3,
       run_failed: 2,
       stage_advanced: 1,
       handed_to_person: 3,
+      delegated_merge: 2,
+      silence_alarm: 3,
     });
     expect([...POSTING_REASONS].sort()).toEqual([
       'delegation_lapsed',
@@ -53,5 +55,6 @@ describe('a weaker wake never spends the window a stronger one needs', () => {
       'handed_to_person',
       'run_failed',
     ]);
+    expect(POSTING_REASONS.has('delegated_merge')).toBe(false);
   });
 });

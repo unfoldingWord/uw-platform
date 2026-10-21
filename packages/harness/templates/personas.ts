@@ -1,5 +1,6 @@
 import {
   templateKeySchema,
+  type ApproveAt,
   type CapabilityWord,
   type Engine,
   type Identity,
@@ -18,6 +19,7 @@ export type PersonaFixture = {
   readonly model: string;
   readonly provider: string | null;
   readonly capability: CapabilityWord;
+  readonly approveAt: ApproveAt | null;
   readonly budget: { readonly monthly_minor: number; readonly currency: string };
   readonly bodyMd: string;
 };
@@ -96,6 +98,9 @@ const reviewerSections = [
   '## Verdict',
   'End your review with a fenced `harness-verdict` block naming `verdict` (`approve` or `request_changes`).',
   '',
+  '## Findings',
+  'Write each finding on its own line after the block, starting with its weight: `- real: ...` for a defect you are sure of, `- plausible: ...` for one that may be real, `- theoretical: ...` for one that only could be. A finding without its weight is refused. No findings means approve.',
+  '',
   '## Limits',
   'You never write a page and you never decide a gate.',
 ];
@@ -120,6 +125,7 @@ const builder: PersonaFixture = {
   model: 'unreported',
   provider: null,
   capability: 'build',
+  approveAt: null,
   budget,
   bodyMd: skill('builder', 'Builder turns an approved plan into a declared pull request.', [
     ...builderSections,
@@ -150,6 +156,7 @@ const reviewer: PersonaFixture = {
   model: 'z-ai/glm-5.3-flash',
   provider: 'z-ai',
   capability: 'review',
+  approveAt: 'no_real_or_plausible',
   budget,
   bodyMd: skill('reviewer', 'Reviewer reads a pull request and posts one verdict.', [
     ...reviewerSections,
@@ -179,6 +186,7 @@ const iterate: PersonaFixture = {
   model: 'z-ai/glm-5.3-flash',
   provider: 'z-ai',
   capability: 'iterate',
+  approveAt: null,
   budget,
   bodyMd: skill('iterate', 'Iterate tunes a product from its measurements.', iterateSections),
 };
@@ -186,6 +194,7 @@ const iterate: PersonaFixture = {
 export const templatePersonas: Readonly<Record<TemplateKey, readonly PersonaFixture[]>> = {
   software: [builder, builderHosted, reviewer, reviewerCodex],
   bml: [iterate],
+  'check-only': [reviewer, reviewerCodex],
 };
 
 const byTemplate: ReadonlyMap<TemplateKey, readonly PersonaFixture[]> = new Map(
@@ -219,6 +228,7 @@ export function personaPageDraft(
       provider: fixture.provider,
       budget: { ...fixture.budget },
       capability: fixture.capability,
+      ...(fixture.approveAt === null ? {} : { approve_at: fixture.approveAt }),
     },
   };
 }

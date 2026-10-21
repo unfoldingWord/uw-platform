@@ -1,4 +1,4 @@
-import type { Harness, PageType, Stage } from '@uw/contracts';
+import { defaultCiChecks, type Harness, type PageType, type Stage } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { revokeSeededGrant, seedPage } from '@uw/db/test-seed';
 import { readAllEvents, software, type Caller } from '@uw/harness';
@@ -63,6 +63,7 @@ describe('KN-18 the stage command refuses what only a human admin may do', () =>
         jdArea: '80-89',
         template: software,
         repository: null,
+        requiredChecks: [...defaultCiChecks],
       });
       const update = await world.kernel.stages.updateStage(agent, {
         harnessId: harness.id,
@@ -230,6 +231,7 @@ describe('KN-18 activating a second harness with a taken key', () => {
       jdArea: '30-39',
       template: software,
       repository: null,
+      requiredChecks: [...defaultCiChecks],
     });
     expect(outcome).toMatchObject({ status: 'error', reason: 'harness_exists' });
   });
@@ -254,6 +256,7 @@ describe('KN-18 the stage command reads the admin grant again inside its transac
         jdArea: '80-89',
         template: software,
         repository: null,
+        requiredChecks: [...defaultCiChecks],
       });
       expect(update).toMatchObject({ status: 'error', reason: 'not_permitted' });
       expect(activate).toMatchObject({ status: 'error', reason: 'not_permitted' });

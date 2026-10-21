@@ -1,4 +1,4 @@
-import { ciJobSchema, type ItemState, type Principal } from '@uw/contracts';
+import { ciJobSchema, defaultCiChecks, type ItemState, type Principal } from '@uw/contracts';
 import { createLogger, type Logger } from '@uw/core/log';
 import type { Database } from '@uw/db/client';
 import { seedGrant, seedPerson } from '@uw/db/test-seed';
@@ -12,11 +12,13 @@ import {
 } from '@uw/harness';
 import { platformGitHubFacts } from '../../ports/github-facts.ts';
 import { platformStore } from '../../ports/store.ts';
+import { listForDispatch } from '../../testing/dispatch.ts';
 import { agentOf, kernelOn, personOn } from '../../testing/kernel.ts';
 import type { GitHubAppConfig } from '../app-config.ts';
 import { createGitHubReads } from '../client.ts';
 import { factsFromPull, repoFromRest } from '../facts/normalise.ts';
-import { recordFiles, upsertFacts } from '../facts/upsert.ts';
+import { recordFiles } from '../facts/heads.ts';
+import { upsertFacts } from '../facts/upsert.ts';
 import restPull from '../fixtures/rest-pull.json' with { type: 'json' };
 import restReviews from '../fixtures/rest-reviews.json' with { type: 'json' };
 import { base, head } from './facts-fixtures.ts';
@@ -54,11 +56,18 @@ async function passStage(kernel: Kernel, worker: Principal, itemId: string, chan
   return accepted(submitted, 'submit').item;
 }
 
-async function enqueued(kernel: Kernel, ian: Principal): Promise<string> {
+async function enqueued(db: Database, kernel: Kernel, ian: Principal): Promise<string> {
   const harnessId = crypto.randomUUID();
   const repository = pullRequest.repo;
-  const harness = { harnessId, harnessKey: 'software', jdArea: '80-89', template: software };
+  const harness = {
+    harnessId,
+    harnessKey: 'software',
+    jdArea: '80-89',
+    template: software,
+    requiredChecks: defaultCiChecks,
+  };
   accepted(await kernel.stages.activate(caller(ian), { ...harness, repository }), 'activate');
+  await listForDispatch(db, repository);
   const { itemId } = accepted(
     await kernel.items.enqueue(caller(ian), {
       harnessId,
@@ -73,8 +82,8 @@ async function enqueued(kernel: Kernel, ian: Principal): Promise<string> {
   return itemId;
 }
 
-export async function parkAtShip(kernel: Kernel, ian: Principal): Promise<ItemState> {
-  const itemId = await enqueued(kernel, ian);
+export async function parkAtShip(db: Database, kernel: Kernel, ian: Principal): Promise<ItemState> {
+  const itemId = await enqueued(db, kernel, ian);
   const agent = agentOf(ian, 'builder');
   await passStage(kernel, ian, itemId, false);
   for (const change of [false, false, true, true]) await passStage(kernel, agent, itemId, change);
@@ -89,6 +98,7 @@ export function pullBasedOn(itemId: string, sha: string, updatedAt: string) {
   const headRef = `harness/${itemId}`;
   return {
     ...restPull,
+    body: restPull.body.replace('closes: #12', 'closes: none'),
     updated_at: updatedAt,
     head: { ...restPull.head, ref: headRef, label: `unfoldingWord:${headRef}` },
     base: { ...restPull.base, sha },
@@ -101,11 +111,19 @@ export async function storedOnTheOldBase(db: Database, itemId: string): Promise<
   const batch = repo === null ? null : factsFromPull(repo, pull);
   if (batch === null) throw new TypeError('the fixture pull request is malformed');
   await upsertFacts(db, batch, new Date('2026-10-02T08:00:00.000Z'));
-  await recordFiles(db, { pullRequestId: pull.id, head, base, paths: oldPaths, problem: null });
+  const files = { pullRequestId: pull.id, head, base, paths: oldPaths, problem: null };
+  const commits = [{ sha: head, merge: false, skipCi: false, closes: [] }];
+  await recordFiles(db, { ...files, behindBy: 0, patchId: null, commits });
 }
 
 function listing(paths: readonly string[]) {
-  return { status: 200, body: { status: 'ahead', files: paths.map((filename) => ({ filename })) } };
+  const files = paths.map((filename) => ({
+    filename,
+    status: 'modified',
+    patch: '@@ -1 +1 @@\n-a\n+b',
+  }));
+  const commits = [{ sha: head, commit: { message: 'Show the board' }, parents: [{ sha: base }] }];
+  return { status: 200, body: { status: 'ahead', behind_by: 0, total_commits: 1, commits, files } };
 }
 
 export function reviewedAndGreen(github: FixtureGitHub): void {
@@ -183,7 +201,7 @@ export async function attemptShip(
   change: (github: FixtureGitHub, itemId: string) => void = () => undefined,
 ) {
   const { ian, kim } = await people(db);
-  const item = await parkAtShip(kernelOn(db, clock), ian);
+  const item = await parkAtShip(db, kernelOn(db, clock), ian);
   await storedOnTheOldBase(db, item.itemId);
   const github = retargetedOnGitHub(item.itemId);
   change(github, item.itemId);

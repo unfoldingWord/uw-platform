@@ -71,13 +71,13 @@ function isSource(file: string): boolean {
   return sourceFile.test(file) && !testFile.test(file) && !file.includes('node_modules/');
 }
 
-function specifiersOf(text: string): string[] {
+export function specifiersOf(text: string): string[] {
   return moduleSpecifiers.flatMap((pattern) =>
     [...text.matchAll(pattern)].map((match) => match[3] ?? ''),
   );
 }
 
-function importsOf(file: string, text: string): string[] {
+export function importsOf(file: string, text: string): string[] {
   const directory = posix.dirname(file);
   return specifiersOf(text)
     .filter((specifier) => relativePath.test(specifier))
@@ -123,15 +123,27 @@ function withoutModulePaths(text: string): string {
   return moduleSpecifiers.reduce((stripped, pattern) => stripped.replaceAll(pattern, "$1''"), text);
 }
 
+const shadowFollow = 'apps/uw-app/github/join.ts';
+const shadowRecordCall = /\bkernel\s*\??\.\s*gates\s*\??\.\s*recordShadowVerdicts\s*\(/;
+
 function withoutPersonSurfaceCalls(file: string, text: string): string {
+  if (file === shadowFollow) return text.replace(shadowRecordCall, '(');
   if (!file.startsWith(personSurface)) return text;
   return personSurfaceCalls.reduce((stripped, pattern) => stripped.replaceAll(pattern, '('), text);
+}
+
+const delegatedExitRoot = 'apps/uw-app/cron/delegated-exits.ts';
+const delegatedExitCall = /\bkernel\s*\.\s*gates\s*\.\s*exitDelegated\s*\(/g;
+
+function withoutDelegatedExitCall(file: string, text: string): string {
+  return file === delegatedExitRoot ? text.replaceAll(delegatedExitCall, '(') : text;
 }
 
 export function gateTouches(sources: SourceFiles, files: readonly string[]): string[] {
   return files
     .filter((file) => {
-      const text = withoutPersonSurfaceCalls(file, withoutModulePaths(sources.read(file)));
+      const stripped = withoutPersonSurfaceCalls(file, withoutModulePaths(sources.read(file)));
+      const text = withoutDelegatedExitCall(file, stripped);
       return gateReach.some((pattern) => pattern.test(text));
     })
     .sort();

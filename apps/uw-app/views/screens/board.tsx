@@ -1,7 +1,6 @@
 import type { Context } from 'hono';
 import type { AgentPickup, ExitGate, Principal, Stage } from '@uw/contracts';
 import { can } from '@uw/core/acl';
-import { formatCount } from '@uw/core/money';
 import type { BoardColumn, BoardInput, BoardView } from '@uw/harness';
 import { Chip } from '@uw/ui/components/chip.tsx';
 import { CommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
@@ -11,7 +10,9 @@ import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { cursorOf } from '../../commands/reads.ts';
 import type { AppEnv } from '../../deps.ts';
 import { BoardCardView, type CardViewer } from '../parts/board-card.tsx';
+import { EpicGroups, NotReadyList } from '../parts/epic-board.tsx';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
+import { itemsText } from '../parts/items-count.ts';
 import { idParam } from '../parts/params.ts';
 import { boardPath, flowPath, homePath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
@@ -44,6 +45,7 @@ function viewerOf(actor: Principal, view: BoardView, at: Date): CardViewer {
   return {
     identity: actor.personId === null ? '' : `human:${actor.personId}`,
     admin: actor.kind === 'person' && can(actor, 'admin', area, at),
+    at,
   };
 }
 
@@ -67,7 +69,7 @@ function ColumnView(props: {
   const { column, view } = props;
   const { stage } = column;
   const harnessId = view.harness.id;
-  const items = column.next === null ? formatCount(column.cards.length) : '50 or more';
+  const items = itemsText(column, view.harness.botAuthors);
   const facts = [
     { label: 'Items', value: items },
     { label: 'Agent pickup', value: pickupWords[stage.agentPickup] },
@@ -167,6 +169,8 @@ export async function boardScreen(c: Context<AppEnv>): Promise<Response> {
         }
       />
       <StageChips view={view} stageKey={input.stageKey} />
+      <EpicGroups harnessId={harnessId} epics={board.epics} />
+      <NotReadyList harnessId={harnessId} entries={board.notReady} />
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         {board.columns.map((column) => (
           <ColumnView

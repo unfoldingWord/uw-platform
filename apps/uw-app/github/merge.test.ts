@@ -171,3 +171,29 @@ describe('GH-6 the merge connector reports a merge that already happened without
     expect(JSON.stringify(outcomes)).not.toContain('ghs_');
   });
 });
+
+describe('MD-3 the merge connector merges a joined pull request at its own head ref, pinned to the evaluated head', () => {
+  const joined = { ...request, joined: true };
+  const contributor = 'feature/login-form';
+
+  it('MD-3 merges a joined pull request whose head ref is the contributor branch, with the sha guard', async () => {
+    const github = openGitHub(pullAt({ ref: contributor }));
+    expect(await mergeOver(app, github).run(joined)).toEqual(succeeded('false'));
+    expect(github.requests().find((entry) => entry.method === 'PUT')?.body).toMatchObject({
+      sha: request.expectedHead,
+    });
+  });
+
+  it('MD-3 still refuses a joined pull request from a fork and one whose head moved, writing nothing', async () => {
+    const fork = openGitHub(pullAt({ ref: contributor, headRepo: 'someone/uw-platform' }));
+    expect(await mergeOver(app, fork).run(joined)).toEqual(refusedFor('head_repository_mismatch'));
+    const moved = openGitHub(pullAt({ ref: contributor, head: otherHead }));
+    expect(await mergeOver(app, moved).run(joined)).toEqual(refusedFor('head_mismatch'));
+    expect([...writesOf(fork), ...writesOf(moved)]).toEqual([]);
+  });
+
+  it('MD-3 an item with a harness branch is still refused head_ref_mismatch at a foreign ref', async () => {
+    const github = openGitHub(pullAt({ ref: contributor }));
+    expect(await mergeOver(app, github).run(request)).toEqual(refusedFor('head_ref_mismatch'));
+  });
+});

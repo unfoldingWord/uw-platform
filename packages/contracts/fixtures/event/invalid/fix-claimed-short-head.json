@@ -1,0 +1,22 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000e1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "name": "fix_claimed",
+  "position": 1,
+  "at": "2026-10-01T09:00:00.000Z",
+  "actor": "agent:builder",
+  "evidence": {
+    "delegationId": "00000000-0000-4000-8000-0000000000d1",
+    "head": "abc",
+    "declaration": {
+      "closes": ["#12", "unfoldingWord/uw-platform#14"],
+      "risks": "the board renders slower on phones",
+      "touches": "apps/uw-app/board",
+      "riskTier": "standard",
+      "riskDomains": []
+    }
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
+}

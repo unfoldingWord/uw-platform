@@ -99,6 +99,8 @@ function answering(facts: PullRequestFacts | null): GitHubFacts {
     pullRequest: async () => facts,
     refresh: async () => facts,
     diff: () => notWiredCall('githubFacts', 'diff'),
+    epic: async () => null,
+    authors: async () => [],
   };
 }
 
@@ -199,6 +201,8 @@ describe('GH-4 adopting takes only the tip of the item’s own branch on a pull 
       pullRequest: () => Promise.reject(new Error('down')),
       refresh: () => Promise.reject(new Error('down')),
       diff: () => notWiredCall('githubFacts', 'diff'),
+      epic: async () => null,
+      authors: async () => [],
     };
     const stranger = await simPerson(scene.world, 3, []);
     const outsider = await adoptWith(scene, failing, device(scene, stranger, 'outsider'));
@@ -303,6 +307,8 @@ describe('adoption reads GitHub facts outside the claim transaction', () => {
       },
       refresh: async () => null,
       diff: () => notWiredCall('githubFacts', 'diff'),
+      epic: async () => null,
+      authors: async () => [],
     };
     const claimed = value(await adoptWith(scene, port));
     expect(claimed.branch).toEqual({

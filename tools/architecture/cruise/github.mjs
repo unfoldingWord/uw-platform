@@ -18,7 +18,7 @@ export const githubRules = [
   {
     name: 'github-reads-only-in-github-and-composition-roots',
     comment:
-      'The read-only GitHub client and its transport are imported only under apps/uw-app/github, by the queue root, by the person gate kernel and its GitHub opener, and by the run host deps.',
+      'The read-only GitHub client and its transport are imported only under apps/uw-app/github, by the queue root, by the person gate kernel and its GitHub opener, by the run host deps, and by the delegated exits job of the minute cron.',
     severity: 'error',
     from: { pathNot: ['^apps/uw-app/github/', ...readRoots, testFile] },
     to: { path: github('(client|transport)') },
@@ -26,7 +26,7 @@ export const githubRules = [
   {
     name: 'github-app-config-only-in-github-and-composition-roots',
     comment:
-      'The GitHub App configuration is read only under apps/uw-app/github, by the queue and cron sweep roots, and by the person gate GitHub opener.',
+      'The GitHub App configuration is read only under apps/uw-app/github, by the queue and cron sweep roots, by the delegated exits job of the minute cron, and by the person gate GitHub opener.',
     severity: 'error',
     from: { pathNot: ['^apps/uw-app/github/', ...appConfigRoots, testFile] },
     to: { path: github('app-config') },

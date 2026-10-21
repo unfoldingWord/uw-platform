@@ -3,10 +3,15 @@ import {
   capabilityWordSchema,
   connectorSchema,
   costBasisSchema,
+  delegableTierSchema,
+  delegatedHoldSchema,
   delegationLapseSchema,
   engineSchema,
+  findingWeightSchema,
+  intakeViaSchema,
   gateDecisionSchema,
   principalKindSchema,
+  reviewVerdictSchema,
   riskDomainsSchema,
   riskTierSchema,
   runFailureSchema,
@@ -16,6 +21,7 @@ import {
   runStopSchema,
 } from './closed-sets.ts';
 import {
+  epicPlaceSchema,
   issueRefSchema,
   personaIdentitySchema,
   pullRequestRefSchema,
@@ -27,9 +33,18 @@ import { identitySchema } from './identity.ts';
 import { errorReasonSchema } from './outcomes.ts';
 import { slugSchema } from './pages.ts';
 import { dataSourceKindSchema } from './page-types.ts';
-import { modelIdSchema, reviewRecordSchema, runStepCosts, runStepSchema } from './runs.ts';
+import {
+  modelIdSchema,
+  providerIdSchema,
+  reviewFindingSchema,
+  reviewRecordSchema,
+  runStepCosts,
+  runStepSchema,
+} from './runs.ts';
+import { shadowVerdictValueSchema } from './shadow.ts';
 import { fullShaSchema, riskDeclarationSchema, shipRefusalSchema } from './ship-rule.ts';
 import { submitToGateResultSchema } from './verb-io.ts';
+import { pullRequestDeclarationSchema } from './github.ts';
 import { ZULIP_TEXT_LIMIT, zulipTopicSchema } from './zulip.ts';
 
 export const personaActivationRefusalSchema = z.enum([
@@ -40,7 +55,7 @@ export const personaActivationRefusalSchema = z.enum([
   'dry_run_failed',
 ]);
 export const learningAttachedKindSchema = z.enum(['learning', 'revision']);
-export const handOffReasonSchema = z.enum(['review_rounds_exhausted']);
+export const handOffReasonSchema = z.enum(['review_rounds_exhausted', 'engine_refused']);
 
 const id = z.uuid();
 const instant = z.iso.datetime();
@@ -117,15 +132,35 @@ const runEvidence = {
   premise_held: z.strictObject({ runId: id.nullable(), reason: oneLine }),
 };
 
+export const delegatedMergeSchema = z.strictObject({
+  decisionId: id,
+  delegationId: id,
+  personId: id,
+  email: z.email(),
+  persona: personaIdentitySchema,
+  expiresAt: instant,
+  maxTier: delegableTierSchema,
+});
+export type DelegatedMerge = z.infer<typeof delegatedMergeSchema>;
+
 const itemEvidence = {
-  item_created: z.strictObject({
-    stage,
-    title: z.string().min(1).max(200),
-    pageId: id.nullable(),
-    priority: z.number().int(),
-    due: z.iso.date().nullable(),
-    issue: issueRefSchema.nullable().default(null),
-  }),
+  item_created: z
+    .strictObject({
+      stage,
+      title: z.string().min(1).max(200),
+      pageId: id.nullable(),
+      priority: z.number().int(),
+      due: z.iso.date().nullable(),
+      issue: issueRefSchema.nullable().default(null),
+      pullRequest: pullRequestRefSchema.nullable().default(null),
+      expectedHead: head.nullable().default(null),
+      epic: epicPlaceSchema.nullable().default(null),
+      blockedBy: z.array(id).max(50).default([]),
+    })
+    .refine(
+      (created) => (created.pullRequest === null) === (created.expectedHead === null),
+      'a joined pull request comes with its head',
+    ),
   item_claimed: z.strictObject({
     holder: identitySchema,
     claimantKind: principalKindSchema,
@@ -179,16 +214,62 @@ const gateEvidence = {
   gate_rejected: z.strictObject({ decisionId: id, stage, findings: z.array(text) }),
   gate_taken_over: z.strictObject({ decisionId: id, stage, holder: identitySchema }),
   gate_overridden: z.strictObject({ decisionId: id, stage, reason: nonBlank }),
-  gate_refused_to_agent: z.strictObject({ decision: gateDecisionSchema, stage }),
+  gate_refused_to_agent: z.strictObject({
+    decision: gateDecisionSchema,
+    stage,
+    reason: delegatedHoldSchema.nullable().default(null),
+  }),
   ship_refused: z.strictObject({ stage, reasons: z.array(shipRefusalSchema).min(1) }),
   connector_succeeded: z.strictObject({
     connector: effect,
     detail: z.record(z.string(), z.string()),
   }),
   connector_refused: z.strictObject({ connector: effect, reason: text }),
+  delegated_merge: delegatedMergeSchema,
+  delegated_exit_claimed: z.strictObject({ decisionId: id }),
+  silence_alarm: z.strictObject({
+    level: z.literal('red'),
+    waiting: z.number().int().min(1),
+    oldestEnteredAt: instant,
+    lastReviewStepAt: instant.nullable(),
+  }),
+  template_changed: z.strictObject({
+    from: slugSchema,
+    to: slugSchema,
+    kept: z.array(stage).min(1),
+    added: z.array(stage).min(1),
+  }),
+  fix_claimed: z.strictObject({
+    delegationId: id,
+    head,
+    declaration: pullRequestDeclarationSchema.nullable(),
+  }),
+  review_verdict_recorded: z.strictObject({
+    runId: id,
+    head,
+    reviewer: z.string().regex(/^[a-z0-9-]{1,64}$/),
+    provider: providerIdSchema,
+    model: modelIdSchema,
+    verdict: reviewVerdictSchema,
+    findings: z.array(reviewFindingSchema).max(50),
+  }),
+  finding_refuted: z.strictObject({
+    runId: id,
+    persona: identitySchema,
+    reviewer: z.string().regex(/^[a-z0-9-]{1,64}$/),
+    index: z.number().int().min(0).max(49),
+    weight: findingWeightSchema,
+    text,
+  }),
+  shadow_verdict: z.strictObject({
+    head: head.nullable(),
+    verdict: shadowVerdictValueSchema,
+    reasons: z.array(shipRefusalSchema).max(shipRefusalSchema.options.length),
+  }),
 };
 
 const harnessEvidence = {
+  freeze_changed: z.strictObject({ frozen: z.boolean(), allow: z.array(id).max(100) }),
   delegation_granted: z.strictObject({
     delegationId: id,
     personId: id,
@@ -196,6 +277,7 @@ const harnessEvidence = {
     capability: capabilityWordSchema,
     expiresAt: instant,
     supersedes: id.nullable(),
+    maxTier: delegableTierSchema.nullable().default(null),
   }),
   delegation_revoked: z.strictObject({ delegationId: id }),
   delegation_lapsed: z.strictObject({ delegationId: id, why: delegationLapseSchema }),
@@ -216,6 +298,7 @@ const harnessEvidence = {
   harness_paused: z.strictObject({ stage: stage.nullable() }),
   harness_resumed: z.strictObject({ stage: stage.nullable() }),
   hosted_builder_set: z.strictObject({ enabled: z.boolean() }),
+  fix_claim_set: z.strictObject({ enabled: z.boolean() }),
   comment_recorded: z.strictObject({
     source: z.literal('zulip'),
     messageId: z.number().int().min(1),
@@ -252,16 +335,51 @@ const harnessEvidence = {
     value: z.number().finite(),
     asOf: z.iso.date(),
   }),
-  handed_to_person: z.strictObject({
-    personId: id,
-    why: handOffReasonSchema,
-    rounds: z.number().int().min(1),
-  }),
+  handed_to_person: z
+    .strictObject({
+      personId: id,
+      why: handOffReasonSchema,
+      rounds: z.number().int().min(1).nullable(),
+    })
+    .refine(
+      (handed) => (handed.why === 'review_rounds_exhausted') === (handed.rounds !== null),
+      'only review rounds name a round count',
+    ),
   template_activated: z.strictObject({
     template: slugSchema,
     stages: z.array(stage).min(1),
     repository: repositorySchema.nullable(),
+    shadow: z.boolean().default(false),
   }),
+  shadow_lifted: z.strictObject({}),
+  epic_enqueued: z.strictObject({
+    epic: issueRefSchema,
+    title: z.string().min(1).max(200),
+    items: z
+      .array(
+        z.strictObject({
+          itemId: id,
+          issue: issueRefSchema,
+          created: z.boolean(),
+          blockedBy: z.array(id).max(50),
+        }),
+      )
+      .min(1)
+      .max(100),
+    outside: z.array(z.number().int().min(1)).max(50),
+    doneWhen: z.array(text).max(100),
+  }),
+  done_when_missing: z
+    .strictObject({
+      via: intakeViaSchema,
+      issue: issueRefSchema.nullable(),
+      pageId: id.nullable(),
+      title: z.string().min(1).max(200),
+    })
+    .refine(
+      (missing) => (missing.issue === null) !== (missing.pageId === null),
+      'an issue or a page',
+    ),
 };
 
 export const eventEvidenceSchemas = {

@@ -8,12 +8,21 @@ import {
 } from '@uw/contracts';
 import type { Executor } from '@uw/db/client';
 import { pages } from '@uw/db/schema';
+import { learningProvenance, type ExternalWriter, type Provenance } from './provenance.ts';
 
-export type Landing = { readonly status: PageStatus; readonly stored: PageStatus | null };
+export type Landing = {
+  readonly status: PageStatus;
+  readonly stored: PageStatus | null;
+  readonly prior: Provenance | null;
+  readonly writer: ExternalWriter | null;
+};
 
 export type DerivedFrontmatter =
   | { readonly ok: true; readonly frontmatter: StoredFrontmatter }
-  | { readonly ok: false; readonly reason: 'activation_required' };
+  | {
+      readonly ok: false;
+      readonly reason: 'activation_required' | 'malformed_command' | 'not_permitted';
+    };
 
 type Frontmatter = Readonly<Record<string, unknown>>;
 type StoredFrontmatter = ReturnType<typeof frontmatterSchema.parse>;
@@ -24,7 +33,9 @@ function derived(frontmatter: Frontmatter): DerivedFrontmatter {
 
 const STATUS = 'status';
 
-function namesActivation(input: Frontmatter, landing: Landing): boolean {
+type Landed = Pick<Landing, 'status' | 'stored'>;
+
+function namesActivation(input: Frontmatter, landing: Landed): boolean {
   if (!Object.hasOwn(input, 'status') || input['status'] !== 'active') return false;
   return landing.status !== 'active' && landing.stored !== 'active';
 }
@@ -37,7 +48,7 @@ function toolsetOf(frontmatter: Frontmatter): readonly unknown[] {
 export function personaFrontmatterFor(
   parsed: Frontmatter,
   input: Frontmatter,
-  landing: Landing,
+  landing: Landed,
 ): DerivedFrontmatter {
   if (namesActivation(input, landing)) return { ok: false, reason: 'activation_required' };
   return derived({ ...parsed, status: landing.status, requires_tools: [...toolsetOf(parsed)] });
@@ -101,7 +112,14 @@ export async function derivedFrontmatter(
 ): Promise<DerivedFrontmatter> {
   if (type === 'persona') return personaFrontmatterFor(parsed, input, landing);
   if (type === 'learning') {
-    return derived({ ...parsed, contradicts: await contradicts(tx, parsed) });
+    const provenance = learningProvenance({
+      parsed,
+      raw: input,
+      prior: landing.prior,
+      writer: landing.writer,
+    });
+    if (!provenance.ok) return { ok: false, reason: provenance.reason };
+    return derived({ ...provenance.frontmatter, contradicts: await contradicts(tx, parsed) });
   }
   return derived(parsed);
 }

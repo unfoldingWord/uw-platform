@@ -53,8 +53,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
-      - uses: ./.github/actions/setup
+      - name: Skip unless the Cloudflare API token is set
+        id: gate
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: bash .github/scripts/secret-gate.sh CLOUDFLARE_API_TOKEN
+      - if: steps.gate.outputs.configured == 'true'
+        uses: ./.github/actions/setup
       - name: Deploy staging
+        if: steps.gate.outputs.configured == 'true'
         working-directory: apps/uw-app
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -63,6 +70,7 @@ jobs:
           pnpm exec wrangler deploy --config ../../infra/uw-app/wrangler.toml --env staging
           --var "COMMIT_SHA:$SHA"
       - name: Confirm /health/probe reports the deployed commit
+        if: steps.gate.outputs.configured == 'true'
         run: bash .github/scripts/await-health.sh "$STAGING_URL/health/probe" "$SHA"
 
   deploy-ingest-staging:

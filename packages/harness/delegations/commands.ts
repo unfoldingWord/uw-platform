@@ -1,9 +1,12 @@
 import {
   capabilityWordSchema,
+  delegableTierSchema,
   personaIdentitySchema,
   type CapabilityWord,
+  type DelegableTier,
   type Harness,
   type Principal,
+  type RiskTier,
 } from '@uw/contracts';
 import { allowed, isAgent, ownerBound } from '../access.ts';
 import type { Caller } from '../caller.ts';
@@ -24,9 +27,24 @@ export type GrantInput = {
   readonly harnessId: string;
   readonly persona: string;
   readonly capability: CapabilityWord;
+  readonly maxTier: RiskTier | null;
   readonly expiresAt: Date | null;
   readonly supersedes: string | null;
 };
+
+type Tiered = { readonly maxTier: DelegableTier | null };
+
+function tierOf(input: GrantInput): Tiered | Refused {
+  if (input.capability !== 'merge') {
+    if (input.maxTier === null) return { maxTier: null };
+    return refused('malformed_command', { why: 'max_tier_only_for_merge' });
+  }
+  if (input.maxTier === null) return refused('malformed_command', { why: 'max_tier_required' });
+  const tier = delegableTierSchema.safeParse(input.maxTier);
+  return tier.success
+    ? { maxTier: tier.data }
+    : refused('tier_not_delegable', { maxTier: input.maxTier });
+}
 
 export type DelegationCommands = {
   grant(caller: Caller, input: GrantInput): Promise<KernelOutcome<Delegation>>;
@@ -65,7 +83,7 @@ function draftOf(
   ports: DelegationPorts,
   caller: Caller,
   harness: Harness,
-  input: GrantInput,
+  input: GrantInput & Tiered,
   at: Date,
 ): Delegation | Refused {
   const persona = personaIdentitySchema.safeParse(input.persona);
@@ -83,6 +101,7 @@ function draftOf(
     persona: persona.data,
     harnessId: harness.id,
     capability: capability.data,
+    maxTier: input.maxTier,
     grantedAt: at,
     expiresAt,
     revokedAt: null,
@@ -102,7 +121,9 @@ async function grantIn(
   if (harness === null) return refused('harness_not_found', { harnessId: input.harnessId });
   const denied = await adminRefusal(ports, tx, caller, harness, at);
   if (denied !== null) return denied;
-  const next = draftOf(ports, caller, harness, input, at);
+  const tier = tierOf(input);
+  if ('status' in tier) return tier;
+  const next = draftOf(ports, caller, harness, { ...input, maxTier: tier.maxTier }, at);
   if ('status' in next) return next;
   const revoked = await supersession(tx, next.personId, next, at);
   if ('status' in revoked) return revoked;
@@ -116,6 +137,7 @@ async function grantIn(
       capability: next.capability,
       expiresAt: next.expiresAt.toISOString(),
       supersedes: next.supersedes,
+      maxTier: next.maxTier,
     }),
   ]);
   return accepted(next);

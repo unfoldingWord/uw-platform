@@ -1,12 +1,11 @@
-import { and, asc, eq, inArray, or, sql, type SQL } from 'drizzle-orm';
+import { asc, eq, inArray, or, sql, type SQL } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import { advisoryLock, githubRepoKey } from '@uw/db/advisory-locks';
-import type { Database, Executor, Transaction } from '@uw/db/client';
+import type { Database, Transaction } from '@uw/db/client';
 import { ghCheckRuns, ghIssues, ghMilestones, ghPrs, ghRepos, ghReviews } from '@uw/db/schema';
 import type {
   CheckRunRecord,
   FactBatch,
-  FilesRecord,
   IssueChange,
   IssueRecord,
   MilestoneRecord,
@@ -14,6 +13,8 @@ import type {
   RepoRecord,
   ReviewRecord,
 } from './records.ts';
+import { recordAllFiles } from './heads.ts';
+import { lockedLabels, storedIssues } from './issues.ts';
 import { pullRequestChanges, type PullRequestChange } from './queries.ts';
 
 export type RepairCounts = {
@@ -121,6 +122,9 @@ const issueColumns = {
   labels: ghIssues.labels,
   milestoneId: ghIssues.milestoneId,
   githubUpdatedAt: ghIssues.githubUpdatedAt,
+  subIssues: ghIssues.subIssues,
+  doneWhen: ghIssues.doneWhen,
+  blockedBy: ghIssues.blockedBy,
 };
 const pullColumns = {
   repoId: ghPrs.repoId,
@@ -134,8 +138,11 @@ const pullColumns = {
   baseRef: ghPrs.baseRef,
   baseSha: ghPrs.baseSha,
   milestoneId: ghPrs.milestoneId,
+  requestedReviewers: ghPrs.requestedReviewers,
+  authorLogin: ghPrs.authorLogin,
   declaration: ghPrs.declaration,
   declarationProblem: ghPrs.declarationProblem,
+  closes: ghPrs.closes,
   githubUpdatedAt: ghPrs.githubUpdatedAt,
 };
 const checkColumns = {
@@ -231,7 +238,15 @@ async function upsertIssues(tx: Transaction, issues: readonly IssueRecord[], fre
   if (issues.length === 0) return 0;
   const rows = await tx
     .insert(ghIssues)
-    .values(issues.map((issue) => ({ ...issue, labels: [...issue.labels], freshAt })))
+    .values(
+      issues.map((issue) => ({
+        ...issue,
+        labels: [...issue.labels],
+        doneWhen: [...issue.doneWhen],
+        blockedBy: [...issue.blockedBy],
+        freshAt,
+      })),
+    )
     .onConflictDoUpdate({
       target: ghIssues.githubId,
       set: excluded(issueColumns),
@@ -245,7 +260,9 @@ async function upsertPulls(tx: Transaction, pulls: readonly PullRequestRecord[],
   if (pulls.length === 0) return 0;
   const rows = await tx
     .insert(ghPrs)
-    .values(pulls.map((pull) => ({ ...pull, freshAt })))
+    .values(
+      pulls.map((pull) => ({ ...pull, requestedReviewers: [...pull.requestedReviewers], freshAt })),
+    )
     .onConflictDoUpdate({
       target: ghPrs.githubId,
       set: {
@@ -254,6 +271,9 @@ async function upsertPulls(tx: Transaction, pulls: readonly PullRequestRecord[],
         filesHead: sameHeadOr('files_head'),
         filesBase: sameHeadOr('files_base'),
         filesProblem: sameHeadOr('files_problem'),
+        behindBy: sameHeadOr('behind_by'),
+        patchId: sameHeadOr('patch_id'),
+        headCommits: sameHeadOr('head_commits'),
       },
       setWhere: both(sql.raw(`(${pullMovesForward})`), differs('gh_prs', pullColumns)),
     })
@@ -342,17 +362,6 @@ async function lockRepos(tx: Transaction, ids: readonly number[]) {
   for (const id of ids) await tx.execute(advisoryLock(githubRepoKey(id)));
 }
 
-async function lockedLabels(tx: Transaction, ids: readonly number[]) {
-  if (ids.length === 0) return new Map<number, readonly string[]>();
-  const rows = await tx
-    .select({ githubId: ghIssues.githubId, labels: ghIssues.labels })
-    .from(ghIssues)
-    .where(inArray(ghIssues.githubId, [...ids]))
-    .orderBy(asc(ghIssues.githubId))
-    .for('update');
-  return new Map(rows.map((row) => [row.githubId, row.labels]));
-}
-
 async function lockPulls(tx: Transaction, ids: readonly number[]) {
   if (ids.length === 0) return;
   await tx
@@ -361,56 +370,6 @@ async function lockPulls(tx: Transaction, ids: readonly number[]) {
     .where(inArray(ghPrs.githubId, [...ids]))
     .orderBy(asc(ghPrs.githubId))
     .for('update');
-}
-
-async function storedIssues(
-  tx: Transaction,
-  ids: readonly number[],
-  had: ReadonlyMap<number, readonly string[]>,
-) {
-  if (ids.length === 0) return [];
-  const rows = await tx
-    .select({ issue: ghIssues, repo: ghRepos.fullName })
-    .from(ghIssues)
-    .innerJoin(ghRepos, eq(ghRepos.githubId, ghIssues.repoId))
-    .where(inArray(ghIssues.githubId, [...ids]))
-    .orderBy(asc(ghIssues.githubId));
-  return rows.map(({ issue, repo }): IssueChange => ({
-    repo,
-    githubId: issue.githubId,
-    number: issue.number,
-    title: issue.title,
-    open: issue.state === 'open',
-    labels: issue.labels,
-    hadLabels: had.get(issue.githubId) ?? null,
-    githubUpdatedAt: issue.githubUpdatedAt,
-  }));
-}
-
-async function recordFilesIn(db: Executor, files: FilesRecord): Promise<boolean> {
-  const at = and(
-    eq(ghPrs.githubId, files.pullRequestId),
-    eq(ghPrs.headSha, files.head),
-    eq(ghPrs.baseSha, files.base),
-  );
-  const rows = await db
-    .update(ghPrs)
-    .set({
-      files: files.paths,
-      filesHead: files.head,
-      filesBase: files.base,
-      filesProblem: files.problem,
-    })
-    .where(at)
-    .returning({ githubId: ghPrs.githubId });
-  return rows.length > 0;
-}
-
-async function recordAllFiles(tx: Transaction, files: readonly FilesRecord[]) {
-  let landed = 0;
-  const ordered = [...files].sort((a, b) => a.pullRequestId - b.pullRequestId);
-  for (const record of ordered) if (await recordFilesIn(tx, record)) landed += 1;
-  return landed;
 }
 
 async function writeRecords(
@@ -451,10 +410,6 @@ export function upsertFacts(db: Database, batch: FactBatch, freshAt: Date): Prom
       pullIds.length === 0 ? [] : await pullRequestChanges(tx, inArray(ghPrs.githubId, pullIds));
     return { repaired, issues, pullRequests };
   });
-}
-
-export function recordFiles(db: Database, files: FilesRecord): Promise<boolean> {
-  return recordFilesIn(db, files);
 }
 
 export type SweepRecord = {

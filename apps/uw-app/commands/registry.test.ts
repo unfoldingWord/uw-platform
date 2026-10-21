@@ -36,6 +36,13 @@ const actions = {
   set_hosted_builder: 'admin',
   activate_persona: 'admin',
   record_measurement: 'write',
+  set_shadow: 'admin',
+  set_freeze: 'admin',
+  decide_gates: 'admin',
+  refute_finding: 'write',
+  set_fix_claim: 'admin',
+  enqueue_epic: 'write',
+  change_template: 'admin',
 } as const;
 
 describe('WB-1 the command registry', () => {

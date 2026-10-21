@@ -1,8 +1,8 @@
-import { eventEvidenceSchemas, type Harness } from '@uw/contracts';
+import { eventEvidenceSchemas, type Harness, type ItemState } from '@uw/contracts';
 import { allowed, isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
-import type { Delegation, StoreTransaction } from '../ports.ts';
-import type { ScenePorts } from '../reads/scene.ts';
+import type { Delegation, GitHubFacts, Ports, StoreTransaction } from '../ports.ts';
+import { uncountedItems } from './bots.ts';
 import { decidableGates } from './gates.ts';
 import { readableHarnesses } from './readable.ts';
 import {
@@ -15,6 +15,7 @@ import {
 
 const nothingWaiting: Waiting = {
   rows: [],
+  uncounted: 0,
   failedRunsCapped: false,
   gatesCapped: false,
   lapsedCapped: false,
@@ -120,7 +121,11 @@ async function failedRows(scope: Scope): Promise<FailedRows> {
   return { rows, capped: runs.length === FAILED_RUNS_LIMIT };
 }
 
-type HandOff = { readonly itemId: string; readonly harness: Harness; readonly rounds: number };
+type HandOff = {
+  readonly itemId: string;
+  readonly harness: Harness;
+  readonly rounds: number | null;
+};
 
 async function handOffsTo(
   scope: Scope,
@@ -158,8 +163,24 @@ async function handedRows(scope: Scope): Promise<LapsedRows> {
   return { rows, capped };
 }
 
+function rowItem(row: WaitingRow): { readonly harness: Harness; readonly item: ItemState } | null {
+  if (row.kind === 'gate') return { harness: row.gate.harness, item: row.gate.item };
+  if (row.kind === 'delegation_lapsed') return null;
+  return { harness: row.harness, item: row.item };
+}
+
+async function uncountedRows(
+  facts: Pick<GitHubFacts, 'authors'>,
+  rows: readonly WaitingRow[],
+): Promise<number> {
+  const pairs = rows.flatMap((row) => rowItem(row) ?? []);
+  const scopes = pairs.map(({ harness, item }) => ({ harness, items: [item] }));
+  const left = await uncountedItems(facts, scopes);
+  return pairs.filter(({ item }) => left.has(item.itemId)).length;
+}
+
 export async function waitingOn(
-  ports: ScenePorts,
+  ports: Pick<Ports, 'grants' | 'githubFacts'>,
   tx: StoreTransaction,
   caller: Caller,
   at: Date,
@@ -179,8 +200,10 @@ export async function waitingOn(
   const failed = await failedRows(scope);
   const handed = await handedRows(scope);
   const gateRows = gates.rows.map((gate): WaitingRow => ({ kind: 'gate', gate }));
+  const rows = [...gateRows, ...lapsed.rows, ...failed.rows, ...handed.rows];
   return {
-    rows: [...gateRows, ...lapsed.rows, ...failed.rows, ...handed.rows],
+    rows,
+    uncounted: await uncountedRows(ports.githubFacts, rows),
     failedRunsCapped: failed.capped,
     gatesCapped: gates.capped,
     lapsedCapped: lapsed.capped,

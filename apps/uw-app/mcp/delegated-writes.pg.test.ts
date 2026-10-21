@@ -1,3 +1,4 @@
+import { defaultCiChecks } from '@uw/contracts';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { sql } from 'drizzle-orm';
@@ -100,6 +101,7 @@ async function harnessOf(r: Rig): Promise<string> {
     jdArea: '80-89',
     template: software,
     repository: `unfoldingWord/${key}`,
+    requiredChecks: [...defaultCiChecks],
   };
   value(await r.kernel.stages.activate(caller(r.ian), activate));
   return harnessId;
@@ -113,7 +115,9 @@ async function delegate(
 ): Promise<string> {
   const person = await personOn(r.db, owner.id, owner.email, new Date());
   const input = { harnessId, persona: 'agent:iterate', expiresAt: null, supersedes: null };
-  return value(await r.kernel.delegations.grant(caller(person), { ...input, capability })).id;
+  return value(
+    await r.kernel.delegations.grant(caller(person), { ...input, capability, maxTier: null }),
+  ).id;
 }
 
 async function login(

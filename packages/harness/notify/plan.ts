@@ -1,5 +1,6 @@
 import {
   gateLink,
+  healthLink,
   homeLink,
   itemLink,
   type DeepLink,
@@ -48,6 +49,7 @@ async function holdersFor(
 }
 
 function linkOf(trigger: Trigger, harness: Harness, itemId: string | null): DeepLink | null {
+  if (trigger.reason === 'silence_alarm') return healthLink('silence_alarm');
   if (trigger.reason === 'delegation_lapsed') return homeLink;
   if (itemId === null) return null;
   return trigger.reason === 'gate_waiting'
@@ -98,6 +100,8 @@ const screens: ReadonlyMap<string, LiveScreen> = new Map<string, LiveScreen>([
   ['run_failed', 'item'],
   ['stage_advanced', 'item'],
   ['handed_to_person', 'item'],
+  ['delegated_merge', 'item'],
+  ['silence_alarm', 'home'],
 ]);
 
 async function presentOn(hub: Hub, draft: Draft, personId: string): Promise<WakeRecipient> {

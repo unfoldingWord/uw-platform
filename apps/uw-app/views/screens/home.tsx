@@ -54,7 +54,10 @@ function shown(row: WaitingRow, viewer: string | null): Shown {
   if (row.kind === 'handed_to_person') {
     return {
       href: itemPath(row.harness.id, row.item.itemId),
-      text: `${row.item.title} was handed to you after ${roundsText(row.rounds)} review rounds`,
+      text:
+        row.rounds === null
+          ? `${row.item.title} was handed to you because an engine refused it`
+          : `${row.item.title} was handed to you after ${roundsText(row.rounds)} review rounds`,
       harnessId: row.harness.id,
     };
   }
@@ -66,11 +69,17 @@ function shown(row: WaitingRow, viewer: string | null): Shown {
   };
 }
 
-function lede(count: number, capped: boolean): string {
+function countWords(count: number, capped: boolean): string {
   if (capped) return `At least ${formatCount(count)} things are waiting on you`;
   return count === 1
     ? '1 thing is waiting on you'
     : `${formatCount(count)} things are waiting on you`;
+}
+
+function lede(count: number, capped: boolean, uncounted: number): string {
+  const head = countWords(count, capped);
+  if (uncounted === 0) return head;
+  return `${head}, not counting ${formatCount(uncounted)} on pull requests by bot accounts`;
 }
 
 const cappedNote = `At least ${formatCount(FAILED_RUNS_LIMIT)} runs failed on your items in the last 7 days. The newest ${formatCount(FAILED_RUNS_LIMIT)} are listed.`;
@@ -151,7 +160,9 @@ export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
       <>
         <PageHead
           title="Waiting on you"
-          {...(rows.length === 0 ? {} : { lede: lede(rows.length, notes.length > 0) })}
+          {...(rows.length === 0
+            ? {}
+            : { lede: lede(rows.length - waiting.uncounted, notes.length > 0, waiting.uncounted) })}
         />
         {notes.map((note) => (
           <Note>{note}</Note>

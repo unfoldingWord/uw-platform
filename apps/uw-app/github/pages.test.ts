@@ -49,23 +49,29 @@ describe('GH-5 the changed files are read by comparing the base SHA with the hea
     const github = fixtureGitHub();
     github.on('GET', comparePath, filesOf(3));
     const result = await readsOver(github).changedFiles('o/r', base, head);
-    expect(result.ok && Array.isArray(result.value) && result.value.length).toBe(3);
+    expect(result.ok && Array.isArray(result.value.files) && result.value.files.length).toBe(3);
     expect(sent(github, comparePath).map((request) => request.search)).toEqual([
-      '?per_page=1&page=1',
+      '?per_page=100&page=1',
     ]);
   });
 
   it('answers too_many_files when the comparison reaches the 300 files GitHub lists', async () => {
-    expect(await answerTo(filesOf(300).body)).toEqual({ ok: true, value: 'too_many_files' });
+    expect(await answerTo(filesOf(300).body)).toMatchObject({
+      ok: true,
+      value: { files: 'too_many_files' },
+    });
   });
 
   it('reads 299 files as the whole list', async () => {
     const result = await answerTo(filesOf(299).body);
-    expect(result.ok && Array.isArray(result.value) && result.value.length).toBe(299);
+    expect(result.ok && Array.isArray(result.value.files) && result.value.files.length).toBe(299);
   });
 
   it('reads an identical comparison with no files listed as no files', async () => {
-    expect(await answerTo({ status: 'identical', commits: [] })).toEqual({ ok: true, value: [] });
+    expect(await answerTo({ status: 'identical', commits: [] })).toEqual({
+      ok: true,
+      value: { files: [], behindBy: null, commits: null },
+    });
   });
 
   it('counts any other comparison with no files listed as malformed', async () => {
@@ -119,5 +125,18 @@ describe('the other GitHub list reads are whole or refused', () => {
     expect(runs.ok && runs.value.length).toBe(150);
     const repositories = await reads.installationRepositories();
     expect(repositories.ok && repositories.value.length).toBe(2);
+  });
+});
+
+describe('SR-1 the comparison carries the distance behind the base and the head commits', () => {
+  it('SR-1 reads the distance behind the base, and the commits only when GitHub listed all of them', async () => {
+    const commits = [{ sha: head }];
+    const all = { status: 'ahead', behind_by: 4, total_commits: 1, commits, files: [] };
+    expect(await answerTo(all)).toEqual({ ok: true, value: { files: [], behindBy: 4, commits } });
+    const some = { ...all, total_commits: 2 };
+    expect(await answerTo(some)).toEqual({
+      ok: true,
+      value: { files: [], behindBy: 4, commits: null },
+    });
   });
 });

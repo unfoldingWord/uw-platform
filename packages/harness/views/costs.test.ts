@@ -69,6 +69,8 @@ function item(holder: string | null): ItemState {
     pullRequest: null,
     issue: null,
     zulipTopic: null,
+    epic: null,
+    blockedBy: [],
   });
 }
 

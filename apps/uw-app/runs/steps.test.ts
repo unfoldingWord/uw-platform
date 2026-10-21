@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { VerbName } from '@uw/contracts';
 import { MAX_BODY_BYTES } from '../http/body.ts';
-import { countedHttp } from './steps.ts';
+import { countedHttp, haltedBy } from './steps.ts';
 
 const served: ReadonlySet<VerbName> = new Set<VerbName>(['read_page', 'write_page']);
 
@@ -69,4 +69,21 @@ describe("a sandbox step's HTTP call counter", () => {
   it('counts a write only when the call succeeded', refusedWritesUncounted);
 
   it('reads at most the body limit before it counts a call', oversizedUncounted);
+});
+
+describe('RV-1 a step halted by an unweighted Reviewer finding', () => {
+  it('RV-1 treats finding_weight_missing as an ending: the run already failed, nothing retries', () => {
+    expect(haltedBy('finding_weight_missing', { runId: 'r' })).toEqual({ kind: 'ended' });
+    expect(haltedBy('github_unavailable', {})).toEqual({
+      kind: 'failed',
+      detail: 'github_unavailable',
+    });
+  });
+});
+
+describe('FL-3 a step halted by a refused fix', () => {
+  it('FL-3 treats fix_size_cap and fix_keeps_purpose as an ending: the kernel released the claim and stopped the run', () => {
+    expect(haltedBy('fix_size_cap', { lines: 9 })).toEqual({ kind: 'ended' });
+    expect(haltedBy('fix_keeps_purpose', {})).toEqual({ kind: 'ended' });
+  });
 });

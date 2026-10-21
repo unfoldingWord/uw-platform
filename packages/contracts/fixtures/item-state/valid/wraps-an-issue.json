@@ -22,5 +22,8 @@
     "number": 42,
     "githubId": 9100000001
   },
-  "zulipTopic": null
+  "zulipTopic": null,
+  "epic": null,
+  "blockedBy": [],
+  "heldSince": null
 }

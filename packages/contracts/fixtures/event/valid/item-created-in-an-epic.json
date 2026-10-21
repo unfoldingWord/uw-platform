@@ -1,0 +1,33 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000f1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "name": "item_created",
+  "position": 1,
+  "at": "2026-10-15T09:00:00.000Z",
+  "actor": "human:00000000-0000-4000-8000-000000000001",
+  "evidence": {
+    "stage": "package",
+    "title": "Read the sub-issues",
+    "pageId": null,
+    "priority": 0,
+    "due": null,
+    "issue": {
+      "repo": "unfoldingWord/uw-platform",
+      "number": 41,
+      "githubId": 9100000341
+    },
+    "epic": {
+      "issue": {
+        "repo": "unfoldingWord/uw-platform",
+        "number": 40,
+        "githubId": 9100000340
+      },
+      "title": "Epic intake",
+      "position": 0
+    },
+    "blockedBy": []
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
+}

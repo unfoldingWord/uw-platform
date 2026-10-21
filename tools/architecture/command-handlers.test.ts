@@ -8,7 +8,10 @@ const testFile = /\.test\.tsx?$/;
 const databasePackage = /['"`]@uw\/db[/'"`]/;
 const databaseMember = /\.\s*database\b|\{[^}]*\bdatabase\b[^}]*\}\s*=/;
 const databaseKey = /['"`]database['"`]/;
-const readRoutes = new Set(['apps/uw-app/commands/person/gate-view.ts']);
+const readRoutes = new Set([
+  'apps/uw-app/commands/person/gate-view.ts',
+  'apps/uw-app/commands/person/shadow-export.ts',
+]);
 
 type Read = (file: string) => string;
 const readReal: Read = (file) => readFileSync(file, 'utf8');

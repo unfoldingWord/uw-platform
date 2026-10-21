@@ -14,6 +14,7 @@ const connectorRequest = (
   itemId: 'b1000000-0000-4000-8000-000000000002',
   traceId: 'b1000000-0000-4000-8000-000000000003',
   pullRequest: null,
+  joined: false,
   expectedHead: null,
   expectedBase: null,
   repository: null,
@@ -56,6 +57,8 @@ const pullRequestFacts: PullRequestFacts = {
   reviews: [],
   files: null,
   declaration: null,
+  closes: [],
+  comparison: null,
   freshAt: new Date('2026-10-01T09:00:00.000Z'),
 };
 

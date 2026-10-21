@@ -44,12 +44,15 @@ function created(event: FoldableEvent): ItemState {
     gateStatus: 'working',
     gateTarget: null,
     branchState: 'none',
-    expectedHead: null,
+    expectedHead: evidence.expectedHead,
     riskTier: null,
     riskDomains: [],
-    pullRequest: null,
+    pullRequest: evidence.pullRequest,
     issue: evidence.issue,
     zulipTopic: null,
+    epic: evidence.epic,
+    blockedBy: evidence.blockedBy,
+    heldSince: event.at,
   };
 }
 
@@ -187,6 +190,16 @@ const steps: ReadonlyMap<EventName, Step> = new Map<EventName, Step>([
 ]);
 
 export const unchangedNames: ReadonlySet<EventName> = new Set<EventName>([
+  'review_verdict_recorded',
+  'shadow_verdict',
+  'shadow_lifted',
+  'freeze_changed',
+  'epic_enqueued',
+  'done_when_missing',
+  'finding_refuted',
+  'delegated_exit_claimed',
+  'silence_alarm',
+  'template_changed',
   'premise_held',
   'label_removed',
   'run_started',
@@ -203,6 +216,7 @@ export const unchangedNames: ReadonlySet<EventName> = new Set<EventName>([
   'ship_refused',
   'connector_succeeded',
   'connector_refused',
+  'delegated_merge',
   'delegation_granted',
   'delegation_revoked',
   'delegation_lapsed',
@@ -214,6 +228,8 @@ export const unchangedNames: ReadonlySet<EventName> = new Set<EventName>([
   'harness_paused',
   'harness_resumed',
   'hosted_builder_set',
+  'fix_claimed',
+  'fix_claim_set',
   'learning_attached',
   'nothing_learned',
   'comment_recorded',
@@ -231,6 +247,15 @@ function ownedBy(state: ItemState, event: FoldableEvent): boolean {
   return event.itemId === state.itemId && event.harnessId === state.harnessId;
 }
 
+function moved(before: ItemState, after: ItemState, event: FoldableEvent): boolean {
+  return (
+    event.name === 'item_claimed' ||
+    before.holder !== after.holder ||
+    before.gateStatus !== after.gateStatus ||
+    before.stageKey !== after.stageKey
+  );
+}
+
 export function foldItem(state: ItemState | null, event: FoldableEvent): ItemState {
   if (event.name === 'item_created') {
     if (state !== null) throw new ReplayError('item_created twice', event.eventId);
@@ -240,7 +265,8 @@ export function foldItem(state: ItemState | null, event: FoldableEvent): ItemSta
   if (!ownedBy(state, event))
     throw new ReplayError(`${event.name} for another item`, event.eventId);
   const step = steps.get(event.name);
-  return step === undefined ? state : step(state, event);
+  const next = step === undefined ? state : step(state, event);
+  return moved(state, next, event) ? { ...next, heldSince: event.at } : next;
 }
 
 export function replay(events: readonly FoldableEvent[]): ItemState | null {

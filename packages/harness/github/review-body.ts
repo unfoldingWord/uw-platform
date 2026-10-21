@@ -1,11 +1,11 @@
-import { providerIdSchema, type ReviewVerdict } from '@uw/contracts';
+import { providerIdSchema, type ReviewFinding, type ReviewVerdict } from '@uw/contracts';
 import { readsAsBlockLine } from './fenced-block.ts';
 
 type ReviewBodySource = {
   readonly provider: string;
   readonly model: string;
   readonly verdict: ReviewVerdict;
-  readonly findings: readonly string[];
+  readonly findings: readonly ReviewFinding[];
 };
 
 const MODEL_LIMIT = 200;
@@ -35,13 +35,17 @@ export function oneLine(text: string): string {
   return visible.replace(lineBreaking, ' ').replace(spaces, ' ').trim();
 }
 
-function findingLine(finding: string): string {
-  const neutral = finding.replace(fenceCharacters, '').replaceAll('<', '‹').replaceAll('&', '＆');
-  const folded = cut(oneLine(neutral), FINDING_LIMIT);
+export function shownFinding(text: string): string {
+  const neutral = text.replace(fenceCharacters, '').replaceAll('<', '‹').replaceAll('&', '＆');
+  return cut(oneLine(neutral), FINDING_LIMIT);
+}
+
+function findingLine(finding: ReviewFinding): string {
+  const folded = shownFinding(finding.text);
   const safe = readsAsBlockLine(`- ${folded}`, providerKeys)
     ? `${FINDING_PREFIX}${folded}`
     : folded;
-  return cut(safe, FINDING_LIMIT);
+  return safe === '' ? '' : `${finding.weight}: ${safe}`;
 }
 
 function modelLine(model: string): string {

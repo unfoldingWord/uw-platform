@@ -1,3 +1,4 @@
+import { itemIndex, openBlockers } from '../items/blockers.ts';
 import { heldForPerson } from '../items/held-for-person.ts';
 import {
   delegationIdOf,
@@ -11,6 +12,8 @@ import {
 import { allowed, bareAgent, isAgent, ownerBound } from '../access.ts';
 import { beatPrincipal } from '../delegations/beat.ts';
 import { capabilityReaches, pageAgrees } from '../delegations/capability.ts';
+import { delegableExit } from '../gates/delegable.ts';
+import { offeredForFix } from '../items/fix-offer.ts';
 import { leaseLapsed } from '../items/leases.ts';
 import { activePersonaOn } from '../personas/projection.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
@@ -107,10 +110,14 @@ function reachable(stage: Stage, reach: ReadonlySet<CapabilityWord> | null): boo
   return [...reach].some((capability) => capabilityReaches(capability, stage.bracket));
 }
 
+function pickupOpen(stage: Stage, reach: ReadonlySet<CapabilityWord> | null): boolean {
+  if (delegableExit(stage)) return reach !== null && reach.has('merge');
+  return stage.agentPickup !== 'none' && reachable(stage, reach);
+}
+
 function claimable(stages: readonly Stage[], item: ItemState, judged: Judged, at: Date): boolean {
   const stage = stages.find((candidate) => candidate.key === item.stageKey);
-  if (stage === undefined || stage.paused || stage.agentPickup === 'none') return false;
-  if (!reachable(stage, judged.reach)) return false;
+  if (stage === undefined || stage.paused || !pickupOpen(stage, judged.reach)) return false;
   const open = item.gateStatus === 'working' || item.gateStatus === 'checks_failed';
   return open && (item.holder === null || leaseLapsed(item, at));
 }
@@ -123,9 +130,15 @@ async function claimableIn(
   const { harness } = judged;
   const stages = await tx.harnessStages.read.forHarness(harness.id);
   const items = await tx.harnessItems.read.forHarness(harness.id);
+  const index = itemIndex(items);
+  const waiting = (item: ItemState) => openBlockers(item, index, stages).length > 0;
+  const candidates = items.filter(
+    (candidate) => claimable(stages, candidate, judged, at) && !waiting(candidate),
+  );
   const open: ItemState[] = [];
-  for (const item of items.filter((candidate) => claimable(stages, candidate, judged, at))) {
-    if (!(await heldForPerson(tx, item))) open.push(item);
+  for (const item of candidates) {
+    if (await heldForPerson(tx, item)) continue;
+    if (await offeredForFix(tx, harness, judged.reach, stages, item)) open.push(item);
   }
   return open;
 }

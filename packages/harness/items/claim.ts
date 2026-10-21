@@ -3,6 +3,8 @@ import { allowed, bareAgent, isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { actingPrincipal, isRefusal, recordDelegationRequired } from '../delegations/acting.ts';
 import { capabilityReaches, pageAgrees } from '../delegations/capability.ts';
+import { delegableExit } from '../gates/delegable.ts';
+import { agentInFlightRefusal } from '../gates/delegated-ship.ts';
 import {
   adoptionOf,
   claimedBranch,
@@ -12,12 +14,15 @@ import {
 } from './adopt.ts';
 import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
-import type { Ports, StoreTransaction } from '../ports.ts';
+import type { Delegation, Ports, StoreTransaction } from '../ports.ts';
 import { engineDescriptor } from '../engines.ts';
 import { spendRefusal } from '../runs/breaker-level.ts';
 import { activePersonaOn, personaIdentityFor } from '../personas/projection.ts';
 import { personaPageOf } from '../runs/persona.ts';
 import { endRunDrafts, stopWorkflows } from '../runs/ends.ts';
+import { dispatchRefusal } from './dispatch.ts';
+import { fixClaiming, readFixStart, type FixRead } from './fix-claim.ts';
+import { blockedRefusal } from './blockers.ts';
 import { personHoldRefusal } from './held-for-person.ts';
 import { lapseDrafts, LEASE_MS, leaseLapsed } from './leases.ts';
 import { pausedRefusal } from './paused.ts';
@@ -52,6 +57,12 @@ export type ClaimTaken = {
 
 type Taking = { readonly delegationId: string | null; readonly tip: BranchTip | null };
 
+type Claiming = {
+  readonly input: ClaimInput;
+  readonly tip: BranchTip | null;
+  readonly fix: FixRead;
+};
+
 type Scene = {
   readonly caller: Caller;
   readonly harness: Harness;
@@ -65,19 +76,43 @@ function gateRefusal(item: ItemState): Refused | null {
   return null;
 }
 
-function claimGuards(scene: Scene, item: ItemState): Refused | null {
+async function claimGuards(
+  tx: StoreTransaction,
+  scene: Scene,
+  item: ItemState,
+): Promise<Refused | null> {
   const { caller, harness, stage, context } = scene;
   if (!allowed(caller.actor, 'write', harness, context.at)) {
     return refused('not_permitted', { harnessId: harness.id });
   }
-  return gateRefusal(item) ?? pickupRefusal(caller, stage);
+  return (
+    (await agentInFlightRefusal(tx, caller, { item, harness, stage, context })) ??
+    gateRefusal(item) ??
+    pickupRefusal(caller, stage)
+  );
 }
 
 function pickupRefusal(caller: Caller, stage: Stage): Refused | null {
-  if (isAgent(caller.actor) && stage.agentPickup === 'none') {
+  if (isAgent(caller.actor) && stage.agentPickup === 'none' && !delegableExit(stage)) {
     return refused('pickup_not_allowed', { stage: stage.key });
   }
   return null;
+}
+
+async function unlentRefusal(
+  tx: StoreTransaction,
+  scene: Scene,
+  item: ItemState,
+  delegationId: string | null,
+): Promise<Refused | null> {
+  const { caller, stage, context } = scene;
+  if (!isAgent(caller.actor) || !delegableExit(stage) || delegationId !== null) return null;
+  return recordDelegationRequired(tx, context, item.itemId, stage.key);
+}
+
+function mergeReach(stage: Stage, delegation: Delegation): Refused | null {
+  if (delegation.capability === 'merge' && delegableExit(stage)) return null;
+  return refused('pickup_not_allowed', { stage: stage.key, capability: delegation.capability });
 }
 
 function lockedGuards(scene: Scene, item: ItemState): Refused | null {
@@ -105,12 +140,21 @@ async function bareRefusal(tx: StoreTransaction, scene: Scene): Promise<Refused 
   return (await hostedBuilderRefusal(tx, caller, harness)) ?? (await spendRefusal(tx, context.at));
 }
 
+async function dispatchGuard(tx: StoreTransaction, scene: Scene): Promise<Refused | null> {
+  return isAgent(scene.caller.actor) ? dispatchRefusal(tx, scene.harness) : null;
+}
+
 async function heldRefusal(
   tx: StoreTransaction,
   scene: Scene,
   item: ItemState,
 ): Promise<Refused | null> {
-  return (await bareRefusal(tx, scene)) ?? (await personHoldRefusal(tx, scene.caller, item));
+  return (
+    (await bareRefusal(tx, scene)) ??
+    (await personHoldRefusal(tx, scene.caller, item)) ??
+    (await blockedRefusal(tx, scene.caller, item)) ??
+    (await dispatchGuard(tx, scene))
+  );
 }
 
 async function inactivePersonaRefusal(
@@ -132,6 +176,8 @@ async function capabilityRefusal(
   const delegation = await tx.delegations.read.byId(delegationId);
   if (delegation === null) return null;
   const { harness, stage } = scene;
+  if (delegation.capability === 'merge' || delegableExit(stage))
+    return mergeReach(stage, delegation);
   const page = await activePersonaOn(tx, delegation.persona, harness.id);
   if (capabilityReaches(delegation.capability, stage.bracket) && pageAgrees(page, delegation)) {
     return null;
@@ -210,6 +256,19 @@ async function takeClaim(
   });
 }
 
+async function takeWithFix(
+  tx: StoreTransaction,
+  scene: Scene,
+  item: ItemState,
+  taking: Taking & { readonly fix: FixRead },
+): Promise<KernelOutcome<ClaimTaken>> {
+  const fixing = await fixClaiming(tx, scene, item, taking);
+  if ('status' in fixing) return fixing;
+  const taken = await takeClaim(tx, scene, item, taking);
+  if (taken.status !== 'accepted') return taken;
+  return accepted({ ...taken.value, drafts: [...taken.value.drafts, ...fixing.drafts] });
+}
+
 async function sceneOf(
   ports: ClaimPorts,
   tx: StoreTransaction,
@@ -225,43 +284,51 @@ async function sceneOf(
   return { caller, harness, stage, context: recordContext(ports, caller, at) };
 }
 
+async function rereadScene(tx: StoreTransaction, scene: Scene): Promise<Scene | Refused> {
+  const harness = await tx.harnesses.read.byId(scene.harness.id);
+  if (harness === null) return refused('harness_not_found', { harnessId: scene.harness.id });
+  const stages = await tx.harnessStages.read.forHarness(harness.id);
+  const stage = stages.find((entry) => entry.id === scene.stage.id);
+  if (stage === undefined) return refused('stage_not_found', { stage: scene.stage.key });
+  return { ...scene, harness, stage };
+}
+
 async function claimIn(
   ports: ClaimPorts,
   tx: StoreTransaction,
   caller: Caller,
-  { input, tip }: { readonly input: ClaimInput; readonly tip: BranchTip | null },
+  { input, tip, fix }: Claiming,
   at: Date,
 ): Promise<KernelOutcome<ClaimTaken>> {
   const pre = await tx.harnessItems.read.byId(input.itemId);
   if (pre === null) return refused('item_not_found', { itemId: input.itemId });
   const scene = await sceneOf(ports, tx, caller, pre, at);
   if ('status' in scene) return scene;
-  const early = claimGuards(scene, pre);
+  const early = await claimGuards(tx, scene, pre);
   if (early !== null) return early;
   await tx.lock(lockKeys.stageClaims(scene.stage.id));
   const item = await tx.harnessItems.read.lock(input.itemId);
   if (item === null) return refused('item_not_found', { itemId: input.itemId });
-  const harness = await tx.harnesses.read.byId(scene.harness.id);
-  if (harness === null) return refused('harness_not_found', { harnessId: scene.harness.id });
-  const stages = await tx.harnessStages.read.forHarness(harness.id);
-  const stage = stages.find((entry) => entry.id === scene.stage.id);
-  if (stage === undefined) return refused('stage_not_found', { stage: scene.stage.key });
-  const locked = { ...scene, harness, stage };
-  const stale = lockedGuards(locked, item) ?? (await heldRefusal(tx, locked, item));
+  const locked = await rereadScene(tx, scene);
+  if ('status' in locked) return locked;
+  const stale =
+    lockedGuards(locked, item) ??
+    (await heldRefusal(tx, locked, item)) ??
+    (await unlentRefusal(tx, locked, item, input.delegationId));
   if (stale !== null) return stale;
   const denied = await actingGuard(tx, ports, locked, item, input.delegationId);
   if (denied !== null) return denied;
-  return takeClaim(tx, locked, item, { delegationId: input.delegationId, tip });
+  return takeWithFix(tx, locked, item, { delegationId: input.delegationId, tip, fix });
 }
 
 export function claimWithin(
   ports: ClaimPorts,
   tx: StoreTransaction,
   caller: Caller,
-  input: ClaimInput,
-  at: Date,
+  claiming: { readonly input: ClaimInput; readonly at: Date; readonly fix?: FixRead },
 ): Promise<KernelOutcome<ClaimTaken>> {
-  return claimIn(ports, tx, caller, { input, tip: null }, at);
+  const { input, at, fix = null } = claiming;
+  return claimIn(ports, tx, caller, { input, tip: null, fix }, at);
 }
 
 export async function claim(
@@ -270,9 +337,10 @@ export async function claim(
   input: ClaimInput,
 ): Promise<KernelOutcome<Claimed>> {
   const tip = input.adoptBranch === true ? await readBranchTip(ports, input.itemId) : null;
+  const fix = await readFixStart(ports, input.itemId, input.delegationId);
   const at = ports.clock.now();
   const outcome = await ports.store.transaction(async (tx) => {
-    const taken = await claimIn(ports, tx, caller, { input, tip }, at);
+    const taken = await claimIn(ports, tx, caller, { input, tip, fix }, at);
     if (taken.status !== 'accepted') return taken;
     const context = recordContext(ports, caller, at);
     const recorded = await recordItemEvents(tx, context, input.itemId, taken.value.drafts);

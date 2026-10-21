@@ -1,4 +1,4 @@
-import { principalSchema } from '@uw/contracts';
+import { principalSchema, type ApproveAt } from '@uw/contracts';
 import { software, type Caller, type PullRequestRef } from '@uw/harness';
 import {
   createSimHarness,
@@ -24,6 +24,7 @@ type ReviewSetup = {
   readonly capability?: 'review' | 'build';
   readonly engine?: 'openrouter-messages' | 'claude-messages';
   readonly provider?: string | null;
+  readonly approveAt?: ApproveAt;
 };
 
 const reviewerPage = '00000000-0000-4000-8000-000000009801';
@@ -94,6 +95,7 @@ export async function reviewWorld(world: World, setup: ReviewSetup = {}): Promis
       provider: setup.provider === undefined ? 'deepinfra' : setup.provider,
       capability,
       toolset: ['read_page', 'record_run_step'],
+      approve_at: setup.approveAt ?? 'no_real_or_plausible',
     }),
   });
   const scene: RunWorld = { ...base, itemId, pageId: reviewerPage, persona: personaOf(base) };

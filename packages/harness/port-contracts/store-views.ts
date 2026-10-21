@@ -402,6 +402,7 @@ function delegationOf(n: number, overrides: Partial<Delegation>): Delegation {
     persona: 'agent:one' as Identity,
     harnessId: uid(0x4700),
     capability: 'iterate',
+    maxTier: null,
     grantedAt: new Date('2031-12-01T00:00:00.000Z'),
     expiresAt: new Date('2032-03-01T00:00:00.000Z'),
     revokedAt: null,

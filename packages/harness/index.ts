@@ -15,10 +15,13 @@ export type {
   CardHost,
   CostTotals,
   DecideAbility,
+  EpicGroup,
+  EpicNode,
   FlowStage,
   FlowView,
   GateRow,
   HarnessCursor,
+  NotReady,
   PlaneIndicator,
   PlaneRow,
   PlaneTotals,
@@ -50,11 +53,19 @@ export {
 export type { StoreRefusal } from './port-errors.ts';
 export { templates } from './templates.ts';
 export type { Template } from './templates.ts';
-export { describeViolation, templateProperty } from './template-property.ts';
+export {
+  delegationProperty,
+  describeDelegationViolation,
+  describeViolation,
+  templateProperty,
+} from './template-property.ts';
+export { delegableExit, type ExitShape } from './gates/delegable.ts';
+export { protectedAmong } from './risk/protected-paths.ts';
 export type { TemplateViolation } from './template-property.ts';
 export type { TemplateStage } from './templates/types.ts';
 export { software } from './templates/software.ts';
 export { bml } from './templates/bml.ts';
+export { checkOnly } from './templates/check-only.ts';
 export { personaPageDraft, personasOf, templatePersonas } from './templates/personas.ts';
 export { bypassesShip } from './templates/fixtures/bypasses-ship.ts';
 export type { Caller } from './caller.ts';
@@ -96,17 +107,44 @@ export type { DelegationCommands, GrantInput } from './delegations/commands.ts';
 export type { GateCommands } from './gates/commands.ts';
 export type { ActivatedPersona } from './personas/types.ts';
 export type { PersonaDashboard, PersonaRunSummary } from './views/persona.ts';
+export type { DelegatedMergeList, DelegatedMergeRow } from './views/delegated-merges.ts';
 export type { Decided, DecideInput } from './gates/decide.ts';
+export type { BatchDecided, BatchEntry, BatchInput } from './gates/decide-batch.ts';
+export type { DelegatedExits } from './gates/delegated-exits.ts';
+export type { RefuteInput, Refuted } from './gates/refute.ts';
+export type { RefuteTally } from './views/refutes.ts';
+export { AGENT_HOLD_MS, PERSON_HOLD_MS, heldTooLong, holderOf } from './views/holder.ts';
+export type { Holder, HolderRole } from './views/holder.ts';
+export type { HeldRow, Holds } from './views/holds.ts';
+export { listsAuthor, pullRequestKey, uncountedItems } from './views/bots.ts';
+export type { CountScope } from './views/bots.ts';
+export { SILENCE_AMBER_MS, SILENCE_RED_MS, silenceLevel } from './alarms/silence.ts';
+export type { Silence, SilenceLevel, WaitingInCheck } from './alarms/silence.ts';
+export type { AlarmCommands, Sounded } from './alarms/commands.ts';
 export { applyDeclaration, domainOf, floorFromPaths } from './risk/derive.ts';
 export type { RiskFloor, RiskResult } from './risk/derive.ts';
 export { approverCovers, domainGrants, requiredResources } from './risk/domain-grants.ts';
 export { protectedDirectories } from './risk/protected-directories.ts';
 export type { ProtectedDirectory } from './risk/protected-directories.ts';
-export { shipRule } from './ship-rule.ts';
+export { countedApprovals, shipRule } from './ship-rule.ts';
+export type { CountedApproval } from './ship-rule.ts';
+export { carriedCommits } from './gates/carry.ts';
 export { parseDeclaration, parseReviewProvider } from './github/declaration.ts';
 export { fullSha, sameRepository } from './github/identifiers.ts';
 export { parseReviewVerdict, parseScoutVerdict } from './github/verdicts.ts';
 export { reviewBody } from './github/review-body.ts';
 export { parseReviewFindings } from './github/review-findings.ts';
+export { blockedByOf, doneWhenOf } from './github/issue-body.ts';
+export type { NotReadyInput, NotReadySubject } from './items/not-ready.ts';
+export type { EnqueueEpicInput, EpicEnqueued } from './items/epic.ts';
+export { openBlockers, passedShip } from './items/blockers.ts';
 export { runToolLoop, TURN_LIMIT } from './runs/tool-loop.ts';
 export type { LoopResult, ToolCaller, ToolReply } from './runs/tool-loop.ts';
+export { promptText, renderUntrusted, scanFences, untrusted } from './untrusted.ts';
+export type { PromptText, UntrustedContent } from './untrusted.ts';
+export { EXTERNAL_PROVIDER, requestsPlatformReviewer } from './github/reviewers.ts';
+export { hasPackageStage } from './stages/package.ts';
+export type { Joined, JoinInput } from './items/join.ts';
+export type { ShadowInput } from './gates/shadow.ts';
+export { closingReferences, hasSkipCiMarker } from './github/closing-keywords.ts';
+export type { FreezeInput } from './stages/freeze.ts';

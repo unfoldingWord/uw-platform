@@ -1,4 +1,4 @@
-import { verbIo, type Engine, type VerbName } from '@uw/contracts';
+import { verbIo, type Engine, type submitToGateResultSchema, type VerbName } from '@uw/contracts';
 import { errorFields } from '@uw/core/log';
 import {
   parseScoutVerdict,
@@ -10,13 +10,8 @@ import { engineAdapter } from '../engines/registry.ts';
 import type { EngineWork, EngineWorkResult } from '../engines/seam.ts';
 import { builderAccess, pulledChange } from './builder-github.ts';
 import type { RunDeps } from './deps.ts';
-import {
-  contextText,
-  reviewPrompt,
-  scoutPrompt,
-  workPrompt,
-  type PromptSource,
-} from './prompts.ts';
+import { contextText, fixPrompt, reviewPrompt, scoutPrompt, workPrompt } from './prompts.ts';
+import { promptSourceOf, reviewSourceOf, titleSourceOf, type ReadText } from './prompt-source.ts';
 import {
   callCore,
   countedHttp,
@@ -32,18 +27,16 @@ import {
   type OpenStep,
 } from './steps.ts';
 
-export type ReadDone = {
+export type ReadDone = ReadText & {
   readonly kind: 'read';
-  readonly title: string;
-  readonly context: string;
-  readonly prompts: readonly string[];
   readonly review: boolean;
+  readonly fix: boolean;
 };
 
 export type ModelDone = {
   readonly kind: 'model';
   readonly text: string | null;
-  readonly outcome: 'ended' | 'turn_limit';
+  readonly outcome: EngineWorkResult['outcome'];
   readonly resolvedProvider: string | null;
   readonly resolvedModel: string;
 };
@@ -58,7 +51,7 @@ export type ScoutDone = {
 
 export type Submitted = {
   readonly kind: 'submitted';
-  readonly result: 'advanced' | 'parked' | 'checks_failed';
+  readonly result: (typeof submitToGateResultSchema.options)[number];
 };
 
 type ModelPlan = {
@@ -97,17 +90,25 @@ async function within<T>(
   }
 }
 
+export async function readContext(open: OpenStep): Promise<string> {
+  const reply = await callCore(open.core, 'resolve_context', { itemId: open.scene.item.itemId });
+  return contextText(JSON.stringify(reply));
+}
+
 export function readBody(deps: RunDeps, runId: string): Promise<ReadDone | Halted> {
   return within(deps, runId, null, async (open) => {
     const { item, capability } = open.scene;
-    const reply = await callCore(open.core, 'resolve_context', { itemId: item.itemId });
+    const context = await readContext(open);
     const prompts = await recordStep(open, { step: 'read', tokensIn: 0, tokensOut: 0 });
     return {
       kind: 'read',
       title: item.title,
-      context: contextText(JSON.stringify(reply)),
+      titleSource: titleSourceOf(item),
+      context,
       prompts: [...prompts],
+      comments: [],
       review: capability === 'review',
+      fix: capability === 'fix',
     };
   });
 }
@@ -147,6 +148,16 @@ function merged(first: readonly VerbName[], second: readonly VerbName[]): VerbNa
   return [...new Set([...first, ...second])];
 }
 
+function unrunFix(plan: ModelPlan): ModelDone {
+  return {
+    kind: 'model',
+    text: null,
+    outcome: 'checks_not_run_locally',
+    resolvedProvider: null,
+    resolvedModel: plan.model,
+  };
+}
+
 async function modelRun(deps: RunDeps, open: OpenStep, plan: ModelPlan): Promise<ModelDone> {
   const { run, item, persona } = open.scene;
   const tools = countedTools(open.client);
@@ -157,6 +168,9 @@ async function modelRun(deps: RunDeps, open: OpenStep, plan: ModelPlan): Promise
   const refused = (host: string, path: string) =>
     deps.logger.warn('sandbox egress refused', { outcome: 'egress_refused', host, path });
   const access = await builderAccess(deps, open.scene, plan.step);
+  if (plan.step === 'work' && open.scene.capability === 'fix' && access.checkout === null) {
+    return unrunFix(plan);
+  }
   const result = await engineWork(deps, plan.engine, {
     runId: run.id,
     itemId: item.itemId,
@@ -215,10 +229,14 @@ function scoutPlan(deps: RunDeps, open: OpenStep, prompt: string): ModelPlan {
 export function scoutBody(
   deps: RunDeps,
   runId: string,
-  read: PromptSource,
+  read: ReadText,
 ): Promise<ScoutDone | Mismatch | Halted> {
   return within(deps, runId, readOnly, async (open) => {
-    const done = await guardedModelRun(deps, open, scoutPlan(deps, open, scoutPrompt(read)));
+    const done = await guardedModelRun(
+      deps,
+      open,
+      scoutPlan(deps, open, scoutPrompt(promptSourceOf(read, open.scene.item.itemId))),
+    );
     if (done.kind === 'mismatch') return done;
     const verdict = parseScoutVerdict(done.text);
     if (!verdict.ok) return { kind: 'scout', holds: false, reason: NO_VERDICT };
@@ -227,15 +245,20 @@ export function scoutBody(
   });
 }
 
+function promptOf(read: ReadDone & { readonly diff: string | null }, itemId: string): string {
+  if (read.diff !== null) return reviewPrompt(reviewSourceOf(read, itemId, read.diff));
+  const source = promptSourceOf(read, itemId);
+  return read.fix ? fixPrompt(source) : workPrompt(source);
+}
+
 export function workBody(
   deps: RunDeps,
   runId: string,
-  read: PromptSource & { readonly diff: string | null },
+  read: ReadDone & { readonly diff: string | null },
 ): Promise<ModelDone | Mismatch | Halted> {
   return within(deps, runId, null, (open) => {
-    const { persona } = open.scene;
-    const { diff } = read;
-    const prompt = diff === null ? workPrompt(read) : reviewPrompt({ ...read, diff });
+    const { persona, item } = open.scene;
+    const prompt = promptOf(read, item.itemId);
     return guardedModelRun(deps, open, {
       step: 'work',
       engine: persona.engine,

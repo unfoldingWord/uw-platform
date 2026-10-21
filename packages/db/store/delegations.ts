@@ -102,6 +102,14 @@ export function bindDelegations(executor: AnyExecutor): DelegationsGateway {
           .where(eq(delegations.id, delegationId));
         return rows[0] ? toDelegation(rows[0]) : null;
       },
+      lock: async (delegationId) => {
+        const rows = await executor
+          .select()
+          .from(delegations)
+          .where(eq(delegations.id, delegationId))
+          .for('share');
+        return rows[0] ? toDelegation(rows[0]) : null;
+      },
       live: async (filter, at) => {
         const rows = await executor
           .select()

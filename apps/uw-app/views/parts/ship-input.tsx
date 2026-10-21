@@ -61,5 +61,16 @@ export function ShipInput(props: { readonly view: GateView }) {
       <Note>This gate is not at a merge or publish stage, so the ship rule does not apply.</Note>
     );
   }
-  return <Table caption="Ship rule inputs" columns={columns} rows={rowsOf(props.view, ship)} />;
+  const behind = failingReasons(props.view).includes('base_behind');
+  return (
+    <>
+      <Table caption="Ship rule inputs" columns={columns} rows={rowsOf(props.view, ship)} />
+      {behind ? (
+        <Note>
+          Waiting for a base update. Update this pull request from its base: an approval carries
+          across a merge from base, so you do not need to approve it again.
+        </Note>
+      ) : null}
+    </>
+  );
 }

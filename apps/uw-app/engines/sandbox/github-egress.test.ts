@@ -26,7 +26,13 @@ type Rig = {
   readonly fetcher: typeof fetch;
 };
 
-function rig(options: { readonly token?: string | null; readonly admit?: boolean } = {}): Rig {
+type RigOptions = {
+  readonly token?: string | null;
+  readonly admit?: boolean;
+  readonly pushes?: (sha: string) => boolean;
+};
+
+function rig(options: RigOptions = {}): Rig {
   const sent: Sent[] = [];
   const refused: string[] = [];
   const unwired: string[] = [];
@@ -50,6 +56,7 @@ function rig(options: { readonly token?: string | null; readonly admit?: boolean
       defaultBranch: 'main',
       token: async () => token,
       unwired: (host, path) => void unwired.push(`${host}${path}`),
+      pushes: options.pushes ?? (() => true),
     },
     admit: async () => {
       admitted.push(1);
@@ -268,4 +275,26 @@ describe('the GitHub egress for a hosted Builder', () => {
     "PE-5 the sandbox's own credentials are dropped and the token never reaches the sandbox",
     credentialsDropped,
   );
+});
+
+describe('FL-4 a fix run cannot push until the platform opens the push', () => {
+  it('FL-4 refuses a push to the branch while pushes are closed and forwards nothing', async () => {
+    const closed = rig({ pushes: () => false });
+    const request = push(`${old} ${next} refs/heads/${branch}`);
+    expect((await githubEgress(request, closed.route, closed.fetcher))?.status).toBe(403);
+    expect(closed.sent).toEqual([]);
+  });
+
+  it('FL-4 forwards only the commit the declared checks ran on', async () => {
+    const seen: string[] = [];
+    const pushes = (sha: string) => {
+      seen.push(sha);
+      return sha === old;
+    };
+    const bound = rig({ pushes });
+    const moved = push(`${old} ${next} refs/heads/${branch}`);
+    expect((await githubEgress(moved, bound.route, bound.fetcher))?.status).toBe(403);
+    expect(seen).toEqual([next]);
+    expect(bound.sent).toEqual([]);
+  });
 });

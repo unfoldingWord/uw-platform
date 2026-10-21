@@ -1,0 +1,16 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000e3",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "name": "shadow_verdict",
+  "position": 3,
+  "at": "2026-10-15T09:00:00.000Z",
+  "actor": "agent:ingest",
+  "evidence": {
+    "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "verdict": "refuse",
+    "reasons": ["looks_wrong"]
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
+}

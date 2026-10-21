@@ -1,0 +1,17 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000001f2",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": null,
+  "name": "template_changed",
+  "position": 2,
+  "at": "2026-10-15T09:00:00.000Z",
+  "actor": "human:00000000-0000-4000-8000-000000000001",
+  "evidence": {
+    "from": "check-only",
+    "to": "software",
+    "kept": ["check", "ship"],
+    "added": ["package", "scope", "plan", "build", "validate", "close"]
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": "00000000-0000-4000-8000-0000000000aa"
+}

@@ -12,7 +12,7 @@ import {
   stageBracketSchema,
 } from './closed-sets.ts';
 import { agentIdentityPattern, identitySchema, isPersonaIdentity } from './identity.ts';
-import { fullShaSchema } from './ship-rule.ts';
+import { fullShaSchema, requiredChecksSchema } from './ship-rule.ts';
 import { slugSchema } from './pages.ts';
 
 const distinct = (values: readonly string[]) => new Set(values).size === values.length;
@@ -45,6 +45,35 @@ export const issueRefSchema = z.strictObject({
   githubId: z.number().int().min(1),
 });
 
+export const githubLoginPattern = '^[A-Za-z0-9][A-Za-z0-9-]{0,38}(?:\\[bot\\])?$';
+export const githubLoginSchema = z
+  .string()
+  .regex(new RegExp(githubLoginPattern), 'a GitHub login, with [bot] for an app');
+
+const distinctInAnyCase = (values: readonly string[]) =>
+  new Set(values.map((value) => value.toLowerCase())).size === values.length;
+
+export const externalReviewerIdentitiesSchema = z
+  .array(githubLoginSchema)
+  .max(20)
+  .refine(distinctInAnyCase, 'each login once, in any case');
+
+export const defaultBotAuthors: readonly string[] = ['dependabot[bot]'];
+
+export const botAuthorsSchema = z
+  .array(githubLoginSchema)
+  .max(20)
+  .refine(distinctInAnyCase, 'each login once, in any case');
+
+const protectedPathPattern = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))[^\s\\]{1,200}$/;
+export const protectedPathSchema = z
+  .string()
+  .regex(protectedPathPattern, 'a protected path is repository-relative, with no dot-dot segment');
+export const protectedPathsSchema = z
+  .array(protectedPathSchema)
+  .max(50)
+  .refine(distinct, 'each protected path once');
+
 export const harnessSchema = z.strictObject({
   id: z.uuid(),
   key: slugSchema,
@@ -53,6 +82,14 @@ export const harnessSchema = z.strictObject({
   repository: repositorySchema.nullable(),
   hostedBuilderEnabled: z.boolean(),
   paused: z.boolean(),
+  shadow: z.boolean().default(false),
+  externalReviewerIdentities: externalReviewerIdentitiesSchema.default([]),
+  botAuthors: botAuthorsSchema.default([...defaultBotAuthors]),
+  frozen: z.boolean().default(false),
+  freezeAllow: z.array(z.uuid()).max(100).default([]),
+  requiredChecks: requiredChecksSchema.default([]),
+  protectedPaths: protectedPathsSchema.default([]),
+  fixClaim: z.boolean().default(false),
 });
 
 export const stageSchema = z.strictObject({
@@ -72,6 +109,12 @@ export const stageSchema = z.strictObject({
     .refine(distinct, 'a stage names each validator once'),
   feeds: z.array(stageKeySchema).refine(distinct, 'a stage names each feeds target once'),
   paused: z.boolean(),
+});
+
+export const epicPlaceSchema = z.strictObject({
+  issue: issueRefSchema,
+  title: z.string().min(1).max(200),
+  position: z.number().int().min(0).max(999),
 });
 
 export const itemStateSchema = z.strictObject({
@@ -95,9 +138,13 @@ export const itemStateSchema = z.strictObject({
   pullRequest: pullRequestRefSchema.nullable(),
   issue: issueRefSchema.nullable(),
   zulipTopic: z.string().min(1).nullable(),
+  epic: epicPlaceSchema.nullable().default(null),
+  blockedBy: z.array(z.uuid()).max(50).default([]),
+  heldSince: z.iso.datetime().nullable().default(null),
 });
 
 export type Harness = z.infer<typeof harnessSchema>;
 export type Stage = z.infer<typeof stageSchema>;
 export type ItemState = z.infer<typeof itemStateSchema>;
 export type IssueRef = z.infer<typeof issueRefSchema>;
+export type EpicPlace = z.infer<typeof epicPlaceSchema>;

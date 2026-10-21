@@ -5,5 +5,13 @@
   "jdArea": "80-89",
   "repository": "unfoldingWord/uw-platform",
   "hostedBuilderEnabled": false,
-  "paused": false
+  "paused": false,
+  "shadow": false,
+  "externalReviewerIdentities": [],
+  "frozen": false,
+  "freezeAllow": [],
+  "requiredChecks": [],
+  "protectedPaths": [],
+  "fixClaim": false,
+  "botAuthors": ["dependabot[bot]"]
 }

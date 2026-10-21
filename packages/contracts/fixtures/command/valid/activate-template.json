@@ -4,5 +4,10 @@
   "harnessKey": "uw-platform",
   "jdArea": "80-89",
   "template": "software",
-  "repository": "unfoldingWord/uw-platform"
+  "repository": "unfoldingWord/uw-platform",
+  "shadow": false,
+  "externalReviewerIdentities": [],
+  "requiredChecks": [],
+  "protectedPaths": [],
+  "botAuthors": ["dependabot[bot]"]
 }

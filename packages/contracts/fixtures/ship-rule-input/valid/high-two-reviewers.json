@@ -2,39 +2,47 @@
   "pullRequest": {
     "open": true,
     "draft": false,
-    "head": "abc123"
+    "head": "abc123",
+    "behindBy": 0,
+    "skipCi": false
   },
   "expectedHead": "abc123",
   "checks": [
     {
       "name": "security-audit",
       "headSha": "abc123",
-      "conclusion": "success"
+      "conclusion": "success",
+      "app": "github-actions"
     },
     {
       "name": "lint",
       "headSha": "abc123",
-      "conclusion": "success"
+      "conclusion": "success",
+      "app": "github-actions"
     },
     {
       "name": "typecheck",
       "headSha": "abc123",
-      "conclusion": "success"
+      "conclusion": "success",
+      "app": "github-actions"
     },
     {
       "name": "architecture",
       "headSha": "abc123",
-      "conclusion": "success"
+      "conclusion": "success",
+      "app": "github-actions"
     },
     {
       "name": "test",
       "headSha": "abc123",
-      "conclusion": "success"
+      "conclusion": "success",
+      "app": "github-actions"
     },
     {
       "name": "build",
       "headSha": "abc123",
-      "conclusion": "success"
+      "conclusion": "success",
+      "app": "github-actions"
     }
   ],
   "approvals": [
@@ -69,5 +77,36 @@
     "interactive": true
   },
   "at": "2026-10-01T09:00:00.000Z",
-  "override": false
+  "override": false,
+  "carries": [],
+  "requiredChecks": [
+    {
+      "app": "github-actions",
+      "name": "security-audit"
+    },
+    {
+      "app": "github-actions",
+      "name": "lint"
+    },
+    {
+      "app": "github-actions",
+      "name": "typecheck"
+    },
+    {
+      "app": "github-actions",
+      "name": "architecture"
+    },
+    {
+      "app": "github-actions",
+      "name": "test"
+    },
+    {
+      "app": "github-actions",
+      "name": "build"
+    }
+  ],
+  "closes": [],
+  "wraps": null,
+  "frozen": false,
+  "delegation": null
 }

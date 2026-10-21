@@ -77,6 +77,7 @@ function agentWrite(
     traceId: crypto.randomUUID(),
     at: new Date(),
     instructions: kernelOn(db, { now: () => new Date() }).reads,
+    writer: null,
   };
   return writePageAsAgent(db, agent, input, request);
 }
@@ -127,6 +128,7 @@ async function editAsAnotherType(rig: () => Rig): Promise<void> {
     traceId: crypto.randomUUID(),
     at: new Date(),
     instructions: kernelOn(db, { now: () => new Date() }).reads,
+    writer: null,
   };
   const input = {
     pageId,

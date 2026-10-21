@@ -2,16 +2,19 @@ import {
   ingestIdentity,
   type CapabilityWord,
   principalSchema,
+  defaultCiChecks,
   systemIdentity,
   type Harness,
   type ItemState,
   type JdArea,
   type Principal,
+  type RequiredCheck,
+  type RiskTier,
   type Role,
   type Scope,
   type Stage,
 } from '@uw/contracts';
-import { seedActivePersona, seedGrant, seedPerson } from '@uw/db/test-seed';
+import { seedActivePersona, seedGrant, seedPerson, seedPlatformPage } from '@uw/db/test-seed';
 import { DEFAULT_SPEND_CAP, type Caller, type Template } from '@uw/harness';
 import type { World } from './world.ts';
 
@@ -120,11 +123,49 @@ type SimHarnessOptions = {
   readonly key?: string;
   readonly jdArea?: JdArea;
   readonly repository?: string | null;
+  readonly shadow?: boolean;
+  readonly externalReviewerIdentities?: readonly string[];
+  readonly botAuthors?: readonly string[];
+  readonly requiredChecks?: readonly RequiredCheck[];
+  readonly dispatchable?: boolean;
+  readonly protectedPaths?: readonly string[];
 };
+
+export function platformPageIdOf(jdArea: JdArea): string {
+  return `00000000-0000-4000-8000-${`a${jdArea.replace('-', '')}`.padStart(12, '0')}`;
+}
+
+async function seedDispatch(world: World, harness: Harness): Promise<void> {
+  if (harness.repository === null) return;
+  await seedPlatformPage(world.database.db, {
+    id: platformPageIdOf(harness.jdArea),
+    jdArea: harness.jdArea,
+    repositories: [harness.repository],
+  });
+}
 
 function defaultRepository(template: Template, key: string): string | null {
   if (template.key !== 'software') return null;
   return key === template.key ? 'unfoldingWord/uw-platform' : `unfoldingWord/${key}`;
+}
+
+function activationOf(world: World, template: Template, options: SimHarnessOptions) {
+  const harnessKey = options.key ?? template.key;
+  return {
+    harnessId: world.adapters.ids.next(),
+    harnessKey,
+    jdArea: options.jdArea ?? '80-89',
+    template,
+    repository:
+      options.repository === undefined
+        ? defaultRepository(template, harnessKey)
+        : options.repository,
+    shadow: options.shadow ?? false,
+    externalReviewerIdentities: options.externalReviewerIdentities ?? [],
+    ...(options.botAuthors === undefined ? {} : { botAuthors: options.botAuthors }),
+    requiredChecks: options.requiredChecks ?? defaultCiChecks,
+    protectedPaths: options.protectedPaths ?? [],
+  };
 }
 
 export async function createSimHarness(
@@ -137,20 +178,14 @@ export async function createSimHarness(
   readonly admin: Principal;
 }> {
   const admin = await simIan(world);
-  const harnessKey = options.key ?? template.key;
-  const outcome = await world.kernel.stages.activate(simCaller(world, admin), {
-    harnessId: world.adapters.ids.next(),
-    harnessKey,
-    jdArea: options.jdArea ?? '80-89',
-    template,
-    repository:
-      options.repository === undefined
-        ? defaultRepository(template, harnessKey)
-        : options.repository,
-  });
+  const outcome = await world.kernel.stages.activate(
+    simCaller(world, admin),
+    activationOf(world, template, options),
+  );
   if (outcome.status !== 'accepted') {
     throw new Error(`activating ${template.key} was refused: ${outcome.reason}`);
   }
+  if (options.dispatchable !== false) await seedDispatch(world, outcome.value.harness);
   return { harness: outcome.value.harness, stages: outcome.value.stages, admin };
 }
 
@@ -267,12 +302,16 @@ type GrantInput = {
   readonly harnessId: string;
   readonly persona: string;
   readonly capability: CapabilityWord;
+  readonly maxTier?: RiskTier | null;
   readonly expiresAt: Date | null;
   readonly supersedes: string | null;
 };
 
 export async function simDelegate(world: World, actor: Principal, input: GrantInput) {
-  const granted = await world.kernel.delegations.grant(simCaller(world, actor), input);
+  const granted = await world.kernel.delegations.grant(simCaller(world, actor), {
+    ...input,
+    maxTier: input.maxTier ?? null,
+  });
   if (granted.status !== 'accepted') return granted;
   const projected = {
     identity: input.persona,

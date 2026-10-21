@@ -192,6 +192,7 @@ async function workingPersona(db: Database) {
   const itemId = await enqueued(db, harnessId, 'Work for the builder');
   const delegation = accepted(
     await kernel.delegations.grant(callerOf(admin), {
+      maxTier: null,
       harnessId,
       persona: 'agent:builder',
       capability: 'build',
@@ -260,6 +261,7 @@ async function delegationsCapped(db: Database): Promise<void> {
           persona: identitySchema.parse('agent:builder'),
           harnessId: made.harnessId,
           capability: 'build',
+          maxTier: null,
           grantedAt: new Date(now.getTime() - 60_000 + n),
           expiresAt: new Date(now.getTime() + 86_400_000),
           revokedAt: null,

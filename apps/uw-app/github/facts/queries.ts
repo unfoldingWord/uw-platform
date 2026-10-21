@@ -1,9 +1,15 @@
 import { and, asc, desc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
-import { checkConclusionSchema, pullRequestDeclarationSchema } from '@uw/contracts';
+import {
+  checkConclusionSchema,
+  closingRefSchema,
+  pullRequestDeclarationSchema,
+  readFindingSchema,
+} from '@uw/contracts';
 import type { Executor } from '@uw/db/client';
 import { ghCheckRuns, ghIssues, ghPrs, ghRepos, ghReviews } from '@uw/db/schema';
 import type {
+  BaseComparison,
   ChangedFiles,
   CheckFact,
   PullRequestFacts,
@@ -12,6 +18,7 @@ import type {
 } from '@uw/harness';
 import { HARNESS_LABEL } from '../harness-label.ts';
 import type { IssueChange } from './records.ts';
+import { issueChangeOf } from './issues.ts';
 
 export type PullRequestChange = {
   readonly repo: string;
@@ -19,6 +26,9 @@ export type PullRequestChange = {
   readonly number: number;
   readonly head: string;
   readonly baseSha: string;
+  readonly title: string;
+  readonly open: boolean;
+  readonly requestedReviewers: readonly string[];
   readonly filesKnown: boolean;
 };
 
@@ -28,7 +38,27 @@ const pullState = z.enum(['open', 'closed', 'merged']);
 const reviewState = z.enum(['approved', 'changes_requested', 'commented', 'dismissed']);
 const conclusion = checkConclusionSchema.nullable();
 const paths = z.array(z.string());
-const findings = z.array(z.string().min(1).max(500)).max(50);
+const findingRow = z.union([
+  z
+    .string()
+    .min(1)
+    .max(500)
+    .transform((text) => ({ text, weight: null })),
+  readFindingSchema,
+]);
+const findings = z.array(findingRow).max(50);
+const closesRow = z.array(closingRefSchema).max(100);
+const headCommitsRow = z
+  .array(
+    z.strictObject({
+      sha: z.string().min(1),
+      merge: z.boolean(),
+      skipCi: z.boolean(),
+      closes: z.array(closingRefSchema).max(100),
+    }),
+  )
+  .max(100);
+const patchIdsRow = z.record(z.string(), z.string());
 const attempted = z.object({ attemptedAt: z.iso.datetime({ offset: true }).nullable() });
 
 export type SweepState = { readonly sweptThrough: Date | null; readonly attemptedAt: Date | null };
@@ -49,7 +79,10 @@ export async function pullRequestChanges(
     number: pull.number,
     head: pull.headSha,
     baseSha: pull.baseSha,
-    filesKnown: pull.filesHead === pull.headSha && pull.filesBase === pull.baseSha,
+    title: pull.title,
+    open: pull.state === 'open',
+    requestedReviewers: [...pull.requestedReviewers],
+    filesKnown: comparisonOf(pull) !== null,
   }));
 }
 
@@ -155,6 +188,20 @@ function filesOf(pull: PullRow): ChangedFiles | null {
   return parsed.success ? { head: pull.headSha, base: pull.baseSha, paths: parsed.data } : null;
 }
 
+function comparisonOf(pull: PullRow): BaseComparison | null {
+  if (pull.filesHead !== pull.headSha || pull.filesBase !== pull.baseSha) return null;
+  if (pull.behindBy === null && pull.patchId === null && pull.headCommits === null) return null;
+  const commits = pull.headCommits === null ? null : headCommitsRow.safeParse(pull.headCommits);
+  return {
+    head: pull.headSha,
+    base: pull.baseSha,
+    behindBy: pull.behindBy,
+    patchId: pull.patchId,
+    commits: commits === null || !commits.success ? null : commits.data,
+    patchIds: patchIdsRow.safeParse(pull.patchIds).data ?? {},
+  };
+}
+
 async function pullNamed(db: Executor, ref: PullRequestRef) {
   const [row] = await db
     .select({ pull: ghPrs, repo: ghRepos.fullName, defaultBranch: ghRepos.defaultBranch })
@@ -188,6 +235,8 @@ export async function pullRequestFacts(
     reviews: await reviewsOf(db, pull),
     files: filesOf(pull),
     declaration: declaration.success ? declaration.data : null,
+    closes: closesRow.safeParse(pull.closes).data ?? null,
+    comparison: comparisonOf(pull),
     freshAt: pull.freshAt,
   };
 }
@@ -229,17 +278,7 @@ export async function issueByNumber(
     .where(and(sql`lower(${ghRepos.fullName}) = lower(${repository})`, eq(ghIssues.number, number)))
     .limit(1);
   if (row === undefined) return null;
-  const { issue, repo } = row;
-  return {
-    repo,
-    githubId: issue.githubId,
-    number: issue.number,
-    title: issue.title,
-    open: issue.state === 'open',
-    labels: issue.labels,
-    hadLabels: null,
-    githubUpdatedAt: issue.githubUpdatedAt,
-  };
+  return issueChangeOf(row.issue, row.repo, null);
 }
 
 export async function issuesAwaitingCrossReference(
@@ -259,16 +298,7 @@ export async function issuesAwaitingCrossReference(
       ),
     )
     .orderBy(asc(ghIssues.githubId));
-  return rows.map(({ issue, repo }) => ({
-    repo,
-    githubId: issue.githubId,
-    number: issue.number,
-    title: issue.title,
-    open: true,
-    labels: issue.labels,
-    hadLabels: null,
-    githubUpdatedAt: issue.githubUpdatedAt,
-  }));
+  return rows.map(({ issue, repo }) => issueChangeOf(issue, repo, null));
 }
 
 const lastSweep = z.object({

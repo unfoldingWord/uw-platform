@@ -95,7 +95,7 @@
           <text x="1023" y="292" text-anchor="middle">analyze · compare</text>
         </g>
 
-        <!-- brackets: Jesse's BML boxes -->
+        <!-- brackets: the sponsor's BML boxes -->
         <g stroke="#014263" stroke-width="1.6">
           <path d="M40,318 L40,330 L158,330 L158,318"/>
           <path d="M172,318 L172,330 L686,330 L686,318"/>

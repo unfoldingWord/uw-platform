@@ -232,6 +232,29 @@ function describeCountForPersona(subject: EventsSubject): void {
   });
 }
 
+function describeHoldsForPersona(subject: EventsSubject): void {
+  it('leaves delegated holds out of the persona counts', async () => {
+    const hold = newEventSchema.parse({
+      ...countEventOf(2, 0x6700, 'agent:builder', 'gate_refused_to_agent'),
+      evidence: { decision: 'approve', stage: 'ship', reason: 'gate_target' },
+    });
+    const counts = await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0x6700, 'gateway-events-persona-holds');
+      await tx.harnessEvents.write.append([
+        countEventOf(1, 0x6700, 'agent:builder', 'gate_refused_to_agent'),
+        hold,
+      ]);
+      return tx.harnessEvents.read.countForPersona({
+        harnessId: uid(0x6700),
+        personaSlug: 'builder',
+        names: [...countedNames],
+        since: at,
+      });
+    });
+    expect(Object.fromEntries(counts)).toEqual({ gate_refused_to_agent: 1 });
+  });
+}
+
 export function describeEvents(subject: EventsSubject): void {
   describeAppend(subject);
   describeRequestIds(subject);
@@ -241,4 +264,5 @@ export function describeEvents(subject: EventsSubject): void {
   describePageBounds(subject);
   describeRefusals(subject);
   describeCountForPersona(subject);
+  describeHoldsForPersona(subject);
 }

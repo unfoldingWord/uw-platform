@@ -71,7 +71,10 @@ describe('the review verdict', () => {
       ok: true,
       verdict: {
         verdict: 'request_changes',
-        findings: ['the lease is not renewed', 'a typo'],
+        findings: [
+          { text: 'the lease is not renewed', weight: null },
+          { text: 'a typo', weight: null },
+        ],
       },
     });
     const approve = ['```harness-verdict', 'verdict: approve', '```'];
@@ -100,5 +103,37 @@ describe('the review verdict', () => {
     for (const [lines, problem] of cases) {
       expect(parseReviewVerdict(text(lines))).toEqual({ ok: false, problem });
     }
+  });
+});
+
+describe('RV-1 the verdict block reads a weight on every finding line', () => {
+  it('reads real, plausible and theoretical, and an unweighted line as weight null', () => {
+    const lines = [
+      ...verdict,
+      '- real: The lease is never renewed.',
+      '- theoretical: A year of skew breaks it.',
+      '- No weight here.',
+    ];
+    expect(parseReviewVerdict(text(lines))).toEqual({
+      ok: true,
+      verdict: {
+        verdict: 'request_changes',
+        findings: [
+          { text: 'The lease is never renewed.', weight: 'real' },
+          { text: 'A year of skew breaks it.', weight: 'theoretical' },
+          { text: 'No weight here.', weight: null },
+        ],
+      },
+    });
+  });
+
+  it('reads a capitalised or dashed weight as no weight', () => {
+    const lines = [
+      ...verdict,
+      '- Real: The lease is never renewed.',
+      '- real - The lease is never renewed.',
+    ];
+    const read = parseReviewVerdict(text(lines));
+    expect(read.ok && read.verdict.findings.map((finding) => finding.weight)).toEqual([null, null]);
   });
 });

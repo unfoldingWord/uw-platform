@@ -9,13 +9,39 @@ export const activateTemplateCommand = commandHandler({
   run: async ({ kernel, caller, harnessId, pages }, body: CommandBody<'activate_template'>) => {
     const template = templates.get(body.template);
     if (template === undefined) return { ok: false, reason: 'malformed_command' };
-    const { harnessKey, jdArea, repository } = body;
-    const input = { harnessId, harnessKey, jdArea, template, repository };
+    const { harnessKey, jdArea, repository, shadow, externalReviewerIdentities, botAuthors } = body;
+    const input = {
+      harnessId,
+      harnessKey,
+      jdArea,
+      template,
+      repository,
+      shadow,
+      externalReviewerIdentities,
+      botAuthors,
+      requiredChecks: body.requiredChecks,
+      protectedPaths: body.protectedPaths,
+    };
     const activated = await kernel.stages.activate(caller, input);
     if (activated.status === 'accepted') {
       await pages.draftPersonas(body.template, activated.value.harness);
     }
     return fromKernel(activated);
+  },
+});
+
+export const changeTemplateCommand = commandHandler({
+  name: 'change_template',
+  action: 'admin',
+  run: async ({ kernel, caller, harnessId, pages }, body: CommandBody<'change_template'>) => {
+    const changed = await kernel.stages.changeTemplate(caller, {
+      harnessId,
+      template: body.template,
+    });
+    if (changed.status === 'accepted') {
+      await pages.draftPersonas(body.template, changed.value.harness);
+    }
+    return fromKernel(changed);
   },
 });
 
@@ -68,4 +94,27 @@ export const setHostedBuilderCommand = commandHandler({
   action: 'admin',
   run: async ({ kernel, caller, harnessId }, body: CommandBody<'set_hosted_builder'>) =>
     fromKernel(await kernel.stages.setHostedBuilder(caller, { harnessId, enabled: body.enabled })),
+});
+
+export const setFixClaimCommand = commandHandler({
+  name: 'set_fix_claim',
+  action: 'admin',
+  run: async ({ kernel, caller, harnessId }, body: CommandBody<'set_fix_claim'>) =>
+    fromKernel(await kernel.stages.setFixClaim(caller, { harnessId, enabled: body.enabled })),
+});
+
+export const setFreezeCommand = commandHandler({
+  name: 'set_freeze',
+  action: 'admin',
+  run: async ({ kernel, caller, harnessId }, body: CommandBody<'set_freeze'>) =>
+    fromKernel(
+      await kernel.stages.setFreeze(caller, { harnessId, frozen: body.frozen, allow: body.allow }),
+    ),
+});
+
+export const setShadowCommand = commandHandler({
+  name: 'set_shadow',
+  action: 'admin',
+  run: async ({ kernel, caller, harnessId }) =>
+    fromKernel(await kernel.stages.liftShadow(caller, { harnessId })),
 });

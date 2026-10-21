@@ -1,7 +1,14 @@
-import { notWiredCall, createKernel, type Connectors, type Kernel, type Store } from '@uw/harness';
+import {
+  notWiredCall,
+  createKernel,
+  type Connectors,
+  type GitHubFacts,
+  type Kernel,
+  type Store,
+} from '@uw/harness';
 import type { World } from './world.ts';
 
-type LostExit = { readonly effectHappened: boolean };
+type LostExit = { readonly effectHappened: boolean; readonly githubFacts?: GitHubFacts };
 
 function exitLost(): Error {
   const error = new Error('the exit transaction was lost after the connector ran');
@@ -31,5 +38,6 @@ export function kernelThatLosesTheExit(world: World, options: LostExit): Kernel 
     },
     appliedMigrations: () => sim.store.appliedMigrations(),
   };
-  return createKernel({ ...sim, connectors, store });
+  const githubFacts = options.githubFacts ?? sim.githubFacts;
+  return createKernel({ ...sim, connectors, store, githubFacts });
 }

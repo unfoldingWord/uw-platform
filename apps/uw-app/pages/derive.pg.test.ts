@@ -183,6 +183,7 @@ async function agentDraftLandsSuggested(db: Database): Promise<void> {
     traceId: crypto.randomUUID(),
     at: new Date(),
     instructions: { namesInstructions: async () => false },
+    writer: null,
   };
   const page = pageOf(await writePageAsAgent(db, agent, input, request));
   expect(page.status).toBe('suggested');

@@ -181,6 +181,20 @@ async function enteredStage(
   return rows.flatMap((row) => (row.itemId === null ? [] : [{ itemId: row.itemId, at: row.at }]));
 }
 
+function evidenceFilters(query: RecentEvents) {
+  return [
+    query.evidencePerson === undefined
+      ? undefined
+      : sql`${harnessEvents.evidence}->>'personId' = ${query.evidencePerson}`,
+    query.evidenceIssue === undefined
+      ? undefined
+      : sql`${harnessEvents.evidence}->'issue'->>'githubId' = ${String(query.evidenceIssue)}`,
+    query.evidencePage === undefined
+      ? undefined
+      : sql`${harnessEvents.evidence}->>'pageId' = ${query.evidencePage}`,
+  ];
+}
+
 export function recentQuery(executor: AnyExecutor, query: RecentEvents) {
   if (!Number.isInteger(query.limit) || query.limit < 1 || query.limit > maxRecent) {
     throw new RangeError(`a recent read holds 1 to ${maxRecent} events, not ${query.limit}`);
@@ -196,9 +210,7 @@ export function recentQuery(executor: AnyExecutor, query: RecentEvents) {
         query.harnessIds === undefined || query.harnessIds.length === 0
           ? undefined
           : inArray(harnessEvents.harnessId, [...query.harnessIds]),
-        query.evidencePerson === undefined
-          ? undefined
-          : sql`${harnessEvents.evidence}->>'personId' = ${query.evidencePerson}`,
+        ...evidenceFilters(query),
       ),
     )
     .orderBy(desc(harnessEvents.at), asc(harnessEvents.harnessId), desc(harnessEvents.position))
@@ -249,6 +261,14 @@ export function completedWith(run: RunColumns, results: readonly string[]): SQL 
   return sql`EXISTS (SELECT 1 FROM ${harnessEvents} WHERE ${harnessEvents.harnessId} = ${run.harnessId} AND ${harnessEvents.itemId} = ${run.itemId} AND ${harnessEvents.name} = 'run_completed' AND ${harnessEvents.evidence}->>'runId' = ${run.id}::text AND ${harnessEvents.evidence}->>'result' IN (${named}))`;
 }
 
+type DecisionColumns = { readonly id: Column; readonly harnessId: Column; readonly itemId: Column };
+
+export function exitNotTaken(decision: DecisionColumns): SQL {
+  return sql`NOT EXISTS (SELECT 1 FROM ${harnessEvents} approval JOIN ${harnessEvents} later ON later.harness_id = approval.harness_id AND later.item_id = approval.item_id AND later.position > approval.position WHERE approval.harness_id = ${decision.harnessId} AND approval.item_id = ${decision.itemId} AND approval.name = 'gate_approved' AND approval.evidence ->> 'decisionId' = ${decision.id}::text AND later.name IN ('connector_succeeded', 'connector_refused', 'delegated_exit_claimed'))`;
+}
+
+const notAHold = sql`NOT (${harnessEvents.name} = 'gate_refused_to_agent' AND ${harnessEvents.evidence} ->> 'reason' IS NOT NULL)`;
+
 async function countForPersona(
   executor: AnyExecutor,
   query: PersonaEventCount,
@@ -264,6 +284,7 @@ async function countForPersona(
         eq(harnessEvents.harnessId, query.harnessId),
         gte(harnessEvents.at, query.since),
         inArray(harnessEvents.name, [...query.names]),
+        notAHold,
         or(
           eq(harnessEvents.actor, `agent:${slug.data}`),
           sql`${harnessEvents.actor} ~ ${delegated}`,

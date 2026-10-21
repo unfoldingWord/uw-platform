@@ -9,6 +9,8 @@ export const PUSH_TITLES: Readonly<Record<string, string>> = {
   run_failed: 'A run failed on an item you hold',
   delegation_lapsed: 'A delegation you gave has lapsed',
   stage_advanced: 'An item you hold moved on',
+  delegated_merge: 'An agent merged under a delegation you gave',
+  silence_alarm: 'Items wait in Check and no review has run',
 };
 
 export const DEFAULT_PUSH_TITLE = 'Something is waiting on you';

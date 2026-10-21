@@ -63,6 +63,8 @@ function readsBeforeTheMerge(github: FixtureGitHub): void {
   const checks = sent.findIndex((line) => line.includes('/check-runs'));
   expect(checks).toBeGreaterThanOrEqual(0);
   expect(checks).toBeLessThan(merge);
+  const pullReads = sent.slice(0, merge).filter((line) => line === `GET ${pulls}`);
+  expect(pullReads.length).toBeGreaterThanOrEqual(2);
 }
 
 async function approveMerges(db: Database): Promise<void> {

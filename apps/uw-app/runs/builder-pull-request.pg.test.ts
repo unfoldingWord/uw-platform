@@ -40,6 +40,8 @@ function factsFor(itemId: string): PullRequestFacts {
     reviews: [],
     files: { head, base, paths: ['apps/uw-app/board.tsx'] },
     declaration: null,
+    closes: [],
+    comparison: null,
     freshAt: new Date(),
   };
 }
@@ -90,6 +92,7 @@ async function pullRequestReachesTheItem(db: Database): Promise<void> {
     branch: `harness/${rig.itemId}`,
     defaultBranch: 'main',
     expectedHead: null,
+    fix: false,
   });
   expect(await work?.egress.github?.token()).toBeNull();
   const events = await allEvents(db, rig.harnessId);

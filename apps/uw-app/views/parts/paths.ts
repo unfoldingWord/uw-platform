@@ -24,6 +24,10 @@ export function gatePath(harnessId: string, itemId: string): string {
   return `${flowPath(harnessId)}/gates/${segment(itemId)}`;
 }
 
+export function shadowExportPath(harnessId: string): string {
+  return `/api/harness/${segment(harnessId)}/shadow`;
+}
+
 export function itemPath(harnessId: string, itemId: string): string {
   return `${flowPath(harnessId)}/items/${segment(itemId)}`;
 }

@@ -1,5 +1,6 @@
 import type { Database } from '@uw/db/client';
-import { recordFiles, upsertFacts } from '../github/facts/upsert.ts';
+import { recordFiles } from '../github/facts/heads.ts';
+import { upsertFacts } from '../github/facts/upsert.ts';
 import { base, openedPull, repo } from '../github/testing/facts-fixtures.ts';
 
 export type PullRequestSeed = {
@@ -30,5 +31,7 @@ export async function seedPullRequest(db: Database, seed: PullRequestSeed): Prom
   const empty = { milestones: [], issues: [], files: [], checkRuns: [], reviews: [] };
   await upsertFacts(db, { ...empty, repos, pullRequests }, seed.freshAt);
   const files = { head: seed.head, base, paths: seed.paths, problem: null };
-  await recordFiles(db, { pullRequestId: seed.pullRequestId, ...files });
+  const commits = [{ sha: seed.head, merge: false, skipCi: false, closes: [] }];
+  const atHead = { behindBy: 0, patchId: null, commits };
+  await recordFiles(db, { pullRequestId: seed.pullRequestId, ...files, ...atHead });
 }

@@ -342,6 +342,14 @@ async function hiddenIsMissing(world: Played): Promise<void> {
   expect(hidden.text).toBe(absent.text);
 }
 
+async function holderLine(world: Played): Promise<void> {
+  const document = await documentOf(world);
+  const line = [...document.querySelectorAll('p')].find((entry) =>
+    (entry.textContent ?? '').startsWith('Holder: '),
+  );
+  expect(line?.textContent).toBe('Holder: Waiting on a person to decide, for 0 min');
+}
+
 async function noProblems(world: Played): Promise<void> {
   const page = await getHtml(world.db, world.ianEmail, pathOf(world), {}, clock);
   expect(await screenProblems(page.text)).toEqual([]);
@@ -366,5 +374,6 @@ describe.skipIf(!testServer)('the play-by-play', () => {
   it('WB-8 the play-by-play is live on its harness filtered to the item', () => inPlay(liveOnItem));
   it('a hidden item play-by-play renders the same not-found page as a missing one', () =>
     inPlay(hiddenIsMissing));
+  it('OB-2 the item screen names who holds the ball', () => inPlay(holderLine));
   it('the play-by-play renders with no screen problems', () => inPlay(noProblems));
 });

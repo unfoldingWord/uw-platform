@@ -151,6 +151,17 @@ function reviewDiff(flow: Flow): Promise<DiffRead | Awake> {
   });
 }
 
+type CommentsRead = { readonly kind: 'comments'; readonly comments: string[] };
+
+function fixComments(flow: Flow): Promise<CommentsRead | Awake> {
+  const { deps, runId } = flow;
+  return stepped<CommentsRead>(flow, 'review comments', STEP, async () => {
+    const read = await deps.runKernel.runs.reviewComments(deps.host, runId);
+    if (read.status !== 'accepted') return haltedBy(read.reason, read.detail);
+    return { kind: 'comments', comments: [...read.value.comments] };
+  });
+}
+
 async function postReview(flow: Flow, work: ModelDone): Promise<string> {
   const { deps, runId } = flow;
   const verdict = parseReviewVerdict(work.text);
@@ -194,15 +205,31 @@ async function afterWork(flow: Flow, read: ReadDone, diff: string | null): Promi
     workBody(deps, runId, { ...read, diff }),
   );
   if (work.kind !== 'model') return settled(flow, 'work', work);
+  if (work.outcome === 'refused') return failRun(flow, 'work', 'engine_refused', null);
   if (work.outcome === 'turn_limit') return failRun(flow, 'work', 'turn_limit', null);
+  if (work.outcome === 'checks_not_run_locally') {
+    return failRun(flow, 'work', 'checks_not_run_locally', null);
+  }
   if (read.review) return postReview(flow, work);
   return closeAfterSubmit(flow);
 }
 
-async function afterRead(flow: Flow, read: ReadDone): Promise<string> {
-  const { deps, runId } = flow;
-  const diff = read.review ? await reviewDiff(flow) : null;
+type Prepared = { readonly read: ReadDone; readonly diff: string | null };
+
+async function prepared(flow: Flow, plain: ReadDone): Promise<Prepared | string> {
+  const diff = plain.review ? await reviewDiff(flow) : null;
   if (diff !== null && diff.kind !== 'diff') return settled(flow, 'work', diff);
+  const found = plain.fix ? await fixComments(flow) : null;
+  if (found !== null && found.kind !== 'comments') return settled(flow, 'read', found);
+  const read = found === null ? plain : { ...plain, comments: found.comments };
+  return { read, diff: diff?.diff ?? null };
+}
+
+async function afterRead(flow: Flow, plain: ReadDone): Promise<string> {
+  const { deps, runId } = flow;
+  const ready = await prepared(flow, plain);
+  if (typeof ready === 'string') return ready;
+  const { read, diff } = ready;
   const scout = await stepped(flow, 'scout', STEP, () => scoutBody(deps, runId, read));
   if (scout.kind !== 'scout') return settled(flow, 'scout', scout);
   if (!scout.holds) {
@@ -211,7 +238,7 @@ async function afterRead(flow: Flow, read: ReadDone): Promise<string> {
     );
     return halted ?? 'premise_held';
   }
-  return afterWork(flow, read, diff?.diff ?? null);
+  return afterWork(flow, read, diff);
 }
 
 export async function runWorkflow(

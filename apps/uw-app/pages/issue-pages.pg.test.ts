@@ -85,6 +85,7 @@ async function agentRefused(db: Database): Promise<void> {
     traceId: crypto.randomUUID(),
     at: new Date(),
     instructions: kernelOn(db, { now: () => new Date() }).reads,
+    writer: null,
   };
   expect(await writePageAsAgent(db, agent, input, request)).toEqual({
     ok: false,

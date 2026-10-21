@@ -42,6 +42,7 @@ async function readingAgents(db: Database, parked: ParkedAtShip): Promise<Princi
   };
   const delegation = accepted(
     await kernel.delegations.grant(callerOf(owner), {
+      maxTier: null,
       ...input,
       expiresAt: null,
       supersedes: null,

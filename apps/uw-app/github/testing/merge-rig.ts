@@ -26,6 +26,7 @@ export const request: ConnectorRequest = {
   itemId,
   traceId: 'b1000000-0000-4000-8000-000000000003',
   pullRequest: { repo: 'unfoldingWord/uw-platform', number: 42 },
+  joined: false,
   expectedHead: head,
   expectedBase: { sha: base, ref: 'main' },
   repository: 'unfoldingWord/uw-platform',

@@ -41,6 +41,7 @@ async function scene(db: Database) {
     jdArea: '30-39',
     template: bml,
     repository: null,
+    requiredChecks: [],
   };
   expect((await kernel.stages.activate(caller(ian), activate)).status).toBe('accepted');
   await seedPage(db, {
@@ -72,6 +73,7 @@ async function agentWidens(db: Database, ian: Principal, harnessId: string) {
     traceId: crypto.randomUUID(),
     at: new Date(),
     instructions: kernelOn(db, systemClock).reads,
+    writer: null,
   };
   return writePageAsAgent(db, agentOf(ian, 'laptop'), input, request);
 }

@@ -229,4 +229,15 @@ describe('the command bodies', () => {
     expect(commandBody('claim', { itemId: 'not-an-id' }, requestId)).toBeNull();
     expect(commandBody('stop_run', { itemId }, requestId)).toBeNull();
   });
+
+  it('GD-1 the approve-all form sends decide_gates with each shown item and its head', () => {
+    const shown = '00000000-0000-4000-8000-0000000000b1';
+    const pinned = 'a'.repeat(40);
+    const body = commandBody('decide_gates', { entries: `${shown}:${pinned}` }, requestId);
+    expect(body).toMatchObject({
+      command: 'decide_gates',
+      entries: [{ itemId: shown, head: pinned, decision: 'approve' }],
+    });
+    expect(commandBody('decide_gates', { entries: '' }, requestId)).toBeNull();
+  });
 });

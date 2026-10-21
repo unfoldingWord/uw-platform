@@ -1,3 +1,4 @@
+import { defaultCiChecks } from '@uw/contracts';
 import type { ItemState, Principal } from '@uw/contracts';
 import { ingestPrincipal } from '@uw/core/principal';
 import { createClient, type Database } from '@uw/db/client';
@@ -6,6 +7,7 @@ import { createMigratedDatabase, testServer } from '@uw/db/test-database';
 import { software, type Caller, type Clock, type Kernel, type KernelOutcome } from '@uw/harness';
 import { describe, expect, it } from 'vitest';
 import { awaitBlocked } from '../../../packages/harness/port-contracts/lock-wait.ts';
+import { listForDispatch } from '../testing/dispatch.ts';
 import { agentOf, kernelOn, personOn } from '../testing/kernel.ts';
 
 const ianId = '00000000-0000-4000-8000-000000000001';
@@ -42,9 +44,11 @@ async function sceneOn(actor: Database, mover: Database, observer: Database): Pr
       jdArea: '80-89',
       template: software,
       repository: 'unfoldingWord/uw-platform',
+      requiredChecks: [...defaultCiChecks],
     }),
     'activate',
   );
+  await listForDispatch(actor, 'unfoldingWord/uw-platform');
   return { actor, mover, observer, kernel, ian, harnessId };
 }
 
@@ -150,7 +154,13 @@ describe.skipIf(!testServer)('an item lock that waited on a stage move finds the
     const imported = accepted(
       await scene.kernel.items.importIssue(
         { actor: ingestPrincipal(), traceId: crypto.randomUUID() },
-        { harnessId: scene.harnessId, issue, title: 'Wire the board', pageId: null },
+        {
+          harnessId: scene.harnessId,
+          issue,
+          title: 'Wire the board',
+          pageId: null,
+          doneWhen: ['The board lists every stage.'],
+        },
       ),
       'import',
     );

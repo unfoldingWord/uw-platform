@@ -195,7 +195,27 @@ async function refusalsEndTheLoop(): Promise<void> {
   expect(tools.calls).toEqual([]);
 }
 
+async function engineRefusalEnds(): Promise<void> {
+  const tools = fine();
+  const refusing = result({
+    toolCalls: [call('a', 'read_page')],
+    stopReason: 'refused',
+    text: 'I cannot help with that.',
+  });
+  const { turn } = scripted([refusing]);
+  const loop = await runToolLoop(turn, tools, request, noop);
+  expect(loop.outcome).toBe('refused');
+  expect(loop.turns).toBe(1);
+  expect(loop.text).toBe('I cannot help with that.');
+  expect(tools.calls).toEqual([]);
+}
+
 describe('the tool loop', () => {
+  it(
+    'GD-3 ends refused on a turn the engine refused, and calls no tool after it',
+    engineRefusalEnds,
+  );
+
   it(
     'HE-3 the loop answers each tool call with its result and ends on a turn without one',
     answersEachCall,

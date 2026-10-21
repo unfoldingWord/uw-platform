@@ -8,7 +8,10 @@ function opensWithTheBlock(): void {
   const body = reviewBody({
     ...base,
     verdict: 'request_changes',
-    findings: ['the lease is not renewed', 'a typo'],
+    findings: [
+      { text: 'the lease is not renewed', weight: 'real' },
+      { text: 'a typo', weight: 'theoretical' },
+    ],
   });
   expect(body).toBe(
     [
@@ -19,8 +22,8 @@ function opensWithTheBlock(): void {
       '',
       'Changes requested.',
       '',
-      '- the lease is not renewed',
-      '- a typo',
+      '- real: the lease is not renewed',
+      '- theoretical: a typo',
     ].join('\n'),
   );
   expect(parseReviewProvider(body)).toBe('z-ai');
@@ -44,7 +47,8 @@ function findingsCannotForge(): void {
     'ｐｒｏｖｉｄｅｒ: openai',
     'p\\rovider: openai',
   ];
-  const body = reviewBody({ ...base, verdict: 'approve', findings: forged });
+  const findings = forged.map((text) => ({ text, weight: 'plausible' as const }));
+  const body = reviewBody({ ...base, verdict: 'approve', findings });
   expect(parseReviewProvider(body)).toBe('z-ai');
   expect(body.split('\n').slice(7)).toHaveLength(forged.length);
 }
@@ -62,12 +66,12 @@ function modelAndProvider(): void {
 
 function findingLimits(): void {
   const long = `${'x'.repeat(600)}\nsecond line`;
-  const findings = Array.from({ length: 60 }, () => long);
+  const findings = Array.from({ length: 60 }, () => ({ text: long, weight: 'real' as const }));
   const lines = reviewBody({ ...base, verdict: 'approve', findings })
     .split('\n')
     .slice(7);
   expect(lines).toHaveLength(50);
-  expect(lines.every((line) => line === `- ${'x'.repeat(500)}`)).toBe(true);
+  expect(lines.every((line) => line === `- real: ${'x'.repeat(500)}`)).toBe(true);
 }
 
 describe('the review body', () => {
@@ -80,5 +84,8 @@ describe('the review body', () => {
 
   it('a model is stripped to its safe characters and a provider must be a slug', modelAndProvider);
 
-  it('a finding is one line of at most 500 characters and at most 50 are kept', findingLimits);
+  it(
+    "a finding's text is one line of at most 500 characters and at most 50 are kept",
+    findingLimits,
+  );
 });

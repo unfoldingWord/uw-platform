@@ -12,7 +12,9 @@ import pullRequestSynchronize from '../fixtures/pull-request-synchronize.json' w
 import { webhookBatch } from '../testing/batches.ts';
 import { base, changedPaths, head, nextHead, openedPull } from '../testing/facts-fixtures.ts';
 import { testServer, withAppDatabase } from '../../testing/postgres.ts';
-import { recordFiles, upsertFacts, type UpsertReport } from './upsert.ts';
+import { recordFiles } from './heads.ts';
+import { unknownHead } from './records.ts';
+import { upsertFacts, type UpsertReport } from './upsert.ts';
 
 const firstAt = new Date('2026-10-02T09:00:00.000Z');
 const laterAt = new Date('2026-10-02T09:30:00.000Z');
@@ -44,6 +46,8 @@ function filesAt(at: string, against = base) {
     base: against,
     paths: changedPaths,
     problem: null,
+    ...unknownHead,
+    behindBy: 0,
   };
 }
 
@@ -187,6 +191,9 @@ describe.skipIf(!testServer)('the upsert reports what it stored', () => {
           number: 7,
           head,
           baseSha: base,
+          title: 'Show the board',
+          open: true,
+          requestedReviewers: [],
           filesKnown: false,
         },
       ]);

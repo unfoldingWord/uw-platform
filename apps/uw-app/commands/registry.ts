@@ -13,9 +13,12 @@ import { importCommand } from './handlers/import.ts';
 import { recordMeasurementCommand } from './handlers/measurements.ts';
 import { promptRunCommand, stopRunCommand } from './handlers/runs.ts';
 import { revokeDelegationCommand, scheduleRegularTweakCommand } from './person/delegations.ts';
+import { enqueueEpicCommand } from './person/epics.ts';
 import { activatePersonaCommand } from './person/personas.ts';
 import {
   approveCommand,
+  decideGatesCommand,
+  refuteFindingCommand,
   overrideCommand,
   recoverConnectorsCommand,
   rejectCommand,
@@ -23,12 +26,16 @@ import {
 } from './person/gates.ts';
 import {
   activateTemplateCommand,
+  changeTemplateCommand,
   createStageCommand,
   pauseCommand,
   removeStageCommand,
   reorderStagesCommand,
   resumeCommand,
   setHostedBuilderCommand,
+  setFixClaimCommand,
+  setFreezeCommand,
+  setShadowCommand,
   updateStageCommand,
 } from './person/stages.ts';
 
@@ -76,4 +83,11 @@ export const commandRegistry = commandRegistryOf([
   setHostedBuilderCommand,
   activatePersonaCommand,
   recordMeasurementCommand,
+  setShadowCommand,
+  setFreezeCommand,
+  setFixClaimCommand,
+  decideGatesCommand,
+  refuteFindingCommand,
+  enqueueEpicCommand,
+  changeTemplateCommand,
 ]);

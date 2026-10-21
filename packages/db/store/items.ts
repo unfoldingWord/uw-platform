@@ -21,7 +21,13 @@ import { harnessItems, harnessStages } from '../schema.ts';
 import { checkedRows } from './limits.ts';
 import { refusing } from './refusal.ts';
 import { toItemState } from './rows.ts';
-import type { HarnessItemsGateway, ItemClaim, StageCursor, StagePage } from './types.ts';
+import type {
+  HarnessItemsGateway,
+  ItemClaim,
+  PullRequestKey,
+  StageCursor,
+  StagePage,
+} from './types.ts';
 
 const stageOf = (harnessId: string, stageKey: string) =>
   sql`(SELECT id FROM harness_stages WHERE harness_id = ${harnessId} AND key = ${stageKey})`;
@@ -52,6 +58,9 @@ function columnsOf(item: ItemState) {
     prNumber: item.pullRequest?.number ?? null,
     ...issueColumnsOf(item.issue),
     zulipTopic: item.zulipTopic,
+    epic: item.epic,
+    blockedBy: [...item.blockedBy],
+    heldSince: item.heldSince === null ? null : new Date(item.heldSince),
   };
 }
 
@@ -196,6 +205,24 @@ async function byIds(
   return rows.map((row) => toItemState(row.item, row.stageKey));
 }
 
+async function byPullRequest(
+  executor: AnyExecutor,
+  harnessId: string,
+  pullRequest: PullRequestKey,
+): Promise<ItemState | null> {
+  const rows = await selectItems(executor)
+    .where(
+      and(
+        eq(harnessItems.harnessId, harnessId),
+        sql`lower(${harnessItems.prRepo}) = lower(${pullRequest.repo})`,
+        eq(harnessItems.prNumber, pullRequest.number),
+      ),
+    )
+    .orderBy(asc(harnessItems.createdAt), asc(harnessItems.id))
+    .limit(1);
+  return rows[0] ? toItemState(rows[0].item, rows[0].stageKey) : null;
+}
+
 function bindReads(executor: AnyExecutor): HarnessItemsGateway['read'] {
   return {
     byId: async (itemId) => {
@@ -206,6 +233,7 @@ function bindReads(executor: AnyExecutor): HarnessItemsGateway['read'] {
       const rows = await selectItems(executor).where(eq(harnessItems.issueGithubId, githubId));
       return rows[0] ? toItemState(rows[0].item, rows[0].stageKey) : null;
     },
+    byPullRequest: (harnessId, pullRequest) => byPullRequest(executor, harnessId, pullRequest),
     lock: async (itemId) => {
       const locked = await executor
         .select({ id: harnessItems.id })

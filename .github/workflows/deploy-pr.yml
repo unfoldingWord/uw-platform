@@ -30,16 +30,25 @@ jobs:
       WORKER_URL: https://uw-app-pr-${{ github.event.workflow_run.pull_requests[0].number }}.unfoldingword.workers.dev
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup
-      - uses: actions/download-artifact@v4
+      - name: Skip unless the Cloudflare API token is set
+        id: gate
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: bash .github/scripts/secret-gate.sh CLOUDFLARE_API_TOKEN
+      - if: steps.gate.outputs.configured == 'true'
+        uses: ./.github/actions/setup
+      - if: steps.gate.outputs.configured == 'true'
+        uses: actions/download-artifact@v4
         with:
           name: pr-worker
           path: ${{ runner.temp }}/pr-worker
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ github.token }}
       - name: Refuse unless the PR is open at this head and the artifact is only the bundle
+        if: steps.gate.outputs.configured == 'true'
         run: bash .github/scripts/check-pr-artifact.sh "$GITHUB_REPOSITORY" "$PR_NUMBER" "$HEAD_SHA" "$RUNNER_TEMP/pr-worker"
       - name: Deploy the PR bundle with the main branch's config and tooling
+        if: steps.gate.outputs.configured == 'true'
         working-directory: apps/uw-app
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -49,8 +58,10 @@ jobs:
           --config ../../infra/uw-app/wrangler.toml --env preview
           --name "$WORKER_NAME" --var "COMMIT_SHA:$HEAD_SHA"
       - name: Confirm /health/probe reports the PR head
+        if: steps.gate.outputs.configured == 'true'
         run: bash .github/scripts/await-health.sh "$WORKER_URL/health/probe" "$HEAD_SHA"
       - name: Post the Worker URL on the PR
+        if: steps.gate.outputs.configured == 'true'
         uses: actions/github-script@v7
         with:
           script: |

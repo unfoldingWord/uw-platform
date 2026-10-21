@@ -2,8 +2,9 @@ import type { HealthIndicator, IndicatorStatus } from '@uw/contracts';
 import { formatInstant } from '@uw/core/dates';
 import { formatCount, formatMoney } from '@uw/core/money';
 import type { Executor } from '@uw/db/client';
-import type { BreakerState, Kernel, PlaneTotals } from '@uw/harness';
+import type { BreakerState, Caller, Kernel, PlaneTotals } from '@uw/harness';
 import { sweepHealth, type SweepHealth } from '../github/facts/queries.ts';
+import { BALL_INDICATORS, heldIndicator, silenceIndicator } from './ball.ts';
 import type { SpendCap } from './spend-cap.ts';
 
 export const AGENT_PLANE_INDICATORS = [
@@ -15,10 +16,13 @@ export const AGENT_PLANE_INDICATORS = [
   'agent_writes',
   'stale_learnings',
   'github_sweep',
+  'reviewer_refutes',
+  ...BALL_INDICATORS,
 ] as const;
 
 export type AgentPlaneSource = {
   readonly kernel: Kernel;
+  readonly caller: Caller;
   readonly db: Executor;
   readonly at: Date;
   readonly cap: SpendCap;
@@ -117,7 +121,9 @@ function delegationsIndicator({ at, liveDelegations }: PlaneTotals): HealthIndic
     return { name: 'live_delegations', status: 'ok', detail: 'None live' };
   }
   const soon = soonestExpiry.getTime() - at.getTime() < DELEGATION_SOON_MS;
-  const detail = `${formatCount(count)} live; next expiry ${formatInstant(soonestExpiry)}`;
+  const merges =
+    liveDelegations.merge === 0 ? '' : `, ${formatCount(liveDelegations.merge)} of them merge`;
+  const detail = `${formatCount(count)} live${merges}; next expiry ${formatInstant(soonestExpiry)}`;
   return { name: 'live_delegations', status: soon ? 'amber' : 'ok', detail };
 }
 
@@ -198,6 +204,22 @@ function sweepIndicator(repos: readonly SweepHealth[], at: Date): HealthIndicato
   return { name: 'github_sweep', status, detail };
 }
 
+function refutesIndicator({ reviewerRefutes }: PlaneTotals): HealthIndicator {
+  const { tallies, capped } = reviewerRefutes;
+  if (tallies.length === 0) {
+    return { name: 'reviewer_refutes', status: 'ok', detail: 'No Reviewer findings in 30 days' };
+  }
+  const parts = tallies.map(
+    (tally) =>
+      `${tally.persona} on ${tally.harnessKey} ${formatCount(tally.refuted)} of ${formatCount(tally.findings)} refuted`,
+  );
+  return {
+    name: 'reviewer_refutes',
+    status: capped ? 'amber' : 'ok',
+    detail: fitted('Refuted findings in 30 days', parts),
+  };
+}
+
 export async function agentPlaneIndicators(
   source: AgentPlaneSource,
 ): Promise<readonly HealthIndicator[]> {
@@ -205,6 +227,10 @@ export async function agentPlaneIndicators(
   const totals = await kernel.views.planeTotals({ at });
   const breaker = await kernel.breaker.state(at);
   const repos = await sweepHealth(source.db);
+  const readable = await kernel.views.harnesses(source.caller, { at });
+  const scoped = { at, harnessIds: readable.map((harness) => harness.id) };
+  const found = await kernel.views.silence(scoped);
+  const holds = await kernel.views.holds(scoped);
   return [
     spendIndicator(totals, source.cap, breaker),
     breakerIndicator(breaker),
@@ -214,6 +240,10 @@ export async function agentPlaneIndicators(
     writesIndicator(totals),
     staleIndicator(totals),
     sweepIndicator(repos, at),
+    refutesIndicator(totals),
+    silenceIndicator(found, at),
+    heldIndicator('held_by_person', holds),
+    heldIndicator('held_by_agent', holds),
   ];
 }
 

@@ -153,6 +153,23 @@ export function complete(
   return completeAfter(ports, caller, runId, { ...input, before: () => [] });
 }
 
+async function handOffAfterRefusal(
+  tx: StoreTransaction,
+  held: Held,
+  why: RunFailure,
+): Promise<readonly EventDraft[]> {
+  if (why !== 'engine_refused' || held.run.delegationId === null) return [];
+  const delegation = await tx.delegations.read.byId(held.run.delegationId);
+  if (delegation === null) return [];
+  return [
+    draft('handed_to_person', {
+      personId: delegation.personId,
+      why: 'engine_refused',
+      rounds: null,
+    }),
+  ];
+}
+
 export function fail(
   ports: HostPorts,
   caller: Caller,
@@ -162,11 +179,13 @@ export function fail(
   if (input.detail !== null && !isFailureDetail(input.detail)) {
     return Promise.resolve(refused('malformed_command', { why: 'detail' }));
   }
-  return onRun(ports, caller, { runId, outcomes: live }, (tx, held) => {
+  return onRun(ports, caller, { runId, outcomes: live }, async (tx, held) => {
     const next = ended(held.run, { outcome: 'failed', failure: input.why }, held.context.at);
+    const handed = await handOffAfterRefusal(tx, held, input.why);
     return endRun(tx, held, next, [
       draft('run_failed', { runId, step: input.step, why: input.why, detail: input.detail }),
       ...released(held.item, held.run),
+      ...handed,
     ]);
   });
 }
