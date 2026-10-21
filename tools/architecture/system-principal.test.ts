@@ -9,6 +9,7 @@ const named = new Set([
   'packages/core/principal.ts',
   'packages/core/principal.test.ts',
   'packages/harness/access.ts',
+  'packages/harness/port-contracts/store-delegated-decisions.ts',
   'tools/architecture/system-principal.test.ts',
 ]);
 

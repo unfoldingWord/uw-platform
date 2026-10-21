@@ -20,6 +20,7 @@ const hostCalls: Readonly<Record<string, HostCall>> = {
   halt: (commands, caller) => commands.halt(caller, runId, 'lease_expired'),
   beat: (commands, caller) => commands.beat(caller, { limit: 0 }),
   reviewDiff: (commands, caller) => commands.reviewDiff(caller, runId),
+  reviewComments: (commands, caller) => commands.reviewComments(caller, runId),
   progress: (commands, caller) => commands.progress(caller, runId),
   postReview: (commands, caller) =>
     commands.postReview(caller, runId, {
@@ -78,7 +79,13 @@ function touchingPorts(touched: string[]): Ports {
       lockAndReread: touch('grants'),
       holders: touch('grants'),
     },
-    githubFacts: { pullRequest: touch('facts'), refresh: touch('facts'), diff: touch('facts') },
+    githubFacts: {
+      pullRequest: touch('facts'),
+      refresh: touch('facts'),
+      diff: touch('facts'),
+      epic: touch('facts'),
+      authors: touch('facts'),
+    },
     connectors: { run: touch('connectors'), outcomeOf: touch('connectors'), review: touch('c') },
     modelEngine: { turn: touch('modelEngine'), spend: touch('modelEngine') },
     hub: { wake: touch('hub'), present: touch('hub') },

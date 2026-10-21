@@ -2,7 +2,7 @@
 
 **Reviewed:** Ian's *Harness v1* (draft, 2026-09-28) — https://claude.ai/artifact/EpMRSpB9mKa1Pr2kRENrfT
 **Against:** *An App For Everything — Platform Architecture Plan* (§1 topology, §4 auth/ACL, §6 agents and work queues, §8 build doctrine, §12 comms, §14 phasing) and the Executive Brief
-**Reviewer:** Claude, for Jesse · 2026-09-28
+**Reviewer:** Claude, for the sponsor · 2026-09-28
 
 ## Verdict
 
@@ -35,7 +35,7 @@ Concretely:
 - `harnesses` gets a `jd_area` (the software harness is area 80–89; a BML harness for product content is the owning program's area).
 - **Claiming** an item requires `editor` on the harness's area — for a person directly, for an agent via its owner.
 - **Approving at Ship** requires `admin` on the harness's area. Items whose diff touches ledger, ACL, or infrastructure code (risk tier, item 7 below) additionally require `admin(20-29)` for finance code — the same rule the plan applies to journal posting.
-- D13's "default open for the software harness" becomes "open to anyone holding `editor` on 80–89". This also answers Ian's open question 3 ("who approves at Ship beyond Jesse") structurally: the approver set is whoever holds `admin` on the area, which is a grants-table row, not a name in a config file.
+- D13's "default open for the software harness" becomes "open to anyone holding `editor` on 80–89". This also answers Ian's open question 3 ("who approves at Ship beyond the sponsor") structurally: the approver set is whoever holds `admin` on the area, which is a grants-table row, not a name in a config file.
 - "Classified internal" is not a platform concept. Harness items inherit their area's visibility like every other page. If BML `measurements` ever pull donor or list statistics from areas 40–49, they are subject to the plan's finance/CRM read exclusions and the FRED sensitivity filter; state that explicitly or keep BML measurements to public web analytics in v1.
 
 ### 2. Make "Ship exits only on human approval" a platform invariant, not template data
@@ -87,7 +87,7 @@ D2 deliberately diverges from the plan (which has a Tauri desktop app and no mob
 | # | Question | Answer from the plan |
 |---|---|---|
 | 1 | One engine for both harnesses? | One engine, two templates — his D1. |
-| 3 | Who approves at Ship beyond Jesse? | Whoever holds `admin` on the harness's JD area (item 1). A role, not a name. |
+| 3 | Who approves at Ship beyond the sponsor? | Whoever holds `admin` on the harness's JD area (item 1). A role, not a name. |
 | 4 | Phone app in v1? | No. Web push + Zulip bot. |
 | 5 | Iterate unattended or person-initiated? | Unattended is fine **only** under a delegation with an expiry (item 3). |
 | 6 | Who may run externally; how are tokens counted? | Anyone with `editor` on the area; tokens tracked separately, never against the API budget — his D11. |

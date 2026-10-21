@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { identitySchema, type ItemState } from '@uw/contracts';
-import type { GateDecisionRow, PageFacts, Store, StoreTransaction } from '../ports.ts';
+import type { PageFacts, Store, StoreTransaction } from '../ports.ts';
 import { awaitBlocked, type LockWaiters } from './lock-wait.ts';
+import { describeDelegatedDecisions } from './store-delegated-decisions.ts';
 import { describeDelegations } from './store-delegations.ts';
 import { describeEvents } from './store-events.ts';
 import { describeHarnessRepositories } from './store-harnesses.ts';
@@ -10,10 +11,12 @@ import { describeLowestOpen, describeStageItems } from './store-items-stage.ts';
 import { describeHarnessPause, describeStageRemoval } from './store-pause-and-removal.ts';
 import {
   at,
+  decisionOf,
   harnessOf,
   hour,
   itemOf,
   refusedBy,
+  seedDecisionItem,
   seedHarness,
   stageOf,
   uid,
@@ -394,26 +397,6 @@ function describePages(subject: () => GatewaySubject): void {
   });
 }
 
-function decisionOf(base: number, n: number, actor: string, decidedAt: Date): GateDecisionRow {
-  return {
-    id: uid(base + 0x80 + n),
-    harnessId: uid(base),
-    itemId: uid(base + 11),
-    stageId: uid(base + 2),
-    actor: identitySchema.parse(actor),
-    decision: 'approve',
-    reason: null,
-    evidence: { findings: [], gateTarget: null },
-    traceId: uid(base + 0x90 + n),
-    decidedAt,
-  };
-}
-
-async function seedDecisionItem(tx: StoreTransaction, base: number, key: string): Promise<void> {
-  await seedHarness(tx, base, key);
-  await tx.harnessItems.write.insert(itemOf(base, 1), at);
-}
-
 function describeGateDecisions(subject: () => GatewaySubject): void {
   it('DX-3 inserts gate decisions and reads them for an item by decision time, then id', async () => {
     const later = decisionOf(0x1300, 1, 'human:ian', new Date(at.getTime() + hour));
@@ -469,6 +452,7 @@ export function describeStoreGateways(
     describeEvents(subject);
     describeDelegations(subject);
     describeGateDecisions(subject);
+    describeDelegatedDecisions(subject);
     if (concurrentConnections) describeItemLock(subject);
   });
 }

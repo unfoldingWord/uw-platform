@@ -6,6 +6,7 @@ export type Checkout = {
   readonly branch: string;
   readonly defaultBranch: string;
   readonly expectedHead: string | null;
+  readonly fix: boolean;
 };
 
 type GitHubAccess = {
@@ -36,7 +37,7 @@ export type EngineWork = {
 };
 
 export type EngineWorkResult = {
-  readonly outcome: 'ended' | 'turn_limit';
+  readonly outcome: 'ended' | 'turn_limit' | 'refused' | 'checks_not_run_locally';
   readonly text: string | null;
   readonly inputTokens: number;
   readonly outputTokens: number;

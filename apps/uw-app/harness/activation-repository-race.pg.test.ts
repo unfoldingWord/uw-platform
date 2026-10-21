@@ -1,3 +1,4 @@
+import { defaultCiChecks } from '@uw/contracts';
 import { setTimeout as pause } from 'node:timers/promises';
 import type { Principal } from '@uw/contracts';
 import { createClient, type Database } from '@uw/db/client';
@@ -63,6 +64,7 @@ function activate(
     jdArea: '80-89',
     template: software,
     repository,
+    requiredChecks: [...defaultCiChecks],
   });
 }
 

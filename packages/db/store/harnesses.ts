@@ -1,10 +1,25 @@
 import { repositorySchema } from '@uw/contracts';
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
 import { harnesses } from '../schema.ts';
 import { refusing } from './refusal.ts';
 import { toHarness } from './rows.ts';
 import type { HarnessesGateway } from './types.ts';
+
+function updateHarness(
+  executor: AnyExecutor,
+  harnessId: string,
+  change: Partial<typeof harnesses.$inferInsert>,
+): Promise<boolean> {
+  return refusing(async () => {
+    const rows = await executor
+      .update(harnesses)
+      .set(change)
+      .where(eq(harnesses.id, harnessId))
+      .returning({ id: harnesses.id });
+    return rows.length > 0;
+  });
+}
 
 export function bindHarnesses(executor: AnyExecutor): HarnessesGateway {
   return {
@@ -35,24 +50,23 @@ export function bindHarnesses(executor: AnyExecutor): HarnessesGateway {
         refusing(async () => {
           await executor.insert(harnesses).values({ ...harness, createdAt: at });
         }),
-      setPaused: (harnessId, paused) =>
-        refusing(async () => {
-          const rows = await executor
-            .update(harnesses)
-            .set({ paused })
-            .where(eq(harnesses.id, harnessId))
-            .returning({ id: harnesses.id });
-          return rows.length > 0;
-        }),
+      setPaused: (harnessId, paused) => updateHarness(executor, harnessId, { paused }),
       setHostedBuilder: (harnessId, enabled) =>
+        updateHarness(executor, harnessId, { hostedBuilderEnabled: enabled }),
+      setShadow: (harnessId, shadow) => updateHarness(executor, harnessId, { shadow }),
+      setFixClaim: (harnessId, enabled) =>
+        updateHarness(executor, harnessId, { fixClaim: enabled }),
+      setTemplate: (harnessId, from, to) =>
         refusing(async () => {
           const rows = await executor
             .update(harnesses)
-            .set({ hostedBuilderEnabled: enabled })
-            .where(eq(harnesses.id, harnessId))
+            .set({ template: to })
+            .where(and(eq(harnesses.id, harnessId), eq(harnesses.template, from)))
             .returning({ id: harnesses.id });
           return rows.length > 0;
         }),
+      setFreeze: (harnessId, frozen, allow) =>
+        updateHarness(executor, harnessId, { frozen, freezeAllow: [...allow] }),
     },
   };
 }

@@ -15,6 +15,7 @@ import { createStageCommands, type StageCommands } from './stages/commands.ts';
 import { templateProperty } from './template-property.ts';
 import { createViewReads, type ViewReads } from './views/index.ts';
 import { walk, type WalkPath, type WalkStage } from './walk.ts';
+import { createAlarmCommands, type AlarmCommands } from './alarms/commands.ts';
 
 export type KernelHealth = { readonly now: Date; readonly appliedMigrations: readonly number[] };
 
@@ -33,6 +34,7 @@ export type Kernel = {
   readonly measurements: MeasurementCommands;
   readonly runs: RunCommands;
   readonly breaker: BreakerCommands;
+  readonly alarms: AlarmCommands;
   readonly health: () => Promise<KernelHealth>;
 };
 
@@ -64,6 +66,7 @@ export function createKernel(ports: Ports): Kernel {
     measurements: createMeasurementCommands(live),
     runs: createRunCommands(live),
     breaker: createBreakerCommands(live),
+    alarms: createAlarmCommands(live),
     health: async () => ({
       now: live.clock.now(),
       appliedMigrations: await live.store.appliedMigrations(),

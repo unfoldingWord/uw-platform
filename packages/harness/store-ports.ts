@@ -1,6 +1,7 @@
 import type {
   CapabilityWord,
   CostBasis,
+  DelegableTier,
   Engine,
   EventEvidence,
   EventName,
@@ -43,6 +44,7 @@ export type PageFacts = {
   readonly version: number;
 };
 export type StagePosition = { readonly id: string; readonly position: number };
+export type PullRequestKey = { readonly repo: string; readonly number: number };
 export type StageCursor = { readonly priority: number; readonly itemId: string };
 export type StagePage = { readonly after: StageCursor | null; readonly limit: number };
 
@@ -57,6 +59,10 @@ export type HarnessesGateway = {
     insert(harness: Harness, at: Date): Promise<void>;
     setPaused(harnessId: string, paused: boolean): Promise<boolean>;
     setHostedBuilder(harnessId: string, enabled: boolean): Promise<boolean>;
+    setShadow(harnessId: string, shadow: boolean): Promise<boolean>;
+    setFixClaim(harnessId: string, enabled: boolean): Promise<boolean>;
+    setFreeze(harnessId: string, frozen: boolean, allow: readonly string[]): Promise<boolean>;
+    setTemplate(harnessId: string, from: string, to: string): Promise<boolean>;
   };
 };
 export type HarnessStagesGateway = {
@@ -75,6 +81,7 @@ export type HarnessItemsGateway = {
   readonly read: {
     byId(itemId: string): Promise<ItemState | null>;
     byIssue(githubId: number): Promise<ItemState | null>;
+    byPullRequest(harnessId: string, pullRequest: PullRequestKey): Promise<ItemState | null>;
     lock(itemId: string): Promise<ItemState | null>;
     forHarness(harnessId: string): Promise<readonly ItemState[]>;
     heldInStage(harnessId: string, stageKey: string, at: Date): Promise<number>;
@@ -105,6 +112,7 @@ export type PagesGateway = {
   readonly read: {
     facts(pageIds: readonly string[]): Promise<readonly PageFacts[]>;
     staleLearnings(today: string, limit: number): Promise<readonly PageFacts[]>;
+    platformFor(jdArea: string): Promise<PageFacts | null>;
   };
   readonly write: { activatePersona(activation: PersonaActivation): Promise<PageFacts | null> };
 };
@@ -151,6 +159,8 @@ export type RecentEvents = {
   readonly limit: number;
   readonly harnessIds?: readonly string[];
   readonly evidencePerson?: string;
+  readonly evidenceIssue?: number;
+  readonly evidencePage?: string;
 };
 export type PersonaEventCount = {
   readonly harnessId: string;
@@ -181,6 +191,7 @@ export type Delegation = {
   readonly persona: Identity;
   readonly harnessId: string;
   readonly capability: CapabilityWord;
+  readonly maxTier: DelegableTier | null;
   readonly grantedAt: Date;
   readonly expiresAt: Date;
   readonly revokedAt: Date | null;
@@ -195,6 +206,7 @@ export type DelegationFilter = {
 export type DelegationsGateway = {
   readonly read: {
     byId(delegationId: string): Promise<Delegation | null>;
+    lock(delegationId: string): Promise<Delegation | null>;
     live(filter: DelegationFilter, at: Date): Promise<readonly Delegation[]>;
     countLive(filter: DelegationFilter, at: Date): Promise<number>;
     firstLive(filter: DelegationFilter, at: Date, limit: number): Promise<readonly Delegation[]>;
@@ -219,6 +231,8 @@ export type GateDecisionRow = {
   readonly itemId: string;
   readonly stageId: string;
   readonly actor: Identity;
+  readonly agentActor: Identity | null;
+  readonly delegationId: string | null;
   readonly decision: GateDecision;
   readonly reason: string | null;
   readonly evidence: HarnessEvent['evidence'];
@@ -229,6 +243,7 @@ export type GateDecisionsGateway = {
   readonly read: {
     forItem(itemId: string): Promise<readonly GateDecisionRow[]>;
     anyForStage(stageId: string): Promise<boolean>;
+    delegatedSince(since: Date, limit: number): Promise<readonly GateDecisionRow[]>;
   };
   readonly write: { insert(decision: GateDecisionRow): Promise<void> };
 };

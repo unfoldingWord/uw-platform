@@ -192,6 +192,25 @@ async function pausesAndResumes(db: Database): Promise<void> {
   expect(after.stages.find((stage) => stage.key === 'build')?.paused).toBe(true);
 }
 
+async function freezesForAnAdmin(db: Database): Promise<void> {
+  const scene = await softwareHarness(db);
+  const requestId = randomUUID();
+  const body = { requestId, frozen: true, allow: [] };
+  const byAdmin = await command(db, IAN, scene.harnessId, 'set_freeze', body);
+  expect(byAdmin.body).toEqual({ status: 'accepted', requestId });
+  const [frozen] = await eventsNamed(db, scene.harnessId, 'freeze_changed');
+  expect(frozen).toMatchObject({ evidence: { frozen: true, allow: [] }, requestId });
+  expect((await sceneOf(db, scene.harnessId)).harness).toMatchObject({ frozen: true });
+  const lift = { requestId: randomUUID(), frozen: false, allow: [] };
+  const byEditor = await command(db, scene.editor, scene.harnessId, 'set_freeze', lift);
+  expect(byEditor.body).toEqual({
+    status: 'error',
+    requestId: lift.requestId,
+    reason: 'not_permitted',
+  });
+  expect(await eventsNamed(db, scene.harnessId, 'freeze_changed')).toHaveLength(1);
+}
+
 async function removesOnlyAnEmptyStage(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const { harnessId } = scene;
@@ -278,6 +297,7 @@ function agentAttempts(harnessId: string): ReadonlyArray<readonly [string, strin
     [harnessId, 'remove_stage', { stageKey: 'close' }],
     [harnessId, 'pause', { stageKey: null }],
     [harnessId, 'resume', { stageKey: null }],
+    [harnessId, 'set_freeze', { frozen: true, allow: [] }],
   ];
 }
 
@@ -394,6 +414,9 @@ describe.skipIf(!testServer)('WB-1 KN-18 the stage command on the person surface
 
   it('WB-1 pause and resume through the command API record harness_paused and harness_resumed', () =>
     withAppDatabase(pausesAndResumes));
+
+  it('GD-2 set_freeze freezes for an admin, is refused for an editor, and records freeze_changed', () =>
+    withAppDatabase(freezesForAnAdmin));
 
   it('KN-18 remove_stage through the command API refuses stage_not_empty for a stage holding an item and removes an empty spare stage', () =>
     withAppDatabase(removesOnlyAnEmptyStage));

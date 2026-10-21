@@ -56,6 +56,7 @@ export type RigOptions = {
   readonly capability?: 'build' | 'review';
   readonly gate?: boolean;
   readonly notifier?: Notifier;
+  readonly itemPageId?: string;
 };
 
 const personaPageId = '00000000-0000-4000-8000-000000009901';
@@ -96,6 +97,8 @@ function factsPort(rig: { facts: PullRequestFacts | null }): GitHubFacts {
     pullRequest: async () => rig.facts,
     refresh: async () => rig.facts,
     diff: async () => ({ kind: 'diff', text: 'diff --git a/x b/x\n', bytes: 19 }),
+    epic: async () => null,
+    authors: async () => [],
   };
 }
 
@@ -174,9 +177,11 @@ export async function hostRig(
   const { harnessId } = await softwareHarness(db);
   const admin = await ian(db);
   await stageFor(kernel, admin, harnessId, options.gate === true);
-  const itemId = await enqueued(db, harnessId, 'Run the hosted Builder');
+  const title = 'Run the hosted Builder';
+  const itemId = await enqueued(db, harnessId, title, options.itemPageId ?? null);
   const delegation = accepted(
     await kernel.delegations.grant(callerOf(admin), {
+      maxTier: null,
       harnessId,
       persona: 'agent:builder',
       capability: options.capability ?? 'build',

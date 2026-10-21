@@ -1,0 +1,17 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000001f1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": null,
+  "name": "silence_alarm",
+  "position": 1,
+  "at": "2026-10-15T09:00:00.000Z",
+  "actor": "agent:system",
+  "evidence": {
+    "level": "red",
+    "waiting": 2,
+    "oldestEnteredAt": "2026-10-15T07:00:00.000Z",
+    "lastReviewStepAt": null
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
+}

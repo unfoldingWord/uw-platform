@@ -15,6 +15,10 @@ const indicatorWords: ReadonlyMap<string, string> = new Map([
   ['gate_refusals_week', 'Gate refusals this week'],
   ['agent_writes', 'Agent writes today'],
   ['stale_learnings', 'Stale learnings'],
+  ['reviewer_refutes', 'Reviewer refute rate'],
+  ['silence_alarm', 'Silence alarm'],
+  ['held_by_person', 'With a person over 24 hours'],
+  ['held_by_agent', 'With an agent over 2 hours'],
   ['github_sweep', 'GitHub sweep'],
 ]);
 

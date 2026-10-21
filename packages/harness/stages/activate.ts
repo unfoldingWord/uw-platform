@@ -1,5 +1,15 @@
-import { repositorySchema, type Harness, type JdArea, type Stage } from '@uw/contracts';
+import {
+  botAuthorsSchema,
+  defaultBotAuthors,
+  harnessSchema,
+  repositorySchema,
+  type Harness,
+  type JdArea,
+  type RequiredCheck,
+  type Stage,
+} from '@uw/contracts';
 import type { Caller } from '../caller.ts';
+import { namesPlatformReviewer } from '../github/reviewers.ts';
 import { draft, recordContext, recordHarnessEvents } from '../items/record.ts';
 import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
@@ -22,12 +32,58 @@ export type ActivateInput = {
   readonly jdArea: JdArea;
   readonly template: Template;
   readonly repository: string | null;
+  readonly shadow?: boolean;
+  readonly externalReviewerIdentities?: readonly string[];
+  readonly botAuthors?: readonly string[];
+  readonly requiredChecks: readonly RequiredCheck[];
+  readonly protectedPaths?: readonly string[];
 };
 
 export type Activated = { readonly harness: Harness; readonly stages: readonly Stage[] };
 
 function templateRefusal(stages: readonly Stage[]): Refused | null {
   return stageProblems(stages) ?? bypassRefusal(stages);
+}
+
+function externalRefusal(external: readonly string[]): Refused | null {
+  const parsed = harnessSchema.shape.externalReviewerIdentities.safeParse(external);
+  if (parsed.success && !external.some(namesPlatformReviewer)) return null;
+  return refused('malformed_command', { why: 'external_reviewer_identities' });
+}
+
+function botsOf(input: ActivateInput): string[] {
+  return [...(input.botAuthors ?? defaultBotAuthors)];
+}
+
+function inputRefusal(input: ActivateInput, external: readonly string[]): Refused | null {
+  const { repository } = input;
+  if (repository !== null && !repositorySchema.safeParse(repository).success) {
+    return refused('malformed_command', { repository });
+  }
+  if (!botAuthorsSchema.safeParse(botsOf(input)).success) {
+    return refused('malformed_command', { field: 'botAuthors' });
+  }
+  return externalRefusal(external);
+}
+
+function harnessOf(input: ActivateInput, external: string[]): Harness {
+  return {
+    id: input.harnessId,
+    key: input.harnessKey,
+    template: input.template.key,
+    jdArea: input.jdArea,
+    repository: input.repository,
+    hostedBuilderEnabled: false,
+    paused: false,
+    shadow: input.shadow ?? false,
+    externalReviewerIdentities: external,
+    botAuthors: botsOf(input),
+    frozen: false,
+    freezeAllow: [],
+    requiredChecks: [...input.requiredChecks],
+    protectedPaths: [...(input.protectedPaths ?? [])],
+    fixClaim: false,
+  };
 }
 
 async function insertAll(
@@ -56,6 +112,7 @@ async function insertAll(
         template: template.key,
         stages: [...stages].sort((a, b) => a.position - b.position).map((stage) => stage.key),
         repository: harness.repository,
+        shadow: harness.shadow,
       }),
     ]);
     return accepted(activated);
@@ -71,18 +128,10 @@ export async function activateTemplate(
   const agent = agentRefusal(caller);
   if (agent !== null) return agent;
   const { repository } = input;
-  if (repository !== null && !repositorySchema.safeParse(repository).success) {
-    return refused('malformed_command', { repository });
-  }
-  const harness: Harness = {
-    id: input.harnessId,
-    key: input.harnessKey,
-    template: input.template.key,
-    jdArea: input.jdArea,
-    repository,
-    hostedBuilderEnabled: false,
-    paused: false,
-  };
+  const external = [...(input.externalReviewerIdentities ?? [])];
+  const malformed = inputRefusal(input, external);
+  if (malformed !== null) return malformed;
+  const harness = harnessOf(input, external);
   const stages = input.template.stages.map((stage) =>
     stageFromTemplate(stage, harness.id, ports.ids.next()),
   );

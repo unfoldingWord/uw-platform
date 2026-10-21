@@ -1,8 +1,13 @@
+import { promptText, renderUntrusted, type PromptText, type UntrustedContent } from '@uw/harness';
+
 export type PromptSource = {
-  readonly title: string;
-  readonly context: string;
+  readonly title: PromptText;
+  readonly context: UntrustedContent;
   readonly prompts: readonly string[];
+  readonly related: readonly UntrustedContent[];
 };
+
+export type ReviewSource = PromptSource & { readonly diff: UntrustedContent };
 
 const CONTEXT_LIMIT = 60_000;
 
@@ -11,12 +16,22 @@ function promptLines(prompts: readonly string[]): readonly string[] {
   return ['', 'Messages from the people who own this run:', ...prompts.map((text) => `- ${text}`)];
 }
 
+function relatedLines(related: readonly UntrustedContent[]): readonly string[] {
+  if (related.length === 0) return [];
+  return [
+    '',
+    'Text from outside the platform that this item refers to:',
+    ...related.map((content) => renderUntrusted(content)),
+  ];
+}
+
 function framed(source: PromptSource): readonly string[] {
   return [
-    `Item: ${source.title}`,
+    `Item: ${promptText(source.title)}`,
     '',
     'Context:',
-    source.context.slice(0, CONTEXT_LIMIT),
+    renderUntrusted(source.context),
+    ...relatedLines(source.related),
     ...promptLines(source.prompts),
   ];
 }
@@ -45,18 +60,32 @@ export function workPrompt(source: PromptSource): string {
   );
 }
 
-export function reviewPrompt(source: PromptSource & { readonly diff: string }): string {
+export function fixPrompt(source: PromptSource): string {
+  return [
+    ...framed(source),
+    '',
+    'A review of this item found the defects quoted above. Fix them on the branch you are given and change nothing else.',
+    "Keep the change within a quarter of the pull request's changed lines, in the files it already touches. Beside them you may add or change only test files (named .test. or .spec., or under a test, tests or __tests__ directory at the repository root or a package root under packages/ or apps/) and markdown under docs/ or a README or CHANGELOG.",
+    'Never touch AGENTS.md, CLAUDE.md, SKILL.md, or anything under .claude/, .github/, skills/ or a persona directory unless the pull request already does.',
+    'Do not change what the pull request declares. Commit your fix and do not push: the platform runs the repository declared checks and pushes when they pass.',
+  ].join('\n');
+}
+
+export function reviewPrompt(source: ReviewSource): string {
   return [
     ...framed(source),
     '',
     'The change to review, as a diff of the head against its base:',
-    source.diff,
+    renderUntrusted(source.diff),
     '',
-    'Open your answer with this block and nothing before it, then one finding per line:',
+    'Open your answer with this block and nothing before it, then one finding per line, each starting with its weight:',
     '```harness-verdict',
     'verdict: approve',
     '```',
-    '- <finding>',
+    '- real: <a defect you are sure of>',
+    '- plausible: <a defect that may be real>',
+    '- theoretical: <a defect that only could be real>',
+    'Write no finding lines when you found nothing.',
     'Write `verdict: request_changes` when the change must not ship as it is.',
   ].join('\n');
 }

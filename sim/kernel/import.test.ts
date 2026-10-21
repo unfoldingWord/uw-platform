@@ -46,6 +46,7 @@ function importAs(scene: Scene, actor: Principal, overrides: Partial<{ issue: Is
     issue: overrides.issue ?? issue,
     title: 'Wire the board',
     pageId: null,
+    doneWhen: ['The board lists every stage.'],
   });
 }
 

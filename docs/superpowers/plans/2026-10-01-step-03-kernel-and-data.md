@@ -497,7 +497,7 @@ Add to `schemaRegistry` in `packages/contracts/registry.ts`: `'stage-bracket'`, 
 Fixtures (every `valid` file must round-trip unchanged through parse and `JSON.stringify`, so write instants as `2026-10-01T09:00:00.000Z` and omit nothing):
 - each of the eight enums: `valid/first.json`, `valid/last.json` (the first and last option as a JSON string), `invalid/unknown.json` (`"nope"`).
 - `stage-key`: valid `package.json` (`"package"`), `human-review.json` (`"human_review"`); invalid `capital.json` (`"Package"`), `digit-first.json` (`"1st"`).
-- `persona-identity`: valid `builder.json` (`"agent:builder"`); invalid `device.json` (`"agent:jesse/laptop"`), `human.json` (`"human:ian"`).
+- `persona-identity`: valid `builder.json` (`"agent:builder"`); invalid `device.json` (`"agent:avery/laptop"`), `human.json` (`"human:ian"`).
 - `pull-request-ref`: valid `{"repo":"unfoldingWord/uw-platform","number":12}`; invalid `no-owner.json` (`{"repo":"uw-platform","number":12}`).
 - `harness`: valid `software.json` (`{"id":"00000000-0000-4000-8000-0000000000a1","key":"software","template":"software","jdArea":"80-89","hostedBuilderEnabled":false,"paused":false}`); invalid `bad-area.json` (same with `"jdArea":"80-99"`).
 - `stage`: valid `ship.json` (key `ship`, title `Ship`, position 60, bracket `deploy_package`, agentPickup `none`, exitGate `human_approval`, connector `merge`, wipLimit 3, instructionsPageId null, validators `[]`, feeds `[]`, paused false, with uuid `id` and `harnessId`); invalid `duplicate-validator.json` (validators `["learning_attached","learning_attached"]`).
@@ -2682,7 +2682,7 @@ Semantics:
 
 `sim/kernel/delegations.test.ts` (`KN-16 …` describes): an agent and an area editor cannot grant; `expiresAt` in the past is `expiry_in_past`; an expired delegation's `beat` lapses `expired` once; a revoked one lapses `revoked`; another area admin may revoke Kim's delegation, an editor may not; renewal with `supersedes` revokes the old row and the new one names it; `live` filters by person, by persona and by harness, and the all-null filter lists every live one; capability `none` gives a principal with no grants.
 
-`packages/harness/delegations/beat.test.ts`: `personaMatches` for `agent:iterate`, for `agent:jesse/laptop as iterate via delegation:<id>` (true), and with another id or persona (false).
+`packages/harness/delegations/beat.test.ts`: `personaMatches` for `agent:iterate`, for `agent:avery/laptop as iterate via delegation:<id>` (true), and with another id or persona (false).
 
 Add a grants contract case `DX-3 reads grants inside a transaction without a lock` (`resolveIn` sees a grant and, after a revoke, does not) and `resolveIn` to `describeGrantsNotWired`'s list; a Store contract case for the delegations gateway (insert, `live` filters and expiry at an instant, conditional `revoke` and `markLapsed` return `true` once then `false`).
 

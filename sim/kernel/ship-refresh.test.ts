@@ -106,7 +106,13 @@ function factsAnswering(
   pullRequest: GitHubFacts['pullRequest'],
   refresh: GitHubFacts['refresh'],
 ): GitHubFacts {
-  return { pullRequest, refresh, diff: () => notWiredCall('githubFacts', 'diff') };
+  return {
+    pullRequest,
+    refresh,
+    diff: () => notWiredCall('githubFacts', 'diff'),
+    epic: async () => null,
+    authors: async () => [],
+  };
 }
 
 function sceneIt(title: string, work: (scene: Scene) => Promise<void>): void {
@@ -129,20 +135,23 @@ describe('GH-5 an approve at Ship decides on facts refreshed from GitHub before 
     },
   );
 
-  sceneIt('refreshes while no transaction is open', async (scene) => {
-    const watched = watchedStore(scene.world.adapters.store);
-    const seen: boolean[] = [];
-    const githubFacts = factsAnswering(
-      async () => approved(scene),
-      async () => {
-        seen.push(watched.open());
-        return approved(scene);
-      },
-    );
-    const { outcome } = await approveWith(scene, githubFacts, watched.store);
-    expect(outcome.status).toBe('accepted');
-    expect(seen).toEqual([false]);
-  });
+  sceneIt(
+    'SR-3 refreshes while no transaction is open, at the decision and again before the merge',
+    async (scene) => {
+      const watched = watchedStore(scene.world.adapters.store);
+      const seen: boolean[] = [];
+      const githubFacts = factsAnswering(
+        async () => approved(scene),
+        async () => {
+          seen.push(watched.open());
+          return approved(scene);
+        },
+      );
+      const { outcome } = await approveWith(scene, githubFacts, watched.store);
+      expect(outcome.status).toBe('accepted');
+      expect(seen).toEqual([false, false]);
+    },
+  );
 });
 
 describe('GH-5 an approve at Ship fails closed on stale or missing GitHub facts', () => {

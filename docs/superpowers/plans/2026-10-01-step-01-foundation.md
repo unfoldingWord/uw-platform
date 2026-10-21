@@ -1757,7 +1757,7 @@ FD-8"
 **Interfaces:**
 - Produces Drizzle exports from `@uw/db/schema`: `people`, `roleGrants`, `grantAudit`, `pages`, `pageVersions`, `webhookDeliveries`, `queueWatermarks`.
 - Produces from `@uw/db/client`: `type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]` and `type Executor = Database | Transaction`.
-- Produces fixed bootstrap ids: Ian `00000000-0000-4000-8000-000000000001` (`ian.lindsley@unfoldingword.org`), Jesse `00000000-0000-4000-8000-000000000002` (`jesse.griffin@unfoldingword.org`), their org-admin grants `…0101` and `…0102`.
+- Produces fixed bootstrap ids: Ian `00000000-0000-4000-8000-000000000001` (`ian.lindsley@unfoldingword.org`), the sponsor `00000000-0000-4000-8000-000000000002` (`sponsor@unfoldingword.org`), their org-admin grants `…0101` and `…0102`.
 
 - [ ] **Step 1: Write the failing constraint tests**
 
@@ -1824,13 +1824,13 @@ describe.skipIf(!testServer)('the foundation tables on real Postgres', () => {
       expect(await attempt(grant(p1, 'editor', 'jd_area', '80-89'))).toBe('ok');
     });
 
-    it('grants org admin to Ian and Jesse in the bootstrap migration, with an audit row each', async () => {
+    it('grants org admin to Ian and the sponsor in the bootstrap migration, with an audit row each', async () => {
       const admins = await sql`
         SELECT p.email FROM role_grants g JOIN people p ON p.id = g.person_id
         WHERE g.role = 'admin' AND g.scope_kind = 'org' AND g.revoked_at IS NULL ORDER BY p.email`;
       expect(admins.map((row) => row['email'])).toEqual([
         'ian.lindsley@unfoldingword.org',
-        'jesse.griffin@unfoldingword.org',
+        'sponsor@unfoldingword.org',
       ]);
       const audits = await sql`SELECT actor, action FROM grant_audit WHERE action = 'bootstrap'`;
       expect(audits).toHaveLength(2);
@@ -2125,7 +2125,7 @@ CREATE TRIGGER grant_audit_no_truncate BEFORE TRUNCATE ON grant_audit FOR EACH S
 ```sql
 INSERT INTO people (id, email, display_name, status) VALUES
   ('00000000-0000-4000-8000-000000000001', 'ian.lindsley@unfoldingword.org', 'Ian Lindsley', 'active'),
-  ('00000000-0000-4000-8000-000000000002', 'jesse.griffin@unfoldingword.org', 'Jesse Griffin', 'active')
+  ('00000000-0000-4000-8000-000000000002', 'sponsor@unfoldingword.org', 'Sponsor', 'active')
 ON CONFLICT (email) DO NOTHING;
 --> statement-breakpoint
 INSERT INTO role_grants (id, person_id, role, scope_kind, scope_area, granted_by) VALUES
@@ -2163,7 +2163,7 @@ git commit -m "feat(db): people, grants, grant audit, pages, page versions, deli
 Shared root packages/db/schema.ts: the foundation tables with their classification
 and offline eligibility, closed sets as CHECK constraints (P4), one live grant per
 person, role and scope, slugs unique per area (P20), an append-only grant_audit,
-and a bootstrap migration granting org admin to Ian and Jesse.
+and a bootstrap migration granting org admin to Ian and the sponsor.
 
 FD-7 FD-8 FD-9 FD-10 FD-11"
 git add packages/db/foundation.test.ts packages/db/client.ts
@@ -2999,15 +2999,15 @@ Locking all live org-admin rows in id order before counting is what makes two co
 | Ian grants the same | accepted; `people.status` is `active`; `pending@gmail.com`'s next `/api/me` is 200 |
 | Ian revokes `e`'s grant | accepted; audit `before->>'revoked_at'` is null and `after->>'revoked_at'` is not; `e`'s next `/api/me` has no grant |
 | Ian revokes the same grant again, and a random UUID | 404 `grant_not_found` each |
-| Ian revokes Jesse's org admin (`…0102`), then his own (`…0101`) | first accepted, second 409 `last_org_admin` |
+| Ian revokes the sponsor's org admin (`…0102`), then his own (`…0101`) | first accepted, second 409 `last_org_admin` |
 | a service-token principal posts a grant | 403 `not_permitted` |
 | body `{ "command": "grant_role" }` | 400 refusal `malformed_command` with no `requestId` |
 | a body with a valid `requestId` and `role: 'owner'` | 400 `{ status: 'error', requestId, reason: 'malformed_command' }` |
 | `POST /api/acl/commands/approve` | 404 `not_wired` |
 
-Run the "Ian revokes Jesse's org admin, then his own" case in its own `withAppDatabase` (it removes an org admin the other cases rely on); the rest may share one database in table order.
+Run the "Ian revokes the sponsor's org admin, then his own" case in its own `withAppDatabase` (it removes an org admin the other cases rely on); the rest may share one database in table order.
 
-`apps/uw-app/acl/last-org-admin.pg.test.ts` (review focus 3): in one migrated database, open two separate clients with `createClient(target)` (two connections), build Ian's and Jesse's principals with `personPrincipal` and their bootstrap grants, and run `Promise.all([revokeRole(dbA, ian, revokeJesse, traceA), revokeRole(dbB, jesse, revokeIan, traceB)])` ten times over fresh databases or after re-inserting the revoked grant. Every round: exactly one result is `{ ok: true }` and the other is `{ ok: false, reason: 'last_org_admin' }`, and `SELECT count(*) FROM role_grants WHERE role = 'admin' AND scope_kind = 'org' AND revoked_at IS NULL` is 1.
+`apps/uw-app/acl/last-org-admin.pg.test.ts` (review focus 3): in one migrated database, open two separate clients with `createClient(target)` (two connections), build Ian's and the sponsor's principals with `personPrincipal` and their bootstrap grants, and run `Promise.all([revokeRole(dbA, ian, revokeSponsor, traceA), revokeRole(dbB, sponsor, revokeIan, traceB)])` ten times over fresh databases or after re-inserting the revoked grant. Every round: exactly one result is `{ ok: true }` and the other is `{ ok: false, reason: 'last_org_admin' }`, and `SELECT count(*) FROM role_grants WHERE role = 'admin' AND scope_kind = 'org' AND revoked_at IS NULL` is 1.
 
 - [ ] **Step 2: Run and see them fail** → FAIL.
 - [ ] **Step 3: Implement.**
@@ -4008,7 +4008,7 @@ Status row for step 1: state `Built`, evidence `docs/superpowers/plans/2026-10-0
 | FD-8 | Revoking the last live org-admin grant is refused `last_org_admin`, serialised by locking every live org-admin row | The org must never lose its last admin | None known |
 | FD-8 | Re-granting a grant that expired but was never revoked first revokes the expired row, with its own audit record | The one-live-grant index would otherwise refuse it | None known |
 | FD-8 | `grant_audit` is append-only by trigger | It is an audit trail kept 7 years (PRD 9) | None known |
-| FD-8 | Jesse's bootstrap email is `jesse.griffin@unfoldingword.org` | No address for Jesse is in the repository | If wrong, Jesse signs in as a separate person without the grant; fixed by a migration or by Ian granting him |
+| FD-8 | The sponsor's bootstrap email is `sponsor@unfoldingword.org` | No address for the sponsor is in the repository | If wrong, the sponsor signs in as a separate person without the grant; fixed by a migration or by Ian granting him |
 | FD-7 | A service token's identity is `agent:svc-<client id>` with no grants | AB-2 maps tokens to owners in step 4 | AB-2 replaces it |
 | FD-7 | `/health` is outside Access and has no `can()` (exceptions.md) | The deploy probe needs the commit without a credential | WB-10's drill-through must live behind Access |
 | FD-7 | People are classified `internal`, `cache_readonly` | Plan §2.6 puts the directory there | None known |
@@ -4028,14 +4028,14 @@ Status row for step 1: state `Built`, evidence `docs/superpowers/plans/2026-10-0
 
 "New dependencies", dated 2026-10-01: `jose` (replaces hand-written JWT and JWKS verification); `@octokit/webhooks-methods` (replaces a hand-written HMAC-SHA256 constant-time compare); `smol-toml` (replaces hand-parsing wrangler TOML in tests).
 
-"Not verified", dated 2026-10-01: FD-7, the Access JWT from a real Access application (fixture key pair only); FD-6 and FD-10, `postgres` under workerd against Hyperdrive (pg tests run in Node); FD-10, Cloudflare Queues delivery, retries and the dead-letter queue (doubles and fixtures only); FD-11, Workers Logs output and the Logpush and R2 lifecycle bodies against the Cloudflare API; FD-12, every go-live job's configured path (only the skip path ran in CI); FD-8, Jesse's email; FD-11, the run-step leg of the trace id, which has nothing to follow until HE-1 adds Workflow steps (the request, webhook, queue message and database-write legs are tested).
+"Not verified", dated 2026-10-01: FD-7, the Access JWT from a real Access application (fixture key pair only); FD-6 and FD-10, `postgres` under workerd against Hyperdrive (pg tests run in Node); FD-10, Cloudflare Queues delivery, retries and the dead-letter queue (doubles and fixtures only); FD-11, Workers Logs output and the Logpush and R2 lifecycle bodies against the Cloudflare API; FD-12, every go-live job's configured path (only the skip path ran in CI); FD-8, the sponsor's email; FD-11, the run-step leg of the trace id, which has nothing to follow until HE-1 adds Workflow steps (the request, webhook, queue message and database-write legs are tested).
 
 "Waiting on a person", dated 2026-10-01:
 
 | Requirement | What is written | What is needed to verify it live | From whom |
 |---|---|---|---|
-| FD-7 | Access JWT verification, `infra/access/uw-app.json` | The Access application with Google as IdP, its AUD tag and team domain, a service token | Ian, Jesse |
-| FD-8 | Bootstrap migration | Confirm Jesse's sign-in address | Jesse |
+| FD-7 | Access JWT verification, `infra/access/uw-app.json` | The Access application with Google as IdP, its AUD tag and team domain, a service token | Ian, the sponsor |
+| FD-8 | Bootstrap migration | Confirm the sponsor's sign-in address | The sponsor |
 | FD-10 | uw-ingest Worker, deploy jobs, queue bindings in `wrangler.go-live.toml` | The four queues; `GITHUB_WEBHOOK_SECRET` as a Worker secret (with GH-1's App) | Ian, an org owner |
 | FD-11 | Workers Logs, `infra/logs/*.json` | Workers Paid for Logpush; the `uw-logs` bucket; R2 credentials | Ian |
 | FD-12 | `neon-pr.yml`, `drop-neon-branch`, `migrate-staging`, `migrate-production`, Hyperdrive bindings in `wrangler.go-live.toml` | `NEON_API_KEY`, `NEON_PROJECT_ID`, `NEON_DIRECT_URL_STAGING`, `NEON_DIRECT_URL_PRODUCTION`; Hyperdrive configs for staging and production; then the switch-on PR | Ian |

@@ -1,5 +1,7 @@
 import type { Database } from '@uw/db/client';
 import { notWiredCall, type Clock, type GitHubFacts } from '@uw/harness';
+import { pullRequestAuthors } from '../github/facts/authors.ts';
+import { epicFacts } from '../github/facts/epics.ts';
 import { pullRequestFacts } from '../github/facts/queries.ts';
 import { refreshPullRequest, type GitHubAccess } from '../github/refresh.ts';
 
@@ -18,5 +20,7 @@ export function platformGitHubFacts(
       github === null
         ? { kind: 'unavailable', reason: 'not_wired' }
         : github.open().diff(ref.repo, range.base, range.head, budgetBytes),
+    epic: (key) => epicFacts(db, key),
+    authors: (refs) => pullRequestAuthors(db, refs),
   };
 }

@@ -61,7 +61,11 @@ async function unreadableAgentIsRecordedButSeesNoItem(scene: Scene): Promise<voi
   });
   const gained = (await eventsOf(scene)).slice(before.length);
   expect(gained.map((event) => [event.name, event.actor, event.evidence])).toEqual([
-    ['gate_refused_to_agent', agent.identity, { decision: 'approve', stage: 'check' }],
+    [
+      'gate_refused_to_agent',
+      agent.identity,
+      { decision: 'approve', stage: 'check', reason: null },
+    ],
   ]);
 }
 

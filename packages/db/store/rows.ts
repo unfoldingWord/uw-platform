@@ -1,6 +1,7 @@
 import {
   capabilityWordSchema,
   costBasisSchema,
+  delegableTierSchema,
   engineSchema,
   eventSchema,
   gateDecisionSchema,
@@ -38,6 +39,14 @@ export function toHarness(row: typeof harnesses.$inferSelect): Harness {
     repository: row.repository,
     hostedBuilderEnabled: row.hostedBuilderEnabled,
     paused: row.paused,
+    shadow: row.shadow,
+    externalReviewerIdentities: row.externalReviewerIdentities,
+    frozen: row.frozen,
+    freezeAllow: row.freezeAllow,
+    requiredChecks: row.requiredChecks,
+    protectedPaths: row.protectedPaths,
+    fixClaim: row.fixClaim,
+    botAuthors: row.botAuthors,
   });
 }
 
@@ -90,6 +99,9 @@ export function toItemState(row: typeof harnessItems.$inferSelect, stageKey: str
         : { repo: row.prRepo, number: row.prNumber },
     issue: issueOf(row),
     zulipTopic: row.zulipTopic,
+    epic: row.epic,
+    blockedBy: row.blockedBy,
+    heldSince: row.heldSince?.toISOString() ?? null,
   });
 }
 
@@ -115,6 +127,7 @@ export function toDelegation(row: typeof delegations.$inferSelect): Delegation {
     persona: identitySchema.parse(row.persona),
     harnessId: row.harnessId,
     capability: capabilityWordSchema.parse(row.capability),
+    maxTier: row.maxTier === null ? null : delegableTierSchema.parse(row.maxTier),
     grantedAt: row.grantedAt,
     expiresAt: row.expiresAt,
     revokedAt: row.revokedAt,
@@ -130,6 +143,8 @@ export function toGateDecision(row: typeof gateDecisions.$inferSelect): GateDeci
     itemId: row.itemId,
     stageId: row.stageId,
     actor: identitySchema.parse(row.actor),
+    agentActor: row.agentActor === null ? null : identitySchema.parse(row.agentActor),
+    delegationId: row.delegationId,
     decision: gateDecisionSchema.parse(row.decision),
     reason: row.reason,
     evidence: eventSchema.shape.evidence.parse(row.evidence),

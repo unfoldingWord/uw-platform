@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   acceptedOutcomeSchema,
   errorOutcomeSchema,
+  defaultCiChecks,
   refusalSchema,
   type HarnessEvent,
   type ItemState,
@@ -23,6 +24,7 @@ import {
 import { createApp } from '../app.tsx';
 import type { DatabaseHandle } from '../database.ts';
 import { createAccessFixture, fixtureAccessEnv, type AccessFixture } from './access-keys.ts';
+import { listForDispatch } from './dispatch.ts';
 import { kernelOn, personOn } from './kernel.ts';
 import { postgresDeps } from './postgres.ts';
 import { executeCommand, type DispatchScope } from '../commands/dispatch.ts';
@@ -146,7 +148,7 @@ export async function eventCount(db: Database, harnessId: string): Promise<numbe
   return (await allEvents(db, harnessId)).length;
 }
 
-async function person(db: Database, name: string, role: 'editor' | 'viewer', area: string) {
+export async function person(db: Database, name: string, role: 'editor' | 'viewer', area: string) {
   const seeded = { id: randomUUID(), email: `${name}@unfoldingword.org`, grantId: randomUUID() };
   await seedPerson(db, { id: seeded.id, email: seeded.email });
   await seedGrant(db, {
@@ -183,8 +185,10 @@ async function activated(db: Database, harnessKey: string, repository: string): 
       jdArea: AREA,
       template: software,
       repository,
+      requiredChecks: defaultCiChecks,
     }),
   );
+  await listForDispatch(db, repository);
   return harnessId;
 }
 
@@ -198,13 +202,18 @@ export async function softwareHarness(db: Database): Promise<Scene> {
   };
 }
 
-export async function enqueued(db: Database, harnessId: string, title: string): Promise<string> {
+export async function enqueued(
+  db: Database,
+  harnessId: string,
+  title: string,
+  pageId: string | null = null,
+): Promise<string> {
   const kernel = kernelOn(db, { now: () => new Date() });
   const item = accepted(
     await kernel.items.enqueue(callerOf(await ian(db)), {
       harnessId,
       title,
-      pageId: null,
+      pageId,
       priority: 0,
       due: null,
       delegationId: null,

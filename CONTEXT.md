@@ -33,7 +33,7 @@ What leaving a stage does in the world: `none`, `merge`, `deploy`, `publish`, `s
 _Avoid_: integration, hook, action
 
 **Validator**:
-A check picked by key from a registry and run at a `checks` gate. `learning_attached` is the Close validator.
+A check picked by key from a registry and run at a `checks` gate; `fix_size_cap` and `fix_keeps_purpose` also run at every submit from a **fix claim**, whatever the stage's gate. `learning_attached` is the Close validator.
 _Avoid_: linter, rule, test (validators run on items, tests run on code)
 
 **Feeds**:
@@ -446,9 +446,17 @@ _Avoid_: auto-merge, robot merge
 A claim the Builder takes on an item after a review round with findings, under a delegation whose capability word is `fix`, when no other claim is live.
 _Avoid_: fix lane (the bench's word for a second writer)
 
+**Declared checks**:
+The commands a repository says prove a change, in the file `.harness/checks.sh` at its root. A fix run reads the file at the commit the fix starts from, runs it after the model has worked, and pushes only when it passes. Not the **required checks** of the ship rule, which are CI checks GitHub reports.
+_Avoid_: local CI, pre-push hook, test script
+
 **Untrusted content**:
 Text that entered the platform from outside it: a pull request diff, an issue body, a review comment, and later a transcript or an invoice. Carried as data, never as instructions, and marked so at the boundary.
 _Avoid_: user input, external text
+
+**Clearance**:
+What a principal may read at an instant: the set of areas its live grants let it read. A cache of model output keys each entry on the reading principal's clearance, so text one reader's prompt held never reaches a reader who could not have read it.
+_Avoid_: security level, permission set (that is the grants themselves)
 
 **Epic**:
 A GitHub issue with sub-issues. Intake reads it as an ordered set of items with blockers.
@@ -457,6 +465,14 @@ _Avoid_: parent issue, milestone (that is a GitHub milestone)
 **Done-when**:
 The sentence in an issue that says what finished looks like. Intake refuses an issue without one.
 _Avoid_: acceptance criteria, definition of done
+
+**Blocker**:
+An item another item in the same epic waits on: the item for an issue named on a `Blocked by:` line in the waiting item's issue. A blocked item is offered to no one until every blocker's item has passed Ship; a person may still claim it.
+_Avoid_: dependency, prerequisite, parent
+
+**Not ready**:
+An issue or product page intake refused because it has no done-when. The refusal is recorded on the harness and the Board lists it until it becomes an item.
+_Avoid_: invalid, rejected (that is a gate decision), backlog
 
 **Holder**:
 Who has the ball on an item right now: the claimant, the Reviewer, or a person waiting to decide.
@@ -473,3 +489,35 @@ _Avoid_: severity (that is the finding's impact), confidence (that is a learning
 **Silence alarm**:
 The health indicator that goes red when items wait in Check and no review step has run for 90 minutes.
 _Avoid_: watchdog
+
+**Bot author**:
+A GitHub account a harness lists in `bot_authors` (by default `dependabot[bot]`). An item whose pull request a bot author opened is shown on every screen and left out of every count of items, and the count says so.
+_Avoid_: bot item, ignored author
+
+**External learning**:
+A learning page an external runner posted on a delegation whose capability is `review`, as the bench posts its weekly patterns. It lands `suggested`, names `source: external` and the pull request it came from, and a person confirms it like any other learning.
+_Avoid_: bench learning, imported learning, ruling (that is the bench's word for a reviewer's decision)
+
+**Required check**:
+A check a harness names, by GitHub App and check name, that must have run on the head and passed before Ship. A harness that names none requires every check that ran on the head to have passed, and at least one to have run.
+_Avoid_: required status, CI gate, branch protection (that is GitHub's)
+
+**Carried approval**:
+A Reviewer approval on an earlier head that counts on the current head because every commit since it is a merge and the change against the merge base is byte-identical (the same patch id). The gate decision names both heads.
+_Avoid_: sticky approval, inherited review
+
+**Refuted finding**:
+A Reviewer finding a person marked wrong on the Gates view. The share of a Reviewer's findings refuted over 30 days is its refute rate.
+_Avoid_: rejected finding (a gate is rejected), false positive
+
+**Strictness preset**:
+The persona-page line `approve_at`: `zero_findings` approves only with no findings at all; `no_real_or_plausible`, the default, approves when every finding is `theoretical`.
+_Avoid_: threshold, severity level
+
+**Delegated Ship exit**:
+A merge delegation used: an agent holding one submits an item at a merge Ship stage, and the kernel records a gate decision whose approver is the person who granted the delegation, whose actor is the agent, and which names the delegation. The merge runs afterwards from the minute job.
+_Avoid_: auto-merge, auto-approve, robot merge
+
+**Protected path**:
+A changed file a delegation never covers: one under the kernel's protected directories (which also raise the risk tier to `high`) or under a path the harness lists in `protected_paths`. Ship refuses a delegated exit that touches one with `protected_path_needs_person`.
+_Avoid_: sensitive file, locked path

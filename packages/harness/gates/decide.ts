@@ -21,6 +21,7 @@ import {
   shipCheck,
   type PendingExit,
   type ShipCheck,
+  type Shipped,
   type ShipSnapshot,
 } from './approve-at-ship.ts';
 import type { ExitPorts } from './exit.ts';
@@ -102,7 +103,11 @@ function refuseAgent(
     const harness = await tx.harnesses.read.byId(item.harnessId);
     if (harness === null) return notFound;
     await recordItemEvents(tx, recordContext(ports, caller, at), item.itemId, [
-      draft('gate_refused_to_agent', { decision: input.decision, stage: item.stageKey }),
+      draft('gate_refused_to_agent', {
+        decision: input.decision,
+        stage: item.stageKey,
+        reason: null,
+      }),
     ]);
     if (!allowed(caller.actor, 'read', harness, at)) return notFound;
     return refused('gate_refused_to_agent', { actor: caller.actor.identity });
@@ -114,7 +119,7 @@ function trimmedOrNull(text: string | null): string | null {
   return trimmed === '' ? null : trimmed;
 }
 
-function normalised(input: DecideInput): DecideInput | Refused {
+export function normalised(input: DecideInput): DecideInput | Refused {
   if (advancing.has(input.decision) && input.seenHead === undefined) {
     return refused('malformed_command', { why: 'seen_head_required' });
   }
@@ -156,7 +161,8 @@ async function placed(tx: StoreTransaction, itemId: string): Promise<Placed | Re
 }
 
 function notTheHeadSeen(input: DecideInput, item: ItemState): boolean {
-  return advancing.has(input.decision) && input.seenHead !== item.expectedHead;
+  const pinned = advancing.has(input.decision) || input.seenHead !== undefined;
+  return pinned && input.seenHead !== item.expectedHead;
 }
 
 async function standing(
@@ -243,7 +249,13 @@ type Decision = {
   readonly connector: EffectConnector | null;
   readonly next: string | null;
   readonly before: readonly EventDraft[];
+  readonly shipped: Shipped | null;
 };
+
+function shippedEvidence(shipped: Shipped | null): Record<string, unknown> {
+  if (shipped === null) return {};
+  return { head: shipped.head, approvals: shipped.approvals.map((approval) => ({ ...approval })) };
+}
 
 async function recordDecision(
   tx: StoreTransaction,
@@ -261,6 +273,8 @@ async function recordDecision(
     itemId: item.itemId,
     stageId: stage.id,
     actor: approver.identity,
+    agentActor: null,
+    delegationId: null,
     decision: input.decision,
     reason: input.reason,
     evidence: {
@@ -268,6 +282,7 @@ async function recordDecision(
       gateTarget: item.gateTarget,
       connector: decision.connector,
       next: decision.next,
+      ...shippedEvidence(decision.shipped),
     },
     traceId: context.traceId,
     decidedAt: context.at,
@@ -281,9 +296,9 @@ async function recordDecision(
   return accepted({ decisionId, item: recorded.item, advanced: exit !== null });
 }
 
-type Committed = { readonly decided: Decided; readonly pending: PendingExit | null };
+export type Committed = { readonly decided: Decided; readonly pending: PendingExit | null };
 
-type Request = {
+export type DecideRequest = {
   readonly caller: Caller;
   readonly input: DecideInput;
   readonly at: Date;
@@ -301,7 +316,8 @@ function pendingExit(
   gate: Gate,
   decided: Decided,
   route: ShipRoute,
-  request: Request,
+  request: DecideRequest,
+  shipped: Shipped | null,
 ): PendingExit {
   const { input, snapshot } = request;
   return {
@@ -313,6 +329,11 @@ function pendingExit(
     overrideReason: input.decision === 'override' ? input.reason : null,
     repository: gate.harness.repository,
     expectedBase: baseOf(snapshot),
+    evaluatedHead: shipped?.head ?? null,
+    delegated: null,
+    harness: gate.harness,
+    approver: gate.approver,
+    override: input.decision === 'override',
     context: gate.context,
   };
 }
@@ -326,6 +347,11 @@ async function openRoute(
   return inFlight ?? routeOf(gate, decision);
 }
 
+function shadowRefusal(gate: Gate, route: Route): Refused | null {
+  if (!gate.harness.shadow || route.connector === null) return null;
+  return refused('not_permitted', { why: 'shadow', harnessId: gate.harness.id });
+}
+
 async function checkedRoute(
   tx: StoreTransaction,
   gate: Gate,
@@ -333,36 +359,39 @@ async function checkedRoute(
   routed: { readonly route: Route; readonly snapshot: ShipSnapshot | null },
 ): Promise<ShipCheck> {
   if (routed.route.connector !== null) return shipCheck(tx, gate, decision, routed.snapshot);
-  return { refusal: await approverRefusal(tx, gate, decision), drafts: [] };
+  return { refusal: await approverRefusal(tx, gate, decision), drafts: [], shipped: null };
 }
 
-function decisionOf(input: DecideInput, route: Route, before: readonly EventDraft[]): Decision {
+function decisionOf(input: DecideInput, route: Route, ship: ShipCheck): Decision {
   const { exit, connector } = route;
-  if (connector === null) return { input, exit, connector, next: null, before };
-  return { input, exit: null, connector, next: exit?.to?.key ?? null, before };
+  const { drafts: before, shipped } = ship;
+  if (connector === null) return { input, exit, connector, next: null, before, shipped };
+  return { input, exit: null, connector, next: exit?.to?.key ?? null, before, shipped };
 }
 
-async function decideIn(
+export async function decideIn(
   ports: GatePorts,
   tx: StoreTransaction,
-  request: Request,
+  request: DecideRequest,
 ): Promise<KernelOutcome<Committed>> {
   const { input, snapshot } = request;
   const gate = await standing(ports, tx, request.caller, input, request.at);
   if (isRefused(gate)) return gate;
   const route = await openRoute(tx, gate, input.decision);
   if (isRefused(route)) return route;
+  const shadow = shadowRefusal(gate, route);
+  if (shadow !== null) return shadow;
   const ship = await checkedRoute(tx, gate, input.decision, { route, snapshot });
   if (ship.refusal !== null) return ship.refusal;
   const full = await wipRefusal(tx, gate, input.decision);
   if (full !== null) return full;
   const { exit, connector } = route;
-  const recorded = await recordDecision(tx, gate, decisionOf(input, route, ship.drafts));
+  const recorded = await recordDecision(tx, gate, decisionOf(input, route, ship));
   if (recorded.status !== 'accepted') return recorded;
   const decided = recorded.value;
   const pending =
     connector !== null && exit !== null
-      ? pendingExit(gate, decided, { exit, connector }, request)
+      ? pendingExit(gate, decided, { exit, connector }, request, ship.shipped)
       : null;
   return accepted({ decided, pending });
 }

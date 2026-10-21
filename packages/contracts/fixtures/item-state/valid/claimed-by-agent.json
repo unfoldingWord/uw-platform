@@ -18,5 +18,8 @@
   "riskDomains": [],
   "pullRequest": null,
   "issue": null,
-  "zulipTopic": null
+  "zulipTopic": null,
+  "epic": null,
+  "blockedBy": [],
+  "heldSince": null
 }

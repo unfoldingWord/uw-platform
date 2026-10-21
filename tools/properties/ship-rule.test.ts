@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   checkConclusionSchema,
   ciJobSchema,
+  defaultCiChecks,
   principalSchema,
   shipRefusalSchema,
   shipRuleInputSchema,
@@ -44,13 +45,28 @@ const approverArb = fc.array(grantArb, { maxLength: 4 }).map((held) =>
 
 const inputArb: fc.Arbitrary<ShipRuleInput> = fc
   .record({
-    pullRequest: fc.option(fc.record({ open: fc.boolean(), draft: fc.boolean(), head: heads }), {
-      nil: null,
-    }),
+    pullRequest: fc.option(
+      fc.record({
+        open: fc.boolean(),
+        draft: fc.boolean(),
+        head: heads,
+        behindBy: fc.constant(0),
+        skipCi: fc.constant(false),
+      }),
+      { nil: null },
+    ),
     expectedHead: fc.option(heads, { nil: null }),
-    checks: fc.array(fc.record({ name: jobs, headSha: heads, conclusion: conclusions }), {
-      maxLength: 12,
-    }),
+    carries: fc.constant([]),
+    checks: fc.array(
+      fc.record({
+        name: jobs,
+        app: fc.constant('github-actions'),
+        headSha: heads,
+        conclusion: conclusions,
+      }),
+      { maxLength: 12 },
+    ),
+    requiredChecks: fc.constant([...defaultCiChecks]),
     approvals: fc.array(
       fc.record({
         reviewer: fc.constantFrom('r1', 'R1', ' r2', 'r2', 'r3'),
@@ -59,11 +75,14 @@ const inputArb: fc.Arbitrary<ShipRuleInput> = fc
       }),
       { maxLength: 4 },
     ),
+    closes: fc.constant([]),
+    wraps: fc.constant(null),
     riskTier: fc.constantFrom('low', 'standard', 'high', null),
     riskDomains: domains,
     area: areas,
     approver: approverArb,
     at: fc.constantFrom('2026-10-01T09:00:00.000Z', '2026-06-01T00:00:00.000Z'),
+    frozen: fc.constant(false),
     override: fc.boolean(),
   })
   .map((input) => shipRuleInputSchema.parse(input));
@@ -177,6 +196,7 @@ function checksFor(mutation: Mutation): ShipRuleInput['checks'] {
     .filter((name) => !(mutation === 'missing' && name === 'lint'))
     .map((name) => ({
       name,
+      app: 'github-actions',
       headSha: 'abc',
       conclusion:
         mutation === 'red' && name === 'test' ? ('failure' as const) : ('success' as const),
@@ -186,7 +206,13 @@ function checksFor(mutation: Mutation): ShipRuleInput['checks'] {
 function pullRequestFor(mutation: Mutation): ShipRuleInput['pullRequest'] {
   if (mutation === 'noPullRequest') return null;
   const head = mutation === 'moved' ? 'def' : 'abc';
-  return { open: mutation !== 'closed', draft: mutation === 'draft', head };
+  return {
+    open: mutation !== 'closed',
+    draft: mutation === 'draft',
+    head,
+    behindBy: 0,
+    skipCi: false,
+  };
 }
 
 function approvalsFor(entries: readonly Entry[]): ShipRuleInput['approvals'] {
@@ -202,13 +228,18 @@ function inputOf(scenario: Scenario): ShipRuleInput {
   return shipRuleInputSchema.parse({
     pullRequest: pullRequestFor(scenario.mutation),
     expectedHead: 'abc',
+    carries: [],
     checks: checksFor(scenario.mutation),
+    requiredChecks: [...defaultCiChecks],
     approvals: approvalsFor(scenario.entries),
+    closes: [],
+    wraps: null,
     riskTier: scenario.riskTier,
     riskDomains: scenario.riskDomains,
     area: '80-89',
     approver: scenario.approver,
     at: '2026-10-01T09:00:00.000Z',
+    frozen: false,
     override: scenario.override,
   });
 }

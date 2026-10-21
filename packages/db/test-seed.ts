@@ -1,4 +1,5 @@
 import { and, eq, ne, sql } from 'drizzle-orm';
+import { platformFrontmatterSchema, platformPageSlug } from '@uw/contracts';
 import type { CapabilityWord, PageStatus, PageType, Role, Scope } from '@uw/contracts';
 import type { AnyExecutor } from './any-database.ts';
 import {
@@ -55,6 +56,17 @@ export async function rewriteHarnessRepository(
   repository: string | null,
 ): Promise<void> {
   await db.update(harnesses).set({ repository }).where(eq(harnesses.id, harnessId));
+}
+
+export async function rewriteRequiredChecks(
+  db: AnyExecutor,
+  harnessId: string,
+  requiredChecks: readonly { readonly app: string; readonly name: string }[],
+): Promise<void> {
+  await db
+    .update(harnesses)
+    .set({ requiredChecks: [...requiredChecks] })
+    .where(eq(harnesses.id, harnessId));
 }
 
 export async function rewriteGrantAudit(db: AnyExecutor, actor: string): Promise<void> {
@@ -217,6 +229,45 @@ export async function seedPage(db: AnyExecutor, page: SeedPage): Promise<void> {
   await db.insert(pages).values({ parentId: null, frontmatter: {}, ...page, version: 1 });
 }
 
+export type SeedPlatformPage = {
+  readonly id: string;
+  readonly jdArea: string;
+  readonly repositories: readonly string[];
+};
+
+export async function seedPlatformPage(db: AnyExecutor, seed: SeedPlatformPage): Promise<void> {
+  const [held] = await db
+    .select({ id: pages.id, frontmatter: pages.frontmatter })
+    .from(pages)
+    .where(
+      and(
+        eq(pages.jdArea, seed.jdArea),
+        eq(pages.slug, platformPageSlug),
+        eq(pages.type, 'platform'),
+      ),
+    );
+  const listed = platformFrontmatterSchema.safeParse(held?.frontmatter);
+  const before = listed.success ? listed.data.dispatch_allowed : [];
+  const folded = new Map(
+    [...before, ...seed.repositories].map((name) => [name.toLowerCase(), name]),
+  );
+  const frontmatter = { dispatch_allowed: [...folded.values()] };
+  if (held !== undefined) {
+    await db.update(pages).set({ frontmatter }).where(eq(pages.id, held.id));
+    return;
+  }
+  await seedPage(db, {
+    id: seed.id,
+    type: 'platform',
+    status: 'active',
+    jdArea: seed.jdArea,
+    slug: platformPageSlug,
+    title: 'Platform',
+    bodyMd: 'The repositories the platform may dispatch work onto.',
+    frontmatter,
+  });
+}
+
 export async function pageVersionsOf(db: AnyExecutor, pageId: string) {
   const rows = await db
     .select({
@@ -285,6 +336,7 @@ export type ItemRewrite = Partial<
     | 'prRepo'
     | 'prNumber'
     | 'zulipTopic'
+    | 'heldSince'
   >
 >;
 

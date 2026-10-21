@@ -125,7 +125,7 @@ async function refusedForAgents(journey: Journey): Promise<void> {
     [cast.laptop.actor.identity, beat.actor.identity],
   );
   for (const event of refusals) {
-    assert.deepEqual(event.evidence, { decision: 'approve', stage: 'ship' });
+    assert.deepEqual(event.evidence, { decision: 'approve', stage: 'ship', reason: null });
   }
   await nothingDecidedOrMerged(journey);
   const item = await itemOf(world, itemId);

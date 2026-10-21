@@ -6,6 +6,7 @@ import type { RunStepInput } from '../runs/types.ts';
 import { claim, type Claimed, type ClaimInput } from './claim.ts';
 import { recordComment, type Commented, type CommentInput } from './comments.ts';
 import { enqueue, type EnqueueInput } from './enqueue.ts';
+import { enqueueEpic, type EnqueueEpicInput, type EpicEnqueued } from './epic.ts';
 import {
   importIssue,
   labelRemoved,
@@ -20,6 +21,8 @@ import {
   type AttachLearningInput,
   type NothingLearnedInput,
 } from './learning.ts';
+import { joinByReviewRequest, type Joined, type JoinInput } from './join.ts';
+import { recordNotReady, type NotReadyInput } from './not-ready.ts';
 import { reorder, type ReorderInput } from './reorder.ts';
 import { release, type ReleaseInput } from './release.ts';
 import { submit, type Submitted, type SubmitInput } from './submit.ts';
@@ -40,6 +43,7 @@ export type ItemCommands = {
   enqueue(caller: Caller, input: EnqueueInput): Promise<KernelOutcome<ItemState>>;
   importIssue(caller: Caller, input: ImportIssueInput): Promise<KernelOutcome<Imported>>;
   labelRemoved(caller: Caller, input: LabelRemovedInput): Promise<KernelOutcome<LabelRemoved>>;
+  join(caller: Caller, input: JoinInput): Promise<KernelOutcome<Joined>>;
   claim(caller: Caller, input: ClaimInput): Promise<KernelOutcome<Claimed>>;
   release(caller: Caller, input: ReleaseInput): Promise<KernelOutcome<ItemState>>;
   reorder(caller: Caller, input: ReorderInput): Promise<KernelOutcome<readonly ItemState[]>>;
@@ -50,6 +54,8 @@ export type ItemCommands = {
   attachLearning(caller: Caller, input: AttachLearningInput): Promise<KernelOutcome<ItemState>>;
   markNothingLearned(caller: Caller, input: NothingLearnedInput): Promise<KernelOutcome<ItemState>>;
   recordComment(caller: Caller, input: CommentInput): Promise<KernelOutcome<Commented>>;
+  recordNotReady(caller: Caller, input: NotReadyInput): Promise<KernelOutcome<never>>;
+  enqueueEpic(caller: Caller, input: EnqueueEpicInput): Promise<KernelOutcome<EpicEnqueued>>;
 };
 
 export function createItemCommands(ports: ItemPorts): ItemCommands {
@@ -57,6 +63,7 @@ export function createItemCommands(ports: ItemPorts): ItemCommands {
     enqueue: (caller, input) => enqueue(ports, caller, input),
     importIssue: (caller, input) => importIssue(ports, caller, input),
     labelRemoved: (caller, input) => labelRemoved(ports, caller, input),
+    join: (caller, input) => joinByReviewRequest(ports, caller, input),
     claim: (caller, input) => claim(ports, caller, input),
     release: (caller, input) => release(ports, caller, input),
     reorder: (caller, input) => reorder(ports, caller, input),
@@ -67,5 +74,7 @@ export function createItemCommands(ports: ItemPorts): ItemCommands {
     attachLearning: (caller, input) => attachLearning(ports, caller, input),
     markNothingLearned: (caller, input) => markNothingLearned(ports, caller, input),
     recordComment: (caller, input) => recordComment(ports, caller, input),
+    recordNotReady: (caller, input) => recordNotReady(ports, caller, input),
+    enqueueEpic: (caller, input) => enqueueEpic(ports, caller, input),
   };
 }

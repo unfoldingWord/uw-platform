@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { principalSchema, type Principal } from '@uw/contracts';
+import { principalSchema, type Principal, defaultCiChecks } from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
@@ -98,6 +98,7 @@ async function harnessIn(kernel: Kernel, ian: Principal, area: Area) {
     jdArea: area,
     template: software,
     repository: null,
+    requiredChecks: [...defaultCiChecks],
   };
   value(await kernel.stages.activate(caller(ian), activation));
   const change = { agentPickup: 'allowed' as const };

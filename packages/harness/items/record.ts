@@ -1,5 +1,6 @@
 import {
   newEventSchema,
+  type EpicPlace,
   type EventEvidence,
   type EventName,
   type EvidenceName,
@@ -38,6 +39,10 @@ export type NewItem = {
   readonly priority: number;
   readonly due: string | null;
   readonly issue: IssueRef | null;
+  readonly pullRequest?: NonNullable<ItemState['pullRequest']> | null;
+  readonly expectedHead?: string | null;
+  readonly epic?: EpicPlace | null;
+  readonly blockedBy?: readonly string[];
 };
 
 export type Recorded = {
@@ -126,25 +131,44 @@ async function assertIssueInHarnessRepository(
   }
 }
 
+function epicKeys(initial: NewItem) {
+  const epic = initial.epic ?? null;
+  if (epic === null) return {};
+  return {
+    epic: { issue: { ...epic.issue }, title: epic.title, position: epic.position },
+    blockedBy: [...(initial.blockedBy ?? [])],
+  };
+}
+
+function createdDraft(initial: NewItem): EventDraft {
+  const evidence = {
+    stage: initial.stageKey,
+    title: initial.title,
+    pageId: initial.pageId,
+    priority: initial.priority,
+    due: initial.due,
+    issue: initial.issue,
+    ...epicKeys(initial),
+  };
+  const pullRequest = initial.pullRequest ?? null;
+  const expectedHead = initial.expectedHead ?? null;
+  if (pullRequest === null || expectedHead === null) {
+    return {
+      name: 'item_created',
+      evidence: { ...evidence, pullRequest: null, expectedHead: null },
+    };
+  }
+  const joined = { ...evidence, pullRequest: { ...pullRequest }, expectedHead };
+  return { name: 'item_created', evidence: joined };
+}
+
 export async function createItem(
   tx: CreateTransaction,
   context: RecordContext,
   initial: NewItem,
 ): Promise<Recorded> {
   await assertIssueInHarnessRepository(tx, initial);
-  const event = stamp(
-    context,
-    initial.harnessId,
-    initial.itemId,
-    draft('item_created', {
-      stage: initial.stageKey,
-      title: initial.title,
-      pageId: initial.pageId,
-      priority: initial.priority,
-      due: initial.due,
-      issue: initial.issue,
-    }),
-  );
+  const event = stamp(context, initial.harnessId, initial.itemId, createdDraft(initial));
   const item = foldItem(null, event);
   await tx.harnessItems.write.insert(item, context.at);
   const events = await tx.harnessEvents.write.append([event]);

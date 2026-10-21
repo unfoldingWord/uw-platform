@@ -13,6 +13,8 @@ function routesWith(refused: string[], mcpSeen: Request[]): EgressRoutes {
     },
     admit: async () => true,
     github: null,
+    registry: null,
+    thinks: () => true,
     mcp: async (request) => {
       mcpSeen.push(request);
       return Response.json({ jsonrpc: '2.0', id: 1, result: { tools: [] } });
@@ -160,4 +162,22 @@ describe('the sandbox egress proxy', () => {
     'the model route forwards only POST to its inference paths, logged by host and path',
     inferenceOnly,
   );
+});
+
+async function closedOutsideModel(): Promise<void> {
+  const refused: string[] = [];
+  const mcpSeen: Request[] = [];
+  const seen: Seen[] = [];
+  const routes = { ...routesWith(refused, mcpSeen), thinks: () => false };
+  const inference = new Request(`http://${MODEL_HOST}/v1/messages`, { method: 'POST', body: '{}' });
+  expect((await egress(inference, routes, upstream(seen))).status).toBe(403);
+  const verb = new Request(`http://${MCP_HOST}/mcp`, { method: 'POST', body: '{}' });
+  expect((await egress(verb, routes, upstream(seen))).status).toBe(403);
+  expect(seen).toEqual([]);
+  expect(mcpSeen).toEqual([]);
+  expect(refused).toEqual([`${MODEL_HOST}/v1/messages`, `${MCP_HOST}/mcp`]);
+}
+
+describe('FL-4 the model and the verbs are closed while a fix runs its checks and its push', () => {
+  it('FL-4 refuses inference and every MCP call outside the model exec', closedOutsideModel);
 });

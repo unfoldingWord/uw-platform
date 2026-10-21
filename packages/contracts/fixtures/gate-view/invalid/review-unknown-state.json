@@ -41,8 +41,14 @@
       "state": "commented",
       "provider": "anthropic",
       "findings": [
-        "The grant re-read happens after the append",
-        "A test names the wrong requirement"
+        {
+          "text": "The grant re-read happens after the append",
+          "weight": null
+        },
+        {
+          "text": "A test names the wrong requirement",
+          "weight": null
+        }
       ]
     }
   ],
@@ -51,14 +57,17 @@
       "pullRequest": {
         "open": true,
         "draft": false,
-        "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "behindBy": 0,
+        "skipCi": false
       },
       "expectedHead": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "checks": [
         {
           "name": "test",
           "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-          "conclusion": "success"
+          "conclusion": "success",
+          "app": "github-actions"
         }
       ],
       "approvals": [
@@ -72,7 +81,17 @@
       "riskDomains": ["acl"],
       "area": "80-89",
       "at": "2026-10-03T09:00:00.000Z",
-      "override": false
+      "override": false,
+      "carries": [],
+      "requiredChecks": [
+        {
+          "app": "github-actions",
+          "name": "test"
+        }
+      ],
+      "closes": [],
+      "wraps": null,
+      "frozen": false
     },
     "outcome": {
       "verdict": "advance"

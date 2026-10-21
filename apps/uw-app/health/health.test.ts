@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { createClient } from '@uw/db/client';
 import { healthReportSchema, type HealthIndicator } from '@uw/contracts';
 import { createApp } from '../app.tsx';
-import type { DatabaseHandle } from '../database.ts';
+import type { Bindings } from '../env.ts';
+import { hyperdriveDatabase, type DatabaseHandle } from '../database.ts';
+import { platformDeps } from '../deps.ts';
 import { fixtureAccessEnv } from '../testing/access-keys.ts';
 import { recordingDeps } from '../testing/deps.ts';
 import { systemTimers, type Timers } from '../timers.ts';
@@ -30,6 +32,10 @@ async function getHealth(
     { headers },
     { COMMIT_SHA: commit },
   );
+}
+
+function answeringPing(): Promise<void> {
+  return Promise.resolve();
 }
 
 function rejectingPing(): Promise<void> {
@@ -113,5 +119,35 @@ describe('FD-11 the overall status', () => {
     );
     expect(overallStatus([indicator('ok'), indicator('red'), indicator('amber')])).toBe('red');
     expect(overallStatus([indicator('not_wired')])).toBe('ok');
+  });
+});
+
+describe('GL-1 the staging probe answers the database through Hyperdrive', () => {
+  it('GL-1 the platform opens its database from the HYPERDRIVE binding and from nothing else', async () => {
+    expect(platformDeps.openDatabase).toBe(hyperdriveDatabase);
+    expect(hyperdriveDatabase({})).toBeNull();
+    const bound = hyperdriveDatabase({
+      HYPERDRIVE: { connectionString: 'postgres://unused@127.0.0.1:1/unused' },
+    });
+    expect(bound).not.toBeNull();
+    await bound?.release();
+  });
+
+  it('GL-1 a database address without the HYPERDRIVE binding opens nothing', () => {
+    const addressOnly: Bindings & { readonly DATABASE_URL: string } = {
+      DATABASE_URL: 'postgres://unused@127.0.0.1:1/unused',
+    };
+    expect(hyperdriveDatabase(addressOnly)).toBeNull();
+  });
+
+  it('GL-1 the probe reports the database ok, with its latency, once the binding answers', async () => {
+    const response = await getHealth(() => handleWithPing(answeringPing));
+    expect(response.status).toBe(200);
+    const report = healthReportSchema.parse(await response.json());
+    const database = report.indicators.find((found) => found.name === 'database');
+    expect(database).toMatchObject({
+      status: 'ok',
+      detail: expect.stringMatching(/^reachable in \d+ ms$/),
+    });
   });
 });

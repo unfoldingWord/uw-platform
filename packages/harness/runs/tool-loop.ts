@@ -14,7 +14,7 @@ type LoopUsage = {
   readonly costMicros: number | null;
 };
 export type LoopResult = {
-  readonly outcome: 'ended' | 'turn_limit';
+  readonly outcome: 'ended' | 'turn_limit' | 'refused';
   readonly text: string | null;
   readonly usage: LoopUsage;
   readonly resolvedProvider: string | null;
@@ -93,6 +93,7 @@ export async function runToolLoop(
     const result = await turn({ ...rest, messages: [...messages] });
     counted(tally, result);
     await onTurn();
+    if (result.stopReason === 'refused') return finished(tally, 'refused', result.text);
     if (result.toolCalls.length === 0) return finished(tally, 'ended', result.text);
     if (tally.turns >= TURN_LIMIT) return finished(tally, 'turn_limit', null);
     calling(tally, result.toolCalls);

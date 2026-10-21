@@ -53,6 +53,10 @@ function controls(harnessId: string): readonly Edit[] {
       label: 'turn hosted Builder on',
       run: (commands, caller) => commands.setHostedBuilder(caller, { harnessId, enabled: true }),
     },
+    {
+      label: 'freeze the harness',
+      run: (commands, caller) => commands.setFreeze(caller, { harnessId, frozen: true, allow: [] }),
+    },
   ];
 }
 
@@ -94,6 +98,7 @@ function structural(world: World, harnessId: string, stages: readonly Stage[]): 
           jdArea: '80-89',
           template,
           repository: null,
+          requiredChecks: [],
         }),
     })),
   ];

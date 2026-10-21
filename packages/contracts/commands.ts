@@ -1,8 +1,12 @@
 import { z } from 'zod';
 import { jdAreaSchema } from './areas.ts';
-import { capabilityWordSchema } from './closed-sets.ts';
+import { capabilityWordSchema, riskTierSchema } from './closed-sets.ts';
 import {
+  botAuthorsSchema,
+  defaultBotAuthors,
+  externalReviewerIdentitiesSchema,
   personaIdentitySchema,
+  protectedPathsSchema,
   pullRequestRefSchema,
   repositorySchema,
   stageKeySchema,
@@ -10,7 +14,7 @@ import {
 } from './harness.ts';
 import { slugSchema } from './pages.ts';
 import { dataSourceKindSchema } from './page-types.ts';
-import { fullShaSchema } from './ship-rule.ts';
+import { fullShaSchema, requiredChecksSchema } from './ship-rule.ts';
 
 export const commandNames = [
   'kickstart',
@@ -40,12 +44,19 @@ export const commandNames = [
   'set_hosted_builder',
   'activate_persona',
   'record_measurement',
+  'set_shadow',
+  'set_freeze',
+  'decide_gates',
+  'refute_finding',
+  'set_fix_claim',
+  'enqueue_epic',
+  'change_template',
 ] as const;
 
 export const commandNameSchema = z.enum(commandNames);
 export type CommandName = z.infer<typeof commandNameSchema>;
 
-export const templateKeySchema = z.enum(['software', 'bml']);
+export const templateKeySchema = z.enum(['software', 'bml', 'check-only']);
 export type TemplateKey = z.infer<typeof templateKeySchema>;
 
 const requestId = z.uuid();
@@ -91,6 +102,22 @@ export const overrideCommandSchema = body('override', {
   reason: nonBlank(2000),
 });
 
+const itemIdList = z
+  .array(itemId)
+  .max(100)
+  .refine((ids) => new Set(ids).size === ids.length, 'each item once');
+
+const batchEntrySchema = z.strictObject({
+  itemId,
+  head: fullShaSchema,
+  decision: z.enum(['approve', 'reject']),
+});
+
+const setFreezeSchema = body('set_freeze', { frozen: z.boolean(), allow: itemIdList }).refine(
+  (command) => command.frozen || command.allow.length === 0,
+  'lifting a freeze names no item',
+);
+
 export const harnessCommandSchemas = {
   kickstart: body('kickstart', { pageId: z.uuid() }),
   enqueue: body('enqueue', {
@@ -117,6 +144,7 @@ export const harnessCommandSchemas = {
     capability: capabilityWordSchema,
     expiresAt: z.iso.datetime().nullable(),
     supersedes: z.uuid().nullable(),
+    maxTier: riskTierSchema.nullable().default(null),
   }),
   revoke_delegation: body('revoke_delegation', { delegationId: z.uuid() }),
   recover_connectors: body('recover_connectors', {}),
@@ -125,12 +153,19 @@ export const harnessCommandSchemas = {
     jdArea: jdAreaSchema,
     template: templateKeySchema,
     repository: repositorySchema.nullable(),
+    shadow: z.boolean().default(false),
+    externalReviewerIdentities: externalReviewerIdentitiesSchema.default([]),
+    requiredChecks: requiredChecksSchema.default([]),
+    protectedPaths: protectedPathsSchema.default([]),
+    botAuthors: botAuthorsSchema.default([...defaultBotAuthors]),
   }),
   create_stage: body('create_stage', { stage: stageInputSchema }),
   update_stage: body('update_stage', { stageKey: stageKeySchema, change: stageChangeSchema }),
   reorder_stages: body('reorder_stages', { order: z.array(stageKeySchema).min(1).max(50) }),
   remove_stage: body('remove_stage', { stageKey: stageKeySchema }),
   set_hosted_builder: body('set_hosted_builder', { enabled: z.boolean() }),
+  set_fix_claim: body('set_fix_claim', { enabled: z.boolean() }),
+  change_template: body('change_template', { template: templateKeySchema }),
   activate_persona: body('activate_persona', {
     pageId: z.uuid(),
     expectedVersion: z.number().int().min(1),
@@ -141,6 +176,27 @@ export const harnessCommandSchemas = {
     name: nonBlank(100),
     value: z.number().finite(),
     asOf: z.iso.date(),
+  }),
+  set_shadow: body('set_shadow', { shadow: z.literal(false) }),
+  set_freeze: setFreezeSchema,
+  decide_gates: body('decide_gates', {
+    entries: z
+      .array(batchEntrySchema)
+      .min(1)
+      .max(50)
+      .refine(
+        (entries) => new Set(entries.map((entry) => entry.itemId)).size === entries.length,
+        'each item once',
+      ),
+  }),
+  refute_finding: body('refute_finding', {
+    itemId,
+    runId: z.uuid(),
+    finding: z.number().int().min(0).max(49),
+  }),
+  enqueue_epic: body('enqueue_epic', {
+    repository: repositorySchema,
+    number: z.number().int().min(1),
   }),
 } as const satisfies Record<CommandName, z.ZodType>;
 
@@ -172,6 +228,13 @@ export const commandSchema = z.discriminatedUnion('command', [
   harnessCommandSchemas.set_hosted_builder,
   harnessCommandSchemas.activate_persona,
   harnessCommandSchemas.record_measurement,
+  harnessCommandSchemas.set_shadow,
+  harnessCommandSchemas.set_freeze,
+  harnessCommandSchemas.decide_gates,
+  harnessCommandSchemas.refute_finding,
+  harnessCommandSchemas.set_fix_claim,
+  harnessCommandSchemas.enqueue_epic,
+  harnessCommandSchemas.change_template,
 ]);
 
 export type Command = z.infer<typeof commandSchema>;

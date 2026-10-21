@@ -1,4 +1,5 @@
 import { githubEgress, type GitHubEgress } from './github-egress.ts';
+import { registryEgress, type RegistryRoute } from './registry-egress.ts';
 
 export const MCP_HOST = 'mcp.internal';
 export const MODEL_HOST = 'model.internal';
@@ -17,7 +18,9 @@ export type EgressRoutes = {
   readonly model: ModelRoute;
   readonly mcp: McpHandler;
   readonly github: GitHubEgress | null;
+  readonly registry: RegistryRoute | null;
   readonly admit: () => Promise<boolean>;
+  readonly thinks: () => boolean;
   readonly refused: (host: string, path: string) => void;
 };
 
@@ -63,10 +66,15 @@ export async function egress(
   fetcher: Fetcher,
 ): Promise<Response> {
   const url = new URL(request.url);
-  if (url.hostname === MCP_HOST) return routes.mcp(request);
+  if (url.hostname === MCP_HOST) {
+    return routes.thinks() ? routes.mcp(request) : refusal(routes, url);
+  }
   const github = await githubEgress(request, routes, fetcher);
   if (github !== null) return github;
-  if (url.hostname !== routes.model.host || !inference(request, url, routes.model)) {
+  const registry = await registryEgress(request, routes, fetcher);
+  if (registry !== null) return registry;
+  const model = url.hostname === routes.model.host && inference(request, url, routes.model);
+  if (!model || !routes.thinks()) {
     return refusal(routes, url);
   }
   if (!(await routes.admit())) return new Response('run halted', { status: 403 });

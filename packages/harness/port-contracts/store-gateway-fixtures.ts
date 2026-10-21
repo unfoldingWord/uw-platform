@@ -1,12 +1,13 @@
 import {
   harnessSchema,
+  identitySchema,
   itemStateSchema,
   stageSchema,
   type Harness,
   type ItemState,
   type Stage,
 } from '@uw/contracts';
-import type { Store, StoreTransaction } from '../ports.ts';
+import type { GateDecisionRow, Store, StoreTransaction } from '../ports.ts';
 import { storeRefusalOf } from '../port-errors.ts';
 
 export const at = new Date('2026-10-01T09:00:00.000Z');
@@ -103,4 +104,35 @@ export function itemOf(
 
 export function refusedBy(work: (tx: StoreTransaction) => Promise<unknown>, store: Store) {
   return store.transaction(work).then(() => null, storeRefusalOf);
+}
+
+export function decisionOf(
+  base: number,
+  n: number,
+  actor: string,
+  decidedAt: Date,
+): GateDecisionRow {
+  return {
+    id: uid(base + 0x80 + n),
+    harnessId: uid(base),
+    itemId: uid(base + 11),
+    stageId: uid(base + 2),
+    actor: identitySchema.parse(actor),
+    agentActor: null,
+    delegationId: null,
+    decision: 'approve',
+    reason: null,
+    evidence: { findings: [], gateTarget: null },
+    traceId: uid(base + 0x90 + n),
+    decidedAt,
+  };
+}
+
+export async function seedDecisionItem(
+  tx: StoreTransaction,
+  base: number,
+  key: string,
+): Promise<void> {
+  await seedHarness(tx, base, key);
+  await tx.harnessItems.write.insert(itemOf(base, 1), at);
 }

@@ -35,6 +35,7 @@ async function unprojectedShadow(scene: RunWorld): Promise<void> {
     harnessId: scene.harnessId,
     persona: 'agent:shadow',
     capability: 'build',
+    maxTier: null,
     expiresAt: null,
     supersedes: null,
   });

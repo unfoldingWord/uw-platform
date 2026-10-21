@@ -22,8 +22,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.repository.default_branch }}
-      - uses: ./.github/actions/setup
+      - name: Skip unless the Cloudflare API token is set
+        id: gate
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: bash .github/scripts/secret-gate.sh CLOUDFLARE_API_TOKEN
+      - if: steps.gate.outputs.configured == 'true'
+        uses: ./.github/actions/setup
       - name: Delete the PR Worker
+        if: steps.gate.outputs.configured == 'true'
         working-directory: apps/uw-app
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

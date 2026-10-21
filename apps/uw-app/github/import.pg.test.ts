@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
+import { eventsNamed } from '../testing/commands.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import type { GitHubAppConfig } from './app-config.ts';
 import { crossReferenceBody } from './cross-reference.ts';
@@ -13,6 +14,7 @@ import {
   delivered,
   deliver,
   depsOn,
+  harnessId,
   imported,
   platform,
   posts,
@@ -209,4 +211,57 @@ describe.skipIf(!testServer)('the import only reaches a repository a harness nam
 
   it('creates the item without GitHub, and a later sweep posts the waiting comment', () =>
     withAppDatabase(notConfigured));
+});
+
+function withBody(body: string, updatedAt: string = issuesLabeled.issue.updated_at) {
+  return { ...issuesLabeled, issue: { ...issuesLabeled.issue, body, updated_at: updatedAt } };
+}
+
+async function notReady(db: Database): Promise<void> {
+  await seedSoftwareHarness(db);
+  const deps = depsOn(db, app, sweeping());
+  const first = await deliver(deps, withBody('The board.'));
+  await deliver(deps, withBody('The board, edited.', '2026-10-02T09:30:00Z'));
+  expect(first).toContainEqual(expect.objectContaining({ outcome: 'issue_not_ready' }));
+  expect(await imported(db)).toMatchObject({ pages: [], items: [] });
+  const recorded = await eventsNamed(db, harnessId, 'done_when_missing');
+  expect(recorded.map((event) => event.evidence)).toEqual([
+    {
+      via: 'import',
+      issue: { repo: platform, number: 12, githubId: issueId },
+      pageId: null,
+      title: issuesLabeled.issue.title,
+    },
+  ]);
+}
+
+async function epicNotImported(db: Database): Promise<void> {
+  await seedSoftwareHarness(db);
+  const epic = {
+    ...issuesLabeled,
+    issue: { ...issuesLabeled.issue, sub_issues_summary: { total: 2, completed: 0 } },
+  };
+  const lines = await deliver(depsOn(db, app, sweeping()), epic);
+  expect(lines).toContainEqual(expect.objectContaining({ outcome: 'issue_is_epic' }));
+  expect(await imported(db)).toMatchObject({ pages: [], items: [] });
+}
+
+async function importedStays(db: Database): Promise<void> {
+  await seedSoftwareHarness(db);
+  const deps = depsOn(db, app, sweeping());
+  await deliver(deps, issuesLabeled);
+  const lines = await deliver(deps, withBody('The board.', '2026-10-02T09:30:00Z'));
+  expect(lines).toContainEqual(expect.objectContaining({ outcome: 'issue_already_imported' }));
+  expect(await eventsNamed(db, harnessId, 'done_when_missing')).toEqual([]);
+}
+
+describe.skipIf(!testServer)('EI-2 a labelled issue needs a done-when to be imported', () => {
+  it('logs issue_not_ready, imports nothing, and records done_when_missing once', () =>
+    withAppDatabase(notReady));
+
+  it('logs issue_is_epic and imports nothing for a labelled issue with sub-issues', () =>
+    withAppDatabase(epicNotImported));
+
+  it('never checks an imported issue again when its done-when goes', () =>
+    withAppDatabase(importedStays));
 });

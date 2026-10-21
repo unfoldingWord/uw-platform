@@ -12,6 +12,7 @@ import { createApp } from '../app.tsx';
 import { platformStore } from '../ports/store.ts';
 import { createAccessFixture, type AccessFixture } from '../testing/access-keys.ts';
 import { seedPullRequest } from '../testing/github-facts.ts';
+import { listForDispatch } from '../testing/dispatch.ts';
 import { kernelOn, personOn } from '../testing/kernel.ts';
 import { areaGrant, callTool, httpClient, testAgent } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
@@ -128,8 +129,10 @@ async function harnessWith(r: Rig, key: string, priorities: readonly number[], a
       jdArea: area,
       template,
       repository: repositoryOf(key),
+      requiredChecks: [],
     }),
   );
+  await listForDispatch(r.db, repositoryOf(key), area);
   const change = { agentPickup: 'allowed' as const };
   value(
     await r.kernel.stages.updateStage(caller(r.ian), { harnessId, stageKey: 'package', change }),

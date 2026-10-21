@@ -18,6 +18,7 @@ import type { Ports, PullRequestFacts, StoreTransaction } from '../ports.ts';
 import { stagedItemScene } from '../reads/scene.ts';
 import { effectOf, shipPreview } from './approve-at-ship.ts';
 import { reviewsOn, usableHead } from './ship-input.ts';
+import { verdictsOf } from './verdicts.ts';
 
 type ViewPorts = Pick<Ports, 'clock' | 'githubFacts' | 'grants' | 'store'>;
 
@@ -27,6 +28,7 @@ type Seen = {
   readonly stage: Stage;
   readonly atConnectorExit: boolean;
   readonly recorded: GateView['recorded'];
+  readonly verdicts: GateView['verdicts'];
 };
 
 function recordedOf(events: readonly HarnessEvent[]): GateView['recorded'] {
@@ -61,7 +63,9 @@ async function seenIn(
   const { item, harness, stage, stages } = scene.value;
   const events = await readAllEvents(tx, harness.id, item.itemId);
   const atConnectorExit = connectorExit(item, stages, stage);
-  return accepted({ item, harness, stage, atConnectorExit, recorded: recordedOf(events) });
+  const recorded = recordedOf(events);
+  const verdicts = verdictsOf(events);
+  return accepted({ item, harness, stage, atConnectorExit, recorded, verdicts });
 }
 
 async function readModelFacts(ports: ViewPorts, item: ItemState): Promise<PullRequestFacts | null> {
@@ -88,7 +92,9 @@ function factsShown(facts: PullRequestFacts | null): GateView['facts'] {
 
 function reviewsShown(seen: Seen, facts: PullRequestFacts | null): GateView['reviews'] {
   const head = usableHead(facts, seen.item, seen.harness);
-  return facts === null || head === null ? [] : reviewsOn(facts, head);
+  return facts === null || head === null
+    ? []
+    : reviewsOn(facts, head, seen.harness.externalReviewerIdentities);
 }
 
 function viewOf(caller: Caller, seen: Seen, facts: PullRequestFacts | null, at: Date): GateView {
@@ -106,6 +112,7 @@ function viewOf(caller: Caller, seen: Seen, facts: PullRequestFacts | null, at: 
     facts: factsShown(facts),
     reviews: reviewsShown(seen, facts),
     ship: seen.atConnectorExit ? shipPreview(source) : null,
+    verdicts: seen.verdicts,
   });
 }
 

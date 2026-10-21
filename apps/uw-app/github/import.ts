@@ -12,7 +12,7 @@ import { carriesHarnessLabel, HARNESS_LABEL } from './harness-label.ts';
 
 const traceIdSchema = z.uuid();
 
-function callerFor(logger: Logger): Caller {
+export function callerFor(logger: Logger): Caller {
   const trace = traceIdSchema.safeParse(logger.context.traceId);
   return { actor: ingestPrincipal(), traceId: trace.success ? trace.data : crypto.randomUUID() };
 }
@@ -66,6 +66,56 @@ async function crossReference(
   });
 }
 
+type Fields = Readonly<Record<string, string | number>>;
+type Target = { readonly harnessId: string; readonly jdArea: JdArea };
+type IntakeRefusal = 'issue_is_epic' | 'issue_not_ready';
+
+async function intakeRefusal(
+  deps: GitHubDeps,
+  caller: Caller,
+  change: IssueChange,
+  harnessId: string,
+): Promise<IntakeRefusal | null> {
+  const reader = { actor: ingestPrincipal(), traceId: caller.traceId };
+  const imported = await deps.kernel.reads.issueImported(reader, { githubId: change.githubId });
+  if (imported.status === 'accepted' && imported.value) return null;
+  if (change.subIssues > 0) return 'issue_is_epic';
+  if (change.doneWhen.length > 0) return null;
+  await deps.kernel.items.recordNotReady(caller, {
+    harnessId,
+    via: 'import',
+    issue: issueOf(change),
+    pageId: null,
+    title: boundedTitle(change.title, `${change.repo}#${change.number}`),
+  });
+  return 'issue_not_ready';
+}
+
+async function importAdmitted(
+  deps: GitHubDeps,
+  caller: Caller,
+  change: IssueChange,
+  target: Target,
+  log: { readonly logger: Logger; readonly fields: Fields },
+) {
+  const page = await wrapPage(deps, caller, change, target.jdArea);
+  if (!page.ok) {
+    log.logger.warn('issue not imported: its page slug is taken', {
+      outcome: 'issue_page_slug_taken',
+      ...log.fields,
+    });
+    return { ok: false as const, reason: 'slug_taken' as const };
+  }
+  const imported = await deps.kernel.items.importIssue(caller, {
+    harnessId: target.harnessId,
+    issue: issueOf(change),
+    title: boundedTitle(change.title, `${change.repo}#${change.number}`),
+    pageId: page.pageId,
+    doneWhen: change.doneWhen,
+  });
+  return { ok: true as const, page, imported };
+}
+
 export async function importStoredIssue(
   deps: GitHubDeps,
   caller: Caller,
@@ -82,20 +132,17 @@ export async function importStoredIssue(
     });
     return { ok: false, reason: 'not_permitted' };
   }
-  const page = await wrapPage(deps, caller, change, target.value.jdArea);
-  if (!page.ok) {
-    logger.warn('issue not imported: its page slug is taken', {
-      outcome: 'issue_page_slug_taken',
-      ...fields,
-    });
-    return { ok: false, reason: 'slug_taken' };
+  const intake = await intakeRefusal(deps, caller, change, target.value.harnessId);
+  if (intake !== null) {
+    logger.info('issue not imported: intake refused it', { outcome: intake, ...fields });
+    return {
+      ok: false,
+      reason: intake === 'issue_is_epic' ? 'not_permitted' : 'done_when_missing',
+    };
   }
-  const imported = await deps.kernel.items.importIssue(caller, {
-    harnessId: target.value.harnessId,
-    issue: issueOf(change),
-    title: boundedTitle(change.title, `${change.repo}#${change.number}`),
-    pageId: page.pageId,
-  });
+  const admitted = await importAdmitted(deps, caller, change, target.value, { logger, fields });
+  if (!admitted.ok) return admitted;
+  const { page, imported } = admitted;
   if (imported.status !== 'accepted') {
     const { reason } = imported;
     logger.warn('issue not imported', { outcome: 'issue_not_imported', ...fields, reason });
@@ -117,7 +164,8 @@ async function importLabelled(deps: GitHubDeps, change: IssueChange, logger: Log
 
 async function recordRemoval(deps: GitHubDeps, change: IssueChange, logger: Logger) {
   const caller = callerFor(logger);
-  const imported = await deps.kernel.reads.issueImported(caller, { githubId: change.githubId });
+  const reader = { actor: ingestPrincipal(), traceId: caller.traceId };
+  const imported = await deps.kernel.reads.issueImported(reader, { githubId: change.githubId });
   if (imported.status !== 'accepted' || !imported.value) return;
   const removed = await deps.kernel.items.labelRemoved(caller, {
     githubId: change.githubId,

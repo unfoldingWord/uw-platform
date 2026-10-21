@@ -84,6 +84,7 @@ async function harnessOn(db: Database, ian: Principal, key: string, jdArea: stri
     jdArea,
     template,
     repository: null,
+    requiredChecks: [],
   });
   if (outcome.status !== 'accepted') throw new Error(`activating ${key}: ${outcome.reason}`);
   return harnessId;

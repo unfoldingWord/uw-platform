@@ -34,8 +34,9 @@ import {
   issuesFromRest,
   repoFromRest,
   reviewsFromRest,
+  subIssuesFromRest,
 } from './normalise.ts';
-import { emptyBatch, type FactBatch } from './records.ts';
+import { emptyBatch, unknownHead, type FactBatch } from './records.ts';
 
 function batchOf(parts: Partial<FactBatch>) {
   return { kind: 'facts', batch: { ...emptyBatch, repos: [repo], ...parts } };
@@ -120,11 +121,14 @@ const reviewedBody = reviewBody({
   provider: 'anthropic',
   model: 'claude',
   verdict: 'request_changes',
-  findings: ['The lease is not renewed', 'A typo in the copy'],
+  findings: [
+    { text: 'The lease is not renewed', weight: 'real' },
+    { text: 'A typo in the copy', weight: 'theoretical' },
+  ],
 });
 
 describe('Reviewer findings in a review payload', () => {
-  it("a review payload's findings are parsed from its body", () => {
+  it("RV-1 a review payload's findings are parsed from its body with their weights", () => {
     const payload = {
       ...reviewSubmitted,
       review: { ...reviewSubmitted.review, body: reviewedBody },
@@ -132,7 +136,10 @@ describe('Reviewer findings in a review payload', () => {
     const delivered = factsFromWebhook('pull_request_review', payload);
     const reviews = delivered.kind === 'facts' ? delivered.batch.reviews : [];
     expect(reviews.map((review) => review.findings)).toEqual([
-      ['The lease is not renewed', 'A typo in the copy'],
+      [
+        { text: 'The lease is not renewed', weight: 'real' },
+        { text: 'A typo in the copy', weight: 'theoretical' },
+      ],
     ]);
     expect(reviewsFromRest(repo, openedPull.githubId, restReviews)[0]?.findings).toEqual([]);
   });
@@ -262,32 +269,41 @@ describe('GH-2 GitHub REST answers become fact records', () => {
 
 describe('GH-5 the changed files at a head include the previous names of renames', () => {
   it('lists every filename and every previous filename once, in first-seen order', () => {
-    expect(filesFromRest(openedPull.githubId, { head, base }, restFiles.files)).toEqual({
+    expect(
+      filesFromRest(openedPull.githubId, { head, base }, restFiles.files, unknownHead),
+    ).toEqual({
       pullRequestId: openedPull.githubId,
       head,
       base,
       paths: ['apps/uw-app/board.tsx', 'apps/uw-app/board/view.tsx', 'apps/uw-app/view.tsx'],
       problem: null,
+      ...unknownHead,
     });
   });
 
   it('records too many files as a problem with no paths', () => {
-    expect(filesFromRest(openedPull.githubId, { head, base }, 'too_many_files')).toEqual({
+    expect(
+      filesFromRest(openedPull.githubId, { head, base }, 'too_many_files', unknownHead),
+    ).toEqual({
       pullRequestId: openedPull.githubId,
       head,
       base,
       paths: null,
       problem: 'too_many_files',
+      ...unknownHead,
     });
   });
 
   it('records a file entry of the wrong shape as a problem with no paths', () => {
-    expect(filesFromRest(openedPull.githubId, { head, base }, [{ status: 'added' }])).toEqual({
+    expect(
+      filesFromRest(openedPull.githubId, { head, base }, [{ status: 'added' }], unknownHead),
+    ).toEqual({
       pullRequestId: openedPull.githubId,
       head,
       base,
       paths: null,
       problem: 'malformed_files',
+      ...unknownHead,
     });
   });
 });
@@ -309,5 +325,78 @@ describe('a check value outside the stored closed sets never reaches a CHECK con
 
   it('drops a check run whose head is not a full SHA', () => {
     expect(checkRunsFromRest(repo.githubId, [{ ...run, head_sha: 'c0ffee' }])).toEqual([]);
+  });
+});
+
+describe('GL-3 the facts carry the requested reviewers', () => {
+  it('reads the requested logins from a pull request, once each, and none when absent', () => {
+    const requested = {
+      ...restPull,
+      requested_reviewers: [
+        { login: 'uw-reviewer[bot]' },
+        { login: 'outside-reviewer' },
+        { login: 'outside-reviewer' },
+      ],
+    };
+    expect(factsFromPull(repo, requested)?.pullRequests[0]?.requestedReviewers).toEqual([
+      'uw-reviewer[bot]',
+      'outside-reviewer',
+    ]);
+    expect(factsFromPull(repo, restPull)?.pullRequests[0]?.requestedReviewers).toEqual([]);
+  });
+});
+
+describe('OB-4 the facts carry the pull request author', () => {
+  it('reads the author login, and none when the payload has no user', () => {
+    const authored = { ...restPull, user: { login: 'dependabot[bot]' } };
+    expect(factsFromPull(repo, authored)?.pullRequests[0]?.authorLogin).toBe('dependabot[bot]');
+    expect(
+      factsFromPull(repo, { ...restPull, user: null })?.pullRequests[0]?.authorLogin,
+    ).toBeNull();
+  });
+});
+
+describe('EI-1 the facts read sub-issues and the body facts intake needs', () => {
+  const batchIssue = (delivery: unknown) => {
+    const batch = factsFromWebhook('issues', delivery);
+    return batch.kind === 'facts' ? batch.batch.issues[0] : undefined;
+  };
+
+  it('reads the sub-issue count, the done-when lines and the blockers from an issue', () => {
+    const issue = {
+      ...issuesLabeled.issue,
+      body: 'Blocked by: #11, other/repo#3\n\n## Done when\n- It ships.',
+      sub_issues_summary: { total: 3, completed: 1, percent_completed: 33 },
+    };
+    expect(batchIssue({ ...issuesLabeled, issue })).toMatchObject({
+      subIssues: 3,
+      doneWhen: ['It ships.'],
+      blockedBy: [11],
+    });
+  });
+
+  it('reads an issue with no body and no summary as no sub-issues, no done-when, no blockers', () => {
+    const issue = { ...issuesLabeled.issue, body: null };
+    expect(batchIssue({ ...issuesLabeled, issue })).toMatchObject({
+      subIssues: 0,
+      doneWhen: [],
+      blockedBy: [],
+    });
+  });
+
+  it('keeps only same-repository sub-issues, in the order GitHub lists them', () => {
+    const child = (id: number, number: number, repository: string) => ({
+      ...issuesLabeled.issue,
+      id,
+      number,
+      body: '## Done when\n- It ships.',
+      repository_url: `https://api.github.com/repos/${repository}`,
+    });
+    const listed = [
+      child(9100000342, 42, repo.fullName),
+      child(9100000999, 9, 'unfoldingWord/other'),
+      child(9100000341, 41, repo.fullName.toUpperCase()),
+    ];
+    expect(subIssuesFromRest(repo, listed).map((record) => record.number)).toEqual([42, 41]);
   });
 });

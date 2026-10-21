@@ -6,6 +6,7 @@ import {
   type CapabilityWord,
   type HarnessEvent,
   type Principal,
+  defaultCiChecks,
 } from '@uw/contracts';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
@@ -15,6 +16,7 @@ import { bindServiceToken } from '../agents/service-tokens.ts';
 import { createApp } from '../app.tsx';
 import { platformStore } from '../ports/store.ts';
 import { createAccessFixture, type AccessFixture } from '../testing/access-keys.ts';
+import { listForDispatch } from '../testing/dispatch.ts';
 import { kernelOn, personOn } from '../testing/kernel.ts';
 import { callTool, httpClient } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
@@ -150,8 +152,10 @@ async function sceneOf(r: Rig, key: string, count: number): Promise<Scene> {
     jdArea: '80-89',
     template: software,
     repository: `unfoldingWord/${key}`,
+    requiredChecks: [...defaultCiChecks],
   };
   value(await r.kernel.stages.activate(caller(r.ian), activate));
+  await listForDispatch(r.db, activate.repository);
   const change = { agentPickup: 'allowed' as const, bracket: 'iterate' as const };
   value(
     await r.kernel.stages.updateStage(caller(r.ian), { harnessId, stageKey: 'package', change }),
@@ -179,7 +183,9 @@ async function delegate(
 ): Promise<string> {
   const person = await personOn(r.db, owner.id, owner.email, r.clock.now());
   const input = { harnessId, persona: 'agent:iterate', expiresAt: null, supersedes: null };
-  const granted = value(await r.kernel.delegations.grant(caller(person), { ...input, capability }));
+  const granted = value(
+    await r.kernel.delegations.grant(caller(person), { ...input, capability, maxTier: null }),
+  );
   await seedActivePersona(r.db, {
     identity: 'agent:iterate',
     harnessId,

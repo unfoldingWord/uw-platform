@@ -1,0 +1,16 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000001f1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "name": "gate_refused_to_agent",
+  "position": 1,
+  "at": "2026-10-15T09:00:00.000Z",
+  "actor": "agent:shipper",
+  "evidence": {
+    "decision": "approve",
+    "stage": "ship",
+    "reason": "protected_path"
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
+}

@@ -14,6 +14,7 @@ export const scenario = defineScenario({
       jdArea: '80-89',
       template: bypassesShip,
       repository: null,
+      requiredChecks: [],
     });
     assert.equal(outcome.status, 'error');
     assert.equal(outcome.status === 'error' && outcome.reason, 'template_bypasses_gate');

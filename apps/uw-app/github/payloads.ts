@@ -35,6 +35,12 @@ export const issueSchema = z.object({
   milestone: milestoneSchema.nullable().optional(),
   updated_at: instant,
   pull_request: z.object({}).optional(),
+  body: z.string().nullable().optional(),
+  sub_issues_summary: z
+    .object({ total: z.number().int().min(0) })
+    .nullable()
+    .optional(),
+  repository_url: z.string().optional(),
 });
 
 export const pullSchema = z.object({
@@ -53,6 +59,8 @@ export const pullSchema = z.object({
   base: z.object({ sha: z.string(), ref: name }),
   body: z.string().nullable().optional(),
   milestone: milestoneSchema.nullable().optional(),
+  requested_reviewers: z.array(z.object({ login: name })).optional(),
+  user: z.object({ login: name }).nullable().optional(),
   updated_at: instant,
 });
 
@@ -79,6 +87,15 @@ export const checkRunSchema = z.object({
 export const fileSchema = z.object({
   filename: name,
   previous_filename: name.optional(),
+  status: text.optional(),
+  patch: text.optional(),
+  sha: z.string().nullable().optional(),
+});
+
+export const compareCommitSchema = z.object({
+  sha: z.string(),
+  commit: z.object({ message: text }),
+  parents: z.array(z.object({ sha: z.string() })),
 });
 
 const withRepository = { action: z.string().optional(), repository: repositorySchema };

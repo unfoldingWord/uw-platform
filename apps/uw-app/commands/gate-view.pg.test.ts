@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { gateViewSchema, type HarnessEvent } from '@uw/contracts';
+import { gateViewSchema, type HarnessEvent, defaultCiChecks } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
 import { seedGrant, seedPerson } from '@uw/db/test-seed';
 import { reviewBody, software } from '@uw/harness';
@@ -55,6 +55,7 @@ async function otherHarness(db: Database, parked: ParkedAtShip): Promise<string>
       jdArea: '80-89',
       template: software,
       repository: 'unfoldingWord/uw-other',
+      requiredChecks: [...defaultCiChecks],
     }),
   );
   return harnessId;
@@ -83,7 +84,7 @@ async function viewShown(db: Database): Promise<void> {
   expect(view).toEqual(sent.body);
   expect(view).toMatchObject({ itemId, harnessId, stageKey: 'ship', gateStatus: 'parked' });
   expect(view.facts?.declaration).toEqual({
-    closes: ['#12'],
+    closes: [],
     risks: 'the board renders slower on phones',
     touches: 'apps/uw-app/board',
     riskTier: 'standard',
@@ -170,7 +171,10 @@ async function overLongReference(db: Database): Promise<void> {
   expect(hidden.text).not.toContain(over);
 }
 
-const reviewerFindings = ['The lease is not renewed', 'A typo in the copy'];
+const reviewerFindings = [
+  { text: 'The lease is not renewed', weight: 'real' as const },
+  { text: 'A typo in the copy', weight: 'theoretical' as const },
+];
 
 async function storedFindings(db: Database): Promise<void> {
   const parked = await parkedAtShip(db);

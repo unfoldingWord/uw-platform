@@ -91,6 +91,7 @@ async function delegatedPersona(rig: Rig): Promise<string> {
   const itemId = await agentItem(rig, 'Run the minute beat');
   accepted(
     await kernel.delegations.grant(callerOf(admin), {
+      maxTier: null,
       harnessId,
       persona: 'agent:builder',
       capability: 'build',
@@ -243,12 +244,37 @@ async function sweepsLapsedLease(rig: Rig): Promise<void> {
   expect(outcomeOf(rig, 'sweep')).toMatchObject({ outcome: 'leases_swept', expired: 0 });
 }
 
+async function delegatedExitsWithoutApp(rig: Rig): Promise<void> {
+  await minuteJob(
+    rig.env,
+    depsOf(rig, () => Promise.resolve(costReply(0))),
+  );
+  expect(outcomeOf(rig, 'beat')).toMatchObject({ outcome: 'beat_finished' });
+  expect(outcomeOf(rig, 'delegated_exits')).toMatchObject({ outcome: 'github_not_configured' });
+}
+
+async function delegatedExitsUnreadableApp(rig: Rig): Promise<void> {
+  const env = new Proxy<Bindings>(rig.env, {
+    get(target, key) {
+      if (key === 'GITHUB_APP_ID') throw new TypeError('the App binding is unreadable');
+      return Reflect.get(target, key);
+    },
+  });
+  await minuteJob(
+    env,
+    depsOf(rig, () => Promise.resolve(costReply(0))),
+  );
+  expect(outcomeOf(rig, 'beat')).toMatchObject({ outcome: 'beat_finished' });
+  expect(outcomeOf(rig, 'delegated_exits')).toMatchObject({ outcome: 'internal_error' });
+}
+
 async function lapsesExpiredDelegation(rig: Rig): Promise<void> {
   const admin = await ian(rig.db);
   const kernel = kernelOn(rig.db, { now: () => new Date() });
   const expiresAt = new Date(Date.now() + 5 * MINUTE);
   const granted = accepted(
     await kernel.delegations.grant(callerOf(admin), {
+      maxTier: null,
       harnessId: rig.harnessId,
       persona: 'agent:builder',
       capability: 'build',
@@ -283,6 +309,11 @@ describe.skipIf(!testServer)('the minute cron', () => {
   it('the minute cron records the lapse of a delegation once it expires', () =>
     withRig(lapsesExpiredDelegation));
 
+  it('MD-3 after the beat the minute cron runs the delegated exits, and without the GitHub App it says so', () =>
+    withRig(delegatedExitsWithoutApp));
+
+  it('MD-3 a GitHub App binding that throws is logged internal_error by the delegated exits step', () =>
+    withRig(delegatedExitsUnreadableApp));
   it('a beat start without the Workflow binding fails start_failed and releases the item', () =>
     withRig(startFailsUnbound));
 });

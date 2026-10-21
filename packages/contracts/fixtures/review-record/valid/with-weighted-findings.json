@@ -1,0 +1,13 @@
+{
+  "reviewer": "uw-reviewer",
+  "provider": "deepinfra",
+  "model": "z-ai/glm-5.3",
+  "verdict": "request_changes",
+  "reviewId": 9300000001,
+  "findings": [
+    {
+      "text": "The empty state is dropped.",
+      "weight": "real"
+    }
+  ]
+}

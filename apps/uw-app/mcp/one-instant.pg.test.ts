@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { principalSchema, type Principal } from '@uw/contracts';
+import { principalSchema, type Principal, defaultCiChecks } from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
@@ -69,6 +69,7 @@ describe.skipIf(!testServer)('a verb call judges the kernel read at the request 
         jdArea: '80-89',
         template: software,
         repository: 'unfoldingWord/uw-platform',
+        requiredChecks: [...defaultCiChecks],
       };
       expect((await kernel.stages.activate(caller(ian), activate)).status).toBe('accepted');
       const context = contextOf(kernel, db, laptopUntil(expiresAt));

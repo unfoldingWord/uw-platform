@@ -88,7 +88,7 @@ function codexReview() {
         provider: 'openai',
         model: 'gpt-5.5-codex',
         verdict: 'approve',
-        findings: ['The migration is reversible.'],
+        findings: [{ text: 'The migration is reversible.', weight: 'theoretical' as const }],
       }),
       submitted_at: '2026-10-02T08:20:00Z',
     },
@@ -116,6 +116,8 @@ const item = itemStateSchema.parse({
   pullRequest: ref,
   issue: null,
   zulipTopic: null,
+  epic: null,
+  blockedBy: [],
 });
 
 const approver = principalSchema.parse({
@@ -141,7 +143,15 @@ async function readsBack(db: Database): Promise<void> {
   const input = assembleShipInput({
     facts,
     item,
-    harness: { jdArea: '80-89', repository: ref.repo },
+    harness: {
+      jdArea: '80-89',
+      repository: ref.repo,
+      externalReviewerIdentities: [],
+      requiredChecks: [],
+      frozen: false,
+      freezeAllow: [],
+      protectedPaths: [],
+    },
     approver,
     at,
     override: false,

@@ -43,6 +43,10 @@ async function everyIndicator(world: BoardWorld): Promise<void> {
     'Agent writes today',
     'Stale learnings',
     'GitHub sweep',
+    'Reviewer refute rate',
+    'Silence alarm',
+    'With a person over 24 hours',
+    'With an agent over 2 hours',
   ]);
   expect(shown.slice(4).map(([, , , href]) => href)).toEqual(
     AGENT_PLANE_INDICATORS.map((name) => healthPath(name)),

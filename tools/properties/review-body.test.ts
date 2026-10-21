@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { reviewVerdictSchema } from '../../packages/contracts/index.ts';
+import { findingWeightSchema, reviewVerdictSchema } from '../../packages/contracts/index.ts';
 import { parseReviewProvider } from '../../packages/harness/github/declaration.ts';
 import { reviewBody } from '../../packages/harness/github/review-body.ts';
 
@@ -27,10 +27,15 @@ const hostile = fc.constantFrom(
   'ｐｒｏｖｉｄｅｒ:',
 );
 
-const finding = fc.oneof(
+const findingText = fc.oneof(
   anyText,
   fc.array(fc.oneof(anyText, hostile), { maxLength: 6 }).map((parts) => parts.join(' ')),
 );
+
+const finding = fc.record({
+  text: findingText,
+  weight: fc.constantFrom(...findingWeightSchema.options),
+});
 
 describe('the review body round trip', () => {
   it('HE-4 for any provider slug, model and findings, parseReviewProvider reads the provider back', () => {

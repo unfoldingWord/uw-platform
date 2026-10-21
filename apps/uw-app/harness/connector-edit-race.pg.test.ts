@@ -1,3 +1,4 @@
+import { defaultCiChecks } from '@uw/contracts';
 import type { Principal, Stage } from '@uw/contracts';
 import { createClient, type Database } from '@uw/db/client';
 import { lockWaiters } from '@uw/db/store';
@@ -44,6 +45,7 @@ async function raceOn(connections: Connections): Promise<Race> {
       jdArea: '80-89',
       template: software,
       repository: 'unfoldingWord/uw-platform',
+      requiredChecks: [...defaultCiChecks],
     }),
     'activate',
   );

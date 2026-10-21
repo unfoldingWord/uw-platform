@@ -1,9 +1,10 @@
-import { ingestEnvelopeSchema, type IngestEnvelope } from '@uw/contracts';
+import { defaultCiChecks, ingestEnvelopeSchema, type IngestEnvelope } from '@uw/contracts';
 import { createLogger, type Logger } from '@uw/core/log';
 import { ingestPrincipal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
 import { software, type KernelOutcome } from '@uw/harness';
 import { systemClock } from '../../ports/clock.ts';
+import { listForDispatch } from '../../testing/dispatch.ts';
 import { kernelOn, personOn } from '../../testing/kernel.ts';
 import type { GitHubAppConfig } from '../app-config.ts';
 import { githubClient, type GitHubDeps } from '../deps.ts';
@@ -38,9 +39,11 @@ export async function seedSoftwareHarness(db: Database): Promise<void> {
         jdArea: '80-89',
         template: software,
         repository: platform,
+        requiredChecks: defaultCiChecks,
       },
     ),
   );
+  await listForDispatch(db, platform);
 }
 
 export function withComments(

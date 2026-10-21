@@ -1,0 +1,25 @@
+{
+  "itemId": "00000000-0000-4000-8000-0000000000b1",
+  "title": "Fix the login form",
+  "pullRequest": {
+    "repo": "unfoldingWord/tc-admin-app",
+    "number": 12
+  },
+  "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "shadow": {
+    "verdict": "refuse",
+    "reasons": ["checks_not_green"]
+  },
+  "reviewer": {
+    "reviewer": "uw-reviewer",
+    "verdict": "approve",
+    "findings": []
+  },
+  "github": [
+    {
+      "reviewer": "x",
+      "state": "commented"
+    }
+  ],
+  "disagrees": true
+}

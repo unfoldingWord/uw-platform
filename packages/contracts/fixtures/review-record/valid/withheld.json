@@ -3,5 +3,6 @@
   "provider": "openai",
   "model": "gpt-5-codex",
   "verdict": "request_changes",
-  "reviewId": null
+  "reviewId": null,
+  "findings": []
 }

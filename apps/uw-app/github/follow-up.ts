@@ -3,6 +3,8 @@ import { unitOfWork, type GitHubDeps } from './deps.ts';
 import { fetchFilesAtHead } from './facts/files.ts';
 import type { UpsertReport } from './facts/upsert.ts';
 import { followIssue } from './import.ts';
+import { followPullRequestJoins } from './join.ts';
+import { followSubIssues } from './sub-issues.ts';
 
 async function followPullRequests(deps: GitHubDeps, report: UpsertReport, logger: Logger) {
   const unknown = report.pullRequests.filter((pull) => !pull.filesKnown);
@@ -34,5 +36,7 @@ export async function followUpserts(
 ): Promise<void> {
   const unit = unitOfWork(deps);
   await followPullRequests(unit, report, logger);
+  await followPullRequestJoins(unit, report.pullRequests, logger);
+  await followSubIssues(unit, report.issues, logger);
   for (const change of report.issues) await followIssue(unit, change, logger);
 }

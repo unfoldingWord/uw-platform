@@ -4,6 +4,7 @@ export const connectorSchema = z.enum(['none', 'merge', 'deploy', 'publish', 'se
 export const exitGateSchema = z.enum(['none', 'checks', 'human_approval']);
 export const agentPickupSchema = z.enum(['none', 'allowed', 'auto']);
 export const riskTierSchema = z.enum(['low', 'standard', 'high']);
+export const delegableTierSchema = z.enum(['low', 'standard']);
 export const riskDomainSchema = z.enum(['ledger', 'acl', 'infra', 'migration']);
 export const riskDomainsSchema = z
   .array(riskDomainSchema)
@@ -23,7 +24,19 @@ export const engineSchema = z.enum([
   'openrouter-messages',
 ]);
 export const costBasisSchema = z.enum(['metered', 'subscription']);
-export const capabilityWordSchema = z.enum(['none', 'iterate', 'build', 'review']);
+export const capabilityWordSchema = z.enum(['none', 'iterate', 'build', 'review', 'merge', 'fix']);
+export const intakeViaSchema = z.enum(['import', 'kickstart', 'enqueue_epic']);
+export const findingWeightSchema = z.enum(['real', 'plausible', 'theoretical']);
+export const approveAtSchema = z.enum(['zero_findings', 'no_real_or_plausible']);
+export const learningSourceSchema = z.enum(['platform', 'external']);
+
+export const untrustedSourceSchema = z.enum([
+  'pr_diff',
+  'issue_body',
+  'review_comment',
+  'page_from_agent',
+  'pr_title',
+]);
 export const gateDecisionSchema = z.enum(['approve', 'reject', 'take_over', 'override']);
 export const personStatusSchema = z.enum(['active', 'pending']);
 export const principalKindSchema = z.enum(['person', 'agent']);
@@ -33,13 +46,17 @@ export const wakeReasonSchema = z.enum([
   'run_failed',
   'stage_advanced',
   'handed_to_person',
+  'delegated_merge',
+  'silence_alarm',
 ]);
 export const liveScreenSchema = z.enum(['home', 'flow', 'board', 'gates', 'item']);
 
+export type IntakeVia = z.infer<typeof intakeViaSchema>;
 export type Connector = z.infer<typeof connectorSchema>;
 export type ExitGate = z.infer<typeof exitGateSchema>;
 export type AgentPickup = z.infer<typeof agentPickupSchema>;
 export type RiskTier = z.infer<typeof riskTierSchema>;
+export type DelegableTier = z.infer<typeof delegableTierSchema>;
 export type RiskDomain = z.infer<typeof riskDomainSchema>;
 export type RiskDomains = z.infer<typeof riskDomainsSchema>;
 export type EvidenceLabel = z.infer<typeof evidenceLabelSchema>;
@@ -51,6 +68,10 @@ export type RunShape = z.infer<typeof runShapeSchema>;
 export type Engine = z.infer<typeof engineSchema>;
 export type CostBasis = z.infer<typeof costBasisSchema>;
 export type CapabilityWord = z.infer<typeof capabilityWordSchema>;
+export type FindingWeight = z.infer<typeof findingWeightSchema>;
+export type ApproveAt = z.infer<typeof approveAtSchema>;
+export type UntrustedSource = z.infer<typeof untrustedSourceSchema>;
+export type LearningSource = z.infer<typeof learningSourceSchema>;
 export type GateDecision = z.infer<typeof gateDecisionSchema>;
 export type PersonStatus = z.infer<typeof personStatusSchema>;
 export type PrincipalKind = z.infer<typeof principalKindSchema>;
@@ -67,6 +88,12 @@ export const gateStatusSchema = z.enum(['working', 'parked', 'checks_failed', 'd
 export const branchStateSchema = z.enum(['none', 'active', 'abandoned']);
 export const runOutcomeSchema = z.enum(['running', 'hibernated', 'stopped', 'completed', 'failed']);
 export const delegationLapseSchema = z.enum(['expired', 'revoked', 'grant_lost']);
+export const delegatedHoldSchema = z.enum([
+  'shadow',
+  'gate_target',
+  'delegation_lapsed',
+  'delegation_required',
+]);
 
 export const taskStatusSchema = z.enum(['suggested', 'open', 'done', 'dismissed']);
 
@@ -75,6 +102,7 @@ export type GateStatus = z.infer<typeof gateStatusSchema>;
 export type BranchState = z.infer<typeof branchStateSchema>;
 export type RunOutcome = z.infer<typeof runOutcomeSchema>;
 export type DelegationLapse = z.infer<typeof delegationLapseSchema>;
+export type DelegatedHold = z.infer<typeof delegatedHoldSchema>;
 
 export const runHibernationSchema = z.enum(['gate', 'paused', 'breaker']);
 export const runStopSchema = z.enum([
@@ -89,6 +117,9 @@ export const runFailureSchema = z.enum([
   'provider_mismatch',
   'start_failed',
   'turn_limit',
+  'engine_refused',
+  'finding_weight_missing',
+  'checks_not_run_locally',
 ]);
 export const runResultSchema = z.enum([
   'submitted',

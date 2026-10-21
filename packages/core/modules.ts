@@ -81,6 +81,7 @@ export const modules = [
       'product_strategy',
       'data_sources',
       'issue',
+      'platform',
     ],
     mcp_tools: [
       'search_pages',

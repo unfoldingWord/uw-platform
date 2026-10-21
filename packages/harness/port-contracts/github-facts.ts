@@ -1,11 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import type { DiffRange, GitHubFacts, PullRequestFacts, PullRequestRef } from '../ports.ts';
+import type {
+  DiffRange,
+  EpicFacts,
+  GitHubFacts,
+  IssueFact,
+  PullRequestFacts,
+  PullRequestRef,
+} from '../ports.ts';
 import { describeNotWired } from './not-wired-cases.ts';
 
 export type GithubFactsSubject = {
   readonly facts: GitHubFacts;
   given(facts: PullRequestFacts): Promise<void>;
   givenDiff(ref: PullRequestRef, range: DiffRange, text: string): Promise<void>;
+  givenEpic(epic: EpicFacts): Promise<void>;
+  givenAuthor(ref: PullRequestRef, author: string): Promise<void>;
   now(): Date;
 };
 
@@ -56,11 +65,101 @@ function factsFor(repo: string, number: number, head: string): PullRequestFacts 
       riskTier: 'standard',
       riskDomains: [],
     },
+    closes: [{ repo, number: 7 }],
+    comparison: null,
     freshAt: new Date('2026-10-01T09:00:00.000Z'),
   };
 }
 
 type DiffReads = 'scripted' | 'not_wired';
+
+function issueFact(number: number, options: Partial<IssueFact> = {}): IssueFact {
+  return {
+    issue: { repo: 'unfoldingWord/uw-platform', number, githubId: 9100000300 + number },
+    title: `Issue ${number}`,
+    open: true,
+    doneWhen: [`Issue ${number} ships.`],
+    blockedBy: [],
+    ...options,
+  };
+}
+
+function authorCases(open: () => Promise<GithubFactsSubject>): void {
+  it('OB-4 answers the author of each pull request it knows, in any case, and nothing for an unknown one', async () => {
+    const subject = await open();
+    await subject.given(factsFor('unfoldingWord/uw-platform', 31, 'b'.repeat(40)));
+    await subject.given(factsFor('unfoldingWord/uw-platform', 32, 'c'.repeat(40)));
+    await subject.givenAuthor({ repo: 'unfoldingWord/uw-platform', number: 31 }, 'dependabot[bot]');
+    const authors = await subject.facts.authors([
+      { repo: 'UNFOLDINGWORD/UW-PLATFORM', number: 31 },
+      { repo: 'unfoldingWord/uw-platform', number: 32 },
+      { repo: 'unfoldingWord/uw-platform', number: 404 },
+    ]);
+    expect(authors).toEqual([
+      { ref: { repo: 'unfoldingWord/uw-platform', number: 31 }, author: 'dependabot[bot]' },
+    ]);
+    expect(await subject.facts.authors([])).toEqual([]);
+  });
+
+  it('OB-4 answers the repository as the read model holds it, whatever case the author was given in', async () => {
+    const subject = await open();
+    await subject.given(factsFor('unfoldingWord/uw-platform', 33, 'd'.repeat(40)));
+    await subject.givenAuthor({ repo: 'UNFOLDINGWORD/uw-platform', number: 33 }, 'renovate[bot]');
+    const authors = await subject.facts.authors([
+      { repo: 'unfoldingword/UW-PLATFORM', number: 33 },
+    ]);
+    expect(authors).toEqual([
+      { ref: { repo: 'unfoldingWord/uw-platform', number: 33 }, author: 'renovate[bot]' },
+    ]);
+  });
+}
+
+function epicOf(subIssues: readonly IssueFact[], number = 40): EpicFacts {
+  return {
+    epic: issueFact(number, { doneWhen: [] }),
+    subIssueCount: subIssues.length,
+    subIssues,
+  };
+}
+
+function epicCases(open: () => Promise<GithubFactsSubject>): void {
+  it('EI-3 answers null for an issue it has no facts for', async () => {
+    const subject = await open();
+    expect(await subject.facts.epic({ repo: 'unfoldingWord/uw-platform', number: 404 })).toBeNull();
+  });
+
+  it('EI-3 answers an epic with its sub-issues in order, their done-whens and blockers', async () => {
+    const subject = await open();
+    const known = epicOf([
+      issueFact(42),
+      issueFact(41, { blockedBy: [42] }),
+      issueFact(43, { open: false, doneWhen: [] }),
+    ]);
+    await subject.givenEpic(known);
+    expect(await subject.facts.epic({ repo: 'UNFOLDINGWORD/uw-platform', number: 40 })).toEqual(
+      known,
+    );
+  });
+
+  it('EI-3 answers an issue with no sub-issues as an epic of none', async () => {
+    const subject = await open();
+    const lone = epicOf([], 50);
+    await subject.givenEpic(lone);
+    expect(await subject.facts.epic({ repo: 'unfoldingWord/uw-platform', number: 50 })).toEqual(
+      lone,
+    );
+  });
+
+  it('EI-3 answers the latest list after a sub-issue leaves the epic', async () => {
+    const subject = await open();
+    await subject.givenEpic(epicOf([issueFact(61), issueFact(62)], 60));
+    const shrunk = epicOf([issueFact(62)], 60);
+    await subject.givenEpic(shrunk);
+    expect(await subject.facts.epic({ repo: 'unfoldingWord/uw-platform', number: 60 })).toEqual(
+      shrunk,
+    );
+  });
+}
 
 export function describeGithubFactsContract(
   adapter: string,
@@ -95,6 +194,8 @@ export function describeGithubFactsContract(
 
     shapeCases(open);
     defaultBranchCases(open);
+    epicCases(open);
+    authorCases(open);
     if (diffs === 'scripted') diffCases(open);
     else diffNotWiredCases(open);
 
@@ -260,5 +361,7 @@ export function describeGithubFactsNotWired(adapter: string, facts: GitHubFacts)
     pullRequest: true,
     refresh: true,
     diff: true,
+    epic: true,
+    authors: true,
   } satisfies Record<keyof GitHubFacts, true>);
 }

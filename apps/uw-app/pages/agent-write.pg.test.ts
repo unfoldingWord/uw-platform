@@ -77,6 +77,7 @@ function agentSave(db: Database, agent: Principal, pageId: string) {
     traceId: crypto.randomUUID(),
     at: new Date(),
     instructions: kernelOn(db, { now: () => new Date() }).reads,
+    writer: null,
   };
   return writePageAsAgent(db, agent, input, request);
 }

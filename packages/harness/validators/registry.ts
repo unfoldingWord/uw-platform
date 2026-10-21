@@ -1,8 +1,13 @@
 import type { ValidationContext, Validator } from './context.ts';
+import { fixKeepsPurpose, fixSizeCap } from './fix.ts';
 import { learningAttached } from './learning-attached.ts';
+
+export const FIX_VALIDATORS = ['fix_size_cap', 'fix_keeps_purpose'] as const;
 
 export const validatorRegistry: ReadonlyMap<string, Validator> = new Map<string, Validator>([
   ['learning_attached', learningAttached],
+  ['fix_size_cap', fixSizeCap],
+  ['fix_keeps_purpose', fixKeepsPurpose],
 ]);
 
 export function runValidators(

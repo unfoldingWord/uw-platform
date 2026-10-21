@@ -1,5 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { bypassesShip, templateProperty, templates } from '../../packages/harness/index.ts';
+import {
+  bypassesShip,
+  delegationProperty,
+  templateProperty,
+  templates,
+} from '../../packages/harness/index.ts';
 import { describe, expect, it } from 'vitest';
 import { repositoryTrace } from '../trace/repository.ts';
 import { traceExitCode } from '../trace/trace.ts';
@@ -22,6 +27,11 @@ const grantRace = 'apps/uw-app/harness/grant-race.pg.test.ts';
 const claimsRace = 'apps/uw-app/harness/claims.pg.test.ts';
 const storeRace = 'packages/db/store/claim-race.test.ts';
 const ciDatabase = 'tools/ci/test-database.test.ts';
+const templatePropertyTest = 'packages/harness/template-property.test.ts';
+const joiningJourney =
+  'sim/scenarios/DX-10.the-joining-journey-from-shadow-to-a-delegated-merge.ts';
+const gateWriters = 'tools/architecture/gate-writers.test.ts';
+const untrustedCheck = 'tools/architecture/untrusted-content.test.ts';
 
 function readSource(path: string): string | null {
   return existsSync(path) ? readFileSync(path, 'utf8') : null;
@@ -137,17 +147,45 @@ describe('release criterion 3, by structure: the DX-7 scenario and its coverage 
   });
 });
 
-describe('release criterion 4: both templates pass the property and the negative fixture fails it', () => {
-  it('passes software and bml, fails the fixture that bypasses Ship, and keeps both KN-10 cases', () => {
-    expect([...templates.keys()].sort()).toEqual(['bml', 'software']);
+describe('release criterion 3 for v0.2.0, by structure: the DX-10 scenario drives the joining journey (pnpm sim:all in item 1 runs it)', () => {
+  it('keeps the scenario file named for DX-10 and its six beats', () => {
+    const scenario = source(joiningJourney);
+    expect(scenario).toContain("id: 'DX-10'");
+    const beats = [
+      'shadowRound(',
+      'liftAndPost(',
+      'waitsForAPerson(',
+      'mergedUnderDelegation(',
+      'refusedForProtectedPath(',
+    ];
+    for (const beat of beats) expect(scenario).toContain(`await ${beat}`);
+    expect(scenario).toContain('await joinedWorld(world, {');
+  });
+});
+
+describe('release criterion 4: the three templates pass the property, the negative fixture fails it, and no exit a delegation can take reaches deploy or publish', () => {
+  it('passes software, bml and check-only, fails the fixture that bypasses Ship, and keeps both KN-10 cases', () => {
+    expect([...templates.keys()].sort()).toEqual(['bml', 'check-only', 'software']);
     for (const template of templates.values()) {
       expect(templateProperty(template.stages)).toEqual([]);
     }
     expect(templateProperty(bypassesShip.stages).length).toBeGreaterThan(0);
-    const property = 'packages/harness/template-property.test.ts';
-    expectTitle(property, 'KN-10 every registered template');
-    expectTitle(property, 'KN-10 the negative fixture');
-    expectNotWeakened(property);
+    expectTitle(templatePropertyTest, 'KN-10 every registered template');
+    expectTitle(templatePropertyTest, 'KN-10 the negative fixture');
+    expectNotWeakened(templatePropertyTest);
+  });
+
+  it('passes the MD-4 delegation property on every template, fails a delegation that could take any human exit, and keeps both MD-4 cases', () => {
+    for (const template of templates.values()) {
+      expect(delegationProperty(template.stages)).toEqual([]);
+    }
+    const permissive = (stage: { readonly exitGate: string }) =>
+      stage.exitGate === 'human_approval';
+    const bml = templates.get('bml')?.stages ?? [];
+    expect(delegationProperty(bml, permissive).length).toBeGreaterThan(0);
+    expectTitle(templatePropertyTest, 'MD-4 no path reaches a deploy or publish connector');
+    expectTitle(templatePropertyTest, 'MD-4 every registered template passes');
+    expectTitle(templatePropertyTest, 'MD-4 a delegation that could take any human exit fails');
   });
 });
 
@@ -183,6 +221,24 @@ describe('release criterion 5, by structure: the three AB-7 checks and their pla
     for (const path of [staticCheck, runtimeCheck, conformanceCheck, plantedConformance]) {
       expectNotWeakened(path);
     }
+  });
+
+  it('keeps the MD-5 gate-writer check over the tree and its planted second writer, unskipped', () => {
+    expectTitle(gateWriters, 'MD-5 exactly two named functions write a gate decision');
+    expectTitle(gateWriters, 'MD-5 a planted second delegated writer fails');
+    expectTitle(gateWriters, 'MD-5 a planted write in any form fails');
+    expectNotWeakened(gateWriters);
+  });
+
+  it('keeps the UC-4 untrusted content check over the tree and its planted cases, unskipped', () => {
+    expectTitle(untrustedCheck, 'UC-4 the tree passes the untrusted content check');
+    expectTitle(
+      untrustedCheck,
+      'UC-4 the check fails on a planted call with an unwrapped outside read',
+    );
+    expectTitle(untrustedCheck, 'UC-4 the check fails on a planted builder');
+    expectTitle(untrustedCheck, 'UC-4 the check fails on a planted forgery of the wrapper');
+    expectNotWeakened(untrustedCheck);
   });
 });
 

@@ -1,5 +1,6 @@
 import type {
   Connector,
+  DelegatedMerge,
   GateDecision,
   Harness,
   ItemState,
@@ -28,14 +29,20 @@ import type {
   PullRequestFacts,
   StoreTransaction,
 } from '../ports.ts';
-import { shipRule } from '../ship-rule.ts';
-import { exitThroughConnector, type ExitPorts } from './exit.ts';
+import { countedApprovals, shipRule, type CountedApproval } from '../ship-rule.ts';
+import { exitThroughConnector, type ExitGuard, type ExitPorts } from './exit.ts';
 import { factsFailure } from './facts-failure.ts';
 import { isStale, staleRefusal } from './facts-fresh.ts';
+import { lentAtExit, type NotLent } from './lent.ts';
 import { decisionInFlight, sameChange } from './parking.ts';
-import { assembleShipInput, riskDerivedAtShip, type ShipInputSource } from './ship-input.ts';
+import {
+  assembleShipInput,
+  riskDerivedAtShip,
+  type ShipDelegation,
+  type ShipInputSource,
+} from './ship-input.ts';
 
-type ShipPorts = Pick<Ports, 'githubFacts' | 'store'> & ExitPorts;
+type ShipPorts = Pick<Ports, 'githubFacts' | 'grants' | 'store'> & ExitPorts;
 
 export type ShipRequest = {
   readonly actor: Principal;
@@ -48,7 +55,7 @@ type AtExit = { readonly item: ItemState; readonly harness: Harness };
 
 export type ShipSnapshot = { readonly item: ItemState; readonly facts: PullRequestFacts | null };
 
-type ShipGate = {
+export type ShipGate = {
   readonly item: ItemState;
   readonly harness: Harness;
   readonly stage: Stage;
@@ -65,7 +72,17 @@ export type PendingExit = {
   readonly overrideReason: string | null;
   readonly repository: string | null;
   readonly expectedBase: DecidedBase | null;
+  readonly evaluatedHead: string | null;
+  readonly delegated: DelegatedMerge | null;
+  readonly harness: Harness;
+  readonly approver: Principal;
+  readonly override: boolean;
   readonly context: RecordContext;
+};
+
+export type Shipped = {
+  readonly head: string | null;
+  readonly approvals: readonly CountedApproval[];
 };
 
 const shipDecisions: ReadonlySet<GateDecision> = new Set<GateDecision>(['approve', 'override']);
@@ -140,20 +157,23 @@ export async function inFlightRefusal(
 export type ShipCheck = {
   readonly refusal: Refused | null;
   readonly drafts: readonly EventDraft[];
+  readonly shipped: Shipped | null;
 };
 
 type ShipVerdict = {
   readonly reasons: readonly ShipRefusal[];
   readonly derived: readonly EventDraft[];
+  readonly shipped: Shipped | null;
 };
 
 function shipVerdict(
   gate: ShipGate,
   decision: GateDecision,
   snapshot: ShipSnapshot | null,
+  delegation: ShipDelegation | null,
 ): ShipVerdict {
   if (snapshot === null || !sameChange(snapshot.item, gate.item)) {
-    return { reasons: ['head_mismatch'], derived: [] };
+    return { reasons: ['head_mismatch'], derived: [], shipped: null };
   }
   const source = {
     facts: snapshot.facts,
@@ -162,12 +182,15 @@ function shipVerdict(
     approver: gate.approver,
     at: gate.context.at,
     override: decision === 'override',
+    delegation,
   };
-  const outcome = shipRule(assembleShipInput(source));
+  const input = assembleShipInput(source);
+  const outcome = shipRule(input);
   const evidence = riskDerivedAtShip(source);
   return {
     reasons: outcome.verdict === 'advance' ? [] : outcome.reasons,
     derived: evidence === null ? [] : [draft('risk_derived', evidence)],
+    shipped: { head: input.pullRequest?.head ?? null, approvals: countedApprovals(input) },
   };
 }
 
@@ -176,23 +199,96 @@ export async function shipCheck(
   gate: ShipGate,
   decision: GateDecision,
   snapshot: ShipSnapshot | null,
+  delegation: ShipDelegation | null = null,
 ): Promise<ShipCheck> {
-  const { reasons, derived } = shipVerdict(gate, decision, snapshot);
+  const { reasons, derived, shipped } = shipVerdict(gate, decision, snapshot, delegation);
   const [first] = reasons;
-  if (first === undefined) return { refusal: null, drafts: derived };
+  if (first === undefined) return { refusal: null, drafts: derived, shipped };
   const stage = gate.stage.key;
   await recordItemEvents(tx, gate.context, gate.item.itemId, [
     ...derived,
     draft('ship_refused', { stage, reasons: [...reasons] }),
   ]);
-  return { refusal: refused(first, { stage, reasons }), drafts: [] };
+  return { refusal: refused(first, { stage, reasons }), drafts: [], shipped: null };
+}
+
+type FactsAtExit = PullRequestFacts | null | 'unavailable';
+
+async function factsAtExit(ports: ShipPorts, item: ItemState): Promise<FactsAtExit> {
+  if (item.pullRequest === null) return null;
+  try {
+    return await ports.githubFacts.refresh(item.pullRequest);
+  } catch {
+    return 'unavailable';
+  }
+}
+
+type LiveGrounds = { readonly harness: Harness; readonly approver: Principal };
+
+function liveGrounds(ports: ShipPorts, pending: PendingExit): Promise<LiveGrounds | null> {
+  const { personId } = pending.approver;
+  return ports.store.transaction(async (tx) => {
+    const harness = await tx.harnesses.read.byId(pending.harness.id);
+    if (harness === null || personId === null) return null;
+    const grants = await ports.grants.lockAndReread(tx, personId, pending.context.at);
+    return { harness, approver: { ...pending.approver, grants: [...grants] } };
+  });
+}
+
+type GuardNotes = { refusals: readonly ShipRefusal[] };
+
+type ExitStanding = { readonly approver: Principal; readonly delegation: ShipDelegation | null };
+
+async function standingAtExit(
+  ports: ShipPorts,
+  pending: PendingExit,
+): Promise<ExitStanding | NotLent> {
+  if (pending.delegated === null) return { approver: pending.approver, delegation: null };
+  const found = await lentAtExit(ports, pending.delegated, pending.context.at);
+  return typeof found === 'string' ? found : { approver: found.approver, delegation: found.lent };
+}
+
+function exitGuard(ports: ShipPorts, pending: PendingExit, notes: GuardNotes): ExitGuard {
+  return async () => {
+    const facts = await factsAtExit(ports, pending.item);
+    if (facts === 'unavailable') return { refused: 'ship_rule_unavailable' };
+    const standing = await standingAtExit(ports, pending);
+    if (typeof standing === 'string') return { refused: standing };
+    const live = await liveGrounds(ports, { ...pending, approver: standing.approver });
+    const { item, override, context } = pending;
+    if (live === null || !allowed(live.approver, 'admin', live.harness, context.at)) {
+      return { refused: 'ship_rule_refused: not_permitted' };
+    }
+    const { harness, approver } = live;
+    const source = { facts, item, harness, approver, at: context.at, override };
+    const input = assembleShipInput({ ...source, delegation: standing.delegation });
+    const outcome = shipRule(input);
+    if (outcome.verdict === 'refuse') {
+      notes.refusals = outcome.reasons;
+      return { refused: `ship_rule_refused: ${outcome.reasons.join(', ')}` };
+    }
+    return { head: input.pullRequest?.head ?? null };
+  };
+}
+
+export type Exited = {
+  readonly item: ItemState;
+  readonly advanced: boolean;
+  readonly refusals: readonly ShipRefusal[];
+};
+
+export async function exitReporting(ports: ShipPorts, pending: PendingExit): Promise<Exited> {
+  const notes: GuardNotes = { refusals: [] };
+  const guard = exitGuard(ports, pending, notes);
+  const advanced = await exitThroughConnector(ports, pending.context, pending, guard);
+  const now = await ports.store.transaction((tx) => tx.harnessItems.read.byId(pending.item.itemId));
+  return { item: now ?? pending.item, advanced, refusals: notes.refusals };
 }
 
 export async function exitAfterDecision(
   ports: ShipPorts,
   pending: PendingExit,
 ): Promise<{ readonly item: ItemState; readonly advanced: boolean }> {
-  const advanced = await exitThroughConnector(ports, pending.context, pending);
-  const now = await ports.store.transaction((tx) => tx.harnessItems.read.byId(pending.item.itemId));
-  return { item: now ?? pending.item, advanced };
+  const { item, advanced } = await exitReporting(ports, pending);
+  return { item, advanced };
 }

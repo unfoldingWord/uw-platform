@@ -2,6 +2,7 @@ import type { HarnessEvent, RunShape } from '@uw/contracts';
 import { formatDate } from '@uw/core/dates';
 import { platformIdentity } from '../access.ts';
 import type { RunCount, StoreTransaction } from '../ports.ts';
+import { refuteNames, refuteSince, refuteTallies } from './refutes.ts';
 import { PLANE_LIMIT, type PlaneTotals } from './types.ts';
 
 const HOUR_MS = 3_600_000;
@@ -27,7 +28,9 @@ export function dayBefore(at: Date): Date {
 }
 
 export function refusalReasons(event: HarnessEvent): readonly string[] {
-  if (event.name === 'gate_refused_to_agent') return ['gate_refused_to_agent'];
+  if (event.name === 'gate_refused_to_agent') {
+    return (event.evidence['reason'] ?? null) === null ? ['gate_refused_to_agent'] : [];
+  }
   const reasons = event.evidence['reasons'];
   if (!Array.isArray(reasons)) return [];
   return reasons.filter((reason): reason is string => typeof reason === 'string');
@@ -66,7 +69,8 @@ async function liveDelegations(
   const live = await tx.delegations.read.live(filter, at);
   const expiries = live.map((delegation) => delegation.expiresAt.getTime());
   const soonest = expiries.length === 0 ? null : new Date(Math.min(...expiries));
-  return { count: live.length, soonestExpiry: soonest };
+  const merge = live.filter((delegation) => delegation.capability === 'merge').length;
+  return { count: live.length, merge, soonestExpiry: soonest };
 }
 
 async function eventTotals(tx: StoreTransaction, at: Date) {
@@ -88,6 +92,26 @@ async function eventTotals(tx: StoreTransaction, at: Date) {
   };
 }
 
+async function refuteTotals(
+  tx: StoreTransaction,
+  at: Date,
+): Promise<PlaneTotals['reviewerRefutes']> {
+  const events = await tx.harnessEvents.read.recent({
+    since: refuteSince(at),
+    names: refuteNames,
+    agentsOnly: false,
+    limit: PLANE_LIMIT,
+  });
+  const keys = new Map<string, string>();
+  const tallies = [];
+  for (const tally of refuteTallies(events)) {
+    const key = keys.get(tally.harnessId) ?? (await tx.harnesses.read.byId(tally.harnessId))?.key;
+    keys.set(tally.harnessId, key ?? tally.harnessId);
+    tallies.push({ ...tally, harnessKey: key ?? tally.harnessId });
+  }
+  return { tallies, capped: events.length === PLANE_LIMIT };
+}
+
 export async function planeTotals(tx: StoreTransaction, at: Date): Promise<PlaneTotals> {
   const month = monthStart(at);
   const today = dayStart(at);
@@ -101,5 +125,6 @@ export async function planeTotals(tx: StoreTransaction, at: Date): Promise<Plane
     liveDelegations: await liveDelegations(tx, at),
     ...(await eventTotals(tx, at)),
     staleLearnings: { count: stale.length, capped: stale.length === PLANE_LIMIT },
+    reviewerRefutes: await refuteTotals(tx, at),
   };
 }

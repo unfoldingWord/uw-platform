@@ -40,6 +40,9 @@ export class StepHalted extends Error {
 const endedRuns: ReadonlySet<unknown> = new Set(['run_stopped', 'run_completed', 'run_failed']);
 const endingReasons: ReadonlySet<string> = new Set([
   'delegation_lapsed',
+  'finding_weight_missing',
+  'fix_keeps_purpose',
+  'fix_size_cap',
   'lease_expired',
   'run_not_found',
 ]);

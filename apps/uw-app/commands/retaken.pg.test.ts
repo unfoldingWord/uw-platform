@@ -23,7 +23,7 @@ async function productPage(db: Database): Promise<string> {
     type: 'product',
     status: 'active',
     jdArea: '80-89',
-    bodyMd: 'The board.',
+    bodyMd: 'The board.\n\n## Done when\n\n- People see the board.',
     slug: `board-${id.slice(0, 8)}`,
     title: 'The board',
   });

@@ -12,7 +12,7 @@ export type RiskResult =
       readonly domains: readonly RiskDomain[];
     };
 
-function normalise(path: string): string {
+export function normalise(path: string): string {
   const kept: string[] = [];
   for (const segment of path.replaceAll('\\', '/').toLowerCase().split('/')) {
     if (segment === '..') kept.pop();
@@ -21,7 +21,7 @@ function normalise(path: string): string {
   return kept.join('/');
 }
 
-function matches(entry: string, path: string): boolean {
+export function matches(entry: string, path: string): boolean {
   const base = normalise(entry);
   if (entry.endsWith('/')) return path === base || path.startsWith(`${base}/`);
   return path === base;

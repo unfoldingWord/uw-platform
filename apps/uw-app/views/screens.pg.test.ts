@@ -35,6 +35,7 @@ async function seededWorld(db: Database): Promise<GateWorld> {
   const lapsing = new Date(at.getTime() + HOUR);
   accepted(
     await kernel.delegations.grant(callerOf(world.kim), {
+      maxTier: null,
       harnessId,
       persona: 'agent:scout',
       capability: 'build',

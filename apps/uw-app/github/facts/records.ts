@@ -1,5 +1,5 @@
-import type { PullRequestDeclaration } from '@uw/contracts';
-import type { CheckConclusion, ReviewState } from '@uw/harness';
+import type { ClosingRef, PullRequestDeclaration, ReadFinding } from '@uw/contracts';
+import type { CheckConclusion, HeadCommit, ReviewState } from '@uw/harness';
 
 export type GithubCheckStatus =
   'queued' | 'in_progress' | 'completed' | 'waiting' | 'requested' | 'pending';
@@ -30,6 +30,9 @@ export type IssueRecord = {
   readonly labels: readonly string[];
   readonly milestoneId: number | null;
   readonly githubUpdatedAt: Date;
+  readonly subIssues: number;
+  readonly doneWhen: readonly string[];
+  readonly blockedBy: readonly number[];
 };
 
 export type IssueChange = {
@@ -41,6 +44,9 @@ export type IssueChange = {
   readonly labels: readonly string[];
   readonly hadLabels: readonly string[] | null;
   readonly githubUpdatedAt: Date;
+  readonly subIssues: number;
+  readonly doneWhen: readonly string[];
+  readonly blockedBy: readonly number[];
 };
 
 export type PullRequestRecord = {
@@ -56,8 +62,11 @@ export type PullRequestRecord = {
   readonly baseRef: string;
   readonly baseSha: string;
   readonly milestoneId: number | null;
+  readonly requestedReviewers: readonly string[];
+  readonly authorLogin: string | null;
   readonly declaration: PullRequestDeclaration | null;
   readonly declarationProblem: string | null;
+  readonly closes: readonly ClosingRef[];
   readonly githubUpdatedAt: Date;
 };
 
@@ -67,7 +76,13 @@ export type FilesRecord = {
   readonly base: string;
   readonly paths: readonly string[] | null;
   readonly problem: string | null;
+  readonly behindBy: number | null;
+  readonly patchId: string | null;
+  readonly commits: readonly HeadCommit[] | null;
 };
+
+export type HeadFacts = Pick<FilesRecord, 'behindBy' | 'patchId' | 'commits'>;
+export const unknownHead: HeadFacts = { behindBy: null, patchId: null, commits: null };
 
 export type CheckRunRecord = {
   readonly githubId: number;
@@ -89,7 +104,7 @@ export type ReviewRecord = {
   readonly commitId: string;
   readonly state: ReviewState;
   readonly provider: string | null;
-  readonly findings: readonly string[];
+  readonly findings: readonly ReadFinding[];
   readonly submittedAt: Date | null;
 };
 

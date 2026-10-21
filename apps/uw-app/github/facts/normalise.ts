@@ -1,6 +1,9 @@
 import type { z } from 'zod';
 import { checkConclusionSchema, repositorySchema as repositoryName } from '@uw/contracts';
 import {
+  blockedByOf,
+  closingReferences,
+  doneWhenOf,
   fullSha,
   parseDeclaration,
   parseReviewFindings,
@@ -28,6 +31,7 @@ import {
   type FactBatch,
   type FilesRecord,
   type GithubCheckStatus,
+  type HeadFacts,
   type IssueRecord,
   type MilestoneRecord,
   type PullRequestRecord,
@@ -85,16 +89,22 @@ function milestonesOf(repoId: number, milestone: Milestone | null | undefined) {
   return milestone ? [milestoneOf(repoId, milestone)] : [];
 }
 
-function issueOf(repoId: number, issue: z.infer<typeof issueSchema>): IssueRecord {
+type RepoName = Pick<RepoRecord, 'githubId' | 'fullName'>;
+
+function issueOf(repo: RepoName, issue: z.infer<typeof issueSchema>): IssueRecord {
+  const body = issue.body ?? '';
   return {
     githubId: issue.id,
-    repoId,
+    repoId: repo.githubId,
     number: issue.number,
     title: issue.title,
     state: issue.state,
     labels: issue.labels.map((label) => label.name),
     milestoneId: issue.milestone?.id ?? null,
     githubUpdatedAt: issue.updated_at,
+    subIssues: issue.sub_issues_summary?.total ?? 0,
+    doneWhen: doneWhenOf(body),
+    blockedBy: blockedByOf(body, repo.fullName),
   };
 }
 
@@ -110,14 +120,25 @@ function headRepositoryOf(pull: Pull): string | null {
   return parsed.success ? parsed.data : null;
 }
 
-function pullOf(repoId: number, pull: Pull): PullRequestRecord | null {
+const REQUESTED_LIMIT = 100;
+
+function requestedOf(pull: Pull): readonly string[] {
+  const logins = (pull.requested_reviewers ?? []).map((user) => user.login);
+  return [...new Set(logins)].slice(0, REQUESTED_LIMIT);
+}
+
+function peopleOf(pull: Pull): Pick<PullRequestRecord, 'requestedReviewers' | 'authorLogin'> {
+  return { requestedReviewers: requestedOf(pull), authorLogin: pull.user?.login ?? null };
+}
+
+function pullOf(repo: RepoRecord, pull: Pull): PullRequestRecord | null {
   const headSha = fullSha(pull.head.sha);
   const baseSha = fullSha(pull.base.sha);
   if (headSha === null || baseSha === null) return null;
   const merged = pull.merged === true || Boolean(pull.merged_at);
   return {
     githubId: pull.id,
-    repoId,
+    repoId: repo.githubId,
     number: pull.number,
     title: pull.title,
     state: merged ? 'merged' : pull.state,
@@ -128,7 +149,9 @@ function pullOf(repoId: number, pull: Pull): PullRequestRecord | null {
     baseRef: pull.base.ref,
     baseSha,
     milestoneId: pull.milestone?.id ?? null,
+    ...peopleOf(pull),
     ...declarationOf(pull.body),
+    closes: [...closingReferences(pull.body ?? null, repo.fullName)],
     githubUpdatedAt: pull.updated_at,
   };
 }
@@ -187,7 +210,7 @@ function eachParsed<T>(schema: z.ZodType<T>, values: readonly unknown[]): readon
 }
 
 function pullBatch(repo: RepoRecord, pull: Pull): FactBatch | null {
-  const record = pullOf(repo.githubId, pull);
+  const record = pullOf(repo, pull);
   if (record === null) return null;
   return {
     ...emptyBatch,
@@ -215,7 +238,7 @@ const readers: ReadonlyMap<string, Reader> = new Map([
         ...emptyBatch,
         repos: [repo],
         milestones: milestonesOf(repo.githubId, issue.milestone),
-        issues: issue.pull_request ? [] : [issueOf(repo.githubId, issue)],
+        issues: issue.pull_request ? [] : [issueOf(repo, issue)],
       };
     }),
   ],
@@ -263,19 +286,19 @@ export function filesFromRest(
   pullRequestId: number,
   compared: { readonly head: string; readonly base: string },
   files: readonly unknown[] | 'too_many_files',
+  atHead: HeadFacts,
 ): FilesRecord {
   const { head, base } = compared;
-  if (files === 'too_many_files') return { pullRequestId, head, base, paths: null, problem: files };
+  const at = { pullRequestId, head, base, ...atHead };
+  if (files === 'too_many_files') return { ...at, paths: null, problem: files };
   const parsed = fileSchema.array().safeParse(files);
-  if (!parsed.success) {
-    return { pullRequestId, head, base, paths: null, problem: 'malformed_files' };
-  }
+  if (!parsed.success) return { ...at, paths: null, problem: 'malformed_files' };
   const paths = parsed.data.flatMap((file) =>
     file.previous_filename === undefined
       ? [file.filename]
       : [file.filename, file.previous_filename],
   );
-  return { pullRequestId, head, base, paths: [...new Set(paths)], problem: null };
+  return { ...at, paths: [...new Set(paths)], problem: null };
 }
 
 export function reviewsFromRest(
@@ -305,9 +328,7 @@ export function issuesFromRest(repo: RepoRecord, issues: readonly unknown[]) {
       milestones.set(issue.milestone.id, milestoneOf(repo.githubId, issue.milestone));
   }
   return {
-    issues: listed
-      .filter((issue) => !issue.pull_request)
-      .map((issue) => issueOf(repo.githubId, issue)),
+    issues: listed.filter((issue) => !issue.pull_request).map((issue) => issueOf(repo, issue)),
     milestones: [...milestones.values()],
     pullRequestNumbers: listed.filter((issue) => issue.pull_request).map((issue) => issue.number),
   };
@@ -316,4 +337,18 @@ export function issuesFromRest(repo: RepoRecord, issues: readonly unknown[]) {
 export function repoFromRest(repo: unknown): RepoRecord | null {
   const parsed = repositorySchema.safeParse(repo);
   return parsed.success ? repoOf(parsed.data) : null;
+}
+
+function inRepository(repo: RepoName, issue: z.infer<typeof issueSchema>): boolean {
+  const url = issue.repository_url?.toLowerCase() ?? '';
+  return url.endsWith(`/repos/${repo.fullName.toLowerCase()}`);
+}
+
+export function subIssuesFromRest(
+  repo: RepoName,
+  listed: readonly unknown[],
+): readonly IssueRecord[] {
+  return eachParsed(issueSchema, listed)
+    .filter((issue) => !issue.pull_request && inRepository(repo, issue))
+    .map((issue) => issueOf(repo, issue));
 }

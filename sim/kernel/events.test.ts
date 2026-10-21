@@ -76,6 +76,8 @@ const item = itemStateSchema.parse({
   pullRequest: null,
   issue: null,
   zulipTopic: null,
+  epic: null,
+  blockedBy: [],
 });
 
 const logged = [

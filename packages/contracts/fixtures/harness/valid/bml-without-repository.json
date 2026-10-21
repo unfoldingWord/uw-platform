@@ -5,5 +5,13 @@
   "jdArea": "30-39",
   "repository": null,
   "hostedBuilderEnabled": false,
-  "paused": false
+  "paused": false,
+  "shadow": false,
+  "externalReviewerIdentities": [],
+  "frozen": false,
+  "freezeAllow": [],
+  "requiredChecks": [],
+  "protectedPaths": [],
+  "fixClaim": false,
+  "botAuthors": ["dependabot[bot]"]
 }

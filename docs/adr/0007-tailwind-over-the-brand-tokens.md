@@ -10,4 +10,4 @@ Today the tokens' source is the CSS in the Claude Design prototype (`ui-design/p
 
 The alternative, hand-written CSS per island against the same variables, would work and would drift: every island would carry its own spacing scale and its own dark-mode branches. Tailwind's value here is not dark mode, which the tokens already provide, but one vocabulary for consuming them.
 
-**Consequences.** Nothing hard-codes a hex value; the tokens-agree check fails the build if it does. Kindle orange marks a human action and nothing else, as the spec's figures do. The `uw-dev-skills` roadmap names Tailwind 4 as a coming shared skill, so this matches the org direction. Source: issue #46; Jesse on Zulip, 2026-09-29.
+**Consequences.** Nothing hard-codes a hex value; the tokens-agree check fails the build if it does. Kindle orange marks a human action and nothing else, as the spec's figures do. The `uw-dev-skills` roadmap names Tailwind 4 as a coming shared skill, so this matches the org direction. Source: issue #46; the sponsor on Zulip, 2026-09-29.

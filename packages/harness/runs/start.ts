@@ -3,6 +3,7 @@ import type { Caller } from '../caller.ts';
 import { beatWithin } from '../delegations/commands.ts';
 import { engineDescriptor, hostable } from '../engines.ts';
 import { claimWithin } from '../items/claim.ts';
+import { readFixStart, type FixRead } from '../items/fix-claim.ts';
 import { draft, recordContext, recordItemEvents, type RecordContext } from '../items/record.ts';
 import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
@@ -20,6 +21,7 @@ type StartPorts = Pick<Ports, 'clock' | 'githubFacts' | 'grants' | 'ids' | 'stor
 type Start = {
   readonly caller: Caller;
   readonly input: StartRunInput;
+  readonly fix: FixRead;
   readonly runId: string;
   readonly traceId: string;
   readonly at: Date;
@@ -113,11 +115,11 @@ async function openRun(
   start: Start,
   { item, persona }: { readonly item: ItemState; readonly persona: RunPersona },
 ): Promise<KernelOutcome<Opened>> {
-  const { caller, input, runId, traceId, at } = start;
+  const { caller, input, fix, runId, traceId, at } = start;
   const principal = await beatPrincipalOf(ports, tx, start);
   if ('status' in principal) return principal;
   const acting: Caller = { ...caller, actor: principal, traceId };
-  const claimed = await claimWithin(ports, tx, acting, input, at);
+  const claimed = await claimWithin(ports, tx, acting, { input, at, fix });
   if (claimed.status !== 'accepted') return claimed;
   const run = newHostedRun({ runId, item, persona, delegationId: input.delegationId, traceId, at });
   await tx.harnessRuns.write.insert(run);
@@ -205,7 +207,9 @@ export async function startRun(
   input: StartRunInput,
   options: StartOptions = { solo: false },
 ): Promise<KernelOutcome<StartedRun>> {
-  const start = { caller, input, runId: ports.ids.next(), traceId: ports.ids.next() };
+  const fix = await readFixStart(ports, input.itemId, input.delegationId);
+  if (fix !== null && 'refusal' in fix) return fix.refusal;
+  const start = { caller, input, fix, runId: ports.ids.next(), traceId: ports.ids.next() };
   const outcome = await opened(ports, { ...start, at: ports.clock.now(), solo: options.solo });
   if (outcome.status !== 'accepted') return outcome;
   const { started, context } = outcome.value;

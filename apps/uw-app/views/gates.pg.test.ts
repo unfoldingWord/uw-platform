@@ -7,6 +7,7 @@ import {
   rewriteItem,
   seedGrant,
   seedOpenItems,
+  seedEventRows,
   seedPerson,
 } from '@uw/db/test-seed';
 import { VIEW_LIMIT, software, type Template } from '@uw/harness';
@@ -19,7 +20,6 @@ import {
   gateWorld,
   greenChecks,
   recordedRisk,
-  reviewerFindings,
   type GateWorld,
 } from '../testing/gate-world.ts';
 import { kernelOn } from '../testing/kernel.ts';
@@ -97,7 +97,7 @@ async function shipInputs(world: GateWorld): Promise<void> {
   const findings = [...document.querySelectorAll('main h3 + ul li ul li')].map(
     (item) => item.textContent,
   );
-  expect(findings).toEqual(reviewerFindings);
+  expect(findings).toEqual(['Real: The lease is not renewed', 'Theoretical: A typo in the copy']);
   expect(document.body.textContent).toContain('uw-reviewer (anthropic): Approved');
 }
 
@@ -116,7 +116,7 @@ async function gateFacts(world: GateWorld): Promise<void> {
   const facts = factsOf(document);
   expect(facts).toMatchObject({
     'Declared tier': 'standard',
-    Closes: '#12',
+    Closes: 'None',
     'Review providers': 'anthropic',
     'You approve head': world.item.expectedHead ?? '',
   });
@@ -131,7 +131,7 @@ async function gateFacts(world: GateWorld): Promise<void> {
 async function approveFollowsShipRule(world: GateWorld): Promise<void> {
   const refused = buttons(await documentOf(world, world.kimEmail, deepLink(world)));
   expect(refused[0]?.[0]).toBe('Approve');
-  expect(refused[0]?.[1]).toBe('Checks not green, No reviewer approval');
+  expect(refused[0]?.[1]).toBe('No reviewer approval, Required check never ran');
   await greenChecks(world.db);
   await approvedWithFindings(world.db);
   const ready = buttons(await documentOf(world, world.kimEmail, deepLink(world)));
@@ -401,6 +401,28 @@ async function parkedCapSaysAtLeast(world: GateWorld): Promise<void> {
   );
 }
 
+function approveAllForms(document: Document): readonly (string | null)[] {
+  const forms = [...document.querySelectorAll('main form[data-command="decide_gates"]')];
+  return forms.map(
+    (form) => form.querySelector('input[name="entries"]')?.getAttribute('value') ?? null,
+  );
+}
+
+async function approveAllShown(world: GateWorld): Promise<void> {
+  expect(approveAllForms(await documentOf(world, world.kimEmail, gatesPath()))).toEqual([]);
+  await greenChecks(world.db);
+  await approvedWithFindings(world.db);
+  const document = await documentOf(world, world.kimEmail, gatesPath());
+  expect(approveAllForms(document)).toEqual([
+    `${world.item.itemId}:${world.item.expectedHead ?? ''}`,
+  ]);
+  const button = document.querySelector('main form[data-command="decide_gates"] button');
+  expect(button?.textContent).toMatch(/^Approve the 1 gate shown on /);
+  expect(button?.getAttribute('class')).toContain('bg-kindle');
+  expect(await screenProblems((await pageOf(world, world.kimEmail, gatesPath())).text)).toEqual([]);
+  expect(approveAllForms(await documentOf(world, world.viewerEmail, gatesPath()))).toEqual([]);
+}
+
 async function noProblems(world: GateWorld): Promise<void> {
   for (const email of [world.kimEmail, world.viewerEmail]) {
     for (const path of [gatesPath(), deepLink(world)]) {
@@ -409,9 +431,45 @@ async function noProblems(world: GateWorld): Promise<void> {
   }
 }
 
+async function delegatedMergeListed(world: GateWorld): Promise<void> {
+  const { harnessId, itemId, title } = world.item;
+  await seedEventRows(world.db, [
+    {
+      id: randomUUID(),
+      harnessId,
+      itemId,
+      name: 'delegated_merge',
+      actor: 'agent:system',
+      evidence: {
+        decisionId: randomUUID(),
+        delegationId: randomUUID(),
+        personId: randomUUID(),
+        email: 'ian.lindsley@unfoldingword.org',
+        persona: 'agent:shipper',
+        expiresAt: '2026-10-20T00:00:00.000Z',
+        maxTier: 'standard',
+      },
+      traceId: randomUUID(),
+      at: new Date(clock.now().getTime() - 60_000),
+    },
+  ]);
+  const page = await pageOf(world, world.kimEmail, gatesPath());
+  expect(page.text).toContain('Merged under a delegation');
+  expect(page.text).toContain('granted by ian.lindsley@unfoldingword.org until');
+  const document = new JSDOM(page.text).window.document;
+  const link = document.querySelector('#delegated-merges-heading + ul a');
+  expect(link?.getAttribute('href')).toBe(itemPath(harnessId, itemId));
+  expect(link?.textContent).toContain(title);
+  expect(await screenProblems(page.text)).toEqual([]);
+  const viewer = await pageOf(world, world.viewerEmail, gatesPath());
+  expect(viewer.text).not.toContain('Merged under a delegation');
+}
+
 describe.skipIf(!testServer)('the Gates view and its deep link', () => {
   it('WB-6 the gates view lists only the gates the person can decide', () =>
     inGates(onlyDecidable));
+  it('GD-1 the Gates view offers approve all shown over the gates whose ship rule advances', () =>
+    inGates(approveAllShown));
   it('WB-6 each gate shows every ship-rule input with its current value from GitHub facts, the tier and domains, and the Reviewer findings', () =>
     inGates(shipInputs));
   it('WB-6 the gate facts show the parsed declaration, the recorded tier with its head, the tier derived now, the review providers and the head you approve', () =>
@@ -445,4 +503,6 @@ describe.skipIf(!testServer)('the Gates view and its deep link', () => {
   it('the gates view says at least when a harness has more parked items than it reads', () =>
     inGates(parkedCapSaysAtLeast));
   it('the gates view and a gate render with no screen problems', () => inGates(noProblems));
+  it('MD-6 the Gates screen lists a merge under a delegation with its grantor and expiry', () =>
+    inGates(delegatedMergeListed));
 });

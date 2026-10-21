@@ -60,6 +60,7 @@ function itemsGateway(log: string[], rows: Map<string, ItemState>): HarnessItems
     read: {
       byId: unused,
       byIssue: unused,
+      byPullRequest: unused,
       lock: async (id) => {
         log.push('lock');
         return rows.get(id) ?? null;
@@ -122,7 +123,15 @@ function eventsGateway(log: string[], appended: HarnessEvent[]): HarnessEventsGa
 
 const harnessesGateway: HarnessesGateway = {
   read: { byId: unused, byKey: unused, byRepository: unused, list: unused },
-  write: { insert: unused, setPaused: unused, setHostedBuilder: unused },
+  write: {
+    insert: unused,
+    setPaused: unused,
+    setHostedBuilder: unused,
+    setShadow: unused,
+    setFreeze: unused,
+    setTemplate: unused,
+    setFixClaim: unused,
+  },
 };
 
 function recording(): Recording {

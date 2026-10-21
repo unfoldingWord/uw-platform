@@ -2,20 +2,24 @@ import { notWiredCall, ProviderMismatchError } from '@uw/harness';
 import type { EngineConfig } from '../config.ts';
 import type { EngineWork, EngineWorkResult } from '../seam.ts';
 import { egress, type EgressRoutes, type ModelRoute } from './egress.ts';
+import { fixPhase, type FixPhase } from './fix-checks.ts';
+import { NO_CHECKS_EXIT } from './fix-commands.ts';
 import { GITHUB_HOST, type GitHubEgress } from './github-egress.ts';
 import type { ContainerHost, ExecResult } from './host.ts';
 import { SandboxNotWiredError } from './not-wired.ts';
+import { WORKSPACE } from './paths.ts';
 import {
   computeMinorOf,
   runSession,
   sessionIdOf,
   type SessionFile,
+  type SessionFinish,
   type SessionRun,
   type SessionSpec,
 } from './session.ts';
 
 export type SandboxReading = {
-  readonly outcome: 'ended' | 'turn_limit';
+  readonly outcome: 'ended' | 'turn_limit' | 'checks_not_run_locally';
   readonly text: string | null;
   readonly inputTokens: number;
   readonly outputTokens: number;
@@ -32,10 +36,10 @@ export type SandboxPlan = {
   files(input: EngineWork): readonly SessionFile[];
   command(input: EngineWork): readonly string[];
   read(ran: ExecResult): SandboxReading;
+  readonly finish: ((input: EngineWork, phase: FixPhase) => SessionFinish) | null;
 };
 
-export const WORKSPACE = '/workspace';
-export const REPOSITORY_DIR = `${WORKSPACE}/repo`;
+export { REPOSITORY_DIR, WORKSPACE } from './paths.ts';
 export const PLACEHOLDER_KEY = 'sk-placeholder-replaced-at-the-egress-proxy';
 const SESSION_TIMEOUT_MS = 25 * 60 * 1000;
 
@@ -86,7 +90,7 @@ function turnGate(onTurn: () => Promise<void>): TurnGate {
 
 async function guardedSession(
   host: ContainerHost,
-  spec: Omit<SessionSpec, 'egress'>,
+  spec: Omit<SessionSpec, 'egress' | 'admit'>,
   routes: Omit<EgressRoutes, 'admit'>,
   config: EngineConfig,
   onTurn: () => Promise<void>,
@@ -96,7 +100,7 @@ async function guardedSession(
   const now = config.now ?? (() => new Date());
   try {
     const egressOf = (request: Request) => egress(request, guarded, config.fetch);
-    const ran = await runSession(host, { ...spec, egress: egressOf }, now);
+    const ran = await runSession(host, { ...spec, egress: egressOf, admit: gate.admit }, now);
     gate.rethrow();
     return ran;
   } catch (error) {
@@ -116,12 +120,58 @@ function envOf(plan: SandboxPlan, input: EngineWork): Readonly<Record<string, st
   };
 }
 
-function githubOf(plan: SandboxPlan, input: EngineWork): GitHubEgress | null {
+function githubOf(plan: SandboxPlan, input: EngineWork, phase: FixPhase): GitHubEgress | null {
   const { checkout } = input;
   const access = input.egress.github;
   if (!plan.clones || checkout === null || access === null) return null;
   const { repository, branch, defaultBranch } = checkout;
-  return { repository, branch, defaultBranch, ...access };
+  return { repository, branch, defaultBranch, ...access, pushes: phase.pushes };
+}
+
+const unread: SandboxReading = {
+  outcome: 'checks_not_run_locally',
+  text: null,
+  inputTokens: 0,
+  outputTokens: 0,
+  costMicros: null,
+  model: null,
+};
+
+function readingOf(plan: SandboxPlan, ran: SessionRun): SandboxReading {
+  if (ran.finished !== 'checks_not_run_locally') return plan.read(ran);
+  if (ran.exitCode === NO_CHECKS_EXIT) return unread;
+  return { ...plan.read(ran), outcome: 'checks_not_run_locally' };
+}
+
+function unrunFix(plan: SandboxPlan, input: EngineWork): EngineWorkResult {
+  const { model, ...reading } = unread;
+  return {
+    ...reading,
+    computeMinor: null,
+    resolvedProvider: plan.provider,
+    resolvedModel: model ?? input.model,
+    toolsCalled: [],
+  };
+}
+
+type Finish = NonNullable<SandboxPlan['finish']>;
+
+type Wired = SandboxPlan & { readonly model: ModelRoute };
+
+function sessionOf(plan: Wired, input: EngineWork, finish: Finish | null) {
+  const phase = fixPhase(finish !== null);
+  const registry = finish === null ? null : { open: phase.installs };
+  const github = githubOf(plan, input, phase);
+  const routes = { ...input.egress, model: plan.model, github, registry, thinks: phase.thinks };
+  const spec = {
+    sessionId: sessionIdOf(input.runId),
+    files: plan.files(input),
+    command: plan.command(input),
+    env: envOf(plan, input),
+    timeoutMs: SESSION_TIMEOUT_MS,
+    finish: finish === null ? null : finish(input, phase),
+  };
+  return { routes, spec };
 }
 
 export async function sandboxWork(
@@ -129,21 +179,18 @@ export async function sandboxWork(
   plan: SandboxPlan,
   input: EngineWork,
 ): Promise<EngineWorkResult> {
-  if (plan.model === null) return notWiredCall('modelEngine', 'work');
+  const { model: route } = plan;
+  if (route === null) return notWiredCall('modelEngine', 'work');
   if (plan.host === null) throw new SandboxNotWiredError();
   if (input.pinnedProvider !== plan.provider) {
     throw new ProviderMismatchError(input.pinnedProvider, plan.provider);
   }
-  const routes = { ...input.egress, model: plan.model, github: githubOf(plan, input) };
-  const spec = {
-    sessionId: sessionIdOf(input.runId),
-    files: plan.files(input),
-    command: plan.command(input),
-    env: envOf(plan, input),
-    timeoutMs: SESSION_TIMEOUT_MS,
-  };
+  const fixing = input.checkout?.fix === true;
+  const finish = fixing ? plan.finish : null;
+  if (fixing && finish === null) return unrunFix(plan, input);
+  const { routes, spec } = sessionOf({ ...plan, model: route }, input, finish);
   const ran = await guardedSession(plan.host, spec, routes, config, input.onTurn);
-  const { model, ...reading } = plan.read(ran);
+  const { model, ...reading } = readingOf(plan, ran);
   return {
     ...reading,
     computeMinor: computeMinorOf(ran.wallMs, config.SANDBOX_MINOR_PER_HOUR),

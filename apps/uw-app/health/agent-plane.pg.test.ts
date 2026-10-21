@@ -27,6 +27,7 @@ const at = new Date('2026-10-15T12:00:00.000Z');
 const clock: Clock = { now: () => at };
 const HOUR = 3_600_000;
 const HARNESS = '00000000-0000-4000-8000-000000005301';
+const OTHER = '00000000-0000-4000-8000-000000005399';
 const ITEM = '00000000-0000-4000-8000-000000005302';
 const EDITOR = { id: '00000000-0000-4000-8000-000000005311', email: 'plane@unfoldingword.org' };
 const PLATFORM = ['commit', 'database', 'queue', 'live_hub'];
@@ -76,11 +77,13 @@ async function meteredRun(db: Database, n: number, costMinor: number): Promise<v
   });
 }
 
-function indicatorsOn(db: Database, totals?: PlaneTotals) {
+async function indicatorsOn(db: Database, totals?: PlaneTotals) {
   const handle = { db, ping: async () => undefined, release: async () => undefined };
   const kernel = platformKernel(handle, clock);
   const views = totals ? { ...kernel.views, planeTotals: async () => totals } : kernel.views;
-  return agentPlaneIndicators({ kernel: { ...kernel, views }, db, at, cap: DEFAULT_SPEND_CAP });
+  const caller = { actor: await personOn(db, EDITOR.id, EDITOR.email, at), traceId: ITEM };
+  const source = { kernel: { ...kernel, views }, caller, db, at, cap: DEFAULT_SPEND_CAP };
+  return agentPlaneIndicators(source);
 }
 
 function named(indicators: readonly HealthIndicator[], name: string): HealthIndicator {
@@ -103,14 +106,67 @@ const cappedTotals: PlaneTotals = {
     byEngine: { external: 1, 'claude-messages': 3 },
     since: new Date('2026-10-15T00:00:00.000Z'),
   },
-  liveDelegations: { count: 2, soonestExpiry: new Date(at.getTime() + 2 * HOUR) },
+  liveDelegations: { count: 2, merge: 0, soonestExpiry: new Date(at.getTime() + 2 * HOUR) },
   gateRefusals: {
     byReason: { no_reviewer_approval: 2, gate_refused_to_agent: 4998 },
     capped: true,
   },
   agentWrites: { count: PLANE_LIMIT, capped: true },
   staleLearnings: { count: PLANE_LIMIT, capped: true },
+  reviewerRefutes: {
+    tallies: [
+      {
+        harnessId: HARNESS,
+        harnessKey: 'software',
+        persona: 'agent:reviewer',
+        findings: 8,
+        refuted: 2,
+      },
+      {
+        harnessId: HARNESS,
+        harnessKey: 'software',
+        persona: 'agent:reviewer-codex',
+        findings: 3,
+        refuted: 0,
+      },
+      {
+        harnessId: OTHER,
+        harnessKey: 'courses',
+        persona: 'agent:reviewer',
+        findings: 4,
+        refuted: 1,
+      },
+    ],
+    capped: true,
+  },
 };
+
+const cappedReadings = [
+  ['spend', 'ok', '$0.00 metered of $1,250.00 this month; 0 subscription tokens reported'],
+  ['breaker', 'amber', 'no fresh reading'],
+  ['runs_today', 'ok', '3 on the platform, 1 on own machines; claude-messages 3, external 1'],
+  ['live_delegations', 'amber', '2 live; next expiry 2026-10-15 14:00 UTC'],
+  [
+    'gate_refusals_week',
+    'amber',
+    'at least 5,000 in 7 days; gate_refused_to_agent 4,998, no_reviewer_approval 2',
+  ],
+  ['agent_writes', 'amber', 'at least 5,000 events by agents in 24 hours'],
+  ['stale_learnings', 'amber', 'at least 5,000 past their review date'],
+  ['github_sweep', 'not_configured', 'No repositories installed'],
+  [
+    'reviewer_refutes',
+    'amber',
+    'Refuted findings in 30 days; agent:reviewer on software 2 of 8 refuted, agent:reviewer-codex on software 0 of 3 refuted, agent:reviewer on courses 1 of 4 refuted',
+  ],
+  [
+    'silence_alarm',
+    'ok',
+    'No item has waited in Check over 45 minutes without a review step in the harnesses you can read',
+  ],
+  ['held_by_person', 'ok', 'None over 24 hours'],
+  ['held_by_agent', 'ok', 'None over 2 hours'],
+];
 
 async function statusesFollowTotals(db: Database): Promise<void> {
   await seed(db);
@@ -139,20 +195,18 @@ async function statusesFollowTotals(db: Database): Promise<void> {
   await meteredRun(db, 2, 1_250);
   expect(named(await indicatorsOn(db), 'spend')).toMatchObject({ status: 'red' });
   const capped = await indicatorsOn(db, cappedTotals);
-  expect(capped.map((indicator) => [indicator.name, indicator.status, indicator.detail])).toEqual([
-    ['spend', 'ok', '$0.00 metered of $1,250.00 this month; 0 subscription tokens reported'],
-    ['breaker', 'amber', 'no fresh reading'],
-    ['runs_today', 'ok', '3 on the platform, 1 on own machines; claude-messages 3, external 1'],
-    ['live_delegations', 'amber', '2 live; next expiry 2026-10-15 14:00 UTC'],
-    [
-      'gate_refusals_week',
-      'amber',
-      'at least 5,000 in 7 days; gate_refused_to_agent 4,998, no_reviewer_approval 2',
-    ],
-    ['agent_writes', 'amber', 'at least 5,000 events by agents in 24 hours'],
-    ['stale_learnings', 'amber', 'at least 5,000 past their review date'],
-    ['github_sweep', 'not_configured', 'No repositories installed'],
-  ]);
+  expect(capped.map((indicator) => [indicator.name, indicator.status, indicator.detail])).toEqual(
+    cappedReadings,
+  );
+}
+
+async function noRefutesYet(db: Database): Promise<void> {
+  await seed(db);
+  expect(named(await indicatorsOn(db), 'reviewer_refutes')).toEqual({
+    name: 'reviewer_refutes',
+    status: 'ok',
+    detail: 'No Reviewer findings in 30 days',
+  });
 }
 
 async function breakerAndCap(db: Database): Promise<void> {
@@ -306,9 +360,25 @@ async function probeAndScreen(db: Database): Promise<void> {
   expect(await html.text()).toContain('github_sweep');
 }
 
+async function mergeDelegationsNamed(db: Database): Promise<void> {
+  await seed(db);
+  const liveDelegations = { ...cappedTotals.liveDelegations, merge: 1 };
+  expect(
+    named(await indicatorsOn(db, { ...cappedTotals, liveDelegations }), 'live_delegations'),
+  ).toEqual({
+    name: 'live_delegations',
+    status: 'amber',
+    detail: '2 live, 1 of them merge; next expiry 2026-10-15 14:00 UTC',
+  });
+}
+
 describe.skipIf(!testServer)('the agent plane indicators', () => {
   it("WB-10 each indicator's status and detail follow its totals", () =>
     withAppDatabase(statusesFollowTotals));
+  it('MD-6 the live delegations indicator says how many of them are merge delegations', () =>
+    withAppDatabase(mergeDelegationsNamed));
+  it('RV-2 the Reviewer refute rate reads no findings on a plane with no Reviewer run', () =>
+    withAppDatabase(noRefutesYet));
   it('WB-10 the breaker indicator shows its state against the cap, and spend names the breaker only while its reading is fresh', () =>
     withAppDatabase(breakerAndCap));
   it('WB-10 the GitHub sweep indicator is red for a failed or stale sweep and amber for a capped, deferred or stalled one', () =>

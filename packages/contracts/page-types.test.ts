@@ -66,7 +66,7 @@ describe('FD-9 the persona frontmatter', () => {
 
   it('takes an agent identity as identity and a human identity as owner', () => {
     expect(acceptsPersona({ identity: 'human:ian' })).toBe(false);
-    expect(acceptsPersona({ identity: 'agent:jesse/laptop-1' })).toBe(false);
+    expect(acceptsPersona({ identity: 'agent:avery/laptop-1' })).toBe(false);
     expect(acceptsPersona({ owner: 'agent:builder' })).toBe(false);
   });
 });

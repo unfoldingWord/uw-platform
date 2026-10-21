@@ -14,7 +14,12 @@ import {
 } from './pages.ts';
 import type { VerbName } from './verb-names.ts';
 
-export const submitToGateResultSchema = z.enum(['advanced', 'parked', 'checks_failed']);
+export const submitToGateResultSchema = z.enum([
+  'advanced',
+  'parked',
+  'checks_failed',
+  'awaiting_review',
+]);
 
 const json = z.record(z.string(), z.json());
 const limit = z.number().int().min(1).max(50);

@@ -1,10 +1,13 @@
 import type { ItemState, Stage } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
 import { accepted, refused, type KernelOutcome } from '../outcome.ts';
-import type { RunRow, StoreTransaction } from '../ports.ts';
-import { harnessScene, stagePageLimit, type ScenePorts } from '../reads/scene.ts';
+import type { Ports, RunRow, StoreTransaction } from '../ports.ts';
+import { harnessScene, stagePageLimit } from '../reads/scene.ts';
+import { uncountedItems } from './bots.ts';
 import { basesOf, costOf, hostOf } from './costs.ts';
+import { epicBoard } from './epics.ts';
 import { byPosition } from './flow.ts';
+import { holderOf, reviewingIds } from './holder.ts';
 import type { BoardCard, BoardColumn, BoardInput, BoardView } from './types.ts';
 
 const liveOutcomes: ReadonlySet<RunRow['outcome']> = new Set(['running', 'hibernated']);
@@ -20,7 +23,7 @@ function leaseOf(item: ItemState): Date | null {
   return item.holder.startsWith('agent:') ? new Date(item.leaseExpiresAt) : null;
 }
 
-function cardOf(item: ItemState, runs: readonly RunRow[]): BoardCard {
+function cardOf(item: ItemState, runs: readonly RunRow[], holder: BoardCard['holder']): BoardCard {
   const own = runs.filter((run) => run.itemId === item.itemId);
   const liveRun = own.find((run) => liveOutcomes.has(run.outcome)) ?? null;
   return {
@@ -30,6 +33,7 @@ function cardOf(item: ItemState, runs: readonly RunRow[]): BoardCard {
     bases: basesOf(own),
     cost: costOf(own),
     liveRun,
+    holder,
   };
 }
 
@@ -39,12 +43,20 @@ function nextOf(items: readonly ItemState[]): string | null {
   return `${last.priority}.${last.itemId}`;
 }
 
-function columnOf(listed: Listed, runs: readonly RunRow[]): BoardColumn {
+type Marks = {
+  readonly reviewing: ReadonlySet<string>;
+  readonly uncounted: ReadonlySet<string>;
+};
+
+function columnOf(listed: Listed, runs: readonly RunRow[], marks: Marks): BoardColumn {
+  const holder = (item: ItemState) =>
+    holderOf(item, listed.stage, marks.reviewing.has(item.itemId));
   return {
     stage: listed.stage,
     held: listed.held,
-    cards: listed.items.map((item) => cardOf(item, runs)),
+    cards: listed.items.map((item) => cardOf(item, runs, holder(item))),
     next: nextOf(listed.items),
+    uncounted: listed.items.filter((item) => marks.uncounted.has(item.itemId)).length,
   };
 }
 
@@ -55,7 +67,7 @@ function shownStages(stages: readonly Stage[], input: BoardInput): readonly Stag
 }
 
 export async function boardView(
-  ports: ScenePorts,
+  ports: Pick<Ports, 'grants' | 'githubFacts'>,
   tx: StoreTransaction,
   caller: Caller,
   input: BoardInput,
@@ -75,7 +87,17 @@ export async function boardView(
       items: await tx.harnessItems.read.openInStage(harness.id, stage.key, page),
     });
   }
-  const ids = listed.flatMap((column) => column.items.map((item) => item.itemId));
-  const runs = await tx.harnessRuns.read.forItems(ids);
-  return accepted({ harness, columns: listed.map((column) => columnOf(column, runs)) });
+  const items = listed.flatMap((column) => column.items);
+  const runs = await tx.harnessRuns.read.forItems(items.map((item) => item.itemId));
+  const marks = {
+    reviewing: await reviewingIds(tx, items),
+    uncounted: await uncountedItems(ports.githubFacts, [{ harness, items }]),
+  };
+  const whole = input.stageKey === null && input.after === null;
+  const extras = whole ? await epicBoard(tx, harness.id, stages, at) : { epics: [], notReady: [] };
+  return accepted({
+    harness,
+    columns: listed.map((column) => columnOf(column, runs, marks)),
+    ...extras,
+  });
 }

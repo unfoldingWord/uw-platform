@@ -1,13 +1,15 @@
 import { z } from 'zod';
 import {
+  approveAtSchema,
   capabilityWordSchema,
   engineSchema,
   evidenceLabelSchema,
+  learningSourceSchema,
   runShapeSchema,
   type Classification,
   type OfflineEligibility,
 } from './closed-sets.ts';
-import { repositorySchema } from './harness.ts';
+import { pullRequestRefSchema, repositorySchema } from './harness.ts';
 import { identitySchema, isPersonaIdentity } from './identity.ts';
 import { providerIdSchema } from './runs.ts';
 import { pageStatusSchema, slugSchema, type PageType } from './pages.ts';
@@ -34,6 +36,8 @@ export const learningFrontmatterSchema = z.strictObject({
   supersedes: z.array(z.uuid()),
   review_by: z.iso.date().nullable(),
   contradicts: z.boolean().default(false),
+  source: learningSourceSchema.default('platform'),
+  pull_request: pullRequestRefSchema.nullable().default(null),
 });
 
 export const personaFrontmatterSchema = z.strictObject({
@@ -50,6 +54,7 @@ export const personaFrontmatterSchema = z.strictObject({
     currency: z.string().regex(/^[A-Z]{3}$/),
   }),
   capability: capabilityWordSchema,
+  approve_at: approveAtSchema.default('no_real_or_plausible'),
   requires_tools: z.array(verbShaped).max(50).refine(distinct).default([]),
   status: pageStatusSchema.default('suggested'),
 });
@@ -89,6 +94,18 @@ export type PageTypeDefinition = {
   readonly offlineEligibility: OfflineEligibility;
 };
 
+export const platformPageSlug = 'platform';
+
+const distinctRepositories = (values: readonly string[]) =>
+  new Set(values.map((value) => value.toLowerCase())).size === values.length;
+
+export const platformFrontmatterSchema = z.strictObject({
+  dispatch_allowed: z
+    .array(repositorySchema)
+    .max(200)
+    .refine(distinctRepositories, 'each repository once, in any case'),
+});
+
 const internalSync = { classification: 'internal', offlineEligibility: 'sync' } as const;
 
 export const pageTypeRegistry = {
@@ -100,6 +117,7 @@ export const pageTypeRegistry = {
   product_strategy: { frontmatter: productStrategyFrontmatterSchema, ...internalSync },
   data_sources: { frontmatter: dataSourcesFrontmatterSchema, ...internalSync },
   issue: { frontmatter: issueFrontmatterSchema, ...internalSync },
+  platform: { frontmatter: platformFrontmatterSchema, ...internalSync },
 } as const satisfies Record<PageType, PageTypeDefinition>;
 
 const byType = new Map<string, PageTypeDefinition>(Object.entries(pageTypeRegistry));

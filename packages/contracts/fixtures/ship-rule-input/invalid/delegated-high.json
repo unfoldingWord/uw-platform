@@ -1,0 +1,116 @@
+{
+  "pullRequest": {
+    "open": true,
+    "draft": false,
+    "head": "abc123",
+    "behindBy": 0,
+    "skipCi": false
+  },
+  "expectedHead": "abc123",
+  "checks": [
+    {
+      "name": "security-audit",
+      "headSha": "abc123",
+      "conclusion": "success",
+      "app": "github-actions"
+    },
+    {
+      "name": "lint",
+      "headSha": "abc123",
+      "conclusion": "success",
+      "app": "github-actions"
+    },
+    {
+      "name": "typecheck",
+      "headSha": "abc123",
+      "conclusion": "success",
+      "app": "github-actions"
+    },
+    {
+      "name": "architecture",
+      "headSha": "abc123",
+      "conclusion": "success",
+      "app": "github-actions"
+    },
+    {
+      "name": "test",
+      "headSha": "abc123",
+      "conclusion": "success",
+      "app": "github-actions"
+    },
+    {
+      "name": "build",
+      "headSha": "abc123",
+      "conclusion": "success",
+      "app": "github-actions"
+    }
+  ],
+  "approvals": [
+    {
+      "reviewer": "reviewer-one",
+      "commit": "abc123",
+      "provider": "anthropic"
+    },
+    {
+      "reviewer": "reviewer-two",
+      "commit": "abc123",
+      "provider": "openai"
+    }
+  ],
+  "riskTier": "high",
+  "riskDomains": ["acl"],
+  "area": "80-89",
+  "approver": {
+    "identity": "human:00000000-0000-4000-8000-000000000001",
+    "kind": "person",
+    "personId": "00000000-0000-4000-8000-000000000001",
+    "email": "ian.lindsley@unfoldingword.org",
+    "grants": [
+      {
+        "grantId": "00000000-0000-4000-8000-000000000101",
+        "role": "admin",
+        "scopeKind": "org",
+        "scopeArea": null,
+        "expiresAt": null
+      }
+    ],
+    "interactive": true
+  },
+  "at": "2026-10-01T09:00:00.000Z",
+  "override": false,
+  "carries": [],
+  "requiredChecks": [
+    {
+      "app": "github-actions",
+      "name": "security-audit"
+    },
+    {
+      "app": "github-actions",
+      "name": "lint"
+    },
+    {
+      "app": "github-actions",
+      "name": "typecheck"
+    },
+    {
+      "app": "github-actions",
+      "name": "architecture"
+    },
+    {
+      "app": "github-actions",
+      "name": "test"
+    },
+    {
+      "app": "github-actions",
+      "name": "build"
+    }
+  ],
+  "closes": [],
+  "wraps": null,
+  "frozen": false,
+  "delegation": {
+    "delegationId": "00000000-0000-4000-8000-0000000000d1",
+    "maxTier": "high",
+    "protectedTouched": []
+  }
+}

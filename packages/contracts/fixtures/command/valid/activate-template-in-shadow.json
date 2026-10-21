@@ -1,0 +1,13 @@
+{
+  "command": "activate_template",
+  "requestId": "00000000-0000-4000-8000-0000000000aa",
+  "harnessKey": "tc-admin-app",
+  "jdArea": "80-89",
+  "template": "check-only",
+  "repository": "unfoldingWord/tc-admin-app",
+  "shadow": true,
+  "externalReviewerIdentities": ["uwreview[bot]"],
+  "requiredChecks": [],
+  "protectedPaths": [],
+  "botAuthors": ["dependabot[bot]"]
+}

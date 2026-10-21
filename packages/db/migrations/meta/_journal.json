@@ -204,6 +204,83 @@
       "when": 1791094985118,
       "tag": "0028_contract_12_1_checks",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1792105514848,
+      "tag": "0029_joining",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1792108239564,
+      "tag": "0030_requested_reviewers_bounded",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1792110961248,
+      "tag": "0031_joined_once",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1792113404531,
+      "tag": "0032_ship_rule_and_gates",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1792125065271,
+      "tag": "0033_merge_delegation",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1792127044952,
+      "tag": "0034_delegated_decision_binding",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1792131155996,
+      "tag": "0035_delegated_exit_claimed",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1792133448500,
+      "tag": "0036_fix_claim",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1792138730111,
+      "tag": "0037_epic_intake",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1792162956566,
+      "tag": "0038_observability_and_hooks",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1792419691458,
+      "tag": "0039_delegated_grantor_binding",
+      "breakpoints": true
     }
   ]
 }

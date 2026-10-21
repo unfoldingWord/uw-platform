@@ -93,7 +93,7 @@ async function cardFacts(world: BoardWorld): Promise<void> {
   );
   expect(metaOf(card)).toEqual({
     Issue: 'None',
-    Holder: 'agent:builder',
+    Holder: 'Claimed by agent:builder, for 3 h 0 min',
     Host: 'Platform',
     Lease: 'Until 2026-10-02 10:00 UTC',
     Risk: 'Not derived',
@@ -115,7 +115,7 @@ async function leaseForAgentOnly(world: BoardWorld): Promise<void> {
     'Until 2026-10-02 10:00 UTC',
   );
   const person = metaOf(cardOf(document, 'Review the copy'));
-  expect(person['Holder']).toBe(world.ian.identity);
+  expect(person['Holder']).toBe(`Claimed by ${world.ian.identity}, for 3 h 0 min`);
   expect(person['Host']).toBe('Person');
   expect(person['Lease']).toBeUndefined();
 }

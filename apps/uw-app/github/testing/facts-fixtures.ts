@@ -39,6 +39,9 @@ export const labelledIssue: IssueRecord = {
   labels: ['harness'],
   milestoneId: milestone.githubId,
   githubUpdatedAt: new Date('2026-10-02T08:00:00.000Z'),
+  subIssues: 0,
+  doneWhen: ['The board lists every stage.'],
+  blockedBy: [],
 };
 
 export const declaration: PullRequestDeclaration = {
@@ -62,8 +65,11 @@ export const openedPull: PullRequestRecord = {
   baseRef: 'main',
   baseSha: base,
   milestoneId: null,
+  requestedReviewers: [],
+  authorLogin: 'ianjl',
   declaration,
   declarationProblem: null,
+  closes: [{ repo: 'unfoldingWord/uw-platform', number: 12 }],
   githubUpdatedAt: new Date('2026-10-02T08:00:00.000Z'),
 };
 

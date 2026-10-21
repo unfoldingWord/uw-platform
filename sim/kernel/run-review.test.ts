@@ -27,7 +27,7 @@ async function inWorld(
 
 const approve = {
   verdict: 'approve' as const,
-  findings: ['The board change reads well.'],
+  findings: [{ text: 'The board change reads well.', weight: 'theoretical' as const }],
   resolvedProvider: 'deepinfra',
   resolvedModel: 'z-ai/glm-5.3',
 };

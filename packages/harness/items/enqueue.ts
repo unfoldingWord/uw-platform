@@ -1,4 +1,4 @@
-import type { Harness, IssueRef, ItemState } from '@uw/contracts';
+import type { EpicPlace, Harness, IssueRef, ItemState } from '@uw/contracts';
 import { allowed } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { actingPrincipal, isRefusal } from '../delegations/acting.ts';
@@ -24,6 +24,9 @@ export type EnqueueDraft = {
   readonly priority: number | null;
   readonly due: string | null;
   readonly issue: IssueRef | null;
+  readonly itemId?: string;
+  readonly epic?: EpicPlace | null;
+  readonly blockedBy?: readonly string[];
 };
 
 export async function enqueueIn(
@@ -41,10 +44,10 @@ export async function enqueueIn(
   const priority = input.priority ?? (await bottomOf(tx, harness.id, first.key));
   return accepted(
     await createItem(tx, context, {
-      itemId: context.ids.next(),
+      ...input,
+      itemId: input.itemId ?? context.ids.next(),
       harnessId: harness.id,
       stageKey: first.key,
-      ...input,
       priority,
     }),
   );

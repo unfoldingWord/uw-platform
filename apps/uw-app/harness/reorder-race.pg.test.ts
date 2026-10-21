@@ -1,3 +1,4 @@
+import { defaultCiChecks } from '@uw/contracts';
 import type { HarnessEvent, ItemState, Principal } from '@uw/contracts';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
@@ -61,6 +62,7 @@ async function openStage(
       jdArea: '80-89',
       template: software,
       repository: null,
+      requiredChecks: [...defaultCiChecks],
     }),
   );
   const itemIds: string[] = [];

@@ -1,4 +1,4 @@
-import { ciJobSchema, type ItemState, type Principal } from '@uw/contracts';
+import { ciJobSchema, type ItemState, type Principal, defaultCiChecks } from '@uw/contracts';
 import { createClient, type Database } from '@uw/db/client';
 import { lockWaiters } from '@uw/db/store';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
@@ -18,6 +18,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import { awaitBlocked } from '../../../packages/harness/port-contracts/lock-wait.ts';
 import { platformStore } from '../ports/store.ts';
+import { listForDispatch } from '../testing/dispatch.ts';
 import { agentOf, fixedFacts, kernelOn, personOn } from '../testing/kernel.ts';
 
 const ianId = '00000000-0000-4000-8000-000000000001';
@@ -73,6 +74,15 @@ function greenFacts(itemId: string): PullRequestFacts {
       riskTier: 'standard',
       riskDomains: [],
     },
+    closes: [],
+    comparison: {
+      head,
+      base: '0'.repeat(40),
+      behindBy: 0,
+      patchId: 'b'.repeat(64),
+      commits: [{ sha: head, merge: false, skipCi: false, closes: [] }],
+      patchIds: { [head]: 'b'.repeat(64) },
+    },
     freshAt: instant,
   };
 }
@@ -98,7 +108,12 @@ async function passStage(kernel: Kernel, worker: Principal, itemId: string, chan
   return accepted(submitted, 'submit').item;
 }
 
-async function parkAtShip(kernel: Kernel, ian: Principal, harnessId: string): Promise<ItemState> {
+async function parkAtShip(
+  db: Database,
+  kernel: Kernel,
+  ian: Principal,
+  harnessId: string,
+): Promise<ItemState> {
   accepted(
     await kernel.stages.activate(caller(ian), {
       harnessId,
@@ -106,9 +121,11 @@ async function parkAtShip(kernel: Kernel, ian: Principal, harnessId: string): Pr
       jdArea: '80-89',
       template: software,
       repository: 'unfoldingWord/uw-platform',
+      requiredChecks: [...defaultCiChecks],
     }),
     'activate',
   );
+  await listForDispatch(db, 'unfoldingWord/uw-platform');
   const { itemId } = accepted(
     await kernel.items.enqueue(caller(ian), {
       harnessId,
@@ -212,7 +229,7 @@ async function withConnections(work: (connections: Connections) => Promise<void>
 async function parkedOn(connections: Connections): Promise<Omit<Race, 'connectors'>> {
   const { one } = connections;
   const ian = await personOn(one, ianId, 'ian.lindsley@unfoldingword.org', instant);
-  const item = await parkAtShip(kernelOn(one, decidedClock), ian, crypto.randomUUID());
+  const item = await parkAtShip(one, kernelOn(one, decidedClock), ian, crypto.randomUUID());
   return { connections, ian, item };
 }
 

@@ -1,11 +1,12 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { delegatedIdentity, principalSchema, type Principal } from '@uw/contracts';
+import { delegatedIdentity, principalSchema, type Principal, defaultCiChecks } from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
 import { seedActivePersona, seedGrant, seedPerson } from '@uw/db/test-seed';
 import { DEFAULT_SPEND_CAP, software, type Caller, type Kernel } from '@uw/harness';
 import { systemClock } from '../ports/clock.ts';
+import { listForDispatch } from '../testing/dispatch.ts';
 import { agentOf, kernelOn, personOn } from '../testing/kernel.ts';
 import type { VerbContext } from './context.ts';
 import { callVerb } from './dispatch.ts';
@@ -39,7 +40,7 @@ function value<T>(outcome: { status: 'accepted'; value: T } | { status: 'error';
   return outcome.value;
 }
 
-async function gatedHarness(kernel: Kernel, ian: Principal): Promise<string> {
+async function gatedHarness(db: Database, kernel: Kernel, ian: Principal): Promise<string> {
   const harnessId = crypto.randomUUID();
   const activate = {
     harnessId,
@@ -47,8 +48,10 @@ async function gatedHarness(kernel: Kernel, ian: Principal): Promise<string> {
     jdArea: '80-89',
     template: software,
     repository: 'unfoldingWord/uw-platform',
+    requiredChecks: [...defaultCiChecks],
   };
   value(await kernel.stages.activate(caller(ian), activate));
+  await listForDispatch(db, activate.repository);
   const change = { exitGate: 'human_approval' as const };
   value(await kernel.stages.updateStage(caller(ian), { harnessId, stageKey: 'check', change }));
   return harnessId;
@@ -57,7 +60,12 @@ async function gatedHarness(kernel: Kernel, ian: Principal): Promise<string> {
 async function actorsOf(db: Database, kernel: Kernel, owner: Principal, harnessId: string) {
   const input = { harnessId, persona: 'agent:builder', capability: 'build' as const };
   const delegation = value(
-    await kernel.delegations.grant(caller(owner), { ...input, expiresAt: null, supersedes: null }),
+    await kernel.delegations.grant(caller(owner), {
+      ...input,
+      maxTier: null,
+      expiresAt: null,
+      supersedes: null,
+    }),
   );
   await seedActivePersona(db, { identity: 'agent:builder', harnessId });
   const delegated = principalSchema.parse({
@@ -86,7 +94,7 @@ async function openRig(): Promise<Rig> {
   const kernel = kernelOn(db, systemClock);
   const ian = await personOn(db, IAN_ID, 'ian.lindsley@unfoldingword.org', new Date());
   const owner = await personOn(db, OWNER.id, OWNER.email, new Date());
-  const harnessId = await gatedHarness(kernel, ian);
+  const harnessId = await gatedHarness(db, kernel, ian);
   const actors = await actorsOf(db, kernel, owner, harnessId);
   const drop = async () => {
     await db.$client.end();

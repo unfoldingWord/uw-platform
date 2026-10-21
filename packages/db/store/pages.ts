@@ -1,5 +1,10 @@
 import { and, asc, eq, inArray, ne, sql, type SQL } from 'drizzle-orm';
-import { frontmatterSchema, pageStatusSchema, pageTypeSchema } from '@uw/contracts';
+import {
+  frontmatterSchema,
+  pageStatusSchema,
+  pageTypeSchema,
+  platformPageSlug,
+} from '@uw/contracts';
 import { isoDateSchema } from '@uw/core/dates';
 import type { AnyExecutor } from '../any-database.ts';
 import { pages, pageVersions } from '../schema.ts';
@@ -110,6 +115,17 @@ async function activatePersona(
   return toFacts(row);
 }
 
+async function platformFor(executor: AnyExecutor, jdArea: string): Promise<PageFacts | null> {
+  const [row] = await executor
+    .select(factColumns)
+    .from(pages)
+    .where(
+      and(eq(pages.jdArea, jdArea), eq(pages.slug, platformPageSlug), eq(pages.type, 'platform')),
+    )
+    .limit(1);
+  return row === undefined ? null : toFacts(row);
+}
+
 export function bindPages(executor: AnyExecutor): PagesGateway {
   return {
     read: {
@@ -118,6 +134,7 @@ export function bindPages(executor: AnyExecutor): PagesGateway {
         return factsWhere(executor, inArray(pages.id, [...pageIds]));
       },
       staleLearnings: (today, limit) => staleLearnings(executor, today, limit),
+      platformFor: (jdArea) => platformFor(executor, jdArea),
     },
     write: { activatePersona: (activation) => activatePersona(executor, activation) },
   };
