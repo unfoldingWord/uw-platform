@@ -8,7 +8,7 @@ Every icon on a screen comes through one icon component in `packages/ui`, by nam
 
 The build, every test and the screenshot check pass without the token (PRD DX-8), and the committed screenshots are taken with the free fallback so CI can reproduce them. Production and staging builds that hold the token draw Pro.
 
-**Why.** The approved look uses Font Awesome Pro Regular; unfoldingWord holds a Pro licence, used by `bt-servant-web-client`. This repository is public, and the Pro artwork may not be published in it.
+**Why.** The approved look uses Font Awesome Pro Regular. The Pro packages are installed in `bt-servant-web-client`, so a Pro licence is in use; whether it is unfoldingWord's and covers this repository is what Ian confirms below. This repository is public, and the Pro artwork may not be published in it.
 
 **Rejected.** Committing the SVG paths of the thirty or so icons used, which would publish Pro artwork. Font Awesome Free only, which lacks the Regular style for most of the icons the look uses. A different open icon set, which would change the approved look.
 
