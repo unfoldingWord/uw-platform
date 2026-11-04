@@ -39,7 +39,7 @@ These are settled. Work inside them; changing one is an architecture change (sec
 | Authorization | Plan §4: `role_grants` with `admin | editor | viewer` at `org` or `jd_area` scope, one `can(actor, verb, resource)`, a principal minted at the edge on every request. The harness derives from it and adds nothing beside it |
 | Conventions | Plan §0: dates `YYYY-MM-DD` through one `formatDate`/`parseDate` pair, money in integer minor units, UUID ids with slugs, Zod at every boundary |
 | Contracts | `packages/contracts` publishes commands, events, outcomes and the verb registry as Zod, one live version, golden fixtures, a conformance test (spec D4) |
-| Design | Tailwind 4 over the brand tokens in `packages/ui/tokens/*.css`; light and dark follow the system setting with a persisted override; Kindle orange marks a human action and nothing else (ADR 0007) |
+| Design | Tailwind 4 over one token system in `packages/ui/tokens/*.css`, generated from the brand colours and locked: the token scales are the whole Tailwind theme, spacing included, and an arbitrary value fails the build; light and dark follow the system setting with a persisted override; Kindle orange marks a human action and nothing else (ADR 0007, ADR 0011) |
 | Package manager | pnpm workspaces, Node 22 |
 | Toolchain | ESLint flat config with fitness functions, Prettier, Vitest on the Workers pool, dependency-cruiser, knip, Husky, `pnpm audit` |
 | Tests | Vitest. Scenarios in `sim/scenarios/` named for the PRD requirement ID they prove, tests at each module's interface, one contract test per port run against every adapter, and the tests only separate connections can prove on a Postgres service container in CI (PRD DX-6). No test needs a live account or a secret (PRD DX-8) |
@@ -146,11 +146,11 @@ Before writing a utility, a client, a parser or a component, search for an exist
 ## 6. UI rules
 
 - Before any UI work read ADR 0007, then `packages/ui/tokens/`, then the existing screens under `apps/uw-app/views/`, or `design-system/` when it exists.
-- Tokens are the only source of a color, size or radius. A value not in the tokens is a design change, not a code change; the tokens-agree check fails the build on a hard-coded hex.
+- Tokens are the only source of a color, size, spacing step, radius or shadow. A value not in the tokens is a design change, not a code change; the build fails on a hard-coded hex and on an arbitrary Tailwind value such as `p-[18px]` (ADR 0011).
 - Every screen renders correctly in light and dark, at phone width, with visible focus and an accessible name on every control.
 - Every control returns an outcome; an unwired control says so. Never silence.
 - Kindle orange marks a human action and nothing else. There is no red for status; refusals are shown in place, on the control that refused, with the closed-set reason.
-- Copy is sentence case, second person, no exclamation marks, no emoji. `unfoldingWord` is camelCase every time.
+- Copy is sentence case, second person, no exclamation marks, no emoji. Navigation items and page names are Title Case, every word capitalized ("Waiting On You", "My Items"). `unfoldingWord` is camelCase every time.
 
 ## 7. Working steps
 
@@ -174,11 +174,11 @@ When a person asks for the whole scope, or a version, to be built, that request 
 - **The input is `docs/PRD.md`.** Work through section 13 in order. Write one implementation plan per build-order step, against the code that exists at that moment, under `docs/superpowers/plans/`. Each plan names `docs/PRD.md` as its spec and lists the requirement IDs it covers. Execute each plan as soon as it is written; do not wait for a person to approve a plan or to choose how it runs.
 - **The PRD is the approved spec.** Do not brainstorm, do not write another spec, and do not ask for the PRD or a plan to be approved. Go from `docs/PRD.md` straight to writing plans. A version's design may live beside the PRD as a document under `docs/superpowers/specs/`, named from the PRD section that holds that version's requirements; the PRD stays the list of work, every plan still names it as spec, and where the two disagree on design the design wins and the PRD is corrected.
 - **Subagents are requested.** When the person names subagent-driven development, every subagent that skill dispatches is requested by them for the whole build: the implementer per task, the reviewer per task, the fix rounds and the whole-branch review. Do not ask again, and do not skip the reviewers.
-- **Worktree: yes, without asking.** The declared preference is an isolated git worktree on a new branch named `build/<version>` (`build/v1` for v0.1.0, `build/v0.2.0` after it). Create it at the start and do not ask for consent.
+- **Branch: yes, without asking; no worktree.** Build on a new branch named `build/<version>` (`build/v1` for v0.1.0, `build/v0.2.0` and `build/v0.3.0` after it) in the main checkout. Do not create a git worktree, even where a skill asks for one (Ian, 2026-11-04). Create the branch at the start and do not ask for consent.
 - **Rulings, not stalls.** Where the PRD, the spec and this file leave a choice open, make it, record it in `docs/progress_tracker.md` with what it costs if wrong, and keep going.
 - **Nothing waits on a person.** No account, secret or installation in PRD section 15 is needed to finish the build (PRD DX-8). Prove every requirement against test adapters and fixtures, write the platform adapter, record it under "Waiting on a person" in the tracker as awaiting live verification, and move to the next requirement. Never add a binding, a job or a test that fails when a secret is absent. The staging acceptance run and the first real item (PRD section 14, items 7 to 10) are a person's to do.
 - **Branch and push.** Build on a branch, not on `main`. Push whenever `pnpm verify` is green and a requirement or a plan is complete. Open one draft pull request for the branch at the first push, so CI and the per-PR Worker run on every push after it. Never force-push.
-- **The build is over** when PRD section 14, items 1 to 6, hold and the tracker says so with the evidence. Then mark the pull request ready and report: what is built, every ruling made, everything not verified, and everything waiting on a person. Do not present a menu of ways to finish; the choice is made: push the branch, keep the worktree, mark the pull request ready, and leave the merge to a person.
+- **The build is over** when PRD section 14, items 1 to 6, hold and the tracker says so with the evidence. Then mark the pull request ready and report: what is built, every ruling made, everything not verified, and everything waiting on a person. Do not present a menu of ways to finish; the choice is made: push the branch, mark the pull request ready, and leave the merge to a person.
 
 Stop and ask only for these: a destructive or irreversible operation; a change that would let an agent identity pass a human gate; merging to `main`; anything touching production; a secret you would have to invent or paste into a file.
 
