@@ -11,6 +11,6 @@
     "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json"
   },
   "dependencies": {
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   }
 }
