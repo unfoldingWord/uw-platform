@@ -19,6 +19,17 @@ import type { VerbContext } from '../mcp/context.ts';
 import { fixtureAccessEnv } from './access-keys.ts';
 
 type Transport = Parameters<Client['connect']>[0];
+type RelayedSendOptions = Parameters<Transport['send']>[1];
+type InnerSendOptions = Parameters<StreamableHTTPClientTransport['send']>[1];
+
+function innerOptions(options: RelayedSendOptions): InnerSendOptions {
+  if (options === undefined) return undefined;
+  const { resumptionToken, onresumptiontoken } = options;
+  return {
+    ...(resumptionToken === undefined ? {} : { resumptionToken }),
+    ...(onresumptiontoken === undefined ? {} : { onresumptiontoken }),
+  };
+}
 
 function relay(inner: StreamableHTTPClientTransport): Transport {
   const relayed: Transport = {
@@ -28,7 +39,7 @@ function relay(inner: StreamableHTTPClientTransport): Transport {
       inner.onclose = () => relayed.onclose?.();
       await inner.start();
     },
-    send: (message, options) => inner.send(message, options),
+    send: (message, options) => inner.send(message, innerOptions(options)),
     close: () => inner.close(),
     setProtocolVersion: (version) => inner.setProtocolVersion(version),
   };
