@@ -415,7 +415,7 @@ This section is the list of work for v0.3.0 and the design document is why; wher
 | UI-15 | **Three reads.** Runs and gate waits per day over 30 days, for the platform and per harness; each item's latest event; the items the viewer holds. No new table Cost: additive. | Must | Design section 7; V3-11 |
 | UI-16 | **The screenshot check.** Every screen rendered from the seeded fixtures in light and dark, at desktop and phone width, in CI, and compared with committed pictures taken with the free icon fallback; a planted change to a token value fails it Cost: additive. | Must | Design section 1 |
 | UI-17 | **Navigation copy.** Navigation items and page names are Title Case, every word capitalized; all other copy stays sentence case, with a test over the sidebar and page titles Cost: shared root `AGENTS.md`. | Must | V3-9 |
-| UI-18 | **Harness display names.** `harnesses.title`, defaulting to `key`, shown wherever a person reads a harness's name; the key stays in identifiers and URLs Cost: shared root `packages/db/schema.ts`. | Must | V3-10 |
+| UI-18 | **Harness display names.** `harnesses.title`, not null and without a default (Postgres cannot default one column to another): the migration backfills `title = key` and then sets not null; the stages module, its one writer, sets it on insert from the creating command or else the key; an admin command `set_title` changes it and records `title_set`; the key never changes, so they cannot drift. The title is shown wherever a person reads a harness's name, the key stays in identifiers and URLs. Tests cover the backfill, the insert with and without a title, and `set_title` refused to an agent and to a non-admin Cost: shared root `packages/db/schema.ts`, `packages/contracts`. | Must | V3-10; design section 7 |
 
 ---
 
@@ -884,7 +884,7 @@ Made between 2026-10-21 and 2026-11-04 by Ian and Claude over ten rounds of a mo
 | V3-7 | **Font Awesome Pro by token, Free as the fallback, Pro artwork never committed** (ADR 0013) | The licence does not cover the token install; every environment then draws the fallback until it is settled |
 | V3-8 | **Charts are Apache ECharts 6 as SVG,** server-rendered where the security policy allows (ADR 0012) | The spike finds neither path clean; the chart becomes an island with its value also as text |
 | V3-9 | **Navigation and page names are Title Case** | Mixed case in the copy reads inconsistent; it is one rule to reverse |
-| V3-10 | **A harness has a display name,** `harnesses.title` | One column and one migration |
+| V3-10 | **A harness has a display name,** `harnesses.title`, backfilled from the key and changed only by the admin command `set_title` (design section 7) | One column, one migration, one admin command and one event |
 | V3-11 | **Nothing on a screen is invented:** live readouts, per-indicator history and a lease progress bar are not drawn because nothing records them | The screens feel less alive until the data exists |
 | V3-12 | **The mockup is not committed;** the design document's screenshots are the record | Rebuilding a detail means reading a picture, not copying code |
 | V3-13 | **Normal branches, no worktrees,** for builds (`AGENTS.md` section 8) | Work in progress shares one checkout; a second task waits or stashes |
