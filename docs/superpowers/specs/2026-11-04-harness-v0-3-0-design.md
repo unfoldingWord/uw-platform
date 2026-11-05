@@ -202,7 +202,7 @@ One column, `harnesses.title`, text, not null, with no default: Postgres cannot 
 
 - **Backfill.** The migration adds the column nullable, sets `title = key` on every existing row, then makes it not null, in one migration.
 - **Creation.** The stages module, `harnesses`' one writer (`packages/harness/stages/owns.ts`), sets `title` on insert: the title the creating command carries if it carries one, otherwise the key.
-- **Change.** An admin command `set_title` on the harness's area, the same shape as `set_hosted_builder`, sets it through a new write operation on the stages module and records a `title_set` event naming the old and new title. Nothing else writes it.
+- **Change.** An admin command `set_title` on the harness's area, the same shape as `set_hosted_builder`, sets it through a new write operation on the stages module and records a `title_set` harness event with strict evidence `{ from, to }`, the old and new title (PRD section 8.6). Nothing else writes it.
 - **Key changes.** A harness's key never changes: the stages module has no operation that sets it. So title and key cannot drift; the title is free text once set, and a change to it never changes the key.
 
 So "Software" and "BML" are titles an admin sets with `set_title` after the backfill leaves them as `software` and `bml`. Three reads, none of which adds a table: runs per day from `harness_runs.started_at` and gate waits per day from `harness_items.held_since` and `gate_decisions`, both over 30 days; the latest `harness_events` row per item; and items whose `claimed_by` is the viewer. Apart from `set_title` and `title_set`, no event, verb, command or closed set changes; no agent verb is added, and an agent cannot reach `set_title`.
