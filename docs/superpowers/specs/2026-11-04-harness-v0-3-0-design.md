@@ -36,7 +36,7 @@ The words are `CONTEXT.md`'s. Three are used here in a narrower sense.
 | V3-7 | **Icons are Font Awesome Pro, never committed.** Installed with a token; the build falls back to Font Awesome Free when the token is absent (ADR 0013) | The approved look uses Pro Regular; the repository is public and the Pro files may not be in it |
 | V3-8 | **Charts are Apache ECharts 6, as SVG** (ADR 0012) | The same library and settings as `bt-servant-telemetry`; SVG can be rendered on the server |
 | V3-9 | **Navigation and page names are Title Case** ("Waiting On You", "My Items", "Software"); everything else stays sentence case | Ian, 2026-11-04 |
-| V3-10 | **A harness has a display name** (`harnesses.title`, defaulting to its key) | People read "Software" and "BML"; the key stays in code-like places |
+| V3-10 | **A harness has a display name,** `harnesses.title`, separate from its key and set by an admin (section 7) | People read "Software" and "BML"; the key stays in code-like places |
 | V3-11 | **Nothing on a screen is invented.** Every figure has a source in the database; what is not recorded is not drawn | Round 8: live agent readouts, per-indicator history and a lease progress bar were removed because nothing records them |
 | V3-12 | **The mockup is not committed.** It embeds Font Awesome Pro paths; the screenshots in this folder are the record | The licence |
 | V3-13 | **Normal branches, no worktrees,** for this version's build | Ian, 2026-11-04; `AGENTS.md` section 8 is amended in the same pull request |
@@ -194,11 +194,18 @@ The rows are PRD section 7.12. Each is proven by a test or a scenario named for 
 | UI-15 | Three reads: runs and gate waits per day over 30 days, each item's last event, and the items the person holds |
 | UI-16 | The screenshot check: every screen in light and dark, desktop and phone, rendered from the seeded fixtures in CI and compared with committed pictures |
 | UI-17 | Title Case for navigation and page names; sentence case everywhere else |
-| UI-18 | `harnesses.title`, defaulting to the key, shown wherever a person reads a harness's name |
+| UI-18 | `harnesses.title`, backfilled from the key, set on creation and by an admin command, shown wherever a person reads a harness's name (section 7) |
 
 ## 7. Data and contracts
 
-One column: `harnesses.title`, text, not null, defaulting to `key` in its migration. Three reads, none of which adds a table: runs per day from `harness_runs.started_at` and gate waits per day from `harness_items.held_since` and `gate_decisions`, both over 30 days; the latest `harness_events` row per item; and items whose `claimed_by` is the viewer. No event, verb, command or closed set changes.
+One column, `harnesses.title`, text, not null, with no default: Postgres cannot default one column to another. Its invariant:
+
+- **Backfill.** The migration adds the column nullable, sets `title = key` on every existing row, then makes it not null, in one migration.
+- **Creation.** The stages module, `harnesses`' one writer (`packages/harness/stages/owns.ts`), sets `title` on insert: the title the creating command carries if it carries one, otherwise the key.
+- **Change.** An admin command `set_title` on the harness's area, the same shape as `set_hosted_builder`, sets it through a new write operation on the stages module and records a `title_set` event naming the old and new title. Nothing else writes it.
+- **Key changes.** A harness's key never changes: the stages module has no operation that sets it. So title and key cannot drift; the title is free text once set, and a change to it never changes the key.
+
+So "Software" and "BML" are titles an admin sets with `set_title` after the backfill leaves them as `software` and `bml`. Three reads, none of which adds a table: runs per day from `harness_runs.started_at` and gate waits per day from `harness_items.held_since` and `gate_decisions`, both over 30 days; the latest `harness_events` row per item; and items whose `claimed_by` is the viewer. Apart from `set_title` and `title_set`, no event, verb, command or closed set changes; no agent verb is added, and an agent cannot reach `set_title`.
 
 ## 8. Shared roots touched
 
@@ -207,6 +214,7 @@ One column: `harnesses.title`, text, not null, defaulting to `key` in its migrat
 | `docs/adr/` | ADRs 0011, 0012, 0013 | This pull request |
 | `AGENTS.md` | Section 1's design row cites ADR 0011; section 6's copy rule gains Title Case for navigation; section 8 builds on a normal branch | This pull request |
 | `packages/db/schema.ts` | `harnesses.title` | The build, step 22 |
+| `packages/contracts/` | The `set_title` command and the `title_set` event | The build, step 22 |
 
 ## 9. Build order
 
