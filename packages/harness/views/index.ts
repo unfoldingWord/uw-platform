@@ -6,6 +6,7 @@ import type { Ports } from '../ports.ts';
 import { boardView } from './board.ts';
 import { delegatedMerges, type DelegatedMergeList } from './delegated-merges.ts';
 import { flowView } from './flow.ts';
+import { frameCounts, type FrameCounts } from './frame.ts';
 import { holdsOf, type Holds } from './holds.ts';
 import { decidableGates, decideAbility, gateDecided } from './gates.ts';
 import { planeList } from './plane-list.ts';
@@ -37,6 +38,7 @@ type Gate = { readonly harness: Harness; readonly stage: Stage; readonly item: I
 
 export type ViewReads = {
   harnesses(caller: Caller, options?: ReadOptions): Promise<readonly Harness[]>;
+  frame(caller: Caller, options?: ReadOptions): Promise<FrameCounts>;
   flow(
     caller: Caller,
     input: { readonly harnessId: string },
@@ -114,6 +116,15 @@ function scopedReads(ports: ViewPorts): Pick<ViewReads, 'silence' | 'holds'> {
   };
 }
 
+function frameRead(ports: ViewPorts): Pick<ViewReads, 'frame'> {
+  return {
+    frame: (caller, options) => {
+      const at = options?.at ?? ports.clock.now();
+      return ports.store.transaction((tx) => frameCounts(ports, tx, caller, at));
+    },
+  };
+}
+
 export function createViewReads(ports: ViewPorts): ViewReads {
   const instant = (options?: ReadOptions): Date => options?.at ?? ports.clock.now();
   const { store } = ports;
@@ -122,6 +133,7 @@ export function createViewReads(ports: ViewPorts): ViewReads {
       const at = instant(options);
       return store.transaction((tx) => readableHarnesses(ports, tx, caller, at));
     },
+    ...frameRead(ports),
     flow: (caller, input, options) => {
       const at = instant(options);
       return store.transaction((tx) => flowView(ports, tx, caller, input.harnessId, at));
