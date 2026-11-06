@@ -74,9 +74,12 @@ export const protectedPathsSchema = z
   .max(50)
   .refine(distinct, 'each protected path once');
 
+export const harnessTitleSchema = z.string().trim().min(1).max(80);
+
 export const harnessSchema = z.strictObject({
   id: z.uuid(),
   key: slugSchema,
+  title: harnessTitleSchema,
   template: slugSchema,
   jdArea: jdAreaSchema,
   repository: repositorySchema.nullable(),

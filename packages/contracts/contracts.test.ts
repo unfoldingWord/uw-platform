@@ -339,6 +339,7 @@ describe('GL-2 GL-4 the contracts for shadow and refusals', () => {
     const older = {
       id: '00000000-0000-4000-8000-0000000000a1',
       key: 'software',
+      title: 'software',
       template: 'software',
       jdArea: '80-89',
       repository: 'unfoldingWord/uw-platform',
@@ -436,6 +437,7 @@ describe('FL-1 FL-2 FL-3 FL-4 the fix claim contracts', () => {
     const older = {
       id: delegationId,
       key: 'tc-admin-app',
+      title: 'tc-admin-app',
       template: 'software',
       jdArea: '80-89',
       repository: 'unfoldingWord/tc-admin-app',
@@ -470,7 +472,9 @@ describe('FL-1 FL-2 FL-3 FL-4 the fix claim contracts', () => {
       false,
     );
   });
+});
 
+describe('FL-3 FL-4 the fix claim refusals and results', () => {
   it('FL-3 a fix is refused with its own reasons, and a passing fix waits for review', () => {
     expect(errorReasonSchema.options).toContain('fix_size_cap');
     expect(errorReasonSchema.options).toContain('fix_keeps_purpose');
@@ -479,5 +483,48 @@ describe('FL-1 FL-2 FL-3 FL-4 the fix claim contracts', () => {
 
   it('FL-4 a run that ran no declared checks fails checks_not_run_locally', () => {
     expect(closedSets.runFailureSchema.options.at(-1)).toBe('checks_not_run_locally');
+  });
+});
+
+describe('UI-18 the contracts for a harness display name', () => {
+  const requestId = '3f1d7c1e-8c53-4a53-9d6e-0a9b6a0f4d11';
+  const harness = {
+    id: '00000000-0000-4000-8000-0000000000a1',
+    key: 'software',
+    title: 'Software',
+    template: 'software',
+    jdArea: '80-89',
+    repository: null,
+    hostedBuilderEnabled: false,
+    paused: false,
+  };
+
+  it('UI-18 a harness carries a title beside its key, trimmed, 1 to 80 characters', () => {
+    expect(harnessSchema.parse({ ...harness, title: '  Software  ' }).title).toBe('Software');
+    expect(harnessSchema.safeParse({ ...harness, title: '   ' }).success).toBe(false);
+    expect(harnessSchema.safeParse({ ...harness, title: 'x'.repeat(81) }).success).toBe(false);
+    expect(harnessSchema.safeParse({ ...harness, title: undefined }).success).toBe(false);
+  });
+
+  it('UI-18 set_title carries a title, and activate_template may carry one', () => {
+    const command = { command: 'set_title', requestId, title: 'Software' };
+    expect(commandSchema.parse(command)).toEqual(command);
+    expect(commandSchema.safeParse({ command: 'set_title', requestId }).success).toBe(false);
+    const activate = {
+      command: 'activate_template',
+      requestId,
+      harnessKey: 'bml',
+      title: 'BML',
+      jdArea: '80-89',
+      template: 'software',
+      repository: null,
+    };
+    expect(commandSchema.parse(activate)).toMatchObject({ title: 'BML' });
+  });
+
+  it('UI-18 title_set records the title before and after', () => {
+    const evidence = { from: 'software', to: 'Software' };
+    expect(eventEvidenceSchemas.title_set.parse(evidence)).toEqual(evidence);
+    expect(eventEvidenceSchemas.title_set.safeParse({ to: 'Software' }).success).toBe(false);
   });
 });

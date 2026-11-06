@@ -29,7 +29,7 @@ const claimed = {
 
 describe('KN-3 the event vocabulary is PRD section 8.6', () => {
   it('has every name in the vocabulary and none of the placeholders it replaces', () => {
-    expect(eventNameSchema.options).toHaveLength(67);
+    expect(eventNameSchema.options).toHaveLength(68);
     expect(eventNameSchema.safeParse('stage_edited').success).toBe(true);
     expect(eventNameSchema.options[0]).toBe('item_created');
     expect(eventNameSchema.options).toContain('template_changed');
