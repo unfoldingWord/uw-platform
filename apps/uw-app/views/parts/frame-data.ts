@@ -16,7 +16,7 @@ function words(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-export function personOf(principal: Principal | null): Person | null {
+function personOf(principal: Principal | null): Person | null {
   if (principal === null || principal.email === null) return null;
   const parts = (principal.email.split('@')[0] ?? '').split(/[._-]+/).filter(Boolean);
   const name = parts.map(words).join(' ');
@@ -85,7 +85,7 @@ export function sectionsOf(counts: FrameCounts, watch: number): readonly NavSect
 
 const reachableIn = /^reachable in (\d+) ms$/;
 
-export function databaseMsOf(report: HealthReport | null): number | null {
+function databaseMsOf(report: HealthReport | null): number | null {
   const found = report?.indicators.find((indicator) => indicator.name === 'database');
   const ms = found === undefined ? undefined : reachableIn.exec(found.detail)?.[1];
   return ms === undefined ? null : Number(ms);

@@ -135,8 +135,8 @@ function Search() {
       class="mx-3 mb-2 flex h-size-5 items-center gap-2 rounded-md bg-raised px-2 text-sm text-text-3 shadow-1"
     >
       <Icon name="magnifying-glass" size={1} />
-      <span>Search or jump to…</span>
-      <span class="ml-auto text-xs">Not wired yet</span>
+      <span class="min-w-0 truncate">Search or jump to…</span>
+      <span class="ml-auto shrink-0 text-xs whitespace-nowrap">Not wired yet</span>
     </div>
   );
 }

@@ -4,7 +4,7 @@ import type { AppEnv } from '../deps.ts';
 import { cachedHubHealth } from './hub.ts';
 import { screenReport, type HealthDeps } from './screen-report.ts';
 
-export const FRAME_HEALTH_CACHE_MS = 30_000;
+const FRAME_HEALTH_CACHE_MS = 30_000;
 const FRAME_HEALTH_PEOPLE = 500;
 
 export type FrameHealth = () => Promise<HealthReport | null>;
