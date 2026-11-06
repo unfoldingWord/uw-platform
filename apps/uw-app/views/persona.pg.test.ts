@@ -316,7 +316,7 @@ async function rendersCleanly(db: Database): Promise<void> {
   expect(document.querySelector('meta[name="color-scheme"]')?.getAttribute('content')).toBe(
     'light dark',
   );
-  const kindled = [...document.querySelectorAll('main [class*="kindle"]')];
+  const kindled = [...document.querySelectorAll('main [class*="human"]')];
   expect(kindled.map((element) => [element.tagName, element.textContent])).toEqual([
     ['BUTTON', 'Activate'],
   ]);

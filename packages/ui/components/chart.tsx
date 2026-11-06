@@ -8,14 +8,14 @@ use([BarChart, LineChart, GridComponent, SVGRenderer]);
 
 const tokenClasses: Readonly<Record<string, { readonly fill: string; readonly stroke: string }>> = {
   'token-accent': { fill: 'fill-accent', stroke: 'stroke-accent' },
-  'token-human': { fill: 'fill-human', stroke: 'stroke-human' },
+  'token-text-2': { fill: 'fill-text-2', stroke: 'stroke-text-2' },
   'token-text-3': { fill: 'fill-text-3', stroke: 'stroke-text-3' },
   'token-line': { fill: 'fill-line', stroke: 'stroke-line' },
 };
 
 const tokenClassFor = new Map(Object.entries(tokenClasses));
 
-const tokenColour = (role: 'accent' | 'human' | 'text-3' | 'line'): string => `token-${role}`;
+const tokenColour = (role: 'accent' | 'text-2' | 'text-3' | 'line'): string => `token-${role}`;
 
 const styleElement = /<style\b[^>]*>[\s\S]*?<\/style>/g;
 const tag = /<([a-zA-Z]+)\b([^>]*?)(\/?)>/g;
@@ -115,7 +115,7 @@ function dailyOption(series: DailySeries): EChartsCoreOption {
               type: 'line',
               data: [...series.line],
               showSymbol: false,
-              lineStyle: { width: 2, color: tokenColour('human') },
+              lineStyle: { width: 2, color: tokenColour('text-2') },
             },
           ]),
     ],

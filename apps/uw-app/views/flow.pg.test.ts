@@ -117,7 +117,7 @@ async function stageFacts(world: BoardWorld): Promise<void> {
 
 async function kindleOnlyOnShip(world: BoardWorld): Promise<void> {
   const document = documentOf((await flowOf(world)).text);
-  const kindled = [...document.querySelectorAll('main [class*="kindle"]')];
+  const kindled = [...document.querySelectorAll('main [class*="human"]')];
   expect(kindled.length).toBeGreaterThan(0);
   for (const element of kindled) {
     const node = element.closest('[data-stage]');
@@ -127,7 +127,7 @@ async function kindleOnlyOnShip(world: BoardWorld): Promise<void> {
       (mark?.textContent ?? '').startsWith('Merge, tag, deploy');
     expect(onShip).toBe(true);
   }
-  expect(document.querySelector('main [data-stage="ship"] [class*="kindle"]')).not.toBeNull();
+  expect(document.querySelector('main [data-stage="ship"] [class*="human"]')).not.toBeNull();
   expect(stageRow(document, 'Merge, tag, deploy')[0]).toBe('Merge, tag, deployPerson decides');
 }
 
@@ -220,7 +220,7 @@ async function foreignTemplate(world: BoardWorld): Promise<void> {
     edge.getAttribute('data-feeds'),
   );
   expect(feeds).toEqual(['listen gather']);
-  expect(document.querySelector('main [data-stage="listen"] [class*="kindle"]')).not.toBeNull();
+  expect(document.querySelector('main [data-stage="listen"] [class*="human"]')).not.toBeNull();
 }
 
 async function cappedSaysAtLeast(world: BoardWorld): Promise<void> {

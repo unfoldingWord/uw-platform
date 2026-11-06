@@ -11,7 +11,7 @@ describe('the chart component renders ECharts as SVG on the server, for a strict
     expect(svg.startsWith('<svg')).toBe(true);
     expect(svg).toContain('role="img" aria-label="Agent runs per day"');
     expect(svg).toContain('class="fill-accent"');
-    expect(svg).toContain('stroke-human');
+    expect(svg).toContain('stroke-text-2');
     expect(svg).toContain('>Nov 2<');
   });
 
