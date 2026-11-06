@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| Status | Approved. v1 (sections 7.1 to 7.10) was built as v0.1.0, merge commit `83e3f64`, tagged 2026-10-12. v0.2.0 (section 7.11), approved on 2026-10-15, was built on `build/v0.2.0`, reviewed by Ian with Codex, merged as `2135ad5` (pull request #84) and tagged `v0.2.0` on 2026-10-20, with CI green on the merge commit; GL-1's live switch and the week of shadow mode are a person's, on the tag (`docs/progress_tracker.md`, Release criteria, v0.2.0) |
-| Version | 0.2 |
-| Date | 2026-10-15 (v1 text dated 2026-10-01) |
+| Status | Approved. v1 (sections 7.1 to 7.10) was built as v0.1.0, merge commit `83e3f64`, tagged 2026-10-12. v0.2.0 (section 7.11), approved on 2026-10-15, was built on `build/v0.2.0`, reviewed by Ian with Codex, merged as `2135ad5` (pull request #84) and tagged `v0.2.0` on 2026-10-20, with CI green on the merge commit; GL-1's live switch and the week of shadow mode are a person's, on the tag (`docs/progress_tracker.md`, Release criteria, v0.2.0). v0.3.0 (section 7.12), the look, proposed on 2026-11-04; its design is `docs/superpowers/specs/2026-11-04-harness-v0-3-0-design.md` and it is approved when the pull request that adds it merges |
+| Version | 0.3 |
+| Date | 2026-11-04 (v0.2.0 text dated 2026-10-15, v1 text 2026-10-01) |
 | Owner | Ian Lindsley |
 | Sponsor | unfoldingWord leadership |
 | Repository | https://github.com/unfoldingWord/uw-platform |
-| Design | The brand tokens in `packages/ui/tokens/`, extracted from the Claude Design prototype (removed from the repository on 2026-10-20) and [`prd/An App For Everything - Key Visuals.html`](../prd/An%20App%20For%20Everything%20-%20Key%20Visuals.html), until a `design-system/` folder lands |
+| Design | From v0.3.0, section 5 of [`docs/superpowers/specs/2026-11-04-harness-v0-3-0-design.md`](superpowers/specs/2026-11-04-harness-v0-3-0-design.md) (ADR 0011), built into `packages/ui/tokens/`, until a `design-system/` folder lands. Before it, the brand tokens extracted from the Claude Design prototype (removed from the repository on 2026-10-20) and [`prd/An App For Everything - Key Visuals.html`](../prd/An%20App%20For%20Everything%20-%20Key%20Visuals.html) |
 | Companions | [`prd/Harness v1 - Architecture.md`](../prd/Harness%20v1%20-%20Architecture.md) for the ratified design and its figures, [`prd/An App For Everything - Platform Architecture Plan.md`](../prd/An%20App%20For%20Everything%20-%20Platform%20Architecture%20Plan.md) for the platform it sits in, [`CONTEXT.md`](../CONTEXT.md) for the words, [`architecture.md`](architecture.md) for the shape, [`adr/`](adr/) for why |
 | Sources | The architecture spec v1.1, the sponsor's review of it, and GitHub issues #4 to #82 (67 issues: 7 closed, 60 open). Appendix B maps every issue to the requirements that replace it |
 
@@ -384,6 +384,39 @@ Every row follows this document's conventions: a stable ID, Must or Should, a sc
 | DX-9 | **The trace knows v0.2.0.** `pnpm trace` reads the v0.2.0 IDs (GL, MD, FL, UC, EI, SR, GD, RV, OB, PI, DX-9, DX-10) from PRD section 7.11 and reports them as it reports v1's; an unproven Must fails `pnpm test` Cost: additive. | Must | DX-5 |
 | DX-10 | **The joining journey.** One scenario drives section 4 end to end in the sim: a check-only harness in shadow mode, a review request, a Reviewer verdict recorded and not posted, a shadow verdict, shadow lifted, a posted review, Ship waiting on a person, then a merge under a delegation on a second item, refused on a third for a protected path Cost: additive. | Must | Section 4 |
 
+
+### 7.12 v0.3.0, the look (the design is `docs/superpowers/specs/2026-11-04-harness-v0-3-0-design.md`)
+
+This section is the list of work for v0.3.0 and the design document is why; where they disagree on design, the design wins and this section is corrected. The rows extend WB-11 and WB-12 and replace none of v0.2.0's. Costs use section 7.11's words.
+
+#### 7.12.1 Tokens and locks (UI)
+
+| ID | Requirement | Priority | Source |
+|---|---|---|---|
+| UI-1 | **The token system.** The colour scales, roles, type, spacing, size, radius, shadow and layout tokens of design section 5 in `packages/ui/tokens/`, light and dark, with a test that every text role on `--canvas`, `--surface` and `--raised`, and each text-on-soft pair, is at least 4.5:1 in both themes Cost: fixed decision (ADR 0011). | Must | Design section 5; V3-2, V3-5 |
+| UI-2 | **The lock.** The Tailwind theme is the token set and nothing else, spacing included; `pnpm verify` fails on an arbitrary value in a class (`p-[18px]`) and on a raw colour, size or shadow outside the token files, each proven against a planted fixture Cost: fixed decision (ADR 0011). | Must | V3-3 |
+| UI-3 | **Bundled fonts.** Nunito Sans (400, 600, 800) and JetBrains Mono (400) served from the Worker's own assets under `font-src 'self'`; no request leaves for a font Cost: additive. | Must | V3-6 |
+| UI-4 | **One icon component.** Icons by name; Font Awesome Pro Regular when its packages are installed, Duotone for large tiles; Font Awesome Free, or a same-size placeholder, when they are not. `pnpm verify` and the screenshot check pass with no Font Awesome token present Cost: fixed decision (ADR 0013). | Must | V3-7; DX-8 |
+
+#### 7.12.2 The frame and the screens (UI)
+
+| ID | Requirement | Priority | Source |
+|---|---|---|---|
+| UI-5 | **The frame.** Sidebar, top bar, status bar and phone header as design section 4.1, on every screen; the status bar's values come from the `/health` indicators and the deployed commit Cost: additive. | Must | Design section 4.1 |
+| UI-6 | **The Board.** The pipeline (display name, summary, brackets, stage nodes with counts, the gate node, the loops), its three figures, the filter chips, and the columns and cards of design section 4.4, for every template Cost: additive. | Must | Design section 4.4 |
+| UI-7 | **Gates.** The list and the decision of design section 4.5: the ship rule's checks as a ring and a list, unmet first and met folded, the callout, the risk, the activity, and the pinned decisions; one at a time on a phone Cost: additive. | Must | Design section 4.5 |
+| UI-8 | **Health.** The sentence, the four figures, the 30-day runs chart and the indicator rows of design section 4.8, each row opening its detail Cost: additive. | Must | Design section 4.8 |
+| UI-9 | **Home.** The four kinds of thing waiting on the person with their actions, a card per harness, and the push setting, as design section 4.2 Cost: additive. | Must | Design section 4.2 |
+| UI-10 | **Flow.** The stages by bracket with their figures, the gate, and the loops, as design section 4.3 Cost: additive. | Must | Design section 4.3 |
+| UI-11 | **Play-by-play.** The links, the filters by kind of event and the timeline of design section 4.6 Cost: additive. | Must | Design section 4.6 |
+| UI-12 | **Persona.** The figures, last runs and delegations of design section 4.7 Cost: additive. | Must | Design section 4.7 |
+| UI-13 | **Health detail.** One indicator's figures and listing, as design section 4.9 Cost: additive. | Must | Design section 4.9 |
+| UI-14 | **Charts.** Health's runs chart and the sparklines on Home and Persona drawn with Apache ECharts as SVG in the token colours; the value each shows is also in the page as text Cost: fixed decision (ADR 0012). | Must | V3-8 |
+| UI-15 | **Three reads.** Runs and gate waits per day over 30 days, for the platform and per harness; each item's latest event; the items the viewer holds. No new table Cost: additive. | Must | Design section 7; V3-11 |
+| UI-16 | **The screenshot check.** Every screen rendered from the seeded fixtures in light and dark, at desktop and phone width, in CI, and compared with committed pictures taken with the free icon fallback; a planted change to a token value fails it Cost: additive. | Must | Design section 1 |
+| UI-17 | **Navigation copy.** Navigation items and page names are Title Case, every word capitalized; all other copy stays sentence case, with a test over the sidebar and page titles Cost: shared root `AGENTS.md`. | Must | V3-9 |
+| UI-18 | **Harness display names.** `harnesses.title`, not null and without a default (Postgres cannot default one column to another): the migration backfills `title = key` and then sets not null; the stages module, its one writer, sets it on insert from the creating command or else the key; an admin command `set_title` changes it and records `title_set` (section 8.6, evidence `{ from, to }`); the key never changes, so they cannot drift. The title is shown wherever a person reads a harness's name, the key stays in identifiers and URLs. Tests cover the backfill, the insert with and without a title, and `set_title` refused to an agent and to a non-admin Cost: shared root `packages/db/schema.ts`, `packages/contracts`. | Must | V3-10; design section 7 |
+
 ---
 
 ## 8. Data and contracts
@@ -523,6 +556,8 @@ measurement_recorded  handed_to_person
 
 Added in v0.2.0: `review_verdict_recorded`, `shadow_verdict`, `shadow_lifted`, `freeze_changed`, `epic_enqueued`, `done_when_missing` (a harness event recording an intake refusal; EI-2), `finding_refuted`, `silence_alarm`, `delegated_merge`, `delegated_exit_claimed`, `template_changed`, `fix_claimed` (an item event: the delegation, the head the fix starts from and the pull request's declaration, FL-2), `fix_claim_set` (a harness event: `{ enabled }`, FL-1). The person command `set_fix_claim` switches a harness's fix claim (admin). Wake reasons gain `silence_alarm` (rank 3) and `delegated_merge` (rank 2).
 
+Added in v0.3.0 (UI-18, step 22, the next minor contract version): `title_set`, a harness event with no item, recorded by the admin command `set_title` as the person who ran it, with strict evidence `{ from, to }`: the previous title and the new one, each a trimmed string of 1 to 80 characters. Like `hosted_builder_set` it records a change to a harness setting whose current value is the column (`harnesses.title`). The migration's backfill of `title = key` records no event, because no person changed anything. `set_title` is not in the verb registry, so no agent can record it. Its fixtures go beside the other harness events', and the Health and play-by-play folds ignore it.
+
 `silence_alarm` (step 19) is a harness event recorded by the minute cron as the system: `{ level: 'red', waiting, oldestEnteredAt, lastReviewStepAt }`, at most one per harness per notifier cooldown; it wakes the area's admins at rank 3 with a link to `/health/silence_alarm`. `template_changed` (step 19, GL-5) records `{ from, to, kept, added }` (stage keys) beside the `stage_edited` rows of the same change.
 
 `delegated_merge` is recorded with `connector_succeeded` when a delegated exit merged, and carries the decision, the delegation, the grantor's id and email, the persona, the expiry and the tier (S16-R9). `delegation_granted` gains `maxTier` (null before contract 13.1.0). `delegated_exit_claimed` (`decisionId`) is the minute job's claim on a delegated decision, recorded under the item lock before the merge connector runs, so two overlapping runs never both take one decision to the connector; a claim with no outcome is left to a person's recovery after 15 minutes.
@@ -568,7 +603,7 @@ Since contract 12.1.0 (step 10), `persona_activated` carries `{ pageId, persona,
 
 ## 10. Design
 
-The source of truth for visual design is `packages/ui/tokens/`, extracted from the Claude Design prototype (removed from the repository on 2026-10-20; it remains in git history), and the token block in the Key Visuals page, until the sponsor's `design-system/` handoff lands. When it lands, its `tokens/*.css` replaces the interim extraction and nothing in the islands changes but the import.
+From v0.3.0 the source of truth for visual design is section 5 of the v0.3.0 design document, built into `packages/ui/tokens/` and locked in Tailwind (ADR 0011), and its screens are the pictures in section 4 of that document. Before v0.3.0 it was the tokens extracted from the Claude Design prototype (removed from the repository on 2026-10-20; it remains in git history) and the token block in the Key Visuals page. When the sponsor's `design-system/` handoff lands, its `tokens/*.css` replaces the token files and nothing in the islands changes but the import; the screenshot check (UI-16) shows what it changes.
 
 | Prototype screen | Harness view |
 |---|---|
@@ -586,7 +621,7 @@ The source of truth for visual design is `packages/ui/tokens/`, extracted from t
 - **Type.** Nunito Sans with Avenir fallback; monospace for identifiers.
 - **Layout.** Fluid, not the prototype's fixed 1440 by 1000. Phone width is first-class for the Gates view.
 - **Figure key.** Ocean outline for what the plan had, Inspire fill for what the harness adds, dashed grey for later.
-- **Copy.** Sentence case, second person, no exclamation marks, no emoji. unfoldingWord is always camelCase.
+- **Copy.** Sentence case, second person, no exclamation marks, no emoji; navigation items and page names are Title Case (UI-17). unfoldingWord is always camelCase.
 
 ---
 
@@ -659,11 +694,19 @@ Each step needs the ones above it. Within a step, order is free.
 
 `packages/db/schema.ts`, `packages/contracts/` and the event vocabulary are the files most likely to conflict; change them in small commits.
 
+**v0.3.0.** Each step needs the ones above it and all of v0.2.0. One plan per step under `docs/superpowers/plans/`, on a normal `build/v0.3.0` branch.
+
+21. **Tokens and locks.** UI-1, UI-2, UI-3, UI-4, with the chart rendering spike of ADR 0012 first.
+22. **The frame and names.** UI-5, UI-17, UI-18.
+23. **Reads.** UI-15.
+24. **Screens.** UI-6 to UI-14, one screen per task.
+25. **The screenshot check.** UI-16, its pictures taken last.
+
 ---
 
 ## 14. Release criteria
 
-v1 is ready when all of these are true. There is no date. v0.2.0's release list is section 9 of its design document; items 1 to 6 below hold for it unchanged.
+v1 is ready when all of these are true. There is no date. v0.2.0's release list is section 9 of its design document and v0.3.0's is section 10 of its; items 1 to 6 below hold for both unchanged.
 
 **Provable by the build, with no person, no account and no secret**
 
@@ -826,6 +869,28 @@ Made on 2026-10-15 between Ian and Claude; the design is `docs/superpowers/specs
 | V2-6 | **An approval survives a base-only update.** The ship rule accepts a Reviewer approval on an earlier head when the pull request's patch identity (the diff against its merge base) is unchanged between that head and the current one; the record names both heads. This reconciles the bench owner's "approvals on the exact head" with their "carry an approval across base-only updates" | An approval is honoured on a head the reviewer never saw whose diff is byte-identical; the exposure is a changed merge base, which CI re-runs on and the rule still requires green |
 | V2-7 | **No agent verb is added.** A merge under delegation and a fix claim both ride on `submit_to_gate` and `claim_item`; the delegation on the call changes what the kernel does with it. `approve`, `merge`, `deploy`, `publish` and `advance` remain forbidden verbs | None; this is the shape that keeps ADR 0002 |
 | V2-8 | **Built for uW's volume.** The bench owner's ruling ledger as a GitHub comment protocol, re-approval churn machinery and anything sized for a hundred pull requests a day are not built. The shapes that are toggles are taken | The pilot shows a click bottleneck at five pull requests a day, which is unlikely, and batch gate decisions (GD-1) already answer it |
+
+
+### 18.4 Decisions for v0.3.0
+
+Made between 2026-10-21 and 2026-11-04 by Ian and Claude over ten rounds of a mockup; the design is `docs/superpowers/specs/2026-11-04-harness-v0-3-0-design.md`.
+
+| # | Decision | Cost if wrong |
+|---|---|---|
+| V3-1 | **v0.3.0 is the look only.** Lessons with statuses, promised to v0.3.0 by V2-4, move to v0.4.0 | The pilot's lessons wait one more version to be filed |
+| V3-2 | **One token system, generated in OKLCH from the brand colours,** each brand hex exact on its step; fixed type, spacing, radius and shadow scales (ADR 0011) | A shade reads wrong in use; it is one token change, and the screenshot check shows every screen it touches |
+| V3-3 | **Tailwind holds the lock:** spacing cleared to the token steps and arbitrary values fail the build (ADR 0011) | A real need for a value between steps; it becomes a new token, deliberately |
+| V3-4 | **Dark first, both themes complete** | Light gets less attention; the screenshot check covers it equally |
+| V3-5 | **Every text colour pair passes WCAG AA, as a test** | None for the people using it; a design that needs a lower-contrast text fails the build until it is rethought |
+| V3-6 | **Fonts are bundled with the Worker** | A few hundred kilobytes of fonts in the assets |
+| V3-7 | **Font Awesome Pro by token, Free as the fallback, Pro artwork never committed** (ADR 0013) | The licence does not cover the token install; every environment then draws the fallback until it is settled |
+| V3-8 | **Charts are Apache ECharts 6 as SVG,** server-rendered where the security policy allows (ADR 0012) | The spike finds neither path clean; the chart becomes an island with its value also as text |
+| V3-9 | **Navigation and page names are Title Case** | Mixed case in the copy reads inconsistent; it is one rule to reverse |
+| V3-10 | **A harness has a display name,** `harnesses.title`, backfilled from the key and changed only by the admin command `set_title` (design section 7) | One column, one migration, one admin command and one event |
+| V3-11 | **Nothing on a screen is invented:** live readouts, per-indicator history and a lease progress bar are not drawn because nothing records them | The screens feel less alive until the data exists |
+| V3-12 | **The mockup is not committed;** the design document's screenshots are the record | Rebuilding a detail means reading a picture, not copying code |
+| V3-13 | **Normal branches, no worktrees,** for builds (`AGENTS.md` section 8) | Work in progress shares one checkout; a second task waits or stashes |
+| V3-14 | **GL-1 runs on its own track** | None; neither needs the other (DX-8) |
 
 ---
 
