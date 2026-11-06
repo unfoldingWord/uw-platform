@@ -9,6 +9,7 @@ import { GatePanel, type PanelGate } from '../parts/gate-panel.tsx';
 import { idParam } from '../parts/params.ts';
 import { flowPath, gatePath, homePath, itemPath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
+import { pageNames } from '../parts/names.ts';
 
 type ItemScene = { readonly item: ItemState; readonly harness: Harness; readonly stage: Stage };
 
@@ -64,12 +65,12 @@ export async function gateScreen(c: Context<AppEnv>): Promise<Response> {
   const { harness, item } = scene;
   const notice = await noticeOf(screen, scene, gate);
   const spec = {
-    title: `${item.title} gate`,
+    title: `${item.title} ${pageNames.gate}`,
     current: gatePath(harness.id, item.itemId),
     crumbs: [
-      { label: 'Home', href: homePath() },
-      { label: harness.key, href: flowPath(harness.id) },
-      { label: 'Gate' },
+      { label: pageNames.home, href: homePath() },
+      { label: harness.title, href: flowPath(harness.id) },
+      { label: pageNames.gate },
     ],
     live: {
       screen: 'gates' as const,
@@ -84,7 +85,7 @@ export async function gateScreen(c: Context<AppEnv>): Promise<Response> {
       <PageHead
         eyebrow="Gate"
         title={item.title}
-        lede={`At ${scene.stage.title} on ${harness.key}`}
+        lede={`At ${scene.stage.title} on ${harness.title}`}
       />
       <div class="flex flex-col gap-4">
         {notice === null ? null : <Note>{notice}</Note>}

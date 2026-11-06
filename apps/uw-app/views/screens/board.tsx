@@ -16,6 +16,7 @@ import { itemsText } from '../parts/items-count.ts';
 import { idParam } from '../parts/params.ts';
 import { boardPath, flowPath, homePath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
+import { pageNames } from '../parts/names.ts';
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
@@ -125,12 +126,12 @@ function StageChips(props: { readonly view: Shown; readonly stageKey: string | n
 function specOf(view: Shown, cursor: number) {
   const { harness } = view;
   return {
-    title: `${harness.key} board`,
-    current: flowPath(harness.id),
+    title: `${harness.title} ${pageNames.board}`,
+    current: boardPath(harness.id),
     crumbs: [
-      { label: 'Home', href: homePath() },
-      { label: harness.key, href: flowPath(harness.id) },
-      { label: 'Board' },
+      { label: pageNames.home, href: homePath() },
+      { label: harness.title, href: flowPath(harness.id) },
+      { label: pageNames.board },
     ],
     live: { screen: 'board' as const, harnesses: [{ harnessId: harness.id, cursor }] },
   };
@@ -161,7 +162,7 @@ export async function boardScreen(c: Context<AppEnv>): Promise<Response> {
     <>
       <PageHead
         eyebrow="Board"
-        title={board.harness.key}
+        title={board.harness.title}
         actions={
           <a href={flowPath(harnessId)} class={`text-accent-text underline ${focus}`}>
             Flow

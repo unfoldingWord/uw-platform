@@ -7,6 +7,7 @@ import { AGENT_PLANE_INDICATORS } from '../../health/agent-plane.ts';
 import { renderScreen } from '../parts/frame.tsx';
 import { indicatorText, statusOf } from '../parts/health-words.ts';
 import { healthPath, homePath } from '../parts/paths.ts';
+import { pageNames } from '../parts/names.ts';
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 const drilled: ReadonlySet<string> = new Set(AGENT_PLANE_INDICATORS);
@@ -34,9 +35,9 @@ function Indicator(props: { readonly indicator: HealthIndicator }) {
 
 export function healthScreen(c: Context<AppEnv>, report: HealthReport): Promise<Response> {
   const spec = {
-    title: 'Health',
+    title: pageNames.health,
     current: healthPath(),
-    crumbs: [{ label: 'Home', href: homePath() }, { label: 'Health' }],
+    crumbs: [{ label: pageNames.home, href: homePath() }, { label: pageNames.health }],
   };
   return renderScreen(
     c,

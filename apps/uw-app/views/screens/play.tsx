@@ -18,6 +18,7 @@ import { notFound } from './not-found.tsx';
 import { zulipConfigOf } from '../../notify/zulip/config.ts';
 import { itemTopicUrl } from '../../notify/zulip/links.ts';
 import { holderText } from '../parts/holder-words.ts';
+import { pageNames } from '../parts/names.ts';
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 const link = `text-accent-text underline ${focus}`;
@@ -95,8 +96,8 @@ export async function playScreen(c: Context<AppEnv>): Promise<Response> {
     title: item.title,
     current: itemPath(harness.id, item.itemId),
     crumbs: [
-      { label: 'Home', href: homePath() },
-      { label: harness.key, href: flowPath(harness.id) },
+      { label: pageNames.home, href: homePath() },
+      { label: harness.title, href: flowPath(harness.id) },
       { label: 'Item' },
     ],
     live: {
@@ -109,7 +110,7 @@ export async function playScreen(c: Context<AppEnv>): Promise<Response> {
     c,
     spec,
     <>
-      <PageHead eyebrow="Item" title={item.title} lede={`At ${stage.title} on ${harness.key}`} />
+      <PageHead eyebrow="Item" title={item.title} lede={`At ${stage.title} on ${harness.title}`} />
       <p class="m-0 mb-4 text-sm text-text-3">{`Holder: ${holderText(play.holder, screen.at)}`}</p>
       <Links play={play} zulipUrl={zulipUrl} />
       <ol class="m-0 flex list-none flex-col gap-2 p-0">

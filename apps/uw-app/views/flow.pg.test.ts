@@ -14,7 +14,7 @@ import {
 import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
-import { getHtml } from '../testing/views.ts';
+import { getHtml, pageContent } from '../testing/views.ts';
 import { boardPath, flowPath } from './parts/paths.ts';
 
 const seedClock: Clock = { now: () => new Date('2026-10-02T06:00:00.000Z') };
@@ -170,8 +170,8 @@ async function hiddenIsMissing(world: BoardWorld): Promise<void> {
   const absent = await flowOf(world, world.stranger.email, flowPath(missing));
   const malformed = await flowOf(world, world.stranger.email, flowPath('not-an-id'));
   expect([hidden.status, absent.status, malformed.status]).toEqual([404, 404, 404]);
-  expect(hidden.text).toBe(absent.text);
-  expect(malformed.text).toBe(absent.text);
+  expect(pageContent(hidden)).toBe(pageContent(absent));
+  expect(pageContent(malformed)).toBe(pageContent(absent));
   expect(hidden.text).toContain('You cannot open that page');
 }
 

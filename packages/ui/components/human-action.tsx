@@ -43,3 +43,14 @@ export function HumanGateMark(props: { readonly label: string }) {
     </span>
   );
 }
+
+export function PersonCount(props: { readonly count: number; readonly label: string }) {
+  return (
+    <span
+      aria-label={props.label}
+      class="ml-auto flex h-size-4 items-center rounded-full bg-human px-2 font-mono text-xs font-heavy text-on-accent"
+    >
+      {props.count}
+    </span>
+  );
+}

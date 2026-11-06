@@ -19,8 +19,11 @@ const scannedFiles = [
 ];
 const scriptSources: ReadonlySet<string> = new Set(['packages/ui/components/inline-scripts.ts']);
 
+const navigationNames = 'apps/uw-app/views/parts/names.ts';
+
 function scanned(path: string): boolean {
   if (scriptSources.has(path) || /\.test\.tsx?$/.test(path)) return false;
+  if (path === navigationNames) return false;
   return scannedFiles.some((pattern) => pattern.test(path));
 }
 
@@ -93,6 +96,11 @@ const planted: readonly (readonly [string, string])[] = [
 ];
 
 describe('the screen copy', () => {
+  it('UI-17 navigation and page names are the one place Title Case is allowed, and only in their module', () => {
+    expect(scanned(navigationNames)).toBe(false);
+    expect(scanned('apps/uw-app/views/screens/home.tsx')).toBe(true);
+  });
+
   it('WB-12 screen copy is sentence case with no exclamation marks, no emoji and no first person or "the user", and unfoldingWord is camelCase', () => {
     const files = repoFiles().filter(scanned);
     expect(files.length).toBeGreaterThan(20);
