@@ -35,7 +35,7 @@ function Node(props: { readonly stage: Stage; readonly count: number; readonly n
   const ring = gate ? humanNode : 'border-accent text-accent-text';
   return (
     <li
-      data-stage={stage.key}
+      data-node={stage.key}
       class="flex w-size-8 shrink-0 flex-col items-center gap-1 text-center"
     >
       <span
