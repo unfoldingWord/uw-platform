@@ -1,10 +1,21 @@
 :root {
   --uw-font-sans: 'Nunito Sans', 'Avenir', 'Avenir Next', system-ui, sans-serif;
-  --uw-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
-  --uw-text-xs: 0.75rem;
-  --uw-text-sm: 0.875rem;
-  --uw-text-base: 1rem;
-  --uw-text-lg: 1.125rem;
-  --uw-text-xl: 1.375rem;
-  --uw-text-2xl: 1.75rem;
+  --uw-font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  --uw-text-xs: 12px;
+  --uw-text-sm: 13px;
+  --uw-text-base: 14px;
+  --uw-text-md: 16px;
+  --uw-text-lg: 20px;
+  --uw-text-xl: 24px;
+  --uw-text-2xl: 30px;
+  --uw-text-3xl: 36px;
+  --uw-weight-regular: 400;
+  --uw-weight-semibold: 600;
+  --uw-weight-heavy: 800;
+  --uw-leading-tight: 1.15;
+  --uw-leading-snug: 1.35;
+  --uw-leading-normal: 1.5;
+  --uw-tracking-heading: -0.035em;
+  --uw-tracking-tight: -0.02em;
+  --uw-tracking-wide: 0.06em;
 }

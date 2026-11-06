@@ -46,6 +46,7 @@ export type Bindings = {
   ANTHROPIC_API_KEY?: string;
   APP_ORIGIN?: string;
   COMMIT_SHA?: string;
+  ENVIRONMENT?: string;
   ACCESS_TEAM_DOMAIN?: string;
   ACCESS_AUD?: string;
   ACCESS_MCP_AUD?: string;
@@ -79,4 +80,8 @@ const UNKNOWN_COMMIT = 'unknown';
 
 export function commitOf(env: Bindings): string {
   return env.COMMIT_SHA ?? UNKNOWN_COMMIT;
+}
+
+export function environmentOf(env: Bindings): string {
+  return env.ENVIRONMENT ?? 'local';
 }

@@ -72,6 +72,9 @@ function itemsGateway(log: string[], rows: Map<string, ItemState>): HarnessItems
       lapsedLeases: unused,
       parked: unused,
       openFor: unused,
+      openCounts: unused,
+      parkedSince: unused,
+      claimedBy: unused,
       byIds: unused,
     },
     write: {
@@ -97,6 +100,7 @@ function eventsGateway(log: string[], appended: HarnessEvent[]): HarnessEventsGa
       recent: unused,
       lastPosition: unused,
       lastPositions: unused,
+      latestForItems: unused,
       countForPersona: unused,
       page: async (query) => {
         const matching = appended.filter(
@@ -131,6 +135,7 @@ const harnessesGateway: HarnessesGateway = {
     setFreeze: unused,
     setTemplate: unused,
     setFixClaim: unused,
+    setTitle: unused,
   },
 };
 

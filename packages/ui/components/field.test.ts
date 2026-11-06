@@ -4,7 +4,7 @@ import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import { SelectField, TextAreaField, TextField } from './field.tsx';
 
-const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
+const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 async function fields(): Promise<JSDOM> {
   const markup = await jsx(

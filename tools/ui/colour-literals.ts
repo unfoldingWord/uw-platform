@@ -18,7 +18,7 @@ export function carriesStyles(path: string): boolean {
   return styleCarriers.some((carrier) => carrier.test(path));
 }
 
-function literalTexts(path: string, text: string): string[] {
+export function literalTexts(path: string, text: string): string[] {
   const kind = path.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
   const source = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, false, kind);
   const found: string[] = [];

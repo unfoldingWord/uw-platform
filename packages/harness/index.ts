@@ -113,6 +113,9 @@ export type { BatchDecided, BatchEntry, BatchInput } from './gates/decide-batch.
 export type { DelegatedExits } from './gates/delegated-exits.ts';
 export type { RefuteInput, Refuted } from './gates/refute.ts';
 export type { RefuteTally } from './views/refutes.ts';
+export type { FrameCounts, FrameHarness } from './views/frame.ts';
+export { DAILY_DAYS } from './views/look.ts';
+export type { DailyPoint, HeldItem, MyItems } from './views/look.ts';
 export { AGENT_HOLD_MS, PERSON_HOLD_MS, heldTooLong, holderOf } from './views/holder.ts';
 export type { Holder, HolderRole } from './views/holder.ts';
 export type { HeldRow, Holds } from './views/holds.ts';

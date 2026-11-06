@@ -1,7 +1,10 @@
 import { jsx } from 'hono/jsx';
 import { describe, expect, it } from 'vitest';
 import { Shell } from '@uw/ui/components/shell.tsx';
+import { testFrame } from '@uw/ui/testing/frame';
 import { appCssPath, manifestColours } from '@uw/ui/generated/app-css';
+import { fontFiles } from '@uw/ui/generated/fonts';
+import { markPath } from '@uw/ui/generated/mark';
 import { createApp } from '../app.tsx';
 import { islandsJs, islandsPath, serviceWorkerJs } from '../generated/islands.ts';
 import { recordingDeps } from '../testing/deps.ts';
@@ -44,7 +47,14 @@ describe('the app is installable', () => {
     expect(response.headers.get('cache-control')).toBe('no-cache');
     expect(response.headers.get('service-worker-allowed')).toBe('/');
     const body = await response.text();
-    const shell = [appCssPath, islandsPath, '/manifest.webmanifest', '/assets/icon.svg'];
+    const shell = [
+      appCssPath,
+      islandsPath,
+      '/manifest.webmanifest',
+      '/assets/icon.svg',
+      markPath,
+      ...fontFiles.map((font) => font.path),
+    ];
     expect(body).toBe(`const UW_SHELL_ASSETS=${JSON.stringify(shell)};\n${serviceWorkerJs}`);
   });
 });
@@ -63,7 +73,7 @@ describe('the islands bundle and the shell links', () => {
   it('WB-7 the shell links the manifest and the icon', async () => {
     const html = await jsx(Shell, {
       title: 'unfoldingWord',
-      nav: [],
+      frame: testFrame(),
       current: '/',
       crumbs: [],
       stylesheet: appCssPath,

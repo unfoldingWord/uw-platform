@@ -22,7 +22,7 @@ function stepOf(tokensIn: number, tokensOut: number) {
   };
 }
 
-function runOf(base: number, n: number, item: number, overrides: Partial<RunRow>): RunRow {
+export function runOf(base: number, n: number, item: number, overrides: Partial<RunRow>): RunRow {
   return {
     id: uid(base + 0x60 + n),
     harnessId: uid(base),
@@ -179,9 +179,34 @@ function describePositions(subject: BoundedSubject): void {
   });
 }
 
+function describeOpenCounts(subject: BoundedSubject): void {
+  it('UI-5 openCounts counts each named harness items that are not done, zero for none', async () => {
+    const base = 0x5600;
+    const counts = await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, base, 'gateway-open-count');
+      await seedHarness(tx, base + 0x80, 'gateway-open-count-empty');
+      await tx.harnessItems.write.insert(itemOf(base, 1), at);
+      await tx.harnessItems.write.insert(itemOf(base, 2, { gateStatus: 'parked' }), at);
+      await tx.harnessItems.write.insert(itemOf(base, 3, { gateStatus: 'done' }), at);
+      return {
+        both: await tx.harnessItems.read.openCounts([uid(base), uid(base + 0x80)]),
+        none: await tx.harnessItems.read.openCounts([]),
+      };
+    });
+    expect(counts).toEqual({
+      both: [
+        { harnessId: uid(base), open: 2 },
+        { harnessId: uid(base + 0x80), open: 0 },
+      ],
+      none: [],
+    });
+  });
+}
+
 export function describeStoreBoundedReads(adapter: string, subject: BoundedSubject): void {
   describe(`bounded store reads for the views on ${adapter}`, () => {
     describeOpenItems(subject);
+    describeOpenCounts(subject);
     describeCosts(subject);
     describePositions(subject);
   });

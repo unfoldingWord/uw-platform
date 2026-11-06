@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| Status | Approved. v1 (sections 7.1 to 7.10) was built as v0.1.0, merge commit `83e3f64`, tagged 2026-10-12. v0.2.0 (section 7.11), approved on 2026-10-15, was built on `build/v0.2.0`, reviewed by Ian with Codex, merged as `2135ad5` (pull request #84) and tagged `v0.2.0` on 2026-10-20, with CI green on the merge commit; GL-1's live switch and the week of shadow mode are a person's, on the tag (`docs/progress_tracker.md`, Release criteria, v0.2.0). v0.3.0 (section 7.12), the look, proposed on 2026-11-04; its design is `docs/superpowers/specs/2026-11-04-harness-v0-3-0-design.md` and it is approved when the pull request that adds it merges |
+| Status | Approved. v1 (sections 7.1 to 7.10) was built as v0.1.0, merge commit `83e3f64`, tagged 2026-10-12. v0.2.0 (section 7.11), approved on 2026-10-15, was built on `build/v0.2.0`, reviewed by Ian with Codex, merged as `2135ad5` (pull request #84) and tagged `v0.2.0` on 2026-10-20, with CI green on the merge commit; GL-1's live switch and the week of shadow mode are a person's, on the tag (`docs/progress_tracker.md`, Release criteria, v0.2.0). v0.3.0 (section 7.12), the look, approved on 2026-11-04 (#87); its design is `docs/specs/2026-11-04-harness-v0-3-0-design.md`. Built on `feat/ui-redesign`, pull request #89, with every v0.3.0 release item but Ian's review and merge holding on 2026-11-06 |
 | Version | 0.3 |
 | Date | 2026-11-04 (v0.2.0 text dated 2026-10-15, v1 text 2026-10-01) |
 | Owner | Ian Lindsley |
 | Sponsor | unfoldingWord leadership |
 | Repository | https://github.com/unfoldingWord/uw-platform |
-| Design | From v0.3.0, section 5 of [`docs/superpowers/specs/2026-11-04-harness-v0-3-0-design.md`](superpowers/specs/2026-11-04-harness-v0-3-0-design.md) (ADR 0011), built into `packages/ui/tokens/`, until a `design-system/` folder lands. Before it, the brand tokens extracted from the Claude Design prototype (removed from the repository on 2026-10-20) and [`prd/An App For Everything - Key Visuals.html`](../prd/An%20App%20For%20Everything%20-%20Key%20Visuals.html) |
+| Design | From v0.3.0, section 5 of [`docs/specs/2026-11-04-harness-v0-3-0-design.md`](specs/2026-11-04-harness-v0-3-0-design.md) (ADR 0011), built into `packages/ui/tokens/`, until a `design-system/` folder lands. Before it, the brand tokens extracted from the Claude Design prototype (removed from the repository on 2026-10-20) and [`prd/An App For Everything - Key Visuals.html`](../prd/An%20App%20For%20Everything%20-%20Key%20Visuals.html) |
 | Companions | [`prd/Harness v1 - Architecture.md`](../prd/Harness%20v1%20-%20Architecture.md) for the ratified design and its figures, [`prd/An App For Everything - Platform Architecture Plan.md`](../prd/An%20App%20For%20Everything%20-%20Platform%20Architecture%20Plan.md) for the platform it sits in, [`CONTEXT.md`](../CONTEXT.md) for the words, [`architecture.md`](architecture.md) for the shape, [`adr/`](adr/) for why |
 | Sources | The architecture spec v1.1, the sponsor's review of it, and GitHub issues #4 to #82 (67 issues: 7 closed, 60 open). Appendix B maps every issue to the requirements that replace it |
 
@@ -285,7 +285,7 @@ Requirement identifiers are stable. **Must** is a v1 requirement. **Later** is d
 | DX-8 | **The build needs no live account.** Every Must requirement is proven against test adapters, fixture keys and recorded fixtures: Access JWTs signed by a fixture key pair, GitHub webhooks and API responses from fixtures, model turns scripted, AI Gateway cost data from fixtures, push and Zulip sends recorded. Each platform adapter is written, passes its port's contract test where the contract can run without the live service, and is listed in `docs/progress_tracker.md` as awaiting live verification. Nothing a requirement needs may be reachable only with a secret. | Must | section 15 |
 | DX-7 | **Figure 2 end to end in the sim.** One scenario takes a fixture item from kickstart to Close on the software template with scripted personas and fixture GitHub facts, covering the claim, a held premise, the lease warning and expiry, the PR declaration, the ship rule's refusals, an agent's refused gate attempt, the approve, the merge connector, a refused Close, a Close with a learning, and an Iterate beat under a delegation that then lapses. It is the machine-checkable half of the release criteria. | Must | #64 |
 
-### 7.11 v0.2.0 (the design is `docs/superpowers/specs/2026-10-15-harness-v0-2-0-design.md`)
+### 7.11 v0.2.0 (the design is `docs/specs/2026-10-15-harness-v0-2-0-design.md`)
 
 This section is the list of work for v0.2.0 and the design document is why. Where they disagree on design, the design wins and this section is corrected, as section 1 says of the v1 architecture spec.
 
@@ -385,7 +385,7 @@ Every row follows this document's conventions: a stable ID, Must or Should, a sc
 | DX-10 | **The joining journey.** One scenario drives section 4 end to end in the sim: a check-only harness in shadow mode, a review request, a Reviewer verdict recorded and not posted, a shadow verdict, shadow lifted, a posted review, Ship waiting on a person, then a merge under a delegation on a second item, refused on a third for a protected path Cost: additive. | Must | Section 4 |
 
 
-### 7.12 v0.3.0, the look (the design is `docs/superpowers/specs/2026-11-04-harness-v0-3-0-design.md`)
+### 7.12 v0.3.0, the look (the design is `docs/specs/2026-11-04-harness-v0-3-0-design.md`)
 
 This section is the list of work for v0.3.0 and the design document is why; where they disagree on design, the design wins and this section is corrected. The rows extend WB-11 and WB-12 and replace none of v0.2.0's. Costs use section 7.11's words.
 
@@ -680,7 +680,7 @@ Each step needs the ones above it. Within a step, order is free.
 10. **Personas.** PE-1 to PE-8.
 11. **The end-to-end scenario.** DX-7.
 
-**v0.2.0.** Each step needs the ones above it and all of v1. One plan per step under `docs/superpowers/plans/`.
+**v0.2.0.** Each step needs the ones above it and all of v1. One plan per step under `docs/plans/`.
 
 12. **Words and contracts.** Section 2 into `CONTEXT.md`; closed sets, finding weight and the check-only fixture into `packages/contracts` at 13.0.0; DX-9.
 13. **Untrusted content.** UC-1 to UC-5. First because every later prompt site inherits it.
@@ -694,7 +694,7 @@ Each step needs the ones above it. Within a step, order is free.
 
 `packages/db/schema.ts`, `packages/contracts/` and the event vocabulary are the files most likely to conflict; change them in small commits.
 
-**v0.3.0.** Each step needs the ones above it and all of v0.2.0. One plan per step under `docs/superpowers/plans/`, on a normal `build/v0.3.0` branch.
+**v0.3.0.** Each step needs the ones above it and all of v0.2.0. One plan per step under `docs/plans/`, on a normal branch named for the work, `feat/ui-redesign`, with no worktree.
 
 21. **Tokens and locks.** UI-1, UI-2, UI-3, UI-4, with the chart rendering spike of ADR 0012 first.
 22. **The frame and names.** UI-5, UI-17, UI-18.
@@ -857,7 +857,7 @@ The issues left these as "decide in the PR". They are decided here so the build 
 
 ### 18.3 Decisions for v0.2.0
 
-Made on 2026-10-15 between Ian and Claude; the design is `docs/superpowers/specs/2026-10-15-harness-v0-2-0-design.md`.
+Made on 2026-10-15 between Ian and Claude; the design is `docs/specs/2026-10-15-harness-v0-2-0-design.md`.
 
 | # | Decision | Cost if wrong |
 |---|---|---|
@@ -873,7 +873,7 @@ Made on 2026-10-15 between Ian and Claude; the design is `docs/superpowers/specs
 
 ### 18.4 Decisions for v0.3.0
 
-Made between 2026-10-21 and 2026-11-04 by Ian and Claude over ten rounds of a mockup; the design is `docs/superpowers/specs/2026-11-04-harness-v0-3-0-design.md`.
+Made between 2026-10-21 and 2026-11-04 by Ian and Claude over ten rounds of a mockup; the design is `docs/specs/2026-11-04-harness-v0-3-0-design.md`.
 
 | # | Decision | Cost if wrong |
 |---|---|---|

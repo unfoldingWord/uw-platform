@@ -74,6 +74,7 @@ export const harnesses = declareTable(
   {
     id: uuid('id').primaryKey(),
     key: text('key').notNull().unique(),
+    title: text('title').notNull(),
     template: text('template').notNull(),
     jdArea: text('jd_area').notNull(),
     hostedBuilderEnabled: boolean('hosted_builder_enabled').notNull().default(false),

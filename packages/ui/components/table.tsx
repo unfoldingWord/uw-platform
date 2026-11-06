@@ -14,15 +14,15 @@ export function Table(props: {
   readonly rows: readonly Readonly<Record<string, Child>>[];
 }) {
   return (
-    <div class="overflow-x-auto rounded-lg border border-line">
-      <table class="w-full border-collapse text-sm text-ink">
+    <div class="overflow-x-auto rounded-lg bg-surface shadow-1">
+      <table class="w-full border-collapse text-sm text-text">
         <caption class="sr-only">{props.caption}</caption>
-        <thead class="bg-surface">
+        <thead class="bg-raised">
           <tr>
             {props.columns.map((column) => (
               <th
                 scope="col"
-                class={`border-b border-line px-3 py-2 font-bold text-muted ${cellClasses(column)}`}
+                class={`border-b border-line px-4 py-2 text-xs font-semibold text-text-3 ${cellClasses(column)}`}
               >
                 {column.label}
               </th>
@@ -33,9 +33,9 @@ export function Table(props: {
           {props.rows.map((row) => {
             const cells = new Map(Object.entries(row));
             return (
-              <tr class="border-b border-line last:border-b-0">
+              <tr class="border-b border-line last:border-b-0 hover:bg-hover">
                 {props.columns.map((column) => (
-                  <td class={`px-3 py-2 ${cellClasses(column)}`}>
+                  <td class={`px-4 py-3 ${cellClasses(column)}`}>
                     {cells.get(column.key) ?? null}
                   </td>
                 ))}

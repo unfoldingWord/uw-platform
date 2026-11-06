@@ -7,8 +7,8 @@ import { Table } from '@uw/ui/components/table.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import { itemPath } from './paths.ts';
 
-const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
-const link = `text-link underline ${focus}`;
+const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
+const link = `text-accent-text underline ${focus}`;
 
 function money(amountMinor: number): string {
   return formatMoney({ amountMinor, currency: 'USD' });
@@ -37,7 +37,7 @@ export function PersonaKpis(props: { readonly dashboard: PersonaDashboard }) {
   const escalation = escalationText(props.dashboard);
   const spent = `${money(spend.costMinor)} metered, ${money(spend.computeMinor)} compute; ${formatCount(spend.subscriptionTokens)} subscription tokens`;
   return (
-    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <Kpi
         label="Runs today"
         value={formatCount(runsToday.total)}
@@ -88,7 +88,7 @@ function stepsText(run: PersonaRunSummary): string {
 
 export function LastRuns(props: { readonly dashboard: PersonaDashboard }) {
   const { lastRuns, harness } = props.dashboard;
-  if (lastRuns.length === 0) return <p class="mb-6 text-sm text-muted">No runs yet</p>;
+  if (lastRuns.length === 0) return <p class="mb-5 text-sm text-text-3">No runs yet</p>;
   const rows = lastRuns.map((run) => ({
     started: formatInstant(new Date(run.startedAt)),
     item: (
@@ -102,7 +102,7 @@ export function LastRuns(props: { readonly dashboard: PersonaDashboard }) {
     steps: stepsText(run),
   }));
   return (
-    <div class="mb-6">
+    <div class="mb-5">
       <Table caption="The last runs of this persona" columns={runColumns} rows={rows} />
     </div>
   );
@@ -117,9 +117,9 @@ const delegationColumns = [
 export function Delegations(props: { readonly dashboard: PersonaDashboard }) {
   const { count, live } = props.dashboard.delegations;
   if (live === null) {
-    return <p class="mb-6 text-sm text-muted">{`${formatCount(count)} live delegations`}</p>;
+    return <p class="mb-5 text-sm text-text-3">{`${formatCount(count)} live delegations`}</p>;
   }
-  if (live.length === 0) return <p class="mb-6 text-sm text-muted">No live delegations</p>;
+  if (live.length === 0) return <p class="mb-5 text-sm text-text-3">No live delegations</p>;
   const rows = live.map((delegation) => ({
     person: delegation.personId,
     capability: delegation.capability,
@@ -127,14 +127,14 @@ export function Delegations(props: { readonly dashboard: PersonaDashboard }) {
   }));
   const more = count - live.length;
   return (
-    <div class="mb-6">
+    <div class="mb-5">
       <Table
         caption="The live delegations of this persona"
         columns={delegationColumns}
         rows={rows}
       />
       {more > 0 ? (
-        <p class="mt-2 text-sm text-muted">{`and ${formatCount(more)} more live delegations`}</p>
+        <p class="mt-2 text-sm text-text-3">{`and ${formatCount(more)} more live delegations`}</p>
       ) : null}
     </div>
   );

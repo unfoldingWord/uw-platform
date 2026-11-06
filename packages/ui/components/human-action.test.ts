@@ -45,10 +45,10 @@ describe('WB-11 the human action', () => {
     expect(button.hasAttribute('disabled')).toBe(false);
     expect(classesOf(button)).toEqual(
       expect.arrayContaining([
-        'bg-kindle',
+        'bg-human',
         'text-on-accent',
         'focus-visible:outline-2',
-        'outline-focus',
+        'outline-accent-text',
       ]),
     );
   });
@@ -75,7 +75,7 @@ describe('WB-11 the human action', () => {
     expect(button.hasAttribute('tabindex')).toBe(false);
     expect(button.getAttribute('type')).not.toBe('submit');
     expect(classesOf(button)).toEqual(
-      expect.arrayContaining(['aria-disabled:bg-kindle-soft', 'aria-disabled:text-ink']),
+      expect.arrayContaining(['aria-disabled:bg-human-soft', 'aria-disabled:text-text']),
     );
   });
 });
@@ -118,7 +118,7 @@ describe('the human action, refused or escaped', () => {
     const mark = document.querySelector('span');
     expect(mark?.textContent).toBe('Ship');
     expect(classesOf(mark)).toEqual(
-      expect.arrayContaining(['bg-kindle-soft', 'text-ink', 'border', 'border-kindle']),
+      expect.arrayContaining(['bg-human-soft', 'text-text', 'border', 'border-human']),
     );
   });
 });
@@ -127,13 +127,13 @@ describe('Kindle is a fill or an edge, never a text colour', () => {
   it.each(['light', 'dark'] as const)(
     'the human action text and the gate mark text meet 4.5:1 in %s',
     (theme) => {
-      expect(contrast(theme, 'on-accent', 'kindle')).toBeGreaterThanOrEqual(4.5);
-      expect(contrast(theme, 'ink', 'kindle-soft')).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(theme, 'on-accent', 'human')).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(theme, 'text', 'human-soft')).toBeGreaterThanOrEqual(4.5);
     },
   );
 
   it('Kindle on the light surface is below 4.5:1, so no piece writes text in Kindle', async () => {
-    expect(contrast('light', 'kindle', 'surface')).toBeLessThan(4.5);
+    expect(contrast('light', 'human', 'surface')).toBeLessThan(4.5);
     const markup = [
       await jsx(HumanActionButton, approve).toString(),
       await jsx(HumanActionButton, { ...approve, disabledReason: 'x' }).toString(),

@@ -1,12 +1,12 @@
 import { safeHref } from './href.ts';
 
 const base =
-  'inline-flex items-center rounded-lg border px-3 py-1 text-sm outline-offset-2 outline-focus focus-visible:outline-2';
+  'inline-flex items-center rounded-lg border px-3 py-1 text-sm outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 function look(selected: boolean): string {
   return selected
-    ? `${base} border-ocean bg-inspire-soft font-bold text-ocean`
-    : `${base} border-line bg-surface text-ink`;
+    ? `${base} border-accent bg-accent-soft font-heavy text-accent-text`
+    : `${base} border-line bg-surface text-text`;
 }
 
 export function Chip(props: {

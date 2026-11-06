@@ -31,8 +31,14 @@
     "audit:prod": "pnpm audit --prod --audit-level high",
     "audit:all": "pnpm audit --audit-level high",
     "verify": "pnpm check && pnpm lint && pnpm lint:dates && pnpm lint:vendor && pnpm format:check && pnpm knip && pnpm architecture && pnpm walk:all && pnpm trace:built && pnpm test && pnpm sim:all && pnpm build",
+    "ui:tokens": "node tools/ui/build-tokens.ts",
+    "ui:fonts": "node tools/ui/build-fonts.ts",
+    "ui:icons": "node tools/ui/build-icons.ts",
+    "ui:mark": "node tools/ui/build-mark.ts",
     "ui:css": "node tools/ui/build-css.ts",
-    "ui:islands": "node tools/ui/build-islands.ts"
+    "ui:islands": "node tools/ui/build-islands.ts",
+    "screens": "UW_SCREENS=required vitest run --project node apps/uw-app/screens",
+    "screens:update": "UW_SCREENS_UPDATE=1 vitest run --project node apps/uw-app/screens"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.22.0",

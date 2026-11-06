@@ -9,6 +9,7 @@ import { flowPath, homePath, personaPath } from '../parts/paths.ts';
 import { ActivateForm, ToolsetForm, type SavedToolset } from '../parts/persona-controls.tsx';
 import { Delegations, LastRuns, PersonaKpis } from '../parts/persona-figures.tsx';
 import { notFound } from './not-found.tsx';
+import { pageNames } from '../parts/names.ts';
 
 export type PersonaRead = KernelOutcome<PersonaDashboard> | null;
 
@@ -34,8 +35,8 @@ export function renderPersona(
     title: page.title,
     current: personaPath(page.id),
     crumbs: [
-      { label: 'Home', href: homePath() },
-      { label: harness.key, href: flowPath(harness.id) },
+      { label: pageNames.home, href: homePath() },
+      { label: harness.title, href: flowPath(harness.id) },
       { label: 'Persona' },
     ],
   };
@@ -47,7 +48,7 @@ export function renderPersona(
       <PageHead
         eyebrow="Persona"
         title={page.title}
-        lede={`${dashboard.persona} on ${harness.key}, today ${dashboard.today}`}
+        lede={`${dashboard.persona} on ${harness.title}, today ${dashboard.today}`}
         actions={
           <Badge tone={page.status === 'active' ? 'success' : 'neutral'}>
             {statusText(dashboard)}
@@ -56,9 +57,9 @@ export function renderPersona(
       />
       {dashboard.canActivate ? <ActivateForm dashboard={dashboard} /> : null}
       <PersonaKpis dashboard={dashboard} />
-      <h2 class="mb-2 text-lg font-bold text-ink">Last runs</h2>
+      <h2 class="mt-5 mb-2 text-md font-heavy text-text">Last runs</h2>
       <LastRuns dashboard={dashboard} />
-      <h2 class="mb-2 text-lg font-bold text-ink">Delegations</h2>
+      <h2 class="mt-5 mb-2 text-md font-heavy text-text">Delegations</h2>
       <Delegations dashboard={dashboard} />
       {options === null ? null : (
         <ToolsetForm

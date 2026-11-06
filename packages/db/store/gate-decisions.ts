@@ -1,6 +1,7 @@
 import { and, asc, eq, gte, isNotNull } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
 import { gateDecisions } from '../schema.ts';
+import { decidedPerDay } from './daily.ts';
 import { exitNotTaken } from './events.ts';
 import { checkedRows } from './limits.ts';
 import { refusing } from './refusal.ts';
@@ -41,6 +42,7 @@ export function bindGateDecisions(executor: AnyExecutor): GateDecisionsGateway {
           .limit(checkedRows(limit, 'delegated decision'));
         return rows.map(toGateDecision);
       },
+      decidedPerDay: (harnessIds, since) => decidedPerDay(executor, harnessIds, since),
     },
     write: {
       insert: (decision) =>

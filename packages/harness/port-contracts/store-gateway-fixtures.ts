@@ -21,6 +21,7 @@ export function harnessOf(base: number, key: string, repository: string | null =
   return harnessSchema.parse({
     id: uid(base),
     key,
+    title: key,
     template: 'software',
     jdArea: '80-89',
     repository,

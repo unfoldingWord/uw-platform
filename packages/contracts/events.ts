@@ -66,6 +66,7 @@ export const eventNames = [
   'delegated_exit_claimed',
   'fix_claimed',
   'fix_claim_set',
+  'title_set',
   'epic_enqueued',
   'done_when_missing',
   'silence_alarm',

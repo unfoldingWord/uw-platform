@@ -45,8 +45,8 @@ async function countOf(db: Db): Promise<number> {
 }
 
 async function seed(db: Db): Promise<void> {
-  await db.execute(sql`INSERT INTO harnesses (id, key, template, jd_area, created_at)
-    VALUES (${harnessId}, 'software', 'software', '80-89', ${atText}::timestamptz)`);
+  await db.execute(sql`INSERT INTO harnesses (id, key, title, template, jd_area, created_at)
+    VALUES (${harnessId}, 'software', 'software', 'software', '80-89', ${atText}::timestamptz)`);
   await db.execute(sql`INSERT INTO harness_stages
     (id, harness_id, key, title, position, bracket, agent_pickup, exit_gate)
     VALUES (${stageId}, ${harnessId}, 'package', 'Package', 1, 'build_package', 'none', 'checks')`);

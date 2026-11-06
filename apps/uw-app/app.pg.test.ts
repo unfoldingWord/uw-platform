@@ -38,7 +38,7 @@ describe.skipIf(!testServer)('uw-app shell for a signed-in person', () => {
       expect(html).toContain('<nav aria-label="Main"');
       expect(html).toContain('<main id="main"');
       expect(html).toContain(`<link rel="stylesheet" href="${appCssPath}"`);
-      expect(html).toMatch(/<h1[^>]*>Waiting on you<\/h1>/);
+      expect(html).toMatch(/<h1[^>]*>Hello, [A-Z][a-z]+<\/h1>/);
       expect(html).toContain(`<script type="module" src="${islandsPath}"></script>`);
     }));
 

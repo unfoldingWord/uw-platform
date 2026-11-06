@@ -16,6 +16,7 @@ const planeTotals: GuardedRead = {
   allowed: [
     'packages/harness/views/',
     healthRoot,
+    'apps/uw-app/views/screens/health.tsx',
     'apps/uw-app/mcp/verbs/get-health.ts',
     'sim/scenarios/',
   ],

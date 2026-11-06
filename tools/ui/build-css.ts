@@ -38,10 +38,10 @@ async function buildStylesheet(): Promise<string> {
 function manifestColours(): string {
   const light = themeTokens('light');
   const colours = {
-    theme: resolveToken('--uw-ocean', light),
-    background: resolveToken('--uw-bg', light),
-    panel: resolveToken('--uw-ocean-panel', light),
-    panelInk: resolveToken('--uw-ocean-panel-ink', light),
+    theme: resolveToken('--uw-ocean-800', light),
+    background: resolveToken('--uw-canvas', light),
+    panel: resolveToken('--uw-ocean-800', light),
+    panelInk: resolveToken('--uw-ocean-50', light),
   };
   return `export const manifestColours = ${JSON.stringify(colours)};`;
 }

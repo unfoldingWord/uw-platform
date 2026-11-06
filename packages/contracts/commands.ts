@@ -5,6 +5,7 @@ import {
   botAuthorsSchema,
   defaultBotAuthors,
   externalReviewerIdentitiesSchema,
+  harnessTitleSchema,
   personaIdentitySchema,
   protectedPathsSchema,
   pullRequestRefSchema,
@@ -49,6 +50,7 @@ export const commandNames = [
   'decide_gates',
   'refute_finding',
   'set_fix_claim',
+  'set_title',
   'enqueue_epic',
   'change_template',
 ] as const;
@@ -150,6 +152,7 @@ export const harnessCommandSchemas = {
   recover_connectors: body('recover_connectors', {}),
   activate_template: body('activate_template', {
     harnessKey: slugSchema,
+    title: harnessTitleSchema.optional(),
     jdArea: jdAreaSchema,
     template: templateKeySchema,
     repository: repositorySchema.nullable(),
@@ -165,6 +168,7 @@ export const harnessCommandSchemas = {
   remove_stage: body('remove_stage', { stageKey: stageKeySchema }),
   set_hosted_builder: body('set_hosted_builder', { enabled: z.boolean() }),
   set_fix_claim: body('set_fix_claim', { enabled: z.boolean() }),
+  set_title: body('set_title', { title: harnessTitleSchema }),
   change_template: body('change_template', { template: templateKeySchema }),
   activate_persona: body('activate_persona', {
     pageId: z.uuid(),
@@ -233,6 +237,7 @@ export const commandSchema = z.discriminatedUnion('command', [
   harnessCommandSchemas.decide_gates,
   harnessCommandSchemas.refute_finding,
   harnessCommandSchemas.set_fix_claim,
+  harnessCommandSchemas.set_title,
   harnessCommandSchemas.enqueue_epic,
   harnessCommandSchemas.change_template,
 ]);

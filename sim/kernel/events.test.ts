@@ -33,6 +33,7 @@ function principalFor(personId: string, grants: Principal['grants']): Principal 
 const harness = harnessSchema.parse({
   id: harnessId,
   key: 'software',
+  title: 'software',
   template: 'software',
   jdArea: '80-89',
   repository: 'unfoldingWord/uw-platform',

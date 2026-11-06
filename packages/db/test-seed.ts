@@ -154,7 +154,9 @@ export async function seedHarness(
   db: AnyExecutor,
   harness: { readonly id: string; readonly key: string; readonly jdArea: string },
 ): Promise<void> {
-  await db.insert(harnesses).values({ ...harness, template: 'software', createdAt: seededAt });
+  await db
+    .insert(harnesses)
+    .values({ ...harness, title: harness.key, template: 'software', createdAt: seededAt });
 }
 
 export async function seedItem(
