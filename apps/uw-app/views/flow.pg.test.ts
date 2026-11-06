@@ -253,6 +253,21 @@ async function noProblems(world: BoardWorld): Promise<void> {
   expect(await screenProblems((await flowOf(world, world.viewer.email)).text)).toEqual([]);
 }
 
+async function lookOfFlow(world: BoardWorld): Promise<void> {
+  const document = documentOf((await flowOf(world)).text);
+  expect(document.querySelector('main h1 + p')?.textContent).toMatch(
+    /^Built from the software template · 8 stages in 4 brackets · 1 gate where a person decides$/,
+  );
+  const tabs = [...document.querySelectorAll('nav[aria-label="Views"] a')].map((tab) => [
+    tab.textContent,
+    tab.getAttribute('aria-current'),
+  ]);
+  expect(tabs).toEqual([
+    ['Flow', 'page'],
+    ['Board', null],
+  ]);
+}
+
 describe.skipIf(!testServer)('the Flow view', () => {
   it('WB-4 the flow view draws every stage from its rows under the four brackets, in position order', () =>
     inFlow(drawnInOrder));
@@ -272,4 +287,5 @@ describe.skipIf(!testServer)('the Flow view', () => {
   it('the flow diagram keeps a minimum width from a size token and scrolls inside its own wrapper', () =>
     inFlow(scrollsAtPhoneWidth));
   it('the flow view renders with no screen problems', () => inFlow(noProblems));
+  it('UI-10 Flow sums up the harness and offers the Flow and Board tabs', () => inFlow(lookOfFlow));
 });

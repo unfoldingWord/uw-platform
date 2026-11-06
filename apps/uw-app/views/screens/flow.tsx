@@ -58,6 +58,31 @@ function rowOf(view: FlowView, entry: FlowStage, at: Date) {
   };
 }
 
+function Diagram(props: { readonly harnessId: string; readonly view: FlowView }) {
+  return (
+    <details>
+      <summary class={`cursor-pointer text-sm font-semibold text-text-2 ${focus}`}>
+        The stages as a diagram
+      </summary>
+      <div class="mt-3">
+        <FlowDiagram
+          harnessId={props.harnessId}
+          harnessKey={props.view.harness.key}
+          stages={props.view.stages}
+        />
+      </div>
+    </details>
+  );
+}
+
+function summaryOf(view: FlowView): string {
+  const brackets = new Set(view.stages.map((entry) => entry.stage.bracket)).size;
+  const gates = view.stages.filter((entry) => entry.stage.exitGate === 'human_approval').length;
+  const gateWords =
+    gates === 1 ? '1 gate where a person decides' : `${gates} gates where a person decides`;
+  return `Built from the ${view.harness.template} template · ${view.stages.length} stages in ${brackets} brackets · ${gateWords}`;
+}
+
 export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   if (screen === null) return screenRefusal(c);
@@ -72,25 +97,35 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
     title: `${view.harness.title} ${pageNames.flow}`,
     current: flowPath(harnessId),
     crumbs: [{ label: pageNames.home, href: homePath() }, { label: view.harness.title }],
+    tabs: [
+      {
+        label: pageNames.flow,
+        href: flowPath(harnessId),
+        icon: 'diagram-project' as const,
+        current: true,
+      },
+      {
+        label: pageNames.board,
+        href: boardPath(harnessId),
+        icon: 'square-kanban' as const,
+        current: false,
+      },
+    ],
     live: { screen: 'flow' as const, harnesses: [{ harnessId, cursor }] },
   };
   return renderScreen(
     c,
     spec,
     <>
-      <PageHead
-        eyebrow="Flow"
-        title={view.harness.title}
-        lede={`Built from the ${view.harness.template} template`}
-      />
+      <PageHead title={view.harness.title} lede={summaryOf(view)} />
       <div class="flex flex-col gap-5">
         {view.capped ? <Note>{cappedNote}</Note> : null}
-        <FlowDiagram harnessId={harnessId} harnessKey={view.harness.key} stages={view.stages} />
         <Table
           caption="Stages"
           columns={columns}
           rows={view.stages.map((entry) => rowOf(view, entry, screen.at))}
         />
+        <Diagram harnessId={harnessId} view={view} />
       </div>
     </>,
   );
