@@ -16,8 +16,8 @@ function idOf(n: number): string {
 }
 
 function insertHarness(db: Db, n: number, repository: string | null) {
-  return db.execute(sql`INSERT INTO harnesses (id, key, template, jd_area, repository, created_at)
-    VALUES (${idOf(n)}, ${`repo-${n}`}, 'software', '80-89', ${repository},
+  return db.execute(sql`INSERT INTO harnesses (id, key, title, template, jd_area, repository, created_at)
+    VALUES (${idOf(n)}, ${`repo-${n}`}, ${`repo-${n}`}, 'software', '80-89', ${repository},
       ${atText}::timestamptz)`);
 }
 
