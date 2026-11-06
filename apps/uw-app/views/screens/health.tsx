@@ -23,7 +23,7 @@ function watching(report: HealthReport): readonly HealthIndicator[] {
   return report.indicators.filter((indicator) => indicator.status === 'amber');
 }
 
-export function sentenceOf(report: HealthReport): string {
+function sentenceOf(report: HealthReport): string {
   if (report.indicators.some((indicator) => indicator.status === 'red'))
     return 'Something needs attention';
   const watch = watching(report).length;
@@ -31,7 +31,7 @@ export function sentenceOf(report: HealthReport): string {
   return `Running, with ${watch} ${watch === 1 ? 'thing' : 'things'} to watch`;
 }
 
-export function ledeOf(report: HealthReport): string {
+function ledeOf(report: HealthReport): string {
   const failing = report.indicators.some((indicator) => indicator.status === 'red');
   const notOn = report.indicators
     .filter((indicator) => off.has(indicator.status))

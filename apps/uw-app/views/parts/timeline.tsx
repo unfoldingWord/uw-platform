@@ -3,7 +3,7 @@ import { formatDate } from '@uw/core/dates';
 import { HumanDot } from '@uw/ui/components/human-action.tsx';
 import { PlayRow } from './play-row.tsx';
 
-export const eventKinds = ['gate', 'run', 'comment', 'lease'] as const;
+const eventKinds = ['gate', 'run', 'comment', 'lease'] as const;
 export type EventKind = (typeof eventKinds)[number] | 'other';
 
 const kindWords = new Map<EventKind, string>([
