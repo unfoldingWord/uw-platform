@@ -56,9 +56,9 @@ export function renderPersona(
       />
       {dashboard.canActivate ? <ActivateForm dashboard={dashboard} /> : null}
       <PersonaKpis dashboard={dashboard} />
-      <h2 class="mb-2 text-lg font-bold text-ink">Last runs</h2>
+      <h2 class="mb-2 text-lg font-heavy text-text">Last runs</h2>
       <LastRuns dashboard={dashboard} />
-      <h2 class="mb-2 text-lg font-bold text-ink">Delegations</h2>
+      <h2 class="mb-2 text-lg font-heavy text-text">Delegations</h2>
       <Delegations dashboard={dashboard} />
       {options === null ? null : (
         <ToolsetForm

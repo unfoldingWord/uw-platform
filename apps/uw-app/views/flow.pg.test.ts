@@ -241,11 +241,11 @@ async function scrollsAtPhoneWidth(world: BoardWorld): Promise<void> {
   const document = documentOf((await flowOf(world)).text);
   const svg = document.querySelector('main svg[role="group"]');
   const classes = (svg?.getAttribute('class') ?? '').split(' ');
-  expect(classes).toContain('min-w-[var(--uw-flow-diagram)]');
+  expect(classes).toContain('min-w-flow');
   expect(classes).not.toContain('min-w-0');
   expect(svg?.parentElement?.getAttribute('class')).toContain('overflow-x-auto');
   const layout = readFileSync('packages/ui/tokens/layout.css', 'utf8');
-  expect(layout).toMatch(/--uw-flow-diagram: \d+rem;/);
+  expect(layout).toMatch(/--uw-layout-flow: \d+rem;/);
 }
 
 async function noProblems(world: BoardWorld): Promise<void> {

@@ -13,7 +13,7 @@ import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { flowPath, gatePath, homePath, itemPath } from '../parts/paths.ts';
 
 const REFRESH_EVERY_MS = 60_000;
-const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
+const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 type Shown = { readonly href: string; readonly text: string; readonly harnessId: string };
 
@@ -105,7 +105,7 @@ function WaitingList(props: { readonly rows: readonly Shown[] }) {
     <ul class="m-0 flex list-none flex-col gap-2 p-0">
       {props.rows.map((row) => (
         <li class="rounded-md border border-line bg-surface p-3">
-          <a href={row.href} class={`text-link underline ${focus}`}>
+          <a href={row.href} class={`text-accent-text underline ${focus}`}>
             {row.text}
           </a>
         </li>
@@ -116,8 +116,8 @@ function WaitingList(props: { readonly rows: readonly Shown[] }) {
 
 function PushControl() {
   return (
-    <section data-push aria-labelledby="push-heading" class="mt-6 flex flex-col gap-2">
-      <h2 id="push-heading" class="m-0 text-base font-bold text-ink">
+    <section data-push aria-labelledby="push-heading" class="mt-5 flex flex-col gap-2">
+      <h2 id="push-heading" class="m-0 text-base font-heavy text-text">
         Notifications
       </h2>
       <div>
@@ -125,7 +125,7 @@ function PushControl() {
           Turn on notifications on this device
         </button>
       </div>
-      <p data-push-outcome role="status" class="m-0 text-sm text-muted"></p>
+      <p data-push-outcome role="status" class="m-0 text-sm text-text-3"></p>
     </section>
   );
 }

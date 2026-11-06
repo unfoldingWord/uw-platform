@@ -26,18 +26,18 @@ export function Shell(props: {
         <link rel="icon" href="/assets/icon.svg" type="image/svg+xml" />
         {props.script === undefined ? null : <script type="module" src={props.script}></script>}
       </head>
-      <body class="min-h-dvh bg-bg font-sans text-base text-ink">
+      <body class="min-h-dvh bg-canvas font-sans text-base text-text">
         <a
           href="#main"
-          class="sr-only bg-surface text-link outline-offset-2 outline-focus focus-visible:not-sr-only focus-visible:absolute focus-visible:outline-2"
+          class="sr-only bg-surface text-accent-text outline-offset-2 outline-accent-text focus-visible:not-sr-only focus-visible:absolute focus-visible:outline-2"
         >
           <span class="block p-2">Skip to content</span>
         </a>
-        <div class="grid min-h-dvh md:grid-cols-[var(--uw-sidebar)_1fr]">
+        <div class="grid min-h-dvh md:grid-cols-frame">
           <Sidebar items={props.nav} current={props.current} />
           <div class="flex min-w-0 flex-col">
             <TopBar crumbs={props.crumbs} />
-            <main id="main" tabindex={-1} class="min-w-0 flex-1 p-4 md:p-6">
+            <main id="main" tabindex={-1} class="min-w-0 flex-1 p-4 md:p-5">
               {props.children}
             </main>
           </div>

@@ -37,7 +37,7 @@ describe('WB-11 the kanban card', () => {
   it('a kanban card link has visible focus', async () => {
     const markup = await jsx(KanbanCard, props).toString();
     expect(markup).toContain('focus-visible:outline-2');
-    expect(markup).toContain('outline-focus');
+    expect(markup).toContain('outline-accent-text');
   });
 
   it('a kanban card escapes its title and its facts', async () => {

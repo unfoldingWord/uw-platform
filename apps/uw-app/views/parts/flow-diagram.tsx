@@ -11,7 +11,7 @@ const PAD = 24;
 const NODE_TOP = 44;
 const FEED_DROP = 72;
 const ARROW = 'flow-arrow';
-const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
+const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 const bracketWords: ReadonlyMap<StageBracket, string> = new Map([
   ['product_package', 'Product package'],
@@ -50,7 +50,7 @@ function nodeLabel(entry: FlowStage): string {
 
 function nodeClass(entry: FlowStage): string {
   if (entry.stage.exitGate === 'human_approval') return humanGateSvg;
-  return entry.stage.paused ? 'fill-bg stroke-ocean' : 'fill-surface stroke-ocean';
+  return entry.stage.paused ? 'fill-canvas stroke-accent' : 'fill-surface stroke-accent';
 }
 
 function Node(props: { readonly harnessId: string; readonly slot: Slot }) {
@@ -69,10 +69,10 @@ function Node(props: { readonly harnessId: string; readonly slot: Slot }) {
           stroke-width="2"
           class={nodeClass(entry)}
         />
-        <text x={x + 12} y={NODE_TOP + 24} class="fill-ink text-xs font-bold">
+        <text x={x + 12} y={NODE_TOP + 24} class="fill-text text-xs font-heavy">
           {stage.title}
         </text>
-        <text x={x + 12} y={NODE_TOP + 46} class="fill-muted text-xs">
+        <text x={x + 12} y={NODE_TOP + 46} class="fill-text-3 text-xs">
           {stage.paused ? 'Paused' : `${entry.held} of ${stage.wipLimit} in progress`}
         </text>
       </a>
@@ -91,9 +91,9 @@ function BandBox(props: { readonly band: Band }) {
         width={width}
         height={NODE_TOP + NODE_HEIGHT + 8}
         rx="12"
-        class="fill-bg stroke-line"
+        class="fill-canvas stroke-line"
       />
-      <text x={first} y="24" class="fill-muted text-xs font-bold">
+      <text x={first} y="24" class="fill-text-3 text-xs font-heavy">
         {bracketText(props.band.bracket)}
       </text>
     </g>
@@ -113,7 +113,7 @@ function stepArrows(slots: readonly Slot[]) {
         x2={slot.x - 4}
         y2={y}
         stroke-width="2"
-        class="stroke-ocean"
+        class="stroke-accent"
         marker-end={`url(#${ARROW})`}
       />
     );
@@ -138,7 +138,7 @@ function feedArrows(slots: readonly Slot[]) {
           d={d}
           fill="none"
           stroke-width="2"
-          class="stroke-ocean"
+          class="stroke-accent"
           marker-end={`url(#${ARROW})`}
         />,
       ];
@@ -164,7 +164,7 @@ export function FlowDiagram(props: {
         role="group"
         aria-labelledby={`${titleId} ${descId}`}
         viewBox={`0 0 ${width} ${height}`}
-        class="h-auto w-full min-w-[var(--uw-flow-diagram)]"
+        class="h-auto w-full min-w-flow"
       >
         <title id={titleId}>{`${props.harnessKey} as the build, measure, learn loop`}</title>
         <desc id={descId}>{`Stages in order: ${placed.join(', then ')}`}</desc>
@@ -178,7 +178,7 @@ export function FlowDiagram(props: {
             markerHeight="8"
             orient="auto-start-reverse"
           >
-            <path d="M 0 0 L 10 5 L 0 10 z" class="fill-ocean" />
+            <path d="M 0 0 L 10 5 L 0 10 z" class="fill-accent" />
           </marker>
         </defs>
         {bands.map((band) => (

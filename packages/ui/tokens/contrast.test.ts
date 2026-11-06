@@ -4,38 +4,19 @@ import { resolveToken, themeTokens, type ThemeName } from '../../../tools/ui/css
 
 const themes: readonly ThemeName[] = ['light', 'dark'];
 
-const textPairs = [
-  ['ink', 'bg'],
-  ['ink', 'surface'],
-  ['muted', 'surface'],
-  ['muted', 'bg'],
-  ['link', 'surface'],
-  ['link', 'bg'],
-  ['ocean', 'surface'],
-  ['ocean', 'bg'],
-  ['on-accent', 'inspire'],
-  ['on-accent', 'cultivate'],
-  ['on-accent', 'kindle'],
-  ['ink', 'inspire-soft'],
-  ['ink', 'cultivate-soft'],
-  ['ink', 'kindle-soft'],
-  ['muted', 'inspire-soft'],
-  ['muted', 'cultivate-soft'],
-  ['muted', 'kindle-soft'],
-  ['link', 'inspire-soft'],
-  ['link', 'cultivate-soft'],
-  ['link', 'kindle-soft'],
-  ['ocean-panel-ink', 'ocean-panel'],
-] as const;
+const textRoles = ['text', 'text-2', 'text-3', 'accent-text', 'human-text', 'ok-text'] as const;
+const surfaces = ['canvas', 'surface', 'raised'] as const;
 
-const focusPairs = [
-  ['focus', 'surface'],
-  ['focus', 'bg'],
-  ['focus', 'ocean-panel'],
-  ['focus', 'inspire-soft'],
-  ['focus', 'cultivate-soft'],
-  ['focus', 'kindle-soft'],
-  ['kindle', 'surface'],
+const textOnSurface = textRoles.flatMap((text) =>
+  surfaces.map((ground) => [text, ground] as const),
+);
+
+const textOnSoft = [
+  ['accent-text', 'accent-soft'],
+  ['human-text', 'human-soft'],
+  ['ok-text', 'ok-soft'],
+  ['on-accent', 'accent'],
+  ['on-accent', 'human'],
 ] as const;
 
 function contrast(theme: ThemeName, foreground: string, background: string): number {
@@ -45,25 +26,17 @@ function contrast(theme: ThemeName, foreground: string, background: string): num
   return ink.contrast(ground, 'WCAG21');
 }
 
-describe.each(themes)('the %s theme', (theme) => {
-  it.each(textPairs)('text %s on %s meets 4.5:1', (foreground, background) => {
-    expect(contrast(theme, foreground, background)).toBeGreaterThanOrEqual(4.5);
-  });
-
-  it.each(focusPairs)(
-    'the focus ring and the human-action colour: %s against %s meets 3:1',
+describe.each(themes)('UI-1 the %s theme passes WCAG AA', (theme) => {
+  it.each([...textOnSurface, ...textOnSoft])(
+    'UI-1 %s on %s is at least 4.5:1',
     (foreground, background) => {
-      expect(contrast(theme, foreground, background)).toBeGreaterThanOrEqual(3);
+      expect(contrast(theme, foreground, background)).toBeGreaterThanOrEqual(4.5);
     },
   );
 });
 
-describe('the accent fills are not text colours in light', () => {
-  it.each(['inspire', 'cultivate'])(
-    '%s falls below 4.5:1 on the light surface, so text sits on it in on-accent and links use link',
-    (accent) => {
-      expect(contrast('light', accent, 'surface')).toBeLessThan(4.5);
-      expect(contrast('light', 'on-accent', accent)).toBeGreaterThanOrEqual(4.5);
-    },
-  );
+describe('UI-1 the lowest pair is the one the design names', () => {
+  it('UI-1 text-3 on canvas in light is 5.99:1', () => {
+    expect(contrast('light', 'text-3', 'canvas')).toBeCloseTo(5.99, 2);
+  });
 });

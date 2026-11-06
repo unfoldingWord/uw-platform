@@ -15,14 +15,14 @@ export function Table(props: {
 }) {
   return (
     <div class="overflow-x-auto rounded-lg border border-line">
-      <table class="w-full border-collapse text-sm text-ink">
+      <table class="w-full border-collapse text-sm text-text">
         <caption class="sr-only">{props.caption}</caption>
         <thead class="bg-surface">
           <tr>
             {props.columns.map((column) => (
               <th
                 scope="col"
-                class={`border-b border-line px-3 py-2 font-bold text-muted ${cellClasses(column)}`}
+                class={`border-b border-line px-3 py-2 font-heavy text-text-3 ${cellClasses(column)}`}
               >
                 {column.label}
               </th>

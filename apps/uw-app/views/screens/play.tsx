@@ -19,8 +19,8 @@ import { zulipConfigOf } from '../../notify/zulip/config.ts';
 import { itemTopicUrl } from '../../notify/zulip/links.ts';
 import { holderText } from '../parts/holder-words.ts';
 
-const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
-const link = `text-link underline ${focus}`;
+const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
+const link = `text-accent-text underline ${focus}`;
 const wholeNumber = /^(?:0|[1-9]\d{0,15})$/;
 
 function afterOf(raw: string | undefined): number | null {
@@ -37,7 +37,7 @@ function ZulipSlot(props: { readonly topic: string | null; readonly url: string 
     );
   }
   const text = props.topic === null ? 'No Zulip topic yet' : `Zulip topic: ${props.topic}`;
-  return <span class="text-sm text-muted">{text}</span>;
+  return <span class="text-sm text-text-3">{text}</span>;
 }
 
 function Links(props: { readonly play: PlayByPlay; readonly zulipUrl: string | null }) {
@@ -110,7 +110,7 @@ export async function playScreen(c: Context<AppEnv>): Promise<Response> {
     spec,
     <>
       <PageHead eyebrow="Item" title={item.title} lede={`At ${stage.title} on ${harness.key}`} />
-      <p class="m-0 mb-4 text-sm text-muted">{`Holder: ${holderText(play.holder, screen.at)}`}</p>
+      <p class="m-0 mb-4 text-sm text-text-3">{`Holder: ${holderText(play.holder, screen.at)}`}</p>
       <Links play={play} zulipUrl={zulipUrl} />
       <ol class="m-0 flex list-none flex-col gap-2 p-0">
         {play.events.map((event) => (

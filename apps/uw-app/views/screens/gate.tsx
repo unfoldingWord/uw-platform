@@ -13,7 +13,7 @@ import { notFound } from './not-found.tsx';
 type ItemScene = { readonly item: ItemState; readonly harness: Harness; readonly stage: Stage };
 
 const REFRESH_EVERY_MS = 60_000;
-const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
+const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 function notAtGate(gate: PanelGate): boolean {
   return !gate.ability.can && gate.ability.reason === 'item_not_at_gate';
@@ -90,7 +90,7 @@ export async function gateScreen(c: Context<AppEnv>): Promise<Response> {
         {notice === null ? null : <Note>{notice}</Note>}
         <GatePanel gate={notice === null ? gate : { ...gate, decides: false }} />
         <p class="m-0">
-          <a href={itemPath(harness.id, item.itemId)} class={`text-link underline ${focus}`}>
+          <a href={itemPath(harness.id, item.itemId)} class={`text-accent-text underline ${focus}`}>
             See everything that happened on this item
           </a>
         </p>

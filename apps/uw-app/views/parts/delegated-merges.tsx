@@ -4,14 +4,14 @@ import { Note } from '@uw/ui/components/note.tsx';
 import { mergedCapNote } from './caps.ts';
 import { itemPath } from './paths.ts';
 
-const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
+const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 export function DelegatedMerges(props: { readonly merged: DelegatedMergeList }) {
   const { rows, capped } = props.merged;
   if (rows.length === 0) return null;
   return (
-    <section aria-labelledby="delegated-merges-heading" class="mt-6 flex flex-col gap-2">
-      <h2 id="delegated-merges-heading" class="m-0 text-base font-bold text-ink">
+    <section aria-labelledby="delegated-merges-heading" class="mt-5 flex flex-col gap-2">
+      <h2 id="delegated-merges-heading" class="m-0 text-base font-heavy text-text">
         Merged under a delegation
       </h2>
       {capped ? <Note>{mergedCapNote}</Note> : null}
@@ -20,11 +20,11 @@ export function DelegatedMerges(props: { readonly merged: DelegatedMergeList }) 
           <li class="flex flex-col gap-1">
             <a
               href={itemPath(row.harness.id, row.itemId)}
-              class={`break-words text-link underline ${focus}`}
+              class={`break-words text-accent-text underline ${focus}`}
             >
               {`${row.title} on ${row.harness.key}`}
             </a>
-            <span class="break-words text-sm text-muted">
+            <span class="break-words text-sm text-text-3">
               {`Merged under a delegation granted by ${row.email} until ${formatInstant(row.expiresAt)}`}
             </span>
           </li>

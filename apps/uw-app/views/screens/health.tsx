@@ -8,7 +8,7 @@ import { renderScreen } from '../parts/frame.tsx';
 import { indicatorText, statusOf } from '../parts/health-words.ts';
 import { healthPath, homePath } from '../parts/paths.ts';
 
-const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
+const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 const drilled: ReadonlySet<string> = new Set(AGENT_PLANE_INDICATORS);
 
 function Indicator(props: { readonly indicator: HealthIndicator }) {

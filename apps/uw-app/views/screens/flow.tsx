@@ -14,7 +14,7 @@ import { idParam } from '../parts/params.ts';
 import { boardPath, flowPath, homePath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 
-const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
+const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 const cappedNote = `This harness has at least ${formatCount(VIEW_LIMIT)} open items. The counts and costs cover the ${formatCount(VIEW_LIMIT)} with the highest priority.`;
 
@@ -33,7 +33,7 @@ function StageCell(props: { readonly harnessId: string; readonly entry: FlowStag
   const { stage } = props.entry;
   return (
     <span class="flex flex-wrap items-center gap-2">
-      <a href={boardPath(props.harnessId, stage.key)} class={`text-link underline ${focus}`}>
+      <a href={boardPath(props.harnessId, stage.key)} class={`text-accent-text underline ${focus}`}>
         {stage.title}
       </a>
       {stage.exitGate === 'human_approval' ? <HumanGateMark label="Person decides" /> : null}
@@ -82,7 +82,7 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
         title={view.harness.key}
         lede={`Built from the ${view.harness.template} template`}
       />
-      <div class="flex flex-col gap-6">
+      <div class="flex flex-col gap-5">
         {view.capped ? <Note>{cappedNote}</Note> : null}
         <FlowDiagram harnessId={harnessId} harnessKey={view.harness.key} stages={view.stages} />
         <Table

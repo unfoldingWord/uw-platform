@@ -20,10 +20,10 @@ export function ActivateForm(props: { readonly dashboard: PersonaDashboard }) {
 
 function Outcome(props: { readonly saved: SavedToolset | null }) {
   const { saved } = props;
-  if (saved === null) return <p role="status" class="m-0 text-sm text-muted"></p>;
+  if (saved === null) return <p role="status" class="m-0 text-sm text-text-3"></p>;
   if ('accepted' in saved) return <Note>Done.</Note>;
   return (
-    <p role="status" class="m-0 text-sm text-muted">
+    <p role="status" class="m-0 text-sm text-text-3">
       {reasonText(saved.reason)}
     </p>
   );
@@ -38,26 +38,26 @@ export function ToolsetForm(props: {
   const { page, toolset } = props.dashboard;
   const held = new Set(toolset);
   return (
-    <form method="post" action={`${personaPath(page.id)}/toolset`} class="mb-6 flex flex-col gap-3">
+    <form method="post" action={`${personaPath(page.id)}/toolset`} class="mb-5 flex flex-col gap-3">
       <input type="hidden" name="expectedVersion" value={String(page.version)} />
       <input type="hidden" name="requestId" value={props.requestId} />
       <fieldset class="m-0 flex flex-col gap-2 rounded-lg border border-line p-4">
-        <legend class="px-1 font-bold text-ink">Toolset</legend>
+        <legend class="px-1 font-heavy text-text">Toolset</legend>
         {props.options.map((verb) => (
-          <label class="flex items-center gap-2 text-sm text-ink">
+          <label class="flex items-center gap-2 text-sm text-text">
             <input
               type="checkbox"
               name="verb"
               value={verb}
               checked={held.has(verb)}
-              class="accent-ocean outline-offset-2 outline-focus focus-visible:outline-2"
+              class="accent-accent outline-offset-2 outline-accent-text focus-visible:outline-2"
             />
             {verb}
           </label>
         ))}
       </fieldset>
       {page.status === 'active' ? (
-        <p class="m-0 text-sm text-muted">
+        <p class="m-0 text-sm text-text-3">
           Saving returns this persona to suggested; an admin activates it again.
         </p>
       ) : null}

@@ -418,7 +418,7 @@ async function approveAllShown(world: GateWorld): Promise<void> {
   ]);
   const button = document.querySelector('main form[data-command="decide_gates"] button');
   expect(button?.textContent).toMatch(/^Approve the 1 gate shown on /);
-  expect(button?.getAttribute('class')).toContain('bg-kindle');
+  expect(button?.getAttribute('class')).toContain('bg-human');
   expect(await screenProblems((await pageOf(world, world.kimEmail, gatesPath())).text)).toEqual([]);
   expect(approveAllForms(await documentOf(world, world.viewerEmail, gatesPath()))).toEqual([]);
 }
