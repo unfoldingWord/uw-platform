@@ -22,7 +22,7 @@ function stepOf(tokensIn: number, tokensOut: number) {
   };
 }
 
-function runOf(base: number, n: number, item: number, overrides: Partial<RunRow>): RunRow {
+export function runOf(base: number, n: number, item: number, overrides: Partial<RunRow>): RunRow {
   return {
     id: uid(base + 0x60 + n),
     harnessId: uid(base),

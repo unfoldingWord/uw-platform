@@ -52,6 +52,7 @@ export function bindEvents(executor: AnyExecutor): HarnessEventsGateway {
       recent: (query) => recent(executor, query),
       lastPosition: (harnessId) => lastPosition(executor, harnessId),
       lastPositions: (harnessIds) => lastPositions(executor, harnessIds),
+      latestForItems: (itemIds) => latestForItems(executor, itemIds),
       countForPersona: (query) => countForPersona(executor, query),
     },
     write: { append: (events) => refusing(() => appendAll(executor, events)) },
@@ -293,4 +294,17 @@ async function countForPersona(
     )
     .groupBy(harnessEvents.name);
   return new Map(rows.map((row) => [eventNameSchema.parse(row.name), row.count]));
+}
+
+async function latestForItems(
+  executor: AnyExecutor,
+  itemIds: readonly string[],
+): Promise<readonly HarnessEvent[]> {
+  if (itemIds.length === 0) return [];
+  const rows = await executor
+    .selectDistinctOn([harnessEvents.itemId])
+    .from(harnessEvents)
+    .where(inArray(harnessEvents.itemId, [...itemIds]))
+    .orderBy(harnessEvents.itemId, desc(harnessEvents.at), desc(harnessEvents.position));
+  return rows.map(toEvent);
 }
