@@ -241,7 +241,7 @@ async function pushControl(db: Database): Promise<void> {
   const control = document.querySelector('main [data-push]');
   const button = control?.querySelector('button[data-push-toggle]');
   expect(button?.textContent?.trim()).toBe('Turn on notifications on this device');
-  expect(button?.getAttribute('class')).not.toContain('kindle');
+  expect(button?.getAttribute('class')).not.toContain('human');
   expect(control?.querySelector('[data-push-outcome][role="status"]')).not.toBeNull();
 }
 

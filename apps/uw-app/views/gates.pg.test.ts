@@ -252,7 +252,7 @@ async function decidedFromForm(world: GateWorld, decision: string): Promise<void
 
 async function kindleOnButtons(world: GateWorld): Promise<void> {
   const document = await documentOf(world, world.kimEmail, gatesPath());
-  const kindled = [...document.querySelectorAll('main [class*="kindle"]')];
+  const kindled = [...document.querySelectorAll('main [class*="human"]')];
   expect(kindled.map((element) => [element.tagName, element.getAttribute('name')])).toEqual([
     ['BUTTON', 'decision'],
     ['BUTTON', 'decision'],
@@ -346,7 +346,7 @@ async function noDecideControls(world: GateWorld, email: string, path: string): 
   const document = await documentOf(world, email, path);
   expect(document.querySelector('main form[data-command="decide"]')).toBeNull();
   expect(document.querySelectorAll('main button[name="decision"]')).toHaveLength(0);
-  expect(document.querySelectorAll('main [class*="kindle"]')).toHaveLength(0);
+  expect(document.querySelectorAll('main [class*="human"]')).toHaveLength(0);
   expect(document.querySelector('main [role="note"]')?.textContent).toBe(notWaiting);
 }
 
