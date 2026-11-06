@@ -5,6 +5,7 @@
 @import './tokens/effects.css';
 @import './tokens/type.css';
 @import './tokens/layout.css';
+@import './generated/fonts.css';
 
 @source './components/**/*.tsx';
 @source '../../apps/uw-app/**/*.tsx';
