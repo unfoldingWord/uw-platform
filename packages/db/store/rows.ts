@@ -34,6 +34,7 @@ export function toHarness(row: typeof harnesses.$inferSelect): Harness {
   return harnessSchema.parse({
     id: row.id,
     key: row.key,
+    title: row.title,
     template: row.template,
     jdArea: row.jdArea,
     repository: row.repository,

@@ -33,6 +33,7 @@ function harnessOf(repository: string | null): Harness {
   return harnessSchema.parse({
     id: harnessId,
     key: 'software',
+    title: 'software',
     template: 'software',
     jdArea: '80-89',
     repository,
@@ -57,6 +58,7 @@ function harnessesGateway(harness: Harness): HarnessesGateway {
       setFreeze: unused,
       setTemplate: unused,
       setFixClaim: unused,
+      setTitle: unused,
     },
   };
 }
