@@ -59,3 +59,11 @@ describe('WB-11 the stylesheet is built from the tokens', () => {
     });
   });
 });
+
+describe('UI-3 the bundled fonts are the font build', () => {
+  it('UI-3 the committed font module and @font-face rules are the Fontsource files', () => {
+    expect(() =>
+      execFileSync('node', ['tools/ui/build-fonts.ts', '--check'], { stdio: 'pipe' }),
+    ).not.toThrow();
+  }, 60_000);
+});

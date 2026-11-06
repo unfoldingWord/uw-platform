@@ -5,15 +5,19 @@
   "type": "module",
   "exports": {
     "./components/*": "./components/*",
-    "./generated/app-css": "./generated/app-css.ts"
+    "./generated/app-css": "./generated/app-css.ts",
+    "./generated/fonts": "./generated/fonts.ts"
   },
   "scripts": {
     "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json"
   },
   "dependencies": {
+    "echarts": "6.1.0",
     "hono": "^4.13.11"
   },
   "devDependencies": {
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@fontsource/nunito-sans": "^5.3.0",
     "@types/jsdom": "^30.0.0",
     "@types/node": "^22.20.4",
     "axe-core": "^4.13.0",
