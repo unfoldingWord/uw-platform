@@ -1,7 +1,5 @@
 # Step 10: Personas Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Make personas real: a persona page carries its own `status` and a derived `requires_tools`, a person with `admin` activates it after the tool check and a dry run, Builder, Reviewer and Iterate ship as persona pages in the template fixtures, Reviewer hands an item to a person after three rounds, hosted Builder pushes and opens its pull request through the egress proxy, Iterate reads measurements through `query_entities` and routes a labelled revision along a `feeds` edge, learnings and skills are confirmed by a person against the version they read, and every persona page opens on its dashboard.
 
 **Architecture:** The kernel's persona module gains the dry run and the status flip (one conditional `UPDATE` through a new Store gateway method, the only kernel write to `pages`, recorded as an exception) and writes the `personas` projection, which then replaces `pages.read.activePersona` in the hosted beat, poll's subscription and the claim. The page owner (`apps/uw-app/pages/`) derives the server-owned frontmatter fields (persona `status` and `requires_tools`, the learning `contradicts` flag), confirms learnings and skills, and serves the stale-confidence report. Measurements get their writer (a person command at the `iterate` bracket) and a whitelisted query. `submit_to_gate` may attach pages, so a revision travels to `learning_attached` in the same transaction that routes it. The persona view is a server-rendered page over a kernel read, with plain form posts that run the command dispatcher.
@@ -10,7 +8,7 @@
 
 **Spec:** `docs/PRD.md` (approved; no brainstorm, no approval step). Requirements covered: **PE-1, PE-2, PE-3, PE-4, PE-5, PE-6, PE-7, PE-8**, and the KN-7 revision clause. Carries planned here (each closed in Task 9 with its commit): persona frontmatter `status` and the learning contradiction flag (step 1); PE-7 revisions to `learning_attached` and KN-7's revision clause (step 3); the capability words `iterate`, `build`, `review` (step 3, AB-6); PE-8 confirmation pins the version read (step 4); PE-2 `requires_tools` derived (step 4, R22); PE-3 dry run and status flip, PE-7 `measurements_for_item` with the measurements writer, the `personas` projection joining poll's subscription (step 4); PE-3/PE-8 flip as `UPDATE ... WHERE version = expectedVersion` and `activation_required` distinguishable in the UI (step 4); PE-6/HE-9 Reviewer logins seam (step 5); hosted Builder's push and pull request through the egress proxy and its GitHub identity (step 7, PE-5); Reviewer's three-round hand-off (step 7, PE-6); the `personas` projection replacing `pages.read.activePersona` in the beat (step 7, PE-3).
 
-The plan is written against the code as it stands after step 7 (`docs/superpowers/plans/2026-10-03-step-07-hosts-and-engines.md`): `kernel.runs` (`start`, `scene`, `beat`, `hibernateAtGate`, `complete`, `fail`, `holdPremise`, `halt`, `stop`, `prompt`, `reviewDiff`, `postReview`), `packages/harness/engines.ts` (`engineDescriptor`, `hostable`), `packages/harness/runs/tool-loop.ts` (`runToolLoop`, `TURN_LIMIT`), `apps/uw-app/engines/sandbox/egress.ts` (`egress`, `EgressRoutes`), `apps/uw-app/runs/run-core.ts`, `apps/uw-app/github/reviewer-apps.ts`, contract `11.0.0`. Where a step-7 file named here differs in detail from the step-7 plan, follow the code and keep this plan's behaviour.
+The plan is written against the code as it stands after step 7 (`docs/plans/2026-10-03-step-07-hosts-and-engines.md`): `kernel.runs` (`start`, `scene`, `beat`, `hibernateAtGate`, `complete`, `fail`, `holdPremise`, `halt`, `stop`, `prompt`, `reviewDiff`, `postReview`), `packages/harness/engines.ts` (`engineDescriptor`, `hostable`), `packages/harness/runs/tool-loop.ts` (`runToolLoop`, `TURN_LIMIT`), `apps/uw-app/engines/sandbox/egress.ts` (`egress`, `EgressRoutes`), `apps/uw-app/runs/run-core.ts`, `apps/uw-app/github/reviewer-apps.ts`, contract `11.0.0`. Where a step-7 file named here differs in detail from the step-7 plan, follow the code and keep this plan's behaviour.
 
 ## Global Constraints
 
@@ -817,7 +815,7 @@ PE-2 PE-3 PE-4 PE-5"
 **Requirements:** PE-1 to PE-8 (the record); DX-5.
 
 **Files:**
-- Modify: `docs/progress_tracker.md` (`.superpowers/sdd/BUILD.md` is the controller's and is not touched)
+- Modify: `docs/progress_tracker.md` (the controller's own ledger is not touched)
 
 - [ ] **Step 1: Prove the trace**
 

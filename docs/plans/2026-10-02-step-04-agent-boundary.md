@@ -1,7 +1,5 @@
 # Step 4, Agent Boundary: Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Give agents their one way in: a Streamable HTTP MCP endpoint at `/mcp` inside `uw-app`, behind Access, whose tool list is the served verb registry and nothing else; agent identities `agent:<person>/<device>` (and the delegated form) minted at the edge from Access credentials with exactly their owner's grants; every handler gated by `can()` on the harness's area; the eleven served verbs over the kernel and the page, task and record modules; delegated non-interactive runners; the three agent-boundary checks (static, runtime, conformance) each with a planted fixture that makes it fail; and persona activation's tool check (AB-1 to AB-8).
 
 **Architecture:** The MCP surface lives in `apps/uw-app/mcp/` (the composition root, PRD 9). One SDK `Server` is built per request by `createVerbServer(context)`: `tools/list` is `toolsFor(principal, at)` over `verbRegistry` from `@uw/contracts`; `tools/call` is `callVerb`, which refuses an unserved name with the MCP unknown-tool error, parses the input with the verb's own Zod schema, runs the one central `can()` for every gated verb, and maps the handler's reply to an MCP result whose refusals carry a closed-set reason. The HTTP route connects it to the SDK's web-standard Streamable HTTP transport (stateless, JSON responses); the Workflow host (step 7) connects the same server in process. Harness verbs call new kernel reads (`kernel.reads`) and the existing item commands; page, task and record verbs call the platform modules that own those tables. Persona activation's tool check is a kernel command (`kernel.personas.activate`), proven in the sim.
@@ -1427,7 +1425,7 @@ Rewrite "The agent boundary" to state what is built: the endpoint `POST /mcp` be
 
 - [ ] **Step 3: Update `docs/progress_tracker.md`**
 
-- Status table: step 4 `Built`, evidence `docs/superpowers/plans/2026-10-02-step-04-agent-boundary.md`; scenarios `sim/scenarios/AB-4.*`, `AB-6.*`, `AB-7.*`, `AB-8.*`; tests named AB-1 to AB-8 (the files of Step 1); `pnpm verify` green with `TEST_DATABASE_URL` set.
+- Status table: step 4 `Built`, evidence `docs/plans/2026-10-02-step-04-agent-boundary.md`; scenarios `sim/scenarios/AB-4.*`, `AB-6.*`, `AB-7.*`, `AB-8.*`; tests named AB-1 to AB-8 (the files of Step 1); `pnpm verify` green with `TEST_DATABASE_URL` set.
 - A `## Step 4 evidence by requirement` table: each of AB-1 to AB-8, its commits (`git log --oneline` for this step, leaving out the plan) and its scenario and test files.
 - Decisions made during the build: one row for each of this plan's decisions 1 to 18 (date 2026-10-02, the requirement, the decision, why, and cost if wrong), plus these rows:
 

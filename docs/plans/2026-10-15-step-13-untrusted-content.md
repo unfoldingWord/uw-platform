@@ -1,14 +1,12 @@
 # Step 13, Untrusted Content: Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Text that entered the platform from outside it reaches a model only inside a fence that names its source and says it is data; the reads a hosted run makes to build a prompt carry the run's own principal; a static check fails the build on an unwrapped outside read or a forged wrapper; and any future cache of model output is keyed by the reader's clearance.
 
 **Architecture:** One wrapper, `packages/harness/untrusted.ts`, holds the only constructor of `UntrustedContent` (a class with ES private fields, exported as a type only, so nothing else can build or spread one) and the deterministic fence renderer. The three prompt builders in `apps/uw-app/runs/prompts.ts` take outside text only as `UntrustedContent`; a new `apps/uw-app/runs/prompt-source.ts` wraps the run's reads after the workflow step boundary, so no wrapper is ever serialised into a step's stored output. The read step keeps reading through `resolve_context` on the in-process core client, which is served for the scene's agent principal; the read is split out as `readContext` so a test can prove the filter is that principal's. `tools/architecture/untrusted-content.ts` is the static check (the AB-7 template: functions over `SourceFiles`, a test over the real tree and planted texts). `packages/harness/clearance.ts` is the clearance key UC-5 binds future caches to.
 
 **Tech Stack:** TypeScript strict, Zod 4, Vitest 4 (node project for `packages`, `tools` and `*.pg.test.ts`; workers project for other `apps/uw-app` tests), the in-process MCP host, Postgres for the `*.pg.test.ts` files.
 
-**Spec:** `docs/PRD.md` section 7.11.4 (UC-1 to UC-5), section 13 step 13, section 18.3 V2-3; the design is `docs/superpowers/specs/2026-10-15-harness-v0-2-0-design.md` sections 3 (V2-3), 5.4, 7 and 9 (release criterion 5).
+**Spec:** `docs/PRD.md` section 7.11.4 (UC-1 to UC-5), section 13 step 13, section 18.3 V2-3; the design is `docs/specs/2026-10-15-harness-v0-2-0-design.md` sections 3 (V2-3), 5.4, 7 and 9 (release criterion 5).
 
 **Requirements covered:** UC-1, UC-2, UC-3, UC-4 (Musts) and UC-5 (Should, built: the rule is one more function in the UC-4 check and the key is twelve lines; deferring it would leave the check without its cache half).
 

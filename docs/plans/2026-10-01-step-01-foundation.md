@@ -1,7 +1,5 @@
 # Step 1, Finish the Foundation: Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Finish the platform foundation the kernel will stand on: real Postgres in CI, the go-live wiring (written, switched off), Access sign-in and a typed `Principal`, `role_grants` and `can()`, pages and page versions, the ingest Worker and its queue, one trace id with a structured logger and `/health`, and the verb registry under a contract lock.
 
 **Architecture:** Everything durable is a table in `packages/db/schema.ts` with a migration and a real-Postgres test. Boundary shapes (principal, commands, pages, envelope, health, verbs) are Zod in `packages/contracts`, guarded by a contract lock that forces `CONTRACT_VERSION` to move with every closed set. `packages/core` holds the pure pieces later steps import: `Principal`, `can()`, the logger and the trace header. `apps/uw-app` and `apps/uw-ingest` are composition roots: Hono routes over small modules that each own their tables and export an `owns` constant. Anything that needs a Cloudflare, Neon or GitHub resource is declared in `infra/` or `.github/workflows/` and either skips cleanly or stays out of the deployed wrangler file until the resource exists.
@@ -3988,7 +3986,7 @@ In `packages/core/modules.ts`, the `core` module's `tables` become `['people', '
 
 - [ ] **Step 4: Update `docs/progress_tracker.md`**
 
-Status row for step 1: state `Built`, evidence `docs/superpowers/plans/2026-10-01-step-01-foundation.md; tests named FD-6 to FD-12, CT-2, CT-3; pnpm verify green with TEST_DATABASE_URL set`. Also change its requirements cell to `FD-6 to FD-12, CT-2, CT-3`.
+Status row for step 1: state `Built`, evidence `docs/plans/2026-10-01-step-01-foundation.md; tests named FD-6 to FD-12, CT-2, CT-3; pnpm verify green with TEST_DATABASE_URL set`. Also change its requirements cell to `FD-6 to FD-12, CT-2, CT-3`.
 
 "Decisions made during the build", one row each, dated 2026-10-01, with the requirement, decision, why and cost if wrong:
 

@@ -1,14 +1,12 @@
 # Step 20, The Joining Journey and the Switch: Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Prove design section 4 end to end in the sim (DX-10), make the go-live switch one reviewed change a person makes and prove by test that everything it switches is inert until then (GL-1's build half), then confirm the v0.2.0 release list (design section 9, items 1 to 6) with its evidence in the tracker.
 
 **Architecture:** No behaviour changes. DX-10 is one scenario composed from the sim helpers steps 14 to 17 built (`joinedWorld`, `simLendMerge`, `exitDelegated`, the sim connectors), plus a new helper module for its six beats. GL-1 adds no binding, job or secret: it turns "copy the go-live files and edit five tests" into "copy the go-live files and flip one flag", writes the runbook a person follows, restates every tracker row that waits on FD-6, FD-7, FD-10 or FD-12 with the runbook step that closes it, and pins all of that with tests titled `GL-1`. The live run (the staging probe answering through Hyperdrive) stays a person's, as `AGENTS.md` section 8 requires.
 
 **Tech Stack:** TypeScript strict, Vitest 4 (node and workers projects), the sim (`sim/`), `yaml` and `smol-toml` for the workflow and wrangler files, Markdown.
 
-**Spec:** `docs/PRD.md` section 7.11 (DX-10 in 7.11.10, GL-1 in 7.11.1), section 13 step 20, section 14 and section 15; the design is `docs/superpowers/specs/2026-10-15-harness-v0-2-0-design.md` sections 4, 5.1, 5.10 and 9.
+**Spec:** `docs/PRD.md` section 7.11 (DX-10 in 7.11.10, GL-1 in 7.11.1), section 13 step 20, section 14 and section 15; the design is `docs/specs/2026-10-15-harness-v0-2-0-design.md` sections 4, 5.1, 5.10 and 9.
 
 **Requirements covered:** DX-10 (Must), GL-1 (Must; its live run is a person's). Also the v0.2.0 release list (design section 9 items 1 to 6) and the carries addressed to step 20: S14 (GL-3, the person's move from Check to Ship), S16 (MD-4 MD-5, the release guard's titles), S16 (MD-3, the GitHub App for the cron, restated), S16 (MD-3, S16-R10, the joined merge in the sim).
 
@@ -510,7 +508,7 @@ grantorApproved: true
 refused: [ protected_path_needs_person ]
 ```
 
-If an assertion fails, use superpowers:systematic-debugging: read the failing beat's kernel command and the event log the run printed, and find which assumption in the table above the kernel disagrees with. A disagreement on beat 3 (the item moved off Check) or beat 5 (`joined` false, or a second connector call) is a defect in the kernel, not in the scenario: fix it with its own failing test first, in its own commit, and record it in the tracker. Any other disagreement (an event name, a place string) is a wrong premise here: correct the assertion to what the kernel records, and record the correction in the tracker under the step 20 rulings. Never delete an assertion to make it pass.
+If an assertion fails, debug it systematically: read the failing beat's kernel command and the event log the run printed, and find which assumption in the table above the kernel disagrees with. A disagreement on beat 3 (the item moved off Check) or beat 5 (`joined` false, or a second connector call) is a defect in the kernel, not in the scenario: fix it with its own failing test first, in its own commit, and record it in the tracker. Any other disagreement (an event name, a place string) is a wrong premise here: correct the assertion to what the kernel records, and record the correction in the tracker under the step 20 rulings. Never delete an assertion to make it pass.
 
 - [ ] **Step 5: Run the sim and the scenario discovery tests**
 
@@ -1499,7 +1497,7 @@ item 7 is Ian's."
 
 In `docs/progress_tracker.md`:
 
-1. The step 20 row of "Status by build-order step": state `Built`; evidence: "Tasks 1 to 8 on `build/v0.2.0`: <the commit SHAs of Tasks 1 to 8, by task>. DX-10 is proven by `sim/scenarios/DX-10.the-joining-journey-from-shadow-to-a-delegated-merge.ts`; GL-1 by `tools/infra/switch.test.ts` and the GL-1 describe in `apps/uw-app/health/health.test.ts`. GL-1's live switch waits on a person (the GL-1 row under Waiting on a person). `pnpm verify` green locally: counts in Step 2 below. CI: <run id, or the waiver proposal of Task 8 Step 5>. `docs/superpowers/plans/2026-10-15-step-20-joining-journey-and-switch.md`".
+1. The step 20 row of "Status by build-order step": state `Built`; evidence: "Tasks 1 to 8 on `build/v0.2.0`: <the commit SHAs of Tasks 1 to 8, by task>. DX-10 is proven by `sim/scenarios/DX-10.the-joining-journey-from-shadow-to-a-delegated-merge.ts`; GL-1 by `tools/infra/switch.test.ts` and the GL-1 describe in `apps/uw-app/health/health.test.ts`. GL-1's live switch waits on a person (the GL-1 row under Waiting on a person). `pnpm verify` green locally: counts in Step 2 below. CI: <run id, or the waiver proposal of Task 8 Step 5>. `docs/plans/2026-10-15-step-20-joining-journey-and-switch.md`".
 2. A section "## Step 20 evidence by requirement", directly before "## Decisions made during the build", in the shape of step 17's:
 
 ```markdown
@@ -1559,7 +1557,7 @@ git push
 - [ ] **Step 5: Mark the pull request ready for Ian's review, and stop**
 
 ```bash
-gh pr edit 84 --title "feat: harness v0.2.0" --body "The v0.2.0 build (PRD section 7.11; design docs/superpowers/specs/2026-10-15-harness-v0-2-0-design.md), steps 12 to 20. Evidence per requirement, every ruling, what was not verified and what waits on a person are in docs/progress_tracker.md; the release list is under Release criteria, v0.2.0. Release item 6: see that table and docs/exceptions.md. GL-1's live switch follows infra/README.md, The GL-1 switch, in order."
+gh pr edit 84 --title "feat: harness v0.2.0" --body "The v0.2.0 build (PRD section 7.11; design docs/specs/2026-10-15-harness-v0-2-0-design.md), steps 12 to 20. Evidence per requirement, every ruling, what was not verified and what waits on a person are in docs/progress_tracker.md; the release list is under Release criteria, v0.2.0. Release item 6: see that table and docs/exceptions.md. GL-1's live switch follows infra/README.md, The GL-1 switch, in order."
 gh pr ready 84
 ```
 
