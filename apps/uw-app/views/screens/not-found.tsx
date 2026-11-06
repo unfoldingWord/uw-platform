@@ -4,7 +4,7 @@ import type { AppEnv } from '../../deps.ts';
 import { renderScreen } from '../parts/frame.tsx';
 import { homePath } from '../parts/paths.ts';
 
-const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
+const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 export function notFound(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
@@ -13,7 +13,7 @@ export function notFound(c: Context<AppEnv>): Promise<Response> {
     <>
       <PageHead title="You cannot open that page" />
       <p>
-        <a href={homePath()} class={`text-link underline ${focus}`}>
+        <a href={homePath()} class={`text-accent-text underline ${focus}`}>
           Go to Home
         </a>
       </p>

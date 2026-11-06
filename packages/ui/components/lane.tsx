@@ -16,24 +16,24 @@ export function Lane(props: {
   return (
     <section
       aria-labelledby={headingId}
-      class="flex min-w-0 flex-col gap-3 rounded-lg border border-line bg-bg p-3"
+      class="flex min-w-0 flex-col gap-3 rounded-lg border border-line bg-canvas p-3"
     >
       <div class="flex flex-wrap items-center gap-2">
-        <h2 id={headingId} class="m-0 text-base font-bold text-ink">
+        <h2 id={headingId} class="m-0 text-base font-heavy text-text">
           {props.title}
         </h2>
-        <p class="m-0 text-sm text-muted">
+        <p class="m-0 text-sm text-text-3">
           {`${props.count} of ${props.wipLimit}`}
           <span class="sr-only"> items against the WIP limit</span>
         </p>
         {props.paused === true ? <Badge tone="held">Paused</Badge> : null}
       </div>
       {facts.length === 0 ? null : (
-        <dl class="m-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+        <dl class="m-0 grid grid-cols-label gap-x-3 gap-y-1 text-xs">
           {facts.map((fact) => (
             <>
-              <dt class="text-muted">{fact.label}</dt>
-              <dd class="m-0 text-ink">{fact.value}</dd>
+              <dt class="text-text-3">{fact.label}</dt>
+              <dd class="m-0 text-text">{fact.value}</dd>
             </>
           ))}
         </dl>

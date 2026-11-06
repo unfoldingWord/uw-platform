@@ -107,7 +107,7 @@ function PersonaLink(props: { readonly card: BoardCard }) {
   return (
     <a
       href={personaPath(pageId)}
-      class="text-sm text-link underline outline-offset-2 outline-focus focus-visible:outline-2"
+      class="text-sm text-accent-text underline outline-offset-2 outline-accent-text focus-visible:outline-2"
     >
       See the persona running this item
     </a>

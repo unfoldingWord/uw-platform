@@ -3,7 +3,7 @@ import { domId } from '@uw/ui/components/text.ts';
 import { epicLayout, NODE_HEIGHT, NODE_WIDTH, nodeLabel, type EpicLayout } from './epic-layout.ts';
 import { issueUrl, itemPath } from './paths.ts';
 
-const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
+const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 const viaWords: Readonly<Record<NotReady['via'], string>> = {
   import: 'Refused at import',
@@ -29,8 +29,8 @@ function stateWords(node: EpicNode): string {
 }
 
 function nodeClass(node: EpicNode): string {
-  if (node.passedShip) return 'fill-bg stroke-line';
-  return node.waiting ? 'fill-bg stroke-ocean' : 'fill-surface stroke-ocean';
+  if (node.passedShip) return 'fill-canvas stroke-line';
+  return node.waiting ? 'fill-canvas stroke-accent' : 'fill-surface stroke-accent';
 }
 
 function Arrowhead(props: { readonly id: string }) {
@@ -45,7 +45,7 @@ function Arrowhead(props: { readonly id: string }) {
         markerHeight="8"
         orient="auto-start-reverse"
       >
-        <path d="M 0 0 L 10 5 L 0 10 z" class="fill-ocean" />
+        <path d="M 0 0 L 10 5 L 0 10 z" class="fill-accent" />
       </marker>
     </defs>
   );
@@ -77,10 +77,10 @@ function Node(props: {
         stroke-dasharray={node.waiting ? '6 4' : undefined}
         class={nodeClass(node)}
       />
-      <text x={at.x + 12} y={at.y + 22} class="fill-ink text-xs font-bold">
+      <text x={at.x + 12} y={at.y + 22} class="fill-text text-xs font-heavy">
         {nodeLabel(nameOf(node))}
       </text>
-      <text x={at.x + 12} y={at.y + 42} class="fill-muted text-xs">
+      <text x={at.x + 12} y={at.y + 42} class="fill-text-3 text-xs">
         {stateWords(node)}
       </text>
     </a>
@@ -121,7 +121,7 @@ function Drawing(props: {
             x2={edge.x2}
             y2={edge.y2}
             stroke-width="2"
-            class="stroke-ocean"
+            class="stroke-accent"
             marker-end={`url(#${arrow})`}
           />
         ))}
@@ -145,14 +145,17 @@ function Group(props: { readonly harnessId: string; readonly group: EpicGroup })
       aria-labelledby={headingId}
       class="mb-4 rounded-lg border border-line bg-surface p-4"
     >
-      <h3 id={headingId} class="mb-2 font-bold text-ink">
+      <h3 id={headingId} class="mb-2 font-heavy text-text">
         {`#${group.epic.number} ${group.title}`}
       </h3>
       <Drawing harnessId={props.harnessId} group={group} laid={epicLayout(group)} />
-      <ol class="mt-2 list-decimal pl-6 text-sm text-ink">
+      <ol class="mt-2 list-decimal pl-5 text-sm text-text">
         {group.nodes.map((node) => (
           <li>
-            <a href={itemPath(props.harnessId, node.itemId)} class={`text-link underline ${focus}`}>
+            <a
+              href={itemPath(props.harnessId, node.itemId)}
+              class={`text-accent-text underline ${focus}`}
+            >
               {`${nameOf(node)} ${node.title}`}
             </a>
             {`, ${stateWords(node)}${waitsOn(node, group)}`}
@@ -170,8 +173,8 @@ export function EpicGroups(props: {
   if (props.epics.length === 0) return null;
   const headingId = domId('board', props.harnessId, 'epics');
   return (
-    <section aria-labelledby={headingId} class="mb-6">
-      <h2 id={headingId} class="mb-2 text-lg font-bold text-ink">
+    <section aria-labelledby={headingId} class="mb-5">
+      <h2 id={headingId} class="mb-2 text-lg font-heavy text-text">
         Epics
       </h2>
       {props.epics.map((group) => (
@@ -188,7 +191,7 @@ function NotReadyEntry(props: { readonly entry: NotReady }) {
       {entry.issue === null ? (
         entry.title
       ) : (
-        <a href={issueUrl(entry.issue)} class={`text-link underline ${focus}`}>
+        <a href={issueUrl(entry.issue)} class={`text-accent-text underline ${focus}`}>
           {`#${entry.issue.number} ${entry.title}`}
         </a>
       )}
@@ -204,15 +207,15 @@ export function NotReadyList(props: {
   if (props.entries.length === 0) return null;
   const headingId = domId('board', props.harnessId, 'not-ready');
   return (
-    <section aria-labelledby={headingId} class="mb-6 rounded-lg border border-line bg-surface p-4">
-      <h2 id={headingId} class="mb-1 text-lg font-bold text-ink">
+    <section aria-labelledby={headingId} class="mb-5 rounded-lg border border-line bg-surface p-4">
+      <h2 id={headingId} class="mb-1 text-lg font-heavy text-text">
         Not ready
       </h2>
-      <p class="mb-2 text-sm text-muted">
+      <p class="mb-2 text-sm text-text-3">
         These have no Done when heading, so intake refused them. Add a Done when heading with at
         least one line under it, then try again.
       </p>
-      <ul class="list-disc pl-6 text-sm text-ink">
+      <ul class="list-disc pl-5 text-sm text-text">
         {props.entries.map((entry) => (
           <NotReadyEntry entry={entry} />
         ))}

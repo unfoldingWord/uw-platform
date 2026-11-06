@@ -16,7 +16,7 @@ import { gatePath, gatesPath, homePath } from '../parts/paths.ts';
 import { ShadowList } from '../parts/shadow-list.tsx';
 
 const REFRESH_EVERY_MS = 60_000;
-const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
+const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 type Shown = { readonly row: GateRow; readonly gate: PanelGate };
 
@@ -77,13 +77,13 @@ function lede(count: number, capped: boolean): string {
 
 function GateList(props: { readonly shown: readonly Shown[] }) {
   return (
-    <div class="flex flex-col gap-6">
+    <div class="flex flex-col gap-5">
       {props.shown.map(({ row, gate }) => (
         <div class="flex flex-col gap-2">
           <p class="m-0">
             <a
               href={gatePath(row.harness.id, row.item.itemId)}
-              class={`text-link underline ${focus}`}
+              class={`text-accent-text underline ${focus}`}
             >
               {`Open ${row.item.title} on ${row.harness.key}`}
             </a>

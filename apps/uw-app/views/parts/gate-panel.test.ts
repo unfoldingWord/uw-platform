@@ -35,7 +35,7 @@ describe('RV-2 the Gates view lists Reviewer verdicts with a refute control', ()
     expect(html).toContain('data-command="refute_finding"');
     expect(html).toContain('>Mark finding 1 of verdict 1 (uw-reviewer) refuted</button>');
     expect(html).not.toContain('Mark finding 2 of verdict 1');
-    expect(html).toContain('bg-kindle');
+    expect(html).toContain('bg-human');
     expect(html.indexOf('data-command="refute_finding"')).toBeGreaterThan(
       html.indexOf('data-command="decide"'),
     );

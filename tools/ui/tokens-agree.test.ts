@@ -39,9 +39,11 @@ function coloursWithoutTheme(semantic: Iterable<string>, css: string): string[] 
 }
 
 const appCss = (): string => readFileSync('packages/ui/app.css', 'utf8');
-const semanticColours = (): string[] => [...blockAt(tokenFile('theme'), ':root').keys()];
+const shadowIngredients = new Set(['color-scheme', '--uw-highlight', '--uw-depth']);
+const semanticColours = (): string[] =>
+  [...blockAt(tokenFile('theme'), ':root').keys()].filter((name) => !shadowIngredients.has(name));
 
-describe('WB-11 the Tailwind theme is the tokens and nothing else', () => {
+describe('WB-11 UI-2 the Tailwind theme is the tokens and nothing else', () => {
   it('WB-11 every theme value is a token', () => {
     expect(themeDeclarations(appCss()).length).toBeGreaterThan(0);
     expect(themeValueViolations(appCss(), definedTokens())).toEqual([]);

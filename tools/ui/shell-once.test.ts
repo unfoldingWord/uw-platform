@@ -137,10 +137,7 @@ function secondPieces(path: string, text: string): string[] {
 }
 
 const planted: readonly (readonly [string, string])[] = [
-  [
-    'apps/uw-app/pages/screen.tsx',
-    '<div class="bg-ocean-panel"><nav aria-label="Main"></nav></div>',
-  ],
+  ['apps/uw-app/pages/screen.tsx', '<div class="bg-side"><nav aria-label="Main"></nav></div>'],
   ['apps/uw-app/pages/screen.tsx', '<header><nav aria-label="Breadcrumb"></nav></header>'],
   ['apps/uw-app/pages/screen.tsx', '<h1 class="text-2xl">Board</h1>'],
   ['apps/uw-app/pages/screen.tsx', 'export function PageHead() { return null; }'],

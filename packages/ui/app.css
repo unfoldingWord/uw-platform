@@ -1,6 +1,8 @@
 @import 'tailwindcss' source(none);
 @import './tokens/brand.css';
+@import './tokens/scales.css';
 @import './tokens/theme.css';
+@import './tokens/effects.css';
 @import './tokens/type.css';
 @import './tokens/layout.css';
 
@@ -12,52 +14,112 @@
 @source not '../../apps/uw-app/**/*.test.tsx';
 
 @theme {
-  --color-*: initial;
-  --font-*: initial;
-  --text-*: initial;
-  --radius-*: initial;
-  --shadow-*: initial;
-  --breakpoint-*: initial;
+  --*: initial;
   --breakpoint-md: 48rem;
   --breakpoint-lg: 64rem;
 }
 
 @theme inline {
-  --color-bg: var(--uw-bg);
+  --color-canvas: var(--uw-canvas);
+  --color-side: var(--uw-side);
   --color-surface: var(--uw-surface);
-  --color-ink: var(--uw-ink);
-  --color-muted: var(--uw-muted);
+  --color-raised: var(--uw-raised);
+  --color-hover: var(--uw-hover);
   --color-line: var(--uw-line);
-  --color-ocean: var(--uw-ocean);
-  --color-ocean-panel: var(--uw-ocean-panel);
-  --color-ocean-panel-ink: var(--uw-ocean-panel-ink);
-  --color-inspire: var(--uw-inspire);
-  --color-inspire-soft: var(--uw-inspire-soft);
-  --color-cultivate: var(--uw-cultivate);
-  --color-cultivate-soft: var(--uw-cultivate-soft);
-  --color-kindle: var(--uw-kindle);
-  --color-kindle-soft: var(--uw-kindle-soft);
+  --color-line-strong: var(--uw-line-strong);
+  --color-text: var(--uw-text);
+  --color-text-2: var(--uw-text-2);
+  --color-text-3: var(--uw-text-3);
+  --color-accent: var(--uw-accent);
+  --color-accent-text: var(--uw-accent-text);
+  --color-accent-soft: var(--uw-accent-soft);
   --color-on-accent: var(--uw-on-accent);
-  --color-link: var(--uw-link);
-  --color-focus: var(--uw-focus);
+  --color-human: var(--uw-human);
+  --color-human-text: var(--uw-human-text);
+  --color-human-soft: var(--uw-human-soft);
+  --color-human-line: var(--uw-human-line);
+  --color-ok: var(--uw-ok);
+  --color-ok-text: var(--uw-ok-text);
+  --color-ok-soft: var(--uw-ok-soft);
+  --color-glow: var(--uw-glow);
+  --color-glow-human: var(--uw-glow-human);
+  --color-gridline: var(--uw-gridline);
   --font-sans: var(--uw-font-sans);
   --font-mono: var(--uw-font-mono);
   --text-xs: var(--uw-text-xs);
+  --text-xs--line-height: var(--uw-leading-snug);
   --text-sm: var(--uw-text-sm);
+  --text-sm--line-height: var(--uw-leading-normal);
   --text-base: var(--uw-text-base);
+  --text-base--line-height: var(--uw-leading-normal);
+  --text-md: var(--uw-text-md);
+  --text-md--line-height: var(--uw-leading-snug);
   --text-lg: var(--uw-text-lg);
+  --text-lg--line-height: var(--uw-leading-snug);
   --text-xl: var(--uw-text-xl);
+  --text-xl--line-height: var(--uw-leading-tight);
   --text-2xl: var(--uw-text-2xl);
+  --text-2xl--line-height: var(--uw-leading-tight);
+  --text-3xl: var(--uw-text-3xl);
+  --text-3xl--line-height: var(--uw-leading-tight);
+  --font-weight-regular: var(--uw-weight-regular);
+  --font-weight-semibold: var(--uw-weight-semibold);
+  --font-weight-heavy: var(--uw-weight-heavy);
+  --leading-tight: var(--uw-leading-tight);
+  --leading-snug: var(--uw-leading-snug);
+  --leading-normal: var(--uw-leading-normal);
+  --tracking-heading: var(--uw-tracking-heading);
+  --tracking-tight: var(--uw-tracking-tight);
+  --tracking-wide: var(--uw-tracking-wide);
+  --spacing-0: var(--uw-space-0);
+  --spacing-1: var(--uw-space-1);
+  --spacing-2: var(--uw-space-2);
+  --spacing-3: var(--uw-space-3);
+  --spacing-4: var(--uw-space-4);
+  --spacing-5: var(--uw-space-5);
+  --spacing-6: var(--uw-space-6);
+  --spacing-7: var(--uw-space-7);
+  --spacing-8: var(--uw-space-8);
+  --spacing-size-1: var(--uw-size-1);
+  --spacing-size-2: var(--uw-size-2);
+  --spacing-size-3: var(--uw-size-3);
+  --spacing-size-4: var(--uw-size-4);
+  --spacing-size-5: var(--uw-size-5);
+  --spacing-size-6: var(--uw-size-6);
+  --spacing-size-7: var(--uw-size-7);
+  --spacing-size-8: var(--uw-size-8);
+  --spacing-side: var(--uw-layout-side);
+  --spacing-inbox: var(--uw-layout-inbox);
+  --spacing-aside: var(--uw-layout-aside);
+  --spacing-content: var(--uw-layout-content);
+  --spacing-col-min: var(--uw-layout-col-min);
+  --spacing-col-max: var(--uw-layout-col-max);
+  --spacing-flow: var(--uw-layout-flow);
   --radius-sm: var(--uw-radius-sm);
   --radius-md: var(--uw-radius-md);
   --radius-lg: var(--uw-radius-lg);
-  --spacing: var(--uw-space);
+  --radius-full: var(--uw-radius-full);
+  --shadow-1: var(--uw-shadow-1);
+  --shadow-2: var(--uw-shadow-2);
+  --shadow-3: var(--uw-shadow-3);
+  --shadow-key: var(--uw-shadow-key);
+  --shadow-person: var(--uw-shadow-person);
+}
+
+@utility grid-cols-label {
+  grid-template-columns: auto 1fr;
+}
+
+@utility grid-cols-frame {
+  grid-template-columns: var(--uw-layout-side) 1fr;
 }
 
 @layer base {
   body {
-    background: var(--uw-bg);
-    color: var(--uw-ink);
+    background: var(--uw-canvas);
+    color: var(--uw-text);
     font-family: var(--uw-font-sans);
+    font-size: var(--uw-text-base);
+    line-height: var(--uw-leading-normal);
   }
 }

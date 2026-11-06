@@ -17,7 +17,7 @@ import { idParam } from '../parts/params.ts';
 import { boardPath, flowPath, homePath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 
-const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
+const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 const pickupWords: Readonly<Record<AgentPickup, string>> = {
   none: 'No agents',
@@ -95,7 +95,7 @@ function ColumnView(props: {
       {column.next === null ? null : (
         <a
           href={`${boardPath(harnessId, stage.key)}&after=${encodeURIComponent(column.next)}`}
-          class={`text-link underline ${focus}`}
+          class={`text-accent-text underline ${focus}`}
         >
           Show more
         </a>
@@ -163,7 +163,7 @@ export async function boardScreen(c: Context<AppEnv>): Promise<Response> {
         eyebrow="Board"
         title={board.harness.key}
         actions={
-          <a href={flowPath(harnessId)} class={`text-link underline ${focus}`}>
+          <a href={flowPath(harnessId)} class={`text-accent-text underline ${focus}`}>
             Flow
           </a>
         }

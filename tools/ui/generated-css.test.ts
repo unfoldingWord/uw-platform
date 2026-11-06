@@ -5,23 +5,30 @@ import { appCss, appCssPath, manifestColours } from '../../packages/ui/generated
 import { resolveToken, themeTokens } from './css-tokens.ts';
 
 const themeColours = [
-  'bg',
+  'canvas',
+  'side',
   'surface',
-  'ink',
-  'muted',
+  'raised',
+  'hover',
   'line',
-  'ocean',
-  'ocean-panel',
-  'ocean-panel-ink',
-  'inspire',
-  'inspire-soft',
-  'cultivate',
-  'cultivate-soft',
-  'kindle',
-  'kindle-soft',
+  'line-strong',
+  'text',
+  'text-2',
+  'text-3',
+  'accent',
+  'accent-text',
+  'accent-soft',
   'on-accent',
-  'link',
-  'focus',
+  'human',
+  'human-text',
+  'human-soft',
+  'human-line',
+  'ok',
+  'ok-text',
+  'ok-soft',
+  'glow',
+  'glow-human',
+  'gridline',
 ];
 
 function colourNames(css: string): string[] {
@@ -45,10 +52,10 @@ describe('WB-11 the stylesheet is built from the tokens', () => {
   it('manifestColours are the light ocean and background tokens', () => {
     const light = themeTokens('light');
     expect(manifestColours).toEqual({
-      theme: resolveToken('--uw-ocean', light),
-      background: resolveToken('--uw-bg', light),
-      panel: resolveToken('--uw-ocean-panel', light),
-      panelInk: resolveToken('--uw-ocean-panel-ink', light),
+      theme: resolveToken('--uw-ocean-800', light),
+      background: resolveToken('--uw-canvas', light),
+      panel: resolveToken('--uw-ocean-800', light),
+      panelInk: resolveToken('--uw-ocean-50', light),
     });
   });
 });

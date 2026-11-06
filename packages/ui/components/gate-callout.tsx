@@ -27,9 +27,9 @@ export function GateCallout(props: {
   return (
     <section
       aria-labelledby={headingId}
-      class="flex flex-col gap-3 rounded-lg border border-line border-l-4 border-l-ocean bg-surface p-4 text-ink"
+      class="flex flex-col gap-3 rounded-lg border border-line border-l-4 border-l-accent bg-surface p-4 text-text"
     >
-      <h2 id={headingId} class="m-0 text-lg font-bold text-ink">
+      <h2 id={headingId} class="m-0 text-lg font-heavy text-text">
         {props.title}
       </h2>
       {props.children}
@@ -42,8 +42,8 @@ export function GateCallout(props: {
 function Fact(props: { readonly term: string; readonly children: Child }) {
   return (
     <>
-      <dt class="text-muted">{props.term}</dt>
-      <dd class="m-0 break-words text-ink">{props.children}</dd>
+      <dt class="text-text-3">{props.term}</dt>
+      <dd class="m-0 break-words text-text">{props.children}</dd>
     </>
   );
 }
@@ -92,7 +92,7 @@ export function GateFacts(props: {
   const moved = derivedHead !== null && derivedHead !== props.head;
   return (
     <div class="flex flex-col gap-2">
-      <dl class="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+      <dl class="m-0 grid grid-cols-label gap-x-4 gap-y-1 text-sm">
         <Declared declaration={props.declaration} />
         <Derived derived={props.riskDerived} when="recorded" />
         {props.derivedNow === undefined ? null : (

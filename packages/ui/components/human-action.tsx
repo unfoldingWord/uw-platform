@@ -1,9 +1,9 @@
 import { domId, reasonText } from './text.ts';
 
-export const humanGateSvg = 'fill-kindle-soft stroke-kindle';
+export const humanGateSvg = 'fill-human-soft stroke-human';
 
 const action =
-  'inline-flex items-center rounded-md bg-kindle px-4 py-2 text-sm font-bold text-on-accent outline-offset-2 outline-focus focus-visible:outline-2 aria-disabled:cursor-not-allowed aria-disabled:bg-kindle-soft aria-disabled:text-ink';
+  'inline-flex items-center rounded-md bg-human px-4 py-2 text-sm font-heavy text-on-accent outline-offset-2 outline-accent-text focus-visible:outline-2 aria-disabled:cursor-not-allowed aria-disabled:bg-human-soft aria-disabled:text-text';
 
 export function HumanActionButton(props: {
   readonly itemId: string;
@@ -28,7 +28,7 @@ export function HumanActionButton(props: {
         {props.label}
       </button>
       {reason === null ? null : (
-        <span id={reasonId} class="text-sm text-muted">
+        <span id={reasonId} class="text-sm text-text-3">
           {reasonText(reason)}
         </span>
       )}
@@ -38,7 +38,7 @@ export function HumanActionButton(props: {
 
 export function HumanGateMark(props: { readonly label: string }) {
   return (
-    <span class="inline-flex items-center rounded-sm border border-kindle bg-kindle-soft px-2 py-0.5 text-xs font-bold text-ink">
+    <span class="inline-flex items-center rounded-sm border border-human bg-human-soft px-2 py-1 text-xs font-heavy text-text">
       {props.label}
     </span>
   );

@@ -67,18 +67,18 @@ function Findings(props: { readonly view: GateView }) {
   const { reviews } = props.view;
   return (
     <div class="flex flex-col gap-2">
-      <h3 class="m-0 text-base font-bold text-ink">Reviewer findings</h3>
+      <h3 class="m-0 text-base font-heavy text-text">Reviewer findings</h3>
       {reviews.length === 0 ? (
-        <p class="m-0 text-sm text-muted">No Reviewer has reviewed this head yet</p>
+        <p class="m-0 text-sm text-text-3">No Reviewer has reviewed this head yet</p>
       ) : (
         <ul class="m-0 flex list-none flex-col gap-2 p-0 text-sm">
           {reviews.map((review) => (
             <li class="flex flex-col gap-1">
-              <p class="m-0 font-bold">
+              <p class="m-0 font-heavy">
                 {`${review.reviewer} (${review.provider ?? 'unknown provider'}): ${reasonText(review.state)}`}
               </p>
               {review.findings.length === 0 ? (
-                <p class="m-0 text-muted">No findings</p>
+                <p class="m-0 text-text-3">No findings</p>
               ) : (
                 <ul class="m-0 pl-5">
                   {review.findings.map((finding) => (
@@ -173,7 +173,7 @@ function VerdictFindings(props: {
       {verdict.findings.map((finding, index) => (
         <li class="flex flex-wrap items-center gap-2 break-words">
           <span>{`${reasonText(finding.weight)}: ${finding.text}`}</span>
-          {finding.refuted ? <span class="text-muted">Refuted</span> : null}
+          {finding.refuted ? <span class="text-text-3">Refuted</span> : null}
           {refutes && !finding.refuted ? (
             <RefuteForm view={view} verdict={verdict} place={place} index={index} />
           ) : null}
@@ -188,11 +188,11 @@ function Verdicts(props: { readonly view: GateView; readonly refutes: boolean })
   if (view.verdicts.length === 0) return null;
   return (
     <div class="flex flex-col gap-2">
-      <h3 class="m-0 text-base font-bold text-ink">Reviewer verdicts on this item</h3>
+      <h3 class="m-0 text-base font-heavy text-text">Reviewer verdicts on this item</h3>
       <ul class="m-0 flex list-none flex-col gap-3 p-0 text-sm">
         {view.verdicts.map((verdict, place) => (
           <li class="flex flex-col gap-1">
-            <p class="m-0 font-bold">{`${verdict.reviewer}: ${reasonText(verdict.verdict)}`}</p>
+            <p class="m-0 font-heavy">{`${verdict.reviewer}: ${reasonText(verdict.verdict)}`}</p>
             <VerdictFindings view={view} verdict={verdict} place={place} refutes={refutes} />
           </li>
         ))}

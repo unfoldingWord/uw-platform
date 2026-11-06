@@ -49,7 +49,7 @@ describe('WB-11 the shell', () => {
     expect(disclosure?.querySelector('summary')?.textContent).toBe('Menu');
     expect(disclosure?.getAttribute('class')).toContain('md:hidden');
     expect(document.querySelectorAll('nav[aria-label="Main"]')).toHaveLength(1);
-    expect(html).toContain('md:grid-cols-[var(--uw-sidebar)_1fr]');
+    expect(html).toContain('md:grid-cols-frame');
   });
 
   it('the current page is marked aria-current="page"', async () => {
@@ -160,9 +160,9 @@ describe('focus is visible on every background the shell paints', () => {
       const grounds = [
         ...new Set([...html.matchAll(/\bbg-([a-z-]+)/g)].map((match) => match[1] ?? '')),
       ];
-      expect(grounds).toEqual(expect.arrayContaining(['bg', 'ocean-panel', 'surface']));
+      expect(grounds).toEqual(expect.arrayContaining(['canvas', 'side', 'surface']));
       for (const ground of grounds)
-        expect(contrast(theme, 'focus', ground)).toBeGreaterThanOrEqual(3);
+        expect(contrast(theme, 'accent-text', ground)).toBeGreaterThanOrEqual(3);
     },
   );
 
@@ -173,7 +173,7 @@ describe('focus is visible on every background the shell paints', () => {
     for (const element of focusable) {
       const classes = element.getAttribute('class') ?? '';
       expect(classes).toContain('focus-visible:outline-2');
-      expect(classes).toContain('outline-focus');
+      expect(classes).toContain('outline-accent-text');
     }
   });
 });
