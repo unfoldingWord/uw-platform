@@ -25,8 +25,8 @@ function openDatabase(target: DatabaseTarget): () => Db {
 
 function fixClaimColumns(db: () => Db): void {
   it('FL-1 a harness starts with the fix claim off', async () => {
-    await db().execute(sql`INSERT INTO harnesses (id, key, template, jd_area, created_at)
-      VALUES (gen_random_uuid(), 'fix-claim-default', 'software', '80-89', now())`);
+    await db().execute(sql`INSERT INTO harnesses (id, key, title, template, jd_area, created_at)
+      VALUES (gen_random_uuid(), 'fix-claim-default', 'fix-claim-default', 'software', '80-89', now())`);
     const rows = await db()
       .select({ fixClaim: harnesses.fixClaim })
       .from(harnesses)
