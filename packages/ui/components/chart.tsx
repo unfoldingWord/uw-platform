@@ -155,9 +155,9 @@ export function sparklineSvg(spark: Spark): string {
 }
 
 export function DailyChart(props: DailySeries) {
-  return raw(dailyChartSvg(props));
+  return <div class="overflow-x-auto">{raw(dailyChartSvg(props))}</div>;
 }
 
 export function Sparkline(props: Spark) {
-  return raw(sparklineSvg(props));
+  return <div class="overflow-x-auto">{raw(sparklineSvg(props))}</div>;
 }
