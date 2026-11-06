@@ -93,6 +93,7 @@ describe('MD-4 a harness lists its protected paths', () => {
     const older = {
       id: delegationId,
       key: 'tc-admin-app',
+      title: 'tc-admin-app',
       template: 'check-only',
       jdArea: '80-89',
       repository: 'unfoldingWord/tc-admin-app',
