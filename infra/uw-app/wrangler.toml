@@ -6,6 +6,7 @@ workers_dev = false
 
 [vars]
 COMMIT_SHA = "unknown"
+ENVIRONMENT = "local"
 
 [observability]
 enabled = true
@@ -16,6 +17,7 @@ workers_dev = true
 
 [env.staging.vars]
 COMMIT_SHA = "unknown"
+ENVIRONMENT = "staging"
 
 [env.staging.observability]
 enabled = true
@@ -26,6 +28,7 @@ workers_dev = false
 
 [env.production.vars]
 COMMIT_SHA = "unknown"
+ENVIRONMENT = "production"
 
 [env.production.observability]
 enabled = true
@@ -35,6 +38,7 @@ workers_dev = true
 
 [env.preview.vars]
 COMMIT_SHA = "unknown"
+ENVIRONMENT = "preview"
 
 [env.preview.observability]
 enabled = true
