@@ -36,7 +36,9 @@
     "ui:icons": "node tools/ui/build-icons.ts",
     "ui:mark": "node tools/ui/build-mark.ts",
     "ui:css": "node tools/ui/build-css.ts",
-    "ui:islands": "node tools/ui/build-islands.ts"
+    "ui:islands": "node tools/ui/build-islands.ts",
+    "screens": "UW_SCREENS=required vitest run --project node apps/uw-app/screens",
+    "screens:update": "UW_SCREENS_UPDATE=1 vitest run --project node apps/uw-app/screens"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.22.0",

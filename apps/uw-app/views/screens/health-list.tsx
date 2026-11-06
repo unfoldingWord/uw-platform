@@ -126,7 +126,7 @@ const levels = ['open', 'holding', 'pausing'] as const;
 function BreakerFigures(props: { readonly breaker: Breaker }) {
   const { breaker } = props;
   return (
-    <div class="grid grid-cols-1 gap-5 rounded-lg bg-surface p-5 shadow-1 md:grid-cols-2">
+    <div class="mb-5 grid grid-cols-1 gap-5 rounded-lg bg-surface p-5 shadow-1 md:grid-cols-2">
       <Kpi
         label="Spent this month"
         value={breaker.spent}
