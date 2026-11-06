@@ -34,6 +34,7 @@
     "ui:tokens": "node tools/ui/build-tokens.ts",
     "ui:fonts": "node tools/ui/build-fonts.ts",
     "ui:icons": "node tools/ui/build-icons.ts",
+    "ui:mark": "node tools/ui/build-mark.ts",
     "ui:css": "node tools/ui/build-css.ts",
     "ui:islands": "node tools/ui/build-islands.ts"
   },

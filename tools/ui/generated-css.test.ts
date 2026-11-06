@@ -67,3 +67,11 @@ describe('UI-3 the bundled fonts are the font build', () => {
     ).not.toThrow();
   }, 60_000);
 });
+
+describe('UI-5 the served mark is the committed brand mark', () => {
+  it('UI-5 the generated mark module is the PNG in packages/ui/assets', () => {
+    expect(() =>
+      execFileSync('node', ['tools/ui/build-mark.ts', '--check'], { stdio: 'pipe' }),
+    ).not.toThrow();
+  }, 60_000);
+});

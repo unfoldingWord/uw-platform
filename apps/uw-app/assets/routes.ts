@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { appCss, appCssPath } from '@uw/ui/generated/app-css';
 import { fontFiles } from '@uw/ui/generated/fonts';
+import { markBase64, markPath } from '@uw/ui/generated/mark';
 import type { AppEnv } from '../deps.ts';
 import { islandsJs, islandsPath, serviceWorkerJs } from '../generated/islands.ts';
 import { iconSvg } from './icon.ts';
@@ -13,10 +14,11 @@ const shellAssets = [
   islandsPath,
   '/manifest.webmanifest',
   '/assets/icon.svg',
+  markPath,
   ...fontFiles.map((font) => font.path),
 ];
 
-function fontBytes(base64: string): Uint8Array<ArrayBuffer> {
+function assetBytes(base64: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
 }
 const workerJs = `const UW_SHELL_ASSETS=${JSON.stringify(shellAssets)};\n${serviceWorkerJs}`;
@@ -31,11 +33,15 @@ export function assetRoutes(): Hono<AppEnv> {
     }),
   );
   for (const font of fontFiles) {
-    const bytes = fontBytes(font.base64);
+    const bytes = assetBytes(font.base64);
     routes.get(font.path, (c) =>
       c.body(bytes, 200, { 'content-type': 'font/woff2', 'cache-control': immutable }),
     );
   }
+  const mark = assetBytes(markBase64);
+  routes.get(markPath, (c) =>
+    c.body(mark, 200, { 'content-type': 'image/png', 'cache-control': immutable }),
+  );
   routes.get(islandsPath, (c) =>
     c.body(islandsJs, 200, { 'content-type': javascript, 'cache-control': immutable }),
   );
