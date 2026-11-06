@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Approved. v1 (sections 7.1 to 7.10) was built as v0.1.0, merge commit `83e3f64`, tagged 2026-10-12. v0.2.0 (section 7.11), approved on 2026-10-15, was built on `build/v0.2.0`, reviewed by Ian with Codex, merged as `2135ad5` (pull request #84) and tagged `v0.2.0` on 2026-10-20, with CI green on the merge commit; GL-1's live switch and the week of shadow mode are a person's, on the tag (`docs/progress_tracker.md`, Release criteria, v0.2.0). v0.3.0 (section 7.12), the look, proposed on 2026-11-04; its design is `docs/specs/2026-11-04-harness-v0-3-0-design.md` and it is approved when the pull request that adds it merges |
+| Status | Approved. v1 (sections 7.1 to 7.10) was built as v0.1.0, merge commit `83e3f64`, tagged 2026-10-12. v0.2.0 (section 7.11), approved on 2026-10-15, was built on `build/v0.2.0`, reviewed by Ian with Codex, merged as `2135ad5` (pull request #84) and tagged `v0.2.0` on 2026-10-20, with CI green on the merge commit; GL-1's live switch and the week of shadow mode are a person's, on the tag (`docs/progress_tracker.md`, Release criteria, v0.2.0). v0.3.0 (section 7.12), the look, approved on 2026-11-04 (#87); its design is `docs/specs/2026-11-04-harness-v0-3-0-design.md`. Built on `feat/ui-redesign`, pull request #89, with every v0.3.0 release item but Ian's review and merge holding on 2026-11-06 |
 | Version | 0.3 |
 | Date | 2026-11-04 (v0.2.0 text dated 2026-10-15, v1 text 2026-10-01) |
 | Owner | Ian Lindsley |
