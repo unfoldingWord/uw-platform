@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import type { HarnessEvent } from '@uw/contracts';
 import type { PlayByPlay } from '@uw/harness';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
@@ -13,7 +14,7 @@ import {
   pullRequestUrl,
   reviewUrl,
 } from '../parts/paths.ts';
-import { PlayRow } from '../parts/play-row.tsx';
+import { KindFilters, Timeline, kindOf, kindParam, type EventKind } from '../parts/timeline.tsx';
 import { notFound } from './not-found.tsx';
 import { zulipConfigOf } from '../../notify/zulip/config.ts';
 import { itemTopicUrl } from '../../notify/zulip/links.ts';
@@ -79,6 +80,10 @@ async function playOf(c: Context<AppEnv>, screen: ScreenKernel, harnessId: strin
   return outcome.value;
 }
 
+function ofKind(events: readonly HarnessEvent[], kind: EventKind | null): readonly HarnessEvent[] {
+  return kind === null ? events : events.filter((event) => kindOf(event.name) === kind);
+}
+
 export async function playScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   if (screen === null) return screenRefusal(c);
@@ -113,11 +118,12 @@ export async function playScreen(c: Context<AppEnv>): Promise<Response> {
       <PageHead eyebrow="Item" title={item.title} lede={`At ${stage.title} on ${harness.title}`} />
       <p class="m-0 mb-4 text-sm text-text-3">{`Holder: ${holderText(play.holder, screen.at)}`}</p>
       <Links play={play} zulipUrl={zulipUrl} />
-      <ol class="m-0 flex list-none flex-col gap-2 p-0">
-        {play.events.map((event) => (
-          <PlayRow event={event} learnings={learnings} personaPages={personaPages} />
-        ))}
-      </ol>
+      <KindFilters base={itemPath(harness.id, item.itemId)} kind={kindParam(c.req.query('kind'))} />
+      <Timeline
+        events={ofKind(play.events, kindParam(c.req.query('kind')))}
+        learnings={learnings}
+        personaPages={personaPages}
+      />
       {play.next === null ? null : (
         <p class="mt-4">
           <a href={`${itemPath(harness.id, item.itemId)}?after=${play.next}`} class={link}>

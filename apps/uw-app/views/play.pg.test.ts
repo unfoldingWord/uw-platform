@@ -355,6 +355,18 @@ async function noProblems(world: Played): Promise<void> {
   expect(await screenProblems(page.text)).toEqual([]);
 }
 
+async function lookOfPlay(world: Played): Promise<void> {
+  const all = await documentOf(world);
+  const days = [...all.querySelectorAll('main section[aria-label] > h2')].map((h) => h.textContent);
+  expect(days.length).toBeGreaterThan(0);
+  expect(days.every((day) => /^\d{4}-\d{2}-\d{2}$/.test(day ?? ''))).toBe(true);
+  const count = (document: Document) => document.querySelectorAll('main ol > li').length;
+  const runs = await documentOf(world, `${pathOf(world)}?kind=run`);
+  expect(count(runs)).toBeLessThan(count(all));
+  const current = runs.querySelector('nav[aria-label="Kinds of event"] [aria-current="true"]');
+  expect(current?.textContent).toBe('Runs');
+}
+
 describe.skipIf(!testServer)('the play-by-play', () => {
   it('WB-8 the play-by-play lists every event on the item in order with the actor full identity', () =>
     inPlay(inOrder));
@@ -376,4 +388,6 @@ describe.skipIf(!testServer)('the play-by-play', () => {
     inPlay(hiddenIsMissing));
   it('OB-2 the item screen names who holds the ball', () => inPlay(holderLine));
   it('the play-by-play renders with no screen problems', () => inPlay(noProblems));
+  it('UI-11 the play-by-play groups events by day and filters them by kind', () =>
+    inPlay(lookOfPlay));
 });

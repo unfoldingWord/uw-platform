@@ -1,3 +1,4 @@
+import type { Child } from 'hono/jsx';
 import { deviceOwnerSegment, type EvidenceLabel as Label, type HarnessEvent } from '@uw/contracts';
 import { formatInstant } from '@uw/core/dates';
 import { EvidenceLabel } from '@uw/ui/components/evidence-label.tsx';
@@ -84,17 +85,21 @@ export function PlayRow(props: {
   readonly event: HarnessEvent;
   readonly learnings: ReadonlyMap<string, Label>;
   readonly personaPages: ReadonlyMap<string, string>;
+  readonly dot?: Child | undefined;
 }) {
   const { event } = props;
   return (
-    <li class="flex flex-col gap-2 rounded-md border border-line bg-surface p-3">
-      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span class="font-heavy text-text">{reasonText(event.name)}</span>
-        <span class="text-sm text-text-3">{formatInstant(new Date(event.at))}</span>
-        <Actor actor={event.actor} pageId={props.personaPages.get(event.actor)} />
-        <span class="text-sm text-text-3">{hostOf(event.actor)}</span>
+    <li class="flex gap-3 rounded-md bg-surface p-3 shadow-1">
+      {props.dot}
+      <div class="flex min-w-0 flex-1 flex-col gap-2">
+        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span class="font-heavy text-text">{reasonText(event.name)}</span>
+          <span class="text-sm text-text-3">{formatInstant(new Date(event.at))}</span>
+          <Actor actor={event.actor} pageId={props.personaPages.get(event.actor)} />
+          <span class="text-sm text-text-3">{hostOf(event.actor)}</span>
+        </div>
+        <Detail event={event} learnings={props.learnings} />
       </div>
-      <Detail event={event} learnings={props.learnings} />
     </li>
   );
 }
