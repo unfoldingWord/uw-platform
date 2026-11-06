@@ -113,3 +113,13 @@ export function HumanCallout(props: { readonly lead: string; readonly text: stri
 export function HumanDot() {
   return <span aria-hidden="true" class="mt-1 size-size-1 shrink-0 rounded-full bg-human"></span>;
 }
+
+export function HumanTile() {
+  return (
+    <span class="grid size-size-6 shrink-0 place-items-center rounded-md border border-human-line bg-human-soft text-human shadow-person">
+      <Icon name="user-check" size={3} />
+    </span>
+  );
+}
+
+export const humanBar = 'bg-human';
