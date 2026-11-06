@@ -48,7 +48,7 @@ function factsOf(scope: Element | undefined): readonly (readonly [string, string
 }
 
 function laneOf(document: Document, title: string): Element | undefined {
-  return [...document.querySelectorAll('main section')].find(
+  return [...document.querySelectorAll('main section[aria-labelledby]')].find(
     (lane) => lane.querySelector('h2')?.textContent === title,
   );
 }
@@ -68,10 +68,10 @@ function metaOf(card: Element | undefined): Readonly<Record<string, string>> {
 
 async function columns(world: BoardWorld): Promise<void> {
   const document = await documentOf(world);
-  const lanes = [...document.querySelectorAll('main section')];
+  const lanes = [...document.querySelectorAll('main section[aria-labelledby]')];
   expect(lanes.map((lane) => lane.querySelector('h2')?.textContent)).toHaveLength(8);
   const build = laneOf(document, 'Commits to PR');
-  expect(build?.textContent).toContain('2 of 3');
+  expect(build?.textContent).toContain('2/3');
   expect(factsOf(build)).toEqual([
     ['Items', '2'],
     ['Agent pickup', 'Agents may pick up'],
@@ -218,7 +218,9 @@ async function claimsRefused(db: Database): Promise<void> {
 
 async function oneStage(world: BoardWorld): Promise<void> {
   const document = await documentOf(world, world.ianEmail, boardPath(world.harnessId, 'build'));
-  const lanes = [...document.querySelectorAll('main section h2')].map((h) => h.textContent);
+  const lanes = [...document.querySelectorAll('main section[aria-labelledby] h2')].map(
+    (h) => h.textContent,
+  );
   expect(lanes).toEqual(['Commits to PR']);
   const current = document.querySelector('main nav[aria-label="Stages"] [aria-current="true"]');
   expect(current?.textContent).toBe('Commits to PR');
