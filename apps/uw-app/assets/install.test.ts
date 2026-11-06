@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Shell } from '@uw/ui/components/shell.tsx';
 import { appCssPath, manifestColours } from '@uw/ui/generated/app-css';
 import { fontFiles } from '@uw/ui/generated/fonts';
+import { markPath } from '@uw/ui/generated/mark';
 import { createApp } from '../app.tsx';
 import { islandsJs, islandsPath, serviceWorkerJs } from '../generated/islands.ts';
 import { recordingDeps } from '../testing/deps.ts';
@@ -50,6 +51,7 @@ describe('the app is installable', () => {
       islandsPath,
       '/manifest.webmanifest',
       '/assets/icon.svg',
+      markPath,
       ...fontFiles.map((font) => font.path),
     ];
     expect(body).toBe(`const UW_SHELL_ASSETS=${JSON.stringify(shell)};\n${serviceWorkerJs}`);
