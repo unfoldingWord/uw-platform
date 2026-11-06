@@ -78,6 +78,8 @@ export type HarnessStagesGateway = {
     remove(stageId: string): Promise<boolean>;
   };
 };
+export type OpenCount = { readonly harnessId: string; readonly open: number };
+
 export type HarnessItemsGateway = {
   readonly read: {
     byId(itemId: string): Promise<ItemState | null>;
@@ -95,6 +97,7 @@ export type HarnessItemsGateway = {
     lapsedLeases(at: Date, limit: number): Promise<readonly string[]>;
     parked(harnessId: string, limit: number): Promise<readonly ItemState[]>;
     openFor(harnessId: string, limit: number): Promise<readonly ItemState[]>;
+    openCounts(harnessIds: readonly string[]): Promise<readonly OpenCount[]>;
     byIds(itemIds: readonly string[]): Promise<readonly ItemState[]>;
   };
   readonly write: {
