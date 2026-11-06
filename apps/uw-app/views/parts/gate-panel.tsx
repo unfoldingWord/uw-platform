@@ -3,15 +3,25 @@ import type { DecideAbility } from '@uw/harness';
 import { CommandForm } from '@uw/ui/components/command-form.tsx';
 import { TextAreaField, TextField } from '@uw/ui/components/field.tsx';
 import { GateCallout, GateFacts } from '@uw/ui/components/gate-callout.tsx';
-import { HumanActionButton } from '@uw/ui/components/human-action.tsx';
+import { HumanActionButton, HumanCallout } from '@uw/ui/components/human-action.tsx';
+import { Icon } from '@uw/ui/components/icon.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import { failingReasons, reasonsText, ShipInput } from './ship-input.tsx';
+import { RULE_COUNT, RulesRing, rulesMet, ShipRules } from './ship-rules.tsx';
+
+export type GatePlace = {
+  readonly harness: string;
+  readonly stage: string;
+  readonly number: string | null;
+  readonly waited: string | null;
+};
 
 export type PanelGate = {
   readonly view: GateView;
   readonly title: string;
   readonly ability: DecideAbility;
   readonly decides: boolean;
+  readonly place?: GatePlace | undefined;
 };
 
 type Refusals = {
@@ -43,22 +53,45 @@ function providersOf(view: GateView): readonly string[] {
   return [...new Set(providers)];
 }
 
+function Risk(props: { readonly view: GateView }) {
+  const { view } = props;
+  return (
+    <aside aria-label="Risk" class="min-w-0 lg:w-aside lg:shrink-0">
+      <h3 class="m-0 mb-2 text-sm font-heavy text-text">Risk</h3>
+      <GateFacts
+        declaration={view.facts?.declaration ?? null}
+        riskDerived={view.recorded}
+        derivedNow={view.ship?.derived ?? null}
+        reviewProviders={providersOf(view)}
+        head={view.facts?.head ?? null}
+      />
+    </aside>
+  );
+}
+
+function Inputs(props: { readonly view: GateView }) {
+  return (
+    <details>
+      <summary class="cursor-pointer text-xs text-text-3 outline-offset-2 outline-accent-text focus-visible:outline-2">
+        Ship rule inputs
+      </summary>
+      <div class="mt-2">
+        <ShipInput view={props.view} />
+      </div>
+    </details>
+  );
+}
+
 function Facts(props: { readonly view: GateView }) {
   const { view } = props;
   return (
-    <div class="flex flex-col gap-4 md:flex-row">
-      <div class="min-w-0 flex-1">
-        <GateFacts
-          declaration={view.facts?.declaration ?? null}
-          riskDerived={view.recorded}
-          derivedNow={view.ship?.derived ?? null}
-          reviewProviders={providersOf(view)}
-          head={view.facts?.head ?? null}
-        />
+    <div class="flex flex-col gap-5 lg:flex-row">
+      <div class="flex min-w-0 flex-1 flex-col gap-4">
+        <ShipRules view={view} />
+        <Inputs view={view} />
+        <Findings view={view} />
       </div>
-      <div class="min-w-0 flex-1">
-        <ShipInput view={view} />
-      </div>
+      <Risk view={view} />
     </div>
   );
 }
@@ -111,10 +144,11 @@ function DecisionForm(props: { readonly gate: PanelGate }) {
   const refusals = new Map(Object.entries(refusalsOf(view, ability)));
   return (
     <CommandForm harnessId={harnessId} command="decide" itemId={itemId}>
-      <div class="flex w-full min-w-0 flex-col gap-4">
+      <div class="flex w-full min-w-0 flex-col gap-3 border-t border-line pt-4">
         <input type="hidden" name="itemId" value={itemId} />
-        <Facts view={view} />
-        <Findings view={view} />
+        {view.facts?.head === undefined || view.facts.head === null ? null : (
+          <input type="hidden" name="head" value={view.facts.head} />
+        )}
         <TextAreaField
           name="findings"
           label="Findings, one per line"
@@ -201,20 +235,77 @@ function Verdicts(props: { readonly view: GateView; readonly refutes: boolean })
   );
 }
 
+function placeText(place: GatePlace | undefined): string | undefined {
+  if (place === undefined) return undefined;
+  return [place.harness, place.number, place.stage].filter((part) => part !== null).join(' / ');
+}
+
+function PullLine(props: { readonly view: GateView }) {
+  const { view } = props;
+  const pull = view.ship?.input.pullRequest ?? null;
+  if (pull === null) return null;
+  const head = view.facts?.head ?? view.expectedHead;
+  return (
+    <span class="flex items-center gap-1">
+      <Icon name="code-pull-request" size={1} />
+      {`PR ${pull.open ? 'open' : 'closed'}${head === null ? '' : ' at '}`}
+      {head === null ? null : <span class="font-mono">{head.slice(0, 7)}</span>}
+    </span>
+  );
+}
+
+function Waited(props: { readonly waited: string | null }) {
+  if (props.waited === null) return null;
+  return (
+    <span class="flex items-center gap-1">
+      <Icon name="clock" size={1} />
+      {`waiting ${props.waited}`}
+    </span>
+  );
+}
+
+function Meta(props: { readonly gate: PanelGate }) {
+  const { view, place } = props.gate;
+  const tier = view.recorded?.riskTier ?? null;
+  return (
+    <>
+      <PullLine view={view} />
+      {tier === null ? null : <span>{tier}</span>}
+      <Waited waited={place?.waited ?? null} />
+    </>
+  );
+}
+
+function Refused(props: { readonly gate: PanelGate }) {
+  const { view } = props.gate;
+  if (!props.gate.decides || view.ship === null) return null;
+  const failing = failingReasons(view);
+  if (failing.length === 0) return null;
+  return (
+    <HumanCallout
+      lead="You can't approve this head yet."
+      text={`${failing.length} of the ${RULE_COUNT} ship rules ${failing.length === 1 ? "isn't" : "aren't"} met. You can still reject it, take it over, or override with a reason.`}
+    />
+  );
+}
+
 export function GatePanel(props: { readonly gate: PanelGate }) {
   const { gate } = props;
   const { view } = gate;
   return (
-    <GateCallout itemId={view.itemId} title={gate.title} reason={null} actions={null}>
-      {gate.decides ? (
-        <DecisionForm gate={gate} />
-      ) : (
-        <div class="flex flex-col gap-4">
-          <Facts view={view} />
-          <Findings view={view} />
-        </div>
-      )}
+    <GateCallout
+      itemId={view.itemId}
+      title={gate.title}
+      reason={null}
+      actions={null}
+      eyebrow={placeText(gate.place)}
+      meta={<Meta gate={gate} />}
+      aside={view.ship === null ? undefined : <RulesRing met={rulesMet(view)} />}
+    >
+      <Refused gate={gate} />
+      <Facts view={view} />
       <Verdicts view={view} refutes={gate.decides} />
+      {gate.decides ? <DecisionForm gate={gate} /> : null}
     </GateCallout>
   );
 }

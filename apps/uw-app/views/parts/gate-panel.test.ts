@@ -36,9 +36,10 @@ describe('RV-2 the Gates view lists Reviewer verdicts with a refute control', ()
     expect(html).toContain('>Mark finding 1 of verdict 1 (uw-reviewer) refuted</button>');
     expect(html).not.toContain('Mark finding 2 of verdict 1');
     expect(html).toContain('bg-human');
-    expect(html.indexOf('data-command="refute_finding"')).toBeGreaterThan(
-      html.indexOf('data-command="decide"'),
-    );
+    const decide = html.indexOf('data-command="decide"');
+    const refute = html.indexOf('data-command="refute_finding"');
+    expect(refute).toBeLessThan(decide);
+    expect(html.slice(decide)).not.toContain('data-command="refute_finding"');
   });
 
   it('RV-2 names each refute control uniquely across verdicts, even two from one reviewer', () => {
@@ -58,5 +59,18 @@ describe('RV-2 the Gates view lists Reviewer verdicts with a refute control', ()
     const html = shown(false);
     expect(html).toContain('Real: The lease is never renewed.');
     expect(html).not.toContain('data-command="refute_finding"');
+  });
+});
+
+describe('the decision sends the head the panel shows', () => {
+  it('the head you are shown is the head the approve sends, from one value', () => {
+    const html = shown(true);
+    const head = view.facts?.head ?? '';
+    expect(head).not.toBe('');
+    const decide = html.slice(html.indexOf('data-command="decide"'));
+    expect(decide).toContain(`<input type="hidden" name="head" value="${head}"`);
+    expect(html.match(/name="head"/g)).toHaveLength(1);
+    expect(html).toContain(`You approve head</dt>`);
+    expect(html).toContain(`<code class="font-mono break-all">${head}</code>`);
   });
 });
