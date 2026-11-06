@@ -1375,6 +1375,7 @@ Choices the PRD, the spec and `AGENTS.md` left open. One row each.
 | 2026-11-05 | UI-10 | Flow keeps its stage table, with the bracket as a column, and moves the diagram under a disclosure, rather than grouping rows under bracket headings | The table and diagram carry the WB-4 proofs | Flow looks plainer than the mockup |
 | 2026-11-05 | UI-11 | The play-by-play's kind filters narrow the page of events read (100), not the item's whole history | The read pages by position, not by kind | A filter on a long history shows only that page's events of the kind |
 | 2026-11-05 | UI-12 | Persona's sparklines are left out: runs and spend per day per persona have no read (V3-11) | Nothing is invented | Persona has no chart until a read exists |
+| 2026-11-05 | UI-16 | The screenshot check runs in the CI `test` job, which installs the headless Chromium and sets `UW_SCREENS=required`, rather than in a job of its own: the CI job names are `ciJobSchema`, which is also the ship rule's default required checks for every harness (SR-1), so a new job would have made every harness require a `screens` check | SR-1 | The `test` job takes about a minute longer |
 
 ## New dependencies
 
@@ -1419,6 +1420,8 @@ Choices the PRD, the spec and `AGENTS.md` left open. One row each.
 | 2026-11-05 | `echarts` `6.1.0` (Apache-2.0, `@uw/ui`, imported only in `packages/ui/components/chart.tsx`; 565 KB minified, 193 KB gzipped, server only) | Hand-written SVG charts, which the mockup used for four rounds (ADR 0012) |
 | 2026-11-05 | `@fontsource/nunito-sans` `5.3.0` and `@fontsource/jetbrains-mono` `5.3.0` (SIL OFL 1.1, `@uw/ui` devDependencies, read only by `tools/ui/build-fonts.ts`) | Fetching the fonts from Google, which `font-src 'self'` never allowed |
 | 2026-11-05 | `@fortawesome/free-regular-svg-icons` and `@fortawesome/free-solid-svg-icons` `7.3.1` (CC BY 4.0 icons, MIT code, `@uw/ui` devDependencies, read only by `tools/ui/build-icons.ts`) | Hand-drawn SVG icons (ADR 0013); the Pro packages are in no `package.json` |
+| 2026-11-05 | `playwright` `1.60.0` (Apache-2.0, `@uw/uw-app` devDependency, used only by `apps/uw-app/screens/screens.pg.test.ts`) | Opening every screen in a browser by hand; the headless Chromium it installs renders the screenshot check (UI-16) |
+| 2026-11-05 | `pngjs` `7.0.0` (MIT) and `pixelmatch` `7.1.0` (ISC), `@uw/uw-app` devDependencies, used only by the screenshot check | A hand-written PNG decoder and pixel comparison |
 
 ## Not verified
 
