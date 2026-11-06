@@ -181,7 +181,7 @@ function describePositions(subject: BoundedSubject): void {
 
 function describeOpenCounts(subject: BoundedSubject): void {
   it('UI-5 openCounts counts each named harness items that are not done, zero for none', async () => {
-    const base = 0x5200;
+    const base = 0x5600;
     const counts = await subject().store.transaction(async (tx) => {
       await seedHarness(tx, base, 'gateway-open-count');
       await seedHarness(tx, base + 0x80, 'gateway-open-count-empty');
