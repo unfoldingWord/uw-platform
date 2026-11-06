@@ -6,7 +6,8 @@
   "exports": {
     "./components/*": "./components/*",
     "./generated/app-css": "./generated/app-css.ts",
-    "./generated/fonts": "./generated/fonts.ts"
+    "./generated/fonts": "./generated/fonts.ts",
+    "./generated/icons": "./generated/icons.ts"
   },
   "scripts": {
     "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json"
@@ -18,6 +19,8 @@
   "devDependencies": {
     "@fontsource/jetbrains-mono": "^5.3.0",
     "@fontsource/nunito-sans": "^5.3.0",
+    "@fortawesome/free-regular-svg-icons": "^7.3.1",
+    "@fortawesome/free-solid-svg-icons": "^7.3.1",
     "@types/jsdom": "^30.0.0",
     "@types/node": "^22.20.4",
     "axe-core": "^4.13.0",

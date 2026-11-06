@@ -33,6 +33,7 @@
     "verify": "pnpm check && pnpm lint && pnpm lint:dates && pnpm lint:vendor && pnpm format:check && pnpm knip && pnpm architecture && pnpm walk:all && pnpm trace:built && pnpm test && pnpm sim:all && pnpm build",
     "ui:tokens": "node tools/ui/build-tokens.ts",
     "ui:fonts": "node tools/ui/build-fonts.ts",
+    "ui:icons": "node tools/ui/build-icons.ts",
     "ui:css": "node tools/ui/build-css.ts",
     "ui:islands": "node tools/ui/build-islands.ts"
   },
