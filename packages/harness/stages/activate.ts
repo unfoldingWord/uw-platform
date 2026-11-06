@@ -1,5 +1,6 @@
 import {
   botAuthorsSchema,
+  harnessTitleSchema,
   defaultBotAuthors,
   harnessSchema,
   repositorySchema,
@@ -29,6 +30,7 @@ type StagePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 export type ActivateInput = {
   readonly harnessId: string;
   readonly harnessKey: string;
+  readonly title?: string;
   readonly jdArea: JdArea;
   readonly template: Template;
   readonly repository: string | null;
@@ -60,6 +62,9 @@ function inputRefusal(input: ActivateInput, external: readonly string[]): Refuse
   if (repository !== null && !repositorySchema.safeParse(repository).success) {
     return refused('malformed_command', { repository });
   }
+  if (input.title !== undefined && !harnessTitleSchema.safeParse(input.title).success) {
+    return refused('malformed_command', { field: 'title' });
+  }
   if (!botAuthorsSchema.safeParse(botsOf(input)).success) {
     return refused('malformed_command', { field: 'botAuthors' });
   }
@@ -70,6 +75,7 @@ function harnessOf(input: ActivateInput, external: string[]): Harness {
   return {
     id: input.harnessId,
     key: input.harnessKey,
+    title: (input.title ?? input.harnessKey).trim(),
     template: input.template.key,
     jdArea: input.jdArea,
     repository: input.repository,

@@ -121,6 +121,7 @@ export function simCaller(world: World, actor: Principal, requestId: string | nu
 
 type SimHarnessOptions = {
   readonly key?: string;
+  readonly title?: string;
   readonly jdArea?: JdArea;
   readonly repository?: string | null;
   readonly shadow?: boolean;
@@ -154,6 +155,7 @@ function activationOf(world: World, template: Template, options: SimHarnessOptio
   return {
     harnessId: world.adapters.ids.next(),
     harnessKey,
+    ...(options.title === undefined ? {} : { title: options.title }),
     jdArea: options.jdArea ?? '80-89',
     template,
     repository:

@@ -17,6 +17,7 @@ function harnessOf(jdArea: string): Harness {
   return harnessSchema.parse({
     id: harnessId,
     key: 'software',
+    title: 'software',
     jdArea,
     template: 'software',
     repository: null,

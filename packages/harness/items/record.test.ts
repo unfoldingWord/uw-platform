@@ -131,6 +131,7 @@ const harnessesGateway: HarnessesGateway = {
     setFreeze: unused,
     setTemplate: unused,
     setFixClaim: unused,
+    setTitle: unused,
   },
 };
 

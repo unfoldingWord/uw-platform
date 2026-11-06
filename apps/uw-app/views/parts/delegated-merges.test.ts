@@ -7,6 +7,7 @@ import { DelegatedMerges } from './delegated-merges.tsx';
 const harness = harnessSchema.parse({
   id: '00000000-0000-4000-8000-0000000000a1',
   key: 'board',
+  title: 'board',
   template: 'software',
   jdArea: '80-89',
   repository: 'unfoldingWord/uw-platform',
