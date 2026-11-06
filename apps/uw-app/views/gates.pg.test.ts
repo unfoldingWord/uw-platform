@@ -472,7 +472,24 @@ async function delegatedMergeListed(world: GateWorld): Promise<void> {
   expect(viewer.text).not.toContain('Merged under a delegation');
 }
 
+async function lookOfGates(world: GateWorld): Promise<void> {
+  const document = await documentOf(world, world.kimEmail, gatesPath());
+  const inbox = document.querySelector('main nav[aria-label="Decisions"]');
+  expect(inbox?.querySelectorAll('li a').length).toBeGreaterThan(0);
+  const panel = document.querySelector('main section[aria-labelledby]');
+  expect(panel?.querySelectorAll('svg circle')).toHaveLength(16);
+  expect(panel?.textContent).toMatch(/\d+\/16rules met/);
+  expect(panel?.querySelector('section[aria-label="Ship rule"]')).not.toBeNull();
+  expect(panel?.querySelector('aside[aria-label="Risk"]')).not.toBeNull();
+  const deep = await documentOf(world, world.kimEmail, deepLink(world));
+  const list = deep.querySelector('main nav[aria-label="Decisions"]');
+  expect(list?.getAttribute('class')).toContain('hidden');
+  expect(list?.getAttribute('class')).toContain('md:flex');
+}
+
 describe.skipIf(!testServer)('the Gates view and its deep link', () => {
+  it('UI-7 Gates lists the decisions beside the open one, with the ring of 16 rules, the rules, the risk, and one at a time on a phone', () =>
+    inGates(lookOfGates));
   it('WB-6 the gates view lists only the gates the person can decide', () =>
     inGates(onlyDecidable));
   it('GD-1 the Gates view offers approve all shown over the gates whose ship rule advances', () =>

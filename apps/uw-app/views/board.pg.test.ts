@@ -242,7 +242,27 @@ async function noProblems(world: BoardWorld): Promise<void> {
   expect(await screenProblems((await boardOf(world, world.viewer.email)).text)).toEqual([]);
 }
 
+async function lookOfBoard(world: BoardWorld): Promise<void> {
+  const document = await documentOf(world);
+  const pipeline = document.querySelector('main section[aria-label="Pipeline"]');
+  expect(pipeline?.querySelectorAll('li[data-node]')).toHaveLength(8);
+  const gate = pipeline?.querySelector('li[data-node] [aria-label="A person decides"]');
+  expect(gate).not.toBeNull();
+  const figures = [...(pipeline?.querySelectorAll('dt') ?? [])].map((term) => term.textContent);
+  expect(figures).toEqual(['Agents working', 'Waiting on you', 'Spent on these items']);
+  const toolbar = document.querySelector('main a[href="/gates"]');
+  expect(toolbar?.textContent).toContain('Waiting on you');
+  expect(document.querySelector('main section[data-folded="true"]')).not.toBeNull();
+  const card = document.querySelector('main article');
+  const summaries = [...(card?.querySelectorAll('details summary') ?? [])].map(
+    (s) => s.textContent,
+  );
+  expect(summaries).toEqual(expect.arrayContaining(['Move', 'Details']));
+}
+
 describe.skipIf(!testServer)('the Board', () => {
+  it('UI-6 the Board draws the pipeline with its figures, the toolbar, folded empty stages and compact cards', () =>
+    inBoard(lookOfBoard));
   it('WB-5 the board has one column per stage with its WIP against its limit, agent pickup and exit gate', () =>
     inBoard(columns));
   it('WB-5 a card shows title, issue ref, holder identity, host, risk tier and domains and cost basis', () =>
