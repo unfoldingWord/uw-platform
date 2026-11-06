@@ -7,8 +7,6 @@ import { screenReport, type HealthDeps } from './screen-report.ts';
 const FRAME_HEALTH_CACHE_MS = 30_000;
 const FRAME_HEALTH_PEOPLE = 500;
 
-export type FrameHealth = () => Promise<HealthReport | null>;
-
 type Cached = { readonly at: number; readonly report: HealthReport };
 
 export function withFrameHealth(deps: HealthDeps): MiddlewareHandler<AppEnv> {
