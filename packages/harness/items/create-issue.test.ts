@@ -78,6 +78,8 @@ function itemsGateway(inserted: ItemState[]): HarnessItemsGateway {
       parked: unused,
       openFor: unused,
       openCounts: unused,
+      parkedSince: unused,
+      claimedBy: unused,
       byIds: unused,
     },
     write: {
@@ -100,6 +102,7 @@ function eventsGateway(appended: HarnessEvent[]): HarnessEventsGateway {
       recent: unused,
       lastPosition: unused,
       lastPositions: unused,
+      latestForItems: unused,
       countForPersona: unused,
     },
     write: {

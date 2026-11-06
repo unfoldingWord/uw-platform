@@ -211,6 +211,37 @@ async function openCounts(
   return harnessIds.map((harnessId) => ({ harnessId, open: found.get(harnessId) ?? 0 }));
 }
 
+async function parkedSince(
+  executor: AnyExecutor,
+  harnessIds: readonly string[],
+): Promise<readonly Date[]> {
+  if (harnessIds.length === 0) return [];
+  const rows = await executor
+    .select({ heldSince: harnessItems.heldSince })
+    .from(harnessItems)
+    .where(
+      and(
+        inArray(harnessItems.harnessId, [...harnessIds]),
+        eq(harnessItems.gateStatus, 'parked'),
+        isNotNull(harnessItems.heldSince),
+      ),
+    )
+    .orderBy(asc(harnessItems.heldSince));
+  return rows.flatMap((row) => (row.heldSince === null ? [] : [row.heldSince]));
+}
+
+async function claimedBy(
+  executor: AnyExecutor,
+  identity: string,
+  limit: number,
+): Promise<readonly ItemState[]> {
+  const rows = await selectItems(executor)
+    .where(and(eq(harnessItems.claimedBy, identity), ne(harnessItems.gateStatus, 'done')))
+    .orderBy(desc(harnessItems.priority), asc(harnessItems.id))
+    .limit(checkedRows(limit, 'claimed item'));
+  return rows.map((row) => toItemState(row.item, row.stageKey));
+}
+
 async function byIds(
   executor: AnyExecutor,
   itemIds: readonly string[],
@@ -282,6 +313,8 @@ function bindReads(executor: AnyExecutor): HarnessItemsGateway['read'] {
     parked: (harnessId, limit) => parked(executor, harnessId, limit),
     openFor: (harnessId, limit) => openFor(executor, harnessId, limit),
     openCounts: (harnessIds) => openCounts(executor, harnessIds),
+    parkedSince: (harnessIds) => parkedSince(executor, harnessIds),
+    claimedBy: (identity, limit) => claimedBy(executor, identity, limit),
     byIds: (itemIds) => byIds(executor, itemIds),
   };
 }
