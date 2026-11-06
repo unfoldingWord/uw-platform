@@ -21,17 +21,36 @@ export function GateCallout(props: {
   readonly title: string;
   readonly reason: string | null;
   readonly actions: Child;
+  readonly eyebrow?: Child | undefined;
+  readonly aside?: Child | undefined;
+  readonly meta?: Child | undefined;
   readonly children?: Child;
 }) {
   const headingId = domId('gate', props.itemId);
   return (
     <section
       aria-labelledby={headingId}
-      class="flex flex-col gap-3 rounded-lg border border-line border-l-4 border-l-accent bg-surface p-4 text-text"
+      class="flex min-w-0 flex-col gap-4 rounded-lg bg-surface p-5 text-text shadow-2"
     >
-      <h2 id={headingId} class="m-0 text-lg font-heavy text-text">
-        {props.title}
-      </h2>
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="min-w-0">
+          {props.eyebrow === undefined ? null : (
+            <p class="m-0 text-xs text-text-3">{props.eyebrow}</p>
+          )}
+          <h2
+            id={headingId}
+            class="m-0 text-2xl leading-tight font-heavy tracking-heading text-text"
+          >
+            {props.title}
+          </h2>
+          {props.meta === undefined ? null : (
+            <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-3">
+              {props.meta}
+            </div>
+          )}
+        </div>
+        {props.aside}
+      </div>
       {props.children}
       {props.reason === null ? null : <Note>{reasonText(props.reason)}</Note>}
       <div class="flex flex-wrap items-center gap-3">{props.actions}</div>
@@ -74,7 +93,8 @@ function Derived(props: { readonly derived: RiskDerived | null; readonly when: s
   return (
     <>
       <Fact term={`Tier ${props.when}`}>
-        {derived.riskTier ?? 'None'} at <code class="font-mono">{derived.head ?? 'no head'}</code>
+        {derived.riskTier ?? 'None'} at{' '}
+        <code class="font-mono break-all">{derived.head ?? 'no head'}</code>
       </Fact>
       <Fact term={`Domains ${props.when}`}>{listed(derived.riskDomains)}</Fact>
     </>
@@ -102,10 +122,9 @@ export function GateFacts(props: {
           <Fact term="Review providers">{listed(props.reviewProviders)}</Fact>
         )}
         <Fact term="You approve head">
-          <code class="font-mono">{props.head ?? 'No head'}</code>
+          <code class="font-mono break-all">{props.head ?? 'No head'}</code>
         </Fact>
       </dl>
-      {props.head === null ? null : <input type="hidden" name="head" value={props.head} />}
       {moved ? <Note>The tier was recorded at another head than the one you approve</Note> : null}
     </div>
   );

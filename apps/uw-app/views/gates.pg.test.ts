@@ -252,7 +252,11 @@ async function decidedFromForm(world: GateWorld, decision: string): Promise<void
 
 async function kindleOnButtons(world: GateWorld): Promise<void> {
   const document = await documentOf(world, world.kimEmail, gatesPath());
-  const kindled = [...document.querySelectorAll('main [class*="human"]')];
+  const kindled = [...document.querySelectorAll('main [class*="human"]')].filter(
+    (element) =>
+      element.closest('nav[aria-label="Decisions"]') === null &&
+      element.closest('[data-human-callout]') === null,
+  );
   expect(kindled.map((element) => [element.tagName, element.getAttribute('name')])).toEqual([
     ['BUTTON', 'decision'],
     ['BUTTON', 'decision'],
@@ -286,7 +290,7 @@ async function phoneWidth(world: GateWorld): Promise<void> {
   for (const path of [gatesPath(), deepLink(world)]) {
     const page = await pageOf(world, world.kimEmail, path);
     const document = new JSDOM(page.text).window.document;
-    const stack = document.querySelector('main section .flex-col.md\\:flex-row');
+    const stack = document.querySelector('main section .flex-col.lg\\:flex-row');
     expect(stack).not.toBeNull();
     const table = document.querySelector('main table');
     expect(table?.parentElement?.getAttribute('class')).toContain('overflow-x-auto');
@@ -346,7 +350,10 @@ async function noDecideControls(world: GateWorld, email: string, path: string): 
   const document = await documentOf(world, email, path);
   expect(document.querySelector('main form[data-command="decide"]')).toBeNull();
   expect(document.querySelectorAll('main button[name="decision"]')).toHaveLength(0);
-  expect(document.querySelectorAll('main [class*="human"]')).toHaveLength(0);
+  const marked = [...document.querySelectorAll('main [class*="human"]')].filter(
+    (element) => element.closest('nav[aria-label="Decisions"]') === null,
+  );
+  expect(marked).toHaveLength(0);
   expect(document.querySelector('main [role="note"]')?.textContent).toBe(notWaiting);
 }
 

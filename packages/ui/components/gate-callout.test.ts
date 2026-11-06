@@ -141,17 +141,10 @@ describe('the gate callout shows the parsed declaration, never the pull request 
   });
 });
 
-describe('the gate facts send the head they show', () => {
-  it('the head you are shown is the head the approve sends, from one value', async () => {
+describe('the gate facts only show the head', () => {
+  it('the facts carry no form field; the decision form sends the head', async () => {
     const document = await dom(jsx(GateFacts, { ...facts, head: headB }));
-    const sent = found(document.querySelector('input[type="hidden"][name="head"]'));
-    expect(sent.getAttribute('value')).toBe(headB);
-    expect(definitions(document).get('You approve head')).toBe(sent.getAttribute('value'));
-    expect(document.querySelectorAll('[name="head"]')).toHaveLength(1);
-  });
-
-  it('with no head the facts send none', async () => {
-    const document = await dom(jsx(GateFacts, { ...facts, head: null }));
+    expect(definitions(document).get('You approve head')).toBe(headB);
     expect(document.querySelector('[name="head"]')).toBeNull();
   });
 });

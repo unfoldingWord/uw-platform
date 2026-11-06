@@ -95,3 +95,21 @@ export function HumanChip(props: {
 }
 
 export const humanFigure = 'text-human-text';
+
+export function HumanCallout(props: { readonly lead: string; readonly text: string }) {
+  return (
+    <p
+      data-human-callout=""
+      class="m-0 flex items-start gap-3 rounded-lg border border-human-line bg-human-soft p-3 text-sm text-human-text"
+    >
+      <Icon name="lock" size={2} />
+      <span>
+        <strong class="font-heavy">{props.lead}</strong> {props.text}
+      </span>
+    </p>
+  );
+}
+
+export function HumanDot() {
+  return <span aria-hidden="true" class="mt-1 size-size-1 shrink-0 rounded-full bg-human"></span>;
+}
