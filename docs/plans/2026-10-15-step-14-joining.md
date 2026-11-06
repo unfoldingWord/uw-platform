@@ -1,14 +1,12 @@
 # Step 14, Joining: Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** A real repository can join the platform the way design section 4 describes: an admin activates a check-only harness in shadow mode, a review request on a pull request enqueues one item at Check, the Reviewer's verdict and the ship rule's verdict are recorded and nothing is written to GitHub, the Gates view compares those verdicts with other reviewers' on the same head, an admin lifts shadow, an external reviewer's approval counts by configuration, and no agent is dispatched onto a repository the area's platform page does not list.
 
 **Architecture:** Additive throughout. The contracts gain four refusal reasons, three events, one command, one page type and three shapes in one shared-root commit; the database gains three columns and the regenerated name checks in one migration; the Store gains three gateway methods behind the port contract. The kernel gains a join command (`items.join`), a dispatch guard on agent claims, a shadow branch in `postReview`, a shadow-verdict recorder (`gates.recordShadowVerdicts`) built on the existing `shipPreview`, a shadow refusal in `decide`, a lift command (`stages.liftShadow`) and one view (`views.shadow`). The app follows every pull-request upsert (webhook and sweep) with a join attempt and a shadow-verdict attempt, refuses `kickstart` on a harness with no Package stage, serves the export route, and adds the shadow section to the Gates screen. External reviewer approvals count through one function the ship-rule input and the gate view share.
 
 **Tech Stack:** TypeScript strict, Zod 4, Drizzle and drizzle-kit, Vitest 4 (node project and the Postgres service), Hono JSX for the Gates screen, the sim over the embedded Postgres Store.
 
-**Spec:** `docs/PRD.md` section 7.11 (GL-2, GL-3, GL-4, GL-6, OB-3, PI-1), sections 8.1, 8.5, 8.6 and 13 (step 14); the design is `docs/superpowers/specs/2026-10-15-harness-v0-2-0-design.md` sections 4, 5.1, 5.8, 5.9, 6 and 7.
+**Spec:** `docs/PRD.md` section 7.11 (GL-2, GL-3, GL-4, GL-6, OB-3, PI-1), sections 8.1, 8.5, 8.6 and 13 (step 14); the design is `docs/specs/2026-10-15-harness-v0-2-0-design.md` sections 4, 5.1, 5.8, 5.9, 6 and 7.
 
 **Requirements covered:** GL-2 (the `kickstart` refusal and "no Package page"; the template fixture is step 12), GL-3, GL-4, GL-6, OB-3, PI-1. All six are Must.
 

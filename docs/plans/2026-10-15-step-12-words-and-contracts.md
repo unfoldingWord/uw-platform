@@ -1,14 +1,12 @@
 # Step 12, Words and Contracts: Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Give v0.2.0 its vocabulary in code: the trace proves it reads the v0.2.0 requirements (DX-9), the closed sets every later step consumes exist in `packages/contracts` with fixtures and a lock entry, and the check-only template is registered and passes the template property.
 
 **Architecture:** Nothing here changes a behaviour. It adds values to enums, a new template to the registry and a test to the trace, so that steps 13 to 20 touch the contracts root as little as possible. The words themselves landed on `main` in `a03d1a1`; the PRD amendment in `b8e031f`; the `Should` priority and the built-mode guard in `c46532b`. This step finishes DX-9 with its named test and adds what those commits did not.
 
 **Tech Stack:** TypeScript strict, Zod 4, Vitest 4 (node project), the contract lock JSON, the harness template registry.
 
-**Spec:** `docs/PRD.md` section 7.11 (DX-9, GL-2's fixture half) and section 8.3; the design is `docs/superpowers/specs/2026-10-15-harness-v0-2-0-design.md` sections 5.1, 5.10 and 6.
+**Spec:** `docs/PRD.md` section 7.11 (DX-9, GL-2's fixture half) and section 8.3; the design is `docs/specs/2026-10-15-harness-v0-2-0-design.md` sections 5.1, 5.10 and 6.
 
 **Requirements covered:** DX-9. The check-only template fixture half of GL-2 (the `kickstart` refusal and the harness behaviour are step 14). Closed sets for FL-1, MD-2, RV-1 and UC-1 (the sets only; their consumers are in later steps).
 
@@ -594,7 +592,7 @@ In `docs/progress_tracker.md`, change the step 12 row's state from `Not started`
 git add docs/progress_tracker.md
 git commit -m "docs(tracker): step 12 is built"
 git push -u origin build/v0.2.0
-gh pr create --draft --base main --head build/v0.2.0 --title "feat: harness v0.2.0 build (step 12, words and contracts)" --body "Draft pull request for the v0.2.0 build on build/v0.2.0. Design: docs/superpowers/specs/2026-10-15-harness-v0-2-0-design.md. Requirements built so far: DX-9, GL-2 (template half). Evidence, rulings and what was not verified are in docs/progress_tracker.md."
+gh pr create --draft --base main --head build/v0.2.0 --title "feat: harness v0.2.0 build (step 12, words and contracts)" --body "Draft pull request for the v0.2.0 build on build/v0.2.0. Design: docs/specs/2026-10-15-harness-v0-2-0-design.md. Requirements built so far: DX-9, GL-2 (template half). Evidence, rulings and what was not verified are in docs/progress_tracker.md."
 ```
 
 If the pull request already exists, push only.

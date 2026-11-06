@@ -1,14 +1,12 @@
 # Step 11: The End-to-End Scenario Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** One scenario, `sim/scenarios/DX-7.software-template-end-to-end.ts`, takes a kickstarted fixture item from Package to Close on the software template across every gate on both hosts, and the build closes against PRD section 14 items 1 to 6 with the evidence in `docs/progress_tracker.md`.
 
 **Architecture:** The scenario is built from three journey modules under `sim/e2e/` (to Ship, through Ship, to Close), each a sequence of kernel calls over the test adapters that asserts with `node:assert/strict` as it goes, plus one coverage module that checks the travelled path against `kernel.walk` and the exit gates crossed. A growing Vitest file `sim/e2e/e2e.test.ts` drives each journey while it is being built; the scenario composes them once all three exist. A release-criteria guard in `tools/release/criteria.test.ts` makes PRD section 14 items 1 to 6 fail mechanically if a proof is removed or skipped, and the final task closes step 11 and the build in the tracker with a go-live hand-off listing every Not verified and Waiting on a person row.
 
 **Tech Stack:** TypeScript strict, Node 22, Vitest (Node pool), PGlite through `@uw/db/embedded` in the sim, `node:assert/strict`. No new dependency.
 
-**Spec:** `docs/PRD.md` (approved; no brainstorm, no approval step). Requirements covered: **DX-7**, and the release-criteria closeout of PRD section 14 items 1 to 6 (which re-prove DX-5, KN-10, AB-7 and DX-6 without changing them). Carries planned here: the tracker's "Carried to later steps" table names no row for step 11 or for "final" (checked on 2026-10-03 against `docs/progress_tracker.md` lines 653 to 704); Task 6 re-reads the table and closes any row added since that names step 11 or the final step, and lists every row still open in the go-live hand-off. Plans for steps 8, 9 and 10 were not in `docs/superpowers/plans/` when this plan was written; this plan assumes they are Built and touches none of their files.
+**Spec:** `docs/PRD.md` (approved; no brainstorm, no approval step). Requirements covered: **DX-7**, and the release-criteria closeout of PRD section 14 items 1 to 6 (which re-prove DX-5, KN-10, AB-7 and DX-6 without changing them). Carries planned here: the tracker's "Carried to later steps" table names no row for step 11 or for "final" (checked on 2026-10-03 against `docs/progress_tracker.md` lines 653 to 704); Task 6 re-reads the table and closes any row added since that names step 11 or the final step, and lists every row still open in the go-live hand-off. Plans for steps 8, 9 and 10 were not in `docs/plans/` when this plan was written; this plan assumes they are Built and touches none of their files.
 
 ## Global Constraints
 

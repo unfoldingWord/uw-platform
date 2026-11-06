@@ -1,7 +1,5 @@
 # Step 3, Kernel and Data: Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Give the kernel its data and its rules: the nine harness tables with the Ship invariant and the append-only event log (KN-1 to KN-3), then replay and the one read path, claims with leases and WIP, exit gates and validators, loop edges, the template property and the two templates, the ship rule and risk tiers, the gate decision command with its locked grant re-read, delegations, and the stage command (KN-4 to KN-18), every one proven in the sim on the embedded Postgres and, where only separate connections can prove it, on a Postgres server (DX-6).
 
 **Architecture:** The kernel in `packages/harness` stays pure and reaches every table through new members of `StoreTransaction` ("gateways", one per table, each with a `read` and a `write` half); the one Drizzle implementation of those gateways lives in `packages/db/store/` and is bound by both the sim and the Worker, so they run the same SQL. Every state change is a list of events appended through one owner module (`packages/harness/items/`), which folds the same events onto the `harness_items` projection in the same transaction, so replay equals record by construction and a property test checks it. Pure rules (replay, the template property, the ship rule, risk derivation, validators) are plain functions with unit tests in `packages/harness` and property tests in `tools/properties/`; behaviour over the database is proven by scenarios in `sim/scenarios/` and by `*.pg.test.ts` races on real connections.
@@ -3417,7 +3415,7 @@ Run: `pnpm trace` and confirm none of KN-1 to KN-18 is listed as unproven. Grep 
 
 - [ ] **Step 2: Update `docs/progress_tracker.md`**
 
-- Status table: step 3 `Built`, evidence `docs/superpowers/plans/2026-10-01-step-03-kernel-and-data.md`; scenarios `sim/scenarios/KN-*.ts`; tests named KN-1 to KN-18; server races `apps/uw-app/harness/*.pg.test.ts`, `packages/db/event-log-order.test.ts`; `pnpm verify` green with `TEST_DATABASE_URL` set.
+- Status table: step 3 `Built`, evidence `docs/plans/2026-10-01-step-03-kernel-and-data.md`; scenarios `sim/scenarios/KN-*.ts`; tests named KN-1 to KN-18; server races `apps/uw-app/harness/*.pg.test.ts`, `packages/db/event-log-order.test.ts`; `pnpm verify` green with `TEST_DATABASE_URL` set.
 - A `## Step 3 evidence by requirement` table: each of KN-1 to KN-18 and DX-6, its commits (`git log --oneline` for this step) and its scenario and test files.
 - Decisions made during the build (one row each, with why and cost if wrong):
 

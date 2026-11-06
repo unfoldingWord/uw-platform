@@ -192,7 +192,7 @@ Each in its own commit whose message names the root and why (rule 4).
 
 ## 8. Build order
 
-Numbered after v1's eleven so the trace reads them as steps not yet built. Each step needs the ones above it and all of v1. Within a step, order is free. One plan per step under `docs/superpowers/plans/`, written against the code at that moment.
+Numbered after v1's eleven so the trace reads them as steps not yet built. Each step needs the ones above it and all of v1. Within a step, order is free. One plan per step under `docs/plans/`, written against the code at that moment.
 
 12. **Words and contracts.** Section 2 into `CONTEXT.md`; closed sets, finding weight and the check-only fixture into `packages/contracts` at 13.0.0; DX-9.
 13. **Untrusted content.** UC-1 to UC-5. First because every later prompt site inherits it.

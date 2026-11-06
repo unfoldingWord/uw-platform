@@ -1,18 +1,16 @@
 # Step 15, Ship Rule and Gates: Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** The ship rule reads five more facts and refuses on each (a head behind its base, a closing keyword for an issue the item does not wrap, a `[skip ci]` commit, a required check that never ran, a frozen harness); an approval survives a merge from base when the change is byte-identical; the merge runs the ship rule again in-process and merges exactly the head it evaluated; a person decides a batch of gates in one transaction, freezes a harness, and never sees an engine's refusal routed to another engine; every Reviewer finding carries a weight, only `real` and `plausible` findings make a review round, a person can mark a finding refuted, and each Reviewer's refute rate shows on its persona view and on `/health`.
 
 **Architecture:** The ship rule stays one pure function in `packages/harness/ship-rule.ts`; its input grows by facts and two harness columns, never by a value planted on the item. Required checks become a harness column (`required_checks`), which retires the ship rule's dependence on this repository's six CI job names. The GitHub facts module records, at each head, the comparison with the base (`behind_by`, the patch id, the commits with their skip-ci markers and closing references) from the compare call it already makes, so no new GitHub endpoint is read. The carry of an approval across a base merge is a pure function (`carriedCommits`) the assembler feeds to the rule. The in-process re-run before the merge lives in the approve-at-Ship path (the only module allowed to call `shipRule`) and reaches the connector through a guard argument to `exitThroughConnector`. `decide_gates` reuses the single decision's transaction body for each entry inside one transaction. The engine refusal rides the existing `stopReason: 'refused'` of a model turn. Finding weights live in the Reviewer's verdict lines (`- real: ...`), in the run's review record and in the GitHub read-back; the refute rate is a read over 30 days of events, not a stored row.
 
 **Tech Stack:** TypeScript strict, Zod 4, Drizzle and drizzle-kit, Vitest 4 (node project and the Postgres service), Hono JSX for the Gates and persona screens, the sim over the embedded Postgres Store, Web Crypto (`crypto.subtle`) for the patch id in the app.
 
-**Spec:** `docs/PRD.md` section 7.11 (SR-1, SR-2, SR-3, GD-1, GD-2, GD-3, RV-1, RV-2, RV-3), sections 8.1, 8.3, 8.5, 8.6 and 13 (step 15); the design is `docs/superpowers/specs/2026-10-15-harness-v0-2-0-design.md` sections 2, 3 (V2-6, V2-8), 5.6, 5.7, 6 and 7.
+**Spec:** `docs/PRD.md` section 7.11 (SR-1, SR-2, SR-3, GD-1, GD-2, GD-3, RV-1, RV-2, RV-3), sections 8.1, 8.3, 8.5, 8.6 and 13 (step 15); the design is `docs/specs/2026-10-15-harness-v0-2-0-design.md` sections 2, 3 (V2-6, V2-8), 5.6, 5.7, 6 and 7.
 
 **Requirements covered:** SR-1, SR-2, SR-3, GD-1, GD-2, GD-3, RV-1, RV-2 (all Must) and RV-3 (Should, built: it is one frontmatter line and one function this step needs anyway for RV-1's verdict).
 
-**Builds on step 14 (planned in `docs/superpowers/plans/2026-10-15-step-14-joining.md`, built before this plan runs).** Names used exactly as step 14 hands them over: `Harness.shadow`, `Harness.externalReviewerIdentities`, the events `review_verdict_recorded`, `shadow_verdict`, `shadow_lifted`, the command `set_shadow`, `shadowComparisonSchema` in `packages/contracts/shadow.ts`, `shipPreview` and its second caller `packages/harness/gates/shadow-verdict.ts`, `gates.recordShadowVerdicts`, `countedReviewer` and `EXTERNAL_PROVIDER` in `packages/harness/github/reviewers.ts`, `latestDecisive(facts, head, external)` and `reviewsOn(facts, head, external)` in `packages/harness/gates/ship-input.ts`, `gh_prs.requested_reviewers`, the contract version step 14 leaves (expected `12.4.0`) and its migration (expected `0029_joining`). Step 14's "left for later" item 2 (the six CI job names) is resolved here by S15-R1.
+**Builds on step 14 (planned in `docs/plans/2026-10-15-step-14-joining.md`, built before this plan runs).** Names used exactly as step 14 hands them over: `Harness.shadow`, `Harness.externalReviewerIdentities`, the events `review_verdict_recorded`, `shadow_verdict`, `shadow_lifted`, the command `set_shadow`, `shadowComparisonSchema` in `packages/contracts/shadow.ts`, `shipPreview` and its second caller `packages/harness/gates/shadow-verdict.ts`, `gates.recordShadowVerdicts`, `countedReviewer` and `EXTERNAL_PROVIDER` in `packages/harness/github/reviewers.ts`, `latestDecisive(facts, head, external)` and `reviewsOn(facts, head, external)` in `packages/harness/gates/ship-input.ts`, `gh_prs.requested_reviewers`, the contract version step 14 leaves (expected `12.4.0`) and its migration (expected `0029_joining`). Step 14's "left for later" item 2 (the six CI job names) is resolved here by S15-R1.
 
 **Rulings made while planning** (recorded here and in `docs/progress_tracker.md` by the last task):
 
@@ -118,7 +116,7 @@ Inputs the spec implies that no requirement row spells out, most likely to bite 
 - Modify: `CONTEXT.md` (four entries at the end of the v0.2.0 block, after **Silence alarm**)
 - Modify: `docs/adr/0003-ship-gate-is-a-database-invariant-and-the-ship-rule-is-pure.md` (an amendment section at the end)
 - Modify: `docs/PRD.md` (sections 8.1, 8.3, 8.5, 8.6)
-- Modify: `docs/superpowers/specs/2026-10-15-harness-v0-2-0-design.md` (section 6)
+- Modify: `docs/specs/2026-10-15-harness-v0-2-0-design.md` (section 6)
 
 This task writes no code. Three commits, because `CONTEXT.md` and `docs/adr/` are each a shared root.
 
@@ -190,7 +188,7 @@ In section 8.6, after the "Added in v0.2.0" paragraph, add: "`handed_to_person` 
 In the design, section 6, replace "`gh_reviews`: `findings[].weight`, `findings[].refuted_by`, `refuted_at`. `measurements`: the refute-rate aggregate." with "`gh_reviews`: `findings[].weight` (read back from the posted review). A refutation is the event `finding_refuted`; the refute rate is a read over those events and the runs' review records, not a stored row (S15-R16)." and add "`harnesses`: `required_checks` (S15-R1)." to the tables line.
 
 ```bash
-git add docs/PRD.md docs/superpowers/specs/2026-10-15-harness-v0-2-0-design.md
+git add docs/PRD.md docs/specs/2026-10-15-harness-v0-2-0-design.md
 git commit -m "docs(prd): step 15's columns, sets and events, and the refute rate as a read
 
 PRD sections 8.1, 8.3, 8.5 and 8.6 name what step 15 adds; the design's

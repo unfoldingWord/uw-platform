@@ -1,18 +1,16 @@
 # Step 18, Epic Intake: Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** A person can hand the platform a whole GitHub epic: the facts know which issues are sub-issues of which, in GitHub's order; intake refuses any issue with no `Done when` heading and records the refusal so the Board shows what is not ready; `enqueue_epic` turns the epic's open sub-issues into items in order with the blockers their `Blocked by:` lines name; a blocked item is offered to no one until its blockers' items have passed Ship; independent items run in parallel up to the stage's WIP limit; and the Board draws each epic with its blocker edges.
 
 **Architecture:** Additive. The GitHub facts module stores what intake needs from an issue body, never the body itself: the done-when lines and the same-repository blocker numbers, parsed by two pure functions in `packages/harness/github/issue-body.ts`, plus GitHub's sub-issue count and, on each sub-issue, its parent and place, read from GitHub's sub-issue list after every issue upsert (webhook and sweep alike). The kernel reads an epic through one new `GitHubFacts` port method, `epic`, over that read model. Items carry their epic place and their blockers on `ItemState` (folded from `item_created`), so `poll_queue` and `claim` decide "blocked" from the projection they already read. Refusals for a missing done-when are a harness event, `done_when_missing`, recorded once a day per issue or page, and the Board reads them back as its "Not ready" list. The Board's epic section is a pure grouping in the kernel view and a token-only SVG in the screen.
 
 **Tech Stack:** TypeScript strict, Zod 4, Drizzle and drizzle-kit, Vitest 4 (node project and the Postgres service), Hono JSX for the Board, the sim over the embedded Postgres Store, the fixture GitHub transport.
 
-**Spec:** `docs/PRD.md` section 7.11.5 (EI-1 to EI-5), sections 8.1, 8.5, 8.6 and 13 (step 18); the design is `docs/superpowers/specs/2026-10-15-harness-v0-2-0-design.md` sections 2 (Epic, Done-when), 3 (V2-4), 5.5, 6 and 7.
+**Spec:** `docs/PRD.md` section 7.11.5 (EI-1 to EI-5), sections 8.1, 8.5, 8.6 and 13 (step 18); the design is `docs/specs/2026-10-15-harness-v0-2-0-design.md` sections 2 (Epic, Done-when), 3 (V2-4), 5.5, 6 and 7.
 
 **Requirements covered:** EI-1, EI-2, EI-3, EI-4 (Must) and EI-5 (Should, built: the grouping is one pure function over items the Board view can already read, and the drawing reuses the Flow diagram's SVG idiom).
 
-**Builds on steps 14 to 17 (built before this plan runs).** Names used exactly as `docs/superpowers/plans/2026-10-15-step-14-joining.md` hands them over: `createdDraft` in `packages/harness/items/record.ts` and the `item_created` evidence with `pullRequest` and `expectedHead` (Task 7 of step 14), `createSimHarness` option `dispatchable` defaulting to `true` so agent claims on a harness with a repository pass the GL-6 gate, `notWiredCommand` in `apps/uw-app/commands/not-wired.ts`, and the step-14 contract procedure (append a lock entry, bump the minor, regenerate the islands bundle). From `docs/superpowers/plans/2026-10-15-step-15-ship-rule-and-gates.md`: `apps/uw-app/github/facts/heads.ts` (the files writer moved out of `upsert.ts`), the contract at `13.0.0`, and its migration. This plan touches nothing steps 16 and 17 own except one guard line each in `packages/harness/reads/poll.ts` (`claimableIn`) and `packages/harness/items/claim.ts` (`heldRefusal`); if those functions were reshaped by step 17, put the line where the same decision is made and say so in the commit body.
+**Builds on steps 14 to 17 (built before this plan runs).** Names used exactly as `docs/plans/2026-10-15-step-14-joining.md` hands them over: `createdDraft` in `packages/harness/items/record.ts` and the `item_created` evidence with `pullRequest` and `expectedHead` (Task 7 of step 14), `createSimHarness` option `dispatchable` defaulting to `true` so agent claims on a harness with a repository pass the GL-6 gate, `notWiredCommand` in `apps/uw-app/commands/not-wired.ts`, and the step-14 contract procedure (append a lock entry, bump the minor, regenerate the islands bundle). From `docs/plans/2026-10-15-step-15-ship-rule-and-gates.md`: `apps/uw-app/github/facts/heads.ts` (the files writer moved out of `upsert.ts`), the contract at `13.0.0`, and its migration. This plan touches nothing steps 16 and 17 own except one guard line each in `packages/harness/reads/poll.ts` (`claimableIn`) and `packages/harness/items/claim.ts` (`heldRefusal`); if those functions were reshaped by step 17, put the line where the same decision is made and say so in the commit body.
 
 **Rulings made while planning** (recorded here and in `docs/progress_tracker.md` by the last task):
 
@@ -107,7 +105,7 @@ Inputs the spec implies that no requirement row spells out, most likely to bite 
 **Files:**
 - Modify: `CONTEXT.md` (two entries after **Done-when**)
 - Modify: `docs/PRD.md` (sections 8.1 and 8.6)
-- Modify: `docs/superpowers/specs/2026-10-15-harness-v0-2-0-design.md` (section 6)
+- Modify: `docs/specs/2026-10-15-harness-v0-2-0-design.md` (section 6)
 
 **Interfaces:**
 - Produces: the words **Blocker** and **Not ready** every later task uses.
@@ -155,7 +153,7 @@ on `gh_issues` the cross-reference claim (`xref_claimed_at`, `xref_comment_id`),
 
 Section 8.6, in the line beginning `Added in v0.2.0:`, replace `` `epic_enqueued`, `` with `` `epic_enqueued`, `done_when_missing` (a harness event recording an intake refusal; EI-2), ``.
 
-`docs/superpowers/specs/2026-10-15-harness-v0-2-0-design.md` section 6, replace `` `gh_issues`: `parent_issue_id`. `` with:
+`docs/specs/2026-10-15-harness-v0-2-0-design.md` section 6, replace `` `gh_issues`: `parent_issue_id`. `` with:
 
 ```markdown
 `gh_issues`: `parent_issue_id`, `parent_position`, `sub_issues`, `done_when`, `blocked_by` (parsed from the body; the body is not stored). `harness_items`: `epic`, `blocked_by`.
@@ -171,7 +169,7 @@ Expected: green (the requirement rows are untouched).
 - [ ] **Step 4: Commit**
 
 ```bash
-git add docs/PRD.md docs/superpowers/specs/2026-10-15-harness-v0-2-0-design.md
+git add docs/PRD.md docs/specs/2026-10-15-harness-v0-2-0-design.md
 git commit -m "docs(prd): the epic intake columns and the done_when_missing event
 
 PRD 8.1 and 8.6 and design section 6 name what step 18 adds beyond

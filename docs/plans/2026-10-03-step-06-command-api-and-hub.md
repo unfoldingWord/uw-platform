@@ -1,7 +1,5 @@
 # Step 6: Command API, Live Hub and Design System Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Give people one command API over the kernel (every Controls row, the issue import, connector recovery and the stage command), a live hub that wakes clients without carrying content, and the design system the step-8 views are built from.
 
 **Architecture:** Every `/api/harness/:harness/*` route runs one dispatcher that parses a contract body, replays a repeated `requestId` from a ledger, resolves the harness (hidden equals missing), calls `can()` and only then the kernel. The commands that decide gates, edit stages or grant delegations live in one directory, the person surface, which the MCP closure can never reach; only the gate commands build a kernel with a GitHub read client and the ship writes. The kernel wakes the hub after every committed append; one Durable Object per harness sends `{"type":"wake","harnessId":…}` to its WebSocket sessions, each of which reads events after its own cursor from the one read route and polls it when the socket is down. `packages/ui` holds the brand tokens, a Tailwind 4 CSS-first theme over them, a committed generated stylesheet and the Hono JSX shell pieces.

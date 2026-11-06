@@ -1,7 +1,5 @@
 # Step 7: Hosts and Engines Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Run personas on both hosts: a hosted run is one Cloudflare Workflow per claim with read, scout, work and submit as checkpointed steps that hibernate at a human gate, behind one engine seam with six engines, metered and stopped by a spend breaker; an external run is a person's own Claude Code or Codex over the MCP surface on their subscription, guided by a synced harness skill.
 
 **Architecture:** The kernel gains a runs module (the only writer of `harness_runs`) and a breaker. `kernel.runs.start` claims an item under a delegation, writes the run row and `run_started` in one transaction, then starts a Workflow through the Runs port. Each Workflow step asks `kernel.runs.scene(runId)` for the beat principal derived from the run's delegation and opens one in-process MCP connection with it, so a hosted run reaches the platform only through the verbs. The engine seam is a platform registry keyed by the six engine keys under `apps/uw-app/engines/<key>/`; the two message engines run one shared tool loop (pure, in `packages/harness`) over their vendor SDK's turn; the two container engines run a CLI in a Cloudflare Sandbox whose model key and MCP route are injected by an egress proxy; `claude-managed-agent` is reserved and `external` never runs on the platform. The breaker reads AI Gateway's month-to-date cost through the ModelEngine port once a minute, records each level change as an event on every harness, holds new hosted claims at 75 percent and hibernates running hosted runs at 90.
@@ -1725,7 +1723,7 @@ HE-6 HE-7"
 **Requirements:** HE-1 to HE-10 (the record); DX-5.
 
 **Files:**
-- Modify: `docs/progress_tracker.md`, `.superpowers/sdd/BUILD.md` is the controller's and is not touched
+- Modify: `docs/progress_tracker.md`, the controller's own ledger is not touched
 
 - [ ] **Step 1: Prove the trace**
 
