@@ -116,6 +116,10 @@
   transform: rotate(180deg);
 }
 
+@utility grid-cols-indicator {
+  grid-template-columns: 2fr 2fr 1fr;
+}
+
 @utility grid-cols-frame {
   grid-template-columns: var(--uw-layout-side) 1fr;
 }

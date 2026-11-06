@@ -96,6 +96,7 @@ function dailyOption(series: DailySeries): EChartsCoreOption {
     },
     yAxis: {
       type: 'value',
+      minInterval: 1,
       splitLine: { lineStyle: { color: tokenColour('line') } },
       axisLabel,
       axisLine: { show: false },
@@ -123,7 +124,7 @@ function dailyOption(series: DailySeries): EChartsCoreOption {
 }
 
 export function dailyChartSvg(series: DailySeries): string {
-  return forStrictCsp(renderSvg(dailyOption(series), 720, 200), series.id, series.label);
+  return forStrictCsp(renderSvg(dailyOption(series), 1080, 220), series.id, series.label);
 }
 
 export type Spark = {
