@@ -77,6 +77,7 @@ function itemsGateway(inserted: ItemState[]): HarnessItemsGateway {
       lapsedLeases: unused,
       parked: unused,
       openFor: unused,
+      openCounts: unused,
       byIds: unused,
     },
     write: {

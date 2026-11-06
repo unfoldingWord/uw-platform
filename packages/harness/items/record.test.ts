@@ -72,6 +72,7 @@ function itemsGateway(log: string[], rows: Map<string, ItemState>): HarnessItems
       lapsedLeases: unused,
       parked: unused,
       openFor: unused,
+      openCounts: unused,
       byIds: unused,
     },
     write: {
