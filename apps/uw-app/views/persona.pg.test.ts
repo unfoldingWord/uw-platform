@@ -322,10 +322,21 @@ async function rendersCleanly(db: Database): Promise<void> {
   ]);
 }
 
+async function lookOfPersona(db: Database): Promise<void> {
+  const { pageId } = await scene(db);
+  const document = documentOf((await getHtml(db, IAN, `/personas/${pageId}`)).text);
+  expect(document.querySelector('main h1')?.textContent).toBe('Builder');
+  const heads = [...document.querySelectorAll('main h2')].map((head) => head.textContent);
+  expect(heads).toEqual(expect.arrayContaining(['Last runs', 'Delegations']));
+  expect(document.querySelectorAll('main dl dt').length).toBeGreaterThanOrEqual(6);
+}
+
 describe.skipIf(!testServer)('the persona view', () => {
   it('the persona view declares both colour schemes and names every control, and Kindle marks only Activate', () =>
     withAppDatabase(rendersCleanly));
   it('PE-4 a persona page opens on its dashboard', () => withAppDatabase(opensOnDashboard));
+  it('UI-12 the persona screen shows its name, figures, last runs and delegations', () =>
+    withAppDatabase(lookOfPersona));
   it('PE-3 the Activate form activates the persona through the command dispatcher and shows the outcome in place', () =>
     withAppDatabase(activates));
   it('PE-2 the toolset form saves only offered verbs and requires_tools follows', () =>
