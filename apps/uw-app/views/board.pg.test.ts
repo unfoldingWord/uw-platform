@@ -15,7 +15,7 @@ import { accepted, callerOf, post } from '../testing/commands.ts';
 import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
-import { getHtml } from '../testing/views.ts';
+import { getHtml, pageContent } from '../testing/views.ts';
 import { boardPath, itemPath } from './parts/paths.ts';
 
 const seedClock: Clock = { now: () => new Date('2026-10-02T06:00:00.000Z') };
@@ -232,7 +232,7 @@ async function hiddenIsMissing(world: BoardWorld): Promise<void> {
   const hidden = await boardOf(world, world.stranger.email);
   const absent = await boardOf(world, world.stranger.email, missing);
   expect([hidden.status, absent.status]).toEqual([404, 404]);
-  expect(hidden.text).toBe(absent.text);
+  expect(pageContent(hidden)).toBe(pageContent(absent));
 }
 
 async function noProblems(world: BoardWorld): Promise<void> {

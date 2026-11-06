@@ -11,6 +11,7 @@ import { handedCapNote, lapsedCapNote, parkedCapNote } from '../parts/caps.ts';
 import { liveCursors } from '../parts/cursors.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { flowPath, gatePath, homePath, itemPath } from '../parts/paths.ts';
+import { pageNames } from '../parts/names.ts';
 
 const REFRESH_EVERY_MS = 60_000;
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
@@ -24,9 +25,9 @@ function lapsedText(
   const { harness, delegation } = row;
   const lapsed = formatInstant(delegation.lapsedAt ?? delegation.expiresAt);
   if (delegation.personId === viewer) {
-    return `Your delegation to ${delegation.persona} on ${harness.key} lapsed ${lapsed}`;
+    return `Your delegation to ${delegation.persona} on ${harness.title} lapsed ${lapsed}`;
   }
-  return `A delegation to ${delegation.persona} on ${harness.key} lapsed ${lapsed} because its person no longer holds admin`;
+  return `A delegation to ${delegation.persona} on ${harness.title} lapsed ${lapsed} because its person no longer holds admin`;
 }
 
 const roundWords: ReadonlyMap<number, string> = new Map([[3, 'three']]);
@@ -142,9 +143,9 @@ export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
     rows.map((row) => row.harnessId),
   );
   const spec = {
-    title: 'Home',
+    title: pageNames.home,
     current: homePath(),
-    crumbs: [{ label: 'Home' }],
+    crumbs: [{ label: pageNames.home }],
     live: { screen: 'home' as const, harnesses, refreshEveryMs: REFRESH_EVERY_MS },
   };
   return renderScreen(

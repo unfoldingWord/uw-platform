@@ -25,7 +25,7 @@ import {
 import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
-import { getHtml } from '../testing/views.ts';
+import { getHtml, pageContent } from '../testing/views.ts';
 import { gatePath, gatesPath, itemPath } from './parts/paths.ts';
 
 function pageOf(world: GateWorld, email: string, path: string) {
@@ -320,8 +320,8 @@ async function hiddenIsMissing(world: GateWorld): Promise<void> {
     gatePath(randomUUID(), world.item.itemId),
   );
   expect([absent.status, hidden.status, elsewhere.status]).toEqual([404, 404, 404]);
-  expect(hidden.text).toBe(absent.text);
-  expect(elsewhere.text).toBe(absent.text);
+  expect(pageContent(hidden)).toBe(pageContent(absent));
+  expect(pageContent(elsewhere)).toBe(pageContent(absent));
 }
 
 async function editorOn80s(world: GateWorld): Promise<string> {

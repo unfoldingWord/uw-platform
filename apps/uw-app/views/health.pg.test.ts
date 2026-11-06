@@ -6,7 +6,7 @@ import { AGENT_PLANE_INDICATORS } from '../health/agent-plane.ts';
 import { boardWorld, type BoardWorld } from '../testing/board-world.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
-import { getHtml } from '../testing/views.ts';
+import { getHtml, pageContent } from '../testing/views.ts';
 import { healthPath } from './parts/paths.ts';
 
 const clock: Clock = { now: () => new Date('2026-10-02T09:00:00.000Z') };
@@ -95,7 +95,7 @@ async function unknownIndicators(world: BoardWorld): Promise<void> {
   for (const path of ['/health/spendx', '/health/xbreaker', '/health/spend/x']) {
     const answer = await page(path);
     expect([path, answer.status]).toEqual([path, 404]);
-    expect(answer.text).toBe(missing.text);
+    expect(pageContent(answer)).toBe(pageContent(missing));
   }
 }
 

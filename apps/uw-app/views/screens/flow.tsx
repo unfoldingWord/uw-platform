@@ -13,6 +13,7 @@ import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { idParam } from '../parts/params.ts';
 import { boardPath, flowPath, homePath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
+import { pageNames } from '../parts/names.ts';
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
@@ -68,9 +69,9 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
   if (outcome.status !== 'accepted') return notFound(c);
   const view = outcome.value;
   const spec = {
-    title: `${view.harness.key} flow`,
+    title: `${view.harness.title} ${pageNames.flow}`,
     current: flowPath(harnessId),
-    crumbs: [{ label: 'Home', href: homePath() }, { label: view.harness.key }],
+    crumbs: [{ label: pageNames.home, href: homePath() }, { label: view.harness.title }],
     live: { screen: 'flow' as const, harnesses: [{ harnessId, cursor }] },
   };
   return renderScreen(
@@ -79,7 +80,7 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
     <>
       <PageHead
         eyebrow="Flow"
-        title={view.harness.key}
+        title={view.harness.title}
         lede={`Built from the ${view.harness.template} template`}
       />
       <div class="flex flex-col gap-5">

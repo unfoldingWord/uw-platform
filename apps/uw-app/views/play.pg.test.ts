@@ -7,7 +7,7 @@ import { clock } from '../github/testing/ship-rig.ts';
 import { gateWorld, type GateWorld } from '../testing/gate-world.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
-import { getHtml, getHtmlWithEnv } from '../testing/views.ts';
+import { getHtml, getHtmlWithEnv, pageContent } from '../testing/views.ts';
 import { zulipEnv } from '../notify/testing.ts';
 import { zulipTopicUrl } from '../notify/zulip/links.ts';
 import { checksUrl, itemPath, pullRequestUrl, reviewUrl } from './parts/paths.ts';
@@ -339,7 +339,7 @@ async function hiddenIsMissing(world: Played): Promise<void> {
   const absent = await getHtml(world.db, world.strangerEmail, missing, {}, clock);
   const hidden = await getHtml(world.db, world.strangerEmail, pathOf(world), {}, clock);
   expect([absent.status, hidden.status]).toEqual([404, 404]);
-  expect(hidden.text).toBe(absent.text);
+  expect(pageContent(hidden)).toBe(pageContent(absent));
 }
 
 async function holderLine(world: Played): Promise<void> {

@@ -13,6 +13,7 @@ import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '..
 import { indicatorText } from '../parts/health-words.ts';
 import { healthPath, homePath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
+import { titleCased, pageNames } from '../parts/names.ts';
 
 type Listing = {
   readonly columns: readonly { readonly key: string; readonly label: string }[];
@@ -112,13 +113,13 @@ export async function healthListScreen(c: Context<AppEnv>): Promise<Response> {
   const pending = listingOf(c, screen, name);
   if (pending === null) return notFound(c);
   const listing = await pending;
-  const title = indicatorText(name);
+  const title = titleCased(indicatorText(name));
   const spec = {
     title,
     current: healthPath(),
     crumbs: [
-      { label: 'Home', href: homePath() },
-      { label: 'Health', href: healthPath() },
+      { label: pageNames.home, href: homePath() },
+      { label: pageNames.health, href: healthPath() },
       { label: title },
     ],
   };

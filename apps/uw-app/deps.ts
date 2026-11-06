@@ -1,3 +1,4 @@
+import type { FrameHealth } from './health/frame-health.ts';
 import type { JWTVerifyGetKey } from 'jose';
 import type { Logger, LogSink } from '@uw/core/log';
 import type { Principal } from '@uw/core/principal';
@@ -28,6 +29,7 @@ export type AppEnv = {
     principal: Principal | null;
     access: AccessIdentity | null;
     outcome: string | null;
+    frameHealth: FrameHealth;
   };
 };
 

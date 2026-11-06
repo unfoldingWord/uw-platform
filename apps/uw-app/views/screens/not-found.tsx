@@ -3,13 +3,19 @@ import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { renderScreen } from '../parts/frame.tsx';
 import { homePath } from '../parts/paths.ts';
+import { pageNames } from '../parts/names.ts';
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 export function notFound(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
-    { title: 'Not found', current: '', crumbs: [{ label: 'Not found' }], status: 404 },
+    {
+      title: pageNames.notFound,
+      current: '',
+      crumbs: [{ label: pageNames.notFound }],
+      status: 404,
+    },
     <>
       <PageHead title="You cannot open that page" />
       <p>

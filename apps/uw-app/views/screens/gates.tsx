@@ -14,6 +14,7 @@ import { liveCursors } from '../parts/cursors.ts';
 import { GatePanel, type PanelGate } from '../parts/gate-panel.tsx';
 import { gatePath, gatesPath, homePath } from '../parts/paths.ts';
 import { ShadowList } from '../parts/shadow-list.tsx';
+import { pageNames } from '../parts/names.ts';
 
 const REFRESH_EVERY_MS = 60_000;
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
@@ -85,7 +86,7 @@ function GateList(props: { readonly shown: readonly Shown[] }) {
               href={gatePath(row.harness.id, row.item.itemId)}
               class={`text-accent-text underline ${focus}`}
             >
-              {`Open ${row.item.title} on ${row.harness.key}`}
+              {`Open ${row.item.title} on ${row.harness.title}`}
             </a>
           </p>
           <GatePanel gate={gate} />
@@ -158,9 +159,9 @@ export async function gatesScreen(c: Context<AppEnv>): Promise<Response> {
     ...comparisons.map((comparison) => comparison.harnessId),
   ]);
   const spec = {
-    title: 'Gates',
+    title: pageNames.waiting,
     current: gatesPath(),
-    crumbs: [{ label: 'Home', href: homePath() }, { label: 'Gates' }],
+    crumbs: [{ label: pageNames.home, href: homePath() }, { label: pageNames.waiting }],
     live: { screen: 'gates' as const, harnesses, refreshEveryMs: REFRESH_EVERY_MS },
   };
   return renderScreen(

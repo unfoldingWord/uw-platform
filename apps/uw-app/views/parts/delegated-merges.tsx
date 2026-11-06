@@ -22,7 +22,7 @@ export function DelegatedMerges(props: { readonly merged: DelegatedMergeList }) 
               href={itemPath(row.harness.id, row.itemId)}
               class={`break-words text-accent-text underline ${focus}`}
             >
-              {`${row.title} on ${row.harness.key}`}
+              {`${row.title} on ${row.harness.title}`}
             </a>
             <span class="break-words text-sm text-text-3">
               {`Merged under a delegation granted by ${row.email} until ${formatInstant(row.expiresAt)}`}
