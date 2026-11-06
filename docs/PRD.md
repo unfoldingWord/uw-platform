@@ -694,7 +694,7 @@ Each step needs the ones above it. Within a step, order is free.
 
 `packages/db/schema.ts`, `packages/contracts/` and the event vocabulary are the files most likely to conflict; change them in small commits.
 
-**v0.3.0.** Each step needs the ones above it and all of v0.2.0. One plan per step under `docs/superpowers/plans/`, on a normal `build/v0.3.0` branch.
+**v0.3.0.** Each step needs the ones above it and all of v0.2.0. One plan per step under `docs/superpowers/plans/`, on a normal branch named for the work, `feat/ui-redesign`, with no worktree.
 
 21. **Tokens and locks.** UI-1, UI-2, UI-3, UI-4, with the chart rendering spike of ADR 0012 first.
 22. **The frame and names.** UI-5, UI-17, UI-18.

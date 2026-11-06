@@ -39,7 +39,7 @@ The words are `CONTEXT.md`'s. Three are used here in a narrower sense.
 | V3-10 | **A harness has a display name,** `harnesses.title`, separate from its key and set by an admin (section 7) | People read "Software" and "BML"; the key stays in code-like places |
 | V3-11 | **Nothing on a screen is invented.** Every figure has a source in the database; what is not recorded is not drawn | Round 8: live agent readouts, per-indicator history and a lease progress bar were removed because nothing records them |
 | V3-12 | **The mockup is not committed.** It embeds Font Awesome Pro paths; the screenshots in this folder are the record | The licence |
-| V3-13 | **Normal branches, no worktrees,** for this version's build | Ian, 2026-11-04; `AGENTS.md` section 8 is amended in the same pull request |
+| V3-13 | **Normal branches, no worktrees,** for this version's build, on `feat/ui-redesign`: a branch is named for the work, never for a version | Ian, 2026-11-04 and 2026-11-05; `AGENTS.md` section 8 says so |
 | V3-14 | **GL-1 is separate.** The go-live switch runs on its own track; the look does not wait for it and it does not wait for the look | Neither depends on the other (PRD DX-8) |
 
 ## 4. What a person sees
