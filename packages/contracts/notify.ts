@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { wakeReasonSchema } from './closed-sets.ts';
-import { slugSchema } from './pages.ts';
+import { harnessTitleSchema } from './harness.ts';
 
 const uuidPart = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 const deepLinkPattern = new RegExp(
@@ -22,7 +22,7 @@ export function itemLink(harnessId: string, itemId: string): DeepLink {
 }
 
 export const pushPayloadSchema = z.strictObject({
-  harness: slugSchema,
+  harness: harnessTitleSchema,
   reason: wakeReasonSchema,
   link: deepLinkSchema,
 });
