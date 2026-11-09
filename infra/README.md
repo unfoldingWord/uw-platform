@@ -207,10 +207,10 @@ A person adds, in the repository settings:
 
 | Name | Kind | Where it comes from |
 |---|---|---|
-| `NEON_API_KEY` | secret | An API key for the Neon project |
-| `NEON_PROJECT_ID` | variable | The Neon project's id |
-| `NEON_DIRECT_URL_STAGING` | secret | The direct, non-pooled connection string for the staging branch |
-| `NEON_DIRECT_URL_PRODUCTION` | secret | The direct, non-pooled connection string for the production branch |
+| `DATABASE_URL_STAGING` | secret | The direct, non-pooled Postgres connection string for staging (any Postgres 16 or later, such as AWS RDS); the deploy migrates through it |
+| `DATABASE_URL_PRODUCTION` | secret | The same for production |
+| `NEON_API_KEY` | secret | Optional: an API key for a Neon project, for a database branch per pull request; without it `neon-pr.yml` says so and stays green |
+| `NEON_PROJECT_ID` | variable | Optional: the Neon project's id, with `NEON_API_KEY` |
 | `CLOUDFLARE_API_TOKEN` | secret | A Cloudflare API token scoped to Workers Scripts edit on the one account (the uw-app section) |
 | `CLOUDFLARE_ACCOUNT_ID` | secret | The Cloudflare account's id |
 
@@ -229,7 +229,7 @@ Until that PR, the per-PR and staging Workers run with no database and no queue,
 
 GL-1 switches the wiring above on. It writes no code: each step creates a resource, sets a secret or a value, or checks one. Every row of `docs/progress_tracker.md` that waits on FD-6, FD-7, FD-10 or FD-12 names the step that closes it. Steps 1 to 5 can run in any order; step 6 needs them all; step 7 is GL-1's release gate.
 
-1. **Neon (FD-12).** Create the Neon project on Postgres 16 or later, and its branch `staging`. In the repository settings set `NEON_API_KEY`, `NEON_DIRECT_URL_STAGING` and `NEON_DIRECT_URL_PRODUCTION` as secrets and `NEON_PROJECT_ID` as a variable (the table above). Check: open a test pull request; `neon-branch` runs its steps instead of the notice "NEON_API_KEY is not set", and closing the pull request runs `drop-neon-branch`.
+1. **The database (FD-12).** A Postgres 16 or later database for staging and one for production (AWS RDS, or any Postgres the Hyperdrive config and the GitHub runner can reach). In the repository settings set `DATABASE_URL_STAGING` and `DATABASE_URL_PRODUCTION` as secrets (the table above); the deploy migrates through them, so the database must accept connections from GitHub's runners while it does. `NEON_API_KEY` and `NEON_PROJECT_ID` are optional: with a Neon project they give each pull request a database branch, and without them `neon-pr.yml` logs that it is not set and stays green.
 2. **Hyperdrive (FD-12, FD-6).** `wrangler hyperdrive create uw-staging --connection-string=<pooled staging string>`, and the same for `uw-production`. Put each Hyperdrive id in place of `set-at-go-live` in `[[env.staging.hyperdrive]]` and `[[env.production.hyperdrive]]` of both go-live files, and staging's Hyperdrive id in uw-app's `[[env.preview.hyperdrive]]` (P33).
 3. **Queues, hosts and the deploy token (FD-10).** Create the four queues listed above with `wrangler queues create`. In the repository settings set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as secrets (the table above). Until the token is set, `deploy-pr`, `cleanup-pr`, `deploy-staging`, `deploy-ingest-staging`, `deploy-production` and `deploy-ingest-production` each log the notice "CLOUDFLARE_API_TOKEN is not set" and stay green; check that each now runs its steps. Read the account's `workers.dev` subdomain in the Cloudflare dashboard; if it is not `unfoldingword`, correct `STAGING_URL` and `INGEST_URL` in `.github/workflows/deploy-staging.yml` and the address in step 7.
 4. **Access and origins (FD-7).** Apply the three applications as the Access section says. Put the app application's AUD tag in `ACCESS_AUD`, the `mcp` application's in `ACCESS_MCP_AUD` and the team domain in `ACCESS_TEAM_DOMAIN`, under staging, production and preview of `uw-app/wrangler.go-live.toml`, and the staging origin in `APP_ORIGIN`. `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`, `ZULIP_SITE` and `ZULIP_BOT_EMAIL` come from the notifier section; the push and Zulip halves read their secrets (`VAPID_PRIVATE_JWK`, `ZULIP_BOT_API_KEY`) before these values, so they stay off until those secrets are set.
