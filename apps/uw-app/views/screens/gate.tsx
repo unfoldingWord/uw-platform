@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import type { Harness, ItemState, Stage } from '@uw/contracts';
+import type { GateRow } from '@uw/harness';
 import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
@@ -9,11 +10,13 @@ import { GatePanel, type PanelGate } from '../parts/gate-panel.tsx';
 import { idParam } from '../parts/params.ts';
 import { flowPath, gatePath, homePath, itemPath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
+import { Inbox, placeOf } from './gates.tsx';
+import { pageNames } from '../parts/names.ts';
 
 type ItemScene = { readonly item: ItemState; readonly harness: Harness; readonly stage: Stage };
 
 const REFRESH_EVERY_MS = 60_000;
-const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
+const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 function notAtGate(gate: PanelGate): boolean {
   return !gate.ability.can && gate.ability.reason === 'item_not_at_gate';
@@ -46,7 +49,43 @@ async function gateOf(screen: ScreenKernel, scene: ItemScene): Promise<PanelGate
   const title = `${scene.item.title} at ${scene.stage.title}`;
   const decides =
     scene.item.gateStatus === 'parked' && showsDecisions(screen.caller.actor, ability);
-  return { view: view.value, title, ability, decides };
+  const place = placeOf(scene, screen.at);
+  return { view: view.value, title, ability, decides, place };
+}
+
+function GateBody(props: {
+  readonly scene: ItemScene;
+  readonly gate: PanelGate;
+  readonly notice: string | null;
+  readonly rows: readonly GateRow[];
+  readonly at: Date;
+}) {
+  const { scene, gate, notice, rows } = props;
+  const { harness, item } = scene;
+  return (
+    <>
+      <PageHead
+        eyebrow="Gate"
+        title={item.title}
+        lede={`At ${scene.stage.title} on ${harness.title}`}
+      />
+      <div class="flex flex-col gap-5 md:flex-row md:items-start">
+        <Inbox rows={rows} at={props.at} selected={item.itemId} phone="hidden" />
+        <div class="flex min-w-0 flex-1 flex-col gap-4">
+          {notice === null ? null : <Note>{notice}</Note>}
+          <GatePanel gate={notice === null ? gate : { ...gate, decides: false }} />
+          <p class="m-0">
+            <a
+              href={itemPath(harness.id, item.itemId)}
+              class={`text-accent-text underline ${focus}`}
+            >
+              See everything that happened on this item
+            </a>
+          </p>
+        </div>
+      </div>
+    </>
+  );
 }
 
 export async function gateScreen(c: Context<AppEnv>): Promise<Response> {
@@ -63,13 +102,14 @@ export async function gateScreen(c: Context<AppEnv>): Promise<Response> {
   if (scene === null || gate === null) return notFound(c);
   const { harness, item } = scene;
   const notice = await noticeOf(screen, scene, gate);
+  const { rows } = await screen.kernel.views.gates(screen.caller, read);
   const spec = {
-    title: `${item.title} gate`,
+    title: `${item.title} ${pageNames.gate}`,
     current: gatePath(harness.id, item.itemId),
     crumbs: [
-      { label: 'Home', href: homePath() },
-      { label: harness.key, href: flowPath(harness.id) },
-      { label: 'Gate' },
+      { label: pageNames.home, href: homePath() },
+      { label: harness.title, href: flowPath(harness.id) },
+      { label: pageNames.gate },
     ],
     live: {
       screen: 'gates' as const,
@@ -80,21 +120,6 @@ export async function gateScreen(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead
-        eyebrow="Gate"
-        title={item.title}
-        lede={`At ${scene.stage.title} on ${harness.key}`}
-      />
-      <div class="flex flex-col gap-4">
-        {notice === null ? null : <Note>{notice}</Note>}
-        <GatePanel gate={notice === null ? gate : { ...gate, decides: false }} />
-        <p class="m-0">
-          <a href={itemPath(harness.id, item.itemId)} class={`text-link underline ${focus}`}>
-            See everything that happened on this item
-          </a>
-        </p>
-      </div>
-    </>,
+    <GateBody scene={scene} gate={gate} notice={notice} rows={rows} at={screen.at} />,
   );
 }

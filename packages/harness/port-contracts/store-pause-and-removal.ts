@@ -33,6 +33,17 @@ export function describeHarnessPause(subject: RemovalSubject): void {
     expect(seen).toEqual([false, true, true, true, false, false]);
   });
 
+  it('UI-18 DX-3 sets a harness title, leaves its key, and reports no harness for an id that names none', async () => {
+    const seen = await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0x2520, 'gateway-title');
+      const set = await tx.harnesses.write.setTitle(uid(0x2520), 'Gateway Title');
+      const read = await tx.harnesses.read.byId(uid(0x2520));
+      const missing = await tx.harnesses.write.setTitle(uid(0x25fc), 'Nobody');
+      return [set, read?.key, read?.title, missing];
+    });
+    expect(seen).toEqual([true, 'gateway-title', 'Gateway Title', false]);
+  });
+
   it('DX-3 reports that no harness was paused when the id names none', async () => {
     const found = await subject().store.transaction((tx) =>
       tx.harnesses.write.setPaused(uid(0x25fe), true),

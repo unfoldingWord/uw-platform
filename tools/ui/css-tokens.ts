@@ -91,6 +91,7 @@ export function themeTokens(theme: ThemeName): Map<string, string> {
     theme === 'dark' ? blockAt(blocks, themeContexts.forcedDark) : new Map<string, string>();
   return new Map([
     ...blockAt(tokenFile('brand'), ':root'),
+    ...blockAt(tokenFile('scales'), ':root'),
     ...blockAt(blocks, themeContexts.light),
     ...dark,
   ]);

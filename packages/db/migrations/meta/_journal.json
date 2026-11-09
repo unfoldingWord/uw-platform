@@ -281,6 +281,13 @@
       "when": 1792419691458,
       "tag": "0039_delegated_grantor_binding",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1793931544301,
+      "tag": "0040_harness_title",
+      "breakpoints": true
     }
   ]
 }

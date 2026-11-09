@@ -36,6 +36,7 @@ export const scenario = defineScenario({
       {
         harnessId: scene.harnessId,
         harnessKey: 'software',
+        harnessTitle: 'software',
         persona: 'agent:reviewer',
         findings: 2,
         refuted: 1,

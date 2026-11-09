@@ -28,7 +28,13 @@
     },
     "packages/ui": {
       "entry": ["**/*.test.ts"],
-      "project": ["**/*.ts", "**/*.tsx", "**/*.css"]
+      "project": ["**/*.ts", "**/*.tsx", "**/*.css"],
+      "ignoreDependencies": [
+        "@fontsource/jetbrains-mono",
+        "@fontsource/nunito-sans",
+        "@fortawesome/free-regular-svg-icons",
+        "@fortawesome/free-solid-svg-icons"
+      ]
     },
     "sim": {
       "entry": ["cli/*.ts", "scenarios/*.ts", "**/*.test.ts"],

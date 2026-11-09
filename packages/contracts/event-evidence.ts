@@ -28,6 +28,7 @@ import {
   repositorySchema,
   stageKeySchema,
   stageSchema,
+  harnessTitleSchema,
 } from './harness.ts';
 import { identitySchema } from './identity.ts';
 import { errorReasonSchema } from './outcomes.ts';
@@ -299,6 +300,7 @@ const harnessEvidence = {
   harness_resumed: z.strictObject({ stage: stage.nullable() }),
   hosted_builder_set: z.strictObject({ enabled: z.boolean() }),
   fix_claim_set: z.strictObject({ enabled: z.boolean() }),
+  title_set: z.strictObject({ from: harnessTitleSchema, to: harnessTitleSchema }),
   comment_recorded: z.strictObject({
     source: z.literal('zulip'),
     messageId: z.number().int().min(1),

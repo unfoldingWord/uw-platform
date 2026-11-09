@@ -56,7 +56,14 @@ export function pushTitle(payload: PushPayload): string {
   return (payload.reason === null ? undefined : titles.get(payload.reason)) ?? DEFAULT_PUSH_TITLE;
 }
 
-const harnessKey = /^[a-z0-9][a-z0-9-]{0,63}$/;
+const MAX_NAME = 80;
+
+function shownName(name: string | null): string | null {
+  if (name === null) return null;
+  const trimmed = name.trim();
+  const plain = [...trimmed].every((character) => character >= ' ' && character !== '\u007f');
+  return trimmed.length > 0 && trimmed.length <= MAX_NAME && plain ? trimmed : null;
+}
 
 export type ShownPush = {
   readonly title: string;
@@ -68,8 +75,8 @@ export type ShownPush = {
 };
 
 export function pushNotification(payload: PushPayload): ShownPush {
-  const named = payload.harness !== null && harnessKey.test(payload.harness);
-  const body = named ? { body: `In ${payload.harness}.` } : {};
+  const name = shownName(payload.harness);
+  const body = name === null ? {} : { body: `In ${name}.` };
   return {
     title: pushTitle(payload),
     options: { ...body, tag: payload.link, data: { link: payload.link } },

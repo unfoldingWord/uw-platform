@@ -31,6 +31,7 @@ import {
 import {
   botAuthorsSchema,
   externalReviewerIdentitiesSchema,
+  harnessTitleSchema,
   githubLoginSchema,
   harnessSchema,
   epicPlaceSchema,
@@ -226,6 +227,7 @@ export const schemaRegistry: Record<string, ZodType> = {
   'github-login': githubLoginSchema,
   'platform-frontmatter': platformFrontmatterSchema,
   'external-reviewer-identities': externalReviewerIdentitiesSchema,
+  'harness-title': harnessTitleSchema,
   'shadow-comparison': shadowComparisonSchema,
   'shadow-row': shadowRowSchema,
   'shadow-verdict-value': shadowVerdictValueSchema,

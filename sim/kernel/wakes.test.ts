@@ -41,6 +41,7 @@ const wakeKeys = [
   'at',
   'harnessId',
   'harnessKey',
+  'harnessTitle',
   'itemId',
   'itemRef',
   'jdArea',

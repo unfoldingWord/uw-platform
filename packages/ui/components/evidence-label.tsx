@@ -1,7 +1,7 @@
 import { evidenceDefinitions, type EvidenceLabelValue } from './evidence-labels.ts';
 
 const word =
-  'inline-flex items-center rounded-sm border border-line bg-bg px-2 py-0.5 text-xs font-bold text-muted';
+  'inline-flex items-center rounded-sm border border-line bg-canvas px-2 py-1 text-xs font-heavy text-text-3';
 
 export function EvidenceLabel(props: {
   readonly label: EvidenceLabelValue;
@@ -12,7 +12,7 @@ export function EvidenceLabel(props: {
     return (
       <span class="inline-flex flex-wrap items-center gap-2">
         <span class={word}>{props.label}</span>
-        <span class="text-xs text-muted">{definition}</span>
+        <span class="text-xs text-text-3">{definition}</span>
       </span>
     );
   }

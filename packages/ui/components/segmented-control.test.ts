@@ -42,7 +42,7 @@ describe('WB-11 the segmented control', () => {
     for (const radio of document.querySelectorAll('input')) {
       const classes = radio.getAttribute('class') ?? '';
       expect(classes).toContain('focus-visible:outline-2');
-      expect(classes).toContain('outline-focus');
+      expect(classes).toContain('outline-accent-text');
     }
   });
 

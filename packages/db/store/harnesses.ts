@@ -56,6 +56,7 @@ export function bindHarnesses(executor: AnyExecutor): HarnessesGateway {
       setShadow: (harnessId, shadow) => updateHarness(executor, harnessId, { shadow }),
       setFixClaim: (harnessId, enabled) =>
         updateHarness(executor, harnessId, { fixClaim: enabled }),
+      setTitle: (harnessId, title) => updateHarness(executor, harnessId, { title }),
       setTemplate: (harnessId, from, to) =>
         refusing(async () => {
           const rows = await executor

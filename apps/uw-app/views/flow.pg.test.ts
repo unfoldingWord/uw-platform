@@ -14,7 +14,7 @@ import {
 import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
-import { getHtml } from '../testing/views.ts';
+import { getHtml, pageContent } from '../testing/views.ts';
 import { boardPath, flowPath } from './parts/paths.ts';
 
 const seedClock: Clock = { now: () => new Date('2026-10-02T06:00:00.000Z') };
@@ -117,7 +117,7 @@ async function stageFacts(world: BoardWorld): Promise<void> {
 
 async function kindleOnlyOnShip(world: BoardWorld): Promise<void> {
   const document = documentOf((await flowOf(world)).text);
-  const kindled = [...document.querySelectorAll('main [class*="kindle"]')];
+  const kindled = [...document.querySelectorAll('main [class*="human"]')];
   expect(kindled.length).toBeGreaterThan(0);
   for (const element of kindled) {
     const node = element.closest('[data-stage]');
@@ -127,7 +127,7 @@ async function kindleOnlyOnShip(world: BoardWorld): Promise<void> {
       (mark?.textContent ?? '').startsWith('Merge, tag, deploy');
     expect(onShip).toBe(true);
   }
-  expect(document.querySelector('main [data-stage="ship"] [class*="kindle"]')).not.toBeNull();
+  expect(document.querySelector('main [data-stage="ship"] [class*="human"]')).not.toBeNull();
   expect(stageRow(document, 'Merge, tag, deploy')[0]).toBe('Merge, tag, deployPerson decides');
 }
 
@@ -170,8 +170,8 @@ async function hiddenIsMissing(world: BoardWorld): Promise<void> {
   const absent = await flowOf(world, world.stranger.email, flowPath(missing));
   const malformed = await flowOf(world, world.stranger.email, flowPath('not-an-id'));
   expect([hidden.status, absent.status, malformed.status]).toEqual([404, 404, 404]);
-  expect(hidden.text).toBe(absent.text);
-  expect(malformed.text).toBe(absent.text);
+  expect(pageContent(hidden)).toBe(pageContent(absent));
+  expect(pageContent(malformed)).toBe(pageContent(absent));
   expect(hidden.text).toContain('You cannot open that page');
 }
 
@@ -220,7 +220,7 @@ async function foreignTemplate(world: BoardWorld): Promise<void> {
     edge.getAttribute('data-feeds'),
   );
   expect(feeds).toEqual(['listen gather']);
-  expect(document.querySelector('main [data-stage="listen"] [class*="kindle"]')).not.toBeNull();
+  expect(document.querySelector('main [data-stage="listen"] [class*="human"]')).not.toBeNull();
 }
 
 async function cappedSaysAtLeast(world: BoardWorld): Promise<void> {
@@ -241,16 +241,31 @@ async function scrollsAtPhoneWidth(world: BoardWorld): Promise<void> {
   const document = documentOf((await flowOf(world)).text);
   const svg = document.querySelector('main svg[role="group"]');
   const classes = (svg?.getAttribute('class') ?? '').split(' ');
-  expect(classes).toContain('min-w-[var(--uw-flow-diagram)]');
+  expect(classes).toContain('min-w-flow');
   expect(classes).not.toContain('min-w-0');
   expect(svg?.parentElement?.getAttribute('class')).toContain('overflow-x-auto');
   const layout = readFileSync('packages/ui/tokens/layout.css', 'utf8');
-  expect(layout).toMatch(/--uw-flow-diagram: \d+rem;/);
+  expect(layout).toMatch(/--uw-layout-flow: \d+rem;/);
 }
 
 async function noProblems(world: BoardWorld): Promise<void> {
   expect(await screenProblems((await flowOf(world)).text)).toEqual([]);
   expect(await screenProblems((await flowOf(world, world.viewer.email)).text)).toEqual([]);
+}
+
+async function lookOfFlow(world: BoardWorld): Promise<void> {
+  const document = documentOf((await flowOf(world)).text);
+  expect(document.querySelector('main h1 + p')?.textContent).toMatch(
+    /^Built from the software template · 8 stages in 4 brackets · 1 gate where a person decides$/,
+  );
+  const tabs = [...document.querySelectorAll('nav[aria-label="Views"] a')].map((tab) => [
+    tab.textContent,
+    tab.getAttribute('aria-current'),
+  ]);
+  expect(tabs).toEqual([
+    ['Flow', 'page'],
+    ['Board', null],
+  ]);
 }
 
 describe.skipIf(!testServer)('the Flow view', () => {
@@ -272,4 +287,5 @@ describe.skipIf(!testServer)('the Flow view', () => {
   it('the flow diagram keeps a minimum width from a size token and scrolls inside its own wrapper', () =>
     inFlow(scrollsAtPhoneWidth));
   it('the flow view renders with no screen problems', () => inFlow(noProblems));
+  it('UI-10 Flow sums up the harness and offers the Flow and Board tabs', () => inFlow(lookOfFlow));
 });

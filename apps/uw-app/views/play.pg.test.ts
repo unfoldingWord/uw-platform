@@ -7,7 +7,7 @@ import { clock } from '../github/testing/ship-rig.ts';
 import { gateWorld, type GateWorld } from '../testing/gate-world.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
-import { getHtml, getHtmlWithEnv } from '../testing/views.ts';
+import { getHtml, getHtmlWithEnv, pageContent } from '../testing/views.ts';
 import { zulipEnv } from '../notify/testing.ts';
 import { zulipTopicUrl } from '../notify/zulip/links.ts';
 import { checksUrl, itemPath, pullRequestUrl, reviewUrl } from './parts/paths.ts';
@@ -339,7 +339,7 @@ async function hiddenIsMissing(world: Played): Promise<void> {
   const absent = await getHtml(world.db, world.strangerEmail, missing, {}, clock);
   const hidden = await getHtml(world.db, world.strangerEmail, pathOf(world), {}, clock);
   expect([absent.status, hidden.status]).toEqual([404, 404]);
-  expect(hidden.text).toBe(absent.text);
+  expect(pageContent(hidden)).toBe(pageContent(absent));
 }
 
 async function holderLine(world: Played): Promise<void> {
@@ -353,6 +353,18 @@ async function holderLine(world: Played): Promise<void> {
 async function noProblems(world: Played): Promise<void> {
   const page = await getHtml(world.db, world.ianEmail, pathOf(world), {}, clock);
   expect(await screenProblems(page.text)).toEqual([]);
+}
+
+async function lookOfPlay(world: Played): Promise<void> {
+  const all = await documentOf(world);
+  const days = [...all.querySelectorAll('main section[aria-label] > h2')].map((h) => h.textContent);
+  expect(days.length).toBeGreaterThan(0);
+  expect(days.every((day) => /^\d{4}-\d{2}-\d{2}$/.test(day ?? ''))).toBe(true);
+  const count = (document: Document) => document.querySelectorAll('main ol > li').length;
+  const runs = await documentOf(world, `${pathOf(world)}?kind=run`);
+  expect(count(runs)).toBeLessThan(count(all));
+  const current = runs.querySelector('nav[aria-label="Kinds of event"] [aria-current="true"]');
+  expect(current?.textContent).toBe('Runs');
 }
 
 describe.skipIf(!testServer)('the play-by-play', () => {
@@ -376,4 +388,6 @@ describe.skipIf(!testServer)('the play-by-play', () => {
     inPlay(hiddenIsMissing));
   it('OB-2 the item screen names who holds the ball', () => inPlay(holderLine));
   it('the play-by-play renders with no screen problems', () => inPlay(noProblems));
+  it('UI-11 the play-by-play groups events by day and filters them by kind', () =>
+    inPlay(lookOfPlay));
 });

@@ -46,10 +46,10 @@ describe('WB-11 the card', () => {
 
 describe('WB-11 the badge', () => {
   const expected = {
-    neutral: 'bg-bg text-muted border border-line',
-    info: 'bg-inspire-soft text-ocean',
-    success: 'bg-cultivate-soft text-ink',
-    held: 'bg-surface text-muted border border-dashed border-line',
+    neutral: 'bg-canvas text-text-3 border border-line',
+    info: 'bg-accent-soft text-accent-text',
+    success: 'bg-ok-soft text-text',
+    held: 'bg-surface text-text-3 border border-dashed border-line',
   } as const;
 
   it.each(Object.entries(expected))(
@@ -72,8 +72,8 @@ describe('the badge text is readable on its background', () => {
     tones.flatMap((tone) => (['light', 'dark'] as const).map((theme) => [tone, theme] as const)),
   )('the %s badge meets 4.5:1 in %s', async (tone, theme) => {
     const markup = await html(jsx(Badge, { tone, children: 'x' }));
-    const ground = /\bbg-([a-z-]+)/.exec(markup)?.[1];
-    const ink = /\btext-([a-z-]+)/.exec(markup.replace('text-xs', ''))?.[1];
+    const ground = /\bbg-([a-z0-9-]+)/.exec(markup)?.[1];
+    const ink = /\btext-([a-z0-9-]+)/.exec(markup.replace('text-xs', ''))?.[1];
     expect(ground).toBeDefined();
     expect(ink).toBeDefined();
     const tokens = themeTokens(theme);
@@ -113,7 +113,7 @@ describe('WB-11 the chip', () => {
   it('every chip has visible focus', async () => {
     const markup = await html(jsx(Chip, { label: 'x' }));
     expect(markup).toContain('focus-visible:outline-2');
-    expect(markup).toContain('outline-focus');
+    expect(markup).toContain('outline-accent-text');
   });
 });
 
@@ -218,7 +218,7 @@ describe('the evidence label with its definition shown', () => {
     const document = await dom(jsx(EvidenceLabel, { label: 'inferred', showDefinition: true }));
     expect(document.querySelector('[title]')).toBeNull();
     expect(document.querySelector('.sr-only')).toBeNull();
-    const definition = document.querySelector('.text-muted:not(.font-bold)');
+    const definition = document.querySelector('.text-text-3:not(.font-heavy)');
     expect(definition?.textContent).toBe('Concluded from other evidence, not seen directly.');
     expect(document.body.textContent).toBe(
       'inferredConcluded from other evidence, not seen directly.',

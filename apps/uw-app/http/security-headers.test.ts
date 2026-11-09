@@ -2,6 +2,7 @@ import { jsx } from 'hono/jsx';
 import { describe, expect, it } from 'vitest';
 import { appCssPath } from '@uw/ui/generated/app-css';
 import { Shell } from '@uw/ui/components/shell.tsx';
+import { testFrame } from '@uw/ui/testing/frame';
 import { createApp } from '../app.tsx';
 import { islandsPath } from '../generated/islands.ts';
 import { recordingDeps } from '../testing/deps.ts';
@@ -41,7 +42,7 @@ describe('the Content-Security-Policy', () => {
   it('the policy allows exactly the inline scripts the shell renders', async () => {
     const html = await jsx(Shell, {
       title: 'unfoldingWord',
-      nav: [],
+      frame: testFrame(),
       current: '/',
       crumbs: [],
       stylesheet: appCssPath,

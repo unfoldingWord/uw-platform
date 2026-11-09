@@ -6,7 +6,7 @@ function batchOf(count: number, total: number): Approvable {
     itemId: `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`,
     head: 'a'.repeat(40),
   }));
-  return { harnessId: '00000000-0000-4000-8000-0000000000a1', harnessKey: 'web', entries, total };
+  return { harnessId: '00000000-0000-4000-8000-0000000000a1', harnessTitle: 'web', entries, total };
 }
 
 describe('GD-1 the approve-all control names how many gates it approves', () => {

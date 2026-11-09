@@ -13,8 +13,8 @@ type HarnessScene = Extract<
 function harnessIndicator(scene: HarnessScene): HealthIndicator {
   const { harness } = scene;
   return harness.paused
-    ? { name: 'harness', status: 'amber', detail: `${harness.key} is paused` }
-    : { name: 'harness', status: 'ok', detail: `${harness.key} is running` };
+    ? { name: 'harness', status: 'amber', detail: `${harness.title} is paused` }
+    : { name: 'harness', status: 'ok', detail: `${harness.title} is running` };
 }
 
 function databaseIndicator(health: KernelHealth): HealthIndicator {
