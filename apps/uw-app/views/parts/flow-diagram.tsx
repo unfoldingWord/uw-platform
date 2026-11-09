@@ -148,7 +148,7 @@ function feedArrows(slots: readonly Slot[]) {
 
 export function FlowDiagram(props: {
   readonly harnessId: string;
-  readonly harnessKey: string;
+  readonly harnessTitle: string;
   readonly stages: readonly FlowStage[];
 }) {
   const bands = bandsOf(props.stages);
@@ -166,7 +166,7 @@ export function FlowDiagram(props: {
         viewBox={`0 0 ${width} ${height}`}
         class="h-auto w-full min-w-flow"
       >
-        <title id={titleId}>{`${props.harnessKey} as the build, measure, learn loop`}</title>
+        <title id={titleId}>{`${props.harnessTitle} as the build, measure, learn loop`}</title>
         <desc id={descId}>{`Stages in order: ${placed.join(', then ')}`}</desc>
         <defs>
           <marker

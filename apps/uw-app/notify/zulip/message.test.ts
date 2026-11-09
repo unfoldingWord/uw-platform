@@ -10,6 +10,7 @@ const origin = 'https://app.example.org';
 const itemWake: Wake = {
   harnessId,
   harnessKey: 'software',
+  harnessTitle: 'software',
   jdArea: '80-89',
   itemId,
   itemRef: 'uw-platform#42',

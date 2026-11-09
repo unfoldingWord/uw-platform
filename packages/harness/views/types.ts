@@ -14,7 +14,10 @@ import type {
 import type { Delegation, RunRow } from '../ports.ts';
 import type { RefuteTally } from './refutes.ts';
 
-type KeyedRefuteTally = RefuteTally & { readonly harnessKey: string };
+type KeyedRefuteTally = RefuteTally & {
+  readonly harnessKey: string;
+  readonly harnessTitle: string;
+};
 
 export type CostTotals = {
   readonly meteredMinor: number;

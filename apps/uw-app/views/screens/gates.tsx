@@ -39,7 +39,7 @@ function approvable(shown: readonly Shown[]): readonly Approvable[] {
     const { harness, item } = one.row;
     const held = byHarness.get(harness.id) ?? {
       harnessId: harness.id,
-      harnessKey: harness.key,
+      harnessTitle: harness.title,
       entries: [],
       total: 0,
     };
@@ -140,9 +140,11 @@ export function Inbox(props: {
   );
 }
 
-async function shadowComparisons(screen: ScreenKernel): Promise<ShadowComparison[]> {
+type Compared = { readonly comparison: ShadowComparison; readonly title: string };
+
+async function shadowComparisons(screen: ScreenKernel): Promise<Compared[]> {
   const read = { at: screen.at };
-  const shown: ShadowComparison[] = [];
+  const shown: Compared[] = [];
   for (const harness of await screen.kernel.views.harnesses(screen.caller, read)) {
     if (!harness.shadow) continue;
     const comparison = await screen.kernel.views.shadow(
@@ -150,7 +152,8 @@ async function shadowComparisons(screen: ScreenKernel): Promise<ShadowComparison
       { harnessId: harness.id },
       read,
     );
-    if (comparison.status === 'accepted') shown.push(comparison.value);
+    if (comparison.status === 'accepted')
+      shown.push({ comparison: comparison.value, title: harness.title });
   }
   return shown;
 }
@@ -158,14 +161,16 @@ async function shadowComparisons(screen: ScreenKernel): Promise<ShadowComparison
 type Body = {
   readonly shown: readonly Shown[];
   readonly capped: boolean;
-  readonly comparisons: readonly ShadowComparison[];
+  readonly comparisons: readonly Compared[];
   readonly merged: DelegatedMergeList;
 };
 
 function GatesBody(props: Body & { readonly at: Date }) {
   const { shown, capped, comparisons, merged } = props;
   const note = capped ? <Note>{parkedCapNote}</Note> : null;
-  const lists = comparisons.map((comparison) => <ShadowList comparison={comparison} />);
+  const lists = comparisons.map(({ comparison, title }) => (
+    <ShadowList comparison={comparison} harnessTitle={title} />
+  ));
   const first = shown[0];
   if (first === undefined) {
     return (
@@ -211,7 +216,7 @@ export async function gatesScreen(c: Context<AppEnv>): Promise<Response> {
   const merged = await screen.kernel.views.delegatedMerges(screen.caller, { at: screen.at });
   const harnesses = liveCursors(cursors, [
     ...shown.map(({ row }) => row.harness.id),
-    ...comparisons.map((comparison) => comparison.harnessId),
+    ...comparisons.map(({ comparison }) => comparison.harnessId),
   ]);
   const spec = {
     title: pageNames.waiting,

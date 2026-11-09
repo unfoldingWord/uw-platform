@@ -67,7 +67,7 @@ function Diagram(props: { readonly harnessId: string; readonly view: FlowView })
       <div class="mt-3">
         <FlowDiagram
           harnessId={props.harnessId}
-          harnessKey={props.view.harness.key}
+          harnessTitle={props.view.harness.title}
           stages={props.view.stages}
         />
       </div>

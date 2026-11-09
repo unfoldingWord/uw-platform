@@ -32,6 +32,7 @@ function wake(jdArea: JdArea): Wake {
   return {
     harnessId,
     harnessKey: 'software',
+    harnessTitle: 'software',
     jdArea,
     itemId,
     itemRef: 'uw-platform#42',
