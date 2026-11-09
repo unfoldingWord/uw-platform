@@ -102,12 +102,18 @@ async function refuteTotals(
     agentsOnly: false,
     limit: PLANE_LIMIT,
   });
-  const keys = new Map<string, string>();
+  const names = new Map<string, { readonly key: string; readonly title: string }>();
   const tallies = [];
   for (const tally of refuteTallies(events)) {
-    const key = keys.get(tally.harnessId) ?? (await tx.harnesses.read.byId(tally.harnessId))?.key;
-    keys.set(tally.harnessId, key ?? tally.harnessId);
-    tallies.push({ ...tally, harnessKey: key ?? tally.harnessId });
+    const harness = names.has(tally.harnessId)
+      ? null
+      : await tx.harnesses.read.byId(tally.harnessId);
+    const fallback = { key: tally.harnessId, title: tally.harnessId };
+    const named =
+      names.get(tally.harnessId) ??
+      (harness === null ? fallback : { key: harness.key, title: harness.title });
+    names.set(tally.harnessId, named);
+    tallies.push({ ...tally, harnessKey: named.key, harnessTitle: named.title });
   }
   return { tallies, capped: events.length === PLANE_LIMIT };
 }

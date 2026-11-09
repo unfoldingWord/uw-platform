@@ -61,10 +61,13 @@ function rowOf(row: ShadowRow) {
   };
 }
 
-export function ShadowList(props: { readonly comparison: ShadowComparison }) {
-  const { comparison } = props;
+export function ShadowList(props: {
+  readonly comparison: ShadowComparison;
+  readonly harnessTitle: string;
+}) {
+  const { comparison, harnessTitle } = props;
   const headingId = domId('shadow', comparison.harnessId);
-  const caption = `Shadow verdicts on ${comparison.harnessKey}`;
+  const caption = `Shadow verdicts on ${harnessTitle}`;
   return (
     <section aria-labelledby={headingId} class="flex flex-col gap-2">
       <h2 id={headingId} class="m-0 text-base font-heavy text-text">
@@ -75,7 +78,7 @@ export function ShadowList(props: { readonly comparison: ShadowComparison }) {
           href={shadowExportPath(comparison.harnessId)}
           class={`text-accent-text underline ${focus}`}
         >
-          {`Export the shadow verdicts for ${comparison.harnessKey}`}
+          {`Export the shadow verdicts for ${harnessTitle}`}
         </a>
       </p>
       {comparison.rows.length === 0 ? (
