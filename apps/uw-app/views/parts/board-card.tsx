@@ -1,9 +1,12 @@
-import { formatInstant } from '@uw/core/dates';
-import type { CostBasis } from '@uw/contracts';
+import { formatDuration, formatInstant } from '@uw/core/dates';
+import type { CostBasis, HarnessEvent } from '@uw/contracts';
 import type { BoardCard, CardHost } from '@uw/harness';
 import { CommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
 import { SelectField } from '@uw/ui/components/field.tsx';
-import { KanbanCard } from '@uw/ui/components/kanban-card.tsx';
+import { HumanWaitChip } from '@uw/ui/components/human-action.tsx';
+import { Icon } from '@uw/ui/components/icon.tsx';
+import { KanbanCard, type CardFoot } from '@uw/ui/components/kanban-card.tsx';
+import { reasonText } from '@uw/ui/components/text.ts';
 import { costText } from './costs.ts';
 import { itemPath, personaPath } from './paths.ts';
 import { holderText } from './holder-words.ts';
@@ -107,11 +110,74 @@ function PersonaLink(props: { readonly card: BoardCard }) {
   return (
     <a
       href={personaPath(pageId)}
-      class="text-sm text-link underline outline-offset-2 outline-focus focus-visible:outline-2"
+      class="text-sm text-accent-text underline outline-offset-2 outline-accent-text focus-visible:outline-2"
     >
       See the persona running this item
     </a>
   );
+}
+
+const hostIcons = new Map<CardHost, CardFoot['icon']>([
+  ['workflow-run', 'cloud'],
+  ['external-run', 'laptop'],
+  ['person', 'user'],
+]);
+
+function footOf(card: BoardCard, at: Date): readonly CardFoot[] {
+  const icon = hostIcons.get(card.host);
+  const metered = card.cost.meteredMinor + card.cost.computeMinor;
+  const lease = card.leaseExpiresAt;
+  return [
+    ...(icon === undefined ? [] : [{ icon, text: hostWords.get(card.host) ?? 'Nobody' }]),
+    ...(metered === 0 ? [] : [{ icon: 'circle-dot' as const, text: costText(card.cost).metered }]),
+    ...(lease === null
+      ? []
+      : [
+          {
+            icon: 'clock' as const,
+            text: `${formatDuration(Math.max(0, lease.getTime() - at.getTime()))} left`,
+          },
+        ]),
+  ];
+}
+
+function lastLine(event: HarnessEvent | undefined, at: Date): string | undefined {
+  if (event === undefined) return undefined;
+  const ago = formatDuration(Math.max(0, at.getTime() - new Date(event.at).getTime()));
+  return `${reasonText(event.name)} · ${ago} ago`;
+}
+
+function riskLine(card: BoardCard): string {
+  const { riskTier, riskDomains } = card.item;
+  if (riskTier === null) return 'tier not set';
+  return riskDomains.length === 0 ? riskTier : `${riskTier} · ${riskDomains.join(', ')}`;
+}
+
+function HolderBadge(props: { readonly card: BoardCard }) {
+  const { holder } = props.card;
+  if (holder === null || holder.identity === null) return null;
+  const agent = holder.kind === 'agent';
+  return (
+    <span
+      title={holder.identity}
+      class="grid size-size-4 place-items-center rounded-sm bg-raised text-text-2"
+    >
+      <Icon
+        name={agent ? 'robot' : 'user'}
+        size={1}
+        label={agent ? 'Held by an agent' : 'Held by a person'}
+      />
+    </span>
+  );
+}
+
+function Waiting(props: { readonly card: BoardCard; readonly at: Date }) {
+  const { card } = props;
+  if (card.item.gateStatus !== 'parked') return null;
+  const since = card.holder?.since ?? null;
+  const waited =
+    since === null ? '' : ` · ${formatDuration(Math.max(0, props.at.getTime() - since.getTime()))}`;
+  return <HumanWaitChip text={`Waiting${waited}`} />;
 }
 
 export function BoardCardView(props: {
@@ -119,20 +185,34 @@ export function BoardCardView(props: {
   readonly card: BoardCard;
   readonly column: readonly BoardCard[];
   readonly viewer: CardViewer;
+  readonly last?: HarnessEvent | undefined;
 }) {
   const { card, harnessId } = props;
+  const { at } = props.viewer;
+  const issue = card.item.issue;
   const { itemId } = card.item;
   const others = props.column.filter((other) => other.item.itemId !== itemId);
   return (
     <KanbanCard
       title={card.item.title}
       href={itemPath(harnessId, itemId)}
-      meta={metaOf(card, props.viewer.at)}
+      meta={metaOf(card, at)}
+      number={issue === null ? undefined : `#${issue.number}`}
+      risk={riskLine(card)}
+      badge={<HolderBadge card={card} />}
+      last={lastLine(props.last, at)}
+      status={<Waiting card={card} at={at} />}
+      foot={footOf(card, at)}
       actions={
         <>
           <PersonaLink card={card} />
           {holdAction(card, harnessId, props.viewer)}
-          <ReorderForm harnessId={harnessId} itemId={itemId} others={others} />
+          <details>
+            <summary class="cursor-pointer text-xs text-text-3 outline-offset-2 outline-accent-text focus-visible:outline-2">
+              Move
+            </summary>
+            <ReorderForm harnessId={harnessId} itemId={itemId} others={others} />
+          </details>
         </>
       }
     />

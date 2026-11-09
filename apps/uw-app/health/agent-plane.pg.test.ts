@@ -118,6 +118,7 @@ const cappedTotals: PlaneTotals = {
       {
         harnessId: HARNESS,
         harnessKey: 'software',
+        harnessTitle: 'software',
         persona: 'agent:reviewer',
         findings: 8,
         refuted: 2,
@@ -125,6 +126,7 @@ const cappedTotals: PlaneTotals = {
       {
         harnessId: HARNESS,
         harnessKey: 'software',
+        harnessTitle: 'software',
         persona: 'agent:reviewer-codex',
         findings: 3,
         refuted: 0,
@@ -132,6 +134,7 @@ const cappedTotals: PlaneTotals = {
       {
         harnessId: OTHER,
         harnessKey: 'courses',
+        harnessTitle: 'courses',
         persona: 'agent:reviewer',
         findings: 4,
         refuted: 1,

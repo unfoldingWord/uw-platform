@@ -8,6 +8,7 @@ const minute = 60_000;
 const harness = harnessSchema.parse({
   id: '00000000-0000-4000-8000-0000000000a1',
   key: 'tc-admin-app',
+  title: 'tc-admin-app',
   template: 'check-only',
   jdArea: '80-89',
   repository: 'unfoldingWord/tc-admin-app',

@@ -5,7 +5,7 @@ import { Table, type Column } from '@uw/ui/components/table.tsx';
 import { domId, reasonText } from '@uw/ui/components/text.ts';
 import { pullRequestUrl, shadowExportPath } from './paths.ts';
 
-const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
+const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 const columns: readonly Column[] = [
   { key: 'pull', label: 'Pull request' },
@@ -44,7 +44,7 @@ function rowOf(row: ShadowRow) {
   const pull = `${row.pullRequest.repo}#${row.pullRequest.number}`;
   return {
     pull: (
-      <a href={pullRequestUrl(row.pullRequest)} class={`text-link underline ${focus}`}>
+      <a href={pullRequestUrl(row.pullRequest)} class={`text-accent-text underline ${focus}`}>
         {pull}
       </a>
     ),
@@ -61,18 +61,24 @@ function rowOf(row: ShadowRow) {
   };
 }
 
-export function ShadowList(props: { readonly comparison: ShadowComparison }) {
-  const { comparison } = props;
+export function ShadowList(props: {
+  readonly comparison: ShadowComparison;
+  readonly harnessTitle: string;
+}) {
+  const { comparison, harnessTitle } = props;
   const headingId = domId('shadow', comparison.harnessId);
-  const caption = `Shadow verdicts on ${comparison.harnessKey}`;
+  const caption = `Shadow verdicts on ${harnessTitle}`;
   return (
     <section aria-labelledby={headingId} class="flex flex-col gap-2">
-      <h2 id={headingId} class="m-0 text-base font-bold text-ink">
+      <h2 id={headingId} class="m-0 text-base font-heavy text-text">
         {caption}
       </h2>
       <p class="m-0">
-        <a href={shadowExportPath(comparison.harnessId)} class={`text-link underline ${focus}`}>
-          {`Export the shadow verdicts for ${comparison.harnessKey}`}
+        <a
+          href={shadowExportPath(comparison.harnessId)}
+          class={`text-accent-text underline ${focus}`}
+        >
+          {`Export the shadow verdicts for ${harnessTitle}`}
         </a>
       </p>
       {comparison.rows.length === 0 ? (

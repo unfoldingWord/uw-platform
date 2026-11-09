@@ -15,7 +15,7 @@ import { accepted, callerOf, post } from '../testing/commands.ts';
 import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
-import { getHtml } from '../testing/views.ts';
+import { getHtml, pageContent } from '../testing/views.ts';
 import { boardPath, itemPath } from './parts/paths.ts';
 
 const seedClock: Clock = { now: () => new Date('2026-10-02T06:00:00.000Z') };
@@ -48,7 +48,7 @@ function factsOf(scope: Element | undefined): readonly (readonly [string, string
 }
 
 function laneOf(document: Document, title: string): Element | undefined {
-  return [...document.querySelectorAll('main section')].find(
+  return [...document.querySelectorAll('main section[aria-labelledby]')].find(
     (lane) => lane.querySelector('h2')?.textContent === title,
   );
 }
@@ -68,10 +68,10 @@ function metaOf(card: Element | undefined): Readonly<Record<string, string>> {
 
 async function columns(world: BoardWorld): Promise<void> {
   const document = await documentOf(world);
-  const lanes = [...document.querySelectorAll('main section')];
+  const lanes = [...document.querySelectorAll('main section[aria-labelledby]')];
   expect(lanes.map((lane) => lane.querySelector('h2')?.textContent)).toHaveLength(8);
   const build = laneOf(document, 'Commits to PR');
-  expect(build?.textContent).toContain('2 of 3');
+  expect(build?.textContent).toContain('2/3');
   expect(factsOf(build)).toEqual([
     ['Items', '2'],
     ['Agent pickup', 'Agents may pick up'],
@@ -218,7 +218,9 @@ async function claimsRefused(db: Database): Promise<void> {
 
 async function oneStage(world: BoardWorld): Promise<void> {
   const document = await documentOf(world, world.ianEmail, boardPath(world.harnessId, 'build'));
-  const lanes = [...document.querySelectorAll('main section h2')].map((h) => h.textContent);
+  const lanes = [...document.querySelectorAll('main section[aria-labelledby] h2')].map(
+    (h) => h.textContent,
+  );
   expect(lanes).toEqual(['Commits to PR']);
   const current = document.querySelector('main nav[aria-label="Stages"] [aria-current="true"]');
   expect(current?.textContent).toBe('Commits to PR');
@@ -232,7 +234,7 @@ async function hiddenIsMissing(world: BoardWorld): Promise<void> {
   const hidden = await boardOf(world, world.stranger.email);
   const absent = await boardOf(world, world.stranger.email, missing);
   expect([hidden.status, absent.status]).toEqual([404, 404]);
-  expect(hidden.text).toBe(absent.text);
+  expect(pageContent(hidden)).toBe(pageContent(absent));
 }
 
 async function noProblems(world: BoardWorld): Promise<void> {
@@ -240,7 +242,27 @@ async function noProblems(world: BoardWorld): Promise<void> {
   expect(await screenProblems((await boardOf(world, world.viewer.email)).text)).toEqual([]);
 }
 
+async function lookOfBoard(world: BoardWorld): Promise<void> {
+  const document = await documentOf(world);
+  const pipeline = document.querySelector('main section[aria-label="Pipeline"]');
+  expect(pipeline?.querySelectorAll('li[data-node]')).toHaveLength(8);
+  const gate = pipeline?.querySelector('li[data-node] [aria-label="A person decides"]');
+  expect(gate).not.toBeNull();
+  const figures = [...(pipeline?.querySelectorAll('dt') ?? [])].map((term) => term.textContent);
+  expect(figures).toEqual(['Agents working', 'Waiting on you', 'Spent on these items']);
+  const toolbar = document.querySelector('main a[href="/gates"]');
+  expect(toolbar?.textContent).toContain('Waiting on you');
+  expect(document.querySelector('main section[data-folded="true"]')).not.toBeNull();
+  const card = document.querySelector('main article');
+  const summaries = [...(card?.querySelectorAll('details summary') ?? [])].map(
+    (s) => s.textContent,
+  );
+  expect(summaries).toEqual(expect.arrayContaining(['Move', 'Details']));
+}
+
 describe.skipIf(!testServer)('the Board', () => {
+  it('UI-6 the Board draws the pipeline with its figures, the toolbar, folded empty stages and compact cards', () =>
+    inBoard(lookOfBoard));
   it('WB-5 the board has one column per stage with its WIP against its limit, agent pickup and exit gate', () =>
     inBoard(columns));
   it('WB-5 a card shows title, issue ref, holder identity, host, risk tier and domains and cost basis', () =>

@@ -44,7 +44,7 @@ async function harnessFor(db: Db, key: string): Promise<string> {
   const id = crypto.randomUUID();
   await db
     .insert(harnesses)
-    .values({ id, key, template: 'software', jdArea: '80-89', createdAt: new Date() });
+    .values({ id, key, title: key, template: 'software', jdArea: '80-89', createdAt: new Date() });
   return id;
 }
 

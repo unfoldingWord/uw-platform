@@ -37,7 +37,7 @@ describe('WB-11 the kanban card', () => {
   it('a kanban card link has visible focus', async () => {
     const markup = await jsx(KanbanCard, props).toString();
     expect(markup).toContain('focus-visible:outline-2');
-    expect(markup).toContain('outline-focus');
+    expect(markup).toContain('outline-accent-text');
   });
 
   it('a kanban card escapes its title and its facts', async () => {
@@ -65,7 +65,7 @@ describe('WB-11 the kanban card', () => {
 });
 
 describe('the kanban card actions', () => {
-  it('a card renders its actions after its facts', async () => {
+  it('a card renders its actions before its details', async () => {
     const actions = jsx(
       'form',
       { 'aria-label': 'Claim' },
@@ -77,7 +77,7 @@ describe('the kanban card actions', () => {
     expect(form?.textContent).toBe('Claim');
     const list = article?.querySelector('dl');
     expect(list?.compareDocumentPosition(form as Node)).toBe(
-      document.defaultView?.Node.DOCUMENT_POSITION_FOLLOWING,
+      document.defaultView?.Node.DOCUMENT_POSITION_PRECEDING,
     );
   });
 });
@@ -88,6 +88,8 @@ describe('the kanban card passes axe-core', () => {
       `<!DOCTYPE html><html lang="en"><head><title>t</title></head><body><main><h2>Build</h2>${await jsx(KanbanCard, props).toString()}</main></body></html>`,
       { runScripts: 'outside-only' },
     ).window;
+    for (const details of window.document.querySelectorAll('details'))
+      details.setAttribute('open', '');
     window.eval(axe.source);
     const runner = (window as unknown as { axe: typeof axe }).axe;
     const results = await runner.run(window.document, {

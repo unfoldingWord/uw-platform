@@ -43,8 +43,8 @@ async function refusal(work: PromiseLike<unknown>) {
 
 function shipRuleColumns(db: () => Db): void {
   it('GD-2 SR-1 a harness starts unfrozen with no allow list and no required checks', async () => {
-    await db().execute(sql`INSERT INTO harnesses (id, key, template, jd_area, created_at)
-      VALUES (gen_random_uuid(), 'ship-defaults', 'software', '80-89', now())`);
+    await db().execute(sql`INSERT INTO harnesses (id, key, title, template, jd_area, created_at)
+      VALUES (gen_random_uuid(), 'ship-defaults', 'ship-defaults', 'software', '80-89', now())`);
     const rows = await db()
       .select({
         frozen: harnesses.frozen,
@@ -58,8 +58,8 @@ function shipRuleColumns(db: () => Db): void {
 
   it('SR-1 refuses required checks that are not an array by harnesses_required_checks_array', async () => {
     const insert = db()
-      .execute(sql`INSERT INTO harnesses (id, key, template, jd_area, created_at, required_checks)
-      VALUES (gen_random_uuid(), 'ship-object', 'software', '80-89', now(), '{}'::jsonb)`);
+      .execute(sql`INSERT INTO harnesses (id, key, title, template, jd_area, created_at, required_checks)
+      VALUES (gen_random_uuid(), 'ship-object', 'ship-object', 'software', '80-89', now(), '{}'::jsonb)`);
     expect(await refusal(insert)).toEqual({
       code: '23514',
       constraint: 'harnesses_required_checks_array',

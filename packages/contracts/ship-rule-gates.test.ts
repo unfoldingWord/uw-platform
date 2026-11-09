@@ -68,6 +68,7 @@ describe('GD-1 GD-2 GD-3 the contracts for gates and the freeze', () => {
     const older = {
       id: '00000000-0000-4000-8000-0000000000a1',
       key: 'software',
+      title: 'software',
       template: 'software',
       jdArea: '80-89',
       repository: 'unfoldingWord/uw-platform',

@@ -159,3 +159,20 @@ describe('zulip_topic_linked carries one topic of at most 60 characters with no 
     },
   );
 });
+
+describe('UI-18 the push payload names the harness by its title', () => {
+  it('UI-18 accepts a title and still accepts a key, which is also a title', () => {
+    const link = gateLink(harnessId, itemId);
+    expect(pushPayloadSchema.parse({ harness: 'Software', reason: 'gate_waiting', link })).toEqual({
+      harness: 'Software',
+      reason: 'gate_waiting',
+      link,
+    });
+    expect(
+      pushPayloadSchema.safeParse({ harness: 'software', reason: 'gate_waiting', link }).success,
+    ).toBe(true);
+    expect(
+      pushPayloadSchema.safeParse({ harness: '  ', reason: 'gate_waiting', link }).success,
+    ).toBe(false);
+  });
+});

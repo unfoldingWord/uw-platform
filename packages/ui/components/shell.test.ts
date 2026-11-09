@@ -7,16 +7,12 @@ import { resolveToken, themeTokens, type ThemeName } from '../../../tools/ui/css
 import { PageHead } from './page-head.tsx';
 import { Shell } from './shell.tsx';
 import { THEME_KEY } from './inline-scripts.ts';
-
-const nav = [
-  { href: '/', label: 'Home' },
-  { href: '/health', label: 'Health' },
-];
+import { testFrame } from '../testing/frame.ts';
 
 async function render(overrides: Partial<Parameters<typeof Shell>[0]> = {}): Promise<string> {
   const props = {
     title: 'unfoldingWord',
-    nav,
+    frame: testFrame(),
     current: '/',
     crumbs: [{ label: 'Home' }],
     stylesheet: '/assets/app-0123456789ab.css',
@@ -34,7 +30,7 @@ describe('WB-11 the shell', () => {
   it('the shell renders one main landmark, a labelled navigation and a skip link', async () => {
     const html = await render();
     expect(html.match(/<main id="main"/g)).toHaveLength(1);
-    expect(html.match(/<nav aria-label="Main"/g)).toHaveLength(1);
+    expect(html.match(/<nav aria-label="Main"/g)).toHaveLength(2);
     expect(html).toContain('<a href="#main"');
     expect(html.indexOf('<a href="#main"')).toBeLessThan(html.indexOf('<nav aria-label="Main"'));
     expect(html).toContain('<header');
@@ -47,9 +43,12 @@ describe('WB-11 the shell', () => {
     const document = documentOf(html);
     const disclosure = document.querySelector('details');
     expect(disclosure?.querySelector('summary')?.textContent).toBe('Menu');
-    expect(disclosure?.getAttribute('class')).toContain('md:hidden');
-    expect(document.querySelectorAll('nav[aria-label="Main"]')).toHaveLength(1);
-    expect(html).toContain('md:grid-cols-[var(--uw-sidebar)_1fr]');
+    expect(disclosure?.closest('.md\\:hidden')).not.toBeNull();
+    expect(document.querySelector('aside')?.getAttribute('class')).toMatch(
+      /\bhidden\b.*\bmd:flex\b/,
+    );
+    expect(document.querySelectorAll('nav[aria-label="Main"]')).toHaveLength(2);
+    expect(html).toContain('md:grid-cols-frame');
   });
 
   it('the current page is marked aria-current="page"', async () => {
@@ -57,9 +56,14 @@ describe('WB-11 the shell', () => {
     const current = [...document.querySelectorAll('nav[aria-label="Main"] a[aria-current]')];
     expect(
       current.map((link) => [link.getAttribute('href'), link.getAttribute('aria-current')]),
-    ).toEqual([['/health', 'page']]);
+    ).toEqual([
+      ['/health', 'page'],
+      ['/health', 'page'],
+    ]);
   });
+});
 
+describe('WB-11 the shell theme and copy', () => {
   it('WB-11 the theme script reads the persisted choice before paint and sets data-theme', async () => {
     const html = await render();
     const head = html.slice(0, html.indexOf('</head>'));
@@ -88,11 +92,11 @@ describe('the shell escapes the text it is given', () => {
     const hostile = '<img src=x onerror=alert(1)>';
     const html = await render({
       title: hostile,
-      nav: [{ href: '/', label: hostile }],
+      frame: testFrame([{ href: '/', label: hostile, mark: { icon: 'house' } }]),
       crumbs: [{ label: hostile, href: '/x"onmouseover="alert(1)' }],
       children: jsx(PageHead, { title: hostile, eyebrow: hostile, lede: hostile }),
     });
-    expect(html).not.toContain('<img');
+    expect(html).not.toContain('<img src=x');
     expect(html).not.toContain('"onmouseover=');
     expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
   });
@@ -100,17 +104,17 @@ describe('the shell escapes the text it is given', () => {
   it('renders no link for a nav or crumb href that is not a relative path or https', async () => {
     const document = documentOf(
       await render({
-        nav: [
-          { href: 'javascript:alert(1)', label: 'Sneak' },
-          { href: '/', label: 'Home' },
-        ],
+        frame: testFrame([
+          { href: 'javascript:alert(1)', label: 'Sneak', mark: { icon: 'house' } },
+          { href: '/', label: 'Home', mark: { icon: 'house' } },
+        ]),
         crumbs: [{ label: 'Trail', href: 'data:text/html,x' }],
       }),
     );
     const hrefs = [...document.querySelectorAll('a[href]')].map((link) =>
       link.getAttribute('href'),
     );
-    expect(hrefs).toEqual(['#main', '/']);
+    expect(hrefs).toEqual(['#main', '/', '/']);
     expect(document.body.textContent).toContain('Trail');
   });
 });
@@ -156,13 +160,21 @@ describe('focus is visible on every background the shell paints', () => {
   it.each(themes)(
     'in %s, the focus ring meets 3:1 against each shell background',
     async (theme) => {
-      const html = await render();
-      const grounds = [
-        ...new Set([...html.matchAll(/\bbg-([a-z-]+)/g)].map((match) => match[1] ?? '')),
-      ];
-      expect(grounds).toEqual(expect.arrayContaining(['bg', 'ocean-panel', 'surface']));
+      const document = documentOf(await render());
+      const focusable = [...document.querySelectorAll('a, input, summary, button')];
+      const painted = (element: Element | null): string[] =>
+        element === null
+          ? []
+          : [
+              ...[
+                ...(element.getAttribute('class') ?? '').matchAll(/(?:^|\s|:)bg-([a-z0-9-]+)/g),
+              ].map((match) => match[1] ?? ''),
+              ...painted(element.parentElement),
+            ];
+      const grounds = [...new Set(focusable.flatMap(painted))];
+      expect(grounds).toEqual(expect.arrayContaining(['canvas', 'side', 'raised']));
       for (const ground of grounds)
-        expect(contrast(theme, 'focus', ground)).toBeGreaterThanOrEqual(3);
+        expect(contrast(theme, 'accent-text', ground)).toBeGreaterThanOrEqual(3);
     },
   );
 
@@ -173,7 +185,7 @@ describe('focus is visible on every background the shell paints', () => {
     for (const element of focusable) {
       const classes = element.getAttribute('class') ?? '';
       expect(classes).toContain('focus-visible:outline-2');
-      expect(classes).toContain('outline-focus');
+      expect(classes).toContain('outline-accent-text');
     }
   });
 });

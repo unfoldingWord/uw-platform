@@ -59,6 +59,7 @@ const claimed = event('fix_claimed', { delegationId: itemId, head, declaration: 
 const harness = harnessSchema.parse({
   id: harnessId,
   key: 'board',
+  title: 'board',
   template: 'software',
   jdArea: '80-89',
   repository: 'unfoldingWord/uw-platform',

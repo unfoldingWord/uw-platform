@@ -1,7 +1,11 @@
 import type { Context } from 'hono';
 import { formatInstant } from '@uw/core/dates';
 import { formatCount } from '@uw/core/money';
-import { FAILED_RUNS_LIMIT, type WaitingRow } from '@uw/harness';
+import { FAILED_RUNS_LIMIT, type FlowView, type WaitingRow } from '@uw/harness';
+import { Sparkline } from '@uw/ui/components/chart.tsx';
+import { HumanTile, humanBar } from '@uw/ui/components/human-action.tsx';
+import { Icon } from '@uw/ui/components/icon.tsx';
+import type { IconName } from '@uw/ui/generated/icons';
 import { commandButton } from '@uw/ui/components/command-form.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
@@ -9,13 +13,29 @@ import { reasonText } from '@uw/ui/components/text.ts';
 import type { AppEnv } from '../../deps.ts';
 import { handedCapNote, lapsedCapNote, parkedCapNote } from '../parts/caps.ts';
 import { liveCursors } from '../parts/cursors.ts';
-import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
+import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { flowPath, gatePath, homePath, itemPath } from '../parts/paths.ts';
+import { pageNames } from '../parts/names.ts';
 
 const REFRESH_EVERY_MS = 60_000;
-const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
 
-type Shown = { readonly href: string; readonly text: string; readonly harnessId: string };
+function personName(email: string | null): string | null {
+  const first = (email ?? '').split('@')[0]?.split(/[._-]+/)[0] ?? '';
+  return first === '' ? null : first.charAt(0).toUpperCase() + first.slice(1);
+}
+
+function greeting(name: string | null): string {
+  return name === null ? 'Hello' : `Hello, ${name}`;
+}
+const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
+
+type Shown = {
+  readonly href: string;
+  readonly text: string;
+  readonly harnessId: string;
+  readonly kind: WaitingRow['kind'];
+  readonly sub: string;
+};
 
 function lapsedText(
   row: Extract<WaitingRow, { kind: 'delegation_lapsed' }>,
@@ -24,15 +44,23 @@ function lapsedText(
   const { harness, delegation } = row;
   const lapsed = formatInstant(delegation.lapsedAt ?? delegation.expiresAt);
   if (delegation.personId === viewer) {
-    return `Your delegation to ${delegation.persona} on ${harness.key} lapsed ${lapsed}`;
+    return `Your delegation to ${delegation.persona} on ${harness.title} lapsed ${lapsed}`;
   }
-  return `A delegation to ${delegation.persona} on ${harness.key} lapsed ${lapsed} because its person no longer holds admin`;
+  return `A delegation to ${delegation.persona} on ${harness.title} lapsed ${lapsed} because its person no longer holds admin`;
 }
 
 const roundWords: ReadonlyMap<number, string> = new Map([[3, 'three']]);
 
 function roundsText(rounds: number): string {
   return roundWords.get(rounds) ?? formatCount(rounds);
+}
+
+function numberOf(item: { readonly issue: { readonly number: number } | null }): number | null {
+  return item.issue === null ? null : item.issue.number;
+}
+
+function subOf(harness: string, number: number | null): string {
+  return number === null ? harness : `${harness} · #${number}`;
 }
 
 function shown(row: WaitingRow, viewer: string | null): Shown {
@@ -42,6 +70,8 @@ function shown(row: WaitingRow, viewer: string | null): Shown {
       href: gatePath(harness.id, item.itemId),
       text: `Decide ${item.title} at ${stage.title}`,
       harnessId: harness.id,
+      kind: row.kind,
+      sub: subOf(harness.title, numberOf(item)),
     };
   }
   if (row.kind === 'delegation_lapsed') {
@@ -49,6 +79,8 @@ function shown(row: WaitingRow, viewer: string | null): Shown {
       href: flowPath(row.harness.id),
       text: lapsedText(row, viewer),
       harnessId: row.harness.id,
+      kind: row.kind,
+      sub: `${row.delegation.persona} can't act for you until you delegate again`,
     };
   }
   if (row.kind === 'handed_to_person') {
@@ -59,6 +91,8 @@ function shown(row: WaitingRow, viewer: string | null): Shown {
           ? `${row.item.title} was handed to you because an engine refused it`
           : `${row.item.title} was handed to you after ${roundsText(row.rounds)} review rounds`,
       harnessId: row.harness.id,
+      kind: row.kind,
+      sub: subOf(row.harness.title, numberOf(row.item)),
     };
   }
   const why = reasonText(row.run.failure ?? 'run_failed');
@@ -66,6 +100,8 @@ function shown(row: WaitingRow, viewer: string | null): Shown {
     href: itemPath(row.harness.id, row.item.itemId),
     text: `A run failed on ${row.item.title}: ${why}`,
     harnessId: row.harness.id,
+    kind: row.kind,
+    sub: subOf(row.harness.title, numberOf(row.item)),
   };
 }
 
@@ -100,24 +136,149 @@ function capNotes(waiting: Caps): readonly string[] {
   return notes;
 }
 
+const tileIcons = new Map<WaitingRow['kind'], IconName>([
+  ['handed_to_person', 'robot'],
+  ['run_failed', 'robot'],
+  ['delegation_lapsed', 'clock'],
+]);
+
+function Tile(props: { readonly kind: WaitingRow['kind'] }) {
+  if (props.kind === 'gate') return <HumanTile />;
+  return (
+    <span class="grid size-size-6 shrink-0 place-items-center rounded-md bg-raised text-text-2 shadow-1">
+      <Icon name={tileIcons.get(props.kind) ?? 'circle-dot'} size={3} />
+    </span>
+  );
+}
+
 function WaitingList(props: { readonly rows: readonly Shown[] }) {
   return (
-    <ul class="m-0 flex list-none flex-col gap-2 p-0">
+    <ul
+      aria-label="Waiting on you"
+      class="m-0 flex list-none flex-col rounded-lg bg-surface p-0 shadow-1"
+    >
       {props.rows.map((row) => (
-        <li class="rounded-md border border-line bg-surface p-3">
-          <a href={row.href} class={`text-link underline ${focus}`}>
-            {row.text}
-          </a>
+        <li class="flex items-center gap-4 border-b border-line px-4 py-3 last:border-b-0">
+          <Tile kind={row.kind} />
+          <div class="min-w-0 flex-1">
+            <a
+              href={row.href}
+              class={`text-sm text-text underline-offset-2 hover:underline ${focus}`}
+            >
+              {row.text}
+            </a>
+            <p class="m-0 text-xs text-text-3">{row.sub}</p>
+          </div>
+          <span
+            aria-hidden="true"
+            class="rounded-md bg-raised px-3 py-1 text-sm font-semibold text-text shadow-key"
+          >
+            Open
+          </span>
         </li>
       ))}
     </ul>
   );
 }
 
+type Card = {
+  readonly flow: FlowView;
+  readonly runs: readonly number[];
+  readonly waiting: number;
+};
+
+function StageBars(props: { readonly flow: FlowView }) {
+  const most = Math.max(1, ...props.flow.stages.map((stage) => stage.count));
+  const height = (count: number): string => {
+    if (count === 0) return 'h-size-1';
+    return count * 2 >= most ? 'h-size-5' : 'h-size-3';
+  };
+  return (
+    <ol aria-label="Items by stage" class="m-0 flex h-size-5 list-none items-end gap-1 p-0">
+      {props.flow.stages.map(({ stage, count }) => (
+        <li
+          title={`${stage.title}: ${count}`}
+          class={`flex-1 rounded-sm ${height(count)} ${stage.exitGate === 'human_approval' ? humanBar : 'bg-accent'}`}
+        >
+          <span class="sr-only">{`${stage.title}: ${count}`}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function HarnessCard(props: { readonly card: Card }) {
+  const { flow, runs, waiting } = props.card;
+  const items = flow.stages.reduce((sum, stage) => sum + stage.count, 0);
+  const moving = flow.stages.reduce((sum, stage) => sum + stage.held, 0);
+  return (
+    <li class="flex flex-col gap-4 rounded-lg bg-surface p-5 shadow-1">
+      <div class="flex items-center gap-2">
+        <span class="grid size-size-4 place-items-center rounded-sm bg-accent text-xs font-heavy text-on-accent">
+          {flow.harness.title.charAt(0).toUpperCase()}
+        </span>
+        <a href={flowPath(flow.harness.id)} class={`text-md font-heavy text-text ${focus}`}>
+          {flow.harness.title}
+        </a>
+        <span class="ml-auto text-xs text-text-3">{`${flow.harness.template} template`}</span>
+      </div>
+      <StageBars flow={flow} />
+      <div>
+        <p class="m-0 mb-1 text-xs text-text-3">{`Runs, ${runs.length} days · ${formatCount(runs.reduce((a, b) => a + b, 0))}`}</p>
+        <Sparkline
+          id={`spark-${flow.harness.key}`}
+          label={`Runs per day on ${flow.harness.title}`}
+          values={runs}
+        />
+      </div>
+      <p class="m-0 flex flex-wrap gap-x-4 text-xs text-text-3">
+        <span>{`${formatCount(items)} items`}</span>
+        <span>{`${formatCount(moving)} in progress`}</span>
+        <span>{`${formatCount(waiting)} waiting on you`}</span>
+      </p>
+    </li>
+  );
+}
+
+function HarnessCards(props: { readonly cards: readonly Card[] }) {
+  if (props.cards.length === 0) return null;
+  return (
+    <section aria-labelledby="harnesses-heading" class="mt-5 flex flex-col gap-3">
+      <h2 id="harnesses-heading" class="m-0 text-md font-heavy text-text">
+        Harnesses
+      </h2>
+      <ul class="m-0 grid list-none grid-cols-1 gap-4 p-0 md:grid-cols-2">
+        {props.cards.map((card) => (
+          <HarnessCard card={card} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+async function cardsOf(screen: ScreenKernel, waiting: readonly WaitingRow[]): Promise<Card[]> {
+  const read = { at: screen.at };
+  const cards: Card[] = [];
+  for (const harness of await screen.kernel.views.harnesses(screen.caller, read)) {
+    const flow = await screen.kernel.views.flow(screen.caller, { harnessId: harness.id }, read);
+    if (flow.status !== 'accepted') continue;
+    const days = await screen.kernel.views.daily(screen.caller, { harnessId: harness.id }, read);
+    const gates = waiting.filter(
+      (row) => row.kind === 'gate' && row.gate.harness.id === harness.id,
+    );
+    cards.push({ flow: flow.value, runs: days.map((day) => day.runs), waiting: gates.length });
+  }
+  return cards;
+}
+
 function PushControl() {
   return (
-    <section data-push aria-labelledby="push-heading" class="mt-6 flex flex-col gap-2">
-      <h2 id="push-heading" class="m-0 text-base font-bold text-ink">
+    <section
+      data-push
+      aria-labelledby="push-heading"
+      class="mt-5 flex flex-col gap-2 rounded-lg bg-surface p-5 shadow-1"
+    >
+      <h2 id="push-heading" class="m-0 text-base font-heavy text-text">
         Notifications
       </h2>
       <div>
@@ -125,7 +286,7 @@ function PushControl() {
           Turn on notifications on this device
         </button>
       </div>
-      <p data-push-outcome role="status" class="m-0 text-sm text-muted"></p>
+      <p data-push-outcome role="status" class="m-0 text-sm text-text-3"></p>
     </section>
   );
 }
@@ -137,14 +298,16 @@ export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
   const waiting = await screen.kernel.views.waitingOn(screen.caller, { at: screen.at });
   const rows = waiting.rows.map((row) => shown(row, screen.caller.actor.personId));
   const notes = capNotes(waiting);
+  const cards = await cardsOf(screen, waiting.rows);
+  const person = personName(screen.caller.actor.email);
   const harnesses = liveCursors(
     cursors,
     rows.map((row) => row.harnessId),
   );
   const spec = {
-    title: 'Home',
+    title: pageNames.home,
     current: homePath(),
-    crumbs: [{ label: 'Home' }],
+    crumbs: [{ label: pageNames.home }],
     live: { screen: 'home' as const, harnesses, refreshEveryMs: REFRESH_EVERY_MS },
   };
   return renderScreen(
@@ -152,14 +315,15 @@ export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
     spec,
     rows.length === 0 && notes.length === 0 ? (
       <>
-        <PageHead title="Waiting on you" />
+        <PageHead title={greeting(person)} />
         <Note>Nothing is waiting on you right now.</Note>
+        <HarnessCards cards={cards} />
         <PushControl />
       </>
     ) : (
       <>
         <PageHead
-          title="Waiting on you"
+          title={greeting(person)}
           {...(rows.length === 0
             ? {}
             : { lede: lede(rows.length - waiting.uncounted, notes.length > 0, waiting.uncounted) })}
@@ -168,6 +332,7 @@ export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
           <Note>{note}</Note>
         ))}
         {rows.length === 0 ? null : <WaitingList rows={rows} />}
+        <HarnessCards cards={cards} />
         <PushControl />
       </>
     ),

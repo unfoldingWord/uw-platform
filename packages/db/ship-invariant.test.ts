@@ -80,8 +80,8 @@ function describeTarget(target: DatabaseTarget): void {
   };
   beforeAll(async () => {
     opened = await target.open();
-    await db().execute(sql`INSERT INTO harnesses (id, key, template, jd_area, created_at)
-      VALUES (${harnessId}, 'software', 'software', '80-89', ${at.toISOString()}::timestamptz)`);
+    await db().execute(sql`INSERT INTO harnesses (id, key, title, template, jd_area, created_at)
+      VALUES (${harnessId}, 'software', 'software', 'software', '80-89', ${at.toISOString()}::timestamptz)`);
   }, 60_000);
   afterAll(() => opened?.close());
 

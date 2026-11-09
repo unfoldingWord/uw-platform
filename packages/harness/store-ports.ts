@@ -61,6 +61,7 @@ export type HarnessesGateway = {
     setHostedBuilder(harnessId: string, enabled: boolean): Promise<boolean>;
     setShadow(harnessId: string, shadow: boolean): Promise<boolean>;
     setFixClaim(harnessId: string, enabled: boolean): Promise<boolean>;
+    setTitle(harnessId: string, title: string): Promise<boolean>;
     setFreeze(harnessId: string, frozen: boolean, allow: readonly string[]): Promise<boolean>;
     setTemplate(harnessId: string, from: string, to: string): Promise<boolean>;
   };
@@ -77,6 +78,9 @@ export type HarnessStagesGateway = {
     remove(stageId: string): Promise<boolean>;
   };
 };
+export type OpenCount = { readonly harnessId: string; readonly open: number };
+export type DayCount = { readonly day: string; readonly count: number };
+
 export type HarnessItemsGateway = {
   readonly read: {
     byId(itemId: string): Promise<ItemState | null>;
@@ -94,6 +98,9 @@ export type HarnessItemsGateway = {
     lapsedLeases(at: Date, limit: number): Promise<readonly string[]>;
     parked(harnessId: string, limit: number): Promise<readonly ItemState[]>;
     openFor(harnessId: string, limit: number): Promise<readonly ItemState[]>;
+    openCounts(harnessIds: readonly string[]): Promise<readonly OpenCount[]>;
+    parkedSince(harnessIds: readonly string[]): Promise<readonly Date[]>;
+    claimedBy(identity: string, limit: number): Promise<readonly ItemState[]>;
     byIds(itemIds: readonly string[]): Promise<readonly ItemState[]>;
   };
   readonly write: {
@@ -181,6 +188,7 @@ export type HarnessEventsGateway = {
     recent(query: RecentEvents): Promise<readonly HarnessEvent[]>;
     lastPosition(harnessId: string): Promise<number>;
     lastPositions(harnessIds: readonly string[]): Promise<readonly HarnessPosition[]>;
+    latestForItems(itemIds: readonly string[]): Promise<readonly HarnessEvent[]>;
   };
   readonly write: { append(events: readonly NewHarnessEvent[]): Promise<readonly HarnessEvent[]> };
 };
@@ -244,6 +252,7 @@ export type GateDecisionsGateway = {
     forItem(itemId: string): Promise<readonly GateDecisionRow[]>;
     anyForStage(stageId: string): Promise<boolean>;
     delegatedSince(since: Date, limit: number): Promise<readonly GateDecisionRow[]>;
+    decidedPerDay(harnessIds: readonly string[], since: Date): Promise<readonly DayCount[]>;
   };
   readonly write: { insert(decision: GateDecisionRow): Promise<void> };
 };
@@ -328,6 +337,7 @@ export type HarnessRunsGateway = {
     ): Promise<readonly RunRow[]>;
     spendSince(since: Date): Promise<RunSpend>;
     runCountsSince(since: Date): Promise<readonly RunCount[]>;
+    startedPerDay(harnessIds: readonly string[], since: Date): Promise<readonly DayCount[]>;
     costsByItem(itemIds: readonly string[]): Promise<readonly ItemCost[]>;
   };
   readonly write: {

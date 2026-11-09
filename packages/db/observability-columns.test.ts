@@ -40,8 +40,8 @@ async function refusal(work: PromiseLike<unknown>) {
 
 function observabilityColumns(db: () => Db): void {
   it('OB-4 a harness lists dependabot as a bot author by default', async () => {
-    await db().execute(sql`INSERT INTO harnesses (id, key, template, jd_area, created_at)
-      VALUES (gen_random_uuid(), 'bots-default', 'check-only', '80-89', now())`);
+    await db().execute(sql`INSERT INTO harnesses (id, key, title, template, jd_area, created_at)
+      VALUES (gen_random_uuid(), 'bots-default', 'bots-default', 'check-only', '80-89', now())`);
     const rows = await db()
       .select({ bots: harnesses.botAuthors })
       .from(harnesses)
@@ -52,8 +52,8 @@ function observabilityColumns(db: () => Db): void {
   it('OB-4 refuses more than twenty bot authors by harnesses_bot_authors_bounded', async () => {
     const many = `{${Array.from({ length: 21 }, (_, n) => `b${n}`).join(',')}}`;
     const insert = db()
-      .execute(sql`INSERT INTO harnesses (id, key, template, jd_area, created_at, bot_authors)
-      VALUES (gen_random_uuid(), 'bots-many', 'check-only', '80-89', now(), ${many}::text[])`);
+      .execute(sql`INSERT INTO harnesses (id, key, title, template, jd_area, created_at, bot_authors)
+      VALUES (gen_random_uuid(), 'bots-many', 'bots-many', 'check-only', '80-89', now(), ${many}::text[])`);
     expect(await refusal(insert)).toEqual({
       code: '23514',
       constraint: 'harnesses_bot_authors_bounded',

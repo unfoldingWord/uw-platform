@@ -69,3 +69,9 @@ export function postForm(
 ): Promise<Html> {
   return htmlRequest(db, email, path, { headers, clock: systemClock, env: {}, form });
 }
+
+const databaseLatency = /db \d+ ms/g;
+
+export function pageContent(html: Html): string {
+  return html.text.replace(databaseLatency, 'db N ms');
+}

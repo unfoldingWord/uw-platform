@@ -13,8 +13,9 @@ import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { idParam } from '../parts/params.ts';
 import { boardPath, flowPath, homePath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
+import { pageNames } from '../parts/names.ts';
 
-const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
+const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 const cappedNote = `This harness has at least ${formatCount(VIEW_LIMIT)} open items. The counts and costs cover the ${formatCount(VIEW_LIMIT)} with the highest priority.`;
 
@@ -33,7 +34,7 @@ function StageCell(props: { readonly harnessId: string; readonly entry: FlowStag
   const { stage } = props.entry;
   return (
     <span class="flex flex-wrap items-center gap-2">
-      <a href={boardPath(props.harnessId, stage.key)} class={`text-link underline ${focus}`}>
+      <a href={boardPath(props.harnessId, stage.key)} class={`text-accent-text underline ${focus}`}>
         {stage.title}
       </a>
       {stage.exitGate === 'human_approval' ? <HumanGateMark label="Person decides" /> : null}
@@ -57,6 +58,31 @@ function rowOf(view: FlowView, entry: FlowStage, at: Date) {
   };
 }
 
+function Diagram(props: { readonly harnessId: string; readonly view: FlowView }) {
+  return (
+    <details>
+      <summary class={`cursor-pointer text-sm font-semibold text-text-2 ${focus}`}>
+        The stages as a diagram
+      </summary>
+      <div class="mt-3">
+        <FlowDiagram
+          harnessId={props.harnessId}
+          harnessTitle={props.view.harness.title}
+          stages={props.view.stages}
+        />
+      </div>
+    </details>
+  );
+}
+
+function summaryOf(view: FlowView): string {
+  const brackets = new Set(view.stages.map((entry) => entry.stage.bracket)).size;
+  const gates = view.stages.filter((entry) => entry.stage.exitGate === 'human_approval').length;
+  const gateWords =
+    gates === 1 ? '1 gate where a person decides' : `${gates} gates where a person decides`;
+  return `Built from the ${view.harness.template} template · ${view.stages.length} stages in ${brackets} brackets · ${gateWords}`;
+}
+
 export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   if (screen === null) return screenRefusal(c);
@@ -68,28 +94,38 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
   if (outcome.status !== 'accepted') return notFound(c);
   const view = outcome.value;
   const spec = {
-    title: `${view.harness.key} flow`,
+    title: `${view.harness.title} ${pageNames.flow}`,
     current: flowPath(harnessId),
-    crumbs: [{ label: 'Home', href: homePath() }, { label: view.harness.key }],
+    crumbs: [{ label: pageNames.home, href: homePath() }, { label: view.harness.title }],
+    tabs: [
+      {
+        label: pageNames.flow,
+        href: flowPath(harnessId),
+        icon: 'diagram-project' as const,
+        current: true,
+      },
+      {
+        label: pageNames.board,
+        href: boardPath(harnessId),
+        icon: 'square-kanban' as const,
+        current: false,
+      },
+    ],
     live: { screen: 'flow' as const, harnesses: [{ harnessId, cursor }] },
   };
   return renderScreen(
     c,
     spec,
     <>
-      <PageHead
-        eyebrow="Flow"
-        title={view.harness.key}
-        lede={`Built from the ${view.harness.template} template`}
-      />
-      <div class="flex flex-col gap-6">
+      <PageHead title={view.harness.title} lede={summaryOf(view)} />
+      <div class="flex flex-col gap-5">
         {view.capped ? <Note>{cappedNote}</Note> : null}
-        <FlowDiagram harnessId={harnessId} harnessKey={view.harness.key} stages={view.stages} />
         <Table
           caption="Stages"
           columns={columns}
           rows={view.stages.map((entry) => rowOf(view, entry, screen.at))}
         />
+        <Diagram harnessId={harnessId} view={view} />
       </div>
     </>,
   );

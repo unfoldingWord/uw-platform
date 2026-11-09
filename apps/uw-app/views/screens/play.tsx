@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import type { HarnessEvent } from '@uw/contracts';
 import type { PlayByPlay } from '@uw/harness';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
@@ -13,14 +14,15 @@ import {
   pullRequestUrl,
   reviewUrl,
 } from '../parts/paths.ts';
-import { PlayRow } from '../parts/play-row.tsx';
+import { KindFilters, Timeline, kindOf, kindParam, type EventKind } from '../parts/timeline.tsx';
 import { notFound } from './not-found.tsx';
 import { zulipConfigOf } from '../../notify/zulip/config.ts';
 import { itemTopicUrl } from '../../notify/zulip/links.ts';
 import { holderText } from '../parts/holder-words.ts';
+import { pageNames } from '../parts/names.ts';
 
-const focus = 'outline-offset-2 outline-focus focus-visible:outline-2';
-const link = `text-link underline ${focus}`;
+const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
+const link = `text-accent-text underline ${focus}`;
 const wholeNumber = /^(?:0|[1-9]\d{0,15})$/;
 
 function afterOf(raw: string | undefined): number | null {
@@ -37,7 +39,7 @@ function ZulipSlot(props: { readonly topic: string | null; readonly url: string 
     );
   }
   const text = props.topic === null ? 'No Zulip topic yet' : `Zulip topic: ${props.topic}`;
-  return <span class="text-sm text-muted">{text}</span>;
+  return <span class="text-sm text-text-3">{text}</span>;
 }
 
 function Links(props: { readonly play: PlayByPlay; readonly zulipUrl: string | null }) {
@@ -78,6 +80,10 @@ async function playOf(c: Context<AppEnv>, screen: ScreenKernel, harnessId: strin
   return outcome.value;
 }
 
+function ofKind(events: readonly HarnessEvent[], kind: EventKind | null): readonly HarnessEvent[] {
+  return kind === null ? events : events.filter((event) => kindOf(event.name) === kind);
+}
+
 export async function playScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   if (screen === null) return screenRefusal(c);
@@ -95,8 +101,8 @@ export async function playScreen(c: Context<AppEnv>): Promise<Response> {
     title: item.title,
     current: itemPath(harness.id, item.itemId),
     crumbs: [
-      { label: 'Home', href: homePath() },
-      { label: harness.key, href: flowPath(harness.id) },
+      { label: pageNames.home, href: homePath() },
+      { label: harness.title, href: flowPath(harness.id) },
       { label: 'Item' },
     ],
     live: {
@@ -109,14 +115,15 @@ export async function playScreen(c: Context<AppEnv>): Promise<Response> {
     c,
     spec,
     <>
-      <PageHead eyebrow="Item" title={item.title} lede={`At ${stage.title} on ${harness.key}`} />
-      <p class="m-0 mb-4 text-sm text-muted">{`Holder: ${holderText(play.holder, screen.at)}`}</p>
+      <PageHead eyebrow="Item" title={item.title} lede={`At ${stage.title} on ${harness.title}`} />
+      <p class="m-0 mb-4 text-sm text-text-3">{`Holder: ${holderText(play.holder, screen.at)}`}</p>
       <Links play={play} zulipUrl={zulipUrl} />
-      <ol class="m-0 flex list-none flex-col gap-2 p-0">
-        {play.events.map((event) => (
-          <PlayRow event={event} learnings={learnings} personaPages={personaPages} />
-        ))}
-      </ol>
+      <KindFilters base={itemPath(harness.id, item.itemId)} kind={kindParam(c.req.query('kind'))} />
+      <Timeline
+        events={ofKind(play.events, kindParam(c.req.query('kind')))}
+        learnings={learnings}
+        personaPages={personaPages}
+      />
       {play.next === null ? null : (
         <p class="mt-4">
           <a href={`${itemPath(harness.id, item.itemId)}?after=${play.next}`} class={link}>

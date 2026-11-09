@@ -25,7 +25,7 @@ import {
 import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
-import { getHtml } from '../testing/views.ts';
+import { getHtml, pageContent } from '../testing/views.ts';
 import { gatePath, gatesPath, itemPath } from './parts/paths.ts';
 
 function pageOf(world: GateWorld, email: string, path: string) {
@@ -252,7 +252,11 @@ async function decidedFromForm(world: GateWorld, decision: string): Promise<void
 
 async function kindleOnButtons(world: GateWorld): Promise<void> {
   const document = await documentOf(world, world.kimEmail, gatesPath());
-  const kindled = [...document.querySelectorAll('main [class*="kindle"]')];
+  const kindled = [...document.querySelectorAll('main [class*="human"]')].filter(
+    (element) =>
+      element.closest('nav[aria-label="Decisions"]') === null &&
+      element.closest('[data-human-callout]') === null,
+  );
   expect(kindled.map((element) => [element.tagName, element.getAttribute('name')])).toEqual([
     ['BUTTON', 'decision'],
     ['BUTTON', 'decision'],
@@ -286,7 +290,7 @@ async function phoneWidth(world: GateWorld): Promise<void> {
   for (const path of [gatesPath(), deepLink(world)]) {
     const page = await pageOf(world, world.kimEmail, path);
     const document = new JSDOM(page.text).window.document;
-    const stack = document.querySelector('main section .flex-col.md\\:flex-row');
+    const stack = document.querySelector('main section .flex-col.lg\\:flex-row');
     expect(stack).not.toBeNull();
     const table = document.querySelector('main table');
     expect(table?.parentElement?.getAttribute('class')).toContain('overflow-x-auto');
@@ -320,8 +324,8 @@ async function hiddenIsMissing(world: GateWorld): Promise<void> {
     gatePath(randomUUID(), world.item.itemId),
   );
   expect([absent.status, hidden.status, elsewhere.status]).toEqual([404, 404, 404]);
-  expect(hidden.text).toBe(absent.text);
-  expect(elsewhere.text).toBe(absent.text);
+  expect(pageContent(hidden)).toBe(pageContent(absent));
+  expect(pageContent(elsewhere)).toBe(pageContent(absent));
 }
 
 async function editorOn80s(world: GateWorld): Promise<string> {
@@ -346,7 +350,10 @@ async function noDecideControls(world: GateWorld, email: string, path: string): 
   const document = await documentOf(world, email, path);
   expect(document.querySelector('main form[data-command="decide"]')).toBeNull();
   expect(document.querySelectorAll('main button[name="decision"]')).toHaveLength(0);
-  expect(document.querySelectorAll('main [class*="kindle"]')).toHaveLength(0);
+  const marked = [...document.querySelectorAll('main [class*="human"]')].filter(
+    (element) => element.closest('nav[aria-label="Decisions"]') === null,
+  );
+  expect(marked).toHaveLength(0);
   expect(document.querySelector('main [role="note"]')?.textContent).toBe(notWaiting);
 }
 
@@ -418,7 +425,7 @@ async function approveAllShown(world: GateWorld): Promise<void> {
   ]);
   const button = document.querySelector('main form[data-command="decide_gates"] button');
   expect(button?.textContent).toMatch(/^Approve the 1 gate shown on /);
-  expect(button?.getAttribute('class')).toContain('bg-kindle');
+  expect(button?.getAttribute('class')).toContain('bg-human');
   expect(await screenProblems((await pageOf(world, world.kimEmail, gatesPath())).text)).toEqual([]);
   expect(approveAllForms(await documentOf(world, world.viewerEmail, gatesPath()))).toEqual([]);
 }
@@ -465,7 +472,24 @@ async function delegatedMergeListed(world: GateWorld): Promise<void> {
   expect(viewer.text).not.toContain('Merged under a delegation');
 }
 
+async function lookOfGates(world: GateWorld): Promise<void> {
+  const document = await documentOf(world, world.kimEmail, gatesPath());
+  const inbox = document.querySelector('main nav[aria-label="Decisions"]');
+  expect(inbox?.querySelectorAll('li a').length).toBeGreaterThan(0);
+  const panel = document.querySelector('main section[aria-labelledby]');
+  expect(panel?.querySelectorAll('svg circle')).toHaveLength(16);
+  expect(panel?.textContent).toMatch(/\d+\/16rules met/);
+  expect(panel?.querySelector('section[aria-label="Ship rule"]')).not.toBeNull();
+  expect(panel?.querySelector('aside[aria-label="Risk"]')).not.toBeNull();
+  const deep = await documentOf(world, world.kimEmail, deepLink(world));
+  const list = deep.querySelector('main nav[aria-label="Decisions"]');
+  expect(list?.getAttribute('class')).toContain('hidden');
+  expect(list?.getAttribute('class')).toContain('md:flex');
+}
+
 describe.skipIf(!testServer)('the Gates view and its deep link', () => {
+  it('UI-7 Gates lists the decisions beside the open one, with the ring of 16 rules, the rules, the risk, and one at a time on a phone', () =>
+    inGates(lookOfGates));
   it('WB-6 the gates view lists only the gates the person can decide', () =>
     inGates(onlyDecidable));
   it('GD-1 the Gates view offers approve all shown over the gates whose ship rule advances', () =>

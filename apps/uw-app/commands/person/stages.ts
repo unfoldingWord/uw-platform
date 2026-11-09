@@ -21,6 +21,7 @@ export const activateTemplateCommand = commandHandler({
       botAuthors,
       requiredChecks: body.requiredChecks,
       protectedPaths: body.protectedPaths,
+      ...(body.title === undefined ? {} : { title: body.title }),
     };
     const activated = await kernel.stages.activate(caller, input);
     if (activated.status === 'accepted') {
@@ -101,6 +102,13 @@ export const setFixClaimCommand = commandHandler({
   action: 'admin',
   run: async ({ kernel, caller, harnessId }, body: CommandBody<'set_fix_claim'>) =>
     fromKernel(await kernel.stages.setFixClaim(caller, { harnessId, enabled: body.enabled })),
+});
+
+export const setTitleCommand = commandHandler({
+  name: 'set_title',
+  action: 'admin',
+  run: async ({ kernel, caller, harnessId }, body: CommandBody<'set_title'>) =>
+    fromKernel(await kernel.stages.setTitle(caller, { harnessId, title: body.title })),
 });
 
 export const setFreezeCommand = commandHandler({

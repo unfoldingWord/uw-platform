@@ -33,6 +33,7 @@ function harnessOf(repository: string | null): Harness {
   return harnessSchema.parse({
     id: harnessId,
     key: 'software',
+    title: 'software',
     template: 'software',
     jdArea: '80-89',
     repository,
@@ -57,6 +58,7 @@ function harnessesGateway(harness: Harness): HarnessesGateway {
       setFreeze: unused,
       setTemplate: unused,
       setFixClaim: unused,
+      setTitle: unused,
     },
   };
 }
@@ -75,6 +77,9 @@ function itemsGateway(inserted: ItemState[]): HarnessItemsGateway {
       lapsedLeases: unused,
       parked: unused,
       openFor: unused,
+      openCounts: unused,
+      parkedSince: unused,
+      claimedBy: unused,
       byIds: unused,
     },
     write: {
@@ -97,6 +102,7 @@ function eventsGateway(appended: HarnessEvent[]): HarnessEventsGateway {
       recent: unused,
       lastPosition: unused,
       lastPositions: unused,
+      latestForItems: unused,
       countForPersona: unused,
     },
     write: {

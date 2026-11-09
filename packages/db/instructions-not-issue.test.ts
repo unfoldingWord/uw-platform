@@ -48,8 +48,8 @@ async function refusal(work: PromiseLike<unknown>) {
 }
 
 async function seed(db: Db): Promise<void> {
-  await db.execute(sql`INSERT INTO harnesses (id, key, template, jd_area, created_at)
-    VALUES (${harnessId}, 'software', 'software', '80-89', ${atText}::timestamptz)`);
+  await db.execute(sql`INSERT INTO harnesses (id, key, title, template, jd_area, created_at)
+    VALUES (${harnessId}, 'software', 'software', 'software', '80-89', ${atText}::timestamptz)`);
   await insertPage(db, skillPage, 'skill', 'package-instructions');
   await insertPage(db, issuePage, 'issue', 'issue-42');
 }

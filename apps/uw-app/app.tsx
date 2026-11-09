@@ -10,6 +10,7 @@ import { harnessRoutes } from './commands/routes.ts';
 import { securityHeaders } from './http/security-headers.ts';
 import { withDatabase } from './database.ts';
 import { platformDeps, type AppDeps, type AppEnv } from './deps.ts';
+import { withFrameHealth } from './health/frame-health.ts';
 import { healthScreenRoutes, probeRoutes } from './health/routes.tsx';
 import { mcpRoutes } from './mcp/routes.ts';
 import { pushRoutes } from './notify/routes.ts';
@@ -42,6 +43,7 @@ export function createApp(
   app.route('/', assetRoutes());
 
   app.use(withPrincipal(deps));
+  app.use(withFrameHealth(deps));
   app.route('/api/me', meRoutes());
   app.route('/api/acl', aclRoutes());
   app.route('/api/agents', agentRoutes());

@@ -1,10 +1,32 @@
 :root {
-  --uw-space: 0.25rem;
+  --uw-space-0: 0px;
+  --uw-space-1: 4px;
+  --uw-space-2: 8px;
+  --uw-space-3: 12px;
+  --uw-space-4: 16px;
+  --uw-space-5: 24px;
+  --uw-space-6: 32px;
+  --uw-space-7: 48px;
+  --uw-space-8: 64px;
+  --uw-size-1: 12px;
+  --uw-size-2: 16px;
+  --uw-size-3: 20px;
+  --uw-size-4: 24px;
+  --uw-size-5: 32px;
+  --uw-size-6: 36px;
+  --uw-size-7: 48px;
+  --uw-size-8: 64px;
   --uw-radius-sm: 4px;
-  --uw-radius-md: 6px;
-  --uw-radius-lg: 10px;
+  --uw-radius-md: 8px;
+  --uw-radius-lg: 12px;
+  --uw-radius-full: 9999px;
+  --uw-layout-side: 248px;
+  --uw-layout-inbox: 340px;
+  --uw-layout-aside: 260px;
+  --uw-layout-content: 1080px;
+  --uw-layout-col-min: 150px;
+  --uw-layout-col-max: 320px;
+  --uw-layout-flow: 48rem;
   --uw-breakpoint-md: 48rem;
   --uw-breakpoint-lg: 64rem;
-  --uw-sidebar: 16rem;
-  --uw-flow-diagram: 48rem;
 }

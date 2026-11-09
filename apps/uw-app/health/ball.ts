@@ -40,7 +40,7 @@ export function silenceIndicator(found: readonly Silence[], at: Date): HealthInd
   const oldest = Math.min(...worst.waiting.map((entry) => entry.enteredAt.getTime()));
   const waiting = loud.reduce((sum, silence) => sum + silence.waiting.length, 0);
   const longest = formatDuration(at.getTime() - oldest);
-  const detail = `${formatCount(waiting)} waiting in Check, the longest ${longest} on ${worst.harness.key}, with no review step for ${quietFor(worst, at)}${bots}`;
+  const detail = `${formatCount(waiting)} waiting in Check, the longest ${longest} on ${worst.harness.title}, with no review step for ${quietFor(worst, at)}${bots}`;
   return { name: 'silence_alarm', status: worst.level, detail: detail.slice(0, DETAIL_LIMIT) };
 }
 

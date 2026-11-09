@@ -6,7 +6,7 @@ import { AGENT_PLANE_INDICATORS } from '../health/agent-plane.ts';
 import { boardWorld, type BoardWorld } from '../testing/board-world.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
-import { getHtml } from '../testing/views.ts';
+import { getHtml, pageContent } from '../testing/views.ts';
 import { healthPath } from './parts/paths.ts';
 
 const clock: Clock = { now: () => new Date('2026-10-02T09:00:00.000Z') };
@@ -95,7 +95,7 @@ async function unknownIndicators(world: BoardWorld): Promise<void> {
   for (const path of ['/health/spendx', '/health/xbreaker', '/health/spend/x']) {
     const answer = await page(path);
     expect([path, answer.status]).toEqual([path, 404]);
-    expect(answer.text).toBe(missing.text);
+    expect(pageContent(answer)).toBe(pageContent(missing));
   }
 }
 
@@ -117,13 +117,38 @@ async function inTheShell(world: BoardWorld): Promise<void> {
   expect(document.querySelector('nav a[href="/health"]')?.getAttribute('aria-current')).toBe(
     'page',
   );
-  expect(document.querySelector('main h1')?.textContent).toBe('Health');
-  expect(document.querySelector('main h1 + p')?.textContent).toMatch(/^Overall status: /);
+  expect(document.querySelector('title')?.textContent).toBe('Health');
+  expect(document.querySelector('main h1')?.textContent).toMatch(
+    /^(?:Running, (?:nothing|with \d+ things?) to watch|Something needs attention)$/,
+  );
+  expect(document.querySelector('main h1 + p')?.textContent).toMatch(
+    /^(?:Nothing|Something) is failing\./,
+  );
   expect(await screenProblems(page.text)).toEqual([]);
   for (const name of AGENT_PLANE_INDICATORS) {
     const list = await getHtml(world.db, world.viewer.email, healthPath(name), {}, clock);
     expect(await screenProblems(list.text)).toEqual([]);
   }
+}
+
+async function lookOfHealth(world: BoardWorld): Promise<void> {
+  const document = await documentOf(world);
+  const figures = [...document.querySelectorAll('main dl')]
+    .slice(0, 4)
+    .map((list) => list.querySelector('dt')?.textContent);
+  expect(figures).toEqual(['Spend this month', 'Runs today', 'Live delegations', 'Gate refusals']);
+  const chart = document.querySelector('main section[aria-label="Agent runs"] svg[role="img"]');
+  expect(chart?.getAttribute('aria-label')).toContain('Agent runs per day');
+  expect(chart?.outerHTML).not.toMatch(/\sstyle="/);
+  const total = document.querySelector('main section[aria-label="Agent runs"] .text-3xl');
+  expect(total?.textContent).toMatch(/^\d+$/);
+}
+
+async function detailSays(world: BoardWorld): Promise<void> {
+  const document = await documentOf(world, healthPath('spend'));
+  expect(document.querySelector('main h1')?.textContent).toBe('Spend This Month');
+  expect(document.querySelector('main h1 + p')?.textContent).toMatch(/^Healthy: \$1\.50 metered/);
+  expect(document.querySelector('main table')).not.toBeNull();
 }
 
 describe.skipIf(!testServer)('/health and its drill-through', () => {
@@ -140,4 +165,8 @@ describe.skipIf(!testServer)('/health and its drill-through', () => {
   it('an unknown indicator, even one that starts or ends with a known name, answers the not-found page', () =>
     inHealth(unknownIndicators));
   it('WB-10 /health renders in the shell with no screen problems', () => inHealth(inTheShell));
+  it('UI-8 UI-14 Health says how the platform is, its four figures and 30 days of runs drawn as SVG with the total as text', () =>
+    inHealth(lookOfHealth));
+  it('UI-13 a Health detail names its indicator, says how it is, and lists what is behind it', () =>
+    inHealth(detailSays));
 });

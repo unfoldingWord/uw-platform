@@ -106,9 +106,27 @@ describe('the notification a push shows', () => {
       title: DEFAULT_PUSH_TITLE,
       options: { tag: '/', data: { link: '/' } },
     });
-    const odd = pushNotification(
+    const titled = pushNotification(
       pushPayload({ harness: 'Not A Key!', reason: 'run_failed', link }),
     );
-    expect(odd.options).toEqual({ tag: link, data: { link } });
+    expect(titled.options).toEqual({ body: 'In Not A Key!.', tag: link, data: { link } });
+    const unnamed = pushNotification(pushPayload({ harness: 7, reason: 'run_failed', link }));
+    expect(unnamed.options).toEqual({ tag: link, data: { link } });
+  });
+});
+
+describe('UI-18 a push names the harness by its title', () => {
+  const link = '/harnesses/h/gates/i';
+  it('UI-18 a title is shown in the body, trimmed', () => {
+    const shown = pushNotification({ harness: '  Software  ', reason: 'gate_waiting', link });
+    expect(shown.options.body).toBe('In Software.');
+  });
+
+  it('UI-18 a name with a control character or over 80 characters is not shown', () => {
+    for (const harness of ['Soft\nware', 'x'.repeat(81), '   ']) {
+      expect(pushNotification({ harness, reason: 'gate_waiting', link }).options.body).toBe(
+        undefined,
+      );
+    }
   });
 });

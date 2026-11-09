@@ -126,7 +126,7 @@ function homeOf(db: Database, email: string, headers: Readonly<Record<string, st
 
 function linksOf(html: string): readonly [string | null, string][] {
   const { document } = new JSDOM(html).window;
-  return [...document.querySelectorAll('main li a')].map((link) => [
+  return [...document.querySelectorAll('main ul[aria-label="Waiting on you"] li a')].map((link) => [
     link.getAttribute('href'),
     link.textContent ?? '',
   ]);
@@ -161,7 +161,7 @@ async function countIsRows(db: Database): Promise<void> {
   await seeded(db);
   const page = await homeOf(db, IAN);
   const { document } = new JSDOM(page.text).window;
-  expect(document.querySelector('main h1')?.textContent).toBe('Waiting on you');
+  expect(document.querySelector('main h1')?.textContent).toBe('Hello, Ian');
   expect(document.querySelector('main h1 + p')?.textContent).toBe('3 things are waiting on you');
   expect(linksOf(page.text)).toHaveLength(3);
 }
@@ -241,7 +241,7 @@ async function pushControl(db: Database): Promise<void> {
   const control = document.querySelector('main [data-push]');
   const button = control?.querySelector('button[data-push-toggle]');
   expect(button?.textContent?.trim()).toBe('Turn on notifications on this device');
-  expect(button?.getAttribute('class')).not.toContain('kindle');
+  expect(button?.getAttribute('class')).not.toContain('human');
   expect(control?.querySelector('[data-push-outcome][role="status"]')).not.toBeNull();
 }
 
@@ -311,7 +311,22 @@ async function kimLosesAdmin(db: Database): Promise<void> {
   ]);
 }
 
+async function lookOfHome(db: Database): Promise<void> {
+  await seeded(db);
+  const { document } = new JSDOM((await homeOf(db, IAN)).text).window;
+  expect(document.querySelector('main h1')?.textContent).toBe('Hello, Ian');
+  const card = document.querySelector('main section[aria-labelledby="harnesses-heading"] li');
+  expect(card?.querySelectorAll('ol[aria-label="Items by stage"] li').length).toBe(8);
+  expect(card?.querySelector('svg[role="img"]')?.getAttribute('aria-label')).toMatch(
+    /^Runs per day on /,
+  );
+  expect(card?.textContent).toMatch(/\d+ items/);
+  expect(document.querySelector('main section[data-push]')).not.toBeNull();
+}
+
 describe.skipIf(!testServer)('Home', () => {
+  it('UI-9 Home greets the person, lists what waits on them, and shows a card per harness with its stages and 30 days of runs', () =>
+    withAppDatabase(lookOfHome));
   it('WB-9 Home lists the gates the person can decide, then lapsed delegations, then failed runs, each deep-linked', () =>
     withAppDatabase(listsInOrder));
   it('WB-9 the count Home shows is the number of rows it lists', () =>

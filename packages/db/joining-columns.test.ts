@@ -28,8 +28,8 @@ function openDatabase(target: DatabaseTarget): () => Db {
 }
 
 function insertHarness(db: Db, key: string, external: string) {
-  return db.execute(sql`INSERT INTO harnesses (id, key, template, jd_area, created_at, external_reviewer_identities)
-    VALUES (gen_random_uuid(), ${key}, 'check-only', '80-89', now(), ${external}::text[])`);
+  return db.execute(sql`INSERT INTO harnesses (id, key, title, template, jd_area, created_at, external_reviewer_identities)
+    VALUES (gen_random_uuid(), ${key}, ${key}, 'check-only', '80-89', now(), ${external}::text[])`);
 }
 
 async function refusal(work: PromiseLike<unknown>) {
@@ -43,8 +43,8 @@ async function refusal(work: PromiseLike<unknown>) {
 
 function joiningColumns(db: () => Db): void {
   it('GL-4 PI-1 a harness starts out of shadow with no external reviewers', async () => {
-    await db().execute(sql`INSERT INTO harnesses (id, key, template, jd_area, created_at)
-      VALUES (gen_random_uuid(), 'joining-defaults', 'check-only', '80-89', now())`);
+    await db().execute(sql`INSERT INTO harnesses (id, key, title, template, jd_area, created_at)
+      VALUES (gen_random_uuid(), 'joining-defaults', 'joining-defaults', 'check-only', '80-89', now())`);
     const rows = await db()
       .select({ shadow: harnesses.shadow, external: harnesses.externalReviewerIdentities })
       .from(harnesses)

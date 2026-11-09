@@ -24,6 +24,7 @@ function wake(
   return {
     harnessId,
     harnessKey: 'software',
+    harnessTitle: 'software',
     jdArea: '80-89',
     itemId,
     itemRef: 'item-c6300000',

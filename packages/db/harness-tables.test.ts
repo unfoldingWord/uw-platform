@@ -55,6 +55,7 @@ const expectedColumns: Record<string, string[]> = {
     'protected_paths',
     'fix_claim',
     'bot_authors',
+    'title',
   ],
   harness_stages: [
     'id',
@@ -193,8 +194,8 @@ async function columnsOf(db: Db, table: string): Promise<string[]> {
 }
 
 function insertHarness(db: Db, id: string, key: string, area: string) {
-  return db.execute(sql`INSERT INTO harnesses (id, key, template, jd_area, created_at)
-    VALUES (${id}, ${key}, 'software', ${area}, ${atText}::timestamptz)`);
+  return db.execute(sql`INSERT INTO harnesses (id, key, title, template, jd_area, created_at)
+    VALUES (${id}, ${key}, ${key}, 'software', ${area}, ${atText}::timestamptz)`);
 }
 
 function insertStage(db: Db, id: string, harness: string, key: string, position: number) {
@@ -268,8 +269,9 @@ function tableShape(db: () => Db): void {
   );
 
   it('KN-1 declares harnesses.jd_area NOT NULL', async () => {
-    const missing = db().execute(sql`INSERT INTO harnesses (id, key, template, jd_area, created_at)
-      VALUES (${idOf(0xb4)}, 'unscoped', 'software', NULL, ${atText}::timestamptz)`);
+    const missing = db()
+      .execute(sql`INSERT INTO harnesses (id, key, title, template, jd_area, created_at)
+      VALUES (${idOf(0xb4)}, 'unscoped', 'unscoped', 'software', NULL, ${atText}::timestamptz)`);
     expect((await refusal(missing)).code).toBe('23502');
   });
 

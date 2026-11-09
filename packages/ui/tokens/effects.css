@@ -1,0 +1,14 @@
+:root {
+  --uw-glow: color-mix(in oklab, var(--uw-accent) 13%, transparent);
+  --uw-glow-human: color-mix(in oklab, var(--uw-human) 14%, transparent);
+  --uw-gridline: color-mix(in oklab, var(--uw-accent) 5%, transparent);
+  --uw-shadow-1: inset 0 1px 0 var(--uw-highlight), 0 0 0 1px var(--uw-line);
+  --uw-shadow-2:
+    inset 0 1px 0 var(--uw-highlight), 0 0 0 1px var(--uw-line-strong),
+    0 12px 28px -12px var(--uw-depth);
+  --uw-shadow-3: 0 0 0 1px var(--uw-line-strong), 0 32px 64px -24px var(--uw-depth);
+  --uw-shadow-key:
+    inset 0 1px 0 var(--uw-highlight), inset 0 -1px 0 rgb(0 0 0 / 0.18),
+    0 0 0 1px var(--uw-line-strong);
+  --uw-shadow-person: 0 0 0 3px var(--uw-glow-human), 0 0 16px -4px var(--uw-human);
+}

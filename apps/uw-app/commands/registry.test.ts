@@ -41,6 +41,7 @@ const actions = {
   decide_gates: 'admin',
   refute_finding: 'write',
   set_fix_claim: 'admin',
+  set_title: 'admin',
   enqueue_epic: 'write',
   change_template: 'admin',
 } as const;

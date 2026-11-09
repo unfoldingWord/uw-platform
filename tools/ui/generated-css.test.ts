@@ -5,23 +5,30 @@ import { appCss, appCssPath, manifestColours } from '../../packages/ui/generated
 import { resolveToken, themeTokens } from './css-tokens.ts';
 
 const themeColours = [
-  'bg',
+  'canvas',
+  'side',
   'surface',
-  'ink',
-  'muted',
+  'raised',
+  'hover',
   'line',
-  'ocean',
-  'ocean-panel',
-  'ocean-panel-ink',
-  'inspire',
-  'inspire-soft',
-  'cultivate',
-  'cultivate-soft',
-  'kindle',
-  'kindle-soft',
+  'line-strong',
+  'text',
+  'text-2',
+  'text-3',
+  'accent',
+  'accent-text',
+  'accent-soft',
   'on-accent',
-  'link',
-  'focus',
+  'human',
+  'human-text',
+  'human-soft',
+  'human-line',
+  'ok',
+  'ok-text',
+  'ok-soft',
+  'glow',
+  'glow-human',
+  'gridline',
 ];
 
 function colourNames(css: string): string[] {
@@ -45,10 +52,26 @@ describe('WB-11 the stylesheet is built from the tokens', () => {
   it('manifestColours are the light ocean and background tokens', () => {
     const light = themeTokens('light');
     expect(manifestColours).toEqual({
-      theme: resolveToken('--uw-ocean', light),
-      background: resolveToken('--uw-bg', light),
-      panel: resolveToken('--uw-ocean-panel', light),
-      panelInk: resolveToken('--uw-ocean-panel-ink', light),
+      theme: resolveToken('--uw-ocean-800', light),
+      background: resolveToken('--uw-canvas', light),
+      panel: resolveToken('--uw-ocean-800', light),
+      panelInk: resolveToken('--uw-ocean-50', light),
     });
   });
+});
+
+describe('UI-3 the bundled fonts are the font build', () => {
+  it('UI-3 the committed font module and @font-face rules are the Fontsource files', () => {
+    expect(() =>
+      execFileSync('node', ['tools/ui/build-fonts.ts', '--check'], { stdio: 'pipe' }),
+    ).not.toThrow();
+  }, 60_000);
+});
+
+describe('UI-5 the served mark is the committed brand mark', () => {
+  it('UI-5 the generated mark module is the PNG in packages/ui/assets', () => {
+    expect(() =>
+      execFileSync('node', ['tools/ui/build-mark.ts', '--check'], { stdio: 'pipe' }),
+    ).not.toThrow();
+  }, 60_000);
 });
