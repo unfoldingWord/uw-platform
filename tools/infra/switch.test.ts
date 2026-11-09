@@ -205,6 +205,10 @@ describe('GL-1 the runbook switches on what the go-live files leave unset', () =
     expect(secrets).toEqual([
       'CLOUDFLARE_ACCOUNT_ID',
       'CLOUDFLARE_API_TOKEN',
+      'DATABASE_TUNNEL_CLIENT_ID',
+      'DATABASE_TUNNEL_CLIENT_SECRET',
+      'DATABASE_TUNNEL_HOST_PRODUCTION',
+      'DATABASE_TUNNEL_HOST_STAGING',
       'DATABASE_URL_PRODUCTION',
       'DATABASE_URL_STAGING',
       'NEON_API_KEY',
