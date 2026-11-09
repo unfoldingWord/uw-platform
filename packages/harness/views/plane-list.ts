@@ -168,7 +168,7 @@ async function heldRows(scope: ListScope, kind: 'person' | 'agent'): Promise<rea
     harnessId: harness.id,
     cells: {
       item: item.title,
-      harness: harness.key,
+      harness: harness.title,
       holder: holder.identity ?? 'A person who may decide',
       role: holder.role,
       since: holder.since === null ? null : formatInstant(holder.since),
@@ -185,7 +185,7 @@ async function silenceRows(scope: ListScope): Promise<readonly PlaneRow[]> {
       harnessId: silence.harness.id,
       cells: {
         item: item.title,
-        harness: silence.harness.key,
+        harness: silence.harness.title,
         level: silence.level,
         entered: formatInstant(enteredAt),
         waited: heldFor(scope.at, enteredAt),
