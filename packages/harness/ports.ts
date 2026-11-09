@@ -231,6 +231,7 @@ export type WakeRecipient = { readonly personId: string; readonly present: boole
 export type Wake = {
   readonly harnessId: string;
   readonly harnessKey: string;
+  readonly harnessTitle: string;
   readonly jdArea: JdArea;
   readonly itemId: string | null;
   readonly itemRef: string | null;
