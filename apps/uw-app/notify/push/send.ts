@@ -13,7 +13,7 @@ export type PushSend = {
 };
 
 function payloadOf(wake: Wake): PushPayload {
-  return { harness: wake.harnessTitle, reason: wake.reason, link: wake.link };
+  return { harness: wake.harnessKey, reason: wake.reason, link: wake.link };
 }
 
 function fieldsOf(wake: Wake, recipient: WakeRecipient) {
