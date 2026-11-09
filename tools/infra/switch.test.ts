@@ -141,12 +141,12 @@ function stagingProbe(): string {
 function plantedFaultsAreFlagged(): void {
   const planted: Job = {
     steps: [
-      { run: 'pnpm db:migrate', env: { DATABASE_URL: 'secrets.NEON_DIRECT_URL_STAGING' } },
-      { id: 'gate', run: 'bash .github/scripts/secret-gate.sh NEON_DIRECT_URL_STAGING' },
+      { run: 'pnpm db:migrate', env: { DATABASE_URL: 'secrets.DATABASE_URL_STAGING' } },
+      { id: 'gate', run: 'bash .github/scripts/secret-gate.sh DATABASE_URL_STAGING' },
       { run: 'pnpm db:migrate' },
     ],
   };
-  expect(gateSecret(planted)).toBe('NEON_DIRECT_URL_STAGING');
+  expect(gateSecret(planted)).toBe('DATABASE_URL_STAGING');
   expect(gateFaults(planted)).toEqual(['step 0', 'step 2']);
   const deploy = { run: 'wrangler deploy', env: { CLOUDFLARE_API_TOKEN: 'secrets.X_TOKEN' } };
   expect(gateFaults({ steps: [deploy] })).toEqual(['gate on nothing', 'step 0']);
@@ -205,9 +205,13 @@ describe('GL-1 the runbook switches on what the go-live files leave unset', () =
     expect(secrets).toEqual([
       'CLOUDFLARE_ACCOUNT_ID',
       'CLOUDFLARE_API_TOKEN',
+      'DATABASE_TUNNEL_CLIENT_ID',
+      'DATABASE_TUNNEL_CLIENT_SECRET',
+      'DATABASE_TUNNEL_HOST_PRODUCTION',
+      'DATABASE_TUNNEL_HOST_STAGING',
+      'DATABASE_URL_PRODUCTION',
+      'DATABASE_URL_STAGING',
       'NEON_API_KEY',
-      'NEON_DIRECT_URL_PRODUCTION',
-      'NEON_DIRECT_URL_STAGING',
       'NEON_PROJECT_ID',
     ]);
     expect(placeholderNames()).toContain('Hyperdrive id');
