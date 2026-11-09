@@ -45,14 +45,14 @@ jobs:
       - name: Skip unless the production direct connection is set
         id: gate
         env:
-          NEON_DIRECT_URL_PRODUCTION: ${{ secrets.NEON_DIRECT_URL_PRODUCTION }}
-        run: bash .github/scripts/secret-gate.sh NEON_DIRECT_URL_PRODUCTION
+          DATABASE_URL_PRODUCTION: ${{ secrets.DATABASE_URL_PRODUCTION }}
+        run: bash .github/scripts/secret-gate.sh DATABASE_URL_PRODUCTION
       - if: steps.gate.outputs.configured == 'true'
         uses: ./.github/actions/setup
       - name: Apply migrations to production
         if: steps.gate.outputs.configured == 'true'
         env:
-          DATABASE_URL: ${{ secrets.NEON_DIRECT_URL_PRODUCTION }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PRODUCTION }}
         run: pnpm db:migrate
 
   deploy-production:
