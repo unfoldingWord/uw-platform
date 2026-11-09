@@ -32,8 +32,8 @@ function runGate(env: Record<string, string>): string {
 const goLiveJobs: [string, string, string][] = [
   ['neon-pr.yml', 'neon-branch', 'NEON_API_KEY'],
   ['cleanup-pr.yml', 'drop-neon-branch', 'NEON_API_KEY'],
-  ['deploy-staging.yml', 'migrate-staging', 'NEON_DIRECT_URL_STAGING'],
-  ['deploy-production.yml', 'migrate-production', 'NEON_DIRECT_URL_PRODUCTION'],
+  ['deploy-staging.yml', 'migrate-staging', 'DATABASE_URL_STAGING'],
+  ['deploy-production.yml', 'migrate-production', 'DATABASE_URL_PRODUCTION'],
 ];
 
 const gated = "steps.gate.outputs.configured == 'true'";
