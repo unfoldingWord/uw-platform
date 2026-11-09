@@ -49,6 +49,13 @@ jobs:
         run: bash .github/scripts/secret-gate.sh DATABASE_URL_PRODUCTION
       - if: steps.gate.outputs.configured == 'true'
         uses: ./.github/actions/setup
+      - name: Open the database tunnel when one is configured
+        if: steps.gate.outputs.configured == 'true'
+        env:
+          DATABASE_TUNNEL_HOST: ${{ vars.DATABASE_TUNNEL_HOST_PRODUCTION }}
+          DATABASE_TUNNEL_CLIENT_ID: ${{ secrets.DATABASE_TUNNEL_CLIENT_ID }}
+          DATABASE_TUNNEL_CLIENT_SECRET: ${{ secrets.DATABASE_TUNNEL_CLIENT_SECRET }}
+        run: bash .github/scripts/db-tunnel.sh
       - name: Apply migrations to production
         if: steps.gate.outputs.configured == 'true'
         env:
