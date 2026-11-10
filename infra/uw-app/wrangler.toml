@@ -24,7 +24,7 @@ enabled = true
 
 [env.production]
 name = "uw-app"
-workers_dev = false
+workers_dev = true
 
 [env.production.vars]
 COMMIT_SHA = "unknown"

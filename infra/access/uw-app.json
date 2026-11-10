@@ -2,8 +2,12 @@
   "application": {
     "name": "uw-app",
     "type": "self_hosted",
-    "domain": "uw-app-staging.unfoldingword.workers.dev",
+    "domain": "uw-app.unfoldingword.workers.dev",
     "destinations": [
+      {
+        "type": "public",
+        "uri": "uw-app.unfoldingword.workers.dev"
+      },
       {
         "type": "public",
         "uri": "uw-app-staging.unfoldingword.workers.dev"
@@ -13,20 +17,18 @@
         "uri": "uw-app-pr-*.unfoldingword.workers.dev"
       }
     ],
-    "allowed_idps": ["<google-idp-id>"],
+    "allowed_idps": ["<one-time-pin-idp-id>"],
     "auto_redirect_to_identity": true,
     "session_duration": "24h",
     "same_site_cookie_attribute": "lax"
   },
   "policies": [
     {
-      "name": "Anyone signed in with Google",
+      "name": "Anyone with an email",
       "decision": "allow",
       "include": [
         {
-          "login_method": {
-            "id": "<google-idp-id>"
-          }
+          "everyone": {}
         }
       ]
     }
@@ -35,8 +37,12 @@
     "application": {
       "name": "uw-app health probe",
       "type": "self_hosted",
-      "domain": "uw-app-staging.unfoldingword.workers.dev/health/probe",
+      "domain": "uw-app.unfoldingword.workers.dev/health/probe",
       "destinations": [
+        {
+          "type": "public",
+          "uri": "uw-app.unfoldingword.workers.dev/health/probe"
+        },
         {
           "type": "public",
           "uri": "uw-app-staging.unfoldingword.workers.dev/health/probe"
@@ -64,8 +70,12 @@
     "application": {
       "name": "uw-app MCP surface",
       "type": "self_hosted",
-      "domain": "uw-app-staging.unfoldingword.workers.dev/mcp",
+      "domain": "uw-app.unfoldingword.workers.dev/mcp",
       "destinations": [
+        {
+          "type": "public",
+          "uri": "uw-app.unfoldingword.workers.dev/mcp"
+        },
         {
           "type": "public",
           "uri": "uw-app-staging.unfoldingword.workers.dev/mcp"
@@ -75,19 +85,17 @@
           "uri": "uw-app-pr-*.unfoldingword.workers.dev/mcp"
         }
       ],
-      "allowed_idps": ["<google-idp-id>"],
+      "allowed_idps": ["<one-time-pin-idp-id>"],
       "auto_redirect_to_identity": true,
       "session_duration": "24h"
     },
     "policies": [
       {
-        "name": "Agents signed in with Google",
+        "name": "Anyone with an email",
         "decision": "allow",
         "include": [
           {
-            "login_method": {
-              "id": "<google-idp-id>"
-            }
+            "everyone": {}
           }
         ]
       },
@@ -97,6 +105,33 @@
         "include": [
           {
             "any_valid_service_token": {}
+          }
+        ]
+      }
+    ]
+  },
+  "migrations": {
+    "application": {
+      "name": "uw-platform database (migrations)",
+      "type": "self_hosted",
+      "domain": "uw-db-production.unfoldingword.us",
+      "destinations": [
+        {
+          "type": "public",
+          "uri": "uw-db-production.unfoldingword.us"
+        }
+      ],
+      "session_duration": "24h"
+    },
+    "policies": [
+      {
+        "name": "GitHub migrations service token",
+        "decision": "non_identity",
+        "include": [
+          {
+            "service_token": {
+              "token_id": "<github-migrations-service-token-id>"
+            }
           }
         ]
       }

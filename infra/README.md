@@ -9,7 +9,7 @@ Everything Cloudflare, Neon and Access that the platform runs on is declared her
 | Environment | Worker name | Reachable at | Deployed by |
 |---|---|---|---|
 | staging | `uw-app-staging` | `https://uw-app-staging.<account subdomain>.workers.dev` | `main` (workflow in #68); by hand until then |
-| production | `uw-app` | nowhere yet: no route, `workers_dev = false` | a tagged release only (#68) |
+| production | `uw-app` | `https://uw-app.unfoldingword.workers.dev` (`workers_dev = true`, behind Access) | a tagged release only (#68) |
 
 ### Deploy staging by hand
 
@@ -45,9 +45,9 @@ The classes `ClaudeCodeSandbox` and `CodexSandbox` (`apps/uw-app/engines/sandbox
 
 ## Access (FD-7)
 
-`access/uw-app.json` declares Cloudflare Access in front of `uw-app` on staging and every per-PR Worker, as three applications. The app application covers the host: people sign in with Google, and no service token is admitted. The `mcp` application covers `/mcp` alone with its own AUD tag: people sign their agents in with Google (through `cloudflared access`), and any valid service token passes as a non-identity request and becomes a non-interactive agent principal. Because the two applications have different audiences, a token an agent holds for `/mcp` is refused on every other path, and a browser session is refused on `/mcp` (R34). `/health/probe` alone is bypassed, on staging and on every per-PR Worker, so the deploy jobs (`deploy-staging.yml` and `deploy-pr.yml`, through `await-health.sh`) can read the deployed commit; `/health` itself shows the agent plane and needs a signed-in person. The app application sends its session cookie `SameSite=Lax`, so a form posted from another site carries no session. Applying either change on Cloudflare is a person's (Waiting on a person).
+`access/uw-app.json` declares Cloudflare Access in front of `uw-app` on production, staging and every per-PR Worker, as three applications. The app application covers the host: people sign in with an emailed one-time PIN, and no service token is admitted. The `mcp` application covers `/mcp` alone with its own AUD tag: people sign their agents in with a one-time PIN (through `cloudflared access`), and any valid service token passes as a non-identity request and becomes a non-interactive agent principal. Because the two applications have different audiences, a token an agent holds for `/mcp` is refused on every other path, and a browser session is refused on `/mcp` (R34). `/health/probe` alone is bypassed, on every host, so the deploy jobs (`deploy-staging.yml` and `deploy-pr.yml`, through `await-health.sh`) can read the deployed commit; `/health` itself shows the agent plane and needs a signed-in person. The app application sends its session cookie `SameSite=Lax`, so a form posted from another site carries no session. Applying either change on Cloudflare is a person's (Waiting on a person).
 
-The allow policy admits any Google account on purpose. A person outside `@unfoldingword.org` must reach the app to be recorded as pending (FD-7). Authorization is the grants table, not Access.
+The allow policy admits anyone who can receive an email on purpose. A person outside `@unfoldingword.org` must reach the app to be recorded as pending (FD-7). Authorization is the grants table, not Access.
 
 The file holds the bodies of two Cloudflare API calls, applied by a person with an API token holding Access: Apps and Policies Edit:
 
@@ -55,7 +55,11 @@ The file holds the bodies of two Cloudflare API calls, applied by a person with 
 - The same two calls for `health_bypass.application` with `health_bypass.policies`.
 - The same two calls for `mcp.application` with `mcp.policies`.
 
-Replace `<google-idp-id>` with the Google identity provider's id from `GET /accounts/{account_id}/access/identity_providers`. After creation, the app application's AUD tag, the `mcp` application's AUD tag and the team domain go into `ACCESS_AUD`, `ACCESS_MCP_AUD` and `ACCESS_TEAM_DOMAIN` in `infra/uw-app/wrangler.go-live.toml` (Task 16 of the step-1 plan). An AUD tag is configuration, not a secret. Production gets its own application when `uw-app` has a production route.
+Replace `<one-time-pin-idp-id>` with the one-time PIN identity provider's id from `GET /accounts/{account_id}/access/identity_providers`. People sign in with an emailed one-time PIN; Google can replace it once a Google OAuth client exists, by adding it as an identity provider and to `allowed_idps`. After creation, the app application's AUD tag, the `mcp` application's AUD tag and the team domain go into `ACCESS_AUD`, `ACCESS_MCP_AUD` and `ACCESS_TEAM_DOMAIN` in `infra/uw-app/wrangler.go-live.toml` (Task 16 of the step-1 plan). An AUD tag is configuration, not a secret. The three applications cover production, staging and every per-PR Worker; they were applied on 2026-11-10 to the team `unfoldingword.cloudflareaccess.com`.
+
+A fourth application, `migrations`, covers the database hostname `uw-db-production.unfoldingword.us` and admits only the service token `uw-platform GitHub migrations` (replace `<github-migrations-service-token-id>` with its id). Its client id and secret are the `DATABASE_TUNNEL_CLIENT_ID` and `DATABASE_TUNNEL_CLIENT_SECRET` secrets. The tunnel's public TCP hostname, `uw-db-production.unfoldingword.us` to the Aurora endpoint on port 5432, is added on the tunnel itself.
+
+The production Hyperdrive config `uw-platform-production` reaches Aurora through the Workers VPC service `uw-platform-db`. That service's certificate verification is `disabled`: a Workers VPC service verifies only against public certificate authorities and ignores a Hyperdrive custom CA, and the Amazon RDS certificate authority is not public. The connection is still TLS, inside the tunnel. The Amazon RDS us-west-2 CA is uploaded (`aws-rds-us-west-2`) for when either side supports it.
 
 ## uw-ingest
 
