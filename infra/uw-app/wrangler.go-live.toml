@@ -31,10 +31,10 @@ logpush = true
 [env.staging.vars]
 COMMIT_SHA = "unknown"
 ENVIRONMENT = "staging"
-ACCESS_TEAM_DOMAIN = "https://set-at-go-live.cloudflareaccess.com"
-ACCESS_AUD = "set-at-go-live"
-ACCESS_MCP_AUD = "set-at-go-live"
-APP_ORIGIN = "set-at-go-live"
+ACCESS_TEAM_DOMAIN = "https://unfoldingword.cloudflareaccess.com"
+ACCESS_AUD = "3ff80cba422e08ef65f46e9207c91322ec1de57bc578d244d30e865e22c9bd79"
+ACCESS_MCP_AUD = "3f4fa24cb33c59c0577b4d3e4505b5c43c8648b4f65ddea3d9679859c7742337"
+APP_ORIGIN = "https://uw-app-staging.unfoldingword.workers.dev"
 VAPID_PUBLIC_KEY = "set-at-go-live"
 VAPID_SUBJECT = "set-at-go-live"
 ZULIP_SITE = "set-at-go-live"
@@ -89,16 +89,16 @@ class_name = "CodexSandbox"
 
 [env.production]
 name = "uw-app"
-workers_dev = false
+workers_dev = true
 logpush = true
 
 [env.production.vars]
 COMMIT_SHA = "unknown"
 ENVIRONMENT = "production"
-ACCESS_TEAM_DOMAIN = "https://set-at-go-live.cloudflareaccess.com"
-ACCESS_AUD = "set-at-go-live"
-ACCESS_MCP_AUD = "set-at-go-live"
-APP_ORIGIN = "set-at-go-live"
+ACCESS_TEAM_DOMAIN = "https://unfoldingword.cloudflareaccess.com"
+ACCESS_AUD = "3ff80cba422e08ef65f46e9207c91322ec1de57bc578d244d30e865e22c9bd79"
+ACCESS_MCP_AUD = "3f4fa24cb33c59c0577b4d3e4505b5c43c8648b4f65ddea3d9679859c7742337"
+APP_ORIGIN = "https://uw-app.unfoldingword.workers.dev"
 VAPID_PUBLIC_KEY = "set-at-go-live"
 VAPID_SUBJECT = "set-at-go-live"
 ZULIP_SITE = "set-at-go-live"
@@ -113,7 +113,7 @@ crons = ["17 3 * * *", "* * * * *"]
 
 [[env.production.hyperdrive]]
 binding = "HYPERDRIVE"
-id = "set-at-go-live"
+id = "2564258906e94905b1b28d0c28002ff6"
 
 [[env.production.queues.consumers]]
 queue = "uw-ingest-events-production"
@@ -157,9 +157,9 @@ workers_dev = true
 [env.preview.vars]
 COMMIT_SHA = "unknown"
 ENVIRONMENT = "preview"
-ACCESS_TEAM_DOMAIN = "https://set-at-go-live.cloudflareaccess.com"
-ACCESS_AUD = "set-at-go-live"
-ACCESS_MCP_AUD = "set-at-go-live"
+ACCESS_TEAM_DOMAIN = "https://unfoldingword.cloudflareaccess.com"
+ACCESS_AUD = "3ff80cba422e08ef65f46e9207c91322ec1de57bc578d244d30e865e22c9bd79"
+ACCESS_MCP_AUD = "3f4fa24cb33c59c0577b4d3e4505b5c43c8648b4f65ddea3d9679859c7742337"
 
 [env.preview.observability]
 enabled = true

@@ -87,6 +87,7 @@ function varsOf(block: Block): Record<string, string> {
 const goLive = 'wrangler.go-live.toml';
 const live = 'wrangler.toml';
 const idShape = new RegExp(`^(${placeholder}|[0-9a-f]{32})$`);
+const audienceShape = new RegExp(`^(${placeholder}|[0-9a-f]{64})$`);
 
 function producerQueue(queues: Queues, binding: string): string {
   return queues.producers?.find((producer) => producer.binding === binding)?.queue ?? '';
@@ -339,8 +340,8 @@ describe('FD-7 the Access variables and ids are placeholders or well formed', ()
   it('uw-app Access AUD tags and team domains are well formed in every environment', () => {
     const blocks = Object.values(environments(load(`infra/uw-app/${goLive}`)));
     const settings = blocks.map(varsOf);
-    expect(settings.every((vars) => idShape.test(vars['ACCESS_AUD'] ?? ''))).toBe(true);
-    expect(settings.every((vars) => idShape.test(vars['ACCESS_MCP_AUD'] ?? ''))).toBe(true);
+    expect(settings.every((vars) => audienceShape.test(vars['ACCESS_AUD'] ?? ''))).toBe(true);
+    expect(settings.every((vars) => audienceShape.test(vars['ACCESS_MCP_AUD'] ?? ''))).toBe(true);
     expect(
       settings.every((vars) =>
         /^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(vars['ACCESS_TEAM_DOMAIN'] ?? ''),
