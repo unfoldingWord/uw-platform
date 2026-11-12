@@ -60,10 +60,10 @@ function mentionsSecrets(workflow: Workflow): boolean {
 const stagingGuard = [
   "github.event.workflow_run.conclusion == 'success'",
   "github.event.workflow_run.event == 'push'",
-  "github.event.workflow_run.head_branch == 'main'",
+  "github.event.workflow_run.head_branch == 'develop'",
 ];
 
-function isGreenPushToMain(guard: string): boolean {
+function isGreenPushToDevelop(guard: string): boolean {
   return stagingGuard.every((condition) => guard.includes(condition));
 }
 
@@ -93,15 +93,15 @@ describe('workflows that can hold a secret', () => {
     expect(actual).toEqual(trustedCheckoutRefs);
   });
 
-  it('check out the workflow_run head only for a green push to main', () => {
+  it('check out the workflow_run head only for a green push to develop', () => {
     const staging = load('deploy-staging.yml');
     const on: unknown = parse(readFileSync(join(directory, 'deploy-staging.yml'), 'utf8')).on;
     expect(on).toEqual({
-      workflow_run: { workflows: ['CI'], types: ['completed'], branches: ['main'] },
+      workflow_run: { workflows: ['CI'], types: ['completed'], branches: ['develop'] },
     });
     const guards = Object.values(staging.jobs).map((job) => job.if ?? '');
     expect(guards.length).toBeGreaterThan(0);
-    expect(guards.every(isGreenPushToMain)).toBe(true);
+    expect(guards.every(isGreenPushToDevelop)).toBe(true);
   });
 });
 
