@@ -15,7 +15,7 @@ permissions:
 jobs:
   cleanup-pr:
     name: cleanup-pr
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       WORKER_NAME: uw-app-pr-${{ github.event.pull_request.number }}
     steps:
@@ -39,7 +39,7 @@ jobs:
 
   drop-neon-branch:
     name: drop-neon-branch
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:

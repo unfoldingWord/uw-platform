@@ -20,7 +20,7 @@ jobs:
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -52,7 +52,7 @@ jobs:
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'main'
     needs: [migrate-staging]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       SHA: ${{ github.event.workflow_run.head_sha }}
       STAGING_URL: https://uw-app-staging.unfoldingword.workers.dev
@@ -87,7 +87,7 @@ jobs:
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'main'
     needs: [migrate-staging]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       SHA: ${{ github.event.workflow_run.head_sha }}
       INGEST_URL: https://uw-ingest-staging.unfoldingword.workers.dev
