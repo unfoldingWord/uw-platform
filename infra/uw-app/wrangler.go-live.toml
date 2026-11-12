@@ -49,7 +49,7 @@ crons = ["17 3 * * *", "* * * * *"]
 
 [[env.staging.hyperdrive]]
 binding = "HYPERDRIVE"
-id = "set-at-go-live"
+id = "621c03bdb5ef4087a2a64f1e411779c8"
 
 [[env.staging.queues.consumers]]
 queue = "uw-ingest-events-staging"
@@ -166,7 +166,7 @@ enabled = true
 
 [[env.preview.hyperdrive]]
 binding = "HYPERDRIVE"
-id = "set-at-go-live"
+id = "621c03bdb5ef4087a2a64f1e411779c8"
 
 [[env.preview.durable_objects.bindings]]
 name = "HARNESS_HUB"

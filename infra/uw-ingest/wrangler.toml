@@ -13,6 +13,7 @@ enabled = true
 [env.staging]
 name = "uw-ingest-staging"
 workers_dev = true
+logpush = true
 
 [env.staging.vars]
 COMMIT_SHA = "unknown"
@@ -20,12 +21,29 @@ COMMIT_SHA = "unknown"
 [env.staging.observability]
 enabled = true
 
+[[env.staging.hyperdrive]]
+binding = "HYPERDRIVE"
+id = "621c03bdb5ef4087a2a64f1e411779c8"
+
+[[env.staging.queues.producers]]
+binding = "INGEST_QUEUE"
+queue = "uw-ingest-events-staging"
+
 [env.production]
 name = "uw-ingest"
 workers_dev = false
+logpush = true
 
 [env.production.vars]
 COMMIT_SHA = "unknown"
 
 [env.production.observability]
 enabled = true
+
+[[env.production.hyperdrive]]
+binding = "HYPERDRIVE"
+id = "2564258906e94905b1b28d0c28002ff6"
+
+[[env.production.queues.producers]]
+binding = "INGEST_QUEUE"
+queue = "uw-ingest-events-production"
