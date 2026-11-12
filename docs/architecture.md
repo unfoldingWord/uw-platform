@@ -294,10 +294,8 @@ The cockpit (PRD DX-4, DX-5):
 pnpm sim -- <scenario>      run one scenario; print the event log and the folded state
 pnpm sim -- all             every scenario
 pnpm walk -- <template>     every path from Package to an external effect, and the gate each crosses
-pnpm trace                  PRD requirement IDs with neither a scenario nor a test
-pnpm trace:built            the same list; fails only on requirements whose step is marked Built
 pnpm check                  lint, format, typecheck
-pnpm verify                 the whole chain, the same one CI runs, including walk:all, trace:built and sim:all
+pnpm verify                 the whole chain, the same one CI runs, including walk:all and sim:all
 ```
 
 A deployed Worker is touched for three things: platform adapters, rendering, and the tests only real infrastructure can prove. Everything else is proven in the sim first.
