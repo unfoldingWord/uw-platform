@@ -8,8 +8,8 @@ Everything Cloudflare, Neon and Access that the platform runs on is declared her
 
 | Environment | Worker name | Reachable at | Deployed by |
 |---|---|---|---|
-| staging | `uw-app-staging` | `https://uw-app-staging.<account subdomain>.workers.dev` | `main` (workflow in #68); by hand until then |
-| production | `uw-app` | `https://uw-app.unfoldingword.workers.dev` (`workers_dev = true`, behind Access) | a tagged release only (#68) |
+| staging | `uw-app-staging` | `https://uw-app-staging.<account subdomain>.workers.dev` | every push to `develop`, after CI |
+| production | `uw-app` | `https://uw-app.unfoldingword.workers.dev` (`workers_dev = true`, behind Access) | a `v*` tag on `main`, by dispatch (`gh workflow run deploy-production.yml --ref v<version>`) |
 
 ### Deploy staging by hand
 
@@ -67,8 +67,8 @@ The production Hyperdrive config `uw-platform-production` reaches Aurora through
 
 | Environment | Worker name | Reachable at | Deployed by |
 |---|---|---|---|
-| staging | `uw-ingest-staging` | `https://uw-ingest-staging.<account subdomain>.workers.dev` | `deploy-ingest-staging` after green CI on `main` |
-| production | `uw-ingest` | nowhere yet: no route, `workers_dev = false` | `deploy-ingest-production` on a tagged release, after the production gate |
+| staging | `uw-ingest-staging` | `https://uw-ingest-staging.<account subdomain>.workers.dev` | `deploy-ingest-staging` after green CI on a push to `develop` |
+| production | `uw-ingest` | nowhere yet: no route, `workers_dev = false` | `deploy-ingest-production` with the same dispatch, after the production gate |
 
 `GITHUB_WEBHOOK_SECRET` is a Worker secret, set with `wrangler secret put GITHUB_WEBHOOK_SECRET --env <name>`. It appears in no file.
 

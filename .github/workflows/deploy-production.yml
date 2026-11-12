@@ -1,8 +1,10 @@
 name: Deploy Production
 
+# Branching model: production only ever runs a release, a v* tag cut on main
+# after a develop → main (or hotfix/*) merge. Release: merge the release PR,
+# tag v<version> on the resulting main commit, then dispatch this workflow on
+# that tag: gh workflow run deploy-production.yml --ref v<version>
 on:
-  push:
-    tags: ['v*']
   workflow_dispatch:
 
 concurrency:
@@ -25,12 +27,25 @@ jobs:
       REF: ${{ github.ref }}
     steps:
       - uses: actions/checkout@v4
-      - name: Refuse a ref that is not main or a v* tag
+        with:
+          # Full history so the guard below can check the tag is on main.
+          fetch-depth: 0
+      - name: Require a release tag on main
         run: |
+          set -euo pipefail
+          echo "Dispatched on $REF ($SHA)"
           case "$REF" in
-            refs/heads/main|refs/tags/v*) echo "Ref $REF is deployable." ;;
-            *) echo "::error::Production deploys only from main or a v* tag, not $REF."; exit 1 ;;
+            refs/tags/v*) ;;
+            *)
+              echo "::error::Production deploys only from a v* release tag. Re-run with: gh workflow run deploy-production.yml --ref v<version>"
+              exit 1 ;;
           esac
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$SHA" origin/main; then
+            echo "::error::Tag ${REF#refs/tags/} points at $SHA, which is not on main. Tag the release commit on main."
+            exit 1
+          fi
+          echo "ok: ${REF#refs/tags/} is on main"
       - name: Refuse unless the actor is listed in main's production-deployers
         run: bash .github/scripts/require-production-deployer.sh "$REPO" "$ACTOR"
       - name: Refuse unless every CI job succeeded on this commit
