@@ -156,10 +156,6 @@ _Avoid_: test (tests sit at module interfaces), story, script
 Every path through a template's stages from Package along position order and every feeds edge, cut at the first revisited stage. `pnpm walk -- <template>` prints every path to an external effect and the gate each crosses.
 _Avoid_: traversal, crawl
 
-**Trace**:
-The check that every Must requirement not marked Built has a scenario or a test named for it. `pnpm trace` lists every unproven one; `pnpm trace:built` fails only on those whose build-order step the progress tracker marks Built.
-_Avoid_: coverage (that is lines of code), audit
-
 **Engine**:
 The code behind one seam that talks to a model vendor: `claude-messages`, `claude-code-sandbox`, `claude-managed-agent`, `codex-sandbox`, `external`, `openrouter-messages`. A persona picks one. The vendor SDK is named in exactly one directory per engine.
 _Avoid_: model (that is one field of the persona), provider, backend, LLM

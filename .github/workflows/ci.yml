@@ -72,7 +72,6 @@ jobs:
       - uses: ./.github/actions/setup
       - run: pnpm architecture
       - run: pnpm walk:all
-      - run: pnpm trace:built
 
   test-shard:
     name: test (${{ matrix.part == 'sim' && 'scenarios' || format('shard {0} of 6', matrix.part) }})
