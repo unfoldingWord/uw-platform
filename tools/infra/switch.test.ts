@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { parse as parseToml } from 'smol-toml';
 import { describe, expect, it } from 'vitest';
 import { parse as parseYaml } from 'yaml';
-import { parseSwitch } from './switch.ts';
+import { goLiveSwitchedOn, parseSwitch } from './switch.ts';
 
 type Step = {
   readonly id?: string;
@@ -214,7 +214,8 @@ describe('GL-1 the runbook switches on what the go-live files leave unset', () =
       'NEON_API_KEY',
       'NEON_PROJECT_ID',
     ]);
-    expect(placeholderNames()).toContain('Hyperdrive id');
+    if (!goLiveSwitchedOn()) expect(placeholderNames()).toContain('Hyperdrive id');
+    else expect(placeholderNames()).not.toContain('Hyperdrive id');
     expect([...secrets, ...placeholderNames()].filter((name) => !section.includes(name))).toEqual(
       [],
     );

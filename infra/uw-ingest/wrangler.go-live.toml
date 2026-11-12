@@ -23,7 +23,7 @@ enabled = true
 
 [[env.staging.hyperdrive]]
 binding = "HYPERDRIVE"
-id = "set-at-go-live"
+id = "621c03bdb5ef4087a2a64f1e411779c8"
 
 [[env.staging.queues.producers]]
 binding = "INGEST_QUEUE"
@@ -42,7 +42,7 @@ enabled = true
 
 [[env.production.hyperdrive]]
 binding = "HYPERDRIVE"
-id = "set-at-go-live"
+id = "2564258906e94905b1b28d0c28002ff6"
 
 [[env.production.queues.producers]]
 binding = "INGEST_QUEUE"
