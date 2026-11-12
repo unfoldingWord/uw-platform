@@ -160,11 +160,11 @@ A task is one GitHub issue. Do these in order.
 3. **Plan the files.** List every file you will add or edit. If any is a shared root (rule 4), that change is its own commit.
 4. **Write the test first.** The scenario in `sim/scenarios/` or the test that proves the behaviour, named for what it proves, observed red. For a bug, the test that reproduces it, observed red. Only then implement.
 5. **Implement.** Copy the template. Fill it. Keep each file under 500 lines and each function under 50.
-6. **Verify.** `pnpm verify` green. If a screen changed, load it in light and dark at phone width. If a platform adapter changed and its credentials exist, run it against staging; if they do not, say so in the pull request.
+6. **Verify.** Before pushing, the fast local checks pass: `pnpm check`, `pnpm lint`, `pnpm format:check`, and the tests for what you touched (`pnpm exec vitest run <paths>`). CI then runs the whole `pnpm verify` on every push; read its result before calling the work done. If a screen changed, load it in light and dark at phone width. If a platform adapter changed and its credentials exist, run it against staging; if they do not, say so in the pull request.
 7. **Open the pull request** into `develop`, with `Closes #<issue>` and a description of what changed, what was verified and how, and what was not verified.
 8. **Report and stop.** Summarize what changed, what you verified, and what you did not verify. Label inferences as inferences. If you could not verify something, say so first.
 
-Done means: `pnpm verify` green, every shared-root change in its own commit, no exception missing its entry, the behaviour the issue asks for proven by a test or scenario, the pull request open against `develop`, and no claim of verification standing without the run behind it.
+Done means: CI green on the pull request (the whole `pnpm verify`), every shared-root change in its own commit, no exception missing its entry, the behaviour the issue asks for proven by a test or scenario, the pull request open against `develop`, and no claim of verification standing without the run behind it.
 
 ## 7b. Branching model (develop → main)
 
@@ -186,7 +186,7 @@ One issue, one branch, one pull request.
 
 - **Branch** from `develop` in the main checkout, named for the work (`feat/agent-queues-landing`, `fix/uw-app-role-exists`), never for a version, and never in a git worktree.
 - **Scope** is the issue. Work you notice outside it becomes a new issue, not a bigger pull request.
-- **Push** only on a green `pnpm verify`. Never force-push.
+- **Push** once the fast local checks pass (section 7, step 6); CI runs the whole `pnpm verify` in about six minutes and is the gate. Never force-push.
 - **Review is the owner's step.** When the pull request is ready, say so and stop. Do not start a review of your own: no review workflow, no multi-agent fan-out, no reviewer subagents. The owner runs the review (Codex) and passes on its comments.
 - **Every review comment is fixed**, whatever its severity, unless there is a concrete, named reason it is wrong; that reason goes in a reply on the comment.
 - **Merging** into `develop` happens when the owner says the pull request is good to merge. Merging into `main` (a release) and any production deploy happen only when the owner asks for them.
@@ -210,5 +210,5 @@ A change to a shared root (rule 4) or a fixed decision (section 1) goes in its o
 - Code carries no comments: no line comments, no block comments, no JSDoc, no directive comments, no commented-out code. What a comment would have said goes into a name, a type, a test, or `docs/`. A lint rule enforces this.
 - Deleting code with no visible callers is allowed once a grep of the repo confirms zero references. Say that you grepped.
 - No merge to this repository's `main`, from any branch, and no production deploy without a person at the keyboard saying so. This governs the build process, the agents building this repository; a merge the platform makes for a harness's repository under a merge delegation is the delegated Ship exit above. Whether the platform's own harness (`unfoldingWord/uw-platform`) may ever be granted a merge delegation is a person's decision, still open.
-- Never push on a red `pnpm verify`.
+- Never merge on red CI. Never push with the fast local checks failing.
 - When the requested implementation conflicts with a rule in this file, the rule wins. Build the version that keeps the rule, record the conflict in the pull request description, and continue; stop only when no version keeps the rule.
