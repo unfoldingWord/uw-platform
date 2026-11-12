@@ -57,13 +57,13 @@ jobs:
       - run: pnpm trace:built
 
   test-shard:
-    name: test (shard ${{ matrix.shard }} of 4)
+    name: test (${{ matrix.part == 'sim' && 'scenarios' || format('shard {0} of 6', matrix.part) }})
     needs: [security-audit]
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        part: [1, 2, 3, 4, 5, 6, sim]
     services:
       postgres:
         image: postgres:16
@@ -92,16 +92,17 @@ jobs:
         run: pnpm db:migrate
         env:
           DATABASE_URL: postgres://postgres@127.0.0.1:5432/postgres
-      - run: pnpm test --shard=${{ matrix.shard }}/4
+      - if: matrix.part != 'sim'
+        run: pnpm test --shard=${{ matrix.part }}/6
       - name: Keep the pictures this run took, to compare by eye
         if: failure()
         run: pnpm screens:update
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: screens-${{ matrix.shard }}
+          name: screens-${{ matrix.part }}
           path: apps/uw-app/screens/pictures/
-      - if: matrix.shard == 1
+      - if: matrix.part == 'sim'
         run: pnpm sim:all
 
   test:
