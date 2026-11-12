@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -57,6 +58,27 @@ async function insertStage(connectionString: string, stage: string): Promise<str
   );
 }
 
+async function asRoleWithoutCreateRole(server: string, target: string): Promise<string> {
+  const role = `uw_migrator_${randomBytes(4).toString('hex')}`;
+  const database = new URL(target).pathname.slice(1);
+  await query(server, `CREATE ROLE ${role} LOGIN NOCREATEROLE NOSUPERUSER`);
+  await query(
+    server,
+    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'uw_app') THEN CREATE ROLE uw_app NOLOGIN; END IF; END $$`,
+  );
+  await query(server, `GRANT CREATE ON DATABASE "${database}" TO ${role}`);
+  await query(target, `GRANT CREATE, USAGE ON SCHEMA public TO ${role}`);
+  const asRole = new URL(target);
+  asRole.username = role;
+  asRole.password = '';
+  return asRole.toString();
+}
+
+async function dropRole(server: string, connectionString: string): Promise<void> {
+  const role = new URL(connectionString).username;
+  await query(server, `DROP ROLE IF EXISTS ${role}`);
+}
+
 describe.skipIf(!testServer)('migrations against a real Postgres (TEST_DATABASE_URL)', () => {
   const server = testServer ?? '';
 
@@ -69,6 +91,23 @@ describe.skipIf(!testServer)('migrations against a real Postgres (TEST_DATABASE_
         expect(first.applied).toEqual(journalOrder(migrationsFolder));
         expect(second).toEqual(first);
       }),
+  );
+
+  it(
+    'applies the committed migrations as a role that may not create roles, once uw_app exists',
+    { timeout },
+    async () => {
+      let migrator = '';
+      try {
+        await withEmptyDatabase(server, async (target) => {
+          migrator = await asRoleWithoutCreateRole(server, target);
+          await applyMigrations(migrator, migrationsFolder);
+          expect(await applied(migrator)).toEqual(journalOrder(migrationsFolder));
+        });
+      } finally {
+        if (migrator) await dropRole(server, migrator);
+      }
+    },
   );
 
   it('runs a hand-written migration in journal order between generated ones', { timeout }, () =>
