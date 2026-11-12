@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, develop]
   push:
-    branches: [main]
+    branches: [main, develop]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -14,6 +14,24 @@ permissions:
   contents: read
 
 jobs:
+  release-source:
+    name: Release Source
+    if: ${{ github.event_name == 'pull_request' && github.base_ref == 'main' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require develop as the source of a PR into main
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          head="$HEAD_REF"
+          echo "PR into main from '$head'"
+          if [ "$head" != "develop" ]; then
+            echo "::error::PRs into main must come from develop (a release). Open this PR against develop instead; an urgent fix goes through develop too."
+            exit 1
+          fi
+          echo "ok"
+
   security-audit:
     name: security-audit
     runs-on: ubuntu-24.04

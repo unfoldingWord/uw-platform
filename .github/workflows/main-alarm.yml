@@ -4,10 +4,10 @@ on:
   workflow_run:
     workflows: [CI]
     types: [completed]
-    branches: [main]
+    branches: [main, develop]
 
 concurrency:
-  group: main-alarm
+  group: main-alarm-${{ github.event.workflow_run.head_branch }}
   cancel-in-progress: false
 
 permissions:
@@ -23,7 +23,11 @@ jobs:
         with:
           script: |
             const run = context.payload.workflow_run;
-            const label = 'ci-red-main';
+            const branch = run.head_branch;
+            const label = `ci-red-${branch}`;
+            const consequence = branch === 'develop'
+              ? 'Staging is frozen on the last green commit'
+              : 'Releases to production are blocked';
             const { owner, repo } = context.repo;
             const open = (
               await github.paginate(github.rest.issues.listForRepo, { owner, repo, labels: label, state: 'open' })
@@ -35,14 +39,14 @@ jobs:
               if (error.status !== 404) throw error;
               await github.rest.issues.createLabel({
                 owner, repo, name: label, color: 'b60205',
-                description: 'CI is red on main; staging is frozen on the last green commit',
+                description: `CI is red on ${branch}; ${consequence.toLowerCase()}`,
               });
             }
             if (run.conclusion === 'success') {
               for (const issue of open) {
                 await github.rest.issues.createComment({
                   owner, repo, issue_number: issue.number,
-                  body: `CI is green again on \`main\` at ${commit}: ${run.html_url}. Staging deploys resume.`,
+                  body: `CI is green again on \`${branch}\` at ${commit}: ${run.html_url}. ${branch === 'develop' ? 'Staging deploys resume.' : 'Releases can go out again.'}`,
                 });
                 await github.rest.issues.update({ owner, repo, issue_number: issue.number, state: 'closed', state_reason: 'completed' });
               }
@@ -53,14 +57,14 @@ jobs:
               return;
             }
             const body = [
-              `CI failed on \`main\` at ${commit} (${run.head_commit?.message?.split('\n')[0] ?? 'no message'}).`,
+              `CI failed on \`${branch}\` at ${commit} (${run.head_commit?.message?.split('\n')[0] ?? 'no message'}).`,
               '',
               `Failing run: ${run.html_url}`,
               '',
-              'Staging is frozen on the last green commit until CI is green on `main` again; this issue closes itself then.',
+              `${consequence} until CI is green on \`${branch}\` again; this issue closes itself then.`,
             ].join('\n');
             if (open.length > 0) {
               await github.rest.issues.createComment({ owner, repo, issue_number: open[0].number, body });
             } else {
-              await github.rest.issues.create({ owner, repo, title: `CI is red on main at ${run.head_sha.slice(0, 7)}`, body, labels: [label] });
+              await github.rest.issues.create({ owner, repo, title: `CI is red on ${branch} at ${run.head_sha.slice(0, 7)}`, body, labels: [label] });
             }
