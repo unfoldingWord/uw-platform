@@ -18,7 +18,7 @@ $$;
 --> statement-breakpoint
 CREATE TRIGGER harness_events_position BEFORE INSERT ON harness_events FOR EACH ROW EXECUTE FUNCTION harness_events_assign_position();
 --> statement-breakpoint
-DO $$ BEGIN CREATE ROLE uw_app NOLOGIN; EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'uw_app') THEN CREATE ROLE uw_app NOLOGIN; END IF; EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL; END $$;
 --> statement-breakpoint
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO uw_app;
 --> statement-breakpoint
