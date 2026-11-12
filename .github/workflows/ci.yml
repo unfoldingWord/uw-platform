@@ -107,3 +107,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
       - run: pnpm build
+      - name: Build the sandbox images the deploys roll out
+        run: |
+          docker build --platform linux/amd64 --tag sandbox-claude-code infra/containers/claude-code
+          docker build --platform linux/amd64 --tag sandbox-codex infra/containers/codex
+          docker run --rm --platform linux/amd64 sandbox-claude-code sh -c 'git --version && claude --version'
+          docker run --rm --platform linux/amd64 sandbox-codex sh -c 'git --version && codex --version'
