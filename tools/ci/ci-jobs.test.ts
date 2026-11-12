@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { ciJobSchema } from '../../packages/contracts/ship-rule.ts';
 
-type Job = { needs?: string[]; if?: string; strategy?: { matrix?: { shard?: number[] } } };
+type Job = {
+  needs?: string[];
+  if?: string;
+  strategy?: { matrix?: { part?: (number | string)[] } };
+};
 
 const workflow = parse(readFileSync('.github/workflows/ci.yml', 'utf8')) as {
   jobs: Record<string, Job>;
@@ -16,8 +20,8 @@ describe('KN-11 the six jobs the ship rule reads are the CI job names', () => {
     expect(named).toEqual(ciJobSchema.options);
   });
 
-  it('runs the tests on four shards, and test passes only when every shard did', () => {
-    expect(workflow.jobs[shardJob]?.strategy?.matrix?.shard).toEqual([1, 2, 3, 4]);
+  it('runs the tests on six shards and the scenarios beside them, and test passes only when every part did', () => {
+    expect(workflow.jobs[shardJob]?.strategy?.matrix?.part).toEqual([1, 2, 3, 4, 5, 6, 'sim']);
     const gate = workflow.jobs['test'];
     expect(gate?.needs).toEqual([shardJob]);
     expect(gate?.if).toBe('always()');
