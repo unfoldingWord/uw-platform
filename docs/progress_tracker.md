@@ -1,5 +1,8 @@
 # Progress tracker
 
+> **Frozen on 2026-11-12. This file is history and is no longer updated.** Work is tracked in GitHub issues (see AGENTS.md section 0); what a change did and verified goes in its pull request. Items still open in the Go-live hand-off section below are tracked in #112.
+
+
 Where the build of [`PRD.md`](PRD.md) stands. Updated in the same commit as the work it records (`AGENTS.md` section 7, step 7). Requirement IDs are the PRD's.
 
 ## Status by build-order step
