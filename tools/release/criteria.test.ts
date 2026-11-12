@@ -258,7 +258,7 @@ describe('release criterion 6, the part a local run can check: the race suites e
     }
     expect(source('vitest.config.ts')).toContain("'apps/**/*.pg.test.ts'");
     const workflow = source('.github/workflows/ci.yml');
-    expect(jobBlock(workflow, 'test')).toContain('image: postgres:16');
+    expect(jobBlock(workflow, 'test-shard')).toContain('image: postgres:16');
   });
 });
 

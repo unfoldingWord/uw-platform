@@ -7,7 +7,7 @@ type Service = { image?: string; env?: Record<string, string>; ports?: string[];
 type Job = { env?: Record<string, string>; services?: Record<string, Service>; steps?: Step[] };
 
 const ci: { jobs: Record<string, Job> } = parse(readFileSync('.github/workflows/ci.yml', 'utf8'));
-const testJob = ci.jobs['test'] ?? {};
+const testJob = ci.jobs['test-shard'] ?? {};
 const serviceUrl = 'postgres://postgres@127.0.0.1:5432/postgres';
 
 describe('FD-6 the CI test job runs on a real Postgres', () => {
@@ -26,7 +26,7 @@ describe('FD-6 the CI test job runs on a real Postgres', () => {
   it('applies every migration from empty, re-applies them, then runs the tests', () => {
     const runs = (testJob.steps ?? []).map((step) => step.run ?? '');
     const migrate = runs.flatMap((run, index) => (run === 'pnpm db:migrate' ? [index] : []));
-    const test = runs.indexOf('pnpm test');
+    const test = runs.findIndex((run) => run.startsWith('pnpm test'));
     expect(migrate).toHaveLength(2);
     expect(test).toBeGreaterThan(Math.max(...migrate));
     const migrateEnv = (testJob.steps ?? []).filter((step) => step.run === 'pnpm db:migrate');

@@ -56,10 +56,14 @@ jobs:
       - run: pnpm walk:all
       - run: pnpm trace:built
 
-  test:
-    name: test
+  test-shard:
+    name: test (shard ${{ matrix.shard }} of 4)
     needs: [security-audit]
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     services:
       postgres:
         image: postgres:16
@@ -88,17 +92,28 @@ jobs:
         run: pnpm db:migrate
         env:
           DATABASE_URL: postgres://postgres@127.0.0.1:5432/postgres
-      - run: pnpm test
+      - run: pnpm test --shard=${{ matrix.shard }}/4
       - name: Keep the pictures this run took, to compare by eye
         if: failure()
         run: pnpm screens:update
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: screens
+          name: screens-${{ matrix.shard }}
           path: apps/uw-app/screens/pictures/
-      - run: pnpm sim:all
+      - if: matrix.shard == 1
+        run: pnpm sim:all
 
+  test:
+    name: test
+    needs: [test-shard]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Pass only when every shard passed
+        run: test "$RESULT" = success
+        env:
+          RESULT: ${{ needs.test-shard.result }}
   build:
     name: build
     needs: [security-audit]

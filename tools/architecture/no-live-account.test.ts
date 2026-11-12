@@ -19,7 +19,7 @@ const testCode =
 const codeFile = /\.(?:ts|tsx|mts)$/;
 const platformAdapterFile = /^apps\/uw-app\/ports\/[^/]+\.ts$/;
 const wiredWithoutService = /\/(clock|ids)\.ts$/;
-const testRunningJobs = ['lint', 'typecheck', 'architecture', 'test', 'build'];
+const testRunningJobs = ['lint', 'typecheck', 'architecture', 'test-shard', 'test', 'build'];
 
 function forbiddenEnvReads(path: string, source: string): string[] {
   const reads = [...source.matchAll(envAccess)]
