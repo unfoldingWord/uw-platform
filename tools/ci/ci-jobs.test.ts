@@ -32,13 +32,14 @@ describe('KN-11 the six jobs the ship rule reads are the CI job names', () => {
 });
 
 describe('the develop → main branching model', () => {
-  it('refuses a PR into main from anything but develop or hotfix/*', () => {
+  it('refuses a PR into main from anything but develop, with no hotfix exception', () => {
     const job = workflow.jobs['release-source'];
     const text = JSON.stringify(job);
     expect(job?.if).toBe("${{ github.event_name == 'pull_request' && github.base_ref == 'main' }}");
-    expect(text).toContain('develop|hotfix/*');
+    expect(text).not.toContain('hotfix');
     expect(text).toContain('HEAD_REF');
     const run = (job as { steps?: { run?: string }[] } | undefined)?.steps?.[0]?.run ?? '';
     expect(run).not.toContain('${{');
+    expect(run).toContain('"$head" != "develop"');
   });
 });
