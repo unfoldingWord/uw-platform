@@ -1,9 +1,5 @@
 name: Deploy Production
 
-# Branching model: production only ever runs a release, a v* tag cut on main
-# after a develop → main (or hotfix/*) merge. Release: merge the release PR,
-# tag v<version> on the resulting main commit, then dispatch this workflow on
-# that tag: gh workflow run deploy-production.yml --ref v<version>
 on:
   workflow_dispatch:
 
@@ -28,7 +24,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Full history so the guard below can check the tag is on main.
           fetch-depth: 0
       - name: Require a release tag on main
         run: |

@@ -1,11 +1,5 @@
 name: Deploy Staging
 
-# Staging follows the develop branch only: it deploys after CI succeeds on a
-# push to develop. A release PR (develop → main) runs CI with head branch
-# develop too, so every job also requires the CI run to have been triggered by
-# a push. Deploys are serialized (queued, never cancelled mid-migration), and
-# each one first checks that its commit is still the tip of develop, so an
-# older CI run finishing after a newer one skips instead of rolling staging back.
 on:
   workflow_run:
     workflows: [CI]
