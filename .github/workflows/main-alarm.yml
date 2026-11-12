@@ -17,7 +17,7 @@ jobs:
   main-alarm:
     name: main-alarm
     if: github.event.workflow_run.event == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/github-script@v7
         with:

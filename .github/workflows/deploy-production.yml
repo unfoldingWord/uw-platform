@@ -16,7 +16,7 @@ permissions:
 jobs:
   production-gate:
     name: production-gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
@@ -38,7 +38,7 @@ jobs:
 
   migrate-production:
     name: migrate-production
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [production-gate]
     steps:
       - uses: actions/checkout@v4
@@ -65,7 +65,7 @@ jobs:
   deploy-production:
     name: deploy-production
     needs: [production-gate, migrate-production]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       SHA: ${{ github.sha }}
     steps:
@@ -90,7 +90,7 @@ jobs:
   deploy-ingest-production:
     name: deploy-ingest-production
     needs: [production-gate, migrate-production]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       SHA: ${{ github.sha }}
     steps:
