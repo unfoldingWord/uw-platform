@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Rules for anyone, human or agent, changing this repository. Read this whole file before your first edit. Every rule here exists because an agent without it will take the shortcut it describes.
+Rules for anyone, human or agent, changing this repository. Read this whole file before your first edit. Work comes from GitHub issues, one issue per pull request into `develop`. Every rule here exists because an agent without it will take the shortcut it describes.
 
 ## 0. The documents
 
@@ -8,17 +8,18 @@ Each document has one job. Load the one the task needs; do not restate one insid
 
 | Read | For |
 |---|---|
-| [`docs/PRD.md`](docs/PRD.md) | What to build: every requirement with a stable ID, the build order (section 13), the release criteria (section 14), what needs a person (section 15) and the decision log (section 18). This is the list of work. There is no other list |
-| [`prd/Harness v1 - Architecture.md`](prd/Harness%20v1%20-%20Architecture.md) | Why, and the design: the ratified spec. Its Decisions table (D1 to D22) and figures are the design; cite them |
+| **GitHub issues** | **The list of work.** Every task is an issue; a larger piece of work is an epic issue with sub-issues (for example #99). An issue says what to build and when it is done. There is no other list |
+| [`docs/PRD.md`](docs/PRD.md) | Reference: how the platform was designed and why, requirement by requirement. Read the section an issue touches; it is not a checklist new work must cite or extend |
+| [`prd/Harness v1 - Architecture.md`](prd/Harness%20v1%20-%20Architecture.md) | Reference: the ratified design. Its Decisions table (D1 to D22) and figures explain the shape |
 | [`CONTEXT.md`](CONTEXT.md) | The words. Every module, test and screen uses these and no synonyms |
 | [`docs/architecture.md`](docs/architecture.md) | The shape: the kernel over ports, events, the sim, the checks |
-| [`prd/An App For Everything - Platform Architecture Plan.md`](prd/An%20App%20For%20Everything%20-%20Platform%20Architecture%20Plan.md) | The platform the harness sits in: ACL (§4), pages (§2), topology (§1), conventions (§0). Read the section a requirement cites |
+| [`prd/An App For Everything - Platform Architecture Plan.md`](prd/An%20App%20For%20Everything%20-%20Platform%20Architecture%20Plan.md) | The platform the harness sits in: ACL (§4), pages (§2), topology (§1), conventions (§0) |
 | [`docs/adr/`](docs/adr/) | Why the shape is this way. Read before changing it |
-| [`docs/progress_tracker.md`](docs/progress_tracker.md) | Where the build stands: requirements done, decisions made along the way, what was not verified, what waits on a person |
-| `packages/ui/tokens/` and, when it lands, `design-system/` | The tokens. See ADR 0007 |
+| `packages/ui/tokens/` | The tokens. See ADR 0007 and ADR 0011 |
 | `docs/exceptions.md` | Recorded exceptions to the rules |
+| [`docs/progress_tracker.md`](docs/progress_tracker.md) and `docs/plans/` | **History, frozen on 2026-11-12.** How v0.1 to v0.3 were built. Read for context; never update them |
 
-Where the spec and the PRD disagree on design, the spec wins and the PRD is corrected. Where either disagrees with this file, they win on what and this file wins on how. GitHub issues #4 to #82 are history; the PRD's Appendix B maps each to the requirements that replaced it.
+"Harness" in the code is a **workflow** in the UI and in conversation: a set of stages that items move through, with the people and agents who work them.
 
 ## 1. Fixed decisions
 
@@ -27,14 +28,14 @@ These are settled. Work inside them; changing one is an architecture change (sec
 | Concern | Decision |
 |---|---|
 | Language | TypeScript, `strict: true`, no `any`, no `// @ts-ignore` |
-| Platform | Cloudflare Workers: `uw-app` (Hono SSR and islands, command API, MCP surface, live hub, Workflows, crons) and `uw-ingest` (webhooks). Neon Postgres through Hyperdrive. Declared in `infra/`, never clicked |
+| Platform | Cloudflare Workers: `uw-app` (Hono SSR and islands, command API, MCP surface, live hub, Workflows, crons) and `uw-ingest` (webhooks). Postgres (AWS Aurora) through Hyperdrive, reached over a Cloudflare Tunnel and a Workers VPC service. Declared in `infra/`, never clicked |
 | Shape | Ports and adapters. The harness kernel is pure TypeScript in `packages/harness`, reached only through ports, the database included. Every port has a platform adapter and a test adapter; the sim drives the kernel in Node (ADR 0001) |
 | Words | "Kernel" is the pure core. "Engine" means only the code behind the model-vendor seam |
 | Agent boundary | Agents reach the platform only through the MCP surface serving the verb registry; approve, merge, deploy, publish and advance do not exist as verbs (ADR 0002) |
 | The gate | Ship exits only on human approval, enforced by a Postgres check constraint; the ship rule is a pure function over GitHub facts, risk tier and the approver's principal (ADR 0003) |
 | Truth | `harness_events` is append-only and the source of truth; state is a fold; replay equals record (ADR 0004) |
 | Unattended work | Runs only on a delegation, on every host (ADR 0005) |
-| Hosts, engines, billing | Two hosts, one verb registry, six engines each in its own directory, billing by host (ADR 0006) |
+| Hosts, engines, billing | Two hosts, one verb registry, six engines each in its own directory, billing by host (ADR 0006; whether to add subscription billing is open in #98) |
 | Schema | Drizzle in `packages/db/schema.ts` is the only schema; it re-exports one `packages/db/schema-<domain>.ts` file per domain (platform, and later GitHub) so no file passes 500 lines; migrations in `packages/db/migrations/`; every table declares `classification` and `offline_eligibility` (plan §2.6) |
 | Authorization | Plan §4: `role_grants` with `admin | editor | viewer` at `org` or `jd_area` scope, one `can(actor, verb, resource)`, a principal minted at the edge on every request. The harness derives from it and adds nothing beside it |
 | Conventions | Plan §0: dates `YYYY-MM-DD` through one `formatDate`/`parseDate` pair, money in integer minor units, UUID ids with slugs, Zod at every boundary |
@@ -42,7 +43,7 @@ These are settled. Work inside them; changing one is an architecture change (sec
 | Design | Tailwind 4 over one token system in `packages/ui/tokens/*.css`, generated from the brand colours and, from v0.3.0 build step 21, locked: the token scales are the whole Tailwind theme, spacing included, and an arbitrary value fails the build; light and dark follow the system setting with a persisted override; Kindle orange marks a human action and nothing else (ADR 0007, ADR 0011) |
 | Package manager | pnpm workspaces, Node 22 |
 | Toolchain | ESLint flat config with fitness functions, Prettier, Vitest on the Workers pool, dependency-cruiser, knip, Husky, `pnpm audit` |
-| Tests | Vitest. Scenarios in `sim/scenarios/` named for the PRD requirement ID they prove, tests at each module's interface, one contract test per port run against every adapter, and the tests only separate connections can prove on a Postgres service container in CI (PRD DX-6). No test needs a live account or a secret (PRD DX-8) |
+| Tests | Vitest. Scenarios in `sim/scenarios/` and tests at each module's interface, named for what they prove, one contract test per port run against every adapter, and the tests only separate connections can prove on a Postgres service container in CI (PRD DX-6). No test needs a live account or a secret (PRD DX-8) |
 | Lint and format | `pnpm check`; the full chain is `pnpm verify`, the same one CI runs |
 | Code comments | None. Meaning lives in names, types, tests and `docs/`, never in a comment |
 | File length | Under 500 lines; functions under 50 |
@@ -50,14 +51,12 @@ These are settled. Work inside them; changing one is an architecture change (sec
 
 ## 2. The cockpit
 
-The commands a worker drives the system with. `pnpm verify` runs `pnpm walk:all`, `pnpm trace:built` and `pnpm sim:all`; `trace:built` fails only on an unproven Must requirement whose build-order step the progress tracker marks Built, and `pnpm trace` lists every unproven one.
+The commands a worker drives the system with. `pnpm verify` runs the whole chain, including `pnpm walk:all` and `pnpm sim:all`.
 
 ```
 pnpm sim -- <scenario>     run one scenario; print the event log and the folded state
 pnpm sim -- all            every scenario
 pnpm walk -- <template>    every path from Package to an external effect, and the gate each crosses
-pnpm trace                 PRD requirement IDs with neither a scenario nor a test
-pnpm trace:built           the same list; fails only on requirements whose step is marked Built
 pnpm check                 lint, format, typecheck
 pnpm verify                the whole chain, the same one CI runs
 pnpm db:generate           generate a migration from the schema
@@ -87,7 +86,7 @@ These behaviors are predictable inputs. The repository is shaped so that the con
 
 Every kind of work has one template. Copy the template, fill the blanks, stop.
 
-- New kernel module: a function on the module's interface in `packages/harness`, a test at that interface, a scenario named for the requirement ID.
+- New kernel module: a function on the module's interface in `packages/harness`, a test at that interface, a scenario for the behaviour.
 - New port: `packages/harness/ports.ts`, then the platform adapter in `apps/uw-app/ports/`, the test adapter in `sim/adapters/` and the port's contract suite in `packages/harness/port-contracts/` with a contract test beside each adapter, together, never one without the others. A port whose service is built in a later step gets a platform adapter that is not wired, and its contract test proves that.
 - New event: the enum in `packages/contracts`, its fixtures, and the folds that should count it.
 - New verb: the registry in `packages/contracts`, the MCP handler, the persona toolsets that may hold it.
@@ -98,7 +97,7 @@ Every kind of work has one template. Copy the template, fill the blanks, stop.
 - New screen: one island, one route, one scenario, tokens only.
 - New word: `CONTEXT.md` first.
 
-If the work does not fit a template, choose the nearest one, say which and why in `docs/progress_tracker.md`, and continue. Do not improvise silently.
+If the work does not fit a template, choose the nearest one, say which and why in the pull request description, and continue. Do not improvise silently.
 
 ### Rule 2. Forbidden dependencies fail mechanically
 
@@ -141,7 +140,7 @@ Adding a persona, an engine, a validator, a connector or a screen means adding a
 
 ## 5. Prefer open source over custom code
 
-Before writing a utility, a client, a parser or a component, search for an existing package. Reach for custom code only when no maintained package does the job. Choose a package that has a permissive license, runs on Workers (and, for anything under `packages/harness`, in plain Node), is typed, is maintained, and does not report to a third party on its own. Record every new dependency in `docs/progress_tracker.md` with one line: what it replaces.
+Before writing a utility, a client, a parser or a component, search for an existing package. Reach for custom code only when no maintained package does the job. Choose a package that has a permissive license, runs on Workers (and, for anything under `packages/harness`, in plain Node), is typed, is maintained, and does not report to a third party on its own. Name every new dependency in the pull request description with one line: what it replaces.
 
 ## 6. UI rules
 
@@ -154,18 +153,18 @@ Before writing a utility, a client, a parser or a component, search for an exist
 
 ## 7. Working steps
 
-Do these in order for every task. A task is one or more PRD requirements, named by ID.
+A task is one GitHub issue. Do these in order.
 
-1. **Orient.** Read the task, then the PRD requirements it names, then the spec section and plan section they cite, then `CONTEXT.md` for the words, then the folder it touches, then `docs/exceptions.md`. State in one line which template (rule 1) applies.
-2. **Search for prior decisions.** Grep for the tables, events and verbs involved. Find the existing writer (rule 3) before adding one. Check PRD section 18, the spec's Decisions table and `docs/adr/` before reopening a settled question. Where none of them decides something, decide it, and record the decision in `docs/progress_tracker.md` with what it costs if wrong.
+1. **Orient.** Read the issue and its epic, then `CONTEXT.md` for the words, then the folder it touches, then `docs/exceptions.md`. Read the PRD or spec section only where the issue touches a part of the design you need to understand. State in one line which template (rule 1) applies.
+2. **Search for prior decisions.** Grep for the tables, events and verbs involved. Find the existing writer (rule 3) before adding one. Check `docs/adr/` and the spec's Decisions table before reopening a settled question. Where nothing decides something, decide it and say so in the pull request description, with what it costs if wrong.
 3. **Plan the files.** List every file you will add or edit. If any is a shared root (rule 4), that change is its own commit.
-4. **Write the scenario first.** For a requirement, the scenario in `sim/scenarios/` or the test that proves it, named for the requirement ID, observed red. For a bug, the scenario that reproduces it, observed red. Only then implement.
+4. **Write the test first.** The scenario in `sim/scenarios/` or the test that proves the behaviour, named for what it proves, observed red. For a bug, the test that reproduces it, observed red. Only then implement.
 5. **Implement.** Copy the template. Fill it. Keep each file under 500 lines and each function under 50.
-6. **Verify.** `pnpm verify` green. If a screen changed, load it in light and dark at phone width. If a platform adapter changed and its credentials exist, run it against staging; if they do not, say so in the tracker.
-7. **Commit and record.** Commit with the requirement IDs in the message body. Update `docs/progress_tracker.md`: the requirements now done, what was verified and how, and what was not verified.
-8. **Report.** Summarize what changed, what you verified, and what you did not verify. Label inferences as inferences. If you could not verify something, say so first.
+6. **Verify.** `pnpm verify` green. If a screen changed, load it in light and dark at phone width. If a platform adapter changed and its credentials exist, run it against staging; if they do not, say so in the pull request.
+7. **Open the pull request** into `develop`, with `Closes #<issue>` and a description of what changed, what was verified and how, and what was not verified.
+8. **Report and stop.** Summarize what changed, what you verified, and what you did not verify. Label inferences as inferences. If you could not verify something, say so first.
 
-Done means: all eight steps completed, `pnpm verify` green, every shared-root change in its own commit, no exception missing its entry, every requirement touched has its scenario or test, and no claim of verification standing without the run behind it.
+Done means: `pnpm verify` green, every shared-root change in its own commit, no exception missing its entry, the behaviour the issue asks for proven by a test or scenario, the pull request open against `develop`, and no claim of verification standing without the run behind it.
 
 ## 7b. Branching model (develop → main)
 
@@ -181,23 +180,24 @@ Two long-lived branches, since 2026-11-12, the model of `bt-servant-worker` with
 
 CI's `Release Source` job refuses a PR into `main` from any branch but `develop`; it reads the PR's branch name from an environment variable, never by interpolating it into the script, so a branch name cannot inject shell. `deploy-production.yml` runs only by dispatch, and refuses anything but a `v*` tag whose commit is on `main` (it checks out full history to test that). Staging deploys only after CI on a push to `develop`, since a release PR's CI also runs with head branch `develop`; staging deploys are queued, never cancelled mid-migration, and each first checks that its commit is still `develop`'s tip, so an older run finishing late skips instead of rolling staging back. The red-CI alarm opens one issue per branch (`ci-red-develop`, `ci-red-main`). The app's own merges (the Merge stage) go to the default branch, so workflow PRs land on `develop` too.
 
-## 8. Building the whole scope
+## 8. Working an issue
 
-When a person asks for the whole scope, or a version, to be built, that request is the approval to plan and build all of it without stopping between steps.
+One issue, one branch, one pull request.
 
-- **The input is `docs/PRD.md`.** Work through section 13 in order. Write one implementation plan per build-order step, against the code that exists at that moment, under `docs/plans/`. Each plan names `docs/PRD.md` as its spec and lists the requirement IDs it covers. Execute each plan as soon as it is written; do not wait for a person to approve a plan or to choose how it runs.
-- **The PRD is the approved spec.** Do not brainstorm, do not write another spec, and do not ask for the PRD or a plan to be approved. Go from `docs/PRD.md` straight to writing plans. A version's design may live beside the PRD as a document under `docs/specs/`, named from the PRD section that holds that version's requirements; the PRD stays the list of work, every plan still names it as spec, and where the two disagree on design the design wins and the PRD is corrected.
-- **Branch: yes, without asking; no worktree.** Build on a new branch in the main checkout, named for the work it holds (`feat/ui-redesign` for v0.3.0), never for a version (Ian, 2026-11-05); `build/v1` and `build/v0.2.0` are the earlier versions' branches. Do not create a git worktree (Ian, 2026-11-04). Create the branch at the start and do not ask for consent.
-- **Rulings, not stalls.** Where the PRD, the spec and this file leave a choice open, make it, record it in `docs/progress_tracker.md` with what it costs if wrong, and keep going.
-- **Nothing waits on a person.** No account, secret or installation in PRD section 15 is needed to finish the build (PRD DX-8). Prove every requirement against test adapters and fixtures, write the platform adapter, record it under "Waiting on a person" in the tracker as awaiting live verification, and move to the next requirement. Never add a binding, a job or a test that fails when a secret is absent. The staging acceptance run and the first real item (PRD section 14, items 7 to 10) are a person's to do.
-- **Branch and push.** Build on a branch, not on `main`. Push whenever `pnpm verify` is green and a requirement or a plan is complete. Open one draft pull request for the branch at the first push, so CI and the per-PR Worker run on every push after it. Never force-push.
-- **The build is over** when PRD section 14, items 1 to 6, hold and the tracker says so with the evidence. Then mark the pull request ready and report: what is built, every ruling made, everything not verified, and everything waiting on a person. Do not present a menu of ways to finish; the choice is made: push the branch, mark the pull request ready, and leave the merge to a person.
+- **Branch** from `develop` in the main checkout, named for the work (`feat/agent-queues-landing`, `fix/uw-app-role-exists`), never for a version, and never in a git worktree.
+- **Scope** is the issue. Work you notice outside it becomes a new issue, not a bigger pull request.
+- **Push** only on a green `pnpm verify`. Never force-push.
+- **Review is the owner's step.** When the pull request is ready, say so and stop. Do not start a review of your own: no review workflow, no multi-agent fan-out, no reviewer subagents. The owner runs the review (Codex) and passes on its comments.
+- **Every review comment is fixed**, whatever its severity, unless there is a concrete, named reason it is wrong; that reason goes in a reply on the comment.
+- **Merging** into `develop` happens when the owner says the pull request is good to merge. Merging into `main` (a release) and any production deploy happen only when the owner asks for them.
+- **More than one issue in a run** only when the owner asks for it by name ("do #104 and #105"). Then each issue still gets its own branch and pull request, one after another.
+- **Rulings, not stalls,** inside an issue: where the issue, the code and this file leave a choice open, make it, say so in the pull request, and keep going.
 
-Stop and ask only for these: a destructive or irreversible operation; a change that would let an agent identity pass a human gate; merging to `main`; anything touching production; a secret you would have to invent or paste into a file.
+Stop and ask for these: a destructive or irreversible operation; a change that would let an agent identity pass a human gate; merging to `main`; anything touching production; a secret you would have to invent or paste into a file; a choice that changes what the issue asks for.
 
 ## 9. Architecture changes
 
-A change to a shared root (rule 4) or a fixed decision (section 1) goes in its own commit, and the message says what changes, why, and what was rejected. If the change is hard to reverse, surprising without context and the result of a real trade-off, the same commit adds an ADR in `docs/adr/`. If it changes the design, it also changes the spec's Decisions table and PRD section 18.
+A change to a shared root (rule 4) or a fixed decision (section 1) goes in its own commit, and the message says what changes, why, and what was rejected. If the change is hard to reverse, surprising without context and the result of a real trade-off, the same commit adds an ADR in `docs/adr/`. The ADR is the record; the PRD and the spec are not updated.
 
 ## 10. Things that always hold
 
@@ -209,6 +209,6 @@ A change to a shared root (rule 4) or a fixed decision (section 1) goes in its o
 - A control goes busy before the first `await` in its handler. An async re-read never overwrites a known value with a stale one.
 - Code carries no comments: no line comments, no block comments, no JSDoc, no directive comments, no commented-out code. What a comment would have said goes into a name, a type, a test, or `docs/`. A lint rule enforces this.
 - Deleting code with no visible callers is allowed once a grep of the repo confirms zero references. Say that you grepped.
-- No merge to this repository's `main`, from any branch, and no production deploy without a person at the keyboard saying so. This governs the build process, the agents building this repository; a merge the platform makes for a harness's repository under a merge delegation is the delegated Ship exit above. Whether the platform's own harness (`unfoldingWord/uw-platform`) may ever be granted a merge delegation is a person's decision, open in `docs/progress_tracker.md`.
+- No merge to this repository's `main`, from any branch, and no production deploy without a person at the keyboard saying so. This governs the build process, the agents building this repository; a merge the platform makes for a harness's repository under a merge delegation is the delegated Ship exit above. Whether the platform's own harness (`unfoldingWord/uw-platform`) may ever be granted a merge delegation is a person's decision, still open.
 - Never push on a red `pnpm verify`.
-- When the requested implementation conflicts with a rule in this file, the rule wins. Build the version that keeps the rule, record the conflict in `docs/progress_tracker.md`, and continue; stop only when no version keeps the rule.
+- When the requested implementation conflicts with a rule in this file, the rule wins. Build the version that keeps the rule, record the conflict in the pull request description, and continue; stop only when no version keeps the rule.
