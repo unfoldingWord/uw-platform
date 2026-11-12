@@ -12,7 +12,7 @@ function jobNames(workflow: string): string[] {
 }
 
 function pnpmSteps(workflow: string): string[] {
-  return [...workflow.matchAll(/^ {6}- run: pnpm (\S+)$/gm)].map((match) => match[1] ?? '');
+  return [...workflow.matchAll(/^ {6}(?:- | {2})run: pnpm (\S+)/gm)].map((match) => match[1] ?? '');
 }
 
 function verifySteps(): string[] {
