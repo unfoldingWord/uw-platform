@@ -1,5 +1,7 @@
 # Harness v0.3.0: the look
 
+> **Historical design (2026-11-12).** This design was built and merged. Its process parts are superseded by `AGENTS.md`: work is tracked in GitHub issues, the PRD is reference, and the requirement trace (`pnpm trace`) no longer exists.
+
 | | |
 |---|---|
 | Status | Proposed on 2026-11-04 by Ian Lindsley and Claude; approved when the pull request that adds it merges |
