@@ -167,6 +167,20 @@ Do these in order for every task. A task is one or more PRD requirements, named 
 
 Done means: all eight steps completed, `pnpm verify` green, every shared-root change in its own commit, no exception missing its entry, every requirement touched has its scenario or test, and no claim of verification standing without the run behind it.
 
+## 7b. Branching model (develop → main)
+
+Two long-lived branches, since 2026-11-12, the same model as `bt-servant-worker`:
+
+- **`develop`** is the integration branch and the default branch. Every feature branch and every PR targets `develop`. Staging deploys automatically after CI passes on a push to `develop`. Bot review plus CI is enough to merge there.
+- **`main`** is the release branch. It only ever receives `develop` (a release PR, "Release vX.Y.Z: develop → main") or a `hotfix/*` branch. Only the repo owner can merge to `main`: branch protection restricts pushes and requires a code-owner review. Production deploys from `main` by tag.
+- **Rule: `develop` is always releasable.** Work that is not ready to ship stays on its branch, or merges behind a flag that is off in production. Never cherry-pick into `main`; if something on `develop` must not ship, revert it on `develop` or flag it off, then release.
+- **Hotfix:** branch from `main` as `hotfix/<name>`, PR into `main`, then open a PR from `main` into `develop` the same day so `develop` stays ahead of `main`.
+- **Release:** merge the release PR, tag `v<version>` on the resulting `main` commit, then dispatch the production deploy on the tag: `gh workflow run deploy-production.yml --ref v<version>`.
+- **Merge methods:** feature PRs into `develop` are **squash**-merged (`develop` requires linear history). Release and hotfix PRs into `main` use a **merge commit**, never squash or rebase; a ruleset on `main` allows only merge commits. A squash would copy `develop`'s work into a commit `develop` never contains, so the branches would diverge and every later release PR would re-list already-shipped commits.
+- **Up to date before merge:** `develop` requires a PR branch to be current with `develop` ("Update branch"), so two PRs that pass alone cannot break together. `main` does not, because `develop` never contains `main`'s release merge commits.
+
+CI's `Release Source` job refuses a PR into `main` from any other branch. `deploy-production.yml` runs only by dispatch, and refuses anything but a `v*` tag on `main`. The app's own merges (the Merge stage) go to the default branch, so harness PRs land on `develop` too.
+
 ## 8. Building the whole scope
 
 When a person asks for the whole scope, or a version, to be built, that request is the approval to plan and build all of it without stopping between steps.

@@ -72,8 +72,15 @@ describe('FD-12 the go-live jobs skip cleanly while their secret is absent', () 
   });
 
   it('migrates before it deploys', () => {
-    expect(job('deploy-staging.yml', 'deploy-staging').needs).toEqual(['migrate-staging']);
-    expect(job('deploy-staging.yml', 'deploy-ingest-staging').needs).toEqual(['migrate-staging']);
+    expect(job('deploy-staging.yml', 'migrate-staging').needs).toEqual(['staging-tip']);
+    expect(job('deploy-staging.yml', 'deploy-staging').needs).toEqual([
+      'staging-tip',
+      'migrate-staging',
+    ]);
+    expect(job('deploy-staging.yml', 'deploy-ingest-staging').needs).toEqual([
+      'staging-tip',
+      'migrate-staging',
+    ]);
     expect(job('deploy-production.yml', 'deploy-production').needs).toEqual([
       'production-gate',
       'migrate-production',

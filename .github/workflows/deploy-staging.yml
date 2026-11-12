@@ -1,25 +1,60 @@
 name: Deploy Staging
 
+# Staging follows the develop branch only: it deploys after CI succeeds on a
+# push to develop. A release PR (develop → main) runs CI with head branch
+# develop too, so every job also requires the CI run to have been triggered by
+# a push. Deploys are serialized (queued, never cancelled mid-migration), and
+# each one first checks that its commit is still the tip of develop, so an
+# older CI run finishing after a newer one skips instead of rolling staging back.
 on:
   workflow_run:
     workflows: [CI]
     types: [completed]
-    branches: [main]
+    branches: [develop]
 
 concurrency:
   group: deploy-staging
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
+  staging-tip:
+    name: staging-tip
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'develop'
+    runs-on: ubuntu-24.04
+    outputs:
+      current: ${{ steps.tip.outputs.current }}
+    steps:
+      - name: Skip if a newer push to develop exists
+        id: tip
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          tip="$(gh api "repos/$REPO/commits/develop" --jq .sha)"
+          if [ "$tip" != "$HEAD_SHA" ]; then
+            echo "::notice::Skipping: $HEAD_SHA is no longer the tip of develop ($tip). The newer push deploys instead."
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok: $HEAD_SHA is the tip of develop"
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          fi
+
   migrate-staging:
     name: migrate-staging
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_branch == 'main'
+      github.event.workflow_run.head_branch == 'develop' &&
+      needs.staging-tip.outputs.current == 'true'
+    needs: [staging-tip]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -50,8 +85,9 @@ jobs:
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_branch == 'main'
-    needs: [migrate-staging]
+      github.event.workflow_run.head_branch == 'develop' &&
+      needs.staging-tip.outputs.current == 'true'
+    needs: [staging-tip, migrate-staging]
     runs-on: ubuntu-24.04
     env:
       SHA: ${{ github.event.workflow_run.head_sha }}
@@ -85,8 +121,9 @@ jobs:
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_branch == 'main'
-    needs: [migrate-staging]
+      github.event.workflow_run.head_branch == 'develop' &&
+      needs.staging-tip.outputs.current == 'true'
+    needs: [staging-tip, migrate-staging]
     runs-on: ubuntu-24.04
     env:
       SHA: ${{ github.event.workflow_run.head_sha }}
