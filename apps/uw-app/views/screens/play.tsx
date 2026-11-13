@@ -19,7 +19,7 @@ import { zulipConfigOf } from '../../notify/zulip/config.ts';
 import { itemTopicUrl } from '../../notify/zulip/links.ts';
 import { holderText } from '../parts/holder-words.ts';
 import { pageNames } from '../parts/names.ts';
-import { moduleCodes } from '../parts/platform-nav.ts';
+import { moduleCodes } from '../parts/names.ts';
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 const link = `text-accent-text underline ${focus}`;

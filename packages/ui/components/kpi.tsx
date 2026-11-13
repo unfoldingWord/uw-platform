@@ -1,6 +1,6 @@
 import type { Child } from 'hono/jsx';
 import { Badge, type BadgeTone } from './badge.tsx';
-import { humanFigure } from './human-action.tsx';
+import { humanFigure, humanRule } from './human-action.tsx';
 
 export function Kpi(props: {
   readonly label: string;
@@ -10,7 +10,7 @@ export function Kpi(props: {
   readonly plain?: boolean | undefined;
   readonly person?: boolean | undefined;
 }) {
-  const rule = props.person === true ? 'border-t-human' : 'border-t-accent';
+  const rule = props.person === true ? humanRule : 'border-t-accent';
   const frame =
     props.plain === true
       ? ''

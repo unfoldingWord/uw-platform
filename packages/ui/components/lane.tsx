@@ -1,6 +1,6 @@
 import type { Child } from 'hono/jsx';
 import { Badge } from './badge.tsx';
-import { HumanMark } from './human-action.tsx';
+import { HumanMark, humanLane } from './human-action.tsx';
 import { domId } from './text.ts';
 
 const column = 'flex w-aside shrink-0 flex-col gap-2 rounded-md bg-lane p-2';
@@ -53,7 +53,7 @@ export function Lane(props: {
     <section
       aria-labelledby={headingId}
       data-folded={props.folded === true ? 'true' : undefined}
-      class={`${column} ${gate ? 'border border-human-line' : ''}`}
+      class={`${column} ${gate ? humanLane : ''}`}
     >
       <div class="flex items-center gap-2 px-1">
         <h2

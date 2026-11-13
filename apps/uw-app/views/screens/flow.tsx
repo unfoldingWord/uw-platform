@@ -13,7 +13,7 @@ import { bracketText, FlowDiagram } from '../parts/flow-diagram.tsx';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { idParam } from '../parts/params.ts';
 import { boardPath, flowPath } from '../parts/paths.ts';
-import { moduleCodes } from '../parts/platform-nav.ts';
+import { moduleCodes } from '../parts/names.ts';
 import { workflowTabs } from '../parts/workflow-tabs.ts';
 import { notFound } from './not-found.tsx';
 import { pageNames } from '../parts/names.ts';

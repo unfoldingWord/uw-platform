@@ -11,7 +11,7 @@ export function Card(props: {
   return (
     <section class="flex min-w-0 flex-col rounded-md border border-line bg-surface text-text">
       {props.title === undefined ? null : (
-        <header class="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
+        <div class="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
           <h2 class="m-0 text-md font-heavy text-text">{props.title}</h2>
           {props.sub === undefined ? null : (
             <span class="text-xs font-semibold text-text-3">{props.sub}</span>
@@ -19,7 +19,7 @@ export function Card(props: {
           {props.actions === undefined ? null : (
             <span class="ml-auto flex items-center gap-2">{props.actions}</span>
           )}
-        </header>
+        </div>
       )}
       <div class={body}>{props.children}</div>
     </section>

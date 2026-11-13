@@ -1,4 +1,5 @@
 import type { Child } from 'hono/jsx';
+import { humanBadge } from './human-action.tsx';
 
 export type BadgeTone = 'neutral' | 'info' | 'success' | 'held' | 'person';
 
@@ -7,7 +8,7 @@ const toneClasses: Readonly<Record<BadgeTone, string>> = {
   info: 'bg-accent-soft text-accent-text',
   success: 'bg-ok-soft text-ok-text',
   held: 'border border-dashed border-line bg-surface text-text-3',
-  person: 'border border-human-line bg-human-soft text-human-text',
+  person: humanBadge,
 };
 
 export function Badge(props: { readonly tone: BadgeTone; readonly children: Child }) {

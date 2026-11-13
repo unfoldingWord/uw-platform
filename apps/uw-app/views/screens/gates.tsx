@@ -12,12 +12,12 @@ import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '..
 import { parkedCapNote } from '../parts/caps.ts';
 import { liveCursors } from '../parts/cursors.ts';
 import { GatePanel, type GatePlace, type PanelGate } from '../parts/gate-panel.tsx';
-import { HumanDot } from '@uw/ui/components/human-action.tsx';
+import { HumanDot, humanBadge } from '@uw/ui/components/human-action.tsx';
 import { formatDuration } from '@uw/core/dates';
 import { gatePath, gatesPath, homePath } from '../parts/paths.ts';
 import { ShadowList } from '../parts/shadow-list.tsx';
 import { pageNames } from '../parts/names.ts';
-import { moduleCodes } from '../parts/platform-nav.ts';
+import { moduleCodes } from '../parts/names.ts';
 
 const REFRESH_EVERY_MS = 60_000;
 const eyebrow = 'A person decides · an agent cannot advance these';
@@ -96,7 +96,7 @@ function InboxHead(props: { readonly count: number }) {
   return (
     <p class="m-0 flex items-center gap-2 border-b border-line px-4 py-3 text-md font-heavy text-text">
       Decide
-      <span class="rounded-sm border border-human-line bg-human-soft px-1 font-mono text-xs leading-normal text-human-text">
+      <span class={`rounded-sm px-1 font-mono text-xs leading-normal ${humanBadge}`}>
         {props.count}
       </span>
     </p>

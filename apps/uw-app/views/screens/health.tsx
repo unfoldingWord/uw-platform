@@ -14,7 +14,7 @@ import { renderScreen, screenKernel } from '../parts/frame.tsx';
 import { indicatorText, statusOf } from '../parts/health-words.ts';
 import { pageNames } from '../parts/names.ts';
 import { healthPath } from '../parts/paths.ts';
-import { moduleCodes } from '../parts/platform-nav.ts';
+import { moduleCodes } from '../parts/names.ts';
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 const drilled: ReadonlySet<string> = new Set(AGENT_PLANE_INDICATORS);

@@ -20,7 +20,7 @@ import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { itemsText } from '../parts/items-count.ts';
 import { idParam } from '../parts/params.ts';
 import { boardPath, flowPath, gatesPath } from '../parts/paths.ts';
-import { moduleCodes } from '../parts/platform-nav.ts';
+import { moduleCodes } from '../parts/names.ts';
 import { workflowTabs } from '../parts/workflow-tabs.ts';
 import { formatMoney } from '@uw/core/money';
 import { notFound } from './not-found.tsx';

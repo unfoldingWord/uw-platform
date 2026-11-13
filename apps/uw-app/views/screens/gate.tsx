@@ -12,7 +12,7 @@ import { flowPath, gatePath, gatesPath, homePath, itemPath } from '../parts/path
 import { notFound } from './not-found.tsx';
 import { Inbox, placeOf } from './gates.tsx';
 import { pageNames } from '../parts/names.ts';
-import { moduleCodes } from '../parts/platform-nav.ts';
+import { moduleCodes } from '../parts/names.ts';
 
 type ItemScene = { readonly item: ItemState; readonly harness: Harness; readonly stage: Stage };
 

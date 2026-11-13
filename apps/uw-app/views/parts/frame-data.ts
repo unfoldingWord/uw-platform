@@ -8,7 +8,7 @@ import { wordmarkPath } from '@uw/ui/generated/mark';
 import type { AppEnv } from '../../deps.ts';
 import { commitOf, environmentOf } from '../../env.ts';
 import { boardPath, flowPath, healthPath, homePath } from './paths.ts';
-import { moduleCodes, noModules, platformAreas, type PlatformModule } from './platform-nav.ts';
+import { moduleCodes, noModules, platformAreas, type PlatformModule } from './names.ts';
 
 const noCounts: FrameCounts = { harnesses: [], waiting: 0, gatesOpen: 0, agentsWorking: 0 };
 

@@ -18,7 +18,7 @@ import { handedCapNote, lapsedCapNote, parkedCapNote } from '../parts/caps.ts';
 import { liveCursors } from '../parts/cursors.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { boardPath, flowPath, gatePath, homePath, itemPath } from '../parts/paths.ts';
-import { moduleCodes } from '../parts/platform-nav.ts';
+import { moduleCodes } from '../parts/names.ts';
 import { pageNames } from '../parts/names.ts';
 
 const REFRESH_EVERY_MS = 60_000;
@@ -189,7 +189,7 @@ function WaitingCard(props: {
   const count = props.rows.length;
   return (
     <Card
-      title="Waiting on me"
+      title="Waiting on you"
       sub={count === 0 ? undefined : <Badge tone="person">{`${formatCount(count)} waiting`}</Badge>}
       actions={<span class="text-xs text-text-3">an agent cannot advance these</span>}
     >
@@ -275,12 +275,12 @@ function HarnessCards(props: { readonly cards: readonly WorkflowCard[] }) {
       aria-labelledby="harnesses-heading"
       class="flex min-w-0 flex-col rounded-md border border-line bg-surface"
     >
-      <header class="flex items-center gap-2 border-b border-line px-4 py-3">
+      <div class="flex items-center gap-2 border-b border-line px-4 py-3">
         <h2 id="harnesses-heading" class="m-0 text-md font-heavy text-text">
           Workflows
         </h2>
         <span class="text-xs font-semibold text-text-3">{`${formatCount(props.cards.length)} in Agent Queues`}</span>
-      </header>
+      </div>
       <ul class="m-0 flex list-none flex-col p-0">
         {props.cards.map((card) => (
           <HarnessCard card={card} />
@@ -367,7 +367,7 @@ export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
       <PageHead eyebrow={`Today · ${formatDate(screen.at)}`} title={greeting(person)} {...head} />
       <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <WaitingCard rows={rows} notes={notes} />
-        <Soon title="My tasks" />
+        <Soon title="Your tasks" />
         {cards.length === 0 ? <PushOnly /> : <HarnessCards cards={cards} />}
         <Soon title="Activity" />
       </div>

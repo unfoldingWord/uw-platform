@@ -56,7 +56,11 @@ export function PersonCount(props: { readonly count: number; readonly label: str
   );
 }
 
-export const humanLane = 'border border-human-line bg-glow-human';
+export const humanLane = 'border border-human-line';
+
+export const humanBadge = 'border border-human-line bg-human-soft text-human-text';
+
+export const humanRule = 'border-t-human';
 
 export const humanNode = 'border-human bg-human-soft text-human-text shadow-person';
 

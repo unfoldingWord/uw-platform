@@ -13,7 +13,7 @@ import { sweepsBacking } from '../../health/agent-plane.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { indicatorText, statusOf } from '../parts/health-words.ts';
 import { healthPath } from '../parts/paths.ts';
-import { moduleCodes } from '../parts/platform-nav.ts';
+import { moduleCodes } from '../parts/names.ts';
 import { notFound } from './not-found.tsx';
 import { titleCased, pageNames } from '../parts/names.ts';
 
