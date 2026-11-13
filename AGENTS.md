@@ -40,7 +40,7 @@ These are settled. Work inside them; changing one is an architecture change (sec
 | Authorization | Plan §4: `role_grants` with `admin | editor | viewer` at `org` or `jd_area` scope, one `can(actor, verb, resource)`, a principal minted at the edge on every request. The harness derives from it and adds nothing beside it |
 | Conventions | Plan §0: dates `YYYY-MM-DD` through one `formatDate`/`parseDate` pair, money in integer minor units, UUID ids with slugs, Zod at every boundary |
 | Contracts | `packages/contracts` publishes commands, events, outcomes and the verb registry as Zod, one live version, golden fixtures, a conformance test (spec D4) |
-| Design | Tailwind 4 over one token system in `packages/ui/tokens/*.css`, generated from the brand colours and, from v0.3.0 build step 21, locked: the token scales are the whole Tailwind theme, spacing included, and an arbitrary value fails the build; light and dark follow the system setting with a persisted override; Kindle orange marks a human action and nothing else (ADR 0007, ADR 0011) |
+| Design | Tailwind 4 over one token system in `packages/ui/tokens/*.css`, generated from the brand colours and, from v0.3.0 build step 21, locked: the token scales are the whole Tailwind theme, spacing included, and an arbitrary value fails the build; light and dark follow the system setting with a persisted override; Kindle orange marks a human action and nothing else (ADR 0007, ADR 0011). Screens take the look of the Claude Design prototype in git history (`9a4955e^:ui-design/`), its values snapped to the token scales (ADR 0014) |
 | Package manager | pnpm workspaces, Node 22 |
 | Toolchain | ESLint flat config with fitness functions, Prettier, Vitest on the Workers pool, dependency-cruiser, knip, Husky, `pnpm audit` |
 | Tests | Vitest. Scenarios in `sim/scenarios/` and tests at each module's interface, named for what they prove, one contract test per port run against every adapter, and the tests only separate connections can prove on a Postgres service container in CI (PRD DX-6). No test needs a live account or a secret (PRD DX-8) |
@@ -144,7 +144,7 @@ Before writing a utility, a client, a parser or a component, search for an exist
 
 ## 6. UI rules
 
-- Before any UI work read ADR 0007, then `packages/ui/tokens/`, then the existing screens under `apps/uw-app/views/`, or `design-system/` when it exists.
+- Before any UI work read ADR 0007, ADR 0014, then `packages/ui/tokens/`, then the existing screens under `apps/uw-app/views/`, or `design-system/` when it exists. A new screen starts from its counterpart in the prototype (`git archive 9a4955e^ ui-design`), or the closest one, and records which.
 - Tokens are the only source of a color, size, spacing step, radius or shadow. A value not in the tokens is a design change, not a code change; the build fails on a hard-coded hex, and from v0.3.0 build step 21 also on an arbitrary Tailwind value such as `p-[18px]` (ADR 0011).
 - Every screen renders correctly in light and dark, at phone width, with visible focus and an accessible name on every control.
 - Every control returns an outcome; an unwired control says so. Never silence.
