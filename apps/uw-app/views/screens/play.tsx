@@ -13,12 +13,12 @@ import {
   pullRequestUrl,
   reviewUrl,
 } from '../parts/paths.ts';
+import { workflowCrumbs } from '../parts/workflow-tabs.ts';
 import { KindFilters, Timeline, kindOf, kindParam, type EventKind } from '../parts/timeline.tsx';
 import { notFound } from './not-found.tsx';
 import { zulipConfigOf } from '../../notify/zulip/config.ts';
 import { itemTopicUrl } from '../../notify/zulip/links.ts';
 import { holderText } from '../parts/holder-words.ts';
-import { pageNames } from '../parts/names.ts';
 import { moduleCodes } from '../parts/names.ts';
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
@@ -85,11 +85,7 @@ function ofKind(events: readonly HarnessEvent[], kind: EventKind | null): readon
 }
 
 function itemCrumbs(harness: { readonly id: string; readonly title: string }) {
-  return [
-    { label: pageNames.agentQueues },
-    { label: harness.title, href: boardPath(harness.id) },
-    { label: 'Item' },
-  ];
+  return workflowCrumbs(harness.title, boardPath(harness.id), 'Item');
 }
 
 export async function playScreen(c: Context<AppEnv>): Promise<Response> {

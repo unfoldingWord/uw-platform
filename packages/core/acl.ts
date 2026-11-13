@@ -74,6 +74,14 @@ export function readableAreas(actor: Principal, at: Date): ReadableAreas {
   return { kind: 'some', areas: [...areas].sort() };
 }
 
+export function grantedAreas(actor: Principal, at: Date): ReadableAreas {
+  const live = actor.grants.filter((grant) => isLive(grant, at));
+  if (live.some((grant) => grant.scopeKind === 'org')) return { kind: 'all' };
+  const areas = new Set<JdArea>();
+  for (const grant of live) if (grant.scopeKind === 'jd_area') areas.add(grant.scopeArea);
+  return { kind: 'some', areas: [...areas].sort() };
+}
+
 const actionByVerbRole: ReadonlyMap<Role, AclAction> = new Map<Role, AclAction>([
   [minimumRole.read, 'read'],
   [minimumRole.write, 'write'],

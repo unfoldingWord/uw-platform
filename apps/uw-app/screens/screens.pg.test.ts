@@ -16,6 +16,7 @@ import { gateWorld } from '../testing/gate-world.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { getHtml } from '../testing/views.ts';
 import {
+  agentQueuesPath,
   boardPath,
   flowPath,
   gatePath,
@@ -103,6 +104,7 @@ async function boardScreens(db: Database): Promise<Screen[]> {
   });
   const paths: readonly (readonly [string, string])[] = [
     ['home', homePath()],
+    ['agent-queues', agentQueuesPath()],
     ['board', boardPath(world.harnessId)],
     ['flow', flowPath(world.harnessId)],
     ['health', healthPath()],
@@ -220,6 +222,7 @@ describe.skipIf(!testServer || (!browserReady && !required))('UI-16 the screensh
   it('UI-16 every screen in light and dark, desktop and phone, matches its committed picture', async () => {
     expect(screens.map((screen) => screen.name)).toEqual([
       'home',
+      'agent-queues',
       'board',
       'flow',
       'health',

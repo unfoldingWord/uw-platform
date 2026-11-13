@@ -7,7 +7,7 @@ import type { NavItem, NavSection, Person } from '@uw/ui/components/sidebar.tsx'
 import { wordmarkPath } from '@uw/ui/generated/mark';
 import type { AppEnv } from '../../deps.ts';
 import { commitOf, environmentOf } from '../../env.ts';
-import { boardPath, flowPath, healthPath, homePath } from './paths.ts';
+import { agentQueuesPath, boardPath, healthPath, homePath } from './paths.ts';
 import { moduleCodes, noModules, platformAreas, type PlatformModule } from './names.ts';
 
 const noCounts: FrameCounts = { harnesses: [], waiting: 0, gatesOpen: 0, agentsWorking: 0 };
@@ -66,7 +66,7 @@ function builtItems(module: PlatformModule, counts: FrameCounts, watch: number):
     ];
   if (module.built === 'agentQueues')
     return [
-      { ...base, code: moduleCodes.agentQueues, href: firstFlow(counts) },
+      { ...base, code: moduleCodes.agentQueues, href: agentQueuesPath() },
       ...counts.harnesses.map(({ harness, open }) => ({
         label: harness.title,
         href: boardPath(harness.id),
@@ -75,11 +75,6 @@ function builtItems(module: PlatformModule, counts: FrameCounts, watch: number):
       })),
     ];
   return [base];
-}
-
-function firstFlow(counts: FrameCounts): string {
-  const first = counts.harnesses[0];
-  return first === undefined ? homePath() : flowPath(first.harness.id);
 }
 
 export function sectionsOf(counts: FrameCounts, watch: number): readonly NavSection[] {

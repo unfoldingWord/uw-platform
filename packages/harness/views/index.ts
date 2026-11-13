@@ -22,6 +22,7 @@ import { planeList } from './plane-list.ts';
 import { planeTotals } from './plane.ts';
 import { personaView, type PersonaDashboard } from './persona.ts';
 import { playByPlay, type PlayInput } from './play.ts';
+import { queuesView } from './queues.ts';
 import { shadowComparison } from './shadow.ts';
 import { harnessCursor, harnessCursors, readableHarnesses } from './readable.ts';
 import type {
@@ -35,6 +36,7 @@ import type {
   PlaneRow,
   PlaneTotals,
   PlayByPlay,
+  Queues,
   Waiting,
 } from './types.ts';
 import { waitingOn } from './waiting.ts';
@@ -48,6 +50,7 @@ type Gate = { readonly harness: Harness; readonly stage: Stage; readonly item: I
 export type ViewReads = {
   harnesses(caller: Caller, options?: ReadOptions): Promise<readonly Harness[]>;
   frame(caller: Caller, options?: ReadOptions): Promise<FrameCounts>;
+  queues(caller: Caller, options?: ReadOptions): Promise<Queues>;
   daily(
     caller: Caller,
     input: { readonly harnessId: string | null },
@@ -136,7 +139,9 @@ function scopedReads(ports: ViewPorts): Pick<ViewReads, 'silence' | 'holds'> {
   };
 }
 
-function frameRead(ports: ViewPorts): Pick<ViewReads, 'frame' | 'daily' | 'lastEvents' | 'mine'> {
+function frameRead(
+  ports: ViewPorts,
+): Pick<ViewReads, 'frame' | 'queues' | 'daily' | 'lastEvents' | 'mine'> {
   const at = (options?: ReadOptions): Date => options?.at ?? ports.clock.now();
   const read = <T>(work: (tx: StoreTransaction) => Promise<T>) => ports.store.transaction(work);
   return {
@@ -145,6 +150,7 @@ function frameRead(ports: ViewPorts): Pick<ViewReads, 'frame' | 'daily' | 'lastE
     lastEvents: (caller, input, options) =>
       read((tx) => lastEventsView(ports, tx, caller, { itemIds: input.itemIds, at: at(options) })),
     mine: (caller, options) => read((tx) => myItemsView(ports, tx, caller, at(options))),
+    queues: (caller, options) => read((tx) => queuesView(ports, tx, caller, at(options))),
     frame: (caller, options) => {
       const at = options?.at ?? ports.clock.now();
       return ports.store.transaction((tx) => frameCounts(ports, tx, caller, at));

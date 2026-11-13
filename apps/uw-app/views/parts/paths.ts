@@ -7,6 +7,10 @@ export function homePath(): string {
   return '/';
 }
 
+export function agentQueuesPath(): string {
+  return '/agent-queues';
+}
+
 export function gatesPath(): string {
   return '/gates';
 }

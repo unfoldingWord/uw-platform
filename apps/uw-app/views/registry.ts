@@ -2,6 +2,11 @@ export type ScreenEntry = { readonly name: string; readonly file: string; readon
 
 export const screens: readonly ScreenEntry[] = [
   { name: 'home', file: 'apps/uw-app/views/screens/home.tsx', path: '/' },
+  {
+    name: 'agent-queues',
+    file: 'apps/uw-app/views/screens/agent-queues.tsx',
+    path: '/agent-queues',
+  },
   { name: 'flow', file: 'apps/uw-app/views/screens/flow.tsx', path: '/harnesses/:harnessId' },
   {
     name: 'board',

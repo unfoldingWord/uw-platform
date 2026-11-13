@@ -3,6 +3,7 @@ import { csrf } from 'hono/csrf';
 import { HTTPException } from 'hono/http-exception';
 import type { AppEnv } from '../deps.ts';
 import { refuse } from '../http/outcomes.ts';
+import { agentQueuesScreen } from './screens/agent-queues.tsx';
 import { boardScreen } from './screens/board.tsx';
 import { flowScreen } from './screens/flow.tsx';
 import { gateScreen } from './screens/gate.tsx';
@@ -26,6 +27,7 @@ async function formGuard(c: Context<AppEnv>, next: Next): Promise<Response | voi
 export function viewRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
   routes.get('/', homeScreen);
+  routes.get('/agent-queues', agentQueuesScreen);
   routes.get('/harnesses/:harnessId', flowScreen);
   routes.get('/harnesses/:harnessId/board', boardScreen);
   routes.get('/gates', gatesScreen);

@@ -20,7 +20,7 @@ import { itemsText } from '../parts/items-count.ts';
 import { idParam } from '../parts/params.ts';
 import { boardPath, flowPath, gatesPath } from '../parts/paths.ts';
 import { moduleCodes } from '../parts/names.ts';
-import { workflowTabs } from '../parts/workflow-tabs.ts';
+import { workflowCrumbs, workflowTabs } from '../parts/workflow-tabs.ts';
 import { formatMoney } from '@uw/core/money';
 import { notFound } from './not-found.tsx';
 import { pageNames } from '../parts/names.ts';
@@ -142,11 +142,7 @@ function specOf(view: Shown, cursor: number) {
     title: `${harness.title} ${pageNames.board}`,
     current: boardPath(harness.id),
     code: moduleCodes.agentQueues,
-    crumbs: [
-      { label: pageNames.agentQueues },
-      { label: harness.title, href: flowPath(harness.id) },
-      { label: pageNames.board },
-    ],
+    crumbs: workflowCrumbs(harness.title, flowPath(harness.id), pageNames.board),
     tabs: workflowTabs(harness.id, 'board'),
     live: { screen: 'board' as const, harnesses: [{ harnessId: harness.id, cursor }] },
   };
