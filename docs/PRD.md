@@ -613,6 +613,7 @@ From #97 (2026-11-12) the source of truth for how screens look is the Claude Des
 |---|---|
 | The frame (sidebar by area, top bar) | Frame (UI-5); unbuilt modules are dimmed and open nothing |
 | Today | Today, was Home (UI-9) |
+| Agent Queues landing (the epic #99 proposal) | Agent Queues, one card per workflow the viewer may see (#104) |
 | Agent Queues lanes and cards, with Development's chips and view switch | Board (WB-5, UI-6) |
 | Agent Queues "Stage configuration" | Flow (WB-4, UI-10) |
 | Today's "Waiting on me" rows | Waiting On You (WB-6, UI-7) |

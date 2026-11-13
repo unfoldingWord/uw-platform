@@ -25,7 +25,10 @@ export type {
   PlaneIndicator,
   PlaneRow,
   PlaneTotals,
+  PhaseCount,
   PlayByPlay,
+  QueueCard,
+  Queues,
   WaitingRow,
 } from './views/types.ts';
 export {
