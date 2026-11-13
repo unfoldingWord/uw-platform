@@ -5,7 +5,7 @@ import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { idParam } from '../parts/params.ts';
-import { boardPath, personaPath } from '../parts/paths.ts';
+import { queuePath, personaPath } from '../parts/paths.ts';
 import { ActivateForm, ToolsetForm, type SavedToolset } from '../parts/persona-controls.tsx';
 import { Delegations, LastRuns, PersonaKpis } from '../parts/persona-figures.tsx';
 import { notFound } from './not-found.tsx';
@@ -38,7 +38,7 @@ export function renderPersona(
     code: moduleCodes.agentQueues,
     crumbs: [
       { label: pageNames.agentQueues },
-      { label: harness.title, href: boardPath(harness.id) },
+      { label: harness.title, href: queuePath(harness.id) },
       { label: 'Persona' },
     ],
   };

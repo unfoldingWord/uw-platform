@@ -94,6 +94,29 @@ describe('the lane facts', () => {
   });
 });
 
+describe('#105 the lane shows its rules', () => {
+  it('#105 the facts are visible, and a gate lane marks the person who approves', async () => {
+    const document = await dom(
+      jsx(Lane, {
+        stageKey: 'merge',
+        title: 'Merge',
+        count: 0,
+        wipLimit: 2,
+        gate: true,
+        facts: [
+          { label: 'Agent pickup', value: 'No agents' },
+          { label: 'To leave', value: 'A person approves', person: true },
+        ],
+      }),
+    );
+    const list = found(document.querySelector('section > dl'));
+    expect(list.getAttribute('class') ?? '').not.toContain('sr-only');
+    const mark = found(list.querySelector('[aria-label="A person approves"]'));
+    expect(mark.closest('dd')?.textContent).toBe('A person approves');
+    expect(document.body.textContent).not.toContain('gate: a person decides');
+  });
+});
+
 describe('the lane ids and keyboard order', () => {
   it('lanes with colliding or non-Latin titles each label themselves with their own heading', async () => {
     const lanes = [

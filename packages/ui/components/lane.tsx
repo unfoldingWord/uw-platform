@@ -5,33 +5,44 @@ import { domId } from './text.ts';
 
 const column = 'flex w-aside shrink-0 flex-col gap-2 rounded-md bg-lane p-3';
 
-function Facts(props: {
-  readonly facts: readonly { readonly label: string; readonly value: string }[];
-}) {
+export type LaneFact = {
+  readonly label: string;
+  readonly value: string;
+  readonly person?: boolean;
+};
+
+function FactValue(props: { readonly fact: LaneFact }) {
+  const { fact } = props;
+  if (fact.person !== true) return <dd class="m-0 text-text-2">{fact.value}</dd>;
+  return (
+    <dd class="m-0">
+      <Badge tone="person">
+        <HumanMark label={fact.value} />
+        {fact.value}
+      </Badge>
+    </dd>
+  );
+}
+
+function Facts(props: { readonly facts: readonly LaneFact[] }) {
   if (props.facts.length === 0) return null;
   return (
-    <dl class="sr-only">
+    <dl class="m-0 grid grid-cols-label items-center gap-x-3 gap-y-1 px-1 text-xs">
       {props.facts.map((fact) => (
         <>
           <dt class="text-text-3">{fact.label}</dt>
-          <dd class="m-0 text-text-2">{fact.value}</dd>
+          <FactValue fact={fact} />
         </>
       ))}
     </dl>
   );
 }
 
-function LaneBadges(props: { readonly gate: boolean; readonly paused: boolean }) {
-  if (!props.gate && !props.paused) return null;
+function LaneBadges(props: { readonly paused: boolean }) {
+  if (!props.paused) return null;
   return (
     <div class="flex flex-wrap gap-1 px-1">
-      {props.gate ? (
-        <Badge tone="person">
-          <HumanMark label="A person decides" />
-          gate: a person decides
-        </Badge>
-      ) : null}
-      {props.paused ? <Badge tone="held">Paused</Badge> : null}
+      <Badge tone="held">Paused</Badge>
     </div>
   );
 }
@@ -44,7 +55,7 @@ export function Lane(props: {
   readonly paused?: boolean;
   readonly gate?: boolean;
   readonly folded?: boolean;
-  readonly facts?: readonly { readonly label: string; readonly value: string }[];
+  readonly facts?: readonly LaneFact[];
   readonly children?: Child;
 }) {
   const headingId = domId('lane', props.stageKey);
@@ -67,7 +78,7 @@ export function Lane(props: {
           <span class="sr-only"> items against the WIP limit</span>
         </p>
       </div>
-      <LaneBadges gate={gate} paused={props.paused === true} />
+      <LaneBadges paused={props.paused === true} />
       <Facts facts={props.facts ?? []} />
       <div class="flex flex-col gap-2">
         {props.children}

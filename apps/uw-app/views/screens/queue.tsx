@@ -1,24 +1,25 @@
 import type { Context } from 'hono';
-import type { AgentPickup, ExitGate, Principal, Stage } from '@uw/contracts';
+import type { AgentPickup, ExitGate, Principal, Stage, StageBracket } from '@uw/contracts';
 import { can } from '@uw/core/acl';
 import type { BoardColumn, BoardInput, BoardView, CostTotals } from '@uw/harness';
 import type { HarnessEvent } from '@uw/contracts';
 import { Chip } from '@uw/ui/components/chip.tsx';
 import { CommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
 import { TextField } from '@uw/ui/components/field.tsx';
-import { Lane } from '@uw/ui/components/lane.tsx';
+import { Lane, type LaneFact } from '@uw/ui/components/lane.tsx';
 import { HumanChip } from '@uw/ui/components/human-action.tsx';
 import { Icon } from '@uw/ui/components/icon.tsx';
 import { Kpi } from '@uw/ui/components/kpi.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { cursorOf } from '../../commands/reads.ts';
 import type { AppEnv } from '../../deps.ts';
-import { BoardCardView, type CardViewer } from '../parts/board-card.tsx';
+import { QueueCardView, type CardViewer } from '../parts/queue-card.tsx';
 import { EpicGroups, NotReadyList } from '../parts/epic-board.tsx';
+import { bracketText } from '../parts/flow-diagram.tsx';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { itemsText } from '../parts/items-count.ts';
 import { idParam } from '../parts/params.ts';
-import { boardPath, flowPath, gatesPath } from '../parts/paths.ts';
+import { queuePath, flowPath, gatesPath } from '../parts/paths.ts';
 import { moduleCodes } from '../parts/names.ts';
 import { workflowCrumbs, workflowTabs } from '../parts/workflow-tabs.ts';
 import { formatMoney } from '@uw/core/money';
@@ -34,9 +35,9 @@ const pickupWords: Readonly<Record<AgentPickup, string>> = {
 };
 
 const exitWords: Readonly<Record<ExitGate, string>> = {
-  none: 'No gate',
-  checks: 'Checks',
-  human_approval: 'A person decides',
+  none: 'Nothing',
+  checks: 'Checks pass',
+  human_approval: 'A person approves',
 };
 
 function boardInput(c: Context<AppEnv>, harnessId: string): BoardInput | null {
@@ -53,6 +54,7 @@ function viewerOf(actor: Principal, view: BoardView, at: Date): CardViewer {
   return {
     identity: actor.personId === null ? '' : `human:${actor.personId}`,
     admin: actor.kind === 'person' && can(actor, 'admin', area, at),
+    canClaim: can(actor, 'write', area, at),
     at,
   };
 }
@@ -68,23 +70,30 @@ function EnqueueForm(props: { readonly harnessId: string }) {
   );
 }
 
+function laneFacts(view: Shown, column: BoardColumn): readonly LaneFact[] {
+  const { stage } = column;
+  return [
+    { label: 'Items', value: itemsText(column, view.harness.botAuthors) },
+    { label: 'Agent pickup', value: pickupWords[stage.agentPickup] },
+    {
+      label: 'To leave',
+      value: exitWords[stage.exitGate],
+      person: stage.exitGate === 'human_approval',
+    },
+  ];
+}
+
 function ColumnView(props: {
   readonly view: Shown;
   readonly column: BoardColumn;
   readonly first: boolean;
   readonly viewer: CardViewer;
-  readonly last: ReadonlyMap<string, HarnessEvent>;
+  readonly marks: Marks;
 }) {
   const { column, view } = props;
   const folded = !props.first && column.held === 0 && column.cards.length === 0;
   const { stage } = column;
   const harnessId = view.harness.id;
-  const items = itemsText(column, view.harness.botAuthors);
-  const facts = [
-    { label: 'Items', value: items },
-    { label: 'Agent pickup', value: pickupWords[stage.agentPickup] },
-    { label: 'Exit', value: exitWords[stage.exitGate] },
-  ];
   return (
     <Lane
       stageKey={stage.key}
@@ -94,20 +103,21 @@ function ColumnView(props: {
       paused={stage.paused}
       gate={stage.exitGate === 'human_approval'}
       folded={folded}
-      facts={facts}
+      facts={laneFacts(view, column)}
     >
       {column.cards.map((card) => (
-        <BoardCardView
+        <QueueCardView
           harnessId={harnessId}
           card={card}
           column={column.cards}
           viewer={props.viewer}
-          last={props.last.get(card.item.itemId)}
+          last={props.marks.last.get(card.item.itemId)}
+          refusal={props.marks.refusals.get(card.item.itemId)}
         />
       ))}
       {column.next === null ? null : (
         <a
-          href={`${boardPath(harnessId, stage.key)}&after=${encodeURIComponent(column.next)}`}
+          href={`${queuePath(harnessId, stage.key)}&after=${encodeURIComponent(column.next)}`}
           class={`text-accent-text underline ${focus}`}
         >
           Show more
@@ -124,11 +134,11 @@ function StageChips(props: { readonly view: Shown; readonly stageKey: string | n
   return (
     <nav aria-label="Stages" class="mb-5 flex flex-wrap items-center gap-2">
       <span class="mr-1 text-xs font-heavy tracking-wide text-text-3 uppercase">Stage</span>
-      <Chip label="All stages" href={boardPath(harnessId)} selected={props.stageKey === null} />
+      <Chip label="All stages" href={queuePath(harnessId)} selected={props.stageKey === null} />
       {view.stages.map((stage) => (
         <Chip
           label={stage.title}
-          href={boardPath(harnessId, stage.key)}
+          href={queuePath(harnessId, stage.key)}
           selected={props.stageKey === stage.key}
         />
       ))}
@@ -139,11 +149,11 @@ function StageChips(props: { readonly view: Shown; readonly stageKey: string | n
 function specOf(view: Shown, cursor: number) {
   const { harness } = view;
   return {
-    title: `${harness.title} ${pageNames.board}`,
-    current: boardPath(harness.id),
+    title: `${harness.title} ${pageNames.queue}`,
+    current: queuePath(harness.id),
     code: moduleCodes.agentQueues,
-    crumbs: workflowCrumbs(harness.title, flowPath(harness.id), pageNames.board),
-    tabs: workflowTabs(harness.id, 'board'),
+    crumbs: workflowCrumbs(harness.title, flowPath(harness.id), pageNames.queue),
+    tabs: workflowTabs(harness.id, 'queue'),
     live: { screen: 'board' as const, harnesses: [{ harnessId: harness.id, cursor }] },
   };
 }
@@ -223,7 +233,93 @@ function Toolbar(props: { readonly tally: Tally }) {
   );
 }
 
-export async function boardScreen(c: Context<AppEnv>): Promise<Response> {
+type Marks = {
+  readonly last: ReadonlyMap<string, HarnessEvent>;
+  readonly refusals: ReadonlyMap<string, HarnessEvent>;
+};
+
+type Screen = NonNullable<ReturnType<typeof screenKernel>>;
+
+function byItem(events: readonly HarnessEvent[]): ReadonlyMap<string, HarnessEvent> {
+  return new Map(events.map((event) => [event.itemId ?? '', event]));
+}
+
+async function cardMarks(screen: Screen, board: BoardView, read: { readonly at: Date }) {
+  const cards = board.columns.flatMap((column) => column.cards);
+  const itemIds = cards.map((card) => card.item.itemId);
+  const stageOf = new Map(cards.map((card) => [card.item.itemId, card.item.stageKey]));
+  const { views } = screen.kernel;
+  const last = await views.lastEvents(screen.caller, { itemIds }, read);
+  const refusals = await views.refusals(screen.caller, { itemIds }, read);
+  const current = refusals.filter(
+    (event) => event.evidence['stage'] === stageOf.get(event.itemId ?? ''),
+  );
+  return { last: byItem(last), refusals: byItem(current) };
+}
+
+type Phase = { readonly bracket: StageBracket; readonly columns: readonly BoardColumn[] };
+
+function phasesOf(columns: readonly BoardColumn[]): readonly Phase[] {
+  const phases: { bracket: StageBracket; columns: BoardColumn[] }[] = [];
+  for (const column of columns) {
+    const open = phases.at(-1);
+    if (open?.bracket === column.stage.bracket) open.columns.push(column);
+    else phases.push({ bracket: column.stage.bracket, columns: [column] });
+  }
+  return phases;
+}
+
+function Lanes(props: {
+  readonly view: Shown;
+  readonly viewer: CardViewer;
+  readonly marks: Marks;
+}) {
+  const { view } = props;
+  const firstKey = view.stages[0]?.key;
+  return (
+    <div class="flex items-start gap-6 overflow-x-auto pb-2">
+      {phasesOf(view.columns).map((phase) => (
+        <div
+          role="group"
+          aria-label={bracketText(phase.bracket)}
+          data-phase={phase.bracket}
+          class="flex shrink-0 flex-col gap-2"
+        >
+          <p
+            aria-hidden="true"
+            class="m-0 px-1 text-xs font-heavy tracking-wide text-text-3 uppercase"
+          >
+            {bracketText(phase.bracket)}
+          </p>
+          <div class="flex items-start gap-4">
+            {phase.columns.map((column) => (
+              <ColumnView
+                view={view}
+                column={column}
+                first={column.stage.key === firstKey}
+                viewer={props.viewer}
+                marks={props.marks}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export async function oldQueueAddress(c: Context<AppEnv>): Promise<Response> {
+  const screen = screenKernel(c);
+  if (screen === null) return screenRefusal(c);
+  const harnessId = idParam(c.req.param('harnessId'));
+  if (harnessId === null) return notFound(c);
+  const read = { at: screen.at };
+  const scene = await screen.kernel.reads.harness(screen.caller, { harnessId }, read);
+  if (scene.status !== 'accepted') return notFound(c);
+  return c.redirect(queuePath(harnessId), 301);
+}
+
+export async function queueScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   if (screen === null) return screenRefusal(c);
   const harnessId = idParam(c.req.param('harnessId'));
@@ -241,10 +337,7 @@ export async function boardScreen(c: Context<AppEnv>): Promise<Response> {
     stages: [...stages].sort((left, right) => left.position - right.position),
   };
   const viewer = viewerOf(screen.caller.actor, view, screen.at);
-  const firstKey = view.stages[0]?.key;
-  const itemIds = board.columns.flatMap((column) => column.cards.map((card) => card.item.itemId));
-  const events = await screen.kernel.views.lastEvents(screen.caller, { itemIds }, read);
-  const last = new Map(events.map((event) => [event.itemId ?? '', event]));
+  const marks = await cardMarks(screen, board, read);
   const tally = tallyOf(board);
   return renderScreen(
     c,
@@ -255,17 +348,7 @@ export async function boardScreen(c: Context<AppEnv>): Promise<Response> {
       <StageChips view={view} stageKey={input.stageKey} />
       <EpicGroups harnessId={harnessId} epics={board.epics} />
       <NotReadyList harnessId={harnessId} entries={board.notReady} />
-      <div class="flex items-start gap-4 overflow-x-auto pb-2">
-        {board.columns.map((column) => (
-          <ColumnView
-            view={view}
-            column={column}
-            first={column.stage.key === firstKey}
-            viewer={viewer}
-            last={last}
-          />
-        ))}
-      </div>
+      <Lanes view={view} viewer={viewer} marks={marks} />
     </>,
   );
 }

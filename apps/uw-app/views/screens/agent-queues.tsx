@@ -12,7 +12,7 @@ import { liveCursors } from '../parts/cursors.ts';
 import { bracketText } from '../parts/flow-diagram.tsx';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { moduleCodes, pageNames } from '../parts/names.ts';
-import { agentQueuesPath, boardPath } from '../parts/paths.ts';
+import { agentQueuesPath, queuePath } from '../parts/paths.ts';
 
 const REFRESH_EVERY_MS = 60_000;
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
@@ -109,7 +109,7 @@ function WorkflowCard(props: { readonly card: QueueCard; readonly at: Date }) {
       class="flex min-w-0 flex-col gap-3 rounded-md border border-line bg-surface p-4"
     >
       <h2 id={titleId} class="m-0 text-md font-heavy">
-        <a href={boardPath(harness.id)} class={`text-text hover:text-accent-text ${focus}`}>
+        <a href={queuePath(harness.id)} class={`text-text hover:text-accent-text ${focus}`}>
           {harness.title}
         </a>
       </h2>

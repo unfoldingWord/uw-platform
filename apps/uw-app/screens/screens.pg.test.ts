@@ -17,7 +17,7 @@ import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { getHtml } from '../testing/views.ts';
 import {
   agentQueuesPath,
-  boardPath,
+  queuePath,
   flowPath,
   gatePath,
   gatesPath,
@@ -105,7 +105,7 @@ async function boardScreens(db: Database): Promise<Screen[]> {
   const paths: readonly (readonly [string, string])[] = [
     ['home', homePath()],
     ['agent-queues', agentQueuesPath()],
-    ['board', boardPath(world.harnessId)],
+    ['queue', queuePath(world.harnessId)],
     ['flow', flowPath(world.harnessId)],
     ['health', healthPath()],
     ['health-detail', healthPath('breaker')],
@@ -223,7 +223,7 @@ describe.skipIf(!testServer || (!browserReady && !required))('UI-16 the screensh
     expect(screens.map((screen) => screen.name)).toEqual([
       'home',
       'agent-queues',
-      'board',
+      'queue',
       'flow',
       'health',
       'health-detail',
