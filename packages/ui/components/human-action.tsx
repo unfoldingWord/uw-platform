@@ -4,7 +4,7 @@ import { domId, reasonText } from './text.ts';
 export const humanGateSvg = 'fill-human-soft stroke-human';
 
 const action =
-  'inline-flex items-center rounded-md bg-human px-4 py-2 text-sm font-heavy text-on-accent outline-offset-2 outline-accent-text focus-visible:outline-2 aria-disabled:cursor-not-allowed aria-disabled:bg-human-soft aria-disabled:text-text';
+  'inline-flex items-center rounded-md border border-human bg-human px-3 py-1 text-sm font-heavy text-on-accent outline-offset-2 outline-accent-text focus-visible:outline-2 aria-disabled:cursor-not-allowed aria-disabled:border-human-line aria-disabled:bg-human-soft aria-disabled:text-human-text';
 
 export function HumanActionButton(props: {
   readonly itemId: string;
@@ -39,7 +39,7 @@ export function HumanActionButton(props: {
 
 export function HumanGateMark(props: { readonly label: string }) {
   return (
-    <span class="inline-flex items-center rounded-sm border border-human bg-human-soft px-2 py-1 text-xs font-heavy text-text">
+    <span class="inline-flex items-center rounded-sm border border-human-line bg-human-soft px-1 text-xs leading-normal font-heavy text-human-text">
       {props.label}
     </span>
   );
@@ -70,7 +70,7 @@ export function HumanMark(props: { readonly label: string }) {
 
 export function HumanWaitChip(props: { readonly text: string }) {
   return (
-    <span class="inline-flex w-fit items-center gap-1 rounded-full border border-human-line bg-human-soft px-2 py-1 text-xs font-semibold text-human-text">
+    <span class="inline-flex h-size-4 w-fit items-center gap-1 rounded-full border border-human-line bg-human-soft px-2 text-xs font-heavy text-human-text">
       <Icon name="user-check" size={1} />
       {props.text}
     </span>
@@ -85,7 +85,7 @@ export function HumanChip(props: {
   return (
     <a
       href={props.href}
-      class="inline-flex items-center gap-2 rounded-full border border-human-line bg-human-soft px-3 py-1 text-sm font-semibold text-human-text outline-offset-2 outline-accent-text focus-visible:outline-2"
+      class="inline-flex h-size-4 items-center gap-1 rounded-full border border-human-line bg-human-soft px-2 text-xs font-heavy text-human-text outline-offset-2 outline-accent-text focus-visible:outline-2"
     >
       <Icon name="user-check" size={1} />
       {props.label}
@@ -100,7 +100,7 @@ export function HumanCallout(props: { readonly lead: string; readonly text: stri
   return (
     <p
       data-human-callout=""
-      class="m-0 flex items-start gap-3 rounded-lg border border-human-line bg-human-soft p-3 text-sm text-human-text"
+      class="m-0 flex items-start gap-2 rounded-md border border-human-line bg-human-soft px-3 py-2 text-sm font-semibold text-human-text"
     >
       <Icon name="lock" size={2} />
       <span>

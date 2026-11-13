@@ -46,10 +46,10 @@ describe('WB-11 the card', () => {
 
 describe('WB-11 the badge', () => {
   const expected = {
-    neutral: 'bg-canvas text-text-3 border border-line',
+    neutral: 'bg-hover text-text-3',
     info: 'bg-accent-soft text-accent-text',
-    success: 'bg-ok-soft text-text',
-    held: 'bg-surface text-text-3 border border-dashed border-line',
+    success: 'bg-ok-soft text-ok-text',
+    held: 'border border-dashed border-line bg-surface text-text-3',
   } as const;
 
   it.each(Object.entries(expected))(
