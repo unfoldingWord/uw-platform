@@ -291,7 +291,7 @@ Requirement identifiers are stable. **Must** is a v1 requirement. **Later** is d
 
 This section is the list of work for v0.2.0 and the design document is why. Where they disagree on design, the design wins and this section is corrected, as section 1 says of the v1 architecture spec.
 
-Every row follows this document's conventions: a stable ID, Must or Should, a scenario or test named for the ID, no live account or secret needed to prove it. Each row ends with its cost by the toggle test: *toggle* means a value on a harness or stage row, a preset or a persona-page line; *additive* means new files and registry rows with no rule changed; *shared root* means a change to a shared root in its own commit, naming which; *fixed decision* means an ADR as well.
+Every row follows this document's conventions: a stable ID, Must or Should, a scenario or test named for the ID, no live account or secret needed to prove it. Each row ends with its cost by the toggle test: *toggle* means a value on a harness or stage row, a preset or a persona-page line; *additive* means new files and registry rows with no rule changed; *shared root* means a change to a shared root, named in the pull request description; *fixed decision* means an ADR as well.
 
 #### 7.11.1 Go-live and joining (GL)
 
