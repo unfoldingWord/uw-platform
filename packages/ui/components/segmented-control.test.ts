@@ -40,8 +40,8 @@ describe('WB-11 the segmented control', () => {
   it('every control has visible focus', async () => {
     const document = await render();
     for (const radio of document.querySelectorAll('input')) {
-      const classes = radio.getAttribute('class') ?? '';
-      expect(classes).toContain('focus-visible:outline-2');
+      const classes = radio.closest('label')?.getAttribute('class') ?? '';
+      expect(classes).toContain('has-focus-visible:outline-2');
       expect(classes).toContain('outline-accent-text');
     }
   });

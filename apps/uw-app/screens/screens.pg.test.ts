@@ -10,7 +10,7 @@ import { seedBreakerReading, seedPage } from '@uw/db/test-seed';
 import type { Clock } from '@uw/harness';
 import { appCss } from '@uw/ui/generated/app-css';
 import { fontFiles } from '@uw/ui/generated/fonts';
-import { markBase64, markPath } from '@uw/ui/generated/mark';
+import { wordmarkBase64, wordmarkPath } from '@uw/ui/generated/mark';
 import { boardWorld } from '../testing/board-world.ts';
 import { gateWorld } from '../testing/gate-world.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
@@ -58,7 +58,7 @@ function inlined(): string {
 export function settled(html: string, css: string): string {
   return html
     .replace(/<link rel="stylesheet" href="[^"]+"\/>/, `<style>${css}</style>`)
-    .replaceAll(markPath, `data:image/png;base64,${markBase64}`)
+    .replaceAll(wordmarkPath, `data:image/png;base64,${wordmarkBase64}`)
     .replace(/<script type="module"[^>]*><\/script>/, '')
     .replace(anyId, '00000000-0000-4000-8000-000000000000')
     .replace(/db \d+ ms/g, 'db 0 ms');

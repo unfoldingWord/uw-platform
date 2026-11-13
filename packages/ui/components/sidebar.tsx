@@ -1,4 +1,5 @@
 import type { IconName } from '../generated/icons.ts';
+import { ComingSoon } from './coming-soon.tsx';
 import { safeHref } from './href.ts';
 import { PersonCount } from './human-action.tsx';
 import { Icon } from './icon.tsx';
@@ -8,77 +9,99 @@ export type NavCount =
   | { readonly kind: 'person'; readonly count: number; readonly label: string }
   | { readonly kind: 'watch'; readonly text: string };
 
-export type NavMark = { readonly icon: IconName } | { readonly initial: string };
-
 export type NavItem = {
   readonly label: string;
-  readonly mark: NavMark;
+  readonly icon?: IconName;
   readonly href?: string;
   readonly count?: NavCount;
-  readonly unwired?: string;
+  readonly code?: string;
+  readonly nested?: boolean;
 };
 
 export type NavSection = {
   readonly heading?: string;
-  readonly aside?: string;
+  readonly code?: string;
+  readonly empty?: string;
   readonly items: readonly NavItem[];
 };
 
 export type Person = { readonly initials: string; readonly name: string; readonly role: string };
 
-const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
-const row = 'flex h-size-6 items-center gap-3 rounded-md px-2 text-sm font-semibold';
-
-const quietCount = 'ml-auto font-mono text-xs font-regular text-text-3';
-const watchCount = 'ml-auto font-mono text-xs font-regular text-accent-text';
-
-function Mark(props: { readonly mark: NavMark }) {
-  const { mark } = props;
-  if ('icon' in mark) return <Icon name={mark.icon} size={2} class="text-text-3" />;
-  return (
-    <span
-      aria-hidden="true"
-      class="grid size-size-3 shrink-0 place-items-center rounded-sm bg-accent text-xs font-heavy text-on-accent"
-    >
-      {mark.initial}
-    </span>
-  );
-}
+const focus = 'outline-offset-2 outline-side-code focus-visible:outline-2';
+const row = 'flex items-center gap-2 rounded-sm px-2 py-1 text-sm font-semibold whitespace-nowrap';
 
 function Count(props: { readonly count: NavCount | undefined }) {
   const { count } = props;
   if (count === undefined) return null;
   if (count.kind === 'person') return <PersonCount count={count.count} label={count.label} />;
-  return <span class={count.kind === 'watch' ? watchCount : quietCount}>{count.text}</span>;
+  const tone = count.kind === 'watch' ? 'text-side-code' : 'text-side-text-3';
+  return (
+    <span class={`ml-auto font-mono text-xs ${tone} group-aria-[current=page]:text-on-accent`}>
+      {count.text}
+    </span>
+  );
+}
+
+function Code(props: { readonly code: string | undefined; readonly alone: boolean }) {
+  if (props.code === undefined) return null;
+  return (
+    <span
+      class={`${props.alone ? 'ml-auto ' : ''}font-mono text-xs text-side-text-3 group-aria-[current=page]:text-on-accent`}
+    >
+      {props.code}
+    </span>
+  );
+}
+
+function Mark(props: { readonly icon: IconName | undefined }) {
+  if (props.icon === undefined) return null;
+  return <Icon name={props.icon} size={2} />;
 }
 
 function NavRow(props: { readonly item: NavItem; readonly current: string }) {
   const { item } = props;
+  const indent = item.nested === true ? 'pl-6' : '';
   const href = item.href === undefined ? undefined : safeHref(item.href);
   if (href === undefined) {
     return (
       <li>
-        <span aria-disabled="true" class={`${row} text-text-3`}>
-          <Mark mark={item.mark} />
-          <span>{item.label}</span>
-          <span class="ml-auto text-xs font-regular">{item.unwired ?? 'Not wired yet'}</span>
+        <span aria-disabled="true" class={`${row} ${indent} text-side-text-3`}>
+          <Mark icon={item.icon} />
+          <span class="min-w-0 truncate">{item.label}</span>
+          <ComingSoon tone="side" />
         </span>
       </li>
     );
   }
-  const current = href === props.current;
   return (
     <li>
       <a
         href={href}
-        aria-current={current ? 'page' : undefined}
-        class={`${row} text-text-2 hover:bg-hover hover:text-text aria-[current=page]:bg-raised aria-[current=page]:text-text aria-[current=page]:shadow-1 ${focus}`}
+        aria-current={href === props.current ? 'page' : undefined}
+        class={`group ${row} ${indent} text-side-text hover:bg-side-hover aria-[current=page]:bg-accent aria-[current=page]:font-heavy aria-[current=page]:text-on-accent ${focus}`}
       >
-        <Mark mark={item.mark} />
+        <Mark icon={item.icon} />
         <span class="min-w-0 truncate">{item.label}</span>
         <Count count={item.count} />
+        <Code code={item.code} alone={item.count === undefined} />
       </a>
     </li>
+  );
+}
+
+function Heading(props: { readonly section: NavSection }) {
+  const { section } = props;
+  if (section.heading === undefined) return null;
+  return (
+    <p
+      data-area={section.code}
+      class="flex gap-1 px-2 pt-3 pb-1 text-xs leading-snug font-heavy tracking-wide text-side-text-3 uppercase"
+    >
+      {section.code === undefined ? null : (
+        <span class="font-mono font-regular text-side-code">{section.code}</span>
+      )}
+      <span>{section.heading}</span>
+    </p>
   );
 }
 
@@ -86,19 +109,15 @@ function Section(props: { readonly section: NavSection; readonly current: string
   const { section } = props;
   return (
     <li>
-      {section.heading === undefined ? null : (
-        <p class="flex items-center gap-2 px-2 pt-4 pb-1 text-xs font-semibold text-text-3">
-          <span>{section.heading}</span>
-          {section.aside === undefined ? null : (
-            <span class="ml-auto font-mono font-regular">{section.aside}</span>
-          )}
-        </p>
-      )}
-      <ul class="flex flex-col gap-1">
+      <Heading section={section} />
+      <ul class="flex flex-col">
         {section.items.map((item) => (
           <NavRow item={item} current={props.current} />
         ))}
       </ul>
+      {section.empty === undefined ? null : (
+        <p class="px-2 py-1 text-xs text-side-text-3 italic">{section.empty}</p>
+      )}
     </li>
   );
 }
@@ -108,7 +127,7 @@ export function NavList(props: {
   readonly current: string;
 }) {
   return (
-    <ul class="flex flex-col gap-1">
+    <ul class="flex flex-col">
       {props.sections.map((section) => (
         <Section section={section} current={props.current} />
       ))}
@@ -116,27 +135,11 @@ export function NavList(props: {
   );
 }
 
-export function Brand(props: { readonly markPath: string }) {
+function Brand(props: { readonly wordmarkPath: string }) {
   return (
-    <div class="flex items-center gap-3 px-3 pt-4 pb-3">
-      <img src={props.markPath} alt="" class="h-size-5 w-auto shrink-0" />
-      <div>
-        <p class="text-md leading-tight font-heavy text-text">unfoldingWord</p>
-        <p class="text-xs text-text-3">Platform</p>
-      </div>
-    </div>
-  );
-}
-
-function Search() {
-  return (
-    <div
-      aria-disabled="true"
-      class="mx-3 mb-2 flex h-size-5 items-center gap-2 rounded-md bg-raised px-2 text-sm text-text-3 shadow-1"
-    >
-      <Icon name="magnifying-glass" size={1} />
-      <span class="min-w-0 truncate">Search or jump to…</span>
-      <span class="ml-auto shrink-0 text-xs whitespace-nowrap">Not wired yet</span>
+    <div class="flex items-center gap-2 border-b border-side-line p-4">
+      <img src={props.wordmarkPath} alt="unfoldingWord" class="h-size-3 w-auto shrink-0" />
+      <p class="border-l border-side-line pl-2 text-sm font-heavy">Platform</p>
     </div>
   );
 }
@@ -144,16 +147,16 @@ function Search() {
 function Me(props: { readonly person: Person }) {
   const { person } = props;
   return (
-    <div class="flex items-center gap-3 border-t border-line p-3">
+    <div class="flex items-center gap-2 border-t border-side-line px-4 py-3">
       <span
         aria-hidden="true"
-        class="grid size-size-6 shrink-0 place-items-center rounded-full bg-accent text-sm font-heavy text-on-accent"
+        class="grid size-size-4 shrink-0 place-items-center rounded-full bg-ok text-xs font-heavy text-on-accent"
       >
         {person.initials}
       </span>
-      <div class="min-w-0">
-        <p class="truncate text-base font-semibold text-text">{person.name}</p>
-        <p class="truncate text-xs text-text-3">{person.role}</p>
+      <div class="min-w-0 leading-snug">
+        <p class="truncate text-sm font-heavy">{person.name}</p>
+        <p class="truncate text-xs text-side-text-3">{person.role}</p>
       </div>
     </div>
   );
@@ -163,13 +166,12 @@ export function Sidebar(props: {
   readonly sections: readonly NavSection[];
   readonly current: string;
   readonly person: Person | null;
-  readonly markPath: string;
+  readonly wordmarkPath: string;
 }) {
   return (
-    <aside class="hidden min-h-0 flex-col border-r border-line bg-side md:flex">
-      <Brand markPath={props.markPath} />
-      <Search />
-      <nav aria-label="Main" class="flex-1 overflow-auto px-2 py-1">
+    <aside class="sticky top-0 hidden h-dvh min-h-0 flex-col bg-side text-side-text md:flex">
+      <Brand wordmarkPath={props.wordmarkPath} />
+      <nav aria-label="Main" class="flex-1 overflow-auto px-1 py-2">
         <NavList sections={props.sections} current={props.current} />
       </nav>
       {props.person === null ? null : <Me person={props.person} />}
@@ -182,24 +184,23 @@ export function PhoneHeader(props: {
   readonly waiting: number;
   readonly sections: readonly NavSection[];
   readonly current: string;
-  readonly markPath: string;
+  readonly wordmarkPath: string;
 }) {
   return (
-    <section aria-label="Menu" class="border-b border-line bg-side md:hidden">
-      <div class="flex h-size-7 items-center gap-3 px-3">
-        <img src={props.markPath} alt="unfoldingWord" class="h-size-4 w-auto shrink-0" />
-        <p class="min-w-0 truncate text-md font-heavy text-text">{props.title}</p>
-        {props.waiting === 0 ? null : (
-          <PersonCount count={props.waiting} label={`${props.waiting} waiting on you`} />
-        )}
-      </div>
-      <details class="px-3 pb-2">
-        <summary
-          class={`cursor-pointer rounded-md py-1 text-sm font-semibold text-text-2 ${focus}`}
-        >
-          Menu
+    <section aria-label="Menu" class="bg-side text-side-text md:hidden">
+      <details>
+        <summary class={`flex cursor-pointer list-none items-center gap-3 px-4 py-3 ${focus}`}>
+          <span class="grid size-size-5 shrink-0 place-items-center rounded-md border border-side-line">
+            <Icon name="bars" size={2} />
+          </span>
+          <span class="sr-only">Menu</span>
+          <img src={props.wordmarkPath} alt="unfoldingWord" class="h-size-2 w-auto shrink-0" />
+          <span class="min-w-0 truncate text-sm font-heavy">{props.title}</span>
+          {props.waiting === 0 ? null : (
+            <PersonCount count={props.waiting} label={`${props.waiting} waiting on you`} />
+          )}
         </summary>
-        <nav aria-label="Main" class="pt-2">
+        <nav aria-label="Main" class="max-h-dvh overflow-auto border-t border-side-line p-2">
           <NavList sections={props.sections} current={props.current} />
         </nav>
       </details>

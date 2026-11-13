@@ -42,7 +42,7 @@ describe('WB-11 the shell', () => {
     expect(html).not.toMatch(/\bw-\d{3,}/);
     const document = documentOf(html);
     const disclosure = document.querySelector('details');
-    expect(disclosure?.querySelector('summary')?.textContent).toBe('Menu');
+    expect(disclosure?.querySelector('summary')?.textContent).toContain('Menu');
     expect(disclosure?.closest('.md\\:hidden')).not.toBeNull();
     expect(document.querySelector('aside')?.getAttribute('class')).toMatch(
       /\bhidden\b.*\bmd:flex\b/,
@@ -92,7 +92,7 @@ describe('the shell escapes the text it is given', () => {
     const hostile = '<img src=x onerror=alert(1)>';
     const html = await render({
       title: hostile,
-      frame: testFrame([{ href: '/', label: hostile, mark: { icon: 'house' } }]),
+      frame: testFrame([{ href: '/', label: hostile, icon: 'house' }]),
       crumbs: [{ label: hostile, href: '/x"onmouseover="alert(1)' }],
       children: jsx(PageHead, { title: hostile, eyebrow: hostile, lede: hostile }),
     });
@@ -105,8 +105,8 @@ describe('the shell escapes the text it is given', () => {
     const document = documentOf(
       await render({
         frame: testFrame([
-          { href: 'javascript:alert(1)', label: 'Sneak', mark: { icon: 'house' } },
-          { href: '/', label: 'Home', mark: { icon: 'house' } },
+          { href: 'javascript:alert(1)', label: 'Sneak', icon: 'house' },
+          { href: '/', label: 'Home', icon: 'house' },
         ]),
         crumbs: [{ label: 'Trail', href: 'data:text/html,x' }],
       }),
@@ -156,36 +156,55 @@ function contrast(theme: ThemeName, foreground: string, background: string): num
   return ink.contrast(ground, 'WCAG21');
 }
 
+function ringHolder(element: Element): Element {
+  const hidden = (element.getAttribute('class') ?? '').split(/\s+/).includes('sr-only');
+  return hidden ? (element.closest('label') ?? element) : element;
+}
+
+function ringOf(element: Element): string | undefined {
+  const classes = (ringHolder(element).getAttribute('class') ?? '').split(/\s+/);
+  const colour = classes
+    .map((name) => /^outline-([a-z][a-z0-9-]*)$/.exec(name)?.[1])
+    .find((role) => role !== undefined && role !== 'offset-2');
+  return colour;
+}
+
+function painted(element: Element | null): string[] {
+  if (element === null) return [];
+  const own = [...(element.getAttribute('class') ?? '').matchAll(/(?:^|\s)bg-([a-z0-9-]+)/g)].map(
+    (match) => match[1] ?? '',
+  );
+  return own.length > 0 ? own : painted(element.parentElement);
+}
+
 describe('focus is visible on every background the shell paints', () => {
   it.each(themes)(
-    'in %s, the focus ring meets 3:1 against each shell background',
+    'in %s, each focus ring meets 3:1 against the background behind its control',
     async (theme) => {
       const document = documentOf(await render());
       const focusable = [...document.querySelectorAll('a, input, summary, button')];
-      const painted = (element: Element | null): string[] =>
-        element === null
-          ? []
-          : [
-              ...[
-                ...(element.getAttribute('class') ?? '').matchAll(/(?:^|\s|:)bg-([a-z0-9-]+)/g),
-              ].map((match) => match[1] ?? ''),
-              ...painted(element.parentElement),
-            ];
-      const grounds = [...new Set(focusable.flatMap(painted))];
-      expect(grounds).toEqual(expect.arrayContaining(['canvas', 'side', 'raised']));
-      for (const ground of grounds)
-        expect(contrast(theme, 'accent-text', ground)).toBeGreaterThanOrEqual(3);
+      const grounds = new Set<string>();
+      for (const element of focusable) {
+        const holder = ringHolder(element);
+        const ring = ringOf(element);
+        if (ring === undefined) throw new Error(`no ring on ${holder.outerHTML.slice(0, 80)}`);
+        for (const ground of painted(holder.parentElement)) {
+          grounds.add(ground);
+          expect(contrast(theme, ring, ground), `${ring} on ${ground}`).toBeGreaterThanOrEqual(3);
+        }
+      }
+      expect([...grounds]).toEqual(expect.arrayContaining(['side', 'surface']));
     },
   );
 
-  it('every link and control in the shell carries the focus ring', async () => {
+  it('every link and control in the shell carries a focus ring', async () => {
     const document = documentOf(await render());
     const focusable = [...document.querySelectorAll('a, input, summary, button')];
     expect(focusable.length).toBeGreaterThan(5);
     for (const element of focusable) {
-      const classes = element.getAttribute('class') ?? '';
-      expect(classes).toContain('focus-visible:outline-2');
-      expect(classes).toContain('outline-accent-text');
+      const classes = ringHolder(element).getAttribute('class') ?? '';
+      expect(classes).toMatch(/(?:focus|has-focus)-visible:outline-2/);
+      expect(ringOf(element)).toBeDefined();
     }
   });
 });

@@ -1,8 +1,8 @@
 export const pageNames = {
-  home: 'Home',
+  home: 'Today',
   waiting: 'Waiting On You',
-  myItems: 'My Items',
-  personas: 'Personas',
+  agentQueues: 'Agent Queues',
+  infrastructure: 'Infrastructure',
   health: 'Health',
   notFound: 'Not Found',
   waitingApproval: 'Waiting For Approval',
@@ -11,8 +11,6 @@ export const pageNames = {
   gate: 'Gate',
   item: 'Item',
 } as const;
-
-export const sectionNames = { harness: 'Harness', system: 'System' } as const;
 
 const smallWord = /^[a-z]/;
 

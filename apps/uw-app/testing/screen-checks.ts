@@ -13,9 +13,16 @@ async function axeProblems(document: Document): Promise<string[]> {
   return results.violations.map((violation) => `axe: ${violation.id}: ${violation.help}`);
 }
 
+function showsFocus(element: Element): boolean {
+  const classes = element.getAttribute('class') ?? '';
+  if (classes.includes('focus-visible:outline-2')) return true;
+  const label = classes.split(/\s+/).includes('sr-only') ? element.closest('label') : null;
+  return (label?.getAttribute('class') ?? '').includes('has-focus-visible:outline-2');
+}
+
 function focusProblems(document: Document): string[] {
   return [...document.querySelectorAll(focusable)]
-    .filter((element) => !(element.getAttribute('class') ?? '').includes('focus-visible:outline-2'))
+    .filter((element) => !showsFocus(element))
     .map((element) => `no visible focus: ${element.outerHTML.slice(0, 80)}`);
 }
 
