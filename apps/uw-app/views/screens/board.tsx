@@ -9,6 +9,9 @@ import { TextField } from '@uw/ui/components/field.tsx';
 import { Lane } from '@uw/ui/components/lane.tsx';
 import { HumanChip } from '@uw/ui/components/human-action.tsx';
 import { Icon } from '@uw/ui/components/icon.tsx';
+import { ComingSoon } from '@uw/ui/components/coming-soon.tsx';
+import { Kpi } from '@uw/ui/components/kpi.tsx';
+import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { cursorOf } from '../../commands/reads.ts';
 import type { AppEnv } from '../../deps.ts';
 import { BoardCardView, type CardViewer } from '../parts/board-card.tsx';
@@ -16,8 +19,9 @@ import { EpicGroups, NotReadyList } from '../parts/epic-board.tsx';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { itemsText } from '../parts/items-count.ts';
 import { idParam } from '../parts/params.ts';
-import { boardPath, flowPath, gatesPath, homePath } from '../parts/paths.ts';
-import { Pipeline } from '../parts/pipeline.tsx';
+import { boardPath, flowPath, gatesPath } from '../parts/paths.ts';
+import { moduleCodes } from '../parts/platform-nav.ts';
+import { workflowTabs } from '../parts/workflow-tabs.ts';
 import { formatMoney } from '@uw/core/money';
 import { notFound } from './not-found.tsx';
 import { pageNames } from '../parts/names.ts';
@@ -119,7 +123,8 @@ function StageChips(props: { readonly view: Shown; readonly stageKey: string | n
   const { view } = props;
   const harnessId = view.harness.id;
   return (
-    <nav aria-label="Stages" class="mb-4 flex flex-wrap gap-2">
+    <nav aria-label="Stages" class="mb-4 flex flex-wrap items-center gap-2">
+      <span class="mr-1 text-xs font-heavy tracking-wide text-text-3 uppercase">Stage</span>
       <Chip label="All stages" href={boardPath(harnessId)} selected={props.stageKey === null} />
       {view.stages.map((stage) => (
         <Chip
@@ -137,25 +142,13 @@ function specOf(view: Shown, cursor: number) {
   return {
     title: `${harness.title} ${pageNames.board}`,
     current: boardPath(harness.id),
+    code: moduleCodes.agentQueues,
     crumbs: [
-      { label: pageNames.home, href: homePath() },
+      { label: pageNames.agentQueues },
       { label: harness.title, href: flowPath(harness.id) },
       { label: pageNames.board },
     ],
-    tabs: [
-      {
-        label: pageNames.flow,
-        href: flowPath(harness.id),
-        icon: 'diagram-project' as const,
-        current: false,
-      },
-      {
-        label: pageNames.board,
-        href: boardPath(harness.id),
-        icon: 'square-kanban' as const,
-        current: true,
-      },
-    ],
+    tabs: workflowTabs(harness.id, 'board'),
     live: { screen: 'board' as const, harnesses: [{ harnessId: harness.id, cursor }] },
   };
 }
@@ -197,32 +190,29 @@ function tallyOf(view: BoardView): Tally {
   };
 }
 
-function Hero(props: { readonly view: Shown; readonly tally: Tally }) {
+function Head(props: { readonly view: Shown; readonly tally: Tally }) {
   const { view, tally } = props;
-  const counts = new Map(view.columns.map((column) => [column.stage.key, column.held]));
-  const need = tally.waiting === 0 ? '' : ` · ${tally.waiting} need a person`;
+  const need = tally.waiting === 0 ? '' : ` ${tally.waiting} need a person.`;
   return (
-    <Pipeline
+    <PageHead
+      eyebrow={`Workflow · ${view.stages.length} stages`}
       title={view.harness.title}
-      summary={`${tally.items} items moving through ${view.stages.length} stages${need}`}
-      stages={view.stages}
-      counts={counts}
-      figures={[
-        { label: 'Agents working', value: String(tally.working) },
-        { label: 'Waiting on you', value: String(tally.waiting), person: true },
-        {
-          label: 'Spent on these items',
-          value: spentText(totalCost(view)),
-        },
-      ]}
+      lede={`${tally.items} items moving through ${view.stages.length} stages. Agents claim cards like anyone else; a person decides at the gate.${need}`}
+      actions={
+        <div aria-label="Figures" role="group" class="flex flex-wrap gap-5">
+          <Kpi label="Agents working" value={String(tally.working)} plain />
+          <Kpi label="Waiting on you" value={String(tally.waiting)} plain person />
+          <Kpi label="Spent on these items" value={spentText(totalCost(view))} plain />
+        </div>
+      }
     />
   );
 }
 
 function Toolbar(props: { readonly tally: Tally }) {
-  const quiet = 'inline-flex items-center gap-2 px-3 py-1 text-sm font-semibold text-text-2';
+  const quiet = 'inline-flex items-center gap-2 px-2 text-sm font-semibold text-text-2';
   return (
-    <div class="mb-4 flex flex-wrap items-center gap-2">
+    <div class="mb-3 flex flex-wrap items-center gap-2">
       <HumanChip label="Waiting on you" count={props.tally.waiting} href={gatesPath()} />
       <span class={quiet}>
         Agents working <span class="font-mono text-text-3">{props.tally.working}</span>
@@ -233,7 +223,7 @@ function Toolbar(props: { readonly tally: Tally }) {
       <span aria-disabled="true" class={`${quiet} text-text-3`}>
         <Icon name="bars-filter" size={1} />
         Filter
-        <span class="text-xs font-regular">Not wired yet</span>
+        <ComingSoon />
       </span>
     </div>
   );
@@ -266,7 +256,7 @@ export async function boardScreen(c: Context<AppEnv>): Promise<Response> {
     c,
     specOf(view, cursor),
     <>
-      <Hero view={view} tally={tally} />
+      <Head view={view} tally={tally} />
       <Toolbar tally={tally} />
       <StageChips view={view} stageKey={input.stageKey} />
       <EpicGroups harnessId={harnessId} epics={board.epics} />

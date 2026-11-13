@@ -1,8 +1,11 @@
 import type { Context } from 'hono';
-import { formatInstant } from '@uw/core/dates';
+import { formatDate, formatInstant } from '@uw/core/dates';
 import { formatCount } from '@uw/core/money';
 import { FAILED_RUNS_LIMIT, type FlowView, type WaitingRow } from '@uw/harness';
+import { Badge } from '@uw/ui/components/badge.tsx';
+import { Card } from '@uw/ui/components/card.tsx';
 import { Sparkline } from '@uw/ui/components/chart.tsx';
+import { ComingSoon } from '@uw/ui/components/coming-soon.tsx';
 import { HumanTile, humanBar } from '@uw/ui/components/human-action.tsx';
 import { Icon } from '@uw/ui/components/icon.tsx';
 import type { IconName } from '@uw/ui/generated/icons';
@@ -14,7 +17,8 @@ import type { AppEnv } from '../../deps.ts';
 import { handedCapNote, lapsedCapNote, parkedCapNote } from '../parts/caps.ts';
 import { liveCursors } from '../parts/cursors.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
-import { flowPath, gatePath, homePath, itemPath } from '../parts/paths.ts';
+import { boardPath, flowPath, gatePath, homePath, itemPath } from '../parts/paths.ts';
+import { moduleCodes } from '../parts/platform-nav.ts';
 import { pageNames } from '../parts/names.ts';
 
 const REFRESH_EVERY_MS = 60_000;
@@ -145,25 +149,22 @@ const tileIcons = new Map<WaitingRow['kind'], IconName>([
 function Tile(props: { readonly kind: WaitingRow['kind'] }) {
   if (props.kind === 'gate') return <HumanTile />;
   return (
-    <span class="grid size-size-6 shrink-0 place-items-center rounded-md bg-raised text-text-2 shadow-1">
-      <Icon name={tileIcons.get(props.kind) ?? 'circle-dot'} size={3} />
+    <span class="grid size-size-5 shrink-0 place-items-center rounded-md bg-raised text-text-2">
+      <Icon name={tileIcons.get(props.kind) ?? 'circle-dot'} size={2} />
     </span>
   );
 }
 
 function WaitingList(props: { readonly rows: readonly Shown[] }) {
   return (
-    <ul
-      aria-label="Waiting on you"
-      class="m-0 flex list-none flex-col rounded-lg bg-surface p-0 shadow-1"
-    >
+    <ul aria-label="Waiting on you" class="m-0 flex list-none flex-col gap-2 p-0">
       {props.rows.map((row) => (
-        <li class="flex items-center gap-4 border-b border-line px-4 py-3 last:border-b-0">
+        <li class="flex items-center gap-3 rounded-md border border-line px-3 py-2">
           <Tile kind={row.kind} />
           <div class="min-w-0 flex-1">
             <a
               href={row.href}
-              class={`text-sm text-text underline-offset-2 hover:underline ${focus}`}
+              class={`text-sm font-heavy text-text underline-offset-2 hover:underline ${focus}`}
             >
               {row.text}
             </a>
@@ -171,7 +172,7 @@ function WaitingList(props: { readonly rows: readonly Shown[] }) {
           </div>
           <span
             aria-hidden="true"
-            class="rounded-md bg-raised px-3 py-1 text-sm font-semibold text-text shadow-key"
+            class="rounded-md border border-line px-2 text-xs leading-normal font-heavy text-text-3"
           >
             Open
           </span>
@@ -181,7 +182,37 @@ function WaitingList(props: { readonly rows: readonly Shown[] }) {
   );
 }
 
-type Card = {
+function WaitingCard(props: {
+  readonly rows: readonly Shown[];
+  readonly notes: readonly string[];
+}) {
+  const count = props.rows.length;
+  return (
+    <Card
+      title="Waiting on me"
+      sub={count === 0 ? undefined : <Badge tone="person">{`${formatCount(count)} waiting`}</Badge>}
+      actions={<span class="text-xs text-text-3">an agent cannot advance these</span>}
+    >
+      {props.notes.map((note) => (
+        <Note>{note}</Note>
+      ))}
+      {count === 0 && props.notes.length === 0 ? (
+        <Note>Nothing is waiting on you right now.</Note>
+      ) : null}
+      {count === 0 ? null : <WaitingList rows={props.rows} />}
+    </Card>
+  );
+}
+
+function Soon(props: { readonly title: string }) {
+  return (
+    <Card title={props.title} actions={<ComingSoon />}>
+      <p class="m-0 text-sm text-text-3">Not built yet.</p>
+    </Card>
+  );
+}
+
+type WorkflowCard = {
   readonly flow: FlowView;
   readonly runs: readonly number[];
   readonly waiting: number;
@@ -207,20 +238,17 @@ function StageBars(props: { readonly flow: FlowView }) {
   );
 }
 
-function HarnessCard(props: { readonly card: Card }) {
+function HarnessCard(props: { readonly card: WorkflowCard }) {
   const { flow, runs, waiting } = props.card;
   const items = flow.stages.reduce((sum, stage) => sum + stage.count, 0);
   const moving = flow.stages.reduce((sum, stage) => sum + stage.held, 0);
   return (
-    <li class="flex flex-col gap-4 rounded-lg bg-surface p-5 shadow-1">
-      <div class="flex items-center gap-2">
-        <span class="grid size-size-4 place-items-center rounded-sm bg-accent text-xs font-heavy text-on-accent">
-          {flow.harness.title.charAt(0).toUpperCase()}
-        </span>
-        <a href={flowPath(flow.harness.id)} class={`text-md font-heavy text-text ${focus}`}>
+    <li class="flex flex-col gap-3 border-b border-line-soft px-4 py-3 last:border-b-0">
+      <div class="flex flex-wrap items-center gap-2">
+        <a href={boardPath(flow.harness.id)} class={`text-base font-heavy text-text ${focus}`}>
           {flow.harness.title}
         </a>
-        <span class="ml-auto text-xs text-text-3">{`${flow.harness.template} template`}</span>
+        <span class="text-xs text-text-3">{`${flow.harness.template} template`}</span>
       </div>
       <StageBars flow={flow} />
       <div>
@@ -240,25 +268,35 @@ function HarnessCard(props: { readonly card: Card }) {
   );
 }
 
-function HarnessCards(props: { readonly cards: readonly Card[] }) {
+function HarnessCards(props: { readonly cards: readonly WorkflowCard[] }) {
   if (props.cards.length === 0) return null;
   return (
-    <section aria-labelledby="harnesses-heading" class="mt-5 flex flex-col gap-3">
-      <h2 id="harnesses-heading" class="m-0 text-md font-heavy text-text">
-        Harnesses
-      </h2>
-      <ul class="m-0 grid list-none grid-cols-1 gap-4 p-0 md:grid-cols-2">
+    <section
+      aria-labelledby="harnesses-heading"
+      class="flex min-w-0 flex-col rounded-md border border-line bg-surface"
+    >
+      <header class="flex items-center gap-2 border-b border-line px-4 py-3">
+        <h2 id="harnesses-heading" class="m-0 text-md font-heavy text-text">
+          Workflows
+        </h2>
+        <span class="text-xs font-semibold text-text-3">{`${formatCount(props.cards.length)} in Agent Queues`}</span>
+      </header>
+      <ul class="m-0 flex list-none flex-col p-0">
         {props.cards.map((card) => (
           <HarnessCard card={card} />
         ))}
       </ul>
+      <PushControl />
     </section>
   );
 }
 
-async function cardsOf(screen: ScreenKernel, waiting: readonly WaitingRow[]): Promise<Card[]> {
+async function cardsOf(
+  screen: ScreenKernel,
+  waiting: readonly WaitingRow[],
+): Promise<WorkflowCard[]> {
   const read = { at: screen.at };
-  const cards: Card[] = [];
+  const cards: WorkflowCard[] = [];
   for (const harness of await screen.kernel.views.harnesses(screen.caller, read)) {
     const flow = await screen.kernel.views.flow(screen.caller, { harnessId: harness.id }, read);
     if (flow.status !== 'accepted') continue;
@@ -276,18 +314,25 @@ function PushControl() {
     <section
       data-push
       aria-labelledby="push-heading"
-      class="mt-5 flex flex-col gap-2 rounded-lg bg-surface p-5 shadow-1"
+      class="flex flex-wrap items-center gap-3 border-t border-dashed border-line px-4 py-2"
     >
-      <h2 id="push-heading" class="m-0 text-base font-heavy text-text">
+      <Icon name="inbox" size={1} class="text-text-3" />
+      <h3 id="push-heading" class="m-0 text-sm font-heavy text-text">
         Notifications
-      </h2>
-      <div>
-        <button type="button" data-push-toggle class={commandButton}>
-          Turn on notifications on this device
-        </button>
-      </div>
+      </h3>
+      <button type="button" data-push-toggle class={commandButton}>
+        Turn on notifications on this device
+      </button>
       <p data-push-outcome role="status" class="m-0 text-sm text-text-3"></p>
     </section>
+  );
+}
+
+function PushOnly() {
+  return (
+    <div class="flex min-w-0 flex-col rounded-md border border-line bg-surface">
+      <PushControl />
+    </div>
   );
 }
 
@@ -307,34 +352,25 @@ export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
   const spec = {
     title: pageNames.home,
     current: homePath(),
+    code: moduleCodes.today,
     crumbs: [{ label: pageNames.home }],
     live: { screen: 'home' as const, harnesses, refreshEveryMs: REFRESH_EVERY_MS },
   };
+  const head =
+    rows.length === 0
+      ? {}
+      : { lede: lede(rows.length - waiting.uncounted, notes.length > 0, waiting.uncounted) };
   return renderScreen(
     c,
     spec,
-    rows.length === 0 && notes.length === 0 ? (
-      <>
-        <PageHead title={greeting(person)} />
-        <Note>Nothing is waiting on you right now.</Note>
-        <HarnessCards cards={cards} />
-        <PushControl />
-      </>
-    ) : (
-      <>
-        <PageHead
-          title={greeting(person)}
-          {...(rows.length === 0
-            ? {}
-            : { lede: lede(rows.length - waiting.uncounted, notes.length > 0, waiting.uncounted) })}
-        />
-        {notes.map((note) => (
-          <Note>{note}</Note>
-        ))}
-        {rows.length === 0 ? null : <WaitingList rows={rows} />}
-        <HarnessCards cards={cards} />
-        <PushControl />
-      </>
-    ),
+    <>
+      <PageHead eyebrow={`Today · ${formatDate(screen.at)}`} title={greeting(person)} {...head} />
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <WaitingCard rows={rows} notes={notes} />
+        <Soon title="My tasks" />
+        {cards.length === 0 ? <PushOnly /> : <HarnessCards cards={cards} />}
+        <Soon title="Activity" />
+      </div>
+    </>,
   );
 }

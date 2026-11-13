@@ -7,8 +7,7 @@ import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '..
 import { idParam } from '../parts/params.ts';
 import {
   checksUrl,
-  flowPath,
-  homePath,
+  boardPath,
   issueUrl,
   itemPath,
   pullRequestUrl,
@@ -20,6 +19,7 @@ import { zulipConfigOf } from '../../notify/zulip/config.ts';
 import { itemTopicUrl } from '../../notify/zulip/links.ts';
 import { holderText } from '../parts/holder-words.ts';
 import { pageNames } from '../parts/names.ts';
+import { moduleCodes } from '../parts/platform-nav.ts';
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 const link = `text-accent-text underline ${focus}`;
@@ -84,6 +84,14 @@ function ofKind(events: readonly HarnessEvent[], kind: EventKind | null): readon
   return kind === null ? events : events.filter((event) => kindOf(event.name) === kind);
 }
 
+function itemCrumbs(harness: { readonly id: string; readonly title: string }) {
+  return [
+    { label: pageNames.agentQueues },
+    { label: harness.title, href: boardPath(harness.id) },
+    { label: 'Item' },
+  ];
+}
+
 export async function playScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   if (screen === null) return screenRefusal(c);
@@ -100,11 +108,8 @@ export async function playScreen(c: Context<AppEnv>): Promise<Response> {
   const spec = {
     title: item.title,
     current: itemPath(harness.id, item.itemId),
-    crumbs: [
-      { label: pageNames.home, href: homePath() },
-      { label: harness.title, href: flowPath(harness.id) },
-      { label: 'Item' },
-    ],
+    code: moduleCodes.agentQueues,
+    crumbs: itemCrumbs(harness),
     live: {
       screen: 'item' as const,
       harnesses: [{ harnessId: harness.id, cursor }],

@@ -12,9 +12,11 @@ export function Table(props: {
   readonly caption: string;
   readonly columns: readonly Column[];
   readonly rows: readonly Readonly<Record<string, Child>>[];
+  readonly bare?: boolean;
 }) {
+  const frame = props.bare === true ? '' : 'rounded-md border border-line';
   return (
-    <div class="overflow-x-auto rounded-md border border-line bg-surface">
+    <div class={`overflow-x-auto bg-surface ${frame}`}>
       <table class="w-full border-collapse text-sm text-text">
         <caption class="sr-only">{props.caption}</caption>
         <thead class="bg-raised">

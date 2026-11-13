@@ -5,11 +5,12 @@ import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { idParam } from '../parts/params.ts';
-import { flowPath, homePath, personaPath } from '../parts/paths.ts';
+import { boardPath, personaPath } from '../parts/paths.ts';
 import { ActivateForm, ToolsetForm, type SavedToolset } from '../parts/persona-controls.tsx';
 import { Delegations, LastRuns, PersonaKpis } from '../parts/persona-figures.tsx';
 import { notFound } from './not-found.tsx';
 import { pageNames } from '../parts/names.ts';
+import { moduleCodes } from '../parts/platform-nav.ts';
 
 export type PersonaRead = KernelOutcome<PersonaDashboard> | null;
 
@@ -34,9 +35,10 @@ export function renderPersona(
   const spec = {
     title: page.title,
     current: personaPath(page.id),
+    code: moduleCodes.agentQueues,
     crumbs: [
-      { label: pageNames.home, href: homePath() },
-      { label: harness.title, href: flowPath(harness.id) },
+      { label: pageNames.agentQueues },
+      { label: harness.title, href: boardPath(harness.id) },
       { label: 'Persona' },
     ],
   };

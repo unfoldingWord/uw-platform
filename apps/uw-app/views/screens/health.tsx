@@ -4,7 +4,7 @@ import { formatCount, formatMoney } from '@uw/core/money';
 import type { DailyPoint, PlaneTotals } from '@uw/harness';
 import { Badge } from '@uw/ui/components/badge.tsx';
 import { DailyChart } from '@uw/ui/components/chart.tsx';
-import { Icon } from '@uw/ui/components/icon.tsx';
+import { Card } from '@uw/ui/components/card.tsx';
 import { Kpi, KpiRow } from '@uw/ui/components/kpi.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
@@ -13,7 +13,8 @@ import { spendCapOf } from '../../health/spend-cap.ts';
 import { renderScreen, screenKernel } from '../parts/frame.tsx';
 import { indicatorText, statusOf } from '../parts/health-words.ts';
 import { pageNames } from '../parts/names.ts';
-import { healthPath, homePath } from '../parts/paths.ts';
+import { healthPath } from '../parts/paths.ts';
+import { moduleCodes } from '../parts/platform-nav.ts';
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 const drilled: ReadonlySet<string> = new Set(AGENT_PLANE_INDICATORS);
@@ -61,11 +62,10 @@ function IndicatorRow(props: { readonly indicator: HealthIndicator }) {
       quiet={quiet}
     />
   );
-  if (!drilled.has(indicator.name))
-    return <li class="border-b border-line last:border-b-0">{row}</li>;
+  if (!drilled.has(indicator.name)) return <li>{row}</li>;
   return (
-    <li class="border-b border-line last:border-b-0">
-      <a href={healthPath(indicator.name)} class={`block hover:bg-hover ${focus}`}>
+    <li>
+      <a href={healthPath(indicator.name)} class={`block hover:bg-raised ${focus}`}>
         {row}
       </a>
     </li>
@@ -83,7 +83,7 @@ function Figures(props: { readonly totals: PlaneTotals; readonly capMinor: numbe
   const runs = Object.values(shapes).reduce((sum, count) => sum + count, 0);
   const refusals = Object.values(totals.gateRefusals.byReason).reduce((a, b) => a + b, 0);
   return (
-    <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <Kpi
         label="Spend this month"
         value={money(spent)}
@@ -108,10 +108,16 @@ function RunsChart(props: { readonly days: readonly DailyPoint[] }) {
   const total = props.days.reduce((sum, day) => sum + day.runs, 0);
   const waits = props.days.reduce((sum, day) => sum + day.gateWaits, 0);
   return (
-    <section aria-label="Agent runs" class="flex flex-col gap-3 rounded-lg bg-surface p-5 shadow-1">
-      <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <p class="m-0 text-xs text-text-3">Agent runs · {props.days.length} days</p>
-        <p class="m-0 font-mono text-3xl text-text">{formatCount(total)}</p>
+    <section aria-label="Agent runs" class="flex flex-col rounded-md border border-line bg-surface">
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-3">
+        <h2 class="m-0 text-md font-heavy text-text">Agent runs</h2>
+        <p class="m-0 text-xs font-semibold text-text-3">{props.days.length} days</p>
+        <p
+          data-total
+          class="m-0 rounded-sm bg-accent-soft px-1 text-xs leading-normal font-heavy text-accent-text"
+        >
+          {`${formatCount(total)} runs`}
+        </p>
         <p class="m-0 ml-auto flex items-center gap-4 text-xs text-text-3">
           <span class="flex items-center gap-1">
             <span aria-hidden="true" class="size-size-1 rounded-full bg-accent"></span>runs per day
@@ -122,13 +128,15 @@ function RunsChart(props: { readonly days: readonly DailyPoint[] }) {
           </span>
         </p>
       </div>
-      <DailyChart
-        id="runs-30"
-        label={`Agent runs per day and gate waits, the last ${props.days.length} days`}
-        days={props.days.map((day) => day.day.slice(5))}
-        bars={props.days.map((day) => day.runs)}
-        line={props.days.map((day) => day.gateWaits)}
-      />
+      <div class="px-4 py-3">
+        <DailyChart
+          id="runs-30"
+          label={`Agent runs per day and gate waits, the last ${props.days.length} days`}
+          days={props.days.map((day) => day.day.slice(5))}
+          bars={props.days.map((day) => day.runs)}
+          line={props.days.map((day) => day.gateWaits)}
+        />
+      </div>
     </section>
   );
 }
@@ -145,25 +153,28 @@ export async function healthScreen(c: Context<AppEnv>, report: HealthReport): Pr
   const spec = {
     title: pageNames.health,
     current: healthPath(),
-    crumbs: [{ label: pageNames.home, href: homePath() }, { label: pageNames.health }],
+    code: moduleCodes.health,
+    crumbs: [{ label: pageNames.infrastructure }, { label: pageNames.health }],
   };
   return renderScreen(
     c,
     spec,
-    <div class="flex flex-col gap-5">
-      <div class="flex items-center gap-4">
-        <span class="grid size-size-7 shrink-0 place-items-center rounded-full bg-raised text-accent-text shadow-1">
-          <Icon name="wave-pulse" size={4} />
-        </span>
-        <PageHead title={sentenceOf(report)} lede={ledeOf(report)} flush />
-      </div>
+    <div class="flex flex-col gap-4">
+      <PageHead
+        eyebrow="Agent plane · one trace id end to end"
+        title={sentenceOf(report)}
+        lede={ledeOf(report)}
+        flush
+      />
       {totals === null ? null : <Figures totals={totals} capMinor={spendCapOf(c.env).capMinor} />}
       {days.length === 0 ? null : <RunsChart days={days} />}
-      <ul aria-label="Indicators" class="m-0 list-none rounded-lg bg-surface p-0 shadow-1">
-        {report.indicators.map((indicator) => (
-          <IndicatorRow indicator={indicator} />
-        ))}
-      </ul>
+      <Card title="Indicators" sub="each one with a detail page opens it" flush>
+        <ul aria-label="Indicators" class="m-0 list-none p-0">
+          {report.indicators.map((indicator) => (
+            <IndicatorRow indicator={indicator} />
+          ))}
+        </ul>
+      </Card>
     </div>,
   );
 }
