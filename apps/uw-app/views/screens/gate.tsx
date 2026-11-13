@@ -8,10 +8,11 @@ import { showsDecisions } from '../parts/decider.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { GatePanel, type PanelGate } from '../parts/gate-panel.tsx';
 import { idParam } from '../parts/params.ts';
-import { flowPath, gatePath, homePath, itemPath } from '../parts/paths.ts';
+import { flowPath, gatePath, gatesPath, homePath, itemPath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 import { Inbox, placeOf } from './gates.tsx';
 import { pageNames } from '../parts/names.ts';
+import { moduleCodes } from '../parts/names.ts';
 
 type ItemScene = { readonly item: ItemState; readonly harness: Harness; readonly stage: Stage };
 
@@ -106,8 +107,10 @@ export async function gateScreen(c: Context<AppEnv>): Promise<Response> {
   const spec = {
     title: `${item.title} ${pageNames.gate}`,
     current: gatePath(harness.id, item.itemId),
+    code: moduleCodes.today,
     crumbs: [
       { label: pageNames.home, href: homePath() },
+      { label: pageNames.waiting, href: gatesPath() },
       { label: harness.title, href: flowPath(harness.id) },
       { label: pageNames.gate },
     ],

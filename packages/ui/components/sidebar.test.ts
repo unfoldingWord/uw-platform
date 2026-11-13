@@ -55,7 +55,7 @@ async function frame(): Promise<Document> {
     sections: testFrame().sections,
     current: '/',
     person: testFrame().person,
-    markPath: testFrame().markPath,
+    wordmarkPath: testFrame().wordmarkPath,
   };
   const desktop = await jsx(Sidebar, props).toString();
   const phone = await jsx(PhoneHeader, { ...props, title: 'Home', waiting: 2 }).toString();
@@ -84,7 +84,7 @@ describe('UI-5 the sidebar becomes a phone header below the md breakpoint', () =
     expect(phone.textContent).toContain('Home');
     const menu = phone.querySelector('details');
     if (menu === null) throw new Error('no menu');
-    expect(menu.querySelector('summary')?.textContent?.trim()).toBe('Menu');
+    expect(menu.querySelector('summary')?.textContent).toContain('Menu');
     expect(menu.hasAttribute('open')).toBe(false);
     expect(menu.querySelector('nav[aria-label="Main"] a[href="/health"]')).not.toBeNull();
   });
@@ -94,5 +94,18 @@ describe('UI-5 the sidebar becomes a phone header below the md breakpoint', () =
       displayRules.some((rule) => rule.selector === '.md\\:flex' && rule.at.includes(wide)),
     ).toBe(true);
     expect(displayRules.some((rule) => rule.selector.startsWith('.hidden'))).toBe(true);
+  });
+
+  it('UI-5 an item without a page is dimmed, carries no pill and is not a link', async () => {
+    const document = await frame();
+    const ledger = [...document.querySelectorAll('aside [aria-disabled="true"]')].find((row) =>
+      row.textContent?.includes('Ledger'),
+    );
+    expect(ledger?.getAttribute('class')).toContain('opacity-45');
+    expect(ledger?.textContent).not.toMatch(/Coming Soon|Future/);
+    expect(ledger?.closest('a')).toBeNull();
+    expect(document.querySelector('aside [data-area="30-39"]')?.textContent).toContain(
+      'Infrastructure',
+    );
   });
 });

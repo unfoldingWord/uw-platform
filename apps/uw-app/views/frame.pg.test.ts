@@ -7,7 +7,7 @@ import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml, getHtmlWithEnv } from '../testing/views.ts';
-import { boardPath, gatesPath, healthPath } from './parts/paths.ts';
+import { boardPath, gatesPath, healthPath, homePath } from './parts/paths.ts';
 
 const IAN = 'ian.lindsley@unfoldingword.org';
 
@@ -33,32 +33,70 @@ async function sidebarReadsTheFrame(db: Database): Promise<void> {
   const item = await parked(db);
   const document = documentOf((await getHtml(db, IAN, '/', {}, clock)).text);
   const nav = desktopNav(document);
-  const waiting = nav.querySelector(`a[href="${gatesPath()}"]`);
-  expect(waiting?.textContent).toContain('Waiting On You');
-  expect(waiting?.querySelector('[aria-label$="waiting on you"]')?.textContent).toBe('1');
-  const harness = nav.querySelector(`a[href="${boardPath(item.harnessId)}"]`);
-  expect(harness?.textContent).toContain('Software');
-  expect(harness?.textContent).toContain('1');
+  const today = nav.querySelector(`a[href="${homePath()}"]`);
+  expect(today?.textContent).toContain('Today');
+  expect(today?.querySelector('[aria-label$="waiting on you"]')?.textContent).toBe('1');
+  expect(nav.textContent).toContain('Agent Queues');
+  const workflow = nav.querySelector(`a[href="${boardPath(item.harnessId)}"]`);
+  expect(workflow?.textContent).toContain('Software');
+  expect(workflow?.textContent).toContain('1');
   expect(nav.querySelector(`a[href="${healthPath()}"]`)?.textContent).toContain('Health');
-  const brand = document.querySelector('aside');
-  expect(brand?.textContent).toContain('unfoldingWord');
-  expect(brand?.textContent).toContain('Platform');
-  expect(brand?.textContent).toContain('Ian Lindsley');
+  expect(nav.querySelector(`a[href="${gatesPath()}"]`)).toBeNull();
+  brandAndPerson(document);
 }
 
-async function unwiredSaySo(db: Database): Promise<void> {
+function brandAndPerson(document: Document): void {
+  const side = document.querySelector('aside');
+  expect(side?.querySelector('img')?.getAttribute('alt')).toBe('unfoldingWord');
+  expect(side?.textContent).toContain('Platform');
+  expect(side?.textContent).toContain('Ian Lindsley');
+}
+
+async function areasInPrototypeOrder(db: Database): Promise<void> {
   await parked(db);
   const nav = desktopNav(documentOf((await getHtml(db, IAN, '/', {}, clock)).text));
-  for (const label of ['My Items', 'Personas']) {
+  const headings = [...nav.querySelectorAll('[data-area]')].map((element) =>
+    element.getAttribute('data-area'),
+  );
+  expect(headings).toEqual([
+    '00-09',
+    '10-19',
+    '20-29',
+    '30-39',
+    '40-49',
+    '50-59',
+    '60-79',
+    '80-89',
+    '90-99',
+  ]);
+}
+
+async function unbuiltAreDimmed(db: Database): Promise<void> {
+  await parked(db);
+  const document = documentOf((await getHtml(db, IAN, '/', {}, clock)).text);
+  const nav = desktopNav(document);
+  for (const label of [
+    'Pages & Wiki',
+    'Ledger',
+    'Modules',
+    'Grants',
+    'Engagements',
+    'Development',
+  ]) {
     const row = [...nav.querySelectorAll('[aria-disabled="true"]')].find((element) =>
       element.textContent?.includes(label),
     );
-    expect(row?.textContent, label).toContain('Not wired yet');
+    expect(row?.getAttribute('class'), label).toContain('opacity-45');
+    expect(row?.textContent, label).not.toMatch(/Coming Soon|Future/);
+    expect(row?.closest('a'), label).toBeNull();
   }
-  const search = documentOf((await getHtml(db, IAN, '/', {}, clock)).text).querySelector(
-    'aside [aria-disabled="true"]',
-  );
-  expect(search?.textContent).toContain('Not wired yet');
+  const search = document.querySelector('header [aria-disabled="true"]');
+  expect(search?.getAttribute('class')).toContain('opacity-45');
+  expect(search?.textContent).not.toMatch(/Coming Soon|Future/);
+  const finance = desktopNav(document).querySelector('[data-area="20-29"]');
+  expect(finance?.getAttribute('data-unbuilt')).toBe('true');
+  const infrastructure = desktopNav(document).querySelector('[data-area="30-39"]');
+  expect(infrastructure?.hasAttribute('data-unbuilt')).toBe(false);
 }
 
 async function statusBarSays(db: Database): Promise<void> {
@@ -82,7 +120,7 @@ async function phoneHeader(db: Database): Promise<void> {
   const document = documentOf((await getHtml(db, IAN, '/', {}, clock)).text);
   const phone = document.querySelector('section[aria-label="Menu"]');
   expect(phone?.querySelector('img')?.getAttribute('alt')).toBe('unfoldingWord');
-  expect(phone?.textContent).toContain('Home');
+  expect(phone?.textContent).toContain('Today');
   expect(phone?.querySelector('[aria-label$="waiting on you"]')?.textContent).toBe('1');
 }
 
@@ -92,10 +130,12 @@ async function noProblems(db: Database): Promise<void> {
 }
 
 describe.skipIf(!testServer)('UI-5 the frame', () => {
-  it('UI-5 the sidebar carries the mark, the counts, each harness by title and the person', () =>
+  it('UI-5 the sidebar carries the logo, Today with its count, each workflow under Agent Queues, Health and the person', () =>
     withAppDatabase(sidebarReadsTheFrame));
-  it('UI-5 My Items, Personas and search say they are not wired', () =>
-    withAppDatabase(unwiredSaySo));
+  it('UI-5 the sidebar groups the platform by area in the prototype order', () =>
+    withAppDatabase(areasInPrototypeOrder));
+  it('UI-5 every unbuilt module, an all-unbuilt group and search are dimmed, carry no pill and open nothing', () =>
+    withAppDatabase(unbuiltAreDimmed));
   it('UI-5 the status bar says what loaded, what is open, what is on, the commit and where', () =>
     withAppDatabase(statusBarSays));
   it('UI-5 on a phone a header shows the mark, the page and the count waiting', () =>

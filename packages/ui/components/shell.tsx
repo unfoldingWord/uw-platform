@@ -10,7 +10,7 @@ export type Frame = {
   readonly person: Person | null;
   readonly waiting: number;
   readonly status: Status;
-  readonly markPath: string;
+  readonly wordmarkPath: string;
 };
 
 function Head(props: {
@@ -33,10 +33,34 @@ function Head(props: {
   );
 }
 
+function SkipLink() {
+  return (
+    <a
+      href="#main"
+      class="sr-only bg-surface text-accent-text outline-offset-2 outline-accent-text focus-visible:not-sr-only focus-visible:absolute focus-visible:outline-2"
+    >
+      <span class="block p-2">Skip to content</span>
+    </a>
+  );
+}
+
+function Main(props: { readonly children?: Child }) {
+  return (
+    <main
+      id="main"
+      tabindex={-1}
+      class="min-w-0 flex-1 p-4 md:min-h-0 md:overflow-y-auto md:px-5 md:pt-5 md:pb-7"
+    >
+      {props.children}
+    </main>
+  );
+}
+
 export function Shell(props: {
   readonly title: string;
   readonly frame: Frame;
   readonly current: string;
+  readonly code?: string | undefined;
   readonly crumbs: readonly Crumb[];
   readonly tabs?: readonly Tab[] | undefined;
   readonly actions?: Child | undefined;
@@ -49,31 +73,29 @@ export function Shell(props: {
     <html lang="en">
       <Head title={props.title} stylesheet={props.stylesheet} script={props.script} />
       <body class="min-h-dvh bg-canvas font-sans text-base text-text">
-        <a
-          href="#main"
-          class="sr-only bg-surface text-accent-text outline-offset-2 outline-accent-text focus-visible:not-sr-only focus-visible:absolute focus-visible:outline-2"
-        >
-          <span class="block p-2">Skip to content</span>
-        </a>
-        <div class="grid min-h-dvh md:grid-cols-frame">
+        <SkipLink />
+        <div data-frame class="grid min-h-dvh md:h-dvh md:grid-cols-frame md:overflow-hidden">
           <Sidebar
             sections={frame.sections}
             current={props.current}
             person={frame.person}
-            markPath={frame.markPath}
+            wordmarkPath={frame.wordmarkPath}
           />
-          <div class="flex min-w-0 flex-col">
+          <div class="flex min-w-0 flex-col md:min-h-0">
             <PhoneHeader
               title={props.title}
               waiting={frame.waiting}
               sections={frame.sections}
               current={props.current}
-              markPath={frame.markPath}
+              wordmarkPath={frame.wordmarkPath}
             />
-            <TopBar crumbs={props.crumbs} tabs={props.tabs} actions={props.actions} />
-            <main id="main" tabindex={-1} class="min-w-0 flex-1 p-4 md:p-5">
-              {props.children}
-            </main>
+            <TopBar
+              code={props.code}
+              crumbs={props.crumbs}
+              tabs={props.tabs}
+              actions={props.actions}
+            />
+            <Main>{props.children}</Main>
             <StatusBar status={frame.status} />
           </div>
         </div>

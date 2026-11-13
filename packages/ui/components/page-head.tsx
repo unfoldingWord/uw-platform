@@ -13,16 +13,20 @@ export function PageHead(props: {
     >
       <div class="min-w-0">
         {props.eyebrow === undefined ? null : (
-          <p class="text-xs font-semibold tracking-wide text-accent-text uppercase">
+          <p class="m-0 mb-1 text-xs font-heavy tracking-wide text-accent-text uppercase">
             {props.eyebrow}
           </p>
         )}
-        <h1 class="m-0 text-3xl leading-tight font-heavy tracking-heading text-text">
+        <h1 class="m-0 text-xl leading-tight font-heavy tracking-tight text-balance text-text">
           {props.title}
         </h1>
-        {props.lede === undefined ? null : <p class="m-0 mt-1 text-sm text-text-3">{props.lede}</p>}
+        {props.lede === undefined ? null : (
+          <p class="m-0 mt-2 max-w-content text-base text-text-3">{props.lede}</p>
+        )}
       </div>
-      {props.actions === undefined ? null : <div class="flex gap-2">{props.actions}</div>}
+      {props.actions === undefined ? null : (
+        <div class="flex flex-wrap items-center gap-2">{props.actions}</div>
+      )}
     </div>
   );
 }

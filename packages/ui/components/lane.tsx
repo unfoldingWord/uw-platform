@@ -1,10 +1,9 @@
 import type { Child } from 'hono/jsx';
 import { Badge } from './badge.tsx';
 import { HumanMark, humanLane } from './human-action.tsx';
-import { Icon } from './icon.tsx';
 import { domId } from './text.ts';
 
-const column = 'flex shrink-0 flex-col gap-3 rounded-lg p-2';
+const column = 'flex w-aside shrink-0 flex-col gap-2 rounded-md bg-lane p-3';
 
 function Facts(props: {
   readonly facts: readonly { readonly label: string; readonly value: string }[];
@@ -22,6 +21,21 @@ function Facts(props: {
   );
 }
 
+function LaneBadges(props: { readonly gate: boolean; readonly paused: boolean }) {
+  if (!props.gate && !props.paused) return null;
+  return (
+    <div class="flex flex-wrap gap-1 px-1">
+      {props.gate ? (
+        <Badge tone="person">
+          <HumanMark label="A person decides" />
+          gate: a person decides
+        </Badge>
+      ) : null}
+      {props.paused ? <Badge tone="held">Paused</Badge> : null}
+    </div>
+  );
+}
+
 export function Lane(props: {
   readonly stageKey: string;
   readonly title: string;
@@ -35,30 +49,34 @@ export function Lane(props: {
 }) {
   const headingId = domId('lane', props.stageKey);
   const gate = props.gate === true;
-  const width = props.folded === true ? 'w-size-7' : 'min-w-col-min max-w-col-max flex-1';
   return (
     <section
       aria-labelledby={headingId}
       data-folded={props.folded === true ? 'true' : undefined}
-      class={`${column} ${width} ${gate ? humanLane : 'bg-side'}`}
+      class={`${column} ${gate ? humanLane : ''}`}
     >
-      <div class={`flex items-center gap-2 ${props.folded === true ? 'flex-col' : ''}`}>
-        <Icon name="circle-dot" size={2} class="text-accent-text" />
+      <div class="flex items-center gap-2 px-1">
         <h2
           id={headingId}
-          class={`m-0 min-w-0 truncate text-sm font-heavy text-text ${props.folded === true ? 'text-vertical' : ''}`}
+          class="m-0 min-w-0 truncate text-xs font-heavy tracking-wide text-text-3 uppercase"
         >
           {props.title}
         </h2>
-        <p class="m-0 font-mono text-xs text-text-3">
-          {`${props.count}/${props.wipLimit}`}
+        <p class="m-0 ml-auto font-mono text-xs whitespace-nowrap text-text-3">
+          {`${props.count} of ${props.wipLimit}`}
           <span class="sr-only"> items against the WIP limit</span>
         </p>
-        {gate ? <HumanMark label="A person decides" /> : null}
-        {props.paused === true ? <Badge tone="held">Paused</Badge> : null}
       </div>
+      <LaneBadges gate={gate} paused={props.paused === true} />
       <Facts facts={props.facts ?? []} />
-      <div class="flex flex-col gap-2">{props.children}</div>
+      <div class="flex flex-col gap-2">
+        {props.children}
+        {props.count === 0 ? (
+          <p class="m-0 rounded-md border border-dashed border-line px-3 py-3 text-center text-xs text-text-3">
+            No items
+          </p>
+        ) : null}
+      </div>
     </section>
   );
 }

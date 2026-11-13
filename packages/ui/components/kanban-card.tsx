@@ -77,7 +77,7 @@ export function KanbanCard(props: {
 }) {
   const href = safeHref(props.href);
   return (
-    <article class="flex flex-col gap-2 rounded-lg bg-surface p-3 text-text shadow-1">
+    <article class="flex flex-col gap-2 rounded-md border border-line bg-card p-3 text-text hover:border-accent">
       <Top number={props.number} risk={props.risk} badge={props.badge} />
       <h3 class="m-0 text-base leading-snug font-heavy break-words">
         {href === undefined ? (
@@ -91,7 +91,9 @@ export function KanbanCard(props: {
       {props.last === undefined ? null : <p class="m-0 text-xs text-text-3">{props.last}</p>}
       {props.status}
       <Foot foot={props.foot ?? []} />
-      {props.actions === undefined ? null : <div class="flex flex-col gap-2">{props.actions}</div>}
+      {props.actions === undefined ? null : (
+        <div class="mt-1 flex flex-col gap-2">{props.actions}</div>
+      )}
       <Facts meta={props.meta} />
     </article>
   );
