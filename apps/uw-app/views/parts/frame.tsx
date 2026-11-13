@@ -18,6 +18,7 @@ export type ScreenSpec = {
   readonly current: string;
   readonly crumbs: readonly Crumb[];
   readonly tabs?: readonly Tab[];
+  readonly code?: string;
   readonly live?: {
     readonly screen: LiveScreen;
     readonly harnesses: readonly LiveHarness[];
@@ -89,6 +90,7 @@ export async function renderScreen(
       title={spec.title}
       frame={frame}
       current={spec.current}
+      code={spec.code}
       crumbs={spec.crumbs}
       tabs={spec.tabs}
       stylesheet={appCssPath}

@@ -2,7 +2,7 @@ import type { Child } from 'hono/jsx';
 import { domId } from './text.ts';
 
 export const commandButton =
-  'rounded-md border border-accent bg-surface px-3 py-2 text-sm font-heavy text-accent-text outline-offset-2 outline-accent-text focus-visible:outline-2 aria-disabled:cursor-not-allowed aria-disabled:text-text-3';
+  'inline-flex items-center rounded-md border border-line bg-surface px-3 py-1 text-sm font-heavy text-text outline-offset-2 outline-accent-text hover:border-accent hover:text-accent-text focus-visible:outline-2 aria-disabled:cursor-not-allowed aria-disabled:text-text-3';
 
 export function CommandForm(props: {
   readonly harnessId: string;

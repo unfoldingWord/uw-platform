@@ -2,6 +2,7 @@ import type { Context } from 'hono';
 import { formatDuration } from '@uw/core/dates';
 import { formatCount } from '@uw/core/money';
 import { VIEW_LIMIT, type FlowStage, type FlowView } from '@uw/harness';
+import { Card } from '@uw/ui/components/card.tsx';
 import { HumanGateMark } from '@uw/ui/components/human-action.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
@@ -11,7 +12,9 @@ import { costText } from '../parts/costs.ts';
 import { bracketText, FlowDiagram } from '../parts/flow-diagram.tsx';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { idParam } from '../parts/params.ts';
-import { boardPath, flowPath, homePath } from '../parts/paths.ts';
+import { boardPath, flowPath } from '../parts/paths.ts';
+import { moduleCodes } from '../parts/names.ts';
+import { workflowTabs } from '../parts/workflow-tabs.ts';
 import { notFound } from './not-found.tsx';
 import { pageNames } from '../parts/names.ts';
 
@@ -60,18 +63,20 @@ function rowOf(view: FlowView, entry: FlowStage, at: Date) {
 
 function Diagram(props: { readonly harnessId: string; readonly view: FlowView }) {
   return (
-    <details>
-      <summary class={`cursor-pointer text-sm font-semibold text-text-2 ${focus}`}>
-        The stages as a diagram
-      </summary>
-      <div class="mt-3">
-        <FlowDiagram
-          harnessId={props.harnessId}
-          harnessTitle={props.view.harness.title}
-          stages={props.view.stages}
-        />
-      </div>
-    </details>
+    <Card title="Flow" sub="the stages as a diagram, with the gate and the loops">
+      <details>
+        <summary class={`cursor-pointer text-sm font-semibold text-text-2 ${focus}`}>
+          Show the diagram
+        </summary>
+        <div class="mt-3">
+          <FlowDiagram
+            harnessId={props.harnessId}
+            harnessTitle={props.view.harness.title}
+            stages={props.view.stages}
+          />
+        </div>
+      </details>
+    </Card>
   );
 }
 
@@ -80,7 +85,7 @@ function summaryOf(view: FlowView): string {
   const gates = view.stages.filter((entry) => entry.stage.exitGate === 'human_approval').length;
   const gateWords =
     gates === 1 ? '1 gate where a person decides' : `${gates} gates where a person decides`;
-  return `Built from the ${view.harness.template} template · ${view.stages.length} stages in ${brackets} brackets · ${gateWords}`;
+  return `${view.stages.length} stages in ${brackets} brackets, with ${gateWords}.`;
 }
 
 export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
@@ -96,35 +101,34 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
   const spec = {
     title: `${view.harness.title} ${pageNames.flow}`,
     current: flowPath(harnessId),
-    crumbs: [{ label: pageNames.home, href: homePath() }, { label: view.harness.title }],
-    tabs: [
-      {
-        label: pageNames.flow,
-        href: flowPath(harnessId),
-        icon: 'diagram-project' as const,
-        current: true,
-      },
-      {
-        label: pageNames.board,
-        href: boardPath(harnessId),
-        icon: 'square-kanban' as const,
-        current: false,
-      },
+    code: moduleCodes.agentQueues,
+    crumbs: [
+      { label: pageNames.agentQueues },
+      { label: view.harness.title, href: boardPath(harnessId) },
+      { label: pageNames.flow },
     ],
+    tabs: workflowTabs(harnessId, 'flow'),
     live: { screen: 'flow' as const, harnesses: [{ harnessId, cursor }] },
   };
   return renderScreen(
     c,
     spec,
     <>
-      <PageHead title={view.harness.title} lede={summaryOf(view)} />
+      <PageHead
+        eyebrow={`Workflow · ${view.harness.template} template`}
+        title={view.harness.title}
+        lede={summaryOf(view)}
+      />
       <div class="flex flex-col gap-5">
         {view.capped ? <Note>{cappedNote}</Note> : null}
-        <Table
-          caption="Stages"
-          columns={columns}
-          rows={view.stages.map((entry) => rowOf(view, entry, screen.at))}
-        />
+        <Card title="Stage configuration" sub="what each stage holds, costs and waits on" flush>
+          <Table
+            caption="Stages"
+            columns={columns}
+            rows={view.stages.map((entry) => rowOf(view, entry, screen.at))}
+            bare
+          />
+        </Card>
         <Diagram harnessId={harnessId} view={view} />
       </div>
     </>,

@@ -12,13 +12,15 @@ import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '..
 import { parkedCapNote } from '../parts/caps.ts';
 import { liveCursors } from '../parts/cursors.ts';
 import { GatePanel, type GatePlace, type PanelGate } from '../parts/gate-panel.tsx';
-import { HumanDot } from '@uw/ui/components/human-action.tsx';
+import { HumanDot, humanBadge } from '@uw/ui/components/human-action.tsx';
 import { formatDuration } from '@uw/core/dates';
 import { gatePath, gatesPath, homePath } from '../parts/paths.ts';
 import { ShadowList } from '../parts/shadow-list.tsx';
 import { pageNames } from '../parts/names.ts';
+import { moduleCodes } from '../parts/names.ts';
 
 const REFRESH_EVERY_MS = 60_000;
+const eyebrow = 'A person decides · an agent cannot advance these';
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 type Shown = { readonly row: GateRow; readonly gate: PanelGate };
@@ -90,6 +92,17 @@ export function placeOf(row: GateRow, at: Date): GatePlace {
   };
 }
 
+function InboxHead(props: { readonly count: number }) {
+  return (
+    <p class="m-0 flex items-center gap-2 border-b border-line px-4 py-3 text-md font-heavy text-text">
+      Decide
+      <span class={`rounded-sm px-1 font-mono text-xs leading-normal ${humanBadge}`}>
+        {props.count}
+      </span>
+    </p>
+  );
+}
+
 export function Inbox(props: {
   readonly rows: readonly GateRow[];
   readonly at: Date;
@@ -99,12 +112,10 @@ export function Inbox(props: {
   return (
     <nav
       aria-label="Decisions"
-      class={`min-w-0 flex-col gap-1 md:flex md:w-inbox md:shrink-0 ${props.phone === 'shown' ? 'flex' : 'hidden'}`}
+      class={`min-w-0 flex-col rounded-md border border-line bg-surface md:flex md:w-inbox md:shrink-0 ${props.phone === 'shown' ? 'flex' : 'hidden'}`}
     >
-      <p class="m-0 px-2 pb-2 text-md font-heavy text-text">
-        Decide <span class="font-mono text-sm font-regular text-text-3">{props.rows.length}</span>
-      </p>
-      <ul class="m-0 flex list-none flex-col gap-1 p-0">
+      <InboxHead count={props.rows.length} />
+      <ul class="m-0 flex list-none flex-col gap-2 p-3">
         {props.rows.map((row) => {
           const place = placeOf(row, props.at);
           const current = row.item.itemId === props.selected;
@@ -113,7 +124,7 @@ export function Inbox(props: {
               <a
                 href={gatePath(row.harness.id, row.item.itemId)}
                 aria-current={current ? 'page' : undefined}
-                class={`flex items-start gap-3 rounded-md px-2 py-3 hover:bg-hover aria-[current=page]:bg-raised aria-[current=page]:shadow-1 ${focus}`}
+                class={`flex items-start gap-3 rounded-md border border-line px-3 py-2 hover:border-accent aria-[current=page]:border-accent aria-[current=page]:bg-accent-soft ${focus}`}
               >
                 <HumanDot />
                 <span class="min-w-0 flex-1">
@@ -175,7 +186,7 @@ function GatesBody(props: Body & { readonly at: Date }) {
   if (first === undefined) {
     return (
       <>
-        <PageHead title={pageNames.waiting} />
+        <PageHead eyebrow={eyebrow} title={pageNames.waiting} />
         {note ?? <Note>No gate is waiting for you to decide.</Note>}
         {lists}
         <DelegatedMerges merged={merged} />
@@ -184,7 +195,7 @@ function GatesBody(props: Body & { readonly at: Date }) {
   }
   return (
     <>
-      <PageHead title={pageNames.waiting} lede={lede(shown.length, capped)} />
+      <PageHead eyebrow={eyebrow} title={pageNames.waiting} lede={lede(shown.length, capped)} />
       {note}
       {approvable(shown).map((batch) => (
         <ApproveAll batch={batch} />
@@ -221,6 +232,7 @@ export async function gatesScreen(c: Context<AppEnv>): Promise<Response> {
   const spec = {
     title: pageNames.waiting,
     current: gatesPath(),
+    code: moduleCodes.today,
     crumbs: [{ label: pageNames.home, href: homePath() }, { label: pageNames.waiting }],
     live: { screen: 'gates' as const, harnesses, refreshEveryMs: REFRESH_EVERY_MS },
   };

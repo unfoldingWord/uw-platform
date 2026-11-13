@@ -7,6 +7,13 @@ export const brandAnchors = {
   kindle: { hex: '#e59d33', step: 400 },
 } as const;
 
+export const greyAnchors = {
+  50: '#f4f8fa',
+  100: '#e7eef2',
+  300: '#c4d3db',
+  600: '#5a6e7a',
+} as const;
+
 type BrandScale = keyof typeof brandAnchors;
 export type ScaleName = BrandScale | 'grey';
 
@@ -124,6 +131,7 @@ function greyScale(): Map<number, string> {
     scale.set(step, fromLch(lightness, lightness > 0.5 ? 0.014 : 0.022, hue));
   }
   scale.set(0, '#ffffff');
+  for (const [step, hex] of Object.entries(greyAnchors)) scale.set(Number(step), hex);
   return scale;
 }
 

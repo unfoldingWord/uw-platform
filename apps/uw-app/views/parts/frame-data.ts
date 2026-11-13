@@ -3,12 +3,12 @@ import { formatDate, formatInstant } from '@uw/core/dates';
 import type { HealthIndicator, HealthReport, Principal } from '@uw/contracts';
 import type { FrameCounts } from '@uw/harness';
 import type { Frame } from '@uw/ui/components/shell.tsx';
-import type { NavSection, Person } from '@uw/ui/components/sidebar.tsx';
-import { markPath } from '@uw/ui/generated/mark';
+import type { NavItem, NavSection, Person } from '@uw/ui/components/sidebar.tsx';
+import { wordmarkPath } from '@uw/ui/generated/mark';
 import type { AppEnv } from '../../deps.ts';
 import { commitOf, environmentOf } from '../../env.ts';
-import { boardPath, gatesPath, healthPath, homePath } from './paths.ts';
-import { pageNames, sectionNames } from './names.ts';
+import { boardPath, flowPath, healthPath, homePath } from './paths.ts';
+import { moduleCodes, noModules, platformAreas, type PlatformModule } from './names.ts';
 
 const noCounts: FrameCounts = { harnesses: [], waiting: 0, gatesOpen: 0, agentsWorking: 0 };
 
@@ -40,47 +40,55 @@ function switchedOn(report: HealthReport | null, name: string): boolean {
   return found !== undefined && found.status !== 'not_configured' && found.status !== 'not_wired';
 }
 
+function builtItems(module: PlatformModule, counts: FrameCounts, watch: number): NavItem[] {
+  const base = { label: module.label, icon: module.icon };
+  if (module.built === 'today') {
+    const waiting = counts.waiting;
+    return [
+      {
+        ...base,
+        href: homePath(),
+        code: moduleCodes.today,
+        ...(waiting === 0
+          ? {}
+          : { count: { kind: 'person', count: waiting, label: `${waiting} waiting on you` } }),
+      },
+    ];
+  }
+  if (module.built === 'health')
+    return [
+      {
+        ...base,
+        href: healthPath(),
+        code: moduleCodes.health,
+        ...(watch === 0 ? {} : { count: { kind: 'watch', text: `${watch} watch` } }),
+      },
+    ];
+  if (module.built === 'agentQueues')
+    return [
+      { ...base, code: moduleCodes.agentQueues, href: firstFlow(counts) },
+      ...counts.harnesses.map(({ harness, open }) => ({
+        label: harness.title,
+        href: boardPath(harness.id),
+        nested: true,
+        count: { kind: 'quiet' as const, text: String(open) },
+      })),
+    ];
+  return [base];
+}
+
+function firstFlow(counts: FrameCounts): string {
+  const first = counts.harnesses[0];
+  return first === undefined ? homePath() : flowPath(first.harness.id);
+}
+
 export function sectionsOf(counts: FrameCounts, watch: number): readonly NavSection[] {
-  const waiting = counts.waiting;
-  return [
-    {
-      items: [
-        { label: pageNames.home, mark: { icon: 'house' }, href: homePath() },
-        {
-          label: pageNames.waiting,
-          mark: { icon: 'inbox' },
-          href: gatesPath(),
-          ...(waiting === 0
-            ? {}
-            : { count: { kind: 'person', count: waiting, label: `${waiting} waiting on you` } }),
-        },
-        { label: pageNames.myItems, mark: { icon: 'user' } },
-      ],
-    },
-    {
-      heading: sectionNames.harness,
-      items: [
-        ...counts.harnesses.map(({ harness, open }) => ({
-          label: harness.title,
-          mark: { initial: harness.title.charAt(0).toUpperCase() },
-          href: boardPath(harness.id),
-          count: { kind: 'quiet' as const, text: String(open) },
-        })),
-        { label: pageNames.personas, mark: { icon: 'robot' } },
-      ],
-    },
-    {
-      heading: sectionNames.system,
-      items: [
-        {
-          label: pageNames.health,
-          mark: { icon: 'wave-pulse' },
-          href: healthPath(),
-          ...(watch === 0 ? {} : { count: { kind: 'watch', text: `${watch} watch` } }),
-        },
-      ],
-    },
-  ];
+  return platformAreas.map((area) => ({
+    heading: area.name,
+    code: area.code,
+    items: area.modules.flatMap((module) => builtItems(module, counts, watch)),
+    ...(area.modules.length === 0 ? { empty: noModules } : {}),
+  }));
 }
 
 const reachableIn = /^reachable in (\d+) ms$/;
@@ -103,7 +111,7 @@ export async function frameOf(
     sections: sectionsOf(counts, watching(report)),
     person: personOf(c.get('principal')),
     waiting: counts.waiting,
-    markPath,
+    wordmarkPath,
     status: {
       loaded,
       agents: counts.agentsWorking,

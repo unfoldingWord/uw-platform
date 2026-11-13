@@ -255,16 +255,19 @@ async function noProblems(world: BoardWorld): Promise<void> {
 
 async function lookOfFlow(world: BoardWorld): Promise<void> {
   const document = documentOf((await flowOf(world)).text);
-  expect(document.querySelector('main h1 + p')?.textContent).toMatch(
-    /^Built from the software template · 8 stages in 4 brackets · 1 gate where a person decides$/,
+  expect(document.querySelector('main h1')?.previousElementSibling?.textContent).toBe(
+    'Workflow · software template',
+  );
+  expect(document.querySelector('main h1 + p')?.textContent).toBe(
+    '8 stages in 4 brackets, with 1 gate where a person decides.',
   );
   const tabs = [...document.querySelectorAll('nav[aria-label="Views"] a')].map((tab) => [
     tab.textContent,
     tab.getAttribute('aria-current'),
   ]);
   expect(tabs).toEqual([
-    ['Flow', 'page'],
     ['Board', null],
+    ['Flow', 'page'],
   ]);
 }
 

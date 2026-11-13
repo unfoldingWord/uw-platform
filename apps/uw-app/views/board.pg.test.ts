@@ -71,7 +71,7 @@ async function columns(world: BoardWorld): Promise<void> {
   const lanes = [...document.querySelectorAll('main section[aria-labelledby]')];
   expect(lanes.map((lane) => lane.querySelector('h2')?.textContent)).toHaveLength(8);
   const build = laneOf(document, 'Commits to PR');
-  expect(build?.textContent).toContain('2/3');
+  expect(build?.textContent).toContain('2 of 3');
   expect(factsOf(build)).toEqual([
     ['Items', '2'],
     ['Agent pickup', 'Agents may pick up'],
@@ -244,11 +244,12 @@ async function noProblems(world: BoardWorld): Promise<void> {
 
 async function lookOfBoard(world: BoardWorld): Promise<void> {
   const document = await documentOf(world);
-  const pipeline = document.querySelector('main section[aria-label="Pipeline"]');
-  expect(pipeline?.querySelectorAll('li[data-node]')).toHaveLength(8);
-  const gate = pipeline?.querySelector('li[data-node] [aria-label="A person decides"]');
+  expect(document.querySelector('main section[aria-label="Pipeline"]')).toBeNull();
+  expect(document.querySelectorAll('main section[aria-labelledby^="lane"]')).toHaveLength(8);
+  const gate = document.querySelector('main section [aria-label="A person decides"]');
   expect(gate).not.toBeNull();
-  const figures = [...(pipeline?.querySelectorAll('dt') ?? [])].map((term) => term.textContent);
+  const head = document.querySelector('main [aria-label="Figures"]');
+  const figures = [...(head?.querySelectorAll('dt') ?? [])].map((term) => term.textContent?.trim());
   expect(figures).toEqual(['Agents working', 'Waiting on you', 'Spent on these items']);
   const toolbar = document.querySelector('main a[href="/gates"]');
   expect(toolbar?.textContent).toContain('Waiting on you');
@@ -261,7 +262,7 @@ async function lookOfBoard(world: BoardWorld): Promise<void> {
 }
 
 describe.skipIf(!testServer)('the Board', () => {
-  it('UI-6 the Board draws the pipeline with its figures, the toolbar, folded empty stages and compact cards', () =>
+  it('UI-6 the Board has the figures in its head, the toolbar, a lane per stage with the gate marked, and compact cards', () =>
     inBoard(lookOfBoard));
   it('WB-5 the board has one column per stage with its WIP against its limit, agent pickup and exit gate', () =>
     inBoard(columns));

@@ -140,8 +140,8 @@ async function lookOfHealth(world: BoardWorld): Promise<void> {
   const chart = document.querySelector('main section[aria-label="Agent runs"] svg[role="img"]');
   expect(chart?.getAttribute('aria-label')).toContain('Agent runs per day');
   expect(chart?.outerHTML).not.toMatch(/\sstyle="/);
-  const total = document.querySelector('main section[aria-label="Agent runs"] .text-3xl');
-  expect(total?.textContent).toMatch(/^\d+$/);
+  const total = document.querySelector('main section[aria-label="Agent runs"] [data-total]');
+  expect(total?.textContent).toMatch(/^\d+ runs$/);
 }
 
 async function detailSays(world: BoardWorld): Promise<void> {

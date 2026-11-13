@@ -78,12 +78,13 @@ export async function enqueuedItem(
   ian: Principal,
   harnessId: string,
   title: string,
+  priority = 1,
 ): Promise<string> {
   const enqueued = await kernel.items.enqueue(callerOf(ian), {
     harnessId,
     title,
     pageId: null,
-    priority: 1,
+    priority,
     due: null,
     delegationId: null,
   });
@@ -186,7 +187,7 @@ async function items(kernel: Kernel, ian: Principal, harnessId: string) {
   await advanced(kernel, ian, subscribed, 3);
   const laptop = agentOf(ian, 'laptop');
   accepted(await kernel.items.claim(callerOf(laptop), { itemId: subscribed, delegationId: null }));
-  const metered = await enqueuedItem(kernel, ian, harnessId, 'Wire the run host');
+  const metered = await enqueuedItem(kernel, ian, harnessId, 'Wire the run host', 2);
   await advanced(kernel, ian, metered, 3);
   return { unheld, personHeld, subscribed, metered, laptop };
 }

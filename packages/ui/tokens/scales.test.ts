@@ -1,6 +1,11 @@
 import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
-import { brandAnchors, colourScales, type ScaleName } from '../../../tools/ui/scales.ts';
+import {
+  brandAnchors,
+  colourScales,
+  greyAnchors,
+  type ScaleName,
+} from '../../../tools/ui/scales.ts';
 
 const designTable: Record<ScaleName, readonly string[]> = {
   inspire: [
@@ -57,13 +62,13 @@ const designTable: Record<ScaleName, readonly string[]> = {
   ],
   grey: [
     '#ffffff',
-    '#f0f8fe',
-    '#e6f0f7',
+    '#f4f8fa',
+    '#e7eef2',
     '#d8e1e8',
-    '#c3ccd3',
+    '#c4d3db',
     '#9da6ad',
     '#798288',
-    '#58656f',
+    '#5a6e7a',
     '#404c55',
     '#243038',
     '#162129',
@@ -80,6 +85,13 @@ describe('UI-1 the colour scales are generated from the brand colours', () => {
         ?.get(anchor.step),
     ).toBe(anchor.hex);
   });
+
+  it.each(Object.entries(greyAnchors))(
+    "UI-1 Jesse's grey %s from the prototype sits exactly on its step (#97)",
+    (step, hex) => {
+      expect(colourScales().get('grey')?.get(Number(step))).toBe(hex);
+    },
+  );
 
   it.each(Object.keys(designTable) as ScaleName[])(
     "UI-1 the %s scale is the design's section 5.1 table",

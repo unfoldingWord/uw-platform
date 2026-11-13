@@ -7,16 +7,16 @@ export function SegmentedControl(props: {
   readonly selected: string;
 }) {
   return (
-    <fieldset class="m-0 inline-flex flex-wrap gap-1 rounded-md border border-line bg-surface p-1">
+    <fieldset class="m-0 inline-flex overflow-hidden rounded-md border border-line bg-surface p-0">
       <legend class="sr-only">{props.legend}</legend>
       {props.choices.map((choice) => (
-        <label class="inline-flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1 text-sm text-text has-checked:bg-accent-soft">
+        <label class="inline-flex cursor-pointer items-center border-r border-line px-3 py-1 text-sm font-heavy whitespace-nowrap text-text-3 outline-offset-2 outline-accent-text last:border-r-0 hover:text-text has-checked:bg-side has-checked:text-side-text has-focus-visible:outline-2">
           <input
             type="radio"
             name={props.name}
             value={choice.value}
             checked={choice.value === props.selected}
-            class="accent-accent outline-offset-2 outline-accent-text focus-visible:outline-2"
+            class="sr-only"
           />
           {choice.label}
         </label>
