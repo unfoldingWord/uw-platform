@@ -44,7 +44,7 @@ These are settled. Work inside them; changing one is an architecture change (sec
 | Package manager | pnpm workspaces, Node 22 |
 | Toolchain | ESLint flat config with fitness functions, Prettier, Vitest on the Workers pool, dependency-cruiser, knip, Husky, `pnpm audit` |
 | Tests | Vitest. Scenarios in `sim/scenarios/` and tests at each module's interface, named for what they prove, one contract test per port run against every adapter, and the tests only separate connections can prove on a Postgres service container in CI (PRD DX-6). No test needs a live account or a secret (PRD DX-8) |
-| Lint and format | `pnpm check`; the full chain is `pnpm verify`, the same one CI runs |
+| Typecheck, lint and format | `pnpm check` (typecheck), `pnpm lint`, `pnpm format:check`; the full chain is `pnpm verify`, the same one CI runs |
 | Code comments | None. Meaning lives in names, types, tests and `docs/`, never in a comment |
 | File length | Under 500 lines; functions under 50 |
 | Commits | Conventional Commits; the agent as author, per `unfoldingWord/uw-dev-skills`, and an attribution footer is allowed; hooks always pass; `--no-verify` unused |
@@ -57,7 +57,9 @@ The commands a worker drives the system with. `pnpm verify` runs the whole chain
 pnpm sim -- <scenario>     run one scenario; print the event log and the folded state
 pnpm sim -- all            every scenario
 pnpm walk -- <template>    every path from Package to an external effect, and the gate each crosses
-pnpm check                 lint, format, typecheck
+pnpm check                 typecheck
+pnpm lint                  lint
+pnpm format:check          format
 pnpm verify                the whole chain, the same one CI runs
 pnpm db:generate           generate a migration from the schema
 pnpm db:migrate            apply migrations to the target in DATABASE_URL
@@ -94,7 +96,7 @@ Every kind of work has one template. Copy the template, fill the blanks, stop.
 - New validator or connector: a registry entry and a handler; a stage row picks it by key.
 - New table or column: the `packages/db/schema.ts` file for its domain (`schema.ts` for the harness, `schema-platform.ts` for the platform) with its classification, and a migration.
 - New command: `packages/contracts`, the Hono route with `can()`, a scenario.
-- New screen: one island, one route, one scenario, tokens only.
+- New screen: a route, an entry in `apps/uw-app/views/registry.ts`, a test that renders it, its pictures in the screenshot check, tokens only. An island only for behaviour the server cannot render.
 - New word: `CONTEXT.md` first.
 
 If the work does not fit a template, choose the nearest one, say which and why in the pull request description, and continue. Do not improvise silently.
@@ -136,7 +138,7 @@ Adding a persona, an engine, a validator, a connector or a screen means adding a
 
 - Every exception to rules 1 to 4 is recorded in `docs/exceptions.md` with: the rule broken, the file, why the rule cannot hold here, and the date.
 - An exception without an entry is a defect.
-- The entry is written before the code, in the same commit.
+- The entry is added in the same pull request as the code it excuses.
 
 ## 5. Prefer open source over custom code
 
@@ -170,7 +172,7 @@ Done means: CI green on the pull request (the whole `pnpm verify`), every shared
 
 Two long-lived branches, since 2026-11-12, the model of `bt-servant-worker` with one difference: `main` takes no hotfix branches (below).
 
-- **`develop`** is the integration branch and the default branch. Every feature branch and every PR targets `develop`. Staging deploys automatically after CI passes on a push to `develop`. Bot review plus CI is enough to merge there.
+- **`develop`** is the integration branch and the default branch. Every feature branch and every PR targets `develop`. Staging deploys automatically after CI passes on a push to `develop`. A pull request merges there on the owner's word, with CI green (section 8).
 - **`main`** is the release branch. It only ever receives `develop`, through a release PR ("Release vX.Y.Z: develop → main"). Only the repo owner can merge to `main`: branch protection restricts pushes and requires a code-owner review. Production deploys from `main` by tag.
 - **Rule: `develop` is always releasable.** Work that is not ready to ship stays on its branch, or merges behind a flag that is off in production. Never cherry-pick into `main`; if something on `develop` must not ship, revert it on `develop` or flag it off, then release.
 - **Urgent fix:** there is no hotfix branch into `main`. A branch name is chosen by its author, so a `hotfix/*` exception could not prove the branch is a hotfix, and any branch could use it to skip `develop` and staging. An urgent fix is a PR into `develop`, then a release PR straight after; CI takes about six minutes.
