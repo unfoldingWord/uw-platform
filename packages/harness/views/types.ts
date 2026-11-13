@@ -10,6 +10,7 @@ import type {
   ItemState,
   RunShape,
   Stage,
+  StageBracket,
 } from '@uw/contracts';
 import type { Delegation, RunRow } from '../ports.ts';
 import type { RefuteTally } from './refutes.ts';
@@ -39,6 +40,16 @@ export type FlowView = {
   readonly stages: readonly FlowStage[];
   readonly capped: boolean;
 };
+export type PhaseCount = { readonly phase: StageBracket; readonly count: number };
+export type QueueCard = {
+  readonly harness: Harness;
+  readonly phases: readonly PhaseCount[];
+  readonly open: number;
+  readonly oldestEnteredAt: Date | null;
+  readonly waiting: number;
+  readonly capped: boolean;
+};
+export type Queues = { readonly cards: readonly QueueCard[] };
 export type HarnessCursor = { readonly harnessId: string; readonly cursor: number };
 export type BoardCard = {
   readonly item: ItemState;
