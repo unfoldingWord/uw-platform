@@ -49,7 +49,9 @@ async function grantsDecideWhatIsListed(scene: Waiting, elsewhere: string): Prom
   ]);
   const nobody = await simPerson(scene.world, 9, []);
   expect(await listed(simCaller(scene.world, viewer))).toEqual([scene.harnessId]);
-  expect(await listed(simCaller(scene.world, scene.editor))).toEqual(
+  expect(await listed(simCaller(scene.world, scene.editor))).toEqual([scene.harnessId]);
+  expect(await listed(simCaller(scene.world, scene.owner))).toEqual([scene.harnessId]);
+  expect(await listed(simCaller(scene.world, scene.admin))).toEqual(
     [scene.harnessId, elsewhere].sort(),
   );
   expect(await listed(simCaller(scene.world, nobody))).toEqual([]);
@@ -57,13 +59,13 @@ async function grantsDecideWhatIsListed(scene: Waiting, elsewhere: string): Prom
 
 async function editorsDecideNothing(scene: Waiting): Promise<void> {
   const { cards } = await scene.world.kernel.views.queues(simCaller(scene.world, scene.editor));
-  expect(cards.map((card) => card.waiting)).toEqual([0, 0]);
+  expect(cards.map((card) => card.waiting)).toEqual([0]);
 }
 
 describe('#104 the Agent Queues landing page lists the workflows a person may see', () => {
   it('#104 each card agrees with the open-item and gate reads', () =>
     inScene(cardsAgreeWithTheReads));
-  it('#104 a viewer sees their own area, an editor every area, no grant nothing', () =>
+  it('#104 a viewer, editor or admin of one area sees only that area; an org grant sees all; no grant sees nothing', () =>
     inScene(grantsDecideWhatIsListed));
   it('#104 only gates the viewer may decide count as waiting on them', () =>
     inScene(editorsDecideNothing));

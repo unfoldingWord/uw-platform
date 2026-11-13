@@ -1,4 +1,5 @@
 import { stageBracketSchema, type Harness, type StageBracket } from '@uw/contracts';
+import { grantedAreas } from '@uw/core/acl';
 import type { Caller } from '../caller.ts';
 import type { StoreTransaction } from '../ports.ts';
 import type { ScenePorts } from '../reads/scene.ts';
@@ -40,13 +41,18 @@ async function cardOf(tx: StoreTransaction, harness: Harness, waiting: number): 
   };
 }
 
+function inGrantedArea(caller: Caller, at: Date): (harness: Harness) => boolean {
+  const granted = grantedAreas(caller.actor, at);
+  return (harness) => granted.kind === 'all' || granted.areas.includes(harness.jdArea);
+}
+
 export async function queuesView(
   ports: ScenePorts,
   tx: StoreTransaction,
   caller: Caller,
   at: Date,
 ): Promise<Queues> {
-  const shown = await readableHarnesses(ports, tx, caller, at);
+  const shown = (await readableHarnesses(ports, tx, caller, at)).filter(inGrantedArea(caller, at));
   const gates = await decidableGates(ports, tx, caller, at);
   const waiting = new Map<string, number>();
   for (const row of gates.rows) {

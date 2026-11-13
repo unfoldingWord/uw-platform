@@ -3,6 +3,7 @@ import type { Grant, Principal } from '@uw/contracts';
 import {
   actionForVerbRole,
   can,
+  grantedAreas,
   minimumRole,
   readableAreas,
   type AclAction,
@@ -167,5 +168,31 @@ describe('readableAreas names exactly the areas can() lets a principal read', ()
 
   it('names no area for a principal with no grants', () => {
     expect(viewing()).toEqual({ kind: 'some', areas: [] });
+  });
+});
+
+function granted(...grants: Grant[]): ReturnType<typeof grantedAreas> {
+  return grantedAreas(holding(...grants), at);
+}
+
+describe('#104 grantedAreas names the areas a person holds a grant in', () => {
+  it('names every area for any org grant', () => {
+    expect(granted(org('viewer'))).toEqual({ kind: 'all' });
+  });
+
+  it('names only its own area for an area editor or admin', () => {
+    expect(granted(area('editor', '80-89'))).toEqual({ kind: 'some', areas: ['80-89'] });
+    expect(granted(area('admin', '30-39'))).toEqual({ kind: 'some', areas: ['30-39'] });
+  });
+
+  it('names the sorted, distinct areas of every role', () => {
+    const grants = [area('admin', '80-89'), area('viewer', '30-39'), area('editor', '80-89')];
+    expect(granted(...grants)).toEqual({ kind: 'some', areas: ['30-39', '80-89'] });
+  });
+
+  it('names no area for an expired grant or no grant', () => {
+    const expired: Grant = { ...org('admin'), expiresAt: at.toISOString() };
+    expect(granted(expired)).toEqual({ kind: 'some', areas: [] });
+    expect(granted()).toEqual({ kind: 'some', areas: [] });
   });
 });
