@@ -44,6 +44,18 @@ function SkipLink() {
   );
 }
 
+function Main(props: { readonly children?: Child }) {
+  return (
+    <main
+      id="main"
+      tabindex={-1}
+      class="min-w-0 flex-1 p-4 md:min-h-0 md:overflow-y-auto md:px-5 md:pt-5 md:pb-7"
+    >
+      {props.children}
+    </main>
+  );
+}
+
 export function Shell(props: {
   readonly title: string;
   readonly frame: Frame;
@@ -62,14 +74,14 @@ export function Shell(props: {
       <Head title={props.title} stylesheet={props.stylesheet} script={props.script} />
       <body class="min-h-dvh bg-canvas font-sans text-base text-text">
         <SkipLink />
-        <div class="grid min-h-dvh md:grid-cols-frame">
+        <div data-frame class="grid min-h-dvh md:h-dvh md:grid-cols-frame md:overflow-hidden">
           <Sidebar
             sections={frame.sections}
             current={props.current}
             person={frame.person}
             wordmarkPath={frame.wordmarkPath}
           />
-          <div class="flex min-w-0 flex-col">
+          <div class="flex min-w-0 flex-col md:min-h-0">
             <PhoneHeader
               title={props.title}
               waiting={frame.waiting}
@@ -83,9 +95,7 @@ export function Shell(props: {
               tabs={props.tabs}
               actions={props.actions}
             />
-            <main id="main" tabindex={-1} class="min-w-0 flex-1 p-4 md:p-5">
-              {props.children}
-            </main>
+            <Main>{props.children}</Main>
             <StatusBar status={frame.status} />
           </div>
         </div>

@@ -611,7 +611,7 @@ From #97 (2026-11-12) the source of truth for how screens look is the Claude Des
 
 | Prototype screen | Harness view |
 |---|---|
-| The frame (sidebar by area, top bar) | Frame (UI-5); unbuilt modules carry a Coming Soon pill |
+| The frame (sidebar by area, top bar) | Frame (UI-5); unbuilt modules are dimmed and open nothing |
 | Today | Today, was Home (UI-9) |
 | Agent Queues lanes and cards, with Development's chips and view switch | Board (WB-5, UI-6) |
 | Agent Queues "Stage configuration" | Flow (WB-4, UI-10) |

@@ -71,7 +71,7 @@ async function areasInPrototypeOrder(db: Database): Promise<void> {
   ]);
 }
 
-async function unbuiltSayComingSoon(db: Database): Promise<void> {
+async function unbuiltAreDimmed(db: Database): Promise<void> {
   await parked(db);
   const document = documentOf((await getHtml(db, IAN, '/', {}, clock)).text);
   const nav = desktopNav(document);
@@ -86,11 +86,17 @@ async function unbuiltSayComingSoon(db: Database): Promise<void> {
     const row = [...nav.querySelectorAll('[aria-disabled="true"]')].find((element) =>
       element.textContent?.includes(label),
     );
-    expect(row?.textContent, label).toContain('Coming Soon');
+    expect(row?.getAttribute('class'), label).toContain('opacity-45');
+    expect(row?.textContent, label).not.toMatch(/Coming Soon|Future/);
     expect(row?.closest('a'), label).toBeNull();
   }
   const search = document.querySelector('header [aria-disabled="true"]');
-  expect(search?.textContent).toContain('Coming Soon');
+  expect(search?.getAttribute('class')).toContain('opacity-45');
+  expect(search?.textContent).not.toMatch(/Coming Soon|Future/);
+  const finance = desktopNav(document).querySelector('[data-area="20-29"]');
+  expect(finance?.getAttribute('data-unbuilt')).toBe('true');
+  const infrastructure = desktopNav(document).querySelector('[data-area="30-39"]');
+  expect(infrastructure?.hasAttribute('data-unbuilt')).toBe(false);
 }
 
 async function statusBarSays(db: Database): Promise<void> {
@@ -128,8 +134,8 @@ describe.skipIf(!testServer)('UI-5 the frame', () => {
     withAppDatabase(sidebarReadsTheFrame));
   it('UI-5 the sidebar groups the platform by area in the prototype order', () =>
     withAppDatabase(areasInPrototypeOrder));
-  it('UI-5 every unbuilt module and search say Coming Soon and open nothing', () =>
-    withAppDatabase(unbuiltSayComingSoon));
+  it('UI-5 every unbuilt module, an all-unbuilt group and search are dimmed, carry no pill and open nothing', () =>
+    withAppDatabase(unbuiltAreDimmed));
   it('UI-5 the status bar says what loaded, what is open, what is on, the commit and where', () =>
     withAppDatabase(statusBarSays));
   it('UI-5 on a phone a header shows the mark, the page and the count waiting', () =>

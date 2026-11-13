@@ -83,7 +83,7 @@ function Figures(props: { readonly totals: PlaneTotals; readonly capMinor: numbe
   const runs = Object.values(shapes).reduce((sum, count) => sum + count, 0);
   const refusals = Object.values(totals.gateRefusals.byReason).reduce((a, b) => a + b, 0);
   return (
-    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
       <Kpi
         label="Spend this month"
         value={money(spent)}
@@ -159,7 +159,7 @@ export async function healthScreen(c: Context<AppEnv>, report: HealthReport): Pr
   return renderScreen(
     c,
     spec,
-    <div class="flex flex-col gap-4">
+    <div class="flex flex-col gap-5">
       <PageHead
         eyebrow="Agent plane · one trace id end to end"
         title={sentenceOf(report)}

@@ -200,7 +200,7 @@ function GatesBody(props: Body & { readonly at: Date }) {
       {approvable(shown).map((batch) => (
         <ApproveAll batch={batch} />
       ))}
-      <div class="flex flex-col gap-4 md:flex-row md:items-start">
+      <div class="flex flex-col gap-5 md:flex-row md:items-start">
         <Inbox
           rows={shown.map(({ row }) => row)}
           at={props.at}

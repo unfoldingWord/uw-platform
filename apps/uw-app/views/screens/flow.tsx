@@ -119,7 +119,7 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
         title={view.harness.title}
         lede={summaryOf(view)}
       />
-      <div class="flex flex-col gap-4">
+      <div class="flex flex-col gap-5">
         {view.capped ? <Note>{cappedNote}</Note> : null}
         <Card title="Stage configuration" sub="what each stage holds, costs and waits on" flush>
           <Table

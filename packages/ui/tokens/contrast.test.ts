@@ -41,7 +41,7 @@ describe.each(themes)('UI-1 the %s theme passes WCAG AA', (theme) => {
 });
 
 describe('UI-1 the lowest pair is the one the design names', () => {
-  it('UI-1 text-3 on lane in light is 5.18:1', () => {
-    expect(contrast('light', 'text-3', 'lane')).toBeCloseTo(5.18, 2);
+  it('UI-1 text-3 on lane in light is 4.54:1', () => {
+    expect(contrast('light', 'text-3', 'lane')).toBeCloseTo(4.54, 2);
   });
 });

@@ -9,7 +9,7 @@ export function PageHead(props: {
 }) {
   return (
     <div
-      class={`flex flex-wrap items-end justify-between gap-4 ${props.flush === true ? '' : 'mb-4'}`}
+      class={`flex flex-wrap items-end justify-between gap-4 ${props.flush === true ? '' : 'mb-5'}`}
     >
       <div class="min-w-0">
         {props.eyebrow === undefined ? null : (
@@ -21,7 +21,7 @@ export function PageHead(props: {
           {props.title}
         </h1>
         {props.lede === undefined ? null : (
-          <p class="m-0 mt-1 max-w-content text-base text-text-3">{props.lede}</p>
+          <p class="m-0 mt-2 max-w-content text-base text-text-3">{props.lede}</p>
         )}
       </div>
       {props.actions === undefined ? null : (

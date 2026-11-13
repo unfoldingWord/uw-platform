@@ -1,5 +1,4 @@
 import type { Child } from 'hono/jsx';
-import { ComingSoon } from './coming-soon.tsx';
 import { safeHref } from './href.ts';
 import { Icon } from './icon.tsx';
 import { ThemeSwitch } from './theme-switch.tsx';
@@ -59,11 +58,10 @@ function Search() {
   return (
     <div
       aria-disabled="true"
-      class="hidden h-size-5 w-aside items-center gap-2 rounded-md border border-line bg-canvas pr-1 pl-3 text-sm text-text-3 lg:flex"
+      class="hidden h-size-5 w-aside cursor-default items-center gap-2 rounded-md border border-line bg-canvas px-3 text-sm text-text-3 opacity-45 lg:flex"
     >
       <Icon name="magnifying-glass" size={1} />
       <span class="min-w-0 truncate">Search everything</span>
-      <ComingSoon />
     </div>
   );
 }

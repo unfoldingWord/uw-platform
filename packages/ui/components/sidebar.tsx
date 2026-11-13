@@ -1,5 +1,4 @@
 import type { IconName } from '../generated/icons.ts';
-import { ComingSoon } from './coming-soon.tsx';
 import { safeHref } from './href.ts';
 import { PersonCount } from './human-action.tsx';
 import { Icon } from './icon.tsx';
@@ -29,6 +28,7 @@ export type Person = { readonly initials: string; readonly name: string; readonl
 
 const focus = 'outline-offset-2 outline-side-code focus-visible:outline-2';
 const row = 'flex items-center gap-2 rounded-sm px-2 py-1 text-sm font-semibold whitespace-nowrap';
+const unbuilt = 'cursor-default opacity-45';
 
 function Count(props: { readonly count: NavCount | undefined }) {
   const { count } = props;
@@ -65,10 +65,9 @@ function NavRow(props: { readonly item: NavItem; readonly current: string }) {
   if (href === undefined) {
     return (
       <li>
-        <span aria-disabled="true" class={`${row} ${indent} text-side-text-3`}>
+        <span aria-disabled="true" class={`${row} ${indent} ${unbuilt} text-side-text`}>
           <Mark icon={item.icon} />
           <span class="min-w-0 truncate">{item.label}</span>
-          <ComingSoon tone="side" />
         </span>
       </li>
     );
@@ -89,13 +88,19 @@ function NavRow(props: { readonly item: NavItem; readonly current: string }) {
   );
 }
 
+function allUnbuilt(section: NavSection): boolean {
+  return section.items.length > 0 && section.items.every((item) => item.href === undefined);
+}
+
 function Heading(props: { readonly section: NavSection }) {
   const { section } = props;
   if (section.heading === undefined) return null;
+  const dim = allUnbuilt(section) ? 'opacity-60' : '';
   return (
     <p
       data-area={section.code}
-      class="flex gap-1 px-2 pt-3 pb-1 text-xs leading-snug font-heavy tracking-wide text-side-text-3 uppercase"
+      data-unbuilt={allUnbuilt(section) ? 'true' : undefined}
+      class={`flex gap-1 px-2 pt-3 pb-1 text-xs leading-snug font-heavy tracking-wide text-side-text-3 uppercase ${dim}`}
     >
       {section.code === undefined ? null : (
         <span class="font-mono font-regular text-side-code">{section.code}</span>
@@ -169,7 +174,7 @@ export function Sidebar(props: {
   readonly wordmarkPath: string;
 }) {
   return (
-    <aside class="sticky top-0 hidden h-dvh min-h-0 flex-col bg-side text-side-text md:flex">
+    <aside class="hidden min-h-0 flex-col bg-side text-side-text md:flex">
       <Brand wordmarkPath={props.wordmarkPath} />
       <nav aria-label="Main" class="flex-1 overflow-auto px-1 py-2">
         <NavList sections={props.sections} current={props.current} />

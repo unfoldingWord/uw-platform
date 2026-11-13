@@ -63,6 +63,20 @@ describe('WB-11 the shell', () => {
   });
 });
 
+describe('#97 on desktop only the content scrolls', () => {
+  it('the frame is the window height from md, and main and the sidebar list each scroll on their own', async () => {
+    const document = documentOf(await render());
+    const frame = document.querySelector('[data-frame]')?.getAttribute('class') ?? '';
+    expect(frame).toContain('md:h-dvh');
+    expect(frame).toContain('md:overflow-hidden');
+    const main = document.querySelector('main')?.getAttribute('class') ?? '';
+    expect(main).toContain('md:overflow-y-auto');
+    expect(main).toContain('md:min-h-0');
+    expect(document.querySelector('aside nav')?.getAttribute('class')).toContain('overflow-auto');
+    expect(main.split(/\s+/)).not.toContain('overflow-y-auto');
+  });
+});
+
 describe('WB-11 the shell theme and copy', () => {
   it('WB-11 the theme script reads the persisted choice before paint and sets data-theme', async () => {
     const html = await render();

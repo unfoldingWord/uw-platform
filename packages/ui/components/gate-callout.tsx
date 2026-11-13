@@ -48,7 +48,7 @@ export function GateCallout(props: {
         </div>
         {props.aside}
       </div>
-      <div class="flex flex-col gap-4 px-4 py-3">
+      <div class="flex flex-col gap-4 p-4">
         {props.children}
         {props.reason === null ? null : <Note>{reasonText(props.reason)}</Note>}
         <div class="flex flex-wrap items-center gap-2">{props.actions}</div>

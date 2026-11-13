@@ -5,7 +5,6 @@ import { FAILED_RUNS_LIMIT, type FlowView, type WaitingRow } from '@uw/harness';
 import { Badge } from '@uw/ui/components/badge.tsx';
 import { Card } from '@uw/ui/components/card.tsx';
 import { Sparkline } from '@uw/ui/components/chart.tsx';
-import { ComingSoon } from '@uw/ui/components/coming-soon.tsx';
 import { HumanTile, humanBar } from '@uw/ui/components/human-action.tsx';
 import { Icon } from '@uw/ui/components/icon.tsx';
 import type { IconName } from '@uw/ui/generated/icons';
@@ -206,9 +205,11 @@ function WaitingCard(props: {
 
 function Soon(props: { readonly title: string }) {
   return (
-    <Card title={props.title} actions={<ComingSoon />}>
-      <p class="m-0 text-sm text-text-3">Not built yet.</p>
-    </Card>
+    <div aria-disabled="true" class="flex cursor-default flex-col opacity-45">
+      <Card title={props.title}>
+        <p class="m-0 text-sm text-text-3">Not built yet.</p>
+      </Card>
+    </div>
   );
 }
 
@@ -365,7 +366,7 @@ export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
     spec,
     <>
       <PageHead eyebrow={`Today · ${formatDate(screen.at)}`} title={greeting(person)} {...head} />
-      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <WaitingCard rows={rows} notes={notes} />
         <Soon title="Your tasks" />
         {cards.length === 0 ? <PushOnly /> : <HarnessCards cards={cards} />}

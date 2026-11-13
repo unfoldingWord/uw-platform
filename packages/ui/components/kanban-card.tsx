@@ -77,7 +77,7 @@ export function KanbanCard(props: {
 }) {
   const href = safeHref(props.href);
   return (
-    <article class="flex flex-col gap-1 rounded-md border border-line bg-card px-3 py-2 text-text hover:border-accent">
+    <article class="flex flex-col gap-2 rounded-md border border-line bg-card p-3 text-text hover:border-accent">
       <Top number={props.number} risk={props.risk} badge={props.badge} />
       <h3 class="m-0 text-base leading-snug font-heavy break-words">
         {href === undefined ? (

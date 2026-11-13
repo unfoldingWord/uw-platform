@@ -10,7 +10,6 @@ const properNouns: ReadonlySet<string> = new Set([
   'Access',
   'Cloudflare',
 ]);
-const issueLabels: ReadonlySet<string> = new Set(['Coming Soon']);
 const emoji = /\p{Extended_Pictographic}/u;
 const scannedFiles = [
   /^apps\/uw-app\/views\/.+\.tsx?$/,
@@ -72,7 +71,7 @@ function problemsIn(text: string): readonly string[] {
   for (const match of text.matchAll(/unfolding\s*word/gi)) {
     if (match[0] !== 'unfoldingWord') problems.push(`unfoldingWord written ${match[0]}`);
   }
-  if (titleCase(text) && !issueLabels.has(text.trim())) problems.push('Title Case');
+  if (titleCase(text)) problems.push('Title Case');
   for (const match of text.matchAll(/\b(?:I|[Ww]e|[Oo]urs?|[Uu]s|[Mm]y|[Mm]e|the user)\b/g)) {
     problems.push(`first or third person: ${match[0]}`);
   }

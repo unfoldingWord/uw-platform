@@ -3,7 +3,7 @@ import { Badge } from './badge.tsx';
 import { HumanMark, humanLane } from './human-action.tsx';
 import { domId } from './text.ts';
 
-const column = 'flex w-aside shrink-0 flex-col gap-2 rounded-md bg-lane p-2';
+const column = 'flex w-aside shrink-0 flex-col gap-2 rounded-md bg-lane p-3';
 
 function Facts(props: {
   readonly facts: readonly { readonly label: string; readonly value: string }[];

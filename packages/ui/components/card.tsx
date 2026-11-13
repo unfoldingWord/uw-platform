@@ -7,7 +7,7 @@ export function Card(props: {
   readonly flush?: boolean | undefined;
   readonly children?: Child;
 }) {
-  const body = props.flush === true ? 'overflow-x-auto' : 'flex flex-col gap-3 px-4 py-3';
+  const body = props.flush === true ? 'overflow-x-auto' : 'flex flex-col gap-3 p-4';
   return (
     <section class="flex min-w-0 flex-col rounded-md border border-line bg-surface text-text">
       {props.title === undefined ? null : (

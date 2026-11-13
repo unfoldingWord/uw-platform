@@ -9,7 +9,6 @@ import { TextField } from '@uw/ui/components/field.tsx';
 import { Lane } from '@uw/ui/components/lane.tsx';
 import { HumanChip } from '@uw/ui/components/human-action.tsx';
 import { Icon } from '@uw/ui/components/icon.tsx';
-import { ComingSoon } from '@uw/ui/components/coming-soon.tsx';
 import { Kpi } from '@uw/ui/components/kpi.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { cursorOf } from '../../commands/reads.ts';
@@ -123,7 +122,7 @@ function StageChips(props: { readonly view: Shown; readonly stageKey: string | n
   const { view } = props;
   const harnessId = view.harness.id;
   return (
-    <nav aria-label="Stages" class="mb-4 flex flex-wrap items-center gap-2">
+    <nav aria-label="Stages" class="mb-5 flex flex-wrap items-center gap-2">
       <span class="mr-1 text-xs font-heavy tracking-wide text-text-3 uppercase">Stage</span>
       <Chip label="All stages" href={boardPath(harnessId)} selected={props.stageKey === null} />
       {view.stages.map((stage) => (
@@ -199,7 +198,7 @@ function Head(props: { readonly view: Shown; readonly tally: Tally }) {
       title={view.harness.title}
       lede={`${tally.items} items moving through ${view.stages.length} stages. Agents claim cards like anyone else; a person decides at the gate.${need}`}
       actions={
-        <div aria-label="Figures" role="group" class="flex flex-wrap gap-5">
+        <div aria-label="Figures" role="group" class="flex flex-wrap gap-6">
           <Kpi label="Agents working" value={String(tally.working)} plain />
           <Kpi label="Waiting on you" value={String(tally.waiting)} plain person />
           <Kpi label="Spent on these items" value={spentText(totalCost(view))} plain />
@@ -220,10 +219,9 @@ function Toolbar(props: { readonly tally: Tally }) {
       <span class={quiet}>
         Unclaimed <span class="font-mono text-text-3">{props.tally.unclaimed}</span>
       </span>
-      <span aria-disabled="true" class={`${quiet} text-text-3`}>
+      <span aria-disabled="true" class={`${quiet} cursor-default text-text-3 opacity-45`}>
         <Icon name="bars-filter" size={1} />
         Filter
-        <ComingSoon />
       </span>
     </div>
   );
@@ -261,7 +259,7 @@ export async function boardScreen(c: Context<AppEnv>): Promise<Response> {
       <StageChips view={view} stageKey={input.stageKey} />
       <EpicGroups harnessId={harnessId} epics={board.epics} />
       <NotReadyList harnessId={harnessId} entries={board.notReady} />
-      <div class="flex items-start gap-3 overflow-x-auto pb-2">
+      <div class="flex items-start gap-4 overflow-x-auto pb-2">
         {board.columns.map((column) => (
           <ColumnView
             view={view}
