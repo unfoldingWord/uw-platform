@@ -33,6 +33,17 @@ function Head(props: {
   );
 }
 
+function SkipLink() {
+  return (
+    <a
+      href="#main"
+      class="sr-only bg-surface text-accent-text outline-offset-2 outline-accent-text focus-visible:not-sr-only focus-visible:absolute focus-visible:outline-2"
+    >
+      <span class="block p-2">Skip to content</span>
+    </a>
+  );
+}
+
 export function Shell(props: {
   readonly title: string;
   readonly frame: Frame;
@@ -50,12 +61,7 @@ export function Shell(props: {
     <html lang="en">
       <Head title={props.title} stylesheet={props.stylesheet} script={props.script} />
       <body class="min-h-dvh bg-canvas font-sans text-base text-text">
-        <a
-          href="#main"
-          class="sr-only bg-surface text-accent-text outline-offset-2 outline-accent-text focus-visible:not-sr-only focus-visible:absolute focus-visible:outline-2"
-        >
-          <span class="block p-2">Skip to content</span>
-        </a>
+        <SkipLink />
         <div class="grid min-h-dvh md:grid-cols-frame">
           <Sidebar
             sections={frame.sections}
