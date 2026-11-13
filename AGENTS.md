@@ -131,7 +131,7 @@ A durable value is anything in Postgres.
 Adding a persona, an engine, a validator, a connector or a screen means adding a folder or a registry row, and touching shared roots only at reserved discovery points.
 
 - Discovery is by registry, never by editing a switch. An `if (engineName)` or `if (personaName)` branch in shared code is the smell this rule forbids.
-- The shared roots are `packages/db/schema.ts`, `packages/db/schema-*.ts`, `packages/contracts/`, `packages/harness/ports.ts`, `packages/harness/store-ports.ts`, `packages/core/acl.ts`, `infra/`, `.github/workflows/`, `AGENTS.md`, `CONTEXT.md` and `docs/adr/`. A change to one goes in its own commit, never mixed with feature code, and the commit message names the shared root and why it changed.
+- The shared roots are `packages/db/schema.ts`, `packages/db/schema-*.ts`, `packages/contracts/`, `packages/harness/ports.ts`, `packages/harness/store-ports.ts`, `packages/core/acl.ts`, `infra/`, `.github/workflows/`, `AGENTS.md`, `CONTEXT.md` and `docs/adr/`. A pull request that changes one names it in its description, under a heading **Shared roots**, with why it changed. It can share a commit with the feature it serves, because feature pull requests are squash-merged into `develop` and separate commits would not survive the merge.
 - `design-system/` is produced in Claude Design and synced here. Code reads it and never hand-edits it.
 
 ### Rule 5. Exceptions are narrow, explicit, and recorded
@@ -159,14 +159,14 @@ A task is one GitHub issue. Do these in order.
 
 1. **Orient.** Read the issue and its epic, then `CONTEXT.md` for the words, then the folder it touches, then `docs/exceptions.md`. Read the PRD or spec section only where the issue touches a part of the design you need to understand. State in one line which template (rule 1) applies.
 2. **Search for prior decisions.** Grep for the tables, events and verbs involved. Find the existing writer (rule 3) before adding one. Check `docs/adr/` and the spec's Decisions table before reopening a settled question. Where nothing decides something, decide it and say so in the pull request description, with what it costs if wrong.
-3. **Plan the files.** List every file you will add or edit. If any is a shared root (rule 4), that change is its own commit.
+3. **Plan the files.** List every file you will add or edit. If any is a shared root (rule 4), the pull request description will name it.
 4. **Write the test first.** The scenario in `sim/scenarios/` or the test that proves the behaviour, named for what it proves, observed red. For a bug, the test that reproduces it, observed red. Only then implement.
 5. **Implement.** Copy the template. Fill it. Keep each file under 500 lines and each function under 50.
 6. **Verify.** Before pushing, the fast local checks pass: `pnpm check`, `pnpm lint`, `pnpm format:check`, and the tests for what you touched (`pnpm exec vitest run <paths>`). CI then runs the whole `pnpm verify` on every push; read its result before calling the work done. If a screen changed, load it in light and dark at phone width. If a platform adapter changed and its credentials exist, run it against staging; if they do not, say so in the pull request.
 7. **Open the pull request** into `develop`, with `Closes #<issue>` and a description of what changed, what was verified and how, and what was not verified.
 8. **Report and stop.** Summarize what changed, what you verified, and what you did not verify. Label inferences as inferences. If you could not verify something, say so first.
 
-Done means: CI green on the pull request (the whole `pnpm verify`), every shared-root change in its own commit, no exception missing its entry, the behaviour the issue asks for proven by a test or scenario, the pull request open against `develop`, and no claim of verification standing without the run behind it.
+Done means: CI green on the pull request (the whole `pnpm verify`), every shared-root change named in the description, no exception missing its entry, the behaviour the issue asks for proven by a test or scenario, the pull request open against `develop`, and no claim of verification standing without the run behind it.
 
 ## 7b. Branching model (develop → main)
 
@@ -200,7 +200,7 @@ Stop and ask for these: a destructive or irreversible operation; a change that w
 
 ## 9. Architecture changes
 
-A change to a shared root (rule 4) or a fixed decision (section 1) goes in its own commit, and the message says what changes, why, and what was rejected. If the change is hard to reverse, surprising without context and the result of a real trade-off, the same commit adds an ADR in `docs/adr/`. The ADR is the record; the PRD and the spec are not updated.
+A change to a shared root (rule 4) or a fixed decision (section 1) is named in the pull request description, which says what changes, why, and what was rejected. If the change is hard to reverse, surprising without context and the result of a real trade-off, the same pull request adds an ADR in `docs/adr/`. The ADR is the record; the PRD and the spec are not updated.
 
 ## 10. Things that always hold
 
