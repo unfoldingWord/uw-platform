@@ -15,3 +15,5 @@ The token scales are the whole Tailwind theme. Tailwind's default spacing (any m
 **Rejected.** Hand-picked shades per screen, which is the state measured above. Tailwind's default palette and spacing, which are not the brand. A published palette such as Radix Colors, which would need its hues retoned to the brand and so be generated anyway. Leaving arbitrary values allowed and reviewing for them, which is the review that did not happen in v0.1.0 and v0.2.0.
 
 **Consequences.** A new value is a design change: it is added to the token files and the spec in the same commit, or it does not compile. The screenshot check (PRD UI-16) shows what a token change does to every screen. Source: Ian on 2026-11-04, after measuring the mockup.
+
+**Later.** ADR 0014 (2026-11-12) makes Jesse Griffin's prototype the authority for how screens look; its values snap to these scales, which stand unchanged.

@@ -389,6 +389,8 @@ Every row follows this document's conventions: a stable ID, Must or Should, a sc
 
 ### 7.12 v0.3.0, the look (the design is `docs/specs/2026-11-04-harness-v0-3-0-design.md`)
 
+From #97 (2026-11-12) the screens these rows name take the prototype's look (section 10, ADR 0014); the rows still say what each screen holds, and the design document's pictures no longer say how it looks.
+
 This section is the list of work for v0.3.0 and the design document is why; where they disagree on design, the design wins and this section is corrected. The rows extend WB-11 and WB-12 and replace none of v0.2.0's. Costs use section 7.11's words.
 
 #### 7.12.1 Tokens and locks (UI)
@@ -605,16 +607,19 @@ Since contract 12.1.0 (step 10), `persona_activated` carries `{ pageId, persona,
 
 ## 10. Design
 
-From v0.3.0 the source of truth for visual design is section 5 of the v0.3.0 design document, built into `packages/ui/tokens/` and locked in Tailwind (ADR 0011), and its screens are the pictures in section 4 of that document. Before v0.3.0 it was the tokens extracted from the Claude Design prototype (removed from the repository on 2026-10-20; it remains in git history) and the token block in the Key Visuals page. When the sponsor's `design-system/` handoff lands, its `tokens/*.css` replaces the token files and nothing in the islands changes but the import; the screenshot check (UI-16) shows what it changes.
+From #97 (2026-11-12) the source of truth for how screens look is the Claude Design prototype (removed from the repository on 2026-10-20; it remains in git history), with every value snapped to the token scales in `packages/ui/tokens/`, which stay locked in Tailwind (ADR 0011, ADR 0014). The pictures the screenshot check holds (UI-16) are that look. From v0.3.0 until #97 the source was section 5 of the v0.3.0 design document and its screens were the pictures in section 4 of that document. Before v0.3.0 it was the tokens extracted from the Claude Design prototype (removed from the repository on 2026-10-20; it remains in git history) and the token block in the Key Visuals page. When the sponsor's `design-system/` handoff lands, its `tokens/*.css` replaces the token files and nothing in the islands changes but the import; the screenshot check (UI-16) shows what it changes.
 
 | Prototype screen | Harness view |
 |---|---|
-| Development, Board segment | Board (WB-5) |
-| Development, Merge gates segment | Gates (WB-6) |
-| Agent Queues lanes and cards | Board (WB-5) |
-| Agent Queues "What the run did" | Item play-by-play (WB-8) |
-| Health | `/health` agent plane (WB-10) |
-| Development, Flow segment | not used; the Flow view (WB-4) is the BML diagram |
+| The frame (sidebar by area, top bar) | Frame (UI-5); unbuilt modules carry a Coming Soon pill |
+| Today | Today, was Home (UI-9) |
+| Agent Queues lanes and cards, with Development's chips and view switch | Board (WB-5, UI-6) |
+| Agent Queues "Stage configuration" | Flow (WB-4, UI-10) |
+| Today's "Waiting on me" rows | Waiting On You (WB-6, UI-7) |
+| Health's "Open alert" card | Gate decision (UI-7) |
+| Agent Queues "What the run did" | Item play-by-play (WB-8, UI-11) |
+| Agent Queues, agents | Persona (UI-12) |
+| Health | `/health` agent plane and its detail (WB-10, UI-8, UI-13) |
 
 **What is fixed**
 
