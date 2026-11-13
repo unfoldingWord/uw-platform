@@ -5,7 +5,7 @@ import { resolveToken, themeTokens, type ThemeName } from '../../../tools/ui/css
 const themes: readonly ThemeName[] = ['light', 'dark'];
 
 const textRoles = ['text', 'text-2', 'text-3', 'accent-text', 'human-text', 'ok-text'] as const;
-const surfaces = ['canvas', 'surface', 'raised'] as const;
+const surfaces = ['canvas', 'surface', 'raised', 'lane', 'card'] as const;
 
 const textOnSurface = textRoles.flatMap((text) =>
   surfaces.map((ground) => [text, ground] as const),
@@ -17,6 +17,11 @@ const textOnSoft = [
   ['ok-text', 'ok-soft'],
   ['on-accent', 'accent'],
   ['on-accent', 'human'],
+  ['text-3', 'hover'],
+  ['side-text', 'side'],
+  ['side-text-3', 'side'],
+  ['side-code', 'side'],
+  ['side-text', 'side-hover'],
 ] as const;
 
 function contrast(theme: ThemeName, foreground: string, background: string): number {
@@ -36,7 +41,7 @@ describe.each(themes)('UI-1 the %s theme passes WCAG AA', (theme) => {
 });
 
 describe('UI-1 the lowest pair is the one the design names', () => {
-  it('UI-1 text-3 on canvas in light is 5.99:1', () => {
-    expect(contrast('light', 'text-3', 'canvas')).toBeCloseTo(5.99, 2);
+  it('UI-1 text-3 on lane in light is 5.18:1', () => {
+    expect(contrast('light', 'text-3', 'lane')).toBeCloseTo(5.18, 2);
   });
 });
