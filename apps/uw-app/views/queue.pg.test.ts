@@ -12,11 +12,11 @@ import {
   type BoardWorld,
 } from '../testing/board-world.ts';
 import { accepted, callerOf, post } from '../testing/commands.ts';
-import { kernelOn } from '../testing/kernel.ts';
+import { agentOf, kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml, pageContent } from '../testing/views.ts';
-import { boardPath, itemPath } from './parts/paths.ts';
+import { queuePath, itemPath } from './parts/paths.ts';
 
 const seedClock: Clock = { now: () => new Date('2026-10-02T06:00:00.000Z') };
 const viewClock: Clock = { now: () => new Date('2026-10-02T09:00:00.000Z') };
@@ -25,14 +25,14 @@ const HOUR = 3_600_000;
 
 type Fields = Readonly<Record<string, string>>;
 
-function boardOf(world: BoardWorld, email = world.ianEmail, path = boardPath(world.harnessId)) {
+function boardOf(world: BoardWorld, email = world.ianEmail, path = queuePath(world.harnessId)) {
   return getHtml(world.db, email, path, {}, viewClock);
 }
 
 async function documentOf(
   world: BoardWorld,
   email = world.ianEmail,
-  path = boardPath(world.harnessId),
+  path = queuePath(world.harnessId),
 ): Promise<Document> {
   return new JSDOM((await boardOf(world, email, path)).text).window.document;
 }
@@ -75,14 +75,22 @@ async function columns(world: BoardWorld): Promise<void> {
   expect(factsOf(build)).toEqual([
     ['Items', '2'],
     ['Agent pickup', 'Agents may pick up'],
-    ['Exit', 'Checks'],
+    ['To leave', 'Checks pass'],
   ]);
   expect(factsOf(laneOf(document, 'Merge, tag, deploy'))).toEqual([
     ['Items', '0'],
     ['Agent pickup', 'No agents'],
-    ['Exit', 'A person decides'],
+    ['To leave', 'A person approves'],
   ]);
   expect(laneOf(document, 'CI and review verdict')?.textContent).toContain('Paused');
+  const phases = [...document.querySelectorAll('main [role="group"][data-phase]')];
+  expect(phases.map((phase) => phase.getAttribute('aria-label'))).toEqual([
+    'Product package',
+    'Build package',
+    'Deploy package',
+    'Iterate',
+  ]);
+  expect(phases.flatMap((phase) => [...phase.querySelectorAll('section h2')]).length).toBe(8);
 }
 
 async function cardFacts(world: BoardWorld): Promise<void> {
@@ -93,6 +101,7 @@ async function cardFacts(world: BoardWorld): Promise<void> {
   );
   expect(metaOf(card)).toEqual({
     Issue: 'None',
+    'Pull request': 'None',
     Holder: 'Claimed by agent:builder, for 3 h 0 min',
     Host: 'Platform',
     Lease: 'Until 2026-10-02 10:00 UTC',
@@ -101,6 +110,7 @@ async function cardFacts(world: BoardWorld): Promise<void> {
     'Metered cost': '$1.50',
     'Subscription tokens': 'No subscription tokens',
   });
+  expect(card?.querySelector('[data-status]')?.textContent).toBe('Working · Priority 2');
   expect(metaOf(cardOf(document, 'Write the run notes'))['Host']).toBe('Own machine');
   expect(metaOf(cardOf(document, 'Draw the icon'))).toMatchObject({
     Holder: 'Nobody',
@@ -150,6 +160,8 @@ async function commandForms(world: BoardWorld): Promise<void> {
   const claim = formOf(cardOf(document, 'Draw the icon'), 'claim');
   expect(claim?.getAttribute('data-harness')).toBe(world.harnessId);
   expect(fieldsOf(claim)).toEqual({ itemId: world.unheld });
+  const viewerQueue = await documentOf(world, world.viewer.email);
+  expect(formOf(cardOf(viewerQueue, 'Draw the icon'), 'claim')).toBeNull();
   expect(fieldsOf(formOf(cardOf(document, 'Review the copy'), 'release'))).toEqual({
     itemId: world.personHeld,
   });
@@ -178,7 +190,7 @@ async function enqueueAndRelease(world: BoardWorld, document: Document): Promise
 }
 
 async function claimFrom(world: BoardWorld, email: string, title: string) {
-  const html = await getHtml(world.db, email, boardPath(world.harnessId), {}, realClock);
+  const html = await getHtml(world.db, world.ianEmail, queuePath(world.harnessId), {}, realClock);
   const document = new JSDOM(html.text).window.document;
   const body = commandBody(
     'claim',
@@ -217,20 +229,20 @@ async function claimsRefused(db: Database): Promise<void> {
 }
 
 async function oneStage(world: BoardWorld): Promise<void> {
-  const document = await documentOf(world, world.ianEmail, boardPath(world.harnessId, 'build'));
+  const document = await documentOf(world, world.ianEmail, queuePath(world.harnessId, 'build'));
   const lanes = [...document.querySelectorAll('main section[aria-labelledby] h2')].map(
     (h) => h.textContent,
   );
   expect(lanes).toEqual(['Commits to PR']);
   const current = document.querySelector('main nav[aria-label="Stages"] [aria-current="true"]');
   expect(current?.textContent).toBe('Commits to PR');
-  const unknown = await boardOf(world, world.ianEmail, boardPath(world.harnessId, 'nowhere'));
-  const unpaged = await boardOf(world, world.ianEmail, `${boardPath(world.harnessId)}?after=1.x`);
+  const unknown = await boardOf(world, world.ianEmail, queuePath(world.harnessId, 'nowhere'));
+  const unpaged = await boardOf(world, world.ianEmail, `${queuePath(world.harnessId)}?after=1.x`);
   expect([unknown.status, unpaged.status]).toEqual([404, 404]);
 }
 
 async function hiddenIsMissing(world: BoardWorld): Promise<void> {
-  const missing = boardPath('00000000-0000-4000-8000-00000000dead');
+  const missing = queuePath('00000000-0000-4000-8000-00000000dead');
   const hidden = await boardOf(world, world.stranger.email);
   const absent = await boardOf(world, world.stranger.email, missing);
   expect([hidden.status, absent.status]).toEqual([404, 404]);
@@ -246,8 +258,9 @@ async function lookOfBoard(world: BoardWorld): Promise<void> {
   const document = await documentOf(world);
   expect(document.querySelector('main section[aria-label="Pipeline"]')).toBeNull();
   expect(document.querySelectorAll('main section[aria-labelledby^="lane"]')).toHaveLength(8);
-  const gate = document.querySelector('main section [aria-label="A person decides"]');
+  const gate = document.querySelector('main section [aria-label="A person approves"]');
   expect(gate).not.toBeNull();
+  expect(document.querySelector('main section [aria-label="A person decides"]')).toBeNull();
   const head = document.querySelector('main [aria-label="Figures"]');
   const figures = [...(head?.querySelectorAll('dt') ?? [])].map((term) => term.textContent?.trim());
   expect(figures).toEqual(['Agents working', 'Waiting on you', 'Spent on these items']);
@@ -261,7 +274,36 @@ async function lookOfBoard(world: BoardWorld): Promise<void> {
   expect(summaries).toEqual(expect.arrayContaining(['Move', 'Details']));
 }
 
-describe.skipIf(!testServer)('the Board', () => {
+async function refusalOnCard(world: BoardWorld): Promise<void> {
+  const kernel = kernelOn(world.db, viewClock);
+  const builder = agentOf(world.ian, 'builder');
+  const outcome = await kernel.gates.decide(callerOf(builder), {
+    itemId: world.metered,
+    decision: 'approve',
+    reason: null,
+    findings: [],
+  });
+  expect(outcome.status).toBe('error');
+  const document = await documentOf(world);
+  const line = cardOf(document, 'Wire the run host')?.querySelector('[data-refusal]');
+  expect(line?.textContent).toBe(
+    `${builder.identity} tried to approve this item, and the platform refused. A person decides.`,
+  );
+  expect(cardOf(document, 'Draw the icon')?.querySelector('[data-refusal]')).toBeNull();
+}
+
+async function oldAddressMoves(world: BoardWorld): Promise<void> {
+  const old = await boardOf(world, world.ianEmail, `/harnesses/${world.harnessId}/board`);
+  expect(old.status).toBe(301);
+  expect(old.headers.get('location')).toBe(queuePath(world.harnessId));
+  const hidden = await boardOf(world, world.stranger.email, `/harnesses/${world.harnessId}/board`);
+  expect(hidden.status).toBe(404);
+}
+
+describe.skipIf(!testServer)('the Queue', () => {
+  it('#105 an agent refused on an item shows the refusal on its card', () =>
+    inBoard(refusalOnCard));
+  it('#105 the old Board address moves to the Queue', () => inBoard(oldAddressMoves));
   it('UI-6 the Board has the figures in its head, the toolbar, a lane per stage with the gate marked, and compact cards', () =>
     inBoard(lookOfBoard));
   it('WB-5 the board has one column per stage with its WIP against its limit, agent pickup and exit gate', () =>

@@ -12,7 +12,7 @@ import { costText } from '../parts/costs.ts';
 import { bracketText, FlowDiagram } from '../parts/flow-diagram.tsx';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { idParam } from '../parts/params.ts';
-import { boardPath, flowPath } from '../parts/paths.ts';
+import { queuePath, flowPath } from '../parts/paths.ts';
 import { moduleCodes } from '../parts/names.ts';
 import { workflowCrumbs, workflowTabs } from '../parts/workflow-tabs.ts';
 import { notFound } from './not-found.tsx';
@@ -37,7 +37,7 @@ function StageCell(props: { readonly harnessId: string; readonly entry: FlowStag
   const { stage } = props.entry;
   return (
     <span class="flex flex-wrap items-center gap-2">
-      <a href={boardPath(props.harnessId, stage.key)} class={`text-accent-text underline ${focus}`}>
+      <a href={queuePath(props.harnessId, stage.key)} class={`text-accent-text underline ${focus}`}>
         {stage.title}
       </a>
       {stage.exitGate === 'human_approval' ? <HumanGateMark label="Person decides" /> : null}
@@ -102,7 +102,7 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
     title: `${view.harness.title} ${pageNames.flow}`,
     current: flowPath(harnessId),
     code: moduleCodes.agentQueues,
-    crumbs: workflowCrumbs(view.harness.title, boardPath(harnessId), pageNames.flow),
+    crumbs: workflowCrumbs(view.harness.title, queuePath(harnessId), pageNames.flow),
     tabs: workflowTabs(harnessId, 'flow'),
     live: { screen: 'flow' as const, harnesses: [{ harnessId, cursor }] },
   };

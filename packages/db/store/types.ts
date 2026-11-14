@@ -188,7 +188,10 @@ export type HarnessEventsGateway = {
     recent(query: RecentEvents): Promise<readonly HarnessEvent[]>;
     lastPosition(harnessId: string): Promise<number>;
     lastPositions(harnessIds: readonly string[]): Promise<readonly HarnessPosition[]>;
-    latestForItems(itemIds: readonly string[]): Promise<readonly HarnessEvent[]>;
+    latestForItems(
+      itemIds: readonly string[],
+      names?: readonly EventName[],
+    ): Promise<readonly HarnessEvent[]>;
   };
   readonly write: { append(events: readonly NewHarnessEvent[]): Promise<readonly HarnessEvent[]> };
 };

@@ -7,7 +7,7 @@ import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '..
 import { idParam } from '../parts/params.ts';
 import {
   checksUrl,
-  boardPath,
+  queuePath,
   issueUrl,
   itemPath,
   pullRequestUrl,
@@ -85,7 +85,7 @@ function ofKind(events: readonly HarnessEvent[], kind: EventKind | null): readon
 }
 
 function itemCrumbs(harness: { readonly id: string; readonly title: string }) {
-  return workflowCrumbs(harness.title, boardPath(harness.id), 'Item');
+  return workflowCrumbs(harness.title, queuePath(harness.id), 'Item');
 }
 
 export async function playScreen(c: Context<AppEnv>): Promise<Response> {

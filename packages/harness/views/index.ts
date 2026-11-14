@@ -15,7 +15,14 @@ import { boardView } from './board.ts';
 import { delegatedMerges, type DelegatedMergeList } from './delegated-merges.ts';
 import { flowView } from './flow.ts';
 import { frameCounts, type FrameCounts } from './frame.ts';
-import { dailyView, lastEventsView, myItemsView, type DailyPoint, type MyItems } from './look.ts';
+import {
+  dailyView,
+  lastEventsView,
+  myItemsView,
+  refusalsView,
+  type DailyPoint,
+  type MyItems,
+} from './look.ts';
 import { holdsOf, type Holds } from './holds.ts';
 import { decidableGates, decideAbility, gateDecided } from './gates.ts';
 import { planeList } from './plane-list.ts';
@@ -57,6 +64,11 @@ export type ViewReads = {
     options?: ReadOptions,
   ): Promise<readonly DailyPoint[]>;
   lastEvents(
+    caller: Caller,
+    input: { readonly itemIds: readonly string[] },
+    options?: ReadOptions,
+  ): Promise<readonly HarnessEvent[]>;
+  refusals(
     caller: Caller,
     input: { readonly itemIds: readonly string[] },
     options?: ReadOptions,
@@ -141,7 +153,7 @@ function scopedReads(ports: ViewPorts): Pick<ViewReads, 'silence' | 'holds'> {
 
 function frameRead(
   ports: ViewPorts,
-): Pick<ViewReads, 'frame' | 'queues' | 'daily' | 'lastEvents' | 'mine'> {
+): Pick<ViewReads, 'frame' | 'queues' | 'daily' | 'lastEvents' | 'refusals' | 'mine'> {
   const at = (options?: ReadOptions): Date => options?.at ?? ports.clock.now();
   const read = <T>(work: (tx: StoreTransaction) => Promise<T>) => ports.store.transaction(work);
   return {
@@ -149,6 +161,8 @@ function frameRead(
       read((tx) => dailyView(ports, tx, caller, { harnessId: input.harnessId, at: at(options) })),
     lastEvents: (caller, input, options) =>
       read((tx) => lastEventsView(ports, tx, caller, { itemIds: input.itemIds, at: at(options) })),
+    refusals: (caller, input, options) =>
+      read((tx) => refusalsView(ports, tx, caller, { itemIds: input.itemIds, at: at(options) })),
     mine: (caller, options) => read((tx) => myItemsView(ports, tx, caller, at(options))),
     queues: (caller, options) => read((tx) => queuesView(ports, tx, caller, at(options))),
     frame: (caller, options) => {

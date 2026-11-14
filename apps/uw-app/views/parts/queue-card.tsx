@@ -1,5 +1,5 @@
 import { formatDuration, formatInstant } from '@uw/core/dates';
-import type { CostBasis, HarnessEvent } from '@uw/contracts';
+import type { CostBasis, GateStatus, HarnessEvent } from '@uw/contracts';
 import type { BoardCard, CardHost } from '@uw/harness';
 import { CommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
 import { SelectField } from '@uw/ui/components/field.tsx';
@@ -14,6 +14,7 @@ import { holderText } from './holder-words.ts';
 export type CardViewer = {
   readonly identity: string;
   readonly admin: boolean;
+  readonly canClaim: boolean;
   readonly at: Date;
 };
 
@@ -48,6 +49,11 @@ function metaOf(card: BoardCard, at: Date) {
       label: 'Issue',
       value: item.issue === null ? 'None' : `${item.issue.repo}#${item.issue.number}`,
     },
+    {
+      label: 'Pull request',
+      value:
+        item.pullRequest === null ? 'None' : `${item.pullRequest.repo}#${item.pullRequest.number}`,
+    },
     { label: 'Holder', value: holderText(card.holder, at) },
     { label: 'Host', value: hostWords.get(card.host) ?? 'Nobody' },
     ...lease,
@@ -74,6 +80,8 @@ function OneButton(props: ItemForm & { readonly command: string; readonly label:
 function holdAction(card: BoardCard, harnessId: string, viewer: CardViewer) {
   const { holder, itemId } = card.item;
   if (holder === null) {
+    const closed = card.item.gateStatus === 'parked' || card.item.gateStatus === 'done';
+    if (!viewer.canClaim || closed) return null;
     return <OneButton harnessId={harnessId} itemId={itemId} command="claim" label="Claim" />;
   }
   if (holder === viewer.identity || viewer.admin) {
@@ -171,6 +179,13 @@ function HolderBadge(props: { readonly card: BoardCard }) {
   );
 }
 
+const gateWords: Readonly<Record<GateStatus, string>> = {
+  working: 'Working',
+  parked: 'Waiting on a person',
+  checks_failed: 'Checks failed',
+  done: 'Done',
+};
+
 function Waiting(props: { readonly card: BoardCard; readonly at: Date }) {
   const { card } = props;
   if (card.item.gateStatus !== 'parked') return null;
@@ -180,16 +195,64 @@ function Waiting(props: { readonly card: BoardCard; readonly at: Date }) {
   return <HumanWaitChip text={`Waiting${waited}`} />;
 }
 
-export function BoardCardView(props: {
+function Status(props: { readonly card: BoardCard; readonly at: Date }) {
+  const { item } = props.card;
+  const priority = `Priority ${item.priority}`;
+  const parked = item.gateStatus === 'parked';
+  return (
+    <>
+      <Waiting card={props.card} at={props.at} />
+      <p data-status="" class="m-0 text-xs text-text-2">
+        {parked ? priority : `${gateWords[item.gateStatus]} · ${priority}`}
+      </p>
+    </>
+  );
+}
+
+const decisionWords: Readonly<Record<string, string>> = {
+  approve: 'approve',
+  reject: 'send back',
+  take_over: 'take over',
+  override: 'override',
+};
+
+function refusalText(event: HarnessEvent): string {
+  if (event.name === 'ship_refused') {
+    return 'The platform refused to ship this item. A person decides.';
+  }
+  const decision = decisionWords[String(event.evidence['decision'])] ?? 'decide';
+  return `${event.actor} tried to ${decision} this item, and the platform refused. A person decides.`;
+}
+
+function Refusal(props: { readonly event: HarnessEvent | undefined }) {
+  if (props.event === undefined) return null;
+  return (
+    <p data-refusal="" class="m-0 flex items-start gap-1 text-xs text-text-2">
+      <Icon name="lock" size={1} />
+      <span>{refusalText(props.event)}</span>
+    </p>
+  );
+}
+
+function numberOf(card: BoardCard): string | undefined {
+  const { issue, pullRequest } = card.item;
+  const parts = [
+    ...(issue === null ? [] : [`#${issue.number}`]),
+    ...(pullRequest === null ? [] : [`PR #${pullRequest.number}`]),
+  ];
+  return parts.length === 0 ? undefined : parts.join(' · ');
+}
+
+export function QueueCardView(props: {
   readonly harnessId: string;
   readonly card: BoardCard;
   readonly column: readonly BoardCard[];
   readonly viewer: CardViewer;
   readonly last?: HarnessEvent | undefined;
+  readonly refusal?: HarnessEvent | undefined;
 }) {
   const { card, harnessId } = props;
   const { at } = props.viewer;
-  const issue = card.item.issue;
   const { itemId } = card.item;
   const others = props.column.filter((other) => other.item.itemId !== itemId);
   return (
@@ -197,11 +260,16 @@ export function BoardCardView(props: {
       title={card.item.title}
       href={itemPath(harnessId, itemId)}
       meta={metaOf(card, at)}
-      number={issue === null ? undefined : `#${issue.number}`}
+      number={numberOf(card)}
       risk={riskLine(card)}
       badge={<HolderBadge card={card} />}
       last={lastLine(props.last, at)}
-      status={<Waiting card={card} at={at} />}
+      status={
+        <>
+          <Status card={card} at={at} />
+          <Refusal event={props.refusal} />
+        </>
+      }
       foot={footOf(card, at)}
       actions={
         <>

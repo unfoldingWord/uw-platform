@@ -7,7 +7,7 @@ import type { NavItem, NavSection, Person } from '@uw/ui/components/sidebar.tsx'
 import { wordmarkPath } from '@uw/ui/generated/mark';
 import type { AppEnv } from '../../deps.ts';
 import { commitOf, environmentOf } from '../../env.ts';
-import { agentQueuesPath, boardPath, healthPath, homePath } from './paths.ts';
+import { agentQueuesPath, queuePath, healthPath, homePath } from './paths.ts';
 import { moduleCodes, noModules, platformAreas, type PlatformModule } from './names.ts';
 
 const noCounts: FrameCounts = { harnesses: [], waiting: 0, gatesOpen: 0, agentsWorking: 0 };
@@ -69,7 +69,7 @@ function builtItems(module: PlatformModule, counts: FrameCounts, watch: number):
       { ...base, code: moduleCodes.agentQueues, href: agentQueuesPath() },
       ...counts.harnesses.map(({ harness, open }) => ({
         label: harness.title,
-        href: boardPath(harness.id),
+        href: queuePath(harness.id),
         nested: true,
         count: { kind: 'quiet' as const, text: String(open) },
       })),
