@@ -6,7 +6,7 @@ The vocabulary of the harness, the module of the unfoldingWord platform that run
 
 **Harness**:
 One instance of the pipeline, built from a template, scoped to a JD area. The software harness lives in area 80 to 89; a BML harness lives in the area of the program whose product it serves.
-_Avoid_: pipeline (that is the drawing), queue, board (that is a screen), work queue (the plan's older name)
+_Avoid_: pipeline (that is the drawing), queue (that is a screen, the Queue), board (the Queue's old name), work queue (the plan's older name)
 
 **Template**:
 The stage graph a harness is built from. Two in v1: software delivery and the BML product flywheel. Same eight stages, different names, workers and connectors.
@@ -278,7 +278,7 @@ _Avoid_: request id (that is a command's `requestId`), correlation id, span
 
 **Envelope**:
 The Zod-validated message `uw-ingest` puts on the queue for one verified webhook delivery: source, delivery id, event, trace id, the ingest principal and the payload.
-_Avoid_: event (that is a row of `harness_events`), message (the queue's word for the transport), job
+_Avoid_: event (that is a row of `harness_events`), message (the message queue's word for the transport), job
 
 **Page type**:
 One entry of the page-type registry in `packages/contracts`: a frontmatter schema, a classification and an offline eligibility. Seven in v1: `skill`, `learning`, `persona`, `product`, `system_goal`, `product_strategy`, `data_sources`.
@@ -333,7 +333,7 @@ A person's open live session on one screen of a harness. A wake for that screen 
 _Avoid_: online, active
 
 **Screen**:
-The view a live session watches: `home`, `flow`, `board`, `gates` or `item`. An `item` session also names its item.
+The view a live session watches: `home`, `queues` (Agent Queues), `flow`, `board` (the Queue; the value keeps the screen's old name), `gates` or `item`. An `item` session also names its item.
 _Avoid_: page (that is a content page), route
 
 **Zulip topic**:
@@ -364,12 +364,16 @@ _Avoid_: dashboard, inbox
 One harness drawn as the BML diagram from its stage rows under the four brackets, with each stage's count, WIP, age and cost, live.
 _Avoid_: pipeline view, diagram page
 
-**Board**:
-The screen with one column per stage and one card per item.
-_Avoid_: kanban (the prototype's word), queue
+**Agent Queues**:
+The landing page that lists, one card per harness, every harness in an area the person holds a live grant on (an org grant covers every area), with its open items by phase and what waits on the person.
+_Avoid_: dashboard, harness list
+
+**Queue**:
+The screen of one harness with one column per stage, grouped by bracket, and one card per item, where people and agents claim the same items. It was called the Board until #105; the kernel read behind it (`boardView`) and its live screen value (`board`) keep the old name. Capitalised, it is always this screen; the transport that carries ingest envelopes is the message queue.
+_Avoid_: board (its old name, outside the code that keeps it), kanban (the prototype's word), work queue
 
 **Card**:
-The Board's rendering of an item.
+The Queue's rendering of an item.
 _Avoid_: ticket, tile
 
 **Agent plane**:
@@ -467,7 +471,7 @@ An item another item in the same epic waits on: the item for an issue named on a
 _Avoid_: dependency, prerequisite, parent
 
 **Not ready**:
-An issue or product page intake refused because it has no done-when. The refusal is recorded on the harness and the Board lists it until it becomes an item.
+An issue or product page intake refused because it has no done-when. The refusal is recorded on the harness and the Queue lists it until it becomes an item.
 _Avoid_: invalid, rejected (that is a gate decision), backlog
 
 **Holder**:

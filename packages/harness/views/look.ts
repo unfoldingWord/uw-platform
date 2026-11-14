@@ -3,6 +3,7 @@ import { formatDate, parseDate } from '@uw/core/dates';
 import type { Caller } from '../caller.ts';
 import type { Ports } from '../ports.ts';
 import type { StoreTransaction } from '../store-ports.ts';
+import { refusalNames, refusalReasons } from './plane.ts';
 import { readableHarnesses } from './readable.ts';
 import { VIEW_LIMIT } from './types.ts';
 
@@ -71,6 +72,21 @@ export async function lastEventsView(
   );
   const events = await tx.harnessEvents.read.latestForItems(input.itemIds);
   return events.filter((event) => readable.has(event.harnessId));
+}
+
+export async function refusalsView(
+  ports: LookPorts,
+  tx: StoreTransaction,
+  caller: Caller,
+  input: { readonly itemIds: readonly string[]; readonly at: Date },
+): Promise<readonly HarnessEvent[]> {
+  const readable = new Set(
+    (await readableHarnesses(ports, tx, caller, input.at)).map((harness) => harness.id),
+  );
+  const events = await tx.harnessEvents.read.latestForItems(input.itemIds, refusalNames);
+  return events.filter(
+    (event) => readable.has(event.harnessId) && refusalReasons(event).length > 0,
+  );
 }
 
 export async function myItemsView(

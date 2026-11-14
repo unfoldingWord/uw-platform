@@ -8,7 +8,7 @@ export const pageNames = {
   health: 'Health',
   notFound: 'Not Found',
   waitingApproval: 'Waiting For Approval',
-  board: 'Board',
+  queue: 'Queue',
   flow: 'Flow',
   gate: 'Gate',
   item: 'Item',

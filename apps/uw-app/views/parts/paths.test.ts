@@ -1,7 +1,7 @@
 import { gateLink, homeLink, itemLink } from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
 import {
-  boardPath,
+  queuePath,
   checksUrl,
   flowPath,
   gatePath,
@@ -27,8 +27,8 @@ describe('the view paths', () => {
       '/health/spend',
     ]);
     expect(flowPath(harness)).toBe(`/harnesses/${harness}`);
-    expect(boardPath(harness)).toBe(`/harnesses/${harness}/board`);
-    expect(boardPath(harness, 'build')).toBe(`/harnesses/${harness}/board?stage=build`);
+    expect(queuePath(harness)).toBe(`/harnesses/${harness}/queue`);
+    expect(queuePath(harness, 'build')).toBe(`/harnesses/${harness}/queue?stage=build`);
     expect(gatePath(harness, item)).toBe(`/harnesses/${harness}/gates/${item}`);
     expect(itemPath(harness, item)).toBe(`/harnesses/${harness}/items/${item}`);
   });

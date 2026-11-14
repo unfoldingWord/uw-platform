@@ -7,7 +7,7 @@ import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml, getHtmlWithEnv } from '../testing/views.ts';
-import { agentQueuesPath, boardPath, gatesPath, healthPath, homePath } from './parts/paths.ts';
+import { agentQueuesPath, queuePath, gatesPath, healthPath, homePath } from './parts/paths.ts';
 
 const IAN = 'ian.lindsley@unfoldingword.org';
 
@@ -39,7 +39,7 @@ async function sidebarReadsTheFrame(db: Database): Promise<void> {
   expect(nav.querySelector(`a[href="${agentQueuesPath()}"]`)?.textContent).toContain(
     'Agent Queues',
   );
-  const workflow = nav.querySelector(`a[href="${boardPath(item.harnessId)}"]`);
+  const workflow = nav.querySelector(`a[href="${queuePath(item.harnessId)}"]`);
   expect(workflow?.textContent).toContain('Software');
   expect(workflow?.textContent).toContain('1');
   expect(nav.querySelector(`a[href="${healthPath()}"]`)?.textContent).toContain('Health');

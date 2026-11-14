@@ -15,7 +15,7 @@ import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml, pageContent } from '../testing/views.ts';
-import { boardPath, flowPath } from './parts/paths.ts';
+import { queuePath, flowPath } from './parts/paths.ts';
 
 const seedClock: Clock = { now: () => new Date('2026-10-02T06:00:00.000Z') };
 const viewClock: Clock = { now: () => new Date('2026-10-02T09:00:00.000Z') };
@@ -144,9 +144,9 @@ async function linksToBoard(world: BoardWorld): Promise<void> {
   const hrefs = [...document.querySelectorAll('main svg a')].map((link) =>
     link.getAttribute('href'),
   );
-  expect(hrefs[3]).toBe(boardPath(world.harnessId, 'build'));
+  expect(hrefs[3]).toBe(queuePath(world.harnessId, 'build'));
   const tableLink = document.querySelector('main table tbody tr a');
-  expect(tableLink?.getAttribute('href')).toBe(boardPath(world.harnessId, 'package'));
+  expect(tableLink?.getAttribute('href')).toBe(queuePath(world.harnessId, 'package'));
 }
 
 async function liveOnHarness(world: BoardWorld): Promise<void> {
@@ -266,7 +266,7 @@ async function lookOfFlow(world: BoardWorld): Promise<void> {
     tab.getAttribute('aria-current'),
   ]);
   expect(tabs).toEqual([
-    ['Board', null],
+    ['Queue', null],
     ['Flow', 'page'],
   ]);
 }
@@ -290,5 +290,5 @@ describe.skipIf(!testServer)('the Flow view', () => {
   it('the flow diagram keeps a minimum width from a size token and scrolls inside its own wrapper', () =>
     inFlow(scrollsAtPhoneWidth));
   it('the flow view renders with no screen problems', () => inFlow(noProblems));
-  it('UI-10 Flow sums up the harness and offers the Flow and Board tabs', () => inFlow(lookOfFlow));
+  it('UI-10 Flow sums up the harness and offers the Queue and Flow tabs', () => inFlow(lookOfFlow));
 });

@@ -6,7 +6,7 @@ import { boardWorld, type BoardWorld } from '../testing/board-world.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml } from '../testing/views.ts';
-import { agentQueuesPath, boardPath } from './parts/paths.ts';
+import { agentQueuesPath, queuePath } from './parts/paths.ts';
 
 const seedClock: Clock = { now: () => new Date('2026-10-02T06:00:00.000Z') };
 const viewClock: Clock = { now: () => new Date('2026-10-02T09:00:00.000Z') };
@@ -28,7 +28,7 @@ async function cardOpensTheWorkflow(world: BoardWorld): Promise<void> {
   expect(response.status).toBe(200);
   const document = documentOf(response.text);
   const main = document.querySelector('main');
-  const card = main?.querySelector(`section a[href="${boardPath(world.harnessId)}"]`);
+  const card = main?.querySelector(`section a[href="${queuePath(world.harnessId)}"]`);
   expect(card).not.toBeNull();
   const section = card?.closest('section');
   expect(section?.textContent).toContain('80-89');
@@ -56,18 +56,18 @@ async function strangerSeesWhyNotAnError(world: BoardWorld): Promise<void> {
   expect(main?.querySelector('[role="note"]')?.textContent).toContain(
     "You don't have access to any workflows yet",
   );
-  expect(main?.querySelector(`a[href="${boardPath(world.harnessId)}"]`)).toBeNull();
+  expect(main?.querySelector(`a[href="${queuePath(world.harnessId)}"]`)).toBeNull();
   expect(await screenProblems(response.text)).toEqual([]);
 }
 
 async function viewerHasNothingToDecide(world: BoardWorld): Promise<void> {
   const main = documentOf((await queuesAs(world, world.viewer.email)).text).querySelector('main');
-  expect(main?.querySelector(`a[href="${boardPath(world.harnessId)}"]`)).not.toBeNull();
+  expect(main?.querySelector(`a[href="${queuePath(world.harnessId)}"]`)).not.toBeNull();
   expect(main?.textContent).toContain('Nothing waiting on you');
 }
 
 async function workflowCrumbLeadsBack(world: BoardWorld): Promise<void> {
-  const html = (await getHtml(world.db, world.ianEmail, boardPath(world.harnessId), {}, viewClock))
+  const html = (await getHtml(world.db, world.ianEmail, queuePath(world.harnessId), {}, viewClock))
     .text;
   const crumbs = documentOf(html).querySelector('nav[aria-label="Breadcrumb"]');
   expect(crumbs?.querySelector(`a[href="${agentQueuesPath()}"]`)?.textContent).toBe('Agent Queues');

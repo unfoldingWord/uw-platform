@@ -2,7 +2,7 @@ import { stageBracketSchema, type StageBracket } from '@uw/contracts';
 import type { FlowStage } from '@uw/harness';
 import { humanGateSvg } from '@uw/ui/components/human-action.tsx';
 import { domId } from '@uw/ui/components/text.ts';
-import { boardPath } from './paths.ts';
+import { queuePath } from './paths.ts';
 
 const NODE_WIDTH = 176;
 const NODE_HEIGHT = 64;
@@ -59,7 +59,7 @@ function Node(props: { readonly harnessId: string; readonly slot: Slot }) {
   const { stage } = entry;
   return (
     <g data-stage={stage.key}>
-      <a href={boardPath(props.harnessId, stage.key)} aria-label={nodeLabel(entry)} class={focus}>
+      <a href={queuePath(props.harnessId, stage.key)} aria-label={nodeLabel(entry)} class={focus}>
         <rect
           x={x}
           y={NODE_TOP}

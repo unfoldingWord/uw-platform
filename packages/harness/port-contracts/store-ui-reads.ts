@@ -154,6 +154,33 @@ function describeLatestEvents(subject: ReadsSubject): void {
       none: [],
     });
   });
+
+  it('UI-15 latestForItems narrows to the named events when names are given', async () => {
+    const base = 0xc500;
+    const read = await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, base, 'gateway-ui-latest-named');
+      for (const n of [1, 2]) await tx.harnessItems.write.insert(itemOf(base, n), at);
+      await tx.harnessEvents.write.append([
+        refusalOf(base, 1, 1, 1),
+        eventOf(base, 2, 1, 2),
+        eventOf(base, 3, 2, 3),
+      ]);
+      const named = await tx.harnessEvents.read.latestForItems(
+        [uid(base + 11), uid(base + 12)],
+        ['gate_refused_to_agent'],
+      );
+      return named.map((event) => [event.itemId, event.eventId]);
+    });
+    expect(read).toEqual([[uid(base + 11), uid(base + 0x41)]]);
+  });
+}
+
+function refusalOf(base: number, n: number, item: number, hours: number) {
+  return newEventSchema.parse({
+    ...eventOf(base, n, item, hours),
+    name: 'gate_refused_to_agent',
+    evidence: { decision: 'approve', stage: 'review', reason: null },
+  });
 }
 
 export function describeStoreUiReads(adapter: string, subject: ReadsSubject): void {

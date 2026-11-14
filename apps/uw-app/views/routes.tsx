@@ -4,7 +4,7 @@ import { HTTPException } from 'hono/http-exception';
 import type { AppEnv } from '../deps.ts';
 import { refuse } from '../http/outcomes.ts';
 import { agentQueuesScreen } from './screens/agent-queues.tsx';
-import { boardScreen } from './screens/board.tsx';
+import { oldQueueAddress, queueScreen } from './screens/queue.tsx';
 import { flowScreen } from './screens/flow.tsx';
 import { gateScreen } from './screens/gate.tsx';
 import { gatesScreen } from './screens/gates.tsx';
@@ -29,7 +29,8 @@ export function viewRoutes(): Hono<AppEnv> {
   routes.get('/', homeScreen);
   routes.get('/agent-queues', agentQueuesScreen);
   routes.get('/harnesses/:harnessId', flowScreen);
-  routes.get('/harnesses/:harnessId/board', boardScreen);
+  routes.get('/harnesses/:harnessId/queue', queueScreen);
+  routes.get('/harnesses/:harnessId/board', oldQueueAddress);
   routes.get('/gates', gatesScreen);
   routes.get('/harnesses/:harnessId/gates/:itemId', gateScreen);
   routes.get('/harnesses/:harnessId/items/:itemId', playScreen);

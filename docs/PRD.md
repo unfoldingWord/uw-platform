@@ -128,7 +128,7 @@ Loop edges are `feeds` on the stage rows: Close to Scope (the regular tweak) and
 ```
 People ──> Web app (uw-app) ──┬── Home "waiting on me"
                               ├── Flow view      one harness as the BML diagram, live
-                              ├── Board          stages as columns, items as cards
+                              ├── Queue          stages as columns, items as cards
                               ├── Gates          the ship decision, at phone width
                               ├── Item           play-by-play from the event log
                               ├── Persona page   form, instructions, dashboard
@@ -614,7 +614,7 @@ From #97 (2026-11-12) the source of truth for how screens look is the Claude Des
 | The frame (sidebar by area, top bar) | Frame (UI-5); unbuilt modules are dimmed and open nothing |
 | Today | Today, was Home (UI-9) |
 | Agent Queues landing (the epic #99 proposal) | Agent Queues, one card per workflow the viewer may see (#104) |
-| Agent Queues lanes and cards, with Development's chips and view switch | Board (WB-5, UI-6) |
+| Agent Queues lanes and cards, with Development's chips and view switch | Queue tab, formerly the Board (WB-5, UI-6): lanes grouped by phase, each lane's rules in plain words, refusals on cards (#105) |
 | Agent Queues "Stage configuration" | Flow (WB-4, UI-10) |
 | Today's "Waiting on me" rows | Waiting On You (WB-6, UI-7) |
 | Health's "Open alert" card | Gate decision (UI-7) |

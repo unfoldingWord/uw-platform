@@ -19,9 +19,9 @@ export function flowPath(harnessId: string): string {
   return `/harnesses/${segment(harnessId)}`;
 }
 
-export function boardPath(harnessId: string, stageKey?: string): string {
-  const board = `${flowPath(harnessId)}/board`;
-  return stageKey === undefined ? board : `${board}?stage=${segment(stageKey)}`;
+export function queuePath(harnessId: string, stageKey?: string): string {
+  const queue = `${flowPath(harnessId)}/queue`;
+  return stageKey === undefined ? queue : `${queue}?stage=${segment(stageKey)}`;
 }
 
 export function gatePath(harnessId: string, itemId: string): string {

@@ -9,7 +9,7 @@ import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml } from '../testing/views.ts';
-import { boardPath } from './parts/paths.ts';
+import { queuePath } from './parts/paths.ts';
 
 const IAN = 'ian.lindsley@unfoldingword.org';
 
@@ -36,7 +36,7 @@ describe.skipIf(!testServer)('OB-4 the Board and Home say what their counts leav
   it('OB-4 the Board counts the bot item out of its column and names the bot', () =>
     withAppDatabase(async (db) => {
       const harnessId = await parkedByBot(db);
-      const page = await getHtml(db, IAN, boardPath(harnessId), {}, clock);
+      const page = await getHtml(db, IAN, queuePath(harnessId), {}, clock);
       expect(itemsFact(page.text, 'Merge, tag, deploy')).toBe(
         '0, not counting 1 by dependabot[bot]',
       );

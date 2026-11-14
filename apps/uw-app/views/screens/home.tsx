@@ -16,7 +16,7 @@ import type { AppEnv } from '../../deps.ts';
 import { handedCapNote, lapsedCapNote, parkedCapNote } from '../parts/caps.ts';
 import { liveCursors } from '../parts/cursors.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
-import { boardPath, flowPath, gatePath, homePath, itemPath } from '../parts/paths.ts';
+import { queuePath, flowPath, gatePath, homePath, itemPath } from '../parts/paths.ts';
 import { moduleCodes } from '../parts/names.ts';
 import { pageNames } from '../parts/names.ts';
 
@@ -246,7 +246,7 @@ function HarnessCard(props: { readonly card: WorkflowCard }) {
   return (
     <li class="flex flex-col gap-3 border-b border-line-soft px-4 py-3 last:border-b-0">
       <div class="flex flex-wrap items-center gap-2">
-        <a href={boardPath(flow.harness.id)} class={`text-base font-heavy text-text ${focus}`}>
+        <a href={queuePath(flow.harness.id)} class={`text-base font-heavy text-text ${focus}`}>
           {flow.harness.title}
         </a>
         <span class="text-xs text-text-3">{`${flow.harness.template} template`}</span>
