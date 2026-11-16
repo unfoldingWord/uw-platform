@@ -406,7 +406,7 @@ async function parkedCapSaysAtLeast(world: GateWorld): Promise<void> {
     'At least 1 gate is waiting for you to decide in this workflow',
   );
   expect(document.querySelector('main [role="note"]')?.textContent).toBe(
-    'A harness has at least 5,000 parked items. Gates are read from the 5,000 with the highest priority on each harness.',
+    'This workflow has at least 5,000 parked items. Gates are read from the 5,000 with the highest priority.',
   );
 }
 

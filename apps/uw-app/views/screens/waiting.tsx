@@ -5,7 +5,7 @@ import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { ApproveAll } from '../parts/approve-all.tsx';
-import { parkedCapNote } from '../parts/caps.ts';
+import { workflowCapNote } from '../parts/caps.ts';
 import { DelegatedMerges } from '../parts/delegated-merges.tsx';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { approvable, panelsOf, type Shown } from '../parts/gate-rows.tsx';
@@ -42,7 +42,7 @@ async function shadowOf(screen: ScreenKernel, harness: Harness) {
 
 function WaitingBody(props: Body) {
   const { shown, capped, shadow, merged } = props;
-  const note = capped ? <Note>{parkedCapNote}</Note> : null;
+  const note = capped ? <Note>{workflowCapNote}</Note> : null;
   const list =
     shadow.list === null ? null : (
       <ShadowList comparison={shadow.list} harnessTitle={shadow.harness.title} />
@@ -95,8 +95,12 @@ export async function waitingScreen(c: Context<AppEnv>): Promise<Response> {
   if (harness === null) return notFound(c);
   const read = { at: screen.at };
   const cursor = await screen.kernel.views.cursor(screen.caller, { harnessId: harness.id }, read);
-  const gates = await screen.kernel.views.gates(screen.caller, read);
-  const rows = gates.rows.filter((row) => row.harness.id === harness.id);
+  const gates = await screen.kernel.views.workflowGates(
+    screen.caller,
+    { harnessId: harness.id },
+    read,
+  );
+  const rows = gates.rows;
   const shown = await panelsOf(screen, rows);
   const all = await screen.kernel.views.delegatedMerges(screen.caller, read);
   const merged = { ...all, rows: all.rows.filter((row) => row.harness.id === harness.id) };

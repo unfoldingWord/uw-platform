@@ -104,8 +104,8 @@ export async function gateScreen(c: Context<AppEnv>): Promise<Response> {
   if (scene === null || gate === null) return notFound(c);
   const { harness, item } = scene;
   const notice = await noticeOf(screen, scene, gate);
-  const gates = await screen.kernel.views.gates(screen.caller, read);
-  const rows = gates.rows.filter((row) => row.harness.id === harness.id);
+  const input = { harnessId: harness.id };
+  const { rows } = await screen.kernel.views.workflowGates(screen.caller, input, read);
   const spec = {
     title: `${item.title} ${pageNames.gate}`,
     current: gatePath(harness.id, item.itemId),

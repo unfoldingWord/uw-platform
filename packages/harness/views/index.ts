@@ -24,7 +24,7 @@ import {
   type MyItems,
 } from './look.ts';
 import { holdsOf, type Holds } from './holds.ts';
-import { decidableGates, decideAbility, gateDecided } from './gates.ts';
+import { decidableGates, decideAbility, gateDecided, workflowGates } from './gates.ts';
 import { planeList } from './plane-list.ts';
 import { planeTotals } from './plane.ts';
 import { personaView, type PersonaDashboard } from './persona.ts';
@@ -85,6 +85,11 @@ export type ViewReads = {
     options?: ReadOptions,
   ): Promise<KernelOutcome<BoardView>>;
   gates(caller: Caller, options?: ReadOptions): Promise<GateList>;
+  workflowGates(
+    caller: Caller,
+    input: { readonly harnessId: string },
+    options?: ReadOptions,
+  ): Promise<GateList>;
   delegatedMerges(caller: Caller, options?: ReadOptions): Promise<DelegatedMergeList>;
   gate(
     caller: Caller,
@@ -172,6 +177,16 @@ function frameRead(
   };
 }
 
+function gateLists(ports: ViewPorts): Pick<ViewReads, 'gates' | 'workflowGates'> {
+  const at = (options?: ReadOptions): Date => options?.at ?? ports.clock.now();
+  const read = <T>(work: (tx: StoreTransaction) => Promise<T>) => ports.store.transaction(work);
+  return {
+    gates: (caller, options) => read((tx) => decidableGates(ports, tx, caller, at(options))),
+    workflowGates: (caller, input, options) =>
+      read((tx) => workflowGates(ports, tx, caller, input.harnessId, at(options))),
+  };
+}
+
 export function createViewReads(ports: ViewPorts): ViewReads {
   const instant = (options?: ReadOptions): Date => options?.at ?? ports.clock.now();
   const { store } = ports;
@@ -189,10 +204,7 @@ export function createViewReads(ports: ViewPorts): ViewReads {
       const at = instant(options);
       return store.transaction((tx) => boardView(ports, tx, caller, input, at));
     },
-    gates: (caller, options) => {
-      const at = instant(options);
-      return store.transaction((tx) => decidableGates(ports, tx, caller, at));
-    },
+    ...gateLists(ports),
     delegatedMerges: (caller, options) => mergesOf(ports, caller, instant(options)),
     gate: (caller, input, options) => gateView(ports, caller, input, { at: instant(options) }),
     shadow: (caller, input, options) => shadowComparison(ports, caller, input, instant(options)),

@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
-import { rewriteItem } from '@uw/db/test-seed';
-import type { Template } from '@uw/harness';
+import { rewriteItem, seedOpenItems } from '@uw/db/test-seed';
+import { VIEW_LIMIT, type Template } from '@uw/harness';
 import { commandBody } from '../islands/browser/command-body.ts';
 import { clock, decisionRows } from '../github/testing/ship-rig.ts';
 import { activatedHarness, advanced, enqueuedItem } from '../testing/board-world.ts';
@@ -170,6 +170,27 @@ async function strangerAndOldAddress(world: GateWorld): Promise<void> {
   expect([old.status, old.headers.get('location')]).toEqual([301, agentQueuesPath()]);
 }
 
+async function capOfThisWorkflowOnly(world: GateWorld): Promise<void> {
+  const other = await parkedAtSignOff(world);
+  await seedOpenItems(world.db, {
+    harnessId: other.harnessId,
+    stageKey: 'sign_off',
+    count: VIEW_LIMIT,
+    gateStatus: 'parked',
+    priority: -1,
+  });
+  const here = await documentOf(world, world.rowanEmail, waitingPath(world.item.harnessId));
+  expect(here.querySelector('main h1 + p')?.textContent).toBe(
+    '1 gate is waiting for you to decide in this workflow',
+  );
+  expect(here.querySelector('main [role="note"]')).toBeNull();
+  const there = await documentOf(world, world.rowanEmail, waitingPath(other.harnessId));
+  expect(there.querySelector('main h1 + p')?.textContent).toMatch(/^At least /);
+  expect(there.querySelector('main [role="note"]')?.textContent).toBe(
+    'This workflow has at least 5,000 parked items. Gates are read from the 5,000 with the highest priority.',
+  );
+}
+
 async function noProblems(world: GateWorld): Promise<void> {
   for (const email of [world.kimEmail, world.viewerEmail]) {
     const page = await getHtml(world.db, email, waitingPath(world.item.harnessId), {}, clock);
@@ -192,6 +213,8 @@ describe.skipIf(!testServer)('the Waiting On You tab', () => {
   it('#106 a person without the grant sees no decide buttons', () => inGates(viewerCannotDecide));
   it('#106 a stranger gets not found, and the old Gates address moves to Agent Queues', () =>
     inGates(strangerAndOldAddress));
+  it('#106 another workflow reaching the read limit does not mark this one as capped', () =>
+    inGates(capOfThisWorkflowOnly));
   it('#106 the tab renders with no screen problems, its table scrolling in its own wrapper', () =>
     inGates(noProblems));
 });
