@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import { can } from '@uw/core/acl';
 import { formatDuration } from '@uw/core/dates';
 import { formatCount } from '@uw/core/money';
 import { VIEW_LIMIT, type FlowStage, type FlowView } from '@uw/harness';
@@ -9,6 +10,7 @@ import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { costText } from '../parts/costs.ts';
+import { DraftSection } from '../parts/draft-editor.tsx';
 import { bracketText, FlowDiagram } from '../parts/flow-diagram.tsx';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { idParam } from '../parts/params.ts';
@@ -99,6 +101,11 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
   const outcome = await screen.kernel.views.flow(screen.caller, { harnessId }, read);
   if (outcome.status !== 'accepted') return notFound(c);
   const view = outcome.value;
+  const drafted = await screen.kernel.views.workflowDraft(screen.caller, { harnessId }, read);
+  const draft = drafted.status === 'accepted' ? drafted.value : null;
+  const { actor } = screen.caller;
+  const area = { kind: 'area', area: view.harness.jdArea } as const;
+  const admin = actor.kind === 'person' && can(actor, 'admin', area, screen.at);
   const spec = {
     title: `${view.harness.title} ${pageNames.flow}`,
     current: flowPath(harnessId),
@@ -118,6 +125,7 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
       />
       <div class="flex flex-col gap-5">
         {view.capped ? <Note>{cappedNote}</Note> : null}
+        <DraftSection harnessId={harnessId} draft={draft} admin={admin} at={screen.at} />
         <Card title="Stage configuration" sub="what each stage holds, costs and waits on" flush>
           <Table
             caption="Stages"

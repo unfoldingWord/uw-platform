@@ -6,13 +6,15 @@ import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
-import { seedBreakerReading, seedPage } from '@uw/db/test-seed';
+import { seedBreakerReading, seedGrant, seedPage, seedPerson } from '@uw/db/test-seed';
 import type { Clock } from '@uw/harness';
 import { appCss } from '@uw/ui/generated/app-css';
 import { fontFiles } from '@uw/ui/generated/fonts';
 import { wordmarkBase64, wordmarkPath } from '@uw/ui/generated/mark';
-import { boardWorld } from '../testing/board-world.ts';
+import { boardWorld, type BoardWorld } from '../testing/board-world.ts';
+import { callerOf } from '../testing/commands.ts';
 import { gateWorld } from '../testing/gate-world.ts';
+import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { getHtml } from '../testing/views.ts';
 import {
@@ -93,6 +95,36 @@ async function personaOn(db: Database, harnessId: string): Promise<string> {
   return pageId;
 }
 
+const watcherEmail = 'flow.watcher@unfoldingword.org';
+
+async function drafted(world: BoardWorld): Promise<void> {
+  const watcher = '00000000-0000-4000-8000-00000000a0a1';
+  await seedPerson(world.db, { id: watcher, email: watcherEmail });
+  await seedGrant(world.db, {
+    id: '00000000-0000-4000-8000-00000000a0a2',
+    personId: watcher,
+    role: 'admin',
+    scopeKind: 'jd_area',
+    scopeArea: '80-89',
+    grantedAt: new Date('2026-01-01T00:00:00.000Z'),
+    expiresAt: null,
+  });
+  const kernel = kernelOn(world.db, { now: () => new Date('2026-10-02T08:56:00.000Z') });
+  const opened = await kernel.drafts.open(callerOf(world.rowan), { harnessId: world.harnessId });
+  if (opened.status !== 'accepted') throw new Error(`refused: ${opened.reason}`);
+}
+
+async function draftScreens(world: BoardWorld): Promise<Screen[]> {
+  await drafted(world);
+  const path = flowPath(world.harnessId);
+  const mine = await getHtml(world.db, world.rowanEmail, path, {}, viewClock);
+  const theirs = await getHtml(world.db, watcherEmail, path, {}, viewClock);
+  return [
+    { name: 'flow-draft', html: mine.text },
+    { name: 'flow-locked', html: theirs.text },
+  ];
+}
+
 async function boardScreens(db: Database): Promise<Screen[]> {
   const world = await boardWorld(db, seedClock);
   const pageId = await personaOn(db, world.harnessId);
@@ -117,7 +149,7 @@ async function boardScreens(db: Database): Promise<Screen[]> {
     const page = await getHtml(db, world.rowanEmail, path, headers, viewClock);
     screens.push({ name, html: page.text });
   }
-  return screens;
+  return [...screens, ...(await draftScreens(world))];
 }
 
 async function gateScreens(db: Database): Promise<Screen[]> {
@@ -228,6 +260,8 @@ describe.skipIf(!testServer || (!browserReady && !required))('UI-16 the screensh
       'health',
       'health-detail',
       'persona',
+      'flow-draft',
+      'flow-locked',
       'waiting',
       'gate',
       'play',

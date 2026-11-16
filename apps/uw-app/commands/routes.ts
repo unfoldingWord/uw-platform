@@ -10,6 +10,7 @@ import { executeCommand } from './dispatch.ts';
 import type { PersonDeps } from './person-deps.ts';
 import { shadowExport } from './person/shadow-export.ts';
 import { gateView } from './person/gate-view.ts';
+import { draftCheck } from './draft-read.ts';
 import { harnessEvents, stageItems } from './reads.ts';
 import { commandRegistry } from './registry.ts';
 
@@ -47,6 +48,7 @@ export function harnessRoutes(
   routes.post('/:harness/commands/:name', (c) => handleCommand(c, deps, person));
   routes.get('/:harness/stages/:stage/items', stageItems);
   routes.get('/:harness/events', harnessEvents);
+  routes.get('/:harness/draft', draftCheck);
   routes.get('/:harness/gates/:item', gateView);
   routes.get('/:harness/shadow', shadowExport);
   routes.get('/:harness/live', connectLive);

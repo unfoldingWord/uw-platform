@@ -1,6 +1,7 @@
 import './jitless.ts';
 import { reconnectingSocket, type LiveTimers } from '../live/session.ts';
 import { wireCommandForms } from './command-form.ts';
+import { wireDraftEditor } from './draft-editor.ts';
 import { startLive } from './live.ts';
 import { morphMain } from './morph.ts';
 import { browserPush, wirePushControl } from './push-subscribe.ts';
@@ -20,6 +21,14 @@ document.addEventListener('DOMContentLoaded', () => {
     fetch: send,
     uuid: () => crypto.randomUUID(),
     afterAccepted: () => void refresher.refresh(),
+  });
+  wireDraftEditor(document, {
+    fetch: send,
+    uuid: () => crypto.randomUUID(),
+    timers: {
+      setTimeout: (run, ms) => window.setTimeout(run, ms),
+      clearTimeout: (handle) => window.clearTimeout(Number(handle)),
+    },
   });
   startLive(document, { fetch: send, connect: reconnectingSocket, timers, refresher });
   wirePushControl(document, { fetch: send, push: browserPush(navigator) });

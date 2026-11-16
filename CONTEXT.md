@@ -40,6 +40,18 @@ _Avoid_: linter, rule, test (validators run on items, tests run on code)
 The loop edges on a stage row that let an item re-enter an earlier stage: the **regular tweak** from Close to Scope and the **occasional tweak** from Validate to Package.
 _Avoid_: loop, back-edge, retry
 
+**Draft**:
+A private copy of a harness's stages that one area admin edits on the Flow tab. It is checked a few seconds after each change, by the same rules as `walk`, and nothing in it is live until it is published. One harness has at most one draft, a row of `workflow_drafts`.
+_Avoid_: pending edit, staged change, copy
+
+**Editing lock**:
+The hold one admin has on a harness's draft. Others see who holds it and since when, and can watch the draft but not edit it. It lapses after 30 minutes without a save, and another admin can take it over at any time with a recorded reason; the draft's changes are kept either way.
+_Avoid_: lease (that is an item's hold), checkout
+
+**Publish**:
+Applying a draft to the live stages in one transaction, once its check passes and the live stages have not changed since the draft was opened. It records a `stage_edited` or `stage_removed` per changed stage and one `workflow_published` with what was added, removed and changed, then deletes the draft. It is the only way a person changes a harness's stages.
+_Avoid_: deploy, release, save
+
 **Ship rule**:
 The pure function that decides whether the Ship button is enabled. Inputs: GitHub facts about the head commit, the item's risk tier and domains, and the approver's principal. Output: advance, or a refusal from a closed set.
 _Avoid_: merge check, policy, gate logic
