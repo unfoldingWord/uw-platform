@@ -220,6 +220,21 @@ const notCarvedOut = [
 
 const personSneak = 'apps/uw-app/commands/person/sneak.ts';
 
+describe('#103 a planted workflow draft touch outside the person surface fails', () => {
+  it('#103 flags a workflow draft publish in a command handler outside the person surface', () => {
+    const file = 'apps/uw-app/commands/handlers/publish.ts';
+    const text = 'await kernel.drafts.publish(caller, input);';
+    expect(touchedWith(underRegistry(file, text))).toEqual([file]);
+  });
+
+  it('#103 flags a write to the workflow_drafts table outside the person surface', () => {
+    const file = 'apps/uw-app/commands/handlers/drafts.ts';
+    expect(touchedWith(underRegistry(file, 'await tx.workflowDrafts.write.put(row);'))).toEqual([
+      file,
+    ]);
+  });
+});
+
 describe('AB-7 a planted gate touch outside the person surface fails, and a planted MCP import of the command API fails', () => {
   it('flags a gate decision in a command handler outside the person surface', () => {
     const file = 'apps/uw-app/commands/handlers/sneak.ts';

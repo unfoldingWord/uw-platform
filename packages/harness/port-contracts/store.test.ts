@@ -11,6 +11,7 @@ const refusingTransaction: StoreTransaction = {
   lockShared: () => Promise.reject(new Error('lock refused')),
   harnesses: untouched(),
   harnessStages: untouched(),
+  workflowDrafts: untouched(),
   harnessItems: untouched(),
   harnessEvents: untouched(),
   harnessRuns: untouched(),

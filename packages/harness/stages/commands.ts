@@ -65,7 +65,7 @@ function replaceOne(stages: readonly Stage[], next: Stage): readonly Stage[] {
   return stages.map((stage) => (stage.key === next.key ? next : stage));
 }
 
-async function instructionsRefusal(
+export async function instructionsRefusal(
   tx: StoreTransaction,
   harness: Harness,
   pageId: string | null | undefined,
@@ -112,7 +112,7 @@ async function awaitingOutcome(
   return null;
 }
 
-async function connectorInFlight(
+export async function connectorInFlight(
   tx: StoreTransaction,
   harness: Harness,
   stage: Stage,
@@ -160,7 +160,7 @@ function updateWork(stageKey: string, change: StageChange): EditWork<Stage> {
   };
 }
 
-async function removalRefusal(
+export async function removalRefusal(
   tx: StoreTransaction,
   harness: Harness,
   stage: Stage,

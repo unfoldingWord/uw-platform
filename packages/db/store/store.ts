@@ -2,6 +2,7 @@ import { advisoryLock, advisoryLockShared } from '../advisory-locks.ts';
 import type { AnyDatabase, AnyExecutor } from '../any-database.ts';
 import { appliedMigrations } from '../migration-ledger.ts';
 import { bindDelegations } from './delegations.ts';
+import { bindDrafts } from './drafts.ts';
 import { bindEvents } from './events.ts';
 import { bindGateDecisions } from './gate-decisions.ts';
 import { bindHarnesses } from './harnesses.ts';
@@ -37,6 +38,7 @@ function bind(executor: AnyExecutor): DrizzleTransaction {
     },
     harnesses: bindHarnesses(executor),
     harnessStages: bindStages(executor),
+    workflowDrafts: bindDrafts(executor),
     harnessItems: bindItems(executor),
     harnessEvents: bindEvents(executor),
     harnessRuns: bindRuns(executor),

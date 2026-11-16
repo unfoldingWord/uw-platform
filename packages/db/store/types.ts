@@ -1,6 +1,7 @@
 import type {
   CapabilityWord,
   CostBasis,
+  DraftStage,
   DelegableTier,
   Engine,
   EventEvidence,
@@ -76,6 +77,26 @@ export type HarnessStagesGateway = {
     update(stage: Stage): Promise<boolean>;
     reposition(harnessId: string, positions: readonly StagePosition[]): Promise<void>;
     remove(stageId: string): Promise<boolean>;
+  };
+};
+export type WorkflowDraftRow = {
+  readonly harnessId: string;
+  readonly holderPersonId: string;
+  readonly startedAt: Date;
+  readonly touchedAt: Date;
+  readonly revision: number;
+  readonly stages: readonly DraftStage[];
+  readonly base: readonly Stage[];
+};
+export type HeldDraft = WorkflowDraftRow & { readonly holderName: string };
+
+export type WorkflowDraftsGateway = {
+  readonly read: {
+    forHarness(harnessId: string): Promise<HeldDraft | null>;
+  };
+  readonly write: {
+    put(draft: WorkflowDraftRow): Promise<void>;
+    remove(harnessId: string): Promise<boolean>;
   };
 };
 export type OpenCount = { readonly harnessId: string; readonly open: number };
@@ -354,6 +375,7 @@ export type DrizzleTransaction = {
   lockShared(key: string): Promise<void>;
   readonly harnesses: HarnessesGateway;
   readonly harnessStages: HarnessStagesGateway;
+  readonly workflowDrafts: WorkflowDraftsGateway;
   readonly harnessItems: HarnessItemsGateway;
   readonly harnessEvents: HarnessEventsGateway;
   readonly harnessRuns: HarnessRunsGateway;

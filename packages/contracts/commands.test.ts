@@ -62,13 +62,6 @@ describe('command bodies', () => {
     expect(commandSchema.safeParse({ ...base, pullRequest: null, head: null }).success).toBe(true);
     expect(commandSchema.safeParse({ ...base, pullRequest, head: null }).success).toBe(false);
   });
-
-  it('refuses a stage change that names no column or pauses the lane', () => {
-    const base = { command: 'update_stage', requestId, stageKey: 'review' };
-    expect(commandSchema.safeParse({ ...base, change: { title: 'Review' } }).success).toBe(true);
-    expect(commandSchema.safeParse({ ...base, change: {} }).success).toBe(false);
-    expect(commandSchema.safeParse({ ...base, change: { paused: true } }).success).toBe(false);
-  });
 });
 
 describe('WB-2 reorder names the item to place before, never an index', () => {
@@ -80,29 +73,44 @@ describe('WB-2 reorder names the item to place before, never an index', () => {
   });
 });
 
-describe('stage command bodies are bounded', () => {
-  const stage = validBody('create_stage');
-  const stageOf = (change: Record<string, unknown>) => ({
-    ...stage,
-    stage: { ...(stage['stage'] as Record<string, unknown>), ...change },
+describe("#103 a workflow's stages change only through a draft", () => {
+  const save = validBody('save_workflow_draft');
+  const stage = (save['stages'] as Record<string, unknown>[])[0] ?? {};
+  const withStage = (change: Record<string, unknown>) => ({
+    ...save,
+    stages: [{ ...stage, ...change }],
   });
   const many = (count: number) => Array.from({ length: count }, (_, n) => `v${n}`);
 
-  it('caps validators, feeds, validator names and the WIP limit on a new stage', () => {
-    expect(commandSchema.safeParse(stageOf({ validators: many(50) })).success).toBe(true);
-    expect(commandSchema.safeParse(stageOf({ validators: many(51) })).success).toBe(false);
-    expect(commandSchema.safeParse(stageOf({ feeds: many(51) })).success).toBe(false);
-    expect(commandSchema.safeParse(stageOf({ validators: ['v'.repeat(101)] })).success).toBe(false);
-    expect(commandSchema.safeParse(stageOf({ wipLimit: 1001 })).success).toBe(false);
+  it('no longer takes the four live stage commands', () => {
+    for (const name of ['create_stage', 'update_stage', 'reorder_stages', 'remove_stage'])
+      expect(commandNames).not.toContain(name);
   });
 
-  it('caps the same columns on a stage change and the stage order', () => {
-    const update = validBody('update_stage');
-    expect(commandSchema.safeParse({ ...update, change: { feeds: many(51) } }).success).toBe(false);
-    expect(commandSchema.safeParse({ ...update, change: { wipLimit: 1001 } }).success).toBe(false);
-    const reorder = validBody('reorder_stages');
-    expect(commandSchema.safeParse({ ...reorder, order: many(50) }).success).toBe(true);
-    expect(commandSchema.safeParse({ ...reorder, order: many(51) }).success).toBe(false);
+  it('saves a half-typed stage so the check can name what is wrong', () => {
+    expect(commandSchema.safeParse(withStage({ title: '', wipLimit: 0 })).success).toBe(true);
+  });
+
+  it('caps validators, feeds, the stage count and the WIP limit on a save', () => {
+    expect(commandSchema.safeParse(withStage({ validators: many(51) })).success).toBe(false);
+    expect(commandSchema.safeParse(withStage({ feeds: many(51) })).success).toBe(false);
+    expect(commandSchema.safeParse(withStage({ wipLimit: 1001 })).success).toBe(false);
+    const fifty = { ...save, stages: Array.from({ length: 51 }, () => stage) };
+    expect(commandSchema.safeParse(fifty).success).toBe(false);
+  });
+
+  it('never takes a paused flag or a position in a draft stage', () => {
+    expect(commandSchema.safeParse(withStage({ paused: true })).success).toBe(false);
+    expect(commandSchema.safeParse(withStage({ position: 10 })).success).toBe(false);
+  });
+
+  it('needs a reason to take over a draft and a revision to publish', () => {
+    const takeOver = { command: 'take_over_workflow_draft', requestId };
+    expect(commandSchema.safeParse({ ...takeOver, reason: ' ' }).success).toBe(false);
+    expect(commandSchema.safeParse({ ...takeOver, reason: 'away' }).success).toBe(true);
+    const publish = { command: 'publish_workflow_draft', requestId };
+    expect(commandSchema.safeParse(publish).success).toBe(false);
+    expect(commandSchema.safeParse({ ...publish, revision: 1 }).success).toBe(true);
   });
 });
 

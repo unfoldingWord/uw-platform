@@ -1,1 +1,1 @@
-export const owns = ['harnesses', 'harness_stages'] as const;
+export const owns = ['harnesses', 'harness_stages', 'workflow_drafts'] as const;

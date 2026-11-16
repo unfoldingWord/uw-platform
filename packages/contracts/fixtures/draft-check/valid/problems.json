@@ -1,0 +1,11 @@
+{
+  "revision": 4,
+  "problems": [
+    {
+      "stage": "build",
+      "code": "unknown_loop_target",
+      "message": "Build loops back to a stage that is not in the workflow: gone."
+    },
+    { "stage": null, "code": "no_stages", "message": "A workflow needs at least one stage." }
+  ]
+}

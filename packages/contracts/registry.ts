@@ -6,6 +6,7 @@ import {
   serviceClientIdSchema,
 } from './agent-commands.ts';
 import { jdAreaSchema } from './areas.ts';
+import { draftCheckSchema, draftStageSchema } from './drafts.ts';
 import * as closedSets from './closed-sets.ts';
 import {
   commandNameSchema,
@@ -218,6 +219,8 @@ export const schemaRegistry: Record<string, ZodType> = {
   'run-step-record': runStepRecordSchema,
   'record-run-step-reply': recordRunStepReplySchema,
   'stage-key': stageKeySchema,
+  'draft-stage': draftStageSchema,
+  'draft-check': draftCheckSchema,
   'persona-identity': personaIdentitySchema,
   'pull-request-ref': pullRequestRefSchema,
   'issue-ref': issueRefSchema,
