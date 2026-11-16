@@ -6,7 +6,7 @@ import { createApp } from '../app.tsx';
 import { platformKernel } from '../kernel.ts';
 import type { HubNamespace } from '../env.ts';
 import { software } from '@uw/harness';
-import { accepted, callerOf, ian, softwareHarness } from '../testing/commands.ts';
+import { accepted, callerOf, rowan, softwareHarness } from '../testing/commands.ts';
 import { kernelOn } from '../testing/kernel.ts';
 import { recordingDeps } from '../testing/deps.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
@@ -209,7 +209,7 @@ async function idsInOrder(db: Database): Promise<void> {
     .sort()
     .reverse();
   const kernel = kernelOn(db, { now: () => new Date() });
-  const caller = callerOf(await ian(db));
+  const caller = callerOf(await rowan(db));
   for (const [index, harnessId] of descending.entries()) {
     const input = {
       harnessId,

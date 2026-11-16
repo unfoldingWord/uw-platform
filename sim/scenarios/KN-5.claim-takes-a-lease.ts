@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { LEASE_MS, software, type Claimed, type KernelOutcome } from '@uw/harness';
-import { createSimHarness, simAgent, simCaller, simIan, simPerson } from '../fixtures.ts';
+import { createSimHarness, simAgent, simCaller, simRowan, simPerson } from '../fixtures.ts';
 import { defineScenario } from '../scenario.ts';
 
 function agentClaim(
@@ -32,7 +32,7 @@ export const scenario = defineScenario({
     'an agent claim takes a 15-minute lease, a person claim takes none, and a held item refuses a second claimant',
   run: async (world) => {
     const { harness } = await createSimHarness(world, software);
-    const admin = simCaller(world, await simIan(world));
+    const admin = simCaller(world, await simRowan(world));
     await world.kernel.stages.updateStage(admin, {
       harnessId: harness.id,
       stageKey: 'package',

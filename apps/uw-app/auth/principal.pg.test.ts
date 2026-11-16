@@ -14,8 +14,8 @@ import {
 import { postgresDeps, testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
-const IAN_GRANT_ID = '00000000-0000-4000-8000-000000000101';
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN_GRANT_ID = '00000000-0000-4000-8000-000000000101';
 
 let fixture: AccessFixture;
 
@@ -95,13 +95,13 @@ describe.skipIf(!testServer)('FD-7 the principal minted at the edge', () => {
 
   it('maps a differently cased address to the same people row', () =>
     withAppDatabase(async (db) => {
-      const mixed = await me(db, 'Ian.Lindsley@UnfoldingWord.org');
-      const lower = await me(db, 'ian.lindsley@unfoldingword.org');
+      const mixed = await me(db, 'Rowan.Test@UnfoldingWord.org');
+      const lower = await me(db, 'rowan.test@unfoldingword.org');
       expect(mixed.status).toBe(200);
       expect(lower.status).toBe(200);
-      expect(principalOf(mixed).personId).toBe(IAN_ID);
-      expect(principalOf(lower).personId).toBe(IAN_ID);
-      expect(await countOf(db, 'ian.lindsley@unfoldingword.org')).toBe(1);
+      expect(principalOf(mixed).personId).toBe(ROWAN_ID);
+      expect(principalOf(lower).personId).toBe(ROWAN_ID);
+      expect(await countOf(db, 'rowan.test@unfoldingword.org')).toBe(1);
     }));
 
   it('marks any other address pending and answers with pending approval', () =>
@@ -155,10 +155,10 @@ describe('FD-7 the people directory is the one writer of people', () => {
 describe.skipIf(!testServer)('FD-8 grants resolve from the table on every request', () => {
   it('gives the bootstrap admin the org admin grant', () =>
     withAppDatabase(async (db) => {
-      const reply = await me(db, 'ian.lindsley@unfoldingword.org');
+      const reply = await me(db, 'rowan.test@unfoldingword.org');
       expect(principalOf(reply).grants).toEqual([
         {
-          grantId: IAN_GRANT_ID,
+          grantId: ROWAN_GRANT_ID,
           role: 'admin',
           scopeKind: 'org',
           scopeArea: null,
@@ -172,10 +172,10 @@ describe.skipIf(!testServer)('FD-8 grants resolve from the table on every reques
       await me(db, 'g@unfoldingword.org');
       const id = await personIdOf(db, 'g@unfoldingword.org');
       await db.execute(
-        sql`INSERT INTO role_grants (person_id, role, scope_kind, granted_by, revoked_at) VALUES (${id}, 'editor', 'org', ${IAN_ID}, now())`,
+        sql`INSERT INTO role_grants (person_id, role, scope_kind, granted_by, revoked_at) VALUES (${id}, 'editor', 'org', ${ROWAN_ID}, now())`,
       );
       await db.execute(
-        sql`INSERT INTO role_grants (person_id, role, scope_kind, granted_by, expires_at) VALUES (${id}, 'viewer', 'org', ${IAN_ID}, now() - interval '1 minute')`,
+        sql`INSERT INTO role_grants (person_id, role, scope_kind, granted_by, expires_at) VALUES (${id}, 'viewer', 'org', ${ROWAN_ID}, now() - interval '1 minute')`,
       );
       const reply = await me(db, 'g@unfoldingword.org');
       expect(principalOf(reply).grants).toEqual([]);
@@ -187,7 +187,7 @@ describe.skipIf(!testServer)('FD-8 grants resolve from the table on every reques
       expect(principalOf(first).grants).toEqual([]);
       const id = await personIdOf(db, 'h@unfoldingword.org');
       await db.execute(
-        sql`INSERT INTO role_grants (person_id, role, scope_kind, scope_area, granted_by) VALUES (${id}, 'editor', 'jd_area', '80-89', ${IAN_ID})`,
+        sql`INSERT INTO role_grants (person_id, role, scope_kind, scope_area, granted_by) VALUES (${id}, 'editor', 'jd_area', '80-89', ${ROWAN_ID})`,
       );
       const second = await me(db, 'h@unfoldingword.org');
       expect(roleAndArea(principalOf(second))).toEqual([['editor', '80-89']]);
@@ -195,7 +195,7 @@ describe.skipIf(!testServer)('FD-8 grants resolve from the table on every reques
 
   it('returns a principal that parses back through the contract schema', () =>
     withAppDatabase(async (db) => {
-      const reply = await me(db, 'ian.lindsley@unfoldingword.org');
+      const reply = await me(db, 'rowan.test@unfoldingword.org');
       const body = reply.body['principal'];
       expect(parsePrincipal(JSON.parse(JSON.stringify(body)))).toEqual(body);
     }));

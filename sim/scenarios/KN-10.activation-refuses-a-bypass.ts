@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { bypassesShip, templateProperty } from '@uw/harness';
-import { simCaller, simIan } from '../fixtures.ts';
+import { simCaller, simRowan } from '../fixtures.ts';
 import { defineScenario } from '../scenario.ts';
 
 export const scenario = defineScenario({
@@ -8,7 +8,7 @@ export const scenario = defineScenario({
   title:
     'activating a template with a path to an effect that skips the gate is refused, naming the first offending path, and writes no harness',
   run: async (world) => {
-    const outcome = await world.kernel.stages.activate(simCaller(world, await simIan(world)), {
+    const outcome = await world.kernel.stages.activate(simCaller(world, await simRowan(world)), {
       harnessId: world.adapters.ids.next(),
       harnessKey: 'bypass',
       jdArea: '80-89',

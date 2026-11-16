@@ -27,15 +27,15 @@ export const mergePath = `${pulls}/merge`;
 
 export type ParkedAtShip = {
   readonly item: ItemState;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly kim: Principal;
 };
 
 export async function parkedAtShip(db: Database): Promise<ParkedAtShip> {
-  const { ian, kim } = await people(db);
-  const item = await parkAtShip(db, kernelOn(db, clock), ian);
+  const { rowan, kim } = await people(db);
+  const item = await parkAtShip(db, kernelOn(db, clock), rowan);
   await storedOnTheOldBase(db, item.itemId);
-  return { item, ian, kim };
+  return { item, rowan, kim };
 }
 
 function tagPath(itemId: string): string {

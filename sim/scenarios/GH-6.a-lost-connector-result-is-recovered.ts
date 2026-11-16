@@ -18,7 +18,7 @@ import type { World } from '../world.ts';
 type Scene = {
   readonly world: World;
   readonly harnessId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly max: Principal;
 };
 
@@ -46,7 +46,7 @@ async function parked(scene: Scene, title: string, change: ShipChange): Promise<
 }
 
 async function approve(scene: Scene, kernel: Kernel, itemId: string) {
-  return kernel.gates.decide(simCaller(scene.world, scene.ian), {
+  return kernel.gates.decide(simCaller(scene.world, scene.rowan), {
     itemId,
     decision: 'approve',
     reason: null,
@@ -56,7 +56,7 @@ async function approve(scene: Scene, kernel: Kernel, itemId: string) {
 }
 
 function recover(scene: Scene) {
-  return scene.world.kernel.gates.recoverConnectors(simCaller(scene.world, scene.ian), {
+  return scene.world.kernel.gates.recoverConnectors(simCaller(scene.world, scene.rowan), {
     harnessId: scene.harnessId,
   });
 }
@@ -124,7 +124,7 @@ export const scenario = defineScenario({
     const max = await simPerson(world, 2, [
       { role: 'editor', scopeKind: 'jd_area', scopeArea: '80-89' },
     ]);
-    const scene = { world, harnessId: harness.id, ian: admin, max };
+    const scene = { world, harnessId: harness.id, rowan: admin, max };
     const itemA = await parked(scene, 'Show the board', standardChange);
     await recoveredMerge(scene, itemA);
     const itemB = await parked(scene, 'Sort the board', changeB);

@@ -203,6 +203,8 @@ describe('GL-1 the runbook switches on what the go-live files leave unset', () =
     const section = switchSection();
     const secrets = goLiveSettings();
     expect(secrets).toEqual([
+      'BOOTSTRAP_ADMIN_EMAIL',
+      'BOOTSTRAP_ADMIN_NAME',
       'CLOUDFLARE_ACCOUNT_ID',
       'CLOUDFLARE_API_TOKEN',
       'DATABASE_TUNNEL_CLIENT_ID',

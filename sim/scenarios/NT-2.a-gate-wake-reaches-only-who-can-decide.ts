@@ -16,10 +16,10 @@ export const scenario = defineScenario({
     const standardWake = gateOf(standard);
     assert.deepEqual(
       recipientIds(standardWake),
-      [personOf(scene.ian), personOf(scene.areaAdmin)].toSorted(),
+      [personOf(scene.rowan), personOf(scene.areaAdmin)].toSorted(),
     );
     assert.equal(standardWake?.link, gateLink(scene.harnessId, standard));
-    assert.deepEqual(recipientIds(gateOf(high)), [personOf(scene.ian)]);
+    assert.deepEqual(recipientIds(gateOf(high)), [personOf(scene.rowan)]);
     return {
       state: {
         standard: recipientIds(standardWake),

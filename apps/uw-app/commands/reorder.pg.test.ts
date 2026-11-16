@@ -11,7 +11,7 @@ import {
   enqueued,
   eventsNamed,
   get,
-  ian,
+  rowan,
   type Person,
   type Scene,
   softwareHarness,
@@ -62,7 +62,7 @@ async function staleBoard(db: Database): Promise<void> {
   const [first, , third] = order;
   if (first === undefined || third === undefined) throw new Error('three items expected');
   const kernel = kernelOn(db, { now: () => new Date() });
-  const admin = callerOf(await ian(db));
+  const admin = callerOf(await rowan(db));
   accepted(await kernel.items.claim(admin, { itemId: first, delegationId: null }));
   accepted(
     await kernel.items.submit(admin, { itemId: first, to: null, evidence: {}, change: null }),

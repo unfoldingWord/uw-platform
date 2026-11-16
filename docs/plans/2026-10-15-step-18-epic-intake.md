@@ -53,7 +53,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Where and how**
 
-- Work only in `/home/ianjl/projects/uw-platform-v0.2.0`, branch `build/v0.2.0`. Never commit to `main`, never force-push, never `--no-verify`.
+- Work only in `/home/rowan-test/projects/uw-platform-v0.2.0`, branch `build/v0.2.0`. Never commit to `main`, never force-push, never `--no-verify`.
 - Read `AGENTS.md` sections 1, 4 and 10 before the first edit. When this plan and `AGENTS.md` disagree, `AGENTS.md` wins; record the conflict in `docs/progress_tracker.md` and build the version that keeps the rule.
 - Words come from `CONTEXT.md`: **epic**, **done-when**, **blocker** and **not ready** (the last two added in Task 1), **item**, **claim**, **Ship**. Never "parent issue" or "milestone" for an epic, never "acceptance criteria" or "definition of done" for a done-when, never "dependency" for a blocker in code or copy.
 - Commits: Conventional Commits, the agent as sole author, no attribution footer. Hooks always pass. Put the requirement IDs in each commit body.
@@ -3671,7 +3671,7 @@ async function epicBoardHtml(): Promise<string> {
     const kernel = kernelOn(db, seedClock, { githubFacts: answeringEpic(epic) });
     const harnessId = randomUUID();
     accepted(
-      await kernel.stages.activate(callerOf(world.ian), {
+      await kernel.stages.activate(callerOf(world.rowan), {
         harnessId,
         harnessKey: 'epics',
         jdArea: '80-89',
@@ -3679,8 +3679,8 @@ async function epicBoardHtml(): Promise<string> {
         repository,
       }),
     );
-    accepted(await kernel.items.enqueueEpic(callerOf(world.ian), { harnessId, epic: { repo: repository, number: 40 } }));
-    html = (await getHtml(db, world.ianEmail, boardPath(harnessId), {}, viewClock)).text;
+    accepted(await kernel.items.enqueueEpic(callerOf(world.rowan), { harnessId, epic: { repo: repository, number: 40 } }));
+    html = (await getHtml(db, world.rowanEmail, boardPath(harnessId), {}, viewClock)).text;
   });
   return html;
 }

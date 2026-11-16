@@ -39,7 +39,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Where and how**
 
-- Work only in the worktree `/home/ianjl/projects/uw-platform-v1` on branch `build/v1`. Never commit to `main`, never force-push, never `--no-verify`.
+- Work only in the worktree `/home/rowan-test/projects/uw-platform-v1` on branch `build/v1`. Never commit to `main`, never force-push, never `--no-verify`.
 - Read `AGENTS.md` sections 1, 4, 6 and 10 before the first edit. When this plan and `AGENTS.md` disagree, `AGENTS.md` wins; record the conflict in `docs/progress_tracker.md` and build the version that keeps the rule.
 - Words come from `CONTEXT.md`: "kernel" (never "engine" for the core), "port", "adapter", "platform adapter", "test adapter", "not wired", "port contract", "sim", "world", "scenario", "walk", "trace", "principal", "grant", "verb", "wake". Never "mock", "fake" or "memory adapter" for the Store test adapter: it is real Postgres.
 
@@ -3720,7 +3720,7 @@ Status row for step 2: state `Built`; evidence `docs/plans/2026-10-01-step-02-ke
 
 | Requirement | What is written | What is needed to verify it live | From whom |
 |---|---|---|---|
-| DX-2 DX-3 | `apps/uw-app/ports/store.ts` and `apps/uw-app/ports/grants.ts`, the platform Store and Grants over Hyperdrive, proven on the CI Postgres service container | Hyperdrive configs and the Neon database (FD-12's switch-on) | Ian |
+| DX-2 DX-3 | `apps/uw-app/ports/store.ts` and `apps/uw-app/ports/grants.ts`, the platform Store and Grants over Hyperdrive, proven on the CI Postgres service container | Hyperdrive configs and the Neon database (FD-12's switch-on) | The owner |
 
 - [ ] **Step 5: Run, verify, commit**
 

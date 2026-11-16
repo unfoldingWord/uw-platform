@@ -2,22 +2,22 @@ import { defaultCiChecks } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { bml, readAllEvents, software, type Caller } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { simCaller, simIan } from '../fixtures.ts';
+import { simCaller, simRowan } from '../fixtures.ts';
 import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
 
-async function inWorld(work: (world: World, ian: Caller) => Promise<void>): Promise<void> {
+async function inWorld(work: (world: World, rowan: Caller) => Promise<void>): Promise<void> {
   const world = await createWorld();
   try {
-    await work(world, simCaller(world, await simIan(world)));
+    await work(world, simCaller(world, await simRowan(world)));
   } finally {
     await world.close();
   }
 }
 
-function activateSoftware(world: World, ian: Caller, harnessKey: string, repository: string) {
-  return world.kernel.stages.activate(ian, {
+function activateSoftware(world: World, rowan: Caller, harnessKey: string, repository: string) {
+  return world.kernel.stages.activate(rowan, {
     harnessId: world.adapters.ids.next(),
     harnessKey,
     jdArea: '80-89',
@@ -31,8 +31,8 @@ function byRepository(world: World, repository: string) {
   return world.adapters.store.transaction((tx) => tx.harnesses.read.byRepository(repository));
 }
 
-async function storesAndRecords(world: World, ian: Caller): Promise<void> {
-  const outcome = await activateSoftware(world, ian, 'software', 'unfoldingWord/uw-platform');
+async function storesAndRecords(world: World, rowan: Caller): Promise<void> {
+  const outcome = await activateSoftware(world, rowan, 'software', 'unfoldingWord/uw-platform');
   if (outcome.status !== 'accepted') throw new Error(`refused: ${outcome.reason}`);
   const { harness } = outcome.value;
   expect(harness.repository).toBe('unfoldingWord/uw-platform');
@@ -49,9 +49,9 @@ async function storesAndRecords(world: World, ian: Caller): Promise<void> {
   expect(await byRepository(world, 'unfoldingWord/other')).toBeNull();
 }
 
-async function refusesTakenRepository(world: World, ian: Caller): Promise<void> {
-  await activateSoftware(world, ian, 'software', 'unfoldingWord/uw-platform');
-  const second = await activateSoftware(world, ian, 'second', 'UNFOLDINGWORD/uw-platform');
+async function refusesTakenRepository(world: World, rowan: Caller): Promise<void> {
+  await activateSoftware(world, rowan, 'software', 'unfoldingWord/uw-platform');
+  const second = await activateSoftware(world, rowan, 'second', 'UNFOLDINGWORD/uw-platform');
   expect(second).toEqual({
     status: 'error',
     reason: 'harness_exists',
@@ -62,8 +62,8 @@ async function refusesTakenRepository(world: World, ian: Caller): Promise<void> 
   });
 }
 
-async function activatesWithoutRepository(world: World, ian: Caller): Promise<void> {
-  const outcome = await world.kernel.stages.activate(ian, {
+async function activatesWithoutRepository(world: World, rowan: Caller): Promise<void> {
+  const outcome = await world.kernel.stages.activate(rowan, {
     harnessId: world.adapters.ids.next(),
     harnessKey: 'bml',
     jdArea: '30-39',
@@ -77,8 +77,8 @@ async function activatesWithoutRepository(world: World, ian: Caller): Promise<vo
   });
 }
 
-async function refusesMalformedRepository(world: World, ian: Caller): Promise<void> {
-  const outcome = await activateSoftware(world, ian, 'software', 'no-slash');
+async function refusesMalformedRepository(world: World, rowan: Caller): Promise<void> {
+  const outcome = await activateSoftware(world, rowan, 'software', 'no-slash');
   expect(outcome).toEqual({
     status: 'error',
     reason: 'malformed_command',

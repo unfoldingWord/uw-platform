@@ -45,9 +45,9 @@ describe('FD-11 the structured logger', () => {
   it('carries a principal set later, and never lets an extra field overwrite a required one', () => {
     const { lines, sink } = capture();
     createLogger(context, sink)
-      .with({ principal: 'human:ian' })
+      .with({ principal: 'human:rowan' })
       .error('failed', { outcome: 'internal_error', trace_id: 'forged' });
-    expect(lines[0]).toMatchObject({ principal: 'human:ian', trace_id: context.traceId });
+    expect(lines[0]).toMatchObject({ principal: 'human:rowan', trace_id: context.traceId });
   });
 });
 

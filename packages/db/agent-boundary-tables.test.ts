@@ -25,7 +25,7 @@ const validTask: TaskRow = {
   createdBy: agent,
   page: '',
 };
-const validToken: TokenRow = { device: 'laptop', boundBy: 'human:ian', revokedAt: null };
+const validToken: TokenRow = { device: 'laptop', boundBy: 'human:rowan', revokedAt: null };
 
 function idOf(n: number): string {
   return `00000000-0000-4000-8000-${n.toString(16).padStart(12, '0')}`;

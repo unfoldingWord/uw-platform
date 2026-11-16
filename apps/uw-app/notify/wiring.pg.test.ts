@@ -8,7 +8,7 @@ import {
   accepted,
   callerOf,
   enqueued,
-  ian,
+  rowan,
   softwareHarness,
   type Scene,
 } from '../testing/commands.ts';
@@ -26,7 +26,7 @@ import {
   type VapidFixture,
 } from './testing.ts';
 
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 
 type Wired = {
   readonly db: Database;
@@ -40,7 +40,7 @@ type Wired = {
 async function wired(db: Database): Promise<Wired> {
   const scene = await softwareHarness(db);
   const vapid = await vapidFixture();
-  await pushStore(db).subscribe(IAN_ID, await subscription(endpointFor('ian')), new Date());
+  await pushStore(db).subscribe(ROWAN_ID, await subscription(endpointFor('rowan')), new Date());
   const recorded = recordingFetch(() => new Response(null, { status: 201 }));
   return { db, scene, vapid, calls: recorded.calls, lines: [], fetcher: recorded.fetcher };
 }
@@ -90,16 +90,16 @@ async function parkedThroughCommands(db: Database): Promise<void> {
   expect((await send('claim')).status).toBe(200);
   const tweaked = await send('tweak_package');
   expect(tweaked.status).toBe(200);
-  expect(w.calls.map((call) => call.url)).toEqual([endpointFor('ian')]);
+  expect(w.calls.map((call) => call.url)).toEqual([endpointFor('rowan')]);
   expect(pushSent(w)).toEqual([
-    expect.objectContaining({ trace_id: tweaked.headers.get('x-trace-id'), person_id: IAN_ID }),
+    expect.objectContaining({ trace_id: tweaked.headers.get('x-trace-id'), person_id: ROWAN_ID }),
   ]);
 }
 
 async function parkedThroughMcp(db: Database): Promise<void> {
   const w = await wired(db);
   const kernel = kernelOn(db, { now: () => new Date() });
-  const admin = await ian(db);
+  const admin = await rowan(db);
   const change = { agentPickup: 'allowed' as const, exitGate: 'human_approval' as const };
   const harnessId = w.scene.harnessId;
   accepted(
@@ -125,7 +125,7 @@ async function parkedThroughMcp(db: Database): Promise<void> {
     head: null,
   });
   expect(submitted.body).toMatchObject({ result: 'parked' });
-  expect(w.calls.map((call) => call.url)).toEqual([endpointFor('ian')]);
+  expect(w.calls.map((call) => call.url)).toEqual([endpointFor('rowan')]);
   expect(pushSent(w)).toHaveLength(1);
 }
 
@@ -133,7 +133,7 @@ async function linksOpen(db: Database): Promise<void> {
   const world = await gateWorld(db);
   const { harnessId, itemId } = world.item;
   for (const link of [gateLink(harnessId, itemId), itemLink(harnessId, itemId), homeLink]) {
-    const page = await getHtml(db, world.ianEmail, link);
+    const page = await getHtml(db, world.rowanEmail, link);
     expect([link, page.status, page.headers.get('content-type')?.split(';')[0]]).toEqual([
       link,
       200,

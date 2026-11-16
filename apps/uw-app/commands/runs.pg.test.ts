@@ -18,7 +18,7 @@ import {
   enqueued,
   eventCount,
   eventsNamed,
-  ian,
+  rowan,
   itemState,
   softwareHarness,
   type Scene,
@@ -31,7 +31,7 @@ type Hosted = Scene & {
   readonly beat: Caller;
 };
 
-const IAN_EMAIL = 'ian.lindsley@unfoldingword.org';
+const ROWAN_EMAIL = 'rowan.test@unfoldingword.org';
 
 function personaOf(admin: Principal): Principal {
   return principalSchema.parse({
@@ -46,7 +46,7 @@ function personaOf(admin: Principal): Principal {
 
 async function hostedRun(db: Database): Promise<Hosted> {
   const scene = await softwareHarness(db);
-  const admin = await ian(db);
+  const admin = await rowan(db);
   const kernel = kernelOn(db, { now: () => new Date() });
   const as = callerOf(admin);
   const change = { agentPickup: 'allowed' as const, bracket: 'build_package' as const };
@@ -95,7 +95,7 @@ async function hostedBuilderSwitch(db: Database): Promise<void> {
   const fresh = { requestId: randomUUID(), enabled: true };
   const byAdmin = await command(
     db,
-    { email: IAN_EMAIL },
+    { email: ROWAN_EMAIL },
     scene.harnessId,
     'set_hosted_builder',
     fresh,
@@ -107,7 +107,7 @@ async function hostedBuilderSwitch(db: Database): Promise<void> {
 
 async function ownerStops(db: Database): Promise<void> {
   const scene = await hostedRun(db);
-  const sent = await send(db, IAN_EMAIL, scene, 'stop_run');
+  const sent = await send(db, ROWAN_EMAIL, scene, 'stop_run');
   expect(sent.body).toMatchObject({ status: 'accepted' });
   expect(await runOf(db, scene.runId)).toMatchObject({ outcome: 'stopped' });
   expect((await itemState(db, scene.itemId)).holder).toBeNull();
@@ -133,7 +133,7 @@ async function editorRefused(db: Database): Promise<void> {
 async function promptDelivered(db: Database): Promise<void> {
   const scene = await hostedRun(db);
   const message = 'Rebase on main first.';
-  const sent = await send(db, IAN_EMAIL, scene, 'prompt_run', { message });
+  const sent = await send(db, ROWAN_EMAIL, scene, 'prompt_run', { message });
   expect(sent.body).toMatchObject({ status: 'accepted' });
   const kernel = kernelOn(db, { now: () => new Date() });
   const step = {
@@ -154,7 +154,7 @@ async function noLiveRun(db: Database): Promise<void> {
   const itemId = await enqueued(db, scene.harnessId, 'Nothing runs here');
   const requestId = randomUUID();
   const body = { requestId, itemId };
-  const sent = await command(db, { email: IAN_EMAIL }, scene.harnessId, 'stop_run', body);
+  const sent = await command(db, { email: ROWAN_EMAIL }, scene.harnessId, 'stop_run', body);
   expect(sent.status).toBe(404);
   expect(sent.body).toEqual({ status: 'error', requestId, reason: 'run_not_found' });
 }
@@ -162,9 +162,9 @@ async function noLiveRun(db: Database): Promise<void> {
 async function replayedStop(db: Database): Promise<void> {
   const scene = await hostedRun(db);
   const body = { requestId: randomUUID(), itemId: scene.itemId };
-  const first = await command(db, { email: IAN_EMAIL }, scene.harnessId, 'stop_run', body);
+  const first = await command(db, { email: ROWAN_EMAIL }, scene.harnessId, 'stop_run', body);
   const events = await eventCount(db, scene.harnessId);
-  const second = await command(db, { email: IAN_EMAIL }, scene.harnessId, 'stop_run', body);
+  const second = await command(db, { email: ROWAN_EMAIL }, scene.harnessId, 'stop_run', body);
   expect(first.body).toMatchObject({ status: 'accepted' });
   expect(second.status).toBe(first.status);
   expect(second.text).toBe(first.text);
@@ -207,7 +207,7 @@ async function foreignRoute(db: Database): Promise<void> {
   ] as const) {
     const requestId = randomUUID();
     const body = { requestId, itemId: scene.itemId, ...extra };
-    const sent = await command(db, { email: IAN_EMAIL }, scene.otherHarnessId, name, body);
+    const sent = await command(db, { email: ROWAN_EMAIL }, scene.otherHarnessId, name, body);
     expect(sent.body).toEqual({ status: 'error', requestId, reason: 'item_not_found' });
   }
   expect([

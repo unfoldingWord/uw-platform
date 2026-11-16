@@ -85,7 +85,7 @@ describe('contract version', () => {
 
 describe('identity strings', () => {
   it.each([
-    'human:ian',
+    'human:rowan',
     'agent:claude',
     'agent:avery/laptop-1',
     'agent:avery/laptop-1 as reviewer via delegation:d-42',
@@ -100,7 +100,7 @@ describe('identity strings', () => {
     'robot:x',
     'agent:avery/laptop-1 as reviewer',
     'agent:avery as reviewer via delegation:d-42',
-    'human:ian as reviewer via delegation:d-42',
+    'human:rowan as reviewer via delegation:d-42',
   ])('rejects %j', (value) => {
     expect(identitySchema.safeParse(value).success).toBe(false);
   });

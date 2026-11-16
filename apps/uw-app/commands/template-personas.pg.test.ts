@@ -5,8 +5,8 @@ import type { Database } from '@uw/db/client';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { command } from '../testing/commands.ts';
 
-const IAN = { email: 'ian.lindsley@unfoldingword.org' };
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN = { email: 'rowan.test@unfoldingword.org' };
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 
 type PersonaRow = {
   readonly slug: string;
@@ -32,7 +32,7 @@ async function activate(
   const harnessId = randomUUID();
   const sent = await command(
     db,
-    IAN,
+    ROWAN,
     harnessId,
     'activate_template',
     activation(template, key, jdArea),
@@ -59,7 +59,7 @@ async function draftsSoftware(db: Database): Promise<void> {
     ['persona-reviewer-codex', 'suggested', 'agent:reviewer-codex'],
   ]);
   for (const row of rows) {
-    expect([row.harness, row.owner]).toEqual([harnessId, `human:${IAN_ID}`]);
+    expect([row.harness, row.owner]).toEqual([harnessId, `human:${ROWAN_ID}`]);
     expect(row.requires).toEqual(row.toolset);
   }
 }

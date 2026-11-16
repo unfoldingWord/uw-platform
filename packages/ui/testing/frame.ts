@@ -11,7 +11,7 @@ export function testFrame(items: readonly NavItem[] = testItems): Frame {
   const sections: readonly NavSection[] = [{ heading: 'Infrastructure', code: '30-39', items }];
   return {
     sections,
-    person: { initials: 'IL', name: 'Ian Lindsley', role: 'admin · 80-89' },
+    person: { initials: 'RT', name: 'Rowan Test', role: 'admin · 80-89' },
     waiting: 2,
     wordmarkPath: '/assets/uw-logo-white-0123456789ab.png',
     status: {

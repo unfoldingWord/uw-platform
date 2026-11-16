@@ -62,7 +62,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Where and how**
 
-- Work only in `/home/ianjl/projects/uw-platform-v0.2.0`, branch `build/v0.2.0`. Never commit to `main`, never force-push, never `--no-verify`.
+- Work only in `/home/rowan-test/projects/uw-platform-v0.2.0`, branch `build/v0.2.0`. Never commit to `main`, never force-push, never `--no-verify`.
 - Read `AGENTS.md` sections 1, 4 and 10 before the first edit. When this plan and `AGENTS.md` disagree, `AGENTS.md` wins; record the conflict in `docs/progress_tracker.md` and build the version that keeps the rule.
 - Words come from `CONTEXT.md`: **holder**, **silence alarm**, **check-only harness**, **item**, **claim**, **delegation**, **learning**, and this step's **bot author** and **external learning** (Task 1). Never "watchdog", "owner" or "assignee" for a holder, "review service" for a check-only harness, or "auto" anything.
 - Commits: Conventional Commits, the agent as sole author, no attribution footer. Hooks always pass. Put the requirement IDs in each commit body.
@@ -1170,8 +1170,8 @@ const since = new Date('2026-10-15T08:00:00.000Z');
 
 describe('OB-2 the holder in words', () => {
   it('OB-2 names the claimant and how long they have held it', () => {
-    const holder = { role: 'claimant' as const, kind: 'person' as const, identity: 'human:ian', since };
-    expect(holderText(holder, at)).toBe('Claimed by human:ian, for 1 d 1 h');
+    const holder = { role: 'claimant' as const, kind: 'person' as const, identity: 'human:rowan', since };
+    expect(holderText(holder, at)).toBe('Claimed by human:rowan, for 1 d 1 h');
   });
 
   it('OB-2 names the Reviewer, a waiting decision, nobody, and an unknown start', () => {
@@ -2510,7 +2510,7 @@ describe('OB-1 the silence alarm indicator', () => {
 
 describe('OB-2 the two holder indicators', () => {
   const none: Holds = { person: [], agent: [], uncounted: { person: 0, agent: 0 }, capped: false };
-  const holder = { role: 'claimant' as const, kind: 'person' as const, identity: 'human:ian', since: at };
+  const holder = { role: 'claimant' as const, kind: 'person' as const, identity: 'human:rowan', since: at };
 
   it('OB-2 counts items with a person over 24 hours and with an agent over 2 hours', () => {
     expect(heldIndicator('held_by_person', none)).toEqual({
@@ -2970,7 +2970,7 @@ import { kernelOn, personOn } from '../testing/kernel.ts';
 import { callTool, httpClient } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
 
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 const BENCH_OWNER = {
   id: '00000000-0000-4000-8000-000000002701',
   email: 'bench-owner@unfoldingword.org',
@@ -2981,7 +2981,7 @@ type Rig = {
   readonly db: Database;
   readonly fixture: AccessFixture;
   readonly kernel: Kernel;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly drop: () => Promise<void>;
 };
 type Bench = { readonly harnessId: string; readonly repository: string };
@@ -3001,12 +3001,12 @@ async function openRig(): Promise<Rig> {
     grantedAt: new Date('2026-01-01T00:00:00.000Z'),
     expiresAt: null,
   });
-  const ian = await personOn(db, IAN_ID, 'ian.lindsley@unfoldingword.org', new Date());
+  const rowan = await personOn(db, ROWAN_ID, 'rowan.test@unfoldingword.org', new Date());
   const drop = async () => {
     await db.$client.end();
     await database.drop();
   };
-  return { db, fixture: await createAccessFixture(), kernel: kernelOn(db, systemClock), ian, drop };
+  return { db, fixture: await createAccessFixture(), kernel: kernelOn(db, systemClock), rowan, drop };
 }
 
 function rig(): Promise<Rig> {
@@ -3032,7 +3032,7 @@ async function benchHarness(r: Rig): Promise<Bench> {
   const key = `bench-${harnessId.slice(0, 8)}`;
   const repository = `unfoldingWord/${key}`;
   const activate = { harnessId, harnessKey: key, jdArea: '80-89', template: software, repository };
-  value(await r.kernel.stages.activate(caller(r.ian), activate));
+  value(await r.kernel.stages.activate(caller(r.rowan), activate));
   return { harnessId, repository };
 }
 
@@ -3135,7 +3135,7 @@ describe.skipIf(!testServer)('PI-2 the bench posts its rulings as suggested lear
       ...page,
       status: 'suggested',
     });
-    const created = await createPage(r.db, r.ian, command, crypto.randomUUID(), new Date());
+    const created = await createPage(r.db, r.rowan, command, crypto.randomUUID(), new Date());
     expect(created).toMatchObject({ ok: false, reason: 'malformed_command' });
   });
 });
@@ -3457,7 +3457,7 @@ import { describe, expect, it } from 'vitest';
 import { command } from '../testing/commands.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 
-const IAN = { email: 'ian.lindsley@unfoldingword.org' };
+const ROWAN = { email: 'rowan.test@unfoldingword.org' };
 
 describe.skipIf(!testServer)('GL-5 the change_template command', () => {
   it('GL-5 changes a check-only harness to software and drafts the Builder personas', () =>
@@ -3470,8 +3470,8 @@ describe.skipIf(!testServer)('GL-5 the change_template command', () => {
         template: 'check-only',
         repository: 'unfoldingWord/joined-review',
       };
-      expect((await command(db, IAN, harnessId, 'activate_template', activation)).body['status']).toBe('accepted');
-      const changed = await command(db, IAN, harnessId, 'change_template', { requestId: randomUUID(), template: 'software' });
+      expect((await command(db, ROWAN, harnessId, 'activate_template', activation)).body['status']).toBe('accepted');
+      const changed = await command(db, ROWAN, harnessId, 'change_template', { requestId: randomUUID(), template: 'software' });
       expect(changed.body['status']).toBe('accepted');
       const slugs = await db.execute<{ slug: string }>(
         sql`SELECT slug FROM pages WHERE type = 'persona' AND jd_area = '50-59' ORDER BY slug`,
@@ -3482,7 +3482,7 @@ describe.skipIf(!testServer)('GL-5 the change_template command', () => {
         'persona-reviewer',
         'persona-reviewer-codex',
       ]);
-      const refused = await command(db, IAN, harnessId, 'change_template', { requestId: randomUUID(), template: 'bml' });
+      const refused = await command(db, ROWAN, harnessId, 'change_template', { requestId: randomUUID(), template: 'bml' });
       expect(refused.body['reason']).toBe('template_change_not_allowed');
     }));
 });

@@ -9,7 +9,7 @@ import type { VerbContext } from './context.ts';
 import { callVerb } from './dispatch.ts';
 import { verbHandlers } from './verbs/index.ts';
 
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 const OWNER = '00000000-0000-4000-8000-000000003001';
 const requestAt = new Date('2026-10-02T12:00:00.000Z');
 const expiresAt = new Date('2026-10-02T12:00:01.000Z');
@@ -61,7 +61,7 @@ describe.skipIf(!testServer)('a verb call judges the kernel read at the request 
     const db = createClient(database.connectionString);
     try {
       const kernel = kernelOn(db, { now: () => kernelNow });
-      const ian = await personOn(db, IAN_ID, 'ian.lindsley@unfoldingword.org', requestAt);
+      const rowan = await personOn(db, ROWAN_ID, 'rowan.test@unfoldingword.org', requestAt);
       const harnessId = crypto.randomUUID();
       const activate = {
         harnessId,
@@ -71,7 +71,7 @@ describe.skipIf(!testServer)('a verb call judges the kernel read at the request 
         repository: 'unfoldingWord/uw-platform',
         requiredChecks: [...defaultCiChecks],
       };
-      expect((await kernel.stages.activate(caller(ian), activate)).status).toBe('accepted');
+      expect((await kernel.stages.activate(caller(rowan), activate)).status).toBe('accepted');
       const context = contextOf(kernel, db, laptopUntil(expiresAt));
       const result = await callVerb(context, 'get_health', { harnessId }, verbHandlers);
       expect(result.isError).toBeUndefined();

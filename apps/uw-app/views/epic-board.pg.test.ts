@@ -49,7 +49,7 @@ async function epicBoardHtml(): Promise<string> {
     const kernel = kernelOn(db, seedClock, { githubFacts: answeringEpic(epic) });
     const harnessId = randomUUID();
     accepted(
-      await kernel.stages.activate(callerOf(world.ian), {
+      await kernel.stages.activate(callerOf(world.rowan), {
         harnessId,
         harnessKey: 'epics',
         jdArea: '80-89',
@@ -58,7 +58,7 @@ async function epicBoardHtml(): Promise<string> {
         requiredChecks: defaultCiChecks,
       }),
     );
-    const caller = callerOf(world.ian);
+    const caller = callerOf(world.rowan);
     accepted(
       await kernel.items.enqueueEpic(caller, { harnessId, epic: { repo: repository, number: 40 } }),
     );
@@ -68,7 +68,7 @@ async function epicBoardHtml(): Promise<string> {
       epic: { repo: repository, number: 50 },
     });
     expect(refused).toMatchObject({ status: 'error', reason: 'done_when_missing' });
-    html = (await getHtml(db, world.ianEmail, queuePath(harnessId), {}, viewClock)).text;
+    html = (await getHtml(db, world.rowanEmail, queuePath(harnessId), {}, viewClock)).text;
   });
   return html;
 }

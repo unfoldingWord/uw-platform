@@ -13,7 +13,7 @@ import { kernelOn, personOn } from '../testing/kernel.ts';
 import { callTool, httpClient } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
 
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 const EDITOR = {
   id: '00000000-0000-4000-8000-000000001401',
   email: 'runs-editor@unfoldingword.org',
@@ -55,16 +55,16 @@ async function openRig() {
     grantedAt: new Date('2026-01-01T00:00:00.000Z'),
     expiresAt: null,
   });
-  const ian = await personOn(db, IAN_ID, 'ian.lindsley@unfoldingword.org', clock.now());
+  const rowan = await personOn(db, ROWAN_ID, 'rowan.test@unfoldingword.org', clock.now());
   const fixture = await createAccessFixture();
-  return { db, clock, fixture, ian, kernel: kernelOn(db, clock) };
+  return { db, clock, fixture, rowan, kernel: kernelOn(db, clock) };
 }
 
 type Rig = Awaited<ReturnType<typeof openRig>>;
 
 async function itemOn(r: Rig): Promise<{ readonly harnessId: string; readonly itemId: string }> {
   const harnessId = crypto.randomUUID();
-  const as = caller(r.ian);
+  const as = caller(r.rowan);
   value(
     await r.kernel.stages.activate(as, {
       harnessId,

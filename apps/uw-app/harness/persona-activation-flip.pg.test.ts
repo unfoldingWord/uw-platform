@@ -10,14 +10,14 @@ import { describe, expect, it } from 'vitest';
 import { platformGrants } from '../ports/grants.ts';
 import { kernelOn, personasOn, personOn } from '../testing/kernel.ts';
 
-const ianId = '00000000-0000-4000-8000-000000000001';
+const rowanId = '00000000-0000-4000-8000-000000000001';
 const pageId = '00000000-0000-4000-8000-000000009901';
 const clock = { now: () => new Date() };
 
 type Flip = {
   readonly first: Database;
   readonly second: Database;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly harnessId: string;
 };
 
@@ -34,9 +34,9 @@ const instructions = [
 ].join('\n');
 
 async function flipOn(first: Database, second: Database): Promise<Flip> {
-  const ian = await personOn(first, ianId, 'ian.lindsley@unfoldingword.org', new Date());
+  const rowan = await personOn(first, rowanId, 'rowan.test@unfoldingword.org', new Date());
   const harnessId = crypto.randomUUID();
-  const activated = await kernelOn(first, clock).stages.activate(caller(ian), {
+  const activated = await kernelOn(first, clock).stages.activate(caller(rowan), {
     harnessId,
     harnessKey: 'software',
     jdArea: '80-89',
@@ -55,7 +55,7 @@ async function flipOn(first: Database, second: Database): Promise<Flip> {
     bodyMd: instructions,
     frontmatter: {
       identity: 'agent:builder',
-      owner: `human:${ianId}`,
+      owner: `human:${rowanId}`,
       harness: harnessId,
       toolset: ['read_page'],
       run_shape: 'workflow-run',
@@ -68,7 +68,7 @@ async function flipOn(first: Database, second: Database): Promise<Flip> {
       status: 'suggested',
     },
   });
-  return { first, second, ian, harnessId };
+  return { first, second, rowan, harnessId };
 }
 
 async function withFlip(work: (flip: Flip) => Promise<void>): Promise<void> {
@@ -104,9 +104,9 @@ async function activateTwice(flip: Flip): Promise<readonly KernelOutcome<unknown
     grants: heldGrants(platformGrants(flip.first), reached, resumed),
   });
   const input = { pageId, expectedVersion: 1, harnessId: flip.harnessId };
-  const held = paused.activate(caller(flip.ian), input);
+  const held = paused.activate(caller(flip.rowan), input);
   await atLock;
-  const other = personasOn(flip.second, clock).activate(caller(flip.ian), input);
+  const other = personasOn(flip.second, clock).activate(caller(flip.rowan), input);
   await awaitBlocked(() => lockWaiters(flip.first));
   resume();
   return Promise.all([held, other]);

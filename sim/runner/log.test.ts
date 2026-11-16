@@ -10,7 +10,7 @@ import {
   recordItemEvents,
   type RecordContext,
 } from '../../packages/harness/items/record.ts';
-import { simCaller, simIan } from '../fixtures.ts';
+import { simCaller, simRowan } from '../fixtures.ts';
 import type { Scenario } from '../scenario.ts';
 import { createWorld, type World } from '../world.ts';
 import { runScenario, type LoadedScenario } from './run.ts';
@@ -50,7 +50,7 @@ const stage = stageSchema.parse({
 });
 
 async function contextOf(world: World): Promise<RecordContext> {
-  const caller = simCaller(world, await simIan(world));
+  const caller = simCaller(world, await simRowan(world));
   return recordContext(world.adapters, caller, world.adapters.clock.now());
 }
 

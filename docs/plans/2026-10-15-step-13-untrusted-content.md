@@ -50,7 +50,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Where and how**
 
-- Work only in the worktree for branch `build/v0.2.0` (`/home/ianjl/projects/uw-platform-v0.2.0`). Never commit to `main`, never force-push, never `--no-verify`.
+- Work only in the worktree for branch `build/v0.2.0` (`/home/rowan-test/projects/uw-platform-v0.2.0`). Never commit to `main`, never force-push, never `--no-verify`.
 - Read `AGENTS.md` sections 1, 4 and 10 before the first edit. When this plan and `AGENTS.md` disagree, `AGENTS.md` wins; record the conflict in `docs/progress_tracker.md` and build the version that keeps the rule.
 - Words come from `CONTEXT.md`. This step's words are **untrusted content**, **clearance** (Task 1 adds it), **platform**, **harness**, **item**, **run**, **principal**. Never "user input" or "external text" for untrusted content.
 - Commits: Conventional Commits, the agent as sole author, no attribution footer. Hooks always pass.

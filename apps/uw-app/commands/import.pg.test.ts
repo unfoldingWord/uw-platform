@@ -18,7 +18,7 @@ import {
   dispatchAs,
   dispatchScope,
   eventsNamed,
-  ian,
+  rowan,
   post,
   softwareHarness,
   type Person,
@@ -165,7 +165,7 @@ async function refusedPrincipals(db: Database): Promise<void> {
   const body = { repository: platform, number: 12 };
   const read = await send(db, viewer, harnessId, body);
   expect(read.body).toMatchObject({ status: 'error', reason: 'not_permitted' });
-  const agent = agentOf(await ian(db), 'builder');
+  const agent = agentOf(await rowan(db), 'builder');
   const requestId = randomUUID();
   const outcome = await dispatchAs(
     agent,

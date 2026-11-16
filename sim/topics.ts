@@ -10,7 +10,7 @@ const toCheck = ['package', 'scope', 'plan', 'build'];
 export type TopicScene = {
   readonly world: World;
   readonly harnessId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly areaAdmin: Principal;
   resubmit(itemId: string): Promise<void>;
   parkIssue(issue: IssueRef): Promise<string>;
@@ -23,9 +23,9 @@ async function submitOnce(world: World, actor: Principal, itemId: string): Promi
 }
 
 export async function topicScene(world: World): Promise<TopicScene> {
-  const { harness, admin: ian } = await createSimHarness(world, software);
+  const { harness, admin: rowan } = await createSimHarness(world, software);
   const areaAdmin = await simPerson(world, 5, [{ role: 'admin', ...area }]);
-  const gated = await world.kernel.stages.updateStage(simCaller(world, ian), {
+  const gated = await world.kernel.stages.updateStage(simCaller(world, rowan), {
     harnessId: harness.id,
     stageKey: 'check',
     change: { exitGate: 'human_approval' },
@@ -35,9 +35,9 @@ export async function topicScene(world: World): Promise<TopicScene> {
   return {
     world,
     harnessId,
-    ian,
+    rowan,
     areaAdmin,
-    resubmit: (itemId) => submitOnce(world, ian, itemId),
+    resubmit: (itemId) => submitOnce(world, rowan, itemId),
     parkIssue: async (issue) => {
       const imported = await world.kernel.items.importIssue(simCaller(world, simIngest()), {
         harnessId,
@@ -47,15 +47,15 @@ export async function topicScene(world: World): Promise<TopicScene> {
         doneWhen: ['The board lists every stage.'],
       });
       const { itemId } = value(imported).item;
-      await simAdvance(world, { harnessId, itemId, worker: ian, through: [...toCheck, 'check'] });
+      await simAdvance(world, { harnessId, itemId, worker: rowan, through: [...toCheck, 'check'] });
       return itemId;
     },
   };
 }
 
 export async function gatedCheck(scene: TopicScene, title: string): Promise<string> {
-  const { world, harnessId, ian } = scene;
-  const enqueued = await world.kernel.items.enqueue(simCaller(world, ian), {
+  const { world, harnessId, rowan } = scene;
+  const enqueued = await world.kernel.items.enqueue(simCaller(world, rowan), {
     harnessId,
     title,
     pageId: null,
@@ -64,13 +64,13 @@ export async function gatedCheck(scene: TopicScene, title: string): Promise<stri
     delegationId: null,
   });
   const { itemId } = value(enqueued);
-  await simAdvance(world, { harnessId, itemId, worker: ian, through: toCheck });
+  await simAdvance(world, { harnessId, itemId, worker: rowan, through: toCheck });
   return itemId;
 }
 
 export async function parkAtCheck(scene: TopicScene, title: string): Promise<string> {
   const itemId = await gatedCheck(scene, title);
-  await submitOnce(scene.world, scene.ian, itemId);
+  await submitOnce(scene.world, scene.rowan, itemId);
   return itemId;
 }
 

@@ -20,7 +20,7 @@ export const issueId = 9100000101;
 export const commentId = 9100000701;
 export const commentsPath = `/repos/${platform}/issues/${issueNumber}/comments`;
 export const delivered = new Date('2026-10-02T09:00:00.000Z');
-const ianId = '00000000-0000-4000-8000-000000000001';
+const rowanId = '00000000-0000-4000-8000-000000000001';
 export const harnessId = '00000000-0000-4000-8000-000000008701';
 
 export function valueOf<T>(outcome: KernelOutcome<T>): T {
@@ -29,10 +29,10 @@ export function valueOf<T>(outcome: KernelOutcome<T>): T {
 }
 
 export async function seedSoftwareHarness(db: Database): Promise<void> {
-  const ian = await personOn(db, ianId, 'ian.lindsley@unfoldingword.org', new Date());
+  const rowan = await personOn(db, rowanId, 'rowan.test@unfoldingword.org', new Date());
   valueOf(
     await kernelOn(db, systemClock).stages.activate(
-      { actor: ian, traceId: crypto.randomUUID() },
+      { actor: rowan, traceId: crypto.randomUUID() },
       {
         harnessId,
         harnessKey: 'software',

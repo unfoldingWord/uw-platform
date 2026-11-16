@@ -10,7 +10,7 @@ import { awaitBlocked } from '../../../packages/harness/port-contracts/lock-wait
 import { listForDispatch } from '../testing/dispatch.ts';
 import { agentOf, kernelOn, personOn } from '../testing/kernel.ts';
 
-const ianId = '00000000-0000-4000-8000-000000000001';
+const rowanId = '00000000-0000-4000-8000-000000000001';
 const instant = new Date();
 const clock: Clock = { now: () => instant };
 const issue = { repo: 'unfoldingWord/uw-platform', number: 31, githubId: 9100000031 };
@@ -20,7 +20,7 @@ type Scene = {
   readonly mover: Database;
   readonly observer: Database;
   readonly kernel: Kernel;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly harnessId: string;
 };
 
@@ -34,11 +34,11 @@ function accepted<T>(outcome: KernelOutcome<T>, what: string): T {
 }
 
 async function sceneOn(actor: Database, mover: Database, observer: Database): Promise<Scene> {
-  const ian = await personOn(actor, ianId, 'ian.lindsley@unfoldingword.org', instant);
+  const rowan = await personOn(actor, rowanId, 'rowan.test@unfoldingword.org', instant);
   const kernel = kernelOn(actor, clock);
   const harnessId = crypto.randomUUID();
   accepted(
-    await kernel.stages.activate(caller(ian), {
+    await kernel.stages.activate(caller(rowan), {
       harnessId,
       harnessKey: 'software',
       jdArea: '80-89',
@@ -49,7 +49,7 @@ async function sceneOn(actor: Database, mover: Database, observer: Database): Pr
     'activate',
   );
   await listForDispatch(actor, 'unfoldingWord/uw-platform');
-  return { actor, mover, observer, kernel, ian, harnessId };
+  return { actor, mover, observer, kernel, rowan, harnessId };
 }
 
 async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
@@ -66,7 +66,7 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
 
 async function enqueued(scene: Scene): Promise<ItemState> {
   return accepted(
-    await scene.kernel.items.enqueue(caller(scene.ian), {
+    await scene.kernel.items.enqueue(caller(scene.rowan), {
       harnessId: scene.harnessId,
       title: 'Show the board',
       pageId: null,
@@ -78,18 +78,21 @@ async function enqueued(scene: Scene): Promise<ItemState> {
   );
 }
 
-async function claimedByIan(scene: Scene): Promise<ItemState> {
+async function claimedByRowan(scene: Scene): Promise<ItemState> {
   const item = await enqueued(scene);
   accepted(
-    await scene.kernel.items.claim(caller(scene.ian), { itemId: item.itemId, delegationId: null }),
+    await scene.kernel.items.claim(caller(scene.rowan), {
+      itemId: item.itemId,
+      delegationId: null,
+    }),
     'claim',
   );
   return item;
 }
 
 async function atScope(scene: Scene): Promise<ItemState> {
-  const item = await claimedByIan(scene);
-  const submitted = await scene.kernel.items.submit(caller(scene.ian), {
+  const item = await claimedByRowan(scene);
+  const submitted = await scene.kernel.items.submit(caller(scene.rowan), {
     itemId: item.itemId,
     to: null,
     evidence: {},
@@ -178,7 +181,7 @@ describe.skipIf(!testServer)('an item lock that waited on a stage move finds the
   serverIt('decide answers that the item moved', async (scene) => {
     const { itemId } = await enqueued(scene);
     const outcome = await againstAMove(scene, { itemId, to: 'scope' }, () =>
-      decideAs(scene, scene.ian, itemId),
+      decideAs(scene, scene.rowan, itemId),
     );
     expect(outcome).toMatchObject({ status: 'error', reason: 'item_not_at_gate' });
     expect(outcome.status === 'error' && outcome.detail).toMatchObject({ why: 'moved' });
@@ -186,7 +189,7 @@ describe.skipIf(!testServer)('an item lock that waited on a stage move finds the
 
   serverIt('an agent decide is refused and its audit event recorded', async (scene) => {
     const { itemId } = await enqueued(scene);
-    const agent = agentOf(scene.ian, 'builder');
+    const agent = agentOf(scene.rowan, 'builder');
     const outcome = await againstAMove(scene, { itemId, to: 'scope' }, () =>
       decideAs(scene, agent, itemId),
     );
@@ -198,7 +201,7 @@ describe.skipIf(!testServer)('an item lock that waited on a stage move finds the
 describe.skipIf(!testServer)('an item verb that waited on a stage move answers it', () => {
   serverIt('claim answers not_permitted moved', async (scene) => {
     const { itemId } = await atScope(scene);
-    const agent = agentOf(scene.ian, 'builder');
+    const agent = agentOf(scene.rowan, 'builder');
     const outcome = await againstAMove(scene, { itemId, to: 'plan' }, () =>
       scene.kernel.items.claim(caller(agent), { itemId, delegationId: null }),
     );
@@ -207,17 +210,17 @@ describe.skipIf(!testServer)('an item verb that waited on a stage move answers i
   });
 
   serverIt('release releases the moved item', async (scene) => {
-    const { itemId } = await claimedByIan(scene);
+    const { itemId } = await claimedByRowan(scene);
     const outcome = await againstAMove(scene, { itemId, to: 'scope' }, () =>
-      scene.kernel.items.release(caller(scene.ian), { itemId, delegationId: null }),
+      scene.kernel.items.release(caller(scene.rowan), { itemId, delegationId: null }),
     );
     expect(accepted(outcome, 'release')).toMatchObject({ stageKey: 'scope', holder: null });
   });
 
   serverIt('submit submits from the stage the item moved to', async (scene) => {
-    const { itemId } = await claimedByIan(scene);
+    const { itemId } = await claimedByRowan(scene);
     const outcome = await againstAMove(scene, { itemId, to: 'scope' }, () =>
-      scene.kernel.items.submit(caller(scene.ian), {
+      scene.kernel.items.submit(caller(scene.rowan), {
         itemId,
         to: null,
         evidence: {},
@@ -228,16 +231,16 @@ describe.skipIf(!testServer)('an item verb that waited on a stage move answers i
   });
 
   serverIt('a learning verb answers for the moved item', async (scene) => {
-    const { itemId } = await claimedByIan(scene);
+    const { itemId } = await claimedByRowan(scene);
     const outcome = await againstAMove(scene, { itemId, to: 'scope' }, () =>
-      scene.kernel.items.markNothingLearned(caller(scene.ian), { itemId, reason: 'a dry run' }),
+      scene.kernel.items.markNothingLearned(caller(scene.rowan), { itemId, reason: 'a dry run' }),
     );
     expect(outcome).toMatchObject({ status: 'accepted', value: { stageKey: 'scope' } });
   });
 
   serverIt('renew renews the lease on the moved item', async (scene) => {
     const { itemId } = await atScope(scene);
-    const agent = agentOf(scene.ian, 'builder');
+    const agent = agentOf(scene.rowan, 'builder');
     accepted(
       await scene.kernel.items.claim(caller(agent), { itemId, delegationId: null }),
       'claim',

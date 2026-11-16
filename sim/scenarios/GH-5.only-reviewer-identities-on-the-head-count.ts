@@ -19,7 +19,7 @@ type Scene = {
   readonly world: World;
   readonly harnessId: string;
   readonly itemId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly max: Principal;
 };
 
@@ -37,7 +37,7 @@ async function parkedAtShip(world: World): Promise<Scene> {
     title: 'Show the board',
     change: standardChange,
   });
-  return { world, harnessId: harness.id, itemId: parked.itemId, ian: admin, max };
+  return { world, harnessId: harness.id, itemId: parked.itemId, rowan: admin, max };
 }
 
 function factsWith(scene: Scene, reviews: PullRequestFacts['reviews']): PullRequestFacts {
@@ -64,7 +64,7 @@ async function approveAs(
 }
 
 async function refusedOver(scene: Scene, facts: PullRequestFacts): Promise<void> {
-  const { outcome, names } = await approveAs(scene, scene.ian, facts);
+  const { outcome, names } = await approveAs(scene, scene.rowan, facts);
   assert.equal(outcome.status === 'error' && outcome.reason, 'no_reviewer_approval');
   assert.deepEqual(names, ['risk_derived', 'ship_refused']);
   assert.deepEqual(scene.world.adapters.connectors.calls(), []);
@@ -80,7 +80,7 @@ async function agentNeverDecides(scene: Scene): Promise<void> {
 
 async function approvedOnTheHead(scene: Scene): Promise<void> {
   const facts = factsWith(scene, [approvedBy('uw-reviewer[bot]', 'anthropic', head, 9100000202)]);
-  const { outcome, names } = await approveAs(scene, scene.ian, facts);
+  const { outcome, names } = await approveAs(scene, scene.rowan, facts);
   assert.equal(outcome.status, 'accepted');
   assert.deepEqual(names, [
     'risk_derived',

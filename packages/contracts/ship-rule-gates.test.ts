@@ -48,7 +48,7 @@ describe('SR-1 SR-2 the contracts for the ship rule', () => {
         identity: 'human:00000000-0000-4000-8000-000000000001',
         kind: 'person',
         personId: '00000000-0000-4000-8000-000000000001',
-        email: 'ian@unfoldingword.org',
+        email: 'rowan@unfoldingword.org',
         grants: [],
         interactive: true,
       },

@@ -3,7 +3,7 @@
 *The Build · Measure · Learn loop drawn as a mechanism: which component owns each box, where the human hand sits, and how status reaches the web page and the person waiting on it.*
 
 **For:** the sponsor
-**From:** Ian
+**From:** the owner
 **Date:** 2026-09-28
 **Status:** draft for iteration
 **Revision:** v1.0 reviewed by the sponsor 2026-09-28 · v1.1 applies every item of that review in one revision; see "Review responses" at the end
@@ -328,7 +328,7 @@ One row per item in *Harness v1 - Architecture Review.md*, plus two points the s
 | Scope cut · phone app | Not a v1 item; web push and the Zulip bot serve the need; keep the contract mobile-ready | **Accepted, pending the sponsor's explicit confirmation**, because it reverses the earlier v1 brief that asked for iOS and Android. The document now reads as if the cut stands | "Reaching a person", D2, question 4 |
 | Question 7 · Scout | First step inside Builder for v1 | **Accepted.** Three persona identities in v1 | "Personas in v1", Figure 1 caption |
 | Zulip · cheap always-on backbone | "Grok subscription and/or an OpenRouter key pegged on whatever models we want... think GLM 5.3 flash" | **Adopted as the sixth engine**, `openrouter-messages`, and as the v1 home of every non-Builder hosted run. A Grok subscription is a personal credential and fits the external host only | "The always-on tier", D16, D21, question 10 |
-| Zulip · OpenRouter as the baseline for code review and AI glue | "Keep in mind OpenRouter and cheap OSS models like GLM or Kimi. What Ian is working on will bring that in as a baseline service for us and may be the easiest way to kick off code reviews and other AI glue services" (the sponsor, 2026-09-29) | **Made true.** `openrouter-messages` is named the platform's baseline model service and Reviewer's default engine, reading the diff through GitHub facts with no container; the second reviewer on `high` items must resolve to a distinct model provider, recorded per review. It is a service for the platform's personas; other systems use AI Gateway directly | "Reviewer's default engine", "The always-on tier", engine table, D21, question 11 |
+| Zulip · OpenRouter as the baseline for code review and AI glue | "Keep in mind OpenRouter and cheap OSS models like GLM or Kimi. What the owner is working on will bring that in as a baseline service for us and may be the easiest way to kick off code reviews and other AI glue services" (the sponsor, 2026-09-29) | **Made true.** `openrouter-messages` is named the platform's baseline model service and Reviewer's default engine, reading the diff through GitHub facts with no container; the second reviewer on `high` items must resolve to a distinct model provider, recorded per review. It is a service for the platform's personas; other systems use AI Gateway directly | "Reviewer's default engine", "The always-on tier", engine table, D21, question 11 |
 | Zulip · self-identifying routines | "If I set up a routine to run every hour that codes, could it identify what it is and what role it is playing, recorded on the ledger?" | **Yes, Figure 4 on a delegation.** A routine is unattended, so it claims only with a live `delegation_id`, like any other beat; the identity on every event becomes `agent:<person>/<device> as <persona> via delegation:<id>`; the claim is the identification | "A scheduled routine is an external runner on a delegation", "Unattended loops", D22 |
 
 ---

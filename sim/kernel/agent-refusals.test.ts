@@ -14,7 +14,7 @@ type Scene = {
   readonly world: World;
   readonly harnessId: string;
   readonly itemId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
 };
 
 async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
@@ -22,7 +22,7 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
   try {
     const { harness, admin } = await createSimHarness(world, software);
     const parked = await simParkedAtCheck(world, { harnessId: harness.id, admin, title: 'Gate' });
-    await work({ world, harnessId: harness.id, itemId: parked.itemId, ian: admin });
+    await work({ world, harnessId: harness.id, itemId: parked.itemId, rowan: admin });
   } finally {
     await world.close();
   }
@@ -71,7 +71,7 @@ async function unreadableAgentIsRecordedButSeesNoItem(scene: Scene): Promise<voi
 
 async function missingItemRecordsNothing(scene: Scene): Promise<void> {
   const missing = '00000000-0000-4000-8000-000000009999';
-  const agent = simAgent(scene.ian, 'reviewer', { interactive: true });
+  const agent = simAgent(scene.rowan, 'reviewer', { interactive: true });
   const before = await eventsOf(scene);
   const outcome = await approveAs({ ...scene, itemId: missing }, agent);
   expect(outcome).toEqual({
@@ -108,8 +108,8 @@ function personKindAgent(owner: Principal): Principal {
   return { ...owner, kind: 'person', identity: identitySchema.parse('agent:builder') };
 }
 
-async function takeOverAsIan(scene: Scene): Promise<void> {
-  const outcome = await scene.world.kernel.gates.decide(simCaller(scene.world, scene.ian), {
+async function takeOverAsRowan(scene: Scene): Promise<void> {
+  const outcome = await scene.world.kernel.gates.decide(simCaller(scene.world, scene.rowan), {
     itemId: scene.itemId,
     decision: 'take_over',
     reason: null,
@@ -119,7 +119,7 @@ async function takeOverAsIan(scene: Scene): Promise<void> {
 }
 
 async function crafted(scene: Scene): Promise<readonly string[]> {
-  const caller = simCaller(scene.world, personKindAgent(scene.ian));
+  const caller = simCaller(scene.world, personKindAgent(scene.rowan));
   const { kernel } = scene.world;
   const stage = await kernel.stages.updateStage(caller, {
     harnessId: scene.harnessId,
@@ -127,7 +127,7 @@ async function crafted(scene: Scene): Promise<readonly string[]> {
     change: { title: 'Changed' },
   });
   const repair = await kernel.repair.rebuildItem(caller, { itemId: scene.itemId });
-  await takeOverAsIan(scene);
+  await takeOverAsRowan(scene);
   const release = await kernel.items.release(caller, { itemId: scene.itemId, delegationId: null });
   return [reasonOf(stage), reasonOf(repair), reasonOf(release)];
 }
@@ -140,7 +140,7 @@ describe('an agent identity is an agent whatever its kind field says', () => {
 });
 
 async function revokedAdminCannotOverride(scene: Scene): Promise<void> {
-  await takeOverAsIan(scene);
+  await takeOverAsRowan(scene);
   const kim = await simPerson(scene.world, 4, [{ role: 'admin', ...area }]);
   await revokeSeededGrant(
     scene.world.database.db,

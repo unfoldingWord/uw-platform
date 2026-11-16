@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readAllEvents, software, type Caller, type KernelOutcome } from '@uw/harness';
-import { createSimHarness, simAgent, simCaller, simIan, simPerson } from '../fixtures.ts';
+import { createSimHarness, simAgent, simCaller, simRowan, simPerson } from '../fixtures.ts';
 import { defineScenario } from '../scenario.ts';
 import type { World } from '../world.ts';
 
@@ -22,7 +22,7 @@ type Setup = { readonly harnessId: string; readonly itemId: string; readonly bui
 
 async function setup(world: World): Promise<Setup> {
   const { harness } = await createSimHarness(world, software);
-  await world.kernel.stages.updateStage(simCaller(world, await simIan(world)), {
+  await world.kernel.stages.updateStage(simCaller(world, await simRowan(world)), {
     harnessId: harness.id,
     stageKey: 'package',
     change: { agentPickup: 'allowed' },

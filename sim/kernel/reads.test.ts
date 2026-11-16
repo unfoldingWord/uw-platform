@@ -22,7 +22,7 @@ afterAll(closeEmbeddedTemplate);
 
 type Scene = {
   readonly world: World;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly firstId: string;
   readonly secondId: string;
   readonly firstItem: string;
@@ -38,8 +38,8 @@ function reasonOf(outcome: KernelOutcome<unknown>): string {
   return outcome.status === 'error' ? outcome.reason : 'accepted';
 }
 
-async function openPackage(world: World, ian: Principal, harnessId: string): Promise<string> {
-  const caller = simCaller(world, ian);
+async function openPackage(world: World, rowan: Principal, harnessId: string): Promise<string> {
+  const caller = simCaller(world, rowan);
   value(
     await world.kernel.stages.updateStage(caller, {
       harnessId,
@@ -61,14 +61,14 @@ async function openPackage(world: World, ian: Principal, harnessId: string): Pro
 async function sceneOf(world: World): Promise<Scene> {
   const first = await createSimHarness(world, software);
   const second = await createSimHarness(world, software, { key: 'software-two', jdArea: '30-39' });
-  const ian = first.admin;
+  const rowan = first.admin;
   return {
     world,
-    ian,
+    rowan,
     firstId: first.harness.id,
     secondId: second.harness.id,
-    firstItem: await openPackage(world, ian, first.harness.id),
-    secondItem: await openPackage(world, ian, second.harness.id),
+    firstItem: await openPackage(world, rowan, first.harness.id),
+    secondItem: await openPackage(world, rowan, second.harness.id),
   };
 }
 
@@ -101,7 +101,7 @@ async function delegate(
 
 async function revoke(scene: Scene, delegationId: string): Promise<void> {
   value(
-    await scene.world.kernel.delegations.revoke(simCaller(scene.world, scene.ian), {
+    await scene.world.kernel.delegations.revoke(simCaller(scene.world, scene.rowan), {
       delegationId,
     }),
   );
@@ -129,7 +129,7 @@ function delegatedDevice(owner: Principal, persona: string, delegationId: string
 }
 
 async function lapseNames(scene: Scene): Promise<readonly string[]> {
-  const page = await scene.world.kernel.events.read(simCaller(scene.world, scene.ian), {
+  const page = await scene.world.kernel.events.read(simCaller(scene.world, scene.rowan), {
     harnessId: scene.firstId,
     itemId: null,
     after: 0,
@@ -141,22 +141,24 @@ async function lapseNames(scene: Scene): Promise<readonly string[]> {
 }
 
 async function barePersona(scene: Scene): Promise<void> {
-  const iterate = simAgent(scene.ian, 'iterate', { interactive: false });
-  const laptop = simAgent(scene.ian, `${scene.ian.personId ?? ''}/laptop`, { interactive: true });
+  const iterate = simAgent(scene.rowan, 'iterate', { interactive: false });
+  const laptop = simAgent(scene.rowan, `${scene.rowan.personId ?? ''}/laptop`, {
+    interactive: true,
+  });
   expect(await idsPolled(scene, laptop)).toEqual([scene.firstItem, scene.secondItem].sort());
   expect(await idsPolled(scene, iterate)).toEqual([]);
-  const delegationId = await delegate(scene, scene.ian, 'agent:iterate');
+  const delegationId = await delegate(scene, scene.rowan, 'agent:iterate');
   expect(await idsPolled(scene, iterate)).toEqual([scene.firstItem]);
   await revoke(scene, delegationId);
   expect(await idsPolled(scene, iterate)).toEqual([]);
 }
 
 async function delegatedForm(scene: Scene): Promise<void> {
-  const delegationId = await delegate(scene, scene.ian, 'agent:iterate');
-  const device = delegatedDevice(scene.ian, 'iterate', delegationId);
+  const delegationId = await delegate(scene, scene.rowan, 'agent:iterate');
+  const device = delegatedDevice(scene.rowan, 'iterate', delegationId);
   expect(await idsPolled(scene, device)).toEqual([scene.firstItem]);
-  const builder = await delegate(scene, scene.ian, 'agent:builder');
-  expect(reasonOf(await polled(scene, delegatedDevice(scene.ian, 'iterate', builder)))).toBe(
+  const builder = await delegate(scene, scene.rowan, 'agent:builder');
+  expect(reasonOf(await polled(scene, delegatedDevice(scene.rowan, 'iterate', builder)))).toBe(
     'not_permitted',
   );
   await revoke(scene, delegationId);
@@ -177,7 +179,7 @@ async function foreignDelegation(scene: Scene): Promise<void> {
   scene.world.adapters.clock.advance(120_000);
   const missing = '00000000-0000-4000-8000-000000009999';
   for (const delegationId of [kims, revoked, expiring, missing]) {
-    expect(await polled(scene, delegatedDevice(scene.ian, 'iterate', delegationId))).toEqual({
+    expect(await polled(scene, delegatedDevice(scene.rowan, 'iterate', delegationId))).toEqual({
       status: 'error',
       reason: 'delegation_not_found',
       detail: { delegationId },
@@ -201,16 +203,16 @@ function eventCount(scene: Scene): Promise<number> {
 }
 
 async function delegatedNone(scene: Scene): Promise<void> {
-  const none = await delegate(scene, scene.ian, 'agent:iterate', { capability: 'none' });
-  expect(await polled(scene, delegatedDevice(scene.ian, 'iterate', none))).toEqual({
+  const none = await delegate(scene, scene.rowan, 'agent:iterate', { capability: 'none' });
+  expect(await polled(scene, delegatedDevice(scene.rowan, 'iterate', none))).toEqual({
     status: 'accepted',
     value: [],
   });
 }
 
 async function personaNone(scene: Scene): Promise<void> {
-  await delegate(scene, scene.ian, 'agent:iterate', { capability: 'none' });
-  expect(await idsPolled(scene, simAgent(scene.ian, 'iterate', { interactive: false }))).toEqual(
+  await delegate(scene, scene.rowan, 'agent:iterate', { capability: 'none' });
+  expect(await idsPolled(scene, simAgent(scene.rowan, 'iterate', { interactive: false }))).toEqual(
     [],
   );
 }
@@ -233,7 +235,7 @@ async function personaLostAdmin(scene: Scene): Promise<void> {
 }
 
 async function undelegatedRunner(scene: Scene): Promise<void> {
-  const runner = simAgent(scene.ian, `${scene.ian.personId ?? ''}/runner`, {
+  const runner = simAgent(scene.rowan, `${scene.rowan.personId ?? ''}/runner`, {
     interactive: false,
   });
   expect(await idsPolled(scene, runner)).toEqual([]);
@@ -282,7 +284,7 @@ async function hides(scene: Scene, name: string): Promise<void> {
 }
 
 async function scenes(scene: Scene): Promise<void> {
-  const caller = simCaller(scene.world, scene.ian);
+  const caller = simCaller(scene.world, scene.rowan);
   const { reads } = scene.world.kernel;
   const harness = value(await reads.harness(caller, { harnessId: scene.firstId }));
   expect(harness.stages.map((stage) => stage.key)).toContain('package');
@@ -330,7 +332,7 @@ const hidden = ['harness_not_found', 'item_not_found', 'harness_not_found'];
 
 async function ownerMismatch(scene: Scene): Promise<void> {
   const other = await simPerson(scene.world, 7, []);
-  const forged = crafted(scene.ian, other);
+  const forged = crafted(scene.rowan, other);
   expect(await readsAs(scene, forged)).toEqual(hidden);
   expect(await polled(scene, forged)).toEqual({
     status: 'error',
@@ -340,8 +342,8 @@ async function ownerMismatch(scene: Scene): Promise<void> {
 }
 
 async function delegatedScene(scene: Scene): Promise<void> {
-  const delegationId = await delegate(scene, scene.ian, 'agent:iterate');
-  const device = delegatedDevice(scene.ian, 'iterate', delegationId);
+  const delegationId = await delegate(scene, scene.rowan, 'agent:iterate');
+  const device = delegatedDevice(scene.rowan, 'iterate', delegationId);
   expect(await readsAs(scene, device)).toEqual(['accepted', 'accepted', 'accepted']);
   const elsewhere = await scene.world.kernel.reads.harness(simCaller(scene.world, device), {
     harnessId: scene.secondId,
@@ -403,13 +405,13 @@ async function readsOwn(scene: Scene, actor: Principal): Promise<readonly string
 const shown = ['accepted', 'accepted', 'accepted'];
 
 function iterateOf(scene: Scene): Principal {
-  return simAgent(scene.ian, 'iterate', { interactive: false });
+  return simAgent(scene.rowan, 'iterate', { interactive: false });
 }
 
 async function personaScene(scene: Scene): Promise<void> {
   const persona = iterateOf(scene);
   await hiddenAsMissing(scene, persona, 'own');
-  const delegationId = await delegate(scene, scene.ian, 'agent:iterate');
+  const delegationId = await delegate(scene, scene.rowan, 'agent:iterate');
   expect(await readsOwn(scene, persona)).toEqual(shown);
   await hiddenAsMissing(scene, persona, 'other');
   await revoke(scene, delegationId);
@@ -417,14 +419,16 @@ async function personaScene(scene: Scene): Promise<void> {
 }
 
 async function personaNoneScene(scene: Scene): Promise<void> {
-  await delegate(scene, scene.ian, 'agent:iterate', { capability: 'none' });
+  await delegate(scene, scene.rowan, 'agent:iterate', { capability: 'none' });
   const persona = iterateOf(scene);
   await hiddenAsMissing(scene, persona, 'own');
 }
 
 async function othersUnchanged(scene: Scene): Promise<void> {
-  const laptop = simAgent(scene.ian, `${scene.ian.personId ?? ''}/laptop`, { interactive: true });
-  for (const actor of [scene.ian, laptop]) {
+  const laptop = simAgent(scene.rowan, `${scene.rowan.personId ?? ''}/laptop`, {
+    interactive: true,
+  });
+  for (const actor of [scene.rowan, laptop]) {
     const caller = simCaller(scene.world, actor);
     for (const probe of probes) {
       expect(reasonOf(await probe.read(scene, caller, probe.own(scene)))).toBe('accepted');
@@ -442,14 +446,16 @@ describe('AB-4 a bare persona reads only the harnesses its working delegations n
 });
 
 function routineOf(scene: Scene): Principal {
-  return simAgent(scene.ian, `${scene.ian.personId ?? ''}/hourly-routine`, { interactive: false });
+  return simAgent(scene.rowan, `${scene.rowan.personId ?? ''}/hourly-routine`, {
+    interactive: false,
+  });
 }
 
 async function unattendedScene(scene: Scene): Promise<void> {
   const runner = routineOf(scene);
   await hiddenAsMissing(scene, runner, 'own');
   await hiddenAsMissing(scene, runner, 'other');
-  const delegationId = await delegate(scene, scene.ian, 'agent:iterate');
+  const delegationId = await delegate(scene, scene.rowan, 'agent:iterate');
   await hiddenAsMissing(scene, runner, 'own');
   const delegated = principalSchema.parse({
     ...runner,

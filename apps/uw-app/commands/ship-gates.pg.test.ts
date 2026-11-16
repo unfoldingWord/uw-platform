@@ -16,7 +16,7 @@ import {
   dispatchAs,
   dispatchScope,
   eventCount,
-  ian,
+  rowan,
   post,
   softwareHarness,
 } from '../testing/commands.ts';
@@ -73,7 +73,7 @@ async function batchMerges(db: Database): Promise<void> {
 async function agentBatchRefused(db: Database): Promise<void> {
   const parked = await parkedAtShip(db);
   const { harnessId } = parked.item;
-  const agent = agentOf(await ian(db), 'builder');
+  const agent = agentOf(await rowan(db), 'builder');
   const before = await eventCount(db, harnessId);
   const requestId = randomUUID();
   const entries = [

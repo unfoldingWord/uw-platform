@@ -4,7 +4,7 @@ import { createLogger } from '@uw/core/log';
 import { systemPrincipal } from '@uw/core/principal';
 import { agentOf, kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
-import { ian } from '../testing/commands.ts';
+import { rowan } from '../testing/commands.ts';
 import { exitDelegatedMerges } from './delegated-exits.ts';
 
 type Line = Record<string, unknown>;
@@ -51,7 +51,7 @@ describe.skipIf(!testServer)('MD-3 the minute job runs the delegated exits as th
       const lines: Line[] = [];
       const kernel = kernelOn(db, { now: () => new Date() });
       const caller = {
-        actor: agentOf(await ian(db), 'shipper'),
+        actor: agentOf(await rowan(db), 'shipper'),
         traceId: randomUUID(),
         requestId: null,
       };

@@ -103,11 +103,11 @@ function gateRows(world: GateWorld): SeedEventRow[] {
 }
 
 function otherRows(world: GateWorld, device: string): SeedEventRow[] {
-  const ian = world.ian.identity;
+  const rowan = world.rowan.identity;
   const head = world.item.expectedHead;
   const granted = {
     delegationId,
-    personId: world.ian.personId,
+    personId: world.rowan.personId,
     persona: 'agent:builder',
     capability: 'build',
     expiresAt: lease,
@@ -118,15 +118,15 @@ function otherRows(world: GateWorld, device: string): SeedEventRow[] {
     rowOf(world, 'lease_expired', 'agent:system', { holder: device, leaseExpiresAt: lease }),
     rowOf(world, 'branch_abandoned', 'agent:system', { head }),
     rowOf(world, 'branch_adopted', device, { head }),
-    rowOf(world, 'delegation_granted', ian, granted),
+    rowOf(world, 'delegation_granted', rowan, granted),
     rowOf(world, 'delegation_lapsed', 'agent:system', { delegationId, why: 'expired' }),
-    rowOf(world, 'learning_attached', ian, { pageId: learningId }),
+    rowOf(world, 'learning_attached', rowan, { pageId: learningId }),
   ];
 }
 
 async function played(db: Database): Promise<Played> {
   const world = await gateWorld(db);
-  const device = `agent:${world.ian.personId ?? ''}/laptop`;
+  const device = `agent:${world.rowan.personId ?? ''}/laptop`;
   await seedPage(db, {
     id: learningId,
     type: 'learning',
@@ -154,7 +154,7 @@ function pathOf(world: GateWorld, after?: number): string {
   return after === undefined ? path : `${path}?after=${after}`;
 }
 
-async function documentOf(world: GateWorld, path = pathOf(world), email = world.ianEmail) {
+async function documentOf(world: GateWorld, path = pathOf(world), email = world.rowanEmail) {
   return new JSDOM((await getHtml(world.db, email, path, {}, clock)).text).window.document;
 }
 
@@ -272,11 +272,11 @@ const channels = { '80-89': '80-89 Technology' };
 async function zulipLink(world: Played): Promise<void> {
   const topic = 'software/uw-platform#42';
   const env = zulipEnv(channels);
-  const before = await getHtmlWithEnv(world.db, world.ianEmail, pathOf(world), env, clock);
+  const before = await getHtmlWithEnv(world.db, world.rowanEmail, pathOf(world), env, clock);
   const empty = new JSDOM(before.text).window.document.querySelector('main nav');
   expect(empty?.textContent).toContain('No Zulip topic yet');
   await rewriteItem(world.db, world.item.itemId, { zulipTopic: topic });
-  const page = await getHtmlWithEnv(world.db, world.ianEmail, pathOf(world), env, clock);
+  const page = await getHtmlWithEnv(world.db, world.rowanEmail, pathOf(world), env, clock);
   const document = new JSDOM(page.text).window.document;
   const link = [...document.querySelectorAll('main nav a')].find(
     (a) => a.textContent === 'Open the Zulip topic',
@@ -299,7 +299,7 @@ async function zulipReply(world: Played): Promise<void> {
       truncated: true,
     }),
   ]);
-  const page = await getHtml(world.db, world.ianEmail, pathOf(world), {}, clock);
+  const page = await getHtml(world.db, world.rowanEmail, pathOf(world), {}, clock);
   const row = rowsNamed(new JSDOM(page.text).window.document, 'Comment recorded')[0];
   expect(factsOf(row)).toMatchObject({ Author: 'reader@partner.example', Source: 'Zulip' });
   expect(row?.querySelector('blockquote')?.textContent).toBe('<b>approve</b> this');
@@ -351,7 +351,7 @@ async function holderLine(world: Played): Promise<void> {
 }
 
 async function noProblems(world: Played): Promise<void> {
-  const page = await getHtml(world.db, world.ianEmail, pathOf(world), {}, clock);
+  const page = await getHtml(world.db, world.rowanEmail, pathOf(world), {}, clock);
   expect(await screenProblems(page.text)).toEqual([]);
 }
 

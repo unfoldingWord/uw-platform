@@ -399,7 +399,7 @@ function describePages(subject: () => GatewaySubject): void {
 
 function describeGateDecisions(subject: () => GatewaySubject): void {
   it('DX-3 inserts gate decisions and reads them for an item by decision time, then id', async () => {
-    const later = decisionOf(0x1300, 1, 'human:ian', new Date(at.getTime() + hour));
+    const later = decisionOf(0x1300, 1, 'human:rowan', new Date(at.getTime() + hour));
     const tied = decisionOf(0x1300, 3, 'human:kim', at);
     const first = { ...decisionOf(0x1300, 2, 'human:kim', at), decision: 'reject' as const };
     const rows = await subject().store.transaction(async (tx) => {

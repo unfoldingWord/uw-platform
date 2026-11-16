@@ -39,7 +39,7 @@ import type { McpHost, VerbContext } from './context.ts';
 import { serveVerbsForTest } from '../testing/in-process.ts';
 import { verbHandlers } from './verbs/index.ts';
 
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 const OWNER = {
   id: '00000000-0000-4000-8000-000000001901',
   email: 'conformance-owner@unfoldingword.org',
@@ -60,7 +60,7 @@ type Rig = {
   readonly clock: SettableClock;
   readonly fixture: AccessFixture;
   readonly kernel: Kernel;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly owner: Principal;
   readonly drop: () => Promise<void>;
 };
@@ -98,14 +98,14 @@ async function openRig(): Promise<Rig> {
   await seedPerson(db, OWNER);
   await seedGrant(db, grantRow(ADMIN_GRANT, OWNER.id, 'admin'));
   await seedGrant(db, grantRow(EDITOR_GRANT, OWNER.id, 'editor'));
-  const ian = await personOn(db, IAN_ID, 'ian.lindsley@unfoldingword.org', clock.now());
+  const rowan = await personOn(db, ROWAN_ID, 'rowan.test@unfoldingword.org', clock.now());
   const owner = await personOn(db, OWNER.id, OWNER.email, clock.now());
   const drop = async () => {
     await db.$client.end();
     await database.drop();
   };
   const fixture = await createAccessFixture();
-  return { db, clock, fixture, kernel: kernelOn(db, clock), ian, owner, drop };
+  return { db, clock, fixture, kernel: kernelOn(db, clock), rowan, owner, drop };
 }
 
 function rig(): Promise<Rig> {
@@ -136,18 +136,18 @@ async function harnessIn(r: Rig, key: string, area: string): Promise<string> {
     repository: `unfoldingWord/${key}`,
     requiredChecks: [...defaultCiChecks],
   };
-  value(await r.kernel.stages.activate(caller(r.ian), activate));
+  value(await r.kernel.stages.activate(caller(r.rowan), activate));
   await listForDispatch(r.db, activate.repository, area);
   const change = { agentPickup: 'allowed' as const, bracket: 'build_package' as const };
   value(
-    await r.kernel.stages.updateStage(caller(r.ian), { harnessId, stageKey: 'package', change }),
+    await r.kernel.stages.updateStage(caller(r.rowan), { harnessId, stageKey: 'package', change }),
   );
   return harnessId;
 }
 
 async function enqueue(r: Rig, harnessId: string, title: string): Promise<string> {
   const input = { harnessId, title, pageId: null, priority: 1, due: null, delegationId: null };
-  return value(await r.kernel.items.enqueue(caller(r.ian), input)).itemId;
+  return value(await r.kernel.items.enqueue(caller(r.rowan), input)).itemId;
 }
 
 async function pageIn(r: Rig): Promise<string> {

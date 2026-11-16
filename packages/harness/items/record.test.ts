@@ -276,7 +276,7 @@ describe('recording a harness event and building a context', () => {
       identity: `human:${personId}`,
       kind: 'person',
       personId,
-      email: 'ian.lindsley@unfoldingword.org',
+      email: 'rowan.test@unfoldingword.org',
       grants: [],
       interactive: true,
     });

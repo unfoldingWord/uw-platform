@@ -36,7 +36,7 @@ const SEEDED = {
   persona80: '00000000-0000-4000-8000-000000001413',
 };
 const GRANTED_AT = new Date('2026-01-01T00:00:00.000Z');
-const IAN = { id: '00000000-0000-4000-8000-000000000001', email: 'ian.lindsley@unfoldingword.org' };
+const ROWAN = { id: '00000000-0000-4000-8000-000000000001', email: 'rowan.test@unfoldingword.org' };
 const clock = { now: () => new Date() };
 
 type Body = Record<string, unknown>;
@@ -394,9 +394,9 @@ describe.skipIf(!testServer)('AB-3 page version history records the agent identi
 });
 
 async function nameAsInstructions(r: Rig, stageKey: string, pageId: string): Promise<void> {
-  const ian = await personOn(r.db, IAN.id, IAN.email, new Date());
+  const rowan = await personOn(r.db, ROWAN.id, ROWAN.email, new Date());
   const kernel = kernelOn(r.db, clock);
-  const caller = { actor: ian, traceId: crypto.randomUUID() };
+  const caller = { actor: rowan, traceId: crypto.randomUUID() };
   const harnessId = crypto.randomUUID();
   const harnessKey = `software-${stageKey}`;
   const activation = {

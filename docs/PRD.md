@@ -4,10 +4,10 @@
 
 | | |
 |---|---|
-| Status | Approved. v1 (sections 7.1 to 7.10) was built as v0.1.0, merge commit `83e3f64`, tagged 2026-10-12. v0.2.0 (section 7.11), approved on 2026-10-15, was built on `build/v0.2.0`, reviewed by Ian with Codex, merged as `2135ad5` (pull request #84) and tagged `v0.2.0` on 2026-10-20, with CI green on the merge commit; GL-1's live switch and the week of shadow mode are a person's, on the tag (`docs/progress_tracker.md`, Release criteria, v0.2.0). v0.3.0 (section 7.12), the look, approved on 2026-11-04 (#87); its design is `docs/specs/2026-11-04-harness-v0-3-0-design.md`. Built on `feat/ui-redesign`, pull request #89, with every v0.3.0 release item but Ian's review and merge holding on 2026-11-06 |
+| Status | Approved. v1 (sections 7.1 to 7.10) was built as v0.1.0, merge commit `83e3f64`, tagged 2026-10-12. v0.2.0 (section 7.11), approved on 2026-10-15, was built on `build/v0.2.0`, reviewed by the owner with Codex, merged as `2135ad5` (pull request #84) and tagged `v0.2.0` on 2026-10-20, with CI green on the merge commit; GL-1's live switch and the week of shadow mode are a person's, on the tag (`docs/progress_tracker.md`, Release criteria, v0.2.0). v0.3.0 (section 7.12), the look, approved on 2026-11-04 (#87); its design is `docs/specs/2026-11-04-harness-v0-3-0-design.md`. Built on `feat/ui-redesign`, pull request #89, with every v0.3.0 release item but the owner's review and merge holding on 2026-11-06 |
 | Version | 0.3 |
 | Date | 2026-11-04 (v0.2.0 text dated 2026-10-15, v1 text 2026-10-01) |
-| Owner | Ian Lindsley |
+| Owner | The product owner |
 | Sponsor | unfoldingWord leadership |
 | Repository | https://github.com/unfoldingWord/uw-platform |
 | Design | From v0.3.0, section 5 of [`docs/specs/2026-11-04-harness-v0-3-0-design.md`](specs/2026-11-04-harness-v0-3-0-design.md) (ADR 0011), built into `packages/ui/tokens/`, until a `design-system/` folder lands. Before it, the brand tokens extracted from the Claude Design prototype (removed from the repository on 2026-10-20) and [`prd/An App For Everything - Key Visuals.html`](../prd/An%20App%20For%20Everything%20-%20Key%20Visuals.html) |
@@ -45,7 +45,7 @@ If the first is no, it does not belong in v1. If the second is no, it does not b
 
 ## 2. Who it is for
 
-**Primary: the people who approve.** Holders of `admin` on a harness's Johnny.Decimal area. Today that is the sponsor and Ian. They need to see what is waiting on them, see the facts behind a ship decision, and decide from a phone.
+**Primary: the people who approve.** Holders of `admin` on a harness's Johnny.Decimal area. Today that is the sponsor and the owner. They need to see what is waiting on them, see the facts behind a ship decision, and decide from a phone.
 
 **Primary: the people who lend agent time.** Staff, volunteers and contractors holding `editor` on a harness's area, who point their own Claude Code or Codex at the queue and work an item on their own subscription.
 
@@ -159,7 +159,7 @@ Requirement identifiers are stable. **Must** is a v1 requirement. **Later** is d
 | FD-6 | CI's `test` job starts a Postgres service container, sets `TEST_DATABASE_URL` to it, applies every migration from empty, re-applies them, and runs the schema, constraint and concurrency tests against it. It needs no secret and no account. | Must | #79 |
 | FD-12 | **Go-live wiring, written during the build and switched on after it.** A CI job that creates a Neon branch per PR and drops it; a migrate-staging job on merge to `main` after CI is green; a migrate-production job on a tagged release; the Hyperdrive binding for staging and production. Each job skips cleanly, and stays green, while its secret is absent. A binding is added to a wrangler file only when the resource it names exists, so a deploy never fails on a missing one; until then `uw-app` starts without a database and `/health` reports the database indicator as not configured. A test asserts each job skips when its secret is absent. | Must | #79 |
 | FD-7 | Cloudflare Access with Google as the identity provider sits in front of `uw-app`, declared in `infra/`. Hono middleware verifies the Access JWT on every request (signature, audience, expiry), maps the email to a `people` row, auto-provisions `@unfoldingword.org` addresses and marks anyone else pending with an explicit "pending approval" response. A typed `Principal` (person or agent id, resolved grants, an `interactive` flag) is exported from `packages/core`, available to every handler, and serialisable into a queue message. A service-token JWT yields a non-interactive principal. A tampered, expired or wrong-audience JWT gets 401. | Must | #6 |
-| FD-8 | `role_grants(person_id, role, scope_kind, scope_area, granted_by, granted_at, expires_at, revoked_at)` with roles `admin`, `editor`, `viewer` at scope `org` or `jd_area`, declared `restricted` and `never`. `can(actor, verb, resource)` in `packages/core/acl.ts` is pure over the grants already resolved on the principal and takes no database handle. Org-scope admin is allowed everything an area admin is; `editor` on one area reads every area and writes only its own; `viewer` reads only its own. Grants resolve from the table on every request with no cross-request cache. Grant and revoke are commands that require `admin` in the target scope and write an audit record with the actor, the time and the before and after row. A bootstrap migration grants org admin to Ian and the sponsor. | Must | #8 |
+| FD-8 | `role_grants(person_id, role, scope_kind, scope_area, granted_by, granted_at, expires_at, revoked_at)` with roles `admin`, `editor`, `viewer` at scope `org` or `jd_area`, declared `restricted` and `never`. `can(actor, verb, resource)` in `packages/core/acl.ts` is pure over the grants already resolved on the principal and takes no database handle. Org-scope admin is allowed everything an area admin is; `editor` on one area reads every area and writes only its own; `viewer` reads only its own. Grants resolve from the table on every request with no cross-request cache. Grant and revoke are commands that require `admin` in the target scope and write an audit record with the actor, the time and the before and after row. A bootstrap migration grants org admin to the owner and the sponsor. | Must | #8 |
 | FD-9 | `pages(id, type, jd_area, slug, title, parent_id, frontmatter jsonb, body_md, version, status)` and `page_versions` (a full snapshot per save with `edit_source` of `human:<id>` or `agent:<id>`), declared `internal` and `sync`. A page-type registry in code gives each type a Zod frontmatter schema, a classification and an offline eligibility. Registered types: `skill`, `learning`, `persona`, `product`, `system_goal`, `product_strategy`, `data_sources`, `issue` (GH-3: an imported issue's page). Create, read and update handlers validate frontmatter, refuse unknown types, write one version per save, and check `can()` with the page's `jd_area`. No editor UI. Stage rows are not pages. | Must | #9 |
 | FD-10 | `uw-ingest` is a second Hono Worker, not behind Access, with its own wrangler config and deploy job. It verifies each source's signature over the raw body, rejects unsigned, badly signed and replayed deliveries with a logged refusal and no queue message, mints a trace id, and enqueues a Zod-validated envelope to one Cloudflare Queue. `uw-app` consumes it, sends a malformed message to a declared dead-letter queue, and tolerates duplicates. | Must | #10 |
 | FD-11 | One trace id follows a request, webhook, queue message and run step from the edge to the database write. A structured JSON logger in `packages/core` writes `trace_id`, `principal`, `route`, `latency_ms`, `outcome` and the deployed commit on every line, in both Workers. Log shipping and 30-day retention are declared in `infra/`. `/health` returns JSON with a named list of indicators and an overall status, and renders a screen: deployed commit, database reachability, queue depth. An unreachable database turns its indicator amber or red and never errors the route. | Must | #11 |
@@ -744,20 +744,20 @@ These need a person, an account or a secret, and the build cannot create them. *
 
 | Dependency | Needed by | Owner | Status |
 |---|---|---|---|
-| Cloudflare account, API token, account id (GitHub secrets) | FD-3, FD-4 | Ian | In place |
-| Neon project, API key, connection strings; Hyperdrive configs for staging and production | FD-12 | Ian | To set up, after the build |
-| Cloudflare Access application with Google as identity provider; team domain and audience tag | FD-7 | Ian, the sponsor | To set up |
-| Access service tokens for agent identities | AB-2, AB-6 | Ian | To set up |
-| Cloudflare Queue and dead-letter queue | FD-10 | Ian | To set up (declared in wrangler) |
+| Cloudflare account, API token, account id (GitHub secrets) | FD-3, FD-4 | The owner | In place |
+| Neon project, API key, connection strings; Hyperdrive configs for staging and production | FD-12 | The owner | To set up, after the build |
+| Cloudflare Access application with Google as identity provider; team domain and audience tag | FD-7 | The owner, the sponsor | To set up |
+| Access service tokens for agent identities | AB-2, AB-6 | The owner | To set up |
+| Cloudflare Queue and dead-letter queue | FD-10 | The owner | To set up (declared in wrangler) |
 | GitHub App registered on the unfoldingWord org; private key, installation id, webhook secret | GH-1 | an org owner | To set up |
 | A GitHub identity for each Reviewer persona | PE-6, HE-9 | an org owner | To set up |
-| A test repository for the merge connector's integration test | GH-6 | Ian | To create |
-| AI Gateway; Anthropic, OpenAI and OpenRouter API keys | HE-3, HE-4, HE-5, HE-9 | Ian, the sponsor | To set up |
-| Cloudflare Sandbox and Containers enabled on the account | HE-8, HE-9 | Ian | To check |
+| A test repository for the merge connector's integration test | GH-6 | The owner | To create |
+| AI Gateway; Anthropic, OpenAI and OpenRouter API keys | HE-3, HE-4, HE-5, HE-9 | The owner, the sponsor | To set up |
+| Cloudflare Sandbox and Containers enabled on the account | HE-8, HE-9 | The owner | To check |
 | Zulip bot, its credentials, and an outgoing webhook | NT-3 | The sponsor | To set up |
-| Web push VAPID key pair | NT-1 | Ian | To generate |
+| Web push VAPID key pair | NT-1 | The owner | To generate |
 | The brand guide link and the `design-system/` handoff | WB-11 | The sponsor | Requested |
-| Two people for the staging acceptance run | section 14 | Ian, the sponsor | When the build is done |
+| Two people for the staging acceptance run | section 14 | The owner, the sponsor | When the build is done |
 
 ---
 
@@ -865,7 +865,7 @@ The issues left these as "decide in the PR". They are decided here so the build 
 
 ### 18.3 Decisions for v0.2.0
 
-Made on 2026-10-15 between Ian and Claude; the design is `docs/specs/2026-10-15-harness-v0-2-0-design.md`.
+Made on 2026-10-15 between the owner and Claude; the design is `docs/specs/2026-10-15-harness-v0-2-0-design.md`.
 
 | # | Decision | Cost if wrong |
 |---|---|---|
@@ -881,7 +881,7 @@ Made on 2026-10-15 between Ian and Claude; the design is `docs/specs/2026-10-15-
 
 ### 18.4 Decisions for v0.3.0
 
-Made between 2026-10-21 and 2026-11-04 by Ian and Claude over ten rounds of a mockup; the design is `docs/specs/2026-11-04-harness-v0-3-0-design.md`.
+Made between 2026-10-21 and 2026-11-04 by the owner and Claude over ten rounds of a mockup; the design is `docs/specs/2026-11-04-harness-v0-3-0-design.md`.
 
 | # | Decision | Cost if wrong |
 |---|---|---|

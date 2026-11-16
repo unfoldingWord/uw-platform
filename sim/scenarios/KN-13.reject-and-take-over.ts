@@ -22,7 +22,7 @@ type Cast = {
   readonly world: World;
   readonly harnessId: string;
   readonly itemId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly builder: Caller;
 };
 
@@ -39,11 +39,11 @@ async function cast(world: World): Promise<Cast> {
     title: 'Migrate the board',
   });
   const builder = simCaller(world, simAgent(max, `${max.personId}/builder`, { interactive: true }));
-  return { world, harnessId: harness.id, itemId: parked.itemId, ian: admin, builder };
+  return { world, harnessId: harness.id, itemId: parked.itemId, rowan: admin, builder };
 }
 
 async function decide(scene: Cast, decision: GateDecision, findings: readonly string[] = []) {
-  const outcome = await scene.world.kernel.gates.decide(simCaller(scene.world, scene.ian), {
+  const outcome = await scene.world.kernel.gates.decide(simCaller(scene.world, scene.rowan), {
     itemId: scene.itemId,
     decision,
     reason: null,
@@ -91,14 +91,14 @@ async function agentParksAgain(scene: Cast): Promise<void> {
 
 async function takeOverAndApprove(scene: Cast): Promise<void> {
   const taken = valueOf(await decide(scene, 'take_over'));
-  assert.equal(taken.item.holder, scene.ian.identity);
+  assert.equal(taken.item.holder, scene.rowan.identity);
   assert.equal(taken.item.claimantKind, 'person');
   assert.equal(taken.item.leaseExpiresAt, null);
   assert.equal(taken.item.gateStatus, 'working');
   assert.deepEqual(await decisionsOf(scene), ['reject', 'take_over']);
-  const ian = simCaller(scene.world, scene.ian);
+  const rowan = simCaller(scene.world, scene.rowan);
   const resubmitted = valueOf(
-    await scene.world.kernel.items.submit(ian, submitInput(scene.itemId)),
+    await scene.world.kernel.items.submit(rowan, submitInput(scene.itemId)),
   );
   assert.equal(resubmitted.result, 'parked');
   const approved = valueOf(await decide(scene, 'approve'));
