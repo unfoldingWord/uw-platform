@@ -153,7 +153,9 @@ async function reasonOf(response: Response | null): Promise<string> {
   return typeof reason === 'string' ? reason : 'internal_error';
 }
 
-async function saveAndCheck(root: HTMLElement, deps: DraftDeps): Promise<void> {
+type Checked = readonly DraftProblem[] | null;
+
+async function saveAndCheck(root: HTMLElement, deps: DraftDeps): Promise<Checked> {
   const harness = encodeURIComponent(root.dataset['harness'] ?? '');
   const body = {
     command: 'save_workflow_draft',
@@ -168,15 +170,46 @@ async function saveAndCheck(root: HTMLElement, deps: DraftDeps): Promise<void> {
       body: JSON.stringify(body),
     })
     .catch(() => null);
-  if (saved === null || !saved.ok) return setStatus(root, reasonText(await reasonOf(saved)));
+  if (saved === null || !saved.ok) {
+    setStatus(root, reasonText(await reasonOf(saved)));
+    return null;
+  }
   setRevision(root, body.revision + 1);
   const checked = await deps
     .fetch(`/api/harness/${harness}/draft`, { headers: { accept: 'application/json' } })
     .catch(() => null);
   const parsed = draftCheckSchema.safeParse(await checked?.json().catch(() => null));
-  if (!parsed.success) return setStatus(root, reasonText(await reasonOf(checked)));
+  if (!parsed.success) {
+    setStatus(root, reasonText(await reasonOf(checked)));
+    return null;
+  }
   setRevision(root, parsed.data.revision);
-  showProblems(root, parsed.data.problems);
+  return parsed.data.problems;
+}
+
+type DraftState = {
+  timer: unknown;
+  dirty: boolean;
+  saving: Promise<void> | null;
+  publishAfter: boolean;
+};
+
+function holdPublish(root: Element): void {
+  root.querySelector('[data-draft-publish]')?.setAttribute('aria-disabled', 'true');
+}
+
+function publishNow(root: Element): void {
+  const button = root.querySelector<HTMLButtonElement>('[data-draft-publish]');
+  const form = button?.closest('form');
+  if (button !== null && form !== null && form !== undefined) form.requestSubmit(button);
+}
+
+function settleCheck(root: HTMLElement, state: DraftState, problems: Checked): void {
+  if (state.dirty) return;
+  const ready = problems !== null && problems.length === 0;
+  if (problems !== null) showProblems(root, problems);
+  if (state.publishAfter && ready) publishNow(root);
+  state.publishAfter = false;
 }
 
 function onClick(root: HTMLElement, target: Element, changed: () => void): void {
@@ -197,28 +230,57 @@ function rootOf(event: Event): { root: HTMLElement; target: Element } | null {
   return target === null || root === null ? null : { root, target };
 }
 
-export function wireDraftEditor(document: Document, deps: DraftDeps): void {
-  const pending = new WeakMap<HTMLElement, unknown>();
-  const changed = (root: HTMLElement) => {
-    setStatus(root, 'Checking… (2 seconds after your last change)');
-    const waiting = pending.get(root);
-    if (waiting !== undefined) deps.timers.clearTimeout(waiting);
-    pending.set(
-      root,
-      deps.timers.setTimeout(() => {
-        pending.delete(root);
-        void saveAndCheck(root, deps);
-      }, DRAFT_CHECK_MS),
-    );
+function draftStates(deps: DraftDeps) {
+  const states = new WeakMap<HTMLElement, DraftState>();
+  const stateOf = (root: HTMLElement): DraftState => {
+    const known = states.get(root);
+    if (known !== undefined) return known;
+    const fresh: DraftState = { timer: undefined, dirty: false, saving: null, publishAfter: false };
+    states.set(root, fresh);
+    return fresh;
   };
+  const flush = async (root: HTMLElement): Promise<void> => {
+    const state = stateOf(root);
+    if (state.timer !== undefined) deps.timers.clearTimeout(state.timer);
+    state.timer = undefined;
+    while (state.saving !== null) await state.saving;
+    if (!state.dirty) return settleCheck(root, state, null);
+    state.dirty = false;
+    state.saving = saveAndCheck(root, deps).then((problems) => {
+      state.saving = null;
+      settleCheck(root, state, problems);
+    });
+    await state.saving;
+  };
+  const changed = (root: HTMLElement): void => {
+    const state = stateOf(root);
+    state.dirty = true;
+    holdPublish(root);
+    setStatus(root, 'Checking… (2 seconds after your last change)');
+    if (state.timer !== undefined) deps.timers.clearTimeout(state.timer);
+    state.timer = deps.timers.setTimeout(() => void flush(root), DRAFT_CHECK_MS);
+  };
+  const publishing = (root: HTMLElement): void => {
+    const state = stateOf(root);
+    if (!state.dirty && state.saving === null) return;
+    state.publishAfter = true;
+    void flush(root);
+  };
+  return { changed, publishing };
+}
+
+export function wireDraftEditor(document: Document, deps: DraftDeps): void {
+  const drafts = draftStates(deps);
   const edited = (event: Event) => {
     const found = rootOf(event);
-    if (found?.target.closest('[data-draft-rows]')) changed(found.root);
+    if (found?.target.closest('[data-draft-rows]')) drafts.changed(found.root);
   };
   document.addEventListener('input', edited);
   document.addEventListener('change', edited);
   document.addEventListener('click', (event) => {
     const found = rootOf(event);
-    if (found !== null) onClick(found.root, found.target, () => changed(found.root));
+    if (found === null) return;
+    if (found.target.closest('[data-draft-publish]')) drafts.publishing(found.root);
+    else onClick(found.root, found.target, () => drafts.changed(found.root));
   });
 }

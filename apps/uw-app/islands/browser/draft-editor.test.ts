@@ -1,9 +1,11 @@
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
+import { wireCommandForms } from './command-form.ts';
 import { DRAFT_CHECK_MS, wireDraftEditor, type DraftTimers } from './draft-editor.ts';
 
 const harnessId = 'd7000000-0000-4000-8000-000000000001';
 const checkId = 'd7000000-0000-4000-8000-000000000002';
+const publishRequest = 'd7000000-0000-4000-8000-000000000003';
 
 function row(key: string, id: string, feeds: readonly string[], others: readonly string[]): string {
   const loops = others
@@ -27,7 +29,7 @@ function row(key: string, id: string, feeds: readonly string[], others: readonly
 function page(): JSDOM {
   const markup = `<section data-draft-editor data-harness="${harnessId}" data-revision="2">
     <p data-draft-status></p><button type="button" data-draft-add>Add stage</button>
-    <form data-command="publish_workflow_draft"><input type="hidden" name="revision" value="2" data-draft-revision><button type="submit" data-draft-publish>Publish</button></form>
+    <form data-command="publish_workflow_draft" data-harness="${harnessId}"><input type="hidden" name="revision" value="2" data-draft-revision><button type="submit" data-draft-publish>Publish</button></form>
     <ul data-draft-general></ul>
     <ol data-draft-rows>${row('check', checkId, [], ['ship'])}${row('ship', '', [], ['check'])}</ol>
     <template data-draft-template>${row('new_stage', '', [], [])}</template></section>`;
@@ -51,18 +53,25 @@ function fakeTimers() {
   return { timers, waiting, fire: () => [...waiting.values()].forEach((run) => run()) };
 }
 
-function wired(check: object) {
-  const dom = page();
-  const document = dom.window.document;
-  const calls: Call[] = [];
-  const fetcher = (async (input: RequestInfo | URL, init?: RequestInit) => {
+function recorder(calls: Call[], check: object = {}): typeof fetch {
+  return (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     calls.push({ url, body: init?.body === undefined ? null : JSON.parse(String(init.body)) });
     const answer = url.endsWith('/draft') ? check : { status: 'accepted' };
     return new Response(JSON.stringify(answer), { status: 200 });
   }) as typeof fetch;
+}
+
+function wired(check: object) {
+  const dom = page();
+  const document = dom.window.document;
+  const calls: Call[] = [];
   const clock = fakeTimers();
-  wireDraftEditor(document, { fetch: fetcher, uuid: () => 'r', timers: clock.timers });
+  wireDraftEditor(document, {
+    fetch: recorder(calls, check),
+    uuid: () => 'r',
+    timers: clock.timers,
+  });
   return { document, dom, calls, clock };
 }
 
@@ -141,7 +150,52 @@ async function addsMovesAndRemoves(): Promise<void> {
   expect(calls[0]?.body).toMatchObject({ stages: [{ key: 'stage_1' }, { key: 'ship' }] });
 }
 
+async function publishesTheLatestEdit(): Promise<void> {
+  const { document, dom, calls, clock } = wired({ revision: 3, problems: [] });
+  wireCommandForms(document, {
+    fetch: recorder(calls),
+    uuid: () => publishRequest,
+    afterAccepted: () => {},
+  });
+  type(dom, document.querySelector('[data-key="check"] [name="title"]'), 'Check it');
+  const publish = document.querySelector<HTMLButtonElement>('[data-draft-publish]');
+  expect(publish?.getAttribute('aria-disabled')).toBe('true');
+  publish?.click();
+  await settle();
+  await settle();
+  expect(clock.waiting.size).toBe(0);
+  expect(calls.map((call) => call.url)).toEqual([
+    `/api/harness/${harnessId}/commands/save_workflow_draft`,
+    `/api/harness/${harnessId}/draft`,
+    `/api/harness/${harnessId}/commands/publish_workflow_draft`,
+  ]);
+  expect(calls[0]?.body).toMatchObject({ stages: [{ title: 'Check it' }, { key: 'ship' }] });
+  expect(calls[2]?.body).toMatchObject({ command: 'publish_workflow_draft', revision: 3 });
+}
+
+async function holdsPublishWhileProblemsRemain(): Promise<void> {
+  const problems = [{ stage: 'ship', code: 'title_blank', message: 'Give ship a title.' }];
+  const { document, dom, calls } = wired({ revision: 3, problems });
+  wireCommandForms(document, {
+    fetch: recorder(calls),
+    uuid: () => publishRequest,
+    afterAccepted: () => {},
+  });
+  type(dom, document.querySelector('[data-key="ship"] [name="title"]'), '');
+  document.querySelector<HTMLButtonElement>('[data-draft-publish]')?.click();
+  await settle();
+  await settle();
+  expect(calls.map((call) => call.url.split('/').pop())).toEqual(['save_workflow_draft', 'draft']);
+}
+
 describe('#103 the draft editor checks the draft a few seconds after the last change', () => {
+  it('saves an unsaved edit before Publish, then publishes that revision', publishesTheLatestEdit);
+
+  it(
+    'does not publish an unsaved edit that the check finds a problem in',
+    holdsPublishWhileProblemsRemain,
+  );
+
   it('saves once after typing stops, not once per key, then asks for the check', savesOncePerPause);
 
   it('puts each problem on its stage, and turns Publish off while any remain', placesProblems);
