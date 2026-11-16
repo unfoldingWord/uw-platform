@@ -32,7 +32,13 @@ function versionOf(raw: string | undefined): number | null {
   return raw === undefined || raw === '' ? null : Number(raw);
 }
 
+const none: Shape = () => ({});
+
 const shapes: ReadonlyMap<string, Shape> = new Map<string, Shape>([
+  ['open_workflow_draft', none],
+  ['discard_workflow_draft', none],
+  ['publish_workflow_draft', (given) => ({ revision: versionOf(given.get('revision')) })],
+  ['take_over_workflow_draft', (given) => ({ reason: given.get('reason') })],
   ['enqueue', (given) => ({ title: given.get('title'), pageId: null, due: null })],
   [
     'reorder',

@@ -1,0 +1,20 @@
+CREATE TABLE "workflow_drafts" (
+	"harness_id" uuid PRIMARY KEY NOT NULL,
+	"holder_person_id" uuid NOT NULL,
+	"started_at" timestamp with time zone NOT NULL,
+	"touched_at" timestamp with time zone NOT NULL,
+	"revision" integer NOT NULL,
+	"stages" jsonb NOT NULL,
+	"base" jsonb NOT NULL,
+	CONSTRAINT "workflow_drafts_revision_positive" CHECK ("workflow_drafts"."revision" >= 1),
+	CONSTRAINT "workflow_drafts_touched_after_start" CHECK ("workflow_drafts"."touched_at" >= "workflow_drafts"."started_at"),
+	CONSTRAINT "workflow_drafts_stages_bounded" CHECK (jsonb_typeof("workflow_drafts"."stages") = 'array' AND jsonb_array_length("workflow_drafts"."stages") <= 50),
+	CONSTRAINT "workflow_drafts_base_bounded" CHECK (jsonb_typeof("workflow_drafts"."base") = 'array' AND jsonb_array_length("workflow_drafts"."base") <= 50)
+);
+--> statement-breakpoint
+ALTER TABLE "harness_events" DROP CONSTRAINT "harness_events_name_known";--> statement-breakpoint
+ALTER TABLE "command_requests" DROP CONSTRAINT "command_requests_command_known";--> statement-breakpoint
+ALTER TABLE "workflow_drafts" ADD CONSTRAINT "workflow_drafts_harness_id_harnesses_id_fk" FOREIGN KEY ("harness_id") REFERENCES "public"."harnesses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "workflow_drafts" ADD CONSTRAINT "workflow_drafts_holder_person_id_people_id_fk" FOREIGN KEY ("holder_person_id") REFERENCES "public"."people"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "harness_events" ADD CONSTRAINT "harness_events_name_known" CHECK ("harness_events"."name" IN ('item_created', 'item_claimed', 'item_released', 'item_reordered', 'lease_renewed', 'lease_expired', 'branch_abandoned', 'branch_adopted', 'stage_advanced', 'loop_edge_taken', 'premise_held', 'risk_derived', 'label_removed', 'run_started', 'run_step_recorded', 'run_failed', 'run_hibernated', 'run_resumed', 'run_stopped', 'run_completed', 'run_prompted', 'submitted_to_gate', 'checks_passed', 'checks_failed', 'gate_approved', 'gate_rejected', 'gate_taken_over', 'gate_overridden', 'gate_refused_to_agent', 'ship_refused', 'connector_succeeded', 'connector_refused', 'delegation_granted', 'delegation_revoked', 'delegation_lapsed', 'delegation_required', 'stage_edit_refused', 'stage_edited', 'stage_removed', 'workflow_draft_opened', 'workflow_draft_saved', 'workflow_draft_taken_over', 'workflow_draft_discarded', 'workflow_published', 'template_activated', 'harness_paused', 'harness_resumed', 'hosted_builder_set', 'learning_attached', 'nothing_learned', 'comment_recorded', 'zulip_topic_linked', 'breaker_holding', 'breaker_pausing', 'breaker_open', 'persona_activation_failed', 'persona_activated', 'measurement_recorded', 'handed_to_person', 'review_verdict_recorded', 'shadow_verdict', 'shadow_lifted', 'freeze_changed', 'finding_refuted', 'delegated_merge', 'delegated_exit_claimed', 'fix_claimed', 'fix_claim_set', 'title_set', 'epic_enqueued', 'done_when_missing', 'silence_alarm', 'template_changed'));--> statement-breakpoint
+ALTER TABLE "command_requests" ADD CONSTRAINT "command_requests_command_known" CHECK ("command_requests"."command" IN ('kickstart', 'enqueue', 'import', 'reorder', 'claim', 'release', 'submit_to_gate', 'approve', 'reject', 'take_over', 'override', 'prompt_run', 'stop_run', 'pause', 'resume', 'tweak_package', 'schedule_regular_tweak', 'revoke_delegation', 'recover_connectors', 'activate_template', 'open_workflow_draft', 'save_workflow_draft', 'take_over_workflow_draft', 'discard_workflow_draft', 'publish_workflow_draft', 'set_hosted_builder', 'activate_persona', 'record_measurement', 'set_shadow', 'set_freeze', 'decide_gates', 'refute_finding', 'set_fix_claim', 'set_title', 'enqueue_epic', 'change_template', 'create_stage', 'update_stage', 'reorder_stages', 'remove_stage'));

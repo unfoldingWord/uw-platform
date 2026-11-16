@@ -551,6 +551,8 @@ gate_taken_over  gate_overridden  gate_refused_to_agent  ship_refused
 connector_succeeded  connector_refused
 delegation_granted  delegation_revoked  delegation_lapsed  delegation_required
 stage_edit_refused  stage_edited  stage_removed  template_activated  harness_paused
+workflow_draft_opened  workflow_draft_saved  workflow_draft_taken_over
+workflow_draft_discarded  workflow_published
 harness_resumed  hosted_builder_set  learning_attached  nothing_learned  comment_recorded
 zulip_topic_linked
 breaker_holding  breaker_pausing  breaker_open
@@ -561,6 +563,8 @@ measurement_recorded  handed_to_person
 Added in v0.2.0: `review_verdict_recorded`, `shadow_verdict`, `shadow_lifted`, `freeze_changed`, `epic_enqueued`, `done_when_missing` (a harness event recording an intake refusal; EI-2), `finding_refuted`, `silence_alarm`, `delegated_merge`, `delegated_exit_claimed`, `template_changed`, `fix_claimed` (an item event: the delegation, the head the fix starts from and the pull request's declaration, FL-2), `fix_claim_set` (a harness event: `{ enabled }`, FL-1). The person command `set_fix_claim` switches a harness's fix claim (admin). Wake reasons gain `silence_alarm` (rank 3) and `delegated_merge` (rank 2).
 
 Added in v0.3.0 (UI-18, step 22, the next minor contract version): `title_set`, a harness event with no item, recorded by the admin command `set_title` as the person who ran it, with strict evidence `{ from, to }`: the previous title and the new one, each a trimmed string of 1 to 80 characters. Like `hosted_builder_set` it records a change to a harness setting whose current value is the column (`harnesses.title`). The migration's backfill of `title = key` records no event, because no person changed anything. `set_title` is not in the verb registry, so no agent can record it. Its fixtures go beside the other harness events', and the Health and play-by-play folds ignore it.
+
+Added in contract 14.0.0 (#103): the four live stage commands `create_stage`, `update_stage`, `reorder_stages` and `remove_stage` are removed, and a harness's stages change only through a draft. The admin commands are `open_workflow_draft`, `save_workflow_draft` (the whole ordered stage list and the revision it was based on), `take_over_workflow_draft` (a reason), `discard_workflow_draft` and `publish_workflow_draft` (the revision). The harness events, none with an item: `workflow_draft_opened` `{}`, `workflow_draft_saved` `{ revision }`, `workflow_draft_taken_over` `{ fromPersonId, reason }` (reason null when the lock had lapsed), `workflow_draft_discarded` `{}`, and `workflow_published` `{ added, removed, changed, reordered }` (stage keys), recorded beside the `stage_edited` and `stage_removed` rows of the same publish. The refusals `draft_locked`, `draft_not_found`, `draft_stale`, `draft_revision_mismatch` and `draft_has_problems` are new. `GET /api/harness/:harness/draft` answers an admin `{ revision, problems }`, each problem `{ stage, code, message }`.
 
 `silence_alarm` (step 19) is a harness event recorded by the minute cron as the system: `{ level: 'red', waiting, oldestEnteredAt, lastReviewStepAt }`, at most one per harness per notifier cooldown; it wakes the area's admins at rank 3 with a link to `/health/silence_alarm`. `template_changed` (step 19, GL-5) records `{ from, to, kept, added }` (stage keys) beside the `stage_edited` rows of the same change.
 
@@ -574,7 +578,7 @@ Since contract 12.1.0 (step 10), `persona_activated` carries `{ pageId, persona,
 
 `packages/contracts` on `main` carries four placeholder names (`gate_approved`, `lease_expired`, `delegation_lapsed`, `abandoned`). The list above replaces them; `abandoned` becomes `branch_abandoned`.
 
-`stage_edited` (contract 3.2.0) records every accepted stage create, update and reorder: the stage id, its key, and before/after limited to the columns the edit changed (before is null for a creation; a reorder writes one per stage whose position changed). It is a harness-level event and changes no item.
+`stage_edited` (contract 3.2.0) records every accepted stage create, update and reorder (since contract 14.0.0, each one a part of a published draft): the stage id, its key, and before/after limited to the columns the edit changed (before is null for a creation; a reorder writes one per stage whose position changed). It is a harness-level event and changes no item.
 
 `item_reordered` (contract 10.0.0) records an item's new priority and, for the moved item, the item it was placed before. `stage_removed` records a removed stage's id, key and columns. `harness_paused` and `harness_resumed` name the lane, or null for the whole harness. Every event carries the `requestId` of the command that appended it, or null.
 
@@ -615,7 +619,7 @@ From #97 (2026-11-12) the source of truth for how screens look is the Claude Des
 | Today | Today, was Home (UI-9) |
 | Agent Queues landing (the epic #99 proposal) | Agent Queues, one card per workflow the viewer may see (#104) |
 | Agent Queues lanes and cards, with Development's chips and view switch | Queue tab, formerly the Board (WB-5, UI-6): lanes grouped by phase, each lane's rules in plain words, refusals on cards (#105) |
-| Agent Queues "Stage configuration" | Flow (WB-4, UI-10) |
+| Agent Queues "Stage configuration" | Flow (WB-4, UI-10); an area admin presses Edit workflow for a private draft of the stages, checked 2 seconds after each change and published as one change, while others see who is editing (#103) |
 | Today's "Waiting on me" rows | Waiting On You tab for each workflow (WB-6, UI-7): each gate the viewer may decide, with Approve (Approve merge at a merge stage) and Send back with a reason; the old `/gates` address moves to Agent Queues (#106) |
 | Health's "Open alert" card | Gate decision (UI-7) |
 | Agent Queues "What the run did" | Item play-by-play (WB-8, UI-11) |

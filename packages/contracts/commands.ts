@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { jdAreaSchema } from './areas.ts';
+import { DRAFT_STAGE_LIMIT, draftStageSchema } from './drafts.ts';
 import { capabilityWordSchema, riskTierSchema } from './closed-sets.ts';
 import {
   botAuthorsSchema,
@@ -11,7 +12,6 @@ import {
   pullRequestRefSchema,
   repositorySchema,
   stageKeySchema,
-  stageSchema,
 } from './harness.ts';
 import { slugSchema } from './pages.ts';
 import { dataSourceKindSchema } from './page-types.ts';
@@ -38,10 +38,11 @@ export const commandNames = [
   'revoke_delegation',
   'recover_connectors',
   'activate_template',
-  'create_stage',
-  'update_stage',
-  'reorder_stages',
-  'remove_stage',
+  'open_workflow_draft',
+  'save_workflow_draft',
+  'take_over_workflow_draft',
+  'discard_workflow_draft',
+  'publish_workflow_draft',
   'set_hosted_builder',
   'activate_persona',
   'record_measurement',
@@ -62,6 +63,7 @@ export const templateKeySchema = z.enum(['software', 'bml', 'check-only']);
 export type TemplateKey = z.infer<typeof templateKeySchema>;
 
 const requestId = z.uuid();
+const revision = z.number().int().min(1);
 const itemId = z.uuid();
 const nonBlank = (max: number) =>
   z
@@ -71,22 +73,6 @@ const nonBlank = (max: number) =>
 
 const body = <Name extends CommandName, Shape extends z.ZodRawShape>(name: Name, shape: Shape) =>
   z.strictObject({ command: z.literal(name), requestId, ...shape });
-
-const stageBounds = {
-  wipLimit: z.number().int().min(1).max(1000),
-  validators: stageSchema.shape.validators.pipe(z.array(z.string().max(100)).max(50)),
-  feeds: stageSchema.shape.feeds.pipe(z.array(stageKeySchema).max(50)),
-};
-
-const stageInputSchema = stageSchema
-  .omit({ id: true, harnessId: true, paused: true })
-  .extend(stageBounds);
-const stageChangeSchema = stageSchema
-  .omit({ id: true, harnessId: true, key: true, paused: true })
-  .extend(stageBounds)
-  .partial()
-  .strict()
-  .refine((change) => Object.keys(change).length > 0, 'a change names at least one column');
 
 const submitCommandSchema = body('submit_to_gate', {
   itemId,
@@ -162,10 +148,14 @@ export const harnessCommandSchemas = {
     protectedPaths: protectedPathsSchema.default([]),
     botAuthors: botAuthorsSchema.default([...defaultBotAuthors]),
   }),
-  create_stage: body('create_stage', { stage: stageInputSchema }),
-  update_stage: body('update_stage', { stageKey: stageKeySchema, change: stageChangeSchema }),
-  reorder_stages: body('reorder_stages', { order: z.array(stageKeySchema).min(1).max(50) }),
-  remove_stage: body('remove_stage', { stageKey: stageKeySchema }),
+  open_workflow_draft: body('open_workflow_draft', {}),
+  save_workflow_draft: body('save_workflow_draft', {
+    revision,
+    stages: z.array(draftStageSchema).max(DRAFT_STAGE_LIMIT),
+  }),
+  take_over_workflow_draft: body('take_over_workflow_draft', { reason: nonBlank(500) }),
+  discard_workflow_draft: body('discard_workflow_draft', {}),
+  publish_workflow_draft: body('publish_workflow_draft', { revision }),
   set_hosted_builder: body('set_hosted_builder', { enabled: z.boolean() }),
   set_fix_claim: body('set_fix_claim', { enabled: z.boolean() }),
   set_title: body('set_title', { title: harnessTitleSchema }),
@@ -225,10 +215,11 @@ export const commandSchema = z.discriminatedUnion('command', [
   harnessCommandSchemas.revoke_delegation,
   harnessCommandSchemas.recover_connectors,
   harnessCommandSchemas.activate_template,
-  harnessCommandSchemas.create_stage,
-  harnessCommandSchemas.update_stage,
-  harnessCommandSchemas.reorder_stages,
-  harnessCommandSchemas.remove_stage,
+  harnessCommandSchemas.open_workflow_draft,
+  harnessCommandSchemas.save_workflow_draft,
+  harnessCommandSchemas.take_over_workflow_draft,
+  harnessCommandSchemas.discard_workflow_draft,
+  harnessCommandSchemas.publish_workflow_draft,
   harnessCommandSchemas.set_hosted_builder,
   harnessCommandSchemas.activate_persona,
   harnessCommandSchemas.record_measurement,

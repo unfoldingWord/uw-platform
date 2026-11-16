@@ -44,6 +44,7 @@ const transactionMembers = [
   'measurements',
   'pages',
   'personas',
+  'workflowDrafts',
 ];
 
 function outcomeOf(result: PromiseSettledResult<unknown>): string {

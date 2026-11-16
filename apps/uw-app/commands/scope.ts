@@ -28,15 +28,13 @@ type Named = { readonly harnessId: string; readonly body: unknown };
 
 const newHarnessArea = z.object({ jdArea: jdAreaSchema });
 const optionalId = z.uuid().nullable().optional();
-const instructions = z.object({ instructionsPageId: optionalId }).optional();
 const namedTargets = z.object({
   itemId: optionalId,
   beforeItemId: optionalId,
   delegationId: optionalId,
   supersedes: optionalId,
   pageId: optionalId,
-  stage: instructions,
-  change: instructions,
+  stages: z.array(z.object({ instructionsPageId: optionalId })).optional(),
 });
 
 export async function sceneOf(
@@ -119,8 +117,7 @@ export async function foreignTarget(
   if (await foreignDelegation(lookup, named.harnessId, delegations)) return 'delegation_not_found';
   const pages = present([
     targets.pageId,
-    targets.stage?.instructionsPageId,
-    targets.change?.instructionsPageId,
+    ...(targets.stages ?? []).map((stage) => stage.instructionsPageId),
   ]);
   if (await foreignPage(lookup, scene.area, pages)) return 'page_not_found';
   return null;

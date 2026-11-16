@@ -63,6 +63,7 @@ describe('DX-2 executorOf', () => {
       lockShared: async () => undefined,
       harnesses: untouched(),
       harnessStages: untouched(),
+      workflowDrafts: untouched(),
       harnessItems: untouched(),
       harnessEvents: untouched(),
       harnessRuns: untouched(),

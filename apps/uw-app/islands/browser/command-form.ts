@@ -19,6 +19,10 @@ export const OUTCOME_TEXT: Readonly<Record<string, string>> = {
   take_over: 'You hold this item now',
   override: 'Overridden',
   activate_persona: 'Done.',
+  open_workflow_draft: 'Draft open',
+  discard_workflow_draft: 'Draft discarded',
+  publish_workflow_draft: 'Published',
+  take_over_workflow_draft: 'You hold the draft now',
 };
 
 const outcomes: ReadonlyMap<string, string> = new Map(Object.entries(OUTCOME_TEXT));

@@ -27,18 +27,21 @@ import {
 import {
   activateTemplateCommand,
   changeTemplateCommand,
-  createStageCommand,
   pauseCommand,
-  removeStageCommand,
-  reorderStagesCommand,
   resumeCommand,
   setHostedBuilderCommand,
   setFixClaimCommand,
   setTitleCommand,
   setFreezeCommand,
   setShadowCommand,
-  updateStageCommand,
 } from './person/stages.ts';
+import {
+  discardDraftCommand,
+  openDraftCommand,
+  publishDraftCommand,
+  saveDraftCommand,
+  takeOverDraftCommand,
+} from './person/drafts.ts';
 
 export function commandRegistryOf(
   handlers: readonly CommandHandler[],
@@ -77,10 +80,11 @@ export const commandRegistry = commandRegistryOf([
   revokeDelegationCommand,
   recoverConnectorsCommand,
   activateTemplateCommand,
-  createStageCommand,
-  updateStageCommand,
-  reorderStagesCommand,
-  removeStageCommand,
+  openDraftCommand,
+  saveDraftCommand,
+  takeOverDraftCommand,
+  discardDraftCommand,
+  publishDraftCommand,
   setHostedBuilderCommand,
   activatePersonaCommand,
   recordMeasurementCommand,

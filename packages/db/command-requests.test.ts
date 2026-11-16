@@ -67,6 +67,16 @@ function describeCommandNames(insert: Insert): void {
     }
     expect(names).toContain('set_hosted_builder');
   });
+
+  it('#103 still admits the four retired stage commands, so requests already recorded stay valid', async () => {
+    const retired = ['create_stage', 'update_stage', 'reorder_stages', 'remove_stage'];
+    for (const [n, command] of retired.entries()) {
+      await insert({
+        requestId: `00000000-0000-4000-8000-0000000002${String(n).padStart(2, '0')}`,
+        command,
+      });
+    }
+  });
 }
 
 function describeTarget(target: DatabaseTarget): void {
