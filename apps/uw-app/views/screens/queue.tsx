@@ -19,8 +19,9 @@ import { bracketText } from '../parts/flow-diagram.tsx';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { itemsText } from '../parts/items-count.ts';
 import { idParam } from '../parts/params.ts';
-import { queuePath, flowPath, gatesPath } from '../parts/paths.ts';
+import { queuePath, flowPath, waitingPath } from '../parts/paths.ts';
 import { moduleCodes } from '../parts/names.ts';
+import { waitingCount } from '../parts/waiting-count.ts';
 import { workflowCrumbs, workflowTabs } from '../parts/workflow-tabs.ts';
 import { formatMoney } from '@uw/core/money';
 import { notFound } from './not-found.tsx';
@@ -146,14 +147,14 @@ function StageChips(props: { readonly view: Shown; readonly stageKey: string | n
   );
 }
 
-function specOf(view: Shown, cursor: number) {
+function specOf(view: Shown, cursor: number, waiting: number) {
   const { harness } = view;
   return {
     title: `${harness.title} ${pageNames.queue}`,
     current: queuePath(harness.id),
     code: moduleCodes.agentQueues,
     crumbs: workflowCrumbs(harness.title, flowPath(harness.id), pageNames.queue),
-    tabs: workflowTabs(harness.id, 'queue'),
+    tabs: workflowTabs(harness.id, 'queue', waiting),
     live: { screen: 'board' as const, harnesses: [{ harnessId: harness.id, cursor }] },
   };
 }
@@ -214,11 +215,15 @@ function Head(props: { readonly view: Shown; readonly tally: Tally }) {
   );
 }
 
-function Toolbar(props: { readonly tally: Tally }) {
+function Toolbar(props: { readonly tally: Tally; readonly harnessId: string }) {
   const quiet = 'inline-flex items-center gap-2 px-2 text-sm font-semibold text-text-2';
   return (
     <div class="mb-3 flex flex-wrap items-center gap-2">
-      <HumanChip label="Waiting on you" count={props.tally.waiting} href={gatesPath()} />
+      <HumanChip
+        label="Waiting on you"
+        count={props.tally.waiting}
+        href={waitingPath(props.harnessId)}
+      />
       <span class={quiet}>
         Agents working <span class="font-mono text-text-3">{props.tally.working}</span>
       </span>
@@ -341,10 +346,10 @@ export async function queueScreen(c: Context<AppEnv>): Promise<Response> {
   const tally = tallyOf(board);
   return renderScreen(
     c,
-    specOf(view, cursor),
+    specOf(view, cursor, await waitingCount(screen, harnessId)),
     <>
       <Head view={view} tally={tally} />
-      <Toolbar tally={tally} />
+      <Toolbar tally={tally} harnessId={harnessId} />
       <StageChips view={view} stageKey={input.stageKey} />
       <EpicGroups harnessId={harnessId} epics={board.epics} />
       <NotReadyList harnessId={harnessId} entries={board.notReady} />

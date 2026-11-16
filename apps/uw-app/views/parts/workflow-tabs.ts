@@ -1,6 +1,8 @@
 import type { Crumb, Tab } from '@uw/ui/components/top-bar.tsx';
 import { pageNames } from './names.ts';
-import { agentQueuesPath, queuePath, flowPath } from './paths.ts';
+import { agentQueuesPath, flowPath, queuePath, waitingPath } from './paths.ts';
+
+export type WorkflowTab = 'queue' | 'waiting' | 'flow';
 
 export function workflowCrumbs(title: string, titleHref: string, last: string): readonly Crumb[] {
   return [
@@ -11,9 +13,19 @@ export function workflowCrumbs(title: string, titleHref: string, last: string): 
   ];
 }
 
-export function workflowTabs(harnessId: string, current: 'flow' | 'queue'): readonly Tab[] {
+export function workflowTabs(
+  harnessId: string,
+  current: WorkflowTab,
+  waiting: number,
+): readonly Tab[] {
   return [
     { label: pageNames.queue, href: queuePath(harnessId), current: current === 'queue' },
+    {
+      label: pageNames.waiting,
+      href: waitingPath(harnessId),
+      current: current === 'waiting',
+      count: waiting,
+    },
     { label: pageNames.flow, href: flowPath(harnessId), current: current === 'flow' },
   ];
 }

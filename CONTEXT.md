@@ -333,7 +333,7 @@ A person's open live session on one screen of a harness. A wake for that screen 
 _Avoid_: online, active
 
 **Screen**:
-The view a live session watches: `home`, `queues` (Agent Queues), `flow`, `board` (the Queue; the value keeps the screen's old name), `gates` or `item`. An `item` session also names its item.
+The view a live session watches: `home`, `queues` (Agent Queues), `flow`, `board` (the Queue; the value keeps the screen's old name), `gates` (a workflow's Waiting On You tab and a gate's own page) or `item`. An `item` session also names its item.
 _Avoid_: page (that is a content page), route
 
 **Zulip topic**:
@@ -507,7 +507,7 @@ A Reviewer approval on an earlier head that counts on the current head because e
 _Avoid_: sticky approval, inherited review
 
 **Refuted finding**:
-A Reviewer finding a person marked wrong on the Gates view. The share of a Reviewer's findings refuted over 30 days is its refute rate.
+A Reviewer finding a person marked wrong on a gate's page. The share of a Reviewer's findings refuted over 30 days is its refute rate.
 _Avoid_: rejected finding (a gate is rejected), false positive
 
 **Strictness preset**:

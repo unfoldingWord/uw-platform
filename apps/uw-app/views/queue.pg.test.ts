@@ -16,7 +16,7 @@ import { agentOf, kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml, pageContent } from '../testing/views.ts';
-import { queuePath, itemPath } from './parts/paths.ts';
+import { queuePath, itemPath, waitingPath } from './parts/paths.ts';
 
 const seedClock: Clock = { now: () => new Date('2026-10-02T06:00:00.000Z') };
 const viewClock: Clock = { now: () => new Date('2026-10-02T09:00:00.000Z') };
@@ -264,7 +264,7 @@ async function lookOfBoard(world: BoardWorld): Promise<void> {
   const head = document.querySelector('main [aria-label="Figures"]');
   const figures = [...(head?.querySelectorAll('dt') ?? [])].map((term) => term.textContent?.trim());
   expect(figures).toEqual(['Agents working', 'Waiting on you', 'Spent on these items']);
-  const toolbar = document.querySelector('main a[href="/gates"]');
+  const toolbar = document.querySelector(`main a[href="${waitingPath(world.harnessId)}"]`);
   expect(toolbar?.textContent).toContain('Waiting on you');
   expect(document.querySelector('main section[data-folded="true"]')).not.toBeNull();
   const card = document.querySelector('main article');

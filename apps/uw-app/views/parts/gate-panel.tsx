@@ -24,14 +24,14 @@ export type PanelGate = {
   readonly place?: GatePlace | undefined;
 };
 
-type Refusals = {
+export type Refusals = {
   readonly approve: string | null;
   readonly reject: string | null;
   readonly take_over: string | null;
   readonly override: string | null;
 };
 
-function refusalsOf(view: GateView, ability: DecideAbility): Refusals {
+export function refusalsOf(view: GateView, ability: DecideAbility): Refusals {
   if (!ability.can) {
     const reason = reasonText(ability.reason);
     return { approve: reason, reject: reason, take_over: reason, override: reason };

@@ -14,6 +14,7 @@ import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { idParam } from '../parts/params.ts';
 import { queuePath, flowPath } from '../parts/paths.ts';
 import { moduleCodes } from '../parts/names.ts';
+import { waitingCount } from '../parts/waiting-count.ts';
 import { workflowCrumbs, workflowTabs } from '../parts/workflow-tabs.ts';
 import { notFound } from './not-found.tsx';
 import { pageNames } from '../parts/names.ts';
@@ -103,7 +104,7 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
     current: flowPath(harnessId),
     code: moduleCodes.agentQueues,
     crumbs: workflowCrumbs(view.harness.title, queuePath(harnessId), pageNames.flow),
-    tabs: workflowTabs(harnessId, 'flow'),
+    tabs: workflowTabs(harnessId, 'flow', await waitingCount(screen, harnessId)),
     live: { screen: 'flow' as const, harnesses: [{ harnessId, cursor }] },
   };
   return renderScreen(

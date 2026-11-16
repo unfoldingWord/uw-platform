@@ -12,7 +12,7 @@ import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml } from '../testing/views.ts';
-import { gatesPath, shadowExportPath } from './parts/paths.ts';
+import { shadowExportPath, waitingPath } from './parts/paths.ts';
 
 const ROWAN_EMAIL = 'rowan.test@unfoldingword.org';
 const repository = 'unfoldingWord/tc-admin-app';
@@ -91,7 +91,7 @@ describe.skipIf(!testServer)(
     it('lists the head under the harness with the shadow label and an export link, and passes the screen checks', () =>
       withAppDatabase(async (db) => {
         const harnessId = await shadowHarness(db);
-        const html = await getHtml(db, ROWAN_EMAIL, gatesPath(), {}, clock);
+        const html = await getHtml(db, ROWAN_EMAIL, waitingPath(harnessId), {}, clock);
         const section = sectionFor(new JSDOM(html.text).window.document, 'tc-admin-app');
         expect(section?.textContent).toContain('shadow');
         expect(section?.querySelector('a')?.getAttribute('href')).toBe(shadowExportPath(harnessId));
