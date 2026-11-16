@@ -2,8 +2,8 @@ export type FirstAdmin = { readonly email: string; readonly displayName: string 
 
 export type RunSql = (text: string, params: readonly string[]) => Promise<unknown>;
 
-export const bootstrapPersonId = '00000000-0000-4000-8000-000000000001';
-export const bootstrapGrantId = '00000000-0000-4000-8000-000000000101';
+const bootstrapPersonId = '00000000-0000-4000-8000-000000000001';
+const bootstrapGrantId = '00000000-0000-4000-8000-000000000101';
 
 const addPerson = `INSERT INTO people (id, email, display_name, status)
 VALUES ($1, $2, $3, 'active')
