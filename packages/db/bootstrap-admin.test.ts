@@ -50,6 +50,17 @@ describe.skipIf(!testServer)('#124 the first admin comes from a setting', () => 
   );
 
   it(
+    'stores an address given with capitals and spaces in lowercase',
+    () =>
+      withEmptyDatabase(testServer ?? '', async (target) => {
+        await applyMigrations(target);
+        await bootstrap(target, { ...first, email: ' First.Admin@UnfoldingWord.org ' });
+        expect(await orgAdmins(target)).toEqual([first.email]);
+      }),
+    timeout,
+  );
+
+  it(
     'never adds a second org admin once one exists',
     () =>
       withEmptyDatabase(testServer ?? '', async (target) => {

@@ -24,7 +24,8 @@ WHERE g.id = $1
   AND NOT EXISTS (SELECT 1 FROM grant_audit a WHERE a.grant_id = $1 AND a.action = 'bootstrap')`;
 
 export async function bootstrapAdmin(run: RunSql, admin: FirstAdmin): Promise<void> {
-  await run(addPerson, [bootstrapPersonId, admin.email, admin.displayName]);
-  await run(addGrant, [bootstrapGrantId, admin.email]);
+  const email = admin.email.trim().toLowerCase();
+  await run(addPerson, [bootstrapPersonId, email, admin.displayName]);
+  await run(addGrant, [bootstrapGrantId, email]);
   await run(addAudit, [bootstrapGrantId]);
 }
