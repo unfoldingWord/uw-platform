@@ -5,6 +5,8 @@ const limit = formatCount(VIEW_LIMIT);
 
 export const parkedCapNote = `A harness has at least ${limit} parked items. Gates are read from the ${limit} with the highest priority on each harness.`;
 
+export const workflowCapNote = `This workflow has at least ${limit} parked items. Gates are read from the ${limit} with the highest priority.`;
+
 export const lapsedCapNote = `At least ${limit} of your delegations lapsed in the last 7 days. The latest ${limit} are read.`;
 
 export const mergedCapNote = `At least ${limit} items merged under a delegation in the last 7 days. The latest ${limit} are read.`;

@@ -7,11 +7,11 @@ import { agentQueuesScreen } from './screens/agent-queues.tsx';
 import { oldQueueAddress, queueScreen } from './screens/queue.tsx';
 import { flowScreen } from './screens/flow.tsx';
 import { gateScreen } from './screens/gate.tsx';
-import { gatesScreen } from './screens/gates.tsx';
 import { homeScreen } from './screens/home.tsx';
 import { saveToolset } from './parts/toolset-save.tsx';
 import { personaScreen } from './screens/persona.tsx';
 import { playScreen } from './screens/play.tsx';
+import { oldWaitingAddress, waitingScreen } from './screens/waiting.tsx';
 
 const sameOrigin = csrf();
 
@@ -31,7 +31,8 @@ export function viewRoutes(): Hono<AppEnv> {
   routes.get('/harnesses/:harnessId', flowScreen);
   routes.get('/harnesses/:harnessId/queue', queueScreen);
   routes.get('/harnesses/:harnessId/board', oldQueueAddress);
-  routes.get('/gates', gatesScreen);
+  routes.get('/harnesses/:harnessId/waiting', waitingScreen);
+  routes.get('/gates', oldWaitingAddress);
   routes.get('/harnesses/:harnessId/gates/:itemId', gateScreen);
   routes.get('/harnesses/:harnessId/items/:itemId', playScreen);
   routes.get('/personas/:pageId', personaScreen);

@@ -20,11 +20,11 @@ import {
   queuePath,
   flowPath,
   gatePath,
-  gatesPath,
   healthPath,
   homePath,
   itemPath,
   personaPath,
+  waitingPath,
 } from '../views/parts/paths.ts';
 
 const seedClock: Clock = { now: () => new Date('2026-10-02T06:00:00.000Z') };
@@ -124,7 +124,7 @@ async function gateScreens(db: Database): Promise<Screen[]> {
   const world = await gateWorld(db);
   const { harnessId, itemId } = world.item;
   const paths: readonly (readonly [string, string])[] = [
-    ['gates', gatesPath()],
+    ['waiting', waitingPath(harnessId)],
     ['gate', gatePath(harnessId, itemId)],
     ['play', itemPath(harnessId, itemId)],
   ];
@@ -228,7 +228,7 @@ describe.skipIf(!testServer || (!browserReady && !required))('UI-16 the screensh
       'health',
       'health-detail',
       'persona',
-      'gates',
+      'waiting',
       'gate',
       'play',
     ]);

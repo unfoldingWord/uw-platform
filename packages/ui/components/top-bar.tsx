@@ -1,10 +1,16 @@
 import type { Child } from 'hono/jsx';
 import { safeHref } from './href.ts';
+import { humanBadge } from './human-action.tsx';
 import { Icon } from './icon.tsx';
 import { ThemeSwitch } from './theme-switch.tsx';
 
 export type Crumb = { readonly label: string; readonly href?: string };
-export type Tab = { readonly label: string; readonly href: string; readonly current: boolean };
+export type Tab = {
+  readonly label: string;
+  readonly href: string;
+  readonly current: boolean;
+  readonly count?: number;
+};
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
@@ -40,13 +46,23 @@ function Tabs(props: { readonly tabs: readonly Tab[] }) {
       {props.tabs.map((tab) => {
         const href = safeHref(tab.href);
         if (href === undefined) return null;
+        const count = tab.count ?? 0;
         return (
           <a
             href={href}
             aria-current={tab.current ? 'page' : undefined}
-            class={`border-r border-line px-3 py-1 text-sm font-heavy text-text-3 last:border-r-0 hover:text-text aria-[current=page]:bg-side aria-[current=page]:text-side-text ${focus}`}
+            aria-label={count > 0 ? `${tab.label}, ${count} waiting` : undefined}
+            class={`inline-flex items-center gap-2 border-r border-line px-3 py-1 text-sm font-heavy text-text-3 last:border-r-0 hover:text-text aria-[current=page]:bg-side aria-[current=page]:text-side-text ${focus}`}
           >
             {tab.label}
+            {count > 0 ? (
+              <span
+                data-count
+                class={`rounded-sm px-1 font-mono text-xs leading-normal ${humanBadge}`}
+              >
+                {count}
+              </span>
+            ) : null}
           </a>
         );
       })}

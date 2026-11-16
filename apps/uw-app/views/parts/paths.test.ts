@@ -12,6 +12,7 @@ import {
   itemPath,
   pullRequestUrl,
   reviewUrl,
+  waitingPath,
 } from './paths.ts';
 
 const harness = 'e7000000-0000-4000-8000-000000000001';
@@ -28,6 +29,7 @@ describe('the view paths', () => {
     ]);
     expect(flowPath(harness)).toBe(`/harnesses/${harness}`);
     expect(queuePath(harness)).toBe(`/harnesses/${harness}/queue`);
+    expect(waitingPath(harness)).toBe(`/harnesses/${harness}/waiting`);
     expect(queuePath(harness, 'build')).toBe(`/harnesses/${harness}/queue?stage=build`);
     expect(gatePath(harness, item)).toBe(`/harnesses/${harness}/gates/${item}`);
     expect(itemPath(harness, item)).toBe(`/harnesses/${harness}/items/${item}`);

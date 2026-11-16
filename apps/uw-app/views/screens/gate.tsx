@@ -8,9 +8,10 @@ import { showsDecisions } from '../parts/decider.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { GatePanel, type PanelGate } from '../parts/gate-panel.tsx';
 import { idParam } from '../parts/params.ts';
-import { flowPath, gatePath, gatesPath, homePath, itemPath } from '../parts/paths.ts';
+import { gatePath, itemPath, queuePath, waitingPath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
-import { Inbox, placeOf } from './gates.tsx';
+import { Inbox, placeOf } from '../parts/gate-rows.tsx';
+import { workflowCrumbs } from '../parts/workflow-tabs.ts';
 import { pageNames } from '../parts/names.ts';
 import { moduleCodes } from '../parts/names.ts';
 
@@ -103,15 +104,15 @@ export async function gateScreen(c: Context<AppEnv>): Promise<Response> {
   if (scene === null || gate === null) return notFound(c);
   const { harness, item } = scene;
   const notice = await noticeOf(screen, scene, gate);
-  const { rows } = await screen.kernel.views.gates(screen.caller, read);
+  const input = { harnessId: harness.id };
+  const { rows } = await screen.kernel.views.workflowGates(screen.caller, input, read);
   const spec = {
     title: `${item.title} ${pageNames.gate}`,
     current: gatePath(harness.id, item.itemId),
-    code: moduleCodes.today,
+    code: moduleCodes.agentQueues,
     crumbs: [
-      { label: pageNames.home, href: homePath() },
-      { label: pageNames.waiting, href: gatesPath() },
-      { label: harness.title, href: flowPath(harness.id) },
+      ...workflowCrumbs(harness.title, queuePath(harness.id), pageNames.waiting).slice(0, -1),
+      { label: pageNames.waiting, href: waitingPath(harness.id) },
       { label: pageNames.gate },
     ],
     live: {
