@@ -32,7 +32,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Where and how**
 
-- Work only in the worktree `/home/ianjl/projects/uw-platform-v1` on branch `build/v1`. Never commit to `main`, never force-push, never `--no-verify`.
+- Work only in the worktree `/home/rowan-test/projects/uw-platform-v1` on branch `build/v1`. Never commit to `main`, never force-push, never `--no-verify`.
 - Read `AGENTS.md` sections 1, 4, 6 and 10 before the first edit. When this plan and `AGENTS.md` disagree, `AGENTS.md` wins; record the conflict in `docs/progress_tracker.md` and build the version that keeps the rule.
 - Words come from `CONTEXT.md`. Use "principal", "grant", "person", "agent identity", "verb", "command", "trace id", "page type", "envelope", "indicator". Never "user", "permission", "tool" (as prose for a verb), "session".
 
@@ -81,7 +81,7 @@ Inputs the PRD implies but does not spell out, most likely to bite first. Each h
 1. A GitHub delivery whose JSON is larger than the 128 KB Cloudflare Queues message limit: the envelope is sent with `payload: null` and `payloadTruncated: true`, and the delivery is accepted, never refused in a retry loop (Task 13).
 2. The queue send fails after the delivery id was recorded: the record is released, so GitHub's redelivery is accepted rather than refused as a replay (Task 13).
 3. Two org admins revoke each other's org-admin grant at the same moment: exactly one revoke is accepted and the other is refused `last_org_admin`, on two real connections (Task 11).
-4. Email spelling at sign-in: `Ian.Lindsley@UnfoldingWord.org` maps to the same `people` row as the lowercase form, and lookalike domains (`x@evil-unfoldingword.org`, `x@unfoldingword.org.evil.com`) are provisioned `pending`, not active (Task 10).
+4. Email spelling at sign-in: `Rowan.Test@UnfoldingWord.org` maps to the same `people` row as the lowercase form, and lookalike domains (`x@evil-unfoldingword.org`, `x@unfoldingword.org.evil.com`) are provisioned `pending`, not active (Task 10).
 5. A page update that sets `parentId` to the page itself or one of its descendants is refused `parent_cycle`, and a principal who may not read a page's area gets `page_not_found`, never a 403 that confirms the page exists (Task 12).
 
 ---
@@ -460,7 +460,7 @@ Expected: FAIL, "ends at the live CONTRACT_VERSION" (undefined vs `1.0.0`).
 Generate the sets from the code rather than by hand, then paste the output as the single entry:
 
 ```bash
-cd /home/ianjl/projects/uw-platform-v1/packages/contracts && node --input-type=module -e "
+cd /home/rowan-test/projects/uw-platform-v1/packages/contracts && node --input-type=module -e "
 import { z } from 'zod';
 import { schemaRegistry } from './registry.ts';
 const sets = Object.fromEntries(Object.entries(schemaRegistry).filter(([, s]) => s instanceof z.ZodEnum).map(([k, s]) => [k, [...s.options]]).sort(([a], [b]) => a.localeCompare(b)));
@@ -733,7 +733,7 @@ Fixture shapes (use these exact values):
   "identity": "human:00000000-0000-4000-8000-000000000001",
   "kind": "person",
   "personId": "00000000-0000-4000-8000-000000000001",
-  "email": "ian.lindsley@unfoldingword.org",
+  "email": "rowan.test@unfoldingword.org",
   "grants": [{ "grantId": "00000000-0000-4000-8000-000000000101", "role": "admin", "scopeKind": "org", "scopeArea": null, "expiresAt": null }],
   "interactive": true
 }
@@ -1582,7 +1582,7 @@ import { ingestPrincipal, parsePrincipal, personPrincipal, serviceTokenPrincipal
 describe('FD-7 the principal', () => {
   const person = personPrincipal({
     personId: '00000000-0000-4000-8000-000000000001',
-    email: 'ian.lindsley@unfoldingword.org',
+    email: 'rowan.test@unfoldingword.org',
     grants: [{ grantId: '00000000-0000-4000-8000-000000000101', role: 'admin', scopeKind: 'org', scopeArea: null, expiresAt: null }],
     interactive: true,
   });
@@ -1755,7 +1755,7 @@ FD-8"
 **Interfaces:**
 - Produces Drizzle exports from `@uw/db/schema`: `people`, `roleGrants`, `grantAudit`, `pages`, `pageVersions`, `webhookDeliveries`, `queueWatermarks`.
 - Produces from `@uw/db/client`: `type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]` and `type Executor = Database | Transaction`.
-- Produces fixed bootstrap ids: Ian `00000000-0000-4000-8000-000000000001` (`ian.lindsley@unfoldingword.org`), the sponsor `00000000-0000-4000-8000-000000000002` (`sponsor@unfoldingword.org`), their org-admin grants `…0101` and `…0102`.
+- Produces fixed bootstrap ids: the owner `00000000-0000-4000-8000-000000000001` (`rowan.test@unfoldingword.org`), the sponsor `00000000-0000-4000-8000-000000000002` (`sponsor@unfoldingword.org`), their org-admin grants `…0101` and `…0102`.
 
 - [ ] **Step 1: Write the failing constraint tests**
 
@@ -1822,12 +1822,12 @@ describe.skipIf(!testServer)('the foundation tables on real Postgres', () => {
       expect(await attempt(grant(p1, 'editor', 'jd_area', '80-89'))).toBe('ok');
     });
 
-    it('grants org admin to Ian and the sponsor in the bootstrap migration, with an audit row each', async () => {
+    it('grants org admin to the owner and the sponsor in the bootstrap migration, with an audit row each', async () => {
       const admins = await sql`
         SELECT p.email FROM role_grants g JOIN people p ON p.id = g.person_id
         WHERE g.role = 'admin' AND g.scope_kind = 'org' AND g.revoked_at IS NULL ORDER BY p.email`;
       expect(admins.map((row) => row['email'])).toEqual([
-        'ian.lindsley@unfoldingword.org',
+        'rowan.test@unfoldingword.org',
         'sponsor@unfoldingword.org',
       ]);
       const audits = await sql`SELECT actor, action FROM grant_audit WHERE action = 'bootstrap'`;
@@ -1860,8 +1860,8 @@ describe.skipIf(!testServer)('the foundation tables on real Postgres', () => {
     it('keeps one snapshot per page version and an identity-shaped edit source', async () => {
       const snapshot = (version: number, source: string) =>
         `INSERT INTO page_versions (page_id, version, type, jd_area, slug, title, frontmatter, body_md, status, edit_source) VALUES ('${a}', ${version}, 'skill', '80-89', 'shared', 'T', '{}', '', 'draft', '${source}')`;
-      expect(await attempt(snapshot(1, 'human:ian'))).toBe('ok');
-      expect(await attempt(snapshot(1, 'human:ian'))).toBe('23505');
+      expect(await attempt(snapshot(1, 'human:rowan'))).toBe('ok');
+      expect(await attempt(snapshot(1, 'human:rowan'))).toBe('23505');
       expect(await attempt(snapshot(2, 'robot:x'))).toBe('23514');
     });
   });
@@ -2098,7 +2098,7 @@ The frontmatter and body have no SQL default: the page API always writes both. I
 - [ ] **Step 4: Generate the migrations**
 
 ```bash
-cd /home/ianjl/projects/uw-platform-v1
+cd /home/rowan-test/projects/uw-platform-v1
 pnpm --filter @uw/db exec drizzle-kit generate --name foundation_tables
 pnpm --filter @uw/db exec drizzle-kit generate --custom --name grant_audit_append_only
 pnpm --filter @uw/db exec drizzle-kit generate --custom --name bootstrap_admins
@@ -2122,7 +2122,7 @@ CREATE TRIGGER grant_audit_no_truncate BEFORE TRUNCATE ON grant_audit FOR EACH S
 
 ```sql
 INSERT INTO people (id, email, display_name, status) VALUES
-  ('00000000-0000-4000-8000-000000000001', 'ian.lindsley@unfoldingword.org', 'Ian Lindsley', 'active'),
+  ('00000000-0000-4000-8000-000000000001', 'rowan.test@unfoldingword.org', 'the owner', 'active'),
   ('00000000-0000-4000-8000-000000000002', 'sponsor@unfoldingword.org', 'Sponsor', 'active')
 ON CONFLICT (email) DO NOTHING;
 --> statement-breakpoint
@@ -2161,7 +2161,7 @@ git commit -m "feat(db): people, grants, grant audit, pages, page versions, deli
 Shared root packages/db/schema.ts: the foundation tables with their classification
 and offline eligibility, closed sets as CHECK constraints (P4), one live grant per
 person, role and scope, slugs unique per area (P20), an append-only grant_audit,
-and a bootstrap migration granting org admin to Ian and the sponsor.
+and a bootstrap migration granting org admin to the owner and the sponsor.
 
 FD-7 FD-8 FD-9 FD-10 FD-11"
 git add packages/db/foundation.test.ts packages/db/client.ts
@@ -2331,8 +2331,8 @@ describe('FD-11 the structured logger', () => {
 
   it('carries a principal set later, and never lets an extra field overwrite a required one', () => {
     const { lines, sink } = capture();
-    createLogger(context, sink).with({ principal: 'human:ian' }).error('failed', { outcome: 'internal_error', trace_id: 'forged' });
-    expect(lines[0]).toMatchObject({ principal: 'human:ian', trace_id: context.traceId });
+    createLogger(context, sink).with({ principal: 'human:rowan' }).error('failed', { outcome: 'internal_error', trace_id: 'forged' });
+    expect(lines[0]).toMatchObject({ principal: 'human:rowan', trace_id: context.traceId });
   });
 });
 ```
@@ -2855,11 +2855,11 @@ describe.skipIf(!testServer)('FD-7 FD-8 the principal minted at the edge', () =>
 
 with these exact expectations:
 - `new.person@unfoldingword.org` → 200; body `principal` has `kind: 'person'`, `identity: 'human:<id>'`, `grants: []`, `interactive: true`; `SELECT status FROM people WHERE email = 'new.person@unfoldingword.org'` is `active`.
-- `Ian.Lindsley@UnfoldingWord.org` and `ian.lindsley@unfoldingword.org` → both 200 with the same `personId` `00000000-0000-4000-8000-000000000001`, and `SELECT count(*) FROM people WHERE email = 'ian.lindsley@unfoldingword.org'` is 1.
+- `Rowan.Test@UnfoldingWord.org` and `rowan.test@unfoldingword.org` → both 200 with the same `personId` `00000000-0000-4000-8000-000000000001`, and `SELECT count(*) FROM people WHERE email = 'rowan.test@unfoldingword.org'` is 1.
 - `someone@gmail.com` → 403, body `{ status: 'error', reason: 'pending_approval' }`, row status `pending`.
 - `x@evil-unfoldingword.org` and `x@unfoldingword.org.evil.com` → 403 `pending_approval` each.
 - `someone@gmail.com` with `accept: text/html` → 403, `content-type` contains `text/html`, body contains `waiting for approval`.
-- Ian → `principal.grants` equals `[{ grantId: '00000000-0000-4000-8000-000000000101', role: 'admin', scopeKind: 'org', scopeArea: null, expiresAt: null }]`.
+- The owner → `principal.grants` equals `[{ grantId: '00000000-0000-4000-8000-000000000101', role: 'admin', scopeKind: 'org', scopeArea: null, expiresAt: null }]`.
 - For a signed-in `g@unfoldingword.org`, insert one revoked grant (`revoked_at = now()`) and one expired grant (`expires_at = now() - interval '1 minute'`) directly with SQL → `principal.grants` is `[]`.
 - Request once (no grants), insert an `editor` grant on `80-89` with SQL, request again → the second principal holds it.
 - `parsePrincipal(JSON.parse(JSON.stringify(body.principal)))` equals `body.principal`.
@@ -2981,31 +2981,31 @@ Locking all live org-admin rows in id order before counting is what makes two co
 
 - [ ] **Step 1: Write the failing tests**
 
-`apps/uw-app/acl/grant-commands.pg.test.ts`, inside `describe.skipIf(!testServer)('FD-8 grant and revoke commands', …)`. Helpers: `as(email)` signs a person token; `command(email, body)` POSTs `body` to `/api/acl/commands/<body.command>` and returns `{ status, body, traceId }`; `personId(email)` signs in once through `/api/me` and returns the id; Ian is the bootstrap org admin. Cases:
+`apps/uw-app/acl/grant-commands.pg.test.ts`, inside `describe.skipIf(!testServer)('FD-8 grant and revoke commands', …)`. Helpers: `as(email)` signs a person token; `command(email, body)` POSTs `body` to `/api/acl/commands/<body.command>` and returns `{ status, body, traceId }`; `personId(email)` signs in once through `/api/me` and returns the id; the owner is the bootstrap org admin. Cases:
 
 | Case | Expect |
 |---|---|
-| Ian grants `editor` on `80-89` to `e@unfoldingword.org` | 200 `{ status: 'accepted', requestId }`; `e`'s next `/api/me` holds the grant; one new `grant_audit` row with `actor = 'human:00000000-0000-4000-8000-000000000001'`, `action = 'grant'`, `before IS NULL`, `after->>'role' = 'editor'`, `after->>'scope_area' = '80-89'`, and `trace_id` equal to the response's `x-trace-id` |
+| The owner grants `editor` on `80-89` to `e@unfoldingword.org` | 200 `{ status: 'accepted', requestId }`; `e`'s next `/api/me` holds the grant; one new `grant_audit` row with `actor = 'human:00000000-0000-4000-8000-000000000001'`, `action = 'grant'`, `before IS NULL`, `after->>'role' = 'editor'`, `after->>'scope_area' = '80-89'`, and `trace_id` equal to the response's `x-trace-id` |
 | `e` (editor on 80-89) grants `viewer` on `80-89` to someone | 403 `not_permitted`, no new audit row |
-| Ian grants `admin` on `80-89` to `a@`; `a` grants `viewer` on `80-89` to `v@` | accepted |
+| The owner grants `admin` on `80-89` to `a@`; `a` grants `viewer` on `80-89` to `v@` | accepted |
 | `a` grants `editor` on `20-29`, and `admin` at `org` | 403 `not_permitted` each |
-| Ian repeats the `editor` on `80-89` grant to `e` | 409 `grant_exists` |
-| an `editor` on `80-89` for `x@` inserted by SQL with `expires_at = now() - interval '1 day'`, then Ian grants the same | accepted; `x` has one live grant; audit shows one `revoke` then one `grant` |
-| Ian grants with `expiresAt` one minute in the past | 422 `expiry_in_past` |
-| Ian grants to a random UUID | 404 `person_not_found` |
+| The owner repeats the `editor` on `80-89` grant to `e` | 409 `grant_exists` |
+| an `editor` on `80-89` for `x@` inserted by SQL with `expires_at = now() - interval '1 day'`, then the owner grants the same | accepted; `x` has one live grant; audit shows one `revoke` then one `grant` |
+| The owner grants with `expiresAt` one minute in the past | 422 `expiry_in_past` |
+| The owner grants to a random UUID | 404 `person_not_found` |
 | `pending@gmail.com` signs in (403), `a` (area admin) grants it `viewer` on `80-89` | 403 `not_permitted`, person still pending |
-| Ian grants the same | accepted; `people.status` is `active`; `pending@gmail.com`'s next `/api/me` is 200 |
-| Ian revokes `e`'s grant | accepted; audit `before->>'revoked_at'` is null and `after->>'revoked_at'` is not; `e`'s next `/api/me` has no grant |
-| Ian revokes the same grant again, and a random UUID | 404 `grant_not_found` each |
-| Ian revokes the sponsor's org admin (`…0102`), then his own (`…0101`) | first accepted, second 409 `last_org_admin` |
+| The owner grants the same | accepted; `people.status` is `active`; `pending@gmail.com`'s next `/api/me` is 200 |
+| The owner revokes `e`'s grant | accepted; audit `before->>'revoked_at'` is null and `after->>'revoked_at'` is not; `e`'s next `/api/me` has no grant |
+| The owner revokes the same grant again, and a random UUID | 404 `grant_not_found` each |
+| The owner revokes the sponsor's org admin (`…0102`), then their own (`…0101`) | first accepted, second 409 `last_org_admin` |
 | a service-token principal posts a grant | 403 `not_permitted` |
 | body `{ "command": "grant_role" }` | 400 refusal `malformed_command` with no `requestId` |
 | a body with a valid `requestId` and `role: 'owner'` | 400 `{ status: 'error', requestId, reason: 'malformed_command' }` |
 | `POST /api/acl/commands/approve` | 404 `not_wired` |
 
-Run the "Ian revokes the sponsor's org admin, then his own" case in its own `withAppDatabase` (it removes an org admin the other cases rely on); the rest may share one database in table order.
+Run the "the owner revokes the sponsor's org admin, then their own" case in its own `withAppDatabase` (it removes an org admin the other cases rely on); the rest may share one database in table order.
 
-`apps/uw-app/acl/last-org-admin.pg.test.ts` (review focus 3): in one migrated database, open two separate clients with `createClient(target)` (two connections), build Ian's and the sponsor's principals with `personPrincipal` and their bootstrap grants, and run `Promise.all([revokeRole(dbA, ian, revokeSponsor, traceA), revokeRole(dbB, sponsor, revokeIan, traceB)])` ten times over fresh databases or after re-inserting the revoked grant. Every round: exactly one result is `{ ok: true }` and the other is `{ ok: false, reason: 'last_org_admin' }`, and `SELECT count(*) FROM role_grants WHERE role = 'admin' AND scope_kind = 'org' AND revoked_at IS NULL` is 1.
+`apps/uw-app/acl/last-org-admin.pg.test.ts` (review focus 3): in one migrated database, open two separate clients with `createClient(target)` (two connections), build the owner's and the sponsor's principals with `personPrincipal` and their bootstrap grants, and run `Promise.all([revokeRole(dbA, rowan, revokeSponsor, traceA), revokeRole(dbB, sponsor, revokeRowan, traceB)])` ten times over fresh databases or after re-inserting the revoked grant. Every round: exactly one result is `{ ok: true }` and the other is `{ ok: false, reason: 'last_org_admin' }`, and `SELECT count(*) FROM role_grants WHERE role = 'admin' AND scope_kind = 'org' AND revoked_at IS NULL` is 1.
 
 - [ ] **Step 2: Run and see them fail** → FAIL.
 - [ ] **Step 3: Implement.**
@@ -3076,7 +3076,7 @@ SELECT 1 FROM chain WHERE id = $pageId LIMIT 1
 
 `apps/uw-app/pages/validate.test.ts`: `checkFrontmatter('policy', {})` → `unknown_page_type`; `checkFrontmatter('constructor', {})` → `unknown_page_type`; a valid persona frontmatter (the object from Task 5's test) → `ok` with `type: 'persona'`; the same with `toolset: ['approve']` → `invalid_frontmatter`; a learning with `confidence: 'certain'` → `invalid_frontmatter`; a skill with an extra key → `invalid_frontmatter` (frontmatter schemas are strict).
 
-`apps/uw-app/pages/pages.pg.test.ts`, inside `describe.skipIf(!testServer)('FD-9 pages and page versions', …)`. Ian grants, through the grants command, `editor` on `80-89` to `ed@`, `viewer` on `80-89` to `vw@`, `editor` on `20-29` to `fin@`, `viewer` on `20-29` to `fv@`. Cases:
+`apps/uw-app/pages/pages.pg.test.ts`, inside `describe.skipIf(!testServer)('FD-9 pages and page versions', …)`. The owner grants, through the grants command, `editor` on `80-89` to `ed@`, `viewer` on `80-89` to `vw@`, `editor` on `20-29` to `fin@`, `viewer` on `20-29` to `fv@`. Cases:
 
 | Case | Expect |
 |---|---|
@@ -4006,7 +4006,7 @@ Status row for step 1: state `Built`, evidence `docs/plans/2026-10-01-step-01-fo
 | FD-8 | Revoking the last live org-admin grant is refused `last_org_admin`, serialised by locking every live org-admin row | The org must never lose its last admin | None known |
 | FD-8 | Re-granting a grant that expired but was never revoked first revokes the expired row, with its own audit record | The one-live-grant index would otherwise refuse it | None known |
 | FD-8 | `grant_audit` is append-only by trigger | It is an audit trail kept 7 years (PRD 9) | None known |
-| FD-8 | The sponsor's bootstrap email is `sponsor@unfoldingword.org` | No address for the sponsor is in the repository | If wrong, the sponsor signs in as a separate person without the grant; fixed by a migration or by Ian granting him |
+| FD-8 | The sponsor's bootstrap email is `sponsor@unfoldingword.org` | No address for the sponsor is in the repository | If wrong, the sponsor signs in as a separate person without the grant; fixed by a migration or by the owner granting him |
 | FD-7 | A service token's identity is `agent:svc-<client id>` with no grants | AB-2 maps tokens to owners in step 4 | AB-2 replaces it |
 | FD-7 | `/health` is outside Access and has no `can()` (exceptions.md) | The deploy probe needs the commit without a credential | WB-10's drill-through must live behind Access |
 | FD-7 | People are classified `internal`, `cache_readonly` | Plan §2.6 puts the directory there | None known |
@@ -4032,11 +4032,11 @@ Status row for step 1: state `Built`, evidence `docs/plans/2026-10-01-step-01-fo
 
 | Requirement | What is written | What is needed to verify it live | From whom |
 |---|---|---|---|
-| FD-7 | Access JWT verification, `infra/access/uw-app.json` | The Access application with Google as IdP, its AUD tag and team domain, a service token | Ian, the sponsor |
+| FD-7 | Access JWT verification, `infra/access/uw-app.json` | The Access application with Google as IdP, its AUD tag and team domain, a service token | The owner, the sponsor |
 | FD-8 | Bootstrap migration | Confirm the sponsor's sign-in address | The sponsor |
-| FD-10 | uw-ingest Worker, deploy jobs, queue bindings in `wrangler.go-live.toml` | The four queues; `GITHUB_WEBHOOK_SECRET` as a Worker secret (with GH-1's App) | Ian, an org owner |
-| FD-11 | Workers Logs, `infra/logs/*.json` | Workers Paid for Logpush; the `uw-logs` bucket; R2 credentials | Ian |
-| FD-12 | `neon-pr.yml`, `drop-neon-branch`, `migrate-staging`, `migrate-production`, Hyperdrive bindings in `wrangler.go-live.toml` | `NEON_API_KEY`, `NEON_PROJECT_ID`, `NEON_DIRECT_URL_STAGING`, `NEON_DIRECT_URL_PRODUCTION`; Hyperdrive configs for staging and production; then the switch-on PR | Ian |
+| FD-10 | uw-ingest Worker, deploy jobs, queue bindings in `wrangler.go-live.toml` | The four queues; `GITHUB_WEBHOOK_SECRET` as a Worker secret (with GH-1's App) | The owner, an org owner |
+| FD-11 | Workers Logs, `infra/logs/*.json` | Workers Paid for Logpush; the `uw-logs` bucket; R2 credentials | The owner |
+| FD-12 | `neon-pr.yml`, `drop-neon-branch`, `migrate-staging`, `migrate-production`, Hyperdrive bindings in `wrangler.go-live.toml` | `NEON_API_KEY`, `NEON_PROJECT_ID`, `NEON_DIRECT_URL_STAGING`, `NEON_DIRECT_URL_PRODUCTION`; Hyperdrive configs for staging and production; then the switch-on PR | The owner |
 
 - [ ] **Step 5: Verify and commit**
 

@@ -74,7 +74,7 @@ function requiring(tools: readonly string[], toolset: readonly string[] = ['sear
   });
 }
 
-const byIan: Activate = (scene) => activatePersona(scene.world, scene.ian, pageId);
+const byRowan: Activate = (scene) => activatePersona(scene.world, scene.rowan, pageId);
 
 function byPerson(grants: Parameters<typeof simPerson>[2]): Activate {
   return async (scene) =>
@@ -98,7 +98,7 @@ const withFixtureRegistry: Activate = async (scene) => {
 
 describe('AB-8 activation refuses a forbidden verb and an unreachable verb', () => {
   it('refuses a forbidden verb with its own message and an event, and opens no item', async () => {
-    const seen = await inScene(requiring(['approve']), byIan);
+    const seen = await inScene(requiring(['approve']), byRowan);
     expect(seen.outcome).toEqual({
       status: 'error',
       reason: 'forbidden_verb',
@@ -132,7 +132,7 @@ describe('AB-8 activation refuses a forbidden verb and an unreachable verb', () 
   });
 
   it("judges reach by the activating person's grants, not the owner the frontmatter names", async () => {
-    const seen = await inScene(requiring(['claim_item'], ['claim_item']), byIan, {
+    const seen = await inScene(requiring(['claim_item'], ['claim_item']), byRowan, {
       ownerRole: 'viewer',
     });
     expect(seen.outcome).toMatchObject({ status: 'accepted' });
@@ -149,7 +149,7 @@ describe('HE-10 activation refuses a persona on the reserved engine', () => {
         requires_tools: ['summarise_measurements'],
       }),
     });
-    const seen = await inScene(page, byIan);
+    const seen = await inScene(page, byRowan);
     expect(seen.outcome).toEqual({
       status: 'error',
       reason: 'engine_not_available',
@@ -195,7 +195,7 @@ describe('persona activation refuses a caller who may not activate', () => {
 
   it('refuses an agent caller, with no event', async () => {
     const agent: Activate = (scene) =>
-      activatePersona(scene.world, simAgent(scene.ian, 'iterate', { interactive: true }), pageId);
+      activatePersona(scene.world, simAgent(scene.rowan, 'iterate', { interactive: true }), pageId);
     const seen = await inScene(requiring(['approve']), agent);
     expect(seen.outcome).toEqual({
       status: 'error',
@@ -208,7 +208,7 @@ describe('persona activation refuses a caller who may not activate', () => {
   it('answers a page that is not a persona page_not_found', async () => {
     const seen = await inScene(
       (scene) => ({ ...requiring(['approve'])(scene), type: 'product' }),
-      byIan,
+      byRowan,
     );
     expect(seen.outcome).toEqual({ status: 'error', reason: 'page_not_found', detail: { pageId } });
   });
@@ -217,7 +217,7 @@ describe('persona activation refuses a caller who may not activate', () => {
 describe('persona activation refuses a page it cannot activate before running the tool check', () => {
   it('answers a page that does not exist page_not_found', async () => {
     const missing: Activate = (scene) =>
-      activatePersona(scene.world, scene.ian, '00000000-0000-4000-8000-000000008399');
+      activatePersona(scene.world, scene.rowan, '00000000-0000-4000-8000-000000008399');
     const seen = await inScene(requiring(['approve']), missing);
     expect(seen.outcome).toMatchObject({ status: 'error', reason: 'page_not_found' });
   });
@@ -226,7 +226,7 @@ describe('persona activation refuses a page it cannot activate before running th
     const page = (scene: PersonaScene) => ({
       frontmatter: personaFrontmatter(scene, { owner: 7 }),
     });
-    const seen = await inScene(page, byIan);
+    const seen = await inScene(page, byRowan);
     expect(seen.outcome).toEqual({
       status: 'error',
       reason: 'invalid_frontmatter',
@@ -237,7 +237,7 @@ describe('persona activation refuses a page it cannot activate before running th
   it('answers a persona whose harness does not exist harness_not_found', async () => {
     const harness = '00000000-0000-4000-8000-000000008398';
     const page = (scene: PersonaScene) => ({ frontmatter: personaFrontmatter(scene, { harness }) });
-    const seen = await inScene(page, byIan);
+    const seen = await inScene(page, byRowan);
     expect(seen.outcome).toEqual({
       status: 'error',
       reason: 'harness_not_found',
@@ -250,7 +250,7 @@ describe('persona activation refuses a page it cannot activate before running th
       ...requiring(['approve'])(scene),
       status: 'active' as const,
     });
-    const seen = await inScene(page, byIan);
+    const seen = await inScene(page, byRowan);
     expect(seen.outcome).toEqual({
       status: 'error',
       reason: 'not_permitted',
@@ -260,7 +260,7 @@ describe('persona activation refuses a page it cannot activate before running th
   });
 
   it('records a missing verb with no item when there is no software harness', async () => {
-    const seen = await inScene(requiring(['summarise_measurements']), byIan, { software: false });
+    const seen = await inScene(requiring(['summarise_measurements']), byRowan, { software: false });
     expect(seen.outcome).toMatchObject({
       reason: 'unknown_verb',
       detail: { itemId: null, why: 'software_harness_missing' },
@@ -290,7 +290,7 @@ describe('persona activation hides a page from a person who cannot read its area
 
 describe('persona activation acts on the page version the person read', () => {
   it('refuses a version that is no longer the stored one stale_version, with no event or item', async () => {
-    const stale: Activate = (scene) => activatePersona(scene.world, scene.ian, pageId, 2);
+    const stale: Activate = (scene) => activatePersona(scene.world, scene.rowan, pageId, 2);
     const seen = await inScene(requiring(['summarise_measurements']), stale);
     expect(seen.outcome).toEqual({
       status: 'error',
@@ -334,7 +334,7 @@ async function seedServed(
 async function activatesAndProjects(scene: PersonaScene): Promise<void> {
   await seedServed(scene);
   const before = await namesIn(scene);
-  const outcome = await activatePersona(scene.world, scene.ian, pageId);
+  const outcome = await activatePersona(scene.world, scene.rowan, pageId);
   expect(outcome).toEqual({
     status: 'accepted',
     value: { pageId, persona: 'agent:iterate', harnessId: scene.bmlId, version: 2 },
@@ -348,7 +348,7 @@ async function activatesAndProjects(scene: PersonaScene): Promise<void> {
 
 async function frontmatterReadsActive(scene: PersonaScene): Promise<void> {
   await seedServed(scene);
-  await activatePersona(scene.world, scene.ian, pageId);
+  await activatePersona(scene.world, scene.rowan, pageId);
   const [facts] = await scene.world.adapters.store.transaction((tx) =>
     tx.pages.read.facts([pageId]),
   );
@@ -367,7 +367,7 @@ async function dryRunFailureRecorded(scene: PersonaScene): Promise<void> {
   });
   const message =
     'persona iterate instructions are not an agentskills document: no agentskills header';
-  expect(await activatePersona(scene.world, scene.ian, pageId)).toEqual({
+  expect(await activatePersona(scene.world, scene.rowan, pageId)).toEqual({
     status: 'error',
     reason: 'dry_run_failed',
     detail: { message },
@@ -395,7 +395,7 @@ async function editorAndAgentRefused(scene: PersonaScene): Promise<void> {
   const editor = await simPerson(scene.world, 5, [
     { role: 'editor', scopeKind: 'jd_area', scopeArea: '30-39' },
   ]);
-  const agent = simAgent(scene.ian, 'iterate', { interactive: true });
+  const agent = simAgent(scene.rowan, 'iterate', { interactive: true });
   for (const actor of [editor, agent]) {
     expect(await activatePersona(scene.world, actor, pageId)).toMatchObject({
       status: 'error',
@@ -413,7 +413,7 @@ async function staleVersionRecordsNothing(scene: PersonaScene): Promise<void> {
   await seedServed(scene);
   await resaveSeededPage(scene.world.database.db, pageId);
   const before = await namesIn(scene);
-  expect(await activatePersona(scene.world, scene.ian, pageId, 1)).toEqual({
+  expect(await activatePersona(scene.world, scene.rowan, pageId, 1)).toEqual({
     status: 'error',
     reason: 'stale_version',
     detail: { pageId, version: 2 },
@@ -428,9 +428,9 @@ async function staleVersionRecordsNothing(scene: PersonaScene): Promise<void> {
 async function identityInUseRefused(scene: PersonaScene): Promise<void> {
   await seedServed(scene);
   await seedServed(scene, secondPage, 'persona-iterate-again');
-  expect((await activatePersona(scene.world, scene.ian, pageId)).status).toBe('accepted');
+  expect((await activatePersona(scene.world, scene.rowan, pageId)).status).toBe('accepted');
   const before = await namesIn(scene);
-  expect(await activatePersona(scene.world, scene.ian, secondPage)).toEqual({
+  expect(await activatePersona(scene.world, scene.rowan, secondPage)).toEqual({
     status: 'error',
     reason: 'not_permitted',
     detail: { why: 'identity_in_use' },
@@ -460,7 +460,7 @@ describe('PE-3 an admin activates a persona after the tool check and a dry run',
 
   it('PE-2 activation checks the derived requires_tools: a missing verb opens one item and leaves the persona suggested', async () => {
     const tools = ['search_pages', 'summarise_measurements'];
-    const seen = await inScene(requiring(tools, tools), byIan);
+    const seen = await inScene(requiring(tools, tools), byRowan);
     expect(seen.outcome).toMatchObject({
       status: 'error',
       reason: 'unknown_verb',

@@ -43,9 +43,9 @@ type SignOff = { readonly harnessId: string; readonly itemId: string };
 
 async function parkedAtSignOff(world: GateWorld): Promise<SignOff> {
   const kernel = kernelOn(world.db, clock);
-  const harnessId = await activatedHarness(kernel, world.ian, signOff, 'sign-off');
-  const itemId = await enqueuedItem(kernel, world.ian, harnessId, 'Sign the release notes');
-  await advanced(kernel, world.ian, itemId, 1);
+  const harnessId = await activatedHarness(kernel, world.rowan, signOff, 'sign-off');
+  const itemId = await enqueuedItem(kernel, world.rowan, harnessId, 'Sign the release notes');
+  await advanced(kernel, world.rowan, itemId, 1);
   await rewriteItem(world.db, itemId, { riskTier: 'high', riskDomains: ['ledger'] });
   return { harnessId, itemId };
 }
@@ -96,12 +96,12 @@ async function rejectedFindings(db: Database, itemId: string): Promise<unknown> 
 
 async function listsThisWorkflowOnly(world: GateWorld): Promise<void> {
   const other = await parkedAtSignOff(world);
-  const here = await documentOf(world, world.ianEmail, waitingPath(world.item.harnessId));
+  const here = await documentOf(world, world.rowanEmail, waitingPath(world.item.harnessId));
   expect(rowTitles(here)).toEqual([world.item.title]);
   expect(here.querySelector('main [data-gate-row] a[href*="/gates/"]')?.getAttribute('href')).toBe(
     gatePath(world.item.harnessId, world.item.itemId),
   );
-  const there = await documentOf(world, world.ianEmail, waitingPath(other.harnessId));
+  const there = await documentOf(world, world.rowanEmail, waitingPath(other.harnessId));
   expect(rowTitles(there)).toEqual(['Sign the release notes']);
   expect(waitingTab(there)?.getAttribute('aria-label')).toBe('Waiting On You, 1 waiting');
 }
@@ -112,17 +112,17 @@ async function approveLabels(world: GateWorld): Promise<void> {
   const ship = await documentOf(world, world.kimEmail, waitingPath(world.item.harnessId));
   expect(rowButtons(ship)).toEqual(['Approve merge', 'Send back']);
   const other = await parkedAtSignOff(world);
-  const plain = await documentOf(world, world.ianEmail, waitingPath(other.harnessId));
+  const plain = await documentOf(world, world.rowanEmail, waitingPath(other.harnessId));
   expect(rowButtons(plain)).toEqual(['Approve', 'Send back']);
 }
 
 async function decide(world: GateWorld, at: SignOff, decision: string, typed: object) {
-  const before = await documentOf(world, world.ianEmail, waitingPath(at.harnessId));
+  const before = await documentOf(world, world.rowanEmail, waitingPath(at.harnessId));
   const fields = { ...rowFields(before, at.itemId), ...typed };
   const body = commandBody(decision, fields, randomUUID());
   expect(body).not.toBeNull();
   const path = `/api/harness/${at.harnessId}/commands/${decision}`;
-  return post(world.db, world.ianEmail, path, body);
+  return post(world.db, world.rowanEmail, path, body);
 }
 
 async function approvedFromRow(world: GateWorld): Promise<void> {
@@ -130,7 +130,7 @@ async function approvedFromRow(world: GateWorld): Promise<void> {
   const sent = await decide(world, at, 'approve', {});
   expect([sent.status, sent.body['status']]).toEqual([200, 'accepted']);
   expect(await decisionRows(world.db, { ...world.item, itemId: at.itemId })).toBe(1);
-  const after = await documentOf(world, world.ianEmail, waitingPath(at.harnessId));
+  const after = await documentOf(world, world.rowanEmail, waitingPath(at.harnessId));
   expect(rowTitles(after)).toEqual([]);
   expect(after.querySelector('main [role="note"]')?.textContent).toBe(
     'Nothing in this workflow is waiting for you to decide.',

@@ -15,7 +15,7 @@ import {
   simAgent,
   simCaller,
   simDelegate,
-  simIan,
+  simRowan,
   simPerson,
   simSystem,
 } from '../fixtures.ts';
@@ -55,7 +55,7 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
     await work({
       world,
       harnessId: harness.id,
-      admin: simCaller(world, await simIan(world)),
+      admin: simCaller(world, await simRowan(world)),
       kim,
       max,
       editor: simCaller(world, max),

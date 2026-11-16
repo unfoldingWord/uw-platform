@@ -20,7 +20,7 @@ import type { VerbContext } from './context.ts';
 import { callVerb } from './dispatch.ts';
 import { verbHandlers } from './verbs/index.ts';
 
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 const EDITOR = {
   id: '00000000-0000-4000-8000-000000001301',
   email: 'verbs-editor@unfoldingword.org',
@@ -42,7 +42,7 @@ type Rig = {
   readonly clock: SettableClock;
   readonly fixture: AccessFixture;
   readonly kernel: Kernel;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly editor: Principal;
   readonly drop: () => Promise<void>;
 };
@@ -82,7 +82,7 @@ async function openRig(): Promise<Rig> {
   const db = createClient(database.connectionString);
   const clock = settableClock();
   await seedPeople(db);
-  const ian = await personOn(db, IAN_ID, 'ian.lindsley@unfoldingword.org', clock.now());
+  const rowan = await personOn(db, ROWAN_ID, 'rowan.test@unfoldingword.org', clock.now());
   const editor = await personOn(db, EDITOR.id, EDITOR.email, clock.now());
   const drop = async () => {
     await db.$client.end();
@@ -90,7 +90,7 @@ async function openRig(): Promise<Rig> {
   };
   const fixture = await createAccessFixture();
   const kernel = kernelOn(db, clock);
-  return { db, clock, fixture, kernel, ian, editor, drop };
+  return { db, clock, fixture, kernel, rowan, editor, drop };
 }
 
 function rig(): Promise<Rig> {
@@ -123,7 +123,7 @@ async function harnessWith(r: Rig, key: string, priorities: readonly number[], a
   const harnessId = crypto.randomUUID();
   const template = software;
   value(
-    await r.kernel.stages.activate(caller(r.ian), {
+    await r.kernel.stages.activate(caller(r.rowan), {
       harnessId,
       harnessKey: key,
       jdArea: area,
@@ -135,13 +135,13 @@ async function harnessWith(r: Rig, key: string, priorities: readonly number[], a
   await listForDispatch(r.db, repositoryOf(key), area);
   const change = { agentPickup: 'allowed' as const };
   value(
-    await r.kernel.stages.updateStage(caller(r.ian), { harnessId, stageKey: 'package', change }),
+    await r.kernel.stages.updateStage(caller(r.rowan), { harnessId, stageKey: 'package', change }),
   );
   const itemIds: string[] = [];
   for (const [n, priority] of priorities.entries()) {
     const input = { harnessId, title: `${key} ${n}`, pageId: null, priority, due: null };
     itemIds.push(
-      value(await r.kernel.items.enqueue(caller(r.ian), { ...input, delegationId: null })).itemId,
+      value(await r.kernel.items.enqueue(caller(r.rowan), { ...input, delegationId: null })).itemId,
     );
   }
   return { harnessId, itemIds };
@@ -161,9 +161,8 @@ async function routineRunner(r: Rig): Promise<Client> {
     personId: EDITOR.id,
     device: ROUTINE,
   };
-  expect(await bindServiceToken(r.db, r.ian, command, crypto.randomUUID(), r.clock.now())).toEqual({
-    ok: true,
-  });
+  const bound = await bindServiceToken(r.db, r.rowan, command, crypto.randomUUID(), r.clock.now());
+  expect(bound).toEqual({ ok: true });
   const token = await r.fixture.signForMcp({ common_name: CLIENT });
   const app = createApp(postgresDeps(r.db, r.fixture, undefined, r.clock));
   return httpClient(app, { 'cf-access-jwt-assertion': token });
@@ -377,7 +376,7 @@ async function heldByPersonAtCheck(
   const h = await harnessWith(r, key, [1]);
   const change = { exitGate: 'human_approval' as const };
   value(
-    await r.kernel.stages.updateStage(caller(r.ian), {
+    await r.kernel.stages.updateStage(caller(r.rowan), {
       harnessId: h.harnessId,
       stageKey: 'check',
       change,
@@ -385,7 +384,7 @@ async function heldByPersonAtCheck(
   );
   const itemId = at(h, 0);
   for (const stageKey of ['package', 'scope', 'plan', 'build']) {
-    expect(value(await r.kernel.reads.item(caller(r.ian), { itemId })).item.stageKey).toBe(
+    expect(value(await r.kernel.reads.item(caller(r.rowan), { itemId })).item.stageKey).toBe(
       stageKey,
     );
     value(await r.kernel.items.claim(caller(r.editor), { itemId, delegationId: null }));
@@ -412,7 +411,7 @@ describe.skipIf(!testServer)('AB-4 submit_to_gate parks at a human gate', () => 
       evidence: { summary: 'ready for a person' },
     });
     expect(submitted).toEqual({ itemId, result: 'parked', failures: [] });
-    const item = value(await r.kernel.reads.item(caller(r.ian), { itemId })).item;
+    const item = value(await r.kernel.reads.item(caller(r.rowan), { itemId })).item;
     expect(item).toMatchObject({ stageKey: 'check', gateStatus: 'parked' });
     expect(await eventsNamed(r, h, 'risk_derived')).toEqual([]);
     const [parked] = await eventsNamed(r, h, 'submitted_to_gate').then((all) => all.slice(-1));
@@ -468,7 +467,7 @@ describe.skipIf(!testServer)(
       expect((await eventsNamed(r, h, 'risk_derived')).map((event) => event.evidence)).toEqual([
         expect.objectContaining({ paths: ['apps/uw-app/board.tsx'], head: HEAD }),
       ]);
-      const item = value(await r.kernel.reads.item(caller(r.ian), { itemId })).item;
+      const item = value(await r.kernel.reads.item(caller(r.rowan), { itemId })).item;
       expect(item).toMatchObject({ stageKey: 'check', gateStatus: 'parked' });
     });
   },
@@ -482,7 +481,7 @@ describe.skipIf(!testServer)('AB-4 submit_to_gate names no stage past a human ga
     expect((await claim(laptop, itemId)).isError).toBe(false);
     const submitted = await submitInProcess(r, submission(itemId, 'software-gate-ship', 'ship'));
     expect(submitted).toEqual({ itemId, result: 'parked', failures: [] });
-    const item = value(await r.kernel.reads.item(caller(r.ian), { itemId })).item;
+    const item = value(await r.kernel.reads.item(caller(r.rowan), { itemId })).item;
     expect(item).toMatchObject({ stageKey: 'check', gateStatus: 'parked' });
   });
 });
@@ -496,7 +495,7 @@ describe.skipIf(!testServer)('AB-4 submit_to_gate refuses a lapsed lease', () =>
     r.clock.advance(LEASE_MS + MINUTE);
     const submitted = await call(laptop, 'submit_to_gate', unchanged(at(h, 0)));
     expect(submitted.body).toMatchObject({ reason: 'lease_expired', detail: { itemId: at(h, 0) } });
-    const item = value(await r.kernel.reads.item(caller(r.ian), { itemId: at(h, 0) })).item;
+    const item = value(await r.kernel.reads.item(caller(r.rowan), { itemId: at(h, 0) })).item;
     expect(item.stageKey).toBe('package');
   });
 });
@@ -512,7 +511,7 @@ describe.skipIf(!testServer)(
       await revokeSeededGrant(r.db, LEAVER_80, r.clock.now());
       const refused = await claim(laptop, at(h, 1));
       expect(refused.body).toMatchObject({ status: 'error', reason: 'not_permitted' });
-      const item = value(await r.kernel.reads.item(caller(r.ian), { itemId: at(h, 1) })).item;
+      const item = value(await r.kernel.reads.item(caller(r.rowan), { itemId: at(h, 1) })).item;
       expect(item.holder).toBeNull();
     });
   },

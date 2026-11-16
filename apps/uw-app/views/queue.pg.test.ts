@@ -25,13 +25,13 @@ const HOUR = 3_600_000;
 
 type Fields = Readonly<Record<string, string>>;
 
-function boardOf(world: BoardWorld, email = world.ianEmail, path = queuePath(world.harnessId)) {
+function boardOf(world: BoardWorld, email = world.rowanEmail, path = queuePath(world.harnessId)) {
   return getHtml(world.db, email, path, {}, viewClock);
 }
 
 async function documentOf(
   world: BoardWorld,
-  email = world.ianEmail,
+  email = world.rowanEmail,
   path = queuePath(world.harnessId),
 ): Promise<Document> {
   return new JSDOM((await boardOf(world, email, path)).text).window.document;
@@ -125,7 +125,7 @@ async function leaseForAgentOnly(world: BoardWorld): Promise<void> {
     'Until 2026-10-02 10:00 UTC',
   );
   const person = metaOf(cardOf(document, 'Review the copy'));
-  expect(person['Holder']).toBe(`Claimed by ${world.ian.identity}, for 3 h 0 min`);
+  expect(person['Holder']).toBe(`Claimed by ${world.rowan.identity}, for 3 h 0 min`);
   expect(person['Host']).toBe('Person');
   expect(person['Lease']).toBeUndefined();
 }
@@ -190,7 +190,7 @@ async function enqueueAndRelease(world: BoardWorld, document: Document): Promise
 }
 
 async function claimFrom(world: BoardWorld, email: string, title: string) {
-  const html = await getHtml(world.db, world.ianEmail, queuePath(world.harnessId), {}, realClock);
+  const html = await getHtml(world.db, world.rowanEmail, queuePath(world.harnessId), {}, realClock);
   const document = new JSDOM(html.text).window.document;
   const body = commandBody(
     'claim',
@@ -210,34 +210,34 @@ async function claimFrom(world: BoardWorld, email: string, title: string) {
 
 async function fullBuild(world: BoardWorld): Promise<void> {
   const kernel = kernelOn(world.db, realClock);
-  const held = await enqueuedItem(kernel, world.ian, world.harnessId, 'Fill the column');
-  const waiting = await enqueuedItem(kernel, world.ian, world.harnessId, 'Wait for room');
-  for (const itemId of [held, waiting]) await advanced(kernel, world.ian, itemId, 3);
-  accepted(await kernel.items.claim(callerOf(world.ian), { itemId: held, delegationId: null }));
+  const held = await enqueuedItem(kernel, world.rowan, world.harnessId, 'Fill the column');
+  const waiting = await enqueuedItem(kernel, world.rowan, world.harnessId, 'Wait for room');
+  for (const itemId of [held, waiting]) await advanced(kernel, world.rowan, itemId, 3);
+  accepted(await kernel.items.claim(callerOf(world.rowan), { itemId: held, delegationId: null }));
 }
 
 async function claimsRefused(db: Database): Promise<void> {
   const world = await boardWorld(db, realClock);
   const viewer = await claimFrom(world, world.viewer.email, 'Draw the icon');
   expect(await viewer()).toBe('not_permitted');
-  const raced = await claimFrom(world, world.ianEmail, 'Draw the icon');
+  const raced = await claimFrom(world, world.rowanEmail, 'Draw the icon');
   await heldByAgent(db, world.unheld, 'agent:scout', new Date(Date.now() + HOUR));
   expect(await raced()).toBe('lease_held');
   await fullBuild(world);
-  const wip = await claimFrom(world, world.ianEmail, 'Wait for room');
+  const wip = await claimFrom(world, world.rowanEmail, 'Wait for room');
   expect(await wip()).toBe('wip_limit_reached');
 }
 
 async function oneStage(world: BoardWorld): Promise<void> {
-  const document = await documentOf(world, world.ianEmail, queuePath(world.harnessId, 'build'));
+  const document = await documentOf(world, world.rowanEmail, queuePath(world.harnessId, 'build'));
   const lanes = [...document.querySelectorAll('main section[aria-labelledby] h2')].map(
     (h) => h.textContent,
   );
   expect(lanes).toEqual(['Commits to PR']);
   const current = document.querySelector('main nav[aria-label="Stages"] [aria-current="true"]');
   expect(current?.textContent).toBe('Commits to PR');
-  const unknown = await boardOf(world, world.ianEmail, queuePath(world.harnessId, 'nowhere'));
-  const unpaged = await boardOf(world, world.ianEmail, `${queuePath(world.harnessId)}?after=1.x`);
+  const unknown = await boardOf(world, world.rowanEmail, queuePath(world.harnessId, 'nowhere'));
+  const unpaged = await boardOf(world, world.rowanEmail, `${queuePath(world.harnessId)}?after=1.x`);
   expect([unknown.status, unpaged.status]).toEqual([404, 404]);
 }
 
@@ -276,7 +276,7 @@ async function lookOfBoard(world: BoardWorld): Promise<void> {
 
 async function refusalOnCard(world: BoardWorld): Promise<void> {
   const kernel = kernelOn(world.db, viewClock);
-  const builder = agentOf(world.ian, 'builder');
+  const builder = agentOf(world.rowan, 'builder');
   const outcome = await kernel.gates.decide(callerOf(builder), {
     itemId: world.metered,
     decision: 'approve',
@@ -293,7 +293,7 @@ async function refusalOnCard(world: BoardWorld): Promise<void> {
 }
 
 async function oldAddressMoves(world: BoardWorld): Promise<void> {
-  const old = await boardOf(world, world.ianEmail, `/harnesses/${world.harnessId}/board`);
+  const old = await boardOf(world, world.rowanEmail, `/harnesses/${world.harnessId}/board`);
   expect(old.status).toBe(301);
   expect(old.headers.get('location')).toBe(queuePath(world.harnessId));
   const hidden = await boardOf(world, world.stranger.email, `/harnesses/${world.harnessId}/board`);

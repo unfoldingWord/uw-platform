@@ -22,7 +22,7 @@
 | S20-R6. FD-6 has no "Waiting on a person" row; its live check is the "Not verified" row dated 2026-10-01 for FD-6 FD-10. GL-1's restatement therefore covers every row in "Waiting on a person", "Not verified" and the go-live hand-off whose requirement cell names FD-6, FD-7, FD-10 or FD-12 (28 rows at planning time): each gains "Still missing on <date>; see the GL-1 switch, step N, in `infra/README.md`." | None beyond the PRD's wording; the GL-1 test names any row left out |
 | S20-R7. Step 20 changes no contract, schema, migration, port, `CONTEXT.md` word or ADR. `CONTRACT_VERSION` stays whatever steps 18 and 19 leave it at (13.4.0 at planning time plus their minors) | None |
 | S20-R8. DX-10 follows PRD 7.11.10's sentence exactly, and adds design section 4 step 4 as one read of the shadow comparison (OB-3) while in shadow. Section 4 step 6 (GL-5, the template change) is not in the journey: GL-5 is a Should with its own scenario from step 19, and a template change mid-journey would put items 2 and 3 on the software template, where the joined-merge case is not what is being proven | The journey does not show the template change; GL-5's own scenario does |
-| S20-R9. Release item 6 (design section 9): if GitHub Actions still refuses to start jobs, the build writes an extension of the 2026-10-12 waiver by name in `docs/exceptions.md`, naming Ian (DRI) as the one who confirms or refuses it at his review; the tracker says item 6 holds only on that confirmation. The pull request is marked ready for review (AGENTS.md section 8). Nothing is tagged or merged | If Ian refuses the extension, the pull request waits on billing; nothing else changes |
+| S20-R9. Release item 6 (design section 9): if GitHub Actions still refuses to start jobs, the build writes an extension of the 2026-10-12 waiver by name in `docs/exceptions.md`, naming the owner (DRI) as the one who confirms or refuses it at his review; the tracker says item 6 holds only on that confirmation. The pull request is marked ready for review (AGENTS.md section 8). Nothing is tagged or merged | If the owner refuses the extension, the pull request waits on billing; nothing else changes |
 
 **What this step hands on (keep these names exactly):**
 
@@ -30,7 +30,7 @@
 |---|---|---|
 | `goLiveSwitchedOn()`, `parseSwitch(text)` | `tools/infra/switch.ts` | the switch pull request (a person's), `tools/infra/go-live.test.ts`, `tools/infra/crons.test.ts`, `tools/infra/switch.test.ts` |
 | `infra/go-live.json` `{ "switchedOn": false }` | `infra/` | the switch pull request |
-| "The GL-1 switch, in order", steps 1 to 8 | `infra/README.md` | Ian at go-live; every FD-6, FD-7, FD-10 and FD-12 tracker row cites a step |
+| "The GL-1 switch, in order", steps 1 to 8 | `infra/README.md` | The owner at go-live; every FD-6, FD-7, FD-10 and FD-12 tracker row cites a step |
 | `shadowRound`, `liftAndPost`, `waitsForAPerson`, `mergedUnderDelegation`, `refusedForProtectedPath`, `joinedChecks`, `protectedDirectory`, `mergedChange`, `protectedChange` | `sim/joining-journey.ts` | DX-10; v0.3.0's journeys |
 | `joinedWorld` options `requiredChecks`, `protectedPaths`; `joinedFacts` inputs `ref`, `paths`; `joinRequest` override `title` | `sim/joining.ts` | DX-10 |
 | Release guard cases for DX-10, MD-4, MD-5, UC-4 | `tools/release/criteria.test.ts` | every later version's release |
@@ -43,7 +43,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Where and how**
 
-- Work only in the worktree `/home/ianjl/projects/uw-platform-v0.2.0` on branch `build/v0.2.0`. Never commit to `main`, never force-push, never `--no-verify`. Other implementers commit in the same worktree: `git add` only the files your task names.
+- Work only in the worktree `/home/rowan-test/projects/uw-platform-v0.2.0` on branch `build/v0.2.0`. Never commit to `main`, never force-push, never `--no-verify`. Other implementers commit in the same worktree: `git add` only the files your task names.
 - Read `AGENTS.md` sections 1, 4, 8 and 10 before the first edit. When this plan and `AGENTS.md` disagree, `AGENTS.md` wins; record the conflict in `docs/progress_tracker.md` and build the version that keeps the rule.
 - **Builds on steps 12 to 19 (built before this plan runs).** Names used exactly as their plans hand them over: `joinedWorld`, `joinRequest`, `joinedFacts`, `startReview`, `approveVerdict`, `joinedPull`, `joinedHead`, `joinedRepository` (`sim/joining.ts`, step 14); `greenFacts`, `approvedBy`, `itemLog`, `simSha`, `simLendMerge`, `MergeLoan` (`sim/ship-fixtures.ts`, steps 15 and 16); `kernel.gates.recordShadowVerdicts`, `kernel.stages.liftShadow`, `kernel.views.shadow` (step 14); `kernel.gates.exitDelegated`, `kernel.views.delegatedMerges`, `ConnectorRequest.joined`, `delegationProperty` (step 16). Steps 18 and 19 may have added options to `createSimHarness` and helpers to `sim/`; where a file below differs from the text quoted here because they changed it, keep their lines and make only this plan's change.
 - Words come from `CONTEXT.md`: **check-only harness**, **shadow mode**, **merge delegation**, **platform**. "The switch" is the PRD's word for GL-1, not a new term. Never "dry run" for shadow, never "auto-merge".
@@ -1163,20 +1163,20 @@ const path = 'docs/progress_tracker.md';
 const today = new Date().toISOString().slice(0, 10);
 const cite = (step) => ` Still missing on ${today}; see the GL-1 switch, step ${step}, in \`infra/README.md\`.`;
 const handOff = [
-  ['| Not verified | 2026-10-01 | FD-7 | Ian: once the Access application exists', 4],
+  ['| Not verified | 2026-10-01 | FD-7 | The owner: once the Access application exists', 4],
   ['| Not verified | 2026-10-01 | FD-6 FD-10 |', 7],
-  ['| Not verified | 2026-10-01 | FD-10 | Ian: once the queues exist', 3],
-  ['| Not verified | 2026-10-01 | FD-10 | Ian: run the uw-ingest deploy job', 3],
-  ['| Not verified | 2026-10-01 | FD-10 | Ian: once the GitHub App', 5],
-  ['| Not verified | 2026-10-01 | FD-12 | Ian: once the Neon key', 1],
-  ['| Not verified | 2026-10-01 | FD-12 | Ian: create the Neon `staging` branch', 1],
-  ['| Waiting on a person | 2026-10-01 | FD-10 | Ian: once the queues exist, open the switch-on', 6],
+  ['| Not verified | 2026-10-01 | FD-10 | The owner: once the queues exist', 3],
+  ['| Not verified | 2026-10-01 | FD-10 | The owner: run the uw-ingest deploy job', 3],
+  ['| Not verified | 2026-10-01 | FD-10 | The owner: once the GitHub App', 5],
+  ['| Not verified | 2026-10-01 | FD-12 | The owner: once the Neon key', 1],
+  ['| Not verified | 2026-10-01 | FD-12 | The owner: create the Neon `staging` branch', 1],
+  ['| Waiting on a person | 2026-10-01 | FD-10 | The owner: once the queues exist, open the switch-on', 6],
   ['| Waiting on a person | 2026-10-01 | FD-12 |', 1],
   ['| Not verified | 2026-10-02 | AB-1 FD-7 |', 4],
   ['| Waiting on a person | 2026-10-02 | AB-1 AB-2 FD-7 |', 4],
   ['| Not verified | 2026-10-03 | WB-3 FD-7 |', 4],
   ['| Waiting on a person | 2026-10-01 | FD-7 |', 4],
-  ['| Waiting on a person | 2026-10-01 | FD-10 | Ian: create the four queues', 3],
+  ['| Waiting on a person | 2026-10-01 | FD-10 | The owner: create the four queues', 3],
 ];
 const notVerified = [
   ['| 2026-10-01 | FD-7 | The Access JWT', 4],
@@ -1242,8 +1242,8 @@ function lastRowBefore(heading) {
   for (let index = stop - 1; index >= 0; index -= 1) if (lines[index].startsWith('| ')) return index;
   throw new Error(`no row before ${heading}`);
 }
-const waitingRow = `| ${today} | GL-1 | The switch, written: the four Neon jobs gated on their secrets (\`.github/scripts/secret-gate.sh\`), both \`wrangler.go-live.toml\` files, the flag \`infra/go-live.json\` and the runbook "The GL-1 switch, in order" in \`infra/README.md\` | Every resource and value in the runbook's steps 1 to 5, then the switch pull request (step 6) and the staging probe reporting the database \`ok\` through Hyperdrive (step 7), GL-1's release gate; each FD-6, FD-7, FD-10 and FD-12 row cites the step that closes it | Ian; an org owner (GitHub App) |`;
-const handOffRow = `| Waiting on a person | ${today} | GL-1 | Ian: follow the GL-1 switch in \`infra/README.md\`, steps 1 to 8, and record the staging probe's database indicator reading \`ok\` through Hyperdrive as GL-1's release gate. | Ian |`;
+const waitingRow = `| ${today} | GL-1 | The switch, written: the four Neon jobs gated on their secrets (\`.github/scripts/secret-gate.sh\`), both \`wrangler.go-live.toml\` files, the flag \`infra/go-live.json\` and the runbook "The GL-1 switch, in order" in \`infra/README.md\` | Every resource and value in the runbook's steps 1 to 5, then the switch pull request (step 6) and the staging probe reporting the database \`ok\` through Hyperdrive (step 7), GL-1's release gate; each FD-6, FD-7, FD-10 and FD-12 row cites the step that closes it | The owner; an org owner (GitHub App) |`;
+const handOffRow = `| Waiting on a person | ${today} | GL-1 | The owner: follow the GL-1 switch in \`infra/README.md\`, steps 1 to 8, and record the staging probe's database indicator reading \`ok\` through Hyperdrive as GL-1's release gate. | The owner |`;
 lines.splice(lastRowBefore('## Carried to later steps') + 1, 0, waitingRow);
 lines.splice(lastRowBefore('### Open carries') + 1, 0, handOffRow);
 fs.writeFileSync(path, lines.join('\n'));
@@ -1444,7 +1444,7 @@ Then for the newest run: `gh run view <databaseId> --json jobs --jq '.jobs[] | [
 Append one row to the table in `docs/exceptions.md`, after the 2026-10-12 row, filling the bracketed values from Steps 1 and 4 (today's date in `YYYY-MM-DD`):
 
 ```markdown
-| <today> | Design section 9 item 6 for v0.2.0, PRD section 14 item 6 and AGENTS.md section 8: the CI `test` job green on the merge commit | `.github/workflows/ci.yml`, pull request #84 (`build/v0.2.0`) | The waiver of 2026-10-12 above, extended by name to the v0.2.0 merge as design section 9 item 6 allows. GitHub Actions on the unfoldingWord organisation still refuses to start any job: run <run id> on `<head sha>` ("<the message gh shows>"). The code is not the cause. The same chain CI runs, `pnpm verify` with `TEST_DATABASE_URL` on the local Postgres server, exited 0 on `<head sha>` on <today>: <files> test files, <passed> tests passed, <skipped> skipped, <n> of <n> scenarios, <proven> of <must> Must requirements proven. Item 6 is waived, not held: the DX-6 row of the go-live hand-off stays open, and this exception closes when CI runs green on the merge commit's head. | Proposed by the build on <today>; Ian (DRI) confirms or refuses it at his review of #84, before the merge |
+| <today> | Design section 9 item 6 for v0.2.0, PRD section 14 item 6 and AGENTS.md section 8: the CI `test` job green on the merge commit | `.github/workflows/ci.yml`, pull request #84 (`build/v0.2.0`) | The waiver of 2026-10-12 above, extended by name to the v0.2.0 merge as design section 9 item 6 allows. GitHub Actions on the unfoldingWord organisation still refuses to start any job: run <run id> on `<head sha>` ("<the message gh shows>"). The code is not the cause. The same chain CI runs, `pnpm verify` with `TEST_DATABASE_URL` on the local Postgres server, exited 0 on `<head sha>` on <today>: <files> test files, <passed> tests passed, <skipped> skipped, <n> of <n> scenarios, <proven> of <must> Must requirements proven. Item 6 is waived, not held: the DX-6 row of the go-live hand-off stays open, and this exception closes when CI runs green on the merge commit's head. | Proposed by the build on <today>; the owner (DRI) confirms or refuses it at his review of #84, before the merge |
 ```
 
 ```bash
@@ -1452,7 +1452,7 @@ git add docs/exceptions.md
 git commit -m "docs(exceptions): propose extending the CI billing waiver to the v0.2.0 merge
 
 Design section 9 item 6. Actions still starts no job (run <run id>);
-the local verify on <head sha> is the evidence. Ian confirms or
+the local verify on <head sha> is the evidence. The owner confirms or
 refuses the extension at his review. S20-R9."
 ```
 
@@ -1463,7 +1463,7 @@ In `docs/progress_tracker.md`, directly after the table under "## Release criter
 ```markdown
 ### v0.2.0 (design section 9)
 
-The v0.2.0 release list. Items 1 to 6 are the build's; item 7 is Ian's. GL-1's live run, the week of shadow mode and the comparison with the bench happen on the tag.
+The v0.2.0 release list. Items 1 to 6 are the build's; item 7 is the owner's. GL-1's live run, the week of shadow mode and the comparison with the bench happen on the tag.
 
 | Item | Holds | Evidence |
 |---|---|---|
@@ -1472,8 +1472,8 @@ The v0.2.0 release list. Items 1 to 6 are the build's; item 7 is Ian's. GL-1's l
 | 3. DX-10 passes | Yes | `pnpm sim -- DX-10`: <the state line>; release criterion 3 for v0.2.0 pins the file and its six beats |
 | 4. The template property passes on all three templates and fails on the planted bypass; MD-4's deploy-and-publish property passes | Yes | `packages/harness/template-property.test.ts` (KN-10 and MD-4 cases), `tools/properties/template.test.ts`, release criterion 4 (both cases) |
 | 5. MD-5 and UC-4 pass on the tree and fail on their planted fixtures | Yes | `tools/architecture/gate-writers.test.ts`, `tools/architecture/untrusted-content.test.ts`; release criterion 5's MD-5 and UC-4 cases |
-| 6. The CI `test` job is green on the merge commit, or the billing waiver of 2026-10-12 is extended by name in `docs/exceptions.md` | <Yes on run <id> / Waived, pending Ian's confirmation> | <the run id and its outcome; or "the extension row dated <today> in `docs/exceptions.md`, proposed by the build, confirmed or refused by Ian at his review of #84"> |
-| 7. Ian has reviewed the branch with Codex and merged it with a merge commit | No: Ian's | Not the build's to do (AGENTS.md section 8) |
+| 6. The CI `test` job is green on the merge commit, or the billing waiver of 2026-10-12 is extended by name in `docs/exceptions.md` | <Yes on run <id> / Waived, pending the owner's confirmation> | <the run id and its outcome; or "the extension row dated <today> in `docs/exceptions.md`, proposed by the build, confirmed or refused by the owner at his review of #84"> |
+| 7. The owner has reviewed the branch with Codex and merged it with a merge commit | No: the owner's | Not the build's to do (AGENTS.md section 8) |
 ```
 
 ```bash
@@ -1481,8 +1481,8 @@ git add docs/progress_tracker.md
 git commit -m "docs(tracker): the v0.2.0 release list with its evidence
 
 Design section 9 items 1 to 5 hold on the local chain; item 6 holds on
-<CI run id> or waits on Ian's confirmation of the waiver extension;
-item 7 is Ian's."
+<CI run id> or waits on the owner's confirmation of the waiver extension;
+item 7 is the owner's."
 ```
 
 ---
@@ -1530,7 +1530,7 @@ Expected: `verify exit 0`. `trace:built` now requires DX-10 and GL-1, and finds 
 In `docs/PRD.md`, replace the Status row's value with:
 
 ```markdown
-| Status | Approved. v1 (sections 7.1 to 7.10) was built as v0.1.0, merge commit `83e3f64`, tagged 2026-10-12. v0.2.0 (section 7.11), approved on 2026-10-15, is built on `build/v0.2.0` (pull request #84) and waits for Ian's Codex review and merge; GL-1's live switch and the week of shadow mode are a person's, on the tag (`docs/progress_tracker.md`, Release criteria, v0.2.0) |
+| Status | Approved. v1 (sections 7.1 to 7.10) was built as v0.1.0, merge commit `83e3f64`, tagged 2026-10-12. v0.2.0 (section 7.11), approved on 2026-10-15, is built on `build/v0.2.0` (pull request #84) and waits for the owner's Codex review and merge; GL-1's live switch and the week of shadow mode are a person's, on the tag (`docs/progress_tracker.md`, Release criteria, v0.2.0) |
 ```
 
 ```bash
@@ -1550,11 +1550,11 @@ git commit -m "docs(tracker): step 20, the joining journey and the switch, is bu
 
 DX-10 and GL-1 proven; S20-R1 to S20-R9 recorded; the carries to step
 20 closed or restated. The v0.2.0 release list holds items 1 to 5 on
-the local chain; item 6 as recorded; item 7 is Ian's."
+the local chain; item 6 as recorded; item 7 is the owner's."
 git push
 ```
 
-- [ ] **Step 5: Mark the pull request ready for Ian's review, and stop**
+- [ ] **Step 5: Mark the pull request ready for the owner's review, and stop**
 
 ```bash
 gh pr edit 84 --title "feat: harness v0.2.0" --body "The v0.2.0 build (PRD section 7.11; design docs/specs/2026-10-15-harness-v0-2-0-design.md), steps 12 to 20. Evidence per requirement, every ruling, what was not verified and what waits on a person are in docs/progress_tracker.md; the release list is under Release criteria, v0.2.0. Release item 6: see that table and docs/exceptions.md. GL-1's live switch follows infra/README.md, The GL-1 switch, in order."

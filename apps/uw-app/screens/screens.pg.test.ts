@@ -114,7 +114,7 @@ async function boardScreens(db: Database): Promise<Screen[]> {
   const headers = { accept: 'text/html' };
   const screens: Screen[] = [];
   for (const [name, path] of paths) {
-    const page = await getHtml(db, world.ianEmail, path, headers, viewClock);
+    const page = await getHtml(db, world.rowanEmail, path, headers, viewClock);
     screens.push({ name, html: page.text });
   }
   return screens;

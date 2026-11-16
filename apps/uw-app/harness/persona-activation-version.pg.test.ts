@@ -9,17 +9,17 @@ import { platformStore } from '../ports/store.ts';
 import { systemClock } from '../ports/clock.ts';
 import { agentOf, kernelOn, personasOn, personOn } from '../testing/kernel.ts';
 
-const ianId = '00000000-0000-4000-8000-000000000001';
+const rowanId = '00000000-0000-4000-8000-000000000001';
 const pageId = '00000000-0000-4000-8000-000000008451';
 
 function caller(actor: Principal): Caller {
   return { actor, traceId: crypto.randomUUID() };
 }
 
-function persona(ian: Principal, harnessId: string, toolset: readonly string[]) {
+function persona(rowan: Principal, harnessId: string, toolset: readonly string[]) {
   return {
     identity: 'agent:iterate',
-    owner: ian.identity,
+    owner: rowan.identity,
     harness: harnessId,
     toolset: [...toolset],
     run_shape: 'workflow-run',
@@ -32,7 +32,7 @@ function persona(ian: Principal, harnessId: string, toolset: readonly string[]) 
 }
 
 async function scene(db: Database) {
-  const ian = await personOn(db, ianId, 'ian.lindsley@unfoldingword.org', new Date());
+  const rowan = await personOn(db, rowanId, 'rowan.test@unfoldingword.org', new Date());
   const harnessId = crypto.randomUUID();
   const kernel = kernelOn(db, systemClock);
   const activate = {
@@ -43,7 +43,7 @@ async function scene(db: Database) {
     repository: null,
     requiredChecks: [],
   };
-  expect((await kernel.stages.activate(caller(ian), activate)).status).toBe('accepted');
+  expect((await kernel.stages.activate(caller(rowan), activate)).status).toBe('accepted');
   await seedPage(db, {
     id: pageId,
     type: 'persona',
@@ -52,12 +52,12 @@ async function scene(db: Database) {
     slug: 'iterate',
     title: 'Iterate',
     bodyMd: 'Iterate tunes a product from its measurements.',
-    frontmatter: persona(ian, harnessId, ['search_pages']),
+    frontmatter: persona(rowan, harnessId, ['search_pages']),
   });
-  return { ian, harnessId };
+  return { rowan, harnessId };
 }
 
-async function agentWidens(db: Database, ian: Principal, harnessId: string) {
+async function agentWidens(db: Database, rowan: Principal, harnessId: string) {
   const input = {
     pageId,
     type: 'persona' as const,
@@ -65,7 +65,7 @@ async function agentWidens(db: Database, ian: Principal, harnessId: string) {
     slug: 'iterate',
     title: 'Iterate',
     parentId: null,
-    frontmatter: persona(ian, harnessId, ['search_pages', 'read_page']),
+    frontmatter: persona(rowan, harnessId, ['search_pages', 'read_page']),
     bodyMd: 'Iterate now reaches further.',
     expectedVersion: 1,
   };
@@ -75,7 +75,7 @@ async function agentWidens(db: Database, ian: Principal, harnessId: string) {
     instructions: kernelOn(db, systemClock).reads,
     writer: null,
   };
-  return writePageAsAgent(db, agentOf(ian, 'laptop'), input, request);
+  return writePageAsAgent(db, agentOf(rowan, 'laptop'), input, request);
 }
 
 describe.skipIf(!testServer)('persona activation is pinned to the version the person read', () => {
@@ -83,10 +83,10 @@ describe.skipIf(!testServer)('persona activation is pinned to the version the pe
     const database = await createMigratedDatabase(testServer ?? '');
     const db = createClient(database.connectionString);
     try {
-      const { ian, harnessId } = await scene(db);
-      expect(await agentWidens(db, ian, harnessId)).toMatchObject({ ok: true });
+      const { rowan, harnessId } = await scene(db);
+      expect(await agentWidens(db, rowan, harnessId)).toMatchObject({ ok: true });
       const input = { pageId, expectedVersion: 1, harnessId };
-      const outcome = await personasOn(db, systemClock).activate(caller(ian), input);
+      const outcome = await personasOn(db, systemClock).activate(caller(rowan), input);
       expect(outcome).toEqual({
         status: 'error',
         reason: 'stale_version',

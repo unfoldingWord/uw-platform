@@ -6,11 +6,11 @@ import { personPrincipal, type Principal } from '@uw/core/principal';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { grantRole, revokeRole } from './grant-commands.ts';
 
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 const SPONSOR_ID = '00000000-0000-4000-8000-000000000002';
 const KIM_ID = '00000000-0000-4000-8000-000000000003';
 const KIM_GRANT_ID = '00000000-0000-4000-8000-000000000103';
-const IAN_GRANT_ID = '00000000-0000-4000-8000-000000000101';
+const ROWAN_GRANT_ID = '00000000-0000-4000-8000-000000000101';
 const SPONSOR_GRANT_ID = '00000000-0000-4000-8000-000000000102';
 
 function orgAdmin(personId: string, email: string, grantId: string): Principal {
@@ -27,7 +27,7 @@ async function seedSponsor(db: Database): Promise<void> {
     sql`INSERT INTO people (id, email, display_name, status) VALUES (${SPONSOR_ID}, 'sponsor@unfoldingword.org', 'Sponsor', 'active')`,
   );
   await db.execute(
-    sql`INSERT INTO role_grants (id, person_id, role, scope_kind, granted_by) VALUES (${SPONSOR_GRANT_ID}, ${SPONSOR_ID}, 'admin', 'org', ${IAN_ID})`,
+    sql`INSERT INTO role_grants (id, person_id, role, scope_kind, granted_by) VALUES (${SPONSOR_GRANT_ID}, ${SPONSOR_ID}, 'admin', 'org', ${ROWAN_ID})`,
   );
 }
 
@@ -36,7 +36,7 @@ async function seedThirdAdmin(db: Database): Promise<void> {
     sql`INSERT INTO people (id, email, display_name, status) VALUES (${KIM_ID}, 'kim@unfoldingword.org', 'Kim', 'active')`,
   );
   await db.execute(
-    sql`INSERT INTO role_grants (id, person_id, role, scope_kind, granted_by) VALUES (${KIM_GRANT_ID}, ${KIM_ID}, 'admin', 'org', ${IAN_ID})`,
+    sql`INSERT INTO role_grants (id, person_id, role, scope_kind, granted_by) VALUES (${KIM_GRANT_ID}, ${KIM_ID}, 'admin', 'org', ${ROWAN_ID})`,
   );
 }
 
@@ -52,10 +52,10 @@ describe.skipIf(!testServer)('FD-8 a command re-checks the caller under lock', (
     withAppDatabase(async (db) => {
       await seedSponsor(db);
       const staleSponsor = orgAdmin(SPONSOR_ID, 'sponsor@unfoldingword.org', SPONSOR_GRANT_ID);
-      const ian = orgAdmin(IAN_ID, 'ian.lindsley@unfoldingword.org', IAN_GRANT_ID);
+      const rowan = orgAdmin(ROWAN_ID, 'rowan.test@unfoldingword.org', ROWAN_GRANT_ID);
       const revoked = await revokeRole(
         db,
-        ian,
+        rowan,
         { command: 'revoke_role', requestId: randomUUID(), grantId: SPONSOR_GRANT_ID },
         randomUUID(),
         new Date(),
@@ -88,10 +88,10 @@ describe.skipIf(!testServer)('FD-8 revoke re-checks the caller under lock', () =
       await seedSponsor(db);
       await seedThirdAdmin(db);
       const staleSponsor = orgAdmin(SPONSOR_ID, 'sponsor@unfoldingword.org', SPONSOR_GRANT_ID);
-      const ian = orgAdmin(IAN_ID, 'ian.lindsley@unfoldingword.org', IAN_GRANT_ID);
+      const rowan = orgAdmin(ROWAN_ID, 'rowan.test@unfoldingword.org', ROWAN_GRANT_ID);
       await revokeRole(
         db,
-        ian,
+        rowan,
         { command: 'revoke_role', requestId: randomUUID(), grantId: SPONSOR_GRANT_ID },
         randomUUID(),
         new Date(),
@@ -99,7 +99,7 @@ describe.skipIf(!testServer)('FD-8 revoke re-checks the caller under lock', () =
       const result = await revokeRole(
         db,
         staleSponsor,
-        { command: 'revoke_role', requestId: randomUUID(), grantId: IAN_GRANT_ID },
+        { command: 'revoke_role', requestId: randomUUID(), grantId: ROWAN_GRANT_ID },
         randomUUID(),
         new Date(),
       );

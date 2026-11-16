@@ -16,7 +16,7 @@ type ReadsSubject = () => { readonly store: Store };
 
 const day = 24 * hour;
 const later = (hours: number): Date => new Date(at.getTime() + hours * hour);
-const ian = 'human:00000000-0000-4000-8000-000000000301' as Identity;
+const rowan = 'human:00000000-0000-4000-8000-000000000301' as Identity;
 const kim = 'human:00000000-0000-4000-8000-000000000306' as Identity;
 
 function describeRunsPerDay(subject: ReadsSubject): void {
@@ -53,7 +53,7 @@ function describeDecisionsPerDay(subject: ReadsSubject): void {
     const read = await subject().store.transaction(async (tx) => {
       await seedDecisionItem(tx, base, 'gateway-ui-decisions');
       for (const [n, decidedAt] of [later(-30), later(1), later(30)].entries())
-        await tx.gateDecisions.write.insert(decisionOf(base, n + 1, ian, decidedAt));
+        await tx.gateDecisions.write.insert(decisionOf(base, n + 1, rowan, decidedAt));
       return tx.gateDecisions.read.decidedPerDay([uid(base)], at);
     });
     expect(read).toEqual([
@@ -76,15 +76,15 @@ async function seedHolds(tx: StoreTransaction, base: number): Promise<void> {
   );
   await tx.harnessItems.write.insert(itemOf(base, 3, { heldSince: later(1).toISOString() }), at);
   await tx.harnessItems.write.insert(
-    itemOf(base, 4, { holder: ian, claimantKind: 'person', priority: 1 }),
+    itemOf(base, 4, { holder: rowan, claimantKind: 'person', priority: 1 }),
     at,
   );
   await tx.harnessItems.write.insert(
-    itemOf(base, 5, { holder: ian, claimantKind: 'person', priority: 9 }),
+    itemOf(base, 5, { holder: rowan, claimantKind: 'person', priority: 9 }),
     at,
   );
   await tx.harnessItems.write.insert(
-    itemOf(base, 6, { holder: ian, claimantKind: 'person', gateStatus: 'done' }),
+    itemOf(base, 6, { holder: rowan, claimantKind: 'person', gateStatus: 'done' }),
     at,
   );
   await tx.harnessItems.write.insert(itemOf(base, 7, { holder: kim, claimantKind: 'person' }), at);
@@ -107,7 +107,7 @@ function describeHolds(subject: ReadsSubject): void {
     const base = 0xc300;
     const read = await subject().store.transaction(async (tx) => {
       await seedHolds(tx, base);
-      const held = await tx.harnessItems.read.claimedBy(ian, 50);
+      const held = await tx.harnessItems.read.claimedBy(rowan, 50);
       return held.filter((item) => item.harnessId === uid(base)).map((item) => item.itemId);
     });
     expect(read).toEqual([uid(base + 15), uid(base + 14)]);
@@ -121,7 +121,7 @@ function eventOf(base: number, n: number, item: number, hours: number) {
     itemId: uid(base + 10 + item),
     name: 'item_reordered',
     at: later(hours).toISOString(),
-    actor: ian,
+    actor: rowan,
     evidence: { priority: n, before: null },
     traceId: uid(base + 0x80 + n),
     requestId: null,

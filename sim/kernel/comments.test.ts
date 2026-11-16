@@ -146,7 +146,7 @@ async function outageDropsTheWake(world: World): Promise<void> {
   world.adapters.notifier.subscribe(scene.areaAdmin.personId ?? '');
   const itemId = await gatedCheck(scene, 'Check the copy');
   world.adapters.notifier.failZulipNext();
-  const caller = simCaller(world, scene.ian);
+  const caller = simCaller(world, scene.rowan);
   value(await world.kernel.items.claim(caller, { itemId, delegationId: null }));
   const submitted = await world.kernel.items.submit(caller, {
     itemId,
@@ -169,7 +169,7 @@ async function replyIsComment(world: World): Promise<void> {
   expect(reasonOf(mapped)).toBeNull();
   value(await commentOn(scene, ingest, itemId, { personId: null, email: 'guest@example.org' }));
   value(await commentOn(scene, ingest, itemId, { text: 'x'.repeat(12_000) }));
-  const refused = await commentOn(scene, simCaller(world, scene.ian), itemId, {});
+  const refused = await commentOn(scene, simCaller(world, scene.rowan), itemId, {});
   expect(reasonOf(refused)).toBe('not_permitted');
   const comments = (await itemEvents(scene, itemId)).filter(
     (event) => event.name === 'comment_recorded',
@@ -218,7 +218,7 @@ async function targetsByTopic(world: World): Promise<void> {
   });
   expect(reasonOf(await target('software/item-ffffffff'))).toBe('item_not_found');
   expect(reasonOf(await target('nowhere/item-00000000'))).toBe('harness_not_found');
-  const person = simCaller(world, scene.ian);
+  const person = simCaller(world, scene.rowan);
   expect(reasonOf(await world.kernel.reads.zulipTarget(person, { topic: 'software' }))).toBe(
     'not_permitted',
   );

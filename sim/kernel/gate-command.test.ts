@@ -28,7 +28,7 @@ type Scene = {
   readonly world: World;
   readonly harnessId: string;
   readonly itemId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly kim: Principal;
   readonly max: Principal;
 };
@@ -57,7 +57,7 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
     const kim = await simPerson(world, 4, [{ role: 'admin', ...area }]);
     const max = await simPerson(world, 5, [{ role: 'editor', ...area }]);
     const parked = await simParkedAtCheck(world, { harnessId: harness.id, admin, title: 'Gate' });
-    await work({ world, harnessId: harness.id, itemId: parked.itemId, ian: admin, kim, max });
+    await work({ world, harnessId: harness.id, itemId: parked.itemId, rowan: admin, kim, max });
     expect((await readWorldLog(world.adapters.store)).drift).toEqual([]);
   } finally {
     await world.close();
@@ -96,15 +96,15 @@ function namesAfter(before: Written, after: Written): string[] {
 }
 
 async function withAclRisk(scene: Scene): Promise<void> {
-  const ian = simCaller(scene.world, scene.ian);
-  value(await decideAs(scene, scene.ian, { decision: 'take_over' }));
+  const rowan = simCaller(scene.world, scene.rowan);
+  value(await decideAs(scene, scene.rowan, { decision: 'take_over' }));
   const pullRequest = { repo: 'unfoldingWord/uw-platform', number: 7 };
   const head = simSha('abc123');
   const paths = ['packages/core/acl.ts'];
   const { itemId } = scene;
   const facts = { itemId, head, reviews: [], ref: pullRequest, paths, declaration: null };
   scene.world.adapters.githubFacts.given(greenFacts(scene.world, facts));
-  const submitted = await scene.world.kernel.items.submit(ian, {
+  const submitted = await scene.world.kernel.items.submit(rowan, {
     itemId,
     to: null,
     evidence: {},
@@ -115,9 +115,9 @@ async function withAclRisk(scene: Scene): Promise<void> {
 
 describe('KN-13 the gate decision command decides only an item parked at a gate', () => {
   sceneIt('refuses a decision on a working item with item_not_at_gate', async (scene) => {
-    value(await decideAs(scene, scene.ian, { decision: 'reject' }));
+    value(await decideAs(scene, scene.rowan, { decision: 'reject' }));
     const before = await written(scene);
-    const outcome = await decideAs(scene, scene.ian, { decision: 'approve' });
+    const outcome = await decideAs(scene, scene.rowan, { decision: 'approve' });
     expect(reasonOf(outcome)).toBe('item_not_at_gate');
     expect(await written(scene)).toEqual(before);
   });
@@ -126,7 +126,7 @@ describe('KN-13 the gate decision command decides only an item parked at a gate'
 describe('KN-13 override requires a non-empty reason', () => {
   sceneIt('refuses an override with a blank reason and writes nothing', async (scene) => {
     const before = await written(scene);
-    const outcome = await decideAs(scene, scene.ian, { decision: 'override', reason: '  ' });
+    const outcome = await decideAs(scene, scene.rowan, { decision: 'override', reason: '  ' });
     expect(reasonOf(outcome)).toBe('reason_required');
     expect(await written(scene)).toEqual(before);
   });
@@ -159,7 +159,7 @@ describe('KN-13 the approver grants are re-read under lock and must still cover 
     const outcome = await decideAs(scene, scene.kim, { decision: 'approve' });
     expect(reasonOf(outcome)).toBe('approver_lacks_domain_grant');
     expect(namesAfter(before, await written(scene))).toEqual(['ship_refused']);
-    const approved = value(await decideAs(scene, scene.ian, { decision: 'approve' }));
+    const approved = value(await decideAs(scene, scene.rowan, { decision: 'approve' }));
     expect(approved).toMatchObject({ advanced: true, item: { stageKey: 'ship' } });
     expect((await written(scene)).decisions).toEqual(['take_over', 'approve']);
   });
@@ -199,7 +199,7 @@ describe('KN-13 the gate decision command requires admin on the harness area', (
 
 describe('KN-13 an agent principal can write no gate decision', () => {
   sceneIt('refuses every decision by an agent holding org admin', async (scene) => {
-    const agent = simAgent(scene.ian, 'reviewer', { interactive: true });
+    const agent = simAgent(scene.rowan, 'reviewer', { interactive: true });
     const before = await written(scene);
     for (const decision of ['approve', 'reject', 'take_over', 'override'] as const) {
       const outcome = await decideAs(scene, agent, { decision, reason: 'because' });
@@ -221,11 +221,13 @@ const withoutPullRequest = ['pr_not_open', 'head_mismatch', 'checks_not_green'] 
 
 describe('KN-13 approve or override at Ship evaluates the ship rule', () => {
   sceneIt('refuses an item with no pull request with every reason in order', async (scene) => {
-    value(await decideAs(scene, scene.ian, { decision: 'approve' }));
-    const ian = simCaller(scene.world, scene.ian);
-    value(await scene.world.kernel.items.claim(ian, { itemId: scene.itemId, delegationId: null }));
+    value(await decideAs(scene, scene.rowan, { decision: 'approve' }));
+    const rowan = simCaller(scene.world, scene.rowan);
+    value(
+      await scene.world.kernel.items.claim(rowan, { itemId: scene.itemId, delegationId: null }),
+    );
     const parked = value(
-      await scene.world.kernel.items.submit(ian, {
+      await scene.world.kernel.items.submit(rowan, {
         itemId: scene.itemId,
         to: null,
         evidence: {},
@@ -234,8 +236,8 @@ describe('KN-13 approve or override at Ship evaluates the ship rule', () => {
     );
     expect(parked.item).toMatchObject({ stageKey: 'ship', gateStatus: 'parked' });
     const before = await written(scene);
-    const approved = await decideAs(scene, scene.ian, { decision: 'approve' });
-    const overridden = await decideAs(scene, scene.ian, { decision: 'override', reason: 'go' });
+    const approved = await decideAs(scene, scene.rowan, { decision: 'approve' });
+    const overridden = await decideAs(scene, scene.rowan, { decision: 'override', reason: 'go' });
     const after = await written(scene);
     expect(namesAfter(before, after)).toEqual(['ship_refused', 'ship_refused']);
     expect(after.events.slice(-2).map((event) => event.evidence['reasons'])).toEqual([
@@ -251,8 +253,8 @@ describe('KN-13 approve or override at Ship evaluates the ship rule', () => {
 describe('the gate decision command on an item that does not exist', () => {
   sceneIt('refuses a decision on an item that does not exist', async (scene) => {
     const itemId = '00000000-0000-4000-8000-00000000dead';
-    const agent = simAgent(scene.ian, 'reviewer', { interactive: true });
-    expect(reasonOf(await decideAs(scene, scene.ian, { decision: 'approve', itemId }))).toBe(
+    const agent = simAgent(scene.rowan, 'reviewer', { interactive: true });
+    expect(reasonOf(await decideAs(scene, scene.rowan, { decision: 'approve', itemId }))).toBe(
       'item_not_found',
     );
     expect(reasonOf(await decideAs(scene, agent, { decision: 'approve', itemId }))).toBe(
@@ -263,7 +265,7 @@ describe('the gate decision command on an item that does not exist', () => {
 
 async function setStage(scene: Scene, stageKey: string, change: Record<string, unknown>) {
   value(
-    await scene.world.kernel.stages.updateStage(simCaller(scene.world, scene.ian), {
+    await scene.world.kernel.stages.updateStage(simCaller(scene.world, scene.rowan), {
       harnessId: scene.harnessId,
       stageKey,
       change,
@@ -271,10 +273,10 @@ async function setStage(scene: Scene, stageKey: string, change: Record<string, u
   );
 }
 
-async function submitAsIan(scene: Scene, to: string | null) {
-  const ian = simCaller(scene.world, scene.ian);
+async function submitAsRowan(scene: Scene, to: string | null) {
+  const rowan = simCaller(scene.world, scene.rowan);
   return value(
-    await scene.world.kernel.items.submit(ian, {
+    await scene.world.kernel.items.submit(rowan, {
       itemId: scene.itemId,
       to,
       evidence: {},
@@ -287,7 +289,7 @@ describe('KN-13 override advances with its reason recorded', () => {
   sceneIt('overrides at Check with a trimmed reason and advances to Ship', async (scene) => {
     const before = await written(scene);
     const overridden = value(
-      await decideAs(scene, scene.ian, { decision: 'override', reason: '  known risk  ' }),
+      await decideAs(scene, scene.rowan, { decision: 'override', reason: '  known risk  ' }),
     );
     expect(overridden).toMatchObject({ advanced: true, item: { stageKey: 'ship' } });
     const rows = await scene.world.adapters.store.transaction((tx) =>
@@ -308,13 +310,13 @@ describe('KN-13 take over reassigns the item to a person within the stage WIP li
   sceneIt('refuses a take over at a WIP-full stage and writes nothing', async (scene) => {
     const other = await simParkedAtCheck(scene.world, {
       harnessId: scene.harnessId,
-      admin: scene.ian,
+      admin: scene.rowan,
       title: 'Other',
     });
     await setStage(scene, 'check', { wipLimit: 1 });
-    value(await decideAs(scene, scene.ian, { decision: 'take_over', itemId: other.itemId }));
+    value(await decideAs(scene, scene.rowan, { decision: 'take_over', itemId: other.itemId }));
     const before = await written(scene);
-    const outcome = await decideAs(scene, scene.ian, { decision: 'take_over' });
+    const outcome = await decideAs(scene, scene.rowan, { decision: 'take_over' });
     expect(reasonOf(outcome)).toBe('wip_limit_reached');
     expect(await written(scene)).toEqual(before);
   });
@@ -330,8 +332,8 @@ describe('KN-13 only a human principal may decide, whatever its kind field says'
     async (scene) => {
       const before = await written(scene);
       for (const principal of [
-        crafted('agent', scene.ian.identity, scene.ian),
-        crafted('person', 'agent:reviewer', scene.ian),
+        crafted('agent', scene.rowan.identity, scene.rowan),
+        crafted('person', 'agent:reviewer', scene.rowan),
       ]) {
         const outcome = await decideAs(scene, principal, { decision: 'approve' });
         expect(reasonOf(outcome)).toBe('gate_refused_to_agent');
@@ -345,14 +347,14 @@ describe('KN-13 only a human principal may decide, whatever its kind field says'
 
 describe('KN-13 approve without a connector takes the exit the item is parked for', () => {
   sceneIt('takes the loop edge for a tweak parked at a human approval stage', async (scene) => {
-    value(await decideAs(scene, scene.ian, { decision: 'take_over' }));
+    value(await decideAs(scene, scene.rowan, { decision: 'take_over' }));
     await setStage(scene, 'check', { feeds: ['scope'] });
-    expect((await submitAsIan(scene, 'scope')).item).toMatchObject({
+    expect((await submitAsRowan(scene, 'scope')).item).toMatchObject({
       gateStatus: 'parked',
       gateTarget: 'scope',
     });
     const before = await written(scene);
-    const approved = value(await decideAs(scene, scene.ian, { decision: 'approve' }));
+    const approved = value(await decideAs(scene, scene.rowan, { decision: 'approve' }));
     expect(approved.item).toMatchObject({ stageKey: 'scope', gateStatus: 'working' });
     const after = await written(scene);
     expect(namesAfter(before, after)).toEqual(['gate_approved', 'loop_edge_taken']);
@@ -364,7 +366,7 @@ describe('KN-13 approve without a connector takes the exit the item is parked fo
     async (scene) => {
       await setStage(scene, 'check', { position: 90 });
       const before = await written(scene);
-      const approved = value(await decideAs(scene, scene.ian, { decision: 'approve' }));
+      const approved = value(await decideAs(scene, scene.rowan, { decision: 'approve' }));
       expect(approved).toMatchObject({ advanced: true, item: { gateStatus: 'done' } });
       const after = await written(scene);
       expect(namesAfter(before, after)).toEqual(['gate_approved', 'stage_advanced']);

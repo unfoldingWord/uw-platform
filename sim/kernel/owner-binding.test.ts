@@ -29,9 +29,9 @@ function reasonOf(outcome: KernelOutcome<unknown>): string {
 }
 
 async function sceneOf(world: World, enqueuer: Principal): Promise<Scene> {
-  const { harness, admin: ian } = await createSimHarness(world, software);
+  const { harness, admin: rowan } = await createSimHarness(world, software);
   await readSpend(world);
-  await world.kernel.stages.updateStage(simCaller(world, ian), {
+  await world.kernel.stages.updateStage(simCaller(world, rowan), {
     harnessId: harness.id,
     stageKey: 'package',
     change: { agentPickup: 'allowed', bracket: 'iterate' },

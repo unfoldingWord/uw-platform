@@ -10,7 +10,7 @@ import { kernelOn, personOn } from '../testing/kernel.ts';
 import { callVerb } from './dispatch.ts';
 import { verbHandlers } from './verbs/index.ts';
 
-const IAN = { id: '00000000-0000-4000-8000-000000000001', email: 'ian.lindsley@unfoldingword.org' };
+const ROWAN = { id: '00000000-0000-4000-8000-000000000001', email: 'rowan.test@unfoldingword.org' };
 const VIEWER_80 = {
   id: '00000000-0000-4000-8000-000000002701',
   email: 'rows-viewer@unfoldingword.org',
@@ -33,7 +33,7 @@ type Tool = (name: string, args: Body) => Promise<Body>;
 type Rig = {
   readonly db: Database;
   readonly kernel: Kernel;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly harnesses: Readonly<Record<Area, string>>;
   readonly items: Readonly<Record<Area, string>>;
   readonly drop: () => Promise<void>;
@@ -67,7 +67,7 @@ async function seedPeople(db: Database): Promise<void> {
   }
 }
 
-async function seedPagesAndTasks(db: Database, ian: Principal): Promise<void> {
+async function seedPagesAndTasks(db: Database, rowan: Principal): Promise<void> {
   for (const [n, area] of AREAS.entries()) {
     await seedPage(db, {
       id: `00000000-0000-4000-8000-0000000027${String(n + 20)}`,
@@ -81,7 +81,7 @@ async function seedPagesAndTasks(db: Database, ian: Principal): Promise<void> {
     const task = { taskId: crypto.randomUUID(), jdArea: area, title: `Lantern task ${area}` };
     const created = await createTask(
       db,
-      ian,
+      rowan,
       { ...task, pageId: null, due: null },
       crypto.randomUUID(),
       new Date(),
@@ -90,7 +90,7 @@ async function seedPagesAndTasks(db: Database, ian: Principal): Promise<void> {
   }
 }
 
-async function harnessIn(kernel: Kernel, ian: Principal, area: Area) {
+async function harnessIn(kernel: Kernel, rowan: Principal, area: Area) {
   const harnessId = crypto.randomUUID();
   const activation = {
     harnessId,
@@ -100,12 +100,12 @@ async function harnessIn(kernel: Kernel, ian: Principal, area: Area) {
     repository: null,
     requiredChecks: [...defaultCiChecks],
   };
-  value(await kernel.stages.activate(caller(ian), activation));
+  value(await kernel.stages.activate(caller(rowan), activation));
   const change = { agentPickup: 'allowed' as const };
-  value(await kernel.stages.updateStage(caller(ian), { harnessId, stageKey: 'package', change }));
+  value(await kernel.stages.updateStage(caller(rowan), { harnessId, stageKey: 'package', change }));
   const input = { harnessId, title: `Item ${area}`, pageId: null, priority: 1, due: null };
   const { itemId } = value(
-    await kernel.items.enqueue(caller(ian), { ...input, delegationId: null }),
+    await kernel.items.enqueue(caller(rowan), { ...input, delegationId: null }),
   );
   return { harnessId, itemId };
 }
@@ -115,10 +115,10 @@ async function openRig(): Promise<Rig> {
   const db = createClient(database.connectionString);
   await seedPeople(db);
   const kernel = kernelOn(db, clock);
-  const ian = await personOn(db, IAN.id, IAN.email, new Date());
-  await seedPagesAndTasks(db, ian);
-  const first = await harnessIn(kernel, ian, '80-89');
-  const second = await harnessIn(kernel, ian, '30-39');
+  const rowan = await personOn(db, ROWAN.id, ROWAN.email, new Date());
+  await seedPagesAndTasks(db, rowan);
+  const first = await harnessIn(kernel, rowan, '80-89');
+  const second = await harnessIn(kernel, rowan, '30-39');
   const drop = async () => {
     await db.$client.end();
     await database.drop();
@@ -126,7 +126,7 @@ async function openRig(): Promise<Rig> {
   return {
     db,
     kernel,
-    ian,
+    rowan,
     harnesses: { '80-89': first.harnessId, '30-39': second.harnessId },
     items: { '80-89': first.itemId, '30-39': second.itemId },
     drop,
@@ -305,15 +305,15 @@ async function measuredAtClose(r: Rig, area: Area, values: readonly number[]): P
   const itemId = r.items[area];
   const change = { feeds: ['close'] };
   value(
-    await r.kernel.stages.updateStage(caller(r.ian), { harnessId, stageKey: 'package', change }),
+    await r.kernel.stages.updateStage(caller(r.rowan), { harnessId, stageKey: 'package', change }),
   );
-  value(await r.kernel.items.claim(caller(r.ian), { itemId, delegationId: null }));
+  value(await r.kernel.items.claim(caller(r.rowan), { itemId, delegationId: null }));
   const moved = { itemId, to: 'close', evidence: {}, change: null };
-  value(await r.kernel.items.submit(caller(r.ian), moved));
+  value(await r.kernel.items.submit(caller(r.rowan), moved));
   for (const [n, reading] of values.entries()) {
     const asOf = `2026-01-0${String(n + 1)}`;
     const input = { itemId, source: 'manual' as const, name: 'readers', value: reading, asOf };
-    value(await r.kernel.measurements.record(caller(r.ian), input));
+    value(await r.kernel.measurements.record(caller(r.rowan), input));
   }
   return itemId;
 }

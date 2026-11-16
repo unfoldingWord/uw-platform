@@ -9,12 +9,12 @@ import {
   callerOf,
   command,
   eventCount,
-  ian,
+  rowan,
   softwareHarness,
   type Person,
 } from '../testing/commands.ts';
 
-const IAN = { email: 'ian.lindsley@unfoldingword.org' };
+const ROWAN = { email: 'rowan.test@unfoldingword.org' };
 
 type Who = Pick<Person, 'email'>;
 
@@ -111,7 +111,7 @@ async function noAdminFreezesAnotherArea(db: Database): Promise<void> {
   const elsewhere = await page(db, '20-29');
   const readable = await page(db, '30-39');
   for (const pageId of [elsewhere, readable]) {
-    for (const reply of await answers(db, IAN, scene.harnessId, pageId)) {
+    for (const reply of await answers(db, ROWAN, scene.harnessId, pageId)) {
       expect(reply.status).toBe(404);
     }
     expect(await namingStages(db, pageId)).toBe(0);
@@ -135,7 +135,7 @@ async function samePageIsNamed(db: Database): Promise<void> {
 async function kernelRefusesBeforeTheKey(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const kernel = kernelOn(db, { now: () => new Date() });
-  const caller = callerOf(await ian(db));
+  const caller = callerOf(await rowan(db));
   const before = await eventCount(db, scene.harnessId);
   for (const pageId of [randomUUID(), await page(db, '20-29'), await page(db, '80-89', 'issue')]) {
     const created = await kernel.stages.createStage(caller, {

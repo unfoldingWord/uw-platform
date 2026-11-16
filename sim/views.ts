@@ -106,7 +106,7 @@ export function itemNow(world: World, itemId: string): Promise<ItemState | null>
 export type GatesWorld = {
   readonly world: World;
   readonly harnessId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly areaAdmin: Principal;
   readonly viewer: Principal;
   readonly standard: string;
@@ -124,7 +124,7 @@ const aclChange = {
 } as const;
 
 export async function gatesWorld(world: World): Promise<GatesWorld> {
-  const { harness, admin: ian } = await createSimHarness(world, software);
+  const { harness, admin: rowan } = await createSimHarness(world, software);
   const editor = await simPerson(world, 2, [{ role: 'editor', ...area }]);
   const areaAdmin = await simPerson(world, 5, [{ role: 'admin', ...area }]);
   const viewer = await simPerson(world, 8, [{ role: 'viewer', ...area }]);
@@ -142,11 +142,15 @@ export async function gatesWorld(world: World): Promise<GatesWorld> {
     title: 'Tighten the access check',
     change: { ...aclChange, declaration: { riskTier: 'high', riskDomains: ['acl'] } },
   });
-  const atCheck = await simParkedAtCheck(world, { harnessId, admin: ian, title: 'Check the copy' });
+  const atCheck = await simParkedAtCheck(world, {
+    harnessId,
+    admin: rowan,
+    title: 'Check the copy',
+  });
   return {
     world,
     harnessId,
-    ian,
+    rowan,
     areaAdmin,
     viewer,
     standard: standard.itemId,

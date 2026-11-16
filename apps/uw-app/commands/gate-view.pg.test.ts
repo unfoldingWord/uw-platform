@@ -49,7 +49,7 @@ async function otherHarness(db: Database, parked: ParkedAtShip): Promise<string>
   const harnessId = randomUUID();
   const kernel = kernelOn(db, { now: () => new Date() });
   accepted(
-    await kernel.stages.activate(callerOf(parked.ian), {
+    await kernel.stages.activate(callerOf(parked.rowan), {
       harnessId,
       harnessKey: 'software-two',
       jdArea: '80-89',
@@ -128,7 +128,7 @@ async function hiddenItem(db: Database): Promise<void> {
 async function agentsDecideNoGate(db: Database): Promise<void> {
   const parked = await parkedAtShip(db);
   const { itemId, harnessId } = parked.item;
-  const forms = await agentForms(db, parked.ian, harnessId, edgeIdentities);
+  const forms = await agentForms(db, parked.rowan, harnessId, edgeIdentities);
   for (const agent of forms.readable) {
     const sent = await readAs(db, agent, gatePath(harnessId, itemId));
     expect(sent.status).toBe(403);

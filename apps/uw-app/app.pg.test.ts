@@ -11,7 +11,7 @@ import {
 import { postgresDeps, testServer, withAppDatabase } from './testing/postgres.ts';
 
 const commit = '0123456789abcdef0123456789abcdef01234567';
-const IAN = 'ian.lindsley@unfoldingword.org';
+const ROWAN = 'rowan.test@unfoldingword.org';
 
 let fixture: AccessFixture;
 
@@ -20,7 +20,7 @@ beforeAll(async () => {
 });
 
 async function signedIn(db: Database, path: string): Promise<Response> {
-  const token = await fixture.sign({ email: IAN });
+  const token = await fixture.sign({ email: ROWAN });
   return createApp(postgresDeps(db, fixture)).request(
     path,
     { headers: { 'cf-access-jwt-assertion': token } },

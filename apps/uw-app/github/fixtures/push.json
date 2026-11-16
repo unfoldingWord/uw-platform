@@ -6,7 +6,7 @@
   "commits": [],
   "head_commit": null,
   "pusher": {
-    "name": "ianjl"
+    "name": "rowan-test"
   },
   "repository": {
     "id": 9100000001,
@@ -24,7 +24,7 @@
     "visibility": "private"
   },
   "sender": {
-    "login": "ianjl",
+    "login": "rowan-test",
     "id": 9100000902,
     "type": "User"
   },

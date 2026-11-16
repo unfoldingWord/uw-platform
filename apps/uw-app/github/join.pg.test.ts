@@ -5,7 +5,7 @@ import { createLogger } from '@uw/core/log';
 import type { Database } from '@uw/db/client';
 import { seedPlatformPage } from '@uw/db/test-seed';
 import { checkOnly } from '@uw/harness';
-import { accepted, callerOf, ian } from '../testing/commands.ts';
+import { accepted, callerOf, rowan } from '../testing/commands.ts';
 import { systemClock } from '../ports/clock.ts';
 import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
@@ -46,7 +46,7 @@ function requested() {
 async function checkOnlyOn(db: Database, shadow: boolean): Promise<string> {
   const harnessId = randomUUID();
   accepted(
-    await kernelOn(db, { now: () => firstRun }).stages.activate(callerOf(await ian(db)), {
+    await kernelOn(db, { now: () => firstRun }).stages.activate(callerOf(await rowan(db)), {
       harnessId,
       harnessKey: 'uw-platform-review',
       jdArea: '80-89',
@@ -63,7 +63,7 @@ async function checkOnlyOn(db: Database, shadow: boolean): Promise<string> {
 
 async function joinedItems(db: Database, harnessId: string) {
   const kernel = kernelOn(db, { now: () => nextRun });
-  const items = await kernel.reads.inStage(callerOf(await ian(db)), {
+  const items = await kernel.reads.inStage(callerOf(await rowan(db)), {
     harnessId,
     stageKey: 'check',
     after: null,

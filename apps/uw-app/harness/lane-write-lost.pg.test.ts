@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
 import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
-import { callerOf, eventCount, ian, softwareHarness } from '../testing/commands.ts';
+import { callerOf, eventCount, rowan, softwareHarness } from '../testing/commands.ts';
 
 async function stageUpdatesVanish(db: Database): Promise<void> {
   await db.$client.unsafe(`
@@ -20,7 +20,7 @@ async function lostWritesRefuse(db: Database): Promise<void> {
   const { harnessId } = await softwareHarness(db);
   await stageUpdatesVanish(db);
   const kernel = kernelOn(db, { now: () => new Date() });
-  const caller = callerOf(await ian(db));
+  const caller = callerOf(await rowan(db));
   const before = await eventCount(db, harnessId);
   const paused = await kernel.stages.pause(caller, { harnessId, stageKey: 'build' });
   expect(paused).toMatchObject({ status: 'error', reason: 'stage_not_found' });

@@ -181,20 +181,20 @@ function wokeOnlyDeciders(cast: Cast, itemId: string, earlier: number): string {
   const wakes = gateWakesFor(cast, itemId);
   assert.equal(wakes.length - earlier, 1);
   const wake = wakes.at(-1);
-  const deciders = [cast.ian.personId, cast.kim.personId].toSorted();
+  const deciders = [cast.rowan.personId, cast.kim.personId].toSorted();
   assert.deepEqual(wake?.recipients.map((recipient) => recipient.personId).toSorted(), deciders);
   assert.equal(wake.link, gateLink(cast.harnessId, itemId));
   return wake.traceId;
 }
 
-async function reachedIanAndTheTopic(cast: Cast, itemId: string, traceId: string): Promise<void> {
+async function reachedRowanAndTheTopic(cast: Cast, itemId: string, traceId: string): Promise<void> {
   const { notifier } = cast.world.adapters;
   const pushed = notifier
     .decisions()
     .filter((decision) => decision.traceId === traceId)
     .map((decision) => [decision.personId, decision.decision]);
   const expected = [
-    [cast.ian.personId, 'sent'],
+    [cast.rowan.personId, 'sent'],
     [cast.kim.personId, 'no_device'],
   ];
   assert.deepEqual(pushed.toSorted(), expected.toSorted());
@@ -221,7 +221,7 @@ async function parkAtShip(cast: Cast, itemId: string): Promise<void> {
   const max = callerFor(cast, cast.max);
   value(await world.kernel.items.claim(max, { itemId, delegationId: null }));
   const earlier = gateWakesFor(cast, itemId).length;
-  world.adapters.notifier.subscribe(cast.ian.personId ?? '');
+  world.adapters.notifier.subscribe(cast.rowan.personId ?? '');
   world.adapters.notifier.enableZulip();
   const parked = value(
     await world.kernel.items.submit(max, { itemId, to: null, evidence: {}, change: null }),
@@ -229,7 +229,7 @@ async function parkAtShip(cast: Cast, itemId: string): Promise<void> {
   assert.equal(parked.result, 'parked');
   assert.deepEqual([parked.item.stageKey, parked.item.gateStatus], ['ship', 'parked']);
   const traceId = wokeOnlyDeciders(cast, itemId, earlier);
-  await reachedIanAndTheTopic(cast, itemId, traceId);
+  await reachedRowanAndTheTopic(cast, itemId, traceId);
 }
 
 export async function travelToShip(world: World): Promise<Journey> {

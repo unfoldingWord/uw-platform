@@ -8,7 +8,7 @@ import {
   activatedHarness,
   boardWorld,
   enqueuedItem,
-  ianOn,
+  rowanOn,
   type BoardWorld,
 } from '../testing/board-world.ts';
 import { kernelOn } from '../testing/kernel.ts';
@@ -21,7 +21,7 @@ const seedClock: Clock = { now: () => new Date('2026-10-02T06:00:00.000Z') };
 const viewClock: Clock = { now: () => new Date('2026-10-02T09:00:00.000Z') };
 const missing = '00000000-0000-4000-8000-00000000dead';
 
-function flowOf(world: BoardWorld, email = world.ianEmail, path = flowPath(world.harnessId)) {
+function flowOf(world: BoardWorld, email = world.rowanEmail, path = flowPath(world.harnessId)) {
   return getHtml(world.db, email, path, {}, viewClock);
 }
 
@@ -156,7 +156,7 @@ async function liveOnHarness(world: BoardWorld): Promise<void> {
   expect(Number(marker?.getAttribute('data-cursor'))).toBeGreaterThan(10);
   const fragment = await getHtml(
     world.db,
-    world.ianEmail,
+    world.rowanEmail,
     flowPath(world.harnessId),
     { 'x-uw-fragment': 'main' },
     viewClock,
@@ -207,11 +207,11 @@ const loop: Template = {
 };
 
 async function foreignTemplate(world: BoardWorld): Promise<void> {
-  const ian = await ianOn(world.db, seedClock.now());
+  const rowan = await rowanOn(world.db, seedClock.now());
   const kernel = kernelOn(world.db, seedClock);
-  const harnessId = await activatedHarness(kernel, ian, loop, 'field-notes');
-  await enqueuedItem(kernel, ian, harnessId, 'Hear the story');
-  const document = documentOf((await flowOf(world, world.ianEmail, flowPath(harnessId))).text);
+  const harnessId = await activatedHarness(kernel, rowan, loop, 'field-notes');
+  await enqueuedItem(kernel, rowan, harnessId, 'Hear the story');
+  const document = documentOf((await flowOf(world, world.rowanEmail, flowPath(harnessId))).text);
   expect(nodeLabels(document)).toEqual([
     'Listen first, 1 items, 0 of 4 in progress',
     'Gather notes, 0 items, 0 of 2 in progress',

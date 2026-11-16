@@ -115,7 +115,7 @@ function factsOf(document: Document): Readonly<Record<string, string>> {
 async function gateFacts(world: GateWorld): Promise<void> {
   await greenChecks(world.db);
   await approvedWithFindings(world.db);
-  await recordedRisk(world.db, world.item, world.ian.identity);
+  await recordedRisk(world.db, world.item, world.rowan.identity);
   const document = await documentOf(world, world.kimEmail, deepLink(world));
   const facts = factsOf(document);
   expect(facts).toMatchObject({
@@ -173,9 +173,9 @@ const signOff: Template = {
 
 async function parkedAtSignOff(world: GateWorld): Promise<{ harnessId: string; itemId: string }> {
   const kernel = kernelOn(world.db, clock);
-  const harnessId = await activatedHarness(kernel, world.ian, signOff, 'sign-off');
-  const itemId = await enqueuedItem(kernel, world.ian, harnessId, 'Sign the release notes');
-  await advanced(kernel, world.ian, itemId, 1);
+  const harnessId = await activatedHarness(kernel, world.rowan, signOff, 'sign-off');
+  const itemId = await enqueuedItem(kernel, world.rowan, harnessId, 'Sign the release notes');
+  await advanced(kernel, world.rowan, itemId, 1);
   await rewriteItem(world.db, itemId, { riskTier: 'high', riskDomains: ['ledger'] });
   return { harnessId, itemId };
 }
@@ -233,7 +233,7 @@ const typed: Readonly<Record<string, Readonly<Record<string, string>>>> = {
 async function decidedFromForm(world: GateWorld, decision: string): Promise<void> {
   const { harnessId, itemId } = await parkedAtSignOff(world);
   const path = gatePath(harnessId, itemId);
-  const before = await documentOf(world, world.ianEmail, path);
+  const before = await documentOf(world, world.rowanEmail, path);
   const named = [...before.querySelectorAll('main button[name="decision"]')].map((button) =>
     button.getAttribute('value'),
   );
@@ -243,13 +243,13 @@ async function decidedFromForm(world: GateWorld, decision: string): Promise<void
   expect(body).not.toBeNull();
   const sent = await post(
     world.db,
-    world.ianEmail,
+    world.rowanEmail,
     `/api/harness/${harnessId}/commands/${decision}`,
     body,
   );
   expect([decision, sent.status, sent.body['status']]).toEqual([decision, 200, 'accepted']);
   expect(await decisionRows(world.db, { ...world.item, itemId })).toBe(1);
-  const after = await documentOf(world, world.ianEmail, path);
+  const after = await documentOf(world, world.rowanEmail, path);
   expect(after.querySelectorAll('main button[name="decision"]')).toHaveLength(0);
   expect(after.querySelector('main [role="note"]')?.textContent).toBe('This gate has been decided');
 }
@@ -361,16 +361,16 @@ async function noDecideControls(world: GateWorld, email: string, path: string): 
 
 async function notAtPersonGate(world: GateWorld): Promise<void> {
   const kernel = kernelOn(world.db, clock);
-  const harnessId = await activatedHarness(kernel, world.ian, software, 'software-backlog');
-  const itemId = await enqueuedItem(kernel, world.ian, harnessId, 'Parked at the backlog');
+  const harnessId = await activatedHarness(kernel, world.rowan, software, 'software-backlog');
+  const itemId = await enqueuedItem(kernel, world.rowan, harnessId, 'Parked at the backlog');
   await rewriteItem(world.db, itemId, { gateStatus: 'parked' });
   const editorEmail = await editorOn80s(world);
-  for (const email of [world.ianEmail, editorEmail, world.viewerEmail]) {
+  for (const email of [world.rowanEmail, editorEmail, world.viewerEmail]) {
     await noDecideControls(world, email, gatePath(harnessId, itemId));
   }
-  const other = await enqueuedItem(kernel, world.ian, harnessId, 'Still in the backlog');
-  accepted(await kernel.items.claim(callerOf(world.ian), { itemId: other, delegationId: null }));
-  for (const email of [world.ianEmail, editorEmail, world.viewerEmail]) {
+  const other = await enqueuedItem(kernel, world.rowan, harnessId, 'Still in the backlog');
+  accepted(await kernel.items.claim(callerOf(world.rowan), { itemId: other, delegationId: null }));
+  for (const email of [world.rowanEmail, editorEmail, world.viewerEmail]) {
     await noDecideControls(world, email, gatePath(harnessId, other));
   }
 }
@@ -385,8 +385,8 @@ async function decidedGate(world: GateWorld): Promise<void> {
     findings: [],
     seenHead: null,
   };
-  accepted(await kernel.gates.decide(callerOf(world.ian), decision));
-  const document = await documentOf(world, world.ianEmail, gatePath(harnessId, itemId));
+  accepted(await kernel.gates.decide(callerOf(world.rowan), decision));
+  const document = await documentOf(world, world.rowanEmail, gatePath(harnessId, itemId));
   expect(document.querySelectorAll('main button[name="decision"]')).toHaveLength(0);
   expect(document.querySelector('main [role="note"]')?.textContent).toBe(
     'This gate has been decided',
@@ -455,7 +455,7 @@ async function delegatedMergeListed(world: GateWorld): Promise<void> {
         decisionId: randomUUID(),
         delegationId: randomUUID(),
         personId: randomUUID(),
-        email: 'ian.lindsley@unfoldingword.org',
+        email: 'rowan.test@unfoldingword.org',
         persona: 'agent:shipper',
         expiresAt: '2026-10-20T00:00:00.000Z',
         maxTier: 'standard',
@@ -466,7 +466,7 @@ async function delegatedMergeListed(world: GateWorld): Promise<void> {
   ]);
   const page = await pageOf(world, world.kimEmail, listPath(world));
   expect(page.text).toContain('Merged under a delegation');
-  expect(page.text).toContain('granted by ian.lindsley@unfoldingword.org until');
+  expect(page.text).toContain('granted by rowan.test@unfoldingword.org until');
   const document = new JSDOM(page.text).window.document;
   const link = document.querySelector('#delegated-merges-heading + ul a');
   expect(link?.getAttribute('href')).toBe(itemPath(harnessId, itemId));

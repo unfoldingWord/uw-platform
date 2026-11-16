@@ -28,7 +28,7 @@
 | S17-R10. A repository declares its checks in one file, `.harness/checks.sh`, read with `git show` at the fix's start commit before the model runs (so the model cannot change what is run) and run with `sh` in the repository after the model's exec; its exit status decides. With no such file the model exec exits 78 before Claude Code starts, so a repository with no declared checks costs no model spend | Other conventions (`package.json` scripts, a Makefile) are not read |
 | S17-R11. The fix work spec is three execs in one container session: the model (clone, checkout at the start head, read the declaration, Claude Code with `git` but no `curl`, the GitHub egress refusing every push), the declared checks (a read-only package-registry route `registry.internal` to `https://registry.npmjs.org`, `GET` and `HEAD`, open only now), and the platform's own push (`git push origin HEAD:refs/heads/harness/<item>`, the only exec during which the egress forwards a push). Missing or failing checks make the engine answer `checks_not_run_locally`; the run fails with it and the submit never runs. A fix on an engine with no fix work spec (`codex-sandbox`, a message engine, or a run with no checkout) ends the same way without a session. Registry requests do not await `admit()`; the push after them does | A process the model leaves running into the later execs could reach the push (Claude Code's tool allowlist is the bound); only npm-registry ecosystems install |
 | S17-R12. The contract moves one minor for the step (expected `13.1.0` to `13.2.0`): new values and a field with a default. One migration, `fix_claim` (expected `0032`) | None; the lock test enforces the rule |
-| S17-R13. PRD sections 8.3, 8.5 and 8.6 and design section 6 gain this step's names (the `fix_claimed` and `fix_claim_set` events, the `set_fix_claim` command, the `fix_size_cap` and `fix_keeps_purpose` refusals, the `awaiting_review` result, `checks_not_run_locally` as a run failure). The step-13 "Not verified" row asking Ian whether tool replies should be fenced (S13-R11) stays with Ian: a fix run's tool replies are not fenced either | None |
+| S17-R13. PRD sections 8.3, 8.5 and 8.6 and design section 6 gain this step's names (the `fix_claimed` and `fix_claim_set` events, the `set_fix_claim` command, the `fix_size_cap` and `fix_keeps_purpose` refusals, the `awaiting_review` result, `checks_not_run_locally` as a run failure). The step-13 "Not verified" row asking the owner whether tool replies should be fenced (S13-R11) stays with the owner: a fix run's tool replies are not fenced either | None |
 
 **What this step hands to later steps (keep these names exactly):**
 
@@ -57,7 +57,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Where and how**
 
-- Work only in `/home/ianjl/projects/uw-platform-v0.2.0`, branch `build/v0.2.0`. Never commit to `main`, never force-push, never `--no-verify`.
+- Work only in `/home/rowan-test/projects/uw-platform-v0.2.0`, branch `build/v0.2.0`. Never commit to `main`, never force-push, never `--no-verify`.
 - Read `AGENTS.md` sections 1, 4 and 10 before the first edit. When this plan and `AGENTS.md` disagree, `AGENTS.md` wins; record the conflict in `docs/progress_tracker.md` and build the version that keeps the rule.
 - Words come from `CONTEXT.md`: **fix claim**, **review round**, **finding weight**, **delegation**, **validator**, **untrusted content**, and this step's **declared checks** (Task 1). Never "fix lane", "second writer", "auto-fix" or "severity".
 - No agent verb is added (V2-7). `approve`, `merge`, `deploy`, `publish` and `advance` stay forbidden. Nothing in this step writes `gate_decisions` or `harness_stages`.
@@ -1270,7 +1270,7 @@ import type { Database } from '@uw/db/client';
 import { command, eventsNamed, softwareHarness } from '../testing/commands.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 
-const IAN_EMAIL = 'ian.lindsley@unfoldingword.org';
+const ROWAN_EMAIL = 'rowan.test@unfoldingword.org';
 
 async function fixClaimSwitch(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
@@ -1281,7 +1281,7 @@ async function fixClaimSwitch(db: Database): Promise<void> {
   });
   expect(byEditor.body).toEqual({ status: 'error', requestId, reason: 'not_permitted' });
   const fresh = { requestId: randomUUID(), enabled: true };
-  const byAdmin = await command(db, { email: IAN_EMAIL }, scene.harnessId, 'set_fix_claim', fresh);
+  const byAdmin = await command(db, { email: ROWAN_EMAIL }, scene.harnessId, 'set_fix_claim', fresh);
   expect(byAdmin.body).toEqual({ status: 'accepted', requestId: fresh.requestId });
   const [set] = await eventsNamed(db, scene.harnessId, 'fix_claim_set');
   expect(set).toMatchObject({ evidence: { enabled: true }, requestId: fresh.requestId });
@@ -3072,7 +3072,7 @@ In `docs/progress_tracker.md`:
 
 3. Under the step's heading in "Decisions made during the build" (the shape `| date | requirement | ruling | why | cost if wrong |` of the S16 rows), S17-R1 to S17-R13 from the top of this plan.
 4. Under "Not verified": the three-exec fix session and the registry route on a real container (whether npm and pnpm fetch tarballs through `registry.internal` with `npm_config_replace_registry_host=always`, whether Corepack honours `COREPACK_NPM_REGISTRY`, whether a background process the model starts survives into the push exec); and that a repository's `.harness/checks.sh` runs inside the container's 25-minute exec limit. Each proven only against the fake container host.
-5. Under "Waiting on a person" (Ian): one fix run on staging end to end against a repository that has `.harness/checks.sh`, during GL-1's live run.
+5. Under "Waiting on a person" (the owner): one fix run on staging end to end against a repository that has `.harness/checks.sh`, during GL-1's live run.
 6. If any implementer made a choice this plan did not (for example the `claimWithin` object form, or moving `handlerOf` into `submit-gates.ts`), one decision row each.
 
 - [ ] **Step 3: Commit and push**

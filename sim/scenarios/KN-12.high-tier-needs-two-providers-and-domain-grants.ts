@@ -18,7 +18,7 @@ type Scene = {
   readonly world: World;
   readonly harnessId: string;
   readonly itemId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly kim: Principal;
 };
 
@@ -43,7 +43,7 @@ async function parkedHighAtShip(world: World): Promise<Scene> {
   });
   assert.equal(parked.riskTier, 'high');
   assert.deepEqual(parked.riskDomains, ['migration']);
-  return { world, harnessId: harness.id, itemId: parked.itemId, ian: admin, kim };
+  return { world, harnessId: harness.id, itemId: parked.itemId, rowan: admin, kim };
 }
 
 async function approveOver(scene: Scene, approver: Principal, reviews: readonly ReviewFact[]) {
@@ -84,15 +84,15 @@ export const scenario = defineScenario({
     'a high-tier change needs two reviewers with distinct providers on the head and an approver holding every grant its domains name',
   run: async (world) => {
     const scene = await parkedHighAtShip(world);
-    await refusedWith(scene, scene.ian, [anthropic], 'reviewer_count_below_tier');
+    await refusedWith(scene, scene.rowan, [anthropic], 'reviewer_count_below_tier');
     await refusedWith(
       scene,
-      scene.ian,
+      scene.rowan,
       [anthropic, secondAnthropic],
       'reviewer_providers_not_distinct',
     );
     await refusedWith(scene, scene.kim, [anthropic, openai], 'approver_lacks_domain_grant');
-    const approved = await approveOver(scene, scene.ian, [anthropic, openai]);
+    const approved = await approveOver(scene, scene.rowan, [anthropic, openai]);
     if (approved.status !== 'accepted') throw new Error(`refused: ${approved.reason}`);
     assert.equal(approved.value.advanced, true);
     assert.equal(approved.value.item.stageKey, 'validate');

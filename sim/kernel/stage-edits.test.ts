@@ -7,13 +7,13 @@ import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
 
-type Scene = { readonly world: World; readonly harness: Harness; readonly ian: Caller };
+type Scene = { readonly world: World; readonly harness: Harness; readonly rowan: Caller };
 
 async function withHarness(work: (scene: Scene) => Promise<void>): Promise<void> {
   const world = await createWorld();
   try {
     const { harness, admin } = await createSimHarness(world, software);
-    await work({ world, harness, ian: simCaller(world, admin) });
+    await work({ world, harness, rowan: simCaller(world, admin) });
   } finally {
     await world.close();
   }
@@ -41,7 +41,7 @@ const extra = {
 };
 
 async function createsExtra(scene: Scene): Promise<void> {
-  const outcome = await scene.world.kernel.stages.createStage(scene.ian, {
+  const outcome = await scene.world.kernel.stages.createStage(scene.rowan, {
     harnessId: scene.harness.id,
     stage: extra,
   });
@@ -49,14 +49,14 @@ async function createsExtra(scene: Scene): Promise<void> {
   const [edit] = await editsOf(scene);
   expect(edit).toMatchObject({
     itemId: null,
-    actor: scene.ian.actor.identity,
+    actor: scene.rowan.actor.identity,
     evidence: { stageId: outcome.value.id, key: 'extra', before: null },
   });
   expect(edit?.evidence['after']).toEqual({ ...extra, paused: false });
 }
 
 async function updatesReview(scene: Scene): Promise<void> {
-  const outcome = await scene.world.kernel.stages.updateStage(scene.ian, {
+  const outcome = await scene.world.kernel.stages.updateStage(scene.rowan, {
     harnessId: scene.harness.id,
     stageKey: 'check',
     change: { exitGate: 'human_approval', wipLimit: 3, title: 'CI and review verdict' },
@@ -77,7 +77,7 @@ async function reordersTwo(scene: Scene): Promise<void> {
   const swapped = [order[0], order[2], order[1], ...order.slice(3)].filter(
     (key): key is string => key !== undefined,
   );
-  const outcome = await scene.world.kernel.stages.reorderStages(scene.ian, {
+  const outcome = await scene.world.kernel.stages.reorderStages(scene.rowan, {
     harnessId: scene.harness.id,
     order: swapped,
   });
@@ -89,7 +89,7 @@ async function reordersTwo(scene: Scene): Promise<void> {
 }
 
 async function refusedLeavesNone(scene: Scene): Promise<void> {
-  await scene.world.kernel.stages.updateStage(scene.ian, {
+  await scene.world.kernel.stages.updateStage(scene.rowan, {
     harnessId: scene.harness.id,
     stageKey: 'ship',
     change: { exitGate: 'checks' },

@@ -12,7 +12,7 @@ import {
 import { postgresDeps, testServer, withAppDatabase } from '../testing/postgres.ts';
 import { owns } from './store.ts';
 
-const IAN = 'ian.lindsley@unfoldingword.org';
+const ROWAN = 'rowan.test@unfoldingword.org';
 const ED = 'ed@unfoldingword.org';
 const VW = 'vw@unfoldingword.org';
 const FIN = 'fin@unfoldingword.org';
@@ -61,7 +61,7 @@ async function personId(db: Database, email: string): Promise<string> {
 }
 
 async function grant(db: Database, email: string, role: string, area: string): Promise<void> {
-  const sent = await post(db, IAN, '/api/acl/commands/grant_role', {
+  const sent = await post(db, ROWAN, '/api/acl/commands/grant_role', {
     command: 'grant_role',
     requestId: randomUUID(),
     personId: await personId(db, email),

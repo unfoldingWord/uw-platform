@@ -6,7 +6,7 @@ import {
   simAdvance,
   simAgent,
   simCaller,
-  simIan,
+  simRowan,
   simPerson,
 } from '../fixtures.ts';
 import { defineScenario } from '../scenario.ts';
@@ -32,7 +32,7 @@ function valueOf<T>(outcome: KernelOutcome<T>): T {
 async function cast(world: World): Promise<Cast> {
   const { harness } = await createSimHarness(world, software);
   valueOf(
-    await world.kernel.stages.updateStage(simCaller(world, await simIan(world)), {
+    await world.kernel.stages.updateStage(simCaller(world, await simRowan(world)), {
       harnessId: harness.id,
       stageKey: 'scope',
       change: { validators: ['learning_attached'] },

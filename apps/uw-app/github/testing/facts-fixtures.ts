@@ -66,7 +66,7 @@ export const openedPull: PullRequestRecord = {
   baseSha: base,
   milestoneId: null,
   requestedReviewers: [],
-  authorLogin: 'ianjl',
+  authorLogin: 'rowan-test',
   declaration,
   declarationProblem: null,
   closes: [{ repo: 'unfoldingWord/uw-platform', number: 12 }],

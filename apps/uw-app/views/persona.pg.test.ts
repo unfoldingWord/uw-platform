@@ -14,7 +14,7 @@ import {
   callerOf,
   command,
   enqueued,
-  ian,
+  rowan,
   softwareHarness,
   type Scene,
 } from '../testing/commands.ts';
@@ -23,7 +23,7 @@ import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml, postForm } from '../testing/views.ts';
 
-const IAN = 'ian.lindsley@unfoldingword.org';
+const ROWAN = 'rowan.test@unfoldingword.org';
 const ORIGIN = { origin: 'http://localhost' };
 
 const body = [
@@ -89,7 +89,7 @@ async function scene(db: Database): Promise<{ scene: Scene; pageId: string }> {
 
 async function opensOnDashboard(db: Database): Promise<void> {
   const { pageId } = await scene(db);
-  const page = await getHtml(db, IAN, `/personas/${pageId}`);
+  const page = await getHtml(db, ROWAN, `/personas/${pageId}`);
   expect(page.status).toBe(200);
   const document = documentOf(page.text);
   expect(document.querySelector('h1')?.textContent).toBe('Builder');
@@ -103,7 +103,7 @@ async function opensOnDashboard(db: Database): Promise<void> {
     'Writes today',
   ]);
   expect(page.text).toContain('No runs ended today');
-  const missing = await getHtml(db, IAN, `/personas/${randomUUID()}`);
+  const missing = await getHtml(db, ROWAN, `/personas/${randomUUID()}`);
   expect(missing.status).toBe(404);
 }
 
@@ -111,26 +111,26 @@ async function activates(db: Database): Promise<void> {
   const { scene: made, pageId } = await scene(db);
   const asEditor = documentOf((await getHtml(db, made.editor.email, `/personas/${pageId}`)).text);
   expect(asEditor.querySelector('form[data-command="activate_persona"]')).toBeNull();
-  const document = documentOf((await getHtml(db, IAN, `/personas/${pageId}`)).text);
+  const document = documentOf((await getHtml(db, ROWAN, `/personas/${pageId}`)).text);
   const form = document.querySelector('form[data-command="activate_persona"]');
   expect(form?.getAttribute('data-harness')).toBe(made.harnessId);
   const field = (name: string) =>
     form?.querySelector(`input[name="${name}"]`)?.getAttribute('value') ?? '';
   expect(field('pageId')).toBe(pageId);
-  const stale = await command(db, { email: IAN }, made.harnessId, 'activate_persona', {
+  const stale = await command(db, { email: ROWAN }, made.harnessId, 'activate_persona', {
     requestId: randomUUID(),
     pageId,
     expectedVersion: Number(field('expectedVersion')) + 1,
   });
   expect(stale.body['reason']).toBe('stale_version');
-  const done = await command(db, { email: IAN }, made.harnessId, 'activate_persona', {
+  const done = await command(db, { email: ROWAN }, made.harnessId, 'activate_persona', {
     requestId: randomUUID(),
     pageId,
     expectedVersion: Number(field('expectedVersion')),
   });
   expect(done.body['status']).toBe('accepted');
   expect(await pageRow(db, pageId)).toMatchObject({ status: 'active', version: 2 });
-  const after = documentOf((await getHtml(db, IAN, `/personas/${pageId}`)).text);
+  const after = documentOf((await getHtml(db, ROWAN, `/personas/${pageId}`)).text);
   expect(after.querySelector('form[data-command="activate_persona"]')).toBeNull();
 }
 
@@ -146,7 +146,7 @@ function toolsetForm(verbs: readonly string[], expectedVersion: number): URLSear
 async function savesToolset(db: Database): Promise<void> {
   const { pageId } = await scene(db);
   const form = toolsetForm(['read_page', 'search_pages', 'list_gifts', 'approve_gate'], 1);
-  const saved = await postForm(db, IAN, `/personas/${pageId}/toolset`, form, ORIGIN);
+  const saved = await postForm(db, ROWAN, `/personas/${pageId}/toolset`, form, ORIGIN);
   expect(saved.status).toBe(200);
   expect(saved.text).toContain('Done.');
   expect(await pageRow(db, pageId)).toEqual({
@@ -155,7 +155,13 @@ async function savesToolset(db: Database): Promise<void> {
     toolset: ['read_page', 'search_pages'],
     requires: ['read_page', 'search_pages'],
   });
-  const stale = await postForm(db, IAN, `/personas/${pageId}/toolset`, toolsetForm([], 1), ORIGIN);
+  const stale = await postForm(
+    db,
+    ROWAN,
+    `/personas/${pageId}/toolset`,
+    toolsetForm([], 1),
+    ORIGIN,
+  );
   expect(stale.text).toContain('Stale version');
   expect((await pageRow(db, pageId))?.version).toBe(2);
 }
@@ -179,7 +185,7 @@ function projected(db: Database, harnessId: string) {
 async function workingPersona(db: Database) {
   const { scene: made, pageId } = await scene(db);
   const { harnessId } = made;
-  const admin = await ian(db);
+  const admin = await rowan(db);
   const kernel = kernelOn(
     db,
     { now: () => new Date() },
@@ -200,7 +206,7 @@ async function workingPersona(db: Database) {
       supersedes: null,
     }),
   );
-  const activated = await command(db, { email: IAN }, harnessId, 'activate_persona', {
+  const activated = await command(db, { email: ROWAN }, harnessId, 'activate_persona', {
     requestId: randomUUID(),
     pageId,
     expectedVersion: 1,
@@ -250,7 +256,7 @@ async function editorSaveStopsTheRuns(db: Database): Promise<void> {
 
 async function delegationsCapped(db: Database): Promise<void> {
   const { scene: made, pageId } = await scene(db);
-  const admin = await ian(db);
+  const admin = await rowan(db);
   const now = new Date();
   await platformStore(db).transaction(async (tx) => {
     for (let n = 1; n <= 52; n += 1) {
@@ -272,7 +278,7 @@ async function delegationsCapped(db: Database): Promise<void> {
       );
     }
   });
-  const document = documentOf((await getHtml(db, IAN, `/personas/${pageId}`)).text);
+  const document = documentOf((await getHtml(db, ROWAN, `/personas/${pageId}`)).text);
   const table = [...document.querySelectorAll('table')].find((element) =>
     element.querySelector('caption')?.textContent?.includes('live delegations'),
   );
@@ -299,18 +305,18 @@ async function keepsUnofferedEntries(db: Database): Promise<void> {
 async function crossSite(db: Database): Promise<void> {
   const { pageId } = await scene(db);
   const form = toolsetForm(['read_page'], 1);
-  const refused = await postForm(db, IAN, `/personas/${pageId}/toolset`, form, {
+  const refused = await postForm(db, ROWAN, `/personas/${pageId}/toolset`, form, {
     origin: 'https://evil.example',
   });
   expect(refused.status).toBe(403);
-  const none = await postForm(db, IAN, `/personas/${pageId}/toolset`, form, {});
+  const none = await postForm(db, ROWAN, `/personas/${pageId}/toolset`, form, {});
   expect(none.status).toBe(403);
   expect((await pageRow(db, pageId))?.version).toBe(1);
 }
 
 async function rendersCleanly(db: Database): Promise<void> {
   const { pageId } = await scene(db);
-  const page = await getHtml(db, IAN, `/personas/${pageId}`);
+  const page = await getHtml(db, ROWAN, `/personas/${pageId}`);
   expect(await screenProblems(page.text)).toEqual([]);
   const document = documentOf(page.text);
   expect(document.querySelector('meta[name="color-scheme"]')?.getAttribute('content')).toBe(
@@ -324,7 +330,7 @@ async function rendersCleanly(db: Database): Promise<void> {
 
 async function lookOfPersona(db: Database): Promise<void> {
   const { pageId } = await scene(db);
-  const document = documentOf((await getHtml(db, IAN, `/personas/${pageId}`)).text);
+  const document = documentOf((await getHtml(db, ROWAN, `/personas/${pageId}`)).text);
   expect(document.querySelector('main h1')?.textContent).toBe('Builder');
   const heads = [...document.querySelectorAll('main h2')].map((head) => head.textContent);
   expect(heads).toEqual(expect.arrayContaining(['Last runs', 'Delegations']));

@@ -224,7 +224,7 @@ describe('hand-off, measurement, activation and attachment evidence', () => {
     const evidence = { pageId, persona: 'agent:iterate', version: 2 };
     expect(parse('persona_activated', evidence)).toBe(true);
     expect(parse('persona_activated', { ...evidence, version: 0 })).toBe(false);
-    expect(parse('persona_activated', { ...evidence, persona: 'human:ian' })).toBe(false);
+    expect(parse('persona_activated', { ...evidence, persona: 'human:rowan' })).toBe(false);
     expect(parse('persona_activated', { ...evidence, extra: true })).toBe(false);
   });
 

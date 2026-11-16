@@ -109,7 +109,7 @@ async function seedDecision(tx: StoreTransaction, base: number, key: string): Pr
     harnessId: uid(base),
     itemId: item.itemId,
     stageId: stages.review.id,
-    actor: identitySchema.parse('human:ian'),
+    actor: identitySchema.parse('human:rowan'),
     agentActor: null,
     delegationId: null,
     decision: 'approve',

@@ -41,7 +41,7 @@ export type Cast = {
   readonly world: World;
   readonly harnessId: string;
   readonly stages: readonly Stage[];
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly max: Principal;
   readonly kim: Principal;
   readonly laptop: Caller;
@@ -139,7 +139,7 @@ export async function createCast(world: World): Promise<Cast> {
     world,
     harnessId: harness.id,
     stages,
-    ian: admin,
+    rowan: admin,
     max,
     kim,
     laptop: device('laptop'),
@@ -159,7 +159,7 @@ export function hostedOn(cast: Cast, hosted: Hosted, itemId: string): RunWorld {
     world: cast.world,
     harnessId: cast.harnessId,
     itemId,
-    admin: cast.ian,
+    admin: cast.rowan,
     owner: cast.kim,
     delegationId: hosted.delegationId,
     pageId: hosted.pageId,

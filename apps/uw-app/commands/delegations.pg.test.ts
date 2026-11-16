@@ -13,12 +13,12 @@ import {
   dispatchScope,
   eventCount,
   eventsNamed,
-  ian,
+  rowan,
   softwareHarness,
 } from '../testing/commands.ts';
 
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
-const IAN = { email: 'ian.lindsley@unfoldingword.org' };
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN = { email: 'rowan.test@unfoldingword.org' };
 const DAY = 24 * 60 * 60 * 1000;
 
 function tweak(overrides: Record<string, unknown> = {}) {
@@ -45,39 +45,43 @@ function iterate(owner: Principal): Principal {
 async function delegationsOf(db: Database, harnessId: string) {
   const kernel = kernelOn(db, { now: () => new Date() });
   const filter = { personId: null, persona: null, harnessId };
-  return accepted(await kernel.delegations.live(callerOf(await ian(db)), filter));
+  return accepted(await kernel.delegations.live(callerOf(await rowan(db)), filter));
 }
 
 async function beat(db: Database, delegationId: string) {
   const kernel = kernelOn(db, { now: () => new Date() });
-  return kernel.delegations.beat(callerOf(iterate(await ian(db))), { delegationId });
+  return kernel.delegations.beat(callerOf(iterate(await rowan(db))), { delegationId });
 }
 
 async function mergeTier(db: Database): Promise<void> {
   const { harnessId } = await softwareHarness(db);
   const high = await command(
     db,
-    IAN,
+    ROWAN,
     harnessId,
     'schedule_regular_tweak',
     tweak({ capability: 'merge', maxTier: 'high' }),
   );
   expect(high.body).toMatchObject({ status: 'error', reason: 'tier_not_delegable' });
   const body = tweak({ persona: 'agent:shipper', capability: 'merge', maxTier: 'standard' });
-  const sent = await command(db, IAN, harnessId, 'schedule_regular_tweak', body);
+  const sent = await command(db, ROWAN, harnessId, 'schedule_regular_tweak', body);
   expect(sent.body).toEqual({ status: 'accepted', requestId: body.requestId });
   const [delegation] = await delegationsOf(db, harnessId);
-  expect(delegation).toMatchObject({ capability: 'merge', maxTier: 'standard', personId: IAN_ID });
+  expect(delegation).toMatchObject({
+    capability: 'merge',
+    maxTier: 'standard',
+    personId: ROWAN_ID,
+  });
 }
 
 async function scheduled(db: Database): Promise<void> {
   const { harnessId } = await softwareHarness(db);
   const body = tweak();
-  const sent = await command(db, IAN, harnessId, 'schedule_regular_tweak', body);
+  const sent = await command(db, ROWAN, harnessId, 'schedule_regular_tweak', body);
   expect(sent.body).toEqual({ status: 'accepted', requestId: body.requestId });
   const [delegation] = await delegationsOf(db, harnessId);
   expect(delegation).toMatchObject({
-    personId: IAN_ID,
+    personId: ROWAN_ID,
     persona: 'agent:iterate',
     capability: 'iterate',
     expiresAt: new Date(body.expiresAt),
@@ -85,20 +89,20 @@ async function scheduled(db: Database): Promise<void> {
   });
   const [event] = await eventsNamed(db, harnessId, 'delegation_granted');
   expect(event).toMatchObject({
-    actor: `human:${IAN_ID}`,
+    actor: `human:${ROWAN_ID}`,
     requestId: body.requestId,
     traceId: sent.traceId,
     evidence: { delegationId: delegation?.id, capability: 'iterate', persona: 'agent:iterate' },
   });
   const past = tweak({ expiresAt: new Date(Date.now() - DAY).toISOString() });
-  const expired = await command(db, IAN, harnessId, 'schedule_regular_tweak', past);
+  const expired = await command(db, ROWAN, harnessId, 'schedule_regular_tweak', past);
   expect(expired.body).toMatchObject({ status: 'error', reason: 'expiry_in_past' });
 }
 
 async function revoked(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const { harnessId } = scene;
-  await command(db, IAN, harnessId, 'schedule_regular_tweak', tweak());
+  await command(db, ROWAN, harnessId, 'schedule_regular_tweak', tweak());
   const [delegation] = await delegationsOf(db, harnessId);
   const delegationId = delegation?.id ?? '';
   expect((await beat(db, delegationId)).status).toBe('accepted');
@@ -108,7 +112,10 @@ async function revoked(db: Database): Promise<void> {
   });
   expect(editor.body).toMatchObject({ status: 'error', reason: 'not_permitted' });
   const requestId = randomUUID();
-  const sent = await command(db, IAN, harnessId, 'revoke_delegation', { requestId, delegationId });
+  const sent = await command(db, ROWAN, harnessId, 'revoke_delegation', {
+    requestId,
+    delegationId,
+  });
   expect(sent.body).toEqual({ status: 'accepted', requestId });
   const [event] = await eventsNamed(db, harnessId, 'delegation_revoked');
   expect(event).toMatchObject({ requestId, evidence: { delegationId } });
@@ -130,7 +137,7 @@ async function editorCannot(db: Database): Promise<void> {
     requestId: body.requestId,
     reason: 'not_permitted',
   });
-  const agent = agentOf(await ian(db), 'builder');
+  const agent = agentOf(await rowan(db), 'builder');
   const scope = dispatchScope(db);
   for (const [name, extra] of [
     ['schedule_regular_tweak', tweak()],
@@ -149,11 +156,11 @@ async function editorCannot(db: Database): Promise<void> {
 
 async function foreignSupersedes(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
-  await command(db, IAN, scene.otherHarnessId, 'schedule_regular_tweak', tweak());
+  await command(db, ROWAN, scene.otherHarnessId, 'schedule_regular_tweak', tweak());
   const [elsewhere] = await delegationsOf(db, scene.otherHarnessId);
   const requestId = randomUUID();
   const send = (supersedes: string) =>
-    command(db, IAN, scene.harnessId, 'schedule_regular_tweak', tweak({ requestId, supersedes }));
+    command(db, ROWAN, scene.harnessId, 'schedule_regular_tweak', tweak({ requestId, supersedes }));
   const foreign = await send(elsewhere?.id ?? '');
   const missing = await send(randomUUID());
   expect(foreign.body).toEqual({ status: 'error', requestId, reason: 'delegation_not_found' });

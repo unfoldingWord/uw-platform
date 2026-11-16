@@ -9,7 +9,7 @@ import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml, getHtmlWithEnv } from '../testing/views.ts';
 import { agentQueuesPath, queuePath, gatesPath, healthPath, homePath } from './parts/paths.ts';
 
-const IAN = 'ian.lindsley@unfoldingword.org';
+const ROWAN = 'rowan.test@unfoldingword.org';
 
 function documentOf(html: string): Document {
   return new JSDOM(html).window.document;
@@ -22,16 +22,16 @@ function desktopNav(document: Document): Element {
 }
 
 async function parked(db: Database) {
-  const { ian } = await people(db);
+  const { rowan } = await people(db);
   const kernel = kernelOn(db, clock);
-  const item = await parkAtShip(db, kernel, ian);
-  await kernel.stages.setTitle(callerOf(ian), { harnessId: item.harnessId, title: 'Software' });
+  const item = await parkAtShip(db, kernel, rowan);
+  await kernel.stages.setTitle(callerOf(rowan), { harnessId: item.harnessId, title: 'Software' });
   return item;
 }
 
 async function sidebarReadsTheFrame(db: Database): Promise<void> {
   const item = await parked(db);
-  const document = documentOf((await getHtml(db, IAN, '/', {}, clock)).text);
+  const document = documentOf((await getHtml(db, ROWAN, '/', {}, clock)).text);
   const nav = desktopNav(document);
   const today = nav.querySelector(`a[href="${homePath()}"]`);
   expect(today?.textContent).toContain('Today');
@@ -51,12 +51,12 @@ function brandAndPerson(document: Document): void {
   const side = document.querySelector('aside');
   expect(side?.querySelector('img')?.getAttribute('alt')).toBe('unfoldingWord');
   expect(side?.textContent).toContain('Platform');
-  expect(side?.textContent).toContain('Ian Lindsley');
+  expect(side?.textContent).toContain('Rowan Test');
 }
 
 async function areasInPrototypeOrder(db: Database): Promise<void> {
   await parked(db);
-  const nav = desktopNav(documentOf((await getHtml(db, IAN, '/', {}, clock)).text));
+  const nav = desktopNav(documentOf((await getHtml(db, ROWAN, '/', {}, clock)).text));
   const headings = [...nav.querySelectorAll('[data-area]')].map((element) =>
     element.getAttribute('data-area'),
   );
@@ -75,7 +75,7 @@ async function areasInPrototypeOrder(db: Database): Promise<void> {
 
 async function unbuiltAreDimmed(db: Database): Promise<void> {
   await parked(db);
-  const document = documentOf((await getHtml(db, IAN, '/', {}, clock)).text);
+  const document = documentOf((await getHtml(db, ROWAN, '/', {}, clock)).text);
   const nav = desktopNav(document);
   for (const label of [
     'Pages & Wiki',
@@ -104,7 +104,7 @@ async function unbuiltAreDimmed(db: Database): Promise<void> {
 async function statusBarSays(db: Database): Promise<void> {
   await parked(db);
   const env = { COMMIT_SHA: 'bf10f9f9999999999999999999999999999999999', ENVIRONMENT: 'staging' };
-  const html = await getHtmlWithEnv(db, IAN, '/', env, clock);
+  const html = await getHtmlWithEnv(db, ROWAN, '/', env, clock);
   const status = documentOf(html.text).querySelector('footer[aria-label="Status"]');
   const text = status?.textContent ?? '';
   expect(text).toContain('Loaded');
@@ -119,7 +119,7 @@ async function statusBarSays(db: Database): Promise<void> {
 
 async function phoneHeader(db: Database): Promise<void> {
   await parked(db);
-  const document = documentOf((await getHtml(db, IAN, '/', {}, clock)).text);
+  const document = documentOf((await getHtml(db, ROWAN, '/', {}, clock)).text);
   const phone = document.querySelector('section[aria-label="Menu"]');
   expect(phone?.querySelector('img')?.getAttribute('alt')).toBe('unfoldingWord');
   expect(phone?.textContent).toContain('Today');
@@ -128,7 +128,7 @@ async function phoneHeader(db: Database): Promise<void> {
 
 async function noProblems(db: Database): Promise<void> {
   await parked(db);
-  expect(await screenProblems((await getHtml(db, IAN, '/', {}, clock)).text)).toEqual([]);
+  expect(await screenProblems((await getHtml(db, ROWAN, '/', {}, clock)).text)).toEqual([]);
 }
 
 describe.skipIf(!testServer)('UI-5 the frame', () => {

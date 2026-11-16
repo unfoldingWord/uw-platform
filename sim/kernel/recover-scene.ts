@@ -18,7 +18,7 @@ export type Scene = {
   readonly world: World;
   readonly harnessId: string;
   readonly itemId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly max: Principal;
 };
 
@@ -44,7 +44,7 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
       change: standardChange,
     });
     giveFacts(world, parked.itemId, head, 9100000101);
-    await work({ world, harnessId: harness.id, itemId: parked.itemId, ian: admin, max });
+    await work({ world, harnessId: harness.id, itemId: parked.itemId, rowan: admin, max });
     expect((await readWorldLog(world.adapters.store)).drift).toEqual([]);
   } finally {
     await world.close();
@@ -56,7 +56,7 @@ export function sceneIt(title: string, work: (scene: Scene) => Promise<void>): v
 }
 
 export async function decide(scene: Scene, kernel: Kernel, decision: 'approve' | 'take_over') {
-  return kernel.gates.decide(simCaller(scene.world, scene.ian), {
+  return kernel.gates.decide(simCaller(scene.world, scene.rowan), {
     itemId: scene.itemId,
     decision,
     reason: null,

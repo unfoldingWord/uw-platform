@@ -30,11 +30,11 @@ type Scene = {
   readonly world: World;
   readonly harnessId: string;
   readonly itemId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly max: Principal;
 };
 
-const ianSubmitsAnotherHead = simSha('fff999');
+const rowanSubmitsAnotherHead = simSha('fff999');
 const head = standardChange.head;
 
 async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
@@ -52,7 +52,7 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
     });
     const reviews = [approvedBy('uw-reviewer[bot]', 'anthropic', head, 9100000101)];
     world.adapters.githubFacts.given(greenFacts(world, { itemId: parked.itemId, head, reviews }));
-    await work({ world, harnessId: harness.id, itemId: parked.itemId, ian: admin, max });
+    await work({ world, harnessId: harness.id, itemId: parked.itemId, rowan: admin, max });
     expect((await readWorldLog(world.adapters.store)).drift).toEqual([]);
   } finally {
     await world.close();
@@ -64,7 +64,7 @@ function sceneIt(title: string, work: (scene: Scene) => Promise<void>): void {
 }
 
 async function approve(scene: Scene, kernel: Kernel = scene.world.kernel) {
-  return kernel.gates.decide(simCaller(scene.world, scene.ian), {
+  return kernel.gates.decide(simCaller(scene.world, scene.rowan), {
     itemId: scene.itemId,
     decision: 'approve',
     reason: null,
@@ -152,7 +152,7 @@ describe('KN-13 approve at Ship reads the GitHub facts before its transaction', 
     async (scene) => {
       const moved = async () => {
         await resubmitAnotherHead(scene);
-        const onNew = ianSubmitsAnotherHead;
+        const onNew = rowanSubmitsAnotherHead;
         const reviews = [approvedBy('uw-reviewer[bot]', 'anthropic', onNew, 9100000102)];
         return greenFacts(scene.world, { itemId: scene.itemId, head: onNew, reviews });
       };
@@ -168,7 +168,7 @@ describe('KN-13 approve at Ship reads the GitHub facts before its transaction', 
       expect(outcome).toEqual({
         status: 'error',
         reason: 'head_mismatch',
-        detail: { why: 'not_the_head_you_saw', expectedHead: ianSubmitsAnotherHead },
+        detail: { why: 'not_the_head_you_saw', expectedHead: rowanSubmitsAnotherHead },
       });
       const after = await itemLog(scene.world, scene.harnessId, scene.itemId);
       expect(namesSince(before, after)).not.toContain('ship_refused');
@@ -181,7 +181,7 @@ describe('KN-13 approve at Ship reads the GitHub facts before its transaction', 
 
 async function takeOver(scene: Scene): Promise<void> {
   value(
-    await scene.world.kernel.gates.decide(simCaller(scene.world, scene.ian), {
+    await scene.world.kernel.gates.decide(simCaller(scene.world, scene.rowan), {
       itemId: scene.itemId,
       decision: 'take_over',
       reason: null,
@@ -191,19 +191,19 @@ async function takeOver(scene: Scene): Promise<void> {
 }
 
 async function resubmitAnotherHead(scene: Scene): Promise<void> {
-  const ian = simCaller(scene.world, scene.ian);
+  const rowan = simCaller(scene.world, scene.rowan);
   await takeOver(scene);
   const submitted = value(
-    await scene.world.kernel.items.submit(ian, {
+    await scene.world.kernel.items.submit(rowan, {
       itemId: scene.itemId,
       to: null,
       evidence: {},
-      change: { ...standardChange, head: ianSubmitsAnotherHead },
+      change: { ...standardChange, head: rowanSubmitsAnotherHead },
     }),
   );
   expect(submitted.item).toMatchObject({
     gateStatus: 'parked',
-    expectedHead: ianSubmitsAnotherHead,
+    expectedHead: rowanSubmitsAnotherHead,
   });
 }
 
@@ -254,7 +254,7 @@ describe('KN-13 an approval whose connector has not reported refuses a second on
 });
 
 async function decideWith(scene: Scene, decision: GateDecision) {
-  return scene.world.kernel.gates.decide(simCaller(scene.world, scene.ian), {
+  return scene.world.kernel.gates.decide(simCaller(scene.world, scene.rowan), {
     itemId: scene.itemId,
     decision,
     reason: null,
@@ -272,7 +272,7 @@ async function holderCannotRepark(scene: Scene): Promise<void> {
     itemId: scene.itemId,
     to: null,
     evidence: {},
-    change: { ...standardChange, head: ianSubmitsAnotherHead },
+    change: { ...standardChange, head: rowanSubmitsAnotherHead },
   });
   expect(submitted.status).toBe('error');
 }

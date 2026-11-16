@@ -35,7 +35,7 @@ async function attempts(first: readonly string[], between: readonly Between[]): 
     const reasons: string[] = [];
     for (const step of [async () => undefined, ...between]) {
       await step(scene);
-      const outcome = await activatePersona(world, scene.ian, pageId);
+      const outcome = await activatePersona(world, scene.rowan, pageId);
       reasons.push(outcome.status === 'error' ? outcome.reason : outcome.status);
     }
     const failures = failuresIn(await harnessLog(world, scene.bmlId));
