@@ -10,10 +10,10 @@ describe('OB-2 the holder in words', () => {
     const holder = {
       role: 'claimant' as const,
       kind: 'person' as const,
-      identity: identitySchema.parse('human:ian'),
+      identity: identitySchema.parse('human:rowan'),
       since,
     };
-    expect(holderText(holder, at)).toBe('Claimed by human:ian, for 1 d 1 h');
+    expect(holderText(holder, at)).toBe('Claimed by human:rowan, for 1 d 1 h');
   });
 
   it('OB-2 names the Reviewer, a waiting decision, nobody, and an unknown start', () => {

@@ -47,7 +47,7 @@ function describeDelegatedRead(subject: DelegatedSubject): void {
       await seedDecisionItem(tx, 0x8100, 'gateway-delegated');
       await tx.delegations.write.insert(delegationFor(0x81d0, 0x8100), uid(0x81e0));
       await tx.gateDecisions.write.insert(row);
-      await tx.gateDecisions.write.insert(decisionOf(0x8100, 2, 'human:ian', at));
+      await tx.gateDecisions.write.insert(decisionOf(0x8100, 2, 'human:rowan', at));
       return {
         forItem: await tx.gateDecisions.read.forItem(uid(0x8100 + 11)),
         since: await tx.gateDecisions.read.delegatedSince(at, 10),
@@ -108,7 +108,7 @@ function describeAgentActorRefusals(subject: DelegatedSubject): void {
     const outcome = await refusedBy(async (tx) => {
       await seedDecisionItem(tx, 0x8200, 'gateway-agent-no-delegation');
       await tx.gateDecisions.write.insert({
-        ...decisionOf(0x8200, 1, 'human:ian', at),
+        ...decisionOf(0x8200, 1, 'human:rowan', at),
         agentActor: identitySchema.parse('agent:shipper'),
       });
     }, subject().store);
@@ -235,7 +235,7 @@ function describeLentBinding(subject: DelegatedSubject): void {
     const outcome = await plantDelegated(subject, {
       base: 0x8e00,
       key: 'gateway-delegated-other-approver',
-      row: (row) => ({ ...row, actor: identitySchema.parse('human:ian') }),
+      row: (row) => ({ ...row, actor: identitySchema.parse('human:rowan') }),
     });
     expect(outcome).toMatchObject(binding);
   });

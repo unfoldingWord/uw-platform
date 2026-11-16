@@ -24,7 +24,7 @@ import restReviews from '../fixtures/rest-reviews.json' with { type: 'json' };
 import { base, head } from './facts-fixtures.ts';
 import { fixtureGitHub, type FixtureGitHub } from './fixture-github.ts';
 
-const ianId = '00000000-0000-4000-8000-000000000001';
+const rowanId = '00000000-0000-4000-8000-000000000001';
 const kimId = '00000000-0000-4000-8000-000000000106';
 export const instant = new Date('2026-10-02T09:00:00.000Z');
 export const clock: Clock = { now: () => instant };
@@ -56,7 +56,7 @@ async function passStage(kernel: Kernel, worker: Principal, itemId: string, chan
   return accepted(submitted, 'submit').item;
 }
 
-async function enqueued(db: Database, kernel: Kernel, ian: Principal): Promise<string> {
+async function enqueued(db: Database, kernel: Kernel, rowan: Principal): Promise<string> {
   const harnessId = crypto.randomUUID();
   const repository = pullRequest.repo;
   const harness = {
@@ -66,10 +66,10 @@ async function enqueued(db: Database, kernel: Kernel, ian: Principal): Promise<s
     template: software,
     requiredChecks: defaultCiChecks,
   };
-  accepted(await kernel.stages.activate(caller(ian), { ...harness, repository }), 'activate');
+  accepted(await kernel.stages.activate(caller(rowan), { ...harness, repository }), 'activate');
   await listForDispatch(db, repository);
   const { itemId } = accepted(
-    await kernel.items.enqueue(caller(ian), {
+    await kernel.items.enqueue(caller(rowan), {
       harnessId,
       title: 'Show the board',
       pageId: null,
@@ -82,12 +82,16 @@ async function enqueued(db: Database, kernel: Kernel, ian: Principal): Promise<s
   return itemId;
 }
 
-export async function parkAtShip(db: Database, kernel: Kernel, ian: Principal): Promise<ItemState> {
-  const itemId = await enqueued(db, kernel, ian);
-  const agent = agentOf(ian, 'builder');
-  await passStage(kernel, ian, itemId, false);
+export async function parkAtShip(
+  db: Database,
+  kernel: Kernel,
+  rowan: Principal,
+): Promise<ItemState> {
+  const itemId = await enqueued(db, kernel, rowan);
+  const agent = agentOf(rowan, 'builder');
+  await passStage(kernel, rowan, itemId, false);
   for (const change of [false, false, true, true]) await passStage(kernel, agent, itemId, change);
-  const parked = await passStage(kernel, ian, itemId, false);
+  const parked = await passStage(kernel, rowan, itemId, false);
   if (parked.stageKey !== 'ship' || parked.gateStatus !== 'parked') {
     throw new Error(`the item is ${parked.gateStatus} at ${parked.stageKey}`);
   }
@@ -166,9 +170,9 @@ export async function people(db: Database) {
     grantedAt: new Date('2026-01-01T00:00:00.000Z'),
     expiresAt: null,
   });
-  const ian = await personOn(db, ianId, 'ian.lindsley@unfoldingword.org', instant);
+  const rowan = await personOn(db, rowanId, 'rowan.test@unfoldingword.org', instant);
   const kim = await personOn(db, kimId, 'person6@unfoldingword.org', instant);
-  return { ian, kim };
+  return { rowan, kim };
 }
 
 export async function riskAtShip(db: Database, item: ItemState) {
@@ -200,8 +204,8 @@ export async function attemptShip(
   app: GitHubAppConfig,
   change: (github: FixtureGitHub, itemId: string) => void = () => undefined,
 ) {
-  const { ian, kim } = await people(db);
-  const item = await parkAtShip(db, kernelOn(db, clock), ian);
+  const { rowan, kim } = await people(db);
+  const item = await parkAtShip(db, kernelOn(db, clock), rowan);
   await storedOnTheOldBase(db, item.itemId);
   const github = retargetedOnGitHub(item.itemId);
   change(github, item.itemId);

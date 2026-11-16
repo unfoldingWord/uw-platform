@@ -12,7 +12,7 @@ import {
   simAgent,
   simCaller,
   simDelegate,
-  simIan,
+  simRowan,
   simPerson,
 } from '../fixtures.ts';
 import { defineScenario } from '../scenario.ts';
@@ -53,8 +53,8 @@ function routineDevice(kim: Principal): string {
 }
 
 async function enqueue(world: World, harnessId: string, n: number): Promise<string> {
-  const ian = await simIan(world);
-  const outcome = await world.kernel.items.enqueue(simCaller(world, ian), {
+  const rowan = await simRowan(world);
+  const outcome = await world.kernel.items.enqueue(simCaller(world, rowan), {
     harnessId,
     title: `Routine work ${n.toString()}`,
     pageId: null,

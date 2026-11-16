@@ -18,7 +18,7 @@ import { listForDispatch } from '../testing/dispatch.ts';
 import { agentOf, fixedFacts, kernelOn, pausingGrants, personOn } from '../testing/kernel.ts';
 import { awaitBlocked } from '../../../packages/harness/port-contracts/lock-wait.ts';
 
-const ianId = '00000000-0000-4000-8000-000000000001';
+const rowanId = '00000000-0000-4000-8000-000000000001';
 const kimId = '00000000-0000-4000-8000-000000000105';
 const kimEmail = 'person5@unfoldingword.org';
 const kimGrantId = '00000000-0000-4000-8000-000000020500';
@@ -86,7 +86,7 @@ type Race = {
     readonly observer: Database;
   };
   readonly decider: Kernel;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly kim: Principal;
   readonly item: ItemState;
 };
@@ -112,10 +112,10 @@ async function passStage(kernel: Kernel, worker: Principal, itemId: string, chan
   return accepted(submitted, 'submit').item;
 }
 
-async function parkAtShip(db: Database, kernel: Kernel, ian: Principal): Promise<ItemState> {
+async function parkAtShip(db: Database, kernel: Kernel, rowan: Principal): Promise<ItemState> {
   const harnessId = crypto.randomUUID();
   accepted(
-    await kernel.stages.activate(caller(ian), {
+    await kernel.stages.activate(caller(rowan), {
       harnessId,
       harnessKey: 'software',
       jdArea: '80-89',
@@ -127,7 +127,7 @@ async function parkAtShip(db: Database, kernel: Kernel, ian: Principal): Promise
   );
   await listForDispatch(db, 'unfoldingWord/uw-platform');
   const { itemId } = accepted(
-    await kernel.items.enqueue(caller(ian), {
+    await kernel.items.enqueue(caller(rowan), {
       harnessId,
       title: 'Show the board',
       pageId: null,
@@ -137,13 +137,13 @@ async function parkAtShip(db: Database, kernel: Kernel, ian: Principal): Promise
     }),
     'enqueue',
   );
-  const agent = agentOf(ian, 'builder');
-  await passStage(kernel, ian, itemId, false);
+  const agent = agentOf(rowan, 'builder');
+  await passStage(kernel, rowan, itemId, false);
   await passStage(kernel, agent, itemId, false);
   await passStage(kernel, agent, itemId, false);
   await passStage(kernel, agent, itemId, true);
   await passStage(kernel, agent, itemId, true);
-  const parked = await passStage(kernel, ian, itemId, false);
+  const parked = await passStage(kernel, rowan, itemId, false);
   if (parked.stageKey !== 'ship' || parked.gateStatus !== 'parked') {
     throw new Error(`the item is ${parked.gateStatus} at ${parked.stageKey}`);
   }
@@ -163,12 +163,17 @@ async function raceOn(connections: Connections): Promise<Race> {
     grantedAt: instant,
     expiresAt: null,
   });
-  const ian = await personOn(connections.decider, ianId, 'ian.lindsley@unfoldingword.org', instant);
+  const rowan = await personOn(
+    connections.decider,
+    rowanId,
+    'rowan.test@unfoldingword.org',
+    instant,
+  );
   const kim = await personOn(connections.decider, kimId, kimEmail, instant);
-  const item = await parkAtShip(connections.decider, kernelOn(connections.decider, clock), ian);
+  const item = await parkAtShip(connections.decider, kernelOn(connections.decider, clock), rowan);
   const facts = fixedFacts(greenFacts(item.itemId));
   const decider = kernelOn(connections.decider, clock, { githubFacts: facts });
-  return { connections, decider, ian, kim, item };
+  return { connections, decider, rowan, kim, item };
 }
 
 async function withRace(work: (race: Race) => Promise<void>): Promise<void> {
@@ -199,7 +204,7 @@ function approve(item: ItemState) {
 function revokeKim(race: Race): Promise<unknown> {
   return revokeRole(
     race.connections.revoker,
-    race.ian,
+    race.rowan,
     { command: 'revoke_role', requestId: crypto.randomUUID(), grantId: kimGrantId },
     crypto.randomUUID(),
     instant,

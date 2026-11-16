@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { kernelOn, personOn } from '../testing/kernel.ts';
 import { awaitBlocked } from '../../../packages/harness/port-contracts/lock-wait.ts';
 
-const ianId = '00000000-0000-4000-8000-000000000001';
+const rowanId = '00000000-0000-4000-8000-000000000001';
 const instant = new Date();
 const clock: Clock = { now: () => instant };
 
@@ -21,7 +21,7 @@ type Connections = {
 
 type Race = {
   readonly connections: Connections;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly harnessId: string;
   readonly check: Stage;
 };
@@ -36,10 +36,10 @@ function accepted<T>(outcome: KernelOutcome<T>, what: string): T {
 }
 
 async function raceOn(connections: Connections): Promise<Race> {
-  const ian = await personOn(connections.gate, ianId, 'ian.lindsley@unfoldingword.org', instant);
+  const rowan = await personOn(connections.gate, rowanId, 'rowan.test@unfoldingword.org', instant);
   const harnessId = crypto.randomUUID();
   const { stages } = accepted(
-    await kernelOn(connections.gate, clock).stages.activate(caller(ian), {
+    await kernelOn(connections.gate, clock).stages.activate(caller(rowan), {
       harnessId,
       harnessKey: 'software',
       jdArea: '80-89',
@@ -51,7 +51,7 @@ async function raceOn(connections: Connections): Promise<Race> {
   );
   const check = stages.find((stage) => stage.key === 'check');
   if (check === undefined) throw new Error('no check stage');
-  return { connections, ian, harnessId, check };
+  return { connections, rowan, harnessId, check };
 }
 
 async function withRace(work: (race: Race) => Promise<void>): Promise<void> {
@@ -71,7 +71,7 @@ async function withRace(work: (race: Race) => Promise<void>): Promise<void> {
 }
 
 function edit(race: Race, db: Database, change: Partial<Stage>) {
-  return kernelOn(db, clock).stages.updateStage(caller(race.ian), {
+  return kernelOn(db, clock).stages.updateStage(caller(race.rowan), {
     harnessId: race.harnessId,
     stageKey: 'check',
     change,

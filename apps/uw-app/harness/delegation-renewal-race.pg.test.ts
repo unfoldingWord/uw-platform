@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { platformGrants } from '../ports/grants.ts';
 import { kernelOn, personOn } from '../testing/kernel.ts';
 
-const ianId = '00000000-0000-4000-8000-000000000001';
+const rowanId = '00000000-0000-4000-8000-000000000001';
 const hour = 60 * 60 * 1000;
 
 type Movable = Clock & { advance(milliseconds: number): void };
@@ -16,7 +16,7 @@ type Race = {
   readonly first: Database;
   readonly second: Database;
   readonly clock: Movable;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly harnessId: string;
   readonly dead: string;
 };
@@ -37,11 +37,11 @@ function accepted<T>(outcome: KernelOutcome<T>, what: string): T {
 
 async function raceOn(first: Database, second: Database): Promise<Race> {
   const clock = movableClock();
-  const ian = await personOn(first, ianId, 'ian.lindsley@unfoldingword.org', clock.now());
+  const rowan = await personOn(first, rowanId, 'rowan.test@unfoldingword.org', clock.now());
   const kernel = kernelOn(first, clock);
   const harnessId = crypto.randomUUID();
   accepted(
-    await kernel.stages.activate(caller(ian), {
+    await kernel.stages.activate(caller(rowan), {
       harnessId,
       harnessKey: 'software',
       jdArea: '80-89',
@@ -51,7 +51,7 @@ async function raceOn(first: Database, second: Database): Promise<Race> {
     }),
     'activate',
   );
-  const granted = await kernel.delegations.grant(caller(ian), {
+  const granted = await kernel.delegations.grant(caller(rowan), {
     maxTier: null,
     harnessId,
     persona: 'agent:builder',
@@ -60,7 +60,7 @@ async function raceOn(first: Database, second: Database): Promise<Race> {
     supersedes: null,
   });
   clock.advance(2 * hour);
-  return { first, second, clock, ian, harnessId, dead: accepted(granted, 'grant').id };
+  return { first, second, clock, rowan, harnessId, dead: accepted(granted, 'grant').id };
 }
 
 async function withRace(work: (race: Race) => Promise<void>): Promise<void> {
@@ -108,10 +108,10 @@ async function renewTwice(race: Race) {
   const paused = kernelOn(race.first, race.clock, {
     grants: heldGrants(platformGrants(race.first), reached, resumed),
   });
-  const held = paused.delegations.grant(caller(race.ian), renewal(race));
+  const held = paused.delegations.grant(caller(race.rowan), renewal(race));
   await atLock;
   const other = await kernelOn(race.second, race.clock).delegations.grant(
-    caller(race.ian),
+    caller(race.rowan),
     renewal(race),
   );
   resume();

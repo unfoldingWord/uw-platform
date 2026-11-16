@@ -38,9 +38,9 @@ describe('GH-6 only a person with admin on the area recovers a stuck parking', (
   sceneIt('refuses every agent form, even one carrying admin grants', async (scene) => {
     await lostApproval(scene, true);
     scene.world.adapters.clock.advance(sixteenMinutes);
-    const agent = simAgent(scene.ian, `${scene.ian.personId}/builder`, { interactive: true });
-    const borrowed = { ...scene.ian, identity: scene.max.identity };
-    const unnamed = { ...scene.ian, personId: null };
+    const agent = simAgent(scene.rowan, `${scene.rowan.personId}/builder`, { interactive: true });
+    const borrowed = { ...scene.rowan, identity: scene.max.identity };
+    const unnamed = { ...scene.rowan, personId: null };
     for (const who of [agent, simSystem(), borrowed, unnamed]) {
       await expectNothingRecorded(scene, who, 'not_permitted');
     }
@@ -70,14 +70,20 @@ describe('GH-6 only a person with admin on the area recovers a stuck parking', (
 describe('GH-6 a recovery takes a stuck parking only after the timeout, and once', () => {
   sceneIt('answers no items when no parking is stuck', async (scene) => {
     scene.world.adapters.clock.advance(sixteenMinutes);
-    expect(await recoverAs(scene, scene.ian)).toEqual({ status: 'accepted', value: { items: [] } });
+    expect(await recoverAs(scene, scene.rowan)).toEqual({
+      status: 'accepted',
+      value: { items: [] },
+    });
   });
 
   sceneIt('leaves a stuck parking alone inside the timeout', async (scene) => {
     await lostApproval(scene, true);
     scene.world.adapters.clock.advance(14 * 60_000);
     const before = await logOf(scene);
-    expect(await recoverAs(scene, scene.ian)).toEqual({ status: 'accepted', value: { items: [] } });
+    expect(await recoverAs(scene, scene.rowan)).toEqual({
+      status: 'accepted',
+      value: { items: [] },
+    });
     expect(await logOf(scene)).toEqual(before);
   });
 
@@ -89,16 +95,22 @@ describe('GH-6 a recovery takes a stuck parking only after the timeout, and once
     });
     scene.world.adapters.clock.advance(sixteenMinutes);
     const before = await logOf(scene);
-    expect(await recoverAs(scene, scene.ian)).toEqual({ status: 'accepted', value: { items: [] } });
+    expect(await recoverAs(scene, scene.rowan)).toEqual({
+      status: 'accepted',
+      value: { items: [] },
+    });
     expect(await logOf(scene)).toEqual(before);
   });
 
   sceneIt('records one outcome when two recoveries run one after the other', async (scene) => {
     await lostApproval(scene, true);
     scene.world.adapters.clock.advance(sixteenMinutes);
-    const first = await recoverAs(scene, scene.ian);
+    const first = await recoverAs(scene, scene.rowan);
     expect(first).toMatchObject({ value: { items: [{ outcome: 'succeeded' }] } });
-    expect(await recoverAs(scene, scene.ian)).toEqual({ status: 'accepted', value: { items: [] } });
+    expect(await recoverAs(scene, scene.rowan)).toEqual({
+      status: 'accepted',
+      value: { items: [] },
+    });
     const connectorEvents = (await logOf(scene)).events.filter((event) =>
       event.name.startsWith('connector_'),
     );
@@ -115,7 +127,7 @@ describe('GH-6 a recovery that cannot read GitHub records nothing', () => {
       outcomeOf: () => Promise.reject(new TypeError('socket closed')),
     });
     const before = await logOf(scene);
-    expect(await recoverAs(scene, scene.ian, kernel)).toMatchObject({
+    expect(await recoverAs(scene, scene.rowan, kernel)).toMatchObject({
       status: 'error',
       reason: 'facts_stale',
       detail: { itemId: scene.itemId, why: 'github_unreadable' },
@@ -131,7 +143,7 @@ describe('GH-6 a recovery that cannot read GitHub records nothing', () => {
       outcomeOf: async () => ({ outcome: 'refused', reason: 'not_wired' }),
     });
     const before = await logOf(scene);
-    expect(await recoverAs(scene, scene.ian, kernel)).toMatchObject({
+    expect(await recoverAs(scene, scene.rowan, kernel)).toMatchObject({
       status: 'error',
       reason: 'not_wired',
     });
@@ -146,7 +158,7 @@ describe('GH-6 a recovery that cannot read GitHub records nothing', () => {
       outcomeOf: async () => ({ outcome: 'refused', reason: 'github_unavailable' }),
     });
     const before = await logOf(scene);
-    expect(await recoverAs(scene, scene.ian, kernel)).toMatchObject({
+    expect(await recoverAs(scene, scene.rowan, kernel)).toMatchObject({
       status: 'error',
       reason: 'facts_stale',
     });
@@ -180,7 +192,7 @@ async function resubmittedPastTheApproval(scene: Scene): Promise<void> {
   const blind = blindToFlight(scene);
   expect(await decide(scene, blind, 'take_over')).toMatchObject({ status: 'accepted' });
   giveFacts(scene.world, scene.itemId, movedHead, 9100000102);
-  const submitted = await blind.items.submit(simCaller(scene.world, scene.ian), {
+  const submitted = await blind.items.submit(simCaller(scene.world, scene.rowan), {
     itemId: scene.itemId,
     to: null,
     evidence: {},
@@ -200,7 +212,7 @@ describe('GH-6 a recovery never advances past a gate the item has not passed', (
       await resubmittedPastTheApproval(scene);
       scene.world.adapters.clock.advance(sixteenMinutes);
       const before = await logOf(scene);
-      expect(await recoverAs(scene, scene.ian)).toEqual({
+      expect(await recoverAs(scene, scene.rowan)).toEqual({
         status: 'accepted',
         value: { items: [{ itemId: scene.itemId, outcome: 'succeeded' }] },
       });
@@ -220,17 +232,17 @@ describe('GH-6 a recovery never advances past a gate the item has not passed', (
 });
 
 async function loopApprovedAtShip(scene: Scene): Promise<void> {
-  const ian = simCaller(scene.world, scene.ian);
+  const rowan = simCaller(scene.world, scene.rowan);
   expect(await decide(scene, scene.world.kernel, 'take_over')).toMatchObject({
     status: 'accepted',
   });
-  const edited = await scene.world.kernel.stages.updateStage(ian, {
+  const edited = await scene.world.kernel.stages.updateStage(rowan, {
     harnessId: scene.harnessId,
     stageKey: 'ship',
     change: { feeds: ['scope'] },
   });
   expect(edited.status).toBe('accepted');
-  const submitted = await scene.world.kernel.items.submit(ian, {
+  const submitted = await scene.world.kernel.items.submit(rowan, {
     itemId: scene.itemId,
     to: 'scope',
     evidence: {},
@@ -247,7 +259,10 @@ describe('GH-6 a recovery takes only approvals that waited on a connector', () =
     await loopApprovedAtShip(scene);
     scene.world.adapters.clock.advance(sixteenMinutes);
     const before = await logOf(scene);
-    expect(await recoverAs(scene, scene.ian)).toEqual({ status: 'accepted', value: { items: [] } });
+    expect(await recoverAs(scene, scene.rowan)).toEqual({
+      status: 'accepted',
+      value: { items: [] },
+    });
     expect(await logOf(scene)).toEqual(before);
   });
 });
@@ -275,7 +290,7 @@ describe('GH-6 a recovery and the late exit record one outcome between them', ()
     const deciding = decide(scene, slow.kernel, 'approve');
     await slow.running;
     scene.world.adapters.clock.advance(sixteenMinutes);
-    expect(await recoverAs(scene, scene.ian)).toMatchObject({
+    expect(await recoverAs(scene, scene.rowan)).toMatchObject({
       value: { items: [{ outcome: 'succeeded' }] },
     });
     slow.release();
@@ -298,7 +313,7 @@ describe('GH-6 a recovery records connector_lost only when GitHub shows no merge
         run: (request) => scene.world.adapters.connectors.run(request),
         outcomeOf: async () => null,
       });
-      expect(await recoverAs(scene, scene.ian, kernel)).toEqual({
+      expect(await recoverAs(scene, scene.rowan, kernel)).toEqual({
         status: 'accepted',
         value: { items: [{ itemId: scene.itemId, outcome: 'lost' }] },
       });
@@ -319,7 +334,7 @@ describe('GH-6 a recovery records connector_lost only when GitHub shows no merge
         outcomeOf: async () => ({ outcome: 'refused', reason }),
       });
       const before = await logOf(scene);
-      expect(await recoverAs(scene, scene.ian, kernel)).toMatchObject({
+      expect(await recoverAs(scene, scene.rowan, kernel)).toMatchObject({
         status: 'error',
         reason: 'facts_stale',
         detail: { itemId: scene.itemId, why: reason },
@@ -376,7 +391,7 @@ describe('GH-6 a recovery uses the connector in force when the person decided', 
       await lostApproval(scene, true);
       await unshipStageRow(scene);
       scene.world.adapters.clock.advance(sixteenMinutes);
-      expect(await recoverAs(scene, scene.ian)).toEqual({
+      expect(await recoverAs(scene, scene.rowan)).toEqual({
         status: 'accepted',
         value: { items: [{ itemId: scene.itemId, outcome: 'succeeded' }] },
       });

@@ -1,7 +1,7 @@
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { checkOnly, readAllEvents, software } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, simCaller, simIan } from '../fixtures.ts';
+import { createSimHarness, simCaller, simRowan } from '../fixtures.ts';
 import { joinedHead, joinedPull, joinedRepository, joinRequest } from '../joining.ts';
 import { reasonOf, value } from '../runs.ts';
 import { createWorld, type World } from '../world.ts';
@@ -54,7 +54,7 @@ describe('GL-3 who may join', () => {
       await createSimHarness(world, checkOnly, { repository: joinedRepository });
       const other = await joinRequest(world, { requestedReviewers: ['outside-reviewer'] });
       expect(reasonOf(other)).toBe('not_permitted');
-      const person = simCaller(world, await simIan(world));
+      const person = simCaller(world, await simRowan(world));
       const byPerson = await world.kernel.items.join(person, {
         pullRequest: joinedPull,
         head: joinedHead,

@@ -43,7 +43,7 @@ type SnapshotFields = Partial<
   Record<'version' | 'type' | 'status' | 'jd_area' | 'slug' | 'edit_source', string>
 >;
 const snapshot = (fields: SnapshotFields = {}) =>
-  `INSERT INTO page_versions (page_id, version, type, jd_area, slug, title, frontmatter, body_md, status, edit_source) VALUES ('${pageA}', ${fields.version ?? '1'}, '${fields.type ?? 'skill'}', '${fields.jd_area ?? '80-89'}', '${fields.slug ?? 'shared'}', 'T', '{}', '', '${fields.status ?? 'draft'}', '${fields.edit_source ?? 'human:ian'}')`;
+  `INSERT INTO page_versions (page_id, version, type, jd_area, slug, title, frontmatter, body_md, status, edit_source) VALUES ('${pageA}', ${fields.version ?? '1'}, '${fields.type ?? 'skill'}', '${fields.jd_area ?? '80-89'}', '${fields.slug ?? 'shared'}', 'T', '{}', '', '${fields.status ?? 'draft'}', '${fields.edit_source ?? 'human:rowan'}')`;
 const delivery = (source: string) =>
   `INSERT INTO webhook_deliveries (source, delivery_id) VALUES ('${source}', 'd-1')`;
 
@@ -92,7 +92,7 @@ const bootstrapAdmins: Check = async (sql) => {
   const admins = await sql`
     SELECT p.email FROM role_grants g JOIN people p ON p.id = g.person_id
     WHERE g.role = 'admin' AND g.scope_kind = 'org' AND g.revoked_at IS NULL ORDER BY p.email`;
-  expect(admins.map((row) => row['email'])).toEqual(['ian.lindsley@unfoldingword.org']);
+  expect(admins.map((row) => row['email'])).toEqual(['rowan.test@unfoldingword.org']);
   const audits = await sql`SELECT actor, action FROM grant_audit WHERE action = 'bootstrap'`;
   expect(audits).toHaveLength(1);
   expect(audits.every((row) => row['actor'] === 'agent:bootstrap')).toBe(true);
@@ -108,7 +108,7 @@ const auditActorIsIdentity: Check = async (sql) => {
   const audit = (actor: string) =>
     `INSERT INTO grant_audit (actor, action, grant_id) VALUES ('${actor}', 'grant', '00000000-0000-4000-8000-000000000101')`;
   expect(await attempt(sql, audit('robot:x'))).toBe('23514');
-  expect(await attempt(sql, audit('human:ian'))).toBe('ok');
+  expect(await attempt(sql, audit('human:rowan'))).toBe('ok');
 };
 
 const pageRefusals: Check = async (sql) => {
@@ -169,7 +169,7 @@ const snapshotRefusals: Check = async (sql) => {
 
 const auditRefusesUnknownAction: Check = async (sql) => {
   const audit = (action: string) =>
-    `INSERT INTO grant_audit (actor, action, grant_id) VALUES ('human:ian', '${action}', '00000000-0000-4000-8000-000000000101')`;
+    `INSERT INTO grant_audit (actor, action, grant_id) VALUES ('human:rowan', '${action}', '00000000-0000-4000-8000-000000000101')`;
   expect(await attempt(sql, audit('delete'))).toBe('23514');
   expect(await attempt(sql, audit('revoke'))).toBe('ok');
 };
@@ -212,7 +212,7 @@ describe.skipIf(!testServer)(
   'FD-8 grant_audit and the bootstrap migration on real Postgres',
   () => {
     it(
-      'grants org admin to Ian only in the bootstrap migration, with one audit row',
+      'grants org admin to Rowan only in the bootstrap migration, with one audit row',
       { timeout },
       run(bootstrapAdmins),
     );

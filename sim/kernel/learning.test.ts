@@ -3,7 +3,7 @@ import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { seedPage } from '@uw/db/test-seed';
 import { LEASE_MS, readAllEvents, software, type Caller, type KernelOutcome } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, simAgent, simCaller, simIan, simPerson } from '../fixtures.ts';
+import { createSimHarness, simAgent, simCaller, simRowan, simPerson } from '../fixtures.ts';
 import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -173,7 +173,7 @@ function deviceOf(scene: Scene): Caller {
 }
 
 async function claimedByDevice(scene: Scene): Promise<Caller> {
-  await scene.world.kernel.stages.updateStage(simCaller(scene.world, await simIan(scene.world)), {
+  await scene.world.kernel.stages.updateStage(simCaller(scene.world, await simRowan(scene.world)), {
     harnessId: scene.harnessId,
     stageKey: 'package',
     change: { agentPickup: 'allowed' },

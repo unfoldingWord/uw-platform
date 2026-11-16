@@ -22,9 +22,9 @@ async function seededWorld(db: Database): Promise<GateWorld> {
   const world = await gateWorld(db);
   const { harnessId } = world.item;
   const kernel = kernelOn(db, earlier);
-  await enqueuedItem(kernel, world.ian, harnessId, 'Draw the icon');
-  const built = await enqueuedItem(kernel, world.ian, harnessId, 'Wire the run host');
-  await advanced(kernel, world.ian, built, 3);
+  await enqueuedItem(kernel, world.rowan, harnessId, 'Draw the icon');
+  const built = await enqueuedItem(kernel, world.rowan, harnessId, 'Wire the run host');
+  await advanced(kernel, world.rowan, built, 3);
   const at = earlier.now();
   await meteredRun(db, { harnessId, itemId: built, at }, 'completed');
   await subscriptionRun(

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { software } from '@uw/harness';
-import { createSimHarness, simCaller, simIan } from '../fixtures.ts';
+import { createSimHarness, simCaller, simRowan } from '../fixtures.ts';
 import { defineScenario } from '../scenario.ts';
 
 export const scenario = defineScenario({
@@ -13,7 +13,7 @@ export const scenario = defineScenario({
       stages.map((stage) => [stage.key, stage.position, stage.exitGate, stage.connector]),
       software.stages.map((stage) => [stage.key, stage.position, stage.exitGate, stage.connector]),
     );
-    const read = await world.kernel.events.read(simCaller(world, await simIan(world)), {
+    const read = await world.kernel.events.read(simCaller(world, await simRowan(world)), {
       harnessId: harness.id,
       itemId: null,
       after: 0,

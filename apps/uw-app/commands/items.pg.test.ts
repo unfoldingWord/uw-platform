@@ -15,7 +15,7 @@ import {
   enqueued,
   eventCount,
   eventsNamed,
-  ian,
+  rowan,
   itemState,
   post,
   softwareHarness,
@@ -182,7 +182,7 @@ async function tweakForeignItem(db: Database): Promise<void> {
 async function runsAfterCan(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const itemId = await enqueued(db, scene.harnessId, 'Run the board');
-  const admin = await ian(db);
+  const admin = await rowan(db);
   accepted(
     await kernelOn(db, { now: () => new Date() }).items.claim(callerOf(admin), {
       itemId,
@@ -209,7 +209,7 @@ async function agentsActOnNothing(db: Database): Promise<void> {
   const itemId = await enqueued(db, scene.harnessId, 'Pause the board');
   const { pageId } = await createdPage(db, scene.editor, 'product');
   const kernel = kernelOn(db, { now: () => new Date() });
-  const admin = await ian(db);
+  const admin = await rowan(db);
   accepted(await kernel.items.claim(callerOf(admin), { itemId, delegationId: null }));
   accepted(
     await kernel.stages.pause(callerOf(admin), { harnessId: scene.harnessId, stageKey: null }),

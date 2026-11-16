@@ -63,7 +63,7 @@ const approver = principalSchema.parse({
   identity: 'human:00000000-0000-4000-8000-000000000001',
   kind: 'person',
   personId: '00000000-0000-4000-8000-000000000001',
-  email: 'ian.lindsley@unfoldingword.org',
+  email: 'rowan.test@unfoldingword.org',
   grants: [],
   interactive: true,
 });

@@ -7,7 +7,7 @@ import { software, type Clock, type KernelOutcome } from '@uw/harness';
 import { describe, expect, it } from 'vitest';
 import { kernelOn, personOn } from '../testing/kernel.ts';
 
-const ianId = '00000000-0000-4000-8000-000000000001';
+const rowanId = '00000000-0000-4000-8000-000000000001';
 const harnessId = '00000000-0000-4000-8000-000000008601';
 const issue: IssueRef = { repo: 'unfoldingWord/uw-platform', number: 12, githubId: 9100000012 };
 const instant = new Date();
@@ -36,10 +36,10 @@ async function withConnections(work: (connections: Connections) => Promise<void>
 }
 
 async function seedHarness(db: Database): Promise<void> {
-  const ian = await personOn(db, ianId, 'ian.lindsley@unfoldingword.org', instant);
+  const rowan = await personOn(db, rowanId, 'rowan.test@unfoldingword.org', instant);
   valueOf(
     await kernelOn(db, clock).stages.activate(
-      { actor: ian, traceId: crypto.randomUUID() },
+      { actor: rowan, traceId: crypto.randomUUID() },
       {
         harnessId,
         harnessKey: 'software',

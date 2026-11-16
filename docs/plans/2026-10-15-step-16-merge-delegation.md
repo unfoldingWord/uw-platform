@@ -65,9 +65,9 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Where and how**
 
-- Work only in `/home/ianjl/projects/uw-platform-v0.2.0`, branch `build/v0.2.0`. Never commit to `main`, never force-push, never `--no-verify`.
+- Work only in `/home/rowan-test/projects/uw-platform-v0.2.0`, branch `build/v0.2.0`. Never commit to `main`, never force-push, never `--no-verify`.
 - Read `AGENTS.md` sections 1, 4 and 10 before the first edit. When this plan and `AGENTS.md` disagree, `AGENTS.md` wins; record the conflict in `docs/progress_tracker.md` and build the version that keeps the rule.
-- This step is the change AGENTS.md section 8 names ("a change that would let an agent identity pass a human gate"). The person decided it: V2-1 in the design, "approved by Ian on 2026-10-15", and PRD 18.3. The plan builds exactly that decision and nothing wider: a merge only, up to `standard`, never deploy, publish, a protected path or `high`, with the grantor as approver. Anything that would widen it (another connector, `high`, an agent verb) is a stop.
+- This step is the change AGENTS.md section 8 names ("a change that would let an agent identity pass a human gate"). The person decided it: V2-1 in the design, "approved by the owner on 2026-10-15", and PRD 18.3. The plan builds exactly that decision and nothing wider: a merge only, up to `standard`, never deploy, publish, a protected path or `high`, with the grantor as approver. Anything that would widen it (another connector, `high`, an agent verb) is a stop.
 - Words come from `CONTEXT.md`: **merge delegation**, **delegation**, **gate decision**, **ship rule**, **check-only harness**, and this step's **delegated Ship exit** and **protected path** (Task 1). Never "auto-merge", "robot merge", "auto-approve" or "bypass".
 - Commits: Conventional Commits, the agent as sole author, no attribution footer. Hooks always pass. Put the requirement IDs in each commit body.
 
@@ -380,7 +380,7 @@ describe('MD-2 MD-4 MD-6 the merge delegation contracts', () => {
         identity: 'human:00000000-0000-4000-8000-000000000001',
         kind: 'person',
         personId: '00000000-0000-4000-8000-000000000001',
-        email: 'ian.lindsley@unfoldingword.org',
+        email: 'rowan.test@unfoldingword.org',
         grants: [],
         interactive: true,
       },
@@ -418,7 +418,7 @@ describe('MD-2 MD-4 MD-6 the merge delegation contracts', () => {
       decisionId: delegationId,
       delegationId,
       personId: '00000000-0000-4000-8000-000000000001',
-      email: 'ian.lindsley@unfoldingword.org',
+      email: 'rowan.test@unfoldingword.org',
       persona: 'agent:shipper',
       expiresAt: '2026-10-20T00:00:00.000Z',
       maxTier: 'standard',
@@ -1016,7 +1016,7 @@ MD-2 MD-3. S16-R5 S16-R10."
       await seedDecisionItem(tx, 0x1500, 'gateway-delegated');
       await tx.delegations.write.insert(delegationFor(0x15d0, 0x1500), uid(0x15e0));
       await tx.gateDecisions.write.insert(row);
-      await tx.gateDecisions.write.insert(decisionOf(0x1500, 2, 'human:ian', at));
+      await tx.gateDecisions.write.insert(decisionOf(0x1500, 2, 'human:rowan', at));
       return {
         forItem: await tx.gateDecisions.read.forItem(uid(0x1500 + 11)),
         since: await tx.gateDecisions.read.delegatedSince(at, 10),
@@ -1033,7 +1033,7 @@ MD-2 MD-3. S16-R5 S16-R10."
     const outcome = await refusedBy(async (tx) => {
       await seedDecisionItem(tx, 0x1600, 'gateway-agent-no-delegation');
       await tx.gateDecisions.write.insert({
-        ...decisionOf(0x1600, 1, 'human:ian', at),
+        ...decisionOf(0x1600, 1, 'human:rowan', at),
         agentActor: identitySchema.parse('agent:shipper'),
       });
     }, subject().store);
@@ -1311,13 +1311,13 @@ If `readAllEvents` does not take `null` for harness-level events, read them the 
 ```ts
 async function mergeTier(db: Database): Promise<void> {
   const { harnessId } = await softwareHarness(db);
-  const high = await command(db, IAN, harnessId, 'schedule_regular_tweak', tweak({ capability: 'merge', maxTier: 'high' }));
+  const high = await command(db, ROWAN, harnessId, 'schedule_regular_tweak', tweak({ capability: 'merge', maxTier: 'high' }));
   expect(high.body).toMatchObject({ status: 'error', reason: 'tier_not_delegable' });
   const body = tweak({ persona: 'agent:shipper', capability: 'merge', maxTier: 'standard' });
-  const sent = await command(db, IAN, harnessId, 'schedule_regular_tweak', body);
+  const sent = await command(db, ROWAN, harnessId, 'schedule_regular_tweak', body);
   expect(sent.body).toEqual({ status: 'accepted', requestId: body.requestId });
   const [delegation] = await delegationsOf(db, harnessId);
-  expect(delegation).toMatchObject({ capability: 'merge', maxTier: 'standard', personId: IAN_ID });
+  expect(delegation).toMatchObject({ capability: 'merge', maxTier: 'standard', personId: ROWAN_ID });
 }
 ```
 
@@ -2989,7 +2989,7 @@ import { createLogger } from '@uw/core/log';
 import { systemPrincipal } from '@uw/core/principal';
 import { agentOf, kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
-import { ian } from '../testing/commands.ts';
+import { rowan } from '../testing/commands.ts';
 import { exitDelegatedMerges } from './delegated-exits.ts';
 
 type Line = Record<string, unknown>;
@@ -3013,7 +3013,7 @@ describe.skipIf(!testServer)('MD-3 the minute job runs the delegated exits as th
     withAppDatabase(async (db) => {
       const lines: Line[] = [];
       const kernel = kernelOn(db, { now: () => new Date() });
-      const caller = { actor: agentOf(await ian(db)), traceId: randomUUID(), requestId: null };
+      const caller = { actor: agentOf(await rowan(db)), traceId: randomUUID(), requestId: null };
       await exitDelegatedMerges(kernel, { caller, logger: loggerInto(lines) });
       expect(lines.at(-1)).toMatchObject({ step: 'delegated_exits', outcome: 'not_permitted' });
     }));
@@ -3236,7 +3236,7 @@ describe('MD-6 the play-by-play shows a delegated merge', () => {
         decisionId: '00000000-0000-4000-8000-0000000000e4',
         delegationId: '00000000-0000-4000-8000-0000000000e5',
         personId: '00000000-0000-4000-8000-000000000001',
-        email: 'ian.lindsley@unfoldingword.org',
+        email: 'rowan.test@unfoldingword.org',
         persona: 'agent:shipper',
         expiresAt,
         maxTier: 'standard',
@@ -3246,7 +3246,7 @@ describe('MD-6 the play-by-play shows a delegated merge', () => {
     });
     const shown = evidenceOf(event);
     expect(shown.list).toEqual([
-      `Merged under a delegation granted by ian.lindsley@unfoldingword.org until ${formatInstant(new Date(expiresAt))}`,
+      `Merged under a delegation granted by rowan.test@unfoldingword.org until ${formatInstant(new Date(expiresAt))}`,
     ]);
     expect(shown.facts).toContainEqual({ label: 'Persona', value: 'agent:shipper' });
   });
@@ -3296,7 +3296,7 @@ describe('MD-6 the Gates view and /health show delegated merges', () => {
 
 If the harness the sim activates is not in area `80-89`, read `createSimHarness` and use its area for the viewer. If `planeTotals` counts delegations the scene's `createSimHarness` seeds, compare `merge` only and `count` with `toBeGreaterThanOrEqual(1)`.
 
-`apps/uw-app/views/gates.pg.test.ts`: add one case on the frame of the file's first case: seed one `delegated_merge` event on an item of the harness with `seedEvent` (`@uw/db/test-seed`; read its `SeedEvent` fields), render `/gates` as the admin, and assert the body contains `Merged under a delegation` and `granted by ian.lindsley@unfoldingword.org until`. Title: `MD-6 the Gates screen lists a merge under a delegation with its grantor and expiry`.
+`apps/uw-app/views/gates.pg.test.ts`: add one case on the frame of the file's first case: seed one `delegated_merge` event on an item of the harness with `seedEvent` (`@uw/db/test-seed`; read its `SeedEvent` fields), render `/gates` as the admin, and assert the body contains `Merged under a delegation` and `granted by rowan.test@unfoldingword.org until`. Title: `MD-6 the Gates screen lists a merge under a delegation with its grantor and expiry`.
 
 - [ ] **Step 2: Run them and see them fail**
 

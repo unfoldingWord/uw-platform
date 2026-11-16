@@ -60,13 +60,13 @@ export const scenario = defineScenario({
   run: async (world) => {
     const { harness, admin } = await createSimHarness(world, software);
     await readSpend(world);
-    const ian = simCaller(world, admin);
+    const rowan = simCaller(world, admin);
     await draftPersonas(world, harness, admin.identity);
     const pageId = pageIds.get('builder-hosted') ?? '';
     const input = { pageId, expectedVersion: 1, harnessId: harness.id };
-    value(await createPersonaActivation(world.adapters).activate(ian, input));
+    value(await createPersonaActivation(world.adapters).activate(rowan, input));
     value(
-      await world.kernel.stages.setHostedBuilder(ian, { harnessId: harness.id, enabled: true }),
+      await world.kernel.stages.setHostedBuilder(rowan, { harnessId: harness.id, enabled: true }),
     );
     const owner = await simPerson(world, 4, [
       { role: 'admin', scopeKind: 'jd_area', scopeArea: '80-89' },

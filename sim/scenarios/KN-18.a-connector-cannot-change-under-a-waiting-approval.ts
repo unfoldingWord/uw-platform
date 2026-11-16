@@ -7,12 +7,12 @@ import { defineScenario } from '../scenario.ts';
 import { approvedBy, greenFacts, simParkedAtShip, standardChange } from '../ship-fixtures.ts';
 import type { World } from '../world.ts';
 
-type Scene = { readonly world: World; readonly harnessId: string; readonly ian: Principal };
+type Scene = { readonly world: World; readonly harnessId: string; readonly rowan: Principal };
 
 const sixteenMinutes = 16 * 60_000;
 
 function unshipped(scene: Scene) {
-  return scene.world.kernel.stages.updateStage(simCaller(scene.world, scene.ian), {
+  return scene.world.kernel.stages.updateStage(simCaller(scene.world, scene.rowan), {
     harnessId: scene.harnessId,
     stageKey: 'ship',
     change: { connector: 'none', exitGate: 'checks' },
@@ -37,7 +37,7 @@ async function waitingApproval(scene: Scene, max: Principal): Promise<string> {
   );
   const losing = kernelThatLosesTheExit(world, { effectHappened: true });
   const seenHead = await simSeenHead(world, item.itemId);
-  const approval = losing.gates.decide(simCaller(world, scene.ian), {
+  const approval = losing.gates.decide(simCaller(world, scene.rowan), {
     itemId: item.itemId,
     decision: 'approve',
     reason: null,
@@ -65,7 +65,7 @@ export const scenario = defineScenario({
     const max = await simPerson(world, 2, [
       { role: 'editor', scopeKind: 'jd_area', scopeArea: '80-89' },
     ]);
-    const scene = { world, harnessId: harness.id, ian: admin };
+    const scene = { world, harnessId: harness.id, rowan: admin };
     const itemId = await waitingApproval(scene, max);
     const waiting = await unshipped(scene);
     assert.equal(reasonOf(waiting), 'decision_in_flight');

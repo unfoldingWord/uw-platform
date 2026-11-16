@@ -1,6 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import postgres from 'postgres';
+import { bootstrapAdmin } from './bootstrap-admin.ts';
 import { applyMigrations, migrationsFolder } from './migrate.ts';
+import { testAdmin } from './test-admin.ts';
 
 export const testServer = process.env['TEST_DATABASE_URL'];
 
@@ -47,6 +49,9 @@ export async function createMigratedDatabase(
   };
   try {
     await applyMigrations(target.toString(), options.folder ?? migrationsFolder);
+    await withAdmin(target.toString(), (admin) =>
+      bootstrapAdmin((text, params) => admin.unsafe(text, [...params]), testAdmin),
+    );
   } catch (error) {
     await drop();
     throw error;

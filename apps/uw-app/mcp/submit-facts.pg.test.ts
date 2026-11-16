@@ -14,7 +14,7 @@ import type { VerbContext } from './context.ts';
 import { callVerb } from './dispatch.ts';
 import { verbHandlers } from './verbs/index.ts';
 
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 const OWNER = {
   id: '00000000-0000-4000-8000-000000003101',
   email: 'facts-owner@unfoldingword.org',
@@ -25,7 +25,7 @@ const HEAD = 'a'.repeat(40);
 type Rig = {
   readonly db: Database;
   readonly kernel: Kernel;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly agent: Principal;
   readonly harnessId: string;
   readonly drop: () => Promise<void>;
@@ -60,11 +60,11 @@ async function openRig(): Promise<Rig> {
   const db = createClient(database.connectionString);
   await seedOwner(db);
   const kernel = kernelOn(db, systemClock);
-  const ian = await personOn(db, IAN_ID, 'ian.lindsley@unfoldingword.org', new Date());
+  const rowan = await personOn(db, ROWAN_ID, 'rowan.test@unfoldingword.org', new Date());
   const owner = await personOn(db, OWNER.id, OWNER.email, new Date());
   const harnessId = crypto.randomUUID();
   value(
-    await kernel.stages.activate(caller(ian), {
+    await kernel.stages.activate(caller(rowan), {
       harnessId,
       harnessKey: 'software',
       jdArea: '80-89',
@@ -78,7 +78,7 @@ async function openRig(): Promise<Rig> {
     await db.$client.end();
     await database.drop();
   };
-  return { db, kernel, ian, agent: agentOf(owner, 'laptop'), harnessId, drop };
+  return { db, kernel, rowan, agent: agentOf(owner, 'laptop'), harnessId, drop };
 }
 
 function rig(): Promise<Rig> {
@@ -93,11 +93,11 @@ afterAll(async () => {
 async function heldByAgent(r: Rig): Promise<string> {
   const input = { harnessId: r.harnessId, title: 'facts', pageId: null, priority: 1 };
   const { itemId } = value(
-    await r.kernel.items.enqueue(caller(r.ian), { ...input, due: null, delegationId: null }),
+    await r.kernel.items.enqueue(caller(r.rowan), { ...input, due: null, delegationId: null }),
   );
-  value(await r.kernel.items.claim(caller(r.ian), { itemId, delegationId: null }));
+  value(await r.kernel.items.claim(caller(r.rowan), { itemId, delegationId: null }));
   value(
-    await r.kernel.items.submit(caller(r.ian), { itemId, to: null, evidence: {}, change: null }),
+    await r.kernel.items.submit(caller(r.rowan), { itemId, to: null, evidence: {}, change: null }),
   );
   value(await r.kernel.items.claim(caller(r.agent), { itemId, delegationId: null }));
   return itemId;

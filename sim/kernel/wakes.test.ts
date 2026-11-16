@@ -59,12 +59,12 @@ async function gateReachesDeciders(world: World): Promise<void> {
   const scene = await gateScene(world);
   const standard = await parkAtShip(scene, 'Show the board');
   const [wake] = wakesFor(world, standard).filter((found) => found.reason === 'gate_waiting');
-  expect(recipientIds(wake)).toEqual([personOf(scene.ian), personOf(scene.areaAdmin)].toSorted());
+  expect(recipientIds(wake)).toEqual([personOf(scene.rowan), personOf(scene.areaAdmin)].toSorted());
   expect(wake?.link).toBe(gateLink(scene.harnessId, standard));
   expect(Object.keys(wake ?? {}).toSorted()).toEqual(wakeKeys);
   const high = await parkAtShip(scene, 'Tighten the access check', ['acl']);
   const [highWake] = wakesFor(world, high).filter((found) => found.reason === 'gate_waiting');
-  expect(recipientIds(highWake)).toEqual([personOf(scene.ian)]);
+  expect(recipientIds(highWake)).toEqual([personOf(scene.rowan)]);
 }
 
 function runWakes(scene: RunWorld) {

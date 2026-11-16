@@ -24,7 +24,7 @@ async function inWorld(work: (world: BoardWorld) => Promise<void>): Promise<void
 }
 
 async function cardOpensTheWorkflow(world: BoardWorld): Promise<void> {
-  const response = await queuesAs(world, world.ianEmail);
+  const response = await queuesAs(world, world.rowanEmail);
   expect(response.status).toBe(200);
   const document = documentOf(response.text);
   const main = document.querySelector('main');
@@ -67,8 +67,9 @@ async function viewerHasNothingToDecide(world: BoardWorld): Promise<void> {
 }
 
 async function workflowCrumbLeadsBack(world: BoardWorld): Promise<void> {
-  const html = (await getHtml(world.db, world.ianEmail, queuePath(world.harnessId), {}, viewClock))
-    .text;
+  const html = (
+    await getHtml(world.db, world.rowanEmail, queuePath(world.harnessId), {}, viewClock)
+  ).text;
   const crumbs = documentOf(html).querySelector('nav[aria-label="Breadcrumb"]');
   expect(crumbs?.querySelector(`a[href="${agentQueuesPath()}"]`)?.textContent).toBe('Agent Queues');
   expect(crumbs?.textContent).toContain('Infrastructure');

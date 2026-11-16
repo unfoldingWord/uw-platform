@@ -42,7 +42,7 @@ const none: Holds = { person: [], agent: [], uncounted: { person: 0, agent: 0 },
 const holder = {
   role: 'claimant' as const,
   kind: 'person' as const,
-  identity: identitySchema.parse('human:ian'),
+  identity: identitySchema.parse('human:rowan'),
   since: at,
 };
 

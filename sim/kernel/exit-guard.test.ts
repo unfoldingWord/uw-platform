@@ -11,7 +11,7 @@ afterAll(closeEmbeddedTemplate);
 
 type Scene = {
   readonly world: World;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly item: ItemState;
   readonly stages: readonly Stage[];
 };
@@ -29,7 +29,7 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
       title: 'Show the board',
       change: standardChange,
     });
-    await work({ world, ian: admin, item, stages });
+    await work({ world, rowan: admin, item, stages });
   } finally {
     await world.close();
   }
@@ -48,7 +48,7 @@ function exitWith(scene: Scene, crafted: Crafted): Promise<boolean> {
   return exitThroughConnector(
     world.adapters,
     {
-      actor: scene.ian.identity,
+      actor: scene.rowan.identity,
       at: world.adapters.clock.now(),
       traceId: world.adapters.ids.next(),
       requestId: null,
@@ -91,7 +91,7 @@ async function recordsOnlyTheConnector(scene: Scene, crafted: Crafted): Promise<
 
 function takeOver(scene: Scene): Promise<KernelOutcome<unknown>> {
   return scene.world.kernel.gates.decide(
-    { actor: scene.ian, traceId: scene.world.adapters.ids.next() },
+    { actor: scene.rowan, traceId: scene.world.adapters.ids.next() },
     { itemId: scene.item.itemId, decision: 'take_over', reason: null, findings: [] },
   );
 }

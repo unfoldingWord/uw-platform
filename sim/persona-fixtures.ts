@@ -15,7 +15,7 @@ export type PersonaScene = {
   readonly world: World;
   readonly softwareId: string | null;
   readonly bmlId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly owner: Principal;
 };
 
@@ -45,7 +45,7 @@ export async function personaScene(
     world,
     softwareId: softwareHarness?.harness.id ?? null,
     bmlId: bmlHarness.harness.id,
-    ian: bmlHarness.admin,
+    rowan: bmlHarness.admin,
     owner,
   };
 }
