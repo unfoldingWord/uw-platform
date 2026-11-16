@@ -85,6 +85,11 @@ export const errorReasonSchema = z.enum([
   'fix_keeps_purpose',
   'done_when_missing',
   'template_change_not_allowed',
+  'draft_locked',
+  'draft_not_found',
+  'draft_stale',
+  'draft_revision_mismatch',
+  'draft_has_problems',
 ]);
 
 export const refusalSchema = z.object({

@@ -1,0 +1,14 @@
+{
+  "id": null,
+  "key": "review",
+  "title": "Review",
+  "position": 30,
+  "bracket": "build_package",
+  "agentPickup": "allowed",
+  "exitGate": "human_approval",
+  "connector": "none",
+  "wipLimit": 3,
+  "instructionsPageId": null,
+  "validators": [],
+  "feeds": []
+}

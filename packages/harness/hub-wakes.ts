@@ -30,6 +30,7 @@ function tracking(tx: StoreTransaction, appended: HarnessEvent[]): StoreTransact
     lockShared: (key) => tx.lockShared(key),
     harnesses: tx.harnesses,
     harnessStages: tx.harnessStages,
+    workflowDrafts: tx.workflowDrafts,
     harnessItems: tx.harnessItems,
     harnessEvents: trackingEvents(tx.harnessEvents, appended),
     harnessRuns: tx.harnessRuns,

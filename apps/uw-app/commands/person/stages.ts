@@ -46,36 +46,6 @@ export const changeTemplateCommand = commandHandler({
   },
 });
 
-export const createStageCommand = commandHandler({
-  name: 'create_stage',
-  action: 'admin',
-  run: async ({ kernel, caller, harnessId }, body: CommandBody<'create_stage'>) =>
-    fromKernel(await kernel.stages.createStage(caller, { harnessId, stage: body.stage })),
-});
-
-export const updateStageCommand = commandHandler({
-  name: 'update_stage',
-  action: 'admin',
-  run: async ({ kernel, caller, harnessId }, body: CommandBody<'update_stage'>) => {
-    const { stageKey, change } = body;
-    return fromKernel(await kernel.stages.updateStage(caller, { harnessId, stageKey, change }));
-  },
-});
-
-export const reorderStagesCommand = commandHandler({
-  name: 'reorder_stages',
-  action: 'admin',
-  run: async ({ kernel, caller, harnessId }, body: CommandBody<'reorder_stages'>) =>
-    fromKernel(await kernel.stages.reorderStages(caller, { harnessId, order: body.order })),
-});
-
-export const removeStageCommand = commandHandler({
-  name: 'remove_stage',
-  action: 'admin',
-  run: async ({ kernel, caller, harnessId }, body: CommandBody<'remove_stage'>) =>
-    fromKernel(await kernel.stages.removeStage(caller, { harnessId, stageKey: body.stageKey })),
-});
-
 export const pauseCommand = commandHandler({
   name: 'pause',
   action: 'admin',

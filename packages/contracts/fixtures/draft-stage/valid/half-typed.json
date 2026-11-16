@@ -1,0 +1,13 @@
+{
+  "id": "00000000-0000-4000-8000-0000000000d1",
+  "key": "build",
+  "title": "",
+  "bracket": "build_package",
+  "agentPickup": "auto",
+  "exitGate": "checks",
+  "connector": "none",
+  "wipLimit": 0,
+  "instructionsPageId": null,
+  "validators": [],
+  "feeds": ["review"]
+}

@@ -237,6 +237,8 @@ export const serviceTokens = declareTable(
   ],
 );
 
+const retiredCommandNames = ['create_stage', 'update_stage', 'reorder_stages', 'remove_stage'];
+
 export const commandRequests = declareTable(
   'command_requests',
   {
@@ -252,7 +254,10 @@ export const commandRequests = declareTable(
   { classification: 'internal', offlineEligibility: 'never' },
   (t) => [
     primaryKey({ name: 'command_requests_pkey', columns: [t.actor, t.requestId] }),
-    check('command_requests_command_known', oneOf(t.command, commandNameSchema.options)),
+    check(
+      'command_requests_command_known',
+      oneOf(t.command, [...commandNameSchema.options, ...retiredCommandNames]),
+    ),
     check('command_requests_actor_is_identity', matches(t.actor, IDENTITY_PATTERN)),
     check(
       'command_requests_settled_with_outcome',

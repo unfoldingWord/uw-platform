@@ -13,6 +13,7 @@ import type { Ports } from '../ports.ts';
 import type { StoreTransaction } from '../store-ports.ts';
 import { boardView } from './board.ts';
 import { delegatedMerges, type DelegatedMergeList } from './delegated-merges.ts';
+import { workflowDraft, type WorkflowDraftView } from './draft.ts';
 import { flowView } from './flow.ts';
 import { frameCounts, type FrameCounts } from './frame.ts';
 import {
@@ -97,6 +98,11 @@ export type ViewReads = {
     options?: ReadOptions,
   ): Promise<KernelOutcome<GateView>>;
   decideAbility(caller: Caller, gate: Gate, options?: ReadOptions): DecideAbility;
+  workflowDraft(
+    caller: Caller,
+    input: { readonly harnessId: string },
+    options?: ReadOptions,
+  ): Promise<KernelOutcome<WorkflowDraftView | null>>;
   shadow(
     caller: Caller,
     input: { readonly harnessId: string },
@@ -177,13 +183,15 @@ function frameRead(
   };
 }
 
-function gateLists(ports: ViewPorts): Pick<ViewReads, 'gates' | 'workflowGates'> {
+function gateLists(ports: ViewPorts): Pick<ViewReads, 'gates' | 'workflowGates' | 'workflowDraft'> {
   const at = (options?: ReadOptions): Date => options?.at ?? ports.clock.now();
   const read = <T>(work: (tx: StoreTransaction) => Promise<T>) => ports.store.transaction(work);
   return {
     gates: (caller, options) => read((tx) => decidableGates(ports, tx, caller, at(options))),
     workflowGates: (caller, input, options) =>
       read((tx) => workflowGates(ports, tx, caller, input.harnessId, at(options))),
+    workflowDraft: (caller, input, options) =>
+      read((tx) => workflowDraft(ports, tx, caller, input.harnessId, at(options))),
   };
 }
 
