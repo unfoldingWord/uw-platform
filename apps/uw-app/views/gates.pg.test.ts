@@ -26,7 +26,7 @@ import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml, pageContent } from '../testing/views.ts';
-import { gatePath, gatesPath, itemPath } from './parts/paths.ts';
+import { gatePath, itemPath, waitingPath } from './parts/paths.ts';
 
 function pageOf(world: GateWorld, email: string, path: string) {
   return getHtml(world.db, email, path, {}, clock);
@@ -34,6 +34,10 @@ function pageOf(world: GateWorld, email: string, path: string) {
 
 async function documentOf(world: GateWorld, email: string, path: string): Promise<Document> {
   return new JSDOM((await pageOf(world, email, path)).text).window.document;
+}
+
+function listPath(world: GateWorld): string {
+  return waitingPath(world.item.harnessId);
 }
 
 function deepLink(world: GateWorld): string {
@@ -64,24 +68,24 @@ function shipRows(document: Document): Readonly<Record<string, string>> {
 }
 
 async function onlyDecidable(world: GateWorld): Promise<void> {
-  const mine = await documentOf(world, world.kimEmail, gatesPath());
+  const mine = await documentOf(world, world.kimEmail, listPath(world));
   expect(mine.querySelector('main h1 + p')?.textContent).toBe(
-    '1 gate is waiting for you to decide',
+    '1 gate is waiting for you to decide in this workflow',
   );
   expect(mine.querySelector('main a[href*="/gates/"]')?.getAttribute('href')).toBe(deepLink(world));
-  const viewer = await documentOf(world, world.viewerEmail, gatesPath());
+  const viewer = await documentOf(world, world.viewerEmail, listPath(world));
   expect(viewer.querySelector('main [role="note"]')?.textContent).toBe(
-    'No gate is waiting for you to decide.',
+    'Nothing in this workflow is waiting for you to decide.',
   );
   await rewriteItem(world.db, world.item.itemId, { riskTier: 'high', riskDomains: ['acl'] });
-  const high = await documentOf(world, world.kimEmail, gatesPath());
+  const high = await documentOf(world, world.kimEmail, listPath(world));
   expect(high.querySelectorAll('main button[name="decision"]')).toHaveLength(0);
 }
 
 async function shipInputs(world: GateWorld): Promise<void> {
   await greenChecks(world.db);
   await approvedWithFindings(world.db);
-  const document = await documentOf(world, world.kimEmail, gatesPath());
+  const document = await documentOf(world, world.kimEmail, deepLink(world));
   const rows = shipRows(document);
   expect(rows['Pull request']).toMatch(/^Open, head c0ffee0+$/);
   expect(rows['Expected head']).toBe(world.item.expectedHead);
@@ -251,7 +255,7 @@ async function decidedFromForm(world: GateWorld, decision: string): Promise<void
 }
 
 async function kindleOnButtons(world: GateWorld): Promise<void> {
-  const document = await documentOf(world, world.kimEmail, gatesPath());
+  const document = await documentOf(world, world.kimEmail, deepLink(world));
   const kindled = [...document.querySelectorAll('main [class*="human"]')].filter(
     (element) =>
       element.closest('nav[aria-label="Decisions"]') === null &&
@@ -266,10 +270,8 @@ async function kindleOnButtons(world: GateWorld): Promise<void> {
 }
 
 async function stableDeepLink(world: GateWorld): Promise<void> {
-  const list = await documentOf(world, world.kimEmail, gatesPath());
   const one = await documentOf(world, world.kimEmail, deepLink(world));
-  const panel = (document: Document) => document.querySelector('main section')?.outerHTML;
-  expect(panel(one)).toBe(panel(list));
+  expect(one.querySelector('main section[aria-labelledby]')).not.toBeNull();
   expect(
     one.querySelector('main a[href$="/items/' + world.item.itemId + '"]')?.getAttribute('href'),
   ).toBe(itemPath(world.item.harnessId, world.item.itemId));
@@ -287,7 +289,7 @@ async function viewerRefused(world: GateWorld): Promise<void> {
 }
 
 async function phoneWidth(world: GateWorld): Promise<void> {
-  for (const path of [gatesPath(), deepLink(world)]) {
+  for (const path of [deepLink(world)]) {
     const page = await pageOf(world, world.kimEmail, path);
     const document = new JSDOM(page.text).window.document;
     const stack = document.querySelector('main section .flex-col.lg\\:flex-row');
@@ -399,9 +401,9 @@ async function parkedCapSaysAtLeast(world: GateWorld): Promise<void> {
     gateStatus: 'parked',
     priority: -1,
   });
-  const document = await documentOf(world, world.kimEmail, gatesPath());
+  const document = await documentOf(world, world.kimEmail, listPath(world));
   expect(document.querySelector('main h1 + p')?.textContent).toBe(
-    'At least 1 gate is waiting for you to decide',
+    'At least 1 gate is waiting for you to decide in this workflow',
   );
   expect(document.querySelector('main [role="note"]')?.textContent).toBe(
     'A harness has at least 5,000 parked items. Gates are read from the 5,000 with the highest priority on each harness.',
@@ -416,23 +418,25 @@ function approveAllForms(document: Document): readonly (string | null)[] {
 }
 
 async function approveAllShown(world: GateWorld): Promise<void> {
-  expect(approveAllForms(await documentOf(world, world.kimEmail, gatesPath()))).toEqual([]);
+  expect(approveAllForms(await documentOf(world, world.kimEmail, listPath(world)))).toEqual([]);
   await greenChecks(world.db);
   await approvedWithFindings(world.db);
-  const document = await documentOf(world, world.kimEmail, gatesPath());
+  const document = await documentOf(world, world.kimEmail, listPath(world));
   expect(approveAllForms(document)).toEqual([
     `${world.item.itemId}:${world.item.expectedHead ?? ''}`,
   ]);
   const button = document.querySelector('main form[data-command="decide_gates"] button');
   expect(button?.textContent).toMatch(/^Approve the 1 gate shown on /);
   expect(button?.getAttribute('class')).toContain('bg-human');
-  expect(await screenProblems((await pageOf(world, world.kimEmail, gatesPath())).text)).toEqual([]);
-  expect(approveAllForms(await documentOf(world, world.viewerEmail, gatesPath()))).toEqual([]);
+  expect(await screenProblems((await pageOf(world, world.kimEmail, listPath(world))).text)).toEqual(
+    [],
+  );
+  expect(approveAllForms(await documentOf(world, world.viewerEmail, listPath(world)))).toEqual([]);
 }
 
 async function noProblems(world: GateWorld): Promise<void> {
   for (const email of [world.kimEmail, world.viewerEmail]) {
-    for (const path of [gatesPath(), deepLink(world)]) {
+    for (const path of [listPath(world), deepLink(world)]) {
       expect(await screenProblems((await pageOf(world, email, path)).text)).toEqual([]);
     }
   }
@@ -460,7 +464,7 @@ async function delegatedMergeListed(world: GateWorld): Promise<void> {
       at: new Date(clock.now().getTime() - 60_000),
     },
   ]);
-  const page = await pageOf(world, world.kimEmail, gatesPath());
+  const page = await pageOf(world, world.kimEmail, listPath(world));
   expect(page.text).toContain('Merged under a delegation');
   expect(page.text).toContain('granted by ian.lindsley@unfoldingword.org until');
   const document = new JSDOM(page.text).window.document;
@@ -468,12 +472,12 @@ async function delegatedMergeListed(world: GateWorld): Promise<void> {
   expect(link?.getAttribute('href')).toBe(itemPath(harnessId, itemId));
   expect(link?.textContent).toContain(title);
   expect(await screenProblems(page.text)).toEqual([]);
-  const viewer = await pageOf(world, world.viewerEmail, gatesPath());
+  const viewer = await pageOf(world, world.viewerEmail, listPath(world));
   expect(viewer.text).not.toContain('Merged under a delegation');
 }
 
 async function lookOfGates(world: GateWorld): Promise<void> {
-  const document = await documentOf(world, world.kimEmail, gatesPath());
+  const document = await documentOf(world, world.kimEmail, deepLink(world));
   const inbox = document.querySelector('main nav[aria-label="Decisions"]');
   expect(inbox?.querySelectorAll('li a').length).toBeGreaterThan(0);
   const panel = document.querySelector('main section[aria-labelledby]');

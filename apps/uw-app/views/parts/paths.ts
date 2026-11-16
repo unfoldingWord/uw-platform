@@ -24,6 +24,10 @@ export function queuePath(harnessId: string, stageKey?: string): string {
   return stageKey === undefined ? queue : `${queue}?stage=${segment(stageKey)}`;
 }
 
+export function waitingPath(harnessId: string): string {
+  return `${flowPath(harnessId)}/waiting`;
+}
+
 export function gatePath(harnessId: string, itemId: string): string {
   return `${flowPath(harnessId)}/gates/${segment(itemId)}`;
 }

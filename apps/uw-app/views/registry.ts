@@ -13,7 +13,11 @@ export const screens: readonly ScreenEntry[] = [
     file: 'apps/uw-app/views/screens/queue.tsx',
     path: '/harnesses/:harnessId/queue',
   },
-  { name: 'gates', file: 'apps/uw-app/views/screens/gates.tsx', path: '/gates' },
+  {
+    name: 'waiting',
+    file: 'apps/uw-app/views/screens/waiting.tsx',
+    path: '/harnesses/:harnessId/waiting',
+  },
   {
     name: 'gate',
     file: 'apps/uw-app/views/screens/gate.tsx',
