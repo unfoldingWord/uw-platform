@@ -1,7 +1,9 @@
+import type { Child } from 'hono/jsx';
 import type { GateView } from '@uw/contracts';
 import { CommandForm } from '@uw/ui/components/command-form.tsx';
 import { TextField } from '@uw/ui/components/field.tsx';
 import { HumanActionButton } from '@uw/ui/components/human-action.tsx';
+import { Table, type Column } from '@uw/ui/components/table.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import { refusalsOf } from './gate-panel.tsx';
 import type { Shown } from './gate-rows.tsx';
@@ -9,8 +11,6 @@ import { gatePath } from './paths.ts';
 import { failingReasons, reasonsText } from './ship-input.tsx';
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
-const cell = 'border-b border-line px-3 py-2 align-top';
-const head = 'border-b border-line px-3 py-2 text-left text-xs font-heavy uppercase text-text-3';
 
 function reviewsText(view: GateView): string | null {
   const count = view.ship?.input.approvals.length ?? 0;
@@ -69,60 +69,47 @@ function Actions(props: { readonly shown: Shown }) {
   );
 }
 
-function Row(props: { readonly shown: Shown }) {
+const columns: readonly Column[] = [
+  { key: 'item', label: 'Item' },
+  { key: 'stage', label: 'Stage' },
+  { key: 'checks', label: 'Checks' },
+  { key: 'waiting', label: 'Waiting', numeric: true },
+  { key: 'decide', label: 'Decide' },
+];
+
+function ItemCell(props: { readonly shown: Shown }) {
   const { row, gate } = props.shown;
   const number = gate.place?.number ?? null;
   return (
-    <tr data-gate-row={row.item.itemId}>
-      <td class={cell}>
-        <a
-          href={gatePath(row.harness.id, row.item.itemId)}
-          class={`font-heavy text-text hover:text-accent-text hover:underline ${focus}`}
-        >
-          {row.item.title}
-        </a>
-        {number === null ? null : <span class="block font-mono text-xs text-text-3">{number}</span>}
-      </td>
-      <td class={cell}>{row.stage.title}</td>
-      <td class={`${cell} text-sm text-text-3`}>{checksText(gate.view)}</td>
-      <td class={`${cell} font-mono text-xs text-text-3`}>{gate.place?.waited ?? ''}</td>
-      <td class={cell}>
-        <Actions shown={props.shown} />
-      </td>
-    </tr>
+    <>
+      <a
+        href={gatePath(row.harness.id, row.item.itemId)}
+        class={`font-heavy text-text hover:text-accent-text hover:underline ${focus}`}
+      >
+        {row.item.title}
+      </a>
+      {number === null ? null : <span class="block font-mono text-xs text-text-3">{number}</span>}
+    </>
   );
+}
+
+function rowOf(shown: Shown): Readonly<Record<string, Child>> {
+  const { row, gate } = shown;
+  return {
+    item: <ItemCell shown={shown} />,
+    stage: row.stage.title,
+    checks: <span class="text-text-3">{checksText(gate.view)}</span>,
+    waiting: gate.place?.waited ?? '',
+    decide: <Actions shown={shown} />,
+  };
 }
 
 export function WaitingTable(props: { readonly shown: readonly Shown[] }) {
   return (
-    <div class="overflow-x-auto rounded-md border border-line bg-surface">
-      <table class="w-full border-collapse text-sm">
-        <caption class="sr-only">Gates waiting for you to decide</caption>
-        <thead>
-          <tr>
-            <th scope="col" class={head}>
-              Item
-            </th>
-            <th scope="col" class={head}>
-              Stage
-            </th>
-            <th scope="col" class={head}>
-              Checks
-            </th>
-            <th scope="col" class={head}>
-              Waiting
-            </th>
-            <th scope="col" class={head}>
-              <span class="sr-only">Decide</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {props.shown.map((shown) => (
-            <Row shown={shown} />
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Table
+      caption="Gates waiting for you to decide"
+      columns={columns}
+      rows={props.shown.map(rowOf)}
+    />
   );
 }

@@ -60,13 +60,13 @@ async function inGates(work: (world: GateWorld) => Promise<void>): Promise<void>
 }
 
 function rowTitles(document: Document): readonly string[] {
-  return [...document.querySelectorAll('main [data-gate-row] a[href*="/gates/"]')].map(
+  return [...document.querySelectorAll('main tbody tr a[href*="/gates/"]')].map(
     (link) => link.textContent ?? '',
   );
 }
 
 function rowButtons(document: Document): readonly string[] {
-  return [...document.querySelectorAll('main [data-gate-row] button[name="decision"]')].map(
+  return [...document.querySelectorAll('main tbody tr button[name="decision"]')].map(
     (button) => button.textContent ?? '',
   );
 }
@@ -76,10 +76,10 @@ function waitingTab(document: Document): Element | null {
 }
 
 function rowFields(document: Document, itemId: string): Record<string, string> {
-  const row = [...document.querySelectorAll('main [data-gate-row]')].find(
-    (candidate) => candidate.getAttribute('data-gate-row') === itemId,
+  const form = [...document.querySelectorAll('main form[data-command="decide"]')].find(
+    (candidate) =>
+      candidate.querySelector('input[name="itemId"]')?.getAttribute('value') === itemId,
   );
-  const form = row?.querySelector('form[data-command="decide"]');
   return Object.fromEntries(
     [...(form?.querySelectorAll('input[name]') ?? [])].map((control) => [
       control.getAttribute('name') ?? '',
@@ -98,7 +98,7 @@ async function listsThisWorkflowOnly(world: GateWorld): Promise<void> {
   const other = await parkedAtSignOff(world);
   const here = await documentOf(world, world.rowanEmail, waitingPath(world.item.harnessId));
   expect(rowTitles(here)).toEqual([world.item.title]);
-  expect(here.querySelector('main [data-gate-row] a[href*="/gates/"]')?.getAttribute('href')).toBe(
+  expect(here.querySelector('main tbody tr a[href*="/gates/"]')?.getAttribute('href')).toBe(
     gatePath(world.item.harnessId, world.item.itemId),
   );
   const there = await documentOf(world, world.rowanEmail, waitingPath(other.harnessId));
