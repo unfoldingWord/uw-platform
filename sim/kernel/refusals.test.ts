@@ -10,7 +10,7 @@ afterAll(closeEmbeddedTemplate);
 type Scene = {
   readonly world: World;
   readonly itemId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
 };
 
 async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
@@ -18,7 +18,7 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
   try {
     const { harness, admin } = await createSimHarness(world, software);
     const parked = await simParkedAtCheck(world, { harnessId: harness.id, admin, title: 'Gate' });
-    await work({ world, itemId: parked.itemId, ian: admin });
+    await work({ world, itemId: parked.itemId, rowan: admin });
   } finally {
     await world.close();
   }
@@ -40,10 +40,10 @@ async function refusalsOf(scene: Scene, reader: Principal) {
 }
 
 async function latestRefusalOutlivesLaterEvents(scene: Scene): Promise<void> {
-  expect(await refusalsOf(scene, scene.ian)).toEqual([]);
-  const agent = simAgent(scene.ian, 'reviewer', { interactive: true });
+  expect(await refusalsOf(scene, scene.rowan)).toEqual([]);
+  const agent = simAgent(scene.rowan, 'reviewer', { interactive: true });
   await approveAs(scene, agent);
-  const caller = simCaller(scene.world, scene.ian);
+  const caller = simCaller(scene.world, scene.rowan);
   await scene.world.kernel.gates.decide(caller, {
     itemId: scene.itemId,
     decision: 'take_over',
@@ -52,14 +52,14 @@ async function latestRefusalOutlivesLaterEvents(scene: Scene): Promise<void> {
   });
   const last = await scene.world.kernel.views.lastEvents(caller, { itemIds: [scene.itemId] });
   expect(last.map((event) => event.name)).not.toEqual(['gate_refused_to_agent']);
-  const shown = await refusalsOf(scene, scene.ian);
+  const shown = await refusalsOf(scene, scene.rowan);
   expect(shown.map((event) => [event.itemId, event.name, event.actor])).toEqual([
     [scene.itemId, 'gate_refused_to_agent', agent.identity],
   ]);
 }
 
 async function unreadableShowsNothing(scene: Scene): Promise<void> {
-  await approveAs(scene, simAgent(scene.ian, 'reviewer', { interactive: true }));
+  await approveAs(scene, simAgent(scene.rowan, 'reviewer', { interactive: true }));
   const stranger = await simPerson(scene.world, 9, []);
   expect(await refusalsOf(scene, stranger)).toEqual([]);
 }

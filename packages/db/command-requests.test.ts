@@ -114,7 +114,7 @@ function describeTarget(target: DatabaseTarget): void {
   });
 
   it('refuses an actor that is not an identity', async () => {
-    const forged = insert({ requestId: '00000000-0000-4000-8000-0000000000a5', actor: 'ian' });
+    const forged = insert({ requestId: '00000000-0000-4000-8000-0000000000a5', actor: 'rowan' });
     expect(await refusal(forged)).toEqual({
       code: '23514',
       constraint: 'command_requests_actor_is_identity',

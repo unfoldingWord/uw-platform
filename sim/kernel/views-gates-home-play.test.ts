@@ -47,7 +47,7 @@ function byId(ids: readonly string[]): readonly string[] {
 }
 
 async function decideOf(scene: GatesWorld, actor: Principal, itemId: string) {
-  const { rows } = await scene.world.kernel.views.gates(callerOf(scene, scene.ian));
+  const { rows } = await scene.world.kernel.views.gates(callerOf(scene, scene.rowan));
   const row = rows.find((entry) => entry.item.itemId === itemId);
   if (row === undefined) throw new Error(`no gate for ${itemId}`);
   return scene.world.kernel.views.decideAbility(callerOf(scene, actor), row);
@@ -69,21 +69,23 @@ async function decidableListed(scene: GatesWorld): Promise<void> {
 
 async function domainGrant(scene: GatesWorld): Promise<void> {
   expect(await gateIds(scene, scene.areaAdmin)).not.toContain(scene.high);
-  expect(await gateIds(scene, scene.ian)).toEqual(
+  expect(await gateIds(scene, scene.rowan)).toEqual(
     byId([scene.standard, scene.high, scene.atCheck]),
   );
 }
 
 async function agentsDecideNone(scene: GatesWorld): Promise<void> {
-  const agent = simAgent(scene.ian, 'builder', { interactive: true });
-  const device = simAgent(scene.ian, `${scene.ian.personId ?? ''}/laptop`, { interactive: true });
+  const agent = simAgent(scene.rowan, 'builder', { interactive: true });
+  const device = simAgent(scene.rowan, `${scene.rowan.personId ?? ''}/laptop`, {
+    interactive: true,
+  });
   expect(await gateIds(scene, agent)).toEqual([]);
   expect(await gateIds(scene, device)).toEqual([]);
 }
 
 async function abilityReasons(scene: GatesWorld): Promise<void> {
-  const agent = simAgent(scene.ian, 'builder', { interactive: true });
-  expect(await decideOf(scene, scene.ian, scene.high)).toEqual({ can: true });
+  const agent = simAgent(scene.rowan, 'builder', { interactive: true });
+  expect(await decideOf(scene, scene.rowan, scene.high)).toEqual({ can: true });
   expect(await decideOf(scene, scene.areaAdmin, scene.standard)).toEqual({ can: true });
   expect(await decideOf(scene, scene.areaAdmin, scene.high)).toEqual({
     can: false,
@@ -95,7 +97,7 @@ async function abilityReasons(scene: GatesWorld): Promise<void> {
 }
 
 async function notAtPersonGate(scene: GatesWorld): Promise<void> {
-  const caller = callerOf(scene, scene.ian);
+  const caller = callerOf(scene, scene.rowan);
   const enqueued = await scene.world.kernel.items.enqueue(caller, {
     harnessId: scene.harnessId,
     title: 'Park me at the backlog',

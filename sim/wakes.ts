@@ -11,18 +11,18 @@ const area = { scopeKind: 'jd_area', scopeArea: '80-89' } as const;
 export type GateScene = {
   readonly world: World;
   readonly harnessId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly areaAdmin: Principal;
   readonly editor: Principal;
   readonly viewer: Principal;
 };
 
 export async function gateScene(world: World): Promise<GateScene> {
-  const { harness, admin: ian } = await createSimHarness(world, software);
+  const { harness, admin: rowan } = await createSimHarness(world, software);
   const editor = await simPerson(world, 2, [{ role: 'editor', ...area }]);
   const areaAdmin = await simPerson(world, 5, [{ role: 'admin', ...area }]);
   const viewer = await simPerson(world, 8, [{ role: 'viewer', ...area }]);
-  return { world, harnessId: harness.id, ian, areaAdmin, editor, viewer };
+  return { world, harnessId: harness.id, rowan, areaAdmin, editor, viewer };
 }
 
 export async function parkAtShip(

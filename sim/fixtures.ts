@@ -18,7 +18,7 @@ import { seedActivePersona, seedGrant, seedPerson, seedPlatformPage } from '@uw/
 import { DEFAULT_SPEND_CAP, type Caller, type Template } from '@uw/harness';
 import type { World } from './world.ts';
 
-const ianPersonId = '00000000-0000-4000-8000-000000000001';
+const rowanPersonId = '00000000-0000-4000-8000-000000000001';
 
 export type SimGrant = {
   readonly role: Role;
@@ -74,8 +74,8 @@ export async function simPerson(
   return personaOf(world, personId, email);
 }
 
-export function simIan(world: World): Promise<Principal> {
-  return personaOf(world, ianPersonId, 'ian.lindsley@unfoldingword.org');
+export function simRowan(world: World): Promise<Principal> {
+  return personaOf(world, rowanPersonId, 'rowan.test@unfoldingword.org');
 }
 
 export function simAgent(
@@ -179,7 +179,7 @@ export async function createSimHarness(
   readonly stages: readonly Stage[];
   readonly admin: Principal;
 }> {
-  const admin = await simIan(world);
+  const admin = await simRowan(world);
   const outcome = await world.kernel.stages.activate(
     simCaller(world, admin),
     activationOf(world, template, options),

@@ -6,7 +6,7 @@ import {
   createSimHarness,
   simAgent,
   simCaller,
-  simIan,
+  simRowan,
   simParkedAtCheck,
   simPerson,
 } from '../fixtures.ts';
@@ -18,7 +18,7 @@ type Cast = {
   readonly world: World;
   readonly firstId: string;
   readonly secondId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly editor: Principal;
 };
 
@@ -35,7 +35,7 @@ function device(world: World, owner: Principal, name: string): Caller {
 }
 
 async function enqueue(world: World, harnessId: string, priority: number): Promise<string> {
-  const outcome = await world.kernel.items.enqueue(simCaller(world, await simIan(world)), {
+  const outcome = await world.kernel.items.enqueue(simCaller(world, await simRowan(world)), {
     harnessId,
     title: `Priority ${priority.toString()}`,
     pageId: null,
@@ -63,7 +63,7 @@ async function cast(world: World): Promise<Cast> {
     world,
     firstId: first.harness.id,
     secondId: second.harness.id,
-    ian: first.admin,
+    rowan: first.admin,
     editor,
   };
 }
@@ -128,7 +128,11 @@ export const scenario = defineScenario({
       [9, 9, 5, 1],
     );
     await claimAndLapse(scene, laptop, expected);
-    await simParkedAtCheck(world, { harnessId: scene.firstId, admin: scene.ian, title: 'Parked' });
+    await simParkedAtCheck(world, {
+      harnessId: scene.firstId,
+      admin: scene.rowan,
+      title: 'Parked',
+    });
     assert.deepEqual(await idsPolled(world, laptop), expected);
     await othersPollNothing(scene);
     const two = await poll(world, laptop, 2);

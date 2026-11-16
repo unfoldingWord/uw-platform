@@ -13,7 +13,7 @@ import { kernelOn, personOn } from '../testing/kernel.ts';
 import { callTool, httpClient } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
 
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 const OWNER = {
   id: '00000000-0000-4000-8000-000000001951',
   email: 'unattended-owner@unfoldingword.org',
@@ -26,7 +26,7 @@ type Rig = {
   readonly db: Database;
   readonly fixture: AccessFixture;
   readonly kernel: Kernel;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly owner: Principal;
   readonly drop: () => Promise<void>;
 };
@@ -53,17 +53,17 @@ async function openRig(): Promise<Rig> {
   for (const [n, role] of [[2, 'admin'] as const, [3, 'editor'] as const]) {
     await seedGrant(db, { ...grantRow(n, role), grantedAt: new Date(0), expiresAt: null });
   }
-  const ian = await personOn(db, IAN_ID, 'ian.lindsley@unfoldingword.org', at);
+  const rowan = await personOn(db, ROWAN_ID, 'rowan.test@unfoldingword.org', at);
   const owner = await personOn(db, OWNER.id, OWNER.email, at);
   const bind = { command: 'bind_service_token' as const, requestId: crypto.randomUUID() };
   const binding = { ...bind, clientId: CLIENT, personId: OWNER.id, device: 'hourly-routine' };
-  expect(await bindServiceToken(db, ian, binding, crypto.randomUUID(), at)).toEqual({ ok: true });
+  expect(await bindServiceToken(db, rowan, binding, crypto.randomUUID(), at)).toEqual({ ok: true });
   const drop = async () => {
     await db.$client.end();
     await database.drop();
   };
   const fixture = await createAccessFixture();
-  return { db, fixture, kernel: kernelOn(db, { now: () => new Date() }), ian, owner, drop };
+  return { db, fixture, kernel: kernelOn(db, { now: () => new Date() }), rowan, owner, drop };
 }
 
 function rig(): Promise<Rig> {
@@ -94,7 +94,7 @@ async function harnessIn(r: Rig, key: string): Promise<string> {
     repository: `unfoldingWord/${key}`,
     requiredChecks: [...defaultCiChecks],
   };
-  value(await r.kernel.stages.activate(caller(r.ian), activate));
+  value(await r.kernel.stages.activate(caller(r.rowan), activate));
   return harnessId;
 }
 
@@ -103,7 +103,7 @@ async function openScene(r: Rig): Promise<Scene> {
   const harnessId = await harnessIn(r, `software-unattended-${scenes}`);
   const otherHarness = await harnessIn(r, `software-unattended-other-${scenes}`);
   const input = { harnessId, title: 'unattended', pageId: null, priority: 1, due: null };
-  const enqueued = await r.kernel.items.enqueue(caller(r.ian), { ...input, delegationId: null });
+  const enqueued = await r.kernel.items.enqueue(caller(r.rowan), { ...input, delegationId: null });
   const grant = { harnessId, persona: 'agent:iterate', capability: 'iterate' as const };
   const delegation = await r.kernel.delegations.grant(caller(r.owner), {
     maxTier: null,

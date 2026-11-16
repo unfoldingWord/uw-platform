@@ -24,6 +24,7 @@
     "walk:all": "node sim/cli/walk.ts all",
     "db:generate": "pnpm --filter @uw/db exec drizzle-kit generate",
     "db:migrate": "node packages/db/bin/migrate.ts",
+    "db:bootstrap-admin": "node packages/db/bin/bootstrap-admin.ts",
     "test": "vitest run",
     "build": "pnpm -r --if-present run build",
     "audit:prod": "pnpm audit --prod --audit-level high",

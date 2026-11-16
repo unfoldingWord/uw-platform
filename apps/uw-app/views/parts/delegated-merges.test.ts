@@ -19,7 +19,7 @@ const row: DelegatedMergeRow = {
   harness,
   itemId: '00000000-0000-4000-8000-0000000000b1',
   title: 'Show the board',
-  email: 'ian.lindsley@unfoldingword.org',
+  email: 'rowan.test@unfoldingword.org',
   expiresAt: new Date('2026-10-20T00:00:00.000Z'),
   at: new Date('2026-10-15T09:00:00.000Z'),
 };

@@ -17,7 +17,7 @@ import { describe, expect, it } from 'vitest';
 import { platformGrants } from '../ports/grants.ts';
 import { kernelOn, personasOn, personOn } from '../testing/kernel.ts';
 
-const ianId = '00000000-0000-4000-8000-000000000001';
+const rowanId = '00000000-0000-4000-8000-000000000001';
 const pageId = '00000000-0000-4000-8000-000000008401';
 const instant = new Date();
 const clock: Clock = { now: () => instant };
@@ -30,7 +30,7 @@ type Connections = {
 
 type Scene = {
   readonly connections: Connections;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly softwareId: string;
   readonly bmlId: string;
 };
@@ -75,10 +75,10 @@ function gated(db: Database, release: Promise<void>): Gate {
   };
 }
 
-async function harnessOn(db: Database, ian: Principal, key: string, jdArea: string) {
+async function harnessOn(db: Database, rowan: Principal, key: string, jdArea: string) {
   const template = key === 'bml' ? bml : software;
   const harnessId = crypto.randomUUID();
-  const outcome = await kernelOn(db, clock).stages.activate(caller(ian), {
+  const outcome = await kernelOn(db, clock).stages.activate(caller(rowan), {
     harnessId,
     harnessKey: key,
     jdArea,
@@ -92,9 +92,9 @@ async function harnessOn(db: Database, ian: Principal, key: string, jdArea: stri
 
 async function sceneOn(connections: Connections): Promise<Scene> {
   const db = connections.observer;
-  const ian = await personOn(db, ianId, 'ian.lindsley@unfoldingword.org', instant);
-  const softwareId = await harnessOn(db, ian, 'software', '80-89');
-  const bmlId = await harnessOn(db, ian, 'bml', '30-39');
+  const rowan = await personOn(db, rowanId, 'rowan.test@unfoldingword.org', instant);
+  const softwareId = await harnessOn(db, rowan, 'software', '80-89');
+  const bmlId = await harnessOn(db, rowan, 'bml', '30-39');
   await seedPage(db, {
     id: pageId,
     type: 'persona',
@@ -105,7 +105,7 @@ async function sceneOn(connections: Connections): Promise<Scene> {
     bodyMd: 'Iterate tunes a product from its measurements.',
     frontmatter: {
       identity: 'agent:iterate',
-      owner: ian.identity,
+      owner: rowan.identity,
       harness: bmlId,
       toolset: ['search_pages'],
       run_shape: 'workflow-run',
@@ -116,7 +116,7 @@ async function sceneOn(connections: Connections): Promise<Scene> {
       requires_tools: ['summarise_measurements'],
     },
   });
-  return { connections, ian, softwareId, bmlId };
+  return { connections, rowan, softwareId, bmlId };
 }
 
 async function withScene(work: (scene: Scene) => Promise<void>): Promise<void> {
@@ -148,7 +148,7 @@ function activateOn(
   db: Database,
   gate: Gate,
 ): Promise<KernelOutcome<ActivatedPersona>> {
-  return personasOn(db, clock, { grants: gate.grants }).activate(caller(scene.ian), {
+  return personasOn(db, clock, { grants: gate.grants }).activate(caller(scene.rowan), {
     pageId,
     expectedVersion: 1,
     harnessId: scene.bmlId,

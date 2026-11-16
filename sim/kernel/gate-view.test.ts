@@ -36,7 +36,7 @@ type Scene = {
   readonly world: World;
   readonly harnessId: string;
   readonly itemId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
 };
 
 const head = simSha('a11ce');
@@ -79,7 +79,7 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
         declaration: parsedDeclaration,
       }),
     );
-    await work({ world, harnessId: harness.id, itemId: parked.itemId, ian: admin });
+    await work({ world, harnessId: harness.id, itemId: parked.itemId, rowan: admin });
   } finally {
     await world.close();
   }
@@ -130,7 +130,7 @@ function asOutcome(decided: KernelOutcome<unknown>): ShipOutcome {
 
 describe('GH-5 the gate view shows the parsed declaration, the derived tier and domains and the head they were derived at', () => {
   sceneIt('answers from the read model with what an approve would evaluate', async (scene) => {
-    const caller = simCaller(scene.world, scene.ian);
+    const caller = simCaller(scene.world, scene.rowan);
     const view = viewOf(await scene.world.kernel.gates.view(caller, { itemId: scene.itemId }));
     expect(gateViewSchema.parse(view)).toEqual(view);
     expect(view.facts?.declaration).toEqual(parsedDeclaration);
@@ -173,7 +173,7 @@ describe('the gate view answers from the read model', () => {
     };
     const kernel = createKernel({ ...scene.world.adapters, githubFacts });
     const view = viewOf(
-      await kernel.gates.view(simCaller(scene.world, scene.ian), { itemId: scene.itemId }),
+      await kernel.gates.view(simCaller(scene.world, scene.rowan), { itemId: scene.itemId }),
     );
     expect(view.facts?.head).toBe(head);
     expect(refreshes).toBe(0);
@@ -186,16 +186,16 @@ describe('the gate view of a hidden item is item_not_found like a missing one', 
   });
 
   sceneIt('answers every agent form that may not read the harness as missing', async (scene) => {
-    const { ian } = scene;
-    const runner = agentOf(ian, `agent:${ian.personId ?? ''}/runner`, false);
-    const persona = agentOf(ian, 'agent:builder', true);
+    const { rowan } = scene;
+    const runner = agentOf(rowan, `agent:${rowan.personId ?? ''}/runner`, false);
+    const persona = agentOf(rowan, 'agent:builder', true);
     const lapsed = agentOf(
-      ian,
-      `agent:${ian.personId ?? ''}/laptop as builder via delegation:${missingId}`,
+      rowan,
+      `agent:${rowan.personId ?? ''}/laptop as builder via delegation:${missingId}`,
       false,
     );
     const foreign: Principal = {
-      ...ian,
+      ...rowan,
       identity: identitySchema.parse(`agent:${missingId}/laptop`),
       kind: 'agent',
       email: null,
@@ -225,7 +225,7 @@ describe('the gate view of an item not at a connector stage has ship null', () =
 
 describe('the gate view is a read for people', () => {
   sceneIt("refuses an agent's gate view not_permitted and records nothing", async (scene) => {
-    const agent = simAgent(scene.ian, `${scene.ian.personId}/builder`, { interactive: true });
+    const agent = simAgent(scene.rowan, `${scene.rowan.personId}/builder`, { interactive: true });
     const before = await itemLog(scene.world, scene.harnessId, scene.itemId);
     const outcome = await scene.world.kernel.gates.view(simCaller(scene.world, agent), {
       itemId: scene.itemId,
@@ -250,7 +250,7 @@ function factsClosing(scene: Scene, count: number): PullRequestFacts {
 describe('GH-5 a declaration closing more issues than the limit counts as undeclared in the view and at Ship', () => {
   sceneIt('shows no declaration and the same refusal an approve records', async (scene) => {
     scene.world.adapters.githubFacts.given(factsClosing(scene, 51));
-    const caller = simCaller(scene.world, scene.ian);
+    const caller = simCaller(scene.world, scene.rowan);
     const view = viewOf(await scene.world.kernel.gates.view(caller, { itemId: scene.itemId }));
     expect(view.facts?.declaration).toBeNull();
     expect(view.ship?.outcome).toMatchObject({ verdict: 'refuse' });
@@ -270,7 +270,7 @@ describe('GH-5 a declaration closing more issues than the limit counts as undecl
 
   sceneIt('shows a declaration closing exactly the limit', async (scene) => {
     scene.world.adapters.githubFacts.given(factsClosing(scene, 50));
-    const caller = simCaller(scene.world, scene.ian);
+    const caller = simCaller(scene.world, scene.rowan);
     const view = viewOf(await scene.world.kernel.gates.view(caller, { itemId: scene.itemId }));
     expect(view.facts?.declaration?.closes).toHaveLength(50);
   });
@@ -282,7 +282,7 @@ async function decideSeeing(
   seenHead: string | null | undefined,
 ) {
   const before = await itemLog(scene.world, scene.harnessId, scene.itemId);
-  const outcome = await scene.world.kernel.gates.decide(simCaller(scene.world, scene.ian), {
+  const outcome = await scene.world.kernel.gates.decide(simCaller(scene.world, scene.rowan), {
     itemId: scene.itemId,
     decision,
     reason: decision === 'override' ? 'known risk' : null,
@@ -391,7 +391,7 @@ describe("WB-6 the gate view lists each Reviewer's latest review on the head wit
         declaration: parsedDeclaration,
       }),
     );
-    const caller = simCaller(scene.world, scene.ian);
+    const caller = simCaller(scene.world, scene.rowan);
     const view = viewOf(await scene.world.kernel.gates.view(caller, { itemId }));
     expect(view.reviews).toEqual([
       {

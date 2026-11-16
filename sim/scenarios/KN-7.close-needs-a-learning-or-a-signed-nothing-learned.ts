@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { seedPage } from '@uw/db/test-seed';
 import { readAllEvents, software, type Caller, type KernelOutcome } from '@uw/harness';
-import { createSimHarness, simAdvance, simCaller, simIan, simPerson } from '../fixtures.ts';
+import { createSimHarness, simAdvance, simCaller, simRowan, simPerson } from '../fixtures.ts';
 import { defineScenario } from '../scenario.ts';
 import type { World } from '../world.ts';
 
@@ -80,7 +80,7 @@ export const scenario = defineScenario({
   run: async (world) => {
     const { harness } = await createSimHarness(world, software);
     valueOf(
-      await world.kernel.stages.updateStage(simCaller(world, await simIan(world)), {
+      await world.kernel.stages.updateStage(simCaller(world, await simRowan(world)), {
         harnessId: harness.id,
         stageKey: 'scope',
         change: { validators: ['learning_attached'] },

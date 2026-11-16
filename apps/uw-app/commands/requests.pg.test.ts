@@ -12,7 +12,7 @@ import {
   dispatchAs,
   dispatchScope,
   eventsNamed,
-  ian,
+  rowan,
   softwareHarness,
   type Scene,
 } from '../testing/commands.ts';
@@ -136,7 +136,7 @@ async function thrownReleases(db: Database): Promise<void> {
 async function keyedByActor(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const editor = await personOn(db, scene.editor.id, scene.editor.email, new Date());
-  const admin = await ian(db);
+  const admin = await rowan(db);
   const body = enqueueBody(randomUUID());
   const scope = dispatchScope(db);
   await dispatchAs(editor, scene.harnessId, 'enqueue', body, scope);

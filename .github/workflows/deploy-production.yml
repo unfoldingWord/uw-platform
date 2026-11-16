@@ -71,6 +71,13 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_PRODUCTION }}
         run: pnpm db:migrate
+      - name: Add the first admin to production when none exists
+        if: steps.gate.outputs.configured == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PRODUCTION }}
+          BOOTSTRAP_ADMIN_EMAIL: ${{ vars.BOOTSTRAP_ADMIN_EMAIL }}
+          BOOTSTRAP_ADMIN_NAME: ${{ vars.BOOTSTRAP_ADMIN_NAME }}
+        run: pnpm db:bootstrap-admin
 
   deploy-production:
     name: deploy-production

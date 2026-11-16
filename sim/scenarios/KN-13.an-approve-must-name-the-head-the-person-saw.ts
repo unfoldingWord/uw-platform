@@ -18,7 +18,7 @@ type Scene = {
   readonly world: World;
   readonly harnessId: string;
   readonly itemId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
 };
 
 const headA = standardChange.head;
@@ -40,17 +40,17 @@ async function parkedAtShip(world: World): Promise<Scene> {
     title: 'Show the board',
     change: standardChange,
   });
-  return { world, harnessId: harness.id, itemId: parked.itemId, ian: admin };
+  return { world, harnessId: harness.id, itemId: parked.itemId, rowan: admin };
 }
 
 async function headSeenInTheView(scene: Scene): Promise<string | null> {
-  const caller = simCaller(scene.world, scene.ian);
+  const caller = simCaller(scene.world, scene.rowan);
   return valueOf(await scene.world.kernel.gates.view(caller, { itemId: scene.itemId }))
     .expectedHead;
 }
 
 async function moveTheHead(scene: Scene): Promise<void> {
-  const caller = simCaller(scene.world, scene.ian);
+  const caller = simCaller(scene.world, scene.rowan);
   const { world, itemId } = scene;
   const { gates, items } = world.kernel;
   const reviews = [approvedBy('uw-reviewer[bot]', 'anthropic', headB, 9100000102)];
@@ -70,7 +70,7 @@ async function moveTheHead(scene: Scene): Promise<void> {
 }
 
 function approveSeeing(scene: Scene, seenHead: string | null) {
-  return scene.world.kernel.gates.decide(simCaller(scene.world, scene.ian), {
+  return scene.world.kernel.gates.decide(simCaller(scene.world, scene.rowan), {
     itemId: scene.itemId,
     decision: 'approve',
     reason: null,

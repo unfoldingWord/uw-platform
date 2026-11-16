@@ -16,7 +16,7 @@ import type { World } from '../world.ts';
 type Lane = {
   readonly world: World;
   readonly harnessId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly max: Principal;
 };
 
@@ -26,7 +26,7 @@ const migration = { repo: 'unfoldingWord/uw-platform', number: 44 };
 const migrationPaths = ['packages/db/migrations/0009_x.sql'];
 
 async function decideAs(lane: Lane, itemId: string, decision: GateDecision, why: string | null) {
-  const outcome = await lane.world.kernel.gates.decide(simCaller(lane.world, lane.ian), {
+  const outcome = await lane.world.kernel.gates.decide(simCaller(lane.world, lane.rowan), {
     itemId,
     decision,
     reason: why,
@@ -108,7 +108,7 @@ export const scenario = defineScenario({
     const max = await simPerson(world, 2, [
       { role: 'editor', scopeKind: 'jd_area', scopeArea: '80-89' },
     ]);
-    const lane: Lane = { world, harnessId: harness.id, ian: admin, max };
+    const lane: Lane = { world, harnessId: harness.id, rowan: admin, max };
     const decisions = await overridesTheMissingReview(lane);
     await overrideKeepsTheTierRule(lane);
     return { state: { decisions, merges: world.adapters.connectors.calls().length } };

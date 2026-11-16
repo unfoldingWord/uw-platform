@@ -9,7 +9,7 @@ import { software, type Caller, type KernelOutcome } from '@uw/harness';
 import { describe, expect, it } from 'vitest';
 import { kernelOn, personasOn, personOn } from '../testing/kernel.ts';
 
-const ianId = '00000000-0000-4000-8000-000000000001';
+const rowanId = '00000000-0000-4000-8000-000000000001';
 const firstPage = '00000000-0000-4000-8000-000000009911';
 const secondPage = '00000000-0000-4000-8000-000000009912';
 const clock = { now: () => new Date() };
@@ -18,7 +18,7 @@ type Race = {
   readonly one: Database;
   readonly two: Database;
   readonly holder: Database;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly harnessId: string;
 };
 
@@ -45,7 +45,7 @@ function builderPage(id: string, slug: string, harnessId: string) {
     bodyMd: instructions,
     frontmatter: {
       identity: 'agent:builder',
-      owner: `human:${ianId}`,
+      owner: `human:${rowanId}`,
       harness: harnessId,
       toolset: ['read_page'],
       run_shape: 'workflow-run',
@@ -61,9 +61,9 @@ function builderPage(id: string, slug: string, harnessId: string) {
 }
 
 async function raceOn(one: Database, two: Database, holder: Database): Promise<Race> {
-  const ian = await personOn(one, ianId, 'ian.lindsley@unfoldingword.org', new Date());
+  const rowan = await personOn(one, rowanId, 'rowan.test@unfoldingword.org', new Date());
   const harnessId = crypto.randomUUID();
-  const activated = await kernelOn(one, clock).stages.activate(caller(ian), {
+  const activated = await kernelOn(one, clock).stages.activate(caller(rowan), {
     harnessId,
     harnessKey: 'software',
     jdArea: '80-89',
@@ -74,7 +74,7 @@ async function raceOn(one: Database, two: Database, holder: Database): Promise<R
   if (activated.status !== 'accepted') throw new Error(`activate refused: ${activated.reason}`);
   await seedPage(one, builderPage(firstPage, 'persona-builder', harnessId));
   await seedPage(one, builderPage(secondPage, 'persona-builder-twin', harnessId));
-  return { one, two, holder, ian, harnessId };
+  return { one, two, holder, rowan, harnessId };
 }
 
 async function withRace(work: (race: Race) => Promise<void>): Promise<void> {
@@ -115,7 +115,7 @@ async function activateBoth(race: Race): Promise<readonly KernelOutcome<unknown>
   const row = holdFirstPageRow(race);
   await row.held;
   const activate = (db: Database, pageId: string) =>
-    personasOn(db, clock).activate(caller(race.ian), {
+    personasOn(db, clock).activate(caller(race.rowan), {
       pageId,
       expectedVersion: 1,
       harnessId: race.harnessId,

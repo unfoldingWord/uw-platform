@@ -61,7 +61,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Where and how**
 
-- Work only in `/home/ianjl/projects/uw-platform-v0.2.0`, branch `build/v0.2.0`. Never commit to `main`, never force-push, never `--no-verify`.
+- Work only in `/home/rowan-test/projects/uw-platform-v0.2.0`, branch `build/v0.2.0`. Never commit to `main`, never force-push, never `--no-verify`.
 - Read `AGENTS.md` sections 1, 4 and 10 before the first edit. When this plan and `AGENTS.md` disagree, `AGENTS.md` wins; record the conflict in `docs/progress_tracker.md` and build the version that keeps the rule.
 - Words come from `CONTEXT.md`: **ship rule**, **freeze**, **finding weight**, **review round**, **hand-off**, **gate decision**, and this step's new **required check**, **carried approval**, **refuted finding**, **strictness preset** (Task 1). Never "code freeze", "severity", "auto-merge" or "escalation" for a hand-off.
 - Commits: Conventional Commits, the agent as sole author, no attribution footer. Hooks always pass. Put the requirement IDs in each commit body.
@@ -265,7 +265,7 @@ describe('SR-1 SR-2 GD-1 GD-2 GD-3 RV-1 RV-2 RV-3 the contracts for the ship rul
       riskTier: 'standard',
       riskDomains: [],
       area: '80-89',
-      approver: { identity: 'human:00000000-0000-4000-8000-000000000001', kind: 'person', personId: '00000000-0000-4000-8000-000000000001', email: 'ian@unfoldingword.org', grants: [], interactive: true },
+      approver: { identity: 'human:00000000-0000-4000-8000-000000000001', kind: 'person', personId: '00000000-0000-4000-8000-000000000001', email: 'rowan@unfoldingword.org', grants: [], interactive: true },
       at: '2026-10-15T09:00:00.000Z',
       frozen: false,
       override: false,
@@ -627,15 +627,15 @@ const harnessId = "00000000-0000-4000-8000-0000000000a1";
 const itemId = "00000000-0000-4000-8000-0000000000b1";
 const runId = "00000000-0000-4000-8000-0000000000d1";
 const requestId = "00000000-0000-4000-8000-0000000000aa";
-const ian = "human:00000000-0000-4000-8000-000000000001";
+const rowan = "human:00000000-0000-4000-8000-000000000001";
 const event = (n, name, item, actor, evidence) => ({
   eventId: `00000000-0000-4000-8000-0000000001e${n}`,
   harnessId, itemId: item, name, position: n, at: "2026-10-15T09:00:00.000Z", actor, evidence,
   traceId: "00000000-0000-4000-8000-0000000000c1", requestId: null,
 });
-write("event/valid/freeze-changed.json", event(1, "freeze_changed", null, ian, { frozen: true, allow: [itemId] }));
-write("event/valid/finding-refuted.json", event(2, "finding_refuted", itemId, ian, { runId, persona: "agent:reviewer", reviewer: "uw-reviewer", index: 0, weight: "plausible", text: "The empty state is dropped." }));
-write("event/invalid/finding-refuted-index-too-high.json", event(2, "finding_refuted", itemId, ian, { runId, persona: "agent:reviewer", reviewer: "uw-reviewer", index: 50, weight: "real", text: "x" }));
+write("event/valid/freeze-changed.json", event(1, "freeze_changed", null, rowan, { frozen: true, allow: [itemId] }));
+write("event/valid/finding-refuted.json", event(2, "finding_refuted", itemId, rowan, { runId, persona: "agent:reviewer", reviewer: "uw-reviewer", index: 0, weight: "plausible", text: "The empty state is dropped." }));
+write("event/invalid/finding-refuted-index-too-high.json", event(2, "finding_refuted", itemId, rowan, { runId, persona: "agent:reviewer", reviewer: "uw-reviewer", index: 50, weight: "real", text: "x" }));
 write("event/valid/handed-to-person-engine-refused.json", event(3, "handed_to_person", itemId, "agent:reviewer", { personId: "00000000-0000-4000-8000-000000000001", why: "engine_refused", rounds: null }));
 write("event/invalid/handed-to-person-rounds-without-count.json", event(3, "handed_to_person", itemId, "agent:reviewer", { personId: "00000000-0000-4000-8000-000000000001", why: "review_rounds_exhausted", rounds: null }));
 write("command/valid/set-freeze.json", { command: "set_freeze", requestId, frozen: true, allow: [itemId] });

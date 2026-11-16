@@ -13,7 +13,7 @@ import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
 
-const ianId = '00000000-0000-4000-8000-000000000001';
+const rowanId = '00000000-0000-4000-8000-000000000001';
 const strangerId = '00000000-0000-4000-8000-000000000002';
 const harnessId = '00000000-0000-4000-8000-0000000000a1';
 const itemId = '00000000-0000-4000-8000-0000000000b1';
@@ -91,13 +91,13 @@ const logged = [
     name: 'item_claimed',
     itemId,
     evidence: {
-      holder: `human:${ianId}`,
+      holder: `human:${rowanId}`,
       claimantKind: 'person',
       delegationId: null,
       leaseExpiresAt: null,
     },
   },
-  { name: 'item_released', itemId, evidence: { holder: `human:${ianId}` } },
+  { name: 'item_released', itemId, evidence: { holder: `human:${rowanId}` } },
   { name: 'delegation_required', itemId: null, evidence: { stage: 'build' } },
 ] as const;
 
@@ -117,7 +117,7 @@ async function seedLog(world: World): Promise<void> {
           itemId: entry.itemId,
           name: entry.name,
           at: clock.now().toISOString(),
-          actor: `human:${ianId}`,
+          actor: `human:${rowanId}`,
           evidence: entry.evidence,
           traceId,
           requestId: null,
@@ -137,16 +137,16 @@ function namesOf(outcome: Awaited<ReturnType<typeof readAs>>): string[] {
   return outcome.status === 'accepted' ? outcome.value.events.map((event) => event.name) : [];
 }
 
-async function ianOf(world: World): Promise<Principal> {
-  const grants = await world.adapters.grants.resolve(ianId, world.adapters.clock.now());
-  return principalFor(ianId, [...grants]);
+async function rowanOf(world: World): Promise<Principal> {
+  const grants = await world.adapters.grants.resolve(rowanId, world.adapters.clock.now());
+  return principalFor(rowanId, [...grants]);
 }
 
-async function withLog(check: (world: World, ian: Principal) => Promise<void>): Promise<void> {
+async function withLog(check: (world: World, rowan: Principal) => Promise<void>): Promise<void> {
   const world = await createWorld();
   try {
     await seedLog(world);
-    await check(world, await ianOf(world));
+    await check(world, await rowanOf(world));
   } finally {
     await world.close();
   }
@@ -160,8 +160,8 @@ const missingReply = {
   detail: { harnessId: missingHarnessId },
 };
 
-function agentOf(ian: Principal, identity: string, interactive: boolean): Principal {
-  return principalSchema.parse({ ...ian, identity, kind: 'agent', email: null, interactive });
+function agentOf(rowan: Principal, identity: string, interactive: boolean): Principal {
+  return principalSchema.parse({ ...rowan, identity, kind: 'agent', email: null, interactive });
 }
 
 async function hiddenLikeMissing(world: World, actor: Principal): Promise<void> {
@@ -171,12 +171,12 @@ async function hiddenLikeMissing(world: World, actor: Principal): Promise<void> 
   expect(JSON.stringify(hidden)).toBe(JSON.stringify(missing).replace(missingHarnessId, harnessId));
 }
 
-async function namesAcrossPages(world: World, ian: Principal, limit: number): Promise<string[]> {
+async function namesAcrossPages(world: World, rowan: Principal, limit: number): Promise<string[]> {
   const names: string[] = [];
   let after = 0;
   let pages = 0;
   while (pages < 10) {
-    const page = await readAs(world, ian, { ...everything, after, limit });
+    const page = await readAs(world, rowan, { ...everything, after, limit });
     if (page.status !== 'accepted') return names;
     names.push(...namesOf(page));
     pages += 1;
@@ -188,28 +188,28 @@ async function namesAcrossPages(world: World, ian: Principal, limit: number): Pr
 
 describe('KN-4 the kernel reads a harness log through the one read path, checking can()', () => {
   it('gives an org admin the events in order', async () => {
-    await withLog(async (world, ian) => {
-      const read = await readAs(world, ian, everything);
+    await withLog(async (world, rowan) => {
+      const read = await readAs(world, rowan, everything);
       expect(namesOf(read)).toEqual(loggedNames);
     });
   });
 
   it('refuses an unknown harness harness_not_found', async () => {
-    await withLog(async (world, ian) => {
+    await withLog(async (world, rowan) => {
       const unknown = { ...everything, harnessId: missingHarnessId };
-      expect(await readAs(world, ian, unknown)).toEqual(missingReply);
+      expect(await readAs(world, rowan, unknown)).toEqual(missingReply);
     });
   });
 
   it('follows next across pages of two without a gap or a repeat', async () => {
-    await withLog(async (world, ian) => {
-      expect(await namesAcrossPages(world, ian, 2)).toEqual(loggedNames);
+    await withLog(async (world, rowan) => {
+      expect(await namesAcrossPages(world, rowan, 2)).toEqual(loggedNames);
     });
   });
 
   it('narrows to one item when asked', async () => {
-    await withLog(async (world, ian) => {
-      const read = await readAs(world, ian, { ...everything, itemId });
+    await withLog(async (world, rowan) => {
+      const read = await readAs(world, rowan, { ...everything, itemId });
       expect(namesOf(read)).toEqual(['item_created', 'item_claimed', 'item_released']);
     });
   });
@@ -223,28 +223,28 @@ describe('WB-3 an event read on a harness the caller may not read answers harnes
   });
 
   it('answers an unattended agent with no delegation as it answers a missing harness', async () => {
-    await withLog(async (world, ian) => {
-      await hiddenLikeMissing(world, agentOf(ian, `agent:${ianId}/runner`, false));
+    await withLog(async (world, rowan) => {
+      await hiddenLikeMissing(world, agentOf(rowan, `agent:${rowanId}/runner`, false));
     });
   });
 
   it('answers a bare persona with no live delegation as it answers a missing harness', async () => {
-    await withLog(async (world, ian) => {
-      await hiddenLikeMissing(world, agentOf(ian, 'agent:builder', true));
+    await withLog(async (world, rowan) => {
+      await hiddenLikeMissing(world, agentOf(rowan, 'agent:builder', true));
     });
   });
 
   it('answers a delegated identity whose delegation is not live as it answers a missing harness', async () => {
-    await withLog(async (world, ian) => {
-      const identity = `agent:${ianId}/laptop as builder via delegation:${missingHarnessId}`;
-      await hiddenLikeMissing(world, agentOf(ian, identity, false));
+    await withLog(async (world, rowan) => {
+      const identity = `agent:${rowanId}/laptop as builder via delegation:${missingHarnessId}`;
+      await hiddenLikeMissing(world, agentOf(rowan, identity, false));
     });
   });
 
   it('answers a device naming another person as it answers a missing harness', async () => {
-    await withLog(async (world, ian) => {
+    await withLog(async (world, rowan) => {
       const foreign: Principal = {
-        ...ian,
+        ...rowan,
         identity: identitySchema.parse(`agent:${strangerId}/laptop`),
         kind: 'agent',
         email: null,
@@ -254,8 +254,8 @@ describe('WB-3 an event read on a harness the caller may not read answers harnes
   });
 
   it("gives the owner's interactive device the same events the owner reads", async () => {
-    await withLog(async (world, ian) => {
-      const device = agentOf(ian, `agent:${ianId}/laptop`, true);
+    await withLog(async (world, rowan) => {
+      const device = agentOf(rowan, `agent:${rowanId}/laptop`, true);
       expect(namesOf(await readAs(world, device, everything))).toEqual(loggedNames);
     });
   });
@@ -270,8 +270,8 @@ describe('the kernel refuses a malformed event query before reading', () => {
     ['an item that is not an id', { itemId: 'not-an-id' }],
   ];
   it.each(malformed)('answers %s malformed_command', async (_name, change) => {
-    await withLog(async (world, ian) => {
-      expect(await readAs(world, ian, { ...everything, ...change })).toMatchObject({
+    await withLog(async (world, rowan) => {
+      expect(await readAs(world, rowan, { ...everything, ...change })).toMatchObject({
         status: 'error',
         reason: 'malformed_command',
       });
@@ -279,8 +279,8 @@ describe('the kernel refuses a malformed event query before reading', () => {
   });
 
   it('answers a harness that is not an id as it answers a missing harness', async () => {
-    await withLog(async (world, ian) => {
-      expect(await readAs(world, ian, { ...everything, harnessId: 'not-an-id' })).toEqual({
+    await withLog(async (world, rowan) => {
+      expect(await readAs(world, rowan, { ...everything, harnessId: 'not-an-id' })).toEqual({
         status: 'error',
         reason: 'harness_not_found',
         detail: { harnessId: 'not-an-id' },

@@ -26,7 +26,7 @@ type Scene = {
   readonly world: World;
   readonly harnessId: string;
   readonly itemId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly max: Principal;
 };
 
@@ -41,7 +41,7 @@ async function parkedAtShip(world: World): Promise<Scene> {
     title: 'Show the board',
     change: standardChange,
   });
-  return { world, harnessId: harness.id, itemId: parked.itemId, ian: admin, max };
+  return { world, harnessId: harness.id, itemId: parked.itemId, rowan: admin, max };
 }
 
 async function approveAndMerge(scene: Scene): Promise<void> {
@@ -51,7 +51,7 @@ async function approveAndMerge(scene: Scene): Promise<void> {
   world.adapters.githubFacts.given(greenFacts(world, { itemId, head, reviews }));
   const before = await itemLog(world, harnessId, itemId);
   const approved = valueOf(
-    await world.kernel.gates.decide(simCaller(world, scene.ian), {
+    await world.kernel.gates.decide(simCaller(world, scene.rowan), {
       itemId,
       decision: 'approve',
       reason: null,

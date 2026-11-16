@@ -40,7 +40,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Where and how**
 
-- Work only in the worktree `/home/ianjl/projects/uw-platform-v1` on branch `build/v1`. Never commit to `main`, never force-push, never `--no-verify`.
+- Work only in the worktree `/home/rowan-test/projects/uw-platform-v1` on branch `build/v1`. Never commit to `main`, never force-push, never `--no-verify`.
 - Read `AGENTS.md` sections 1, 4, 6 and 10 before the first edit. When this plan and `AGENTS.md` disagree, `AGENTS.md` wins; record the conflict in `docs/progress_tracker.md` and build the version that keeps the rule.
 - Words come from `CONTEXT.md`: kernel (never "engine" for the core), harness, template, stage, item, gate, connector, validator, feeds, regular tweak, occasional tweak, ship rule, risk tier, risk domains, principal, grant, delegation, beat, lease, WIP limit, event, gate decision, learning, port, adapter, platform adapter, test adapter, not wired, port contract, sim, world, scenario, walk, trace, projection (Task 7 adds it). Never "mock", "fake" or "memory adapter" for the Store test adapter: it is real Postgres. Never "ticket", "card" (outside the board) or "task" for an item.
 
@@ -94,7 +94,7 @@ Every task obeys every line here. The controller passes this section to each imp
 - Real connections: `apps/uw-app/harness/*.pg.test.ts`, wrapped in `describe.skipIf(!testServer)`, each connection its own `createClient(connectionString)` from `@uw/db/client`. Locally `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test` (a private local server, Postgres 16, already running); CI uses the `postgres:16` service container. No test may need a live account or a secret (PRD DX-8); the only environment variables test code reads are `TEST_DATABASE_URL`, `CI` and `PATH`.
 - Every test file that opens an embedded Postgres (directly or through `createWorld`) has `afterAll(closeEmbeddedTemplate)` and closes every world or database it opens.
 - Kernel tables (`harnesses`, `harness_stages`, `harness_items`, `harness_events`, `harness_runs`, `gate_decisions`, `delegations`, `measurements`, `personas`) take every instant from the command's `at` (the Clock port) and every id from the Ids port. No `defaultNow()`, `defaultRandom()`, `$defaultFn` or SQL default on any of their `uuid`, `timestamp` or `date` columns; `packages/db/kernel-defaults.test.ts` (Task 3) fails on one. Defaults on other columns (`connector` `'none'`, `wip_limit` `3`, booleans, empty arrays) are fine.
-- Fixed ids in tests are UUIDs; use the patterns already in the repo (`00000000-0000-4000-8000-00000000000N`). The bootstrap migration seeds person `00000000-0000-4000-8000-000000000001` (`ian.lindsley@unfoldingword.org`) with org admin grant `00000000-0000-4000-8000-000000000101` in every migrated database.
+- Fixed ids in tests are UUIDs; use the patterns already in the repo (`00000000-0000-4000-8000-00000000000N`). The bootstrap migration seeds person `00000000-0000-4000-8000-000000000001` (`rowan.test@unfoldingword.org`) with org admin grant `00000000-0000-4000-8000-000000000101` in every migrated database.
 
 **Verify and commit**
 
@@ -495,13 +495,13 @@ Add to `schemaRegistry` in `packages/contracts/registry.ts`: `'stage-bracket'`, 
 Fixtures (every `valid` file must round-trip unchanged through parse and `JSON.stringify`, so write instants as `2026-10-01T09:00:00.000Z` and omit nothing):
 - each of the eight enums: `valid/first.json`, `valid/last.json` (the first and last option as a JSON string), `invalid/unknown.json` (`"nope"`).
 - `stage-key`: valid `package.json` (`"package"`), `human-review.json` (`"human_review"`); invalid `capital.json` (`"Package"`), `digit-first.json` (`"1st"`).
-- `persona-identity`: valid `builder.json` (`"agent:builder"`); invalid `device.json` (`"agent:avery/laptop"`), `human.json` (`"human:ian"`).
+- `persona-identity`: valid `builder.json` (`"agent:builder"`); invalid `device.json` (`"agent:avery/laptop"`), `human.json` (`"human:rowan"`).
 - `pull-request-ref`: valid `{"repo":"unfoldingWord/uw-platform","number":12}`; invalid `no-owner.json` (`{"repo":"uw-platform","number":12}`).
 - `harness`: valid `software.json` (`{"id":"00000000-0000-4000-8000-0000000000a1","key":"software","template":"software","jdArea":"80-89","hostedBuilderEnabled":false,"paused":false}`); invalid `bad-area.json` (same with `"jdArea":"80-99"`).
 - `stage`: valid `ship.json` (key `ship`, title `Ship`, position 60, bracket `deploy_package`, agentPickup `none`, exitGate `human_approval`, connector `merge`, wipLimit 3, instructionsPageId null, validators `[]`, feeds `[]`, paused false, with uuid `id` and `harnessId`); invalid `duplicate-validator.json` (validators `["learning_attached","learning_attached"]`).
 - `item-state`: valid `claimed-by-agent.json` (stageKey `build`, holder `agent:builder`, claimantKind `agent`, leaseExpiresAt `2026-10-01T09:15:00.000Z`, gateStatus `working`, branchState `none`, riskDomains `[]`, every other nullable field null, priority 0); invalid `unknown-gate-status.json` (gateStatus `merged`).
 - `risk-declaration`: valid `high-acl.json` (`{"riskTier":"high","riskDomains":["acl"]}`); invalid `unknown-domain.json` (`["ui"]`).
-- `ship-rule-input`: valid `high-two-reviewers.json` (open, not draft, head `abc123`, expectedHead `abc123`, the six jobs `success` on `abc123`, two approvals on `abc123` with providers `anthropic` and `openai`, riskTier `high`, riskDomains `["acl"]`, area `80-89`, approver a person principal for `00000000-0000-4000-8000-000000000001` / `ian.lindsley@unfoldingword.org` with an org-scope admin grant `00000000-0000-4000-8000-000000000101`, `interactive` true, at `2026-10-01T09:00:00.000Z`, override false); invalid `narrative.json` (the same plus `"narrative":"trust me"`), `no-approver.json` (without `approver`).
+- `ship-rule-input`: valid `high-two-reviewers.json` (open, not draft, head `abc123`, expectedHead `abc123`, the six jobs `success` on `abc123`, two approvals on `abc123` with providers `anthropic` and `openai`, riskTier `high`, riskDomains `["acl"]`, area `80-89`, approver a person principal for `00000000-0000-4000-8000-000000000001` / `rowan.test@unfoldingword.org` with an org-scope admin grant `00000000-0000-4000-8000-000000000101`, `interactive` true, at `2026-10-01T09:00:00.000Z`, override false); invalid `narrative.json` (the same plus `"narrative":"trust me"`), `no-approver.json` (without `approver`).
 - `ship-rule-outcome`: valid `advance.json` (`{"verdict":"advance"}`), `refuse.json` (`{"verdict":"refuse","reasons":["head_mismatch","checks_not_green"]}`); invalid `refuse-without-reasons.json` (`{"verdict":"refuse","reasons":[]}`).
 
 Set `CONTRACT_VERSION = '2.4.0'`. Append a `2.4.0` entry to `contract-lock.json`: a copy of the `2.3.0` entry's `sets` with the fourteen reasons appended to `error-reason` and these sets added: `branch-state`, `check-conclusion`, `ci-job`, `delegation-lapse`, `gate-status`, `run-outcome`, `ship-refusal`, `stage-bracket`, each listing its options in schema order. `contract-lock.test.ts` (`records every closed set exactly as it is now`) names any mismatch. Set `"contractVersion": "2.4.0"` in `apps/uw-app/package.json` and `apps/uw-ingest/package.json`.
@@ -2150,7 +2150,7 @@ The projection is written before the append so the append is the last statement 
 
 - [ ] **Step 4: The kernel read path over the world**
 
-`sim/kernel/events.test.ts`, `describe('KN-4 the kernel reads a harness log through the one read path, checking can()', …)`: in the test, insert a harness and three events through `world.adapters.store.transaction` and the gateways (test files may write; the owners check scans only non-test sources), then: Ian (seeded org admin; build the principal with `principalSchema.parse` and `world.adapters.grants.resolve`) reads them in order; a principal with no grants is refused `not_permitted`; an unknown harness id is `harness_not_found`.
+`sim/kernel/events.test.ts`, `describe('KN-4 the kernel reads a harness log through the one read path, checking can()', …)`: in the test, insert a harness and three events through `world.adapters.store.transaction` and the gateways (test files may write; the owners check scans only non-test sources), then: the owner (seeded org admin; build the principal with `principalSchema.parse` and `world.adapters.grants.resolve`) reads them in order; a principal with no grants is refused `not_permitted`; an unknown harness id is `harness_not_found`.
 
 - [ ] **Step 5: The replay property**
 
@@ -2393,7 +2393,7 @@ export type SimGrant = {
 };
 export function simPersonId(n: number): string;
 export function simPerson(world: World, n: number, grants: readonly SimGrant[]): Promise<Principal>;
-export function simIan(world: World): Promise<Principal>;
+export function simRowan(world: World): Promise<Principal>;
 export function simAgent(owner: Principal, persona: string, options: { readonly interactive: boolean }): Principal;
 export function simCaller(world: World, actor: Principal): Caller;
 ```
@@ -2402,7 +2402,7 @@ export function simCaller(world: World, actor: Principal): Caller;
 
 `runScenario` calls `scenario.run(world)`, then `readWorldLog(world.adapters.store)`; a non-empty `drift` makes the result a failure `projection drift: <first entry>`; otherwise the report is `{ events: log.events, state: outcome.state }`. Keep the per-scenario timeout the step-2 fix wave added around both calls.
 
-`simPersonId(n)` is `00000000-0000-4000-8000-0000000001` followed by `n` as two decimal digits; grant ids are `00000000-0000-4000-8000-0000000002` + `n` (two digits) + the grant's index (two digits). `simPerson` seeds the person (`person<n>@unfoldingword.org`) and each grant with `seedPerson`/`seedGrant` from `@uw/db/test-seed` (`grantedAt` = the sim clock's now), resolves the grants through `world.adapters.grants.resolve(personId, now)` and returns `principalSchema.parse({ identity: 'human:<id>', kind: 'person', personId, email, grants, interactive: true })`. `simIan` does the same for the bootstrap person without seeding. `simAgent` returns an agent principal `agent:<persona>` carrying the owner's `personId` and grants and the given `interactive` flag. `simCaller` is `{ actor, traceId: world.adapters.ids.next() }`.
+`simPersonId(n)` is `00000000-0000-4000-8000-0000000001` followed by `n` as two decimal digits; grant ids are `00000000-0000-4000-8000-0000000002` + `n` (two digits) + the grant's index (two digits). `simPerson` seeds the person (`person<n>@unfoldingword.org`) and each grant with `seedPerson`/`seedGrant` from `@uw/db/test-seed` (`grantedAt` = the sim clock's now), resolves the grants through `world.adapters.grants.resolve(personId, now)` and returns `principalSchema.parse({ identity: 'human:<id>', kind: 'person', personId, email, grants, interactive: true })`. `simRowan` does the same for the bootstrap person without seeding. `simAgent` returns an agent principal `agent:<persona>` carrying the owner's `personId` and grants and the given `interactive` flag. `simCaller` is `{ actor, traceId: world.adapters.ids.next() }`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -2474,7 +2474,7 @@ Rules, in this order, for every command:
 7. Activation: refuses `harness_exists` when `harnesses.read.byId(harnessId)` or `byKey(harnessKey)` finds one; inserts the harness (`template` = the template's key, `hostedBuilderEnabled` false, `paused` false), then each template stage as a `Stage` with an id from `ports.ids`, `instructionsPageId` null and `paused` false, then records `template_activated` `{ template, stages: keys in position order }`. A store refusal during activation is returned as `stage_edit_refused` with no event (there is no harness row to hang it on).
 8. `reorderStages` refuses `stage_not_found` (detail `{ stage }`) for a key that is not a stage and `malformed_command` unless `order` is a permutation of every stage key; it repositions to 10, 20, 30, … in the given order.
 
-`createSimHarness` activates the template as `simIan(world)` with key `options.key ?? template.key`, area `options.jdArea ?? '80-89'`, and a harness id from the world's ids; it throws if the outcome is not accepted.
+`createSimHarness` activates the template as `simRowan(world)` with key `options.key ?? template.key`, area `options.jdArea ?? '80-89'`, and a harness id from the world's ids; it throws if the outcome is not accepted.
 
 - [ ] **Step 1: Write the failing scenarios and tests**
 
@@ -2490,7 +2490,7 @@ export const scenario = defineScenario({
       stages.map((stage) => [stage.key, stage.position, stage.exitGate, stage.connector]),
       software.stages.map((stage) => [stage.key, stage.position, stage.exitGate, stage.connector]),
     );
-    const read = await world.kernel.events.read(simCaller(world, await simIan(world)), {
+    const read = await world.kernel.events.read(simCaller(world, await simRowan(world)), {
       harnessId: harness.id,
       itemId: null,
       after: 0,
@@ -2507,7 +2507,7 @@ export const scenario = defineScenario({
 
 `KN-15.both-templates-activate.ts`: activates `software` (`80-89`) and `bml` (`30-39`, key `bml`) and asserts both have eight stages, Ship carries `merge` and `publish` respectively, and the stored rows of each pass `templateProperty`.
 
-`KN-18.lowering-ship-is-refused-by-postgres.ts`: activates software, then `updateStage(ship, { exitGate: 'checks' })` as Ian; asserts the outcome is `{ status: 'error', reason: 'stage_edit_refused', detail: { code: '23514', constraint: 'harness_stages_effect_needs_human_gate' } }`, Ship's stored exit is still `human_approval`, and the harness log ends with one `stage_edit_refused` whose evidence names the constraint (the runner's log holds it; read it through `world.kernel.events.read` to assert).
+`KN-18.lowering-ship-is-refused-by-postgres.ts`: activates software, then `updateStage(ship, { exitGate: 'checks' })` as the owner; asserts the outcome is `{ status: 'error', reason: 'stage_edit_refused', detail: { code: '23514', constraint: 'harness_stages_effect_needs_human_gate' } }`, Ship's stored exit is still `human_approval`, and the harness log ends with one `stage_edit_refused` whose evidence names the constraint (the runner's log holds it; read it through `world.kernel.events.read` to assert).
 
 `KN-10.activation-refuses-a-bypass.ts`: activating `bypassesShip` is refused `template_bypasses_gate` with `detail.path` `['package', 'scope', 'plan', 'build', 'hotfix']` and `detail.effectStage` `hotfix`, and `tx.harnesses.read.list()` is empty afterwards.
 
@@ -2573,7 +2573,7 @@ export type RepairCommands = {
 
 `tools/properties/projection.test.ts`, `describe('KN-4 the projection equals the replay over random valid sequences recorded through the store', …)`: one world for the file (`beforeAll` creates it and activates software through `createSimHarness`; `afterAll` closes it and the template), and `fc.asyncProperty(itemEventSequence(), fc.integer({ min: 1, max: 5 }), …)`: give each run a fresh item id; record the sequence's `item_created` with `createItem` and the rest with `recordItemEvents` in batches of the drawn size, each batch its own transaction (lock the row first with `harnessItems.read.lock`); then in one transaction expect `harnessItems.read.byId(id)` to equal `replay(readAllEvents(tx, harnessId, id))`. 40 runs, `timeout` 120 s. The events' `harnessId` and `itemId` are overwritten with the world's ids and their `eventId`s with fresh ids from `world.adapters.ids` before recording.
 
-`sim/kernel/repair.test.ts`, `describe('KN-4 the repair routine rebuilds a projection from the log', …)`: enqueue an item; in the test, overwrite its projection with `title: 'drifted'` through the gateway; `rebuildItem` as Ian returns `repaired: ['title']` and the row's title is the original again; a second call returns `repaired: []`; an editor is refused `not_permitted`. The test leaves no drift behind (it runs in a test file, not a scenario).
+`sim/kernel/repair.test.ts`, `describe('KN-4 the repair routine rebuilds a projection from the log', …)`: enqueue an item; in the test, overwrite its projection with `title: 'drifted'` through the gateway; `rebuildItem` as the owner returns `repaired: ['title']` and the row's title is the original again; a second call returns `repaired: []`; an editor is refused `not_permitted`. The test leaves no drift behind (it runs in a test file, not a scenario).
 
 Run: `pnpm vitest run tools/properties/projection.test.ts sim/kernel/repair.test.ts && pnpm sim -- KN-4`
 Expected: FAIL.
@@ -2869,7 +2869,7 @@ describe.skipIf(!testServer)('DX-6 KN-5 claims race on separate connections', ()
 });
 ```
 
-`withSharedDatabase(work)` creates one migrated database (`createMigratedDatabase(testServer)`), opens eight `createClient` connections to it, runs `work`, and always ends every client and drops the database. `setUp` activates software as Ian through `kernelOn(connections[0], …)`, sets Package's `agentPickup` to `allowed` and its `wipLimit`, seeds an area editor as the owner, and enqueues. Repeat each race five times inside its `it` (fresh items each round) so an ordering accident cannot pass it once.
+`withSharedDatabase(work)` creates one migrated database (`createMigratedDatabase(testServer)`), opens eight `createClient` connections to it, runs `work`, and always ends every client and drops the database. `setUp` activates software as the owner through `kernelOn(connections[0], …)`, sets Package's `agentPickup` to `allowed` and its `wipLimit`, seeds an area editor as the owner, and enqueues. Repeat each race five times inside its `it` (fresh items each round) so an ordering accident cannot pass it once.
 
 Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-app/harness/claims.pg.test.ts`
 Expected: PASS once Tasks 14 and 15 are in (this task adds tests only; if it fails, the claim's lock order or conditional update is wrong — fix it in `packages/harness/items/claim.ts` in this task).
@@ -3241,9 +3241,9 @@ export type GateCommands = { decide(caller: Caller, input: DecideInput): Promise
 
 `KN-13.agent-cannot-write-decision.ts`: activate software; give Check `exitGate: 'human_approval'` (connector `none`); park an item at Check; for each of these agent principals — owner grants `admin` org, `admin` on `80-89`, `editor` on `80-89`, `viewer` on `80-89`, and the beat principal of a live delegation — `decide` approve is `gate_refused_to_agent`; afterwards `tx.gateDecisions.read.forItem` is empty, the item is still parked at Check, and the item's log holds five `gate_refused_to_agent` events and nothing else after `submitted_to_gate`.
 
-`KN-13.reject-and-take-over.ts`: Ian rejects with findings `['the migration has no down path']`: one `gate_decisions` row (`reject`), `gate_rejected` with the findings, the item `working` in Check with no holder; an agent claims and submits again (parks); Ian takes over: the item is held by Ian, kind `person`, no lease, `working`, and a second row (`take_over`) exists; Ian submits: parked again; Ian approves: `gate_approved`, `stage_advanced` to `ship`, and three rows in all.
+`KN-13.reject-and-take-over.ts`: the owner rejects with findings `['the migration has no down path']`: one `gate_decisions` row (`reject`), `gate_rejected` with the findings, the item `working` in Check with no holder; an agent claims and submits again (parks); the owner takes over: the item is held by the owner, kind `person`, no lease, `working`, and a second row (`take_over`) exists; the owner submits: parked again; the owner approves: `gate_approved`, `stage_advanced` to `ship`, and three rows in all.
 
-`KN-8.occasional-tweak-needs-a-person.ts`: as in Task 18, park an item at Scope with `gateTarget` `package`; an editor's approve is `not_permitted`; Ian's approve records a `gate_decisions` row and `loop_edge_taken` `{ from: 'scope', to: 'package' }`; the item is in `package`, `working`.
+`KN-8.occasional-tweak-needs-a-person.ts`: as in Task 18, park an item at Scope with `gateTarget` `package`; an editor's approve is `not_permitted`; the owner's approve records a `gate_decisions` row and `loop_edge_taken` `{ from: 'scope', to: 'package' }`; the item is in `package`, `working`.
 
 `sim/kernel/gate-command.test.ts`:
 - deciding on an item that is not parked is `item_not_at_gate`;
@@ -3309,13 +3309,13 @@ export function exitThroughConnector(ports: Ports, context: RecordContext, input
 
 - [ ] **Step 1: Write the failing scenarios and tests**
 
-`KN-13.approve-merges-and-advances.ts` (the software path end to end): enqueue; advance to Build with `simAdvance`; the agent submits at Build and Check with `change` `{ pullRequest: { repo: 'unfoldingWord/uw-platform', number: 42 }, head: 'abc123', paths: ['apps/uw-app/board.tsx'], declaration: { riskTier: 'standard', riskDomains: [] } }`; the editor claims Ship and submits → parked; `world.adapters.githubFacts.given({ ref, state: 'open', draft: false, head: 'abc123', checks: <the six jobs success on abc123>, reviews: [{ reviewer: 'uw-reviewer', commit: 'abc123', state: 'approved', provider: 'anthropic' }], freshAt })`; Ian approves → accepted, `advanced: true`; one `gate_decisions` row; the log has `gate_approved`, `connector_succeeded`, `stage_advanced { from: 'ship', to: 'validate' }`; `world.adapters.connectors.calls()` holds one `merge` call with `expectedHead` `abc123`; then Validate and Close (attach a `suggested` labelled learning first) take the item to `done`.
+`KN-13.approve-merges-and-advances.ts` (the software path end to end): enqueue; advance to Build with `simAdvance`; the agent submits at Build and Check with `change` `{ pullRequest: { repo: 'unfoldingWord/uw-platform', number: 42 }, head: 'abc123', paths: ['apps/uw-app/board.tsx'], declaration: { riskTier: 'standard', riskDomains: [] } }`; the editor claims Ship and submits → parked; `world.adapters.githubFacts.given({ ref, state: 'open', draft: false, head: 'abc123', checks: <the six jobs success on abc123>, reviews: [{ reviewer: 'uw-reviewer', commit: 'abc123', state: 'approved', provider: 'anthropic' }], freshAt })`; the owner approves → accepted, `advanced: true`; one `gate_decisions` row; the log has `gate_approved`, `connector_succeeded`, `stage_advanced { from: 'ship', to: 'validate' }`; `world.adapters.connectors.calls()` holds one `merge` call with `expectedHead` `abc123`; then Validate and Close (attach a `suggested` labelled learning first) take the item to `done`.
 
 `KN-11.ship-rule-refuses-on-facts.ts`: the same item parked at Ship with facts whose head is `def456` → `head_mismatch` with `ship_refused` `{ reasons: ['head_mismatch'] }`, no decision row, no connector call, still parked; facts with a draft PR and a failing `test` job → `pr_is_draft` first and `detail.reasons` `['pr_is_draft', 'checks_not_green']`.
 
-`KN-12.high-tier-needs-two-providers-and-domain-grants.ts`: a change touching `packages/db/migrations/0009_x.sql` declared `standard` → tier `high`, domains `['migration']`; with one review → `reviewer_count_below_tier`; with two reviews both `anthropic` → `reviewer_providers_not_distinct`; with `anthropic` and `openai` but approved by Kim (area admin) → `approver_lacks_domain_grant`; by Ian (org admin) → advanced.
+`KN-12.high-tier-needs-two-providers-and-domain-grants.ts`: a change touching `packages/db/migrations/0009_x.sql` declared `standard` → tier `high`, domains `['migration']`; with one review → `reviewer_count_below_tier`; with two reviews both `anthropic` → `reviewer_providers_not_distinct`; with `anthropic` and `openai` but approved by Kim (area admin) → `approver_lacks_domain_grant`; by the owner (org admin) → advanced.
 
-`KN-13.override-needs-a-reason.ts`: facts with no review → Ian's approve is `no_reviewer_approval`; override with reason `'Hotfix for the outage on 2026-10-01'` → advanced, `gate_overridden` carries the reason, the decision row carries it, and the connector call's `message` ends with `Override: Hotfix for the outage on 2026-10-01`; override of a `high` item with one reviewer is still `reviewer_count_below_tier` (P12).
+`KN-13.override-needs-a-reason.ts`: facts with no review → the owner's approve is `no_reviewer_approval`; override with reason `'Hotfix for the outage on 2026-10-01'` → advanced, `gate_overridden` carries the reason, the decision row carries it, and the connector call's `message` ends with `Override: Hotfix for the outage on 2026-10-01`; override of a `high` item with one reviewer is still `reviewer_count_below_tier` (P12).
 
 `sim/kernel/connector-exit.test.ts`, `describe('KN-13 a connector that refuses or is not wired leaves the decision and the item parked', …)`: with `connectors.refuseNext('merge', 'merge conflict')`, approve is accepted with `advanced: false`, the decision row and `gate_approved` exist, `connector_refused { reason: 'merge conflict' }` is recorded, the item is still parked at Ship; a kernel built with `createKernel({ ...world.adapters, connectors: { run: () => notWiredCall('connectors', 'run') } })` records `connector_refused { reason: 'not_wired' }` the same way and nothing throws.
 
@@ -3455,7 +3455,7 @@ Run: `pnpm trace` and confirm none of KN-1 to KN-18 is listed as unproven. Grep 
 
 - New dependencies: `2026-10-01 | fast-check | hand-written random generators for the replay, projection, template and ship-rule property tests (root devDependency, tools/properties only)`; `@uw/core` workspace link in `packages/harness` (not a replacement: `can()` for the kernel's checks).
 - Not verified: the `uw_app` role and its grants on Neon (only PGlite and the local Postgres 16 ran them); `CREATE ROLE` permission for the migration role on Neon; the event-position lock under production concurrency.
-- Waiting on a person: `| 2026-10-01 | KN-3 | migration 0007 creates uw_app and its grants | the Hyperdrive connection's login role made a member of uw_app and not an owner of the tables; confirm the Neon migration role may CREATE ROLE | Ian |`.
+- Waiting on a person: `| 2026-10-01 | KN-3 | migration 0007 creates uw_app and its grants | the Hyperdrive connection's login role made a member of uw_app and not an owner of the tables; confirm the Neon migration role may CREATE ROLE | The owner |`.
 
 - [ ] **Step 3: Verify and commit**
 

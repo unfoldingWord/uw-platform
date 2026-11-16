@@ -20,10 +20,10 @@ const storedAt = new Date('2026-10-02T08:30:00.000Z');
 export type GateWorld = {
   readonly db: Database;
   readonly item: ItemState;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly kim: Principal;
   readonly kimEmail: string;
-  readonly ianEmail: string;
+  readonly rowanEmail: string;
   readonly viewerEmail: string;
   readonly strangerEmail: string;
 };
@@ -108,10 +108,10 @@ export async function gateWorld(db: Database): Promise<GateWorld> {
   return {
     db,
     item: parked.item,
-    ian: parked.ian,
+    rowan: parked.rowan,
     kim: parked.kim,
     kimEmail,
-    ianEmail: 'ian.lindsley@unfoldingword.org',
+    rowanEmail: 'rowan.test@unfoldingword.org',
     viewerEmail: await person(db, 'gate-viewer', 'viewer', '80-89'),
     strangerEmail: await person(db, 'gate-stranger', 'viewer', '20-29'),
   };

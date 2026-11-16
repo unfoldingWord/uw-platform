@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { awaitBlocked } from '../../../packages/harness/port-contracts/lock-wait.ts';
 import { kernelOn, personOn } from '../testing/kernel.ts';
 
-const ianId = '00000000-0000-4000-8000-000000000001';
+const rowanId = '00000000-0000-4000-8000-000000000001';
 const instant = new Date();
 const clock: Clock = { now: () => instant };
 
@@ -20,7 +20,7 @@ type Connections = {
 
 type Race = {
   readonly connections: Connections;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly harnessId: string;
   readonly ship: Stage;
 };
@@ -36,10 +36,10 @@ function accepted<T>(outcome: KernelOutcome<T>, what: string): T {
 
 async function raceOn(connections: Connections): Promise<Race> {
   const { editor } = connections;
-  const ian = await personOn(editor, ianId, 'ian.lindsley@unfoldingword.org', instant);
+  const rowan = await personOn(editor, rowanId, 'rowan.test@unfoldingword.org', instant);
   const harnessId = crypto.randomUUID();
   const { stages } = accepted(
-    await kernelOn(editor, clock).stages.activate(caller(ian), {
+    await kernelOn(editor, clock).stages.activate(caller(rowan), {
       harnessId,
       harnessKey: 'software',
       jdArea: '80-89',
@@ -51,7 +51,7 @@ async function raceOn(connections: Connections): Promise<Race> {
   );
   const ship = stages.find((stage) => stage.key === 'ship');
   if (ship === undefined) throw new Error('no ship stage');
-  return { connections, ian, harnessId, ship };
+  return { connections, rowan, harnessId, ship };
 }
 
 async function withRace(work: (race: Race) => Promise<void>): Promise<void> {
@@ -81,7 +81,7 @@ async function editWhileADecisionHoldsTheStage(race: Race) {
     await released;
   });
   await stageLocked;
-  const edit = kernelOn(race.connections.editor, clock).stages.updateStage(caller(race.ian), {
+  const edit = kernelOn(race.connections.editor, clock).stages.updateStage(caller(race.rowan), {
     harnessId: race.harnessId,
     stageKey: 'ship',
     change: { connector: 'none', exitGate: 'checks' },

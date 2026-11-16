@@ -15,7 +15,7 @@ import { callTool, httpClient } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
 import { systemClock } from '../ports/clock.ts';
 
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 
 type Owner = { readonly id: string; readonly email: string; readonly adminGrant: string };
 
@@ -39,7 +39,7 @@ type Rig = {
   readonly db: Database;
   readonly fixture: AccessFixture;
   readonly kernel: Kernel;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly drop: () => Promise<void>;
 };
 
@@ -65,13 +65,13 @@ async function openRig(): Promise<Rig> {
   await seedOwner(db, KIM, '00000000-0000-4000-8000-000000002612');
   await seedOwner(db, LEE, '00000000-0000-4000-8000-000000002622');
   await seedOwner(db, ADA, '00000000-0000-4000-8000-000000002632');
-  const ian = await personOn(db, IAN_ID, 'ian.lindsley@unfoldingword.org', new Date());
+  const rowan = await personOn(db, ROWAN_ID, 'rowan.test@unfoldingword.org', new Date());
   const drop = async () => {
     await db.$client.end();
     await database.drop();
   };
   const fixture = await createAccessFixture();
-  return { db, fixture, kernel: kernelOn(db, systemClock), ian, drop };
+  return { db, fixture, kernel: kernelOn(db, systemClock), rowan, drop };
 }
 
 function rig(): Promise<Rig> {
@@ -103,7 +103,7 @@ async function harnessOf(r: Rig): Promise<string> {
     repository: `unfoldingWord/${key}`,
     requiredChecks: [...defaultCiChecks],
   };
-  value(await r.kernel.stages.activate(caller(r.ian), activate));
+  value(await r.kernel.stages.activate(caller(r.rowan), activate));
   return harnessId;
 }
 
@@ -228,7 +228,7 @@ describe.skipIf(!testServer)('AB-6 page and task verbs check the named delegatio
 
 async function itemOn(r: Rig, harnessId: string): Promise<string> {
   const input = { harnessId, title: 'lapse', pageId: null, priority: 1, due: null };
-  return value(await r.kernel.items.enqueue(caller(r.ian), { ...input, delegationId: null }))
+  return value(await r.kernel.items.enqueue(caller(r.rowan), { ...input, delegationId: null }))
     .itemId;
 }
 

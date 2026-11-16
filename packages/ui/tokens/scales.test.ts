@@ -87,7 +87,7 @@ describe('UI-1 the colour scales are generated from the brand colours', () => {
   });
 
   it.each(Object.entries(greyAnchors))(
-    "UI-1 Jesse's grey %s from the prototype sits exactly on its step (#97)",
+    "UI-1 the prototype's grey %s sits exactly on its step (#97)",
     (step, hex) => {
       expect(colourScales().get('grey')?.get(Number(step))).toBe(hex);
     },

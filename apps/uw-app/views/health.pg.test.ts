@@ -16,7 +16,7 @@ async function inHealth(work: (world: BoardWorld) => Promise<void>): Promise<voi
   await withAppDatabase(async (db: Database) => work(await boardWorld(db, clock)));
 }
 
-async function documentOf(world: BoardWorld, path = healthPath(), email = world.ianEmail) {
+async function documentOf(world: BoardWorld, path = healthPath(), email = world.rowanEmail) {
   const page = await getHtml(world.db, email, path, {}, clock);
   return new JSDOM(page.text).window.document;
 }
@@ -89,7 +89,7 @@ async function countsFormatted(world: BoardWorld): Promise<void> {
 }
 
 async function unknownIndicators(world: BoardWorld): Promise<void> {
-  const page = (path: string) => getHtml(world.db, world.ianEmail, path, {}, clock);
+  const page = (path: string) => getHtml(world.db, world.rowanEmail, path, {}, clock);
   const missing = await page(healthPath('nowhere'));
   expect(missing.status).toBe(404);
   for (const path of ['/health/spendx', '/health/xbreaker', '/health/spend/x']) {
@@ -102,7 +102,7 @@ async function unknownIndicators(world: BoardWorld): Promise<void> {
 async function sameForEveryone(world: BoardWorld): Promise<void> {
   const plane = async (email: string) =>
     kpis(await documentOf(world, healthPath(), email)).slice(PLATFORM.length);
-  const admin = await plane(world.ianEmail);
+  const admin = await plane(world.rowanEmail);
   expect(admin.find(([label]) => label === 'Runs today')?.[2]).not.toBe(
     '0 on the platform, 0 on own machines',
   );
@@ -112,7 +112,7 @@ async function sameForEveryone(world: BoardWorld): Promise<void> {
 }
 
 async function inTheShell(world: BoardWorld): Promise<void> {
-  const page = await getHtml(world.db, world.ianEmail, healthPath(), {}, clock);
+  const page = await getHtml(world.db, world.rowanEmail, healthPath(), {}, clock);
   const document = new JSDOM(page.text).window.document;
   expect(document.querySelector('nav a[href="/health"]')?.getAttribute('aria-current')).toBe(
     'page',

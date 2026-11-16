@@ -25,7 +25,7 @@ import { kernelOn, personOn } from '../testing/kernel.ts';
 import { callTool, httpClient } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
 
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 const BENCH_OWNER = {
   id: '00000000-0000-4000-8000-000000002701',
   email: 'bench-owner@unfoldingword.org',
@@ -36,7 +36,7 @@ type Rig = {
   readonly db: Database;
   readonly fixture: AccessFixture;
   readonly kernel: Kernel;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly drop: () => Promise<void>;
 };
 type Bench = { readonly harnessId: string; readonly repository: string };
@@ -57,12 +57,18 @@ async function openRig(): Promise<Rig> {
     grantedAt: new Date('2026-01-01T00:00:00.000Z'),
     expiresAt: null,
   });
-  const ian = await personOn(db, IAN_ID, 'ian.lindsley@unfoldingword.org', new Date());
+  const rowan = await personOn(db, ROWAN_ID, 'rowan.test@unfoldingword.org', new Date());
   const drop = async () => {
     await db.$client.end();
     await database.drop();
   };
-  return { db, fixture: await createAccessFixture(), kernel: kernelOn(db, systemClock), ian, drop };
+  return {
+    db,
+    fixture: await createAccessFixture(),
+    kernel: kernelOn(db, systemClock),
+    rowan,
+    drop,
+  };
 }
 
 function rig(): Promise<Rig> {
@@ -95,7 +101,7 @@ async function benchHarness(r: Rig): Promise<Bench> {
     repository,
     requiredChecks: [...defaultCiChecks],
   };
-  value(await r.kernel.stages.activate(caller(r.ian), activate));
+  value(await r.kernel.stages.activate(caller(r.rowan), activate));
   return { harnessId, repository };
 }
 
@@ -298,7 +304,7 @@ async function personCannotClaim(): Promise<void> {
     ...page,
     status: 'suggested',
   });
-  const created = await createPage(r.db, r.ian, command, crypto.randomUUID(), new Date());
+  const created = await createPage(r.db, r.rowan, command, crypto.randomUUID(), new Date());
   expect(created).toMatchObject({ ok: false, reason: 'malformed_command' });
 }
 

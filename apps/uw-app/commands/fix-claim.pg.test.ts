@@ -4,7 +4,7 @@ import type { Database } from '@uw/db/client';
 import { command, eventsNamed, softwareHarness } from '../testing/commands.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 
-const IAN_EMAIL = 'ian.lindsley@unfoldingword.org';
+const ROWAN_EMAIL = 'rowan.test@unfoldingword.org';
 
 async function fixClaimSwitch(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
@@ -15,7 +15,13 @@ async function fixClaimSwitch(db: Database): Promise<void> {
   });
   expect(byEditor.body).toEqual({ status: 'error', requestId, reason: 'not_permitted' });
   const fresh = { requestId: randomUUID(), enabled: true };
-  const byAdmin = await command(db, { email: IAN_EMAIL }, scene.harnessId, 'set_fix_claim', fresh);
+  const byAdmin = await command(
+    db,
+    { email: ROWAN_EMAIL },
+    scene.harnessId,
+    'set_fix_claim',
+    fresh,
+  );
   expect(byAdmin.body).toEqual({ status: 'accepted', requestId: fresh.requestId });
   const [set] = await eventsNamed(db, scene.harnessId, 'fix_claim_set');
   expect(set).toMatchObject({ evidence: { enabled: true }, requestId: fresh.requestId });

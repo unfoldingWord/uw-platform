@@ -21,7 +21,7 @@ import { platformStore } from '../ports/store.ts';
 import { listForDispatch } from '../testing/dispatch.ts';
 import { agentOf, fixedFacts, kernelOn, personOn } from '../testing/kernel.ts';
 
-const ianId = '00000000-0000-4000-8000-000000000001';
+const rowanId = '00000000-0000-4000-8000-000000000001';
 const head = 'a'.repeat(40);
 const pullRequest = { repo: 'unfoldingWord/uw-platform', number: 42 };
 const instant = new Date();
@@ -111,11 +111,11 @@ async function passStage(kernel: Kernel, worker: Principal, itemId: string, chan
 async function parkAtShip(
   db: Database,
   kernel: Kernel,
-  ian: Principal,
+  rowan: Principal,
   harnessId: string,
 ): Promise<ItemState> {
   accepted(
-    await kernel.stages.activate(caller(ian), {
+    await kernel.stages.activate(caller(rowan), {
       harnessId,
       harnessKey: 'software',
       jdArea: '80-89',
@@ -127,7 +127,7 @@ async function parkAtShip(
   );
   await listForDispatch(db, 'unfoldingWord/uw-platform');
   const { itemId } = accepted(
-    await kernel.items.enqueue(caller(ian), {
+    await kernel.items.enqueue(caller(rowan), {
       harnessId,
       title: 'Show the board',
       pageId: null,
@@ -137,9 +137,9 @@ async function parkAtShip(
     }),
     'enqueue',
   );
-  const agent = agentOf(ian, 'builder');
+  const agent = agentOf(rowan, 'builder');
   for (const [worker, change] of [
-    [ian, false],
+    [rowan, false],
     [agent, false],
     [agent, false],
     [agent, true],
@@ -147,7 +147,7 @@ async function parkAtShip(
   ] as const) {
     await passStage(kernel, worker, itemId, change);
   }
-  return passStage(kernel, ian, itemId, false);
+  return passStage(kernel, rowan, itemId, false);
 }
 
 type Script = {
@@ -206,7 +206,7 @@ function holdingStore(db: Database): Hold {
 
 type Race = {
   readonly connections: Connections;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly item: ItemState;
   readonly connectors: Connectors;
 };
@@ -228,13 +228,13 @@ async function withConnections(work: (connections: Connections) => Promise<void>
 
 async function parkedOn(connections: Connections): Promise<Omit<Race, 'connectors'>> {
   const { one } = connections;
-  const ian = await personOn(one, ianId, 'ian.lindsley@unfoldingword.org', instant);
-  const item = await parkAtShip(one, kernelOn(one, decidedClock), ian, crypto.randomUUID());
-  return { connections, ian, item };
+  const rowan = await personOn(one, rowanId, 'rowan.test@unfoldingword.org', instant);
+  const item = await parkAtShip(one, kernelOn(one, decidedClock), rowan, crypto.randomUUID());
+  return { connections, rowan, item };
 }
 
 function approve(kernel: Kernel, race: Omit<Race, 'connectors'>) {
-  return kernel.gates.decide(caller(race.ian), {
+  return kernel.gates.decide(caller(race.rowan), {
     itemId: race.item.itemId,
     decision: 'approve',
     reason: null,
@@ -285,7 +285,7 @@ function recoverOn(db: Database, race: Race, hold: Hold | null = null) {
     connectors,
     ...(hold === null ? {} : { store: hold.store }),
   });
-  return kernel.gates.recoverConnectors(caller(race.ian), { harnessId: race.item.harnessId });
+  return kernel.gates.recoverConnectors(caller(race.rowan), { harnessId: race.item.harnessId });
 }
 
 async function outcomeEvents(race: Pick<Race, 'connections' | 'item'>): Promise<string[]> {
