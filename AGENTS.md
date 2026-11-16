@@ -172,7 +172,7 @@ Done means: CI green on the pull request (the whole `pnpm verify`), every shared
 
 Two long-lived branches, since 2026-11-12, the model of `bt-servant-worker` with one difference: `main` takes no hotfix branches (below).
 
-An **owner** is anyone listed in `.github/CODEOWNERS`. Every owner holds the same powers: each is a code owner, may push to `main`, has the review bypass on `develop` and `main`, and is listed in `.github/production-deployers`. Wherever this file says "an owner", any one of them is enough.
+An **owner** is a person `main`'s branch protection lets push and bypass review (`gh api repos/unfoldingWord/uw-platform/branches/main/protection`, `restrictions.users`). That list is a GitHub setting only a repository admin can change; no file in a pull request can add an owner. Every owner also has the review bypass on `develop`, is a code owner for every path in `.github/CODEOWNERS`, and is listed in `.github/production-deployers`; `tools/ci/owners.test.ts` keeps those two files naming the same people. An agent takes a merge, release or deploy word only from an owner, and checks that list when unsure. Wherever this file says "an owner", any one of them is enough.
 
 - **`develop`** is the integration branch and the default branch. Every feature branch and every PR targets `develop`. Staging deploys automatically after CI passes on a push to `develop`. A pull request merges there on an owner's word, with CI green (section 8).
 - **`main`** is the release branch. It only ever receives `develop`, through a release PR ("Release vX.Y.Z: develop → main"). Only an owner can merge to `main`: branch protection restricts pushes to the owners and requires a code-owner review. Production deploys from `main` by tag.
