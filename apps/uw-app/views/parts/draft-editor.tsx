@@ -4,6 +4,7 @@ import type { WorkflowDraftView } from '@uw/harness';
 import { Card } from '@uw/ui/components/card.tsx';
 import { CommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
 import { TextField } from '@uw/ui/components/field.tsx';
+import { Note } from '@uw/ui/components/note.tsx';
 import { DraftRow } from './draft-row.tsx';
 import { cleanCheck, problemCount } from './draft-words.ts';
 
@@ -128,13 +129,9 @@ function LockBar(props: { readonly draft: WorkflowDraftView; readonly at: Date }
     ? `${name} is editing this workflow (started ${since(draft, props.at)} ago). The live workflow is unchanged until they publish.`
     : `${name} started a draft ${since(draft, props.at)} ago and stopped editing, so their lock has lapsed. The live workflow is unchanged.`;
   return (
-    <p
-      data-lock-bar
-      role="note"
-      class="m-0 rounded-md border border-line bg-raised px-3 py-2 text-sm font-semibold text-text-2"
-    >
-      {words}
-    </p>
+    <div data-lock-bar>
+      <Note>{words}</Note>
+    </div>
   );
 }
 
