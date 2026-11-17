@@ -269,6 +269,7 @@ async function lookOfFlow(world: BoardWorld): Promise<void> {
     ['Queue', null],
     ['Waiting On You', null],
     ['Flow', 'page'],
+    ['Stages & Controls', null],
   ]);
 }
 
@@ -291,5 +292,5 @@ describe.skipIf(!testServer)('the Flow view', () => {
   it('the flow diagram keeps a minimum width from a size token and scrolls inside its own wrapper', () =>
     inFlow(scrollsAtPhoneWidth));
   it('the flow view renders with no screen problems', () => inFlow(noProblems));
-  it('UI-10 Flow sums up the harness and offers the Queue and Flow tabs', () => inFlow(lookOfFlow));
+  it('UI-10 Flow sums up the harness and offers the workflow tabs', () => inFlow(lookOfFlow));
 });

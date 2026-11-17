@@ -12,7 +12,7 @@ import { pagesRefusal, type DraftInput } from './lock.ts';
 
 export type PublishInput = DraftInput & { readonly revision: number };
 
-function resultingStages(
+export function resultingStages(
   ports: DraftPorts,
   harnessId: string,
   live: readonly Stage[],
@@ -28,7 +28,7 @@ function resultingStages(
   }));
 }
 
-async function apply(
+export async function applyStages(
   tx: StoreTransaction,
   live: readonly Stage[],
   resulting: readonly Stage[],
@@ -98,7 +98,7 @@ async function publish(
   const problems = await draftProblems(scope.tx, scope.harness, live, held.stages);
   if (problems.length > 0) return refused('draft_has_problems', { problems: problems.length });
   const resulting = resultingStages(ports, scope.harness.id, live, held.stages);
-  await apply(scope.tx, live, resulting);
+  await applyStages(scope.tx, live, resulting);
   await scope.record([
     ...editDrafts(live, resulting),
     draft('workflow_published', summaryOf(live, resulting)),

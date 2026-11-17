@@ -23,6 +23,12 @@ export const OUTCOME_TEXT: Readonly<Record<string, string>> = {
   discard_workflow_draft: 'Draft discarded',
   publish_workflow_draft: 'Published',
   take_over_workflow_draft: 'You hold the draft now',
+  set_stage_rules: 'Saved',
+  set_shadow: 'Saved',
+  set_hosted_builder: 'Saved',
+  set_freeze: 'Saved',
+  pause: 'Paused',
+  resume: 'Resumed',
 };
 
 const outcomes: ReadonlyMap<string, string> = new Map(Object.entries(OUTCOME_TEXT));
@@ -34,8 +40,12 @@ function counted(control: Control): boolean {
   return !control.hasAttribute('disabled');
 }
 
+const fieldTags = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
+
 function formFields(form: HTMLFormElement): CommandFields {
-  const controls = [...form.querySelectorAll<Control>('input[name], textarea[name], select[name]')];
+  const controls = [...form.elements].filter(
+    (element): element is Control => fieldTags.has(element.tagName) && element.hasAttribute('name'),
+  );
   const entries = controls
     .filter(counted)
     .map((control) => [control.getAttribute('name') ?? '', control.value] as const);
@@ -120,8 +130,9 @@ async function onSubmit(event: SubmitEvent, deps: CommandDeps): Promise<void> {
 }
 
 function markDirty(event: Event): void {
-  const target = event.target as Element | null;
-  target?.closest('form[data-command]')?.setAttribute('data-dirty', '');
+  const target = event.target as (Element & { readonly form?: HTMLFormElement | null }) | null;
+  const linked = target?.form?.hasAttribute('data-command') === true ? target.form : null;
+  (linked ?? target?.closest('form[data-command]'))?.setAttribute('data-dirty', '');
 }
 
 export function wireCommandForms(root: Document | Element, deps: CommandDeps): void {

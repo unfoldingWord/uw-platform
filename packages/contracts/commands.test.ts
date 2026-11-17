@@ -114,6 +114,40 @@ describe("#103 a workflow's stages change only through a draft", () => {
   });
 });
 
+describe("#108 a stage's rules change live, never its shape", () => {
+  const rules = validBody('set_stage_rules');
+  const entry = (rules['stages'] as Record<string, unknown>[])[0] ?? {};
+  const withEntry = (change: Record<string, unknown>) => ({
+    ...rules,
+    stages: [{ ...entry, ...change }],
+  });
+
+  it('takes the five rule fields for each named stage', () => {
+    expect(commandSchema.safeParse(rules).success).toBe(true);
+  });
+
+  it('names at least one stage, each once', () => {
+    expect(commandSchema.safeParse({ ...rules, stages: [] }).success).toBe(false);
+    expect(commandSchema.safeParse({ ...rules, stages: [entry, entry] }).success).toBe(false);
+  });
+
+  it('never takes a title, phase, key, connector, loop or paused flag', () => {
+    for (const change of [
+      { title: 'Renamed' },
+      { bracket: 'iterate' },
+      { key: 'other' },
+      { connector: 'merge_pr' },
+      { feeds: [] },
+      { paused: true },
+    ])
+      expect(commandSchema.safeParse(withEntry(change)).success).toBe(false);
+  });
+
+  it('keeps the in-progress limit at least 1', () => {
+    expect(commandSchema.safeParse(withEntry({ wipLimit: 0 })).success).toBe(false);
+  });
+});
+
 describe('hosted Builder is turned on through a command', () => {
   it('takes set_hosted_builder with a boolean enabled and nothing else', () => {
     const base = { command: 'set_hosted_builder', requestId };

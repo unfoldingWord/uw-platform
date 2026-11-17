@@ -329,10 +329,11 @@ describe('GL-2 GL-4 the contracts for shadow and refusals', () => {
     }
   });
 
-  it('lifts shadow and never sets it on a live harness', () => {
+  it('#108 turns shadow on and off on a live harness', () => {
     const lift = { command: 'set_shadow', requestId, shadow: false };
     expect(commandSchema.safeParse(lift).success).toBe(true);
-    expect(commandSchema.safeParse({ ...lift, shadow: true }).success).toBe(false);
+    expect(commandSchema.safeParse({ ...lift, shadow: true }).success).toBe(true);
+    expect(commandSchema.safeParse({ ...lift, shadow: 'on' }).success).toBe(false);
   });
 
   it('reads an older harness row as not in shadow with no external reviewers', () => {

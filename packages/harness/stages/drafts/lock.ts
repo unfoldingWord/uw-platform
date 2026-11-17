@@ -2,7 +2,7 @@ import type { DraftStage, Harness, Stage } from '@uw/contracts';
 import type { Caller } from '../../caller.ts';
 import { draft } from '../../items/record.ts';
 import { accepted, refused, type KernelOutcome } from '../../outcome.ts';
-import { instructionsRefusal } from '../commands.ts';
+import { instructionsRefusal } from '../guards.ts';
 import type { HeldDraft, StoreTransaction, WorkflowDraftRow } from '../../store-ports.ts';
 import { heldByCaller, isOutcome, withDraft, type DraftPorts, type DraftScope } from './access.ts';
 import { draftOf, lockActive } from './shape.ts';

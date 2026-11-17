@@ -25,7 +25,7 @@ async function checkOnlyHarness(db: Database, shadow: boolean): Promise<string> 
 }
 
 describe.skipIf(!testServer)('GL-4 shadow through the command API', () => {
-  it('activates in shadow, refuses an editor the lift, lifts for an admin and refuses setting it on', () =>
+  it('activates in shadow, refuses an editor the lift, lifts for an admin and turns it on again (#108)', () =>
     withAppDatabase(async (db) => {
       const harnessId = await checkOnlyHarness(db, true);
       const [activated] = await eventsNamed(db, harnessId, 'template_activated');
@@ -46,7 +46,8 @@ describe.skipIf(!testServer)('GL-4 shadow through the command API', () => {
         requestId: randomUUID(),
         shadow: true,
       });
-      expect(on.status).toBe(400);
+      expect(on.body).toMatchObject({ status: 'accepted' });
+      expect(await eventsNamed(db, harnessId, 'shadow_turned_on')).toHaveLength(1);
     }));
 });
 

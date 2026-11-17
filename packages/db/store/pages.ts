@@ -8,7 +8,7 @@ import {
 import { isoDateSchema } from '@uw/core/dates';
 import type { AnyExecutor } from '../any-database.ts';
 import { pages, pageVersions } from '../schema.ts';
-import type { PageFacts, PagesGateway, PersonaActivation } from './types.ts';
+import type { PageFacts, PageTitle, PagesGateway, PersonaActivation } from './types.ts';
 
 export const factColumns = {
   id: pages.id,
@@ -126,6 +126,17 @@ async function platformFor(executor: AnyExecutor, jdArea: string): Promise<PageF
   return row === undefined ? null : toFacts(row);
 }
 
+const SKILL_LIST_LIMIT = 200;
+
+function skillsFor(executor: AnyExecutor, jdArea: string): Promise<readonly PageTitle[]> {
+  return executor
+    .select({ id: pages.id, title: pages.title })
+    .from(pages)
+    .where(and(eq(pages.jdArea, jdArea), eq(pages.type, 'skill')))
+    .orderBy(asc(pages.title), asc(pages.id))
+    .limit(SKILL_LIST_LIMIT);
+}
+
 export function bindPages(executor: AnyExecutor): PagesGateway {
   return {
     read: {
@@ -135,6 +146,7 @@ export function bindPages(executor: AnyExecutor): PagesGateway {
       },
       staleLearnings: (today, limit) => staleLearnings(executor, today, limit),
       platformFor: (jdArea) => platformFor(executor, jdArea),
+      skillsFor: (jdArea) => skillsFor(executor, jdArea),
     },
     write: { activatePersona: (activation) => activatePersona(executor, activation) },
   };

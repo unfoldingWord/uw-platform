@@ -136,11 +136,13 @@ export type PersonaActivation = {
   readonly editSource: Identity;
   readonly traceId: string;
 };
+export type PageTitle = { readonly id: string; readonly title: string };
 export type PagesGateway = {
   readonly read: {
     facts(pageIds: readonly string[]): Promise<readonly PageFacts[]>;
     staleLearnings(today: string, limit: number): Promise<readonly PageFacts[]>;
     platformFor(jdArea: string): Promise<PageFacts | null>;
+    skillsFor(jdArea: string): Promise<readonly PageTitle[]>;
   };
   readonly write: { activatePersona(activation: PersonaActivation): Promise<PageFacts | null> };
 };

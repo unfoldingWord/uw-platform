@@ -193,6 +193,7 @@ export const unchangedNames: ReadonlySet<EventName> = new Set<EventName>([
   'review_verdict_recorded',
   'shadow_verdict',
   'shadow_lifted',
+  'shadow_turned_on',
   'freeze_changed',
   'epic_enqueued',
   'done_when_missing',
