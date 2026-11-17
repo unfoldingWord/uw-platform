@@ -146,7 +146,26 @@ async function harnessEncoded(): Promise<void> {
   expect(run.sent.map((sent) => sent.url)).toEqual(['/api/harness/a%2F..%2Fb%3Fc/commands/claim']);
 }
 
+async function linkedControls(): Promise<void> {
+  const dom = page(
+    `<form id="rules" data-command="set_shadow" data-harness="${harnessId}" method="post" action="#"><button type="submit">Save</button><p data-outcome role="status"></p></form><table><tr><td><select name="shadow" form="rules"><option value="false">Off</option><option value="true" selected>On</option></select></td></tr></table>`,
+  );
+  const run = wired(dom, async () => Response.json({ status: 'accepted', requestId }));
+  run.document
+    .querySelector('select')
+    ?.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  expect(run.document.querySelector('form')?.hasAttribute('data-dirty')).toBe(true);
+  submit(run.document, run.document.querySelector('button'));
+  await settled();
+  expect(run.sent[0]?.body).toMatchObject({ command: 'set_shadow', shadow: true });
+}
+
 describe('the command form island', () => {
+  it(
+    '#108 sends and marks dirty a control linked to the form by its form attribute',
+    linkedControls,
+  );
+
   it(
     'the form goes busy before the request and shows the accepted outcome in place',
     busyThenAccepted,

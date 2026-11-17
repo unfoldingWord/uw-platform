@@ -443,7 +443,7 @@ The whole product in `uw-platform`. The comparison called it "the shared harness
 _Avoid_: the shared harness, the system
 
 **Shadow mode**:
-A harness setting under which the ship rule is evaluated and recorded as an event on every head, and nothing is posted to GitHub and no connector runs.
+A harness setting under which the ship rule is evaluated and recorded as an event on every head, and nothing is posted to GitHub and no connector runs. An area admin turns it on or off at any time.
 _Avoid_: dry run (that is a persona check), read-only mode
 
 **Check-only harness**:

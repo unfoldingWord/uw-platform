@@ -20,6 +20,7 @@ import { getHtml } from '../testing/views.ts';
 import {
   agentQueuesPath,
   queuePath,
+  controlsPath,
   flowPath,
   gatePath,
   healthPath,
@@ -139,6 +140,7 @@ async function boardScreens(db: Database): Promise<Screen[]> {
     ['agent-queues', agentQueuesPath()],
     ['queue', queuePath(world.harnessId)],
     ['flow', flowPath(world.harnessId)],
+    ['controls-admin', controlsPath(world.harnessId)],
     ['health', healthPath()],
     ['health-detail', healthPath('breaker')],
     ['persona', personaPath(pageId)],
@@ -149,6 +151,14 @@ async function boardScreens(db: Database): Promise<Screen[]> {
     const page = await getHtml(db, world.rowanEmail, path, headers, viewClock);
     screens.push({ name, html: page.text });
   }
+  const member = await getHtml(
+    db,
+    world.viewer.email,
+    controlsPath(world.harnessId),
+    headers,
+    viewClock,
+  );
+  screens.push({ name: 'controls-member', html: member.text });
   return [...screens, ...(await draftScreens(world))];
 }
 
@@ -257,9 +267,11 @@ describe.skipIf(!testServer || (!browserReady && !required))('UI-16 the screensh
       'agent-queues',
       'queue',
       'flow',
+      'controls-admin',
       'health',
       'health-detail',
       'persona',
+      'controls-member',
       'flow-draft',
       'flow-locked',
       'waiting',

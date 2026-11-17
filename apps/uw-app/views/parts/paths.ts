@@ -28,6 +28,10 @@ export function waitingPath(harnessId: string): string {
   return `${flowPath(harnessId)}/waiting`;
 }
 
+export function controlsPath(harnessId: string): string {
+  return `${flowPath(harnessId)}/controls`;
+}
+
 export function gatePath(harnessId: string, itemId: string): string {
   return `${flowPath(harnessId)}/gates/${segment(itemId)}`;
 }
