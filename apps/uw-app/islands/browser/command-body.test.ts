@@ -84,7 +84,7 @@ describe('#110 the standing-permission forms become command bodies', () => {
   const delegationId = '00000000-0000-4000-8000-0000000000d1';
 
   it('grants a kind of work until the end of the chosen day', () => {
-    const form = { persona: 'agent:reviewer', capability: 'review', expiresOn: '2026-12-31' };
+    const form = { grant: 'agent:reviewer|review', expiresOn: '2026-12-31' };
     expect(commandBody('schedule_regular_tweak', form, requestId)).toEqual({
       command: 'schedule_regular_tweak',
       requestId,
@@ -97,7 +97,7 @@ describe('#110 the standing-permission forms become command bodies', () => {
   });
 
   it('leaves the end open when no day is chosen, and carries a merge tier', () => {
-    const form = { persona: 'agent:merger', capability: 'merge', expiresOn: '', maxTier: 'low' };
+    const form = { grant: 'agent:merger|merge', expiresOn: '', maxTier: 'low' };
     expect(commandBody('schedule_regular_tweak', form, requestId)).toMatchObject({
       expiresAt: null,
       maxTier: 'low',
@@ -105,7 +105,7 @@ describe('#110 the standing-permission forms become command bodies', () => {
   });
 
   it('refuses a day that is not a calendar date', () => {
-    const form = { persona: 'agent:reviewer', capability: 'review', expiresOn: 'soon' };
+    const form = { grant: 'agent:reviewer|review', expiresOn: 'soon' };
     expect(commandBody('schedule_regular_tweak', form, requestId)).toBeNull();
   });
 

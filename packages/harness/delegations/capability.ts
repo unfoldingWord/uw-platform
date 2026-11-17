@@ -1,4 +1,4 @@
-import type { CapabilityWord, StageBracket } from '@uw/contracts';
+import { capabilityWordSchema, type CapabilityWord, type StageBracket } from '@uw/contracts';
 import type { Delegation, PageFacts } from '../ports.ts';
 
 const reach: ReadonlyMap<CapabilityWord, ReadonlySet<StageBracket>> = new Map([
@@ -13,6 +13,12 @@ const lentTo: ReadonlyMap<CapabilityWord, CapabilityWord> = new Map([['fix', 'bu
 
 export function capabilityReaches(capability: CapabilityWord, bracket: StageBracket): boolean {
   return reach.get(capability)?.has(bracket) ?? false;
+}
+
+export function grantableFor(capability: CapabilityWord): readonly CapabilityWord[] {
+  return capabilityWordSchema.options.filter(
+    (granted) => granted !== 'none' && (lentTo.get(granted) ?? granted) === capability,
+  );
 }
 
 export function pageAgrees(page: PageFacts | null, delegation: Delegation): boolean {

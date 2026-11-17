@@ -182,6 +182,18 @@ async function grantsShowsReachAndRevokes(db: Database): Promise<void> {
   expect(after.view.permissions).toEqual([]);
 }
 
+async function grantsOnlyWorkTheAgentCanUse(db: Database): Promise<void> {
+  const made = await softwareHarness(db);
+  const { harnessId } = made;
+  await liveScout(db, made);
+  await added(db, made, 'Spare');
+  const page = documentOf((await getHtml(db, ROWAN, agentsOf(harnessId))).text);
+  const offered = [...page.querySelectorAll('select[name="grant"] option')].map((option) =>
+    option.getAttribute('value'),
+  );
+  expect(offered).toEqual(['agent:scout-software|review']);
+}
+
 async function jobCardShowsLocksAndChecks(db: Database): Promise<void> {
   const made = await softwareHarness(db);
   const pageId = await added(db, made);
@@ -264,6 +276,8 @@ describe.skipIf(!testServer)('#110 the Agents tab', () => {
     withAppDatabase(memberOnlyLooks));
   it('a standing permission shows who granted it and where the agent can work, until it is revoked', () =>
     withAppDatabase(grantsShowsReachAndRevokes));
+  it('the grant form offers only live agents, each with only the kinds of work its page agrees with', () =>
+    withAppDatabase(grantsOnlyWorkTheAgentCanUse));
   it('the job card locks the forbidden actions, marks the unbuilt ones and shows all five checks', () =>
     withAppDatabase(jobCardShowsLocksAndChecks));
   it('saving the job card changes engine, model, budget and actions, re-runs the checks, and Retire retires it', () =>

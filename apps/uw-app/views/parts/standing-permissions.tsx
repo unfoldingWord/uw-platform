@@ -1,13 +1,11 @@
 import { formatDate } from '@uw/core/dates';
-import type { AgentsView, StandingPermission } from '@uw/harness';
+import { grantableFor, type AgentsView, type StandingPermission } from '@uw/harness';
 import { Card } from '@uw/ui/components/card.tsx';
 import { CommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
 import { SelectField } from '@uw/ui/components/field.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
 import { domId } from '@uw/ui/components/text.ts';
 import { capabilityWord } from './agent-words.ts';
-
-const GRANTED_KINDS = ['build', 'review', 'fix', 'iterate', 'merge'] as const;
 
 const columns = [
   { key: 'agent', label: 'Agent' },
@@ -67,13 +65,25 @@ function EndsField(props: { readonly scope: string }) {
   );
 }
 
+function grantPairs(view: AgentsView): readonly { value: string; label: string }[] {
+  return view.agents
+    .filter((agent) => agent.status === 'active')
+    .flatMap((agent) =>
+      grantableFor(agent.capability).map((kind) => ({
+        value: `${agent.identity}|${kind}`,
+        label: `${agent.title} · ${capabilityWord(kind)}`,
+      })),
+    );
+}
+
 function GrantForm(props: { readonly view: AgentsView }) {
   const { view } = props;
-  const live = view.agents.filter((agent) => agent.status === 'active');
-  if (live.length === 0) {
+  const pairs = grantPairs(view);
+  if (pairs.length === 0) {
     return (
       <p class="m-0 border-t border-line px-4 py-3 text-sm text-text-3">
-        An agent needs to be live before it can be given a standing permission.
+        An agent needs to be live, with a kind of work, before it can be given a standing
+        permission.
       </p>
     );
   }
@@ -81,18 +91,7 @@ function GrantForm(props: { readonly view: AgentsView }) {
   return (
     <div class="border-t border-line px-4 py-3">
       <CommandForm harnessId={view.harness.id} command="schedule_regular_tweak">
-        <SelectField
-          name="persona"
-          label="Agent"
-          scope={scope}
-          choices={live.map((agent) => ({ value: agent.identity, label: agent.title }))}
-        />
-        <SelectField
-          name="capability"
-          label="May"
-          scope={scope}
-          choices={GRANTED_KINDS.map((kind) => ({ value: kind, label: capabilityWord(kind) }))}
-        />
+        <SelectField name="grant" label="Agent and kind of work" scope={scope} choices={pairs} />
         <SelectField
           name="maxTier"
           label="Merge risk"

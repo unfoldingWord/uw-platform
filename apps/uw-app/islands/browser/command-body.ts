@@ -41,13 +41,16 @@ function endOfDay(day: string | undefined): string | null | undefined {
   return calendarDay.test(day) ? `${day}T23:59:59.000Z` : undefined;
 }
 
-const grant: Shape = (given) => ({
-  persona: given.get('persona'),
-  capability: given.get('capability'),
-  expiresAt: endOfDay(given.get('expiresOn')),
-  supersedes: null,
-  maxTier: optional(given.get('maxTier')),
-});
+const grant: Shape = (given) => {
+  const [persona, capability] = (given.get('grant') ?? '').split('|');
+  return {
+    persona,
+    capability,
+    expiresAt: endOfDay(given.get('expiresOn')),
+    supersedes: null,
+    maxTier: optional(given.get('maxTier')),
+  };
+};
 
 const switched =
   (field: string): Shape =>
