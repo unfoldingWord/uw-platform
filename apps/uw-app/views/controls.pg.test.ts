@@ -31,14 +31,13 @@ async function adminEdits(world: BoardWorld): Promise<void> {
   const { document, text, status } = await controlsFor(world, world.rowanEmail);
   expect(status).toBe(200);
   const rules = document.querySelector('form[data-command="set_stage_rules"]');
-  expect(rules?.getAttribute('id')).toBe('stage-rules');
+  const formId = rules?.getAttribute('id') ?? '';
+  expect(formId).not.toBe('');
   expect(document.querySelectorAll('table tbody tr').length).toBeGreaterThan(3);
   const pickup = document.querySelector('select[name="stage.0.agentPickup"]');
-  expect(pickup?.getAttribute('form')).toBe('stage-rules');
+  expect(pickup?.getAttribute('form')).toBe(formId);
   expect(pickup?.hasAttribute('disabled')).toBe(false);
-  expect(document.querySelector('input[name="stage.0.id"]')?.getAttribute('form')).toBe(
-    'stage-rules',
-  );
+  expect(document.querySelector('input[name="stage.0.id"]')?.getAttribute('form')).toBe(formId);
   for (const command of switchCommands)
     expect(document.querySelector(`form[data-command="${command}"]`)).not.toBeNull();
   expect(document.querySelector('form[data-command="pause"]')).not.toBeNull();
@@ -56,8 +55,7 @@ async function memberSeesViewOnly(world: BoardWorld): Promise<void> {
   expect(pickups.length).toBeGreaterThan(3);
   expect(pickups.every((select) => select.hasAttribute('disabled'))).toBe(true);
   const shadow = document.querySelector('[data-switch="shadow"]');
-  expect(shadow?.getAttribute('aria-pressed')).toBe('false');
-  expect(shadow?.hasAttribute('disabled')).toBe(true);
+  expect(shadow?.getAttribute('data-state')).toBe('off');
   expect(await screenProblems(text)).toEqual([]);
 }
 
@@ -68,9 +66,7 @@ async function showsSwitchState(world: BoardWorld): Promise<void> {
     shadow: true,
   });
   const { document } = await controlsFor(world, world.viewer.email);
-  expect(document.querySelector('[data-switch="shadow"]')?.getAttribute('aria-pressed')).toBe(
-    'true',
-  );
+  expect(document.querySelector('[data-switch="shadow"]')?.getAttribute('data-state')).toBe('on');
   const admin = await controlsFor(world, world.rowanEmail);
   const form = admin.document.querySelector('form[data-command="set_shadow"]');
   expect(form?.querySelector('input[name="shadow"]')?.getAttribute('value')).toBe('false');

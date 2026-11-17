@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import type { Child } from 'hono/jsx';
 import type { Stage } from '@uw/contracts';
 import type { OpenDraft, StageControlsView } from '@uw/harness';
 import { Badge } from '@uw/ui/components/badge.tsx';
@@ -6,6 +7,8 @@ import { Card } from '@uw/ui/components/card.tsx';
 import { CommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { Table } from '@uw/ui/components/table.tsx';
+import { domId } from '@uw/ui/components/text.ts';
 import type { AppEnv } from '../../deps.ts';
 import { draftChoices, type Choice } from '../parts/draft-words.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
@@ -16,36 +19,44 @@ import { waitingCount } from '../parts/waiting-count.ts';
 import { workflowCrumbs, workflowTabs } from '../parts/workflow-tabs.ts';
 import { notFound } from './not-found.tsx';
 
-const RULES_FORM = 'stage-rules';
+const RULES_COMMAND = 'set_stage_rules';
 
 const control =
   'rounded-md border border-line bg-surface px-2 py-1 text-sm text-text outline-offset-2 outline-accent-text focus-visible:outline-2 disabled:text-text-3';
 const box = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
-const head = 'px-3 py-2 text-left text-xs font-semibold tracking-wide text-text-3 uppercase';
-const cell = 'border-t border-line px-3 py-2 align-top';
 const primary =
   'inline-flex items-center rounded-md border border-accent bg-accent px-3 py-1 text-sm font-heavy text-on-accent outline-offset-2 outline-accent-text focus-visible:outline-2 aria-disabled:cursor-not-allowed aria-disabled:opacity-50';
 
-type Editing = { readonly admin: boolean };
-
-function linked(props: Editing): Record<string, string> {
-  return props.admin ? { form: RULES_FORM } : {};
+function rulesFormId(harnessId: string): string {
+  return domId('form', RULES_COMMAND, harnessId);
 }
 
+function linked(view: StageControlsView): Record<string, string> {
+  return view.admin ? { form: rulesFormId(view.harness.id) } : {};
+}
+
+type RowProps = {
+  readonly view: StageControlsView;
+  readonly stage: Stage;
+  readonly index: number;
+};
+
+const fieldName = (index: number, field: string): string => `stage.${index}.${field}`;
+
 function Pick(props: {
+  readonly view: StageControlsView;
   readonly name: string;
   readonly label: string;
   readonly choices: readonly Choice[];
   readonly selected: string;
-  readonly admin: boolean;
 }) {
   return (
     <select
       name={props.name}
       aria-label={props.label}
       class={control}
-      disabled={!props.admin}
-      {...linked(props)}
+      disabled={!props.view.admin}
+      {...linked(props.view)}
     >
       {props.choices.map((choice) => (
         <option value={choice.value} selected={choice.value === props.selected}>
@@ -63,11 +74,54 @@ function pageChoices(view: StageControlsView): readonly Choice[] {
   ];
 }
 
-function Checks(props: {
-  readonly view: StageControlsView;
-  readonly stage: Stage;
-  readonly index: number;
-}) {
+function StageName(props: RowProps) {
+  const { view, stage, index } = props;
+  return (
+    <span class="font-heavy text-text">
+      {stage.title}
+      {view.admin ? (
+        <input type="hidden" name={fieldName(index, 'id')} value={stage.id} {...linked(view)} />
+      ) : null}
+    </span>
+  );
+}
+
+function ExitRule(props: RowProps) {
+  const { view, stage, index } = props;
+  return (
+    <div class="flex flex-col gap-1">
+      <Pick
+        view={view}
+        name={fieldName(index, 'exitGate')}
+        label={`To leave ${stage.title}`}
+        choices={draftChoices.exitGate}
+        selected={stage.exitGate}
+      />
+      {stage.connector === 'none' ? null : (
+        <span class="text-xs text-text-3">Acts outside the platform, so a person approves.</span>
+      )}
+    </div>
+  );
+}
+
+function Limit(props: RowProps) {
+  const { view, stage, index } = props;
+  return (
+    <input
+      type="number"
+      name={fieldName(index, 'wipLimit')}
+      aria-label={`Most at once on ${stage.title}`}
+      min="1"
+      max="1000"
+      value={String(stage.wipLimit)}
+      class={`${control} w-8 tabular-nums`}
+      disabled={!view.admin}
+      {...linked(view)}
+    />
+  );
+}
+
+function Checks(props: RowProps) {
   const { view, stage, index } = props;
   const names = [...new Set([...view.validators, ...stage.validators])];
   if (names.length === 0) return <span class="text-sm text-text-3">None registered</span>;
@@ -78,7 +132,7 @@ function Checks(props: {
         <label class="inline-flex items-center gap-1 text-sm">
           <input
             type="checkbox"
-            name={`stage.${index}.validator.${name}`}
+            name={fieldName(index, `validator.${name}`)}
             value={name}
             class={box}
             checked={stage.validators.includes(name)}
@@ -92,7 +146,7 @@ function Checks(props: {
   );
 }
 
-function PauseCell(props: { readonly view: StageControlsView; readonly stage: Stage }) {
+function Running(props: RowProps) {
   const { view, stage } = props;
   const state = stage.paused ? (
     <Badge tone="held">Paused</Badge>
@@ -100,164 +154,68 @@ function PauseCell(props: { readonly view: StageControlsView; readonly stage: St
     <Badge tone="success">Running</Badge>
   );
   if (!view.admin) return state;
-  const command = stage.paused ? 'resume' : 'pause';
+  const verb = stage.paused ? 'Resume' : 'Pause';
   return (
     <div class="flex flex-col items-start gap-1">
       {state}
-      <CommandForm harnessId={view.harness.id} command={command} itemId={stage.id}>
+      <CommandForm harnessId={view.harness.id} command={verb.toLowerCase()} itemId={stage.id}>
         <input type="hidden" name="stageKey" value={stage.key} />
-        <button
-          type="submit"
-          class={commandButton}
-          aria-label={`${stage.paused ? 'Resume' : 'Pause'} ${stage.title}`}
-        >
-          {stage.paused ? 'Resume' : 'Pause'}
+        <button type="submit" class={commandButton} aria-label={`${verb} ${stage.title}`}>
+          {verb}
         </button>
       </CommandForm>
     </div>
   );
 }
 
-type RowProps = {
-  readonly view: StageControlsView;
-  readonly stage: Stage;
-  readonly index: number;
-};
-
-function ExitCell(props: RowProps) {
-  const { view, stage, index } = props;
-  const name = (field: string) => `stage.${index}.${field}`;
-  const merges = stage.connector !== 'none';
-  return (
-    <td class={cell}>
-      <Pick
-        name={name('exitGate')}
-        label={`To leave ${stage.title}`}
-        choices={draftChoices.exitGate}
-        selected={stage.exitGate}
-        admin={view.admin}
-      />
-      {merges ? (
-        <p class="m-0 mt-1 text-xs text-text-3">Acts outside the platform, so a person approves.</p>
-      ) : null}
-    </td>
-  );
-}
-
-function LimitCell(props: RowProps) {
-  const { view, stage, index } = props;
-  const name = (field: string) => `stage.${index}.${field}`;
-  return (
-    <td class={cell}>
-      <input
-        type="number"
-        name={name('wipLimit')}
-        aria-label={`Most at once on ${stage.title}`}
-        min="1"
-        max="1000"
-        value={String(stage.wipLimit)}
-        class={`${control} w-8 tabular-nums`}
-        disabled={!view.admin}
-        {...linked(view)}
-      />
-    </td>
-  );
-}
-
-function RuleRow(props: {
-  readonly view: StageControlsView;
-  readonly stage: Stage;
-  readonly index: number;
-}) {
-  const { view, stage, index } = props;
-  const name = (field: string) => `stage.${index}.${field}`;
-  return (
-    <tr>
-      <th scope="row" class={`${cell} text-left text-sm font-heavy text-text`}>
-        {stage.title}
-        {view.admin ? (
-          <input type="hidden" name={name('id')} value={stage.id} form={RULES_FORM} />
-        ) : null}
-      </th>
-      <td class={cell}>
-        <Pick
-          name={name('agentPickup')}
-          label={`Agents pick up on ${stage.title}`}
-          choices={draftChoices.agentPickup}
-          selected={stage.agentPickup}
-          admin={view.admin}
-        />
-      </td>
-      <ExitCell view={view} stage={stage} index={index} />
-      <LimitCell view={view} stage={stage} index={index} />
-      <td class={cell}>
-        <Pick
-          name={name('instructionsPageId')}
-          label={`Instructions for ${stage.title}`}
-          choices={pageChoices(view)}
-          selected={stage.instructionsPageId ?? ''}
-          admin={view.admin}
-        />
-      </td>
-      <td class={cell}>
-        <Checks view={view} stage={stage} index={index} />
-      </td>
-      <td class={cell}>
-        <PauseCell view={view} stage={stage} />
-      </td>
-    </tr>
-  );
-}
-
 const ruleColumns = [
-  'Stage',
-  'Agents pick up',
-  'To leave the stage',
-  'Most at once',
-  'Instructions',
-  'Checks run',
-  'Running',
+  { key: 'stage', label: 'Stage' },
+  { key: 'pickup', label: 'Agents pick up' },
+  { key: 'exit', label: 'To leave the stage' },
+  { key: 'limit', label: 'Most at once' },
+  { key: 'instructions', label: 'Instructions' },
+  { key: 'checks', label: 'Checks run' },
+  { key: 'running', label: 'Running' },
 ];
 
-function RulesTable(props: { readonly view: StageControlsView }) {
-  return (
-    <table class="w-full border-collapse">
-      <caption class="sr-only">Stage rules</caption>
-      <thead>
-        <tr>
-          {ruleColumns.map((label) => (
-            <th scope="col" class={head}>
-              {label}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {props.view.stages.map((stage, index) => (
-          <RuleRow view={props.view} stage={stage} index={index} />
-        ))}
-      </tbody>
-    </table>
-  );
+function ruleRow(props: RowProps): Readonly<Record<string, Child>> {
+  const { view, stage, index } = props;
+  return {
+    stage: <StageName {...props} />,
+    pickup: (
+      <Pick
+        view={view}
+        name={fieldName(index, 'agentPickup')}
+        label={`Agents pick up on ${stage.title}`}
+        choices={draftChoices.agentPickup}
+        selected={stage.agentPickup}
+      />
+    ),
+    exit: <ExitRule {...props} />,
+    limit: <Limit {...props} />,
+    instructions: (
+      <Pick
+        view={view}
+        name={fieldName(index, 'instructionsPageId')}
+        label={`Instructions for ${stage.title}`}
+        choices={pageChoices(view)}
+        selected={stage.instructionsPageId ?? ''}
+      />
+    ),
+    checks: <Checks {...props} />,
+    running: <Running {...props} />,
+  };
 }
 
 function SaveRules(props: { readonly view: StageControlsView }) {
   const blocked = props.view.draft !== null;
   return (
     <div class="border-t border-line px-4 py-3">
-      <form
-        id={RULES_FORM}
-        data-command="set_stage_rules"
-        data-harness={props.view.harness.id}
-        method="post"
-        action="#"
-        class="flex flex-wrap items-center gap-3"
-      >
+      <CommandForm harnessId={props.view.harness.id} command={RULES_COMMAND}>
         <button type="submit" class={primary} aria-disabled={blocked ? 'true' : undefined}>
           Save changes
         </button>
-        <p data-outcome role="status" aria-live="polite" class="m-0 text-sm text-text-3"></p>
-      </form>
+      </CommandForm>
     </div>
   );
 }
@@ -266,7 +224,12 @@ function StageRules(props: { readonly view: StageControlsView }) {
   const { view } = props;
   return (
     <Card title="Stage rules" sub="Applies to everyone on this workflow" flush>
-      <RulesTable view={view} />
+      <Table
+        caption="Stage rules"
+        columns={ruleColumns}
+        rows={view.stages.map((stage, index) => ruleRow({ view, stage, index }))}
+        bare
+      />
       {view.admin ? <SaveRules view={view} /> : null}
       <p class="m-0 border-t border-line px-4 py-3 text-sm text-text-3">
         Adding, removing or reordering stages, and loops between them, happen in Flow. “A person
@@ -317,44 +280,31 @@ function switchesOf(view: StageControlsView): readonly Switch[] {
   ];
 }
 
-const switchButton =
-  'inline-flex min-w-8 items-center justify-center rounded-md border px-3 py-1 text-sm font-heavy outline-offset-2 outline-accent-text focus-visible:outline-2 disabled:cursor-not-allowed aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-on-accent border-line bg-surface text-text-3';
-
-function SwitchButton(props: { readonly item: Switch; readonly admin: boolean }) {
-  const { item } = props;
+function SwitchState(props: { readonly item: Switch }) {
   return (
-    <button
-      type={props.admin ? 'submit' : 'button'}
-      data-switch={item.key}
-      aria-pressed={item.on ? 'true' : 'false'}
-      aria-label={`${item.title}: ${item.on ? 'on' : 'off'}`}
-      class={switchButton}
-      disabled={!props.admin}
-    >
-      {item.on ? 'On' : 'Off'}
-    </button>
+    <span data-switch={props.item.key} data-state={props.item.on ? 'on' : 'off'}>
+      <Badge tone={props.item.on ? 'info' : 'neutral'}>{props.item.on ? 'On' : 'Off'}</Badge>
+    </span>
   );
 }
 
 function SwitchRow(props: { readonly view: StageControlsView; readonly item: Switch }) {
   const { view, item } = props;
-  const words = (
-    <div class="min-w-0 flex-1">
-      <p class="m-0 text-sm font-heavy text-text">{item.title}</p>
-      <p class="m-0 text-sm text-text-3">{item.about}</p>
-    </div>
-  );
   return (
     <li class="flex flex-wrap items-start gap-3 border-t border-line px-4 py-3 first:border-t-0">
+      <SwitchState item={item} />
+      <div class="min-w-0 flex-1">
+        <p class="m-0 text-sm font-heavy text-text">{item.title}</p>
+        <p class="m-0 text-sm text-text-3">{item.about}</p>
+      </div>
       {view.admin ? (
         <CommandForm harnessId={view.harness.id} command={item.command}>
           <input type="hidden" name={item.field} value={item.on ? 'false' : 'true'} />
-          <SwitchButton item={item} admin />
+          <button type="submit" class={commandButton}>
+            {item.on ? 'Turn off' : 'Turn on'}
+          </button>
         </CommandForm>
-      ) : (
-        <SwitchButton item={item} admin={false} />
-      )}
-      {words}
+      ) : null}
     </li>
   );
 }
