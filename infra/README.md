@@ -105,7 +105,7 @@ An org owner of `unfoldingWord` sets it up once, awaiting go-live:
 
 None of the four appears in any file. Until they are set, `uw-app` treats GitHub as not configured and nothing that runs needs them.
 
-The production App is a second registration from a copy of the manifest with production's ingest URL, once that Worker has a route.
+The production App, `uw-harness`, is a second registration from `github/app-manifest.production.json`, the same manifest with production's ingest URL. Production uw-ingest serves `uw-ingest.unfoldingword.workers.dev` for it.
 
 The webhook host assumes the account's `workers.dev` subdomain is `unfoldingword`; confirm it before registering, and correct the manifest if it differs.
 
@@ -159,6 +159,39 @@ An org owner of `unfoldingWord` registers the App once, awaiting go-live:
    ```
 
 Until the three secrets are set, every GitHub request from the sandbox answers `503 egress not configured` and is logged `github_egress_not_wired` with its host and path.
+
+## Hosted agents (#98)
+
+A hosted agent needs three things the code reads but no file holds: an AI Gateway, the organization's API keys, and the GitHub Apps. Until they are set, the engines answer `not_wired` and nothing is spent. Billing stays as ADR 0006 says (confirmed 2026-11-17).
+
+### Settings
+
+| Setting | Kind | Worker | Value or source |
+|---|---|---|---|
+| `AI_GATEWAY_ACCOUNT_ID` | var | uw-app | The account id, in the wrangler files |
+| `AI_GATEWAY_ID` | var | uw-app | `uw-platform-staging` or `uw-platform-production`, in the wrangler files |
+| `AI_SPEND_CAP_MINOR` | var | uw-app | `50000`, $500 a month, in the wrangler files |
+| `ALWAYS_ON_PROVIDER`, `ALWAYS_ON_MODEL` | var | uw-app | `z-ai` and `z-ai/glm-5.3-flash`, in the wrangler files |
+| `SANDBOX_MINOR_PER_HOUR` | var | uw-app | `3`, in the wrangler files (below) |
+| `AI_GATEWAY_TOKEN` | secret | uw-app | The gateway's authentication token |
+| `AI_GATEWAY_ANALYTICS_TOKEN` | secret | uw-app | An API token with AI Gateway read, for the spend breaker |
+| `OPENROUTER_API_KEY` | secret | uw-app | The organization's key; the always-on tier |
+| `ANTHROPIC_API_KEY` | secret | uw-app | The organization's key; the Claude Code sandbox and `claude-messages` |
+| `OPENAI_API_KEY` | secret | uw-app | The organization's key; the Codex sandbox and the second reviewer |
+| `GITHUB_APP_*`, `BUILDER_GITHUB_APP_*`, `REVIEWER_GITHUB_APP_*`, `REVIEWER_CODEX_GITHUB_APP_*` | secret | uw-app | Set by `pnpm github-apps:convert` |
+| `GITHUB_WEBHOOK_SECRET` | secret | uw-ingest | Set by `pnpm github-apps:convert` |
+
+Each secret is set from `infra/uw-app` (or `infra/uw-ingest`) with `wrangler secret put <NAME> --env staging`, then `--env production`, typed at the prompt and never written to a file or a chat. `tools/infra/agent-settings.test.ts` holds the vars to these values and refuses a var named like a credential.
+
+**The sandbox rate.** Both sandboxes run on the `basic` instance type (1/4 vCPU, 1 GiB memory, 4 GB disk); `lite`'s 256 MiB is too small to run a Node CLI and a clone. At Cloudflare's Containers prices (developers.cloudflare.com/containers/pricing, read 2026-11-17: $0.0000025 per GiB-second of memory, $0.000020 per vCPU-second of active CPU, $0.00000007 per GB-second of disk), a fully busy `basic` instance costs about $0.028 an hour, so the rate is 3 cents an hour, rounded up.
+
+### Setting it up
+
+1. **AI Gateway.** In the Cloudflare dashboard, create two gateways, `uw-platform-staging` and `uw-platform-production`, with authentication on, and create the gateway token. Create an API token with AI Gateway read for the analytics token. Set `AI_GATEWAY_TOKEN` and `AI_GATEWAY_ANALYTICS_TOKEN` on each environment.
+2. **API keys.** Set `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` on each environment.
+3. **GitHub Apps, in one sitting with an org owner.** Run `pnpm github-apps:page <file.html>` and send the page to the owner. For each of the five Apps (`uw-harness-staging`, `uw-harness`, `uw-builder`, `uw-reviewer`, `uw-reviewer-codex`) they click Register, keep the name, install the App on `unfoldingWord/uw-platform` only, and send back the address GitHub lands on, which carries a one-time `code` valid for an hour. For each address, run `pnpm github-apps:convert '<address>'`. It exchanges the code, converts the key to PKCS#8 in memory, finds the installation, and sets the App's secrets on the environments it serves (the harness Apps on one each, with the webhook secret on uw-ingest; Builder and the Reviewers on both). It prints only the names it set. If the App was not installed yet, it says which installation id to set by hand.
+4. **Turn on hosted Builder** for the Software workflow on staging only (Stages & Controls). Production stays off.
+5. **Check on staging.** Add a Builder agent on the Agents tab, put it live, grant it `build`, and put an item in a build stage. The run should open a pull request from `harness/<item>`, its run step should show the model, tokens and cost, the request should appear in the gateway's log, and the spend indicator on Health should move. Then repeat steps 1 to 3 for production and compare `wrangler secret list --env production` with staging.
 
 ## The notifier: web push and Zulip (NT-1, NT-3)
 

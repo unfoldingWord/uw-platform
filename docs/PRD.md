@@ -756,10 +756,10 @@ These need a person, an account or a secret, and the build cannot create them. *
 | Cloudflare Access application with Google as identity provider; team domain and audience tag | FD-7 | The owner, the sponsor | To set up |
 | Access service tokens for agent identities | AB-2, AB-6 | The owner | To set up |
 | Cloudflare Queue and dead-letter queue | FD-10 | The owner | To set up (declared in wrangler) |
-| GitHub App registered on the unfoldingWord org; private key, installation id, webhook secret | GH-1 | an org owner | To set up |
-| A GitHub identity for each Reviewer persona | PE-6, HE-9 | an org owner | To set up |
+| GitHub App registered on the unfoldingWord org; private key, installation id, webhook secret | GH-1 | an org owner | To set up: `uw-harness-staging` and `uw-harness`, registered with `pnpm github-apps:page` and set with `pnpm github-apps:convert` (#98) |
+| A GitHub identity for each Reviewer persona, and the Builder's | PE-5, PE-6, HE-9 | an org owner | To set up: `uw-builder`, `uw-reviewer` and `uw-reviewer-codex`, in the same sitting (#98) |
 | A test repository for the merge connector's integration test | GH-6 | The owner | To create |
-| AI Gateway; Anthropic, OpenAI and OpenRouter API keys | HE-3, HE-4, HE-5, HE-9 | The owner, the sponsor | To set up |
+| AI Gateway; Anthropic, OpenAI and OpenRouter API keys | HE-3, HE-4, HE-5, HE-9 | The owner, the sponsor | To set up: gateways `uw-platform-staging` and `uw-platform-production`; the keys are Worker secrets (#98) |
 | Cloudflare Sandbox and Containers enabled on the account | HE-8, HE-9 | The owner | To check |
 | Zulip bot, its credentials, and an outgoing webhook | NT-3 | The sponsor | To set up |
 | Web push VAPID key pair | NT-1 | The owner | To generate |
@@ -790,8 +790,8 @@ Each has a working assumption so the build does not wait. The assumption stands 
 |---|---|---|
 | Q2, D9 | Which Deploy Package channel is wired first, and does `uw-www` join v1? | None in v1. The BML template's Ship stage carries `publish`, and the handler returns "not wired". |
 | Q4, D2 | Is the phone-app cut confirmed? | Yes. Needs the sponsor's explicit word, because it reverses an earlier brief. |
-| Q10, D21 | Which flash-class model does the always-on tier start on? | The model is configuration on each persona page. The fixtures name the spec's example, GLM 5.3 flash through OpenRouter, as a placeholder. |
-| | What is the AI Gateway cap in dollars? | $1,250 a month, the brief's "less than $15k per year" for maintenance and AI tooling, as configuration. |
+| Q10, D21 | Which flash-class model does the always-on tier start on? | GLM 5.3 Flash through OpenRouter (`ALWAYS_ON_PROVIDER = "z-ai"`, `ALWAYS_ON_MODEL = "z-ai/glm-5.3-flash"`), confirmed by the owner on 2026-11-17 (#98). Each persona page can still name its own model. |
+| | What is the AI Gateway cap in dollars? | $500 a month on staging and on production (`AI_SPEND_CAP_MINOR = "50000"`), set by the owner on 2026-11-17 (#98). The code's fallback stays $1,250. |
 | | Nonprofit Team seat price | Not used anywhere in v1. To be re-verified before it enters the brief. |
 | | Does the repository move to a plan with branch protection? | No. The deploy gate stands in for it. |
 | | Licence for this repository | To be confirmed by unfoldingWord. |

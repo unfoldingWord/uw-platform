@@ -37,6 +37,8 @@
     "ui:css": "node tools/ui/build-css.ts",
     "ui:islands": "node tools/ui/build-islands.ts",
     "screens": "UW_SCREENS=required vitest run --project node apps/uw-app/screens",
+    "github-apps:page": "node tools/github-apps/run-page.ts",
+    "github-apps:convert": "node tools/github-apps/run-convert.ts",
     "screens:update": "UW_SCREENS_UPDATE=1 vitest run --project node apps/uw-app/screens"
   },
   "devDependencies": {
