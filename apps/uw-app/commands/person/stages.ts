@@ -93,6 +93,13 @@ export const setFreezeCommand = commandHandler({
 export const setShadowCommand = commandHandler({
   name: 'set_shadow',
   action: 'admin',
-  run: async ({ kernel, caller, harnessId }) =>
-    fromKernel(await kernel.stages.liftShadow(caller, { harnessId })),
+  run: async ({ kernel, caller, harnessId }, body: CommandBody<'set_shadow'>) =>
+    fromKernel(await kernel.stages.setShadow(caller, { harnessId, shadow: body.shadow })),
+});
+
+export const setStageRulesCommand = commandHandler({
+  name: 'set_stage_rules',
+  action: 'admin',
+  run: async ({ kernel, caller, harnessId }, body: CommandBody<'set_stage_rules'>) =>
+    fromKernel(await kernel.stages.setStageRules(caller, { harnessId, stages: body.stages })),
 });

@@ -1,19 +1,18 @@
-import { stageSchema, type Harness, type ItemState, type Stage } from '@uw/contracts';
+import { stageSchema, type Stage } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
-import { approvalsAwaitingOutcome } from '../gates/parking.ts';
-import { readAllEvents } from '../items/record.ts';
-import { lockKeys } from '../lock-keys.ts';
-import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
-import type { Ports, StageCursor, StoreTransaction } from '../ports.ts';
+import { accepted, refused, type KernelOutcome } from '../outcome.ts';
+import type { Ports } from '../ports.ts';
 import type { HarnessScene } from '../reads/scene.ts';
 import { activateTemplate, type Activated, type ActivateInput } from './activate.ts';
 import { editInTransaction, type EditWork } from './edit.ts';
+import { connectorInFlight, instructionsRefusal, removalRefusal } from './guards.ts';
 import { setFixClaim, type FixClaimInput } from './fix-claim.ts';
 import { setTitle, type TitleInput } from './title.ts';
 import { setFreeze, type FreezeInput } from './freeze.ts';
 import { setHostedBuilder, type HostedBuilderInput } from './hosted-builder.ts';
 import { setPause, type PauseInput } from './pause.ts';
-import { liftShadow, type LiftShadowInput } from './shadow.ts';
+import { setStageRules, type StageRulesInput } from './rules-edit.ts';
+import { setShadow, type ShadowInput } from './shadow.ts';
 import { changeTemplate, type ChangeTemplateInput } from './template-change.ts';
 
 type StagePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store' | 'runs'>;
@@ -52,7 +51,8 @@ export type StageCommands = {
   setFixClaim(caller: Caller, input: FixClaimInput): Promise<KernelOutcome<HarnessScene>>;
   setTitle(caller: Caller, input: TitleInput): Promise<KernelOutcome<HarnessScene>>;
   setFreeze(caller: Caller, input: FreezeInput): Promise<KernelOutcome<HarnessScene>>;
-  liftShadow(caller: Caller, input: LiftShadowInput): Promise<KernelOutcome<HarnessScene>>;
+  setShadow(caller: Caller, input: ShadowInput): Promise<KernelOutcome<HarnessScene>>;
+  setStageRules(caller: Caller, input: StageRulesInput): Promise<KernelOutcome<readonly Stage[]>>;
   changeTemplate(caller: Caller, input: ChangeTemplateInput): Promise<KernelOutcome<HarnessScene>>;
 };
 
@@ -63,20 +63,6 @@ const stageChangeSchema = stageSchema
 
 function replaceOne(stages: readonly Stage[], next: Stage): readonly Stage[] {
   return stages.map((stage) => (stage.key === next.key ? next : stage));
-}
-
-export async function instructionsRefusal(
-  tx: StoreTransaction,
-  harness: Harness,
-  pageId: string | null | undefined,
-): Promise<Refused | null> {
-  if (pageId === null || pageId === undefined) return null;
-  const [page] = await tx.pages.read.facts([pageId]);
-  const readable = page !== undefined && page.type !== 'issue' && page.jdArea === harness.jdArea;
-  if (!readable) return refused('page_not_found', { pageId });
-  return page.type === 'skill'
-    ? null
-    : refused('malformed_command', { why: 'instructions_not_skill' });
 }
 
 function createWork(ports: StagePorts, stage: StageInput): EditWork<Stage> {
@@ -96,41 +82,6 @@ function createWork(ports: StagePorts, stage: StageInput): EditWork<Stage> {
       },
     };
   };
-}
-
-const inFlightPage = 50;
-
-async function awaitingOutcome(
-  tx: StoreTransaction,
-  harness: Harness,
-  items: readonly ItemState[],
-): Promise<ItemState | null> {
-  for (const item of items) {
-    const events = await readAllEvents(tx, harness.id, item.itemId);
-    if (approvalsAwaitingOutcome(events).length > 0) return item;
-  }
-  return null;
-}
-
-export async function connectorInFlight(
-  tx: StoreTransaction,
-  harness: Harness,
-  stage: Stage,
-): Promise<Refused | null> {
-  await tx.lock(lockKeys.stageClaims(stage.id));
-  for (let after: StageCursor | null = null; ;) {
-    const page = await tx.harnessItems.read.openInStage(harness.id, stage.key, {
-      after,
-      limit: inFlightPage,
-    });
-    const waiting = await awaitingOutcome(tx, harness, page);
-    if (waiting !== null) {
-      return refused('decision_in_flight', { stage: stage.key, itemId: waiting.itemId });
-    }
-    const last = page.at(-1);
-    if (page.length < inFlightPage || last === undefined) return null;
-    after = { priority: last.priority, itemId: last.itemId };
-  }
 }
 
 function updateWork(stageKey: string, change: StageChange): EditWork<Stage> {
@@ -158,24 +109,6 @@ function updateWork(stageKey: string, change: StageChange): EditWork<Stage> {
           : refused('stage_not_found', { stage: stageKey }),
     };
   };
-}
-
-export async function removalRefusal(
-  tx: StoreTransaction,
-  harness: Harness,
-  stage: Stage,
-): Promise<Refused | null> {
-  if (stage.connector !== 'none') {
-    return refused('not_permitted', { stage: stage.key, why: 'effect_stage' });
-  }
-  const items = await tx.harnessItems.read.forHarness(harness.id);
-  if (items.some((item) => item.stageKey === stage.key)) {
-    return refused('stage_not_empty', { stage: stage.key });
-  }
-  if (await tx.gateDecisions.read.anyForStage(stage.id)) {
-    return refused('stage_not_empty', { stage: stage.key, why: 'stage_has_history' });
-  }
-  return null;
 }
 
 function byPosition(stages: readonly Stage[]): readonly Stage[] {
@@ -241,7 +174,8 @@ export function createStageCommands(ports: StagePorts): StageCommands {
     setFixClaim: (caller, input) => setFixClaim(ports, caller, input),
     setTitle: (caller, input) => setTitle(ports, caller, input),
     setFreeze: (caller, input) => setFreeze(ports, caller, input),
-    liftShadow: (caller, input) => liftShadow(ports, caller, input),
+    setShadow: (caller, input) => setShadow(ports, caller, input),
+    setStageRules: (caller, input) => setStageRules(ports, caller, input),
     changeTemplate: (caller, input) => changeTemplate(ports, caller, input),
   };
 }

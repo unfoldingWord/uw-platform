@@ -106,7 +106,9 @@ async function harnessEventNames(scene: JoinedWorld): Promise<readonly string[]>
 export async function liftAndPost(scene: JoinedWorld, reviews: PostedReviews): Promise<number> {
   const { world } = scene;
   const lift = simCaller(world, scene.admin);
-  const lifted = value(await world.kernel.stages.liftShadow(lift, { harnessId: scene.harnessId }));
+  const lifted = value(
+    await world.kernel.stages.setShadow(lift, { harnessId: scene.harnessId, shadow: false }),
+  );
   assert.equal(lifted.harness.shadow, false);
   assert.equal((await harnessEventNames(scene)).includes('shadow_lifted'), true);
   const runId = await startReview(scene);

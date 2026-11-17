@@ -34,6 +34,7 @@ import {
   setTitleCommand,
   setFreezeCommand,
   setShadowCommand,
+  setStageRulesCommand,
 } from './person/stages.ts';
 import {
   discardDraftCommand,
@@ -90,6 +91,7 @@ export const commandRegistry = commandRegistryOf([
   recordMeasurementCommand,
   setShadowCommand,
   setFreezeCommand,
+  setStageRulesCommand,
   setFixClaimCommand,
   setTitleCommand,
   decideGatesCommand,

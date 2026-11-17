@@ -79,7 +79,9 @@ function joiningColumns(db: () => Db): void {
       'shadow_verdict',
       'review_verdict_recorded',
       'shadow_lifted',
+      'shadow_turned_on',
       'set_shadow',
+      'set_stage_rules',
       'platform',
     ]) {
       expect(text).toContain(`'${name}'`);

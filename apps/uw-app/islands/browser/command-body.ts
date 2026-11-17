@@ -34,8 +34,48 @@ function versionOf(raw: string | undefined): number | null {
 
 const none: Shape = () => ({});
 
+const switched =
+  (field: string): Shape =>
+  (given) => ({ [field]: given.get(field) === 'true' });
+
+const stageKeyOnly: Shape = (given) => ({ stageKey: optional(given.get('stageKey')) });
+
+const stageField = /^stage\.(\d+)\.(.+)$/;
+
+function rowsOf(given: ReadonlyMap<string, string>): readonly ReadonlyMap<string, string>[] {
+  const rows = new Map<number, Map<string, string>>();
+  for (const [name, value] of given) {
+    const match = stageField.exec(name);
+    if (match === null) continue;
+    const index = Number(match[1]);
+    const row = rows.get(index) ?? new Map<string, string>();
+    row.set(match[2] ?? '', value);
+    rows.set(index, row);
+  }
+  return [...rows.entries()].sort(([a], [b]) => a - b).map(([, row]) => row);
+}
+
+function stageRuleOf(row: ReadonlyMap<string, string>): Readonly<Record<string, unknown>> {
+  return {
+    id: row.get('id'),
+    agentPickup: row.get('agentPickup'),
+    exitGate: row.get('exitGate'),
+    wipLimit: Number(row.get('wipLimit')),
+    instructionsPageId: optional(row.get('instructionsPageId')),
+    validators: [...row.entries()]
+      .filter(([name]) => name.startsWith('validator.'))
+      .map(([, value]) => value),
+  };
+}
+
 const shapes: ReadonlyMap<string, Shape> = new Map<string, Shape>([
   ['open_workflow_draft', none],
+  ['set_stage_rules', (given) => ({ stages: rowsOf(given).map(stageRuleOf) })],
+  ['set_shadow', switched('shadow')],
+  ['set_hosted_builder', switched('enabled')],
+  ['set_freeze', (given) => ({ ...switched('frozen')(given), allow: [] })],
+  ['pause', stageKeyOnly],
+  ['resume', stageKeyOnly],
   ['discard_workflow_draft', none],
   ['publish_workflow_draft', (given) => ({ revision: versionOf(given.get('revision')) })],
   ['take_over_workflow_draft', (given) => ({ reason: given.get('reason') })],

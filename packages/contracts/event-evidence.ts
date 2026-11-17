@@ -367,6 +367,7 @@ const harnessEvidence = {
     shadow: z.boolean().default(false),
   }),
   shadow_lifted: z.strictObject({}),
+  shadow_turned_on: z.strictObject({}),
   epic_enqueued: z.strictObject({
     epic: issueRefSchema,
     title: z.string().min(1).max(200),

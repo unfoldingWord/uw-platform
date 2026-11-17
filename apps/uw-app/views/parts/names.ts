@@ -10,6 +10,7 @@ export const pageNames = {
   waitingApproval: 'Waiting For Approval',
   queue: 'Queue',
   flow: 'Flow',
+  controls: 'Stages & Controls',
   gate: 'Gate',
   item: 'Item',
 } as const;

@@ -1,7 +1,7 @@
 import type { DraftProblem, DraftProblemCode, DraftStage, Harness, Stage } from '@uw/contracts';
 import { connectorRegistered, connectorRegistry } from '../../connectors/registry.ts';
 import type { EffectConnector, StoreTransaction } from '../../ports.ts';
-import { connectorInFlight, removalRefusal } from '../commands.ts';
+import { connectorInFlight, removalRefusal } from '../guards.ts';
 import { templateProperty } from '../../template-property.ts';
 import { validatorRegistry } from '../../validators/registry.ts';
 import { positionOf } from './shape.ts';

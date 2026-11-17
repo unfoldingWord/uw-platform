@@ -1,0 +1,14 @@
+{
+  "command": "set_stage_rules",
+  "requestId": "00000000-0000-4000-8000-0000000000aa",
+  "stages": [
+    {
+      "id": "00000000-0000-4000-8000-0000000000c1",
+      "agentPickup": "auto",
+      "exitGate": "human_approval",
+      "wipLimit": 2,
+      "instructionsPageId": null,
+      "validators": []
+    }
+  ]
+}

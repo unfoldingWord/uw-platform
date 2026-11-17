@@ -12,6 +12,7 @@ import {
   pullRequestRefSchema,
   repositorySchema,
   stageKeySchema,
+  stageSchema,
 } from './harness.ts';
 import { slugSchema } from './pages.ts';
 import { dataSourceKindSchema } from './page-types.ts';
@@ -48,6 +49,7 @@ export const commandNames = [
   'record_measurement',
   'set_shadow',
   'set_freeze',
+  'set_stage_rules',
   'decide_gates',
   'refute_finding',
   'set_fix_claim',
@@ -99,6 +101,31 @@ const batchEntrySchema = z.strictObject({
   itemId,
   head: fullShaSchema,
   decision: z.enum(['approve', 'reject']),
+});
+
+const stageRulesSchema = stageSchema
+  .pick({
+    id: true,
+    agentPickup: true,
+    exitGate: true,
+    wipLimit: true,
+    instructionsPageId: true,
+    validators: true,
+  })
+  .extend({
+    wipLimit: z.number().int().min(1).max(1000),
+    validators: draftStageSchema.shape.validators,
+  });
+
+const setStageRulesSchema = body('set_stage_rules', {
+  stages: z
+    .array(stageRulesSchema)
+    .min(1)
+    .max(DRAFT_STAGE_LIMIT)
+    .refine(
+      (stages) => new Set(stages.map((stage) => stage.id)).size === stages.length,
+      'each stage once',
+    ),
 });
 
 const setFreezeSchema = body('set_freeze', { frozen: z.boolean(), allow: itemIdList }).refine(
@@ -171,8 +198,9 @@ export const harnessCommandSchemas = {
     value: z.number().finite(),
     asOf: z.iso.date(),
   }),
-  set_shadow: body('set_shadow', { shadow: z.literal(false) }),
+  set_shadow: body('set_shadow', { shadow: z.boolean() }),
   set_freeze: setFreezeSchema,
+  set_stage_rules: setStageRulesSchema,
   decide_gates: body('decide_gates', {
     entries: z
       .array(batchEntrySchema)
@@ -225,6 +253,7 @@ export const commandSchema = z.discriminatedUnion('command', [
   harnessCommandSchemas.record_measurement,
   harnessCommandSchemas.set_shadow,
   harnessCommandSchemas.set_freeze,
+  harnessCommandSchemas.set_stage_rules,
   harnessCommandSchemas.decide_gates,
   harnessCommandSchemas.refute_finding,
   harnessCommandSchemas.set_fix_claim,
@@ -235,4 +264,5 @@ export const commandSchema = z.discriminatedUnion('command', [
 
 export type Command = z.infer<typeof commandSchema>;
 export type CommandBody<Name extends CommandName> = z.infer<(typeof harnessCommandSchemas)[Name]>;
+export type StageRules = z.infer<typeof stageRulesSchema>;
 export type OverrideCommand = z.infer<typeof overrideCommandSchema>;
