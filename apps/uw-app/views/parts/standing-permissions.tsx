@@ -65,14 +65,21 @@ function EndsField(props: { readonly scope: string }) {
   );
 }
 
-function grantPairs(view: AgentsView): readonly { value: string; label: string }[] {
+const MERGE_TIERS = ['low', 'standard'] as const;
+
+export function grantPairs(view: AgentsView): readonly { value: string; label: string }[] {
   return view.agents
     .filter((agent) => agent.status === 'active')
     .flatMap((agent) =>
-      grantableFor(agent.capability).map((kind) => ({
-        value: `${agent.identity}|${kind}`,
-        label: `${agent.title} · ${capabilityWord(kind)}`,
-      })),
+      grantableFor(agent.capability).flatMap((kind) => {
+        const value = `${agent.identity}|${kind}`;
+        const label = `${agent.title} · ${capabilityWord(kind)}`;
+        if (kind !== 'merge') return [{ value, label }];
+        return MERGE_TIERS.map((tier) => ({
+          value: `${value}|${tier}`,
+          label: `${label}, up to ${tier} risk`,
+        }));
+      }),
     );
 }
 
@@ -92,16 +99,6 @@ function GrantForm(props: { readonly view: AgentsView }) {
     <div class="border-t border-line px-4 py-3">
       <CommandForm harnessId={view.harness.id} command="schedule_regular_tweak">
         <SelectField name="grant" label="Agent and kind of work" scope={scope} choices={pairs} />
-        <SelectField
-          name="maxTier"
-          label="Merge risk"
-          scope={scope}
-          choices={[
-            { value: '', label: 'Only for merge' },
-            { value: 'low', label: 'Up to low' },
-            { value: 'standard', label: 'Up to standard' },
-          ]}
-        />
         <EndsField scope={scope} />
         <button type="submit" class={commandButton}>
           Grant

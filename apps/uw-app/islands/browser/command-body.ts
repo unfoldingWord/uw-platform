@@ -42,13 +42,13 @@ function endOfDay(day: string | undefined): string | null | undefined {
 }
 
 const grant: Shape = (given) => {
-  const [persona, capability] = (given.get('grant') ?? '').split('|');
+  const [persona, capability, tier] = (given.get('grant') ?? '').split('|');
   return {
     persona,
     capability,
     expiresAt: endOfDay(given.get('expiresOn')),
     supersedes: null,
-    maxTier: optional(given.get('maxTier')),
+    maxTier: optional(tier),
   };
 };
 

@@ -97,10 +97,18 @@ describe('#110 the standing-permission forms become command bodies', () => {
   });
 
   it('leaves the end open when no day is chosen, and carries a merge tier', () => {
-    const form = { grant: 'agent:merger|merge', expiresOn: '', maxTier: 'low' };
+    const form = { grant: 'agent:merger|merge|low', expiresOn: '' };
     expect(commandBody('schedule_regular_tweak', form, requestId)).toMatchObject({
       expiresAt: null,
       maxTier: 'low',
+    });
+  });
+
+  it('never sends a merge tier with work other than merge, whatever else the form holds', () => {
+    const form = { grant: 'agent:reviewer|review', expiresOn: '', maxTier: 'low' };
+    expect(commandBody('schedule_regular_tweak', form, requestId)).toMatchObject({
+      capability: 'review',
+      maxTier: null,
     });
   });
 
