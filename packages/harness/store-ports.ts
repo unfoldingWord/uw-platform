@@ -143,6 +143,7 @@ export type PagesGateway = {
     staleLearnings(today: string, limit: number): Promise<readonly PageFacts[]>;
     platformFor(jdArea: string): Promise<PageFacts | null>;
     skillsFor(jdArea: string): Promise<readonly PageTitle[]>;
+    personasOf(harnessId: string): Promise<readonly PageFacts[]>;
   };
   readonly write: { activatePersona(activation: PersonaActivation): Promise<PageFacts | null> };
 };
@@ -232,6 +233,7 @@ export type Delegation = {
   readonly lapsedAt: Date | null;
   readonly supersedes: string | null;
 };
+export type NamedDelegation = Delegation & { readonly grantedByName: string };
 export type DelegationFilter = {
   readonly personId: string | null;
   readonly persona: string | null;
@@ -244,6 +246,7 @@ export type DelegationsGateway = {
     live(filter: DelegationFilter, at: Date): Promise<readonly Delegation[]>;
     countLive(filter: DelegationFilter, at: Date): Promise<number>;
     firstLive(filter: DelegationFilter, at: Date, limit: number): Promise<readonly Delegation[]>;
+    liveNamed(harnessId: string, at: Date, limit: number): Promise<readonly NamedDelegation[]>;
     lapsedFor(
       personId: string,
       since: Date,

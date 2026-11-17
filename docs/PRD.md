@@ -626,7 +626,7 @@ From #97 (2026-11-12) the source of truth for how screens look is the Claude Des
 | Agent Queues "Stages & controls" | Stages & Controls tab for each workflow (#108): an area admin changes each stage's pickup, exit rule, limit, instructions page and checks with one Save, applied at once after the same whole-workflow check as a publish and refused while a draft is open; pauses and resumes a stage; and turns hosted Builder, shadow mode and freeze on or off. Everyone else sees the same values read-only, with the area whose admins can change them |
 | Health's "Open alert" card | Gate decision (UI-7) |
 | Agent Queues "What the run did" | Item play-by-play (WB-8, UI-11) |
-| Agent Queues, agents | Persona (UI-12) |
+| Agent Queues, agents | Agents tab for each workflow (#110): every agent with what it does, where it runs, its model, budget and status; an area admin adds one from a template persona under its own name, grants and revokes standing permissions (delegations), and a grid shows the stages each agent can pick up in. An agent's page (Persona, UI-12) shows its job card: its actions in plain words, with unbuilt ones marked not available yet and the forbidden ones locked, where it runs, engine, model, budget and instructions, editable only by an area admin, and the five activation checks, which run again on every save. Reach stays capability plus phase: a stage does not name which agents may pick up there (Ian, 2026-11-17). Routines, people's own agents on a schedule, are #134 |
 | Health | `/health` agent plane and its detail (WB-10, UI-8, UI-13) |
 
 **What is fixed**

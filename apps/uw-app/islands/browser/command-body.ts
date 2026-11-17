@@ -34,6 +34,24 @@ function versionOf(raw: string | undefined): number | null {
 
 const none: Shape = () => ({});
 
+const calendarDay = /^\d{4}-\d{2}-\d{2}$/;
+
+function endOfDay(day: string | undefined): string | null | undefined {
+  if (day === undefined || day === '') return null;
+  return calendarDay.test(day) ? `${day}T23:59:59.000Z` : undefined;
+}
+
+const grant: Shape = (given) => {
+  const [persona, capability, tier] = (given.get('grant') ?? '').split('|');
+  return {
+    persona,
+    capability,
+    expiresAt: endOfDay(given.get('expiresOn')),
+    supersedes: null,
+    maxTier: optional(tier),
+  };
+};
+
 const switched =
   (field: string): Shape =>
   (given) => ({ [field]: given.get(field) === 'true' });
@@ -84,6 +102,8 @@ const shapes: ReadonlyMap<string, Shape> = new Map<string, Shape>([
     'reorder',
     (given) => ({ itemId: given.get('itemId'), beforeItemId: optional(given.get('beforeItemId')) }),
   ],
+  ['schedule_regular_tweak', grant],
+  ['revoke_delegation', (given) => ({ delegationId: given.get('delegationId') })],
   ['claim', itemOnly],
   ['release', itemOnly],
   ['take_over', itemOnly],
