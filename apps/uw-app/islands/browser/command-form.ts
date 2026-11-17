@@ -61,15 +61,16 @@ function commandOf(form: HTMLFormElement, submitter: HTMLElement | null): string
 function formOf(target: EventTarget | null): HTMLFormElement | null {
   const element = target as Element | null;
   if (element === null || element.tagName !== 'FORM') return null;
+  if (element.hasAttribute('data-new-workflow')) return null;
   return element.hasAttribute('data-command') ? (element as HTMLFormElement) : null;
 }
 
-function setOutcome(form: HTMLFormElement, text: string): void {
+export function setOutcome(form: HTMLFormElement, text: string): void {
   const region = form.querySelector('[data-outcome]');
   if (region !== null) region.textContent = text;
 }
 
-function goBusy(form: HTMLFormElement): readonly Element[] {
+export function goBusy(form: HTMLFormElement): readonly Element[] {
   form.setAttribute('aria-busy', 'true');
   const buttons = [...form.querySelectorAll('button[type="submit"], button:not([type])')];
   const quiet = buttons.filter((button) => button.getAttribute('aria-disabled') !== 'true');
@@ -77,13 +78,17 @@ function goBusy(form: HTMLFormElement): readonly Element[] {
   return quiet;
 }
 
-function settle(form: HTMLFormElement, quieted: readonly Element[], accepted: boolean): void {
+export function settle(
+  form: HTMLFormElement,
+  quieted: readonly Element[],
+  accepted: boolean,
+): void {
   form.removeAttribute('aria-busy');
   if (accepted) form.removeAttribute('data-dirty');
   for (const button of quieted) button.removeAttribute('aria-disabled');
 }
 
-async function answerOf(response: Response): Promise<{ status: string; reason: string }> {
+export async function answerOf(response: Response): Promise<{ status: string; reason: string }> {
   const body: unknown = await response.json().catch(() => null);
   if (typeof body !== 'object' || body === null)
     return { status: 'error', reason: 'internal_error' };

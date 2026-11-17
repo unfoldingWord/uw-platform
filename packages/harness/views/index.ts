@@ -11,7 +11,9 @@ import { gateView } from '../gates/view.ts';
 import type { KernelOutcome } from '../outcome.ts';
 import type { Ports } from '../ports.ts';
 import type { StoreTransaction } from '../store-ports.ts';
+import type { ReadableAreas } from '@uw/core/acl';
 import { boardView } from './board.ts';
+import { creatableAreas } from './creatable.ts';
 import { delegatedMerges, type DelegatedMergeList } from './delegated-merges.ts';
 import { stageControls, type StageControlsView } from './controls.ts';
 import { workflowDraft, type WorkflowDraftView } from './draft.ts';
@@ -60,6 +62,7 @@ export type ViewReads = {
   harnesses(caller: Caller, options?: ReadOptions): Promise<readonly Harness[]>;
   frame(caller: Caller, options?: ReadOptions): Promise<FrameCounts>;
   queues(caller: Caller, options?: ReadOptions): Promise<Queues>;
+  creatableAreas(caller: Caller, options?: ReadOptions): Promise<ReadableAreas>;
   daily(
     caller: Caller,
     input: { readonly harnessId: string | null },
@@ -170,7 +173,10 @@ function scopedReads(ports: ViewPorts): Pick<ViewReads, 'silence' | 'holds'> {
 
 function frameRead(
   ports: ViewPorts,
-): Pick<ViewReads, 'frame' | 'queues' | 'daily' | 'lastEvents' | 'refusals' | 'mine'> {
+): Pick<
+  ViewReads,
+  'frame' | 'queues' | 'daily' | 'lastEvents' | 'refusals' | 'mine' | 'creatableAreas'
+> {
   const at = (options?: ReadOptions): Date => options?.at ?? ports.clock.now();
   const read = <T>(work: (tx: StoreTransaction) => Promise<T>) => ports.store.transaction(work);
   return {
@@ -182,6 +188,8 @@ function frameRead(
       read((tx) => refusalsView(ports, tx, caller, { itemIds: input.itemIds, at: at(options) })),
     mine: (caller, options) => read((tx) => myItemsView(ports, tx, caller, at(options))),
     queues: (caller, options) => read((tx) => queuesView(ports, tx, caller, at(options))),
+    creatableAreas: (caller, options) =>
+      read((tx) => creatableAreas(ports, tx, caller, at(options))),
     frame: (caller, options) => {
       const at = options?.at ?? ports.clock.now();
       return ports.store.transaction((tx) => frameCounts(ports, tx, caller, at));

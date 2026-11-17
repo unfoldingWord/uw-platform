@@ -1,9 +1,11 @@
 import type { Context } from 'hono';
 import type { StageBracket } from '@uw/contracts';
+import type { ReadableAreas } from '@uw/core/acl';
 import { formatDuration } from '@uw/core/dates';
 import { formatCount } from '@uw/core/money';
 import { VIEW_LIMIT, type PhaseCount, type QueueCard } from '@uw/harness';
 import { Badge } from '@uw/ui/components/badge.tsx';
+import { primaryButton } from '@uw/ui/components/command-form.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { domId } from '@uw/ui/components/text.ts';
@@ -12,7 +14,7 @@ import { liveCursors } from '../parts/cursors.ts';
 import { bracketText } from '../parts/flow-diagram.tsx';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { moduleCodes, pageNames } from '../parts/names.ts';
-import { agentQueuesPath, queuePath } from '../parts/paths.ts';
+import { agentQueuesPath, newWorkflowPath, queuePath } from '../parts/paths.ts';
 
 const REFRESH_EVERY_MS = 60_000;
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
@@ -150,12 +152,17 @@ function Workflows(props: { readonly cards: readonly QueueCard[]; readonly at: D
   );
 }
 
+function canCreate(held: ReadableAreas): boolean {
+  return held.kind === 'all' || held.areas.length > 0;
+}
+
 export async function agentQueuesScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   if (screen === null) return screenRefusal(c);
   const read = { at: screen.at };
   const { cards } = await screen.kernel.views.queues(screen.caller, read);
   const cursors = await screen.kernel.views.cursors(screen.caller, read);
+  const creatable = await screen.kernel.views.creatableAreas(screen.caller, read);
   const harnesses = liveCursors(
     cursors,
     cards.map((card) => card.harness.id),
@@ -175,6 +182,13 @@ export async function agentQueuesScreen(c: Context<AppEnv>): Promise<Response> {
         eyebrow={pageNames.agentQueues}
         title="Your workflows"
         lede="A workflow is a set of stages that work moves through, with the people and agents who do it. You see the workflows in the areas you have access to."
+        actions={
+          canCreate(creatable) ? (
+            <a href={newWorkflowPath()} class={primaryButton}>
+              New workflow
+            </a>
+          ) : undefined
+        }
         flush
       />
       <Workflows cards={cards} at={screen.at} />

@@ -11,6 +11,10 @@ export function agentQueuesPath(): string {
   return '/agent-queues';
 }
 
+export function newWorkflowPath(): string {
+  return '/agent-queues/new';
+}
+
 export function gatesPath(): string {
   return '/gates';
 }
