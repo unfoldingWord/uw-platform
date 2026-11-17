@@ -7,6 +7,11 @@ export const screens: readonly ScreenEntry[] = [
     file: 'apps/uw-app/views/screens/agent-queues.tsx',
     path: '/agent-queues',
   },
+  {
+    name: 'new-workflow',
+    file: 'apps/uw-app/views/screens/new-workflow.tsx',
+    path: '/agent-queues/new',
+  },
   { name: 'flow', file: 'apps/uw-app/views/screens/flow.tsx', path: '/harnesses/:harnessId' },
   {
     name: 'queue',

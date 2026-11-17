@@ -2,15 +2,12 @@ import { formatDuration } from '@uw/core/dates';
 import type { DraftProblem, DraftStage } from '@uw/contracts';
 import type { WorkflowDraftView } from '@uw/harness';
 import { Card } from '@uw/ui/components/card.tsx';
-import { CommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
+import { CommandForm, commandButton, primaryButton } from '@uw/ui/components/command-form.tsx';
 import { TextField } from '@uw/ui/components/field.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
 import { DraftMap } from './draft-map.tsx';
 import { DraftRow } from './draft-row.tsx';
 import { cleanCheck, problemCount } from './draft-words.ts';
-
-const primary =
-  'inline-flex items-center rounded-md border border-accent bg-accent px-3 py-1 text-sm font-heavy text-on-accent outline-offset-2 outline-accent-text focus-visible:outline-2 aria-disabled:cursor-not-allowed aria-disabled:opacity-50';
 
 const blankStage: DraftStage = {
   id: null,
@@ -91,7 +88,7 @@ function DraftBar(props: { readonly harnessId: string; readonly draft: WorkflowD
             type="submit"
             data-draft-publish
             aria-disabled={clean ? undefined : 'true'}
-            class={primary}
+            class={primaryButton}
           >
             Publish
           </button>
@@ -147,7 +144,7 @@ function LockBar(props: { readonly draft: WorkflowDraftView; readonly at: Date }
 function EditButton(props: { readonly harnessId: string; readonly label: string }) {
   return (
     <CommandForm harnessId={props.harnessId} command="open_workflow_draft">
-      <button type="submit" class={primary}>
+      <button type="submit" class={primaryButton}>
         {props.label}
       </button>
     </CommandForm>

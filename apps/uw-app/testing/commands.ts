@@ -148,7 +148,12 @@ export async function eventCount(db: Database, harnessId: string): Promise<numbe
   return (await allEvents(db, harnessId)).length;
 }
 
-export async function person(db: Database, name: string, role: 'editor' | 'viewer', area: string) {
+export async function person(
+  db: Database,
+  name: string,
+  role: 'admin' | 'editor' | 'viewer',
+  area: string,
+) {
   const seeded = { id: randomUUID(), email: `${name}@unfoldingword.org`, grantId: randomUUID() };
   await seedPerson(db, { id: seeded.id, email: seeded.email });
   await seedGrant(db, {

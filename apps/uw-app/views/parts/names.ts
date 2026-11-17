@@ -4,6 +4,7 @@ export const pageNames = {
   home: 'Today',
   waiting: 'Waiting On You',
   agentQueues: 'Agent Queues',
+  newWorkflow: 'New Workflow',
   infrastructure: 'Infrastructure',
   health: 'Health',
   notFound: 'Not Found',
