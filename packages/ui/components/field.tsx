@@ -74,6 +74,8 @@ export function TextAreaField(props: {
   readonly scope: string;
   readonly hint?: string;
   readonly maxLength: number;
+  readonly value?: string;
+  readonly rows?: number;
 }) {
   const id = domId('field', props.name, props.scope);
   const hintId = hintIdOf(props);
@@ -82,11 +84,13 @@ export function TextAreaField(props: {
       <textarea
         id={id}
         name={props.name}
-        rows={4}
+        rows={props.rows ?? 4}
         maxlength={props.maxLength}
         aria-describedby={hintId}
         class={control}
-      ></textarea>
+      >
+        {props.value ?? ''}
+      </textarea>
       <Hint id={hintId} text={props.hint} />
     </Labelled>
   );

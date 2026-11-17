@@ -27,6 +27,8 @@ export const OUTCOME_TEXT: Readonly<Record<string, string>> = {
   set_shadow: 'Saved',
   set_hosted_builder: 'Saved',
   set_freeze: 'Saved',
+  schedule_regular_tweak: 'Granted',
+  revoke_delegation: 'Revoked',
   pause: 'Paused',
   resume: 'Resumed',
 };

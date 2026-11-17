@@ -309,6 +309,7 @@ async function lookOfFlow(world: BoardWorld): Promise<void> {
     ['Waiting On You', null],
     ['Flow', 'page'],
     ['Stages & Controls', null],
+    ['Agents', null],
   ]);
 }
 

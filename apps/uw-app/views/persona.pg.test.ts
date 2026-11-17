@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { JSDOM } from 'jsdom';
+import { reasonText } from '@uw/ui/components/text.ts';
 import { describe, expect, it } from 'vitest';
 import { identitySchema, principalSchema, type Principal } from '@uw/contracts';
 import { systemPrincipal } from '@uw/core/principal';
@@ -148,7 +149,7 @@ async function savesToolset(db: Database): Promise<void> {
   const form = toolsetForm(['read_page', 'search_pages', 'list_gifts', 'approve_gate'], 1);
   const saved = await postForm(db, ROWAN, `/personas/${pageId}/toolset`, form, ORIGIN);
   expect(saved.status).toBe(200);
-  expect(saved.text).toContain('Done.');
+  expect(saved.text).toContain('Saved. The checks below have run again.');
   expect(await pageRow(db, pageId)).toEqual({
     status: 'suggested',
     version: 2,
@@ -234,9 +235,18 @@ async function editorSaveStopsTheRuns(db: Database): Promise<void> {
   const polled = accepted(await kernel.reads.poll(runner, { harnessId, limit: 50 }));
   expect(polled.map((item) => item.itemId)).toContain(itemId);
   const form = toolsetForm(['read_page', 'claim_item', 'search_pages'], 2);
-  const saved = await postForm(db, made.editor.email, `/personas/${pageId}/toolset`, form, ORIGIN);
+  const refused = await postForm(
+    db,
+    made.editor.email,
+    `/personas/${pageId}/toolset`,
+    form,
+    ORIGIN,
+  );
+  expect(refused.text).toContain(reasonText('not_permitted'));
+  expect(await pageRow(db, pageId)).toMatchObject({ status: 'active', version: 2 });
+  const saved = await postForm(db, ROWAN, `/personas/${pageId}/toolset`, form, ORIGIN);
   expect(saved.status).toBe(200);
-  expect(saved.text).toContain('Done.');
+  expect(saved.text).toContain('Saved. The checks below have run again.');
   const row = await pageRow(db, pageId);
   expect(row).toMatchObject({ status: 'suggested', version: 3 });
   expect(row?.toolset).toContain('search_pages');
@@ -291,8 +301,8 @@ async function keepsUnofferedEntries(db: Database): Promise<void> {
   const stored = ['read_page', 'list_gifts', 'draft_release', 'claim_item'];
   const pageId = await personaPage(db, made.harnessId, stored);
   const form = toolsetForm(['read_page', 'search_pages', 'list_gifts'], 1);
-  const saved = await postForm(db, made.editor.email, `/personas/${pageId}/toolset`, form, ORIGIN);
-  expect(saved.text).toContain('Done.');
+  const saved = await postForm(db, ROWAN, `/personas/${pageId}/toolset`, form, ORIGIN);
+  expect(saved.text).toContain('Saved. The checks below have run again.');
   const kept = ['read_page', 'list_gifts', 'draft_release', 'search_pages'];
   expect(await pageRow(db, pageId)).toEqual({
     status: 'suggested',
@@ -333,7 +343,7 @@ async function lookOfPersona(db: Database): Promise<void> {
   const document = documentOf((await getHtml(db, ROWAN, `/personas/${pageId}`)).text);
   expect(document.querySelector('main h1')?.textContent).toBe('Builder');
   const heads = [...document.querySelectorAll('main h2')].map((head) => head.textContent);
-  expect(heads).toEqual(expect.arrayContaining(['Last runs', 'Delegations']));
+  expect(heads).toEqual(expect.arrayContaining(['Last runs', 'Standing permissions']));
   expect(document.querySelectorAll('main dl dt').length).toBeGreaterThanOrEqual(6);
 }
 
@@ -347,11 +357,11 @@ describe.skipIf(!testServer)('the persona view', () => {
     withAppDatabase(activates));
   it('PE-2 the toolset form saves only offered verbs and requires_tools follows', () =>
     withAppDatabase(savesToolset));
-  it("an editor's toolset save on an active persona lands it suggested, and neither the beat nor a claim works for it", () =>
+  it("an editor can't change an agent; an admin's save on an active agent lands it suggested, and neither the beat nor a claim works for it", () =>
     withAppDatabase(editorSaveStopsTheRuns));
   it('the persona view lists 50 live delegations and names how many more there are', () =>
     withAppDatabase(delegationsCapped));
-  it('a toolset save keeps the stored entries the editor is not offered, in their stored order', () =>
+  it('a toolset save keeps the stored entries the admin is not offered, in their stored order', () =>
     withAppDatabase(keepsUnofferedEntries));
   it('a toolset post from another origin, or with no origin, is refused', () =>
     withAppDatabase(crossSite));

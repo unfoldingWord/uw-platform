@@ -195,10 +195,31 @@ function describeProjectionDrops(subject: PersonasSubject): void {
   });
 }
 
+function describePersonasOf(subject: PersonasSubject): void {
+  it('personasOf lists every persona page of one workflow by title, whatever its status', async () => {
+    await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0xa300, 'gateway-personas-list');
+      await seedHarness(tx, 0xa400, 'gateway-personas-list-other');
+    });
+    const reviewer = pageOf(0xa300, 1, { title: 'Reviewer' });
+    const builder = pageOf(0xa300, 2, { title: 'Builder', status: 'active' }, { status: 'active' });
+    const retired = pageOf(0xa300, 3, { title: 'Old', status: 'retired' }, { status: 'retired' });
+    const elsewhere = pageOf(0xa300, 4, { title: 'Elsewhere' }, { harness: uid(0xa400) });
+    const learning = pageOf(0xa300, 5, { title: 'Learning', type: 'learning' });
+    for (const page of [reviewer, builder, retired, elsewhere, learning]) {
+      await subject().seedPage(page);
+    }
+    const listed = await subject().store.transaction((tx) => tx.pages.read.personasOf(uid(0xa300)));
+    expect(listed.map((page) => page.id)).toEqual([builder.id, retired.id, reviewer.id]);
+    expect(listed[0]).toMatchObject({ status: 'active', type: 'persona', title: 'Builder' });
+  });
+}
+
 export function describeStorePersonas(adapter: string, subject: PersonasSubject): void {
   describe(`DX-3 store pages and personas gateways on ${adapter}`, () => {
     describeFlip(subject);
     describeProjectionUpsert(subject);
     describeProjectionDrops(subject);
+    describePersonasOf(subject);
   });
 }

@@ -1,5 +1,5 @@
 import type { Context } from 'hono';
-import { updatePageCommandSchema } from '@uw/contracts';
+import { engineSchema, runShapeSchema, updatePageCommandSchema } from '@uw/contracts';
 import type { PersonaDashboard } from '@uw/harness';
 import type { AppEnv } from '../../deps.ts';
 import { readPage, updatePage } from '../../pages/store.ts';
@@ -34,6 +34,69 @@ function chosenToolset(
   return [...kept, ...added];
 }
 
+type Frontmatter = Readonly<Record<string, unknown>>;
+
+const BUDGET_LIMIT_MINOR = 100_000_000_00;
+
+function text(posted: Posted, name: string): string | undefined {
+  const value = posted.fields.get(name);
+  return typeof value === 'string' ? value : undefined;
+}
+
+function budgetOf(stored: Frontmatter, posted: Posted): unknown {
+  const raw = text(posted, 'budget')?.trim();
+  const budget = stored['budget'];
+  if (raw === undefined) return budget;
+  const minor = Math.round(Number(raw) * 100);
+  const valid = raw !== '' && Number.isSafeInteger(minor) && minor >= 0;
+  if (!valid || minor > BUDGET_LIMIT_MINOR) return null;
+  const old = typeof budget === 'object' && budget !== null ? budget : {};
+  return { ...old, monthly_minor: minor };
+}
+
+function engineOf(stored: Frontmatter, posted: Posted): Frontmatter {
+  const engine = engineSchema.safeParse(text(posted, 'engine'));
+  if (!engine.success || engine.data === stored['engine']) return {};
+  return { engine: engine.data, provider: null };
+}
+
+function settingsOf(stored: Frontmatter, posted: Posted): Frontmatter {
+  const shape = runShapeSchema.safeParse(text(posted, 'run_shape'));
+  const model = text(posted, 'model')?.trim();
+  return {
+    ...(shape.success ? { run_shape: shape.data } : {}),
+    ...engineOf(stored, posted),
+    ...(model === undefined ? {} : { model }),
+    budget: budgetOf(stored, posted),
+  };
+}
+
+type StoredPage = NonNullable<Awaited<ReturnType<typeof readPage>>>;
+
+function updateOf(page: StoredPage, posted: Posted, options: readonly string[]) {
+  const chosen = chosenToolset(page.frontmatter['toolset'], options, posted.verbs);
+  const retiring = text(posted, 'retire') === 'retire';
+  const status = retiring ? 'retired' : page.status;
+  const frontmatter = {
+    ...page.frontmatter,
+    ...settingsOf(page.frontmatter, posted),
+    toolset: chosen,
+    ...(retiring ? { status } : {}),
+  };
+  return updatePageCommandSchema.safeParse({
+    command: 'update_page',
+    requestId: posted.fields.get('requestId'),
+    pageId: page.id,
+    expectedVersion: Number(posted.fields.get('expectedVersion')),
+    slug: page.slug,
+    title: page.title,
+    parentId: page.parentId,
+    frontmatter,
+    bodyMd: text(posted, 'bodyMd')?.replace(/\r\n?/g, '\n') ?? page.bodyMd,
+    status,
+  });
+}
+
 async function save(
   c: Context<AppEnv>,
   screen: ScreenKernel,
@@ -42,23 +105,13 @@ async function save(
 ): Promise<SavedToolset> {
   const database = c.get('database');
   const options = dashboard.toolsetOptions;
-  if (database === null || options === null) return { reason: 'not_permitted' };
+  if (database === null || options === null || !dashboard.canEdit) {
+    return { reason: 'not_permitted' };
+  }
   const { actor } = screen.caller;
   const page = await readPage(database.db, actor, dashboard.page.id, screen.at);
   if (page === null) return { reason: 'page_not_found' };
-  const chosen = chosenToolset(page.frontmatter['toolset'], options, posted.verbs);
-  const command = updatePageCommandSchema.safeParse({
-    command: 'update_page',
-    requestId: posted.fields.get('requestId'),
-    pageId: page.id,
-    expectedVersion: Number(posted.fields.get('expectedVersion')),
-    slug: page.slug,
-    title: page.title,
-    parentId: page.parentId,
-    frontmatter: { ...page.frontmatter, toolset: chosen },
-    bodyMd: page.bodyMd,
-    status: page.status,
-  });
+  const command = updateOf(page, posted, options);
   if (!command.success) return { reason: 'malformed_command' };
   const saved = await updatePage(
     database.db,
