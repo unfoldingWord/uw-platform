@@ -4,6 +4,9 @@ import { domId } from './text.ts';
 export const commandButton =
   'inline-flex items-center rounded-md border border-line bg-surface px-3 py-1 text-sm font-heavy text-text outline-offset-2 outline-accent-text hover:border-accent hover:text-accent-text focus-visible:outline-2 aria-disabled:cursor-not-allowed aria-disabled:text-text-3';
 
+export const primaryButton =
+  'inline-flex items-center rounded-md border border-accent bg-accent px-3 py-1 text-sm font-heavy text-on-accent outline-offset-2 outline-accent-text focus-visible:outline-2 aria-disabled:cursor-not-allowed aria-disabled:opacity-50';
+
 export function CommandForm(props: {
   readonly harnessId: string;
   readonly command: string;
@@ -21,6 +24,20 @@ export function CommandForm(props: {
     >
       {props.children}
       <p data-outcome role="status" aria-live="polite" class="m-0 text-sm text-text-3"></p>
+    </form>
+  );
+}
+
+export function NewHarnessForm(props: { readonly command: string; readonly children: Child }) {
+  return (
+    <form
+      data-command={props.command}
+      data-new-workflow
+      method="post"
+      action="#"
+      class="flex flex-col gap-5"
+    >
+      {props.children}
     </form>
   );
 }

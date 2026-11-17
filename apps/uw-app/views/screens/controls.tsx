@@ -4,7 +4,7 @@ import type { Stage } from '@uw/contracts';
 import type { OpenDraft, StageControlsView } from '@uw/harness';
 import { Badge } from '@uw/ui/components/badge.tsx';
 import { Card } from '@uw/ui/components/card.tsx';
-import { CommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
+import { CommandForm, commandButton, primaryButton } from '@uw/ui/components/command-form.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
@@ -24,8 +24,6 @@ const RULES_COMMAND = 'set_stage_rules';
 const control =
   'rounded-md border border-line bg-surface px-2 py-1 text-sm text-text outline-offset-2 outline-accent-text focus-visible:outline-2 disabled:text-text-3';
 const box = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
-const primary =
-  'inline-flex items-center rounded-md border border-accent bg-accent px-3 py-1 text-sm font-heavy text-on-accent outline-offset-2 outline-accent-text focus-visible:outline-2 aria-disabled:cursor-not-allowed aria-disabled:opacity-50';
 
 function rulesFormId(harnessId: string): string {
   return domId('form', RULES_COMMAND, harnessId);
@@ -212,7 +210,7 @@ function SaveRules(props: { readonly view: StageControlsView }) {
   return (
     <div class="border-t border-line px-4 py-3">
       <CommandForm harnessId={props.view.harness.id} command={RULES_COMMAND}>
-        <button type="submit" class={primary} aria-disabled={blocked ? 'true' : undefined}>
+        <button type="submit" class={primaryButton} aria-disabled={blocked ? 'true' : undefined}>
           Save changes
         </button>
       </CommandForm>
