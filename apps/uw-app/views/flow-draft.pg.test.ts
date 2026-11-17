@@ -129,6 +129,38 @@ async function lapsedLockOffersPickUp(scene: Scene): Promise<void> {
   expect(reader.personId).toBe(scene.ana.id);
 }
 
+async function holderMapsTheDraft(scene: Scene): Promise<void> {
+  await rowanDrafts(scene, ['ship']);
+  const { document } = await flowFor(scene, scene.rowanEmail);
+  const map = document.querySelector('[data-draft-editor] [data-draft-map] svg[data-map-editable]');
+  expect(map).not.toBeNull();
+  const rows = [...document.querySelectorAll('[data-draft-rows] > [data-draft-row]')];
+  const boxes = [...(map?.querySelectorAll('[data-box]') ?? [])];
+  expect(boxes.map((box) => box.getAttribute('data-stage'))).toEqual(
+    rows.map((row) => row.getAttribute('data-key')),
+  );
+  expect(map?.querySelectorAll('[data-loop-handle]')).toHaveLength(rows.length);
+  const first = rows[0]?.getAttribute('data-key') ?? '';
+  expect(map?.querySelector(`[data-loop="${first} ship"]`)?.getAttribute('tabindex')).toBe('0');
+  const ship = [...(map?.querySelectorAll('[data-stage="ship"] text') ?? [])].map(
+    (text) => text.textContent,
+  );
+  expect(ship.at(-1)).toBe('A person approves');
+  expect(document.querySelectorAll('main svg[data-map-editable]')).toHaveLength(1);
+}
+
+async function watcherSeesTheDraftMapReadOnly(scene: Scene): Promise<void> {
+  await rowanDrafts(scene, ['ship']);
+  const { document } = await flowFor(scene, scene.ana.email);
+  const map = document.querySelector('[data-draft-view] [data-draft-map] svg');
+  expect(map).not.toBeNull();
+  expect(map?.hasAttribute('data-map-editable')).toBe(false);
+  expect(map?.querySelectorAll('[data-loop-handle], [data-loop], [data-box]')).toHaveLength(0);
+  expect(map?.querySelectorAll('[data-feeds]').length).toBeGreaterThan(2);
+  const member = await flowFor(scene, scene.viewer.email);
+  expect(member.document.querySelector('[data-draft-map]')).toBeNull();
+}
+
 describe.skipIf(!testServer)('#103 the Flow tab edits a workflow as a draft', () => {
   it('offers Edit workflow to an area admin and not to a viewer', () =>
     inDraft(offersEditToAdminsOnly));
@@ -144,4 +176,10 @@ describe.skipIf(!testServer)('#103 the Flow tab edits a workflow as a draft', ()
   it('shows a viewer who is editing, but not the draft', () => inDraft(memberSeesOnlyTheLock));
 
   it('offers to pick up a draft once its lock has lapsed', () => inDraft(lapsedLockOffersPickUp));
+
+  it('#109 draws the holder’s draft as a map with a box per row, loop handles and deletable loops', () =>
+    inDraft(holderMapsTheDraft));
+
+  it('#109 shows a second admin the draft map read-only, and a viewer no draft map', () =>
+    inDraft(watcherSeesTheDraftMapReadOnly));
 });

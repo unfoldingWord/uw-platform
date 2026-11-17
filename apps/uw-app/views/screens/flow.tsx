@@ -2,7 +2,7 @@ import type { Context } from 'hono';
 import { can } from '@uw/core/acl';
 import { formatDuration } from '@uw/core/dates';
 import { formatCount } from '@uw/core/money';
-import { VIEW_LIMIT, type FlowStage, type FlowView } from '@uw/harness';
+import { VIEW_LIMIT, type FlowStage, type FlowView, type WorkflowDraftView } from '@uw/harness';
 import { Card } from '@uw/ui/components/card.tsx';
 import { HumanGateMark } from '@uw/ui/components/human-action.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
@@ -64,21 +64,33 @@ function rowOf(view: FlowView, entry: FlowStage, at: Date) {
   };
 }
 
-function Diagram(props: { readonly harnessId: string; readonly view: FlowView }) {
+const fixedWords =
+  'The four phases and the option lists are set in the platform and can’t be changed here.';
+const yoursWords =
+  'Stages, their order, their phase and the loop arrows are yours to change in a draft.';
+
+function Diagram(props: {
+  readonly harnessId: string;
+  readonly view: FlowView;
+  readonly admin: boolean;
+  readonly at: Date;
+}) {
   return (
-    <Card title="Flow" sub="the stages as a diagram, with the gate and the loops">
-      <details>
-        <summary class={`cursor-pointer text-sm font-semibold text-text-2 ${focus}`}>
-          Show the diagram
-        </summary>
-        <div class="mt-3">
-          <FlowDiagram
-            harnessId={props.harnessId}
-            harnessTitle={props.view.harness.title}
-            stages={props.view.stages}
-          />
-        </div>
-      </details>
+    <Card
+      title="Flow"
+      sub="the live map of this workflow: stages in four phases, with forward and loop arrows"
+    >
+      <div class="flex flex-col gap-3">
+        <FlowDiagram
+          harnessId={props.harnessId}
+          harnessTitle={props.view.harness.title}
+          stages={props.view.stages}
+          at={props.at}
+        />
+        <p data-fixed-note class="m-0 text-sm text-text-2">
+          {props.admin ? `${fixedWords} ${yoursWords}` : fixedWords}
+        </p>
+      </div>
     </Card>
   );
 }
@@ -89,6 +101,36 @@ function summaryOf(view: FlowView): string {
   const gateWords =
     gates === 1 ? '1 gate where a person decides' : `${gates} gates where a person decides`;
   return `${view.stages.length} stages in ${brackets} brackets, with ${gateWords}.`;
+}
+
+function FlowBody(props: {
+  readonly harnessId: string;
+  readonly view: FlowView;
+  readonly draft: WorkflowDraftView | null;
+  readonly admin: boolean;
+  readonly at: Date;
+}) {
+  return (
+    <div class="flex flex-col gap-5">
+      {props.view.capped ? <Note>{cappedNote}</Note> : null}
+      <Diagram harnessId={props.harnessId} view={props.view} admin={props.admin} at={props.at} />
+      <DraftSection
+        harnessId={props.harnessId}
+        harnessTitle={props.view.harness.title}
+        draft={props.draft}
+        admin={props.admin}
+        at={props.at}
+      />
+      <Card title="Stage details" sub="what each stage holds, costs and waits on" flush>
+        <Table
+          caption="Stages"
+          columns={columns}
+          rows={props.view.stages.map((entry) => rowOf(props.view, entry, props.at))}
+          bare
+        />
+      </Card>
+    </div>
+  );
 }
 
 export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
@@ -123,19 +165,7 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
         title={view.harness.title}
         lede={summaryOf(view)}
       />
-      <div class="flex flex-col gap-5">
-        {view.capped ? <Note>{cappedNote}</Note> : null}
-        <DraftSection harnessId={harnessId} draft={draft} admin={admin} at={screen.at} />
-        <Card title="Stage configuration" sub="what each stage holds, costs and waits on" flush>
-          <Table
-            caption="Stages"
-            columns={columns}
-            rows={view.stages.map((entry) => rowOf(view, entry, screen.at))}
-            bare
-          />
-        </Card>
-        <Diagram harnessId={harnessId} view={view} />
-      </div>
+      <FlowBody harnessId={harnessId} view={view} draft={draft} admin={admin} at={screen.at} />
     </>,
   );
 }

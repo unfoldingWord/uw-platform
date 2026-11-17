@@ -5,6 +5,7 @@ import { Card } from '@uw/ui/components/card.tsx';
 import { CommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
 import { TextField } from '@uw/ui/components/field.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
+import { DraftMap } from './draft-map.tsx';
 import { DraftRow } from './draft-row.tsx';
 import { cleanCheck, problemCount } from './draft-words.ts';
 
@@ -100,7 +101,9 @@ function DraftBar(props: { readonly harnessId: string; readonly draft: WorkflowD
   );
 }
 
-function Editor(props: { readonly harnessId: string; readonly draft: WorkflowDraftView }) {
+type Named = { readonly harnessId: string; readonly harnessTitle: string };
+
+function Editor(props: Named & { readonly draft: WorkflowDraftView }) {
   return (
     <section
       data-draft-editor
@@ -109,6 +112,12 @@ function Editor(props: { readonly harnessId: string; readonly draft: WorkflowDra
       class="flex min-w-0 flex-col rounded-md border border-line bg-surface text-text"
     >
       <DraftBar harnessId={props.harnessId} draft={props.draft} />
+      <DraftMap
+        harnessId={props.harnessId}
+        harnessTitle={props.harnessTitle}
+        stages={props.draft.stages}
+        editable
+      />
       <General draft={props.draft} />
       <Rows draft={props.draft} locked={false} />
       <template data-draft-template>
@@ -145,7 +154,7 @@ function EditButton(props: { readonly harnessId: string; readonly label: string 
   );
 }
 
-function TakeOver(props: { readonly harnessId: string; readonly draft: WorkflowDraftView }) {
+function TakeOver(props: Named & { readonly draft: WorkflowDraftView }) {
   return (
     <Card title="Their draft" sub="you can watch; to edit, take over the lock with a reason">
       <CommandForm harnessId={props.harnessId} command="take_over_workflow_draft">
@@ -155,23 +164,25 @@ function TakeOver(props: { readonly harnessId: string; readonly draft: WorkflowD
         </button>
       </CommandForm>
       <section data-draft-view class="rounded-md border border-line">
+        <DraftMap
+          harnessId={props.harnessId}
+          harnessTitle={props.harnessTitle}
+          stages={props.draft.stages}
+          editable={false}
+        />
         <Rows draft={props.draft} locked />
       </section>
     </Card>
   );
 }
 
-function OthersDraft(props: {
-  readonly harnessId: string;
-  readonly draft: WorkflowDraftView;
-  readonly at: Date;
-}) {
+function OthersDraft(props: Named & { readonly draft: WorkflowDraftView; readonly at: Date }) {
   const { draft } = props;
   return (
     <div class="flex flex-col gap-3">
       <LockBar draft={draft} at={props.at} />
       {draft.admin && draft.lockActive ? (
-        <TakeOver harnessId={props.harnessId} draft={draft} />
+        <TakeOver harnessId={props.harnessId} harnessTitle={props.harnessTitle} draft={draft} />
       ) : null}
       {draft.admin && !draft.lockActive ? (
         <EditButton harnessId={props.harnessId} label="Pick up their draft" />
@@ -182,6 +193,7 @@ function OthersDraft(props: {
 
 export function DraftSection(props: {
   readonly harnessId: string;
+  readonly harnessTitle: string;
   readonly draft: WorkflowDraftView | null;
   readonly admin: boolean;
   readonly at: Date;
@@ -202,6 +214,14 @@ export function DraftSection(props: {
       </Card>
     );
   }
-  if (draft.mine) return <Editor harnessId={props.harnessId} draft={draft} />;
-  return <OthersDraft harnessId={props.harnessId} draft={draft} at={props.at} />;
+  if (draft.mine)
+    return <Editor harnessId={props.harnessId} harnessTitle={props.harnessTitle} draft={draft} />;
+  return (
+    <OthersDraft
+      harnessId={props.harnessId}
+      harnessTitle={props.harnessTitle}
+      draft={draft}
+      at={props.at}
+    />
+  );
 }

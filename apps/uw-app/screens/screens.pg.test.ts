@@ -159,6 +159,14 @@ async function boardScreens(db: Database): Promise<Screen[]> {
     viewClock,
   );
   screens.push({ name: 'controls-member', html: member.text });
+  const flowMember = await getHtml(
+    db,
+    world.viewer.email,
+    flowPath(world.harnessId),
+    headers,
+    viewClock,
+  );
+  screens.push({ name: 'flow-member', html: flowMember.text });
   return [...screens, ...(await draftScreens(world))];
 }
 
@@ -272,6 +280,7 @@ describe.skipIf(!testServer || (!browserReady && !required))('UI-16 the screensh
       'health-detail',
       'persona',
       'controls-member',
+      'flow-member',
       'flow-draft',
       'flow-locked',
       'waiting',
