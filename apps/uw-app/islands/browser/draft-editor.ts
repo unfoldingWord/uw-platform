@@ -1,5 +1,6 @@
 import { draftCheckSchema, type DraftProblem, type DraftStage } from '@uw/contracts';
 import { reasonText } from '@uw/ui/components/text.ts';
+import { redrawMap, wireDraftMap, type HitTest } from './draft-map.ts';
 
 export const DRAFT_CHECK_MS = 2000;
 
@@ -16,6 +17,7 @@ export type DraftDeps = {
   readonly fetch: typeof fetch;
   readonly uuid: () => string;
   readonly timers: DraftTimers;
+  readonly hitTest?: HitTest;
 };
 
 type Control = HTMLInputElement | HTMLSelectElement;
@@ -253,6 +255,7 @@ function draftStates(deps: DraftDeps) {
     await state.saving;
   };
   const changed = (root: HTMLElement): void => {
+    redrawMap(root);
     const state = stateOf(root);
     state.dirty = true;
     holdPublish(root);
@@ -271,6 +274,8 @@ function draftStates(deps: DraftDeps) {
 
 export function wireDraftEditor(document: Document, deps: DraftDeps): void {
   const drafts = draftStates(deps);
+  const hitTest = deps.hitTest ?? ((x: number, y: number) => document.elementFromPoint(x, y));
+  wireDraftMap(document, hitTest, drafts.changed);
   const edited = (event: Event) => {
     const found = rootOf(event);
     if (found?.target.closest('[data-draft-rows]')) drafts.changed(found.root);

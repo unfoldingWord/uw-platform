@@ -2,6 +2,7 @@ import { Icon } from './icon.tsx';
 import { domId, reasonText } from './text.ts';
 
 export const humanGateSvg = 'fill-human-soft stroke-human';
+export const humanGateSvgLine = 'fill-human-text text-xs font-heavy';
 
 const action =
   'inline-flex items-center rounded-md border border-human bg-human px-3 py-1 text-sm font-heavy text-on-accent outline-offset-2 outline-accent-text focus-visible:outline-2 aria-disabled:cursor-not-allowed aria-disabled:border-human-line aria-disabled:bg-human-soft aria-disabled:text-human-text';

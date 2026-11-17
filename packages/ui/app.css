@@ -9,6 +9,7 @@
 
 @source './components/**/*.tsx';
 @source '../../apps/uw-app/**/*.tsx';
+@source './components/flow-layout.ts';
 @source not './dist';
 @source not '../../apps/uw-app/dist';
 @source not './components/**/*.test.tsx';
