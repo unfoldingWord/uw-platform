@@ -180,12 +180,53 @@ async function freezesForAnAdmin(db: Database): Promise<void> {
   expect(await eventsNamed(db, scene.harnessId, 'freeze_changed')).toHaveLength(1);
 }
 
+async function rulesOf(db: Database, harnessId: string, key: string) {
+  const { stages } = await sceneOf(db, harnessId);
+  const stage = stages.find((entry) => entry.key === key);
+  if (stage === undefined) throw new Error(`no ${key} stage`);
+  const { id, agentPickup, exitGate, wipLimit, instructionsPageId, validators } = stage;
+  return { id, agentPickup, exitGate, wipLimit, instructionsPageId, validators };
+}
+
+async function setsStageRules(db: Database): Promise<void> {
+  const scene = await softwareHarness(db);
+  const { harnessId } = scene;
+  const build = await rulesOf(db, harnessId, 'build');
+  const change = { stages: [{ ...build, agentPickup: 'none', wipLimit: 5 }] };
+  const requestId = randomUUID();
+  const saved = await command(db, ROWAN, harnessId, 'set_stage_rules', { requestId, ...change });
+  expect(saved.body).toEqual({ status: 'accepted', requestId });
+  expect(await rulesOf(db, harnessId, 'build')).toMatchObject({ agentPickup: 'none', wipLimit: 5 });
+  const [edited] = await eventsNamed(db, harnessId, 'stage_edited');
+  expect(edited).toMatchObject({
+    actor: `human:${ROWAN_ID}`,
+    requestId,
+    evidence: { key: 'build' },
+  });
+  const byEditor = await send(db, scene.editor, harnessId, 'set_stage_rules', change);
+  expect(byEditor.body).toMatchObject({ status: 'error', reason: 'not_permitted' });
+}
+
+async function turnsShadowOnAndOff(db: Database): Promise<void> {
+  const scene = await softwareHarness(db);
+  const { harnessId } = scene;
+  const on = await send(db, ROWAN, harnessId, 'set_shadow', { shadow: true });
+  expect(on.body).toMatchObject({ status: 'accepted' });
+  expect((await sceneOf(db, harnessId)).harness.shadow).toBe(true);
+  const byEditor = await send(db, scene.editor, harnessId, 'set_shadow', { shadow: false });
+  expect(byEditor.body).toMatchObject({ status: 'error', reason: 'not_permitted' });
+  await send(db, ROWAN, harnessId, 'set_shadow', { shadow: false });
+  expect(await eventsNamed(db, harnessId, 'shadow_turned_on')).toHaveLength(1);
+  expect(await eventsNamed(db, harnessId, 'shadow_lifted')).toHaveLength(1);
+}
+
 function agentAttempts(harnessId: string): ReadonlyArray<readonly [string, string, object]> {
   return [
     [randomUUID(), 'activate_template', activation({ harnessKey: 'agent-board' })],
     [harnessId, 'pause', { stageKey: null }],
     [harnessId, 'resume', { stageKey: null }],
     [harnessId, 'set_freeze', { frozen: true, allow: [] }],
+    [harnessId, 'set_shadow', { shadow: true }],
   ];
 }
 
@@ -215,6 +256,12 @@ describe.skipIf(!testServer)('WB-1 KN-18 the stage command on the person surface
 
   it('GD-2 set_freeze freezes for an admin, is refused for an editor, and records freeze_changed', () =>
     withAppDatabase(freezesForAnAdmin));
+
+  it('#108 set_stage_rules changes a stage at once for an admin, records who, and refuses an editor', () =>
+    withAppDatabase(setsStageRules));
+
+  it('#108 set_shadow turns shadow on and off for an admin and refuses an editor', () =>
+    withAppDatabase(turnsShadowOnAndOff));
 
   it('the stage command refuses an agent on every route and records nothing', () =>
     withAppDatabase(agentsRefused));

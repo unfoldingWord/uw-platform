@@ -65,6 +65,7 @@ export const eventNames = [
   'review_verdict_recorded',
   'shadow_verdict',
   'shadow_lifted',
+  'shadow_turned_on',
   'freeze_changed',
   'finding_refuted',
   'delegated_merge',

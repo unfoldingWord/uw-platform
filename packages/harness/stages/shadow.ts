@@ -8,12 +8,12 @@ import { adminRefusal, agentRefusal } from './rules.ts';
 
 type ShadowPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
-export type LiftShadowInput = { readonly harnessId: string };
+export type ShadowInput = { readonly harnessId: string; readonly shadow: boolean };
 
-export async function liftShadow(
+export async function setShadow(
   ports: ShadowPorts,
   caller: Caller,
-  input: LiftShadowInput,
+  input: ShadowInput,
 ): Promise<KernelOutcome<HarnessScene>> {
   const agent = agentRefusal(caller);
   if (agent !== null) return agent;
@@ -25,13 +25,13 @@ export async function liftShadow(
     const denied = await adminRefusal(ports, tx, caller, harness, at);
     if (denied !== null) return denied;
     const stages = await tx.harnessStages.read.forHarness(harness.id);
-    if (!harness.shadow) return accepted({ harness, stages });
-    if (!(await tx.harnesses.write.setShadow(harness.id, false))) {
+    if (harness.shadow === input.shadow) return accepted({ harness, stages });
+    if (!(await tx.harnesses.write.setShadow(harness.id, input.shadow))) {
       return refused('harness_not_found', { harnessId: harness.id });
     }
     await recordHarnessEvents(tx, recordContext(ports, caller, at), harness.id, [
-      draft('shadow_lifted', {}),
+      draft(input.shadow ? 'shadow_turned_on' : 'shadow_lifted', {}),
     ]);
-    return accepted({ harness: { ...harness, shadow: false }, stages });
+    return accepted({ harness: { ...harness, shadow: input.shadow }, stages });
   });
 }

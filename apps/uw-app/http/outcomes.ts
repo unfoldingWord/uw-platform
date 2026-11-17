@@ -38,6 +38,7 @@ const statusByReason = new Map<ErrorReason, ContentfulStatusCode>([
   ['draft_stale', 409],
   ['draft_revision_mismatch', 409],
   ['draft_has_problems', 409],
+  ['stage_rules_have_problems', 409],
   ['malformed_command', 400],
   ['internal_error', 500],
   ['access_not_configured', 503],

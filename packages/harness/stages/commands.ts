@@ -13,7 +13,8 @@ import { setTitle, type TitleInput } from './title.ts';
 import { setFreeze, type FreezeInput } from './freeze.ts';
 import { setHostedBuilder, type HostedBuilderInput } from './hosted-builder.ts';
 import { setPause, type PauseInput } from './pause.ts';
-import { liftShadow, type LiftShadowInput } from './shadow.ts';
+import { setStageRules, type StageRulesInput } from './rules-edit.ts';
+import { setShadow, type ShadowInput } from './shadow.ts';
 import { changeTemplate, type ChangeTemplateInput } from './template-change.ts';
 
 type StagePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store' | 'runs'>;
@@ -52,7 +53,8 @@ export type StageCommands = {
   setFixClaim(caller: Caller, input: FixClaimInput): Promise<KernelOutcome<HarnessScene>>;
   setTitle(caller: Caller, input: TitleInput): Promise<KernelOutcome<HarnessScene>>;
   setFreeze(caller: Caller, input: FreezeInput): Promise<KernelOutcome<HarnessScene>>;
-  liftShadow(caller: Caller, input: LiftShadowInput): Promise<KernelOutcome<HarnessScene>>;
+  setShadow(caller: Caller, input: ShadowInput): Promise<KernelOutcome<HarnessScene>>;
+  setStageRules(caller: Caller, input: StageRulesInput): Promise<KernelOutcome<readonly Stage[]>>;
   changeTemplate(caller: Caller, input: ChangeTemplateInput): Promise<KernelOutcome<HarnessScene>>;
 };
 
@@ -241,7 +243,8 @@ export function createStageCommands(ports: StagePorts): StageCommands {
     setFixClaim: (caller, input) => setFixClaim(ports, caller, input),
     setTitle: (caller, input) => setTitle(ports, caller, input),
     setFreeze: (caller, input) => setFreeze(ports, caller, input),
-    liftShadow: (caller, input) => liftShadow(ports, caller, input),
+    setShadow: (caller, input) => setShadow(ports, caller, input),
+    setStageRules: (caller, input) => setStageRules(ports, caller, input),
     changeTemplate: (caller, input) => changeTemplate(ports, caller, input),
   };
 }

@@ -39,6 +39,7 @@ const actions = {
   record_measurement: 'write',
   set_shadow: 'admin',
   set_freeze: 'admin',
+  set_stage_rules: 'admin',
   decide_gates: 'admin',
   refute_finding: 'write',
   set_fix_claim: 'admin',

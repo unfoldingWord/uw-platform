@@ -156,3 +156,4 @@ export { closingReferences, hasSkipCiMarker } from './github/closing-keywords.ts
 export type { FreezeInput } from './stages/freeze.ts';
 export { DRAFT_LOCK_MINUTES } from './stages/drafts/shape.ts';
 export type { DraftHolder, WorkflowDraftView } from './views/draft.ts';
+export type { OpenDraft, StageControlsView } from './views/controls.ts';
