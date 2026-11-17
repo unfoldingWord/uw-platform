@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { sql } from 'drizzle-orm';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
@@ -119,6 +120,26 @@ async function createdWorkflowAppearsForTheArea(db: Database): Promise<void> {
   expect(named((await pageAs(db, outsider.email, agentQueuesPath())).main)).toBe(false);
 }
 
+async function aResentCreateMakesOneWorkflow(db: Database): Promise<void> {
+  const admin = await person(db, 'new-wf-resender', 'admin', '40-49');
+  const harnessId = randomUUID();
+  const body = {
+    requestId: randomUUID(),
+    harnessKey: 'resent',
+    title: 'Resent',
+    jdArea: '40-49',
+    template: 'check-only',
+    repository: null,
+  };
+  const first = await command(db, admin, harnessId, 'activate_template', body);
+  const again = await command(db, admin, harnessId, 'activate_template', body);
+  expect([first.body['status'], again.body['status']]).toEqual(['accepted', 'accepted']);
+  const rows = await db.execute<{ readonly count: number }>(
+    sql`SELECT count(*)::int AS count FROM harnesses WHERE key = 'resent'`,
+  );
+  expect(rows[0]?.count).toBe(1);
+}
+
 describe.skipIf(!testServer)('#111 create a new workflow', () => {
   it('shows an area admin a form offering only the areas they administer', () =>
     withAppDatabase(areaAdminSeesOnlyTheirAreas));
@@ -134,6 +155,9 @@ describe.skipIf(!testServer)('#111 create a new workflow', () => {
 
   it('puts New workflow on the landing page for admins only', () =>
     withAppDatabase(landingOffersItToAdminsOnly));
+
+  it('answers a resent create with its first answer and makes one workflow', () =>
+    withAppDatabase(aResentCreateMakesOneWorkflow));
 
   it('lists a created workflow for others in its area and not outside it', () =>
     withAppDatabase(createdWorkflowAppearsForTheArea));

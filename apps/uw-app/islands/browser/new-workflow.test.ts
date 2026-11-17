@@ -3,11 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { wireCommandForms } from './command-form.ts';
 import { wireNewWorkflow, workflowKey } from './new-workflow.ts';
 
-const ids = [
-  'e1000000-0000-4000-8000-000000000001',
-  'e1000000-0000-4000-8000-000000000002',
-  'e1000000-0000-4000-8000-000000000003',
-];
+const idOf = (n: number): string => `e1000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+const ids = [idOf(1), idOf(2), idOf(3), idOf(4), idOf(5)];
+
+type Reply = Response | 'lost';
 
 type Sent = { readonly url: string; readonly body: Readonly<Record<string, unknown>> };
 
@@ -26,7 +25,7 @@ function answer(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status });
 }
 
-function wired(markup: string, answers: readonly Response[]) {
+function wired(markup: string, answers: readonly Reply[]) {
   const dom = new JSDOM(`<!DOCTYPE html><body>${markup}</body>`, { url: 'https://uw.example/' });
   const document = dom.window.document;
   const sent: Sent[] = [];
@@ -37,12 +36,12 @@ function wired(markup: string, answers: readonly Response[]) {
     sent.push({ url: String(input), body: JSON.parse(String(init?.body)) });
     const reply = answers[replies] ?? answer(200, { status: 'accepted' });
     replies += 1;
+    if (reply === 'lost') throw new TypeError('network connection lost');
     return reply;
   }) as typeof globalThis.fetch;
   const uuid = () => {
-    const id = ids[next] ?? 'none';
     next += 1;
-    return id;
+    return idOf(next);
   };
   let refreshed = 0;
   wireCommandForms(document, { fetch, uuid, afterAccepted: () => (refreshed += 1) });
@@ -102,14 +101,75 @@ async function blankRepositoryIsNull(): Promise<void> {
   expect(scene.sent[0]?.body['repository']).toBeNull();
 }
 
-async function goesOnWhenTheDraftFails(): Promise<void> {
+function urls(scene: ReturnType<typeof wired>): readonly string[] {
+  return scene.sent.map((sent) => sent.url.split('/commands/')[1] ?? '');
+}
+
+function fieldsLocked(document: Document): boolean {
+  return document.querySelector('input[name="title"]')?.hasAttribute('disabled') ?? false;
+}
+
+async function replaysALostCreate(): Promise<void> {
+  const scene = wired(form(), ['lost', answer(200, { status: 'accepted' })]);
+  submit(scene.document);
+  await settled();
+  expect(outcome(scene.document)).toContain('We couldn’t tell whether the workflow was created');
+  expect(fieldsLocked(scene.document)).toBe(true);
+  expect(scene.went).toEqual([]);
+  submit(scene.document);
+  await settled();
+  expect(urls(scene)).toEqual(['activate_template', 'activate_template', 'open_workflow_draft']);
+  expect(scene.sent[1]?.url).toBe(scene.sent[0]?.url);
+  expect(scene.sent[1]?.body).toEqual(scene.sent[0]?.body);
+  expect(scene.went).toEqual([`/harnesses/${ids[0]}`]);
+}
+
+async function staysWhenTheDraftDoesNotOpen(): Promise<void> {
   const scene = wired(form(), [
     answer(200, { status: 'accepted' }),
     answer(409, { status: 'error', reason: 'draft_held' }),
   ]);
   submit(scene.document);
   await settled();
+  expect(scene.went).toEqual([]);
+  expect(outcome(scene.document)).toContain(
+    'Your workflow was created, but its draft didn’t open (Draft held)',
+  );
+  const link = scene.document.querySelector('[data-outcome] a');
+  expect([link?.getAttribute('href'), link?.textContent]).toEqual([
+    `/harnesses/${ids[0]}`,
+    'open its Flow tab',
+  ]);
+  expect(fieldsLocked(scene.document)).toBe(true);
+  submit(scene.document);
+  await settled();
+  expect(urls(scene)).toEqual(['activate_template', 'open_workflow_draft', 'open_workflow_draft']);
+  expect(scene.sent[2]?.url).toBe(scene.sent[1]?.url);
+  expect(scene.sent[2]?.body['requestId']).not.toBe(scene.sent[1]?.body['requestId']);
   expect(scene.went).toEqual([`/harnesses/${ids[0]}`]);
+}
+
+async function replaysALostDraftOpen(): Promise<void> {
+  const scene = wired(form(), [answer(200, { status: 'accepted' }), 'lost']);
+  submit(scene.document);
+  await settled();
+  expect(scene.went).toEqual([]);
+  submit(scene.document);
+  await settled();
+  expect(urls(scene)).toEqual(['activate_template', 'open_workflow_draft', 'open_workflow_draft']);
+  expect(scene.sent[2]?.body).toEqual(scene.sent[1]?.body);
+  expect(scene.went).toEqual([`/harnesses/${ids[0]}`]);
+}
+
+async function aRefusalStartsAfresh(): Promise<void> {
+  const scene = wired(form(), [answer(409, { status: 'error', reason: 'harness_exists' })]);
+  submit(scene.document);
+  await settled();
+  expect(fieldsLocked(scene.document)).toBe(false);
+  submit(scene.document);
+  await settled();
+  expect(scene.sent[1]?.url).not.toBe(scene.sent[0]?.url);
+  expect(scene.sent[1]?.body['requestId']).not.toBe(scene.sent[0]?.body['requestId']);
 }
 
 async function refusalsInPlainWords(): Promise<void> {
@@ -155,7 +215,19 @@ describe('#111 the New workflow form', () => {
 
   it('sends no repository when the field is blank', blankRepositoryIsNull);
 
-  it('still goes to Flow when the draft does not open', goesOnWhenTheDraftFails);
+  it(
+    'resends the same create after a lost response, so it cannot make a second workflow',
+    replaysALostCreate,
+  );
+
+  it(
+    'stays on the page with a link to Flow when the draft does not open, and retries only the draft',
+    staysWhenTheDraftDoesNotOpen,
+  );
+
+  it('resends the same draft open after a lost response', replaysALostDraftOpen);
+
+  it('starts a new create, with new ids, after a refusal', aRefusalStartsAfresh);
 
   it('says in plain words why a create was refused, and stays on the page', refusalsInPlainWords);
 
