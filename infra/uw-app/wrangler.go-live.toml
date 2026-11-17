@@ -40,6 +40,12 @@ VAPID_SUBJECT = "set-at-go-live"
 ZULIP_SITE = "set-at-go-live"
 ZULIP_BOT_EMAIL = "set-at-go-live"
 ZULIP_CHANNELS = "{}"
+AI_GATEWAY_ACCOUNT_ID = "5a3ffd86280d3ed086be76d955829242"
+AI_GATEWAY_ID = "uw-platform-staging"
+AI_SPEND_CAP_MINOR = "50000"
+ALWAYS_ON_PROVIDER = "z-ai"
+ALWAYS_ON_MODEL = "z-ai/glm-5.3-flash"
+SANDBOX_MINOR_PER_HOUR = "3"
 
 [env.staging.observability]
 enabled = true
@@ -73,11 +79,13 @@ class_name = "HarnessRun"
 class_name = "ClaudeCodeSandbox"
 image = "../containers/claude-code/Dockerfile"
 max_instances = 4
+instance_type = "basic"
 
 [[env.staging.containers]]
 class_name = "CodexSandbox"
 image = "../containers/codex/Dockerfile"
 max_instances = 4
+instance_type = "basic"
 
 [[env.staging.durable_objects.bindings]]
 name = "CLAUDE_CODE_SANDBOX"
@@ -104,6 +112,12 @@ VAPID_SUBJECT = "set-at-go-live"
 ZULIP_SITE = "set-at-go-live"
 ZULIP_BOT_EMAIL = "set-at-go-live"
 ZULIP_CHANNELS = "{}"
+AI_GATEWAY_ACCOUNT_ID = "5a3ffd86280d3ed086be76d955829242"
+AI_GATEWAY_ID = "uw-platform-production"
+AI_SPEND_CAP_MINOR = "50000"
+ALWAYS_ON_PROVIDER = "z-ai"
+ALWAYS_ON_MODEL = "z-ai/glm-5.3-flash"
+SANDBOX_MINOR_PER_HOUR = "3"
 
 [env.production.observability]
 enabled = true
@@ -137,11 +151,13 @@ class_name = "HarnessRun"
 class_name = "ClaudeCodeSandbox"
 image = "../containers/claude-code/Dockerfile"
 max_instances = 4
+instance_type = "basic"
 
 [[env.production.containers]]
 class_name = "CodexSandbox"
 image = "../containers/codex/Dockerfile"
 max_instances = 4
+instance_type = "basic"
 
 [[env.production.durable_objects.bindings]]
 name = "CLAUDE_CODE_SANDBOX"

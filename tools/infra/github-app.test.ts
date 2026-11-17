@@ -49,7 +49,30 @@ describe('GH-1 the GitHub App is declared with least privilege', () => {
     );
     expect(manifest.public).toBe(false);
   });
+});
 
+describe('GH-1 the production App', () => {
+  it('declares the production App as the staging one with production names', () => {
+    const production = JSON.parse(
+      readFileSync('infra/github/app-manifest.production.json', 'utf8'),
+    ) as typeof manifest;
+    expect(production).toEqual({
+      ...manifest,
+      name: 'uw-harness',
+      hook_attributes: {
+        ...manifest.hook_attributes,
+        url: 'https://uw-ingest.unfoldingword.workers.dev/webhooks/github',
+      },
+    });
+    expect(
+      parse(readFileSync('infra/uw-ingest/wrangler.toml', 'utf8')) as {
+        env: { production: { workers_dev: boolean } };
+      },
+    ).toMatchObject({ env: { production: { workers_dev: true } } });
+  });
+});
+
+describe('GH-1 the GitHub App holds no secret', () => {
   it('holds no key, secret or token text', () => {
     expect(secretText.test(readFileSync('infra/github/app-manifest.json', 'utf8'))).toBe(false);
   });

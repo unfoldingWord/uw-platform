@@ -31,7 +31,7 @@ queue = "uw-ingest-events-staging"
 
 [env.production]
 name = "uw-ingest"
-workers_dev = false
+workers_dev = true
 logpush = true
 
 [env.production.vars]
