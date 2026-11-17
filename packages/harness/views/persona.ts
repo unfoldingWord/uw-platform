@@ -17,7 +17,9 @@ import { formatDate } from '@uw/core/dates';
 import { allowed, isAgent } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { accepted, refused, type KernelOutcome } from '../outcome.ts';
+import { activationChecks, type ActivationCheck } from '../personas/checks.ts';
 import { toolsetOptions } from '../personas/toolset-options.ts';
+import type { PersonaFrontmatter } from '../personas/types.ts';
 import type { PageFacts, PersonaDay, RunRow, StoreTransaction } from '../ports.ts';
 import { readableHarness, type ScenePorts } from '../reads/scene.ts';
 import { refuteNames, refuteSince, refuteTallies } from './refutes.ts';
@@ -80,12 +82,16 @@ export type PersonaDashboard = {
       | null;
   };
   readonly canActivate: boolean;
+  readonly canEdit: boolean;
   readonly toolsetOptions: readonly VerbName[] | null;
+  readonly frontmatter: PersonaFrontmatter;
+  readonly bodyMd: string;
+  readonly checks: readonly ActivationCheck[];
 };
 
 type Scene = {
   readonly page: PageFacts;
-  readonly frontmatter: ReturnType<typeof personaFrontmatterSchema.parse>;
+  readonly frontmatter: PersonaFrontmatter;
   readonly harness: Harness;
   readonly principal: Principal;
 };
@@ -176,8 +182,19 @@ function abilities(scene: Scene, at: Date) {
   const admin = person && allowed(principal, 'admin', harness, at);
   return {
     canActivate: page.status === 'suggested' && writes && admin,
+    canEdit: writes && admin,
     toolsetOptions: writes ? toolsetOptions(principal, page.jdArea, at) : null,
   };
+}
+
+function checksOf(scene: Scene, canEdit: boolean, at: Date) {
+  return activationChecks({
+    frontmatter: scene.frontmatter,
+    body: scene.page.bodyMd,
+    activator: canEdit ? scene.principal : null,
+    area: scene.harness.jdArea,
+    at,
+  });
 }
 
 async function figures(tx: StoreTransaction, scene: Scene, since: Date) {
@@ -235,6 +252,7 @@ export async function personaView(
   const { day, events, last } = await figures(tx, scene, since);
   const counts = (name: EventName) => events.get(name) ?? 0;
   const { page, frontmatter } = scene;
+  const able = abilities(scene, at);
   return accepted({
     page: {
       id: page.id,
@@ -263,6 +281,9 @@ export async function personaView(
     refutes: await refutesOf(tx, scene, at),
     lastRuns: last.map(summaryOf),
     delegations: await delegationsOf(tx, scene, at),
-    ...abilities(scene, at),
+    ...able,
+    frontmatter,
+    bodyMd: page.bodyMd,
+    checks: await checksOf(scene, able.canEdit, at),
   });
 }

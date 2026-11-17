@@ -137,6 +137,18 @@ function skillsFor(executor: AnyExecutor, jdArea: string): Promise<readonly Page
     .limit(SKILL_LIST_LIMIT);
 }
 
+const PERSONA_LIST_LIMIT = 200;
+
+async function personasOf(executor: AnyExecutor, harnessId: string): Promise<readonly PageFacts[]> {
+  const rows = await executor
+    .select(factColumns)
+    .from(pages)
+    .where(and(eq(pages.type, 'persona'), sql`${pages.frontmatter}->>'harness' = ${harnessId}`))
+    .orderBy(asc(pages.title), asc(pages.id))
+    .limit(PERSONA_LIST_LIMIT);
+  return rows.map(toFacts);
+}
+
 export function bindPages(executor: AnyExecutor): PagesGateway {
   return {
     read: {
@@ -147,6 +159,7 @@ export function bindPages(executor: AnyExecutor): PagesGateway {
       staleLearnings: (today, limit) => staleLearnings(executor, today, limit),
       platformFor: (jdArea) => platformFor(executor, jdArea),
       skillsFor: (jdArea) => skillsFor(executor, jdArea),
+      personasOf: (harnessId) => personasOf(executor, harnessId),
     },
     write: { activatePersona: (activation) => activatePersona(executor, activation) },
   };

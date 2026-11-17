@@ -36,6 +36,14 @@ export function controlsPath(harnessId: string): string {
   return `${flowPath(harnessId)}/controls`;
 }
 
+export function agentsPath(harnessId: string): string {
+  return `${flowPath(harnessId)}/agents`;
+}
+
+export function newAgentPath(harnessId: string): string {
+  return `${agentsPath(harnessId)}/new`;
+}
+
 export function gatePath(harnessId: string, itemId: string): string {
   return `${flowPath(harnessId)}/gates/${segment(itemId)}`;
 }

@@ -12,6 +12,8 @@ export const pageNames = {
   queue: 'Queue',
   flow: 'Flow',
   controls: 'Stages & Controls',
+  agents: 'Agents',
+  newAgent: 'New Agent',
   gate: 'Gate',
   item: 'Item',
 } as const;
