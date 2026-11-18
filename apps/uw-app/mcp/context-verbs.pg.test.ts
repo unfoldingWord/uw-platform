@@ -307,7 +307,7 @@ describe.skipIf(!testServer)(
       const [itemId] = r.itemIds;
       const reader = await viewer(r, VIEWER_80);
       expect(await reader('resolve_context', { itemId })).toEqual({
-        instructions: summary(PAGE.instructions, 'skill'),
+        instructions: { ...summary(PAGE.instructions, 'skill'), bodyMd: 'Context.' },
         package: [summary(PAGE.item), summary(PAGE.strategy, 'product_strategy')],
         learnings: [itemLearning, ...laterTiers],
       });

@@ -10,7 +10,7 @@ import type { Caller } from '../caller.ts';
 import { gateView } from '../gates/view.ts';
 import type { KernelOutcome } from '../outcome.ts';
 import type { Ports } from '../ports.ts';
-import type { StoreTransaction } from '../store-ports.ts';
+import type { PageFacts, StoreTransaction } from '../store-ports.ts';
 import type { ReadableAreas } from '@uw/core/acl';
 import { agentsView, type AgentsView } from './agents.ts';
 import { runsView, runView, type RunInput, type RunsView, type RunView } from './runs.ts';
@@ -33,6 +33,7 @@ import { holdsOf, type Holds } from './holds.ts';
 import { decidableGates, decideAbility, gateDecided, workflowGates } from './gates.ts';
 import { planeList } from './plane-list.ts';
 import { planeTotals } from './plane.ts';
+import { pageView } from './page.ts';
 import { personaView, type PersonaDashboard } from './persona.ts';
 import { playByPlay, type PlayInput } from './play.ts';
 import { queuesView } from './queues.ts';
@@ -154,6 +155,11 @@ export type ViewReads = {
     input: { readonly pageId: string },
     options?: ReadOptions,
   ): Promise<KernelOutcome<PersonaDashboard>>;
+  page(
+    caller: Caller,
+    input: { readonly pageId: string },
+    options?: ReadOptions,
+  ): Promise<KernelOutcome<PageFacts>>;
   planeTotals(options?: ReadOptions): Promise<PlaneTotals>;
   planeList(
     caller: Caller,
@@ -274,6 +280,8 @@ export function createViewReads(ports: ViewPorts): ViewReads {
       return store.transaction((tx) => harnessCursors(ports, tx, caller, at));
     },
     persona: (caller, input, options) => personaOf(ports, caller, input.pageId, instant(options)),
+    page: (caller, input, options) =>
+      store.transaction((tx) => pageView(tx, caller, input.pageId, instant(options))),
     planeTotals: (options) => store.transaction((tx) => planeTotals(tx, instant(options))),
     planeList: (caller, indicator, options) => {
       const at = instant(options);
