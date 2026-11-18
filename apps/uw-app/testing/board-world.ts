@@ -205,7 +205,12 @@ export async function boardWorld(db: Database, clock: Clock): Promise<BoardWorld
   const kernel = kernelOn(db, clock);
   const harnessId = await activatedHarness(kernel, rowan);
   const seeded = await items(kernel, rowan, harnessId);
-  await subscriptionRun(db, { harnessId, itemId: seeded.subscribed, at }, seeded.laptop.identity);
+  const earlier = new Date(at.getTime() - 60_000);
+  await subscriptionRun(
+    db,
+    { harnessId, itemId: seeded.subscribed, at: earlier },
+    seeded.laptop.identity,
+  );
   const meteredRunId = await meteredRun(db, { harnessId, itemId: seeded.metered, at }, 'running');
   const leaseUntil = new Date(at.getTime() + 4 * HOUR);
   await heldByAgent(db, seeded.metered, 'agent:builder', leaseUntil);
