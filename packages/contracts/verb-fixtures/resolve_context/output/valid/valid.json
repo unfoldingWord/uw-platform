@@ -5,7 +5,8 @@
     "jdArea": "80-89",
     "slug": "harness-skill",
     "title": "Harness skill",
-    "status": "draft"
+    "status": "draft",
+    "bodyMd": "Package the item."
   },
   "package": [
     {

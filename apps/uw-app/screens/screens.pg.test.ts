@@ -29,6 +29,7 @@ import {
   itemPath,
   agentsPath,
   newAgentPath,
+  pagePath,
   personaPath,
   runPath,
   runsPath,
@@ -154,6 +155,7 @@ async function boardScreens(db: Database): Promise<Screen[]> {
     ['health', healthPath()],
     ['health-detail', healthPath('breaker')],
     ['persona', personaPath(pageId)],
+    ['page', pagePath(pageId)],
   ];
   const headers = { accept: 'text/html' };
   const screens: Screen[] = [];
@@ -294,6 +296,7 @@ describe.skipIf(!testServer || (!browserReady && !required))('UI-16 the screensh
       'health',
       'health-detail',
       'persona',
+      'page',
       'controls-member',
       'flow-member',
       'flow-draft',

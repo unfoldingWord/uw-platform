@@ -18,6 +18,7 @@ export const pageNames = {
   newAgent: 'New Agent',
   gate: 'Gate',
   item: 'Item',
+  page: 'Page',
 } as const;
 
 const smallWord = /^[a-z]/;

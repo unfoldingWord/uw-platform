@@ -18,6 +18,7 @@ import { controlsPath, queuePath } from '../parts/paths.ts';
 import { waitingCount } from '../parts/waiting-count.ts';
 import { workflowCrumbs, workflowTabs } from '../parts/workflow-tabs.ts';
 import { notFound } from './not-found.tsx';
+import { InstructionsExtras } from '../parts/stage-instructions.tsx';
 
 const RULES_COMMAND = 'set_stage_rules';
 
@@ -192,13 +193,16 @@ function ruleRow(props: RowProps): Readonly<Record<string, Child>> {
     exit: <ExitRule {...props} />,
     limit: <Limit {...props} />,
     instructions: (
-      <Pick
-        view={view}
-        name={fieldName(index, 'instructionsPageId')}
-        label={`Instructions for ${stage.title}`}
-        choices={pageChoices(view)}
-        selected={stage.instructionsPageId ?? ''}
-      />
+      <div class="flex flex-col gap-2">
+        <Pick
+          view={view}
+          name={fieldName(index, 'instructionsPageId')}
+          label={`Instructions for ${stage.title}`}
+          choices={pageChoices(view)}
+          selected={stage.instructionsPageId ?? ''}
+        />
+        <InstructionsExtras view={view} stage={stage} />
+      </div>
     ),
     checks: <Checks {...props} />,
     running: <Running {...props} />,

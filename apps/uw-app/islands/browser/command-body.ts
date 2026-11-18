@@ -108,6 +108,10 @@ const shapes: ReadonlyMap<string, Shape> = new Map<string, Shape>([
   ['release', itemOnly],
   ['take_over', itemOnly],
   ['stop_run', itemOnly],
+  [
+    'add_stage_instructions',
+    (given) => ({ stageId: given.get('stageId'), title: given.get('title') }),
+  ],
   ['decide_gates', (given) => ({ entries: entriesOf(given.get('entries')) })],
   [
     'refute_finding',
