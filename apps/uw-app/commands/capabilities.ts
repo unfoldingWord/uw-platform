@@ -10,7 +10,11 @@ import { personaPageDraft, personasOf, type Caller, type Clock, type Kernel } fr
 import type { DatabaseHandle } from '../database.ts';
 import { issueByNumber } from '../github/facts/queries.ts';
 import { importStoredIssue, isImportable } from '../github/import.ts';
-import { createInstructionsPage, type InstructionsCreated } from '../pages/instructions.ts';
+import {
+  createInstructionsPage,
+  discardUnusedInstructionsPage,
+  type InstructionsCreated,
+} from '../pages/instructions.ts';
 import { createPage, readPage } from '../pages/store.ts';
 import type { LiveWiring } from '../kernel.ts';
 import type { ShipGitHub } from '../ports/connectors.ts';
@@ -32,6 +36,7 @@ export type CommandCapabilities = {
     readonly read: (pageId: string) => Promise<Page | null>;
     readonly draftPersonas: DraftPersonas;
     readonly createInstructions: (harness: Harness, title: string) => Promise<InstructionsCreated>;
+    readonly discardInstructions: (pageId: string) => Promise<boolean>;
   };
   readonly githubIssues: {
     readonly byNumber: (repository: string, number: number) => Promise<StoredIssue | null>;
@@ -129,6 +134,7 @@ export function commandCapabilities(grounds: CapabilityGrounds): CommandCapabili
           traceId: grounds.caller.traceId,
           at: grounds.clock.now(),
         }),
+      discardInstructions: (pageId) => discardUnusedInstructionsPage(db, pageId),
     },
     githubIssues: { byNumber: (repository, number) => issueByNumber(db, repository, number) },
     importIssue: importerOf(grounds),

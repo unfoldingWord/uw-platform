@@ -121,6 +121,8 @@ export const addStageInstructionsCommand = commandHandler({
       instructionsPageId: created.pageId,
       validators: [...stage.validators],
     };
-    return fromKernel(await kernel.stages.setStageRules(caller, { harnessId, stages: [rules] }));
+    const attached = await kernel.stages.setStageRules(caller, { harnessId, stages: [rules] });
+    if (attached.status !== 'accepted') await context.pages.discardInstructions(created.pageId);
+    return fromKernel(attached);
   },
 });

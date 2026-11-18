@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
@@ -139,6 +140,24 @@ async function viewerOnlyReads(db: Database): Promise<void> {
   expect(sent.text).toContain('Not saved');
 }
 
+async function skillPagesIn(db: Database): Promise<number> {
+  const rows = await db.execute<{ count: number }>(
+    sql`SELECT count(*)::int AS count FROM pages WHERE type = 'skill' AND jd_area = '80-89'`,
+  );
+  return rows[0]?.count ?? -1;
+}
+
+async function refusedAttachLeavesNoPage(db: Database): Promise<void> {
+  const made = await world(db);
+  const kernel = kernelOn(db, { now: () => new Date() });
+  accepted(await kernel.drafts.open(callerOf(await rowan(db)), { harnessId: made.harnessId }));
+  const before = await skillPagesIn(db);
+  const sent = await addInstructions(db, ROWAN, made, 'Blocked by a draft');
+  expect(sent.body).toMatchObject({ status: 'error', reason: 'draft_locked' });
+  expect(await skillPagesIn(db)).toBe(before);
+  expect(await stagePage(db, made)).toBeNull();
+}
+
 async function editorMayNotCreate(db: Database): Promise<void> {
   const made = await world(db);
   const page = await getHtml(db, made.editor.email, controlsOf(made.harnessId));
@@ -160,6 +179,9 @@ describe.skipIf(!testServer)(
 
     it('a viewer reads the page and its history but cannot save', () =>
       withAppDatabase(viewerOnlyReads));
+
+    it('a refused attach, such as a held workflow draft, leaves no new page behind', () =>
+      withAppDatabase(refusedAttachLeavesNoPage));
 
     it('an editor gets no new-page form, and add_stage_instructions from one is not_permitted', () =>
       withAppDatabase(editorMayNotCreate));

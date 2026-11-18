@@ -1,6 +1,9 @@
+import { and, eq } from 'drizzle-orm';
 import { createPageCommandSchema, type ErrorReason, type JdArea } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
+import { pgErrorCode } from '@uw/db/errors';
+import { pages, pageVersions } from '@uw/db/schema';
 import { createPage } from './store.ts';
 
 export type InstructionsRequest = {
@@ -48,4 +51,28 @@ export async function createInstructionsPage(
   const made = await createPage(db, actor, command, traceId, at);
   if (!made.ok) return { ok: false, reason: made.reason };
   return { ok: true, pageId };
+}
+
+const FOREIGN_KEY_VIOLATION = '23503';
+
+export async function discardUnusedInstructionsPage(
+  db: Database,
+  pageId: string,
+): Promise<boolean> {
+  try {
+    return await db.transaction(async (tx) => {
+      const [fresh] = await tx
+        .select({ id: pages.id })
+        .from(pages)
+        .where(and(eq(pages.id, pageId), eq(pages.version, 1), eq(pages.type, 'skill')))
+        .for('update');
+      if (fresh === undefined) return false;
+      await tx.delete(pageVersions).where(eq(pageVersions.pageId, pageId));
+      await tx.delete(pages).where(eq(pages.id, pageId));
+      return true;
+    });
+  } catch (error) {
+    if (pgErrorCode(error) === FOREIGN_KEY_VIOLATION) return false;
+    throw error;
+  }
 }
