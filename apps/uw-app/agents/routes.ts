@@ -11,21 +11,26 @@ import type { Principal } from '@uw/core/principal';
 import type { AppDeps, AppEnv } from '../deps.ts';
 import { malformed, readJson, toOutcome, type CommandResult } from '../http/commands.ts';
 import { refuse, reply } from '../http/outcomes.ts';
-import { applyRoutineChange } from './routine-actions.ts';
-import { bindServiceToken, revokeServiceToken } from './service-tokens.ts';
+import { applyRoutineChange, loginRemover } from './routine-actions.ts';
+import { bindServiceToken, revokeServiceToken, type RemoveLogin } from './service-tokens.ts';
+
+type RunRequest = {
+  readonly db: Database;
+  readonly actor: Principal;
+  readonly body: unknown;
+  readonly traceId: string;
+  readonly at: Date;
+  readonly removeLogin: RemoveLogin;
+};
 
 type Run = (
-  db: Database,
-  actor: Principal,
-  body: unknown,
-  traceId: string,
-  at: Date,
+  request: RunRequest,
 ) => Promise<{ readonly requestId: string; readonly result: CommandResult } | null>;
 
 const handlers = new Map<string, Run>([
   [
     'bind_service_token',
-    async (db, actor, body, traceId, at) => {
+    async ({ db, actor, body, traceId, at }) => {
       const parsed = bindServiceTokenCommandSchema.safeParse(body);
       if (!parsed.success) return null;
       const command: BindServiceTokenCommand = parsed.data;
@@ -35,11 +40,11 @@ const handlers = new Map<string, Run>([
   ],
   [
     'revoke_service_token',
-    async (db, actor, body, _traceId, at) => {
+    async ({ db, actor, body, at, removeLogin }) => {
       const parsed = revokeServiceTokenCommandSchema.safeParse(body);
       if (!parsed.success) return null;
       const command: RevokeServiceTokenCommand = parsed.data;
-      const result = await revokeServiceToken(db, actor, command, at);
+      const result = await revokeServiceToken(db, actor, command, at, removeLogin);
       return { requestId: command.requestId, result };
     },
   ],
@@ -71,7 +76,14 @@ async function handleCommand(c: Context<AppEnv>, deps: AppDeps): Promise<Respons
   const actor = c.get('principal');
   if (actor === null) return refuse(c, 'unauthenticated');
   const body = await readJson(c);
-  const outcome = await run(database.db, actor, body, c.get('traceId'), c.get('now'));
+  const outcome = await run({
+    db: database.db,
+    actor,
+    body,
+    traceId: c.get('traceId'),
+    at: c.get('now'),
+    removeLogin: loginRemover(c.env, deps.fetch),
+  });
   if (outcome === null) return malformed(c, body);
   return reply(c, toOutcome(outcome.requestId, outcome.result));
 }

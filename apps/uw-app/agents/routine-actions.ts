@@ -4,6 +4,7 @@ import type { Database } from '@uw/db/client';
 import type { Bindings } from '../env.ts';
 import { accessTokensConfigOf, deleteAccessServiceToken } from './access-tokens.ts';
 import { changeRoutine } from './routines.ts';
+import type { RemoveLogin } from './service-tokens.ts';
 
 export type RoutineChangeName = RoutineChangeCommand['command'];
 
@@ -25,14 +26,16 @@ export type RoutineChangeRequest = {
   readonly at: Date;
 };
 
-async function removeLogin(request: RoutineChangeRequest, accessTokenId: string): Promise<boolean> {
-  const config = accessTokensConfigOf(request.env, request.fetch);
-  if (config === null) return false;
-  try {
-    return await deleteAccessServiceToken(config, accessTokenId);
-  } catch {
-    return false;
-  }
+export function loginRemover(env: Bindings, fetcher: typeof fetch): RemoveLogin {
+  return async (accessTokenId) => {
+    const config = accessTokensConfigOf(env, fetcher);
+    if (config === null) return false;
+    try {
+      return await deleteAccessServiceToken(config, accessTokenId);
+    } catch {
+      return false;
+    }
+  };
 }
 
 export async function applyRoutineChange(
@@ -44,5 +47,6 @@ export async function applyRoutineChange(
   const changed = await changeRoutine(request.db, request.actor, routineId, change, request.at);
   if (!changed.ok) return changed;
   if (change !== 'revoke') return { ok: true, loginRemoved: false };
-  return { ok: true, loginRemoved: await removeLogin(request, changed.accessTokenId) };
+  const removeLogin = loginRemover(request.env, request.fetch);
+  return { ok: true, loginRemoved: await removeLogin(changed.accessTokenId) };
 }

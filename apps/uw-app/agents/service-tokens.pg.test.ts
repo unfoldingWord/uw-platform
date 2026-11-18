@@ -92,6 +92,8 @@ function outcomeOf(sent: Sent): unknown {
   return sent.body['status'] === 'accepted' ? 'accepted' : sent.body['reason'];
 }
 
+const keepLogin = (): Promise<boolean> => Promise.resolve(true);
+
 function withPeople(work: (db: Database) => Promise<void>): Promise<void> {
   return withAppDatabase(async (db) => {
     await seedPeople(db);
@@ -295,7 +297,7 @@ describe.skipIf(!testServer)(
         });
         await bindServiceToken(db, rowan, bind, randomUUID(), at);
         const revoke = { ...revokeBody(), command: 'revoke_service_token' as const };
-        expect(await revokeServiceToken(db, agent, revoke, at)).toEqual({
+        expect(await revokeServiceToken(db, agent, revoke, at, keepLogin)).toEqual({
           ok: false,
           reason: 'not_permitted',
         });

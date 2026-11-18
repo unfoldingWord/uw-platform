@@ -27,6 +27,9 @@ import { bindOwnRoutine, noteRoutineSeen, routinesOnHarness } from './routines.t
 
 const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 const DEVICE = 'hourly-box';
+const SWITCHED_ON = { ACCESS_ACCOUNT_ID: 'account-1', ACCESS_SERVICE_TOKENS_API_TOKEN: 'key-1' };
+const SERVICE_TOKENS =
+  'https://api.cloudflare.com/client/v4/accounts/account-1/access/service_tokens';
 
 type Person = { readonly id: string; readonly email: string; readonly role: 'admin' | 'editor' };
 
@@ -311,6 +314,40 @@ async function pausedAndBorrowedAreRefused(): Promise<void> {
   expect(await refusalOf(await signIn(r, routine.clientId, delegationId))).toBeNull();
 }
 
+async function legacyRevoke(r: Rig, clientId: string, deleted: string[]): Promise<unknown> {
+  const deps = {
+    ...postgresDeps(r.db, r.fixture),
+    fetch: (async (input: RequestInfo | URL) => {
+      deleted.push(String(input));
+      return Response.json({ success: true });
+    }) as typeof fetch,
+  };
+  const token = await r.fixture.sign({ email: 'rowan.test@unfoldingword.org' });
+  const body = { command: 'revoke_service_token', requestId: crypto.randomUUID(), clientId };
+  const response = await createApp(deps).request(
+    '/api/agents/commands/revoke_service_token',
+    {
+      method: 'POST',
+      headers: { 'cf-access-jwt-assertion': token, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+    { ...fixtureAccessEnv, ...SWITCHED_ON },
+  );
+  return ((await response.json()) as { status?: string }).status;
+}
+
+async function adminRevokeOfTheLoginRemovesIt(): Promise<void> {
+  const r = await rig();
+  const scene = await openScene(r);
+  const delegationId = await grant(r, scene.harnessId, scene.kim);
+  const { routine } = await bindFor(r, scene.kim, scene.harnessId, delegationId, 'kim-legacy');
+  const deleted: string[] = [];
+  expect(await legacyRevoke(r, routine.clientId, deleted)).toBe('accepted');
+  expect(deleted).toEqual([`${SERVICE_TOKENS}/cf-${routine.routineId}`]);
+  expect(await routinesOnHarness(r.db, scene.harnessId, new Date())).toEqual([]);
+  expect(await refusalOf(await signIn(r, routine.clientId, delegationId))).toBe('unauthenticated');
+}
+
 async function seenAtMostOncePerMinute(): Promise<void> {
   const r = await rig();
   const scene = await openScene(r);
@@ -331,4 +368,8 @@ describe.skipIf(!testServer)('#134 a routine works under its owner’s standing 
   it('claims an item as its role, is counted, and stops at revoke', worksAsItsRoleUntilRevoked);
   it('refuses a paused routine and one presenting another permission', pausedAndBorrowedAreRefused);
   it('writes last seen at most once a minute', seenAtMostOncePerMinute);
+  it(
+    'revokes the routine and deletes its Cloudflare login when an org admin revokes the token',
+    adminRevokeOfTheLoginRemovesIt,
+  );
 });
