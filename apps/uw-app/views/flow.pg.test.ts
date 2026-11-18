@@ -307,6 +307,7 @@ async function lookOfFlow(world: BoardWorld): Promise<void> {
   expect(tabs).toEqual([
     ['Queue', null],
     ['Waiting On You', null],
+    ['Runs', null],
     ['Flow', 'page'],
     ['Stages & Controls', null],
     ['Agents', null],

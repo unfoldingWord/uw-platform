@@ -13,6 +13,7 @@ import type { Ports } from '../ports.ts';
 import type { StoreTransaction } from '../store-ports.ts';
 import type { ReadableAreas } from '@uw/core/acl';
 import { agentsView, type AgentsView } from './agents.ts';
+import { runsView, runView, type RunInput, type RunsView, type RunView } from './runs.ts';
 import { boardView } from './board.ts';
 import { creatableAreas } from './creatable.ts';
 import { delegatedMerges, type DelegatedMergeList } from './delegated-merges.ts';
@@ -118,6 +119,12 @@ export type ViewReads = {
     input: { readonly harnessId: string },
     options?: ReadOptions,
   ): Promise<KernelOutcome<AgentsView>>;
+  runs(
+    caller: Caller,
+    input: { readonly harnessId: string },
+    options?: ReadOptions,
+  ): Promise<KernelOutcome<RunsView>>;
+  run(caller: Caller, input: RunInput, options?: ReadOptions): Promise<KernelOutcome<RunView>>;
   shadow(
     caller: Caller,
     input: { readonly harnessId: string },
@@ -205,7 +212,10 @@ function frameRead(
 
 function gateLists(
   ports: ViewPorts,
-): Pick<ViewReads, 'gates' | 'workflowGates' | 'workflowDraft' | 'stageControls' | 'agents'> {
+): Pick<
+  ViewReads,
+  'gates' | 'workflowGates' | 'workflowDraft' | 'stageControls' | 'agents' | 'runs' | 'run'
+> {
   const at = (options?: ReadOptions): Date => options?.at ?? ports.clock.now();
   const read = <T>(work: (tx: StoreTransaction) => Promise<T>) => ports.store.transaction(work);
   return {
@@ -218,6 +228,9 @@ function gateLists(
       read((tx) => stageControls(ports, tx, caller, input.harnessId, at(options))),
     agents: (caller, input, options) =>
       read((tx) => agentsView(ports, tx, caller, input.harnessId, at(options))),
+    runs: (caller, input, options) =>
+      read((tx) => runsView(ports, tx, caller, input.harnessId, at(options))),
+    run: (caller, input, options) => read((tx) => runView(ports, tx, caller, input, at(options))),
   };
 }
 
