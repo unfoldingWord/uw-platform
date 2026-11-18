@@ -7,9 +7,14 @@ function notParked(outcome: KernelOutcome<unknown>): boolean {
   return outcome.detail['why'] !== 'moved';
 }
 
-async function decided(context: CommandContext, input: DecideInput) {
+async function gateOutcome(context: CommandContext, input: DecideInput) {
   const kernel = context.gateKernel();
-  return fromKernel(await kernel.gates.decide(context.caller, input));
+  const outcome = await kernel.gates.decide(context.caller, input);
+  return outcome;
+}
+
+async function decided(context: CommandContext, input: DecideInput) {
+  return fromKernel(await gateOutcome(context, input));
 }
 
 export const approveCommand = commandHandler({
@@ -44,12 +49,11 @@ export const takeOverCommand = commandHandler({
   action: 'admin',
   agents: 'recorded',
   run: async (context, body: CommandBody<'take_over'>) => {
-    const input = { itemId: body.itemId, decision: 'take_over' as const, reason: null };
-    const atGate = await context
-      .gateKernel()
-      .gates.decide(context.caller, { ...input, findings: [] });
+    const { itemId } = body;
+    const input = { itemId, decision: 'take_over' as const, reason: null, findings: [] };
+    const atGate = await gateOutcome(context, input);
     if (!notParked(atGate)) return fromKernel(atGate);
-    return fromKernel(await context.kernel.runs.takeOver(context.caller, { itemId: body.itemId }));
+    return fromKernel(await context.kernel.runs.takeOver(context.caller, { itemId }));
   },
 });
 

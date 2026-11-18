@@ -71,5 +71,5 @@ export function markText(mark: RunMark): string {
 
 export function agentName(run: Pick<RunSummary, 'agentTitle' | 'persona'>): string {
   if (run.agentTitle !== null) return run.agentTitle;
-  return deviceOwnerSegment(run.persona) === null ? run.persona : 'Own Claude Code';
+  return deviceOwnerSegment(run.persona) === null ? run.persona : 'A person’s own Claude Code';
 }

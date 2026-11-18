@@ -59,7 +59,7 @@ async function listsRuns(db: Database): Promise<void> {
   expect(rows).toHaveLength(2);
   expect(rows[0]).toContain('Retry webhook deliveries | Running');
   expect(rows[0]).toMatch(/\$1\.50$/);
-  expect(rows[1]).toContain('Own Claude Code | Split the test job | Done');
+  expect(rows[1]).toContain('A person’s own Claude Code | Split the test job | Done');
   expect(rows[1]).toMatch(/1,200 tokens, own subscription$/);
 }
 
