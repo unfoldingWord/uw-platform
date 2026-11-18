@@ -159,4 +159,5 @@ export { DRAFT_LOCK_MINUTES } from './stages/drafts/shape.ts';
 export type { DraftHolder, WorkflowDraftView } from './views/draft.ts';
 export type { OpenDraft, StageControlsView } from './views/controls.ts';
 export type { AgentSummary, AgentsView, StandingPermission } from './views/agents.ts';
+export type { RunInput, RunMark, RunSpend, RunSummary, RunsView, RunView } from './views/runs.ts';
 export type { ActivationCheck, ActivationCheckKey } from './personas/checks.ts';

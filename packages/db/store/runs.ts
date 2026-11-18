@@ -102,6 +102,15 @@ export function startedSinceQuery(executor: AnyExecutor, since: Date, limit: num
     .limit(checkedLimit(limit));
 }
 
+export function recentRunsQuery(executor: AnyExecutor, harnessId: string, limit: number) {
+  return executor
+    .select()
+    .from(harnessRuns)
+    .where(eq(harnessRuns.harnessId, harnessId))
+    .orderBy(desc(harnessRuns.startedAt), desc(harnessRuns.id))
+    .limit(checkedLimit(limit));
+}
+
 async function forPersona(executor: AnyExecutor, query: PersonaRunQuery): Promise<RunRow[]> {
   const rows = await executor
     .select()
@@ -230,6 +239,8 @@ export function bindRuns(executor: AnyExecutor): HarnessRunsGateway {
       forItems: (itemIds) => forItems(executor, itemIds),
       startedSince: async (since, limit) =>
         (await startedSinceQuery(executor, since, limit)).map(toRun),
+      recent: async (harnessId, limit) =>
+        (await recentRunsQuery(executor, harnessId, limit)).map(toRun),
       failedFor: (personId, harnessIds, since, limit) =>
         failedFor(executor, { personId, harnessIds, since, limit }),
       spendSince: (since) => spendSince(executor, since),

@@ -301,6 +301,7 @@ export const harnessRuns = declareTable(
     uniqueIndex('harness_runs_one_live_per_item').on(t.itemId).where(live(t.outcome)),
     index('harness_runs_live').on(t.harnessId).where(live(t.outcome)),
     index('harness_runs_started_at').on(t.startedAt),
+    index('harness_runs_harness_started').on(t.harnessId, t.startedAt),
     index('harness_runs_failed_ended')
       .on(t.endedAt)
       .where(sql`${t.outcome} = 'failed'`),

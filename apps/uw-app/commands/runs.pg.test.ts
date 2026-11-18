@@ -195,6 +195,38 @@ async function stopReachesTheWorkflow(db: Database): Promise<void> {
   expect(await runs.status(scene.runId)).toBe('stopped');
 }
 
+async function adminTakesOver(db: Database): Promise<void> {
+  const scene = await hostedRun(db);
+  const sent = await send(db, ROWAN_EMAIL, scene, 'take_over');
+  expect(sent.body).toMatchObject({ status: 'accepted' });
+  expect(await runOf(db, scene.runId)).toMatchObject({ outcome: 'stopped' });
+  expect((await itemState(db, scene.itemId)).holder).toBe(scene.admin.identity);
+  const [stopped] = await eventsNamed(db, scene.harnessId, 'run_stopped');
+  expect(stopped?.evidence).toEqual({ runId: scene.runId, why: 'taken_over' });
+  const claims = await eventsNamed(db, scene.harnessId, 'item_claimed');
+  expect(claims.at(-1)?.evidence).toMatchObject({ holder: scene.admin.identity });
+}
+
+async function editorMayNotTakeOver(db: Database): Promise<void> {
+  const scene = await hostedRun(db);
+  const before = await eventCount(db, scene.harnessId);
+  const sent = await send(db, scene.editor.email, scene, 'take_over');
+  expect(sent.body).toMatchObject({ status: 'error', reason: 'not_permitted' });
+  expect(await eventCount(db, scene.harnessId)).toBe(before);
+  expect((await runOf(db, scene.runId))?.outcome).toBe('running');
+}
+
+async function nothingToTakeOver(db: Database): Promise<void> {
+  const scene = await softwareHarness(db);
+  const itemId = await enqueued(db, scene.harnessId, 'Nobody runs this');
+  const requestId = randomUUID();
+  const sent = await command(db, { email: ROWAN_EMAIL }, scene.harnessId, 'take_over', {
+    requestId,
+    itemId,
+  });
+  expect(sent.body).toEqual({ status: 'error', requestId, reason: 'run_not_found' });
+}
+
 async function foreignRoute(db: Database): Promise<void> {
   const scene = await hostedRun(db);
   const before = [
@@ -236,6 +268,15 @@ describe.skipIf(!testServer)('the run and hosted Builder commands', () => {
 
   it("stop_run through the command route stops the run's Workflow on the platform Runs adapter", () =>
     withAppDatabase(stopReachesTheWorkflow));
+
+  it('take_over on a working run stops it and gives the item to the admin in one step', () =>
+    withAppDatabase(adminTakesOver));
+
+  it('take_over by an editor is not_permitted and leaves the run working', () =>
+    withAppDatabase(editorMayNotTakeOver));
+
+  it('take_over on an item with no gate and no live run is run_not_found', () =>
+    withAppDatabase(nothingToTakeOver));
 
   it('stop_run and prompt_run naming an item of another harness answer item_not_found', () =>
     withAppDatabase(foreignRoute));

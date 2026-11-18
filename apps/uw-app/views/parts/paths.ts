@@ -40,6 +40,14 @@ export function agentsPath(harnessId: string): string {
   return `${flowPath(harnessId)}/agents`;
 }
 
+export function runsPath(harnessId: string): string {
+  return `${flowPath(harnessId)}/runs`;
+}
+
+export function runPath(harnessId: string, runId: string): string {
+  return `${runsPath(harnessId)}/${segment(runId)}`;
+}
+
 export function newAgentPath(harnessId: string): string {
   return `${agentsPath(harnessId)}/new`;
 }

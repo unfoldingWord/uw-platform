@@ -27,6 +27,7 @@ export type BoardWorld = {
   readonly stranger: Seeded;
   readonly subscribed: string;
   readonly metered: string;
+  readonly meteredRunId: string;
   readonly personHeld: string;
   readonly unheld: string;
   readonly leaseUntil: Date;
@@ -140,9 +141,14 @@ export async function subscriptionRun(db: Database, seed: RunSeed, persona: stri
   });
 }
 
-export async function meteredRun(db: Database, seed: RunSeed, outcome: 'running' | 'completed') {
+export async function meteredRun(
+  db: Database,
+  seed: RunSeed,
+  outcome: 'running' | 'completed',
+): Promise<string> {
+  const id = randomUUID();
   await seedRunRow(db, {
-    id: randomUUID(),
+    id,
     harnessId: seed.harnessId,
     itemId: seed.itemId,
     persona: 'agent:builder',
@@ -159,6 +165,7 @@ export async function meteredRun(db: Database, seed: RunSeed, outcome: 'running'
     startedAt: seed.at,
     endedAt: outcome === 'running' ? null : seed.at,
   });
+  return id;
 }
 
 export async function heldByAgent(
@@ -199,7 +206,7 @@ export async function boardWorld(db: Database, clock: Clock): Promise<BoardWorld
   const harnessId = await activatedHarness(kernel, rowan);
   const seeded = await items(kernel, rowan, harnessId);
   await subscriptionRun(db, { harnessId, itemId: seeded.subscribed, at }, seeded.laptop.identity);
-  await meteredRun(db, { harnessId, itemId: seeded.metered, at }, 'running');
+  const meteredRunId = await meteredRun(db, { harnessId, itemId: seeded.metered, at }, 'running');
   const leaseUntil = new Date(at.getTime() + 4 * HOUR);
   await heldByAgent(db, seeded.metered, 'agent:builder', leaseUntil);
   await heldByAgent(db, seeded.subscribed, seeded.laptop.identity, leaseUntil);
@@ -213,6 +220,7 @@ export async function boardWorld(db: Database, clock: Clock): Promise<BoardWorld
     stranger: await seededPerson(db, 'board-stranger', 'viewer', '20-29'),
     subscribed: seeded.subscribed,
     metered: seeded.metered,
+    meteredRunId,
     personHeld: seeded.personHeld,
     unheld: seeded.unheld,
     leaseUntil,

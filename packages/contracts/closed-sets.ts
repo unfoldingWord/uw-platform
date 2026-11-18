@@ -49,7 +49,15 @@ export const wakeReasonSchema = z.enum([
   'delegated_merge',
   'silence_alarm',
 ]);
-export const liveScreenSchema = z.enum(['home', 'queues', 'flow', 'board', 'gates', 'item']);
+export const liveScreenSchema = z.enum([
+  'home',
+  'queues',
+  'flow',
+  'board',
+  'gates',
+  'item',
+  'runs',
+]);
 
 export type IntakeVia = z.infer<typeof intakeViaSchema>;
 export type Connector = z.infer<typeof connectorSchema>;
@@ -111,6 +119,7 @@ export const runStopSchema = z.enum([
   'lease_expired',
   'delegation_lapsed',
   'gate_wait_expired',
+  'taken_over',
 ]);
 export const runFailureSchema = z.enum([
   'retries_exhausted',

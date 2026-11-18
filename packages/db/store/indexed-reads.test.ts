@@ -4,7 +4,7 @@ import type { AnyExecutor } from '../any-database.ts';
 import { closeEmbeddedTemplate } from '../embedded.ts';
 import { databaseTargets, type DatabaseTarget, type OpenedDatabase } from '../test-targets.ts';
 import { latestNamedQuery, recentQuery } from './events.ts';
-import { failedForQuery, liveRuns, runsQuery, startedSinceQuery } from './runs.ts';
+import { failedForQuery, liveRuns, recentRunsQuery, runsQuery, startedSinceQuery } from './runs.ts';
 
 afterAll(closeEmbeddedTemplate);
 
@@ -75,6 +75,11 @@ function describeTarget(target: DatabaseTarget): void {
     const input = { personId: item, harnessIds: [harness], since, limit: 50 };
     const failed = (tx: AnyExecutor) => failedForQuery(tx, input);
     expect(await planOf(db(), failed)).toContain('harness_runs_failed_ended');
+  });
+
+  it('reads the recent runs of one harness through the harness and start index', async () => {
+    const recentRuns = (tx: AnyExecutor) => recentRunsQuery(tx, harness, 50);
+    expect(await planOf(db(), recentRuns)).toContain('harness_runs_harness_started');
   });
 }
 

@@ -13,6 +13,8 @@ export const pageNames = {
   flow: 'Flow',
   controls: 'Stages & Controls',
   agents: 'Agents',
+  runs: 'Runs',
+  run: 'Run',
   newAgent: 'New Agent',
   gate: 'Gate',
   item: 'Item',
