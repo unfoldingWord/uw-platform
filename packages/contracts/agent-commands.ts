@@ -17,5 +17,14 @@ export const revokeServiceTokenCommandSchema = z.object({
   clientId: serviceClientIdSchema,
 });
 
+const routineChangeSchema = z.enum(['pause_routine', 'resume_routine', 'revoke_routine']);
+
+export const routineChangeCommandSchema = z.object({
+  command: routineChangeSchema,
+  requestId: z.uuid(),
+  routineId: z.uuid(),
+});
+
 export type BindServiceTokenCommand = z.infer<typeof bindServiceTokenCommandSchema>;
 export type RevokeServiceTokenCommand = z.infer<typeof revokeServiceTokenCommandSchema>;
+export type RoutineChangeCommand = z.infer<typeof routineChangeCommandSchema>;

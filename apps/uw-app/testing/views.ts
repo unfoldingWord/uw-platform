@@ -70,6 +70,17 @@ export function postForm(
   return htmlRequest(db, email, path, { headers, clock: systemClock, env: {}, form });
 }
 
+export function postFormWithEnv(
+  db: Database,
+  email: string,
+  path: string,
+  form: URLSearchParams,
+  env: Readonly<Record<string, string>>,
+): Promise<Html> {
+  const headers = { origin: 'http://localhost' };
+  return htmlRequest(db, email, path, { headers, clock: systemClock, env, form });
+}
+
 const databaseLatency = /db \d+ ms/g;
 
 export function pageContent(html: Html): string {

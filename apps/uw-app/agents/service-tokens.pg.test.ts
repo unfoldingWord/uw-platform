@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { getTableName, sql } from 'drizzle-orm';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Principal } from '@uw/contracts';
-import { serviceTokens } from '@uw/db/schema';
+import { routines, serviceTokens } from '@uw/db/schema';
 import { revokeSeededGrant, seedGrant, seedPerson } from '@uw/db/test-seed';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase } from '@uw/db/test-database';
@@ -92,6 +92,8 @@ function outcomeOf(sent: Sent): unknown {
   return sent.body['status'] === 'accepted' ? 'accepted' : sent.body['reason'];
 }
 
+const keepLogin = (): Promise<boolean> => Promise.resolve(true);
+
 function withPeople(work: (db: Database) => Promise<void>): Promise<void> {
   return withAppDatabase(async (db) => {
     await seedPeople(db);
@@ -153,9 +155,9 @@ async function onTwoConnections(work: (dbA: Database, dbB: Database) => Promise<
   }
 }
 
-describe('service_tokens has one writer', () => {
-  it('declares exactly service_tokens as owned', () => {
-    expect(owns).toEqual([getTableName(serviceTokens)]);
+describe('the agents module writes service_tokens and routines', () => {
+  it('declares exactly service_tokens and routines as owned', () => {
+    expect(owns).toEqual([getTableName(serviceTokens), getTableName(routines)]);
   });
 });
 
@@ -165,7 +167,10 @@ describe.skipIf(!testServer)("an org admin binds a service token to a person's d
       const sent = await asRowan(db, bindBody(idOf('editor')));
       expect(sent.status).toBe(200);
       expect(outcomeOf(sent)).toBe('accepted');
-      expect(await liveBinding(db, CLIENT)).toEqual({ personId: idOf('editor'), device: DEVICE });
+      expect(await liveBinding(db, CLIENT)).toMatchObject({
+        personId: idOf('editor'),
+        device: DEVICE,
+      });
       const row = await storedRow(db);
       expect(row?.bound_by).toBe(`human:${ROWAN_ID}`);
       expect(row?.trace_id).toMatch(/^[0-9a-f-]{36}$/);
@@ -240,7 +245,10 @@ describe.skipIf(!testServer)('an org admin revokes a service token binding', () 
       expect(outcomeOf(byArea)).toBe('not_permitted');
       const bySvc = await send(db, { common_name: CLIENT }, revokeBody());
       expect(outcomeOf(bySvc)).toBe('unauthenticated');
-      expect(await liveBinding(db, CLIENT)).toEqual({ personId: idOf('editor'), device: DEVICE });
+      expect(await liveBinding(db, CLIENT)).toMatchObject({
+        personId: idOf('editor'),
+        device: DEVICE,
+      });
     }));
 
   it('binds a revoked client id again, live once more, and refuses a second live binding', () =>
@@ -251,7 +259,10 @@ describe.skipIf(!testServer)('an org admin revokes a service token binding', () 
       expect(outcomeOf(await asRowan(db, bindBody(idOf('editor'), CLIENT, 'other')))).toBe(
         'accepted',
       );
-      expect(await liveBinding(db, CLIENT)).toEqual({ personId: idOf('editor'), device: 'other' });
+      expect(await liveBinding(db, CLIENT)).toMatchObject({
+        personId: idOf('editor'),
+        device: 'other',
+      });
       expect(outcomeOf(await asRowan(db, bindBody(idOf('editor'), CLIENT, 'third')))).toBe(
         'grant_exists',
       );
@@ -286,7 +297,7 @@ describe.skipIf(!testServer)(
         });
         await bindServiceToken(db, rowan, bind, randomUUID(), at);
         const revoke = { ...revokeBody(), command: 'revoke_service_token' as const };
-        expect(await revokeServiceToken(db, agent, revoke, at)).toEqual({
+        expect(await revokeServiceToken(db, agent, revoke, at, keepLogin)).toEqual({
           ok: false,
           reason: 'not_permitted',
         });
@@ -324,5 +335,21 @@ describe.skipIf(!testServer)('two concurrent binds of one service token', () => 
       await seedPeople(dbA);
       const rowan = await personOn(dbA, ROWAN_ID, ROWAN, at);
       for (let n = 0; n < 10; n += 1) await racingBinds(rowan, dbA, dbB, n);
+    }));
+});
+
+describe.skipIf(!testServer)('the routine commands on the agents API', () => {
+  it('answers a well-formed change for an unknown routine as not found', () =>
+    withPeople(async (db) => {
+      const body = { command: 'pause_routine', requestId: randomUUID(), routineId: randomUUID() };
+      expect(outcomeOf(await asRowan(db, body))).toBe('grant_not_found');
+    }));
+
+  it('refuses a change that names no routine id', () =>
+    withPeople(async (db) => {
+      const body = { command: 'revoke_routine', requestId: randomUUID(), routineId: 'laptop' };
+      const sent = await asRowan(db, body);
+      expect(sent.status).not.toBe(200);
+      expect(outcomeOf(sent)).toBe('malformed_command');
     }));
 });
