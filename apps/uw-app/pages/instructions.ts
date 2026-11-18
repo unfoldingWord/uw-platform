@@ -1,7 +1,6 @@
 import { createPageCommandSchema, type ErrorReason, type JdArea } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
-import { confirmPage } from './confirm.ts';
 import { createPage } from './store.ts';
 
 export type InstructionsRequest = {
@@ -15,7 +14,7 @@ export type InstructionsCreated =
   | { readonly ok: true; readonly pageId: string }
   | { readonly ok: false; readonly reason: ErrorReason };
 
-export function slugOf(title: string, pageId: string): string {
+function slugOf(title: string, pageId: string): string {
   const words = title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -48,7 +47,5 @@ export async function createInstructionsPage(
   });
   const made = await createPage(db, actor, command, traceId, at);
   if (!made.ok) return { ok: false, reason: made.reason };
-  const confirm = { command: 'confirm_page' as const, requestId: crypto.randomUUID(), pageId };
-  await confirmPage(db, actor, { ...confirm, expectedVersion: 1 }, traceId, at);
   return { ok: true, pageId };
 }

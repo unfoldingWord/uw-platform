@@ -4,7 +4,7 @@ import type { Executor } from '@uw/db/client';
 import { pageVersions, people } from '@uw/db/schema';
 import { readPage } from './store.ts';
 
-export const HISTORY_LIMIT = 50;
+const HISTORY_LIMIT = 50;
 
 export type PageVersion = {
   readonly version: number;
