@@ -103,3 +103,26 @@ export const setStageRulesCommand = commandHandler({
   run: async ({ kernel, caller, harnessId }, body: CommandBody<'set_stage_rules'>) =>
     fromKernel(await kernel.stages.setStageRules(caller, { harnessId, stages: body.stages })),
 });
+
+export const addStageInstructionsCommand = commandHandler({
+  name: 'add_stage_instructions',
+  action: 'admin',
+  run: async (context, body: CommandBody<'add_stage_instructions'>) => {
+    const { kernel, caller, harnessId, harness } = context;
+    const stage = context.stages.find((entry) => entry.id === body.stageId);
+    if (harness === null || stage === undefined) return { ok: false, reason: 'stage_not_found' };
+    const created = await context.pages.createInstructions(harness, body.title.trim());
+    if (!created.ok) return created;
+    const rules = {
+      id: stage.id,
+      agentPickup: stage.agentPickup,
+      exitGate: stage.exitGate,
+      wipLimit: stage.wipLimit,
+      instructionsPageId: created.pageId,
+      validators: [...stage.validators],
+    };
+    const attached = await kernel.stages.setStageRules(caller, { harnessId, stages: [rules] });
+    if (attached.status !== 'accepted') await context.pages.discardInstructions(created.pageId);
+    return fromKernel(attached);
+  },
+});

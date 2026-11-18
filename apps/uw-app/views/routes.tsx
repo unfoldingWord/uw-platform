@@ -15,6 +15,8 @@ import { homeScreen } from './screens/home.tsx';
 import { saveToolset } from './parts/toolset-save.tsx';
 import { personaScreen } from './screens/persona.tsx';
 import { playScreen } from './screens/play.tsx';
+import { pageScreen } from './screens/page.tsx';
+import { savePage } from './parts/page-save.tsx';
 import { runScreen } from './screens/run.tsx';
 import { runsScreen } from './screens/runs.tsx';
 import { oldWaitingAddress, waitingScreen } from './screens/waiting.tsx';
@@ -30,6 +32,15 @@ async function formGuard(c: Context<AppEnv>, next: Next): Promise<Response | voi
   }
 }
 
+function formRoutes(routes: Hono<AppEnv>): void {
+  routes.use('/pages/:pageId', formGuard);
+  routes.post('/pages/:pageId', savePage);
+  routes.use('/harnesses/:harnessId/agents/new', formGuard);
+  routes.post('/harnesses/:harnessId/agents/new', addAgent);
+  routes.use('/personas/:pageId/toolset', formGuard);
+  routes.post('/personas/:pageId/toolset', saveToolset);
+}
+
 export function viewRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
   routes.get('/', homeScreen);
@@ -42,15 +53,13 @@ export function viewRoutes(): Hono<AppEnv> {
   routes.get('/harnesses/:harnessId/runs', runsScreen);
   routes.get('/harnesses/:harnessId/runs/:runId', runScreen);
   routes.get('/harnesses/:harnessId/controls', controlsScreen);
+  routes.get('/pages/:pageId', pageScreen);
   routes.get('/harnesses/:harnessId/agents', agentsScreen);
   routes.get('/harnesses/:harnessId/agents/new', newAgentScreen);
-  routes.use('/harnesses/:harnessId/agents/new', formGuard);
-  routes.post('/harnesses/:harnessId/agents/new', addAgent);
   routes.get('/gates', oldWaitingAddress);
   routes.get('/harnesses/:harnessId/gates/:itemId', gateScreen);
   routes.get('/harnesses/:harnessId/items/:itemId', playScreen);
   routes.get('/personas/:pageId', personaScreen);
-  routes.use('/personas/:pageId/toolset', formGuard);
-  routes.post('/personas/:pageId/toolset', saveToolset);
+  formRoutes(routes);
   return routes;
 }

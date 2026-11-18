@@ -70,7 +70,7 @@ export const verbIo = {
   resolve_context: {
     input: z.object({ itemId: z.uuid() }),
     output: z.object({
-      instructions: pageSummary.nullable(),
+      instructions: pageSummary.extend({ bodyMd: pageSchema.shape.bodyMd }).nullable(),
       package: z.array(pageSummary),
       learnings: z.array(
         z.object({ page: pageSummary, confidence: evidenceLabelSchema, asOf: z.iso.date() }),

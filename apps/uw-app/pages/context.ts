@@ -27,8 +27,10 @@ type Learning = {
   readonly asOf: string;
 };
 
+type InstructionsPage = PageSummary & { readonly bodyMd: string };
+
 type ContextPages = {
-  readonly instructions: PageSummary | null;
+  readonly instructions: InstructionsPage | null;
   readonly package: readonly PageSummary[];
   readonly learnings: readonly Learning[];
 };
@@ -48,13 +50,13 @@ async function instructionsPage(
   db: Executor,
   pageId: string | null,
   readable: Readable,
-): Promise<PageSummary | null> {
+): Promise<InstructionsPage | null> {
   if (pageId === null) return null;
   const [row] = await db
-    .select(summaryColumns)
+    .select({ ...summaryColumns, bodyMd: pages.bodyMd })
     .from(pages)
     .where(and(eq(pages.id, pageId), readable));
-  return row ? summarySchema.parse(row) : null;
+  return row ? { ...summarySchema.parse(row), bodyMd: row.bodyMd } : null;
 }
 
 async function packagePages(

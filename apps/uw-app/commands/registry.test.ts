@@ -40,6 +40,7 @@ const actions = {
   set_shadow: 'admin',
   set_freeze: 'admin',
   set_stage_rules: 'admin',
+  add_stage_instructions: 'admin',
   decide_gates: 'admin',
   refute_finding: 'write',
   set_fix_claim: 'admin',

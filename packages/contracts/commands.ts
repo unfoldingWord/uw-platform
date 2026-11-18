@@ -50,6 +50,7 @@ export const commandNames = [
   'set_shadow',
   'set_freeze',
   'set_stage_rules',
+  'add_stage_instructions',
   'decide_gates',
   'refute_finding',
   'set_fix_claim',
@@ -201,6 +202,10 @@ export const harnessCommandSchemas = {
   set_shadow: body('set_shadow', { shadow: z.boolean() }),
   set_freeze: setFreezeSchema,
   set_stage_rules: setStageRulesSchema,
+  add_stage_instructions: body('add_stage_instructions', {
+    stageId: z.uuid(),
+    title: nonBlank(200),
+  }),
   decide_gates: body('decide_gates', {
     entries: z
       .array(batchEntrySchema)
@@ -254,6 +259,7 @@ export const commandSchema = z.discriminatedUnion('command', [
   harnessCommandSchemas.set_shadow,
   harnessCommandSchemas.set_freeze,
   harnessCommandSchemas.set_stage_rules,
+  harnessCommandSchemas.add_stage_instructions,
   harnessCommandSchemas.decide_gates,
   harnessCommandSchemas.refute_finding,
   harnessCommandSchemas.set_fix_claim,
