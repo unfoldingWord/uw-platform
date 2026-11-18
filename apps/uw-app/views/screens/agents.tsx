@@ -6,13 +6,19 @@ import { Card } from '@uw/ui/components/card.tsx';
 import { primaryButton } from '@uw/ui/components/command-form.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
+import { reasonText } from '@uw/ui/components/text.ts';
+import { can } from '@uw/core/acl';
+import { accessTokensConfigOf } from '../../agents/access-tokens.ts';
+import { routinesOnHarness } from '../../agents/routines.ts';
 import type { AppEnv } from '../../deps.ts';
 import { doesWords, runShapeWords } from '../parts/agent-words.ts';
-import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
+import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { moduleCodes, pageNames } from '../parts/names.ts';
 import { idParam } from '../parts/params.ts';
 import { agentsPath, newAgentPath, personaPath, queuePath } from '../parts/paths.ts';
+import { Routines } from '../parts/routines.tsx';
 import { StandingPermissions } from '../parts/standing-permissions.tsx';
+import { Note } from '@uw/ui/components/note.tsx';
 import { waitingCount } from '../parts/waiting-count.ts';
 import { workflowCrumbs, workflowTabs } from '../parts/workflow-tabs.ts';
 import { notFound } from './not-found.tsx';
@@ -128,6 +134,46 @@ function Access(props: { readonly view: AgentsView }) {
   );
 }
 
+const routineNotices: ReadonlyMap<string, string> = new Map([
+  ['pause_routine', 'The routine is paused. Its next call is refused until you resume it.'],
+  ['resume_routine', 'The routine is running again.'],
+  ['revoked', 'The routine is revoked and its machine login is deleted.'],
+  [
+    'revoked_login_kept',
+    'The routine is revoked, so the app refuses it. Its Cloudflare machine login could not be deleted; ask a Cloudflare admin to remove it.',
+  ],
+  ['grant_exists', 'You already have a live routine on this device or under this permission.'],
+  ['delegation_lapsed', 'That standing permission has ended. Grant a new one first.'],
+  ['delegation_not_found', 'A routine can only work under one of your own standing permissions.'],
+  ['not_permitted', 'Only an admin of this area can set up a routine here.'],
+  ['grant_not_found', 'That routine is already revoked.'],
+  [
+    'malformed_command',
+    'Give the routine a name and a device made of lowercase letters, numbers and dashes.',
+  ],
+  ['not_switched_on', 'Routines are not switched on here yet.'],
+  [
+    'cloudflare_failed',
+    'Cloudflare did not make the machine login. Nothing was set up; try again.',
+  ],
+]);
+
+function routineNotice(key: string | undefined): string | null {
+  if (key === undefined) return null;
+  return routineNotices.get(key) ?? reasonText(key);
+}
+
+async function routineData(c: Context<AppEnv>, screen: ScreenKernel, harnessId: string) {
+  const database = c.get('database');
+  const rows = database === null ? [] : await routinesOnHarness(database.db, harnessId, screen.at);
+  const viewer = {
+    personId: screen.caller.actor.personId,
+    orgAdmin: can(screen.caller.actor, 'admin', { kind: 'org' }, screen.at),
+    switchedOn: accessTokensConfigOf(c.env, fetch) !== null,
+  };
+  return { rows, viewer };
+}
+
 export async function agentsScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   if (screen === null) return screenRefusal(c);
@@ -145,6 +191,8 @@ export async function agentsScreen(c: Context<AppEnv>): Promise<Response> {
     tabs: workflowTabs(harnessId, 'agents', await waitingCount(screen, harnessId)),
   };
   const viewer = { admin: view.admin, personId: screen.caller.actor.personId };
+  const routines = await routineData(c, screen, harnessId);
+  const notice = routineNotice(c.req.query('routine'));
   return renderScreen(
     c,
     spec,
@@ -162,9 +210,11 @@ export async function agentsScreen(c: Context<AppEnv>): Promise<Response> {
         }
       />
       <div class="flex flex-col gap-5">
+        {notice === null ? null : <Note>{notice}</Note>}
         <Access view={view} />
         <AgentList view={view} />
         <StandingPermissions view={view} viewer={viewer} />
+        <Routines view={view} viewer={routines.viewer} routines={routines.rows} at={screen.at} />
         <Reach view={view} />
       </div>
     </>,

@@ -46,7 +46,7 @@ export function createApp(
   app.use(withFrameHealth(deps));
   app.route('/api/me', meRoutes());
   app.route('/api/acl', aclRoutes());
-  app.route('/api/agents', agentRoutes());
+  app.route('/api/agents', agentRoutes(deps));
   app.route('/api/pages', pageRoutes());
   app.route('/api/push', pushRoutes());
   app.route('/api/harness', harnessRoutes(deps, person));

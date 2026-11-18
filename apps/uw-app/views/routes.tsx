@@ -17,6 +17,7 @@ import { personaScreen } from './screens/persona.tsx';
 import { playScreen } from './screens/play.tsx';
 import { pageScreen } from './screens/page.tsx';
 import { savePage } from './parts/page-save.tsx';
+import { changeRoutineForm, newRoutine } from './parts/routine-new.tsx';
 import { runScreen } from './screens/run.tsx';
 import { runsScreen } from './screens/runs.tsx';
 import { oldWaitingAddress, waitingScreen } from './screens/waiting.tsx';
@@ -33,6 +34,10 @@ async function formGuard(c: Context<AppEnv>, next: Next): Promise<Response | voi
 }
 
 function formRoutes(routes: Hono<AppEnv>): void {
+  routes.use('/harnesses/:harnessId/agents/routines', formGuard);
+  routes.post('/harnesses/:harnessId/agents/routines', newRoutine);
+  routes.use('/harnesses/:harnessId/agents/routines/:routineId', formGuard);
+  routes.post('/harnesses/:harnessId/agents/routines/:routineId', changeRoutineForm);
   routes.use('/pages/:pageId', formGuard);
   routes.post('/pages/:pageId', savePage);
   routes.use('/harnesses/:harnessId/agents/new', formGuard);

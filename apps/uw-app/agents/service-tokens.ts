@@ -14,9 +14,13 @@ import { resolveGrants } from '@uw/db/store';
 import type { CommandResult } from '../http/commands.ts';
 import { lockPerson } from '../people/directory.ts';
 
-export const owns = ['service_tokens'] as const;
+export const owns = ['service_tokens', 'routines'] as const;
 
-type ServiceTokenBinding = { readonly personId: string; readonly device: string };
+type ServiceTokenBinding = {
+  readonly id: string;
+  readonly personId: string;
+  readonly device: string;
+};
 
 const UNIQUE_VIOLATION = '23505';
 const BINDING_CONSTRAINTS = new Set([
@@ -124,7 +128,11 @@ export async function liveBinding(
   clientId: string,
 ): Promise<ServiceTokenBinding | null> {
   const [row] = await db
-    .select({ personId: serviceTokens.personId, device: serviceTokens.device })
+    .select({
+      id: serviceTokens.id,
+      personId: serviceTokens.personId,
+      device: serviceTokens.device,
+    })
     .from(serviceTokens)
     .where(and(eq(serviceTokens.clientId, clientId), isNull(serviceTokens.revokedAt)));
   return row ?? null;

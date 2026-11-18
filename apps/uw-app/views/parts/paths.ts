@@ -48,6 +48,14 @@ export function runPath(harnessId: string, runId: string): string {
   return `${runsPath(harnessId)}/${segment(runId)}`;
 }
 
+export function routinesPath(harnessId: string): string {
+  return `${agentsPath(harnessId)}/routines`;
+}
+
+export function routineChangePath(harnessId: string, routineId: string): string {
+  return `${routinesPath(harnessId)}/${segment(routineId)}`;
+}
+
 export function newAgentPath(harnessId: string): string {
   return `${agentsPath(harnessId)}/new`;
 }

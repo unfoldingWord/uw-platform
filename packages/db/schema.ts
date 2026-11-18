@@ -50,7 +50,7 @@ import {
 import { instant } from './columns.ts';
 import { declareTable } from './declarations.ts';
 import { harnesses } from './schema-harnesses.ts';
-import { pages, people } from './schema-platform.ts';
+import { pages, people, serviceTokens } from './schema-platform.ts';
 
 export * from './schema-harnesses.ts';
 export * from './schema-platform.ts';
@@ -150,6 +150,38 @@ export const delegations = declareTable(
     uniqueIndex('delegations_supersedes_once')
       .on(t.supersedes)
       .where(sql`${t.supersedes} IS NOT NULL`),
+  ],
+);
+
+export const routines = declareTable(
+  'routines',
+  {
+    id: uuid('id').primaryKey(),
+    serviceTokenId: uuid('service_token_id')
+      .notNull()
+      .references(() => serviceTokens.id),
+    delegationId: uuid('delegation_id')
+      .notNull()
+      .references(() => delegations.id),
+    name: text('name').notNull(),
+    accessTokenId: text('access_token_id').notNull(),
+    createdAt: instant('created_at').notNull(),
+    pausedAt: instant('paused_at'),
+    revokedAt: instant('revoked_at'),
+    lastSeenAt: instant('last_seen_at'),
+    traceId: uuid('trace_id').notNull(),
+  },
+  restrictedNever,
+  (t) => [
+    check('routines_name_length', sql`char_length(${t.name}) BETWEEN 1 AND 60`),
+    check(
+      'routines_access_token_id_length',
+      sql`char_length(${t.accessTokenId}) BETWEEN 1 AND 100`,
+    ),
+    uniqueIndex('routines_one_per_service_token').on(t.serviceTokenId),
+    uniqueIndex('routines_one_live_per_delegation')
+      .on(t.delegationId)
+      .where(sql`${t.revokedAt} IS NULL`),
   ],
 );
 

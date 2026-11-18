@@ -193,6 +193,17 @@ Each secret is set from `infra/uw-app` (or `infra/uw-ingest`) with `wrangler sec
 4. **Turn on hosted Builder** for the Software workflow on staging only (Stages & Controls). Production stays off.
 5. **Check on staging.** Add a Builder agent on the Agents tab, put it live, grant it `build`, and put an item in a build stage. The run should open a pull request from `harness/<item>`, its run step should show the model, tokens and cost, the request should appear in the gateway's log, and the spend indicator on Health should move. Then repeat steps 1 to 3 for production and compare `wrangler secret list --env production` with staging.
 
+## Routines (#134)
+
+A routine is a person's own Claude Code or Codex working a workflow unattended, under one of their own standing permissions. An area admin sets one up on the workflow's Agents tab. The app then makes a Cloudflare Access service token for it, shows the secret once, and binds the token to that person, a device name and that one standing permission. Revoke deletes the token in Cloudflare as well. The MCP Access application already admits any valid service token (the Access section), so it needs no change.
+
+| Setting | Kind | Worker | Value or source |
+|---|---|---|---|
+| `ACCESS_ACCOUNT_ID` | var | uw-app | The account id, in the wrangler files |
+| `ACCESS_SERVICE_TOKENS_API_TOKEN` | secret | uw-app | An API token with only Access: Service Tokens Edit on this account |
+
+Someone with Zero Trust rights on the account creates the API token (My Profile, API Tokens, Create Custom Token, Account, Access: Service Tokens, Edit, this account only). It is then set from `infra/uw-app` with `wrangler secret put ACCESS_SERVICE_TOKENS_API_TOKEN --env staging`, then `--env production`, typed at the prompt. Until it is set, the Agents tab says routines are not switched on and nothing else changes.
+
 ## The notifier: web push and Zulip (NT-1, NT-3)
 
 The notifier reads its configuration from `uw-app`'s variables and secrets. With any piece missing or malformed, that channel answers `not_configured` and logs; nothing fails at startup.
