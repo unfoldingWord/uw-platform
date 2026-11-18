@@ -203,6 +203,31 @@ function describeLive(subject: RunsSubject): void {
   });
 }
 
+function describeRecent(subject: RunsSubject): void {
+  it('lists the runs of one harness newest first, up to the limit, whatever their outcome', async () => {
+    const result = await subject().store.transaction(async (tx) => {
+      await seedItems(tx, 0x3d00, 'gateway-runs-recent-a', 3);
+      await seedItems(tx, 0x3e00, 'gateway-runs-recent-b', 1);
+      const later = (minutes: number) => new Date(at.getTime() + minutes * 60_000);
+      await tx.harnessRuns.write.insert(
+        runOf(0x3d00, 1, 1, { outcome: 'stopped', endedAt: later(5) }),
+      );
+      await tx.harnessRuns.write.insert(runOf(0x3d00, 2, 2, { startedAt: later(10) }));
+      await tx.harnessRuns.write.insert(runOf(0x3d00, 3, 3, { startedAt: later(20) }));
+      await tx.harnessRuns.write.insert(runOf(0x3e00, 1, 1, { startedAt: later(30) }));
+      const ids = (rows: readonly RunRow[]) => rows.map((row) => row.id);
+      return {
+        all: ids(await tx.harnessRuns.read.recent(uid(0x3d00), 50)),
+        two: ids(await tx.harnessRuns.read.recent(uid(0x3d00), 2)),
+      };
+    });
+    expect(result).toEqual({
+      all: [uid(0x3d63), uid(0x3d62), uid(0x3d61)],
+      two: [uid(0x3d63), uid(0x3d62)],
+    });
+  });
+}
+
 function breakerEvent(base: number, n: number, name: BreakerEventName, minute: number) {
   return newEventSchema.parse({
     eventId: uid(base + 0x40 + n),
@@ -376,6 +401,7 @@ export function describeStoreRuns(adapter: string, subject: RunsSubject): void {
     describeRefusals(subject);
     describeLinkAndCostRefusals(subject);
     describeLive(subject);
+    describeRecent(subject);
     describeLatestNamed(subject);
     describeForPersona(subject);
     describePersonaDay(subject);

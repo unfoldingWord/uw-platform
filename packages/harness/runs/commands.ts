@@ -19,6 +19,7 @@ import { runProgress, type RunProgress } from './progress.ts';
 import { postReview, reviewDiff, type PostReviewInput, type ReviewDiff } from './review.ts';
 import { runScene } from './scene.ts';
 import { startRun } from './start.ts';
+import { takeOver, type TakenOver, type TakeOverInput } from './take-over.ts';
 import type { RunScene, StartedRun, StartRunInput } from './types.ts';
 
 type RunPorts = Pick<
@@ -38,6 +39,7 @@ export type RunCommands = {
   halt(caller: Caller, runId: string, why: HaltReason): RunOutcome;
   stop(caller: Caller, input: StopInput): RunOutcome;
   prompt(caller: Caller, input: PromptInput): RunOutcome;
+  takeOver(caller: Caller, input: TakeOverInput): Promise<KernelOutcome<TakenOver>>;
   beat(caller: Caller, input: BeatInput): Promise<KernelOutcome<Beaten>>;
   reviewDiff(caller: Caller, runId: string): Promise<KernelOutcome<ReviewDiff>>;
   postReview(caller: Caller, runId: string, input: PostReviewInput): RunOutcome;
@@ -72,6 +74,7 @@ export function createRunCommands(ports: RunPorts): RunCommands {
     halt: hostOnly((caller, runId: string, why: HaltReason) => halt(ports, caller, runId, why)),
     stop: (caller, input) => stop(ports, caller, input),
     prompt: (caller, input) => prompt(ports, caller, input),
+    takeOver: (caller, input) => takeOver(ports, caller, input),
     beat: hostOnly((caller, input: BeatInput) => beat(ports, caller, input)),
     reviewDiff: hostOnly((caller, runId: string) => reviewDiff(ports, caller, runId)),
     postReview: hostOnly((caller, runId: string, input: PostReviewInput) =>

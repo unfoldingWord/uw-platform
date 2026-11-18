@@ -246,7 +246,6 @@ describe('the command bodies', () => {
     });
     expect(commandBody('enqueue', { title: '' }, requestId)).toBeNull();
     expect(commandBody('claim', { itemId: 'not-an-id' }, requestId)).toBeNull();
-    expect(commandBody('stop_run', { itemId }, requestId)).toBeNull();
   });
 
   it('GD-1 the approve-all form sends decide_gates with each shown item and its head', () => {
@@ -258,5 +257,15 @@ describe('the command bodies', () => {
       entries: [{ itemId: shown, head: pinned, decision: 'approve' }],
     });
     expect(commandBody('decide_gates', { entries: '' }, requestId)).toBeNull();
+  });
+});
+
+describe('the Stop run form', () => {
+  it('sends stop_run with the item', () => {
+    expect(commandBody('stop_run', { itemId }, requestId)).toEqual({
+      command: 'stop_run',
+      requestId,
+      itemId,
+    });
   });
 });

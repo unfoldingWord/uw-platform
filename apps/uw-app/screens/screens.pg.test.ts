@@ -30,6 +30,8 @@ import {
   agentsPath,
   newAgentPath,
   personaPath,
+  runPath,
+  runsPath,
   waitingPath,
 } from '../views/parts/paths.ts';
 
@@ -146,6 +148,8 @@ async function boardScreens(db: Database): Promise<Screen[]> {
     ['flow', flowPath(world.harnessId)],
     ['controls-admin', controlsPath(world.harnessId)],
     ['agents', agentsPath(world.harnessId)],
+    ['runs', runsPath(world.harnessId)],
+    ['run', runPath(world.harnessId, world.meteredRunId)],
     ['new-agent', newAgentPath(world.harnessId)],
     ['health', healthPath()],
     ['health-detail', healthPath('breaker')],
@@ -284,6 +288,8 @@ describe.skipIf(!testServer || (!browserReady && !required))('UI-16 the screensh
       'flow',
       'controls-admin',
       'agents',
+      'runs',
+      'run',
       'new-agent',
       'health',
       'health-detail',

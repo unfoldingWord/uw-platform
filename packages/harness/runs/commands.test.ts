@@ -31,7 +31,7 @@ const hostCalls: Readonly<Record<string, HostCall>> = {
     }),
 };
 
-const personReachable = ['start', 'stop', 'prompt'];
+const personReachable = ['start', 'stop', 'prompt', 'takeOver'];
 
 const persona = principalSchema.parse({
   identity: 'agent:builder',

@@ -6,10 +6,11 @@ import {
   controlsPath,
   flowPath,
   queuePath,
+  runsPath,
   waitingPath,
 } from './paths.ts';
 
-export type WorkflowTab = 'queue' | 'waiting' | 'flow' | 'controls' | 'agents';
+export type WorkflowTab = 'queue' | 'waiting' | 'runs' | 'flow' | 'controls' | 'agents';
 
 export function workflowCrumbs(title: string, titleHref: string, last: string): readonly Crumb[] {
   return [
@@ -33,6 +34,7 @@ export function workflowTabs(
       current: current === 'waiting',
       count: waiting,
     },
+    { label: pageNames.runs, href: runsPath(harnessId), current: current === 'runs' },
     { label: pageNames.flow, href: flowPath(harnessId), current: current === 'flow' },
     {
       label: pageNames.controls,

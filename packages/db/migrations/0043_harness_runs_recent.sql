@@ -1,0 +1,1 @@
+CREATE INDEX "harness_runs_harness_started" ON "harness_runs" USING btree ("harness_id","started_at");
