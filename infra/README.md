@@ -174,7 +174,7 @@ A hosted agent needs three things the code reads but no file holds: an AI Gatewa
 | `ALWAYS_ON_PROVIDER`, `ALWAYS_ON_MODEL` | var | uw-app | `z-ai` and `z-ai/glm-5.3-flash`, in the wrangler files |
 | `SANDBOX_MINOR_PER_HOUR` | var | uw-app | `3`, in the wrangler files (below) |
 | `AI_GATEWAY_TOKEN` | secret | uw-app | The gateway's authentication token |
-| `AI_GATEWAY_ANALYTICS_TOKEN` | secret | uw-app | An API token with AI Gateway read, for the spend breaker |
+| `AI_GATEWAY_ANALYTICS_TOKEN` | secret | uw-app | An API token with Account Analytics: Read on the account, for the spend breaker |
 | `OPENROUTER_API_KEY` | secret | uw-app | The organization's key; the always-on tier |
 | `ANTHROPIC_API_KEY` | secret | uw-app | The organization's key; the Claude Code sandbox and `claude-messages` |
 | `OPENAI_API_KEY` | secret | uw-app | The organization's key; the Codex sandbox and the second reviewer |
@@ -187,8 +187,8 @@ Each secret is set from `infra/uw-app` (or `infra/uw-ingest`) with `wrangler sec
 
 ### Setting it up
 
-1. **AI Gateway.** In the Cloudflare dashboard, create two gateways, `uw-platform-staging` and `uw-platform-production`, with authentication on, and create the gateway token. Create an API token with AI Gateway read for the analytics token. Set `AI_GATEWAY_TOKEN` and `AI_GATEWAY_ANALYTICS_TOKEN` on each environment.
-2. **API keys.** Set `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` on each environment.
+1. **AI Gateway.** In the Cloudflare dashboard (AI, AI Gateway, Create a custom gateway), create two gateways, `uw-platform-staging` and `uw-platform-production`. On each gateway's Settings, under Authenticated Gateway, choose Create authentication token: that token is the environment's `AI_GATEWAY_TOKEN`. For `AI_GATEWAY_ANALYTICS_TOKEN`, create a custom API token per environment with only Account Analytics: Read, on this account only. Under Spend Limits, give each gateway a $600 monthly budget on a fixed window for the whole gateway. It sits above the app's $500 cap, which counts the calendar month in UTC, so the app's breaker stops work cleanly first and the gateway refuses requests only if the breaker fails.
+2. **API keys.** Set `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` on each environment, a separate key per environment from the organization's account with each provider.
 3. **GitHub Apps, in one sitting with an org owner.** Run `pnpm github-apps:page <file.html>` and send the page to the owner. For each of the five Apps (`uw-harness-staging`, `uw-harness`, `uw-builder`, `uw-reviewer`, `uw-reviewer-codex`) they click Register, keep the name, install the App on `unfoldingWord/uw-platform` only, and send back the address GitHub lands on, which carries a one-time `code` valid for an hour. For each address, run `pnpm github-apps:convert '<address>'`. It exchanges the code, converts the key to PKCS#8 in memory, finds the installation, and sets the App's secrets on the environments it serves (the harness Apps on one each, with the webhook secret on uw-ingest; Builder and the Reviewers on both). It prints only the names it set. If the App was not installed yet, it says which installation id to set by hand.
 4. **Turn on hosted Builder** for the Software workflow on staging only (Stages & Controls). Production stays off.
 5. **Check on staging.** Add a Builder agent on the Agents tab, put it live, grant it `build`, and put an item in a build stage. The run should open a pull request from `harness/<item>`, its run step should show the model, tokens and cost, the request should appear in the gateway's log, and the spend indicator on Health should move. Then repeat steps 1 to 3 for production and compare `wrangler secret list --env production` with staging.
