@@ -144,7 +144,9 @@ async function revokeRoutine(db: Database): Promise<void> {
     requestId: randomUUID(),
     clientId: CLIENT,
   };
-  expect(await revokeServiceToken(db, await rowan(db), command, new Date())).toEqual({ ok: true });
+  expect(
+    await revokeServiceToken(db, await rowan(db), command, new Date(), async () => true),
+  ).toEqual({ ok: true });
 }
 
 function withPeople(work: (db: Database) => Promise<void>): Promise<void> {

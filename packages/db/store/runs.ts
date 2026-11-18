@@ -264,3 +264,24 @@ export function bindRuns(executor: AnyExecutor): HarnessRunsGateway {
     },
   };
 }
+
+export async function subscriptionTokensFor(
+  executor: AnyExecutor,
+  delegationIds: readonly string[],
+): Promise<ReadonlyMap<string, number>> {
+  if (delegationIds.length === 0) return new Map();
+  const rows = await executor
+    .select({
+      delegationId: harnessRuns.delegationId,
+      tokens: sql`coalesce(sum(${stepTokens}), 0)`.mapWith(Number),
+    })
+    .from(harnessRuns)
+    .where(
+      and(
+        inArray(harnessRuns.delegationId, [...delegationIds]),
+        eq(harnessRuns.costBasis, 'subscription'),
+      ),
+    )
+    .groupBy(harnessRuns.delegationId);
+  return new Map(rows.map((row) => [row.delegationId ?? '', row.tokens]));
+}

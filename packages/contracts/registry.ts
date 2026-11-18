@@ -3,6 +3,7 @@ import { grantRoleCommandSchema, revokeRoleCommandSchema } from './acl-commands.
 import {
   bindServiceTokenCommandSchema,
   revokeServiceTokenCommandSchema,
+  routineChangeCommandSchema,
   serviceClientIdSchema,
 } from './agent-commands.ts';
 import { jdAreaSchema } from './areas.ts';
@@ -255,6 +256,7 @@ export const schemaRegistry: Record<string, ZodType> = {
   'service-client-id': serviceClientIdSchema,
   'bind-service-token-command': bindServiceTokenCommandSchema,
   'revoke-service-token-command': revokeServiceTokenCommandSchema,
+  'routine-change-command': routineChangeCommandSchema,
   'issue-reference': issueReferenceSchema,
   'pull-request-declaration': pullRequestDeclarationSchema,
   'template-key': templateKeySchema,

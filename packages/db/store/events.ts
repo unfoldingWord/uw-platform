@@ -8,6 +8,7 @@ import {
   gte,
   inArray,
   isNotNull,
+  like,
   max,
   notLike,
   or,
@@ -309,4 +310,33 @@ async function latestForItems(
     .where(and(inArray(harnessEvents.itemId, [...itemIds]), named))
     .orderBy(harnessEvents.itemId, desc(harnessEvents.at), desc(harnessEvents.position));
   return rows.map(toEvent);
+}
+
+export type AgentClaims = {
+  readonly identityPrefix: string;
+  readonly delegationId: string;
+};
+
+export async function claimsByAgent(
+  executor: AnyExecutor,
+  harnessId: string,
+  agents: readonly AgentClaims[],
+): Promise<ReadonlyMap<string, number>> {
+  const counted = await Promise.all(
+    agents.map(async (agent): Promise<[string, number]> => {
+      const [row] = await executor
+        .select({ claimed: count() })
+        .from(harnessEvents)
+        .where(
+          and(
+            eq(harnessEvents.harnessId, harnessId),
+            eq(harnessEvents.name, 'item_claimed'),
+            like(harnessEvents.actor, `${agent.identityPrefix} as %`),
+            like(harnessEvents.actor, `% via delegation:${agent.delegationId}`),
+          ),
+        );
+      return [agent.delegationId, row?.claimed ?? 0];
+    }),
+  );
+  return new Map(counted);
 }

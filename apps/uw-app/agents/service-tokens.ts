@@ -9,14 +9,18 @@ import type { Principal } from '@uw/core/principal';
 import { advisoryLock, advisoryLocks } from '@uw/db/advisory-locks';
 import type { Database, Executor, Transaction } from '@uw/db/client';
 import { pgConstraint, pgErrorCode } from '@uw/db/errors';
-import { serviceTokens } from '@uw/db/schema';
+import { routines, serviceTokens } from '@uw/db/schema';
 import { resolveGrants } from '@uw/db/store';
 import type { CommandResult } from '../http/commands.ts';
 import { lockPerson } from '../people/directory.ts';
 
-export const owns = ['service_tokens'] as const;
+export const owns = ['service_tokens', 'routines'] as const;
 
-type ServiceTokenBinding = { readonly personId: string; readonly device: string };
+type ServiceTokenBinding = {
+  readonly id: string;
+  readonly personId: string;
+  readonly device: string;
+};
 
 const UNIQUE_VIOLATION = '23505';
 const BINDING_CONSTRAINTS = new Set([
@@ -94,29 +98,44 @@ export async function bindServiceToken(
   }
 }
 
+type TokenRevoke = { readonly result: CommandResult; readonly accessTokenId: string | null };
+
+export type RemoveLogin = (accessTokenId: string) => Promise<boolean>;
+
 async function revokeInTransaction(
   tx: Transaction,
   actor: Principal,
   command: RevokeServiceTokenCommand,
   at: Date,
-): Promise<CommandResult> {
-  if (!(await isLiveOrgAdmin(tx, actor, at))) return refused('not_permitted');
-  const revoked = await tx
+): Promise<TokenRevoke> {
+  if (!(await isLiveOrgAdmin(tx, actor, at))) {
+    return { result: refused('not_permitted'), accessTokenId: null };
+  }
+  const [revoked] = await tx
     .update(serviceTokens)
     .set({ revokedAt: at })
     .where(and(eq(serviceTokens.clientId, command.clientId), isNull(serviceTokens.revokedAt)))
-    .returning({ clientId: serviceTokens.clientId });
-  return revoked.length === 0 ? refused('grant_not_found') : accepted;
+    .returning({ id: serviceTokens.id });
+  if (revoked === undefined) return { result: refused('grant_not_found'), accessTokenId: null };
+  const [routine] = await tx
+    .update(routines)
+    .set({ revokedAt: at })
+    .where(and(eq(routines.serviceTokenId, revoked.id), isNull(routines.revokedAt)))
+    .returning({ accessTokenId: routines.accessTokenId });
+  return { result: accepted, accessTokenId: routine?.accessTokenId ?? null };
 }
 
-export function revokeServiceToken(
+export async function revokeServiceToken(
   db: Database,
   actor: Principal,
   command: RevokeServiceTokenCommand,
   at: Date,
+  removeLogin: RemoveLogin,
 ): Promise<CommandResult> {
-  if (actor.kind !== 'person') return Promise.resolve(refused('not_permitted'));
-  return db.transaction((tx) => revokeInTransaction(tx, actor, command, at));
+  if (actor.kind !== 'person') return refused('not_permitted');
+  const revoke = await db.transaction((tx) => revokeInTransaction(tx, actor, command, at));
+  if (revoke.accessTokenId !== null) await removeLogin(revoke.accessTokenId);
+  return revoke.result;
 }
 
 export async function liveBinding(
@@ -124,7 +143,11 @@ export async function liveBinding(
   clientId: string,
 ): Promise<ServiceTokenBinding | null> {
   const [row] = await db
-    .select({ personId: serviceTokens.personId, device: serviceTokens.device })
+    .select({
+      id: serviceTokens.id,
+      personId: serviceTokens.personId,
+      device: serviceTokens.device,
+    })
     .from(serviceTokens)
     .where(and(eq(serviceTokens.clientId, clientId), isNull(serviceTokens.revokedAt)));
   return row ?? null;
