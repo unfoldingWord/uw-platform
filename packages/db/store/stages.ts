@@ -8,6 +8,21 @@ import type { HarnessStagesGateway, StagePosition } from './types.ts';
 
 const repositionOffset = 1_000_000;
 
+export async function stagesOfHarnesses(
+  executor: AnyExecutor,
+  harnessIds: readonly string[],
+): Promise<ReadonlyMap<string, readonly Stage[]>> {
+  const found = new Map<string, Stage[]>(harnessIds.map((harnessId) => [harnessId, []]));
+  if (harnessIds.length === 0) return found;
+  const rows = await executor
+    .select()
+    .from(harnessStages)
+    .where(inArray(harnessStages.harnessId, [...harnessIds]))
+    .orderBy(asc(harnessStages.harnessId), asc(harnessStages.position));
+  for (const row of rows) found.get(row.harnessId)?.push(toStage(row));
+  return found;
+}
+
 function columnsOf(stage: Stage) {
   return {
     key: stage.key,

@@ -97,6 +97,7 @@ function eventsGateway(log: string[], appended: HarnessEvent[]): HarnessEventsGa
       createdFor: unused,
       latestNamed: unused,
       enteredStage: unused,
+      enteredStages: unused,
       recent: unused,
       lastPosition: unused,
       lastPositions: unused,

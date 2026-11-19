@@ -20,7 +20,7 @@ export type DailyPoint = {
 export type HeldItem = { readonly item: ItemState; readonly harness: Harness };
 export type MyItems = { readonly rows: readonly HeldItem[]; readonly capped: boolean };
 
-function daysEnding(at: Date): readonly string[] {
+export function daysEnding(at: Date): readonly string[] {
   const today = parseDate(formatDate(at)).getTime();
   return Array.from({ length: DAILY_DAYS }, (_, n) =>
     formatDate(new Date(today - (DAILY_DAYS - 1 - n) * DAY_MS)),

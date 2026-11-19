@@ -6,6 +6,7 @@ import type { ImportTarget } from '../items/import.ts';
 import { pollQueue, type PollInput, type PollItem } from './poll.ts';
 import { importTarget, issueImported } from './repository.ts';
 import { zulipTarget, type ZulipTarget } from './zulip-target.ts';
+import { readOnly } from '../store-read.ts';
 import {
   delegationHarness,
   type DelegationScene,
@@ -81,21 +82,21 @@ export function createKernelReads(ports: ReadPorts): KernelReads {
   return {
     harness: (caller, input, options) => {
       const at = instant(options);
-      return ports.store.transaction((tx) => harnessScene(ports, tx, caller, input.harnessId, at));
+      return readOnly(ports.store, (tx) => harnessScene(ports, tx, caller, input.harnessId, at));
     },
     item: (caller, input, options) => {
       const at = instant(options);
-      return ports.store.transaction((tx) => itemScene(ports, tx, caller, input.itemId, at));
+      return readOnly(ports.store, (tx) => itemScene(ports, tx, caller, input.itemId, at));
     },
     delegation: (caller, input, options) => {
       const at = instant(options);
-      return ports.store.transaction((tx) =>
+      return readOnly(ports.store, (tx) =>
         delegationHarness(ports, tx, caller, input.delegationId, at),
       );
     },
     inStage: (caller, input, options) => {
       const at = instant(options);
-      return ports.store.transaction((tx) => itemsInStage(ports, tx, caller, input, at));
+      return readOnly(ports.store, (tx) => itemsInStage(ports, tx, caller, input, at));
     },
     poll: (caller, input, options) => {
       const at = instant(options);

@@ -1,6 +1,6 @@
 import { raw } from 'hono/html';
 import type { Child } from 'hono/jsx';
-import { themeScript } from './inline-scripts.ts';
+import { speculationRules, themeScript } from './inline-scripts.ts';
 import { PhoneHeader, Sidebar, type NavSection, type Person } from './sidebar.tsx';
 import { StatusBar, type Status } from './status-bar.tsx';
 import { TopBar, type Crumb, type Tab } from './top-bar.tsx';
@@ -29,6 +29,7 @@ function Head(props: {
       <link rel="manifest" href="/manifest.webmanifest" />
       <link rel="icon" href="/assets/icon.svg" type="image/svg+xml" />
       {props.script === undefined ? null : <script type="module" src={props.script}></script>}
+      <script type="speculationrules">{raw(speculationRules)}</script>
     </head>
   );
 }
@@ -74,6 +75,7 @@ export function Shell(props: {
       <Head title={props.title} stylesheet={props.stylesheet} script={props.script} />
       <body class="min-h-dvh bg-canvas font-sans text-base text-text">
         <SkipLink />
+        <div data-progress aria-hidden="true"></div>
         <div data-frame class="grid min-h-dvh md:h-dvh md:grid-cols-frame md:overflow-hidden">
           <Sidebar
             sections={frame.sections}

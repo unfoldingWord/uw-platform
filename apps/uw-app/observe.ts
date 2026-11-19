@@ -1,4 +1,5 @@
 import type { MiddlewareHandler } from 'hono';
+import { setMetric, timing } from 'hono/timing';
 import { createLogger } from '@uw/core/log';
 import { TRACE_HEADER } from '@uw/core/trace';
 import type { AppDeps, AppEnv } from './deps.ts';
@@ -19,9 +20,24 @@ export function observe(deps: Pick<AppDeps, 'newId' | 'sink'>): MiddlewareHandle
     c.set('outcome', null);
     await next();
     c.header(TRACE_HEADER, traceId);
+    const stats = c.get('database')?.stats?.();
     requestLogger(c).info('request', {
       outcome: c.get('outcome') ?? `http_${c.res.status}`,
       latencyMs: Date.now() - started,
+      queries: stats?.queries,
+      transactions: stats?.transactions,
     });
   };
+}
+
+export function serverTiming(): MiddlewareHandler<AppEnv> {
+  const timed = timing({ totalDescription: 'whole request' });
+  return (c, next) =>
+    timed(c, async () => {
+      await next();
+      const stats = c.get('database')?.stats?.();
+      if (stats !== undefined) {
+        setMetric(c, 'db', `${stats.queries} queries in ${stats.transactions} transactions`);
+      }
+    });
 }
