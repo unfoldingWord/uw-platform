@@ -316,13 +316,14 @@ describe.skipIf(!testServer)(
     it('adds a learning in another area only for a caller who may read it', async () => {
       const r = rig();
       const [itemId] = r.itemIds;
-      const context = await (await runner(r, EDITOR.email))('resolve_context', { itemId });
       const otherArea = {
         page: summary(PAGE.otherAreaLearning, 'learning', '30-39'),
         confidence: 'observed',
         asOf: '2026-09-10',
       };
-      expect(context['learnings']).toEqual([otherArea, itemLearning, ...laterTiers]);
+      const seen = async (tool: Tool) => (await tool('resolve_context', { itemId }))['learnings'];
+      expect(await seen(await runner(r, EDITOR.email))).toEqual([itemLearning, ...laterTiers]);
+      expect(await seen(await viewer(r, ROWAN))).toEqual([otherArea, itemLearning, ...laterTiers]);
     });
 
     it('answers a viewer of another area exactly as a missing item', async () => {
@@ -455,8 +456,7 @@ describe.skipIf(!testServer)(
       const tasks = await seedTasks(r);
       const query = { query: 'open_tasks', params: { jdArea: '30-39' } };
       expect(await (await viewer(r, VIEWER_80))('query_entities', query)).toEqual({ rows: [] });
-      const rows = await (await runner(r, EDITOR.email))('query_entities', query);
-      expect(rows).toEqual({ rows: tasks });
+      expect(await (await viewer(r, VIEWER_30))('query_entities', query)).toEqual({ rows: tasks });
     });
 
     it('answers the items of a readable stage and hides an unreadable harness', async () => {

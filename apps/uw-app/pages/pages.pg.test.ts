@@ -262,11 +262,12 @@ describe.skipIf(!testServer)('FD-9 create_page conflicts and parents', () => {
 });
 
 describe.skipIf(!testServer)('FD-9 reading a page', () => {
-  it('shows a page to a reader elsewhere and hides it from a viewer elsewhere', () =>
+  it('shows a page to an org reader and hides it from anyone holding grants only elsewhere', () =>
     withAppDatabase(async (db) => {
       await seedPeople(db);
       const pageId = await seeded(db);
-      expect((await get(db, FIN, `/api/pages/${pageId}`)).status).toBe(200);
+      expect((await get(db, ROWAN, `/api/pages/${pageId}`)).status).toBe(200);
+      expect(reasonOf(await get(db, FIN, `/api/pages/${pageId}`))).toEqual([404, 'page_not_found']);
       const hidden = await get(db, FV, `/api/pages/${pageId}`);
       expect(reasonOf(hidden)).toEqual([404, 'page_not_found']);
     }));
@@ -305,12 +306,12 @@ describe.skipIf(!testServer)('FD-9 update_page', () => {
       ]);
     }));
 
-  it('refuses a viewer, an editor of another area, and a page the caller cannot read', () =>
+  it('refuses a viewer, and answers anyone holding grants only in another area as a missing page', () =>
     withAppDatabase(async (db) => {
       await seedPeople(db);
       const pageId = await seeded(db);
       expect(reasonOf(await update(db, VW, pageId))).toEqual([403, 'not_permitted']);
-      expect(reasonOf(await update(db, FIN, pageId))).toEqual([403, 'not_permitted']);
+      expect(reasonOf(await update(db, FIN, pageId))).toEqual([404, 'page_not_found']);
       expect(reasonOf(await update(db, FV, pageId))).toEqual([404, 'page_not_found']);
     }));
 

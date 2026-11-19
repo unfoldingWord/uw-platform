@@ -2,11 +2,13 @@ import {
   modelIdSchema,
   personaFrontmatterSchema,
   verbNameSchema,
+  type Principal,
   type VerbName,
 } from '@uw/contracts';
+import { allowed } from '../access.ts';
 import { engineDescriptor } from '../engines.ts';
 import { refused, type Refused } from '../outcome.ts';
-import type { PageFacts, RunRow } from '../ports.ts';
+import type { PageFacts, RunRow, StoreTransaction } from '../ports.ts';
 import type { RunPersona } from './types.ts';
 
 type PersonaFrontmatter = ReturnType<typeof personaFrontmatterSchema.parse>;
@@ -65,4 +67,24 @@ export function pinnedPersonaOf(run: RunRow, facts: PageFacts | undefined): RunP
     instructions: page.facts.bodyMd,
     approveAt: frontmatter.approve_at,
   };
+}
+
+export function hiddenPersona(
+  principal: Principal,
+  facts: PageFacts | undefined,
+  pageId: string | null,
+  at: Date,
+): Refused | null {
+  if (facts !== undefined && allowed(principal, 'read', facts, at)) return null;
+  return refused('page_not_found', { pageId });
+}
+
+export async function unreadablePersona(
+  tx: StoreTransaction,
+  principal: Principal,
+  pageId: string,
+  at: Date,
+): Promise<Refused | null> {
+  const [facts] = await tx.pages.read.facts([pageId]);
+  return hiddenPersona(principal, facts, pageId, at);
 }

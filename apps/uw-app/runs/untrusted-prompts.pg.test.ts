@@ -164,12 +164,12 @@ async function seedItemPages(db: Database): Promise<void> {
   await seedPage(db, page(PAGE.hidden, 'Hidden budget', '30-39', PAGE.item));
 }
 
-function viewerOnly(rig: HostRig): Principal {
+function orgViewer(rig: HostRig): Principal {
   const grant = {
     grantId: randomUUID(),
     role: 'viewer',
-    scopeKind: 'jd_area',
-    scopeArea: '80-89',
+    scopeKind: 'org',
+    scopeArea: null,
     expiresAt: null,
   };
   return principalSchema.parse({ ...personaPrincipal(rig), grants: [grant] });
@@ -211,10 +211,10 @@ async function readAsTheRun(db: Database): Promise<void> {
   expect(scene.principal).toMatchObject({ identity: 'agent:builder', kind: 'agent' });
   const asTheRun = await contextPrompt(rig, runId, null);
   expect(asTheRun).toContain('Readable strategy');
-  expect(asTheRun).toContain('Hidden budget');
-  const asViewer = await contextPrompt(rig, runId, viewerOnly(rig));
-  expect(asViewer).toContain('Readable strategy');
-  expect(asViewer).not.toContain('Hidden budget');
+  expect(asTheRun).not.toContain('Hidden budget');
+  const asOrgViewer = await contextPrompt(rig, runId, orgViewer(rig));
+  expect(asOrgViewer).toContain('Readable strategy');
+  expect(asOrgViewer).toContain('Hidden budget');
 }
 
 describe.skipIf(!testServer)('UC-3 a prompt read carries the run principal', () => {

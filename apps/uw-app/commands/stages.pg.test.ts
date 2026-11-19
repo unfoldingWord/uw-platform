@@ -131,7 +131,7 @@ async function hidesWhatItCannotRead(db: Database): Promise<void> {
   const kernel = kernelOn(db, { now: () => new Date() });
   const reader = await personOn(db, admin.id, admin.email, new Date());
   const read = await kernel.reads.harness(callerOf(reader), { harnessId: scene.harnessId });
-  expect(read.status).toBe('accepted');
+  expect(read).toMatchObject({ status: 'error', reason: 'harness_not_found' });
 }
 
 async function pausesAndResumes(db: Database): Promise<void> {
@@ -248,7 +248,7 @@ describe.skipIf(!testServer)('WB-1 KN-18 the stage command on the person surface
   it('WB-1 activate_template creates the harness named in the path from a template, for an admin of the body area', () =>
     withAppDatabase(activates));
 
-  it('activate_template answers a person who cannot administer the area not_permitted alike whether the id, key or repository is taken or free, and harness_exists only to an admin, who reads every area', () =>
+  it("activate_template answers a person who cannot administer the area not_permitted alike whether the id, key or repository is taken or free, and harness_exists only to an admin, since keys are unique across areas, though the admin cannot read the other area's harness", () =>
     withAppDatabase(hidesWhatItCannotRead));
 
   it('WB-1 pause and resume through the command API record harness_paused and harness_resumed', () =>
