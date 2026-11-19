@@ -269,3 +269,43 @@ describe('the Stop run form', () => {
     });
   });
 });
+
+const personId = 'a1540000-0000-4000-8000-000000000001';
+
+function decideForm(): string {
+  return `<form data-command="decide" data-endpoint="/api/acl/commands" method="post" action="#"><input type="hidden" name="personId" value="${personId}"><button type="submit" name="decision" value="approve_person">Approve</button><button type="submit" name="decision" value="decline_person">Decline</button><p data-outcome role="status"></p></form>`;
+}
+
+async function platformFormPosts(): Promise<void> {
+  const dom = page(decideForm());
+  const run = wired(dom, async () => Response.json({ status: 'accepted', requestId }));
+  submit(run.document, run.document.querySelector('button[value="decline_person"]'));
+  await settled();
+  expect(run.sent).toEqual([
+    {
+      url: '/api/acl/commands/decline_person',
+      body: { command: 'decline_person', requestId, personId },
+      busy: 'true',
+    },
+  ]);
+  expect(outcomeOf(run.document)).toBe('Declined');
+  expect(run.accepted()).toBe(1);
+}
+
+async function platformRefusalInPlace(): Promise<void> {
+  const dom = page(decideForm());
+  const refusal = { status: 'error', requestId, reason: 'last_org_admin' };
+  const run = wired(dom, async () => Response.json(refusal, { status: 409 }));
+  submit(run.document, run.document.querySelector('button[value="approve_person"]'));
+  await settled();
+  expect(outcomeOf(run.document)).toBe('Last org admin');
+  expect(run.accepted()).toBe(0);
+}
+
+describe('#154 a platform command form', () => {
+  it('posts to its own endpoint, with the command its button names', platformFormPosts);
+  it(
+    'shows a refusal such as the last org admin in place and does not refresh',
+    platformRefusalInPlace,
+  );
+});

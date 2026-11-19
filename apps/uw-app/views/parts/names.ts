@@ -9,6 +9,8 @@ export const pageNames = {
   health: 'Health',
   notFound: 'Not Found',
   waitingApproval: 'Waiting For Approval',
+  accessDeclined: 'Access Declined',
+  access: 'Access',
   queue: 'Queue',
   flow: 'Flow',
   controls: 'Stages & Controls',
@@ -41,7 +43,7 @@ export type PlatformModule = {
   readonly icon: IconName;
   readonly built?: BuiltModule;
 };
-export type BuiltModule = 'today' | 'health' | 'agentQueues';
+export type BuiltModule = 'today' | 'health' | 'agentQueues' | 'access';
 export type PlatformArea = {
   readonly code: string;
   readonly name: string;
@@ -82,6 +84,7 @@ export const platformAreas: readonly PlatformArea[] = [
     modules: [
       { label: 'Health', icon: 'wave-pulse', built: 'health' },
       { label: 'Agent Queues', icon: 'robot', built: 'agentQueues' },
+      { label: 'Access', icon: 'lock', built: 'access' },
       { label: 'Modules', icon: 'cube' },
       { label: 'Desktop & Offline', icon: 'desktop' },
     ],
@@ -116,6 +119,27 @@ export const moduleCodes: Readonly<Record<BuiltModule, string>> = {
   today: '00',
   health: '38',
   agentQueues: '32',
+  access: '37',
 };
 
 export const noModules = 'No modules enabled for this area';
+
+const DECADES = 10;
+
+function decadeOf(code: string): readonly [number, number] {
+  const [from = '', to = ''] = code.split('-');
+  return [Number(from), Number(to)];
+}
+
+export function areaLabel(area: string): string {
+  const [from] = decadeOf(area);
+  const named = platformAreas.find((platform) => {
+    const [start, end] = decadeOf(platform.code);
+    return from >= start && from <= end;
+  });
+  return named === undefined ? area : `${area} ${named.name}`;
+}
+
+export function everyArea(): readonly string[] {
+  return Array.from({ length: DECADES }, (_, decade) => `${decade}0-${decade}9`);
+}

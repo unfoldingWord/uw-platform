@@ -49,7 +49,7 @@ async function targetRefusal(
 ): Promise<ErrorReason | null> {
   const person = await lockPerson(tx, personId);
   if (!person) return 'person_not_found';
-  if (person.status === 'pending') return 'pending_approval';
+  if (person.status !== 'active') return 'pending_approval';
   const grants = await resolveGrants(tx, personId, { at, lock: 'share' });
   return grants.some((grant) => BINDABLE_ROLES.has(grant.role)) ? null : 'not_permitted';
 }

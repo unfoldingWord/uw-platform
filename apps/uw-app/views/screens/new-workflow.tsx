@@ -8,13 +8,12 @@ import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { ChoiceCards, type CardChoice } from '@uw/ui/components/segmented-control.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
-import { moduleCodes, pageNames, platformAreas } from '../parts/names.ts';
+import { areaLabel, everyArea, moduleCodes, pageNames } from '../parts/names.ts';
 import { agentQueuesPath, newWorkflowPath } from '../parts/paths.ts';
 
 const SCOPE = 'new-workflow';
 const NAME_LIMIT = 80;
 const REPOSITORY_LIMIT = 140;
-const DECADES = 10;
 
 const templateSummaries: ReadonlyMap<string, string> = new Map([
   ['software', 'From a backlog issue to merged, deployed and learned from.'],
@@ -29,24 +28,6 @@ const repositoryHint =
   'Optional, one per workflow. Linking a repository means its issues can become items, its merge stage merges there, and agents’ code work happens there.';
 const notAdminWords =
   'Only an area admin can create a workflow. Ask an admin of the area your work belongs to.';
-
-function decadeOf(code: string): readonly [number, number] {
-  const [from = '', to = ''] = code.split('-');
-  return [Number(from), Number(to)];
-}
-
-function areaLabel(area: string): string {
-  const [from] = decadeOf(area);
-  const named = platformAreas.find((platform) => {
-    const [start, end] = decadeOf(platform.code);
-    return from >= start && from <= end;
-  });
-  return named === undefined ? area : `${area} ${named.name}`;
-}
-
-function everyArea(): readonly string[] {
-  return Array.from({ length: DECADES }, (_, decade) => `${decade}0-${decade}9`);
-}
 
 function templateChoices(): readonly CardChoice[] {
   return [...templates.values()].map((template) => ({

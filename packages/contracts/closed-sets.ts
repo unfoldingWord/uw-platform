@@ -38,7 +38,7 @@ export const untrustedSourceSchema = z.enum([
   'pr_title',
 ]);
 export const gateDecisionSchema = z.enum(['approve', 'reject', 'take_over', 'override']);
-export const personStatusSchema = z.enum(['active', 'pending']);
+export const personStatusSchema = z.enum(['active', 'pending', 'disabled']);
 export const principalKindSchema = z.enum(['person', 'agent']);
 export const wakeReasonSchema = z.enum([
   'gate_waiting',

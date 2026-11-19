@@ -7,7 +7,7 @@ import type { NavItem, NavSection, Person } from '@uw/ui/components/sidebar.tsx'
 import { wordmarkPath } from '@uw/ui/generated/mark';
 import type { AppEnv } from '../../deps.ts';
 import { commitOf, environmentOf } from '../../env.ts';
-import { agentQueuesPath, queuePath, healthPath, homePath } from './paths.ts';
+import { accessPath, agentQueuesPath, queuePath, healthPath, homePath } from './paths.ts';
 import { moduleCodes, noModules, platformAreas, type PlatformModule } from './names.ts';
 
 const noCounts: FrameCounts = { harnesses: [], waiting: 0, gatesOpen: 0, agentsWorking: 0 };
@@ -64,6 +64,7 @@ function builtItems(module: PlatformModule, counts: FrameCounts, watch: number):
         ...(watch === 0 ? {} : { count: { kind: 'watch', text: `${watch} watch` } }),
       },
     ];
+  if (module.built === 'access') return [{ ...base, href: accessPath(), code: moduleCodes.access }];
   if (module.built === 'agentQueues')
     return [
       { ...base, code: moduleCodes.agentQueues, href: agentQueuesPath() },

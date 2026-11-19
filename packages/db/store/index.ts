@@ -7,3 +7,11 @@ export { createDrizzleGrants, liveGrant, resolveGrants } from './grants.ts';
 export type { DrizzleGrants, GrantReadOptions } from './grants.ts';
 export { claimsByAgent } from './events.ts';
 export { subscriptionTokensFor } from './runs.ts';
+export { readAccessRecords } from './access.ts';
+export type {
+  AccessGrant,
+  AccessGrantChange,
+  AccessPerson,
+  AccessPersonChange,
+  AccessRecords,
+} from './access.ts';

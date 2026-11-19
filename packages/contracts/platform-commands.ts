@@ -11,6 +11,8 @@ export const platformCommandNameSchema = z.enum([
   'pause_routine',
   'resume_routine',
   'revoke_routine',
+  'approve_person',
+  'decline_person',
 ]);
 
 export type PlatformCommandName = z.infer<typeof platformCommandNameSchema>;

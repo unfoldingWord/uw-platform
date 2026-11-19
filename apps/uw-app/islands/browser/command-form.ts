@@ -31,6 +31,10 @@ export const OUTCOME_TEXT: Readonly<Record<string, string>> = {
   revoke_delegation: 'Revoked',
   pause: 'Paused',
   resume: 'Resumed',
+  grant_role: 'Granted',
+  revoke_role: 'Revoked',
+  approve_person: 'Approved',
+  decline_person: 'Declined',
 };
 
 const outcomes: ReadonlyMap<string, string> = new Map(Object.entries(OUTCOME_TEXT));
@@ -101,15 +105,21 @@ export async function answerOf(response: Response): Promise<{ status: string; re
   return { status: 'error', reason: typeof reason === 'string' ? reason : 'internal_error' };
 }
 
+function endpointOf(form: HTMLFormElement): string {
+  const platform = form.getAttribute('data-endpoint');
+  if (platform !== null) return platform;
+  const harness = form.getAttribute('data-harness') ?? '';
+  return `/api/harness/${encodeURIComponent(harness)}/commands`;
+}
+
 async function send(form: HTMLFormElement, command: string, deps: CommandDeps): Promise<boolean> {
   const body = commandBody(command, formFields(form), deps.uuid());
   if (body === null) {
     setOutcome(form, reasonText('malformed_command'));
     return false;
   }
-  const harness = form.getAttribute('data-harness') ?? '';
   const response = await deps
-    .fetch(`/api/harness/${encodeURIComponent(harness)}/commands/${encodeURIComponent(command)}`, {
+    .fetch(`${endpointOf(form)}/${encodeURIComponent(command)}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'application/json' },
       body: JSON.stringify(body),
