@@ -93,7 +93,7 @@ describe('the events that wake a person', () => {
     const quiet = [
       event(1, 'zulip_topic_linked', { topic: 'software' }),
       event(2, 'comment_recorded', comment),
-      event(3, 'item_released', { holder: 'human:ian' }),
+      event(3, 'item_released', { holder: 'human:rowan' }),
     ];
     expect(triggersOf(quiet)).toEqual([]);
   });

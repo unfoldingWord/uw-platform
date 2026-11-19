@@ -25,14 +25,16 @@ export async function screenReport(
   hubHealth: HubHealth,
   seen: { readonly database: DatabaseHandle; readonly principal: Principal },
 ): Promise<HealthReport> {
-  const platform = await platformReport(c, deps, hubHealth);
-  const plane = await agentPlaneIndicators({
-    kernel: platformKernel(seen.database, deps.clock),
-    caller: { actor: seen.principal, traceId: c.get('traceId') },
-    db: seen.database.db,
-    at: c.get('now'),
-    cap: spendCapOf(c.env),
-  });
+  const [platform, plane] = await Promise.all([
+    platformReport(c, deps, hubHealth),
+    agentPlaneIndicators({
+      kernel: platformKernel(seen.database, deps.clock),
+      caller: { actor: seen.principal, traceId: c.get('traceId') },
+      db: seen.database.db,
+      at: c.get('now'),
+      cap: spendCapOf(c.env),
+    }),
+  ]);
   const indicators = [...platform.indicators, ...plane];
   return { status: overallStatus(indicators), commit: platform.commit, indicators };
 }

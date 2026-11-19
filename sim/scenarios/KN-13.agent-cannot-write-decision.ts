@@ -36,12 +36,12 @@ async function beatPrincipalOf(world: World, harnessId: string, kim: Principal) 
   return beat.principal;
 }
 
-async function agentsOf(world: World, harnessId: string, ian: Principal) {
+async function agentsOf(world: World, harnessId: string, rowan: Principal) {
   const kim = await simPerson(world, 4, [{ role: 'admin', ...area }]);
   const max = await simPerson(world, 5, [{ role: 'editor', ...area }]);
   const vic = await simPerson(world, 6, [{ role: 'viewer', ...area }]);
   return [
-    simAgent(ian, 'reviewer', { interactive: true }),
+    simAgent(rowan, 'reviewer', { interactive: true }),
     simAgent(kim, `${kim.personId}/builder`, { interactive: false }),
     simAgent(max, `${max.personId}/builder`, { interactive: true }),
     simAgent(vic, `${vic.personId}/builder`, { interactive: true }),

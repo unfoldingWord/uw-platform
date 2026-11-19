@@ -14,7 +14,7 @@ import {
   allEvents,
   callerOf,
   enqueued,
-  ian,
+  rowan,
   softwareHarness,
 } from '../testing/commands.ts';
 import type { CronDeps } from './job.ts';
@@ -74,7 +74,7 @@ async function withRig(work: (rig: Rig) => Promise<void>): Promise<void> {
 }
 
 async function agentItem(rig: Rig, title: string): Promise<string> {
-  const admin = await ian(rig.db);
+  const admin = await rowan(rig.db);
   const kernel = kernelOn(rig.db, { now: () => new Date() });
   const { harnessId } = rig;
   const change = { agentPickup: 'allowed' as const, bracket: 'build_package' as const };
@@ -85,7 +85,7 @@ async function agentItem(rig: Rig, title: string): Promise<string> {
 }
 
 async function delegatedPersona(rig: Rig): Promise<string> {
-  const admin = await ian(rig.db);
+  const admin = await rowan(rig.db);
   const kernel = kernelOn(rig.db, { now: () => new Date() });
   const { harnessId } = rig;
   const itemId = await agentItem(rig, 'Run the minute beat');
@@ -224,7 +224,7 @@ async function startFailsUnbound(rig: Rig): Promise<void> {
 }
 
 async function sweepsLapsedLease(rig: Rig): Promise<void> {
-  const laptop = agentOf(await ian(rig.db), 'laptop');
+  const laptop = agentOf(await rowan(rig.db), 'laptop');
   const kernel = kernelOn(rig.db, { now: () => new Date() });
   const itemId = await agentItem(rig, 'A lease that lapses');
   accepted(await kernel.items.claim(callerOf(laptop), { itemId, delegationId: null }));
@@ -269,7 +269,7 @@ async function delegatedExitsUnreadableApp(rig: Rig): Promise<void> {
 }
 
 async function lapsesExpiredDelegation(rig: Rig): Promise<void> {
-  const admin = await ian(rig.db);
+  const admin = await rowan(rig.db);
   const kernel = kernelOn(rig.db, { now: () => new Date() });
   const expiresAt = new Date(Date.now() + 5 * MINUTE);
   const granted = accepted(

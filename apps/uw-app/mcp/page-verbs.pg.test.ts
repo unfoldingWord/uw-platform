@@ -36,7 +36,7 @@ const SEEDED = {
   persona80: '00000000-0000-4000-8000-000000001413',
 };
 const GRANTED_AT = new Date('2026-01-01T00:00:00.000Z');
-const IAN = { id: '00000000-0000-4000-8000-000000000001', email: 'ian.lindsley@unfoldingword.org' };
+const ROWAN = { id: '00000000-0000-4000-8000-000000000001', email: 'rowan.test@unfoldingword.org' };
 const clock = { now: () => new Date() };
 
 type Body = Record<string, unknown>;
@@ -256,12 +256,13 @@ describe.skipIf(!testServer)(
   'AB-5 search_pages and read_page return only pages the principal may read',
   () => {
     const rig = freshRig();
-    it('finds only the readable area for the viewer and both areas for the editor', async () => {
+    it('finds only its own area for the viewer and for the editor', async () => {
       const r = rig();
       const found = await search(await viewer(r), 'harvest');
       expect(idsOf(found.body)).toEqual([SEEDED.workshop30]);
       const editor = await search(await runner(r, EDITOR.email), 'harvest');
-      expect(idsOf(editor.body)).toEqual(Object.values(SEEDED).sort());
+      const own = [SEEDED.workshop80, SEEDED.lesson80, SEEDED.persona80];
+      expect(idsOf(editor.body)).toEqual(own.sort());
     });
 
     it('narrows the search to one page type', async () => {
@@ -394,9 +395,9 @@ describe.skipIf(!testServer)('AB-3 page version history records the agent identi
 });
 
 async function nameAsInstructions(r: Rig, stageKey: string, pageId: string): Promise<void> {
-  const ian = await personOn(r.db, IAN.id, IAN.email, new Date());
+  const rowan = await personOn(r.db, ROWAN.id, ROWAN.email, new Date());
   const kernel = kernelOn(r.db, clock);
-  const caller = { actor: ian, traceId: crypto.randomUUID() };
+  const caller = { actor: rowan, traceId: crypto.randomUUID() };
   const harnessId = crypto.randomUUID();
   const harnessKey = `software-${stageKey}`;
   const activation = {

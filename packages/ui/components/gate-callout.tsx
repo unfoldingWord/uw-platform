@@ -30,17 +30,14 @@ export function GateCallout(props: {
   return (
     <section
       aria-labelledby={headingId}
-      class="flex min-w-0 flex-col gap-4 rounded-lg bg-surface p-5 text-text shadow-2"
+      class="flex min-w-0 flex-col rounded-md border border-line bg-surface text-text"
     >
-      <div class="flex flex-wrap items-start justify-between gap-4">
+      <div class="flex flex-wrap items-start justify-between gap-4 border-b border-line px-4 py-3">
         <div class="min-w-0">
           {props.eyebrow === undefined ? null : (
-            <p class="m-0 text-xs text-text-3">{props.eyebrow}</p>
+            <p class="m-0 text-xs font-semibold text-text-3">{props.eyebrow}</p>
           )}
-          <h2
-            id={headingId}
-            class="m-0 text-2xl leading-tight font-heavy tracking-heading text-text"
-          >
+          <h2 id={headingId} class="m-0 text-lg leading-snug font-heavy tracking-tight text-text">
             {props.title}
           </h2>
           {props.meta === undefined ? null : (
@@ -51,9 +48,11 @@ export function GateCallout(props: {
         </div>
         {props.aside}
       </div>
-      {props.children}
-      {props.reason === null ? null : <Note>{reasonText(props.reason)}</Note>}
-      <div class="flex flex-wrap items-center gap-3">{props.actions}</div>
+      <div class="flex flex-col gap-4 p-4">
+        {props.children}
+        {props.reason === null ? null : <Note>{reasonText(props.reason)}</Note>}
+        <div class="flex flex-wrap items-center gap-2">{props.actions}</div>
+      </div>
     </section>
   );
 }

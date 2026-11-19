@@ -14,6 +14,7 @@
     "./schema": "./schema.ts",
     "./store": "./store/index.ts",
     "./test-seed": "./test-seed.ts",
+    "./test-admin": "./test-admin.ts",
     "./test-database": "./test-database.ts",
     "./test-targets": "./test-targets.ts"
   },

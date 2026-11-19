@@ -19,8 +19,8 @@ import { personOn } from '../testing/kernel.ts';
 import { postgresDeps, testServer, withAppDatabase } from '../testing/postgres.ts';
 import { withAgentPrincipal } from './mint.ts';
 
-const IAN = 'ian.lindsley@unfoldingword.org';
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN = 'rowan.test@unfoldingword.org';
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 const CLIENT = 'routine-1.access';
 const ROUTINE_DEVICE = 'hourly-routine';
 const DELEGATION = '00000000-0000-4000-8000-000000000999';
@@ -122,8 +122,8 @@ function areasOf(principal: Principal) {
   return principal.grants.map((grant) => [grant.role, grant.scopeArea]);
 }
 
-async function ian(db: Database): Promise<Principal> {
-  return personOn(db, IAN_ID, IAN, new Date());
+async function rowan(db: Database): Promise<Principal> {
+  return personOn(db, ROWAN_ID, ROWAN, new Date());
 }
 
 async function bindRoutine(db: Database): Promise<void> {
@@ -134,7 +134,7 @@ async function bindRoutine(db: Database): Promise<void> {
     personId: idOf('routine'),
     device: ROUTINE_DEVICE,
   };
-  const bound = await bindServiceToken(db, await ian(db), command, randomUUID(), new Date());
+  const bound = await bindServiceToken(db, await rowan(db), command, randomUUID(), new Date());
   expect(bound).toEqual({ ok: true });
 }
 
@@ -144,7 +144,9 @@ async function revokeRoutine(db: Database): Promise<void> {
     requestId: randomUUID(),
     clientId: CLIENT,
   };
-  expect(await revokeServiceToken(db, await ian(db), command, new Date())).toEqual({ ok: true });
+  expect(
+    await revokeServiceToken(db, await rowan(db), command, new Date(), async () => true),
+  ).toEqual({ ok: true });
 }
 
 function withPeople(work: (db: Database) => Promise<void>): Promise<void> {

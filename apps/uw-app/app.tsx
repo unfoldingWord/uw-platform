@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { errorFields } from '@uw/core/log';
-import { aclRoutes } from './acl/routes.ts';
+import { accessScreenRoutes, aclRoutes } from './acl/routes.ts';
 import { agentRoutes } from './agents/routes.ts';
 import { assetRoutes } from './assets/routes.ts';
 import { meRoutes } from './auth/me.ts';
@@ -8,13 +8,13 @@ import { withPrincipal } from './auth/principal-middleware.ts';
 import { platformPersonDeps, type PersonDeps } from './commands/person-deps.ts';
 import { harnessRoutes } from './commands/routes.ts';
 import { securityHeaders } from './http/security-headers.ts';
-import { withDatabase } from './database.ts';
+import { shareReadsOnPages, withDatabase } from './database.ts';
 import { platformDeps, type AppDeps, type AppEnv } from './deps.ts';
 import { withFrameHealth } from './health/frame-health.ts';
 import { healthScreenRoutes, probeRoutes } from './health/routes.tsx';
 import { mcpRoutes } from './mcp/routes.ts';
 import { pushRoutes } from './notify/routes.ts';
-import { observe } from './observe.ts';
+import { observe, serverTiming } from './observe.ts';
 import { pageRoutes } from './pages/routes.ts';
 import { requestLogger } from './request-logger.ts';
 import { viewRoutes } from './views/routes.tsx';
@@ -29,6 +29,8 @@ export function createApp(
   app.use(securityHeaders());
   app.use(observe(deps));
   app.use(withDatabase(deps));
+  app.use(serverTiming());
+  app.use(shareReadsOnPages());
 
   app.onError((error, c) => {
     c.set('outcome', 'internal_error');
@@ -46,12 +48,13 @@ export function createApp(
   app.use(withFrameHealth(deps));
   app.route('/api/me', meRoutes());
   app.route('/api/acl', aclRoutes());
-  app.route('/api/agents', agentRoutes());
+  app.route('/api/agents', agentRoutes(deps));
   app.route('/api/pages', pageRoutes());
   app.route('/api/push', pushRoutes());
   app.route('/api/harness', harnessRoutes(deps, person));
   app.route('/mcp', mcpRoutes(deps));
   app.route('/health', healthScreenRoutes(deps));
+  app.route('/access', accessScreenRoutes());
 
   app.route('/', viewRoutes());
   app.notFound((c) =>

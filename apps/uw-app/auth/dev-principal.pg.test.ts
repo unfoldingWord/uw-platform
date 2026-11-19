@@ -6,9 +6,9 @@ import { createApp } from '../app.tsx';
 import { createAccessFixture } from '../testing/access-keys.ts';
 import { postgresDeps, testServer, withAppDatabase } from '../testing/postgres.ts';
 
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 const meReplySchema = z.object({ principal: z.unknown() });
-const dev = { DEV_PRINCIPAL_EMAIL: 'ian.lindsley@unfoldingword.org' };
+const dev = { DEV_PRINCIPAL_EMAIL: 'rowan.test@unfoldingword.org' };
 
 async function meOnLocalhost(db: Database) {
   const deps = postgresDeps(db, await createAccessFixture());
@@ -24,8 +24,8 @@ describe.skipIf(!testServer)('P21 FD-7 the dev-only principal through the middle
       const principal = parsePrincipal(body.principal);
       expect(principal).toMatchObject({
         kind: 'person',
-        personId: IAN_ID,
-        email: 'ian.lindsley@unfoldingword.org',
+        personId: ROWAN_ID,
+        email: 'rowan.test@unfoldingword.org',
         interactive: true,
       });
     }));

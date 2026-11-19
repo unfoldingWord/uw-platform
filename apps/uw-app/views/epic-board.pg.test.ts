@@ -10,7 +10,7 @@ import { answeringEpic, kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml } from '../testing/views.ts';
-import { boardPath } from './parts/paths.ts';
+import { queuePath } from './parts/paths.ts';
 
 const seedClock: Clock = { now: () => new Date('2026-10-15T06:00:00.000Z') };
 const viewClock: Clock = { now: () => new Date('2026-10-15T09:00:00.000Z') };
@@ -49,7 +49,7 @@ async function epicBoardHtml(): Promise<string> {
     const kernel = kernelOn(db, seedClock, { githubFacts: answeringEpic(epic) });
     const harnessId = randomUUID();
     accepted(
-      await kernel.stages.activate(callerOf(world.ian), {
+      await kernel.stages.activate(callerOf(world.rowan), {
         harnessId,
         harnessKey: 'epics',
         jdArea: '80-89',
@@ -58,7 +58,7 @@ async function epicBoardHtml(): Promise<string> {
         requiredChecks: defaultCiChecks,
       }),
     );
-    const caller = callerOf(world.ian);
+    const caller = callerOf(world.rowan);
     accepted(
       await kernel.items.enqueueEpic(caller, { harnessId, epic: { repo: repository, number: 40 } }),
     );
@@ -68,7 +68,7 @@ async function epicBoardHtml(): Promise<string> {
       epic: { repo: repository, number: 50 },
     });
     expect(refused).toMatchObject({ status: 'error', reason: 'done_when_missing' });
-    html = (await getHtml(db, world.ianEmail, boardPath(harnessId), {}, viewClock)).text;
+    html = (await getHtml(db, world.rowanEmail, queuePath(harnessId), {}, viewClock)).text;
   });
   return html;
 }

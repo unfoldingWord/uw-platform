@@ -1,7 +1,9 @@
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle, type PgliteDatabase } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
+import { bootstrapAdmin } from './bootstrap-admin.ts';
 import { migrationsFolder } from './migrate.ts';
+import { testAdmin } from './test-admin.ts';
 import * as schema from './schema.ts';
 
 export type EmbeddedDatabase = {
@@ -15,6 +17,7 @@ async function migratedTemplate(folder: string): Promise<PGlite> {
   const client = new PGlite();
   try {
     await migrate(drizzle(client), { migrationsFolder: folder });
+    await bootstrapAdmin((text, params) => client.query(text, [...params]), testAdmin);
   } catch (error) {
     await client.close();
     throw error;

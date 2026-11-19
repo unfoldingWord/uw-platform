@@ -5,7 +5,7 @@ import {
   createSimHarness,
   simAgent,
   simCaller,
-  simIan,
+  simRowan,
   simPerson,
   simSystem,
 } from '../fixtures.ts';
@@ -36,7 +36,7 @@ type Cast = {
 
 async function cast(world: World): Promise<Cast> {
   const { harness } = await createSimHarness(world, software);
-  const admin = simCaller(world, await simIan(world));
+  const admin = simCaller(world, await simRowan(world));
   await world.kernel.stages.updateStage(admin, {
     harnessId: harness.id,
     stageKey: 'package',

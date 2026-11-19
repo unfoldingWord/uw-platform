@@ -33,7 +33,7 @@ function agent(
 }
 
 async function readingAgents(db: Database, parked: ParkedAtShip): Promise<Principal[]> {
-  const owner = parked.ian;
+  const owner = parked.rowan;
   const kernel = kernelOn(db, { now: () => new Date() });
   const input = {
     harnessId: parked.item.harnessId,
@@ -148,7 +148,7 @@ async function agentsRefusedElsewhere(db: Database): Promise<void> {
   const opener = countingOpener(db);
   const actors = await readingAgents(db, parked);
   const before = await eventCount(db, parked.item.harnessId);
-  for (const actor of [...actors, ...hiddenFromAgents(parked.ian)]) {
+  for (const actor of [...actors, ...hiddenFromAgents(parked.rowan)]) {
     for (const [name, extra] of otherAttempts(parked.item.itemId)) {
       const requestId = randomUUID();
       const body = { requestId, ...extra };
@@ -170,7 +170,7 @@ async function unreadableHarness(db: Database): Promise<void> {
   const parked = await parkedAtShip(db);
   const opener = countingOpener(db);
   const before = await eventCount(db, parked.item.harnessId);
-  for (const actor of hiddenFromAgents(parked.ian)) {
+  for (const actor of hiddenFromAgents(parked.rowan)) {
     for (const command of gateAttempts(parked.item.expectedHead)) {
       const { requestId, outcome } = await attempt(parked, actor, opener, command);
       expect(outcome).toEqual({ status: 'error', requestId, reason: 'harness_not_found' });

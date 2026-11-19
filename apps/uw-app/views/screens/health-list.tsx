@@ -12,7 +12,8 @@ import type { AppEnv } from '../../deps.ts';
 import { sweepsBacking } from '../../health/agent-plane.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { indicatorText, statusOf } from '../parts/health-words.ts';
-import { healthPath, homePath } from '../parts/paths.ts';
+import { healthPath } from '../parts/paths.ts';
+import { moduleCodes } from '../parts/names.ts';
 import { notFound } from './not-found.tsx';
 import { titleCased, pageNames } from '../parts/names.ts';
 
@@ -172,8 +173,9 @@ export async function healthListScreen(c: Context<AppEnv>): Promise<Response> {
   const spec = {
     title,
     current: healthPath(),
+    code: moduleCodes.health,
     crumbs: [
-      { label: pageNames.home, href: homePath() },
+      { label: pageNames.infrastructure },
       { label: pageNames.health, href: healthPath() },
       { label: title },
     ],

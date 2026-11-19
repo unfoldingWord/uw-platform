@@ -294,14 +294,16 @@ function gateDecisionRules(db: () => Db): void {
   });
 
   it('refuses an override with a blank reason', async () => {
-    expect(await refusal(insertDecision(db(), idOf(0xf2), 'human:ian', 'override', '  '))).toEqual({
+    expect(
+      await refusal(insertDecision(db(), idOf(0xf2), 'human:rowan', 'override', '  ')),
+    ).toEqual({
       code: '23514',
       constraint: 'gate_decisions_override_has_reason',
     });
   });
 
   it('refuses an update, a delete and a truncate with the trigger message', async () => {
-    await insertDecision(db(), idOf(0xf3), 'human:ian', 'approve', null);
+    await insertDecision(db(), idOf(0xf3), 'human:rowan', 'approve', null);
     const changed = db().execute(
       sql`UPDATE gate_decisions SET reason = 'x' WHERE id = ${idOf(0xf3)}`,
     );
@@ -317,7 +319,7 @@ function gateDecisionRules(db: () => Db): void {
 function itemRules(db: () => Db): void {
   it('refuses a person claim with a lease', async () => {
     const leased = insertItem(db(), idOf(0xa1), stageA, {
-      claimedBy: 'human:ian',
+      claimedBy: 'human:rowan',
       kind: 'person',
       lease: at,
     });

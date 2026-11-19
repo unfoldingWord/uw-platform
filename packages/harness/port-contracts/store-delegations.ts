@@ -171,6 +171,34 @@ function describeBoundedLive(subject: DelegationsSubject): void {
   });
 }
 
+function describeNamedLive(subject: DelegationsSubject): void {
+  it('lists the live delegations of one workflow with the name of the person who granted each', async () => {
+    const first = delegationOf(0xa100, 1, { capability: 'review' });
+    const second = delegationOf(0xa100, 2, { grantedAt: new Date(at.getTime() + 60_000) });
+    const revoked = delegationOf(0xa100, 3, { revokedAt: at });
+    const elsewhere = delegationOf(0xa200, 4);
+    const found = await subject().store.transaction(async (tx) => {
+      await seedHarness(tx, 0xa100, 'gateway-delegations-named');
+      await seedHarness(tx, 0xa200, 'gateway-delegations-named-other');
+      for (const [n, row] of [first, second, revoked, elsewhere].entries()) {
+        await tx.delegations.write.insert(row, uid(0xa180 + n));
+      }
+      const later = new Date(at.getTime() + 120_000);
+      return {
+        all: await tx.delegations.read.liveNamed(uid(0xa100), later, 50),
+        capped: await tx.delegations.read.liveNamed(uid(0xa100), later, 1),
+      };
+    });
+    expect(found.all.map((row) => row.id)).toEqual([first.id, second.id]);
+    expect(found.all[0]).toMatchObject({ ...first, grantedByName: expect.any(String) });
+    expect(found.all[0]?.grantedByName.length).toBeGreaterThan(0);
+    expect(found.capped.map((row) => row.id)).toEqual([first.id]);
+    await expect(
+      subject().store.transaction((tx) => tx.delegations.read.liveNamed(uid(0xa100), at, 0)),
+    ).rejects.toBeInstanceOf(RangeError);
+  });
+}
+
 function describeLockAndTier(subject: DelegationsSubject): void {
   it('MD-2 MD-3 locks a delegation for share and reads it back with its merge tier', async () => {
     const merge = delegationOf(0x8700, 1, { capability: 'merge', maxTier: 'low' });
@@ -189,6 +217,7 @@ function describeLockAndTier(subject: DelegationsSubject): void {
 export function describeDelegations(subject: DelegationsSubject): void {
   describeLive(subject);
   describeBoundedLive(subject);
+  describeNamedLive(subject);
   describeConditionalWrites(subject);
   describeExpired(subject);
   describeLockAndTier(subject);

@@ -11,13 +11,13 @@ import {
   dispatchScope,
   enqueued,
   eventsNamed,
-  ian,
+  rowan,
   softwareHarness,
 } from '../testing/commands.ts';
 
 async function itemAtClose(db: Database, harnessId: string): Promise<string> {
   const kernel = kernelOn(db, { now: () => new Date() });
-  const admin = callerOf(await ian(db));
+  const admin = callerOf(await rowan(db));
   const change = { feeds: ['close'] };
   accepted(await kernel.stages.updateStage(admin, { harnessId, stageKey: 'package', change }));
   const itemId = await enqueued(db, harnessId, 'Tune the lantern guide');
@@ -43,7 +43,7 @@ async function personsWrite(db: Database): Promise<void> {
   const send = (who: { readonly email: string }) =>
     command(db, who, scene.harnessId, 'record_measurement', reading(itemId));
   expect((await send(scene.viewer)).body).toMatchObject({ reason: 'not_permitted' });
-  const agent = agentOf(await ian(db), 'laptop');
+  const agent = agentOf(await rowan(db), 'laptop');
   const fromAgent = await dispatchAs(
     agent,
     scene.harnessId,

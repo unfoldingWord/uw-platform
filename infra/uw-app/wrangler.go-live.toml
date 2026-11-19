@@ -34,15 +34,25 @@ ENVIRONMENT = "staging"
 ACCESS_TEAM_DOMAIN = "https://unfoldingword.cloudflareaccess.com"
 ACCESS_AUD = "3ff80cba422e08ef65f46e9207c91322ec1de57bc578d244d30e865e22c9bd79"
 ACCESS_MCP_AUD = "3f4fa24cb33c59c0577b4d3e4505b5c43c8648b4f65ddea3d9679859c7742337"
+ACCESS_ACCOUNT_ID = "5a3ffd86280d3ed086be76d955829242"
 APP_ORIGIN = "https://uw-app-staging.unfoldingword.workers.dev"
 VAPID_PUBLIC_KEY = "set-at-go-live"
 VAPID_SUBJECT = "set-at-go-live"
 ZULIP_SITE = "set-at-go-live"
 ZULIP_BOT_EMAIL = "set-at-go-live"
 ZULIP_CHANNELS = "{}"
+AI_GATEWAY_ACCOUNT_ID = "5a3ffd86280d3ed086be76d955829242"
+AI_GATEWAY_ID = "uw-platform-staging"
+AI_SPEND_CAP_MINOR = "50000"
+ALWAYS_ON_PROVIDER = "z-ai"
+ALWAYS_ON_MODEL = "z-ai/glm-5.3-flash"
+SANDBOX_MINOR_PER_HOUR = "3"
 
 [env.staging.observability]
 enabled = true
+
+[env.staging.placement]
+region = "aws:us-west-2"
 
 [env.staging.triggers]
 crons = ["17 3 * * *", "* * * * *"]
@@ -73,11 +83,13 @@ class_name = "HarnessRun"
 class_name = "ClaudeCodeSandbox"
 image = "../containers/claude-code/Dockerfile"
 max_instances = 4
+instance_type = "basic"
 
 [[env.staging.containers]]
 class_name = "CodexSandbox"
 image = "../containers/codex/Dockerfile"
 max_instances = 4
+instance_type = "basic"
 
 [[env.staging.durable_objects.bindings]]
 name = "CLAUDE_CODE_SANDBOX"
@@ -98,15 +110,25 @@ ENVIRONMENT = "production"
 ACCESS_TEAM_DOMAIN = "https://unfoldingword.cloudflareaccess.com"
 ACCESS_AUD = "3ff80cba422e08ef65f46e9207c91322ec1de57bc578d244d30e865e22c9bd79"
 ACCESS_MCP_AUD = "3f4fa24cb33c59c0577b4d3e4505b5c43c8648b4f65ddea3d9679859c7742337"
+ACCESS_ACCOUNT_ID = "5a3ffd86280d3ed086be76d955829242"
 APP_ORIGIN = "https://uw-app.unfoldingword.workers.dev"
 VAPID_PUBLIC_KEY = "set-at-go-live"
 VAPID_SUBJECT = "set-at-go-live"
 ZULIP_SITE = "set-at-go-live"
 ZULIP_BOT_EMAIL = "set-at-go-live"
 ZULIP_CHANNELS = "{}"
+AI_GATEWAY_ACCOUNT_ID = "5a3ffd86280d3ed086be76d955829242"
+AI_GATEWAY_ID = "uw-platform-production"
+AI_SPEND_CAP_MINOR = "50000"
+ALWAYS_ON_PROVIDER = "z-ai"
+ALWAYS_ON_MODEL = "z-ai/glm-5.3-flash"
+SANDBOX_MINOR_PER_HOUR = "3"
 
 [env.production.observability]
 enabled = true
+
+[env.production.placement]
+region = "aws:us-west-2"
 
 [env.production.triggers]
 crons = ["17 3 * * *", "* * * * *"]
@@ -137,11 +159,13 @@ class_name = "HarnessRun"
 class_name = "ClaudeCodeSandbox"
 image = "../containers/claude-code/Dockerfile"
 max_instances = 4
+instance_type = "basic"
 
 [[env.production.containers]]
 class_name = "CodexSandbox"
 image = "../containers/codex/Dockerfile"
 max_instances = 4
+instance_type = "basic"
 
 [[env.production.durable_objects.bindings]]
 name = "CLAUDE_CODE_SANDBOX"
@@ -160,9 +184,13 @@ ENVIRONMENT = "preview"
 ACCESS_TEAM_DOMAIN = "https://unfoldingword.cloudflareaccess.com"
 ACCESS_AUD = "3ff80cba422e08ef65f46e9207c91322ec1de57bc578d244d30e865e22c9bd79"
 ACCESS_MCP_AUD = "3f4fa24cb33c59c0577b4d3e4505b5c43c8648b4f65ddea3d9679859c7742337"
+ACCESS_ACCOUNT_ID = "5a3ffd86280d3ed086be76d955829242"
 
 [env.preview.observability]
 enabled = true
+
+[env.preview.placement]
+region = "aws:us-west-2"
 
 [[env.preview.hyperdrive]]
 binding = "HYPERDRIVE"

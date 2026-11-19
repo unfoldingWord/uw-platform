@@ -6,9 +6,9 @@ import { createMigratedDatabase, testServer } from '@uw/db/test-database';
 import { personPrincipal, type Principal } from '@uw/core/principal';
 import { revokeRole } from './grant-commands.ts';
 
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 const SPONSOR_ID = '00000000-0000-4000-8000-000000000002';
-const IAN_GRANT_ID = '00000000-0000-4000-8000-000000000101';
+const ROWAN_GRANT_ID = '00000000-0000-4000-8000-000000000101';
 const SPONSOR_GRANT_ID = '00000000-0000-4000-8000-000000000102';
 const ROUNDS = 10;
 
@@ -33,17 +33,17 @@ async function seedSponsor(db: Database): Promise<void> {
     sql`INSERT INTO people (id, email, display_name, status) VALUES (${SPONSOR_ID}, 'sponsor@unfoldingword.org', 'Sponsor', 'active')`,
   );
   await db.execute(
-    sql`INSERT INTO role_grants (id, person_id, role, scope_kind, granted_by) VALUES (${SPONSOR_GRANT_ID}, ${SPONSOR_ID}, 'admin', 'org', ${IAN_ID})`,
+    sql`INSERT INTO role_grants (id, person_id, role, scope_kind, granted_by) VALUES (${SPONSOR_GRANT_ID}, ${SPONSOR_ID}, 'admin', 'org', ${ROWAN_ID})`,
   );
 }
 
 async function race(dbA: Database, dbB: Database) {
-  const ian = orgAdmin(IAN_ID, 'ian.lindsley@unfoldingword.org', IAN_GRANT_ID);
+  const rowan = orgAdmin(ROWAN_ID, 'rowan.test@unfoldingword.org', ROWAN_GRANT_ID);
   const sponsor = orgAdmin(SPONSOR_ID, 'sponsor@unfoldingword.org', SPONSOR_GRANT_ID);
   return Promise.all([
     revokeRole(
       dbA,
-      ian,
+      rowan,
       { command: 'revoke_role', requestId: randomUUID(), grantId: SPONSOR_GRANT_ID },
       randomUUID(),
       new Date(),
@@ -51,7 +51,7 @@ async function race(dbA: Database, dbB: Database) {
     revokeRole(
       dbB,
       sponsor,
-      { command: 'revoke_role', requestId: randomUUID(), grantId: IAN_GRANT_ID },
+      { command: 'revoke_role', requestId: randomUUID(), grantId: ROWAN_GRANT_ID },
       randomUUID(),
       new Date(),
     ),

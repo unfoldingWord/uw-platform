@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gt, isNull, lte, sql, type SQL } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
-import { delegations } from '../schema.ts';
+import { delegations, people } from '../schema.ts';
 import { checkedRows } from './limits.ts';
 import { refusing } from './refusal.ts';
 import { toDelegation } from './rows.ts';
@@ -92,6 +92,17 @@ async function firstLive(executor: AnyExecutor, filter: DelegationFilter, at: Da
   return rows.map(toDelegation);
 }
 
+async function liveNamed(executor: AnyExecutor, harnessId: string, at: Date, limit: number) {
+  const rows = await executor
+    .select({ delegation: delegations, grantedByName: people.displayName })
+    .from(delegations)
+    .innerJoin(people, eq(people.id, delegations.personId))
+    .where(matching({ personId: null, persona: null, harnessId }, at))
+    .orderBy(asc(delegations.grantedAt), asc(delegations.id))
+    .limit(checkedRows(limit, 'live delegation'));
+  return rows.map((row) => ({ ...toDelegation(row.delegation), grantedByName: row.grantedByName }));
+}
+
 export function bindDelegations(executor: AnyExecutor): DelegationsGateway {
   return {
     read: {
@@ -120,6 +131,7 @@ export function bindDelegations(executor: AnyExecutor): DelegationsGateway {
       },
       countLive: (filter, at) => countLive(executor, filter, at),
       firstLive: (filter, at, limit) => firstLive(executor, filter, at, limit),
+      liveNamed: (harnessId, at, limit) => liveNamed(executor, harnessId, at, limit),
       lapsedFor: (personId, since, at, limit) => lapsedFor(executor, personId, since, at, limit),
       expiredUnlapsed: (at, limit) => expiredUnlapsed(executor, at, limit),
     },

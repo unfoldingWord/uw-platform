@@ -224,13 +224,17 @@ export async function agentPlaneIndicators(
   source: AgentPlaneSource,
 ): Promise<readonly HealthIndicator[]> {
   const { kernel, at } = source;
-  const totals = await kernel.views.planeTotals({ at });
-  const breaker = await kernel.breaker.state(at);
-  const repos = await sweepHealth(source.db);
-  const readable = await kernel.views.harnesses(source.caller, { at });
-  const scoped = { at, harnessIds: readable.map((harness) => harness.id) };
-  const found = await kernel.views.silence(scoped);
-  const holds = await kernel.views.holds(scoped);
+  const scopedReads = async () => {
+    const readable = await kernel.views.harnesses(source.caller, { at });
+    const scoped = { at, harnessIds: readable.map((harness) => harness.id) };
+    return Promise.all([kernel.views.silence(scoped), kernel.views.holds(scoped)]);
+  };
+  const [totals, breaker, repos, [found, holds]] = await Promise.all([
+    kernel.views.planeTotals({ at }),
+    kernel.breaker.state(at),
+    sweepHealth(source.db),
+    scopedReads(),
+  ]);
   return [
     spendIndicator(totals, source.cap, breaker),
     breakerIndicator(breaker),

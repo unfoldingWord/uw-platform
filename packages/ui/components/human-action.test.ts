@@ -75,7 +75,7 @@ describe('WB-11 the human action', () => {
     expect(button.hasAttribute('tabindex')).toBe(false);
     expect(button.getAttribute('type')).not.toBe('submit');
     expect(classesOf(button)).toEqual(
-      expect.arrayContaining(['aria-disabled:bg-human-soft', 'aria-disabled:text-text']),
+      expect.arrayContaining(['aria-disabled:bg-human-soft', 'aria-disabled:text-human-text']),
     );
   });
 });
@@ -113,12 +113,12 @@ describe('the human action, refused or escaped', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('the human gate mark is a Kindle-edged label in ink on the soft Kindle fill', async () => {
+  it('the human gate mark is a Kindle-edged label in human ink on the soft Kindle fill', async () => {
     const document = await dom(jsx(HumanGateMark, { label: 'Ship' }));
     const mark = document.querySelector('span');
     expect(mark?.textContent).toBe('Ship');
     expect(classesOf(mark)).toEqual(
-      expect.arrayContaining(['bg-human-soft', 'text-text', 'border', 'border-human']),
+      expect.arrayContaining(['bg-human-soft', 'text-human-text', 'border', 'border-human-line']),
     );
   });
 });

@@ -48,6 +48,8 @@ export type Bindings = {
   COMMIT_SHA?: string;
   ENVIRONMENT?: string;
   ACCESS_TEAM_DOMAIN?: string;
+  ACCESS_ACCOUNT_ID?: string;
+  ACCESS_SERVICE_TOKENS_API_TOKEN?: string;
   ACCESS_AUD?: string;
   ACCESS_MCP_AUD?: string;
   DEV_PRINCIPAL_EMAIL?: string;

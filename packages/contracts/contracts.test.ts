@@ -85,7 +85,7 @@ describe('contract version', () => {
 
 describe('identity strings', () => {
   it.each([
-    'human:ian',
+    'human:rowan',
     'agent:claude',
     'agent:avery/laptop-1',
     'agent:avery/laptop-1 as reviewer via delegation:d-42',
@@ -100,7 +100,7 @@ describe('identity strings', () => {
     'robot:x',
     'agent:avery/laptop-1 as reviewer',
     'agent:avery as reviewer via delegation:d-42',
-    'human:ian as reviewer via delegation:d-42',
+    'human:rowan as reviewer via delegation:d-42',
   ])('rejects %j', (value) => {
     expect(identitySchema.safeParse(value).success).toBe(false);
   });
@@ -197,7 +197,7 @@ describe('closed sets of the principal and the gate', () => {
       'take_over',
       'override',
     ]);
-    expect(closedSets.personStatusSchema.options).toEqual(['active', 'pending']);
+    expect(closedSets.personStatusSchema.options).toEqual(['active', 'pending', 'disabled']);
     expect(closedSets.principalKindSchema.options).toEqual(['person', 'agent']);
   });
 });
@@ -329,10 +329,11 @@ describe('GL-2 GL-4 the contracts for shadow and refusals', () => {
     }
   });
 
-  it('lifts shadow and never sets it on a live harness', () => {
+  it('#108 turns shadow on and off on a live harness', () => {
     const lift = { command: 'set_shadow', requestId, shadow: false };
     expect(commandSchema.safeParse(lift).success).toBe(true);
-    expect(commandSchema.safeParse({ ...lift, shadow: true }).success).toBe(false);
+    expect(commandSchema.safeParse({ ...lift, shadow: true }).success).toBe(true);
+    expect(commandSchema.safeParse({ ...lift, shadow: 'on' }).success).toBe(false);
   });
 
   it('reads an older harness row as not in shadow with no external reviewers', () => {

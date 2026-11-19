@@ -102,6 +102,33 @@ function describePlatformFor(subject: JoiningSubject): void {
   });
 }
 
+function skillPage(n: number, jdArea: string, title: string): SeededPage {
+  return {
+    id: uid(0x7400 + n),
+    type: 'skill',
+    status: 'active',
+    jdArea,
+    title,
+    bodyMd: 'How to work this stage.',
+    frontmatter: {},
+    slug: `skill-${n}`,
+  };
+}
+
+function describeSkillsFor(subject: JoiningSubject): void {
+  it('#108 lists the skill pages of an area by title, and no other type or area', async () => {
+    await subject().seedPage(skillPage(2, '40-49', 'Write the tests'));
+    await subject().seedPage(skillPage(1, '40-49', 'Review the change'));
+    await subject().seedPage(skillPage(3, '30-39', 'Elsewhere'));
+    await subject().seedPage({ ...platformPage('40-49'), id: uid(0x7404) });
+    const listed = await subject().store.transaction((tx) => tx.pages.read.skillsFor('40-49'));
+    expect(listed).toEqual([
+      { id: uid(0x7401), title: 'Review the change' },
+      { id: uid(0x7402), title: 'Write the tests' },
+    ]);
+  });
+}
+
 function describeSetShadow(subject: JoiningSubject): void {
   it('DX-3 stores shadow and the external reviewers, and lifts shadow', async () => {
     const harness = {
@@ -130,6 +157,7 @@ export function describeStoreJoining(adapter: string, subject: JoiningSubject): 
     describeByPullRequest(subject);
     describeJoinedOnce(subject);
     describePlatformFor(subject);
+    describeSkillsFor(subject);
     describeSetShadow(subject);
   });
 }

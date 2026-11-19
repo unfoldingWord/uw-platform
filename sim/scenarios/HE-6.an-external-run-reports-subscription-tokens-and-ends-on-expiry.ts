@@ -5,7 +5,7 @@ import {
   createSimHarness,
   simAgent,
   simCaller,
-  simIan,
+  simRowan,
   simPerson,
   simSystem,
 } from '../fixtures.ts';
@@ -57,7 +57,7 @@ async function cast(world: World): Promise<Cast> {
     { role: 'editor', scopeKind: 'jd_area', scopeArea: '80-89' },
   ]);
   const { itemId } = valueOf(
-    await world.kernel.items.enqueue(simCaller(world, await simIan(world)), {
+    await world.kernel.items.enqueue(simCaller(world, await simRowan(world)), {
       harnessId: harness.id,
       title: 'Write the run host notes',
       pageId: null,

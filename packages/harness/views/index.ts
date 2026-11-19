@@ -10,18 +10,35 @@ import type { Caller } from '../caller.ts';
 import { gateView } from '../gates/view.ts';
 import type { KernelOutcome } from '../outcome.ts';
 import type { Ports } from '../ports.ts';
-import type { StoreTransaction } from '../store-ports.ts';
+import { readOnly } from '../store-read.ts';
+import type { PageFacts, StoreTransaction } from '../store-ports.ts';
+import type { ReadableAreas } from '@uw/core/acl';
+import { agentsView, type AgentsView } from './agents.ts';
+import { runsView, runView, type RunInput, type RunsView, type RunView } from './runs.ts';
 import { boardView } from './board.ts';
+import { creatableAreas } from './creatable.ts';
 import { delegatedMerges, type DelegatedMergeList } from './delegated-merges.ts';
+import { stageControls, type StageControlsView } from './controls.ts';
+import { workflowDraft, type WorkflowDraftView } from './draft.ts';
+import { flowCards, type FlowCard } from './cards.ts';
 import { flowView } from './flow.ts';
 import { frameCounts, type FrameCounts } from './frame.ts';
-import { dailyView, lastEventsView, myItemsView, type DailyPoint, type MyItems } from './look.ts';
+import {
+  dailyView,
+  lastEventsView,
+  myItemsView,
+  refusalsView,
+  type DailyPoint,
+  type MyItems,
+} from './look.ts';
 import { holdsOf, type Holds } from './holds.ts';
-import { decidableGates, decideAbility, gateDecided } from './gates.ts';
+import { decidableGates, decideAbility, gateDecided, workflowGates } from './gates.ts';
 import { planeList } from './plane-list.ts';
 import { planeTotals } from './plane.ts';
+import { pageView } from './page.ts';
 import { personaView, type PersonaDashboard } from './persona.ts';
 import { playByPlay, type PlayInput } from './play.ts';
+import { queuesView } from './queues.ts';
 import { shadowComparison } from './shadow.ts';
 import { harnessCursor, harnessCursors, readableHarnesses } from './readable.ts';
 import type {
@@ -35,6 +52,7 @@ import type {
   PlaneRow,
   PlaneTotals,
   PlayByPlay,
+  Queues,
   Waiting,
 } from './types.ts';
 import { waitingOn } from './waiting.ts';
@@ -48,6 +66,8 @@ type Gate = { readonly harness: Harness; readonly stage: Stage; readonly item: I
 export type ViewReads = {
   harnesses(caller: Caller, options?: ReadOptions): Promise<readonly Harness[]>;
   frame(caller: Caller, options?: ReadOptions): Promise<FrameCounts>;
+  queues(caller: Caller, options?: ReadOptions): Promise<Queues>;
+  creatableAreas(caller: Caller, options?: ReadOptions): Promise<ReadableAreas>;
   daily(
     caller: Caller,
     input: { readonly harnessId: string | null },
@@ -58,18 +78,29 @@ export type ViewReads = {
     input: { readonly itemIds: readonly string[] },
     options?: ReadOptions,
   ): Promise<readonly HarnessEvent[]>;
+  refusals(
+    caller: Caller,
+    input: { readonly itemIds: readonly string[] },
+    options?: ReadOptions,
+  ): Promise<readonly HarnessEvent[]>;
   mine(caller: Caller, options?: ReadOptions): Promise<MyItems>;
   flow(
     caller: Caller,
     input: { readonly harnessId: string },
     options?: ReadOptions,
   ): Promise<KernelOutcome<FlowView>>;
+  flowCards(caller: Caller, options?: ReadOptions): Promise<readonly FlowCard[]>;
   board(
     caller: Caller,
     input: BoardInput,
     options?: ReadOptions,
   ): Promise<KernelOutcome<BoardView>>;
   gates(caller: Caller, options?: ReadOptions): Promise<GateList>;
+  workflowGates(
+    caller: Caller,
+    input: { readonly harnessId: string },
+    options?: ReadOptions,
+  ): Promise<GateList>;
   delegatedMerges(caller: Caller, options?: ReadOptions): Promise<DelegatedMergeList>;
   gate(
     caller: Caller,
@@ -77,6 +108,27 @@ export type ViewReads = {
     options?: ReadOptions,
   ): Promise<KernelOutcome<GateView>>;
   decideAbility(caller: Caller, gate: Gate, options?: ReadOptions): DecideAbility;
+  workflowDraft(
+    caller: Caller,
+    input: { readonly harnessId: string },
+    options?: ReadOptions,
+  ): Promise<KernelOutcome<WorkflowDraftView | null>>;
+  stageControls(
+    caller: Caller,
+    input: { readonly harnessId: string },
+    options?: ReadOptions,
+  ): Promise<KernelOutcome<StageControlsView>>;
+  agents(
+    caller: Caller,
+    input: { readonly harnessId: string },
+    options?: ReadOptions,
+  ): Promise<KernelOutcome<AgentsView>>;
+  runs(
+    caller: Caller,
+    input: { readonly harnessId: string },
+    options?: ReadOptions,
+  ): Promise<KernelOutcome<RunsView>>;
+  run(caller: Caller, input: RunInput, options?: ReadOptions): Promise<KernelOutcome<RunView>>;
   shadow(
     caller: Caller,
     input: { readonly harnessId: string },
@@ -106,6 +158,11 @@ export type ViewReads = {
     input: { readonly pageId: string },
     options?: ReadOptions,
   ): Promise<KernelOutcome<PersonaDashboard>>;
+  page(
+    caller: Caller,
+    input: { readonly pageId: string },
+    options?: ReadOptions,
+  ): Promise<KernelOutcome<PageFacts>>;
   planeTotals(options?: ReadOptions): Promise<PlaneTotals>;
   planeList(
     caller: Caller,
@@ -115,11 +172,11 @@ export type ViewReads = {
 };
 
 function personaOf(ports: ViewPorts, caller: Caller, pageId: string, at: Date) {
-  return ports.store.transaction((tx) => personaView(ports, tx, caller, pageId, at));
+  return readOnly(ports.store, (tx) => personaView(ports, tx, caller, pageId, at));
 }
 
 function mergesOf(ports: ViewPorts, caller: Caller, at: Date) {
-  return ports.store.transaction((tx) => delegatedMerges(ports, tx, caller, at));
+  return readOnly(ports.store, (tx) => delegatedMerges(ports, tx, caller, at));
 }
 
 function withinOf(options?: ScopedOptions): ReadonlySet<string> | null {
@@ -130,25 +187,60 @@ function scopedReads(ports: ViewPorts): Pick<ViewReads, 'silence' | 'holds'> {
   const at = (options?: ScopedOptions): Date => options?.at ?? ports.clock.now();
   return {
     silence: (options) =>
-      ports.store.transaction((tx) => silences(ports, tx, at(options), withinOf(options))),
+      readOnly(ports.store, (tx) => silences(ports, tx, at(options), withinOf(options))),
     holds: (options) =>
-      ports.store.transaction((tx) => holdsOf(ports, tx, at(options), withinOf(options))),
+      readOnly(ports.store, (tx) => holdsOf(ports, tx, at(options), withinOf(options))),
   };
 }
 
-function frameRead(ports: ViewPorts): Pick<ViewReads, 'frame' | 'daily' | 'lastEvents' | 'mine'> {
+function frameRead(
+  ports: ViewPorts,
+): Pick<
+  ViewReads,
+  'frame' | 'queues' | 'daily' | 'lastEvents' | 'refusals' | 'mine' | 'flowCards' | 'creatableAreas'
+> {
   const at = (options?: ReadOptions): Date => options?.at ?? ports.clock.now();
-  const read = <T>(work: (tx: StoreTransaction) => Promise<T>) => ports.store.transaction(work);
+  const read = <T>(work: (tx: StoreTransaction) => Promise<T>) => readOnly(ports.store, work);
   return {
     daily: (caller, input, options) =>
       read((tx) => dailyView(ports, tx, caller, { harnessId: input.harnessId, at: at(options) })),
     lastEvents: (caller, input, options) =>
       read((tx) => lastEventsView(ports, tx, caller, { itemIds: input.itemIds, at: at(options) })),
+    refusals: (caller, input, options) =>
+      read((tx) => refusalsView(ports, tx, caller, { itemIds: input.itemIds, at: at(options) })),
     mine: (caller, options) => read((tx) => myItemsView(ports, tx, caller, at(options))),
+    flowCards: (caller, options) => read((tx) => flowCards(ports, tx, caller, at(options))),
+    queues: (caller, options) => read((tx) => queuesView(ports, tx, caller, at(options))),
+    creatableAreas: (caller, options) =>
+      read((tx) => creatableAreas(ports, tx, caller, at(options))),
     frame: (caller, options) => {
       const at = options?.at ?? ports.clock.now();
-      return ports.store.transaction((tx) => frameCounts(ports, tx, caller, at));
+      return readOnly(ports.store, (tx) => frameCounts(ports, tx, caller, at));
     },
+  };
+}
+
+function gateLists(
+  ports: ViewPorts,
+): Pick<
+  ViewReads,
+  'gates' | 'workflowGates' | 'workflowDraft' | 'stageControls' | 'agents' | 'runs' | 'run'
+> {
+  const at = (options?: ReadOptions): Date => options?.at ?? ports.clock.now();
+  const read = <T>(work: (tx: StoreTransaction) => Promise<T>) => readOnly(ports.store, work);
+  return {
+    gates: (caller, options) => read((tx) => decidableGates(ports, tx, caller, at(options))),
+    workflowGates: (caller, input, options) =>
+      read((tx) => workflowGates(ports, tx, caller, input.harnessId, at(options))),
+    workflowDraft: (caller, input, options) =>
+      read((tx) => workflowDraft(ports, tx, caller, input.harnessId, at(options))),
+    stageControls: (caller, input, options) =>
+      read((tx) => stageControls(ports, tx, caller, input.harnessId, at(options))),
+    agents: (caller, input, options) =>
+      read((tx) => agentsView(ports, tx, caller, input.harnessId, at(options))),
+    runs: (caller, input, options) =>
+      read((tx) => runsView(ports, tx, caller, input.harnessId, at(options))),
+    run: (caller, input, options) => read((tx) => runView(ports, tx, caller, input, at(options))),
   };
 }
 
@@ -158,47 +250,46 @@ export function createViewReads(ports: ViewPorts): ViewReads {
   return {
     harnesses: (caller, options) => {
       const at = instant(options);
-      return store.transaction((tx) => readableHarnesses(ports, tx, caller, at));
+      return readOnly(store, (tx) => readableHarnesses(ports, tx, caller, at));
     },
     ...frameRead(ports),
     flow: (caller, input, options) => {
       const at = instant(options);
-      return store.transaction((tx) => flowView(ports, tx, caller, input.harnessId, at));
+      return readOnly(store, (tx) => flowView(ports, tx, caller, input.harnessId, at));
     },
     board: (caller, input, options) => {
       const at = instant(options);
-      return store.transaction((tx) => boardView(ports, tx, caller, input, at));
+      return readOnly(store, (tx) => boardView(ports, tx, caller, input, at));
     },
-    gates: (caller, options) => {
-      const at = instant(options);
-      return store.transaction((tx) => decidableGates(ports, tx, caller, at));
-    },
+    ...gateLists(ports),
     delegatedMerges: (caller, options) => mergesOf(ports, caller, instant(options)),
     gate: (caller, input, options) => gateView(ports, caller, input, { at: instant(options) }),
     shadow: (caller, input, options) => shadowComparison(ports, caller, input, instant(options)),
     decideAbility: (caller, gate, options) => decideAbility(caller.actor, gate, instant(options)),
     decided: (caller, { itemId }, options) =>
-      store.transaction((tx) => gateDecided(ports, tx, caller, itemId, instant(options))),
+      readOnly(store, (tx) => gateDecided(ports, tx, caller, itemId, instant(options))),
     waitingOn: (caller, options) =>
-      store.transaction((tx) => waitingOn(ports, tx, caller, instant(options))),
+      readOnly(store, (tx) => waitingOn(ports, tx, caller, instant(options))),
     ...scopedReads(ports),
     playByPlay: (caller, input, options) => {
       const at = instant(options);
-      return store.transaction((tx) => playByPlay(ports, tx, caller, input, at));
+      return readOnly(store, (tx) => playByPlay(ports, tx, caller, input, at));
     },
     cursor: (caller, input, options) => {
       const at = instant(options);
-      return store.transaction((tx) => harnessCursor(ports, tx, caller, input.harnessId, at));
+      return readOnly(store, (tx) => harnessCursor(ports, tx, caller, input.harnessId, at));
     },
     cursors: (caller, options) => {
       const at = instant(options);
-      return store.transaction((tx) => harnessCursors(ports, tx, caller, at));
+      return readOnly(store, (tx) => harnessCursors(ports, tx, caller, at));
     },
     persona: (caller, input, options) => personaOf(ports, caller, input.pageId, instant(options)),
-    planeTotals: (options) => store.transaction((tx) => planeTotals(tx, instant(options))),
+    page: (caller, input, options) =>
+      readOnly(store, (tx) => pageView(tx, caller, input.pageId, instant(options))),
+    planeTotals: (options) => readOnly(store, (tx) => planeTotals(tx, instant(options))),
     planeList: (caller, indicator, options) => {
       const at = instant(options);
-      return store.transaction((tx) => planeList({ ports, tx, caller, at }, indicator));
+      return readOnly(store, (tx) => planeList({ ports, tx, caller, at }, indicator));
     },
   };
 }

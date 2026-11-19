@@ -6,7 +6,7 @@ The vocabulary of the harness, the module of the unfoldingWord platform that run
 
 **Harness**:
 One instance of the pipeline, built from a template, scoped to a JD area. The software harness lives in area 80 to 89; a BML harness lives in the area of the program whose product it serves.
-_Avoid_: pipeline (that is the drawing), queue, board (that is a screen), work queue (the plan's older name)
+_Avoid_: pipeline (that is the drawing), queue (that is a screen, the Queue), board (the Queue's old name), work queue (the plan's older name)
 
 **Template**:
 The stage graph a harness is built from. Two in v1: software delivery and the BML product flywheel. Same eight stages, different names, workers and connectors.
@@ -40,6 +40,18 @@ _Avoid_: linter, rule, test (validators run on items, tests run on code)
 The loop edges on a stage row that let an item re-enter an earlier stage: the **regular tweak** from Close to Scope and the **occasional tweak** from Validate to Package.
 _Avoid_: loop, back-edge, retry
 
+**Draft**:
+A private copy of a harness's stages that one area admin edits on the Flow tab. It is checked a few seconds after each change, by the same rules as `walk`, and nothing in it is live until it is published. One harness has at most one draft, a row of `workflow_drafts`.
+_Avoid_: pending edit, staged change, copy
+
+**Editing lock**:
+The hold one admin has on a harness's draft. Others see who holds it and since when, and can watch the draft but not edit it. It lapses after 30 minutes without a save, and another admin can take it over at any time with a recorded reason; the draft's changes are kept either way.
+_Avoid_: lease (that is an item's hold), checkout
+
+**Publish**:
+Applying a draft to the live stages in one transaction, once its check passes and the live stages have not changed since the draft was opened. It records a `stage_edited` or `stage_removed` per changed stage and one `workflow_published` with what was added, removed and changed, then deletes the draft. It is the only way a person changes a harness's stages.
+_Avoid_: deploy, release, save
+
 **Ship rule**:
 The pure function that decides whether the Ship button is enabled. Inputs: GitHub facts about the head commit, the item's risk tier and domains, and the approver's principal. Output: advance, or a refusal from a closed set.
 _Avoid_: merge check, policy, gate logic
@@ -53,6 +65,18 @@ _Avoid_: severity, priority (that is ordering), impact
 **Person**:
 A human principal with a Google login through Cloudflare Access and rows in the grants table. The only kind of identity that can write a gate decision.
 _Avoid_: user, human (as a noun in code), approver (that is a role a person plays at one gate)
+
+**Person status**:
+`active`, `pending` or `disabled`. A sign-in from `@unfoldingword.org` starts `active`; any other starts `pending` and is refused at the edge until an org admin **approves** it (to `active`) or **declines** it (to `disabled`). A disabled person is refused at the edge whatever grants they hold, and an org admin can approve them later. Each decision writes a `person_audit` row.
+_Avoid_: banned, blocked, suspended (that is what Google Workspace does to an account), invited
+
+**Waiting for access**:
+A person who has signed in and can reach nothing yet: pending, or active with no live grant. Listed on the **Access** screen for an admin.
+_Avoid_: new user, unassigned, guest
+
+**Access** (the screen):
+Where grants are seen, given and revoked, under 30-39 Infrastructure. An org admin sees every grant; an area admin sees and manages the grants on their own areas; anyone sees their own. "Cloudflare Access" is always written in full, so the bare word means this screen.
+_Avoid_: permissions page, user management, directory (that is the 10-19 module)
 
 **Principal**:
 The structured identity minted at the edge for every request: a person or agent id plus their resolved grants. It travels with every call, queue message and MCP invocation (plan §4).
@@ -155,10 +179,6 @@ _Avoid_: test (tests sit at module interfaces), story, script
 **Walk**:
 Every path through a template's stages from Package along position order and every feeds edge, cut at the first revisited stage. `pnpm walk -- <template>` prints every path to an external effect and the gate each crosses.
 _Avoid_: traversal, crawl
-
-**Trace**:
-The check that every Must requirement not marked Built has a scenario or a test named for it. `pnpm trace` lists every unproven one; `pnpm trace:built` fails only on those whose build-order step the progress tracker marks Built.
-_Avoid_: coverage (that is lines of code), audit
 
 **Engine**:
 The code behind one seam that talks to a model vendor: `claude-messages`, `claude-code-sandbox`, `claude-managed-agent`, `codex-sandbox`, `external`, `openrouter-messages`. A persona picks one. The vendor SDK is named in exactly one directory per engine.
@@ -282,7 +302,7 @@ _Avoid_: request id (that is a command's `requestId`), correlation id, span
 
 **Envelope**:
 The Zod-validated message `uw-ingest` puts on the queue for one verified webhook delivery: source, delivery id, event, trace id, the ingest principal and the payload.
-_Avoid_: event (that is a row of `harness_events`), message (the queue's word for the transport), job
+_Avoid_: event (that is a row of `harness_events`), message (the message queue's word for the transport), job
 
 **Page type**:
 One entry of the page-type registry in `packages/contracts`: a frontmatter schema, a classification and an offline eligibility. Seven in v1: `skill`, `learning`, `persona`, `product`, `system_goal`, `product_strategy`, `data_sources`.
@@ -337,7 +357,7 @@ A person's open live session on one screen of a harness. A wake for that screen 
 _Avoid_: online, active
 
 **Screen**:
-The view a live session watches: `home`, `flow`, `board`, `gates` or `item`. An `item` session also names its item.
+The view a live session watches: `home`, `queues` (Agent Queues), `flow`, `board` (the Queue; the value keeps the screen's old name), `gates` (a workflow's Waiting On You tab and a gate's own page) or `item`. An `item` session also names its item.
 _Avoid_: page (that is a content page), route
 
 **Zulip topic**:
@@ -368,12 +388,16 @@ _Avoid_: dashboard, inbox
 One harness drawn as the BML diagram from its stage rows under the four brackets, with each stage's count, WIP, age and cost, live.
 _Avoid_: pipeline view, diagram page
 
-**Board**:
-The screen with one column per stage and one card per item.
-_Avoid_: kanban (the prototype's word), queue
+**Agent Queues**:
+The landing page that lists, one card per harness, every harness in an area the person holds a live grant on (an org grant covers every area), with its open items by phase and what waits on the person.
+_Avoid_: dashboard, harness list
+
+**Queue**:
+The screen of one harness with one column per stage, grouped by bracket, and one card per item, where people and agents claim the same items. It was called the Board until #105; the kernel read behind it (`boardView`) and its live screen value (`board`) keep the old name. Capitalised, it is always this screen; the transport that carries ingest envelopes is the message queue.
+_Avoid_: board (its old name, outside the code that keeps it), kanban (the prototype's word), work queue
 
 **Card**:
-The Board's rendering of an item.
+The Queue's rendering of an item.
 _Avoid_: ticket, tile
 
 **Agent plane**:
@@ -431,7 +455,7 @@ The whole product in `uw-platform`. The comparison called it "the shared harness
 _Avoid_: the shared harness, the system
 
 **Shadow mode**:
-A harness setting under which the ship rule is evaluated and recorded as an event on every head, and nothing is posted to GitHub and no connector runs.
+A harness setting under which the ship rule is evaluated and recorded as an event on every head, and nothing is posted to GitHub and no connector runs. An area admin turns it on or off at any time.
 _Avoid_: dry run (that is a persona check), read-only mode
 
 **Check-only harness**:
@@ -471,7 +495,7 @@ An item another item in the same epic waits on: the item for an issue named on a
 _Avoid_: dependency, prerequisite, parent
 
 **Not ready**:
-An issue or product page intake refused because it has no done-when. The refusal is recorded on the harness and the Board lists it until it becomes an item.
+An issue or product page intake refused because it has no done-when. The refusal is recorded on the harness and the Queue lists it until it becomes an item.
 _Avoid_: invalid, rejected (that is a gate decision), backlog
 
 **Holder**:
@@ -507,7 +531,7 @@ A Reviewer approval on an earlier head that counts on the current head because e
 _Avoid_: sticky approval, inherited review
 
 **Refuted finding**:
-A Reviewer finding a person marked wrong on the Gates view. The share of a Reviewer's findings refuted over 30 days is its refute rate.
+A Reviewer finding a person marked wrong on a gate's page. The share of a Reviewer's findings refuted over 30 days is its refute rate.
 _Avoid_: rejected finding (a gate is rejected), false positive
 
 **Strictness preset**:

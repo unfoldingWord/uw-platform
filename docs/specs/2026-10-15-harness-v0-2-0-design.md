@@ -1,6 +1,8 @@
 # Harness v0.2.0: the version a real repository can use
 
-Status: approved by Ian on 2026-10-15. The design for the v0.2.0 build. `docs/PRD.md` stays the list of work: section 5 below is PRD section 7.11, section 3 is 18.3 and section 8 is in section 13 (commit `b8e031f`), so `pnpm trace` sees every ID. Where this document and PRD section 7.11 disagree on design, this document wins and the PRD is corrected.
+> **Historical design (2026-11-12).** This design was built and merged. Its process parts are superseded by `AGENTS.md`: work is tracked in GitHub issues, the PRD is reference, and the requirement trace (`pnpm trace`) no longer exists.
+
+Status: approved by the owner on 2026-10-15. The design for the v0.2.0 build. `docs/PRD.md` stays the list of work: section 5 below is PRD section 7.11, section 3 is 18.3 and section 8 is in section 13 (commit `b8e031f`), so `pnpm trace` sees every ID. Where this document and PRD section 7.11 disagree on design, this document wins and the PRD is corrected.
 
 ## 1. Why this version exists
 
@@ -40,7 +42,7 @@ New entries for `CONTEXT.md`, added in their own commit before any code uses the
 
 ## 3. Decisions
 
-Made on 2026-10-15 between Ian and Claude, each with what it costs if wrong. These become PRD section 18.3.
+Made on 2026-10-15 between the owner and Claude, each with what it costs if wrong. These become PRD section 18.3.
 
 | # | Decision | Cost if wrong |
 |---|---|---|
@@ -158,7 +160,7 @@ Every row follows the PRD's conventions: a stable ID, Must or Should, a scenario
 
 | ID | Requirement | Priority | Cost | Source |
 |---|---|---|---|---|
-| DX-9 | **The trace knows v0.2.0.** `pnpm trace` reads the v0.2.0 IDs (GL, MD, FL, UC, EI, SR, GD, RV, OB, PI, DX-9, DX-10) from PRD section 7.11 and reports them as it reports v1's; an unproven Must fails `pnpm test` | Must | additive | DX-5 |
+| DX-9 | **Superseded 2026-11-12: the trace was removed.** **The trace knows v0.2.0.** `pnpm trace` reads the v0.2.0 IDs (GL, MD, FL, UC, EI, SR, GD, RV, OB, PI, DX-9, DX-10) from PRD section 7.11 and reports them as it reports v1's; an unproven Must fails `pnpm test` | Must | additive | DX-5 |
 | DX-10 | **The joining journey.** One scenario drives section 4 end to end in the sim: a check-only harness in shadow mode, a review request, a Reviewer verdict recorded and not posted, a shadow verdict, shadow lifted, a posted review, Ship waiting on a person, then a merge under a delegation on a second item, refused on a third for a protected path | Must | additive | Section 4 |
 
 ## 6. Data and contracts
@@ -214,7 +216,7 @@ v0.2.0 is tagged when:
 4. The template property test passes on all three templates and fails on the planted bypass; MD-4's deploy-and-publish property passes.
 5. MD-5 and UC-4 pass on the tree and fail on their planted fixtures.
 6. The CI `test` job is green on the merge commit, or the billing waiver of 2026-10-12 is extended by name in `docs/exceptions.md`.
-7. Ian has reviewed the branch with Codex and merged it with a merge commit.
+7. The owner has reviewed the branch with Codex and merged it with a merge commit.
 
 GL-1's live run, the week of shadow mode and the comparison with the bench happen on the tag.
 

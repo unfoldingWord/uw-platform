@@ -11,7 +11,7 @@ import {
   dispatchAs,
   dispatchScope,
   eventsNamed,
-  ian,
+  rowan,
   softwareHarness,
 } from '../testing/commands.ts';
 import { agentOf } from '../testing/kernel.ts';
@@ -103,7 +103,7 @@ describe.skipIf(!testServer)('EI-3 enqueue_epic is a person command', () => {
     withAppDatabase(async (db) => {
       const { harnessId } = await softwareHarness(db);
       await seedEpic(db);
-      const owner = await ian(db);
+      const owner = await rowan(db);
       const sent = await dispatchAs(
         agentOf(owner, 'laptop'),
         harnessId,

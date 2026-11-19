@@ -18,14 +18,14 @@ import { agentOf, kernelOn, personOn } from '../testing/kernel.ts';
 
 const connectionCount = 8;
 const rounds = 5;
-const ianId = '00000000-0000-4000-8000-000000000001';
+const rowanId = '00000000-0000-4000-8000-000000000001';
 const ownerId = '00000000-0000-4000-8000-000000000104';
 const ownerEmail = 'person4@unfoldingword.org';
 
 type Rig = {
   readonly connections: readonly Database[];
   readonly clock: Clock & { advance(milliseconds: number): void };
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly owner: Principal;
 };
 
@@ -66,9 +66,9 @@ async function rigOn(connections: readonly Database[]): Promise<Rig> {
     grantedAt: clock.now(),
     expiresAt: null,
   });
-  const ian = await personOn(first, ianId, 'ian.lindsley@unfoldingword.org', clock.now());
+  const rowan = await personOn(first, rowanId, 'rowan.test@unfoldingword.org', clock.now());
   const owner = await personOn(first, ownerId, ownerEmail, clock.now());
-  return { connections, clock, ian, owner };
+  return { connections, clock, rowan, owner };
 }
 
 function caller(actor: Principal): Caller {
@@ -90,7 +90,7 @@ async function openRound(
   const kernel = kernelOn(first, rig.clock);
   const harnessId = crypto.randomUUID();
   accepted(
-    await kernel.stages.activate(caller(rig.ian), {
+    await kernel.stages.activate(caller(rig.rowan), {
       harnessId,
       harnessKey: `software-${round}`,
       jdArea: '80-89',
@@ -100,7 +100,7 @@ async function openRound(
     }),
   );
   accepted(
-    await kernel.stages.updateStage(caller(rig.ian), {
+    await kernel.stages.updateStage(caller(rig.rowan), {
       harnessId,
       stageKey: 'package',
       change: { agentPickup: 'allowed', wipLimit: options.wipLimit },

@@ -12,7 +12,7 @@ import type { VerbContext } from './context.ts';
 import { callVerb } from './dispatch.ts';
 import { verbHandlers } from './verbs/index.ts';
 
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 const OWNER = {
   id: '00000000-0000-4000-8000-000000002901',
   email: 'gate-owner@unfoldingword.org',
@@ -23,7 +23,7 @@ const HEAD = 'a'.repeat(40);
 type Rig = {
   readonly db: Database;
   readonly kernel: Kernel;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly harnessId: string;
   readonly actors: ReadonlyMap<string, { principal: Principal; delegationId: string | null }>;
   readonly drop: () => Promise<void>;
@@ -40,7 +40,7 @@ function value<T>(outcome: { status: 'accepted'; value: T } | { status: 'error';
   return outcome.value;
 }
 
-async function gatedHarness(db: Database, kernel: Kernel, ian: Principal): Promise<string> {
+async function gatedHarness(db: Database, kernel: Kernel, rowan: Principal): Promise<string> {
   const harnessId = crypto.randomUUID();
   const activate = {
     harnessId,
@@ -50,10 +50,10 @@ async function gatedHarness(db: Database, kernel: Kernel, ian: Principal): Promi
     repository: 'unfoldingWord/uw-platform',
     requiredChecks: [...defaultCiChecks],
   };
-  value(await kernel.stages.activate(caller(ian), activate));
+  value(await kernel.stages.activate(caller(rowan), activate));
   await listForDispatch(db, activate.repository);
   const change = { exitGate: 'human_approval' as const };
-  value(await kernel.stages.updateStage(caller(ian), { harnessId, stageKey: 'check', change }));
+  value(await kernel.stages.updateStage(caller(rowan), { harnessId, stageKey: 'check', change }));
   return harnessId;
 }
 
@@ -92,15 +92,15 @@ async function openRig(): Promise<Rig> {
     expiresAt: null,
   });
   const kernel = kernelOn(db, systemClock);
-  const ian = await personOn(db, IAN_ID, 'ian.lindsley@unfoldingword.org', new Date());
+  const rowan = await personOn(db, ROWAN_ID, 'rowan.test@unfoldingword.org', new Date());
   const owner = await personOn(db, OWNER.id, OWNER.email, new Date());
-  const harnessId = await gatedHarness(db, kernel, ian);
+  const harnessId = await gatedHarness(db, kernel, rowan);
   const actors = await actorsOf(db, kernel, owner, harnessId);
   const drop = async () => {
     await db.$client.end();
     await database.drop();
   };
-  return { db, kernel, ian, harnessId, actors, drop };
+  return { db, kernel, rowan, harnessId, actors, drop };
 }
 
 function rig(): Promise<Rig> {
@@ -117,12 +117,12 @@ async function heldAtCheck(r: Rig, actor: string): Promise<string> {
   if (held === undefined) throw new Error(`no actor ${actor}`);
   const input = { harnessId: r.harnessId, title: `gate ${actor}`, pageId: null, priority: 1 };
   const { itemId } = value(
-    await r.kernel.items.enqueue(caller(r.ian), { ...input, due: null, delegationId: null }),
+    await r.kernel.items.enqueue(caller(r.rowan), { ...input, due: null, delegationId: null }),
   );
   for (const stage of ['package', 'scope', 'plan', 'build']) {
-    value(await r.kernel.items.claim(caller(r.ian), { itemId, delegationId: null }));
+    value(await r.kernel.items.claim(caller(r.rowan), { itemId, delegationId: null }));
     const submit = { itemId, to: null, evidence: { stage }, change: null };
-    value(await r.kernel.items.submit(caller(r.ian), submit));
+    value(await r.kernel.items.submit(caller(r.rowan), submit));
   }
   const claim = { itemId, delegationId: held.delegationId };
   value(await r.kernel.items.claim(caller(held.principal), claim));
@@ -152,7 +152,7 @@ function replyOf(result: Awaited<ReturnType<typeof callVerb>>): Record<string, u
 }
 
 async function stageOf(r: Rig, itemId: string): Promise<string> {
-  return value(await r.kernel.reads.item(caller(r.ian), { itemId })).item.stageKey;
+  return value(await r.kernel.reads.item(caller(r.rowan), { itemId })).item.stageKey;
 }
 
 async function releaseIfHeld(
@@ -160,7 +160,7 @@ async function releaseIfHeld(
   held: { readonly principal: Principal; readonly delegationId: string | null },
   itemId: string,
 ): Promise<void> {
-  const item = value(await r.kernel.reads.item(caller(r.ian), { itemId })).item;
+  const item = value(await r.kernel.reads.item(caller(r.rowan), { itemId })).item;
   if (item.holder !== held.principal.identity) return;
   value(
     await r.kernel.items.release(caller(held.principal), {

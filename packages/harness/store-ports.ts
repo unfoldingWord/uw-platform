@@ -1,6 +1,7 @@
 import type {
   CapabilityWord,
   CostBasis,
+  DraftStage,
   DelegableTier,
   Engine,
   EventEvidence,
@@ -78,8 +79,29 @@ export type HarnessStagesGateway = {
     remove(stageId: string): Promise<boolean>;
   };
 };
+export type WorkflowDraftRow = {
+  readonly harnessId: string;
+  readonly holderPersonId: string;
+  readonly startedAt: Date;
+  readonly touchedAt: Date;
+  readonly revision: number;
+  readonly stages: readonly DraftStage[];
+  readonly base: readonly Stage[];
+};
+export type HeldDraft = WorkflowDraftRow & { readonly holderName: string };
+
+export type WorkflowDraftsGateway = {
+  readonly read: {
+    forHarness(harnessId: string): Promise<HeldDraft | null>;
+  };
+  readonly write: {
+    put(draft: WorkflowDraftRow): Promise<void>;
+    remove(harnessId: string): Promise<boolean>;
+  };
+};
 export type OpenCount = { readonly harnessId: string; readonly open: number };
 export type DayCount = { readonly day: string; readonly count: number };
+export type HarnessDayCount = DayCount & { readonly harnessId: string };
 
 export type HarnessItemsGateway = {
   readonly read: {
@@ -115,11 +137,14 @@ export type PersonaActivation = {
   readonly editSource: Identity;
   readonly traceId: string;
 };
+export type PageTitle = { readonly id: string; readonly title: string };
 export type PagesGateway = {
   readonly read: {
     facts(pageIds: readonly string[]): Promise<readonly PageFacts[]>;
     staleLearnings(today: string, limit: number): Promise<readonly PageFacts[]>;
     platformFor(jdArea: string): Promise<PageFacts | null>;
+    skillsFor(jdArea: string): Promise<readonly PageTitle[]>;
+    personasOf(harnessId: string): Promise<readonly PageFacts[]>;
   };
   readonly write: { activatePersona(activation: PersonaActivation): Promise<PageFacts | null> };
 };
@@ -185,10 +210,14 @@ export type HarnessEventsGateway = {
       harnessId: string | null,
     ): Promise<HarnessEvent | null>;
     enteredStage(harnessId: string, itemIds: readonly string[]): Promise<readonly StageEntry[]>;
+    enteredStages(itemIds: readonly string[]): Promise<readonly StageEntry[]>;
     recent(query: RecentEvents): Promise<readonly HarnessEvent[]>;
     lastPosition(harnessId: string): Promise<number>;
     lastPositions(harnessIds: readonly string[]): Promise<readonly HarnessPosition[]>;
-    latestForItems(itemIds: readonly string[]): Promise<readonly HarnessEvent[]>;
+    latestForItems(
+      itemIds: readonly string[],
+      names?: readonly EventName[],
+    ): Promise<readonly HarnessEvent[]>;
   };
   readonly write: { append(events: readonly NewHarnessEvent[]): Promise<readonly HarnessEvent[]> };
 };
@@ -206,6 +235,7 @@ export type Delegation = {
   readonly lapsedAt: Date | null;
   readonly supersedes: string | null;
 };
+export type NamedDelegation = Delegation & { readonly grantedByName: string };
 export type DelegationFilter = {
   readonly personId: string | null;
   readonly persona: string | null;
@@ -218,6 +248,7 @@ export type DelegationsGateway = {
     live(filter: DelegationFilter, at: Date): Promise<readonly Delegation[]>;
     countLive(filter: DelegationFilter, at: Date): Promise<number>;
     firstLive(filter: DelegationFilter, at: Date, limit: number): Promise<readonly Delegation[]>;
+    liveNamed(harnessId: string, at: Date, limit: number): Promise<readonly NamedDelegation[]>;
     lapsedFor(
       personId: string,
       since: Date,
@@ -329,6 +360,7 @@ export type HarnessRunsGateway = {
     live(harnessId: string | null): Promise<readonly RunRow[]>;
     forItems(itemIds: readonly string[]): Promise<readonly RunRow[]>;
     startedSince(since: Date, limit: number): Promise<readonly RunRow[]>;
+    recent(harnessId: string, limit: number): Promise<readonly RunRow[]>;
     failedFor(
       personId: string,
       harnessIds: readonly string[],
@@ -338,6 +370,10 @@ export type HarnessRunsGateway = {
     spendSince(since: Date): Promise<RunSpend>;
     runCountsSince(since: Date): Promise<readonly RunCount[]>;
     startedPerDay(harnessIds: readonly string[], since: Date): Promise<readonly DayCount[]>;
+    startedPerDayByHarness(
+      harnessIds: readonly string[],
+      since: Date,
+    ): Promise<readonly HarnessDayCount[]>;
     costsByItem(itemIds: readonly string[]): Promise<readonly ItemCost[]>;
   };
   readonly write: {
@@ -349,8 +385,10 @@ export type HarnessRunsGateway = {
 export type StoreTransaction = {
   lock(key: string): Promise<void>;
   lockShared(key: string): Promise<void>;
+  admit?(harnessIds: readonly string[]): void;
   readonly harnesses: HarnessesGateway;
   readonly harnessStages: HarnessStagesGateway;
+  readonly workflowDrafts: WorkflowDraftsGateway;
   readonly harnessItems: HarnessItemsGateway;
   readonly harnessEvents: HarnessEventsGateway;
   readonly harnessRuns: HarnessRunsGateway;

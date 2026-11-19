@@ -49,7 +49,7 @@ describe('the Content-Security-Policy', () => {
       script: islandsPath,
     }).toString();
     const inline = inlineScriptsOf(html);
-    expect(inline).toHaveLength(2);
+    expect(inline).toHaveLength(3);
     const scripts = directive(await contentSecurityPolicy('uw.example'), 'script-src');
     for (const body of inline) expect(scripts).toContain(await sha256(body));
     expect(scripts).not.toContain(await sha256('alert(1)'));

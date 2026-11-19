@@ -1,17 +1,23 @@
 import type { Context } from 'hono';
+import { can } from '@uw/core/acl';
 import { formatDuration } from '@uw/core/dates';
 import { formatCount } from '@uw/core/money';
-import { VIEW_LIMIT, type FlowStage, type FlowView } from '@uw/harness';
+import { VIEW_LIMIT, type FlowStage, type FlowView, type WorkflowDraftView } from '@uw/harness';
+import { Card } from '@uw/ui/components/card.tsx';
 import { HumanGateMark } from '@uw/ui/components/human-action.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { costText } from '../parts/costs.ts';
+import { DraftSection } from '../parts/draft-editor.tsx';
 import { bracketText, FlowDiagram } from '../parts/flow-diagram.tsx';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { idParam } from '../parts/params.ts';
-import { boardPath, flowPath, homePath } from '../parts/paths.ts';
+import { queuePath, flowPath } from '../parts/paths.ts';
+import { moduleCodes } from '../parts/names.ts';
+import { waitingCount } from '../parts/waiting-count.ts';
+import { workflowCrumbs, workflowTabs } from '../parts/workflow-tabs.ts';
 import { notFound } from './not-found.tsx';
 import { pageNames } from '../parts/names.ts';
 
@@ -34,7 +40,7 @@ function StageCell(props: { readonly harnessId: string; readonly entry: FlowStag
   const { stage } = props.entry;
   return (
     <span class="flex flex-wrap items-center gap-2">
-      <a href={boardPath(props.harnessId, stage.key)} class={`text-accent-text underline ${focus}`}>
+      <a href={queuePath(props.harnessId, stage.key)} class={`text-accent-text underline ${focus}`}>
         {stage.title}
       </a>
       {stage.exitGate === 'human_approval' ? <HumanGateMark label="Person decides" /> : null}
@@ -58,20 +64,34 @@ function rowOf(view: FlowView, entry: FlowStage, at: Date) {
   };
 }
 
-function Diagram(props: { readonly harnessId: string; readonly view: FlowView }) {
+const fixedWords =
+  'The four phases and the option lists are set in the platform and can’t be changed here.';
+const yoursWords =
+  'Stages, their order, their phase and the loop arrows are yours to change in a draft.';
+
+function Diagram(props: {
+  readonly harnessId: string;
+  readonly view: FlowView;
+  readonly admin: boolean;
+  readonly at: Date;
+}) {
   return (
-    <details>
-      <summary class={`cursor-pointer text-sm font-semibold text-text-2 ${focus}`}>
-        The stages as a diagram
-      </summary>
-      <div class="mt-3">
+    <Card
+      title="Flow"
+      sub="the live map of this workflow: stages in four phases, with forward and loop arrows"
+    >
+      <div class="flex flex-col gap-3">
         <FlowDiagram
           harnessId={props.harnessId}
           harnessTitle={props.view.harness.title}
           stages={props.view.stages}
+          at={props.at}
         />
+        <p data-fixed-note class="m-0 text-sm text-text-2">
+          {props.admin ? `${fixedWords} ${yoursWords}` : fixedWords}
+        </p>
       </div>
-    </details>
+    </Card>
   );
 }
 
@@ -80,7 +100,37 @@ function summaryOf(view: FlowView): string {
   const gates = view.stages.filter((entry) => entry.stage.exitGate === 'human_approval').length;
   const gateWords =
     gates === 1 ? '1 gate where a person decides' : `${gates} gates where a person decides`;
-  return `Built from the ${view.harness.template} template · ${view.stages.length} stages in ${brackets} brackets · ${gateWords}`;
+  return `${view.stages.length} stages in ${brackets} brackets, with ${gateWords}.`;
+}
+
+function FlowBody(props: {
+  readonly harnessId: string;
+  readonly view: FlowView;
+  readonly draft: WorkflowDraftView | null;
+  readonly admin: boolean;
+  readonly at: Date;
+}) {
+  return (
+    <div class="flex flex-col gap-5">
+      {props.view.capped ? <Note>{cappedNote}</Note> : null}
+      <Diagram harnessId={props.harnessId} view={props.view} admin={props.admin} at={props.at} />
+      <DraftSection
+        harnessId={props.harnessId}
+        harnessTitle={props.view.harness.title}
+        draft={props.draft}
+        admin={props.admin}
+        at={props.at}
+      />
+      <Card title="Stage details" sub="what each stage holds, costs and waits on" flush>
+        <Table
+          caption="Stages"
+          columns={columns}
+          rows={props.view.stages.map((entry) => rowOf(props.view, entry, props.at))}
+          bare
+        />
+      </Card>
+    </div>
+  );
 }
 
 export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
@@ -93,40 +143,29 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
   const outcome = await screen.kernel.views.flow(screen.caller, { harnessId }, read);
   if (outcome.status !== 'accepted') return notFound(c);
   const view = outcome.value;
+  const drafted = await screen.kernel.views.workflowDraft(screen.caller, { harnessId }, read);
+  const draft = drafted.status === 'accepted' ? drafted.value : null;
+  const { actor } = screen.caller;
+  const area = { kind: 'area', area: view.harness.jdArea } as const;
+  const admin = actor.kind === 'person' && can(actor, 'admin', area, screen.at);
   const spec = {
     title: `${view.harness.title} ${pageNames.flow}`,
     current: flowPath(harnessId),
-    crumbs: [{ label: pageNames.home, href: homePath() }, { label: view.harness.title }],
-    tabs: [
-      {
-        label: pageNames.flow,
-        href: flowPath(harnessId),
-        icon: 'diagram-project' as const,
-        current: true,
-      },
-      {
-        label: pageNames.board,
-        href: boardPath(harnessId),
-        icon: 'square-kanban' as const,
-        current: false,
-      },
-    ],
+    code: moduleCodes.agentQueues,
+    crumbs: workflowCrumbs(view.harness.title, queuePath(harnessId), pageNames.flow),
+    tabs: workflowTabs(harnessId, 'flow', await waitingCount(screen, harnessId)),
     live: { screen: 'flow' as const, harnesses: [{ harnessId, cursor }] },
   };
   return renderScreen(
     c,
     spec,
     <>
-      <PageHead title={view.harness.title} lede={summaryOf(view)} />
-      <div class="flex flex-col gap-5">
-        {view.capped ? <Note>{cappedNote}</Note> : null}
-        <Table
-          caption="Stages"
-          columns={columns}
-          rows={view.stages.map((entry) => rowOf(view, entry, screen.at))}
-        />
-        <Diagram harnessId={harnessId} view={view} />
-      </div>
+      <PageHead
+        eyebrow={`Workflow · ${view.harness.template} template`}
+        title={view.harness.title}
+        lede={summaryOf(view)}
+      />
+      <FlowBody harnessId={harnessId} view={view} draft={draft} admin={admin} at={screen.at} />
     </>,
   );
 }

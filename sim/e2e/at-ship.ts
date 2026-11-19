@@ -22,7 +22,7 @@ const mergeKeys = [
 
 async function approve(journey: Journey) {
   const { cast, itemId } = journey;
-  return cast.world.kernel.gates.decide(callerFor(cast, cast.ian), {
+  return cast.world.kernel.gates.decide(callerFor(cast, cast.rowan), {
     itemId,
     decision: 'approve',
     reason: null,
@@ -157,7 +157,7 @@ async function approvedAndMerged(journey: Journey): Promise<void> {
     'connector_succeeded',
     'stage_advanced',
   ]);
-  assert.equal(named(after.events, 'gate_approved').at(-1)?.actor, cast.ian.identity);
+  assert.equal(named(after.events, 'gate_approved').at(-1)?.actor, cast.rowan.identity);
   const merged = named(after.events, 'connector_succeeded').at(-1)?.evidence;
   assert.deepEqual(merged, { connector: 'merge', detail: {} });
   const advanced = named(after.events, 'stage_advanced').at(-1)?.evidence;

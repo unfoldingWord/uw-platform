@@ -2,19 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
 import { seedGrant, seedPerson } from '@uw/db/test-seed';
-import { bml, software } from '@uw/harness';
-import {
-  gateDeps,
-  kimEmail,
-  parkedAtShip,
-  readyToShip,
-  shipWrites,
-  type ParkedAtShip,
-} from '../github/testing/gate-rig.ts';
-import { decisionRows } from '../github/testing/ship-rig.ts';
+import { bml } from '@uw/harness';
 import { agentOf, kernelOn, personOn } from '../testing/kernel.ts';
-import { platformStore } from '../ports/store.ts';
-import { kernelThatLosesTheExit } from '../testing/lost-exit.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import {
   accepted,
@@ -22,18 +11,15 @@ import {
   command,
   dispatchAs,
   dispatchScope,
-  enqueued,
   eventCount,
   eventsNamed,
-  ian,
-  itemState,
-  post,
+  rowan,
   softwareHarness,
   type Person,
 } from '../testing/commands.ts';
 
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
-const IAN = { email: 'ian.lindsley@unfoldingword.org' };
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN = { email: 'rowan.test@unfoldingword.org' };
 
 type Who = Pick<Person, 'email'>;
 
@@ -51,26 +37,9 @@ function activation(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function spare(overrides: Record<string, unknown> = {}) {
-  return {
-    key: 'spare',
-    title: 'Spare',
-    position: 90,
-    bracket: 'iterate',
-    agentPickup: 'allowed',
-    exitGate: 'checks',
-    connector: 'none',
-    wipLimit: 3,
-    instructionsPageId: null,
-    validators: [],
-    feeds: [],
-    ...overrides,
-  };
-}
-
 async function sceneOf(db: Database, harnessId: string) {
   const kernel = kernelOn(db, { now: () => new Date() });
-  return accepted(await kernel.reads.harness(callerOf(await ian(db)), { harnessId }));
+  return accepted(await kernel.reads.harness(callerOf(await rowan(db)), { harnessId }));
 }
 
 async function stageKeys(db: Database, harnessId: string): Promise<string[]> {
@@ -103,7 +72,7 @@ async function activates(db: Database): Promise<void> {
   const harnessId = randomUUID();
   const requestId = randomUUID();
   const body = { requestId, ...activation() };
-  const sent = await command(db, IAN, harnessId, 'activate_template', body);
+  const sent = await command(db, ROWAN, harnessId, 'activate_template', body);
   expect(sent.body).toEqual({ status: 'accepted', requestId });
   expect((await sceneOf(db, harnessId)).harness).toMatchObject({
     key: 'bml-board',
@@ -113,10 +82,10 @@ async function activates(db: Database): Promise<void> {
   });
   expect(await stageKeys(db, harnessId)).toEqual(bml.stages.map((stage) => stage.key));
   const [event] = await eventsNamed(db, harnessId, 'template_activated');
-  expect(event).toMatchObject({ actor: `human:${IAN_ID}`, requestId, traceId: sent.traceId });
+  expect(event).toMatchObject({ actor: `human:${ROWAN_ID}`, requestId, traceId: sent.traceId });
   const again = await send(
     db,
-    IAN,
+    ROWAN,
     harnessId,
     'activate_template',
     activation({ harnessKey: 'b' }),
@@ -162,29 +131,29 @@ async function hidesWhatItCannotRead(db: Database): Promise<void> {
   const kernel = kernelOn(db, { now: () => new Date() });
   const reader = await personOn(db, admin.id, admin.email, new Date());
   const read = await kernel.reads.harness(callerOf(reader), { harnessId: scene.harnessId });
-  expect(read.status).toBe('accepted');
+  expect(read).toMatchObject({ status: 'error', reason: 'harness_not_found' });
 }
 
 async function pausesAndResumes(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const { harnessId } = scene;
   const requestId = randomUUID();
-  const paused = await command(db, IAN, harnessId, 'pause', { requestId, stageKey: null });
+  const paused = await command(db, ROWAN, harnessId, 'pause', { requestId, stageKey: null });
   expect(paused.body).toEqual({ status: 'accepted', requestId });
-  expect((await send(db, IAN, harnessId, 'pause', { stageKey: null })).body).toMatchObject({
+  expect((await send(db, ROWAN, harnessId, 'pause', { stageKey: null })).body).toMatchObject({
     status: 'accepted',
   });
-  expect((await send(db, IAN, harnessId, 'pause', { stageKey: 'build' })).body).toMatchObject({
+  expect((await send(db, ROWAN, harnessId, 'pause', { stageKey: 'build' })).body).toMatchObject({
     status: 'accepted',
   });
-  expect((await send(db, IAN, harnessId, 'resume', { stageKey: null })).body).toMatchObject({
+  expect((await send(db, ROWAN, harnessId, 'resume', { stageKey: null })).body).toMatchObject({
     status: 'accepted',
   });
   const editor = await send(db, scene.editor, harnessId, 'resume', { stageKey: 'build' });
   expect(editor.body).toMatchObject({ status: 'error', reason: 'not_permitted' });
   const pauses = await eventsNamed(db, harnessId, 'harness_paused');
   expect(pauses.map((event) => event.evidence)).toEqual([{ stage: null }, { stage: 'build' }]);
-  expect(pauses[0]).toMatchObject({ actor: `human:${IAN_ID}`, requestId });
+  expect(pauses[0]).toMatchObject({ actor: `human:${ROWAN_ID}`, requestId });
   const resumes = await eventsNamed(db, harnessId, 'harness_resumed');
   expect(resumes.map((event) => event.evidence)).toEqual([{ stage: null }]);
   const after = await sceneOf(db, harnessId);
@@ -196,7 +165,7 @@ async function freezesForAnAdmin(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const requestId = randomUUID();
   const body = { requestId, frozen: true, allow: [] };
-  const byAdmin = await command(db, IAN, scene.harnessId, 'set_freeze', body);
+  const byAdmin = await command(db, ROWAN, scene.harnessId, 'set_freeze', body);
   expect(byAdmin.body).toEqual({ status: 'accepted', requestId });
   const [frozen] = await eventsNamed(db, scene.harnessId, 'freeze_changed');
   expect(frozen).toMatchObject({ evidence: { frozen: true, allow: [] }, requestId });
@@ -211,99 +180,59 @@ async function freezesForAnAdmin(db: Database): Promise<void> {
   expect(await eventsNamed(db, scene.harnessId, 'freeze_changed')).toHaveLength(1);
 }
 
-async function removesOnlyAnEmptyStage(db: Database): Promise<void> {
-  const scene = await softwareHarness(db);
-  const { harnessId } = scene;
-  await enqueued(db, harnessId, 'Hold the package stage');
-  const before = await eventCount(db, harnessId);
-  const holding = await send(db, IAN, harnessId, 'remove_stage', { stageKey: 'package' });
-  expect(holding.body).toMatchObject({ status: 'error', reason: 'stage_not_empty' });
-  const effect = await send(db, IAN, harnessId, 'remove_stage', { stageKey: 'ship' });
-  expect(effect.body).toMatchObject({ status: 'error', reason: 'not_permitted' });
-  expect(await eventCount(db, harnessId)).toBe(before);
-  const created = await send(db, IAN, harnessId, 'create_stage', { stage: spare() });
-  expect(created.body).toMatchObject({ status: 'accepted' });
-  const editor = await send(db, scene.editor, harnessId, 'remove_stage', { stageKey: 'spare' });
-  expect(editor.body).toMatchObject({ status: 'error', reason: 'not_permitted' });
-  const requestId = randomUUID();
-  const removed = await command(db, IAN, harnessId, 'remove_stage', {
-    requestId,
-    stageKey: 'spare',
-  });
-  expect(removed.body).toEqual({ status: 'accepted', requestId });
-  const [event] = await eventsNamed(db, harnessId, 'stage_removed');
-  expect(event).toMatchObject({ requestId, evidence: { key: 'spare' } });
-  expect(await stageKeys(db, harnessId)).not.toContain('spare');
+async function rulesOf(db: Database, harnessId: string, key: string) {
+  const { stages } = await sceneOf(db, harnessId);
+  const stage = stages.find((entry) => entry.key === key);
+  if (stage === undefined) throw new Error(`no ${key} stage`);
+  const { id, agentPickup, exitGate, wipLimit, instructionsPageId, validators } = stage;
+  return { id, agentPickup, exitGate, wipLimit, instructionsPageId, validators };
 }
 
-async function createsAndReorders(db: Database): Promise<void> {
+async function setsStageRules(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const { harnessId } = scene;
+  const build = await rulesOf(db, harnessId, 'build');
+  const change = { stages: [{ ...build, agentPickup: 'none', wipLimit: 5 }] };
   const requestId = randomUUID();
-  const created = await command(db, IAN, harnessId, 'create_stage', { requestId, stage: spare() });
-  expect(created.body).toEqual({ status: 'accepted', requestId });
+  const saved = await command(db, ROWAN, harnessId, 'set_stage_rules', { requestId, ...change });
+  expect(saved.body).toEqual({ status: 'accepted', requestId });
+  expect(await rulesOf(db, harnessId, 'build')).toMatchObject({ agentPickup: 'none', wipLimit: 5 });
   const [edited] = await eventsNamed(db, harnessId, 'stage_edited');
-  expect(edited).toMatchObject({ requestId, evidence: { key: 'spare', before: null } });
-  const order = ['spare', ...software.stages.map((stage) => stage.key)];
-  const reordered = await send(db, IAN, harnessId, 'reorder_stages', { order });
-  expect(reordered.body).toMatchObject({ status: 'accepted' });
-  expect(await stageKeys(db, harnessId)).toEqual(order);
-  const editor = await send(db, scene.editor, harnessId, 'create_stage', {
-    stage: spare({ key: 'other' }),
+  expect(edited).toMatchObject({
+    actor: `human:${ROWAN_ID}`,
+    requestId,
+    evidence: { key: 'build' },
   });
-  expect(editor.body).toMatchObject({ status: 'error', reason: 'not_permitted' });
-  expect(await stageKeys(db, harnessId)).toEqual(order);
+  const byEditor = await send(db, scene.editor, harnessId, 'set_stage_rules', change);
+  expect(byEditor.body).toMatchObject({ status: 'error', reason: 'not_permitted' });
 }
 
-async function noEditBypassesShip(db: Database): Promise<void> {
-  const { harnessId } = await softwareHarness(db);
-  const before = await sceneOf(db, harnessId);
-  const requestId = randomUUID();
-  const lowered = await command(db, IAN, harnessId, 'update_stage', {
-    requestId,
-    stageKey: 'ship',
-    change: { exitGate: 'checks' },
-  });
-  const unguarded = await send(db, IAN, harnessId, 'create_stage', {
-    stage: spare({ connector: 'merge' }),
-  });
-  for (const sent of [lowered, unguarded]) {
-    expect(sent.body).toMatchObject({ status: 'error', reason: 'stage_edit_refused' });
-  }
-  expect((await sceneOf(db, harnessId)).stages).toEqual(before.stages);
-  const [recorded] = await eventsNamed(db, harnessId, 'stage_edit_refused');
-  expect(recorded).toMatchObject({
-    actor: `human:${IAN_ID}`,
-    requestId,
-    evidence: {
-      stage: 'ship',
-      reason: 'stage_edit_refused',
-      constraint: 'harness_stages_effect_needs_human_gate',
-    },
-  });
-  const paused = await send(db, IAN, harnessId, 'update_stage', {
-    stageKey: 'build',
-    change: { paused: true },
-  });
-  expect(paused.body).toMatchObject({ status: 'error', reason: 'malformed_command' });
+async function turnsShadowOnAndOff(db: Database): Promise<void> {
+  const scene = await softwareHarness(db);
+  const { harnessId } = scene;
+  const on = await send(db, ROWAN, harnessId, 'set_shadow', { shadow: true });
+  expect(on.body).toMatchObject({ status: 'accepted' });
+  expect((await sceneOf(db, harnessId)).harness.shadow).toBe(true);
+  const byEditor = await send(db, scene.editor, harnessId, 'set_shadow', { shadow: false });
+  expect(byEditor.body).toMatchObject({ status: 'error', reason: 'not_permitted' });
+  await send(db, ROWAN, harnessId, 'set_shadow', { shadow: false });
+  expect(await eventsNamed(db, harnessId, 'shadow_turned_on')).toHaveLength(1);
+  expect(await eventsNamed(db, harnessId, 'shadow_lifted')).toHaveLength(1);
 }
 
 function agentAttempts(harnessId: string): ReadonlyArray<readonly [string, string, object]> {
   return [
     [randomUUID(), 'activate_template', activation({ harnessKey: 'agent-board' })],
-    [harnessId, 'create_stage', { stage: spare() }],
-    [harnessId, 'update_stage', { stageKey: 'build', change: { title: 'Built' } }],
-    [harnessId, 'reorder_stages', { order: ['package'] }],
-    [harnessId, 'remove_stage', { stageKey: 'close' }],
     [harnessId, 'pause', { stageKey: null }],
     [harnessId, 'resume', { stageKey: null }],
     [harnessId, 'set_freeze', { frozen: true, allow: [] }],
+    [harnessId, 'set_shadow', { shadow: true }],
   ];
 }
 
 async function agentsRefused(db: Database): Promise<void> {
   const { harnessId } = await softwareHarness(db);
-  const agent = agentOf(await ian(db), 'builder');
+  const agent = agentOf(await rowan(db), 'builder');
   const scope = dispatchScope(db);
   const before = await eventCount(db, harnessId);
   for (const [target, name, body] of agentAttempts(harnessId)) {
@@ -315,101 +244,11 @@ async function agentsRefused(db: Database): Promise<void> {
   expect(await harnessCount(db)).toBe(2);
 }
 
-async function shipStage(db: Database, parked: ParkedAtShip) {
-  const { stages } = await sceneOf(db, parked.item.harnessId);
-  const ship = stages.find((stage) => stage.key === 'ship');
-  return { connector: ship?.connector, exitGate: ship?.exitGate };
-}
-
-function unshipped(db: Database, parked: ParkedAtShip) {
-  return send(db, IAN, parked.item.harnessId, 'update_stage', {
-    stageKey: 'ship',
-    change: { connector: 'none' },
-  });
-}
-
-async function connectorHeldWhileApprovalWaits(db: Database): Promise<void> {
-  const parked = await parkedAtShip(db);
-  const lost = await kernelThatLosesTheExit(db, parked.item.itemId);
-  await expect(
-    lost.gates.decide(callerOf(parked.kim), {
-      itemId: parked.item.itemId,
-      decision: 'approve',
-      reason: null,
-      findings: [],
-      seenHead: parked.item.expectedHead,
-    }),
-  ).rejects.toThrow('the exit was lost');
-  const requestId = randomUUID();
-  const sent = await command(db, IAN, parked.item.harnessId, 'update_stage', {
-    requestId,
-    stageKey: 'ship',
-    change: { connector: 'none' },
-  });
-  expect(sent.body).toEqual({ status: 'error', requestId, reason: 'decision_in_flight' });
-  expect(await shipStage(db, parked)).toEqual({ connector: 'merge', exitGate: 'human_approval' });
-  const renamed = await send(db, IAN, parked.item.harnessId, 'update_stage', {
-    stageKey: 'ship',
-    change: { title: 'Ship it' },
-  });
-  expect(renamed.body).toMatchObject({ status: 'accepted' });
-}
-
-async function onlyOpenItemsHoldTheConnector(db: Database): Promise<void> {
-  const parked = await parkedAtShip(db);
-  const lost = await kernelThatLosesTheExit(db, parked.item.itemId);
-  await expect(
-    lost.gates.decide(callerOf(parked.kim), {
-      itemId: parked.item.itemId,
-      decision: 'approve',
-      reason: null,
-      findings: [],
-      seenHead: parked.item.expectedHead,
-    }),
-  ).rejects.toThrow('the exit was lost');
-  await platformStore(db).transaction(async (tx) => {
-    const row = await tx.harnessItems.read.lock(parked.item.itemId);
-    if (row === null) throw new Error('the parked item vanished');
-    await tx.harnessItems.write.project({ ...row, gateStatus: 'done' });
-  });
-  expect((await unshipped(db, parked)).body).toMatchObject({ status: 'accepted' });
-}
-
-async function shippedThrough(db: Database, parked: ParkedAtShip): Promise<void> {
-  const github = readyToShip(parked.item.itemId);
-  const path = `/api/harness/${parked.item.harnessId}/commands/approve`;
-  const body = {
-    command: 'approve',
-    requestId: randomUUID(),
-    itemId: parked.item.itemId,
-    head: parked.item.expectedHead,
-  };
-  const sent = await post(db, kimEmail, path, body, await gateDeps(github));
-  expect(sent.body).toMatchObject({ status: 'accepted' });
-  expect(shipWrites(github)).not.toEqual([]);
-}
-
-async function historyHoldsAStage(db: Database): Promise<void> {
-  const parked = await parkedAtShip(db);
-  const { harnessId } = parked.item;
-  const effect = await send(db, IAN, harnessId, 'remove_stage', { stageKey: 'ship' });
-  expect(effect.body).toMatchObject({ status: 'error', reason: 'not_permitted' });
-  await shippedThrough(db, parked);
-  expect(await itemState(db, parked.item.itemId)).toMatchObject({ stageKey: 'validate' });
-  expect(await decisionRows(db, parked.item)).toBe(1);
-  expect((await unshipped(db, parked)).body).toMatchObject({ status: 'accepted' });
-  const before = await eventCount(db, harnessId);
-  const held = await send(db, IAN, harnessId, 'remove_stage', { stageKey: 'ship' });
-  expect(held.body).toMatchObject({ status: 'error', reason: 'stage_not_empty' });
-  expect(await eventCount(db, harnessId)).toBe(before);
-  expect(await stageKeys(db, harnessId)).toContain('ship');
-}
-
 describe.skipIf(!testServer)('WB-1 KN-18 the stage command on the person surface', () => {
   it('WB-1 activate_template creates the harness named in the path from a template, for an admin of the body area', () =>
     withAppDatabase(activates));
 
-  it('activate_template answers a person who cannot administer the area not_permitted alike whether the id, key or repository is taken or free, and harness_exists only to an admin, who reads every area', () =>
+  it("activate_template answers a person who cannot administer the area not_permitted alike whether the id, key or repository is taken or free, and harness_exists only to an admin, since keys are unique across areas, though the admin cannot read the other area's harness", () =>
     withAppDatabase(hidesWhatItCannotRead));
 
   it('WB-1 pause and resume through the command API record harness_paused and harness_resumed', () =>
@@ -418,24 +257,12 @@ describe.skipIf(!testServer)('WB-1 KN-18 the stage command on the person surface
   it('GD-2 set_freeze freezes for an admin, is refused for an editor, and records freeze_changed', () =>
     withAppDatabase(freezesForAnAdmin));
 
-  it('KN-18 remove_stage through the command API refuses stage_not_empty for a stage holding an item and removes an empty spare stage', () =>
-    withAppDatabase(removesOnlyAnEmptyStage));
+  it('#108 set_stage_rules changes a stage at once for an admin, records who, and refuses an editor', () =>
+    withAppDatabase(setsStageRules));
 
-  it('KN-18 create_stage and reorder_stages through the command API are the stage command', () =>
-    withAppDatabase(createsAndReorders));
-
-  it("update_stage lowering Ship's exit to checks and create_stage adding a merge stage without a gate are both refused stage_edit_refused, and update_stage cannot pause", () =>
-    withAppDatabase(noEditBypassesShip));
+  it('#108 set_shadow turns shadow on and off for an admin and refuses an editor', () =>
+    withAppDatabase(turnsShadowOnAndOff));
 
   it('the stage command refuses an agent on every route and records nothing', () =>
     withAppDatabase(agentsRefused));
-
-  it('KN-18 update_stage refuses decision_in_flight while an approval waits for its connector', () =>
-    withAppDatabase(connectorHeldWhileApprovalWaits));
-
-  it('the connector guard reads only the open items at the stage, so a done item does not hold the connector', () =>
-    withAppDatabase(onlyOpenItemsHoldTheConnector));
-
-  it('KN-18 remove_stage refuses an effect stage, and a stage with gate decision history once it holds no item', () =>
-    withAppDatabase(historyHoldsAStage));
 });

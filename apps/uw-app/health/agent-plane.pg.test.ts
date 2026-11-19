@@ -30,6 +30,7 @@ const HARNESS = '00000000-0000-4000-8000-000000005301';
 const OTHER = '00000000-0000-4000-8000-000000005399';
 const ITEM = '00000000-0000-4000-8000-000000005302';
 const EDITOR = { id: '00000000-0000-4000-8000-000000005311', email: 'plane@unfoldingword.org' };
+const ROWAN = { id: '00000000-0000-4000-8000-000000000001', email: 'rowan.test@unfoldingword.org' };
 const PLATFORM = ['commit', 'database', 'queue', 'live_hub'];
 
 let fixture: AccessFixture;
@@ -447,7 +448,7 @@ async function staleRows(db: Database, person = EDITOR) {
 
 async function staleReport(db: Database): Promise<void> {
   await seedLearnings(db);
-  const rows = await staleRows(db);
+  const rows = await staleRows(db, ROWAN);
   expect(rows).toEqual(
     expect.arrayContaining([
       { title: 'Assumed since July', confidence: 'assumed', 'review by': '2026-09-29' },

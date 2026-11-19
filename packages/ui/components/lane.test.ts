@@ -35,7 +35,7 @@ describe('WB-11 the lane', () => {
     const heading = found(document.getElementById(found(lane.getAttribute('aria-labelledby'))));
     expect(heading.textContent).toBe('Build');
     expect(lane.contains(heading)).toBe(true);
-    expect(lane.textContent).toContain('3/3');
+    expect(lane.textContent).toContain('3 of 3');
     const badge = found(
       [...lane.querySelectorAll('span')].find((span) => span.textContent === 'Paused'),
     );
@@ -48,7 +48,7 @@ describe('WB-11 the lane', () => {
       jsx(Lane, { stageKey: 'build', title: 'Build', count: 1, wipLimit: 3 }),
     );
     expect(document.body.textContent).not.toContain('Paused');
-    expect(document.body.textContent).toContain('1/3');
+    expect(document.body.textContent).toContain('1 of 3');
   });
 
   it('a lane escapes its title', async () => {
@@ -91,6 +91,29 @@ describe('the lane facts', () => {
     expect(list.compareDocumentPosition(found(lane.querySelector('article')))).toBe(
       document.defaultView?.Node.DOCUMENT_POSITION_FOLLOWING,
     );
+  });
+});
+
+describe('#105 the lane shows its rules', () => {
+  it('#105 the facts are visible, and a gate lane marks the person who approves', async () => {
+    const document = await dom(
+      jsx(Lane, {
+        stageKey: 'merge',
+        title: 'Merge',
+        count: 0,
+        wipLimit: 2,
+        gate: true,
+        facts: [
+          { label: 'Agent pickup', value: 'No agents' },
+          { label: 'To leave', value: 'A person approves', person: true },
+        ],
+      }),
+    );
+    const list = found(document.querySelector('section > dl'));
+    expect(list.getAttribute('class') ?? '').not.toContain('sr-only');
+    const mark = found(list.querySelector('[aria-label="A person approves"]'));
+    expect(mark.closest('dd')?.textContent).toBe('A person approves');
+    expect(document.body.textContent).not.toContain('gate: a person decides');
   });
 });
 

@@ -2,7 +2,7 @@ import type { Harness } from '@uw/contracts';
 import type { HarnessCursor } from './types.ts';
 import type { Caller } from '../caller.ts';
 import type { StoreTransaction } from '../ports.ts';
-import { admitsHarness, readableHarness, type ScenePorts } from '../reads/scene.ts';
+import { admittedHarnesses, readableHarness, type ScenePorts } from '../reads/scene.ts';
 
 function byKey(left: Harness, right: Harness): number {
   if (left.key === right.key) return 0;
@@ -15,11 +15,7 @@ export async function readableHarnesses(
   caller: Caller,
   at: Date,
 ): Promise<readonly Harness[]> {
-  const shown: Harness[] = [];
-  for (const harness of await tx.harnesses.read.list()) {
-    if (await admitsHarness(ports, tx, caller, harness, at)) shown.push(harness);
-  }
-  return shown.sort(byKey);
+  return [...(await admittedHarnesses(ports, tx, caller, at))].sort(byKey);
 }
 
 export async function harnessCursors(

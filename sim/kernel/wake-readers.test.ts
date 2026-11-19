@@ -109,13 +109,13 @@ async function advanceSkipsLostReader(world: World): Promise<void> {
   expect(await approvalWakes(scene, areaAdmin, lost)).toEqual([]);
 }
 
-async function advanceWakesReaderThroughAnotherArea(world: World): Promise<void> {
+async function advanceSkipsReaderOfAnotherArea(world: World): Promise<void> {
   const elsewhere = { role: 'editor', scopeKind: 'jd_area', scopeArea: '70-79' } as const;
   const scene = await parkScene(world, [{ role: 'editor', ...area }, elsewhere]);
   const areaAdmin = await simPerson(world, 5, [{ role: 'admin', ...area }]);
   const itemId = await parkedByLaptop(scene, 'Check the copy');
   await loseAdmin(world, scene.editor);
-  expect(await approvalWakes(scene, areaAdmin, itemId)).toEqual([[personOf(scene.editor)]]);
+  expect(await approvalWakes(scene, areaAdmin, itemId)).toEqual([]);
 }
 
 async function failureSkipsLostReader(world: World): Promise<void> {
@@ -133,6 +133,6 @@ describe('wakes reach only people who can still read the harness', () => {
     inWorld(advanceSkipsLostReader));
   it('a run failure wakes nobody whose grant on the area was revoked', () =>
     inWorld(failureSkipsLostReader));
-  it('a stage advance wakes a person who reads the area only through an editor grant on another area', () =>
-    inWorld(advanceWakesReaderThroughAnotherArea));
+  it('a stage advance wakes nobody whose only grant is an editor grant on another area', () =>
+    inWorld(advanceSkipsReaderOfAnotherArea));
 });

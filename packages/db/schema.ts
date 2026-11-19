@@ -41,10 +41,7 @@ import {
 import {
   HUMAN_IDENTITY_PATTERN,
   IDENTITY_PATTERN,
-  JD_AREA_PATTERN,
   PERSONA_IDENTITY_PATTERN,
-  REPOSITORY_PATTERN,
-  SLUG_PATTERN,
   STAGE_KEY_PATTERN,
   matches,
   oneOf,
@@ -52,8 +49,10 @@ import {
 } from './checks.ts';
 import { instant } from './columns.ts';
 import { declareTable } from './declarations.ts';
-import { pages, people } from './schema-platform.ts';
+import { harnesses } from './schema-harnesses.ts';
+import { pages, people, serviceTokens } from './schema-platform.ts';
 
+export * from './schema-harnesses.ts';
 export * from './schema-platform.ts';
 export * from './schema-github.ts';
 export * from './schema-notify.ts';
@@ -68,58 +67,6 @@ type LentKey = [AnyPgColumn, AnyPgColumn, AnyPgColumn, AnyPgColumn, AnyPgColumn]
 const lentKey = (d: Lending): LentKey => [d.id, d.harnessId, d.persona, d.capability, d.grantor];
 const boundedArray = (column: AnyPgColumn, most: number) =>
   sql`jsonb_typeof(${column}) = 'array' AND jsonb_array_length(${column}) <= ${sql.raw(String(most))}`;
-
-export const harnesses = declareTable(
-  'harnesses',
-  {
-    id: uuid('id').primaryKey(),
-    key: text('key').notNull().unique(),
-    title: text('title').notNull(),
-    template: text('template').notNull(),
-    jdArea: text('jd_area').notNull(),
-    hostedBuilderEnabled: boolean('hosted_builder_enabled').notNull().default(false),
-    paused: boolean('paused').notNull().default(false),
-    createdAt: instant('created_at').notNull(),
-    repository: text('repository'),
-    shadow: boolean('shadow').notNull().default(false),
-    externalReviewerIdentities: text('external_reviewer_identities')
-      .array()
-      .notNull()
-      .default(emptyText),
-    frozen: boolean('frozen').notNull().default(false),
-    freezeAllow: uuid('freeze_allow')
-      .array()
-      .notNull()
-      .default(sql`'{}'::uuid[]`),
-    requiredChecks: jsonb('required_checks')
-      .notNull()
-      .default(sql`'[]'::jsonb`),
-    protectedPaths: text('protected_paths').array().notNull().default(emptyText),
-    fixClaim: boolean('fix_claim').notNull().default(false),
-    botAuthors: text('bot_authors')
-      .array()
-      .notNull()
-      .default(sql`'{dependabot[bot]}'::text[]`),
-  },
-  internalSync,
-  (t) => [
-    check('harnesses_freeze_allow_bounded', sql`cardinality(${t.freezeAllow}) <= 100`),
-    check('harnesses_protected_paths_bounded', sql`cardinality(${t.protectedPaths}) <= 50`),
-    check('harnesses_bot_authors_bounded', sql`cardinality(${t.botAuthors}) <= 20`),
-    check('harnesses_required_checks_array', sql`jsonb_typeof(${t.requiredChecks}) = 'array'`),
-    check(
-      'harnesses_external_reviewers_bounded',
-      sql`cardinality(${t.externalReviewerIdentities}) <= 20`,
-    ),
-    check('harnesses_area_form', matches(t.jdArea, JD_AREA_PATTERN)),
-    check('harnesses_key_form', matches(t.key, SLUG_PATTERN)),
-    check('harnesses_template_form', matches(t.template, SLUG_PATTERN)),
-    check('harnesses_repository_form', matches(t.repository, REPOSITORY_PATTERN)),
-    uniqueIndex('harnesses_repository_once')
-      .on(sql`lower(${t.repository})`)
-      .where(sql`${t.repository} IS NOT NULL`),
-  ],
-);
 
 export const harnessStages = declareTable(
   'harness_stages',
@@ -203,6 +150,38 @@ export const delegations = declareTable(
     uniqueIndex('delegations_supersedes_once')
       .on(t.supersedes)
       .where(sql`${t.supersedes} IS NOT NULL`),
+  ],
+);
+
+export const routines = declareTable(
+  'routines',
+  {
+    id: uuid('id').primaryKey(),
+    serviceTokenId: uuid('service_token_id')
+      .notNull()
+      .references(() => serviceTokens.id),
+    delegationId: uuid('delegation_id')
+      .notNull()
+      .references(() => delegations.id),
+    name: text('name').notNull(),
+    accessTokenId: text('access_token_id').notNull(),
+    createdAt: instant('created_at').notNull(),
+    pausedAt: instant('paused_at'),
+    revokedAt: instant('revoked_at'),
+    lastSeenAt: instant('last_seen_at'),
+    traceId: uuid('trace_id').notNull(),
+  },
+  restrictedNever,
+  (t) => [
+    check('routines_name_length', sql`char_length(${t.name}) BETWEEN 1 AND 60`),
+    check(
+      'routines_access_token_id_length',
+      sql`char_length(${t.accessTokenId}) BETWEEN 1 AND 100`,
+    ),
+    uniqueIndex('routines_one_per_service_token').on(t.serviceTokenId),
+    uniqueIndex('routines_one_live_per_delegation')
+      .on(t.delegationId)
+      .where(sql`${t.revokedAt} IS NULL`),
   ],
 );
 
@@ -354,6 +333,7 @@ export const harnessRuns = declareTable(
     uniqueIndex('harness_runs_one_live_per_item').on(t.itemId).where(live(t.outcome)),
     index('harness_runs_live').on(t.harnessId).where(live(t.outcome)),
     index('harness_runs_started_at').on(t.startedAt),
+    index('harness_runs_harness_started').on(t.harnessId, t.startedAt),
     index('harness_runs_failed_ended')
       .on(t.endedAt)
       .where(sql`${t.outcome} = 'failed'`),

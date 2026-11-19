@@ -43,20 +43,49 @@ describe('GL-4 shadow is set at activation and lifted by an admin', () => {
       const editor = await simPerson(world, 2, [
         { role: 'editor', scopeKind: 'jd_area', scopeArea: '80-89' },
       ]);
-      const refused = await world.kernel.stages.liftShadow(simCaller(world, editor), {
+      const refused = await world.kernel.stages.setShadow(simCaller(world, editor), {
         harnessId: harness.id,
+        shadow: false,
       });
       expect(refused).toMatchObject({ status: 'error', reason: 'not_permitted' });
-      const lifted = await world.kernel.stages.liftShadow(simCaller(world, admin), {
+      const lifted = await world.kernel.stages.setShadow(simCaller(world, admin), {
         harnessId: harness.id,
+        shadow: false,
       });
       expect(lifted).toMatchObject({ status: 'accepted', value: { harness: { shadow: false } } });
-      const again = await world.kernel.stages.liftShadow(simCaller(world, admin), {
+      const again = await world.kernel.stages.setShadow(simCaller(world, admin), {
         harnessId: harness.id,
+        shadow: false,
       });
       expect(again.status).toBe('accepted');
       const names = (await eventsOf(world, harness.id)).map(nameOf);
       expect(names).toEqual(['template_activated', 'shadow_lifted']);
+    }));
+});
+
+describe('#108 an admin turns shadow on again on a live harness', () => {
+  it('records shadow_turned_on, then shadow_lifted, and nothing for a no-op', () =>
+    inWorld(async (world) => {
+      const { harness, admin } = await createSimHarness(world, checkOnly, { repository });
+      const caller = simCaller(world, admin);
+      const on = await world.kernel.stages.setShadow(caller, {
+        harnessId: harness.id,
+        shadow: true,
+      });
+      expect(on).toMatchObject({ status: 'accepted', value: { harness: { shadow: true } } });
+      const still = await world.kernel.stages.setShadow(caller, {
+        harnessId: harness.id,
+        shadow: true,
+      });
+      expect(still.status).toBe('accepted');
+      await world.kernel.stages.setShadow(caller, { harnessId: harness.id, shadow: false });
+      const events = await eventsOf(world, harness.id);
+      expect(events.map(nameOf)).toEqual([
+        'template_activated',
+        'shadow_turned_on',
+        'shadow_lifted',
+      ]);
+      expect(events[1]?.actor).toBe(caller.actor.identity);
     }));
 });
 

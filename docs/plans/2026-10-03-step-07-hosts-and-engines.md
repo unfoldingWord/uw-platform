@@ -12,7 +12,7 @@
 
 Every task obeys every line here. Copy exact values; do not paraphrase them in code.
 
-- **Where:** the worktree `/home/ianjl/projects/uw-platform-v1`, branch `build/v1`. Implementers commit; they do not push (the controller pushes and watches CI).
+- **Where:** the worktree `/home/rowan-test/projects/uw-platform-v1`, branch `build/v1`. Implementers commit; they do not push (the controller pushes and watches CI).
 - **Read before the first edit:** `AGENTS.md` sections 1, 4, 6 and 10; `CONTEXT.md` for every word (Run, Run shape, Run step, Host, Engine, Persona, Delegation, Beat, Lease, Principal, Agent identity, Kernel, Port, Adapter, Scenario, and the words Task 1 adds); `docs/exceptions.md`; `docs/architecture.md` sections "The agent boundary" and "Transactions and locks".
 - **Verify, at the end of every task, green:** `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`. If the local server is down: `/usr/lib/postgresql/16/bin/pg_ctl -D ~/.local/share/uw-platform-test-pg -o "-p 54329 -k '' -c listen_addresses=127.0.0.1" -l ~/.local/share/uw-platform-test-pg.log start`. The local server is private; CI uses a Postgres service container. Run `pnpm format` before verify.
 - **R37:** never run two test suites at once. No parallel `pnpm verify`, `pnpm test`, `vitest` or `pnpm sim:all`; wait for one to finish before starting another (concurrent suites kill the WSL VM).

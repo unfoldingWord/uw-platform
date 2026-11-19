@@ -23,14 +23,14 @@ import { getHtml } from '../testing/views.ts';
 import { flowPath, gatePath, itemPath } from './parts/paths.ts';
 
 const HOUR = 3_600_000;
-const IAN = 'ian.lindsley@unfoldingword.org';
+const ROWAN = 'rowan.test@unfoldingword.org';
 const KIM = 'person6@unfoldingword.org';
 const VIEWER = {
   id: '00000000-0000-4000-8000-000000007301',
   email: 'home-viewer@unfoldingword.org',
 };
 
-type Home = { readonly item: ItemState; readonly ian: Principal };
+type Home = { readonly item: ItemState; readonly rowan: Principal };
 
 function earlier(hours: number): Date {
   return new Date(instant.getTime() - hours * HOUR);
@@ -39,7 +39,7 @@ function earlier(hours: number): Date {
 async function lapsedDelegation(db: Database, home: Home): Promise<void> {
   const kernel = kernelOn(db, { now: () => earlier(3) });
   accepted(
-    await kernel.delegations.grant(callerOf(home.ian), {
+    await kernel.delegations.grant(callerOf(home.rowan), {
       maxTier: null,
       harnessId: home.item.harnessId,
       persona: 'agent:scout',
@@ -55,7 +55,7 @@ async function failedRun(db: Database, home: Home): Promise<void> {
     id: '00000000-0000-4000-8000-000000007310',
     harnessId: home.item.harnessId,
     itemId: home.item.itemId,
-    persona: `agent:${home.ian.personId ?? ''}/laptop`,
+    persona: `agent:${home.rowan.personId ?? ''}/laptop`,
     delegationId: null,
     runShape: 'external-run',
     engine: 'external',
@@ -76,7 +76,7 @@ async function manyFailedRuns(db: Database, home: Home): Promise<void> {
       id: `00000000-0000-4000-8000-${tail}`,
       harnessId: home.item.harnessId,
       itemId: home.item.itemId,
-      persona: `agent:${home.ian.personId ?? ''}/laptop`,
+      persona: `agent:${home.rowan.personId ?? ''}/laptop`,
       runShape: 'external-run',
       engine: 'external',
       model: 'claude-sonnet-5',
@@ -92,18 +92,18 @@ async function manyFailedRuns(db: Database, home: Home): Promise<void> {
 }
 
 async function seeded(db: Database): Promise<Home> {
-  const { ian } = await people(db);
-  const item = await parkAtShip(db, kernelOn(db, clock), ian);
-  const home = { item, ian };
+  const { rowan } = await people(db);
+  const item = await parkAtShip(db, kernelOn(db, clock), rowan);
+  const home = { item, rowan };
   await lapsedDelegation(db, home);
   await failedRun(db, home);
   return home;
 }
 
-async function handedOffToIan(db: Database): Promise<ItemState> {
-  const { ian } = await people(db);
-  const item = await parkAtShip(db, kernelOn(db, clock), ian);
-  const personId = ian.personId ?? '';
+async function handedOffToRowan(db: Database): Promise<ItemState> {
+  const { rowan } = await people(db);
+  const item = await parkAtShip(db, kernelOn(db, clock), rowan);
+  const personId = rowan.personId ?? '';
   await rewriteItem(db, item.itemId, { claimedBy: `human:${personId}`, claimantKind: 'person' });
   await seedEventRows(db, [
     {
@@ -133,9 +133,9 @@ function linksOf(html: string): readonly [string | null, string][] {
 }
 
 async function handOffShows(db: Database): Promise<void> {
-  const item = await handedOffToIan(db);
-  const ian = linksOf((await homeOf(db, IAN)).text);
-  expect(ian).toContainEqual([
+  const item = await handedOffToRowan(db);
+  const rowan = linksOf((await homeOf(db, ROWAN)).text);
+  expect(rowan).toContainEqual([
     itemPath(item.harnessId, item.itemId),
     'Show the board was handed to you after three review rounds',
   ]);
@@ -145,7 +145,7 @@ async function handOffShows(db: Database): Promise<void> {
 
 async function listsInOrder(db: Database): Promise<void> {
   const { item } = await seeded(db);
-  const page = await homeOf(db, IAN);
+  const page = await homeOf(db, ROWAN);
   expect(page.status).toBe(200);
   expect(linksOf(page.text)).toEqual([
     [gatePath(item.harnessId, item.itemId), 'Decide Show the board at Merge, tag, deploy'],
@@ -159,9 +159,9 @@ async function listsInOrder(db: Database): Promise<void> {
 
 async function countIsRows(db: Database): Promise<void> {
   await seeded(db);
-  const page = await homeOf(db, IAN);
+  const page = await homeOf(db, ROWAN);
   const { document } = new JSDOM(page.text).window;
-  expect(document.querySelector('main h1')?.textContent).toBe('Hello, Ian');
+  expect(document.querySelector('main h1')?.textContent).toBe('Hello, Rowan');
   expect(document.querySelector('main h1 + p')?.textContent).toBe('3 things are waiting on you');
   expect(linksOf(page.text)).toHaveLength(3);
 }
@@ -169,7 +169,7 @@ async function countIsRows(db: Database): Promise<void> {
 async function cappedSaysAtLeast(db: Database): Promise<void> {
   const home = await seeded(db);
   await manyFailedRuns(db, home);
-  const page = await homeOf(db, IAN);
+  const page = await homeOf(db, ROWAN);
   const { document } = new JSDOM(page.text).window;
   expect(document.querySelector('main h1 + p')?.textContent).toBe(
     'At least 52 things are waiting on you',
@@ -181,7 +181,7 @@ async function cappedSaysAtLeast(db: Database): Promise<void> {
 }
 
 async function notesOf(db: Database): Promise<readonly (string | null)[]> {
-  const { document } = new JSDOM((await homeOf(db, IAN)).text).window;
+  const { document } = new JSDOM((await homeOf(db, ROWAN)).text).window;
   return [document.querySelector('main h1 + p')?.textContent ?? null].concat(
     [...document.querySelectorAll('main [role="note"]')].map((note) => note.textContent),
   );
@@ -197,7 +197,7 @@ async function parkedAndLapsedCaps(db: Database): Promise<void> {
     'A harness has at least 5,000 parked items. Gates are read from the 5,000 with the highest priority on each harness.',
   ]);
   await seedLapsedDelegations(db, {
-    personId: home.ian.personId ?? '',
+    personId: home.rowan.personId ?? '',
     harnessId,
     persona: 'agent:builder',
     count: VIEW_LIMIT,
@@ -254,12 +254,12 @@ async function highItemHidden(db: Database): Promise<void> {
     .set({ riskTier: 'high', riskDomains: ['acl'] })
     .where(eq(harnessItems.id, item.itemId));
   expect(linksOf((await homeOf(db, KIM)).text)).toEqual([]);
-  expect(linksOf((await homeOf(db, IAN)).text).map(([href]) => href)).toContain(gate);
+  expect(linksOf((await homeOf(db, ROWAN)).text).map(([href]) => href)).toContain(gate);
 }
 
 async function fragmentOnly(db: Database): Promise<void> {
   const { item } = await seeded(db);
-  const page = await homeOf(db, IAN, { 'x-uw-fragment': 'main' });
+  const page = await homeOf(db, ROWAN, { 'x-uw-fragment': 'main' });
   expect(page.status).toBe(200);
   expect(page.headers.get('cache-control')).toBe('no-store');
   expect(page.headers.get('vary')).toBe('x-uw-fragment');
@@ -273,7 +273,7 @@ async function fragmentOnly(db: Database): Promise<void> {
 
 async function noProblems(db: Database): Promise<void> {
   await seeded(db);
-  const page = await homeOf(db, IAN);
+  const page = await homeOf(db, ROWAN);
   expect(await screenProblems(page.text)).toEqual([]);
   await seedViewer(db);
   expect(await screenProblems((await homeOf(db, VIEWER.email)).text)).toEqual([]);
@@ -305,7 +305,7 @@ async function kimLosesAdmin(db: Database): Promise<void> {
     interactive: false,
   });
   await kernel.delegations.beat(callerOf(scout), { delegationId: delegation.id });
-  expect(linksOf((await homeOf(db, IAN)).text)).toContainEqual([
+  expect(linksOf((await homeOf(db, ROWAN)).text)).toContainEqual([
     flowPath(item.harnessId),
     'A delegation to agent:scout on software lapsed 2026-10-02 09:00 UTC because its person no longer holds admin',
   ]);
@@ -313,8 +313,8 @@ async function kimLosesAdmin(db: Database): Promise<void> {
 
 async function lookOfHome(db: Database): Promise<void> {
   await seeded(db);
-  const { document } = new JSDOM((await homeOf(db, IAN)).text).window;
-  expect(document.querySelector('main h1')?.textContent).toBe('Hello, Ian');
+  const { document } = new JSDOM((await homeOf(db, ROWAN)).text).window;
+  expect(document.querySelector('main h1')?.textContent).toBe('Hello, Rowan');
   const card = document.querySelector('main section[aria-labelledby="harnesses-heading"] li');
   expect(card?.querySelectorAll('ol[aria-label="Items by stage"] li').length).toBe(8);
   expect(card?.querySelector('svg[role="img"]')?.getAttribute('aria-label')).toMatch(

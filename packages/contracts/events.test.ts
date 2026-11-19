@@ -29,7 +29,7 @@ const claimed = {
 
 describe('KN-3 the event vocabulary is PRD section 8.6', () => {
   it('has every name in the vocabulary and none of the placeholders it replaces', () => {
-    expect(eventNameSchema.options).toHaveLength(68);
+    expect(eventNameSchema.options).toHaveLength(74);
     expect(eventNameSchema.safeParse('stage_edited').success).toBe(true);
     expect(eventNameSchema.options[0]).toBe('item_created');
     expect(eventNameSchema.options).toContain('template_changed');
@@ -224,7 +224,7 @@ describe('hand-off, measurement, activation and attachment evidence', () => {
     const evidence = { pageId, persona: 'agent:iterate', version: 2 };
     expect(parse('persona_activated', evidence)).toBe(true);
     expect(parse('persona_activated', { ...evidence, version: 0 })).toBe(false);
-    expect(parse('persona_activated', { ...evidence, persona: 'human:ian' })).toBe(false);
+    expect(parse('persona_activated', { ...evidence, persona: 'human:rowan' })).toBe(false);
     expect(parse('persona_activated', { ...evidence, extra: true })).toBe(false);
   });
 

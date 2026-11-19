@@ -45,10 +45,8 @@ const REVOKING_OWNER = 'admin org';
 const readableSets: ReadonlySet<string> = new Set([
   'admin org',
   'admin 80-89',
-  'admin 30-39',
   'editor org',
   'editor 80-89',
-  'editor 30-39',
   'viewer org',
   'viewer 80-89',
 ]);

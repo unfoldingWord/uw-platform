@@ -8,20 +8,20 @@ import {
   activatedHarness,
   boardWorld,
   enqueuedItem,
-  ianOn,
+  rowanOn,
   type BoardWorld,
 } from '../testing/board-world.ts';
 import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml, pageContent } from '../testing/views.ts';
-import { boardPath, flowPath } from './parts/paths.ts';
+import { queuePath, flowPath } from './parts/paths.ts';
 
 const seedClock: Clock = { now: () => new Date('2026-10-02T06:00:00.000Z') };
 const viewClock: Clock = { now: () => new Date('2026-10-02T09:00:00.000Z') };
 const missing = '00000000-0000-4000-8000-00000000dead';
 
-function flowOf(world: BoardWorld, email = world.ianEmail, path = flowPath(world.harnessId)) {
+function flowOf(world: BoardWorld, email = world.rowanEmail, path = flowPath(world.harnessId)) {
   return getHtml(world.db, email, path, {}, viewClock);
 }
 
@@ -55,7 +55,7 @@ async function drawnInOrder(world: BoardWorld): Promise<void> {
     ['deploy_package', 'Deploy package'],
     ['iterate', 'Iterate'],
   ]);
-  const titles = nodeLabels(document).map((label) => label?.replace(/, \d+ items, .*$/, ''));
+  const titles = nodeLabels(document).map((label) => label?.replace(/, \d+ items?, .*$/, ''));
   expect(titles).toEqual([
     'Backlog issue',
     'Premise verified',
@@ -144,9 +144,9 @@ async function linksToBoard(world: BoardWorld): Promise<void> {
   const hrefs = [...document.querySelectorAll('main svg a')].map((link) =>
     link.getAttribute('href'),
   );
-  expect(hrefs[3]).toBe(boardPath(world.harnessId, 'build'));
+  expect(hrefs[3]).toBe(queuePath(world.harnessId, 'build'));
   const tableLink = document.querySelector('main table tbody tr a');
-  expect(tableLink?.getAttribute('href')).toBe(boardPath(world.harnessId, 'package'));
+  expect(tableLink?.getAttribute('href')).toBe(queuePath(world.harnessId, 'package'));
 }
 
 async function liveOnHarness(world: BoardWorld): Promise<void> {
@@ -156,7 +156,7 @@ async function liveOnHarness(world: BoardWorld): Promise<void> {
   expect(Number(marker?.getAttribute('data-cursor'))).toBeGreaterThan(10);
   const fragment = await getHtml(
     world.db,
-    world.ianEmail,
+    world.rowanEmail,
     flowPath(world.harnessId),
     { 'x-uw-fragment': 'main' },
     viewClock,
@@ -207,13 +207,13 @@ const loop: Template = {
 };
 
 async function foreignTemplate(world: BoardWorld): Promise<void> {
-  const ian = await ianOn(world.db, seedClock.now());
+  const rowan = await rowanOn(world.db, seedClock.now());
   const kernel = kernelOn(world.db, seedClock);
-  const harnessId = await activatedHarness(kernel, ian, loop, 'field-notes');
-  await enqueuedItem(kernel, ian, harnessId, 'Hear the story');
-  const document = documentOf((await flowOf(world, world.ianEmail, flowPath(harnessId))).text);
+  const harnessId = await activatedHarness(kernel, rowan, loop, 'field-notes');
+  await enqueuedItem(kernel, rowan, harnessId, 'Hear the story');
+  const document = documentOf((await flowOf(world, world.rowanEmail, flowPath(harnessId))).text);
   expect(nodeLabels(document)).toEqual([
-    'Listen first, 1 items, 0 of 4 in progress',
+    'Listen first, 1 item, 0 of 4 in progress',
     'Gather notes, 0 items, 0 of 2 in progress',
   ]);
   const feeds = [...document.querySelectorAll('main svg [data-feeds]')].map((edge) =>
@@ -248,6 +248,45 @@ async function scrollsAtPhoneWidth(world: BoardWorld): Promise<void> {
   expect(layout).toMatch(/--uw-layout-flow: \d+rem;/);
 }
 
+function boxLines(document: Document, key: string): readonly string[] {
+  const box = document.querySelector(`main svg [data-stage="${key}"]`);
+  return [...(box?.querySelectorAll('text') ?? [])].map((text) => text.textContent ?? '');
+}
+
+async function mapShowsTheNumbers(world: BoardWorld): Promise<void> {
+  const document = documentOf((await flowOf(world)).text);
+  expect(document.querySelector('main details')).toBeNull();
+  expect(boxLines(document, 'build')).toEqual([
+    'Commits to PR',
+    '2 of 3 in progress',
+    '2 items · oldest 3 h 0 min',
+    '$1.50',
+  ]);
+  expect(boxLines(document, 'ship').at(-1)).toBe('Person approves');
+  const approves = [...document.querySelectorAll('main svg text')].filter(
+    (text) => text.textContent === 'Person approves',
+  );
+  expect(approves).toHaveLength(1);
+  const loops = [...document.querySelectorAll('main svg [data-feeds]')];
+  expect(loops.map((loop) => loop.getAttribute('stroke-dasharray'))).toEqual(['6 4', '6 4']);
+  expect(
+    document.querySelectorAll('main svg [data-loop-handle], main svg [data-loop]'),
+  ).toHaveLength(0);
+  const headings = [...document.querySelectorAll('main h2')].map((h) => h.textContent);
+  expect(headings.indexOf('Flow')).toBeLessThan(headings.indexOf('Stage details'));
+}
+
+async function saysWhatIsFixed(world: BoardWorld): Promise<void> {
+  const fixed =
+    'The four phases and the option lists are set in the platform and can’t be changed here.';
+  const member = documentOf((await flowOf(world, world.viewer.email)).text);
+  expect(member.querySelector('main [data-fixed-note]')?.textContent).toBe(fixed);
+  const admin = documentOf((await flowOf(world)).text);
+  expect(admin.querySelector('main [data-fixed-note]')?.textContent).toBe(
+    `${fixed} Stages, their order, their phase and the loop arrows are yours to change in a draft.`,
+  );
+}
+
 async function noProblems(world: BoardWorld): Promise<void> {
   expect(await screenProblems((await flowOf(world)).text)).toEqual([]);
   expect(await screenProblems((await flowOf(world, world.viewer.email)).text)).toEqual([]);
@@ -255,16 +294,23 @@ async function noProblems(world: BoardWorld): Promise<void> {
 
 async function lookOfFlow(world: BoardWorld): Promise<void> {
   const document = documentOf((await flowOf(world)).text);
-  expect(document.querySelector('main h1 + p')?.textContent).toMatch(
-    /^Built from the software template · 8 stages in 4 brackets · 1 gate where a person decides$/,
+  expect(document.querySelector('main h1')?.previousElementSibling?.textContent).toBe(
+    'Workflow · software template',
+  );
+  expect(document.querySelector('main h1 + p')?.textContent).toBe(
+    '8 stages in 4 brackets, with 1 gate where a person decides.',
   );
   const tabs = [...document.querySelectorAll('nav[aria-label="Views"] a')].map((tab) => [
     tab.textContent,
     tab.getAttribute('aria-current'),
   ]);
   expect(tabs).toEqual([
+    ['Queue', null],
+    ['Waiting On You', null],
+    ['Runs', null],
     ['Flow', 'page'],
-    ['Board', null],
+    ['Stages & Controls', null],
+    ['Agents', null],
   ]);
 }
 
@@ -287,5 +333,9 @@ describe.skipIf(!testServer)('the Flow view', () => {
   it('the flow diagram keeps a minimum width from a size token and scrolls inside its own wrapper', () =>
     inFlow(scrollsAtPhoneWidth));
   it('the flow view renders with no screen problems', () => inFlow(noProblems));
-  it('UI-10 Flow sums up the harness and offers the Flow and Board tabs', () => inFlow(lookOfFlow));
+  it('the map is open and each box shows progress against its limit, its items and oldest age, and its cost; loops are dashed', () =>
+    inFlow(mapShowsTheNumbers));
+  it('the map says what is fixed in the platform, and tells an admin what is theirs to change', () =>
+    inFlow(saysWhatIsFixed));
+  it('UI-10 Flow sums up the harness and offers the workflow tabs', () => inFlow(lookOfFlow));
 });

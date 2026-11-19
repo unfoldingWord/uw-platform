@@ -3,6 +3,8 @@ import type { Grant, Principal } from '@uw/contracts';
 import {
   actionForVerbRole,
   can,
+  adminAreas,
+  grantedAreas,
   minimumRole,
   readableAreas,
   type AclAction,
@@ -45,16 +47,27 @@ const matrix: Row[] = [
   ['area admin may administer its area', [area('admin', '80-89')], 'admin', software, true],
   ['area admin may not administer another area', [area('admin', '80-89')], 'admin', finance, false],
   ['area admin may not administer the org', [area('admin', '80-89')], 'admin', wholeOrg, false],
-  ['area admin reads every area', [area('admin', '80-89')], 'read', finance, true],
+  ['area admin reads its own area', [area('admin', '80-89')], 'read', software, true],
+  ['area admin may not read another area', [area('admin', '80-89')], 'read', finance, false],
   ['editor writes its own area', [area('editor', '80-89')], 'write', software, true],
   ['editor may not write another area', [area('editor', '80-89')], 'write', finance, false],
-  ['editor reads every area', [area('editor', '80-89')], 'read', finance, true],
+  ['editor reads its own area', [area('editor', '80-89')], 'read', software, true],
+  ['editor may not read another area', [area('editor', '80-89')], 'read', finance, false],
   ['editor may not administer its area', [area('editor', '80-89')], 'admin', software, false],
   ['viewer reads its own area', [area('viewer', '80-89')], 'read', software, true],
   ['viewer may not read another area', [area('viewer', '80-89')], 'read', finance, false],
   ['viewer may not write its own area', [area('viewer', '80-89')], 'write', software, false],
   ['org editor writes every area', [org('editor')], 'write', finance, true],
   ['org viewer reads every area', [org('viewer')], 'read', finance, true],
+  ['org editor reads every area', [org('editor')], 'read', finance, true],
+  ['org admin reads every area', [org('admin')], 'read', finance, true],
+  [
+    'grants on two areas read both and no third',
+    [area('viewer', '80-89'), area('editor', '20-29')],
+    'read',
+    { kind: 'area', area: '40-49' },
+    false,
+  ],
   ['org viewer may not write', [org('viewer')], 'write', software, false],
   ['no grant may do nothing', [], 'read', software, false],
   ['grants add up', [area('viewer', '80-89'), area('editor', '20-29')], 'write', finance, true],
@@ -151,8 +164,14 @@ describe('readableAreas names exactly the areas can() lets a principal read', ()
     expect(viewing(org('viewer'))).toEqual({ kind: 'all' });
   });
 
-  it('names every area for an editor on one area, because editors read every area', () => {
-    expect(viewing(area('editor', '80-89'))).toEqual({ kind: 'all' });
+  it('names only its own area for an editor or admin on one area', () => {
+    expect(viewing(area('editor', '80-89'))).toEqual({ kind: 'some', areas: ['80-89'] });
+    expect(viewing(area('admin', '20-29'))).toEqual({ kind: 'some', areas: ['20-29'] });
+  });
+
+  it('names every area for an org grant of any role', () => {
+    expect(viewing(org('editor'))).toEqual({ kind: 'all' });
+    expect(viewing(org('admin'))).toEqual({ kind: 'all' });
   });
 
   it('names the sorted, distinct areas of area viewers', () => {
@@ -167,5 +186,57 @@ describe('readableAreas names exactly the areas can() lets a principal read', ()
 
   it('names no area for a principal with no grants', () => {
     expect(viewing()).toEqual({ kind: 'some', areas: [] });
+  });
+});
+
+function granted(...grants: Grant[]): ReturnType<typeof grantedAreas> {
+  return grantedAreas(holding(...grants), at);
+}
+
+describe('#104 grantedAreas names the areas a person holds a grant in', () => {
+  it('names every area for any org grant', () => {
+    expect(granted(org('viewer'))).toEqual({ kind: 'all' });
+  });
+
+  it('names only its own area for an area editor or admin', () => {
+    expect(granted(area('editor', '80-89'))).toEqual({ kind: 'some', areas: ['80-89'] });
+    expect(granted(area('admin', '30-39'))).toEqual({ kind: 'some', areas: ['30-39'] });
+  });
+
+  it('names the sorted, distinct areas of every role', () => {
+    const grants = [area('admin', '80-89'), area('viewer', '30-39'), area('editor', '80-89')];
+    expect(granted(...grants)).toEqual({ kind: 'some', areas: ['30-39', '80-89'] });
+  });
+
+  it('names no area for an expired grant or no grant', () => {
+    const expired: Grant = { ...org('admin'), expiresAt: at.toISOString() };
+    expect(granted(expired)).toEqual({ kind: 'some', areas: [] });
+    expect(granted()).toEqual({ kind: 'some', areas: [] });
+  });
+});
+
+function administered(...grants: Grant[]): ReturnType<typeof adminAreas> {
+  return adminAreas(holding(...grants), at);
+}
+
+describe('#111 adminAreas names the areas a person may create a workflow in', () => {
+  it('names every area for an org admin and none for a lesser org role', () => {
+    expect(administered(org('admin'))).toEqual({ kind: 'all' });
+    expect(administered(org('editor'))).toEqual({ kind: 'some', areas: [] });
+  });
+
+  it('names the sorted, distinct areas held as admin and leaves out the rest', () => {
+    const grants = [
+      area('admin', '80-89'),
+      area('editor', '30-39'),
+      area('admin', '20-29'),
+      area('admin', '80-89'),
+    ];
+    expect(administered(...grants)).toEqual({ kind: 'some', areas: ['20-29', '80-89'] });
+  });
+
+  it('names no area for an expired admin grant', () => {
+    const expired: Grant = { ...area('admin', '80-89'), expiresAt: at.toISOString() };
+    expect(administered(expired)).toEqual({ kind: 'some', areas: [] });
   });
 });

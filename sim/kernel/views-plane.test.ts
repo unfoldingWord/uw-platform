@@ -74,7 +74,7 @@ async function refusalsByReason(scene: GatesWorld): Promise<void> {
   await decide(scene, scene.areaAdmin, scene.high);
   scene.world.adapters.clock.advance(7 * day + 60_000);
   await decide(scene, scene.areaAdmin, scene.high);
-  await decide(scene, simAgent(scene.ian, 'reviewer', { interactive: true }), scene.standard);
+  await decide(scene, simAgent(scene.rowan, 'reviewer', { interactive: true }), scene.standard);
   const { gateRefusals } = await totalsOf(scene.world);
   expect(gateRefusals).toEqual({
     byReason: {

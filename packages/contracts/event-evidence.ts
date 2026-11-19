@@ -296,6 +296,19 @@ const harnessEvidence = {
     after: stageColumns,
   }),
   stage_removed: z.strictObject({ stageId: id, key: stage, before: stageColumns }),
+  workflow_draft_opened: z.strictObject({}),
+  workflow_draft_saved: z.strictObject({ revision: z.number().int().min(1) }),
+  workflow_draft_taken_over: z.strictObject({
+    fromPersonId: id,
+    reason: z.string().min(1).max(500).nullable(),
+  }),
+  workflow_draft_discarded: z.strictObject({}),
+  workflow_published: z.strictObject({
+    added: z.array(stage).max(50),
+    removed: z.array(stage).max(50),
+    changed: z.array(stage).max(50),
+    reordered: z.boolean(),
+  }),
   harness_paused: z.strictObject({ stage: stage.nullable() }),
   harness_resumed: z.strictObject({ stage: stage.nullable() }),
   hosted_builder_set: z.strictObject({ enabled: z.boolean() }),
@@ -354,6 +367,7 @@ const harnessEvidence = {
     shadow: z.boolean().default(false),
   }),
   shadow_lifted: z.strictObject({}),
+  shadow_turned_on: z.strictObject({}),
   epic_enqueued: z.strictObject({
     epic: issueRefSchema,
     title: z.string().min(1).max(200),

@@ -1,9 +1,10 @@
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { personStatusSchema, type PersonStatus } from '@uw/contracts';
+import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
-import { people } from '@uw/db/schema';
+import { people, personAudit } from '@uw/db/schema';
 
-export const owns = ['people'] as const;
+export const owns = ['people', 'person_audit'] as const;
 
 const ORG_EMAIL_SUFFIX = '@unfoldingword.org';
 
@@ -61,9 +62,31 @@ export async function lockPerson(db: Executor, personId: string): Promise<Person
   return { personId: row.id, email: row.email, status: personStatusSchema.parse(row.status) };
 }
 
-export async function activatePerson(db: Executor, personId: string): Promise<void> {
-  await db
-    .update(people)
-    .set({ status: 'active' })
-    .where(and(eq(people.id, personId), eq(people.status, 'pending')));
+export type StatusChange = {
+  readonly actor: Principal;
+  readonly action: 'approve' | 'decline';
+  readonly traceId: string;
+  readonly at: Date;
+};
+
+function statusAfter(action: StatusChange['action']): PersonStatus {
+  return action === 'approve' ? 'active' : 'disabled';
+}
+
+export async function changeStatus(
+  tx: Executor,
+  person: PersonRecord,
+  change: StatusChange,
+): Promise<void> {
+  const after = statusAfter(change.action);
+  await tx.update(people).set({ status: after }).where(eq(people.id, person.personId));
+  await tx.insert(personAudit).values({
+    actor: change.actor.identity,
+    at: change.at,
+    action: change.action,
+    personId: person.personId,
+    before: person.status,
+    after,
+    traceId: change.traceId,
+  });
 }

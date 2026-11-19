@@ -28,7 +28,7 @@ type Scene = {
   readonly world: World;
   readonly harnessId: string;
   readonly itemId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
 };
 
 const head = standardChange.head;
@@ -46,7 +46,7 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
       title: 'Show the board',
       change: standardChange,
     });
-    await work({ world, harnessId: harness.id, itemId: parked.itemId, ian: admin });
+    await work({ world, harnessId: harness.id, itemId: parked.itemId, rowan: admin });
     expect((await readWorldLog(world.adapters.store)).drift).toEqual([]);
   } finally {
     await world.close();
@@ -91,7 +91,7 @@ async function approveWith(scene: Scene, githubFacts: GitHubFacts, store?: Store
     store: store ?? scene.world.adapters.store,
   };
   const before = await itemLog(scene.world, scene.harnessId, scene.itemId);
-  const outcome = await createKernel(ports).gates.decide(simCaller(scene.world, scene.ian), {
+  const outcome = await createKernel(ports).gates.decide(simCaller(scene.world, scene.rowan), {
     itemId: scene.itemId,
     decision: 'approve',
     reason: null,

@@ -1,8 +1,9 @@
 import type { Context } from 'hono';
 import type { Child } from 'hono/jsx';
+import { wrapTime } from 'hono/timing';
 import type { LiveScreen } from '@uw/contracts';
 import type { Caller, Kernel } from '@uw/harness';
-import { Shell } from '@uw/ui/components/shell.tsx';
+import { Shell, type Frame } from '@uw/ui/components/shell.tsx';
 import type { Crumb, Tab } from '@uw/ui/components/top-bar.tsx';
 import { appCssPath } from '@uw/ui/generated/app-css';
 import type { AppEnv } from '../../deps.ts';
@@ -18,6 +19,7 @@ export type ScreenSpec = {
   readonly current: string;
   readonly crumbs: readonly Crumb[];
   readonly tabs?: readonly Tab[];
+  readonly code?: string;
   readonly live?: {
     readonly screen: LiveScreen;
     readonly harnesses: readonly LiveHarness[];
@@ -29,13 +31,38 @@ export type ScreenSpec = {
 
 export type ScreenKernel = { readonly kernel: Kernel; readonly caller: Caller; readonly at: Date };
 
+function readFrame(c: Context<AppEnv>, screen: ScreenKernel | null): Promise<Frame> {
+  return wrapTime(
+    c,
+    'frame',
+    frameOf(c, () =>
+      screen === null ? null : screen.kernel.views.frame(screen.caller, { at: screen.at }),
+    ),
+  );
+}
+
+function wholePage(c: Context<AppEnv>): boolean {
+  return c.req.method === 'GET' && c.req.header('x-uw-fragment') !== 'main';
+}
+
+const startedFrames = new WeakMap<Context<AppEnv>, Promise<Frame>>();
+
+function startFrame(c: Context<AppEnv>, screen: ScreenKernel): void {
+  if (!wholePage(c) || startedFrames.has(c)) return;
+  const frame = readFrame(c, screen);
+  frame.catch(() => undefined);
+  startedFrames.set(c, frame);
+}
+
 export function screenKernel(c: Context<AppEnv>): ScreenKernel | null {
   const database = c.get('database');
   const actor = c.get('principal');
   if (database === null || actor === null) return null;
   const at = c.get('now');
   const kernel = platformKernel(database, { now: () => at });
-  return { kernel, caller: { actor, traceId: c.get('traceId') }, at };
+  const screen = { kernel, caller: { actor, traceId: c.get('traceId') }, at };
+  startFrame(c, screen);
+  return screen;
 }
 
 export function screenRefusal(c: Context<AppEnv>): Response {
@@ -72,6 +99,7 @@ export async function renderScreen(
 ): Promise<Response> {
   c.header('cache-control', 'no-store');
   c.header('vary', 'x-uw-fragment');
+  c.header('link', `<${appCssPath}>; rel=preload; as=style, <${islandsPath}>; rel=modulepreload`);
   const status = spec.status ?? 200;
   const main = (
     <>
@@ -80,15 +108,13 @@ export async function renderScreen(
     </>
   );
   if (c.req.header('x-uw-fragment') === 'main') return c.html(main, status);
-  const screen = screenKernel(c);
-  const frame = await frameOf(c, () =>
-    screen === null ? null : screen.kernel.views.frame(screen.caller, { at: screen.at }),
-  );
+  const frame = await (startedFrames.get(c) ?? readFrame(c, screenKernel(c)));
   const page = (
     <Shell
       title={spec.title}
       frame={frame}
       current={spec.current}
+      code={spec.code}
       crumbs={spec.crumbs}
       tabs={spec.tabs}
       stylesheet={appCssPath}

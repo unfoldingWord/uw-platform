@@ -19,7 +19,7 @@ type Scene = {
   readonly world: World;
   readonly harnessId: string;
   readonly itemId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
 };
 
 async function parkedAtShip(world: World): Promise<Scene> {
@@ -33,14 +33,14 @@ async function parkedAtShip(world: World): Promise<Scene> {
     title: 'Show the board',
     change: standardChange,
   });
-  return { world, harnessId: harness.id, itemId: parked.itemId, ian: admin };
+  return { world, harnessId: harness.id, itemId: parked.itemId, rowan: admin };
 }
 
 async function refusedOver(scene: Scene, facts: PullRequestFacts) {
   const { world, harnessId, itemId } = scene;
   world.adapters.githubFacts.given(facts);
   const before = await itemLog(world, harnessId, itemId);
-  const outcome = await world.kernel.gates.decide(simCaller(world, scene.ian), {
+  const outcome = await world.kernel.gates.decide(simCaller(world, scene.rowan), {
     itemId,
     decision: 'approve',
     reason: null,

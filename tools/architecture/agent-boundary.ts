@@ -25,6 +25,8 @@ const moduleSpecifiers = [
 
 const gateReach = [
   /\bgateDecisions\b|\bgate_decisions\b|\bharnessStages\b|\bharness_stages\b/,
+  /\bworkflowDrafts\b|\bworkflow_drafts\b/,
+  /\bkernel\s*\??\.\s*drafts\b/,
   /\.gates\s*\??\./,
   /\bkernel\s*\??\.\s*stages\b/,
   /\bstages\s*\??\.\s*(?:activate|pause|resume)\s*\(/,
@@ -35,7 +37,7 @@ const gateReach = [
   /\bkernel\s*\??\.\s*personas\b/,
   /\bexitThroughConnector\b/,
   /\bconnectors\s*\??\./,
-  /\[\s*['"`](?:gates|stages|repair|connectors|personas)['"`]\s*\]/,
+  /\[\s*['"`](?:gates|stages|drafts|repair|connectors|personas)['"`]\s*\]/,
   /\bdelegations\s*\??\.?\s*\[\s*['"`](?:grant|revoke|write)['"`]\s*\]/,
   /\bpersonas\s*\??\.?\s*\[\s*['"`]activate['"`]\s*\]/,
   /\{[^{}]*\b(?:gates|repair|connectors|personas)\b[^{}]*\}\s*=(?![=>])/,
@@ -46,6 +48,7 @@ const gateReach = [
 const personSurfaceCalls = [
   /\bkernel\s*\??\.\s*gates\s*\??\.\s*\w+\s*\(/g,
   /\bkernel\s*\??\.\s*stages\s*\??\.\s*\w+\s*\(/g,
+  /\bkernel\s*\??\.\s*drafts\s*\??\.\s*\w+\s*\(/g,
   /\bkernel\s*\??\.\s*delegations\s*\??\.\s*(?:grant|revoke)\s*\(/g,
   /\bkernel\s*\??\.\s*personas\s*\??\.\s*activate\s*\(/g,
 ];

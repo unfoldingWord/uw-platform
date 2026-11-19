@@ -1,11 +1,13 @@
 # unfoldingWord Platform, Harness: Product Requirements Document
 
+> **Reference, not the list of work (2026-11-12).** Work is tracked in GitHub issues; this document records how the platform was designed. Its process items are superseded by `AGENTS.md`: the requirement trace (`pnpm trace`, `pnpm trace:built`, DX-5, DX-9, P35) was removed on 2026-11-12, the build order (section 13) and step plans are history, and `docs/progress_tracker.md` is frozen. Where this document and `AGENTS.md` disagree on how work is done, `AGENTS.md` wins.
+
 | | |
 |---|---|
-| Status | Approved. v1 (sections 7.1 to 7.10) was built as v0.1.0, merge commit `83e3f64`, tagged 2026-10-12. v0.2.0 (section 7.11), approved on 2026-10-15, was built on `build/v0.2.0`, reviewed by Ian with Codex, merged as `2135ad5` (pull request #84) and tagged `v0.2.0` on 2026-10-20, with CI green on the merge commit; GL-1's live switch and the week of shadow mode are a person's, on the tag (`docs/progress_tracker.md`, Release criteria, v0.2.0). v0.3.0 (section 7.12), the look, approved on 2026-11-04 (#87); its design is `docs/specs/2026-11-04-harness-v0-3-0-design.md`. Built on `feat/ui-redesign`, pull request #89, with every v0.3.0 release item but Ian's review and merge holding on 2026-11-06 |
+| Status | Approved. v1 (sections 7.1 to 7.10) was built as v0.1.0, merge commit `83e3f64`, tagged 2026-10-12. v0.2.0 (section 7.11), approved on 2026-10-15, was built on `build/v0.2.0`, reviewed by the owner with Codex, merged as `2135ad5` (pull request #84) and tagged `v0.2.0` on 2026-10-20, with CI green on the merge commit; GL-1's live switch and the week of shadow mode are a person's, on the tag (`docs/progress_tracker.md`, Release criteria, v0.2.0). v0.3.0 (section 7.12), the look, approved on 2026-11-04 (#87); its design is `docs/specs/2026-11-04-harness-v0-3-0-design.md`. Built on `feat/ui-redesign`, pull request #89, with every v0.3.0 release item but the owner's review and merge holding on 2026-11-06 |
 | Version | 0.3 |
 | Date | 2026-11-04 (v0.2.0 text dated 2026-10-15, v1 text 2026-10-01) |
-| Owner | Ian Lindsley |
+| Owner | The product owner |
 | Sponsor | unfoldingWord leadership |
 | Repository | https://github.com/unfoldingWord/uw-platform |
 | Design | From v0.3.0, section 5 of [`docs/specs/2026-11-04-harness-v0-3-0-design.md`](specs/2026-11-04-harness-v0-3-0-design.md) (ADR 0011), built into `packages/ui/tokens/`, until a `design-system/` folder lands. Before it, the brand tokens extracted from the Claude Design prototype (removed from the repository on 2026-10-20) and [`prd/An App For Everything - Key Visuals.html`](../prd/An%20App%20For%20Everything%20-%20Key%20Visuals.html) |
@@ -43,7 +45,7 @@ If the first is no, it does not belong in v1. If the second is no, it does not b
 
 ## 2. Who it is for
 
-**Primary: the people who approve.** Holders of `admin` on a harness's Johnny.Decimal area. Today that is the sponsor and Ian. They need to see what is waiting on them, see the facts behind a ship decision, and decide from a phone.
+**Primary: the people who approve.** Holders of `admin` on a harness's Johnny.Decimal area. Today that is the sponsor and the owner. They need to see what is waiting on them, see the facts behind a ship decision, and decide from a phone.
 
 **Primary: the people who lend agent time.** Staff, volunteers and contractors holding `editor` on a harness's area, who point their own Claude Code or Codex at the queue and work an item on their own subscription.
 
@@ -126,8 +128,8 @@ Loop edges are `feeds` on the stage rows: Close to Scope (the regular tweak) and
 ```
 People ──> Web app (uw-app) ──┬── Home "waiting on me"
                               ├── Flow view      one harness as the BML diagram, live
-                              ├── Board          stages as columns, items as cards
-                              ├── Gates          the ship decision, at phone width
+                              ├── Queue          stages as columns, items as cards
+                              ├── Waiting On You each workflow's gates to decide, at phone width
                               ├── Item           play-by-play from the event log
                               ├── Persona page   form, instructions, dashboard
                               └── /health        the agent plane
@@ -157,7 +159,7 @@ Requirement identifiers are stable. **Must** is a v1 requirement. **Later** is d
 | FD-6 | CI's `test` job starts a Postgres service container, sets `TEST_DATABASE_URL` to it, applies every migration from empty, re-applies them, and runs the schema, constraint and concurrency tests against it. It needs no secret and no account. | Must | #79 |
 | FD-12 | **Go-live wiring, written during the build and switched on after it.** A CI job that creates a Neon branch per PR and drops it; a migrate-staging job on merge to `main` after CI is green; a migrate-production job on a tagged release; the Hyperdrive binding for staging and production. Each job skips cleanly, and stays green, while its secret is absent. A binding is added to a wrangler file only when the resource it names exists, so a deploy never fails on a missing one; until then `uw-app` starts without a database and `/health` reports the database indicator as not configured. A test asserts each job skips when its secret is absent. | Must | #79 |
 | FD-7 | Cloudflare Access with Google as the identity provider sits in front of `uw-app`, declared in `infra/`. Hono middleware verifies the Access JWT on every request (signature, audience, expiry), maps the email to a `people` row, auto-provisions `@unfoldingword.org` addresses and marks anyone else pending with an explicit "pending approval" response. A typed `Principal` (person or agent id, resolved grants, an `interactive` flag) is exported from `packages/core`, available to every handler, and serialisable into a queue message. A service-token JWT yields a non-interactive principal. A tampered, expired or wrong-audience JWT gets 401. | Must | #6 |
-| FD-8 | `role_grants(person_id, role, scope_kind, scope_area, granted_by, granted_at, expires_at, revoked_at)` with roles `admin`, `editor`, `viewer` at scope `org` or `jd_area`, declared `restricted` and `never`. `can(actor, verb, resource)` in `packages/core/acl.ts` is pure over the grants already resolved on the principal and takes no database handle. Org-scope admin is allowed everything an area admin is; `editor` on one area reads every area and writes only its own; `viewer` reads only its own. Grants resolve from the table on every request with no cross-request cache. Grant and revoke are commands that require `admin` in the target scope and write an audit record with the actor, the time and the before and after row. A bootstrap migration grants org admin to Ian and the sponsor. | Must | #8 |
+| FD-8 | `role_grants(person_id, role, scope_kind, scope_area, granted_by, granted_at, expires_at, revoked_at)` with roles `admin`, `editor`, `viewer` at scope `org` or `jd_area`, declared `restricted` and `never`. `can(actor, verb, resource)` in `packages/core/acl.ts` is pure over the grants already resolved on the principal and takes no database handle. Org-scope admin is allowed everything an area admin is; `editor` on one area reads every area and writes only its own; `viewer` reads only its own. Grants resolve from the table on every request with no cross-request cache. Grant and revoke are commands that require `admin` in the target scope and write an audit record with the actor, the time and the before and after row. A bootstrap migration grants org admin to the owner and the sponsor. | Must | #8 |
 | FD-9 | `pages(id, type, jd_area, slug, title, parent_id, frontmatter jsonb, body_md, version, status)` and `page_versions` (a full snapshot per save with `edit_source` of `human:<id>` or `agent:<id>`), declared `internal` and `sync`. A page-type registry in code gives each type a Zod frontmatter schema, a classification and an offline eligibility. Registered types: `skill`, `learning`, `persona`, `product`, `system_goal`, `product_strategy`, `data_sources`, `issue` (GH-3: an imported issue's page). Create, read and update handlers validate frontmatter, refuse unknown types, write one version per save, and check `can()` with the page's `jd_area`. No editor UI. Stage rows are not pages. | Must | #9 |
 | FD-10 | `uw-ingest` is a second Hono Worker, not behind Access, with its own wrangler config and deploy job. It verifies each source's signature over the raw body, rejects unsigned, badly signed and replayed deliveries with a logged refusal and no queue message, mints a trace id, and enqueues a Zod-validated envelope to one Cloudflare Queue. `uw-app` consumes it, sends a malformed message to a declared dead-letter queue, and tolerates duplicates. | Must | #10 |
 | FD-11 | One trace id follows a request, webhook, queue message and run step from the edge to the database write. A structured JSON logger in `packages/core` writes `trace_id`, `principal`, `route`, `latency_ms`, `outcome` and the deployed commit on every line, in both Workers. Log shipping and 30-day retention are declared in `infra/`. `/health` returns JSON with a named list of indicators and an overall status, and renders a screen: deployed commit, database reachability, queue depth. An unreachable database turns its indicator amber or red and never errors the route. | Must | #11 |
@@ -280,7 +282,7 @@ Requirement identifiers are stable. **Must** is a v1 requirement. **Later** is d
 | DX-2 | **The Store test adapter is real Postgres.** In the sim, the Store port is the same Drizzle adapter over an embedded Postgres (PGlite) running the real migrations from `packages/db`. No hand-written in-memory tables. The one Drizzle implementation of the Store and Grants ports lives in `packages/db/store`, and the platform adapter and the sim's test adapter both bind it. `sim/` may import `packages/harness`, `packages/contracts`, `packages/db` and the Node built-ins `fs`, `fs/promises`, `path`, `url`, `process`, `assert` and `assert/strict` (`os` and `child_process` only in its tests, CLI and runner), and its tests Vitest, and nothing else. | Must | #82 |
 | DX-3 | **A contract test per port.** One shared test suite per port, run against every adapter of that port. A check fails on a port without one. | Must | #82 |
 | DX-4 | **The sim.** `pnpm sim -- <scenario>` runs one scenario and prints the event log and the folded state; `pnpm sim -- all` runs every scenario. Scenarios live in `sim/scenarios/`, are named for the requirement ID they prove, and assert on the event log and folded state. | Must | architecture.md |
-| DX-5 | **Every Must requirement in this document that is not marked Built has a scenario or a test that fails without it.** `pnpm trace` fails on a requirement ID with neither. `pnpm walk -- <template>` prints every path from Package to an external effect and the gate each crosses. Both join `pnpm verify`; during the build verify runs `pnpm trace:built`, which equals `pnpm trace` once the last build step is Built. | Must | architecture.md |
+| DX-5 | **Superseded 2026-11-12: the trace was removed; `pnpm walk` and the sim remain.** **Every Must requirement in this document that is not marked Built has a scenario or a test that fails without it.** `pnpm trace` fails on a requirement ID with neither. `pnpm walk -- <template>` prints every path from Package to an external effect and the gate each crosses. Both join `pnpm verify`; during the build verify runs `pnpm trace:built`, which equals `pnpm trace` once the last build step is Built. | Must | architecture.md |
 | DX-6 | **What only separate connections can prove** runs on the Postgres service container in CI (FD-6), and locally whenever `TEST_DATABASE_URL` points at a Postgres server: the grant re-read race (KN-14), N concurrent claims on one item, and two claims racing one WIP slot (KN-5). The constraint and trigger tests (KN-2, KN-3) run on both the embedded Postgres and the service container. | Must | #82, #17, #21 |
 | DX-8 | **The build needs no live account.** Every Must requirement is proven against test adapters, fixture keys and recorded fixtures: Access JWTs signed by a fixture key pair, GitHub webhooks and API responses from fixtures, model turns scripted, AI Gateway cost data from fixtures, push and Zulip sends recorded. Each platform adapter is written, passes its port's contract test where the contract can run without the live service, and is listed in `docs/progress_tracker.md` as awaiting live verification. Nothing a requirement needs may be reachable only with a secret. | Must | section 15 |
 | DX-7 | **Figure 2 end to end in the sim.** One scenario takes a fixture item from kickstart to Close on the software template with scripted personas and fixture GitHub facts, covering the claim, a held premise, the lease warning and expiry, the PR declaration, the ship rule's refusals, an agent's refused gate attempt, the approve, the merge connector, a refused Close, a Close with a learning, and an Iterate beat under a delegation that then lapses. It is the machine-checkable half of the release criteria. | Must | #64 |
@@ -289,7 +291,7 @@ Requirement identifiers are stable. **Must** is a v1 requirement. **Later** is d
 
 This section is the list of work for v0.2.0 and the design document is why. Where they disagree on design, the design wins and this section is corrected, as section 1 says of the v1 architecture spec.
 
-Every row follows this document's conventions: a stable ID, Must or Should, a scenario or test named for the ID, no live account or secret needed to prove it. Each row ends with its cost by the toggle test: *toggle* means a value on a harness or stage row, a preset or a persona-page line; *additive* means new files and registry rows with no rule changed; *shared root* means a change to a shared root in its own commit, naming which; *fixed decision* means an ADR as well.
+Every row follows this document's conventions: a stable ID, Must or Should, a scenario or test named for the ID, no live account or secret needed to prove it. Each row ends with its cost by the toggle test: *toggle* means a value on a harness or stage row, a preset or a persona-page line; *additive* means new files and registry rows with no rule changed; *shared root* means a change to a shared root, named in the pull request description; *fixed decision* means an ADR as well.
 
 #### 7.11.1 Go-live and joining (GL)
 
@@ -298,7 +300,7 @@ Every row follows this document's conventions: a stable ID, Must or Should, a sc
 | GL-1 | **Go-live wiring switched on.** Every FD-12 job and binding runs when its secret exists; the tracker's "Waiting on a person" rows for FD-6, FD-7, FD-10 and FD-12 are closed by a live run or restated with what is still missing. Nothing new is written; this is the switch. The release gate for this ID is the staging health probe answering through Hyperdrive Cost: additive. | Must | PRD section 14 items 7 to 9 |
 | GL-2 | **A check-only template.** A third template fixture, `check-only`, with Check and Ship as its only stages, Ship exiting through `human_approval`, and no Package. It passes the template property test (KN-10). A harness built from it has no Package page and `kickstart` refuses it with `template_has_no_package` Cost: additive; shared root `packages/contracts` for the template fixture. | Must | The bench owner, Q1 and scale check; artifact "opt-in by requesting uwreview" |
 | GL-3 | **Joining by review request.** When the GitHub facts show the Reviewer identity requested as a reviewer on a pull request in a check-only harness's repository, the sweep enqueues an item at Check for that pull request, once, with the head as its expected head and no `harness/<item>` branch. A pull request on a repository with no harness enqueues nothing and logs `no_harness_for_repo` Cost: additive. | Must | The bench owner Q1; artifact table |
-| GL-4 | **Shadow mode.** A harness column `shadow` (default `false`). While true: the Reviewer's verdict is recorded as a `review_verdict_recorded` event and no GitHub review is posted; the ship rule is evaluated on every head change and recorded as `shadow_verdict`; no connector runs; the Gates view shows the verdict with the label "shadow". Lifting it is an admin command recorded as `shadow_lifted`. A test proves that in shadow mode no GitHub write port method is called Cost: toggle; shared root `packages/db/schema.ts` for the column. | Must | The bench owner Q1 |
+| GL-4 | **Shadow mode.** A harness column `shadow` (default `false`). While true: the Reviewer's verdict is recorded as a `review_verdict_recorded` event and no GitHub review is posted; the ship rule is evaluated on every head change and recorded as `shadow_verdict`; no connector runs; the Gates view shows the verdict with the label "shadow". Turning it on or off on a live harness is an admin command (`set_shadow`), recorded as `shadow_turned_on` or `shadow_lifted` (#108). A test proves that in shadow mode no GitHub write port method is called Cost: toggle; shared root `packages/db/schema.ts` for the column. | Must | The bench owner Q1 |
 | GL-5 | **Template change on a live harness.** An admin may replace a check-only harness's template with the software template; items in Check and Ship keep their stage, and the new stages start empty. Any other template change is refused `template_change_not_allowed` Cost: additive. | Should | Section 4 step 6 |
 | GL-6 | **Ownership gate on dispatch.** A harness names its repository (exists) and a `dispatch_allowed` list of repositories lives on the platform page for the area. A claim or a sweep on a repository not on the list is refused `repository_not_dispatchable`; if the list cannot be read, every claim is refused `dispatch_list_unavailable`. Fail closed, as the bench owner's incident Cost: additive. | Must | The bench owner, "things the comparison doesn't cover" |
 
@@ -381,11 +383,13 @@ Every row follows this document's conventions: a stable ID, Must or Should, a sc
 
 | ID | Requirement | Priority | Source |
 |---|---|---|---|
-| DX-9 | **The trace knows v0.2.0.** `pnpm trace` reads the v0.2.0 IDs (GL, MD, FL, UC, EI, SR, GD, RV, OB, PI, DX-9, DX-10) from PRD section 7.11 and reports them as it reports v1's; an unproven Must fails `pnpm test` Cost: additive. | Must | DX-5 |
+| DX-9 | **Superseded 2026-11-12: the trace was removed.** **The trace knows v0.2.0.** `pnpm trace` reads the v0.2.0 IDs (GL, MD, FL, UC, EI, SR, GD, RV, OB, PI, DX-9, DX-10) from PRD section 7.11 and reports them as it reports v1's; an unproven Must fails `pnpm test` Cost: additive. | Must | DX-5 |
 | DX-10 | **The joining journey.** One scenario drives section 4 end to end in the sim: a check-only harness in shadow mode, a review request, a Reviewer verdict recorded and not posted, a shadow verdict, shadow lifted, a posted review, Ship waiting on a person, then a merge under a delegation on a second item, refused on a third for a protected path Cost: additive. | Must | Section 4 |
 
 
 ### 7.12 v0.3.0, the look (the design is `docs/specs/2026-11-04-harness-v0-3-0-design.md`)
+
+From #97 (2026-11-12) the screens these rows name take the prototype's look (section 10, ADR 0014); the rows still say what each screen holds, and the design document's pictures no longer say how it looks.
 
 This section is the list of work for v0.3.0 and the design document is why; where they disagree on design, the design wins and this section is corrected. The rows extend WB-11 and WB-12 and replace none of v0.2.0's. Costs use section 7.11's words.
 
@@ -547,6 +551,8 @@ gate_taken_over  gate_overridden  gate_refused_to_agent  ship_refused
 connector_succeeded  connector_refused
 delegation_granted  delegation_revoked  delegation_lapsed  delegation_required
 stage_edit_refused  stage_edited  stage_removed  template_activated  harness_paused
+workflow_draft_opened  workflow_draft_saved  workflow_draft_taken_over
+workflow_draft_discarded  workflow_published
 harness_resumed  hosted_builder_set  learning_attached  nothing_learned  comment_recorded
 zulip_topic_linked
 breaker_holding  breaker_pausing  breaker_open
@@ -557,6 +563,10 @@ measurement_recorded  handed_to_person
 Added in v0.2.0: `review_verdict_recorded`, `shadow_verdict`, `shadow_lifted`, `freeze_changed`, `epic_enqueued`, `done_when_missing` (a harness event recording an intake refusal; EI-2), `finding_refuted`, `silence_alarm`, `delegated_merge`, `delegated_exit_claimed`, `template_changed`, `fix_claimed` (an item event: the delegation, the head the fix starts from and the pull request's declaration, FL-2), `fix_claim_set` (a harness event: `{ enabled }`, FL-1). The person command `set_fix_claim` switches a harness's fix claim (admin). Wake reasons gain `silence_alarm` (rank 3) and `delegated_merge` (rank 2).
 
 Added in v0.3.0 (UI-18, step 22, the next minor contract version): `title_set`, a harness event with no item, recorded by the admin command `set_title` as the person who ran it, with strict evidence `{ from, to }`: the previous title and the new one, each a trimmed string of 1 to 80 characters. Like `hosted_builder_set` it records a change to a harness setting whose current value is the column (`harnesses.title`). The migration's backfill of `title = key` records no event, because no person changed anything. `set_title` is not in the verb registry, so no agent can record it. Its fixtures go beside the other harness events', and the Health and play-by-play folds ignore it.
+
+Added in contract 14.0.0 (#103): the four live stage commands `create_stage`, `update_stage`, `reorder_stages` and `remove_stage` are removed, and a harness's stages change only through a draft. The admin commands are `open_workflow_draft`, `save_workflow_draft` (the whole ordered stage list and the revision it was based on), `take_over_workflow_draft` (a reason), `discard_workflow_draft` and `publish_workflow_draft` (the revision). The harness events, none with an item: `workflow_draft_opened` `{}`, `workflow_draft_saved` `{ revision }`, `workflow_draft_taken_over` `{ fromPersonId, reason }` (reason null when the lock had lapsed), `workflow_draft_discarded` `{}`, and `workflow_published` `{ added, removed, changed, reordered }` (stage keys), recorded beside the `stage_edited` and `stage_removed` rows of the same publish. The refusals `draft_locked`, `draft_not_found`, `draft_stale`, `draft_revision_mismatch` and `draft_has_problems` are new. `GET /api/harness/:harness/draft` answers an admin `{ revision, problems }`, each problem `{ stage, code, message }`.
+
+Added in contract 14.1.0 (#108): the admin command `set_stage_rules` `{ stages: [{ id, agentPickup, exitGate, wipLimit, instructionsPageId, validators }] }` changes those five rules on the named stages at once, refused with `draft_locked` while a draft is open and with the new refusal `stage_rules_have_problems` when the whole-workflow check finds a problem; each changed stage records `stage_edited`. `set_shadow` takes `shadow: true` as well as `false`, and turning it on records the new harness event `shadow_turned_on` `{}`.
 
 `silence_alarm` (step 19) is a harness event recorded by the minute cron as the system: `{ level: 'red', waiting, oldestEnteredAt, lastReviewStepAt }`, at most one per harness per notifier cooldown; it wakes the area's admins at rank 3 with a link to `/health/silence_alarm`. `template_changed` (step 19, GL-5) records `{ from, to, kept, added }` (stage keys) beside the `stage_edited` rows of the same change.
 
@@ -570,7 +580,7 @@ Since contract 12.1.0 (step 10), `persona_activated` carries `{ pageId, persona,
 
 `packages/contracts` on `main` carries four placeholder names (`gate_approved`, `lease_expired`, `delegation_lapsed`, `abandoned`). The list above replaces them; `abandoned` becomes `branch_abandoned`.
 
-`stage_edited` (contract 3.2.0) records every accepted stage create, update and reorder: the stage id, its key, and before/after limited to the columns the edit changed (before is null for a creation; a reorder writes one per stage whose position changed). It is a harness-level event and changes no item.
+`stage_edited` (contract 3.2.0) records every accepted stage create, update and reorder (since contract 14.0.0, each one a part of a published draft): the stage id, its key, and before/after limited to the columns the edit changed (before is null for a creation; a reorder writes one per stage whose position changed). It is a harness-level event and changes no item.
 
 `item_reordered` (contract 10.0.0) records an item's new priority and, for the moved item, the item it was placed before. `stage_removed` records a removed stage's id, key and columns. `harness_paused` and `harness_resumed` name the lane, or null for the whole harness. Every event carries the `requestId` of the command that appended it, or null.
 
@@ -603,16 +613,21 @@ Since contract 12.1.0 (step 10), `persona_activated` carries `{ pageId, persona,
 
 ## 10. Design
 
-From v0.3.0 the source of truth for visual design is section 5 of the v0.3.0 design document, built into `packages/ui/tokens/` and locked in Tailwind (ADR 0011), and its screens are the pictures in section 4 of that document. Before v0.3.0 it was the tokens extracted from the Claude Design prototype (removed from the repository on 2026-10-20; it remains in git history) and the token block in the Key Visuals page. When the sponsor's `design-system/` handoff lands, its `tokens/*.css` replaces the token files and nothing in the islands changes but the import; the screenshot check (UI-16) shows what it changes.
+From #97 (2026-11-12) the source of truth for how screens look is the Claude Design prototype (removed from the repository on 2026-10-20; it remains in git history), with every value snapped to the token scales in `packages/ui/tokens/`, which stay locked in Tailwind (ADR 0011, ADR 0014). The pictures the screenshot check holds (UI-16) are that look. From v0.3.0 until #97 the source was section 5 of the v0.3.0 design document and its screens were the pictures in section 4 of that document. Before v0.3.0 it was the tokens extracted from the Claude Design prototype (removed from the repository on 2026-10-20; it remains in git history) and the token block in the Key Visuals page. When the sponsor's `design-system/` handoff lands, its `tokens/*.css` replaces the token files and nothing in the islands changes but the import; the screenshot check (UI-16) shows what it changes.
 
 | Prototype screen | Harness view |
 |---|---|
-| Development, Board segment | Board (WB-5) |
-| Development, Merge gates segment | Gates (WB-6) |
-| Agent Queues lanes and cards | Board (WB-5) |
-| Agent Queues "What the run did" | Item play-by-play (WB-8) |
-| Health | `/health` agent plane (WB-10) |
-| Development, Flow segment | not used; the Flow view (WB-4) is the BML diagram |
+| The frame (sidebar by area, top bar) | Frame (UI-5); unbuilt modules are dimmed and open nothing |
+| Today | Today, was Home (UI-9) |
+| Agent Queues landing (the epic #99 proposal) | Agent Queues, one card per workflow the viewer may see (#104); an area admin presses New workflow to create one, giving a name, one of their areas, a starting template whose stages are copied in, and an optional GitHub repository, and lands in its Flow tab with a draft open (#111) |
+| Agent Queues lanes and cards, with Development's chips and view switch | Queue tab, formerly the Board (WB-5, UI-6): lanes grouped by phase, each lane's rules in plain words, refusals on cards (#105) |
+| Agent Queues "Stage configuration" | Flow (WB-4, UI-10): the live map of the workflow, open for everyone, each phase a column with its stages' progress against limit, items and oldest age, and cost, the forward arrows and the dashed loop arrows, with the stage details table below and a note that the phases and option lists are set in the platform (#109); an area admin presses Edit workflow for a private draft of the stages, checked 2 seconds after each change and published as one change, while others see who is editing (#103); in the draft the admin drags a stage to move it or to another phase, drags from a stage's dot to another stage to draw a loop, and selects a loop and presses Delete to remove it, with the row buttons and lists doing the same from the keyboard (#109) |
+| Today's "Waiting on me" rows | Waiting On You tab for each workflow (WB-6, UI-7): each gate the viewer may decide, with Approve (Approve merge at a merge stage) and Send back with a reason; the old `/gates` address moves to Agent Queues (#106) |
+| Agent Queues "Stages & controls" | Stages & Controls tab for each workflow (#108): an area admin changes each stage's pickup, exit rule, limit, instructions page and checks with one Save, applied at once after the same whole-workflow check as a publish and refused while a draft is open; pauses and resumes a stage; and turns hosted Builder, shadow mode and freeze on or off. Everyone else sees the same values read-only, with the area whose admins can change them |
+| Health's "Open alert" card | Gate decision (UI-7) |
+| Agent Queues "What the run did" | Item play-by-play (WB-8, UI-11) |
+| Agent Queues, agents | Agents tab for each workflow (#110): every agent with what it does, where it runs, its model, budget and status; an area admin adds one from a template persona under its own name, grants and revokes standing permissions (delegations), and a grid shows the stages each agent can pick up in. An agent's page (Persona, UI-12) shows its job card: its actions in plain words, with unbuilt ones marked not available yet and the forbidden ones locked, where it runs, engine, model, budget and instructions, editable only by an area admin, and the five activation checks, which run again on every save. Reach stays capability plus phase: a stage does not name which agents may pick up there (Ian, 2026-11-17). Routines, people's own agents on a schedule, are #134 |
+| Health | `/health` agent plane and its detail (WB-10, UI-8, UI-13) |
 
 **What is fixed**
 
@@ -736,20 +751,20 @@ These need a person, an account or a secret, and the build cannot create them. *
 
 | Dependency | Needed by | Owner | Status |
 |---|---|---|---|
-| Cloudflare account, API token, account id (GitHub secrets) | FD-3, FD-4 | Ian | In place |
-| Neon project, API key, connection strings; Hyperdrive configs for staging and production | FD-12 | Ian | To set up, after the build |
-| Cloudflare Access application with Google as identity provider; team domain and audience tag | FD-7 | Ian, the sponsor | To set up |
-| Access service tokens for agent identities | AB-2, AB-6 | Ian | To set up |
-| Cloudflare Queue and dead-letter queue | FD-10 | Ian | To set up (declared in wrangler) |
-| GitHub App registered on the unfoldingWord org; private key, installation id, webhook secret | GH-1 | an org owner | To set up |
-| A GitHub identity for each Reviewer persona | PE-6, HE-9 | an org owner | To set up |
-| A test repository for the merge connector's integration test | GH-6 | Ian | To create |
-| AI Gateway; Anthropic, OpenAI and OpenRouter API keys | HE-3, HE-4, HE-5, HE-9 | Ian, the sponsor | To set up |
-| Cloudflare Sandbox and Containers enabled on the account | HE-8, HE-9 | Ian | To check |
+| Cloudflare account, API token, account id (GitHub secrets) | FD-3, FD-4 | The owner | In place |
+| Neon project, API key, connection strings; Hyperdrive configs for staging and production | FD-12 | The owner | To set up, after the build |
+| Cloudflare Access application with Google as identity provider; team domain and audience tag | FD-7 | The owner, the sponsor | To set up |
+| Access service tokens for agent identities | AB-2, AB-6 | The owner | To set up |
+| Cloudflare Queue and dead-letter queue | FD-10 | The owner | To set up (declared in wrangler) |
+| GitHub App registered on the unfoldingWord org; private key, installation id, webhook secret | GH-1 | an org owner | To set up: `uw-harness-staging` and `uw-harness`, registered with `pnpm github-apps:page` and set with `pnpm github-apps:convert` (#98) |
+| A GitHub identity for each Reviewer persona, and the Builder's | PE-5, PE-6, HE-9 | an org owner | To set up: `uw-builder`, `uw-reviewer` and `uw-reviewer-codex`, in the same sitting (#98) |
+| A test repository for the merge connector's integration test | GH-6 | The owner | To create |
+| AI Gateway; Anthropic, OpenAI and OpenRouter API keys | HE-3, HE-4, HE-5, HE-9 | The owner, the sponsor | To set up: gateways `uw-platform-staging` and `uw-platform-production`; the keys are Worker secrets (#98) |
+| Cloudflare Sandbox and Containers enabled on the account | HE-8, HE-9 | The owner | To check |
 | Zulip bot, its credentials, and an outgoing webhook | NT-3 | The sponsor | To set up |
-| Web push VAPID key pair | NT-1 | Ian | To generate |
+| Web push VAPID key pair | NT-1 | The owner | To generate |
 | The brand guide link and the `design-system/` handoff | WB-11 | The sponsor | Requested |
-| Two people for the staging acceptance run | section 14 | Ian, the sponsor | When the build is done |
+| Two people for the staging acceptance run | section 14 | The owner, the sponsor | When the build is done |
 
 ---
 
@@ -775,8 +790,8 @@ Each has a working assumption so the build does not wait. The assumption stands 
 |---|---|---|
 | Q2, D9 | Which Deploy Package channel is wired first, and does `uw-www` join v1? | None in v1. The BML template's Ship stage carries `publish`, and the handler returns "not wired". |
 | Q4, D2 | Is the phone-app cut confirmed? | Yes. Needs the sponsor's explicit word, because it reverses an earlier brief. |
-| Q10, D21 | Which flash-class model does the always-on tier start on? | The model is configuration on each persona page. The fixtures name the spec's example, GLM 5.3 flash through OpenRouter, as a placeholder. |
-| | What is the AI Gateway cap in dollars? | $1,250 a month, the brief's "less than $15k per year" for maintenance and AI tooling, as configuration. |
+| Q10, D21 | Which flash-class model does the always-on tier start on? | GLM 5.3 Flash through OpenRouter (`ALWAYS_ON_PROVIDER = "z-ai"`, `ALWAYS_ON_MODEL = "z-ai/glm-5.3-flash"`), confirmed by the owner on 2026-11-17 (#98). Each persona page can still name its own model. |
+| | What is the AI Gateway cap in dollars? | $500 a month on staging and on production (`AI_SPEND_CAP_MINOR = "50000"`), set by the owner on 2026-11-17 (#98). The code's fallback stays $1,250. |
 | | Nonprofit Team seat price | Not used anywhere in v1. To be re-verified before it enters the brief. |
 | | Does the repository move to a plan with branch protection? | No. The deploy gate stands in for it. |
 | | Licence for this repository | To be confirmed by unfoldingWord. |
@@ -849,15 +864,15 @@ The issues left these as "decide in the PR". They are decided here so the build 
 | P28 | The persona dry run is one `claude-messages`-shaped turn against a fixture item on test adapters that writes nothing durable. A persona whose missing verb later ships needs the person to press Activate again. |
 | P29 | Builder's default model on the hosted path is the persona page's `model` field, with Sonnet-class as the fixture value. Reviewer's lens split for `high` items is correctness on the first reviewer and security on the second. |
 | P30 | The default review date for `assumed` and `inferred` learnings is 90 days after `as_of`. A contradiction is detected by `supersedes` alone. |
-| P31 | The bracket each stage belongs to is a column on `harness_stages`. The Flow diagram is inline SVG. Board reorder is a menu action, with drag-and-drop optional. The play-by-play pages 100 events at a time. Home lives at the app root. A gate the person cannot decide for lack of a domain grant is not shown. |
+| P31 | The bracket each stage belongs to is a column on `harness_stages`. The Flow diagram is inline SVG. Board reorder is a menu action, with drag-and-drop optional. The Flow draft editor has drag-and-drop on its map, with the row buttons and lists as the keyboard way (#109). The play-by-play pages 100 events at a time. Home lives at the app root. A gate the person cannot decide for lack of a domain grant is not shown. |
 | P32 | The interim tokens live in `packages/ui/tokens/`. The tested phone width is 390 pixels. The service worker caches the shell only and holds no harness data. |
 | P33 | Once FD-12 is on, per-PR Workers bind to shared staging's database through its Hyperdrive config; only CI's Neon job uses the per-PR Neon branch. Until then a per-PR Worker runs with no database. |
 | P34 | The engine seam's loop caps at 40 turns. A tool error is returned to the model as the tool result. |
-| P35 | **The shared Store implementation lives in `packages/db/store`.** `sim/` may not import `apps/` and `apps/` may not import `sim/`, so the one Drizzle implementation of the Store and Grants ports that DX-2 requires sits in `packages/db`, and both adapters bind it. `sim/` may also import the Node built-ins DX-2 names, and its tests Vitest. `pnpm verify` runs `pnpm trace:built` during the build, which equals `pnpm trace` once the last step is Built (DX-5). |
+| P35 | **Superseded 2026-11-12: the `pnpm trace:built` sentence no longer holds; the trace was removed.** **The shared Store implementation lives in `packages/db/store`.** `sim/` may not import `apps/` and `apps/` may not import `sim/`, so the one Drizzle implementation of the Store and Grants ports that DX-2 requires sits in `packages/db`, and both adapters bind it. `sim/` may also import the Node built-ins DX-2 names, and its tests Vitest. `pnpm verify` runs `pnpm trace:built` during the build, which equals `pnpm trace` once the last step is Built (DX-5). |
 
 ### 18.3 Decisions for v0.2.0
 
-Made on 2026-10-15 between Ian and Claude; the design is `docs/specs/2026-10-15-harness-v0-2-0-design.md`.
+Made on 2026-10-15 between the owner and Claude; the design is `docs/specs/2026-10-15-harness-v0-2-0-design.md`.
 
 | # | Decision | Cost if wrong |
 |---|---|---|
@@ -873,7 +888,7 @@ Made on 2026-10-15 between Ian and Claude; the design is `docs/specs/2026-10-15-
 
 ### 18.4 Decisions for v0.3.0
 
-Made between 2026-10-21 and 2026-11-04 by Ian and Claude over ten rounds of a mockup; the design is `docs/specs/2026-11-04-harness-v0-3-0-design.md`.
+Made between 2026-10-21 and 2026-11-04 by the owner and Claude over ten rounds of a mockup; the design is `docs/specs/2026-11-04-harness-v0-3-0-design.md`.
 
 | # | Decision | Cost if wrong |
 |---|---|---|

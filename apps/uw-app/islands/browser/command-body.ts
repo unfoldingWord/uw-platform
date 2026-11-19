@@ -1,8 +1,21 @@
-import { harnessCommandSchemas } from '@uw/contracts';
+import {
+  approvePersonCommandSchema,
+  declinePersonCommandSchema,
+  grantRoleCommandSchema,
+  harnessCommandSchemas,
+  revokeRoleCommandSchema,
+} from '@uw/contracts';
+import type { ZodType } from 'zod';
 
 export type CommandFields = Readonly<Record<string, string>>;
 
-const schemas = new Map(Object.entries(harnessCommandSchemas));
+const schemas = new Map<string, ZodType>([
+  ...Object.entries(harnessCommandSchemas),
+  ['grant_role', grantRoleCommandSchema],
+  ['revoke_role', revokeRoleCommandSchema],
+  ['approve_person', approvePersonCommandSchema],
+  ['decline_person', declinePersonCommandSchema],
+]);
 const fields = (all: CommandFields) => new Map(Object.entries(all));
 const optional = (value: string | undefined): string | null =>
   value === undefined || value === '' ? null : value;
@@ -32,15 +45,105 @@ function versionOf(raw: string | undefined): number | null {
   return raw === undefined || raw === '' ? null : Number(raw);
 }
 
+const none: Shape = () => ({});
+
+const calendarDay = /^\d{4}-\d{2}-\d{2}$/;
+
+function endOfDay(day: string | undefined): string | null | undefined {
+  if (day === undefined || day === '') return null;
+  return calendarDay.test(day) ? `${day}T23:59:59.000Z` : undefined;
+}
+
+const grant: Shape = (given) => {
+  const [persona, capability, tier] = (given.get('grant') ?? '').split('|');
+  return {
+    persona,
+    capability,
+    expiresAt: endOfDay(given.get('expiresOn')),
+    supersedes: null,
+    maxTier: optional(tier),
+  };
+};
+
+const ORG_SCOPE = 'org';
+
+const roleGrant: Shape = (given) => {
+  const scope = given.get('scope') ?? '';
+  return {
+    personId: given.get('personId'),
+    role: given.get('role'),
+    scopeKind: scope === ORG_SCOPE ? 'org' : 'jd_area',
+    scopeArea: scope === ORG_SCOPE ? null : scope,
+    expiresAt: endOfDay(given.get('expiresOn')),
+  };
+};
+
+const personOnly: Shape = (given) => ({ personId: given.get('personId') });
+
+const switched =
+  (field: string): Shape =>
+  (given) => ({ [field]: given.get(field) === 'true' });
+
+const stageKeyOnly: Shape = (given) => ({ stageKey: optional(given.get('stageKey')) });
+
+const stageField = /^stage\.(\d+)\.(.+)$/;
+
+function rowsOf(given: ReadonlyMap<string, string>): readonly ReadonlyMap<string, string>[] {
+  const rows = new Map<number, Map<string, string>>();
+  for (const [name, value] of given) {
+    const match = stageField.exec(name);
+    if (match === null) continue;
+    const index = Number(match[1]);
+    const row = rows.get(index) ?? new Map<string, string>();
+    row.set(match[2] ?? '', value);
+    rows.set(index, row);
+  }
+  return [...rows.entries()].sort(([a], [b]) => a - b).map(([, row]) => row);
+}
+
+function stageRuleOf(row: ReadonlyMap<string, string>): Readonly<Record<string, unknown>> {
+  return {
+    id: row.get('id'),
+    agentPickup: row.get('agentPickup'),
+    exitGate: row.get('exitGate'),
+    wipLimit: Number(row.get('wipLimit')),
+    instructionsPageId: optional(row.get('instructionsPageId')),
+    validators: [...row.entries()]
+      .filter(([name]) => name.startsWith('validator.'))
+      .map(([, value]) => value),
+  };
+}
+
 const shapes: ReadonlyMap<string, Shape> = new Map<string, Shape>([
+  ['open_workflow_draft', none],
+  ['set_stage_rules', (given) => ({ stages: rowsOf(given).map(stageRuleOf) })],
+  ['set_shadow', switched('shadow')],
+  ['set_hosted_builder', switched('enabled')],
+  ['set_freeze', (given) => ({ ...switched('frozen')(given), allow: [] })],
+  ['pause', stageKeyOnly],
+  ['resume', stageKeyOnly],
+  ['discard_workflow_draft', none],
+  ['publish_workflow_draft', (given) => ({ revision: versionOf(given.get('revision')) })],
+  ['take_over_workflow_draft', (given) => ({ reason: given.get('reason') })],
   ['enqueue', (given) => ({ title: given.get('title'), pageId: null, due: null })],
   [
     'reorder',
     (given) => ({ itemId: given.get('itemId'), beforeItemId: optional(given.get('beforeItemId')) }),
   ],
+  ['schedule_regular_tweak', grant],
+  ['revoke_delegation', (given) => ({ delegationId: given.get('delegationId') })],
+  ['grant_role', roleGrant],
+  ['revoke_role', (given) => ({ grantId: given.get('grantId') })],
+  ['approve_person', personOnly],
+  ['decline_person', personOnly],
   ['claim', itemOnly],
   ['release', itemOnly],
   ['take_over', itemOnly],
+  ['stop_run', itemOnly],
+  [
+    'add_stage_instructions',
+    (given) => ({ stageId: given.get('stageId'), title: given.get('title') }),
+  ],
   ['decide_gates', (given) => ({ entries: entriesOf(given.get('entries')) })],
   [
     'refute_finding',

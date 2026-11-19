@@ -1,6 +1,7 @@
 import { capabilityWordSchema, stageBracketSchema } from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
-import { capabilityReaches } from './capability.ts';
+import type { Delegation, PageFacts } from '../ports.ts';
+import { capabilityReaches, grantableFor, pageAgrees } from './capability.ts';
 
 function reached(capability: (typeof capabilityWordSchema.options)[number]): readonly string[] {
   return stageBracketSchema.options.filter((bracket) => capabilityReaches(capability, bracket));
@@ -12,5 +13,39 @@ describe('capability brackets', () => {
     expect(reached('review')).toEqual(['build_package']);
     expect(reached('iterate')).toEqual(['iterate']);
     expect(reached('none')).toEqual([]);
+  });
+});
+
+function pageWith(capability: string): PageFacts {
+  return {
+    id: '00000000-0000-4000-8000-0000000000a1',
+    type: 'persona',
+    status: 'active',
+    jdArea: '80-89',
+    title: 'Agent',
+    bodyMd: '',
+    version: 1,
+    frontmatter: { capability },
+  };
+}
+
+function grantOf(capability: (typeof capabilityWordSchema.options)[number]): Delegation {
+  return { capability } as Delegation;
+}
+
+describe('#110 the kinds of work an agent can be granted', () => {
+  it('offers exactly the kinds of work its page agrees with', () => {
+    for (const held of capabilityWordSchema.options) {
+      const agreed = capabilityWordSchema.options.filter((granted) =>
+        pageAgrees(pageWith(held), grantOf(granted)),
+      );
+      expect(grantableFor(held)).toEqual(agreed.filter((granted) => granted !== 'none'));
+    }
+  });
+
+  it('lends fix to a builder and offers a reviewer only review', () => {
+    expect(grantableFor('build')).toEqual(['build', 'fix']);
+    expect(grantableFor('review')).toEqual(['review']);
+    expect(grantableFor('fix')).toEqual([]);
   });
 });

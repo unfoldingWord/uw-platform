@@ -8,6 +8,11 @@ export const platformCommandNameSchema = z.enum([
   'confirm_page',
   'bind_service_token',
   'revoke_service_token',
+  'pause_routine',
+  'resume_routine',
+  'revoke_routine',
+  'approve_person',
+  'decline_person',
 ]);
 
 export type PlatformCommandName = z.infer<typeof platformCommandNameSchema>;

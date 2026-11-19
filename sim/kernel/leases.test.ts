@@ -9,7 +9,7 @@ import {
   simAgent,
   simCaller,
   simDelegate,
-  simIan,
+  simRowan,
   simPerson,
 } from '../fixtures.ts';
 import { createWorld, type World } from '../world.ts';
@@ -40,7 +40,7 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
   try {
     const { harness } = await createSimHarness(world, software);
     await readSpend(world);
-    await world.kernel.stages.updateStage(simCaller(world, await simIan(world)), {
+    await world.kernel.stages.updateStage(simCaller(world, await simRowan(world)), {
       harnessId: harness.id,
       stageKey: 'package',
       change: { agentPickup: 'allowed', bracket: 'iterate' },
