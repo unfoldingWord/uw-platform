@@ -19,6 +19,7 @@ import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { getHtml } from '../testing/views.ts';
 import {
+  accessPath,
   agentQueuesPath,
   newWorkflowPath,
   queuePath,
@@ -155,6 +156,7 @@ async function boardScreens(db: Database): Promise<Screen[]> {
     ['new-agent', newAgentPath(world.harnessId)],
     ['health', healthPath()],
     ['health-detail', healthPath('breaker')],
+    ['access', accessPath()],
     ['persona', personaPath(pageId)],
     ['page', pagePath(pageId)],
   ];
@@ -355,6 +357,7 @@ describe.skipIf(!testServer || (!browserReady && !required))('UI-16 the screensh
       'new-agent',
       'health',
       'health-detail',
+      'access',
       'persona',
       'page',
       'controls-member',

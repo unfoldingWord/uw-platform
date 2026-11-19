@@ -31,6 +31,10 @@ export const OUTCOME_TEXT: Readonly<Record<string, string>> = {
   revoke_delegation: 'Revoked',
   pause: 'Paused',
   resume: 'Resumed',
+  grant_role: 'Granted',
+  revoke_role: 'Revoked',
+  approve_person: 'Approved',
+  decline_person: 'Declined',
 };
 
 const outcomes: ReadonlyMap<string, string> = new Map(Object.entries(OUTCOME_TEXT));
@@ -72,6 +76,11 @@ export function setOutcome(form: HTMLFormElement, text: string): void {
   if (region !== null) region.textContent = text;
 }
 
+function keepOutcome(form: HTMLFormElement, text: string): void {
+  const kept = form.ownerDocument.querySelector('[data-outcome-keep]');
+  if (kept !== null && form.hasAttribute('data-endpoint')) kept.textContent = text;
+}
+
 export function goBusy(form: HTMLFormElement): readonly Element[] {
   form.setAttribute('aria-busy', 'true');
   const buttons = [...form.querySelectorAll('button[type="submit"], button:not([type])')];
@@ -101,15 +110,21 @@ export async function answerOf(response: Response): Promise<{ status: string; re
   return { status: 'error', reason: typeof reason === 'string' ? reason : 'internal_error' };
 }
 
+function endpointOf(form: HTMLFormElement): string {
+  const platform = form.getAttribute('data-endpoint');
+  if (platform !== null) return platform;
+  const harness = form.getAttribute('data-harness') ?? '';
+  return `/api/harness/${encodeURIComponent(harness)}/commands`;
+}
+
 async function send(form: HTMLFormElement, command: string, deps: CommandDeps): Promise<boolean> {
   const body = commandBody(command, formFields(form), deps.uuid());
   if (body === null) {
     setOutcome(form, reasonText('malformed_command'));
     return false;
   }
-  const harness = form.getAttribute('data-harness') ?? '';
   const response = await deps
-    .fetch(`/api/harness/${encodeURIComponent(harness)}/commands/${encodeURIComponent(command)}`, {
+    .fetch(`${endpointOf(form)}/${encodeURIComponent(command)}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'application/json' },
       body: JSON.stringify(body),
@@ -118,7 +133,9 @@ async function send(form: HTMLFormElement, command: string, deps: CommandDeps): 
   const answer =
     response === null ? { status: 'error', reason: 'internal_error' } : await answerOf(response);
   const accepted = answer.status === 'accepted';
-  setOutcome(form, accepted ? (outcomes.get(command) ?? '') : reasonText(answer.reason));
+  const done = form.getAttribute('data-done') ?? outcomes.get(command) ?? '';
+  setOutcome(form, accepted ? done : reasonText(answer.reason));
+  if (accepted) keepOutcome(form, done);
   return accepted;
 }
 
@@ -131,6 +148,7 @@ async function onSubmit(event: SubmitEvent, deps: CommandDeps): Promise<void> {
   const command = commandOf(form, submitter);
   if (command === null) return;
   const quieted = goBusy(form);
+  keepOutcome(form, '');
   const accepted = await send(form, command, deps);
   settle(form, quieted, accepted);
   if (accepted) deps.afterAccepted();

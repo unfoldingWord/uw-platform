@@ -101,6 +101,30 @@ export const grantAudit = declareTable(
   ],
 );
 
+export const personAudit = declareTable(
+  'person_audit',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    actor: text('actor').notNull(),
+    at: instant('at').notNull(),
+    action: text('action').notNull(),
+    personId: uuid('person_id')
+      .notNull()
+      .references(() => people.id),
+    before: text('before').notNull(),
+    after: text('after').notNull(),
+    traceId: uuid('trace_id').notNull(),
+  },
+  { classification: 'restricted', offlineEligibility: 'never' },
+  (t) => [
+    check('person_audit_action_known', oneOf(t.action, ['approve', 'decline'])),
+    check('person_audit_actor_is_human', matches(t.actor, HUMAN_IDENTITY_PATTERN)),
+    check('person_audit_before_known', oneOf(t.before, personStatusSchema.options)),
+    check('person_audit_after_known', oneOf(t.after, personStatusSchema.options)),
+    index('person_audit_person').on(t.personId),
+  ],
+);
+
 export const pages = declareTable(
   'pages',
   {

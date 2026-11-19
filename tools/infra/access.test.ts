@@ -23,8 +23,8 @@ const staging = 'uw-app-staging.unfoldingword.workers.dev';
 const perPr = 'uw-app-pr-*.unfoldingword.workers.dev';
 const everyHost = (suffix: string): string[] =>
   [production, staging, perPr].map((host) => `${host}${suffix}`);
-const anyoneWithAnEmail = {
-  name: 'Anyone with an email',
+const anyoneWithGoogle = {
+  name: 'Anyone with a Google account',
   decision: 'allow',
   include: [{ everyone: {} }],
 };
@@ -37,9 +37,10 @@ describe('FD-7 Cloudflare Access in front of uw-app, declared in infra', () => {
     expect(declaration.application.destinations?.map((d) => d.uri)).toEqual(everyHost(''));
   });
 
-  it('signs people in with an emailed one-time PIN and admits no service token on the app', () => {
-    expect(declaration.application.allowed_idps).toEqual(['<one-time-pin-idp-id>']);
-    expect(declaration.policies).toEqual([anyoneWithAnEmail]);
+  it('#154 signs people in with Google only, offers no one-time PIN, and admits no service token on the app', () => {
+    expect(declaration.application.allowed_idps).toEqual(['<google-idp-id>']);
+    expect(JSON.stringify(declaration)).not.toMatch(/one-time|pin/i);
+    expect(declaration.policies).toEqual([anyoneWithGoogle]);
   });
 
   it('sends the app session cookie same-site lax, so a cross-site form post carries none', () => {
@@ -65,13 +66,13 @@ describe('FD-7 AB-1 the MCP surface is its own Access application', () => {
   it('puts /mcp behind its own application, on every host', () => {
     expect(declaration.mcp.application.domain).toBe(`${production}/mcp`);
     expect(declaration.mcp.application.destinations?.map((d) => d.uri)).toEqual(everyHost('/mcp'));
-    expect(declaration.mcp.application.allowed_idps).toEqual(['<one-time-pin-idp-id>']);
+    expect(declaration.mcp.application.allowed_idps).toEqual(['<google-idp-id>']);
   });
 
-  it('signs agents on /mcp in with a one-time PIN or any valid service token as non-identity', () => {
+  it('signs agents on /mcp in with Google or any valid service token as non-identity', () => {
     const [people, agents] = declaration.mcp.policies;
     expect(declaration.mcp.policies).toHaveLength(2);
-    expect(people).toEqual(anyoneWithAnEmail);
+    expect(people).toEqual(anyoneWithGoogle);
     expect(agents).toMatchObject({
       decision: 'non_identity',
       include: [{ any_valid_service_token: {} }],

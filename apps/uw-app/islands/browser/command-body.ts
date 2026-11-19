@@ -1,8 +1,21 @@
-import { harnessCommandSchemas } from '@uw/contracts';
+import {
+  approvePersonCommandSchema,
+  declinePersonCommandSchema,
+  grantRoleCommandSchema,
+  harnessCommandSchemas,
+  revokeRoleCommandSchema,
+} from '@uw/contracts';
+import type { ZodType } from 'zod';
 
 export type CommandFields = Readonly<Record<string, string>>;
 
-const schemas = new Map(Object.entries(harnessCommandSchemas));
+const schemas = new Map<string, ZodType>([
+  ...Object.entries(harnessCommandSchemas),
+  ['grant_role', grantRoleCommandSchema],
+  ['revoke_role', revokeRoleCommandSchema],
+  ['approve_person', approvePersonCommandSchema],
+  ['decline_person', declinePersonCommandSchema],
+]);
 const fields = (all: CommandFields) => new Map(Object.entries(all));
 const optional = (value: string | undefined): string | null =>
   value === undefined || value === '' ? null : value;
@@ -51,6 +64,21 @@ const grant: Shape = (given) => {
     maxTier: optional(tier),
   };
 };
+
+const ORG_SCOPE = 'org';
+
+const roleGrant: Shape = (given) => {
+  const scope = given.get('scope') ?? '';
+  return {
+    personId: given.get('personId'),
+    role: given.get('role'),
+    scopeKind: scope === ORG_SCOPE ? 'org' : 'jd_area',
+    scopeArea: scope === ORG_SCOPE ? null : scope,
+    expiresAt: endOfDay(given.get('expiresOn')),
+  };
+};
+
+const personOnly: Shape = (given) => ({ personId: given.get('personId') });
 
 const switched =
   (field: string): Shape =>
@@ -104,6 +132,10 @@ const shapes: ReadonlyMap<string, Shape> = new Map<string, Shape>([
   ],
   ['schedule_regular_tweak', grant],
   ['revoke_delegation', (given) => ({ delegationId: given.get('delegationId') })],
+  ['grant_role', roleGrant],
+  ['revoke_role', (given) => ({ grantId: given.get('grantId') })],
+  ['approve_person', personOnly],
+  ['decline_person', personOnly],
   ['claim', itemOnly],
   ['release', itemOnly],
   ['take_over', itemOnly],

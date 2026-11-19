@@ -23,5 +23,19 @@ export const revokeRoleCommandSchema = z.object({
   grantId: z.uuid(),
 });
 
+export const approvePersonCommandSchema = z.object({
+  command: z.literal('approve_person'),
+  requestId: z.uuid(),
+  personId: z.uuid(),
+});
+
+export const declinePersonCommandSchema = z.object({
+  command: z.literal('decline_person'),
+  requestId: z.uuid(),
+  personId: z.uuid(),
+});
+
 export type GrantRoleCommand = z.infer<typeof grantRoleCommandSchema>;
 export type RevokeRoleCommand = z.infer<typeof revokeRoleCommandSchema>;
+export type ApprovePersonCommand = z.infer<typeof approvePersonCommandSchema>;
+export type DeclinePersonCommand = z.infer<typeof declinePersonCommandSchema>;

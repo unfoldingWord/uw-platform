@@ -66,6 +66,7 @@ export const screens: readonly ScreenEntry[] = [
     file: 'apps/uw-app/views/screens/health-list.tsx',
     path: '/health/:indicator',
   },
+  { name: 'access', file: 'apps/uw-app/views/screens/access.tsx', path: '/access' },
   {
     name: 'not-found',
     file: 'apps/uw-app/views/screens/not-found.tsx',
