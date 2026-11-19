@@ -100,12 +100,14 @@ function Heading(props: { readonly section: NavSection }) {
     <p
       data-area={section.code}
       data-unbuilt={allUnbuilt(section) ? 'true' : undefined}
-      class={`flex gap-1 px-2 pt-3 pb-1 text-xs leading-snug font-heavy tracking-wide text-side-text-3 uppercase ${dim}`}
+      class={`flex items-baseline gap-2 px-2 pb-1 text-xs leading-snug font-heavy tracking-wide text-side-text-3 uppercase ${dim}`}
     >
       {section.code === undefined ? null : (
-        <span class="font-mono font-regular text-side-code">{section.code}</span>
+        <span class="shrink-0 font-mono font-regular whitespace-nowrap text-side-code">
+          {section.code}
+        </span>
       )}
-      <span>{section.heading}</span>
+      <span class="min-w-0">{section.heading}</span>
     </p>
   );
 }
@@ -132,7 +134,7 @@ export function NavList(props: {
   readonly current: string;
 }) {
   return (
-    <ul class="flex flex-col">
+    <ul class="flex flex-col gap-4">
       {props.sections.map((section) => (
         <Section section={section} current={props.current} />
       ))}
@@ -176,7 +178,7 @@ export function Sidebar(props: {
   return (
     <aside class="hidden min-h-0 flex-col bg-side text-side-text md:flex">
       <Brand wordmarkPath={props.wordmarkPath} />
-      <nav aria-label="Main" class="flex-1 overflow-auto px-1 py-2">
+      <nav aria-label="Main" class="flex-1 overflow-auto p-2">
         <NavList sections={props.sections} current={props.current} />
       </nav>
       {props.person === null ? null : <Me person={props.person} />}
