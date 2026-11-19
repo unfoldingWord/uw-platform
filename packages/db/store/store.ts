@@ -9,6 +9,7 @@ import { bindHarnesses } from './harnesses.ts';
 import { bindItems } from './items.ts';
 import { insideOpenTransaction, outsideOpenTransaction } from './open-transactions.ts';
 import { bindMeasurements } from './measurements.ts';
+import { memoizedReads } from './memo.ts';
 import { bindPages } from './pages.ts';
 import { bindPersonas } from './personas.ts';
 import { bindRuns } from './runs.ts';
@@ -17,6 +18,7 @@ import type { DrizzleTransaction } from './types.ts';
 
 export type DrizzleStore = {
   transaction<T>(work: (tx: DrizzleTransaction) => Promise<T>): Promise<T>;
+  read<T>(work: (tx: DrizzleTransaction) => Promise<T>): Promise<T>;
   appliedMigrations(): Promise<readonly number[]>;
 };
 
@@ -72,10 +74,17 @@ async function inTransaction<T>(
   }
 }
 
+function readOnly(db: AnyDatabase): DrizzleTransaction {
+  const shared = memoizedReads(bind(db), db);
+  executors.set(shared, db);
+  return shared;
+}
+
 export function createDrizzleStore(db: AnyDatabase): DrizzleStore {
   return {
     transaction: (work) =>
       outsideOpenTransaction(db, 'store.transaction', () => inTransaction(db, work)),
+    read: (work) => outsideOpenTransaction(db, 'store.read', () => work(readOnly(db))),
     appliedMigrations: () =>
       outsideOpenTransaction(db, 'store.appliedMigrations', () => appliedMigrations(db)),
   };

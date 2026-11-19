@@ -1,4 +1,5 @@
 export { createDrizzleStore } from './store.ts';
+export { sharingReads } from './memo.ts';
 export type { DrizzleStore } from './store.ts';
 export type * from './types.ts';
 export { advisoryLocksHeld, lockWaiters } from './held-locks.ts';

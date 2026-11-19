@@ -1,4 +1,4 @@
-import type { ItemState, Stage } from '@uw/contracts';
+import type { Harness, ItemState, Stage } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
 import { accepted, type KernelOutcome } from '../outcome.ts';
 import type { ItemCost, StageEntry, StoreTransaction } from '../ports.ts';
@@ -6,7 +6,7 @@ import { harnessScene, type ScenePorts } from '../reads/scene.ts';
 import { costOfItems } from './costs.ts';
 import { VIEW_LIMIT, type FlowStage, type FlowView } from './types.ts';
 
-type StageFacts = {
+export type StageFacts = {
   readonly open: readonly ItemState[];
   readonly entries: readonly StageEntry[];
   readonly costs: readonly ItemCost[];
@@ -50,10 +50,20 @@ export async function flowView(
     entries: await tx.harnessEvents.read.enteredStage(harness.id, ids),
     costs: await tx.harnessRuns.read.costsByItem(ids),
   };
-  const rows: FlowStage[] = [];
-  for (const stage of byPosition(stages)) {
-    const held = await tx.harnessItems.read.heldInStage(harness.id, stage.key, at);
-    rows.push(stageRow(stage, held, facts));
-  }
-  return accepted({ harness, stages: rows, capped: open.length === VIEW_LIMIT });
+  return accepted(await flowOf(tx, { harness, stages }, facts, at));
+}
+
+export async function flowOf(
+  tx: StoreTransaction,
+  scene: { readonly harness: Harness; readonly stages: readonly Stage[] },
+  facts: StageFacts,
+  at: Date,
+): Promise<FlowView> {
+  const { harness, stages } = scene;
+  const rows = await Promise.all(
+    byPosition(stages).map(async (stage) =>
+      stageRow(stage, await tx.harnessItems.read.heldInStage(harness.id, stage.key, at), facts),
+    ),
+  );
+  return { harness, stages: rows, capped: facts.open.length === VIEW_LIMIT };
 }

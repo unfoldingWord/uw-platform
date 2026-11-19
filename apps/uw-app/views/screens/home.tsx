@@ -296,18 +296,13 @@ async function cardsOf(
   screen: ScreenKernel,
   waiting: readonly WaitingRow[],
 ): Promise<WorkflowCard[]> {
-  const read = { at: screen.at };
-  const cards: WorkflowCard[] = [];
-  for (const harness of await screen.kernel.views.harnesses(screen.caller, read)) {
-    const flow = await screen.kernel.views.flow(screen.caller, { harnessId: harness.id }, read);
-    if (flow.status !== 'accepted') continue;
-    const days = await screen.kernel.views.daily(screen.caller, { harnessId: harness.id }, read);
-    const gates = waiting.filter(
-      (row) => row.kind === 'gate' && row.gate.harness.id === harness.id,
-    );
-    cards.push({ flow: flow.value, runs: days.map((day) => day.runs), waiting: gates.length });
-  }
-  return cards;
+  const cards = await screen.kernel.views.flowCards(screen.caller, { at: screen.at });
+  return cards.map(({ flow, runs }) => ({
+    flow,
+    runs,
+    waiting: waiting.filter((row) => row.kind === 'gate' && row.gate.harness.id === flow.harness.id)
+      .length,
+  }));
 }
 
 function PushControl() {

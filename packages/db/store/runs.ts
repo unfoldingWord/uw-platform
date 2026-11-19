@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gte, inArray, sql, type SQL } from 'drizzle-orm';
 import { engineSchema, runShapeSchema } from '@uw/contracts';
-import { startedPerDay } from './daily.ts';
+import { startedPerDay, startedPerDayByHarness } from './daily.ts';
 import type { AnyExecutor } from '../any-database.ts';
 import { oneOf } from '../checks.ts';
 import { delegations, harnessItems, harnessRuns } from '../schema.ts';
@@ -246,6 +246,8 @@ export function bindRuns(executor: AnyExecutor): HarnessRunsGateway {
       spendSince: (since) => spendSince(executor, since),
       runCountsSince: (since) => runCountsSince(executor, since),
       startedPerDay: (harnessIds, since) => startedPerDay(executor, harnessIds, since),
+      startedPerDayByHarness: (harnessIds, since) =>
+        startedPerDayByHarness(executor, harnessIds, since),
       costsByItem: (itemIds) => costsByItem(executor, itemIds),
       forPersona: (query) => forPersona(executor, query),
       personaDay: (query) => personaDay(executor, query),

@@ -50,6 +50,7 @@ export function bindEvents(executor: AnyExecutor): HarnessEventsGateway {
       createdFor: (actor, requestId) => createdFor(executor, actor, requestId),
       latestNamed: (names, harnessId) => latestNamed(executor, names, harnessId),
       enteredStage: (harnessId, itemIds) => enteredStage(executor, harnessId, itemIds),
+      enteredStages: (itemIds) => enteredStage(executor, null, itemIds),
       recent: (query) => recent(executor, query),
       lastPosition: (harnessId) => lastPosition(executor, harnessId),
       lastPositions: (harnessIds) => lastPositions(executor, harnessIds),
@@ -162,7 +163,7 @@ async function latestNamed(
 
 async function enteredStage(
   executor: AnyExecutor,
-  harnessId: string,
+  harnessId: string | null,
   itemIds: readonly string[],
 ): Promise<readonly StageEntry[]> {
   if (itemIds.length === 0) return [];
@@ -174,7 +175,7 @@ async function enteredStage(
     .from(harnessEvents)
     .where(
       and(
-        eq(harnessEvents.harnessId, harnessId),
+        harnessId === null ? undefined : eq(harnessEvents.harnessId, harnessId),
         inArray(harnessEvents.itemId, [...itemIds]),
         inArray(harnessEvents.name, stageEntryNames),
       ),

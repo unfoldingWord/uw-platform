@@ -62,6 +62,7 @@ async function afterAppend(
 export function wakingStore(store: Store, hub: Hub, afterCommit?: AfterCommit): Store {
   return {
     appliedMigrations: () => store.appliedMigrations(),
+    read: (work) => (store.read === undefined ? store.transaction(work) : store.read(work)),
     transaction: async (work) => {
       const appended: HarnessEvent[] = [];
       const result = await store.transaction((tx) => work(tracking(tx, appended)));

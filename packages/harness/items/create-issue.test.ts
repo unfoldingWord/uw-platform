@@ -99,6 +99,7 @@ function eventsGateway(appended: HarnessEvent[]): HarnessEventsGateway {
       createdFor: unused,
       latestNamed: unused,
       enteredStage: unused,
+      enteredStages: unused,
       recent: unused,
       lastPosition: unused,
       lastPositions: unused,
