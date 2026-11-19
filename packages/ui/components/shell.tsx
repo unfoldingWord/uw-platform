@@ -1,13 +1,14 @@
 import { raw } from 'hono/html';
 import type { Child } from 'hono/jsx';
 import { speculationRules, themeScript } from './inline-scripts.ts';
-import { PhoneHeader, Sidebar, type NavSection, type Person } from './sidebar.tsx';
+import { PhoneHeader, Sidebar, type LogOutLink, type NavSection, type Person } from './sidebar.tsx';
 import { StatusBar, type Status } from './status-bar.tsx';
 import { TopBar, type Crumb, type Tab } from './top-bar.tsx';
 
 export type Frame = {
   readonly sections: readonly NavSection[];
   readonly person: Person | null;
+  readonly logOut: LogOutLink;
   readonly waiting: number;
   readonly status: Status;
   readonly wordmarkPath: string;
@@ -81,6 +82,7 @@ export function Shell(props: {
             sections={frame.sections}
             current={props.current}
             person={frame.person}
+            logOut={frame.logOut}
             wordmarkPath={frame.wordmarkPath}
           />
           <div class="flex min-w-0 flex-col md:min-h-0">
@@ -89,6 +91,7 @@ export function Shell(props: {
               waiting={frame.waiting}
               sections={frame.sections}
               current={props.current}
+              logOut={frame.logOut}
               wordmarkPath={frame.wordmarkPath}
             />
             <TopBar

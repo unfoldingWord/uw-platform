@@ -3,6 +3,7 @@ import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import { appCss } from '../generated/app-css.ts';
 import { testFrame } from '../testing/frame.ts';
+import { speculationRules } from './inline-scripts.ts';
 import { PhoneHeader, Sidebar } from './sidebar.tsx';
 
 type Rule = { readonly at: readonly string[]; readonly selector: string; readonly body: string };
@@ -55,6 +56,7 @@ async function frame(): Promise<Document> {
     sections: testFrame().sections,
     current: '/',
     person: testFrame().person,
+    logOut: testFrame().logOut,
     wordmarkPath: testFrame().wordmarkPath,
   };
   const desktop = await jsx(Sidebar, props).toString();
@@ -107,5 +109,50 @@ describe('UI-5 the sidebar becomes a phone header below the md breakpoint', () =
     expect(document.querySelector('aside [data-area="30-39"]')?.textContent).toContain(
       'Infrastructure',
     );
+  });
+});
+
+type Rules = {
+  readonly prefetch: readonly { readonly where: { readonly and: readonly unknown[] } }[];
+};
+
+function leftAlone(path: string): boolean {
+  const rules = JSON.parse(speculationRules) as Rules;
+  const patterns = rules.prefetch.flatMap((rule) =>
+    rule.where.and.flatMap((clause) => {
+      const pattern = (clause as { not?: { href_matches?: string } }).not?.href_matches;
+      return pattern === undefined ? [] : [pattern];
+    }),
+  );
+  return patterns.some((pattern) =>
+    pattern.endsWith('*') ? path.startsWith(pattern.slice(0, -1)) : path === pattern,
+  );
+}
+
+const logoutPath = testFrame().logOut.href;
+
+function logOutLinks(scope: Element): Element[] {
+  return [...scope.querySelectorAll(`a[href="${logoutPath}"]`)];
+}
+
+describe('#149 a person can log out', () => {
+  it('#149 the sidebar and the phone menu each carry one Log Out link to the Access logout', async () => {
+    const document = await frame();
+    for (const scope of [found(document, 'aside'), found(document, 'section[aria-label="Menu"]')]) {
+      const links = logOutLinks(scope);
+      expect(links).toHaveLength(1);
+      expect(links[0]?.textContent).toBe('Log Out');
+    }
+  });
+
+  it('#149 the sidebar offers Log Out even with no person shown', async () => {
+    const html = await jsx(Sidebar, { ...testFrame(), current: '/', person: null }).toString();
+    const document = new JSDOM(`<!DOCTYPE html><body>${html}</body>`).window.document;
+    expect(logOutLinks(found(document, 'aside'))).toHaveLength(1);
+  });
+
+  it('#149 hover prefetch leaves the logout address alone', () => {
+    expect(leftAlone(logoutPath)).toBe(true);
+    expect(leftAlone('/health')).toBe(false);
   });
 });
