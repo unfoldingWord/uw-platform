@@ -30,8 +30,13 @@ export function observe(deps: Pick<AppDeps, 'newId' | 'sink'>): MiddlewareHandle
   };
 }
 
+const SWITCHING_PROTOCOLS = 101;
+
 export function serverTiming(): MiddlewareHandler<AppEnv> {
-  const timed = timing({ totalDescription: 'whole request' });
+  const timed = timing({
+    totalDescription: 'whole request',
+    enabled: (c) => c.res.status !== SWITCHING_PROTOCOLS,
+  });
   return (c, next) =>
     timed(c, async () => {
       await next();
