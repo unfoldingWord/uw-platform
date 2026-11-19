@@ -510,7 +510,7 @@ describe.skipIf(!testServer)(
       expect((await claim(laptop, at(h, 0))).isError).toBe(false);
       await revokeSeededGrant(r.db, LEAVER_80, r.clock.now());
       const refused = await claim(laptop, at(h, 1));
-      expect(refused.body).toMatchObject({ status: 'error', reason: 'not_permitted' });
+      expect(refused.body).toMatchObject({ status: 'error', reason: 'item_not_found' });
       const item = value(await r.kernel.reads.item(caller(r.rowan), { itemId: at(h, 1) })).item;
       expect(item.holder).toBeNull();
     });

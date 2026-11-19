@@ -256,12 +256,13 @@ describe.skipIf(!testServer)(
   'AB-5 search_pages and read_page return only pages the principal may read',
   () => {
     const rig = freshRig();
-    it('finds only the readable area for the viewer and both areas for the editor', async () => {
+    it('finds only its own area for the viewer and for the editor', async () => {
       const r = rig();
       const found = await search(await viewer(r), 'harvest');
       expect(idsOf(found.body)).toEqual([SEEDED.workshop30]);
       const editor = await search(await runner(r, EDITOR.email), 'harvest');
-      expect(idsOf(editor.body)).toEqual(Object.values(SEEDED).sort());
+      const own = [SEEDED.workshop80, SEEDED.lesson80, SEEDED.persona80];
+      expect(idsOf(editor.body)).toEqual(own.sort());
     });
 
     it('narrows the search to one page type', async () => {
