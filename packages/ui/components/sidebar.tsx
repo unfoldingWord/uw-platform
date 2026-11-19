@@ -176,7 +176,7 @@ export function Sidebar(props: {
   readonly wordmarkPath: string;
 }) {
   return (
-    <aside class="hidden min-h-0 flex-col bg-side text-side-text md:flex">
+    <aside data-side class="hidden min-h-0 flex-col bg-side text-side-text md:flex">
       <Brand wordmarkPath={props.wordmarkPath} />
       <nav aria-label="Main" class="flex-1 overflow-auto p-2">
         <NavList sections={props.sections} current={props.current} />
@@ -194,7 +194,7 @@ export function PhoneHeader(props: {
   readonly wordmarkPath: string;
 }) {
   return (
-    <section aria-label="Menu" class="bg-side text-side-text md:hidden">
+    <section data-side aria-label="Menu" class="bg-side text-side-text md:hidden">
       <details>
         <summary class={`flex cursor-pointer list-none items-center gap-3 px-4 py-3 ${focus}`}>
           <span class="grid size-size-5 shrink-0 place-items-center rounded-md border border-side-line">
