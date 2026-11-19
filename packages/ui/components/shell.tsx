@@ -50,7 +50,7 @@ function Main(props: { readonly children?: Child }) {
     <main
       id="main"
       tabindex={-1}
-      class="min-w-0 flex-1 p-4 md:min-h-0 md:overflow-y-auto md:px-5 md:pt-5 md:pb-7"
+      class="relative min-w-0 flex-1 p-4 md:min-h-0 md:overflow-y-auto md:px-5 md:pt-5 md:pb-7"
     >
       {props.children}
     </main>

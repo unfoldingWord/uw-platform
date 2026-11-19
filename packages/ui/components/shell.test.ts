@@ -83,6 +83,7 @@ describe('#97 on desktop only the content scrolls', () => {
     expect(main).toContain('md:min-h-0');
     expect(document.querySelector('aside nav')?.getAttribute('class')).toContain('overflow-auto');
     expect(main.split(/\s+/)).not.toContain('overflow-y-auto');
+    expect(main.split(/\s+/)).toContain('relative');
   });
 });
 
