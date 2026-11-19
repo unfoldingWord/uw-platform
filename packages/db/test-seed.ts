@@ -133,6 +133,14 @@ export async function resaveSeededPage(db: AnyExecutor, pageId: string): Promise
     .where(eq(pages.id, pageId));
 }
 
+export async function moveSeededPage(
+  db: AnyExecutor,
+  pageId: string,
+  jdArea: string,
+): Promise<void> {
+  await db.update(pages).set({ jdArea }).where(eq(pages.id, pageId));
+}
+
 const seededAt = new Date('2026-10-01T09:00:00.000Z');
 const seededActor = 'human:00000000-0000-4000-8000-000000000001';
 const seededTrace = '00000000-0000-4000-8000-0000000000e1';
