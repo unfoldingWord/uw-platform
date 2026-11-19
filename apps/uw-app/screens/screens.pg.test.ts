@@ -198,6 +198,14 @@ async function gateScreens(db: Database): Promise<Screen[]> {
   return screens;
 }
 
+const closedMenu = /(<section[^>]*aria-label="Menu"[^>]*>)<details>/;
+
+function menuOpen(all: readonly Screen[]): Screen {
+  const home = all.find((screen) => screen.name === 'home');
+  if (home === undefined || !closedMenu.test(home.html)) throw new Error('no closed menu on home');
+  return { name: 'menu', html: home.html.replace(closedMenu, '$1<details open="">') };
+}
+
 async function shoot(browser: Browser, html: string, shot: Shot): Promise<Buffer> {
   const page = await browser.newPage({
     viewport: { width: shot.width, height: shot.height },
@@ -241,6 +249,7 @@ beforeAll(async () => {
   await withAppDatabase(async (db) => {
     screens = [...screens, ...(await gateScreens(db))];
   });
+  screens = [...screens, menuOpen(screens)];
 }, 300_000);
 
 afterAll(async () => {
@@ -304,6 +313,7 @@ describe.skipIf(!testServer || (!browserReady && !required))('UI-16 the screensh
       'waiting',
       'gate',
       'play',
+      'menu',
     ]);
     expect(await compareAll(inlined())).toEqual([]);
   }, 600_000);
