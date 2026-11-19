@@ -167,6 +167,29 @@
     }
   }
 
+  :root {
+    scrollbar-color: var(--uw-text-3) transparent;
+  }
+
+  * {
+    scrollbar-width: thin;
+  }
+
+  [data-side] {
+    scrollbar-color: var(--uw-side-text-3) transparent;
+  }
+
+  @media (forced-colors: active), (prefers-contrast: more) {
+    :root,
+    [data-side] {
+      scrollbar-color: auto;
+    }
+
+    * {
+      scrollbar-width: auto;
+    }
+  }
+
   body {
     background: var(--uw-canvas);
     color: var(--uw-text);

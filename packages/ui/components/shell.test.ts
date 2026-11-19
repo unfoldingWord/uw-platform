@@ -51,6 +51,15 @@ describe('WB-11 the shell', () => {
     expect(html).toContain('md:grid-cols-frame');
   });
 
+  it('the sidebar and the phone menu are marked so their scrollbars take the sidebar colours', async () => {
+    const document = documentOf(await render());
+    expect(document.querySelector('aside')?.hasAttribute('data-side')).toBe(true);
+    expect(document.querySelector('section[aria-label="Menu"]')?.hasAttribute('data-side')).toBe(
+      true,
+    );
+    expect(document.querySelectorAll('[data-side]')).toHaveLength(2);
+  });
+
   it('the current page is marked aria-current="page"', async () => {
     const document = documentOf(await render({ current: '/health' }));
     const current = [...document.querySelectorAll('nav[aria-label="Main"] a[aria-current]')];
