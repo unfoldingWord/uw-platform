@@ -19,6 +19,7 @@ export const pageNames = {
   gate: 'Gate',
   item: 'Item',
   page: 'Page',
+  logOut: 'Log Out',
 } as const;
 
 const smallWord = /^[a-z]/;

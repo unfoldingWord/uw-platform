@@ -10,6 +10,7 @@ import {
   homePath,
   issueUrl,
   itemPath,
+  logOutPath,
   pullRequestUrl,
   reviewUrl,
   waitingPath,
@@ -48,5 +49,9 @@ describe('the view paths', () => {
     expect(reviewUrl(pull)).toBe(`${base}/pull/44/files`);
     expect(reviewUrl(pull, 7)).toBe(`${base}/pull/44#pullrequestreview-7`);
     expect(issueUrl({ ...pull, number: 12, githubId: 99 })).toBe(`${base}/issues/12`);
+  });
+
+  it("#149 logs out through the Cloudflare Access logout on the app's own host", () => {
+    expect(logOutPath()).toBe('/cdn-cgi/access/logout');
   });
 });
