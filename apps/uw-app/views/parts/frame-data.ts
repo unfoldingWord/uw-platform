@@ -3,7 +3,8 @@ import { formatDate, formatInstant } from '@uw/core/dates';
 import type { HealthIndicator, HealthReport, Principal } from '@uw/contracts';
 import type { FrameCounts } from '@uw/harness';
 import type { Frame } from '@uw/ui/components/shell.tsx';
-import type { NavItem, NavSection, Person } from '@uw/ui/components/sidebar.tsx';
+import type { Person } from '@uw/ui/components/account-menu.tsx';
+import type { NavItem, NavSection } from '@uw/ui/components/sidebar.tsx';
 import { wordmarkPath } from '@uw/ui/generated/mark';
 import type { AppEnv } from '../../deps.ts';
 import { commitOf, environmentOf } from '../../env.ts';
@@ -26,7 +27,7 @@ function personOf(principal: Principal | null): Person | null {
     .join('');
   const grant = principal.grants[0];
   const role = grant === undefined ? 'no role' : `${grant.role} · ${grant.scopeArea ?? 'org'}`;
-  return { initials, name, role };
+  return { initials, name, email: principal.email, role };
 }
 
 function watching(report: HealthReport | null): number {

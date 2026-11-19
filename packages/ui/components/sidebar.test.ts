@@ -2,6 +2,7 @@ import { jsx } from 'hono/jsx';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import { appCss } from '../generated/app-css.ts';
+import { AccountMenu, accountMenuId } from './account-menu.tsx';
 import { testFrame } from '../testing/frame.ts';
 import { speculationRules } from './inline-scripts.ts';
 import { PhoneHeader, Sidebar, type NavSection } from './sidebar.tsx';
@@ -79,7 +80,11 @@ function pixels(value: string | undefined): number {
 }
 
 function sidePadding(element: Element): number {
-  return pixels(declared(element, 'padding-inline') ?? declared(element, 'padding'));
+  return pixels(
+    declared(element, 'padding-left') ??
+      declared(element, 'padding-inline') ??
+      declared(element, 'padding'),
+  );
 }
 
 const longArea: readonly NavSection[] = [
@@ -91,17 +96,15 @@ const longArea: readonly NavSection[] = [
   },
 ];
 
-async function frame(sections: readonly NavSection[] = testFrame().sections): Promise<Document> {
-  const props = {
-    sections,
-    current: '/',
-    person: testFrame().person,
-    logOut: testFrame().logOut,
-    wordmarkPath: testFrame().wordmarkPath,
-  };
+async function frame(
+  sections: readonly NavSection[] = testFrame().sections,
+  person = testFrame().person,
+): Promise<Document> {
+  const props = { sections, current: '/', person, wordmarkPath: testFrame().wordmarkPath };
   const desktop = await jsx(Sidebar, props).toString();
   const phone = await jsx(PhoneHeader, { ...props, title: 'Home', waiting: 2 }).toString();
-  return new JSDOM(`<!DOCTYPE html><body>${desktop}${phone}</body>`).window.document;
+  const menu = await jsx(AccountMenu, { person, logOut: testFrame().logOut }).toString();
+  return new JSDOM(`<!DOCTYPE html><body>${desktop}${phone}${menu}</body>`).window.document;
 }
 
 function found(document: Document | Element, selector: string): Element {
@@ -183,9 +186,8 @@ describe('#143 the sidebar keeps to the spacing scale and groups read as groups'
     const edge = sidePadding(found(document, 'aside > div:first-child'));
     expect(nav + sidePadding(found(document, 'aside [data-area="10-19"]'))).toBe(edge);
     expect(nav + sidePadding(found(document, 'aside nav a'))).toBe(edge);
-    expect(sidePadding(found(document, 'aside > div:nth-last-child(2)'))).toBe(edge);
     const foot = found(document, 'aside > div:last-child');
-    expect(sidePadding(foot) + sidePadding(found(foot, 'a'))).toBe(edge);
+    expect(sidePadding(foot) + sidePadding(found(foot, 'button'))).toBe(edge);
     const phoneNav = sidePadding(found(document, 'section[aria-label="Menu"] nav'));
     const phoneEdge = sidePadding(found(document, 'section[aria-label="Menu"] summary'));
     expect(phoneNav + sidePadding(found(document, 'section[aria-label="Menu"] nav a'))).toBe(
@@ -213,24 +215,78 @@ function leftAlone(path: string): boolean {
 
 const logoutPath = testFrame().logOut.href;
 
-function logOutLinks(scope: Element): Element[] {
+function logOutLinks(scope: Document | Element): Element[] {
   return [...scope.querySelectorAll(`a[href="${logoutPath}"]`)];
 }
 
-describe('#149 a person can log out', () => {
-  it('#149 the sidebar and the phone menu each carry one Log Out link to the Access logout', async () => {
+function accountButtons(document: Document): Element[] {
+  return [...document.querySelectorAll(`button[popovertarget="${accountMenuId}"]`)];
+}
+
+describe('#168 Log Out sits in the account menu, behind your name and initials', () => {
+  it('#168 the page carries one Log Out link, in the account menu and nowhere else', async () => {
     const document = await frame();
-    for (const scope of [found(document, 'aside'), found(document, 'section[aria-label="Menu"]')]) {
-      const links = logOutLinks(scope);
-      expect(links).toHaveLength(1);
-      expect(links[0]?.textContent).toBe('Log Out');
-    }
+    const links = logOutLinks(document);
+    expect(links).toHaveLength(1);
+    expect(links[0]?.textContent).toBe('Log Out');
+    expect(links[0]?.closest('[popover]')?.id).toBe(accountMenuId);
+    expect(logOutLinks(found(document, 'aside'))).toHaveLength(0);
+    expect(logOutLinks(found(document, 'section[aria-label="Menu"]'))).toHaveLength(0);
   });
 
-  it('#149 the sidebar offers Log Out even with no person shown', async () => {
-    const html = await jsx(Sidebar, { ...testFrame(), current: '/', person: null }).toString();
-    const document = new JSDOM(`<!DOCTYPE html><body>${html}</body>`).window.document;
-    expect(logOutLinks(found(document, 'aside'))).toHaveLength(1);
+  it('#168 the account menu is a popover the browser closes on Esc or a click outside', async () => {
+    const document = await frame();
+    const menu = found(document, `#${accountMenuId}`);
+    expect(menu.getAttribute('popover')).toBe('auto');
+    expect(menu.getAttribute('aria-label')).toBe('Account');
+    expect(declared(menu, 'display')).toBeUndefined();
+    expect(document.querySelectorAll('[popover]')).toHaveLength(1);
+  });
+
+  it('#168 the menu shows your name, email and role, then Log Out', async () => {
+    const document = await frame();
+    const menu = found(document, `#${accountMenuId}`);
+    const lines = [...menu.querySelectorAll('p')].map((line) => line.textContent);
+    expect(lines).toEqual(['Rowan Test', 'rowan.test@example.org', 'admin · 80-89']);
+    const last = found(menu, 'p:last-of-type');
+    const link = found(menu, 'a');
+    expect(last.compareDocumentPosition(link) & 4).toBe(4);
+  });
+});
+
+function accountButton(document: Document, within: string): Element {
+  return found(document, `${within} button[popovertarget="${accountMenuId}"]`);
+}
+
+describe('#168 your name and initials open the account menu', () => {
+  it('#168 your name in the sidebar is a button that opens it', async () => {
+    const document = await frame();
+    expect(accountButtons(document)).toHaveLength(2);
+    const button = accountButton(document, 'aside');
+    expect(button.textContent).toBe('RTRowan Testadmin · 80-89Account menu');
+    expect(button.getAttribute('type')).toBe('button');
+    expect(found(button, '[aria-hidden="true"]').textContent).toBe('RT');
+    expect(button.hasAttribute('aria-expanded')).toBe(false);
+  });
+
+  it('#168 your initials in the phone bar are a button that opens it, outside the menu toggle', async () => {
+    const document = await frame();
+    const button = accountButton(document, 'section[aria-label="Menu"]');
+    expect(button.closest('details')).toBeNull();
+    expect(button.textContent).toBe('RTAccount menu, Rowan Test');
+    expect(button.getAttribute('type')).toBe('button');
+    expect(found(button, '[aria-hidden="true"]').textContent).toBe('RT');
+    expect(button.hasAttribute('aria-expanded')).toBe(false);
+  });
+
+  it('#168 with no person shown the buttons and Log Out are still there', async () => {
+    const document = await frame(testFrame().sections, null);
+    const buttons = accountButtons(document);
+    expect(buttons).toHaveLength(2);
+    for (const button of buttons) expect(button.textContent).toBe('Account menu');
+    const menu = found(document, `#${accountMenuId}`);
+    expect(menu.querySelectorAll('p')).toHaveLength(0);
+    expect(logOutLinks(menu)).toHaveLength(1);
   });
 
   it('#149 hover prefetch leaves the logout address alone', () => {

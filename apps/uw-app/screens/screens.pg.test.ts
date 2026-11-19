@@ -1,13 +1,14 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { chromium, type Browser } from 'playwright';
+import { chromium, type Browser, type Page } from 'playwright';
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
 import { seedBreakerReading, seedGrant, seedPage, seedPerson } from '@uw/db/test-seed';
 import type { Clock } from '@uw/harness';
+import { accountMenuId } from '@uw/ui/components/account-menu.tsx';
 import { appCss } from '@uw/ui/generated/app-css';
 import { fontFiles } from '@uw/ui/generated/fonts';
 import { wordmarkBase64, wordmarkPath } from '@uw/ui/generated/mark';
@@ -54,7 +55,7 @@ const widths = [
 ] as const;
 const themes = ['dark', 'light'] as const;
 
-type Screen = { readonly name: string; readonly html: string };
+type Screen = { readonly name: string; readonly html: string; readonly opens?: string };
 
 const anyId = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
 
@@ -206,9 +207,49 @@ function menuOpen(all: readonly Screen[]): Screen {
   return { name: 'menu', html: home.html.replace(closedMenu, '$1<details open="">') };
 }
 
-type Taken = { readonly picture: Buffer; readonly windowScrolls: boolean };
+function accountMenuOpen(all: readonly Screen[]): Screen {
+  const home = all.find((screen) => screen.name === 'home');
+  if (home === undefined) throw new Error('no home');
+  return { name: 'account-menu', html: home.html, opens: accountMenuId };
+}
 
-async function shoot(browser: Browser, html: string, shot: Shot): Promise<Taken> {
+type Taken = {
+  readonly picture: Buffer;
+  readonly windowScrolls: boolean;
+  readonly popover: readonly string[];
+};
+
+async function popoverOpen(page: Page, id: string): Promise<boolean> {
+  return page.evaluate(
+    (menu) => document.getElementById(menu)?.matches(':popover-open') === true,
+    id,
+  );
+}
+
+async function openPopover(page: Page, id: string): Promise<string[]> {
+  const faults: string[] = [];
+  const button = page.locator(`button[popovertarget="${id}"]:visible`);
+  if ((await button.count()) !== 1) return ['not exactly one visible button opens the menu'];
+  await button.click();
+  if (!(await popoverOpen(page, id))) faults.push('a click does not open the menu');
+  await page.keyboard.press('Escape');
+  if (await popoverOpen(page, id)) faults.push('Esc does not close the menu');
+  const back = await button.evaluate((control) => control === document.activeElement);
+  if (!back) faults.push('focus does not return to the button');
+  await page.keyboard.press('Enter');
+  if (!(await popoverOpen(page, id))) faults.push('Enter does not open the menu');
+  const content = await page.locator('main').boundingBox();
+  if (content === null) return [...faults, 'no content to click outside the menu'];
+  await page.mouse.click(content.x + 2, content.y + 2);
+  if (await popoverOpen(page, id)) faults.push('a click outside does not close the menu');
+  await button.focus();
+  await page.keyboard.press('Space');
+  if (!(await popoverOpen(page, id))) faults.push('Space does not open the menu');
+  return faults;
+}
+
+async function shoot(browser: Browser, screen: Screen, css: string, shot: Shot): Promise<Taken> {
+  const html = settled(screen.html, css);
   const page = await browser.newPage({
     viewport: { width: shot.width, height: shot.height },
     colorScheme: shot.theme,
@@ -220,7 +261,8 @@ async function shoot(browser: Browser, html: string, shot: Shot): Promise<Taken>
     const windowScrolls = await page.evaluate(
       () => document.documentElement.scrollHeight > document.documentElement.clientHeight,
     );
-    return { picture: await page.screenshot({ animations: 'disabled' }), windowScrolls };
+    const popover = screen.opens === undefined ? [] : await openPopover(page, screen.opens);
+    return { picture: await page.screenshot({ animations: 'disabled' }), windowScrolls, popover };
   } finally {
     await page.close();
   }
@@ -254,7 +296,7 @@ beforeAll(async () => {
   await withAppDatabase(async (db) => {
     screens = [...screens, ...(await gateScreens(db))];
   });
-  screens = [...screens, menuOpen(screens)];
+  screens = [...screens, menuOpen(screens), accountMenuOpen(screens)];
 }, 300_000);
 
 afterAll(async () => {
@@ -272,8 +314,9 @@ async function compareAll(css: string): Promise<string[]> {
     for (const size of widths)
       for (const theme of themes) {
         const name = `${screen.name}-${size.name}-${theme}.png`;
-        const taken = await shoot(browser, settled(screen.html, css), { ...size, theme });
+        const taken = await shoot(browser, screen, css, { ...size, theme });
         const shot = taken.picture;
+        failures.push(...taken.popover.map((fault) => `${name}: ${fault}`));
         if (size.name === 'desktop' && taken.windowScrolls)
           failures.push(`${name}: the window scrolls, only the content should`);
         if (update) {
@@ -322,6 +365,7 @@ describe.skipIf(!testServer || (!browserReady && !required))('UI-16 the screensh
       'gate',
       'play',
       'menu',
+      'account-menu',
     ]);
     expect(await compareAll(inlined())).toEqual([]);
   }, 600_000);
