@@ -208,7 +208,9 @@ function menuOpen(all: readonly Screen[]): Screen {
   return { name: 'menu', html: home.html.replace(closedMenu, '$1<details open="">') };
 }
 
-async function shoot(browser: Browser, html: string, shot: Shot): Promise<Buffer> {
+type Taken = { readonly picture: Buffer; readonly windowScrolls: boolean };
+
+async function shoot(browser: Browser, html: string, shot: Shot): Promise<Taken> {
   const page = await browser.newPage({
     viewport: { width: shot.width, height: shot.height },
     colorScheme: shot.theme,
@@ -217,7 +219,10 @@ async function shoot(browser: Browser, html: string, shot: Shot): Promise<Buffer
   try {
     await page.setContent(html, { waitUntil: 'load' });
     await page.evaluate(() => document.fonts.ready);
-    return await page.screenshot({ animations: 'disabled' });
+    const windowScrolls = await page.evaluate(
+      () => document.documentElement.scrollHeight > document.documentElement.clientHeight,
+    );
+    return { picture: await page.screenshot({ animations: 'disabled' }), windowScrolls };
   } finally {
     await page.close();
   }
@@ -269,7 +274,10 @@ async function compareAll(css: string): Promise<string[]> {
     for (const size of widths)
       for (const theme of themes) {
         const name = `${screen.name}-${size.name}-${theme}.png`;
-        const shot = await shoot(browser, settled(screen.html, css), { ...size, theme });
+        const taken = await shoot(browser, settled(screen.html, css), { ...size, theme });
+        const shot = taken.picture;
+        if (size.name === 'desktop' && taken.windowScrolls)
+          failures.push(`${name}: the window scrolls, only the content should`);
         if (update) {
           mkdirSync(pictures, { recursive: true });
           writeFileSync(pictureOf(name), shot);
