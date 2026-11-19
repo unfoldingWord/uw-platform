@@ -287,12 +287,14 @@ async function pagesInOrder(scene: Played): Promise<void> {
 
 async function labelled(scene: Played): Promise<void> {
   const rest = value(await playOf(scene, scene.editor, 100));
-  expect(rest.learnings).toEqual({ [shownLearning]: 'inferred', [elsewhereLearning]: 'assumed' });
-  const viewer = await simPerson(scene.world, 8, [
+  expect(rest.learnings).toEqual({ [shownLearning]: 'inferred' });
+  const readsFinance = await simPerson(scene.world, 8, [
     { role: 'viewer', scopeKind: 'jd_area', scopeArea: '80-89' },
+    { role: 'viewer', scopeKind: 'jd_area', scopeArea: '20-29' },
   ]);
-  expect(value(await playOf(scene, viewer, 100)).learnings).toEqual({
+  expect(value(await playOf(scene, readsFinance, 100)).learnings).toEqual({
     [shownLearning]: 'inferred',
+    [elsewhereLearning]: 'assumed',
   });
 }
 

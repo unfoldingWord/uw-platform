@@ -48,9 +48,9 @@ describe('UC-5 a cache of model output keys on the reader clearance', () => {
     );
   });
 
-  it('UC-5 keys an editor and an org reader as reading every area, as FD-8 says', () => {
+  it('UC-5 keys an area editor by its own area and an org reader as reading every area', () => {
     expect(clearanceKey(reader('agent:builder', [grant(1, 'editor', '80-89')]), at)).toBe(
-      'clearance:all',
+      'clearance:80-89',
     );
     expect(clearanceKey(reader('agent:auditor', [grant(2, 'viewer', null)]), at)).toBe(
       'clearance:all',
