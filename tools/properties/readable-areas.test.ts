@@ -76,8 +76,7 @@ function oracle(held: readonly HeldGrant[], action: string, resource: AclResourc
       const need = needed.get(action) ?? 99;
       if (grant.scope === 'org') return rank >= need;
       if (resource.kind === 'org') return false;
-      if (grant.scope === resource.area) return rank >= need;
-      return action === 'read' && rank >= 2;
+      return grant.scope === resource.area && rank >= need;
     });
 }
 
@@ -96,9 +95,10 @@ describe('can() agrees with the written rule for every action and resource', () 
     );
   });
 
-  it('lets an area editor read every area yet refuses it the org', () => {
+  it('lets an area editor read only its own area and refuses it the org', () => {
     const principal = holding([{ role: 'editor', scope: '80-89', expiresAt: null }]);
-    expect(readableAreas(principal, at)).toEqual({ kind: 'all' });
+    expect(readableAreas(principal, at)).toEqual({ kind: 'some', areas: ['80-89'] });
+    expect(can(principal, 'read', { kind: 'area', area: '20-29' }, at)).toBe(false);
     expect(can(principal, 'read', { kind: 'org' }, at)).toBe(false);
   });
 });

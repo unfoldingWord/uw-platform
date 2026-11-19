@@ -167,7 +167,7 @@ async function everyFormIsBuilt({ attempts }: Scene): Promise<void> {
   const labels = attempts.map((attempt) => attempt.label);
   const identities = attempts.map((attempt) => attempt.actor.identity);
   expect(attempts).toHaveLength(13 * 4 + 3 + 3 + 1);
-  expect(attempts.filter((attempt) => attempt.readable)).toHaveLength(8 * 4 + 7);
+  expect(attempts.filter((attempt) => attempt.readable)).toHaveLength(6 * 4 + 7);
   expect(new Set(labels).size).toBe(attempts.length);
   expect(identities.filter((identity) => !identity.startsWith('agent:'))).toEqual([]);
 }

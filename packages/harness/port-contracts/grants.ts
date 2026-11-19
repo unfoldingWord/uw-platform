@@ -197,8 +197,8 @@ function describeGrantsHolders(adapter: string, subject: () => GrantsSubject): v
       expect(holders.map((holder) => [holder.personId, ids(holder.grants)])).toEqual([
         [person(21), [grantId(21), grantId(22)]],
         [person(22), [grantId(23)]],
-        [person(25), [grantId(26)]],
       ]);
+      expect(holders.map((holder) => holder.personId)).not.toContain(person(25));
       expect(holders[0]?.email).toBe(`${person(21)}@fixture.unfoldingword.org`);
     });
 

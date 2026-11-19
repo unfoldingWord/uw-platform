@@ -182,17 +182,6 @@ describe('persona activation refuses a caller who may not activate', () => {
     expect(seen.failures).toEqual([]);
   });
 
-  it("refuses an admin of the harness area who cannot write the persona page's area, with no event", async () => {
-    const page = (scene: PersonaScene) => ({ ...requiring(['approve'])(scene), jdArea: '20-29' });
-    const seen = await inScene(page, byPerson(admin3039));
-    expect(seen.outcome).toEqual({
-      status: 'error',
-      reason: 'not_permitted',
-      detail: { jdArea: '20-29' },
-    });
-    expect(seen.failures).toEqual([]);
-  });
-
   it('refuses an agent caller, with no event', async () => {
     const agent: Activate = (scene) =>
       activatePersona(scene.world, simAgent(scene.rowan, 'iterate', { interactive: true }), pageId);
@@ -211,6 +200,34 @@ describe('persona activation refuses a caller who may not activate', () => {
       byRowan,
     );
     expect(seen.outcome).toEqual({ status: 'error', reason: 'page_not_found', detail: { pageId } });
+  });
+});
+
+describe('persona activation by an admin of another area than the page', () => {
+  it("finds no persona page for an admin of the harness area who cannot read the page's area, with no event", async () => {
+    const page = (scene: PersonaScene) => ({ ...requiring(['approve'])(scene), jdArea: '20-29' });
+    const seen = await inScene(page, byPerson(admin3039));
+    expect(seen.outcome).toEqual({
+      status: 'error',
+      reason: 'page_not_found',
+      detail: { pageId },
+    });
+    expect(seen.failures).toEqual([]);
+  });
+
+  it("refuses an admin of the harness area who can read but not write the persona page's area, with no event", async () => {
+    const page = (scene: PersonaScene) => ({ ...requiring(['approve'])(scene), jdArea: '20-29' });
+    const readsFinance = [
+      ...admin3039,
+      { role: 'viewer', scopeKind: 'jd_area', scopeArea: '20-29' },
+    ] as const;
+    const seen = await inScene(page, byPerson(readsFinance));
+    expect(seen.outcome).toEqual({
+      status: 'error',
+      reason: 'not_permitted',
+      detail: { jdArea: '20-29' },
+    });
+    expect(seen.failures).toEqual([]);
   });
 });
 
