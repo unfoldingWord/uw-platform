@@ -1,5 +1,8 @@
+import { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
 import { createApp } from './app.tsx';
+import type { AppEnv } from './deps.ts';
+import { serverTiming } from './observe.ts';
 import { recordingDeps } from './testing/deps.ts';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -74,5 +77,29 @@ describe('FD-11 the request log line on refusals and cleanup failures', () => {
     expect(response.status).toBe(200);
     expect(lines.map((line) => line['level'])).toEqual(['warn', 'info']);
     expect(lines[0]).toMatchObject({ route: 'GET /health/probe', outcome: 'release_failed' });
+  });
+});
+
+function upgrading(): Response {
+  const pair = new WebSocketPair();
+  return new Response(null, { status: 101, webSocket: pair[0] });
+}
+
+describe('the Server-Timing header', () => {
+  it('names the whole request on an ordinary response', async () => {
+    const app = new Hono<AppEnv>();
+    app.use(serverTiming());
+    app.get('/page', (c) => c.text('ok'));
+    const response = await app.request('/page');
+    expect(response.headers.get('server-timing')).toContain('total;dur=');
+  });
+
+  it('leaves a WebSocket upgrade untouched', async () => {
+    const app = new Hono<AppEnv>();
+    app.use(serverTiming());
+    app.get('/live', upgrading);
+    const response = await app.request('/live');
+    expect(response.status).toBe(101);
+    expect(response.headers.get('server-timing')).toBeNull();
   });
 });
