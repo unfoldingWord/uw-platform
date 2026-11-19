@@ -137,7 +137,7 @@ describe('the shell escapes the text it is given', () => {
     const hrefs = [...document.querySelectorAll('a[href]')].map((link) =>
       link.getAttribute('href'),
     );
-    expect(hrefs).toEqual(['#main', '/', '/']);
+    expect(hrefs).toEqual(['#main', '/', '/cdn-cgi/access/logout', '/', '/cdn-cgi/access/logout']);
     expect(document.body.textContent).toContain('Trail');
   });
 });
