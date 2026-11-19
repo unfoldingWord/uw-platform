@@ -6,24 +6,35 @@ import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
-import { seedBreakerReading, seedPage } from '@uw/db/test-seed';
+import { seedBreakerReading, seedGrant, seedPage, seedPerson } from '@uw/db/test-seed';
 import type { Clock } from '@uw/harness';
 import { appCss } from '@uw/ui/generated/app-css';
 import { fontFiles } from '@uw/ui/generated/fonts';
-import { markBase64, markPath } from '@uw/ui/generated/mark';
-import { boardWorld } from '../testing/board-world.ts';
+import { wordmarkBase64, wordmarkPath } from '@uw/ui/generated/mark';
+import { boardWorld, type BoardWorld } from '../testing/board-world.ts';
+import { callerOf } from '../testing/commands.ts';
 import { gateWorld } from '../testing/gate-world.ts';
+import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { getHtml } from '../testing/views.ts';
 import {
-  boardPath,
+  accessPath,
+  agentQueuesPath,
+  newWorkflowPath,
+  queuePath,
+  controlsPath,
   flowPath,
   gatePath,
-  gatesPath,
   healthPath,
   homePath,
   itemPath,
+  agentsPath,
+  newAgentPath,
+  pagePath,
   personaPath,
+  runPath,
+  runsPath,
+  waitingPath,
 } from '../views/parts/paths.ts';
 
 const seedClock: Clock = { now: () => new Date('2026-10-02T06:00:00.000Z') };
@@ -58,7 +69,7 @@ function inlined(): string {
 export function settled(html: string, css: string): string {
   return html
     .replace(/<link rel="stylesheet" href="[^"]+"\/>/, `<style>${css}</style>`)
-    .replaceAll(markPath, `data:image/png;base64,${markBase64}`)
+    .replaceAll(wordmarkPath, `data:image/png;base64,${wordmarkBase64}`)
     .replace(/<script type="module"[^>]*><\/script>/, '')
     .replace(anyId, '00000000-0000-4000-8000-000000000000')
     .replace(/db \d+ ms/g, 'db 0 ms');
@@ -92,6 +103,36 @@ async function personaOn(db: Database, harnessId: string): Promise<string> {
   return pageId;
 }
 
+const watcherEmail = 'flow.watcher@unfoldingword.org';
+
+async function drafted(world: BoardWorld): Promise<void> {
+  const watcher = '00000000-0000-4000-8000-00000000a0a1';
+  await seedPerson(world.db, { id: watcher, email: watcherEmail });
+  await seedGrant(world.db, {
+    id: '00000000-0000-4000-8000-00000000a0a2',
+    personId: watcher,
+    role: 'admin',
+    scopeKind: 'jd_area',
+    scopeArea: '80-89',
+    grantedAt: new Date('2026-01-01T00:00:00.000Z'),
+    expiresAt: null,
+  });
+  const kernel = kernelOn(world.db, { now: () => new Date('2026-10-02T08:56:00.000Z') });
+  const opened = await kernel.drafts.open(callerOf(world.rowan), { harnessId: world.harnessId });
+  if (opened.status !== 'accepted') throw new Error(`refused: ${opened.reason}`);
+}
+
+async function draftScreens(world: BoardWorld): Promise<Screen[]> {
+  await drafted(world);
+  const path = flowPath(world.harnessId);
+  const mine = await getHtml(world.db, world.rowanEmail, path, {}, viewClock);
+  const theirs = await getHtml(world.db, watcherEmail, path, {}, viewClock);
+  return [
+    { name: 'flow-draft', html: mine.text },
+    { name: 'flow-locked', html: theirs.text },
+  ];
+}
+
 async function boardScreens(db: Database): Promise<Screen[]> {
   const world = await boardWorld(db, seedClock);
   const pageId = await personaOn(db, world.harnessId);
@@ -103,26 +144,51 @@ async function boardScreens(db: Database): Promise<Screen[]> {
   });
   const paths: readonly (readonly [string, string])[] = [
     ['home', homePath()],
-    ['board', boardPath(world.harnessId)],
+    ['agent-queues', agentQueuesPath()],
+    ['new-workflow', newWorkflowPath()],
+    ['queue', queuePath(world.harnessId)],
     ['flow', flowPath(world.harnessId)],
+    ['controls-admin', controlsPath(world.harnessId)],
+    ['agents', agentsPath(world.harnessId)],
+    ['runs', runsPath(world.harnessId)],
+    ['run', runPath(world.harnessId, world.meteredRunId)],
+    ['new-agent', newAgentPath(world.harnessId)],
     ['health', healthPath()],
     ['health-detail', healthPath('breaker')],
+    ['access', accessPath()],
     ['persona', personaPath(pageId)],
+    ['page', pagePath(pageId)],
   ];
   const headers = { accept: 'text/html' };
   const screens: Screen[] = [];
   for (const [name, path] of paths) {
-    const page = await getHtml(db, world.ianEmail, path, headers, viewClock);
+    const page = await getHtml(db, world.rowanEmail, path, headers, viewClock);
     screens.push({ name, html: page.text });
   }
-  return screens;
+  const member = await getHtml(
+    db,
+    world.viewer.email,
+    controlsPath(world.harnessId),
+    headers,
+    viewClock,
+  );
+  screens.push({ name: 'controls-member', html: member.text });
+  const flowMember = await getHtml(
+    db,
+    world.viewer.email,
+    flowPath(world.harnessId),
+    headers,
+    viewClock,
+  );
+  screens.push({ name: 'flow-member', html: flowMember.text });
+  return [...screens, ...(await draftScreens(world))];
 }
 
 async function gateScreens(db: Database): Promise<Screen[]> {
   const world = await gateWorld(db);
   const { harnessId, itemId } = world.item;
   const paths: readonly (readonly [string, string])[] = [
-    ['gates', gatesPath()],
+    ['waiting', waitingPath(harnessId)],
     ['gate', gatePath(harnessId, itemId)],
     ['play', itemPath(harnessId, itemId)],
   ];
@@ -134,7 +200,17 @@ async function gateScreens(db: Database): Promise<Screen[]> {
   return screens;
 }
 
-async function shoot(browser: Browser, html: string, shot: Shot): Promise<Buffer> {
+const closedMenu = /(<section[^>]*aria-label="Menu"[^>]*>)<details>/;
+
+function menuOpen(all: readonly Screen[]): Screen {
+  const home = all.find((screen) => screen.name === 'home');
+  if (home === undefined || !closedMenu.test(home.html)) throw new Error('no closed menu on home');
+  return { name: 'menu', html: home.html.replace(closedMenu, '$1<details open="">') };
+}
+
+type Taken = { readonly picture: Buffer; readonly windowScrolls: boolean };
+
+async function shoot(browser: Browser, html: string, shot: Shot): Promise<Taken> {
   const page = await browser.newPage({
     viewport: { width: shot.width, height: shot.height },
     colorScheme: shot.theme,
@@ -143,7 +219,10 @@ async function shoot(browser: Browser, html: string, shot: Shot): Promise<Buffer
   try {
     await page.setContent(html, { waitUntil: 'load' });
     await page.evaluate(() => document.fonts.ready);
-    return await page.screenshot({ animations: 'disabled' });
+    const windowScrolls = await page.evaluate(
+      () => document.documentElement.scrollHeight > document.documentElement.clientHeight,
+    );
+    return { picture: await page.screenshot({ animations: 'disabled' }), windowScrolls };
   } finally {
     await page.close();
   }
@@ -177,6 +256,7 @@ beforeAll(async () => {
   await withAppDatabase(async (db) => {
     screens = [...screens, ...(await gateScreens(db))];
   });
+  screens = [...screens, menuOpen(screens)];
 }, 300_000);
 
 afterAll(async () => {
@@ -194,7 +274,10 @@ async function compareAll(css: string): Promise<string[]> {
     for (const size of widths)
       for (const theme of themes) {
         const name = `${screen.name}-${size.name}-${theme}.png`;
-        const shot = await shoot(browser, settled(screen.html, css), { ...size, theme });
+        const taken = await shoot(browser, settled(screen.html, css), { ...size, theme });
+        const shot = taken.picture;
+        if (size.name === 'desktop' && taken.windowScrolls)
+          failures.push(`${name}: the window scrolls, only the content should`);
         if (update) {
           mkdirSync(pictures, { recursive: true });
           writeFileSync(pictureOf(name), shot);
@@ -220,14 +303,28 @@ describe.skipIf(!testServer || (!browserReady && !required))('UI-16 the screensh
   it('UI-16 every screen in light and dark, desktop and phone, matches its committed picture', async () => {
     expect(screens.map((screen) => screen.name)).toEqual([
       'home',
-      'board',
+      'agent-queues',
+      'new-workflow',
+      'queue',
       'flow',
+      'controls-admin',
+      'agents',
+      'runs',
+      'run',
+      'new-agent',
       'health',
       'health-detail',
+      'access',
       'persona',
-      'gates',
+      'page',
+      'controls-member',
+      'flow-member',
+      'flow-draft',
+      'flow-locked',
+      'waiting',
       'gate',
       'play',
+      'menu',
     ]);
     expect(await compareAll(inlined())).toEqual([]);
   }, 600_000);

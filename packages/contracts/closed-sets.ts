@@ -38,7 +38,7 @@ export const untrustedSourceSchema = z.enum([
   'pr_title',
 ]);
 export const gateDecisionSchema = z.enum(['approve', 'reject', 'take_over', 'override']);
-export const personStatusSchema = z.enum(['active', 'pending']);
+export const personStatusSchema = z.enum(['active', 'pending', 'disabled']);
 export const principalKindSchema = z.enum(['person', 'agent']);
 export const wakeReasonSchema = z.enum([
   'gate_waiting',
@@ -49,7 +49,15 @@ export const wakeReasonSchema = z.enum([
   'delegated_merge',
   'silence_alarm',
 ]);
-export const liveScreenSchema = z.enum(['home', 'flow', 'board', 'gates', 'item']);
+export const liveScreenSchema = z.enum([
+  'home',
+  'queues',
+  'flow',
+  'board',
+  'gates',
+  'item',
+  'runs',
+]);
 
 export type IntakeVia = z.infer<typeof intakeViaSchema>;
 export type Connector = z.infer<typeof connectorSchema>;
@@ -111,6 +119,7 @@ export const runStopSchema = z.enum([
   'lease_expired',
   'delegation_lapsed',
   'gate_wait_expired',
+  'taken_over',
 ]);
 export const runFailureSchema = z.enum([
   'retries_exhausted',

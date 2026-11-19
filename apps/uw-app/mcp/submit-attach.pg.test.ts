@@ -9,7 +9,7 @@ import { kernelOn, personOn } from '../testing/kernel.ts';
 import { callVerb } from './dispatch.ts';
 import { verbHandlers } from './verbs/index.ts';
 
-const IAN = { id: '00000000-0000-4000-8000-000000000001', email: 'ian.lindsley@unfoldingword.org' };
+const ROWAN = { id: '00000000-0000-4000-8000-000000000001', email: 'rowan.test@unfoldingword.org' };
 const EDITOR = { id: '00000000-0000-4000-8000-000000002901', email: 'attach@unfoldingword.org' };
 const LEARNING = '00000000-0000-4000-8000-000000002911';
 const REVISION = '00000000-0000-4000-8000-000000002912';
@@ -60,7 +60,7 @@ async function seedWorld(db: Database): Promise<void> {
   });
 }
 
-async function itemAtClose(kernel: Kernel, ian: Principal): Promise<{ h: string; i: string }> {
+async function itemAtClose(kernel: Kernel, rowan: Principal): Promise<{ h: string; i: string }> {
   const harnessId = crypto.randomUUID();
   const activation = {
     harnessId,
@@ -70,16 +70,16 @@ async function itemAtClose(kernel: Kernel, ian: Principal): Promise<{ h: string;
     repository: null,
     requiredChecks: [...defaultCiChecks],
   };
-  value(await kernel.stages.activate(caller(ian), activation));
+  value(await kernel.stages.activate(caller(rowan), activation));
   const change = { feeds: ['close'] };
-  value(await kernel.stages.updateStage(caller(ian), { harnessId, stageKey: 'package', change }));
+  value(await kernel.stages.updateStage(caller(rowan), { harnessId, stageKey: 'package', change }));
   const input = { harnessId, title: 'Tune', pageId: null, priority: 1, due: null };
   const { itemId } = value(
-    await kernel.items.enqueue(caller(ian), { ...input, delegationId: null }),
+    await kernel.items.enqueue(caller(rowan), { ...input, delegationId: null }),
   );
-  value(await kernel.items.claim(caller(ian), { itemId, delegationId: null }));
+  value(await kernel.items.claim(caller(rowan), { itemId, delegationId: null }));
   const moved = { itemId, to: 'close', evidence: {}, change: null };
-  value(await kernel.items.submit(caller(ian), moved));
+  value(await kernel.items.submit(caller(rowan), moved));
   return { h: harnessId, i: itemId };
 }
 
@@ -132,8 +132,8 @@ describe.skipIf(!testServer)('submit_to_gate attachments', () => {
   it('PE-7 submit_to_gate attaches pages before its validators run', async () => {
     if (current === null) throw new Error('the rig is not open');
     const r = current;
-    const ian = await personOn(r.db, IAN.id, IAN.email, new Date());
-    const { h, i } = await itemAtClose(r.kernel, ian);
+    const rowan = await personOn(r.db, ROWAN.id, ROWAN.email, new Date());
+    const { h, i } = await itemAtClose(r.kernel, rowan);
     const laptop = await laptopOf(r);
     value(await r.kernel.items.claim(caller(laptop), { itemId: i, delegationId: null }));
     const submitted = await submitAs(r, laptop, {
@@ -151,7 +151,7 @@ describe.skipIf(!testServer)('submit_to_gate attachments', () => {
         `learning_attached: revision ${REVISION} has a claim without an evidence label: readers want shorter guides`,
       ],
     });
-    const events = await r.kernel.events.read(caller(ian), {
+    const events = await r.kernel.events.read(caller(rowan), {
       harnessId: h,
       itemId: i,
       after: 0,

@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { awaitBlocked } from '../../../packages/harness/port-contracts/lock-wait.ts';
 import { agentOf, kernelOn, personOn } from '../testing/kernel.ts';
 
-const ianId = '00000000-0000-4000-8000-000000000001';
+const rowanId = '00000000-0000-4000-8000-000000000001';
 const instant = new Date();
 const clock: Clock = { now: () => instant };
 
@@ -22,7 +22,7 @@ type Connections = {
 type Scene = {
   readonly connections: Connections;
   readonly kernel: Kernel;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly harnessId: string;
   readonly scope: Stage;
   readonly itemId: string;
@@ -37,9 +37,9 @@ function accepted<T>(outcome: KernelOutcome<T>, what: string): T {
   return outcome.value;
 }
 
-async function itemAtScope(kernel: Kernel, ian: Principal, harnessId: string): Promise<string> {
+async function itemAtScope(kernel: Kernel, rowan: Principal, harnessId: string): Promise<string> {
   const { itemId } = accepted(
-    await kernel.items.enqueue(caller(ian), {
+    await kernel.items.enqueue(caller(rowan), {
       harnessId,
       title: 'Scope the board',
       pageId: null,
@@ -49,18 +49,18 @@ async function itemAtScope(kernel: Kernel, ian: Principal, harnessId: string): P
     }),
     'enqueue',
   );
-  accepted(await kernel.items.claim(caller(ian), { itemId, delegationId: null }), 'claim');
+  accepted(await kernel.items.claim(caller(rowan), { itemId, delegationId: null }), 'claim');
   const change = { itemId, to: null, evidence: {}, change: null };
-  accepted(await kernel.items.submit(caller(ian), change), 'submit');
+  accepted(await kernel.items.submit(caller(rowan), change), 'submit');
   return itemId;
 }
 
 async function sceneOn(connections: Connections): Promise<Scene> {
-  const ian = await personOn(connections.actor, ianId, 'ian.lindsley@unfoldingword.org', instant);
+  const rowan = await personOn(connections.actor, rowanId, 'rowan.test@unfoldingword.org', instant);
   const kernel = kernelOn(connections.actor, clock);
   const harnessId = crypto.randomUUID();
   const { stages } = accepted(
-    await kernel.stages.activate(caller(ian), {
+    await kernel.stages.activate(caller(rowan), {
       harnessId,
       harnessKey: 'software',
       jdArea: '80-89',
@@ -72,8 +72,8 @@ async function sceneOn(connections: Connections): Promise<Scene> {
   );
   const scope = stages.find((stage) => stage.key === 'scope');
   if (scope === undefined) throw new Error('no scope stage');
-  const itemId = await itemAtScope(kernel, ian, harnessId);
-  return { connections, kernel, ian, harnessId, scope, itemId };
+  const itemId = await itemAtScope(kernel, rowan, harnessId);
+  return { connections, kernel, rowan, harnessId, scope, itemId };
 }
 
 async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
@@ -104,13 +104,13 @@ async function claimPausedWhileWaiting(scene: Scene) {
     await released;
   });
   await stageLocked;
-  const agent = agentOf(scene.ian, 'builder');
+  const agent = agentOf(scene.rowan, 'builder');
   const claim = scene.kernel.items.claim(caller(agent), {
     itemId: scene.itemId,
     delegationId: null,
   });
   await awaitBlocked(() => lockWaiters(scene.connections.observer));
-  const pause = await kernelOn(scene.connections.admin, clock).stages.pause(caller(scene.ian), {
+  const pause = await kernelOn(scene.connections.admin, clock).stages.pause(caller(scene.rowan), {
     harnessId: scene.harnessId,
     stageKey: null,
   });

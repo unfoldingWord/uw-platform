@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gte, inArray, sql, type SQL } from 'drizzle-orm';
 import { engineSchema, runShapeSchema } from '@uw/contracts';
-import { startedPerDay } from './daily.ts';
+import { startedPerDay, startedPerDayByHarness } from './daily.ts';
 import type { AnyExecutor } from '../any-database.ts';
 import { oneOf } from '../checks.ts';
 import { delegations, harnessItems, harnessRuns } from '../schema.ts';
@@ -99,6 +99,15 @@ export function startedSinceQuery(executor: AnyExecutor, since: Date, limit: num
     .from(harnessRuns)
     .where(gte(harnessRuns.startedAt, since))
     .orderBy(asc(harnessRuns.startedAt), asc(harnessRuns.id))
+    .limit(checkedLimit(limit));
+}
+
+export function recentRunsQuery(executor: AnyExecutor, harnessId: string, limit: number) {
+  return executor
+    .select()
+    .from(harnessRuns)
+    .where(eq(harnessRuns.harnessId, harnessId))
+    .orderBy(desc(harnessRuns.startedAt), desc(harnessRuns.id))
     .limit(checkedLimit(limit));
 }
 
@@ -230,11 +239,15 @@ export function bindRuns(executor: AnyExecutor): HarnessRunsGateway {
       forItems: (itemIds) => forItems(executor, itemIds),
       startedSince: async (since, limit) =>
         (await startedSinceQuery(executor, since, limit)).map(toRun),
+      recent: async (harnessId, limit) =>
+        (await recentRunsQuery(executor, harnessId, limit)).map(toRun),
       failedFor: (personId, harnessIds, since, limit) =>
         failedFor(executor, { personId, harnessIds, since, limit }),
       spendSince: (since) => spendSince(executor, since),
       runCountsSince: (since) => runCountsSince(executor, since),
       startedPerDay: (harnessIds, since) => startedPerDay(executor, harnessIds, since),
+      startedPerDayByHarness: (harnessIds, since) =>
+        startedPerDayByHarness(executor, harnessIds, since),
       costsByItem: (itemIds) => costsByItem(executor, itemIds),
       forPersona: (query) => forPersona(executor, query),
       personaDay: (query) => personaDay(executor, query),
@@ -252,4 +265,25 @@ export function bindRuns(executor: AnyExecutor): HarnessRunsGateway {
       update: (run) => refusing(() => update(executor, run)),
     },
   };
+}
+
+export async function subscriptionTokensFor(
+  executor: AnyExecutor,
+  delegationIds: readonly string[],
+): Promise<ReadonlyMap<string, number>> {
+  if (delegationIds.length === 0) return new Map();
+  const rows = await executor
+    .select({
+      delegationId: harnessRuns.delegationId,
+      tokens: sql`coalesce(sum(${stepTokens}), 0)`.mapWith(Number),
+    })
+    .from(harnessRuns)
+    .where(
+      and(
+        inArray(harnessRuns.delegationId, [...delegationIds]),
+        eq(harnessRuns.costBasis, 'subscription'),
+      ),
+    )
+    .groupBy(harnessRuns.delegationId);
+  return new Map(rows.map((row) => [row.delegationId ?? '', row.tokens]));
 }

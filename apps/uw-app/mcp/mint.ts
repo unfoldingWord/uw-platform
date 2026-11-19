@@ -11,6 +11,7 @@ import {
 } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
 import { resolveGrants } from '@uw/db/store';
+import { noteRoutineSeen, routineOfServiceToken, type RoutineBinding } from '../agents/routines.ts';
 import { deviceIsBound, liveBinding } from '../agents/service-tokens.ts';
 import type { AppEnv } from '../deps.ts';
 import { refuse } from '../http/outcomes.ts';
@@ -98,6 +99,11 @@ async function personOwner(
   };
 }
 
+function routineAdmits(routine: RoutineBinding | null, claim: AgentClaim): boolean {
+  if (routine === null) return true;
+  return !routine.paused && claim.delegation?.delegationId === routine.delegationId;
+}
+
 async function serviceOwner(
   c: Context<AppEnv>,
   db: Database,
@@ -111,8 +117,11 @@ async function serviceOwner(
   if (claim.device !== null && claim.device !== binding.device) {
     return refuse(c, 'malformed_command');
   }
+  const routine = await routineOfServiceToken(db, binding.id);
+  if (!routineAdmits(routine, claim)) return refuse(c, 'not_permitted');
   const person = await personById(db, binding.personId);
   if (person?.status !== 'active') return refuse(c, 'pending_approval');
+  if (routine !== null) await noteRoutineSeen(db, routine.id, c.get('now'));
   const grants = await resolveGrants(db, binding.personId, { at: c.get('now') });
   return { personId: binding.personId, grants, device: binding.device, interactive: false };
 }

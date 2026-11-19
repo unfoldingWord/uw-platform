@@ -10,11 +10,11 @@ import {
   dispatchAs,
   dispatchScope,
   eventsNamed,
-  ian,
+  rowan,
   softwareHarness,
 } from '../testing/commands.ts';
 
-const IAN = { email: 'ian.lindsley@unfoldingword.org' };
+const ROWAN = { email: 'rowan.test@unfoldingword.org' };
 
 const body = [
   '---',
@@ -69,7 +69,7 @@ async function adminOnly(db: Database): Promise<void> {
   const send = (who: { readonly email: string }, version: number) =>
     command(db, who, scene.harnessId, 'activate_persona', activation(pageId, version));
   expect((await send(scene.editor, 1)).body).toMatchObject({ reason: 'not_permitted' });
-  const agent = agentOf(await ian(db), 'laptop');
+  const agent = agentOf(await rowan(db), 'laptop');
   const fromAgent = await dispatchAs(
     agent,
     scene.harnessId,
@@ -78,11 +78,11 @@ async function adminOnly(db: Database): Promise<void> {
     dispatchScope(db),
   );
   expect(fromAgent).toMatchObject({ status: 'error', reason: 'not_permitted' });
-  const stale = await send(IAN, 2);
+  const stale = await send(ROWAN, 2);
   expect([stale.status, stale.body['reason']]).toEqual([409, 'stale_version']);
   expect(await eventsNamed(db, scene.harnessId, 'persona_activated')).toHaveLength(0);
   expect(await pageRow(db, pageId)).toEqual({ status: 'suggested', version: 1 });
-  const done = await send(IAN, 1);
+  const done = await send(ROWAN, 1);
   expect([done.status, done.body['status']]).toEqual([200, 'accepted']);
   expect(await pageRow(db, pageId)).toEqual({ status: 'active', version: 2 });
   expect(await eventsNamed(db, scene.harnessId, 'persona_activated')).toHaveLength(1);
@@ -93,7 +93,7 @@ async function otherHarness(db: Database): Promise<void> {
   const pageId = await suggestedPersona(db, scene.harnessId);
   const sent = await command(
     db,
-    IAN,
+    ROWAN,
     scene.otherHarnessId,
     'activate_persona',
     activation(pageId, 1),

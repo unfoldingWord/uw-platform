@@ -16,17 +16,19 @@ import { screens, type ScreenEntry } from './registry.ts';
 const HOUR = 3_600_000;
 const earlier = { now: () => new Date(clock.now().getTime() - 2 * HOUR) };
 
+type Seeded = GateWorld & { readonly runId: string };
+
 type Rendered = { readonly name: string; readonly email: string; readonly page: Html };
 
-async function seededWorld(db: Database): Promise<GateWorld> {
+async function seededWorld(db: Database): Promise<Seeded> {
   const world = await gateWorld(db);
   const { harnessId } = world.item;
   const kernel = kernelOn(db, earlier);
-  await enqueuedItem(kernel, world.ian, harnessId, 'Draw the icon');
-  const built = await enqueuedItem(kernel, world.ian, harnessId, 'Wire the run host');
-  await advanced(kernel, world.ian, built, 3);
+  await enqueuedItem(kernel, world.rowan, harnessId, 'Draw the icon');
+  const built = await enqueuedItem(kernel, world.rowan, harnessId, 'Wire the run host');
+  await advanced(kernel, world.rowan, built, 3);
   const at = earlier.now();
-  await meteredRun(db, { harnessId, itemId: built, at }, 'completed');
+  const runId = await meteredRun(db, { harnessId, itemId: built, at }, 'running');
   await subscriptionRun(
     db,
     { harnessId, itemId: built, at },
@@ -64,7 +66,7 @@ async function seededWorld(db: Database): Promise<GateWorld> {
     frontmatter: personaFrontmatter(harnessId),
     slug: 'screens-persona',
   });
-  return world;
+  return { ...world, runId };
 }
 
 const personaPageId = '00000000-0000-4000-8000-00000000be11';
@@ -86,15 +88,16 @@ function personaFrontmatter(harnessId: string) {
   };
 }
 
-function pathOf(entry: ScreenEntry, world: GateWorld): string {
+function pathOf(entry: ScreenEntry, world: Seeded): string {
   return entry.path
     .replace(':harnessId', world.item.harnessId)
     .replace(':itemId', world.item.itemId)
+    .replace(':runId', world.runId)
     .replace(':indicator', 'spend')
     .replace(':pageId', personaPageId);
 }
 
-async function renderAll(world: GateWorld): Promise<readonly Rendered[]> {
+async function renderAll(world: Seeded): Promise<readonly Rendered[]> {
   const rendered: Rendered[] = [];
   for (const email of [world.kimEmail, world.viewerEmail]) {
     for (const entry of screens) {

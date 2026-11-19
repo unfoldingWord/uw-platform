@@ -6,7 +6,7 @@ import { createMigratedDatabase, testServer } from '@uw/db/test-database';
 import { personPrincipal, type Principal } from '@uw/core/principal';
 import { grantRole, revokeRole } from './grant-commands.ts';
 
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 const ADMIN_ID = '00000000-0000-4000-8000-000000000002';
 const ADMIN_GRANT_ID = '00000000-0000-4000-8000-000000000102';
 const AREA = '80-89';
@@ -17,7 +17,7 @@ async function seed(db: Database): Promise<void> {
     sql`INSERT INTO people (id, email, display_name, status) VALUES (${ADMIN_ID}, 'a@unfoldingword.org', 'A', 'active')`,
   );
   await db.execute(
-    sql`INSERT INTO role_grants (id, person_id, role, scope_kind, scope_area, granted_by) VALUES (${ADMIN_GRANT_ID}, ${ADMIN_ID}, 'admin', 'jd_area', ${AREA}, ${IAN_ID})`,
+    sql`INSERT INTO role_grants (id, person_id, role, scope_kind, scope_area, granted_by) VALUES (${ADMIN_GRANT_ID}, ${ADMIN_ID}, 'admin', 'jd_area', ${AREA}, ${ROWAN_ID})`,
   );
 }
 
@@ -32,7 +32,7 @@ async function seedExpiredPair(db: Database): Promise<Pair> {
     sql`INSERT INTO people (id, email, display_name, status) VALUES (${pair.targetId}, ${`${pair.targetId}@unfoldingword.org`}, 'T', 'active')`,
   );
   await db.execute(
-    sql`INSERT INTO role_grants (id, person_id, role, scope_kind, scope_area, granted_by, expires_at) VALUES (${pair.expiredGrantId}, ${pair.targetId}, 'editor', 'jd_area', ${AREA}, ${IAN_ID}, now() - interval '1 day')`,
+    sql`INSERT INTO role_grants (id, person_id, role, scope_kind, scope_area, granted_by, expires_at) VALUES (${pair.expiredGrantId}, ${pair.targetId}, 'editor', 'jd_area', ${AREA}, ${ROWAN_ID}, now() - interval '1 day')`,
   );
   return pair;
 }

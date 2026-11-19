@@ -6,12 +6,12 @@ import { seedPage } from '@uw/db/test-seed';
 import { command, eventsNamed, person } from '../testing/commands.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 
-const IAN = { email: 'ian.lindsley@unfoldingword.org' };
+const ROWAN = { email: 'rowan.test@unfoldingword.org' };
 const repository = 'unfoldingWord/tc-admin-app';
 
 async function checkOnlyHarness(db: Database, shadow: boolean): Promise<string> {
   const harnessId = randomUUID();
-  const sent = await command(db, IAN, harnessId, 'activate_template', {
+  const sent = await command(db, ROWAN, harnessId, 'activate_template', {
     requestId: randomUUID(),
     harnessKey: `tc-admin-app-${harnessId.slice(0, 8)}`,
     jdArea: '80-89',
@@ -25,7 +25,7 @@ async function checkOnlyHarness(db: Database, shadow: boolean): Promise<string> 
 }
 
 describe.skipIf(!testServer)('GL-4 shadow through the command API', () => {
-  it('activates in shadow, refuses an editor the lift, lifts for an admin and refuses setting it on', () =>
+  it('activates in shadow, refuses an editor the lift, lifts for an admin and turns it on again (#108)', () =>
     withAppDatabase(async (db) => {
       const harnessId = await checkOnlyHarness(db, true);
       const [activated] = await eventsNamed(db, harnessId, 'template_activated');
@@ -36,17 +36,18 @@ describe.skipIf(!testServer)('GL-4 shadow through the command API', () => {
         status: 'error',
         reason: 'not_permitted',
       });
-      const lifted = await command(db, IAN, harnessId, 'set_shadow', {
+      const lifted = await command(db, ROWAN, harnessId, 'set_shadow', {
         ...lift,
         requestId: randomUUID(),
       });
       expect(lifted.body).toMatchObject({ status: 'accepted' });
       expect(await eventsNamed(db, harnessId, 'shadow_lifted')).toHaveLength(1);
-      const on = await command(db, IAN, harnessId, 'set_shadow', {
+      const on = await command(db, ROWAN, harnessId, 'set_shadow', {
         requestId: randomUUID(),
         shadow: true,
       });
-      expect(on.status).toBe(400);
+      expect(on.body).toMatchObject({ status: 'accepted' });
+      expect(await eventsNamed(db, harnessId, 'shadow_turned_on')).toHaveLength(1);
     }));
 });
 
@@ -66,7 +67,7 @@ describe.skipIf(!testServer)(
           title: 'A product',
           bodyMd: 'A product page in the area.',
         });
-        const kicked = await command(db, IAN, harnessId, 'kickstart', {
+        const kicked = await command(db, ROWAN, harnessId, 'kickstart', {
           requestId: randomUUID(),
           pageId,
         });
@@ -82,7 +83,7 @@ describe.skipIf(!testServer)(
 
 async function activatedWith(db: Database, extra: Record<string, unknown>) {
   const harnessId = randomUUID();
-  const sent = await command(db, IAN, harnessId, 'activate_template', {
+  const sent = await command(db, ROWAN, harnessId, 'activate_template', {
     requestId: randomUUID(),
     harnessKey: `bots-${harnessId.slice(0, 8)}`,
     jdArea: '80-89',

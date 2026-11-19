@@ -17,7 +17,7 @@ export const scenario = defineScenario({
     const scene = await gatesWorld(world);
     const lists = {
       areaAdmin: await titlesFor(scene, scene.areaAdmin),
-      orgAdmin: await titlesFor(scene, scene.ian),
+      orgAdmin: await titlesFor(scene, scene.rowan),
       viewer: await titlesFor(scene, scene.viewer),
     };
     assert.deepEqual(lists.areaAdmin, ['Show the board']);

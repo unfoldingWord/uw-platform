@@ -110,7 +110,7 @@ function reachable(stage: Stage, reach: ReadonlySet<CapabilityWord> | null): boo
   return [...reach].some((capability) => capabilityReaches(capability, stage.bracket));
 }
 
-function pickupOpen(stage: Stage, reach: ReadonlySet<CapabilityWord> | null): boolean {
+export function pickupOpen(stage: Stage, reach: ReadonlySet<CapabilityWord> | null): boolean {
   if (delegableExit(stage)) return reach !== null && reach.has('merge');
   return stage.agentPickup !== 'none' && reachable(stage, reach);
 }

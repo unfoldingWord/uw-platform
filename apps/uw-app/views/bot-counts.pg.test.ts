@@ -9,13 +9,13 @@ import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml } from '../testing/views.ts';
-import { boardPath } from './parts/paths.ts';
+import { queuePath } from './parts/paths.ts';
 
-const IAN = 'ian.lindsley@unfoldingword.org';
+const ROWAN = 'rowan.test@unfoldingword.org';
 
 async function parkedByBot(db: Database): Promise<string> {
-  const { ian } = await people(db);
-  const item = await parkAtShip(db, kernelOn(db, clock), ian);
+  const { rowan } = await people(db);
+  const item = await parkAtShip(db, kernelOn(db, clock), rowan);
   const pull = { ...openedPull, authorLogin: 'Dependabot[bot]' };
   await upsertFacts(db, { ...emptyBatch, repos: [repo], pullRequests: [pull] }, clock.now());
   return item.harnessId;
@@ -36,7 +36,7 @@ describe.skipIf(!testServer)('OB-4 the Board and Home say what their counts leav
   it('OB-4 the Board counts the bot item out of its column and names the bot', () =>
     withAppDatabase(async (db) => {
       const harnessId = await parkedByBot(db);
-      const page = await getHtml(db, IAN, boardPath(harnessId), {}, clock);
+      const page = await getHtml(db, ROWAN, queuePath(harnessId), {}, clock);
       expect(itemsFact(page.text, 'Merge, tag, deploy')).toBe(
         '0, not counting 1 by dependabot[bot]',
       );
@@ -46,7 +46,7 @@ describe.skipIf(!testServer)('OB-4 the Board and Home say what their counts leav
   it('OB-4 Home counts the bot gate out of what waits on you and says so', () =>
     withAppDatabase(async (db) => {
       await parkedByBot(db);
-      const page = await getHtml(db, IAN, '/', {}, clock);
+      const page = await getHtml(db, ROWAN, '/', {}, clock);
       const { document } = new JSDOM(page.text).window;
       expect(document.querySelector('main h1 + p')?.textContent).toBe(
         '0 things are waiting on you, not counting 1 on pull requests by bot accounts',

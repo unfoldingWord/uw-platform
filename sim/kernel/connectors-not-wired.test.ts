@@ -18,13 +18,13 @@ afterAll(closeEmbeddedTemplate);
 
 const unwired = ['deploy', 'publish', 'send', 'post'] as const satisfies EffectConnector[];
 
-type Scene = { readonly world: World; readonly harness: Harness; readonly ian: Principal };
+type Scene = { readonly world: World; readonly harness: Harness; readonly rowan: Principal };
 
 async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
   const world = await createWorld();
   try {
     const { harness, admin } = await createSimHarness(world, software);
-    await work({ world, harness, ian: admin });
+    await work({ world, harness, rowan: admin });
     expect((await readWorldLog(world.adapters.store)).drift).toEqual([]);
   } finally {
     await world.close();
@@ -56,10 +56,10 @@ function stageWith(connector: (typeof unwired)[number]) {
   };
 }
 
-async function parkedAtSendStage(scene: Scene, ian: Caller): Promise<string> {
+async function parkedAtSendStage(scene: Scene, rowan: Caller): Promise<string> {
   const { world, harness } = scene;
   value(
-    await world.kernel.stages.updateStage(ian, {
+    await world.kernel.stages.updateStage(rowan, {
       harnessId: harness.id,
       stageKey: 'ship',
       change: { connector: 'send' },
@@ -83,9 +83,9 @@ async function parkedAtSendStage(scene: Scene, ian: Caller): Promise<string> {
 describe('GH-7 deploy, publish, send and post are registered and answer not wired as an event', () => {
   it('accepts a stage with each of the four connectors', () =>
     inScene(async (scene) => {
-      const ian = simCaller(scene.world, scene.ian);
+      const rowan = simCaller(scene.world, scene.rowan);
       for (const connector of unwired) {
-        const created = await scene.world.kernel.stages.createStage(ian, {
+        const created = await scene.world.kernel.stages.createStage(rowan, {
           harnessId: scene.harness.id,
           stage: stageWith(connector),
         });
@@ -96,11 +96,11 @@ describe('GH-7 deploy, publish, send and post are registered and answer not wire
   it('records connector_refused not_wired from the sim send connector for an approved item and keeps it parked', () =>
     inScene(async (scene) => {
       const { world, harness } = scene;
-      const ian = simCaller(world, scene.ian);
-      const itemId = await parkedAtSendStage(scene, ian);
+      const rowan = simCaller(world, scene.rowan);
+      const itemId = await parkedAtSendStage(scene, rowan);
       const before = await itemLog(world, harness.id, itemId);
       const decided = value(
-        await world.kernel.gates.decide(ian, {
+        await world.kernel.gates.decide(rowan, {
           itemId,
           decision: 'approve',
           reason: null,

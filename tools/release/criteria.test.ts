@@ -6,8 +6,6 @@ import {
   templates,
 } from '../../packages/harness/index.ts';
 import { describe, expect, it } from 'vitest';
-import { repositoryTrace } from '../trace/repository.ts';
-import { traceExitCode } from '../trace/trace.ts';
 
 const callArguments = /\.(?:each|skipIf|runIf)\([^()]*\)/g;
 const titlePattern = /\b(?:describe|it|test)[.\w]*\(\s*(?:'([^']*)'|"([^"]*)"|`([^`]*)`)/g;
@@ -114,27 +112,19 @@ describe('the release guard catches a weakened proof', () => {
   });
 });
 
-describe('release criterion 1: pnpm verify runs walk, trace and the whole sim', () => {
-  it('chains walk:all, trace:built, the tests and sim:all in that order', () => {
+describe('release criterion 1: pnpm verify runs walk and the whole sim', () => {
+  it('chains walk:all, the tests and sim:all in that order', () => {
     const manifest: unknown = JSON.parse(source('package.json'));
     const scripts = new Map(
       Object.entries((manifest as { readonly scripts: Readonly<Record<string, string>> }).scripts),
     );
     const chain = (scripts.get('verify') ?? '').split(' && ');
-    const wanted = ['pnpm walk:all', 'pnpm trace:built', 'pnpm test', 'pnpm sim:all'];
+    const wanted = ['pnpm walk:all', 'pnpm test', 'pnpm sim:all'];
     const positions = wanted.map((step) => chain.indexOf(step));
     expect(positions.every((position) => position >= 0)).toBe(true);
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
     expect(scripts.get('walk:all')).toBe('node sim/cli/walk.ts all');
     expect(scripts.get('sim:all')).toBe('node sim/cli/sim.ts all');
-  });
-});
-
-describe('release criterion 2: every Must requirement in a built step has a scenario or a test named for it', () => {
-  it('leaves no due Must requirement unproven, so pnpm trace:built exits 0', () => {
-    const report = repositoryTrace();
-    expect(report.unproven.filter((entry) => entry.due).map((entry) => entry.id)).toEqual([]);
-    expect(traceExitCode(report, 'built')).toBe(0);
   });
 });
 

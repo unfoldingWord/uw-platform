@@ -2,13 +2,52 @@ export type ScreenEntry = { readonly name: string; readonly file: string; readon
 
 export const screens: readonly ScreenEntry[] = [
   { name: 'home', file: 'apps/uw-app/views/screens/home.tsx', path: '/' },
+  {
+    name: 'agent-queues',
+    file: 'apps/uw-app/views/screens/agent-queues.tsx',
+    path: '/agent-queues',
+  },
+  {
+    name: 'new-workflow',
+    file: 'apps/uw-app/views/screens/new-workflow.tsx',
+    path: '/agent-queues/new',
+  },
   { name: 'flow', file: 'apps/uw-app/views/screens/flow.tsx', path: '/harnesses/:harnessId' },
   {
-    name: 'board',
-    file: 'apps/uw-app/views/screens/board.tsx',
-    path: '/harnesses/:harnessId/board',
+    name: 'queue',
+    file: 'apps/uw-app/views/screens/queue.tsx',
+    path: '/harnesses/:harnessId/queue',
   },
-  { name: 'gates', file: 'apps/uw-app/views/screens/gates.tsx', path: '/gates' },
+  {
+    name: 'waiting',
+    file: 'apps/uw-app/views/screens/waiting.tsx',
+    path: '/harnesses/:harnessId/waiting',
+  },
+  {
+    name: 'runs',
+    file: 'apps/uw-app/views/screens/runs.tsx',
+    path: '/harnesses/:harnessId/runs',
+  },
+  {
+    name: 'run',
+    file: 'apps/uw-app/views/screens/run.tsx',
+    path: '/harnesses/:harnessId/runs/:runId',
+  },
+  {
+    name: 'controls',
+    file: 'apps/uw-app/views/screens/controls.tsx',
+    path: '/harnesses/:harnessId/controls',
+  },
+  {
+    name: 'agents',
+    file: 'apps/uw-app/views/screens/agents.tsx',
+    path: '/harnesses/:harnessId/agents',
+  },
+  {
+    name: 'new-agent',
+    file: 'apps/uw-app/views/screens/new-agent.tsx',
+    path: '/harnesses/:harnessId/agents/new',
+  },
   {
     name: 'gate',
     file: 'apps/uw-app/views/screens/gate.tsx',
@@ -19,6 +58,7 @@ export const screens: readonly ScreenEntry[] = [
     file: 'apps/uw-app/views/screens/play.tsx',
     path: '/harnesses/:harnessId/items/:itemId',
   },
+  { name: 'page', file: 'apps/uw-app/views/screens/page.tsx', path: '/pages/:pageId' },
   { name: 'persona', file: 'apps/uw-app/views/screens/persona.tsx', path: '/personas/:pageId' },
   { name: 'health', file: 'apps/uw-app/views/screens/health.tsx', path: '/health' },
   {
@@ -26,6 +66,7 @@ export const screens: readonly ScreenEntry[] = [
     file: 'apps/uw-app/views/screens/health-list.tsx',
     path: '/health/:indicator',
   },
+  { name: 'access', file: 'apps/uw-app/views/screens/access.tsx', path: '/access' },
   {
     name: 'not-found',
     file: 'apps/uw-app/views/screens/not-found.tsx',

@@ -27,7 +27,7 @@ import { defaultBranchOf, openPullRequestFrom } from '../github/facts/queries.ts
 import type { BuilderGitHub, RunDeps } from '../runs/deps.ts';
 import type { Json, StepRunner } from '../runs/step-runner.ts';
 import { fakeWorkflowBinding, type FakeWorkflowBinding } from '../runs/testing.ts';
-import { accepted, callerOf, enqueued, ian, softwareHarness } from './commands.ts';
+import { accepted, callerOf, enqueued, rowan, softwareHarness } from './commands.ts';
 import { kernelOn } from './kernel.ts';
 
 type TestClock = { now(): Date; advance(ms: number): void };
@@ -175,7 +175,7 @@ export async function hostRig(
     ...(options.notifier === undefined ? {} : { notifier: options.notifier }),
   });
   const { harnessId } = await softwareHarness(db);
-  const admin = await ian(db);
+  const admin = await rowan(db);
   await stageFor(kernel, admin, harnessId, options.gate === true);
   const title = 'Run the hosted Builder';
   const itemId = await enqueued(db, harnessId, title, options.itemPageId ?? null);

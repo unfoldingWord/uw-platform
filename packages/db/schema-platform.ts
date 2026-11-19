@@ -101,6 +101,30 @@ export const grantAudit = declareTable(
   ],
 );
 
+export const personAudit = declareTable(
+  'person_audit',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    actor: text('actor').notNull(),
+    at: instant('at').notNull(),
+    action: text('action').notNull(),
+    personId: uuid('person_id')
+      .notNull()
+      .references(() => people.id),
+    before: text('before').notNull(),
+    after: text('after').notNull(),
+    traceId: uuid('trace_id').notNull(),
+  },
+  { classification: 'restricted', offlineEligibility: 'never' },
+  (t) => [
+    check('person_audit_action_known', oneOf(t.action, ['approve', 'decline'])),
+    check('person_audit_actor_is_human', matches(t.actor, HUMAN_IDENTITY_PATTERN)),
+    check('person_audit_before_known', oneOf(t.before, personStatusSchema.options)),
+    check('person_audit_after_known', oneOf(t.after, personStatusSchema.options)),
+    index('person_audit_person').on(t.personId),
+  ],
+);
+
 export const pages = declareTable(
   'pages',
   {
@@ -237,6 +261,8 @@ export const serviceTokens = declareTable(
   ],
 );
 
+const retiredCommandNames = ['create_stage', 'update_stage', 'reorder_stages', 'remove_stage'];
+
 export const commandRequests = declareTable(
   'command_requests',
   {
@@ -252,7 +278,10 @@ export const commandRequests = declareTable(
   { classification: 'internal', offlineEligibility: 'never' },
   (t) => [
     primaryKey({ name: 'command_requests_pkey', columns: [t.actor, t.requestId] }),
-    check('command_requests_command_known', oneOf(t.command, commandNameSchema.options)),
+    check(
+      'command_requests_command_known',
+      oneOf(t.command, [...commandNameSchema.options, ...retiredCommandNames]),
+    ),
     check('command_requests_actor_is_identity', matches(t.actor, IDENTITY_PATTERN)),
     check(
       'command_requests_settled_with_outcome',

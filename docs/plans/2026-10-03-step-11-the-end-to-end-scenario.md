@@ -12,7 +12,7 @@
 
 Every task obeys every line here. Copy exact values; do not paraphrase them in code.
 
-- **Where:** the worktree `/home/ianjl/projects/uw-platform-v1`, branch `build/v1`. Implementers commit; they do not push (the controller pushes and watches CI).
+- **Where:** the worktree `/home/rowan-test/projects/uw-platform-v1`, branch `build/v1`. Implementers commit; they do not push (the controller pushes and watches CI).
 - **Read before the first edit:** `AGENTS.md` sections 1, 4, 6 and 10; `CONTEXT.md` for every word (Item, Stage, Exit gate, Connector, Lease, Delegation, Beat, Run, Run shape, Host, Persona, Principal, Agent identity, Kernel, Port, Adapter, Scenario); `docs/exceptions.md`; `docs/architecture.md` sections "The sim" and "Transactions and locks".
 - **Verify, at the end of every task, green:** `pnpm format`, then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`. The local server is private; CI uses a Postgres service container. If it is down: `/usr/lib/postgresql/16/bin/pg_ctl -D ~/.local/share/uw-platform-test-pg -o "-p 54329 -k '' -c listen_addresses=127.0.0.1" -l ~/.local/share/uw-platform-test-pg.log start`.
 - **R37:** never run two test suites at once. No parallel `pnpm verify`, `pnpm test`, `vitest`, `pnpm sim -- all` or `pnpm sim:all`; wait for one to finish before starting another (concurrent suites kill the WSL VM). One focused file is run with `pnpm exec vitest run --project node <file>`.
@@ -30,7 +30,7 @@ Every task obeys every line here. Copy exact values; do not paraphrase them in c
 - **One writer per table.** The sim seeds people, grants and pages only through `@uw/db/test-seed` (`seedPage`, `seedPerson`, `seedGrant`, `revokeSeededGrant`) and writes everything else through kernel commands.
 - **R36 trace honesty:** a `describe`/`it`/`test` title that leads with a requirement ID must prove that requirement's clauses; supporting tests lead with no ID. Only the scenario file `sim/scenarios/DX-7.software-template-end-to-end.ts` (id `DX-7`) proves DX-7. The `sim/e2e/` tests and the release guard lead with no ID.
 - **When an observed value differs from one this plan pins:** read the kernel code named next to it. If the kernel is right and the plan's expectation is wrong (an event order, a detail key), pin what the kernel writes and say so in the commit body. If the kernel is wrong, write a failing test for the defect at the kernel's interface (in `sim/kernel/`), fix it in its owning module, and add a "Decisions made during the build" or "Not verified" row as the case needs. Never weaken an assertion to pass.
-- **Fixed values used across tasks:** heads `simSha('d7a1')` (first push, undeclared), `simSha('d7b2')` (declared, the head that ships), `simSha('d7c3')` (a later push nobody saw); page ids `00000000-0000-4000-8000-0000000d7001` (Builder persona), `...0d7002` (Iterate persona), `...0d7003` (the product page kickstarted), `...0d7004` (the learning Iterate drafts); people `simIan` (org admin, decides the gate), `simPerson(world, 2, editor 80-89)` "Max", `simPerson(world, 4, admin 80-89)` "Kim" (owns the personas and grants their delegations); devices `agent:<Max>/laptop` and `agent:<Max>/desktop` (interactive); hosted personas `agent:builder` (capability `build`, engine `claude-messages`) and `agent:iterate` (capability `iterate`, engine `openrouter-messages`, model `z-ai/glm-5.3-flash`, provider `z-ai`); the Reviewer login `uw-reviewer[bot]` with provider `anthropic`; review ids `9100000301`, `9100000302`.
+- **Fixed values used across tasks:** heads `simSha('d7a1')` (first push, undeclared), `simSha('d7b2')` (declared, the head that ships), `simSha('d7c3')` (a later push nobody saw); page ids `00000000-0000-4000-8000-0000000d7001` (Builder persona), `...0d7002` (Iterate persona), `...0d7003` (the product page kickstarted), `...0d7004` (the learning Iterate drafts); people `simRowan` (org admin, decides the gate), `simPerson(world, 2, editor 80-89)` "Max", `simPerson(world, 4, admin 80-89)` "Kim" (owns the personas and grants their delegations); devices `agent:<Max>/laptop` and `agent:<Max>/desktop` (interactive); hosted personas `agent:builder` (capability `build`, engine `claude-messages`) and `agent:iterate` (capability `iterate`, engine `openrouter-messages`, model `z-ai/glm-5.3-flash`, provider `z-ai`); the Reviewer login `uw-reviewer[bot]` with provider `anthropic`; review ids `9100000301`, `9100000302`.
 
 ## Review Focus
 
@@ -142,7 +142,7 @@ export type Cast = {
   readonly world: World;
   readonly harnessId: string;
   readonly stages: readonly Stage[];
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly max: Principal;
   readonly kim: Principal;
   readonly laptop: Caller;
@@ -210,7 +210,7 @@ export async function createCast(world: World): Promise<Cast> {
   });
   const laptop = device('laptop');
   const desktop = device('desktop');
-  return { world, harnessId: harness.id, stages, ian: admin, max, kim, laptop, desktop, builder, iterate };
+  return { world, harnessId: harness.id, stages, rowan: admin, max, kim, laptop, desktop, builder, iterate };
 }
 
 export function hostedOn(cast: Cast, hosted: Hosted, itemId: string): RunWorld {
@@ -218,7 +218,7 @@ export function hostedOn(cast: Cast, hosted: Hosted, itemId: string): RunWorld {
     world: cast.world,
     harnessId: cast.harnessId,
     itemId,
-    admin: cast.ian,
+    admin: cast.rowan,
     owner: cast.kim,
     delegationId: hosted.delegationId,
     pageId: hosted.pageId,
@@ -439,7 +439,7 @@ with `import { travelThroughShip } from './at-ship.ts';`. Run the file — Expec
 ```ts
 async function approve(journey: Journey) {
   const { cast, itemId } = journey;
-  return cast.world.kernel.gates.decide(callerFor(cast, cast.ian), {
+  return cast.world.kernel.gates.decide(callerFor(cast, cast.rowan), {
     itemId,
     decision: 'approve',
     reason: null,
@@ -461,7 +461,7 @@ async function approve(journey: Journey) {
 `approvedAndMerged(journey): Promise<void>`:
 1. `world.adapters.githubFacts.given(greenFacts(world, { itemId, head: heads.second, reviews: [approvedBy('uw-reviewer[bot]', 'anthropic', heads.second, 9100000302)] }))`.
 2. `const decided = value(await approve(journey))`; assert `decided.advanced === true`, `decided.item.stageKey === 'validate'`, `decided.item.gateStatus === 'working'`.
-3. Assert `namesSince(before, after)` deep-equals `['risk_derived', 'gate_approved', 'connector_succeeded', 'stage_advanced']`; the `gate_approved` actor is `cast.ian.identity`; the `connector_succeeded` evidence deep-equals `{ connector: 'merge', detail: {} }`; the `stage_advanced` evidence deep-equals `{ from: 'ship', to: 'validate' }`; `after.decisions` deep-equals `['approve']`.
+3. Assert `namesSince(before, after)` deep-equals `['risk_derived', 'gate_approved', 'connector_succeeded', 'stage_advanced']`; the `gate_approved` actor is `cast.rowan.identity`; the `connector_succeeded` evidence deep-equals `{ connector: 'merge', detail: {} }`; the `stage_advanced` evidence deep-equals `{ from: 'ship', to: 'validate' }`; `after.decisions` deep-equals `['approve']`.
 4. `const calls = world.adapters.connectors.calls()`; assert length 1 and `calls[0]` matches `{ connector: 'merge', harnessId, itemId, pullRequest: shipPullRequest, expectedHead: heads.second, repository: 'unfoldingWord/uw-platform', title: 'Show the board', overrideReason: null }`: pick those keys from `calls[0]` into a new object and `assert.deepEqual` it to that value.
 
 ```ts
@@ -859,10 +859,10 @@ Every edit below is exact in shape; fill the values from the commits of Tasks 1 
 4. **"Decisions made during the build":** one row per S11-D1 to S11-D12 from this plan, columns `| Date | Requirement | Decision | Why | Cost if wrong |`.
 5. **"New dependencies":** none; add no row.
 6. **"Not verified":** add `| <date> | DX-7 | The journey on real services: DX-7 runs on the sim's test adapters and fixture GitHub facts only | PRD section 14 item 8, the acceptance run on staging, is a person's (DX-8) |`. If a guard item was recorded pending (item 6), add its row too.
-7. **"Waiting on a person":** add `| <date> | DX-7 | The DX-7 journey as code (`sim/scenarios/DX-7.software-template-end-to-end.ts`) and every platform adapter listed above | PRD section 14 items 7 to 10: the go-live wiring switched on (FD-12), the acceptance scenario of issue #64 on staging, the exported event log with screenshots, and the first real item (issue #65) | Ian, with an org owner for the GitHub Apps |`.
+7. **"Waiting on a person":** add `| <date> | DX-7 | The DX-7 journey as code (`sim/scenarios/DX-7.software-template-end-to-end.ts`) and every platform adapter listed above | PRD section 14 items 7 to 10: the go-live wiring switched on (FD-12), the acceptance scenario of issue #64 on staging, the exported event log with screenshots, and the first real item (issue #65) | The owner, with an org owner for the GitHub Apps |`.
 8. **"Carried to later steps":** re-read the table. Close every row whose `To step` names 11, "final" or "Final review" and is not closed, by prefixing its `What` with `Closed by step 11 Task <n> (<commit>):`. List every row still open (any `To step` not marked closed) in the hand-off's "Open carries" table below; change none of them.
 9. **`## Go-live hand-off`** (new section, after "Release criteria"): one paragraph saying the build is finished when section 14 items 1 to 6 hold (they do, above) and that what follows is for people at go-live, then:
-   - a table `| Source | Date | Requirement | What to do | Who acts |` with **one row for every row** of "Not verified" (`Source` = `Not verified`, `What to do` = that row's "What was not verified" shortened to one sentence naming the live check that closes it, `Who acts` = Ian unless the row names someone else) and **one row for every row** of "Waiting on a person" (`Source` = `Waiting on a person`, `What to do` = its "What is needed to verify it live" shortened to one sentence, `Who acts` = its "From whom"). Date and requirement are copied exactly from the source row so the guard can match them. Order the rows by `Who acts`, then date;
+   - a table `| Source | Date | Requirement | What to do | Who acts |` with **one row for every row** of "Not verified" (`Source` = `Not verified`, `What to do` = that row's "What was not verified" shortened to one sentence naming the live check that closes it, `Who acts` = the owner unless the row names someone else) and **one row for every row** of "Waiting on a person" (`Source` = `Waiting on a person`, `What to do` = its "What is needed to verify it live" shortened to one sentence, `Who acts` = its "From whom"). Date and requirement are copied exactly from the source row so the guard can match them. Order the rows by `Who acts`, then date;
    - a table `| From | To step | What |` titled "Open carries" for the rows found in 8.
 
 - [ ] **Step 3: Run the guard, verify, commit**

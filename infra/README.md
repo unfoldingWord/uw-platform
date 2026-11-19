@@ -37,6 +37,14 @@ A binding is added by a diff to `uw-app/wrangler.toml`, once in `[env.staging]` 
 
 Ids that are not secret (a Hyperdrive id) may be committed. A secret is set with `wrangler secret put --env <name>` and appears in the file nowhere.
 
+### Where the Worker runs (#142)
+
+Each environment sets `[env.<name>.placement] region = "aws:us-west-2"`. Without it, the Worker runs at the Cloudflare location nearest the viewer, and every database query crosses to Aurora in us-west-2 and back. With it, Cloudflare runs the Worker in the data center closest to that region, so the queries a page makes stay short. `region` and `mode = "smart"` cannot both be set. If the database moves region, this value moves with it.
+
+Hyperdrive's query cache is off (`caching.disabled: true`). It keeps a read for up to a minute and is not cleared by writes, so after someone claims an item or decides a gate a page could show the old state. Pages read outside transactions, where the cache would apply. Connection pooling stays on. Staging was switched on 2026-11-19 with `env -u CLOUDFLARE_API_TOKEN npx wrangler hyperdrive update 621c03bdb5ef4087a2a64f1e411779c8 --caching-disabled`; production (`2564258906e94905b1b28d0c28002ff6`) is switched the same way at the release that ships #142.
+
+Every response carries a `Server-Timing` header: `total`, `frame` (the sidebar and status bar) and `db` (queries and transactions). The `request` log line records `queries` and `transactions` too. `apps/uw-app/views/query-budget.pg.test.ts` keeps each page under a query budget and fails if a page's query count grows with the number of workflows or items.
+
 ### Sandbox containers (HE-8, HE-9)
 
 `containers/claude-code/Dockerfile` and `containers/codex/Dockerfile` are the images the two sandbox engines run: the Node.js 22 slim image at a pinned tag with `git`, the one CLI installed globally at a pinned version, a non-root `runner` user whose home is `/workspace`, and a small HTTP listener on port 3000 that keeps the container alive for `exec`. Cloudflare's `cloudflare/sandbox:1.0.0` base was dropped on 2026-11-12: it has no `/bin/sh`, so neither image could be built. The CI `build` job builds both images and runs `git --version` and the CLI's `--version` in each, so a broken image fails a pull request, not a deploy. Neither image holds a key, a token or a login: the CLI gets a placeholder key and a base URL of `http://model.internal`, and the Worker's egress proxy swaps in the organization's key on the way to AI Gateway (S7-R48). `tools/infra/containers.test.ts` refuses an `ENV` or `ARG` named like a credential, an unpinned base and an image that ends as root.
@@ -45,9 +53,15 @@ The classes `ClaudeCodeSandbox` and `CodexSandbox` (`apps/uw-app/engines/sandbox
 
 ## Access (FD-7)
 
-`access/uw-app.json` declares Cloudflare Access in front of `uw-app` on production, staging and every per-PR Worker, as three applications. The app application covers the host: people sign in with an emailed one-time PIN, and no service token is admitted. The `mcp` application covers `/mcp` alone with its own AUD tag: people sign their agents in with a one-time PIN (through `cloudflared access`), and any valid service token passes as a non-identity request and becomes a non-interactive agent principal. Because the two applications have different audiences, a token an agent holds for `/mcp` is refused on every other path, and a browser session is refused on `/mcp` (R34). `/health/probe` alone is bypassed, on every host, so the deploy jobs (`deploy-staging.yml` and `deploy-pr.yml`, through `await-health.sh`) can read the deployed commit; `/health` itself shows the agent plane and needs a signed-in person. The app application sends its session cookie `SameSite=Lax`, so a form posted from another site carries no session. Applying either change on Cloudflare is a person's (Waiting on a person).
+`access/uw-app.json` declares Cloudflare Access in front of `uw-app` on production, staging and every per-PR Worker, as three applications. The app application covers the host: people sign in with Google and nothing else (no one-time PIN, since #154), and no service token is admitted. The `mcp` application covers `/mcp` alone with its own AUD tag: people sign their agents in with Google (through `cloudflared access`), and any valid service token passes as a non-identity request and becomes a non-interactive agent principal. Because the two applications have different audiences, a token an agent holds for `/mcp` is refused on every other path, and a browser session is refused on `/mcp` (R34). `/health/probe` alone is bypassed, on every host, so the deploy jobs (`deploy-staging.yml` and `deploy-pr.yml`, through `await-health.sh`) can read the deployed commit; `/health` itself shows the agent plane and needs a signed-in person. The app application sends its session cookie `SameSite=Lax`, so a form posted from another site carries no session. Applying either change on Cloudflare is a person's (Waiting on a person).
 
-The allow policy admits anyone who can receive an email on purpose. A person outside `@unfoldingword.org` must reach the app to be recorded as pending (FD-7). Authorization is the grants table, not Access.
+The allow policy admits anyone with a Google account on purpose. A person outside `@unfoldingword.org` must reach the app to be recorded as pending (FD-7); an org admin then approves or declines them on the Access screen (`/access`). Authorization is the grants table, not Access, and Google Groups are not read. Because sign-in is Google, Workspace's multi-factor rules and offboarding apply to `@unfoldingword.org` accounts: suspending someone in Google stops their sign-in.
+
+### Google as the identity provider (#154)
+
+- **The OAuth client** lives in the Google Cloud project `uw-platform` (organization `unfoldingword.org`), under Google Auth Platform: app name "unfoldingWord Platform", audience External and published ("In production"), so any Google account can sign in; home page `https://unfoldingword.org/`, privacy policy `https://unfoldingword.org/privacy/`, authorized domains `cloudflareaccess.com` and `unfoldingword.org`. The client is "Cloudflare Access", a Web application, with JavaScript origin `https://unfoldingword.cloudflareaccess.com` and redirect URI `https://unfoldingword.cloudflareaccess.com/cdn-cgi/access/callback`. It asks only for `openid`, `email` and `profile`, which need no Google verification. Creating or changing it takes a Workspace account with rights on that project.
+- **The identity provider** is added to Cloudflare Access as type `google` with that client's id and secret (`POST /accounts/{account_id}/access/identity_providers`). The client secret is held only by Cloudflare; it is not in this repository, in a Worker secret or in GitHub. The provider was added on 2026-11-19 with id `1cc60ad0-7558-4780-93b4-7e012b3179f6`; an id is configuration, not a secret.
+- **The policy** is unchanged in shape: one allow rule for everyone, now reached only through Google, because `allowed_idps` on the app and `mcp` applications names the Google provider alone. With one provider and `auto_redirect_to_identity`, a visitor goes straight to Google.
 
 The file holds the bodies of two Cloudflare API calls, applied by a person with an API token holding Access: Apps and Policies Edit:
 
@@ -55,7 +69,7 @@ The file holds the bodies of two Cloudflare API calls, applied by a person with 
 - The same two calls for `health_bypass.application` with `health_bypass.policies`.
 - The same two calls for `mcp.application` with `mcp.policies`.
 
-Replace `<one-time-pin-idp-id>` with the one-time PIN identity provider's id from `GET /accounts/{account_id}/access/identity_providers`. People sign in with an emailed one-time PIN; Google can replace it once a Google OAuth client exists, by adding it as an identity provider and to `allowed_idps`. After creation, the app application's AUD tag, the `mcp` application's AUD tag and the team domain go into `ACCESS_AUD`, `ACCESS_MCP_AUD` and `ACCESS_TEAM_DOMAIN` in `infra/uw-app/wrangler.go-live.toml` (Task 16 of the step-1 plan). An AUD tag is configuration, not a secret. The three applications cover production, staging and every per-PR Worker; they were applied on 2026-11-10 to the team `unfoldingword.cloudflareaccess.com`.
+Replace `<google-idp-id>` with the Google identity provider's id from `GET /accounts/{account_id}/access/identity_providers`. To apply a change to an application that already exists, send the same body with `PUT /accounts/{account_id}/access/apps/{app_id}`. After creation, the app application's AUD tag, the `mcp` application's AUD tag and the team domain go into `ACCESS_AUD`, `ACCESS_MCP_AUD` and `ACCESS_TEAM_DOMAIN` in `infra/uw-app/wrangler.go-live.toml` (Task 16 of the step-1 plan). An AUD tag is configuration, not a secret. The three applications cover production, staging and every per-PR Worker; they were applied on 2026-11-10 to the team `unfoldingword.cloudflareaccess.com`.
 
 A fourth application, `migrations`, covers the database hostname `uw-db-production.unfoldingword.us` and admits only the service token `uw-platform GitHub migrations` (replace `<github-migrations-service-token-id>` with its id). Its client id and secret are the `DATABASE_TUNNEL_CLIENT_ID` and `DATABASE_TUNNEL_CLIENT_SECRET` secrets. The tunnel's public TCP hostname, `uw-db-production.unfoldingword.us` to the Aurora endpoint on port 5432, is added on the tunnel itself.
 
@@ -105,7 +119,7 @@ An org owner of `unfoldingWord` sets it up once, awaiting go-live:
 
 None of the four appears in any file. Until they are set, `uw-app` treats GitHub as not configured and nothing that runs needs them.
 
-The production App is a second registration from a copy of the manifest with production's ingest URL, once that Worker has a route.
+The production App, `uw-harness`, is a second registration from `github/app-manifest.production.json`, the same manifest with production's ingest URL. Production uw-ingest serves `uw-ingest.unfoldingword.workers.dev` for it.
 
 The webhook host assumes the account's `workers.dev` subdomain is `unfoldingword`; confirm it before registering, and correct the manifest if it differs.
 
@@ -159,6 +173,50 @@ An org owner of `unfoldingWord` registers the App once, awaiting go-live:
    ```
 
 Until the three secrets are set, every GitHub request from the sandbox answers `503 egress not configured` and is logged `github_egress_not_wired` with its host and path.
+
+## Hosted agents (#98)
+
+A hosted agent needs three things the code reads but no file holds: an AI Gateway, the organization's API keys, and the GitHub Apps. Until they are set, the engines answer `not_wired` and nothing is spent. Billing stays as ADR 0006 says (confirmed 2026-11-17).
+
+### Settings
+
+| Setting | Kind | Worker | Value or source |
+|---|---|---|---|
+| `AI_GATEWAY_ACCOUNT_ID` | var | uw-app | The account id, in the wrangler files |
+| `AI_GATEWAY_ID` | var | uw-app | `uw-platform-staging` or `uw-platform-production`, in the wrangler files |
+| `AI_SPEND_CAP_MINOR` | var | uw-app | `50000`, $500 a month, in the wrangler files |
+| `ALWAYS_ON_PROVIDER`, `ALWAYS_ON_MODEL` | var | uw-app | `z-ai` and `z-ai/glm-5.3-flash`, in the wrangler files |
+| `SANDBOX_MINOR_PER_HOUR` | var | uw-app | `3`, in the wrangler files (below) |
+| `AI_GATEWAY_TOKEN` | secret | uw-app | The gateway's authentication token |
+| `AI_GATEWAY_ANALYTICS_TOKEN` | secret | uw-app | An API token with Account Analytics: Read on the account, for the spend breaker |
+| `OPENROUTER_API_KEY` | secret | uw-app | The organization's key; the always-on tier |
+| `ANTHROPIC_API_KEY` | secret | uw-app | The organization's key; the Claude Code sandbox and `claude-messages` |
+| `OPENAI_API_KEY` | secret | uw-app | The organization's key; the Codex sandbox and the second reviewer |
+| `GITHUB_APP_*`, `BUILDER_GITHUB_APP_*`, `REVIEWER_GITHUB_APP_*`, `REVIEWER_CODEX_GITHUB_APP_*` | secret | uw-app | Set by `pnpm github-apps:convert` |
+| `GITHUB_WEBHOOK_SECRET` | secret | uw-ingest | Set by `pnpm github-apps:convert` |
+
+Each secret is set from `infra/uw-app` (or `infra/uw-ingest`) with `wrangler secret put <NAME> --env staging`, then `--env production`, typed at the prompt and never written to a file or a chat. `tools/infra/agent-settings.test.ts` holds the vars to these values and refuses a var named like a credential.
+
+**The sandbox rate.** Both sandboxes run on the `basic` instance type (1/4 vCPU, 1 GiB memory, 4 GB disk); `lite`'s 256 MiB is too small to run a Node CLI and a clone. At Cloudflare's Containers prices (developers.cloudflare.com/containers/pricing, read 2026-11-17: $0.0000025 per GiB-second of memory, $0.000020 per vCPU-second of active CPU, $0.00000007 per GB-second of disk), a fully busy `basic` instance costs about $0.028 an hour, so the rate is 3 cents an hour, rounded up.
+
+### Setting it up
+
+1. **AI Gateway.** In the Cloudflare dashboard (AI, AI Gateway, Create a custom gateway), create two gateways, `uw-platform-staging` and `uw-platform-production`. On each gateway's Settings, under Authenticated Gateway, choose Create authentication token: that token is the environment's `AI_GATEWAY_TOKEN`. For `AI_GATEWAY_ANALYTICS_TOKEN`, create a custom API token per environment with only Account Analytics: Read, on this account only. Under Spend Limits, give each gateway a $600 monthly budget on a fixed window for the whole gateway. It sits above the app's $500 cap, which counts the calendar month in UTC, so the app's breaker stops work cleanly first and the gateway refuses requests only if the breaker fails.
+2. **API keys.** Set `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` on each environment, a separate key per environment from the organization's account with each provider.
+3. **GitHub Apps, in one sitting with an org owner.** Run `pnpm github-apps:page <file.html>` and send the page to the owner. For each of the five Apps (`uw-harness-staging`, `uw-harness`, `uw-builder`, `uw-reviewer`, `uw-reviewer-codex`) they click Register, keep the name, install the App on `unfoldingWord/uw-platform` only, and send back the address GitHub lands on, which carries a one-time `code` valid for an hour. For each address, run `pnpm github-apps:convert '<address>'`. It exchanges the code, converts the key to PKCS#8 in memory, finds the installation, and sets the App's secrets on the environments it serves (the harness Apps on one each, with the webhook secret on uw-ingest; Builder and the Reviewers on both). It prints only the names it set. If the App was not installed yet, it says which installation id to set by hand.
+4. **Turn on hosted Builder** for the Software workflow on staging only (Stages & Controls). Production stays off.
+5. **Check on staging.** Add a Builder agent on the Agents tab, put it live, grant it `build`, and put an item in a build stage. The run should open a pull request from `harness/<item>`, its run step should show the model, tokens and cost, the request should appear in the gateway's log, and the spend indicator on Health should move. Then repeat steps 1 to 3 for production and compare `wrangler secret list --env production` with staging.
+
+## Routines (#134)
+
+A routine is a person's own Claude Code or Codex working a workflow unattended, under one of their own standing permissions. An area admin sets one up on the workflow's Agents tab. The app then makes a Cloudflare Access service token for it, shows the secret once, and binds the token to that person, a device name and that one standing permission. Revoke deletes the token in Cloudflare as well. The MCP Access application already admits any valid service token (the Access section), so it needs no change.
+
+| Setting | Kind | Worker | Value or source |
+|---|---|---|---|
+| `ACCESS_ACCOUNT_ID` | var | uw-app | The account id, in the wrangler files |
+| `ACCESS_SERVICE_TOKENS_API_TOKEN` | secret | uw-app | An API token with only Access: Service Tokens Edit on this account |
+
+Someone with Zero Trust rights on the account creates the API token (My Profile, API Tokens, Create Custom Token, Account, Access: Service Tokens, Edit, this account only). It is then set from `infra/uw-app` with `wrangler secret put ACCESS_SERVICE_TOKENS_API_TOKEN --env staging`, then `--env production`, typed at the prompt. Until it is set, the Agents tab says routines are not switched on and nothing else changes.
 
 ## The notifier: web push and Zulip (NT-1, NT-3)
 
@@ -217,6 +275,8 @@ A person adds, in the repository settings:
 | `DATABASE_TUNNEL_HOST_PRODUCTION` | variable | Optional: the same for production |
 | `DATABASE_TUNNEL_CLIENT_ID` | secret | With a tunnel host: the Cloudflare Access service token's client id the migrate jobs present |
 | `DATABASE_TUNNEL_CLIENT_SECRET` | secret | With a tunnel host: that service token's secret |
+| `BOOTSTRAP_ADMIN_EMAIL` | variable | The person who becomes the first org admin. After migrating, each deploy runs `pnpm db:bootstrap-admin`, which adds this person and an org admin grant only when no org admin exists, so on a database that already has one it changes nothing. Unset, the step logs that and adds no one |
+| `BOOTSTRAP_ADMIN_NAME` | variable | Optional: that person's display name; without it the part of the email before the @ is used |
 | `NEON_API_KEY` | secret | Optional: an API key for a Neon project, for a database branch per pull request; without it `neon-pr.yml` says so and stays green |
 | `NEON_PROJECT_ID` | variable | Optional: the Neon project's id, with `NEON_API_KEY` |
 | `CLOUDFLARE_API_TOKEN` | secret | A Cloudflare API token scoped to Workers Scripts edit on the one account (the uw-app section) |
@@ -237,7 +297,7 @@ Until that PR, the per-PR and staging Workers run with no database and no queue,
 
 GL-1 switches the wiring above on. It writes no code: each step creates a resource, sets a secret or a value, or checks one. Every row of `docs/progress_tracker.md` that waits on FD-6, FD-7, FD-10 or FD-12 names the step that closes it. Steps 1 to 5 can run in any order; step 6 needs them all; step 7 is GL-1's release gate.
 
-1. **The database (FD-12).** A Postgres 16 or later database for staging and one for production (AWS RDS, or any Postgres the Hyperdrive config and the GitHub runner can reach). In the repository settings set `DATABASE_URL_STAGING` and `DATABASE_URL_PRODUCTION` as secrets (the table above); the deploy migrates through them, so the database must accept connections from GitHub's runners while it does. When the database is reachable only through a Cloudflare Tunnel (AWS Aurora, set up with Jaap-Jan), set `DATABASE_TUNNEL_HOST_STAGING` and `DATABASE_TUNNEL_HOST_PRODUCTION` as variables and `DATABASE_TUNNEL_CLIENT_ID` and `DATABASE_TUNNEL_CLIENT_SECRET` as secrets: the tunnel needs a TCP route to the database behind a Cloudflare Access application that admits that service token, and each migrate job opens it with `.github/scripts/db-tunnel.sh` before migrating, with the `DATABASE_URL_*` secret pointing at `127.0.0.1:15432`. `NEON_API_KEY` and `NEON_PROJECT_ID` are optional: with a Neon project they give each pull request a database branch, and without them `neon-pr.yml` logs that it is not set and stays green.
+1. **The database (FD-12).** A Postgres 16 or later database for staging and one for production (AWS RDS, or any Postgres the Hyperdrive config and the GitHub runner can reach). In the repository settings set `DATABASE_URL_STAGING` and `DATABASE_URL_PRODUCTION` as secrets (the table above); the deploy migrates through them, so the database must accept connections from GitHub's runners while it does. When the database is reachable only through a Cloudflare Tunnel (AWS Aurora, set up with the infrastructure team), set `DATABASE_TUNNEL_HOST_STAGING` and `DATABASE_TUNNEL_HOST_PRODUCTION` as variables and `DATABASE_TUNNEL_CLIENT_ID` and `DATABASE_TUNNEL_CLIENT_SECRET` as secrets: the tunnel needs a TCP route to the database behind a Cloudflare Access application that admits that service token, and each migrate job opens it with `.github/scripts/db-tunnel.sh` before migrating, with the `DATABASE_URL_*` secret pointing at `127.0.0.1:15432`. `NEON_API_KEY` and `NEON_PROJECT_ID` are optional: with a Neon project they give each pull request a database branch, and without them `neon-pr.yml` logs that it is not set and stays green.
 2. **Hyperdrive (FD-12, FD-6).** `wrangler hyperdrive create uw-staging --connection-string=<pooled staging string>`, and the same for `uw-production`. Put each Hyperdrive id in place of `set-at-go-live` in `[[env.staging.hyperdrive]]` and `[[env.production.hyperdrive]]` of both go-live files, and staging's Hyperdrive id in uw-app's `[[env.preview.hyperdrive]]` (P33).
 3. **Queues, hosts and the deploy token (FD-10).** Create the four queues listed above with `wrangler queues create`. In the repository settings set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as secrets (the table above). Until the token is set, `deploy-pr`, `cleanup-pr`, `deploy-staging`, `deploy-ingest-staging`, `deploy-production` and `deploy-ingest-production` each log the notice "CLOUDFLARE_API_TOKEN is not set" and stay green; check that each now runs its steps. Read the account's `workers.dev` subdomain in the Cloudflare dashboard; if it is not `unfoldingword`, correct `STAGING_URL` and `INGEST_URL` in `.github/workflows/deploy-staging.yml` and the address in step 7.
 4. **Access and origins (FD-7).** Apply the three applications as the Access section says. Put the app application's AUD tag in `ACCESS_AUD`, the `mcp` application's in `ACCESS_MCP_AUD` and the team domain in `ACCESS_TEAM_DOMAIN`, under staging, production and preview of `uw-app/wrangler.go-live.toml`, and the staging origin in `APP_ORIGIN`. `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`, `ZULIP_SITE` and `ZULIP_BOT_EMAIL` come from the notifier section; the push and Zulip halves read their secrets (`VAPID_PRIVATE_JWK`, `ZULIP_BOT_API_KEY`) before these values, so they stay off until those secrets are set.

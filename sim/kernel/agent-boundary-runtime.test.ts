@@ -104,7 +104,8 @@ function bypassingStages(world: World): StageCommands {
     setFixClaim: (caller, input) => stages.setFixClaim(laundered(caller), input),
     setTitle: (caller, input) => stages.setTitle(laundered(caller), input),
     setFreeze: (caller, input) => stages.setFreeze(laundered(caller), input),
-    liftShadow: (caller, input) => stages.liftShadow(laundered(caller), input),
+    setShadow: (caller, input) => stages.setShadow(laundered(caller), input),
+    setStageRules: (caller, input) => stages.setStageRules(laundered(caller), input),
     changeTemplate: (caller, input) => stages.changeTemplate(laundered(caller), input),
   };
 }
@@ -166,7 +167,7 @@ async function everyFormIsBuilt({ attempts }: Scene): Promise<void> {
   const labels = attempts.map((attempt) => attempt.label);
   const identities = attempts.map((attempt) => attempt.actor.identity);
   expect(attempts).toHaveLength(13 * 4 + 3 + 3 + 1);
-  expect(attempts.filter((attempt) => attempt.readable)).toHaveLength(8 * 4 + 7);
+  expect(attempts.filter((attempt) => attempt.readable)).toHaveLength(6 * 4 + 7);
   expect(new Set(labels).size).toBe(attempts.length);
   expect(identities.filter((identity) => !identity.startsWith('agent:'))).toEqual([]);
 }

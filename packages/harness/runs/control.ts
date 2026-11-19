@@ -28,14 +28,14 @@ type Scene = {
 const PROMPT_LIMIT = 20;
 const MESSAGE_LIMIT = 4000;
 
-async function ownerOf(tx: StoreTransaction, run: RunRow): Promise<string | null> {
+export async function ownerOf(tx: StoreTransaction, run: RunRow): Promise<string | null> {
   if (run.runShape !== 'workflow-run') return deviceOwnerSegment(run.persona);
   if (run.delegationId === null) return null;
   const delegation = await tx.delegations.read.byId(run.delegationId);
   return delegation?.personId ?? null;
 }
 
-async function liveRun(tx: StoreTransaction, itemId: string): Promise<RunRow | null> {
+export async function liveRun(tx: StoreTransaction, itemId: string): Promise<RunRow | null> {
   const live = await tx.harnessRuns.read.liveForItem(itemId);
   if (live === null) return null;
   const run = await tx.harnessRuns.read.lock(live.id);
@@ -75,11 +75,11 @@ async function controlled(
   return { item, run: judgement, context: recordContext(ports, caller, at) };
 }
 
-function agentRefusal(caller: Caller): Refused | null {
+export function agentRefusal(caller: Caller): Refused | null {
   return isAgent(caller.actor) ? refused('not_permitted', { actor: caller.actor.identity }) : null;
 }
 
-async function stopWorkflow(ports: ControlPorts, run: RunRow): Promise<void> {
+export async function stopWorkflow(ports: ControlPorts, run: RunRow): Promise<void> {
   if (run.runShape !== 'workflow-run') return;
   try {
     await ports.runs.stop(run.id);

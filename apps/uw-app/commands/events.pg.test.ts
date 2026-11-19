@@ -6,7 +6,7 @@ import {
   allEvents,
   enqueued,
   get,
-  ian,
+  rowan,
   softwareHarness,
   type Person,
   type Sent,
@@ -116,7 +116,7 @@ async function hiddenLikeMissing(db: Database): Promise<void> {
 async function agentsSeeWhatTheyActOn(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   await enqueued(db, scene.harnessId, 'Show the agents');
-  const owner = await ian(db);
+  const owner = await rowan(db);
   const forms = await agentForms(db, owner, scene.harnessId, edgeIdentities);
   const stored = await allEvents(db, scene.harnessId);
   for (const agent of forms.readable) {

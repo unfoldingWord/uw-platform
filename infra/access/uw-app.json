@@ -17,14 +17,14 @@
         "uri": "uw-app-pr-*.unfoldingword.workers.dev"
       }
     ],
-    "allowed_idps": ["<one-time-pin-idp-id>"],
+    "allowed_idps": ["<google-idp-id>"],
     "auto_redirect_to_identity": true,
     "session_duration": "24h",
     "same_site_cookie_attribute": "lax"
   },
   "policies": [
     {
-      "name": "Anyone with an email",
+      "name": "Anyone with a Google account",
       "decision": "allow",
       "include": [
         {
@@ -85,13 +85,13 @@
           "uri": "uw-app-pr-*.unfoldingword.workers.dev/mcp"
         }
       ],
-      "allowed_idps": ["<one-time-pin-idp-id>"],
+      "allowed_idps": ["<google-idp-id>"],
       "auto_redirect_to_identity": true,
       "session_duration": "24h"
     },
     "policies": [
       {
-        "name": "Anyone with an email",
+        "name": "Anyone with a Google account",
         "decision": "allow",
         "include": [
           {

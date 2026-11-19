@@ -13,7 +13,7 @@ import {
 } from '../items/record.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { Ports, RunRow, StoreTransaction } from '../ports.ts';
-import { pinnedPersonaOf } from './persona.ts';
+import { hiddenPersona, pinnedPersonaOf } from './persona.ts';
 import { ended, heldByRun } from './rows.ts';
 import type { RunScene } from './types.ts';
 
@@ -158,6 +158,8 @@ export async function sceneWithin(
   const standing = await standingOf(ports, tx, context, held);
   if ('status' in standing) return standing;
   const { item, run, principal, harness, capability } = standing;
+  const hidden = hiddenPersona(principal, facts, seen.personaPageId, context.at);
+  if (hidden !== null) return hidden;
   if (!leaseLive(item, run, context.at)) return stopForLease(tx, context, standing);
   return accepted({ run, item, persona, principal, harness, capability });
 }

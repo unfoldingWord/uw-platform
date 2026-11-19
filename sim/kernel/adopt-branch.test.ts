@@ -16,7 +16,7 @@ import {
   simAdvance,
   simAgent,
   simCaller,
-  simIan,
+  simRowan,
   simPerson,
 } from '../fixtures.ts';
 import { greenFacts, shipPullRequest, simSha } from '../ship-fixtures.ts';
@@ -70,7 +70,7 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
   try {
     const { harness } = await createSimHarness(world, software);
     value(
-      await world.kernel.stages.updateStage(simCaller(world, await simIan(world)), {
+      await world.kernel.stages.updateStage(simCaller(world, await simRowan(world)), {
         harnessId: harness.id,
         stageKey: 'scope',
         change: { validators: ['learning_attached'] },

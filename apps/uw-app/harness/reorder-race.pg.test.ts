@@ -16,7 +16,7 @@ import { kernelOn, personOn } from '../testing/kernel.ts';
 
 const connectionCount = 6;
 const rounds = 4;
-const ianId = '00000000-0000-4000-8000-000000000001';
+const rowanId = '00000000-0000-4000-8000-000000000001';
 
 function caller(actor: Principal): Caller {
   return { actor, traceId: crypto.randomUUID() };
@@ -50,13 +50,13 @@ function connectionAt(connections: readonly Database[], n: number): Database {
 
 async function openStage(
   connections: readonly Database[],
-  ian: Principal,
+  rowan: Principal,
   round: number,
 ): Promise<{ readonly harnessId: string; readonly itemIds: readonly string[] }> {
   const kernel = kernelOn(connectionAt(connections, 0), clock);
   const harnessId = crypto.randomUUID();
   accepted(
-    await kernel.stages.activate(caller(ian), {
+    await kernel.stages.activate(caller(rowan), {
       harnessId,
       harnessKey: `software-${round}`,
       jdArea: '80-89',
@@ -68,7 +68,7 @@ async function openStage(
   const itemIds: string[] = [];
   for (let n = 0; n < connectionCount; n += 1) {
     const item = accepted(
-      await kernel.items.enqueue(caller(ian), {
+      await kernel.items.enqueue(caller(rowan), {
         harnessId,
         title: `Race ${round}.${n}`,
         pageId: null,
@@ -101,20 +101,20 @@ async function settled(
 }
 
 type Held = {
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly harnessId: string;
   readonly itemIds: readonly string[];
 };
 
 async function heldStage(connections: readonly Database[]): Promise<Held> {
-  const ian = await personOn(
+  const rowan = await personOn(
     connectionAt(connections, 0),
-    ianId,
-    'ian.lindsley@unfoldingword.org',
+    rowanId,
+    'rowan.test@unfoldingword.org',
     clock.now(),
   );
-  const { harnessId, itemIds } = await openStage(connections, ian, 0);
-  return { ian, harnessId, itemIds };
+  const { harnessId, itemIds } = await openStage(connections, rowan, 0);
+  return { rowan, harnessId, itemIds };
 }
 
 type HeldReorder = Held & {
@@ -140,7 +140,7 @@ async function reorderWhileHeld(
   });
   await ready;
   const kernel = kernelOn(connectionAt(connections, 2), clock);
-  const pending = kernel.items.reorder(caller(input.ian), input.reorder);
+  const pending = kernel.items.reorder(caller(input.rowan), input.reorder);
   await new Promise((resolve) => setTimeout(resolve, 400));
   release();
   await holder;
@@ -149,13 +149,13 @@ async function reorderWhileHeld(
 
 async function raceRound(
   connections: readonly Database[],
-  ian: Principal,
+  rowan: Principal,
   round: number,
 ): Promise<void> {
-  const { harnessId, itemIds } = await openStage(connections, ian, round);
+  const { harnessId, itemIds } = await openStage(connections, rowan, round);
   const outcomes = await Promise.all(
     itemIds.map((itemId, n) =>
-      kernelOn(connectionAt(connections, n), clock).items.reorder(caller(ian), {
+      kernelOn(connectionAt(connections, n), clock).items.reorder(caller(rowan), {
         itemId,
         beforeItemId: itemIds[(n + 1) % itemIds.length] ?? null,
       }),
@@ -171,16 +171,16 @@ async function raceRound(
 
 async function raceRounds(connections: readonly Database[]): Promise<void> {
   const first = connectionAt(connections, 0);
-  const ian = await personOn(first, ianId, 'ian.lindsley@unfoldingword.org', clock.now());
-  for (let round = 0; round < rounds; round += 1) await raceRound(connections, ian, round);
+  const rowan = await personOn(first, rowanId, 'rowan.test@unfoldingword.org', clock.now());
+  for (let round = 0; round < rounds; round += 1) await raceRound(connections, rowan, round);
 }
 
 async function leavesStage(connections: readonly Database[]): Promise<void> {
-  const { ian, harnessId, itemIds } = await heldStage(connections);
+  const { rowan, harnessId, itemIds } = await heldStage(connections);
   const [first, second] = itemIds;
   if (first === undefined || second === undefined) throw new Error('no items');
   const outcome = await reorderWhileHeld(connections, {
-    ian,
+    rowan,
     harnessId,
     itemIds,
     hold: first,
@@ -191,12 +191,12 @@ async function leavesStage(connections: readonly Database[]): Promise<void> {
 }
 
 async function entersStage(connections: readonly Database[]): Promise<void> {
-  const { ian, harnessId, itemIds } = await heldStage(connections);
+  const { rowan, harnessId, itemIds } = await heldStage(connections);
   const [first, second] = itemIds;
   if (first === undefined || second === undefined) throw new Error('no items');
   const kernel = kernelOn(connectionAt(connections, 0), clock);
   const entering = accepted(
-    await kernel.items.enqueue(caller(ian), {
+    await kernel.items.enqueue(caller(rowan), {
       harnessId,
       title: 'Entering',
       pageId: null,
@@ -209,7 +209,7 @@ async function entersStage(connections: readonly Database[]): Promise<void> {
     tx.harnessItems.write.project({ ...entering, stageKey: 'scope' }),
   );
   const outcome = await reorderWhileHeld(connections, {
-    ian,
+    rowan,
     harnessId,
     itemIds,
     hold: first,
@@ -261,14 +261,14 @@ function holdRow(connection: Database, itemId: string) {
 
 async function reorderPastHeld(
   connections: readonly Database[],
-  ian: Principal,
+  rowan: Principal,
   held: string,
   input: { readonly itemId: string; readonly beforeItemId: string },
 ) {
   const holding = holdRow(connectionAt(connections, 1), held);
   await holding.ready;
   const kernel = kernelOn(connectionAt(connections, 2), clock);
-  const pending = kernel.items.reorder(caller(ian), input);
+  const pending = kernel.items.reorder(caller(rowan), input);
   const timeout = new Promise<'blocked'>((resolve) => setTimeout(() => resolve('blocked'), 3000));
   const raced = await Promise.race([pending, timeout]);
   holding.release();
@@ -278,7 +278,7 @@ async function reorderPastHeld(
 }
 
 async function skipsDoneRows(connections: readonly Database[]): Promise<void> {
-  const { ian, harnessId, itemIds } = await heldStage(connections);
+  const { rowan, harnessId, itemIds } = await heldStage(connections);
   const done = itemIds.slice(2, 5);
   const open = itemIds.filter((itemId) => !done.includes(itemId)).sort();
   const [top, , bottom] = open;
@@ -286,7 +286,7 @@ async function skipsDoneRows(connections: readonly Database[]): Promise<void> {
   if (top === undefined || bottom === undefined || doneItem === undefined)
     throw new Error('no items');
   await markDone(connectionAt(connections, 0), done);
-  const order = await reorderPastHeld(connections, ian, doneItem, {
+  const order = await reorderPastHeld(connections, rowan, doneItem, {
     itemId: bottom,
     beforeItemId: top,
   });
@@ -295,7 +295,7 @@ async function skipsDoneRows(connections: readonly Database[]): Promise<void> {
   expect(reordered.map((event) => event.itemId)).toEqual([bottom]);
   const input = { itemId: top, beforeItemId: doneItem };
   const kernel = kernelOn(connectionAt(connections, 0), clock);
-  const doneBefore = await kernel.items.reorder(caller(ian), input);
+  const doneBefore = await kernel.items.reorder(caller(rowan), input);
   expect(doneBefore.status === 'error' && doneBefore.reason).toBe('malformed_command');
   const { items } = await settled(connectionAt(connections, 0), harnessId);
   const events = await platformStore(connectionAt(connections, 0)).transaction((tx) =>

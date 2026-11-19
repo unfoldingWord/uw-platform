@@ -1,16 +1,24 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
-const source = new URL('../../packages/ui/assets/uw-logo-mark.png', import.meta.url);
+const assets = [
+  { name: 'mark', file: 'uw-logo-mark' },
+  { name: 'wordmark', file: 'uw-logo-white' },
+] as const;
 const target = new URL('../../packages/ui/generated/mark.ts', import.meta.url);
 
-const bytes = readFileSync(source);
-const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 12);
-const expected = [
-  `export const markPath = '/assets/uw-logo-mark-${hash}.png';`,
-  `export const markBase64 = '${bytes.toString('base64')}';`,
-  '',
-].join('\n');
+function linesFor(asset: (typeof assets)[number]): readonly string[] {
+  const bytes = readFileSync(
+    new URL(`../../packages/ui/assets/${asset.file}.png`, import.meta.url),
+  );
+  const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 12);
+  return [
+    `export const ${asset.name}Path = '/assets/${asset.file}-${hash}.png';`,
+    `export const ${asset.name}Base64 = '${bytes.toString('base64')}';`,
+  ];
+}
+
+const expected = [...assets.flatMap(linesFor), ''].join('\n');
 
 if (process.argv.includes('--check')) {
   if (!existsSync(target) || readFileSync(target, 'utf8') !== expected) {

@@ -7,14 +7,14 @@ import type { Database } from '@uw/db/client';
 import { seedPlatformPage } from '@uw/db/test-seed';
 import { checkOnly } from '@uw/harness';
 import { seedPullRequest } from '../testing/github-facts.ts';
-import { accepted, callerOf, get, ian, person } from '../testing/commands.ts';
+import { accepted, callerOf, get, rowan, person } from '../testing/commands.ts';
 import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml } from '../testing/views.ts';
-import { gatesPath, shadowExportPath } from './parts/paths.ts';
+import { shadowExportPath, waitingPath } from './parts/paths.ts';
 
-const IAN_EMAIL = 'ian.lindsley@unfoldingword.org';
+const ROWAN_EMAIL = 'rowan.test@unfoldingword.org';
 const repository = 'unfoldingWord/tc-admin-app';
 const head = 'c'.repeat(40);
 const clock = { now: () => new Date() };
@@ -23,7 +23,7 @@ async function shadowHarness(db: Database): Promise<string> {
   const harnessId = randomUUID();
   const kernel = kernelOn(db, clock);
   accepted(
-    await kernel.stages.activate(callerOf(await ian(db)), {
+    await kernel.stages.activate(callerOf(await rowan(db)), {
       harnessId,
       harnessKey: 'tc-admin-app',
       jdArea: '80-89',
@@ -73,7 +73,7 @@ describe.skipIf(!testServer)('OB-3 the shadow comparison export', () => {
   it('answers the comparison as JSON for a reader and harness_not_found for an outsider', () =>
     withAppDatabase(async (db) => {
       const harnessId = await shadowHarness(db);
-      const read = await get(db, { email: IAN_EMAIL }, shadowExportPath(harnessId));
+      const read = await get(db, { email: ROWAN_EMAIL }, shadowExportPath(harnessId));
       expect(read.status).toBe(200);
       const comparison = shadowComparisonSchema.parse(read.body);
       expect(comparison).toMatchObject({ harnessKey: 'tc-admin-app', shadow: true });
@@ -91,7 +91,7 @@ describe.skipIf(!testServer)(
     it('lists the head under the harness with the shadow label and an export link, and passes the screen checks', () =>
       withAppDatabase(async (db) => {
         const harnessId = await shadowHarness(db);
-        const html = await getHtml(db, IAN_EMAIL, gatesPath(), {}, clock);
+        const html = await getHtml(db, ROWAN_EMAIL, waitingPath(harnessId), {}, clock);
         const section = sectionFor(new JSDOM(html.text).window.document, 'tc-admin-app');
         expect(section?.textContent).toContain('shadow');
         expect(section?.querySelector('a')?.getAttribute('href')).toBe(shadowExportPath(harnessId));

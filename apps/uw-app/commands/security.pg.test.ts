@@ -15,7 +15,7 @@ import {
   enqueued,
   eventCount,
   eventsNamed,
-  ian,
+  rowan,
   softwareHarness,
 } from '../testing/commands.ts';
 
@@ -60,7 +60,7 @@ async function contextWithoutEnv(db: Database): Promise<void> {
   ]);
   const github = countingGitHub();
   const scope = dispatchScope(db, { registry, gateGitHub: github.gateGitHub });
-  const admin = await ian(db);
+  const admin = await rowan(db);
   await dispatchAs(admin, scene.harnessId, 'enqueue', enqueueBody(randomUUID()), scope);
   const approve = { requestId: randomUUID(), itemId, head: null };
   await dispatchAs(admin, scene.harnessId, 'approve', approve, scope);
@@ -94,7 +94,7 @@ async function agentGetsNoGitHub(db: Database): Promise<void> {
   ]);
   const github = countingGitHub();
   const scope = dispatchScope(db, { registry, gateGitHub: github.gateGitHub });
-  const admin = await ian(db);
+  const admin = await rowan(db);
   const approve = () => ({ requestId: randomUUID(), itemId, head: null });
   await dispatchAs(agentOf(admin, 'builder'), scene.harnessId, 'approve', approve(), scope);
   expect(github.opened()).toBe(0);
@@ -130,7 +130,7 @@ async function newHarnessScope(db: Database): Promise<void> {
   const fresh = randomUUID();
   const refused = await dispatchAs(editor, fresh, 'activate_template', body, scope);
   expect(refused).toMatchObject({ reason: 'not_permitted' });
-  const admitted = await dispatchAs(await ian(db), fresh, 'activate_template', body, scope);
+  const admitted = await dispatchAs(await rowan(db), fresh, 'activate_template', body, scope);
   expect(admitted).toEqual({ status: 'accepted', requestId: body.requestId });
   expect(runs).toBe(1);
 }
@@ -174,7 +174,7 @@ async function foreignDelegation(db: Database): Promise<void> {
   const kernel = kernelOn(db, { now: () => new Date() });
   const grant = { persona: 'agent:iterate', capability: 'iterate' as const };
   const delegation = accepted(
-    await kernel.delegations.grant(callerOf(await ian(db)), {
+    await kernel.delegations.grant(callerOf(await rowan(db)), {
       maxTier: null,
       ...grant,
       harnessId: scene.otherHarnessId,
@@ -183,7 +183,7 @@ async function foreignDelegation(db: Database): Promise<void> {
     }),
   );
   const requestId = randomUUID();
-  const admin = { email: 'ian.lindsley@unfoldingword.org' };
+  const admin = { email: 'rowan.test@unfoldingword.org' };
   const revoke = (harnessId: string, delegationId: string) =>
     command(db, admin, harnessId, 'revoke_delegation', { requestId, delegationId });
   const foreign = await revoke(scene.harnessId, delegation.id);

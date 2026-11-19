@@ -288,6 +288,48 @@
       "when": 1793931544301,
       "tag": "0040_harness_title",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1794862668733,
+      "tag": "0041_workflow_drafts",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1794875862571,
+      "tag": "0042_stage_rules_and_shadow_on",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1795012041459,
+      "tag": "0043_harness_runs_recent",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1795024832228,
+      "tag": "0044_add_stage_instructions_command",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1795029640446,
+      "tag": "0045_routines",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1795107246610,
+      "tag": "0046_person_audit",
+      "breakpoints": true
     }
   ]
 }

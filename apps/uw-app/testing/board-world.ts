@@ -12,8 +12,8 @@ import { software, type Clock, type Kernel, type Template } from '@uw/harness';
 import { accepted, callerOf } from './commands.ts';
 import { agentOf, kernelOn, personOn } from './kernel.ts';
 
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
-const IAN_EMAIL = 'ian.lindsley@unfoldingword.org';
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN_EMAIL = 'rowan.test@unfoldingword.org';
 const HOUR = 3_600_000;
 
 type Seeded = { readonly email: string; readonly id: string };
@@ -21,12 +21,13 @@ type Seeded = { readonly email: string; readonly id: string };
 export type BoardWorld = {
   readonly db: Database;
   readonly harnessId: string;
-  readonly ian: Principal;
-  readonly ianEmail: string;
+  readonly rowan: Principal;
+  readonly rowanEmail: string;
   readonly viewer: Seeded;
   readonly stranger: Seeded;
   readonly subscribed: string;
   readonly metered: string;
+  readonly meteredRunId: string;
   readonly personHeld: string;
   readonly unheld: string;
   readonly leaseUntil: Date;
@@ -55,13 +56,13 @@ async function seededPerson(
 
 export async function activatedHarness(
   kernel: Kernel,
-  ian: Principal,
+  rowan: Principal,
   template: Template = software,
   harnessKey = 'software',
 ): Promise<string> {
   const harnessId = randomUUID();
   accepted(
-    await kernel.stages.activate(callerOf(ian), {
+    await kernel.stages.activate(callerOf(rowan), {
       harnessId,
       harnessKey,
       jdArea: '80-89',
@@ -75,15 +76,16 @@ export async function activatedHarness(
 
 export async function enqueuedItem(
   kernel: Kernel,
-  ian: Principal,
+  rowan: Principal,
   harnessId: string,
   title: string,
+  priority = 1,
 ): Promise<string> {
-  const enqueued = await kernel.items.enqueue(callerOf(ian), {
+  const enqueued = await kernel.items.enqueue(callerOf(rowan), {
     harnessId,
     title,
     pageId: null,
-    priority: 1,
+    priority,
     due: null,
     delegationId: null,
   });
@@ -92,14 +94,14 @@ export async function enqueuedItem(
 
 export async function advanced(
   kernel: Kernel,
-  ian: Principal,
+  rowan: Principal,
   itemId: string,
   stages: number,
 ): Promise<void> {
   for (let n = 0; n < stages; n += 1) {
-    accepted(await kernel.items.claim(callerOf(ian), { itemId, delegationId: null }));
+    accepted(await kernel.items.claim(callerOf(rowan), { itemId, delegationId: null }));
     accepted(
-      await kernel.items.submit(callerOf(ian), { itemId, to: null, evidence: {}, change: null }),
+      await kernel.items.submit(callerOf(rowan), { itemId, to: null, evidence: {}, change: null }),
     );
   }
 }
@@ -139,9 +141,14 @@ export async function subscriptionRun(db: Database, seed: RunSeed, persona: stri
   });
 }
 
-export async function meteredRun(db: Database, seed: RunSeed, outcome: 'running' | 'completed') {
+export async function meteredRun(
+  db: Database,
+  seed: RunSeed,
+  outcome: 'running' | 'completed',
+): Promise<string> {
+  const id = randomUUID();
   await seedRunRow(db, {
-    id: randomUUID(),
+    id,
     harnessId: seed.harnessId,
     itemId: seed.itemId,
     persona: 'agent:builder',
@@ -158,6 +165,7 @@ export async function meteredRun(db: Database, seed: RunSeed, outcome: 'running'
     startedAt: seed.at,
     endedAt: outcome === 'running' ? null : seed.at,
   });
+  return id;
 }
 
 export async function heldByAgent(
@@ -173,32 +181,37 @@ async function pausedStage(db: Database, harnessId: string, key: string): Promis
   await rewriteStagePaused(db, { harnessId, key }, true);
 }
 
-export function ianOn(db: Database, at: Date): Promise<Principal> {
-  return personOn(db, IAN_ID, IAN_EMAIL, at);
+export function rowanOn(db: Database, at: Date): Promise<Principal> {
+  return personOn(db, ROWAN_ID, ROWAN_EMAIL, at);
 }
 
-async function items(kernel: Kernel, ian: Principal, harnessId: string) {
-  const unheld = await enqueuedItem(kernel, ian, harnessId, 'Draw the icon');
-  const personHeld = await enqueuedItem(kernel, ian, harnessId, 'Review the copy');
-  await advanced(kernel, ian, personHeld, 1);
-  accepted(await kernel.items.claim(callerOf(ian), { itemId: personHeld, delegationId: null }));
-  const subscribed = await enqueuedItem(kernel, ian, harnessId, 'Write the run notes');
-  await advanced(kernel, ian, subscribed, 3);
-  const laptop = agentOf(ian, 'laptop');
+async function items(kernel: Kernel, rowan: Principal, harnessId: string) {
+  const unheld = await enqueuedItem(kernel, rowan, harnessId, 'Draw the icon');
+  const personHeld = await enqueuedItem(kernel, rowan, harnessId, 'Review the copy');
+  await advanced(kernel, rowan, personHeld, 1);
+  accepted(await kernel.items.claim(callerOf(rowan), { itemId: personHeld, delegationId: null }));
+  const subscribed = await enqueuedItem(kernel, rowan, harnessId, 'Write the run notes');
+  await advanced(kernel, rowan, subscribed, 3);
+  const laptop = agentOf(rowan, 'laptop');
   accepted(await kernel.items.claim(callerOf(laptop), { itemId: subscribed, delegationId: null }));
-  const metered = await enqueuedItem(kernel, ian, harnessId, 'Wire the run host');
-  await advanced(kernel, ian, metered, 3);
+  const metered = await enqueuedItem(kernel, rowan, harnessId, 'Wire the run host', 2);
+  await advanced(kernel, rowan, metered, 3);
   return { unheld, personHeld, subscribed, metered, laptop };
 }
 
 export async function boardWorld(db: Database, clock: Clock): Promise<BoardWorld> {
   const at = clock.now();
-  const ian = await ianOn(db, at);
+  const rowan = await rowanOn(db, at);
   const kernel = kernelOn(db, clock);
-  const harnessId = await activatedHarness(kernel, ian);
-  const seeded = await items(kernel, ian, harnessId);
-  await subscriptionRun(db, { harnessId, itemId: seeded.subscribed, at }, seeded.laptop.identity);
-  await meteredRun(db, { harnessId, itemId: seeded.metered, at }, 'running');
+  const harnessId = await activatedHarness(kernel, rowan);
+  const seeded = await items(kernel, rowan, harnessId);
+  const earlier = new Date(at.getTime() - 60_000);
+  await subscriptionRun(
+    db,
+    { harnessId, itemId: seeded.subscribed, at: earlier },
+    seeded.laptop.identity,
+  );
+  const meteredRunId = await meteredRun(db, { harnessId, itemId: seeded.metered, at }, 'running');
   const leaseUntil = new Date(at.getTime() + 4 * HOUR);
   await heldByAgent(db, seeded.metered, 'agent:builder', leaseUntil);
   await heldByAgent(db, seeded.subscribed, seeded.laptop.identity, leaseUntil);
@@ -206,12 +219,13 @@ export async function boardWorld(db: Database, clock: Clock): Promise<BoardWorld
   return {
     db,
     harnessId,
-    ian,
-    ianEmail: IAN_EMAIL,
+    rowan,
+    rowanEmail: ROWAN_EMAIL,
     viewer: await seededPerson(db, 'board-viewer', 'viewer', '80-89'),
     stranger: await seededPerson(db, 'board-stranger', 'viewer', '20-29'),
     subscribed: seeded.subscribed,
     metered: seeded.metered,
+    meteredRunId,
     personHeld: seeded.personHeld,
     unheld: seeded.unheld,
     leaseUntil,

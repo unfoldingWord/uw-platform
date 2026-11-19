@@ -9,7 +9,7 @@ import { createWorld, type World } from '../world.ts';
 afterAll(closeEmbeddedTemplate);
 
 async function withHarness(
-  work: (world: World, harness: Harness, ian: Caller) => Promise<void>,
+  work: (world: World, harness: Harness, rowan: Caller) => Promise<void>,
 ): Promise<void> {
   const world = await createWorld();
   try {
@@ -22,7 +22,7 @@ async function withHarness(
 
 function harnessIt(
   title: string,
-  work: (world: World, harness: Harness, ian: Caller) => Promise<void>,
+  work: (world: World, harness: Harness, rowan: Caller) => Promise<void>,
 ): void {
   it(title, () => withHarness(work));
 }
@@ -55,8 +55,8 @@ function newStage(overrides: Partial<Omit<Stage, 'id' | 'harnessId' | 'paused'>>
 describe('KN-18 the stage command refuses what only a human admin may do', () => {
   harnessIt(
     'refuses an agent principal that carries org admin, on activate and on update, and writes no event',
-    async (world, harness, ian) => {
-      const agent = simCaller(world, simAgent(ian.actor, 'builder', { interactive: false }));
+    async (world, harness, rowan) => {
+      const agent = simCaller(world, simAgent(rowan.actor, 'builder', { interactive: false }));
       const activate = await world.kernel.stages.activate(agent, {
         harnessId: world.adapters.ids.next(),
         harnessKey: 'other',
@@ -95,8 +95,8 @@ describe('KN-18 the stage command refuses what only a human admin may do', () =>
     ]);
   });
 
-  harnessIt('refuses an unknown harness', async (world, _harness, ian) => {
-    const outcome = await world.kernel.stages.updateStage(ian, {
+  harnessIt('refuses an unknown harness', async (world, _harness, rowan) => {
+    const outcome = await world.kernel.stages.updateStage(rowan, {
       harnessId: world.adapters.ids.next(),
       stageKey: 'build',
       change: { title: 'Changed' },
@@ -108,8 +108,8 @@ describe('KN-18 the stage command refuses what only a human admin may do', () =>
 describe('KN-18 the stage command refuses what the kernel can see before Postgres', () => {
   harnessIt(
     'refuses an unknown validator and records stage_edit_refused with the reason',
-    async (world, harness, ian) => {
-      const outcome = await world.kernel.stages.createStage(ian, {
+    async (world, harness, rowan) => {
+      const outcome = await world.kernel.stages.createStage(rowan, {
         harnessId: harness.id,
         stage: newStage({ validators: ['nope'] }),
       });
@@ -131,8 +131,8 @@ describe('KN-18 the stage command refuses what the kernel can see before Postgre
 });
 
 describe('KN-18 a dangling feeds target is refused at write time', () => {
-  harnessIt('refuses a feeds target that is not a stage', async (world, harness, ian) => {
-    const outcome = await world.kernel.stages.updateStage(ian, {
+  harnessIt('refuses a feeds target that is not a stage', async (world, harness, rowan) => {
+    const outcome = await world.kernel.stages.updateStage(rowan, {
       harnessId: harness.id,
       stageKey: 'close',
       change: { feeds: ['nowhere'] },
@@ -148,8 +148,8 @@ describe('KN-18 a dangling feeds target is refused at write time', () => {
 describe('KN-18 the stage command records what Postgres refuses', () => {
   harnessIt(
     'refuses a taken key with the constraint and records it on the harness',
-    async (world, harness, ian) => {
-      const outcome = await world.kernel.stages.createStage(ian, {
+    async (world, harness, rowan) => {
+      const outcome = await world.kernel.stages.createStage(rowan, {
         harnessId: harness.id,
         stage: newStage({ key: 'scope' }),
       });
@@ -167,12 +167,12 @@ describe('KN-18 the stage command records what Postgres refuses', () => {
     },
   );
 
-  harnessIt('creates and updates a stage that Postgres accepts', async (world, harness, ian) => {
-    const created = await world.kernel.stages.createStage(ian, {
+  harnessIt('creates and updates a stage that Postgres accepts', async (world, harness, rowan) => {
+    const created = await world.kernel.stages.createStage(rowan, {
       harnessId: harness.id,
       stage: newStage({}),
     });
-    const updated = await world.kernel.stages.updateStage(ian, {
+    const updated = await world.kernel.stages.updateStage(rowan, {
       harnessId: harness.id,
       stageKey: 'extra',
       change: { title: 'Renamed', wipLimit: 5 },
@@ -189,9 +189,9 @@ describe('KN-18 the stage command records what Postgres refuses', () => {
 describe('KN-18 reordering stages', () => {
   const keys = software.stages.map((stage) => stage.key);
 
-  harnessIt('repositions to 10 through 80 in the given order', async (world, harness, ian) => {
+  harnessIt('repositions to 10 through 80 in the given order', async (world, harness, rowan) => {
     const order = [...keys].reverse();
-    const outcome = await world.kernel.stages.reorderStages(ian, {
+    const outcome = await world.kernel.stages.reorderStages(rowan, {
       harnessId: harness.id,
       order,
     });
@@ -204,12 +204,12 @@ describe('KN-18 reordering stages', () => {
 
   harnessIt(
     'refuses a missing key as malformed and an unknown key as stage_not_found',
-    async (world, harness, ian) => {
-      const missing = await world.kernel.stages.reorderStages(ian, {
+    async (world, harness, rowan) => {
+      const missing = await world.kernel.stages.reorderStages(rowan, {
         harnessId: harness.id,
         order: keys.slice(1),
       });
-      const unknown = await world.kernel.stages.reorderStages(ian, {
+      const unknown = await world.kernel.stages.reorderStages(rowan, {
         harnessId: harness.id,
         order: [...keys.slice(1), 'nowhere'],
       });
@@ -224,8 +224,8 @@ describe('KN-18 reordering stages', () => {
 });
 
 describe('KN-18 activating a second harness with a taken key', () => {
-  harnessIt('is refused harness_exists', async (world, _harness, ian) => {
-    const outcome = await world.kernel.stages.activate(ian, {
+  harnessIt('is refused harness_exists', async (world, _harness, rowan) => {
+    const outcome = await world.kernel.stages.activate(rowan, {
       harnessId: world.adapters.ids.next(),
       harnessKey: 'software',
       jdArea: '30-39',
@@ -242,15 +242,15 @@ describe('KN-18 the stage command reads the admin grant again inside its transac
 
   harnessIt(
     'refuses a stale principal whose admin grant was revoked',
-    async (world, harness, ian) => {
+    async (world, harness, rowan) => {
       await revokeSeededGrant(world.database.db, adminGrantId, world.adapters.clock.now());
       world.adapters.clock.advance(1000);
-      const update = await world.kernel.stages.updateStage(ian, {
+      const update = await world.kernel.stages.updateStage(rowan, {
         harnessId: harness.id,
         stageKey: 'build',
         change: { title: 'Changed' },
       });
-      const activate = await world.kernel.stages.activate(ian, {
+      const activate = await world.kernel.stages.activate(rowan, {
         harnessId: world.adapters.ids.next(),
         harnessKey: 'other',
         jdArea: '80-89',
@@ -275,9 +275,9 @@ describe('KN-18 an update cannot carry identity fields', () => {
     ['id', { id: foreign }],
     ['harnessId', { harnessId: foreign }],
   ])('refuses a change carrying %s and changes nothing', async (_name, extra) => {
-    await withHarness(async (world, harness, ian) => {
+    await withHarness(async (world, harness, rowan) => {
       const before = await stagesOf(world, harness.id);
-      const outcome = await world.kernel.stages.updateStage(ian, {
+      const outcome = await world.kernel.stages.updateStage(rowan, {
         harnessId: harness.id,
         stageKey: 'build',
         change: Object.assign({ title: 'Changed' }, extra),
@@ -307,9 +307,9 @@ async function seedInstructions(world: World, type: PageType, jdArea = '80-89'):
 describe('a stage names its instructions', () => {
   harnessIt(
     "PE-8 a stage's instructions page must be a skill page",
-    async (world, harness, ian) => {
+    async (world, harness, rowan) => {
       const create = (instructionsPageId: string) =>
-        world.kernel.stages.createStage(ian, {
+        world.kernel.stages.createStage(rowan, {
           harnessId: harness.id,
           stage: newStage({ key: `s${instructionsPageId.slice(-6)}`, instructionsPageId }),
         });
@@ -329,7 +329,7 @@ describe('a stage names its instructions', () => {
           detail: { pageId },
         });
       }
-      const updated = await world.kernel.stages.updateStage(ian, {
+      const updated = await world.kernel.stages.updateStage(rowan, {
         harnessId: harness.id,
         stageKey: 'build',
         change: { instructionsPageId: product },

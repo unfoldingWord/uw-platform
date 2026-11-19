@@ -1,17 +1,19 @@
 # Harness v0.3.0: the look
 
+> **Historical design (2026-11-12).** This design was built and merged. Its process parts are superseded by `AGENTS.md`: work is tracked in GitHub issues, the PRD is reference, and the requirement trace (`pnpm trace`) no longer exists.
+
 | | |
 |---|---|
-| Status | Proposed on 2026-11-04 by Ian Lindsley and Claude; approved when the pull request that adds it merges |
+| Status | Proposed on 2026-11-04 by the owner and Claude; approved when the pull request that adds it merges |
 | Requirements | `docs/PRD.md` section 7.12, IDs UI-1 to UI-18 |
 | Screens | The screenshots in [`2026-11-04-harness-v0-3-0-design/`](2026-11-04-harness-v0-3-0-design/), taken from the approved mockup (round 10, 2026-11-04) |
 | Decision records | ADR 0011 (one token system, locked in Tailwind), ADR 0012 (charts), ADR 0013 (icons) |
 
 ## 1. Why this version exists
 
-On 2026-10-21 Ian looked at the screens v0.2.0 renders and called them horrible. They had never been looked at: ADR 0007 and WB-11 carried the prototype's tokens but not its components, the font was named and never loaded, and no check compared a rendered screen with anything. The pull requests were reviewed as code.
+On 2026-10-21 the owner looked at the screens v0.2.0 renders and called them horrible. They had never been looked at: ADR 0007 and WB-11 carried the prototype's tokens but not its components, the font was named and never loaded, and no check compared a rendered screen with anything. The pull requests were reviewed as code.
 
-Between 2026-10-21 and 2026-11-04 the look was designed in ten rounds of a mockup, each round judged by Ian on rendered screens in light and dark, at desktop and phone width. This document records where the rounds ended. v0.3.0 builds it into `apps/uw-app` and adds the check that stops it drifting back: every screen is rendered in CI and compared with a committed picture of itself.
+Between 2026-10-21 and 2026-11-04 the look was designed in ten rounds of a mockup, each round judged by the owner on rendered screens in light and dark, at desktop and phone width. This document records where the rounds ended. v0.3.0 builds it into `apps/uw-app` and adds the check that stops it drifting back: every screen is rendered in CI and compared with a committed picture of itself.
 
 v0.3.0 changes how the harness looks and what it shows. It does not change what the kernel does, what an agent may do, or who decides a gate.
 
@@ -30,16 +32,16 @@ The words are `CONTEXT.md`'s. Three are used here in a narrower sense.
 | V3-1 | **v0.3.0 is the look only.** Lessons with statuses, promised to v0.3.0 by V2-4, move to v0.4.0 | One reviewable change at a time; the look touches every screen and lessons touch the kernel |
 | V3-2 | **One token system, generated, not picked.** Colour scales are computed in OKLCH from the five brand colours, each brand hex exact on its step; the type, spacing, radius and shadow scales are fixed lists (section 5) | The mockup's rounds produced 25 font sizes, 24 spacing values, 58 hex colours and 42 shadows by hand. Refactoring UI's rule: choose the system first, then use only it |
 | V3-3 | **Tailwind holds the lock.** The token scales become the whole Tailwind theme, spacing included, and a check fails the build on any arbitrary value (`p-[18px]`, `text-[13px]`) | Today Tailwind's spacing is "4px times any number" and arbitrary values pass; the tokens-agree check sees only hex colours |
-| V3-4 | **Dark first, both themes complete.** The mockup is judged in dark; light uses the same roles and passes the same contrast test | Ian's direction from round 4 |
+| V3-4 | **Dark first, both themes complete.** The mockup is judged in dark; light uses the same roles and passes the same contrast test | The owner's direction from round 4 |
 | V3-5 | **Every text colour pair passes WCAG AA, computed.** 4.5:1 for every text role on every surface role in both themes, as a test | The lowest pair in the approved set is 5.99:1 |
 | V3-6 | **Fonts are bundled.** Nunito Sans and JetBrains Mono are served from the Worker's own assets | The content security policy is `font-src 'self'`; Google Fonts could never have loaded, which is why the built screens never showed Nunito |
 | V3-7 | **Icons are Font Awesome Pro, never committed.** Installed with a token; the build falls back to Font Awesome Free when the token is absent (ADR 0013) | The approved look uses Pro Regular; the repository is public and the Pro files may not be in it |
 | V3-8 | **Charts are Apache ECharts 6, as SVG** (ADR 0012) | The same library and settings as `bt-servant-telemetry`; SVG can be rendered on the server |
-| V3-9 | **Navigation and page names are Title Case** ("Waiting On You", "My Items", "Software"); everything else stays sentence case | Ian, 2026-11-04 |
+| V3-9 | **Navigation and page names are Title Case** ("Waiting On You", "My Items", "Software"); everything else stays sentence case | The owner, 2026-11-04 |
 | V3-10 | **A harness has a display name,** `harnesses.title`, separate from its key and set by an admin (section 7) | People read "Software" and "BML"; the key stays in code-like places |
 | V3-11 | **Nothing on a screen is invented.** Every figure has a source in the database; what is not recorded is not drawn | Round 8: live agent readouts, per-indicator history and a lease progress bar were removed because nothing records them |
 | V3-12 | **The mockup is not committed.** It embeds Font Awesome Pro paths; the screenshots in this folder are the record | The licence |
-| V3-13 | **Normal branches, no worktrees,** for this version's build, on `feat/ui-redesign`: a branch is named for the work, never for a version | Ian, 2026-11-04 and 2026-11-05; `AGENTS.md` section 8 says so |
+| V3-13 | **Normal branches, no worktrees,** for this version's build, on `feat/ui-redesign`: a branch is named for the work, never for a version | The owner, 2026-11-04 and 2026-11-05; `AGENTS.md` section 8 says so |
 | V3-14 | **GL-1 is separate.** The go-live switch runs on its own track; the look does not wait for it and it does not wait for the look | Neither depends on the other (PRD DX-8) |
 
 ## 4. What a person sees
@@ -232,7 +234,7 @@ PRD section 13, steps 21 to 25.
 2. Every Must in section 6 has a test or scenario named for its ID.
 3. The screenshot check passes in CI and fails when a planted change to a token value is added.
 4. The build fails on a planted arbitrary Tailwind value and a planted raw colour.
-5. Ian has looked at every screen's picture in light and dark, desktop and phone, and merged the pull request.
+5. The owner has looked at every screen's picture in light and dark, desktop and phone, and merged the pull request.
 
 ## 11. Not in v0.3.0
 

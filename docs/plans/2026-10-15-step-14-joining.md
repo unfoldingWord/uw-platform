@@ -64,7 +64,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Where and how**
 
-- Work only in `/home/ianjl/projects/uw-platform-v0.2.0`, branch `build/v0.2.0`. Never commit to `main`, never force-push, never `--no-verify`.
+- Work only in `/home/rowan-test/projects/uw-platform-v0.2.0`, branch `build/v0.2.0`. Never commit to `main`, never force-push, never `--no-verify`.
 - Read `AGENTS.md` sections 1, 4 and 10 before the first edit. When this plan and `AGENTS.md` disagree, `AGENTS.md` wins; record the conflict in `docs/progress_tracker.md` and build the version that keeps the rule.
 - Words come from `CONTEXT.md`: **platform**, **check-only harness**, **shadow mode**, **holder**. Never "the shared harness", "dry run" or "read-only mode" for shadow, never "review service" or "opt-in review" for a check-only harness.
 - Commits: Conventional Commits, the agent as sole author, no attribution footer. Hooks always pass. Put the requirement IDs in each commit body.
@@ -1211,12 +1211,12 @@ import type { Database } from '@uw/db/client';
 import { command, eventsNamed, person } from '../testing/commands.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 
-const IAN = { email: 'ian.lindsley@unfoldingword.org' };
+const ROWAN = { email: 'rowan.test@unfoldingword.org' };
 const repository = 'unfoldingWord/tc-admin-app';
 
 async function checkOnlyHarness(db: Database, shadow: boolean): Promise<string> {
   const harnessId = randomUUID();
-  const sent = await command(db, IAN, harnessId, 'activate_template', {
+  const sent = await command(db, ROWAN, harnessId, 'activate_template', {
     requestId: randomUUID(),
     harnessKey: `tc-admin-app-${harnessId.slice(0, 8)}`,
     jdArea: '80-89',
@@ -1241,10 +1241,10 @@ describe.skipIf(!testServer)('GL-4 shadow through the command API', () => {
         status: 'error',
         reason: 'not_permitted',
       });
-      const lifted = await command(db, IAN, harnessId, 'set_shadow', { ...lift, requestId: randomUUID() });
+      const lifted = await command(db, ROWAN, harnessId, 'set_shadow', { ...lift, requestId: randomUUID() });
       expect(lifted.body).toMatchObject({ status: 'accepted' });
       expect(await eventsNamed(db, harnessId, 'shadow_lifted')).toHaveLength(1);
-      const on = await command(db, IAN, harnessId, 'set_shadow', { requestId: randomUUID(), shadow: true });
+      const on = await command(db, ROWAN, harnessId, 'set_shadow', { requestId: randomUUID(), shadow: true });
       expect(on.status).toBe(400);
     }));
 });
@@ -1339,7 +1339,7 @@ describe.skipIf(!testServer)('GL-2 kickstart refuses a check-only harness, which
   it('refuses template_has_no_package and leaves the area without a product page or Package stage', () =>
     withAppDatabase(async (db) => {
       const harnessId = await checkOnlyHarness(db, false);
-      const kicked = await command(db, IAN, harnessId, 'kickstart', {
+      const kicked = await command(db, ROWAN, harnessId, 'kickstart', {
         requestId: randomUUID(),
         pageId: randomUUID(),
       });
@@ -1857,7 +1857,7 @@ export const approveVerdict = {
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { checkOnly, readAllEvents, software } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, simCaller, simIan } from '../fixtures.ts';
+import { createSimHarness, simCaller, simRowan } from '../fixtures.ts';
 import { joinedHead, joinedPull, joinedRepository, joinRequest } from '../joining.ts';
 import { reasonOf, value } from '../runs.ts';
 import { createWorld, type World } from '../world.ts';
@@ -1905,7 +1905,7 @@ describe('GL-3 joining by review request', () => {
     inWorld(async (world) => {
       await createSimHarness(world, checkOnly, { repository: joinedRepository });
       expect(reasonOf(await joinRequest(world, { requestedReviewers: ['outside-reviewer'] }))).toBe('not_permitted');
-      const person = simCaller(world, await simIan(world));
+      const person = simCaller(world, await simRowan(world));
       const byPerson = await world.kernel.items.join(person, {
         pullRequest: joinedPull,
         head: joinedHead,
@@ -2593,7 +2593,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
 import { seedPlatformPage } from '@uw/db/test-seed';
 import { checkOnly } from '@uw/harness';
-import { accepted, callerOf, ian } from '../testing/commands.ts';
+import { accepted, callerOf, rowan } from '../testing/commands.ts';
 import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import type { GitHubAppConfig } from './app-config.ts';
@@ -2620,7 +2620,7 @@ function requested() {
 async function checkOnlyOn(db: Database, shadow: boolean): Promise<string> {
   const harnessId = randomUUID();
   accepted(
-    await kernelOn(db, { now: () => firstRun }).stages.activate(callerOf(await ian(db)), {
+    await kernelOn(db, { now: () => firstRun }).stages.activate(callerOf(await rowan(db)), {
       harnessId,
       harnessKey: 'uw-platform-review',
       jdArea: '80-89',
@@ -2635,7 +2635,7 @@ async function checkOnlyOn(db: Database, shadow: boolean): Promise<string> {
 
 async function joinedItems(db: Database, harnessId: string) {
   const kernel = kernelOn(db, { now: () => nextRun });
-  const items = await kernel.reads.inStage(callerOf(await ian(db)), {
+  const items = await kernel.reads.inStage(callerOf(await rowan(db)), {
     harnessId,
     stageKey: 'check',
     after: null,
@@ -3354,14 +3354,14 @@ import { ingestPrincipal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
 import { seedPlatformPage } from '@uw/db/test-seed';
 import { checkOnly } from '@uw/harness';
-import { accepted, callerOf, get, ian, person } from '../testing/commands.ts';
+import { accepted, callerOf, get, rowan, person } from '../testing/commands.ts';
 import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml } from '../testing/views.ts';
 import { gatesPath, shadowExportPath } from './parts/paths.ts';
 
-const IAN_EMAIL = 'ian.lindsley@unfoldingword.org';
+const ROWAN_EMAIL = 'rowan.test@unfoldingword.org';
 const repository = 'unfoldingWord/tc-admin-app';
 const head = 'c'.repeat(40);
 const clock = { now: () => new Date() };
@@ -3370,7 +3370,7 @@ async function shadowHarness(db: Database): Promise<string> {
   const harnessId = randomUUID();
   const kernel = kernelOn(db, clock);
   accepted(
-    await kernel.stages.activate(callerOf(await ian(db)), {
+    await kernel.stages.activate(callerOf(await rowan(db)), {
       harnessId,
       harnessKey: 'tc-admin-app',
       jdArea: '80-89',
@@ -3398,7 +3398,7 @@ describe.skipIf(!testServer)('OB-3 the shadow comparison export', () => {
   it('answers the comparison as JSON for a reader and harness_not_found for an outsider', () =>
     withAppDatabase(async (db) => {
       const harnessId = await shadowHarness(db);
-      const read = await get(db, { email: IAN_EMAIL }, shadowExportPath(harnessId));
+      const read = await get(db, { email: ROWAN_EMAIL }, shadowExportPath(harnessId));
       expect(read.status).toBe(200);
       const comparison = shadowComparisonSchema.parse(read.body);
       expect(comparison).toMatchObject({ harnessKey: 'tc-admin-app', shadow: true });
@@ -3413,7 +3413,7 @@ describe.skipIf(!testServer)('GL-4 OB-3 the Gates view shows shadow verdicts lab
   it('lists the head under the harness with the shadow label and an export link, and passes the screen checks', () =>
     withAppDatabase(async (db) => {
       const harnessId = await shadowHarness(db);
-      const html = await getHtml(db, IAN_EMAIL, gatesPath(), {}, clock);
+      const html = await getHtml(db, ROWAN_EMAIL, gatesPath(), {}, clock);
       const document = new JSDOM(html.text).window.document;
       const section = [...document.querySelectorAll('main section')].find((candidate) =>
         candidate.querySelector('h2')?.textContent?.includes('tc-admin-app'),
@@ -3585,7 +3585,7 @@ Expected: green; the route test sees `kernel.views.shadow(` as the guarded entry
 
 - [ ] **Step 10: Look at it**
 
-Run the app as `AGENTS.md` section 7 step 6 asks (the `run` skill or the repository's dev script), open `/gates` as Ian with the shadow harness from Step 7 seeded, in light and dark and at 390px width. Confirm the table scrolls inside its border and not the page, every link has a visible focus ring, and nothing is orange. If the app cannot be run locally, say so in the tracker under "Not verified" and rely on `screenProblems`.
+Run the app as `AGENTS.md` section 7 step 6 asks (the `run` skill or the repository's dev script), open `/gates` as the owner with the shadow harness from Step 7 seeded, in light and dark and at 390px width. Confirm the table scrolls inside its border and not the page, every link has a visible focus ring, and nothing is orange. If the app cannot be run locally, say so in the tracker under "Not verified" and rely on `screenProblems`.
 
 - [ ] **Step 11: Commit**
 

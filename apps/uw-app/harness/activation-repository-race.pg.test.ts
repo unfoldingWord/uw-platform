@@ -8,7 +8,7 @@ import { software, type Caller, type Clock } from '@uw/harness';
 import { describe, expect, it } from 'vitest';
 import { kernelOn, personOn } from '../testing/kernel.ts';
 
-const ianId = '00000000-0000-4000-8000-000000000001';
+const rowanId = '00000000-0000-4000-8000-000000000001';
 const firstId = '00000000-0000-4000-8000-000000008501';
 const secondId = '00000000-0000-4000-8000-000000008502';
 const instant = new Date();
@@ -53,12 +53,12 @@ function holdEventAppends(blocker: Database, harnessId: string, release: Promise
 
 function activate(
   db: Database,
-  ian: Principal,
+  rowan: Principal,
   harnessId: string,
   harnessKey: string,
   repository: string,
 ) {
-  return kernelOn(db, clock).stages.activate(caller(ian), {
+  return kernelOn(db, clock).stages.activate(caller(rowan), {
     harnessId,
     harnessKey,
     jdArea: '80-89',
@@ -69,15 +69,15 @@ function activate(
 }
 
 async function race(connections: Connections) {
-  const ian = await personOn(connections.observer, ianId, 'ian@unfoldingword.org', instant);
+  const rowan = await personOn(connections.observer, rowanId, 'rowan@unfoldingword.org', instant);
   const release = deferred();
   const blocking = holdEventAppends(connections.blocker, firstId, release.promise);
   await blocking.held;
-  const one = activate(connections.one, ian, firstId, 'software-a', 'unfoldingWord/race');
+  const one = activate(connections.one, rowan, firstId, 'software-a', 'unfoldingWord/race');
   let two: ReturnType<typeof activate> | undefined;
   try {
     await waitersReach(connections.observer, 1);
-    two = activate(connections.two, ian, secondId, 'software-b', 'UnfoldingWord/RACE');
+    two = activate(connections.two, rowan, secondId, 'software-b', 'UnfoldingWord/RACE');
     await waitersReach(connections.observer, 2);
     release.resolve();
     await blocking.done;

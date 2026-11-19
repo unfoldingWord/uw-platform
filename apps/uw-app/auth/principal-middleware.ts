@@ -13,7 +13,7 @@ import {
   type AccessSurface,
 } from './access.ts';
 import { devEmail } from './dev-principal.ts';
-import { pendingApprovalPage } from './pending-approval.tsx';
+import { accessDeclinedPage, pendingApprovalPage } from './pending-approval.tsx';
 
 type Keys = Pick<AppDeps, 'accessKeys'>;
 
@@ -30,10 +30,14 @@ async function verifiedIdentity(
   return identity ?? refuse(c, 'unauthenticated');
 }
 
-function refusePending(c: Context<AppEnv>): Response | Promise<Response> {
-  c.set('outcome', 'pending_approval');
-  if (c.req.header('accept')?.includes('text/html')) return pendingApprovalPage(c);
-  return refuse(c, 'pending_approval');
+function refuseInactive(
+  c: Context<AppEnv>,
+  status: 'pending' | 'disabled',
+): Response | Promise<Response> {
+  const reason = status === 'pending' ? 'pending_approval' : 'not_permitted';
+  c.set('outcome', reason);
+  if (!c.req.header('accept')?.includes('text/html')) return refuse(c, reason);
+  return status === 'pending' ? pendingApprovalPage(c) : accessDeclinedPage(c);
 }
 
 export function withPrincipal(
@@ -56,7 +60,7 @@ export function withPrincipal(
     const database = c.get('database');
     if (database === null) return refuse(c, 'database_not_configured');
     const person = await signIn(database.db, identity.email);
-    if (person.status === 'pending') return refusePending(c);
+    if (person.status !== 'active') return refuseInactive(c, person.status);
     const grants = await resolveGrants(database.db, person.personId, { at: now });
     c.set(
       'principal',

@@ -1,10 +1,20 @@
 import type { CommandBody } from '@uw/contracts';
-import type { DecideInput } from '@uw/harness';
+import type { DecideInput, KernelOutcome } from '@uw/harness';
 import { commandHandler, fromKernel, type CommandContext } from '../handler.ts';
 
-async function decided(context: CommandContext, input: DecideInput) {
+function notParked(outcome: KernelOutcome<unknown>): boolean {
+  if (outcome.status === 'accepted' || outcome.reason !== 'item_not_at_gate') return false;
+  return outcome.detail['why'] !== 'moved';
+}
+
+async function gateOutcome(context: CommandContext, input: DecideInput) {
   const kernel = context.gateKernel();
-  return fromKernel(await kernel.gates.decide(context.caller, input));
+  const outcome = await kernel.gates.decide(context.caller, input);
+  return outcome;
+}
+
+async function decided(context: CommandContext, input: DecideInput) {
+  return fromKernel(await gateOutcome(context, input));
 }
 
 export const approveCommand = commandHandler({
@@ -38,8 +48,13 @@ export const takeOverCommand = commandHandler({
   name: 'take_over',
   action: 'admin',
   agents: 'recorded',
-  run: (context, body: CommandBody<'take_over'>) =>
-    decided(context, { itemId: body.itemId, decision: 'take_over', reason: null, findings: [] }),
+  run: async (context, body: CommandBody<'take_over'>) => {
+    const { itemId } = body;
+    const input = { itemId, decision: 'take_over' as const, reason: null, findings: [] };
+    const atGate = await gateOutcome(context, input);
+    if (!notParked(atGate)) return fromKernel(atGate);
+    return fromKernel(await context.kernel.runs.takeOver(context.caller, { itemId }));
+  },
 });
 
 export const overrideCommand = commandHandler({

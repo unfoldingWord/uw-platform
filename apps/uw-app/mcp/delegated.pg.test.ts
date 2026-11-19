@@ -21,7 +21,7 @@ import { kernelOn, personOn } from '../testing/kernel.ts';
 import { callTool, httpClient } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
 
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 const ROUTINE = 'hourly-routine';
 const MISSING = '00000000-0000-4000-8000-000000001699';
 
@@ -63,7 +63,7 @@ type Rig = {
   readonly clock: SettableClock;
   readonly fixture: AccessFixture;
   readonly kernel: Kernel;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly drop: () => Promise<void>;
 };
 type Scene = { readonly harnessId: string; readonly itemIds: readonly string[] };
@@ -95,7 +95,7 @@ async function bind(r: Rig, owner: Owner): Promise<void> {
     personId: owner.id,
     device: ROUTINE,
   };
-  const bound = await bindServiceToken(r.db, r.ian, command, crypto.randomUUID(), r.clock.now());
+  const bound = await bindServiceToken(r.db, r.rowan, command, crypto.randomUUID(), r.clock.now());
   expect(bound).toEqual({ ok: true });
 }
 
@@ -107,7 +107,7 @@ async function openRig(): Promise<Rig> {
   await seedOwner(db, KIM);
   await seedOwner(db, LEE);
   await seedOwner(db, ADA);
-  const ian = await personOn(db, IAN_ID, 'ian.lindsley@unfoldingword.org', clock.now());
+  const rowan = await personOn(db, ROWAN_ID, 'rowan.test@unfoldingword.org', clock.now());
   const drop = async () => {
     await Promise.all([db.$client.end(), second.$client.end()]);
     await database.drop();
@@ -118,7 +118,7 @@ async function openRig(): Promise<Rig> {
     clock,
     fixture: await createAccessFixture(),
     kernel: kernelOn(db, clock),
-    ian,
+    rowan,
     drop,
   };
   await bind(r, KIM);
@@ -154,16 +154,19 @@ async function sceneOf(r: Rig, key: string, count: number): Promise<Scene> {
     repository: `unfoldingWord/${key}`,
     requiredChecks: [...defaultCiChecks],
   };
-  value(await r.kernel.stages.activate(caller(r.ian), activate));
+  value(await r.kernel.stages.activate(caller(r.rowan), activate));
   await listForDispatch(r.db, activate.repository);
   const change = { agentPickup: 'allowed' as const, bracket: 'iterate' as const };
   value(
-    await r.kernel.stages.updateStage(caller(r.ian), { harnessId, stageKey: 'package', change }),
+    await r.kernel.stages.updateStage(caller(r.rowan), { harnessId, stageKey: 'package', change }),
   );
   const itemIds: string[] = [];
   for (let n = 0; n < count; n += 1) {
     const input = { harnessId, title: `${key} ${n}`, pageId: null, priority: 1, due: null };
-    const enqueued = await r.kernel.items.enqueue(caller(r.ian), { ...input, delegationId: null });
+    const enqueued = await r.kernel.items.enqueue(caller(r.rowan), {
+      ...input,
+      delegationId: null,
+    });
     itemIds.push(value(enqueued).itemId);
   }
   return { harnessId, itemIds };
@@ -315,7 +318,7 @@ async function stopsWhenRevoked(): Promise<void> {
   expect(await lapses(r, scene, delegationId)).toEqual(revokedBy);
   expect(await submit(runner, at(scene, 0))).toEqual(lapsed);
   expect(await lapses(r, scene, delegationId)).toEqual(revokedBy);
-  const item = value(await r.kernel.reads.item(caller(r.ian), { itemId: at(scene, 0) })).item;
+  const item = value(await r.kernel.reads.item(caller(r.rowan), { itemId: at(scene, 0) })).item;
   expect(item.stageKey).toBe('package');
 }
 
@@ -370,7 +373,7 @@ async function refusesAnotherPersonsDelegation(): Promise<void> {
     detail: { delegationId: foreign },
   });
   expect(JSON.stringify(borrowed)).toBe(JSON.stringify(absent).replace(MISSING, foreign));
-  const item = value(await r.kernel.reads.item(caller(r.ian), { itemId: at(scene, 0) })).item;
+  const item = value(await r.kernel.reads.item(caller(r.rowan), { itemId: at(scene, 0) })).item;
   expect(item.holder).toBeNull();
 }
 

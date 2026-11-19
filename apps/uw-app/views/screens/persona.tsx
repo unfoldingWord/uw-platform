@@ -5,11 +5,14 @@ import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { idParam } from '../parts/params.ts';
-import { flowPath, homePath, personaPath } from '../parts/paths.ts';
-import { ActivateForm, ToolsetForm, type SavedToolset } from '../parts/persona-controls.tsx';
+import { Checks, JobCard } from '../parts/agent-card.tsx';
+import { agentsPath } from '../parts/paths.ts';
+import type { SavedToolset } from '../parts/persona-controls.tsx';
+import { waitingCount } from '../parts/waiting-count.ts';
+import { workflowCrumbs, workflowTabs } from '../parts/workflow-tabs.ts';
 import { Delegations, LastRuns, PersonaKpis } from '../parts/persona-figures.tsx';
 import { notFound } from './not-found.tsx';
-import { pageNames } from '../parts/names.ts';
+import { moduleCodes } from '../parts/names.ts';
 
 export type PersonaRead = KernelOutcome<PersonaDashboard> | null;
 
@@ -21,54 +24,58 @@ export function readDashboard(read: PersonaRead): PersonaDashboard | null {
   return read?.status === 'accepted' ? read.value : null;
 }
 
-function statusText(dashboard: PersonaDashboard): string {
-  return dashboard.page.status === 'active' ? 'Active' : 'Suggested';
-}
+const statusWords: Readonly<Record<PersonaDashboard['page']['status'], string>> = {
+  draft: 'Draft',
+  suggested: 'Not live yet',
+  active: 'Live',
+  retired: 'Retired',
+};
 
-export function renderPersona(
+export async function renderPersona(
   c: Context<AppEnv>,
   dashboard: PersonaDashboard,
   saved: SavedToolset | null,
 ): Promise<Response> {
   const { page, harness } = dashboard;
+  const screen = screenKernel(c);
+  const waiting = screen === null ? 0 : await waitingCount(screen, harness.id);
   const spec = {
     title: page.title,
-    current: personaPath(page.id),
-    crumbs: [
-      { label: pageNames.home, href: homePath() },
-      { label: harness.title, href: flowPath(harness.id) },
-      { label: 'Persona' },
-    ],
+    current: agentsPath(harness.id),
+    code: moduleCodes.agentQueues,
+    crumbs: workflowCrumbs(harness.title, agentsPath(harness.id), page.title),
+    tabs: workflowTabs(harness.id, 'agents', waiting),
   };
-  const options = dashboard.toolsetOptions;
+  const owner =
+    dashboard.frontmatter.owner === screen?.caller.actor.identity
+      ? 'you'
+      : dashboard.frontmatter.owner;
   return renderScreen(
     c,
     spec,
     <>
       <PageHead
-        eyebrow="Persona"
+        eyebrow="Agent"
         title={page.title}
-        lede={`${dashboard.persona} on ${harness.title}, today ${dashboard.today}`}
+        lede={`${dashboard.persona} on ${harness.title} · owner ${owner} · today ${dashboard.today}`}
         actions={
           <Badge tone={page.status === 'active' ? 'success' : 'neutral'}>
-            {statusText(dashboard)}
+            {statusWords[page.status]}
           </Badge>
         }
       />
-      {dashboard.canActivate ? <ActivateForm dashboard={dashboard} /> : null}
-      <PersonaKpis dashboard={dashboard} />
-      <h2 class="mt-5 mb-2 text-md font-heavy text-text">Last runs</h2>
-      <LastRuns dashboard={dashboard} />
-      <h2 class="mt-5 mb-2 text-md font-heavy text-text">Delegations</h2>
-      <Delegations dashboard={dashboard} />
-      {options === null ? null : (
-        <ToolsetForm
-          dashboard={dashboard}
-          options={options}
-          requestId={crypto.randomUUID()}
-          saved={saved}
-        />
-      )}
+      <div class="flex flex-col gap-5">
+        <Checks dashboard={dashboard} />
+        <JobCard dashboard={dashboard} requestId={crypto.randomUUID()} saved={saved} />
+        <section>
+          <h2 class="mt-0 mb-2 text-md font-heavy text-text">Today</h2>
+          <PersonaKpis dashboard={dashboard} />
+          <h2 class="mt-5 mb-2 text-md font-heavy text-text">Last runs</h2>
+          <LastRuns dashboard={dashboard} />
+          <h2 class="mt-5 mb-2 text-md font-heavy text-text">Standing permissions</h2>
+          <Delegations dashboard={dashboard} />
+        </section>
+      </div>
     </>,
   );
 }

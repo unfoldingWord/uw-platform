@@ -8,6 +8,7 @@ import {
   gte,
   inArray,
   isNotNull,
+  like,
   max,
   notLike,
   or,
@@ -49,10 +50,11 @@ export function bindEvents(executor: AnyExecutor): HarnessEventsGateway {
       createdFor: (actor, requestId) => createdFor(executor, actor, requestId),
       latestNamed: (names, harnessId) => latestNamed(executor, names, harnessId),
       enteredStage: (harnessId, itemIds) => enteredStage(executor, harnessId, itemIds),
+      enteredStages: (itemIds) => enteredStage(executor, null, itemIds),
       recent: (query) => recent(executor, query),
       lastPosition: (harnessId) => lastPosition(executor, harnessId),
       lastPositions: (harnessIds) => lastPositions(executor, harnessIds),
-      latestForItems: (itemIds) => latestForItems(executor, itemIds),
+      latestForItems: (itemIds, names) => latestForItems(executor, itemIds, names),
       countForPersona: (query) => countForPersona(executor, query),
     },
     write: { append: (events) => refusing(() => appendAll(executor, events)) },
@@ -161,7 +163,7 @@ async function latestNamed(
 
 async function enteredStage(
   executor: AnyExecutor,
-  harnessId: string,
+  harnessId: string | null,
   itemIds: readonly string[],
 ): Promise<readonly StageEntry[]> {
   if (itemIds.length === 0) return [];
@@ -173,7 +175,7 @@ async function enteredStage(
     .from(harnessEvents)
     .where(
       and(
-        eq(harnessEvents.harnessId, harnessId),
+        harnessId === null ? undefined : eq(harnessEvents.harnessId, harnessId),
         inArray(harnessEvents.itemId, [...itemIds]),
         inArray(harnessEvents.name, stageEntryNames),
       ),
@@ -299,12 +301,43 @@ async function countForPersona(
 async function latestForItems(
   executor: AnyExecutor,
   itemIds: readonly string[],
+  names?: readonly EventName[],
 ): Promise<readonly HarnessEvent[]> {
-  if (itemIds.length === 0) return [];
+  if (itemIds.length === 0 || names?.length === 0) return [];
+  const named = names === undefined ? undefined : inArray(harnessEvents.name, [...names]);
   const rows = await executor
     .selectDistinctOn([harnessEvents.itemId])
     .from(harnessEvents)
-    .where(inArray(harnessEvents.itemId, [...itemIds]))
+    .where(and(inArray(harnessEvents.itemId, [...itemIds]), named))
     .orderBy(harnessEvents.itemId, desc(harnessEvents.at), desc(harnessEvents.position));
   return rows.map(toEvent);
+}
+
+export type AgentClaims = {
+  readonly identityPrefix: string;
+  readonly delegationId: string;
+};
+
+export async function claimsByAgent(
+  executor: AnyExecutor,
+  harnessId: string,
+  agents: readonly AgentClaims[],
+): Promise<ReadonlyMap<string, number>> {
+  const counted = await Promise.all(
+    agents.map(async (agent): Promise<[string, number]> => {
+      const [row] = await executor
+        .select({ claimed: count() })
+        .from(harnessEvents)
+        .where(
+          and(
+            eq(harnessEvents.harnessId, harnessId),
+            eq(harnessEvents.name, 'item_claimed'),
+            like(harnessEvents.actor, `${agent.identityPrefix} as %`),
+            like(harnessEvents.actor, `% via delegation:${agent.delegationId}`),
+          ),
+        );
+      return [agent.delegationId, row?.claimed ?? 0];
+    }),
+  );
+  return new Map(counted);
 }

@@ -1,4 +1,5 @@
 import { createDelegationCommands, type DelegationCommands } from './delegations/commands.ts';
+import { createDraftCommands, type DraftCommands } from './stages/drafts/commands.ts';
 import { createGateCommands, type GateCommands } from './gates/commands.ts';
 import { wakingGrants, wakingStore } from './hub-wakes.ts';
 import { createEventReads, type EventReads } from './items/events.ts';
@@ -29,6 +30,7 @@ export type Kernel = {
   readonly items: ItemCommands;
   readonly repair: RepairCommands;
   readonly stages: StageCommands;
+  readonly drafts: DraftCommands;
   readonly delegations: DelegationCommands;
   readonly gates: GateCommands;
   readonly measurements: MeasurementCommands;
@@ -61,6 +63,7 @@ export function createKernel(ports: Ports): Kernel {
     items: createItemCommands(live),
     repair: createRepairCommands(live),
     stages: createStageCommands(live),
+    drafts: createDraftCommands(live),
     delegations: createDelegationCommands(live),
     gates: createGateCommands(live),
     measurements: createMeasurementCommands(live),

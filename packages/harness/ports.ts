@@ -30,6 +30,7 @@ export type Ids = { next(): string };
 
 export type Store = {
   transaction<T>(work: (tx: StoreTransaction) => Promise<T>): Promise<T>;
+  read?<T>(work: (tx: StoreTransaction) => Promise<T>): Promise<T>;
   appliedMigrations(): Promise<readonly number[]>;
 };
 

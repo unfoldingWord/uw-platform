@@ -5,7 +5,7 @@ import type { Database } from '@uw/db/client';
 import { allEvents, command } from '../testing/commands.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 
-const IAN = { email: 'ian.lindsley@unfoldingword.org' };
+const ROWAN = { email: 'rowan.test@unfoldingword.org' };
 
 async function personaSlugs(db: Database): Promise<readonly string[]> {
   const rows = await db.execute<{ slug: string }>(
@@ -23,11 +23,11 @@ async function changesAndDrafts(db: Database): Promise<void> {
     template: 'check-only',
     repository: 'unfoldingWord/joined-review',
   };
-  const activated = await command(db, IAN, harnessId, 'activate_template', activation);
+  const activated = await command(db, ROWAN, harnessId, 'activate_template', activation);
   expect(activated.body['status']).toBe('accepted');
   expect(await personaSlugs(db)).toEqual(['persona-reviewer', 'persona-reviewer-codex']);
   const body = { requestId: randomUUID(), template: 'software' };
-  const changed = await command(db, IAN, harnessId, 'change_template', body);
+  const changed = await command(db, ROWAN, harnessId, 'change_template', body);
   expect(changed.body['status']).toBe('accepted');
   expect(await personaSlugs(db)).toEqual([
     'persona-builder',
@@ -38,7 +38,7 @@ async function changesAndDrafts(db: Database): Promise<void> {
   const names = (await allEvents(db, harnessId)).map((event) => event.name);
   expect(names.filter((name) => name === 'template_changed')).toHaveLength(1);
   const again = { requestId: randomUUID(), template: 'bml' };
-  const refused = await command(db, IAN, harnessId, 'change_template', again);
+  const refused = await command(db, ROWAN, harnessId, 'change_template', again);
   expect(refused.body['reason']).toBe('template_change_not_allowed');
 }
 

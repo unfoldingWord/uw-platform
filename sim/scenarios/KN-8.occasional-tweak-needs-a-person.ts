@@ -21,7 +21,7 @@ type Cast = {
   readonly world: World;
   readonly harnessId: string;
   readonly itemId: string;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly max: Principal;
 };
 
@@ -55,7 +55,7 @@ async function parkedTweak(world: World): Promise<Cast> {
   );
   assert.equal(tweak.result, 'parked');
   assert.equal(tweak.item.gateTarget, 'package');
-  return { world, harnessId: harness.id, itemId, ian: admin, max };
+  return { world, harnessId: harness.id, itemId, rowan: admin, max };
 }
 
 async function approveAs(scene: Cast, person: Principal) {
@@ -76,7 +76,7 @@ export const scenario = defineScenario({
     const scene = await parkedTweak(world);
     const byEditor = await approveAs(scene, scene.max);
     assert.equal(byEditor.status === 'error' && byEditor.reason, 'not_permitted');
-    const approved = valueOf(await approveAs(scene, scene.ian));
+    const approved = valueOf(await approveAs(scene, scene.rowan));
     assert.equal(approved.advanced, true);
     assert.equal(approved.item.stageKey, 'package');
     assert.equal(approved.item.gateStatus, 'working');
@@ -87,7 +87,7 @@ export const scenario = defineScenario({
     }));
     assert.deepEqual(
       recorded.decisions.map((row) => [row.decision, row.actor, row.evidence['gateTarget']]),
-      [['approve', scene.ian.identity, 'package']],
+      [['approve', scene.rowan.identity, 'package']],
     );
     const taken = recorded.events.filter((event) => event.name === 'loop_edge_taken');
     assert.deepEqual(

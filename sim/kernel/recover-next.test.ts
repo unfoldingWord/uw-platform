@@ -19,7 +19,7 @@ async function spareAfterShip(scene: Scene): Promise<void> {
   );
   const ship = stages.find((stage) => stage.key === 'ship');
   if (ship === undefined) throw new Error('no ship stage');
-  const created = await scene.world.kernel.stages.createStage(simCaller(scene.world, scene.ian), {
+  const created = await scene.world.kernel.stages.createStage(simCaller(scene.world, scene.rowan), {
     harnessId: scene.harnessId,
     stage: {
       key: 'spare',
@@ -45,7 +45,7 @@ describe('GH-6 a recovery advances to the stage the decision routed to', () => {
       await lostApproval(scene, true);
       await spareAfterShip(scene);
       scene.world.adapters.clock.advance(sixteenMinutes);
-      expect(await recoverAs(scene, scene.ian)).toEqual({
+      expect(await recoverAs(scene, scene.rowan)).toEqual({
         status: 'accepted',
         value: { items: [{ itemId: scene.itemId, outcome: 'succeeded' }] },
       });
@@ -65,7 +65,7 @@ describe('GH-6 a recovery of a decision recorded before next falls back to the s
       await dropDecisionNext(scene.world.database.db, scene.itemId);
       await spareAfterShip(scene);
       scene.world.adapters.clock.advance(sixteenMinutes);
-      expect(await recoverAs(scene, scene.ian)).toEqual({
+      expect(await recoverAs(scene, scene.rowan)).toEqual({
         status: 'accepted',
         value: { items: [{ itemId: scene.itemId, outcome: 'succeeded' }] },
       });

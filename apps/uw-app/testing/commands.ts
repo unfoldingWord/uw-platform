@@ -35,8 +35,8 @@ import { hubNotWired } from '../ports/hub.not-wired.ts';
 import { notifierNotWired } from '../ports/notifier.not-wired.ts';
 import { runsNotWired } from '../ports/runs.not-wired.ts';
 
-const IAN = 'ian.lindsley@unfoldingword.org';
-const IAN_ID = '00000000-0000-4000-8000-000000000001';
+const ROWAN = 'rowan.test@unfoldingword.org';
+const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 const AREA = '80-89';
 
 export const responseSchema = z.union([
@@ -124,7 +124,7 @@ export function command(
 
 export async function allEvents(db: Database, harnessId: string): Promise<HarnessEvent[]> {
   const kernel = kernelOn(db, { now: () => new Date() });
-  const caller = callerOf(await ian(db));
+  const caller = callerOf(await rowan(db));
   const events: HarnessEvent[] = [];
   let after: number | null = 0;
   while (after !== null) {
@@ -148,7 +148,12 @@ export async function eventCount(db: Database, harnessId: string): Promise<numbe
   return (await allEvents(db, harnessId)).length;
 }
 
-export async function person(db: Database, name: string, role: 'editor' | 'viewer', area: string) {
+export async function person(
+  db: Database,
+  name: string,
+  role: 'admin' | 'editor' | 'viewer',
+  area: string,
+) {
   const seeded = { id: randomUUID(), email: `${name}@unfoldingword.org`, grantId: randomUUID() };
   await seedPerson(db, { id: seeded.id, email: seeded.email });
   await seedGrant(db, {
@@ -172,14 +177,14 @@ export function callerOf(actor: Principal): Caller {
   return { actor, traceId: randomUUID() };
 }
 
-export async function ian(db: Database): Promise<Principal> {
-  return personOn(db, IAN_ID, IAN, new Date());
+export async function rowan(db: Database): Promise<Principal> {
+  return personOn(db, ROWAN_ID, ROWAN, new Date());
 }
 
 async function activated(db: Database, harnessKey: string, repository: string): Promise<string> {
   const harnessId = randomUUID();
   accepted(
-    await kernelOn(db, { now: () => new Date() }).stages.activate(callerOf(await ian(db)), {
+    await kernelOn(db, { now: () => new Date() }).stages.activate(callerOf(await rowan(db)), {
       harnessId,
       harnessKey,
       jdArea: AREA,
@@ -210,7 +215,7 @@ export async function enqueued(
 ): Promise<string> {
   const kernel = kernelOn(db, { now: () => new Date() });
   const item = accepted(
-    await kernel.items.enqueue(callerOf(await ian(db)), {
+    await kernel.items.enqueue(callerOf(await rowan(db)), {
       harnessId,
       title,
       pageId,
@@ -224,7 +229,7 @@ export async function enqueued(
 
 export async function itemState(db: Database, itemId: string): Promise<ItemState> {
   const kernel = kernelOn(db, { now: () => new Date() });
-  return accepted(await kernel.reads.item(callerOf(await ian(db)), { itemId })).item;
+  return accepted(await kernel.reads.item(callerOf(await rowan(db)), { itemId })).item;
 }
 
 function handleOn(db: Database): DatabaseHandle {

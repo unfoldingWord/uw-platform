@@ -9,12 +9,12 @@ import {
   callerOf,
   command,
   eventCount,
-  ian,
+  rowan,
   softwareHarness,
   type Person,
 } from '../testing/commands.ts';
 
-const IAN = { email: 'ian.lindsley@unfoldingword.org' };
+const ROWAN = { email: 'rowan.test@unfoldingword.org' };
 
 type Who = Pick<Person, 'email'>;
 
@@ -49,9 +49,9 @@ async function areaAdmin(db: Database, area: string): Promise<Person> {
 
 function spare(instructionsPageId: string | null) {
   return {
+    id: null,
     key: `spare_${randomUUID().slice(0, 8)}`,
     title: 'Spare',
-    position: 90,
     bracket: 'iterate',
     agentPickup: 'allowed',
     exitGate: 'checks',
@@ -63,6 +63,17 @@ function spare(instructionsPageId: string | null) {
   };
 }
 
+async function openDraft(db: Database, who: Who, harnessId: string) {
+  const opened = await command(db, who, harnessId, 'open_workflow_draft', {
+    requestId: randomUUID(),
+  });
+  expect(opened.body).toMatchObject({ status: 'accepted' });
+  const kernel = kernelOn(db, { now: () => new Date() });
+  const view = await kernel.views.workflowDraft(callerOf(await rowan(db)), { harnessId });
+  if (view.status !== 'accepted' || view.value === null) throw new Error('expected a draft');
+  return view.value;
+}
+
 async function namingStages(db: Database, pageId: string): Promise<number> {
   const rows = await db.$client`
     SELECT count(*)::int AS n FROM harness_stages WHERE instructions_page_id = ${pageId}`;
@@ -72,13 +83,18 @@ async function namingStages(db: Database, pageId: string): Promise<number> {
 type Answer = { readonly status: number; readonly text: string };
 
 async function answers(db: Database, who: Who, harnessId: string, pageId: string) {
+  const draft = await openDraft(db, who, harnessId);
+  const named = draft.stages.map((stage) =>
+    stage.key === 'build' ? { ...stage, instructionsPageId: pageId } : stage,
+  );
   const replies: Answer[] = [];
-  for (const [name, body] of [
-    ['create_stage', { stage: spare(pageId) }],
-    ['update_stage', { stageKey: 'build', change: { instructionsPageId: pageId } }],
-  ] as const) {
+  for (const stages of [[...draft.stages, spare(pageId)], named]) {
     const requestId = randomUUID();
-    const sent = await command(db, who, harnessId, name, { requestId, ...body });
+    const sent = await command(db, who, harnessId, 'save_workflow_draft', {
+      requestId,
+      revision: draft.revision,
+      stages,
+    });
     expect(sent.body).toEqual({ status: 'error', requestId, reason: 'page_not_found' });
     replies.push({ status: sent.status, text: sent.text.replace(requestId, '') });
   }
@@ -88,6 +104,7 @@ async function answers(db: Database, who: Who, harnessId: string, pageId: string
 async function everyUnusablePageAnswersAlike(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const admin = await areaAdmin(db, '80-89');
+  await openDraft(db, admin, scene.harnessId);
   const before = await eventCount(db, scene.harnessId);
   const targets = [
     randomUUID(),
@@ -111,7 +128,7 @@ async function noAdminFreezesAnotherArea(db: Database): Promise<void> {
   const elsewhere = await page(db, '20-29');
   const readable = await page(db, '30-39');
   for (const pageId of [elsewhere, readable]) {
-    for (const reply of await answers(db, IAN, scene.harnessId, pageId)) {
+    for (const reply of await answers(db, ROWAN, scene.harnessId, pageId)) {
       expect(reply.status).toBe(404);
     }
     expect(await namingStages(db, pageId)).toBe(0);
@@ -122,11 +139,19 @@ async function samePageIsNamed(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const admin = await areaAdmin(db, '80-89');
   const inside = await page(db, '80-89');
+  const draft = await openDraft(db, admin, scene.harnessId);
+  const saved = await command(db, admin, scene.harnessId, 'save_workflow_draft', {
+    requestId: randomUUID(),
+    revision: draft.revision,
+    stages: draft.stages.map((stage) =>
+      stage.key === 'build' ? { ...stage, instructionsPageId: inside } : stage,
+    ),
+  });
+  expect(saved.body).toMatchObject({ status: 'accepted' });
   const requestId = randomUUID();
-  const sent = await command(db, admin, scene.harnessId, 'update_stage', {
+  const sent = await command(db, admin, scene.harnessId, 'publish_workflow_draft', {
     requestId,
-    stageKey: 'build',
-    change: { instructionsPageId: inside },
+    revision: draft.revision + 1,
   });
   expect(sent.body).toEqual({ status: 'accepted', requestId });
   expect(await namingStages(db, inside)).toBe(1);
@@ -135,12 +160,14 @@ async function samePageIsNamed(db: Database): Promise<void> {
 async function kernelRefusesBeforeTheKey(db: Database): Promise<void> {
   const scene = await softwareHarness(db);
   const kernel = kernelOn(db, { now: () => new Date() });
-  const caller = callerOf(await ian(db));
+  const caller = callerOf(await rowan(db));
   const before = await eventCount(db, scene.harnessId);
   for (const pageId of [randomUUID(), await page(db, '20-29'), await page(db, '80-89', 'issue')]) {
     const created = await kernel.stages.createStage(caller, {
       harnessId: scene.harnessId,
-      stage: spare(pageId) as Parameters<typeof kernel.stages.createStage>[1]['stage'],
+      stage: { ...spare(pageId), position: 90 } as Parameters<
+        typeof kernel.stages.createStage
+      >[1]['stage'],
     });
     const updated = await kernel.stages.updateStage(caller, {
       harnessId: scene.harnessId,
@@ -154,7 +181,7 @@ async function kernelRefusesBeforeTheKey(db: Database): Promise<void> {
 }
 
 describe.skipIf(!testServer)('a stage instructions page a command names', () => {
-  it('a missing, hidden, other-area or issue page answers page_not_found byte-identically on create_stage and update_stage, and records nothing', () =>
+  it('a missing, hidden, other-area or issue page answers page_not_found byte-identically on a draft save that adds or changes a stage, and records nothing', () =>
     withAppDatabase(everyUnusablePageAnswersAlike));
 
   it('an admin cannot bind a page in another area as stage instructions, so cannot freeze agent writes to it', () =>

@@ -1,9 +1,10 @@
 import { JSDOM } from 'jsdom';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { harnessCommandSchemas } from '@uw/contracts';
 import { reasonText } from '@uw/ui/components/text.ts';
 import { commandBody } from './command-body.ts';
 import { OUTCOME_TEXT, wireCommandForms } from './command-form.ts';
+import { morphMain } from './morph.ts';
 
 const harnessId = 'c7000000-0000-4000-8000-000000000001';
 const itemId = 'c7000000-0000-4000-8000-000000000002';
@@ -146,7 +147,26 @@ async function harnessEncoded(): Promise<void> {
   expect(run.sent.map((sent) => sent.url)).toEqual(['/api/harness/a%2F..%2Fb%3Fc/commands/claim']);
 }
 
+async function linkedControls(): Promise<void> {
+  const dom = page(
+    `<form id="rules" data-command="set_shadow" data-harness="${harnessId}" method="post" action="#"><button type="submit">Save</button><p data-outcome role="status"></p></form><table><tr><td><select name="shadow" form="rules"><option value="false">Off</option><option value="true" selected>On</option></select></td></tr></table>`,
+  );
+  const run = wired(dom, async () => Response.json({ status: 'accepted', requestId }));
+  run.document
+    .querySelector('select')
+    ?.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  expect(run.document.querySelector('form')?.hasAttribute('data-dirty')).toBe(true);
+  submit(run.document, run.document.querySelector('button'));
+  await settled();
+  expect(run.sent[0]?.body).toMatchObject({ command: 'set_shadow', shadow: true });
+}
+
 describe('the command form island', () => {
+  it(
+    '#108 sends and marks dirty a control linked to the form by its form attribute',
+    linkedControls,
+  );
+
   it(
     'the form goes busy before the request and shows the accepted outcome in place',
     busyThenAccepted,
@@ -227,7 +247,6 @@ describe('the command bodies', () => {
     });
     expect(commandBody('enqueue', { title: '' }, requestId)).toBeNull();
     expect(commandBody('claim', { itemId: 'not-an-id' }, requestId)).toBeNull();
-    expect(commandBody('stop_run', { itemId }, requestId)).toBeNull();
   });
 
   it('GD-1 the approve-all form sends decide_gates with each shown item and its head', () => {
@@ -240,4 +259,108 @@ describe('the command bodies', () => {
     });
     expect(commandBody('decide_gates', { entries: '' }, requestId)).toBeNull();
   });
+});
+
+describe('the Stop run form', () => {
+  it('sends stop_run with the item', () => {
+    expect(commandBody('stop_run', { itemId }, requestId)).toEqual({
+      command: 'stop_run',
+      requestId,
+      itemId,
+    });
+  });
+});
+
+const personId = 'a1540000-0000-4000-8000-000000000001';
+
+function decideForm(): string {
+  return `<form data-command="decide" data-endpoint="/api/acl/commands" method="post" action="#"><input type="hidden" name="personId" value="${personId}"><button type="submit" name="decision" value="approve_person">Approve</button><button type="submit" name="decision" value="decline_person">Decline</button><p data-outcome role="status"></p></form>`;
+}
+
+async function platformFormPosts(): Promise<void> {
+  const dom = page(decideForm());
+  const run = wired(dom, async () => Response.json({ status: 'accepted', requestId }));
+  submit(run.document, run.document.querySelector('button[value="decline_person"]'));
+  await settled();
+  expect(run.sent).toEqual([
+    {
+      url: '/api/acl/commands/decline_person',
+      body: { command: 'decline_person', requestId, personId },
+      busy: 'true',
+    },
+  ]);
+  expect(outcomeOf(run.document)).toBe('Declined');
+  expect(run.accepted()).toBe(1);
+}
+
+async function platformRefusalInPlace(): Promise<void> {
+  const dom = page(decideForm());
+  const refusal = { status: 'error', requestId, reason: 'last_org_admin' };
+  const run = wired(dom, async () => Response.json(refusal, { status: 409 }));
+  submit(run.document, run.document.querySelector('button[value="approve_person"]'));
+  await settled();
+  expect(outcomeOf(run.document)).toBe('Last org admin');
+  expect(run.accepted()).toBe(0);
+}
+
+const grantId = 'a1540000-0000-4000-8000-000000000002';
+
+function revokePage(row: string): string {
+  return `<main id="main"><p data-outcome-keep role="status"></p>${row}</main>`;
+}
+
+function revokeRow(): string {
+  return `<form data-command="revoke_role" data-endpoint="/api/acl/commands" data-done="Revoked viewer for kim." method="post" action="#"><input type="hidden" name="grantId" value="${grantId}"><button type="submit">Confirm revoke</button><p data-outcome role="status"></p></form>`;
+}
+
+async function confirmationOutlivesTheRefresh(): Promise<void> {
+  const dom = page(revokePage(revokeRow()));
+  const run = wired(dom, async () => Response.json({ status: 'accepted', requestId }));
+  submit(run.document, run.document.querySelector('button'));
+  await settled();
+  const main = run.document.getElementById('main');
+  if (main === null) throw new Error('no main');
+  const { window } = dom;
+  vi.stubGlobal('document', window.document);
+  vi.stubGlobal('DOMParser', window.DOMParser);
+  vi.stubGlobal('Node', window.Node);
+  vi.stubGlobal('Element', window.Element);
+  vi.stubGlobal('Document', window.Document);
+  morphMain(main, '<p data-outcome-keep role="status"></p><p>No grants to show.</p>');
+  expect(run.document.querySelector('form')).toBeNull();
+  expect(run.document.querySelector('[data-outcome-keep]')?.textContent).toBe(
+    'Revoked viewer for kim.',
+  );
+  expect(main.textContent).toContain('No grants to show.');
+}
+
+async function nextCommandClearsTheConfirmation(): Promise<void> {
+  const dom = page(revokePage(revokeRow()));
+  const kept = dom.window.document.querySelector('[data-outcome-keep]');
+  if (kept === null) throw new Error('no kept region');
+  kept.textContent = 'Granted.';
+  const refusal = { status: 'error', requestId, reason: 'not_permitted' };
+  const run = wired(dom, async () => Response.json(refusal, { status: 403 }));
+  submit(run.document, run.document.querySelector('button'));
+  await settled();
+  expect(kept.textContent).toBe('');
+  expect(outcomeOf(run.document)).toBe('Not permitted');
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe('#154 an accepted platform command keeps its confirmation', () => {
+  it('through the refresh that removes the form it came from', confirmationOutlivesTheRefresh);
+  it('until the next command starts, so a refusal never sits under a stale success', () =>
+    nextCommandClearsTheConfirmation());
+});
+
+describe('#154 a platform command form', () => {
+  it('posts to its own endpoint, with the command its button names', platformFormPosts);
+  it(
+    'shows a refusal such as the last org admin in place and does not refresh',
+    platformRefusalInPlace,
+  );
 });

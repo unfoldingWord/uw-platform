@@ -34,7 +34,7 @@ async function seedPages(scene: PersonaScene): Promise<void> {
 }
 
 async function refusals(scene: PersonaScene): Promise<void> {
-  const failed = await activatePersona(scene.world, scene.ian, headless);
+  const failed = await activatePersona(scene.world, scene.rowan, headless);
   assert.equal(failed.status === 'error' && failed.reason, 'dry_run_failed');
   const failures = failuresIn(await harnessLog(scene.world, scene.bmlId));
   assert.deepEqual(
@@ -47,7 +47,7 @@ async function refusals(scene: PersonaScene): Promise<void> {
   ]);
   const byEditor = await activatePersona(scene.world, editor, pageId);
   assert.equal(byEditor.status === 'error' && byEditor.reason, 'not_permitted');
-  const stale = await activatePersona(scene.world, scene.ian, pageId, 2);
+  const stale = await activatePersona(scene.world, scene.rowan, pageId, 2);
   assert.equal(stale.status === 'error' && stale.reason, 'stale_version');
 }
 
@@ -65,7 +65,7 @@ export const scenario = defineScenario({
     const scene = await personaScene(world);
     await seedPages(scene);
     await refusals(scene);
-    const activated = await activatePersona(world, scene.ian, pageId);
+    const activated = await activatePersona(world, scene.rowan, pageId);
     assert.equal(activated.status, 'accepted');
     const page = await projected(world, scene.bmlId);
     assert.equal(page?.id, pageId);
@@ -73,7 +73,7 @@ export const scenario = defineScenario({
       [page.status, page.version, page.frontmatter['status']],
       ['active', 2, 'active'],
     );
-    const again = await activatePersona(world, scene.ian, pageId, 2);
+    const again = await activatePersona(world, scene.rowan, pageId, 2);
     assert.deepEqual(again.status === 'error' && again.detail, { why: 'not_suggested' });
     const log = await harnessLog(world, scene.bmlId);
     const names = log.map((event) => event.name).filter((name) => name.startsWith('persona_'));

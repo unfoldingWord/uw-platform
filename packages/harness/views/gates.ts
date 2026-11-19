@@ -67,6 +67,21 @@ export async function decidableGates(
   return { rows, capped };
 }
 
+export async function workflowGates(
+  ports: ScenePorts,
+  tx: StoreTransaction,
+  caller: Caller,
+  harnessId: string,
+  at: Date,
+): Promise<GateList> {
+  if (!decider(caller.actor)) return { rows: [], capped: false };
+  const readable = await readableHarnesses(ports, tx, caller, at);
+  const harness = readable.find((candidate) => candidate.id === harnessId);
+  return harness === undefined
+    ? { rows: [], capped: false }
+    : gatesIn(tx, caller.actor, harness, at);
+}
+
 export async function gateDecided(
   ports: ScenePorts,
   tx: StoreTransaction,

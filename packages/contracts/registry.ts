@@ -1,11 +1,18 @@
 import type { ZodType } from 'zod';
-import { grantRoleCommandSchema, revokeRoleCommandSchema } from './acl-commands.ts';
+import {
+  approvePersonCommandSchema,
+  declinePersonCommandSchema,
+  grantRoleCommandSchema,
+  revokeRoleCommandSchema,
+} from './acl-commands.ts';
 import {
   bindServiceTokenCommandSchema,
   revokeServiceTokenCommandSchema,
+  routineChangeCommandSchema,
   serviceClientIdSchema,
 } from './agent-commands.ts';
 import { jdAreaSchema } from './areas.ts';
+import { draftCheckSchema, draftStageSchema } from './drafts.ts';
 import * as closedSets from './closed-sets.ts';
 import {
   commandNameSchema,
@@ -159,6 +166,8 @@ export const schemaRegistry: Record<string, ZodType> = {
   'platform-command-name': platformCommandNameSchema,
   'grant-role-command': grantRoleCommandSchema,
   'revoke-role-command': revokeRoleCommandSchema,
+  'approve-person-command': approvePersonCommandSchema,
+  'decline-person-command': declinePersonCommandSchema,
   'indicator-status': indicatorStatusSchema,
   'overall-status': overallStatusSchema,
   'health-indicator': healthIndicatorSchema,
@@ -218,6 +227,8 @@ export const schemaRegistry: Record<string, ZodType> = {
   'run-step-record': runStepRecordSchema,
   'record-run-step-reply': recordRunStepReplySchema,
   'stage-key': stageKeySchema,
+  'draft-stage': draftStageSchema,
+  'draft-check': draftCheckSchema,
   'persona-identity': personaIdentitySchema,
   'pull-request-ref': pullRequestRefSchema,
   'issue-ref': issueRefSchema,
@@ -252,6 +263,7 @@ export const schemaRegistry: Record<string, ZodType> = {
   'service-client-id': serviceClientIdSchema,
   'bind-service-token-command': bindServiceTokenCommandSchema,
   'revoke-service-token-command': revokeServiceTokenCommandSchema,
+  'routine-change-command': routineChangeCommandSchema,
   'issue-reference': issueReferenceSchema,
   'pull-request-declaration': pullRequestDeclarationSchema,
   'template-key': templateKeySchema,

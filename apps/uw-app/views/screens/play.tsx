@@ -1,73 +1,23 @@
 import type { Context } from 'hono';
-import type { HarnessEvent } from '@uw/contracts';
-import type { PlayByPlay } from '@uw/harness';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { idParam } from '../parts/params.ts';
-import {
-  checksUrl,
-  flowPath,
-  homePath,
-  issueUrl,
-  itemPath,
-  pullRequestUrl,
-  reviewUrl,
-} from '../parts/paths.ts';
-import { KindFilters, Timeline, kindOf, kindParam, type EventKind } from '../parts/timeline.tsx';
+import { itemPath, runsPath } from '../parts/paths.ts';
+import { workflowCrumbs } from '../parts/workflow-tabs.ts';
+import { kindParam } from '../parts/timeline.tsx';
+import { ItemHistory } from '../parts/item-history.tsx';
 import { notFound } from './not-found.tsx';
 import { zulipConfigOf } from '../../notify/zulip/config.ts';
 import { itemTopicUrl } from '../../notify/zulip/links.ts';
 import { holderText } from '../parts/holder-words.ts';
-import { pageNames } from '../parts/names.ts';
+import { moduleCodes, pageNames } from '../parts/names.ts';
 
-const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
-const link = `text-accent-text underline ${focus}`;
 const wholeNumber = /^(?:0|[1-9]\d{0,15})$/;
 
 function afterOf(raw: string | undefined): number | null {
   if (raw === undefined) return 0;
   return wholeNumber.test(raw) ? Number(raw) : null;
-}
-
-function ZulipSlot(props: { readonly topic: string | null; readonly url: string | null }) {
-  if (props.url !== null) {
-    return (
-      <a href={props.url} class={link}>
-        Open the Zulip topic
-      </a>
-    );
-  }
-  const text = props.topic === null ? 'No Zulip topic yet' : `Zulip topic: ${props.topic}`;
-  return <span class="text-sm text-text-3">{text}</span>;
-}
-
-function Links(props: { readonly play: PlayByPlay; readonly zulipUrl: string | null }) {
-  const { item } = props.play;
-  const pull = item.pullRequest;
-  return (
-    <nav aria-label="Links for this item" class="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-      {pull === null ? null : (
-        <>
-          <a href={pullRequestUrl(pull)} class={link}>
-            Pull request
-          </a>
-          <a href={checksUrl(pull)} class={link}>
-            Checks
-          </a>
-          <a href={reviewUrl(pull)} class={link}>
-            Reviews
-          </a>
-        </>
-      )}
-      {item.issue === null ? null : (
-        <a href={issueUrl(item.issue)} class={link}>
-          Issue
-        </a>
-      )}
-      <ZulipSlot topic={item.zulipTopic} url={props.zulipUrl} />
-    </nav>
-  );
 }
 
 async function playOf(c: Context<AppEnv>, screen: ScreenKernel, harnessId: string | null) {
@@ -80,8 +30,8 @@ async function playOf(c: Context<AppEnv>, screen: ScreenKernel, harnessId: strin
   return outcome.value;
 }
 
-function ofKind(events: readonly HarnessEvent[], kind: EventKind | null): readonly HarnessEvent[] {
-  return kind === null ? events : events.filter((event) => kindOf(event.name) === kind);
+function itemCrumbs(harness: { readonly id: string; readonly title: string }) {
+  return workflowCrumbs(harness.title, runsPath(harness.id), pageNames.item);
 }
 
 export async function playScreen(c: Context<AppEnv>): Promise<Response> {
@@ -94,17 +44,12 @@ export async function playScreen(c: Context<AppEnv>): Promise<Response> {
   const play = await playOf(c, screen, harnessId);
   if (play === null) return notFound(c);
   const { harness, item, stage } = play;
-  const learnings = new Map(Object.entries(play.learnings));
-  const personaPages = new Map(Object.entries(play.personaPages));
   const zulipUrl = itemTopicUrl(zulipConfigOf(c.env), harness.jdArea, item.zulipTopic);
   const spec = {
     title: item.title,
     current: itemPath(harness.id, item.itemId),
-    crumbs: [
-      { label: pageNames.home, href: homePath() },
-      { label: harness.title, href: flowPath(harness.id) },
-      { label: 'Item' },
-    ],
+    code: moduleCodes.agentQueues,
+    crumbs: itemCrumbs(harness),
     live: {
       screen: 'item' as const,
       harnesses: [{ harnessId: harness.id, cursor }],
@@ -117,20 +62,12 @@ export async function playScreen(c: Context<AppEnv>): Promise<Response> {
     <>
       <PageHead eyebrow="Item" title={item.title} lede={`At ${stage.title} on ${harness.title}`} />
       <p class="m-0 mb-4 text-sm text-text-3">{`Holder: ${holderText(play.holder, screen.at)}`}</p>
-      <Links play={play} zulipUrl={zulipUrl} />
-      <KindFilters base={itemPath(harness.id, item.itemId)} kind={kindParam(c.req.query('kind'))} />
-      <Timeline
-        events={ofKind(play.events, kindParam(c.req.query('kind')))}
-        learnings={learnings}
-        personaPages={personaPages}
+      <ItemHistory
+        play={play}
+        zulipUrl={zulipUrl}
+        base={itemPath(harness.id, item.itemId)}
+        kind={kindParam(c.req.query('kind'))}
       />
-      {play.next === null ? null : (
-        <p class="mt-4">
-          <a href={`${itemPath(harness.id, item.itemId)}?after=${play.next}`} class={link}>
-            Show later events
-          </a>
-        </p>
-      )}
     </>,
   );
 }

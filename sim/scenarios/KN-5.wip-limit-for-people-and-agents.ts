@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { software, type Caller, type KernelOutcome } from '@uw/harness';
-import { createSimHarness, simAgent, simCaller, simIan, simPerson } from '../fixtures.ts';
+import { createSimHarness, simAgent, simCaller, simRowan, simPerson } from '../fixtures.ts';
 import { defineScenario } from '../scenario.ts';
 
 function reasonOf(outcome: KernelOutcome<unknown>): string | null {
@@ -18,7 +18,7 @@ export const scenario = defineScenario({
     'the stage WIP limit counts people and agents alike, and a release frees the place for an agent',
   run: async (world) => {
     const { harness } = await createSimHarness(world, software);
-    await world.kernel.stages.updateStage(simCaller(world, await simIan(world)), {
+    await world.kernel.stages.updateStage(simCaller(world, await simRowan(world)), {
       harnessId: harness.id,
       stageKey: 'package',
       change: { agentPickup: 'allowed', wipLimit: 1 },

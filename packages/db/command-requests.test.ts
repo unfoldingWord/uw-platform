@@ -67,6 +67,16 @@ function describeCommandNames(insert: Insert): void {
     }
     expect(names).toContain('set_hosted_builder');
   });
+
+  it('#103 still admits the four retired stage commands, so requests already recorded stay valid', async () => {
+    const retired = ['create_stage', 'update_stage', 'reorder_stages', 'remove_stage'];
+    for (const [n, command] of retired.entries()) {
+      await insert({
+        requestId: `00000000-0000-4000-8000-0000000002${String(n).padStart(2, '0')}`,
+        command,
+      });
+    }
+  });
 }
 
 function describeTarget(target: DatabaseTarget): void {
@@ -114,7 +124,7 @@ function describeTarget(target: DatabaseTarget): void {
   });
 
   it('refuses an actor that is not an identity', async () => {
-    const forged = insert({ requestId: '00000000-0000-4000-8000-0000000000a5', actor: 'ian' });
+    const forged = insert({ requestId: '00000000-0000-4000-8000-0000000000a5', actor: 'rowan' });
     expect(await refusal(forged)).toEqual({
       code: '23514',
       constraint: 'command_requests_actor_is_identity',

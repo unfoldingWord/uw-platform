@@ -14,7 +14,7 @@ import { postgresDeps } from '../testing/postgres.ts';
 import { callVerb } from './dispatch.ts';
 import { verbHandlers } from './verbs/index.ts';
 
-const IAN = { id: '00000000-0000-4000-8000-000000000001', email: 'ian.lindsley@unfoldingword.org' };
+const ROWAN = { id: '00000000-0000-4000-8000-000000000001', email: 'rowan.test@unfoldingword.org' };
 const EDITOR = {
   id: '00000000-0000-4000-8000-000000001501',
   email: 'context-editor@unfoldingword.org',
@@ -49,7 +49,7 @@ type Rig = {
   readonly db: Database;
   readonly fixture: AccessFixture;
   readonly kernel: Kernel;
-  readonly ian: Principal;
+  readonly rowan: Principal;
   readonly harnessId: string;
   readonly itemIds: readonly string[];
   readonly packageItems: { readonly bare: string; readonly paged: string };
@@ -151,26 +151,26 @@ function value<T>(outcome: { status: 'accepted'; value: T } | { status: 'error';
   return outcome.value;
 }
 
-async function itemInScope(kernel: Kernel, ian: Principal, harnessId: string, n: number) {
+async function itemInScope(kernel: Kernel, rowan: Principal, harnessId: string, n: number) {
   const input = { harnessId, title: `Item ${n}`, pageId: PAGE.item, priority: n, due: null };
   const { itemId } = value(
-    await kernel.items.enqueue(caller(ian), { ...input, delegationId: null }),
+    await kernel.items.enqueue(caller(rowan), { ...input, delegationId: null }),
   );
-  value(await kernel.items.claim(caller(ian), { itemId, delegationId: null }));
+  value(await kernel.items.claim(caller(rowan), { itemId, delegationId: null }));
   const submit = { itemId, to: null, evidence: {}, change: null };
-  value(await kernel.items.submit(caller(ian), submit));
+  value(await kernel.items.submit(caller(rowan), submit));
   return itemId;
 }
 
 async function itemInPackage(
   kernel: Kernel,
-  ian: Principal,
+  rowan: Principal,
   harnessId: string,
   pageId: string | null,
   priority = 0,
 ) {
   const input = { harnessId, title: 'Package item', pageId, priority, due: null };
-  return value(await kernel.items.enqueue(caller(ian), { ...input, delegationId: null })).itemId;
+  return value(await kernel.items.enqueue(caller(rowan), { ...input, delegationId: null })).itemId;
 }
 
 function activationOf(harnessId: string, harnessKey: string) {
@@ -179,18 +179,18 @@ function activationOf(harnessId: string, harnessKey: string) {
   return { harnessId, harnessKey, jdArea: '80-89', template: software, repository, requiredChecks };
 }
 
-async function seedHarness(kernel: Kernel, ian: Principal) {
+async function seedHarness(kernel: Kernel, rowan: Principal) {
   const harnessId = crypto.randomUUID();
-  value(await kernel.stages.activate(caller(ian), activationOf(harnessId, 'software')));
+  value(await kernel.stages.activate(caller(rowan), activationOf(harnessId, 'software')));
   const change = { instructionsPageId: PAGE.instructions };
-  value(await kernel.stages.updateStage(caller(ian), { harnessId, stageKey: 'scope', change }));
+  value(await kernel.stages.updateStage(caller(rowan), { harnessId, stageKey: 'scope', change }));
   const itemIds = [
-    await itemInScope(kernel, ian, harnessId, 1),
-    await itemInScope(kernel, ian, harnessId, 2),
+    await itemInScope(kernel, rowan, harnessId, 1),
+    await itemInScope(kernel, rowan, harnessId, 2),
   ];
   const packageItems = {
-    bare: await itemInPackage(kernel, ian, harnessId, null),
-    paged: await itemInPackage(kernel, ian, harnessId, PAGE.item),
+    bare: await itemInPackage(kernel, rowan, harnessId, null),
+    paged: await itemInPackage(kernel, rowan, harnessId, PAGE.item),
   };
   return { harnessId, itemIds, packageItems };
 }
@@ -200,13 +200,13 @@ async function openRig(): Promise<Rig> {
   const db = createClient(database.connectionString);
   await seedWorld(db);
   const kernel = kernelOn(db, clock);
-  const ian = await personOn(db, IAN.id, IAN.email, new Date());
-  const scene = await seedHarness(kernel, ian);
+  const rowan = await personOn(db, ROWAN.id, ROWAN.email, new Date());
+  const scene = await seedHarness(kernel, rowan);
   const drop = async () => {
     await db.$client.end();
     await database.drop();
   };
-  return { db, fixture: await createAccessFixture(), kernel, ian, ...scene, drop };
+  return { db, fixture: await createAccessFixture(), kernel, rowan, ...scene, drop };
 }
 
 function freshRig(): () => Rig {
@@ -307,7 +307,7 @@ describe.skipIf(!testServer)(
       const [itemId] = r.itemIds;
       const reader = await viewer(r, VIEWER_80);
       expect(await reader('resolve_context', { itemId })).toEqual({
-        instructions: summary(PAGE.instructions, 'skill'),
+        instructions: { ...summary(PAGE.instructions, 'skill'), bodyMd: 'Context.' },
         package: [summary(PAGE.item), summary(PAGE.strategy, 'product_strategy')],
         learnings: [itemLearning, ...laterTiers],
       });
@@ -316,13 +316,14 @@ describe.skipIf(!testServer)(
     it('adds a learning in another area only for a caller who may read it', async () => {
       const r = rig();
       const [itemId] = r.itemIds;
-      const context = await (await runner(r, EDITOR.email))('resolve_context', { itemId });
       const otherArea = {
         page: summary(PAGE.otherAreaLearning, 'learning', '30-39'),
         confidence: 'observed',
         asOf: '2026-09-10',
       };
-      expect(context['learnings']).toEqual([otherArea, itemLearning, ...laterTiers]);
+      const seen = async (tool: Tool) => (await tool('resolve_context', { itemId }))['learnings'];
+      expect(await seen(await runner(r, EDITOR.email))).toEqual([itemLearning, ...laterTiers]);
+      expect(await seen(await viewer(r, ROWAN))).toEqual([otherArea, itemLearning, ...laterTiers]);
     });
 
     it('answers a viewer of another area exactly as a missing item', async () => {
@@ -434,7 +435,7 @@ async function seedTasks(r: Rig): Promise<readonly Body[]> {
       due: null,
     };
     const at = new Date(Date.UTC(2026, 9, 1, 9, n));
-    const created = await createTask(r.db, r.ian, task, crypto.randomUUID(), at);
+    const created = await createTask(r.db, r.rowan, task, crypto.randomUUID(), at);
     expect(created.ok).toBe(true);
     tasks.push({ ...task, status: 'suggested' });
   }
@@ -455,8 +456,7 @@ describe.skipIf(!testServer)(
       const tasks = await seedTasks(r);
       const query = { query: 'open_tasks', params: { jdArea: '30-39' } };
       expect(await (await viewer(r, VIEWER_80))('query_entities', query)).toEqual({ rows: [] });
-      const rows = await (await runner(r, EDITOR.email))('query_entities', query);
-      expect(rows).toEqual({ rows: tasks });
+      expect(await (await viewer(r, VIEWER_30))('query_entities', query)).toEqual({ rows: tasks });
     });
 
     it('answers the items of a readable stage and hides an unreadable harness', async () => {
@@ -476,8 +476,8 @@ describe.skipIf(!testServer)(
     it('answers at most 50 items of a stage, highest priority first', async () => {
       const r = rig();
       const harnessId = crypto.randomUUID();
-      value(await r.kernel.stages.activate(caller(r.ian), activationOf(harnessId, 'many')));
-      for (let n = 0; n < 51; n += 1) await itemInPackage(r.kernel, r.ian, harnessId, null, n);
+      value(await r.kernel.stages.activate(caller(r.rowan), activationOf(harnessId, 'many')));
+      for (let n = 0; n < 51; n += 1) await itemInPackage(r.kernel, r.rowan, harnessId, null, n);
       const query = { query: 'stage_items', params: { harnessId, stageKey: 'package' } };
       const found = await (await runner(r, EDITOR.email))('query_entities', query);
       const rows = Array.isArray(found['rows']) ? found['rows'] : [];

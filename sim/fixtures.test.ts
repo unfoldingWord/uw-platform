@@ -1,6 +1,6 @@
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { afterAll, describe, expect, it } from 'vitest';
-import { simAgent, simCaller, simIan, simPerson, simPersonId, simSystem } from './fixtures.ts';
+import { simAgent, simCaller, simRowan, simPerson, simPersonId, simSystem } from './fixtures.ts';
 import { createWorld, type World } from './world.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -65,12 +65,12 @@ describe('DX-4 sim fixtures build principals from the seeded people and grants',
     async () => {
       const world = await createWorld();
       try {
-        const ian = await simIan(world);
-        expect(ian.identity).toBe('human:00000000-0000-4000-8000-000000000001');
-        expect(ian.grants.map((grant) => grant.role)).toEqual(['admin']);
-        const caller = simCaller(world, ian);
-        expect(caller.actor).toBe(ian);
-        expect(caller.traceId).not.toBe(simCaller(world, ian).traceId);
+        const rowan = await simRowan(world);
+        expect(rowan.identity).toBe('human:00000000-0000-4000-8000-000000000001');
+        expect(rowan.grants.map((grant) => grant.role)).toEqual(['admin']);
+        const caller = simCaller(world, rowan);
+        expect(caller.actor).toBe(rowan);
+        expect(caller.traceId).not.toBe(simCaller(world, rowan).traceId);
       } finally {
         await world.close();
       }

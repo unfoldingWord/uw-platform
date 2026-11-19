@@ -102,7 +102,10 @@ function editDraft(previous: Stage | undefined, next: Stage): EventDraft | null 
   return draft('stage_edited', { stageId: next.id, key: next.key, ...changed });
 }
 
-function editDrafts(before: readonly Stage[], after: readonly Stage[]): readonly EventDraft[] {
+export function editDrafts(
+  before: readonly Stage[],
+  after: readonly Stage[],
+): readonly EventDraft[] {
   const previous = new Map(before.map((stage) => [stage.id, stage]));
   const kept = new Set(after.map((stage) => stage.id));
   const removed = before

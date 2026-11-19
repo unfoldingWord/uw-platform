@@ -5,7 +5,7 @@ import { testServer, withMigratedDatabase } from '@uw/db/test-database';
 import type { Hub } from '@uw/harness';
 import { hubWiring, platformKernel } from './kernel.ts';
 import { hubNotWired } from './ports/hub.not-wired.ts';
-import { callerOf, ian, softwareHarness } from './testing/commands.ts';
+import { callerOf, rowan, softwareHarness } from './testing/commands.ts';
 import { withAppDatabase } from './testing/postgres.ts';
 
 const clock = { now: () => new Date() };
@@ -16,7 +16,7 @@ function handleOn(db: Database) {
 
 async function enqueueWith(db: Database, harnessId: string, hub: Hub) {
   const kernel = platformKernel(handleOn(db), clock, hubWiring(hub));
-  return kernel.items.enqueue(callerOf(await ian(db)), {
+  return kernel.items.enqueue(callerOf(await rowan(db)), {
     harnessId,
     title: 'Draw the board',
     pageId: null,

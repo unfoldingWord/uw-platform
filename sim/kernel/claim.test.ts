@@ -16,7 +16,7 @@ import {
   simAgent,
   simCaller,
   simDelegate,
-  simIan,
+  simRowan,
   simPerson,
 } from '../fixtures.ts';
 import { createWorld, type World } from '../world.ts';
@@ -39,7 +39,7 @@ async function inScene(work: (scene: Scene) => Promise<void>): Promise<void> {
   try {
     const { harness } = await createSimHarness(world, software);
     await readSpend(world);
-    await world.kernel.stages.updateStage(simCaller(world, await simIan(world)), {
+    await world.kernel.stages.updateStage(simCaller(world, await simRowan(world)), {
       harnessId: harness.id,
       stageKey: 'package',
       change: { agentPickup: 'allowed', bracket: 'iterate' },
@@ -168,11 +168,14 @@ describe('a bare agent identity acts only under a delegation', () => {
 
 describe('KN-5 the WIP limit counts agents against people', () => {
   sceneIt('counts an agent-held item against a person on the WIP limit', async (scene) => {
-    await scene.world.kernel.stages.updateStage(simCaller(scene.world, await simIan(scene.world)), {
-      harnessId: scene.harnessId,
-      stageKey: 'package',
-      change: { wipLimit: 1 },
-    });
+    await scene.world.kernel.stages.updateStage(
+      simCaller(scene.world, await simRowan(scene.world)),
+      {
+        harnessId: scene.harnessId,
+        stageKey: 'package',
+        change: { wipLimit: 1 },
+      },
+    );
     const second = value(
       await scene.world.kernel.items.enqueue(simCaller(scene.world, scene.max), {
         harnessId: scene.harnessId,
@@ -371,9 +374,9 @@ describe('release by the holder or an admin', () => {
   sceneIt('accepts the holder and an org admin, recording item_released', async (scene) => {
     const release = (caller: Caller) =>
       scene.world.kernel.items.release(caller, { itemId: scene.itemId, delegationId: null });
-    const ian = simCaller(scene.world, await simIan(scene.world));
+    const rowan = simCaller(scene.world, await simRowan(scene.world));
     await claimAs(scene, simCaller(scene.world, scene.max));
-    const byAdmin = value(await release(ian));
+    const byAdmin = value(await release(rowan));
     await claimAs(scene, simCaller(scene.world, scene.max));
     const byHolder = value(await release(simCaller(scene.world, scene.max)));
     expect([byAdmin.holder, byHolder.holder]).toEqual([null, null]);

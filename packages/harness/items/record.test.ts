@@ -97,6 +97,7 @@ function eventsGateway(log: string[], appended: HarnessEvent[]): HarnessEventsGa
       createdFor: unused,
       latestNamed: unused,
       enteredStage: unused,
+      enteredStages: unused,
       recent: unused,
       lastPosition: unused,
       lastPositions: unused,
@@ -276,7 +277,7 @@ describe('recording a harness event and building a context', () => {
       identity: `human:${personId}`,
       kind: 'person',
       personId,
-      email: 'ian.lindsley@unfoldingword.org',
+      email: 'rowan.test@unfoldingword.org',
       grants: [],
       interactive: true,
     });

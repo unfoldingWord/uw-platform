@@ -27,16 +27,11 @@ function neededRole(action: AclAction): Role {
   return minimumRoleByAction.get(action) ?? 'admin';
 }
 
-type ReadScope =
-  | { readonly kind: 'org' }
-  | { readonly kind: 'every-area' }
-  | { readonly kind: 'area'; readonly area: JdArea }
-  | null;
+type ReadScope = { readonly kind: 'org' } | { readonly kind: 'area'; readonly area: JdArea } | null;
 
 function readScope(grant: Grant): ReadScope {
   if (!reaches(grant.role, minimumRole.read)) return null;
   if (grant.scopeKind === 'org') return { kind: 'org' };
-  if (reaches(grant.role, 'editor')) return { kind: 'every-area' };
   return { kind: 'area', area: grant.scopeArea };
 }
 
@@ -46,7 +41,7 @@ function grantAllows(grant: Grant, action: AclAction, resource: AclResource): bo
     if (scope === null) return false;
     if (scope.kind === 'org') return true;
     if (resource.kind === 'org') return false;
-    return scope.kind === 'every-area' || scope.area === resource.area;
+    return scope.area === resource.area;
   }
   if (grant.scopeKind === 'org') return reaches(grant.role, neededRole(action));
   if (resource.kind === 'org') return false;
@@ -61,16 +56,34 @@ export function can(actor: Principal, action: AclAction, resource: AclResource, 
   return actor.grants.some((grant) => isLive(grant, at) && grantAllows(grant, action, resource));
 }
 
-type ReadableAreas =
+export type ReadableAreas =
   { readonly kind: 'all' } | { readonly kind: 'some'; readonly areas: readonly JdArea[] };
 
 export function readableAreas(actor: Principal, at: Date): ReadableAreas {
   const scopes = actor.grants.filter((grant) => isLive(grant, at)).map(readScope);
   const areas = new Set<JdArea>();
   for (const scope of scopes) {
-    if (scope?.kind === 'org' || scope?.kind === 'every-area') return { kind: 'all' };
+    if (scope?.kind === 'org') return { kind: 'all' };
     if (scope) areas.add(scope.area);
   }
+  return { kind: 'some', areas: [...areas].sort() };
+}
+
+export function grantedAreas(actor: Principal, at: Date): ReadableAreas {
+  const live = actor.grants.filter((grant) => isLive(grant, at));
+  if (live.some((grant) => grant.scopeKind === 'org')) return { kind: 'all' };
+  const areas = new Set<JdArea>();
+  for (const grant of live) if (grant.scopeKind === 'jd_area') areas.add(grant.scopeArea);
+  return { kind: 'some', areas: [...areas].sort() };
+}
+
+export function adminAreas(actor: Principal, at: Date): ReadableAreas {
+  const admin = actor.grants.filter(
+    (grant) => isLive(grant, at) && reaches(grant.role, minimumRole.admin),
+  );
+  if (admin.some((grant) => grant.scopeKind === 'org')) return { kind: 'all' };
+  const areas = new Set<JdArea>();
+  for (const grant of admin) if (grant.scopeKind === 'jd_area') areas.add(grant.scopeArea);
   return { kind: 'some', areas: [...areas].sort() };
 }
 

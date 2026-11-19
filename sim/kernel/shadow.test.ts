@@ -113,7 +113,12 @@ describe('GL-4 shadow mode ends at the lift', () => {
   it('posts the review once shadow is lifted', () =>
     inShadow(async (scene) => {
       const lift = simCaller(scene.world, scene.admin);
-      value(await scene.world.kernel.stages.liftShadow(lift, { harnessId: scene.harnessId }));
+      value(
+        await scene.world.kernel.stages.setShadow(lift, {
+          harnessId: scene.harnessId,
+          shadow: false,
+        }),
+      );
       const runId = await startReview(scene);
       value(await scene.world.kernel.runs.postReview(scene.host, runId, approveVerdict));
       expect(scene.world.adapters.connectors.reviews()).toHaveLength(1);

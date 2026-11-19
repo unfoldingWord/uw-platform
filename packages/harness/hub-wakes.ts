@@ -30,6 +30,7 @@ function tracking(tx: StoreTransaction, appended: HarnessEvent[]): StoreTransact
     lockShared: (key) => tx.lockShared(key),
     harnesses: tx.harnesses,
     harnessStages: tx.harnessStages,
+    workflowDrafts: tx.workflowDrafts,
     harnessItems: tx.harnessItems,
     harnessEvents: trackingEvents(tx.harnessEvents, appended),
     harnessRuns: tx.harnessRuns,
@@ -61,6 +62,7 @@ async function afterAppend(
 export function wakingStore(store: Store, hub: Hub, afterCommit?: AfterCommit): Store {
   return {
     appliedMigrations: () => store.appliedMigrations(),
+    read: (work) => (store.read === undefined ? store.transaction(work) : store.read(work)),
     transaction: async (work) => {
       const appended: HarnessEvent[] = [];
       const result = await store.transaction((tx) => work(tracking(tx, appended)));

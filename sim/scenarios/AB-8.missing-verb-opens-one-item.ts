@@ -16,7 +16,7 @@ const pageId = '00000000-0000-4000-8000-000000008201';
 const message = 'persona iterate requires verb summarise_measurements, which does not exist';
 
 async function attempt(scene: PersonaScene): Promise<string> {
-  const outcome = await activatePersona(scene.world, scene.ian, pageId);
+  const outcome = await activatePersona(scene.world, scene.rowan, pageId);
   assert.equal(outcome.status, 'error');
   assert.equal(outcome.reason, 'unknown_verb');
   const { verb, itemId } = outcome.detail;
