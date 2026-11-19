@@ -26,6 +26,8 @@ export type NavSection = {
 
 export type Person = { readonly initials: string; readonly name: string; readonly role: string };
 
+export type LogOutLink = { readonly label: string; readonly href: string };
+
 const focus = 'outline-offset-2 outline-side-code focus-visible:outline-2';
 const row = 'flex items-center gap-2 rounded-sm px-2 py-1 text-sm font-semibold whitespace-nowrap';
 const unbuilt = 'cursor-default opacity-45';
@@ -100,12 +102,14 @@ function Heading(props: { readonly section: NavSection }) {
     <p
       data-area={section.code}
       data-unbuilt={allUnbuilt(section) ? 'true' : undefined}
-      class={`flex gap-1 px-2 pt-3 pb-1 text-xs leading-snug font-heavy tracking-wide text-side-text-3 uppercase ${dim}`}
+      class={`flex items-baseline gap-2 px-2 pb-1 text-xs leading-snug font-heavy tracking-wide text-side-text-3 uppercase ${dim}`}
     >
       {section.code === undefined ? null : (
-        <span class="font-mono font-regular text-side-code">{section.code}</span>
+        <span class="shrink-0 font-mono font-regular whitespace-nowrap text-side-code">
+          {section.code}
+        </span>
       )}
-      <span>{section.heading}</span>
+      <span class="min-w-0">{section.heading}</span>
     </p>
   );
 }
@@ -132,7 +136,7 @@ export function NavList(props: {
   readonly current: string;
 }) {
   return (
-    <ul class="flex flex-col">
+    <ul class="flex flex-col gap-4">
       {props.sections.map((section) => (
         <Section section={section} current={props.current} />
       ))}
@@ -167,19 +171,34 @@ function Me(props: { readonly person: Person }) {
   );
 }
 
+function LogOut(props: { readonly link: LogOutLink }) {
+  const href = safeHref(props.link.href);
+  if (href === undefined) return null;
+  return (
+    <a href={href} class={`${row} text-side-text hover:bg-side-hover ${focus}`}>
+      <Icon name="right-from-bracket" size={2} />
+      <span>{props.link.label}</span>
+    </a>
+  );
+}
+
 export function Sidebar(props: {
   readonly sections: readonly NavSection[];
   readonly current: string;
   readonly person: Person | null;
+  readonly logOut: LogOutLink;
   readonly wordmarkPath: string;
 }) {
   return (
     <aside data-side class="hidden min-h-0 flex-col bg-side text-side-text md:flex">
       <Brand wordmarkPath={props.wordmarkPath} />
-      <nav aria-label="Main" class="flex-1 overflow-auto px-1 py-2">
+      <nav aria-label="Main" class="flex-1 overflow-auto p-2">
         <NavList sections={props.sections} current={props.current} />
       </nav>
       {props.person === null ? null : <Me person={props.person} />}
+      <div class="border-t border-side-line p-2">
+        <LogOut link={props.logOut} />
+      </div>
     </aside>
   );
 }
@@ -189,6 +208,7 @@ export function PhoneHeader(props: {
   readonly waiting: number;
   readonly sections: readonly NavSection[];
   readonly current: string;
+  readonly logOut: LogOutLink;
   readonly wordmarkPath: string;
 }) {
   return (
@@ -207,6 +227,9 @@ export function PhoneHeader(props: {
         </summary>
         <nav aria-label="Main" class="max-h-dvh overflow-auto border-t border-side-line p-2">
           <NavList sections={props.sections} current={props.current} />
+          <div class="mt-2 border-t border-side-line pt-2">
+            <LogOut link={props.logOut} />
+          </div>
         </nav>
       </details>
     </section>
