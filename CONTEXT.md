@@ -66,6 +66,18 @@ _Avoid_: severity, priority (that is ordering), impact
 A human principal with a Google login through Cloudflare Access and rows in the grants table. The only kind of identity that can write a gate decision.
 _Avoid_: user, human (as a noun in code), approver (that is a role a person plays at one gate)
 
+**Person status**:
+`active`, `pending` or `disabled`. A sign-in from `@unfoldingword.org` starts `active`; any other starts `pending` and is refused at the edge until an org admin **approves** it (to `active`) or **declines** it (to `disabled`). A disabled person is refused at the edge whatever grants they hold, and an org admin can approve them later. Each decision writes a `person_audit` row.
+_Avoid_: banned, blocked, suspended (that is what Google Workspace does to an account), invited
+
+**Waiting for access**:
+A person who has signed in and can reach nothing yet: pending, or active with no live grant. Listed on the **Access** screen for an admin.
+_Avoid_: new user, unassigned, guest
+
+**Access** (the screen):
+Where grants are seen, given and revoked, under 30-39 Infrastructure. An org admin sees every grant; an area admin sees and manages the grants on their own areas; anyone sees their own. "Cloudflare Access" is always written in full, so the bare word means this screen.
+_Avoid_: permissions page, user management, directory (that is the 10-19 module)
+
 **Principal**:
 The structured identity minted at the edge for every request: a person or agent id plus their resolved grants. It travels with every call, queue message and MCP invocation (plan §4).
 _Avoid_: session, token, actor (actor is the field name on an event, and holds a principal's id)

@@ -125,3 +125,46 @@ describe('#110 the standing-permission forms become command bodies', () => {
     });
   });
 });
+
+const person = 'c8000000-0000-4000-8000-000000000009';
+
+describe('#154 the Access command bodies', () => {
+  it('grant_role names no area at org scope and one at an area, ending at the end of the chosen day', () => {
+    const fields = { personId: person, role: 'viewer', scope: 'org', expiresOn: '' };
+    expect(commandBody('grant_role', fields, requestId)).toEqual({
+      command: 'grant_role',
+      requestId,
+      personId: person,
+      role: 'viewer',
+      scopeKind: 'org',
+      scopeArea: null,
+      expiresAt: null,
+    });
+    const area = { ...fields, role: 'editor', scope: '30-39', expiresOn: '2027-01-31' };
+    expect(commandBody('grant_role', area, requestId)).toMatchObject({
+      scopeKind: 'jd_area',
+      scopeArea: '30-39',
+      expiresAt: '2027-01-31T23:59:59.000Z',
+    });
+  });
+
+  it('refuses a grant with no person or an unknown scope, and builds revoke and the two decisions', () => {
+    const fields = { personId: '', role: 'viewer', scope: 'org' };
+    expect(commandBody('grant_role', fields, requestId)).toBeNull();
+    expect(
+      commandBody('grant_role', { ...fields, personId: person, scope: 'x' }, requestId),
+    ).toBeNull();
+    expect(commandBody('revoke_role', { grantId: person }, requestId)).toEqual({
+      command: 'revoke_role',
+      requestId,
+      grantId: person,
+    });
+    for (const command of ['approve_person', 'decline_person']) {
+      expect(commandBody(command, { personId: person }, requestId)).toEqual({
+        command,
+        requestId,
+        personId: person,
+      });
+    }
+  });
+});

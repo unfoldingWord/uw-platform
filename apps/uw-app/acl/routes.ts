@@ -1,5 +1,7 @@
 import { Hono, type Context } from 'hono';
 import {
+  approvePersonCommandSchema,
+  declinePersonCommandSchema,
   grantRoleCommandSchema,
   revokeRoleCommandSchema,
   type GrantRoleCommand,
@@ -10,6 +12,8 @@ import type { Principal } from '@uw/core/principal';
 import type { AppEnv } from '../deps.ts';
 import { malformed, readJson, toOutcome, type CommandResult } from '../http/commands.ts';
 import { refuse, reply } from '../http/outcomes.ts';
+import { approvePerson, declinePerson } from '../people/approval.ts';
+import { accessScreen } from '../views/screens/access.tsx';
 import { grantRole, revokeRole } from './grant-commands.ts';
 
 type Run = (
@@ -41,6 +45,24 @@ const handlers = new Map<string, Run>([
       return { requestId: command.requestId, result };
     },
   ],
+  [
+    'approve_person',
+    async (db, actor, body, traceId, at) => {
+      const parsed = approvePersonCommandSchema.safeParse(body);
+      if (!parsed.success) return null;
+      const result = await approvePerson(db, actor, parsed.data, traceId, at);
+      return { requestId: parsed.data.requestId, result };
+    },
+  ],
+  [
+    'decline_person',
+    async (db, actor, body, traceId, at) => {
+      const parsed = declinePersonCommandSchema.safeParse(body);
+      if (!parsed.success) return null;
+      const result = await declinePerson(db, actor, parsed.data, traceId, at);
+      return { requestId: parsed.data.requestId, result };
+    },
+  ],
 ]);
 
 async function handle(c: Context<AppEnv>): Promise<Response> {
@@ -59,5 +81,11 @@ async function handle(c: Context<AppEnv>): Promise<Response> {
 export function aclRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
   routes.post('/commands/:name', handle);
+  return routes;
+}
+
+export function accessScreenRoutes(): Hono<AppEnv> {
+  const routes = new Hono<AppEnv>();
+  routes.get('/', accessScreen);
   return routes;
 }

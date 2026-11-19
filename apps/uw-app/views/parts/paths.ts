@@ -88,6 +88,14 @@ export function healthPath(indicator?: string): string {
   return indicator === undefined ? '/health' : `/health/${segment(indicator)}`;
 }
 
+export function accessPath(filter?: { readonly scope?: string; readonly person?: string }): string {
+  const query = new URLSearchParams();
+  if (filter?.scope !== undefined) query.set('scope', filter.scope);
+  if (filter?.person !== undefined) query.set('person', filter.person);
+  const text = query.toString();
+  return text === '' ? '/access' : `/access?${text}`;
+}
+
 function repoUrl(repo: string): string {
   return `https://github.com/${repo}`;
 }

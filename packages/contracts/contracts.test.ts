@@ -197,7 +197,7 @@ describe('closed sets of the principal and the gate', () => {
       'take_over',
       'override',
     ]);
-    expect(closedSets.personStatusSchema.options).toEqual(['active', 'pending']);
+    expect(closedSets.personStatusSchema.options).toEqual(['active', 'pending', 'disabled']);
     expect(closedSets.principalKindSchema.options).toEqual(['person', 'agent']);
   });
 });

@@ -53,7 +53,7 @@ function rowOf(view: AgentsView, viewer: PermissionViewer, permission: StandingP
   };
 }
 
-function EndsField(props: { readonly scope: string }) {
+export function EndsField(props: { readonly scope: string }) {
   const id = domId('field', 'expiresOn', props.scope);
   return (
     <div class="flex min-w-0 flex-col gap-1">

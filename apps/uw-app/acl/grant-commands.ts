@@ -14,7 +14,7 @@ import { grantAudit, roleGrants } from '@uw/db/schema';
 import type { CommandResult } from '../http/commands.ts';
 import { pgConstraint, pgErrorCode } from '@uw/db/errors';
 import { liveGrant, resolveGrants } from '@uw/db/store';
-import { activatePerson, lockPerson } from '../people/directory.ts';
+import { changeStatus, lockPerson, type PersonRecord } from '../people/directory.ts';
 
 export const owns = ['role_grants', 'grant_audit'] as const;
 
@@ -113,9 +113,14 @@ async function closeExpiredDuplicate(
   });
 }
 
-async function approvePending(tx: Transaction, actor: Principal, personId: string, at: Date) {
-  if (!can(actor, 'admin', { kind: 'org' }, at)) return refused('not_permitted');
-  await activatePerson(tx, personId);
+async function approvePending(
+  tx: Transaction,
+  actor: Principal,
+  person: PersonRecord,
+  stamp: { readonly traceId: string; readonly at: Date },
+) {
+  if (!can(actor, 'admin', { kind: 'org' }, stamp.at)) return refused('not_permitted');
+  await changeStatus(tx, person, { actor, action: 'approve', ...stamp });
   return accepted;
 }
 
@@ -171,7 +176,7 @@ async function grantInTransaction(
   const person = await lockPerson(tx, command.personId);
   if (!person) return refused('person_not_found');
   if (person.status === 'pending') {
-    const approval = await approvePending(tx, live, command.personId, at);
+    const approval = await approvePending(tx, live, person, { traceId, at });
     if (!approval.ok) return approval;
   }
   await closeExpiredDuplicate(tx, live, command, traceId, at);

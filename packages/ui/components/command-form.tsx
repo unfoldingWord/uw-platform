@@ -28,6 +28,29 @@ export function CommandForm(props: {
   );
 }
 
+export function PlatformCommandForm(props: {
+  readonly endpoint: string;
+  readonly command: string;
+  readonly scope: string;
+  readonly done?: string;
+  readonly children: Child;
+}) {
+  return (
+    <form
+      id={domId('form', props.command, props.scope)}
+      data-command={props.command}
+      data-endpoint={props.endpoint}
+      data-done={props.done}
+      method="post"
+      action="#"
+      class="flex flex-wrap items-end gap-2"
+    >
+      {props.children}
+      <p data-outcome role="status" aria-live="polite" class="m-0 text-sm text-text-3"></p>
+    </form>
+  );
+}
+
 export function NewHarnessForm(props: { readonly command: string; readonly children: Child }) {
   return (
     <form
