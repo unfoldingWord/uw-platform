@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { appCss } from '../generated/app-css.ts';
 import { testFrame } from '../testing/frame.ts';
 import { speculationRules } from './inline-scripts.ts';
-import { PhoneHeader, Sidebar } from './sidebar.tsx';
+import { PhoneHeader, Sidebar, type NavSection } from './sidebar.tsx';
 
 type Rule = { readonly at: readonly string[]; readonly selector: string; readonly body: string };
 
@@ -51,9 +51,49 @@ function display(element: Element, atWidth: 'narrow' | 'wide'): string {
   return /display:none/.test(last.body) ? 'none' : 'shown';
 }
 
-async function frame(): Promise<Document> {
+const plainRules = cssRules(appCss).filter((rule) =>
+  rule.at.every((at) => at.startsWith('@layer')),
+);
+
+function declared(element: Element, property: string): string | undefined {
+  let value: string | undefined;
+  for (const rule of plainRules) {
+    if (!matches(element, rule.selector)) continue;
+    for (const declaration of rule.body.split(';')) {
+      const [name, ...rest] = declaration.split(':');
+      if (name?.trim() === property) value = rest.join(':').trim();
+    }
+  }
+  return value;
+}
+
+const spacingSteps = new Map(
+  [...appCss.matchAll(/(--uw-space-\d):(\d+)px/g)].map((found) => [found[1], Number(found[2])]),
+);
+
+function pixels(value: string | undefined): number {
+  const token = /var\((--uw-space-\d)\)/.exec(value ?? '')?.[1];
+  const size = spacingSteps.get(token);
+  if (size === undefined) throw new Error(`not a spacing token: ${String(value)}`);
+  return size;
+}
+
+function sidePadding(element: Element): number {
+  return pixels(declared(element, 'padding-inline') ?? declared(element, 'padding'));
+}
+
+const longArea: readonly NavSection[] = [
+  { heading: 'unfoldingWord Home', code: '00-09', items: [{ label: 'Today', href: '/' }] },
+  {
+    heading: 'Internal Operations & Administration',
+    code: '10-19',
+    items: [{ label: 'Directory & Access' }],
+  },
+];
+
+async function frame(sections: readonly NavSection[] = testFrame().sections): Promise<Document> {
   const props = {
-    sections: testFrame().sections,
+    sections,
     current: '/',
     person: testFrame().person,
     logOut: testFrame().logOut,
@@ -64,7 +104,7 @@ async function frame(): Promise<Document> {
   return new JSDOM(`<!DOCTYPE html><body>${desktop}${phone}</body>`).window.document;
 }
 
-function found(document: Document, selector: string): Element {
+function found(document: Document | Element, selector: string): Element {
   const element = document.querySelector(selector);
   if (element === null) throw new Error(`no ${selector}`);
   return element;
@@ -108,6 +148,48 @@ describe('UI-5 the sidebar becomes a phone header below the md breakpoint', () =
     expect(ledger?.closest('a')).toBeNull();
     expect(document.querySelector('aside [data-area="30-39"]')?.textContent).toContain(
       'Infrastructure',
+    );
+  });
+});
+
+describe('#143 the sidebar keeps to the spacing scale and groups read as groups', () => {
+  it('#143 a long area heading keeps its number whole, on the first line of the heading', async () => {
+    const document = await frame(longArea);
+    for (const menu of ['aside', 'section[aria-label="Menu"]']) {
+      const heading = found(document, `${menu} [data-area="10-19"]`);
+      const number = found(document, `${menu} [data-area="10-19"] span`);
+      expect(number.textContent).toBe('10-19');
+      expect(declared(number, 'white-space')).toBe('nowrap');
+      expect(declared(number, 'flex-shrink')).toBe('0');
+      expect(declared(heading, 'align-items')).toBe('baseline');
+    }
+  });
+
+  it('#143 groups sit further apart than a heading sits from its own rows', async () => {
+    const document = await frame(longArea);
+    for (const menu of ['aside', 'section[aria-label="Menu"]']) {
+      const groups = found(document, `${menu} nav > ul`);
+      const heading = found(document, `${menu} [data-area="10-19"]`);
+      const between = pixels(declared(groups, 'gap'));
+      expect(between).toBeGreaterThan(pixels(declared(heading, 'padding-bottom')));
+      expect(declared(heading, 'padding-top')).toBeUndefined();
+      expect(declared(found(document, `${menu} nav > ul ul`), 'gap')).toBeUndefined();
+    }
+  });
+
+  it('#143 headings and rows start level with the logo above and the name below', async () => {
+    const document = await frame(longArea);
+    const nav = sidePadding(found(document, 'aside nav'));
+    const edge = sidePadding(found(document, 'aside > div:first-child'));
+    expect(nav + sidePadding(found(document, 'aside [data-area="10-19"]'))).toBe(edge);
+    expect(nav + sidePadding(found(document, 'aside nav a'))).toBe(edge);
+    expect(sidePadding(found(document, 'aside > div:nth-last-child(2)'))).toBe(edge);
+    const foot = found(document, 'aside > div:last-child');
+    expect(sidePadding(foot) + sidePadding(found(foot, 'a'))).toBe(edge);
+    const phoneNav = sidePadding(found(document, 'section[aria-label="Menu"] nav'));
+    const phoneEdge = sidePadding(found(document, 'section[aria-label="Menu"] summary'));
+    expect(phoneNav + sidePadding(found(document, 'section[aria-label="Menu"] nav a'))).toBe(
+      phoneEdge,
     );
   });
 });
