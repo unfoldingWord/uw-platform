@@ -76,6 +76,11 @@ export function setOutcome(form: HTMLFormElement, text: string): void {
   if (region !== null) region.textContent = text;
 }
 
+function keepOutcome(form: HTMLFormElement, text: string): void {
+  const kept = form.ownerDocument.querySelector('[data-outcome-keep]');
+  if (kept !== null && form.hasAttribute('data-endpoint')) kept.textContent = text;
+}
+
 export function goBusy(form: HTMLFormElement): readonly Element[] {
   form.setAttribute('aria-busy', 'true');
   const buttons = [...form.querySelectorAll('button[type="submit"], button:not([type])')];
@@ -128,7 +133,9 @@ async function send(form: HTMLFormElement, command: string, deps: CommandDeps): 
   const answer =
     response === null ? { status: 'error', reason: 'internal_error' } : await answerOf(response);
   const accepted = answer.status === 'accepted';
-  setOutcome(form, accepted ? (outcomes.get(command) ?? '') : reasonText(answer.reason));
+  const done = form.getAttribute('data-done') ?? outcomes.get(command) ?? '';
+  setOutcome(form, accepted ? done : reasonText(answer.reason));
+  if (accepted) keepOutcome(form, done);
   return accepted;
 }
 
@@ -141,6 +148,7 @@ async function onSubmit(event: SubmitEvent, deps: CommandDeps): Promise<void> {
   const command = commandOf(form, submitter);
   if (command === null) return;
   const quieted = goBusy(form);
+  keepOutcome(form, '');
   const accepted = await send(form, command, deps);
   settle(form, quieted, accepted);
   if (accepted) deps.afterAccepted();

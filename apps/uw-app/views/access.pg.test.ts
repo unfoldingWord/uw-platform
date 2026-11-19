@@ -185,6 +185,48 @@ async function grantAndRevokeShowInPlace(db: Database): Promise<void> {
   );
 }
 
+async function historySurvivesBusyAreas(db: Database): Promise<void> {
+  await scene(db);
+  const made = await send(db, INFRA.email, {
+    command: 'grant_role',
+    personId: FRESH.id,
+    role: 'viewer',
+    scopeKind: 'jd_area',
+    scopeArea: '30-39',
+    expiresAt: null,
+  });
+  expect(made['status']).toBe('accepted');
+  for (let n = 0; n < 12; n += 1) {
+    const grant = { personId: FRESH.id, role: 'viewer', scopeKind: 'jd_area', scopeArea: '80-89' };
+    await send(db, ROWAN, { command: 'grant_role', ...grant, expiresAt: null });
+    const { document } = await documentFor(db, ROWAN, accessPath({ scope: '80-89' }));
+    const grantId = document
+      .querySelector(`form[data-command="revoke_role"][data-done*="${FRESH.email}"] input`)
+      ?.getAttribute('value');
+    await send(db, ROWAN, { command: 'revoke_role', grantId });
+  }
+  const { document } = await documentFor(db, INFRA.email);
+  expect(rowsOf(document, 'Access history')).toEqual([
+    expect.stringContaining(`${INFRA.email} | Granted`),
+  ]);
+  const kept = await documentFor(db, INFRA.email, accessPath({ person: PARTNER.id }));
+  const chosen = kept.document.querySelector('select[name="person"] option[selected]');
+  expect(chosen?.getAttribute('value')).toBe(PARTNER.id);
+  const statuses = [...document.querySelectorAll('main table')]
+    .find((table) => table.querySelector('caption')?.textContent === 'Who has access')
+    ?.querySelectorAll('tbody tr td:nth-child(4)');
+  expect([...(statuses ?? [])].map((cell) => cell.textContent)).toEqual([
+    'Active',
+    'Active',
+    'Active',
+  ]);
+}
+
+describe.skipIf(!testServer)('#154 review: history, filter and status on the Access screen', () => {
+  it('an area admin still sees their history after 24 newer changes elsewhere, a filter keeps its person, and each grant row shows status', () =>
+    withAppDatabase(historySurvivesBusyAreas));
+});
+
 describe.skipIf(!testServer)('#154 the Access screen', () => {
   it('an org admin sees every grant, who is waiting, and may grant in every scope', () =>
     withAppDatabase(orgAdminSeesEverything));

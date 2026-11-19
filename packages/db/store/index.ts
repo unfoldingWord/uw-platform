@@ -11,6 +11,7 @@ export { readAccessRecords } from './access.ts';
 export type {
   AccessGrant,
   AccessGrantChange,
+  AccessHistoryQuery,
   AccessPerson,
   AccessPersonChange,
   AccessRecords,

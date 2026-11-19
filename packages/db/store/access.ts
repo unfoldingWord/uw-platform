@@ -1,10 +1,20 @@
-import { asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { AnyExecutor } from '../any-database.ts';
 import { grantAudit, people, personAudit, roleGrants } from '../schema.ts';
 import { liveGrant } from './grants.ts';
 
-const HISTORY_LIMIT = 200;
+export type AccessHistoryQuery = {
+  readonly everything: boolean;
+  readonly areas: readonly string[];
+  readonly viewerId: string | null;
+  readonly scope: string | null;
+  readonly personId: string | null;
+  readonly limit: number;
+};
+
+const ORG_SCOPE = 'org';
+const nothing = sql`false`;
 
 export type AccessPerson = {
   readonly personId: string;
@@ -79,7 +89,23 @@ function readLiveGrants(db: AnyExecutor, at: Date): Promise<AccessGrant[]> {
     .orderBy(asc(roleGrants.grantedAt), asc(roleGrants.id));
 }
 
-function readGrantChanges(db: AnyExecutor): Promise<AccessGrantChange[]> {
+function seenBy(query: AccessHistoryQuery): SQL | undefined {
+  if (query.everything) return undefined;
+  const own = query.viewerId === null ? nothing : eq(roleGrants.personId, query.viewerId);
+  if (query.areas.length === 0) return own;
+  return or(own, inArray(roleGrants.scopeArea, [...query.areas]));
+}
+
+function inScope(scope: string | null): SQL | undefined {
+  if (scope === null) return undefined;
+  return scope === ORG_SCOPE ? isNull(roleGrants.scopeArea) : eq(roleGrants.scopeArea, scope);
+}
+
+function readGrantChanges(
+  db: AnyExecutor,
+  query: AccessHistoryQuery,
+): Promise<AccessGrantChange[]> {
+  const person = query.personId === null ? undefined : eq(roleGrants.personId, query.personId);
   return db
     .select({
       at: grantAudit.at,
@@ -92,11 +118,16 @@ function readGrantChanges(db: AnyExecutor): Promise<AccessGrantChange[]> {
     })
     .from(grantAudit)
     .innerJoin(roleGrants, eq(roleGrants.id, grantAudit.grantId))
+    .where(and(seenBy(query), inScope(query.scope), person))
     .orderBy(desc(grantAudit.at), desc(grantAudit.id))
-    .limit(HISTORY_LIMIT);
+    .limit(query.limit);
 }
 
-function readPersonChanges(db: AnyExecutor): Promise<AccessPersonChange[]> {
+async function readPersonChanges(
+  db: AnyExecutor,
+  query: AccessHistoryQuery,
+): Promise<AccessPersonChange[]> {
+  if (!query.everything || query.scope !== null) return [];
   return db
     .select({
       at: personAudit.at,
@@ -105,16 +136,21 @@ function readPersonChanges(db: AnyExecutor): Promise<AccessPersonChange[]> {
       personId: personAudit.personId,
     })
     .from(personAudit)
+    .where(query.personId === null ? undefined : eq(personAudit.personId, query.personId))
     .orderBy(desc(personAudit.at), desc(personAudit.id))
-    .limit(HISTORY_LIMIT);
+    .limit(query.limit);
 }
 
-export async function readAccessRecords(db: AnyExecutor, at: Date): Promise<AccessRecords> {
+export async function readAccessRecords(
+  db: AnyExecutor,
+  at: Date,
+  history: AccessHistoryQuery,
+): Promise<AccessRecords> {
   const [everyone, grants, grantChanges, personChanges] = await Promise.all([
     readPeople(db),
     readLiveGrants(db, at),
-    readGrantChanges(db),
-    readPersonChanges(db),
+    readGrantChanges(db, history),
+    readPersonChanges(db, history),
   ]);
   return { people: everyone, grants, grantChanges, personChanges };
 }

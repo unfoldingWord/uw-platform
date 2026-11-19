@@ -8,6 +8,7 @@ import { Table } from '@uw/ui/components/table.tsx';
 import type { AppEnv } from '../../deps.ts';
 import {
   DecideControl,
+  KeptOutcome,
   FilterForm,
   GrantForm,
   RevokeControl,
@@ -16,6 +17,7 @@ import {
 import {
   ORG_SCOPE,
   accessViewOf,
+  historyQueryOf,
   scopeLabel,
   scopeOf,
   type AccessFilter,
@@ -39,6 +41,7 @@ const grantColumns = [
   { key: 'person', label: 'Person' },
   { key: 'role', label: 'Role' },
   { key: 'scope', label: 'Scope' },
+  { key: 'status', label: 'Status' },
   { key: 'by', label: 'Granted by' },
   { key: 'on', label: 'Granted' },
   { key: 'ends', label: 'Ends' },
@@ -89,7 +92,7 @@ function Waiting(props: { readonly view: AccessView }) {
           columns={waitingColumns}
           rows={view.waiting.map((person) => ({
             person: <PersonCell person={person} />,
-            status: <StatusBadge status={person.status} />,
+            status: <StatusBadge status={person.status} holds={false} />,
             decide: decideCell(view, person),
           }))}
           bare
@@ -104,6 +107,7 @@ function grantRows(holder: Holder) {
     person: <PersonCell person={holder.person} />,
     role: line.grant.role,
     scope: scopeLabel(scopeOf(line.grant)),
+    status: <StatusBadge status={holder.person.status} holds />,
     by: line.grant.grantedBy ?? 'Set up with the platform',
     on: formatDate(line.grant.grantedAt),
     ends: line.grant.expiresAt === null ? 'No end date' : formatDate(line.grant.expiresAt),
@@ -162,8 +166,10 @@ export async function accessScreen(c: Context<AppEnv>): Promise<Response> {
   const database = c.get('database');
   if (screen === null || database === null) return screenRefusal(c);
   const filter = filterOf(c);
-  const records = await readAccessRecords(database.db, screen.at);
-  const view = accessViewOf(records, screen.caller.actor, filter, screen.at);
+  const viewer = screen.caller.actor;
+  const history = historyQueryOf(viewer, filter, screen.at);
+  const records = await readAccessRecords(database.db, screen.at, history);
+  const view = accessViewOf(records, viewer, filter, screen.at);
   const admin = view.grantScopes.length > 0;
   const spec = {
     title: pageNames.access,
@@ -176,6 +182,7 @@ export async function accessScreen(c: Context<AppEnv>): Promise<Response> {
     spec,
     <>
       <PageHead title={pageNames.access} lede={ledeOf(view)} />
+      <KeptOutcome />
       <div class="flex flex-col gap-5">
         {admin ? <Waiting view={view} /> : null}
         {admin ? (

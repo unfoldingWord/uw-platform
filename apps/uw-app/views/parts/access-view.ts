@@ -1,6 +1,6 @@
 import type { Principal } from '@uw/contracts';
 import { can } from '@uw/core/acl';
-import type { AccessGrant, AccessPerson, AccessRecords } from '@uw/db/store';
+import type { AccessGrant, AccessHistoryQuery, AccessPerson, AccessRecords } from '@uw/db/store';
 import { areaLabel, everyArea } from './names.ts';
 
 export const ORG_SCOPE = 'org';
@@ -56,6 +56,21 @@ function seen(seeing: Seeing, grant: Scoped): boolean {
 function kept(filter: AccessFilter, grant: Scoped): boolean {
   const scope = filter.scope === null || scopeOf(grant) === filter.scope;
   return scope && (filter.personId === null || grant.personId === filter.personId);
+}
+
+export function historyQueryOf(
+  viewer: Principal,
+  filter: AccessFilter,
+  at: Date,
+): AccessHistoryQuery {
+  return {
+    everything: manages(viewer, ORG_SCOPE, at),
+    areas: everyArea().filter((area) => manages(viewer, area, at)),
+    viewerId: viewer.personId,
+    scope: filter.scope,
+    personId: filter.personId,
+    limit: HISTORY_SHOWN,
+  };
 }
 
 function grantScopesOf(viewer: Principal, at: Date): readonly Choice[] {
@@ -141,8 +156,12 @@ export function accessViewOf(
   const grantScopes = grantScopesOf(viewer, at);
   const visible = records.grants.filter((grant) => seen(seeing, grant));
   const admin = grantScopes.length > 0;
-  const scopes = [...new Set(visible.map(scopeOf))].sort();
+  const chosenScope = filter.scope === null ? [] : [filter.scope];
+  const scopes = [...new Set([...visible.map(scopeOf), ...chosenScope])].sort();
   const holding = new Set(visible.map((grant) => grant.personId));
+  const choosable = (person: AccessPerson): boolean =>
+    holding.has(person.personId) ||
+    (person.personId === filter.personId && (admin || person.personId === viewer.personId));
   return {
     orgAdmin,
     grantScopes,
@@ -156,7 +175,7 @@ export function accessViewOf(
       seeing,
     ),
     filterScopes: scopes.map((scope) => ({ value: scope, label: scopeLabel(scope) })),
-    filterPeople: records.people.filter((person) => holding.has(person.personId)).map(personChoice),
+    filterPeople: records.people.filter(choosable).map(personChoice),
     history: historyOf(records, seeing, orgAdmin),
   };
 }

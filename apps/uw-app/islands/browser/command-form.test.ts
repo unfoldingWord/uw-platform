@@ -1,9 +1,10 @@
 import { JSDOM } from 'jsdom';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { harnessCommandSchemas } from '@uw/contracts';
 import { reasonText } from '@uw/ui/components/text.ts';
 import { commandBody } from './command-body.ts';
 import { OUTCOME_TEXT, wireCommandForms } from './command-form.ts';
+import { morphMain } from './morph.ts';
 
 const harnessId = 'c7000000-0000-4000-8000-000000000001';
 const itemId = 'c7000000-0000-4000-8000-000000000002';
@@ -301,6 +302,60 @@ async function platformRefusalInPlace(): Promise<void> {
   expect(outcomeOf(run.document)).toBe('Last org admin');
   expect(run.accepted()).toBe(0);
 }
+
+const grantId = 'a1540000-0000-4000-8000-000000000002';
+
+function revokePage(row: string): string {
+  return `<main id="main"><p data-outcome-keep role="status"></p>${row}</main>`;
+}
+
+function revokeRow(): string {
+  return `<form data-command="revoke_role" data-endpoint="/api/acl/commands" data-done="Revoked viewer for kim." method="post" action="#"><input type="hidden" name="grantId" value="${grantId}"><button type="submit">Confirm revoke</button><p data-outcome role="status"></p></form>`;
+}
+
+async function confirmationOutlivesTheRefresh(): Promise<void> {
+  const dom = page(revokePage(revokeRow()));
+  const run = wired(dom, async () => Response.json({ status: 'accepted', requestId }));
+  submit(run.document, run.document.querySelector('button'));
+  await settled();
+  const main = run.document.getElementById('main');
+  if (main === null) throw new Error('no main');
+  const { window } = dom;
+  vi.stubGlobal('document', window.document);
+  vi.stubGlobal('DOMParser', window.DOMParser);
+  vi.stubGlobal('Node', window.Node);
+  vi.stubGlobal('Element', window.Element);
+  vi.stubGlobal('Document', window.Document);
+  morphMain(main, '<p data-outcome-keep role="status"></p><p>No grants to show.</p>');
+  expect(run.document.querySelector('form')).toBeNull();
+  expect(run.document.querySelector('[data-outcome-keep]')?.textContent).toBe(
+    'Revoked viewer for kim.',
+  );
+  expect(main.textContent).toContain('No grants to show.');
+}
+
+async function nextCommandClearsTheConfirmation(): Promise<void> {
+  const dom = page(revokePage(revokeRow()));
+  const kept = dom.window.document.querySelector('[data-outcome-keep]');
+  if (kept === null) throw new Error('no kept region');
+  kept.textContent = 'Granted.';
+  const refusal = { status: 'error', requestId, reason: 'not_permitted' };
+  const run = wired(dom, async () => Response.json(refusal, { status: 403 }));
+  submit(run.document, run.document.querySelector('button'));
+  await settled();
+  expect(kept.textContent).toBe('');
+  expect(outcomeOf(run.document)).toBe('Not permitted');
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe('#154 an accepted platform command keeps its confirmation', () => {
+  it('through the refresh that removes the form it came from', confirmationOutlivesTheRefresh);
+  it('until the next command starts, so a refusal never sits under a stale success', () =>
+    nextCommandClearsTheConfirmation());
+});
 
 describe('#154 a platform command form', () => {
   it('posts to its own endpoint, with the command its button names', platformFormPosts);

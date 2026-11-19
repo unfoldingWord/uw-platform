@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { personPrincipal } from '@uw/core/principal';
 import type { AccessGrant, AccessPerson, AccessRecords } from '@uw/db/store';
-import { accessViewOf } from './access-view.ts';
+import { accessViewOf, historyQueryOf } from './access-view.ts';
 
 const at = new Date('2026-11-19T12:00:00.000Z');
 const none = { scope: null, personId: null };
@@ -154,5 +154,35 @@ describe('#154 who is waiting, the filters and the history on the Access screen'
     expect(
       accessViewOf(records, viewer(infra), none, at).history.map((line) => line.detail),
     ).not.toContain('Sign-in');
+  });
+});
+
+describe('#154 review: the filter keeps its choice and the history is asked for by what the viewer sees', () => {
+  it('keeps a filtered person and scope as choices when no grant matches any more', () => {
+    const filter = { scope: '20-29', personId: fresh.personId };
+    const view = accessViewOf(records, viewer(org), filter, at);
+    expect(view.holders).toEqual([]);
+    expect(view.filterPeople.map((choice) => choice.value)).toContain(fresh.personId);
+    expect(view.filterScopes.map((choice) => choice.value)).toContain('20-29');
+    const probing = accessViewOf(
+      records,
+      viewer(tech),
+      { scope: null, personId: org.personId },
+      at,
+    );
+    expect(probing.filterPeople.map((choice) => choice.value)).not.toContain(org.personId);
+  });
+
+  it("asks the store for an area admin's own areas and filter, so the limit applies after them", () => {
+    const filter = { scope: null, personId: tech.personId };
+    expect(historyQueryOf(viewer(infra), filter, at)).toEqual({
+      everything: false,
+      areas: ['30-39'],
+      viewerId: infra.personId,
+      scope: null,
+      personId: tech.personId,
+      limit: 20,
+    });
+    expect(historyQueryOf(viewer(org), none, at)).toMatchObject({ everything: true });
   });
 });

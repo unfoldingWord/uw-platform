@@ -24,10 +24,22 @@ const roleWords: ReadonlyMap<string, string> = new Map([
   ['viewer', 'Viewer: reads only'],
 ]);
 
-export function StatusBadge(props: { readonly status: string }) {
+export function StatusBadge(props: { readonly status: string; readonly holds: boolean }) {
   if (props.status === 'pending') return <Badge tone="person">Waiting for approval</Badge>;
   if (props.status === 'disabled') return <Badge tone="held">Declined</Badge>;
+  if (props.holds) return <Badge tone="success">Active</Badge>;
   return <Badge tone="neutral">No access yet</Badge>;
+}
+
+export function KeptOutcome() {
+  return (
+    <p
+      data-outcome-keep
+      role="status"
+      aria-live="polite"
+      class="m-0 mb-3 text-sm font-semibold text-text empty:hidden"
+    ></p>
+  );
 }
 
 export function GrantForm(props: { readonly view: AccessView }) {
@@ -38,7 +50,12 @@ export function GrantForm(props: { readonly view: AccessView }) {
   }));
   return (
     <div class="flex flex-col gap-2">
-      <PlatformCommandForm endpoint={ACL_ENDPOINT} command="grant_role" scope="new">
+      <PlatformCommandForm
+        endpoint={ACL_ENDPOINT}
+        command="grant_role"
+        scope="new"
+        done="Granted. The list below shows it."
+      >
         <SelectField name="personId" label="Person" scope="grant" choices={view.grantable} />
         <SelectField name="role" label="Role" scope="grant" choices={roles} selected="viewer" />
         <SelectField name="scope" label="Scope" scope="grant" choices={view.grantScopes} />
@@ -68,7 +85,12 @@ export function RevokeControl(props: { readonly person: AccessPerson; readonly l
         <p class="m-0 text-sm text-text">
           {props.person.email} loses {what}.
         </p>
-        <PlatformCommandForm endpoint={ACL_ENDPOINT} command="revoke_role" scope={grant.grantId}>
+        <PlatformCommandForm
+          endpoint={ACL_ENDPOINT}
+          command="revoke_role"
+          scope={grant.grantId}
+          done={`Revoked ${what} for ${props.person.email}.`}
+        >
           <input type="hidden" name="grantId" value={grant.grantId} />
           <HumanActionButton
             itemId={grant.grantId}
@@ -82,26 +104,40 @@ export function RevokeControl(props: { readonly person: AccessPerson; readonly l
   );
 }
 
-export function DecideControl(props: { readonly person: AccessPerson }) {
+function DecideForm(props: {
+  readonly person: AccessPerson;
+  readonly command: 'approve_person' | 'decline_person';
+  readonly verb: string;
+  readonly done: string;
+}) {
   const { person } = props;
   return (
-    <PlatformCommandForm endpoint={ACL_ENDPOINT} command="decide" scope={person.personId}>
+    <PlatformCommandForm
+      endpoint={ACL_ENDPOINT}
+      command={props.command}
+      scope={person.personId}
+      done={`${props.done} ${person.email}.`}
+    >
       <input type="hidden" name="personId" value={person.personId} />
       <HumanActionButton
         itemId={person.personId}
-        label={`Approve ${person.email}`}
+        label={`${props.verb} ${person.email}`}
         name="decision"
-        value="approve_person"
+        value={props.command}
       />
-      {person.status === 'pending' ? (
-        <HumanActionButton
-          itemId={person.personId}
-          label={`Decline ${person.email}`}
-          name="decision"
-          value="decline_person"
-        />
-      ) : null}
     </PlatformCommandForm>
+  );
+}
+
+export function DecideControl(props: { readonly person: AccessPerson }) {
+  const { person } = props;
+  return (
+    <div class="flex flex-wrap items-end gap-2">
+      <DecideForm person={person} command="approve_person" verb="Approve" done="Approved" />
+      {person.status === 'pending' ? (
+        <DecideForm person={person} command="decline_person" verb="Decline" done="Declined" />
+      ) : null}
+    </div>
   );
 }
 

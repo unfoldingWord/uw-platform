@@ -32,6 +32,7 @@ export function PlatformCommandForm(props: {
   readonly endpoint: string;
   readonly command: string;
   readonly scope: string;
+  readonly done?: string;
   readonly children: Child;
 }) {
   return (
@@ -39,6 +40,7 @@ export function PlatformCommandForm(props: {
       id={domId('form', props.command, props.scope)}
       data-command={props.command}
       data-endpoint={props.endpoint}
+      data-done={props.done}
       method="post"
       action="#"
       class="flex flex-wrap items-end gap-2"
