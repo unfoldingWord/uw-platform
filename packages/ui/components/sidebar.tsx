@@ -1,4 +1,5 @@
 import type { IconName } from '../generated/icons.ts';
+import { AccountInitials, AccountRow, type Person } from './account-menu.tsx';
 import { safeHref } from './href.ts';
 import { PersonCount } from './human-action.tsx';
 import { Icon } from './icon.tsx';
@@ -23,10 +24,6 @@ export type NavSection = {
   readonly empty?: string;
   readonly items: readonly NavItem[];
 };
-
-export type Person = { readonly initials: string; readonly name: string; readonly role: string };
-
-export type LogOutLink = { readonly label: string; readonly href: string };
 
 const focus = 'outline-offset-2 outline-side-code focus-visible:outline-2';
 const row = 'flex items-center gap-2 rounded-sm px-2 py-1 text-sm font-semibold whitespace-nowrap';
@@ -153,40 +150,10 @@ function Brand(props: { readonly wordmarkPath: string }) {
   );
 }
 
-function Me(props: { readonly person: Person }) {
-  const { person } = props;
-  return (
-    <div class="flex items-center gap-2 border-t border-side-line px-4 py-3">
-      <span
-        aria-hidden="true"
-        class="grid size-size-4 shrink-0 place-items-center rounded-full bg-ok text-xs font-heavy text-on-accent"
-      >
-        {person.initials}
-      </span>
-      <div class="min-w-0 leading-snug">
-        <p class="truncate text-sm font-heavy">{person.name}</p>
-        <p class="truncate text-xs text-side-text-3">{person.role}</p>
-      </div>
-    </div>
-  );
-}
-
-function LogOut(props: { readonly link: LogOutLink }) {
-  const href = safeHref(props.link.href);
-  if (href === undefined) return null;
-  return (
-    <a href={href} class={`${row} text-side-text hover:bg-side-hover ${focus}`}>
-      <Icon name="right-from-bracket" size={2} />
-      <span>{props.link.label}</span>
-    </a>
-  );
-}
-
 export function Sidebar(props: {
   readonly sections: readonly NavSection[];
   readonly current: string;
   readonly person: Person | null;
-  readonly logOut: LogOutLink;
   readonly wordmarkPath: string;
 }) {
   return (
@@ -195,9 +162,8 @@ export function Sidebar(props: {
       <nav aria-label="Main" class="flex-1 overflow-auto p-2">
         <NavList sections={props.sections} current={props.current} />
       </nav>
-      {props.person === null ? null : <Me person={props.person} />}
       <div class="border-t border-side-line p-2">
-        <LogOut link={props.logOut} />
+        <AccountRow person={props.person} />
       </div>
     </aside>
   );
@@ -208,13 +174,13 @@ export function PhoneHeader(props: {
   readonly waiting: number;
   readonly sections: readonly NavSection[];
   readonly current: string;
-  readonly logOut: LogOutLink;
+  readonly person: Person | null;
   readonly wordmarkPath: string;
 }) {
   return (
-    <section data-side aria-label="Menu" class="bg-side text-side-text md:hidden">
+    <section data-side aria-label="Menu" class="relative bg-side text-side-text md:hidden">
       <details>
-        <summary class={`flex cursor-pointer list-none items-center gap-3 px-4 py-3 ${focus}`}>
+        <summary class={`flex cursor-pointer list-none items-center gap-3 py-3 pr-8 pl-4 ${focus}`}>
           <span class="grid size-size-5 shrink-0 place-items-center rounded-md border border-side-line">
             <Icon name="bars" size={2} />
           </span>
@@ -227,11 +193,9 @@ export function PhoneHeader(props: {
         </summary>
         <nav aria-label="Main" class="max-h-dvh overflow-auto border-t border-side-line p-2">
           <NavList sections={props.sections} current={props.current} />
-          <div class="mt-2 border-t border-side-line pt-2">
-            <LogOut link={props.logOut} />
-          </div>
         </nav>
       </details>
+      <AccountInitials person={props.person} />
     </section>
   );
 }
