@@ -304,6 +304,7 @@ export function describeStoreContract(
 export function describeStoreNotWired(adapter: string, store: Store): void {
   describeNotWired('store', adapter, store, {
     transaction: true,
+    read: true,
     appliedMigrations: true,
   } satisfies Record<keyof Store, true>);
 }

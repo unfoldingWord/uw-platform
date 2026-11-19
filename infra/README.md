@@ -37,6 +37,14 @@ A binding is added by a diff to `uw-app/wrangler.toml`, once in `[env.staging]` 
 
 Ids that are not secret (a Hyperdrive id) may be committed. A secret is set with `wrangler secret put --env <name>` and appears in the file nowhere.
 
+### Where the Worker runs (#142)
+
+Each environment sets `[env.<name>.placement] region = "aws:us-west-2"`. Without it, the Worker runs at the Cloudflare location nearest the viewer, and every database query crosses to Aurora in us-west-2 and back. With it, Cloudflare runs the Worker in the data center closest to that region, so the queries a page makes stay short. `region` and `mode = "smart"` cannot both be set. If the database moves region, this value moves with it.
+
+Hyperdrive's query cache is off (`caching.disabled: true`). It keeps a read for up to a minute and is not cleared by writes, so after someone claims an item or decides a gate a page could show the old state. Pages read outside transactions, where the cache would apply. Connection pooling stays on. Staging was switched on 2026-11-19 with `env -u CLOUDFLARE_API_TOKEN npx wrangler hyperdrive update 621c03bdb5ef4087a2a64f1e411779c8 --caching-disabled`; production (`2564258906e94905b1b28d0c28002ff6`) is switched the same way at the release that ships #142.
+
+Every response carries a `Server-Timing` header: `total`, `frame` (the sidebar and status bar) and `db` (queries and transactions). The `request` log line records `queries` and `transactions` too. `apps/uw-app/views/query-budget.pg.test.ts` keeps each page under a query budget and fails if a page's query count grows with the number of workflows or items.
+
 ### Sandbox containers (HE-8, HE-9)
 
 `containers/claude-code/Dockerfile` and `containers/codex/Dockerfile` are the images the two sandbox engines run: the Node.js 22 slim image at a pinned tag with `git`, the one CLI installed globally at a pinned version, a non-root `runner` user whose home is `/workspace`, and a small HTTP listener on port 3000 that keeps the container alive for `exec`. Cloudflare's `cloudflare/sandbox:1.0.0` base was dropped on 2026-11-12: it has no `/bin/sh`, so neither image could be built. The CI `build` job builds both images and runs `git --version` and the CLI's `--version` in each, so a broken image fails a pull request, not a deploy. Neither image holds a key, a token or a login: the CLI gets a placeholder key and a base URL of `http://model.internal`, and the Worker's egress proxy swaps in the organization's key on the way to AI Gateway (S7-R48). `tools/infra/containers.test.ts` refuses an `ENV` or `ARG` named like a credential, an unpinned base and an image that ends as root.

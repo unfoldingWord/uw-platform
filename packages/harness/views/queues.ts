@@ -22,12 +22,20 @@ function earliest(times: readonly Date[]): Date | null {
   return new Date(Math.min(...times.map((time) => time.getTime())));
 }
 
-async function cardOf(tx: StoreTransaction, harness: Harness, waiting: number): Promise<QueueCard> {
+type CardFacts = { readonly waiting: number; readonly entries: ReadonlyMap<string, Date> };
+
+async function cardOf(
+  tx: StoreTransaction,
+  harness: Harness,
+  facts: CardFacts,
+): Promise<QueueCard> {
   const stages = await tx.harnessStages.read.forHarness(harness.id);
   const brackets = new Map(stages.map((stage) => [stage.key, stage.bracket]));
   const open = await tx.harnessItems.read.openFor(harness.id, VIEW_LIMIT);
-  const ids = open.map((item) => item.itemId);
-  const entries = await tx.harnessEvents.read.enteredStage(harness.id, ids);
+  const entered = open.flatMap((item) => {
+    const at = facts.entries.get(item.itemId);
+    return at === undefined ? [] : [at];
+  });
   return {
     harness,
     phases: phaseCounts(
@@ -35,10 +43,23 @@ async function cardOf(tx: StoreTransaction, harness: Harness, waiting: number): 
       open.map((item) => item.stageKey),
     ),
     open: open.length,
-    oldestEnteredAt: earliest(entries.map((entry) => entry.at)),
-    waiting,
+    oldestEnteredAt: earliest(entered),
+    waiting: facts.waiting,
     capped: open.length === VIEW_LIMIT,
   };
+}
+
+async function entriesOf(
+  tx: StoreTransaction,
+  harnesses: readonly Harness[],
+): Promise<ReadonlyMap<string, Date>> {
+  const opens = await Promise.all(
+    harnesses.map((harness) => tx.harnessItems.read.openFor(harness.id, VIEW_LIMIT)),
+  );
+  const entries = await tx.harnessEvents.read.enteredStages(
+    opens.flat().map((item) => item.itemId),
+  );
+  return new Map(entries.map((entry) => [entry.itemId, entry.at]));
 }
 
 function inGrantedArea(caller: Caller, at: Date): (harness: Harness) => boolean {
@@ -58,7 +79,9 @@ export async function queuesView(
   for (const row of gates.rows) {
     waiting.set(row.harness.id, (waiting.get(row.harness.id) ?? 0) + 1);
   }
-  const cards: QueueCard[] = [];
-  for (const harness of shown) cards.push(await cardOf(tx, harness, waiting.get(harness.id) ?? 0));
+  const entries = await entriesOf(tx, shown);
+  const cards = await Promise.all(
+    shown.map((harness) => cardOf(tx, harness, { waiting: waiting.get(harness.id) ?? 0, entries })),
+  );
   return { cards };
 }

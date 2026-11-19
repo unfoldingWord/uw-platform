@@ -133,7 +133,40 @@
   grid-template-columns: var(--uw-layout-side) 1fr;
 }
 
+@keyframes uw-progress {
+  from {
+    transform: scaleX(0.05);
+  }
+  to {
+    transform: scaleX(0.9);
+  }
+}
+
 @layer base {
+  [data-progress] {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 50;
+    height: var(--uw-space-1);
+    background: var(--uw-accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  html[data-navigating] [data-progress] {
+    opacity: 1;
+    animation: uw-progress 6s cubic-bezier(0.1, 0.7, 0.2, 1) forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html[data-navigating] [data-progress] {
+      animation: none;
+      transform: scaleX(1);
+    }
+  }
+
   body {
     background: var(--uw-canvas);
     color: var(--uw-text);

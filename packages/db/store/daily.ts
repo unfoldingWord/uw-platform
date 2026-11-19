@@ -1,7 +1,7 @@
 import { and, asc, count, gte, inArray, sql, type Column } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
 import { gateDecisions, harnessRuns } from '../schema.ts';
-import type { DayCount } from './types.ts';
+import type { DayCount, HarnessDayCount } from './types.ts';
 
 type Dated = typeof harnessRuns | typeof gateDecisions;
 
@@ -40,4 +40,20 @@ export function decidedPerDay(
   since: Date,
 ): Promise<readonly DayCount[]> {
   return perDay(executor, gateDecisions, gateDecisions.decidedAt, { harnessIds, since });
+}
+
+export async function startedPerDayByHarness(
+  executor: AnyExecutor,
+  harnessIds: readonly string[],
+  since: Date,
+): Promise<readonly HarnessDayCount[]> {
+  if (harnessIds.length === 0) return [];
+  const day = utcDay(harnessRuns.startedAt);
+  const rows = await executor
+    .select({ harnessId: harnessRuns.harnessId, day, count: count() })
+    .from(harnessRuns)
+    .where(and(inArray(harnessRuns.harnessId, [...harnessIds]), gte(harnessRuns.startedAt, since)))
+    .groupBy(harnessRuns.harnessId, day)
+    .orderBy(asc(harnessRuns.harnessId), asc(day));
+  return rows.map((row) => ({ harnessId: row.harnessId, day: row.day, count: row.count }));
 }

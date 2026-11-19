@@ -7,6 +7,7 @@ import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.
 import type { Ports, RunRow, StoreTransaction } from '../ports.ts';
 import { currentLevel, freshAt, latestReading, levelOfEvent } from './breaker-level.ts';
 import { resumeRunsWhere } from './resume.ts';
+import { readOnly } from '../store-read.ts';
 import { hibernateRunsWhere, underPause } from './suspend.ts';
 
 const BREAKER_HOLD_PERCENT = 75;
@@ -162,7 +163,7 @@ function readingFrom(event: HarnessEvent): BreakerReading | null {
 }
 
 async function state(ports: BreakerPorts, at: Date): Promise<BreakerState> {
-  const latest = await ports.store.transaction((tx) => latestReading(tx, null));
+  const latest = await readOnly(ports.store, (tx) => latestReading(tx, null));
   if (latest === null) return { level: 'open', reading: null, at: null, fresh: false };
   const level = levelOfEvent(latest);
   return { level, reading: readingFrom(latest), at: latest.at, fresh: freshAt(latest, at) };

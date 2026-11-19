@@ -123,6 +123,31 @@ async function heldInStage(
   return rows[0]?.held ?? 0;
 }
 
+export async function heldByStage(
+  executor: AnyExecutor,
+  harnessIds: readonly string[],
+  at: Date,
+): Promise<ReadonlyMap<string, ReadonlyMap<string, number>>> {
+  const found = new Map<string, Map<string, number>>(
+    harnessIds.map((harnessId) => [harnessId, new Map()]),
+  );
+  if (harnessIds.length === 0) return found;
+  const rows = await executor
+    .select({ harnessId: harnessItems.harnessId, stageKey: harnessStages.key, held: count() })
+    .from(harnessItems)
+    .innerJoin(harnessStages, eq(harnessStages.id, harnessItems.stageId))
+    .where(
+      and(
+        inArray(harnessItems.harnessId, [...harnessIds]),
+        isNotNull(harnessItems.claimedBy),
+        or(isNull(harnessItems.leaseExpires), gt(harnessItems.leaseExpires, at)),
+      ),
+    )
+    .groupBy(harnessItems.harnessId, harnessStages.key);
+  for (const row of rows) found.get(row.harnessId)?.set(row.stageKey, row.held);
+  return found;
+}
+
 function afterCursor(after: StageCursor | null): SQL | undefined {
   if (after === null) return undefined;
   return or(
@@ -193,6 +218,52 @@ async function openFor(
     .orderBy(desc(harnessItems.priority), asc(harnessItems.id))
     .limit(checkedRows(limit, 'open item'));
   return rows.map((row) => toItemState(row.item, row.stageKey));
+}
+
+async function rankedFor(
+  executor: AnyExecutor,
+  harnessIds: readonly string[],
+  which: SQL | undefined,
+  limit: number,
+): Promise<ReadonlyMap<string, readonly ItemState[]>> {
+  const found = new Map<string, ItemState[]>(harnessIds.map((harnessId) => [harnessId, []]));
+  if (harnessIds.length === 0) return found;
+  const ranked = executor
+    .select({
+      id: harnessItems.id,
+      rank: sql<number>`row_number() over (partition by ${harnessItems.harnessId} order by ${harnessItems.priority} desc, ${harnessItems.id} asc)`.as(
+        'rank',
+      ),
+    })
+    .from(harnessItems)
+    .where(and(inArray(harnessItems.harnessId, [...harnessIds]), which))
+    .as('ranked');
+  const rows = await selectItems(executor)
+    .innerJoin(ranked, eq(ranked.id, harnessItems.id))
+    .where(lte(ranked.rank, limit))
+    .orderBy(asc(harnessItems.harnessId), desc(harnessItems.priority), asc(harnessItems.id));
+  for (const row of rows) {
+    found.get(row.item.harnessId)?.push(toItemState(row.item, row.stageKey));
+  }
+  return found;
+}
+
+export function parkedForHarnesses(
+  executor: AnyExecutor,
+  harnessIds: readonly string[],
+  limit: number,
+): Promise<ReadonlyMap<string, readonly ItemState[]>> {
+  const rows = checkedRows(limit, 'parked item');
+  return rankedFor(executor, harnessIds, eq(harnessItems.gateStatus, 'parked'), rows);
+}
+
+export function openForHarnesses(
+  executor: AnyExecutor,
+  harnessIds: readonly string[],
+  limit: number,
+): Promise<ReadonlyMap<string, readonly ItemState[]>> {
+  const rows = checkedRows(limit, 'open item');
+  return rankedFor(executor, harnessIds, ne(harnessItems.gateStatus, 'done'), rows);
 }
 
 async function openCounts(

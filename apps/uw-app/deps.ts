@@ -1,4 +1,5 @@
 import type { HealthReport } from '@uw/contracts';
+import type { TimingVariables } from 'hono/timing';
 import type { JWTVerifyGetKey } from 'jose';
 import type { Logger, LogSink } from '@uw/core/log';
 import type { Principal } from '@uw/core/principal';
@@ -30,7 +31,7 @@ export type AppEnv = {
     access: AccessIdentity | null;
     outcome: string | null;
     frameHealth: () => Promise<HealthReport | null>;
-  };
+  } & TimingVariables;
 };
 
 export const platformDeps: AppDeps = {

@@ -95,7 +95,7 @@ async function delegationAdmits(
   return delegation.harnessId === harness.id && delegation.capability !== 'none';
 }
 
-export async function admitsHarness(
+async function admitsHarness(
   ports: ScenePorts,
   tx: StoreTransaction,
   caller: Caller,
@@ -106,6 +106,20 @@ export async function admitsHarness(
   return delegationAdmits(ports, tx, caller.actor, harness, at);
 }
 
+export async function admittedHarnesses(
+  ports: ScenePorts,
+  tx: StoreTransaction,
+  caller: Caller,
+  at: Date,
+): Promise<readonly Harness[]> {
+  const shown: Harness[] = [];
+  for (const harness of await tx.harnesses.read.list()) {
+    if (await admitsHarness(ports, tx, caller, harness, at)) shown.push(harness);
+  }
+  tx.admit?.(shown.map((harness) => harness.id));
+  return shown;
+}
+
 export async function readableHarness(
   ports: ScenePorts,
   tx: StoreTransaction,
@@ -114,6 +128,10 @@ export async function readableHarness(
   at: Date,
 ): Promise<Harness | null> {
   if (!ownerBound(caller.actor)) return null;
+  if (tx.admit !== undefined) {
+    const shown = await admittedHarnesses(ports, tx, caller, at);
+    return shown.find((harness) => harness.id === harnessId) ?? null;
+  }
   const harness = await tx.harnesses.read.byId(harnessId);
   if (harness === null) return null;
   return (await admitsHarness(ports, tx, caller, harness, at)) ? harness : null;
