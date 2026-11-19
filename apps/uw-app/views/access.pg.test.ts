@@ -104,8 +104,8 @@ async function orgAdminSeesEverything(db: Database): Promise<void> {
   await scene(db);
   const { document, text } = await documentFor(db, ROWAN);
   const grants = rowsOf(document, 'Who has access');
-  expect(grants).toContain(`infra.admin${INFRA.email} | admin | 30-39 Infrastructure`);
-  expect(grants).toContain(`tech.editor${TECH.email} | editor | 80-89 Tech & SLR`);
+  expect(grants).toContain(`${INFRA.email}${INFRA.email} | admin | 30-39 Infrastructure`);
+  expect(grants).toContain(`${TECH.email}${TECH.email} | editor | 80-89 Tech & SLR`);
   expect(grants.some((row) => row.includes('admin | Whole organization'))).toBe(true);
   expect(rowsOf(document, 'Waiting for access').map((row) => row.split(' | ')[1])).toEqual([
     'No access yet',
@@ -122,8 +122,8 @@ async function areaAdminStaysInTheirArea(db: Database): Promise<void> {
   await scene(db);
   const { document, text } = await documentFor(db, INFRA.email);
   expect(rowsOf(document, 'Who has access')).toEqual([
-    `infra.admin${INFRA.email} | admin | 30-39 Infrastructure`,
-    `tech.editor${TECH.email} | viewer | 30-39 Infrastructure`,
+    `${INFRA.email}${INFRA.email} | admin | 30-39 Infrastructure`,
+    `${TECH.email}${TECH.email} | viewer | 30-39 Infrastructure`,
   ]);
   expect(text).not.toContain('80-89 Tech');
   expect(scopeChoices(document)).toEqual(['30-39 Infrastructure']);
@@ -148,8 +148,8 @@ async function memberSeesOwnGrants(db: Database): Promise<void> {
   await scene(db);
   const { document, text } = await documentFor(db, TECH.email);
   expect(rowsOf(document, 'Who has access')).toEqual([
-    `tech.editor${TECH.email} | editor | 80-89 Tech & SLR`,
-    `tech.editor${TECH.email} | viewer | 30-39 Infrastructure`,
+    `${TECH.email}${TECH.email} | editor | 80-89 Tech & SLR`,
+    `${TECH.email}${TECH.email} | viewer | 30-39 Infrastructure`,
   ]);
   expect(document.querySelector('form[data-command]')).toBeNull();
   expect(text).not.toContain('Waiting for access');
@@ -168,7 +168,7 @@ async function grantAndRevokeShowInPlace(db: Database): Promise<void> {
   expect(made['status']).toBe('accepted');
   const after = await documentFor(db, INFRA.email);
   expect(rowsOf(after.document, 'Who has access')).toContain(
-    `new.mate${FRESH.email} | viewer | 30-39 Infrastructure`,
+    `${FRESH.email}${FRESH.email} | viewer | 30-39 Infrastructure`,
   );
   expect(rowsOf(after.document, 'Waiting for access').join()).not.toContain(FRESH.email);
   const revoked = await send(db, INFRA.email, {
