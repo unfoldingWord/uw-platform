@@ -26,6 +26,8 @@ export type NavSection = {
 
 export type Person = { readonly initials: string; readonly name: string; readonly role: string };
 
+export type LogOutLink = { readonly label: string; readonly href: string };
+
 const focus = 'outline-offset-2 outline-side-code focus-visible:outline-2';
 const row = 'flex items-center gap-2 rounded-sm px-2 py-1 text-sm font-semibold whitespace-nowrap';
 const unbuilt = 'cursor-default opacity-45';
@@ -169,10 +171,22 @@ function Me(props: { readonly person: Person }) {
   );
 }
 
+function LogOut(props: { readonly link: LogOutLink }) {
+  const href = safeHref(props.link.href);
+  if (href === undefined) return null;
+  return (
+    <a href={href} class={`${row} text-side-text hover:bg-side-hover ${focus}`}>
+      <Icon name="right-from-bracket" size={2} />
+      <span>{props.link.label}</span>
+    </a>
+  );
+}
+
 export function Sidebar(props: {
   readonly sections: readonly NavSection[];
   readonly current: string;
   readonly person: Person | null;
+  readonly logOut: LogOutLink;
   readonly wordmarkPath: string;
 }) {
   return (
@@ -182,6 +196,9 @@ export function Sidebar(props: {
         <NavList sections={props.sections} current={props.current} />
       </nav>
       {props.person === null ? null : <Me person={props.person} />}
+      <div class="border-t border-side-line p-2">
+        <LogOut link={props.logOut} />
+      </div>
     </aside>
   );
 }
@@ -191,6 +208,7 @@ export function PhoneHeader(props: {
   readonly waiting: number;
   readonly sections: readonly NavSection[];
   readonly current: string;
+  readonly logOut: LogOutLink;
   readonly wordmarkPath: string;
 }) {
   return (
@@ -209,6 +227,9 @@ export function PhoneHeader(props: {
         </summary>
         <nav aria-label="Main" class="max-h-dvh overflow-auto border-t border-side-line p-2">
           <NavList sections={props.sections} current={props.current} />
+          <div class="mt-2 border-t border-side-line pt-2">
+            <LogOut link={props.logOut} />
+          </div>
         </nav>
       </details>
     </section>

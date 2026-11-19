@@ -12,6 +12,7 @@ export function testFrame(items: readonly NavItem[] = testItems): Frame {
   return {
     sections,
     person: { initials: 'RT', name: 'Rowan Test', role: 'admin · 80-89' },
+    logOut: { label: 'Log Out', href: '/cdn-cgi/access/logout' },
     waiting: 2,
     wordmarkPath: '/assets/uw-logo-white-0123456789ab.png',
     status: {

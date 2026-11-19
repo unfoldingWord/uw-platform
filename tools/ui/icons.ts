@@ -36,6 +36,7 @@ export const iconNames = [
   'moon',
   'plus',
   'receipt',
+  'right-from-bracket',
   'robot',
   'scale-balanced',
   'shield-check',

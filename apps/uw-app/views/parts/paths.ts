@@ -7,6 +7,10 @@ export function homePath(): string {
   return '/';
 }
 
+export function logOutPath(): string {
+  return '/cdn-cgi/access/logout';
+}
+
 export function agentQueuesPath(): string {
   return '/agent-queues';
 }

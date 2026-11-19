@@ -7,8 +7,15 @@ import type { NavItem, NavSection, Person } from '@uw/ui/components/sidebar.tsx'
 import { wordmarkPath } from '@uw/ui/generated/mark';
 import type { AppEnv } from '../../deps.ts';
 import { commitOf, environmentOf } from '../../env.ts';
-import { accessPath, agentQueuesPath, queuePath, healthPath, homePath } from './paths.ts';
-import { moduleCodes, noModules, platformAreas, type PlatformModule } from './names.ts';
+import {
+  accessPath,
+  agentQueuesPath,
+  queuePath,
+  healthPath,
+  homePath,
+  logOutPath,
+} from './paths.ts';
+import { moduleCodes, noModules, pageNames, platformAreas, type PlatformModule } from './names.ts';
 
 const noCounts: FrameCounts = { harnesses: [], waiting: 0, gatesOpen: 0, agentsWorking: 0 };
 
@@ -106,6 +113,7 @@ export async function frameOf(
   return {
     sections: sectionsOf(counts, watching(report)),
     person: personOf(c.get('principal')),
+    logOut: { label: pageNames.logOut, href: logOutPath() },
     waiting: counts.waiting,
     wordmarkPath,
     status: {
