@@ -385,6 +385,7 @@ export type HarnessRunsGateway = {
 export type DrizzleTransaction = {
   lock(key: string): Promise<void>;
   lockShared(key: string): Promise<void>;
+  admit?(harnessIds: readonly string[]): void;
   readonly harnesses: HarnessesGateway;
   readonly harnessStages: HarnessStagesGateway;
   readonly workflowDrafts: WorkflowDraftsGateway;

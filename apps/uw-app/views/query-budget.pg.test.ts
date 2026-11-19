@@ -1,7 +1,9 @@
+import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { createClient, type Database } from '@uw/db/client';
+import { defaultCiChecks } from '@uw/contracts';
+import { createClient, type Database, type QueryListener } from '@uw/db/client';
 import { testServer, withMigratedDatabase } from '@uw/db/test-database';
-import type { Clock } from '@uw/harness';
+import { software, type Clock } from '@uw/harness';
 import { queryCounter, type DatabaseStats } from '../database.ts';
 import {
   activatedHarness,
@@ -10,6 +12,7 @@ import {
   enqueuedItem,
   type BoardWorld,
 } from '../testing/board-world.ts';
+import { accepted, callerOf } from '../testing/commands.ts';
 import { kernelOn } from '../testing/kernel.ts';
 import { getHtml } from '../testing/views.ts';
 import {
@@ -110,6 +113,53 @@ describe.skipIf(testServer === undefined)('the database cost of a page', () => {
         expect({ name, ...cost }).toEqual({ name, ...small[name] });
         expect(cost.queries, name).toBeLessThanOrEqual(QUERY_BUDGET);
         expect(cost.transactions, name).toBeLessThanOrEqual(TRANSACTION_BUDGET);
+      }
+    });
+  }, 120_000);
+});
+
+async function elsewhere(world: BoardWorld): Promise<string> {
+  const kernel = kernelOn(world.db, seedClock);
+  const harnessId = randomUUID();
+  accepted(
+    await kernel.stages.activate(callerOf(world.rowan), {
+      harnessId,
+      harnessKey: 'elsewhere',
+      jdArea: '20-29',
+      template: software,
+      repository: null,
+      requiredChecks: defaultCiChecks,
+    }),
+  );
+  await enqueuedItem(kernel, world.rowan, harnessId, 'Visible to the stranger');
+  return harnessId;
+}
+
+function collecting(sent: unknown[]): QueryListener {
+  return (_query, parameters) => {
+    sent.push(...parameters);
+  };
+}
+
+describe.skipIf(testServer === undefined)('the shared reads of a page', () => {
+  it('never ask about a workflow the viewer cannot read', async () => {
+    await withMigratedDatabase(testServer ?? '', async (target) => {
+      const sent: unknown[] = [];
+      const db = createClient(target, collecting(sent));
+      try {
+        const world = await boardWorld(db, seedClock);
+        const theirs = await elsewhere(world);
+        const hidden = [world.harnessId, world.metered, world.subscribed, world.personHeld];
+        const paths = [homePath(), agentQueuesPath(), healthPath(), flowPath(theirs)];
+        for (const path of paths) {
+          sent.length = 0;
+          const page = await getHtml(db, world.stranger.email, path, {}, viewClock);
+          expect(page.status, path).toBe(200);
+          expect(sent, path).toContain(theirs);
+          for (const id of hidden) expect(sent, path).not.toContain(id);
+        }
+      } finally {
+        await db.$client.end();
       }
     });
   }, 120_000);

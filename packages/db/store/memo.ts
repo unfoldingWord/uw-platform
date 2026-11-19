@@ -54,10 +54,12 @@ const batches: ReadonlyMap<string, Batch> = new Map(
 
 const LIST_KEY = 'harnesses.list:[]';
 
-const requestScope = new AsyncLocalStorage<Seen>();
+type Scope = { readonly seen: Seen; readonly admitted: Set<string> };
+
+const requestScope = new AsyncLocalStorage<Scope>();
 
 export function sharingReads<T>(work: () => Promise<T>): Promise<T> {
-  return requestScope.run(new Map(), work);
+  return requestScope.run({ seen: new Map(), admitted: new Set() }, work);
 }
 
 function plain(value: unknown): boolean {
@@ -84,6 +86,7 @@ function remembered<T>(seen: Seen, key: string, read: () => Promise<T>): Promise
 type Context = {
   readonly executor: AnyExecutor;
   readonly seen: Seen;
+  readonly admitted: ReadonlySet<string>;
   readonly listed: () => Promise<readonly Harness[]>;
 };
 
@@ -92,9 +95,9 @@ type Read = (...args: unknown[]) => unknown;
 async function batched(context: Context, name: string, batch: Batch, args: readonly unknown[]) {
   const [harnessId, ...rest] = args;
   const shared = batch.shared(rest);
-  const ids = (await context.listed()).map((harness) => harness.id);
-  if (!ids.includes(String(harnessId))) return undefined;
-  const key = keyOf(`${name}#all`, shared);
+  if (!context.admitted.has(String(harnessId))) return undefined;
+  const ids = [...context.admitted].sort();
+  const key = keyOf(`${name}#${ids.join(',')}`, shared);
   if (key === null) return undefined;
   const all = await remembered(context.seen, key, () => batch.fetch(context.executor, ids, shared));
   return all.has(String(harnessId))
@@ -142,13 +145,18 @@ function isGateway(value: unknown): value is Gateway {
 }
 
 export function memoizedReads(tx: DrizzleTransaction, executor: AnyExecutor): DrizzleTransaction {
-  const seen = requestScope.getStore() ?? new Map<string, Promise<unknown>>();
+  const page = requestScope.getStore();
+  const { seen, admitted } = page ?? { seen: new Map(), admitted: new Set<string>() };
   const listed = () => remembered(seen, LIST_KEY, () => tx.harnesses.read.list());
-  const context: Context = { executor, seen, listed };
+  const context: Context = { executor, seen, admitted, listed };
   const entries = Object.entries(tx).map(([name, part]) =>
     isGateway(part)
       ? [name, { ...part, read: sharedReads(context, name, part.read) }]
       : [name, part],
   );
-  return Object.fromEntries(entries) as DrizzleTransaction;
+  const admit = (harnessIds: readonly string[]) => {
+    for (const harnessId of harnessIds) admitted.add(harnessId);
+  };
+  const shared = Object.fromEntries(entries) as DrizzleTransaction;
+  return page === undefined ? shared : { ...shared, admit };
 }
