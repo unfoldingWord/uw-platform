@@ -12,7 +12,7 @@ import type { Ports, RunRow, StoreTransaction } from '../ports.ts';
 import { spendRefusal } from './breaker-level.ts';
 import { isFailureDetail } from './evidence-rules.ts';
 import { activePersonaOn } from '../personas/projection.ts';
-import { personaOfPage, personaPageOf, type PersonaPage } from './persona.ts';
+import { personaOfPage, personaPageOf, unreadablePersona, type PersonaPage } from './persona.ts';
 import { ended, heldByRun, newHostedRun } from './rows.ts';
 import type { RunPersona, StartedRun, StartRunInput } from './types.ts';
 
@@ -118,6 +118,8 @@ async function openRun(
   const { caller, input, fix, runId, traceId, at } = start;
   const principal = await beatPrincipalOf(ports, tx, start);
   if ('status' in principal) return principal;
+  const hidden = await unreadablePersona(tx, principal, persona.pageId, at);
+  if (hidden !== null) return hidden;
   const acting: Caller = { ...caller, actor: principal, traceId };
   const claimed = await claimWithin(ports, tx, acting, { input, at, fix });
   if (claimed.status !== 'accepted') return claimed;
