@@ -4,7 +4,10 @@ const ELEMENT_NODE = 1;
 
 function heldByClient(node: Node): boolean {
   const element = node.nodeType === ELEMENT_NODE ? (node as Element) : node.parentElement;
-  return (element?.closest('form[data-dirty], [data-draft-editor]') ?? null) !== null;
+  return (
+    (element?.closest('form[data-dirty], [data-draft-editor], [data-outcome-keep]') ?? null) !==
+    null
+  );
 }
 
 export function morphMain(target: Element, html: string): void {

@@ -47,6 +47,7 @@ export const modules = [
       'people',
       'role_grants',
       'grant_audit',
+      'person_audit',
       'pages',
       'page_versions',
       'webhook_deliveries',
@@ -55,6 +56,7 @@ export const modules = [
     routes: [
       '/health',
       '/api/me',
+      '/access',
       '/api/acl/commands/:name',
       '/api/pages/commands/:name',
       '/api/pages/:pageId',

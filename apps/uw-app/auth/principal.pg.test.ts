@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
 import { parsePrincipal, type Principal } from '@uw/core/principal';
 import { getTableName } from 'drizzle-orm';
-import { people } from '@uw/db/schema';
+import { people, personAudit } from '@uw/db/schema';
 import { owns } from '../people/directory.ts';
 import { createApp } from '../app.tsx';
 import {
@@ -147,8 +147,8 @@ describe.skipIf(!testServer)('the pending page', () => {
 });
 
 describe('FD-7 the people directory is the one writer of people', () => {
-  it('declares exactly the people table as owned', () => {
-    expect(owns).toEqual([getTableName(people)]);
+  it('declares exactly the people table and its audit as owned', () => {
+    expect(owns).toEqual([getTableName(people), getTableName(personAudit)]);
   });
 });
 

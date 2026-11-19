@@ -1,5 +1,10 @@
 import type { ZodType } from 'zod';
-import { grantRoleCommandSchema, revokeRoleCommandSchema } from './acl-commands.ts';
+import {
+  approvePersonCommandSchema,
+  declinePersonCommandSchema,
+  grantRoleCommandSchema,
+  revokeRoleCommandSchema,
+} from './acl-commands.ts';
 import {
   bindServiceTokenCommandSchema,
   revokeServiceTokenCommandSchema,
@@ -161,6 +166,8 @@ export const schemaRegistry: Record<string, ZodType> = {
   'platform-command-name': platformCommandNameSchema,
   'grant-role-command': grantRoleCommandSchema,
   'revoke-role-command': revokeRoleCommandSchema,
+  'approve-person-command': approvePersonCommandSchema,
+  'decline-person-command': declinePersonCommandSchema,
   'indicator-status': indicatorStatusSchema,
   'overall-status': overallStatusSchema,
   'health-indicator': healthIndicatorSchema,
