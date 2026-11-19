@@ -21,7 +21,7 @@
 ### Findings
 
 1. **Fixed by #153 and ADR 0015: a grant on an area now reads only that area.** Before that fix, an editor or admin on any area could read every area. This was deliberate (spec, the "org-wide read that `editor` anywhere carries"; `acl.test.ts:50,53`) and fits an open, Notion-like culture. It also means an editor in 80–89 can read Finance (20–29). The platform plan (§4) said finance detail and donor history would be excluded from that open read. That exclusion has not been built yet.
-2. **Classification is labelling only, not enforcement.** Every table is labelled `public`, `internal`, `restricted` or `sensitive`. No read path in `apps/uw-app` checks that label. Before any `restricted` or `sensitive` data arrives (credentials, gifts, ledger), reads of those rows must require a grant on that exact area. The broad cross-area read must not reach them.
+2. **Classification is labelling only, not enforcement.** Every table is labelled `public`, `internal`, `restricted` or `sensitive`. No read path in `apps/uw-app` checks that label. Before any `restricted` or `sensitive` data arrives (credentials, gifts, ledger), reads of those rows must require a grant on that exact area. The broad cross-area read must not reach them. **Ruling (#155):** four restricted tables have no area (`grant_audit`, `service_tokens`, `push_subscriptions`, and `role_grants` for org grants), so they follow the record's owner: grants and their audit are read by org admins, the admin of the grant's area, and the grantee; service tokens and push subscriptions by the person they belong to, plus org admins.
 3. **An agent carries all of its person's grants.** For pages and tasks this is acceptable. For credentials it is too broad (Part 2 narrows it).
 4. **No credential store exists.** Every external secret is a Worker-wide environment secret: the model keys, five GitHub App private keys, the Access API token, the VAPID key and the Zulip bot key. Any code in `uw-app` can read all of them, so the blast radius is the whole platform.
 5. **The live grants could not be checked.** I could not see who actually holds what on staging and production: there is no database access from this machine, and production needs your go-ahead. Checks to run: list the live `role_grants`; confirm at least two org admins (bus factor); confirm nobody holds org-scope `editor` without need, since that means write access to every area, Finance included.
@@ -51,7 +51,7 @@ A grant on an area covers that area's categories and IDs. A credential pinned to
 | `reveal` | See the plaintext value | Nobody by default. Needs an explicit, time-limited grant on that one credential from an area admin, and notifies the area's admins |
 | `manage` | Create, rotate, revoke, bind, grant `reveal` | `admin` on that exact area |
 
-**The open cross-area read never applies to credentials.** Every capability needs a grant on the credential's own area, or on org scope where the table allows it. Even an org admin gets `manage`, not `reveal`; to see a value, an org admin needs a reveal grant like anyone else. This is a new resource kind in `can()` with its own rule. It must not route through `read`. Its test cases come first: "an editor in 80–89 cannot use a 20–29 credential"; "an org admin cannot reveal without a reveal grant".
+**The open cross-area read never applies to credentials.** Every capability needs a grant on the credential's own area. **Ruling (#156):** the one org-scope exception is that an org admin gets `see` and `manage` on every credential, so someone can rotate or revoke when an area admin is unavailable. An org admin never gets `use` or `reveal`; to see a value, an org admin needs a reveal grant like anyone else. Org editors and org viewers get nothing on credentials. This is a new resource kind in `can()` with its own rule. It must not route through `read`. Its test cases come first: "an editor in 80–89 cannot use a 20–29 credential"; "an org admin cannot reveal without a reveal grant".
 
 ### How agents and connectors use one
 
@@ -89,7 +89,7 @@ Each value is encrypted with its own data key (AES-256-GCM, Web Crypto, availabl
 
 ### Platform secrets versus area credentials
 
-The secrets the platform itself runs on (model keys, GitHub App keys, Access API token, VAPID, Zulip bot) stay out of this store. They move from plain `wrangler secret` to **Cloudflare Secrets Store**, so each Worker binds only the secrets it needs, and they are listed under 30–39 Infrastructure for ownership and rotation. The credentials store is for credentials that belong to an area's work: partner APIs, portals, funder systems, bank exports.
+The secrets the platform itself runs on (model keys, GitHub App keys, Access API token, VAPID, Zulip bot) stay out of this store. They move from plain `wrangler secret` to **Cloudflare Secrets Store**, so each Worker binds only the secrets it needs, and they are listed under 30–39 Infrastructure for ownership and rotation. **Added (#160):** this includes the AWS credentials the store uses to call KMS, bound only to the Worker that decrypts, under an IAM role limited to `kms:Decrypt` and `kms:GenerateDataKey` on the one key. The credentials store is for credentials that belong to an area's work: partner APIs, portals, funder systems, bank exports.
 
 ### Lifecycle
 
@@ -104,6 +104,9 @@ The secrets the platform itself runs on (model keys, GitHub App keys, Access API
 3. **Order:** the read-scope fix (#153) first, then classification-aware reads, then the store.
 4. **Production check:** approved in principle. Reading the live `role_grants` still needs database access from a person, because no credentials exist on the build machine.
 5. **An editor cannot read every area** (#153, ADR 0015). Org-wide visibility is now an explicit `viewer` grant at `org` scope.
+6. **Persona activation across areas** answers `page_not_found` rather than `not_permitted`, so the platform does not confirm that a page exists to someone who cannot read it (#153).
+7. **Tables with no area** follow the record's owner (#155). **Org admins** get `see` and `manage` on credentials, never `use` or `reveal` (#156). **The KMS credentials** are a platform secret (#160).
+8. **Sign-in:** Google, per PRD FD-7; outsiders sign in and land as pending rather than being refused (#154).
 
 ## Proposed issues (one PR each, into `develop`)
 
