@@ -34,4 +34,4 @@ Every secret the platform runs on was a Worker secret: a string on `env`, readab
 - `tools/github-apps/convert.ts` still sets a new App's private key as a Worker secret. It works, and health counts it; moving it to the store is by hand until that tool is changed.
 - The runbook is `infra/README.md`, "Platform secrets in Cloudflare Secrets Store".
 
-Source: issue #160; `prd/Credentials Store - Design Proposal.md`, "Platform secrets versus area credentials"; ADR 0018.
+Source: issue #160; `prd/Credentials Store - Design Proposal.md`, "Platform secrets versus area credentials"; ADR 0019.

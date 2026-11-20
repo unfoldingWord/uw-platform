@@ -4,7 +4,7 @@ date: 2026-11-20
 ---
 # A credential answers four capabilities and never read
 
-The credentials store (#157 to #159) holds secrets that belong to an area's work. `can()` knew three actions, `read`, `write` and `admin`, and an `org` grant satisfies each of them on every area. A credential that answered those actions would be used by every org editor and revealed to every org admin. ADR 0016 left room for a resource kind with its own rule; this is it.
+The credentials store (#157 to #159) holds secrets that belong to an area's work. `can()` knew three actions, `read`, `write` and `admin`, and an `org` grant satisfies each of them on every area. A credential that answered those actions would be used by every org editor and revealed to every org admin. ADR 0017 left room for a resource kind with its own rule; this is it.
 
 **Decision (2026-11-20).** `can(actor, capability, { kind: 'credential', ... }, at)` answers four capabilities, `see`, `use`, `reveal` and `manage`, each by the rule `credentialRules` declares in `packages/core/acl.ts`. A credential resource answers nothing else: `read`, `write` and `admin` on it are always refused, and a capability asked of an area, the org or a row is always refused. So no credential is reached through a page read, and no page is reached through a capability.
 
@@ -26,7 +26,7 @@ The rows for the roles are the design (`prd/Credentials Store - Design Proposal.
 - **A reveal grant adds to an area grant.** `reveal` needs the reveal grant and `see`. The design says a person's reveal grants end when their role grants are revoked; requiring `see` makes that true without anyone deleting the reveal grant. An org admin holds `see`, so a reveal grant is all they lack, as the ruling says.
 - **A reveal grant always expires.** Its `expiresAt` is an instant, never `null`, and one that is not a date is never live.
 
-**What #157 builds on.** The five credential tables are `restricted` or `sensitive`, so `tools/properties/restricted-rows.test.ts` refuses their migration until each has an entry in `rowReadRules`. A read rule is a ceiling (ADR 0016), and the three parts express the capability that guards each table: `{ area: 'viewer', owner: false, orgAdmin: true }` is `see`, and `{ area: 'admin', owner: false, orgAdmin: true }` is `manage`. No rule is as narrow as `reveal`, so the ciphertext table takes the `manage` ceiling and its readers are `platform` in the restricted-reads ledger. Every path that hands a credential row to a caller asks `can()` for the capability, on the credential resource, and not `read` on the row.
+**What #157 builds on.** The five credential tables are `restricted` or `sensitive`, so `tools/properties/restricted-rows.test.ts` refuses their migration until each has an entry in `rowReadRules`. A read rule is a ceiling (ADR 0017), and the three parts express the capability that guards each table: `{ area: 'viewer', owner: false, orgAdmin: true }` is `see`, and `{ area: 'admin', owner: false, orgAdmin: true }` is `manage`. No rule is as narrow as `reveal`, so the ciphertext table takes the `manage` ceiling and its readers are `platform` in the restricted-reads ledger. Every path that hands a credential row to a caller asks `can()` for the capability, on the credential resource, and not `read` on the row.
 
 **Rejected.**
 
