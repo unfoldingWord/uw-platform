@@ -2,7 +2,7 @@ import { and, desc, eq, isNull } from 'drizzle-orm';
 import type { Principal } from '@uw/contracts';
 import { can, type CredentialBinding, type CredentialResource } from '@uw/core/acl';
 import type { CredentialRefusal } from '@uw/core/credentials';
-import type { Database } from '@uw/db/client';
+import type { Executor, Transaction } from '@uw/db/client';
 import {
   credentialBindings,
   credentialGrants,
@@ -10,6 +10,7 @@ import {
   credentialVersions,
 } from '@uw/db/schema';
 import { openValue, type SealedValue } from './envelope.ts';
+import { actorAsOf } from './live-actor.ts';
 import {
   recordAccess,
   refuseAndRecord,
@@ -46,7 +47,7 @@ type Facts = {
   readonly current: CurrentVersion | null;
 };
 
-async function currentVersion(db: Database, credentialId: string): Promise<CurrentVersion | null> {
+async function currentVersion(db: Executor, credentialId: string): Promise<CurrentVersion | null> {
   const [row] = await db
     .select({
       id: credentialVersions.id,
@@ -65,9 +66,14 @@ async function currentVersion(db: Database, credentialId: string): Promise<Curre
   return { ...row, cipher: row.cipher as SealedValue['cipher'] };
 }
 
-async function factsOf(db: Database, request: OpenRequest): Promise<Facts | null> {
+async function factsOf(
+  db: Executor,
+  request: OpenRequest,
+  lock: 'locked' | 'unlocked',
+): Promise<Facts | null> {
   const { credentialId } = request;
-  const [credential] = await db.select().from(credentials).where(eq(credentials.id, credentialId));
+  const found = db.select().from(credentials).where(eq(credentials.id, credentialId));
+  const [credential] = lock === 'locked' ? await found.for('update') : await found;
   if (credential === undefined) return null;
   const bindings = await db
     .select({
@@ -116,6 +122,45 @@ function refusalOf(
   return facts.current === null ? 'envelope_malformed' : null;
 }
 
+type Unwrapped = {
+  readonly entry: AccessEntry;
+  readonly versionId: string;
+  readonly value: Uint8Array<ArrayBuffer>;
+};
+
+type FinalAnswer = CredentialRefusal | 'credential_not_found' | null;
+
+async function finalAnswer(
+  tx: Transaction,
+  deps: CredentialsDeps,
+  request: OpenRequest,
+  unwrapped: Unwrapped,
+): Promise<FinalAnswer> {
+  const { entry, versionId } = unwrapped;
+  const facts = await factsOf(tx, request, 'locked');
+  if (facts === null) return 'credential_not_found';
+  const at = deps.clock.now();
+  const actor = await actorAsOf(tx, entry.actor, at);
+  const moved = facts.resource.area !== entry.jdArea;
+  const reason = moved ? 'key_rejected' : refusalOf(actor, request, facts, at);
+  await recordAccess(tx, { ...entry, at }, { versionId, reason });
+  return reason;
+}
+
+async function releasedOnlyIfStillAllowed(
+  deps: CredentialsDeps,
+  request: OpenRequest,
+  unwrapped: Unwrapped,
+): Promise<FinalAnswer> {
+  let answer: FinalAnswer = 'not_permitted';
+  try {
+    answer = await deps.db.transaction((tx) => finalAnswer(tx, deps, request, unwrapped));
+    return answer;
+  } finally {
+    if (answer !== null) unwrapped.value.fill(0);
+  }
+}
+
 export async function openCredential(
   deps: CredentialsDeps,
   actor: Principal,
@@ -124,7 +169,7 @@ export async function openCredential(
 ): Promise<OpenedCredential> {
   const at = deps.clock.now();
   const { credentialId } = request;
-  const facts = await factsOf(deps.db, request);
+  const facts = await factsOf(deps.db, request, 'unlocked');
   if (facts === null) return refused('credential_not_found');
   const jdArea = facts.resource.area;
   const entry: AccessEntry = {
@@ -146,6 +191,8 @@ export async function openCredential(
   const versionId = current.id;
   const opened = await openValue(deps.keys, { credentialId, versionId, jdArea }, current);
   if (!opened.ok) return refuseAndRecord(deps.db, entry, { versionId, reason: opened.reason });
-  await recordAccess(deps.db, entry, { versionId, reason: null });
-  return { ok: true, value: opened.plaintext, versionId, version: current.version };
+  const value = opened.plaintext;
+  const answer = await releasedOnlyIfStillAllowed(deps, request, { entry, versionId, value });
+  if (answer !== null) return refused(answer);
+  return { ok: true, value, versionId, version: current.version };
 }

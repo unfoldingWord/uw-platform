@@ -126,6 +126,10 @@ _Avoid_: additional data, AAD, tags
 The rows of `credential_access_log`: every create, rotate, use and reveal of a credential, done or refused, with the actor, the run, the workflow and connector of a use, and the trace id. Append-only and kept seven years.
 _Avoid_: audit log on its own, grant audit (that records grants), history
 
+**Final check**:
+The second time a credential's access is decided, after the key service has answered and before the value is returned or a sealed value is written. It runs in one transaction that locks the credential row, reads the credential, its bindings, its reveal grants and the person's role grants again at a fresh time, and writes the access log row. The final check decides; the first check only saves a call to the key service (ADR 0018).
+_Avoid_: recheck, revalidation, double check
+
 **Grant audit**:
 One row of `grant_audit`: who granted or revoked which grant, when, the row before and after, and the trace id. Append-only.
 _Avoid_: access log, history

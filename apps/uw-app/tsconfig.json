@@ -18,6 +18,7 @@
     "testing/screen-checks.ts",
     "testing/board-world.ts",
     "testing/gate-world.ts",
+    "testing/credentials-world.ts",
     "islands/browser/**",
     "islands/worker/**"
   ]

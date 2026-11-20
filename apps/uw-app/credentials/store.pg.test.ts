@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer, type TestDatabase } from '@uw/db/test-database';
-import { seedHarness, seedPerson } from '@uw/db/test-seed';
+import { seedGrant, seedHarness, seedPerson } from '@uw/db/test-seed';
 import { toBase64 } from './base64.ts';
 import type { DataKeys } from './data-keys.ts';
 import { openCredential } from './open.ts';
@@ -24,6 +24,7 @@ import {
   person,
   rewrite,
   runId,
+  seededGrants,
   seededPeople,
   textOf,
   traceId,
@@ -454,6 +455,7 @@ describe.skipIf(!testServer)('#157 the credentials store on Postgres', () => {
     database = await createMigratedDatabase(testServer ?? '');
     db = createClient(database.connectionString);
     for (const seeded of seededPeople) await seedPerson(db, seeded);
+    for (const seeded of seededGrants) await seedGrant(db, seeded);
     await seedHarness(db, { id: harnessId, key: 'finance', jdArea: '20-29' });
     await seedHarness(db, { id: otherHarnessId, key: 'finance-two', jdArea: '20-29' });
     world = await worldOn(db);
