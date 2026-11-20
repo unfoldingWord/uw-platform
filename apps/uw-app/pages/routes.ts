@@ -1,6 +1,7 @@
 import { Hono, type Context } from 'hono';
 import {
   confirmPageCommandSchema,
+  movePageCommandSchema,
   createPageCommandSchema,
   nameCategoryCommandSchema,
   pageCommandAcceptedSchema,
@@ -12,14 +13,19 @@ import type { Database } from '@uw/db/client';
 import type { Principal } from '@uw/core/principal';
 import type { AppEnv } from '../deps.ts';
 import { malformed, readJson } from '../http/commands.ts';
+import { formGuard } from '../http/form-guard.ts';
 import { refuse, reply } from '../http/outcomes.ts';
+import { managePage, pageManageScreen } from '../views/screens/page-manage.tsx';
+import { pageVersionScreen, restoreVersion } from '../views/screens/page-version.tsx';
 import { wikiCategoryScreen } from '../views/screens/wiki-category.tsx';
 import { searchScreen } from '../views/screens/search.tsx';
+import { createFromForm, wikiNewScreen } from '../views/screens/wiki-new.tsx';
 import { wikiScreen } from '../views/screens/wiki.tsx';
 import { nameCategory } from './categories.ts';
 import { confirmPage } from './confirm.ts';
 import { connectDraft } from './draft-handlers.ts';
 import { downloadFile, listPageFiles, uploadFile } from './file-handlers.ts';
+import { movePage } from './move.ts';
 import { pageReads } from './read-handlers.ts';
 import { createPage, updatePage, type PageRefusal, type PageResult } from './store.ts';
 
@@ -50,6 +56,15 @@ const handlers = new Map<string, Run>([
       const command: UpdatePageCommand = parsed.data;
       const result = await updatePage(db, actor, command, traceId, at);
       return { requestId: command.requestId, result };
+    },
+  ],
+  [
+    'move_page',
+    async (db, actor, body, traceId, at) => {
+      const parsed = movePageCommandSchema.safeParse(body);
+      if (!parsed.success) return null;
+      const result = await movePage(db, actor, parsed.data, traceId, at);
+      return { requestId: parsed.data.requestId, result };
     },
   ],
   [
@@ -123,7 +138,21 @@ function pageRoutes(): Hono<AppEnv> {
 function wikiScreenRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
   routes.get('/', wikiScreen);
+  routes.use('/new', formGuard);
+  routes.get('/new', wikiNewScreen);
+  routes.post('/new', createFromForm);
   routes.get('/:category', wikiCategoryScreen);
+  return routes;
+}
+
+function pageScreenRoutes(): Hono<AppEnv> {
+  const routes = new Hono<AppEnv>();
+  routes.use('/:pageId/manage', formGuard);
+  routes.get('/:pageId/manage', pageManageScreen);
+  routes.post('/:pageId/manage', managePage);
+  routes.use('/:pageId/versions/:version', formGuard);
+  routes.get('/:pageId/versions/:version', pageVersionScreen);
+  routes.post('/:pageId/versions/:version', restoreVersion);
   return routes;
 }
 
@@ -144,5 +173,6 @@ export function mountKnowledgeBase(app: Hono<AppEnv>): void {
   app.route('/api/pages', pageRoutes());
   app.route('/api/files', fileRoutes());
   app.route('/wiki', wikiScreenRoutes());
+  app.route('/pages', pageScreenRoutes());
   app.route('/search', searchScreenRoutes());
 }

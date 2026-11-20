@@ -129,7 +129,7 @@ function conflictReason(error: unknown): ErrorReason | null {
   return null;
 }
 
-async function refusalOrThrow(error: unknown): Promise<PageResult> {
+export async function pageConflict(error: unknown): Promise<PageResult> {
   const reason = conflictReason(error);
   if (reason === null) throw error;
   return refused(reason);
@@ -223,7 +223,7 @@ export async function createPageAs(
       return made;
     });
   } catch (error) {
-    return refusalOrThrow(error);
+    return pageConflict(error);
   }
 }
 
@@ -242,10 +242,10 @@ async function ancestorChainReaches(
   return rows.length > 0;
 }
 
-async function parentRefusal(
+export async function parentRefusal(
   tx: Transaction,
   actor: Principal,
-  command: UpdatePageCommand,
+  command: Pick<UpdatePageCommand, 'pageId' | 'parentId'>,
   at: Date,
 ): Promise<ErrorReason | null> {
   if (command.parentId === null) return null;
@@ -378,7 +378,7 @@ async function saveChecked(db: Database, save: Save): Promise<PageResult | PageR
   try {
     return await db.transaction((tx) => updateInTransaction(tx, save));
   } catch (error) {
-    return refusalOrThrow(error);
+    return pageConflict(error);
   }
 }
 

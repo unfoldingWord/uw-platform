@@ -24,6 +24,9 @@ export const pageNames = {
   wiki: 'Pages & Wiki',
   search: 'Search',
   pageEdit: 'Edit',
+  pageManage: 'Manage',
+  pageVersion: 'Version',
+  wikiNew: 'New Page',
   logOut: 'Log Out',
 } as const;
 

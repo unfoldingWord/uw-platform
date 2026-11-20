@@ -95,7 +95,8 @@ function pathOf(entry: ScreenEntry, world: Seeded): string {
     .replace(':runId', world.runId)
     .replace(':indicator', 'spend')
     .replace(':pageId', personaPageId)
-    .replace(':category', '81');
+    .replace(':category', '81')
+    .replace(':version', '1');
 }
 
 async function renderAll(world: Seeded): Promise<readonly Rendered[]> {

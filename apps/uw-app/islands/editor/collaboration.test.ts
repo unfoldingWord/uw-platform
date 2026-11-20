@@ -2,8 +2,7 @@ import { JSDOM } from 'jsdom';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { applyAwarenessUpdate, Awareness, encodeAwarenessUpdate } from 'y-protocols/awareness';
 import { applyUpdate, Doc, encodeStateAsUpdate } from 'yjs';
-import { editorHtml } from '../../markdown/editor-html.ts';
-import { markdownFromEditor } from '../../markdown/from-editor.ts';
+import { markdownFromEditor } from './from-editor.ts';
 
 type Module = typeof import('./collaboration.ts');
 type Core = typeof import('@tiptap/core');
@@ -31,7 +30,7 @@ const globals = [
 ] as const;
 
 const MARKDOWN = '## Rules\n\nUse **strong** passwords.';
-const HTML = editorHtml(MARKDOWN);
+const HTML = '<h2>Rules</h2><p>Use <strong>strong</strong> passwords.</p>';
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 const never = { setTimeout: () => undefined };
 

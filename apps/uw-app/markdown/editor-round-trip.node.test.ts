@@ -1,8 +1,8 @@
 import { JSDOM } from 'jsdom';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { editorHtml } from '../../markdown/editor-html.ts';
-import { markdownFromEditor } from '../../markdown/from-editor.ts';
-import { roundTripSamples } from '../../markdown/round-trip-samples.ts';
+import { editorHtml } from './editor-html.ts';
+import { markdownFromEditor } from '../islands/editor/from-editor.ts';
+import { roundTripSamples } from './round-trip-samples.ts';
 
 type Through = (html: string) => string;
 
@@ -35,7 +35,7 @@ function browserGlobals(): void {
 beforeAll(async () => {
   browserGlobals();
   const { Editor } = await import('@tiptap/core');
-  const { pageExtensions } = await import('./extensions.ts');
+  const { pageExtensions } = await import('../islands/editor/extensions.ts');
   throughTiptap = (html) => {
     const editor = new Editor({
       element: document.createElement('div'),

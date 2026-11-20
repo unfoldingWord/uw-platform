@@ -1,6 +1,5 @@
 import { JSDOM } from 'jsdom';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { editorHtml } from '../../markdown/editor-html.ts';
 
 type Start = typeof import('./page-editor.ts').startPageEditor;
 
@@ -32,7 +31,10 @@ function install(next: JSDOM): void {
   }
 }
 
-function page(markdown: string, content = editorHtml(markdown)): Document {
+const RULES = '## Rules\n\nUse **strong** passwords.';
+const RULES_HTML = '<h2>Rules</h2><p>Use <strong>strong</strong> passwords.</p>';
+
+function page(markdown: string, content: string): Document {
   install(
     new JSDOM(
       `<!DOCTYPE html><body><form>
@@ -70,8 +72,8 @@ beforeAll(async () => {
 
 describe('#175 the editor takes over the text field, and hands markdown back on save', () => {
   it('shows the editor, hides the text field, and saves the page unchanged when nothing was typed', async () => {
-    const markdown = '## Rules\n\nUse **strong** passwords.\n\n- [x] done\n- [ ] open';
-    const document = page(markdown);
+    const markdown = RULES;
+    const document = page(markdown, RULES_HTML);
     const editor = await start(document, deps);
     expect(editor).not.toBeNull();
     expect(document.querySelector('[data-editor]')?.hasAttribute('hidden')).toBe(false);
@@ -80,7 +82,7 @@ describe('#175 the editor takes over the text field, and hands markdown back on 
   });
 
   it('writes what was typed and formatted as markdown', async () => {
-    const document = page('First line.');
+    const document = page('First line.', '<p>First line.</p>');
     const editor = await start(document, deps);
     editor?.commands.selectAll();
     document.querySelector<HTMLButtonElement>('[data-format="bold"]')?.click();

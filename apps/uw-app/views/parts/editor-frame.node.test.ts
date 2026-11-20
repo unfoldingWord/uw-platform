@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { EditorFrame } from '../../views/parts/editor-frame.tsx';
-import { formatNames } from './formats.ts';
+import { EditorFrame } from './editor-frame.tsx';
+import '../../islands/editor/extensions.ts';
+import { formatNames } from '../../islands/editor/formats.ts';
 
 describe('#175 every toolbar button names a format the editor applies', () => {
   it('offers no button the editor does not know', () => {

@@ -1,7 +1,7 @@
 import { createNodeFromContent, Editor, getHTMLFromFragment, getSchema } from '@tiptap/core';
 import type { Node as PageNode } from '@tiptap/pm/model';
 import { pageIndexReplySchema } from '@uw/contracts';
-import { markdownFromEditor } from '../../markdown/from-editor.ts';
+import { markdownFromEditor } from './from-editor.ts';
 import { markdownFor } from '../browser/page-upload.ts';
 import { createMatcher, type Matcher } from '../browser/switcher-match.ts';
 import type { Collaboration } from './collaboration.ts';

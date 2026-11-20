@@ -11,7 +11,7 @@ import { treeOf, type TreeNode } from '../../pages/tree.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { areaLabel, moduleCodes, pageNames } from '../parts/names.ts';
 import { pageLink } from '../parts/page-shown.ts';
-import { pagePath, wikiPath } from '../parts/paths.ts';
+import { pagePath, wikiNewPath, wikiPath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 import { countWords } from './wiki.tsx';
 
@@ -88,6 +88,13 @@ export async function wikiCategoryScreen(c: Context<AppEnv>): Promise<Response> 
         lede={`${countWords(entries.length)} filed in this category.`}
       />
       <div class="flex flex-col gap-5">
+        {can(actor, 'write', { kind: 'area', area }, screen.at) ? (
+          <p class="m-0">
+            <a href={wikiNewPath({ category })} class={pageLink}>
+              New page in this category
+            </a>
+          </p>
+        ) : null}
         <Card title="Pages">
           {entries.length === 0 ? (
             <p class="m-0 text-sm text-text-2">No page is filed here yet.</p>

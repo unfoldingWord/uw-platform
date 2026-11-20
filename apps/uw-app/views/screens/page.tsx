@@ -22,7 +22,14 @@ import {
   type ShownPage,
 } from '../parts/page-shown.ts';
 import { idParam } from '../parts/params.ts';
-import { pageEditPath, pagePath, withBack } from '../parts/paths.ts';
+import {
+  pageEditPath,
+  pageManagePath,
+  pagePath,
+  pageVersionPath,
+  wikiNewPath,
+  withBack,
+} from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 
 const MIN_CONTENTS = 2;
@@ -34,9 +41,13 @@ function savedVersion(raw: string | undefined): number | null {
   return raw !== undefined && Number.isInteger(version) && version >= 1 ? version : null;
 }
 
-function History(props: { readonly versions: readonly PageVersion[] }) {
+function History(props: { readonly pageId: string; readonly versions: readonly PageVersion[] }) {
   const rows = props.versions.map((entry) => ({
-    version: String(entry.version),
+    version: (
+      <a href={pageVersionPath(props.pageId, entry.version)} class={pageLink}>
+        {String(entry.version)}
+      </a>
+    ),
     when: formatInstant(entry.savedAt),
     who: entry.savedBy,
     title: entry.title,
@@ -101,6 +112,21 @@ function PageList(props: {
   );
 }
 
+function Manage(props: { readonly shown: ShownPage }) {
+  const { page, canEdit } = props.shown;
+  if (!canEdit || page.type !== 'knowledge') return null;
+  return (
+    <p class="m-0 flex flex-wrap items-center gap-4 text-sm">
+      <a href={wikiNewPath({ parent: page.id })} class={pageLink}>
+        New page under this one
+      </a>
+      <a href={pageManagePath(page.id)} class={pageLink}>
+        Move, copy or retire
+      </a>
+    </p>
+  );
+}
+
 type Extras = {
   readonly back: string | null;
   readonly saved: number | null;
@@ -136,6 +162,10 @@ function body(shown: ShownPage, extras: Extras) {
           </p>
         )}
         {saved === null ? null : <Note>{`Saved as version ${String(saved)}.`}</Note>}
+        {page.status === 'retired' ? (
+          <Note>This page is retired. It is hidden from lists and search.</Note>
+        ) : null}
+        <Manage shown={shown} />
         {extras.drafted ? (
           <Note>There is an unsaved draft of this page. You are reading it as last saved.</Note>
         ) : null}
@@ -149,7 +179,7 @@ function body(shown: ShownPage, extras: Extras) {
         </div>
         <PageList title="Pages under this one" mark="children" pages={shown.children} />
         <PageList title="Linked from" mark="backlinks" pages={shown.backlinks} />
-        <History versions={shown.versions} />
+        <History pageId={page.id} versions={shown.versions} />
       </div>
     </>
   );

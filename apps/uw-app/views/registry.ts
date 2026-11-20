@@ -79,6 +79,17 @@ export const screens: readonly ScreenEntry[] = [
     file: 'apps/uw-app/views/screens/wiki-category.tsx',
     path: '/wiki/:category',
   },
+  { name: 'wiki-new', file: 'apps/uw-app/views/screens/wiki-new.tsx', path: '/wiki/new' },
+  {
+    name: 'page-manage',
+    file: 'apps/uw-app/views/screens/page-manage.tsx',
+    path: '/pages/:pageId/manage',
+  },
+  {
+    name: 'page-version',
+    file: 'apps/uw-app/views/screens/page-version.tsx',
+    path: '/pages/:pageId/versions/:version',
+  },
   {
     name: 'not-found',
     file: 'apps/uw-app/views/screens/not-found.tsx',

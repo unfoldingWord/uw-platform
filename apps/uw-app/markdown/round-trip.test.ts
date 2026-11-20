@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { editorHtml } from './editor-html.ts';
-import { markdownFromEditor } from './from-editor.ts';
+import { markdownFromEditor } from '../islands/editor/from-editor.ts';
 import { renderMarkdown } from './render.ts';
 import { roundTripSamples } from './round-trip-samples.ts';
 

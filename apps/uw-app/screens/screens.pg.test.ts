@@ -33,11 +33,14 @@ import {
   agentsPath,
   newAgentPath,
   pageEditPath,
+  pageManagePath,
+  pageVersionPath,
   pagePath,
   personaPath,
   runPath,
   runsPath,
   waitingPath,
+  wikiNewPath,
   wikiPath,
 } from '../views/parts/paths.ts';
 
@@ -178,6 +181,9 @@ async function boardScreens(db: Database): Promise<Screen[]> {
     ['page-edit', pageEditPath(knowledgeId)],
     ['wiki', wikiPath()],
     ['wiki-category', wikiPath('81')],
+    ['wiki-new', wikiNewPath({ category: '81' })],
+    ['page-manage', pageManagePath(knowledgeId)],
+    ['page-version', pageVersionPath(knowledgeId, 1)],
     ['search', '/search?q=assessment'],
   ];
   const headers = { accept: 'text/html' };
@@ -342,43 +348,48 @@ async function compareAll(css: string): Promise<string[]> {
   return failures;
 }
 
+const pictured = [
+  'home',
+  'agent-queues',
+  'new-workflow',
+  'queue',
+  'flow',
+  'controls-admin',
+  'agents',
+  'runs',
+  'run',
+  'new-agent',
+  'health',
+  'health-detail',
+  'access',
+  'persona',
+  'page',
+  'knowledge-page',
+  'page-edit',
+  'wiki',
+  'wiki-category',
+  'wiki-new',
+  'page-manage',
+  'page-version',
+  'search',
+  'controls-member',
+  'flow-member',
+  'flow-draft',
+  'flow-locked',
+  'waiting',
+  'gate',
+  'play',
+  'menu',
+  'account-menu',
+];
+
 describe.skipIf(!testServer || (!browserReady && !required))('UI-16 the screenshot check', () => {
   it('UI-16 the browser the check needs is installed', () => {
     expect(browserReady).toBe(true);
   });
 
   it('UI-16 every screen in light and dark, desktop and phone, matches its committed picture', async () => {
-    expect(screens.map((screen) => screen.name)).toEqual([
-      'home',
-      'agent-queues',
-      'new-workflow',
-      'queue',
-      'flow',
-      'controls-admin',
-      'agents',
-      'runs',
-      'run',
-      'new-agent',
-      'health',
-      'health-detail',
-      'access',
-      'persona',
-      'page',
-      'knowledge-page',
-      'page-edit',
-      'wiki',
-      'wiki-category',
-      'search',
-      'controls-member',
-      'flow-member',
-      'flow-draft',
-      'flow-locked',
-      'waiting',
-      'gate',
-      'play',
-      'menu',
-      'account-menu',
-    ]);
+    expect(screens.map((screen) => screen.name)).toEqual(pictured);
     expect(await compareAll(inlined())).toEqual([]);
   }, 600_000);
 

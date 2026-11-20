@@ -92,6 +92,22 @@ export function pageEditPath(pageId: string): string {
   return `${pagePath(pageId)}/edit`;
 }
 
+export function pageManagePath(pageId: string): string {
+  return `${pagePath(pageId)}/manage`;
+}
+
+export function pageVersionPath(pageId: string, version: number): string {
+  return `${pagePath(pageId)}/versions/${String(version)}`;
+}
+
+export function wikiNewPath(from: { readonly category?: string; readonly parent?: string } = {}) {
+  const query = new URLSearchParams();
+  if (from.category !== undefined) query.set('category', from.category);
+  if (from.parent !== undefined) query.set('parent', from.parent);
+  const asked = query.toString();
+  return asked === '' ? '/wiki/new' : `/wiki/new?${asked}`;
+}
+
 export function withBack(path: string, back: string | null): string {
   return back === null ? path : `${path}?back=${segment(back)}`;
 }

@@ -1,12 +1,13 @@
 import type { Context } from 'hono';
 import type { PageCategory } from '@uw/contracts';
 import { Card } from '@uw/ui/components/card.tsx';
+import { HumanActionLink } from '@uw/ui/components/human-action.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { categoryCounts } from '../../pages/categories.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { areasWithin, moduleCodes, pageNames, platformAreas } from '../parts/names.ts';
-import { wikiPath } from '../parts/paths.ts';
+import { wikiNewPath, wikiPath } from '../parts/paths.ts';
 
 const row =
   'flex items-baseline gap-3 rounded-sm px-4 py-2 text-base text-text outline-offset-2 outline-accent-text hover:bg-hover focus-visible:outline-2';
@@ -82,6 +83,9 @@ export async function wikiScreen(c: Context<AppEnv>): Promise<Response> {
       <PageHead
         title={pageNames.wiki}
         lede="The knowledge pages you can read, by area and category. Press Ctrl or Cmd with O to jump to a page by name."
+        actions={
+          <HumanActionLink href={wikiNewPath()} label="New page" name="New page" icon="pen" />
+        }
       />
       <div class="flex flex-col gap-5">
         {groups.length === 0 ? (
