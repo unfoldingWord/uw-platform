@@ -12,6 +12,7 @@ import { credentialAccessLog, credentials, credentialVersions } from '@uw/db/sch
 import type { Clock } from '@uw/harness';
 import type { DataKeys } from './data-keys.ts';
 import { sealValue, type SealedValue } from './envelope.ts';
+import { actorAsOf } from './live-actor.ts';
 
 export const owns = [
   'credentials',
@@ -36,7 +37,6 @@ export type StoreRefusal =
   | CredentialRefusal
   | 'credential_not_found'
   | 'credential_name_taken'
-  | 'value_not_storable'
   | 'connector_unknown'
   | 'workflow_not_found'
   | 'already_bound'
@@ -166,9 +166,16 @@ type Sealing = {
   readonly entry: AccessEntry;
 };
 
-async function insertCredential(db: Database, input: NewCredential, made: Sealing): Promise<void> {
+async function insertCredential(
+  deps: CredentialsDeps,
+  input: NewCredential,
+  made: Sealing,
+): Promise<boolean> {
   const { credentialId, versionId, personId, sealed, entry } = made;
-  await db.transaction(async (tx) => {
+  return deps.db.transaction(async (tx) => {
+    const at = deps.clock.now();
+    const actor = await actorAsOf(tx, entry.actor, at);
+    if (managerOf(actor, { id: credentialId, jdArea: input.jdArea }, at) === null) return false;
     await tx.insert(credentials).values({
       id: credentialId,
       jdArea: input.jdArea,
@@ -184,6 +191,7 @@ async function insertCredential(db: Database, input: NewCredential, made: Sealin
     const row = { id: versionId, credentialId, version: 1, createdBy: personId };
     await addVersion(tx, { ...row, createdAt: entry.at }, sealed);
     await recordAccess(tx, entry, { versionId, reason: null });
+    return true;
   });
 }
 
@@ -211,8 +219,9 @@ export async function createCredential(
     traceId,
     at,
   };
+  const made = { ...sealed, credentialId, versionId, personId, entry };
   try {
-    await insertCredential(deps.db, input, { ...sealed, credentialId, versionId, personId, entry });
+    if (!(await insertCredential(deps, input, made))) return refused('not_permitted');
   } catch (error) {
     if (nameTaken(error)) return refused('credential_name_taken');
     throw error;
@@ -228,15 +237,24 @@ async function nextVersion(tx: Transaction, credentialId: string): Promise<numbe
   return (row?.latest ?? 0) + 1;
 }
 
-async function addRotation(db: Database, input: Rotation, made: Sealing): Promise<Written> {
+async function addRotation(
+  deps: CredentialsDeps,
+  input: Rotation,
+  made: Sealing,
+): Promise<Written> {
   const { credentialId, versionId, personId, sealed, entry } = made;
-  return db.transaction(async (tx) => {
+  return deps.db.transaction(async (tx) => {
     const [locked] = await tx
-      .select({ revokedAt: credentials.revokedAt })
+      .select({ id: credentials.id, jdArea: credentials.jdArea, revokedAt: credentials.revokedAt })
       .from(credentials)
       .where(eq(credentials.id, credentialId))
       .for('update');
-    if (locked === undefined || locked.revokedAt !== null) {
+    if (locked === undefined) return refused('credential_not_found');
+    const at = deps.clock.now();
+    if (managerOf(await actorAsOf(tx, entry.actor, at), locked, at) === null) {
+      return refuseAndRecord(tx, entry, { versionId: null, reason: 'not_permitted' });
+    }
+    if (locked.revokedAt !== null) {
       return refuseAndRecord(tx, entry, { versionId: null, reason: 'credential_revoked' });
     }
     const version = await nextVersion(tx, credentialId);
@@ -283,9 +301,11 @@ export async function rotateCredential(
   if (found.revokedAt !== null) {
     return refuseAndRecord(deps.db, entry, { ...unsealed, reason: 'credential_revoked' });
   }
-  if (!storable(input.value)) return refused('value_not_storable');
+  if (!storable(input.value)) {
+    return refuseAndRecord(deps.db, entry, { ...unsealed, reason: 'value_not_storable' });
+  }
   const versionId = deps.newId();
   const sealed = await sealValue(deps.keys, { credentialId, versionId, jdArea }, input.value);
   if (!sealed.ok) return refuseAndRecord(deps.db, entry, { ...unsealed, reason: sealed.reason });
-  return addRotation(deps.db, input, { ...sealed, credentialId, versionId, personId, entry });
+  return addRotation(deps, input, { ...sealed, credentialId, versionId, personId, entry });
 }

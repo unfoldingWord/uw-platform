@@ -1,5 +1,5 @@
 {
-  "id": "f3a25725-e55a-49e0-9246-23d273f6ff4b",
+  "id": "53760eaa-3e8f-4ade-b008-8a648c2e7b2d",
   "prevId": "5e43cf19-77ca-4342-99aa-04429f8eeff4",
   "version": "7",
   "dialect": "postgresql",
@@ -4360,7 +4360,7 @@
         },
         "credential_access_log_action_known": {
           "name": "credential_access_log_action_known",
-          "value": "\"credential_access_log\".\"action\" IN ('create', 'rotate', 'revoke', 'bind', 'unbind', 'use', 'reveal')"
+          "value": "\"credential_access_log\".\"action\" IN ('create', 'rotate', 'revoke', 'bind', 'use', 'reveal')"
         },
         "credential_access_log_outcome_known": {
           "name": "credential_access_log_outcome_known",
@@ -4368,7 +4368,7 @@
         },
         "credential_access_log_reason_matches": {
           "name": "credential_access_log_reason_matches",
-          "value": "(\"credential_access_log\".\"outcome\" = 'done' AND \"credential_access_log\".\"reason\" IS NULL) OR (\"credential_access_log\".\"outcome\" = 'refused' AND \"credential_access_log\".\"reason\" IS NOT NULL AND \"credential_access_log\".\"reason\" IN ('not_permitted', 'credential_revoked', 'credential_expired', 'key_rejected', 'key_service_refused', 'key_service_unavailable', 'key_service_not_configured', 'ciphertext_rejected', 'envelope_malformed'))"
+          "value": "(\"credential_access_log\".\"outcome\" = 'done' AND \"credential_access_log\".\"reason\" IS NULL) OR (\"credential_access_log\".\"outcome\" = 'refused' AND \"credential_access_log\".\"reason\" IS NOT NULL AND \"credential_access_log\".\"reason\" IN ('not_permitted', 'credential_revoked', 'credential_expired', 'value_not_storable', 'key_rejected', 'key_service_refused', 'key_service_unavailable', 'ciphertext_rejected', 'envelope_malformed'))"
         },
         "credential_access_log_actor_is_identity": {
           "name": "credential_access_log_actor_is_identity",

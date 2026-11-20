@@ -133,6 +133,12 @@ export async function unbindCredential(
   const change = await asked(deps, actor, 'unbind', { binding, traceId });
   if ('ok' in change) return change;
   return deps.db.transaction(async (tx) => {
+    const [locked] = await tx
+      .select({ id: credentials.id })
+      .from(credentials)
+      .where(eq(credentials.id, binding.credentialId))
+      .for('update');
+    if (locked === undefined) return refused('credential_not_found');
     const removed = await tx
       .delete(credentialBindings)
       .where(where(binding))

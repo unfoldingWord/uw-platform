@@ -51,6 +51,7 @@ export const credentialRefusals = [
   'not_permitted',
   'credential_revoked',
   'credential_expired',
+  'value_not_storable',
   ...envelopeRefusals,
 ] as const;
 
