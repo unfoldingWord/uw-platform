@@ -51,10 +51,10 @@ describe('#155 every restricted or sensitive table declares who reads its rows',
   });
 
   it('reports a new sensitive table that lands without a rule, or with an empty one', () => {
-    const landed = [...tables, { table: 'credentials', classification: 'sensitive' }];
-    expect(withoutReadRule(landed, rowReadRules)).toEqual(['credentials']);
-    const empty = { ...rowReadRules, credentials: { area: null, owner: false } };
-    expect(withoutReadRule(landed, empty)).toEqual(['credentials']);
+    const landed = [...tables, { table: 'gifts', classification: 'sensitive' }];
+    expect(withoutReadRule(landed, rowReadRules)).toEqual(['gifts']);
+    const empty = { ...rowReadRules, gifts: { area: null, owner: false } };
+    expect(withoutReadRule(landed, empty)).toEqual(['gifts']);
   });
 
   it('reports a rule left behind for a table that became internal', () => {
@@ -110,6 +110,11 @@ const written = new Map<string, { areaRank: number | null; owner: boolean }>([
   ['delegations', { areaRank: 1, owner: true }],
   ['routines', { areaRank: 1, owner: true }],
   ['gate_decisions', { areaRank: 1, owner: false }],
+  ['credentials', { areaRank: 1, owner: false }],
+  ['credential_versions', { areaRank: 3, owner: false }],
+  ['credential_grants', { areaRank: 3, owner: true }],
+  ['credential_bindings', { areaRank: 3, owner: false }],
+  ['credential_access_log', { areaRank: 3, owner: false }],
 ]);
 
 type Asked = {
