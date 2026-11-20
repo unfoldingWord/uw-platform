@@ -38,6 +38,7 @@ import {
   runPath,
   runsPath,
   waitingPath,
+  wikiPath,
 } from '../views/parts/paths.ts';
 
 const seedClock: Clock = { now: () => new Date('2026-10-02T06:00:00.000Z') };
@@ -175,6 +176,8 @@ async function boardScreens(db: Database): Promise<Screen[]> {
     ['page', pagePath(pageId)],
     ['knowledge-page', pagePath(knowledgeId)],
     ['page-edit', pageEditPath(knowledgeId)],
+    ['wiki', wikiPath()],
+    ['wiki-category', wikiPath('81')],
   ];
   const headers = { accept: 'text/html' };
   const screens: Screen[] = [];
@@ -362,6 +365,8 @@ describe.skipIf(!testServer || (!browserReady && !required))('UI-16 the screensh
       'page',
       'knowledge-page',
       'page-edit',
+      'wiki',
+      'wiki-category',
       'controls-member',
       'flow-member',
       'flow-draft',
