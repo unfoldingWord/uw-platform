@@ -90,6 +90,22 @@ _Avoid_: permission, role (a role is one field of a grant), ACL entry
 Who reads a row of a `restricted` or `sensitive` table, declared per table in `rowReadRules` (`packages/core/acl.ts`): the least role on the row's own JD area, whether the person the row belongs to reads it, and whether an org admin does. `can(actor, 'read', row)` is the one function that applies it; an `org` viewer or editor never satisfies it (ADR 0016).
 _Avoid_: row-level security, policy, classification check
 
+**Credential**:
+A secret that belongs to one JD area's work (a partner API key, a portal password, a funder system login), held for that area and not for a person. The secrets the platform itself runs on are platform secrets, not credentials.
+_Avoid_: secret (that is the value, or a platform secret), key, password, token
+
+**Credential capability**:
+What a principal may do with one credential, asked as `can(actor, capability, credential)` and never as `read`: `see` (know it exists, never its value), `use` (have a connector use it without seeing it), `reveal` (see the value) and `manage` (create, rotate, revoke, bind, give a reveal grant). Each needs a grant on the credential's own JD area; an org admin has `see` and `manage` only, and an org editor or viewer has none. An agent has `use` and nothing else (ADR 0017).
+_Avoid_: credential permission, secret access, credential role, read (a credential is never read through a page read)
+
+**Reveal grant**:
+A person's time-limited leave to `reveal` one credential, given by a person who may `manage` it. It always expires, names one credential and one person, and adds to a grant on the credential's area without replacing it.
+_Avoid_: reveal permission, break-glass (that is a reveal outside the grants, by two org admins), share
+
+**Credential binding**:
+The workflow and connector a credential may be used from. `use` is refused anywhere else, whatever grants the principal holds.
+_Avoid_: binding on its own (a service token has one too), attachment, scope (a scope is the org or a JD area on a grant)
+
 **Grant audit**:
 One row of `grant_audit`: who granted or revoked which grant, when, the row before and after, and the trace id. Append-only.
 _Avoid_: access log, history
