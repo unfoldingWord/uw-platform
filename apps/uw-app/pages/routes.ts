@@ -13,7 +13,7 @@ import type { AppEnv } from '../deps.ts';
 import { malformed, readJson } from '../http/commands.ts';
 import { refuse, reply } from '../http/outcomes.ts';
 import { confirmPage } from './confirm.ts';
-import { addPageReads } from './read-routes.ts';
+import { pageReads } from './read-handlers.ts';
 import { createPage, updatePage, type PageRefusal, type PageResult } from './store.ts';
 
 type Run = (
@@ -81,6 +81,11 @@ async function handleCommand(c: Context<AppEnv>): Promise<Response> {
 export function pageRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
   routes.post('/commands/:name', handleCommand);
-  addPageReads(routes);
+  routes.get('/', pageReads.list);
+  routes.get('/index', pageReads.index);
+  routes.get('/search', pageReads.search);
+  routes.get('/:pageId/versions', pageReads.versions);
+  routes.get('/:pageId/versions/:version', pageReads.version);
+  routes.get('/:pageId', pageReads.one);
   return routes;
 }

@@ -1,4 +1,4 @@
-import type { Context, Hono } from 'hono';
+import type { Context } from 'hono';
 import { z } from 'zod';
 import {
   pageIndexReplySchema,
@@ -115,11 +115,11 @@ const version: Read = async (c, { db, actor, at }) => {
   );
 };
 
-export function addPageReads(routes: Hono<AppEnv>): void {
-  routes.get('/', reading(list));
-  routes.get('/index', reading(index));
-  routes.get('/search', reading(search));
-  routes.get('/:pageId/versions', reading(versions));
-  routes.get('/:pageId/versions/:version', reading(version));
-  routes.get('/:pageId', reading(one));
-}
+export const pageReads = {
+  list: reading(list),
+  index: reading(index),
+  search: reading(search),
+  versions: reading(versions),
+  version: reading(version),
+  one: reading(one),
+};
