@@ -8,7 +8,7 @@ import {
   type RunShape,
   type Stage,
 } from '@uw/contracts';
-import { allowed, isAgent } from '../access.ts';
+import { allowed, isAgent, readsDelegation } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { pageAgrees } from '../delegations/capability.ts';
 import { accepted, type KernelOutcome } from '../outcome.ts';
@@ -100,7 +100,9 @@ export async function agentsView(
     harness,
     stages,
     agents,
-    permissions: named.map((row) => ({ ...row, agentTitle: titles.get(row.persona) ?? null })),
+    permissions: named
+      .filter((row) => readsDelegation(caller.actor, row, harness, at))
+      .map((row) => ({ ...row, agentTitle: titles.get(row.persona) ?? null })),
     admin: !isAgent(caller.actor) && allowed(caller.actor, 'admin', harness, at),
   });
 }

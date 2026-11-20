@@ -56,6 +56,7 @@ export * from './schema-harnesses.ts';
 export * from './schema-platform.ts';
 export * from './schema-github.ts';
 export * from './schema-notify.ts';
+export * from './schema-credentials.ts';
 
 const internalSync = { classification: 'internal', offlineEligibility: 'sync' } as const;
 const restrictedNever = { classification: 'restricted', offlineEligibility: 'never' } as const;

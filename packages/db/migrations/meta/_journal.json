@@ -330,6 +330,34 @@
       "when": 1795107246610,
       "tag": "0046_person_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1795184951681,
+      "tag": "0047_credentials_store",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1795184953011,
+      "tag": "0048_credentials_append_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1795187312253,
+      "tag": "0049_credential_unbind_and_not_configured",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1795190524916,
+      "tag": "0050_break_glass_reveal",
+      "breakpoints": true
     }
   ]
 }

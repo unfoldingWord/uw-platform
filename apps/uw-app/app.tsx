@@ -7,6 +7,7 @@ import { meRoutes } from './auth/me.ts';
 import { withPrincipal } from './auth/principal-middleware.ts';
 import { platformPersonDeps, type PersonDeps } from './commands/person-deps.ts';
 import { harnessRoutes } from './commands/routes.ts';
+import { credentialRoutes, credentialScreenRoutes } from './credentials/routes.ts';
 import { securityHeaders } from './http/security-headers.ts';
 import { shareReadsOnPages, withDatabase } from './database.ts';
 import { platformDeps, type AppDeps, type AppEnv } from './deps.ts';
@@ -49,12 +50,14 @@ export function createApp(
   app.route('/api/me', meRoutes());
   app.route('/api/acl', aclRoutes());
   app.route('/api/agents', agentRoutes(deps));
+  app.route('/api/credentials', credentialRoutes(deps));
   app.route('/api/pages', pageRoutes());
   app.route('/api/push', pushRoutes());
   app.route('/api/harness', harnessRoutes(deps, person));
   app.route('/mcp', mcpRoutes(deps));
   app.route('/health', healthScreenRoutes(deps));
   app.route('/access', accessScreenRoutes());
+  app.route('/credentials', credentialScreenRoutes());
 
   app.route('/', viewRoutes());
   app.notFound((c) =>

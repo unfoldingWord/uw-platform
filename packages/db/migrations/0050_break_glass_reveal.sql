@@ -1,0 +1,7 @@
+ALTER TABLE "credential_access_log" DROP CONSTRAINT "credential_access_log_action_known";--> statement-breakpoint
+ALTER TABLE "credential_grants" ADD COLUMN "second_required" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "credential_grants" ADD COLUMN "second_by" uuid;--> statement-breakpoint
+ALTER TABLE "credential_grants" ADD COLUMN "second_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "credential_grants" ADD CONSTRAINT "credential_grants_second_by_people_id_fk" FOREIGN KEY ("second_by") REFERENCES "public"."people"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "credential_access_log" ADD CONSTRAINT "credential_access_log_action_known" CHECK ("credential_access_log"."action" IN ('create', 'rotate', 'revoke', 'bind', 'unbind', 'use', 'reveal', 'grant_reveal', 'confirm_reveal', 'revoke_reveal'));--> statement-breakpoint
+ALTER TABLE "credential_grants" ADD CONSTRAINT "credential_grants_second_is_another_person" CHECK (("credential_grants"."second_by" IS NULL AND "credential_grants"."second_at" IS NULL) OR ("credential_grants"."second_required" AND "credential_grants"."second_by" IS NOT NULL AND "credential_grants"."second_at" IS NOT NULL AND "credential_grants"."second_by" <> "credential_grants"."granted_by"));

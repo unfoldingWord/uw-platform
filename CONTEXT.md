@@ -86,6 +86,62 @@ _Avoid_: session, token, actor (actor is the field name on an event, and holds a
 One row of `role_grants`: a role (`admin`, `editor`, `viewer`) at a scope (the org, or one JD area), optionally expiring. `can(actor, verb, resource)` is the one function that reads them (plan §4).
 _Avoid_: permission, role (a role is one field of a grant), ACL entry
 
+**Read rule**:
+Who reads a row of a `restricted` or `sensitive` table, declared per table in `rowReadRules` (`packages/core/acl.ts`): the least role on the row's own JD area, whether the person the row belongs to reads it, and whether an org admin does. `can(actor, 'read', row)` is the one function that applies it; an `org` viewer or editor never satisfies it (ADR 0016).
+_Avoid_: row-level security, policy, classification check
+
+**Credential**:
+A secret that belongs to one JD area's work (a partner API key, a portal password, a funder system login), held for that area and not for a person. The secrets the platform itself runs on are platform secrets, not credentials.
+_Avoid_: secret (that is the value, or a platform secret), key, password, token
+
+**Credential capability**:
+What a principal may do with one credential, asked as `can(actor, capability, credential)` and never as `read`: `see` (know it exists, never its value), `use` (have a connector use it without seeing it), `reveal` (see the value) and `manage` (create, rotate, revoke, bind, give a reveal grant). Each needs a grant on the credential's own JD area; an org admin has `see` and `manage` only, and an org editor or viewer has none. An agent has `use` and nothing else (ADR 0017).
+_Avoid_: credential permission, secret access, credential role, read (a credential is never read through a page read)
+
+**Reveal grant**:
+A person's time-limited leave to `reveal` one credential, given by a person who may `manage` it. It always expires, names one credential and one person, and adds to a grant on the credential's area without replacing it.
+_Avoid_: reveal permission, break-glass (that is a reveal outside the grants, by two org admins), share
+
+**Break-glass reveal**:
+A reveal grant given by an org admin who is not an admin of the credential's area. It is not live until a second person who may `manage` the credential, never the one who gave it, confirms it; both are recorded on the grant and in the credential access log, and its time starts when it is confirmed (ADR 0020).
+_Avoid_: emergency access, override (a gate has one), second approval (a gate is approved)
+
+**Reveal notice**:
+The web push sent to every admin of a credential's area, other than the person revealing, each time its value is revealed. It names the area and the reason and never the credential.
+_Avoid_: wake (a wake names a workflow), alert, reveal email
+
+**Credential binding**:
+The workflow and connector a credential may be used from. `use` is refused anywhere else, whatever grants the principal holds.
+_Avoid_: binding on its own (a service token has one too), attachment, scope (a scope is the org or a JD area on a grant)
+
+**Credential reference**:
+How a caller names a credential it wants used: the credential's id and nothing else. A connector passes one to `useCredential` with the workflow and connector of the use; it never holds the value outside the one call the store opens it for (ADR 0019).
+_Avoid_: credential handle, secret reference, credential key, token
+
+**Secret**:
+In code, the wrapper a credential's opened value travels in (`Secret` in `apps/uw-app/credentials/secret.ts`). It shows `[secret]` wherever it is printed, serialised or logged, gives its text only to `exposeSecret`, and is spent when the call it was opened for ends.
+_Avoid_: secret for a credential (that is the thing stored), plaintext, raw value
+
+**Credential version**:
+One row of `credential_versions`: one sealed value of a credential. Rotating a credential adds a version and never changes one; the highest version is the one in use.
+_Avoid_: revision (a page has those), secret version, key version
+
+**Data key**:
+The 256-bit key that seals exactly one credential version with AES-256-GCM. It is stored only wrapped, beside the ciphertext it sealed, and exists unwrapped only in memory while a value is sealed or opened.
+_Avoid_: key on its own, credential key, DEK
+
+**Key-encryption key**:
+The AWS KMS key that wraps and unwraps every data key. It never leaves KMS, so a copy of the database alone opens nothing.
+_Avoid_: master key, KEK, root key, the KMS credentials (those are a platform secret that signs requests to KMS)
+
+**Encryption context**:
+The facts a sealed value is bound to: its credential, its version and its JD area. KMS refuses to unwrap a data key under a different context, and the cipher refuses to open the value under one.
+_Avoid_: additional data, AAD, tags
+
+**Credential access log**:
+The rows of `credential_access_log`: every create, rotate, revoke, bind, unbind, use and reveal of a credential, and every reveal grant given, confirmed or revoked, done or refused, with the actor, the run, the workflow and connector of a use, and the trace id. Append-only and kept seven years.
+_Avoid_: audit log on its own, grant audit (that records grants), history
+
 **Grant audit**:
 One row of `grant_audit`: who granted or revoked which grant, when, the row before and after, and the trace id. Append-only.
 _Avoid_: access log, history

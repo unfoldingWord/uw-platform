@@ -1,5 +1,5 @@
-import { eventEvidenceSchemas, type Harness, type ItemState } from '@uw/contracts';
-import { allowed, isAgent } from '../access.ts';
+import { eventEvidenceSchemas, type Harness, type ItemState, type Principal } from '@uw/contracts';
+import { allowed, isAgent, readsDelegation } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import type { Delegation, GitHubFacts, Ports, StoreTransaction } from '../ports.ts';
 import { uncountedItems } from './bots.ts';
@@ -26,6 +26,7 @@ type FailedRows = { readonly rows: readonly WaitingRow[]; readonly capped: boole
 
 type Scope = {
   readonly tx: StoreTransaction;
+  readonly actor: Principal;
   readonly personId: string;
   readonly readable: ReadonlyMap<string, Harness>;
   readonly administered: ReadonlyMap<string, Harness>;
@@ -60,7 +61,10 @@ async function lapsedRows(scope: Scope): Promise<LapsedRows> {
   const rows: WaitingRow[] = [];
   for (const delegation of latestPerPersona(lapsed)) {
     const harness = scope.readable.get(delegation.harnessId);
-    if (harness === undefined || (await renewed(scope, delegation))) continue;
+    if (harness === undefined || !readsDelegation(scope.actor, delegation, harness, scope.at)) {
+      continue;
+    }
+    if (await renewed(scope, delegation)) continue;
     rows.push({ kind: 'delegation_lapsed', harness, delegation });
   }
   return { rows, capped: lapsed.length === VIEW_LIMIT };
@@ -94,7 +98,10 @@ async function orphanedRows(scope: Scope): Promise<LapsedRows> {
   const rows: WaitingRow[] = [];
   for (const delegation of orphans) {
     const harness = scope.administered.get(delegation.harnessId);
-    if (harness === undefined || (await renewed(scope, delegation))) continue;
+    if (harness === undefined || !readsDelegation(scope.actor, delegation, harness, scope.at)) {
+      continue;
+    }
+    if (await renewed(scope, delegation)) continue;
     rows.push({ kind: 'delegation_lapsed', harness, delegation });
   }
   return { rows, capped };
@@ -193,7 +200,7 @@ export async function waitingOn(
   const administered = new Map(
     shown.filter((harness) => allowed(caller.actor, 'admin', harness, at)).map((h) => [h.id, h]),
   );
-  const scope = { tx, personId, readable, administered, at };
+  const scope = { tx, actor: caller.actor, personId, readable, administered, at };
   const own = await lapsedRows(scope);
   const orphaned = await orphanedRows(scope);
   const lapsed = { rows: [...own.rows, ...orphaned.rows], capped: own.capped || orphaned.capped };

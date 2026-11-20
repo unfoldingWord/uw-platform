@@ -52,6 +52,10 @@ export type Bindings = {
   ACCESS_SERVICE_TOKENS_API_TOKEN?: string;
   ACCESS_AUD?: string;
   ACCESS_MCP_AUD?: string;
+  CREDENTIALS_KMS_ACCESS_KEY_ID?: string;
+  CREDENTIALS_KMS_KEY_ID?: string;
+  CREDENTIALS_KMS_REGION?: string;
+  CREDENTIALS_KMS_SECRET_ACCESS_KEY?: string;
   DEV_PRINCIPAL_EMAIL?: string;
   GITHUB_APP_ID?: string;
   GITHUB_APP_INSTALLATION_ID?: string;
