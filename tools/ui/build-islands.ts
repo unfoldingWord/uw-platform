@@ -4,6 +4,7 @@ import { dirname } from 'node:path';
 import { build, type Plugin } from 'esbuild';
 
 const generated = new URL('../../apps/uw-app/generated/islands.ts', import.meta.url);
+const generatedEditor = new URL('../../apps/uw-app/generated/editor.ts', import.meta.url);
 const shared = {
   bundle: true,
   minify: true,
@@ -34,8 +35,17 @@ async function bundled(entry: string, format: 'esm' | 'iife'): Promise<string> {
   return result.outputFiles[0]?.text ?? '';
 }
 
-function hashedPath(js: string): string {
-  return `/assets/islands-${createHash('sha256').update(js).digest('hex').slice(0, 12)}.js`;
+function hashedPath(js: string, name = 'islands'): string {
+  return `/assets/${name}-${createHash('sha256').update(js).digest('hex').slice(0, 12)}.js`;
+}
+
+async function editorModuleText(): Promise<string> {
+  const editorJs = await bundled('apps/uw-app/islands/editor/main.ts', 'esm');
+  return [
+    `export const editorPath = ${JSON.stringify(hashedPath(editorJs, 'editor'))};`,
+    `export const editorJs = ${JSON.stringify(editorJs)};`,
+    '',
+  ].join('\n');
 }
 
 async function moduleText(): Promise<string> {
@@ -50,15 +60,22 @@ async function moduleText(): Promise<string> {
 }
 
 const expected = await moduleText();
+const expectedEditor = await editorModuleText();
+
+function committed(file: URL): string {
+  return existsSync(file) ? readFileSync(file, 'utf8') : '';
+}
 
 if (process.argv.includes('--check')) {
-  const committed = existsSync(generated) ? readFileSync(generated, 'utf8') : '';
-  if (committed !== expected) {
-    console.error('apps/uw-app/generated/islands.ts is stale. Run pnpm ui:islands and commit it.');
+  if (committed(generated) !== expected || committed(generatedEditor) !== expectedEditor) {
+    console.error(
+      'apps/uw-app/generated/islands.ts or editor.ts is stale. Run pnpm ui:islands and commit them.',
+    );
     process.exit(1);
   }
-  console.log('apps/uw-app/generated/islands.ts is the current islands build.');
+  console.log('The committed islands and editor bundles are the current build.');
 } else {
   writeFileSync(generated, expected);
-  console.log('Wrote apps/uw-app/generated/islands.ts.');
+  writeFileSync(generatedEditor, expectedEditor);
+  console.log('Wrote apps/uw-app/generated/islands.ts and editor.ts.');
 }

@@ -20,6 +20,7 @@
     "testing/gate-world.ts",
     "testing/knowledge.ts",
     "islands/browser/**",
+    "islands/editor/**",
     "islands/worker/**"
   ]
 }

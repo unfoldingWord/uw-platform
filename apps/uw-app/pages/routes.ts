@@ -18,6 +18,7 @@ import { searchScreen } from '../views/screens/search.tsx';
 import { wikiScreen } from '../views/screens/wiki.tsx';
 import { nameCategory } from './categories.ts';
 import { confirmPage } from './confirm.ts';
+import { connectDraft } from './draft-handlers.ts';
 import { downloadFile, listPageFiles, uploadFile } from './file-handlers.ts';
 import { pageReads } from './read-handlers.ts';
 import { createPage, updatePage, type PageRefusal, type PageResult } from './store.ts';
@@ -111,6 +112,7 @@ function pageRoutes(): Hono<AppEnv> {
   routes.get('/recent', pageReads.recent);
   routes.get('/search', pageReads.search);
   routes.get('/:pageId/backlinks', pageReads.backlinks);
+  routes.get('/:pageId/draft', connectDraft);
   routes.get('/:pageId/files', listPageFiles);
   routes.get('/:pageId/versions', pageReads.versions);
   routes.get('/:pageId/versions/:version', pageReads.version);

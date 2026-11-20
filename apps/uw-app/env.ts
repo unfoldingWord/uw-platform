@@ -45,6 +45,9 @@ export type FilesBucket = {
   delete(key: string): Promise<unknown>;
 };
 
+type DraftStub = { fetch(input: string, init?: RequestInit): Promise<Response> };
+export type DraftNamespace = { idFromName(name: string): unknown; get(id: unknown): DraftStub };
+
 export type Bindings = {
   AI_GATEWAY_ACCOUNT_ID?: string;
   AI_GATEWAY_ANALYTICS_TOKEN?: string;
@@ -77,6 +80,7 @@ export type Bindings = {
   HYPERDRIVE?: HyperdriveBinding;
   INGEST_DLQ?: QueueProducer<unknown>;
   OPENAI_API_KEY?: string;
+  PAGE_DRAFT?: DraftNamespace;
   OPENROUTER_API_KEY?: string;
   REVIEWER_CODEX_GITHUB_APP_ID?: string;
   REVIEWER_CODEX_GITHUB_APP_INSTALLATION_ID?: string;

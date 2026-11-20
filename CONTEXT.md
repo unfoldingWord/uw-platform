@@ -339,7 +339,7 @@ The unsaved text of a page in edit mode, shared live by everyone editing it and 
 _Avoid_: draft (alone, that is the Flow tab's private copy of stages, or the page status `draft`), autosave, revision
 
 **Sync hub**:
-One Durable Object per page being edited, holding its working draft as a Yjs document and passing changes between the people in edit mode. It is not the record: the saved markdown is.
+One Durable Object per page version being edited (`PageDraft`), holding its working draft as a Yjs document and passing changes between the people in edit mode. It is not the record: the saved markdown is. A new version gets a new sync hub, so a working draft always starts from one saved version.
 _Avoid_: live hub (that sends wakes for a harness and holds no data), collab server, room
 
 **Quick Switcher**:

@@ -1,3 +1,4 @@
+import { Icon, type IconProps } from './icon.tsx';
 import { safeHref } from './href.ts';
 
 const base =
@@ -26,6 +27,28 @@ export function Chip(props: {
   return (
     <button type="button" aria-pressed={selected ? 'true' : 'false'} class={look(selected)}>
       {props.label}
+    </button>
+  );
+}
+
+const toggle =
+  'inline-flex size-size-5 items-center justify-center rounded-sm text-text-2 outline-offset-2 outline-accent-text hover:bg-hover hover:text-text focus-visible:outline-2 data-on:bg-accent-soft data-on:text-accent-text';
+
+export function IconToggle(props: {
+  readonly format: string;
+  readonly label: string;
+  readonly icon: IconProps['name'];
+}) {
+  return (
+    <button
+      type="button"
+      data-format={props.format}
+      aria-label={props.label}
+      aria-pressed="false"
+      title={props.label}
+      class={toggle}
+    >
+      <Icon name={props.icon} size={1} />
     </button>
   );
 }

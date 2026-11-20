@@ -5,6 +5,7 @@ import { consumeIngestBatch } from './queue/worker.ts';
 
 export { ClaudeCodeSandbox, CodexSandbox, ContainerProxy } from './engines/sandbox/classes.ts';
 export { HarnessHub } from './live/harness-hub.ts';
+export { PageDraft } from './pages/draft-hub.ts';
 export { HarnessRun } from './runs/workflow.ts';
 
 const app = createApp();

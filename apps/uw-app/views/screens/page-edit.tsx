@@ -7,8 +7,11 @@ import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import type { AppEnv } from '../../deps.ts';
+import { editorPath } from '../../generated/editor.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { pageNames } from '../parts/names.ts';
+import { draftsOf } from '../../pages/drafts.ts';
+import { EditorFrame, type DraftRoom } from '../parts/editor-frame.tsx';
 import { backOf, pageLink, pageSpec, shownPage, typeWords } from '../parts/page-shown.ts';
 import { idParam } from '../parts/params.ts';
 import { pageEditPath, pagePath, withBack } from '../parts/paths.ts';
@@ -26,6 +29,7 @@ export type Typed = {
 };
 
 export type EditOptions = {
+  readonly asText: boolean;
   readonly back: string | null;
   readonly refused: string | null;
   readonly typed: Typed | null;
@@ -58,7 +62,13 @@ function UploadControl(props: { readonly pageId: string }) {
   );
 }
 
-function EditForm(props: { readonly page: Page; readonly options: EditOptions }) {
+type FormProps = {
+  readonly page: Page;
+  readonly options: EditOptions;
+  readonly draft: DraftRoom | null;
+};
+
+function EditForm(props: FormProps) {
   const { page, options } = props;
   const typed = options.typed ?? {
     title: page.title,
@@ -72,15 +82,26 @@ function EditForm(props: { readonly page: Page; readonly options: EditOptions })
         <input type="hidden" name="requestId" value={crypto.randomUUID()} />
         {options.back === null ? null : <input type="hidden" name="back" value={options.back} />}
         <TextField name="title" label="Title" scope={page.id} value={typed.title} maxLength={200} />
-        <TextAreaField
-          name="bodyMd"
-          label="Text"
-          scope={page.id}
-          value={typed.bodyMd}
-          rows={BODY_ROWS}
-          maxLength={1_000_000}
-          hint={page.type === 'skill' ? instructionsHint : markdownHint}
-        />
+        {options.asText ? null : (
+          <EditorFrame pageId={page.id} bodyMd={typed.bodyMd} draft={props.draft} />
+        )}
+        <div data-editor-text="">
+          <TextAreaField
+            name="bodyMd"
+            label="Text"
+            scope={page.id}
+            value={typed.bodyMd}
+            rows={BODY_ROWS}
+            maxLength={1_000_000}
+            hint={page.type === 'skill' ? instructionsHint : markdownHint}
+          />
+        </div>
+        <p
+          data-editor-status=""
+          role="status"
+          aria-live="polite"
+          class="m-0 text-sm text-text-3"
+        ></p>
         <UploadControl pageId={page.id} />
         <p class="m-0 flex flex-wrap items-center gap-2">
           <button type="submit" class={primaryButton}>
@@ -105,6 +126,10 @@ export async function renderPageEdit(
   if (shown === null) return notFound(c);
   const { page } = shown;
   const read = withBack(pagePath(page.id), options.back);
+  const together = draftsOf(c.env) !== null && options.typed === null && !options.asText;
+  const draft = together
+    ? { version: page.version, person: screen.caller.actor.email ?? '' }
+    : null;
   return renderScreen(
     c,
     pageSpec(shown, pageNames.pageEdit),
@@ -117,7 +142,10 @@ export async function renderPageEdit(
       <div class="flex flex-col gap-5">
         {options.refused === null ? null : <Note>{refusalText(options.refused)}</Note>}
         {shown.canEdit ? (
-          <EditForm page={page} options={options} />
+          <>
+            <EditForm page={page} options={options} draft={draft} />
+            {options.asText ? null : <script type="module" src={editorPath}></script>}
+          </>
         ) : (
           <Card title="Read only">
             <p class="m-0 text-sm text-text-2">
@@ -143,5 +171,6 @@ export async function pageEditScreen(c: Context<AppEnv>): Promise<Response> {
   const read = await screen.kernel.views.page(screen.caller, { pageId }, { at: screen.at });
   if (read.status !== 'accepted') return notFound(c);
   const back = backOf(c.req.query('back'));
-  return renderPageEdit(c, screen, pageId, { back, refused: null, typed: null });
+  const asText = c.req.query('as') === 'text';
+  return renderPageEdit(c, screen, pageId, { asText, back, refused: null, typed: null });
 }

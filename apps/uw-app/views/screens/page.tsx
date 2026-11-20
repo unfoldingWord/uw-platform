@@ -8,6 +8,7 @@ import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
 import type { AppEnv } from '../../deps.ts';
 import type { Heading, Rendered } from '../../markdown/render.ts';
+import { draftsOf } from '../../pages/drafts.ts';
 import { renderPage } from '../../pages/render-page.ts';
 import type { PageVersion } from '../../pages/history.ts';
 import { recordView } from '../../pages/recent.ts';
@@ -104,6 +105,7 @@ type Extras = {
   readonly back: string | null;
   readonly saved: number | null;
   readonly rendered: Rendered;
+  readonly drafted: boolean;
 };
 
 function body(shown: ShownPage, extras: Extras) {
@@ -134,6 +136,9 @@ function body(shown: ShownPage, extras: Extras) {
           </p>
         )}
         {saved === null ? null : <Note>{`Saved as version ${String(saved)}.`}</Note>}
+        {extras.drafted ? (
+          <Note>There is an unsaved draft of this page. You are reading it as last saved.</Note>
+        ) : null}
         <div class="flex flex-col gap-5 lg:flex-row lg:items-start">
           <div class="min-w-0 flex-1">
             <Card>
@@ -166,7 +171,11 @@ export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
     database === null
       ? { html: '', headings: [] }
       : await renderPage(database.db, actor, shown.page, screen.at);
+  const draft = shown.canEdit
+    ? await draftsOf(c.env)?.status(shown.page.id, shown.page.version)
+    : null;
   const extras = {
+    drafted: draft?.dirty === true,
     back: backOf(c.req.query('back')),
     saved: savedVersion(c.req.query('saved')),
     rendered,

@@ -1,6 +1,7 @@
 import type { Context } from 'hono';
 import { updatePageCommandSchema, type Page } from '@uw/contracts';
 import type { AppEnv } from '../../deps.ts';
+import { draftsOf } from '../../pages/drafts.ts';
 import { updatePage } from '../../pages/store.ts';
 import { renderPageEdit, type Typed } from '../screens/page-edit.tsx';
 import { notFound } from '../screens/not-found.tsx';
@@ -69,13 +70,16 @@ export async function savePage(c: Context<AppEnv>): Promise<Response> {
   const back = backOf(text(posted, 'back'));
   const read = withBack(pagePath(pageId), back);
   if (!shown.canEdit) {
-    return renderPageEdit(c, screen, pageId, { back, refused: 'not_permitted', typed: null });
+    const refusal = { asText: false, back, refused: 'not_permitted', typed: null };
+    return renderPageEdit(c, screen, pageId, refusal);
   }
   const outcome = await saved(c, screen, shown.page, posted);
   if (outcome.ok) {
+    await draftsOf(c.env)?.close(pageId, outcome.version - 1);
     const mark = `saved=${String(outcome.version)}`;
     return c.redirect(`${read}${back === null ? '?' : '&'}${mark}`, 303);
   }
   const typed = typedOf(shown.page, posted);
-  return renderPageEdit(c, screen, pageId, { back, refused: outcome.reason, typed });
+  const asText = text(posted, 'asText') === '1';
+  return renderPageEdit(c, screen, pageId, { asText, back, refused: outcome.reason, typed });
 }
