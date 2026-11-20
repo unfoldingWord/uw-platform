@@ -7,6 +7,7 @@ const indicatorWords: ReadonlyMap<string, string> = new Map([
   ['database', 'Database'],
   ['queue', 'Queue'],
   ['live_hub', 'Live hub'],
+  ['secrets', 'Platform secrets'],
   ['harness', 'Harness'],
   ['spend', 'Spend this month'],
   ['breaker', 'Spend breaker'],

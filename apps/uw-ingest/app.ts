@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { errorFields } from '@uw/core/log';
+import { secretsHealth } from '@uw/core/platform-secrets';
 import { platformIngestDeps, type IngestDeps, type IngestEnv } from './deps.ts';
 import { commitOf } from './env.ts';
 import { observe } from './observe.ts';
@@ -18,10 +19,12 @@ export function createIngestApp(deps: IngestDeps = platformIngestDeps): Hono<Ing
 
   app.get('/health', (c) => {
     const commit = commitOf(c.env);
+    const sources = c.env.SECRET_SOURCES;
+    const secrets = sources === undefined ? [] : [{ name: 'secrets', ...secretsHealth(sources) }];
     return c.json({
-      status: 'ok',
+      status: secrets.some((indicator) => indicator.status === 'red') ? 'red' : 'ok',
       commit,
-      indicators: [{ name: 'commit', status: 'ok', detail: commit }],
+      indicators: [{ name: 'commit', status: 'ok', detail: commit }, ...secrets],
     });
   });
 
