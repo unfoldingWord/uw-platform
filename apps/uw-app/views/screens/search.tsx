@@ -48,7 +48,7 @@ function areaChoices(actor: Principal, at: Date) {
   ];
 }
 
-const MINE = 'me';
+const MINE = 'owned';
 const DAY_MS = 86_400_000;
 const changedDays: ReadonlyMap<string, number> = new Map([
   ['7', 7],
