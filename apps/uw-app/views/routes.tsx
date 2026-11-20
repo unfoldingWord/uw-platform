@@ -16,6 +16,7 @@ import { saveToolset } from './parts/toolset-save.tsx';
 import { personaScreen } from './screens/persona.tsx';
 import { playScreen } from './screens/play.tsx';
 import { pageScreen } from './screens/page.tsx';
+import { pageEditScreen } from './screens/page-edit.tsx';
 import { savePage } from './parts/page-save.tsx';
 import { changeRoutineForm, newRoutine } from './parts/routine-new.tsx';
 import { runScreen } from './screens/run.tsx';
@@ -38,8 +39,8 @@ function formRoutes(routes: Hono<AppEnv>): void {
   routes.post('/harnesses/:harnessId/agents/routines', newRoutine);
   routes.use('/harnesses/:harnessId/agents/routines/:routineId', formGuard);
   routes.post('/harnesses/:harnessId/agents/routines/:routineId', changeRoutineForm);
-  routes.use('/pages/:pageId', formGuard);
-  routes.post('/pages/:pageId', savePage);
+  routes.use('/pages/:pageId/edit', formGuard);
+  routes.post('/pages/:pageId/edit', savePage);
   routes.use('/harnesses/:harnessId/agents/new', formGuard);
   routes.post('/harnesses/:harnessId/agents/new', addAgent);
   routes.use('/personas/:pageId/toolset', formGuard);
@@ -59,6 +60,7 @@ export function viewRoutes(): Hono<AppEnv> {
   routes.get('/harnesses/:harnessId/runs/:runId', runScreen);
   routes.get('/harnesses/:harnessId/controls', controlsScreen);
   routes.get('/pages/:pageId', pageScreen);
+  routes.get('/pages/:pageId/edit', pageEditScreen);
   routes.get('/harnesses/:harnessId/agents', agentsScreen);
   routes.get('/harnesses/:harnessId/agents/new', newAgentScreen);
   routes.get('/gates', oldWaitingAddress);

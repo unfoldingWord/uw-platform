@@ -16,6 +16,7 @@ import { boardWorld, type BoardWorld } from '../testing/board-world.ts';
 import { callerOf } from '../testing/commands.ts';
 import { gateWorld } from '../testing/gate-world.ts';
 import { kernelOn } from '../testing/kernel.ts';
+import { seedSampleKnowledge } from '../testing/knowledge.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { getHtml } from '../testing/views.ts';
 import {
@@ -31,6 +32,7 @@ import {
   itemPath,
   agentsPath,
   newAgentPath,
+  pageEditPath,
   pagePath,
   personaPath,
   runPath,
@@ -134,9 +136,21 @@ async function draftScreens(world: BoardWorld): Promise<Screen[]> {
   ];
 }
 
+async function memberScreens(world: BoardWorld): Promise<Screen[]> {
+  const headers = { accept: 'text/html' };
+  const read = (path: string) => getHtml(world.db, world.viewer.email, path, headers, viewClock);
+  const member = await read(controlsPath(world.harnessId));
+  const flowMember = await read(flowPath(world.harnessId));
+  return [
+    { name: 'controls-member', html: member.text },
+    { name: 'flow-member', html: flowMember.text },
+  ];
+}
+
 async function boardScreens(db: Database): Promise<Screen[]> {
   const world = await boardWorld(db, seedClock);
   const pageId = await personaOn(db, world.harnessId);
+  const knowledgeId = await seedSampleKnowledge(db);
   await seedBreakerReading(db, {
     harnessId: world.harnessId,
     at: new Date('2026-10-02T08:30:00.000Z'),
@@ -159,6 +173,8 @@ async function boardScreens(db: Database): Promise<Screen[]> {
     ['access', accessPath()],
     ['persona', personaPath(pageId)],
     ['page', pagePath(pageId)],
+    ['knowledge-page', pagePath(knowledgeId)],
+    ['page-edit', pageEditPath(knowledgeId)],
   ];
   const headers = { accept: 'text/html' };
   const screens: Screen[] = [];
@@ -166,23 +182,7 @@ async function boardScreens(db: Database): Promise<Screen[]> {
     const page = await getHtml(db, world.rowanEmail, path, headers, viewClock);
     screens.push({ name, html: page.text });
   }
-  const member = await getHtml(
-    db,
-    world.viewer.email,
-    controlsPath(world.harnessId),
-    headers,
-    viewClock,
-  );
-  screens.push({ name: 'controls-member', html: member.text });
-  const flowMember = await getHtml(
-    db,
-    world.viewer.email,
-    flowPath(world.harnessId),
-    headers,
-    viewClock,
-  );
-  screens.push({ name: 'flow-member', html: flowMember.text });
-  return [...screens, ...(await draftScreens(world))];
+  return [...screens, ...(await memberScreens(world)), ...(await draftScreens(world))];
 }
 
 async function gateScreens(db: Database): Promise<Screen[]> {
@@ -360,6 +360,8 @@ describe.skipIf(!testServer || (!browserReady && !required))('UI-16 the screensh
       'access',
       'persona',
       'page',
+      'knowledge-page',
+      'page-edit',
       'controls-member',
       'flow-member',
       'flow-draft',

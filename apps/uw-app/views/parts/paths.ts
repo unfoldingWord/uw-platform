@@ -80,6 +80,14 @@ export function pagePath(pageId: string): string {
   return `/pages/${segment(pageId)}`;
 }
 
+export function pageEditPath(pageId: string): string {
+  return `${pagePath(pageId)}/edit`;
+}
+
+export function withBack(path: string, back: string | null): string {
+  return back === null ? path : `${path}?back=${segment(back)}`;
+}
+
 export function personaPath(pageId: string): string {
   return `/personas/${segment(pageId)}`;
 }

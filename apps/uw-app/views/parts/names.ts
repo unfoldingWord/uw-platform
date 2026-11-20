@@ -21,6 +21,7 @@ export const pageNames = {
   gate: 'Gate',
   item: 'Item',
   page: 'Page',
+  pageEdit: 'Edit',
   logOut: 'Log Out',
 } as const;
 
