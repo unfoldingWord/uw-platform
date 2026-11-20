@@ -30,7 +30,7 @@ const schema: Schema = {
     ...defaultSchema.attributes,
     '*': withoutIdsAndClasses(defaultSchema.attributes?.['*']),
     a: withoutIdsAndClasses(defaultSchema.attributes?.['a']),
-    code: [],
+    code: [['className', /^language-./]],
     h2: [],
     li: [],
     ol: [],
@@ -82,6 +82,17 @@ function sanitised(source: string, hooks: RenderHooks, depth: number): Root {
     .use(outsideLinks)
     .use(pageLinks(hooks))
     .use(pageEmbeds({ hooks, nested: (inner, level) => sanitised(inner, hooks, level), depth }));
+  return pipeline.runSync(pipeline.parse(source));
+}
+
+export function sanitisedTree(source: string): Root {
+  const pipeline = unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkRehype, { allowDangerousHtml: true })
+    .use(rehypeRaw)
+    .use(dialect)
+    .use(rehypeSanitize, schema);
   return pipeline.runSync(pipeline.parse(source));
 }
 
