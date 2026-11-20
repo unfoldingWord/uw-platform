@@ -193,6 +193,21 @@ function reachesCredential(
   );
 }
 
+export function managesOwnArea(
+  actor: Principal,
+  credential: CredentialResource,
+  at: Date,
+): boolean {
+  if (!isPersonAtTheKeyboard(actor)) return false;
+  return actor.grants.some(
+    (grant) =>
+      isLive(grant, at) &&
+      grant.scopeKind === 'jd_area' &&
+      grant.scopeArea === credential.area &&
+      reaches(grant.role, credentialRules.manage.area),
+  );
+}
+
 const aclActions: ReadonlySet<string> = new Set(Object.keys(minimumRole));
 
 function isAclAction(action: AclAction | CredentialCapability): action is AclAction {

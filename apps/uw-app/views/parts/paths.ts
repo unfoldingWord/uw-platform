@@ -96,6 +96,14 @@ export function accessPath(filter?: { readonly scope?: string; readonly person?:
   return text === '' ? '/access' : `/access?${text}`;
 }
 
+export function credentialsPath(): string {
+  return '/credentials';
+}
+
+export function credentialPath(credentialId: string): string {
+  return `/credentials/${segment(credentialId)}`;
+}
+
 function repoUrl(repo: string): string {
   return `https://github.com/${repo}`;
 }

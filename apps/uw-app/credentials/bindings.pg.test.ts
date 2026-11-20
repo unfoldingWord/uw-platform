@@ -108,12 +108,12 @@ function bindingWhere(): void {
 
 function refusingBinding(): void {
   it.each([
-    ['an editor on the area', () => person('editor')],
-    ['a viewer on the area', () => person('viewer')],
-    ['an admin of another area', () => person('outsider')],
-    ['an org editor', () => orgEditor()],
-    ['an agent of the area admin', () => agentOf('admin')],
-  ])('refuses %s, records the refusal and binds nothing', async (_name, actor) => {
+    ['an editor on the area', () => person('editor'), 'not_permitted'],
+    ['a viewer on the area', () => person('viewer'), 'not_permitted'],
+    ['an admin of another area', () => person('outsider'), 'credential_not_found'],
+    ['an org editor', () => orgEditor(), 'credential_not_found'],
+    ['an agent of the area admin', () => agentOf('admin'), 'credential_not_found'],
+  ])('refuses %s, records the refusal and binds nothing', async (_name, actor, answer) => {
     const id = await world.created(`Not bound by ${_name}`);
     const outcome = await bindCredential(
       world.deps,
@@ -121,7 +121,7 @@ function refusingBinding(): void {
       { credentialId: id, ...send },
       traceId,
     );
-    expect(outcome).toEqual({ ok: false, reason: 'not_permitted' });
+    expect(outcome).toEqual({ ok: false, reason: answer });
     expect(await bindingsOf(id)).toEqual([]);
     expect(last(await logOf(world.db, id))).toMatchObject({
       action: 'bind',
@@ -259,16 +259,16 @@ function unbindingOne(): void {
   });
 
   it.each([
-    ['an editor on the area', () => person('editor')],
-    ['an agent of the area admin', () => agentOf('admin')],
-    ['an admin of another area', () => person('outsider')],
-  ])('refuses %s, records the refusal and keeps the binding', async (_name, actor) => {
+    ['an editor on the area', () => person('editor'), 'not_permitted'],
+    ['an agent of the area admin', () => agentOf('admin'), 'credential_not_found'],
+    ['an admin of another area', () => person('outsider'), 'credential_not_found'],
+  ])('refuses %s, records the refusal and keeps the binding', async (_name, actor, answer) => {
     const id = await world.created(`Kept bound from ${_name}`);
     const change = { credentialId: id, ...send };
     await bindCredential(world.deps, person('admin'), change, traceId);
     expect(await unbindCredential(world.deps, actor(), change, traceId)).toEqual({
       ok: false,
-      reason: 'not_permitted',
+      reason: answer,
     });
     expect(await bindingsOf(id)).toHaveLength(1);
     expect(last(await logOf(world.db, id))).toMatchObject({

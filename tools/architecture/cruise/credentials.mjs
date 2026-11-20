@@ -4,6 +4,8 @@ const kmsClient = '^apps/uw-app/credentials/kms/';
 
 const store = '^apps/uw-app/credentials/';
 const opensAValue = '^apps/uw-app/credentials/(open|envelope|outcome-guard)\\.ts$';
+const revealsAValue = '^apps/uw-app/credentials/reveal\\.ts$';
+const revealRoute = '^apps/uw-app/credentials/routes\\.ts$';
 const usesAValue = '^apps/uw-app/credentials/(use|secret)\\.ts$';
 const connectorsAdapter = '^apps/uw-app/ports/connectors\\.ts$';
 const agentSurface = '^apps/uw-app/(mcp|engines|runs|agents)/';
@@ -28,10 +30,18 @@ export const credentialRules = [
   {
     name: 'credential-value-opened-only-inside-the-store',
     comment:
-      'Only the credentials store opens a sealed value, so every open passes can(), the access log and the outcome guard. A caller outside the store asks useCredential.',
+      'Only the credentials store opens a sealed value, so every open passes can(), the access log and the outcome guard. A caller outside the store asks useCredential. Inside the store two files call openCredential: use.ts for a connector, and reveal.ts for a person who holds a reveal grant (#159).',
     severity: 'error',
     from: { pathNot: [store, testFile] },
     to: { path: opensAValue },
+  },
+  {
+    name: 'credential-revealed-only-by-its-route',
+    comment:
+      'Only the credential routes ask for a reveal, so a value reaches a person in one uncached answer to POST /api/credentials/reveal and no screen, command, cron job, connector or other store file returns one (#159, ADR 0020).',
+    severity: 'error',
+    from: { pathNot: [revealsAValue, revealRoute, testFile] },
+    to: { path: revealsAValue },
   },
   {
     name: 'credential-used-only-by-a-connector',

@@ -77,7 +77,7 @@ function governanceOf(
 }
 
 const appliesTheRule =
-  /kind: 'row'|\breadsDelegation\(|\breadableDelegations\(|\breadableRoutines\(/;
+  /kind: 'row'|\breadsDelegation\(|\breadableDelegations\(|\breadableRoutines\(|\bcan\([^()]*'(?:see|reveal|manage)'/;
 
 const source = (file: string): string => readFileSync(file, 'utf8');
 

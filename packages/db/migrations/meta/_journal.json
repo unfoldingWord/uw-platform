@@ -358,6 +358,13 @@
       "when": 1795201937994,
       "tag": "0052_credential_unbind_and_not_configured",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1795202607550,
+      "tag": "0053_break_glass_reveal",
+      "breakpoints": true
     }
   ]
 }

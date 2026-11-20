@@ -1,5 +1,5 @@
-import { and, desc, eq, isNull } from 'drizzle-orm';
-import type { Principal } from '@uw/contracts';
+import { and, desc, eq, isNotNull, isNull, not, or } from 'drizzle-orm';
+import type { JdArea, Principal } from '@uw/contracts';
 import { can, type CredentialBinding, type CredentialResource } from '@uw/core/acl';
 import type { CredentialRefusal } from '@uw/core/credentials';
 import type { Executor, Transaction } from '@uw/db/client';
@@ -11,6 +11,7 @@ import {
 } from '@uw/db/schema';
 import { openValue, type SealedValue } from './envelope.ts';
 import { actorAsOf } from './live-actor.ts';
+import { isId, sees } from './standing.ts';
 import {
   recordAccess,
   refuseAndRecord,
@@ -35,6 +36,7 @@ export type OpenedCredential =
       readonly value: Uint8Array<ArrayBuffer>;
       readonly versionId: string;
       readonly version: number;
+      readonly jdArea: JdArea;
     }
   | Refused;
 
@@ -90,6 +92,7 @@ async function factsOf(
         eq(credentialGrants.credentialId, credentialId),
         eq(credentialGrants.capability, 'reveal'),
         isNull(credentialGrants.revokedAt),
+        or(not(credentialGrants.secondRequired), isNotNull(credentialGrants.secondBy)),
       ),
     );
   const resource: CredentialResource = {
@@ -144,7 +147,9 @@ async function finalAnswer(
   const moved = facts.resource.area !== entry.jdArea;
   const reason = moved ? 'key_rejected' : refusalOf(actor, request, facts, at);
   await recordAccess(tx, { ...entry, at }, { versionId, reason });
-  return reason;
+  if (reason === null || request.action !== 'reveal') return reason;
+  const seen = sees(actor, { id: entry.credentialId, jdArea: facts.resource.area }, at);
+  return seen ? reason : 'credential_not_found';
 }
 
 async function releasedOnlyIfStillAllowed(
@@ -161,6 +166,18 @@ async function releasedOnlyIfStillAllowed(
   }
 }
 
+async function refusedAtFirst(
+  deps: CredentialsDeps,
+  entry: AccessEntry,
+  jdArea: JdArea,
+  reason: CredentialRefusal,
+): Promise<Refused> {
+  const answered = await refuseAndRecord(deps.db, entry, { versionId: null, reason });
+  if (entry.action !== 'reveal') return answered;
+  const seen = sees(entry.actor, { id: entry.credentialId, jdArea }, entry.at);
+  return seen ? answered : refused('credential_not_found');
+}
+
 export async function openCredential(
   deps: CredentialsDeps,
   actor: Principal,
@@ -169,7 +186,7 @@ export async function openCredential(
 ): Promise<OpenedCredential> {
   const at = deps.clock.now();
   const { credentialId } = request;
-  const facts = await factsOf(deps.db, request, 'unlocked');
+  const facts = isId(credentialId) ? await factsOf(deps.db, request, 'unlocked') : null;
   if (facts === null) return refused('credential_not_found');
   const jdArea = facts.resource.area;
   const entry: AccessEntry = {
@@ -185,8 +202,7 @@ export async function openCredential(
   const reason = refusalOf(actor, request, facts, at);
   const { current } = facts;
   if (reason !== null || current === null) {
-    const refusal = { versionId: null, reason: reason ?? 'envelope_malformed' } as const;
-    return refuseAndRecord(deps.db, entry, refusal);
+    return refusedAtFirst(deps, entry, jdArea, reason ?? 'envelope_malformed');
   }
   const versionId = current.id;
   const opened = await openValue(deps.keys, { credentialId, versionId, jdArea }, current);
@@ -194,5 +210,5 @@ export async function openCredential(
   const value = opened.plaintext;
   const answer = await releasedOnlyIfStillAllowed(deps, request, { entry, versionId, value });
   if (answer !== null) return refused(answer);
-  return { ok: true, value, versionId, version: current.version };
+  return { ok: true, value, versionId, version: current.version, jdArea };
 }
