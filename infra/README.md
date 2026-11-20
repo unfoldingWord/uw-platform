@@ -259,6 +259,31 @@ Thirty-day retention is the R2 bucket `uw-logs` with the lifecycle rule in `logs
 
 Nothing in the files is a secret. `logpush = true` is added to `wrangler.go-live.toml` with the go-live wiring, because Workers Logpush needs the paid plan and the job above.
 
+## Page files: the `uw-files` buckets
+
+Pictures and files attached to pages are stored in R2 through the `FILES` binding of `uw-app`. The binding is not declared in `uw-app/wrangler.toml` yet, because a deploy fails when it names a bucket that does not exist. Until it is declared, an upload and a download both answer `not_wired`, the edit screen says file storage is not set up, and everything else about pages works.
+
+A person with access to the Cloudflare account sets it up once:
+
+- Create the buckets `uw-files-staging` and `uw-files` (private; no public access, no custom domain).
+- Add this block to `uw-app/wrangler.toml` and to `uw-app/wrangler.go-live.toml`, once under each environment, with `preview` using the staging bucket:
+
+```toml
+[[env.staging.r2_buckets]]
+binding = "FILES"
+bucket_name = "uw-files-staging"
+
+[[env.preview.r2_buckets]]
+binding = "FILES"
+bucket_name = "uw-files-staging"
+
+[[env.production.r2_buckets]]
+binding = "FILES"
+bucket_name = "uw-files"
+```
+
+Nothing here is a secret. A file is read only through `GET /api/files/:fileId`, which checks the reader's grant on the file's area; the bucket is never exposed.
+
 ## Switching on the go-live wiring (FD-12)
 
 `uw-app/wrangler.go-live.toml` and `uw-ingest/wrangler.go-live.toml` are each their `wrangler.toml` plus the bindings whose resources do not exist yet: `logpush`, the `HYPERDRIVE` binding, the ingest queue producer and consumer, the `INGEST_DLQ` producer, and uw-app's `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD`. A test keeps each file equal to its live twin plus exactly those.

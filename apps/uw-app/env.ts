@@ -30,6 +30,21 @@ export type SandboxNamespace = {
   get(id: unknown): SandboxStub;
 };
 
+type BucketMetadata = { readonly contentType?: string };
+type BucketObject = {
+  arrayBuffer(): Promise<ArrayBuffer>;
+  readonly httpMetadata?: BucketMetadata;
+};
+export type FilesBucket = {
+  put(
+    key: string,
+    value: Uint8Array,
+    options?: { readonly httpMetadata?: BucketMetadata },
+  ): Promise<unknown>;
+  get(key: string): Promise<BucketObject | null>;
+  delete(key: string): Promise<unknown>;
+};
+
 export type Bindings = {
   AI_GATEWAY_ACCOUNT_ID?: string;
   AI_GATEWAY_ANALYTICS_TOKEN?: string;
@@ -53,6 +68,7 @@ export type Bindings = {
   ACCESS_AUD?: string;
   ACCESS_MCP_AUD?: string;
   DEV_PRINCIPAL_EMAIL?: string;
+  FILES?: FilesBucket;
   GITHUB_APP_ID?: string;
   GITHUB_APP_INSTALLATION_ID?: string;
   GITHUB_APP_PRIVATE_KEY?: string;

@@ -18,6 +18,7 @@ import { searchScreen } from '../views/screens/search.tsx';
 import { wikiScreen } from '../views/screens/wiki.tsx';
 import { nameCategory } from './categories.ts';
 import { confirmPage } from './confirm.ts';
+import { downloadFile, listPageFiles, uploadFile } from './file-handlers.ts';
 import { pageReads } from './read-handlers.ts';
 import { createPage, updatePage, type PageRefusal, type PageResult } from './store.ts';
 
@@ -101,7 +102,7 @@ async function handleCommand(c: Context<AppEnv>): Promise<Response> {
   return c.json(pageCommandAcceptedSchema.parse(saved), 200);
 }
 
-export function pageRoutes(): Hono<AppEnv> {
+function pageRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
   routes.post('/commands/name_category', handleNameCategory);
   routes.post('/commands/:name', handleCommand);
@@ -110,21 +111,36 @@ export function pageRoutes(): Hono<AppEnv> {
   routes.get('/recent', pageReads.recent);
   routes.get('/search', pageReads.search);
   routes.get('/:pageId/backlinks', pageReads.backlinks);
+  routes.get('/:pageId/files', listPageFiles);
   routes.get('/:pageId/versions', pageReads.versions);
   routes.get('/:pageId/versions/:version', pageReads.version);
   routes.get('/:pageId', pageReads.one);
   return routes;
 }
 
-export function wikiScreenRoutes(): Hono<AppEnv> {
+function wikiScreenRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
   routes.get('/', wikiScreen);
   routes.get('/:category', wikiCategoryScreen);
   return routes;
 }
 
-export function searchScreenRoutes(): Hono<AppEnv> {
+function searchScreenRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
   routes.get('/', searchScreen);
   return routes;
+}
+
+function fileRoutes(): Hono<AppEnv> {
+  const routes = new Hono<AppEnv>();
+  routes.put('/:fileId', uploadFile);
+  routes.get('/:fileId', downloadFile);
+  return routes;
+}
+
+export function mountKnowledgeBase(app: Hono<AppEnv>): void {
+  app.route('/api/pages', pageRoutes());
+  app.route('/api/files', fileRoutes());
+  app.route('/wiki', wikiScreenRoutes());
+  app.route('/search', searchScreenRoutes());
 }

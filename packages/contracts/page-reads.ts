@@ -108,6 +108,38 @@ export const pageCategorySchema = z.object({
 
 export const pageCategoriesReplySchema = z.object({ categories: z.array(pageCategorySchema) });
 
+export const fileContentTypes = [
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'application/pdf',
+  'text/plain',
+  'text/csv',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+] as const;
+
+export const MAX_FILE_BYTES = 20 * 1024 * 1024;
+
+export const fileSchema = z.object({
+  id: z.uuid(),
+  pageId: z.uuid(),
+  jdArea: jdAreaSchema,
+  name: z.string().min(1).max(200),
+  contentType: z.enum(fileContentTypes),
+  size: z.number().int().min(1).max(MAX_FILE_BYTES),
+  sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  uploadedBy: z.string().min(1),
+  createdAt: instant,
+  url: z.string().min(1),
+});
+
+export const fileReplySchema = z.object({ status: z.literal('accepted'), file: fileSchema });
+
+export const pageFilesReplySchema = z.object({ files: z.array(fileSchema) });
+
 export const pageCommandAcceptedSchema = z.object({
   status: z.literal('accepted'),
   requestId: z.uuid(),
@@ -116,6 +148,7 @@ export const pageCommandAcceptedSchema = z.object({
 });
 
 export type PageCategory = z.infer<typeof pageCategorySchema>;
+export type StoredFileRecord = z.infer<typeof fileSchema>;
 export type PageEntry = z.infer<typeof pageEntrySchema>;
 export type PageListQuery = z.infer<typeof pageListQuerySchema>;
 export type PageCapabilities = z.infer<typeof pageCapabilitiesSchema>;

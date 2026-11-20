@@ -27,6 +27,7 @@ export const owns = [
   'jd_categories',
   'page_views',
   'page_links',
+  'page_files',
 ] as const;
 
 export type PageResult =

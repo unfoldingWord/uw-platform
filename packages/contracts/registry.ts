@@ -86,7 +86,10 @@ import {
   updatePageCommandSchema,
 } from './pages.ts';
 import {
+  fileReplySchema,
+  fileSchema,
   pageCapabilitiesSchema,
+  pageFilesReplySchema,
   pageCategoriesReplySchema,
   pageCategorySchema,
   pageCommandAcceptedSchema,
@@ -218,6 +221,9 @@ export const schemaRegistry: Record<string, ZodType> = {
   'page-versions-reply': pageVersionsReplySchema,
   'page-version-reply': pageVersionReplySchema,
   'page-command-accepted': pageCommandAcceptedSchema,
+  file: fileSchema,
+  'file-reply': fileReplySchema,
+  'page-files-reply': pageFilesReplySchema,
   'page-category': pageCategorySchema,
   'page-categories-reply': pageCategoriesReplySchema,
   'name-category-command': nameCategoryCommandSchema,

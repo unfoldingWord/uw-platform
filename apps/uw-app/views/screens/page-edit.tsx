@@ -38,6 +38,26 @@ function refusalText(reason: string): string {
   return `Not saved: ${reasonText(reason)}.`;
 }
 
+function UploadControl(props: { readonly pageId: string }) {
+  const id = `upload-${props.pageId}`;
+  return (
+    <div data-upload="" data-page={props.pageId} class="flex min-w-0 flex-col gap-1">
+      <label for={id} class="text-xs font-heavy tracking-wide text-text-3 uppercase">
+        Add a picture or file
+      </label>
+      <input
+        id={id}
+        type="file"
+        data-upload-input=""
+        class="rounded-md text-sm text-text outline-offset-2 outline-accent-text focus-visible:outline-2"
+      />
+      <p data-upload-status="" role="status" aria-live="polite" class="m-0 text-xs text-text-3">
+        Pictures, PDFs and office files up to 20 MB. It is added where your cursor is.
+      </p>
+    </div>
+  );
+}
+
 function EditForm(props: { readonly page: Page; readonly options: EditOptions }) {
   const { page, options } = props;
   const typed = options.typed ?? {
@@ -61,6 +81,7 @@ function EditForm(props: { readonly page: Page; readonly options: EditOptions })
           maxLength={1_000_000}
           hint={page.type === 'skill' ? instructionsHint : markdownHint}
         />
+        <UploadControl pageId={page.id} />
         <p class="m-0 flex flex-wrap items-center gap-2">
           <button type="submit" class={primaryButton}>
             Save

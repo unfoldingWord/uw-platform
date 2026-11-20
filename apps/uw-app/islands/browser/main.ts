@@ -6,6 +6,7 @@ import { startLive } from './live.ts';
 import { morphMain } from './morph.ts';
 import { wireNavigating } from './navigating.ts';
 import { wireNewWorkflow } from './new-workflow.ts';
+import { wirePageUpload } from './page-upload.ts';
 import { browserPush, wirePushControl } from './push-subscribe.ts';
 import { wireQuickSwitcher } from './quick-switcher.ts';
 import { createRefresher } from './refresh.ts';
@@ -39,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     uuid: () => crypto.randomUUID(),
     go: (href) => window.location.assign(href),
   });
+  wirePageUpload(document, { fetch: send, uuid: () => crypto.randomUUID() });
   wireQuickSwitcher(document, {
     fetch: send,
     go: (href) => window.location.assign(href),

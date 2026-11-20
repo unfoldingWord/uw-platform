@@ -213,6 +213,32 @@ export const pageLinks = declareTable(
   ],
 );
 
+export const pageFiles = declareTable(
+  'page_files',
+  {
+    id: uuid('id').primaryKey(),
+    pageId: uuid('page_id')
+      .notNull()
+      .references(() => pages.id),
+    jdArea: text('jd_area').notNull(),
+    name: text('name').notNull(),
+    contentType: text('content_type').notNull(),
+    size: integer('size').notNull(),
+    sha256: text('sha256').notNull(),
+    uploadedBy: text('uploaded_by').notNull(),
+    createdAt: instant('created_at').notNull().defaultNow(),
+  },
+  { classification: 'internal', offlineEligibility: 'sync' },
+  (t) => [
+    check('page_files_area_form', matches(t.jdArea, JD_AREA_PATTERN)),
+    check('page_files_size_bounded', sql`${t.size} BETWEEN 1 AND 20971520`),
+    check('page_files_sha256_form', matches(t.sha256, '^[0-9a-f]{64}$')),
+    check('page_files_uploaded_by_is_identity', matches(t.uploadedBy, IDENTITY_PATTERN)),
+    check('page_files_name_not_blank', sql`length(btrim(${t.name})) BETWEEN 1 AND 200`),
+    index('page_files_page').on(t.pageId),
+  ],
+);
+
 export const pageVersions = declareTable(
   'page_versions',
   {
