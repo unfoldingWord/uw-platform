@@ -351,6 +351,13 @@
       "when": 1795201556481,
       "tag": "0051_value_not_storable_reason",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1795201937994,
+      "tag": "0052_credential_unbind_and_not_configured",
+      "breakpoints": true
     }
   ]
 }

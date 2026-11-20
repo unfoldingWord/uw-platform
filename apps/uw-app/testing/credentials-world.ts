@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase } from '@uw/db/test-database';
 import { seedGrant, seedHarness, seedPerson } from '@uw/db/test-seed';
@@ -45,4 +46,19 @@ export async function pgWorld(server: string): Promise<PgWorld> {
       await database.drop();
     },
   };
+}
+
+export async function dumpEveryTable(db: Database): Promise<string> {
+  const tables = await db.execute<{ name: string }>(
+    sql`SELECT table_name AS name FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY 1`,
+  );
+  const parts: string[] = [];
+  for (const { name } of tables) {
+    const rows = await db.execute<{ row: string }>(
+      sql`SELECT row_to_json(t)::text AS row FROM ${sql.identifier(name)} t`,
+    );
+    parts.push(...[...rows].map((entry) => `${name} ${entry.row}`));
+  }
+  return parts.join('\n');
 }

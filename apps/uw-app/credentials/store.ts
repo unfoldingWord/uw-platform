@@ -33,7 +33,14 @@ export type CredentialsDeps = {
   readonly newId: () => string;
 };
 
-export type StoreRefusal = CredentialRefusal | 'credential_not_found' | 'credential_name_taken';
+export type StoreRefusal =
+  | CredentialRefusal
+  | 'credential_not_found'
+  | 'credential_name_taken'
+  | 'connector_unknown'
+  | 'workflow_not_found'
+  | 'already_bound'
+  | 'not_bound';
 
 export type Refused = { readonly ok: false; readonly reason: StoreRefusal };
 
@@ -115,7 +122,7 @@ export async function refuseAndRecord(
   return refused(result.reason);
 }
 
-function managerOf(
+export function managerOf(
   actor: Principal,
   credential: { readonly id: string; readonly jdArea: JdArea },
   at: Date,
