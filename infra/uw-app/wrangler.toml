@@ -47,6 +47,8 @@ AI_SPEND_CAP_MINOR = "50000"
 ALWAYS_ON_PROVIDER = "z-ai"
 ALWAYS_ON_MODEL = "z-ai/glm-5.3-flash"
 SANDBOX_MINOR_PER_HOUR = "3"
+CREDENTIALS_KMS_REGION = "us-west-2"
+CREDENTIALS_KMS_KEY_ID = "arn:aws:kms:us-west-2:002723143144:key/5c44bdf8-f2f5-422f-a53c-e2832cf9e84d"
 
 [env.staging.observability]
 enabled = true
@@ -123,6 +125,8 @@ AI_SPEND_CAP_MINOR = "50000"
 ALWAYS_ON_PROVIDER = "z-ai"
 ALWAYS_ON_MODEL = "z-ai/glm-5.3-flash"
 SANDBOX_MINOR_PER_HOUR = "3"
+CREDENTIALS_KMS_REGION = "us-west-2"
+CREDENTIALS_KMS_KEY_ID = "arn:aws:kms:us-west-2:002723143144:key/fbdd5b46-fa68-47e0-8bdd-ffa816d99342"
 
 [env.production.observability]
 enabled = true
