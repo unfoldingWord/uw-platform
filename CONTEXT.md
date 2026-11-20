@@ -86,6 +86,10 @@ _Avoid_: session, token, actor (actor is the field name on an event, and holds a
 One row of `role_grants`: a role (`admin`, `editor`, `viewer`) at a scope (the org, or one JD area), optionally expiring. `can(actor, verb, resource)` is the one function that reads them (plan §4).
 _Avoid_: permission, role (a role is one field of a grant), ACL entry
 
+**Read rule**:
+Who reads a row of a `restricted` or `sensitive` table, declared per table in `rowReadRules` (`packages/core/acl.ts`): the least role on the row's own JD area, whether the person the row belongs to reads it, and whether an org admin does. `can(actor, 'read', row)` is the one function that applies it; an `org` viewer or editor never satisfies it (ADR 0016).
+_Avoid_: row-level security, policy, classification check
+
 **Grant audit**:
 One row of `grant_audit`: who granted or revoked which grant, when, the row before and after, and the trace id. Append-only.
 _Avoid_: access log, history
