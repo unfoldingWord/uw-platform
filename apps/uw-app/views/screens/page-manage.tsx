@@ -6,6 +6,7 @@ import {
   type Page,
   type PageEntry,
 } from '@uw/contracts';
+import { formatDate } from '@uw/core/dates';
 import { Card } from '@uw/ui/components/card.tsx';
 import { commandButton } from '@uw/ui/components/command-form.tsx';
 import { SelectField, TextField } from '@uw/ui/components/field.tsx';
@@ -77,6 +78,33 @@ function MoveCard(props: { readonly managed: Managed; readonly siblings: readonl
         <p class="m-0">
           <button type="submit" class={commandButton}>
             Move page
+          </button>
+        </p>
+      </Action>
+    </Card>
+  );
+}
+
+const periods = [
+  { value: '90', label: '90 days' },
+  { value: '180', label: '6 months' },
+  { value: '365', label: '1 year' },
+];
+
+function VerifyCard(props: { readonly page: Page }) {
+  return (
+    <Card title="Verify" sub="Says you read this page and it is still right">
+      <Action page={props.page} intent="verify">
+        <SelectField
+          name="days"
+          label="Verified for"
+          scope={props.page.id}
+          choices={periods}
+          selected="90"
+        />
+        <p class="m-0">
+          <button type="submit" class={commandButton}>
+            Mark as verified
           </button>
         </p>
       </Action>
@@ -184,6 +212,7 @@ async function render(
             Back to the page
           </a>
         </p>
+        <VerifyCard page={shown.page} />
         <MoveCard managed={managed} siblings={siblings} />
         <OtherCards page={shown.page} />
       </div>
@@ -242,6 +271,33 @@ async function statusSet(c: Context<AppEnv>, managed: Managed, posted: Posted): 
   return updatePage(database.db, actor, command.data, traceId, managed.screen.at);
 }
 
+const DAY_MS = 86_400_000;
+
+async function verified(c: Context<AppEnv>, managed: Managed, posted: Posted): Promise<Outcome> {
+  const database = c.get('database');
+  const { page } = managed.shown;
+  const { actor, traceId } = managed.screen.caller;
+  const days = Number(posted['days']);
+  if (database === null || !periods.some((period) => Number(period.value) === days)) {
+    return malformed;
+  }
+  const until = formatDate(new Date(managed.screen.at.getTime() + days * DAY_MS));
+  const command = updatePageCommandSchema.safeParse({
+    command: 'update_page',
+    requestId: posted['requestId'],
+    pageId: page.id,
+    expectedVersion: Number(posted['expectedVersion']),
+    slug: page.slug,
+    title: page.title,
+    parentId: page.parentId,
+    frontmatter: { ...page.frontmatter, verified_by: actor.identity, verified_until: until },
+    bodyMd: page.bodyMd,
+    status: page.status,
+  });
+  if (!command.success) return malformed;
+  return updatePage(database.db, actor, command.data, traceId, managed.screen.at);
+}
+
 async function copied(c: Context<AppEnv>, managed: Managed, posted: Posted): Promise<Outcome> {
   const database = c.get('database');
   if (database === null) return malformed;
@@ -253,6 +309,7 @@ async function copied(c: Context<AppEnv>, managed: Managed, posted: Posted): Pro
 const actions = new Map([
   ['move', moved],
   ['copy', copied],
+  ['verify', verified],
   ['retire', statusSet],
   ['restore', statusSet],
 ]);

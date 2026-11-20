@@ -147,6 +147,25 @@ export const pageCommandAcceptedSchema = z.object({
   version: z.number().int().min(1),
 });
 
+export const pageCommentSchema = z.object({
+  id: z.uuid(),
+  pageId: z.uuid(),
+  author: z.string().min(1),
+  authorName: z.string().min(1).nullable(),
+  bodyMd: z.string().min(1).max(10_000),
+  createdAt: instant,
+  resolvedAt: instant.nullable(),
+});
+
+export const pageCommentsReplySchema = z.object({ comments: z.array(pageCommentSchema) });
+
+export const pageFavouriteReplySchema = z.object({
+  status: z.literal('accepted'),
+  pageId: z.uuid(),
+  favourite: z.boolean(),
+});
+
+export type PageComment = z.infer<typeof pageCommentSchema>;
 export type PageCategory = z.infer<typeof pageCategorySchema>;
 export type StoredFileRecord = z.infer<typeof fileSchema>;
 export type PageEntry = z.infer<typeof pageEntrySchema>;

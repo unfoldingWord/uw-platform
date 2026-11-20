@@ -52,3 +52,22 @@ export function IconToggle(props: {
     </button>
   );
 }
+
+const favourite =
+  'inline-flex h-size-5 items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-heavy text-text-2 outline-offset-2 outline-accent-text hover:border-accent hover:text-accent-text focus-visible:outline-2 data-on:border-accent data-on:bg-accent-soft data-on:text-accent-text';
+
+export function FavouriteToggle(props: { readonly pageId: string; readonly on: boolean }) {
+  const state = props.on ? { 'data-on': '' } : {};
+  return (
+    <button
+      type="button"
+      data-favourite={props.pageId}
+      aria-pressed={props.on ? 'true' : 'false'}
+      {...state}
+      class={favourite}
+    >
+      <Icon name="star" size={1} />
+      <span>Favourite</span>
+    </button>
+  );
+}

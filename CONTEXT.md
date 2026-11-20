@@ -342,6 +342,22 @@ _Avoid_: draft (alone, that is the Flow tab's private copy of stages, or the pag
 One Durable Object per page version being edited (`PageDraft`), holding its working draft as a Yjs document and passing changes between the people in edit mode. It is not the record: the saved markdown is. A new version gets a new sync hub, so a working draft always starts from one saved version.
 _Avoid_: live hub (that sends wakes for a harness and holds no data), collab server, room
 
+**Verification**:
+A person's statement, on a knowledge page, that they read it and it is still right, with the date it holds until. After that date the verification has **lapsed**: the read view says so and the page is on the "Needs review" list.
+_Avoid_: approval (that is a gate decision), review (alone), sign-off
+
+**Template**:
+A knowledge page tagged `template`. A new page can start from its text; the template itself is an ordinary page.
+_Avoid_: blueprint, boilerplate
+
+**Favourite**:
+A page a person marked for themselves. Only that person sees it, on "Pages & Wiki".
+_Avoid_: bookmark, star, pin
+
+**Comment**:
+A reader's note on a page, kept beside the page and not in its text. Anyone who can read the page can comment; its author or an editor of the page's area resolves it.
+_Avoid_: note, annotation, thread
+
 **Quick Switcher**:
 The dialog Cmd/Ctrl+O opens on any screen: type part of a title, a JD ID or an alias and go to that page. It matches titles only; searching the text of pages is **search**.
 _Avoid_: command palette, omnibox, spotlight, launcher

@@ -102,6 +102,15 @@ async function titlesOf(
   );
 }
 
+export function embedSources(
+  db: Executor,
+  actor: Principal,
+  bodyMd: string,
+  at: Date,
+): Promise<ReadonlyMap<string, EmbedSource>> {
+  return gatherEmbeds(db, { actor, at }, bodyMd);
+}
+
 export async function renderPage(
   db: Executor,
   actor: Principal,

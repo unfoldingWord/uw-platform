@@ -96,6 +96,25 @@ export const movePageCommandSchema = z.object({
   parentId: z.uuid().nullable(),
 });
 
+export const commentPageCommandSchema = z.object({
+  command: z.literal('comment_page'),
+  requestId: z.uuid(),
+  commentId: z.uuid(),
+  pageId: z.uuid(),
+  bodyMd: z
+    .string()
+    .max(10_000)
+    .refine((value) => value.trim().length > 0, 'a comment is not blank'),
+});
+
+export const resolveCommentCommandSchema = z.object({
+  command: z.literal('resolve_comment'),
+  requestId: z.uuid(),
+  commentId: z.uuid(),
+});
+
+export type CommentPageCommand = z.infer<typeof commentPageCommandSchema>;
+export type ResolveCommentCommand = z.infer<typeof resolveCommentCommandSchema>;
 export type MovePageCommand = z.infer<typeof movePageCommandSchema>;
 export type NameCategoryCommand = z.infer<typeof nameCategoryCommandSchema>;
 export type PageType = z.infer<typeof pageTypeSchema>;

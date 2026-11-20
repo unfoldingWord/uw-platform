@@ -92,6 +92,18 @@ export function pageEditPath(pageId: string): string {
   return `${pagePath(pageId)}/edit`;
 }
 
+export function wikiReviewPath(): string {
+  return '/wiki/review';
+}
+
+export function pageExportPath(pageId: string): string {
+  return `/api/pages/${segment(pageId)}/export`;
+}
+
+export function pageCommentsPath(pageId: string): string {
+  return `${pagePath(pageId)}/comments`;
+}
+
 export function pageManagePath(pageId: string): string {
   return `${pagePath(pageId)}/manage`;
 }

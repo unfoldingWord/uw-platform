@@ -104,7 +104,10 @@ export function TopBar(props: {
   readonly actions?: Child | undefined;
 }) {
   return (
-    <header class="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-4 py-3 md:px-5">
+    <header
+      data-chrome=""
+      class="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-4 py-3 md:px-5"
+    >
       <nav aria-label="Breadcrumb" class="min-w-0 text-sm font-semibold text-text-3">
         <ol class="flex flex-wrap items-center gap-2">
           {props.code === undefined ? null : (

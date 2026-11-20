@@ -5,9 +5,12 @@ import { HumanActionLink } from '@uw/ui/components/human-action.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { categoryCounts } from '../../pages/categories.ts';
+import { favouritesOf } from '../../pages/favourites.ts';
+import { lapsedPages } from '../../pages/verification.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { areasWithin, moduleCodes, pageNames, platformAreas } from '../parts/names.ts';
-import { wikiNewPath, wikiPath } from '../parts/paths.ts';
+import { pageLink } from '../parts/page-shown.ts';
+import { pagePath, wikiNewPath, wikiPath, wikiReviewPath } from '../parts/paths.ts';
 
 const row =
   'flex items-baseline gap-3 rounded-sm px-4 py-2 text-base text-text outline-offset-2 outline-accent-text hover:bg-hover focus-visible:outline-2';
@@ -65,11 +68,32 @@ function AreaCard(props: { readonly group: Group }) {
   );
 }
 
+function Favourites(props: {
+  readonly pages: readonly { readonly id: string; readonly title: string }[];
+}) {
+  if (props.pages.length === 0) return null;
+  return (
+    <Card title="Your favourites">
+      <ul data-favourites="" class="m-0 flex list-none flex-col gap-1 p-0">
+        {props.pages.map((entry) => (
+          <li>
+            <a href={pagePath(entry.id)} class={pageLink}>
+              {entry.title}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 export async function wikiScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   const database = c.get('database');
   if (screen === null || database === null) return screenRefusal(c);
   const groups = groupsOf(await categoryCounts(database.db, screen.caller.actor, screen.at));
+  const lapsed = (await lapsedPages(database.db, screen.caller.actor, screen.at)).length;
+  const favourites = await favouritesOf(database.db, screen.caller.actor, screen.at);
   const spec = {
     title: pageNames.wiki,
     current: wikiPath(),
@@ -88,6 +112,14 @@ export async function wikiScreen(c: Context<AppEnv>): Promise<Response> {
         }
       />
       <div class="flex flex-col gap-5">
+        {lapsed === 0 ? null : (
+          <p class="m-0">
+            <a href={wikiReviewPath()} class={pageLink}>
+              {lapsed === 1 ? '1 page needs review' : `${String(lapsed)} pages need review`}
+            </a>
+          </p>
+        )}
+        <Favourites pages={favourites} />
         {groups.length === 0 ? (
           <Card title="Nothing here yet">
             <p class="m-0 text-sm text-text-2">

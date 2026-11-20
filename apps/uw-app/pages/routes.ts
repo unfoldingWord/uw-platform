@@ -15,17 +15,26 @@ import type { AppEnv } from '../deps.ts';
 import { malformed, readJson } from '../http/commands.ts';
 import { formGuard } from '../http/form-guard.ts';
 import { refuse, reply } from '../http/outcomes.ts';
+import { commentFromForm, pageCommentsScreen } from '../views/screens/page-comments.tsx';
 import { managePage, pageManageScreen } from '../views/screens/page-manage.tsx';
 import { pageVersionScreen, restoreVersion } from '../views/screens/page-version.tsx';
 import { wikiCategoryScreen } from '../views/screens/wiki-category.tsx';
 import { searchScreen } from '../views/screens/search.tsx';
 import { createFromForm, wikiNewScreen } from '../views/screens/wiki-new.tsx';
+import { wikiReviewScreen } from '../views/screens/wiki-review.tsx';
 import { wikiScreen } from '../views/screens/wiki.tsx';
 import { nameCategory } from './categories.ts';
 import { confirmPage } from './confirm.ts';
 import { connectDraft } from './draft-handlers.ts';
 import { downloadFile, listPageFiles, uploadFile } from './file-handlers.ts';
 import { movePage } from './move.ts';
+import {
+  dropFavourite,
+  handleComment,
+  handleResolve,
+  keepFavourite,
+  listComments,
+} from './social-handlers.ts';
 import { pageReads } from './read-handlers.ts';
 import { createPage, updatePage, type PageRefusal, type PageResult } from './store.ts';
 
@@ -121,13 +130,20 @@ async function handleCommand(c: Context<AppEnv>): Promise<Response> {
 function pageRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
   routes.post('/commands/name_category', handleNameCategory);
+  routes.post('/commands/comment_page', handleComment);
+  routes.post('/commands/resolve_comment', handleResolve);
   routes.post('/commands/:name', handleCommand);
   routes.get('/', pageReads.list);
   routes.get('/index', pageReads.index);
   routes.get('/recent', pageReads.recent);
   routes.get('/search', pageReads.search);
   routes.get('/:pageId/backlinks', pageReads.backlinks);
+  routes.get('/:pageId/comments', listComments);
+  routes.use('/:pageId/favourite', formGuard);
+  routes.put('/:pageId/favourite', keepFavourite);
+  routes.delete('/:pageId/favourite', dropFavourite);
   routes.get('/:pageId/draft', connectDraft);
+  routes.get('/:pageId/export', pageReads.exported);
   routes.get('/:pageId/files', listPageFiles);
   routes.get('/:pageId/versions', pageReads.versions);
   routes.get('/:pageId/versions/:version', pageReads.version);
@@ -140,6 +156,7 @@ function wikiScreenRoutes(): Hono<AppEnv> {
   routes.get('/', wikiScreen);
   routes.use('/new', formGuard);
   routes.get('/new', wikiNewScreen);
+  routes.get('/review', wikiReviewScreen);
   routes.post('/new', createFromForm);
   routes.get('/:category', wikiCategoryScreen);
   return routes;
@@ -147,6 +164,9 @@ function wikiScreenRoutes(): Hono<AppEnv> {
 
 function pageScreenRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
+  routes.use('/:pageId/comments', formGuard);
+  routes.get('/:pageId/comments', pageCommentsScreen);
+  routes.post('/:pageId/comments', commentFromForm);
   routes.use('/:pageId/manage', formGuard);
   routes.get('/:pageId/manage', pageManageScreen);
   routes.post('/:pageId/manage', managePage);

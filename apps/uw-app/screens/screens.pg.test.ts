@@ -32,6 +32,7 @@ import {
   itemPath,
   agentsPath,
   newAgentPath,
+  pageCommentsPath,
   pageEditPath,
   pageManagePath,
   pageVersionPath,
@@ -42,6 +43,7 @@ import {
   waitingPath,
   wikiNewPath,
   wikiPath,
+  wikiReviewPath,
 } from '../views/parts/paths.ts';
 
 const seedClock: Clock = { now: () => new Date('2026-10-02T06:00:00.000Z') };
@@ -184,6 +186,8 @@ async function boardScreens(db: Database): Promise<Screen[]> {
     ['wiki-new', wikiNewPath({ category: '81' })],
     ['page-manage', pageManagePath(knowledgeId)],
     ['page-version', pageVersionPath(knowledgeId, 1)],
+    ['page-comments', pageCommentsPath(knowledgeId)],
+    ['wiki-review', wikiReviewPath()],
     ['search', '/search?q=assessment'],
   ];
   const headers = { accept: 'text/html' };
@@ -371,6 +375,8 @@ const pictured = [
   'wiki-new',
   'page-manage',
   'page-version',
+  'page-comments',
+  'wiki-review',
   'search',
   'controls-member',
   'flow-member',

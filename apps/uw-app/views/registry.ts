@@ -79,6 +79,16 @@ export const screens: readonly ScreenEntry[] = [
     file: 'apps/uw-app/views/screens/wiki-category.tsx',
     path: '/wiki/:category',
   },
+  {
+    name: 'wiki-review',
+    file: 'apps/uw-app/views/screens/wiki-review.tsx',
+    path: '/wiki/review',
+  },
+  {
+    name: 'page-comments',
+    file: 'apps/uw-app/views/screens/page-comments.tsx',
+    path: '/pages/:pageId/comments',
+  },
   { name: 'wiki-new', file: 'apps/uw-app/views/screens/wiki-new.tsx', path: '/wiki/new' },
   {
     name: 'page-manage',

@@ -28,6 +28,8 @@ export const owns = [
   'page_views',
   'page_links',
   'page_files',
+  'page_favourites',
+  'page_comments',
 ] as const;
 
 export type PageResult =

@@ -381,3 +381,12 @@
     font-weight: var(--uw-weight-heavy);
   }
 }
+
+@media print {
+  [data-side],
+  [data-chrome],
+  [data-print],
+  dialog {
+    display: none;
+  }
+}

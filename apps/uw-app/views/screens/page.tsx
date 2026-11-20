@@ -2,6 +2,7 @@ import type { Context } from 'hono';
 import { raw } from 'hono/html';
 import { formatInstant } from '@uw/core/dates';
 import { Card } from '@uw/ui/components/card.tsx';
+import { FavouriteToggle } from '@uw/ui/components/chip.tsx';
 import { HumanActionLink } from '@uw/ui/components/human-action.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
@@ -11,8 +12,11 @@ import type { Heading, Rendered } from '../../markdown/render.ts';
 import { draftsOf } from '../../pages/drafts.ts';
 import { renderPage } from '../../pages/render-page.ts';
 import type { PageVersion } from '../../pages/history.ts';
+import { openComments } from '../../pages/comments.ts';
+import { isFavourite } from '../../pages/favourites.ts';
 import { recordView } from '../../pages/recent.ts';
-import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
+import { verificationOf } from '../../pages/verification.ts';
+import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import {
   backOf,
   pageLink,
@@ -23,7 +27,9 @@ import {
 } from '../parts/page-shown.ts';
 import { idParam } from '../parts/params.ts';
 import {
+  pageCommentsPath,
   pageEditPath,
+  pageExportPath,
   pageManagePath,
   pagePath,
   pageVersionPath,
@@ -112,6 +118,38 @@ function PageList(props: {
   );
 }
 
+function Verified(props: { readonly shown: ShownPage; readonly at: Date }) {
+  const { page } = props.shown;
+  if (page.type !== 'knowledge') return null;
+  const verification = verificationOf(page.frontmatter, props.at);
+  if (verification.state === 'never') return null;
+  if (verification.state === 'lapsed') {
+    return (
+      <Note>{`Verification lapsed on ${verification.until}. This page may be out of date.`}</Note>
+    );
+  }
+  return <p class="m-0 text-sm text-text-3">{`Verified until ${verification.until}.`}</p>;
+}
+
+function Take(props: { readonly pageId: string; readonly open: number }) {
+  const { open } = props;
+  const comments =
+    open === 0 ? 'Comments' : open === 1 ? '1 open comment' : `${String(open)} open comments`;
+  return (
+    <p class="m-0 flex flex-wrap items-center gap-4 text-sm">
+      <a href={pageCommentsPath(props.pageId)} class={pageLink}>
+        {comments}
+      </a>
+      <a href={pageExportPath(props.pageId)} class={pageLink}>
+        Export as markdown
+      </a>
+      <button type="button" data-print="" class={`${pageLink} cursor-pointer`}>
+        Print or save as PDF
+      </button>
+    </p>
+  );
+}
+
 function Manage(props: { readonly shown: ShownPage }) {
   const { page, canEdit } = props.shown;
   if (!canEdit || page.type !== 'knowledge') return null;
@@ -132,11 +170,39 @@ type Extras = {
   readonly saved: number | null;
   readonly rendered: Rendered;
   readonly drafted: boolean;
+  readonly at: Date;
+  readonly openComments: number;
+  readonly favourite: boolean;
 };
+
+function Notices(props: { readonly shown: ShownPage; readonly extras: Extras }) {
+  const { shown, extras } = props;
+  const { back, saved } = extras;
+  return (
+    <>
+      {back === null ? null : (
+        <p class="m-0">
+          <a href={back} class={pageLink}>
+            Back to Stages & Controls
+          </a>
+        </p>
+      )}
+      {saved === null ? null : <Note>{`Saved as version ${String(saved)}.`}</Note>}
+      {shown.page.status === 'retired' ? (
+        <Note>This page is retired. It is hidden from lists and search.</Note>
+      ) : null}
+      <Verified shown={shown} at={extras.at} />
+      <Manage shown={shown} />
+      {extras.drafted ? (
+        <Note>There is an unsaved draft of this page. You are reading it as last saved.</Note>
+      ) : null}
+    </>
+  );
+}
 
 function body(shown: ShownPage, extras: Extras) {
   const { page } = shown;
-  const { back, saved, rendered } = extras;
+  const { back, rendered } = extras;
   const pencil = shown.canEdit ? (
     <HumanActionLink
       href={withBack(pageEditPath(page.id), back)}
@@ -151,24 +217,15 @@ function body(shown: ShownPage, extras: Extras) {
         eyebrow={typeWords[page.type] ?? page.type}
         title={page.title}
         lede={`Version ${String(page.version)} in area ${page.jdArea}.`}
-        actions={pencil}
+        actions={
+          <>
+            <FavouriteToggle pageId={page.id} on={extras.favourite} />
+            {pencil}
+          </>
+        }
       />
       <div class="flex flex-col gap-5">
-        {back === null ? null : (
-          <p class="m-0">
-            <a href={back} class={pageLink}>
-              Back to Stages & Controls
-            </a>
-          </p>
-        )}
-        {saved === null ? null : <Note>{`Saved as version ${String(saved)}.`}</Note>}
-        {page.status === 'retired' ? (
-          <Note>This page is retired. It is hidden from lists and search.</Note>
-        ) : null}
-        <Manage shown={shown} />
-        {extras.drafted ? (
-          <Note>There is an unsaved draft of this page. You are reading it as last saved.</Note>
-        ) : null}
+        <Notices shown={shown} extras={extras} />
         <div class="flex flex-col gap-5 lg:flex-row lg:items-start">
           <div class="min-w-0 flex-1">
             <Card>
@@ -179,10 +236,32 @@ function body(shown: ShownPage, extras: Extras) {
         </div>
         <PageList title="Pages under this one" mark="children" pages={shown.children} />
         <PageList title="Linked from" mark="backlinks" pages={shown.backlinks} />
+        <Take pageId={page.id} open={extras.openComments} />
         <History pageId={page.id} versions={shown.versions} />
       </div>
     </>
   );
+}
+
+type Stored = Pick<Extras, 'rendered' | 'openComments' | 'favourite'>;
+
+async function storedExtras(
+  c: Context<AppEnv>,
+  screen: ScreenKernel,
+  shown: ShownPage,
+): Promise<Stored> {
+  const database = c.get('database');
+  if (database === null) {
+    return { rendered: { html: '', headings: [] }, openComments: 0, favourite: false };
+  }
+  const { actor } = screen.caller;
+  const { page } = shown;
+  await recordView(database.db, actor, page.id, screen.at);
+  return {
+    rendered: await renderPage(database.db, actor, page, screen.at),
+    openComments: await openComments(database.db, page.id),
+    favourite: await isFavourite(database.db, actor, page.id),
+  };
 }
 
 export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
@@ -193,22 +272,15 @@ export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
   const read = await screen.kernel.views.page(screen.caller, { pageId }, { at: screen.at });
   const shown = read.status === 'accepted' ? await shownPage(c, screen, pageId) : null;
   if (shown === null) return notFound(c);
-  const database = c.get('database');
-  if (database !== null) await recordView(database.db, screen.caller.actor, pageId, screen.at);
-  const spec = pageSpec(shown, null);
-  const { actor } = screen.caller;
-  const rendered =
-    database === null
-      ? { html: '', headings: [] }
-      : await renderPage(database.db, actor, shown.page, screen.at);
   const draft = shown.canEdit
     ? await draftsOf(c.env)?.status(shown.page.id, shown.page.version)
     : null;
   const extras = {
+    ...(await storedExtras(c, screen, shown)),
     drafted: draft?.dirty === true,
+    at: screen.at,
     back: backOf(c.req.query('back')),
     saved: savedVersion(c.req.query('saved')),
-    rendered,
   };
-  return renderScreen(c, spec, body(shown, extras));
+  return renderScreen(c, pageSpec(shown, null), body(shown, extras));
 }
