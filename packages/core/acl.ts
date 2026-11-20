@@ -62,6 +62,7 @@ const grantRecord: RowReadRule = { area: 'admin', owner: true, orgAdmin: true };
 const personalRecord: RowReadRule = { area: null, owner: true, orgAdmin: true };
 const lentRecord: RowReadRule = { area: 'viewer', owner: true, orgAdmin: true };
 const areaRecord: RowReadRule = { area: 'viewer', owner: false, orgAdmin: true };
+const managedRecord: RowReadRule = { area: 'admin', owner: false, orgAdmin: true };
 
 export const rowReadRules = {
   role_grants: grantRecord,
@@ -72,6 +73,11 @@ export const rowReadRules = {
   delegations: lentRecord,
   routines: lentRecord,
   gate_decisions: areaRecord,
+  credentials: areaRecord,
+  credential_versions: managedRecord,
+  credential_grants: grantRecord,
+  credential_bindings: managedRecord,
+  credential_access_log: managedRecord,
 } as const satisfies Readonly<Record<string, RowReadRule>>;
 
 export type RestrictedTable = keyof typeof rowReadRules;

@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest';
 import { owns as acl } from '../../apps/uw-app/acl/grant-commands.ts';
 import { owns as serviceTokens } from '../../apps/uw-app/agents/service-tokens.ts';
 import { owns as commandRequests } from '../../apps/uw-app/commands/requests.ts';
+import { owns as credentialStore } from '../../apps/uw-app/credentials/store.ts';
 import { owns as githubFacts } from '../../apps/uw-app/github/facts/owns.ts';
 import { owns as notify } from '../../apps/uw-app/notify/push/owns.ts';
 import { owns as pages } from '../../apps/uw-app/pages/store.ts';
@@ -50,6 +51,7 @@ const owners: Owner[] = [
   { dir: 'apps/uw-app/tasks/', tables: tasks },
   { dir: 'apps/uw-app/agents/', tables: serviceTokens },
   { dir: 'apps/uw-app/commands/', tables: commandRequests },
+  { dir: 'apps/uw-app/credentials/', tables: credentialStore },
   { dir: 'apps/uw-app/github/facts/', tables: githubFacts },
   { dir: 'apps/uw-app/notify/push/', tables: notify },
   { dir: 'apps/uw-ingest/deliveries/', tables: deliveries },

@@ -106,6 +106,26 @@ _Avoid_: reveal permission, break-glass (that is a reveal outside the grants, by
 The workflow and connector a credential may be used from. `use` is refused anywhere else, whatever grants the principal holds.
 _Avoid_: binding on its own (a service token has one too), attachment, scope (a scope is the org or a JD area on a grant)
 
+**Credential version**:
+One row of `credential_versions`: one sealed value of a credential. Rotating a credential adds a version and never changes one; the highest version is the one in use.
+_Avoid_: revision (a page has those), secret version, key version
+
+**Data key**:
+The 256-bit key that seals exactly one credential version with AES-256-GCM. It is stored only wrapped, beside the ciphertext it sealed, and exists unwrapped only in memory while a value is sealed or opened.
+_Avoid_: key on its own, credential key, DEK
+
+**Key-encryption key**:
+The AWS KMS key that wraps and unwraps every data key. It never leaves KMS, so a copy of the database alone opens nothing.
+_Avoid_: master key, KEK, root key, the KMS credentials (those are a platform secret that signs requests to KMS)
+
+**Encryption context**:
+The facts a sealed value is bound to: its credential, its version and its JD area. KMS refuses to unwrap a data key under a different context, and the cipher refuses to open the value under one.
+_Avoid_: additional data, AAD, tags
+
+**Credential access log**:
+The rows of `credential_access_log`: every create, rotate, use and reveal of a credential, done or refused, with the actor, the run, the workflow and connector of a use, and the trace id. Append-only and kept seven years.
+_Avoid_: audit log on its own, grant audit (that records grants), history
+
 **Grant audit**:
 One row of `grant_audit`: who granted or revoked which grant, when, the row before and after, and the trace id. Append-only.
 _Avoid_: access log, history
