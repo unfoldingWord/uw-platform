@@ -142,18 +142,29 @@ describe('#175 the Quick Switcher lists recent pages, then matches as you type',
     expect(made.went).toEqual([`/pages/${id(2)}`]);
   });
 
-  it('matches titles and JD IDs, and offers a full-text search as the last row', async () => {
+  it('matches titles and JD IDs, then offers a full-text search and a new page as the last rows', async () => {
     const made = rig();
     press(made, 'o', { ctrlKey: true });
     await settled();
     type(made, 'secur');
-    expect(rows(made)).toEqual(['>01.47 Security Guidelines01.47', ' Search all text for “secur”']);
+    expect(rows(made)).toEqual([
+      '>01.47 Security Guidelines01.47',
+      ' Search all text for “secur”',
+      ' Create page “secur”',
+    ]);
     type(made, '0126');
     expect(rows(made)[0]).toBe('>01.26 Budgeting01.26');
     type(made, 'nothing like this');
-    expect(rows(made)).toEqual(['>Search all text for “nothing like this”']);
+    expect(rows(made)).toEqual([
+      '>Search all text for “nothing like this”',
+      ' Create page “nothing like this”',
+    ]);
     press(made, 'Enter', {}, '[data-switcher-input]');
     expect(made.went).toEqual(['/search?q=nothing%20like%20this']);
+    type(made, 'Per diem');
+    press(made, 'ArrowDown', {}, '[data-switcher-input]');
+    press(made, 'Enter', {}, '[data-switcher-input]');
+    expect(made.went.at(-1)).toBe('/wiki/new?title=Per%20diem');
   });
 });
 
@@ -185,6 +196,6 @@ describe('#175 the Quick Switcher is driven from the keyboard', () => {
     const status = made.dom.window.document.querySelector('[data-switcher-status]');
     expect(status?.textContent).toBe('The page list could not be loaded.');
     type(made, 'budget');
-    expect(rows(made)).toEqual(['>Search all text for “budget”']);
+    expect(rows(made)).toEqual(['>Search all text for “budget”', ' Create page “budget”']);
   });
 });

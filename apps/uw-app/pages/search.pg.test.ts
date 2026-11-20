@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
+import { formatDate } from '@uw/core/dates';
 import type { Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
 import { person } from '../testing/commands.ts';
@@ -95,6 +96,32 @@ describe.skipIf(!testServer)('#175 search reads title and body through one store
 
   it('narrows to titles only, and takes anything a person types without an error', () =>
     withAppDatabase(narrowsToTitlesOnlyAndTakesAnything));
+});
+
+async function narrowsByOwnerAndDate(db: Database): Promise<void> {
+  const made = await world(db);
+  const owner = made.reader.identity;
+  const owned = await fileKnowledge(db, made.reader.email ?? '', '01', {
+    title: '01.50 Budget owner page',
+    bodyMd: 'Budget owned here.',
+    frontmatter: { jd_category: '01', owner },
+  });
+  expect(owned.sent.body).toMatchObject({ status: 'accepted' });
+  expect(await titles(db, made.reader, { text: 'budget', owner })).toEqual([
+    '01.50 Budget owner page',
+  ]);
+  await db.execute(sql`UPDATE pages SET updated_at = now() - interval '40 days'
+    WHERE title = '01.26 Budgeting'`);
+  const since = formatDate(new Date(Date.now() - 31 * 86_400_000));
+  expect(await titles(db, made.reader, { text: 'budget', since })).toEqual([
+    '01.50 Budget owner page',
+    '01.47 Security Guidelines',
+  ]);
+}
+
+describe.skipIf(!testServer)('#175 search narrows by owner and by when a page changed', () => {
+  it('finds only the pages a person owns, or that changed since a date', () =>
+    withAppDatabase(narrowsByOwnerAndDate));
 });
 
 describe.skipIf(!testServer)('#175 a search result shows where the words were found', () => {

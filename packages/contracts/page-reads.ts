@@ -63,6 +63,11 @@ export const pageSearchQuerySchema = z.object({
   type: pageTypeSchema.optional(),
   area: jdAreaSchema.optional(),
   titles: z.enum(['1']).optional(),
+  owner: z
+    .string()
+    .regex(/^human:[0-9a-f-]{36}$/)
+    .optional(),
+  since: z.iso.date().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 

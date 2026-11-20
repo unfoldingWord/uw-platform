@@ -82,7 +82,7 @@ const recent: Read = async (c, { db, actor, at }) =>
 const search: Read = async (c, { db, actor, at }) => {
   const query = pageSearchQuerySchema.safeParse(c.req.query());
   if (!query.success) return refuse(c, 'malformed_command');
-  const { q, type, area, titles, limit } = query.data;
+  const { q, type, area, titles, owner, since, limit } = query.data;
   const results = await searchWithSnippets(
     db,
     actor,
@@ -92,6 +92,8 @@ const search: Read = async (c, { db, actor, at }) => {
       area: area ?? null,
       titlesOnly: titles === '1',
       liveOnly: true,
+      owner: owner ?? null,
+      since: since ?? null,
       limit,
     },
     at,

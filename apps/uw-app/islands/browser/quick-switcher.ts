@@ -69,12 +69,20 @@ function searchRow(query: string): Row {
   };
 }
 
+function createRow(query: string): Row {
+  return {
+    title: `Create page “${query}”`,
+    meta: '',
+    href: `/wiki/new?title=${encodeURIComponent(query)}`,
+  };
+}
+
 function rowsFor(loaded: Loaded, query: string, here: string): readonly Row[] {
   const typed = query.trim();
   if (typed === '') {
     return loaded.recent.map(pageRow).filter((row) => row.href !== here);
   }
-  return [...loaded.match(typed, SHOWN).map(pageRow), searchRow(typed)];
+  return [...loaded.match(typed, SHOWN).map(pageRow), searchRow(typed), createRow(typed)];
 }
 
 function statusFor(loaded: Loaded | null, query: string, shown: number): string {

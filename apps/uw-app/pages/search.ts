@@ -12,6 +12,8 @@ export type SearchQuery = {
   readonly area: JdArea | null;
   readonly titlesOnly: boolean;
   readonly liveOnly: boolean;
+  readonly owner?: string | null;
+  readonly since?: string | null;
   readonly limit: number;
 };
 
@@ -33,6 +35,15 @@ function matching(query: SearchQuery, terms: SQL): SQL | undefined {
   return or(sql`${document} @@ ${terms}`, inTitle);
 }
 
+function narrowing(query: SearchQuery): (SQL | undefined)[] {
+  const owner = query.owner ?? null;
+  const since = query.since ?? null;
+  return [
+    owner === null ? undefined : sql`${pages.frontmatter}->>'owner' = ${owner}`,
+    since === null ? undefined : sql`${pages.updatedAt} >= ${since}::date`,
+  ];
+}
+
 export async function searchPages(
   db: Executor,
   actor: Principal,
@@ -51,6 +62,7 @@ export async function searchPages(
         query.type === null ? undefined : eq(pages.type, query.type),
         query.area === null ? undefined : eq(pages.jdArea, query.area),
         query.liveOnly ? ne(pages.status, 'retired') : undefined,
+        ...narrowing(query),
         areas,
       ),
     )

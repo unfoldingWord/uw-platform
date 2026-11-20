@@ -1,6 +1,7 @@
 import type { Context } from 'hono';
 import { jdAreaSchema, type JdArea } from '@uw/contracts';
 import { readableAreas } from '@uw/core/acl';
+import { formatDate } from '@uw/core/dates';
 import type { Principal } from '@uw/core/principal';
 import { Card } from '@uw/ui/components/card.tsx';
 import { primaryButton } from '@uw/ui/components/command-form.tsx';
@@ -22,6 +23,8 @@ type Asked = {
   readonly titlesOnly: boolean;
   readonly area: JdArea | null;
   readonly everyType: boolean;
+  readonly mine: boolean;
+  readonly changed: string;
 };
 
 function askedOf(c: Context<AppEnv>): Asked {
@@ -31,6 +34,8 @@ function askedOf(c: Context<AppEnv>): Asked {
     titlesOnly: c.req.query('titles') === '1',
     area: area.success ? area.data : null,
     everyType: c.req.query('type') === EVERY_TYPE,
+    mine: c.req.query('owner') === MINE,
+    changed: changedDays.has(c.req.query('changed') ?? '') ? (c.req.query('changed') ?? ALL) : ALL,
   };
 }
 
@@ -43,10 +48,54 @@ function areaChoices(actor: Principal, at: Date) {
   ];
 }
 
+const MINE = 'me';
+const DAY_MS = 86_400_000;
+const changedDays: ReadonlyMap<string, number> = new Map([
+  ['7', 7],
+  ['31', 31],
+  ['365', 365],
+]);
+const changedChoices = [
+  { value: ALL, label: 'Any time' },
+  { value: '7', label: 'In the past week' },
+  { value: '31', label: 'In the past month' },
+  { value: '365', label: 'In the past year' },
+];
+const ownerChoices = [
+  { value: ALL, label: 'Anyone' },
+  { value: MINE, label: 'Owned by you' },
+];
+
+function sinceOf(asked: Asked, at: Date): string | null {
+  const days = changedDays.get(asked.changed);
+  return days === undefined ? null : formatDate(new Date(at.getTime() - days * DAY_MS));
+}
+
 const typeChoices = [
   { value: ALL, label: 'Knowledge pages' },
   { value: EVERY_TYPE, label: 'Every kind of page' },
 ];
+
+function Narrowing(props: { readonly asked: Asked }) {
+  return (
+    <>
+      <SelectField
+        name="owner"
+        label="Owner"
+        scope="search"
+        choices={ownerChoices}
+        selected={props.asked.mine ? MINE : ALL}
+      />
+      <SelectField
+        name="changed"
+        label="Changed"
+        scope="search"
+        choices={changedChoices}
+        selected={props.asked.changed}
+      />
+    </>
+  );
+}
 
 function SearchForm(props: {
   readonly asked: Asked;
@@ -71,6 +120,7 @@ function SearchForm(props: {
           choices={typeChoices}
           selected={asked.everyType ? EVERY_TYPE : ALL}
         />
+        <Narrowing asked={asked} />
         <label class="flex items-center gap-2 py-1 text-sm font-semibold text-text">
           <input
             type="checkbox"
@@ -155,6 +205,8 @@ export async function searchScreen(c: Context<AppEnv>): Promise<Response> {
     area: asked.area,
     titlesOnly: asked.titlesOnly,
     liveOnly: true,
+    owner: asked.mine ? actor.identity : null,
+    since: sinceOf(asked, screen.at),
     limit: RESULTS,
   };
   const results = await searchWithSnippets(database.db, actor, query, screen.at);

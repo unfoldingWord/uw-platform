@@ -7,6 +7,7 @@ import { morphMain } from './morph.ts';
 import { wireNavigating } from './navigating.ts';
 import { wireNewWorkflow } from './new-workflow.ts';
 import { wirePageUpload } from './page-upload.ts';
+import { wireEditKey } from './edit-key.ts';
 import { wireFavourite } from './favourite.ts';
 import { wirePrint } from './print.ts';
 import { browserPush, wirePushControl } from './push-subscribe.ts';
@@ -45,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
   wirePageUpload(document, { fetch: send, uuid: () => crypto.randomUUID() });
   wirePrint(document, () => window.print());
   wireFavourite(document, send);
+  wireEditKey(document, (href) => window.location.assign(href));
   wireQuickSwitcher(document, {
     fetch: send,
     go: (href) => window.location.assign(href),
