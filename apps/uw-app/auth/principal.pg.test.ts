@@ -79,7 +79,7 @@ async function expectPending(db: Database, email: string) {
 }
 
 describe.skipIf(!testServer)('FD-7 the principal minted at the edge', () => {
-  it('provisions an @unfoldingword.org address as active with no grants', () =>
+  it('provisions an @unfoldingword.org address as active, reading 00-09 and nothing else', () =>
     withAppDatabase(async (db) => {
       const reply = await me(db, 'new.person@unfoldingword.org');
       expect(reply.status).toBe(200);
@@ -88,7 +88,7 @@ describe.skipIf(!testServer)('FD-7 the principal minted at the edge', () => {
       expect(principal.identity).toBe(
         `human:${await personIdOf(db, 'new.person@unfoldingword.org')}`,
       );
-      expect(principal.grants).toEqual([]);
+      expect(roleAndArea(principal)).toEqual([['viewer', '00-09']]);
       expect(principal.interactive).toBe(true);
       expect(await statusOf(db, 'new.person@unfoldingword.org')).toBe('active');
     }));
@@ -178,19 +178,22 @@ describe.skipIf(!testServer)('FD-8 grants resolve from the table on every reques
         sql`INSERT INTO role_grants (person_id, role, scope_kind, granted_by, expires_at) VALUES (${id}, 'viewer', 'org', ${ROWAN_ID}, now() - interval '1 minute')`,
       );
       const reply = await me(db, 'g@unfoldingword.org');
-      expect(principalOf(reply).grants).toEqual([]);
+      expect(roleAndArea(principalOf(reply))).toEqual([['viewer', '00-09']]);
     }));
 
   it('sees a grant added between two requests, with no cache', () =>
     withAppDatabase(async (db) => {
       const first = await me(db, 'h@unfoldingword.org');
-      expect(principalOf(first).grants).toEqual([]);
+      expect(roleAndArea(principalOf(first))).toEqual([['viewer', '00-09']]);
       const id = await personIdOf(db, 'h@unfoldingword.org');
       await db.execute(
         sql`INSERT INTO role_grants (person_id, role, scope_kind, scope_area, granted_by) VALUES (${id}, 'editor', 'jd_area', '80-89', ${ROWAN_ID})`,
       );
       const second = await me(db, 'h@unfoldingword.org');
-      expect(roleAndArea(principalOf(second))).toEqual([['editor', '80-89']]);
+      expect(roleAndArea(principalOf(second))).toEqual([
+        ['viewer', '00-09'],
+        ['editor', '80-89'],
+      ]);
     }));
 
   it('returns a principal that parses back through the contract schema', () =>

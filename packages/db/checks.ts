@@ -6,6 +6,7 @@ import {
   humanIdentityPattern,
   identityPattern,
   jdAreaPattern,
+  jdCategoryPattern,
   personaIdentityPattern,
   repositoryPattern,
   stageKeyPattern,
@@ -35,6 +36,7 @@ export function matches(column: AnyPgColumn, pattern: string): SQL {
 }
 
 export const JD_AREA_PATTERN = jdAreaPattern;
+export const JD_CATEGORY_PATTERN = jdCategoryPattern;
 export const SLUG_PATTERN = '^[a-z0-9]+(-[a-z0-9]+)*$';
 export const IDENTITY_PATTERN = identityPattern;
 export const STAGE_KEY_PATTERN = stageKeyPattern;

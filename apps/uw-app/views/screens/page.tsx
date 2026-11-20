@@ -10,10 +10,16 @@ import type { AppEnv } from '../../deps.ts';
 import { renderMarkdown, type Heading } from '../../markdown/render.ts';
 import type { PageVersion } from '../../pages/history.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
-import { moduleCodes, pageNames } from '../parts/names.ts';
-import { backOf, pageLink, shownPage, typeWords, type ShownPage } from '../parts/page-shown.ts';
+import {
+  backOf,
+  pageLink,
+  pageSpec,
+  shownPage,
+  typeWords,
+  type ShownPage,
+} from '../parts/page-shown.ts';
 import { idParam } from '../parts/params.ts';
-import { agentQueuesPath, pageEditPath, pagePath, withBack } from '../parts/paths.ts';
+import { pageEditPath, pagePath, withBack } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 
 const MIN_CONTENTS = 2;
@@ -70,6 +76,24 @@ function Contents(props: { readonly headings: readonly Heading[] }) {
   );
 }
 
+function Children(props: { readonly shown: ShownPage }) {
+  const { children } = props.shown;
+  if (children.length === 0) return null;
+  return (
+    <Card title="Pages under this one">
+      <ul data-children="" class="m-0 flex list-none flex-col gap-1 p-0">
+        {children.map((child) => (
+          <li>
+            <a href={pagePath(child.id)} class={pageLink}>
+              {child.title}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 function body(shown: ShownPage, back: string | null, saved: number | null) {
   const { page } = shown;
   const rendered = renderMarkdown(page.bodyMd);
@@ -106,6 +130,7 @@ function body(shown: ShownPage, back: string | null, saved: number | null) {
           </div>
           <Contents headings={rendered.headings} />
         </div>
+        <Children shown={shown} />
         <History versions={shown.versions} />
       </div>
     </>
@@ -120,12 +145,7 @@ export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
   const read = await screen.kernel.views.page(screen.caller, { pageId }, { at: screen.at });
   const shown = read.status === 'accepted' ? await shownPage(c, screen, pageId) : null;
   if (shown === null) return notFound(c);
-  const spec = {
-    title: shown.page.title,
-    current: pagePath(shown.page.id),
-    code: moduleCodes.agentQueues,
-    crumbs: [{ label: pageNames.agentQueues, href: agentQueuesPath() }, { label: pageNames.page }],
-  };
+  const spec = pageSpec(shown, null);
   const back = backOf(c.req.query('back'));
   return renderScreen(c, spec, body(shown, back, savedVersion(c.req.query('saved'))));
 }

@@ -1,12 +1,14 @@
 import type { Context } from 'hono';
-import type { Page } from '@uw/contracts';
+import { knowledgeFrontmatterSchema, type Page, type PageEntry } from '@uw/contracts';
 import { can } from '@uw/core/acl';
 import type { AppEnv } from '../../deps.ts';
 import { pageHistory, type PageVersion } from '../../pages/history.ts';
+import { listPages } from '../../pages/listing.ts';
 import { readPage } from '../../pages/store.ts';
+import { ancestorsOf, type Ancestor } from '../../pages/tree.ts';
 import type { ScreenKernel } from './frame.tsx';
 import { moduleCodes, pageNames } from './names.ts';
-import { agentQueuesPath, pagePath } from './paths.ts';
+import { agentQueuesPath, pagePath, wikiPath } from './paths.ts';
 
 export const pageLink =
   'font-heavy text-accent-text underline outline-offset-2 outline-accent-text focus-visible:outline-2';
@@ -29,7 +31,11 @@ export type ShownPage = {
   readonly page: Page;
   readonly versions: readonly PageVersion[];
   readonly canEdit: boolean;
+  readonly ancestors: readonly Ancestor[];
+  readonly children: readonly PageEntry[];
 };
+
+const CHILDREN_SHOWN = 200;
 
 export async function shownPage(
   c: Context<AppEnv>,
@@ -43,18 +49,38 @@ export async function shownPage(
   const versions = await pageHistory(database.db, actor, pageId, screen.at);
   if (page === null || versions === null) return null;
   const mayWrite = can(actor, 'write', { kind: 'area', area: page.jdArea }, screen.at);
-  return { page, versions, canEdit: mayWrite && page.type !== MIRRORED };
+  const ancestors = await ancestorsOf(database.db, actor, page, screen.at);
+  const under = { parent: page.id, limit: CHILDREN_SHOWN };
+  const children = (await listPages(database.db, actor, under, screen.at))?.pages ?? [];
+  return { page, versions, canEdit: mayWrite && page.type !== MIRRORED, ancestors, children };
 }
 
-export function pageSpec(page: Page, last: string) {
+function knowledgeCrumbs(shown: ShownPage) {
+  const filed = knowledgeFrontmatterSchema.safeParse(shown.page.frontmatter);
+  const category = filed.success
+    ? [{ label: filed.data.jd_category, href: wikiPath(filed.data.jd_category) }]
+    : [];
+  const parents = shown.ancestors.map((parent) => ({
+    label: parent.title,
+    href: pagePath(parent.id),
+  }));
+  return [{ label: pageNames.wiki, href: wikiPath() }, ...category, ...parents];
+}
+
+export function pageSpec(shown: ShownPage, last: string | null) {
+  const { page } = shown;
+  const wiki = page.type === 'knowledge';
+  const lead = wiki
+    ? knowledgeCrumbs(shown)
+    : [{ label: pageNames.agentQueues, href: agentQueuesPath() }];
+  const here =
+    last === null
+      ? [{ label: page.title }]
+      : [{ label: page.title, href: pagePath(page.id) }, { label: last }];
   return {
     title: page.title,
-    current: pagePath(page.id),
-    code: moduleCodes.agentQueues,
-    crumbs: [
-      { label: pageNames.agentQueues, href: agentQueuesPath() },
-      { label: page.title, href: pagePath(page.id) },
-      { label: last },
-    ],
+    current: wiki ? wikiPath() : pagePath(page.id),
+    code: wiki ? moduleCodes.pages : moduleCodes.agentQueues,
+    crumbs: [...lead, ...here],
   };
 }

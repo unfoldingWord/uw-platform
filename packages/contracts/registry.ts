@@ -78,6 +78,7 @@ import {
   confirmPageCommandSchema,
   createPageCommandSchema,
   frontmatterSchema,
+  nameCategoryCommandSchema,
   pageSchema,
   pageStatusSchema,
   pageTypeSchema,
@@ -86,6 +87,8 @@ import {
 } from './pages.ts';
 import {
   pageCapabilitiesSchema,
+  pageCategoriesReplySchema,
+  pageCategorySchema,
   pageCommandAcceptedSchema,
   pageEntrySchema,
   pageHeadingSchema,
@@ -215,6 +218,9 @@ export const schemaRegistry: Record<string, ZodType> = {
   'page-versions-reply': pageVersionsReplySchema,
   'page-version-reply': pageVersionReplySchema,
   'page-command-accepted': pageCommandAcceptedSchema,
+  'page-category': pageCategorySchema,
+  'page-categories-reply': pageCategoriesReplySchema,
+  'name-category-command': nameCategoryCommandSchema,
   'verb-name': verbNameSchema,
   'forbidden-verb': forbiddenVerbSchema,
   'verb-group': verbGroupSchema,

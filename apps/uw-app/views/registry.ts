@@ -72,6 +72,12 @@ export const screens: readonly ScreenEntry[] = [
     path: '/health/:indicator',
   },
   { name: 'access', file: 'apps/uw-app/views/screens/access.tsx', path: '/access' },
+  { name: 'wiki', file: 'apps/uw-app/views/screens/wiki.tsx', path: '/wiki' },
+  {
+    name: 'wiki-category',
+    file: 'apps/uw-app/views/screens/wiki-category.tsx',
+    path: '/wiki/:category',
+  },
   {
     name: 'not-found',
     file: 'apps/uw-app/views/screens/not-found.tsx',

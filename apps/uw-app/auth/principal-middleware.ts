@@ -1,6 +1,8 @@
 import type { Context, MiddlewareHandler } from 'hono';
 import { personPrincipal, serviceTokenPrincipal } from '@uw/core/principal';
+import type { Database } from '@uw/db/client';
 import { resolveGrants } from '@uw/db/store';
+import { giveDefaultReading } from '../acl/default-grant.ts';
 import type { AppDeps, AppEnv } from '../deps.ts';
 import { refuse } from '../http/outcomes.ts';
 import { signIn } from '../people/directory.ts';
@@ -40,6 +42,13 @@ function refuseInactive(
   return status === 'pending' ? pendingApprovalPage(c) : accessDeclinedPage(c);
 }
 
+async function grantsWithDefault(db: Database, personId: string, at: Date, traceId: string) {
+  const held = await resolveGrants(db, personId, { at });
+  if (held.length > 0) return held;
+  const given = await giveDefaultReading(db, personId, { actor: null, traceId });
+  return given ? resolveGrants(db, personId, { at }) : held;
+}
+
 export function withPrincipal(
   deps: Pick<AppDeps, 'accessKeys' | 'clock'>,
 ): MiddlewareHandler<AppEnv> {
@@ -61,7 +70,7 @@ export function withPrincipal(
     if (database === null) return refuse(c, 'database_not_configured');
     const person = await signIn(database.db, identity.email);
     if (person.status !== 'active') return refuseInactive(c, person.status);
-    const grants = await resolveGrants(database.db, person.personId, { at: now });
+    const grants = await grantsWithDefault(database.db, person.personId, now, c.get('traceId'));
     c.set(
       'principal',
       personPrincipal({

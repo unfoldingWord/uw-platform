@@ -27,6 +27,7 @@ import {
   HUMAN_IDENTITY_PATTERN,
   IDENTITY_PATTERN,
   JD_AREA_PATTERN,
+  JD_CATEGORY_PATTERN,
   SLUG_PATTERN,
   matches,
   oneOf,
@@ -96,7 +97,7 @@ export const grantAudit = declareTable(
   },
   { classification: 'restricted', offlineEligibility: 'never' },
   (t) => [
-    check('grant_audit_action_known', oneOf(t.action, ['grant', 'revoke', 'bootstrap'])),
+    check('grant_audit_action_known', oneOf(t.action, ['grant', 'revoke', 'bootstrap', 'default'])),
     check('grant_audit_actor_is_identity', matches(t.actor, IDENTITY_PATTERN)),
     index('grant_audit_grant').on(t.grantId),
   ],
@@ -154,6 +155,20 @@ export const pages = declareTable(
     index('pages_parent').on(t.parentId),
     index('pages_search').using('gin', searchDocument(t)),
     index('pages_area_updated').on(t.jdArea, t.updatedAt),
+  ],
+);
+
+export const jdCategories = declareTable(
+  'jd_categories',
+  {
+    code: text('code').primaryKey(),
+    name: text('name').notNull(),
+    updatedAt: instant('updated_at').notNull().defaultNow(),
+  },
+  { classification: 'internal', offlineEligibility: 'sync' },
+  (t) => [
+    check('jd_categories_code_form', matches(t.code, JD_CATEGORY_PATTERN)),
+    check('jd_categories_name_not_blank', sql`length(btrim(${t.name})) BETWEEN 1 AND 80`),
   ],
 );
 

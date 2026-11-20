@@ -86,7 +86,7 @@ export async function renderPageEdit(
   const read = withBack(pagePath(page.id), options.back);
   return renderScreen(
     c,
-    pageSpec(page, pageNames.pageEdit),
+    pageSpec(shown, pageNames.pageEdit),
     <>
       <PageHead
         eyebrow={typeWords[page.type] ?? page.type}

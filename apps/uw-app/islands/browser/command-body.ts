@@ -3,6 +3,7 @@ import {
   declinePersonCommandSchema,
   grantRoleCommandSchema,
   harnessCommandSchemas,
+  nameCategoryCommandSchema,
   revokeRoleCommandSchema,
 } from '@uw/contracts';
 import type { ZodType } from 'zod';
@@ -15,6 +16,7 @@ const schemas = new Map<string, ZodType>([
   ['revoke_role', revokeRoleCommandSchema],
   ['approve_person', approvePersonCommandSchema],
   ['decline_person', declinePersonCommandSchema],
+  ['name_category', nameCategoryCommandSchema],
 ]);
 const fields = (all: CommandFields) => new Map(Object.entries(all));
 const optional = (value: string | undefined): string | null =>
@@ -136,6 +138,7 @@ const shapes: ReadonlyMap<string, Shape> = new Map<string, Shape>([
   ['revoke_role', (given) => ({ grantId: given.get('grantId') })],
   ['approve_person', personOnly],
   ['decline_person', personOnly],
+  ['name_category', (given) => ({ category: given.get('category'), name: given.get('name') })],
   ['claim', itemOnly],
   ['release', itemOnly],
   ['take_over', itemOnly],

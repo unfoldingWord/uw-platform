@@ -78,7 +78,7 @@ async function unbuiltAreDimmed(db: Database): Promise<void> {
   const document = documentOf((await getHtml(db, ROWAN, '/', {}, clock)).text);
   const nav = desktopNav(document);
   for (const label of [
-    'Pages & Wiki',
+    'Strategic Cascade',
     'Ledger',
     'Modules',
     'Grants',

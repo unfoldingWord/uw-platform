@@ -15,7 +15,7 @@ import { healthScreenRoutes, probeRoutes } from './health/routes.tsx';
 import { mcpRoutes } from './mcp/routes.ts';
 import { pushRoutes } from './notify/routes.ts';
 import { observe, serverTiming } from './observe.ts';
-import { pageRoutes } from './pages/routes.ts';
+import { pageRoutes, wikiScreenRoutes } from './pages/routes.ts';
 import { requestLogger } from './request-logger.ts';
 import { viewRoutes } from './views/routes.tsx';
 import { notFound } from './views/screens/not-found.tsx';
@@ -55,6 +55,7 @@ export function createApp(
   app.route('/mcp', mcpRoutes(deps));
   app.route('/health', healthScreenRoutes(deps));
   app.route('/access', accessScreenRoutes());
+  app.route('/wiki', wikiScreenRoutes());
 
   app.route('/', viewRoutes());
   app.notFound((c) =>

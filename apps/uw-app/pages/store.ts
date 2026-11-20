@@ -20,7 +20,7 @@ import { provenanceOf, type ExternalWriter } from './provenance.ts';
 import { REPLAY_INDEX, replayOf } from './replay.ts';
 import { checkFrontmatter } from './validate.ts';
 
-export const owns = ['pages', 'page_versions'] as const;
+export const owns = ['pages', 'page_versions', 'jd_categories'] as const;
 
 export type PageResult =
   { readonly ok: true; readonly page: Page } | { readonly ok: false; readonly reason: ErrorReason };

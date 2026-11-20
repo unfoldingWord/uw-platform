@@ -35,6 +35,7 @@ export const OUTCOME_TEXT: Readonly<Record<string, string>> = {
   revoke_role: 'Revoked',
   approve_person: 'Approved',
   decline_person: 'Declined',
+  name_category: 'Saved',
 };
 
 const outcomes: ReadonlyMap<string, string> = new Map(Object.entries(OUTCOME_TEXT));

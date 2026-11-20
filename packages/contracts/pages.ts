@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { jdAreaSchema } from './areas.ts';
+import { jdAreaSchema, jdCategorySchema } from './areas.ts';
 
 export const pageTypes = [
   'skill',
@@ -77,6 +77,17 @@ export const confirmPageCommandSchema = z.object({
   expectedVersion: z.number().int().min(1),
 });
 
+export const nameCategoryCommandSchema = z.object({
+  command: z.literal('name_category'),
+  requestId: z.uuid(),
+  category: jdCategorySchema,
+  name: z
+    .string()
+    .max(80)
+    .refine((value) => value.trim().length > 0, 'a category name is not blank'),
+});
+
+export type NameCategoryCommand = z.infer<typeof nameCategoryCommandSchema>;
 export type PageType = z.infer<typeof pageTypeSchema>;
 export type PageStatus = z.infer<typeof pageStatusSchema>;
 export type Page = z.infer<typeof pageSchema>;

@@ -99,6 +99,15 @@ export const pageVersionReplySchema = z.object({
   savedBy: z.string(),
 });
 
+export const pageCategorySchema = z.object({
+  code: jdCategorySchema,
+  area: jdAreaSchema,
+  name: z.string().nullable(),
+  pages: z.number().int().min(0),
+});
+
+export const pageCategoriesReplySchema = z.object({ categories: z.array(pageCategorySchema) });
+
 export const pageCommandAcceptedSchema = z.object({
   status: z.literal('accepted'),
   requestId: z.uuid(),
@@ -106,6 +115,7 @@ export const pageCommandAcceptedSchema = z.object({
   version: z.number().int().min(1),
 });
 
+export type PageCategory = z.infer<typeof pageCategorySchema>;
 export type PageEntry = z.infer<typeof pageEntrySchema>;
 export type PageListQuery = z.infer<typeof pageListQuerySchema>;
 export type PageCapabilities = z.infer<typeof pageCapabilitiesSchema>;

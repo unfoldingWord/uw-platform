@@ -76,6 +76,10 @@ export function itemPath(harnessId: string, itemId: string): string {
   return `${flowPath(harnessId)}/items/${segment(itemId)}`;
 }
 
+export function wikiPath(category?: string): string {
+  return category === undefined ? '/wiki' : `/wiki/${segment(category)}`;
+}
+
 export function pagePath(pageId: string): string {
   return `/pages/${segment(pageId)}`;
 }
