@@ -11,7 +11,12 @@ export function testFrame(items: readonly NavItem[] = testItems): Frame {
   const sections: readonly NavSection[] = [{ heading: 'Infrastructure', code: '30-39', items }];
   return {
     sections,
-    person: { initials: 'RT', name: 'Rowan Test', role: 'admin · 80-89' },
+    person: {
+      initials: 'RT',
+      name: 'Rowan Test',
+      email: 'rowan.test@example.org',
+      role: 'admin · 80-89',
+    },
     logOut: { label: 'Log Out', href: '/cdn-cgi/access/logout' },
     waiting: 2,
     wordmarkPath: '/assets/uw-logo-white-0123456789ab.png',

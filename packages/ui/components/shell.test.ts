@@ -138,7 +138,8 @@ describe('the shell escapes the text it is given', () => {
     const hrefs = [...document.querySelectorAll('a[href]')].map((link) =>
       link.getAttribute('href'),
     );
-    expect(hrefs).toEqual(['#main', '/', '/cdn-cgi/access/logout', '/', '/cdn-cgi/access/logout']);
+    expect(hrefs).toEqual(['#main', '/', '/', '/cdn-cgi/access/logout']);
+    expect(document.querySelectorAll('[popover]')).toHaveLength(1);
     expect(document.body.textContent).toContain('Trail');
   });
 });
