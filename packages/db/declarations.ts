@@ -67,3 +67,14 @@ export function tableEntries(
     is(value, PgTable) ? [{ exportName, table: getTableName(value) }] : [],
   );
 }
+
+export function classifiedTables(
+  schema: Record<string, unknown>,
+): { table: string; classification: Classification }[] {
+  return exportedTables(schema).flatMap((table) => {
+    const declaration = declarations.get(table);
+    return declaration === undefined
+      ? []
+      : [{ table: getTableName(table), classification: declaration.classification }];
+  });
+}

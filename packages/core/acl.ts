@@ -52,7 +52,63 @@ function isLive(grant: Grant, at: Date): boolean {
   return grant.expiresAt === null || new Date(grant.expiresAt).getTime() > at.getTime();
 }
 
-export function can(actor: Principal, action: AclAction, resource: AclResource, at: Date): boolean {
+export type RowReadRule = {
+  readonly area: Role | null;
+  readonly owner: boolean;
+  readonly orgAdmin: boolean;
+};
+
+const grantRecord: RowReadRule = { area: 'admin', owner: true, orgAdmin: true };
+const personalRecord: RowReadRule = { area: null, owner: true, orgAdmin: true };
+const lentRecord: RowReadRule = { area: 'viewer', owner: true, orgAdmin: true };
+const areaRecord: RowReadRule = { area: 'viewer', owner: false, orgAdmin: true };
+
+export const rowReadRules = {
+  role_grants: grantRecord,
+  grant_audit: grantRecord,
+  person_audit: personalRecord,
+  service_tokens: personalRecord,
+  push_subscriptions: personalRecord,
+  delegations: lentRecord,
+  routines: lentRecord,
+  gate_decisions: areaRecord,
+} as const satisfies Readonly<Record<string, RowReadRule>>;
+
+export type RestrictedTable = keyof typeof rowReadRules;
+
+export type RowResource = {
+  readonly kind: 'row';
+  readonly table: RestrictedTable;
+  readonly area: JdArea | null;
+  readonly ownerId: string | null;
+};
+
+const rowReadRuleByTable: ReadonlyMap<string, RowReadRule> = new Map(Object.entries(rowReadRules));
+
+function ownsRow(actor: Principal, row: RowResource): boolean {
+  return actor.kind === 'person' && actor.personId !== null && actor.personId === row.ownerId;
+}
+
+function grantReadsRow(grant: Grant, rule: RowReadRule, row: RowResource): boolean {
+  if (grant.scopeKind === 'org') return rule.orgAdmin && reaches(grant.role, minimumRole.admin);
+  if (rule.area === null || row.area === null) return false;
+  return grant.scopeArea === row.area && reaches(grant.role, rule.area);
+}
+
+function readsRow(actor: Principal, row: RowResource, at: Date): boolean {
+  const rule = rowReadRuleByTable.get(row.table);
+  if (rule === undefined) return false;
+  if (rule.owner && ownsRow(actor, row)) return true;
+  return actor.grants.some((grant) => isLive(grant, at) && grantReadsRow(grant, rule, row));
+}
+
+export function can(
+  actor: Principal,
+  action: AclAction,
+  resource: AclResource | RowResource,
+  at: Date,
+): boolean {
+  if (resource.kind === 'row') return action === 'read' && readsRow(actor, resource, at);
   return actor.grants.some((grant) => isLive(grant, at) && grantAllows(grant, action, resource));
 }
 

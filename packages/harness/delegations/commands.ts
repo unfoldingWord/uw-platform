@@ -8,7 +8,7 @@ import {
   type Principal,
   type RiskTier,
 } from '@uw/contracts';
-import { allowed, isAgent, ownerBound } from '../access.ts';
+import { isAgent, ownerBound } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { draft, recordContext, recordHarnessEvents, type EventDraft } from '../items/record.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
@@ -18,6 +18,7 @@ import { adminRefusal, agentRefusal } from '../stages/rules.ts';
 import { beatPrincipal, personaMatches } from './beat.ts';
 import { lapseExpired, type Expired, type ExpiryInput } from './expiry.ts';
 import { assertDelegationLive, recordLapse } from './live.ts';
+import { readableDelegations } from './readable.ts';
 
 type DelegationPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
@@ -182,14 +183,7 @@ async function readableLive(
   filter: DelegationFilter,
   at: Date,
 ): Promise<readonly Delegation[]> {
-  const rows = await tx.delegations.read.live(filter, at);
-  const readable = new Map<string, boolean>();
-  for (const row of rows) {
-    if (readable.has(row.harnessId)) continue;
-    const harness = await tx.harnesses.read.byId(row.harnessId);
-    readable.set(row.harnessId, harness !== null && allowed(caller.actor, 'read', harness, at));
-  }
-  return rows.filter((row) => readable.get(row.harnessId) === true);
+  return readableDelegations(tx, caller.actor, await tx.delegations.read.live(filter, at), at);
 }
 
 function boundTo(caller: Caller, delegation: Delegation): boolean {

@@ -319,6 +319,8 @@ A rule that lives only in prose drifts. Each has a check in `verify` and in CI, 
 | One writer per durable table | a test walks every module's `owns` export |
 | Dates are `YYYY-MM-DD` | the lint rule and CI grep from plan §0 |
 | Every table declares its classification | a schema test (plan §2.6) |
+| Every `restricted` or `sensitive` table declares who reads its rows, and `can()` reads a row only by that rule | `tools/properties/restricted-rows.test.ts`: the schema against `rowReadRules`, and `can()` against an independent oracle (ADR 0016) |
+| Every read of a `restricted` or `sensitive` table is accounted for | `tools/architecture/restricted-reads.test.ts` over the ledger in `tools/architecture/restricted-reads.ts`: the rule, a count or yes/no, or the platform's own read (ADR 0016) |
 | The schema and the migrations agree | the drift check in `tools/db` |
 | Tokens agree | the Tailwind theme is compared to `packages/ui/tokens/*.css` by name and value |
 | Nothing unused | knip over files, dependencies, exports and types |
