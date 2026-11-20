@@ -9,8 +9,15 @@ type DraftStatus = z.infer<typeof statusSchema>;
 
 export type Drafts = {
   status(pageId: string, version: number): Promise<DraftStatus | null>;
-  close(pageId: string, version: number): Promise<void>;
-  connect(pageId: string, version: number, connectionId: string): Promise<Response>;
+  close(pageId: string, version: number, saved: string | null): Promise<void>;
+  connect(room: Room): Promise<Response>;
+};
+
+export type Room = {
+  readonly pageId: string;
+  readonly version: number;
+  readonly connectionId: string;
+  readonly until: number;
 };
 
 function roomOf(pageId: string, version: number): string {
@@ -37,17 +44,18 @@ export function draftsOf(env: Bindings): Drafts | null {
         return null;
       }
     },
-    close: async (pageId, version) => {
+    close: async (pageId, version, saved) => {
+      const sent = saved === null ? '' : `?saved=${encodeURIComponent(saved)}`;
       try {
-        await ask(pageId, version, '', { method: 'POST', headers: {} });
+        await ask(pageId, version, sent, { method: 'POST', headers: {} });
       } catch {
         return;
       }
     },
-    connect: (pageId, version, connectionId) =>
-      ask(pageId, version, `?_pk=${encodeURIComponent(connectionId)}`, {
+    connect: (room) =>
+      ask(room.pageId, room.version, `?_pk=${encodeURIComponent(room.connectionId)}`, {
         method: 'GET',
-        headers: { Upgrade: 'websocket' },
+        headers: { Upgrade: 'websocket', 'x-draft-until': String(room.until) },
       }),
   };
 }

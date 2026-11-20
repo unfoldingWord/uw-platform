@@ -157,13 +157,41 @@ function mount(parts: Parts, deps: EditorDeps, shared: Collaboration | null): Ed
   return editor;
 }
 
-function wireSave(parts: Parts, editor: Editor): Editor {
-  wireToolbar(parts.root, editor);
-  parts.form.addEventListener('submit', () => {
-    if (parts.form.hasAttribute('data-editor-active')) {
-      parts.area.value = markdownFromEditor(editor.getHTML());
+type Active = { editor: Editor | null; shared: Collaboration | null };
+
+function savingWith(form: HTMLFormElement, enabled: boolean): void {
+  for (const button of form.querySelectorAll<HTMLButtonElement>('button[type="submit"]')) {
+    button.disabled = !enabled;
+  }
+}
+
+function stateField(form: HTMLFormElement): HTMLInputElement {
+  const found = form.querySelector<HTMLInputElement>('input[name="draftState"]');
+  if (found !== null) return found;
+  const field = form.ownerDocument.createElement('input');
+  field.type = 'hidden';
+  field.name = 'draftState';
+  form.append(field);
+  return field;
+}
+
+function wireSubmit(parts: Parts, active: Active): void {
+  parts.form.addEventListener('submit', (event) => {
+    if (!parts.form.hasAttribute('data-editor-active')) return;
+    if (active.editor === null) {
+      event.preventDefault();
+      return;
     }
+    parts.area.value = markdownFromEditor(active.editor.getHTML());
+    stateField(parts.form).value = active.shared?.snapshot() ?? '';
   });
+}
+
+function ready(parts: Parts, active: Active, editor: Editor): Editor {
+  wireToolbar(parts.root, editor);
+  editor.setEditable(true);
+  active.editor = editor;
+  savingWith(parts.form, true);
   return editor;
 }
 
@@ -186,12 +214,20 @@ export async function startPageEditor(
   parts.root.hidden = false;
   parts.form.setAttribute('data-editor-active', '');
   parts.form.querySelector<HTMLElement>('[data-editor-text]')?.setAttribute('hidden', '');
-  const shared = deps.collaboration?.(parts.root) ?? null;
-  if (shared === null) return wireSave(parts, mount(parts, deps, null));
+  const active: Active = { editor: null, shared: deps.collaboration?.(parts.root) ?? null };
+  wireSubmit(parts, active);
+  const { shared } = active;
+  if (shared === null) return ready(parts, active, mount(parts, deps, null));
+  savingWith(parts.form, false);
+  say(parts.form, 'Joining the shared draft.');
   const editor = mount(parts, deps, shared);
-  if ((await shared.ready(editor, parts.initial)) !== 'unavailable') return wireSave(parts, editor);
+  editor.setEditable(false);
+  if ((await shared.ready(editor, parts.initial)) !== 'unavailable') {
+    return ready(parts, active, editor);
+  }
   shared.destroy();
   editor.destroy();
+  active.shared = null;
   say(parts.form, 'Editing together is not available right now, so you are editing on your own.');
-  return wireSave(parts, mount(parts, deps, null));
+  return ready(parts, active, mount(parts, deps, null));
 }

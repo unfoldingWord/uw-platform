@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { JSDOM } from 'jsdom';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
-import { seedGrant, seedPerson } from '@uw/db/test-seed';
+import { seedGrant, seedPerson, seedRevokedDefaultReading } from '@uw/db/test-seed';
 import { createApp } from '../app.tsx';
 import {
   createAccessFixture,
@@ -49,7 +49,10 @@ function areaGrant(
 }
 
 async function scene(db: Database): Promise<void> {
-  for (const person of [INFRA, TECH, FRESH]) await seedPerson(db, person);
+  for (const person of [INFRA, TECH, FRESH]) {
+    await seedPerson(db, person);
+    await seedRevokedDefaultReading(db, person.id, new Date());
+  }
   await seedPerson(db, { ...PARTNER, status: 'pending' });
   await seedGrant(
     db,

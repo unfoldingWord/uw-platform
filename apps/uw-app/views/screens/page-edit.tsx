@@ -10,9 +10,17 @@ import type { AppEnv } from '../../deps.ts';
 import { editorPath } from '../../generated/editor.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { pageNames } from '../parts/names.ts';
+import { editorCanShow } from '../../markdown/editor-html.ts';
 import { draftsOf } from '../../pages/drafts.ts';
 import { EditorFrame, type DraftRoom } from '../parts/editor-frame.tsx';
-import { backOf, pageLink, pageSpec, shownPage, typeWords } from '../parts/page-shown.ts';
+import {
+  backOf,
+  pageLink,
+  pageSpec,
+  shownPage,
+  typeWords,
+  type ShownPage,
+} from '../parts/page-shown.ts';
 import { idParam } from '../parts/params.ts';
 import { pageEditPath, pagePath, withBack } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
@@ -30,6 +38,7 @@ export type Typed = {
 
 export type EditOptions = {
   readonly asText: boolean;
+  readonly askedForText?: boolean;
   readonly back: string | null;
   readonly refused: string | null;
   readonly typed: Typed | null;
@@ -116,6 +125,51 @@ function EditForm(props: FormProps) {
   );
 }
 
+function ReadOnly(props: { readonly page: Page; readonly read: string }) {
+  return (
+    <Card title="Read only">
+      <p class="m-0 text-sm text-text-2">
+        You can read this page. Editing it needs the editor role in area {props.page.jdArea}.
+      </p>
+      <p class="m-0">
+        <a href={props.read} class={pageLink}>
+          Back to the page
+        </a>
+      </p>
+    </Card>
+  );
+}
+
+type Editing = { readonly options: EditOptions; readonly draft: DraftRoom | null };
+
+function Editable(props: { readonly page: Page; readonly editing: Editing }) {
+  const { options, draft } = props.editing;
+  return (
+    <>
+      {options.asText && !options.askedForText ? (
+        <Note>This page uses formatting the editor cannot keep, so it opens as text.</Note>
+      ) : null}
+      <EditForm page={props.page} options={options} draft={draft} />
+      {options.asText ? null : <script type="module" src={editorPath}></script>}
+    </>
+  );
+}
+
+function editingOf(
+  c: Context<AppEnv>,
+  shown: ShownPage,
+  screen: ScreenKernel,
+  options: EditOptions,
+): Editing {
+  const { page } = shown;
+  const asText = options.asText || !editorCanShow(page.bodyMd);
+  const together = draftsOf(c.env) !== null && options.typed === null && !asText;
+  const draft = together
+    ? { version: page.version, person: screen.caller.actor.email ?? '' }
+    : null;
+  return { options: { ...options, asText, askedForText: options.asText }, draft };
+}
+
 export async function renderPageEdit(
   c: Context<AppEnv>,
   screen: ScreenKernel,
@@ -126,10 +180,6 @@ export async function renderPageEdit(
   if (shown === null) return notFound(c);
   const { page } = shown;
   const read = withBack(pagePath(page.id), options.back);
-  const together = draftsOf(c.env) !== null && options.typed === null && !options.asText;
-  const draft = together
-    ? { version: page.version, person: screen.caller.actor.email ?? '' }
-    : null;
   return renderScreen(
     c,
     pageSpec(shown, pageNames.pageEdit),
@@ -142,21 +192,9 @@ export async function renderPageEdit(
       <div class="flex flex-col gap-5">
         {options.refused === null ? null : <Note>{refusalText(options.refused)}</Note>}
         {shown.canEdit ? (
-          <>
-            <EditForm page={page} options={options} draft={draft} />
-            {options.asText ? null : <script type="module" src={editorPath}></script>}
-          </>
+          <Editable page={page} editing={editingOf(c, shown, screen, options)} />
         ) : (
-          <Card title="Read only">
-            <p class="m-0 text-sm text-text-2">
-              You can read this page. Editing it needs the editor role in area {page.jdArea}.
-            </p>
-            <p class="m-0">
-              <a href={read} class={pageLink}>
-                Back to the page
-              </a>
-            </p>
-          </Card>
+          <ReadOnly page={page} read={read} />
         )}
       </div>
     </>,

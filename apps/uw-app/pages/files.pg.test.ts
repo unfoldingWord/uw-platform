@@ -4,6 +4,7 @@ import { fileReplySchema, pageFilesReplySchema, pageReadReplySchema } from '@uw/
 import type { Database } from '@uw/db/client';
 import { createApp } from '../app.tsx';
 import type { FilesBucket } from '../env.ts';
+import { seedGrant } from '@uw/db/test-seed';
 import { memoryBucket } from '../testing/files.ts';
 import { createAccessFixture, fixtureAccessEnv } from '../testing/access-keys.ts';
 import { person } from '../testing/commands.ts';
@@ -167,7 +168,47 @@ async function showsInThePage(db: Database): Promise<void> {
   expect(html).toContain(`<img src="/api/files/${fileId}" alt="The index">`);
 }
 
+async function followsThePageWhenItMoves(db: Database): Promise<void> {
+  const mover = await person(db, 'file-mover', 'editor', '00-09');
+  await seedGrant(db, {
+    id: randomUUID(),
+    personId: mover.id,
+    role: 'editor',
+    scopeKind: 'jd_area',
+    scopeArea: '20-29',
+    grantedAt: new Date(Date.now() - 60_000),
+    expiresAt: null,
+  });
+  const made = await world(db);
+  const page = await fileKnowledge(db, mover.email, '01', { title: 'Moving' });
+  const moved = { ...made, editor: mover.email, pageId: page.pageId };
+  const fileId = randomUUID();
+  expect((await put(moved, mover.email, fileId)).status).toBe(200);
+  expect((await send(moved, made.viewer, `/api/files/${fileId}`)).status).toBe(200);
+  const sent = await send(moved, mover.email, '/api/pages/commands/move_page', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      command: 'move_page',
+      requestId: randomUUID(),
+      pageId: page.pageId,
+      expectedVersion: 1,
+      category: '21',
+      parentId: null,
+    }),
+  });
+  expect(sent.status).toBe(200);
+  expect((await send(moved, made.viewer, `/api/files/${fileId}`)).status).toBe(404);
+  expect((await send(moved, made.stranger, `/api/files/${fileId}`)).status).toBe(200);
+  const listed = await send(moved, made.stranger, `/api/pages/${page.pageId}/files`);
+  const { files } = pageFilesReplySchema.parse(await listed.raw.json());
+  expect(files.map((file) => file.jdArea)).toEqual(['20-29']);
+}
+
 describe.skipIf(!testServer)('#175 a page can hold pictures and files', () => {
+  it('serves a file to the readers of the area its page is in now, after a move', () =>
+    withAppDatabase(followsThePageWhenItMoves));
+
   it('stores an upload against a page and serves it back, bytes and type intact', () =>
     withAppDatabase(storesAndServes));
 

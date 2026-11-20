@@ -9,7 +9,7 @@ import {
 import { can } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
-import { pageFiles } from '@uw/db/schema';
+import { pageFiles, pages } from '@uw/db/schema';
 import type { FileStore } from './file-store.ts';
 import { readPage } from './store.ts';
 
@@ -116,9 +116,14 @@ export async function serveFile(
   reader: Reader,
   fileId: string,
 ): Promise<Served | null> {
-  const [row] = await db.select().from(pageFiles).where(eq(pageFiles.id, fileId));
-  if (row === undefined) return null;
-  if (!can(reader.actor, 'read', { kind: 'area', area: row.jdArea }, reader.at)) return null;
+  const [found] = await db
+    .select({ file: pageFiles, area: pages.jdArea })
+    .from(pageFiles)
+    .innerJoin(pages, eq(pages.id, pageFiles.pageId))
+    .where(eq(pageFiles.id, fileId));
+  if (found === undefined) return null;
+  if (!can(reader.actor, 'read', { kind: 'area', area: found.area }, reader.at)) return null;
+  const row = { ...found.file, jdArea: found.area };
   const stored = await store.get(keyOf(row));
   return stored === null ? null : { file: recordOf(row), bytes: stored.bytes };
 }
@@ -128,11 +133,12 @@ export async function filesOfPage(
   reader: Reader,
   pageId: string,
 ): Promise<readonly StoredFileRecord[] | null> {
-  if ((await readPage(db, reader.actor, pageId, reader.at)) === null) return null;
+  const page = await readPage(db, reader.actor, pageId, reader.at);
+  if (page === null) return null;
   const rows = await db
     .select()
     .from(pageFiles)
     .where(eq(pageFiles.pageId, pageId))
     .orderBy(desc(pageFiles.createdAt));
-  return rows.map(recordOf);
+  return rows.map((row) => recordOf({ ...row, jdArea: page.jdArea }));
 }

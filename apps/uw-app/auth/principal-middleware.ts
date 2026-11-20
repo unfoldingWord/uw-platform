@@ -2,7 +2,7 @@ import type { Context, MiddlewareHandler } from 'hono';
 import { personPrincipal, serviceTokenPrincipal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
 import { resolveGrants } from '@uw/db/store';
-import { giveDefaultReading } from '../acl/default-grant.ts';
+import { giveDefaultReading, readsDefaultArea } from '../acl/default-grant.ts';
 import type { AppDeps, AppEnv } from '../deps.ts';
 import { refuse } from '../http/outcomes.ts';
 import { signIn } from '../people/directory.ts';
@@ -44,7 +44,7 @@ function refuseInactive(
 
 async function grantsWithDefault(db: Database, personId: string, at: Date, traceId: string) {
   const held = await resolveGrants(db, personId, { at });
-  if (held.length > 0) return held;
+  if (readsDefaultArea(held)) return held;
   const given = await giveDefaultReading(db, personId, { actor: null, traceId });
   return given ? resolveGrants(db, personId, { at }) : held;
 }

@@ -1,4 +1,5 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
+import type { Grant } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
 import { grantAudit, roleGrants } from '@uw/db/schema';
@@ -7,13 +8,27 @@ const DEFAULT_READING_AREA = '00-09';
 
 type GivenBy = { readonly actor: Principal | null; readonly traceId: string | null };
 
-async function hasEverHeldAGrant(db: Executor, personId: string): Promise<boolean> {
+async function hasEverHeldDefaultArea(db: Executor, personId: string): Promise<boolean> {
   const rows = await db
     .select({ id: roleGrants.id })
     .from(roleGrants)
-    .where(eq(roleGrants.personId, personId))
+    .where(
+      and(
+        eq(roleGrants.personId, personId),
+        eq(roleGrants.scopeKind, 'jd_area'),
+        eq(roleGrants.scopeArea, DEFAULT_READING_AREA),
+      ),
+    )
     .limit(1);
   return rows.length > 0;
+}
+
+export function readsDefaultArea(grants: readonly Grant[]): boolean {
+  return grants.some(
+    (grant) =>
+      grant.scopeKind === 'org' ||
+      (grant.scopeKind === 'jd_area' && grant.scopeArea === DEFAULT_READING_AREA),
+  );
 }
 
 export async function giveDefaultReading(
@@ -21,7 +36,7 @@ export async function giveDefaultReading(
   personId: string,
   by: GivenBy,
 ): Promise<boolean> {
-  if (await hasEverHeldAGrant(db, personId)) return false;
+  if (await hasEverHeldDefaultArea(db, personId)) return false;
   const [row] = await db
     .insert(roleGrants)
     .values({

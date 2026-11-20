@@ -4,7 +4,7 @@ import CollaborationCaret from '@tiptap/extension-collaboration-caret';
 import type { Node as PageNode, Schema } from '@tiptap/pm/model';
 import { prosemirrorToYXmlFragment } from '@tiptap/y-tiptap';
 import type { Awareness } from 'y-protocols/awareness';
-import { applyUpdate, Doc, encodeStateAsUpdate } from 'yjs';
+import { applyUpdate, Doc, encodeSnapshot, encodeStateAsUpdate, snapshot } from 'yjs';
 
 export type Room = {
   readonly pageId: string;
@@ -26,14 +26,24 @@ export type Joined = 'seeded' | 'joined' | 'unavailable';
 export type Collaboration = {
   readonly extensions: Extensions;
   readonly ready: (editor: Editor, html: string) => Promise<Joined>;
+  readonly snapshot: () => string;
   readonly destroy: () => void;
 };
 
-type Waits = { readonly setTimeout: (run: () => void, ms: number) => unknown };
+type Waits = {
+  readonly setTimeout: (run: () => void, ms: number) => unknown;
+  readonly confirm: (question: string) => boolean;
+};
 
 const FIELD = 'default';
 const SEED_CLIENT = 1;
 const SYNC_WAIT_MS = 4000;
+
+function base64Of(bytes: Uint8Array): string {
+  let text = '';
+  for (const byte of bytes) text += String.fromCharCode(byte);
+  return btoa(text);
+}
 
 export function roomIn(root: HTMLElement): Room | null {
   const version = Number(root.getAttribute('data-draft-version'));
@@ -91,7 +101,21 @@ function showPeople(root: HTMLElement, awareness: Awareness): void {
   refresh();
 }
 
-function wireDraft(root: HTMLElement, editor: Editor, doc: Doc, html: string): void {
+export function discardQuestion(others: number): string {
+  if (others === 0) return 'Throw away this draft and go back to the page as it was last saved?';
+  const who = others === 1 ? '1 other person is' : `${String(others)} other people are`;
+  return `${who} editing this draft. Discarding throws away their unsaved changes too. Discard it for everyone?`;
+}
+
+type Draft = {
+  readonly doc: Doc;
+  readonly html: string;
+  readonly link: Link;
+  readonly waits: Waits;
+};
+
+function wireDraft(root: HTMLElement, editor: Editor, draft: Draft): void {
+  const { doc, html } = draft;
   const meta = doc.getMap('meta');
   editor.on('update', ({ transaction }) => {
     if (!isChangeOrigin(transaction) && meta.get('dirty') !== true) meta.set('dirty', true);
@@ -100,6 +124,8 @@ function wireDraft(root: HTMLElement, editor: Editor, doc: Doc, html: string): v
   if (discard === null) return;
   discard.hidden = false;
   discard.addEventListener('click', () => {
+    const others = namesOf(draft.link.awareness).length;
+    if (!draft.waits.confirm(discardQuestion(others))) return;
     editor.commands.setContent(html);
     meta.set('dirty', false);
     say(root, '[data-editor-status]', 'Draft discarded. The page is as it was last saved.');
@@ -111,6 +137,24 @@ function whenSynced(link: Link, waits: Waits): Promise<boolean> {
     link.onSynced(() => resolve(true));
     waits.setTimeout(() => resolve(false), SYNC_WAIT_MS);
   });
+}
+
+const SAVED_BEHIND =
+  'Someone saved a new version, but your latest changes were not in it. They are still here: copy them, then open the page.';
+
+function heard(root: HTMLElement, editor: Editor, link: Link, message: string): void {
+  if (message === 'saved-behind') {
+    say(root, '[data-editor-status]', SAVED_BEHIND);
+    return;
+  }
+  if (message !== 'saved') return;
+  editor.setEditable(false);
+  link.destroy();
+  say(
+    root,
+    '[data-editor-status]',
+    'This draft was saved as a new version. Open the page to carry on from it.',
+  );
 }
 
 export function collaborationFor(
@@ -141,23 +185,17 @@ export function collaborationFor(
       const meta = doc.getMap('meta');
       const seeded = meta.get('seeded') === true;
       if (!seeded) applyUpdate(doc, seedUpdate(editor.schema, html));
-      wireDraft(root, editor, doc, html);
+      wireDraft(root, editor, { doc, html, link, waits });
       showPeople(root, link.awareness);
       link.onMessage((message) => {
-        if (message !== 'saved') return;
-        editor.setEditable(false);
-        link.destroy();
-        say(
-          root,
-          '[data-editor-status]',
-          'This draft was saved as a new version. Open the page to carry on from it.',
-        );
+        heard(root, editor, link, message);
       });
       if (seeded && meta.get('dirty') === true) {
         say(root, '[data-editor-status]', 'You are continuing an unsaved draft of this page.');
       }
       return seeded ? 'joined' : 'seeded';
     },
+    snapshot: () => base64Of(encodeSnapshot(snapshot(doc))),
     destroy,
   };
 }

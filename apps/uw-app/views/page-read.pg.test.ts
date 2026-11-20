@@ -107,7 +107,30 @@ async function refusedSaveKeepsWhatWasTyped(db: Database): Promise<void> {
   expect(documentOf(read.text).querySelector('[data-page-body] p')?.textContent).toBe('First.');
 }
 
+async function formattingTheEditorWouldLoseOpensAsText(db: Database): Promise<void> {
+  const made = await world(db);
+  const kept = await fileKnowledge(db, made.editor, '01', {
+    title: 'Units',
+    bodyMd: 'Area is measured in m<sup>2</sup>.\n\n<!-- kept for the auditors -->',
+  });
+  const edit = await getHtml(db, made.editor, `/pages/${kept.pageId}/edit`);
+  const document = documentOf(edit.text);
+  expect(document.querySelector('[data-editor]')).toBeNull();
+  expect(document.querySelector('script[src*="editor"]')).toBeNull();
+  expect(edit.text).toContain(
+    'This page uses formatting the editor cannot keep, so it opens as text.',
+  );
+  expect(document.querySelector('textarea[name="bodyMd"]')?.textContent).toBe(
+    'Area is measured in m<sup>2</sup>.\n\n<!-- kept for the auditors -->',
+  );
+  const plain = documentOf((await getHtml(db, made.editor, `/pages/${made.pageId}/edit`)).text);
+  expect(plain.querySelector('[data-editor]')).toBeNull();
+}
+
 describe.skipIf(!testServer)('#175 a page opens as a read view and is edited on purpose', () => {
+  it('opens a page as text when the editor would lose part of it', () =>
+    withAppDatabase(formattingTheEditorWouldLoseOpensAsText));
+
   it('shows the rendered page with a pencil and no field that could change it', () =>
     withAppDatabase(readViewHasNoFields));
 

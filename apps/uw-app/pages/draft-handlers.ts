@@ -1,8 +1,10 @@
 import type { Context } from 'hono';
 import { z } from 'zod';
+import type { Grant } from '@uw/contracts';
 import type { AppEnv } from '../deps.ts';
 import { refuse } from '../http/outcomes.ts';
 import { capabilitiesOn } from './capabilities.ts';
+import { AUTHORIZED_MS } from './draft-rules.ts';
 import { draftsOf } from './drafts.ts';
 import { readPage } from './store.ts';
 
@@ -25,6 +27,17 @@ function asksForSocket(c: Context<AppEnv>): boolean {
   return c.req.header('upgrade')?.toLowerCase() === 'websocket';
 }
 
+const WRITERS: ReadonlySet<string> = new Set(['editor', 'admin']);
+
+export function writableUntil(grants: readonly Grant[], area: string, at: Date): number {
+  const ends = grants
+    .filter((grant) => WRITERS.has(grant.role))
+    .filter((grant) => grant.scopeKind === 'org' || grant.scopeArea === area)
+    .map((grant) => (grant.expiresAt === null ? Infinity : Date.parse(grant.expiresAt)));
+  const latest = ends.length === 0 ? at.getTime() : Math.max(...ends);
+  return Math.min(latest, at.getTime() + AUTHORIZED_MS);
+}
+
 export async function connectDraft(c: Context<AppEnv>): Promise<Response> {
   const database = c.get('database');
   if (database === null) return refuse(c, 'database_not_configured');
@@ -45,5 +58,11 @@ export async function connectDraft(c: Context<AppEnv>): Promise<Response> {
   const drafts = draftsOf(c.env);
   if (drafts === null) return refuse(c, 'not_wired');
   c.set('outcome', 'accepted');
-  return drafts.connect(page.id, page.version, asked.connection);
+  const until = writableUntil(actor.grants, page.jdArea, at);
+  return drafts.connect({
+    pageId: page.id,
+    version: page.version,
+    connectionId: asked.connection,
+    until,
+  });
 }

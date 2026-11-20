@@ -47,6 +47,7 @@ function page(markdown: string, content: string): Document {
         </div>
         <p data-editor-status></p>
         <div data-editor-text><textarea name="bodyMd">${markdown}</textarea></div>
+        <button type="submit">Save</button>
       </form></body>`,
       { url: 'https://uw.example/pages/x/edit', pretendToBeVisual: true },
     ),
@@ -59,10 +60,41 @@ const deps = {
   uuid: () => '00000000-0000-4000-8000-00000000f11e',
 };
 
-function submit(document: Document): string {
+function submitted(document: Document): { readonly sent: boolean; readonly body: string } {
   const form = document.querySelector('form');
-  form?.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
-  return document.querySelector<HTMLTextAreaElement>('textarea')?.value ?? '';
+  const event = new dom.window.Event('submit', { bubbles: true, cancelable: true });
+  form?.dispatchEvent(event);
+  const body = document.querySelector<HTMLTextAreaElement>('textarea')?.value ?? '';
+  return { sent: !event.defaultPrevented, body };
+}
+
+function submit(document: Document): string {
+  return submitted(document).body;
+}
+
+type Answer = 'joined' | 'seeded' | 'unavailable';
+
+function pendingDraft() {
+  let answer: (how: Answer) => void = () => undefined;
+  const answered = new Promise<Answer>((resolve) => {
+    answer = resolve;
+  });
+  let destroyed = false;
+  const shared = {
+    extensions: [],
+    ready: () => answered,
+    snapshot: () => 'c25hcHNob3Q=',
+    destroy: () => {
+      destroyed = true;
+    },
+  };
+  return { shared, answer: (how: Answer) => answer(how), destroyed: () => destroyed };
+}
+
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+function saveButton(document: Document): HTMLButtonElement | null {
+  return document.querySelector<HTMLButtonElement>('button[type="submit"]');
 }
 
 beforeAll(async () => {
@@ -106,5 +138,46 @@ describe('#175 the editor takes over the text field, and hands markdown back on 
   it('does nothing on a screen with no editor', async () => {
     install(new JSDOM('<!DOCTYPE html><body><form></form></body>'));
     expect(await start(dom.window.document, deps)).toBeNull();
+  });
+});
+
+describe('#175 nothing is typed or saved until the shared draft is ready', () => {
+  it('holds Save and typing while joining, then saves the draft with its state', async () => {
+    const document = page(RULES, RULES_HTML);
+    const draft = pendingDraft();
+    const started = start(document, { ...deps, collaboration: () => draft.shared });
+    await tick();
+    expect(saveButton(document)?.disabled).toBe(true);
+    expect(document.querySelector('[data-editor-input]')?.getAttribute('contenteditable')).toBe(
+      'false',
+    );
+    expect(submitted(document).sent).toBe(false);
+    draft.answer('joined');
+    const editor = await started;
+    expect(saveButton(document)?.disabled).toBe(false);
+    expect(editor?.isEditable).toBe(true);
+    editor?.commands.insertContentAt(0, '<p>Joined.</p>');
+    const saved = submitted(document);
+    expect(saved.sent).toBe(true);
+    expect(saved.body.startsWith('Joined.')).toBe(true);
+    expect(document.querySelector<HTMLInputElement>('input[name="draftState"]')?.value).toBe(
+      'c25hcHNob3Q=',
+    );
+  });
+
+  it('edits alone from the saved text when the shared draft never answers', async () => {
+    const document = page(RULES, RULES_HTML);
+    const draft = pendingDraft();
+    const started = start(document, { ...deps, collaboration: () => draft.shared });
+    draft.answer('unavailable');
+    const editor = await started;
+    expect(draft.destroyed()).toBe(true);
+    expect(editor?.isEditable).toBe(true);
+    expect(saveButton(document)?.disabled).toBe(false);
+    expect(document.querySelector('[data-editor-status]')?.textContent).toContain(
+      'editing on your own',
+    );
+    expect(submit(document)).toBe(RULES);
+    expect(document.querySelector<HTMLInputElement>('input[name="draftState"]')?.value).toBe('');
   });
 });

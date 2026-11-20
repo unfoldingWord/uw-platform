@@ -13,7 +13,7 @@ import {
 } from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
 import type { Database } from '@uw/db/client';
-import { seedGrant, seedPerson } from '@uw/db/test-seed';
+import { seedGrant, seedPerson, seedRevokedDefaultReading } from '@uw/db/test-seed';
 import {
   software,
   type Caller,
@@ -180,6 +180,7 @@ export async function person(
     grantedAt: new Date(Date.now() - 60_000),
     expiresAt: null,
   });
+  if (area !== '00-09') await seedRevokedDefaultReading(db, seeded.id, new Date());
   return seeded;
 }
 

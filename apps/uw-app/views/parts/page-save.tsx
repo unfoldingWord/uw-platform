@@ -75,7 +75,7 @@ export async function savePage(c: Context<AppEnv>): Promise<Response> {
   }
   const outcome = await saved(c, screen, shown.page, posted);
   if (outcome.ok) {
-    await draftsOf(c.env)?.close(pageId, outcome.version - 1);
+    await draftsOf(c.env)?.close(pageId, outcome.version - 1, text(posted, 'draftState') ?? null);
     const mark = `saved=${String(outcome.version)}`;
     return c.redirect(`${read}${back === null ? '?' : '&'}${mark}`, 303);
   }

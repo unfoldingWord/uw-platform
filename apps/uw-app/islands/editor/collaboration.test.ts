@@ -32,7 +32,15 @@ const globals = [
 const MARKDOWN = '## Rules\n\nUse **strong** passwords.';
 const HTML = '<h2>Rules</h2><p>Use <strong>strong</strong> passwords.</p>';
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
-const never = { setTimeout: () => undefined };
+const asked: string[] = [];
+const answers: boolean[] = [];
+const never = {
+  setTimeout: () => undefined,
+  confirm: (question: string) => {
+    asked.push(question);
+    return answers.shift() ?? true;
+  },
+};
 
 type Seat = { readonly doc: Doc; readonly awareness: Awareness; say: (message: string) => void };
 
@@ -175,6 +183,13 @@ async function discardsForEveryone(): Promise<void> {
   second.editor.commands.insertContentAt(second.editor.state.doc.content.size, '<p>Oops.</p>');
   const discard = ana.querySelector<HTMLButtonElement>('[data-editor-discard]');
   expect(discard?.hidden).toBe(false);
+  asked.length = 0;
+  answers.push(false);
+  discard?.click();
+  expect(asked).toEqual([collab.discardQuestion(1)]);
+  expect(asked[0]).toContain('1 other person is editing this draft');
+  expect(markdownFromEditor(second.editor.getHTML())).toBe(`${MARKDOWN}\n\nOops.`);
+  answers.push(true);
   discard?.click();
   expect(markdownFromEditor(first.editor.getHTML())).toBe(MARKDOWN);
   expect(markdownFromEditor(second.editor.getHTML())).toBe(MARKDOWN);
@@ -203,6 +218,7 @@ async function reportsUnavailable(): Promise<void> {
   const root = seatFor('ana@uw.example');
   const shared = collab.collaborationFor(root, silent, {
     setTimeout: (run: () => void) => run(),
+    confirm: () => true,
   });
   const editor = new core.Editor({
     element: root.querySelector('[data-editor-surface]'),

@@ -4,7 +4,7 @@ import { can } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
 import type { Database, Transaction } from '@uw/db/client';
 import { advisoryLock, advisoryLocks } from '@uw/db/advisory-locks';
-import { pages } from '@uw/db/schema';
+import { pageFiles, pages } from '@uw/db/schema';
 import { replayOf } from './replay.ts';
 import {
   lockedPage,
@@ -59,6 +59,7 @@ async function moveInTransaction(tx: Transaction, move: Move): Promise<PageResul
     .where(and(eq(pages.id, command.pageId), eq(pages.version, command.expectedVersion)))
     .returning();
   if (!row) return refused('stale_version');
+  await tx.update(pageFiles).set({ jdArea: target }).where(eq(pageFiles.pageId, row.id));
   await snapshot(tx, row, actor, { traceId: move.traceId, requestId: command.requestId });
   return { ok: true, page: toPage(row) };
 }

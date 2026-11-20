@@ -1,6 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
+import { seedGrant, seedPerson } from '@uw/db/test-seed';
 import { get, post } from '../testing/commands.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 
@@ -79,7 +81,48 @@ async function adminsAreNotDoubled(db: Database): Promise<void> {
   expect(grants.some((grant) => grant.scope_area === null)).toBe(true);
 }
 
+async function approvedByAGrantGetIt(db: Database): Promise<void> {
+  const email = 'finance.partner@example.org';
+  await signIn(db, email);
+  const granted = await post(db, ROWAN, '/api/acl/commands/grant_role', {
+    command: 'grant_role',
+    requestId: crypto.randomUUID(),
+    personId: await idOf(db, email),
+    role: 'viewer',
+    scopeKind: 'jd_area',
+    scopeArea: '20-29',
+    expiresAt: null,
+  });
+  expect(granted.body).toMatchObject({ status: 'accepted' });
+  const areas = (await liveGrants(db, email)).map((grant) => grant.scope_area).sort();
+  expect(areas).toEqual(['00-09', '20-29']);
+}
+
+async function anotherAreaDoesNotStopIt(db: Database): Promise<void> {
+  const email = 'ledger.keeper@unfoldingword.org';
+  const personId = randomUUID();
+  await seedPerson(db, { id: personId, email });
+  await seedGrant(db, {
+    id: randomUUID(),
+    personId,
+    role: 'editor',
+    scopeKind: 'jd_area',
+    scopeArea: '20-29',
+    grantedAt: new Date(Date.now() - 60_000),
+    expiresAt: null,
+  });
+  await signIn(db, email);
+  const areas = (await liveGrants(db, email)).map((grant) => grant.scope_area).sort();
+  expect(areas).toEqual(['00-09', '20-29']);
+}
+
 describe.skipIf(!testServer)('#175 everyone reads 00-09 by default', () => {
+  it('gives it to an outsider approved by a grant on another area', () =>
+    withAppDatabase(approvedByAGrantGetIt));
+
+  it('gives it at sign-in to a person who holds only another area', () =>
+    withAppDatabase(anotherAreaDoesNotStopIt));
+
   it('gives a new member of staff viewer on 00-09 at first sign-in, once, and records it', () =>
     withAppDatabase(staffGetIt));
 

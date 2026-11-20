@@ -15,6 +15,7 @@ import type { CommandResult } from '../http/commands.ts';
 import { pgConstraint, pgErrorCode } from '@uw/db/errors';
 import { liveGrant, resolveGrants } from '@uw/db/store';
 import { changeStatus, lockPerson, type PersonRecord } from '../people/directory.ts';
+import { giveDefaultReading } from './default-grant.ts';
 
 export const owns = ['role_grants', 'grant_audit'] as const;
 
@@ -121,6 +122,7 @@ async function approvePending(
 ) {
   if (!can(actor, 'admin', { kind: 'org' }, stamp.at)) return refused('not_permitted');
   await changeStatus(tx, person, { actor, action: 'approve', ...stamp });
+  await giveDefaultReading(tx, person.personId, { actor, traceId: stamp.traceId });
   return accepted;
 }
 

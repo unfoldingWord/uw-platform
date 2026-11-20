@@ -1,4 +1,7 @@
 import type { Element, ElementContent, Root } from 'hast';
+import type { Root as MdastRoot } from 'mdast';
+import remarkGfm from 'remark-gfm';
+import remarkParse from 'remark-parse';
 import rehypeStringify from 'rehype-stringify';
 import { unified } from 'unified';
 import { SKIP, visit } from 'unist-util-visit';
@@ -96,4 +99,75 @@ export function editorHtml(markdown: string): string {
   const tree = sanitisedTree(markdown);
   finish.runSync(tree);
   return finish.stringify(tree);
+}
+
+const RAW_HTML_KEPT = new Set(['<details>', '</details>', '<br>', '<br/>', '<br />']);
+const SUMMARY_OPEN = '<summary>';
+const SUMMARY_CLOSE = '</summary>';
+
+const EDITOR_TAGS = new Set([
+  'p',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'strong',
+  'em',
+  'del',
+  's',
+  'a',
+  'ul',
+  'ol',
+  'li',
+  'table',
+  'thead',
+  'tbody',
+  'tr',
+  'th',
+  'td',
+  'br',
+  'code',
+  'pre',
+  'blockquote',
+  'details',
+  'summary',
+  'div',
+  'mark',
+  'img',
+  'hr',
+  'input',
+]);
+
+function keptRawHtml(value: string): boolean {
+  const raw = value.trim().toLowerCase();
+  if (RAW_HTML_KEPT.has(raw)) return true;
+  if (raw.startsWith(SUMMARY_OPEN) && raw.endsWith(SUMMARY_CLOSE)) {
+    const inner = raw.slice(SUMMARY_OPEN.length, -SUMMARY_CLOSE.length);
+    return !inner.includes('<');
+  }
+  return raw.startsWith('<details>') && raw.endsWith('</summary>') && !raw.includes('<!--');
+}
+
+function rawHtmlIsKept(markdown: string): boolean {
+  const tree = unified().use(remarkParse).use(remarkGfm).parse(markdown) as MdastRoot;
+  let kept = true;
+  visit(tree, 'html', (node) => {
+    if (!keptRawHtml(node.value)) kept = false;
+  });
+  return kept;
+}
+
+function elementsAreKept(markdown: string): boolean {
+  const tree = sanitisedTree(markdown);
+  let kept = true;
+  visit(tree, 'element', (node) => {
+    if (!EDITOR_TAGS.has(node.tagName)) kept = false;
+  });
+  return kept;
+}
+
+export function editorCanShow(markdown: string): boolean {
+  return rawHtmlIsKept(markdown) && elementsAreKept(markdown);
 }
