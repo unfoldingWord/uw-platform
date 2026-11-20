@@ -14,6 +14,7 @@ import type { AppEnv } from '../deps.ts';
 import { malformed, readJson } from '../http/commands.ts';
 import { refuse, reply } from '../http/outcomes.ts';
 import { wikiCategoryScreen } from '../views/screens/wiki-category.tsx';
+import { searchScreen } from '../views/screens/search.tsx';
 import { wikiScreen } from '../views/screens/wiki.tsx';
 import { nameCategory } from './categories.ts';
 import { confirmPage } from './confirm.ts';
@@ -106,6 +107,7 @@ export function pageRoutes(): Hono<AppEnv> {
   routes.post('/commands/:name', handleCommand);
   routes.get('/', pageReads.list);
   routes.get('/index', pageReads.index);
+  routes.get('/recent', pageReads.recent);
   routes.get('/search', pageReads.search);
   routes.get('/:pageId/versions', pageReads.versions);
   routes.get('/:pageId/versions/:version', pageReads.version);
@@ -117,5 +119,11 @@ export function wikiScreenRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
   routes.get('/', wikiScreen);
   routes.get('/:category', wikiCategoryScreen);
+  return routes;
+}
+
+export function searchScreenRoutes(): Hono<AppEnv> {
+  const routes = new Hono<AppEnv>();
+  routes.get('/', searchScreen);
   return routes;
 }

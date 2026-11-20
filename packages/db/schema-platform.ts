@@ -172,6 +172,24 @@ export const jdCategories = declareTable(
   ],
 );
 
+export const pageViews = declareTable(
+  'page_views',
+  {
+    personId: uuid('person_id')
+      .notNull()
+      .references(() => people.id),
+    pageId: uuid('page_id')
+      .notNull()
+      .references(() => pages.id),
+    viewedAt: instant('viewed_at').notNull(),
+  },
+  { classification: 'internal', offlineEligibility: 'cache_readonly' },
+  (t) => [
+    primaryKey({ name: 'page_views_pkey', columns: [t.personId, t.pageId] }),
+    index('page_views_recent').on(t.personId, t.viewedAt),
+  ],
+);
+
 export const pageVersions = declareTable(
   'page_versions',
   {

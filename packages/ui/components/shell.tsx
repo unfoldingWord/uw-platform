@@ -2,6 +2,7 @@ import { raw } from 'hono/html';
 import type { Child } from 'hono/jsx';
 import { speculationRules, themeScript } from './inline-scripts.ts';
 import { AccountMenu, type LogOutLink, type Person } from './account-menu.tsx';
+import { QuickSwitcher } from './quick-switcher.tsx';
 import { PhoneHeader, Sidebar, type NavSection } from './sidebar.tsx';
 import { StatusBar, type Status } from './status-bar.tsx';
 import { TopBar, type Crumb, type Tab } from './top-bar.tsx';
@@ -59,6 +60,15 @@ function Main(props: { readonly children?: Child }) {
   );
 }
 
+function Overlays(props: { readonly frame: Frame }) {
+  return (
+    <>
+      <AccountMenu person={props.frame.person} logOut={props.frame.logOut} />
+      <QuickSwitcher />
+    </>
+  );
+}
+
 export function Shell(props: {
   readonly title: string;
   readonly frame: Frame;
@@ -104,7 +114,7 @@ export function Shell(props: {
             <StatusBar status={frame.status} />
           </div>
         </div>
-        <AccountMenu person={frame.person} logOut={frame.logOut} />
+        <Overlays frame={frame} />
       </body>
     </html>
   );

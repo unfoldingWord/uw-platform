@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { getTableName, sql } from 'drizzle-orm';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
-import { jdCategories, pages, pageVersions } from '@uw/db/schema';
+import { jdCategories, pages, pageVersions, pageViews } from '@uw/db/schema';
 import { createApp } from '../app.tsx';
 import {
   createAccessFixture,
@@ -171,11 +171,12 @@ const learningFrontmatter = {
 };
 
 describe('FD-9 the pages module is the only writer of pages and page versions', () => {
-  it('declares exactly pages, page_versions and jd_categories as owned', () => {
+  it('declares exactly pages, page_versions, jd_categories and page_views as owned', () => {
     expect(owns).toEqual([
       getTableName(pages),
       getTableName(pageVersions),
       getTableName(jdCategories),
+      getTableName(pageViews),
     ]);
   });
 });

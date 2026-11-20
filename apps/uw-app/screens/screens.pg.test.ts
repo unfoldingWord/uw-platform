@@ -178,6 +178,7 @@ async function boardScreens(db: Database): Promise<Screen[]> {
     ['page-edit', pageEditPath(knowledgeId)],
     ['wiki', wikiPath()],
     ['wiki-category', wikiPath('81')],
+    ['search', '/search?q=assessment'],
   ];
   const headers = { accept: 'text/html' };
   const screens: Screen[] = [];
@@ -367,6 +368,7 @@ describe.skipIf(!testServer || (!browserReady && !required))('UI-16 the screensh
       'page-edit',
       'wiki',
       'wiki-category',
+      'search',
       'controls-member',
       'flow-member',
       'flow-draft',

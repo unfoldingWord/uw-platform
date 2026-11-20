@@ -351,6 +351,13 @@
       "when": 1795190218252,
       "tag": "0049_categories_and_default_reading",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1795191816707,
+      "tag": "0050_page_views",
+      "breakpoints": true
     }
   ]
 }

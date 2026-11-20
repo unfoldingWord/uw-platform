@@ -92,9 +92,10 @@ async function unbuiltAreDimmed(db: Database): Promise<void> {
     expect(row?.textContent, label).not.toMatch(/Coming Soon|Future/);
     expect(row?.closest('a'), label).toBeNull();
   }
-  const search = document.querySelector('header [aria-disabled="true"]');
-  expect(search?.getAttribute('class')).toContain('opacity-45');
-  expect(search?.textContent).not.toMatch(/Coming Soon|Future/);
+  expect(document.querySelector('header [aria-disabled="true"]')).toBeNull();
+  expect(document.querySelector('header form[role="search"]')?.getAttribute('action')).toBe(
+    '/search',
+  );
   const finance = desktopNav(document).querySelector('[data-area="20-29"]');
   expect(finance?.getAttribute('data-unbuilt')).toBe('true');
   const infrastructure = desktopNav(document).querySelector('[data-area="30-39"]');
@@ -136,7 +137,7 @@ describe.skipIf(!testServer)('UI-5 the frame', () => {
     withAppDatabase(sidebarReadsTheFrame));
   it('UI-5 the sidebar groups the platform by area in the prototype order', () =>
     withAppDatabase(areasInPrototypeOrder));
-  it('UI-5 every unbuilt module, an all-unbuilt group and search are dimmed, carry no pill and open nothing', () =>
+  it('UI-5 every unbuilt module and an all-unbuilt group are dimmed, carry no pill and open nothing, and search is built', () =>
     withAppDatabase(unbuiltAreDimmed));
   it('UI-5 the status bar says what loaded, what is open, what is on, the commit and where', () =>
     withAppDatabase(statusBarSays));

@@ -80,6 +80,10 @@ export function wikiPath(category?: string): string {
   return category === undefined ? '/wiki' : `/wiki/${segment(category)}`;
 }
 
+export function searchPath(): string {
+  return '/search';
+}
+
 export function pagePath(pageId: string): string {
   return `/pages/${segment(pageId)}`;
 }

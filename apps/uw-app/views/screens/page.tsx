@@ -9,6 +9,7 @@ import { Table } from '@uw/ui/components/table.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { renderMarkdown, type Heading } from '../../markdown/render.ts';
 import type { PageVersion } from '../../pages/history.ts';
+import { recordView } from '../../pages/recent.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import {
   backOf,
@@ -145,6 +146,8 @@ export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
   const read = await screen.kernel.views.page(screen.caller, { pageId }, { at: screen.at });
   const shown = read.status === 'accepted' ? await shownPage(c, screen, pageId) : null;
   if (shown === null) return notFound(c);
+  const database = c.get('database');
+  if (database !== null) await recordView(database.db, screen.caller.actor, pageId, screen.at);
   const spec = pageSpec(shown, null);
   const back = backOf(c.req.query('back'));
   return renderScreen(c, spec, body(shown, back, savedVersion(c.req.query('saved'))));

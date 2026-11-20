@@ -18,6 +18,7 @@ import { renderMarkdown } from '../markdown/render.ts';
 import { capabilitiesOn } from './capabilities.ts';
 import { pageHistory, pageVersion } from './history.ts';
 import { listPages, titleIndex } from './listing.ts';
+import { recentPages } from './recent.ts';
 import { searchWithSnippets } from './search.ts';
 import { readPage } from './store.ts';
 
@@ -64,6 +65,9 @@ const index: Read = async (c, { db, actor, at }) => {
   if (c.req.header('if-none-match') === etag) return c.body(null, 304);
   return c.json(reply, 200);
 };
+
+const recent: Read = async (c, { db, actor, at }) =>
+  accepted(c, pageIndexReplySchema.parse({ entries: await recentPages(db, actor, at) }));
 
 const search: Read = async (c, { db, actor, at }) => {
   const query = pageSearchQuerySchema.safeParse(c.req.query());
@@ -118,6 +122,7 @@ const version: Read = async (c, { db, actor, at }) => {
 export const pageReads = {
   list: reading(list),
   index: reading(index),
+  recent: reading(recent),
   search: reading(search),
   versions: reading(versions),
   version: reading(version),

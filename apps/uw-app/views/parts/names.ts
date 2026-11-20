@@ -22,6 +22,7 @@ export const pageNames = {
   item: 'Item',
   page: 'Page',
   wiki: 'Pages & Wiki',
+  search: 'Search',
   pageEdit: 'Edit',
   logOut: 'Log Out',
 } as const;
