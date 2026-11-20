@@ -93,6 +93,30 @@ export const seededPeople: readonly { readonly id: string; readonly email: strin
   ...cast.values(),
 ].map(({ id, email }) => ({ id, email }));
 
+const grantIds: ReadonlyMap<Who, string> = new Map<Who, string>([
+  ['admin', '00000000-0000-4000-8000-0000000158a1'],
+  ['editor', '00000000-0000-4000-8000-0000000158a2'],
+  ['viewer', '00000000-0000-4000-8000-0000000158a3'],
+  ['orgAdmin', '00000000-0000-4000-8000-0000000158a4'],
+  ['outsider', '00000000-0000-4000-8000-0000000158a5'],
+]);
+
+export function grantIdOf(who: Who): string {
+  const found = grantIds.get(who);
+  if (found === undefined) throw new Error(`no test grant for ${who}`);
+  return found;
+}
+
+export const seededGrants = [...cast.entries()].map(([who, { id, grant: held }]) => ({
+  id: grantIdOf(who),
+  personId: id,
+  role: held.role,
+  scopeKind: held.scopeKind,
+  scopeArea: held.scopeArea,
+  grantedAt: new Date('2026-11-01T09:00:00.000Z'),
+  expiresAt: null,
+}));
+
 export async function worldOn(db: Database): Promise<World> {
   const keys = await memoryDataKeys();
   return {

@@ -19,6 +19,7 @@ export const credentialAccessActions = [
   'rotate',
   'revoke',
   'bind',
+  'unbind',
   'use',
   'reveal',
 ] as const;
@@ -33,6 +34,7 @@ export const dataKeyRefusals = [
   'key_rejected',
   'key_service_refused',
   'key_service_unavailable',
+  'key_service_not_configured',
 ] as const;
 
 export type DataKeyRefusal = (typeof dataKeyRefusals)[number];
