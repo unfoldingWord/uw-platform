@@ -10,6 +10,8 @@ import {
   rowReadRules,
   type AclAction,
   type AclResource,
+  type CredentialCapability,
+  type CredentialResource,
   type RestrictedTable,
   type RowResource,
 } from './acl.ts';
@@ -110,7 +112,12 @@ describe('FD-8 can()', () => {
 
   it('takes a principal, an action and a resource and no database handle', () => {
     expectTypeOf(can).parameters.toEqualTypeOf<
-      [Principal, AclAction, AclResource | RowResource, Date]
+      [
+        Principal,
+        AclAction | CredentialCapability,
+        AclResource | RowResource | CredentialResource,
+        Date,
+      ]
     >();
     expectTypeOf(can).returns.toEqualTypeOf<boolean>();
   });
