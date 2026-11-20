@@ -5,6 +5,8 @@ import type { EmbedSource } from './page-refs.ts';
 
 const A = '00000000-0000-4000-8000-00000000000a';
 const B = '00000000-0000-4000-8000-00000000000b';
+const C = '00000000-0000-4000-8000-00000000000c';
+const D = '00000000-0000-4000-8000-00000000000d';
 
 function page(bodyMd: string): Page {
   return {
@@ -28,7 +30,13 @@ const source: EmbedSource = {
     'Intro.\n\n## Rules\n\nUse strong ones.\n\n### Length\n\nTwelve.\n\n## Travel\n\nAsk first.',
 };
 
-const sources = (id: string): EmbedSource => (id === A ? source : { kind: 'missing' });
+const nested: Readonly<Record<string, EmbedSource>> = {
+  [C]: { kind: 'page', title: 'Outer', bodyMd: `Outer text.\n\n![Inner](/pages/${D})` },
+  [D]: { kind: 'page', title: 'Inner', bodyMd: `Inner text.\n\n![Outer](/pages/${C})` },
+};
+
+const sources = (id: string): EmbedSource =>
+  id === A ? source : (new Map(Object.entries(nested)).get(id) ?? { kind: 'missing' });
 
 describe('#175 a page is exported as markdown that stands on its own', () => {
   it('leads with the title and filing as front matter', () => {
@@ -72,9 +80,18 @@ describe('#175 a page is exported as markdown that stands on its own', () => {
       '> This section no longer exists.',
     );
   });
+});
 
+describe('#175 an exported page keeps what it embeds, however it is written', () => {
   it('leaves an embed inside a code block as written', () => {
     const body = `\`\`\`\n![P](/pages/${A})\n\`\`\``;
     expect(exportMarkdown(page(body), sources)).toContain(body);
+  });
+
+  it('writes an embed inside an embedded section out too, and stops at a loop or two levels', () => {
+    const text = exportMarkdown(page(`![Outer](/pages/${C})`), sources);
+    expect(text).toContain('**From Outer:**\n\nOuter text.\n\n**From Inner:**\n\nInner text.');
+    expect(text).toContain(`See [Outer](/pages/${C}).`);
+    expect(text).not.toContain('](/pages/' + D + ')\n');
   });
 });

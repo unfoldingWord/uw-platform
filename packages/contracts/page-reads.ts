@@ -165,6 +165,18 @@ export const pageFavouriteReplySchema = z.object({
   favourite: z.boolean(),
 });
 
+export const pageTitleSchema = pageSchema.pick({ id: true, title: true });
+
+export const pageTitlesReplySchema = z.object({ pages: z.array(pageTitleSchema) });
+
+export const lapsedPageSchema = pageTitleSchema.extend({
+  category: jdCategorySchema.nullable(),
+  owner: z.string().min(1).nullable(),
+  until: z.iso.date(),
+});
+
+export const lapsedPagesReplySchema = z.object({ pages: z.array(lapsedPageSchema) });
+
 export type PageComment = z.infer<typeof pageCommentSchema>;
 export type PageCategory = z.infer<typeof pageCategorySchema>;
 export type StoredFileRecord = z.infer<typeof fileSchema>;

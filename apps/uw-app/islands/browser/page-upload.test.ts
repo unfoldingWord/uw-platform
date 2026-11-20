@@ -89,4 +89,13 @@ describe('#175 a chosen file is uploaded and placed in the text', () => {
       'Not added: this kind of file cannot be stored here.',
     );
   });
+
+  it('leaves the file to the formatted editor when it owns the form', async () => {
+    const made = rig(() => stored('shot.png', 'image/png'));
+    made.dom.window.document.querySelector('form')?.setAttribute('data-editor-active', '');
+    choose(made, 'shot.png', 'image/png');
+    await settled();
+    expect(made.sent).toEqual([]);
+    expect(made.dom.window.document.querySelector('textarea')?.value).toBe('Before. After.');
+  });
 });

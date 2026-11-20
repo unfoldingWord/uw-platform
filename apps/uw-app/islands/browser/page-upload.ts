@@ -86,6 +86,7 @@ export function wirePageUpload(document: Document, deps: UploadDeps): void {
     const input = event.target as HTMLInputElement | null;
     const region = input?.closest?.('[data-upload]') ?? null;
     if (input === null || region === null || !input.hasAttribute('data-upload-input')) return;
+    if (region.closest('form')?.hasAttribute('data-editor-active') === true) return;
     void onChosen(region, input, deps);
   });
 }

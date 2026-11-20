@@ -13,7 +13,7 @@ export type Drafts = {
   connect(room: Room): Promise<Response>;
 };
 
-export type Room = {
+type Room = {
   readonly pageId: string;
   readonly version: number;
   readonly connectionId: string;

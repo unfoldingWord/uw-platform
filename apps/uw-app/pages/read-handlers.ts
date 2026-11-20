@@ -1,7 +1,11 @@
 import type { Context } from 'hono';
 import { z } from 'zod';
 import {
+  lapsedPagesReplySchema,
+  pageCategoriesReplySchema,
+  pageFavouriteReplySchema,
   pageIndexReplySchema,
+  pageTitlesReplySchema,
   pageListQuerySchema,
   pageListReplySchema,
   pageReadReplySchema,
@@ -14,7 +18,11 @@ import type { Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
 import type { AppEnv } from '../deps.ts';
 import { refuse } from '../http/outcomes.ts';
+import { categoryCounts } from './categories.ts';
 import { capabilitiesOn } from './capabilities.ts';
+import { favouritesOf, isFavourite } from './favourites.ts';
+import { templatesFor } from './templates.ts';
+import { lapsedPages } from './verification.ts';
 import { pageHistory, pageVersion } from './history.ts';
 import { listPages, titleIndex } from './listing.ts';
 import { recentPages } from './recent.ts';
@@ -114,6 +122,30 @@ const exported: Read = async (c, { db, actor, at }) => {
   });
 };
 
+const categories: Read = async (c, { db, actor, at }) =>
+  accepted(c, pageCategoriesReplySchema.parse({ categories: await categoryCounts(db, actor, at) }));
+
+const favourites: Read = async (c, { db, actor, at }) =>
+  accepted(c, pageTitlesReplySchema.parse({ pages: await favouritesOf(db, actor, at) }));
+
+const templates: Read = async (c, { db, actor, at }) =>
+  accepted(c, pageTitlesReplySchema.parse({ pages: await templatesFor(db, actor, at) }));
+
+const review: Read = async (c, { db, actor, at }) =>
+  accepted(c, lapsedPagesReplySchema.parse({ pages: await lapsedPages(db, actor, at) }));
+
+const favourite: Read = async (c, { db, actor, at }) => {
+  const pageId = z.uuid().safeParse(c.req.param('pageId'));
+  const page = pageId.success ? await readPage(db, actor, pageId.data, at) : null;
+  if (page === null) return refuse(c, 'page_not_found');
+  const answer = {
+    status: 'accepted',
+    pageId: page.id,
+    favourite: await isFavourite(db, actor, page.id),
+  };
+  return accepted(c, pageFavouriteReplySchema.parse(answer));
+};
+
 const backlinks: Read = async (c, { db, actor, at }) => {
   const pageId = z.uuid().safeParse(c.req.param('pageId'));
   const page = pageId.success ? await readPage(db, actor, pageId.data, at) : null;
@@ -148,6 +180,11 @@ export const pageReads = {
   recent: reading(recent),
   search: reading(search),
   backlinks: reading(backlinks),
+  categories: reading(categories),
+  favourites: reading(favourites),
+  favourite: reading(favourite),
+  templates: reading(templates),
+  review: reading(review),
   exported: reading(exported),
   versions: reading(versions),
   version: reading(version),

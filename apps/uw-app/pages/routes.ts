@@ -127,6 +127,13 @@ async function handleCommand(c: Context<AppEnv>): Promise<Response> {
   return c.json(pageCommandAcceptedSchema.parse(saved), 200);
 }
 
+function wikiReads(routes: Hono<AppEnv>): void {
+  routes.get('/categories', pageReads.categories);
+  routes.get('/favourites', pageReads.favourites);
+  routes.get('/templates', pageReads.templates);
+  routes.get('/review', pageReads.review);
+}
+
 function pageRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
   routes.post('/commands/name_category', handleNameCategory);
@@ -137,9 +144,11 @@ function pageRoutes(): Hono<AppEnv> {
   routes.get('/index', pageReads.index);
   routes.get('/recent', pageReads.recent);
   routes.get('/search', pageReads.search);
+  wikiReads(routes);
   routes.get('/:pageId/backlinks', pageReads.backlinks);
   routes.get('/:pageId/comments', listComments);
   routes.use('/:pageId/favourite', formGuard);
+  routes.get('/:pageId/favourite', pageReads.favourite);
   routes.put('/:pageId/favourite', keepFavourite);
   routes.delete('/:pageId/favourite', dropFavourite);
   routes.get('/:pageId/draft', connectDraft);

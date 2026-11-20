@@ -4,6 +4,7 @@ import {
   fileSchema,
   MAX_FILE_BYTES,
   type ErrorReason,
+  type Page,
   type StoredFileRecord,
 } from '@uw/contracts';
 import { can } from '@uw/core/acl';
@@ -74,6 +75,20 @@ function shapeRefusal(upload: Upload): ErrorReason | null {
   return null;
 }
 
+function writeRefusal(reader: Reader, page: Page | null): ErrorReason | null {
+  if (page === null) return 'page_not_found';
+  const area = { kind: 'area', area: page.jdArea } as const;
+  return can(reader.actor, 'write', area, reader.at) ? null : 'not_permitted';
+}
+
+export async function uploadRefusal(
+  db: Executor,
+  reader: Reader,
+  pageId: string,
+): Promise<ErrorReason | null> {
+  return writeRefusal(reader, await readPage(db, reader.actor, pageId, reader.at));
+}
+
 export async function storeFile(
   db: Executor,
   store: FileStore,
@@ -83,10 +98,8 @@ export async function storeFile(
   const shape = shapeRefusal(upload);
   if (shape !== null) return refused(shape);
   const page = await readPage(db, reader.actor, upload.pageId, reader.at);
-  if (page === null) return refused('page_not_found');
-  if (!can(reader.actor, 'write', { kind: 'area', area: page.jdArea }, reader.at)) {
-    return refused('not_permitted');
-  }
+  const refusal = writeRefusal(reader, page);
+  if (refusal !== null || page === null) return refused(refusal ?? 'page_not_found');
   const [held] = await db.select().from(pageFiles).where(eq(pageFiles.id, upload.fileId));
   if (held !== undefined) return { ok: true, file: recordOf(held) };
   await store.put(keyOf({ pageId: page.id, id: upload.fileId }), {

@@ -4,7 +4,7 @@ import { fileReplySchema, MAX_FILE_BYTES, pageFilesReplySchema } from '@uw/contr
 import type { AppEnv } from '../deps.ts';
 import { refuse } from '../http/outcomes.ts';
 import { bucketFiles } from './file-store.ts';
-import { bufferOf, filesOfPage, serveFile, storeFile } from './files.ts';
+import { bufferOf, filesOfPage, serveFile, storeFile, uploadRefusal } from './files.ts';
 
 const inline: ReadonlySet<string> = new Set([
   'image/png',
@@ -23,15 +23,42 @@ function mediaType(request: Request): string {
   return (request.headers.get('content-type') ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
 }
 
-async function boundedBytes(request: Request): Promise<Uint8Array | null> {
-  const declared = Number(request.headers.get('content-length') ?? '0');
-  if (declared > MAX_FILE_BYTES) return null;
-  const bytes = new Uint8Array(await request.arrayBuffer());
-  return bytes.byteLength > MAX_FILE_BYTES ? null : bytes;
+function joined(chunks: readonly Uint8Array[], size: number): Uint8Array {
+  const bytes = new Uint8Array(size);
+  let at = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, at);
+    at += chunk.byteLength;
+  }
+  return bytes;
+}
+
+export async function boundedBytes(request: Request, most: number): Promise<Uint8Array | null> {
+  if (Number(request.headers.get('content-length') ?? '0') > most) return null;
+  if (request.body === null) return new Uint8Array();
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
+    received += chunk.value.byteLength;
+    if (received > most) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(chunk.value);
+  }
+  return joined(chunks, received);
 }
 
 function fileName(name: string): string {
   return name.replace(/[^\w. -]/g, '_');
+}
+
+function askedUpload(c: Context<AppEnv>): { fileId: string; pageId: string } | null {
+  const fileId = z.uuid().safeParse(c.req.param('fileId'));
+  const pageId = z.uuid().safeParse(c.req.query('page'));
+  if (!fromThisSite(c.req.raw) || !fileId.success || !pageId.success) return null;
+  return { fileId: fileId.data, pageId: pageId.data };
 }
 
 export async function uploadFile(c: Context<AppEnv>): Promise<Response> {
@@ -40,21 +67,19 @@ export async function uploadFile(c: Context<AppEnv>): Promise<Response> {
   const actor = c.get('principal');
   if (actor === null) return refuse(c, 'unauthenticated');
   if (c.env.FILES === undefined) return refuse(c, 'not_wired');
-  const fileId = z.uuid().safeParse(c.req.param('fileId'));
-  const pageId = z.uuid().safeParse(c.req.query('page'));
-  if (!fromThisSite(c.req.raw) || !fileId.success || !pageId.success) {
-    return refuse(c, 'malformed_command');
-  }
-  const bytes = await boundedBytes(c.req.raw);
+  const asked = askedUpload(c);
+  if (asked === null) return refuse(c, 'malformed_command');
+  const reader = { actor, at: c.get('now') };
+  const refusal = await uploadRefusal(database.db, reader, asked.pageId);
+  if (refusal !== null) return refuse(c, refusal);
+  const bytes = await boundedBytes(c.req.raw, MAX_FILE_BYTES);
   if (bytes === null) return refuse(c, 'file_too_large');
   const upload = {
-    fileId: fileId.data,
-    pageId: pageId.data,
+    ...asked,
     name: c.req.query('name') ?? 'file',
     contentType: mediaType(c.req.raw),
     bytes,
   };
-  const reader = { actor, at: c.get('now') };
   const result = await storeFile(database.db, bucketFiles(c.env.FILES), reader, upload);
   if (!result.ok) return refuse(c, result.reason);
   c.set('outcome', 'accepted');
