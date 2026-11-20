@@ -19,6 +19,8 @@
     "testing/board-world.ts",
     "testing/gate-world.ts",
     "testing/credentials-world.ts",
+    "testing/credentials-app.ts",
+    "testing/credentials-scene.ts",
     "islands/browser/**",
     "islands/worker/**"
   ]

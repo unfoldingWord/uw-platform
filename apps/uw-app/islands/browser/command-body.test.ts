@@ -168,3 +168,88 @@ describe('#154 the Access command bodies', () => {
     }
   });
 });
+
+const credentialId = 'c1590000-0000-4000-8000-000000000001';
+const owner = 'c1590000-0000-4000-8000-000000000002';
+const workflow = 'c1590000-0000-4000-8000-000000000003';
+const added = {
+  jdArea: '20-29',
+  jdRef: '',
+  name: ' Bank export key ',
+  kind: 'api_key',
+  ownerId: owner,
+  rotateBy: '',
+  expiresOn: '',
+  value: '  spaces kept \n',
+};
+
+describe('#159 the Credentials command bodies that carry a value', () => {
+  it('create_credential trims the name, keeps the value as typed, and leaves empty dates and place as none', () => {
+    expect(commandBody('create_credential', added, requestId)).toEqual({
+      command: 'create_credential',
+      requestId,
+      jdArea: '20-29',
+      jdRef: null,
+      name: 'Bank export key',
+      kind: 'api_key',
+      ownerId: owner,
+      rotateBy: null,
+      expiresAt: null,
+      value: '  spaces kept \n',
+    });
+    const dated = { ...added, jdRef: '28.04', rotateBy: '2027-02-01', expiresOn: '2027-03-01' };
+    expect(commandBody('create_credential', dated, requestId)).toMatchObject({
+      jdRef: '28.04',
+      rotateBy: '2027-02-01',
+      expiresAt: '2027-03-01T23:59:59.000Z',
+    });
+  });
+
+  it('create_credential with no value, or rotate_credential with none, is not sent', () => {
+    expect(commandBody('create_credential', { ...added, value: '' }, requestId)).toBeNull();
+    const rotation = { credentialId, rotateBy: '', expiresOn: '', value: '' };
+    expect(commandBody('rotate_credential', rotation, requestId)).toBeNull();
+    expect(commandBody('rotate_credential', { ...rotation, value: 'next' }, requestId)).toEqual({
+      command: 'rotate_credential',
+      requestId,
+      credentialId,
+      rotateBy: null,
+      expiresAt: null,
+      value: 'next',
+    });
+  });
+});
+
+describe('#159 the Credentials command bodies that carry ids', () => {
+  it('bind, unbind, revoke and the reveal grant commands carry ids and a whole number of minutes', () => {
+    const binding = { credentialId, harnessId: workflow, connectorKey: 'send' };
+    for (const command of ['bind_credential', 'unbind_credential']) {
+      expect(commandBody(command, binding, requestId)).toEqual({ command, requestId, ...binding });
+    }
+    expect(commandBody('revoke_credential', { credentialId }, requestId)).toEqual({
+      command: 'revoke_credential',
+      requestId,
+      credentialId,
+    });
+    const grant = { credentialId, personId: owner, minutes: '60' };
+    expect(commandBody('grant_reveal', grant, requestId)).toEqual({
+      command: 'grant_reveal',
+      requestId,
+      credentialId,
+      personId: owner,
+      minutes: 60,
+    });
+    expect(commandBody('grant_reveal', { ...grant, minutes: 'forever' }, requestId)).toBeNull();
+    for (const command of ['confirm_reveal', 'revoke_reveal']) {
+      expect(commandBody(command, { grantId: credentialId }, requestId)).toEqual({
+        command,
+        requestId,
+        grantId: credentialId,
+      });
+    }
+  });
+
+  it('has no body for reveal_credential, which is never sent as a form command', () => {
+    expect(commandBody('reveal_credential', { credentialId }, requestId)).toBeNull();
+  });
+});

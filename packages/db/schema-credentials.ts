@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   bigint,
+  boolean,
   check,
   date,
   index,
@@ -120,11 +121,18 @@ export const credentialGrants = declareTable(
     grantedAt: instant('granted_at').notNull(),
     expiresAt: instant('expires_at').notNull(),
     revokedAt: instant('revoked_at'),
+    secondRequired: boolean('second_required').notNull().default(false),
+    secondBy: uuid('second_by').references(() => people.id),
+    secondAt: instant('second_at'),
   },
   restrictedNever,
   (t) => [
     check('credential_grants_capability_known', oneOf(t.capability, credentialGrantCapabilities)),
     check('credential_grants_expires_after_grant', sql`${t.expiresAt} > ${t.grantedAt}`),
+    check(
+      'credential_grants_second_is_another_person',
+      sql`(${t.secondBy} IS NULL AND ${t.secondAt} IS NULL) OR (${t.secondRequired} AND ${t.secondBy} IS NOT NULL AND ${t.secondAt} IS NOT NULL AND ${t.secondBy} <> ${t.grantedBy})`,
+    ),
     index('credential_grants_credential').on(t.credentialId, t.personId),
   ],
 );

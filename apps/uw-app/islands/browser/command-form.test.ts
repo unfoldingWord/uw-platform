@@ -364,3 +364,38 @@ describe('#154 a platform command form', () => {
     platformRefusalInPlace,
   );
 });
+
+describe('#159 a form that carries a value forgets it once the command is accepted', () => {
+  const credentialId = 'c1590000-0000-4000-8000-000000000001';
+  const typed = 'uw-planted-typed-value-159';
+  const rotateForm = `<form data-command="rotate_credential" data-endpoint="/api/credentials/commands" method="post" action="#"><input type="hidden" name="credentialId" value="${credentialId}"><textarea name="value" data-forget></textarea><input name="rotateBy" value=""><input name="expiresOn" value=""><button type="submit">Rotate</button><p data-outcome role="status"></p></form>`;
+
+  function typing(answer: () => Promise<Response>) {
+    const run = wired(page(rotateForm), answer);
+    const field = run.document.querySelector('textarea');
+    if (field === null) throw new Error('no value field');
+    field.value = typed;
+    return { ...run, field };
+  }
+
+  it('clears the field after an accepted rotate, and posts the value only in the body', async () => {
+    const run = typing(async () => Response.json({ status: 'accepted', requestId }));
+    submit(run.document);
+    await settled();
+    expect(run.sent[0]?.url).toBe('/api/credentials/commands/rotate_credential');
+    expect(run.sent[0]?.body).toMatchObject({ credentialId, value: typed });
+    expect(run.field.value).toBe('');
+    expect(run.document.documentElement.outerHTML).not.toContain(typed);
+  });
+
+  it('keeps what you typed when the command is refused, and says why in place', async () => {
+    const refusal = { status: 'error', requestId, reason: 'key_service_not_configured' };
+    const run = typing(async () => Response.json(refusal, { status: 422 }));
+    submit(run.document);
+    await settled();
+    expect(run.field.value).toBe(typed);
+    expect(run.document.querySelector('[data-outcome]')?.textContent).toBe(
+      'Key service not configured',
+    );
+  });
+});

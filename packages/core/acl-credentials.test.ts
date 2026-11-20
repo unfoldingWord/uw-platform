@@ -3,6 +3,7 @@ import type { Grant, Principal } from '@uw/contracts';
 import {
   can,
   credentialRules,
+  managesOwnArea,
   type AclAction,
   type CredentialBinding,
   type CredentialCapability,
@@ -282,5 +283,37 @@ describe('#156 an agent uses a credential and passes no other capability', () =>
     expect(can(approver, 'see', open, at)).toBe(false);
     expect(can(approver, 'manage', open, at)).toBe(false);
     expect(can(approver, 'use', open, at)).toBe(true);
+  });
+});
+
+describe('#159 who gives a reveal grant alone, and who needs a second org admin', () => {
+  it.each([
+    ['an admin of the credential\u2019s area', [area('admin', '20-29')], true],
+    ['an org admin with no grant on the area', [org('admin')], false],
+    ['an org admin who is also an admin of the area', [org('admin'), area('admin', '20-29')], true],
+    ['an org admin who edits the area', [org('admin'), area('editor', '20-29')], false],
+    ['an admin of another area', [area('admin', '80-89')], false],
+    ['an editor on the area', [area('editor', '20-29')], false],
+  ] as [string, Grant[], boolean][])('%s', (_name, grants, alone) => {
+    expect(managesOwnArea(holding(...grants), finance(), at)).toBe(alone);
+  });
+
+  it('is never an agent or a lent person, whatever grants they carry', () => {
+    expect(managesOwnArea(agent(true, area('admin', '20-29')), finance(), at)).toBe(false);
+    expect(managesOwnArea(lent(area('admin', '20-29')), finance(), at)).toBe(false);
+  });
+
+  it('does not count an area admin grant that has ended', () => {
+    const ended = { ...area('admin', '20-29'), expiresAt: earlier };
+    expect(managesOwnArea(holding(ended), finance(), at)).toBe(false);
+  });
+
+  it('is never wider than manage', () => {
+    for (const grants of [[area('admin', '20-29')], [org('admin')], [area('admin', '80-89')]]) {
+      const actor = holding(...grants);
+      if (managesOwnArea(actor, finance(), at)) {
+        expect(can(actor, 'manage', finance(), at)).toBe(true);
+      }
+    }
   });
 });

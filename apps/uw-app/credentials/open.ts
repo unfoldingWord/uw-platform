@@ -1,5 +1,5 @@
-import { and, desc, eq, isNull } from 'drizzle-orm';
-import type { Principal } from '@uw/contracts';
+import { and, desc, eq, isNotNull, isNull, not, or } from 'drizzle-orm';
+import type { JdArea, Principal } from '@uw/contracts';
 import { can, type CredentialBinding, type CredentialResource } from '@uw/core/acl';
 import type { CredentialRefusal } from '@uw/core/credentials';
 import type { Database } from '@uw/db/client';
@@ -10,6 +10,7 @@ import {
   credentialVersions,
 } from '@uw/db/schema';
 import { openValue, type SealedValue } from './envelope.ts';
+import { isId, sees } from './standing.ts';
 import {
   recordAccess,
   refuseAndRecord,
@@ -34,6 +35,7 @@ export type OpenedCredential =
       readonly value: Uint8Array<ArrayBuffer>;
       readonly versionId: string;
       readonly version: number;
+      readonly jdArea: JdArea;
     }
   | Refused;
 
@@ -84,6 +86,7 @@ async function factsOf(db: Database, request: OpenRequest): Promise<Facts | null
         eq(credentialGrants.credentialId, credentialId),
         eq(credentialGrants.capability, 'reveal'),
         isNull(credentialGrants.revokedAt),
+        or(not(credentialGrants.secondRequired), isNotNull(credentialGrants.secondBy)),
       ),
     );
   const resource: CredentialResource = {
@@ -124,7 +127,7 @@ export async function openCredential(
 ): Promise<OpenedCredential> {
   const at = deps.clock.now();
   const { credentialId } = request;
-  const facts = await factsOf(deps.db, request);
+  const facts = isId(credentialId) ? await factsOf(deps.db, request) : null;
   if (facts === null) return refused('credential_not_found');
   const jdArea = facts.resource.area;
   const entry: AccessEntry = {
@@ -141,11 +144,13 @@ export async function openCredential(
   const { current } = facts;
   if (reason !== null || current === null) {
     const refusal = { versionId: null, reason: reason ?? 'envelope_malformed' } as const;
-    return refuseAndRecord(deps.db, entry, refusal);
+    const answered = await refuseAndRecord(deps.db, entry, refusal);
+    const hidden = request.action === 'reveal' && !sees(actor, { id: credentialId, jdArea }, at);
+    return hidden ? refused('credential_not_found') : answered;
   }
   const versionId = current.id;
   const opened = await openValue(deps.keys, { credentialId, versionId, jdArea }, current);
   if (!opened.ok) return refuseAndRecord(deps.db, entry, { versionId, reason: opened.reason });
   await recordAccess(deps.db, entry, { versionId, reason: null });
-  return { ok: true, value: opened.plaintext, versionId, version: current.version };
+  return { ok: true, value: opened.plaintext, versionId, version: current.version, jdArea };
 }

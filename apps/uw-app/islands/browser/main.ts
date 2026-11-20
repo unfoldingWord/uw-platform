@@ -8,6 +8,7 @@ import { wireNavigating } from './navigating.ts';
 import { wireNewWorkflow } from './new-workflow.ts';
 import { browserPush, wirePushControl } from './push-subscribe.ts';
 import { createRefresher } from './refresh.ts';
+import { wireReveal } from './reveal.ts';
 import { registerWorker } from './register.ts';
 
 const timers: LiveTimers = {
@@ -37,6 +38,14 @@ document.addEventListener('DOMContentLoaded', () => {
     fetch: send,
     uuid: () => crypto.randomUUID(),
     go: (href) => window.location.assign(href),
+  });
+  wireReveal(document, {
+    fetch: send,
+    uuid: () => crypto.randomUUID(),
+    timers: {
+      setTimeout: (run, ms) => window.setTimeout(run, ms),
+      clearTimeout: (handle) => window.clearTimeout(Number(handle)),
+    },
   });
   startLive(document, { fetch: send, connect: reconnectingSocket, timers, refresher });
   wirePushControl(document, { fetch: send, push: browserPush(navigator) });

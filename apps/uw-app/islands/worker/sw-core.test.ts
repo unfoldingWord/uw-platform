@@ -67,6 +67,7 @@ describe('the push notification', () => {
       'An item you hold moved on',
       'An agent merged under a delegation you gave',
       'Items wait in Check and no review has run',
+      'A credential in your area was revealed',
     ]);
   });
 });

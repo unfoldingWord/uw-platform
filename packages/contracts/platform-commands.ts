@@ -13,6 +13,15 @@ export const platformCommandNameSchema = z.enum([
   'revoke_routine',
   'approve_person',
   'decline_person',
+  'create_credential',
+  'rotate_credential',
+  'revoke_credential',
+  'bind_credential',
+  'unbind_credential',
+  'grant_reveal',
+  'confirm_reveal',
+  'revoke_reveal',
+  'reveal_credential',
 ]);
 
 export type PlatformCommandName = z.infer<typeof platformCommandNameSchema>;

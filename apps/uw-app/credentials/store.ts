@@ -1,4 +1,5 @@
 import { eq, max } from 'drizzle-orm';
+import { z } from 'zod';
 import type { JdArea, Principal } from '@uw/contracts';
 import { can, type CredentialBinding } from '@uw/core/acl';
 import type {
@@ -12,6 +13,7 @@ import { credentialAccessLog, credentials, credentialVersions } from '@uw/db/sch
 import type { Clock } from '@uw/harness';
 import type { DataKeys } from './data-keys.ts';
 import { sealValue, type SealedValue } from './envelope.ts';
+import { isId, locate, resourceOf, type Located } from './standing.ts';
 
 export const owns = [
   'credentials',
@@ -23,7 +25,12 @@ export const owns = [
 
 const VALUE_MAX_BYTES = 65_536;
 const UNIQUE_VIOLATION = '23505';
+const FOREIGN_KEY_VIOLATION = '23503';
 const NAME_PER_AREA = 'credentials_name_per_area';
+const OWNER_EXISTS = 'credentials_owner_id_people_id_fk';
+const NAME_MAX = 120;
+const daySchema = z.iso.date();
+const jdRefPattern = /^[0-9]{2}$|^[0-9]{2}\.[0-9]{2}$/;
 
 export type CredentialsDeps = {
   readonly db: Database;
@@ -40,7 +47,12 @@ export type StoreRefusal =
   | 'connector_unknown'
   | 'workflow_not_found'
   | 'already_bound'
-  | 'not_bound';
+  | 'not_bound'
+  | 'credential_malformed'
+  | 'person_not_found'
+  | 'grant_not_found'
+  | 'grant_exists'
+  | 'second_admin_required';
 
 export type Refused = { readonly ok: false; readonly reason: StoreRefusal };
 
@@ -127,15 +139,28 @@ export function managerOf(
   credential: { readonly id: string; readonly jdArea: JdArea },
   at: Date,
 ): string | null {
-  const resource = {
-    kind: 'credential',
-    credentialId: credential.id,
-    area: credential.jdArea,
-    bindings: [],
-    usedBy: null,
-    revealGrants: [],
-  } as const;
-  return can(actor, 'manage', resource, at) ? actor.personId : null;
+  return can(actor, 'manage', resourceOf(credential), at) ? actor.personId : null;
+}
+
+export async function refuseUnpermitted(
+  db: Executor,
+  entry: AccessEntry,
+  located: Pick<Located, 'seen'>,
+  hidden: 'credential_not_found' | 'grant_not_found' = 'credential_not_found',
+): Promise<Refused> {
+  await recordAccess(db, entry, { versionId: null, reason: 'not_permitted' });
+  return refused(located.seen ? 'not_permitted' : hidden);
+}
+
+function dayOrNone(day: string | null): boolean {
+  return day === null || daySchema.safeParse(day).success;
+}
+
+function wellFormed(input: NewCredential): boolean {
+  const { name, jdRef, jdArea } = input;
+  const named = name === name.trim() && name.length >= 1 && name.length <= NAME_MAX;
+  const placed = jdRef === null || (jdRefPattern.test(jdRef) && jdRef[0] === jdArea[0]);
+  return named && placed && isId(input.ownerId) && dayOrNone(input.rotateBy);
 }
 
 function storable(value: Uint8Array): boolean {
@@ -156,6 +181,10 @@ async function addVersion(tx: Transaction, row: VersionRow, sealed: SealedValue)
 
 function nameTaken(error: unknown): boolean {
   return pgErrorCode(error) === UNIQUE_VIOLATION && pgConstraint(error) === NAME_PER_AREA;
+}
+
+function ownerMissing(error: unknown): boolean {
+  return pgErrorCode(error) === FOREIGN_KEY_VIOLATION && pgConstraint(error) === OWNER_EXISTS;
 }
 
 type Sealing = {
@@ -198,6 +227,7 @@ export async function createCredential(
   const { jdArea } = input;
   const personId = managerOf(actor, { id: credentialId, jdArea }, at);
   if (personId === null) return refused('not_permitted');
+  if (!wellFormed(input)) return refused('credential_malformed');
   if (!storable(input.value)) return refused('value_not_storable');
   const sealed = await sealValue(deps.keys, { credentialId, versionId, jdArea }, input.value);
   if (!sealed.ok) return refused(sealed.reason);
@@ -215,6 +245,7 @@ export async function createCredential(
     await insertCredential(deps.db, input, { ...sealed, credentialId, versionId, personId, entry });
   } catch (error) {
     if (nameTaken(error)) return refused('credential_name_taken');
+    if (ownerMissing(error)) return refused('person_not_found');
     throw error;
   }
   return { ok: true, credentialId, versionId, version: 1 };
@@ -259,11 +290,9 @@ export async function rotateCredential(
 ): Promise<Written> {
   const at = deps.clock.now();
   const { credentialId } = input;
-  const [found] = await deps.db
-    .select({ id: credentials.id, jdArea: credentials.jdArea, revokedAt: credentials.revokedAt })
-    .from(credentials)
-    .where(eq(credentials.id, credentialId));
-  if (found === undefined) return refused('credential_not_found');
+  const found = await locate(deps.db, actor, credentialId, at);
+  if (found === null) return refused('credential_not_found');
+  if (!dayOrNone(input.rotateBy)) return refused('credential_malformed');
   const { jdArea } = found;
   const entry: AccessEntry = {
     credentialId,
@@ -277,9 +306,7 @@ export async function rotateCredential(
   };
   const unsealed = { versionId: null };
   const personId = managerOf(actor, found, at);
-  if (personId === null) {
-    return refuseAndRecord(deps.db, entry, { ...unsealed, reason: 'not_permitted' });
-  }
+  if (personId === null) return refuseUnpermitted(deps.db, entry, found);
   if (found.revokedAt !== null) {
     return refuseAndRecord(deps.db, entry, { ...unsealed, reason: 'credential_revoked' });
   }

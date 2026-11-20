@@ -65,6 +65,10 @@ export function orgEditor(): Principal {
   return person('outsider', [grant('editor', null)]);
 }
 
+export function secondOrgAdmin(): Principal {
+  return person('outsider', [grant('admin', null)]);
+}
+
 export function agentOf(who: Who): Principal {
   const { id, grant: held } = member(who);
   return parsePrincipal({
@@ -146,6 +150,26 @@ export async function bind(db: Database, credentialId: string, harness = harness
 }
 
 type Reveal = { readonly expiresAt: Date; readonly revokedAt?: Date };
+
+export type GrantRow = {
+  readonly id: string;
+  readonly person_id: string;
+  readonly granted_by: string;
+  readonly second_required: boolean;
+  readonly second_by: string | null;
+  readonly revoked: boolean;
+  readonly minutes: number;
+};
+
+export async function grantsOf(db: Database, credentialId: string): Promise<GrantRow[]> {
+  const rows = await db.execute<GrantRow>(
+    sql`SELECT id, person_id, granted_by, second_required, second_by,
+          revoked_at IS NOT NULL AS revoked,
+          (extract(epoch FROM expires_at - coalesce(second_at, granted_at)) / 60)::int AS minutes
+        FROM credential_grants WHERE credential_id = ${credentialId} ORDER BY granted_at, id`,
+  );
+  return [...rows];
+}
 
 export async function grantReveal(db: Database, credentialId: string, who: Who, reveal: Reveal) {
   await db.insert(credentialGrants).values({

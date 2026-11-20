@@ -11,6 +11,7 @@ function rule(appliedIn: string): ReadGovernance {
 }
 
 const accessView = 'apps/uw-app/views/parts/access-view.ts';
+const credentialRecords = 'apps/uw-app/credentials/records.ts';
 const readableDelegations = 'packages/harness/delegations/readable.ts';
 
 export const restrictedReads: ReadonlyMap<string, ReadGovernance> = new Map<string, ReadGovernance>(
@@ -22,6 +23,7 @@ export const restrictedReads: ReadonlyMap<string, ReadGovernance> = new Map<stri
     ['packages/harness/views/agents.ts', rule('packages/harness/views/agents.ts')],
     ['packages/harness/views/persona.ts', rule('packages/harness/views/persona.ts')],
     ['packages/harness/views/waiting.ts', rule('packages/harness/views/waiting.ts')],
+    [credentialRecords, rule(credentialRecords)],
     ['packages/harness/views/gates.ts', derived],
     ['packages/harness/views/holder.ts', derived],
     ['packages/harness/views/look.ts', derived],
@@ -30,6 +32,9 @@ export const restrictedReads: ReadonlyMap<string, ReadGovernance> = new Map<stri
     ['apps/uw-app/agents/service-tokens.ts', platform],
     ['apps/uw-app/credentials/bindings.ts', platform],
     ['apps/uw-app/credentials/open.ts', platform],
+    ['apps/uw-app/credentials/reveal-grants.ts', platform],
+    ['apps/uw-app/credentials/revoke.ts', platform],
+    ['apps/uw-app/credentials/standing.ts', platform],
     ['apps/uw-app/credentials/store.ts', platform],
     ['apps/uw-app/notify/push/store.ts', platform],
     ['packages/db/bootstrap-admin.ts', platform],
