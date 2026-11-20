@@ -1,8 +1,18 @@
+import { sql } from 'drizzle-orm';
+import { Hono } from 'hono';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { verbNames, verbRegistry, type Principal, type VerbName } from '@uw/contracts';
+import {
+  platformCommandNameSchema,
+  verbNames,
+  verbRegistry,
+  type Principal,
+  type VerbName,
+} from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
+import { personPrincipal, serviceTokenPrincipal } from '@uw/core/principal';
 import { testServer } from '@uw/db/test-database';
 import { DEFAULT_SPEND_CAP } from '@uw/harness';
+import type { AppEnv } from '../deps.ts';
 import type { McpHost, VerbContext } from '../mcp/context.ts';
 import { callVerb } from '../mcp/dispatch.ts';
 import { toolsFor } from '../mcp/tools.ts';
@@ -11,10 +21,11 @@ import { kernelOn } from '../testing/kernel.ts';
 import { toBase64, utf8 } from './base64.ts';
 import { bindCredential, unbindCredential } from './bindings.ts';
 import { notConfiguredDataKeys } from './kms/not-configured.ts';
+import { credentialRoutes } from './routes.ts';
 import { exposeSecret, type Secret } from './secret.ts';
 import { rotateCredential } from './store.ts';
 import { dumpEveryTable, pgWorld, type PgWorld } from '../testing/credentials-world.ts';
-import { agentOf, harnessId, now, person, runId, traceId } from './testing/store-world.ts';
+import { agentOf, harnessId, now, people, person, runId, traceId } from './testing/store-world.ts';
 import { useCredential, type CredentialUse } from './use.ts';
 
 const first = 'uw-planted-credential-value-158-first';
@@ -168,6 +179,111 @@ async function callEveryVerb(principal: Principal, host: McpHost): Promise<numbe
   return calls;
 }
 
+const credentialCommands = platformCommandNameSchema.options.filter(
+  (command) => command.includes('credential') || command.includes('reveal'),
+);
+const routeAnswers: { readonly where: string; readonly status: number; readonly text: string }[] =
+  [];
+
+function routesAs(principal: Principal): Hono<AppEnv> {
+  const app = new Hono<AppEnv>();
+  const database = { db: world.db, ping: async () => undefined, release: async () => undefined };
+  const logger = createLogger(
+    { traceId, commit: 'test-commit', route: 'POST', principal: principal.identity },
+    (line) => seen.push({ where: `route log line of ${principal.identity}`, text: line }),
+  );
+  app.use(async (c, next) => {
+    c.set('database', database);
+    c.set('principal', principal);
+    c.set('traceId', traceId);
+    c.set('now', clock.now());
+    c.set('logger', logger);
+    c.set('outcome', null);
+    await next();
+  });
+  const noNetwork: typeof fetch = () => Promise.reject(new Error('no network in this test'));
+  const timers = { after: () => new Promise<void>(() => undefined) };
+  const platform = { fetch: noNetwork, timers, clock, newId: () => crypto.randomUUID() };
+  app.route('/api/credentials', credentialRoutes(platform));
+  return app;
+}
+
+function bodyFor(command: string): Record<string, unknown> {
+  return {
+    command,
+    requestId: crypto.randomUUID(),
+    credentialId,
+    grantId: credentialId,
+    harnessId,
+    connectorKey: 'send',
+    personId: people.admin,
+    ownerId: people.admin,
+    minutes: 60,
+    jdArea: '20-29',
+    jdRef: null,
+    name: `Made by an agent ${crypto.randomUUID()}`,
+    kind: 'api_key',
+    rotateBy: null,
+    expiresAt: null,
+    value: 'a value an agent offers',
+  };
+}
+
+async function callEveryRoute(principal: Principal): Promise<void> {
+  const app = routesAs(principal);
+  for (const command of credentialCommands) {
+    const path = command === 'reveal_credential' ? 'reveal' : `commands/${command}`;
+    const whole = bodyFor(command);
+    for (const body of [whole, { command, requestId: whole['requestId'], credentialId }]) {
+      const response = await app.request(`/api/credentials/${path}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const text = await response.text();
+      const where = `${command} route for ${principal.identity}`;
+      routeAnswers.push({ where, status: response.status, text });
+      seen.push({ where, text });
+    }
+  }
+}
+
+function notPeopleAtTheKeyboard(): Principal[] {
+  const lender = person('admin');
+  const lent = personPrincipal({
+    personId: people.admin,
+    email: lender.email ?? '',
+    grants: lender.grants,
+    interactive: false,
+  });
+  return [agentOf('admin'), agentOf('editor'), lent, serviceTokenPrincipal('a1b2c3d4.access')];
+}
+
+function routesRefused(): void {
+  it('refuses every credential route to an agent, a lent person and a service token', () => {
+    expect(credentialCommands).toHaveLength(9);
+    expect(routeAnswers).toHaveLength(9 * 2 * 4);
+    const letThrough = routeAnswers.filter((answer) => answer.status < 400);
+    expect(letThrough.map((answer) => answer.where)).toEqual([]);
+    const reasons = new Set(
+      routeAnswers.map((answer) => String(JSON.parse(answer.text)['reason'] ?? '')),
+    );
+    expect([...reasons].sort()).toEqual(['not_permitted']);
+  });
+
+  it('let none of them write: no row of the five tables names one as the actor of a change', async () => {
+    const rows = await world.db.execute<{ n: number }>(
+      sql`SELECT count(*)::int AS n FROM credential_access_log
+          WHERE action NOT IN ('use') AND actor NOT LIKE 'human:%' AND outcome = 'done'`,
+    );
+    expect([...rows][0]?.n).toBe(0);
+    const made = await world.db.execute<{ n: number }>(
+      sql`SELECT count(*)::int AS n FROM credentials WHERE name LIKE 'Made by an agent%'`,
+    );
+    expect([...made][0]?.n).toBe(0);
+  });
+}
+
 let calls = 0;
 
 function exercised(): void {
@@ -230,6 +346,7 @@ describe.skipIf(!testServer)('#158 an agent never sees the value of a credential
       calls += await callEveryVerb(principal, 'external');
       calls += await callEveryVerb(principal, 'workflow');
     }
+    for (const principal of notPeopleAtTheKeyboard()) await callEveryRoute(principal);
     seen.push({ where: 'every table of the database', text: await dumpEveryTable(world.db) });
   });
 
@@ -241,6 +358,7 @@ describe.skipIf(!testServer)('#158 an agent never sees the value of a credential
   describe('what was exercised', exercised);
   describe('where the value was searched for', searched);
   describe('what a refusal says', refusedByReason);
+  describe('#159 the credential routes', routesRefused);
 });
 
 describe('#158 no verb names a credential or answers a value', () => {

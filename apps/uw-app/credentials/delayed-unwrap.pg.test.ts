@@ -5,7 +5,10 @@ import { personPrincipal } from '@uw/core/principal';
 import { testServer } from '@uw/db/test-database';
 import { revokeSeededGrant, seedGrant, seedPerson } from '@uw/db/test-seed';
 import { pgWorld, type PgWorld } from '../testing/credentials-world.ts';
+import { bindCredential, unbindCredential } from './bindings.ts';
 import { openCredential, type OpenRequest } from './open.ts';
+import { giveRevealGrant, revokeRevealGrant } from './reveal-grants.ts';
+import { revokeCredential } from './revoke.ts';
 import { createCredential, rotateCredential, type CredentialsDeps } from './store.ts';
 import {
   bind,
@@ -17,13 +20,12 @@ import {
   harnessId,
   logOf,
   now,
+  people,
   person,
-  revokeRevealRow,
   rewrite,
   runId,
   textOf,
   traceId,
-  unbindRow,
 } from './testing/store-world.ts';
 
 let world: PgWorld;
@@ -70,6 +72,11 @@ async function leaver(n: number, role: 'editor' | 'admin' = 'editor'): Promise<L
   return { actor: personPrincipal({ personId, email, grants, interactive: true }), grantId };
 }
 
+async function revoked(credentialId: string): Promise<void> {
+  const outcome = await revokeCredential(world.deps, person('admin'), credentialId, traceId);
+  expect(outcome).toEqual({ ok: true });
+}
+
 async function expectRefusedAndRecorded(id: string, action: string, reason: string) {
   const log = await logOf(world.db, id);
   expect(log.at(-1)).toMatchObject({ action, outcome: 'refused', reason });
@@ -80,7 +87,7 @@ function withdrawnReveals(): void {
   it('refuses a reveal whose credential was revoked while the key service answered', async () => {
     const id = await world.created('Revoked mid-reveal');
     await grantReveal(world.db, id, 'viewer', { expiresAt: soon });
-    const deps = delayed({ change: () => rewrite(world.db, id, { revokedAt: now }) });
+    const deps = delayed({ change: () => revoked(id) });
     expect(await openCredential(deps, person('viewer'), reveal(id), traceId)).toEqual({
       ok: false,
       reason: 'credential_revoked',
@@ -101,8 +108,14 @@ function withdrawnReveals(): void {
 
   it('refuses a reveal whose grant was revoked while the key service answered', async () => {
     const id = await world.created('Grant revoked mid-reveal');
-    await grantReveal(world.db, id, 'viewer', { expiresAt: soon });
-    const deps = delayed({ change: () => revokeRevealRow(world.db, id, now) });
+    const request = { credentialId: id, personId: people.viewer, minutes: 60 };
+    const given = await giveRevealGrant(world.deps, person('admin'), request, traceId);
+    const grantId = given.ok ? given.grantId : '';
+    const revoke = async () => {
+      const outcome = await revokeRevealGrant(world.deps, person('admin'), grantId, traceId);
+      expect(outcome).toEqual({ ok: true });
+    };
+    const deps = delayed({ change: revoke });
     expect(await openCredential(deps, person('viewer'), reveal(id), traceId)).toEqual({
       ok: false,
       reason: 'not_permitted',
@@ -126,8 +139,13 @@ function withdrawnReveals(): void {
 function withdrawnUses(): void {
   it('refuses a use whose binding was removed while the key service answered', async () => {
     const id = await world.created('Unbound mid-use');
-    await bind(world.db, id);
-    const deps = delayed({ change: () => unbindRow(world.db, id) });
+    const binding = { credentialId: id, ...send };
+    await bindCredential(world.deps, person('admin'), binding, traceId);
+    const unbind = async () => {
+      const outcome = await unbindCredential(world.deps, person('admin'), binding, traceId);
+      expect(outcome).toEqual({ ok: true });
+    };
+    const deps = delayed({ change: unbind });
     expect(await openCredential(deps, person('editor'), use(id), traceId)).toEqual({
       ok: false,
       reason: 'not_permitted',
@@ -191,7 +209,7 @@ function withdrawnWrites(): void {
 
   it('refuses a rotation whose credential was revoked while the key service answered', async () => {
     const id = await world.created('Revoked mid-rotation');
-    const deps = sealing(() => rewrite(world.db, id, { revokedAt: now }));
+    const deps = sealing(() => revoked(id));
     expect(await rotateCredential(deps, person('admin'), rotation(id), traceId)).toEqual({
       ok: false,
       reason: 'credential_revoked',
@@ -250,9 +268,10 @@ function ordering(): void {
     const id = await world.created('Revoked after release');
     await bind(world.db, id);
     const opened = await openCredential(world.deps, person('editor'), use(id), traceId);
-    await rewrite(world.db, id, { revokedAt: later });
+    await revoked(id);
     expect(opened.ok).toBe(true);
-    expect((await logOf(world.db, id)).at(-1)).toMatchObject({ action: 'use', outcome: 'done' });
+    const log = (await logOf(world.db, id)).map((entry) => `${entry.action} ${entry.outcome}`);
+    expect(log.slice(-2)).toEqual(['use done', 'revoke done']);
   });
 }
 
@@ -271,7 +290,7 @@ function wiping(): void {
     const id = await world.created('Wiped on refusal', 'a value to wipe');
     await bind(world.db, id);
     const spy = vi.spyOn(crypto.subtle, 'decrypt');
-    const deps = delayed({ change: () => rewrite(world.db, id, { revokedAt: now }) });
+    const deps = delayed({ change: () => revoked(id) });
     const outcome = await openCredential(deps, person('editor'), use(id), traceId);
     expect(outcome.ok).toBe(false);
     const bytes = await lastDecrypted(spy);

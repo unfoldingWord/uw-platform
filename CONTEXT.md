@@ -102,6 +102,14 @@ _Avoid_: credential permission, secret access, credential role, read (a credenti
 A person's time-limited leave to `reveal` one credential, given by a person who may `manage` it. It always expires, names one credential and one person, and adds to a grant on the credential's area without replacing it.
 _Avoid_: reveal permission, break-glass (that is a reveal outside the grants, by two org admins), share
 
+**Break-glass reveal**:
+A reveal grant given by an org admin who is not an admin of the credential's area. It is not live until a second person who may `manage` the credential, never the one who gave it, confirms it; both are recorded on the grant and in the credential access log, and its time starts when it is confirmed (ADR 0020).
+_Avoid_: emergency access, override (a gate has one), second approval (a gate is approved)
+
+**Reveal notice**:
+The web push sent to every admin of a credential's area, other than the person revealing, each time its value is revealed. It names the area and the reason and never the credential.
+_Avoid_: wake (a wake names a workflow), alert, reveal email
+
 **Credential binding**:
 The workflow and connector a credential may be used from. `use` is refused anywhere else, whatever grants the principal holds.
 _Avoid_: binding on its own (a service token has one too), attachment, scope (a scope is the org or a JD area on a grant)
@@ -131,7 +139,7 @@ The facts a sealed value is bound to: its credential, its version and its JD are
 _Avoid_: additional data, AAD, tags
 
 **Credential access log**:
-The rows of `credential_access_log`: every create, rotate, bind, unbind, use and reveal of a credential, done or refused, with the actor, the run, the workflow and connector of a use, and the trace id. Append-only and kept seven years.
+The rows of `credential_access_log`: every create, rotate, revoke, bind, unbind, use and reveal of a credential, and every reveal grant given, confirmed or revoked, done or refused, with the actor, the run, the workflow and connector of a use, and the trace id. Append-only and kept seven years.
 _Avoid_: audit log on its own, grant audit (that records grants), history
 
 **Final check**:

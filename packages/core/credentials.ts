@@ -1,12 +1,8 @@
-export const credentialKinds = [
-  'api_key',
-  'oauth_refresh',
-  'password',
-  'ssh_key',
-  'certificate',
-] as const;
+import { credentialKindSchema, type CredentialKind } from '@uw/contracts';
 
-export type CredentialKind = (typeof credentialKinds)[number];
+export const credentialKinds = credentialKindSchema.options;
+
+export type { CredentialKind };
 
 export const credentialCiphers = ['aes-256-gcm'] as const;
 
@@ -22,6 +18,9 @@ export const credentialAccessActions = [
   'unbind',
   'use',
   'reveal',
+  'grant_reveal',
+  'confirm_reveal',
+  'revoke_reveal',
 ] as const;
 
 export type CredentialAccessAction = (typeof credentialAccessActions)[number];
@@ -52,7 +51,10 @@ export const credentialRefusals = [
   'credential_revoked',
   'credential_expired',
   'value_not_storable',
+  'credential_malformed',
   ...envelopeRefusals,
 ] as const;
 
 export type CredentialRefusal = (typeof credentialRefusals)[number];
+
+export const REVEAL_GRANT_MINUTES = { least: 5, most: 1440 } as const;

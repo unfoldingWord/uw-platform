@@ -1,14 +1,15 @@
 import { and, eq } from 'drizzle-orm';
-import { z } from 'zod';
 import { connectorSchema, type Principal } from '@uw/contracts';
 import type { CredentialBinding } from '@uw/core/acl';
 import type { Database } from '@uw/db/client';
 import { pgConstraint, pgErrorCode } from '@uw/db/errors';
 import { credentialBindings, credentials } from '@uw/db/schema';
+import { isId, locate, lockCredentialRow } from './standing.ts';
 import {
   managerOf,
   recordAccess,
   refuseAndRecord,
+  refuseUnpermitted,
   refused,
   type AccessEntry,
   type CredentialsDeps,
@@ -19,12 +20,6 @@ const FOREIGN_KEY_VIOLATION = '23503';
 const WORKFLOW_EXISTS = 'credential_bindings_harness_id_harnesses_id_fk';
 
 const effectConnectors: ReadonlySet<string> = new Set(connectorSchema.exclude(['none']).options);
-
-const idSchema = z.uuid();
-
-function isId(value: string): boolean {
-  return idSchema.safeParse(value).success;
-}
 
 export type BindingChange = CredentialBinding & { readonly credentialId: string };
 
@@ -60,11 +55,8 @@ async function asked(
   if (!isId(credentialId)) return refused('credential_not_found');
   if (!isId(harnessId)) return refused('workflow_not_found');
   const at = deps.clock.now();
-  const [found] = await deps.db
-    .select({ id: credentials.id, jdArea: credentials.jdArea })
-    .from(credentials)
-    .where(eq(credentials.id, credentialId));
-  if (found === undefined) return refused('credential_not_found');
+  const found = await locate(deps.db, actor, credentialId, at);
+  if (found === null) return refused('credential_not_found');
   const entry: AccessEntry = {
     credentialId,
     jdArea: found.jdArea,
@@ -76,9 +68,7 @@ async function asked(
     at,
   };
   const personId = managerOf(actor, found, at);
-  if (personId === null) {
-    return refuseAndRecord(deps.db, entry, { versionId: null, reason: 'not_permitted' });
-  }
+  if (personId === null) return refuseUnpermitted(deps.db, entry, found);
   return { binding, personId, entry };
 }
 
@@ -133,12 +123,8 @@ export async function unbindCredential(
   const change = await asked(deps, actor, 'unbind', { binding, traceId });
   if ('ok' in change) return change;
   return deps.db.transaction(async (tx) => {
-    const [locked] = await tx
-      .select({ id: credentials.id })
-      .from(credentials)
-      .where(eq(credentials.id, binding.credentialId))
-      .for('update');
-    if (locked === undefined) return refused('credential_not_found');
+    if (!(await lockCredentialRow(tx, binding.credentialId)))
+      return refused('credential_not_found');
     const removed = await tx
       .delete(credentialBindings)
       .where(where(binding))

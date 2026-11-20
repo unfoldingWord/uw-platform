@@ -4,7 +4,7 @@ import { harnessTitleSchema } from './harness.ts';
 
 const uuidPart = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 const deepLinkPattern = new RegExp(
-  `^/(?:harnesses/${uuidPart}/(?:gates|items)/${uuidPart}|health/[a-z][a-z_]{0,63})?$`,
+  `^/(?:harnesses/${uuidPart}/(?:gates|items)/${uuidPart}|health/[a-z][a-z_]{0,63}|credentials)?$`,
 );
 
 export const deepLinkSchema = z.string().max(100).regex(deepLinkPattern);
@@ -21,9 +21,14 @@ export function itemLink(harnessId: string, itemId: string): DeepLink {
   return deepLinkSchema.parse(`/harnesses/${harnessId}/items/${itemId}`);
 }
 
+export const credentialsLink: DeepLink = '/credentials';
+
+export const noticeReasonSchema = z.enum(['credential_revealed']);
+export type NoticeReason = z.infer<typeof noticeReasonSchema>;
+
 export const pushPayloadSchema = z.strictObject({
   harness: harnessTitleSchema,
-  reason: wakeReasonSchema,
+  reason: z.union([wakeReasonSchema, noticeReasonSchema]),
   link: deepLinkSchema,
 });
 export type PushPayload = z.infer<typeof pushPayloadSchema>;

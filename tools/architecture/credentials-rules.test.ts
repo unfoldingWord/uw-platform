@@ -124,3 +124,37 @@ describe('#158 a credential value is opened inside the store and used only by a 
   describe('a credential is used only by the connectors adapter', usedByConnectors);
   describe('the agent surface imports nothing of the store', keptFromAgents);
 });
+
+describe('#159 a value is revealed only by the reveal route', () => {
+  const reveal = { [`${store}/open.ts`]: leaf, [`${store}/reveal.ts`]: "import './open.ts';" };
+
+  it('lets the credential routes ask for a reveal, and a test', async () => {
+    const found = await rules({
+      ...reveal,
+      [`${store}/routes.ts`]: "import './reveal.ts';",
+      [`${store}/routes.pg.test.ts`]: "import './reveal.ts';",
+      'apps/uw-app/app.tsx': "import './credentials/routes.ts';",
+    });
+    expect(found).toEqual([]);
+  });
+
+  it.each([
+    ['another file of the store', `${store}/use.ts`, './reveal.ts'],
+    ['a screen', 'apps/uw-app/views/screens/credential.tsx', '../../credentials/reveal.ts'],
+    ['a harness command', 'apps/uw-app/commands/x.ts', '../credentials/reveal.ts'],
+    ['a cron job', 'apps/uw-app/cron/x.ts', '../credentials/reveal.ts'],
+    ['the connectors adapter', 'apps/uw-app/ports/connectors.ts', '../credentials/reveal.ts'],
+  ])('refuses the reveal in %s', async (_name, path, specifier) => {
+    const found = await rules({ ...reveal, [path]: `import '${specifier}'; ${leaf}` });
+    expect(found).toContain('credential-revealed-only-by-its-route');
+  });
+
+  it('refuses the credential routes on the agent surface', async () => {
+    const found = await rules({
+      ...reveal,
+      [`${store}/routes.ts`]: "import './reveal.ts';",
+      'apps/uw-app/mcp/verbs/x.ts': `import '../../credentials/routes.ts'; ${leaf}`,
+    });
+    expect(found).toContain('no-credential-store-on-the-agent-surface');
+  });
+});

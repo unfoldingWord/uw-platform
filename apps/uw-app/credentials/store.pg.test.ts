@@ -402,9 +402,23 @@ function refusingWithoutFacts(): void {
   });
 }
 
-function revealing(): void {
-  const reveal = (credentialId: string) => ({ action: 'reveal', credentialId }) as const;
+const reveal = (credentialId: string) => ({ action: 'reveal', credentialId }) as const;
 
+function hiddenFromAnAgent(): void {
+  it('refuses an agent of a person who holds a reveal grant, records the refusal and does not say the credential exists', async () => {
+    const id = await created('Refused to an agent');
+    await grantReveal(db, id, 'viewer', { expiresAt: soon });
+    const outcome = await openCredential(world.deps, agentOf('viewer'), reveal(id), traceId);
+    expect(outcome).toEqual({ ok: false, reason: 'credential_not_found' });
+    expect((await logOf(db, id)).at(-1)).toMatchObject({
+      action: 'reveal',
+      outcome: 'refused',
+      reason: 'not_permitted',
+    });
+  });
+}
+
+function revealing(): void {
   it('reveals to a viewer who holds a live reveal grant, and records it', async () => {
     const id = await created('Revealed', 'the revealed value');
     await grantReveal(db, id, 'viewer', { expiresAt: soon });
@@ -428,7 +442,6 @@ function revealing(): void {
       () => person('viewer'),
       { expiresAt: soon, revokedAt: past },
     ],
-    ['an agent of a person who holds a reveal grant', () => agentOf('viewer'), { expiresAt: soon }],
   ])('refuses %s, and records the refusal', async (_name, actor, grant) => {
     const id = await created(`Refused reveal ${crypto.randomUUID()}`);
     if (grant !== null) await grantReveal(db, id, 'viewer', grant);
@@ -476,4 +489,5 @@ describe.skipIf(!testServer)('#157 the credentials store on Postgres', () => {
   describe('a use that is refused is recorded', refusingUse);
   describe('a refusal gives away no more than it must', refusingWithoutFacts);
   describe('revealing a credential needs a live reveal grant', revealing);
+  describe('a reveal asked by an agent', hiddenFromAnAgent);
 });

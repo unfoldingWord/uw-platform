@@ -31,6 +31,7 @@ const prototypeSidebar = [
   'Health',
   'Agent Queues',
   'Access',
+  'Credentials',
   'Modules',
   'Desktop & Offline',
   'Engage Benefactors',
