@@ -1,6 +1,6 @@
 {
-  "id": "f3a25725-e55a-49e0-9246-23d273f6ff4b",
-  "prevId": "5e43cf19-77ca-4342-99aa-04429f8eeff4",
+  "id": "3a94b807-bf89-4908-ab2e-ff315495a09c",
+  "prevId": "b6459481-f321-4de2-a876-0061ecccd0c1",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -4360,7 +4360,7 @@
         },
         "credential_access_log_action_known": {
           "name": "credential_access_log_action_known",
-          "value": "\"credential_access_log\".\"action\" IN ('create', 'rotate', 'revoke', 'bind', 'unbind', 'use', 'reveal')"
+          "value": "\"credential_access_log\".\"action\" IN ('create', 'rotate', 'revoke', 'bind', 'unbind', 'use', 'reveal', 'grant_reveal', 'confirm_reveal', 'revoke_reveal')"
         },
         "credential_access_log_outcome_known": {
           "name": "credential_access_log_outcome_known",
@@ -4368,7 +4368,7 @@
         },
         "credential_access_log_reason_matches": {
           "name": "credential_access_log_reason_matches",
-          "value": "(\"credential_access_log\".\"outcome\" = 'done' AND \"credential_access_log\".\"reason\" IS NULL) OR (\"credential_access_log\".\"outcome\" = 'refused' AND \"credential_access_log\".\"reason\" IS NOT NULL AND \"credential_access_log\".\"reason\" IN ('not_permitted', 'credential_revoked', 'credential_expired', 'key_rejected', 'key_service_refused', 'key_service_unavailable', 'key_service_not_configured', 'ciphertext_rejected', 'envelope_malformed'))"
+          "value": "(\"credential_access_log\".\"outcome\" = 'done' AND \"credential_access_log\".\"reason\" IS NULL) OR (\"credential_access_log\".\"outcome\" = 'refused' AND \"credential_access_log\".\"reason\" IS NOT NULL AND \"credential_access_log\".\"reason\" IN ('not_permitted', 'credential_revoked', 'credential_expired', 'value_not_storable', 'credential_malformed', 'key_rejected', 'key_service_refused', 'key_service_unavailable', 'key_service_not_configured', 'ciphertext_rejected', 'envelope_malformed'))"
         },
         "credential_access_log_actor_is_identity": {
           "name": "credential_access_log_actor_is_identity",
@@ -4510,6 +4510,25 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
+        },
+        "second_required": {
+          "name": "second_required",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "second_by": {
+          "name": "second_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "second_at": {
+          "name": "second_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -4562,6 +4581,15 @@
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "credential_grants_second_by_people_id_fk": {
+          "name": "credential_grants_second_by_people_id_fk",
+          "tableFrom": "credential_grants",
+          "tableTo": "people",
+          "columnsFrom": ["second_by"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -4575,6 +4603,10 @@
         "credential_grants_expires_after_grant": {
           "name": "credential_grants_expires_after_grant",
           "value": "\"credential_grants\".\"expires_at\" > \"credential_grants\".\"granted_at\""
+        },
+        "credential_grants_second_is_another_person": {
+          "name": "credential_grants_second_is_another_person",
+          "value": "(\"credential_grants\".\"second_by\" IS NULL AND \"credential_grants\".\"second_at\" IS NULL) OR (\"credential_grants\".\"second_required\" AND \"credential_grants\".\"second_by\" IS NOT NULL AND \"credential_grants\".\"second_at\" IS NOT NULL AND \"credential_grants\".\"second_by\" <> \"credential_grants\".\"granted_by\")"
         }
       },
       "isRLSEnabled": false
