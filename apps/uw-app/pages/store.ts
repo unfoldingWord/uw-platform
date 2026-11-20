@@ -14,6 +14,7 @@ import type { Database, Executor, Transaction } from '@uw/db/client';
 import { pages, pageVersions } from '@uw/db/schema';
 import { pgConstraint, pgErrorCode } from '@uw/db/errors';
 import { derivedFrontmatter, personaLanding } from './derive.ts';
+import { filedOutsideItsArea } from './filing.ts';
 import { isGatedType } from './gating.ts';
 import { provenanceOf, type ExternalWriter } from './provenance.ts';
 import { checkFrontmatter } from './validate.ts';
@@ -168,6 +169,9 @@ export async function createPageAs(
   if (command.type === ISSUE_MIRROR) return issueMirror;
   const check = checkFrontmatter(command.type, command.frontmatter);
   if (!check.ok) return refused(check.reason);
+  if (filedOutsideItsArea(check.type, check.frontmatter, command.jdArea)) {
+    return refused('invalid_frontmatter');
+  }
   if (activates(command.type, null, command.status)) return activationRequired;
   if (!can(actor, 'write', { kind: 'area', area: command.jdArea }, at)) {
     return refused('not_permitted');
@@ -278,6 +282,9 @@ async function derivedSave(
 ): Promise<UpdatePageCommand | PageResult> {
   const check = checkFrontmatter(stored.type, command.frontmatter);
   if (!check.ok) return refused(check.reason);
+  if (filedOutsideItsArea(check.type, check.frontmatter, stored.jdArea)) {
+    return refused('invalid_frontmatter');
+  }
   const status = personaLanding(stored, chosen, check.frontmatter, command.bodyMd);
   const prior = stored.type === 'learning' ? provenanceOf(stored.frontmatter) : null;
   const landing = { status, stored: stored.status, prior, writer: null };

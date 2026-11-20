@@ -15,7 +15,8 @@
     "testing/views.ts",
     "testing/screen-checks.ts",
     "testing/board-world.ts",
-    "testing/gate-world.ts"
+    "testing/gate-world.ts",
+    "testing/knowledge.ts"
   ],
   "exclude": ["node_modules"]
 }

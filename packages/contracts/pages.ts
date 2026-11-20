@@ -11,6 +11,7 @@ export const pageTypes = [
   'data_sources',
   'issue',
   'platform',
+  'knowledge',
 ] as const;
 
 export const pageTypeSchema = z.enum(pageTypes);

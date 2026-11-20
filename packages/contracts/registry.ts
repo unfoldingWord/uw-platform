@@ -11,7 +11,7 @@ import {
   routineChangeCommandSchema,
   serviceClientIdSchema,
 } from './agent-commands.ts';
-import { jdAreaSchema } from './areas.ts';
+import { jdAreaSchema, jdCategorySchema, jdIdSchema } from './areas.ts';
 import { draftCheckSchema, draftStageSchema } from './drafts.ts';
 import * as closedSets from './closed-sets.ts';
 import {
@@ -88,6 +88,7 @@ import {
   dataSourceKindSchema,
   dataSourcesFrontmatterSchema,
   issueFrontmatterSchema,
+  knowledgeFrontmatterSchema,
   learningFrontmatterSchema,
   personaFrontmatterSchema,
   platformFrontmatterSchema,
@@ -161,6 +162,8 @@ export const schemaRegistry: Record<string, ZodType> = {
   'person-status': closedSets.personStatusSchema,
   'principal-kind': closedSets.principalKindSchema,
   'jd-area': jdAreaSchema,
+  'jd-category': jdCategorySchema,
+  'jd-id': jdIdSchema,
   grant: grantSchema,
   principal: principalSchema,
   'platform-command-name': platformCommandNameSchema,
@@ -194,6 +197,7 @@ export const schemaRegistry: Record<string, ZodType> = {
   'product-strategy-frontmatter': productStrategyFrontmatterSchema,
   'data-sources-frontmatter': dataSourcesFrontmatterSchema,
   'issue-frontmatter': issueFrontmatterSchema,
+  'knowledge-frontmatter': knowledgeFrontmatterSchema,
   'data-source-kind': dataSourceKindSchema,
   'ingest-source': ingestSourceSchema,
   'ingest-refusal': ingestRefusalSchema,

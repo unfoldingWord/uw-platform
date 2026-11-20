@@ -330,6 +330,13 @@
       "when": 1795107246610,
       "tag": "0046_person_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1795185976112,
+      "tag": "0047_knowledge_page_type",
+      "breakpoints": true
     }
   ]
 }

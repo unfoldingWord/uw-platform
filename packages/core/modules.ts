@@ -62,6 +62,7 @@ export const modules = [
       '/api/pages/:pageId',
       '/webhooks/:source',
     ],
+    page_types: ['knowledge'],
     queues: ['uw-ingest-events'],
     name: 'Core',
     summary:
