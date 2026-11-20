@@ -207,6 +207,32 @@ Each secret is set from `infra/uw-app` (or `infra/uw-ingest`) with `wrangler sec
 4. **Turn on hosted Builder** for the Software workflow on staging only (Stages & Controls). Production stays off.
 5. **Check on staging.** Add a Builder agent on the Agents tab, put it live, grant it `build`, and put an item in a build stage. The run should open a pull request from `harness/<item>`, its run step should show the model, tokens and cost, the request should appear in the gateway's log, and the spend indicator on Health should move. Then repeat steps 1 to 3 for production and compare `wrangler secret list --env production` with staging.
 
+## The credentials store's key service (#157, #186)
+
+The credentials store wraps each data key with an AWS KMS key. The keys and the IAM users were made by hand in the AWS console on 2026-11-20, in account `002723143144`, region `us-west-2`, where Aurora runs. Nothing reads these settings until #158 constructs the KMS adapter.
+
+| | Staging | Production |
+|---|---|---|
+| Key alias | `alias/uw-platform-credentials-staging` | `alias/uw-platform-credentials-production` |
+| IAM user | `uw-platform-credentials-staging` | `uw-platform-credentials-production` |
+
+Each key is symmetric and single-region, with one key administrator who may not delete it. Each IAM user has no console access and one inline policy, `credentials-data-keys`, allowing only `kms:GenerateDataKey` and `kms:Decrypt` on its own key. The account's `management-events` CloudTrail trail logs every KMS call. Losing a key loses every credential stored under it.
+
+| Setting | Kind | Worker | Value or source |
+|---|---|---|---|
+| `CREDENTIALS_KMS_REGION` | var | uw-app | `us-west-2`, in the wrangler files |
+| `CREDENTIALS_KMS_KEY_ID` | var | uw-app | The environment's key ARN, in the wrangler files. An ARN, not the alias, so the key cannot be repointed |
+| `CREDENTIALS_KMS_ACCESS_KEY_ID` | secret | uw-app | The access key of that environment's IAM user |
+| `CREDENTIALS_KMS_SECRET_ACCESS_KEY` | secret | uw-app | Its secret, shown once when the access key is created |
+
+`tools/infra/credentials-kms.test.ts` holds the two vars to these values, keeps the two environments on different keys, and gives a preview Worker neither.
+
+**Setting or rotating the access key.** An IAM user may hold two access keys, so the old one works until the new one is in place.
+
+1. In the AWS console open IAM, Users, the environment's user, Security credentials, and create an access key for an application running outside AWS.
+2. From `infra/uw-app`, with `CLOUDFLARE_ACCOUNT_ID` set to the organization's account if your login reaches more than one, run `wrangler secret put CREDENTIALS_KMS_ACCESS_KEY_ID --env <name>` and `wrangler secret put CREDENTIALS_KMS_SECRET_ACCESS_KEY --env <name>`, each typed at the prompt.
+3. When the store has opened a credential with the new pair, delete the old access key in AWS.
+
 ## Routines (#134)
 
 A routine is a person's own Claude Code or Codex working a workflow unattended, under one of their own standing permissions. An area admin sets one up on the workflow's Agents tab. The app then makes a Cloudflare Access service token for it, shows the secret once, and binds the token to that person, a device name and that one standing permission. Revoke deletes the token in Cloudflare as well. The MCP Access application already admits any valid service token (the Access section), so it needs no change.
