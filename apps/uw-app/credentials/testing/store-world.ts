@@ -31,7 +31,7 @@ const grantIds: ReadonlyMap<Who, string> = new Map<Who, string>([
   ['outsider', '00000000-0000-4000-8000-0000000158a5'],
 ]);
 
-function grantIdOf(who: Who): string {
+export function grantIdOf(who: Who): string {
   const found = grantIds.get(who);
   if (found === undefined) throw new Error(`no test grant for ${who}`);
   return found;

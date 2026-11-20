@@ -43,3 +43,84 @@ describe('#157 the AWS signer and the KMS client stay inside the credentials sto
     expect(found).toContain('kms-client-only-in-the-credentials-store');
   });
 });
+
+const store = 'apps/uw-app/credentials';
+
+function openedInside(): void {
+  it('lets the store open a value and the connectors adapter use one', async () => {
+    const found = await rules({
+      [`${store}/open.ts`]: leaf,
+      [`${store}/envelope.ts`]: leaf,
+      [`${store}/outcome-guard.ts`]: leaf,
+      [`${store}/secret.ts`]: leaf,
+      [`${store}/use.ts`]: "import './open.ts'; import './secret.ts'; import './outcome-guard.ts';",
+      [`${store}/use.pg.test.ts`]: "import './use.ts'; import './secret.ts';",
+      'apps/uw-app/ports/connectors.ts':
+        "import '../credentials/use.ts'; import '../credentials/secret.ts';",
+    });
+    expect(found).toEqual([]);
+  });
+
+  it.each([
+    ['open.ts', 'a connector', 'apps/uw-app/ports/connectors.ts', '../credentials'],
+    ['envelope.ts', 'a connector', 'apps/uw-app/ports/connectors.ts', '../credentials'],
+    ['outcome-guard.ts', 'a connector', 'apps/uw-app/ports/connectors.ts', '../credentials'],
+    ['open.ts', 'a command', 'apps/uw-app/commands/x.ts', '../credentials'],
+    ['open.ts', 'a screen', 'apps/uw-app/views/screens/x.tsx', '../../credentials'],
+    ['open.ts', 'a cron job', 'apps/uw-app/cron/x.ts', '../credentials'],
+  ])('refuses %s in %s', async (file, _name, path, folder) => {
+    const found = await rules({
+      [`${store}/${file}`]: leaf,
+      [path]: `import '${folder}/${file}'; ${leaf}`,
+    });
+    expect(found).toContain('credential-value-opened-only-inside-the-store');
+  });
+}
+
+function usedByConnectors(): void {
+  it.each([
+    ['use.ts', 'a command', 'apps/uw-app/commands/x.ts', '../credentials'],
+    ['secret.ts', 'a command', 'apps/uw-app/commands/x.ts', '../credentials'],
+    ['secret.ts', 'a screen', 'apps/uw-app/views/screens/x.tsx', '../../credentials'],
+    ['use.ts', 'the queue worker', 'apps/uw-app/queue/x.ts', '../credentials'],
+    ['secret.ts', 'the logger', 'apps/uw-app/request-logger.ts', './credentials'],
+    ['secret.ts', 'the kernel', 'packages/harness/x.ts', '../../apps/uw-app/credentials'],
+  ])('refuses %s in %s', async (file, _name, path, folder) => {
+    const found = await rules({
+      [`${store}/${file}`]: leaf,
+      [path]: `import '${folder}/${file}'; ${leaf}`,
+    });
+    expect(found).toContain('credential-used-only-by-a-connector');
+  });
+}
+
+function keptFromAgents(): void {
+  it.each([
+    ['an MCP verb', 'apps/uw-app/mcp/verbs/x.ts', '../../credentials'],
+    ['the MCP server', 'apps/uw-app/mcp/x.ts', '../credentials'],
+    ['an engine', 'apps/uw-app/engines/external/x.ts', '../../credentials'],
+    ['the run host', 'apps/uw-app/runs/x.ts', '../credentials'],
+    ['the agents module', 'apps/uw-app/agents/x.ts', '../credentials'],
+  ])('refuses every file of the store in %s', async (_name, path, folder) => {
+    for (const file of [
+      'use.ts',
+      'secret.ts',
+      'open.ts',
+      'store.ts',
+      'bindings.ts',
+      'compose.ts',
+    ]) {
+      const found = await rules({
+        [`${store}/${file}`]: leaf,
+        [path]: `import '${folder}/${file}'; ${leaf}`,
+      });
+      expect(found).toContain('no-credential-store-on-the-agent-surface');
+    }
+  });
+}
+
+describe('#158 a credential value is opened inside the store and used only by a connector', () => {
+  describe('a sealed value is opened only inside the store', openedInside);
+  describe('a credential is used only by the connectors adapter', usedByConnectors);
+  describe('the agent surface imports nothing of the store', keptFromAgents);
+});

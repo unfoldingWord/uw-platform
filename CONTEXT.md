@@ -106,6 +106,14 @@ _Avoid_: reveal permission, break-glass (that is a reveal outside the grants, by
 The workflow and connector a credential may be used from. `use` is refused anywhere else, whatever grants the principal holds.
 _Avoid_: binding on its own (a service token has one too), attachment, scope (a scope is the org or a JD area on a grant)
 
+**Credential reference**:
+How a caller names a credential it wants used: the credential's id and nothing else. A connector passes one to `useCredential` with the workflow and connector of the use; it never holds the value outside the one call the store opens it for (ADR 0019).
+_Avoid_: credential handle, secret reference, credential key, token
+
+**Secret**:
+In code, the wrapper a credential's opened value travels in (`Secret` in `apps/uw-app/credentials/secret.ts`). It shows `[secret]` wherever it is printed, serialised or logged, gives its text only to `exposeSecret`, and is spent when the call it was opened for ends.
+_Avoid_: secret for a credential (that is the thing stored), plaintext, raw value
+
 **Credential version**:
 One row of `credential_versions`: one sealed value of a credential. Rotating a credential adds a version and never changes one; the highest version is the one in use.
 _Avoid_: revision (a page has those), secret version, key version
@@ -123,7 +131,7 @@ The facts a sealed value is bound to: its credential, its version and its JD are
 _Avoid_: additional data, AAD, tags
 
 **Credential access log**:
-The rows of `credential_access_log`: every create, rotate, use and reveal of a credential, done or refused, with the actor, the run, the workflow and connector of a use, and the trace id. Append-only and kept seven years.
+The rows of `credential_access_log`: every create, rotate, bind, unbind, use and reveal of a credential, done or refused, with the actor, the run, the workflow and connector of a use, and the trace id. Append-only and kept seven years.
 _Avoid_: audit log on its own, grant audit (that records grants), history
 
 **Final check**:
