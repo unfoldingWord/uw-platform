@@ -4,7 +4,7 @@ import type { CredentialBinding } from '@uw/core/acl';
 import type { Database } from '@uw/db/client';
 import { pgConstraint, pgErrorCode } from '@uw/db/errors';
 import { credentialBindings, credentials } from '@uw/db/schema';
-import { isId, locate } from './standing.ts';
+import { isId, locate, lockCredentialRow } from './standing.ts';
 import {
   managerOf,
   recordAccess,
@@ -123,6 +123,8 @@ export async function unbindCredential(
   const change = await asked(deps, actor, 'unbind', { binding, traceId });
   if ('ok' in change) return change;
   return deps.db.transaction(async (tx) => {
+    if (!(await lockCredentialRow(tx, binding.credentialId)))
+      return refused('credential_not_found');
     const removed = await tx
       .delete(credentialBindings)
       .where(where(binding))

@@ -4,6 +4,7 @@ import { parsePrincipal, personPrincipal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
 import { credentialBindings, credentialGrants, credentials } from '@uw/db/schema';
 import { utf8 } from '../base64.ts';
+import type { DataKeys } from '../data-keys.ts';
 import type { CredentialsDeps, NewCredential } from '../store.ts';
 import { memoryDataKeys, type MemoryDataKeys } from './memory-data-keys.ts';
 
@@ -22,8 +23,22 @@ export const people = {
 
 type Who = keyof typeof people;
 
-function grant(role: Grant['role'], area: string | null): Grant {
-  const base = { grantId: '00000000-0000-4000-8000-000000015701', role, expiresAt: null };
+const grantIds: ReadonlyMap<Who, string> = new Map<Who, string>([
+  ['admin', '00000000-0000-4000-8000-0000000158a1'],
+  ['editor', '00000000-0000-4000-8000-0000000158a2'],
+  ['viewer', '00000000-0000-4000-8000-0000000158a3'],
+  ['orgAdmin', '00000000-0000-4000-8000-0000000158a4'],
+  ['outsider', '00000000-0000-4000-8000-0000000158a5'],
+]);
+
+export function grantIdOf(who: Who): string {
+  const found = grantIds.get(who);
+  if (found === undefined) throw new Error(`no test grant for ${who}`);
+  return found;
+}
+
+function grant(who: Who, role: Grant['role'], area: string | null): Grant {
+  const base = { grantId: grantIdOf(who), role, expiresAt: null };
   if (area === null) return { ...base, scopeKind: 'org', scopeArea: null };
   return { ...base, scopeKind: 'jd_area', scopeArea: area };
 }
@@ -31,22 +46,41 @@ function grant(role: Grant['role'], area: string | null): Grant {
 type Cast = { readonly id: string; readonly email: string; readonly grant: Grant };
 
 const cast: ReadonlyMap<Who, Cast> = new Map<Who, Cast>([
-  ['admin', { id: people.admin, email: 'cred-admin@example.org', grant: grant('admin', '20-29') }],
+  [
+    'admin',
+    { id: people.admin, email: 'cred-admin@example.org', grant: grant('admin', 'admin', '20-29') },
+  ],
   [
     'editor',
-    { id: people.editor, email: 'cred-editor@example.org', grant: grant('editor', '20-29') },
+    {
+      id: people.editor,
+      email: 'cred-editor@example.org',
+      grant: grant('editor', 'editor', '20-29'),
+    },
   ],
   [
     'viewer',
-    { id: people.viewer, email: 'cred-viewer@example.org', grant: grant('viewer', '20-29') },
+    {
+      id: people.viewer,
+      email: 'cred-viewer@example.org',
+      grant: grant('viewer', 'viewer', '20-29'),
+    },
   ],
   [
     'orgAdmin',
-    { id: people.orgAdmin, email: 'cred-org-admin@example.org', grant: grant('admin', null) },
+    {
+      id: people.orgAdmin,
+      email: 'cred-org-admin@example.org',
+      grant: grant('orgAdmin', 'admin', null),
+    },
   ],
   [
     'outsider',
-    { id: people.outsider, email: 'cred-outsider@example.org', grant: grant('admin', '80-89') },
+    {
+      id: people.outsider,
+      email: 'cred-outsider@example.org',
+      grant: grant('outsider', 'admin', '80-89'),
+    },
   ],
 ]);
 
@@ -62,11 +96,11 @@ export function person(who: Who, grants?: readonly Grant[]): Principal {
 }
 
 export function orgEditor(): Principal {
-  return person('outsider', [grant('editor', null)]);
+  return person('outsider', [grant('outsider', 'editor', null)]);
 }
 
 export function secondOrgAdmin(): Principal {
-  return person('outsider', [grant('admin', null)]);
+  return person('outsider', [grant('outsider', 'admin', null)]);
 }
 
 export function agentOf(who: Who): Principal {
@@ -97,20 +131,6 @@ export const seededPeople: readonly { readonly id: string; readonly email: strin
   ...cast.values(),
 ].map(({ id, email }) => ({ id, email }));
 
-const grantIds: ReadonlyMap<Who, string> = new Map<Who, string>([
-  ['admin', '00000000-0000-4000-8000-0000000158a1'],
-  ['editor', '00000000-0000-4000-8000-0000000158a2'],
-  ['viewer', '00000000-0000-4000-8000-0000000158a3'],
-  ['orgAdmin', '00000000-0000-4000-8000-0000000158a4'],
-  ['outsider', '00000000-0000-4000-8000-0000000158a5'],
-]);
-
-export function grantIdOf(who: Who): string {
-  const found = grantIds.get(who);
-  if (found === undefined) throw new Error(`no test grant for ${who}`);
-  return found;
-}
-
 export const seededGrants = [...cast.entries()].map(([who, { id, grant: held }]) => ({
   id: grantIdOf(who),
   personId: id,
@@ -136,6 +156,28 @@ export async function worldOn(db: Database): Promise<World> {
       expiresAt: null,
       value: utf8(value),
     }),
+  };
+}
+
+export function duringUnwrap(keys: DataKeys, change: () => Promise<void>): DataKeys {
+  return {
+    generate: (context) => keys.generate(context),
+    unwrap: async (key, context) => {
+      const outcome = await keys.unwrap(key, context);
+      await change();
+      return outcome;
+    },
+  };
+}
+
+export function duringGenerate(keys: DataKeys, change: () => Promise<void>): DataKeys {
+  return {
+    unwrap: (key, context) => keys.unwrap(key, context),
+    generate: async (context) => {
+      const outcome = await keys.generate(context);
+      await change();
+      return outcome;
+    },
   };
 }
 

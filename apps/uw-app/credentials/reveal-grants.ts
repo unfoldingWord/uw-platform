@@ -5,7 +5,7 @@ import { REVEAL_GRANT_MINUTES, type CredentialAccessAction } from '@uw/core/cred
 import type { Transaction } from '@uw/db/client';
 import { credentialGrants, credentials } from '@uw/db/schema';
 import { personById } from '../people/directory.ts';
-import { isId, locate, resourceOf, type Located } from './standing.ts';
+import { isId, locate, lockCredentialRow, resourceOf, type Located } from './standing.ts';
 import {
   managerOf,
   recordAccess,
@@ -174,6 +174,7 @@ export async function confirmRevealGrant(
   }
   const length = grant.expiresAt.getTime() - grant.grantedAt.getTime();
   return deps.db.transaction(async (tx) => {
+    if (!(await lockCredentialRow(tx, grant.credentialId))) return refused('grant_not_found');
     const confirmed = await tx
       .update(credentialGrants)
       .set({
@@ -205,6 +206,7 @@ export async function revokeRevealGrant(
   if ('ok' in change) return change;
   const { grant, entry } = change;
   return deps.db.transaction(async (tx) => {
+    if (!(await lockCredentialRow(tx, grant.credentialId))) return refused('grant_not_found');
     const revoked = await tx
       .update(credentialGrants)
       .set({ revokedAt: entry.at })
