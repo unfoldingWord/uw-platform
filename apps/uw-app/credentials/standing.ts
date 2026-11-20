@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import type { JdArea, Principal } from '@uw/contracts';
 import { can, type CredentialResource } from '@uw/core/acl';
-import type { Executor } from '@uw/db/client';
+import type { Executor, Transaction } from '@uw/db/client';
 import { credentials } from '@uw/db/schema';
 
 const idSchema = z.uuid();
@@ -53,4 +53,13 @@ export async function locate(
     .where(eq(credentials.id, credentialId));
   if (found === undefined) return null;
   return { ...found, seen: sees(actor, found, at) };
+}
+
+export async function lockCredentialRow(tx: Transaction, credentialId: string): Promise<boolean> {
+  const [locked] = await tx
+    .select({ id: credentials.id })
+    .from(credentials)
+    .where(eq(credentials.id, credentialId))
+    .for('update');
+  return locked !== undefined;
 }
