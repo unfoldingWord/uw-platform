@@ -17,6 +17,7 @@ import { derivedFrontmatter, personaLanding } from './derive.ts';
 import { filedOutsideItsArea } from './filing.ts';
 import { isGatedType } from './gating.ts';
 import { provenanceOf, type ExternalWriter } from './provenance.ts';
+import { REPLAY_INDEX, replayOf } from './replay.ts';
 import { checkFrontmatter } from './validate.ts';
 
 export const owns = ['pages', 'page_versions'] as const;
@@ -86,7 +87,14 @@ export async function readPage(
   return can(actor, 'read', { kind: 'area', area: page.jdArea }, at) ? page : null;
 }
 
-export async function snapshot(tx: Transaction, row: PageRow, actor: Principal, traceId: string) {
+export type SnapshotSource = { readonly traceId: string; readonly requestId: string | null };
+
+export async function snapshot(
+  tx: Transaction,
+  row: PageRow,
+  actor: Principal,
+  source: SnapshotSource,
+) {
   await tx.insert(pageVersions).values({
     pageId: row.id,
     version: row.version,
@@ -99,7 +107,8 @@ export async function snapshot(tx: Transaction, row: PageRow, actor: Principal, 
     bodyMd: row.bodyMd,
     status: row.status,
     editSource: actor.identity,
-    traceId,
+    traceId: source.traceId,
+    requestId: source.requestId,
   });
 }
 
@@ -108,6 +117,7 @@ function conflictReason(error: unknown): ErrorReason | null {
   const constraint = pgConstraint(error);
   if (constraint === PAGE_PRIMARY_KEY) return 'page_exists';
   if (constraint === SLUG_PER_AREA) return 'slug_taken';
+  if (constraint === REPLAY_INDEX) return 'request_in_flight';
   return null;
 }
 
@@ -139,7 +149,7 @@ async function insertPage(
     })
     .returning();
   if (!row) throw new Error('an inserted page must return its row');
-  await snapshot(tx, row, actor, traceId);
+  await snapshot(tx, row, actor, { traceId, requestId: command.requestId });
   return { ok: true, page: toPage(row) };
 }
 
@@ -166,6 +176,8 @@ export async function createPageAs(
   request: CreateRequest,
 ): Promise<PageResult | PageRefusal> {
   const { traceId, at } = request;
+  const replayed = await replayOf(db, actor, command.requestId);
+  if (replayed !== null) return { ok: true, page: replayed };
   if (command.type === ISSUE_MIRROR) return issueMirror;
   const check = checkFrontmatter(command.type, command.frontmatter);
   if (!check.ok) return refused(check.reason);
@@ -246,7 +258,7 @@ async function writeUpdate(
     .where(and(eq(pages.id, command.pageId), eq(pages.version, command.expectedVersion)))
     .returning();
   if (!row) return refused('stale_version');
-  await snapshot(tx, row, actor, traceId);
+  await snapshot(tx, row, actor, { traceId, requestId: command.requestId });
   return { ok: true, page: toPage(row) };
 }
 
@@ -329,6 +341,8 @@ async function updateInTransaction(tx: Transaction, save: Save): Promise<PageRes
 }
 
 async function saveChecked(db: Database, save: Save): Promise<PageResult | PageRefusal> {
+  const replayed = await replayOf(db, save.actor, save.checked.command.requestId);
+  if (replayed !== null) return { ok: true, page: replayed };
   try {
     return await db.transaction((tx) => updateInTransaction(tx, save));
   } catch (error) {

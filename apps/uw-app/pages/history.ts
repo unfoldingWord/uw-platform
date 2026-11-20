@@ -1,4 +1,5 @@
-import { desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
+import { pageSchema, type Page } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
 import { pageVersions, people } from '@uw/db/schema';
@@ -39,4 +40,39 @@ export async function pageHistory(
     savedAt: row.savedAt,
     savedBy: row.name ?? row.editSource,
   }));
+}
+
+export type PageSnapshot = {
+  readonly page: Page;
+  readonly savedAt: Date;
+  readonly savedBy: string;
+};
+
+export async function pageVersion(
+  db: Executor,
+  actor: Principal,
+  key: { readonly pageId: string; readonly version: number },
+  at: Date,
+): Promise<PageSnapshot | null> {
+  if ((await readPage(db, actor, key.pageId, at)) === null) return null;
+  const [row] = await db
+    .select({ snapshot: pageVersions, name: people.displayName })
+    .from(pageVersions)
+    .leftJoin(people, sql`${pageVersions.editSource} = 'human:' || ${people.id}::text`)
+    .where(and(eq(pageVersions.pageId, key.pageId), eq(pageVersions.version, key.version)));
+  if (!row) return null;
+  const { snapshot } = row;
+  const page = pageSchema.parse({
+    id: snapshot.pageId,
+    type: snapshot.type,
+    jdArea: snapshot.jdArea,
+    slug: snapshot.slug,
+    title: snapshot.title,
+    parentId: snapshot.parentId,
+    frontmatter: snapshot.frontmatter,
+    bodyMd: snapshot.bodyMd,
+    version: snapshot.version,
+    status: snapshot.status,
+  });
+  return { page, savedAt: snapshot.savedAt, savedBy: row.name ?? snapshot.editSource };
 }

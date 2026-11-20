@@ -21,6 +21,7 @@ import {
   scopeSchema,
   taskStatusSchema,
 } from '@uw/contracts';
+import { searchDocument } from './page-search.ts';
 import {
   DEVICE_PATTERN,
   HUMAN_IDENTITY_PATTERN,
@@ -151,6 +152,8 @@ export const pages = declareTable(
     check('pages_version_positive', sql`${t.version} >= 1`),
     uniqueIndex('pages_slug_per_area').on(t.jdArea, t.slug),
     index('pages_parent').on(t.parentId),
+    index('pages_search').using('gin', searchDocument(t)),
+    index('pages_area_updated').on(t.jdArea, t.updatedAt),
   ],
 );
 
@@ -172,6 +175,7 @@ export const pageVersions = declareTable(
     status: text('status').notNull(),
     editSource: text('edit_source').notNull(),
     traceId: uuid('trace_id'),
+    requestId: uuid('request_id'),
     savedAt: instant('saved_at').notNull().defaultNow(),
   },
   { classification: 'internal', offlineEligibility: 'sync' },
@@ -183,6 +187,9 @@ export const pageVersions = declareTable(
     check('page_versions_version_positive', sql`${t.version} >= 1`),
     uniqueIndex('page_versions_page_version').on(t.pageId, t.version),
     check('page_versions_edit_source_is_identity', matches(t.editSource, IDENTITY_PATTERN)),
+    uniqueIndex('page_versions_request')
+      .on(t.editSource, t.requestId)
+      .where(sql`${t.requestId} IS NOT NULL`),
   ],
 );
 

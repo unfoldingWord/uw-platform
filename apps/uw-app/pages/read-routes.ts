@@ -1,0 +1,125 @@
+import type { Context, Hono } from 'hono';
+import { z } from 'zod';
+import {
+  pageIndexReplySchema,
+  pageListQuerySchema,
+  pageListReplySchema,
+  pageReadReplySchema,
+  pageSearchQuerySchema,
+  pageSearchReplySchema,
+  pageVersionReplySchema,
+  pageVersionsReplySchema,
+} from '@uw/contracts';
+import type { Principal } from '@uw/core/principal';
+import type { Database } from '@uw/db/client';
+import type { AppEnv } from '../deps.ts';
+import { refuse } from '../http/outcomes.ts';
+import { renderMarkdown } from '../markdown/render.ts';
+import { capabilitiesOn } from './capabilities.ts';
+import { pageHistory, pageVersion } from './history.ts';
+import { listPages, titleIndex } from './listing.ts';
+import { searchWithSnippets } from './search.ts';
+import { readPage } from './store.ts';
+
+type Reader = { readonly db: Database; readonly actor: Principal; readonly at: Date };
+type Read = (c: Context<AppEnv>, reader: Reader) => Promise<Response>;
+
+const versionParam = z.coerce.number().int().min(1);
+
+function accepted(c: Context<AppEnv>, body: unknown): Response {
+  c.set('outcome', 'accepted');
+  return c.json(body, 200);
+}
+
+function reading(read: Read) {
+  return async (c: Context<AppEnv>): Promise<Response> => {
+    const database = c.get('database');
+    if (database === null) return refuse(c, 'database_not_configured');
+    const actor = c.get('principal');
+    if (actor === null) return refuse(c, 'unauthenticated');
+    return read(c, { db: database.db, actor, at: c.get('now') });
+  };
+}
+
+const list: Read = async (c, { db, actor, at }) => {
+  const query = pageListQuerySchema.safeParse(c.req.query());
+  if (!query.success) return refuse(c, 'malformed_command');
+  const found = await listPages(db, actor, query.data, at);
+  if (found === null) return refuse(c, 'malformed_command');
+  return accepted(c, pageListReplySchema.parse(found));
+};
+
+async function etagOf(body: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body));
+  const hex = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0'));
+  return `"${hex.join('').slice(0, 32)}"`;
+}
+
+const index: Read = async (c, { db, actor, at }) => {
+  const reply = pageIndexReplySchema.parse({ entries: await titleIndex(db, actor, at) });
+  const etag = await etagOf(JSON.stringify(reply));
+  c.set('outcome', 'accepted');
+  c.header('etag', etag);
+  c.header('cache-control', 'private, no-cache');
+  if (c.req.header('if-none-match') === etag) return c.body(null, 304);
+  return c.json(reply, 200);
+};
+
+const search: Read = async (c, { db, actor, at }) => {
+  const query = pageSearchQuerySchema.safeParse(c.req.query());
+  if (!query.success) return refuse(c, 'malformed_command');
+  const { q, type, area, titles, limit } = query.data;
+  const results = await searchWithSnippets(
+    db,
+    actor,
+    {
+      text: q,
+      type: type ?? null,
+      area: area ?? null,
+      titlesOnly: titles === '1',
+      liveOnly: true,
+      limit,
+    },
+    at,
+  );
+  return accepted(c, pageSearchReplySchema.parse({ results }));
+};
+
+const one: Read = async (c, { db, actor, at }) => {
+  const pageId = z.uuid().safeParse(c.req.param('pageId'));
+  if (!pageId.success) return refuse(c, 'page_not_found');
+  const page = await readPage(db, actor, pageId.data, at);
+  if (page === null) return refuse(c, 'page_not_found');
+  const rendered = c.req.query('format') === 'html' ? renderMarkdown(page.bodyMd) : {};
+  const capabilities = capabilitiesOn(actor, page, at);
+  return accepted(c, pageReadReplySchema.parse({ page, capabilities, ...rendered }));
+};
+
+const versions: Read = async (c, { db, actor, at }) => {
+  const pageId = z.uuid().safeParse(c.req.param('pageId'));
+  const history = pageId.success ? await pageHistory(db, actor, pageId.data, at) : null;
+  if (history === null) return refuse(c, 'page_not_found');
+  const entries = history.map((entry) => ({ ...entry, savedAt: entry.savedAt.toISOString() }));
+  return accepted(c, pageVersionsReplySchema.parse({ versions: entries }));
+};
+
+const version: Read = async (c, { db, actor, at }) => {
+  const pageId = z.uuid().safeParse(c.req.param('pageId'));
+  const number = versionParam.safeParse(c.req.param('version'));
+  if (!pageId.success || !number.success) return refuse(c, 'page_not_found');
+  const found = await pageVersion(db, actor, { pageId: pageId.data, version: number.data }, at);
+  if (found === null) return refuse(c, 'page_not_found');
+  return accepted(
+    c,
+    pageVersionReplySchema.parse({ ...found, savedAt: found.savedAt.toISOString() }),
+  );
+};
+
+export function addPageReads(routes: Hono<AppEnv>): void {
+  routes.get('/', reading(list));
+  routes.get('/index', reading(index));
+  routes.get('/search', reading(search));
+  routes.get('/:pageId/versions', reading(versions));
+  routes.get('/:pageId/versions/:version', reading(version));
+  routes.get('/:pageId', reading(one));
+}

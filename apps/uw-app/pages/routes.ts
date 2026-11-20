@@ -1,9 +1,8 @@
 import { Hono, type Context } from 'hono';
-import { z } from 'zod';
 import {
   confirmPageCommandSchema,
   createPageCommandSchema,
-  pageSchema,
+  pageCommandAcceptedSchema,
   updatePageCommandSchema,
   type CreatePageCommand,
   type UpdatePageCommand,
@@ -11,10 +10,11 @@ import {
 import type { Database } from '@uw/db/client';
 import type { Principal } from '@uw/core/principal';
 import type { AppEnv } from '../deps.ts';
-import { malformed, readJson, toOutcome, type CommandResult } from '../http/commands.ts';
+import { malformed, readJson } from '../http/commands.ts';
 import { refuse, reply } from '../http/outcomes.ts';
 import { confirmPage } from './confirm.ts';
-import { createPage, readPage, updatePage, type PageRefusal, type PageResult } from './store.ts';
+import { addPageReads } from './read-routes.ts';
+import { createPage, updatePage, type PageRefusal, type PageResult } from './store.ts';
 
 type Run = (
   db: Database,
@@ -22,11 +22,7 @@ type Run = (
   body: unknown,
   traceId: string,
   at: Date,
-) => Promise<{ readonly requestId: string; readonly result: CommandResult } | null>;
-
-function summarise(result: PageResult | PageRefusal): CommandResult {
-  return result.ok ? { ok: true } : { ok: false, reason: result.reason };
-}
+) => Promise<{ readonly requestId: string; readonly result: PageResult | PageRefusal } | null>;
 
 const handlers = new Map<string, Run>([
   [
@@ -36,7 +32,7 @@ const handlers = new Map<string, Run>([
       if (!parsed.success) return null;
       const command: CreatePageCommand = parsed.data;
       const result = await createPage(db, actor, command, traceId, at);
-      return { requestId: command.requestId, result: summarise(result) };
+      return { requestId: command.requestId, result };
     },
   ],
   [
@@ -46,7 +42,7 @@ const handlers = new Map<string, Run>([
       if (!parsed.success) return null;
       const command: UpdatePageCommand = parsed.data;
       const result = await updatePage(db, actor, command, traceId, at);
-      return { requestId: command.requestId, result: summarise(result) };
+      return { requestId: command.requestId, result };
     },
   ],
   [
@@ -55,7 +51,7 @@ const handlers = new Map<string, Run>([
       const parsed = confirmPageCommandSchema.safeParse(body);
       if (!parsed.success) return null;
       const result = await confirmPage(db, actor, parsed.data, traceId, at);
-      return { requestId: parsed.data.requestId, result: summarise(result) };
+      return { requestId: parsed.data.requestId, result };
     },
   ],
 ]);
@@ -70,25 +66,21 @@ async function handleCommand(c: Context<AppEnv>): Promise<Response> {
   const body = await readJson(c);
   const outcome = await run(database.db, actor, body, c.get('traceId'), c.get('now'));
   if (outcome === null) return malformed(c, body);
-  return reply(c, toOutcome(outcome.requestId, outcome.result));
-}
-
-async function handleRead(c: Context<AppEnv>): Promise<Response> {
-  const database = c.get('database');
-  if (database === null) return refuse(c, 'database_not_configured');
-  const actor = c.get('principal');
-  if (actor === null) return refuse(c, 'unauthenticated');
-  const pageId = z.uuid().safeParse(c.req.param('pageId'));
-  if (!pageId.success) return refuse(c, 'page_not_found');
-  const page = await readPage(database.db, actor, pageId.data, c.get('now'));
-  if (page === null) return refuse(c, 'page_not_found');
+  const { requestId, result } = outcome;
+  if (!result.ok) return reply(c, { status: 'error', requestId, reason: result.reason });
   c.set('outcome', 'accepted');
-  return c.json({ page: pageSchema.parse(page) }, 200);
+  const saved = {
+    status: 'accepted',
+    requestId,
+    pageId: result.page.id,
+    version: result.page.version,
+  };
+  return c.json(pageCommandAcceptedSchema.parse(saved), 200);
 }
 
 export function pageRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
   routes.post('/commands/:name', handleCommand);
-  routes.get('/:pageId', handleRead);
+  addPageReads(routes);
   return routes;
 }

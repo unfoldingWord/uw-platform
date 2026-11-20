@@ -1,0 +1,13 @@
+{
+  "id": "00000000-0000-4000-8000-000000000001",
+  "type": "knowledge",
+  "jdArea": "00-09",
+  "slug": "security-guidelines",
+  "title": "01.47 Security Guidelines",
+  "status": "active",
+  "parentId": null,
+  "version": 3,
+  "category": "01",
+  "jdId": "01.47",
+  "updatedAt": "2026-11-20T09:00:00.000Z"
+}

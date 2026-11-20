@@ -1,0 +1,4 @@
+ALTER TABLE "page_versions" ADD COLUMN "request_id" uuid;--> statement-breakpoint
+CREATE UNIQUE INDEX "page_versions_request" ON "page_versions" USING btree ("edit_source","request_id") WHERE "page_versions"."request_id" IS NOT NULL;--> statement-breakpoint
+CREATE INDEX "pages_search" ON "pages" USING gin ((setweight(to_tsvector('english', "title"), 'A') || setweight(to_tsvector('english', coalesce("frontmatter"->>'jd_id', '') || ' ' || coalesce("frontmatter"->>'overview', '') || ' ' || coalesce("frontmatter"->'tags', '[]'::jsonb)::text || ' ' || coalesce("frontmatter"->'aliases', '[]'::jsonb)::text), 'B') || setweight(to_tsvector('english', left("body_md", 500000)), 'D')));--> statement-breakpoint
+CREATE INDEX "pages_area_updated" ON "pages" USING btree ("jd_area","updated_at");

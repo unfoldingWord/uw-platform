@@ -109,6 +109,21 @@ export async function get(
   return { status: raw.status, body: parsed, text, traceId: raw.headers.get('x-trace-id') ?? '' };
 }
 
+export async function getRaw(
+  db: Database,
+  email: string,
+  path: string,
+  headers: Readonly<Record<string, string>> = {},
+): Promise<Response> {
+  const keys = await accessFixture();
+  const token = await keys.sign({ email });
+  return createApp(postgresDeps(db, keys), noGateGitHub).request(
+    path,
+    { method: 'GET', headers: { 'cf-access-jwt-assertion': token, ...headers } },
+    fixtureAccessEnv,
+  );
+}
+
 export function command(
   db: Database,
   person: Pick<Person, 'email'>,
