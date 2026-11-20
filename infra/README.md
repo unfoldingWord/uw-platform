@@ -207,6 +207,32 @@ Each secret is set from `infra/uw-app` (or `infra/uw-ingest`) with `wrangler sec
 4. **Turn on hosted Builder** for the Software workflow on staging only (Stages & Controls). Production stays off.
 5. **Check on staging.** Add a Builder agent on the Agents tab, put it live, grant it `build`, and put an item in a build stage. The run should open a pull request from `harness/<item>`, its run step should show the model, tokens and cost, the request should appear in the gateway's log, and the spend indicator on Health should move. Then repeat steps 1 to 3 for production and compare `wrangler secret list --env production` with staging.
 
+## The credentials store's key service (#157, #186)
+
+The credentials store wraps each data key with an AWS KMS key. The keys and the IAM users were made by hand in the AWS console on 2026-11-20, in account `002723143144`, region `us-west-2`, where Aurora runs. Nothing reads these settings until #158 constructs the KMS adapter.
+
+| | Staging | Production |
+|---|---|---|
+| Key alias | `alias/uw-platform-credentials-staging` | `alias/uw-platform-credentials-production` |
+| IAM user | `uw-platform-credentials-staging` | `uw-platform-credentials-production` |
+
+Each key is symmetric and single-region, with one key administrator who may not delete it. Each IAM user has no console access and one inline policy, `credentials-data-keys`, allowing only `kms:GenerateDataKey` and `kms:Decrypt` on its own key. The account's `management-events` CloudTrail trail logs every KMS call. Losing a key loses every credential stored under it.
+
+| Setting | Kind | Worker | Value or source |
+|---|---|---|---|
+| `CREDENTIALS_KMS_REGION` | var | uw-app | `us-west-2`, in the wrangler files |
+| `CREDENTIALS_KMS_KEY_ID` | var | uw-app | The environment's key ARN, in the wrangler files. An ARN, not the alias, so the key cannot be repointed |
+| `CREDENTIALS_KMS_ACCESS_KEY_ID` | secret | uw-app | The access key of that environment's IAM user |
+| `CREDENTIALS_KMS_SECRET_ACCESS_KEY` | secret | uw-app | Its secret, shown once when the access key is created |
+
+`tools/infra/credentials-kms.test.ts` holds the two vars to these values, keeps the two environments on different keys, and gives a preview Worker neither.
+
+**Setting or rotating the access key.** An IAM user may hold two access keys, so the old one works until the new one is in place.
+
+1. In the AWS console open IAM, Users, the environment's user, Security credentials, and create an access key for an application running outside AWS.
+2. From `infra/uw-app`, with `CLOUDFLARE_ACCOUNT_ID` set to the organization's account if your login reaches more than one, run `wrangler secret put CREDENTIALS_KMS_ACCESS_KEY_ID --env <name>` and `wrangler secret put CREDENTIALS_KMS_SECRET_ACCESS_KEY --env <name>`, each typed at the prompt.
+3. When the store has opened a credential with the new pair, delete the old access key in AWS.
+
 ## Routines (#134)
 
 A routine is a person's own Claude Code or Codex working a workflow unattended, under one of their own standing permissions. An area admin sets one up on the workflow's Agents tab. The app then makes a Cloudflare Access service token for it, shows the secret once, and binds the token to that person, a device name and that one standing permission. Revoke deletes the token in Cloudflare as well. The MCP Access application already admits any valid service token (the Access section), so it needs no change.
@@ -300,16 +326,16 @@ Whoever does this needs the Super Administrator or Secrets Store Admin role on t
 
 3. **Let the deploy bind secrets.** Add Account, Secrets Store, Edit to the API token behind the repository secret `CLOUDFLARE_API_TOKEN`. Cloudflare requires it to deploy a Worker that binds a Secrets Store secret; without it the deploy fails with an authorization error. The token still cannot read a value: nothing can, once a secret is stored.
 
-4. **The KMS key and its user (#157).** `infra/aws/credentials-kms.json` declares, for each environment, one symmetric KMS key in `us-west-2` and one IAM user whose only policy allows `kms:Decrypt` and `kms:GenerateDataKey` on that key. The Worker holds a long-lived key pair, so this is an IAM user and not a role. For each environment, with the key's ARN and the user's name:
+4. **The KMS key and its user (#157, #186).** These exist: see "The credentials store's key service" above. `infra/aws/credentials-kms.json` declares them, for each environment one symmetric KMS key in `us-west-2` and one IAM user whose only policy, the inline `credentials-data-keys`, allows `kms:Decrypt` and `kms:GenerateDataKey` on that key. The Worker holds a long-lived key pair, so this is an IAM user and not a role. Each key ARN is also `CREDENTIALS_KMS_KEY_ID` under that environment in both `infra/uw-app/wrangler.toml` and `infra/uw-app/wrangler.go-live.toml`; an ARN is configuration, not a secret. To check a user against the declaration, or to put the policy back:
 
    ```
    jq --arg arn "<key arn>" '.policy | .Statement[0].Resource = $arn' infra/aws/credentials-kms.json > "$TMPDIR/uw-kms-policy.json"
-   aws iam put-user-policy --user-name <iam user> --policy-name uw-platform-credentials-kms --policy-document "file://$TMPDIR/uw-kms-policy.json"
+   aws iam put-user-policy --user-name <iam user> --policy-name credentials-data-keys --policy-document "file://$TMPDIR/uw-kms-policy.json"
    aws iam list-attached-user-policies --user-name <iam user>
    aws iam list-user-policies --user-name <iam user>
    ```
 
-   The two lists must show that one inline policy and nothing else. Record the key ARNs and user names in `infra/aws/credentials-kms.json` in place of its `<...>` placeholders, and put each key ARN in `CREDENTIALS_KMS_KEY_ID` under that environment in both `infra/uw-app/wrangler.toml` and `infra/uw-app/wrangler.go-live.toml`; an ARN is configuration, not a secret. The user's access key is made in the move below and goes straight into the store.
+   The two lists must show that one inline policy and nothing else. The user's access key is made in the move below and goes straight into the store.
 
 ### Move staging
 
@@ -432,7 +458,7 @@ Then, with Cloudflare access:
 
 - Create the Hyperdrive configs: `wrangler hyperdrive create uw-staging --connection-string=...` and `wrangler hyperdrive create uw-production --connection-string=...`, using the pooled connection strings.
 - Create the four queues: `wrangler queues create uw-ingest-events-staging`, `uw-ingest-events-staging-dlq`, `uw-ingest-events-production` and `uw-ingest-events-production-dlq`.
-- Replace every `set-at-go-live` with the real Hyperdrive id, Access AUD tag and Access team domain. `CREDENTIALS_KMS_KEY_ID` and the Secrets Store `store_id` are set by the Platform secrets section, not here.
+- Replace every `set-at-go-live` with the real Hyperdrive id, Access AUD tag and Access team domain. `CREDENTIALS_KMS_KEY_ID` is already declared (#186), and the Secrets Store `store_id` is set by the Platform secrets section, not here.
 - Once every resource exists, copy each `wrangler.go-live.toml` over its `wrangler.toml` in one reviewed PR.
 
 Until that PR, the per-PR and staging Workers run with no database and no queue, `/health/probe` says so, and every go-live job logs a notice and stays green. After it, per-PR Workers bind to staging's Hyperdrive (P33).
