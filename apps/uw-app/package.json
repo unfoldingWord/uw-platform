@@ -24,6 +24,7 @@
     "@uw/ui": "workspace:*",
     "@uw/uw-ingest": "workspace:*",
     "drizzle-orm": "^0.45.3",
+    "github-slugger": "^2.0.0",
     "hast-util-to-string": "^3.0.1",
     "hono": "^4.13.11",
     "idiomorph": "0.8.0",
@@ -39,12 +40,14 @@
     "remark-rehype": "^11.1.2",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.2.0",
+    "unist-util-visit-parents": "^6.1.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260930.1",
     "@types/hast": "^3.0.5",
     "@types/jsdom": "^30.0.0",
+    "@types/mdast": "^4.0.4",
     "@types/node": "^22.20.4",
     "@types/pngjs": "^6.0.5",
     "axe-core": "^4.13.0",
@@ -54,5 +57,5 @@
     "pngjs": "7.0.0",
     "wrangler": "^4.144.0"
   },
-  "contractVersion": "14.6.0"
+  "contractVersion": "14.7.0"
 }

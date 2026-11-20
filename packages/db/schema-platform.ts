@@ -190,6 +190,29 @@ export const pageViews = declareTable(
   ],
 );
 
+export const pageLinks = declareTable(
+  'page_links',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    fromPage: uuid('from_page')
+      .notNull()
+      .references(() => pages.id),
+    toPage: uuid('to_page').references(() => pages.id),
+    rel: text('rel').notNull(),
+    wanted: text('wanted'),
+  },
+  { classification: 'internal', offlineEligibility: 'sync' },
+  (t) => [
+    check('page_links_rel_known', oneOf(t.rel, ['links', 'embeds', 'unresolved'])),
+    check(
+      'page_links_unresolved_names_no_page',
+      sql`(${t.rel} = 'unresolved') = (${t.toPage} IS NULL)`,
+    ),
+    index('page_links_from').on(t.fromPage),
+    index('page_links_to').on(t.toPage, t.rel),
+  ],
+);
+
 export const pageVersions = declareTable(
   'page_versions',
   {

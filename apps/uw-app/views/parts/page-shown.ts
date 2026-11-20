@@ -3,6 +3,7 @@ import { knowledgeFrontmatterSchema, type Page, type PageEntry } from '@uw/contr
 import { can } from '@uw/core/acl';
 import type { AppEnv } from '../../deps.ts';
 import { pageHistory, type PageVersion } from '../../pages/history.ts';
+import { backlinksOf } from '../../pages/links.ts';
 import { listPages } from '../../pages/listing.ts';
 import { readPage } from '../../pages/store.ts';
 import { ancestorsOf, type Ancestor } from '../../pages/tree.ts';
@@ -33,6 +34,7 @@ export type ShownPage = {
   readonly canEdit: boolean;
   readonly ancestors: readonly Ancestor[];
   readonly children: readonly PageEntry[];
+  readonly backlinks: readonly PageEntry[];
 };
 
 const CHILDREN_SHOWN = 200;
@@ -52,7 +54,9 @@ export async function shownPage(
   const ancestors = await ancestorsOf(database.db, actor, page, screen.at);
   const under = { parent: page.id, limit: CHILDREN_SHOWN };
   const children = (await listPages(database.db, actor, under, screen.at))?.pages ?? [];
-  return { page, versions, canEdit: mayWrite && page.type !== MIRRORED, ancestors, children };
+  const backlinks = await backlinksOf(database.db, actor, page.id, screen.at);
+  const canEdit = mayWrite && page.type !== MIRRORED;
+  return { page, versions, canEdit, ancestors, children, backlinks };
 }
 
 function knowledgeCrumbs(shown: ShownPage) {

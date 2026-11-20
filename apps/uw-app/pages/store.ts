@@ -16,11 +16,18 @@ import { pgConstraint, pgErrorCode } from '@uw/db/errors';
 import { derivedFrontmatter, personaLanding } from './derive.ts';
 import { filedOutsideItsArea } from './filing.ts';
 import { isGatedType } from './gating.ts';
+import { embedsItself, rebuildLinks, resolveBody } from './links.ts';
 import { provenanceOf, type ExternalWriter } from './provenance.ts';
 import { REPLAY_INDEX, replayOf } from './replay.ts';
 import { checkFrontmatter } from './validate.ts';
 
-export const owns = ['pages', 'page_versions', 'jd_categories', 'page_views'] as const;
+export const owns = [
+  'pages',
+  'page_versions',
+  'jd_categories',
+  'page_views',
+  'page_links',
+] as const;
 
 export type PageResult =
   { readonly ok: true; readonly page: Page } | { readonly ok: false; readonly reason: ErrorReason };
@@ -202,7 +209,17 @@ export async function createPageAs(
         landing,
       );
       if (!derived.ok) return refused(derived.reason);
-      return insertPage(tx, actor, { ...command, frontmatter: derived.frontmatter }, traceId);
+      const bodyMd = await resolveBody(
+        tx,
+        actor,
+        { bodyMd: command.bodyMd, area: command.jdArea },
+        at,
+      );
+      if (await embedsItself(tx, command.pageId, bodyMd)) return refused('embed_cycle');
+      const filled = { ...command, frontmatter: derived.frontmatter, bodyMd };
+      const made = await insertPage(tx, actor, filled, traceId);
+      if (made.ok) await rebuildLinks(tx, command.pageId, bodyMd);
+      return made;
     });
   } catch (error) {
     return refusalOrThrow(error);
@@ -318,8 +335,22 @@ type Save = {
   readonly at: Date;
 };
 
+async function writeLinked(
+  tx: Transaction,
+  save: Save,
+  stored: Page,
+  full: UpdatePageCommand,
+): Promise<PageResult> {
+  const { actor, traceId, at } = save;
+  const bodyMd = await resolveBody(tx, actor, { bodyMd: full.bodyMd, area: stored.jdArea }, at);
+  if (await embedsItself(tx, stored.id, bodyMd)) return refused('embed_cycle');
+  const saved = await writeUpdate(tx, actor, { ...full, bodyMd }, traceId);
+  if (saved.ok) await rebuildLinks(tx, stored.id, bodyMd);
+  return saved;
+}
+
 async function updateInTransaction(tx: Transaction, save: Save): Promise<PageResult | PageRefusal> {
-  const { actor, checked, traceId, at } = save;
+  const { actor, checked, at } = save;
   const { command } = checked;
   const reparents = await movesParent(tx, command);
   if (reparents) await tx.execute(advisoryLock(advisoryLocks.pageReparenting));
@@ -337,7 +368,7 @@ async function updateInTransaction(tx: Transaction, save: Save): Promise<PageRes
   if ('ok' in full) return full;
   const blocked = await parentRefusal(tx, actor, full, at);
   if (blocked !== null) return refused(blocked);
-  return writeUpdate(tx, actor, full, traceId);
+  return writeLinked(tx, save, stored, full);
 }
 
 async function saveChecked(db: Database, save: Save): Promise<PageResult | PageRefusal> {

@@ -122,6 +122,9 @@ importers:
       drizzle-orm:
         specifier: ^0.45.3
         version: 0.45.3(@cloudflare/workers-types@5.20260930.1)(@electric-sql/pglite@0.5.8)(postgres@3.4.9)
+      github-slugger:
+        specifier: ^2.0.0
+        version: 2.0.0
       hast-util-to-string:
         specifier: ^3.0.1
         version: 3.0.1
@@ -167,6 +170,9 @@ importers:
       unist-util-visit:
         specifier: ^5.2.0
         version: 5.2.0
+      unist-util-visit-parents:
+        specifier: ^6.1.0
+        version: 6.1.0
       zod:
         specifier: ^4.6.6
         version: 4.6.7
@@ -180,6 +186,9 @@ importers:
       '@types/jsdom':
         specifier: ^30.0.0
         version: 30.0.0
+      '@types/mdast':
+        specifier: ^4.0.4
+        version: 4.0.4
       '@types/node':
         specifier: ^22.20.4
         version: 22.20.4

@@ -46,6 +46,7 @@ export const errorReasonSchema = z.enum([
   'stale_version',
   'parent_not_found',
   'parent_cycle',
+  'embed_cycle',
   'harness_not_found',
   'harness_exists',
   'stage_not_found',

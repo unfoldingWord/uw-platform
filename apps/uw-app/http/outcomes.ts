@@ -34,6 +34,7 @@ const statusByReason = new Map<ErrorReason, ContentfulStatusCode>([
   ['page_exists', 409],
   ['slug_taken', 409],
   ['stale_version', 409],
+  ['embed_cycle', 409],
   ['draft_locked', 409],
   ['draft_stale', 409],
   ['draft_revision_mismatch', 409],

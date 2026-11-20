@@ -109,6 +109,7 @@ export function pageRoutes(): Hono<AppEnv> {
   routes.get('/index', pageReads.index);
   routes.get('/recent', pageReads.recent);
   routes.get('/search', pageReads.search);
+  routes.get('/:pageId/backlinks', pageReads.backlinks);
   routes.get('/:pageId/versions', pageReads.versions);
   routes.get('/:pageId/versions/:version', pageReads.version);
   routes.get('/:pageId', pageReads.one);

@@ -8,8 +8,9 @@ import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
-import { visit } from 'unist-util-visit';
+import { visitParents } from 'unist-util-visit-parents';
 import { calloutKinds, dialect, outsideLinks } from './dialect.ts';
+import { pageEmbeds, pageLinks, type RenderHooks } from './page-refs.ts';
 
 export type Heading = { readonly depth: 2 | 3; readonly id: string; readonly text: string };
 export type Rendered = { readonly html: string; readonly headings: readonly Heading[] };
@@ -42,21 +43,36 @@ const schema: Schema = {
 
 const levels: Readonly<Record<string, 2 | 3>> = { h2: 2, h3: 3 };
 
+function insideEmbed(ancestors: readonly { readonly type: string }[]): boolean {
+  return ancestors.some(
+    (node) => node.type === 'element' && 'properties' in node && hasEmbed(node.properties),
+  );
+}
+
+function hasEmbed(properties: unknown): boolean {
+  return typeof properties === 'object' && properties !== null && 'dataEmbed' in properties;
+}
+
 function collectHeadings(into: Heading[]) {
   return () =>
     (tree: Root): void => {
-      visit(tree, 'element', (node) => {
+      visitParents(tree, 'element', (node, ancestors) => {
         const depth = levels[node.tagName];
         const id = node.properties['id'];
-        if (depth === undefined || typeof id !== 'string') return;
+        if (depth === undefined || typeof id !== 'string' || insideEmbed(ancestors)) return;
         into.push({ depth, id, text: toString(node) });
       });
     };
 }
 
-export function renderMarkdown(source: string): Rendered {
-  const headings: Heading[] = [];
-  const file = unified()
+const noHooks: RenderHooks = {
+  linkTitle: () => null,
+  wiki: () => null,
+  embed: () => ({ kind: 'missing' }),
+};
+
+function sanitised(source: string, hooks: RenderHooks, depth: number): Root {
+  const pipeline = unified()
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkRehype, { allowDangerousHtml: true })
@@ -64,9 +80,15 @@ export function renderMarkdown(source: string): Rendered {
     .use(dialect)
     .use(rehypeSanitize, schema)
     .use(outsideLinks)
-    .use(rehypeSlug)
-    .use(collectHeadings(headings))
-    .use(rehypeStringify)
-    .processSync(source);
-  return { html: String(file), headings };
+    .use(pageLinks(hooks))
+    .use(pageEmbeds({ hooks, nested: (inner, level) => sanitised(inner, hooks, level), depth }));
+  return pipeline.runSync(pipeline.parse(source));
+}
+
+export function renderMarkdown(source: string, hooks: RenderHooks = noHooks): Rendered {
+  const headings: Heading[] = [];
+  const finish = unified().use(rehypeSlug).use(collectHeadings(headings)).use(rehypeStringify);
+  const tree = sanitised(source, hooks, 0);
+  finish.runSync(tree);
+  return { html: finish.stringify(tree), headings };
 }

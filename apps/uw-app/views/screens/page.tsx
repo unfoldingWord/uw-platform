@@ -7,7 +7,8 @@ import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
 import type { AppEnv } from '../../deps.ts';
-import { renderMarkdown, type Heading } from '../../markdown/render.ts';
+import type { Heading, Rendered } from '../../markdown/render.ts';
+import { renderPage } from '../../pages/render-page.ts';
 import type { PageVersion } from '../../pages/history.ts';
 import { recordView } from '../../pages/recent.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
@@ -77,13 +78,17 @@ function Contents(props: { readonly headings: readonly Heading[] }) {
   );
 }
 
-function Children(props: { readonly shown: ShownPage }) {
-  const { children } = props.shown;
-  if (children.length === 0) return null;
+function PageList(props: {
+  readonly title: string;
+  readonly mark: 'children' | 'backlinks';
+  readonly pages: ShownPage['children'];
+}) {
+  if (props.pages.length === 0) return null;
+  const marked = { [`data-${props.mark}`]: '' };
   return (
-    <Card title="Pages under this one">
-      <ul data-children="" class="m-0 flex list-none flex-col gap-1 p-0">
-        {children.map((child) => (
+    <Card title={props.title}>
+      <ul class="m-0 flex list-none flex-col gap-1 p-0" {...marked}>
+        {props.pages.map((child) => (
           <li>
             <a href={pagePath(child.id)} class={pageLink}>
               {child.title}
@@ -95,9 +100,15 @@ function Children(props: { readonly shown: ShownPage }) {
   );
 }
 
-function body(shown: ShownPage, back: string | null, saved: number | null) {
+type Extras = {
+  readonly back: string | null;
+  readonly saved: number | null;
+  readonly rendered: Rendered;
+};
+
+function body(shown: ShownPage, extras: Extras) {
   const { page } = shown;
-  const rendered = renderMarkdown(page.bodyMd);
+  const { back, saved, rendered } = extras;
   const pencil = shown.canEdit ? (
     <HumanActionLink
       href={withBack(pageEditPath(page.id), back)}
@@ -131,7 +142,8 @@ function body(shown: ShownPage, back: string | null, saved: number | null) {
           </div>
           <Contents headings={rendered.headings} />
         </div>
-        <Children shown={shown} />
+        <PageList title="Pages under this one" mark="children" pages={shown.children} />
+        <PageList title="Linked from" mark="backlinks" pages={shown.backlinks} />
         <History versions={shown.versions} />
       </div>
     </>
@@ -149,6 +161,15 @@ export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
   const database = c.get('database');
   if (database !== null) await recordView(database.db, screen.caller.actor, pageId, screen.at);
   const spec = pageSpec(shown, null);
-  const back = backOf(c.req.query('back'));
-  return renderScreen(c, spec, body(shown, back, savedVersion(c.req.query('saved'))));
+  const { actor } = screen.caller;
+  const rendered =
+    database === null
+      ? { html: '', headings: [] }
+      : await renderPage(database.db, actor, shown.page, screen.at);
+  const extras = {
+    back: backOf(c.req.query('back')),
+    saved: savedVersion(c.req.query('saved')),
+    rendered,
+  };
+  return renderScreen(c, spec, body(shown, extras));
 }

@@ -14,11 +14,12 @@ import type { Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
 import type { AppEnv } from '../deps.ts';
 import { refuse } from '../http/outcomes.ts';
-import { renderMarkdown } from '../markdown/render.ts';
 import { capabilitiesOn } from './capabilities.ts';
 import { pageHistory, pageVersion } from './history.ts';
 import { listPages, titleIndex } from './listing.ts';
 import { recentPages } from './recent.ts';
+import { renderPage } from './render-page.ts';
+import { backlinksOf } from './links.ts';
 import { searchWithSnippets } from './search.ts';
 import { readPage } from './store.ts';
 
@@ -94,9 +95,17 @@ const one: Read = async (c, { db, actor, at }) => {
   if (!pageId.success) return refuse(c, 'page_not_found');
   const page = await readPage(db, actor, pageId.data, at);
   if (page === null) return refuse(c, 'page_not_found');
-  const rendered = c.req.query('format') === 'html' ? renderMarkdown(page.bodyMd) : {};
+  const rendered = c.req.query('format') === 'html' ? await renderPage(db, actor, page, at) : {};
   const capabilities = capabilitiesOn(actor, page, at);
   return accepted(c, pageReadReplySchema.parse({ page, capabilities, ...rendered }));
+};
+
+const backlinks: Read = async (c, { db, actor, at }) => {
+  const pageId = z.uuid().safeParse(c.req.param('pageId'));
+  const page = pageId.success ? await readPage(db, actor, pageId.data, at) : null;
+  if (page === null) return refuse(c, 'page_not_found');
+  const linked = await backlinksOf(db, actor, page.id, at);
+  return accepted(c, pageListReplySchema.parse({ pages: linked, next: null }));
 };
 
 const versions: Read = async (c, { db, actor, at }) => {
@@ -124,6 +133,7 @@ export const pageReads = {
   index: reading(index),
   recent: reading(recent),
   search: reading(search),
+  backlinks: reading(backlinks),
   versions: reading(versions),
   version: reading(version),
   one: reading(one),
