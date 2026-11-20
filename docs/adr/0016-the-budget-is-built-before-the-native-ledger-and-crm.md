@@ -17,7 +17,7 @@ The platform plan replaces Sage Intacct with a native double-entry ledger (Phase
 **Rejected.**
 
 - **Wait for the native ledger.** No re-sequencing, but the CFO keeps closing months by hand, and the forecast keeps being overwritten by actuals, for as long as the ledger takes.
-- **Sync the sheet into the database and keep the sheet as the source.** Quick, and it removes none of the manual work. It survives only as the first step: the sheet is imported once so the new views can be proven against it.
+- **Sync the sheet into the database and keep the sheet as the source.** Quick, and it removes none of the manual work. It survives only as the first step: the sheet is imported, repeatedly until cutover, so the new views can be proven against it while it remains the place people edit.
 - **A CSV mirror of Sage, as the plan describes.** API access is available, and a file drop would make "actuals as they come in" a daily manual step.
 
 **Consequences.** The mirror tables are shaped to become the plan's Sage parallel-run mirror, and the plan tables to become its `budget_lines`, so the native ledger inherits them and does not replace them. Two external systems become runtime dependencies of a platform feature, so their credentials wait on the credentials store (#157, #158) and a sync failure is shown as state, never as stale figures. Finance data arrives before classification-aware reads (#155) are finished; the read rule above is enforced by the budget's own queries until then. Source: the migration plan; the owner's instruction of 2026-11-20.

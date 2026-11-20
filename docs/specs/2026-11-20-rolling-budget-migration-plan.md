@@ -87,11 +87,17 @@ After the first field program tab, five more were read: a second Transformation 
 | Income cells hold arithmetic: an annual grant divided by 12, or a total minus parts | Two tabs | The amount is imported; a line may carry "annual amount, spread evenly" as its rule |
 | Funder labels vary by tab (a regional suffix added) | One tab | A funding source has an identity apart from its label |
 | The detail block starts on different rows per tab, has sub-groups, and three tabs still hold template placeholders | All five | Line items are found by their account header, not by row number; placeholders with no amounts are skipped |
-| Stray formulas: an annual total sitting in a 2027-01 income cell, and 2027-01 expense cells that read the 2026-10 detail column | Two tabs | The import flags any cell whose formula reads outside its own column or row pattern, for a person to confirm |
+| Stray formulas: an annual total sitting in a 2027-01 income cell, and 2027-01 expense cells that read the 2026-10 detail column | Two tabs | The import flags any cell whose formula reads outside its own column or row pattern, for a person to confirm. This needs the formula text kept as evidence (see below) |
 | No "Fiscal Year Budget" value in row 38 | All five | The year's budget is the official budget version, not a cell |
 | No pooled-grant roll-down formulas in the months read; the amounts are typed | All five | `allocation_rules` stays, and the import records which amounts were typed |
 
-The import in #178 therefore reads values, never formulas, and produces a report of every cell where the typed value and the stated rule disagree. That report is the list of things to settle with the CFO before the sheet is frozen.
+The import in #178 therefore takes each cell's **evaluated amount** as the figure and never executes a spreadsheet formula. It also keeps, as diagnostic evidence beside each imported figure:
+
+- the cell's formula text, if it has one, so a typed number, a correct formula and a stray cross-month reference can be told apart even when they evaluate the same;
+- the source coordinates (tab, row, column) and the import run;
+- the month header's colour (closed or open) and the cell's background colour (the confidence scale), and any cell note.
+
+The export format must carry these (a workbook export or an API read that includes formulas and formats; a values-only CSV does not qualify). From the evidence the import produces a report of every cell where the typed value and the stated rule disagree, every formula that breaks its row or column pattern, and every pooled-grant amount that was typed. That report is the list of things to settle with the CFO before the sheet is frozen.
 
 Tab names, funder names, amounts and balances are left out of this document on purpose: the repository is public.
 
@@ -118,7 +124,7 @@ Principle: **store only what a person typed or a system reported; compute everyt
 | `gl_accounts` | Account number, name, income or expense, display group | Column B |
 | `sage_dimension_map` | Sage department (and any other dimension) → cascade node, with effective dates | Column C |
 | `funding_sources` | A funder or giving channel, linked to its Virtuous contact and to the Sage coding that identifies it | Row labels 2–27 |
-| `budget_line_items` | A named line under a program and account ("Sara Kaba translation team") | The "Expense Budgeting" block |
+| `budget_line_items` | A named line under a program and account (one translation team's stipend, one workshop) | The "Expense Budgeting" block |
 | `assessment_rules` | The Operational Assessment rate in basis points by funding source and program, with effective dates. Policy: 18%, or 15% where a foundation dictates it | The row-29 formulas; the 01.26 matrix |
 | `program_cost_rules` | Project Management and Training rates by program and funding source, with effective dates and the reason for each change. These are direct program costs, not assessments. Default 10% + 12%; one funder's grants 10% + 15%; a field program at stage 3 drops Training to 5%; one-off exceptions for one funder on one program, with a start date | The 7600 and 7700 formulas; the 01.26 matrix and its change log |
 | Program attributes | Program stage (with the date it changed), whether the program takes part in the field staff bucket, whether it receives pooled-grant funds | Clearing cells D77:DG79 by hand; the pooled-grant formulas in rows 6 and 7 |
@@ -129,9 +135,16 @@ Facts are stored by **calendar month**. Fiscal year is a lookup on the period, s
 
 ### 4.2 Actuals (system-reported, never typed)
 
-- `sage_entries`: one row per Sage journal line: date, account, department, other dimensions, amount in minor units, document reference, and provenance (source id, synced at, sync status). This is the bottom of the drill-down.
-- `gifts`, `gift_asks`: mirrored from Virtuous with the same provenance columns, each mapped to a funding source and, where known, a program.
-- Monthly actuals per program and account are a query over `sage_entries`.
+**Currency.** Every budget figure in this domain is functional US dollars, in integer minor units, with the currency stored on the row and constrained to `USD`. This is a single-currency constraint, not a multicurrency feature. A mirrored record that originated in another currency keeps its original currency and original amount beside the functional amount, so it can be interpreted; every sum, comparison and reconciliation uses the functional amount.
+
+- `sage_entries`: one row per Sage journal line: date, account, department, other dimensions, functional amount and currency, original amount and currency where they differ, document reference, and provenance (source id, synced at, sync status, sync run). This is the bottom of the drill-down.
+- `gifts`, `gift_asks`: mirrored from Virtuous with the same currency and provenance columns, each mapped to a funding source and, where known, a program. `gift_ask_gifts` mirrors the link Virtuous keeps between a gift and the ask it fulfils.
+- `imported_actuals`: the closed-month figures taken from the sheet, one row per program, account, funding source (for income) and period, with the import evidence of section 2.7. This is where #178's "typed history" lives. It is never merged into `sage_entries`.
+- `period_actuals_source`: for each program and period, which source is authoritative: `sheet_import` or `sage`. A view reads actuals from exactly one of them, so the two are never added together.
+
+**Handover from the sheet to Sage.** Every closed period starts as `sheet_import`. In #179 the reconciliation compares `imported_actuals` with `sage_entries` per program, account and period. A period moves to `sage` when its differences are zero or each one has been explained and accepted by the CFO; the move is recorded with who accepted it. Both sets of evidence are kept afterwards. A period first closed after the Sage sync is live starts as `sage`.
+
+Monthly actuals per program and account are therefore a query over whichever source is authoritative for that program and period.
 
 ### 4.3 Plans (person-typed)
 
@@ -146,11 +159,17 @@ Two tables carry every budget, forecast, worksheet and scenario.
 | `fiscal_year`, `calendar` | The year it plans, under which calendar |
 | `author` | The person whose judgment it is |
 | `lens` | Whose view it represents: `manager`, `cfo`, `development` (the gift pipeline), or a named scenario such as `all-money`, `good-money` |
-| `status` | `worksheet` (private working copy) → `proposed` (visible up the cascade, marked unofficial) → `official` (pinned) → `superseded` |
+| `status` | `worksheet` (private to its author and the people it is shared with) → `proposed` (visible to every budget reader, marked unofficial) → `official` (pinned) → `superseded` |
 | `based_on` | The version it was copied from |
 | `pinned_at`, `pinned_by` | When and by whom it became official |
 
-`plan_lines`: version, program, period, and either a funding source (income) or an account with an optional line item (expense); an amount in minor units; an optional rule ("10% of Project Income") instead of an amount; a confidence score on future income lines; a persistent note.
+`plan_version_shares`: a worksheet's author may share it with named people, to read or to edit.
+
+`plan_lines`: version, program, period, and a GL account on **every** line. An income line also carries its funding source; an expense line may carry a line item. Then an amount in minor units, an optional rule ("10% of Project Income") instead of an amount, a confidence score on future income lines, and a persistent note.
+
+The account is kept on income lines because the sheet distinguishes income accounts (two on program tabs, six more on Operations) and #179 reconciles per program and account. Plan and actual then share the same keys: program, account, period, and funding source where the books carry it. Where one sheet row maps to more than one account or fund, the split is written into the source-dimension crosswalk agreed with the CFO (section 8.2), not guessed by the import.
+
+`plan_targets`: a top-down figure that is not accounting detail. Version, cascade node, fiscal year or period, a measure (`program_income`, `program_expense`, `unrestricted_income`), and an amount. A target has no account and no funding source, and is never stored as a plan line.
 
 Confidence uses the scale staff already use as cell colours in the sheet: committed (a signed gift agreement, or received and recorded in the CRM), 90%, 75%, 50%. It is the same scale as the Virtuous gift-ask status, so a typed income line and a mirrored gift ask can be compared like for like.
 
@@ -159,12 +178,20 @@ Confidence uses the scale staff already use as cell colours in the sheet: commit
 Rules that fall out of this:
 
 - **Official versus draft.** At most one `official` budget per scope and fiscal year, enforced by the database. An official version is immutable; a change is a new version that supersedes it, so every past official figure stays recoverable.
+- **Pinning freezes the arithmetic, not only the lines.** The rule tables (`assessment_rules`, `program_cost_rules`, `allocation_rules`) are revisioned and never edited in place. When a version is proposed or pinned, each rule-driven line stores its evaluated amount together with the rule revision and the inputs that produced it. A later change of rate or allocation, even for a future month, creates a new rule revision that new worksheets pick up; the pinned version's totals stay identical and remain explainable. Acceptance check for #181: pin a version, change a rate and an allocation, and the pinned totals are unchanged while a new worksheet shows the new figures.
 - **A CFO's draft seen through the cascade.** A `proposed` org-scope version rolls up and down like an official one; every figure from it is marked as proposed. Pinning it makes it official.
 - **Distinct judgments that connect but are not forced equal.** The manager's forecast, the CFO's budget and the development team's pipeline are three versions over the same dimensions. Views place them side by side and show the gap. They are never summed, which is the rule the Revenue Projection already follows.
-- **The pipeline lens is derived.** It is computed from Virtuous gift asks × probability by expected month, so it is always current and nobody types it.
-- **Top-down meets bottom-up.** The CFO's org-scope version can hold a single target per program; program-scope versions hold the detail. A view shows target against the sum of detail.
+- **The pipeline lens is derived.** It is computed from Virtuous gift asks by expected month, so it is always current and nobody types it. It counts only what is still expected, so money already received is not counted twice:
+  - outstanding on an ask = asked amount − gifts linked to it, never below zero;
+  - anticipated from an ask = outstanding × the probability of its status;
+  - a fully fulfilled ask contributes nothing to anticipated; its gifts are in received;
+  - a partly fulfilled ask contributes its remainder only;
+  - a declined ask contributes nothing;
+  - a closed ask with no linked gift counts at its asked amount and is listed as unlinked, for someone to link.
+- **Still to raise** = budget − received − anticipated, with received taken from gifts and anticipated from the rule above. Acceptance check for #180: a gift that fully meets a program's budget, linked to its closed ask, leaves still to raise at zero, not below it.
+- **Top-down meets bottom-up.** The CFO's org-scope version holds targets (`plan_targets`); program-scope versions hold the detail (`plan_lines`). Roll-ups of detail sum lines only, and a target is never added to them. A node shows its own target where it has one, otherwise the sum of its children's targets, marked partial when some children have none. The comparison view places target beside detail and shows the gap, also when the two are equal.
 - **No fixed horizon.** A forecast version may hold lines for any future period, so planning beyond twelve months needs no new columns.
-- **Forecast history.** When a period closes, the forecast version in force is snapshotted. "As of" then shows what was expected at the time, which the sheet cannot.
+- **Forecast history.** When a period closes, the forecast version in force is snapshotted. What history each view can show is set out in section 6.1.
 
 ### 4.4 Roll-up, up and down
 
@@ -180,12 +207,28 @@ Purpose → Objective → Portfolio (Strategic Intent) → Program → Project
 
 Any figure at any level is the sum over its descendants, for a chosen lens and version, and can be opened downward until it reaches the Sage journal lines or the Virtuous gifts behind it.
 
+**What the drill-down shows, and to whom.** Reading the whole budget is not reading the whole mirror. A budget reader (section 8.1) sees a *budget projection* of each source record:
+
+| Source | A budget reader sees | Held back |
+|---|---|---|
+| Sage journal line | Posting date, period, account, program, functional amount, entry reference | Memo and description text, vendor, employee and customer names, attachments. Lines on personnel accounts (6000–6030) appear only as the monthly total per program and account |
+| Virtuous gift | Date, funding source, program, amount, the ask it fulfils | The contact record, giving history outside this budget, notes, contact details |
+| Virtuous gift ask | Funding source, program, asked amount, status, expected month, outstanding amount | Notes, assigned-user detail, the contact record |
+
+A funding source is an institution or a giving channel. Gifts from individuals appear to a budget reader only under their channel, never under a name.
+
+The held-back fields need the grant that already governs them: a grant on area `20–29` for full Sage detail, and a grant on the donor area `40–49` for Virtuous contact detail. `admin` at `org` scope reads both. This boundary is this plan's proposal; widening it is an owner's decision recorded in the ACL pull request. The read tests in #178 to #180 assert it: a `21.10` reader gets the projection and is refused the held-back fields, on every route and tool that serves a source record.
+
 ## 5. Month close without the CFO
 
-1. A scheduled job mirrors Sage entries and each period's close state.
+1. A scheduled job mirrors Sage entries and each period's close state. Each run is recorded with its outcome.
 2. An open month shows actuals to date beside the forecast, labelled preliminary.
-3. When Sage reports a period closed, the job snapshots the forecast, marks the period closed, and the views switch that month to actuals. Nobody types anything.
-4. A later Sage adjustment to a closed period shows as a change with its entry, instead of being silently absorbed.
+3. When Sage reports a period closed, the job snapshots the forecast in force. The snapshot is taken once per period and never replaced.
+4. The period's actuals become final only when both hold: a sync run for that period completed in full (every page fetched, and the mirrored total per account equal to Sage's own period balance), and the period's reconciliation passed. Until then the month stays preliminary and says why. A fetched close state alone never switches the view.
+5. A failed or partial run changes nothing a reader sees as final. A retry is idempotent: the same entries are not counted twice.
+6. If Sage reopens a period and closes it again, the original forecast snapshot is kept, and each close, reopen and adjustment is appended to the period's close history (`period_close_events`). A later adjustment to a closed period shows as a change with its entry, instead of being silently absorbed.
+
+Nobody types anything. These are acceptance conditions of #179, tested for the failure and retry cases as well as the clean close.
 
 One thing must be settled before this works: the Operational Assessment and the Field Staff Offset lines. If Sage books them, they arrive as actuals. If the sheet has been computing them, they stay computed by `assessment_rules` and `program_cost_rules`. See section 9.
 
@@ -203,7 +246,22 @@ One thing must be settled before this works: the Operational Assessment and the 
 | Funding allocation | Funder × program matrix with pooled-fund percentages | Allocations and Income Sources |
 | Ledger drill-down | Sage entries behind any actual | None |
 
-Every view takes: cascade node, fiscal or calendar year, lens and version, and an as-of date.
+Every view takes: cascade node, fiscal or calendar year, lens and version, a reporting cutoff, and where supported a knowledge date.
+
+### 6.1 Two meanings of "as of"
+
+- **Reporting cutoff:** show periods up to a given month, using what is known now. Every view supports it.
+- **Knowledge date:** show what was known or forecast on a given day. It is supported only where the inputs were kept:
+
+| Data | What is kept | Knowledge date available |
+|---|---|---|
+| Plan versions edited in the platform | Every saved revision of every line and target, with its rule revisions | Any moment since platform editing opened (#181) |
+| Forecasts imported from the sheet | One revision per import run, plus the snapshot at each close | Each import run and each close; not between runs |
+| Sage actuals | Each entry's sync run and each period's close history | Any sync run since the first sync (#179) |
+| Imported actuals | One revision per import run | Each import run |
+| Pipeline lens and Still to raise | A daily snapshot of asks, links and the computed result | Each day since the Virtuous sync began (#180) |
+
+Where a view is asked for a knowledge date it cannot serve, it says so and offers the nearest kept one; it never presents current knowledge as the earlier view. Nothing before the first import is recoverable as it stood: the sheet's closed months are known only as they are recorded now, and earlier forecasts were overwritten.
 
 ## 7. Phases and issues
 
@@ -216,7 +274,18 @@ The work is one epic (#182) with four issues, each a large pull request by an ow
 | #180 Virtuous integration and revenue views | 4 | A Virtuous port over its API, mirrored gifts and gift asks, the gift ask → program mapping, the Revenue Projection views, the derived pipeline lens | Figures tie to the Revenue Projection app |
 | #181 Worksheets, versions and cutover | 5–6 | The editable grid, worksheets, propose and pin, side-by-side lenses, funding allocation; a parallel run; the sheet frozen and the two Apps Script apps retired | The 2027 budget can be drafted and pinned in the platform; an owner's sign-off |
 
-#178 needs no external credential, because it reads the sheet through a one-time export. #179 and #180 wait on the credentials store (#157, #158).
+#178 needs no external credential, because the import reads an export of the sheet that a person supplies. #179 and #180 wait on the credentials store (#157, #158).
+
+### 7.1 Which system is authoritative until cutover
+
+People keep editing the sheet while #178 to #180 are built, so one import is not enough.
+
+- **Until cutover the sheet is authoritative for every plan and forecast figure.** The platform shows them read-only and shows the time of the import it is displaying.
+- **The import is repeatable and append-only.** Each run adds a new revision of the forecast and of `imported_actuals`; it never overwrites an earlier run, a close snapshot, or a period already handed to Sage. A period whose actuals are `sage` is not changed by a later import, and a difference there is reported.
+- **The import runs on a schedule once a credential can be stored** (after #157 and #158); before that a person runs it from a fresh export, at least before each month end.
+- **A close snapshot uses the latest import.** In #179, if the newest import is older than the period's end, the snapshot is still taken and marked stale, and is replaced once by the first import run after it. This is the only case in which a snapshot is replaced.
+- **Cutover sequence (#181):** announce an edit freeze; lock the sheet against edits; run the final import; produce the reconciliation of that run against the platform; the CFO accepts it; platform editing opens; the sheet stays read-only as an archive.
+- **Acceptance for the parallel run and cutover:** an edit made in the sheet after the first export appears in the platform after the next import, no preserved history changes, and after the freeze the final import and the platform agree for every program, account and period.
 
 ## 8. Comparison with the PRD and the Platform Plan
 
@@ -238,7 +307,17 @@ The work is one epic (#182) with four issues, each a large pull request by an ow
 - a grant on the area `20–29` (Finance);
 - `admin` at `org` scope.
 
-Writing follows the same scopes with the `editor` role: a program manager with `editor` on `21.10` edits worksheets; pinning a version official needs `admin` on `21.10` or on `20–29`. This write rule is this plan's proposal, not an owner's statement.
+Writing follows the same scopes with the `editor` role, and adds ownership. This write rule is this plan's proposal, not an owner's statement.
+
+| Version status | Who reads it | Who edits it |
+|---|---|---|
+| `worksheet` | Its author, and people the author shared it with | Its author, and people given edit by the author. Each still needs `editor` on `21.10` or `20–29` to create or edit at all |
+| `proposed` | Every budget reader | Its author. Withdrawing it returns it to `worksheet` |
+| `official`, `superseded` | Every budget reader | Nobody |
+
+- The budget grant alone never opens another person's worksheet, for any role, including `admin` on `21.10` or `20–29`. A worksheet's lines, targets and comments follow the worksheet.
+- Proposing is the author's act and is what makes a version visible. Pinning a proposed version official needs `admin` on `21.10` or on `20–29`.
+- Tests in #181: a second `21.10` editor cannot read or edit an unshared worksheet or its comments; sharing grants exactly read or edit; proposing makes it readable by all budget readers and editable by none but the author.
 
 Two things follow that the ACL work must handle:
 
