@@ -11,6 +11,7 @@ import { flowScreen } from './screens/flow.tsx';
 import { gateScreen } from './screens/gate.tsx';
 import { homeScreen } from './screens/home.tsx';
 import { saveToolset } from './parts/toolset-save.tsx';
+import { personScreen } from './screens/person.tsx';
 import { personaScreen } from './screens/persona.tsx';
 import { playScreen } from './screens/play.tsx';
 import { pageScreen } from './screens/page.tsx';
@@ -54,6 +55,8 @@ export function viewRoutes(): Hono<AppEnv> {
   routes.get('/harnesses/:harnessId/gates/:itemId', gateScreen);
   routes.get('/harnesses/:harnessId/items/:itemId', playScreen);
   routes.get('/personas/:pageId', personaScreen);
+  routes.get('/people/:personId', personScreen);
+  routes.get('/people/:personId/:slug', personScreen);
   formRoutes(routes);
   return routes;
 }

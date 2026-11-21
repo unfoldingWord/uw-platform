@@ -7,6 +7,7 @@ import type { AppEnv } from '../../deps.ts';
 import { ApproveAll } from '../parts/approve-all.tsx';
 import { workflowCapNote } from '../parts/caps.ts';
 import { DelegatedMerges } from '../parts/delegated-merges.tsx';
+import { holdingOf, type Holding } from '../parts/holder.tsx';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { approvable, panelsOf, type Shown } from '../parts/gate-rows.tsx';
 import { moduleCodes, pageNames } from '../parts/names.ts';
@@ -26,6 +27,7 @@ type Body = {
   readonly capped: boolean;
   readonly shadow: Readonly<{ harness: Harness; list: Awaited<ReturnType<typeof shadowOf>> }>;
   readonly merged: DelegatedMergeList;
+  readonly holding: Holding;
 };
 
 function lede(count: number, capped: boolean): string {
@@ -62,7 +64,7 @@ function WaitingBody(props: Body) {
         <ApproveAll batch={batch} />
       ))}
       {list}
-      <DelegatedMerges merged={merged} />
+      <DelegatedMerges merged={merged} holding={props.holding} />
     </>
   );
 }
@@ -105,10 +107,21 @@ export async function waitingScreen(c: Context<AppEnv>): Promise<Response> {
   const all = await screen.kernel.views.delegatedMerges(screen.caller, read);
   const merged = { ...all, rows: all.rows.filter((row) => row.harness.id === harness.id) };
   const shadow = { harness, list: await shadowOf(screen, harness) };
+  const holding = await holdingOf(
+    c.get('database')?.db ?? null,
+    { reader: screen.caller.actor, at: screen.at },
+    merged.rows.map((row) => `human:${row.personId}`),
+  );
   return renderScreen(
     c,
     specOf(harness, cursor, rows.length),
-    <WaitingBody shown={shown} capped={gates.capped} shadow={shadow} merged={merged} />,
+    <WaitingBody
+      shown={shown}
+      capped={gates.capped}
+      shadow={shadow}
+      merged={merged}
+      holding={holding}
+    />,
   );
 }
 

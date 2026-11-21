@@ -1,3 +1,5 @@
+import type { PersonName } from '../../people/directory.ts';
+import { shownPerson, shownText, type Someone } from './person-names.ts';
 import { formatDate, formatInstant } from '@uw/core/dates';
 import { reasonText } from '@uw/ui/components/text.ts';
 import type { CredentialLine, LogLine } from '../../credentials/records.ts';
@@ -91,4 +93,12 @@ export function dayOrNone(day: string | null): string {
 
 export function instantOrNone(at: Date | null, none: string): string {
   return at === null ? none : formatInstant(at);
+}
+
+export function someoneOf(person: PersonName | null, otherwise: string): Someone {
+  return person === null ? shownText(otherwise) : shownPerson(person);
+}
+
+export function ownerOf(line: Pick<CredentialLine, 'owner' | 'ownerPerson'>): Someone {
+  return someoneOf(line.ownerPerson, line.owner);
 }

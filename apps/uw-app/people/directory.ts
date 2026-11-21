@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, inArray } from 'drizzle-orm';
 import { personStatusSchema, type PersonStatus } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
@@ -98,4 +98,52 @@ export async function changeStatus(
     after,
     traceId: change.traceId,
   });
+}
+
+export type PersonPage = {
+  readonly personId: string;
+  readonly displayName: string;
+  readonly email: string;
+  readonly status: PersonStatus;
+  readonly joinedAt: Date;
+};
+
+export async function personPage(db: Executor, personId: string): Promise<PersonPage | null> {
+  const [row] = await db.select().from(people).where(eq(people.id, personId)).limit(1);
+  if (!row) return null;
+  return {
+    personId: row.id,
+    displayName: row.displayName,
+    email: row.email,
+    status: personStatusSchema.parse(row.status),
+    joinedAt: row.createdAt,
+  };
+}
+
+export type PersonName = {
+  readonly personId: string;
+  readonly displayName: string;
+  readonly status: PersonStatus | null;
+};
+
+export async function personNames(
+  db: Executor,
+  personIds: readonly string[],
+): Promise<ReadonlyMap<string, PersonName>> {
+  const wanted = [...new Set(personIds)];
+  if (wanted.length === 0) return new Map();
+  const rows = await db
+    .select({ id: people.id, displayName: people.displayName, status: people.status })
+    .from(people)
+    .where(inArray(people.id, wanted));
+  return new Map(
+    rows.map((row) => [
+      row.id,
+      {
+        personId: row.id,
+        displayName: row.displayName,
+        status: personStatusSchema.parse(row.status),
+      },
+    ]),
+  );
 }

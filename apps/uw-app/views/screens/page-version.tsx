@@ -17,11 +17,12 @@ import { pageNames } from '../parts/names.ts';
 import { pageLink, pageSpec, shownPage, typeWords, type ShownPage } from '../parts/page-shown.ts';
 import { idParam } from '../parts/params.ts';
 import { pagePath, pageVersionPath } from '../parts/paths.ts';
+import { shownPerson, shownText, Who } from '../parts/person.tsx';
 import { notFound } from './not-found.tsx';
 import { commitOf } from '../../env.ts';
 
 type Kept = Pick<PageSnapshot, 'page'> & {
-  readonly saved: Pick<PageSnapshot, 'savedAt' | 'savedBy'> | null;
+  readonly saved: Pick<PageSnapshot, 'savedAt' | 'savedBy' | 'saver'> | null;
 };
 
 type Old = {
@@ -113,7 +114,7 @@ async function oldOf(c: Context<AppEnv>): Promise<Old | null> {
 function ledeOf(snapshot: Kept): string {
   const version = `Version ${String(snapshot.page.version)}`;
   if (snapshot.saved === null) return `${version}, the current version.`;
-  return `${version}, saved ${formatInstant(snapshot.saved.savedAt)} by ${snapshot.saved.savedBy}.`;
+  return `${version}, saved ${formatInstant(snapshot.saved.savedAt)}.`;
 }
 
 async function render(c: Context<AppEnv>, old: Old, refused: string | null): Promise<Response> {
@@ -137,6 +138,19 @@ async function render(c: Context<AppEnv>, old: Old, refused: string | null): Pro
       />
       <div class="flex flex-col gap-5">
         {refused === null ? null : <Note>{`Not restored: ${reasonText(refused)}.`}</Note>}
+        {snapshot.saved === null ? null : (
+          <p class="m-0 flex flex-wrap items-center gap-2 text-sm text-text-3">
+            <span>Saved by</span>
+            <Who
+              reading={{ reader: actor, at: screen.at }}
+              who={
+                snapshot.saved.saver === null
+                  ? shownText(snapshot.saved.savedBy)
+                  : shownPerson(snapshot.saved.saver)
+              }
+            />
+          </p>
+        )}
         <p class="m-0">
           <a href={pagePath(shown.page.id)} class={pageLink}>
             {current ? 'This is the current version' : 'Back to the current version'}

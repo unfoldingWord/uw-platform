@@ -3,7 +3,7 @@ import { formatInstant } from '@uw/core/dates';
 import { formatCount, formatMoney } from '@uw/core/money';
 import { reasonText } from '@uw/ui/components/text.ts';
 
-type Fact = { readonly label: string; readonly value: string };
+type Fact = { readonly label: string; readonly value: string; readonly identity?: string };
 export type Shown = { readonly facts: readonly Fact[]; readonly list: readonly string[] };
 
 type Fields = ReadonlyMap<string, unknown>;
@@ -76,7 +76,7 @@ function decided(decision: string, extra: (fields: Fields) => Shown): Describe {
     const shown = [
       { label: 'Decision', value: decision },
       { label: 'Stage', value: text(fields, 'stage') ?? 'None' },
-      { label: 'Decided by', value: event.actor },
+      { label: 'Decided by', value: event.actor, identity: event.actor },
     ];
     return { facts: [...shown, ...more.facts], list: more.list };
   };
@@ -84,11 +84,24 @@ function decided(decision: string, extra: (fields: Fields) => Shown): Describe {
 
 const none: (fields: Fields) => Shown = () => facts();
 
+function holderFact(fields: Fields): Fact {
+  const held = text(fields, 'holder');
+  return held === null
+    ? { label: 'Holder', value: 'None' }
+    : { label: 'Holder', value: held, identity: held };
+}
+
+function personFact(label: string, fields: Fields, otherwise: string): Fact {
+  const personId = text(fields, 'personId');
+  const value = text(fields, 'email') ?? otherwise;
+  return personId === null ? { label, value } : { label, value, identity: `human:${personId}` };
+}
+
 function holder(fields: Fields): Shown {
-  return facts(
-    { label: 'Holder', value: text(fields, 'holder') ?? 'None' },
-    { label: 'Lease until', value: instant(text(fields, 'leaseExpiresAt')) },
-  );
+  return facts(holderFact(fields), {
+    label: 'Lease until',
+    value: instant(text(fields, 'leaseExpiresAt')),
+  });
 }
 
 function branch(fields: Fields, event: HarnessEvent): Shown {
@@ -99,10 +112,7 @@ function branch(fields: Fields, event: HarnessEvent): Shown {
 }
 
 function comment(fields: Fields): Shown {
-  const shown = [
-    { label: 'Author', value: text(fields, 'email') ?? 'Unknown' },
-    { label: 'Source', value: 'Zulip' },
-  ];
+  const shown = [personFact('Author', fields, 'Unknown'), { label: 'Source', value: 'Zulip' }];
   if (fields.get('truncated') !== true) return facts(...shown);
   return facts(...shown, { label: 'Length', value: 'Cut at 10,000 characters' });
 }
@@ -113,15 +123,13 @@ function delegatedExitClaimed(fields: Fields): Shown {
 }
 
 function delegatedMerge(fields: Fields): Shown {
-  const by = text(fields, 'email') ?? 'a person no longer named';
   return {
     facts: [
       { label: 'Persona', value: text(fields, 'persona') ?? 'None' },
       { label: 'Up to tier', value: words(text(fields, 'maxTier')) },
+      personFact('Granted by', fields, 'A person no longer named'),
     ],
-    list: [
-      `Merged under a delegation granted by ${by} until ${instant(text(fields, 'expiresAt'))}`,
-    ],
+    list: [`Merged under a delegation until ${instant(text(fields, 'expiresAt'))}`],
   };
 }
 
@@ -146,12 +154,7 @@ const describers: ReadonlyMap<string, Describe> = new Map<string, Describe>([
     'gate_rejected',
     decided('Rejected', (fields) => ({ facts: [], list: texts(fields, 'findings') })),
   ],
-  [
-    'gate_taken_over',
-    decided('Taken over', (fields) =>
-      facts({ label: 'Holder', value: text(fields, 'holder') ?? 'None' }),
-    ),
-  ],
+  ['gate_taken_over', decided('Taken over', (fields) => facts(holderFact(fields)))],
   [
     'gate_overridden',
     decided('Overridden', (fields) =>
@@ -211,4 +214,16 @@ export function evidenceOf(event: HarnessEvent): Shown {
   const describe = describers.get(event.name);
   if (describe === undefined) return facts();
   return describe(new Map(Object.entries(event.evidence)), event);
+}
+
+export function eventIdentities(events: readonly HarnessEvent[]): readonly string[] {
+  return events.flatMap((event) => {
+    const fields = new Map(Object.entries(event.evidence));
+    const personId = text(fields, 'personId');
+    return [
+      event.actor,
+      text(fields, 'holder') ?? '',
+      personId === null ? '' : `human:${personId}`,
+    ];
+  });
 }

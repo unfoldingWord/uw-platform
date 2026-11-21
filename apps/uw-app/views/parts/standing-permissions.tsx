@@ -1,3 +1,4 @@
+import { namedPerson, Person, type Reading } from './person.tsx';
 import { formatDate } from '@uw/core/dates';
 import { grantableFor, type AgentsView, type StandingPermission } from '@uw/harness';
 import { Card } from '@uw/ui/components/card.tsx';
@@ -18,7 +19,11 @@ const columns = [
 const dateControl =
   'rounded-md border border-line bg-surface px-3 py-1 text-sm text-text outline-offset-2 outline-accent-text focus-visible:outline-2';
 
-export type PermissionViewer = { readonly admin: boolean; readonly personId: string | null };
+export type PermissionViewer = {
+  readonly admin: boolean;
+  readonly personId: string | null;
+  readonly reading: Reading;
+};
 
 function mayRevoke(viewer: PermissionViewer, permission: StandingPermission): boolean {
   return viewer.admin || viewer.personId === permission.personId;
@@ -45,7 +50,12 @@ function rowOf(view: AgentsView, viewer: PermissionViewer, permission: StandingP
   return {
     agent: permission.agentTitle ?? permission.persona,
     may: `${capabilityWord(permission.capability)}${tier}`,
-    granted: permission.grantedByName,
+    granted: (
+      <Person
+        reading={viewer.reading}
+        person={namedPerson(permission.personId, permission.grantedByName)}
+      />
+    ),
     ends: formatDate(permission.expiresAt),
     revoke: mayRevoke(viewer, permission) ? (
       <Revoke harnessId={view.harness.id} permission={permission} />

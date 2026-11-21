@@ -1,3 +1,5 @@
+import type { Principal } from '@uw/core/principal';
+import { namedPerson, Person, type Reading } from './person.tsx';
 import { formatDuration } from '@uw/core/dates';
 import type { DraftProblem, DraftStage } from '@uw/contracts';
 import type { WorkflowDraftView } from '@uw/harness';
@@ -128,15 +130,18 @@ function since(draft: WorkflowDraftView, at: Date): string {
   return formatDuration(at.getTime() - draft.startedAt.getTime());
 }
 
-function LockBar(props: { readonly draft: WorkflowDraftView; readonly at: Date }) {
+function LockBar(props: { readonly draft: WorkflowDraftView; readonly reading: Reading }) {
   const { draft } = props;
-  const name = draft.holder.name;
+  const { at } = props.reading;
   const words = draft.lockActive
-    ? `${name} is editing this workflow (started ${since(draft, props.at)} ago). The live workflow is unchanged until they publish.`
-    : `${name} started a draft ${since(draft, props.at)} ago and stopped editing, so their lock has lapsed. The live workflow is unchanged.`;
+    ? `is editing this workflow (started ${since(draft, at)} ago). The live workflow is unchanged until they publish.`
+    : `started a draft ${since(draft, at)} ago and stopped editing, so their lock has lapsed. The live workflow is unchanged.`;
+  const holder = namedPerson(draft.holder.personId, draft.holder.name);
   return (
     <div data-lock-bar>
-      <Note>{words}</Note>
+      <Note>
+        <Person reading={props.reading} person={holder} /> {words}
+      </Note>
     </div>
   );
 }
@@ -173,11 +178,13 @@ function TakeOver(props: Named & { readonly draft: WorkflowDraftView }) {
   );
 }
 
-function OthersDraft(props: Named & { readonly draft: WorkflowDraftView; readonly at: Date }) {
+function OthersDraft(
+  props: Named & { readonly draft: WorkflowDraftView; readonly reading: Reading },
+) {
   const { draft } = props;
   return (
     <div class="flex flex-col gap-3">
-      <LockBar draft={draft} at={props.at} />
+      <LockBar draft={draft} reading={props.reading} />
       {draft.admin && draft.lockActive ? (
         <TakeOver harnessId={props.harnessId} harnessTitle={props.harnessTitle} draft={draft} />
       ) : null}
@@ -194,6 +201,7 @@ export function DraftSection(props: {
   readonly draft: WorkflowDraftView | null;
   readonly admin: boolean;
   readonly at: Date;
+  readonly reader: Principal;
 }) {
   const { draft } = props;
   if (draft === null) {
@@ -218,7 +226,7 @@ export function DraftSection(props: {
       harnessId={props.harnessId}
       harnessTitle={props.harnessTitle}
       draft={draft}
-      at={props.at}
+      reading={{ reader: props.reader, at: props.at }}
     />
   );
 }

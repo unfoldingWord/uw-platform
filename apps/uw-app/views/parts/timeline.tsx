@@ -1,6 +1,7 @@
 import type { EvidenceLabel as Label, HarnessEvent } from '@uw/contracts';
 import { formatDate } from '@uw/core/dates';
 import { HumanDot } from '@uw/ui/components/human-action.tsx';
+import type { Holding } from './holder.tsx';
 import { PlayRow } from './play-row.tsx';
 
 const eventKinds = ['gate', 'run', 'comment', 'lease'] as const;
@@ -85,6 +86,7 @@ export function Timeline(props: {
   readonly events: readonly HarnessEvent[];
   readonly learnings: ReadonlyMap<string, Label>;
   readonly personaPages: ReadonlyMap<string, string>;
+  readonly holding: Holding;
 }) {
   return (
     <div class="flex flex-col gap-5">
@@ -97,6 +99,7 @@ export function Timeline(props: {
                 event={event}
                 learnings={props.learnings}
                 personaPages={props.personaPages}
+                holding={props.holding}
                 dot={<Dot kind={kindOf(event.name)} />}
               />
             ))}

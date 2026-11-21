@@ -16,27 +16,39 @@ import { reasonText } from '@uw/ui/components/text.ts';
 import type { AppEnv } from '../../deps.ts';
 import { renderMarkdown } from '../../markdown/render.ts';
 import { addComment, commentsOf, resolveComment } from '../../pages/comments.ts';
+import type { PersonName } from '../../people/directory.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { pageNames } from '../parts/names.ts';
 import { pageLink, pageSpec, shownPage, type ShownPage } from '../parts/page-shown.ts';
 import { idParam } from '../parts/params.ts';
+import { namesOf, shownIdentity, Who, type Reading, type Someone } from '../parts/person.tsx';
 import { pageCommentsPath, pagePath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 
 type Found = { readonly screen: ScreenKernel; readonly shown: ShownPage };
-type Shown = PageComment & { readonly html: string; readonly mayResolve: boolean };
+type Shown = PageComment & {
+  readonly html: string;
+  readonly mayResolve: boolean;
+  readonly who: Someone;
+};
 
-function Comment(props: { readonly pageId: string; readonly comment: Shown }) {
+function Comment(props: {
+  readonly pageId: string;
+  readonly comment: Shown;
+  readonly reading: Reading;
+}) {
   const { comment } = props;
-  const who = comment.authorName ?? comment.author;
   const when = formatInstant(new Date(comment.createdAt));
   return (
     <li
       data-comment={comment.id}
       class="flex flex-col gap-2 border-b border-line-soft px-4 py-3 last:border-b-0"
     >
-      <p class="m-0 text-xs font-heavy tracking-wide text-text-3 uppercase">
-        {`${who}, ${when}${comment.resolvedAt === null ? '' : ', resolved'}`}
+      <p class="m-0 flex flex-wrap items-center gap-2 text-xs text-text-3">
+        <Who reading={props.reading} who={comment.who} />
+        <span class="font-heavy tracking-wide uppercase">
+          {`${when}${comment.resolvedAt === null ? '' : ', resolved'}`}
+        </span>
       </p>
       {comment.quote === null ? null : (
         <blockquote
@@ -112,11 +124,19 @@ async function shownComments(c: Context<AppEnv>, found: Found): Promise<readonly
       ? []
       : ((await commentsOf(database.db, actor, page.id, found.screen.at)) ?? []);
   const editor = can(actor, 'write', { kind: 'area', area: page.jdArea }, found.screen.at);
+  const names =
+    database === null
+      ? new Map<string, PersonName>()
+      : await namesOf(
+          database.db,
+          comments.map((comment) => comment.author),
+        );
   return Promise.all(
     comments.map(async (comment) => ({
       ...comment,
       html: (await renderMarkdown(comment.bodyMd)).html,
       mayResolve: editor || comment.author === actor.identity,
+      who: shownIdentity(comment.author, names, (author) => author),
     })),
   );
 }
@@ -149,7 +169,11 @@ async function render(c: Context<AppEnv>, found: Found, state: State): Promise<R
           ) : (
             <ul class="m-0 flex list-none flex-col p-0">
               {comments.map((comment) => (
-                <Comment pageId={page.id} comment={comment} />
+                <Comment
+                  pageId={page.id}
+                  comment={comment}
+                  reading={{ reader: found.screen.caller.actor, at: found.screen.at }}
+                />
               ))}
             </ul>
           )}

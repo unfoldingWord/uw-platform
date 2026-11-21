@@ -1,12 +1,36 @@
 import { formatInstant } from '@uw/core/dates';
-import type { DelegatedMergeList } from '@uw/harness';
+import type { DelegatedMergeList, DelegatedMergeRow } from '@uw/harness';
 import { Note } from '@uw/ui/components/note.tsx';
 import { mergedCapNote } from './caps.ts';
+import type { Holding } from './holder.tsx';
+import { Person } from './person.tsx';
 import { itemPath } from './paths.ts';
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
-export function DelegatedMerges(props: { readonly merged: DelegatedMergeList }) {
+function GrantedBy(props: {
+  readonly row: DelegatedMergeRow;
+  readonly holding?: Holding | undefined;
+}) {
+  const { row, holding } = props;
+  const until = `until ${formatInstant(row.expiresAt)}`;
+  const person = holding?.names.get(row.personId);
+  if (holding === undefined || person === undefined) {
+    return <>{`Merged under a delegation granted by ${row.email} ${until}`}</>;
+  }
+  return (
+    <span class="inline-flex flex-wrap items-center gap-1">
+      <span>Merged under a delegation granted by</span>
+      <Person reading={holding.reading} person={person} />
+      <span>{until}</span>
+    </span>
+  );
+}
+
+export function DelegatedMerges(props: {
+  readonly merged: DelegatedMergeList;
+  readonly holding?: Holding;
+}) {
   const { rows, capped } = props.merged;
   if (rows.length === 0) return null;
   return (
@@ -25,7 +49,7 @@ export function DelegatedMerges(props: { readonly merged: DelegatedMergeList }) 
               {`${row.title} on ${row.harness.title}`}
             </a>
             <span class="break-words text-sm text-text-3">
-              {`Merged under a delegation granted by ${row.email} until ${formatInstant(row.expiresAt)}`}
+              <GrantedBy row={row} holding={props.holding} />
             </span>
           </li>
         ))}
