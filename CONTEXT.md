@@ -87,7 +87,7 @@ One row of `role_grants`: a role (`admin`, `editor`, `viewer`) at a scope (the o
 _Avoid_: permission, role (a role is one field of a grant), ACL entry
 
 **Read rule**:
-Who reads a row of a `restricted` or `sensitive` table, declared per table in `rowReadRules` (`packages/core/acl.ts`): the least role on the row's own JD area, whether the person the row belongs to reads it, and whether an org admin does. `can(actor, 'read', row)` is the one function that applies it; an `org` viewer or editor never satisfies it (ADR 0016).
+Who reads a row of a `restricted` or `sensitive` table, declared per table in `rowReadRules` (`packages/core/acl.ts`): the least role on the row's own JD area, whether the person the row belongs to reads it, and whether an org admin does. `can(actor, 'read', row)` is the one function that applies it; an `org` viewer or editor never satisfies it (ADR 0017).
 _Avoid_: row-level security, policy, classification check
 
 **Credential**:
@@ -95,7 +95,7 @@ A secret that belongs to one JD area's work (a partner API key, a portal passwor
 _Avoid_: secret (that is the value, or a platform secret), key, password, token
 
 **Credential capability**:
-What a principal may do with one credential, asked as `can(actor, capability, credential)` and never as `read`: `see` (know it exists, never its value), `use` (have a connector use it without seeing it), `reveal` (see the value) and `manage` (create, rotate, revoke, bind, give a reveal grant). Each needs a grant on the credential's own JD area; an org admin has `see` and `manage` only, and an org editor or viewer has none. An agent has `use` and nothing else (ADR 0017).
+What a principal may do with one credential, asked as `can(actor, capability, credential)` and never as `read`: `see` (know it exists, never its value), `use` (have a connector use it without seeing it), `reveal` (see the value) and `manage` (create, rotate, revoke, bind, give a reveal grant). Each needs a grant on the credential's own JD area; an org admin has `see` and `manage` only, and an org editor or viewer has none. An agent has `use` and nothing else (ADR 0018).
 _Avoid_: credential permission, secret access, credential role, read (a credential is never read through a page read)
 
 **Reveal grant**:
@@ -103,7 +103,7 @@ A person's time-limited leave to `reveal` one credential, given by a person who 
 _Avoid_: reveal permission, break-glass (that is a reveal outside the grants, by two org admins), share
 
 **Break-glass reveal**:
-A reveal grant given by an org admin who is not an admin of the credential's area. It is not live until a second person who may `manage` the credential, never the one who gave it, confirms it; both are recorded on the grant and in the credential access log, and its time starts when it is confirmed (ADR 0020).
+A reveal grant given by an org admin who is not an admin of the credential's area. It is not live until a second person who may `manage` the credential, never the one who gave it, confirms it; both are recorded on the grant and in the credential access log, and its time starts when it is confirmed (ADR 0021).
 _Avoid_: emergency access, override (a gate has one), second approval (a gate is approved)
 
 **Reveal notice**:
@@ -115,7 +115,7 @@ The workflow and connector a credential may be used from. `use` is refused anywh
 _Avoid_: binding on its own (a service token has one too), attachment, scope (a scope is the org or a JD area on a grant)
 
 **Credential reference**:
-How a caller names a credential it wants used: the credential's id and nothing else. A connector passes one to `useCredential` with the workflow and connector of the use; it never holds the value outside the one call the store opens it for (ADR 0019).
+How a caller names a credential it wants used: the credential's id and nothing else. A connector passes one to `useCredential` with the workflow and connector of the use; it never holds the value outside the one call the store opens it for (ADR 0020).
 _Avoid_: credential handle, secret reference, credential key, token
 
 **Secret**:
@@ -143,7 +143,7 @@ The rows of `credential_access_log`: every create, rotate, revoke, bind, unbind,
 _Avoid_: audit log on its own, grant audit (that records grants), history
 
 **Final check**:
-The second time a credential's access is decided, after the key service has answered and before the value is returned or a sealed value is written. It runs in one transaction that locks the credential row, reads the credential, its bindings, its reveal grants and the person's role grants again at a fresh time, and writes the access log row. The final check decides; the first check only saves a call to the key service (ADR 0018).
+The second time a credential's access is decided, after the key service has answered and before the value is returned or a sealed value is written. It runs in one transaction that locks the credential row, reads the credential, its bindings, its reveal grants and the person's role grants again at a fresh time, and writes the access log row. The final check decides; the first check only saves a call to the key service (ADR 0019).
 _Avoid_: recheck, revalidation, double check
 
 **Grant audit**:

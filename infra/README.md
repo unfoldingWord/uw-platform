@@ -17,7 +17,7 @@ Everything Cloudflare, Neon and Access that the platform runs on is declared her
 pnpm --filter @uw/uw-app deploy:staging
 ```
 
-`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` come from the shell or from the CI secret store. They are never written to a wrangler file. The token is scoped to Workers Scripts edit on the one account.
+`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` come from the shell or from the CI secret store. They are never written to a wrangler file. The token is scoped to Workers Scripts edit on the one account, and to Secrets Store edit once a Worker binds a secret from the store (the Platform secrets section).
 
 The deployed commit reaches the Worker as the `COMMIT_SHA` var, set on the deploy command line. The value in the file is the placeholder `unknown`, which `/health/probe` reports when nothing was passed.
 
@@ -35,7 +35,7 @@ A binding is added by a diff to `uw-app/wrangler.toml`, once in `[env.staging]` 
 | Containers | `[[env.<name>.containers]]` with `class_name`, `image`, `max_instances`, plus a Durable Object binding per class and a migration | sandbox engines |
 | Crons | `[env.<name>.triggers]` with `crons` | later |
 
-Ids that are not secret (a Hyperdrive id) may be committed. A secret is set with `wrangler secret put --env <name>` and appears in the file nowhere.
+Ids that are not secret (a Hyperdrive id, the Secrets Store id) may be committed. A secret's value appears in no file. It lives in Cloudflare Secrets Store and is bound to the one Worker that reads it (the Platform secrets section); until an environment is moved there, it is a Worker secret set with `wrangler secret put --env <name>`.
 
 ### Where the Worker runs (#142)
 
@@ -84,7 +84,7 @@ The production Hyperdrive config `uw-platform-production` reaches Aurora through
 | staging | `uw-ingest-staging` | `https://uw-ingest-staging.<account subdomain>.workers.dev` | `deploy-ingest-staging` after green CI on a push to `develop` |
 | production | `uw-ingest` | nowhere yet: no route, `workers_dev = false` | `deploy-ingest-production` with the same dispatch, after the production gate |
 
-`GITHUB_WEBHOOK_SECRET` is a Worker secret, set with `wrangler secret put GITHUB_WEBHOOK_SECRET --env <name>`. It appears in no file.
+`GITHUB_WEBHOOK_SECRET` is a Worker secret, set with `wrangler secret put GITHUB_WEBHOOK_SECRET --env <name>`, until the environment is moved to the Secrets Store (the Platform secrets section). It appears in no file.
 
 The queue and Hyperdrive bindings are in `uw-ingest/wrangler.go-live.toml` until the resources exist; nothing in `wrangler.toml` binds a resource that is not there yet.
 
@@ -273,6 +273,150 @@ The Zulip bot is an outgoing-webhook bot. Its endpoint URL is `https://<uw-inges
 
 A post reaches everyone in its channel, and the platform does not check who that is. Every channel in `ZULIP_CHANNELS` must therefore be a private channel (never public or web-public) whose members are exactly the people who can read that area: anyone with a live grant on the area, an org grant, or an editor or admin grant on any area. Whoever configures the realm keeps membership in step with grants: a person granted read on an area joins its channel, and a person whose grant is revoked or expires leaves it. Otherwise a person who cannot read the area sees its harness key, its repository names and issue numbers, and that a gate, a lapse or a failed run is waiting. The post carries only the harness key, the item ref, one fixed sentence and the link, never an item's title or body.
 
+## Platform secrets in Cloudflare Secrets Store (#160)
+
+The secrets the platform itself runs on live in the account's Cloudflare Secrets Store, and each Worker binds only the ones it reads. `uw-ingest` binds its two; `uw-app` binds the rest; a per-PR Worker (`preview`) binds none. The list is `infra/secrets-store.json`, under 30-39 Infrastructure: each secret with what it is, who issues it, its owner and the date to rotate it by, per environment. `tools/infra/secrets-store.test.ts` keeps the list, the wrangler files and the code naming the same secrets, and fails when a binding named like a credential is added to a Worker without a row.
+
+| Secret | Worker | Binding | Name in the store |
+|---|---|---|---|
+| `ACCESS_SERVICE_TOKENS_API_TOKEN` | uw-app | `STORE_ACCESS_SERVICE_TOKENS_API_TOKEN` | `UW_<ENV>_ACCESS_SERVICE_TOKENS_API_TOKEN` |
+| `AI_GATEWAY_ANALYTICS_TOKEN` | uw-app | `STORE_AI_GATEWAY_ANALYTICS_TOKEN` | `UW_<ENV>_AI_GATEWAY_ANALYTICS_TOKEN` |
+| `AI_GATEWAY_TOKEN` | uw-app | `STORE_AI_GATEWAY_TOKEN` | `UW_<ENV>_AI_GATEWAY_TOKEN` |
+| `ANTHROPIC_API_KEY` | uw-app | `STORE_ANTHROPIC_API_KEY` | `UW_<ENV>_ANTHROPIC_API_KEY` |
+| `BUILDER_GITHUB_APP_PRIVATE_KEY` | uw-app | `STORE_BUILDER_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_BUILDER_GITHUB_APP_PRIVATE_KEY` |
+| `CREDENTIALS_KMS_ACCESS_KEY_ID` | uw-app | `STORE_CREDENTIALS_KMS_ACCESS_KEY_ID` | `UW_<ENV>_CREDENTIALS_KMS_ACCESS_KEY_ID` |
+| `CREDENTIALS_KMS_SECRET_ACCESS_KEY` | uw-app | `STORE_CREDENTIALS_KMS_SECRET_ACCESS_KEY` | `UW_<ENV>_CREDENTIALS_KMS_SECRET_ACCESS_KEY` |
+| `GITHUB_APP_PRIVATE_KEY` | uw-app | `STORE_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_GITHUB_APP_PRIVATE_KEY` |
+| `OPENAI_API_KEY` | uw-app | `STORE_OPENAI_API_KEY` | `UW_<ENV>_OPENAI_API_KEY` |
+| `OPENROUTER_API_KEY` | uw-app | `STORE_OPENROUTER_API_KEY` | `UW_<ENV>_OPENROUTER_API_KEY` |
+| `REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY` | uw-app | `STORE_REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY` |
+| `REVIEWER_GITHUB_APP_PRIVATE_KEY` | uw-app | `STORE_REVIEWER_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_REVIEWER_GITHUB_APP_PRIVATE_KEY` |
+| `VAPID_PRIVATE_JWK` | uw-app | `STORE_VAPID_PRIVATE_JWK` | `UW_<ENV>_VAPID_PRIVATE_JWK` |
+| `ZULIP_BOT_API_KEY` | uw-app | `STORE_ZULIP_BOT_API_KEY` | `UW_<ENV>_ZULIP_BOT_API_KEY` |
+| `GITHUB_WEBHOOK_SECRET` | uw-ingest | `STORE_GITHUB_WEBHOOK_SECRET` | `UW_<ENV>_GITHUB_WEBHOOK_SECRET` |
+| `ZULIP_WEBHOOK_TOKEN` | uw-ingest | `STORE_ZULIP_WEBHOOK_TOKEN` | `UW_<ENV>_ZULIP_WEBHOOK_TOKEN` |
+
+`<ENV>` is `STAGING` or `PRODUCTION`. An account has one store, and a name is unique in it, so the environment is part of the name: 32 secrets of the 100 an account may hold. The GitHub App ids and installation ids (`*_GITHUB_APP_ID`, `*_GITHUB_APP_INSTALLATION_ID`) are not secrets; they stay Worker settings and are not in the store.
+
+### How a secret is read
+
+A Secrets Store binding is not a string: the Worker reads it with `await env.<BINDING>.get()`. Both Workers do that in one place, `withSecrets` (`apps/uw-app/secrets.ts`, `apps/uw-ingest/secrets.ts`, over `packages/core/platform-secrets.ts`), before any request, queue batch, cron or run is handled. For each secret it reads the `STORE_<NAME>` binding when one is declared; when none is declared it reads the Worker secret `<NAME>`, as before the move. The rest of the code sees a plain string under the old name. A Worker instance keeps what it read for five minutes, so a rotated value arrives without a deploy.
+
+`/health/probe` on `uw-app` and `/health` on `uw-ingest` carry a `secrets` indicator that counts the sources and never names a secret or shows a value, for example `14 from the Secrets Store, 0 from Worker secrets, 0 not set`. If a declared binding cannot be read, the indicator is red and adds `1 unreadable in the Secrets Store`, the Worker logs `secret_store_unreadable` with the secret's name, and that secret is read from its Worker secret while one still exists. So a broken binding is never hidden by the fallback.
+
+The bindings are declared in each `wrangler.go-live.toml`, with `store_id = "set-at-go-live"`. A block is copied into `wrangler.toml` when its secret exists in the store; a test refuses a block in `wrangler.toml` that differs from the go-live file, has no store id, or whose secret has no owner and rotation date in `infra/secrets-store.json`.
+
+### Before the first move
+
+Whoever does this needs the Super Administrator or Secrets Store Admin role on the account, and runs `pnpm --filter @uw/uw-app exec wrangler login` first. No value is ever typed into a file, a chat or a command line: `wrangler` asks for it at a hidden prompt, or reads it from a file on standard input.
+
+1. **Find the store.** An account has one. List it, and create it only if the list is empty:
+
+   ```
+   pnpm --filter @uw/uw-app exec wrangler secrets-store store list --remote
+   pnpm --filter @uw/uw-app exec wrangler secrets-store store create uw-platform --remote
+   ```
+
+2. **Declare the store id.** A store id is configuration, not a secret. Put it in place of every `store_id = "set-at-go-live"` in `infra/uw-app/wrangler.go-live.toml` and `infra/uw-ingest/wrangler.go-live.toml`, in a pull request:
+
+   ```
+   sed -i 's/^store_id = "set-at-go-live"$/store_id = "<store id>"/' infra/uw-app/wrangler.go-live.toml infra/uw-ingest/wrangler.go-live.toml
+   pnpm exec vitest run tools/infra
+   ```
+
+3. **Let the deploy bind secrets.** Add Account, Secrets Store, Edit to the API token behind the repository secret `CLOUDFLARE_API_TOKEN`. Cloudflare requires it to deploy a Worker that binds a Secrets Store secret; without it the deploy fails with an authorization error. The token still cannot read a value: nothing can, once a secret is stored.
+
+4. **The KMS key and its user (#157, #186).** These exist: see "The credentials store's key service" above. `infra/aws/credentials-kms.json` declares them, for each environment one symmetric KMS key in `us-west-2` and one IAM user whose only policy, the inline `credentials-data-keys`, allows `kms:Decrypt` and `kms:GenerateDataKey` on that key. The Worker holds a long-lived key pair, so this is an IAM user and not a role. Each key ARN is also `CREDENTIALS_KMS_KEY_ID` under that environment in both `infra/uw-app/wrangler.toml` and `infra/uw-app/wrangler.go-live.toml`; an ARN is configuration, not a secret. To check a user against the declaration, or to put the policy back:
+
+   ```
+   jq --arg arn "<key arn>" '.policy | .Statement[0].Resource = $arn' infra/aws/credentials-kms.json > "$TMPDIR/uw-kms-policy.json"
+   aws iam put-user-policy --user-name <iam user> --policy-name credentials-data-keys --policy-document "file://$TMPDIR/uw-kms-policy.json"
+   aws iam list-attached-user-policies --user-name <iam user>
+   aws iam list-user-policies --user-name <iam user>
+   ```
+
+   The two lists must show that one inline policy and nothing else. The user's access key is made in the move below and goes straight into the store.
+
+### Move staging
+
+1. **Create the secrets.** A value cannot be read back from a Worker secret or from the store, so each one comes from where its owner keeps it or is issued anew, which is a rotation. `issued_by` in `infra/secrets-store.json` says where. For a model key, a Cloudflare API token or the KMS access key (`aws iam create-access-key --user-name <iam user>`), issue a new one beside the old. Each of these asks for the value at a hidden prompt:
+
+   ```
+   STORE_ID=<store id>
+   for name in $(jq -r '.secrets[].name | select(endswith("PRIVATE_KEY") | not)' infra/secrets-store.json); do
+     pnpm --filter @uw/uw-app exec wrangler secrets-store secret create "$STORE_ID" --name "UW_STAGING_$name" --scopes workers --remote
+   done
+   ```
+
+   A GitHub App private key has many lines, which the prompt cannot take. Generate an additional private key in the App's settings (an App can hold several), convert it to PKCS#8 as the GitHub App section says, and pass the file on standard input. Delete both files afterwards:
+
+   ```
+   pnpm --filter @uw/uw-app exec wrangler secrets-store secret create "$STORE_ID" --name UW_STAGING_GITHUB_APP_PRIVATE_KEY --scopes workers --remote < key.pkcs8.pem
+   ```
+
+   The same for `UW_STAGING_BUILDER_GITHUB_APP_PRIVATE_KEY`, `UW_STAGING_REVIEWER_GITHUB_APP_PRIVATE_KEY` and `UW_STAGING_REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY`.
+
+   Three secrets have only one live value at their issuer: `GITHUB_WEBHOOK_SECRET`, `ZULIP_WEBHOOK_TOKEN` and `ZULIP_BOT_API_KEY`. Store the current value if its owner has it. If not, store a new one, and change it at the issuer straight after step 3 deploys; deliveries in between are refused, and GitHub can redeliver them. `VAPID_PRIVATE_JWK` must be the key that matches `VAPID_PUBLIC_KEY`: a new pair ends every push subscription.
+
+   Skip a secret that has no value yet (the notifier's, until it is configured). Stop the loop at its prompt with Ctrl-C and run the rest by hand, and leave its block out in step 3.
+
+2. **Name the owner and the rotation date.** In `infra/secrets-store.json`, set `owner` (an email address) and `rotate_by.staging` (`YYYY-MM-DD`) for each secret created.
+
+3. **Bind them.** In the same pull request as step 2, copy the `[[env.staging.secrets_store_secrets]]` block of each secret created from `infra/uw-app/wrangler.go-live.toml` into `infra/uw-app/wrangler.toml`, and the same for `uw-ingest`. Run `pnpm exec vitest run tools/infra`. Merging to `develop` deploys staging. The Worker secrets are untouched, so nothing can go missing at this step.
+
+4. **Verify.**
+
+   ```
+   curl -fsS https://uw-app-staging.unfoldingword.workers.dev/health/probe \
+     | jq -e '.indicators[] | select(.name == "secrets")'
+   curl -fsS https://uw-ingest-staging.unfoldingword.workers.dev/health \
+     | jq -e '.indicators[] | select(.name == "secrets")'
+   ```
+
+   Each must read `"status": "ok"`, with as many `from the Secrets Store` as blocks were copied for that Worker. Then prove the values, since a count cannot: run the staging check in the Hosted agents section (a Builder run that opens a pull request and shows its cost), send one GitHub delivery through `uw-ingest`, and make and revoke a routine.
+
+5. **Delete the Worker secrets that were moved.** For each one, on the Worker that held it:
+
+   ```
+   pnpm --filter @uw/uw-app exec wrangler secret delete ANTHROPIC_API_KEY --config ../../infra/uw-app/wrangler.toml --env staging
+   pnpm --filter @uw/uw-ingest exec wrangler secret delete GITHUB_WEBHOOK_SECRET --config ../../infra/uw-ingest/wrangler.toml --env staging
+   ```
+
+   Run the two `curl` checks again: `0 from Worker secrets`. `wrangler secret list --env staging` should now show only the App ids and installation ids, and any secret skipped in step 1.
+
+6. **Revoke what was replaced.** At each issuer, delete the old key or token that the new one replaced, and in each GitHub App the old private key.
+
+### Move production
+
+Production follows staging, with an owner's word, as part of a release. Repeat step 1 with `UW_PRODUCTION_` names and production's own values, set `rotate_by.production`, and copy the `[[env.production.secrets_store_secrets]]` blocks in a pull request into `develop`. The bindings reach production with the release that carries that pull request (`gh workflow run deploy-production.yml --ref v<version>`). Then verify, delete and revoke as in steps 4 to 6, with `--env production` and:
+
+```
+curl -fsS https://uw-app.unfoldingword.workers.dev/health/probe \
+  | jq -e '.indicators[] | select(.name == "secrets")'
+curl -fsS https://uw-ingest.unfoldingword.workers.dev/health \
+  | jq -e '.indicators[] | select(.name == "secrets")'
+```
+
+### Roll back
+
+- **Before the Worker secrets are deleted (step 5):** revert the pull request that copied the blocks, or remove one block, and deploy. The Worker reads its Worker secrets again. No value was touched.
+- **A wrong value in the store:** replace it. It answers "Do you want to update the secret value?" and then asks for the value; running Workers read it within five minutes, or at once after a deploy:
+
+  ```
+  pnpm --filter @uw/uw-app exec wrangler secrets-store secret list "$STORE_ID" --remote --per-page 100
+  pnpm --filter @uw/uw-app exec wrangler secrets-store secret update "$STORE_ID" --secret-id <secret id> --remote
+  ```
+
+- **After the Worker secrets are deleted:** set the Worker secret again with `wrangler secret put <NAME> --env <name>` and remove that secret's block from `wrangler.toml`. With no block, the Worker secret is what is read.
+- **The `secrets` indicator is red:** find the name in the Worker's log (`outcome` `secret_store_unreadable`), then check that the secret exists under exactly the name in the table, in the store whose id the block gives, with the `workers` scope.
+- Never delete a secret from the store while a deployed Worker binds it.
+
+### After the move
+
+A new platform secret gets a row in `infra/secrets-store.json`, a name in the Worker's `secrets.ts`, and a block per environment in the go-live file and, once it exists in the store, the live file. To rotate one, issue the new value, run `secret update` as above, set the next `rotate_by`, and revoke the old value. Where another section of this file says `wrangler secret put <NAME> --env <name>` for a secret in the table above, use `secret create` or `secret update` instead once that environment is moved.
+
+Confirmed against wrangler 4.144.0 and Cloudflare's Secrets Store documentation on 2026-11-20: the binding syntax, the commands and their flags, one store and 100 secrets per account, the roles, and the deploy token's permission. Not confirmed without an account: that a deploy fails when a bound secret does not exist, and what one `get()` costs a request.
+
 ## Logs (FD-11)
 
 Workers Logs is on for both Workers, in the top-level block and in `staging` and `production`, because wrangler does not carry top-level observability into an environment.
@@ -314,7 +458,7 @@ Then, with Cloudflare access:
 
 - Create the Hyperdrive configs: `wrangler hyperdrive create uw-staging --connection-string=...` and `wrangler hyperdrive create uw-production --connection-string=...`, using the pooled connection strings.
 - Create the four queues: `wrangler queues create uw-ingest-events-staging`, `uw-ingest-events-staging-dlq`, `uw-ingest-events-production` and `uw-ingest-events-production-dlq`.
-- Replace every `set-at-go-live` with the real Hyperdrive id, Access AUD tag and Access team domain.
+- Replace every `set-at-go-live` with the real Hyperdrive id, Access AUD tag and Access team domain. `CREDENTIALS_KMS_KEY_ID` is already declared (#186), and the Secrets Store `store_id` is set by the Platform secrets section, not here.
 - Once every resource exists, copy each `wrangler.go-live.toml` over its `wrangler.toml` in one reviewed PR.
 
 Until that PR, the per-PR and staging Workers run with no database and no queue, `/health/probe` says so, and every go-live job logs a notice and stays green. After it, per-PR Workers bind to staging's Hyperdrive (P33).

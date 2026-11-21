@@ -38,7 +38,7 @@ export const credentialRules = [
   {
     name: 'credential-revealed-only-by-its-route',
     comment:
-      'Only the credential routes ask for a reveal, so a value reaches a person in one uncached answer to POST /api/credentials/reveal and no screen, command, cron job, connector or other store file returns one (#159, ADR 0020).',
+      'Only the credential routes ask for a reveal, so a value reaches a person in one uncached answer to POST /api/credentials/reveal and no screen, command, cron job, connector or other store file returns one (#159, ADR 0021).',
     severity: 'error',
     from: { pathNot: [revealsAValue, revealRoute, testFile] },
     to: { path: revealsAValue },
@@ -54,7 +54,7 @@ export const credentialRules = [
   {
     name: 'no-credential-store-on-the-agent-surface',
     comment:
-      'No MCP verb, engine, run host or agent module imports the credentials store, so no tool reply, prompt or run step can carry a value and no agent manages a credential (#158, ADR 0019).',
+      'No MCP verb, engine, run host or agent module imports the credentials store, so no tool reply, prompt or run step can carry a value and no agent manages a credential (#158, ADR 0020).',
     severity: 'error',
     from: { path: agentSurface, pathNot: [testFile] },
     to: { path: store },

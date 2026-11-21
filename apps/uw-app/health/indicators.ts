@@ -1,4 +1,5 @@
 import type { HealthIndicator, HealthReport, OverallStatus } from '@uw/contracts';
+import { secretsHealth } from '@uw/core/platform-secrets';
 import type { Executor } from '@uw/db/client';
 import { oldestDeliveryReceivedAfter } from '@uw/uw-ingest/deliveries/backlog';
 import type { DatabaseHandle } from '../database.ts';
@@ -109,6 +110,11 @@ async function queueIndicator(
   }
 }
 
+function secretsIndicators(env: Bindings): HealthIndicator[] {
+  if (env.SECRET_SOURCES === undefined) return [];
+  return [{ name: 'secrets', ...secretsHealth(env.SECRET_SOURCES) }];
+}
+
 export function overallStatus(indicators: readonly HealthIndicator[]): OverallStatus {
   if (indicators.some((indicator) => indicator.status === 'red')) return 'red';
   if (indicators.some((indicator) => indicator.status === 'amber')) return 'amber';
@@ -127,6 +133,6 @@ export async function healthReport(
     queueIndicator(env, handle, probe),
     probe.hubHealth(env, kernel, probe.timers),
   ]);
-  const indicators = [commitIndicator(commit), database, queue, liveHub];
+  const indicators = [commitIndicator(commit), database, queue, liveHub, ...secretsIndicators(env)];
   return { status: overallStatus(indicators), commit, indicators };
 }

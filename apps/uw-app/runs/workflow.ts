@@ -2,6 +2,7 @@ import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloud
 import { z } from 'zod';
 import { engineSchema, runShapeSchema } from '@uw/contracts';
 import type { Bindings } from '../env.ts';
+import { withSecrets } from '../secrets.ts';
 import { runDepsOf } from './deps.ts';
 import { runWorkflow } from './run-core.ts';
 import type { Json, StepConfig, StepRunner } from './step-runner.ts';
@@ -56,7 +57,7 @@ export class HarnessRun extends WorkflowEntrypoint<Bindings, z.infer<typeof runS
     step: WorkflowStep,
   ): Promise<string> {
     const start = runStartSchema.parse(event.payload);
-    const opened = runDepsOf(this.env, start.traceId);
+    const opened = runDepsOf(await withSecrets(this.env), start.traceId);
     try {
       return await runWorkflow(start, workflowStepRunner(step), opened.deps);
     } finally {
