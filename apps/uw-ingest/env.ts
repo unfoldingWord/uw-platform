@@ -1,4 +1,5 @@
 import type { IngestEnvelope, IngestRefusal } from '@uw/contracts';
+import type { SecretSources } from '@uw/core/platform-secrets';
 
 export type QueueSendOptions = { readonly contentType: 'json' };
 
@@ -7,6 +8,7 @@ export type IngestBindings = {
   GITHUB_WEBHOOK_SECRET?: string;
   HYPERDRIVE?: { readonly connectionString: string };
   INGEST_QUEUE?: { send(body: IngestEnvelope, options?: QueueSendOptions): Promise<void> };
+  SECRET_SOURCES?: SecretSources;
   ZULIP_WEBHOOK_TOKEN?: string;
 };
 

@@ -1,3 +1,4 @@
+import type { SecretSources } from '@uw/core/platform-secrets';
 import type { RunStart } from '@uw/harness';
 type HyperdriveBinding = { readonly connectionString: string };
 export type QueueProducer<Body> = { send(body: Body): Promise<void> };
@@ -73,6 +74,7 @@ export type Bindings = {
   REVIEWER_GITHUB_APP_INSTALLATION_ID?: string;
   REVIEWER_GITHUB_APP_PRIVATE_KEY?: string;
   SANDBOX_MINOR_PER_HOUR?: string;
+  SECRET_SOURCES?: SecretSources;
   VAPID_PRIVATE_JWK?: string;
   VAPID_PUBLIC_KEY?: string;
   VAPID_SUBJECT?: string;
