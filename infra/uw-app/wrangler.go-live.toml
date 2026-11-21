@@ -183,6 +183,10 @@ binding = "STORE_ZULIP_BOT_API_KEY"
 store_id = "set-at-go-live"
 secret_name = "UW_STAGING_ZULIP_BOT_API_KEY"
 
+[[env.staging.r2_buckets]]
+binding = "FILES"
+bucket_name = "uw-files-staging"
+
 [env.production]
 name = "uw-app"
 workers_dev = true
@@ -335,6 +339,10 @@ binding = "STORE_ZULIP_BOT_API_KEY"
 store_id = "set-at-go-live"
 secret_name = "UW_PRODUCTION_ZULIP_BOT_API_KEY"
 
+[[env.production.r2_buckets]]
+binding = "FILES"
+bucket_name = "uw-files"
+
 [env.preview]
 workers_dev = true
 
@@ -363,3 +371,7 @@ class_name = "HarnessHub"
 [[env.preview.durable_objects.bindings]]
 name = "PAGE_DRAFT"
 class_name = "PageDraft"
+
+[[env.preview.r2_buckets]]
+binding = "FILES"
+bucket_name = "uw-files-staging"

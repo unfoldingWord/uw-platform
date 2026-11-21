@@ -49,7 +49,7 @@ function relay(inner: StreamableHTTPClientTransport): Transport {
 export async function httpClient(
   app: Hono<AppEnv>,
   headers: Record<string, string>,
-  env: Readonly<Record<string, string>> = fixtureAccessEnv,
+  env: Readonly<Record<string, unknown>> = fixtureAccessEnv,
 ): Promise<Client> {
   const transport = new StreamableHTTPClientTransport(new URL('http://uw.test/mcp'), {
     fetch: async (url, init) => app.request(url, init, env),

@@ -4,6 +4,7 @@ export const verbNames = [
   'search_pages',
   'read_page',
   'write_page',
+  'attach_file',
   'resolve_context',
   'query_entities',
   'create_task',

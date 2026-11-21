@@ -431,26 +431,7 @@ Nothing in the files is a secret. `logpush = true` is added to `wrangler.go-live
 
 ## Page files: the `uw-files` buckets
 
-Pictures and files attached to pages are stored in R2 through the `FILES` binding of `uw-app`. The binding is not declared in `uw-app/wrangler.toml` yet, because a deploy fails when it names a bucket that does not exist. Until it is declared, an upload and a download both answer `not_wired`, the edit screen says file storage is not set up, and everything else about pages works.
-
-A person with access to the Cloudflare account sets it up once:
-
-- Create the buckets `uw-files-staging` and `uw-files` (private; no public access, no custom domain).
-- Add this block to `uw-app/wrangler.toml` and to `uw-app/wrangler.go-live.toml`, once under each environment, with `preview` using the staging bucket:
-
-```toml
-[[env.staging.r2_buckets]]
-binding = "FILES"
-bucket_name = "uw-files-staging"
-
-[[env.preview.r2_buckets]]
-binding = "FILES"
-bucket_name = "uw-files-staging"
-
-[[env.production.r2_buckets]]
-binding = "FILES"
-bucket_name = "uw-files"
-```
+Pictures and files attached to pages are stored in R2 through the `FILES` binding of `uw-app`. `uw-app/wrangler.toml` and `uw-app/wrangler.go-live.toml` declare it under each environment, with `preview` using the staging bucket: `uw-files-staging` for staging and preview, `uw-files` for production. A deploy fails when the bucket it names does not exist, so both buckets (private; no public access, no custom domain) must exist before a deploy of an environment that names them. Without the binding, an upload, the agent verb `attach_file` and a download all answer `not_wired`.
 
 Nothing here is a secret. A file is read only through `GET /api/files/:fileId`, which checks the reader's grant on the file's area; the bucket is never exposed.
 

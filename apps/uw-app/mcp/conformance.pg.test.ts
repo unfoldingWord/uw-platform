@@ -24,10 +24,17 @@ import {
 } from '@uw/db/test-seed';
 import { DEFAULT_SPEND_CAP, software, type Caller, type Kernel } from '@uw/harness';
 import { createApp } from '../app.tsx';
-import { createAccessFixture, type AccessFixture } from '../testing/access-keys.ts';
 import {
+  createAccessFixture,
+  fixtureAccessEnv,
+  type AccessFixture,
+} from '../testing/access-keys.ts';
+import {
+  attachArgs,
   callableFailures,
+  filesEnv,
   toolSurfaceMismatches,
+  workflowFiles,
   type CallResult,
   type ToolSurface,
 } from '../testing/conformance.ts';
@@ -220,6 +227,7 @@ function workflowContext(r: Rig, principal: Principal): Omit<VerbContext, 'host'
     db: r.db,
     commit: 'test-commit',
     cap: DEFAULT_SPEND_CAP,
+    files: workflowFiles(),
     logger: createLogger(
       { traceId: 'trace', commit: 'test-commit', route: 'workflow', principal: null },
       () => undefined,
@@ -234,11 +242,11 @@ async function hostsOf(
 ): Promise<Hosts> {
   const token = await r.fixture.signForMcp({ email: OWNER.email });
   const app = createApp(postgresDeps(r.db, r.fixture, undefined, r.clock));
-  const external = await httpClient(app, {
-    'cf-access-jwt-assertion': token,
-    'x-uw-device': 'laptop',
-    ...headers,
-  });
+  const external = await httpClient(
+    app,
+    { 'cf-access-jwt-assertion': token, 'x-uw-device': 'laptop', ...headers },
+    filesEnv(fixtureAccessEnv),
+  );
   const workflow = await serveVerbsForTest(workflowContext(r, inProcess));
   return { external, workflow };
 }
@@ -306,6 +314,7 @@ function sceneCalls(host: McpHost, scene: Scene): Call[] {
     { verb: 'search_pages', args: { query: 'conformance', type: null, limit: 10 } },
     { verb: 'read_page', args: { pageId: scene.pageId } },
     { verb: 'write_page', args: pageArgs(host) },
+    { verb: 'attach_file', args: attachArgs(scene.pageId) },
     { verb: 'query_entities', args: { query: 'stage_items', params: stageItems } },
     {
       verb: 'create_task',
@@ -324,6 +333,7 @@ const expectedOutcomes = new Map<string, 'accepted' | ErrorReason>([
   ['search_pages', 'accepted'],
   ['read_page', 'accepted'],
   ['write_page', 'accepted'],
+  ['attach_file', 'accepted'],
   ['query_entities', 'accepted'],
   ['create_task', 'accepted'],
 ]);

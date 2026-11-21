@@ -113,6 +113,10 @@ class_name = "ClaudeCodeSandbox"
 name = "CODEX_SANDBOX"
 class_name = "CodexSandbox"
 
+[[env.staging.r2_buckets]]
+binding = "FILES"
+bucket_name = "uw-files-staging"
+
 [env.production]
 name = "uw-app"
 workers_dev = true
@@ -195,6 +199,10 @@ class_name = "ClaudeCodeSandbox"
 name = "CODEX_SANDBOX"
 class_name = "CodexSandbox"
 
+[[env.production.r2_buckets]]
+binding = "FILES"
+bucket_name = "uw-files"
+
 [env.preview]
 workers_dev = true
 
@@ -223,3 +231,7 @@ class_name = "HarnessHub"
 [[env.preview.durable_objects.bindings]]
 name = "PAGE_DRAFT"
 class_name = "PageDraft"
+
+[[env.preview.r2_buckets]]
+binding = "FILES"
+bucket_name = "uw-files-staging"

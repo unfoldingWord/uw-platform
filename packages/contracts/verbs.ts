@@ -66,6 +66,12 @@ export const verbRegistry: readonly VerbDefinition[] = [
     'Create a page or save a new version of one; learning, skill and persona pages land as suggested for a person to confirm.',
   ),
   verb(
+    'attach_file',
+    'pages_and_context',
+    onResource('editor'),
+    'Attach a picture or file to a page you may edit; embed it in the page body by the url it answers.',
+  ),
+  verb(
     'resolve_context',
     'pages_and_context',
     onResource('viewer'),
