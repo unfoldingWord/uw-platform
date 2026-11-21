@@ -3,6 +3,7 @@ import type { Logger } from '@uw/core/log';
 import type { Database } from '@uw/db/client';
 import type { Caller, Kernel } from '@uw/harness';
 import type { SpendCap } from '../health/spend-cap.ts';
+import type { FileStore } from '../pages/file-store.ts';
 
 export type McpHost = 'external' | 'workflow';
 
@@ -16,6 +17,7 @@ export type VerbContext = {
   readonly commit: string;
   readonly cap: SpendCap;
   readonly logger: Logger;
+  readonly files?: FileStore | null;
 };
 
 export function callerOf(context: VerbContext): Caller {

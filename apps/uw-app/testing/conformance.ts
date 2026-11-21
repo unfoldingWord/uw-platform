@@ -2,6 +2,8 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { CallToolResultSchema, ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { errorReasonSchema, findVerb, type ErrorReason } from '@uw/contracts';
 import type { McpHost } from '../mcp/context.ts';
+import { memoryFiles, type FileStore } from '../pages/file-store.ts';
+import { memoryBucket } from './files.ts';
 
 export type ToolSurface = { readonly host: McpHost; readonly tools: readonly Tool[] };
 
@@ -115,4 +117,22 @@ function failureOf(host: McpHost, call: CallResult): string | null {
 
 export function callableFailures(host: McpHost, results: readonly CallResult[]): string[] {
   return results.flatMap((call) => failureOf(host, call) ?? []);
+}
+
+export function attachArgs(pageId: string): Record<string, unknown> {
+  return {
+    fileId: crypto.randomUUID(),
+    pageId,
+    name: 'conformance.png',
+    contentType: 'image/png',
+    contentBase64: 'iVBORw0KGgo=',
+  };
+}
+
+export function filesEnv(env: Readonly<Record<string, string>>): Readonly<Record<string, unknown>> {
+  return { ...env, FILES: memoryBucket() };
+}
+
+export function workflowFiles(): FileStore {
+  return memoryFiles();
 }

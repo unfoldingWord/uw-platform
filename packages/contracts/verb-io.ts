@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { jdAreaSchema } from './areas.ts';
 import { costBasisSchema, evidenceLabelSchema } from './closed-sets.ts';
 import { healthReportSchema } from './health.ts';
+import { fileContentTypes, fileSchema, MAX_AGENT_FILE_BASE64_LENGTH } from './page-reads.ts';
 import { pullRequestRefSchema, stageKeySchema } from './harness.ts';
 import { runStepCosts, runStepSchema } from './runs.ts';
 import { fullShaSchema } from './ship-rule.ts';
@@ -66,6 +67,16 @@ export const verbIo = {
       version: z.number().int().min(1),
       status: pageStatusSchema,
     }),
+  },
+  attach_file: {
+    input: z.object({
+      fileId: z.uuid(),
+      pageId: z.uuid(),
+      name: z.string().trim().min(1).max(200),
+      contentType: z.enum(fileContentTypes),
+      contentBase64: z.base64().min(1).max(MAX_AGENT_FILE_BASE64_LENGTH),
+    }),
+    output: z.object({ file: fileSchema }),
   },
   resolve_context: {
     input: z.object({ itemId: z.uuid() }),

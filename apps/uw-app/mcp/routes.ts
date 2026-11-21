@@ -2,14 +2,14 @@ import { Hono, type Context } from 'hono';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import type { AppDeps, AppEnv } from '../deps.ts';
 import { commitOf } from '../env.ts';
-import { MAX_BODY_BYTES } from '../http/body.ts';
 import { spendCapOf } from '../health/spend-cap.ts';
 import { refuse } from '../http/outcomes.ts';
 import { hubWiring, platformKernel } from '../kernel.ts';
 import { hubOf } from '../ports/hub.ts';
 import { notifierOf } from '../ports/notifier.ts';
+import { bucketFiles } from '../pages/file-store.ts';
 import { requestLogger } from '../request-logger.ts';
-import { jsonRpcError, singleMessage } from './body.ts';
+import { jsonRpcError, MCP_MAX_BODY_BYTES, singleMessage } from './body.ts';
 import { withAgentPrincipal } from './mint.ts';
 import { createVerbServer } from './server.ts';
 
@@ -37,10 +37,11 @@ async function serve(c: Context<AppEnv>, deps: McpDeps): Promise<Response> {
     commit: commitOf(c.env),
     cap: spendCapOf(c.env),
     logger,
+    files: c.env.FILES === undefined ? null : bucketFiles(c.env.FILES),
   });
   const transport = new WebStandardStreamableHTTPServerTransport({
     enableJsonResponse: true,
-    maxRequestBodySize: MAX_BODY_BYTES,
+    maxRequestBodySize: MCP_MAX_BODY_BYTES,
   });
   try {
     await server.connect(transport);

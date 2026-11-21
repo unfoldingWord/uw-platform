@@ -34,11 +34,12 @@ function groupOf(name: string): string | undefined {
 }
 
 describe('CT-2 the verb registry', () => {
-  it('registers exactly the thirteen verbs of PRD section 8.2', () => {
+  it('registers the thirteen verbs of PRD section 8.2 and attach_file for the Notion import', () => {
     expect(names()).toEqual([
       'search_pages',
       'read_page',
       'write_page',
+      'attach_file',
       'resolve_context',
       'query_entities',
       'create_task',
@@ -86,7 +87,7 @@ describe('CT-2 the verb manifest is contract data', () => {
   it('is plain JSON-serialisable contract data', () => {
     const manifest = verbManifest();
     expect(JSON.parse(JSON.stringify(manifest))).toEqual(manifest);
-    expect(manifest).toHaveLength(13);
+    expect(manifest).toHaveLength(14);
   });
 
   it('serialises the registry with its Zod schemas stripped', () => {

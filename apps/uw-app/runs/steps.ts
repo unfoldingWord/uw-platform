@@ -77,6 +77,7 @@ export async function openStep(
     commit: deps.commit,
     cap: deps.cap,
     logger: deps.logger,
+    files: deps.files,
     within,
   });
   return opened.status === 'accepted' ? opened.value : haltedBy(opened.reason, opened.detail);

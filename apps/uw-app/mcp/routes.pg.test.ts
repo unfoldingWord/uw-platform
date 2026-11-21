@@ -16,6 +16,7 @@ import {
 import { callTool, httpClient } from '../testing/mcp.ts';
 import { postgresDeps, testServer, withAppDatabase } from '../testing/postgres.ts';
 import { personOn } from '../testing/kernel.ts';
+import { MCP_MAX_BODY_BYTES } from './body.ts';
 import { callVerb } from './dispatch.ts';
 import { verbHandlers } from './verbs/index.ts';
 
@@ -203,7 +204,7 @@ describe.skipIf(!testServer)('AB-1 /mcp is a Streamable HTTP endpoint behind Acc
     }));
 });
 
-describe.skipIf(!testServer)('/mcp takes one JSON-RPC message of at most 256 KiB', () => {
+describe.skipIf(!testServer)('/mcp takes one JSON-RPC message of at most 8 MiB', () => {
   it('refuses a JSON-RPC batch with an invalid-request error before any call runs', () =>
     withAppDatabase(async (db) => {
       await seed(db);
@@ -217,11 +218,12 @@ describe.skipIf(!testServer)('/mcp takes one JSON-RPC message of at most 256 KiB
       });
     }));
 
-  it('refuses a body over 256 KiB as too large', () =>
+  it('refuses a body over 8 MiB as too large', () =>
     withAppDatabase(async (db) => {
       await seed(db);
       const jwt = await fixture.signForMcp({ email: EDITOR.email });
-      const padded = JSON.stringify({ ...listRequest, params: { pad: 'x'.repeat(256 * 1024) } });
+      const pad = 'x'.repeat(MCP_MAX_BODY_BYTES);
+      const padded = JSON.stringify({ ...listRequest, params: { pad } });
       const response = await rawMcp(db, 'POST', jwt, padded);
       expect(response.status).toBe(413);
       expect(await response.json()).toMatchObject({ jsonrpc: '2.0', error: { code: -32000 } });
