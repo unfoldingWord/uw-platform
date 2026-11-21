@@ -1,14 +1,15 @@
 import type { Context } from 'hono';
 import { raw } from 'hono/html';
 import { formatInstant } from '@uw/core/dates';
-import { Card } from '@uw/ui/components/card.tsx';
+import { knowledgeFrontmatterSchema, type PageEntry } from '@uw/contracts';
+import type { Executor } from '@uw/db/client';
+import type { PersonName } from '../../people/directory.ts';
 import { FavouriteToggle } from '@uw/ui/components/chip.tsx';
 import { HumanActionLink } from '@uw/ui/components/human-action.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
 import type { AppEnv } from '../../deps.ts';
-import type { Heading, Rendered } from '../../markdown/render.ts';
+import type { Rendered } from '../../markdown/render.ts';
 import { draftsOf } from '../../pages/drafts.ts';
 import { renderPage } from '../../pages/render-page.ts';
 import type { PageVersion } from '../../pages/history.ts';
@@ -19,33 +20,33 @@ import { verificationOf } from '../../pages/verification.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import {
   backOf,
+  categoryOf,
   pageLink,
-  pageSpec,
+  pageScreenSpec,
   shownPage,
   typeWords,
   type ShownPage,
 } from '../parts/page-shown.ts';
-import { idParam } from '../parts/params.ts';
 import { PageStatusBadge } from '../parts/page-status.tsx';
 import {
-  pageCommentsPath,
-  pageEditPath,
-  pageExportPath,
-  pageManagePath,
-  pagePath,
-  pageVersionPath,
-  wikiNewPath,
-  withBack,
-} from '../parts/paths.ts';
+  CommentButton,
+  Connected,
+  MoreMenu,
+  Pager,
+  ReadHead,
+  commentWords,
+  sheet,
+} from '../parts/page-read.tsx';
+import { neighboursOf } from '../parts/wiki-tree.ts';
+import { pagesInCategory } from '../../pages/categories.ts';
+import { namesOf, shownIdentity } from '../parts/person-names.ts';
+import { idParam } from '../parts/params.ts';
+import { pageCommentsPath, pageEditPath, pageVersionPath, withBack } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 import { withViews } from '../parts/view-embed.tsx';
 import type { Principal } from '@uw/core/principal';
 import { shownPerson, shownText, Who, type Reading } from '../parts/person.tsx';
 import { commitOf } from '../../env.ts';
-
-const MIN_CONTENTS = 2;
-const tocLink =
-  'block rounded-sm py-1 text-sm font-semibold text-text-2 outline-offset-2 outline-accent-text hover:text-accent-text focus-visible:outline-2';
 
 function savedVersion(raw: string | undefined): number | null {
   const version = Number(raw);
@@ -79,111 +80,26 @@ function History(props: {
     { key: 'title', label: 'Title' },
   ];
   return (
-    <Card title="History" sub="Newest first" flush>
+    <details data-history="" class="rounded-md border border-line bg-surface">
+      <summary class="cursor-pointer px-4 py-3 text-sm font-heavy text-text outline-offset-2 outline-accent-text focus-visible:outline-2">
+        {`History, ${String(rows.length)} ${rows.length === 1 ? 'version' : 'versions'}, newest first`}
+      </summary>
       {rows.length === 0 ? (
         <p class="m-0 px-4 py-3 text-sm text-text-3">No saved versions yet.</p>
       ) : (
         <Table caption="Versions of this page" columns={columns} rows={rows} bare />
       )}
-    </Card>
+    </details>
   );
 }
 
-function Contents(props: { readonly headings: readonly Heading[] }) {
-  if (props.headings.length < MIN_CONTENTS) return null;
-  return (
-    <aside class="shrink-0 lg:sticky lg:top-5 lg:w-aside">
-      <Card title="On this page">
-        <nav aria-label="On this page">
-          <ul class="m-0 flex list-none flex-col p-0">
-            {props.headings.map((heading) => (
-              <li class={heading.depth === 3 ? 'pl-4' : ''}>
-                <a href={`#${heading.id}`} class={tocLink}>
-                  {heading.text}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </Card>
-    </aside>
-  );
-}
-
-function PageList(props: {
-  readonly title: string;
-  readonly mark: 'children' | 'backlinks';
-  readonly pages: ShownPage['children'];
-}) {
-  if (props.pages.length === 0) return null;
-  const marked = { [`data-${props.mark}`]: '' };
-  return (
-    <Card title={props.title}>
-      <ul class="m-0 flex list-none flex-col gap-1 p-0" {...marked}>
-        {props.pages.map((child) => (
-          <li>
-            <a href={pagePath(child.id)} class={pageLink}>
-              {child.title}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </Card>
-  );
-}
-
-function Verified(props: { readonly shown: ShownPage; readonly at: Date }) {
+function Lapsed(props: { readonly shown: ShownPage; readonly at: Date }) {
   const { page } = props.shown;
   if (page.type !== 'knowledge') return null;
   const verification = verificationOf(page.frontmatter, props.at);
-  if (verification.state === 'never') return null;
-  if (verification.state === 'lapsed') {
-    return (
-      <Note>{`Verification lapsed on ${verification.until}. This page may be out of date.`}</Note>
-    );
-  }
-  return <p class="m-0 text-sm text-text-3">{`Verified until ${verification.until}.`}</p>;
-}
-
-function Take(props: { readonly pageId: string; readonly open: number }) {
-  const { open } = props;
-  const comments =
-    open === 0 ? 'Comments' : open === 1 ? '1 open comment' : `${String(open)} open comments`;
+  if (verification.state !== 'lapsed') return null;
   return (
-    <p class="m-0 flex flex-wrap items-center gap-4 text-sm">
-      <a href={pageCommentsPath(props.pageId)} class={pageLink}>
-        {comments}
-      </a>
-      <button
-        type="button"
-        data-comment-passage=""
-        data-href={pageCommentsPath(props.pageId)}
-        class={`${pageLink} cursor-pointer`}
-      >
-        Comment on the selected words
-      </button>
-      <a href={pageExportPath(props.pageId)} class={pageLink}>
-        Export as markdown
-      </a>
-      <button type="button" data-print="" class={`${pageLink} cursor-pointer`}>
-        Print or save as PDF
-      </button>
-    </p>
-  );
-}
-
-function Manage(props: { readonly shown: ShownPage }) {
-  const { page, canEdit } = props.shown;
-  if (!canEdit || page.type !== 'knowledge') return null;
-  return (
-    <p class="m-0 flex flex-wrap items-center gap-4 text-sm">
-      <a href={wikiNewPath({ parent: page.id })} class={pageLink}>
-        New page under this one
-      </a>
-      <a href={pageManagePath(page.id)} class={pageLink}>
-        Move, copy or retire
-      </a>
-    </p>
+    <Note>{`Verification lapsed on ${verification.until}. This page may be out of date.`}</Note>
   );
 }
 
@@ -196,6 +112,8 @@ type Extras = {
   readonly reader: Principal;
   readonly openComments: number;
   readonly favourite: boolean;
+  readonly filed: readonly PageEntry[];
+  readonly owner: PersonName | null;
 };
 
 function Notices(props: { readonly shown: ShownPage; readonly extras: Extras }) {
@@ -214,8 +132,7 @@ function Notices(props: { readonly shown: ShownPage; readonly extras: Extras }) 
       {shown.page.status === 'retired' ? (
         <Note>This page is retired. It is hidden from lists and search.</Note>
       ) : null}
-      <Verified shown={shown} at={extras.at} />
-      <Manage shown={shown} />
+      <Lapsed shown={shown} at={extras.at} />
       {extras.drafted ? (
         <Note>There is an unsaved draft of this page. You are reading it as last saved.</Note>
       ) : null}
@@ -223,55 +140,105 @@ function Notices(props: { readonly shown: ShownPage; readonly extras: Extras }) 
   );
 }
 
-function body(shown: ShownPage, extras: Extras) {
-  const { page } = shown;
-  const { back, rendered } = extras;
-  const pencil = shown.canEdit ? (
-    <HumanActionLink
-      href={withBack(pageEditPath(page.id), back)}
-      label="Edit"
-      name="Edit this page"
-      icon="pen"
-    />
-  ) : undefined;
+function Facts(props: { readonly shown: ShownPage; readonly extras: Extras }) {
+  const { page } = props.shown;
+  const { extras } = props;
+  const reading = { reader: extras.reader, at: extras.at };
+  const verification =
+    page.type === 'knowledge' ? verificationOf(page.frontmatter, extras.at) : null;
   return (
     <>
-      <PageHead
-        eyebrow={typeWords[page.type] ?? page.type}
-        title={page.title}
-        lede={`Version ${String(page.version)} in area ${page.jdArea}.`}
-        actions={
-          <>
-            <PageStatusBadge status={page.status} />
-            <FavouriteToggle pageId={page.id} on={extras.favourite} />
-            {pencil}
-          </>
-        }
-      />
-      <div class="flex flex-col gap-5">
-        <Notices shown={shown} extras={extras} />
-        <div class="flex flex-col gap-5 lg:flex-row lg:items-start">
-          <div class="min-w-0 flex-1">
-            <Card>
-              <div data-page-body="">{raw(rendered.html)}</div>
-            </Card>
-          </div>
-          <Contents headings={rendered.headings} />
-        </div>
-        <PageList title="Pages under this one" mark="children" pages={shown.children} />
-        <PageList title="Linked from" mark="backlinks" pages={shown.backlinks} />
-        <Take pageId={page.id} open={extras.openComments} />
-        <History
-          pageId={page.id}
-          versions={shown.versions}
-          reading={{ reader: extras.reader, at: extras.at }}
-        />
-      </div>
+      {extras.owner === null ? null : (
+        <span>
+          <Who reading={reading} who={shownPerson(extras.owner)} />
+        </span>
+      )}
+      {verification?.state === 'verified' ? (
+        <span>{`Verified until ${verification.until}`}</span>
+      ) : null}
+      <span>{`Version ${String(page.version)} in area ${page.jdArea}`}</span>
+      <a href={pageCommentsPath(page.id)} class={pageLink}>
+        {commentWords(extras.openComments)}
+      </a>
     </>
   );
 }
 
-type Stored = Pick<Extras, 'rendered' | 'openComments' | 'favourite'>;
+function Actions(props: { readonly shown: ShownPage; readonly extras: Extras }) {
+  const { page, canEdit } = props.shown;
+  return (
+    <>
+      <PageStatusBadge status={page.status} />
+      <FavouriteToggle pageId={page.id} on={props.extras.favourite} />
+      <CommentButton pageId={page.id} />
+      <MoreMenu pageId={page.id} manage={canEdit && page.type === 'knowledge'} />
+      {canEdit ? (
+        <HumanActionLink
+          href={withBack(pageEditPath(page.id), props.extras.back)}
+          label="Edit"
+          name="Edit this page"
+          icon="pen"
+        />
+      ) : null}
+    </>
+  );
+}
+
+function markOf(shown: ShownPage): { readonly mark: string; readonly mono: boolean } {
+  const filed = knowledgeFrontmatterSchema.safeParse(shown.page.frontmatter);
+  const jdId = shown.page.type === 'knowledge' && filed.success ? filed.data.jd_id : null;
+  if (jdId !== null) return { mark: jdId, mono: true };
+  return { mark: typeWords[shown.page.type] ?? shown.page.type, mono: false };
+}
+
+function body(shown: ShownPage, extras: Extras) {
+  const { page } = shown;
+  const category = categoryOf(page);
+  const { previous, next } = neighboursOf(extras.filed, page.id);
+  return (
+    <div class="mx-auto flex w-full max-w-flow flex-col gap-5">
+      <ReadHead
+        {...markOf(shown)}
+        title={page.title}
+        actions={<Actions shown={shown} extras={extras} />}
+        facts={<Facts shown={shown} extras={extras} />}
+        headings={extras.rendered.headings}
+      />
+      <Notices shown={shown} extras={extras} />
+      <div data-page-sheet="" class={sheet}>
+        <div data-page-body="">{raw(extras.rendered.html)}</div>
+      </div>
+      {category === null ? null : <Pager category={category} previous={previous} next={next} />}
+      <div class="flex flex-col gap-5 md:flex-row">
+        <Connected title="Pages under this one" mark="children" pages={shown.children} />
+        <Connected title="Linked from" mark="backlinks" pages={shown.backlinks} />
+      </div>
+      <History
+        pageId={page.id}
+        versions={shown.versions}
+        reading={{ reader: extras.reader, at: extras.at }}
+      />
+    </div>
+  );
+}
+
+type Stored = Pick<Extras, 'rendered' | 'openComments' | 'favourite' | 'filed' | 'owner'>;
+
+const nothingStored: Stored = {
+  rendered: { html: '', headings: [] },
+  openComments: 0,
+  favourite: false,
+  filed: [],
+  owner: null,
+};
+
+async function ownerOf(db: Executor, page: ShownPage['page']): Promise<PersonName | null> {
+  const filed = knowledgeFrontmatterSchema.safeParse(page.frontmatter);
+  if (page.type !== 'knowledge' || !filed.success || filed.data.owner === null) return null;
+  const names = await namesOf(db, [filed.data.owner]);
+  const shown = shownIdentity(filed.data.owner, names, () => '');
+  return shown.kind === 'person' ? shown.person : null;
+}
 
 async function storedExtras(
   c: Context<AppEnv>,
@@ -279,11 +246,10 @@ async function storedExtras(
   shown: ShownPage,
 ): Promise<Stored> {
   const database = c.get('database');
-  if (database === null) {
-    return { rendered: { html: '', headings: [] }, openComments: 0, favourite: false };
-  }
+  if (database === null) return nothingStored;
   const { actor } = screen.caller;
   const { page } = shown;
+  const category = categoryOf(page);
   await recordView(database.db, actor, page.id, screen.at);
   return {
     rendered: await withViews(
@@ -293,6 +259,11 @@ async function storedExtras(
     ),
     openComments: await openComments(database.db, page.id),
     favourite: await isFavourite(database.db, actor, page.id),
+    filed:
+      category === null
+        ? []
+        : ((await pagesInCategory(database.db, actor, category, screen.at)) ?? []),
+    owner: await ownerOf(database.db, page),
   };
 }
 
@@ -315,5 +286,6 @@ export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
     back: backOf(c.req.query('back')),
     saved: savedVersion(c.req.query('saved')),
   };
-  return renderScreen(c, pageSpec(shown, null), body(shown, extras));
+  const spec = await pageScreenSpec(c, screen, shown, null, extras.filed);
+  return renderScreen(c, spec, body(shown, extras));
 }

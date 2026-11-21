@@ -6,20 +6,22 @@ export function PageHead(props: {
   readonly lede?: string | undefined;
   readonly actions?: Child | undefined;
   readonly flush?: boolean | undefined;
+  readonly document?: boolean | undefined;
 }) {
+  const big = props.document === true;
+  const eyebrow = big
+    ? 'm-0 mb-1 font-mono text-sm font-semibold text-accent-text'
+    : 'm-0 mb-1 text-xs font-heavy tracking-wide text-accent-text uppercase';
+  const heading = big
+    ? 'm-0 text-3xl leading-tight font-heavy tracking-heading text-balance text-text'
+    : 'm-0 text-xl leading-tight font-heavy tracking-tight text-balance text-text';
   return (
     <div
       class={`flex flex-wrap items-end justify-between gap-4 ${props.flush === true ? '' : 'mb-5'}`}
     >
       <div class="min-w-0">
-        {props.eyebrow === undefined ? null : (
-          <p class="m-0 mb-1 text-xs font-heavy tracking-wide text-accent-text uppercase">
-            {props.eyebrow}
-          </p>
-        )}
-        <h1 class="m-0 text-xl leading-tight font-heavy tracking-tight text-balance text-text">
-          {props.title}
-        </h1>
+        {props.eyebrow === undefined ? null : <p class={eyebrow}>{props.eyebrow}</p>}
+        <h1 class={heading}>{props.title}</h1>
         {props.lede === undefined ? null : (
           <p class="m-0 mt-2 max-w-content text-base text-text-3">{props.lede}</p>
         )}

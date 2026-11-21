@@ -399,12 +399,16 @@ Two or more areas shown as one group in navigation, such as `60-79 Field Program
 _Avoid_: area (a cluster is not one), super-area, range
 
 **Read view**:
-What `/pages/:pageId` shows: the page's last saved version, rendered, with no field that can change it. Every page opens here.
+What `/pages/:pageId` shows: the page's last saved version, rendered on one sheet under its title and facts, with no field that can change it. Every page opens here.
 _Avoid_: preview, view mode, published view
 
+**Page tree**:
+The branch of the sidebar under "Pages & Wiki" on wiki and knowledge page screens: the areas a person may read, the categories of the area they are in, and the pages of the category they are in.
+_Avoid_: file tree, outline, navigator, explorer
+
 **Edit mode**:
-What `/pages/:pageId/edit` shows to a person who may write the page, reached by the pencil. Nothing in it reaches the read view until Save.
-_Avoid_: editor (that is the Tiptap component inside it), editing view
+What `/pages/:pageId/edit` shows to a person who may write the page, reached by the pencil: the read view's sheet made editable, full window, with no sidebar, under one bar holding Back to reading, Discard draft and Save. Nothing in it reaches the read view until Save.
+_Avoid_: editor (that is the Tiptap component inside it), editing view, focus mode (in the UI)
 
 **Working draft**:
 The unsaved text of a page in edit mode, shared live by everyone editing it and held by the page's **sync hub**. Save publishes it as one version; Discard throws it away.

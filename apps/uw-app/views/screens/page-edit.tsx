@@ -1,8 +1,8 @@
 import type { Context } from 'hono';
+import type { Child } from 'hono/jsx';
 import type { Page } from '@uw/contracts';
 import { Card } from '@uw/ui/components/card.tsx';
-import { commandButton, primaryButton } from '@uw/ui/components/command-form.tsx';
-import { TextAreaField, TextField } from '@uw/ui/components/field.tsx';
+import { TextAreaField } from '@uw/ui/components/field.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
@@ -13,6 +13,8 @@ import { pageNames } from '../parts/names.ts';
 import { editorCanShow } from '../../markdown/editor-html.ts';
 import { draftsOf } from '../../pages/drafts.ts';
 import { EditorFrame, type DraftRoom } from '../parts/editor-frame.tsx';
+import { EditBar } from '../parts/edit-bar.tsx';
+import { sheet } from '../parts/page-read.tsx';
 import {
   backOf,
   pageLink,
@@ -75,7 +77,71 @@ type FormProps = {
   readonly page: Page;
   readonly options: EditOptions;
   readonly draft: DraftRoom | null;
+  readonly read: string;
+  readonly children?: Child;
 };
+
+const titleInput =
+  'w-full rounded-sm border-0 bg-transparent p-0 text-xl leading-tight md:text-3xl font-heavy tracking-heading text-text outline-offset-4 outline-accent-text focus-visible:outline-2';
+
+function TitleField(props: { readonly page: Page; readonly title: string }) {
+  const id = `title-${props.page.id}`;
+  return (
+    <div>
+      <label for={id} class="sr-only">
+        Title
+      </label>
+      <input
+        id={id}
+        name="title"
+        type="text"
+        value={props.title}
+        maxLength={200}
+        required
+        class={titleInput}
+      />
+    </div>
+  );
+}
+
+function BodyField(props: { readonly page: Page; readonly bodyMd: string }) {
+  return (
+    <div data-editor-text="">
+      <TextAreaField
+        name="bodyMd"
+        label="Text"
+        scope={props.page.id}
+        value={props.bodyMd}
+        rows={BODY_ROWS}
+        maxLength={1_000_000}
+        hint={props.page.type === 'skill' ? instructionsHint : markdownHint}
+      />
+    </div>
+  );
+}
+
+function EditSheet(props: FormProps & { readonly typed: Typed }) {
+  const { page, options, typed } = props;
+  return (
+    <div class={`${sheet} flex flex-col gap-4`}>
+      <TitleField page={page} title={typed.title} />
+      <p class="m-0 text-sm text-text-3">
+        {`Readers see version ${String(page.version)} until you save. Type / for blocks and [[ to link or embed a page.`}
+      </p>
+      {options.asText ? null : (
+        <EditorFrame pageId={page.id} bodyMd={typed.bodyMd} draft={props.draft} />
+      )}
+      <BodyField page={page} bodyMd={typed.bodyMd} />
+      <p
+        data-editor-status=""
+        role="status"
+        aria-live="polite"
+        class="m-0 text-sm text-text-3 empty:hidden"
+      ></p>
+      <UploadControl pageId={page.id} />
+    </div>
+  );
+}
 
 function EditForm(props: FormProps) {
   const { page, options } = props;
@@ -85,43 +151,29 @@ function EditForm(props: FormProps) {
     expectedVersion: page.version,
   };
   return (
-    <Card title="Edit this page" sub="Saving keeps a new version with your name">
-      <form method="post" action={pageEditPath(page.id)} class="flex flex-col gap-4">
-        <input type="hidden" name="expectedVersion" value={String(typed.expectedVersion)} />
-        <input type="hidden" name="requestId" value={crypto.randomUUID()} />
-        {options.back === null ? null : <input type="hidden" name="back" value={options.back} />}
-        <TextField name="title" label="Title" scope={page.id} value={typed.title} maxLength={200} />
-        {options.asText ? null : (
-          <EditorFrame pageId={page.id} bodyMd={typed.bodyMd} draft={props.draft} />
-        )}
-        <div data-editor-text="">
-          <TextAreaField
-            name="bodyMd"
-            label="Text"
-            scope={page.id}
-            value={typed.bodyMd}
-            rows={BODY_ROWS}
-            maxLength={1_000_000}
-            hint={page.type === 'skill' ? instructionsHint : markdownHint}
+    <form
+      method="post"
+      action={pageEditPath(page.id)}
+      data-page-edit=""
+      class="flex min-h-dvh flex-col"
+    >
+      <input type="hidden" name="expectedVersion" value={String(typed.expectedVersion)} />
+      <input type="hidden" name="requestId" value={crypto.randomUUID()} />
+      {options.back === null ? null : <input type="hidden" name="back" value={options.back} />}
+      <EditBar page={page} read={props.read} />
+      <div class="flex flex-1 justify-center px-4 pt-5 pb-7 md:px-5">
+        <div class="flex w-full max-w-flow flex-col gap-4">
+          {props.children}
+          <EditSheet
+            page={page}
+            options={options}
+            draft={props.draft}
+            read={props.read}
+            typed={typed}
           />
         </div>
-        <p
-          data-editor-status=""
-          role="status"
-          aria-live="polite"
-          class="m-0 text-sm text-text-3"
-        ></p>
-        <UploadControl pageId={page.id} />
-        <p class="m-0 flex flex-wrap items-center gap-2">
-          <button type="submit" class={primaryButton}>
-            Save
-          </button>
-          <a href={withBack(pagePath(page.id), options.back)} class={commandButton}>
-            Cancel
-          </a>
-        </p>
-      </form>
-    </Card>
+      </div>
+    </form>
   );
 }
 
@@ -142,14 +194,32 @@ function ReadOnly(props: { readonly page: Page; readonly read: string }) {
 
 type Editing = { readonly options: EditOptions; readonly draft: DraftRoom | null };
 
-function Editable(props: { readonly page: Page; readonly editing: Editing }) {
-  const { options, draft } = props.editing;
+function EditNotes(props: { readonly options: EditOptions }) {
+  const { options } = props;
   return (
     <>
+      {options.refused === null ? null : <Note>{refusalText(options.refused)}</Note>}
       {options.asText && !options.askedForText ? (
         <Note>This page uses formatting the editor cannot keep, so it opens as text.</Note>
       ) : null}
-      <EditForm page={props.page} options={options} draft={draft} />
+      {options.asText ? (
+        <Note>Text you type here is kept only until you leave. Save before going back.</Note>
+      ) : null}
+    </>
+  );
+}
+
+function Editable(props: {
+  readonly page: Page;
+  readonly editing: Editing;
+  readonly read: string;
+}) {
+  const { options, draft } = props.editing;
+  return (
+    <>
+      <EditForm page={props.page} options={options} draft={draft} read={props.read}>
+        <EditNotes options={options} />
+      </EditForm>
       {options.asText ? null : <script type="module" src={editorPath}></script>}
     </>
   );
@@ -170,6 +240,21 @@ function editingOf(
   return { options: { ...options, asText, askedForText: options.asText }, draft };
 }
 
+function readOnlyScreen(c: Context<AppEnv>, shown: ShownPage, options: EditOptions, read: string) {
+  const { page } = shown;
+  return renderScreen(
+    c,
+    pageSpec(shown, pageNames.pageEdit),
+    <>
+      <PageHead eyebrow={typeWords[page.type] ?? page.type} title={page.title} />
+      <div class="flex flex-col gap-5">
+        {options.refused === null ? null : <Note>{refusalText(options.refused)}</Note>}
+        <ReadOnly page={page} read={read} />
+      </div>
+    </>,
+  );
+}
+
 export async function renderPageEdit(
   c: Context<AppEnv>,
   screen: ScreenKernel,
@@ -180,24 +265,11 @@ export async function renderPageEdit(
   if (shown === null) return notFound(c);
   const { page } = shown;
   const read = withBack(pagePath(page.id), options.back);
+  if (!shown.canEdit) return readOnlyScreen(c, shown, options, read);
   return renderScreen(
     c,
-    pageSpec(shown, pageNames.pageEdit),
-    <>
-      <PageHead
-        eyebrow={typeWords[page.type] ?? page.type}
-        title={page.title}
-        lede={`Editing version ${String(page.version)}. Readers see it as it was last saved.`}
-      />
-      <div class="flex flex-col gap-5">
-        {options.refused === null ? null : <Note>{refusalText(options.refused)}</Note>}
-        {shown.canEdit ? (
-          <Editable page={page} editing={editingOf(c, shown, screen, options)} />
-        ) : (
-          <ReadOnly page={page} read={read} />
-        )}
-      </div>
-    </>,
+    { ...pageSpec(shown, pageNames.pageEdit), focus: true },
+    <Editable page={page} editing={editingOf(c, shown, screen, options)} read={read} />,
   );
 }
 

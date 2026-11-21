@@ -52,6 +52,15 @@ export function HumanActionLink(props: {
   );
 }
 
+export function HumanSubmit(props: { readonly label: string; readonly icon: IconProps['name'] }) {
+  return (
+    <button type="submit" class={`${action} cursor-pointer gap-2`}>
+      <Icon name={props.icon} size={1} />
+      {props.label}
+    </button>
+  );
+}
+
 export function HumanGateMark(props: { readonly label: string }) {
   return (
     <span class="inline-flex items-center rounded-sm border border-human-line bg-human-soft px-1 text-xs leading-normal font-heavy text-human-text">

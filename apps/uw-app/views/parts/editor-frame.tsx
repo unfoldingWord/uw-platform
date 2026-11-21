@@ -1,5 +1,4 @@
 import { raw } from 'hono/html';
-import { commandButton } from '@uw/ui/components/command-form.tsx';
 import { IconToggle } from '@uw/ui/components/chip.tsx';
 import type { IconProps } from '@uw/ui/components/icon.tsx';
 import { editorHtml } from '../../markdown/editor-html.ts';
@@ -47,7 +46,7 @@ function Toolbar() {
       data-editor-toolbar=""
       role="toolbar"
       aria-label="Formatting"
-      class="flex flex-wrap items-center gap-1 rounded-md border border-line bg-raised p-1"
+      class="sticky bottom-4 z-10 flex flex-wrap items-center justify-center gap-1 self-center rounded-full border border-line bg-surface p-1 shadow-3"
     >
       {groups.map((group, index) => (
         <span class={`flex items-center gap-1 ${index === 0 ? '' : 'border-l border-line pl-1'}`}>
@@ -57,24 +56,6 @@ function Toolbar() {
         </span>
       ))}
     </div>
-  );
-}
-
-function DraftBar() {
-  return (
-    <>
-      <p
-        data-editor-people=""
-        role="status"
-        aria-live="polite"
-        class="m-0 text-xs font-heavy text-text-2 empty:hidden"
-      ></p>
-      <p class="m-0">
-        <button type="button" data-editor-discard="" hidden class={commandButton}>
-          Discard draft
-        </button>
-      </p>
-    </>
   );
 }
 
@@ -117,19 +98,14 @@ export function EditorFrame(props: FrameProps) {
       data-page={props.pageId}
       {...room}
       hidden
-      class="flex min-w-0 flex-col gap-2"
+      class="flex min-w-0 flex-col gap-4"
     >
-      <Toolbar />
       <div
         data-editor-surface=""
         data-page-body=""
-        class="min-h-aside rounded-md border border-line bg-surface p-4 outline-offset-2 outline-accent-text has-focus-visible:outline-2"
+        class="min-h-aside rounded-md outline-offset-4 outline-accent-text has-focus-visible:outline-2"
       ></div>
-      <p class="m-0 text-xs text-text-3">
-        Type / for blocks and [[ to link or embed a page. Nothing changes for readers until you
-        save.
-      </p>
-      <DraftBar />
+      <Toolbar />
       <template data-editor-content="">{raw(editorHtml(props.bodyMd))}</template>
       <InsertMenu />
     </div>

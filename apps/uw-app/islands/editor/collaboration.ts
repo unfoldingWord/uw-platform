@@ -121,7 +121,8 @@ function wireDraft(root: HTMLElement, editor: Editor, draft: Draft): void {
   editor.on('update', ({ transaction }) => {
     if (!isChangeOrigin(transaction) && meta.get('dirty') !== true) meta.set('dirty', true);
   });
-  const discard = root.querySelector<HTMLButtonElement>('[data-editor-discard]');
+  const scope = root.closest('form') ?? root;
+  const discard = scope.querySelector<HTMLButtonElement>('[data-editor-discard]');
   if (discard === null) return;
   discard.hidden = false;
   discard.addEventListener('click', () => {

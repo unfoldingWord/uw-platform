@@ -21,7 +21,7 @@ import { movePage } from '../../pages/move.ts';
 import { updatePage, type PageRefusal, type PageResult } from '../../pages/store.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { pageNames } from '../parts/names.ts';
-import { pageLink, pageSpec, shownPage, type ShownPage } from '../parts/page-shown.ts';
+import { pageLink, pageScreenSpec, shownPage, type ShownPage } from '../parts/page-shown.ts';
 import { idParam } from '../parts/params.ts';
 import { pageEditPath, pageManagePath, pagePath, wikiAreaPath } from '../parts/paths.ts';
 import { AreaHomeCard, changeAreaHome, homeStateOf } from '../parts/area-home-card.tsx';
@@ -162,7 +162,7 @@ function managedOf(found: Found): Managed | null {
   return { ...found, category: filed.data.jd_category };
 }
 
-function readOnly(c: Context<AppEnv>, found: Found): Promise<Response> {
+async function readOnly(c: Context<AppEnv>, found: Found): Promise<Response> {
   const { page } = found.shown;
   const why =
     page.type === 'knowledge'
@@ -170,7 +170,7 @@ function readOnly(c: Context<AppEnv>, found: Found): Promise<Response> {
       : 'Only knowledge pages are moved, copied or retired here.';
   return renderScreen(
     c,
-    pageSpec(found.shown, pageNames.pageManage),
+    await pageScreenSpec(c, found.screen, found.shown, pageNames.pageManage),
     <>
       <PageHead eyebrow={pageNames.wiki} title={page.title} lede="Nothing to manage here." />
       <Card title="Read only">
@@ -199,7 +199,7 @@ async function render(
         []);
   return renderScreen(
     c,
-    pageSpec(shown, pageNames.pageManage),
+    await pageScreenSpec(c, screen, shown, pageNames.pageManage, siblings),
     <>
       <PageHead
         eyebrow={pageNames.wiki}

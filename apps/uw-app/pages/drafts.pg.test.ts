@@ -99,7 +99,8 @@ async function editScreenOffersTheRoom(db: Database): Promise<void> {
   const editor = await editorOf(made, `/pages/${made.pageId}/edit`);
   expect(editor?.getAttribute('data-draft-version')).toBe('1');
   expect(editor?.getAttribute('data-person')).toBe(made.editor);
-  expect(editor?.querySelector('[data-editor-discard]')?.hasAttribute('hidden')).toBe(true);
+  const form = editor?.closest('form');
+  expect(form?.querySelector('[data-editor-discard]')?.hasAttribute('hidden')).toBe(true);
   const asText = await editorOf(made, `/pages/${made.pageId}/edit?as=text`);
   expect(asText).toBeNull();
 }

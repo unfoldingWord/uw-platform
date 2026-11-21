@@ -19,7 +19,7 @@ import { addComment, commentsOf, resolveComment } from '../../pages/comments.ts'
 import type { PersonName } from '../../people/directory.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { pageNames } from '../parts/names.ts';
-import { pageLink, pageSpec, shownPage, type ShownPage } from '../parts/page-shown.ts';
+import { pageLink, pageScreenSpec, shownPage, type ShownPage } from '../parts/page-shown.ts';
 import { idParam } from '../parts/params.ts';
 import { namesOf, shownIdentity, Who, type Reading, type Someone } from '../parts/person.tsx';
 import { pageCommentsPath, pagePath } from '../parts/paths.ts';
@@ -149,7 +149,7 @@ async function render(c: Context<AppEnv>, found: Found, state: State): Promise<R
   const comments = await shownComments(c, found);
   return renderScreen(
     c,
-    pageSpec(found.shown, pageNames.pageComments),
+    await pageScreenSpec(c, found.screen, found.shown, pageNames.pageComments),
     <>
       <PageHead
         eyebrow={pageNames.wiki}

@@ -78,7 +78,7 @@ async function saveReturnsToTheReadView(db: Database): Promise<void> {
   const document = documentOf(edit.text);
   expect(document.querySelector('textarea[name="bodyMd"]')?.textContent).toBe(BODY);
   expect(document.querySelector(`main a[href="/pages/${made.pageId}"]`)?.textContent).toContain(
-    'Cancel',
+    'Back to reading',
   );
   const saved = await postForm(
     db,

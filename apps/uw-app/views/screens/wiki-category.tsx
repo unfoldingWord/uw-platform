@@ -9,6 +9,7 @@ import type { AppEnv } from '../../deps.ts';
 import { categoryName, pagesInCategory } from '../../pages/categories.ts';
 import { treeOf, type TreeNode } from '../../pages/tree.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
+import { wikiBranch } from '../parts/wiki-tree.ts';
 import { areaLabel, moduleCodes, pageNames } from '../parts/names.ts';
 import { pageLink } from '../parts/page-shown.ts';
 import { pagePath, wikiNewPath, wikiPath } from '../parts/paths.ts';
@@ -59,6 +60,15 @@ function NameForm(props: { readonly category: JdCategory; readonly name: string 
   );
 }
 
+function categorySpec(category: string, title: string) {
+  return {
+    title,
+    current: wikiPath(category),
+    code: moduleCodes.pages,
+    crumbs: [{ label: pageNames.wiki, href: wikiPath() }, { label: title }],
+  };
+}
+
 export async function wikiCategoryScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   const database = c.get('database');
@@ -72,12 +82,8 @@ export async function wikiCategoryScreen(c: Context<AppEnv>): Promise<Response> 
   const name = await categoryName(database.db, category);
   const area = areaOfCategory(category);
   const title = name === null ? category : `${category} ${name}`;
-  const spec = {
-    title,
-    current: wikiPath(),
-    code: moduleCodes.pages,
-    crumbs: [{ label: pageNames.wiki, href: wikiPath() }, { label: title }],
-  };
+  const branch = await wikiBranch(database.db, actor, screen.at, { category, pages: entries });
+  const spec = { ...categorySpec(category, title), branch };
   return renderScreen(
     c,
     spec,
