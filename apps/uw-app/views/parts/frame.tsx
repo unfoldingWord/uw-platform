@@ -30,6 +30,7 @@ export type ScreenSpec = {
   readonly status?: 200 | 404;
   readonly branch?: Branch;
   readonly focus?: boolean;
+  readonly bare?: boolean;
 };
 
 export type Branch = { readonly under: string; readonly items: readonly NavItem[] };
@@ -134,6 +135,7 @@ export async function renderScreen(
       frame={{ ...frame, sections: withBranch(frame.sections, spec.branch) }}
       current={spec.current}
       focus={spec.focus}
+      bare={spec.bare}
       code={spec.code}
       crumbs={spec.crumbs}
       tabs={spec.tabs}

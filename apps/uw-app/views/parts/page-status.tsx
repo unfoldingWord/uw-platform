@@ -6,6 +6,10 @@ const notLiveWords: Readonly<Partial<Record<PageStatus, string>>> = {
   suggested: 'Not live yet',
 };
 
+export function isNotLive(page: { readonly status: PageStatus }): boolean {
+  return notLiveWords[page.status] !== undefined;
+}
+
 export function PageStatusBadge(props: { readonly status: PageStatus }) {
   const words = notLiveWords[props.status];
   if (words === undefined) return null;

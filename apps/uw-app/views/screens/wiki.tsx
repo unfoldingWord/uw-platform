@@ -91,7 +91,7 @@ export async function wikiScreen(c: Context<AppEnv>): Promise<Response> {
     current: wikiPath(),
     code: moduleCodes.pages,
     crumbs: [{ label: pageNames.wiki }],
-    branch: branchOf(groups, {}),
+    branch: branchOf(groups, { lapsed }),
   };
   return renderScreen(
     c,

@@ -13,7 +13,7 @@ export function PageHead(props: {
     ? 'm-0 mb-1 font-mono text-sm font-semibold text-accent-text'
     : 'm-0 mb-1 text-xs font-heavy tracking-wide text-accent-text uppercase';
   const heading = big
-    ? 'm-0 text-3xl leading-tight font-heavy tracking-heading text-balance text-text'
+    ? 'm-0 text-3xl leading-tight font-heavy tracking-heading text-balance text-accent-text'
     : 'm-0 text-xl leading-tight font-heavy tracking-tight text-balance text-text';
   return (
     <div

@@ -12,7 +12,11 @@ function jdIdOf(page: Page): string | null {
   return page.type === 'knowledge' && filed.success ? filed.data.jd_id : null;
 }
 
-export function EditBar(props: { readonly page: Page; readonly read: string }) {
+export function EditBar(props: {
+  readonly page: Page;
+  readonly read: string;
+  readonly drafting: boolean;
+}) {
   const jdId = jdIdOf(props.page);
   return (
     <div
@@ -35,6 +39,13 @@ export function EditBar(props: { readonly page: Page; readonly read: string }) {
       <p class="m-0 flex min-w-0 items-center gap-2 text-sm">
         {jdId === null ? null : <span class="font-mono text-side-code">{jdId}</span>}
         <span class="truncate font-heavy">{props.page.title}</span>
+        <span aria-hidden="true" class="hidden text-side-text-3 md:inline">
+          ·
+        </span>
+        <span class="hidden items-center gap-2 text-side-text-3 md:inline-flex">
+          <span aria-hidden="true" class="size-size-1 rounded-full bg-ok"></span>
+          {props.drafting ? 'Working draft' : 'Editing on your own'}
+        </span>
       </p>
       <div class="flex flex-wrap items-center gap-2">
         <p

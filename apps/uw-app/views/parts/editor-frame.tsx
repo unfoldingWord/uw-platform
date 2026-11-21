@@ -1,6 +1,6 @@
 import { raw } from 'hono/html';
 import { IconToggle } from '@uw/ui/components/chip.tsx';
-import type { IconProps } from '@uw/ui/components/icon.tsx';
+import { Icon, type IconProps } from '@uw/ui/components/icon.tsx';
 import { editorHtml } from '../../markdown/editor-html.ts';
 
 type Tool = {
@@ -40,21 +40,32 @@ const groups: readonly (readonly Tool[])[] = [
 const option =
   'flex cursor-pointer items-baseline gap-3 rounded-sm px-3 py-2 text-sm text-text aria-selected:bg-accent aria-selected:font-heavy aria-selected:text-on-accent';
 
-function Toolbar() {
+const fileButton =
+  'inline-flex size-size-5 cursor-pointer items-center justify-center rounded-full text-side-text outline-offset-2 outline-side-code hover:bg-side-hover has-focus-visible:outline-2';
+
+function Toolbar(props: { readonly uploadFor: string }) {
   return (
     <div
       data-editor-toolbar=""
       role="toolbar"
       aria-label="Formatting"
-      class="sticky bottom-4 z-10 flex flex-wrap items-center justify-center gap-1 self-center rounded-full border border-line bg-surface p-1 shadow-3"
+      class="fixed inset-x-4 bottom-5 z-20 mx-auto flex w-fit flex-wrap items-center justify-center gap-1 rounded-full bg-side p-1 shadow-3"
     >
       {groups.map((group, index) => (
-        <span class={`flex items-center gap-1 ${index === 0 ? '' : 'border-l border-line pl-1'}`}>
+        <span
+          class={`flex items-center gap-1 ${index === 0 ? '' : 'border-l border-side-line pl-1'}`}
+        >
           {group.map((entry) => (
-            <IconToggle format={entry.format} label={entry.label} icon={entry.icon} />
+            <IconToggle format={entry.format} label={entry.label} icon={entry.icon} tone="side" />
           ))}
         </span>
       ))}
+      <span class="flex items-center border-l border-side-line pl-1">
+        <label for={props.uploadFor} title="Add a picture or file" class={fileButton}>
+          <Icon name="paperclip" size={1} />
+          <span class="sr-only">Add a picture or file</span>
+        </label>
+      </span>
     </div>
   );
 }
@@ -77,6 +88,10 @@ function InsertMenu() {
       </template>
     </>
   );
+}
+
+export function uploadIdOf(pageId: string): string {
+  return `upload-${pageId}`;
 }
 
 export type DraftRoom = { readonly version: number; readonly person: string };
@@ -105,7 +120,7 @@ export function EditorFrame(props: FrameProps) {
         data-page-body=""
         class="min-h-aside rounded-md outline-offset-4 outline-accent-text has-focus-visible:outline-2"
       ></div>
-      <Toolbar />
+      <Toolbar uploadFor={uploadIdOf(props.pageId)} />
       <template data-editor-content="">{raw(editorHtml(props.bodyMd))}</template>
       <InsertMenu />
     </div>

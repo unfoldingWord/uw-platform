@@ -1,4 +1,6 @@
 import type { Context } from 'hono';
+import type { Child } from 'hono/jsx';
+import type { Crumb } from '@uw/ui/components/top-bar.tsx';
 import { raw } from 'hono/html';
 import { formatInstant } from '@uw/core/dates';
 import { knowledgeFrontmatterSchema, type PageEntry } from '@uw/contracts';
@@ -27,15 +29,14 @@ import {
   typeWords,
   type ShownPage,
 } from '../parts/page-shown.ts';
-import { PageStatusBadge } from '../parts/page-status.tsx';
+import { PageStatusBadge, isNotLive } from '../parts/page-status.tsx';
 import {
   CommentButton,
   Connected,
   MoreMenu,
   Pager,
-  ReadHead,
+  ReadBand,
   commentWords,
-  sheet,
 } from '../parts/page-read.tsx';
 import { neighboursOf } from '../parts/wiki-tree.ts';
 import { pagesInCategory } from '../../pages/categories.ts';
@@ -140,36 +141,36 @@ function Notices(props: { readonly shown: ShownPage; readonly extras: Extras }) 
   );
 }
 
-function Facts(props: { readonly shown: ShownPage; readonly extras: Extras }) {
-  const { page } = props.shown;
-  const { extras } = props;
+function facts(shown: ShownPage, extras: Extras): readonly Child[] {
+  const { page } = shown;
   const reading = { reader: extras.reader, at: extras.at };
   const verification =
     page.type === 'knowledge' ? verificationOf(page.frontmatter, extras.at) : null;
-  return (
-    <>
-      {extras.owner === null ? null : (
-        <span>
-          <Who reading={reading} who={shownPerson(extras.owner)} />
-        </span>
-      )}
-      {verification?.state === 'verified' ? (
-        <span>{`Verified until ${verification.until}`}</span>
-      ) : null}
-      <span>{`Version ${String(page.version)} in area ${page.jdArea}`}</span>
-      <a href={pageCommentsPath(page.id)} class={pageLink}>
-        {commentWords(extras.openComments)}
-      </a>
-    </>
+  const shownFacts: Child[] = isNotLive(page) ? [<PageStatusBadge status={page.status} />] : [];
+  if (extras.owner !== null) {
+    shownFacts.push(
+      <span>
+        <Who reading={reading} who={shownPerson(extras.owner)} />
+      </span>,
+    );
+  }
+  if (verification?.state === 'verified') {
+    shownFacts.push(<span>{`Verified until ${verification.until}`}</span>);
+  }
+  shownFacts.push(<span>{`Version ${String(page.version)} in area ${page.jdArea}`}</span>);
+  shownFacts.push(
+    <a href={pageCommentsPath(page.id)} class={pageLink}>
+      {commentWords(extras.openComments)}
+    </a>,
   );
+  return shownFacts;
 }
 
 function Actions(props: { readonly shown: ShownPage; readonly extras: Extras }) {
   const { page, canEdit } = props.shown;
   return (
     <>
-      <PageStatusBadge status={page.status} />
-      <FavouriteToggle pageId={page.id} on={props.extras.favourite} />
+      <FavouriteToggle pageId={page.id} on={props.extras.favourite} compact />
       <CommentButton pageId={page.id} />
       <MoreMenu pageId={page.id} manage={canEdit && page.type === 'knowledge'} />
       {canEdit ? (
@@ -191,34 +192,47 @@ function markOf(shown: ShownPage): { readonly mark: string; readonly mono: boole
   return { mark: typeWords[shown.page.type] ?? shown.page.type, mono: false };
 }
 
-function body(shown: ShownPage, extras: Extras) {
+type Lead = { readonly code?: string | undefined; readonly crumbs: readonly Crumb[] };
+
+function Band(props: { readonly shown: ShownPage; readonly extras: Extras; readonly lead: Lead }) {
+  const { shown, extras } = props;
+  return (
+    <ReadBand
+      code={props.lead.code}
+      crumbs={props.lead.crumbs}
+      actions={<Actions shown={shown} extras={extras} />}
+      {...markOf(shown)}
+      title={shown.page.title}
+      facts={facts(shown, extras)}
+      headings={extras.rendered.headings}
+    />
+  );
+}
+
+function body(shown: ShownPage, extras: Extras, lead: Lead) {
   const { page } = shown;
   const category = categoryOf(page);
   const { previous, next } = neighboursOf(extras.filed, page.id);
   return (
-    <div class="mx-auto flex w-full max-w-flow flex-col gap-5">
-      <ReadHead
-        {...markOf(shown)}
-        title={page.title}
-        actions={<Actions shown={shown} extras={extras} />}
-        facts={<Facts shown={shown} extras={extras} />}
-        headings={extras.rendered.headings}
-      />
-      <Notices shown={shown} extras={extras} />
-      <div data-page-sheet="" class={sheet}>
-        <div data-page-body="">{raw(extras.rendered.html)}</div>
+    <>
+      <Band shown={shown} extras={extras} lead={lead} />
+      <div class="mx-auto flex w-full max-w-flow flex-col gap-6 pt-6">
+        <Notices shown={shown} extras={extras} />
+        <div data-page-sheet="">
+          <div data-page-body="">{raw(extras.rendered.html)}</div>
+        </div>
+        {category === null ? null : <Pager category={category} previous={previous} next={next} />}
+        <div class="flex flex-col gap-5 md:flex-row">
+          <Connected title="Pages under this one" mark="children" pages={shown.children} />
+          <Connected title="Linked from" mark="backlinks" pages={shown.backlinks} />
+        </div>
+        <History
+          pageId={page.id}
+          versions={shown.versions}
+          reading={{ reader: extras.reader, at: extras.at }}
+        />
       </div>
-      {category === null ? null : <Pager category={category} previous={previous} next={next} />}
-      <div class="flex flex-col gap-5 md:flex-row">
-        <Connected title="Pages under this one" mark="children" pages={shown.children} />
-        <Connected title="Linked from" mark="backlinks" pages={shown.backlinks} />
-      </div>
-      <History
-        pageId={page.id}
-        versions={shown.versions}
-        reading={{ reader: extras.reader, at: extras.at }}
-      />
-    </div>
+    </>
   );
 }
 
@@ -287,5 +301,6 @@ export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
     saved: savedVersion(c.req.query('saved')),
   };
   const spec = await pageScreenSpec(c, screen, shown, null, extras.filed);
-  return renderScreen(c, spec, body(shown, extras));
+  const lead = { code: spec.code, crumbs: spec.crumbs };
+  return renderScreen(c, { ...spec, bare: true }, body(shown, extras, lead));
 }

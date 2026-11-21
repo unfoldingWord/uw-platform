@@ -399,7 +399,7 @@ Two or more areas shown as one group in navigation, such as `60-79 Field Program
 _Avoid_: area (a cluster is not one), super-area, range
 
 **Read view**:
-What `/pages/:pageId` shows: the page's last saved version, rendered on one sheet under its title and facts, with no field that can change it. Every page opens here.
+What `/pages/:pageId` shows: the page's last saved version, rendered below a tinted band that holds its title, facts and actions, with no field that can change it. Every page opens here.
 _Avoid_: preview, view mode, published view
 
 **Page tree**:

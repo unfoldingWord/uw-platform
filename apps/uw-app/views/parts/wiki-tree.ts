@@ -3,9 +3,10 @@ import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
 import type { NavItem } from '@uw/ui/components/sidebar.tsx';
 import { categoryCounts, pagesInCategory } from '../../pages/categories.ts';
+import { lapsedPages } from '../../pages/verification.ts';
 import type { Branch } from './frame.tsx';
 import { areasWithin, platformAreas } from './names.ts';
-import { pagePath, wikiAreaPath, wikiPath } from './paths.ts';
+import { pagePath, wikiAreaPath, wikiPath, wikiReviewPath } from './paths.ts';
 
 export const PAGES_SHOWN = 25;
 
@@ -19,6 +20,7 @@ export type Here = {
   readonly area?: string;
   readonly category?: JdCategory;
   readonly pages?: readonly PageEntry[];
+  readonly lapsed?: number;
 };
 
 export function groupsOf(categories: readonly PageCategory[]): readonly Group[] {
@@ -59,10 +61,13 @@ function pageRows(category: JdCategory, entries: readonly PageEntry[]): readonly
 
 function categoryRows(group: Group, here: Here): readonly NavItem[] {
   return group.categories.flatMap((category) => {
+    const named =
+      category.name === null
+        ? { label: category.code }
+        : { label: category.name, code: category.code };
     const row: NavItem = {
-      label: category.name ?? `Category ${category.code}`,
+      ...named,
       href: wikiPath(category.code),
-      code: category.code,
       depth: 2,
       open: category.code === here.category,
     };
@@ -90,8 +95,15 @@ function groupRows(group: Group, here: Here): readonly NavItem[] {
   return inside ? [row, ...categoryRows(group, here)] : [row];
 }
 
+function reviewRow(lapsed: number | undefined): readonly NavItem[] {
+  if (lapsed === undefined || lapsed === 0) return [];
+  const count = { kind: 'quiet' as const, text: String(lapsed) };
+  return [{ label: 'Needs review', href: wikiReviewPath(), depth: 1, count }];
+}
+
 export function branchOf(groups: readonly Group[], here: Here): Branch {
-  return { under: wikiPath(), items: groups.flatMap((group) => groupRows(group, here)) };
+  const items = [...groups.flatMap((group) => groupRows(group, here)), ...reviewRow(here.lapsed)];
+  return { under: wikiPath(), items };
 }
 
 export async function wikiBranch(
@@ -106,5 +118,6 @@ export async function wikiBranch(
     (here.category === undefined
       ? undefined
       : ((await pagesInCategory(db, actor, here.category, at)) ?? undefined));
-  return branchOf(groups, pages === undefined ? here : { ...here, pages });
+  const lapsed = (await lapsedPages(db, actor, at)).length;
+  return branchOf(groups, { ...here, lapsed, ...(pages === undefined ? {} : { pages }) });
 }

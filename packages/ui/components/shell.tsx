@@ -48,12 +48,13 @@ function SkipLink() {
   );
 }
 
-function Main(props: { readonly children?: Child }) {
+function Main(props: { readonly children?: Child; readonly sheet?: boolean }) {
+  const ground = props.sheet === true ? 'bg-surface' : '';
   return (
     <main
       id="main"
       tabindex={-1}
-      class="relative min-w-0 flex-1 p-4 md:min-h-0 md:overflow-y-auto md:px-5 md:pt-5 md:pb-7"
+      class={`relative min-w-0 flex-1 p-4 md:min-h-0 md:overflow-y-auto md:px-5 md:pt-5 md:pb-7 ${ground}`}
     >
       {props.children}
     </main>
@@ -85,6 +86,7 @@ function Framed(props: {
   readonly crumbs: readonly Crumb[];
   readonly tabs?: readonly Tab[] | undefined;
   readonly actions?: Child | undefined;
+  readonly bare?: boolean | undefined;
   readonly children?: Child;
 }) {
   const { frame } = props;
@@ -105,8 +107,15 @@ function Framed(props: {
           person={frame.person}
           wordmarkPath={frame.wordmarkPath}
         />
-        <TopBar code={props.code} crumbs={props.crumbs} tabs={props.tabs} actions={props.actions} />
-        <Main>{props.children}</Main>
+        {props.bare === true ? null : (
+          <TopBar
+            code={props.code}
+            crumbs={props.crumbs}
+            tabs={props.tabs}
+            actions={props.actions}
+          />
+        )}
+        <Main sheet={props.bare === true}>{props.children}</Main>
         <StatusBar status={frame.status} />
       </div>
     </div>
@@ -124,6 +133,7 @@ export function Shell(props: {
   readonly stylesheet: string;
   readonly script?: string;
   readonly focus?: boolean | undefined;
+  readonly bare?: boolean | undefined;
   readonly children?: Child;
 }) {
   const { frame } = props;
@@ -144,6 +154,7 @@ export function Shell(props: {
             crumbs={props.crumbs}
             tabs={props.tabs}
             actions={props.actions}
+            bare={props.bare}
           >
             {props.children}
           </Framed>

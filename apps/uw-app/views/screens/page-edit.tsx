@@ -2,7 +2,6 @@ import type { Context } from 'hono';
 import type { Child } from 'hono/jsx';
 import type { Page } from '@uw/contracts';
 import { Card } from '@uw/ui/components/card.tsx';
-import { TextAreaField } from '@uw/ui/components/field.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
@@ -12,9 +11,9 @@ import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '..
 import { pageNames } from '../parts/names.ts';
 import { editorCanShow } from '../../markdown/editor-html.ts';
 import { draftsOf } from '../../pages/drafts.ts';
-import { EditorFrame, type DraftRoom } from '../parts/editor-frame.tsx';
+import { EditorFrame, uploadIdOf, type DraftRoom } from '../parts/editor-frame.tsx';
 import { EditBar } from '../parts/edit-bar.tsx';
-import { sheet } from '../parts/page-read.tsx';
+import { Icon } from '@uw/ui/components/icon.tsx';
 import {
   backOf,
   pageLink,
@@ -28,9 +27,11 @@ import { pageEditPath, pagePath, withBack } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 
 const BODY_ROWS = 24;
+const sheetEdge =
+  'rounded-t-lg border border-b-0 border-line bg-surface px-4 pt-6 pb-8 shadow-2 md:px-8 md:pt-7';
 const instructionsHint =
   'Agents at a stage using this page receive this text as their instructions.';
-const markdownHint = 'Write in markdown. Nothing changes for readers until you save.';
+const markdownHint = 'Write in markdown.';
 
 export type Typed = {
   readonly title: string;
@@ -53,19 +54,18 @@ function refusalText(reason: string): string {
   return `Not saved: ${reasonText(reason)}.`;
 }
 
+const fileLink =
+  'inline-flex cursor-pointer items-center gap-2 rounded-md border border-line px-3 py-1 text-sm font-heavy text-text-2 outline-offset-2 outline-accent-text hover:border-accent hover:text-accent-text has-focus-visible:outline-2 group-data-editor-active/edit:hidden';
+
 function UploadControl(props: { readonly pageId: string }) {
-  const id = `upload-${props.pageId}`;
+  const id = uploadIdOf(props.pageId);
   return (
-    <div data-upload="" data-page={props.pageId} class="flex min-w-0 flex-col gap-1">
-      <label for={id} class="text-xs font-heavy tracking-wide text-text-3 uppercase">
+    <div data-upload="" data-page={props.pageId} class="flex min-w-0 flex-col items-start gap-1">
+      <label for={id} class={fileLink}>
+        <Icon name="paperclip" size={1} />
         Add a picture or file
+        <input id={id} type="file" data-upload-input="" class="sr-only" />
       </label>
-      <input
-        id={id}
-        type="file"
-        data-upload-input=""
-        class="rounded-md text-sm text-text outline-offset-2 outline-accent-text focus-visible:outline-2"
-      />
       <p data-upload-status="" role="status" aria-live="polite" class="m-0 text-xs text-text-3">
         Pictures, PDFs and office files up to 20 MB. It is added where your cursor is.
       </p>
@@ -104,30 +104,37 @@ function TitleField(props: { readonly page: Page; readonly title: string }) {
   );
 }
 
+const bodyInput =
+  'min-h-aside w-full resize-y rounded-md border-0 bg-transparent p-0 font-mono text-sm leading-normal text-text outline-offset-4 outline-accent-text focus-visible:outline-2';
+
 function BodyField(props: { readonly page: Page; readonly bodyMd: string }) {
+  const id = `body-${props.page.id}`;
   return (
     <div data-editor-text="">
-      <TextAreaField
-        name="bodyMd"
-        label="Text"
-        scope={props.page.id}
-        value={props.bodyMd}
-        rows={BODY_ROWS}
-        maxLength={1_000_000}
-        hint={props.page.type === 'skill' ? instructionsHint : markdownHint}
-      />
+      <label for={id} class="sr-only">
+        Text
+      </label>
+      <textarea id={id} name="bodyMd" rows={BODY_ROWS} maxLength={1_000_000} class={bodyInput}>
+        {props.bodyMd}
+      </textarea>
     </div>
   );
+}
+
+function hintOf(page: Page, asText: boolean): string {
+  if (page.type === 'skill') return instructionsHint;
+  const saved = `Readers see version ${String(page.version)} until you save.`;
+  return asText
+    ? `${saved} ${markdownHint}`
+    : `${saved} Type / for blocks and [[ to link or embed a page.`;
 }
 
 function EditSheet(props: FormProps & { readonly typed: Typed }) {
   const { page, options, typed } = props;
   return (
-    <div class={`${sheet} flex flex-col gap-4`}>
+    <div class={`${sheetEdge} flex flex-1 flex-col gap-4`}>
       <TitleField page={page} title={typed.title} />
-      <p class="m-0 text-sm text-text-3">
-        {`Readers see version ${String(page.version)} until you save. Type / for blocks and [[ to link or embed a page.`}
-      </p>
+      <p class="m-0 text-sm text-text-3">{hintOf(page, options.asText)}</p>
       {options.asText ? null : (
         <EditorFrame pageId={page.id} bodyMd={typed.bodyMd} draft={props.draft} />
       )}
@@ -155,13 +162,13 @@ function EditForm(props: FormProps) {
       method="post"
       action={pageEditPath(page.id)}
       data-page-edit=""
-      class="flex min-h-dvh flex-col"
+      class="group/edit flex min-h-dvh flex-col"
     >
       <input type="hidden" name="expectedVersion" value={String(typed.expectedVersion)} />
       <input type="hidden" name="requestId" value={crypto.randomUUID()} />
       {options.back === null ? null : <input type="hidden" name="back" value={options.back} />}
-      <EditBar page={page} read={props.read} />
-      <div class="flex flex-1 justify-center px-4 pt-5 pb-7 md:px-5">
+      <EditBar page={page} read={props.read} drafting={props.draft !== null} />
+      <div class="flex flex-1 justify-center px-4 pt-6 md:px-5">
         <div class="flex w-full max-w-flow flex-col gap-4">
           {props.children}
           <EditSheet

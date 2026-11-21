@@ -3,6 +3,8 @@ import type { PageEntry } from '@uw/contracts';
 import { commandButton } from '@uw/ui/components/command-form.tsx';
 import { Icon } from '@uw/ui/components/icon.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { QuickSwitcherButton } from '@uw/ui/components/quick-switcher.tsx';
+import { Crumbs, type Crumb } from '@uw/ui/components/top-bar.tsx';
 import type { Heading } from '../../markdown/render.ts';
 import { pageLink } from './page-shown.ts';
 import {
@@ -19,41 +21,54 @@ const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 const chip = `inline-flex items-center rounded-full border border-line bg-surface px-3 py-1 text-sm font-heavy text-accent-text hover:bg-hover ${focus}`;
 
+const iconButton = commandButton.replace('px-3 py-1', 'h-size-5 cursor-pointer px-2');
+
 const menuRow = `block w-full cursor-pointer rounded-sm px-3 py-2 text-left text-sm font-semibold text-text hover:bg-hover ${focus}`;
 
 const pagerCard = `flex min-w-0 flex-1 flex-col gap-1 rounded-md border border-line bg-surface px-4 py-3 hover:bg-hover ${focus}`;
-
-export const sheet = 'rounded-lg border border-line bg-surface px-4 py-5 md:px-7 md:py-6';
 
 export function commentWords(open: number): string {
   if (open === 0) return 'Comments';
   return open === 1 ? '1 open comment' : `${String(open)} open comments`;
 }
 
-export function ReadHead(props: {
+export function ReadBand(props: {
+  readonly code?: string | undefined;
+  readonly crumbs: readonly Crumb[];
+  readonly actions: Child;
   readonly mark: string;
   readonly mono: boolean;
   readonly title: string;
-  readonly actions: Child;
-  readonly facts: Child;
+  readonly facts: readonly Child[];
   readonly headings: readonly Heading[];
 }) {
   return (
-    <div class="flex flex-col gap-3">
-      <PageHead
-        eyebrow={props.mark}
-        document={props.mono}
-        title={props.title}
-        actions={props.actions}
-        flush
-      />
-      <p
-        data-page-facts=""
-        class="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-3"
-      >
-        {props.facts}
-      </p>
-      <Contents headings={props.headings} />
+    <div
+      data-band=""
+      class="-mx-4 -mt-4 flex flex-col gap-5 border-b border-band-line bg-band px-4 pt-3 pb-6 md:-mx-5 md:-mt-5 md:px-7"
+    >
+      <div class="flex flex-wrap items-center gap-3">
+        <Crumbs code={props.code} crumbs={props.crumbs} />
+        <div class="ml-auto flex flex-wrap items-center gap-2">
+          <QuickSwitcherButton />
+          {props.actions}
+        </div>
+      </div>
+      <div class="mx-auto flex w-full max-w-flow flex-col gap-3">
+        <PageHead eyebrow={props.mark} document={props.mono} title={props.title} flush />
+        <p
+          data-page-facts=""
+          class="m-0 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-text-3"
+        >
+          {props.facts.map((fact, index) => (
+            <>
+              {index === 0 ? null : <span aria-hidden="true">·</span>}
+              {fact}
+            </>
+          ))}
+        </p>
+        <Contents headings={props.headings} />
+      </div>
     </div>
   );
 }
@@ -82,10 +97,10 @@ export function CommentButton(props: { readonly pageId: string }) {
       data-comment-passage=""
       data-href={pageCommentsPath(props.pageId)}
       aria-label="Comment on the selected words"
-      class={`${commandButton} cursor-pointer gap-2`}
+      title="Comment on the selected words"
+      class={iconButton}
     >
       <Icon name="comment" size={1} />
-      Comment
     </button>
   );
 }
@@ -94,9 +109,9 @@ export function MoreMenu(props: { readonly pageId: string; readonly manage: bool
   const { pageId } = props;
   return (
     <details data-page-more="" class="relative">
-      <summary class={`${commandButton} cursor-pointer list-none gap-2`}>
+      <summary class={`${iconButton} list-none`} title="More">
         <Icon name="ellipsis" size={1} />
-        <span>More</span>
+        <span class="sr-only">More</span>
       </summary>
       <div class="absolute right-0 z-10 mt-2 flex w-aside flex-col gap-1 rounded-md border border-line bg-surface p-1 shadow-3">
         <a href={pageExportPath(pageId)} class={menuRow}>

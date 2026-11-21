@@ -53,13 +53,13 @@ describe('ADR 0026 the page tree shows where a reader is and nothing they may no
     expect(branch.items.every((item) => item.depth === 1 && item.open !== true)).toBe(true);
   });
 
-  it('names a category without a name by its code, and ends a long category with More', () => {
+  it('shows a category without a name as its number, and ends a long category with More', () => {
     const many = Array.from({ length: PAGES_SHOWN + 2 }, (_, index) =>
       entry(`p${String(index)}`, `Page ${String(index)}`),
     );
     const branch = branchOf(groupsOf(categories), { category: '61', pages: many });
     const labels = branch.items.map((item) => item.label);
-    expect(labels).toContain('Category 61');
+    expect(labels).toContain('61');
     expect(labels.at(-1)).toBe('More in 61');
     expect(branch.items.filter((item) => item.depth === 3)).toHaveLength(PAGES_SHOWN + 1);
   });
@@ -80,6 +80,19 @@ describe('ADR 0026 the page tree shows where a reader is and nothing they may no
       ['Pages & Wiki', true],
       ['Area', false],
     ]);
+  });
+});
+
+describe('ADR 0026 the page tree points at pages whose verification lapsed', () => {
+  it('ends with Needs review only when a page has lapsed', () => {
+    expect(branchOf(groupsOf(categories), { lapsed: 2 }).items.at(-1)).toMatchObject({
+      label: 'Needs review',
+      href: '/wiki/review',
+      count: { text: '2' },
+    });
+    expect(
+      branchOf(groupsOf(categories), { lapsed: 0 }).items.map((item) => item.label),
+    ).not.toContain('Needs review');
   });
 });
 
