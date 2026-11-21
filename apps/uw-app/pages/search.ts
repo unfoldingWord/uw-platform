@@ -18,7 +18,7 @@ export type SearchQuery = {
   readonly limit: number;
 };
 
-export type Match = 'words' | 'similar_title';
+type Match = 'words' | 'similar_title';
 
 type SnippetPart = { readonly text: string; readonly hit: boolean };
 export type SearchResult = {
@@ -84,7 +84,7 @@ async function similarTitles(
   return rows.map((row) => summarySchema.parse(row));
 }
 
-export async function findPages(
+async function findPages(
   db: Executor,
   actor: Principal,
   query: SearchQuery,

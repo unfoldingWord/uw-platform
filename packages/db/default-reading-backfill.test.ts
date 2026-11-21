@@ -9,7 +9,7 @@ afterAll(closeEmbeddedTemplate);
 
 type Db = OpenedDatabase['db'];
 
-const migration = new URL('./migrations/0049_categories_and_default_reading.sql', import.meta.url);
+const migration = new URL('./migrations/0056_categories_and_default_reading.sql', import.meta.url);
 const backfill = readFileSync(migration, 'utf8').split('--> statement-breakpoint').at(-1) ?? '';
 
 const staff = '00000000-0000-4000-8000-0000000000d1';
