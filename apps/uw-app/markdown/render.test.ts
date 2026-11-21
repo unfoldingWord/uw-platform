@@ -109,3 +109,31 @@ describe('the table of contents comes from the headings', () => {
     expect(headings.map((heading) => heading.id)).toEqual(['rules', 'rules-1']);
   });
 });
+
+describe('a page file that is a video plays in place', () => {
+  const VIDEO = '00000000-0000-4000-8000-0000000000a1';
+  const IMAGE = '00000000-0000-4000-8000-0000000000a2';
+  const hooks = {
+    linkTitle: () => null,
+    wiki: () => null,
+    embed: () => ({ kind: 'missing' as const }),
+    fileKind: (id: string) =>
+      id === VIDEO ? ('video' as const) : id === IMAGE ? ('image' as const) : null,
+  };
+
+  it('draws a video file as a video with controls, and an image file as an image', () => {
+    const out = renderMarkdown(
+      `![Zoom walkthrough](/api/files/${VIDEO})\n\n![Settings](/api/files/${IMAGE})`,
+      hooks,
+    ).html;
+    expect(out).toContain(`<video src="/api/files/${VIDEO}" controls preload="metadata"`);
+    expect(out).toContain(`<a href="/api/files/${VIDEO}">Zoom walkthrough</a>`);
+    expect(out).toContain(`<img src="/api/files/${IMAGE}" alt="Settings">`);
+  });
+
+  it('keeps an image when the file is unknown, and strips a video written as raw HTML', () => {
+    expect(html(`![Clip](/api/files/${VIDEO})`)).toContain('<img');
+    const raw = html('<video src="https://example.com/x.mp4" autoplay></video>');
+    expect(raw).not.toContain('<video');
+  });
+});

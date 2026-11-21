@@ -3,7 +3,8 @@ import type { Page } from '@uw/contracts';
 import { can } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
-import { pageVersions, pages } from '@uw/db/schema';
+import { pageFiles, pageVersions, pages } from '@uw/db/schema';
+import { fileIds, kindOfContentType, type FileKind } from '../markdown/file-media.ts';
 import type { EmbedSource, RenderHooks } from '../markdown/page-refs.ts';
 import { renderMarkdown, type Rendered } from '../markdown/render.ts';
 import { pageRefs, wikiRefs, type Resolved } from '../markdown/wiki-syntax.ts';
@@ -104,6 +105,24 @@ async function titlesOf(
   );
 }
 
+async function fileKindsOf(
+  db: Executor,
+  bodies: readonly string[],
+): Promise<ReadonlyMap<string, FileKind>> {
+  const ids = [...new Set(bodies.flatMap(fileIds))];
+  if (ids.length === 0) return new Map();
+  const rows = await db
+    .select({ id: pageFiles.id, contentType: pageFiles.contentType })
+    .from(pageFiles)
+    .where(inArray(pageFiles.id, ids));
+  return new Map(
+    rows.flatMap((row) => {
+      const kind = kindOfContentType(row.contentType);
+      return kind === null ? [] : [[row.id, kind] as const];
+    }),
+  );
+}
+
 export function embedSources(
   db: Executor,
   actor: Principal,
@@ -137,9 +156,11 @@ export async function renderPage(
   const titles = await titlesOf(db, reader, linked);
   const targets = bodies.flatMap((body) => wikiRefs(body).map((ref) => ref.target));
   const wiki = await resolverFor(db, actor, { targets, area: page.jdArea }, at);
+  const files = await fileKindsOf(db, bodies);
   const hooks: RenderHooks = {
     wiki,
     embed: (id) => embeds.get(id) ?? { kind: 'missing' },
+    fileKind: (id) => files.get(id) ?? null,
     linkTitle: (id, shown) => {
       const known = titles.get(id);
       if (known === undefined || shown === known.title) return null;
@@ -147,7 +168,14 @@ export async function renderPage(
     },
   };
   const current = new Map([...titles].map(([id, known]) => [id, known.title]));
-  const inputs = { revision, page, embeds, titles: current, wiki: resolvedAll(targets, wiki) };
+  const inputs = {
+    revision,
+    page,
+    embeds,
+    titles: current,
+    wiki: resolvedAll(targets, wiki),
+    files,
+  };
   const key = await renderKey(inputs);
   const cached = await cachedRender(db, page.id, key);
   if (cached !== null) return cached;

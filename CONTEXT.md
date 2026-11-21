@@ -383,7 +383,7 @@ Two digits, such as `61`: the Johnny.Decimal level below an area, and where a kn
 _Avoid_: folder, section, collection, space
 
 **Page file**:
-A picture or other file stored with one page, in the `uw-files` bucket, and read only through `/api/files/:fileId` by someone who may read the page's area. A person adds one by pasting or dropping it in edit mode; an agent adds one with `attach_file`. The page body embeds it by that address.
+A picture, video or other file stored with one page, in the `uw-files` bucket, and read only through `/api/files/:fileId` by someone who may read the page's area. A person adds one by pasting or dropping it in edit mode; an agent adds one with `attach_file`. The page body embeds a picture or a video as `![name](/api/files/:fileId)`; the read view draws a video with player controls.
 _Avoid_: attachment (alone), asset, upload, media
 
 **Cluster**:

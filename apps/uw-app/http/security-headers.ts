@@ -21,6 +21,7 @@ export async function contentSecurityPolicy(host: string): Promise<string> {
     `script-src 'self' ${scripts}`,
     "style-src 'self'",
     "img-src 'self'",
+    "media-src 'self'",
     "font-src 'self'",
     `connect-src ${connect}`,
     "manifest-src 'self'",

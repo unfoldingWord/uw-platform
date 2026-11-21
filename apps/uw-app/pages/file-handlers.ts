@@ -3,14 +3,25 @@ import { z } from 'zod';
 import { fileReplySchema, MAX_FILE_BYTES, pageFilesReplySchema } from '@uw/contracts';
 import type { AppEnv } from '../deps.ts';
 import { refuse } from '../http/outcomes.ts';
+import { rangeOf } from './byte-range.ts';
 import { bucketFiles } from './file-store.ts';
-import { bufferOf, filesOfPage, serveFile, storeFile, uploadRefusal } from './files.ts';
+import {
+  bufferOf,
+  filesOfPage,
+  serveFile,
+  storeFile,
+  uploadRefusal,
+  type Served,
+} from './files.ts';
 
 const inline: ReadonlySet<string> = new Set([
   'image/png',
   'image/jpeg',
   'image/gif',
   'image/webp',
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
   'application/pdf',
 ]);
 
@@ -99,17 +110,37 @@ export async function downloadFile(c: Context<AppEnv>): Promise<Response> {
     : null;
   if (served === null) return refuse(c, 'file_not_found');
   c.set('outcome', 'accepted');
+  return servedResponse(c.req.header('range') ?? null, served);
+}
+
+function servedHeaders(served: Served): Record<string, string> {
   const { file } = served;
   const placed = inline.has(file.contentType) ? 'inline' : 'attachment';
-  const headers = {
+  return {
     'content-type': file.contentType,
     'content-disposition': `${placed}; filename="${fileName(file.name)}"`,
     'x-content-type-options': 'nosniff',
     'content-security-policy': "default-src 'none'; sandbox",
     'cache-control': 'private, max-age=3600',
+    'accept-ranges': 'bytes',
     etag: `"${file.sha256.slice(0, 32)}"`,
   };
-  return new Response(bufferOf(served.bytes), { status: 200, headers });
+}
+
+function servedResponse(range: string | null, served: Served): Response {
+  const headers = servedHeaders(served);
+  const size = served.bytes.byteLength;
+  const span = rangeOf(range, size);
+  if (span === null) return new Response(bufferOf(served.bytes), { status: 200, headers });
+  if (span === 'unsatisfiable') {
+    return new Response(null, {
+      status: 416,
+      headers: { ...headers, 'content-range': `bytes */${size}` },
+    });
+  }
+  const part = served.bytes.subarray(span.start, span.end + 1);
+  const ranged = { ...headers, 'content-range': `bytes ${span.start}-${span.end}/${size}` };
+  return new Response(bufferOf(part), { status: 206, headers: ranged });
 }
 
 export async function listPageFiles(c: Context<AppEnv>): Promise<Response> {
