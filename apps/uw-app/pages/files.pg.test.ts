@@ -168,6 +168,57 @@ async function showsInThePage(db: Database): Promise<void> {
   expect(html).toContain(`<img src="/api/files/${fileId}" alt="The index">`);
 }
 
+const MP4 = Uint8Array.from({ length: 64 }, (_, index) => index);
+
+async function playsAVideo(db: Database): Promise<void> {
+  const made = await world(db);
+  const fileId = randomUUID();
+  const stored = await put(made, made.editor, fileId, {
+    type: 'video/mp4',
+    body: MP4,
+    name: 'tour.mp4',
+  });
+  expect(stored.status).toBe(200);
+  const page = await fileKnowledge(db, made.editor, '01', {
+    title: 'With a video',
+    bodyMd: `![Zoom tour](/api/files/${fileId})`,
+  });
+  const read = await send(made, made.viewer, `/api/pages/${page.pageId}?format=html`);
+  const html = pageReadReplySchema.parse(await read.raw.json()).html ?? '';
+  expect(html).toContain(`<video src="/api/files/${fileId}" controls preload="metadata"`);
+  expect(html).toContain(`<a href="/api/files/${fileId}" download>Download Zoom tour</a>`);
+  expect(html).not.toContain('<img');
+  const whole = await send(made, made.viewer, `/api/files/${fileId}`);
+  expect(whole.raw.headers.get('accept-ranges')).toBe('bytes');
+  expect(whole.raw.headers.get('content-disposition')).toMatch(/^inline/);
+  const part = await send(made, made.viewer, `/api/files/${fileId}`, {
+    headers: { range: 'bytes=10-19' },
+  });
+  expect(part.status).toBe(206);
+  expect(part.raw.headers.get('content-range')).toBe('bytes 10-19/64');
+  expect([...new Uint8Array(await part.raw.arrayBuffer())]).toEqual([...MP4.subarray(10, 20)]);
+  const past = await send(made, made.viewer, `/api/files/${fileId}`, {
+    headers: { range: 'bytes=64-' },
+  });
+  expect(past.status).toBe(416);
+  expect(past.raw.headers.get('content-range')).toBe('bytes */64');
+}
+
+async function redrawsWhenTheVideoArrives(db: Database): Promise<void> {
+  const made = await world(db);
+  const fileId = randomUUID();
+  const page = await fileKnowledge(db, made.editor, '01', {
+    title: 'Video to come',
+    bodyMd: `![Zoom tour](/api/files/${fileId})`,
+  });
+  const path = `/api/pages/${page.pageId}?format=html`;
+  const before = pageReadReplySchema.parse(await (await send(made, made.viewer, path)).raw.json());
+  expect(before.html ?? '').toContain(`<img src="/api/files/${fileId}"`);
+  await put(made, made.editor, fileId, { type: 'video/mp4', body: MP4, name: 'tour.mp4' });
+  const after = pageReadReplySchema.parse(await (await send(made, made.viewer, path)).raw.json());
+  expect(after.html ?? '').toContain(`<video src="/api/files/${fileId}"`);
+}
+
 async function followsThePageWhenItMoves(db: Database): Promise<void> {
   const mover = await person(db, 'file-mover', 'editor', '00-09');
   await seedGrant(db, {
@@ -222,4 +273,10 @@ describe.skipIf(!testServer)('#175 a page can hold pictures and files', () => {
     withAppDatabase(sentTwiceAndNotWired));
 
   it('shows an uploaded picture in the rendered page', () => withAppDatabase(showsInThePage));
+
+  it('plays an uploaded video in the rendered page and serves it in byte ranges', () =>
+    withAppDatabase(playsAVideo));
+
+  it('draws a video once it is stored, even after the page was read and cached without it', () =>
+    withAppDatabase(redrawsWhenTheVideoArrives));
 });

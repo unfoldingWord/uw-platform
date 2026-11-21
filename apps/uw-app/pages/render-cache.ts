@@ -5,6 +5,7 @@ import { pageRenders } from '@uw/db/schema';
 import type { EmbedSource } from '../markdown/page-refs.ts';
 import type { Heading, Rendered } from '../markdown/render.ts';
 import type { Resolved } from '../markdown/wiki-syntax.ts';
+import type { FileKind } from '../markdown/file-video.ts';
 
 const KEPT_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -14,6 +15,7 @@ export type RenderInputs = {
   readonly embeds: ReadonlyMap<string, EmbedSource>;
   readonly titles: ReadonlyMap<string, string>;
   readonly wiki: ReadonlyMap<string, Resolved | null>;
+  readonly files: ReadonlyMap<string, FileKind>;
 };
 
 function sorted<V>(map: ReadonlyMap<string, V>): (readonly [string, V])[] {
@@ -27,6 +29,7 @@ export async function renderKey(inputs: RenderInputs): Promise<string> {
     embeds: sorted(inputs.embeds),
     titles: sorted(inputs.titles),
     wiki: sorted(inputs.wiki),
+    files: sorted(inputs.files),
   });
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(described));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');

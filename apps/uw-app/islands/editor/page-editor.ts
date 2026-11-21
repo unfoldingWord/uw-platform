@@ -2,7 +2,7 @@ import { createNodeFromContent, Editor, getHTMLFromFragment, getSchema } from '@
 import type { Node as PageNode } from '@tiptap/pm/model';
 import { pageIndexReplySchema } from '@uw/contracts';
 import { markdownFromEditor } from './from-editor.ts';
-import { markdownFor } from '../browser/page-upload.ts';
+import { markdownFor, showsInPlace } from '../browser/page-upload.ts';
 import { createMatcher, type Matcher } from '../browser/switcher-match.ts';
 import type { Collaboration } from './collaboration.ts';
 import { pageExtensions } from './extensions.ts';
@@ -75,7 +75,7 @@ async function loadPages(send: typeof fetch): Promise<Matcher> {
 }
 
 function insertFile(editor: Editor, file: Parameters<typeof markdownFor>[0]): void {
-  if (file.contentType.startsWith('image/')) {
+  if (showsInPlace(file.contentType)) {
     editor.chain().focus().setImage({ src: file.url, alt: file.name }).run();
     return;
   }

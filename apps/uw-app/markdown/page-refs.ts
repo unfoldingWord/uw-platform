@@ -3,6 +3,7 @@ import type { Element, ElementContent, Root, RootContent, Text } from 'hast';
 import { toString } from 'hast-util-to-string';
 import { SKIP, visit } from 'unist-util-visit';
 import { pageAddress, wikiParts, type Resolved } from './wiki-syntax.ts';
+import type { FileKind } from './file-video.ts';
 
 export type EmbedSource =
   | { readonly kind: 'page'; readonly title: string; readonly bodyMd: string }
@@ -13,6 +14,7 @@ export type RenderHooks = {
   readonly linkTitle: (id: string, shown: string) => string | null;
   readonly wiki: (target: string) => Resolved | null;
   readonly embed: (id: string) => EmbedSource;
+  readonly fileKind: (id: string) => FileKind | null;
 };
 
 type Nested = (source: string, depth: number) => Root;
