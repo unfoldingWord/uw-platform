@@ -14,10 +14,14 @@ const refusalWords: ReadonlyMap<string, string> = new Map([
   ['not_permitted', 'you cannot change this page'],
 ]);
 
+export function showsInPlace(contentType: string): boolean {
+  return contentType.startsWith('image/') || contentType.startsWith('video/');
+}
+
 export function markdownFor(file: Placed): string {
   const name = file.name.replace(/[\\[\]]/g, (bracket) => `\\${bracket}`);
   const link = `[${name}](${file.url})`;
-  return file.contentType.startsWith('image/') ? `!${link}` : link;
+  return showsInPlace(file.contentType) ? `!${link}` : link;
 }
 
 function placedOf(body: unknown): Placed | null {

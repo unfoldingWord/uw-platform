@@ -54,13 +54,16 @@ const stored = (name: string, contentType: string) =>
   });
 
 describe('#175 a chosen file is uploaded and placed in the text', () => {
-  it('writes a picture as an image and anything else as a link', () => {
+  it('writes a picture or a video in place and anything else as a link', () => {
     expect(markdownFor({ name: 'index.png', contentType: 'image/png', url: '/api/files/1' })).toBe(
       '![index.png](/api/files/1)',
     );
     expect(
       markdownFor({ name: 'plan [v2].pdf', contentType: 'application/pdf', url: '/api/files/2' }),
     ).toBe('[plan \\[v2\\].pdf](/api/files/2)');
+    expect(markdownFor({ name: 'tour.mp4', contentType: 'video/mp4', url: '/api/files/3' })).toBe(
+      '![tour.mp4](/api/files/3)',
+    );
   });
 
   it('sends the file to the page it belongs to and adds it where the cursor was', async () => {

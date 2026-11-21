@@ -66,6 +66,11 @@ describe('the Content-Security-Policy', () => {
     expect(policy).toContain("frame-ancestors 'none'");
   });
 
+  it('lets a page play a video it stores, and nothing from another origin', async () => {
+    const policy = await contentSecurityPolicy('uw.example');
+    expect(directive(policy, 'media-src')).toBe("media-src 'self'");
+  });
+
   it('names no host in connect-src when the host carries a character outside the host set', async () => {
     const policy = await contentSecurityPolicy("uw.example; script-src 'unsafe-inline'");
     expect(directive(policy, 'connect-src')).toBe("connect-src 'self'");
