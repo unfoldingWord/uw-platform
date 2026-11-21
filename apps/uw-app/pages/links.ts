@@ -129,7 +129,7 @@ export async function embedsItself(tx: Executor, pageId: string, bodyMd: string)
   return rows.length > 0;
 }
 
-export const BODY_RELS = ['links', 'embeds', 'unresolved'] as const;
+const BODY_RELS = ['links', 'embeds', 'unresolved'] as const;
 
 export async function rebuildLinks(tx: Executor, pageId: string, bodyMd: string): Promise<void> {
   const refs = pageRefs(bodyMd);

@@ -4,7 +4,7 @@ import { can } from '@uw/core/acl';
 import type { Transaction } from '@uw/db/client';
 import { directoryEntries, directoryPrivate } from '@uw/db/schema';
 
-export const DIRECTORY_AREA = '10-19';
+const DIRECTORY_AREA = '10-19';
 
 export type DirectoryColumn =
   | 'role'

@@ -4,7 +4,7 @@ import { propertyAccess } from '@uw/core/acl';
 import { areaClause, textArray, type Scope } from './scope.ts';
 import { columnExpr, frontmatterExpr, systemExpr, type Expr } from './sources.ts';
 
-export type At = {
+type At = {
   readonly definition: CollectionDefinition;
   readonly alias: string;
   readonly depth: number;
@@ -108,7 +108,7 @@ function rollupExpr(scope: Scope, at: At, property: PropertyDefinition): Expr | 
       sql`(SELECT round(100.0 * count(*) FILTER (WHERE ${expr.scalar} = ANY(${done})) / nullif(count(*), 0)) FROM ${linked.from})`,
     );
   }
-  const value = sql`(SELECT coalesce(jsonb_agg(DISTINCT lbl ORDER BY lbl), '[]'::jsonb) FROM ${linked.from} CROSS JOIN LATERAL unnest(${labels(expr, read)}) AS lbl WHERE lbl IS NOT NULL)`;
+  const value = sql`(SELECT coalesce(jsonb_agg(DISTINCT lbl ORDER BY lbl), '[]'::jsonb) FROM (SELECT ${labels(expr, read)} AS lbls FROM ${linked.from}) AS rolled CROSS JOIN LATERAL unnest(rolled.lbls) AS lbl WHERE lbl IS NOT NULL)`;
   return { kind: 'list', scalar: sql`NULL::text[]`, end: null, value };
 }
 
@@ -146,7 +146,7 @@ function computedExpr(scope: Scope, at: At, property: PropertyDefinition): Expr 
   return exprs === null ? null : combined(fn, exprs, scope.today);
 }
 
-export function expressionAt(scope: Scope, at: At, property: PropertyDefinition): Expr | null {
+function expressionAt(scope: Scope, at: At, property: PropertyDefinition): Expr | null {
   const { source } = property;
   if (property.config.type === 'relation') return relationExpr(scope, at, property);
   if (source.kind === 'column') return columnExpr(at.definition.rowSource, source.column, at.alias);

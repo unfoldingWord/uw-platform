@@ -33,6 +33,8 @@ export function PlatformCommandForm(props: {
   readonly command: string;
   readonly scope: string;
   readonly done?: string;
+  readonly autosubmit?: boolean;
+  readonly inline?: boolean;
   readonly children: Child;
 }) {
   return (
@@ -41,9 +43,10 @@ export function PlatformCommandForm(props: {
       data-command={props.command}
       data-endpoint={props.endpoint}
       data-done={props.done}
+      data-autosubmit={props.autosubmit === true ? '' : undefined}
       method="post"
       action="#"
-      class="flex flex-wrap items-end gap-2"
+      class={`flex flex-wrap gap-2 ${props.inline === true ? 'items-center' : 'items-end'}`}
     >
       {props.children}
       <p data-outcome role="status" aria-live="polite" class="m-0 text-sm text-text-3"></p>

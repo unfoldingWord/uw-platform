@@ -66,7 +66,7 @@ export function createCollection(
     if ((await lockedCollection(tx, definition.key)) !== null) return refusal('collection_exists');
     const valid = await checked(tx, definition);
     if (!valid.ok) return valid.done;
-    await insertCollection(tx, request.newId(), valid.definition, request.actor);
+    await insertCollection(tx, request.newId(), valid.definition, request.actor.identity);
     return { ok: true, collection: definition.key, version: 1 };
   });
 }

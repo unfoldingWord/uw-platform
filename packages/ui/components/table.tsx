@@ -1,11 +1,26 @@
 import type { Child } from 'hono/jsx';
 
-export type Column = { readonly key: string; readonly label: string; readonly numeric?: boolean };
+export type Column = {
+  readonly key: string;
+  readonly label: string;
+  readonly numeric?: boolean;
+  readonly wide?: 'narrow' | 'medium' | 'wide' | undefined;
+};
+
+const wideClasses: ReadonlyMap<string, string> = new Map([
+  ['narrow', 'min-w-col-min'],
+  ['medium', 'min-w-aside'],
+  ['wide', 'min-w-col-max'],
+]);
 
 const numericClasses = 'text-right font-mono';
 
 function cellClasses(column: Column): string {
   return column.numeric === true ? numericClasses : 'text-left';
+}
+
+function headClasses(column: Column): string {
+  return `${cellClasses(column)} ${wideClasses.get(column.wide ?? '') ?? ''}`;
 }
 
 export function Table(props: {
@@ -24,7 +39,7 @@ export function Table(props: {
             {props.columns.map((column) => (
               <th
                 scope="col"
-                class={`border-b border-line px-3 py-2 text-xs font-heavy tracking-wide whitespace-nowrap text-text-3 uppercase ${cellClasses(column)}`}
+                class={`border-b border-line px-3 py-2 text-xs font-heavy tracking-wide whitespace-nowrap text-text-3 uppercase ${headClasses(column)}`}
               >
                 {column.label}
               </th>

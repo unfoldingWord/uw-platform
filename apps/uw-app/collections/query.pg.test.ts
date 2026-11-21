@@ -1,7 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { type FilterCondition, type FilterGroup, type Principal } from '@uw/contracts';
+import {
+  type FilterCondition,
+  type FilterGroup,
+  type Principal,
+  type SetPropertyCommand,
+} from '@uw/contracts';
 import type { Database } from '@uw/db/client';
+
+type JsonValue = SetPropertyCommand['value'];
 import {
   accepted,
   collectionsAt,
@@ -52,7 +59,7 @@ function condition(
   return { kind: 'condition', property, operator, value };
 }
 
-function set(rowId: string, property: string, value: unknown, collection = 'tprogram') {
+function set(rowId: string, property: string, value: JsonValue, collection = 'tprogram') {
   return {
     command: 'set_property',
     requestId: randomUUID(),

@@ -44,6 +44,9 @@ export const OUTCOME_TEXT: Readonly<Record<string, string>> = {
   grant_reveal: 'Granted',
   confirm_reveal: 'Confirmed',
   revoke_reveal: 'Revoked',
+  set_property: 'Saved',
+  move_card: 'Moved',
+  create_row: 'Created',
 };
 
 const outcomes: ReadonlyMap<string, string> = new Map(Object.entries(OUTCOME_TEXT));

@@ -159,7 +159,7 @@ export async function insertCollection(
   tx: Transaction,
   id: string,
   definition: CollectionDefinition,
-  actor: Principal,
+  by: string,
 ): Promise<void> {
   await tx.insert(collections).values({
     id,
@@ -171,12 +171,12 @@ export async function insertCollection(
     description: definition.description,
     locked: definition.locked,
     version: 1,
-    createdBy: actor.identity,
+    createdBy: by,
   });
   await writeProperties(tx, id, definition.properties);
   await tx
     .insert(collectionVersions)
-    .values({ collectionId: id, version: 1, definition, savedBy: actor.identity });
+    .values({ collectionId: id, version: 1, definition, savedBy: by });
 }
 
 export async function saveDefinition(

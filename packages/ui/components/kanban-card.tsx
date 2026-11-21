@@ -63,10 +63,35 @@ function Foot(props: { readonly foot: readonly CardFoot[] }) {
   );
 }
 
+export type ShownFact = { readonly label: string; readonly value: Child };
+
+export function FactList(props: {
+  readonly facts: readonly ShownFact[];
+  readonly roomy?: boolean;
+}) {
+  if (props.facts.length === 0) return null;
+  const size = props.roomy === true ? 'gap-x-4 gap-y-3 text-sm' : 'gap-x-3 gap-y-1 text-xs';
+  return (
+    <dl class={`m-0 grid grid-cols-label ${size}`}>
+      {props.facts.map((fact) => (
+        <>
+          <dt class="text-text-3">{fact.label}</dt>
+          <dd class="m-0 flex min-w-0 flex-col items-start gap-1 break-words text-text">
+            {fact.value}
+          </dd>
+        </>
+      ))}
+    </dl>
+  );
+}
+
 export function KanbanCard(props: {
   readonly title: string;
   readonly href: string;
   readonly meta: readonly CardFact[];
+  readonly facts?: readonly ShownFact[] | undefined;
+  readonly dragRow?: string | undefined;
+  readonly cover?: string | undefined;
   readonly number?: string | undefined;
   readonly risk?: string | undefined;
   readonly badge?: Child | undefined;
@@ -76,8 +101,19 @@ export function KanbanCard(props: {
   readonly actions?: Child | undefined;
 }) {
   const href = safeHref(props.href);
+  const cover = props.cover === undefined ? undefined : safeHref(props.cover);
+  const drag =
+    props.dragRow === undefined
+      ? {}
+      : { 'data-card': '', 'data-row': props.dragRow, draggable: 'true' };
   return (
-    <article class="flex flex-col gap-2 rounded-md border border-line bg-card p-3 text-text hover:border-accent">
+    <article
+      {...drag}
+      class="flex flex-col gap-2 overflow-hidden rounded-md border border-line bg-card p-3 text-text hover:border-accent"
+    >
+      {cover === undefined ? null : (
+        <img src={cover} alt="" class="block h-size-8 w-full rounded-sm object-cover" />
+      )}
       <Top number={props.number} risk={props.risk} badge={props.badge} />
       <h3 class="m-0 text-base leading-snug font-heavy break-words">
         {href === undefined ? (
@@ -90,6 +126,7 @@ export function KanbanCard(props: {
       </h3>
       {props.last === undefined ? null : <p class="m-0 text-xs text-text-3">{props.last}</p>}
       {props.status}
+      <FactList facts={props.facts ?? []} />
       <Foot foot={props.foot ?? []} />
       {props.actions === undefined ? null : (
         <div class="mt-1 flex flex-col gap-2">{props.actions}</div>

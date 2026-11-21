@@ -190,4 +190,5 @@ export type FilterValue = z.infer<typeof filterValueSchema>;
 export type DateOperand = z.infer<typeof dateOperandSchema>;
 export type RowSort = z.infer<typeof rowSortSchema>;
 export type RowGrouping = z.infer<typeof rowGroupingSchema>;
+export type GroupBy = z.infer<typeof groupBySchema>;
 export type RowQuery = z.infer<typeof rowQuerySchema>;

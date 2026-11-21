@@ -14,6 +14,7 @@ describe('FD-8 FD-9 advisory lock keys live in one registry, in one key space', 
     expect(advisoryLocks).toEqual({
       grantCommands: 'acl-grant-commands',
       pageReparenting: 'pages-reparenting',
+      builtInCollections: 'collections-built-in',
     });
   });
 

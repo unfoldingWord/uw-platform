@@ -1,6 +1,6 @@
 import type { CollectionCommandName, ErrorReason } from '@uw/contracts';
 
-export type Accepted = {
+type Accepted = {
   readonly status: 'accepted';
   readonly requestId: string;
   readonly collection: string;

@@ -28,7 +28,7 @@ function shift(today: string, unit: string, amount: number): string {
   return formatDate(next);
 }
 
-export function dateRange(operand: DateOperand, today: string): readonly [string, string] {
+function dateRange(operand: DateOperand, today: string): readonly [string, string] {
   if (operand.kind === 'date') return [operand.date, operand.date];
   if (operand.kind === 'today') return [today, today];
   const sign = operand.direction === 'past' ? -1 : 1;
@@ -114,12 +114,13 @@ function personOf(scope: Scope, value: FilterValue): string | null {
 }
 
 function listCondition(scope: Scope, expr: Expr, operator: string, value: FilterValue): SQL | null {
-  const list = sql`coalesce(${expr.scalar}, '{}'::text[])`;
+  const list = expr.scalar;
   if (operator === 'is_any_of' && Array.isArray(value)) return sql`${list} && ${textArray(value)}`;
   const one = personOf(scope, value);
   if (one === null) return sql`FALSE`;
-  if (operator === 'contains') return sql`${one}::text = ANY(${list})`;
-  if (operator === 'not_contains') return sql`NOT (${one}::text = ANY(${list}))`;
+  const holds = sql`${list} @> ARRAY[${one}::text]`;
+  if (operator === 'contains') return holds;
+  if (operator === 'not_contains') return sql`NOT coalesce(${holds}, false)`;
   return null;
 }
 

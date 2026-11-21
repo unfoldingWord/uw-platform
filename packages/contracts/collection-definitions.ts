@@ -9,6 +9,7 @@ export const recordColumns: Readonly<Record<RowSource, Readonly<Record<string, P
   pages: { title: 'title' },
   tasks: {
     title: 'title',
+    jd_area: 'text',
     status: 'status',
     due: 'date',
     assignees: 'person',
@@ -22,6 +23,7 @@ export const recordColumns: Readonly<Record<RowSource, Readonly<Record<string, P
   },
   people: {
     display_name: 'title',
+    person_id: 'person',
     email: 'email',
     role: 'text',
     team: 'select',

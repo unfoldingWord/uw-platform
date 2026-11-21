@@ -19,7 +19,14 @@ import {
   writeDirectoryColumn,
   type DirectoryColumn,
 } from '../people/directory-entries.ts';
-import { insertTaskRow, lockedTask, writeTaskColumn, type TaskColumn } from '../tasks/columns.ts';
+import { personById } from '../people/directory.ts';
+import {
+  insertTaskRow,
+  isTaskColumn,
+  lockedTask,
+  writeTaskColumn,
+  type TaskColumn,
+} from '../tasks/columns.ts';
 import type { Request } from './definition-commands.ts';
 import { loadCollection, type StoredCollection } from './definitions.ts';
 import { refusal, type CollectionOutcome, type Done } from './outcome.ts';
@@ -228,7 +235,7 @@ async function setOnTask(
   const checked = checkValue(scope, command.property, command.value, null);
   if (!checked.ok) return refusal(checked.reason);
   const column = columnOf(checked.property);
-  if (column === null) return refusal('property_not_writable');
+  if (column === null || !isTaskColumn(column)) return refusal('property_not_writable');
   const value = column === 'page_id' ? (listOf(checked.value)[0] ?? null) : checked.value;
   await writeTaskColumn(tx, task, { column: column as TaskColumn, value }, request);
   return { ok: true, collection: scope.definition.key, version: 1, rowId: task.id };
@@ -240,6 +247,7 @@ async function setOnPerson(
   command: SetPropertyCommand,
   request: Request,
 ): Promise<Done> {
+  if ((await personById(tx, command.rowId)) === null) return refusal('row_not_found');
   const checked = checkValue(scope, command.property, command.value, command.rowId);
   if (!checked.ok) return refusal(checked.reason);
   const column = columnOf(checked.property);

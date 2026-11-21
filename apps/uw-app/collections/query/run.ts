@@ -12,6 +12,7 @@ export type RowsRequest = {
   readonly viewId: string | null;
   readonly manualOrder: boolean;
   readonly groupOrder: readonly string[];
+  readonly only?: string;
 };
 
 export type RowsResult = {
@@ -104,6 +105,11 @@ function manualJoin(scope: Scope, request: RowsRequest): SQL {
   return sql` LEFT JOIN collection_card_order co ON co.view_id = ${request.viewId} AND co.row_id = ${rowId(scope)}`;
 }
 
+function onlyRow(scope: Scope, request: RowsRequest): SQL {
+  if (request.only === undefined) return sql``;
+  return sql` AND ${rowId(scope)}::text = ${request.only}`;
+}
+
 type RawRow = {
   readonly id: string;
   readonly title: string;
@@ -128,7 +134,7 @@ async function selectRows(
     SELECT ${rowId(scope)} AS id, ${columns.title} AS title, ${columns.area} AS jd_area,
       ${columns.version} AS version, ${groupKey} AS group_key, ${valuesObject(scope)} AS vals
     FROM ${base.from}${manualJoin(scope, request)}
-    WHERE ${base.where} AND (${plan.where})
+    WHERE ${base.where} AND (${plan.where})${onlyRow(scope, request)}
     ORDER BY ${orderBy(scope, plan, request)}
     LIMIT ${limit + 1} OFFSET ${offset}`);
   return [...rows] as unknown as RawRow[];
@@ -149,13 +155,30 @@ async function groupCounts(
   return new Map(list.map((row) => [row.group_key, Number(row.n)]));
 }
 
-function withReadThrough(scope: Scope, values: Record<string, unknown>): Record<string, unknown> {
-  const filled = { ...values };
-  for (const property of scope.definition.properties) {
-    if (property.config.type !== 'read_through' || accessOf(scope, property) === 'none') continue;
-    filled[property.key] = readThroughValue(scope.definition, property.config.feed);
+const instantTypes: ReadonlySet<string> = new Set([
+  'created_time',
+  'edited_time',
+  'completed_time',
+]);
+
+function finished(scope: Scope, property: PropertyDefinition, value: unknown): unknown {
+  if (instantTypes.has(property.config.type) && typeof value === 'string') {
+    return new Date(value).toISOString();
   }
-  return filled;
+  if (property.config.type === 'read_through') {
+    return readThroughValue(scope.definition, property.config.feed);
+  }
+  return value;
+}
+
+function withReadThrough(scope: Scope, values: Record<string, unknown>): Record<string, unknown> {
+  const given = new Map(Object.entries(values));
+  const entries = scope.definition.properties.flatMap((property) => {
+    const shown = given.has(property.key) || property.config.type === 'read_through';
+    if (!shown || accessOf(scope, property) === 'none') return [];
+    return [[property.key, finished(scope, property, given.get(property.key) ?? null)] as const];
+  });
+  return Object.fromEntries(entries);
 }
 
 function toRow(scope: Scope, raw: RawRow): CollectionRow {

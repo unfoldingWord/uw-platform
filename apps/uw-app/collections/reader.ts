@@ -1,8 +1,11 @@
 import { inArray } from 'drizzle-orm';
+import { rowQuerySchema } from '@uw/contracts';
 import type {
+  CollectionRow,
   ErrorReason,
   PropertyDefinition,
   RowGroup,
+  RowGrouping,
   RowQuery,
   RowsReply,
   SavedView,
@@ -85,7 +88,7 @@ function labelOf(group: CompiledGroup, value: string, names: ReadonlyMap<string,
   return optionLabel(group.property, value) ?? names.get(value) ?? value;
 }
 
-export function groupOrderFor(group: CompiledGroup | null, view: SavedView | null): string[] {
+function groupOrderFor(group: CompiledGroup | null, view: SavedView | null): string[] {
   if (group === null) return [];
   const chosen = (view?.settings.groups ?? []).map((g) => g.value);
   const declared = declaredGroupOrder(group).filter((value) => !chosen.includes(value));
@@ -159,4 +162,26 @@ export async function readRows(
       next: result.value.next,
     },
   };
+}
+
+export async function readRow(
+  db: Executor,
+  stored: StoredCollection,
+  actor: Principal,
+  at: Date,
+  row: string | { readonly id: string; readonly grouping: RowGrouping | null },
+): Promise<CollectionRow | null> {
+  const rowId = typeof row === 'string' ? row : row.id;
+  const grouping = typeof row === 'string' ? null : row.grouping;
+  if (!mayReadCollection(stored, actor, at)) return null;
+  const scope = await scopeOf(db, stored, actor, at);
+  const query = rowQuerySchema.parse({ limit: 1, group: grouping });
+  const result = await runQuery(db, scope, {
+    query,
+    viewId: null,
+    manualOrder: false,
+    groupOrder: [],
+    only: rowId,
+  });
+  return result.ok ? (result.value.rows[0] ?? null) : null;
 }

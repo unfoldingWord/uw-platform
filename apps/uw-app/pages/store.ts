@@ -104,10 +104,14 @@ export async function readPage(
 
 export type SnapshotSource = { readonly traceId: string; readonly requestId: string | null };
 
-export async function snapshot(
+export function snapshot(tx: Transaction, row: PageRow, actor: Principal, source: SnapshotSource) {
+  return snapshotBy(tx, row, actor.identity, source);
+}
+
+export async function snapshotBy(
   tx: Transaction,
   row: PageRow,
-  actor: Principal,
+  editSource: string,
   source: SnapshotSource,
 ) {
   await tx.insert(pageVersions).values({
@@ -121,7 +125,7 @@ export async function snapshot(
     frontmatter: row.frontmatter,
     bodyMd: row.bodyMd,
     status: row.status,
-    editSource: actor.identity,
+    editSource,
     traceId: source.traceId,
     requestId: source.requestId,
   });

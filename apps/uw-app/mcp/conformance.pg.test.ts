@@ -38,6 +38,7 @@ import { postgresDeps } from '../testing/postgres.ts';
 import type { McpHost, VerbContext } from './context.ts';
 import { serveVerbsForTest } from '../testing/in-process.ts';
 import { verbHandlers } from './verbs/index.ts';
+import * as collections from '../testing/conformance-collections.ts';
 
 const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 const OWNER = {
@@ -98,6 +99,7 @@ async function openRig(): Promise<Rig> {
   await seedPerson(db, OWNER);
   await seedGrant(db, grantRow(ADMIN_GRANT, OWNER.id, 'admin'));
   await seedGrant(db, grantRow(EDITOR_GRANT, OWNER.id, 'editor'));
+  await seedGrant(db, collections.readerGrant(OWNER.id));
   const rowan = await personOn(db, ROWAN_ID, 'rowan.test@unfoldingword.org', clock.now());
   const owner = await personOn(db, OWNER.id, OWNER.email, clock.now());
   const drop = async () => {
@@ -311,6 +313,7 @@ function sceneCalls(host: McpHost, scene: Scene): Call[] {
       verb: 'create_task',
       args: { title: `task from ${host}`, jdArea: '80-89', pageId: null, due: null },
     },
+    ...collections.collectionCalls(host),
   ];
 }
 
@@ -326,6 +329,7 @@ const expectedOutcomes = new Map<string, 'accepted' | ErrorReason>([
   ['write_page', 'accepted'],
   ['query_entities', 'accepted'],
   ['create_task', 'accepted'],
+  ...collections.collectionOutcomes,
 ]);
 
 function outcomeOf(client: Client, name: string, args: Body): Promise<unknown> {
@@ -340,7 +344,7 @@ async function callEach(host: McpHost, client: Client, scene: Scene): Promise<Ca
   expect(calls.map((call) => call.verb).toSorted()).toEqual(servedNames().toSorted());
   const results: CallResult[] = [];
   for (const { verb, args } of calls) {
-    const expected = expectedOutcomes.get(verb) ?? 'internal_error';
+    const expected = collections.expectedOn(expectedOutcomes, host, verb);
     results.push({ verb, outcome: await outcomeOf(client, verb, args), expected });
   }
   return results;

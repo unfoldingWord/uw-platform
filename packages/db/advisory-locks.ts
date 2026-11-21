@@ -3,6 +3,7 @@ import { sql, type SQL } from 'drizzle-orm';
 export const advisoryLocks = {
   grantCommands: 'acl-grant-commands',
   pageReparenting: 'pages-reparenting',
+  builtInCollections: 'collections-built-in',
 } as const;
 
 export const lockKeyPrefixes: readonly string[] = [

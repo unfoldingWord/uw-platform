@@ -32,6 +32,11 @@ export const pageNames = {
   wikiNew: 'New Page',
   wikiReview: 'Needs Review',
   logOut: 'Log Out',
+  collections: 'Collections',
+  collectionSettings: 'Settings',
+  tasks: 'Tasks',
+  directory: 'Directory',
+  cascade: 'Strategic Cascade',
 } as const;
 
 const smallWord = /^[a-z]/;
@@ -54,7 +59,16 @@ export type PlatformModule = {
   readonly icon: IconName;
   readonly built?: BuiltModule;
 };
-export type BuiltModule = 'today' | 'health' | 'agentQueues' | 'access' | 'pages' | 'credentials';
+export type BuiltModule =
+  | 'today'
+  | 'health'
+  | 'agentQueues'
+  | 'access'
+  | 'pages'
+  | 'credentials'
+  | 'collections'
+  | 'tasks'
+  | 'directory';
 export type PlatformArea = {
   readonly code: string;
   readonly name: string;
@@ -68,7 +82,8 @@ export const platformAreas: readonly PlatformArea[] = [
     modules: [
       { label: 'Today', icon: 'house', built: 'today' },
       { label: 'Pages & Wiki', icon: 'file-lines', built: 'pages' },
-      { label: 'Strategic Cascade', icon: 'layer-group' },
+      { label: 'Tasks', icon: 'list-check', built: 'tasks' },
+      { label: 'Strategic Cascade', icon: 'layer-group', built: 'collections' },
       { label: 'Meetings', icon: 'calendar' },
       { label: 'JD Crosswalk', icon: 'table-cells' },
     ],
@@ -76,7 +91,7 @@ export const platformAreas: readonly PlatformArea[] = [
   {
     code: '10-19',
     name: 'Internal Operations & Administration',
-    modules: [{ label: 'Directory & Access', icon: 'users' }],
+    modules: [{ label: 'Directory & Access', icon: 'users', built: 'directory' }],
   },
   {
     code: '20-29',
@@ -134,6 +149,9 @@ export const moduleCodes: Readonly<Record<BuiltModule, string>> = {
   access: '37',
   pages: '01',
   credentials: '36',
+  collections: '02',
+  tasks: '03',
+  directory: '11',
 };
 
 export const noModules = 'No modules enabled for this area';

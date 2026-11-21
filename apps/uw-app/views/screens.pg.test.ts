@@ -12,14 +12,29 @@ import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml, type Html } from '../testing/views.ts';
+import { ensureBuiltIns } from '../collections/builtins/seed.ts';
+import { personWith, rowIn } from '../testing/collections.ts';
 import { screens, type ScreenEntry } from './registry.ts';
 
 const HOUR = 3_600_000;
 const earlier = { now: () => new Date(clock.now().getTime() - 2 * HOUR) };
 
-type Seeded = GateWorld & { readonly runId: string; readonly credentialId: string };
+type Seeded = GateWorld & {
+  readonly runId: string;
+  readonly credentialId: string;
+  readonly programRow: string;
+};
 
 type Rendered = { readonly name: string; readonly email: string; readonly page: Html };
+
+async function programRowIn(db: Database): Promise<string> {
+  await ensureBuiltIns(db, clock.now());
+  const writer = await personWith(db, 'program-writer', [
+    { role: 'editor', area: '80-89' },
+    { role: 'viewer', area: '00-09' },
+  ]);
+  return rowIn(db, writer, { collection: 'program', jdArea: '80-89', title: 'Gateway languages' });
+}
 
 async function seededWorld(db: Database): Promise<Seeded> {
   const world = await gateWorld(db);
@@ -68,7 +83,7 @@ async function seededWorld(db: Database): Promise<Seeded> {
     slug: 'screens-persona',
   });
   const credentialId = await credentialFor(db, world.kimEmail, clock);
-  return { ...world, runId, credentialId };
+  return { ...world, runId, credentialId, programRow: await programRowIn(db) };
 }
 
 const personaPageId = '00000000-0000-4000-8000-00000000be11';
@@ -100,6 +115,9 @@ function pathOf(entry: ScreenEntry, world: Seeded): string {
     .replace(':category', '81')
     .replace(':area', '80-89')
     .replace(':version', '1')
+    .replace(':key', 'program')
+    .replace(':viewId', 'c0110000-0000-4000-8000-000000000401')
+    .replace(':rowId', world.programRow)
 
     .replace(':credentialId', world.credentialId);
 }

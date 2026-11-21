@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { hasColourLiteral } from '../../../tools/ui/colour-literals.ts';
-import { dailyChartSvg, forStrictCsp, sparklineSvg } from './chart.tsx';
+import { categoryChartSvg, dailyChartSvg, forStrictCsp, sparklineSvg } from './chart.tsx';
 
 const days = ['Nov 1', 'Nov 2', 'Nov 3'];
 const daily = { id: 'runs', label: 'Agent runs per day', days, bars: [3, 5, 2], line: [1, 2, 1] };
@@ -40,5 +40,22 @@ describe('the chart component renders ECharts as SVG on the server, for a strict
     expect(forStrictCsp('<svg width="1" height="1"></svg>', 'x', 'a "b" <c>')).toBe(
       '<svg class="block h-auto w-full" role="img" aria-label="a &quot;b&quot; &lt;c>"></svg>',
     );
+  });
+});
+
+describe('#206 the category chart draws a count by group as a bar or a donut', () => {
+  const series = {
+    id: 'phase',
+    label: 'Programs by phase',
+    categories: ['To do', 'Done'],
+    values: [3, 1],
+  };
+
+  it.each(['bar', 'donut'] as const)('draws a %s with token colours only and no style', (kind) => {
+    const svg = categoryChartSvg({ ...series, kind });
+    expect(svg).toContain('role="img" aria-label="Programs by phase"');
+    expect(svg).toContain('fill-accent');
+    expect(hasColourLiteral('chart.svg.html', svg)).toBe(false);
+    expect(svg).not.toMatch(/<style\b|\sstyle="|token-/);
   });
 });

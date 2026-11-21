@@ -505,7 +505,7 @@ A named starting point for a new row in one collection: property values and a bo
 _Avoid_: template (alone, that is a stage graph or a knowledge page tagged template), blueprint
 
 **View embed**:
-`![[view:<view id>]]` in a page's body: a saved view drawn in place for the reader, checked on both the page and the view, so an embed never widens access.
+`![View name](/collections/<key>/views/<view id>)` on a line of its own in a page's body: a saved view drawn in place for the reader, checked on both the page and the view, so an embed never widens access. The cached rendering holds only a placeholder; the rows are read for each reader.
 _Avoid_: inline database, linked view, embed (alone, that is another page's text)
 
 **Task**:

@@ -4,7 +4,7 @@ import type { Principal } from '@uw/core/principal';
 import type { Transaction } from '@uw/db/client';
 import { tasks } from '@uw/db/schema';
 
-export const completeTaskStatuses: readonly TaskStatus[] = ['done', 'dismissed'];
+const completeTaskStatuses: readonly TaskStatus[] = ['done', 'dismissed'];
 
 export type TaskColumn =
   | 'title'
@@ -110,4 +110,8 @@ export async function insertTaskRow(tx: Transaction, task: NewTaskRow, write: Ta
     traceId: write.traceId,
     createdAt: write.at,
   });
+}
+
+export function isTaskColumn(column: string): column is TaskColumn {
+  return fields.has(column);
 }

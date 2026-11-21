@@ -1,6 +1,6 @@
 import { sql, type SQL } from 'drizzle-orm';
 import type { CollectionDefinition, JdArea, PropertyDefinition } from '@uw/contracts';
-import { propertyAccess, readableAreas, type PropertyAccess } from '@uw/core/acl';
+import { can, propertyAccess, readableAreas, type PropertyAccess } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
 import { formatDate } from '@uw/core/dates';
 
@@ -17,6 +17,47 @@ export type Scope = {
 
 export type Target = { readonly id: string; readonly definition: CollectionDefinition };
 
+const PRIVATE_COLUMNS: ReadonlySet<string> = new Set([
+  'phone',
+  'mailing_address',
+  'compliance_status',
+  'compliance_due',
+]);
+const DIRECTORY_STEWARD: JdArea = '10-19';
+
+function privateRowAccess(actor: Principal, at: Date): PropertyAccess {
+  const row = {
+    kind: 'row',
+    table: 'directory_private',
+    area: DIRECTORY_STEWARD,
+    ownerId: null,
+  } as const;
+  if (can(actor, 'read', row, at)) return 'all';
+  return actor.kind === 'person' && actor.personId !== null ? 'own' : 'none';
+}
+
+const breadth: ReadonlyMap<PropertyAccess, number> = new Map([
+  ['none', 0],
+  ['own', 1],
+  ['all', 2],
+]);
+
+function narrower(left: PropertyAccess, right: PropertyAccess): PropertyAccess {
+  return (breadth.get(left) ?? 0) <= (breadth.get(right) ?? 0) ? left : right;
+}
+
+function accessFor(
+  definition: CollectionDefinition,
+  property: PropertyDefinition,
+  actor: Principal,
+  at: Date,
+): PropertyAccess {
+  const declared = propertyAccess(actor, property.rule, definition.jdArea, at);
+  const column = property.source.kind === 'column' ? property.source.column : '';
+  if (definition.rowSource !== 'people' || !PRIVATE_COLUMNS.has(column)) return declared;
+  return narrower(declared, privateRowAccess(actor, at));
+}
+
 export function scopeFor(
   definition: CollectionDefinition,
   collectionId: string,
@@ -28,7 +69,7 @@ export function scopeFor(
   const access = new Map(
     definition.properties.map((property) => [
       property.key,
-      propertyAccess(actor, property.rule, definition.jdArea, at),
+      accessFor(definition, property, actor, at),
     ]),
   );
   return {

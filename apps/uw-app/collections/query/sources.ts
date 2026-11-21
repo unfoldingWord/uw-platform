@@ -1,7 +1,7 @@
 import { sql, type SQL } from 'drizzle-orm';
 import type { CollectionDefinition, PropertyDefinition, RowSource } from '@uw/contracts';
 
-export type Kind = 'text' | 'number' | 'date' | 'range' | 'list' | 'bool' | 'instant' | 'identity';
+type Kind = 'text' | 'number' | 'date' | 'range' | 'list' | 'bool' | 'instant' | 'identity';
 
 export type Expr = {
   readonly kind: Kind;
@@ -14,6 +14,7 @@ type Column = { readonly sql: SQL; readonly kind: Kind };
 
 const taskColumns: Readonly<Record<string, Column>> = {
   title: { sql: sql`t.title`, kind: 'text' },
+  jd_area: { sql: sql`t.jd_area`, kind: 'text' },
   status: { sql: sql`t.status`, kind: 'text' },
   due: { sql: sql`t.due`, kind: 'date' },
   assignees: { sql: sql`t.assignees::text[]`, kind: 'list' },
@@ -31,6 +32,7 @@ const taskColumns: Readonly<Record<string, Column>> = {
 
 const peopleColumns: Readonly<Record<string, Column>> = {
   display_name: { sql: sql`pe.display_name`, kind: 'text' },
+  person_id: { sql: sql`pe.id::text`, kind: 'text' },
   email: { sql: sql`pe.email`, kind: 'text' },
   role: { sql: sql`de.role`, kind: 'text' },
   team: { sql: sql`de.team`, kind: 'text' },
