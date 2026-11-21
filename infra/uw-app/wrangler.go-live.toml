@@ -88,6 +88,10 @@ class_name = "HarnessHub"
 name = "PAGE_DRAFT"
 class_name = "PageDraft"
 
+[[env.staging.r2_buckets]]
+binding = "FILES"
+bucket_name = "uw-files-staging"
+
 [[env.staging.workflows]]
 name = "harness-run-staging"
 binding = "HARNESS_RUN"
@@ -240,6 +244,10 @@ class_name = "HarnessHub"
 name = "PAGE_DRAFT"
 class_name = "PageDraft"
 
+[[env.production.r2_buckets]]
+binding = "FILES"
+bucket_name = "uw-files"
+
 [[env.production.workflows]]
 name = "harness-run-production"
 binding = "HARNESS_RUN"
@@ -363,3 +371,7 @@ class_name = "HarnessHub"
 [[env.preview.durable_objects.bindings]]
 name = "PAGE_DRAFT"
 class_name = "PageDraft"
+
+[[env.preview.r2_buckets]]
+binding = "FILES"
+bucket_name = "uw-files-staging"
