@@ -24,6 +24,7 @@ export const restrictedReads: ReadonlyMap<string, ReadGovernance> = new Map<stri
     ['packages/harness/views/persona.ts', rule('packages/harness/views/persona.ts')],
     ['packages/harness/views/waiting.ts', rule('packages/harness/views/waiting.ts')],
     [credentialRecords, rule(credentialRecords)],
+    ['apps/uw-app/collections/query/run.ts', rule('apps/uw-app/collections/query/scope.ts')],
     ['packages/harness/views/gates.ts', derived],
     ['packages/harness/views/holder.ts', derived],
     ['packages/harness/views/look.ts', derived],

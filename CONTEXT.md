@@ -199,7 +199,7 @@ The time-boxed hold an agent takes on an item at claim, renewed by every run ste
 _Avoid_: lock, assignment (a person is assigned; an agent holds a lease), checkout
 
 **WIP limit**:
-The maximum number of items a stage may hold at once, applied to people and agents alike (plan §13).
+The maximum number of items a stage may hold at once, applied to people and agents alike, and the maximum number of rows one Board group may hold (plan §13).
 _Avoid_: capacity, quota, throttle
 
 ## How work runs
@@ -373,7 +373,7 @@ The Zod-validated message `uw-ingest` puts on the queue for one verified webhook
 _Avoid_: event (that is a row of `harness_events`), message (the message queue's word for the transport), job
 
 **Page type**:
-One entry of the page-type registry in `packages/contracts`: a frontmatter schema, a classification and an offline eligibility. Ten: `skill`, `learning`, `persona`, `product`, `system_goal`, `product_strategy`, `data_sources`, `issue`, `platform`, `knowledge`.
+One entry of the page-type registry in `packages/contracts`: a frontmatter schema, a classification and an offline eligibility. Fifteen: `skill`, `learning`, `persona`, `product`, `system_goal`, `product_strategy`, `data_sources`, `issue`, `platform`, `knowledge`, and the collection row types `entry`, `portfolio`, `program`, `project` and `okr`, whose frontmatter is checked by their collection's definition.
 _Avoid_: template (that is a stage graph), kind, category (that is where a knowledge page is filed)
 
 ## The knowledge base
@@ -449,6 +449,84 @@ _Avoid_: reference, incoming link, linked mention
 **Embed**:
 `![[Page title]]` or `![[Page title#Heading]]`: another page's saved text, or one section of it, shown in place and edited only at its source. Access is checked for the reader.
 _Avoid_: transclusion (in the UI; the design documents use it), synced block, include, snippet
+
+## Collections
+
+**Collection**:
+A stored definition that lists pages or typed records as rows and lets them be queried and shown in saved views: a row of `collections` with its properties. A **page collection** lists pages (each page names its collection in `pages.collection_id`); a **record collection** lists the rows of a typed table (`tasks`, `people`). Built-in collections (tasks, directory, portfolio, program, project, OKR) are seeded through the same path an area admin uses (ADR 0023).
+_Avoid_: database (Notion's word, and Postgres is the database), table (that is a layout, or a Postgres table), list (that is a layout), category (that is where a knowledge page is filed)
+
+**Row**:
+One page or record a collection lists.
+_Avoid_: record (alone, that is the typed table row behind it), entry (that is the page type of an admin-made collection's pages), item (that is a harness's unit of work)
+
+**Property**:
+One typed field of a collection: a key, a name, a type from the **property catalogue** (title, text, number, select, multi-select, status, person, date, date range, URL, email, phone, checkbox, files, relation, rollup, computed, read-through), a **property source** (a frontmatter key, a column of the record table, a relation, a computed value, a read-through feed, or a system field) and a classification.
+_Avoid_: field (in prose; the column of a record table is a column), attribute, column (that is a table layout's rendering of a property)
+
+**Definition**:
+A collection's properties and settings, versioned: each change advances the collection's version and keeps the whole definition in `collection_versions`. Only a person with `admin` on the collection's area changes it, and not while it is **locked**.
+_Avoid_: schema (that is Drizzle's), configuration
+
+**Status group**:
+One of the three groups a status property's options fall into: to-do, in progress and complete. Filters and boards can use the group as well as the option; the time a row entered its complete group is a system property.
+_Avoid_: group (alone, that is a saved view's grouping), phase, stage (that is a harness's)
+
+**Rollup**:
+A property that reads another property across a relation: count, sum, show unique or percent complete.
+_Avoid_: lookup, aggregate, formula
+
+**Computed property**:
+A property worked out from others of the same row from a closed set: sum, difference, count, date until. There is no formula language.
+_Avoid_: formula, calculated field
+
+**Read-through property**:
+A property whose value is read from another module and never stored or written by a collection: the money on a program or project (from the budget module's views) and a program's Sage Intacct program ID. Until the budget module serves a feed it reads `not_wired`.
+_Avoid_: money property, linked field, synced property
+
+**Property rule**:
+A property's classification narrower than its row, with who reads it: a steward area and the least role on it, and whether the row's own person does. A reader without it gets no value, a refused filter, sort and group, and nothing from a rollup over it (ADR 0024).
+_Avoid_: field permission, column security, read rule (that is a whole table's)
+
+**Saved view**:
+A named way of showing a collection: a layout, the properties shown with their widths, a filter, sorts and a group, stored as normalized rows. A **shared view** belongs to the collection; a **personal view** to one person.
+_Avoid_: view (alone, ambiguous with the read view and the gate view), report, filter (that is one part of it), board (that is one layout)
+
+**Layout**:
+How a saved view draws its rows: **Table**, **Board**, **List**, **Gallery**, **Calendar** or **Chart**. "Board" names only this layout; the harness screen is the Queue.
+_Avoid_: view type, display, kanban (the prototype's word)
+
+**Filter**:
+A tree of conditions and nested and/or groups on a saved view, compiled to SQL on the server. A condition may name a **relative value**: `me`, `today`, or a past or next count of days, weeks, months or years.
+_Avoid_: query (that is the text a person typed into search), where clause, rule
+
+**Group**:
+A saved view's grouping of rows by one property, and one value of it: a Board column, a Gallery section. Each group has an order, may be hidden, and on a Board may carry a WIP limit.
+_Avoid_: column (a table's), lane, swimlane, bucket, status group (that is a status option's group)
+
+**Card order**:
+A saved view's manual order of its rows, one fractional text key per row and view, so two Boards grouped differently never fight over one order.
+_Avoid_: rank, position (alone), sort (that is by a property)
+
+**Row page**:
+What a row opens to: its properties in sections, empty ones hidden where the definition says so, a relations panel, then the page body and comments.
+_Avoid_: record page, detail view, profile (that is a person's directory row page)
+
+**Row template**:
+A named starting point for a new row in one collection: property values and a body. A saved view names its default.
+_Avoid_: template (alone, that is a stage graph or a knowledge page tagged template), blueprint
+
+**View embed**:
+`![View name](/collections/<key>/views/<view id>)` on a line of its own in a page's body: a saved view drawn in place for the reader, checked on both the page and the view, so an embed never widens access. The cached rendering holds only a placeholder; the rows are read for each reader.
+_Avoid_: inline database, linked view, embed (alone, that is another page's text)
+
+**Task**:
+A row of `tasks`: a unit of a person's work in a JD area, with a status, assignees, priority, tags, a due date, an optional parent page and a source. Listed by the tasks collection.
+_Avoid_: item (that is a harness's), to-do, ticket, card
+
+**Directory entry**:
+The directory fields of one person (role, team, employment, joined date, contact details, compliance), a row of `directory_entries` owned by the people module. The directory collection lists people with these fields; a person's row page is their profile (ADR 0025).
+_Avoid_: profile record, contact, employee record
 
 ## What GitHub says
 
@@ -535,11 +613,11 @@ The landing page that lists, one card per harness, every harness in an area the 
 _Avoid_: dashboard, harness list
 
 **Queue**:
-The screen of one harness with one column per stage, grouped by bracket, and one card per item, where people and agents claim the same items. It was called the Board until #105; the kernel read behind it (`boardView`) and its live screen value (`board`) keep the old name. Capitalised, it is always this screen; the transport that carries ingest envelopes is the message queue.
+The screen of one harness with one column per stage, grouped by bracket, and one card per item, where people and agents claim the same items. It was called the Board until #105; the kernel read behind it (`boardView`) and its live screen value (`board`) keep the old name. Since #206, "Board" is a saved view's layout and never this screen. Capitalised, Queue is always this screen; the transport that carries ingest envelopes is the message queue.
 _Avoid_: board (its old name, outside the code that keeps it), kanban (the prototype's word), work queue
 
 **Card**:
-The Queue's rendering of an item.
+The Queue's rendering of an item, and a row's rendering on a Board or Gallery layout.
 _Avoid_: ticket, tile
 
 **Agent plane**:

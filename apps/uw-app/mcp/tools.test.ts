@@ -44,7 +44,7 @@ describe('AB-1 the tool list is the served registry and nothing else', () => {
 
   it('lists exactly the served verbs, in registry order', () => {
     const served = verbRegistry.filter((verb) => verb.servedInV1).map((verb) => verb.name);
-    expect(served).toHaveLength(12);
+    expect(served).toHaveLength(16);
     expect(tools.map((tool) => tool.name)).toEqual(served);
   });
 

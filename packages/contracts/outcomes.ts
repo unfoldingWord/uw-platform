@@ -110,6 +110,23 @@ export const errorReasonSchema = z.enum([
   'already_bound',
   'not_bound',
   'second_admin_required',
+  'collection_not_found',
+  'collection_exists',
+  'collection_locked',
+  'definition_has_problems',
+  'property_not_found',
+  'property_exists',
+  'property_not_writable',
+  'property_not_readable',
+  'property_not_queryable',
+  'invalid_value',
+  'rows_do_not_fit',
+  'type_change_not_allowed',
+  'row_not_found',
+  'view_not_found',
+  'template_not_found',
+  'filter_not_valid',
+  'collection_row',
 ]);
 
 export const refusalSchema = z.object({

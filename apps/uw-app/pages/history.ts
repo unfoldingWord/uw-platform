@@ -2,8 +2,9 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 import { pageSchema, personStatusSchema, type Page } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
-import { pageVersions, people } from '@uw/db/schema';
+import { pages, pageVersions, people } from '@uw/db/schema';
 import type { PersonName } from '../people/directory.ts';
+import { withoutWithheld } from './property-rules.ts';
 import { readPage } from './store.ts';
 
 const HISTORY_LIMIT = 50;
@@ -58,6 +59,11 @@ export async function pageHistory(
   }));
 }
 
+async function collectionOf(db: Executor, pageId: string): Promise<string | null> {
+  const [row] = await db.select({ id: pages.collectionId }).from(pages).where(eq(pages.id, pageId));
+  return row?.id ?? null;
+}
+
 export type PageSnapshot = {
   readonly page: Page;
   readonly savedAt: Date;
@@ -91,8 +97,9 @@ export async function pageVersion(
     version: snapshot.version,
     status: snapshot.status,
   });
+  const collectionId = await collectionOf(db, key.pageId);
   return {
-    page,
+    page: await withoutWithheld(db, actor, page, collectionId, at),
     savedAt: snapshot.savedAt,
     savedBy: row.saver?.name ?? snapshot.editSource,
     saver: saverOf(snapshot.editSource, row.saver),

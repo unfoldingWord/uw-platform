@@ -1,10 +1,10 @@
-import { BarChart, LineChart } from 'echarts/charts';
+import { BarChart, LineChart, PieChart } from 'echarts/charts';
 import { GridComponent } from 'echarts/components';
 import { init, use, type EChartsCoreOption } from 'echarts/core';
 import { SVGRenderer } from 'echarts/renderers';
 import { raw } from 'hono/html';
 
-use([BarChart, LineChart, GridComponent, SVGRenderer]);
+use([BarChart, LineChart, PieChart, GridComponent, SVGRenderer]);
 
 const tokenClasses: Readonly<Record<string, { readonly fill: string; readonly stroke: string }>> = {
   'token-accent': { fill: 'fill-accent', stroke: 'stroke-accent' },
@@ -160,4 +160,77 @@ export function DailyChart(props: DailySeries) {
 
 export function Sparkline(props: Spark) {
   return <div class="overflow-x-auto">{raw(sparklineSvg(props))}</div>;
+}
+
+export type CategorySeries = {
+  readonly id: string;
+  readonly label: string;
+  readonly kind: 'bar' | 'donut';
+  readonly categories: readonly string[];
+  readonly values: readonly number[];
+};
+
+const sliceColours = [
+  tokenColour('accent'),
+  tokenColour('text-2'),
+  tokenColour('text-3'),
+  tokenColour('line'),
+];
+
+function donutOption(series: CategorySeries): EChartsCoreOption {
+  return {
+    animation: false,
+    series: [
+      {
+        type: 'pie',
+        radius: ['45%', '75%'],
+        label: { show: false },
+        data: series.categories.map((name, index) => ({
+          name,
+          value: series.values.at(index) ?? 0,
+          itemStyle: {
+            color: sliceColours.at(index % sliceColours.length) ?? tokenColour('accent'),
+          },
+        })),
+      },
+    ],
+  };
+}
+
+function barOption(series: CategorySeries): EChartsCoreOption {
+  return {
+    animation: false,
+    grid: { left: 40, right: 16, top: 12, bottom: 28 },
+    xAxis: {
+      type: 'category',
+      data: [...series.categories],
+      axisLine: { lineStyle: { color: tokenColour('line') } },
+      axisLabel: { ...axisLabel, hideOverlap: true },
+      axisTick: { show: false },
+    },
+    yAxis: {
+      type: 'value',
+      minInterval: 1,
+      splitLine: { lineStyle: { color: tokenColour('line') } },
+      axisLabel,
+    },
+    series: [
+      {
+        type: 'bar',
+        data: [...series.values],
+        itemStyle: { color: tokenColour('accent'), borderRadius: [2, 2, 0, 0] },
+        barMaxWidth: 32,
+      },
+    ],
+  };
+}
+
+export function categoryChartSvg(series: CategorySeries): string {
+  const option = series.kind === 'donut' ? donutOption(series) : barOption(series);
+  const [width, height] = series.kind === 'donut' ? [320, 240] : [720, 240];
+  return forStrictCsp(renderSvg(option, width, height), series.id, series.label);
+}
+
+export function CategoryChart(props: CategorySeries) {
+  return <div class="overflow-x-auto">{raw(categoryChartSvg(props))}</div>;
 }

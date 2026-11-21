@@ -12,6 +12,7 @@ import { visitParents } from 'unist-util-visit-parents';
 import { calloutKinds, dialect, outsideLinks } from './dialect.ts';
 import { fileVideos } from './file-video.ts';
 import { pageEmbeds, pageLinks, type RenderHooks } from './page-refs.ts';
+import { viewEmbeds } from './view-embeds.ts';
 
 export type Heading = { readonly depth: 2 | 3; readonly id: string; readonly text: string };
 export type Rendered = { readonly html: string; readonly headings: readonly Heading[] };
@@ -83,6 +84,7 @@ function sanitised(source: string, hooks: RenderHooks, depth: number): Root {
     .use(rehypeSanitize, schema)
     .use(outsideLinks)
     .use(pageLinks(hooks))
+    .use(viewEmbeds())
     .use(fileVideos(hooks.fileKind))
     .use(pageEmbeds({ hooks, nested: (inner, level) => sanitised(inner, hooks, level), depth }));
   return pipeline.runSync(pipeline.parse(source));

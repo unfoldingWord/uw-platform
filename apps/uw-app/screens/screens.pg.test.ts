@@ -19,6 +19,8 @@ import { credentialsScene } from '../testing/credentials-scene.ts';
 import { gateWorld } from '../testing/gate-world.ts';
 import { kernelOn } from '../testing/kernel.ts';
 import { seedSampleKnowledge } from '../testing/knowledge.ts';
+import { ensureBuiltIns } from '../collections/builtins/seed.ts';
+import { personWith, rowIn } from '../testing/collections.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { getHtml } from '../testing/views.ts';
 import {
@@ -239,6 +241,79 @@ async function credentialScreens(db: Database): Promise<Screen[]> {
   return screens;
 }
 
+const viewPath = (key: string, n: number, query = '') =>
+  `/collections/${key}/views/c0110000-0000-4000-8000-${String(n).padStart(12, '0')}${query}`;
+
+async function collectionWorld(db: Database) {
+  await ensureBuiltIns(db, seedClock.now());
+  const ana = await personWith(db, 'ana.collections', [
+    { role: 'admin', area: '00-09' },
+    { role: 'editor', area: '60-69' },
+  ]);
+  const area = { jdArea: '60-69' };
+  const portfolio = await rowIn(db, ana, {
+    ...area,
+    collection: 'portfolio',
+    title: 'Bible translation',
+  });
+  const program = await rowIn(db, ana, {
+    ...area,
+    collection: 'program',
+    title: 'Gateway languages',
+    values: { portfolio, phase: 'active', health: 'on_track', lead: ana.personId },
+  });
+  await rowIn(db, ana, {
+    ...area,
+    collection: 'program',
+    title: 'Oral Bible stories',
+    values: { phase: 'idea', health: 'at_risk' },
+  });
+  await rowIn(db, ana, {
+    ...area,
+    collection: 'project',
+    title: 'Nairobi workshop',
+    values: {
+      program,
+      phase: 'underway',
+      training_event_id: 'EV-1',
+      duration: { start: '2026-10-05', end: '2026-10-07' },
+    },
+  });
+  await rowIn(db, ana, {
+    ...area,
+    collection: 'tasks',
+    title: 'Book the venue',
+    values: {
+      assignees: [ana.personId],
+      status: 'in_progress',
+      due: '2026-10-04',
+      priority: 'high',
+    },
+  });
+  return { email: ana.email ?? '', program };
+}
+
+async function collectionScreens(db: Database): Promise<Screen[]> {
+  const world = await collectionWorld(db);
+  const shots: readonly (readonly [string, string])[] = [
+    ['collections', '/collections'],
+    ['collection-board', viewPath('program', 401)],
+    ['collection-table', viewPath('program', 403)],
+    ['collection-chart', viewPath('program', 404)],
+    ['collection-calendar', viewPath('project', 505, '?month=2026-10')],
+    ['collection-gallery', viewPath('project', 510)],
+    ['collection-list', viewPath('tasks', 101)],
+    ['collection-row', `/collections/program/rows/${world.program}`],
+    ['collection-settings', '/collections/program/settings'],
+  ];
+  const screens: Screen[] = [];
+  for (const [name, path] of shots) {
+    const page = await getHtml(db, world.email, path, {}, viewClock);
+    screens.push({ name, html: page.text });
+  }
+  return screens;
+}
+
 const closedMenu = /(<section[^>]*aria-label="Menu"[^>]*>)<details>/;
 
 function menuOpen(all: readonly Screen[]): Screen {
@@ -339,6 +414,9 @@ beforeAll(async () => {
   await withAppDatabase(async (db) => {
     screens = [...screens, ...(await credentialScreens(db))];
   });
+  await withAppDatabase(async (db) => {
+    screens = [...screens, ...(await collectionScreens(db))];
+  });
   screens = [...screens, menuOpen(screens), accountMenuOpen(screens)];
 }, 300_000);
 
@@ -417,6 +495,15 @@ const pictured = [
   'credentials',
   'credential',
   'credential-member',
+  'collections',
+  'collection-board',
+  'collection-table',
+  'collection-chart',
+  'collection-calendar',
+  'collection-gallery',
+  'collection-list',
+  'collection-row',
+  'collection-settings',
   'menu',
   'account-menu',
 ];

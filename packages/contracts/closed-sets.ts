@@ -103,8 +103,20 @@ export const delegatedHoldSchema = z.enum([
   'delegation_required',
 ]);
 
-export const taskStatusSchema = z.enum(['suggested', 'open', 'done', 'dismissed']);
+export const taskStatusSchema = z.enum([
+  'suggested',
+  'open',
+  'done',
+  'dismissed',
+  'backlog',
+  'recurring',
+  'in_progress',
+  'review',
+]);
+export const taskPrioritySchema = z.enum(['urgent', 'high', 'normal', 'low']);
 
+export type TaskPriority = z.infer<typeof taskPrioritySchema>;
+export type TaskStatus = z.infer<typeof taskStatusSchema>;
 export type StageBracket = z.infer<typeof stageBracketSchema>;
 export type GateStatus = z.infer<typeof gateStatusSchema>;
 export type BranchState = z.infer<typeof branchStateSchema>;

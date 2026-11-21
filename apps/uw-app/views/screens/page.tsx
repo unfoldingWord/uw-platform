@@ -37,6 +37,7 @@ import {
   withBack,
 } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
+import { withViews } from '../parts/view-embed.tsx';
 import type { Principal } from '@uw/core/principal';
 import { shownPerson, shownText, Who, type Reading } from '../parts/person.tsx';
 import { commitOf } from '../../env.ts';
@@ -283,7 +284,11 @@ async function storedExtras(
   const { page } = shown;
   await recordView(database.db, actor, page.id, screen.at);
   return {
-    rendered: await renderPage(database.db, actor, page, screen.at, commitOf(c.env)),
+    rendered: await withViews(
+      database.db,
+      screen,
+      await renderPage(database.db, actor, page, screen.at, commitOf(c.env)),
+    ),
     openComments: await openComments(database.db, page.id),
     favourite: await isFavourite(database.db, actor, page.id),
   };

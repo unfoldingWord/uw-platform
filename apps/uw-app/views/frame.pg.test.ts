@@ -77,14 +77,7 @@ async function unbuiltAreDimmed(db: Database): Promise<void> {
   await parked(db);
   const document = documentOf((await getHtml(db, ROWAN, '/', {}, clock)).text);
   const nav = desktopNav(document);
-  for (const label of [
-    'Strategic Cascade',
-    'Ledger',
-    'Modules',
-    'Grants',
-    'Engagements',
-    'Development',
-  ]) {
+  for (const label of ['Meetings', 'Ledger', 'Modules', 'Grants', 'Engagements', 'Development']) {
     const row = [...nav.querySelectorAll('[aria-disabled="true"]')].find((element) =>
       element.textContent?.includes(label),
     );

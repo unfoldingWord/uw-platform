@@ -19,6 +19,7 @@ import { owns as pages } from '../../apps/uw-app/pages/store.ts';
 import { owns as people } from '../../apps/uw-app/people/directory.ts';
 import { owns as queue } from '../../apps/uw-app/queue/watermarks.ts';
 import { owns as tasks } from '../../apps/uw-app/tasks/store.ts';
+import { owns as collections } from '../../apps/uw-app/collections/owns.ts';
 import { owns as deliveries } from '../../apps/uw-ingest/deliveries/ledger.ts';
 import { owns as delegations } from '../../packages/harness/delegations/owns.ts';
 import { owns as gates } from '../../packages/harness/gates/owns.ts';
@@ -49,6 +50,7 @@ const owners: Owner[] = [
   { dir: 'apps/uw-app/pages/', tables: pages },
   { dir: 'apps/uw-app/queue/', tables: queue },
   { dir: 'apps/uw-app/tasks/', tables: tasks },
+  { dir: 'apps/uw-app/collections/', tables: collections },
   { dir: 'apps/uw-app/agents/', tables: serviceTokens },
   { dir: 'apps/uw-app/commands/', tables: commandRequests },
   { dir: 'apps/uw-app/credentials/', tables: credentialStore },

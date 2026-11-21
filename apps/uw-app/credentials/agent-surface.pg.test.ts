@@ -129,6 +129,10 @@ function argumentsOf(): Readonly<Record<VerbName, readonly unknown[]>> {
       { query: 'credential_access_log', params: ids },
     ],
     create_task: [ids],
+    read_collection: [{ collection: 'tasks' }],
+    read_view: [{ viewId: credentialId, limit: 50, cursor: null }],
+    create_row: [{ collection: 'tasks', rowId: credentialId, jdArea: '30-39', title: name }],
+    set_property: [{ collection: 'tasks', rowId: credentialId, property: 'title', value: name }],
     list_gifts: [{ since: '2026-01-01' }],
     create_draft_journal_entry: [ids],
     poll_queue: [

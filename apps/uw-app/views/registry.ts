@@ -115,6 +115,22 @@ export const screens: readonly ScreenEntry[] = [
     file: 'apps/uw-app/views/screens/credential.tsx',
     path: '/credentials/:credentialId',
   },
+  { name: 'collections', file: 'apps/uw-app/views/screens/collections.tsx', path: '/collections' },
+  {
+    name: 'collection',
+    file: 'apps/uw-app/views/screens/collection.tsx',
+    path: '/collections/:key/views/:viewId',
+  },
+  {
+    name: 'collection-row',
+    file: 'apps/uw-app/views/screens/collection-row.tsx',
+    path: '/collections/:key/rows/:rowId',
+  },
+  {
+    name: 'collection-settings',
+    file: 'apps/uw-app/views/screens/collection-settings.tsx',
+    path: '/collections/:key/settings',
+  },
   { name: 'person', file: 'apps/uw-app/views/screens/person.tsx', path: '/people/:personId' },
   {
     name: 'not-found',

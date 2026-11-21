@@ -1,0 +1,13 @@
+{
+  "key": "phone",
+  "name": "Phone",
+  "source": {
+    "kind": "column",
+    "column": "phone"
+  },
+  "config": {
+    "type": "phone"
+  },
+  "classification": "restricted",
+  "rule": null
+}

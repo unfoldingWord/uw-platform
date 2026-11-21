@@ -1,5 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import {
+  isCollectionPageType,
   pageSchema,
   type CreatePageCommand,
   type ErrorReason,
@@ -19,6 +20,7 @@ import { isGatedType } from './gating.ts';
 import { embedsItself, rebuildLinks, resolveBody } from './links.ts';
 import { provenanceOf, type ExternalWriter } from './provenance.ts';
 import { REPLAY_INDEX, replayOf } from './replay.ts';
+import { withoutWithheld } from './property-rules.ts';
 import { checkFrontmatter } from './validate.ts';
 
 export const owns = [
@@ -58,6 +60,8 @@ function refused(reason: ErrorReason): PageResult {
   return { ok: false, reason };
 }
 
+const collectionRow: PageRefusal = { ok: false, reason: 'collection_row', detail: {} };
+
 const activationRequired: PageRefusal = { ok: false, reason: 'activation_required', detail: {} };
 
 const ISSUE_MIRROR = 'issue';
@@ -96,15 +100,20 @@ export async function readPage(
   const [row] = await db.select().from(pages).where(eq(pages.id, pageId));
   if (!row) return null;
   const page = toPage(row);
-  return can(actor, 'read', { kind: 'area', area: page.jdArea }, at) ? page : null;
+  if (!can(actor, 'read', { kind: 'area', area: page.jdArea }, at)) return null;
+  return withoutWithheld(db, actor, page, row.collectionId, at);
 }
 
 export type SnapshotSource = { readonly traceId: string; readonly requestId: string | null };
 
-export async function snapshot(
+export function snapshot(tx: Transaction, row: PageRow, actor: Principal, source: SnapshotSource) {
+  return snapshotBy(tx, row, actor.identity, source);
+}
+
+export async function snapshotBy(
   tx: Transaction,
   row: PageRow,
-  actor: Principal,
+  editSource: string,
   source: SnapshotSource,
 ) {
   await tx.insert(pageVersions).values({
@@ -118,7 +127,7 @@ export async function snapshot(
     frontmatter: row.frontmatter,
     bodyMd: row.bodyMd,
     status: row.status,
-    editSource: actor.identity,
+    editSource,
     traceId: source.traceId,
     requestId: source.requestId,
   });
@@ -181,6 +190,17 @@ export function createPage(
   return createPageAs(db, actor, command, { traceId, at, writer: null });
 }
 
+function reservedType(type: string): PageRefusal | null {
+  if (type === ISSUE_MIRROR) return issueMirror;
+  return isCollectionPageType(type) ? collectionRow : null;
+}
+
+function keptFrontmatter(stored: Page, command: CheckedSave['command']): CheckedSave['command'] {
+  return isCollectionPageType(stored.type)
+    ? { ...command, frontmatter: stored.frontmatter }
+    : command;
+}
+
 export async function createPageAs(
   db: Database,
   actor: Principal,
@@ -190,7 +210,8 @@ export async function createPageAs(
   const { traceId, at } = request;
   const replayed = await replayOf(db, actor, command.requestId);
   if (replayed !== null) return { ok: true, page: replayed };
-  if (command.type === ISSUE_MIRROR) return issueMirror;
+  const reserved = reservedType(command.type);
+  if (reserved !== null) return reserved;
   const check = checkFrontmatter(command.type, command.frontmatter);
   if (!check.ok) return refused(check.reason);
   if (filedOutsideItsArea(check.type, check.frontmatter, command.jdArea)) {
@@ -369,7 +390,7 @@ async function updateInTransaction(tx: Transaction, save: Save): Promise<PageRes
   }
   const chosen = checked.statusFor(stored);
   if (typeof chosen !== 'string') return chosen;
-  const full = await derivedSave(tx, stored, chosen, command);
+  const full = await derivedSave(tx, stored, chosen, keptFrontmatter(stored, command));
   if ('ok' in full) return full;
   const blocked = await parentRefusal(tx, actor, full, at);
   if (blocked !== null) return refused(blocked);

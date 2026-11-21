@@ -134,6 +134,8 @@ export type KnowledgeFrontmatter = z.infer<typeof knowledgeFrontmatterSchema>;
 
 const internalSync = { classification: 'internal', offlineEligibility: 'sync' } as const;
 
+export const collectionFrontmatterSchema = z.record(z.string().max(48), z.json());
+
 export const pageTypeRegistry = {
   skill: { frontmatter: skillFrontmatterSchema, ...internalSync },
   learning: { frontmatter: learningFrontmatterSchema, ...internalSync },
@@ -145,6 +147,11 @@ export const pageTypeRegistry = {
   issue: { frontmatter: issueFrontmatterSchema, ...internalSync },
   platform: { frontmatter: platformFrontmatterSchema, ...internalSync },
   knowledge: { frontmatter: knowledgeFrontmatterSchema, ...internalSync },
+  entry: { frontmatter: collectionFrontmatterSchema, ...internalSync },
+  portfolio: { frontmatter: collectionFrontmatterSchema, ...internalSync },
+  program: { frontmatter: collectionFrontmatterSchema, ...internalSync },
+  project: { frontmatter: collectionFrontmatterSchema, ...internalSync },
+  okr: { frontmatter: collectionFrontmatterSchema, ...internalSync },
 } as const satisfies Record<PageType, PageTypeDefinition>;
 
 const byType = new Map<string, PageTypeDefinition>(Object.entries(pageTypeRegistry));

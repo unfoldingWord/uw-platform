@@ -1,0 +1,8 @@
+{
+  "kind": "condition",
+  "property": "lead",
+  "operator": "contains",
+  "value": {
+    "kind": "me"
+  }
+}

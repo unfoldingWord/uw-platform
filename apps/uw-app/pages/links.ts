@@ -129,6 +129,8 @@ export async function embedsItself(tx: Executor, pageId: string, bodyMd: string)
   return rows.length > 0;
 }
 
+const BODY_RELS = ['links', 'embeds', 'unresolved'] as const;
+
 export async function rebuildLinks(tx: Executor, pageId: string, bodyMd: string): Promise<void> {
   const refs = pageRefs(bodyMd);
   const known = await existing(tx, [...refs.links, ...refs.embeds.map((embed) => embed.id)]);
@@ -139,7 +141,9 @@ export async function rebuildLinks(tx: Executor, pageId: string, bodyMd: string)
     ...embedded.filter((id) => known.has(id)).map((id) => ({ toPage: id, rel: 'embeds' })),
     ...unresolved.map((wanted) => ({ toPage: null, rel: 'unresolved', wanted })),
   ];
-  await tx.delete(pageLinks).where(eq(pageLinks.fromPage, pageId));
+  await tx
+    .delete(pageLinks)
+    .where(and(eq(pageLinks.fromPage, pageId), inArray(pageLinks.rel, [...BODY_RELS])));
   if (rows.length === 0) return;
   await tx
     .insert(pageLinks)
@@ -170,7 +174,14 @@ export async function backlinksOf(
     })
     .from(pageLinks)
     .innerJoin(pages, eq(pages.id, pageLinks.fromPage))
-    .where(and(eq(pageLinks.toPage, pageId), ne(pages.status, 'retired'), areas))
+    .where(
+      and(
+        eq(pageLinks.toPage, pageId),
+        inArray(pageLinks.rel, [...BODY_RELS]),
+        ne(pages.status, 'retired'),
+        areas,
+      ),
+    )
     .orderBy(asc(pages.title));
   return rows.map((row) =>
     pageEntrySchema.parse({ ...row, updatedAt: row.updatedAt.toISOString() }),

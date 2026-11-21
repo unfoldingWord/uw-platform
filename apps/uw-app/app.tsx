@@ -16,10 +16,16 @@ import { healthScreenRoutes, probeRoutes } from './health/routes.tsx';
 import { mcpRoutes } from './mcp/routes.ts';
 import { pushRoutes } from './notify/routes.ts';
 import { observe, serverTiming } from './observe.ts';
+import { mountCollections } from './collections/routes.ts';
 import { mountKnowledgeBase } from './pages/routes.ts';
 import { requestLogger } from './request-logger.ts';
 import { viewRoutes } from './views/routes.tsx';
 import { notFound } from './views/screens/not-found.tsx';
+
+function mountContent(app: Hono<AppEnv>): void {
+  mountKnowledgeBase(app);
+  mountCollections(app);
+}
 
 export function createApp(
   deps: AppDeps = platformDeps,
@@ -51,7 +57,7 @@ export function createApp(
   app.route('/api/acl', aclRoutes());
   app.route('/api/agents', agentRoutes(deps));
   app.route('/api/credentials', credentialRoutes(deps));
-  mountKnowledgeBase(app);
+  mountContent(app);
   app.route('/api/push', pushRoutes());
   app.route('/api/harness', harnessRoutes(deps, person));
   app.route('/mcp', mcpRoutes(deps));

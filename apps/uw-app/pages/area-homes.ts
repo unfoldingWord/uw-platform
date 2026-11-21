@@ -8,10 +8,10 @@ import {
 } from '@uw/contracts';
 import { can } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
-import type { Executor } from '@uw/db/client';
+import type { Executor, Transaction } from '@uw/db/client';
 import { areaHomes, pages } from '@uw/db/schema';
 import { categoryCounts } from './categories.ts';
-import { readPage } from './store.ts';
+import { readPage, snapshotBy } from './store.ts';
 
 type Done = { readonly ok: true } | { readonly ok: false; readonly reason: ErrorReason };
 
@@ -76,4 +76,50 @@ export async function areaHome(
   const live = page !== null && page.status !== 'retired' && page.jdArea === area;
   const categories = (await categoryCounts(db, actor, at)).filter((entry) => entry.area === area);
   return { area, home: live ? { id: page.id, title: page.title } : null, categories };
+}
+
+export type SeededHome = {
+  readonly area: JdArea;
+  readonly pageId: string;
+  readonly category: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly bodyMd: string;
+  readonly overview: string;
+};
+
+export async function seedAreaHome(
+  tx: Transaction,
+  home: SeededHome,
+  by: string,
+  at: Date,
+): Promise<void> {
+  if ((await homePageOf(tx, home.area)) !== null) return;
+  const [taken] = await tx.select({ id: pages.id }).from(pages).where(eq(pages.id, home.pageId));
+  if (taken !== undefined) return;
+  const frontmatter = knowledgeFrontmatterSchema.parse({
+    jd_category: home.category,
+    overview: home.overview,
+  });
+  const [row] = await tx
+    .insert(pages)
+    .values({
+      id: home.pageId,
+      type: 'knowledge',
+      jdArea: home.area,
+      slug: home.slug,
+      title: home.title,
+      parentId: null,
+      frontmatter,
+      bodyMd: home.bodyMd,
+      version: 1,
+      status: 'active',
+      createdAt: at,
+      updatedAt: at,
+    })
+    .onConflictDoNothing()
+    .returning();
+  if (row === undefined) return;
+  await snapshotBy(tx, row, by, { traceId: crypto.randomUUID(), requestId: null });
+  await tx.insert(areaHomes).values({ area: home.area, pageId: home.pageId, setBy: by, setAt: at });
 }

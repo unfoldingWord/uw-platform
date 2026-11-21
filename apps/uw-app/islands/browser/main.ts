@@ -1,5 +1,6 @@
 import './jitless.ts';
 import { reconnectingSocket, type LiveTimers } from '../live/session.ts';
+import { wireAutosubmit, wireBoards } from './collection-board.ts';
 import { wireCommandForms } from './command-form.ts';
 import { wireDraftEditor } from './draft-editor.ts';
 import { startLive } from './live.ts';
@@ -22,16 +23,22 @@ const timers: LiveTimers = {
   clearInterval: (handle) => window.clearInterval(Number(handle)),
 };
 
+const go = (href: string): void => window.location.assign(href);
+const openTab = (href: string): void => void window.open(href, '_blank', 'noopener');
+
 document.addEventListener('DOMContentLoaded', () => {
   const send: typeof fetch = (input, init) => window.fetch(input, init);
   wireNavigating(document);
   const refresher = createRefresher({ document, fetch: send, morph: morphMain });
   void registerWorker(navigator);
-  wireCommandForms(document, {
+  const commandDeps = {
     fetch: send,
     uuid: () => crypto.randomUUID(),
     afterAccepted: () => void refresher.refresh(),
-  });
+  };
+  wireCommandForms(document, commandDeps);
+  wireBoards(document, commandDeps);
+  wireAutosubmit(document);
   wireDraftEditor(document, {
     fetch: send,
     uuid: () => crypto.randomUUID(),
@@ -56,11 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     go: (href) => window.location.assign(href),
   });
-  wireQuickSwitcher(document, {
-    fetch: send,
-    go: (href) => window.location.assign(href),
-    openTab: (href) => void window.open(href, '_blank', 'noopener'),
-  });
+  wireQuickSwitcher(document, { fetch: send, go, openTab });
   wireReveal(document, {
     fetch: send,
     uuid: () => crypto.randomUUID(),

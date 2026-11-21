@@ -190,3 +190,27 @@ export function reviewUrl(ref: PullRequestRef, reviewId?: number): string {
 export function issueUrl(issue: IssueRef): string {
   return `${repoUrl(issue.repo)}/issues/${issue.number}`;
 }
+
+export function collectionsPath(): string {
+  return '/collections';
+}
+
+export function collectionPath(key: string): string {
+  return `/collections/${segment(key)}`;
+}
+
+export function collectionViewPath(key: string, viewId: string, query: string = ''): string {
+  return `${collectionPath(key)}/views/${segment(viewId)}${query}`;
+}
+
+export function collectionRowPath(key: string, rowId: string): string {
+  return `${collectionPath(key)}/rows/${segment(rowId)}`;
+}
+
+export function collectionSettingsPath(key: string): string {
+  return `${collectionPath(key)}/settings`;
+}
+
+export function collectionExportPath(key: string, viewId: string): string {
+  return `/api/collections/${segment(key)}/views/${segment(viewId)}/export`;
+}
