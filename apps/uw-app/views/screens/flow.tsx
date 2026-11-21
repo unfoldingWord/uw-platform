@@ -1,3 +1,4 @@
+import type { Principal } from '@uw/core/principal';
 import type { Context } from 'hono';
 import { can } from '@uw/core/acl';
 import { formatDuration } from '@uw/core/dates';
@@ -109,6 +110,7 @@ function FlowBody(props: {
   readonly draft: WorkflowDraftView | null;
   readonly admin: boolean;
   readonly at: Date;
+  readonly reader: Principal;
 }) {
   return (
     <div class="flex flex-col gap-5">
@@ -120,6 +122,7 @@ function FlowBody(props: {
         draft={props.draft}
         admin={props.admin}
         at={props.at}
+        reader={props.reader}
       />
       <Card title="Stage details" sub="what each stage holds, costs and waits on" flush>
         <Table
@@ -165,7 +168,14 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
         title={view.harness.title}
         lede={summaryOf(view)}
       />
-      <FlowBody harnessId={harnessId} view={view} draft={draft} admin={admin} at={screen.at} />
+      <FlowBody
+        harnessId={harnessId}
+        view={view}
+        draft={draft}
+        admin={admin}
+        at={screen.at}
+        reader={screen.caller.actor}
+      />
     </>,
   );
 }

@@ -117,7 +117,7 @@ async function editorSavesAVersion(db: Database): Promise<void> {
   );
   const [newest] = historyRows(read.text);
   expect(newest?.startsWith(`${String(version + 1)} | `)).toBe(true);
-  expect(newest).toContain(`| ${made.editor.email} |`);
+  expect(newest).toContain(`| EO${made.editor.email} |`);
   const admin = await rowan(db);
   const scope = { itemPageId: null, instructionsPageId: pageId, area: '80-89' as const };
   const context = await contextPages(db, admin, scope, new Date(), () => undefined);

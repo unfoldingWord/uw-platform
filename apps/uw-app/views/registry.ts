@@ -115,6 +115,7 @@ export const screens: readonly ScreenEntry[] = [
     file: 'apps/uw-app/views/screens/credential.tsx',
     path: '/credentials/:credentialId',
   },
+  { name: 'person', file: 'apps/uw-app/views/screens/person.tsx', path: '/people/:personId' },
   {
     name: 'not-found',
     file: 'apps/uw-app/views/screens/not-found.tsx',

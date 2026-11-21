@@ -1,3 +1,4 @@
+import { namedPerson, Person, type Reading } from './person.tsx';
 import { personaSlugOf } from '@uw/contracts';
 import { formatDate, formatInstant } from '@uw/core/dates';
 import { formatCount } from '@uw/core/money';
@@ -18,6 +19,7 @@ export type RoutineViewer = {
   readonly personId: string | null;
   readonly orgAdmin: boolean;
   readonly switchedOn: boolean;
+  readonly reading: Reading;
 };
 
 const columns = [
@@ -89,9 +91,16 @@ function Changes(props: { readonly harnessId: string; readonly routine: RoutineR
 
 function rowOf(harnessId: string, viewer: RoutineViewer, routine: RoutineRow) {
   const mine = viewer.personId === routine.personId;
-  const owner = mine ? '' : ` · ${routine.ownerName}`;
+  const owner = namedPerson(routine.personId, routine.ownerName);
   return {
-    routine: `${routine.name} (${routine.device})${owner}`,
+    routine: mine ? (
+      `${routine.name} (${routine.device})`
+    ) : (
+      <span class="inline-flex flex-wrap items-center gap-2">
+        <span>{`${routine.name} (${routine.device}) ·`}</span>
+        <Person reading={viewer.reading} person={owner} />
+      </span>
+    ),
     acts: `${personaSlugOf(routine.persona) ?? routine.persona} · ${capabilityWord(routine.capability)}`,
     seen: routine.lastSeenAt === null ? 'Not yet' : formatInstant(routine.lastSeenAt),
     claimed: formatCount(routine.itemsClaimed),

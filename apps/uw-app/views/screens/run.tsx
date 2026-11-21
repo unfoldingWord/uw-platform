@@ -1,3 +1,5 @@
+import { holdingOf } from '../parts/holder.tsx';
+import { eventIdentities } from '../parts/play-evidence.ts';
 import type { Context } from 'hono';
 import type { RunStepRecord } from '@uw/contracts';
 import type { RunSummary, RunView } from '@uw/harness';
@@ -170,6 +172,11 @@ export async function runScreen(c: Context<AppEnv>): Promise<Response> {
   const { harness, play } = view;
   const spec = await specOf(screen, view, runId);
   const zulipUrl = itemTopicUrl(zulipConfigOf(c.env), harness.jdArea, play.item.zulipTopic);
+  const holding = await holdingOf(
+    c.get('database')?.db ?? null,
+    { reader: screen.caller.actor, at: screen.at },
+    eventIdentities(play.events),
+  );
   return renderScreen(
     c,
     spec,
@@ -190,6 +197,7 @@ export async function runScreen(c: Context<AppEnv>): Promise<Response> {
             zulipUrl={zulipUrl}
             base={runPath(harnessId, runId)}
             kind={kindParam(c.req.query('kind'))}
+            holding={holding}
           />
         </section>
       </div>

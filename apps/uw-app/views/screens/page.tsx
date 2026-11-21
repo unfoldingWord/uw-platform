@@ -37,6 +37,8 @@ import {
   withBack,
 } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
+import type { Principal } from '@uw/core/principal';
+import { shownPerson, shownText, Who, type Reading } from '../parts/person.tsx';
 import { commitOf } from '../../env.ts';
 
 const MIN_CONTENTS = 2;
@@ -48,7 +50,11 @@ function savedVersion(raw: string | undefined): number | null {
   return raw !== undefined && Number.isInteger(version) && version >= 1 ? version : null;
 }
 
-function History(props: { readonly pageId: string; readonly versions: readonly PageVersion[] }) {
+function History(props: {
+  readonly pageId: string;
+  readonly versions: readonly PageVersion[];
+  readonly reading: Reading;
+}) {
   const rows = props.versions.map((entry) => ({
     version: (
       <a href={pageVersionPath(props.pageId, entry.version)} class={pageLink}>
@@ -56,7 +62,12 @@ function History(props: { readonly pageId: string; readonly versions: readonly P
       </a>
     ),
     when: formatInstant(entry.savedAt),
-    who: entry.savedBy,
+    who: (
+      <Who
+        reading={props.reading}
+        who={entry.saver === null ? shownText(entry.savedBy) : shownPerson(entry.saver)}
+      />
+    ),
     title: entry.title,
   }));
   const columns = [
@@ -180,6 +191,7 @@ type Extras = {
   readonly rendered: Rendered;
   readonly drafted: boolean;
   readonly at: Date;
+  readonly reader: Principal;
   readonly openComments: number;
   readonly favourite: boolean;
 };
@@ -246,7 +258,11 @@ function body(shown: ShownPage, extras: Extras) {
         <PageList title="Pages under this one" mark="children" pages={shown.children} />
         <PageList title="Linked from" mark="backlinks" pages={shown.backlinks} />
         <Take pageId={page.id} open={extras.openComments} />
-        <History pageId={page.id} versions={shown.versions} />
+        <History
+          pageId={page.id}
+          versions={shown.versions}
+          reading={{ reader: extras.reader, at: extras.at }}
+        />
       </div>
     </>
   );
@@ -288,6 +304,7 @@ export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
     ...(await storedExtras(c, screen, shown)),
     drafted: draft?.dirty === true,
     at: screen.at,
+    reader: screen.caller.actor,
     back: backOf(c.req.query('back')),
     saved: savedVersion(c.req.query('saved')),
   };

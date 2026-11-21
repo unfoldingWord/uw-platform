@@ -7,6 +7,8 @@ import {
   seenCredentials,
   type CredentialLine,
 } from '../../credentials/records.ts';
+import { ownerOf } from '../parts/credential-words.ts';
+import { Who, type Reading } from '../parts/person.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { activePeople } from '../../people/directory.ts';
 import { KeptOutcome } from '../parts/access-forms.tsx';
@@ -45,12 +47,13 @@ function NameCell(props: { readonly line: CredentialLine }) {
   );
 }
 
-function rowOf(line: CredentialLine, at: Date) {
+function rowOf(line: CredentialLine, reading: Reading) {
+  const { at } = reading;
   return {
     name: <NameCell line={line} />,
     area:
       line.jdRef === null ? areaLabel(line.jdArea) : `${areaLabel(line.jdArea)} · ${line.jdRef}`,
-    owner: line.owner,
+    owner: <Who reading={reading} who={ownerOf(line)} />,
     rotate: dayOrNone(line.rotateBy),
     expires: instantOrNone(line.expiresAt, 'No end'),
     used: instantOrNone(line.lastUsedAt, 'Never'),
@@ -103,7 +106,9 @@ export async function credentialsScreen(c: Context<AppEnv>): Promise<Response> {
             <Table
               caption="Credentials"
               columns={columns}
-              rows={lines.map((line) => rowOf(line, screen.at))}
+              rows={lines.map((line) =>
+                rowOf(line, { reader: screen.caller.actor, at: screen.at }),
+              )}
               bare
             />
           )}

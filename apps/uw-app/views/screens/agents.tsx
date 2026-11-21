@@ -174,6 +174,7 @@ async function routineData(c: Context<AppEnv>, screen: ScreenKernel, harness: Ha
     personId: screen.caller.actor.personId,
     orgAdmin: can(screen.caller.actor, 'admin', { kind: 'org' }, screen.at),
     switchedOn: accessTokensConfigOf(c.env, fetch) !== null,
+    reading: { reader: screen.caller.actor, at: screen.at },
   };
   return { rows, viewer };
 }
@@ -194,7 +195,11 @@ export async function agentsScreen(c: Context<AppEnv>): Promise<Response> {
     crumbs: workflowCrumbs(view.harness.title, queuePath(harnessId), pageNames.agents),
     tabs: workflowTabs(harnessId, 'agents', await waitingCount(screen, harnessId)),
   };
-  const viewer = { admin: view.admin, personId: screen.caller.actor.personId };
+  const viewer = {
+    admin: view.admin,
+    personId: screen.caller.actor.personId,
+    reading: { reader: screen.caller.actor, at: screen.at },
+  };
   const routines = await routineData(c, screen, view.harness);
   const notice = routineNotice(c.req.query('routine'));
   return renderScreen(

@@ -144,6 +144,23 @@ export function accessPath(filter?: { readonly scope?: string; readonly person?:
   return text === '' ? '/access' : `/access?${text}`;
 }
 
+const MOST_PERSON_SLUG = 60;
+
+function personSlug(name: string): string {
+  return name
+    .normalize('NFKD')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .slice(0, MOST_PERSON_SLUG)
+    .replace(/^-+|-+$/g, '');
+}
+
+export function personPath(personId: string, name?: string): string {
+  const path = `/people/${segment(personId)}`;
+  const slug = name === undefined ? '' : personSlug(name);
+  return slug === '' ? path : `${path}/${slug}`;
+}
+
 export function credentialsPath(): string {
   return '/credentials';
 }

@@ -1,3 +1,5 @@
+import type { Child } from 'hono/jsx';
+import type { Principal } from '@uw/core/principal';
 import type { Context } from 'hono';
 import { formatInstant } from '@uw/core/dates';
 import { Badge } from '@uw/ui/components/badge.tsx';
@@ -8,6 +10,8 @@ import {
   seenCredential,
   type CredentialLine,
   type CredentialRecord,
+  type GrantLine,
+  type LogLine,
   type Managed,
 } from '../../credentials/records.ts';
 import type { AppEnv } from '../../deps.ts';
@@ -31,8 +35,11 @@ import {
   instantOrNone,
   kindWord,
   outcomeWord,
+  ownerOf,
+  someoneOf,
   standingOf,
 } from '../parts/credential-words.ts';
+import { Who, type Reading } from '../parts/person.tsx';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { areaLabel, moduleCodes, pageNames } from '../parts/names.ts';
 import { credentialPath, credentialsPath } from '../parts/paths.ts';
@@ -46,6 +53,7 @@ type Seen = {
   readonly record: CredentialRecord;
   readonly workflows: readonly Choice[];
   readonly at: Date;
+  readonly reader: Principal;
 };
 
 const factColumns = [
@@ -55,11 +63,12 @@ const factColumns = [
 
 function Facts(props: { readonly seen: Seen }) {
   const { line, managed } = props.seen.record;
-  const facts: readonly (readonly [string, string])[] = [
+  const reading = { reader: props.seen.reader, at: props.seen.at };
+  const facts: readonly (readonly [string, Child])[] = [
     ['Area', areaLabel(line.jdArea)],
     ['Category or ID', line.jdRef ?? 'The whole area'],
     ['Kind', kindWord(line.kind)],
-    ['Owner', line.owner],
+    ['Owner', <Who reading={reading} who={ownerOf(line)} />],
     ['Rotate by', dayOrNone(line.rotateBy)],
     ['Expires', instantOrNone(line.expiresAt, 'No end')],
     ['Last used', instantOrNone(line.lastUsedAt, 'Never')],
@@ -147,12 +156,26 @@ const grantColumns = [
   { key: 'change', label: 'Change' },
 ];
 
+function GivenBy(props: { readonly reading: Reading; readonly grant: GrantLine }) {
+  const { grant, reading } = props;
+  const giver = <Who reading={reading} who={someoneOf(grant.giver, grant.grantedBy)} />;
+  if (grant.secondBy === null) return giver;
+  return (
+    <span class="inline-flex flex-wrap items-center gap-2">
+      {giver}
+      <span>and</span>
+      <Who reading={reading} who={someoneOf(grant.second, grant.secondBy)} />
+    </span>
+  );
+}
+
 function Grants(props: { readonly seen: Seen; readonly managed: Managed }) {
   const { seen, managed } = props;
   const { line } = seen.record;
+  const reading = { reader: seen.reader, at: seen.at };
   const rows = managed.grants.map((grant) => ({
-    person: grant.person,
-    by: grant.secondBy === null ? grant.grantedBy : `${grant.grantedBy} and ${grant.secondBy}`,
+    person: <Who reading={reading} who={someoneOf(grant.holder, grant.person)} />,
+    by: <GivenBy reading={reading} grant={grant} />,
     ends: formatInstant(grant.expiresAt),
     status: grant.waitsForSecond ? (
       <Badge tone="person">Waiting for a second org admin</Badge>
@@ -189,11 +212,26 @@ const logColumns = [
   { key: 'where', label: 'Where' },
 ];
 
+function Actor(props: { readonly reading: Reading; readonly entry: LogLine }) {
+  const { entry, reading } = props;
+  const who = someoneOf(entry.personName, entry.person ?? 'nobody');
+  const word = actorWord(entry);
+  if (entry.actor.startsWith('human:')) return <Who reading={reading} who={who} />;
+  if (!entry.actor.startsWith('agent:')) return <>{word}</>;
+  return (
+    <span class="inline-flex flex-wrap items-center gap-2">
+      <span>An agent for</span>
+      <Who reading={reading} who={who} />
+    </span>
+  );
+}
+
 function Log(props: { readonly seen: Seen; readonly managed: Managed }) {
   const titles = new Map(props.seen.workflows.map((choice) => [choice.value, choice.label]));
+  const reading = { reader: props.seen.reader, at: props.seen.at };
   const rows = props.managed.log.map((entry) => ({
     at: formatInstant(entry.at),
-    who: actorWord(entry),
+    who: <Actor reading={reading} entry={entry} />,
     what: actionWord(entry.action),
     outcome: outcomeWord(entry),
     where:
@@ -244,7 +282,7 @@ export async function credentialScreen(c: Context<AppEnv>): Promise<Response> {
     value: harness.id,
     label: harness.title,
   }));
-  const seen = { record, workflows, at: screen.at };
+  const seen = { record, workflows, at: screen.at, reader: screen.caller.actor };
   const spec = {
     title: `${line.name} · ${pageNames.credential}`,
     current: credentialsPath(),

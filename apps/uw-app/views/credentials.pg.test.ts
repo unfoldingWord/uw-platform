@@ -232,10 +232,10 @@ async function logAndRevoked(db: Database): Promise<void> {
       .join(' | '),
   );
   expect(lines).toEqual([
-    `${cast.admin.email} | Revealed | Refused: not permitted | `,
-    `${cast.editor.email} | Revoked | Refused: not permitted | `,
-    `${cast.admin.email} | Bound | Done | monthly-close · Send`,
-    `${cast.admin.email} | Added | Done | `,
+    `FA${cast.admin.email} | Revealed | Refused: not permitted | `,
+    `FE${cast.editor.email} | Revoked | Refused: not permitted | `,
+    `FA${cast.admin.email} | Bound | Done | monthly-close · Send`,
+    `FA${cast.admin.email} | Added | Done | `,
   ]);
   expect(commands(live.document)).toContain('unbind_credential');
   await app.send(cast.admin.email, { command: 'revoke_credential', credentialId: finance });

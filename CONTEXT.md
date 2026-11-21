@@ -70,6 +70,14 @@ _Avoid_: user, human (as a noun in code), approver (that is a role a person play
 `active`, `pending` or `disabled`. A sign-in from `@unfoldingword.org` starts `active`; any other starts `pending` and is refused at the edge until an org admin **approves** it (to `active`) or **declines** it (to `disabled`). A disabled person is refused at the edge whatever grants they hold, and an org admin can approve them later. Each decision writes a `person_audit` row.
 _Avoid_: banned, blocked, suspended (that is what Google Workspace does to an account), invited
 
+**Person page**:
+The one page for a person: their directory row, at `/people/<id>/<slug>`. It shows what the directory holds about them that the reader may see, and the pages they own in areas the reader can read. The person themself and an org admin may always open it; anyone else holding a live read grant may open it while the person is `active`. Anyone else gets Not Found, so the page never says whether the person exists.
+_Avoid_: profile, profile screen, user page
+
+**Person chip**:
+How a person is shown wherever the app names one: their initials and display name, linking to their **person page** when the reader may open it and plain text when they may not. An agent identity is not a person and never gets one.
+_Avoid_: avatar, user badge, mention (that is a link written in a page body)
+
 **Waiting for access**:
 A person who has signed in and can reach nothing yet: pending, or active with no live grant. Listed on the **Access** screen for an admin.
 _Avoid_: new user, unassigned, guest

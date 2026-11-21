@@ -8,6 +8,7 @@ import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { moduleCodes, pageNames } from '../parts/names.ts';
 import { pageLink } from '../parts/page-shown.ts';
 import { pagePath, wikiPath } from '../parts/paths.ts';
+import { namesOf, shownIdentity, Who } from '../parts/person.tsx';
 
 const spec = {
   title: pageNames.wikiReview,
@@ -28,6 +29,11 @@ export async function wikiReviewScreen(c: Context<AppEnv>): Promise<Response> {
   const database = c.get('database');
   if (screen === null || database === null) return screenRefusal(c);
   const lapsed = await lapsedPages(database.db, screen.caller.actor, screen.at);
+  const names = await namesOf(
+    database.db,
+    lapsed.map((entry) => entry.ownerIdentity),
+  );
+  const reading = { reader: screen.caller.actor, at: screen.at };
   const rows = lapsed.map((entry) => ({
     page: (
       <a href={pagePath(entry.id)} class={pageLink}>
@@ -35,7 +41,12 @@ export async function wikiReviewScreen(c: Context<AppEnv>): Promise<Response> {
       </a>
     ),
     category: entry.category ?? '',
-    owner: entry.owner ?? 'No owner',
+    owner: (
+      <Who
+        reading={reading}
+        who={shownIdentity(entry.ownerIdentity, names, () => entry.owner ?? 'No owner')}
+      />
+    ),
     until: entry.until,
   }));
   return renderScreen(

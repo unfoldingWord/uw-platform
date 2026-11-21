@@ -1,5 +1,4 @@
 import { and, asc, desc, eq, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
 import type { AnyExecutor } from '../any-database.ts';
 import { grantAudit, people, personAudit, roleGrants } from '../schema.ts';
 import { liveGrant } from './grants.ts';
@@ -71,7 +70,6 @@ function readPeople(db: AnyExecutor): Promise<AccessPerson[]> {
 }
 
 function readLiveGrants(db: AnyExecutor, at: Date): Promise<AccessGrant[]> {
-  const granter = alias(people, 'granter');
   return db
     .select({
       grantId: roleGrants.id,
@@ -79,12 +77,11 @@ function readLiveGrants(db: AnyExecutor, at: Date): Promise<AccessGrant[]> {
       role: roleGrants.role,
       scopeKind: roleGrants.scopeKind,
       scopeArea: roleGrants.scopeArea,
-      grantedBy: granter.email,
+      grantedBy: roleGrants.grantedBy,
       grantedAt: roleGrants.grantedAt,
       expiresAt: roleGrants.expiresAt,
     })
     .from(roleGrants)
-    .leftJoin(granter, eq(granter.id, roleGrants.grantedBy))
     .where(liveGrant(at))
     .orderBy(asc(roleGrants.grantedAt), asc(roleGrants.id));
 }
