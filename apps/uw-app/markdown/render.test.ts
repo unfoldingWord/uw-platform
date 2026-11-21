@@ -13,8 +13,8 @@ describe('a page body renders as GitHub-flavoured markdown', () => {
   });
 
   it('renders a table with its header row, and a checklist that cannot be ticked', () => {
-    const table = html('| Program | Rate |\n|---|---|\n| Laptop | 2 |');
-    expect(table).toContain('<th>Program</th>');
+    const table = html('| Item | Count |\n|---|---|\n| Laptop | 2 |');
+    expect(table).toContain('<th>Item</th>');
     expect(table).toContain('<td>2</td>');
     const list = html('- [ ] open\n- [x] done');
     expect(list).toContain('type="checkbox"');

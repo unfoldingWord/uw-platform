@@ -16,7 +16,7 @@ function longPage(): string {
     '',
     '</details>',
     '',
-    '| Program | Rate |',
+    '| Item | Count |',
     '|---|---|',
     '| Laptop | 2 |',
     '',

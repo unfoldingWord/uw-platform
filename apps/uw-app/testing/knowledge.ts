@@ -44,16 +44,16 @@ export async function fileKnowledge(
 const sampleKnowledgeId = '00000000-0000-4000-8000-0000000b00c5';
 
 const sampleBody = [
-  'This page gives an overview of how budgeting works, both the theory and the practical tools.',
+  'This page explains how to prepare for a team trip, both the planning and the practical tools.',
   '',
-  '## Assessment',
+  '## Planning',
   '',
   'The **Trip Lead** is ==named a month ahead==, chosen by the travelling team.',
   '',
   '> [!IMPORTANT]',
   '> Always say Trip Lead when you mean the person who books the travel.',
   '',
-  '## Program costs',
+  '## Packing list',
   '',
   '| Item | Carry-on | Checked |',
   '|---|---|---|',
@@ -62,17 +62,17 @@ const sampleBody = [
   '',
   '### Before you start',
   '',
-  '- [x] Copy the program template',
-  '- [ ] Enter the department number',
+  '- [x] Copy the trip template',
+  '- [ ] Enter the travel dates',
   '',
   '<details>',
   '<summary>Change log</summary>',
   '',
-  '- 2025-07-01 three programs moved to stage 3',
+  '- 2025-07-01 three checklists moved to the new template',
   '',
   '</details>',
   '',
-  'Rows are summed with `=SUM(D3:D9)`. See the [rolling budget](https://example.org/budget).',
+  'Rows are counted with `=COUNTA(D3:D9)`. See the [travel guide](https://example.org/travel).',
 ].join('\n');
 
 export async function seedSampleKnowledge(db: Database): Promise<string> {
@@ -81,8 +81,8 @@ export async function seedSampleKnowledge(db: Database): Promise<string> {
     type: 'knowledge',
     status: 'active',
     jdArea: '80-89',
-    slug: 'budgeting',
-    title: '81.26 Budgeting',
+    slug: 'travel-checklist',
+    title: '81.26 Travel Checklist',
     bodyMd: sampleBody,
     frontmatter: { jd_category: '81', jd_id: '81.26' },
   });

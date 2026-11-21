@@ -13,12 +13,12 @@ export const roundTripSamples: readonly Sample[] = [
   },
   {
     name: 'a checklist',
-    markdown: '- [x] Copy the program template\n- [ ] Enter the department number',
+    markdown: '- [x] Copy the trip template\n- [ ] Enter the travel dates',
   },
   {
     name: 'a table with a line break in a cell',
     markdown:
-      '| Item | Default | Exception |\n| --- | --- | --- |\n| Field program | Carry-on: yes<br>Checked: no | Carry-on: yes |\n| Charger | yes | no |',
+      '| Item | Default | Exception |\n| --- | --- | --- |\n| Laptop | Carry-on: yes<br>Checked: no | Carry-on: yes |\n| Charger | yes | no |',
   },
   {
     name: 'code, inline and fenced with a language',
