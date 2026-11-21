@@ -382,6 +382,10 @@ _Avoid_: wiki page, article, doc
 Two digits, such as `61`: the Johnny.Decimal level below an area, and where a knowledge page is filed. The page's area is the category's decade, so `61` is in `60-69`.
 _Avoid_: folder, section, collection, space
 
+**Page file**:
+A picture or other file stored with one page, in the `uw-files` bucket, and read only through `/api/files/:fileId` by someone who may read the page's area. A person adds one by pasting or dropping it in edit mode; an agent adds one with `attach_file`. The page body embeds it by that address.
+_Avoid_: attachment (alone), asset, upload, media
+
 **Cluster**:
 Two or more areas shown as one group in navigation, such as `60-79 Field Programs` over `60-69` and `70-79`. A cluster holds no pages and takes no grant; each of its areas does.
 _Avoid_: area (a cluster is not one), super-area, range

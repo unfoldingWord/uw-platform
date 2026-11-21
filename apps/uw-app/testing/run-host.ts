@@ -286,6 +286,7 @@ export function runDepsFor(
     engines,
     scout: { model: 'z-ai/glm-5.3-flash', provider: 'z-ai' },
     builder,
+    files: null,
   };
 }
 

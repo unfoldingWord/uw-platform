@@ -2,8 +2,11 @@ export const MAX_BODY_BYTES = 256 * 1024;
 
 type Json = { readonly ok: true; readonly value: unknown } | { readonly ok: false };
 
-export async function boundedText(request: Request): Promise<string | null> {
-  if (Number(request.headers.get('content-length')) > MAX_BODY_BYTES) return null;
+export async function boundedText(
+  request: Request,
+  most: number = MAX_BODY_BYTES,
+): Promise<string | null> {
+  if (Number(request.headers.get('content-length')) > most) return null;
   if (request.body === null) return '';
   const reader = request.body.getReader();
   const decoder = new TextDecoder();
@@ -11,7 +14,7 @@ export async function boundedText(request: Request): Promise<string | null> {
   let text = '';
   for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
     received += chunk.value.byteLength;
-    if (received > MAX_BODY_BYTES) {
+    if (received > most) {
       await reader.cancel();
       return null;
     }

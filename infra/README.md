@@ -433,7 +433,7 @@ Nothing in the files is a secret. `logpush = true` is added to `wrangler.go-live
 
 Pictures and files attached to pages are stored in R2 through the `FILES` binding of `uw-app`: the bucket `uw-files-staging` for staging and for every per-PR Worker (`preview`), and `uw-files` for production. Both buckets are private, with no public access and no custom domain, and were created on 2026-11-21. The binding is declared in `uw-app/wrangler.toml` and `uw-app/wrangler.go-live.toml`.
 
-Nothing here is a secret. A file is read only through `GET /api/files/:fileId`, which checks the reader's grant on the area of the page that holds it; the bucket is never exposed. A Worker without the binding answers `not_wired` to an upload or a download, and the edit screen says file storage is not set up.
+Nothing here is a secret. A file is read only through `GET /api/files/:fileId`, which checks the reader's grant on the area of the page that holds it; the bucket is never exposed. A Worker without the binding answers `not_wired` to an upload, a download or the agent verb `attach_file`, and the edit screen says file storage is not set up.
 
 ## Switching on the go-live wiring (FD-12)
 

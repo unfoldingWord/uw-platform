@@ -20,6 +20,7 @@ import { hubOf } from '../ports/hub.ts';
 import { notifierOf } from '../ports/notifier.ts';
 import { platformModelEngine } from '../ports/model-engine.ts';
 import { runsOf } from '../ports/runs.ts';
+import { bucketFiles, type FileStore } from '../pages/file-store.ts';
 
 export type BuilderGitHub = {
   readonly defaultBranch: (repository: string) => Promise<string | null>;
@@ -42,6 +43,7 @@ export type RunDeps = {
   readonly engines: EngineRegistry;
   readonly scout: { readonly model: string; readonly provider: string };
   readonly builder: BuilderGitHub;
+  readonly files: FileStore | null;
 };
 
 export type OpenedRunDeps = { readonly deps: RunDeps; release(): Promise<void> };
@@ -111,6 +113,7 @@ export function runDepsOf(env: Bindings, traceId: string): OpenedRunDeps {
       provider: env.ALWAYS_ON_PROVIDER ?? ALWAYS_ON_PROVIDER,
     },
     builder: builderOf(env, database.db),
+    files: env.FILES === undefined ? null : bucketFiles(env.FILES),
   };
   return { deps, release: () => database.release() };
 }

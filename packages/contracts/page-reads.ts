@@ -129,6 +129,10 @@ export const fileContentTypes = [
 
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
+export const MAX_AGENT_FILE_BYTES = 5 * 1024 * 1024;
+
+export const MAX_AGENT_FILE_BASE64_LENGTH = Math.ceil(MAX_AGENT_FILE_BYTES / 3) * 4;
+
 export const fileSchema = z.object({
   id: z.uuid(),
   pageId: z.uuid(),

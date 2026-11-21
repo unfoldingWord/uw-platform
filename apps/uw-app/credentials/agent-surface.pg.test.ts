@@ -121,6 +121,7 @@ function argumentsOf(): Readonly<Record<VerbName, readonly unknown[]>> {
     ],
     read_page: [page],
     write_page: [page],
+    attach_file: [page],
     resolve_context: [{ itemId: credentialId }],
     query_entities: [
       { query: 'credentials', params: ids },
