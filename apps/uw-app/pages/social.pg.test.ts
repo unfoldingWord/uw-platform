@@ -114,6 +114,23 @@ async function aReaderCommentsAndAnEditorResolves(db: Database): Promise<void> {
   expect((await listed(made, made.reader))[0]?.resolvedAt).not.toBeNull();
 }
 
+async function aPassageIsQuoted(db: Database, made: World, path: string): Promise<void> {
+  const quoted = new URLSearchParams({
+    intent: 'add',
+    requestId: randomUUID(),
+    bodyMd: 'This changed.',
+    quote: 'The limit is 50 dollars.',
+  });
+  await postForm(db, made.reader, path, quoted, ORIGIN);
+  const asked = await getHtml(db, made.reader, `${path}?quote=Only%20these%20words`);
+  const form = documentOf(asked.text).querySelector<HTMLTextAreaElement>('textarea[name="quote"]');
+  expect(form?.textContent).toBe('Only these words');
+  const withQuote = documentOf((await getHtml(db, made.reader, path)).text);
+  expect(withQuote.querySelector('[data-quote]')?.textContent?.trim()).toBe(
+    'The limit is 50 dollars.',
+  );
+}
+
 async function theCommentsScreenShowsAndTakesComments(db: Database): Promise<void> {
   const made = await world(db);
   const path = `/pages/${made.pageId}/comments`;
@@ -130,18 +147,21 @@ async function theCommentsScreenShowsAndTakesComments(db: Database): Promise<voi
   const document = documentOf(screen.text);
   expect(document.querySelector('[data-comment] strong')?.textContent).toBe('still');
   expect(screen.text).not.toContain('steal()');
+  await aPassageIsQuoted(db, made, path);
   const view = await getHtml(db, made.reader, `/pages/${made.pageId}`);
   expect(documentOf(view.text).querySelector(`main a[href="${path}"]`)?.textContent).toBe(
-    '1 open comment',
+    '2 open comments',
   );
-  const [only] = await listed(made, made.reader);
-  const settle = new URLSearchParams({
-    intent: 'resolve',
-    requestId: randomUUID(),
-    commentId: only?.id ?? '',
-  });
-  await postForm(db, made.reader, path, settle, ORIGIN);
-  expect((await listed(made, made.reader))[0]?.resolvedAt).not.toBeNull();
+  for (const comment of await listed(made, made.reader)) {
+    const settle = new URLSearchParams({
+      intent: 'resolve',
+      requestId: randomUUID(),
+      commentId: comment.id,
+    });
+    await postForm(db, made.reader, path, settle, ORIGIN);
+  }
+  const settled = await listed(made, made.reader);
+  expect(settled.every((comment) => comment.resolvedAt !== null)).toBe(true);
   const after = await getHtml(db, made.reader, `/pages/${made.pageId}`);
   expect(documentOf(after.text).querySelector(`main a[href="${path}"]`)?.textContent).toBe(
     'Comments',

@@ -213,6 +213,23 @@ export const pageLinks = declareTable(
   ],
 );
 
+export const areaHomes = declareTable(
+  'area_homes',
+  {
+    area: text('area').primaryKey(),
+    pageId: uuid('page_id')
+      .notNull()
+      .references(() => pages.id),
+    setBy: text('set_by').notNull(),
+    setAt: instant('set_at').notNull(),
+  },
+  { classification: 'internal', offlineEligibility: 'cache_readonly' },
+  (t) => [
+    check('area_homes_area_form', matches(t.area, JD_AREA_PATTERN)),
+    check('area_homes_set_by_is_identity', matches(t.setBy, IDENTITY_PATTERN)),
+  ],
+);
+
 export const pageFavourites = declareTable(
   'page_favourites',
   {
@@ -237,6 +254,7 @@ export const pageComments = declareTable(
       .references(() => pages.id),
     author: text('author').notNull(),
     bodyMd: text('body_md').notNull(),
+    quote: text('quote'),
     createdAt: instant('created_at').notNull(),
     resolvedAt: instant('resolved_at'),
     resolvedBy: text('resolved_by'),
@@ -245,6 +263,10 @@ export const pageComments = declareTable(
   (t) => [
     check('page_comments_author_is_identity', matches(t.author, IDENTITY_PATTERN)),
     check('page_comments_body_bounded', sql`length(btrim(${t.bodyMd})) BETWEEN 1 AND 10000`),
+    check(
+      'page_comments_quote_bounded',
+      sql`${t.quote} IS NULL OR length(btrim(${t.quote})) BETWEEN 1 AND 500`,
+    ),
     check(
       'page_comments_resolved_together',
       sql`(${t.resolvedAt} IS NULL) = (${t.resolvedBy} IS NULL)`,

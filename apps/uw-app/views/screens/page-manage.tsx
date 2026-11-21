@@ -23,7 +23,8 @@ import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '..
 import { pageNames } from '../parts/names.ts';
 import { pageLink, pageSpec, shownPage, type ShownPage } from '../parts/page-shown.ts';
 import { idParam } from '../parts/params.ts';
-import { pageEditPath, pageManagePath, pagePath } from '../parts/paths.ts';
+import { pageEditPath, pageManagePath, pagePath, wikiAreaPath } from '../parts/paths.ts';
+import { AreaHomeCard, changeAreaHome, homeStateOf } from '../parts/area-home-card.tsx';
 import { notFound } from './not-found.tsx';
 
 type Managed = {
@@ -215,6 +216,7 @@ async function render(
         <VerifyCard page={shown.page} />
         <MoveCard managed={managed} siblings={siblings} />
         <OtherCards page={shown.page} />
+        <AreaHomeCard page={shown.page} state={await homeStateOf(c, screen, shown.page)} />
       </div>
     </>,
   );
@@ -322,6 +324,11 @@ export async function managePage(c: Context<AppEnv>): Promise<Response> {
   if (managed === null) return readOnly(c, found);
   const posted = await c.req.parseBody();
   const intent = text(posted['intent']);
+  if (intent === 'home') {
+    const refused = await changeAreaHome(c, managed.screen, managed.shown.page, posted);
+    if (refused !== null) return render(c, managed, refused);
+    return c.redirect(wikiAreaPath(managed.shown.page.jdArea), 303);
+  }
   const act = actions.get(intent);
   const outcome = act === undefined ? malformed : await act(c, managed, posted);
   if (!outcome.ok) return render(c, managed, outcome.reason);

@@ -1,6 +1,8 @@
 import type { Context } from 'hono';
 import { z } from 'zod';
 import {
+  areaHomeReplySchema,
+  jdAreaSchema,
   lapsedPagesReplySchema,
   pageCategoriesReplySchema,
   pageFavouriteReplySchema,
@@ -18,6 +20,7 @@ import type { Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
 import type { AppEnv } from '../deps.ts';
 import { refuse } from '../http/outcomes.ts';
+import { areaHome } from './area-homes.ts';
 import { categoryCounts } from './categories.ts';
 import { capabilitiesOn } from './capabilities.ts';
 import { favouritesOf, isFavourite } from './favourites.ts';
@@ -139,6 +142,13 @@ const review: Read = async (c, { db, actor, at }) =>
 const reviewDue: Read = async (c, { db, actor, at }) =>
   accepted(c, lapsedPagesReplySchema.parse({ pages: await reviewDueFor(db, actor, at) }));
 
+const area: Read = async (c, { db, actor, at }) => {
+  const asked = jdAreaSchema.safeParse(c.req.param('area'));
+  const home = asked.success ? await areaHome(db, actor, asked.data, at) : null;
+  if (home === null) return refuse(c, 'page_not_found');
+  return accepted(c, areaHomeReplySchema.parse(home));
+};
+
 const favourite: Read = async (c, { db, actor, at }) => {
   const pageId = z.uuid().safeParse(c.req.param('pageId'));
   const page = pageId.success ? await readPage(db, actor, pageId.data, at) : null;
@@ -191,6 +201,7 @@ export const pageReads = {
   templates: reading(templates),
   review: reading(review),
   reviewDue: reading(reviewDue),
+  area: reading(area),
   exported: reading(exported),
   versions: reading(versions),
   version: reading(version),

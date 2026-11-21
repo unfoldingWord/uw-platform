@@ -158,6 +158,7 @@ export const pageCommentSchema = z.object({
   author: z.string().min(1),
   authorName: z.string().min(1).nullable(),
   bodyMd: z.string().min(1).max(10_000),
+  quote: z.string().min(1).max(500).nullable(),
   createdAt: instant,
   resolvedAt: instant.nullable(),
 });
@@ -181,6 +182,12 @@ export const lapsedPageSchema = pageTitleSchema.extend({
 });
 
 export const lapsedPagesReplySchema = z.object({ pages: z.array(lapsedPageSchema) });
+
+export const areaHomeReplySchema = z.object({
+  area: jdAreaSchema,
+  home: pageTitleSchema.nullable(),
+  categories: z.array(pageCategorySchema),
+});
 
 export type PageComment = z.infer<typeof pageCommentSchema>;
 export type PageCategory = z.infer<typeof pageCategorySchema>;

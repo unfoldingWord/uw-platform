@@ -30,6 +30,7 @@ export const owns = [
   'page_files',
   'page_favourites',
   'page_comments',
+  'area_homes',
 ] as const;
 
 export type PageResult =

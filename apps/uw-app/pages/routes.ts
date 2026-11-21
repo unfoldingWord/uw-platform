@@ -4,6 +4,7 @@ import {
   movePageCommandSchema,
   createPageCommandSchema,
   nameCategoryCommandSchema,
+  setAreaHomeCommandSchema,
   pageCommandAcceptedSchema,
   updatePageCommandSchema,
   type CreatePageCommand,
@@ -21,8 +22,10 @@ import { pageVersionScreen, restoreVersion } from '../views/screens/page-version
 import { wikiCategoryScreen } from '../views/screens/wiki-category.tsx';
 import { searchScreen } from '../views/screens/search.tsx';
 import { createFromForm, wikiNewScreen } from '../views/screens/wiki-new.tsx';
+import { wikiAreaScreen } from '../views/screens/wiki-area.tsx';
 import { wikiReviewScreen } from '../views/screens/wiki-review.tsx';
 import { wikiScreen } from '../views/screens/wiki.tsx';
+import { setAreaHome } from './area-homes.ts';
 import { nameCategory } from './categories.ts';
 import { confirmPage } from './confirm.ts';
 import { connectDraft } from './draft-handlers.ts';
@@ -87,6 +90,24 @@ const handlers = new Map<string, Run>([
   ],
 ]);
 
+async function handleSetAreaHome(c: Context<AppEnv>): Promise<Response> {
+  const database = c.get('database');
+  if (database === null) return refuse(c, 'database_not_configured');
+  const actor = c.get('principal');
+  if (actor === null) return refuse(c, 'unauthenticated');
+  const body = await readJson(c);
+  const parsed = setAreaHomeCommandSchema.safeParse(body);
+  if (!parsed.success) return malformed(c, body);
+  const result = await setAreaHome(database.db, actor, parsed.data, c.get('now'));
+  const { requestId } = parsed.data;
+  return reply(
+    c,
+    result.ok
+      ? { status: 'accepted', requestId }
+      : { status: 'error', requestId, reason: result.reason },
+  );
+}
+
 async function handleNameCategory(c: Context<AppEnv>): Promise<Response> {
   const database = c.get('database');
   if (database === null) return refuse(c, 'database_not_configured');
@@ -133,11 +154,13 @@ function wikiReads(routes: Hono<AppEnv>): void {
   routes.get('/templates', pageReads.templates);
   routes.get('/review', pageReads.review);
   routes.get('/review/yours', pageReads.reviewDue);
+  routes.get('/areas/:area', pageReads.area);
 }
 
 function pageRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
   routes.post('/commands/name_category', handleNameCategory);
+  routes.post('/commands/set_area_home', handleSetAreaHome);
   routes.post('/commands/comment_page', handleComment);
   routes.post('/commands/resolve_comment', handleResolve);
   routes.post('/commands/:name', handleCommand);
@@ -167,6 +190,7 @@ function wikiScreenRoutes(): Hono<AppEnv> {
   routes.use('/new', formGuard);
   routes.get('/new', wikiNewScreen);
   routes.get('/review', wikiReviewScreen);
+  routes.get('/areas/:area', wikiAreaScreen);
   routes.post('/new', createFromForm);
   routes.get('/:category', wikiCategoryScreen);
   return routes;

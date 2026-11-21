@@ -30,6 +30,7 @@ export async function addComment(
       pageId: page.id,
       author: actor.identity,
       bodyMd: command.bodyMd.trim(),
+      quote: command.quote?.trim() ?? null,
       createdAt: at,
     })
     .onConflictDoNothing();
@@ -81,6 +82,7 @@ export async function commentsOf(
     author: comment.author,
     authorName: name,
     bodyMd: comment.bodyMd,
+    quote: comment.quote,
     createdAt: comment.createdAt.toISOString(),
     resolvedAt: comment.resolvedAt?.toISOString() ?? null,
   }));

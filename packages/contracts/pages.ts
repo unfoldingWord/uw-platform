@@ -105,7 +105,22 @@ export const commentPageCommandSchema = z.object({
     .string()
     .max(10_000)
     .refine((value) => value.trim().length > 0, 'a comment is not blank'),
+  quote: z
+    .string()
+    .max(500)
+    .refine((value) => value.trim().length > 0, 'a quoted passage is not blank')
+    .nullable()
+    .default(null),
 });
+
+export const setAreaHomeCommandSchema = z.object({
+  command: z.literal('set_area_home'),
+  requestId: z.uuid(),
+  area: jdAreaSchema,
+  pageId: z.uuid().nullable(),
+});
+
+export type SetAreaHomeCommand = z.infer<typeof setAreaHomeCommandSchema>;
 
 export const resolveCommentCommandSchema = z.object({
   command: z.literal('resolve_comment'),

@@ -41,6 +41,7 @@ import {
   runPath,
   runsPath,
   waitingPath,
+  wikiAreaPath,
   wikiNewPath,
   wikiPath,
   wikiReviewPath,
@@ -188,6 +189,7 @@ async function boardScreens(db: Database): Promise<Screen[]> {
     ['page-version', pageVersionPath(knowledgeId, 1)],
     ['page-comments', pageCommentsPath(knowledgeId)],
     ['wiki-review', wikiReviewPath()],
+    ['wiki-area', wikiAreaPath('80-89')],
     ['search', '/search?q=assessment'],
   ];
   const headers = { accept: 'text/html' };
@@ -377,6 +379,7 @@ const pictured = [
   'page-version',
   'page-comments',
   'wiki-review',
+  'wiki-area',
   'search',
   'controls-member',
   'flow-member',

@@ -38,6 +38,14 @@ function Comment(props: { readonly pageId: string; readonly comment: Shown }) {
       <p class="m-0 text-xs font-heavy tracking-wide text-text-3 uppercase">
         {`${who}, ${when}${comment.resolvedAt === null ? '' : ', resolved'}`}
       </p>
+      {comment.quote === null ? null : (
+        <blockquote
+          data-quote=""
+          class="m-0 border-l-2 border-line-strong pl-3 text-sm text-text-2 italic"
+        >
+          {comment.quote}
+        </blockquote>
+      )}
       <div data-page-body="">{raw(comment.html)}</div>
       {comment.resolvedAt !== null || !comment.mayResolve ? null : (
         <form method="post" action={pageCommentsPath(props.pageId)}>
@@ -53,17 +61,26 @@ function Comment(props: { readonly pageId: string; readonly comment: Shown }) {
   );
 }
 
-function AddForm(props: { readonly pageId: string; readonly typed: string }) {
+function AddForm(props: { readonly pageId: string; readonly typed: Typed }) {
   return (
     <Card title="Add a comment" sub="Say what is wrong, missing or unclear">
       <form method="post" action={pageCommentsPath(props.pageId)} class="flex flex-col gap-4">
         <input type="hidden" name="intent" value="add" />
         <input type="hidden" name="requestId" value={crypto.randomUUID()} />
         <TextAreaField
+          name="quote"
+          label="About these words"
+          scope={props.pageId}
+          value={props.typed.quote}
+          rows={2}
+          maxLength={500}
+          hint="Leave empty to comment on the whole page."
+        />
+        <TextAreaField
           name="bodyMd"
           label="Comment"
           scope={props.pageId}
-          value={props.typed}
+          value={props.typed.bodyMd}
           rows={4}
           maxLength={10_000}
           hint="Markdown works here."
@@ -104,7 +121,8 @@ async function shownComments(c: Context<AppEnv>, found: Found): Promise<readonly
   );
 }
 
-type State = { readonly refused: string | null; readonly typed: string };
+type Typed = { readonly bodyMd: string; readonly quote: string };
+type State = { readonly refused: string | null; readonly typed: Typed };
 
 async function render(c: Context<AppEnv>, found: Found, state: State): Promise<Response> {
   const { page } = found.shown;
@@ -145,8 +163,12 @@ async function render(c: Context<AppEnv>, found: Found, state: State): Promise<R
 export async function pageCommentsScreen(c: Context<AppEnv>): Promise<Response> {
   if (screenKernel(c) === null) return screenRefusal(c);
   const found = await foundOf(c);
-  return found === null ? notFound(c) : render(c, found, { refused: null, typed: '' });
+  const quote = (c.req.query('quote') ?? '').trim().slice(0, 500);
+  const typed = { bodyMd: '', quote };
+  return found === null ? notFound(c) : render(c, found, { refused: null, typed });
 }
+
+const blank: Typed = { bodyMd: '', quote: '' };
 
 function text(value: unknown): string {
   return typeof value === 'string' ? value : '';
@@ -167,17 +189,18 @@ export async function commentFromForm(c: Context<AppEnv>): Promise<Response> {
       requestId: posted['requestId'],
       commentId: posted['commentId'],
     });
-    if (!settle.success) return render(c, found, { refused: 'malformed_command', typed: '' });
+    if (!settle.success) return render(c, found, { refused: 'malformed_command', typed: blank });
     const done = await resolveComment(database.db, actor, settle.data, found.screen.at);
-    return done.ok ? back : render(c, found, { refused: done.reason, typed: '' });
+    return done.ok ? back : render(c, found, { refused: done.reason, typed: blank });
   }
-  const typed = text(posted['bodyMd']);
+  const typed = { bodyMd: text(posted['bodyMd']), quote: text(posted['quote']).trim() };
   const said = commentPageCommandSchema.safeParse({
     command: 'comment_page',
     requestId: posted['requestId'],
     commentId: crypto.randomUUID(),
     pageId: page.id,
-    bodyMd: typed,
+    bodyMd: typed.bodyMd,
+    quote: typed.quote === '' ? null : typed.quote,
   });
   if (!said.success) return render(c, found, { refused: 'malformed_command', typed });
   const done = await addComment(database.db, actor, said.data, found.screen.at);

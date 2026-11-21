@@ -1,0 +1,15 @@
+{
+  "area": "00-09",
+  "home": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "title": "00 Home"
+  },
+  "categories": [
+    {
+      "code": "01",
+      "area": "00-09",
+      "name": "Knowledge base",
+      "pages": 3
+    }
+  ]
+}

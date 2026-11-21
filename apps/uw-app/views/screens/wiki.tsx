@@ -10,7 +10,7 @@ import { lapsedPages } from '../../pages/verification.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { areasWithin, moduleCodes, pageNames, platformAreas } from '../parts/names.ts';
 import { pageLink } from '../parts/page-shown.ts';
-import { pagePath, wikiNewPath, wikiPath, wikiReviewPath } from '../parts/paths.ts';
+import { pagePath, wikiAreaPath, wikiNewPath, wikiPath, wikiReviewPath } from '../parts/paths.ts';
 
 const row =
   'flex items-baseline gap-3 rounded-sm px-4 py-2 text-base text-text outline-offset-2 outline-accent-text hover:bg-hover focus-visible:outline-2';
@@ -64,6 +64,13 @@ function AreaCard(props: { readonly group: Group }) {
           <CategoryRow category={category} />
         ))}
       </ul>
+      <p class="m-0 flex flex-wrap gap-4 border-t border-line px-4 py-2 text-sm">
+        {[...new Set(group.categories.map((category) => category.area))].map((area) => (
+          <a href={wikiAreaPath(area)} class={pageLink}>
+            {`Home of ${area}`}
+          </a>
+        ))}
+      </p>
     </section>
   );
 }

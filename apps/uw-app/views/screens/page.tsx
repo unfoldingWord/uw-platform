@@ -140,6 +140,14 @@ function Take(props: { readonly pageId: string; readonly open: number }) {
       <a href={pageCommentsPath(props.pageId)} class={pageLink}>
         {comments}
       </a>
+      <button
+        type="button"
+        data-comment-passage=""
+        data-href={pageCommentsPath(props.pageId)}
+        class={`${pageLink} cursor-pointer`}
+      >
+        Comment on the selected words
+      </button>
       <a href={pageExportPath(props.pageId)} class={pageLink}>
         Export as markdown
       </a>

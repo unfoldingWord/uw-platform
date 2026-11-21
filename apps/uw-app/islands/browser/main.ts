@@ -9,6 +9,7 @@ import { wireNewWorkflow } from './new-workflow.ts';
 import { wirePageUpload } from './page-upload.ts';
 import { wireEditKey } from './edit-key.ts';
 import { wireFavourite } from './favourite.ts';
+import { wirePassageComment } from './passage.ts';
 import { wirePrint } from './print.ts';
 import { browserPush, wirePushControl } from './push-subscribe.ts';
 import { wireQuickSwitcher } from './quick-switcher.ts';
@@ -47,6 +48,13 @@ document.addEventListener('DOMContentLoaded', () => {
   wirePrint(document, () => window.print());
   wireFavourite(document, send);
   wireEditKey(document, (href) => window.location.assign(href));
+  wirePassageComment(document, {
+    selected: () => {
+      const selection = window.getSelection();
+      return { text: selection?.toString() ?? '', inside: selection?.anchorNode ?? null };
+    },
+    go: (href) => window.location.assign(href),
+  });
   wireQuickSwitcher(document, {
     fetch: send,
     go: (href) => window.location.assign(href),

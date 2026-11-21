@@ -92,6 +92,10 @@ export function pageEditPath(pageId: string): string {
   return `${pagePath(pageId)}/edit`;
 }
 
+export function wikiAreaPath(area: string): string {
+  return `/wiki/areas/${segment(area)}`;
+}
+
 export function wikiReviewPath(): string {
   return '/wiki/review';
 }
