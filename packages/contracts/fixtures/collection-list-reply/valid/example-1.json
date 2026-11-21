@@ -1,0 +1,11 @@
+{
+  "collections": [
+    {
+      "key": "program",
+      "name": "Programs",
+      "jdArea": "60-69",
+      "version": 1,
+      "locked": false
+    }
+  ]
+}

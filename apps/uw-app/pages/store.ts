@@ -1,5 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import {
+  isCollectionPageType,
   pageSchema,
   type CreatePageCommand,
   type ErrorReason,
@@ -57,6 +58,8 @@ const SLUG_PER_AREA = 'pages_slug_per_area';
 function refused(reason: ErrorReason): PageResult {
   return { ok: false, reason };
 }
+
+const collectionRow: PageRefusal = { ok: false, reason: 'collection_row', detail: {} };
 
 const activationRequired: PageRefusal = { ok: false, reason: 'activation_required', detail: {} };
 
@@ -181,6 +184,17 @@ export function createPage(
   return createPageAs(db, actor, command, { traceId, at, writer: null });
 }
 
+function reservedType(type: string): PageRefusal | null {
+  if (type === ISSUE_MIRROR) return issueMirror;
+  return isCollectionPageType(type) ? collectionRow : null;
+}
+
+function keptFrontmatter(stored: Page, command: CheckedSave['command']): CheckedSave['command'] {
+  return isCollectionPageType(stored.type)
+    ? { ...command, frontmatter: stored.frontmatter }
+    : command;
+}
+
 export async function createPageAs(
   db: Database,
   actor: Principal,
@@ -190,7 +204,8 @@ export async function createPageAs(
   const { traceId, at } = request;
   const replayed = await replayOf(db, actor, command.requestId);
   if (replayed !== null) return { ok: true, page: replayed };
-  if (command.type === ISSUE_MIRROR) return issueMirror;
+  const reserved = reservedType(command.type);
+  if (reserved !== null) return reserved;
   const check = checkFrontmatter(command.type, command.frontmatter);
   if (!check.ok) return refused(check.reason);
   if (filedOutsideItsArea(check.type, check.frontmatter, command.jdArea)) {
@@ -369,7 +384,7 @@ async function updateInTransaction(tx: Transaction, save: Save): Promise<PageRes
   }
   const chosen = checked.statusFor(stored);
   if (typeof chosen !== 'string') return chosen;
-  const full = await derivedSave(tx, stored, chosen, command);
+  const full = await derivedSave(tx, stored, chosen, keptFrontmatter(stored, command));
   if ('ok' in full) return full;
   const blocked = await parentRefusal(tx, actor, full, at);
   if (blocked !== null) return refused(blocked);

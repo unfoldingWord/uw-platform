@@ -1,7 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
   check,
-  date,
   foreignKey,
   index,
   integer,
@@ -19,7 +18,6 @@ import {
   personStatusSchema,
   roleSchema,
   scopeSchema,
-  taskStatusSchema,
 } from '@uw/contracts';
 import { searchDocument } from './page-search.ts';
 import {
@@ -34,6 +32,7 @@ import {
 } from './checks.ts';
 import { instant } from './columns.ts';
 import { declareTable } from './declarations.ts';
+import { collections } from './schema-collections.ts';
 
 export const people = declareTable(
   'people',
@@ -136,6 +135,7 @@ export const pages = declareTable(
     slug: text('slug').notNull(),
     title: text('title').notNull(),
     parentId: uuid('parent_id'),
+    collectionId: uuid('collection_id').references(() => collections.id),
     frontmatter: jsonb('frontmatter').notNull(),
     bodyMd: text('body_md').notNull(),
     version: integer('version').notNull(),
@@ -156,6 +156,7 @@ export const pages = declareTable(
     index('pages_search').using('gin', searchDocument(t)),
     index('pages_title_trgm').using('gin', t.title.op('gin_trgm_ops')),
     index('pages_area_updated').on(t.jdArea, t.updatedAt),
+    index('pages_collection').on(t.collectionId, t.jdArea),
   ],
 );
 
@@ -201,10 +202,20 @@ export const pageLinks = declareTable(
     toPage: uuid('to_page').references(() => pages.id),
     rel: text('rel').notNull(),
     wanted: text('wanted'),
+    position: text('position'),
   },
   { classification: 'internal', offlineEligibility: 'sync' },
   (t) => [
-    check('page_links_rel_known', oneOf(t.rel, ['links', 'embeds', 'unresolved'])),
+    check(
+      'page_links_rel_known',
+      sql`${oneOf(t.rel, ['links', 'embeds', 'unresolved'])} OR ${matches(t.rel, RELATION_REL_PATTERN)}`,
+    ),
+    check(
+      'page_links_position_form',
+      sql`${t.position} IS NULL OR ${matches(t.position, '^[0-9A-Za-z]+$')}`,
+    ),
+    index('page_links_rel_from').on(t.rel, t.fromPage),
+    index('page_links_rel_to').on(t.rel, t.toPage),
     check(
       'page_links_unresolved_names_no_page',
       sql`(${t.rel} = 'unresolved') = (${t.toPage} IS NULL)`,
@@ -383,29 +394,6 @@ export const queueWatermarks = declareTable(
   { classification: 'internal', offlineEligibility: 'never' },
 );
 
-export const tasks = declareTable(
-  'tasks',
-  {
-    id: uuid('id').primaryKey(),
-    jdArea: text('jd_area').notNull(),
-    title: text('title').notNull(),
-    pageId: uuid('page_id').references(() => pages.id),
-    due: date('due', { mode: 'string' }),
-    status: text('status').notNull(),
-    createdBy: text('created_by').notNull(),
-    traceId: uuid('trace_id').notNull(),
-    createdAt: instant('created_at').notNull(),
-  },
-  { classification: 'internal', offlineEligibility: 'sync' },
-  (t) => [
-    check('tasks_status_known', oneOf(t.status, taskStatusSchema.options)),
-    check('tasks_area_form', matches(t.jdArea, JD_AREA_PATTERN)),
-    check('tasks_created_by_is_identity', matches(t.createdBy, IDENTITY_PATTERN)),
-    check('tasks_title_not_blank', sql`length(btrim(${t.title})) > 0`),
-    index('tasks_area_status').on(t.jdArea, t.status),
-  ],
-);
-
 export const serviceTokens = declareTable(
   'service_tokens',
   {
@@ -432,6 +420,8 @@ export const serviceTokens = declareTable(
       .where(sql`${t.revokedAt} IS NULL`),
   ],
 );
+
+const RELATION_REL_PATTERN = '^[a-z][a-z0-9_]*[.][a-z][a-z0-9_]*$';
 
 const retiredCommandNames = ['create_stage', 'update_stage', 'reorder_stages', 'remove_stage'];
 

@@ -1,0 +1,58 @@
+{
+  "collection": {
+    "key": "program",
+    "name": "Programs",
+    "jdArea": "60-69",
+    "version": 1,
+    "locked": false
+  },
+  "definition": {
+    "key": "program",
+    "name": "Programs",
+    "jdArea": "60-69",
+    "rowSource": "pages",
+    "pageType": "program",
+    "properties": [
+      {
+        "key": "name",
+        "name": "Name",
+        "config": {
+          "type": "title"
+        },
+        "source": {
+          "kind": "column",
+          "column": "title"
+        }
+      },
+      {
+        "key": "phase",
+        "name": "Phase",
+        "source": {
+          "kind": "frontmatter"
+        },
+        "config": {
+          "type": "status",
+          "options": [
+            {
+              "id": "idea",
+              "name": "Idea",
+              "group": "to_do"
+            },
+            {
+              "id": "running",
+              "name": "Running",
+              "group": "in_progress"
+            },
+            {
+              "id": "closed",
+              "name": "Closed",
+              "group": "complete"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "views": [],
+  "templates": []
+}

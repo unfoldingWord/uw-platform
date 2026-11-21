@@ -4,7 +4,7 @@ import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
 import { people, personAudit } from '@uw/db/schema';
 
-export const owns = ['people', 'person_audit'] as const;
+export const owns = ['people', 'person_audit', 'directory_entries', 'directory_private'] as const;
 
 const ORG_EMAIL_SUFFIX = '@unfoldingword.org';
 

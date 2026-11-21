@@ -442,6 +442,20 @@
       "when": 1795226535630,
       "tag": "0064_pages_title_trgm",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1795278137328,
+      "tag": "0065_collections",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1795278144204,
+      "tag": "0066_collection_extractors",
+      "breakpoints": true
     }
   ]
 }

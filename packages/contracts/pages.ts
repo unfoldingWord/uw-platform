@@ -12,7 +12,20 @@ export const pageTypes = [
   'issue',
   'platform',
   'knowledge',
+  'entry',
+  'portfolio',
+  'program',
+  'project',
+  'okr',
 ] as const;
+
+export const collectionPageTypes = ['entry', 'portfolio', 'program', 'project', 'okr'] as const;
+
+const collectionPageTypeSet: ReadonlySet<string> = new Set(collectionPageTypes);
+
+export function isCollectionPageType(type: string): boolean {
+  return collectionPageTypeSet.has(type);
+}
 
 export const pageTypeSchema = z.enum(pageTypes);
 export const pageStatusSchema = z.enum(['draft', 'suggested', 'active', 'retired']);

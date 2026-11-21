@@ -1,0 +1,11 @@
+{
+  "command": "save_template",
+  "requestId": "00000000-0000-4000-8000-000000000900",
+  "collection": "project",
+  "templateId": "00000000-0000-4000-8000-000000000005",
+  "name": "New project",
+  "values": {
+    "phase": "idea"
+  },
+  "bodyMd": "## Goal\n"
+}

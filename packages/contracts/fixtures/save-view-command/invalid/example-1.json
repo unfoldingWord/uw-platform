@@ -1,0 +1,22 @@
+{
+  "command": "save_view",
+  "requestId": "00000000-0000-4000-8000-000000000900",
+  "collection": "program",
+  "viewId": "00000000-0000-4000-8000-000000000001",
+  "settings": {
+    "name": "By phase",
+    "layout": "timeline",
+    "scope": "shared",
+    "group": {
+      "property": "phase",
+      "by": "value"
+    },
+    "groups": [
+      {
+        "value": "running",
+        "visible": true,
+        "wipLimit": 5
+      }
+    ]
+  }
+}

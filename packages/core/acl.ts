@@ -78,6 +78,7 @@ export const rowReadRules = {
   credential_grants: grantRecord,
   credential_bindings: managedRecord,
   credential_access_log: managedRecord,
+  directory_private: lentRecord,
 } as const satisfies Readonly<Record<string, RowReadRule>>;
 
 export type RestrictedTable = keyof typeof rowReadRules;
@@ -265,4 +266,53 @@ const actionByVerbRole: ReadonlyMap<Role, AclAction> = new Map<Role, AclAction>(
 
 export function actionForVerbRole(role: Role): AclAction {
   return actionByVerbRole.get(role) ?? 'admin';
+}
+
+export type PropertyRule = {
+  readonly steward: JdArea | null;
+  readonly role: Role;
+  readonly owner: boolean;
+};
+
+export type PropertyAccess = 'all' | 'own' | 'none';
+
+function holdsOrgAdmin(actor: Principal, at: Date): boolean {
+  return actor.grants.some(
+    (grant) =>
+      isLive(grant, at) && grant.scopeKind === 'org' && reaches(grant.role, minimumRole.admin),
+  );
+}
+
+function holdsAreaRole(actor: Principal, area: JdArea, role: Role, at: Date): boolean {
+  return actor.grants.some(
+    (grant) =>
+      isLive(grant, at) &&
+      grant.scopeKind === 'jd_area' &&
+      grant.scopeArea === area &&
+      reaches(grant.role, role),
+  );
+}
+
+export function propertyAccess(
+  actor: Principal,
+  rule: PropertyRule | null,
+  rowArea: JdArea,
+  at: Date,
+): PropertyAccess {
+  if (rule === null) return 'all';
+  if (holdsOrgAdmin(actor, at)) return 'all';
+  if (holdsAreaRole(actor, rule.steward ?? rowArea, rule.role, at)) return 'all';
+  if (rule.owner && actor.kind === 'person' && actor.personId !== null) return 'own';
+  return 'none';
+}
+
+export function canReadProperty(
+  actor: Principal,
+  rule: PropertyRule | null,
+  row: { readonly area: JdArea; readonly ownerId: string | null },
+  at: Date,
+): boolean {
+  const access = propertyAccess(actor, rule, row.area, at);
+  if (access === 'all') return true;
+  return access === 'own' && row.ownerId !== null && row.ownerId === actor.personId;
 }

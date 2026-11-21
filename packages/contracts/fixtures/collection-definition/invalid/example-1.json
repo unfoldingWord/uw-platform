@@ -1,0 +1,36 @@
+{
+  "key": "program",
+  "name": "Programs",
+  "jdArea": "60-69",
+  "rowSource": "pages",
+  "pageType": "program",
+  "properties": [
+    {
+      "key": "phase",
+      "name": "Phase",
+      "source": {
+        "kind": "frontmatter"
+      },
+      "config": {
+        "type": "status",
+        "options": [
+          {
+            "id": "idea",
+            "name": "Idea",
+            "group": "to_do"
+          },
+          {
+            "id": "running",
+            "name": "Running",
+            "group": "in_progress"
+          },
+          {
+            "id": "closed",
+            "name": "Closed",
+            "group": "complete"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "command": "create_row",
+  "requestId": "00000000-0000-4000-8000-000000000900",
+  "collection": "project",
+  "rowId": "00000000-0000-4000-8000-000000000003",
+  "jdArea": "60-69",
+  "title": "Workshop",
+  "values": {
+    "phase": "idea"
+  },
+  "template": null
+}

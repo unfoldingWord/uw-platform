@@ -13,6 +13,8 @@ import {
   slugSchema,
 } from './pages.ts';
 import type { VerbName } from './verb-names.ts';
+import { collectionKeySchema, propertyKeySchema } from './collections.ts';
+import { collectionReplySchema, rowsReplySchema } from './collection-reads.ts';
 
 export const submitToGateResultSchema = z.enum([
   'advanced',
@@ -176,6 +178,42 @@ export const verbIo = {
       ...runStepCosts,
     }),
     output: recordRunStepReplySchema,
+  },
+  read_collection: {
+    input: z.strictObject({ collection: collectionKeySchema }),
+    output: collectionReplySchema,
+  },
+  read_view: {
+    input: z.strictObject({
+      viewId: z.uuid(),
+      limit: z.number().int().min(1).max(200).default(50),
+      cursor: z
+        .string()
+        .regex(/^[0-9]{1,7}$/)
+        .nullable()
+        .default(null),
+    }),
+    output: rowsReplySchema,
+  },
+  create_row: {
+    input: z.strictObject({
+      collection: collectionKeySchema,
+      rowId: z.uuid(),
+      jdArea: jdAreaSchema,
+      title: z.string().min(1).max(200),
+      values: z.record(propertyKeySchema, z.json()).default({}),
+      template: z.uuid().nullable().default(null),
+    }),
+    output: z.object({ rowId: z.uuid(), version: z.number().int().min(1) }),
+  },
+  set_property: {
+    input: z.strictObject({
+      collection: collectionKeySchema,
+      rowId: z.uuid(),
+      property: propertyKeySchema,
+      value: z.json(),
+    }),
+    output: z.object({ rowId: z.uuid(), version: z.number().int().min(1) }),
   },
   get_health: {
     input: z.object({ harnessId: z.uuid() }),

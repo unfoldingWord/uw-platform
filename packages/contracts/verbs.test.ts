@@ -34,7 +34,7 @@ function groupOf(name: string): string | undefined {
 }
 
 describe('CT-2 the verb registry', () => {
-  it('registers exactly the thirteen verbs of PRD section 8.2', () => {
+  it('registers the thirteen verbs of PRD section 8.2 and the four collection verbs of #206', () => {
     expect(names()).toEqual([
       'search_pages',
       'read_page',
@@ -42,6 +42,10 @@ describe('CT-2 the verb registry', () => {
       'resolve_context',
       'query_entities',
       'create_task',
+      'read_collection',
+      'read_view',
+      'create_row',
+      'set_property',
       'list_gifts',
       'create_draft_journal_entry',
       'poll_queue',
@@ -86,7 +90,7 @@ describe('CT-2 the verb manifest is contract data', () => {
   it('is plain JSON-serialisable contract data', () => {
     const manifest = verbManifest();
     expect(JSON.parse(JSON.stringify(manifest))).toEqual(manifest);
-    expect(manifest).toHaveLength(13);
+    expect(manifest).toHaveLength(17);
   });
 
   it('serialises the registry with its Zod schemas stripped', () => {

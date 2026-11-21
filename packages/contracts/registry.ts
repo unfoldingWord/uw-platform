@@ -27,6 +27,7 @@ import {
 } from './credential-commands.ts';
 import { draftCheckSchema, draftStageSchema } from './drafts.ts';
 import * as closedSets from './closed-sets.ts';
+import { collectionSchemaRegistry } from './collection-registry.ts';
 import {
   commandNameSchema,
   commandSchema,
@@ -177,6 +178,7 @@ import { verbGrantSchema, verbGroupSchema } from './verbs.ts';
 import { zulipMessageSchema, zulipOutgoingSchema, zulipTopicSchema } from './zulip.ts';
 
 export const schemaRegistry: Record<string, ZodType> = {
+  ...collectionSchemaRegistry,
   command: commandSchema,
   'command-name': commandNameSchema,
   'override-command': overrideCommandSchema,

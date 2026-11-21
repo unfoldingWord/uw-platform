@@ -84,6 +84,30 @@ export const verbRegistry: readonly VerbDefinition[] = [
     'Suggest a task in an area, attributed to you, for a person to confirm.',
   ),
   verb(
+    'read_collection',
+    'records',
+    onResource('viewer'),
+    "Read a collection's definition: its properties, their types and options, its saved views and row templates.",
+  ),
+  verb(
+    'read_view',
+    'records',
+    onResource('viewer'),
+    'Read the rows of a saved view you may see, filtered, sorted and grouped as the view says; properties you may not read are withheld.',
+  ),
+  verb(
+    'create_row',
+    'records',
+    onResource('editor'),
+    'Create a row in a collection, in an area you may write; money and other read-through properties cannot be set.',
+  ),
+  verb(
+    'set_property',
+    'records',
+    onResource('editor'),
+    'Set one property of a row you may write; read-through, rollup, computed and system properties cannot be set.',
+  ),
+  verb(
     'list_gifts',
     'role_gated',
     inArea('editor', '40-49'),
