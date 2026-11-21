@@ -25,6 +25,18 @@ document.addEventListener('DOMContentLoaded', () => {
   void startPageEditor(document, {
     fetch: (input, init) => window.fetch(input, init),
     uuid: () => crypto.randomUUID(),
-    collaboration: (root) => collaborationFor(root, connect, window),
+    collaboration: (root) =>
+      collaborationFor(root, connect, {
+        setTimeout: (run, ms) => window.setTimeout(run, ms),
+        confirm: (question) => window.confirm(question),
+        currentVersion: async (pageId) => {
+          const response = await window.fetch(`/api/pages/${encodeURIComponent(pageId)}`, {
+            headers: { accept: 'application/json' },
+          });
+          if (!response.ok) return null;
+          const body = (await response.json()) as { page?: { version?: unknown } };
+          return typeof body.page?.version === 'number' ? body.page.version : null;
+        },
+      }),
   });
 });

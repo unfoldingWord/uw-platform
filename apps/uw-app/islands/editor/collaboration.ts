@@ -33,6 +33,7 @@ export type Collaboration = {
 type Waits = {
   readonly setTimeout: (run: () => void, ms: number) => unknown;
   readonly confirm: (question: string) => boolean;
+  readonly currentVersion?: (pageId: string) => Promise<number | null>;
 };
 
 const FIELD = 'default';
@@ -139,6 +140,27 @@ function whenSynced(link: Link, waits: Waits): Promise<boolean> {
   });
 }
 
+const WATCH_MS = 30_000;
+const SUPERSEDED =
+  'A newer version of this page was saved somewhere else. Your draft is still here, but it cannot be saved over the newer version: copy what you need, then open the page.';
+
+export function watchVersion(root: HTMLElement, room: Room, waits: Waits): void {
+  const current = waits.currentVersion;
+  if (current === undefined) return;
+  const check = (): void => {
+    void current(room.pageId)
+      .then((version) => {
+        if (version !== null && version > room.version) {
+          say(root, '[data-editor-status]', SUPERSEDED);
+          return;
+        }
+        waits.setTimeout(check, WATCH_MS);
+      })
+      .catch(() => waits.setTimeout(check, WATCH_MS));
+  };
+  waits.setTimeout(check, WATCH_MS);
+}
+
 const SAVED_BEHIND =
   'Someone saved a new version, but your latest changes were not in it. They are still here: copy them, then open the page.';
 
@@ -187,6 +209,7 @@ export function collaborationFor(
       if (!seeded) applyUpdate(doc, seedUpdate(editor.schema, html));
       wireDraft(root, editor, { doc, html, link, waits });
       showPeople(root, link.awareness);
+      watchVersion(root, room, waits);
       link.onMessage((message) => {
         heard(root, editor, link, message);
       });

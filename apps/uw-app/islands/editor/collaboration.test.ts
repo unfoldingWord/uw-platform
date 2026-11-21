@@ -235,3 +235,24 @@ describe('#175 a draft is shared, and nothing changes for readers until someone 
   it('stops editing when someone else saves the draft', stopsWhenSaved);
   it('reports that sharing is unavailable when the room never answers', reportsUnavailable);
 });
+
+describe('#175 people in a draft are told when a newer version is saved elsewhere', () => {
+  it('checks the page every so often and says so once it has moved on', async () => {
+    const root = seatFor('ana@uw.example');
+    const room = collab.roomIn(root);
+    if (room === null) throw new Error('no room');
+    const pending: (() => void)[] = [];
+    const versions = [3, 3, 4];
+    collab.watchVersion(root, room, {
+      setTimeout: (run: () => void) => pending.push(run),
+      confirm: () => true,
+      currentVersion: () => Promise.resolve(versions.shift() ?? null),
+    });
+    for (let round = 0; round < 3; round += 1) {
+      pending.shift()?.();
+      await tick();
+    }
+    expect(words(root, '[data-editor-status]')).toContain('A newer version of this page was saved');
+    expect(pending).toHaveLength(0);
+  });
+});
