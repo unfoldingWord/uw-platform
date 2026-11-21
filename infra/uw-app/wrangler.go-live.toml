@@ -88,6 +88,10 @@ class_name = "HarnessHub"
 name = "PAGE_DRAFT"
 class_name = "PageDraft"
 
+[[env.staging.r2_buckets]]
+binding = "FILES"
+bucket_name = "uw-files-staging"
+
 [[env.staging.workflows]]
 name = "harness-run-staging"
 binding = "HARNESS_RUN"
@@ -183,10 +187,6 @@ binding = "STORE_ZULIP_BOT_API_KEY"
 store_id = "set-at-go-live"
 secret_name = "UW_STAGING_ZULIP_BOT_API_KEY"
 
-[[env.staging.r2_buckets]]
-binding = "FILES"
-bucket_name = "uw-files-staging"
-
 [env.production]
 name = "uw-app"
 workers_dev = true
@@ -243,6 +243,10 @@ class_name = "HarnessHub"
 [[env.production.durable_objects.bindings]]
 name = "PAGE_DRAFT"
 class_name = "PageDraft"
+
+[[env.production.r2_buckets]]
+binding = "FILES"
+bucket_name = "uw-files"
 
 [[env.production.workflows]]
 name = "harness-run-production"
@@ -338,10 +342,6 @@ secret_name = "UW_PRODUCTION_VAPID_PRIVATE_JWK"
 binding = "STORE_ZULIP_BOT_API_KEY"
 store_id = "set-at-go-live"
 secret_name = "UW_PRODUCTION_ZULIP_BOT_API_KEY"
-
-[[env.production.r2_buckets]]
-binding = "FILES"
-bucket_name = "uw-files"
 
 [env.preview]
 workers_dev = true

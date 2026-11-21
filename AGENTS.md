@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Rules for anyone, human or agent, changing this repository. Read this whole file before your first edit. Work comes from GitHub issues, one issue per pull request into `develop`. Every rule here exists because an agent without it will take the shortcut it describes.
+Rules for anyone, human or agent, changing this repository. Read this whole file before your first edit. Work lands on `develop`, pushed straight there or through a pull request; an issue is optional. Every rule here exists because an agent without it will take the shortcut it describes.
 
 ## 0. The documents
 
@@ -8,8 +8,8 @@ Each document has one job. Load the one the task needs; do not restate one insid
 
 | Read | For |
 |---|---|
-| **GitHub issues** | **The list of work.** Every task is an issue; a larger piece of work is an epic issue with sub-issues (for example #99). An issue says what to build and when it is done. There is no other list |
-| [`docs/PRD.md`](docs/PRD.md) | Reference: how the platform was designed and why, requirement by requirement. Read the section an issue touches; it is not a checklist new work must cite or extend |
+| **GitHub issues** | **Planning, when useful.** An issue or an epic can say what to build and when it is done. Work does not need one, and one issue or epic can be done in a single push or pull request |
+| [`docs/PRD.md`](docs/PRD.md) | Reference: how the platform was designed and why, requirement by requirement. Read the section the work touches; it is not a checklist new work must cite or extend |
 | [`prd/Harness v1 - Architecture.md`](prd/Harness%20v1%20-%20Architecture.md) | Reference: the ratified design. Its Decisions table (D1 to D22) and figures explain the shape |
 | [`CONTEXT.md`](CONTEXT.md) | The words. Every module, test and screen uses these and no synonyms |
 | [`docs/architecture.md`](docs/architecture.md) | The shape: the kernel over ports, events, the sim, the checks |
@@ -155,50 +155,49 @@ Before writing a utility, a client, a parser or a component, search for an exist
 
 ## 7. Working steps
 
-A task is one GitHub issue. Do these in order.
+A task is whatever an owner asks for, with or without an issue. Do these in order.
 
-1. **Orient.** Read the issue and its epic, then `CONTEXT.md` for the words, then the folder it touches, then `docs/exceptions.md`. Read the PRD or spec section only where the issue touches a part of the design you need to understand. State in one line which template (rule 1) applies.
+1. **Orient.** Read the issue and its epic if there is one, then `CONTEXT.md` for the words, then the folder it touches, then `docs/exceptions.md`. Read the PRD or spec section only where the work touches a part of the design you need to understand. State in one line which template (rule 1) applies.
 2. **Search for prior decisions.** Grep for the tables, events and verbs involved. Find the existing writer (rule 3) before adding one. Check `docs/adr/` and the spec's Decisions table before reopening a settled question. Where nothing decides something, decide it and say so in the pull request description, with what it costs if wrong.
 3. **Plan the files.** List every file you will add or edit. If any is a shared root (rule 4), the pull request description will name it.
 4. **Write the test first.** The scenario in `sim/scenarios/` or the test that proves the behaviour, named for what it proves, observed red. For a bug, the test that reproduces it, observed red. Only then implement.
 5. **Implement.** Copy the template. Fill it. Keep each file under 500 lines and each function under 50.
 6. **Verify.** Before pushing, the fast local checks pass: `pnpm check`, `pnpm lint`, `pnpm format:check`, and the tests for what you touched (`pnpm exec vitest run <paths>`). CI then runs the whole `pnpm verify` on every push; read its result before calling the work done. If a screen changed, load it in light and dark at phone width. If a platform adapter changed and its credentials exist, run it against staging; if they do not, say so in the pull request.
-7. **Open the pull request** into `develop`, with `Closes #<issue>` and a description of what changed, what was verified and how, and what was not verified.
+7. **Land it on `develop`:** push straight to `develop`, or open a pull request into `develop` when an owner wants to review it first. Either way, the commit message or the pull request description says what changed, what was verified and how, and what was not verified, and names `Closes #<issue>` when there is one.
 8. **Report and stop.** Summarize what changed, what you verified, and what you did not verify. Label inferences as inferences. If you could not verify something, say so first.
 
-Done means: CI green on the pull request (the whole `pnpm verify`), every shared-root change named in the description, no exception missing its entry, the behaviour the issue asks for proven by a test or scenario, the pull request open against `develop`, and no claim of verification standing without the run behind it.
+Done means: CI green on the pushed commit or the pull request (the whole `pnpm verify`), every shared-root change named in the description, no exception missing its entry, the behaviour asked for proven by a test or scenario, the work on `develop` or in a pull request against it, and no claim of verification standing without the run behind it.
 
 ## 7b. Branching model (develop → main)
 
 Two long-lived branches, since 2026-11-12, the model of `bt-servant-worker` with one difference: `main` takes no hotfix branches (below).
 
-An **owner** is a person `main`'s branch protection lets push and bypass review (`gh api repos/unfoldingWord/uw-platform/branches/main/protection`, `restrictions.users`). That list is a GitHub setting only a repository admin can change; no file in a pull request can add an owner. Every owner also has the review bypass on `develop`, is a code owner for every path in `.github/CODEOWNERS`, and is listed in `.github/production-deployers`; `tools/ci/owners.test.ts` keeps those two files naming the same people. An agent takes a merge, release or deploy word only from an owner, and checks that list when unsure. Wherever this file says "an owner", any one of them is enough.
+An **owner** is a person `main`'s branch protection lets push and bypass review (`gh api repos/unfoldingWord/uw-platform/branches/main/protection`, `restrictions.users`). That list is a GitHub setting only a repository admin can change; no file in a pull request can add an owner. Every owner is a code owner for every path in `.github/CODEOWNERS`, and is listed in `.github/production-deployers`; `tools/ci/owners.test.ts` keeps those two files naming the same people. An agent takes a merge, release or deploy word only from an owner, and checks that list when unsure. Wherever this file says "an owner", any one of them is enough.
 
-- **`develop`** is the integration branch and the default branch. Every feature branch and every PR targets `develop`. Staging deploys automatically after CI passes on a push to `develop`. A pull request merges there on an owner's word, with CI green (section 8).
+- **`develop`** is the integration branch and the default branch. Work is pushed straight to it, or reaches it through a pull request. `develop` requires no pull request, no passing checks and no up-to-date branch; it keeps only linear history and refuses force-pushes and deletion. CI runs on every push to `develop`, and staging deploys automatically only after that CI passes, so a red push never reaches staging; it turns `develop` red until fixed, and the red-CI alarm opens an issue. A pull request merges there on an owner's word (section 8).
 - **`main`** is the release branch. It only ever receives `develop`, through a release PR ("Release vX.Y.Z: develop → main"). Only an owner can merge to `main`: branch protection restricts pushes to the owners and requires a code-owner review. Production deploys from `main` by tag.
 - **Rule: `develop` is always releasable.** Work that is not ready to ship stays on its branch, or merges behind a flag that is off in production. Never cherry-pick into `main`; if something on `develop` must not ship, revert it on `develop` or flag it off, then release.
-- **Urgent fix:** there is no hotfix branch into `main`. A branch name is chosen by its author, so a `hotfix/*` exception could not prove the branch is a hotfix, and any branch could use it to skip `develop` and staging. An urgent fix is a PR into `develop`, then a release PR straight after; CI takes about six minutes.
-- **Release (manual, on an owner's word).** When an owner says to cut a release, the agent works out what is on `develop` since the last tag, proposes the version (a fix bumps the patch, a feature the minor; an owner may override it), writes a changelog from the merged pull requests, opens "Release vX.Y.Z: develop → main" with that changelog, waits for CI (including `Release Source`) and reports. When an owner says to merge it, the agent merges with a merge commit, tags `vX.Y.Z` on the resulting `main` commit, dispatches the production deploy on the tag (`gh workflow run deploy-production.yml --ref vX.Y.Z`), watches it, checks production's `/health/probe`, and reports. Nothing reaches `main` or production without those two words from an owner.
-- **Merging into `develop`.** Reviews posted from an owner's own account are comments, not approvals, so `develop`'s required approval is met through the owners' review bypass. On an owner's "good to merge" with CI green, resolve every addressed review thread, then squash-merge with the bypass (`gh pr merge <n> --squash --admin --delete-branch`).
-- **Merge methods:** feature PRs into `develop` are **squash**-merged (`develop` requires linear history). Release PRs into `main` use a **merge commit**, never squash or rebase; a ruleset on `main` allows only merge commits. A squash would copy `develop`'s work into a commit `develop` never contains, so the branches would diverge and every later release PR would re-list already-shipped commits.
-- **Up to date before merge:** `develop` requires a PR branch to be current with `develop` ("Update branch"), so two PRs that pass alone cannot break together. `main` does not, because `develop` never contains `main`'s release merge commits.
+- **Urgent fix:** there is no hotfix branch into `main`. A branch name is chosen by its author, so a `hotfix/*` exception could not prove the branch is a hotfix, and any branch could use it to skip `develop` and staging. An urgent fix lands on `develop`, then a release PR straight after; CI takes about six minutes.
+- **Release (manual, on an owner's word).** When an owner says to cut a release, the agent works out what is on `develop` since the last tag, proposes the version (a fix bumps the patch, a feature the minor; an owner may override it), writes a changelog from the commits since the last tag, opens "Release vX.Y.Z: develop → main" with that changelog, waits for CI (including `Release Source`) and reports. When an owner says to merge it, the agent merges with a merge commit, tags `vX.Y.Z` on the resulting `main` commit, dispatches the production deploy on the tag (`gh workflow run deploy-production.yml --ref vX.Y.Z`), watches it, checks production's `/health/probe`, and reports. Nothing reaches `main` or production without those two words from an owner.
+- **Merging a pull request into `develop`.** On an owner's "good to merge", resolve every addressed review thread, then squash-merge (`gh pr merge <n> --squash --delete-branch`).
+- **Merge methods:** pull requests into `develop` are **squash**-merged, and direct pushes are fast-forward, so `develop` keeps a straight history; never push a merge commit to `develop`. Release PRs into `main` use a **merge commit**, never squash or rebase; a ruleset on `main` allows only merge commits. A squash would copy `develop`'s work into a commit `develop` never contains, so the branches would diverge and every later release PR would re-list already-shipped commits.
 
 CI's `Release Source` job refuses a PR into `main` from any branch but `develop`; it reads the PR's branch name from an environment variable, never by interpolating it into the script, so a branch name cannot inject shell. `deploy-production.yml` runs only by dispatch, and refuses anything but a `v*` tag whose commit is on `main` (it checks out full history to test that). Staging deploys only after CI on a push to `develop`, since a release PR's CI also runs with head branch `develop`; staging deploys are queued, never cancelled mid-migration, and each first checks that its commit is still `develop`'s tip, so an older run finishing late skips instead of rolling staging back. The red-CI alarm opens one issue per branch (`ci-red-develop`, `ci-red-main`). The app's own merges (the Merge stage) go to the default branch, so workflow PRs land on `develop` too.
 
-## 8. Working an issue
+## 8. Landing work
 
-One issue, one branch, one pull request.
+No issue is required, and no pull request is required. One push or one pull request can carry a whole epic. Wherever this file says "the pull request description", a direct push puts the same text in its commit message.
 
-- **Branch** from `develop` in the main checkout, named for the work (`feat/agent-queues-landing`, `fix/uw-app-role-exists`), never for a version, and never in a git worktree.
-- **Scope** is the issue. Work you notice outside it becomes a new issue, not a bigger pull request.
-- **Push** once the fast local checks pass (section 7, step 6); CI runs the whole `pnpm verify` in about six minutes and is the gate. Never force-push.
-- **Review is an owner's step.** When the pull request is ready, say so and stop. Do not start a review of your own: no review workflow, no multi-agent fan-out, no reviewer subagents. An owner runs the review (Codex) and passes on its comments.
+- **Direct push:** commit on `develop` in the main checkout, pull with `--rebase` if `develop` moved, and push once the fast local checks pass (section 7, step 6). CI then runs the whole `pnpm verify` on `develop`, in about six minutes; read its result. If it goes red, fixing it comes before anything else.
+- **Pull request,** when an owner wants a review first: branch from `develop` in the main checkout, named for the work (`feat/agent-queues-landing`, `fix/uw-app-role-exists`), never for a version, and never in a git worktree. It does not need to be current with `develop` to merge.
+- **Never force-push.**
+- **Review is an owner's step.** When a pull request is ready, say so and stop. Do not start a review of your own: no review workflow, no multi-agent fan-out, no reviewer subagents. An owner runs the review (Codex) and passes on its comments.
 - **Every review comment is fixed**, whatever its severity, unless there is a concrete, named reason it is wrong; that reason goes in a reply on the comment.
 - **Merging** into `develop` happens when an owner says the pull request is good to merge. Merging into `main` (a release) and any production deploy happen only when an owner asks for them.
-- **More than one issue in a run** only when an owner asks for it by name ("do #104 and #105"). Then each issue still gets its own branch and pull request, one after another.
-- **Rulings, not stalls,** inside an issue: where the issue, the code and this file leave a choice open, make it, say so in the pull request, and keep going.
+- **Several issues** asked for together can land in one push or one pull request.
+- **Rulings, not stalls:** where the request, the code and this file leave a choice open, make it, say so in the commit message or the pull request, and keep going.
 
-Stop and ask for these: a destructive or irreversible operation; a change that would let an agent identity pass a human gate; merging to `main`; anything touching production; a secret you would have to invent or paste into a file; a choice that changes what the issue asks for.
+Stop and ask for these: a destructive or irreversible operation; a change that would let an agent identity pass a human gate; merging to `main`; anything touching production; a secret you would have to invent or paste into a file; a choice that changes what was asked for.
 
 ## 9. Architecture changes
 

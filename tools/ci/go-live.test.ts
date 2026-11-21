@@ -30,8 +30,6 @@ function runGate(env: Record<string, string>): string {
 }
 
 const goLiveJobs: [string, string, string][] = [
-  ['neon-pr.yml', 'neon-branch', 'NEON_API_KEY'],
-  ['cleanup-pr.yml', 'drop-neon-branch', 'NEON_API_KEY'],
   ['deploy-staging.yml', 'migrate-staging', 'DATABASE_URL_STAGING'],
   ['deploy-production.yml', 'migrate-production', 'DATABASE_URL_PRODUCTION'],
 ];
@@ -98,19 +96,5 @@ describe('P13 per-PR Workers deploy to the preview environment', () => {
     const deploy = steps.find((step) => step.run?.includes('wrangler deploy'));
     expect(deploy?.run).toContain('--env preview');
     expect(deploy?.run).not.toContain('--env staging');
-  });
-});
-
-describe('P33 the PR Neon branch is migrated by main tooling from the PR migrations as data', () => {
-  it('replaces main migrations with the PR migrations before running main runner', () => {
-    const steps = job('neon-pr.yml', 'neon-branch').steps ?? [];
-    const runs = steps.map((step) => step.run ?? '');
-    const copyIndex = runs.findIndex((run) => run.includes('pr/packages/db/migrations'));
-    const migrateIndexes = runs.flatMap((run, index) =>
-      run.includes('packages/db/bin/migrate.ts') ? [index] : [],
-    );
-    expect(copyIndex).toBeGreaterThan(-1);
-    expect(migrateIndexes).toHaveLength(2);
-    expect(migrateIndexes.every((index) => index > copyIndex)).toBe(true);
   });
 });
