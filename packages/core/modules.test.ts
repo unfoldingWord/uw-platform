@@ -38,9 +38,17 @@ describe('the module registry', () => {
     expect(new Set(tables).size).toBe(tables.length);
   });
 
-  it('declares the registered page types and verbs under agents', () => {
+  it('declares every registered page type once, knowledge under core and the rest under agents', () => {
+    const core = modules.find((declared) => declared.key === 'core');
     const agents = modules.find((declared) => declared.key === 'agents');
-    expect(agents?.page_types).toEqual(Object.keys(pageTypeRegistry));
+    expect(core?.page_types).toEqual(['knowledge']);
+    expect([...(agents?.page_types ?? []), ...(core?.page_types ?? [])]).toEqual(
+      Object.keys(pageTypeRegistry),
+    );
+  });
+
+  it('declares the registered verbs under agents', () => {
+    const agents = modules.find((declared) => declared.key === 'agents');
     expect(agents?.mcp_tools).toEqual(verbRegistry.map((entry) => entry.name));
   });
 

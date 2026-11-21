@@ -18,6 +18,7 @@ import { cast } from '../testing/credentials-app.ts';
 import { credentialsScene } from '../testing/credentials-scene.ts';
 import { gateWorld } from '../testing/gate-world.ts';
 import { kernelOn } from '../testing/kernel.ts';
+import { seedSampleKnowledge } from '../testing/knowledge.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { getHtml } from '../testing/views.ts';
 import {
@@ -35,11 +36,19 @@ import {
   itemPath,
   agentsPath,
   newAgentPath,
+  pageCommentsPath,
+  pageEditPath,
+  pageManagePath,
+  pageVersionPath,
   pagePath,
   personaPath,
   runPath,
   runsPath,
   waitingPath,
+  wikiAreaPath,
+  wikiNewPath,
+  wikiPath,
+  wikiReviewPath,
 } from '../views/parts/paths.ts';
 
 const seedClock: Clock = { now: () => new Date('2026-10-02T06:00:00.000Z') };
@@ -138,9 +147,21 @@ async function draftScreens(world: BoardWorld): Promise<Screen[]> {
   ];
 }
 
+async function memberScreens(world: BoardWorld): Promise<Screen[]> {
+  const headers = { accept: 'text/html' };
+  const read = (path: string) => getHtml(world.db, world.viewer.email, path, headers, viewClock);
+  const member = await read(controlsPath(world.harnessId));
+  const flowMember = await read(flowPath(world.harnessId));
+  return [
+    { name: 'controls-member', html: member.text },
+    { name: 'flow-member', html: flowMember.text },
+  ];
+}
+
 async function boardScreens(db: Database): Promise<Screen[]> {
   const world = await boardWorld(db, seedClock);
   const pageId = await personaOn(db, world.harnessId);
+  const knowledgeId = await seedSampleKnowledge(db);
   await seedBreakerReading(db, {
     harnessId: world.harnessId,
     at: new Date('2026-10-02T08:30:00.000Z'),
@@ -163,6 +184,17 @@ async function boardScreens(db: Database): Promise<Screen[]> {
     ['access', accessPath()],
     ['persona', personaPath(pageId)],
     ['page', pagePath(pageId)],
+    ['knowledge-page', pagePath(knowledgeId)],
+    ['page-edit', pageEditPath(knowledgeId)],
+    ['wiki', wikiPath()],
+    ['wiki-category', wikiPath('81')],
+    ['wiki-new', wikiNewPath({ category: '81' })],
+    ['page-manage', pageManagePath(knowledgeId)],
+    ['page-version', pageVersionPath(knowledgeId, 1)],
+    ['page-comments', pageCommentsPath(knowledgeId)],
+    ['wiki-review', wikiReviewPath()],
+    ['wiki-area', wikiAreaPath('80-89')],
+    ['search', '/search?q=assessment'],
   ];
   const headers = { accept: 'text/html' };
   const screens: Screen[] = [];
@@ -170,23 +202,7 @@ async function boardScreens(db: Database): Promise<Screen[]> {
     const page = await getHtml(db, world.rowanEmail, path, headers, viewClock);
     screens.push({ name, html: page.text });
   }
-  const member = await getHtml(
-    db,
-    world.viewer.email,
-    controlsPath(world.harnessId),
-    headers,
-    viewClock,
-  );
-  screens.push({ name: 'controls-member', html: member.text });
-  const flowMember = await getHtml(
-    db,
-    world.viewer.email,
-    flowPath(world.harnessId),
-    headers,
-    viewClock,
-  );
-  screens.push({ name: 'flow-member', html: flowMember.text });
-  return [...screens, ...(await draftScreens(world))];
+  return [...screens, ...(await memberScreens(world)), ...(await draftScreens(world))];
 }
 
 async function gateScreens(db: Database): Promise<Screen[]> {
@@ -361,41 +377,54 @@ async function compareAll(css: string): Promise<string[]> {
   return failures;
 }
 
+const pictured = [
+  'home',
+  'agent-queues',
+  'new-workflow',
+  'queue',
+  'flow',
+  'controls-admin',
+  'agents',
+  'runs',
+  'run',
+  'new-agent',
+  'health',
+  'health-detail',
+  'access',
+  'persona',
+  'page',
+  'knowledge-page',
+  'page-edit',
+  'wiki',
+  'wiki-category',
+  'wiki-new',
+  'page-manage',
+  'page-version',
+  'page-comments',
+  'wiki-review',
+  'wiki-area',
+  'search',
+  'controls-member',
+  'flow-member',
+  'flow-draft',
+  'flow-locked',
+  'waiting',
+  'gate',
+  'play',
+  'credentials',
+  'credential',
+  'credential-member',
+  'menu',
+  'account-menu',
+];
+
 describe.skipIf(!testServer || (!browserReady && !required))('UI-16 the screenshot check', () => {
   it('UI-16 the browser the check needs is installed', () => {
     expect(browserReady).toBe(true);
   });
 
   it('UI-16 every screen in light and dark, desktop and phone, matches its committed picture', async () => {
-    expect(screens.map((screen) => screen.name)).toEqual([
-      'home',
-      'agent-queues',
-      'new-workflow',
-      'queue',
-      'flow',
-      'controls-admin',
-      'agents',
-      'runs',
-      'run',
-      'new-agent',
-      'health',
-      'health-detail',
-      'access',
-      'persona',
-      'page',
-      'controls-member',
-      'flow-member',
-      'flow-draft',
-      'flow-locked',
-      'waiting',
-      'gate',
-      'play',
-      'credentials',
-      'credential',
-      'credential-member',
-      'menu',
-      'account-menu',
-    ]);
+    expect(screens.map((screen) => screen.name)).toEqual(pictured);
     expect(await compareAll(inlined())).toEqual([]);
   }, 600_000);
 

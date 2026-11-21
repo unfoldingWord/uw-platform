@@ -2,6 +2,7 @@ import type { Child } from 'hono/jsx';
 import { safeHref } from './href.ts';
 import { humanBadge } from './human-action.tsx';
 import { Icon } from './icon.tsx';
+import { QuickSwitcherButton } from './quick-switcher.tsx';
 import { ThemeSwitch } from './theme-switch.tsx';
 
 export type Crumb = { readonly label: string; readonly href?: string };
@@ -70,15 +71,29 @@ function Tabs(props: { readonly tabs: readonly Tab[] }) {
   );
 }
 
+const searchId = 'top-bar-search';
+
 function Search() {
   return (
-    <div
-      aria-disabled="true"
-      class="hidden h-size-5 w-aside cursor-default items-center gap-2 rounded-md border border-line bg-canvas px-3 text-sm text-text-3 opacity-45 lg:flex"
+    <form
+      action="/search"
+      method="get"
+      role="search"
+      class="hidden h-size-5 w-aside items-center gap-2 rounded-md border border-line bg-canvas px-3 text-sm text-text-3 lg:flex"
     >
       <Icon name="magnifying-glass" size={1} />
-      <span class="min-w-0 truncate">Search everything</span>
-    </div>
+      <label for={searchId} class="sr-only">
+        Search pages
+      </label>
+      <input
+        id={searchId}
+        type="search"
+        name="q"
+        maxlength={200}
+        placeholder="Search pages"
+        class="min-w-0 flex-1 rounded-sm bg-transparent text-sm text-text outline-offset-2 outline-accent-text placeholder:text-text-3 focus-visible:outline-2"
+      />
+    </form>
   );
 }
 
@@ -89,7 +104,10 @@ export function TopBar(props: {
   readonly actions?: Child | undefined;
 }) {
   return (
-    <header class="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-4 py-3 md:px-5">
+    <header
+      data-chrome=""
+      class="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-4 py-3 md:px-5"
+    >
       <nav aria-label="Breadcrumb" class="min-w-0 text-sm font-semibold text-text-3">
         <ol class="flex flex-wrap items-center gap-2">
           {props.code === undefined ? null : (
@@ -104,6 +122,7 @@ export function TopBar(props: {
       </nav>
       <Tabs tabs={props.tabs ?? []} />
       <div class="ml-auto flex flex-wrap items-center gap-2">
+        <QuickSwitcherButton />
         <Search />
         {props.actions}
         <ThemeSwitch />

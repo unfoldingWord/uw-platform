@@ -10,7 +10,13 @@
       "project": ["**/*.ts"]
     },
     "apps/uw-app": {
-      "entry": ["index.ts", "**/*.test.ts", "islands/browser/main.ts", "islands/worker/sw.ts"],
+      "entry": [
+        "index.ts",
+        "**/*.test.ts",
+        "islands/browser/main.ts",
+        "islands/editor/main.ts",
+        "islands/worker/sw.ts"
+      ],
       "project": ["**/*.ts", "**/*.tsx"],
       "ignoreDependencies": ["cloudflare"]
     },

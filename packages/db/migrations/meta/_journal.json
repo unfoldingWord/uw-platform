@@ -365,6 +365,83 @@
       "when": 1795202607550,
       "tag": "0053_break_glass_reveal",
       "breakpoints": true
+    },
+    {
+      "version": "7",
+      "breakpoints": true,
+      "idx": 54,
+      "tag": "0054_knowledge_page_type",
+      "when": 1795225885189
+    },
+    {
+      "version": "7",
+      "breakpoints": true,
+      "idx": 55,
+      "tag": "0055_page_search_and_requests",
+      "when": 1795225886189
+    },
+    {
+      "version": "7",
+      "breakpoints": true,
+      "idx": 56,
+      "tag": "0056_categories_and_default_reading",
+      "when": 1795225887189
+    },
+    {
+      "version": "7",
+      "breakpoints": true,
+      "idx": 57,
+      "tag": "0057_page_views",
+      "when": 1795225888189
+    },
+    {
+      "version": "7",
+      "breakpoints": true,
+      "idx": 58,
+      "tag": "0058_page_links",
+      "when": 1795225889189
+    },
+    {
+      "version": "7",
+      "breakpoints": true,
+      "idx": 59,
+      "tag": "0059_page_files",
+      "when": 1795225890189
+    },
+    {
+      "version": "7",
+      "breakpoints": true,
+      "idx": 60,
+      "tag": "0060_page_favourites_and_comments",
+      "when": 1795225891189
+    },
+    {
+      "version": "7",
+      "breakpoints": true,
+      "idx": 61,
+      "tag": "0061_area_homes_and_passages",
+      "when": 1795225892189
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1795226291874,
+      "tag": "0062_page_renders",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1795226533323,
+      "tag": "0063_pg_trgm",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1795226535630,
+      "tag": "0064_pages_title_trgm",
+      "breakpoints": true
     }
   ]
 }

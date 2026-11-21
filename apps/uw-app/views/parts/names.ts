@@ -23,6 +23,14 @@ export const pageNames = {
   gate: 'Gate',
   item: 'Item',
   page: 'Page',
+  wiki: 'Pages & Wiki',
+  search: 'Search',
+  pageEdit: 'Edit',
+  pageComments: 'Comments',
+  pageManage: 'Manage',
+  pageVersion: 'Version',
+  wikiNew: 'New Page',
+  wikiReview: 'Needs Review',
   logOut: 'Log Out',
 } as const;
 
@@ -46,7 +54,7 @@ export type PlatformModule = {
   readonly icon: IconName;
   readonly built?: BuiltModule;
 };
-export type BuiltModule = 'today' | 'health' | 'agentQueues' | 'access' | 'credentials';
+export type BuiltModule = 'today' | 'health' | 'agentQueues' | 'access' | 'pages' | 'credentials';
 export type PlatformArea = {
   readonly code: string;
   readonly name: string;
@@ -59,7 +67,7 @@ export const platformAreas: readonly PlatformArea[] = [
     name: 'unfoldingWord Home',
     modules: [
       { label: 'Today', icon: 'house', built: 'today' },
-      { label: 'Pages & Wiki', icon: 'file-lines' },
+      { label: 'Pages & Wiki', icon: 'file-lines', built: 'pages' },
       { label: 'Strategic Cascade', icon: 'layer-group' },
       { label: 'Meetings', icon: 'calendar' },
       { label: 'JD Crosswalk', icon: 'table-cells' },
@@ -124,6 +132,7 @@ export const moduleCodes: Readonly<Record<BuiltModule, string>> = {
   health: '38',
   agentQueues: '32',
   access: '37',
+  pages: '01',
   credentials: '36',
 };
 
@@ -147,4 +156,12 @@ export function areaLabel(area: string): string {
 
 export function everyArea(): readonly string[] {
   return Array.from({ length: DECADES }, (_, decade) => `${decade}0-${decade}9`);
+}
+
+export function areasWithin(code: string): readonly string[] {
+  const [from, to] = decadeOf(code);
+  return everyArea().filter((area) => {
+    const [start] = decadeOf(area);
+    return start >= from && start <= to;
+  });
 }

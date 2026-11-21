@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { jdAreaSchema } from './areas.ts';
+import { jdAreaSchema, jdCategorySchema } from './areas.ts';
 
 export const pageTypes = [
   'skill',
@@ -11,6 +11,7 @@ export const pageTypes = [
   'data_sources',
   'issue',
   'platform',
+  'knowledge',
 ] as const;
 
 export const pageTypeSchema = z.enum(pageTypes);
@@ -76,6 +77,61 @@ export const confirmPageCommandSchema = z.object({
   expectedVersion: z.number().int().min(1),
 });
 
+export const nameCategoryCommandSchema = z.object({
+  command: z.literal('name_category'),
+  requestId: z.uuid(),
+  category: jdCategorySchema,
+  name: z
+    .string()
+    .max(80)
+    .refine((value) => value.trim().length > 0, 'a category name is not blank'),
+});
+
+export const movePageCommandSchema = z.object({
+  command: z.literal('move_page'),
+  requestId: z.uuid(),
+  pageId: z.uuid(),
+  expectedVersion: z.number().int().min(1),
+  category: jdCategorySchema,
+  parentId: z.uuid().nullable(),
+});
+
+export const commentPageCommandSchema = z.object({
+  command: z.literal('comment_page'),
+  requestId: z.uuid(),
+  commentId: z.uuid(),
+  pageId: z.uuid(),
+  bodyMd: z
+    .string()
+    .max(10_000)
+    .refine((value) => value.trim().length > 0, 'a comment is not blank'),
+  quote: z
+    .string()
+    .max(500)
+    .refine((value) => value.trim().length > 0, 'a quoted passage is not blank')
+    .nullable()
+    .default(null),
+});
+
+export const setAreaHomeCommandSchema = z.object({
+  command: z.literal('set_area_home'),
+  requestId: z.uuid(),
+  area: jdAreaSchema,
+  pageId: z.uuid().nullable(),
+});
+
+export type SetAreaHomeCommand = z.infer<typeof setAreaHomeCommandSchema>;
+
+export const resolveCommentCommandSchema = z.object({
+  command: z.literal('resolve_comment'),
+  requestId: z.uuid(),
+  commentId: z.uuid(),
+});
+
+export type CommentPageCommand = z.infer<typeof commentPageCommandSchema>;
+export type ResolveCommentCommand = z.infer<typeof resolveCommentCommandSchema>;
+export type MovePageCommand = z.infer<typeof movePageCommandSchema>;
+export type NameCategoryCommand = z.infer<typeof nameCategoryCommandSchema>;
 export type PageType = z.infer<typeof pageTypeSchema>;
 export type PageStatus = z.infer<typeof pageStatusSchema>;
 export type Page = z.infer<typeof pageSchema>;

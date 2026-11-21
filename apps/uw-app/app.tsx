@@ -16,7 +16,7 @@ import { healthScreenRoutes, probeRoutes } from './health/routes.tsx';
 import { mcpRoutes } from './mcp/routes.ts';
 import { pushRoutes } from './notify/routes.ts';
 import { observe, serverTiming } from './observe.ts';
-import { pageRoutes } from './pages/routes.ts';
+import { mountKnowledgeBase } from './pages/routes.ts';
 import { requestLogger } from './request-logger.ts';
 import { viewRoutes } from './views/routes.tsx';
 import { notFound } from './views/screens/not-found.tsx';
@@ -51,7 +51,7 @@ export function createApp(
   app.route('/api/acl', aclRoutes());
   app.route('/api/agents', agentRoutes(deps));
   app.route('/api/credentials', credentialRoutes(deps));
-  app.route('/api/pages', pageRoutes());
+  mountKnowledgeBase(app);
   app.route('/api/push', pushRoutes());
   app.route('/api/harness', harnessRoutes(deps, person));
   app.route('/mcp', mcpRoutes(deps));

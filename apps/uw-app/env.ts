@@ -31,6 +31,24 @@ export type SandboxNamespace = {
   get(id: unknown): SandboxStub;
 };
 
+type BucketMetadata = { readonly contentType?: string };
+type BucketObject = {
+  arrayBuffer(): Promise<ArrayBuffer>;
+  readonly httpMetadata?: BucketMetadata;
+};
+export type FilesBucket = {
+  put(
+    key: string,
+    value: Uint8Array,
+    options?: { readonly httpMetadata?: BucketMetadata },
+  ): Promise<unknown>;
+  get(key: string): Promise<BucketObject | null>;
+  delete(key: string): Promise<unknown>;
+};
+
+type DraftStub = { fetch(input: string, init?: RequestInit): Promise<Response> };
+export type DraftNamespace = { idFromName(name: string): unknown; get(id: unknown): DraftStub };
+
 export type Bindings = {
   AI_GATEWAY_ACCOUNT_ID?: string;
   AI_GATEWAY_ANALYTICS_TOKEN?: string;
@@ -58,6 +76,7 @@ export type Bindings = {
   CREDENTIALS_KMS_REGION?: string;
   CREDENTIALS_KMS_SECRET_ACCESS_KEY?: string;
   DEV_PRINCIPAL_EMAIL?: string;
+  FILES?: FilesBucket;
   GITHUB_APP_ID?: string;
   GITHUB_APP_INSTALLATION_ID?: string;
   GITHUB_APP_PRIVATE_KEY?: string;
@@ -66,6 +85,7 @@ export type Bindings = {
   HYPERDRIVE?: HyperdriveBinding;
   INGEST_DLQ?: QueueProducer<unknown>;
   OPENAI_API_KEY?: string;
+  PAGE_DRAFT?: DraftNamespace;
   OPENROUTER_API_KEY?: string;
   REVIEWER_CODEX_GITHUB_APP_ID?: string;
   REVIEWER_CODEX_GITHUB_APP_INSTALLATION_ID?: string;

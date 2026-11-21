@@ -59,6 +59,11 @@ export const screens: readonly ScreenEntry[] = [
     path: '/harnesses/:harnessId/items/:itemId',
   },
   { name: 'page', file: 'apps/uw-app/views/screens/page.tsx', path: '/pages/:pageId' },
+  {
+    name: 'page-edit',
+    file: 'apps/uw-app/views/screens/page-edit.tsx',
+    path: '/pages/:pageId/edit',
+  },
   { name: 'persona', file: 'apps/uw-app/views/screens/persona.tsx', path: '/personas/:pageId' },
   { name: 'health', file: 'apps/uw-app/views/screens/health.tsx', path: '/health' },
   {
@@ -67,6 +72,39 @@ export const screens: readonly ScreenEntry[] = [
     path: '/health/:indicator',
   },
   { name: 'access', file: 'apps/uw-app/views/screens/access.tsx', path: '/access' },
+  { name: 'search', file: 'apps/uw-app/views/screens/search.tsx', path: '/search' },
+  { name: 'wiki', file: 'apps/uw-app/views/screens/wiki.tsx', path: '/wiki' },
+  {
+    name: 'wiki-category',
+    file: 'apps/uw-app/views/screens/wiki-category.tsx',
+    path: '/wiki/:category',
+  },
+  {
+    name: 'wiki-review',
+    file: 'apps/uw-app/views/screens/wiki-review.tsx',
+    path: '/wiki/review',
+  },
+  {
+    name: 'page-comments',
+    file: 'apps/uw-app/views/screens/page-comments.tsx',
+    path: '/pages/:pageId/comments',
+  },
+  {
+    name: 'wiki-area',
+    file: 'apps/uw-app/views/screens/wiki-area.tsx',
+    path: '/wiki/areas/:area',
+  },
+  { name: 'wiki-new', file: 'apps/uw-app/views/screens/wiki-new.tsx', path: '/wiki/new' },
+  {
+    name: 'page-manage',
+    file: 'apps/uw-app/views/screens/page-manage.tsx',
+    path: '/pages/:pageId/manage',
+  },
+  {
+    name: 'page-version',
+    file: 'apps/uw-app/views/screens/page-version.tsx',
+    path: '/pages/:pageId/versions/:version',
+  },
   {
     name: 'credentials',
     file: 'apps/uw-app/views/screens/credentials.tsx',

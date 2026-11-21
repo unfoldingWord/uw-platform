@@ -32,3 +32,20 @@ describe('WB-12 the copy check reads the brand beside an address', () => {
     ]);
   });
 });
+
+describe('#175 the checks judge the screen, not what a person wrote on a page', () => {
+  const written = '<a href="https://example.org">A link</a> Great news! Unfolding Word';
+
+  it('passes a page body whose words and links are the author’s own', async () => {
+    const problems = await screenProblems(page(`<article data-page-body="">${written}</article>`));
+    expect(problems.filter((problem) => !problem.startsWith('no '))).toEqual([]);
+    expect(problems.filter((problem) => problem.startsWith('no visible focus'))).toEqual([]);
+  });
+
+  it('still flags the same words and the same link outside a page body', async () => {
+    const problems = await screenProblems(page(`<p>${written}</p>`));
+    expect(problems).toContain('an exclamation mark in the copy');
+    expect(problems).toContain('unfoldingWord written Unfolding Word');
+    expect(problems.some((problem) => problem.startsWith('no visible focus'))).toBe(true);
+  });
+});

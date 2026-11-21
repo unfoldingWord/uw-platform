@@ -97,6 +97,10 @@ function pathOf(entry: ScreenEntry, world: Seeded): string {
     .replace(':runId', world.runId)
     .replace(':indicator', 'spend')
     .replace(':pageId', personaPageId)
+    .replace(':category', '81')
+    .replace(':area', '80-89')
+    .replace(':version', '1')
+
     .replace(':credentialId', world.credentialId);
 }
 

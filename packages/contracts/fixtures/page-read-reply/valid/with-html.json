@@ -1,0 +1,29 @@
+{
+  "page": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "type": "skill",
+    "jdArea": "80-89",
+    "slug": "harness-skill",
+    "title": "Harness skill",
+    "parentId": null,
+    "frontmatter": {
+      "confidence": "observed"
+    },
+    "bodyMd": "# Harness skill",
+    "version": 1,
+    "status": "draft"
+  },
+  "capabilities": {
+    "canEdit": true,
+    "canRetire": false,
+    "canComment": true
+  },
+  "html": "<h2 id=\"rules\">Rules</h2>",
+  "headings": [
+    {
+      "depth": 2,
+      "id": "rules",
+      "text": "Rules"
+    }
+  ]
+}

@@ -4,7 +4,12 @@ import { Hono, type Context } from 'hono';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { parsePrincipal, type Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
-import { revokeSeededGrant, seedGrant, seedPerson } from '@uw/db/test-seed';
+import {
+  revokeSeededGrant,
+  seedGrant,
+  seedPerson,
+  seedRevokedDefaultReading,
+} from '@uw/db/test-seed';
 import { bindServiceToken, revokeServiceToken } from '../agents/service-tokens.ts';
 import { withPrincipal } from '../auth/principal-middleware.ts';
 import { withDatabase } from '../database.ts';
@@ -72,6 +77,7 @@ function areaGrant(
 async function seedPeople(db: Database): Promise<void> {
   for (const who of Object.keys(people) as Who[]) {
     await seedPerson(db, { id: idOf(who), email: people[who].email });
+    await seedRevokedDefaultReading(db, idOf(who), new Date());
   }
   await seedGrant(db, areaGrant(grantIds.makerEditor, idOf('maker'), 'editor', '80-89'));
   await seedGrant(db, areaGrant(grantIds.makerAdmin, idOf('maker'), 'admin', '30-39'));

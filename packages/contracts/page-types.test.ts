@@ -3,6 +3,7 @@ import { classificationSchema, offlineEligibilitySchema } from './closed-sets.ts
 import {
   dataSourceKindSchema,
   issueFrontmatterSchema,
+  knowledgeFrontmatterSchema,
   learningFrontmatterSchema,
   pageTypeDefinition,
   pageTypeRegistry,
@@ -139,5 +140,47 @@ describe('the learning contradiction flag', () => {
     expect(learningFrontmatterSchema.safeParse({ ...learning, contradicts: 'yes' }).success).toBe(
       false,
     );
+  });
+});
+
+describe('a knowledge page is filed in a category', () => {
+  const filed = { jd_category: '61' };
+
+  it('needs a two-digit category and defaults every other property', () => {
+    expect(knowledgeFrontmatterSchema.parse(filed)).toEqual({
+      jd_category: '61',
+      jd_id: null,
+      owner: null,
+      tags: [],
+      aliases: [],
+      overview: '',
+      icon: null,
+      verified_by: null,
+      verified_until: null,
+      source_ref: null,
+    });
+    expect(knowledgeFrontmatterSchema.safeParse({}).success).toBe(false);
+    expect(knowledgeFrontmatterSchema.safeParse({ jd_category: '6' }).success).toBe(false);
+    expect(knowledgeFrontmatterSchema.safeParse({ jd_category: '60-69' }).success).toBe(false);
+  });
+
+  it('refuses a JD ID outside the page category', () => {
+    const accepts = (jdId: string) =>
+      knowledgeFrontmatterSchema.safeParse({ ...filed, jd_id: jdId }).success;
+    expect(accepts('61.04')).toBe(true);
+    expect(accepts('62.04')).toBe(false);
+    expect(accepts('61.4')).toBe(false);
+  });
+
+  it('names an owner and a verifier only as people, and each tag once', () => {
+    const accepts = (more: Record<string, unknown>) =>
+      knowledgeFrontmatterSchema.safeParse({ ...filed, ...more }).success;
+    expect(accepts({ owner: 'human:00000000-0000-4000-8000-000000000001' })).toBe(true);
+    expect(accepts({ owner: 'agent:builder' })).toBe(false);
+    expect(accepts({ verified_by: 'agent:builder' })).toBe(false);
+    expect(accepts({ verified_until: '2027-01-31' })).toBe(true);
+    expect(accepts({ verified_until: '31/01/2027' })).toBe(false);
+    expect(accepts({ tags: ['Onboarding', 'Onboarding'] })).toBe(false);
+    expect(accepts({ unknown: true })).toBe(false);
   });
 });

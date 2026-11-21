@@ -16,7 +16,9 @@ import type { AppEnv } from '../../deps.ts';
 import { handedCapNote, lapsedCapNote, parkedCapNote } from '../parts/caps.ts';
 import { liveCursors } from '../parts/cursors.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
-import { queuePath, flowPath, gatePath, homePath, itemPath } from '../parts/paths.ts';
+import { queuePath, flowPath, gatePath, homePath, itemPath, pagePath } from '../parts/paths.ts';
+import { pageLink } from '../parts/page-shown.ts';
+import { reviewDueFor, type LapsedPage } from '../../pages/verification.ts';
 import { moduleCodes } from '../parts/names.ts';
 import { pageNames } from '../parts/names.ts';
 
@@ -203,6 +205,30 @@ function WaitingCard(props: {
   );
 }
 
+function ToReview(props: { readonly pages: readonly LapsedPage[]; readonly at: Date }) {
+  if (props.pages.length === 0) return null;
+  const today = formatDate(props.at);
+  return (
+    <Card
+      title="Pages to review"
+      sub="You own these, and their verification has lapsed or soon will"
+    >
+      <ul data-review="" class="m-0 flex list-none flex-col gap-2 p-0">
+        {props.pages.map((page) => (
+          <li class="flex flex-wrap items-baseline gap-2">
+            <a href={pagePath(page.id)} class={pageLink}>
+              {page.title}
+            </a>
+            <span class="text-xs text-text-3">
+              {page.until < today ? `lapsed on ${page.until}` : `lapses on ${page.until}`}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 function Soon(props: { readonly title: string }) {
   return (
     <div aria-disabled="true" class="flex cursor-default flex-col opacity-45">
@@ -341,6 +367,9 @@ export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
   const notes = capNotes(waiting);
   const cards = await cardsOf(screen, waiting.rows);
   const person = personName(screen.caller.actor.email);
+  const database = c.get('database');
+  const toReview =
+    database === null ? [] : await reviewDueFor(database.db, screen.caller.actor, screen.at);
   const harnesses = liveCursors(
     cursors,
     rows.map((row) => row.harnessId),
@@ -363,6 +392,7 @@ export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
       <PageHead eyebrow={`Today · ${formatDate(screen.at)}`} title={greeting(person)} {...head} />
       <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <WaitingCard rows={rows} notes={notes} />
+        <ToReview pages={toReview} at={screen.at} />
         <Soon title="Your tasks" />
         {cards.length === 0 ? <PushOnly /> : <HarnessCards cards={cards} />}
         <Soon title="Activity" />

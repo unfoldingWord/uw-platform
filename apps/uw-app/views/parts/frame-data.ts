@@ -16,6 +16,7 @@ import {
   healthPath,
   homePath,
   logOutPath,
+  wikiPath,
 } from './paths.ts';
 import { moduleCodes, noModules, pageNames, platformAreas, type PlatformModule } from './names.ts';
 
@@ -73,6 +74,7 @@ function builtItems(module: PlatformModule, counts: FrameCounts, watch: number):
         ...(watch === 0 ? {} : { count: { kind: 'watch', text: `${watch} watch` } }),
       },
     ];
+  if (module.built === 'pages') return [{ ...base, href: wikiPath(), code: moduleCodes.pages }];
   if (module.built === 'access') return [{ ...base, href: accessPath(), code: moduleCodes.access }];
   if (module.built === 'credentials')
     return [{ ...base, href: credentialsPath(), code: moduleCodes.credentials }];

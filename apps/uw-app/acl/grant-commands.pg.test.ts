@@ -77,6 +77,10 @@ async function personId(db: Database, email: string): Promise<string> {
   return rows[0]?.id ?? '';
 }
 
+function isDefaultReading(grant: { role: string; scopeArea: string | null }): boolean {
+  return grant.role === 'viewer' && grant.scopeArea === '00-09';
+}
+
 async function grantsOf(
   db: Database,
   email: string,
@@ -85,7 +89,7 @@ async function grantsOf(
   const principal = reply.body['principal'] as {
     grants: { role: string; scopeArea: string | null }[];
   };
-  return principal.grants;
+  return principal.grants.filter((grant) => !isDefaultReading(grant));
 }
 
 function revokeCommand(db: Database, grantId: string): Promise<Sent> {
@@ -108,7 +112,7 @@ function grantBody(personId_: string, role: string, scopeArea: string | null, ex
 async function audits(db: Database): Promise<Audit[]> {
   return [
     ...(await db.execute<Audit>(
-      sql`SELECT actor, action, before, after, trace_id FROM grant_audit WHERE action <> 'bootstrap' ORDER BY ctid`,
+      sql`SELECT actor, action, before, after, trace_id FROM grant_audit WHERE action NOT IN ('bootstrap', 'default') ORDER BY ctid`,
     )),
   ];
 }

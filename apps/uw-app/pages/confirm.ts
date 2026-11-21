@@ -45,7 +45,7 @@ async function confirmIn(
     )
     .returning();
   if (row === undefined) return refused('stale_version', { pageId: command.pageId });
-  await snapshot(tx, row, actor, traceId);
+  await snapshot(tx, row, actor, { traceId, requestId: command.requestId });
   return { ok: true, page: toPage(row) };
 }
 

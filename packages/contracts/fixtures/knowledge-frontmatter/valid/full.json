@@ -1,0 +1,12 @@
+{
+  "jd_category": "01",
+  "jd_id": "01.47",
+  "owner": "human:00000000-0000-4000-8000-000000000001",
+  "tags": ["Onboarding"],
+  "aliases": ["Security"],
+  "overview": "How we keep accounts and devices safe.",
+  "icon": "shield-halved",
+  "verified_by": "human:00000000-0000-4000-8000-000000000001",
+  "verified_until": "2027-06-30",
+  "source_ref": "notion:21572d5af2de803eb5e8fbfecce35227"
+}

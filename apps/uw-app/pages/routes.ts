@@ -1,9 +1,11 @@
 import { Hono, type Context } from 'hono';
-import { z } from 'zod';
 import {
   confirmPageCommandSchema,
+  movePageCommandSchema,
   createPageCommandSchema,
-  pageSchema,
+  nameCategoryCommandSchema,
+  setAreaHomeCommandSchema,
+  pageCommandAcceptedSchema,
   updatePageCommandSchema,
   type CreatePageCommand,
   type UpdatePageCommand,
@@ -11,10 +13,33 @@ import {
 import type { Database } from '@uw/db/client';
 import type { Principal } from '@uw/core/principal';
 import type { AppEnv } from '../deps.ts';
-import { malformed, readJson, toOutcome, type CommandResult } from '../http/commands.ts';
+import { malformed, readJson } from '../http/commands.ts';
+import { formGuard } from '../http/form-guard.ts';
 import { refuse, reply } from '../http/outcomes.ts';
+import { commentFromForm, pageCommentsScreen } from '../views/screens/page-comments.tsx';
+import { managePage, pageManageScreen } from '../views/screens/page-manage.tsx';
+import { pageVersionScreen, restoreVersion } from '../views/screens/page-version.tsx';
+import { wikiCategoryScreen } from '../views/screens/wiki-category.tsx';
+import { searchScreen } from '../views/screens/search.tsx';
+import { createFromForm, wikiNewScreen } from '../views/screens/wiki-new.tsx';
+import { wikiAreaScreen } from '../views/screens/wiki-area.tsx';
+import { wikiReviewScreen } from '../views/screens/wiki-review.tsx';
+import { wikiScreen } from '../views/screens/wiki.tsx';
+import { setAreaHome } from './area-homes.ts';
+import { nameCategory } from './categories.ts';
 import { confirmPage } from './confirm.ts';
-import { createPage, readPage, updatePage, type PageRefusal, type PageResult } from './store.ts';
+import { connectDraft } from './draft-handlers.ts';
+import { downloadFile, listPageFiles, uploadFile } from './file-handlers.ts';
+import { movePage } from './move.ts';
+import {
+  dropFavourite,
+  handleComment,
+  handleResolve,
+  keepFavourite,
+  listComments,
+} from './social-handlers.ts';
+import { pageReads } from './read-handlers.ts';
+import { createPage, updatePage, type PageRefusal, type PageResult } from './store.ts';
 
 type Run = (
   db: Database,
@@ -22,11 +47,7 @@ type Run = (
   body: unknown,
   traceId: string,
   at: Date,
-) => Promise<{ readonly requestId: string; readonly result: CommandResult } | null>;
-
-function summarise(result: PageResult | PageRefusal): CommandResult {
-  return result.ok ? { ok: true } : { ok: false, reason: result.reason };
-}
+) => Promise<{ readonly requestId: string; readonly result: PageResult | PageRefusal } | null>;
 
 const handlers = new Map<string, Run>([
   [
@@ -36,7 +57,7 @@ const handlers = new Map<string, Run>([
       if (!parsed.success) return null;
       const command: CreatePageCommand = parsed.data;
       const result = await createPage(db, actor, command, traceId, at);
-      return { requestId: command.requestId, result: summarise(result) };
+      return { requestId: command.requestId, result };
     },
   ],
   [
@@ -46,7 +67,16 @@ const handlers = new Map<string, Run>([
       if (!parsed.success) return null;
       const command: UpdatePageCommand = parsed.data;
       const result = await updatePage(db, actor, command, traceId, at);
-      return { requestId: command.requestId, result: summarise(result) };
+      return { requestId: command.requestId, result };
+    },
+  ],
+  [
+    'move_page',
+    async (db, actor, body, traceId, at) => {
+      const parsed = movePageCommandSchema.safeParse(body);
+      if (!parsed.success) return null;
+      const result = await movePage(db, actor, parsed.data, traceId, at);
+      return { requestId: parsed.data.requestId, result };
     },
   ],
   [
@@ -55,10 +85,46 @@ const handlers = new Map<string, Run>([
       const parsed = confirmPageCommandSchema.safeParse(body);
       if (!parsed.success) return null;
       const result = await confirmPage(db, actor, parsed.data, traceId, at);
-      return { requestId: parsed.data.requestId, result: summarise(result) };
+      return { requestId: parsed.data.requestId, result };
     },
   ],
 ]);
+
+async function handleSetAreaHome(c: Context<AppEnv>): Promise<Response> {
+  const database = c.get('database');
+  if (database === null) return refuse(c, 'database_not_configured');
+  const actor = c.get('principal');
+  if (actor === null) return refuse(c, 'unauthenticated');
+  const body = await readJson(c);
+  const parsed = setAreaHomeCommandSchema.safeParse(body);
+  if (!parsed.success) return malformed(c, body);
+  const result = await setAreaHome(database.db, actor, parsed.data, c.get('now'));
+  const { requestId } = parsed.data;
+  return reply(
+    c,
+    result.ok
+      ? { status: 'accepted', requestId }
+      : { status: 'error', requestId, reason: result.reason },
+  );
+}
+
+async function handleNameCategory(c: Context<AppEnv>): Promise<Response> {
+  const database = c.get('database');
+  if (database === null) return refuse(c, 'database_not_configured');
+  const actor = c.get('principal');
+  if (actor === null) return refuse(c, 'unauthenticated');
+  const body = await readJson(c);
+  const parsed = nameCategoryCommandSchema.safeParse(body);
+  if (!parsed.success) return malformed(c, body);
+  const result = await nameCategory(database.db, actor, parsed.data, c.get('now'));
+  const { requestId } = parsed.data;
+  return reply(
+    c,
+    result.ok
+      ? { status: 'accepted', requestId }
+      : { status: 'error', requestId, reason: result.reason },
+  );
+}
 
 async function handleCommand(c: Context<AppEnv>): Promise<Response> {
   const run = handlers.get(c.req.param('name') ?? '');
@@ -70,25 +136,97 @@ async function handleCommand(c: Context<AppEnv>): Promise<Response> {
   const body = await readJson(c);
   const outcome = await run(database.db, actor, body, c.get('traceId'), c.get('now'));
   if (outcome === null) return malformed(c, body);
-  return reply(c, toOutcome(outcome.requestId, outcome.result));
-}
-
-async function handleRead(c: Context<AppEnv>): Promise<Response> {
-  const database = c.get('database');
-  if (database === null) return refuse(c, 'database_not_configured');
-  const actor = c.get('principal');
-  if (actor === null) return refuse(c, 'unauthenticated');
-  const pageId = z.uuid().safeParse(c.req.param('pageId'));
-  if (!pageId.success) return refuse(c, 'page_not_found');
-  const page = await readPage(database.db, actor, pageId.data, c.get('now'));
-  if (page === null) return refuse(c, 'page_not_found');
+  const { requestId, result } = outcome;
+  if (!result.ok) return reply(c, { status: 'error', requestId, reason: result.reason });
   c.set('outcome', 'accepted');
-  return c.json({ page: pageSchema.parse(page) }, 200);
+  const saved = {
+    status: 'accepted',
+    requestId,
+    pageId: result.page.id,
+    version: result.page.version,
+  };
+  return c.json(pageCommandAcceptedSchema.parse(saved), 200);
 }
 
-export function pageRoutes(): Hono<AppEnv> {
+function wikiReads(routes: Hono<AppEnv>): void {
+  routes.get('/categories', pageReads.categories);
+  routes.get('/favourites', pageReads.favourites);
+  routes.get('/templates', pageReads.templates);
+  routes.get('/review', pageReads.review);
+  routes.get('/review/yours', pageReads.reviewDue);
+  routes.get('/areas/:area', pageReads.area);
+}
+
+function pageRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
+  routes.post('/commands/name_category', handleNameCategory);
+  routes.post('/commands/set_area_home', handleSetAreaHome);
+  routes.post('/commands/comment_page', handleComment);
+  routes.post('/commands/resolve_comment', handleResolve);
   routes.post('/commands/:name', handleCommand);
-  routes.get('/:pageId', handleRead);
+  routes.get('/', pageReads.list);
+  routes.get('/index', pageReads.index);
+  routes.get('/recent', pageReads.recent);
+  routes.get('/search', pageReads.search);
+  wikiReads(routes);
+  routes.get('/:pageId/backlinks', pageReads.backlinks);
+  routes.get('/:pageId/comments', listComments);
+  routes.use('/:pageId/favourite', formGuard);
+  routes.get('/:pageId/favourite', pageReads.favourite);
+  routes.put('/:pageId/favourite', keepFavourite);
+  routes.delete('/:pageId/favourite', dropFavourite);
+  routes.get('/:pageId/draft', connectDraft);
+  routes.get('/:pageId/export', pageReads.exported);
+  routes.get('/:pageId/files', listPageFiles);
+  routes.get('/:pageId/versions', pageReads.versions);
+  routes.get('/:pageId/versions/:version', pageReads.version);
+  routes.get('/:pageId', pageReads.one);
   return routes;
+}
+
+function wikiScreenRoutes(): Hono<AppEnv> {
+  const routes = new Hono<AppEnv>();
+  routes.get('/', wikiScreen);
+  routes.use('/new', formGuard);
+  routes.get('/new', wikiNewScreen);
+  routes.get('/review', wikiReviewScreen);
+  routes.get('/areas/:area', wikiAreaScreen);
+  routes.post('/new', createFromForm);
+  routes.get('/:category', wikiCategoryScreen);
+  return routes;
+}
+
+function pageScreenRoutes(): Hono<AppEnv> {
+  const routes = new Hono<AppEnv>();
+  routes.use('/:pageId/comments', formGuard);
+  routes.get('/:pageId/comments', pageCommentsScreen);
+  routes.post('/:pageId/comments', commentFromForm);
+  routes.use('/:pageId/manage', formGuard);
+  routes.get('/:pageId/manage', pageManageScreen);
+  routes.post('/:pageId/manage', managePage);
+  routes.use('/:pageId/versions/:version', formGuard);
+  routes.get('/:pageId/versions/:version', pageVersionScreen);
+  routes.post('/:pageId/versions/:version', restoreVersion);
+  return routes;
+}
+
+function searchScreenRoutes(): Hono<AppEnv> {
+  const routes = new Hono<AppEnv>();
+  routes.get('/', searchScreen);
+  return routes;
+}
+
+function fileRoutes(): Hono<AppEnv> {
+  const routes = new Hono<AppEnv>();
+  routes.put('/:fileId', uploadFile);
+  routes.get('/:fileId', downloadFile);
+  return routes;
+}
+
+export function mountKnowledgeBase(app: Hono<AppEnv>): void {
+  app.route('/api/pages', pageRoutes());
+  app.route('/api/files', fileRoutes());
+  app.route('/wiki', wikiScreenRoutes());
+  app.route('/pages', pageScreenRoutes());
+  app.route('/search', searchScreenRoutes());
 }
