@@ -1,4 +1,4 @@
-export type Span = { readonly start: number; readonly end: number };
+type Span = { readonly start: number; readonly end: number };
 type Answer = Span | 'unsatisfiable' | null;
 
 const ONE_RANGE = /^bytes=(\d*)-(\d*)$/;
