@@ -1,3 +1,4 @@
+import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing';
 import { and, eq, inArray } from 'drizzle-orm';
 import {
   rowQuerySchema,
@@ -15,7 +16,6 @@ import type { Database, Transaction } from '@uw/db/client';
 import { collectionCardOrder, collectionTemplates } from '@uw/db/schema';
 import type { Request } from './definition-commands.ts';
 import { loadCollection, loadCollectionById, type StoredCollection } from './definitions.ts';
-import { keyBetween } from './fractional.ts';
 import { refusal, type CollectionOutcome, type Done } from './outcome.ts';
 import { planOf } from './query/run.ts';
 import { mayReadCollection, readRow, readRows, scopeOf } from './reader.ts';
@@ -118,15 +118,25 @@ async function putPosition(tx: Transaction, viewId: string, rowId: string, posit
     });
 }
 
+function isKey(position: string): boolean {
+  try {
+    generateKeyBetween(position, null);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function keyedGroup(tx: Transaction, viewId: string, ordered: readonly string[]) {
   const known = await positionsOf(tx, viewId, ordered);
-  if (ordered.every((id) => known.has(id))) return known;
+  const whole = ordered.every((id) => isKey(known.get(id) ?? ''));
+  if (whole) return known;
+  const keys = generateNKeysBetween(null, null, ordered.length);
   const keyed = new Map<string, string>();
-  let last: string | null = null;
-  for (const id of ordered) {
-    last = keyBetween(last, null);
-    keyed.set(id, last);
-    await putPosition(tx, viewId, id, last);
+  for (const [index, id] of ordered.entries()) {
+    const key = keys.at(index) ?? generateKeyBetween(null, null);
+    keyed.set(id, key);
+    await putPosition(tx, viewId, id, key);
   }
   return keyed;
 }
@@ -137,7 +147,7 @@ async function placeCard(tx: Transaction, command: MoveCardCommand, shown: reado
   const low = command.after === null ? null : (keys.get(command.after) ?? null);
   const high = command.before === null ? null : (keys.get(command.before) ?? null);
   const ordered = low === null || high === null || low < high;
-  const position = ordered ? keyBetween(low, high) : keyBetween(low, null);
+  const position = ordered ? generateKeyBetween(low, high) : generateKeyBetween(low, null);
   await putPosition(tx, command.viewId, command.rowId, position);
 }
 
