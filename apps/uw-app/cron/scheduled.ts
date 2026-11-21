@@ -1,5 +1,6 @@
 import { engineConfigOf } from '../engines/config.ts';
 import { commitOf, type Bindings } from '../env.ts';
+import { withSecrets, type WorkerEnv } from '../secrets.ts';
 import { cronLogger, type CronDeps } from './job.ts';
 import { cronJobs } from './registry.ts';
 
@@ -15,7 +16,11 @@ function platformCronDeps(env: Bindings): CronDeps {
   };
 }
 
-export async function runScheduled(controller: ScheduledController, env: Bindings): Promise<void> {
+export async function runScheduled(
+  controller: ScheduledController,
+  bound: WorkerEnv,
+): Promise<void> {
+  const env = await withSecrets(bound);
   const deps = platformCronDeps(env);
   const job = cronJobs.get(controller.cron);
   if (job === undefined) {

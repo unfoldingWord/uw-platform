@@ -337,6 +337,46 @@ describe('KN-16 live delegations are queryable', () => {
   );
 });
 
+describe('#155 a delegation is read on its own area, by its grantor, or by an org admin', () => {
+  sceneIt('lists none to an org viewer or an org editor, who read the workflow', async (scene) => {
+    const granted = value(await grantAs(scene, scene.kim));
+    const everything = { personId: null, persona: null, harnessId: null };
+    const listedTo = async (n: number, grants: Parameters<typeof simPerson>[2]) => {
+      const reader = simCaller(scene.world, await simPerson(scene.world, n, grants));
+      return value(await scene.world.kernel.delegations.live(reader, everything)).map(
+        (delegation) => delegation.id,
+      );
+    };
+    const org = { scopeKind: 'org', scopeArea: null } as const;
+    expect(await listedTo(11, [{ role: 'viewer', ...org }])).toEqual([]);
+    expect(await listedTo(12, [{ role: 'editor', ...org }])).toEqual([]);
+    expect(await listedTo(13, [{ role: 'admin', ...org }])).toEqual([granted.id]);
+    expect(
+      await listedTo(14, [{ role: 'viewer', scopeKind: 'jd_area', scopeArea: '80-89' }]),
+    ).toEqual([granted.id]);
+    expect(
+      await listedTo(15, [{ role: 'admin', scopeKind: 'jd_area', scopeArea: '20-29' }]),
+    ).toEqual([]);
+  });
+
+  sceneIt('shows the agents screen its permissions by the same rule', async (scene) => {
+    const granted = value(await grantAs(scene, scene.kim));
+    const shownTo = async (actor: Principal) => {
+      const view = await scene.world.kernel.views.agents(
+        simCaller(scene.world, actor),
+        { harnessId: scene.harnessId },
+        { at: nowOf(scene) },
+      );
+      return value(view).permissions.map((permission) => permission.id);
+    };
+    const orgViewer = await simPerson(scene.world, 16, [
+      { role: 'viewer', scopeKind: 'org', scopeArea: null },
+    ]);
+    expect(await shownTo(orgViewer)).toEqual([]);
+    expect(await shownTo(scene.max)).toEqual([granted.id]);
+  });
+});
+
 describe('KN-16 renewal races and dead rows', () => {
   sceneIt('refuses a second renewal of a row another renewal already revoked', async (scene) => {
     const old = value(await grantAs(scene, scene.kim));

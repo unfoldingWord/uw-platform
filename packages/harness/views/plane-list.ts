@@ -10,6 +10,7 @@ import {
 import { formatMoney } from '@uw/core/money';
 import type { Caller } from '../caller.ts';
 import { silences } from '../alarms/silence.ts';
+import { readableDelegations } from '../delegations/readable.ts';
 import type { PageFacts, Ports, RunRow, StoreTransaction } from '../ports.ts';
 import { readableHarness } from '../reads/scene.ts';
 import { holdsOf } from './holds.ts';
@@ -67,7 +68,8 @@ async function runRows(scope: ListScope, since: Date): Promise<readonly PlaneRow
 async function delegationRows(scope: ListScope): Promise<readonly PlaneRow[]> {
   const filter = { personId: null, persona: null, harnessId: null };
   const live = await scope.tx.delegations.read.live(filter, scope.at);
-  return live.map((delegation) => ({
+  const shown = await readableDelegations(scope.tx, scope.caller.actor, live, scope.at);
+  return shown.map((delegation) => ({
     harnessId: delegation.harnessId,
     cells: {
       persona: delegation.persona,

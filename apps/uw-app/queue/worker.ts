@@ -11,6 +11,7 @@ import { hubOf } from '../ports/hub.ts';
 import { notifierOf } from '../ports/notifier.ts';
 import { zulipConfigOf } from '../notify/zulip/config.ts';
 import { zulipIngestHandler } from '../notify/zulip/inbound.ts';
+import { withSecrets, type WorkerEnv } from '../secrets.ts';
 import { unitHub, type UnitHub } from '../unit-hub.ts';
 import {
   batchTraceId,
@@ -51,8 +52,9 @@ function hubLogger(env: Bindings, sink: LogSink, batch: MessageBatch<unknown>): 
 
 export async function consumeIngestBatch(
   batch: MessageBatch<unknown>,
-  env: Bindings,
+  bound: WorkerEnv,
 ): Promise<void> {
+  const env = await withSecrets(bound);
   const database = hyperdriveDatabase(env);
   const now = () => new Date();
   const sink = (line: string) => console.log(line);

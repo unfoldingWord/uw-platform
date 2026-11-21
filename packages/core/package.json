@@ -5,11 +5,14 @@
   "type": "module",
   "exports": {
     "./acl": "./acl.ts",
+    "./credentials": "./credentials.ts",
     "./database-error": "./database-error.ts",
     "./dates": "./dates.ts",
     "./log": "./log.ts",
     "./modules": "./modules.ts",
     "./money": "./money.ts",
+    "./platform-secrets": "./platform-secrets.ts",
+    "./platform-secrets-testing": "./platform-secrets-testing.ts",
     "./principal": "./principal.ts",
     "./trace": "./trace.ts"
   },

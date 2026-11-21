@@ -1,5 +1,5 @@
 import type { Principal } from '@uw/contracts';
-import { can } from '@uw/core/acl';
+import { can, type RestrictedTable } from '@uw/core/acl';
 import type { AccessGrant, AccessHistoryQuery, AccessPerson, AccessRecords } from '@uw/db/store';
 import { areaLabel, everyArea } from './names.ts';
 
@@ -47,10 +47,9 @@ function manages(viewer: Principal, scope: string, at: Date): boolean {
   return can(viewer, 'admin', resource, at);
 }
 
-function seen(seeing: Seeing, grant: Scoped): boolean {
-  return (
-    grant.personId === seeing.viewer.personId || manages(seeing.viewer, scopeOf(grant), seeing.at)
-  );
+function reads(seeing: Seeing, table: RestrictedTable, record: Scoped): boolean {
+  const row = { kind: 'row', table, area: record.scopeArea, ownerId: record.personId } as const;
+  return can(seeing.viewer, 'read', row, seeing.at);
 }
 
 function kept(filter: AccessFilter, grant: Scoped): boolean {
@@ -131,14 +130,15 @@ function historyOf(records: AccessRecords, seeing: Seeing, orgAdmin: boolean): H
     person: name(change.personId),
   });
   const grants = records.grantChanges
-    .filter((change) => seen(seeing, change) && kept(seeing.filter, change))
+    .filter((change) => reads(seeing, 'grant_audit', change) && kept(seeing.filter, change))
     .map((change) => ({
       ...line(change),
       detail: `${change.role} · ${scopeLabel(scopeOf(change))}`,
     }));
   const signIns = records.personChanges
-    .filter(() => orgAdmin && seeing.filter.scope === null)
-    .filter((change) => kept(seeing.filter, { personId: change.personId, scopeArea: null }))
+    .map((change) => ({ ...change, scopeArea: null }))
+    .filter((change) => orgAdmin && reads(seeing, 'person_audit', change))
+    .filter((change) => seeing.filter.scope === null && kept(seeing.filter, change))
     .map((change) => ({ ...line(change), detail: 'Sign-in' }));
   return [...grants, ...signIns]
     .sort((a, b) => b.at.getTime() - a.at.getTime())
@@ -154,7 +154,7 @@ export function accessViewOf(
   const seeing = { viewer, at, filter };
   const orgAdmin = manages(viewer, ORG_SCOPE, at);
   const grantScopes = grantScopesOf(viewer, at);
-  const visible = records.grants.filter((grant) => seen(seeing, grant));
+  const visible = records.grants.filter((grant) => reads(seeing, 'role_grants', grant));
   const admin = grantScopes.length > 0;
   const chosenScope = filter.scope === null ? [] : [filter.scope];
   const scopes = [...new Set([...visible.map(scopeOf), ...chosenScope])].sort();
