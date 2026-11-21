@@ -14,6 +14,7 @@ import { malformed, readJson, toOutcome, type CommandResult } from '../http/comm
 import { refuse, reply } from '../http/outcomes.ts';
 import { approvePerson, declinePerson } from '../people/approval.ts';
 import { accessScreen } from '../views/screens/access.tsx';
+import { personScreen } from '../views/screens/person.tsx';
 import { grantRole, revokeRole } from './grant-commands.ts';
 
 type Run = (
@@ -84,8 +85,10 @@ export function aclRoutes(): Hono<AppEnv> {
   return routes;
 }
 
-export function accessScreenRoutes(): Hono<AppEnv> {
+export function directoryScreenRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
-  routes.get('/', accessScreen);
+  routes.get('/access', accessScreen);
+  routes.get('/people/:personId', personScreen);
+  routes.get('/people/:personId/:slug', personScreen);
   return routes;
 }

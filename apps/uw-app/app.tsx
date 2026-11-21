@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { errorFields } from '@uw/core/log';
-import { accessScreenRoutes, aclRoutes } from './acl/routes.ts';
+import { aclRoutes, directoryScreenRoutes } from './acl/routes.ts';
 import { agentRoutes } from './agents/routes.ts';
 import { assetRoutes } from './assets/routes.ts';
 import { meRoutes } from './auth/me.ts';
@@ -56,7 +56,7 @@ export function createApp(
   app.route('/api/harness', harnessRoutes(deps, person));
   app.route('/mcp', mcpRoutes(deps));
   app.route('/health', healthScreenRoutes(deps));
-  app.route('/access', accessScreenRoutes());
+  app.route('/', directoryScreenRoutes());
   app.route('/credentials', credentialScreenRoutes());
 
   app.route('/', viewRoutes());
