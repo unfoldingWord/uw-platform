@@ -16,6 +16,7 @@ export * from './ingest.ts';
 export * from './live.ts';
 export * from './notify.ts';
 export * from './outcomes.ts';
+export * from './page-reads.ts';
 export * from './page-types.ts';
 export * from './pages.ts';
 export * from './platform-commands.ts';

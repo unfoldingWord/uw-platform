@@ -28,6 +28,7 @@ export const restrictedReads: ReadonlyMap<string, ReadGovernance> = new Map<stri
     ['packages/harness/views/holder.ts', derived],
     ['packages/harness/views/look.ts', derived],
     ['packages/harness/views/plane.ts', derived],
+    ['apps/uw-app/acl/default-grant.ts', platform],
     ['apps/uw-app/acl/grant-commands.ts', platform],
     ['apps/uw-app/agents/service-tokens.ts', platform],
     ['apps/uw-app/credentials/bindings.ts', platform],

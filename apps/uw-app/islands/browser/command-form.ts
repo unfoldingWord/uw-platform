@@ -35,6 +35,7 @@ export const OUTCOME_TEXT: Readonly<Record<string, string>> = {
   revoke_role: 'Revoked',
   approve_person: 'Approved',
   decline_person: 'Declined',
+  name_category: 'Saved',
   create_credential: 'Added',
   rotate_credential: 'Rotated',
   revoke_credential: 'Revoked',

@@ -11,6 +11,7 @@
     "./errors": "./errors.ts",
     "./journal": "./journal.ts",
     "./migrate": "./migrate.ts",
+    "./page-search": "./page-search.ts",
     "./schema": "./schema.ts",
     "./store": "./store/index.ts",
     "./test-seed": "./test-seed.ts",

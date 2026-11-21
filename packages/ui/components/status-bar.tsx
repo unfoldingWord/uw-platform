@@ -25,6 +25,7 @@ export function StatusBar(props: { readonly status: Status }) {
   const { status } = props;
   return (
     <footer
+      data-chrome=""
       aria-label="Status"
       class="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-dashed border-line bg-surface px-4 py-1 font-mono text-xs text-text-3 md:px-5"
     >

@@ -14,11 +14,25 @@ import type { Database, Executor, Transaction } from '@uw/db/client';
 import { pages, pageVersions } from '@uw/db/schema';
 import { pgConstraint, pgErrorCode } from '@uw/db/errors';
 import { derivedFrontmatter, personaLanding } from './derive.ts';
+import { filedOutsideItsArea } from './filing.ts';
 import { isGatedType } from './gating.ts';
+import { embedsItself, rebuildLinks, resolveBody } from './links.ts';
 import { provenanceOf, type ExternalWriter } from './provenance.ts';
+import { REPLAY_INDEX, replayOf } from './replay.ts';
 import { checkFrontmatter } from './validate.ts';
 
-export const owns = ['pages', 'page_versions'] as const;
+export const owns = [
+  'pages',
+  'page_versions',
+  'jd_categories',
+  'page_views',
+  'page_links',
+  'page_files',
+  'page_favourites',
+  'page_comments',
+  'area_homes',
+  'page_renders',
+] as const;
 
 export type PageResult =
   { readonly ok: true; readonly page: Page } | { readonly ok: false; readonly reason: ErrorReason };
@@ -85,7 +99,14 @@ export async function readPage(
   return can(actor, 'read', { kind: 'area', area: page.jdArea }, at) ? page : null;
 }
 
-export async function snapshot(tx: Transaction, row: PageRow, actor: Principal, traceId: string) {
+export type SnapshotSource = { readonly traceId: string; readonly requestId: string | null };
+
+export async function snapshot(
+  tx: Transaction,
+  row: PageRow,
+  actor: Principal,
+  source: SnapshotSource,
+) {
   await tx.insert(pageVersions).values({
     pageId: row.id,
     version: row.version,
@@ -98,7 +119,8 @@ export async function snapshot(tx: Transaction, row: PageRow, actor: Principal, 
     bodyMd: row.bodyMd,
     status: row.status,
     editSource: actor.identity,
-    traceId,
+    traceId: source.traceId,
+    requestId: source.requestId,
   });
 }
 
@@ -107,10 +129,11 @@ function conflictReason(error: unknown): ErrorReason | null {
   const constraint = pgConstraint(error);
   if (constraint === PAGE_PRIMARY_KEY) return 'page_exists';
   if (constraint === SLUG_PER_AREA) return 'slug_taken';
+  if (constraint === REPLAY_INDEX) return 'request_in_flight';
   return null;
 }
 
-async function refusalOrThrow(error: unknown): Promise<PageResult> {
+export async function pageConflict(error: unknown): Promise<PageResult> {
   const reason = conflictReason(error);
   if (reason === null) throw error;
   return refused(reason);
@@ -138,7 +161,7 @@ async function insertPage(
     })
     .returning();
   if (!row) throw new Error('an inserted page must return its row');
-  await snapshot(tx, row, actor, traceId);
+  await snapshot(tx, row, actor, { traceId, requestId: command.requestId });
   return { ok: true, page: toPage(row) };
 }
 
@@ -165,9 +188,14 @@ export async function createPageAs(
   request: CreateRequest,
 ): Promise<PageResult | PageRefusal> {
   const { traceId, at } = request;
+  const replayed = await replayOf(db, actor, command.requestId);
+  if (replayed !== null) return { ok: true, page: replayed };
   if (command.type === ISSUE_MIRROR) return issueMirror;
   const check = checkFrontmatter(command.type, command.frontmatter);
   if (!check.ok) return refused(check.reason);
+  if (filedOutsideItsArea(check.type, check.frontmatter, command.jdArea)) {
+    return refused('invalid_frontmatter');
+  }
   if (activates(command.type, null, command.status)) return activationRequired;
   if (!can(actor, 'write', { kind: 'area', area: command.jdArea }, at)) {
     return refused('not_permitted');
@@ -186,10 +214,20 @@ export async function createPageAs(
         landing,
       );
       if (!derived.ok) return refused(derived.reason);
-      return insertPage(tx, actor, { ...command, frontmatter: derived.frontmatter }, traceId);
+      const bodyMd = await resolveBody(
+        tx,
+        actor,
+        { bodyMd: command.bodyMd, area: command.jdArea },
+        at,
+      );
+      if (await embedsItself(tx, command.pageId, bodyMd)) return refused('embed_cycle');
+      const filled = { ...command, frontmatter: derived.frontmatter, bodyMd };
+      const made = await insertPage(tx, actor, filled, traceId);
+      if (made.ok) await rebuildLinks(tx, command.pageId, bodyMd);
+      return made;
     });
   } catch (error) {
-    return refusalOrThrow(error);
+    return pageConflict(error);
   }
 }
 
@@ -208,10 +246,10 @@ async function ancestorChainReaches(
   return rows.length > 0;
 }
 
-async function parentRefusal(
+export async function parentRefusal(
   tx: Transaction,
   actor: Principal,
-  command: UpdatePageCommand,
+  command: Pick<UpdatePageCommand, 'pageId' | 'parentId'>,
   at: Date,
 ): Promise<ErrorReason | null> {
   if (command.parentId === null) return null;
@@ -242,7 +280,7 @@ async function writeUpdate(
     .where(and(eq(pages.id, command.pageId), eq(pages.version, command.expectedVersion)))
     .returning();
   if (!row) return refused('stale_version');
-  await snapshot(tx, row, actor, traceId);
+  await snapshot(tx, row, actor, { traceId, requestId: command.requestId });
   return { ok: true, page: toPage(row) };
 }
 
@@ -278,6 +316,9 @@ async function derivedSave(
 ): Promise<UpdatePageCommand | PageResult> {
   const check = checkFrontmatter(stored.type, command.frontmatter);
   if (!check.ok) return refused(check.reason);
+  if (filedOutsideItsArea(check.type, check.frontmatter, stored.jdArea)) {
+    return refused('invalid_frontmatter');
+  }
   const status = personaLanding(stored, chosen, check.frontmatter, command.bodyMd);
   const prior = stored.type === 'learning' ? provenanceOf(stored.frontmatter) : null;
   const landing = { status, stored: stored.status, prior, writer: null };
@@ -299,8 +340,22 @@ type Save = {
   readonly at: Date;
 };
 
+async function writeLinked(
+  tx: Transaction,
+  save: Save,
+  stored: Page,
+  full: UpdatePageCommand,
+): Promise<PageResult> {
+  const { actor, traceId, at } = save;
+  const bodyMd = await resolveBody(tx, actor, { bodyMd: full.bodyMd, area: stored.jdArea }, at);
+  if (await embedsItself(tx, stored.id, bodyMd)) return refused('embed_cycle');
+  const saved = await writeUpdate(tx, actor, { ...full, bodyMd }, traceId);
+  if (saved.ok) await rebuildLinks(tx, stored.id, bodyMd);
+  return saved;
+}
+
 async function updateInTransaction(tx: Transaction, save: Save): Promise<PageResult | PageRefusal> {
-  const { actor, checked, traceId, at } = save;
+  const { actor, checked, at } = save;
   const { command } = checked;
   const reparents = await movesParent(tx, command);
   if (reparents) await tx.execute(advisoryLock(advisoryLocks.pageReparenting));
@@ -318,14 +373,16 @@ async function updateInTransaction(tx: Transaction, save: Save): Promise<PageRes
   if ('ok' in full) return full;
   const blocked = await parentRefusal(tx, actor, full, at);
   if (blocked !== null) return refused(blocked);
-  return writeUpdate(tx, actor, full, traceId);
+  return writeLinked(tx, save, stored, full);
 }
 
 async function saveChecked(db: Database, save: Save): Promise<PageResult | PageRefusal> {
+  const replayed = await replayOf(db, save.actor, save.checked.command.requestId);
+  if (replayed !== null) return { ok: true, page: replayed };
   try {
     return await db.transaction((tx) => updateInTransaction(tx, save));
   } catch (error) {
-    return refusalOrThrow(error);
+    return pageConflict(error);
   }
 }
 

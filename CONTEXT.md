@@ -365,8 +365,78 @@ The Zod-validated message `uw-ingest` puts on the queue for one verified webhook
 _Avoid_: event (that is a row of `harness_events`), message (the message queue's word for the transport), job
 
 **Page type**:
-One entry of the page-type registry in `packages/contracts`: a frontmatter schema, a classification and an offline eligibility. Seven in v1: `skill`, `learning`, `persona`, `product`, `system_goal`, `product_strategy`, `data_sources`.
-_Avoid_: template (that is a stage graph), kind, category
+One entry of the page-type registry in `packages/contracts`: a frontmatter schema, a classification and an offline eligibility. Ten: `skill`, `learning`, `persona`, `product`, `system_goal`, `product_strategy`, `data_sources`, `issue`, `platform`, `knowledge`.
+_Avoid_: template (that is a stage graph), kind, category (that is where a knowledge page is filed)
+
+## The knowledge base
+
+**Page**:
+A row of `pages`: a type, an area, a title, typed frontmatter and a markdown body, saved as numbered versions. The markdown is the record; everything else about a page is drawn from it.
+_Avoid_: document, doc, note, article, block
+
+**Knowledge page**:
+A page of type `knowledge`: a wiki page a person reads. It is filed in a **category**, may carry a JD ID, an owner, tags and aliases, and is what "Pages & Wiki" lists.
+_Avoid_: wiki page, article, doc
+
+**Category**:
+Two digits, such as `61`: the Johnny.Decimal level below an area, and where a knowledge page is filed. The page's area is the category's decade, so `61` is in `60-69`.
+_Avoid_: folder, section, collection, space
+
+**Cluster**:
+Two or more areas shown as one group in navigation, such as `60-79 Field Programs` over `60-69` and `70-79`. A cluster holds no pages and takes no grant; each of its areas does.
+_Avoid_: area (a cluster is not one), super-area, range
+
+**Read view**:
+What `/pages/:pageId` shows: the page's last saved version, rendered, with no field that can change it. Every page opens here.
+_Avoid_: preview, view mode, published view
+
+**Edit mode**:
+What `/pages/:pageId/edit` shows to a person who may write the page, reached by the pencil. Nothing in it reaches the read view until Save.
+_Avoid_: editor (that is the Tiptap component inside it), editing view
+
+**Working draft**:
+The unsaved text of a page in edit mode, shared live by everyone editing it and held by the page's **sync hub**. Save publishes it as one version; Discard throws it away.
+_Avoid_: draft (alone, that is the Flow tab's private copy of stages, or the page status `draft`), autosave, revision
+
+**Sync hub**:
+One Durable Object per page version being edited (`PageDraft`), holding its working draft as a Yjs document and passing changes between the people in edit mode. It is not the record: the saved markdown is. A new version gets a new sync hub, so a working draft always starts from one saved version.
+_Avoid_: live hub (that sends wakes for a harness and holds no data), collab server, room
+
+**Verification**:
+A person's statement, on a knowledge page, that they read it and it is still right, with the date it holds until. After that date the verification has **lapsed**: the read view says so and the page is on the "Needs review" list.
+_Avoid_: approval (that is a gate decision), review (alone), sign-off
+
+**Template**:
+A knowledge page tagged `template`. A new page can start from its text; the template itself is an ordinary page.
+_Avoid_: blueprint, boilerplate
+
+**Favourite**:
+A page a person marked for themselves. Only that person sees it, on "Pages & Wiki".
+_Avoid_: bookmark, star, pin
+
+**Comment**:
+A reader's note on a page, kept beside the page and not in its text. Anyone who can read the page can comment; its author or an editor of the page's area resolves it.
+_Avoid_: note, annotation, thread
+
+**Quick Switcher**:
+The dialog Cmd/Ctrl+O opens on any screen: type part of a title, a JD ID or an alias and go to that page. It matches titles only; searching the text of pages is **search**.
+_Avoid_: command palette, omnibox, spotlight, launcher
+
+**Search**:
+Full-text search over the title and body of the pages a person may read, title weighted higher. One reader serves the search screen, the JSON route and the agent verb `search_pages`.
+_Avoid_: find, lookup, query (that is the text a person typed)
+
+**Wiki link**:
+`[[Page title]]` as typed. On save the server resolves it to a link that carries the target page's id, so a rename breaks nothing. One that names no page yet stays as typed and offers to create the page.
+_Avoid_: mention, internal link, reference
+
+**Backlink**:
+A page that links to this one, read from `page_links`.
+_Avoid_: reference, incoming link, linked mention
+
+**Embed**:
+`![[Page title]]` or `![[Page title#Heading]]`: another page's saved text, or one section of it, shown in place and edited only at its source. Access is checked for the reader.
+_Avoid_: transclusion (in the UI; the design documents use it), synced block, include, snippet
 
 ## What GitHub says
 

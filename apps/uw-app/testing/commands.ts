@@ -13,7 +13,7 @@ import {
 } from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
 import type { Database } from '@uw/db/client';
-import { seedGrant, seedPerson } from '@uw/db/test-seed';
+import { seedGrant, seedPerson, seedRevokedDefaultReading } from '@uw/db/test-seed';
 import {
   software,
   type Caller,
@@ -109,6 +109,21 @@ export async function get(
   return { status: raw.status, body: parsed, text, traceId: raw.headers.get('x-trace-id') ?? '' };
 }
 
+export async function getRaw(
+  db: Database,
+  email: string,
+  path: string,
+  headers: Readonly<Record<string, string>> = {},
+): Promise<Response> {
+  const keys = await accessFixture();
+  const token = await keys.sign({ email });
+  return createApp(postgresDeps(db, keys), noGateGitHub).request(
+    path,
+    { method: 'GET', headers: { 'cf-access-jwt-assertion': token, ...headers } },
+    fixtureAccessEnv,
+  );
+}
+
 export function command(
   db: Database,
   person: Pick<Person, 'email'>,
@@ -165,6 +180,7 @@ export async function person(
     grantedAt: new Date(Date.now() - 60_000),
     expiresAt: null,
   });
+  if (area !== '00-09') await seedRevokedDefaultReading(db, seeded.id, new Date());
   return seeded;
 }
 

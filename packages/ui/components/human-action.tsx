@@ -1,4 +1,4 @@
-import { Icon } from './icon.tsx';
+import { Icon, type IconProps } from './icon.tsx';
 import { domId, reasonText } from './text.ts';
 
 export const humanGateSvg = 'fill-human-soft stroke-human';
@@ -35,6 +35,20 @@ export function HumanActionButton(props: {
         </span>
       )}
     </span>
+  );
+}
+
+export function HumanActionLink(props: {
+  readonly href: string;
+  readonly label: string;
+  readonly name: string;
+  readonly icon: IconProps['name'];
+}) {
+  return (
+    <a href={props.href} aria-label={props.name} class={`${action} gap-2`}>
+      <Icon name={props.icon} size={1} />
+      {props.label}
+    </a>
   );
 }
 
