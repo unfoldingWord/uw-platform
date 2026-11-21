@@ -12,6 +12,19 @@ import {
   serviceClientIdSchema,
 } from './agent-commands.ts';
 import { jdAreaSchema, jdCategorySchema, jdIdSchema } from './areas.ts';
+import {
+  bindCredentialCommandSchema,
+  confirmRevealCommandSchema,
+  createCredentialCommandSchema,
+  credentialKindSchema,
+  credentialRevealedSchema,
+  grantRevealCommandSchema,
+  revealCredentialCommandSchema,
+  revokeCredentialCommandSchema,
+  revokeRevealCommandSchema,
+  rotateCredentialCommandSchema,
+  unbindCredentialCommandSchema,
+} from './credential-commands.ts';
 import { draftCheckSchema, draftStageSchema } from './drafts.ts';
 import * as closedSets from './closed-sets.ts';
 import {
@@ -62,6 +75,7 @@ import {
 import { eventPageReplySchema, eventQuerySchema, hubWakeSchema } from './live.ts';
 import {
   deepLinkSchema,
+  noticeReasonSchema,
   pushEndpointSchema,
   pushPayloadSchema,
   pushSubscribeSchema,
@@ -206,6 +220,17 @@ export const schemaRegistry: Record<string, ZodType> = {
   'revoke-role-command': revokeRoleCommandSchema,
   'approve-person-command': approvePersonCommandSchema,
   'decline-person-command': declinePersonCommandSchema,
+  'credential-kind': credentialKindSchema,
+  'create-credential-command': createCredentialCommandSchema,
+  'rotate-credential-command': rotateCredentialCommandSchema,
+  'revoke-credential-command': revokeCredentialCommandSchema,
+  'bind-credential-command': bindCredentialCommandSchema,
+  'unbind-credential-command': unbindCredentialCommandSchema,
+  'grant-reveal-command': grantRevealCommandSchema,
+  'confirm-reveal-command': confirmRevealCommandSchema,
+  'revoke-reveal-command': revokeRevealCommandSchema,
+  'reveal-credential-command': revealCredentialCommandSchema,
+  'credential-revealed': credentialRevealedSchema,
   'indicator-status': indicatorStatusSchema,
   'overall-status': overallStatusSchema,
   'health-indicator': healthIndicatorSchema,
@@ -346,6 +371,7 @@ export const schemaRegistry: Record<string, ZodType> = {
   'wake-reason': closedSets.wakeReasonSchema,
   'live-screen': closedSets.liveScreenSchema,
   'deep-link': deepLinkSchema,
+  'notice-reason': noticeReasonSchema,
   'push-payload': pushPayloadSchema,
   'push-endpoint': pushEndpointSchema,
   'push-subscribe': pushSubscribeSchema,

@@ -85,6 +85,7 @@ export const pageSearchReplySchema = z.object({
         status: true,
       }),
       snippet: z.array(snippetPartSchema),
+      match: z.enum(['words', 'similar_title']),
     }),
   ),
 });

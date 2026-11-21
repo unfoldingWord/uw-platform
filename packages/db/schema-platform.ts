@@ -154,6 +154,7 @@ export const pages = declareTable(
     uniqueIndex('pages_slug_per_area').on(t.jdArea, t.slug),
     index('pages_parent').on(t.parentId),
     index('pages_search').using('gin', searchDocument(t)),
+    index('pages_title_trgm').using('gin', t.title.op('gin_trgm_ops')),
     index('pages_area_updated').on(t.jdArea, t.updatedAt),
   ],
 );
@@ -210,6 +211,26 @@ export const pageLinks = declareTable(
     ),
     index('page_links_from').on(t.fromPage),
     index('page_links_to').on(t.toPage, t.rel),
+  ],
+);
+
+export const pageRenders = declareTable(
+  'page_renders',
+  {
+    pageId: uuid('page_id')
+      .notNull()
+      .references(() => pages.id),
+    key: text('key').notNull(),
+    version: integer('version').notNull(),
+    html: text('html').notNull(),
+    headings: jsonb('headings').notNull(),
+    renderedAt: instant('rendered_at').notNull(),
+  },
+  { classification: 'internal', offlineEligibility: 'never' },
+  (t) => [
+    primaryKey({ name: 'page_renders_pkey', columns: [t.pageId, t.key] }),
+    check('page_renders_key_form', matches(t.key, '^[0-9a-f]{64}$')),
+    index('page_renders_rendered').on(t.renderedAt),
   ],
 );
 

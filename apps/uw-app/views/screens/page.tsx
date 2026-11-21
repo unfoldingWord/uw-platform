@@ -37,6 +37,7 @@ import {
   withBack,
 } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
+import { commitOf } from '../../env.ts';
 
 const MIN_CONTENTS = 2;
 const tocLink =
@@ -266,7 +267,7 @@ async function storedExtras(
   const { page } = shown;
   await recordView(database.db, actor, page.id, screen.at);
   return {
-    rendered: await renderPage(database.db, actor, page, screen.at),
+    rendered: await renderPage(database.db, actor, page, screen.at, commitOf(c.env)),
     openComments: await openComments(database.db, page.id),
     favourite: await isFavourite(database.db, actor, page.id),
   };

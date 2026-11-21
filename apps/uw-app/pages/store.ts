@@ -31,6 +31,7 @@ export const owns = [
   'page_favourites',
   'page_comments',
   'area_homes',
+  'page_renders',
 ] as const;
 
 export type PageResult =

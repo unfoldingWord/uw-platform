@@ -3,6 +3,7 @@ export * from './agent-commands.ts';
 export * from './areas.ts';
 export * from './closed-sets.ts';
 export * from './commands.ts';
+export * from './credential-commands.ts';
 export * from './drafts.ts';
 export * from './event-evidence.ts';
 export * from './events.ts';

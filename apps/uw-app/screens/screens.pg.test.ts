@@ -14,6 +14,8 @@ import { fontFiles } from '@uw/ui/generated/fonts';
 import { wordmarkBase64, wordmarkPath } from '@uw/ui/generated/mark';
 import { boardWorld, type BoardWorld } from '../testing/board-world.ts';
 import { callerOf } from '../testing/commands.ts';
+import { cast } from '../testing/credentials-app.ts';
+import { credentialsScene } from '../testing/credentials-scene.ts';
 import { gateWorld } from '../testing/gate-world.ts';
 import { kernelOn } from '../testing/kernel.ts';
 import { seedSampleKnowledge } from '../testing/knowledge.ts';
@@ -25,6 +27,8 @@ import {
   newWorkflowPath,
   queuePath,
   controlsPath,
+  credentialPath,
+  credentialsPath,
   flowPath,
   gatePath,
   healthPath,
@@ -217,6 +221,22 @@ async function gateScreens(db: Database): Promise<Screen[]> {
   return screens;
 }
 
+async function credentialScreens(db: Database): Promise<Screen[]> {
+  const scene = await credentialsScene(db, seedClock);
+  const one = credentialPath(scene.bankExport);
+  const shots: readonly (readonly [string, string, string])[] = [
+    ['credentials', cast.admin.email, credentialsPath()],
+    ['credential', cast.admin.email, one],
+    ['credential-member', cast.viewer.email, one],
+  ];
+  const screens: Screen[] = [];
+  for (const [name, email, path] of shots) {
+    const page = await getHtml(db, email, path, {}, viewClock);
+    screens.push({ name, html: page.text });
+  }
+  return screens;
+}
+
 const closedMenu = /(<section[^>]*aria-label="Menu"[^>]*>)<details>/;
 
 function menuOpen(all: readonly Screen[]): Screen {
@@ -314,6 +334,9 @@ beforeAll(async () => {
   await withAppDatabase(async (db) => {
     screens = [...screens, ...(await gateScreens(db))];
   });
+  await withAppDatabase(async (db) => {
+    screens = [...screens, ...(await credentialScreens(db))];
+  });
   screens = [...screens, menuOpen(screens), accountMenuOpen(screens)];
 }, 300_000);
 
@@ -388,6 +411,9 @@ const pictured = [
   'waiting',
   'gate',
   'play',
+  'credentials',
+  'credential',
+  'credential-member',
   'menu',
   'account-menu',
 ];

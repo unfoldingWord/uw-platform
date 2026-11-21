@@ -184,12 +184,20 @@ function Results(props: { readonly asked: Asked; readonly results: readonly Sear
   if (props.results.length === 0) {
     return <p class="m-0 text-sm text-text-2">No page you can read matches those words.</p>;
   }
+  const similar = props.results.every((result) => result.match === 'similar_title');
   return (
-    <ul class="m-0 flex list-none flex-col gap-3 p-0">
-      {props.results.map((result) => (
-        <Result result={result} />
-      ))}
-    </ul>
+    <>
+      {similar ? (
+        <p data-similar="" class="m-0 text-sm text-text-2">
+          No page you can read holds those words. These titles are close to them:
+        </p>
+      ) : null}
+      <ul class="m-0 flex list-none flex-col gap-3 p-0">
+        {props.results.map((result) => (
+          <Result result={result} />
+        ))}
+      </ul>
+    </>
   );
 }
 
@@ -205,6 +213,7 @@ export async function searchScreen(c: Context<AppEnv>): Promise<Response> {
     area: asked.area,
     titlesOnly: asked.titlesOnly,
     liveOnly: true,
+    similar: true,
     owner: asked.mine ? actor.identity : null,
     since: sinceOf(asked, screen.at),
     limit: RESULTS,

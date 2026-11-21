@@ -14,11 +14,18 @@ export type SearchQuery = {
   readonly liveOnly: boolean;
   readonly owner?: string | null;
   readonly since?: string | null;
+  readonly similar?: boolean;
   readonly limit: number;
 };
 
+export type Match = 'words' | 'similar_title';
+
 type SnippetPart = { readonly text: string; readonly hit: boolean };
-export type SearchResult = { readonly page: PageSummary; readonly snippet: readonly SnippetPart[] };
+export type SearchResult = {
+  readonly page: PageSummary;
+  readonly snippet: readonly SnippetPart[];
+  readonly match: Match;
+};
 
 const HIT_START = '';
 const HIT_END = '';
@@ -35,6 +42,16 @@ function matching(query: SearchQuery, terms: SQL): SQL | undefined {
   return or(sql`${document} @@ ${terms}`, inTitle);
 }
 
+function filtersOf(query: SearchQuery, areas: SQL | undefined): (SQL | undefined)[] {
+  return [
+    query.type === null ? undefined : eq(pages.type, query.type),
+    query.area === null ? undefined : eq(pages.jdArea, query.area),
+    query.liveOnly ? ne(pages.status, 'retired') : undefined,
+    ...narrowing(query),
+    areas,
+  ];
+}
+
 function narrowing(query: SearchQuery): (SQL | undefined)[] {
   const owner = query.owner ?? null;
   const since = query.since ?? null;
@@ -44,28 +61,61 @@ function narrowing(query: SearchQuery): (SQL | undefined)[] {
   ];
 }
 
+type Found = { readonly pages: readonly PageSummary[]; readonly match: Match };
+
+async function similarTitles(
+  db: Executor,
+  query: SearchQuery,
+  areas: SQL | undefined,
+): Promise<readonly PageSummary[]> {
+  const text = query.text.trim().toLowerCase();
+  const closeness = sql`greatest(similarity(${pages.title}, ${text}), word_similarity(${text}, ${pages.title}))`;
+  const rows = await db
+    .select(summaryColumns)
+    .from(pages)
+    .where(
+      and(
+        or(sql`${pages.title} % ${text}`, sql`${text} <% ${pages.title}`),
+        ...filtersOf(query, areas),
+      ),
+    )
+    .orderBy(desc(closeness), asc(pages.title), pages.id)
+    .limit(query.limit);
+  return rows.map((row) => summarySchema.parse(row));
+}
+
+export async function findPages(
+  db: Executor,
+  actor: Principal,
+  query: SearchQuery,
+  at: Date,
+): Promise<Found> {
+  const areas = areaFilter(actor, at);
+  if (areas === null || query.text.trim() === '') return { pages: [], match: 'words' };
+  const words = await wordMatches(db, query, areas);
+  if (words.length > 0 || query.similar !== true) return { pages: words, match: 'words' };
+  return { pages: await similarTitles(db, query, areas), match: 'similar_title' };
+}
+
 export async function searchPages(
   db: Executor,
   actor: Principal,
   query: SearchQuery,
   at: Date,
 ): Promise<readonly PageSummary[]> {
-  const areas = areaFilter(actor, at);
-  if (areas === null || query.text.trim() === '') return [];
+  return (await findPages(db, actor, query, at)).pages;
+}
+
+async function wordMatches(
+  db: Executor,
+  query: SearchQuery,
+  areas: SQL | undefined,
+): Promise<readonly PageSummary[]> {
   const terms = searchTerms(query.text);
   const rows = await db
     .select(summaryColumns)
     .from(pages)
-    .where(
-      and(
-        matching(query, terms),
-        query.type === null ? undefined : eq(pages.type, query.type),
-        query.area === null ? undefined : eq(pages.jdArea, query.area),
-        query.liveOnly ? ne(pages.status, 'retired') : undefined,
-        ...narrowing(query),
-        areas,
-      ),
-    )
+    .where(and(matching(query, terms), ...filtersOf(query, areas)))
     .orderBy(desc(sql`ts_rank(${searchDocument(pages)}, ${terms})`), asc(pages.title), pages.id)
     .limit(query.limit);
   return rows.map((row) => summarySchema.parse(row));
@@ -87,7 +137,7 @@ export async function searchWithSnippets(
   query: SearchQuery,
   at: Date,
 ): Promise<readonly SearchResult[]> {
-  const found = await searchPages(db, actor, query, at);
+  const { pages: found, match } = await findPages(db, actor, query, at);
   if (found.length === 0) return [];
   const language = sql.raw(`'${SEARCH_LANGUAGE}'`);
   const source = sql`left(${pages.bodyMd}, ${sql.raw(String(SNIPPET_SOURCE))})`;
@@ -104,5 +154,5 @@ export async function searchWithSnippets(
       ),
     );
   const headlines = new Map(rows.map((row) => [row.id, row.headline]));
-  return found.map((page) => ({ page, snippet: partsOf(headlines.get(page.id) ?? '') }));
+  return found.map((page) => ({ page, snippet: partsOf(headlines.get(page.id) ?? ''), match }));
 }

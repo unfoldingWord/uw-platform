@@ -11,6 +11,8 @@ export const pageNames = {
   waitingApproval: 'Waiting For Approval',
   accessDeclined: 'Access Declined',
   access: 'Access',
+  credentials: 'Credentials',
+  credential: 'Credential',
   queue: 'Queue',
   flow: 'Flow',
   controls: 'Stages & Controls',
@@ -52,7 +54,7 @@ export type PlatformModule = {
   readonly icon: IconName;
   readonly built?: BuiltModule;
 };
-export type BuiltModule = 'today' | 'health' | 'agentQueues' | 'access' | 'pages';
+export type BuiltModule = 'today' | 'health' | 'agentQueues' | 'access' | 'pages' | 'credentials';
 export type PlatformArea = {
   readonly code: string;
   readonly name: string;
@@ -94,6 +96,7 @@ export const platformAreas: readonly PlatformArea[] = [
       { label: 'Health', icon: 'wave-pulse', built: 'health' },
       { label: 'Agent Queues', icon: 'robot', built: 'agentQueues' },
       { label: 'Access', icon: 'lock', built: 'access' },
+      { label: 'Credentials', icon: 'shield-check', built: 'credentials' },
       { label: 'Modules', icon: 'cube' },
       { label: 'Desktop & Offline', icon: 'desktop' },
     ],
@@ -130,6 +133,7 @@ export const moduleCodes: Readonly<Record<BuiltModule, string>> = {
   agentQueues: '32',
   access: '37',
   pages: '01',
+  credentials: '36',
 };
 
 export const noModules = 'No modules enabled for this area';

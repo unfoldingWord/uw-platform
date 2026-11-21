@@ -1,6 +1,6 @@
 {
-  "id": "64edcbfd-75b0-4410-9ec8-09df69a47681",
-  "prevId": "1a9eba90-9860-4c77-92a3-b8bb5c9f6e61",
+  "id": "f602abf8-f1d3-49f8-838a-980e5ca9e3de",
+  "prevId": "405c1f69-c3c1-4b79-86d5-06183c81ad03",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2794,6 +2794,91 @@
       },
       "isRLSEnabled": false
     },
+    "public.page_renders": {
+      "name": "page_renders",
+      "schema": "",
+      "columns": {
+        "page_id": {
+          "name": "page_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "html": {
+          "name": "html",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "headings": {
+          "name": "headings",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rendered_at": {
+          "name": "rendered_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "page_renders_rendered": {
+          "name": "page_renders_rendered",
+          "columns": [
+            {
+              "expression": "rendered_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "page_renders_page_id_pages_id_fk": {
+          "name": "page_renders_page_id_pages_id_fk",
+          "tableFrom": "page_renders",
+          "tableTo": "pages",
+          "columnsFrom": ["page_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "page_renders_pkey": {
+          "name": "page_renders_pkey",
+          "columns": ["page_id", "key"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "page_renders_key_form": {
+          "name": "page_renders_key_form",
+          "value": "\"page_renders\".\"key\" ~ '^[0-9a-f]{64}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.page_versions": {
       "name": "page_versions",
       "schema": "",
@@ -4815,6 +4900,662 @@
         "push_subscriptions_endpoint_https": {
           "name": "push_subscriptions_endpoint_https",
           "value": "\"push_subscriptions\".\"endpoint\" LIKE 'https://%'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.credential_access_log": {
+      "name": "credential_access_log",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "position": {
+          "name": "position",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "credential_access_log_position_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "credential_id": {
+          "name": "credential_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version_id": {
+          "name": "version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "jd_area": {
+          "name": "jd_area",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actor": {
+          "name": "actor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "person_id": {
+          "name": "person_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "harness_id": {
+          "name": "harness_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "connector_key": {
+          "name": "connector_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "trace_id": {
+          "name": "trace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "at": {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "credential_access_log_credential": {
+          "name": "credential_access_log_credential",
+          "columns": [
+            {
+              "expression": "credential_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "credential_access_log_credential_id_credentials_id_fk": {
+          "name": "credential_access_log_credential_id_credentials_id_fk",
+          "tableFrom": "credential_access_log",
+          "tableTo": "credentials",
+          "columnsFrom": ["credential_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "credential_access_log_version_id_credential_versions_id_fk": {
+          "name": "credential_access_log_version_id_credential_versions_id_fk",
+          "tableFrom": "credential_access_log",
+          "tableTo": "credential_versions",
+          "columnsFrom": ["version_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "credential_access_log_person_id_people_id_fk": {
+          "name": "credential_access_log_person_id_people_id_fk",
+          "tableFrom": "credential_access_log",
+          "tableTo": "people",
+          "columnsFrom": ["person_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "credential_access_log_area_is_jd": {
+          "name": "credential_access_log_area_is_jd",
+          "value": "\"credential_access_log\".\"jd_area\" ~ '^([0-9])0-\\1[9]$'"
+        },
+        "credential_access_log_action_known": {
+          "name": "credential_access_log_action_known",
+          "value": "\"credential_access_log\".\"action\" IN ('create', 'rotate', 'revoke', 'bind', 'unbind', 'use', 'reveal', 'grant_reveal', 'confirm_reveal', 'revoke_reveal')"
+        },
+        "credential_access_log_outcome_known": {
+          "name": "credential_access_log_outcome_known",
+          "value": "\"credential_access_log\".\"outcome\" IN ('done', 'refused')"
+        },
+        "credential_access_log_reason_matches": {
+          "name": "credential_access_log_reason_matches",
+          "value": "(\"credential_access_log\".\"outcome\" = 'done' AND \"credential_access_log\".\"reason\" IS NULL) OR (\"credential_access_log\".\"outcome\" = 'refused' AND \"credential_access_log\".\"reason\" IS NOT NULL AND \"credential_access_log\".\"reason\" IN ('not_permitted', 'credential_revoked', 'credential_expired', 'value_not_storable', 'credential_malformed', 'key_rejected', 'key_service_refused', 'key_service_unavailable', 'key_service_not_configured', 'ciphertext_rejected', 'envelope_malformed'))"
+        },
+        "credential_access_log_actor_is_identity": {
+          "name": "credential_access_log_actor_is_identity",
+          "value": "\"credential_access_log\".\"actor\" ~ '^(?:human:[A-Za-z0-9][A-Za-z0-9_-]*|agent:[a-z0-9][a-z0-9_-]*|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31}|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31} as [a-z0-9][a-z0-9_-]* via delegation:[A-Za-z0-9][A-Za-z0-9_-]*)$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.credential_bindings": {
+      "name": "credential_bindings",
+      "schema": "",
+      "columns": {
+        "credential_id": {
+          "name": "credential_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "harness_id": {
+          "name": "harness_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "connector_key": {
+          "name": "connector_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "credential_bindings_credential_id_credentials_id_fk": {
+          "name": "credential_bindings_credential_id_credentials_id_fk",
+          "tableFrom": "credential_bindings",
+          "tableTo": "credentials",
+          "columnsFrom": ["credential_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "credential_bindings_harness_id_harnesses_id_fk": {
+          "name": "credential_bindings_harness_id_harnesses_id_fk",
+          "tableFrom": "credential_bindings",
+          "tableTo": "harnesses",
+          "columnsFrom": ["harness_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "credential_bindings_created_by_people_id_fk": {
+          "name": "credential_bindings_created_by_people_id_fk",
+          "tableFrom": "credential_bindings",
+          "tableTo": "people",
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "credential_bindings_once": {
+          "name": "credential_bindings_once",
+          "columns": ["credential_id", "harness_id", "connector_key"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "credential_bindings_connector_known": {
+          "name": "credential_bindings_connector_known",
+          "value": "\"credential_bindings\".\"connector_key\" IN ('merge', 'deploy', 'publish', 'send', 'post')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.credential_grants": {
+      "name": "credential_grants",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "credential_id": {
+          "name": "credential_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "person_id": {
+          "name": "person_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "capability": {
+          "name": "capability",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "granted_by": {
+          "name": "granted_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "granted_at": {
+          "name": "granted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "second_required": {
+          "name": "second_required",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "second_by": {
+          "name": "second_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "second_at": {
+          "name": "second_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "credential_grants_credential": {
+          "name": "credential_grants_credential",
+          "columns": [
+            {
+              "expression": "credential_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "person_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "credential_grants_credential_id_credentials_id_fk": {
+          "name": "credential_grants_credential_id_credentials_id_fk",
+          "tableFrom": "credential_grants",
+          "tableTo": "credentials",
+          "columnsFrom": ["credential_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "credential_grants_person_id_people_id_fk": {
+          "name": "credential_grants_person_id_people_id_fk",
+          "tableFrom": "credential_grants",
+          "tableTo": "people",
+          "columnsFrom": ["person_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "credential_grants_granted_by_people_id_fk": {
+          "name": "credential_grants_granted_by_people_id_fk",
+          "tableFrom": "credential_grants",
+          "tableTo": "people",
+          "columnsFrom": ["granted_by"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "credential_grants_second_by_people_id_fk": {
+          "name": "credential_grants_second_by_people_id_fk",
+          "tableFrom": "credential_grants",
+          "tableTo": "people",
+          "columnsFrom": ["second_by"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "credential_grants_capability_known": {
+          "name": "credential_grants_capability_known",
+          "value": "\"credential_grants\".\"capability\" IN ('reveal')"
+        },
+        "credential_grants_expires_after_grant": {
+          "name": "credential_grants_expires_after_grant",
+          "value": "\"credential_grants\".\"expires_at\" > \"credential_grants\".\"granted_at\""
+        },
+        "credential_grants_second_is_another_person": {
+          "name": "credential_grants_second_is_another_person",
+          "value": "(\"credential_grants\".\"second_by\" IS NULL AND \"credential_grants\".\"second_at\" IS NULL) OR (\"credential_grants\".\"second_required\" AND \"credential_grants\".\"second_by\" IS NOT NULL AND \"credential_grants\".\"second_at\" IS NOT NULL AND \"credential_grants\".\"second_by\" <> \"credential_grants\".\"granted_by\")"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.credential_versions": {
+      "name": "credential_versions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "credential_id": {
+          "name": "credential_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cipher": {
+          "name": "cipher",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ciphertext": {
+          "name": "ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nonce": {
+          "name": "nonce",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "wrapped_key": {
+          "name": "wrapped_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key_id": {
+          "name": "key_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "credential_versions_credential_id_credentials_id_fk": {
+          "name": "credential_versions_credential_id_credentials_id_fk",
+          "tableFrom": "credential_versions",
+          "tableTo": "credentials",
+          "columnsFrom": ["credential_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "credential_versions_created_by_people_id_fk": {
+          "name": "credential_versions_created_by_people_id_fk",
+          "tableFrom": "credential_versions",
+          "tableTo": "people",
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "credential_versions_once": {
+          "name": "credential_versions_once",
+          "nullsNotDistinct": false,
+          "columns": ["credential_id", "version"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "credential_versions_version_positive": {
+          "name": "credential_versions_version_positive",
+          "value": "\"credential_versions\".\"version\" >= 1"
+        },
+        "credential_versions_cipher_known": {
+          "name": "credential_versions_cipher_known",
+          "value": "\"credential_versions\".\"cipher\" IN ('aes-256-gcm')"
+        },
+        "credential_versions_nonce_length": {
+          "name": "credential_versions_nonce_length",
+          "value": "length(\"credential_versions\".\"nonce\") = 16 AND \"credential_versions\".\"nonce\" ~ '^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$'"
+        },
+        "credential_versions_sealed": {
+          "name": "credential_versions_sealed",
+          "value": "length(\"credential_versions\".\"ciphertext\") > 0 AND \"credential_versions\".\"ciphertext\" ~ '^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$' AND length(\"credential_versions\".\"wrapped_key\") > 0 AND \"credential_versions\".\"wrapped_key\" ~ '^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$' AND length(\"credential_versions\".\"key_id\") > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.credentials": {
+      "name": "credentials",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "jd_area": {
+          "name": "jd_area",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "jd_ref": {
+          "name": "jd_ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rotate_by": {
+          "name": "rotate_by",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "credentials_owner_id_people_id_fk": {
+          "name": "credentials_owner_id_people_id_fk",
+          "tableFrom": "credentials",
+          "tableTo": "people",
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "credentials_created_by_people_id_fk": {
+          "name": "credentials_created_by_people_id_fk",
+          "tableFrom": "credentials",
+          "tableTo": "people",
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "credentials_name_per_area": {
+          "name": "credentials_name_per_area",
+          "nullsNotDistinct": false,
+          "columns": ["jd_area", "name"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "credentials_area_is_jd": {
+          "name": "credentials_area_is_jd",
+          "value": "\"credentials\".\"jd_area\" ~ '^([0-9])0-\\1[9]$'"
+        },
+        "credentials_ref_inside_area": {
+          "name": "credentials_ref_inside_area",
+          "value": "\"credentials\".\"jd_ref\" IS NULL OR (\"credentials\".\"jd_ref\" ~ '^[0-9]{2}(\\.[0-9]{2})?$' AND left(\"credentials\".\"jd_ref\", 1) = left(\"credentials\".\"jd_area\", 1))"
+        },
+        "credentials_kind_known": {
+          "name": "credentials_kind_known",
+          "value": "\"credentials\".\"kind\" IN ('api_key', 'oauth_refresh', 'password', 'ssh_key', 'certificate')"
+        },
+        "credentials_name_trimmed": {
+          "name": "credentials_name_trimmed",
+          "value": "\"credentials\".\"name\" = btrim(\"credentials\".\"name\") AND length(\"credentials\".\"name\") BETWEEN 1 AND 120"
         }
       },
       "isRLSEnabled": false

@@ -9,6 +9,7 @@ import { Note } from '@uw/ui/components/note.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { areaHome, type AreaHome } from '../../pages/area-homes.ts';
+import { commitOf } from '../../env.ts';
 import { renderPage } from '../../pages/render-page.ts';
 import { readPage } from '../../pages/store.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
@@ -78,10 +79,18 @@ function HomePage(props: { readonly shown: Shown; readonly admin: boolean }) {
   );
 }
 
-async function shownHome(db: Database, actor: Principal, home: AreaHome, at: Date): Promise<Shown> {
+type Reading = {
+  readonly db: Database;
+  readonly actor: Principal;
+  readonly at: Date;
+  readonly revision: string;
+};
+
+async function shownHome(reading: Reading, home: AreaHome): Promise<Shown> {
+  const { db, actor, at } = reading;
   const page = home.home === null ? null : await readPage(db, actor, home.home.id, at);
   if (page === null) return null;
-  return { page, html: (await renderPage(db, actor, page, at)).html };
+  return { page, html: (await renderPage(db, actor, page, at, reading.revision)).html };
 }
 
 export async function wikiAreaScreen(c: Context<AppEnv>): Promise<Response> {
@@ -92,7 +101,8 @@ export async function wikiAreaScreen(c: Context<AppEnv>): Promise<Response> {
   const { actor } = screen.caller;
   const home = area.success ? await areaHome(database.db, actor, area.data, screen.at) : null;
   if (home === null) return notFound(c);
-  const shown = await shownHome(database.db, actor, home, screen.at);
+  const reading = { db: database.db, actor, at: screen.at, revision: commitOf(c.env) };
+  const shown = await shownHome(reading, home);
   const admin = can(actor, 'admin', { kind: 'area', area: home.area }, screen.at);
   const title = areaLabel(home.area);
   const spec = {

@@ -36,6 +36,7 @@
     "@uw/harness": "workspace:*",
     "@uw/ui": "workspace:*",
     "@uw/uw-ingest": "workspace:*",
+    "aws4fetch": "1.0.20",
     "drizzle-orm": "^0.45.3",
     "github-slugger": "^2.0.0",
     "hast-util-to-mdast": "^10.1.4",
@@ -78,5 +79,5 @@
     "pngjs": "7.0.0",
     "wrangler": "^4.144.0"
   },
-  "contractVersion": "14.8.0"
+  "contractVersion": "14.7.0"
 }

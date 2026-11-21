@@ -334,57 +334,113 @@
     {
       "idx": 47,
       "version": "7",
-      "when": 1795185976112,
-      "tag": "0047_knowledge_page_type",
+      "when": 1795184951681,
+      "tag": "0047_credentials_store",
       "breakpoints": true
     },
     {
       "idx": 48,
       "version": "7",
-      "when": 1795188323643,
-      "tag": "0048_page_search_and_requests",
-      "breakpoints": true
-    },
-    {
-      "idx": 49,
-      "version": "7",
-      "when": 1795190218252,
-      "tag": "0049_categories_and_default_reading",
-      "breakpoints": true
-    },
-    {
-      "idx": 50,
-      "version": "7",
-      "when": 1795191816707,
-      "tag": "0050_page_views",
+      "when": 1795184953011,
+      "tag": "0048_credentials_append_only",
       "breakpoints": true
     },
     {
       "idx": 51,
       "version": "7",
-      "when": 1795193111369,
-      "tag": "0051_page_links",
+      "when": 1795201556481,
+      "tag": "0051_value_not_storable_reason",
       "breakpoints": true
     },
     {
       "idx": 52,
       "version": "7",
-      "when": 1795195226356,
-      "tag": "0052_page_files",
+      "when": 1795201937994,
+      "tag": "0052_credential_unbind_and_not_configured",
       "breakpoints": true
     },
     {
       "idx": 53,
       "version": "7",
-      "when": 1795202931387,
-      "tag": "0053_page_favourites_and_comments",
+      "when": 1795202607550,
+      "tag": "0053_break_glass_reveal",
       "breakpoints": true
     },
     {
-      "idx": 54,
       "version": "7",
-      "when": 1795219418225,
-      "tag": "0054_area_homes_and_passages",
+      "breakpoints": true,
+      "idx": 54,
+      "tag": "0054_knowledge_page_type",
+      "when": 1795225885189
+    },
+    {
+      "version": "7",
+      "breakpoints": true,
+      "idx": 55,
+      "tag": "0055_page_search_and_requests",
+      "when": 1795225886189
+    },
+    {
+      "version": "7",
+      "breakpoints": true,
+      "idx": 56,
+      "tag": "0056_categories_and_default_reading",
+      "when": 1795225887189
+    },
+    {
+      "version": "7",
+      "breakpoints": true,
+      "idx": 57,
+      "tag": "0057_page_views",
+      "when": 1795225888189
+    },
+    {
+      "version": "7",
+      "breakpoints": true,
+      "idx": 58,
+      "tag": "0058_page_links",
+      "when": 1795225889189
+    },
+    {
+      "version": "7",
+      "breakpoints": true,
+      "idx": 59,
+      "tag": "0059_page_files",
+      "when": 1795225890189
+    },
+    {
+      "version": "7",
+      "breakpoints": true,
+      "idx": 60,
+      "tag": "0060_page_favourites_and_comments",
+      "when": 1795225891189
+    },
+    {
+      "version": "7",
+      "breakpoints": true,
+      "idx": 61,
+      "tag": "0061_area_homes_and_passages",
+      "when": 1795225892189
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1795226291874,
+      "tag": "0062_page_renders",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1795226533323,
+      "tag": "0063_pg_trgm",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1795226535630,
+      "tag": "0064_pages_title_trgm",
       "breakpoints": true
     }
   ]

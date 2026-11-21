@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { personStatusSchema, type PersonStatus } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
@@ -49,6 +49,15 @@ export async function personById(db: Executor, personId: string): Promise<Person
   const [row] = await db.select().from(people).where(eq(people.id, personId)).limit(1);
   if (!row) return null;
   return { personId: row.id, email: row.email, status: personStatusSchema.parse(row.status) };
+}
+
+export async function activePeople(db: Executor): Promise<readonly PersonRecord[]> {
+  const rows = await db
+    .select()
+    .from(people)
+    .where(eq(people.status, 'active'))
+    .orderBy(asc(people.email));
+  return rows.map((row) => ({ personId: row.id, email: row.email, status: 'active' }));
 }
 
 export async function personByEmail(db: Executor, email: string): Promise<PersonRecord | null> {

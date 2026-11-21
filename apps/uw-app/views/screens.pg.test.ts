@@ -6,6 +6,7 @@ import { rewriteItem, seedPage } from '@uw/db/test-seed';
 import { clock } from '../github/testing/ship-rig.ts';
 import { advanced, enqueuedItem, meteredRun, subscriptionRun } from '../testing/board-world.ts';
 import { accepted, callerOf } from '../testing/commands.ts';
+import { credentialFor } from '../testing/credentials-scene.ts';
 import { gateWorld, type GateWorld } from '../testing/gate-world.ts';
 import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
@@ -16,7 +17,7 @@ import { screens, type ScreenEntry } from './registry.ts';
 const HOUR = 3_600_000;
 const earlier = { now: () => new Date(clock.now().getTime() - 2 * HOUR) };
 
-type Seeded = GateWorld & { readonly runId: string };
+type Seeded = GateWorld & { readonly runId: string; readonly credentialId: string };
 
 type Rendered = { readonly name: string; readonly email: string; readonly page: Html };
 
@@ -66,7 +67,8 @@ async function seededWorld(db: Database): Promise<Seeded> {
     frontmatter: personaFrontmatter(harnessId),
     slug: 'screens-persona',
   });
-  return { ...world, runId };
+  const credentialId = await credentialFor(db, world.kimEmail, clock);
+  return { ...world, runId, credentialId };
 }
 
 const personaPageId = '00000000-0000-4000-8000-00000000be11';
@@ -97,7 +99,9 @@ function pathOf(entry: ScreenEntry, world: Seeded): string {
     .replace(':pageId', personaPageId)
     .replace(':category', '81')
     .replace(':area', '80-89')
-    .replace(':version', '1');
+    .replace(':version', '1')
+
+    .replace(':credentialId', world.credentialId);
 }
 
 async function renderAll(world: Seeded): Promise<readonly Rendered[]> {

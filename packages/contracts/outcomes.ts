@@ -95,6 +95,21 @@ export const errorReasonSchema = z.enum([
   'draft_revision_mismatch',
   'draft_has_problems',
   'stage_rules_have_problems',
+  'credential_not_found',
+  'credential_name_taken',
+  'value_not_storable',
+  'credential_revoked',
+  'credential_expired',
+  'key_rejected',
+  'key_service_refused',
+  'key_service_unavailable',
+  'key_service_not_configured',
+  'ciphertext_rejected',
+  'envelope_malformed',
+  'connector_unknown',
+  'already_bound',
+  'not_bound',
+  'second_admin_required',
 ]);
 
 export const refusalSchema = z.object({

@@ -1,10 +1,18 @@
 import {
   approvePersonCommandSchema,
+  bindCredentialCommandSchema,
+  confirmRevealCommandSchema,
+  createCredentialCommandSchema,
   declinePersonCommandSchema,
+  grantRevealCommandSchema,
   grantRoleCommandSchema,
   harnessCommandSchemas,
   nameCategoryCommandSchema,
+  revokeCredentialCommandSchema,
+  revokeRevealCommandSchema,
   revokeRoleCommandSchema,
+  rotateCredentialCommandSchema,
+  unbindCredentialCommandSchema,
 } from '@uw/contracts';
 import type { ZodType } from 'zod';
 
@@ -17,6 +25,14 @@ const schemas = new Map<string, ZodType>([
   ['approve_person', approvePersonCommandSchema],
   ['decline_person', declinePersonCommandSchema],
   ['name_category', nameCategoryCommandSchema],
+  ['create_credential', createCredentialCommandSchema],
+  ['rotate_credential', rotateCredentialCommandSchema],
+  ['revoke_credential', revokeCredentialCommandSchema],
+  ['bind_credential', bindCredentialCommandSchema],
+  ['unbind_credential', unbindCredentialCommandSchema],
+  ['grant_reveal', grantRevealCommandSchema],
+  ['confirm_reveal', confirmRevealCommandSchema],
+  ['revoke_reveal', revokeRevealCommandSchema],
 ]);
 const fields = (all: CommandFields) => new Map(Object.entries(all));
 const optional = (value: string | undefined): string | null =>
@@ -82,6 +98,37 @@ const roleGrant: Shape = (given) => {
 
 const personOnly: Shape = (given) => ({ personId: given.get('personId') });
 
+const credentialOnly: Shape = (given) => ({ credentialId: given.get('credentialId') });
+
+const sealing: Shape = (given) => ({
+  rotateBy: optional(given.get('rotateBy')),
+  expiresAt: endOfDay(given.get('expiresOn')),
+  value: given.get('value'),
+});
+
+const newCredential: Shape = (given) => ({
+  jdArea: given.get('jdArea'),
+  jdRef: optional(given.get('jdRef')?.trim()),
+  name: given.get('name')?.trim(),
+  kind: given.get('kind'),
+  ownerId: given.get('ownerId'),
+  ...sealing(given),
+});
+
+const credentialBinding: Shape = (given) => ({
+  ...credentialOnly(given),
+  harnessId: given.get('harnessId'),
+  connectorKey: given.get('connectorKey'),
+});
+
+const revealGrant: Shape = (given) => ({
+  ...credentialOnly(given),
+  personId: given.get('personId'),
+  minutes: Number(given.get('minutes')),
+});
+
+const grantOnly: Shape = (given) => ({ grantId: given.get('grantId') });
+
 const switched =
   (field: string): Shape =>
   (given) => ({ [field]: given.get(field) === 'true' });
@@ -139,6 +186,14 @@ const shapes: ReadonlyMap<string, Shape> = new Map<string, Shape>([
   ['approve_person', personOnly],
   ['decline_person', personOnly],
   ['name_category', (given) => ({ category: given.get('category'), name: given.get('name') })],
+  ['create_credential', newCredential],
+  ['rotate_credential', (given) => ({ ...credentialOnly(given), ...sealing(given) })],
+  ['revoke_credential', credentialOnly],
+  ['bind_credential', credentialBinding],
+  ['unbind_credential', credentialBinding],
+  ['grant_reveal', revealGrant],
+  ['confirm_reveal', grantOnly],
+  ['revoke_reveal', grantOnly],
   ['claim', itemOnly],
   ['release', itemOnly],
   ['take_over', itemOnly],

@@ -31,6 +31,7 @@ const goLiveVars = [
   'ZULIP_BOT_EMAIL',
   'ZULIP_CHANNELS',
 ];
+const movedSecretBySecret = ['secrets_store_secrets'];
 const apps = ['uw-app', 'uw-ingest'] as const;
 const deployedEnvironments = ['staging', 'production'] as const;
 const placeholder = 'set-at-go-live';
@@ -51,7 +52,10 @@ function withoutGoLiveBindings(config: Block): Block {
   const stripped = Object.fromEntries(
     Object.entries(environments(config)).map(([name, block]) => [
       name,
-      { ...omit(block, goLiveOnly), vars: omit((block['vars'] ?? {}) as Block, goLiveVars) },
+      {
+        ...omit(block, [...goLiveOnly, ...movedSecretBySecret]),
+        vars: omit((block['vars'] ?? {}) as Block, goLiveVars),
+      },
     ]),
   );
   return { ...omit(config, goLiveOnly), env: stripped };

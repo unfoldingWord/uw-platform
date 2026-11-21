@@ -18,6 +18,21 @@ export function allowed(
   return can(actor, action, { kind: 'area', area: harness.jdArea }, at);
 }
 
+export function readsDelegation(
+  actor: Principal,
+  delegation: { readonly personId: string },
+  harness: Pick<Harness, 'jdArea'>,
+  at: Date,
+): boolean {
+  const row = {
+    kind: 'row',
+    table: 'delegations',
+    area: harness.jdArea,
+    ownerId: delegation.personId,
+  } as const;
+  return can(actor, 'read', row, at);
+}
+
 export function isAgent(actor: Principal): boolean {
   return actor.kind === 'agent' || !actor.identity.startsWith('human:');
 }

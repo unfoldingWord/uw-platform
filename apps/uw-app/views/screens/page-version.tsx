@@ -18,6 +18,7 @@ import { pageLink, pageSpec, shownPage, typeWords, type ShownPage } from '../par
 import { idParam } from '../parts/params.ts';
 import { pagePath, pageVersionPath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
+import { commitOf } from '../../env.ts';
 
 type Kept = Pick<PageSnapshot, 'page'> & {
   readonly saved: Pick<PageSnapshot, 'savedAt' | 'savedBy'> | null;
@@ -122,7 +123,7 @@ async function render(c: Context<AppEnv>, old: Old, refused: string | null): Pro
   const rendered =
     database === null
       ? { html: '', headings: [] }
-      : await renderPage(database.db, actor, snapshot.page, screen.at);
+      : await renderPage(database.db, actor, snapshot.page, screen.at, commitOf(c.env));
   const current = snapshot.page.version === shown.page.version;
   const label = `${pageNames.pageVersion} ${String(snapshot.page.version)}`;
   return renderScreen(

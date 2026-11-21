@@ -119,6 +119,50 @@ async function narrowsByOwnerAndDate(db: Database): Promise<void> {
   ]);
 }
 
+async function aTypoFindsCloseTitles(db: Database): Promise<void> {
+  const made = await world(db);
+  expect(await titles(db, made.reader, { text: 'buddgeting' })).toEqual([]);
+  const close = await searchPages(
+    db,
+    made.reader,
+    { ...everything, text: 'secruity guidlines', similar: true },
+    new Date(),
+  );
+  expect(close.map((page) => page.title)).toEqual(['01.47 Security Guidelines']);
+  const typo = await searchWithSnippets(
+    db,
+    made.reader,
+    { ...everything, text: 'buddgeting', similar: true },
+    new Date(),
+  );
+  expect(typo.map((result) => [result.page.title, result.match])).toEqual([
+    ['01.26 Budgeting', 'similar_title'],
+  ]);
+  const outside = await titles(db, made.stranger, { text: 'secruity guidlines', similar: true });
+  expect(outside).toEqual([]);
+  const exact = await searchWithSnippets(
+    db,
+    made.reader,
+    { ...everything, text: 'budget', similar: true },
+    new Date(),
+  );
+  expect(exact.every((result) => result.match === 'words')).toBe(true);
+}
+
+async function keepsTheTrigramIndex(db: Database): Promise<void> {
+  const rows = await db.execute<{ indexdef: string }>(
+    sql`SELECT indexdef FROM pg_indexes WHERE tablename = 'pages' AND indexname = 'pages_title_trgm'`,
+  );
+  expect(rows[0]?.indexdef).toContain('gin_trgm_ops');
+}
+
+describe.skipIf(!testServer)('#175 a search with a typo still finds the page', () => {
+  it('offers pages with a close title when no page holds the words, only where the person may read', () =>
+    withAppDatabase(aTypoFindsCloseTitles));
+
+  it('keeps a trigram index on titles', () => withAppDatabase(keepsTheTrigramIndex));
+});
+
 describe.skipIf(!testServer)('#175 search narrows by owner and by when a page changed', () => {
   it('finds only the pages a person owns, or that changed since a date', () =>
     withAppDatabase(narrowsByOwnerAndDate));

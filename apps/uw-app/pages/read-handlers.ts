@@ -34,6 +34,7 @@ import { embedSources, renderPage } from './render-page.ts';
 import { backlinksOf } from './links.ts';
 import { searchWithSnippets } from './search.ts';
 import { readPage } from './store.ts';
+import { commitOf } from '../env.ts';
 
 type Reader = { readonly db: Database; readonly actor: Principal; readonly at: Date };
 type Read = (c: Context<AppEnv>, reader: Reader) => Promise<Response>;
@@ -95,6 +96,7 @@ const search: Read = async (c, { db, actor, at }) => {
       area: area ?? null,
       titlesOnly: titles === '1',
       liveOnly: true,
+      similar: true,
       owner: owner ?? null,
       since: since ?? null,
       limit,
@@ -109,7 +111,8 @@ const one: Read = async (c, { db, actor, at }) => {
   if (!pageId.success) return refuse(c, 'page_not_found');
   const page = await readPage(db, actor, pageId.data, at);
   if (page === null) return refuse(c, 'page_not_found');
-  const rendered = c.req.query('format') === 'html' ? await renderPage(db, actor, page, at) : {};
+  const rendered =
+    c.req.query('format') === 'html' ? await renderPage(db, actor, page, at, commitOf(c.env)) : {};
   const capabilities = capabilitiesOn(actor, page, at);
   return accepted(c, pageReadReplySchema.parse({ page, capabilities, ...rendered }));
 };

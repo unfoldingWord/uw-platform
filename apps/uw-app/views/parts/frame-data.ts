@@ -11,6 +11,7 @@ import { commitOf, environmentOf } from '../../env.ts';
 import {
   accessPath,
   agentQueuesPath,
+  credentialsPath,
   queuePath,
   healthPath,
   homePath,
@@ -75,6 +76,8 @@ function builtItems(module: PlatformModule, counts: FrameCounts, watch: number):
     ];
   if (module.built === 'pages') return [{ ...base, href: wikiPath(), code: moduleCodes.pages }];
   if (module.built === 'access') return [{ ...base, href: accessPath(), code: moduleCodes.access }];
+  if (module.built === 'credentials')
+    return [{ ...base, href: credentialsPath(), code: moduleCodes.credentials }];
   if (module.built === 'agentQueues')
     return [
       { ...base, code: moduleCodes.agentQueues, href: agentQueuesPath() },

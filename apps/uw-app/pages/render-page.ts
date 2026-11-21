@@ -6,13 +6,15 @@ import type { Executor } from '@uw/db/client';
 import { pageVersions, pages } from '@uw/db/schema';
 import type { EmbedSource, RenderHooks } from '../markdown/page-refs.ts';
 import { renderMarkdown, type Rendered } from '../markdown/render.ts';
-import { pageRefs, wikiRefs } from '../markdown/wiki-syntax.ts';
-import { resolverFor } from './links.ts';
+import { pageRefs, wikiRefs, type Resolved } from '../markdown/wiki-syntax.ts';
+import { resolverFor, type Resolve } from './links.ts';
+import { cachedRender, keepRender, renderKey } from './render-cache.ts';
 
 type Reader = { readonly actor: Principal; readonly at: Date };
 type Titles = { readonly title: string; readonly past: ReadonlySet<string> };
 
 const EMBED_ROUNDS = 3;
+const UNVERSIONED = 'unversioned';
 
 function mayRead(reader: Reader, area: string): boolean {
   return can(reader.actor, 'read', { kind: 'area', area }, reader.at);
@@ -111,11 +113,19 @@ export function embedSources(
   return gatherEmbeds(db, { actor, at }, bodyMd);
 }
 
+function resolvedAll(
+  targets: readonly string[],
+  wiki: Resolve,
+): ReadonlyMap<string, Resolved | null> {
+  return new Map(targets.map((target) => [target.toLowerCase(), wiki(target)]));
+}
+
 export async function renderPage(
   db: Executor,
   actor: Principal,
   page: Page,
   at: Date,
+  revision = UNVERSIONED,
 ): Promise<Rendered> {
   const reader = { actor, at };
   const embeds = await gatherEmbeds(db, reader, page.bodyMd);
@@ -136,5 +146,12 @@ export async function renderPage(
       return known.past.has(shown) ? known.title : null;
     },
   };
-  return renderMarkdown(page.bodyMd, hooks);
+  const current = new Map([...titles].map(([id, known]) => [id, known.title]));
+  const inputs = { revision, page, embeds, titles: current, wiki: resolvedAll(targets, wiki) };
+  const key = await renderKey(inputs);
+  const cached = await cachedRender(db, page.id, key);
+  if (cached !== null) return cached;
+  const rendered = renderMarkdown(page.bodyMd, hooks);
+  await keepRender(db, { page, key, at }, rendered);
+  return rendered;
 }
