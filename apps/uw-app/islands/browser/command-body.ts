@@ -12,6 +12,7 @@ import {
   revokeRevealCommandSchema,
   revokeRoleCommandSchema,
   rotateCredentialCommandSchema,
+  saveProfileBodyCommandSchema,
   unbindCredentialCommandSchema,
 } from '@uw/contracts';
 import type { ZodType } from 'zod';
@@ -26,6 +27,7 @@ const schemas = new Map<string, ZodType>([
   ['revoke_role', revokeRoleCommandSchema],
   ['approve_person', approvePersonCommandSchema],
   ['decline_person', declinePersonCommandSchema],
+  ['save_profile_body', saveProfileBodyCommandSchema],
   ['name_category', nameCategoryCommandSchema],
   ['create_credential', createCredentialCommandSchema],
   ['rotate_credential', rotateCredentialCommandSchema],
@@ -188,6 +190,14 @@ const shapes: ReadonlyMap<string, Shape> = new Map<string, Shape>([
   ['revoke_role', (given) => ({ grantId: given.get('grantId') })],
   ['approve_person', personOnly],
   ['decline_person', personOnly],
+  [
+    'save_profile_body',
+    (given) => ({
+      personId: given.get('personId'),
+      expectedVersion: versionOf(given.get('expectedVersion')),
+      bodyMd: given.get('bodyMd') ?? '',
+    }),
+  ],
   ['name_category', (given) => ({ category: given.get('category'), name: given.get('name') })],
   ['create_credential', newCredential],
   ['rotate_credential', (given) => ({ ...credentialOnly(given), ...sealing(given) })],

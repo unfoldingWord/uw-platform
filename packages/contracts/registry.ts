@@ -1,6 +1,7 @@
 import type { ZodType } from 'zod';
 import {
   approvePersonCommandSchema,
+  saveProfileBodyCommandSchema,
   declinePersonCommandSchema,
   grantRoleCommandSchema,
   revokeRoleCommandSchema,
@@ -222,6 +223,7 @@ export const schemaRegistry: Record<string, ZodType> = {
   'revoke-role-command': revokeRoleCommandSchema,
   'approve-person-command': approvePersonCommandSchema,
   'decline-person-command': declinePersonCommandSchema,
+  'save-profile-body-command': saveProfileBodyCommandSchema,
   'credential-kind': credentialKindSchema,
   'create-credential-command': createCredentialCommandSchema,
   'rotate-credential-command': rotateCredentialCommandSchema,

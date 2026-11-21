@@ -32,6 +32,8 @@ import {
   pageCommentsPath,
   pageEditPath,
 } from '../parts/paths.ts';
+import { ProfileBodyCard, profileBody } from '../parts/profile-body.tsx';
+import { ProfileListCards, profileLists } from '../parts/profile-lists.tsx';
 import { notFound } from './not-found.tsx';
 import { withViews } from '../parts/view-embed.tsx';
 import {
@@ -173,12 +175,32 @@ function Relations(props: { readonly scene: RowScene }) {
   );
 }
 
+function opensRow(screen: ScreenKernel, stored: StoredCollection, row: CollectionRow): boolean {
+  if (stored.definition.rowSource !== 'people') return true;
+  const person = { kind: 'person', personId: row.id, status: 'active' } as const;
+  return can(screen.caller.actor, 'read', person, screen.at);
+}
+
+async function profileOf(db: Db, screen: ScreenKernel, scene: RowScene): Promise<Child> {
+  if (scene.stored.definition.rowSource !== 'people') return null;
+  const [body, lists] = await Promise.all([
+    profileBody(db, screen, scene.row.id),
+    profileLists(db, screen, scene.row.id),
+  ]);
+  return (
+    <>
+      <ProfileBodyCard body={body} />
+      <ProfileListCards lists={lists} />
+    </>
+  );
+}
+
 async function sceneOf(c: Context<AppEnv>, db: Db, screen: ScreenKernel): Promise<RowScene | null> {
   await ensureBuiltIns(db, screen.at);
   const stored = await loadCollection(db, c.req.param('key') ?? '');
   if (stored === null || !mayReadCollection(stored, screen.caller.actor, screen.at)) return null;
   const row = await readRow(db, stored, screen.caller.actor, screen.at, c.req.param('rowId') ?? '');
-  if (row === null) return null;
+  if (row === null || !opensRow(screen, stored, row)) return null;
   const collections = new Map((await allCollections(db)).map((s) => [s.definition.key, s]));
   const finding = findingOf(new URL(c.req.url).searchParams);
   const people = (await activePeople(db)).map((p) => ({ value: p.personId, label: p.email }));
@@ -276,6 +298,7 @@ export async function rowScreen(c: Context<AppEnv>): Promise<Response> {
           </Card>
         ))}
         <Relations scene={scene} />
+        {await profileOf(database.db, screen, scene)}
         {await bodyOf(database.db, screen, scene)}
       </div>
     </>,

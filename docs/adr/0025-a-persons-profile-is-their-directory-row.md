@@ -14,4 +14,10 @@ Ruled by an owner on 2026-11-21 as decision H of `prd/Databases and Views - Desi
 
 **Built where.** #206 builds the directory collection, its properties and their rules, and the row page at `/collections/directory/rows/:personId`. #208 builds the person chip in `packages/ui`, uses it everywhere a person is shown, and adds the read-through lists.
 
+**Built (2026-11-21).** The person page that #208 first built at `/people/:id/:slug` is gone; every person chip links to the row page, which is now the only page for a person.
+
+- **Who opens it.** `can(actor, 'read', { kind: 'person', … })` answers exactly when the directory would list the person to the reader: a person (never an agent) who can read the directory's area `00-09`, and only for an `active` person. That is the row page's own rule, so a chip never links to a Not Found. A pending or declined person has no profile, not even for an org admin or themself; the Access screen is where they are decided.
+- **The body** is a page of a new type, `profile`, in `00-09`, so everyone who reads the directory reads it. It is written only by the people module's `save_profile_body` command, for the person or an `admin` on `10-19`. `create_page` and `update_page` refuse the type (`collection_row`), so an editor of `00-09` cannot rewrite someone else's body through the page editor.
+- **The lists** run through the collections query engine (`tasks` by assignee and not complete, `program` by lead or team, `project` by manager or team), so a row or a property the reader may not read never appears.
+
 **Rejected.** A profile screen separate from the directory (two places to keep a person's details); profile fields in `people` (it is the sign-in record, read at the edge on every request).

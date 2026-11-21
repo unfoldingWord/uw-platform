@@ -38,11 +38,11 @@ describe('the module registry', () => {
     expect(new Set(tables).size).toBe(tables.length);
   });
 
-  it('declares every registered page type once: knowledge and entry under core, the cascade under strategy, the rest under agents', () => {
+  it('declares every registered page type once: knowledge, entry and profile under core, the cascade under strategy, the rest under agents', () => {
     const core = modules.find((declared) => declared.key === 'core');
     const agents = modules.find((declared) => declared.key === 'agents');
     const strategy = modules.find((declared) => declared.key === 'strategy');
-    expect(core?.page_types).toEqual(['knowledge', 'entry']);
+    expect(core?.page_types).toEqual(['knowledge', 'entry', 'profile']);
     expect(strategy?.page_types).toEqual(['portfolio', 'program', 'project', 'okr']);
     expect([
       ...(agents?.page_types ?? []),

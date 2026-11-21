@@ -37,13 +37,8 @@ describe('the view paths', () => {
     expect(itemPath(harness, item)).toBe(`/harnesses/${harness}/items/${item}`);
   });
 
-  it('keys a person page by the people id with a readable slug', () => {
-    expect(personPath(harness)).toBe(`/people/${harness}`);
-    expect(personPath(harness, 'Avery Stone')).toBe(`/people/${harness}/avery-stone`);
-    expect(personPath(harness, 'avery.stone')).toBe(`/people/${harness}/avery-stone`);
-    expect(personPath(harness, '...')).toBe(`/people/${harness}`);
-    expect(personPath(harness, 'José María')).toBe(`/people/${harness}/jose-maria`);
-    expect(personPath(harness, 'Zoë Müller')).toBe(`/people/${harness}/zoe-muller`);
+  it('opens a person at their directory row, the one profile', () => {
+    expect(personPath(harness)).toBe(`/collections/directory/rows/${harness}`);
   });
 
   it('agrees with the deep links a wake carries', () => {

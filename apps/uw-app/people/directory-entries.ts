@@ -4,7 +4,7 @@ import { can } from '@uw/core/acl';
 import type { Transaction } from '@uw/db/client';
 import { directoryEntries, directoryPrivate } from '@uw/db/schema';
 
-const DIRECTORY_AREA = '10-19';
+export const DIRECTORY_STEWARD = '10-19';
 
 export type DirectoryColumn =
   | 'role'
@@ -48,7 +48,7 @@ export function mayWriteDirectory(
   column: DirectoryColumn,
   at: Date,
 ): boolean {
-  if (can(actor, 'admin', { kind: 'area', area: DIRECTORY_AREA }, at)) return true;
+  if (can(actor, 'admin', { kind: 'area', area: DIRECTORY_STEWARD }, at)) return true;
   const self = actor.kind === 'person' && actor.personId === personId;
   return self && ownContactColumns.has(column);
 }

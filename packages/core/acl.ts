@@ -215,21 +215,15 @@ export type PersonResource = {
   readonly status: PersonStatus;
 };
 
-function holdsAnyRead(actor: Principal, at: Date): boolean {
-  return actor.grants.some((grant) => isLive(grant, at) && readScope(grant) !== null);
-}
-
-function isOrgAdmin(actor: Principal, at: Date): boolean {
-  return actor.grants.some(
-    (grant) =>
-      isLive(grant, at) && grant.scopeKind === 'org' && reaches(grant.role, minimumRole.admin),
-  );
-}
+export const DIRECTORY_AREA: JdArea = '00-09';
 
 function readsPersonRecord(actor: Principal, person: PersonResource, at: Date): boolean {
   if (actor.kind !== 'person' || actor.personId === null) return false;
-  if (actor.personId === person.personId || isOrgAdmin(actor, at)) return true;
-  return person.status === 'active' && holdsAnyRead(actor, at);
+  if (person.status !== 'active') return false;
+  return actor.grants.some(
+    (grant) =>
+      isLive(grant, at) && grantAllows(grant, 'read', { kind: 'area', area: DIRECTORY_AREA }),
+  );
 }
 
 const aclActions: ReadonlySet<string> = new Set(Object.keys(minimumRole));
