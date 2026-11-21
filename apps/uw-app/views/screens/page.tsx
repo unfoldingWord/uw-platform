@@ -26,6 +26,7 @@ import {
   type ShownPage,
 } from '../parts/page-shown.ts';
 import { idParam } from '../parts/params.ts';
+import { PageStatusBadge } from '../parts/page-status.tsx';
 import {
   pageCommentsPath,
   pageEditPath,
@@ -241,6 +242,7 @@ function body(shown: ShownPage, extras: Extras) {
         lede={`Version ${String(page.version)} in area ${page.jdArea}.`}
         actions={
           <>
+            <PageStatusBadge status={page.status} />
             <FavouriteToggle pageId={page.id} on={extras.favourite} />
             {pencil}
           </>

@@ -1,9 +1,10 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { pageSchema, personStatusSchema, type Page } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
 import { pages, pageVersions, people } from '@uw/db/schema';
 import type { PersonName } from '../people/directory.ts';
+import { authorName, authorPersonIs } from './author.ts';
 import { withoutWithheld } from './property-rules.ts';
 import { readPage } from './store.ts';
 
@@ -46,7 +47,7 @@ export async function pageHistory(
       saver: saverColumns,
     })
     .from(pageVersions)
-    .leftJoin(people, sql`${pageVersions.editSource} = 'human:' || ${people.id}::text`)
+    .leftJoin(people, authorPersonIs(pageVersions.editSource))
     .where(eq(pageVersions.pageId, pageId))
     .orderBy(desc(pageVersions.version))
     .limit(HISTORY_LIMIT);
@@ -54,7 +55,7 @@ export async function pageHistory(
     version: row.version,
     title: row.title,
     savedAt: row.savedAt,
-    savedBy: row.saver?.name ?? row.editSource,
+    savedBy: authorName(row.editSource, row.saver?.name ?? null),
     saver: saverOf(row.editSource, row.saver),
   }));
 }
@@ -81,7 +82,7 @@ export async function pageVersion(
   const [row] = await db
     .select({ snapshot: pageVersions, saver: saverColumns })
     .from(pageVersions)
-    .leftJoin(people, sql`${pageVersions.editSource} = 'human:' || ${people.id}::text`)
+    .leftJoin(people, authorPersonIs(pageVersions.editSource))
     .where(and(eq(pageVersions.pageId, key.pageId), eq(pageVersions.version, key.version)));
   if (!row) return null;
   const { snapshot } = row;
@@ -101,7 +102,7 @@ export async function pageVersion(
   return {
     page: await withoutWithheld(db, actor, page, collectionId, at),
     savedAt: snapshot.savedAt,
-    savedBy: row.saver?.name ?? snapshot.editSource,
+    savedBy: authorName(snapshot.editSource, row.saver?.name ?? null),
     saver: saverOf(snapshot.editSource, row.saver),
   };
 }
