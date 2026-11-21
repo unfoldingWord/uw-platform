@@ -431,28 +431,9 @@ Nothing in the files is a secret. `logpush = true` is added to `wrangler.go-live
 
 ## Page files: the `uw-files` buckets
 
-Pictures and files attached to pages are stored in R2 through the `FILES` binding of `uw-app`. The binding is not declared in `uw-app/wrangler.toml` yet, because a deploy fails when it names a bucket that does not exist. Until it is declared, an upload and a download both answer `not_wired`, the edit screen says file storage is not set up, and everything else about pages works.
+Pictures and files attached to pages are stored in R2 through the `FILES` binding of `uw-app`: the bucket `uw-files-staging` for staging and for every per-PR Worker (`preview`), and `uw-files` for production. Both buckets are private, with no public access and no custom domain, and were created on 2026-11-21. The binding is declared in `uw-app/wrangler.toml` and `uw-app/wrangler.go-live.toml`.
 
-A person with access to the Cloudflare account sets it up once:
-
-- Create the buckets `uw-files-staging` and `uw-files` (private; no public access, no custom domain).
-- Add this block to `uw-app/wrangler.toml` and to `uw-app/wrangler.go-live.toml`, once under each environment, with `preview` using the staging bucket:
-
-```toml
-[[env.staging.r2_buckets]]
-binding = "FILES"
-bucket_name = "uw-files-staging"
-
-[[env.preview.r2_buckets]]
-binding = "FILES"
-bucket_name = "uw-files-staging"
-
-[[env.production.r2_buckets]]
-binding = "FILES"
-bucket_name = "uw-files"
-```
-
-Nothing here is a secret. A file is read only through `GET /api/files/:fileId`, which checks the reader's grant on the file's area; the bucket is never exposed.
+Nothing here is a secret. A file is read only through `GET /api/files/:fileId`, which checks the reader's grant on the area of the page that holds it; the bucket is never exposed. A Worker without the binding answers `not_wired` to an upload or a download, and the edit screen says file storage is not set up.
 
 ## Switching on the go-live wiring (FD-12)
 
