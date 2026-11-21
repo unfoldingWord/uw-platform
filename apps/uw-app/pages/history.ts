@@ -1,8 +1,9 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { pageSchema, type Page } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
 import { pageVersions, people } from '@uw/db/schema';
+import { authorName, authorPersonIs } from './author.ts';
 import { readPage } from './store.ts';
 
 const HISTORY_LIMIT = 50;
@@ -30,7 +31,7 @@ export async function pageHistory(
       name: people.displayName,
     })
     .from(pageVersions)
-    .leftJoin(people, sql`${pageVersions.editSource} = 'human:' || ${people.id}::text`)
+    .leftJoin(people, authorPersonIs(pageVersions.editSource))
     .where(eq(pageVersions.pageId, pageId))
     .orderBy(desc(pageVersions.version))
     .limit(HISTORY_LIMIT);
@@ -38,7 +39,7 @@ export async function pageHistory(
     version: row.version,
     title: row.title,
     savedAt: row.savedAt,
-    savedBy: row.name ?? row.editSource,
+    savedBy: authorName(row.editSource, row.name),
   }));
 }
 
@@ -58,7 +59,7 @@ export async function pageVersion(
   const [row] = await db
     .select({ snapshot: pageVersions, name: people.displayName })
     .from(pageVersions)
-    .leftJoin(people, sql`${pageVersions.editSource} = 'human:' || ${people.id}::text`)
+    .leftJoin(people, authorPersonIs(pageVersions.editSource))
     .where(and(eq(pageVersions.pageId, key.pageId), eq(pageVersions.version, key.version)));
   if (!row) return null;
   const { snapshot } = row;
@@ -74,5 +75,5 @@ export async function pageVersion(
     version: snapshot.version,
     status: snapshot.status,
   });
-  return { page, savedAt: snapshot.savedAt, savedBy: row.name ?? snapshot.editSource };
+  return { page, savedAt: snapshot.savedAt, savedBy: authorName(snapshot.editSource, row.name) };
 }
