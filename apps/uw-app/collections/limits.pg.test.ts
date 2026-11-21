@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { viewSettingsSchema, type Principal, type ViewSettings } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
+import { collectionCardOrder } from '@uw/db/schema';
 import {
   accepted,
   collectionsAt,
@@ -93,6 +94,46 @@ async function provesFirstDragKeepsOthers(db: Database, { admin }: Rig) {
   expect(await order(db, admin, viewId)).toEqual(['A', 'B', 'D', 'C']);
 }
 
+async function provesOldKeysKeepTheirOrder(db: Database, { admin }: Rig) {
+  const viewId = await saved(db, admin, {
+    layout: 'board',
+    group: { property: 'phase', by: 'value' },
+    manualOrder: true,
+  });
+  const ids = new Map<string, string>();
+  for (const [title, position] of [
+    ['A', 'V'],
+    ['B', 'k'],
+    ['C', 'r'],
+  ] as const) {
+    const values = { phase: 'idea' };
+    const rowId = await rowIn(db, admin, {
+      collection: 'tprogram',
+      jdArea: '60-69',
+      title,
+      values,
+    });
+    ids.set(title, rowId);
+    await db.insert(collectionCardOrder).values({ viewId, rowId, position });
+  }
+  expect(await order(db, admin, viewId)).toEqual(['A', 'B', 'C']);
+  const move = {
+    command: 'move_card',
+    requestId: randomUUID(),
+    viewId,
+    rowId: ids.get('C') ?? '',
+    group: 'idea',
+    after: ids.get('A') ?? null,
+    before: ids.get('B') ?? null,
+  } as const;
+  accepted(await moveCard(db, move, requestOf(admin)));
+  expect(await order(db, admin, viewId)).toEqual(['A', 'C', 'B']);
+  const stored = await db.select().from(collectionCardOrder);
+  expect(
+    stored.every((row) => /^[a-zA-Z][0-9A-Za-z]*$/.test(row.position) && row.position.length > 1),
+  ).toBe(true);
+}
+
 async function provesExportPastAPage(db: Database, { admin }: Rig) {
   const viewId = await saved(db, admin, {});
   for (let n = 0; n < 205; n += 1) {
@@ -164,6 +205,8 @@ async function provesImpossibleDate(db: Database, { admin }: Rig) {
 describe.skipIf(!testServer)('#206 manual order and long views', () => {
   it('keeps the cards nobody moved in place on the first drag in a column', () =>
     withRig(provesFirstDragKeepsOthers));
+  it('re-keys a column holding keys from before fractional-indexing, in the order shown', () =>
+    withRig(provesOldKeysKeepTheirOrder));
   it('exports every row of a view longer than one page', () => withRig(provesExportPastAPage));
 });
 

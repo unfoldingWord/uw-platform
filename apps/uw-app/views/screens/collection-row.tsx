@@ -1,12 +1,7 @@
 import type { Context } from 'hono';
 import { raw } from 'hono/html';
 import type { Child } from 'hono/jsx';
-import {
-  isWritableProperty,
-  rowQuerySchema,
-  type CollectionRow,
-  type PropertyDefinition,
-} from '@uw/contracts';
+import { isWritableProperty, type CollectionRow, type PropertyDefinition } from '@uw/contracts';
 import { can } from '@uw/core/acl';
 import { Card } from '@uw/ui/components/card.tsx';
 import { FactList, type ShownFact } from '@uw/ui/components/kanban-card.tsx';
@@ -20,7 +15,7 @@ import {
 } from '../../collections/definitions.ts';
 import { namesFor, valueOf, type Names } from '../../collections/display.ts';
 import { incomingRelations, type Incoming } from '../../collections/incoming.ts';
-import { mayReadCollection, readRow, readRows } from '../../collections/reader.ts';
+import { mayReadCollection, readRow } from '../../collections/reader.ts';
 import { renderPage } from '../../pages/render-page.ts';
 import { readPage } from '../../pages/store.ts';
 import { mayWriteDirectory, type DirectoryColumn } from '../../people/directory-entries.ts';
@@ -39,6 +34,13 @@ import {
 } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 import { withViews } from '../parts/view-embed.tsx';
+import {
+  findingOf,
+  relationChoices,
+  RelationFinder,
+  type Finding,
+  type Found,
+} from '../parts/relation-picker.tsx';
 
 type Db = NonNullable<AppEnv['Variables']['database']>['db'];
 
@@ -47,7 +49,8 @@ type RowScene = {
   readonly row: CollectionRow;
   readonly names: Names;
   readonly people: readonly Choice[];
-  readonly targets: ReadonlyMap<string, readonly Choice[]>;
+  readonly found: ReadonlyMap<string, Found>;
+  readonly finding: Finding;
   readonly incoming: readonly Incoming[];
   readonly collections: ReadonlyMap<string, StoredCollection>;
 };
@@ -109,7 +112,7 @@ function merged(choices: readonly Choice[], current: readonly Choice[]): readonl
 
 function factOf(screen: ScreenKernel, scene: RowScene, property: PropertyDefinition): ShownFact {
   const value = valueOf(scene.row, property.key);
-  const target = property.config.type === 'relation' ? property.config.relation.target : '';
+  const found = scene.found.get(property.key);
   const current = currentChoices(value, scene.names);
   const editor = {
     collection: scene.stored.definition.key,
@@ -119,10 +122,7 @@ function factOf(screen: ScreenKernel, scene: RowScene, property: PropertyDefinit
     value,
     compact: false,
     people: merged(scene.people, property.config.type === 'person' ? current : []),
-    rows: merged(
-      scene.targets.get(target) ?? [],
-      property.config.type === 'relation' ? current : [],
-    ),
+    rows: merged(found?.choices ?? [], property.config.type === 'relation' ? current : []),
   };
   return {
     label: property.name,
@@ -130,9 +130,16 @@ function factOf(screen: ScreenKernel, scene: RowScene, property: PropertyDefinit
       <>
         <CellValue property={property} value={value} names={scene.names} />
         {mayEdit(screen, scene, property) ? (
-          <details>
+          <details id={property.key} open={scene.finding.property === property.key}>
             <summary class="cursor-pointer text-xs text-text-3 outline-offset-2 outline-accent-text focus-visible:outline-2">{`Change ${property.name.toLowerCase()}`}</summary>
-            <div class="mt-2">
+            <div class="mt-2 flex flex-col gap-3">
+              {found === undefined ? null : (
+                <RelationFinder
+                  path={collectionRowPath(scene.stored.definition.key, scene.row.id)}
+                  property={property}
+                  found={found}
+                />
+              )}
               <PropertyEditor target={editor} />
             </div>
           </details>
@@ -166,29 +173,6 @@ function Relations(props: { readonly scene: RowScene }) {
   );
 }
 
-async function targetChoices(
-  db: Db,
-  screen: ScreenKernel,
-  stored: StoredCollection,
-  all: ReadonlyMap<string, StoredCollection>,
-) {
-  const choices = new Map<string, readonly Choice[]>();
-  for (const property of stored.definition.properties) {
-    if (property.config.type !== 'relation') continue;
-    const target = all.get(property.config.relation.target);
-    if (target === undefined || choices.has(target.definition.key)) continue;
-    const read = await readRows(db, target, screen.caller.actor, screen.at, {
-      query: rowQuerySchema.parse({ limit: 200 }),
-      view: null,
-    });
-    choices.set(
-      target.definition.key,
-      read.ok ? read.value.rows.map((r) => ({ value: r.id, label: r.title })) : [],
-    );
-  }
-  return choices;
-}
-
 async function sceneOf(c: Context<AppEnv>, db: Db, screen: ScreenKernel): Promise<RowScene | null> {
   await ensureBuiltIns(db, screen.at);
   const stored = await loadCollection(db, c.req.param('key') ?? '');
@@ -196,13 +180,19 @@ async function sceneOf(c: Context<AppEnv>, db: Db, screen: ScreenKernel): Promis
   const row = await readRow(db, stored, screen.caller.actor, screen.at, c.req.param('rowId') ?? '');
   if (row === null) return null;
   const collections = new Map((await allCollections(db)).map((s) => [s.definition.key, s]));
+  const finding = findingOf(new URL(c.req.url).searchParams);
   const people = (await activePeople(db)).map((p) => ({ value: p.personId, label: p.email }));
   return {
     stored,
     row,
     names: await namesFor(db, [row], stored.definition.properties),
     people,
-    targets: await targetChoices(db, screen, stored, collections),
+    found: await relationChoices(
+      { db, actor: screen.caller.actor, at: screen.at, all: collections },
+      stored,
+      finding,
+    ),
+    finding,
     incoming:
       stored.definition.rowSource === 'pages'
         ? await incomingRelations(db, screen.caller.actor, row.id, screen.at)

@@ -1,3 +1,4 @@
+import type { Child } from 'hono/jsx';
 import type { Context } from 'hono';
 import {
   groupableType,
@@ -51,22 +52,68 @@ function sourceName(property: PropertyDefinition): string {
   return property.source.kind === 'frontmatter' ? 'page frontmatter' : 'worked out';
 }
 
+function Confirmed(props: {
+  readonly opener: string;
+  readonly loss: string;
+  readonly children: Child;
+}) {
+  return (
+    <details>
+      <summary class={`${commandButton} cursor-pointer list-none`}>{props.opener}</summary>
+      <div class="mt-2 flex flex-col gap-2">
+        <p class="m-0 text-sm text-text">{props.loss}</p>
+        {props.children}
+      </div>
+    </details>
+  );
+}
+
 function RemoveProperty(props: {
   readonly collection: string;
   readonly property: PropertyDefinition;
 }) {
+  const { name } = props.property;
   const scope = `${props.collection}-${props.property.key}`;
   return (
-    <PlatformCommandForm
-      endpoint={COLLECTIONS_ENDPOINT}
-      command="remove_property"
-      scope={scope}
-      done="Removed"
+    <Confirmed
+      opener={`Remove ${name}`}
+      loss={`Every row loses its ${name} value, and saved views drop their filters and sorts on it. You cannot undo this.`}
     >
-      <input type="hidden" name="collection" value={props.collection} />
-      <input type="hidden" name="property" value={props.property.key} />
-      <button type="submit" class={commandButton}>{`Remove ${props.property.name}`}</button>
-    </PlatformCommandForm>
+      <PlatformCommandForm
+        endpoint={COLLECTIONS_ENDPOINT}
+        command="remove_property"
+        scope={scope}
+        done="Removed"
+      >
+        <input type="hidden" name="collection" value={props.collection} />
+        <input type="hidden" name="property" value={props.property.key} />
+        <button type="submit" class={commandButton}>{`Confirm remove ${name}`}</button>
+      </PlatformCommandForm>
+    </Confirmed>
+  );
+}
+
+function DeleteView(props: { readonly view: SavedView }) {
+  const { view } = props;
+  const who = view.settings.scope === 'shared' ? 'everyone who uses it' : 'you';
+  return (
+    <Confirmed
+      opener={`Delete ${view.settings.name}`}
+      loss={`${view.settings.name} goes away for ${who}, with its filters, sorts, groups and card order. Page embeds of it stop showing. You cannot undo this.`}
+    >
+      <PlatformCommandForm
+        endpoint={COLLECTIONS_ENDPOINT}
+        command="delete_view"
+        scope={view.id}
+        done="Deleted"
+      >
+        <input type="hidden" name="viewId" value={view.id} />
+        <button
+          type="submit"
+          class={commandButton}
+        >{`Confirm delete ${view.settings.name}`}</button>
+      </PlatformCommandForm>
+    </Confirmed>
   );
 }
 
@@ -230,17 +277,7 @@ function ViewRow(props: { readonly view: SavedView; readonly writable: boolean }
     <li class="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
       <span class="font-heavy">{view.settings.name}</span>
       <span class="text-text-3">{`${layoutNames.get(view.settings.layout) ?? view.settings.layout} · ${view.settings.scope === 'shared' ? 'Shared' : 'Only you'}`}</span>
-      {props.writable || view.settings.scope === 'personal' ? (
-        <PlatformCommandForm
-          endpoint={COLLECTIONS_ENDPOINT}
-          command="delete_view"
-          scope={view.id}
-          done="Deleted"
-        >
-          <input type="hidden" name="viewId" value={view.id} />
-          <button type="submit" class={commandButton}>{`Delete ${view.settings.name}`}</button>
-        </PlatformCommandForm>
-      ) : null}
+      {props.writable || view.settings.scope === 'personal' ? <DeleteView view={view} /> : null}
     </li>
   );
 }

@@ -105,7 +105,7 @@ export function KanbanCard(props: {
   const drag =
     props.dragRow === undefined
       ? {}
-      : { 'data-card': '', 'data-row': props.dragRow, draggable: 'true' };
+      : { 'data-card': '', 'data-row': props.dragRow, draggable: 'true' as const };
   return (
     <article
       {...drag}

@@ -1,4 +1,4 @@
-import type { CollectionRow, PropertyDefinition } from '@uw/contracts';
+import type { CollectionRow, PropertyDefinition, RowGroup } from '@uw/contracts';
 import { CategoryChart } from '@uw/ui/components/chart.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
 import { formatDate, formatMonth, parseDate } from '@uw/core/dates';
@@ -113,44 +113,44 @@ export function CalendarLayout(props: LayoutProps) {
   );
 }
 
-function sums(props: LayoutProps, key: string | null): ReadonlyMap<string, number> | null {
-  if (key === null) return null;
-  const totals = new Map<string, number>();
-  for (const row of props.reply.rows) {
-    const value = propertyValue(row, key);
-    const group = row.group ?? '';
-    totals.set(group, (totals.get(group) ?? 0) + (typeof value === 'number' ? value : 0));
-  }
-  return totals;
-}
-
 type Figures = {
   readonly id: string;
   readonly name: string;
   readonly kind: 'bar' | 'donut';
   readonly measure: string;
   readonly points: readonly { readonly label: string; readonly value: number }[];
-  readonly partial: boolean;
+  readonly withheld: string | null;
 };
 
+function nameOf(props: LayoutProps, key: string): string {
+  return props.definition.properties.find((p) => p.key === key)?.name ?? key;
+}
+
 function measureOf(props: LayoutProps, sumKey: string | null): string {
-  if (sumKey === null) return 'Count';
-  const named = props.definition.properties.find((p) => p.key === sumKey)?.name;
-  return `Sum of ${named ?? sumKey}`;
+  if (sumKey === null || props.sums === null) return 'Count';
+  return `Sum of ${nameOf(props, sumKey)}`;
+}
+
+function pointOf(totals: ReadonlyMap<string, number> | null, group: RowGroup): number {
+  return totals === null ? group.count : (totals.get(group.value) ?? 0);
+}
+
+function withheldOf(props: LayoutProps, sumKey: string | null): string | null {
+  return sumKey !== null && props.sums === null ? nameOf(props, sumKey) : null;
 }
 
 function figuresOf(props: LayoutProps): Figures {
   const view = props.reply.view;
   const chart = view?.settings.chart ?? { kind: 'bar' as const, sum: null };
   const groups = (props.reply.groups ?? []).filter((group) => group.visible);
-  const totals = sums(props, chart.sum);
+  const totals = chart.sum === null ? null : props.sums;
   return {
     id: `chart-${view?.id ?? 'view'}`,
     name: view?.settings.name ?? '',
     kind: chart.kind,
     measure: measureOf(props, chart.sum),
-    points: groups.map((g) => ({ label: g.label, value: totals?.get(g.value) ?? g.count })),
-    partial: chart.sum !== null && props.reply.next !== null,
+    points: groups.map((g) => ({ label: g.label, value: pointOf(totals, g) })),
+    withheld: withheldOf(props, chart.sum),
   };
 }
 
@@ -173,11 +173,11 @@ export function ChartLayout(props: LayoutProps) {
         ]}
         rows={figures.points.map((point) => ({ group: point.label, value: String(point.value) }))}
       />
-      {figures.partial ? (
+      {figures.withheld === null ? null : (
         <p class="m-0 text-xs text-text-3">
-          The sums cover only the first rows shown; counts cover every row.
+          {`You cannot read ${figures.withheld} on every row, so this chart shows counts.`}
         </p>
-      ) : null}
+      )}
     </div>
   );
 }
