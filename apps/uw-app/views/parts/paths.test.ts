@@ -11,6 +11,7 @@ import {
   issueUrl,
   itemPath,
   logOutPath,
+  personPath,
   pullRequestUrl,
   reviewUrl,
   waitingPath,
@@ -34,6 +35,15 @@ describe('the view paths', () => {
     expect(queuePath(harness, 'build')).toBe(`/harnesses/${harness}/queue?stage=build`);
     expect(gatePath(harness, item)).toBe(`/harnesses/${harness}/gates/${item}`);
     expect(itemPath(harness, item)).toBe(`/harnesses/${harness}/items/${item}`);
+  });
+
+  it('keys a person page by the people id with a readable slug', () => {
+    expect(personPath(harness)).toBe(`/people/${harness}`);
+    expect(personPath(harness, 'Avery Stone')).toBe(`/people/${harness}/avery-stone`);
+    expect(personPath(harness, 'avery.stone')).toBe(`/people/${harness}/avery-stone`);
+    expect(personPath(harness, '...')).toBe(`/people/${harness}`);
+    expect(personPath(harness, 'José María')).toBe(`/people/${harness}/jose-maria`);
+    expect(personPath(harness, 'Zoë Müller')).toBe(`/people/${harness}/zoe-muller`);
   });
 
   it('agrees with the deep links a wake carries', () => {

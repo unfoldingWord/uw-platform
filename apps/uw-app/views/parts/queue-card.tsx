@@ -9,13 +9,14 @@ import { KanbanCard, type CardFoot } from '@uw/ui/components/kanban-card.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import { costText } from './costs.ts';
 import { itemPath, personaPath } from './paths.ts';
-import { holderText } from './holder-words.ts';
+import { HolderOf, type Holding } from './holder.tsx';
 
 export type CardViewer = {
   readonly identity: string;
   readonly admin: boolean;
   readonly canClaim: boolean;
   readonly at: Date;
+  readonly holding: Holding;
 };
 
 const hostWords = new Map<CardHost, string>([
@@ -37,7 +38,7 @@ function riskWords(card: BoardCard): string {
   return `${riskTier} · ${riskDomains.length === 0 ? 'No domains' : riskDomains.join(', ')}`;
 }
 
-function metaOf(card: BoardCard, at: Date) {
+function metaOf(card: BoardCard, viewer: CardViewer) {
   const { item } = card;
   const cost = costText(card.cost);
   const lease =
@@ -54,7 +55,7 @@ function metaOf(card: BoardCard, at: Date) {
       value:
         item.pullRequest === null ? 'None' : `${item.pullRequest.repo}#${item.pullRequest.number}`,
     },
-    { label: 'Holder', value: holderText(card.holder, at) },
+    { label: 'Holder', value: <HolderOf holder={card.holder} holding={viewer.holding} /> },
     { label: 'Host', value: hostWords.get(card.host) ?? 'Nobody' },
     ...lease,
     { label: 'Risk', value: riskWords(card) },
@@ -259,7 +260,7 @@ export function QueueCardView(props: {
     <KanbanCard
       title={card.item.title}
       href={itemPath(harnessId, itemId)}
-      meta={metaOf(card, at)}
+      meta={metaOf(card, props.viewer)}
       number={numberOf(card)}
       risk={riskLine(card)}
       badge={<HolderBadge card={card} />}

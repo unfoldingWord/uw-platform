@@ -32,6 +32,8 @@ export const pageNames = {
   wikiNew: 'New Page',
   wikiReview: 'Needs Review',
   logOut: 'Log Out',
+  person: 'Person',
+  directory: 'Directory',
 } as const;
 
 const smallWord = /^[a-z]/;

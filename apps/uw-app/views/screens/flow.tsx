@@ -1,3 +1,4 @@
+import { holdingOf, type Holding } from '../parts/holder.tsx';
 import type { Context } from 'hono';
 import { can } from '@uw/core/acl';
 import { formatDuration } from '@uw/core/dates';
@@ -109,6 +110,7 @@ function FlowBody(props: {
   readonly draft: WorkflowDraftView | null;
   readonly admin: boolean;
   readonly at: Date;
+  readonly holding: Holding;
 }) {
   return (
     <div class="flex flex-col gap-5">
@@ -120,6 +122,7 @@ function FlowBody(props: {
         draft={props.draft}
         admin={props.admin}
         at={props.at}
+        holding={props.holding}
       />
       <Card title="Stage details" sub="what each stage holds, costs and waits on" flush>
         <Table
@@ -148,6 +151,9 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
   const { actor } = screen.caller;
   const area = { kind: 'area', area: view.harness.jdArea } as const;
   const admin = actor.kind === 'person' && can(actor, 'admin', area, screen.at);
+  const holding = await holdingOf(c.get('database')?.db ?? null, { reader: actor, at: screen.at }, [
+    draft === null ? null : `human:${draft.holder.personId}`,
+  ]);
   const spec = {
     title: `${view.harness.title} ${pageNames.flow}`,
     current: flowPath(harnessId),
@@ -165,7 +171,14 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
         title={view.harness.title}
         lede={summaryOf(view)}
       />
-      <FlowBody harnessId={harnessId} view={view} draft={draft} admin={admin} at={screen.at} />
+      <FlowBody
+        harnessId={harnessId}
+        view={view}
+        draft={draft}
+        admin={admin}
+        at={screen.at}
+        holding={holding}
+      />
     </>,
   );
 }

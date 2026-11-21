@@ -4,7 +4,9 @@ import { formatInstant } from '@uw/core/dates';
 import { EvidenceLabel } from '@uw/ui/components/evidence-label.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import { personaPath } from './paths.ts';
+import type { Holding } from './holder.tsx';
 import { evidenceOf } from './play-evidence.ts';
+import { Person, personIdOf, shownIdentity, Who } from './person.tsx';
 
 function hostOf(identity: string): string {
   if (identity.startsWith('human:')) return 'Person';
@@ -21,7 +23,17 @@ function Learning(props: {
   return <EvidenceLabel label={label} showDefinition />;
 }
 
-function Evidence(props: { readonly event: HarnessEvent }) {
+function FactValue(props: {
+  readonly value: string;
+  readonly identity: string | undefined;
+  readonly holding: Holding;
+}) {
+  const { holding } = props;
+  const who = shownIdentity(props.identity ?? null, holding.names, () => props.value);
+  return <Who reading={holding.reading} who={who} />;
+}
+
+function Evidence(props: { readonly event: HarnessEvent; readonly holding: Holding }) {
   const shown = evidenceOf(props.event);
   return (
     <>
@@ -30,7 +42,9 @@ function Evidence(props: { readonly event: HarnessEvent }) {
           {shown.facts.map((fact) => (
             <li class="flex flex-wrap gap-x-2">
               <span class="text-text-3">{fact.label}</span>
-              <span class="break-words text-text">{fact.value}</span>
+              <span class="break-words text-text">
+                <FactValue value={fact.value} identity={fact.identity} holding={props.holding} />
+              </span>
             </li>
           ))}
         </ul>
@@ -46,11 +60,11 @@ function Evidence(props: { readonly event: HarnessEvent }) {
   );
 }
 
-function Comment(props: { readonly event: HarnessEvent }) {
+function Comment(props: { readonly event: HarnessEvent; readonly holding: Holding }) {
   const text = props.event.evidence['text'];
   return (
     <>
-      <Evidence event={props.event} />
+      <Evidence event={props.event} holding={props.holding} />
       <blockquote class="m-0 whitespace-pre-wrap break-words border-l-2 border-line pl-3 text-text">
         {typeof text === 'string' ? text : ''}
       </blockquote>
@@ -61,17 +75,27 @@ function Comment(props: { readonly event: HarnessEvent }) {
 function Detail(props: {
   readonly event: HarnessEvent;
   readonly learnings: ReadonlyMap<string, Label>;
+  readonly holding: Holding;
 }) {
   if (props.event.name === 'learning_attached') {
     return <Learning event={props.event} learnings={props.learnings} />;
   }
-  if (props.event.name === 'comment_recorded') return <Comment event={props.event} />;
-  return <Evidence event={props.event} />;
+  if (props.event.name === 'comment_recorded') {
+    return <Comment event={props.event} holding={props.holding} />;
+  }
+  return <Evidence event={props.event} holding={props.holding} />;
 }
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
-function Actor(props: { readonly actor: string; readonly pageId: string | undefined }) {
+function Actor(props: {
+  readonly actor: string;
+  readonly pageId: string | undefined;
+  readonly holding: Holding;
+}) {
+  const id = personIdOf(props.actor);
+  const person = id === null ? undefined : props.holding.names.get(id);
+  if (person !== undefined) return <Person reading={props.holding.reading} person={person} />;
   const name = <code class="break-all font-mono text-sm text-text">{props.actor}</code>;
   if (props.pageId === undefined) return name;
   return (
@@ -85,6 +109,7 @@ export function PlayRow(props: {
   readonly event: HarnessEvent;
   readonly learnings: ReadonlyMap<string, Label>;
   readonly personaPages: ReadonlyMap<string, string>;
+  readonly holding: Holding;
   readonly dot?: Child | undefined;
 }) {
   const { event } = props;
@@ -95,10 +120,14 @@ export function PlayRow(props: {
         <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <span class="font-heavy text-text">{reasonText(event.name)}</span>
           <span class="text-sm text-text-3">{formatInstant(new Date(event.at))}</span>
-          <Actor actor={event.actor} pageId={props.personaPages.get(event.actor)} />
+          <Actor
+            actor={event.actor}
+            pageId={props.personaPages.get(event.actor)}
+            holding={props.holding}
+          />
           <span class="text-sm text-text-3">{hostOf(event.actor)}</span>
         </div>
-        <Detail event={event} learnings={props.learnings} />
+        <Detail event={event} learnings={props.learnings} holding={props.holding} />
       </div>
     </li>
   );

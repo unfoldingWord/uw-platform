@@ -1,7 +1,15 @@
-import type { Principal } from '@uw/contracts';
+import { personStatusSchema, type Principal } from '@uw/contracts';
 import { can, type RestrictedTable } from '@uw/core/acl';
 import type { AccessGrant, AccessHistoryQuery, AccessPerson, AccessRecords } from '@uw/db/store';
+import type { PersonName } from '../../people/directory.ts';
 import { areaLabel, everyArea } from './names.ts';
+import {
+  shownIdentity,
+  shownPerson,
+  shownText,
+  type Reading,
+  type Someone,
+} from './person-names.ts';
 
 export const ORG_SCOPE = 'org';
 const HISTORY_SHOWN = 20;
@@ -13,9 +21,9 @@ export type Holder = { readonly person: AccessPerson; readonly grants: readonly 
 
 type HistoryLine = {
   readonly at: Date;
-  readonly actor: string;
+  readonly actor: Someone;
   readonly action: string;
-  readonly person: string;
+  readonly person: Someone;
   readonly detail: string;
 };
 
@@ -28,6 +36,8 @@ export type AccessView = {
   readonly filterScopes: readonly Choice[];
   readonly filterPeople: readonly Choice[];
   readonly history: readonly HistoryLine[];
+  readonly names: ReadonlyMap<string, PersonName>;
+  readonly reading: Reading;
 };
 
 type Scoped = { readonly personId: string; readonly scopeArea: string | null };
@@ -112,22 +122,40 @@ const actionWords: ReadonlyMap<string, string> = new Map([
   ['decline', 'Declined'],
 ]);
 
-function namer(everyone: readonly AccessPerson[]): (personId: string) => string {
-  const emails = new Map(everyone.map((person) => [person.personId, person.email]));
-  return (personId) => emails.get(personId) ?? 'Someone no longer listed';
+const noLongerListed = 'Someone no longer listed';
+
+function accessNames(everyone: readonly AccessPerson[]): ReadonlyMap<string, PersonName> {
+  return new Map(
+    everyone.map((person) => [
+      person.personId,
+      {
+        personId: person.personId,
+        displayName: person.displayName,
+        status: personStatusSchema.catch('pending').parse(person.status),
+      },
+    ]),
+  );
 }
 
-function actorName(actor: string, name: (personId: string) => string): string {
-  return actor.startsWith('human:') ? name(actor.slice('human:'.length)) : 'The platform';
+export function grantedByOf(names: ReadonlyMap<string, PersonName>, by: string | null): Someone {
+  if (by === null) return shownText('Set up with the platform');
+  const person = names.get(by);
+  return person === undefined ? shownText(noLongerListed) : shownPerson(person);
 }
 
-function historyOf(records: AccessRecords, seeing: Seeing, orgAdmin: boolean): HistoryLine[] {
-  const name = namer(records.people);
+function historyOf(
+  records: AccessRecords,
+  seeing: Seeing,
+  orgAdmin: boolean,
+  names: ReadonlyMap<string, PersonName>,
+): HistoryLine[] {
   const line = (change: { at: Date; actor: string; action: string; personId: string }) => ({
     at: change.at,
-    actor: actorName(change.actor, name),
+    actor: shownIdentity(change.actor, names, (actor) =>
+      actor.startsWith('human:') ? noLongerListed : 'The platform',
+    ),
     action: actionWords.get(change.action) ?? change.action,
-    person: name(change.personId),
+    person: grantedByOf(names, change.personId),
   });
   const grants = records.grantChanges
     .filter((change) => reads(seeing, 'grant_audit', change) && kept(seeing.filter, change))
@@ -152,6 +180,7 @@ export function accessViewOf(
   at: Date,
 ): AccessView {
   const seeing = { viewer, at, filter };
+  const names = accessNames(records.people);
   const orgAdmin = manages(viewer, ORG_SCOPE, at);
   const grantScopes = grantScopesOf(viewer, at);
   const visible = records.grants.filter((grant) => reads(seeing, 'role_grants', grant));
@@ -176,6 +205,8 @@ export function accessViewOf(
     ),
     filterScopes: scopes.map((scope) => ({ value: scope, label: scopeLabel(scope) })),
     filterPeople: records.people.filter(choosable).map(personChoice),
-    history: historyOf(records, seeing, orgAdmin),
+    history: historyOf(records, seeing, orgAdmin, names),
+    names,
+    reading: { reader: viewer, at },
   };
 }

@@ -8,7 +8,7 @@ const titleLink =
 const summary =
   'cursor-pointer text-xs text-text-3 outline-offset-2 outline-accent-text focus-visible:outline-2';
 
-export type CardFact = { readonly label: string; readonly value: string };
+export type CardFact = { readonly label: string; readonly value: Child };
 export type CardFoot = { readonly icon: IconName; readonly text: string };
 
 function Facts(props: { readonly meta: readonly CardFact[] }) {

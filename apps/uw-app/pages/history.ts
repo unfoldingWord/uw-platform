@@ -1,8 +1,9 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
-import { pageSchema, type Page } from '@uw/contracts';
+import { pageSchema, personStatusSchema, type Page } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
 import { pageVersions, people } from '@uw/db/schema';
+import type { PersonName } from '../people/directory.ts';
 import { readPage } from './store.ts';
 
 const HISTORY_LIMIT = 50;
@@ -12,7 +13,21 @@ export type PageVersion = {
   readonly title: string;
   readonly savedAt: Date;
   readonly savedBy: string;
+  readonly saver: PersonName | null;
 };
+
+type Saver = { readonly id: string; readonly name: string; readonly status: string } | null;
+
+const saverColumns = { id: people.id, name: people.displayName, status: people.status };
+
+function saverOf(editSource: string, saver: Saver): PersonName | null {
+  if (saver === null || !editSource.startsWith('human:')) return null;
+  return {
+    personId: saver.id,
+    displayName: saver.name,
+    status: personStatusSchema.parse(saver.status),
+  };
+}
 
 export async function pageHistory(
   db: Executor,
@@ -27,7 +42,7 @@ export async function pageHistory(
       title: pageVersions.title,
       savedAt: pageVersions.savedAt,
       editSource: pageVersions.editSource,
-      name: people.displayName,
+      saver: saverColumns,
     })
     .from(pageVersions)
     .leftJoin(people, sql`${pageVersions.editSource} = 'human:' || ${people.id}::text`)
@@ -38,7 +53,8 @@ export async function pageHistory(
     version: row.version,
     title: row.title,
     savedAt: row.savedAt,
-    savedBy: row.name ?? row.editSource,
+    savedBy: row.saver?.name ?? row.editSource,
+    saver: saverOf(row.editSource, row.saver),
   }));
 }
 
@@ -46,6 +62,7 @@ export type PageSnapshot = {
   readonly page: Page;
   readonly savedAt: Date;
   readonly savedBy: string;
+  readonly saver: PersonName | null;
 };
 
 export async function pageVersion(
@@ -56,7 +73,7 @@ export async function pageVersion(
 ): Promise<PageSnapshot | null> {
   if ((await readPage(db, actor, key.pageId, at)) === null) return null;
   const [row] = await db
-    .select({ snapshot: pageVersions, name: people.displayName })
+    .select({ snapshot: pageVersions, saver: saverColumns })
     .from(pageVersions)
     .leftJoin(people, sql`${pageVersions.editSource} = 'human:' || ${people.id}::text`)
     .where(and(eq(pageVersions.pageId, key.pageId), eq(pageVersions.version, key.version)));
@@ -74,5 +91,10 @@ export async function pageVersion(
     version: snapshot.version,
     status: snapshot.status,
   });
-  return { page, savedAt: snapshot.savedAt, savedBy: row.name ?? snapshot.editSource };
+  return {
+    page,
+    savedAt: snapshot.savedAt,
+    savedBy: row.saver?.name ?? snapshot.editSource,
+    saver: saverOf(snapshot.editSource, row.saver),
+  };
 }

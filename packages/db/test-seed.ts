@@ -20,7 +20,7 @@ import {
 export type SeedPerson = {
   readonly id: string;
   readonly email: string;
-  readonly status?: 'active' | 'pending';
+  readonly status?: 'active' | 'pending' | 'disabled';
 };
 
 export type SeedGrant = {

@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, gt, inArray, isNull, max } from 'drizzle-orm';
-import type { JdArea, Principal } from '@uw/contracts';
+import { personStatusSchema, type JdArea, type Principal } from '@uw/contracts';
 import { can, managesOwnArea, type CredentialBinding, type RevealGrant } from '@uw/core/acl';
 import { personPrincipal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
@@ -12,6 +12,7 @@ import {
   people,
 } from '@uw/db/schema';
 import { createDrizzleGrants } from '@uw/db/store';
+import type { PersonName } from '../people/directory.ts';
 import { isId, resourceOf } from './standing.ts';
 
 const LOG_SHOWN = 50;
@@ -28,6 +29,7 @@ export type CredentialLine = {
   readonly name: string;
   readonly kind: string;
   readonly owner: string;
+  readonly ownerPerson: PersonName | null;
   readonly rotateBy: string | null;
   readonly expiresAt: Date | null;
   readonly revokedAt: Date | null;
@@ -40,11 +42,14 @@ export type CredentialLine = {
 export type GrantLine = {
   readonly grantId: string;
   readonly person: string;
+  readonly holder: PersonName | null;
   readonly grantedBy: string;
+  readonly giver: PersonName | null;
   readonly grantedAt: Date;
   readonly expiresAt: Date;
   readonly waitsForSecond: boolean;
   readonly secondBy: string | null;
+  readonly second: PersonName | null;
   readonly confirmable: boolean;
 };
 
@@ -55,6 +60,7 @@ export type LogLine = {
   readonly reason: string | null;
   readonly actor: string;
   readonly person: string | null;
+  readonly personName: PersonName | null;
   readonly harnessId: string | null;
   readonly connectorKey: string | null;
 };
@@ -110,20 +116,36 @@ async function lastUses(db: Database, ids: readonly string[]): Promise<ReadonlyM
   return new Map(rows.flatMap((row) => (row.at === null ? [] : [[row.credentialId, row.at]])));
 }
 
-async function emailsOf(
-  db: Database,
-  ids: readonly (string | null)[],
-): Promise<(personId: string | null) => string> {
+type Lookup = {
+  readonly email: (personId: string | null) => string;
+  readonly name: (personId: string | null) => PersonName | null;
+};
+
+async function emailsOf(db: Database, ids: readonly (string | null)[]): Promise<Lookup> {
   const wanted = [...new Set(ids.filter((id): id is string => id !== null))];
   const rows =
     wanted.length === 0
       ? []
       : await db
-          .select({ id: people.id, email: people.email })
+          .select({
+            id: people.id,
+            email: people.email,
+            displayName: people.displayName,
+            status: people.status,
+          })
           .from(people)
           .where(inArray(people.id, wanted));
-  const emails = new Map(rows.map((row) => [row.id, row.email]));
-  return (personId) => (personId === null ? null : emails.get(personId)) ?? 'Someone not listed';
+  const found = new Map(rows.map((row) => [row.id, row]));
+  const row = (personId: string | null) => (personId === null ? undefined : found.get(personId));
+  return {
+    email: (personId) => row(personId)?.email ?? 'Someone not listed',
+    name: (personId) => {
+      const hit = row(personId);
+      if (hit === undefined) return null;
+      const status = personStatusSchema.parse(hit.status);
+      return { personId: hit.id, displayName: hit.displayName, status };
+    },
+  };
 }
 
 function revealGrantsOf(grants: readonly GrantRow[], credentialId: string): RevealGrant[] {
@@ -139,7 +161,7 @@ function revealGrantsOf(grants: readonly GrantRow[], credentialId: string): Reve
 type LineFacts = {
   readonly own: readonly GrantRow[];
   readonly used: ReadonlyMap<string, Date>;
-  readonly email: (personId: string | null) => string;
+  readonly email: Lookup;
 };
 
 function lineOf(row: CredentialRow, seeing: Seeing, facts: LineFacts): CredentialLine {
@@ -153,7 +175,8 @@ function lineOf(row: CredentialRow, seeing: Seeing, facts: LineFacts): Credentia
     jdRef: row.jdRef,
     name: row.name,
     kind: row.kind,
-    owner: facts.email(row.ownerId),
+    owner: facts.email.email(row.ownerId),
+    ownerPerson: facts.email.name(row.ownerId),
     rotateBy: row.rotateBy,
     expiresAt: row.expiresAt,
     revokedAt: row.revokedAt,
@@ -205,18 +228,21 @@ async function grantLines(seeing: Seeing, credentialId: string): Promise<GrantLi
       ),
     )
     .orderBy(asc(credentialGrants.grantedAt), asc(credentialGrants.id));
-  const email = await emailsOf(
+  const { email, name } = await emailsOf(
     db,
     rows.flatMap((row) => [row.personId, row.grantedBy, row.secondBy]),
   );
   return rows.map((row) => ({
     grantId: row.id,
     person: email(row.personId),
+    holder: name(row.personId),
     grantedBy: email(row.grantedBy),
+    giver: name(row.grantedBy),
     grantedAt: row.grantedAt,
     expiresAt: row.expiresAt,
     waitsForSecond: !confirmed(row),
     secondBy: row.secondBy === null ? null : email(row.secondBy),
+    second: name(row.secondBy),
     confirmable: !confirmed(row) && row.grantedBy !== viewer.personId,
   }));
 }
@@ -228,7 +254,7 @@ async function logLines(db: Database, credentialId: string): Promise<LogLine[]> 
     .where(eq(credentialAccessLog.credentialId, credentialId))
     .orderBy(desc(credentialAccessLog.position))
     .limit(LOG_SHOWN);
-  const email = await emailsOf(
+  const { email, name } = await emailsOf(
     db,
     rows.map((row) => row.personId),
   );
@@ -239,6 +265,7 @@ async function logLines(db: Database, credentialId: string): Promise<LogLine[]> 
     reason: row.reason,
     actor: row.actor,
     person: row.personId === null ? null : email(row.personId),
+    personName: name(row.personId),
     harnessId: row.harnessId,
     connectorKey: row.connectorKey,
   }));

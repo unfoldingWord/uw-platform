@@ -25,7 +25,7 @@ function grant(n: number, holder: AccessPerson, role: string, area: string | nul
     role,
     scopeKind: area === null ? 'org' : 'jd_area',
     scopeArea: area,
-    grantedBy: org.email,
+    grantedBy: org.personId,
     grantedAt: new Date('2026-11-01T00:00:00.000Z'),
     expiresAt: null,
   };

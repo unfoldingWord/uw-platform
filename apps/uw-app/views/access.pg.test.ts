@@ -68,15 +68,18 @@ async function documentFor(db: Database, email: string, path = accessPath()) {
   return { document: new JSDOM(page.text).window.document, text: page.text };
 }
 
+function shownText(cell: Element): string {
+  const copy = cell.cloneNode(true) as Element;
+  for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
+  return copy.textContent ?? '';
+}
+
 function rowsOf(document: Document, caption: string): string[] {
   const table = [...document.querySelectorAll('main table')].find(
     (found) => found.querySelector('caption')?.textContent === caption,
   );
   return [...(table?.querySelectorAll('tbody tr') ?? [])].map((row) =>
-    [...row.querySelectorAll('td')]
-      .slice(0, 3)
-      .map((cell) => cell.textContent ?? '')
-      .join(' | '),
+    [...row.querySelectorAll('td')].slice(0, 3).map(shownText).join(' | '),
   );
 }
 

@@ -100,6 +100,7 @@ function pathOf(entry: ScreenEntry, world: Seeded): string {
     .replace(':category', '81')
     .replace(':area', '80-89')
     .replace(':version', '1')
+    .replace(':personId', world.kim.personId ?? '')
 
     .replace(':credentialId', world.credentialId);
 }

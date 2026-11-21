@@ -13,6 +13,8 @@ import { Kpi } from '@uw/ui/components/kpi.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { cursorOf } from '../../commands/reads.ts';
 import type { AppEnv } from '../../deps.ts';
+import type { PersonName } from '../../people/directory.ts';
+import { namesOf } from '../parts/person.tsx';
 import { QueueCardView, type CardViewer } from '../parts/queue-card.tsx';
 import { EpicGroups, NotReadyList } from '../parts/epic-board.tsx';
 import { bracketText } from '../parts/flow-diagram.tsx';
@@ -50,9 +52,15 @@ function boardInput(c: Context<AppEnv>, harnessId: string): BoardInput | null {
 
 type Shown = BoardView & { readonly stages: readonly Stage[] };
 
-function viewerOf(actor: Principal, view: BoardView, at: Date): CardViewer {
+function viewerOf(
+  actor: Principal,
+  view: BoardView,
+  at: Date,
+  names: ReadonlyMap<string, PersonName>,
+): CardViewer {
   const area = { kind: 'area', area: view.harness.jdArea } as const;
   return {
+    holding: { reading: { reader: actor, at }, names },
     identity: actor.personId === null ? '' : `human:${actor.personId}`,
     admin: actor.kind === 'person' && can(actor, 'admin', area, at),
     canClaim: can(actor, 'write', area, at),
@@ -341,7 +349,13 @@ export async function queueScreen(c: Context<AppEnv>): Promise<Response> {
     ...board,
     stages: [...stages].sort((left, right) => left.position - right.position),
   };
-  const viewer = viewerOf(screen.caller.actor, view, screen.at);
+  const database = c.get('database');
+  const holders = board.columns.flatMap((column) =>
+    column.cards.map((card) => card.holder?.identity ?? null),
+  );
+  const names =
+    database === null ? new Map<string, PersonName>() : await namesOf(database.db, holders);
+  const viewer = viewerOf(screen.caller.actor, view, screen.at, names);
   const marks = await cardMarks(screen, board, read);
   const tally = tallyOf(board);
   return renderScreen(

@@ -1,4 +1,4 @@
-import { eq, inArray, type SQL } from 'drizzle-orm';
+import { and, asc, eq, inArray, ne, sql, type SQL } from 'drizzle-orm';
 import type { z } from 'zod';
 import { jdAreaSchema, pageSchema, type JdArea } from '@uw/contracts';
 import { readableAreas } from '@uw/core/acl';
@@ -36,4 +36,22 @@ export function areaFilter(actor: Principal, at: Date): SQL | undefined | null {
   if (readable.kind === 'all') return undefined;
   if (readable.areas.length === 0) return null;
   return inArray(pages.jdArea, [...readable.areas]);
+}
+
+export async function pagesOwnedBy(
+  db: Executor,
+  actor: Principal,
+  owner: string,
+  at: Date,
+  limit: number,
+): Promise<readonly PageSummary[]> {
+  const areas = areaFilter(actor, at);
+  if (areas === null) return [];
+  const rows = await db
+    .select(summaryColumns)
+    .from(pages)
+    .where(and(sql`${pages.frontmatter}->>'owner' = ${owner}`, ne(pages.status, 'retired'), areas))
+    .orderBy(asc(pages.title), pages.id)
+    .limit(limit);
+  return rows.map((row) => summarySchema.parse(row));
 }

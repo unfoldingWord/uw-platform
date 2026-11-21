@@ -10,7 +10,7 @@ import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml, getHtmlWithEnv, pageContent } from '../testing/views.ts';
 import { zulipEnv } from '../notify/testing.ts';
 import { zulipTopicUrl } from '../notify/zulip/links.ts';
-import { checksUrl, itemPath, pullRequestUrl, reviewUrl } from './parts/paths.ts';
+import { checksUrl, itemPath, personPath, pullRequestUrl, reviewUrl } from './parts/paths.ts';
 
 const learningId = randomUUID();
 const decisionId = randomUUID();
@@ -180,7 +180,8 @@ async function inOrder(world: Played): Promise<void> {
   expect(rows[0]?.querySelector('div > span')?.textContent).toBe('Item created');
   const actors = rows.map((row) => row.querySelector('code')?.textContent);
   expect(actors).toContain(world.device);
-  expect(actors).toContain(world.kim.identity);
+  const people = rows.map((row) => row.querySelector('a[data-person-chip]')?.getAttribute('href'));
+  expect(people).toContain(personPath(world.kim.personId ?? '', world.kimEmail));
   const device = rowsNamed(document, 'Lease renewed')[0];
   expect(device?.textContent).toContain('Own machine');
   expect(rowsNamed(document, 'Item created')[0]?.textContent).toContain('Person');
@@ -211,10 +212,11 @@ async function runSteps(world: Played): Promise<void> {
 async function gateEvents(world: Played): Promise<void> {
   const document = await documentOf(world);
   const rejected = rowsNamed(document, 'Gate rejected')[0];
-  expect(factsOf(rejected)).toMatchObject({
-    Decision: 'Rejected',
-    'Decided by': world.kim.identity,
-  });
+  expect(factsOf(rejected)['Decision']).toBe('Rejected');
+  expect(factsOf(rejected)['Decided by']).toContain(world.kimEmail);
+  expect(rejected?.querySelector('a[data-person-chip]')?.getAttribute('href')).toBe(
+    personPath(world.kim.personId ?? '', world.kimEmail),
+  );
   expect(rejected?.querySelector('ul + ul li')?.textContent).toBe('Rename the lane');
   expect(factsOf(rowsNamed(document, 'Gate overridden')[0])['Reason']).toBe('The reviewer is down');
   const refused = rowsNamed(document, 'Ship refused')[0];

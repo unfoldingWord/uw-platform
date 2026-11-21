@@ -10,7 +10,8 @@ import { ItemHistory } from '../parts/item-history.tsx';
 import { notFound } from './not-found.tsx';
 import { zulipConfigOf } from '../../notify/zulip/config.ts';
 import { itemTopicUrl } from '../../notify/zulip/links.ts';
-import { holderText } from '../parts/holder-words.ts';
+import { HolderOf, holdingOf } from '../parts/holder.tsx';
+import { eventIdentities } from '../parts/play-evidence.ts';
 import { moduleCodes, pageNames } from '../parts/names.ts';
 
 const wholeNumber = /^(?:0|[1-9]\d{0,15})$/;
@@ -45,6 +46,11 @@ export async function playScreen(c: Context<AppEnv>): Promise<Response> {
   if (play === null) return notFound(c);
   const { harness, item, stage } = play;
   const zulipUrl = itemTopicUrl(zulipConfigOf(c.env), harness.jdArea, item.zulipTopic);
+  const holding = await holdingOf(
+    c.get('database')?.db ?? null,
+    { reader: screen.caller.actor, at: screen.at },
+    [play.holder?.identity, ...eventIdentities(play.events)],
+  );
   const spec = {
     title: item.title,
     current: itemPath(harness.id, item.itemId),
@@ -61,12 +67,15 @@ export async function playScreen(c: Context<AppEnv>): Promise<Response> {
     spec,
     <>
       <PageHead eyebrow="Item" title={item.title} lede={`At ${stage.title} on ${harness.title}`} />
-      <p class="m-0 mb-4 text-sm text-text-3">{`Holder: ${holderText(play.holder, screen.at)}`}</p>
+      <p class="m-0 mb-4 text-sm text-text-3">
+        Holder: <HolderOf holder={play.holder} holding={holding} />
+      </p>
       <ItemHistory
         play={play}
         zulipUrl={zulipUrl}
         base={itemPath(harness.id, item.itemId)}
         kind={kindParam(c.req.query('kind'))}
+        holding={holding}
       />
     </>,
   );

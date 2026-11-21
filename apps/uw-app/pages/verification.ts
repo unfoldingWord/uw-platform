@@ -13,6 +13,7 @@ export type LapsedPage = {
   readonly title: string;
   readonly category: string | null;
   readonly owner: string | null;
+  readonly ownerIdentity: string | null;
   readonly until: string;
 };
 
@@ -65,6 +66,7 @@ async function verificationDue(
       title: pages.title,
       category: sql<string | null>`${pages.frontmatter}->>'jd_category'`,
       owner: people.displayName,
+      ownerIdentity: sql<string | null>`${pages.frontmatter}->>'owner'`,
       until,
     })
     .from(pages)

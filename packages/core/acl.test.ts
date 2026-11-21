@@ -12,6 +12,7 @@ import {
   type AclResource,
   type CredentialCapability,
   type CredentialResource,
+  type PersonResource,
   type RestrictedTable,
   type RowResource,
 } from './acl.ts';
@@ -115,7 +116,7 @@ describe('FD-8 can()', () => {
       [
         Principal,
         AclAction | CredentialCapability,
-        AclResource | RowResource | CredentialResource,
+        AclResource | RowResource | CredentialResource | PersonResource,
         Date,
       ]
     >();

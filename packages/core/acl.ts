@@ -1,4 +1,4 @@
-import type { Grant, JdArea, Principal, Role } from '@uw/contracts';
+import type { Grant, JdArea, PersonStatus, Principal, Role } from '@uw/contracts';
 
 export type AclAction = 'read' | 'write' | 'admin';
 
@@ -208,6 +208,29 @@ export function managesOwnArea(
   );
 }
 
+export type PersonResource = {
+  readonly kind: 'person';
+  readonly personId: string;
+  readonly status: PersonStatus;
+};
+
+function holdsAnyRead(actor: Principal, at: Date): boolean {
+  return actor.grants.some((grant) => isLive(grant, at) && readScope(grant) !== null);
+}
+
+function isOrgAdmin(actor: Principal, at: Date): boolean {
+  return actor.grants.some(
+    (grant) =>
+      isLive(grant, at) && grant.scopeKind === 'org' && reaches(grant.role, minimumRole.admin),
+  );
+}
+
+function readsPersonRecord(actor: Principal, person: PersonResource, at: Date): boolean {
+  if (actor.kind !== 'person' || actor.personId === null) return false;
+  if (actor.personId === person.personId || isOrgAdmin(actor, at)) return true;
+  return person.status === 'active' && holdsAnyRead(actor, at);
+}
+
 const aclActions: ReadonlySet<string> = new Set(Object.keys(minimumRole));
 
 function isAclAction(action: AclAction | CredentialCapability): action is AclAction {
@@ -217,10 +240,12 @@ function isAclAction(action: AclAction | CredentialCapability): action is AclAct
 export function can(
   actor: Principal,
   action: AclAction | CredentialCapability,
-  resource: AclResource | RowResource | CredentialResource,
+  resource: AclResource | RowResource | CredentialResource | PersonResource,
   at: Date,
 ): boolean {
   if (resource.kind === 'credential') return reachesCredential(actor, action, resource, at);
+  if (resource.kind === 'person')
+    return action === 'read' && readsPersonRecord(actor, resource, at);
   if (!isAclAction(action)) return false;
   if (resource.kind === 'row') return action === 'read' && readsRow(actor, resource, at);
   return actor.grants.some((grant) => isLive(grant, at) && grantAllows(grant, action, resource));
