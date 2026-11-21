@@ -29,9 +29,32 @@ export function verificationOf(
   return { state: date < formatDate(at) ? 'lapsed' : 'verified', until: date };
 }
 
+const SOON_DAYS = 14;
+const DAY_MS = 86_400_000;
+
 export async function lapsedPages(
   db: Executor,
   actor: Principal,
+  at: Date,
+): Promise<readonly LapsedPage[]> {
+  return verificationDue(db, actor, { before: formatDate(at), owner: null }, at);
+}
+
+export function reviewDueFor(
+  db: Executor,
+  actor: Principal,
+  at: Date,
+): Promise<readonly LapsedPage[]> {
+  const before = formatDate(new Date(at.getTime() + SOON_DAYS * DAY_MS));
+  return verificationDue(db, actor, { before, owner: actor.identity }, at);
+}
+
+type Due = { readonly before: string; readonly owner: string | null };
+
+async function verificationDue(
+  db: Executor,
+  actor: Principal,
+  due: Due,
   at: Date,
 ): Promise<readonly LapsedPage[]> {
   const areas = areaFilter(actor, at);
@@ -51,7 +74,8 @@ export async function lapsedPages(
         areas,
         eq(pages.type, LISTED),
         ne(pages.status, 'retired'),
-        sql`${until} < ${formatDate(at)}`,
+        sql`${until} < ${due.before}`,
+        due.owner === null ? undefined : sql`${pages.frontmatter}->>'owner' = ${due.owner}`,
       ),
     )
     .orderBy(asc(until), asc(pages.title))

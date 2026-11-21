@@ -85,6 +85,16 @@ async function aNewPageStartsFromATemplate(db: Database): Promise<void> {
   expect(page.frontmatter).toMatchObject({ jd_category: '01', tags: ['meetings'] });
 }
 
+async function theOwnerIsReminded(db: Database, email: string): Promise<void> {
+  const today = documentOf((await getHtml(db, email, '/')).text);
+  const reminded = [...today.querySelectorAll('[data-review] li')].map((row) => row.textContent);
+  expect(reminded).toEqual(['Old procedurelapsed on 2025-08-08']);
+  const yours = await get(db, { email }, '/api/pages/review/yours');
+  expect((yours.body['pages'] as { title: string }[]).map((page) => page.title)).toEqual([
+    'Old procedure',
+  ]);
+}
+
 async function verificationIsSetShownAndListedWhenItLapses(db: Database): Promise<void> {
   const made = await world(db);
   const lapsed = await fileKnowledge(db, made.editor.email, '01', {
@@ -119,6 +129,7 @@ async function verificationIsSetShownAndListedWhenItLapses(db: Database): Promis
   expect(home.querySelector('main a[href="/wiki/review"]')?.textContent).toContain(
     '1 page needs review',
   );
+  await theOwnerIsReminded(db, made.editor.email);
   const elsewhere = await getHtml(db, made.stranger, '/wiki/review');
   expect(documentOf(elsewhere.text).querySelector('main table')).toBeNull();
 }

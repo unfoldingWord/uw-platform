@@ -132,6 +132,7 @@ function wikiReads(routes: Hono<AppEnv>): void {
   routes.get('/favourites', pageReads.favourites);
   routes.get('/templates', pageReads.templates);
   routes.get('/review', pageReads.review);
+  routes.get('/review/yours', pageReads.reviewDue);
 }
 
 function pageRoutes(): Hono<AppEnv> {

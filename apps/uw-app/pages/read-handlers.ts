@@ -22,7 +22,7 @@ import { categoryCounts } from './categories.ts';
 import { capabilitiesOn } from './capabilities.ts';
 import { favouritesOf, isFavourite } from './favourites.ts';
 import { templatesFor } from './templates.ts';
-import { lapsedPages } from './verification.ts';
+import { lapsedPages, reviewDueFor } from './verification.ts';
 import { pageHistory, pageVersion } from './history.ts';
 import { listPages, titleIndex } from './listing.ts';
 import { recentPages } from './recent.ts';
@@ -136,6 +136,9 @@ const templates: Read = async (c, { db, actor, at }) =>
 const review: Read = async (c, { db, actor, at }) =>
   accepted(c, lapsedPagesReplySchema.parse({ pages: await lapsedPages(db, actor, at) }));
 
+const reviewDue: Read = async (c, { db, actor, at }) =>
+  accepted(c, lapsedPagesReplySchema.parse({ pages: await reviewDueFor(db, actor, at) }));
+
 const favourite: Read = async (c, { db, actor, at }) => {
   const pageId = z.uuid().safeParse(c.req.param('pageId'));
   const page = pageId.success ? await readPage(db, actor, pageId.data, at) : null;
@@ -187,6 +190,7 @@ export const pageReads = {
   favourite: reading(favourite),
   templates: reading(templates),
   review: reading(review),
+  reviewDue: reading(reviewDue),
   exported: reading(exported),
   versions: reading(versions),
   version: reading(version),
