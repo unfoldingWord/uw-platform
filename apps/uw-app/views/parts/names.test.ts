@@ -16,6 +16,7 @@ const prototypeSidebar = [
   'unfoldingWord Home',
   'Today',
   'Pages & Wiki',
+  'Tasks',
   'Strategic Cascade',
   'Meetings',
   'JD Crosswalk',

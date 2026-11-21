@@ -27,7 +27,7 @@ async function shown(db: Db, screen: ScreenKernel, placed: Placed): Promise<Chil
     <section
       data-view-embed-shown={view.id}
       aria-label={`${stored.definition.name}: ${view.settings.name}`}
-      class="my-4 flex flex-col gap-2"
+      class="mt-4 mb-4 flex flex-col gap-2"
     >
       <p class="m-0 text-sm">
         <a href={collectionViewPath(stored.definition.key, view.id)} class={pageLink}>
