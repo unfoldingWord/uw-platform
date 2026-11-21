@@ -169,7 +169,6 @@ describe('GL-1 every go-live job runs when its secret exists and skips while it 
     const jobs = secretJobs();
     expect(jobs.map((found) => found.site)).toEqual([
       'cleanup-pr.yml cleanup-pr',
-      'cleanup-pr.yml drop-neon-branch',
       'deploy-pr.yml deploy-pr',
       'deploy-production.yml migrate-production',
       'deploy-production.yml deploy-production',
@@ -177,7 +176,6 @@ describe('GL-1 every go-live job runs when its secret exists and skips while it 
       'deploy-staging.yml migrate-staging',
       'deploy-staging.yml deploy-staging',
       'deploy-staging.yml deploy-ingest-staging',
-      'neon-pr.yml neon-branch',
     ]);
     for (const { site, job } of jobs) {
       expect(gateFaults(job), site).toEqual([]);
@@ -213,8 +211,6 @@ describe('GL-1 the runbook switches on what the go-live files leave unset', () =
       'DATABASE_TUNNEL_HOST_STAGING',
       'DATABASE_URL_PRODUCTION',
       'DATABASE_URL_STAGING',
-      'NEON_API_KEY',
-      'NEON_PROJECT_ID',
     ]);
     if (!goLiveSwitchedOn()) expect(placeholderNames()).toContain('Hyperdrive id');
     else expect(placeholderNames()).not.toContain('Hyperdrive id');
