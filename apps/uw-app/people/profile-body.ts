@@ -4,7 +4,6 @@ import { can } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
 import type { Database, Transaction } from '@uw/db/client';
 import { directoryEntries } from '@uw/db/schema';
-import { directoryCollection } from '../collections/builtins/directory.ts';
 import { ensureBuiltIns } from '../collections/builtins/seed.ts';
 import type { CommandResult } from '../http/commands.ts';
 import { createProfilePage, writeProfileBody } from '../pages/profile-pages.ts';
@@ -19,9 +18,18 @@ function refused(reason: ErrorReason): CommandResult {
 }
 
 export function mayWriteProfileBody(actor: Principal, personId: string, at: Date): boolean {
-  if (actor.kind !== 'person' || actor.personId === null) return false;
+  const profile = { kind: 'person', personId, status: 'active' } as const;
+  if (!can(actor, 'read', profile, at)) return false;
   if (actor.personId === personId) return true;
   return can(actor, 'admin', { kind: 'area', area: DIRECTORY_STEWARD }, at);
+}
+
+export async function personOfProfilePage(db: Database, pageId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ personId: directoryEntries.personId })
+    .from(directoryEntries)
+    .where(eq(directoryEntries.pageId, pageId));
+  return row?.personId ?? null;
 }
 
 export async function profilePageId(db: Database, personId: string): Promise<string | null> {
@@ -63,7 +71,6 @@ async function firstWrite(tx: Transaction, save: Save): Promise<CommandResult> {
     tx,
     {
       pageId,
-      collectionId: directoryCollection.id,
       personId: command.personId,
       title: save.title,
       bodyMd: command.bodyMd,
@@ -90,7 +97,12 @@ async function saveInTransaction(tx: Transaction, save: Save): Promise<CommandRe
     traceId: save.traceId,
     requestId: command.requestId,
   };
-  const change = { pageId, expectedVersion: command.expectedVersion, bodyMd: command.bodyMd };
+  const change = {
+    pageId,
+    expectedVersion: command.expectedVersion,
+    title: save.title,
+    bodyMd: command.bodyMd,
+  };
   const written = await writeProfileBody(tx, change, source);
   return written.ok ? accepted : refused(written.reason);
 }

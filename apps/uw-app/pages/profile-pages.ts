@@ -11,7 +11,6 @@ const PROFILE = 'profile';
 
 export type NewProfilePage = {
   readonly pageId: string;
-  readonly collectionId: string;
   readonly personId: string;
   readonly title: string;
   readonly bodyMd: string;
@@ -26,7 +25,7 @@ export function createProfilePage(
     tx,
     {
       pageId: page.pageId,
-      collectionId: page.collectionId,
+      collectionId: null,
       type: PROFILE,
       jdArea: DIRECTORY_AREA,
       slug: `profile-${page.personId}`,
@@ -44,7 +43,12 @@ export type ProfileWrite =
 
 export async function writeProfileBody(
   tx: Transaction,
-  change: { readonly pageId: string; readonly expectedVersion: number; readonly bodyMd: string },
+  change: {
+    readonly pageId: string;
+    readonly expectedVersion: number;
+    readonly title: string;
+    readonly bodyMd: string;
+  },
   source: WriteSource,
 ): Promise<ProfileWrite> {
   const [stored] = await tx.select().from(pages).where(eq(pages.id, change.pageId)).for('update');
@@ -55,7 +59,7 @@ export async function writeProfileBody(
   if (await embedsItself(tx, stored.id, bodyMd)) return { ok: false, reason: 'embed_cycle' };
   const [row] = await tx
     .update(pages)
-    .set({ bodyMd, version: stored.version + 1, updatedAt: source.at })
+    .set({ title: change.title, bodyMd, version: stored.version + 1, updatedAt: source.at })
     .where(and(eq(pages.id, stored.id), eq(pages.version, stored.version)))
     .returning();
   if (!row) throw new Error('a locked profile page keeps its version until written');

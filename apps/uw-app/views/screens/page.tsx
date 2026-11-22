@@ -16,6 +16,7 @@ import { openComments } from '../../pages/comments.ts';
 import { isFavourite } from '../../pages/favourites.ts';
 import { recordView } from '../../pages/recent.ts';
 import { verificationOf } from '../../pages/verification.ts';
+import { personOfProfilePage } from '../../people/profile-body.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import {
   backOf,
@@ -34,6 +35,7 @@ import {
   pageManagePath,
   pagePath,
   pageVersionPath,
+  personPath,
   wikiNewPath,
   withBack,
 } from '../parts/paths.ts';
@@ -296,6 +298,13 @@ async function storedExtras(
   };
 }
 
+async function profileOf(c: Context<AppEnv>, page: ShownPage['page']): Promise<string | null> {
+  const database = c.get('database');
+  if (page.type !== 'profile' || database === null) return null;
+  const personId = await personOfProfilePage(database.db, page.id);
+  return personId === null ? null : personPath(personId);
+}
+
 export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   if (screen === null) return screenRefusal(c);
@@ -304,6 +313,8 @@ export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
   const read = await screen.kernel.views.page(screen.caller, { pageId }, { at: screen.at });
   const shown = read.status === 'accepted' ? await shownPage(c, screen, pageId) : null;
   if (shown === null) return notFound(c);
+  const profile = await profileOf(c, shown.page);
+  if (profile !== null) return c.redirect(profile, 302);
   const draft = shown.canEdit
     ? await draftsOf(c.env)?.status(shown.page.id, shown.page.version)
     : null;

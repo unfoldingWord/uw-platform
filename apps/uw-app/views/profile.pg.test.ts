@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
+import { eq } from 'drizzle-orm';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import type { Principal, SetPropertyCommand } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
+import { pages, people } from '@uw/db/schema';
 import { seedPage, seedPerson, seedRevokedDefaultReading } from '@uw/db/test-seed';
 import { createApp } from '../app.tsx';
 import { ensureBuiltIns } from '../collections/builtins/seed.ts';
@@ -186,6 +188,25 @@ async function profilePageOf(w: World, personId: string) {
   return page;
 }
 
+async function noBodyWithoutReadingTheDirectory(w: World): Promise<void> {
+  const own = await save(w, w.idle, saveBody(idOf(w.idle), 'I can still write this.', null));
+  expect(own).toEqual({ ok: false, reason: 'not_permitted' });
+}
+
+async function bodyPageFollowsTheProfile(w: World): Promise<void> {
+  const blair = idOf(w.blair);
+  expect((await save(w, w.blair, saveBody(blair, 'First.', null))).ok).toBe(true);
+  const first = await profilePageOf(w, blair);
+  const [row] = await w.db.select().from(pages).where(eq(pages.id, first.id));
+  expect(row?.collectionId).toBeNull();
+  await w.db.update(people).set({ displayName: 'Blair Reed' }).where(eq(people.id, blair));
+  expect((await save(w, w.blair, saveBody(blair, 'Second.', first.version))).ok).toBe(true);
+  expect((await profilePageOf(w, blair)).title).toBe('Blair Reed');
+  const raw = await open(w, w.avery, `/pages/${first.id}`);
+  expect(raw.page.status).toBe(302);
+  expect(raw.page.headers.get('location')).toBe(personPath(blair));
+}
+
 async function profilePageRefusesTheGenericEditor(w: World): Promise<void> {
   const blair = idOf(w.blair);
   expect((await save(w, w.blair, saveBody(blair, 'Mine.', null))).ok).toBe(true);
@@ -257,6 +278,10 @@ describe.skipIf(!testServer)('#208 a person’s profile is their directory row',
     run(editingRules));
   it('lets the person or the directory steward write the body, and no colleague', () =>
     run(bodyIsWrittenByThePersonOrTheSteward));
+  it('refuses a body write from a person who cannot read the directory, themself included', () =>
+    run(noBodyWithoutReadingTheDirectory));
+  it('keeps the body page out of the directory collection, titled with the current name, and sends /pages to the profile', () =>
+    run(bodyPageFollowsTheProfile));
   it('refuses the generic page editor on a profile body, even for an org admin', () =>
     run(profilePageRefusesTheGenericEditor));
   it('lists open tasks, programs and owned pages only from areas the reader can read', () =>
