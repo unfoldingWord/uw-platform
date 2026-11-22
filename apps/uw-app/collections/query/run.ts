@@ -155,6 +155,27 @@ async function groupCounts(
   return new Map(list.map((row) => [row.group_key, Number(row.n)]));
 }
 
+export async function groupSums(
+  db: Executor,
+  scope: Scope,
+  query: RowQuery,
+  key: string,
+): Promise<ReadonlyMap<string, number> | null> {
+  const plan = planOf(scope, query);
+  const property = scope.definition.properties.find((p) => p.key === key);
+  if (!plan.ok || plan.value.group === null || property === undefined) return null;
+  if (accessOf(scope, property) !== 'all') return null;
+  const expr = expressionOf(scope, property);
+  if (expr?.kind !== 'number') return null;
+  const base = baseOf(scope);
+  const rows = await db.execute(sql`
+    SELECT ${plan.value.group.key} AS group_key, coalesce(sum(${expr.scalar}), 0)::float8 AS total
+    FROM ${base.from} WHERE ${base.where} AND (${plan.value.where})
+    GROUP BY 1`);
+  const list = [...rows] as unknown as { group_key: string; total: number }[];
+  return new Map(list.map((row) => [row.group_key, Number(row.total)]));
+}
+
 const instantTypes: ReadonlySet<string> = new Set([
   'created_time',
   'edited_time',

@@ -3,6 +3,7 @@ import {
   rowQuerySchema,
   type CollectionRow,
   type FilterGroup,
+  type RowQuery,
   type RowsReply,
   type SavedView,
 } from '@uw/contracts';
@@ -13,7 +14,7 @@ import { ensureBuiltIns } from '../../collections/builtins/seed.ts';
 import { coversOf } from '../../collections/covers.ts';
 import { loadCollection, type StoredCollection } from '../../collections/definitions.ts';
 import { namesFor } from '../../collections/display.ts';
-import { mayReadCollection, readRows } from '../../collections/reader.ts';
+import { mayReadCollection, readGroupSums, readRows } from '../../collections/reader.ts';
 import { viewsOf } from '../../collections/view-rows.ts';
 import { activePeople } from '../../people/directory.ts';
 import { monthBounds } from './collection-calendar.tsx';
@@ -72,6 +73,18 @@ async function peopleChoices(db: Db) {
   return everyone.map((person) => ({ value: person.personId, label: person.email }));
 }
 
+async function sumsOf(
+  db: Db,
+  screen: ScreenKernel,
+  stored: StoredCollection,
+  view: SavedView,
+  query: RowQuery,
+) {
+  const sum = view.settings.layout === 'chart' ? (view.settings.chart?.sum ?? null) : null;
+  if (sum === null) return null;
+  return readGroupSums(db, stored, screen.caller.actor, screen.at, { query, sum });
+}
+
 export async function layoutOf(
   db: Db,
   screen: ScreenKernel,
@@ -107,6 +120,7 @@ export async function layoutOf(
       people: await peopleChoices(db),
       covers,
       month,
+      sums: await sumsOf(db, screen, stored, view, query),
     },
   };
 }

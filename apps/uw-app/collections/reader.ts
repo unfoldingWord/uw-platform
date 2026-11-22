@@ -16,7 +16,7 @@ import type { Executor } from '@uw/db/client';
 import { pages, people, tasks } from '@uw/db/schema';
 import { allCollections, type StoredCollection } from './definitions.ts';
 import { declaredGroupOrder, EMPTY_GROUP, type CompiledGroup } from './query/order.ts';
-import { planOf, runQuery, type RowsResult } from './query/run.ts';
+import { groupSums, planOf, runQuery, type RowsResult } from './query/run.ts';
 import { accessOf, scopeFor, type Scope, type Target } from './query/scope.ts';
 
 export type Read<T> =
@@ -184,4 +184,16 @@ export async function readRow(
     only: rowId,
   });
   return result.ok ? (result.value.rows[0] ?? null) : null;
+}
+
+export async function readGroupSums(
+  db: Executor,
+  stored: StoredCollection,
+  actor: Principal,
+  at: Date,
+  request: { readonly query: RowQuery; readonly sum: string },
+): Promise<ReadonlyMap<string, number> | null> {
+  if (!mayReadCollection(stored, actor, at)) return null;
+  const scope = await scopeOf(db, stored, actor, at);
+  return groupSums(db, scope, request.query, request.sum);
 }
