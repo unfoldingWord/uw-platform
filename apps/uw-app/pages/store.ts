@@ -66,6 +66,12 @@ const activationRequired: PageRefusal = { ok: false, reason: 'activation_require
 
 const ISSUE_MIRROR = 'issue';
 
+const PROFILE = 'profile';
+
+function writtenByItsRow(type: string): boolean {
+  return type === PROFILE || isCollectionPageType(type);
+}
+
 const issueMirror: PageRefusal = {
   ok: false,
   reason: 'not_permitted',
@@ -192,7 +198,7 @@ export function createPage(
 
 function reservedType(type: string): PageRefusal | null {
   if (type === ISSUE_MIRROR) return issueMirror;
-  return isCollectionPageType(type) ? collectionRow : null;
+  return writtenByItsRow(type) ? collectionRow : null;
 }
 
 function keptFrontmatter(stored: Page, command: CheckedSave['command']): CheckedSave['command'] {
@@ -375,6 +381,10 @@ async function writeLinked(
   return saved;
 }
 
+function statusOf(checked: CheckedSave, stored: Page): PageStatus | PageRefusal {
+  return stored.type === PROFILE ? collectionRow : checked.statusFor(stored);
+}
+
 async function updateInTransaction(tx: Transaction, save: Save): Promise<PageResult | PageRefusal> {
   const { actor, checked, at } = save;
   const { command } = checked;
@@ -388,7 +398,7 @@ async function updateInTransaction(tx: Transaction, save: Save): Promise<PageRes
   if (!can(actor, 'write', { kind: 'area', area: stored.jdArea }, at)) {
     return refused('not_permitted');
   }
-  const chosen = checked.statusFor(stored);
+  const chosen = statusOf(checked, stored);
   if (typeof chosen !== 'string') return chosen;
   const full = await derivedSave(tx, stored, chosen, keptFrontmatter(stored, command));
   if ('ok' in full) return full;

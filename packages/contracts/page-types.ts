@@ -148,6 +148,7 @@ export const pageTypeRegistry = {
   platform: { frontmatter: platformFrontmatterSchema, ...internalSync },
   knowledge: { frontmatter: knowledgeFrontmatterSchema, ...internalSync },
   entry: { frontmatter: collectionFrontmatterSchema, ...internalSync },
+  profile: { frontmatter: z.strictObject({}), ...internalSync },
   portfolio: { frontmatter: collectionFrontmatterSchema, ...internalSync },
   program: { frontmatter: collectionFrontmatterSchema, ...internalSync },
   project: { frontmatter: collectionFrontmatterSchema, ...internalSync },

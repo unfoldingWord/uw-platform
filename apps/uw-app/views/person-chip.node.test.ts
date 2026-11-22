@@ -13,7 +13,6 @@ const alwaysRaw = [/\bholderText\(/u, /\.authorName\b/u, /=\s*[\w.]*holder\.name
 const allowed = new Set([
   'apps/uw-app/views/parts/holder.tsx',
   'apps/uw-app/views/parts/holder-words.ts',
-  'apps/uw-app/views/screens/person.tsx',
 ]);
 
 function viewFiles(): readonly string[] {

@@ -105,7 +105,7 @@ export const modules = [
       '/api/collections/:key/views/:viewId/export',
       '/webhooks/:source',
     ],
-    page_types: ['knowledge', 'entry'],
+    page_types: ['knowledge', 'entry', 'profile'],
     queues: ['uw-ingest-events'],
     name: 'Core',
     summary:

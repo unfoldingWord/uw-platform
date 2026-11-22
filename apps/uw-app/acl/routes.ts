@@ -4,6 +4,7 @@ import {
   declinePersonCommandSchema,
   grantRoleCommandSchema,
   revokeRoleCommandSchema,
+  saveProfileBodyCommandSchema,
   type GrantRoleCommand,
   type RevokeRoleCommand,
 } from '@uw/contracts';
@@ -13,8 +14,8 @@ import type { AppEnv } from '../deps.ts';
 import { malformed, readJson, toOutcome, type CommandResult } from '../http/commands.ts';
 import { refuse, reply } from '../http/outcomes.ts';
 import { approvePerson, declinePerson } from '../people/approval.ts';
+import { saveProfileBody } from '../people/profile-body.ts';
 import { accessScreen } from '../views/screens/access.tsx';
-import { personScreen } from '../views/screens/person.tsx';
 import { grantRole, revokeRole } from './grant-commands.ts';
 
 type Run = (
@@ -64,6 +65,15 @@ const handlers = new Map<string, Run>([
       return { requestId: parsed.data.requestId, result };
     },
   ],
+  [
+    'save_profile_body',
+    async (db, actor, body, traceId, at) => {
+      const parsed = saveProfileBodyCommandSchema.safeParse(body);
+      if (!parsed.success) return null;
+      const result = await saveProfileBody(db, actor, parsed.data, traceId, at);
+      return { requestId: parsed.data.requestId, result };
+    },
+  ],
 ]);
 
 async function handle(c: Context<AppEnv>): Promise<Response> {
@@ -88,7 +98,5 @@ export function aclRoutes(): Hono<AppEnv> {
 export function directoryScreenRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
   routes.get('/access', accessScreen);
-  routes.get('/people/:personId', personScreen);
-  routes.get('/people/:personId/:slug', personScreen);
   return routes;
 }

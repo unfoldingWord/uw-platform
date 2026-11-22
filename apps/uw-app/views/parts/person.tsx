@@ -16,7 +16,7 @@ export {
 
 function chipFor(reading: Reading, person: PersonName): PersonChipPerson {
   const href = can(reading.reader, 'read', { kind: 'person', ...person }, reading.at)
-    ? personPath(person.personId, person.displayName)
+    ? personPath(person.personId)
     : undefined;
   return { name: person.displayName, href };
 }

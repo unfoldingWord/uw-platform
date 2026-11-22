@@ -14,6 +14,7 @@ const gatingByType = {
   issue: 'open',
   knowledge: 'open',
   entry: 'open',
+  profile: 'open',
   portfolio: 'open',
   program: 'open',
   project: 'open',

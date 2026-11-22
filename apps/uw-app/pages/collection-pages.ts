@@ -8,7 +8,7 @@ import { snapshot, toPage } from './store.ts';
 
 export type NewCollectionPage = {
   readonly pageId: string;
-  readonly collectionId: string;
+  readonly collectionId: string | null;
   readonly type: PageType;
   readonly jdArea: JdArea;
   readonly slug: string;

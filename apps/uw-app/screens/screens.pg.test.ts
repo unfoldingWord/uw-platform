@@ -185,7 +185,7 @@ async function boardScreens(db: Database): Promise<Screen[]> {
     ['health', healthPath()],
     ['health-detail', healthPath('breaker')],
     ['access', accessPath()],
-    ['person', personPath(world.rowan.personId ?? '', 'Rowan Test')],
+    ['person', personPath(world.rowan.personId ?? '')],
     ['persona', personaPath(pageId)],
     ['page', pagePath(pageId)],
     ['knowledge-page', pagePath(knowledgeId)],

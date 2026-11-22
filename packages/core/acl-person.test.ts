@@ -36,22 +36,35 @@ const orgAdmin: Grant = {
 };
 const lapsed: Grant = { ...areaViewer, expiresAt: '2026-11-01T00:00:00.000Z' };
 
-describe('#208 can() reads a person page by the directory rule', () => {
-  it('lets anyone who can read an area open an active colleague', () => {
-    expect(can(reader([areaViewer]), 'read', person(blair, 'active'), at)).toBe(true);
+const directoryViewer: Grant = {
+  ...areaViewer,
+  grantId: '00000000-0000-4000-8000-0000000000b3',
+  scopeArea: '00-09',
+};
+
+describe('#208 can() opens a profile by the directory collection rule', () => {
+  it('lets a reader of the directory area open an active colleague', () => {
+    expect(can(reader([directoryViewer]), 'read', person(blair, 'active'), at)).toBe(true);
+    expect(can(reader([orgAdmin]), 'read', person(blair, 'active'), at)).toBe(true);
   });
 
-  it('keeps a reader with no live grant to their own page', () => {
-    expect(can(reader([]), 'read', person(blair, 'active'), at)).toBe(false);
-    expect(can(reader([lapsed]), 'read', person(blair, 'active'), at)).toBe(false);
-    expect(can(reader([]), 'read', person(avery, 'active'), at)).toBe(true);
+  it('keeps a reader who cannot read the directory area out, themself included', () => {
+    expect(can(reader([areaViewer]), 'read', person(blair, 'active'), at)).toBe(false);
+    expect(can(reader([]), 'read', person(avery, 'active'), at)).toBe(false);
+    expect(
+      can(
+        reader([{ ...directoryViewer, expiresAt: lapsed.expiresAt }]),
+        'read',
+        person(blair, 'active'),
+        at,
+      ),
+    ).toBe(false);
   });
 
-  it('shows a pending or declined person only to an org admin and to themself', () => {
+  it('opens no profile for a pending or declined person, because the directory lists only active people', () => {
     for (const status of ['pending', 'disabled'] as const) {
-      expect(can(reader([areaViewer]), 'read', person(blair, status), at)).toBe(false);
-      expect(can(reader([orgAdmin]), 'read', person(blair, status), at)).toBe(true);
-      expect(can(reader([]), 'read', person(avery, status), at)).toBe(true);
+      expect(can(reader([orgAdmin]), 'read', person(blair, status), at)).toBe(false);
+      expect(can(reader([directoryViewer]), 'read', person(avery, status), at)).toBe(false);
     }
   });
 
