@@ -46,6 +46,7 @@ function page(markdown: string, content: string): Document {
           <template data-editor-menu-row><li role="option"><span data-title></span></li></template>
         </div>
         <p data-editor-status></p>
+        <span data-editor-mode>Joining the working draft</span>
         <div data-editor-text><textarea name="bodyMd">${markdown}</textarea></div>
         <button type="submit">Save</button>
       </form></body>`,
@@ -156,6 +157,8 @@ describe('#175 nothing is typed or saved until the shared draft is ready', () =>
     const editor = await started;
     expect(saveButton(document)?.disabled).toBe(false);
     expect(editor?.isEditable).toBe(true);
+    expect(document.querySelector('form')?.hasAttribute('data-draft-live')).toBe(true);
+    expect(document.querySelector('[data-editor-mode]')?.textContent).toBe('Working draft');
     editor?.commands.insertContentAt(0, '<p>Joined.</p>');
     const saved = submitted(document);
     expect(saved.sent).toBe(true);
@@ -177,6 +180,8 @@ describe('#175 nothing is typed or saved until the shared draft is ready', () =>
     expect(document.querySelector('[data-editor-status]')?.textContent).toContain(
       'editing on your own',
     );
+    expect(document.querySelector('form')?.hasAttribute('data-draft-live')).toBe(false);
+    expect(document.querySelector('[data-editor-mode]')?.textContent).toBe('Editing on your own');
     expect(submit(document)).toBe(RULES);
     expect(document.querySelector<HTMLInputElement>('input[name="draftState"]')?.value).toBe('');
   });

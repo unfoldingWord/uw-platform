@@ -97,6 +97,26 @@ function Search() {
   );
 }
 
+export function Crumbs(props: {
+  readonly code?: string | undefined;
+  readonly crumbs: readonly Crumb[];
+}) {
+  return (
+    <nav aria-label="Breadcrumb" class="min-w-0 text-sm font-semibold text-text-3">
+      <ol class="flex flex-wrap items-center gap-2">
+        {props.code === undefined ? null : (
+          <li class="rounded-sm bg-accent-soft px-1 font-mono text-xs text-accent-text">
+            {props.code}
+          </li>
+        )}
+        {props.crumbs.map((crumb, index) => (
+          <CrumbItem crumb={crumb} last={index === props.crumbs.length - 1} />
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
 export function TopBar(props: {
   readonly code?: string | undefined;
   readonly crumbs: readonly Crumb[];
@@ -108,18 +128,7 @@ export function TopBar(props: {
       data-chrome=""
       class="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-4 py-3 md:px-5"
     >
-      <nav aria-label="Breadcrumb" class="min-w-0 text-sm font-semibold text-text-3">
-        <ol class="flex flex-wrap items-center gap-2">
-          {props.code === undefined ? null : (
-            <li class="rounded-sm bg-accent-soft px-1 font-mono text-xs text-accent-text">
-              {props.code}
-            </li>
-          )}
-          {props.crumbs.map((crumb, index) => (
-            <CrumbItem crumb={crumb} last={index === props.crumbs.length - 1} />
-          ))}
-        </ol>
-      </nav>
+      <Crumbs code={props.code} crumbs={props.crumbs} />
       <Tabs tabs={props.tabs ?? []} />
       <div class="ml-auto flex flex-wrap items-center gap-2">
         <QuickSwitcherButton />

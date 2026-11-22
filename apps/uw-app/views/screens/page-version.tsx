@@ -14,7 +14,13 @@ import { renderPage } from '../../pages/render-page.ts';
 import { updatePage } from '../../pages/store.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { pageNames } from '../parts/names.ts';
-import { pageLink, pageSpec, shownPage, typeWords, type ShownPage } from '../parts/page-shown.ts';
+import {
+  pageLink,
+  pageScreenSpec,
+  shownPage,
+  typeWords,
+  type ShownPage,
+} from '../parts/page-shown.ts';
 import { idParam } from '../parts/params.ts';
 import { pagePath, pageVersionPath } from '../parts/paths.ts';
 import { shownPerson, shownText, Who } from '../parts/person.tsx';
@@ -129,7 +135,7 @@ async function render(c: Context<AppEnv>, old: Old, refused: string | null): Pro
   const label = `${pageNames.pageVersion} ${String(snapshot.page.version)}`;
   return renderScreen(
     c,
-    pageSpec(shown, label),
+    await pageScreenSpec(c, screen, shown, label),
     <>
       <PageHead
         eyebrow={typeWords[shown.page.type] ?? shown.page.type}

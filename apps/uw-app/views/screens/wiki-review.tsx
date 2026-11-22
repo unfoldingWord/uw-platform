@@ -5,6 +5,7 @@ import { Table } from '@uw/ui/components/table.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { lapsedPages } from '../../pages/verification.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
+import { wikiBranch } from '../parts/wiki-tree.ts';
 import { moduleCodes, pageNames } from '../parts/names.ts';
 import { pageLink } from '../parts/page-shown.ts';
 import { pagePath, wikiPath } from '../parts/paths.ts';
@@ -49,9 +50,10 @@ export async function wikiReviewScreen(c: Context<AppEnv>): Promise<Response> {
     ),
     until: entry.until,
   }));
+  const branch = await wikiBranch(database.db, screen.caller.actor, screen.at, {});
   return renderScreen(
     c,
-    spec,
+    { ...spec, branch },
     <>
       <PageHead
         eyebrow={pageNames.wiki}

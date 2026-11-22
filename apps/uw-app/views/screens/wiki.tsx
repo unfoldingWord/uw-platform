@@ -6,9 +6,10 @@ import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { categoryCounts } from '../../pages/categories.ts';
 import { favouritesOf } from '../../pages/favourites.ts';
-import { lapsedPages } from '../../pages/verification.ts';
+import { lapsedCount } from '../../pages/verification.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
-import { areasWithin, moduleCodes, pageNames, platformAreas } from '../parts/names.ts';
+import { moduleCodes, pageNames } from '../parts/names.ts';
+import { branchOf, groupsOf, type Group } from '../parts/wiki-tree.ts';
 import { pageLink } from '../parts/page-shown.ts';
 import { pagePath, wikiAreaPath, wikiNewPath, wikiPath, wikiReviewPath } from '../parts/paths.ts';
 
@@ -17,22 +18,6 @@ const row =
 
 export function countWords(pages: number): string {
   return pages === 1 ? '1 page' : `${String(pages)} pages`;
-}
-
-type Group = {
-  readonly code: string;
-  readonly name: string;
-  readonly categories: readonly PageCategory[];
-};
-
-function groupsOf(categories: readonly PageCategory[]): readonly Group[] {
-  return platformAreas
-    .map((area) => {
-      const within = areasWithin(area.code);
-      const held = categories.filter((category) => within.includes(category.area));
-      return { code: area.code, name: area.name, categories: held };
-    })
-    .filter((group) => group.categories.length > 0);
 }
 
 function CategoryRow(props: { readonly category: PageCategory }) {
@@ -99,13 +84,14 @@ export async function wikiScreen(c: Context<AppEnv>): Promise<Response> {
   const database = c.get('database');
   if (screen === null || database === null) return screenRefusal(c);
   const groups = groupsOf(await categoryCounts(database.db, screen.caller.actor, screen.at));
-  const lapsed = (await lapsedPages(database.db, screen.caller.actor, screen.at)).length;
+  const lapsed = await lapsedCount(database.db, screen.caller.actor, screen.at);
   const favourites = await favouritesOf(database.db, screen.caller.actor, screen.at);
   const spec = {
     title: pageNames.wiki,
     current: wikiPath(),
     code: moduleCodes.pages,
     crumbs: [{ label: pageNames.wiki }],
+    branch: branchOf(groups, { lapsed }),
   };
   return renderScreen(
     c,

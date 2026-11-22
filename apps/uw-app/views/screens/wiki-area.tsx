@@ -13,9 +13,10 @@ import { commitOf } from '../../env.ts';
 import { renderPage } from '../../pages/render-page.ts';
 import { readPage } from '../../pages/store.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
+import { wikiBranch } from '../parts/wiki-tree.ts';
 import { areaLabel, moduleCodes, pageNames } from '../parts/names.ts';
 import { pageLink } from '../parts/page-shown.ts';
-import { pageManagePath, pagePath, wikiPath } from '../parts/paths.ts';
+import { pageManagePath, pagePath, wikiAreaPath, wikiPath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 import { countWords } from './wiki.tsx';
 
@@ -107,9 +108,10 @@ export async function wikiAreaScreen(c: Context<AppEnv>): Promise<Response> {
   const title = areaLabel(home.area);
   const spec = {
     title,
-    current: wikiPath(),
+    current: wikiAreaPath(home.area),
     code: moduleCodes.pages,
     crumbs: [{ label: pageNames.wiki, href: wikiPath() }, { label: title }],
+    branch: await wikiBranch(database.db, actor, screen.at, { area: home.area }),
   };
   return renderScreen(
     c,

@@ -78,7 +78,7 @@ async function saveReturnsToTheReadView(db: Database): Promise<void> {
   const document = documentOf(edit.text);
   expect(document.querySelector('textarea[name="bodyMd"]')?.textContent).toBe(BODY);
   expect(document.querySelector(`main a[href="/pages/${made.pageId}"]`)?.textContent).toContain(
-    'Cancel',
+    'Back to reading',
   );
   const saved = await postForm(
     db,
@@ -103,6 +103,9 @@ async function refusedSaveKeepsWhatWasTyped(db: Database): Promise<void> {
   expect(stale.text).toContain('Someone saved a newer version');
   const document = documentOf(stale.text);
   expect(document.querySelector('textarea[name="bodyMd"]')?.textContent).toBe('My long edit.');
+  expect(document.querySelector('form[data-page-edit]')?.hasAttribute('data-unsaved')).toBe(true);
+  const fresh = documentOf((await getHtml(db, made.editor, path)).text);
+  expect(fresh.querySelector('form[data-page-edit]')?.hasAttribute('data-unsaved')).toBe(false);
   const read = await getHtml(db, made.editor, `/pages/${made.pageId}`);
   expect(documentOf(read.text).querySelector('[data-page-body] p')?.textContent).toBe('First.');
 }

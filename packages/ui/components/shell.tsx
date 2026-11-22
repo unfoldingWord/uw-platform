@@ -48,12 +48,13 @@ function SkipLink() {
   );
 }
 
-function Main(props: { readonly children?: Child }) {
+function Main(props: { readonly children?: Child; readonly sheet?: boolean }) {
+  const ground = props.sheet === true ? 'bg-surface' : '';
   return (
     <main
       id="main"
       tabindex={-1}
-      class="relative min-w-0 flex-1 p-4 md:min-h-0 md:overflow-y-auto md:px-5 md:pt-5 md:pb-7"
+      class={`relative min-w-0 flex-1 p-4 md:min-h-0 md:overflow-y-auto md:px-5 md:pt-5 md:pb-7 ${ground}`}
     >
       {props.children}
     </main>
@@ -69,6 +70,58 @@ function Overlays(props: { readonly frame: Frame }) {
   );
 }
 
+function FocusMain(props: { readonly children?: Child }) {
+  return (
+    <main id="main" tabindex={-1} data-focus class="relative flex min-h-dvh min-w-0 flex-col">
+      {props.children}
+    </main>
+  );
+}
+
+function Framed(props: {
+  readonly title: string;
+  readonly frame: Frame;
+  readonly current: string;
+  readonly code?: string | undefined;
+  readonly crumbs: readonly Crumb[];
+  readonly tabs?: readonly Tab[] | undefined;
+  readonly actions?: Child | undefined;
+  readonly bare?: boolean | undefined;
+  readonly children?: Child;
+}) {
+  const { frame } = props;
+  return (
+    <div data-frame class="grid min-h-dvh md:h-dvh md:grid-cols-frame md:overflow-hidden">
+      <Sidebar
+        sections={frame.sections}
+        current={props.current}
+        person={frame.person}
+        wordmarkPath={frame.wordmarkPath}
+      />
+      <div class="flex min-w-0 flex-col md:min-h-0">
+        <PhoneHeader
+          title={props.title}
+          waiting={frame.waiting}
+          sections={frame.sections}
+          current={props.current}
+          person={frame.person}
+          wordmarkPath={frame.wordmarkPath}
+        />
+        {props.bare === true ? null : (
+          <TopBar
+            code={props.code}
+            crumbs={props.crumbs}
+            tabs={props.tabs}
+            actions={props.actions}
+          />
+        )}
+        <Main sheet={props.bare === true}>{props.children}</Main>
+        <StatusBar status={frame.status} />
+      </div>
+    </div>
+  );
+}
+
 export function Shell(props: {
   readonly title: string;
   readonly frame: Frame;
@@ -79,6 +132,8 @@ export function Shell(props: {
   readonly actions?: Child | undefined;
   readonly stylesheet: string;
   readonly script?: string;
+  readonly focus?: boolean | undefined;
+  readonly bare?: boolean | undefined;
   readonly children?: Child;
 }) {
   const { frame } = props;
@@ -88,32 +143,22 @@ export function Shell(props: {
       <body class="min-h-dvh bg-canvas font-sans text-base text-text">
         <SkipLink />
         <div data-progress aria-hidden="true"></div>
-        <div data-frame class="grid min-h-dvh md:h-dvh md:grid-cols-frame md:overflow-hidden">
-          <Sidebar
-            sections={frame.sections}
+        {props.focus === true ? (
+          <FocusMain>{props.children}</FocusMain>
+        ) : (
+          <Framed
+            title={props.title}
+            frame={frame}
             current={props.current}
-            person={frame.person}
-            wordmarkPath={frame.wordmarkPath}
-          />
-          <div class="flex min-w-0 flex-col md:min-h-0">
-            <PhoneHeader
-              title={props.title}
-              waiting={frame.waiting}
-              sections={frame.sections}
-              current={props.current}
-              person={frame.person}
-              wordmarkPath={frame.wordmarkPath}
-            />
-            <TopBar
-              code={props.code}
-              crumbs={props.crumbs}
-              tabs={props.tabs}
-              actions={props.actions}
-            />
-            <Main>{props.children}</Main>
-            <StatusBar status={frame.status} />
-          </div>
-        </div>
+            code={props.code}
+            crumbs={props.crumbs}
+            tabs={props.tabs}
+            actions={props.actions}
+            bare={props.bare}
+          >
+            {props.children}
+          </Framed>
+        )}
         <Overlays frame={frame} />
       </body>
     </html>

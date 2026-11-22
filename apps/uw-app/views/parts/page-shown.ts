@@ -1,5 +1,10 @@
 import type { Context } from 'hono';
-import { knowledgeFrontmatterSchema, type Page, type PageEntry } from '@uw/contracts';
+import {
+  knowledgeFrontmatterSchema,
+  type JdCategory,
+  type Page,
+  type PageEntry,
+} from '@uw/contracts';
 import { can } from '@uw/core/acl';
 import type { AppEnv } from '../../deps.ts';
 import { pageHistory, type PageVersion } from '../../pages/history.ts';
@@ -10,6 +15,7 @@ import { ancestorsOf, type Ancestor } from '../../pages/tree.ts';
 import type { ScreenKernel } from './frame.tsx';
 import { moduleCodes, pageNames } from './names.ts';
 import { agentQueuesPath, pagePath, wikiPath } from './paths.ts';
+import { wikiBranch } from './wiki-tree.ts';
 
 export const pageLink =
   'font-heavy text-accent-text underline outline-offset-2 outline-accent-text focus-visible:outline-2';
@@ -88,4 +94,27 @@ export function pageSpec(shown: ShownPage, last: string | null) {
     code: wiki ? moduleCodes.pages : moduleCodes.agentQueues,
     crumbs: [...lead, ...here],
   };
+}
+
+export function categoryOf(page: Page): JdCategory | null {
+  const filed = knowledgeFrontmatterSchema.safeParse(page.frontmatter);
+  return page.type === 'knowledge' && filed.success ? filed.data.jd_category : null;
+}
+
+export async function pageScreenSpec(
+  c: Context<AppEnv>,
+  screen: ScreenKernel,
+  shown: ShownPage,
+  last: string | null,
+  pages?: readonly PageEntry[],
+) {
+  const spec = pageSpec(shown, last);
+  const database = c.get('database');
+  const category = categoryOf(shown.page);
+  if (category === null || database === null) return spec;
+  const { page, ancestors } = shown;
+  const current = { id: page.id, title: page.title, topId: ancestors[0]?.id ?? page.id };
+  const here = { category, current, ...(pages === undefined ? {} : { pages }) };
+  const branch = await wikiBranch(database.db, screen.caller.actor, screen.at, here);
+  return { ...spec, current: pagePath(shown.page.id), branch };
 }

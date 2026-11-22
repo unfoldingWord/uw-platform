@@ -9,6 +9,7 @@ import { wireNavigating } from './navigating.ts';
 import { wireNewWorkflow } from './new-workflow.ts';
 import { wirePageUpload } from './page-upload.ts';
 import { wireEditKey } from './edit-key.ts';
+import { wireLeaveEdit } from './leave-edit.ts';
 import { wireFavourite } from './favourite.ts';
 import { wirePassageComment } from './passage.ts';
 import { wirePrint } from './print.ts';
@@ -25,6 +26,11 @@ const timers: LiveTimers = {
 
 const go = (href: string): void => window.location.assign(href);
 const openTab = (href: string): void => void window.open(href, '_blank', 'noopener');
+
+function wireKeys(page: Document): void {
+  wireEditKey(page, go);
+  wireLeaveEdit(page, { go, confirm: (question) => window.confirm(question) });
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   const send: typeof fetch = (input, init) => window.fetch(input, init);
@@ -55,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
   wirePageUpload(document, { fetch: send, uuid: () => crypto.randomUUID() });
   wirePrint(document, () => window.print());
   wireFavourite(document, send);
-  wireEditKey(document, (href) => window.location.assign(href));
+  wireKeys(document);
   wirePassageComment(document, {
     selected: () => {
       const selection = window.getSelection();

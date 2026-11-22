@@ -16,6 +16,8 @@ export type NavItem = {
   readonly count?: NavCount;
   readonly code?: string;
   readonly nested?: boolean;
+  readonly depth?: 1 | 2 | 3;
+  readonly open?: boolean;
 };
 
 export type NavSection = {
@@ -28,6 +30,9 @@ export type NavSection = {
 const focus = 'outline-offset-2 outline-side-code focus-visible:outline-2';
 const row = 'flex items-center gap-2 rounded-sm px-2 py-1 text-sm font-semibold whitespace-nowrap';
 const unbuilt = 'cursor-default opacity-45';
+const guides = { 1: 'ml-4', 2: 'ml-6', 3: 'ml-7' } as const;
+const current =
+  'aria-[current=page]:bg-accent aria-[current=page]:font-heavy aria-[current=page]:text-on-accent';
 
 function Count(props: { readonly count: NavCount | undefined }) {
   const { count } = props;
@@ -57,10 +62,42 @@ function Mark(props: { readonly icon: IconName | undefined }) {
   return <Icon name={props.icon} size={2} />;
 }
 
+function TreeRow(props: {
+  readonly item: NavItem;
+  readonly depth: 1 | 2 | 3;
+  readonly href: string;
+  readonly current: string;
+}) {
+  const { item } = props;
+  const weight = item.open === true ? 'font-heavy' : 'font-semibold';
+  return (
+    <li class={`${guides[props.depth]} border-l border-side-line pl-1`}>
+      <a
+        href={props.href}
+        aria-current={props.href === props.current ? 'page' : undefined}
+        data-open={item.open === true ? '' : undefined}
+        class={`group flex items-center gap-2 rounded-sm px-2 py-1 text-sm ${weight} whitespace-nowrap text-side-text hover:bg-side-hover ${current} ${focus}`}
+      >
+        {item.code === undefined ? null : (
+          <span class="font-mono text-xs text-side-code group-aria-[current=page]:text-on-accent">
+            {item.code}
+          </span>
+        )}
+        <span class="min-w-0 truncate">{item.label}</span>
+        <Count count={item.count} />
+      </a>
+    </li>
+  );
+}
+
 function NavRow(props: { readonly item: NavItem; readonly current: string }) {
   const { item } = props;
   const indent = item.nested === true ? 'pl-6' : '';
+  const open = item.open === true ? 'bg-side-hover' : '';
   const href = item.href === undefined ? undefined : safeHref(item.href);
+  if (href !== undefined && item.depth !== undefined) {
+    return <TreeRow item={item} depth={item.depth} href={href} current={props.current} />;
+  }
   if (href === undefined) {
     return (
       <li>
@@ -76,7 +113,8 @@ function NavRow(props: { readonly item: NavItem; readonly current: string }) {
       <a
         href={href}
         aria-current={href === props.current ? 'page' : undefined}
-        class={`group ${row} ${indent} text-side-text hover:bg-side-hover aria-[current=page]:bg-accent aria-[current=page]:font-heavy aria-[current=page]:text-on-accent ${focus}`}
+        data-open={item.open === true ? '' : undefined}
+        class={`group ${row} ${indent} ${open} text-side-text hover:bg-side-hover ${current} ${focus}`}
       >
         <Mark icon={item.icon} />
         <span class="min-w-0 truncate">{item.label}</span>

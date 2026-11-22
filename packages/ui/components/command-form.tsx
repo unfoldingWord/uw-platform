@@ -4,6 +4,9 @@ import { domId } from './text.ts';
 export const commandButton =
   'inline-flex items-center rounded-md border border-line bg-surface px-3 py-1 text-sm font-heavy text-text outline-offset-2 outline-accent-text hover:border-accent hover:text-accent-text focus-visible:outline-2 aria-disabled:cursor-not-allowed aria-disabled:text-text-3';
 
+export const iconCommandButton =
+  'inline-flex h-size-5 cursor-pointer items-center rounded-md border border-line bg-surface px-2 text-sm font-heavy text-text outline-offset-2 outline-accent-text hover:border-accent hover:text-accent-text focus-visible:outline-2 aria-disabled:cursor-not-allowed aria-disabled:text-text-3';
+
 export const primaryButton =
   'inline-flex items-center rounded-md border border-accent bg-accent px-3 py-1 text-sm font-heavy text-on-accent outline-offset-2 outline-accent-text focus-visible:outline-2 aria-disabled:cursor-not-allowed aria-disabled:opacity-50';
 
