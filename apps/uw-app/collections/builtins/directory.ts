@@ -1,3 +1,4 @@
+import { DIRECTORY_AREA } from '@uw/core/acl';
 import { column, option, shown } from './parts.ts';
 import type { BuiltIn } from './seed-types.ts';
 
@@ -61,7 +62,7 @@ export const directoryCollection: BuiltIn = {
   definition: {
     key: 'directory',
     name: 'Colleague Directory',
-    jdArea: '00-09',
+    jdArea: DIRECTORY_AREA,
     rowSource: 'people',
     pageType: null,
     description: 'Everyone who works with unfoldingWord. A person’s row is their profile.',

@@ -181,7 +181,7 @@ async function inOrder(world: Played): Promise<void> {
   const actors = rows.map((row) => row.querySelector('code')?.textContent);
   expect(actors).toContain(world.device);
   const people = rows.map((row) => row.querySelector('a[data-person-chip]')?.getAttribute('href'));
-  expect(people).toContain(personPath(world.kim.personId ?? '', world.kimEmail));
+  expect(people).toContain(personPath(world.kim.personId ?? ''));
   const device = rowsNamed(document, 'Lease renewed')[0];
   expect(device?.textContent).toContain('Own machine');
   expect(rowsNamed(document, 'Item created')[0]?.textContent).toContain('Person');
@@ -215,7 +215,7 @@ async function gateEvents(world: Played): Promise<void> {
   expect(factsOf(rejected)['Decision']).toBe('Rejected');
   expect(factsOf(rejected)['Decided by']).toContain(world.kimEmail);
   expect(rejected?.querySelector('a[data-person-chip]')?.getAttribute('href')).toBe(
-    personPath(world.kim.personId ?? '', world.kimEmail),
+    personPath(world.kim.personId ?? ''),
   );
   expect(rejected?.querySelector('ul + ul li')?.textContent).toBe('Rename the lane');
   expect(factsOf(rowsNamed(document, 'Gate overridden')[0])['Reason']).toBe('The reviewer is down');

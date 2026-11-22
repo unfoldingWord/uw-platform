@@ -13,6 +13,7 @@ export const pageTypes = [
   'platform',
   'knowledge',
   'entry',
+  'profile',
   'portfolio',
   'program',
   'project',

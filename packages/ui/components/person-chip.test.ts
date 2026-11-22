@@ -31,10 +31,10 @@ async function violations(element: ReturnType<typeof jsx>): Promise<readonly str
 
 describe('the person chip', () => {
   it('links to the person page with the display name as its accessible name', async () => {
-    const element = chip({ name: 'Avery Stone', href: '/people/abc/avery-stone' });
+    const element = chip({ name: 'Avery Stone', href: '/collections/directory/rows/abc' });
     const document = await dom(element);
     const link = document.querySelector('a[data-person-chip]');
-    expect(link?.getAttribute('href')).toBe('/people/abc/avery-stone');
+    expect(link?.getAttribute('href')).toBe('/collections/directory/rows/abc');
     expect(link?.textContent).toContain('Avery Stone');
     expect(link?.querySelector('[aria-hidden="true"]')?.textContent).toBe('AS');
     expect(await violations(element)).toEqual([]);

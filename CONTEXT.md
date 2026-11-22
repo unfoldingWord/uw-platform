@@ -71,8 +71,12 @@ _Avoid_: user, human (as a noun in code), approver (that is a role a person play
 _Avoid_: banned, blocked, suspended (that is what Google Workspace does to an account), invited
 
 **Person page**:
-The one page for a person: their directory row, at `/people/<id>/<slug>`. It shows what the directory holds about them that the reader may see, and the pages they own in areas the reader can read. The person themself and an org admin may always open it; anyone else holding a live read grant may open it while the person is `active`. Anyone else gets Not Found, so the page never says whether the person exists.
+The one page for a person: the **row page** of their **directory entry**, at `/collections/directory/rows/<id>`. It shows the directory fields the reader may see, the **profile body**, and read-through lists of their open tasks, the programs and projects they lead, manage or are on the team of, and the pages they own, each only from areas the reader can read. A person, never an agent, opens it when they can read the directory's area (`00-09`) and the person is `active`, which is exactly when the directory lists them. Anyone else gets Not Found, so the page never says whether the person exists.
 _Avoid_: profile, profile screen, user page
+
+**Profile body**:
+What a person writes about themself on their **person page**: a page of type `profile` in `00-09` that their **directory entry** points at, created the first time it is saved. Only the people module writes it, through `save_profile_body`, for the person themself or an `admin` on `10-19`; the page editor and `update_page` refuse it.
+_Avoid_: bio, about page
 
 **Person chip**:
 How a person is shown wherever the app names one: their initials and display name, linking to their **person page** when the reader may open it and plain text when they may not. An agent identity is not a person and never gets one.

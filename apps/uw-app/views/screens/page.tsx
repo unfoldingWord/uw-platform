@@ -19,6 +19,7 @@ import { openComments } from '../../pages/comments.ts';
 import { isFavourite } from '../../pages/favourites.ts';
 import { recordView } from '../../pages/recent.ts';
 import { verificationOf } from '../../pages/verification.ts';
+import { personOfProfilePage } from '../../people/profile-body.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import {
   backOf,
@@ -42,7 +43,13 @@ import { neighboursOf } from '../parts/wiki-tree.ts';
 import { pagesInCategory } from '../../pages/categories.ts';
 import { namesOf, shownIdentity } from '../parts/person-names.ts';
 import { idParam } from '../parts/params.ts';
-import { pageCommentsPath, pageEditPath, pageVersionPath, withBack } from '../parts/paths.ts';
+import {
+  pageCommentsPath,
+  pageEditPath,
+  pageVersionPath,
+  personPath,
+  withBack,
+} from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 import { withViews } from '../parts/view-embed.tsx';
 import type { Principal } from '@uw/core/principal';
@@ -281,6 +288,13 @@ async function storedExtras(
   };
 }
 
+async function profileOf(c: Context<AppEnv>, page: ShownPage['page']): Promise<string | null> {
+  const database = c.get('database');
+  if (page.type !== 'profile' || database === null) return null;
+  const personId = await personOfProfilePage(database.db, page.id);
+  return personId === null ? null : personPath(personId);
+}
+
 export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   if (screen === null) return screenRefusal(c);
@@ -289,6 +303,8 @@ export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
   const read = await screen.kernel.views.page(screen.caller, { pageId }, { at: screen.at });
   const shown = read.status === 'accepted' ? await shownPage(c, screen, pageId) : null;
   if (shown === null) return notFound(c);
+  const profile = await profileOf(c, shown.page);
+  if (profile !== null) return c.redirect(profile, 302);
   const draft = shown.canEdit
     ? await draftsOf(c.env)?.status(shown.page.id, shown.page.version)
     : null;
