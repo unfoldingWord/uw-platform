@@ -89,6 +89,13 @@ function say(root: HTMLElement, selector: string, words: string): void {
   if (target !== null) target.textContent = words;
 }
 
+function unshared(root: HTMLElement): void {
+  const form = root.closest('form');
+  form?.removeAttribute('data-draft-live');
+  const mode = form?.querySelector('[data-editor-mode]') ?? null;
+  if (mode !== null) mode.textContent = 'Unsaved changes';
+}
+
 function showPeople(root: HTMLElement, awareness: Awareness): void {
   const refresh = () => {
     const names = namesOf(awareness);
@@ -153,6 +160,7 @@ export function watchVersion(root: HTMLElement, room: Room, waits: Waits): void 
       .then((version) => {
         if (version !== null && version > room.version) {
           say(root, '[data-editor-status]', SUPERSEDED);
+          unshared(root);
           return;
         }
         waits.setTimeout(check, WATCH_MS);
@@ -168,6 +176,7 @@ const SAVED_BEHIND =
 function heard(root: HTMLElement, editor: Editor, link: Link, message: string): void {
   if (message === 'saved-behind') {
     say(root, '[data-editor-status]', SAVED_BEHIND);
+    unshared(root);
     return;
   }
   if (message !== 'saved') return;

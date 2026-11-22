@@ -41,6 +41,12 @@ function partsOf(document: Document): Parts | null {
   return { root, form, surface, area, initial: content?.innerHTML ?? '' };
 }
 
+function sharing(form: Element, live: boolean): void {
+  form.toggleAttribute('data-draft-live', live);
+  const mode = form.querySelector('[data-editor-mode]');
+  if (mode !== null) mode.textContent = live ? 'Working draft' : 'Editing on your own';
+}
+
 function say(root: Element, words: string): void {
   const status = root.querySelector('[data-editor-status]');
   if (status !== null) status.textContent = words;
@@ -201,6 +207,32 @@ function shows(initial: string): boolean {
   return sameMeaning(initial, getHTMLFromFragment(node.content, schema));
 }
 
+function alone(parts: Parts, active: Active, deps: EditorDeps): Editor {
+  sharing(parts.form, false);
+  return ready(parts, active, mount(parts, deps, null));
+}
+
+async function joined(
+  parts: Parts,
+  active: Active,
+  deps: EditorDeps,
+  shared: Collaboration,
+): Promise<Editor> {
+  savingWith(parts.form, false);
+  say(parts.form, 'Joining the shared draft.');
+  const editor = mount(parts, deps, shared);
+  editor.setEditable(false);
+  if ((await shared.ready(editor, parts.initial)) !== 'unavailable') {
+    sharing(parts.form, true);
+    return ready(parts, active, editor);
+  }
+  shared.destroy();
+  editor.destroy();
+  active.shared = null;
+  say(parts.form, 'Editing together is not available right now, so you are editing on your own.');
+  return alone(parts, active, deps);
+}
+
 export async function startPageEditor(
   document: Document,
   deps: EditorDeps,
@@ -217,17 +249,5 @@ export async function startPageEditor(
   const active: Active = { editor: null, shared: deps.collaboration?.(parts.root) ?? null };
   wireSubmit(parts, active);
   const { shared } = active;
-  if (shared === null) return ready(parts, active, mount(parts, deps, null));
-  savingWith(parts.form, false);
-  say(parts.form, 'Joining the shared draft.');
-  const editor = mount(parts, deps, shared);
-  editor.setEditable(false);
-  if ((await shared.ready(editor, parts.initial)) !== 'unavailable') {
-    return ready(parts, active, editor);
-  }
-  shared.destroy();
-  editor.destroy();
-  active.shared = null;
-  say(parts.form, 'Editing together is not available right now, so you are editing on your own.');
-  return ready(parts, active, mount(parts, deps, null));
+  return shared === null ? alone(parts, active, deps) : joined(parts, active, deps, shared);
 }

@@ -1,4 +1,4 @@
-import { and, asc, eq, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, ne, sql, type SQL } from 'drizzle-orm';
 import { formatDate } from '@uw/core/dates';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
@@ -52,6 +52,27 @@ export function reviewDueFor(
 
 type Due = { readonly before: string; readonly owner: string | null };
 
+function dueWhere(areas: SQL | undefined, due: Due): SQL {
+  const where = and(
+    areas,
+    eq(pages.type, LISTED),
+    ne(pages.status, 'retired'),
+    sql`${until} < ${due.before}`,
+    due.owner === null ? undefined : sql`${pages.frontmatter}->>'owner' = ${due.owner}`,
+  );
+  return where ?? sql`false`;
+}
+
+export async function lapsedCount(db: Executor, actor: Principal, at: Date): Promise<number> {
+  const areas = areaFilter(actor, at);
+  if (areas === null) return 0;
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(pages)
+    .where(dueWhere(areas, { before: formatDate(at), owner: null }));
+  return row?.count ?? 0;
+}
+
 async function verificationDue(
   db: Executor,
   actor: Principal,
@@ -71,15 +92,7 @@ async function verificationDue(
     })
     .from(pages)
     .leftJoin(people, sql`${pages.frontmatter}->>'owner' = 'human:' || ${people.id}::text`)
-    .where(
-      and(
-        areas,
-        eq(pages.type, LISTED),
-        ne(pages.status, 'retired'),
-        sql`${until} < ${due.before}`,
-        due.owner === null ? undefined : sql`${pages.frontmatter}->>'owner' = ${due.owner}`,
-      ),
-    )
+    .where(dueWhere(areas, due))
     .orderBy(asc(until), asc(pages.title))
     .limit(MOST_LISTED);
 }

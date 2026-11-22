@@ -407,7 +407,7 @@ The branch of the sidebar under "Pages & Wiki" on wiki and knowledge page screen
 _Avoid_: file tree, outline, navigator, explorer
 
 **Edit mode**:
-What `/pages/:pageId/edit` shows to a person who may write the page, reached by the pencil: the read view's sheet made editable, full window, with no sidebar, under one bar holding Back to reading, Discard draft and Save. Nothing in it reaches the read view until Save.
+What `/pages/:pageId/edit` shows to a person who may write the page, reached by the pencil: the page's title and text on one editable sheet, full window, with no sidebar, under one bar holding Back to reading, Discard draft and Save. Leaving it asks first when what was typed is not in a working draft. Nothing in it reaches the read view until Save.
 _Avoid_: editor (that is the Tiptap component inside it), editing view, focus mode (in the UI)
 
 **Working draft**:

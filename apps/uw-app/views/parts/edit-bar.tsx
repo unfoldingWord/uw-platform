@@ -12,6 +12,38 @@ function jdIdOf(page: Page): string | null {
   return page.type === 'knowledge' && filed.success ? filed.data.jd_id : null;
 }
 
+function BackLink(props: { readonly read: string }) {
+  return (
+    <nav aria-label="Page">
+      <a
+        href={props.read}
+        data-leave-edit=""
+        class={`inline-flex items-center gap-2 rounded-sm text-sm font-heavy text-side-text ${onSide}`}
+      >
+        <Icon name="chevron-left" size={1} />
+        Back to reading
+        <kbd class="hidden rounded-sm border border-side-line px-1 font-mono text-xs text-side-text-3 md:inline">
+          Esc
+        </kbd>
+      </a>
+    </nav>
+  );
+}
+
+function DraftMode(props: { readonly drafting: boolean }) {
+  return (
+    <span class="hidden items-center gap-2 text-side-text-3 md:inline-flex">
+      <span
+        aria-hidden="true"
+        class="size-size-1 rounded-full bg-side-text-3 group-data-draft-live/edit:bg-ok"
+      ></span>
+      <span data-editor-mode="" role="status" aria-live="polite">
+        {props.drafting ? 'Joining the working draft' : 'Editing on your own'}
+      </span>
+    </span>
+  );
+}
+
 export function EditBar(props: {
   readonly page: Page;
   readonly read: string;
@@ -23,29 +55,14 @@ export function EditBar(props: {
       data-edit-bar=""
       class="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 bg-side px-4 py-2 text-side-text md:px-5"
     >
-      <nav aria-label="Page">
-        <a
-          href={props.read}
-          data-leave-edit=""
-          class={`inline-flex items-center gap-2 rounded-sm text-sm font-heavy text-side-text ${onSide}`}
-        >
-          <Icon name="chevron-left" size={1} />
-          Back to reading
-          <kbd class="hidden rounded-sm border border-side-line px-1 font-mono text-xs text-side-text-3 md:inline">
-            Esc
-          </kbd>
-        </a>
-      </nav>
+      <BackLink read={props.read} />
       <p class="m-0 flex min-w-0 items-center gap-2 text-sm">
         {jdId === null ? null : <span class="font-mono text-side-code">{jdId}</span>}
         <span class="truncate font-heavy">{props.page.title}</span>
         <span aria-hidden="true" class="hidden text-side-text-3 md:inline">
           ·
         </span>
-        <span class="hidden items-center gap-2 text-side-text-3 md:inline-flex">
-          <span aria-hidden="true" class="size-size-1 rounded-full bg-ok"></span>
-          {props.drafting ? 'Working draft' : 'Editing on your own'}
-        </span>
+        <DraftMode drafting={props.drafting} />
       </p>
       <div class="flex flex-wrap items-center gap-2">
         <p

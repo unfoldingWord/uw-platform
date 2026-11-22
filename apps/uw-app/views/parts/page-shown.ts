@@ -111,7 +111,9 @@ export async function pageScreenSpec(
   const database = c.get('database');
   const category = categoryOf(shown.page);
   if (category === null || database === null) return spec;
-  const here = { category, ...(pages === undefined ? {} : { pages }) };
+  const { page, ancestors } = shown;
+  const current = { id: page.id, title: page.title, topId: ancestors[0]?.id ?? page.id };
+  const here = { category, current, ...(pages === undefined ? {} : { pages }) };
   const branch = await wikiBranch(database.db, screen.caller.actor, screen.at, here);
   return { ...spec, current: pagePath(shown.page.id), branch };
 }

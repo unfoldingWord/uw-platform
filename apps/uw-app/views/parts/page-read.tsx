@@ -1,6 +1,6 @@
 import type { Child } from 'hono/jsx';
 import type { PageEntry } from '@uw/contracts';
-import { commandButton } from '@uw/ui/components/command-form.tsx';
+import { iconCommandButton } from '@uw/ui/components/command-form.tsx';
 import { Icon } from '@uw/ui/components/icon.tsx';
 import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { QuickSwitcherButton } from '@uw/ui/components/quick-switcher.tsx';
@@ -20,8 +20,6 @@ const MIN_CONTENTS = 2;
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 const chip = `inline-flex items-center rounded-full border border-line bg-surface px-3 py-1 text-sm font-heavy text-accent-text hover:bg-hover ${focus}`;
-
-const iconButton = commandButton.replace('px-3 py-1', 'h-size-5 cursor-pointer px-2');
 
 const menuRow = `block w-full cursor-pointer rounded-sm px-3 py-2 text-left text-sm font-semibold text-text hover:bg-hover ${focus}`;
 
@@ -98,7 +96,7 @@ export function CommentButton(props: { readonly pageId: string }) {
       data-href={pageCommentsPath(props.pageId)}
       aria-label="Comment on the selected words"
       title="Comment on the selected words"
-      class={iconButton}
+      class={iconCommandButton}
     >
       <Icon name="comment" size={1} />
     </button>
@@ -109,7 +107,7 @@ export function MoreMenu(props: { readonly pageId: string; readonly manage: bool
   const { pageId } = props;
   return (
     <details data-page-more="" class="relative">
-      <summary class={`${iconButton} list-none`} title="More">
+      <summary class={`${iconCommandButton} list-none`} title="More">
         <Icon name="ellipsis" size={1} />
         <span class="sr-only">More</span>
       </summary>

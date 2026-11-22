@@ -96,6 +96,36 @@ describe('ADR 0026 the page tree points at pages whose verification lapsed', () 
   });
 });
 
+describe('ADR 0026 the page tree always has a row for the page being read', () => {
+  function pageRowsOf(here: Parameters<typeof branchOf>[1]) {
+    return branchOf(groupsOf(categories), here)
+      .items.filter((item) => item.depth === 3)
+      .map((item) => [item.label, item.href, item.open === true]);
+  }
+
+  it('puts a sub-page under its top-level page, which opens', () => {
+    const current = { id: 'b1', title: 'Bravo child', topId: 'b' };
+    expect(pageRowsOf({ category: '01', pages: filed, current })).toEqual([
+      ['Alpha', '/pages/a', false],
+      ['Bravo', '/pages/b', true],
+      ['Bravo child', '/pages/b1', false],
+      ['Charlie', '/pages/c', false],
+    ]);
+  });
+
+  it('keeps a top-level page past the first ones shown, before More', () => {
+    const many = Array.from({ length: PAGES_SHOWN + 2 }, (_, index) =>
+      entry(`p${String(index)}`, `Page ${String(index)}`),
+    );
+    const last = `p${String(PAGES_SHOWN + 1)}`;
+    const current = { id: last, title: 'Last page', topId: last };
+    const rows = pageRowsOf({ category: '01', pages: many, current });
+    expect(rows).toHaveLength(PAGES_SHOWN + 2);
+    expect(rows.at(-2)?.[1]).toBe(`/pages/${last}`);
+    expect(rows.at(-1)?.[0]).toBe('More in 01');
+  });
+});
+
 describe('ADR 0026 previous and next walk the pages beside this one', () => {
   it('steps among pages with the same parent, in listed order', () => {
     expect(neighboursOf(filed, 'b')).toMatchObject({ previous: { id: 'a' }, next: { id: 'c' } });

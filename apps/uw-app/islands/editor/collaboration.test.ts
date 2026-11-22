@@ -239,6 +239,7 @@ describe('#175 a draft is shared, and nothing changes for readers until someone 
 describe('#175 people in a draft are told when a newer version is saved elsewhere', () => {
   it('checks the page every so often and says so once it has moved on', async () => {
     const root = seatFor('ana@uw.example');
+    root.closest('form')?.setAttribute('data-draft-live', '');
     const room = collab.roomIn(root);
     if (room === null) throw new Error('no room');
     const pending: (() => void)[] = [];
@@ -253,6 +254,7 @@ describe('#175 people in a draft are told when a newer version is saved elsewher
       await tick();
     }
     expect(words(root, '[data-editor-status]')).toContain('A newer version of this page was saved');
+    expect(root.closest('form')?.hasAttribute('data-draft-live')).toBe(false);
     expect(pending).toHaveLength(0);
   });
 });

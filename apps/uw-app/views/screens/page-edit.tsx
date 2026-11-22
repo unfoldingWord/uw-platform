@@ -162,6 +162,7 @@ function EditForm(props: FormProps) {
       method="post"
       action={pageEditPath(page.id)}
       data-page-edit=""
+      data-unsaved={options.typed === null ? undefined : ''}
       class="group/edit flex min-h-dvh flex-col"
     >
       <input type="hidden" name="expectedVersion" value={String(typed.expectedVersion)} />

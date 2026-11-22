@@ -3,7 +3,7 @@ import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
 import type { NavItem } from '@uw/ui/components/sidebar.tsx';
 import { categoryCounts, pagesInCategory } from '../../pages/categories.ts';
-import { lapsedPages } from '../../pages/verification.ts';
+import { lapsedCount } from '../../pages/verification.ts';
 import type { Branch } from './frame.tsx';
 import { areasWithin, platformAreas } from './names.ts';
 import { pagePath, wikiAreaPath, wikiPath, wikiReviewPath } from './paths.ts';
@@ -21,6 +21,7 @@ export type Here = {
   readonly category?: JdCategory;
   readonly pages?: readonly PageEntry[];
   readonly lapsed?: number;
+  readonly current?: Current;
 };
 
 export function groupsOf(categories: readonly PageCategory[]): readonly Group[] {
@@ -48,15 +49,31 @@ export function neighboursOf(
   return { previous: siblings[index - 1] ?? null, next: siblings[index + 1] ?? null };
 }
 
-function pageRows(category: JdCategory, entries: readonly PageEntry[]): readonly NavItem[] {
+type Current = { readonly id: string; readonly title: string; readonly topId: string };
+
+function shownTop(top: readonly PageEntry[], current: Current | undefined): readonly PageEntry[] {
+  const shown = top.slice(0, PAGES_SHOWN);
+  if (current === undefined || shown.some((entry) => entry.id === current.topId)) return shown;
+  const held = top.find((entry) => entry.id === current.topId);
+  return held === undefined ? shown : [...shown, held];
+}
+
+function rowsFor(entry: PageEntry, current: Current | undefined): readonly NavItem[] {
+  const row: NavItem = { label: entry.title, href: pagePath(entry.id), depth: 3 };
+  if (current === undefined || entry.id !== current.topId || current.id === entry.id) return [row];
+  const below: NavItem = { label: current.title, href: pagePath(current.id), depth: 3 };
+  return [{ ...row, open: true }, below];
+}
+
+function pageRows(
+  category: JdCategory,
+  entries: readonly PageEntry[],
+  here: Here,
+): readonly NavItem[] {
   const top = topPages(entries);
-  const rows: NavItem[] = top
-    .slice(0, PAGES_SHOWN)
-    .map((entry) => ({ label: entry.title, href: pagePath(entry.id), depth: 3 }));
-  if (top.length > PAGES_SHOWN) {
-    rows.push({ label: `More in ${category}`, href: wikiPath(category), depth: 3 });
-  }
-  return rows;
+  const rows = shownTop(top, here.current).flatMap((entry) => rowsFor(entry, here.current));
+  if (top.length <= PAGES_SHOWN) return rows;
+  return [...rows, { label: `More in ${category}`, href: wikiPath(category), depth: 3 }];
 }
 
 function categoryRows(group: Group, here: Here): readonly NavItem[] {
@@ -72,7 +89,7 @@ function categoryRows(group: Group, here: Here): readonly NavItem[] {
       open: category.code === here.category,
     };
     if (category.code !== here.category || here.pages === undefined) return [row];
-    return [row, ...pageRows(category.code, here.pages)];
+    return [row, ...pageRows(category.code, here.pages, here)];
   });
 }
 
@@ -112,12 +129,15 @@ export async function wikiBranch(
   at: Date,
   here: Here,
 ): Promise<Branch> {
-  const groups = groupsOf(await categoryCounts(db, actor, at));
-  const pages =
-    here.pages ??
-    (here.category === undefined
-      ? undefined
-      : ((await pagesInCategory(db, actor, here.category, at)) ?? undefined));
-  const lapsed = (await lapsedPages(db, actor, at)).length;
-  return branchOf(groups, { ...here, lapsed, ...(pages === undefined ? {} : { pages }) });
+  const listing =
+    here.pages !== undefined || here.category === undefined
+      ? Promise.resolve(here.pages ?? null)
+      : pagesInCategory(db, actor, here.category, at);
+  const [categories, pages, lapsed] = await Promise.all([
+    categoryCounts(db, actor, at),
+    listing,
+    lapsedCount(db, actor, at),
+  ]);
+  const listed = pages === null ? {} : { pages };
+  return branchOf(groupsOf(categories), { ...here, lapsed, ...listed });
 }

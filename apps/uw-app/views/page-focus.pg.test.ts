@@ -118,7 +118,7 @@ async function readerStaysInTheFrame(db: Database): Promise<void> {
 }
 
 describe.skipIf(!testServer)(
-  'ADR 0026 pages are found in the tree, read on a sheet and edited in focus',
+  'ADR 0026 pages are found in the tree, read under a band and edited in focus',
   () => {
     it('opens the page tree at the page being read, showing only areas the reader may read', () =>
       withAppDatabase(treeShowsWhereTheReaderIs));

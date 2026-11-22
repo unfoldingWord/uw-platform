@@ -6,7 +6,7 @@ import { PageHead } from '@uw/ui/components/page-head.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { categoryCounts } from '../../pages/categories.ts';
 import { favouritesOf } from '../../pages/favourites.ts';
-import { lapsedPages } from '../../pages/verification.ts';
+import { lapsedCount } from '../../pages/verification.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { moduleCodes, pageNames } from '../parts/names.ts';
 import { branchOf, groupsOf, type Group } from '../parts/wiki-tree.ts';
@@ -84,7 +84,7 @@ export async function wikiScreen(c: Context<AppEnv>): Promise<Response> {
   const database = c.get('database');
   if (screen === null || database === null) return screenRefusal(c);
   const groups = groupsOf(await categoryCounts(database.db, screen.caller.actor, screen.at));
-  const lapsed = (await lapsedPages(database.db, screen.caller.actor, screen.at)).length;
+  const lapsed = await lapsedCount(database.db, screen.caller.actor, screen.at);
   const favourites = await favouritesOf(database.db, screen.caller.actor, screen.at);
   const spec = {
     title: pageNames.wiki,

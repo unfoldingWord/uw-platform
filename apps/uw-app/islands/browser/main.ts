@@ -29,7 +29,7 @@ const openTab = (href: string): void => void window.open(href, '_blank', 'noopen
 
 function wireKeys(page: Document): void {
   wireEditKey(page, go);
-  wireLeaveEdit(page, go);
+  wireLeaveEdit(page, { go, confirm: (question) => window.confirm(question) });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
