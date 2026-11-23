@@ -96,7 +96,7 @@ Every kind of work has one template. Copy the template, fill the blanks, stop.
 - New validator or connector: a registry entry and a handler; a stage row picks it by key.
 - New table or column: the `packages/db/schema.ts` file for its domain (`schema.ts` for the harness, `schema-platform.ts` for the platform) with its classification, and a migration.
 - New command: `packages/contracts`, the Hono route with `can()`, a scenario.
-- New screen: a route, an entry in `apps/uw-app/views/registry.ts`, a test that renders it, its pictures in the screenshot check, tokens only. An island only for behaviour the server cannot render.
+- New screen: a route, an entry in `apps/uw-app/views/registry.ts`, a test that renders it, tokens only. An island only for behaviour the server cannot render.
 - New word: `CONTEXT.md` first.
 
 If the work does not fit a template, choose the nearest one, say which and why in the pull request description, and continue. Do not improvise silently.

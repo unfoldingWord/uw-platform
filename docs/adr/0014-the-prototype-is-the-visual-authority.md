@@ -30,4 +30,4 @@ The sidebar is the prototype's, area by area. Today (was Home), Health and Agent
 
 **Rejected.** Replacing the scales with the prototype's own values, which would bring back the unmanaged values ADR 0011 measured. Dropping the lock and writing values by hand. Drawing the prototype's own line icons in place of Font Awesome, which the owner declined. Leaving dark and phone as they were in v0.3.0, which would make the two themes look like two products.
 
-**Consequences.** A screen that differs from the prototype by less than a token step is correct. A new screen starts from the closest existing screen and the rules above, and records which. The screenshot check (PRD UI-16) holds the pictures of this look. Source: the owner on 2026-11-12, issue #97.
+**Consequences.** A screen that differs from the prototype by less than a token step is correct. A new screen starts from the closest existing screen and the rules above, and records which. The screenshot check (PRD UI-16) that held the pictures of this look was removed on 2026-11-23; a person checks the look by eye. Source: the owner on 2026-11-12, issue #97.
