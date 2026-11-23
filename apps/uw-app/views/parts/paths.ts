@@ -206,9 +206,9 @@ export function crosswalkPath(): string {
 }
 
 export function crosswalkCellPath(area: string, tier: string): string {
-  return `/crosswalk/areas/${area}/${tier}`;
+  return `/crosswalk/areas/${segment(area)}/${segment(tier)}`;
 }
 
 export function crosswalkNodePath(nodeId: string): string {
-  return `/crosswalk/nodes/${nodeId}`;
+  return `/crosswalk/nodes/${segment(nodeId)}`;
 }

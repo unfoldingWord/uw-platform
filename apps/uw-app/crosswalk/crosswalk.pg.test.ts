@@ -5,6 +5,7 @@ import type { Database } from '@uw/db/client';
 import { jdCascadeMapAudit, tasks } from '@uw/db/schema';
 import { seedGrant, seedHarness, seedItem, seedPage, seedPerson } from '@uw/db/test-seed';
 import { get, person, post } from '../testing/commands.ts';
+import { getHtml } from '../testing/views.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 
 const COMMANDS = '/api/crosswalk/commands';
@@ -49,7 +50,7 @@ async function orgAdmin(db: Database): Promise<string> {
 
 async function page(
   db: Database,
-  type: 'knowledge' | 'portfolio' | 'program' | 'project',
+  type: 'knowledge' | 'issue' | 'portfolio' | 'program' | 'project',
   jdArea: string,
   title: string,
 ) {
@@ -268,12 +269,60 @@ async function placingNeedsWriteOnTheEntitysArea(db: Database): Promise<void> {
   expect(cell(await read(db, made.finance), '20-29', 'program')?.counts.pages).toBe(0);
 }
 
+async function noNodeTitleFromAnUnreadArea(db: Database): Promise<void> {
+  const made = await seedWorld(db);
+  const hidden = await page(db, 'project', '80-89', 'Hidden Tooling Project');
+  await accepted(db, made.admin, 'declare_jd_map', declare('20-29', hidden, 'supports'));
+  await accepted(db, made.admin, 'place_in_cascade', place('task', made.task, hidden));
+  const all = await read(db, made.admin);
+  expect(cell(all, '20-29', 'project')?.links.map((link) => link.title)).toEqual([
+    'Hidden Tooling Project',
+  ]);
+  const finance = await read(db, made.finance);
+  expect(cell(finance, '20-29', 'project')?.links).toEqual([]);
+  const screen = await getHtml(db, made.finance, '/crosswalk/areas/20-29/project');
+  expect(screen.status).toBe(200);
+  expect(screen.text).toContain('Reconcile the month');
+  expect(screen.text).not.toContain('Hidden Tooling Project');
+  const listed = await getHtml(db, made.finance, '/crosswalk');
+  expect(listed.text).not.toContain('Hidden Tooling Project');
+}
+
+async function mirrorPagesAreNotCounted(db: Database): Promise<void> {
+  const made = await seedWorld(db);
+  await page(db, 'issue', '20-29', 'Mirror of an issue');
+  const finance = await read(db, made.finance);
+  expect(finance.rows.find((row) => row.jdArea === '20-29')?.unplaced.pages).toBe(2);
+  const screen = await getHtml(db, made.finance, '/crosswalk/areas/20-29/unplaced');
+  expect(screen.text).not.toContain('Mirror of an issue');
+}
+
+async function aWriterPlacesFromTheCellScreen(db: Database): Promise<void> {
+  const made = await seedWorld(db);
+  const forms = (html: string) => html.match(/data-command="place_in_cascade"/g)?.length ?? 0;
+  const writer = await getHtml(db, made.finance, '/crosswalk/areas/20-29/unplaced');
+  expect(forms(writer.text)).toBe(3);
+  expect(writer.text).toContain('Field Partnerships');
+  const reader = await getHtml(db, made.home, '/crosswalk/areas/00-09/portfolio');
+  expect(reader.status).toBe(200);
+  expect(forms(reader.text)).toBe(0);
+}
+
 describe.skipIf(!testServer)('#202 the JD map and the crosswalk', () => {
   it('counts pages, tasks and items by area and tier, and the same placements by cascade node', () =>
     withAppDatabase(countsBothWays));
 
   it('shows a reader no counts and no map relations from an area they hold no grant on', () =>
     withAppDatabase(noCountsWithoutAGrant));
+
+  it('never shows the title of a node filed in an area the reader cannot read', () =>
+    withAppDatabase(noNodeTitleFromAnUnreadArea));
+
+  it('counts no issue mirror page, since its item already stands for the work', () =>
+    withAppDatabase(mirrorPagesAreNotCounted));
+
+  it('offers a writer of the area a place control on each row, and a reader none', () =>
+    withAppDatabase(aWriterPlacesFromTheCellScreen));
 
   it('takes a map relation only from an org admin, only to a cascade node, and audits it', () =>
     withAppDatabase(onlyAnOrgAdminWritesTheMap));

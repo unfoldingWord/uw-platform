@@ -1,5 +1,10 @@
-import { mapRelationSchema, type EntityCounts, type MapRelation } from '@uw/contracts';
-import { PlatformCommandForm } from '@uw/ui/components/command-form.tsx';
+import {
+  mapRelationSchema,
+  type EntityCounts,
+  type MapRelation,
+  type PlacedEntityKind,
+} from '@uw/contracts';
+import { PlatformCommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
 import { SelectField, TextField } from '@uw/ui/components/field.tsx';
 import { HumanActionButton } from '@uw/ui/components/human-action.tsx';
 import type { CascadeNode } from '../../crosswalk/nodes.ts';
@@ -80,6 +85,44 @@ export function RemoveForm(props: { readonly mapId: string; readonly what: strin
         name="decision"
         value="remove_jd_map"
       />
+    </PlatformCommandForm>
+  );
+}
+
+export function nodeChoices(nodes: readonly CascadeNode[]) {
+  return [
+    { value: '', label: tierWord('unplaced') },
+    ...nodes.map((node) => ({ value: node.id, label: `${tierWord(node.tier)} · ${node.title}` })),
+  ];
+}
+
+export function PlaceForm(props: {
+  readonly kind: PlacedEntityKind;
+  readonly entityId: string;
+  readonly title: string;
+  readonly nodeId: string | null;
+  readonly choices: readonly { readonly value: string; readonly label: string }[];
+}) {
+  return (
+    <PlatformCommandForm
+      endpoint={ENDPOINT}
+      command="place_in_cascade"
+      scope={props.entityId}
+      done={`Placed ${props.title}.`}
+      inline
+    >
+      <input type="hidden" name="entityKind" value={props.kind} />
+      <input type="hidden" name="entityId" value={props.entityId} />
+      <SelectField
+        name="cascadePageId"
+        label={`Place ${props.title} under`}
+        scope={props.entityId}
+        choices={props.choices}
+        selected={props.nodeId ?? ''}
+      />
+      <button type="submit" class={commandButton}>
+        Place
+      </button>
     </PlatformCommandForm>
   );
 }

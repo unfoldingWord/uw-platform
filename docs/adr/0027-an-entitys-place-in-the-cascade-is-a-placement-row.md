@@ -16,9 +16,11 @@ The platform organizes everything twice: by Johnny.Decimal area (where a thing i
 
 **Rejected.**
 
-- **A `cascade_page_id` column on `pages`, `tasks` and `harness_items`.** Each table has one owner (AGENTS.md rule 3), so the column would be written by three modules, and `harness_items` is a kernel table reached through the Store port. One placement table gives one writer and adds nothing to the kernel. The cost: the database cannot hold a foreign key from `entity_id` to three tables, so a placement can outlive a deleted task. Pages are retired, never deleted, and items are not deleted, so only a task can leave one behind; the crosswalk joins through the entity, so such a row counts nothing.
+- **A `cascade_page_id` column on `pages`, `tasks` and `harness_items`.** Each table has one owner (AGENTS.md rule 3), so the column would be written by three modules, and `harness_items` is a kernel table reached through the Store port. One placement table gives one writer and adds nothing to the kernel. The cost: the database cannot hold a foreign key from `entity_id` to three tables, so a placement can outlive a deleted entity: a task, or the stage-instructions page that `pages/instructions.ts` deletes. Every count and list joins from the entity to its placement, so such a row is never counted or shown. A node is a portfolio, program or project page, which is retired and never deleted, so the foreign key from a placement or a map row to its node always holds.
 - **Deriving the cascade from the area, or the area from the cascade.** The plan's point is that they are different facts; a project filed in Finance can serve a field program.
 - **A portfolio or program select on each collection.** That is the duplicated-select debt the plan names. A test refuses a select property named for a tier on any built-in collection.
 - **Letting an area admin declare the map.** The map relates an area to the whole organization's strategy, so it is an org decision.
+
+**Placements are not audited; the map is.** A placement keeps only its last writer and time (`placed_by`, `placed_at`). It is filing, as a page's category is, and an area's writers change it as part of ordinary work. A map row is an org decision about strategy, so each change to it is kept in full.
 
 **Consequences.** Placing work is a separate step from filing it, and the crosswalk's "Not placed" column is the list still to do. A node retired later stops counting its placements without losing them, so reviving it restores them.

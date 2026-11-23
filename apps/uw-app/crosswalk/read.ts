@@ -30,7 +30,8 @@ export async function mapLinks(
   at: Date,
 ): Promise<readonly AreaLink[]> {
   const areas = readFilter(actor, at, jdCascadeMap.jdArea);
-  if (areas === null) return [];
+  const nodeAreas = readFilter(actor, at, pages.jdArea);
+  if (areas === null || nodeAreas === null) return [];
   const rows = await db
     .select({
       mapId: jdCascadeMap.id,
@@ -43,7 +44,7 @@ export async function mapLinks(
     })
     .from(jdCascadeMap)
     .innerJoin(pages, eq(pages.id, jdCascadeMap.cascadePageId))
-    .where(and(isNode, areas))
+    .where(and(isNode, areas, nodeAreas))
     .orderBy(asc(jdCascadeMap.jdArea), asc(pages.title), asc(jdCascadeMap.relation));
   return rows.map((row) => ({
     ...row,

@@ -22,7 +22,6 @@
     "testing/credentials-world.ts",
     "testing/credentials-app.ts",
     "testing/credentials-scene.ts",
-    "testing/crosswalk-scene.ts",
     "islands/browser/**",
     "islands/editor/**",
     "islands/worker/**"

@@ -16,6 +16,8 @@ export type CountRow = {
 
 export const node = alias(pages, 'cascade_node');
 
+export const MIRRORED = 'issue';
+
 export function placedAs(kind: PlacedEntityKind, id: SQL | typeof pages.id) {
   return and(eq(cascadePlacements.entityKind, kind), sql`${cascadePlacements.entityId} = ${id}`);
 }
@@ -46,7 +48,9 @@ async function pageCounts(db: Executor, actor: Principal, at: Date, focus: Focus
     .from(pages)
     .leftJoin(cascadePlacements, placedAs('page', pages.id))
     .leftJoin(node, liveNode)
-    .where(and(ne(pages.status, 'retired'), areas, under(focus, pages.id)))
+    .where(
+      and(ne(pages.status, 'retired'), ne(pages.type, MIRRORED), areas, under(focus, pages.id)),
+    )
     .groupBy(pages.jdArea, ownTier);
   return rows.map((row): CountRow => ({ kind: 'page', ...row }));
 }

@@ -38,6 +38,7 @@ export const OUTCOME_TEXT: Readonly<Record<string, string>> = {
   name_category: 'Saved',
   declare_jd_map: 'Declared',
   remove_jd_map: 'Removed',
+  place_in_cascade: 'Placed',
   create_credential: 'Added',
   rotate_credential: 'Rotated',
   revoke_credential: 'Revoked',
