@@ -40,7 +40,7 @@ export const jdCascadeMapAudit = declareTable(
     after: jsonb('after'),
     traceId: uuid('trace_id').notNull(),
   },
-  { classification: 'restricted', offlineEligibility: 'never' },
+  { classification: 'internal', offlineEligibility: 'never' },
   (t) => [
     check('jd_cascade_map_audit_action_known', oneOf(t.action, ['declare', 'remove'])),
     check('jd_cascade_map_audit_actor_identity', matches(t.actor, IDENTITY_PATTERN)),
