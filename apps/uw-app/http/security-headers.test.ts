@@ -76,3 +76,13 @@ describe('the Content-Security-Policy', () => {
     expect(directive(policy, 'connect-src')).toBe("connect-src 'self'");
   });
 });
+
+describe('a screen that injects styles asks for a nonce', () => {
+  it('allows a style element only with the nonce a screen asked for', async () => {
+    const plain = await contentSecurityPolicy('uw.example');
+    expect(directive(plain, 'style-src')).toBe("style-src 'self'");
+    const nonced = await contentSecurityPolicy('uw.example', 'bm9uY2Utb2YtYS1wYWdl');
+    expect(directive(nonced, 'style-src')).toBe("style-src 'self' 'nonce-bm9uY2Utb2YtYS1wYWdl'");
+    expect(nonced).not.toContain("'unsafe-inline'");
+  });
+});

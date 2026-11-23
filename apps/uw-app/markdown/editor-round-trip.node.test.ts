@@ -1,86 +1,138 @@
-import { JSDOM } from 'jsdom';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { editorHtml } from './editor-html.ts';
-import { markdownFromEditor } from '../islands/editor/from-editor.ts';
+import { installDom } from '../islands/editor/test-dom.ts';
+import { sameMeaning } from '../islands/editor/same-meaning.ts';
 import { roundTripSamples } from './round-trip-samples.ts';
+import { wikiRefs } from './wiki-syntax.ts';
 
-type Through = (html: string) => string;
-type Shown = (html: string) => HTMLElement;
-
-let throughTiptap: Through = () => '';
-let shownInEditor: Shown = () => document.createElement('div');
-
-function browserGlobals(): void {
-  const dom = new JSDOM('<!DOCTYPE html><body></body>', { url: 'https://uw.example/' });
-  const names = [
-    'window',
-    'document',
-    'navigator',
-    'Node',
-    'Element',
-    'HTMLElement',
-    'DOMParser',
-    'MutationObserver',
-    'getComputedStyle',
-    'requestAnimationFrame',
-    'cancelAnimationFrame',
-  ] as const;
-  for (const name of names) {
-    Object.defineProperty(globalThis, name, {
-      value: name === 'window' ? dom.window : Reflect.get(dom.window, name),
-      configurable: true,
-      writable: true,
-    });
-  }
+function liveWikiLinks(markdown: string): readonly string[] {
+  return wikiRefs(markdown).map((ref) => `${ref.kind}:${ref.target}`);
 }
 
+type Through = (markdown: string) => Promise<string>;
+
+let throughEditor: Through = () => Promise.resolve('');
+
 beforeAll(async () => {
-  browserGlobals();
-  const { Editor } = await import('@tiptap/core');
-  const { pageExtensions } = await import('../islands/editor/extensions.ts');
-  throughTiptap = (html) => {
-    const editor = new Editor({
-      element: document.createElement('div'),
-      extensions: pageExtensions({ history: true }),
-      content: html,
+  installDom('<!DOCTYPE html><body></body>');
+  const { pageEditor } = await import('../islands/editor/crepe-editor.ts');
+  throughEditor = async (markdown) => {
+    const root = document.createElement('div');
+    document.body.append(root);
+    const editor = pageEditor({
+      root,
+      markdown,
+      upload: () => Promise.resolve(''),
+      slashItems: [],
+      plugins: [],
     });
-    const out = editor.getHTML();
-    editor.destroy();
+    await editor.create();
+    const out = editor.getMarkdown();
+    await editor.destroy();
+    root.remove();
     return out;
   };
-  shownInEditor = (html) => {
-    const element = document.createElement('div');
-    new Editor({ element, extensions: pageExtensions({ history: true }), content: html });
-    return element;
-  };
 });
 
-describe('#175 a page opened in the editor and saved untouched is unchanged', () => {
-  it.each(roundTripSamples)('keeps $name exactly as written', ({ markdown }) => {
-    expect(markdownFromEditor(throughTiptap(editorHtml(markdown)))).toBe(markdown);
+const reflowed = (markdown: string) => /!\[[^\]]*\]\(|^\|/m.test(markdown);
+const samples = roundTripSamples.map((sample) => [sample.name, sample.markdown] as const);
+
+describe('#175 the editor keeps the markdown it was given', () => {
+  it.each(samples)('keeps the meaning of %s', async (_name, markdown) => {
+    expect(sameMeaning(markdown, await throughEditor(markdown))).toBe(true);
+  });
+
+  it.each(samples.filter(([, markdown]) => !reflowed(markdown)))(
+    'writes %s back as it was written',
+    async (_name, markdown) => {
+      expect((await throughEditor(markdown)).trim()).toBe(markdown);
+    },
+  );
+});
+
+describe('#175 the meaning check counts live wiki links', () => {
+  it('tells an escaped wiki link from a live one', () => {
+    expect(sameMeaning('See \\[[X]].', 'See [[X]].')).toBe(false);
+    expect(sameMeaning('See \\![[X]].', 'See ![[X]].')).toBe(false);
+    expect(sameMeaning('See [[X]].', 'See [[X]].')).toBe(true);
   });
 });
 
-describe('#214 a video page file in the editor shows as a video and saves unchanged', () => {
-  const VIDEO = '00000000-0000-4000-8000-0000000000a1';
-  const IMAGE = '00000000-0000-4000-8000-0000000000a2';
-  const kindOf = (id: string) =>
-    id === VIDEO ? ('video' as const) : id === IMAGE ? ('image' as const) : null;
-  const markdown = `Watch this.\n\n![Zoom walkthrough](/api/files/${VIDEO})\n\n![Settings](/api/files/${IMAGE})`;
+describe('#175 a reference link means the same as the inline link the editor writes', () => {
+  it('opens a page with reference links in the editor', async () => {
+    const markdown = 'See [the rules][rules].\n\n[rules]: https://example.org/rules';
+    expect(sameMeaning(markdown, await throughEditor(markdown))).toBe(true);
+  });
 
-  it('draws a player for the video and a picture for the image', () => {
-    const shown = shownInEditor(editorHtml(markdown, kindOf));
-    const video = shown.querySelector('video');
-    expect(video?.getAttribute('src')).toBe(`/api/files/${VIDEO}`);
-    expect(video?.getAttribute('title')).toBe('Zoom walkthrough');
-    expect(video?.hasAttribute('controls')).toBe(true);
-    const images = [...shown.querySelectorAll('img[src]')].map((image) =>
-      image.getAttribute('src'),
+  it('still tells a changed link from the original', () => {
+    expect(
+      sameMeaning('[a][r]\n\n[r]: https://example.org/one', '[a](https://example.org/two)'),
+    ).toBe(false);
+  });
+});
+
+describe('#175 the editor settles, and keeps raw HTML it cannot show as written', () => {
+  it('changes nothing on a second save', async () => {
+    const loose = '* one\n* two\n\nSome __bold__ and _soft_ text.\n\n***\n';
+    const once = await throughEditor(loose);
+    expect(await throughEditor(once)).toBe(once);
+    expect(sameMeaning(loose, once)).toBe(true);
+  });
+
+  it.each([
+    ['a superscript', 'Area is measured in m<sup>2</sup>.'],
+    ['an HTML comment', 'Visible.\n\n<!-- kept for the auditors -->'],
+    ['a script', 'Before.\n\n<script>steal()</script>\n\nAfter.'],
+  ])('keeps %s', async (_name, markdown) => {
+    expect((await throughEditor(markdown)).trim()).toBe(markdown);
+  });
+});
+
+describe('#175 wiki syntax is kept as typed', () => {
+  it.each([
+    ['a wiki link', 'Read [[Travel Policy]] first.'],
+    ['a labelled wiki link to a section', 'See [[01.47#Limits|the limits]].'],
+    ['an embed', '![[Area Descriptions]]'],
+    ['a callout', '> [!WARNING]\n> Do not move any rows.'],
+    ['a folded callout', '> [!NOTE]-\n> Hidden at first.'],
+    ['a labelled wiki link in a table cell', '| Page | Note |\n| --- | --- |\n| [[A\\|b]] | x |'],
+    ['a hard break before a wiki link', 'Related:\\\n[[A]]'],
+    ['wiki links that open continuation lines', 'Related:\n[[A]]\n[[B]]\nend'],
+    ['a callout whose next line opens with a wiki link', '> [!NOTE]\n> [[X]] y'],
+  ])('keeps %s', async (_name, markdown) => {
+    const written = (await throughEditor(markdown)).trim();
+    expect(sameMeaning(markdown, written)).toBe(true);
+    if (!markdown.startsWith('|')) expect(written).toBe(markdown);
+  });
+
+  it.each([
+    ['before a live link', 'See \\[[X]] or [[Y]].'],
+    ['at the start, before a live link', '\\[[X]] and [[Y]]'],
+    ['after a character reference', 'Tom &amp; Jerry \\[[X]] and [[Y]]'],
+    ['on a continuation line', 'a\n\\[[X]] c [[Y]]'],
+    ['in a quote', '> a\n> \\[[X]] c [[Y]]'],
+    ['in a list item', '- a\n  \\[[X]] c [[Y]]'],
+    ['as an escaped embed', 'See \\![[X]] and [[Y]].'],
+  ])('keeps an escaped wiki link %s escaped, and the live one live', async (_name, markdown) => {
+    const written = await throughEditor(markdown);
+    expect(liveWikiLinks(written)).toEqual(liveWikiLinks(markdown));
+  });
+
+  it('leaves an escaped bracket as text rather than a live link', async () => {
+    const written = (await throughEditor('Write \\[[Page]] to link.')).trim();
+    expect(written).not.toContain(' [[Page]]');
+    expect(sameMeaning('Write \\[[Page]] to link.', written)).toBe(true);
+  });
+
+  it('aligns a table it writes, keeping every cell', async () => {
+    const table = '| Item | Default |\n| --- | --- |\n| Laptop | yes |';
+    expect((await throughEditor(table)).trim()).toBe(
+      '| Item   | Default |\n| ------ | ------- |\n| Laptop | yes     |',
     );
-    expect(images).toEqual([`/api/files/${IMAGE}`]);
   });
 
-  it('saves the same markdown embed for the video', () => {
-    expect(markdownFromEditor(throughTiptap(editorHtml(markdown, kindOf)))).toBe(markdown);
+  it('escapes a bracket that is not wiki syntax, as any markdown editor would', async () => {
+    expect((await throughEditor('A [!NOTE] mid-sentence.')).trim()).toBe(
+      'A \\[!NOTE] mid-sentence.',
+    );
   });
 });

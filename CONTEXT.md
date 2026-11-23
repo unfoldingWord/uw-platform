@@ -412,7 +412,7 @@ _Avoid_: file tree, outline, navigator, explorer
 
 **Edit mode**:
 What `/pages/:pageId/edit` shows to a person who may write the page, reached by the pencil: the page's title and text on one editable sheet, full window, with no sidebar, under one bar holding Back to reading, Discard draft and Save. Leaving it asks first when what was typed is not in a working draft. Nothing in it reaches the read view until Save.
-_Avoid_: editor (that is the Tiptap component inside it), editing view, focus mode (in the UI)
+_Avoid_: editor (that is the Milkdown Crepe component inside it), editing view, focus mode (in the UI)
 
 **Working draft**:
 The unsaved text of a page in edit mode, shared live by everyone editing it and held by the page's **sync hub**. Save publishes it as one version; Discard throws it away.

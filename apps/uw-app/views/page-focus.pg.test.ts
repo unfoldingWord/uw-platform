@@ -88,6 +88,15 @@ async function readerGetsNoManageEntries(db: Database): Promise<void> {
   expect(document.querySelector('main a[aria-label="Edit this page"]')).toBeNull();
 }
 
+function carriesTheEditor(headers: Headers, document: Document): void {
+  const editor = document.querySelector('main form[data-page-edit] [data-editor]');
+  expect(editor?.querySelector('[data-editor-surface]')).not.toBeNull();
+  const nonce = editor?.getAttribute('data-style-nonce') ?? '';
+  expect(nonce).toMatch(/^[A-Za-z0-9+/]{22}==$/);
+  expect(headers.get('content-security-policy')).toContain(`style-src 'self' 'nonce-${nonce}'`);
+  expect(document.querySelector('link[rel="stylesheet"][href^="/assets/editor-"]')).not.toBeNull();
+}
+
 async function editModeIsFocused(db: Database): Promise<void> {
   const made = await world(db);
   const edit = await getHtml(db, made.editor, `/pages/${made.middle}/edit`);
@@ -102,7 +111,7 @@ async function editModeIsFocused(db: Database): Promise<void> {
   );
   expect(form?.querySelector('[data-edit-bar] [data-editor-discard]')).not.toBeNull();
   expect(form?.querySelector('[data-edit-bar] [data-editor-people]')).not.toBeNull();
-  expect(form?.querySelector('[data-editor] [data-editor-toolbar]')).not.toBeNull();
+  carriesTheEditor(edit.headers, document);
   expect(form?.querySelector('input[name="title"]')?.getAttribute('value')).toBe('Bravo guide');
   expect(
     form?.querySelector(`a[data-leave-edit][href="/pages/${made.middle}"]`)?.textContent,

@@ -1,0 +1,54 @@
+@import '@milkdown/crepe/theme/common/prosemirror.css';
+@import '@milkdown/crepe/theme/common/reset.css';
+@import '@milkdown/crepe/theme/common/block-edit.css';
+@import '@milkdown/crepe/theme/common/code-mirror.css';
+@import '@milkdown/crepe/theme/common/cursor.css';
+@import '@milkdown/crepe/theme/common/image-block.css';
+@import '@milkdown/crepe/theme/common/link-tooltip.css';
+@import '@milkdown/crepe/theme/common/list-item.css';
+@import '@milkdown/crepe/theme/common/placeholder.css';
+@import '@milkdown/crepe/theme/common/toolbar.css';
+@import '@milkdown/crepe/theme/common/table.css';
+@import '@milkdown/crepe/theme/classic.css';
+
+[data-editor-surface] [data-wiki-text] {
+  padding-inline: var(--uw-space-1);
+  border-radius: var(--uw-radius-sm);
+  background: var(--uw-accent-soft);
+  color: var(--uw-accent-text);
+  font-family: var(--uw-font-mono);
+  font-size: var(--uw-text-sm);
+}
+
+[data-editor-surface] :is(th, td)[data-align='center'] {
+  text-align: center;
+}
+
+[data-editor-surface] :is(th, td)[data-align='right'] {
+  text-align: right;
+}
+
+[data-editor-surface] .collab-caret {
+  position: relative;
+  border-inline-start: thin solid var(--uw-accent-text);
+  pointer-events: none;
+}
+
+[data-editor-surface] .collab-caret-label {
+  position: absolute;
+  inset-block-end: 100%;
+  inset-inline-start: 0;
+  padding-inline: var(--uw-space-1);
+  border-radius: var(--uw-radius-sm);
+  background: var(--uw-accent);
+  color: var(--uw-on-accent);
+  font-size: var(--uw-text-xs);
+  font-weight: var(--uw-weight-heavy);
+  line-height: var(--uw-leading-snug);
+  white-space: nowrap;
+  user-select: none;
+}
+
+[data-editor-surface] .collab-selection {
+  background: var(--uw-accent-soft);
+}

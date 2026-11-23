@@ -3,7 +3,7 @@ import { appCss, appCssPath } from '@uw/ui/generated/app-css';
 import { fontFiles } from '@uw/ui/generated/fonts';
 import { markBase64, markPath, wordmarkBase64, wordmarkPath } from '@uw/ui/generated/mark';
 import type { AppEnv } from '../deps.ts';
-import { editorJs, editorPath } from '../generated/editor.ts';
+import { editorCss, editorCssPath, editorJs, editorPath } from '../generated/editor.ts';
 import { islandsJs, islandsPath, serviceWorkerJs } from '../generated/islands.ts';
 import { iconSvg } from './icon.ts';
 import { manifest } from './manifest.ts';
@@ -23,21 +23,26 @@ const shellAssets = [
 function assetBytes(base64: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
 }
+const stylesheets = [
+  [appCssPath, appCss],
+  [editorCssPath, editorCss],
+] as const;
 const scripts = [
   [islandsPath, islandsJs],
   [editorPath, editorJs],
 ] as const;
 const workerJs = `const UW_SHELL_ASSETS=${JSON.stringify(shellAssets)};\n${serviceWorkerJs}`;
 
-export function assetRoutes(): Hono<AppEnv> {
-  const routes = new Hono<AppEnv>();
-  routes.get(appCssPath, (c) =>
-    c.body(appCss, 200, {
-      'content-type': 'text/css; charset=utf-8',
-      'cache-control': immutable,
-      'x-content-type-options': 'nosniff',
-    }),
-  );
+function hashedAssets(routes: Hono<AppEnv>): void {
+  for (const [path, css] of stylesheets) {
+    routes.get(path, (c) =>
+      c.body(css, 200, {
+        'content-type': 'text/css; charset=utf-8',
+        'cache-control': immutable,
+        'x-content-type-options': 'nosniff',
+      }),
+    );
+  }
   for (const font of fontFiles) {
     const bytes = assetBytes(font.base64);
     routes.get(font.path, (c) =>
@@ -58,6 +63,11 @@ export function assetRoutes(): Hono<AppEnv> {
       c.body(script, 200, { 'content-type': javascript, 'cache-control': immutable }),
     );
   }
+}
+
+export function assetRoutes(): Hono<AppEnv> {
+  const routes = new Hono<AppEnv>();
+  hashedAssets(routes);
   routes.get('/sw.js', (c) =>
     c.body(workerJs, 200, {
       'content-type': javascript,

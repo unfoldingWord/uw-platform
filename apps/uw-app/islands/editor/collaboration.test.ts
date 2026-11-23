@@ -1,36 +1,20 @@
-import { JSDOM } from 'jsdom';
+import type { CrepeBuilder } from '@milkdown/crepe/builder';
+import { editorViewCtx } from '@milkdown/kit/core';
+import type { MilkdownPlugin } from '@milkdown/kit/ctx';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { applyAwarenessUpdate, Awareness, encodeAwarenessUpdate } from 'y-protocols/awareness';
 import { applyUpdate, Doc, encodeStateAsUpdate } from 'yjs';
-import { markdownFromEditor } from './from-editor.ts';
+import { installDom } from './test-dom.ts';
 
 type Module = typeof import('./collaboration.ts');
-type Core = typeof import('@tiptap/core');
-type Extensions = typeof import('./extensions.ts');
-type Editor = InstanceType<Core['Editor']>;
+type Builder = typeof import('./crepe-editor.ts');
 type Link = import('./collaboration.ts').Link;
 
 let collab: Module;
-let core: Core;
-let pageExtensions: Extensions['pageExtensions'];
-let dom: JSDOM;
+let builder: Builder;
 
-const globals = [
-  'window',
-  'document',
-  'navigator',
-  'Node',
-  'Element',
-  'HTMLElement',
-  'DOMParser',
-  'MutationObserver',
-  'getComputedStyle',
-  'requestAnimationFrame',
-  'cancelAnimationFrame',
-] as const;
-
+const MAC = /Mac|iP(hone|[oa]d)/.test(globalThis.navigator.platform);
 const MARKDOWN = '## Rules\n\nUse **strong** passwords.';
-const HTML = '<h2>Rules</h2><p>Use <strong>strong</strong> passwords.</p>';
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 const asked: string[] = [];
 const answers: boolean[] = [];
@@ -78,7 +62,11 @@ function room() {
       destroy: () => undefined,
     };
   };
-  return { connect, tell: (message: string) => seats.forEach((seat) => seat.say(message)) };
+  return {
+    connect,
+    seats,
+    tell: (message: string) => seats.forEach((seat) => seat.say(message)),
+  };
 }
 
 function seatFor(person: string): HTMLElement {
@@ -92,15 +80,61 @@ function seatFor(person: string): HTMLElement {
   return form.querySelector<HTMLElement>('[data-editor]') as HTMLElement;
 }
 
+async function editorIn(
+  root: HTMLElement,
+  plugins: readonly MilkdownPlugin[],
+): Promise<CrepeBuilder> {
+  const editor = builder.pageEditor({
+    root: root.querySelector<HTMLElement>('[data-editor-surface]') ?? root,
+    markdown: MARKDOWN,
+    upload: () => Promise.resolve(''),
+    slashItems: [],
+    plugins,
+  });
+  if (plugins.length > 0) await builder.sharedHistory(editor);
+  await editor.create();
+  return editor;
+}
+
+function surfaceOf(editor: CrepeBuilder) {
+  return { editor: editor.editor, setReadonly: (value: boolean) => editor.setReadonly(value) };
+}
+
 async function join(root: HTMLElement, connect: (doc: Doc) => Link) {
   const shared = collab.collaborationFor(root, connect, never);
   if (shared === null) throw new Error('no room on this screen');
-  const editor: Editor = new core.Editor({
-    element: root.querySelector('[data-editor-surface]'),
-    injectCSS: false,
-    extensions: [...pageExtensions({ history: false }), ...shared.extensions],
+  const editor = await editorIn(root, shared.plugins);
+  return { editor, how: await shared.ready(surfaceOf(editor), MARKDOWN) };
+}
+
+function touch(editor: CrepeBuilder): void {
+  editor.editor.action((ctx) => {
+    ctx
+      .get(editorViewCtx)
+      .dom.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'a' }));
   });
-  return { editor, how: await shared.ready(editor, HTML) };
+}
+
+function undo(editor: CrepeBuilder): void {
+  editor.editor.action((ctx) => {
+    const view = ctx.get(editorViewCtx);
+    const event = new KeyboardEvent('keydown', { key: 'z', metaKey: MAC, ctrlKey: !MAC });
+    view.someProp('handleKeyDown', (handle) => handle(view, event));
+  });
+}
+
+function append(editor: CrepeBuilder, words: string): void {
+  touch(editor);
+  editor.editor.action((ctx) => {
+    const view = ctx.get(editorViewCtx);
+    const { schema, doc } = view.state;
+    const paragraph = schema.nodes['paragraph']?.create(null, schema.text(words));
+    if (paragraph !== undefined) view.dispatch(view.state.tr.insert(doc.content.size, paragraph));
+  });
+}
+
+function shown(editor: CrepeBuilder): string {
+  return editor.getMarkdown().trim();
 }
 
 function words(root: HTMLElement, selector: string): string {
@@ -108,33 +142,23 @@ function words(root: HTMLElement, selector: string): string {
 }
 
 beforeAll(async () => {
-  dom = new JSDOM('<!DOCTYPE html><body></body>', {
-    url: 'https://uw.example/',
-    pretendToBeVisual: true,
-  });
-  for (const name of globals) {
-    Object.defineProperty(globalThis, name, {
-      value: name === 'window' ? dom.window : Reflect.get(dom.window, name),
-      configurable: true,
-      writable: true,
-    });
-  }
+  installDom('<!DOCTYPE html><body></body>');
   collab = await import('./collaboration.ts');
-  core = await import('@tiptap/core');
-  pageExtensions = (await import('./extensions.ts')).pageExtensions;
+  builder = await import('./crepe-editor.ts');
 });
 
 describe('#175 two people who open the same version at once get one copy of the page', () => {
-  it('builds the same first content byte for byte, so applying it twice changes nothing', () => {
-    const schema = core.getSchema(pageExtensions({ history: false }));
-    const first = collab.seedUpdate(schema, HTML);
-    expect([...collab.seedUpdate(schema, HTML)]).toEqual([...first]);
+  it('builds the same first content byte for byte, so applying it twice changes nothing', async () => {
+    const editor = await editorIn(document.body, []);
+    const first = collab.seedUpdate(editor.editor, MARKDOWN);
+    expect([...collab.seedUpdate(editor.editor, MARKDOWN)]).toEqual([...first]);
     const once = new Doc();
     applyUpdate(once, first);
     const twice = new Doc();
     applyUpdate(twice, first);
-    applyUpdate(twice, collab.seedUpdate(schema, HTML));
+    applyUpdate(twice, collab.seedUpdate(editor.editor, MARKDOWN));
     expect([...encodeStateAsUpdate(twice)]).toEqual([...encodeStateAsUpdate(once)]);
+    await editor.destroy();
   });
 
   it('reads no room from a screen that offers none', () => {
@@ -152,10 +176,10 @@ async function seedsThenJoins(): Promise<void> {
   const first = await join(ana, shared.connect);
   const second = await join(ben, shared.connect);
   expect([first.how, second.how]).toEqual(['seeded', 'joined']);
-  expect(markdownFromEditor(first.editor.getHTML())).toBe(MARKDOWN);
-  expect(markdownFromEditor(second.editor.getHTML())).toBe(MARKDOWN);
-  first.editor.commands.insertContentAt(first.editor.state.doc.content.size, '<p>From Ana.</p>');
-  expect(markdownFromEditor(second.editor.getHTML())).toBe(`${MARKDOWN}\n\nFrom Ana.`);
+  expect(shown(first.editor)).toBe(MARKDOWN);
+  expect(shown(second.editor)).toBe(MARKDOWN);
+  append(first.editor, 'From Ana.');
+  expect(shown(second.editor)).toBe(`${MARKDOWN}\n\nFrom Ana.`);
   expect(words(ben, '[data-editor-people]')).toBe('Also editing: ana@uw.example.');
   expect(words(ana, '[data-editor-people]')).toBe('Also editing: ben@uw.example.');
 }
@@ -164,14 +188,14 @@ async function continuesADraft(): Promise<void> {
   const shared = room();
   const ana = seatFor('ana@uw.example');
   const first = await join(ana, shared.connect);
-  first.editor.commands.insertContentAt(first.editor.state.doc.content.size, '<p>Unsaved.</p>');
+  append(first.editor, 'Unsaved.');
   const ben = seatFor('ben@uw.example');
   const second = await join(ben, shared.connect);
   expect(second.how).toBe('joined');
   expect(words(ben, '[data-editor-status]')).toBe(
     'You are continuing an unsaved draft of this page.',
   );
-  expect(markdownFromEditor(second.editor.getHTML())).toBe(`${MARKDOWN}\n\nUnsaved.`);
+  expect(shown(second.editor)).toBe(`${MARKDOWN}\n\nUnsaved.`);
 }
 
 async function discardsForEveryone(): Promise<void> {
@@ -180,7 +204,7 @@ async function discardsForEveryone(): Promise<void> {
   const ben = seatFor('ben@uw.example');
   const first = await join(ana, shared.connect);
   const second = await join(ben, shared.connect);
-  second.editor.commands.insertContentAt(second.editor.state.doc.content.size, '<p>Oops.</p>');
+  append(second.editor, 'Oops.');
   const discard = ana.querySelector<HTMLButtonElement>('[data-editor-discard]');
   expect(discard?.hidden).toBe(false);
   asked.length = 0;
@@ -188,15 +212,15 @@ async function discardsForEveryone(): Promise<void> {
   discard?.click();
   expect(asked).toEqual([collab.discardQuestion(1)]);
   expect(asked[0]).toContain('1 other person is editing this draft');
-  expect(markdownFromEditor(second.editor.getHTML())).toBe(`${MARKDOWN}\n\nOops.`);
+  expect(shown(second.editor)).toBe(`${MARKDOWN}\n\nOops.`);
   answers.push(true);
   discard?.click();
-  expect(markdownFromEditor(first.editor.getHTML())).toBe(MARKDOWN);
-  expect(markdownFromEditor(second.editor.getHTML())).toBe(MARKDOWN);
+  expect(shown(first.editor)).toBe(MARKDOWN);
+  expect(shown(second.editor)).toBe(MARKDOWN);
   expect(words(ana, '[data-editor-status]')).toContain('Draft discarded');
   const late = await join(seatFor('cy@uw.example'), shared.connect);
   expect(late.how).toBe('joined');
-  expect(markdownFromEditor(late.editor.getHTML())).toBe(MARKDOWN);
+  expect(shown(late.editor)).toBe(MARKDOWN);
 }
 
 async function stopsWhenSaved(): Promise<void> {
@@ -204,7 +228,7 @@ async function stopsWhenSaved(): Promise<void> {
   const ana = seatFor('ana@uw.example');
   const first = await join(ana, shared.connect);
   shared.tell('saved');
-  expect(first.editor.isEditable).toBe(false);
+  expect(first.editor.readonly).toBe(true);
   expect(words(ana, '[data-editor-status]')).toContain('saved as a new version');
 }
 
@@ -220,15 +244,53 @@ async function reportsUnavailable(): Promise<void> {
     setTimeout: (run: () => void) => run(),
     confirm: () => true,
   });
-  const editor = new core.Editor({
-    element: root.querySelector('[data-editor-surface]'),
-    injectCSS: false,
-    extensions: [...pageExtensions({ history: false }), ...(shared?.extensions ?? [])],
+  const editor = await editorIn(root, shared?.plugins ?? []);
+  expect(await shared?.ready(surfaceOf(editor), MARKDOWN)).toBe('unavailable');
+}
+
+async function openingLeavesItClean(): Promise<void> {
+  const shared = room();
+  await join(seatFor('ana@uw.example'), shared.connect);
+  await join(seatFor('ben@uw.example'), shared.connect);
+  await tick();
+  const meta = shared.seats[0]?.doc.getMap('meta');
+  expect(meta?.get('dirty')).not.toBe(true);
+}
+
+async function controlsThatStopEventsStillCount(): Promise<void> {
+  const shared = room();
+  const root = seatFor('ana@uw.example');
+  const first = await join(root, shared.connect);
+  const control = document.createElement('input');
+  control.addEventListener('pointerdown', (event) => event.stopPropagation());
+  root.querySelector('[data-editor-surface]')?.append(control);
+  control.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+  first.editor.editor.action((ctx) => {
+    const view = ctx.get(editorViewCtx);
+    view.dispatch(view.state.tr.insertText('Ticked.', 1));
   });
-  expect(await shared?.ready(editor, HTML)).toBe('unavailable');
+  expect(shared.seats[0]?.doc.getMap('meta').get('dirty')).toBe(true);
+}
+
+async function undoesOnlyYourOwnEdit(): Promise<void> {
+  const shared = room();
+  const first = await join(seatFor('ana@uw.example'), shared.connect);
+  const second = await join(seatFor('ben@uw.example'), shared.connect);
+  append(first.editor, 'From Ana.');
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  append(second.editor, 'From Ben.');
+  undo(first.editor);
+  expect(shown(first.editor)).toBe(`${MARKDOWN}\n\nFrom Ben.`);
+  expect(shown(second.editor)).toBe(`${MARKDOWN}\n\nFrom Ben.`);
 }
 
 describe('#175 a draft is shared, and nothing changes for readers until someone saves', () => {
+  it('leaves the draft clean when people only open it', openingLeavesItClean);
+  it('undoes your own last edit and keeps what others typed', undoesOnlyYourOwnEdit);
+  it(
+    'counts an edit made through a control that stops its events',
+    controlsThatStopEventsStillCount,
+  );
   it('seeds the draft for the first person and joins the second to it', seedsThenJoins);
   it('tells a person who joins later that they are continuing a draft', continuesADraft);
   it('discards the draft for everyone, back to the page as it was saved', discardsForEveryone);
