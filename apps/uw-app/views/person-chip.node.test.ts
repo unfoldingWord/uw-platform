@@ -8,7 +8,12 @@ const personFields =
   /\.(?:displayName|authorName|ownerName|grantedByName|grantedBy|savedBy|owner|person|email)\b/u;
 const cellKey = /^\s*(?:owner|granted|who|by|person):\s/u;
 const childName = /\{[^{}]*\.(?:displayName|savedBy|ownerName|grantedByName)\s*\}/u;
-const alwaysRaw = [/\bholderText\(/u, /\.authorName\b/u, /=\s*[\w.]*holder\.name;/u];
+const alwaysRaw = [
+  /\bholderText\(/u,
+  /\.authorName\b/u,
+  /=\s*[\w.]*holder\.name;/u,
+  /\bnamesFor\(/u,
+];
 
 const allowed = new Set([
   'apps/uw-app/views/parts/holder.tsx',
@@ -57,6 +62,7 @@ describe('#208 every screen shows a person through the person chip', () => {
       'owner: line.owner,',
       "{ label: 'Holder', value: holderText(card.holder, at) },",
       'const name = draft.holder.name;',
+      'names: await namesFor(db, reply.rows, stored.definition.properties),',
     ];
     expect(before.filter((line) => !printsAPersonAsText(line))).toEqual([]);
   });

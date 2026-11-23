@@ -13,13 +13,14 @@ import type { AppEnv } from '../../deps.ts';
 import { ensureBuiltIns } from '../../collections/builtins/seed.ts';
 import { coversOf } from '../../collections/covers.ts';
 import { loadCollection, type StoredCollection } from '../../collections/definitions.ts';
-import { namesFor } from '../../collections/display.ts';
+import { personIdsIn } from '../../collections/display.ts';
 import { mayReadCollection, readGroupSums, readRows } from '../../collections/reader.ts';
 import { viewsOf } from '../../collections/view-rows.ts';
 import { activePeople } from '../../people/directory.ts';
 import { monthBounds } from './collection-calendar.tsx';
 import type { LayoutProps } from './collection-layouts.tsx';
 import type { ScreenKernel } from './frame.tsx';
+import { personChipsFor } from './person.tsx';
 
 export type CollectionScene = {
   readonly stored: StoredCollection;
@@ -112,7 +113,11 @@ export async function layoutOf(
     layout: {
       definition: stored.definition,
       reply,
-      names: await namesFor(db, reply.rows, stored.definition.properties),
+      personChips: await personChipsFor(
+        db,
+        { reader: actor, at: screen.at },
+        personIdsIn(reply.rows, stored.definition.properties),
+      ),
       mayWrite: (row: CollectionRow) =>
         stored.definition.rowSource !== 'people' &&
         row.jdArea !== null &&

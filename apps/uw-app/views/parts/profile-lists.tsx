@@ -127,7 +127,7 @@ function Rows(props: { readonly rows: readonly ListedRow[]; readonly empty: stri
               <CellValue
                 property={property}
                 value={valueOf(listed.row, property.key)}
-                names={new Map()}
+                people={new Map()}
               />
             </span>
           ))}

@@ -64,7 +64,7 @@ export function cellText(property: PropertyDefinition, value: unknown, names: Na
   return scalarText(property, value, names);
 }
 
-function personIds(
+export function personIdsIn(
   rows: readonly CollectionRow[],
   properties: readonly PropertyDefinition[],
 ): string[] {
@@ -84,7 +84,7 @@ export async function namesFor(
   rows: readonly CollectionRow[],
   properties: readonly PropertyDefinition[],
 ): Promise<Names> {
-  const ids = personIds(rows, properties).filter((id) => /^[0-9a-f-]{36}$/.test(id));
+  const ids = personIdsIn(rows, properties).filter((id) => /^[0-9a-f-]{36}$/.test(id));
   if (ids.length === 0) return new Map();
   const found = await db
     .select({ id: people.id, name: people.displayName })
