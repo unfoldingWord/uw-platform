@@ -86,6 +86,7 @@ export const platformAreas: readonly PlatformArea[] = [
       { label: 'Today', icon: 'house', built: 'today' },
       { label: 'Pages & Wiki', icon: 'file-lines', built: 'pages' },
       { label: 'Tasks', icon: 'list-check', built: 'tasks' },
+      { label: 'Colleague Directory', icon: 'users', built: 'directory' },
       { label: 'Strategic Cascade', icon: 'layer-group', built: 'collections' },
       { label: 'Meetings', icon: 'calendar' },
       { label: 'JD Crosswalk', icon: 'table-cells', built: 'crosswalk' },
@@ -94,7 +95,7 @@ export const platformAreas: readonly PlatformArea[] = [
   {
     code: '10-19',
     name: 'Internal Operations & Administration',
-    modules: [{ label: 'Directory & Access', icon: 'users', built: 'directory' }],
+    modules: [],
   },
   {
     code: '20-29',
