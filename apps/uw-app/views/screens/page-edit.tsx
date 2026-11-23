@@ -11,6 +11,7 @@ import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '..
 import { pageNames } from '../parts/names.ts';
 import { editorCanShow } from '../../markdown/editor-html.ts';
 import { draftsOf } from '../../pages/drafts.ts';
+import { editorVideos } from '../../pages/editor-videos.ts';
 import { EditorFrame, uploadIdOf, type DraftRoom } from '../parts/editor-frame.tsx';
 import { EditBar } from '../parts/edit-bar.tsx';
 import { Icon } from '@uw/ui/components/icon.tsx';
@@ -77,6 +78,7 @@ type FormProps = {
   readonly page: Page;
   readonly options: EditOptions;
   readonly draft: DraftRoom | null;
+  readonly videos: ReadonlySet<string>;
   readonly read: string;
   readonly children?: Child;
 };
@@ -136,7 +138,12 @@ function EditSheet(props: FormProps & { readonly typed: Typed }) {
       <TitleField page={page} title={typed.title} />
       <p class="m-0 text-sm text-text-3">{hintOf(page, options.asText)}</p>
       {options.asText ? null : (
-        <EditorFrame pageId={page.id} bodyMd={typed.bodyMd} draft={props.draft} />
+        <EditorFrame
+          pageId={page.id}
+          bodyMd={typed.bodyMd}
+          draft={props.draft}
+          videos={props.videos}
+        />
       )}
       <BodyField page={page} bodyMd={typed.bodyMd} />
       <p
@@ -176,6 +183,7 @@ function EditForm(props: FormProps) {
             page={page}
             options={options}
             draft={props.draft}
+            videos={props.videos}
             read={props.read}
             typed={typed}
           />
@@ -200,7 +208,11 @@ function ReadOnly(props: { readonly page: Page; readonly read: string }) {
   );
 }
 
-type Editing = { readonly options: EditOptions; readonly draft: DraftRoom | null };
+type Editing = {
+  readonly options: EditOptions;
+  readonly draft: DraftRoom | null;
+  readonly videos: ReadonlySet<string>;
+};
 
 function EditNotes(props: { readonly options: EditOptions }) {
   const { options } = props;
@@ -222,10 +234,10 @@ function Editable(props: {
   readonly editing: Editing;
   readonly read: string;
 }) {
-  const { options, draft } = props.editing;
+  const { options, draft, videos } = props.editing;
   return (
     <>
-      <EditForm page={props.page} options={options} draft={draft} read={props.read}>
+      <EditForm page={props.page} options={options} draft={draft} videos={videos} read={props.read}>
         <EditNotes options={options} />
       </EditForm>
       {options.asText ? null : <script type="module" src={editorPath}></script>}
@@ -233,19 +245,28 @@ function Editable(props: {
   );
 }
 
-function editingOf(
+const noVideos: ReadonlySet<string> = new Set();
+
+async function videosFor(c: Context<AppEnv>, page: Page, bodyMd: string, asText: boolean) {
+  const database = c.get('database');
+  if (asText || database === null) return noVideos;
+  return editorVideos(database.db, page.id, bodyMd);
+}
+
+async function editingOf(
   c: Context<AppEnv>,
   shown: ShownPage,
   screen: ScreenKernel,
   options: EditOptions,
-): Editing {
+): Promise<Editing> {
   const { page } = shown;
   const asText = options.asText || !editorCanShow(page.bodyMd);
   const together = draftsOf(c.env) !== null && options.typed === null && !asText;
   const draft = together
     ? { version: page.version, person: screen.caller.actor.email ?? '' }
     : null;
-  return { options: { ...options, asText, askedForText: options.asText }, draft };
+  const videos = await videosFor(c, page, options.typed?.bodyMd ?? page.bodyMd, asText);
+  return { options: { ...options, asText, askedForText: options.asText }, draft, videos };
 }
 
 function readOnlyScreen(c: Context<AppEnv>, shown: ShownPage, options: EditOptions, read: string) {
@@ -277,7 +298,7 @@ export async function renderPageEdit(
   return renderScreen(
     c,
     { ...pageSpec(shown, pageNames.pageEdit), focus: true },
-    <Editable page={page} editing={editingOf(c, shown, screen, options)} read={read} />,
+    <Editable page={page} editing={await editingOf(c, shown, screen, options)} read={read} />,
   );
 }
 
