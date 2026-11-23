@@ -2,6 +2,7 @@ import { raw } from 'hono/html';
 import { IconToggle } from '@uw/ui/components/chip.tsx';
 import { Icon, type IconProps } from '@uw/ui/components/icon.tsx';
 import { editorHtml } from '../../markdown/editor-html.ts';
+import type { KindOf } from '../../markdown/file-video.ts';
 
 type Tool = {
   readonly format: string;
@@ -100,6 +101,7 @@ type FrameProps = {
   readonly pageId: string;
   readonly bodyMd: string;
   readonly draft: DraftRoom | null;
+  readonly kindOf?: KindOf;
 };
 
 export function EditorFrame(props: FrameProps) {
@@ -121,7 +123,7 @@ export function EditorFrame(props: FrameProps) {
         class="min-h-aside rounded-md outline-offset-4 outline-accent-text has-focus-visible:outline-2"
       ></div>
       <Toolbar uploadFor={uploadIdOf(props.pageId)} />
-      <template data-editor-content="">{raw(editorHtml(props.bodyMd))}</template>
+      <template data-editor-content="">{raw(editorHtml(props.bodyMd, props.kindOf))}</template>
       <InsertMenu />
     </div>
   );

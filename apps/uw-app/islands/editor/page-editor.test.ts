@@ -1,5 +1,5 @@
 import { JSDOM } from 'jsdom';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 type Start = typeof import('./page-editor.ts').startPageEditor;
 
@@ -48,6 +48,7 @@ function page(markdown: string, content: string): Document {
         <p data-editor-status></p>
         <span data-editor-mode>Joining the working draft</span>
         <div data-editor-text><textarea name="bodyMd">${markdown}</textarea></div>
+        <div data-upload data-page="p1"><input type="file" data-upload-input /><p data-upload-status></p></div>
         <button type="submit">Save</button>
       </form></body>`,
       { url: 'https://uw.example/pages/x/edit', pretendToBeVisual: true },
@@ -184,5 +185,32 @@ describe('#175 nothing is typed or saved until the shared draft is ready', () =>
     expect(document.querySelector('[data-editor-mode]')?.textContent).toBe('Editing on your own');
     expect(submit(document)).toBe(RULES);
     expect(document.querySelector<HTMLInputElement>('input[name="draftState"]')?.value).toBe('');
+  });
+});
+
+describe('#214 a video added while editing shows as a video and saves as an embed', () => {
+  const url = '/api/files/00000000-0000-4000-8000-0000000000a1';
+  const storing: Parameters<Start>[1] = {
+    ...deps,
+    fetch: (_input, init) =>
+      Promise.resolve(
+        init?.method === 'PUT'
+          ? Response.json({ file: { name: 'Walkthrough', contentType: 'video/mp4', url } })
+          : Response.json({ entries: [] }),
+      ),
+  };
+
+  it('draws a player where the cursor is and writes the same markdown embed', async () => {
+    const document = page('Watch this.', '<p>Watch this.</p>');
+    const editor = await start(document, storing);
+    editor?.commands.focus('end');
+    const input = document.querySelector<HTMLInputElement>('[data-upload-input]');
+    const video = new dom.window.File(['x'], 'walkthrough.mp4', { type: 'video/mp4' });
+    Object.defineProperty(input, 'files', { value: [video] });
+    input?.dispatchEvent(new dom.window.Event('change'));
+    await vi.waitFor(() => {
+      expect(document.querySelector('[data-editor-surface] video')?.getAttribute('src')).toBe(url);
+    });
+    expect(submit(document)).toBe(`Watch this.![Walkthrough](${url})`);
   });
 });

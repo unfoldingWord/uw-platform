@@ -5,6 +5,7 @@ import remarkParse from 'remark-parse';
 import rehypeStringify from 'rehype-stringify';
 import { unified } from 'unified';
 import { SKIP, visit } from 'unist-util-visit';
+import { fileIdOf, type KindOf } from './file-video.ts';
 import { sanitisedTree } from './render.ts';
 import { pageAddress } from './wiki-syntax.ts';
 
@@ -81,9 +82,18 @@ function embedOf(paragraph: Element): Element | null {
   return element('div', { dataPageEmbed: src, dataTitle: typeof alt === 'string' ? alt : '' }, []);
 }
 
-function forEditor() {
+const noKind: KindOf = () => null;
+
+function markVideo(image: Element, kindOf: KindOf): void {
+  const src = image.properties['src'];
+  const id = typeof src === 'string' ? fileIdOf(src) : null;
+  if (id !== null && kindOf(id) === 'video') image.properties['dataFileKind'] = 'video';
+}
+
+function forEditor(kindOf: KindOf) {
   return (tree: Root): void => {
     visit(tree, 'element', (node, index, parent) => {
+      if (node.tagName === 'img') markVideo(node, kindOf);
       if (node.tagName === 'ul') taskList(node);
       if (node.tagName === 'details') detailsContent(node);
       const embed = node.tagName === 'p' ? embedOf(node) : null;
@@ -94,8 +104,8 @@ function forEditor() {
   };
 }
 
-export function editorHtml(markdown: string): string {
-  const finish = unified().use(forEditor).use(rehypeStringify);
+export function editorHtml(markdown: string, kindOf: KindOf = noKind): string {
+  const finish = unified().use(forEditor, kindOf).use(rehypeStringify);
   const tree = sanitisedTree(markdown);
   finish.runSync(tree);
   return finish.stringify(tree);

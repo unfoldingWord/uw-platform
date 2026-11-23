@@ -210,7 +210,8 @@
     margin-block-end: 0;
   }
 
-  [data-page-body] img {
+  [data-page-body] img,
+  [data-page-body] video {
     max-width: 100%;
     height: auto;
     border-radius: var(--uw-radius-md);
