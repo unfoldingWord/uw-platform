@@ -9,6 +9,7 @@ import { pageExtensions } from './extensions.ts';
 import { applyFormat, isFormatActive } from './formats.ts';
 import { createMenu } from './menu.ts';
 import { suggestionMenus } from './suggestions.ts';
+import { markVideos, videoFilesOf } from './video-files.ts';
 
 export type EditorDeps = {
   readonly fetch: typeof fetch;
@@ -196,6 +197,7 @@ function wireSubmit(parts: Parts, active: Active): void {
 }
 
 function ready(parts: Parts, active: Active, editor: Editor): Editor {
+  markVideos(editor, videoFilesOf(parts.root));
   wireToolbar(parts.root, editor);
   editor.setEditable(true);
   active.editor = editor;

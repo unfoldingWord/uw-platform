@@ -214,3 +214,31 @@ describe('#214 a video added while editing shows as a video and saves as an embe
     expect(submit(document)).toBe(`Watch this.![Walkthrough](${url})`);
   });
 });
+
+describe('#214 a video in a working draft shows as a video, and its controls stay with the player', () => {
+  const url = '/api/files/00000000-0000-4000-8000-0000000000a1';
+
+  it('marks a video the shared draft loaded as a picture, and saves the same embed', async () => {
+    const document = page('Watch this.', '<p>Watch this.</p>');
+    document.querySelector('[data-editor]')?.setAttribute('data-video-files', url);
+    const shared = {
+      ...pendingDraft().shared,
+      ready: (editor: { commands: { setContent: (html: string) => void } }) => {
+        editor.commands.setContent(`<p>Watch this.</p><p><img src="${url}" alt="Clip"></p>`);
+        return Promise.resolve('joined' as const);
+      },
+    };
+    await start(document, { ...deps, collaboration: () => shared });
+    expect(document.querySelector('[data-editor-surface] video')?.getAttribute('src')).toBe(url);
+    expect(submit(document)).toBe(`Watch this.\n\n![Clip](${url})`);
+  });
+
+  it('keeps a drag that starts on the player from moving the video', async () => {
+    const document = page(`![Clip](${url})`, `<p><img src="${url}" alt="Clip"></p>`);
+    document.querySelector('[data-editor]')?.setAttribute('data-video-files', url);
+    await start(document, deps);
+    const drag = new dom.window.Event('dragstart', { bubbles: true, cancelable: true });
+    document.querySelector('[data-editor-surface] video')?.dispatchEvent(drag);
+    expect(drag.defaultPrevented).toBe(true);
+  });
+});

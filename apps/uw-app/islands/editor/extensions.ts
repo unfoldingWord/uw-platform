@@ -52,18 +52,29 @@ const PageEmbed = Node.create({
 
 const VIDEO = 'video';
 
-function fileView(props: NodeViewRendererProps & { HTMLAttributes: Record<string, unknown> }) {
-  const video = props.node.attrs['fileKind'] === VIDEO;
-  const dom = document.createElement(video ? 'video' : 'img');
-  for (const [name, value] of Object.entries(props.HTMLAttributes)) {
+const PLAYER_EVENTS = /^(mouse|pointer|drag|click|dblclick|contextmenu|touch|wheel)/;
+
+function attributesOn(dom: HTMLElement, attributes: Record<string, unknown>): void {
+  for (const [name, value] of Object.entries(attributes)) {
     if (value !== null && value !== undefined) dom.setAttribute(name, String(value));
   }
-  if (video) {
-    dom.setAttribute('controls', '');
-    dom.setAttribute('preload', 'metadata');
-    dom.setAttribute('title', String(props.node.attrs['alt'] ?? ''));
-    dom.removeAttribute('alt');
-  }
+}
+
+function playerView(props: NodeViewRendererProps & { HTMLAttributes: Record<string, unknown> }) {
+  const dom = document.createElement('video');
+  attributesOn(dom, props.HTMLAttributes);
+  dom.removeAttribute('alt');
+  dom.setAttribute('controls', '');
+  dom.setAttribute('preload', 'metadata');
+  dom.setAttribute('title', String(props.node.attrs['alt'] ?? ''));
+  dom.addEventListener('dragstart', (event) => event.preventDefault());
+  return { dom, stopEvent: (event: Event) => PLAYER_EVENTS.test(event.type) };
+}
+
+function fileView(props: NodeViewRendererProps & { HTMLAttributes: Record<string, unknown> }) {
+  if (props.node.attrs['fileKind'] === VIDEO) return playerView(props);
+  const dom = document.createElement('img');
+  attributesOn(dom, props.HTMLAttributes);
   return { dom };
 }
 

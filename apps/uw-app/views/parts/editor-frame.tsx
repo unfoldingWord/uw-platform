@@ -2,7 +2,6 @@ import { raw } from 'hono/html';
 import { IconToggle } from '@uw/ui/components/chip.tsx';
 import { Icon, type IconProps } from '@uw/ui/components/icon.tsx';
 import { editorHtml } from '../../markdown/editor-html.ts';
-import type { KindOf } from '../../markdown/file-video.ts';
 
 type Tool = {
   readonly format: string;
@@ -101,10 +100,14 @@ type FrameProps = {
   readonly pageId: string;
   readonly bodyMd: string;
   readonly draft: DraftRoom | null;
-  readonly kindOf?: KindOf;
+  readonly videos?: ReadonlySet<string>;
 };
 
+const noVideos: ReadonlySet<string> = new Set();
+
 export function EditorFrame(props: FrameProps) {
+  const videos = props.videos ?? noVideos;
+  const listed = [...videos].map((id) => `/api/files/${id}`).join(' ');
   const room =
     props.draft === null
       ? {}
@@ -114,6 +117,7 @@ export function EditorFrame(props: FrameProps) {
       data-editor=""
       data-page={props.pageId}
       {...room}
+      data-video-files={listed === '' ? undefined : listed}
       hidden
       class="flex min-w-0 flex-col gap-4"
     >
@@ -123,7 +127,9 @@ export function EditorFrame(props: FrameProps) {
         class="min-h-aside rounded-md outline-offset-4 outline-accent-text has-focus-visible:outline-2"
       ></div>
       <Toolbar uploadFor={uploadIdOf(props.pageId)} />
-      <template data-editor-content="">{raw(editorHtml(props.bodyMd, props.kindOf))}</template>
+      <template data-editor-content="">
+        {raw(editorHtml(props.bodyMd, (id) => (videos.has(id) ? 'video' : null)))}
+      </template>
       <InsertMenu />
     </div>
   );

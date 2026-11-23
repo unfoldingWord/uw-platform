@@ -17,8 +17,9 @@ describe('#214 the editor content marks a video page file by its stored type', (
     const video = '00000000-0000-4000-8000-0000000000a1';
     const image = '00000000-0000-4000-8000-0000000000a2';
     const bodyMd = `![Walkthrough](/api/files/${video})\n\n![Settings](/api/files/${image})`;
-    const kindOf = (id: string) => (id === video ? ('video' as const) : ('image' as const));
-    const html = String(EditorFrame({ pageId: 'p1', bodyMd, draft: null, kindOf }));
+    const videos = new Set([video]);
+    const html = String(EditorFrame({ pageId: 'p1', bodyMd, draft: null, videos }));
+    expect(html).toContain(`data-video-files="/api/files/${video}"`);
     expect(html).toContain(
       `<img src="/api/files/${video}" alt="Walkthrough" data-file-kind="video">`,
     );
