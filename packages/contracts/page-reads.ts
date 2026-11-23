@@ -58,10 +58,6 @@ export const pageIndexEntrySchema = z.object({
 
 export const pageIndexReplySchema = z.object({ entries: z.array(pageIndexEntrySchema) });
 
-export const pastedMarkdownSchema = z.object({ markdown: z.string().min(1).max(200_000) });
-
-export const pastedMarkdownReplySchema = z.object({ html: z.string() });
-
 export const pageSearchQuerySchema = z.object({
   q: z.string().min(1).max(200),
   type: pageTypeSchema.optional(),

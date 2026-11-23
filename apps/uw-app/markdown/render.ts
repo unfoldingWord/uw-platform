@@ -90,17 +90,6 @@ function sanitised(source: string, hooks: RenderHooks, depth: number): Root {
   return pipeline.runSync(pipeline.parse(source));
 }
 
-export function sanitisedTree(source: string): Root {
-  const pipeline = unified()
-    .use(remarkParse)
-    .use(remarkGfm)
-    .use(remarkRehype, { allowDangerousHtml: true })
-    .use(rehypeRaw)
-    .use(dialect)
-    .use(rehypeSanitize, schema);
-  return pipeline.runSync(pipeline.parse(source));
-}
-
 export function renderMarkdown(source: string, hooks: RenderHooks = noHooks): Rendered {
   const headings: Heading[] = [];
   const finish = unified().use(rehypeSlug).use(collectHeadings(headings)).use(rehypeStringify);

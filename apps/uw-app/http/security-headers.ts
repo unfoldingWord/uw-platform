@@ -1,4 +1,4 @@
-import type { MiddlewareHandler } from 'hono';
+import type { Context, MiddlewareHandler } from 'hono';
 import { inlineScripts } from '@uw/ui/components/inline-scripts.ts';
 import type { AppEnv } from '../deps.ts';
 
@@ -12,14 +12,17 @@ async function sha256(text: string): Promise<string> {
   return `'sha256-${btoa(String.fromCharCode(...new Uint8Array(digest)))}'`;
 }
 
-export async function contentSecurityPolicy(host: string): Promise<string> {
+export async function contentSecurityPolicy(
+  host: string,
+  styleNonce: string | null = null,
+): Promise<string> {
   hashes ??= Promise.all(inlineScripts.map(sha256));
   const scripts = (await hashes).join(' ');
   const connect = plainHost.test(host) ? `'self' wss://${host}` : "'self'";
   return [
     "default-src 'none'",
     `script-src 'self' ${scripts}`,
-    "style-src 'self'",
+    styleNonce === null ? "style-src 'self'" : `style-src 'self' 'nonce-${styleNonce}'`,
     "img-src 'self'",
     "media-src 'self'",
     "font-src 'self'",
@@ -36,8 +39,20 @@ export function securityHeaders(): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
     await next();
     if (c.res.status === SWITCHING_PROTOCOLS) return;
-    c.header('content-security-policy', await contentSecurityPolicy(new URL(c.req.url).host));
+    const host = new URL(c.req.url).host;
+    c.header(
+      'content-security-policy',
+      await contentSecurityPolicy(host, c.get('styleNonce') ?? null),
+    );
     c.header('x-content-type-options', 'nosniff');
     c.header('referrer-policy', 'same-origin');
   };
+}
+
+export function styleNonceFor(c: Context<AppEnv>): string {
+  const minted = c.get('styleNonce');
+  if (minted !== undefined) return minted;
+  const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
+  c.set('styleNonce', nonce);
+  return nonce;
 }

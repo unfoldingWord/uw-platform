@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { Bindings } from '../env.ts';
 
 const ROOM_URL = 'https://draft.internal/room';
+const EDITOR = 'milkdown';
 
 const statusSchema = z.object({ dirty: z.boolean(), editors: z.number().int().min(0) });
 
@@ -21,7 +22,7 @@ type Room = {
 };
 
 function roomOf(pageId: string, version: number): string {
-  return `${pageId}.${String(version)}`;
+  return `${pageId}.${String(version)}.${EDITOR}`;
 }
 
 export function draftsOf(env: Bindings): Drafts | null {

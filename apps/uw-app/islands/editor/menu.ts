@@ -4,8 +4,10 @@ export type MenuItem = {
   readonly choose: () => void;
 };
 
+export type Place = { readonly left: number; readonly bottom: number };
+
 export type Menu = {
-  show(items: readonly MenuItem[], at: DOMRect | null): void;
+  show(items: readonly MenuItem[], at: Place | null): void;
   move(by: number): void;
   choose(): boolean;
   hide(): void;
@@ -15,7 +17,7 @@ export type Menu = {
 const SELECTED = 'aria-selected';
 const GAP = 6;
 
-function place(panel: HTMLElement, at: DOMRect | null): void {
+function place(panel: HTMLElement, at: Place | null): void {
   if (at === null) return;
   panel.style.left = `${String(Math.round(at.left))}px`;
   panel.style.top = `${String(Math.round(at.bottom + GAP))}px`;

@@ -105,7 +105,7 @@ async function titlesOf(
   );
 }
 
-export async function fileKindsOf(
+async function fileKindsOf(
   db: Executor,
   bodies: readonly string[],
 ): Promise<ReadonlyMap<string, FileKind>> {

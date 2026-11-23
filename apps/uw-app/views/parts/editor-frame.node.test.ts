@@ -1,28 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { EditorFrame } from './editor-frame.tsx';
-import '../../islands/editor/extensions.ts';
-import { formatNames } from '../../islands/editor/formats.ts';
 
-describe('#175 every toolbar button names a format the editor applies', () => {
-  it('offers no button the editor does not know', () => {
-    const html = String(EditorFrame({ pageId: 'p1', bodyMd: '', draft: null }));
-    const offered = [...html.matchAll(/data-format="([^"]+)"/g)].map((match) => match[1]);
-    expect(offered.length).toBeGreaterThan(10);
-    expect(offered.filter((name) => !formatNames.includes(name ?? ''))).toEqual([]);
-  });
-});
-
-describe('#214 the editor content marks a video page file by its stored type', () => {
-  it('tags the video for the editor and leaves the picture as it is', () => {
-    const video = '00000000-0000-4000-8000-0000000000a1';
-    const image = '00000000-0000-4000-8000-0000000000a2';
-    const bodyMd = `![Walkthrough](/api/files/${video})\n\n![Settings](/api/files/${image})`;
-    const videos = new Set([video]);
-    const html = String(EditorFrame({ pageId: 'p1', bodyMd, draft: null, videos }));
-    expect(html).toContain(`data-video-files="/api/files/${video}"`);
-    expect(html).toContain(
-      `<img src="/api/files/${video}" alt="Walkthrough" data-file-kind="video">`,
+describe('#175 the editor frame carries only what the editor mounts on', () => {
+  it('offers the surface, the page picker and the draft room, and no toolbar of its own', () => {
+    const html = String(
+      EditorFrame({
+        pageId: 'p1',
+        draft: { version: 3, person: 'ana@uw.example' },
+        styleNonce: 'bm9uY2U=',
+      }),
     );
-    expect(html).toContain(`<img src="/api/files/${image}" alt="Settings">`);
+    expect(html).toContain('data-editor-surface');
+    expect(html).toContain('data-editor-menu');
+    expect(html).toContain('data-draft-version="3"');
+    expect(html).not.toContain('data-format');
+    expect(html).not.toContain('data-editor-content');
   });
 });

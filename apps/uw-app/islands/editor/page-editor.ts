@@ -1,16 +1,14 @@
-import { createNodeFromContent, Editor, getHTMLFromFragment, getSchema } from '@tiptap/core';
-import type { Node as PageNode } from '@tiptap/pm/model';
+import type { CrepeBuilder } from '@milkdown/crepe/builder';
+import { insert } from '@milkdown/kit/utils';
 import { pageIndexReplySchema } from '@uw/contracts';
-import { markdownFromEditor } from './from-editor.ts';
-import { markdownFor, showsInPlace } from '../browser/page-upload.ts';
+import { markdownFor, notAdded, uploadFile, type Placed } from '../browser/page-upload.ts';
 import { createMatcher, type Matcher } from '../browser/switcher-match.ts';
 import type { Collaboration } from './collaboration.ts';
-import { pageExtensions } from './extensions.ts';
-import { applyFormat, isFormatActive } from './formats.ts';
-import { MarkdownPaste } from './markdown-paste.ts';
+import { pageEditor, sharedHistory } from './crepe-editor.ts';
 import { createMenu } from './menu.ts';
-import { suggestionMenus } from './suggestions.ts';
-import { markVideos, videoFilesOf } from './video-files.ts';
+import { pagePicker } from './page-picker.ts';
+import { sameMeaning } from './same-meaning.ts';
+import { pageSlashItems } from './slash-items.ts';
 
 export type EditorDeps = {
   readonly fetch: typeof fetch;
@@ -28,7 +26,6 @@ type Parts = {
 
 const INDEX = '/api/pages/index';
 const noMatch: Matcher = () => [];
-
 function within<T extends Element>(scope: Element | null, selector: string): T | null {
   return scope?.querySelector<T>(selector) ?? null;
 }
@@ -38,9 +35,8 @@ function partsOf(document: Document): Parts | null {
   const form = root?.closest('form') ?? null;
   const surface = within<HTMLElement>(root, '[data-editor-surface]');
   const area = within<HTMLTextAreaElement>(form, 'textarea[name="bodyMd"]');
-  const content = within<HTMLTemplateElement>(root, '[data-editor-content]');
   if (root === null || form === null || surface === null || area === null) return null;
-  return { root, form, surface, area, initial: content?.innerHTML ?? '' };
+  return { root, form, surface, area, initial: area.value };
 }
 
 function sharing(form: Element, live: boolean): void {
@@ -54,25 +50,6 @@ function say(root: Element, words: string): void {
   if (status !== null) status.textContent = words;
 }
 
-function wireToolbar(root: Element, editor: Editor): void {
-  const buttons = [...root.querySelectorAll<HTMLButtonElement>('[data-format]')];
-  root.addEventListener('click', (event) => {
-    const button = (event.target as Element | null)?.closest('[data-format]') ?? null;
-    if (button === null) return;
-    event.preventDefault();
-    applyFormat(editor, button.getAttribute('data-format') ?? '');
-  });
-  const refresh = () => {
-    for (const button of buttons) {
-      const active = isFormatActive(editor, button.getAttribute('data-format') ?? '');
-      button.setAttribute('aria-pressed', active ? 'true' : 'false');
-      button.toggleAttribute('data-on', active);
-    }
-  };
-  editor.on('transaction', refresh);
-  refresh();
-}
-
 async function loadPages(send: typeof fetch): Promise<Matcher> {
   try {
     const response = await send(INDEX, { headers: { accept: 'application/json' } });
@@ -82,93 +59,80 @@ async function loadPages(send: typeof fetch): Promise<Matcher> {
   }
 }
 
-function insertFile(editor: Editor, file: Parameters<typeof markdownFor>[0]): void {
-  if (showsInPlace(file.contentType)) {
-    const fileKind = file.contentType.startsWith('video/') ? 'video' : null;
-    const attrs = { src: file.url, alt: file.name, fileKind };
-    editor.chain().focus().insertContent({ type: 'image', attrs }).run();
-    return;
-  }
-  const mark = { type: 'link', attrs: { href: file.url } };
-  editor
-    .chain()
-    .focus()
-    .insertContent({ type: 'text', text: file.name, marks: [mark] })
-    .run();
+function uploader(parts: Parts, deps: EditorDeps) {
+  const region = parts.form.querySelector('[data-upload]');
+  const status = parts.form.querySelector('[data-upload-status]');
+  const say = (words: string) => {
+    if (status !== null) status.textContent = words;
+  };
+  return async (file: File): Promise<Placed> => {
+    say(`Adding ${file.name}`);
+    const outcome = region === null ? 'not_wired' : await uploadFile(region, file, deps);
+    if (typeof outcome === 'string') {
+      say(notAdded(outcome));
+      throw new Error(outcome);
+    }
+    say(`Added ${outcome.name}. Save the page to keep it.`);
+    return outcome;
+  };
 }
 
-function wireUploads(parts: Parts, editor: Editor, deps: EditorDeps): () => void {
-  const input = parts.form.querySelector<HTMLInputElement>('[data-upload-input]');
-  const region = input?.closest('[data-upload]') ?? null;
-  const status = region?.querySelector('[data-upload-status]') ?? null;
+type Upload = ReturnType<typeof uploader>;
+
+type Mounting = {
+  readonly parts: Parts;
+  readonly deps: EditorDeps;
+  readonly upload: Upload;
+  readonly pickFile: () => void;
+};
+
+type Active = {
+  editor: CrepeBuilder;
+  baseline: string;
+  shared: Collaboration | null;
+  joined: boolean;
+};
+
+function uploadInput(parts: Parts): HTMLInputElement | null {
+  return parts.form.querySelector<HTMLInputElement>('[data-upload-input]');
+}
+
+function wireUploads(parts: Parts, active: Active, upload: Upload): void {
+  const input = uploadInput(parts);
   input?.addEventListener('change', () => {
     const file = input.files?.[0];
-    if (file === undefined || region === null) return;
-    const page = encodeURIComponent(region.getAttribute('data-page') ?? '');
-    const url = `/api/files/${deps.uuid()}?page=${page}&name=${encodeURIComponent(file.name)}`;
-    void deps
-      .fetch(url, { method: 'PUT', headers: { 'content-type': file.type }, body: file })
-      .then((response) => response.json())
-      .then((body: { file?: Parameters<typeof markdownFor>[0]; reason?: string }) => {
-        if (body.file === undefined) throw new Error(body.reason ?? 'internal_error');
-        insertFile(editor, body.file);
+    if (file === undefined) return;
+    void upload(file)
+      .then((placed) => {
+        active.editor.editor.action(insert(markdownFor(placed)));
         input.value = '';
-        if (status !== null)
-          status.textContent = `Added ${body.file.name}. Save the page to keep it.`;
       })
-      .catch(() => {
-        if (status !== null) status.textContent = 'Not added: the file could not be stored.';
-      });
+      .catch(() => undefined);
   });
-  return () => input?.click();
 }
 
-function showAsText(parts: Parts, why: string): void {
-  parts.root.hidden = true;
-  parts.form.removeAttribute('data-editor-active');
-  parts.form.querySelector<HTMLElement>('[data-editor-text]')?.removeAttribute('hidden');
-  say(parts.form, why);
-}
-
-function sameMeaning(before: string, after: string): boolean {
-  return markdownFromEditor(before) === markdownFromEditor(after);
-}
-
-function mount(parts: Parts, deps: EditorDeps, shared: Collaboration | null): Editor {
+async function mount(mounting: Mounting, shared: Collaboration | null): Promise<CrepeBuilder> {
+  const { parts, deps, upload } = mounting;
   const menu = createMenu(parts.root);
   let pages: Matcher = noMatch;
-  let pickFile = () => undefined as void;
-  const menus =
-    menu === null
-      ? []
-      : [suggestionMenus({ menu, pages: () => pages, pickFile: () => pickFile() })];
-  const editor = new Editor({
-    element: parts.surface,
-    injectCSS: false,
-    extensions: [
-      ...pageExtensions({ history: shared === null }),
-      ...(shared?.extensions ?? []),
-      ...menus,
-      MarkdownPaste.configure({ fetch: deps.fetch }),
+  const editor = pageEditor({
+    root: parts.surface,
+    markdown: parts.initial,
+    styleNonce: parts.root.getAttribute('data-style-nonce') ?? '',
+    upload: async (file) => (await upload(file)).url,
+    slashItems: pageSlashItems(mounting.pickFile),
+    plugins: [
+      ...(menu === null ? [] : [pagePicker({ menu, pages: () => pages })]),
+      ...(shared?.plugins ?? []),
     ],
-    content: shared === null ? parts.initial : '',
-    editorProps: {
-      attributes: {
-        role: 'textbox',
-        'aria-multiline': 'true',
-        'aria-label': 'Page text',
-        'data-editor-input': '',
-      },
-    },
   });
-  pickFile = wireUploads(parts, editor, deps);
+  if (shared !== null) await sharedHistory(editor);
+  await editor.create();
   void loadPages(deps.fetch).then((loaded) => {
     pages = loaded;
   });
   return editor;
 }
-
-type Active = { editor: Editor | null; shared: Collaboration | null };
 
 function savingWith(form: HTMLFormElement, enabled: boolean): void {
   for (const button of form.querySelectorAll<HTMLButtonElement>('button[type="submit"]')) {
@@ -189,71 +153,70 @@ function stateField(form: HTMLFormElement): HTMLInputElement {
 function wireSubmit(parts: Parts, active: Active): void {
   parts.form.addEventListener('submit', (event) => {
     if (!parts.form.hasAttribute('data-editor-active')) return;
-    if (active.editor === null) {
+    if (!active.joined) {
       event.preventDefault();
       return;
     }
-    parts.area.value = markdownFromEditor(active.editor.getHTML());
+    const markdown = active.editor.getMarkdown();
+    parts.area.value = markdown === active.baseline ? parts.initial : markdown;
     stateField(parts.form).value = active.shared?.snapshot() ?? '';
   });
 }
 
-function ready(parts: Parts, active: Active, editor: Editor): Editor {
-  markVideos(editor, videoFilesOf(parts.root));
-  wireToolbar(parts.root, editor);
-  editor.setEditable(true);
-  active.editor = editor;
-  savingWith(parts.form, true);
-  return editor;
-}
-
-function shows(initial: string): boolean {
-  const schema = getSchema(pageExtensions({ history: false }));
-  const node = createNodeFromContent(initial, schema, { slice: false }) as PageNode;
-  return sameMeaning(initial, getHTMLFromFragment(node.content, schema));
-}
-
-function alone(parts: Parts, active: Active, deps: EditorDeps): Editor {
+function showAsText(parts: Parts, why: string): void {
   sharing(parts.form, false);
-  return ready(parts, active, mount(parts, deps, null));
+  parts.root.hidden = true;
+  parts.form.removeAttribute('data-editor-active');
+  parts.form.querySelector<HTMLElement>('[data-editor-text]')?.removeAttribute('hidden');
+  say(parts.form, why);
 }
 
-async function joined(
-  parts: Parts,
-  active: Active,
-  deps: EditorDeps,
-  shared: Collaboration,
-): Promise<Editor> {
+function ready(parts: Parts, active: Active, live: boolean): CrepeBuilder {
+  sharing(parts.form, live);
+  active.editor.setReadonly(false);
+  active.joined = true;
+  savingWith(parts.form, true);
+  return active.editor;
+}
+
+async function joined(mounting: Mounting, active: Active, shared: Collaboration) {
+  const { parts } = mounting;
   savingWith(parts.form, false);
+  active.editor.setReadonly(true);
   say(parts.form, 'Joining the shared draft.');
-  const editor = mount(parts, deps, shared);
-  editor.setEditable(false);
-  if ((await shared.ready(editor, parts.initial)) !== 'unavailable') {
-    sharing(parts.form, true);
-    return ready(parts, active, editor);
+  if ((await shared.ready(active.editor, parts.initial)) !== 'unavailable') {
+    return ready(parts, active, true);
   }
   shared.destroy();
-  editor.destroy();
+  await active.editor.destroy();
   active.shared = null;
+  active.editor = await mount(mounting, null);
+  active.baseline = active.editor.getMarkdown();
   say(parts.form, 'Editing together is not available right now, so you are editing on your own.');
-  return alone(parts, active, deps);
+  return ready(parts, active, false);
 }
 
 export async function startPageEditor(
   document: Document,
   deps: EditorDeps,
-): Promise<Editor | null> {
+): Promise<CrepeBuilder | null> {
   const parts = partsOf(document);
   if (parts === null) return null;
-  if (!shows(parts.initial)) {
+  const upload = uploader(parts, deps);
+  const mounting = { parts, deps, upload, pickFile: () => uploadInput(parts)?.click() };
+  const shared = deps.collaboration?.(parts.root) ?? null;
+  const editor = await mount(mounting, shared);
+  if (!sameMeaning(parts.initial, editor.getMarkdown())) {
+    await editor.destroy();
+    shared?.destroy();
     showAsText(parts, 'This page uses formatting the editor cannot show yet, so it opens as text.');
     return null;
   }
   parts.root.hidden = false;
   parts.form.setAttribute('data-editor-active', '');
   parts.form.querySelector<HTMLElement>('[data-editor-text]')?.setAttribute('hidden', '');
-  const active: Active = { editor: null, shared: deps.collaboration?.(parts.root) ?? null };
+  const active: Active = { editor, baseline: editor.getMarkdown(), shared, joined: false };
   wireSubmit(parts, active);
-  const { shared } = active;
-  return shared === null ? alone(parts, active, deps) : joined(parts, active, deps, shared);
+  wireUploads(parts, active, upload);
+  return shared === null ? ready(parts, active, false) : joined(mounting, active, shared);
 }

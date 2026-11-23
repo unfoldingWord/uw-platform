@@ -76,7 +76,7 @@ async function socketNeedsAnEditorOnTheCurrentVersion(db: Database): Promise<voi
   expect(await joined.text()).toBe('joined');
   expect(made.drafts?.calls).toEqual([
     {
-      room: `${made.pageId}.1`,
+      room: `${made.pageId}.1.milkdown`,
       method: 'GET',
       socket: true,
       url: 'https://draft.internal/room?_pk=a1',
@@ -124,7 +124,12 @@ async function savingClosesTheDraft(db: Database): Promise<void> {
   });
   expect(saved.status).toBe(303);
   expect(made.drafts?.calls).toEqual([
-    { room: `${made.pageId}.1`, method: 'POST', socket: false, url: 'https://draft.internal/room' },
+    {
+      room: `${made.pageId}.1.milkdown`,
+      method: 'POST',
+      socket: false,
+      url: 'https://draft.internal/room',
+    },
   ]);
   const refused = await send(made, made.editor, path, {
     method: 'POST',
@@ -143,7 +148,7 @@ async function readViewSaysADraftIsOpen(db: Database): Promise<void> {
   const quiet = await world(db, memoryDrafts());
   const calm = await (await send(quiet, quiet.editor, `/pages/${quiet.pageId}`)).text();
   expect(calm).not.toContain('unsaved draft');
-  const busy = { ...quiet, drafts: memoryDrafts([`${quiet.pageId}.1`]) };
+  const busy = { ...quiet, drafts: memoryDrafts([`${quiet.pageId}.1.milkdown`]) };
   const noted = await (await send(busy, busy.editor, `/pages/${busy.pageId}`)).text();
   expect(noted).toContain(
     'There is an unsaved draft of this page. You are reading it as last saved.',

@@ -219,23 +219,6 @@ async function redrawsWhenTheVideoArrives(db: Database): Promise<void> {
   expect(after.html ?? '').toContain(`<video src="/api/files/${fileId}"`);
 }
 
-async function marksVideosForTheEditor(db: Database): Promise<void> {
-  const made = await world(db);
-  const fileId = randomUUID();
-  await put(made, made.editor, fileId, { type: 'video/mp4', body: MP4, name: 'tour.mp4' });
-  const own = await (await send(made, made.editor, `/pages/${made.pageId}/edit`)).raw.text();
-  expect(own).toContain(`data-video-files="/api/files/${fileId}"`);
-  const page = await fileKnowledge(db, made.editor, '01', {
-    title: 'Borrows a video',
-    bodyMd: `![Zoom tour](/api/files/${fileId})`,
-  });
-  const edit = await (await send(made, made.editor, `/pages/${page.pageId}/edit`)).raw.text();
-  expect(edit).toContain(`data-video-files="/api/files/${fileId}"`);
-  expect(edit).toContain(`<img src="/api/files/${fileId}" alt="Zoom tour" data-file-kind="video">`);
-  const text = await send(made, made.editor, `/pages/${page.pageId}/edit?as=text`);
-  expect(await text.raw.text()).not.toContain('data-video-files');
-}
-
 async function followsThePageWhenItMoves(db: Database): Promise<void> {
   const mover = await person(db, 'file-mover', 'editor', '00-09');
   await seedGrant(db, {
@@ -293,9 +276,6 @@ describe.skipIf(!testServer)('#175 a page can hold pictures and files', () => {
 
   it('plays an uploaded video in the rendered page and serves it in byte ranges', () =>
     withAppDatabase(playsAVideo));
-
-  it('#214 marks the videos a page holds or embeds for the editor, and skips it as text', () =>
-    withAppDatabase(marksVideosForTheEditor));
 
   it('draws a video once it is stored, even after the page was read and cached without it', () =>
     withAppDatabase(redrawsWhenTheVideoArrives));

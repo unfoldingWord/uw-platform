@@ -53,7 +53,7 @@ Monorepo, three Workers:
 - **Drizzle ORM** — schema-as-TypeScript is the single source of truth; plain reviewable SQL migrations via drizzle-kit (applied by GitHub Actions direct to Neon, bypassing Hyperdrive)
 - **Neon Postgres** via Hyperdrive (free connector). Neon over Supabase: we only want Postgres — Access/R2/DO already cover auth/storage/realtime. Branch-per-PR = free staging DBs.
 - **Zod** at every boundary; frontmatter schemas defined once, reused for validation + types + forms
-- UI: Hono JSX SSR + HTMX/minimal islands for dashboards, boards, and admin; the **page editor/browser is a shared TypeScript client component** (Tiptap + Yjs, markdown-canonical) mounted as an island on the web and as the whole app in the Tauri desktop shell (§2.5)
+- UI: Hono JSX SSR + HTMX/minimal islands for dashboards, boards, and admin; the **page editor/browser is a shared TypeScript client component** (Milkdown Crepe + Yjs, markdown-canonical) mounted as an island on the web and as the whole app in the Tauri desktop shell (§2.5)
 - Desktop: **Tauri** app in the same monorepo (`apps/uw-desktop`), reusing the editor/sync client with local SQLite + optional on-disk markdown vault
 - Testing: Vitest with workers pool; ledger gets property-based tests ("any generated posting balances or is rejected")
 - CI/CD: GitHub Actions → wrangler; main→staging auto, prod on tagged release
@@ -105,7 +105,7 @@ Types drive search filters, per-type list views, and reserved-JD-ID conventions 
 
 **Whole-doc markdown at rest + CRDT sync layer (Yjs), not blocks.** Blocks (Notion's model) kill diffability and make agent writes multi-row transactions — still rejected. An earlier draft also rejected CRDTs and used optimistic-concurrency LWW, but the **offline/desktop requirement (§2.5) changes that calculus**: offline editing makes divergence normal rather than rare, and 3-way merge prompts on every reconnect would be miserable. The design:
 
-- Each page body is a **Yjs document**; Tiptap has first-class Yjs bindings, so the same editor does realtime co-editing online and conflict-free merge after offline work. Adopted from Phase 0 — retrofitting CRDT under a live editor later would be far more expensive than starting with it.
+- Each page body is a **Yjs document**; Milkdown binds to Yjs through its collaboration plugin (`y-prosemirror`), so the same editor does realtime co-editing online and conflict-free merge after offline work. Adopted from Phase 0 — retrofitting CRDT under a live editor later would be far more expensive than starting with it.
 - **Markdown stays canonical at rest**: on every sync point/idle save, the server exports the Yjs doc to markdown into `pages.body_md` + `page_versions`, so search, AI agents, exports, publishing, and the version history all see plain markdown, never CRDT binary. The Yjs state is a sync-layer artifact (snapshot + update log in Durable Object storage, compacted), not the system of record. If the CRDT layer ever had to be abandoned, the markdown corpus is complete.
 - **Frontmatter is NOT CRDT-merged**: typed properties are form-edited, per-field LWW with field-level timestamps (concurrent edits to *different* fields both win; same field, latest wins, both recorded in version history). Merging YAML by CRDT invites schema-invalid garbage.
 - Sync hub: **one Durable Object per active page** (y-partyserver/PartyKit patterns — Cloudflare acquired PartyKit; y-sweet is the same shape), websocket online, update-batch exchange for reconnecting offline clients. This is the real job DOs were reserved for; a page-DO is idle-evicted and costs nothing when nobody edits.
@@ -486,8 +486,8 @@ Both run on Workers; Rust compiles to WASM via `workers-rs`. With AI agents writ
 | Dimension | TypeScript | Rust (workers-rs/WASM) |
 |---|---|---|
 | Workers support | First-class; every CF feature ships JS-first (Queues, DO, MCP helpers, Hyperdrive examples) | Supported but second-class; API gaps lag months behind; smaller community when stuck |
-| Ecosystem fit | Everything this platform needs exists validated: Tiptap, Drizzle, Zod, Stripe SDK, Octokit, googleapis, unified/remark | No equivalents for editor/serialization; Stripe/Google/GitHub crates are community-grade; you'd write more from scratch — opposite of the reuse goal |
-| The UI problem | One language everywhere — editor, SSR, API, MCP | The Tiptap/ProseMirror editor is unavoidably JS. Rust backend = permanent two-language codebase, two toolchains, duplicated types across a serialization boundary |
+| Ecosystem fit | Everything this platform needs exists validated: Milkdown, Drizzle, Zod, Stripe SDK, Octokit, googleapis, unified/remark | No equivalents for editor/serialization; Stripe/Google/GitHub crates are community-grade; you'd write more from scratch — opposite of the reuse goal |
+| The UI problem | One language everywhere — editor, SSR, API, MCP | The Milkdown/ProseMirror editor is unavoidably JS. Rust backend = permanent two-language codebase, two toolchains, duplicated types across a serialization boundary |
 | Correctness | Weaker (null/undefined, structural typing); mitigated by strict mode + Zod at boundaries + **invariants living in Postgres, not app code** | Genuinely better: exhaustive matching, no null, ownership — real value for ledger logic |
 | Runtime perf | More than sufficient; workload is I/O-bound CRUD at 50-user scale | Faster CPU, but nothing here is CPU-bound; WASM adds bundle-size/cold-start cost and 128MB memory limit applies equally |
 | AI-agent effectiveness | Largest training corpus of any language; agents are measurably strongest here; instant iteration (no compile step in dev loop) | Agents are good but corpus is thinner, especially for workers-rs; borrow-checker fights slow agent iteration loops |
@@ -504,7 +504,7 @@ Rule: **buy validated feature sets from the OSS ecosystem; write only the integr
 | HTTP framework | Hono | de facto Workers standard |
 | ORM/migrations | Drizzle | plain-SQL migrations, schema-as-code |
 | Validation | Zod | single schema → validation + types + forms |
-| WYSIWYG↔Markdown | Tiptap (MIT core) on ProseMirror; `prosemirror-markdown` serializer | the validated Notion-style editing stack |
+| WYSIWYG↔Markdown | Milkdown with its Crepe interface (MIT) on ProseMirror; markdown parsed and written by remark | a Notion-style editor whose own source is markdown |
 | CRDT sync | Yjs + y-partyserver/PartyKit (Cloudflare-acquired) on Durable Objects | realtime collab + offline merge; markdown stays canonical |
 | Desktop shell | Tauri | ~10MB installers, same TS client code, local SQLite + filesystem vault |
 | Markdown pipeline | unified/remark/rehype | parsing, frontmatter, wiki-link plugins, HTML render — battle-tested |
@@ -790,7 +790,7 @@ Every row produces an artifact on schedule — a PDF (§16) plus its machine-rea
 4. **Access drift** — permissions rot as people change roles. ACL is native and audit-logged (§4); time-boxed grants for contractors; quarterly access-review report; grant changes touching finance areas notify super admins.
 5. **Parallel-run fatigue** — Intacct mirror is an automated import job, not re-keying; manual burden scoped to monthly reconciliation review.
 6. **Backup theater** — quarterly scripted restore drill (dump → fresh Neon branch → trial balance matches), logged as a page.
-7. **CRDT sync layer complexity** — Yjs + per-page DOs is the most intricate subsystem outside the ledger. Contained by design: markdown remains the complete system of record (the CRDT layer could be ripped out and the corpus survives intact), frontmatter is excluded from CRDT merge, Yjs/Tiptap/PartyKit are widely deployed OSS rather than homegrown, and snapshot compaction + export are covered by property tests (offline edit → reconnect → exported markdown contains both writers' changes).
+7. **CRDT sync layer complexity** — Yjs + per-page DOs is the most intricate subsystem outside the ledger. Contained by design: markdown remains the complete system of record (the CRDT layer could be ripped out and the corpus survives intact), frontmatter is excluded from CRDT merge, Yjs/Milkdown/PartyKit are widely deployed OSS rather than homegrown, and snapshot compaction + export are covered by property tests (offline edit → reconnect → exported markdown contains both writers' changes).
 8. **Local replicas on devices** — laptops in sensitive countries hold synced content. Mitigations: ledger/CRM/donor data never syncs offline; FRED-sensitive records excluded by default; selective sync by JD area with ACL enforced at sync time; revocation purges on next connect; OS-level disk encryption required by policy for the desktop app.
 9. **Story-Bank consent failure** — a field story published above its consented level is a safety incident, not an editorial mistake. Mitigations: level is a column enforced server-side in the publish path, stories inherit their engagement's sensitivity as a hard ceiling, default on creation is `internal`, `story_usages` makes a consent withdrawal traceable to every place the story landed (§9.5).
 10. **Module sprawl / dependency rot** — modules that quietly join into each other's tables stop being modules within months. Mitigated by the CI check over the schema and import graph, and by the rule that a module ships a runbook, an export path, verification steps, and a classification or it is not done (§14).
@@ -806,7 +806,7 @@ Every row produces an artifact on schedule — a PDF (§16) plus its machine-rea
 - `apps/uw-ingest/` — Stripe/GitHub webhook verification + enqueue
 - `apps/uw-www/` — public site server
 - `apps/uw-desktop/` — Tauri shell around the shared editor/sync client
-- `packages/editor/` — shared Tiptap + Yjs editor and sync client (used by uw-app islands and uw-desktop), incl. the suggestion/revision layer and CriticMarkup serializer (§2.4)
+- `packages/editor/` — shared Milkdown Crepe + Yjs editor and sync client (used by uw-app islands and uw-desktop), incl. the suggestion/revision layer and CriticMarkup serializer (§2.4)
 - `packages/core/modules.ts` — the module registry (§14): dependencies, tables, routes, tools, classification
 - `packages/core/dates.ts` — the single `formatDate`/`parseDate` pair; everything else is banned by lint (§0)
 - `packages/charts/` — chart specs, standard chart library, brand palette, SVG/PNG/CSV export (§17), seeded by porting `../Budget Report`, `../Revenue Projection`, `../team-charts`
