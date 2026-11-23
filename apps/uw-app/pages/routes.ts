@@ -31,6 +31,7 @@ import { confirmPage } from './confirm.ts';
 import { connectDraft } from './draft-handlers.ts';
 import { downloadFile, listPageFiles, uploadFile } from './file-handlers.ts';
 import { movePage } from './move.ts';
+import { convertPaste } from './paste-handlers.ts';
 import {
   dropFavourite,
   handleComment,
@@ -164,6 +165,7 @@ function pageRoutes(): Hono<AppEnv> {
   routes.post('/commands/comment_page', handleComment);
   routes.post('/commands/resolve_comment', handleResolve);
   routes.post('/commands/:name', handleCommand);
+  routes.post('/editor-html', convertPaste);
   routes.get('/', pageReads.list);
   routes.get('/index', pageReads.index);
   routes.get('/recent', pageReads.recent);

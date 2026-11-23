@@ -149,7 +149,7 @@ function mount(parts: Parts, deps: EditorDeps, shared: Collaboration | null): Ed
       ...pageExtensions({ history: shared === null }),
       ...(shared?.extensions ?? []),
       ...menus,
-      MarkdownPaste,
+      MarkdownPaste.configure({ fetch: deps.fetch }),
     ],
     content: shared === null ? parts.initial : '',
     editorProps: {

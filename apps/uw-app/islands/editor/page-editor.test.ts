@@ -261,11 +261,35 @@ const PASTED = [
   '- Areas\n- Categories',
 ].join('\n\n');
 
+const PASTED_HTML = [
+  '<blockquote><p>Pro Tip: search this page.</p></blockquote>',
+  '<h2>Overview</h2>',
+  '<p>unfoldingWord uses <a href="https://johnnydecimal.com/">Johnny.Decimal</a> for ',
+  '<strong>knowledge</strong>.</p>',
+  '<ul><li><p>Areas</p></li><li><p>Categories</p></li></ul>',
+].join('');
+
+type Sent = { readonly url: string; readonly body: unknown };
+
+function converting(html: string | null) {
+  const sent: Sent[] = [];
+  const send = (input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input) !== '/api/pages/editor-html') return deps.fetch();
+    sent.push({ url: String(input), body: JSON.parse(String(init?.body ?? 'null')) });
+    if (html === null) return Promise.resolve(new Response(null, { status: 503 }));
+    return Promise.resolve(Response.json({ html }));
+  };
+  return { deps: { ...deps, fetch: send }, sent };
+}
+
 describe('pasting markdown keeps its formatting', () => {
   it('turns pasted markdown text into headings, quotes, links and lists', async () => {
     const document = page('', '<p></p>');
-    const editor = await start(document, deps);
+    const server = converting(PASTED_HTML);
+    const editor = await start(document, server.deps);
     editor?.view.pasteText(PASTED, clipboard(PASTED, ''));
+    await tick();
+    expect(server.sent).toEqual([{ url: '/api/pages/editor-html', body: { markdown: PASTED } }]);
     const html = editor?.getHTML() ?? '';
     expect(html).toContain('<h2>Overview</h2>');
     expect(html).toContain('<blockquote>');
@@ -275,32 +299,53 @@ describe('pasting markdown keeps its formatting', () => {
 
   it('reads markdown from a code editor whose copy carries only coloured text', async () => {
     const document = page('', '<p></p>');
-    const editor = await start(document, deps);
+    const server = converting('<h2>Overview</h2>');
+    const editor = await start(document, server.deps);
     const html = '<div><span style="color:#569cd6">## Overview</span></div>';
     editor?.view.pasteHTML(html, clipboard('## Overview', html));
+    await tick();
     expect(editor?.getHTML()).toContain('<h2>Overview</h2>');
   });
 
+  it('keeps the pasted lines as text when the markdown cannot be converted', async () => {
+    const document = page('', '<p></p>');
+    const editor = await start(document, converting(null).deps);
+    editor?.view.pasteText('## Overview\nSecond line', clipboard('## Overview\nSecond line', ''));
+    await tick();
+    expect(editor?.getHTML()).toBe('<p>## Overview</p><p>Second line</p>');
+  });
+});
+
+describe('pasting text that is not markdown leaves it as it was', () => {
   it('keeps formatted text copied from a web page as it was', async () => {
     const document = page('', '<p></p>');
-    const editor = await start(document, deps);
+    const server = converting('<h1>wrong</h1>');
+    const editor = await start(document, server.deps);
     const html = '<p><strong>Bold</strong> # not a heading</p>';
     editor?.view.pasteHTML(html, clipboard('**Bold** # not a heading', html));
+    await tick();
+    expect(server.sent).toEqual([]);
     expect(editor?.getHTML()).toContain('<strong>Bold</strong> # not a heading');
   });
 
   it('pastes plain words as plain words', async () => {
     const document = page('', '<p></p>');
-    const editor = await start(document, deps);
+    const server = converting('<h1>wrong</h1>');
+    const editor = await start(document, server.deps);
     editor?.view.pasteText('Just words.', clipboard('Just words.', ''));
+    await tick();
+    expect(server.sent).toEqual([]);
     expect(submit(document)).toBe('Just words.');
   });
 
   it('pastes markdown into a code block as the characters typed', async () => {
     const document = page('', '<pre><code>x</code></pre>');
-    const editor = await start(document, deps);
+    const server = converting('<h2>wrong</h2>');
+    const editor = await start(document, server.deps);
     editor?.commands.setTextSelection(2);
     editor?.view.pasteText('## Overview', clipboard('## Overview', ''));
+    await tick();
+    expect(server.sent).toEqual([]);
     expect(editor?.getHTML()).toContain('## Overview');
     expect(editor?.getHTML()).not.toContain('<h2>');
   });
