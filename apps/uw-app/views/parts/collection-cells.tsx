@@ -7,9 +7,11 @@ import {
 } from '@uw/contracts';
 import { Badge, type BadgeTone } from '@uw/ui/components/badge.tsx';
 import { safeHref } from '@uw/ui/components/href.ts';
-import { cellText, valueOf, type Names } from '../../collections/display.ts';
+import { PersonChip } from '@uw/ui/components/person-chip.tsx';
+import { cellText, personTypes, valueOf } from '../../collections/display.ts';
 import { pageLink } from './page-shown.ts';
 import { collectionRowPath } from './paths.ts';
+import type { PersonChips } from './person.tsx';
 
 const quiet = 'text-text-3';
 
@@ -95,6 +97,18 @@ const readThroughShown: Special = (property, value) =>
     <span class={quiet}>{cellText(property, value, new Map())}</span>
   ) : undefined;
 
+function People(props: { readonly value: unknown; readonly people: PersonChips }) {
+  const ids = (Array.isArray(props.value) ? props.value : [props.value]).map(String);
+  return (
+    <span class="flex min-w-0 max-w-full flex-wrap gap-x-3 gap-y-1">
+      {ids.map((id) => {
+        const person = props.people.get(id);
+        return person === undefined ? <span>{id}</span> : <PersonChip person={person} />;
+      })}
+    </span>
+  );
+}
+
 function special(property: PropertyDefinition, value: unknown): Child | undefined {
   return (
     listShown(property, value) ?? textShown(property, value) ?? readThroughShown(property, value)
@@ -104,15 +118,18 @@ function special(property: PropertyDefinition, value: unknown): Child | undefine
 export function CellValue(props: {
   readonly property: PropertyDefinition;
   readonly value: unknown;
-  readonly names: Names;
+  readonly people: PersonChips;
 }) {
   const { property, value } = props;
   if (value === null || value === undefined || (Array.isArray(value) && value.length === 0)) {
     return <span class={quiet}>—</span>;
   }
+  if (personTypes.has(property.config.type)) {
+    return <People value={value} people={props.people} />;
+  }
   const shown = special(property, value);
   if (shown !== undefined) return <>{shown}</>;
-  return <span>{cellText(property, value, props.names)}</span>;
+  return <span>{cellText(property, value, new Map())}</span>;
 }
 
 export function RowTitle(props: { readonly collection: string; readonly row: CollectionRow }) {

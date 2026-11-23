@@ -3,7 +3,7 @@ import { SKIP, visit } from 'unist-util-visit';
 
 export type FileKind = 'image' | 'video';
 
-type KindOf = (id: string) => FileKind | null;
+export type KindOf = (id: string) => FileKind | null;
 type Video = { readonly src: string; readonly name: string };
 
 const FILE_ADDRESS =
@@ -12,7 +12,7 @@ const FILE_IN_TEXT =
   /\/api\/files\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/g;
 const UNNAMED = 'the video';
 
-function fileIdOf(url: string): string | null {
+export function fileIdOf(url: string): string | null {
   return FILE_ADDRESS.exec(url)?.[1] ?? null;
 }
 

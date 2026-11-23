@@ -9,6 +9,7 @@ import { pageExtensions } from './extensions.ts';
 import { applyFormat, isFormatActive } from './formats.ts';
 import { createMenu } from './menu.ts';
 import { suggestionMenus } from './suggestions.ts';
+import { markVideos, videoFilesOf } from './video-files.ts';
 
 export type EditorDeps = {
   readonly fetch: typeof fetch;
@@ -82,7 +83,9 @@ async function loadPages(send: typeof fetch): Promise<Matcher> {
 
 function insertFile(editor: Editor, file: Parameters<typeof markdownFor>[0]): void {
   if (showsInPlace(file.contentType)) {
-    editor.chain().focus().setImage({ src: file.url, alt: file.name }).run();
+    const fileKind = file.contentType.startsWith('video/') ? 'video' : null;
+    const attrs = { src: file.url, alt: file.name, fileKind };
+    editor.chain().focus().insertContent({ type: 'image', attrs }).run();
     return;
   }
   const mark = { type: 'link', attrs: { href: file.url } };
@@ -194,6 +197,7 @@ function wireSubmit(parts: Parts, active: Active): void {
 }
 
 function ready(parts: Parts, active: Active, editor: Editor): Editor {
+  markVideos(editor, videoFilesOf(parts.root));
   wireToolbar(parts.root, editor);
   editor.setEditable(true);
   active.editor = editor;

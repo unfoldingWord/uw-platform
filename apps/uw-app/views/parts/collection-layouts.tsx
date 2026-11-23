@@ -8,16 +8,16 @@ import {
 } from '@uw/contracts';
 import { KanbanCard, type ShownFact } from '@uw/ui/components/kanban-card.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
-import type { Names } from '../../collections/display.ts';
 import { CellValue, propertyValue, RowTitle } from './collection-cells.tsx';
 import { PropertyEditor, type Choice } from './collection-edit.tsx';
 import { drawnTable } from './collection-table.tsx';
 import { collectionRowPath } from './paths.ts';
+import type { PersonChips } from './person.tsx';
 
 export type LayoutProps = {
   readonly definition: CollectionDefinition;
   readonly reply: RowsReply;
-  readonly names: Names;
+  readonly personChips: PersonChips;
   readonly mayWrite: (row: CollectionRow) => boolean;
   readonly people: readonly Choice[];
   readonly covers: ReadonlyMap<string, string>;
@@ -47,7 +47,7 @@ function cell(layout: LayoutProps, row: CollectionRow, property: PropertyDefinit
   const value = propertyValue(row, property.key);
   const editable =
     layout.mayWrite(row) && isWritableProperty(property) && inlineTypes.has(property.config.type);
-  if (!editable) return <CellValue property={property} value={value} names={layout.names} />;
+  if (!editable) return <CellValue property={property} value={value} people={layout.personChips} />;
   const target = {
     collection: layout.definition.key,
     rowId: row.id,
@@ -82,7 +82,7 @@ export function rowFacts(layout: LayoutProps, row: CollectionRow): readonly Show
       <CellValue
         property={property}
         value={propertyValue(row, property.key)}
-        names={layout.names}
+        people={layout.personChips}
       />
     ),
   }));
@@ -103,7 +103,7 @@ export function ListLayout(props: LayoutProps) {
               <CellValue
                 property={property}
                 value={propertyValue(row, property.key)}
-                names={props.names}
+                people={props.personChips}
               />
             </span>
           ))}
