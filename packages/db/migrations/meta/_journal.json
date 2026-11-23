@@ -463,6 +463,13 @@
       "when": 1795300546267,
       "tag": "0067_profile_page_type",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1795442111331,
+      "tag": "0068_jd_cascade_map",
+      "breakpoints": true
     }
   ]
 }

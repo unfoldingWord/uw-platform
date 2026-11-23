@@ -269,7 +269,7 @@ async function links(world: Played): Promise<void> {
   expect(nav?.textContent).toContain('No Zulip topic yet');
 }
 
-const channels = { '80-89': '80-89 Technology' };
+const channels = { '80-89': '80-89 Tech & SLR' };
 
 async function zulipLink(world: Played): Promise<void> {
   const topic = 'software/uw-platform#42';
@@ -284,7 +284,7 @@ async function zulipLink(world: Played): Promise<void> {
     (a) => a.textContent === 'Open the Zulip topic',
   );
   expect(link?.getAttribute('href')).toBe(
-    zulipTopicUrl(env['ZULIP_SITE'] ?? '', '80-89 Technology', topic),
+    zulipTopicUrl(env['ZULIP_SITE'] ?? '', '80-89 Tech & SLR', topic),
   );
   expect(await screenProblems(page.text)).toEqual([]);
 }

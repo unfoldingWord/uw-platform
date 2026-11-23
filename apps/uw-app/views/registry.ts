@@ -110,6 +110,18 @@ export const screens: readonly ScreenEntry[] = [
     file: 'apps/uw-app/views/screens/credentials.tsx',
     path: '/credentials',
   },
+  { name: 'crosswalk', file: 'apps/uw-app/views/screens/crosswalk.tsx', path: '/crosswalk' },
+  {
+    name: 'crosswalk-cell',
+    file: 'apps/uw-app/views/screens/crosswalk-cell.tsx',
+    path: '/crosswalk/areas/:area/:tier',
+  },
+  {
+    name: 'crosswalk-node',
+    file: 'apps/uw-app/views/screens/crosswalk-node.tsx',
+    path: '/crosswalk/nodes/:nodeId',
+  },
+
   {
     name: 'credential',
     file: 'apps/uw-app/views/screens/credential.tsx',

@@ -12,6 +12,7 @@ export * from './collection-views.ts';
 export * from './collections.ts';
 export * from './commands.ts';
 export * from './credential-commands.ts';
+export * from './crosswalk.ts';
 export * from './drafts.ts';
 export * from './event-evidence.ts';
 export * from './events.ts';

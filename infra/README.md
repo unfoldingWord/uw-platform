@@ -257,7 +257,7 @@ Variables, in `infra/uw-app/wrangler.go-live.toml` under staging and production 
 | `VAPID_SUBJECT` | `mailto:` an address that answers, or an `https://` page |
 | `ZULIP_SITE` | The Zulip realm's `https://` origin |
 | `ZULIP_BOT_EMAIL` | The bot's email address |
-| `ZULIP_CHANNELS` | A JSON object from area to channel name, for example `{"80-89":"80-89 Technology"}`; an area with no channel drops its Zulip wakes. Each channel must be private, with members exactly the people who can read that area (see below) |
+| `ZULIP_CHANNELS` | A JSON object from area to channel name, for example `{"80-89":"80-89 Tech & SLR"}`; an area with no channel drops its Zulip wakes. Each channel must be private, with members exactly the people who can read that area (see below) |
 
 Secrets, set with `wrangler secret put <name> --env <name>` and written in no file:
 

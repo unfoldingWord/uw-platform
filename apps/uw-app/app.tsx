@@ -8,6 +8,7 @@ import { withPrincipal } from './auth/principal-middleware.ts';
 import { platformPersonDeps, type PersonDeps } from './commands/person-deps.ts';
 import { harnessRoutes } from './commands/routes.ts';
 import { credentialRoutes, credentialScreenRoutes } from './credentials/routes.ts';
+import { mountCrosswalk } from './crosswalk/routes.ts';
 import { securityHeaders } from './http/security-headers.ts';
 import { shareReadsOnPages, withDatabase } from './database.ts';
 import { platformDeps, type AppDeps, type AppEnv } from './deps.ts';
@@ -25,6 +26,7 @@ import { notFound } from './views/screens/not-found.tsx';
 function mountContent(app: Hono<AppEnv>): void {
   mountKnowledgeBase(app);
   mountCollections(app);
+  mountCrosswalk(app);
 }
 
 export function createApp(

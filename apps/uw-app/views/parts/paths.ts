@@ -200,3 +200,15 @@ export function collectionSettingsPath(key: string): string {
 export function collectionExportPath(key: string, viewId: string): string {
   return `/api/collections/${segment(key)}/views/${segment(viewId)}/export`;
 }
+
+export function crosswalkPath(): string {
+  return '/crosswalk';
+}
+
+export function crosswalkCellPath(area: string, tier: string): string {
+  return `/crosswalk/areas/${segment(area)}/${segment(tier)}`;
+}
+
+export function crosswalkNodePath(nodeId: string): string {
+  return `/crosswalk/nodes/${segment(nodeId)}`;
+}

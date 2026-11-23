@@ -11,6 +11,7 @@ It runs on Cloudflare Workers, with PostgreSQL (Amazon Aurora) reached through C
 - [`docs/architecture.md`](docs/architecture.md): the shape. A pure kernel over ports, driven headlessly in a simulator, with events as the spine.
 - [`docs/adr/`](docs/adr/): the decisions behind that shape.
 - [`docs/PRD.md`](docs/PRD.md): every requirement with a stable ID, and the decision log.
+- [`docs/guides/two-axes.md`](docs/guides/two-axes.md): for adopters, the two ways the platform organizes work (Johnny.Decimal areas and the Strategic Cascade) and how to declare the map between them.
 - [`infra/README.md`](infra/README.md): how each environment is set up: Workers, Hyperdrive, Access, GitHub Apps, secrets and logs.
 - [`prd/`](prd/): the platform corpus the harness sits under, including the ratified harness spec and its review.
 

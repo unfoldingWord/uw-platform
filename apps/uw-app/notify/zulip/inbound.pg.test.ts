@@ -14,7 +14,7 @@ import { notifyConfigOf } from '../config.ts';
 import { zulipEnv } from '../testing.ts';
 import { zulipIngestHandler } from './inbound.ts';
 
-const channel = '80-89 Technology';
+const channel = '80-89 Tech & SLR';
 const config = notifyConfigOf(zulipEnv({ '80-89': channel, '20-29': '20-29 Other' })).zulip;
 let messages = 500;
 

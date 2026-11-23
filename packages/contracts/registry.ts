@@ -106,6 +106,16 @@ import {
   updatePageCommandSchema,
 } from './pages.ts';
 import {
+  cascadeNodeReplySchema,
+  cascadeTierSchema,
+  crosswalkReplySchema,
+  declareJdMapCommandSchema,
+  mapRelationSchema,
+  placeInCascadeCommandSchema,
+  placedEntityKindSchema,
+  removeJdMapCommandSchema,
+} from './crosswalk.ts';
+import {
   fileReplySchema,
   fileSchema,
   pageCapabilitiesSchema,
@@ -280,6 +290,14 @@ export const schemaRegistry: Record<string, ZodType> = {
   'set-area-home-command': setAreaHomeCommandSchema,
   'area-home-reply': areaHomeReplySchema,
   'name-category-command': nameCategoryCommandSchema,
+  'cascade-tier': cascadeTierSchema,
+  'map-relation': mapRelationSchema,
+  'placed-entity-kind': placedEntityKindSchema,
+  'declare-jd-map-command': declareJdMapCommandSchema,
+  'remove-jd-map-command': removeJdMapCommandSchema,
+  'place-in-cascade-command': placeInCascadeCommandSchema,
+  'crosswalk-reply': crosswalkReplySchema,
+  'cascade-node-reply': cascadeNodeReplySchema,
   'verb-name': verbNameSchema,
   'forbidden-verb': forbiddenVerbSchema,
   'verb-group': verbGroupSchema,

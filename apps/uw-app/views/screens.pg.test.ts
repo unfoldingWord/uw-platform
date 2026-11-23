@@ -117,6 +117,8 @@ function pathOf(entry: ScreenEntry, world: Seeded): string {
     .replace(':version', '1')
     .replace(':key', 'program')
     .replace(':viewId', 'c0110000-0000-4000-8000-000000000401')
+    .replace(':tier', 'program')
+    .replace(':nodeId', world.programRow)
     .replace(':rowId', world.programRow)
     .replace(':personId', world.kim.personId ?? '')
 
