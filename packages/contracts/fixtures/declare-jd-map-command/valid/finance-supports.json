@@ -1,0 +1,8 @@
+{
+  "command": "declare_jd_map",
+  "requestId": "00000000-0000-4000-8000-000000000001",
+  "jdArea": "20-29",
+  "cascadePageId": "00000000-0000-4000-8000-000000000002",
+  "relation": "supports",
+  "note": null
+}

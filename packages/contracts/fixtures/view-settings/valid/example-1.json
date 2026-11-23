@@ -1,0 +1,25 @@
+{
+  "name": "By phase",
+  "layout": "board",
+  "scope": "shared",
+  "properties": [],
+  "filter": null,
+  "sorts": [],
+  "group": {
+    "property": "phase",
+    "by": "value"
+  },
+  "groups": [
+    {
+      "value": "running",
+      "visible": true,
+      "wipLimit": 5
+    }
+  ],
+  "hideEmptyGroups": false,
+  "manualOrder": false,
+  "dateProperty": null,
+  "chart": null,
+  "cover": false,
+  "defaultTemplate": null
+}

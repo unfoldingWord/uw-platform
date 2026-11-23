@@ -400,7 +400,7 @@ This section is the list of work for v0.3.0 and the design document is why; wher
 | UI-1 | **The token system.** The colour scales, roles, type, spacing, size, radius, shadow and layout tokens of design section 5 in `packages/ui/tokens/`, light and dark, with a test that every text role on `--canvas`, `--surface` and `--raised`, and each text-on-soft pair, is at least 4.5:1 in both themes Cost: fixed decision (ADR 0011). | Must | Design section 5; V3-2, V3-5 |
 | UI-2 | **The lock.** The Tailwind theme is the token set and nothing else, spacing included; `pnpm verify` fails on an arbitrary value in a class (`p-[18px]`) and on a raw colour, size or shadow outside the token files, each proven against a planted fixture Cost: fixed decision (ADR 0011). | Must | V3-3 |
 | UI-3 | **Bundled fonts.** Nunito Sans (400, 600, 800) and JetBrains Mono (400) served from the Worker's own assets under `font-src 'self'`; no request leaves for a font Cost: additive. | Must | V3-6 |
-| UI-4 | **One icon component.** Icons by name; Font Awesome Pro Regular when its packages are installed, Duotone for large tiles; Font Awesome Free, or a same-size placeholder, when they are not. `pnpm verify` and the screenshot check pass with no Font Awesome token present Cost: fixed decision (ADR 0013). | Must | V3-7; DX-8 |
+| UI-4 | **One icon component.** Icons by name; Font Awesome Pro Regular when its packages are installed, Duotone for large tiles; Font Awesome Free, or a same-size placeholder, when they are not. `pnpm verify` passes with no Font Awesome token present Cost: fixed decision (ADR 0013). | Must | V3-7; DX-8 |
 
 #### 7.12.2 The frame and the screens (UI)
 
@@ -417,7 +417,7 @@ This section is the list of work for v0.3.0 and the design document is why; wher
 | UI-13 | **Health detail.** One indicator's figures and listing, as design section 4.9 Cost: additive. | Must | Design section 4.9 |
 | UI-14 | **Charts.** Health's runs chart and the sparklines on Home and Persona drawn with Apache ECharts as SVG in the token colours; the value each shows is also in the page as text Cost: fixed decision (ADR 0012). | Must | V3-8 |
 | UI-15 | **Three reads.** Runs and gate waits per day over 30 days, for the platform and per harness; each item's latest event; the items the viewer holds. No new table Cost: additive. | Must | Design section 7; V3-11 |
-| UI-16 | **The screenshot check.** Every screen rendered from the seeded fixtures in light and dark, at desktop and phone width, in CI, and compared with committed pictures taken with the free icon fallback; a planted change to a token value fails it Cost: additive. | Must | Design section 1 |
+| UI-16 | **The screenshot check.** Removed on 2026-11-23 at the owners' request. It was: every screen rendered from the seeded fixtures in light and dark, at desktop and phone width, in CI, and compared with committed pictures taken with the free icon fallback; a planted change to a token value fails it Cost: additive. | Must | Design section 1 |
 | UI-17 | **Navigation copy.** Navigation items and page names are Title Case, every word capitalized; all other copy stays sentence case, with a test over the sidebar and page titles Cost: shared root `AGENTS.md`. | Must | V3-9 |
 | UI-18 | **Harness display names.** `harnesses.title`, not null and without a default (Postgres cannot default one column to another): the migration backfills `title = key` and then sets not null; the stages module, its one writer, sets it on insert from the creating command or else the key; an admin command `set_title` changes it and records `title_set` (section 8.6, evidence `{ from, to }`); the key never changes, so they cannot drift. The title is shown wherever a person reads a harness's name, the key stays in identifiers and URLs. Tests cover the backfill, the insert with and without a title, and `set_title` refused to an agent and to a non-admin Cost: shared root `packages/db/schema.ts`, `packages/contracts`. | Must | V3-10; design section 7 |
 
@@ -613,7 +613,7 @@ Since contract 12.1.0 (step 10), `persona_activated` carries `{ pageId, persona,
 
 ## 10. Design
 
-From #97 (2026-11-12) the source of truth for how screens look is the Claude Design prototype (removed from the repository on 2026-10-20; it remains in git history), with every value snapped to the token scales in `packages/ui/tokens/`, which stay locked in Tailwind (ADR 0011, ADR 0014). The pictures the screenshot check holds (UI-16) are that look. From v0.3.0 until #97 the source was section 5 of the v0.3.0 design document and its screens were the pictures in section 4 of that document. Before v0.3.0 it was the tokens extracted from the Claude Design prototype (removed from the repository on 2026-10-20; it remains in git history) and the token block in the Key Visuals page. When the sponsor's `design-system/` handoff lands, its `tokens/*.css` replaces the token files and nothing in the islands changes but the import; the screenshot check (UI-16) shows what it changes.
+From #97 (2026-11-12) the source of truth for how screens look is the Claude Design prototype (removed from the repository on 2026-10-20 and later from its history), with every value snapped to the token scales in `packages/ui/tokens/`, which stay locked in Tailwind (ADR 0011, ADR 0014). From v0.3.0 until #97 the source was section 5 of the v0.3.0 design document and its screens were the pictures in section 4 of that document. Before v0.3.0 it was the tokens extracted from the Claude Design prototype (removed from the repository on 2026-10-20 and later from its history) and the token block in the Key Visuals page. When the sponsor's `design-system/` handoff lands, its `tokens/*.css` replaces the token files and nothing in the islands changes but the import.
 
 | Prototype screen | Harness view |
 |---|---|
@@ -893,9 +893,9 @@ Made between 2026-10-21 and 2026-11-04 by the owner and Claude over ten rounds o
 | # | Decision | Cost if wrong |
 |---|---|---|
 | V3-1 | **v0.3.0 is the look only.** Lessons with statuses, promised to v0.3.0 by V2-4, move to v0.4.0 | The pilot's lessons wait one more version to be filed |
-| V3-2 | **One token system, generated in OKLCH from the brand colours,** each brand hex exact on its step; fixed type, spacing, radius and shadow scales (ADR 0011) | A shade reads wrong in use; it is one token change, and the screenshot check shows every screen it touches |
+| V3-2 | **One token system, generated in OKLCH from the brand colours,** each brand hex exact on its step; fixed type, spacing, radius and shadow scales (ADR 0011) | A shade reads wrong in use; it is one token change |
 | V3-3 | **Tailwind holds the lock:** spacing cleared to the token steps and arbitrary values fail the build (ADR 0011) | A real need for a value between steps; it becomes a new token, deliberately |
-| V3-4 | **Dark first, both themes complete** | Light gets less attention; the screenshot check covers it equally |
+| V3-4 | **Dark first, both themes complete** | Light gets less attention |
 | V3-5 | **Every text colour pair passes WCAG AA, as a test** | None for the people using it; a design that needs a lower-contrast text fails the build until it is rethought |
 | V3-6 | **Fonts are bundled with the Worker** | A few hundred kilobytes of fonts in the assets |
 | V3-7 | **Font Awesome Pro by token, Free as the fallback, Pro artwork never committed** (ADR 0013) | The licence does not cover the token install; every environment then draws the fallback until it is settled |

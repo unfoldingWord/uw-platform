@@ -11,6 +11,8 @@ export const pageNames = {
   waitingApproval: 'Waiting For Approval',
   accessDeclined: 'Access Declined',
   access: 'Access',
+  credentials: 'Credentials',
+  credential: 'Credential',
   queue: 'Queue',
   flow: 'Flow',
   controls: 'Stages & Controls',
@@ -21,7 +23,22 @@ export const pageNames = {
   gate: 'Gate',
   item: 'Item',
   page: 'Page',
+  wiki: 'Pages & Wiki',
+  search: 'Search',
+  pageEdit: 'Edit',
+  pageComments: 'Comments',
+  pageManage: 'Manage',
+  pageVersion: 'Version',
+  wikiNew: 'New Page',
+  wikiReview: 'Needs Review',
   logOut: 'Log Out',
+  collections: 'Collections',
+  collectionSettings: 'Settings',
+  tasks: 'Tasks',
+  directory: 'Directory',
+  cascade: 'Strategic Cascade',
+  crosswalk: 'JD Crosswalk',
+  person: 'Person',
 } as const;
 
 const smallWord = /^[a-z]/;
@@ -44,7 +61,17 @@ export type PlatformModule = {
   readonly icon: IconName;
   readonly built?: BuiltModule;
 };
-export type BuiltModule = 'today' | 'health' | 'agentQueues' | 'access';
+export type BuiltModule =
+  | 'today'
+  | 'health'
+  | 'agentQueues'
+  | 'access'
+  | 'pages'
+  | 'credentials'
+  | 'collections'
+  | 'tasks'
+  | 'directory'
+  | 'crosswalk';
 export type PlatformArea = {
   readonly code: string;
   readonly name: string;
@@ -57,16 +84,18 @@ export const platformAreas: readonly PlatformArea[] = [
     name: 'unfoldingWord Home',
     modules: [
       { label: 'Today', icon: 'house', built: 'today' },
-      { label: 'Pages & Wiki', icon: 'file-lines' },
-      { label: 'Strategic Cascade', icon: 'layer-group' },
+      { label: 'Pages & Wiki', icon: 'file-lines', built: 'pages' },
+      { label: 'Tasks', icon: 'list-check', built: 'tasks' },
+      { label: 'Colleague Directory', icon: 'users', built: 'directory' },
+      { label: 'Strategic Cascade', icon: 'layer-group', built: 'collections' },
       { label: 'Meetings', icon: 'calendar' },
-      { label: 'JD Crosswalk', icon: 'table-cells' },
+      { label: 'JD Crosswalk', icon: 'table-cells', built: 'crosswalk' },
     ],
   },
   {
     code: '10-19',
     name: 'Internal Operations & Administration',
-    modules: [{ label: 'Directory & Access', icon: 'users' }],
+    modules: [],
   },
   {
     code: '20-29',
@@ -86,6 +115,7 @@ export const platformAreas: readonly PlatformArea[] = [
       { label: 'Health', icon: 'wave-pulse', built: 'health' },
       { label: 'Agent Queues', icon: 'robot', built: 'agentQueues' },
       { label: 'Access', icon: 'lock', built: 'access' },
+      { label: 'Credentials', icon: 'shield-check', built: 'credentials' },
       { label: 'Modules', icon: 'cube' },
       { label: 'Desktop & Offline', icon: 'desktop' },
     ],
@@ -121,6 +151,12 @@ export const moduleCodes: Readonly<Record<BuiltModule, string>> = {
   health: '38',
   agentQueues: '32',
   access: '37',
+  pages: '01',
+  credentials: '37.30',
+  collections: '00.06',
+  tasks: '00',
+  directory: '00.05',
+  crosswalk: '00',
 };
 
 export const noModules = 'No modules enabled for this area';
@@ -143,4 +179,12 @@ export function areaLabel(area: string): string {
 
 export function everyArea(): readonly string[] {
   return Array.from({ length: DECADES }, (_, decade) => `${decade}0-${decade}9`);
+}
+
+export function areasWithin(code: string): readonly string[] {
+  const [from, to] = decadeOf(code);
+  return everyArea().filter((area) => {
+    const [start] = decadeOf(area);
+    return start >= from && start <= to;
+  });
 }

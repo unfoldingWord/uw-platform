@@ -20,8 +20,11 @@ function showsFocus(element: Element): boolean {
   return (label?.getAttribute('class') ?? '').includes('has-focus-visible:outline-2');
 }
 
+const pageBody = '[data-page-body]';
+
 function focusProblems(document: Document): string[] {
   return [...document.querySelectorAll(focusable)]
+    .filter((element) => element.closest(pageBody) === null)
     .filter((element) => !showsFocus(element))
     .map((element) => `no visible focus: ${element.outerHTML.slice(0, 80)}`);
 }
@@ -44,7 +47,9 @@ function attributeProblems(document: Document): string[] {
 
 function visibleBody(document: Document): HTMLElement {
   const body = document.body.cloneNode(true) as HTMLElement;
-  for (const hidden of body.querySelectorAll('script, style, template')) hidden.remove();
+  for (const hidden of body.querySelectorAll(`script, style, template, ${pageBody}`)) {
+    hidden.remove();
+  }
   return body;
 }
 

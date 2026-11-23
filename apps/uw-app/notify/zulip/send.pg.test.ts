@@ -26,7 +26,7 @@ const harnessId = 'c7100000-0000-4000-8000-000000000002';
 const itemId = 'c7100000-0000-4000-8000-000000000003';
 const traceId = 'c7100000-0000-4000-8000-000000000004';
 const at = new Date('2026-10-04T09:00:00.000Z');
-const channels = { '80-89': '80-89 Technology', '40-49': '40-49 Programs' };
+const channels = { '80-89': '80-89 Tech & SLR', '40-49': '40-49 Engage Benefactors' };
 
 function wake(jdArea: JdArea): Wake {
   return {
@@ -82,7 +82,7 @@ async function mappedChannel(db: Database): Promise<void> {
   expect((await notifier.notify(wake('40-49'))).zulip).toBe('posted');
   expect(zulipForms(recorded.calls)).toEqual([
     {
-      to: '40-49 Programs',
+      to: '40-49 Engage Benefactors',
       topic: 'software/uw-platform#42',
       content: `software · uw-platform#42: A gate is waiting on a person. ${appOrigin}/harnesses/${harnessId}/gates/${itemId}`,
     },
@@ -105,7 +105,7 @@ async function harnessTopic(db: Database): Promise<void> {
   expect((await notifier.notify(lapse)).zulip).toBe('posted');
   expect(zulipForms(recorded.calls)).toEqual([
     {
-      to: '80-89 Technology',
+      to: '80-89 Tech & SLR',
       topic: 'software',
       content: `software: A delegation lapsed. ${appOrigin}/`,
     },

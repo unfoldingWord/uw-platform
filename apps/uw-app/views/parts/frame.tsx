@@ -4,6 +4,7 @@ import { wrapTime } from 'hono/timing';
 import type { LiveScreen } from '@uw/contracts';
 import type { Caller, Kernel } from '@uw/harness';
 import { Shell, type Frame } from '@uw/ui/components/shell.tsx';
+import type { NavItem, NavSection } from '@uw/ui/components/sidebar.tsx';
 import type { Crumb, Tab } from '@uw/ui/components/top-bar.tsx';
 import { appCssPath } from '@uw/ui/generated/app-css';
 import type { AppEnv } from '../../deps.ts';
@@ -27,7 +28,26 @@ export type ScreenSpec = {
     readonly refreshEveryMs?: number;
   };
   readonly status?: 200 | 404;
+  readonly branch?: Branch;
+  readonly focus?: boolean;
+  readonly bare?: boolean;
 };
+
+export type Branch = { readonly under: string; readonly items: readonly NavItem[] };
+
+function opened(items: readonly NavItem[], branch: Branch): readonly NavItem[] {
+  return items.flatMap((item) =>
+    item.href === branch.under ? [{ ...item, open: true }, ...branch.items] : [item],
+  );
+}
+
+export function withBranch(
+  sections: readonly NavSection[],
+  branch: Branch | undefined,
+): readonly NavSection[] {
+  if (branch === undefined) return sections;
+  return sections.map((section) => ({ ...section, items: opened(section.items, branch) }));
+}
 
 export type ScreenKernel = { readonly kernel: Kernel; readonly caller: Caller; readonly at: Date };
 
@@ -112,8 +132,10 @@ export async function renderScreen(
   const page = (
     <Shell
       title={spec.title}
-      frame={frame}
+      frame={{ ...frame, sections: withBranch(frame.sections, spec.branch) }}
       current={spec.current}
+      focus={spec.focus}
+      bare={spec.bare}
       code={spec.code}
       crumbs={spec.crumbs}
       tabs={spec.tabs}

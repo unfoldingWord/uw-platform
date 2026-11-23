@@ -1,12 +1,14 @@
 import { Hono } from 'hono';
 import { errorFields } from '@uw/core/log';
-import { accessScreenRoutes, aclRoutes } from './acl/routes.ts';
+import { aclRoutes, directoryScreenRoutes } from './acl/routes.ts';
 import { agentRoutes } from './agents/routes.ts';
 import { assetRoutes } from './assets/routes.ts';
 import { meRoutes } from './auth/me.ts';
 import { withPrincipal } from './auth/principal-middleware.ts';
 import { platformPersonDeps, type PersonDeps } from './commands/person-deps.ts';
 import { harnessRoutes } from './commands/routes.ts';
+import { credentialRoutes, credentialScreenRoutes } from './credentials/routes.ts';
+import { mountCrosswalk } from './crosswalk/routes.ts';
 import { securityHeaders } from './http/security-headers.ts';
 import { shareReadsOnPages, withDatabase } from './database.ts';
 import { platformDeps, type AppDeps, type AppEnv } from './deps.ts';
@@ -15,10 +17,17 @@ import { healthScreenRoutes, probeRoutes } from './health/routes.tsx';
 import { mcpRoutes } from './mcp/routes.ts';
 import { pushRoutes } from './notify/routes.ts';
 import { observe, serverTiming } from './observe.ts';
-import { pageRoutes } from './pages/routes.ts';
+import { mountCollections } from './collections/routes.ts';
+import { mountKnowledgeBase } from './pages/routes.ts';
 import { requestLogger } from './request-logger.ts';
 import { viewRoutes } from './views/routes.tsx';
 import { notFound } from './views/screens/not-found.tsx';
+
+function mountContent(app: Hono<AppEnv>): void {
+  mountKnowledgeBase(app);
+  mountCollections(app);
+  mountCrosswalk(app);
+}
 
 export function createApp(
   deps: AppDeps = platformDeps,
@@ -49,12 +58,14 @@ export function createApp(
   app.route('/api/me', meRoutes());
   app.route('/api/acl', aclRoutes());
   app.route('/api/agents', agentRoutes(deps));
-  app.route('/api/pages', pageRoutes());
+  app.route('/api/credentials', credentialRoutes(deps));
+  mountContent(app);
   app.route('/api/push', pushRoutes());
   app.route('/api/harness', harnessRoutes(deps, person));
   app.route('/mcp', mcpRoutes(deps));
   app.route('/health', healthScreenRoutes(deps));
-  app.route('/access', accessScreenRoutes());
+  app.route('/', directoryScreenRoutes());
+  app.route('/credentials', credentialScreenRoutes());
 
   app.route('/', viewRoutes());
   app.notFound((c) =>

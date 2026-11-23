@@ -76,8 +76,56 @@ export function itemPath(harnessId: string, itemId: string): string {
   return `${flowPath(harnessId)}/items/${segment(itemId)}`;
 }
 
+export function wikiPath(category?: string): string {
+  return category === undefined ? '/wiki' : `/wiki/${segment(category)}`;
+}
+
+export function searchPath(): string {
+  return '/search';
+}
+
 export function pagePath(pageId: string): string {
   return `/pages/${segment(pageId)}`;
+}
+
+export function pageEditPath(pageId: string): string {
+  return `${pagePath(pageId)}/edit`;
+}
+
+export function wikiAreaPath(area: string): string {
+  return `/wiki/areas/${segment(area)}`;
+}
+
+export function wikiReviewPath(): string {
+  return '/wiki/review';
+}
+
+export function pageExportPath(pageId: string): string {
+  return `/api/pages/${segment(pageId)}/export`;
+}
+
+export function pageCommentsPath(pageId: string): string {
+  return `${pagePath(pageId)}/comments`;
+}
+
+export function pageManagePath(pageId: string): string {
+  return `${pagePath(pageId)}/manage`;
+}
+
+export function pageVersionPath(pageId: string, version: number): string {
+  return `${pagePath(pageId)}/versions/${String(version)}`;
+}
+
+export function wikiNewPath(from: { readonly category?: string; readonly parent?: string } = {}) {
+  const query = new URLSearchParams();
+  if (from.category !== undefined) query.set('category', from.category);
+  if (from.parent !== undefined) query.set('parent', from.parent);
+  const asked = query.toString();
+  return asked === '' ? '/wiki/new' : `/wiki/new?${asked}`;
+}
+
+export function withBack(path: string, back: string | null): string {
+  return back === null ? path : `${path}?back=${segment(back)}`;
 }
 
 export function personaPath(pageId: string): string {
@@ -94,6 +142,18 @@ export function accessPath(filter?: { readonly scope?: string; readonly person?:
   if (filter?.person !== undefined) query.set('person', filter.person);
   const text = query.toString();
   return text === '' ? '/access' : `/access?${text}`;
+}
+
+export function personPath(personId: string): string {
+  return collectionRowPath('directory', personId);
+}
+
+export function credentialsPath(): string {
+  return '/credentials';
+}
+
+export function credentialPath(credentialId: string): string {
+  return `/credentials/${segment(credentialId)}`;
 }
 
 function repoUrl(repo: string): string {
@@ -115,4 +175,40 @@ export function reviewUrl(ref: PullRequestRef, reviewId?: number): string {
 
 export function issueUrl(issue: IssueRef): string {
   return `${repoUrl(issue.repo)}/issues/${issue.number}`;
+}
+
+export function collectionsPath(): string {
+  return '/collections';
+}
+
+export function collectionPath(key: string): string {
+  return `/collections/${segment(key)}`;
+}
+
+export function collectionViewPath(key: string, viewId: string, query: string = ''): string {
+  return `${collectionPath(key)}/views/${segment(viewId)}${query}`;
+}
+
+export function collectionRowPath(key: string, rowId: string): string {
+  return `${collectionPath(key)}/rows/${segment(rowId)}`;
+}
+
+export function collectionSettingsPath(key: string): string {
+  return `${collectionPath(key)}/settings`;
+}
+
+export function collectionExportPath(key: string, viewId: string): string {
+  return `/api/collections/${segment(key)}/views/${segment(viewId)}/export`;
+}
+
+export function crosswalkPath(): string {
+  return '/crosswalk';
+}
+
+export function crosswalkCellPath(area: string, tier: string): string {
+  return `/crosswalk/areas/${segment(area)}/${segment(tier)}`;
+}
+
+export function crosswalkNodePath(nodeId: string): string {
+  return `/crosswalk/nodes/${segment(nodeId)}`;
 }

@@ -35,6 +35,21 @@ export const OUTCOME_TEXT: Readonly<Record<string, string>> = {
   revoke_role: 'Revoked',
   approve_person: 'Approved',
   decline_person: 'Declined',
+  name_category: 'Saved',
+  declare_jd_map: 'Declared',
+  remove_jd_map: 'Removed',
+  place_in_cascade: 'Placed',
+  create_credential: 'Added',
+  rotate_credential: 'Rotated',
+  revoke_credential: 'Revoked',
+  bind_credential: 'Bound',
+  unbind_credential: 'Unbound',
+  grant_reveal: 'Granted',
+  confirm_reveal: 'Confirmed',
+  revoke_reveal: 'Revoked',
+  set_property: 'Saved',
+  move_card: 'Moved',
+  create_row: 'Created',
 };
 
 const outcomes: ReadonlyMap<string, string> = new Map(Object.entries(OUTCOME_TEXT));
@@ -89,6 +104,12 @@ export function goBusy(form: HTMLFormElement): readonly Element[] {
   return quiet;
 }
 
+function forget(form: HTMLFormElement): void {
+  for (const field of form.querySelectorAll('[data-forget]')) {
+    (field as Element & { value: string }).value = '';
+  }
+}
+
 export function settle(
   form: HTMLFormElement,
   quieted: readonly Element[],
@@ -96,6 +117,7 @@ export function settle(
 ): void {
   form.removeAttribute('aria-busy');
   if (accepted) form.removeAttribute('data-dirty');
+  if (accepted) forget(form);
   for (const button of quieted) button.removeAttribute('aria-disabled');
 }
 

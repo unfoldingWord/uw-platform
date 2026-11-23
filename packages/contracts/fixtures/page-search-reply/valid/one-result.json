@@ -1,0 +1,25 @@
+{
+  "results": [
+    {
+      "page": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "type": "knowledge",
+        "jdArea": "00-09",
+        "slug": "security-guidelines",
+        "title": "01.47 Security Guidelines",
+        "status": "active"
+      },
+      "snippet": [
+        {
+          "text": "Never share a ",
+          "hit": false
+        },
+        {
+          "text": "password",
+          "hit": true
+        }
+      ],
+      "match": "words"
+    }
+  ]
+}

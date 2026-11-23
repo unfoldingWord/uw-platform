@@ -6,6 +6,7 @@
 @import './tokens/type.css';
 @import './tokens/layout.css';
 @import './generated/fonts.css';
+@import './page-body.css';
 
 @source './components/**/*.tsx';
 @source '../../apps/uw-app/**/*.tsx';
@@ -31,6 +32,8 @@
   --color-side-code: var(--uw-side-code);
   --color-surface: var(--uw-surface);
   --color-raised: var(--uw-raised);
+  --color-band: var(--uw-band);
+  --color-band-line: var(--uw-band-line);
   --color-lane: var(--uw-lane);
   --color-card: var(--uw-card);
   --color-hover: var(--uw-hover);

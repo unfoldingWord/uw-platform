@@ -1,0 +1,41 @@
+{
+  "command": "add_property",
+  "requestId": "00000000-0000-4000-8000-000000000900",
+  "collection": "program",
+  "property": {
+    "key": "phase",
+    "name": "Phase",
+    "config": {
+      "type": "status",
+      "options": [
+        {
+          "id": "idea",
+          "name": "Idea",
+          "tone": "neutral",
+          "group": "to_do"
+        },
+        {
+          "id": "running",
+          "name": "Running",
+          "tone": "neutral",
+          "group": "in_progress"
+        },
+        {
+          "id": "closed",
+          "name": "Closed",
+          "tone": "neutral",
+          "group": "complete"
+        }
+      ]
+    },
+    "source": {
+      "kind": "frontmatter"
+    },
+    "classification": "internal",
+    "rule": null,
+    "required": false,
+    "hide_when_empty": false,
+    "section": null,
+    "description": ""
+  }
+}

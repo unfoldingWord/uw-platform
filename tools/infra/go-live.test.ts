@@ -31,6 +31,7 @@ const goLiveVars = [
   'ZULIP_BOT_EMAIL',
   'ZULIP_CHANNELS',
 ];
+const movedSecretBySecret = ['secrets_store_secrets'];
 const apps = ['uw-app', 'uw-ingest'] as const;
 const deployedEnvironments = ['staging', 'production'] as const;
 const placeholder = 'set-at-go-live';
@@ -51,7 +52,10 @@ function withoutGoLiveBindings(config: Block): Block {
   const stripped = Object.fromEntries(
     Object.entries(environments(config)).map(([name, block]) => [
       name,
-      { ...omit(block, goLiveOnly), vars: omit((block['vars'] ?? {}) as Block, goLiveVars) },
+      {
+        ...omit(block, [...goLiveOnly, ...movedSecretBySecret]),
+        vars: omit((block['vars'] ?? {}) as Block, goLiveVars),
+      },
     ]),
   );
   return { ...omit(config, goLiveOnly), env: stripped };
@@ -161,10 +165,33 @@ describe('WB-3 the live hub Durable Object is declared for go-live only', () => 
 
   it('binds HARNESS_HUB at the top level and declares HarnessHub as a SQLite class', () => {
     const config = load(`infra/uw-app/${goLive}`);
-    expect(hubBindingsOf(config)).toEqual([{ name: 'HARNESS_HUB', class_name: 'HarnessHub' }]);
+    expect(hubBindingsOf(config)).toEqual([
+      { name: 'HARNESS_HUB', class_name: 'HarnessHub' },
+      { name: 'PAGE_DRAFT', class_name: 'PageDraft' },
+    ]);
     expect(config['migrations'] as Migration[]).toContainEqual({
       tag: 'v1',
       new_sqlite_classes: ['HarnessHub'],
+    });
+  });
+});
+
+describe('#175 the page draft Durable Object is declared beside the hub', () => {
+  it.each(['staging', 'production', 'preview'])(
+    '%s binds PAGE_DRAFT to the PageDraft class',
+    (name) => {
+      expect(hubBindingsOf(environment('uw-app', name, goLive))).toContainEqual({
+        name: 'PAGE_DRAFT',
+        class_name: 'PageDraft',
+      });
+    },
+  );
+
+  it('declares PageDraft as a SQLite class in its own migration', () => {
+    const config = load(`infra/uw-app/${goLive}`);
+    expect(config['migrations'] as Migration[]).toContainEqual({
+      tag: 'v3',
+      new_sqlite_classes: ['PageDraft'],
     });
   });
 });

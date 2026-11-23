@@ -17,6 +17,7 @@ export type DelegatedMergeRow = {
   readonly harness: Harness;
   readonly itemId: string;
   readonly title: string;
+  readonly personId: string;
   readonly email: string;
   readonly expiresAt: Date;
   readonly at: Date;
@@ -38,11 +39,12 @@ function rowOf(
   const item = event.itemId === null ? undefined : items.get(event.itemId);
   const evidence = eventEvidenceSchemas.delegated_merge.safeParse(event.evidence);
   if (harness === undefined || item === undefined || !evidence.success) return null;
-  const { email, expiresAt } = evidence.data;
+  const { personId, email, expiresAt } = evidence.data;
   return {
     harness,
     itemId: item.itemId,
     title: item.title,
+    personId,
     email,
     expiresAt: new Date(expiresAt),
     at: new Date(event.at),

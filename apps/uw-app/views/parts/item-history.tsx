@@ -1,6 +1,7 @@
 import type { HarnessEvent } from '@uw/contracts';
 import type { PlayByPlay } from '@uw/harness';
 import { checksUrl, issueUrl, pullRequestUrl, reviewUrl } from './paths.ts';
+import type { Holding } from './holder.tsx';
 import { KindFilters, Timeline, kindOf, type EventKind } from './timeline.tsx';
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
@@ -55,6 +56,7 @@ export function ItemHistory(props: {
   readonly zulipUrl: string | null;
   readonly base: string;
   readonly kind: EventKind | null;
+  readonly holding: Holding;
 }) {
   const { play, base, kind } = props;
   return (
@@ -65,6 +67,7 @@ export function ItemHistory(props: {
         events={ofKind(play.events, kind)}
         learnings={new Map(Object.entries(play.learnings))}
         personaPages={new Map(Object.entries(play.personaPages))}
+        holding={props.holding}
       />
       {play.next === null ? null : (
         <p class="mt-4">

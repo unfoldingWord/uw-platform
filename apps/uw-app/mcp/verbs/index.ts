@@ -1,5 +1,7 @@
 import type { VerbHandler } from '../handler.ts';
+import { attachFileVerb } from './attach-file.ts';
 import { claimItem } from './claim-item.ts';
+import { createRowVerb, readCollectionVerb, readViewVerb, setPropertyVerb } from './collections.ts';
 import { createTaskVerb } from './create-task.ts';
 import { getHealth } from './get-health.ts';
 import { pollQueue } from './poll-queue.ts';
@@ -20,9 +22,14 @@ const handlers: readonly VerbHandler[] = [
   searchPagesVerb,
   readPageVerb,
   writePageVerb,
+  attachFileVerb,
   resolveContext,
   queryEntities,
   createTaskVerb,
+  readCollectionVerb,
+  readViewVerb,
+  createRowVerb,
+  setPropertyVerb,
 ];
 
 export const verbHandlers: ReadonlyMap<string, VerbHandler> = new Map(

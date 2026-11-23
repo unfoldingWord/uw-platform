@@ -70,6 +70,18 @@ _Avoid_: user, human (as a noun in code), approver (that is a role a person play
 `active`, `pending` or `disabled`. A sign-in from `@unfoldingword.org` starts `active`; any other starts `pending` and is refused at the edge until an org admin **approves** it (to `active`) or **declines** it (to `disabled`). A disabled person is refused at the edge whatever grants they hold, and an org admin can approve them later. Each decision writes a `person_audit` row.
 _Avoid_: banned, blocked, suspended (that is what Google Workspace does to an account), invited
 
+**Person page**:
+The one page for a person: the **row page** of their **directory entry**, at `/collections/directory/rows/<id>`. It shows the directory fields the reader may see, the **profile body**, and read-through lists of their open tasks, the programs and projects they lead, manage or are on the team of, and the pages they own, each only from areas the reader can read. A person, never an agent, opens it when they can read the directory's area (`00-09`) and the person is `active`, which is exactly when the directory lists them. Anyone else gets Not Found, so the page never says whether the person exists.
+_Avoid_: profile, profile screen, user page
+
+**Profile body**:
+What a person writes about themself on their **person page**: a page of type `profile` in `00-09` that their **directory entry** points at, created the first time it is saved. Only the people module writes it, through `save_profile_body`, for the person themself or an `admin` on `10-19`; the page editor and `update_page` refuse it.
+_Avoid_: bio, about page
+
+**Person chip**:
+How a person is shown wherever the app names one: their initials and display name, linking to their **person page** when the reader may open it and plain text when they may not. An agent identity is not a person and never gets one.
+_Avoid_: avatar, user badge, mention (that is a link written in a page body)
+
 **Waiting for access**:
 A person who has signed in and can reach nothing yet: pending, or active with no live grant. Listed on the **Access** screen for an admin.
 _Avoid_: new user, unassigned, guest
@@ -85,6 +97,66 @@ _Avoid_: session, token, actor (actor is the field name on an event, and holds a
 **Grant**:
 One row of `role_grants`: a role (`admin`, `editor`, `viewer`) at a scope (the org, or one JD area), optionally expiring. `can(actor, verb, resource)` is the one function that reads them (plan §4).
 _Avoid_: permission, role (a role is one field of a grant), ACL entry
+
+**Read rule**:
+Who reads a row of a `restricted` or `sensitive` table, declared per table in `rowReadRules` (`packages/core/acl.ts`): the least role on the row's own JD area, whether the person the row belongs to reads it, and whether an org admin does. `can(actor, 'read', row)` is the one function that applies it; an `org` viewer or editor never satisfies it (ADR 0017).
+_Avoid_: row-level security, policy, classification check
+
+**Credential**:
+A secret that belongs to one JD area's work (a partner API key, a portal password, a funder system login), held for that area and not for a person. The secrets the platform itself runs on are platform secrets, not credentials.
+_Avoid_: secret (that is the value, or a platform secret), key, password, token
+
+**Credential capability**:
+What a principal may do with one credential, asked as `can(actor, capability, credential)` and never as `read`: `see` (know it exists, never its value), `use` (have a connector use it without seeing it), `reveal` (see the value) and `manage` (create, rotate, revoke, bind, give a reveal grant). Each needs a grant on the credential's own JD area; an org admin has `see` and `manage` only, and an org editor or viewer has none. An agent has `use` and nothing else (ADR 0018).
+_Avoid_: credential permission, secret access, credential role, read (a credential is never read through a page read)
+
+**Reveal grant**:
+A person's time-limited leave to `reveal` one credential, given by a person who may `manage` it. It always expires, names one credential and one person, and adds to a grant on the credential's area without replacing it.
+_Avoid_: reveal permission, break-glass (that is a reveal outside the grants, by two org admins), share
+
+**Break-glass reveal**:
+A reveal grant given by an org admin who is not an admin of the credential's area. It is not live until a second person who may `manage` the credential, never the one who gave it, confirms it; both are recorded on the grant and in the credential access log, and its time starts when it is confirmed (ADR 0021).
+_Avoid_: emergency access, override (a gate has one), second approval (a gate is approved)
+
+**Reveal notice**:
+The web push sent to every admin of a credential's area, other than the person revealing, each time its value is revealed. It names the area and the reason and never the credential.
+_Avoid_: wake (a wake names a workflow), alert, reveal email
+
+**Credential binding**:
+The workflow and connector a credential may be used from. `use` is refused anywhere else, whatever grants the principal holds.
+_Avoid_: binding on its own (a service token has one too), attachment, scope (a scope is the org or a JD area on a grant)
+
+**Credential reference**:
+How a caller names a credential it wants used: the credential's id and nothing else. A connector passes one to `useCredential` with the workflow and connector of the use; it never holds the value outside the one call the store opens it for (ADR 0020).
+_Avoid_: credential handle, secret reference, credential key, token
+
+**Secret**:
+In code, the wrapper a credential's opened value travels in (`Secret` in `apps/uw-app/credentials/secret.ts`). It shows `[secret]` wherever it is printed, serialised or logged, gives its text only to `exposeSecret`, and is spent when the call it was opened for ends.
+_Avoid_: secret for a credential (that is the thing stored), plaintext, raw value
+
+**Credential version**:
+One row of `credential_versions`: one sealed value of a credential. Rotating a credential adds a version and never changes one; the highest version is the one in use.
+_Avoid_: revision (a page has those), secret version, key version
+
+**Data key**:
+The 256-bit key that seals exactly one credential version with AES-256-GCM. It is stored only wrapped, beside the ciphertext it sealed, and exists unwrapped only in memory while a value is sealed or opened.
+_Avoid_: key on its own, credential key, DEK
+
+**Key-encryption key**:
+The AWS KMS key that wraps and unwraps every data key. It never leaves KMS, so a copy of the database alone opens nothing.
+_Avoid_: master key, KEK, root key, the KMS credentials (those are a platform secret that signs requests to KMS)
+
+**Encryption context**:
+The facts a sealed value is bound to: its credential, its version and its JD area. KMS refuses to unwrap a data key under a different context, and the cipher refuses to open the value under one.
+_Avoid_: additional data, AAD, tags
+
+**Credential access log**:
+The rows of `credential_access_log`: every create, rotate, revoke, bind, unbind, use and reveal of a credential, and every reveal grant given, confirmed or revoked, done or refused, with the actor, the run, the workflow and connector of a use, and the trace id. Append-only and kept seven years.
+_Avoid_: audit log on its own, grant audit (that records grants), history
+
+**Final check**:
+The second time a credential's access is decided, after the key service has answered and before the value is returned or a sealed value is written. It runs in one transaction that locks the credential row, reads the credential, its bindings, its reveal grants and the person's role grants again at a fresh time, and writes the access log row. The final check decides; the first check only saves a call to the key service (ADR 0019).
+_Avoid_: recheck, revalidation, double check
 
 **Grant audit**:
 One row of `grant_audit`: who granted or revoked which grant, when, the row before and after, and the trace id. Append-only.
@@ -131,7 +203,7 @@ The time-boxed hold an agent takes on an item at claim, renewed by every run ste
 _Avoid_: lock, assignment (a person is assigned; an agent holds a lease), checkout
 
 **WIP limit**:
-The maximum number of items a stage may hold at once, applied to people and agents alike (plan §13).
+The maximum number of items a stage may hold at once, applied to people and agents alike, and the maximum number of rows one Board group may hold (plan §13).
 _Avoid_: capacity, quota, throttle
 
 ## How work runs
@@ -305,8 +377,194 @@ The Zod-validated message `uw-ingest` puts on the queue for one verified webhook
 _Avoid_: event (that is a row of `harness_events`), message (the message queue's word for the transport), job
 
 **Page type**:
-One entry of the page-type registry in `packages/contracts`: a frontmatter schema, a classification and an offline eligibility. Seven in v1: `skill`, `learning`, `persona`, `product`, `system_goal`, `product_strategy`, `data_sources`.
-_Avoid_: template (that is a stage graph), kind, category
+One entry of the page-type registry in `packages/contracts`: a frontmatter schema, a classification and an offline eligibility. Fifteen: `skill`, `learning`, `persona`, `product`, `system_goal`, `product_strategy`, `data_sources`, `issue`, `platform`, `knowledge`, and the collection row types `entry`, `portfolio`, `program`, `project` and `okr`, whose frontmatter is checked by their collection's definition.
+_Avoid_: template (that is a stage graph), kind, category (that is where a knowledge page is filed)
+
+## The knowledge base
+
+**Page**:
+A row of `pages`: a type, an area, a title, typed frontmatter and a markdown body, saved as numbered versions. The markdown is the record; everything else about a page is drawn from it.
+_Avoid_: document, doc, note, article, block
+
+**Knowledge page**:
+A page of type `knowledge`: a wiki page a person reads. It is filed in a **category**, may carry a JD ID, an owner, tags and aliases, and is what "Pages & Wiki" lists.
+_Avoid_: wiki page, article, doc
+
+**Category**:
+Two digits, such as `61`: the Johnny.Decimal level below an area, and where a knowledge page is filed. The page's area is the category's decade, so `61` is in `60-69`.
+_Avoid_: folder, section, collection, space
+
+**Page file**:
+A picture, video or other file stored with one page, in the `uw-files` bucket, and read only through `/api/files/:fileId` by someone who may read the page's area. A person adds one by pasting or dropping it in edit mode; an agent adds one with `attach_file`. The page body embeds a picture or a video as `![name](/api/files/:fileId)`; the read view draws a video with player controls.
+_Avoid_: attachment (alone), asset, upload, media
+
+**Cluster**:
+Two or more areas shown as one group in navigation, such as `60-79 Field Programs` over `60-69` and `70-79`. A cluster holds no pages and takes no grant; each of its areas does.
+_Avoid_: area (a cluster is not one), super-area, range
+
+**Read view**:
+What `/pages/:pageId` shows: the page's last saved version, rendered below a tinted band that holds its title, facts and actions, with no field that can change it. Every page opens here.
+_Avoid_: preview, view mode, published view
+
+**Page tree**:
+The branch of the sidebar under "Pages & Wiki" on wiki and knowledge page screens: the areas a person may read, the categories of the area they are in, and the pages of the category they are in.
+_Avoid_: file tree, outline, navigator, explorer
+
+**Edit mode**:
+What `/pages/:pageId/edit` shows to a person who may write the page, reached by the pencil: the page's title and text on one editable sheet, full window, with no sidebar, under one bar holding Back to reading, Discard draft and Save. Leaving it asks first when what was typed is not in a working draft. Nothing in it reaches the read view until Save.
+_Avoid_: editor (that is the Tiptap component inside it), editing view, focus mode (in the UI)
+
+**Working draft**:
+The unsaved text of a page in edit mode, shared live by everyone editing it and held by the page's **sync hub**. Save publishes it as one version; Discard throws it away.
+_Avoid_: draft (alone, that is the Flow tab's private copy of stages, or the page status `draft`), autosave, revision
+
+**Sync hub**:
+One Durable Object per page version being edited (`PageDraft`), holding its working draft as a Yjs document and passing changes between the people in edit mode. It is not the record: the saved markdown is. A new version gets a new sync hub, so a working draft always starts from one saved version.
+_Avoid_: live hub (that sends wakes for a harness and holds no data), collab server, room
+
+**Verification**:
+A person's statement, on a knowledge page, that they read it and it is still right, with the date it holds until. After that date the verification has **lapsed**: the read view says so and the page is on the "Needs review" list.
+_Avoid_: approval (that is a gate decision), review (alone), sign-off
+
+**Template**:
+A knowledge page tagged `template`. A new page can start from its text; the template itself is an ordinary page.
+_Avoid_: blueprint, boilerplate
+
+**Favourite**:
+A page a person marked for themselves. Only that person sees it, on "Pages & Wiki".
+_Avoid_: bookmark, star, pin
+
+**Comment**:
+A reader's note on a page, kept beside the page and not in its text. Anyone who can read the page can comment; its author or an editor of the page's area resolves it.
+_Avoid_: note, annotation, thread
+
+**Quick Switcher**:
+The dialog Cmd/Ctrl+O opens on any screen: type part of a title, a JD ID or an alias and go to that page. It matches titles only; searching the text of pages is **search**.
+_Avoid_: command palette, omnibox, spotlight, launcher
+
+**Search**:
+Full-text search over the title and body of the pages a person may read, title weighted higher. One reader serves the search screen, the JSON route and the agent verb `search_pages`.
+_Avoid_: find, lookup, query (that is the text a person typed)
+
+**Wiki link**:
+`[[Page title]]` as typed. On save the server resolves it to a link that carries the target page's id, so a rename breaks nothing. One that names no page yet stays as typed and offers to create the page.
+_Avoid_: mention, internal link, reference
+
+**Backlink**:
+A page that links to this one, read from `page_links`.
+_Avoid_: reference, incoming link, linked mention
+
+**Embed**:
+`![[Page title]]` or `![[Page title#Heading]]`: another page's saved text, or one section of it, shown in place and edited only at its source. Access is checked for the reader.
+_Avoid_: transclusion (in the UI; the design documents use it), synced block, include, snippet
+
+## Collections
+
+**Collection**:
+A stored definition that lists pages or typed records as rows and lets them be queried and shown in saved views: a row of `collections` with its properties. A **page collection** lists pages (each page names its collection in `pages.collection_id`); a **record collection** lists the rows of a typed table (`tasks`, `people`). Built-in collections (tasks, directory, portfolio, program, project, OKR) are seeded through the same path an area admin uses (ADR 0023).
+_Avoid_: database (Notion's word, and Postgres is the database), table (that is a layout, or a Postgres table), list (that is a layout), category (that is where a knowledge page is filed)
+
+**Row**:
+One page or record a collection lists.
+_Avoid_: record (alone, that is the typed table row behind it), entry (that is the page type of an admin-made collection's pages), item (that is a harness's unit of work)
+
+**Property**:
+One typed field of a collection: a key, a name, a type from the **property catalogue** (title, text, number, select, multi-select, status, person, date, date range, URL, email, phone, checkbox, files, relation, rollup, computed, read-through), a **property source** (a frontmatter key, a column of the record table, a relation, a computed value, a read-through feed, or a system field) and a classification.
+_Avoid_: field (in prose; the column of a record table is a column), attribute, column (that is a table layout's rendering of a property)
+
+**Definition**:
+A collection's properties and settings, versioned: each change advances the collection's version and keeps the whole definition in `collection_versions`. Only a person with `admin` on the collection's area changes it, and not while it is **locked**.
+_Avoid_: schema (that is Drizzle's), configuration
+
+**Status group**:
+One of the three groups a status property's options fall into: to-do, in progress and complete. Filters and boards can use the group as well as the option; the time a row entered its complete group is a system property.
+_Avoid_: group (alone, that is a saved view's grouping), phase, stage (that is a harness's)
+
+**Rollup**:
+A property that reads another property across a relation: count, sum, show unique or percent complete.
+_Avoid_: lookup, aggregate, formula
+
+**Computed property**:
+A property worked out from others of the same row from a closed set: sum, difference, count, date until. There is no formula language.
+_Avoid_: formula, calculated field
+
+**Read-through property**:
+A property whose value is read from another module and never stored or written by a collection: the money on a program or project (from the budget module's views) and a program's Sage Intacct program ID. Until the budget module serves a feed it reads `not_wired`.
+_Avoid_: money property, linked field, synced property
+
+**Property rule**:
+A property's classification narrower than its row, with who reads it: a steward area and the least role on it, and whether the row's own person does. A reader without it gets no value, a refused filter, sort and group, and nothing from a rollup over it (ADR 0024).
+_Avoid_: field permission, column security, read rule (that is a whole table's)
+
+**Saved view**:
+A named way of showing a collection: a layout, the properties shown with their widths, a filter, sorts and a group, stored as normalized rows. A **shared view** belongs to the collection; a **personal view** to one person.
+_Avoid_: view (alone, ambiguous with the read view and the gate view), report, filter (that is one part of it), board (that is one layout)
+
+**Layout**:
+How a saved view draws its rows: **Table**, **Board**, **List**, **Gallery**, **Calendar** or **Chart**. "Board" names only this layout; the harness screen is the Queue.
+_Avoid_: view type, display, kanban (the prototype's word)
+
+**Filter**:
+A tree of conditions and nested and/or groups on a saved view, compiled to SQL on the server. A condition may name a **relative value**: `me`, `today`, or a past or next count of days, weeks, months or years.
+_Avoid_: query (that is the text a person typed into search), where clause, rule
+
+**Group**:
+A saved view's grouping of rows by one property, and one value of it: a Board column, a Gallery section. Each group has an order, may be hidden, and on a Board may carry a WIP limit.
+_Avoid_: column (a table's), lane, swimlane, bucket, status group (that is a status option's group)
+
+**Card order**:
+A saved view's manual order of its rows, one fractional text key per row and view, so two Boards grouped differently never fight over one order.
+_Avoid_: rank, position (alone), sort (that is by a property)
+
+**Row page**:
+What a row opens to: its properties in sections, empty ones hidden where the definition says so, a relations panel, then the page body and comments.
+_Avoid_: record page, detail view, profile (that is a person's directory row page)
+
+**Row template**:
+A named starting point for a new row in one collection: property values and a body. A saved view names its default.
+_Avoid_: template (alone, that is a stage graph or a knowledge page tagged template), blueprint
+
+**View embed**:
+`![View name](/collections/<key>/views/<view id>)` on a line of its own in a page's body: a saved view drawn in place for the reader, checked on both the page and the view, so an embed never widens access. The cached rendering holds only a placeholder; the rows are read for each reader.
+_Avoid_: inline database, linked view, embed (alone, that is another page's text)
+
+**Task**:
+A row of `tasks`: a unit of a person's work in a JD area, with a status, assignees, priority, tags, a due date, an optional parent page and a source. Listed by the tasks collection.
+_Avoid_: item (that is a harness's), to-do, ticket, card
+
+**Directory entry**:
+The directory fields of one person (role, team, employment, joined date, contact details, compliance), a row of `directory_entries` owned by the people module. The directory collection lists people with these fields; a person's row page is their profile (ADR 0025).
+_Avoid_: profile record, contact, employee record
+
+## The two axes
+
+**Johnny.Decimal index**:
+The organization's filing scheme: areas (`00-09`), categories (`00`) and IDs (`00.01`), with the name of each. The index `00.01 unfoldingWord Index (Johnny.Decimal)` is the one source of truth for every number and name; the platform's areas, category names and module numbers follow it. It answers where a thing is filed.
+_Avoid_: JD tree, taxonomy, folder structure
+
+**Strategic Cascade**:
+The organization's purpose axis: Purpose, Objective, Principles, Portfolio, Program, Project and Task. It answers why a thing exists. Neither axis is derived from the other.
+_Avoid_: hierarchy, org chart, strategy tree
+
+**Cascade node**:
+A page that is a place in the Strategic Cascade: a page of type `portfolio`, `program` or `project`, kept by its built-in collection.
+_Avoid_: strategy item, initiative
+
+**Cascade tier**:
+The level of a cascade node: `portfolio`, `program` or `project`, the page's type. The crosswalk has one column per tier.
+_Avoid_: level, rank
+
+**Placement**:
+Where an entity sits in the Strategic Cascade: one cascade node named for one page, task or item, a row of `cascade_placements`. An entity's area and its placement are two separate facts, set separately. A cascade node is placed by being one, at its own tier.
+_Avoid_: cascade field, portfolio select, tag
+
+**JD map**:
+The explicit, many-to-many map from areas to cascade nodes, rows of `jd_cascade_map`. Each row says how one area relates to one node, as one **map relation**: `owns`, `supports`, `funds` or `reports_on`. An org admin declares or removes a row, and every change is kept in `jd_cascade_map_audit`.
+_Avoid_: mapping table, link, crosswalk (that is the screen)
+
+**Crosswalk**:
+The screen at `/crosswalk` that shows both axes at once: areas down, cascade tiers across. Each cell counts the pages, tasks and items in that area placed at that tier, and lists the JD map relations between the area and that tier's nodes. A cell opens the entities it counts; a node opens every area it touches. It counts only areas the reader can read.
+_Avoid_: matrix, pivot, JD/cascade report
 
 ## What GitHub says
 
@@ -393,11 +651,11 @@ The landing page that lists, one card per harness, every harness in an area the 
 _Avoid_: dashboard, harness list
 
 **Queue**:
-The screen of one harness with one column per stage, grouped by bracket, and one card per item, where people and agents claim the same items. It was called the Board until #105; the kernel read behind it (`boardView`) and its live screen value (`board`) keep the old name. Capitalised, it is always this screen; the transport that carries ingest envelopes is the message queue.
+The screen of one harness with one column per stage, grouped by bracket, and one card per item, where people and agents claim the same items. It was called the Board until #105; the kernel read behind it (`boardView`) and its live screen value (`board`) keep the old name. Since #206, "Board" is a saved view's layout and never this screen. Capitalised, Queue is always this screen; the transport that carries ingest envelopes is the message queue.
 _Avoid_: board (its old name, outside the code that keeps it), kanban (the prototype's word), work queue
 
 **Card**:
-The Queue's rendering of an item.
+The Queue's rendering of an item, and a row's rendering on a Board or Gallery layout.
 _Avoid_: ticket, tile
 
 **Agent plane**:

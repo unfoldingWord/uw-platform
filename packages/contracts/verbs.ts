@@ -66,6 +66,12 @@ export const verbRegistry: readonly VerbDefinition[] = [
     'Create a page or save a new version of one; learning, skill and persona pages land as suggested for a person to confirm.',
   ),
   verb(
+    'attach_file',
+    'pages_and_context',
+    onResource('editor'),
+    'Attach a picture or file to a page you may edit; embed it in the page body by the url it answers.',
+  ),
+  verb(
     'resolve_context',
     'pages_and_context',
     onResource('viewer'),
@@ -82,6 +88,30 @@ export const verbRegistry: readonly VerbDefinition[] = [
     'records',
     onResource('editor'),
     'Suggest a task in an area, attributed to you, for a person to confirm.',
+  ),
+  verb(
+    'read_collection',
+    'records',
+    onResource('viewer'),
+    "Read a collection's definition: its properties, their types and options, its saved views and row templates.",
+  ),
+  verb(
+    'read_view',
+    'records',
+    onResource('viewer'),
+    'Read the rows of a saved view you may see, filtered, sorted and grouped as the view says; properties you may not read are withheld.',
+  ),
+  verb(
+    'create_row',
+    'records',
+    onResource('editor'),
+    'Create a row in a collection, in an area you may write; money and other read-through properties cannot be set.',
+  ),
+  verb(
+    'set_property',
+    'records',
+    onResource('editor'),
+    'Set one property of a row you may write; read-through, rollup, computed and system properties cannot be set.',
   ),
   verb(
     'list_gifts',

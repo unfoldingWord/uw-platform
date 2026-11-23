@@ -20,7 +20,7 @@ import {
 export type SeedPerson = {
   readonly id: string;
   readonly email: string;
-  readonly status?: 'active' | 'pending';
+  readonly status?: 'active' | 'pending' | 'disabled';
 };
 
 export type SeedGrant = {
@@ -44,6 +44,21 @@ export async function seedPerson(db: AnyExecutor, person: SeedPerson): Promise<v
 
 export async function seedGrant(db: AnyExecutor, grant: SeedGrant): Promise<void> {
   await db.insert(roleGrants).values({ ...grant });
+}
+
+export async function seedRevokedDefaultReading(
+  db: AnyExecutor,
+  personId: string,
+  at: Date,
+): Promise<void> {
+  await db.insert(roleGrants).values({
+    personId,
+    role: 'viewer',
+    scopeKind: 'jd_area',
+    scopeArea: '00-09',
+    grantedAt: new Date(at.getTime() - 120_000),
+    revokedAt: new Date(at.getTime() - 60_000),
+  });
 }
 
 export async function revokeSeededGrant(db: AnyExecutor, grantId: string, at: Date): Promise<void> {

@@ -1,4 +1,5 @@
 import { PGlite } from '@electric-sql/pglite';
+import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { drizzle, type PgliteDatabase } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import { bootstrapAdmin } from './bootstrap-admin.ts';
@@ -14,7 +15,7 @@ export type EmbeddedDatabase = {
 let template: Promise<PGlite> | null = null;
 
 async function migratedTemplate(folder: string): Promise<PGlite> {
-  const client = new PGlite();
+  const client = new PGlite({ extensions: { pg_trgm } });
   try {
     await migrate(drizzle(client), { migrationsFolder: folder });
     await bootstrapAdmin((text, params) => client.query(text, [...params]), testAdmin);

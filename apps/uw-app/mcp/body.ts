@@ -1,4 +1,6 @@
-import { boundedText, MAX_BODY_BYTES } from '../http/body.ts';
+import { boundedText } from '../http/body.ts';
+
+export const MCP_MAX_BODY_BYTES = 8 * 1024 * 1024;
 
 type BodyRefusal = { readonly status: 400 | 413; readonly code: number; readonly message: string };
 type Body =
@@ -7,7 +9,7 @@ type Body =
 const tooLarge: BodyRefusal = {
   status: 413,
   code: -32000,
-  message: `Payload Too Large: Request body must not exceed ${MAX_BODY_BYTES} bytes`,
+  message: `Payload Too Large: Request body must not exceed ${MCP_MAX_BODY_BYTES} bytes`,
 };
 const notJson: BodyRefusal = { status: 400, code: -32700, message: 'Parse error: Invalid JSON' };
 const batch: BodyRefusal = {
@@ -25,7 +27,7 @@ function parsedJson(text: string): { readonly value: unknown } | null {
 }
 
 export async function singleMessage(request: Request): Promise<Body> {
-  const text = await boundedText(request);
+  const text = await boundedText(request, MCP_MAX_BODY_BYTES);
   if (text === null) return { ok: false, ...tooLarge };
   const parsed = parsedJson(text);
   if (parsed === null) return { ok: false, ...notJson };

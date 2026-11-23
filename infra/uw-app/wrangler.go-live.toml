@@ -15,6 +15,10 @@ enabled = true
 name = "HARNESS_HUB"
 class_name = "HarnessHub"
 
+[[durable_objects.bindings]]
+name = "PAGE_DRAFT"
+class_name = "PageDraft"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["HarnessHub"]
@@ -22,6 +26,10 @@ new_sqlite_classes = ["HarnessHub"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["ClaudeCodeSandbox", "CodexSandbox"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["PageDraft"]
 
 [env.staging]
 name = "uw-app-staging"
@@ -47,6 +55,8 @@ AI_SPEND_CAP_MINOR = "50000"
 ALWAYS_ON_PROVIDER = "z-ai"
 ALWAYS_ON_MODEL = "z-ai/glm-5.3-flash"
 SANDBOX_MINOR_PER_HOUR = "3"
+CREDENTIALS_KMS_REGION = "us-west-2"
+CREDENTIALS_KMS_KEY_ID = "arn:aws:kms:us-west-2:002723143144:key/5c44bdf8-f2f5-422f-a53c-e2832cf9e84d"
 
 [env.staging.observability]
 enabled = true
@@ -74,6 +84,14 @@ queue = "uw-ingest-events-staging-dlq"
 name = "HARNESS_HUB"
 class_name = "HarnessHub"
 
+[[env.staging.durable_objects.bindings]]
+name = "PAGE_DRAFT"
+class_name = "PageDraft"
+
+[[env.staging.r2_buckets]]
+binding = "FILES"
+bucket_name = "uw-files-staging"
+
 [[env.staging.workflows]]
 name = "harness-run-staging"
 binding = "HARNESS_RUN"
@@ -99,6 +117,76 @@ class_name = "ClaudeCodeSandbox"
 name = "CODEX_SANDBOX"
 class_name = "CodexSandbox"
 
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_ACCESS_SERVICE_TOKENS_API_TOKEN"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_ACCESS_SERVICE_TOKENS_API_TOKEN"
+
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_AI_GATEWAY_ANALYTICS_TOKEN"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_AI_GATEWAY_ANALYTICS_TOKEN"
+
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_AI_GATEWAY_TOKEN"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_AI_GATEWAY_TOKEN"
+
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_ANTHROPIC_API_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_ANTHROPIC_API_KEY"
+
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_BUILDER_GITHUB_APP_PRIVATE_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_BUILDER_GITHUB_APP_PRIVATE_KEY"
+
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_CREDENTIALS_KMS_ACCESS_KEY_ID"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_CREDENTIALS_KMS_ACCESS_KEY_ID"
+
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_CREDENTIALS_KMS_SECRET_ACCESS_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_CREDENTIALS_KMS_SECRET_ACCESS_KEY"
+
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_GITHUB_APP_PRIVATE_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_GITHUB_APP_PRIVATE_KEY"
+
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_OPENAI_API_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_OPENAI_API_KEY"
+
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_OPENROUTER_API_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_OPENROUTER_API_KEY"
+
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY"
+
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_REVIEWER_GITHUB_APP_PRIVATE_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_REVIEWER_GITHUB_APP_PRIVATE_KEY"
+
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_VAPID_PRIVATE_JWK"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_VAPID_PRIVATE_JWK"
+
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_ZULIP_BOT_API_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_ZULIP_BOT_API_KEY"
+
 [env.production]
 name = "uw-app"
 workers_dev = true
@@ -123,6 +211,8 @@ AI_SPEND_CAP_MINOR = "50000"
 ALWAYS_ON_PROVIDER = "z-ai"
 ALWAYS_ON_MODEL = "z-ai/glm-5.3-flash"
 SANDBOX_MINOR_PER_HOUR = "3"
+CREDENTIALS_KMS_REGION = "us-west-2"
+CREDENTIALS_KMS_KEY_ID = "arn:aws:kms:us-west-2:002723143144:key/fbdd5b46-fa68-47e0-8bdd-ffa816d99342"
 
 [env.production.observability]
 enabled = true
@@ -150,6 +240,14 @@ queue = "uw-ingest-events-production-dlq"
 name = "HARNESS_HUB"
 class_name = "HarnessHub"
 
+[[env.production.durable_objects.bindings]]
+name = "PAGE_DRAFT"
+class_name = "PageDraft"
+
+[[env.production.r2_buckets]]
+binding = "FILES"
+bucket_name = "uw-files"
+
 [[env.production.workflows]]
 name = "harness-run-production"
 binding = "HARNESS_RUN"
@@ -175,6 +273,76 @@ class_name = "ClaudeCodeSandbox"
 name = "CODEX_SANDBOX"
 class_name = "CodexSandbox"
 
+[[env.production.secrets_store_secrets]]
+binding = "STORE_ACCESS_SERVICE_TOKENS_API_TOKEN"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_ACCESS_SERVICE_TOKENS_API_TOKEN"
+
+[[env.production.secrets_store_secrets]]
+binding = "STORE_AI_GATEWAY_ANALYTICS_TOKEN"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_AI_GATEWAY_ANALYTICS_TOKEN"
+
+[[env.production.secrets_store_secrets]]
+binding = "STORE_AI_GATEWAY_TOKEN"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_AI_GATEWAY_TOKEN"
+
+[[env.production.secrets_store_secrets]]
+binding = "STORE_ANTHROPIC_API_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_ANTHROPIC_API_KEY"
+
+[[env.production.secrets_store_secrets]]
+binding = "STORE_BUILDER_GITHUB_APP_PRIVATE_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_BUILDER_GITHUB_APP_PRIVATE_KEY"
+
+[[env.production.secrets_store_secrets]]
+binding = "STORE_CREDENTIALS_KMS_ACCESS_KEY_ID"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_CREDENTIALS_KMS_ACCESS_KEY_ID"
+
+[[env.production.secrets_store_secrets]]
+binding = "STORE_CREDENTIALS_KMS_SECRET_ACCESS_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_CREDENTIALS_KMS_SECRET_ACCESS_KEY"
+
+[[env.production.secrets_store_secrets]]
+binding = "STORE_GITHUB_APP_PRIVATE_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_GITHUB_APP_PRIVATE_KEY"
+
+[[env.production.secrets_store_secrets]]
+binding = "STORE_OPENAI_API_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_OPENAI_API_KEY"
+
+[[env.production.secrets_store_secrets]]
+binding = "STORE_OPENROUTER_API_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_OPENROUTER_API_KEY"
+
+[[env.production.secrets_store_secrets]]
+binding = "STORE_REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY"
+
+[[env.production.secrets_store_secrets]]
+binding = "STORE_REVIEWER_GITHUB_APP_PRIVATE_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_REVIEWER_GITHUB_APP_PRIVATE_KEY"
+
+[[env.production.secrets_store_secrets]]
+binding = "STORE_VAPID_PRIVATE_JWK"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_VAPID_PRIVATE_JWK"
+
+[[env.production.secrets_store_secrets]]
+binding = "STORE_ZULIP_BOT_API_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_ZULIP_BOT_API_KEY"
+
 [env.preview]
 workers_dev = true
 
@@ -199,3 +367,11 @@ id = "621c03bdb5ef4087a2a64f1e411779c8"
 [[env.preview.durable_objects.bindings]]
 name = "HARNESS_HUB"
 class_name = "HarnessHub"
+
+[[env.preview.durable_objects.bindings]]
+name = "PAGE_DRAFT"
+class_name = "PageDraft"
+
+[[env.preview.r2_buckets]]
+binding = "FILES"
+bucket_name = "uw-files-staging"

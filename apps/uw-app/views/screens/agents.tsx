@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import type { Harness } from '@uw/contracts';
 import { formatMoney } from '@uw/core/money';
 import type { AgentSummary, AgentsView } from '@uw/harness';
 import { Badge } from '@uw/ui/components/badge.tsx';
@@ -9,7 +10,9 @@ import { Table } from '@uw/ui/components/table.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import { can } from '@uw/core/acl';
 import { accessTokensConfigOf } from '../../agents/access-tokens.ts';
+import { readableRoutines } from '../../agents/routine-reads.ts';
 import { routinesOnHarness } from '../../agents/routines.ts';
+import { holdingOf } from '../parts/holder.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { doesWords, runShapeWords } from '../parts/agent-words.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
@@ -163,15 +166,34 @@ function routineNotice(key: string | undefined): string | null {
   return routineNotices.get(key) ?? reasonText(key);
 }
 
-async function routineData(c: Context<AppEnv>, screen: ScreenKernel, harnessId: string) {
+async function routineData(c: Context<AppEnv>, screen: ScreenKernel, harness: Harness) {
   const database = c.get('database');
-  const rows = database === null ? [] : await routinesOnHarness(database.db, harnessId, screen.at);
+  const stored =
+    database === null ? [] : await routinesOnHarness(database.db, harness.id, screen.at);
+  const rows = readableRoutines(screen.caller.actor, stored, harness.jdArea, screen.at);
   const viewer = {
     personId: screen.caller.actor.personId,
     orgAdmin: can(screen.caller.actor, 'admin', { kind: 'org' }, screen.at),
     switchedOn: accessTokensConfigOf(c.env, fetch) !== null,
+    holding: await holdingOf(
+      database?.db ?? null,
+      { reader: screen.caller.actor, at: screen.at },
+      rows.map((routine) => `human:${routine.personId}`),
+    ),
   };
   return { rows, viewer };
+}
+
+async function permissionViewer(c: Context<AppEnv>, screen: ScreenKernel, view: AgentsView) {
+  return {
+    admin: view.admin,
+    personId: screen.caller.actor.personId,
+    holding: await holdingOf(
+      c.get('database')?.db ?? null,
+      { reader: screen.caller.actor, at: screen.at },
+      view.permissions.map((permission) => `human:${permission.personId}`),
+    ),
+  };
 }
 
 export async function agentsScreen(c: Context<AppEnv>): Promise<Response> {
@@ -190,8 +212,8 @@ export async function agentsScreen(c: Context<AppEnv>): Promise<Response> {
     crumbs: workflowCrumbs(view.harness.title, queuePath(harnessId), pageNames.agents),
     tabs: workflowTabs(harnessId, 'agents', await waitingCount(screen, harnessId)),
   };
-  const viewer = { admin: view.admin, personId: screen.caller.actor.personId };
-  const routines = await routineData(c, screen, harnessId);
+  const viewer = await permissionViewer(c, screen, view);
+  const routines = await routineData(c, screen, view.harness);
   const notice = routineNotice(c.req.query('routine'));
   return renderScreen(
     c,

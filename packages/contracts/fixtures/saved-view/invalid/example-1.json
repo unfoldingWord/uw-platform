@@ -1,0 +1,22 @@
+{
+  "id": "00000000-0000-4000-8000-000000000001",
+  "collection": "Program",
+  "position": 0,
+  "ownerId": null,
+  "settings": {
+    "name": "By phase",
+    "layout": "board",
+    "scope": "shared",
+    "group": {
+      "property": "phase",
+      "by": "value"
+    },
+    "groups": [
+      {
+        "value": "running",
+        "visible": true,
+        "wipLimit": 5
+      }
+    ]
+  }
+}

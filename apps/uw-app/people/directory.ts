@@ -1,10 +1,10 @@
-import { eq } from 'drizzle-orm';
+import { asc, eq, inArray } from 'drizzle-orm';
 import { personStatusSchema, type PersonStatus } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
 import { people, personAudit } from '@uw/db/schema';
 
-export const owns = ['people', 'person_audit'] as const;
+export const owns = ['people', 'person_audit', 'directory_entries', 'directory_private'] as const;
 
 const ORG_EMAIL_SUFFIX = '@unfoldingword.org';
 
@@ -51,6 +51,15 @@ export async function personById(db: Executor, personId: string): Promise<Person
   return { personId: row.id, email: row.email, status: personStatusSchema.parse(row.status) };
 }
 
+export async function activePeople(db: Executor): Promise<readonly PersonRecord[]> {
+  const rows = await db
+    .select()
+    .from(people)
+    .where(eq(people.status, 'active'))
+    .orderBy(asc(people.email));
+  return rows.map((row) => ({ personId: row.id, email: row.email, status: 'active' }));
+}
+
 export async function personByEmail(db: Executor, email: string): Promise<PersonRecord | null> {
   const found = await selectByEmail(db, normaliseEmail(email));
   return found?.status === 'active' ? found : null;
@@ -89,4 +98,52 @@ export async function changeStatus(
     after,
     traceId: change.traceId,
   });
+}
+
+export type PersonPage = {
+  readonly personId: string;
+  readonly displayName: string;
+  readonly email: string;
+  readonly status: PersonStatus;
+  readonly joinedAt: Date;
+};
+
+export async function personPage(db: Executor, personId: string): Promise<PersonPage | null> {
+  const [row] = await db.select().from(people).where(eq(people.id, personId)).limit(1);
+  if (!row) return null;
+  return {
+    personId: row.id,
+    displayName: row.displayName,
+    email: row.email,
+    status: personStatusSchema.parse(row.status),
+    joinedAt: row.createdAt,
+  };
+}
+
+export type PersonName = {
+  readonly personId: string;
+  readonly displayName: string;
+  readonly status: PersonStatus;
+};
+
+export async function personNames(
+  db: Executor,
+  personIds: readonly string[],
+): Promise<ReadonlyMap<string, PersonName>> {
+  const wanted = [...new Set(personIds)];
+  if (wanted.length === 0) return new Map();
+  const rows = await db
+    .select({ id: people.id, displayName: people.displayName, status: people.status })
+    .from(people)
+    .where(inArray(people.id, wanted));
+  return new Map(
+    rows.map((row) => [
+      row.id,
+      {
+        personId: row.id,
+        displayName: row.displayName,
+        status: personStatusSchema.parse(row.status),
+      },
+    ]),
+  );
 }

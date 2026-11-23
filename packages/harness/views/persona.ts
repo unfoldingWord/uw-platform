@@ -14,7 +14,7 @@ import {
   type VerbName,
 } from '@uw/contracts';
 import { formatDate } from '@uw/core/dates';
-import { allowed, isAgent } from '../access.ts';
+import { allowed, isAgent, readsDelegation } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { accepted, refused, type KernelOutcome } from '../outcome.ts';
 import { activationChecks, type ActivationCheck } from '../personas/checks.ts';
@@ -166,7 +166,10 @@ async function delegationsOf(tx: StoreTransaction, scene: Scene, at: Date) {
   const count = await tx.delegations.read.countLive(filter, at);
   if (!allowed(scene.principal, 'admin', scene.harness, at)) return { count, live: null };
   const live = await tx.delegations.read.firstLive(filter, at, SHOWN_DELEGATIONS);
-  const shown = live.map((delegation) => ({
+  const readable = live.filter((delegation) =>
+    readsDelegation(scene.principal, delegation, scene.harness, at),
+  );
+  const shown = readable.map((delegation) => ({
     id: delegation.id,
     personId: delegation.personId,
     capability: delegation.capability,

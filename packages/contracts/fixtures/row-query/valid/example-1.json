@@ -1,0 +1,20 @@
+{
+  "filter": {
+    "kind": "group",
+    "conjunction": "and",
+    "children": [
+      {
+        "kind": "condition",
+        "property": "lead",
+        "operator": "contains",
+        "value": {
+          "kind": "me"
+        }
+      }
+    ]
+  },
+  "sorts": [],
+  "group": null,
+  "limit": 50,
+  "cursor": null
+}

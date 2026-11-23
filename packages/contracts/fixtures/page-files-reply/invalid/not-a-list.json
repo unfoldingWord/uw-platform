@@ -1,0 +1,14 @@
+{
+  "files": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "pageId": "00000000-0000-4000-8000-000000000001",
+    "jdArea": "00-09",
+    "name": "index.png",
+    "contentType": "image/png",
+    "size": 2048,
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "uploadedBy": "human:00000000-0000-4000-8000-000000000001",
+    "createdAt": "2026-11-20T09:00:00.000Z",
+    "url": "/api/files/00000000-0000-4000-8000-000000000001"
+  }
+}

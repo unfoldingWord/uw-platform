@@ -5,7 +5,9 @@ import type { PersonaDashboard, PersonaRunSummary } from '@uw/harness';
 import { Kpi } from '@uw/ui/components/kpi.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
+import type { Holding } from './holder.tsx';
 import { itemPath } from './paths.ts';
+import { shownIdentity, Who } from './person.tsx';
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 const link = `text-accent-text underline ${focus}`;
@@ -114,14 +116,26 @@ const delegationColumns = [
   { key: 'expires', label: 'Expires' },
 ] as const;
 
-export function Delegations(props: { readonly dashboard: PersonaDashboard }) {
+export function Delegations(props: {
+  readonly dashboard: PersonaDashboard;
+  readonly holding: Holding;
+}) {
   const { count, live } = props.dashboard.delegations;
   if (live === null) {
     return <p class="mb-5 text-sm text-text-3">{`${formatCount(count)} live delegations`}</p>;
   }
   if (live.length === 0) return <p class="mb-5 text-sm text-text-3">No live delegations</p>;
   const rows = live.map((delegation) => ({
-    person: delegation.personId,
+    person: (
+      <Who
+        reading={props.holding.reading}
+        who={shownIdentity(
+          `human:${delegation.personId}`,
+          props.holding.names,
+          () => 'Someone no longer listed',
+        )}
+      />
+    ),
     capability: delegation.capability,
     expires: formatInstant(new Date(delegation.expiresAt)),
   }));

@@ -24,10 +24,17 @@ import {
 } from '@uw/db/test-seed';
 import { DEFAULT_SPEND_CAP, software, type Caller, type Kernel } from '@uw/harness';
 import { createApp } from '../app.tsx';
-import { createAccessFixture, type AccessFixture } from '../testing/access-keys.ts';
 import {
+  createAccessFixture,
+  fixtureAccessEnv,
+  type AccessFixture,
+} from '../testing/access-keys.ts';
+import {
+  attachArgs,
   callableFailures,
+  filesEnv,
   toolSurfaceMismatches,
+  workflowFiles,
   type CallResult,
   type ToolSurface,
 } from '../testing/conformance.ts';
@@ -38,6 +45,7 @@ import { postgresDeps } from '../testing/postgres.ts';
 import type { McpHost, VerbContext } from './context.ts';
 import { serveVerbsForTest } from '../testing/in-process.ts';
 import { verbHandlers } from './verbs/index.ts';
+import * as collections from '../testing/conformance-collections.ts';
 
 const ROWAN_ID = '00000000-0000-4000-8000-000000000001';
 const OWNER = {
@@ -98,6 +106,7 @@ async function openRig(): Promise<Rig> {
   await seedPerson(db, OWNER);
   await seedGrant(db, grantRow(ADMIN_GRANT, OWNER.id, 'admin'));
   await seedGrant(db, grantRow(EDITOR_GRANT, OWNER.id, 'editor'));
+  await seedGrant(db, collections.readerGrant(OWNER.id));
   const rowan = await personOn(db, ROWAN_ID, 'rowan.test@unfoldingword.org', clock.now());
   const owner = await personOn(db, OWNER.id, OWNER.email, clock.now());
   const drop = async () => {
@@ -220,6 +229,7 @@ function workflowContext(r: Rig, principal: Principal): Omit<VerbContext, 'host'
     db: r.db,
     commit: 'test-commit',
     cap: DEFAULT_SPEND_CAP,
+    files: workflowFiles(),
     logger: createLogger(
       { traceId: 'trace', commit: 'test-commit', route: 'workflow', principal: null },
       () => undefined,
@@ -234,11 +244,11 @@ async function hostsOf(
 ): Promise<Hosts> {
   const token = await r.fixture.signForMcp({ email: OWNER.email });
   const app = createApp(postgresDeps(r.db, r.fixture, undefined, r.clock));
-  const external = await httpClient(app, {
-    'cf-access-jwt-assertion': token,
-    'x-uw-device': 'laptop',
-    ...headers,
-  });
+  const external = await httpClient(
+    app,
+    { 'cf-access-jwt-assertion': token, 'x-uw-device': 'laptop', ...headers },
+    filesEnv(fixtureAccessEnv),
+  );
   const workflow = await serveVerbsForTest(workflowContext(r, inProcess));
   return { external, workflow };
 }
@@ -306,11 +316,13 @@ function sceneCalls(host: McpHost, scene: Scene): Call[] {
     { verb: 'search_pages', args: { query: 'conformance', type: null, limit: 10 } },
     { verb: 'read_page', args: { pageId: scene.pageId } },
     { verb: 'write_page', args: pageArgs(host) },
+    { verb: 'attach_file', args: attachArgs(scene.pageId) },
     { verb: 'query_entities', args: { query: 'stage_items', params: stageItems } },
     {
       verb: 'create_task',
       args: { title: `task from ${host}`, jdArea: '80-89', pageId: null, due: null },
     },
+    ...collections.collectionCalls(host),
   ];
 }
 
@@ -324,6 +336,7 @@ const expectedOutcomes = new Map<string, 'accepted' | ErrorReason>([
   ['search_pages', 'accepted'],
   ['read_page', 'accepted'],
   ['write_page', 'accepted'],
+  ['attach_file', 'accepted'],
   ['query_entities', 'accepted'],
   ['create_task', 'accepted'],
 ]);
@@ -340,7 +353,7 @@ async function callEach(host: McpHost, client: Client, scene: Scene): Promise<Ca
   expect(calls.map((call) => call.verb).toSorted()).toEqual(servedNames().toSorted());
   const results: CallResult[] = [];
   for (const { verb, args } of calls) {
-    const expected = expectedOutcomes.get(verb) ?? 'internal_error';
+    const expected = collections.expectedOn(expectedOutcomes, host, verb);
     results.push({ verb, outcome: await outcomeOf(client, verb, args), expected });
   }
   return results;

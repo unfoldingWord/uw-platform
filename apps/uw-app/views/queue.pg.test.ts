@@ -125,7 +125,7 @@ async function leaseForAgentOnly(world: BoardWorld): Promise<void> {
     'Until 2026-10-02 10:00 UTC',
   );
   const person = metaOf(cardOf(document, 'Review the copy'));
-  expect(person['Holder']).toBe(`Claimed by ${world.rowan.identity}, for 3 h 0 min`);
+  expect(person['Holder']).toBe('Claimed by RTRowan Test, for 3 h 0 min');
   expect(person['Host']).toBe('Person');
   expect(person['Lease']).toBeUndefined();
 }

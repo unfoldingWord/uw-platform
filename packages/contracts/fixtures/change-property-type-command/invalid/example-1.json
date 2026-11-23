@@ -1,0 +1,9 @@
+{
+  "command": "change_property_type",
+  "requestId": "00000000-0000-4000-8000-000000000900",
+  "collection": "program",
+  "property": "size",
+  "config": {
+    "type": "money"
+  }
+}

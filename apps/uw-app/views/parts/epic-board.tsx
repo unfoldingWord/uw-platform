@@ -64,7 +64,7 @@ function Node(props: {
     <a
       href={itemPath(props.harnessId, node.itemId)}
       aria-label={`${nameOf(node)} ${node.title}, ${stateWords(node)}${waitsOn(node, props.group)}`}
-      tabindex="-1"
+      tabindex={-1}
       class={focus}
     >
       <rect

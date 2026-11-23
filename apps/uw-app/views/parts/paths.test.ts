@@ -11,6 +11,7 @@ import {
   issueUrl,
   itemPath,
   logOutPath,
+  personPath,
   pullRequestUrl,
   reviewUrl,
   waitingPath,
@@ -34,6 +35,10 @@ describe('the view paths', () => {
     expect(queuePath(harness, 'build')).toBe(`/harnesses/${harness}/queue?stage=build`);
     expect(gatePath(harness, item)).toBe(`/harnesses/${harness}/gates/${item}`);
     expect(itemPath(harness, item)).toBe(`/harnesses/${harness}/items/${item}`);
+  });
+
+  it('opens a person at their directory row, the one profile', () => {
+    expect(personPath(harness)).toBe(`/collections/directory/rows/${harness}`);
   });
 
   it('agrees with the deep links a wake carries', () => {

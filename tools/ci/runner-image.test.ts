@@ -17,7 +17,7 @@ function runnerImages(): string[] {
 }
 
 describe('every job runs on one pinned runner image', () => {
-  it(`pins ${pinned}, never ubuntu-latest, so a GitHub image change cannot move the screenshots or the browser`, () => {
+  it(`pins ${pinned}, never ubuntu-latest, so a GitHub image change cannot move a run`, () => {
     const images = runnerImages();
     expect(images.length).toBeGreaterThan(0);
     expect(images.filter((entry) => !entry.endsWith(` ${pinned}`))).toEqual([]);

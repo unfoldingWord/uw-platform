@@ -14,6 +14,13 @@ describe('AB-5 every page type is classified as gated or open', () => {
       ['data_sources', 'open'],
       ['issue', 'open'],
       ['platform', 'gated'],
+      ['knowledge', 'open'],
+      ['entry', 'open'],
+      ['profile', 'open'],
+      ['portfolio', 'open'],
+      ['program', 'open'],
+      ['project', 'open'],
+      ['okr', 'open'],
     ]);
   });
 

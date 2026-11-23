@@ -5,7 +5,7 @@ import { resolveToken, themeTokens, type ThemeName } from '../../../tools/ui/css
 const themes: readonly ThemeName[] = ['light', 'dark'];
 
 const textRoles = ['text', 'text-2', 'text-3', 'accent-text', 'human-text', 'ok-text'] as const;
-const surfaces = ['canvas', 'surface', 'raised', 'lane', 'card'] as const;
+const surfaces = ['canvas', 'surface', 'raised', 'lane', 'card', 'band'] as const;
 
 const textOnSurface = textRoles.flatMap((text) =>
   surfaces.map((ground) => [text, ground] as const),

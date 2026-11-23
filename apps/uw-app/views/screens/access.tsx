@@ -17,6 +17,7 @@ import {
 import {
   ORG_SCOPE,
   accessViewOf,
+  grantedByOf,
   historyQueryOf,
   scopeLabel,
   scopeOf,
@@ -27,6 +28,7 @@ import {
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { moduleCodes, pageNames } from '../parts/names.ts';
 import { idParam } from '../parts/params.ts';
+import { Person, Who } from '../parts/person.tsx';
 import { accessPath } from '../parts/paths.ts';
 
 const empty = 'm-0 px-4 py-3 text-sm text-text-3';
@@ -65,11 +67,13 @@ function filterOf(c: Context<AppEnv>): AccessFilter {
   };
 }
 
-function PersonCell(props: { readonly person: AccessPerson }) {
+function PersonCell(props: { readonly view: AccessView; readonly person: AccessPerson }) {
+  const { person, view } = props;
+  const name = view.names.get(person.personId);
   return (
-    <span class="flex min-w-0 flex-col">
-      <span class="font-heavy text-text">{props.person.displayName}</span>
-      <span class="text-xs text-text-3">{props.person.email}</span>
+    <span class="flex min-w-0 flex-col items-start gap-1">
+      {name === undefined ? null : <Person reading={view.reading} person={name} />}
+      <span class="text-xs text-text-3">{person.email}</span>
     </span>
   );
 }
@@ -91,7 +95,7 @@ function Waiting(props: { readonly view: AccessView }) {
           caption="Waiting for access"
           columns={waitingColumns}
           rows={view.waiting.map((person) => ({
-            person: <PersonCell person={person} />,
+            person: <PersonCell view={view} person={person} />,
             status: <StatusBadge status={person.status} holds={false} />,
             decide: decideCell(view, person),
           }))}
@@ -102,13 +106,13 @@ function Waiting(props: { readonly view: AccessView }) {
   );
 }
 
-function grantRows(holder: Holder) {
+function grantRows(view: AccessView, holder: Holder) {
   return holder.grants.map((line) => ({
-    person: <PersonCell person={holder.person} />,
+    person: <PersonCell view={view} person={holder.person} />,
     role: line.grant.role,
     scope: scopeLabel(scopeOf(line.grant)),
     status: <StatusBadge status={holder.person.status} holds />,
-    by: line.grant.grantedBy ?? 'Set up with the platform',
+    by: <Who reading={view.reading} who={grantedByOf(view.names, line.grant.grantedBy)} />,
     on: formatDate(line.grant.grantedAt),
     ends: line.grant.expiresAt === null ? 'No end date' : formatDate(line.grant.expiresAt),
     revoke: line.manageable ? <RevokeControl person={holder.person} line={line} /> : null,
@@ -128,7 +132,7 @@ function Holders(props: { readonly view: AccessView; readonly filter: AccessFilt
         <Table
           caption="Who has access"
           columns={grantColumns}
-          rows={view.holders.flatMap(grantRows)}
+          rows={view.holders.flatMap((holder) => grantRows(view, holder))}
           bare
         />
       )}
@@ -146,7 +150,12 @@ function History(props: { readonly view: AccessView }) {
         <Table
           caption="Access history"
           columns={historyColumns}
-          rows={history.map((line) => ({ ...line, at: formatInstant(line.at) }))}
+          rows={history.map((line) => ({
+            ...line,
+            at: formatInstant(line.at),
+            actor: <Who reading={props.view.reading} who={line.actor} />,
+            person: <Who reading={props.view.reading} who={line.person} />,
+          }))}
           bare
         />
       )}

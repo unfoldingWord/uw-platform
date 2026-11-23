@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { JSDOM } from 'jsdom';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
-import { seedGrant, seedPerson } from '@uw/db/test-seed';
+import { seedGrant, seedPerson, seedRevokedDefaultReading } from '@uw/db/test-seed';
 import { createApp } from '../app.tsx';
 import {
   createAccessFixture,
@@ -49,7 +49,10 @@ function areaGrant(
 }
 
 async function scene(db: Database): Promise<void> {
-  for (const person of [INFRA, TECH, FRESH]) await seedPerson(db, person);
+  for (const person of [INFRA, TECH, FRESH]) {
+    await seedPerson(db, person);
+    await seedRevokedDefaultReading(db, person.id, new Date());
+  }
   await seedPerson(db, { ...PARTNER, status: 'pending' });
   await seedGrant(
     db,
@@ -65,15 +68,18 @@ async function documentFor(db: Database, email: string, path = accessPath()) {
   return { document: new JSDOM(page.text).window.document, text: page.text };
 }
 
+function shownText(cell: Element): string {
+  const copy = cell.cloneNode(true) as Element;
+  for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
+  return copy.textContent ?? '';
+}
+
 function rowsOf(document: Document, caption: string): string[] {
   const table = [...document.querySelectorAll('main table')].find(
     (found) => found.querySelector('caption')?.textContent === caption,
   );
   return [...(table?.querySelectorAll('tbody tr') ?? [])].map((row) =>
-    [...row.querySelectorAll('td')]
-      .slice(0, 3)
-      .map((cell) => cell.textContent ?? '')
-      .join(' | '),
+    [...row.querySelectorAll('td')].slice(0, 3).map(shownText).join(' | '),
   );
 }
 

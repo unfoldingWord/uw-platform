@@ -9,6 +9,7 @@ import type { Principal } from '@uw/core/principal';
 import { advisoryLock, advisoryLocks } from '@uw/db/advisory-locks';
 import type { Database, Transaction } from '@uw/db/client';
 import { resolveGrants } from '@uw/db/store';
+import { giveDefaultReading } from '../acl/default-grant.ts';
 import type { CommandResult } from '../http/commands.ts';
 import { changeStatus, lockPerson, type StatusChange } from './directory.ts';
 
@@ -41,6 +42,9 @@ async function decideInTransaction(
     return refused('transition_not_allowed');
   }
   await changeStatus(tx, person, change);
+  if (change.action === 'approve') {
+    await giveDefaultReading(tx, personId, { actor: change.actor, traceId: change.traceId });
+  }
   return accepted;
 }
 

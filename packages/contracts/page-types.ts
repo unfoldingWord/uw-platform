@@ -9,6 +9,7 @@ import {
   type Classification,
   type OfflineEligibility,
 } from './closed-sets.ts';
+import { jdCategorySchema, jdIdSchema } from './areas.ts';
 import { pullRequestRefSchema, repositorySchema } from './harness.ts';
 import { identitySchema, isPersonaIdentity } from './identity.ts';
 import { providerIdSchema } from './runs.ts';
@@ -106,7 +107,34 @@ export const platformFrontmatterSchema = z.strictObject({
     .refine(distinctRepositories, 'each repository once, in any case'),
 });
 
+const label = z
+  .string()
+  .max(60)
+  .refine((value) => value.trim().length > 0, 'a label is not blank');
+
+export const knowledgeFrontmatterSchema = z
+  .strictObject({
+    jd_category: jdCategorySchema,
+    jd_id: jdIdSchema.nullable().default(null),
+    owner: humanIdentity.nullable().default(null),
+    tags: z.array(label).max(20).refine(distinct, 'each tag once').default([]),
+    aliases: z.array(label).max(20).refine(distinct, 'each alias once').default([]),
+    overview: z.string().max(500).default(''),
+    icon: z.string().max(60).nullable().default(null),
+    verified_by: humanIdentity.nullable().default(null),
+    verified_until: z.iso.date().nullable().default(null),
+    source_ref: z.string().min(1).max(200).nullable().default(null),
+  })
+  .refine(
+    (value) => value.jd_id === null || value.jd_id.startsWith(`${value.jd_category}.`),
+    'a JD ID starts with the page category',
+  );
+
+export type KnowledgeFrontmatter = z.infer<typeof knowledgeFrontmatterSchema>;
+
 const internalSync = { classification: 'internal', offlineEligibility: 'sync' } as const;
+
+export const collectionFrontmatterSchema = z.record(z.string().max(48), z.json());
 
 export const pageTypeRegistry = {
   skill: { frontmatter: skillFrontmatterSchema, ...internalSync },
@@ -118,6 +146,13 @@ export const pageTypeRegistry = {
   data_sources: { frontmatter: dataSourcesFrontmatterSchema, ...internalSync },
   issue: { frontmatter: issueFrontmatterSchema, ...internalSync },
   platform: { frontmatter: platformFrontmatterSchema, ...internalSync },
+  knowledge: { frontmatter: knowledgeFrontmatterSchema, ...internalSync },
+  entry: { frontmatter: collectionFrontmatterSchema, ...internalSync },
+  profile: { frontmatter: z.strictObject({}), ...internalSync },
+  portfolio: { frontmatter: collectionFrontmatterSchema, ...internalSync },
+  program: { frontmatter: collectionFrontmatterSchema, ...internalSync },
+  project: { frontmatter: collectionFrontmatterSchema, ...internalSync },
+  okr: { frontmatter: collectionFrontmatterSchema, ...internalSync },
 } as const satisfies Record<PageType, PageTypeDefinition>;
 
 const byType = new Map<string, PageTypeDefinition>(Object.entries(pageTypeRegistry));

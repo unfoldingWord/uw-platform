@@ -3,6 +3,7 @@ import { appCss, appCssPath } from '@uw/ui/generated/app-css';
 import { fontFiles } from '@uw/ui/generated/fonts';
 import { markBase64, markPath, wordmarkBase64, wordmarkPath } from '@uw/ui/generated/mark';
 import type { AppEnv } from '../deps.ts';
+import { editorJs, editorPath } from '../generated/editor.ts';
 import { islandsJs, islandsPath, serviceWorkerJs } from '../generated/islands.ts';
 import { iconSvg } from './icon.ts';
 import { manifest } from './manifest.ts';
@@ -22,6 +23,10 @@ const shellAssets = [
 function assetBytes(base64: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
 }
+const scripts = [
+  [islandsPath, islandsJs],
+  [editorPath, editorJs],
+] as const;
 const workerJs = `const UW_SHELL_ASSETS=${JSON.stringify(shellAssets)};\n${serviceWorkerJs}`;
 
 export function assetRoutes(): Hono<AppEnv> {
@@ -48,9 +53,11 @@ export function assetRoutes(): Hono<AppEnv> {
       c.body(bytes, 200, { 'content-type': 'image/png', 'cache-control': immutable }),
     );
   }
-  routes.get(islandsPath, (c) =>
-    c.body(islandsJs, 200, { 'content-type': javascript, 'cache-control': immutable }),
-  );
+  for (const [path, script] of scripts) {
+    routes.get(path, (c) =>
+      c.body(script, 200, { 'content-type': javascript, 'cache-control': immutable }),
+    );
+  }
   routes.get('/sw.js', (c) =>
     c.body(workerJs, 200, {
       'content-type': javascript,

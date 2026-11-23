@@ -137,6 +137,10 @@ async function readableRowsOnly(scene: PlaneWorld): Promise<void> {
     new Set([scene.harnessId, scene.elsewhereId]),
   );
   expect(await harnessesOf(viewer, 'live_delegations')).toEqual(new Set([scene.harnessId]));
+  const orgViewer = await simPerson(scene.world, 10, [
+    { role: 'viewer', scopeKind: 'org', scopeArea: null },
+  ]);
+  expect(await harnessesOf(orgViewer, 'live_delegations')).toEqual(new Set());
   const stale = await listOf(scene.world, viewer, 'stale_learnings');
   expect(stale.map((row) => row.cells['title'])).toEqual(['Learning 0']);
   const stranger = await simPerson(scene.world, 9, []);

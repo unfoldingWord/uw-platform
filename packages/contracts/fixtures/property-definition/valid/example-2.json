@@ -1,0 +1,21 @@
+{
+  "key": "phone",
+  "name": "Phone",
+  "config": {
+    "type": "phone"
+  },
+  "source": {
+    "kind": "column",
+    "column": "phone"
+  },
+  "classification": "restricted",
+  "rule": {
+    "steward": "10-19",
+    "role": "viewer",
+    "owner": true
+  },
+  "required": false,
+  "hide_when_empty": false,
+  "section": null,
+  "description": ""
+}

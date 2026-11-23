@@ -9,6 +9,8 @@
   --uw-side-code: var(--uw-inspire-300);
   --uw-surface: var(--uw-grey-0);
   --uw-raised: var(--uw-grey-50);
+  --uw-band: var(--uw-ocean-50);
+  --uw-band-line: var(--uw-ocean-200);
   --uw-lane: var(--uw-grey-100);
   --uw-card: var(--uw-grey-0);
   --uw-hover: var(--uw-grey-100);
@@ -45,6 +47,8 @@
     --uw-side-code: var(--uw-inspire-300);
     --uw-surface: var(--uw-grey-900);
     --uw-raised: var(--uw-grey-850);
+    --uw-band: var(--uw-ocean-950);
+    --uw-band-line: var(--uw-ocean-900);
     --uw-lane: var(--uw-grey-900);
     --uw-card: var(--uw-grey-850);
     --uw-hover: var(--uw-grey-800);
@@ -81,6 +85,8 @@
   --uw-side-code: var(--uw-inspire-300);
   --uw-surface: var(--uw-grey-900);
   --uw-raised: var(--uw-grey-850);
+  --uw-band: var(--uw-ocean-950);
+  --uw-band-line: var(--uw-ocean-900);
   --uw-lane: var(--uw-grey-900);
   --uw-card: var(--uw-grey-850);
   --uw-hover: var(--uw-grey-800);

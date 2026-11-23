@@ -59,6 +59,11 @@ export const screens: readonly ScreenEntry[] = [
     path: '/harnesses/:harnessId/items/:itemId',
   },
   { name: 'page', file: 'apps/uw-app/views/screens/page.tsx', path: '/pages/:pageId' },
+  {
+    name: 'page-edit',
+    file: 'apps/uw-app/views/screens/page-edit.tsx',
+    path: '/pages/:pageId/edit',
+  },
   { name: 'persona', file: 'apps/uw-app/views/screens/persona.tsx', path: '/personas/:pageId' },
   { name: 'health', file: 'apps/uw-app/views/screens/health.tsx', path: '/health' },
   {
@@ -67,6 +72,77 @@ export const screens: readonly ScreenEntry[] = [
     path: '/health/:indicator',
   },
   { name: 'access', file: 'apps/uw-app/views/screens/access.tsx', path: '/access' },
+  { name: 'search', file: 'apps/uw-app/views/screens/search.tsx', path: '/search' },
+  { name: 'wiki', file: 'apps/uw-app/views/screens/wiki.tsx', path: '/wiki' },
+  {
+    name: 'wiki-category',
+    file: 'apps/uw-app/views/screens/wiki-category.tsx',
+    path: '/wiki/:category',
+  },
+  {
+    name: 'wiki-review',
+    file: 'apps/uw-app/views/screens/wiki-review.tsx',
+    path: '/wiki/review',
+  },
+  {
+    name: 'page-comments',
+    file: 'apps/uw-app/views/screens/page-comments.tsx',
+    path: '/pages/:pageId/comments',
+  },
+  {
+    name: 'wiki-area',
+    file: 'apps/uw-app/views/screens/wiki-area.tsx',
+    path: '/wiki/areas/:area',
+  },
+  { name: 'wiki-new', file: 'apps/uw-app/views/screens/wiki-new.tsx', path: '/wiki/new' },
+  {
+    name: 'page-manage',
+    file: 'apps/uw-app/views/screens/page-manage.tsx',
+    path: '/pages/:pageId/manage',
+  },
+  {
+    name: 'page-version',
+    file: 'apps/uw-app/views/screens/page-version.tsx',
+    path: '/pages/:pageId/versions/:version',
+  },
+  {
+    name: 'credentials',
+    file: 'apps/uw-app/views/screens/credentials.tsx',
+    path: '/credentials',
+  },
+  { name: 'crosswalk', file: 'apps/uw-app/views/screens/crosswalk.tsx', path: '/crosswalk' },
+  {
+    name: 'crosswalk-cell',
+    file: 'apps/uw-app/views/screens/crosswalk-cell.tsx',
+    path: '/crosswalk/areas/:area/:tier',
+  },
+  {
+    name: 'crosswalk-node',
+    file: 'apps/uw-app/views/screens/crosswalk-node.tsx',
+    path: '/crosswalk/nodes/:nodeId',
+  },
+
+  {
+    name: 'credential',
+    file: 'apps/uw-app/views/screens/credential.tsx',
+    path: '/credentials/:credentialId',
+  },
+  { name: 'collections', file: 'apps/uw-app/views/screens/collections.tsx', path: '/collections' },
+  {
+    name: 'collection',
+    file: 'apps/uw-app/views/screens/collection.tsx',
+    path: '/collections/:key/views/:viewId',
+  },
+  {
+    name: 'collection-row',
+    file: 'apps/uw-app/views/screens/collection-row.tsx',
+    path: '/collections/:key/rows/:rowId',
+  },
+  {
+    name: 'collection-settings',
+    file: 'apps/uw-app/views/screens/collection-settings.tsx',
+    path: '/collections/:key/settings',
+  },
   {
     name: 'not-found',
     file: 'apps/uw-app/views/screens/not-found.tsx',

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, formatDuration, formatInstant, isoDateSchema, parseDate } from './dates.ts';
+import {
+  formatDate,
+  formatDuration,
+  formatInstant,
+  formatMonth,
+  isoDateSchema,
+  parseDate,
+} from './dates.ts';
 
 describe('formatDate', () => {
   it('renders the UTC calendar date as an ISO 8601 date', () => {
@@ -74,5 +81,12 @@ describe('formatDuration', () => {
     expect(formatDuration(192 * minute)).toBe('3 h 12 min');
     expect(formatDuration(60 * minute)).toBe('1 h 0 min');
     expect(formatDuration((2 * 24 + 4) * 60 * minute + 30 * minute)).toBe('2 d 4 h');
+  });
+});
+
+describe('#206 formatMonth names a calendar month', () => {
+  it('names the month and year of a calendar month', () => {
+    expect(formatMonth('2026-10')).toBe('October 2026');
+    expect(() => formatMonth('2026-13')).toThrow(RangeError);
   });
 });

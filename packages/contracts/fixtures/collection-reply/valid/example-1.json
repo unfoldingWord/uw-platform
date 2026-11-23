@@ -1,0 +1,86 @@
+{
+  "collection": {
+    "key": "program",
+    "name": "Programs",
+    "jdArea": "60-69",
+    "version": 1,
+    "locked": false
+  },
+  "definition": {
+    "key": "program",
+    "name": "Programs",
+    "jdArea": "60-69",
+    "rowSource": "pages",
+    "pageType": "program",
+    "description": "",
+    "locked": false,
+    "properties": [
+      {
+        "key": "name",
+        "name": "Name",
+        "config": {
+          "type": "title"
+        },
+        "source": {
+          "kind": "column",
+          "column": "title"
+        },
+        "classification": "internal",
+        "rule": null,
+        "required": false,
+        "hide_when_empty": false,
+        "section": null,
+        "description": ""
+      },
+      {
+        "key": "phase",
+        "name": "Phase",
+        "config": {
+          "type": "status",
+          "options": [
+            {
+              "id": "idea",
+              "name": "Idea",
+              "tone": "neutral",
+              "group": "to_do"
+            },
+            {
+              "id": "running",
+              "name": "Running",
+              "tone": "neutral",
+              "group": "in_progress"
+            },
+            {
+              "id": "closed",
+              "name": "Closed",
+              "tone": "neutral",
+              "group": "complete"
+            }
+          ]
+        },
+        "source": {
+          "kind": "frontmatter"
+        },
+        "classification": "internal",
+        "rule": null,
+        "required": false,
+        "hide_when_empty": false,
+        "section": null,
+        "description": ""
+      }
+    ]
+  },
+  "views": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "name": "By phase",
+      "layout": "board",
+      "scope": "shared"
+    }
+  ],
+  "templates": [],
+  "capabilities": {
+    "write": true,
+    "admin": false
+  }
+}

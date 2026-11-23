@@ -9,7 +9,7 @@ const config: ZulipConfig = {
   site: 'https://chat.example.org',
   botEmail: 'harness-bot@chat.example.org',
   apiKey: 'fixture-api-key',
-  channels: new Map([['80-89', '80-89 Technology']]),
+  channels: new Map([['80-89', '80-89 Tech & SLR']]),
 };
 
 const immediately: Timers = { after: () => Promise.resolve() };
@@ -17,7 +17,7 @@ const immediately: Timers = { after: () => Promise.resolve() };
 function postWith(answer: FetchAnswer, timers: Timers = systemTimers) {
   const recorded = recordingFetch(answer);
   const poster = zulipPoster(config, recorded.fetcher, timers);
-  return { recorded, post: () => poster.post('80-89 Technology', 'software/x#1', 'content') };
+  return { recorded, post: () => poster.post('80-89 Tech & SLR', 'software/x#1', 'content') };
 }
 
 describe('the Zulip poster', () => {
@@ -33,7 +33,7 @@ describe('the Zulip poster', () => {
     expect(call.headers.get('content-type')).toBe('application/x-www-form-urlencoded');
     expect(Object.fromEntries(new URLSearchParams(String(call.body)))).toEqual({
       type: 'stream',
-      to: '80-89 Technology',
+      to: '80-89 Tech & SLR',
       topic: 'software/x#1',
       content: 'content',
     });

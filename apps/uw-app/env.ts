@@ -1,3 +1,4 @@
+import type { SecretSources } from '@uw/core/platform-secrets';
 import type { RunStart } from '@uw/harness';
 type HyperdriveBinding = { readonly connectionString: string };
 export type QueueProducer<Body> = { send(body: Body): Promise<void> };
@@ -30,6 +31,24 @@ export type SandboxNamespace = {
   get(id: unknown): SandboxStub;
 };
 
+type BucketMetadata = { readonly contentType?: string };
+type BucketObject = {
+  arrayBuffer(): Promise<ArrayBuffer>;
+  readonly httpMetadata?: BucketMetadata;
+};
+export type FilesBucket = {
+  put(
+    key: string,
+    value: Uint8Array,
+    options?: { readonly httpMetadata?: BucketMetadata },
+  ): Promise<unknown>;
+  get(key: string): Promise<BucketObject | null>;
+  delete(key: string): Promise<unknown>;
+};
+
+type DraftStub = { fetch(input: string, init?: RequestInit): Promise<Response> };
+export type DraftNamespace = { idFromName(name: string): unknown; get(id: unknown): DraftStub };
+
 export type Bindings = {
   AI_GATEWAY_ACCOUNT_ID?: string;
   AI_GATEWAY_ANALYTICS_TOKEN?: string;
@@ -52,7 +71,12 @@ export type Bindings = {
   ACCESS_SERVICE_TOKENS_API_TOKEN?: string;
   ACCESS_AUD?: string;
   ACCESS_MCP_AUD?: string;
+  CREDENTIALS_KMS_ACCESS_KEY_ID?: string;
+  CREDENTIALS_KMS_KEY_ID?: string;
+  CREDENTIALS_KMS_REGION?: string;
+  CREDENTIALS_KMS_SECRET_ACCESS_KEY?: string;
   DEV_PRINCIPAL_EMAIL?: string;
+  FILES?: FilesBucket;
   GITHUB_APP_ID?: string;
   GITHUB_APP_INSTALLATION_ID?: string;
   GITHUB_APP_PRIVATE_KEY?: string;
@@ -61,6 +85,7 @@ export type Bindings = {
   HYPERDRIVE?: HyperdriveBinding;
   INGEST_DLQ?: QueueProducer<unknown>;
   OPENAI_API_KEY?: string;
+  PAGE_DRAFT?: DraftNamespace;
   OPENROUTER_API_KEY?: string;
   REVIEWER_CODEX_GITHUB_APP_ID?: string;
   REVIEWER_CODEX_GITHUB_APP_INSTALLATION_ID?: string;
@@ -69,6 +94,7 @@ export type Bindings = {
   REVIEWER_GITHUB_APP_INSTALLATION_ID?: string;
   REVIEWER_GITHUB_APP_PRIVATE_KEY?: string;
   SANDBOX_MINOR_PER_HOUR?: string;
+  SECRET_SOURCES?: SecretSources;
   VAPID_PRIVATE_JWK?: string;
   VAPID_PUBLIC_KEY?: string;
   VAPID_SUBJECT?: string;

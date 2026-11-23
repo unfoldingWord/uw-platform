@@ -1,0 +1,20 @@
+{
+  "cascadePageId": "00000000-0000-4000-8000-000000000002",
+  "title": "Example Program",
+  "tier": "program",
+  "areas": [
+    {
+      "jdArea": "80-89",
+      "counts": { "pages": 0, "tasks": 0, "items": 1 },
+      "links": [
+        {
+          "mapId": "00000000-0000-4000-8000-000000000003",
+          "cascadePageId": "00000000-0000-4000-8000-000000000002",
+          "title": "Example Program",
+          "relation": "owns",
+          "note": null
+        }
+      ]
+    }
+  ]
+}

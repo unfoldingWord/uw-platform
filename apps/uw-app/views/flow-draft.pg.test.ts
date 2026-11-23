@@ -95,7 +95,9 @@ async function holderSeesProblems(scene: Scene): Promise<void> {
 async function anotherAdminWatches(scene: Scene): Promise<void> {
   await rowanDrafts(scene);
   const { document, text } = await flowFor(scene, scene.ana.email);
-  expect(document.querySelector('[data-lock-bar]')?.textContent).toBe(
+  const bar = document.querySelector('[data-lock-bar]');
+  expect(bar?.querySelector('a[data-person-chip]')?.textContent).toBe('RTRowan Test');
+  expect(bar?.textContent).toContain(
     'Rowan Test is editing this workflow (started 4 min ago). The live workflow is unchanged until they publish.',
   );
   expect(document.querySelector('[data-draft-editor]')).toBeNull();

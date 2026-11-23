@@ -7,6 +7,7 @@ import type { Logger } from '@uw/core/log';
 import type { Database } from '@uw/db/client';
 import type { Caller, Kernel, KernelOutcome, RunScene } from '@uw/harness';
 import type { SpendCap } from '../health/spend-cap.ts';
+import type { FileStore } from '../pages/file-store.ts';
 import { MAX_BODY_BYTES } from '../http/body.ts';
 import type { VerbContext } from './context.ts';
 import { refusal, type VerbHandler, type VerbRefusal } from './handler.ts';
@@ -23,6 +24,7 @@ export type RunStepConnection = {
   readonly commit: string;
   readonly cap: SpendCap;
   readonly logger: Logger;
+  readonly files?: FileStore | null;
   readonly within: ReadonlySet<VerbName> | null;
 };
 
@@ -110,6 +112,7 @@ export async function connectInProcess(
     commit: connection.commit,
     cap: connection.cap,
     logger: connection.logger,
+    files: connection.files ?? null,
   };
   const verbs = modelVerbs(scene, connection.within);
   const guard = sceneGuard(connection);

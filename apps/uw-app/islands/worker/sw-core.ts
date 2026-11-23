@@ -11,6 +11,7 @@ export const PUSH_TITLES: Readonly<Record<string, string>> = {
   stage_advanced: 'An item you hold moved on',
   delegated_merge: 'An agent merged under a delegation you gave',
   silence_alarm: 'Items wait in Check and no review has run',
+  credential_revealed: 'A credential in your area was revealed',
 };
 
 export const DEFAULT_PUSH_TITLE = 'Something is waiting on you';

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { jdAreaSchema } from './areas.ts';
 import { costBasisSchema, evidenceLabelSchema } from './closed-sets.ts';
 import { healthReportSchema } from './health.ts';
+import { fileContentTypes, fileSchema, MAX_AGENT_FILE_BASE64_LENGTH } from './page-reads.ts';
 import { pullRequestRefSchema, stageKeySchema } from './harness.ts';
 import { runStepCosts, runStepSchema } from './runs.ts';
 import { fullShaSchema } from './ship-rule.ts';
@@ -13,6 +14,8 @@ import {
   slugSchema,
 } from './pages.ts';
 import type { VerbName } from './verb-names.ts';
+import { collectionKeySchema, propertyKeySchema } from './collections.ts';
+import { collectionReplySchema, rowsReplySchema } from './collection-reads.ts';
 
 export const submitToGateResultSchema = z.enum([
   'advanced',
@@ -66,6 +69,16 @@ export const verbIo = {
       version: z.number().int().min(1),
       status: pageStatusSchema,
     }),
+  },
+  attach_file: {
+    input: z.object({
+      fileId: z.uuid(),
+      pageId: z.uuid(),
+      name: z.string().trim().min(1).max(200),
+      contentType: z.enum(fileContentTypes),
+      contentBase64: z.base64().min(1).max(MAX_AGENT_FILE_BASE64_LENGTH),
+    }),
+    output: z.object({ file: fileSchema }),
   },
   resolve_context: {
     input: z.object({ itemId: z.uuid() }),
@@ -176,6 +189,42 @@ export const verbIo = {
       ...runStepCosts,
     }),
     output: recordRunStepReplySchema,
+  },
+  read_collection: {
+    input: z.strictObject({ collection: collectionKeySchema }),
+    output: collectionReplySchema,
+  },
+  read_view: {
+    input: z.strictObject({
+      viewId: z.uuid(),
+      limit: z.number().int().min(1).max(200).default(50),
+      cursor: z
+        .string()
+        .regex(/^[0-9]{1,7}$/)
+        .nullable()
+        .default(null),
+    }),
+    output: rowsReplySchema,
+  },
+  create_row: {
+    input: z.strictObject({
+      collection: collectionKeySchema,
+      rowId: z.uuid(),
+      jdArea: jdAreaSchema,
+      title: z.string().min(1).max(200),
+      values: z.record(propertyKeySchema, z.json()).default({}),
+      template: z.uuid().nullable().default(null),
+    }),
+    output: z.object({ rowId: z.uuid(), version: z.number().int().min(1) }),
+  },
+  set_property: {
+    input: z.strictObject({
+      collection: collectionKeySchema,
+      rowId: z.uuid(),
+      property: propertyKeySchema,
+      value: z.json(),
+    }),
+    output: z.object({ rowId: z.uuid(), version: z.number().int().min(1) }),
   },
   get_health: {
     input: z.object({ harnessId: z.uuid() }),

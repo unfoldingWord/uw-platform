@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { personPrincipal } from '@uw/core/principal';
+import { parsePrincipal, personPrincipal } from '@uw/core/principal';
 import type { AccessGrant, AccessPerson, AccessRecords } from '@uw/db/store';
 import { accessViewOf, historyQueryOf } from './access-view.ts';
 
@@ -25,7 +25,7 @@ function grant(n: number, holder: AccessPerson, role: string, area: string | nul
     role,
     scopeKind: area === null ? 'org' : 'jd_area',
     scopeArea: area,
-    grantedBy: org.email,
+    grantedBy: org.personId,
     grantedAt: new Date('2026-11-01T00:00:00.000Z'),
     expiresAt: null,
   };
@@ -184,5 +184,40 @@ describe('#154 review: the filter keeps its choice and the history is asked for 
       limit: 20,
     });
     expect(historyQueryOf(viewer(org), none, at)).toMatchObject({ everything: true });
+  });
+});
+
+describe('#155 the Access screen reads grants and their history by the declared row rule', () => {
+  it('shows an agent bound to a person none of that person\u2019s grants or history', () => {
+    const agent = parsePrincipal({
+      ...viewer(tech),
+      identity: `agent:${tech.personId}/laptop`,
+      kind: 'agent',
+      email: null,
+      interactive: false,
+    });
+    const view = accessViewOf(records, agent, none, at);
+    expect(view.holders).toEqual([]);
+    expect(view.history).toEqual([]);
+  });
+
+  it('shows an org viewer only their own grant', () => {
+    const wide = grant(5, fresh, 'viewer', null);
+    const all = { ...records, grants: [...grants, wide] };
+    const orgViewer = personPrincipal({
+      personId: fresh.personId,
+      email: fresh.email,
+      grants: [
+        {
+          grantId: wide.grantId,
+          role: 'viewer',
+          scopeKind: 'org',
+          scopeArea: null,
+          expiresAt: null,
+        },
+      ],
+      interactive: true,
+    });
+    expect(shown(accessViewOf(all, orgViewer, none, at))).toEqual(['new.teammate:viewer:org:see']);
   });
 });

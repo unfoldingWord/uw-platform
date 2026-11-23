@@ -32,6 +32,11 @@ export const actionGroups: readonly ActionGroup[] = [
         'Learning, skill and agent pages land as suggestions for a person to confirm.',
       ),
       action(
+        'attach_file',
+        'Attach a picture or file',
+        'To a page it may edit, for the page to show.',
+      ),
+      action(
         'resolve_context',
         "Load an item's context",
         "The stage's instructions, the item's pages and the learnings that apply.",

@@ -1,0 +1,13 @@
+{
+  "name": "By phase",
+  "layout": "board",
+  "scope": "shared",
+  "group": null,
+  "groups": [
+    {
+      "value": "running",
+      "visible": true,
+      "wipLimit": 5
+    }
+  ]
+}

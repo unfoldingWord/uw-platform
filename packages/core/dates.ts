@@ -43,3 +43,23 @@ export function formatDuration(ms: number): string {
   if (days === 0) return `${hours} h ${minutes % HOUR_MINUTES} min`;
   return `${days} d ${hours % DAY_HOURS} h`;
 }
+
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+] as const;
+
+export function formatMonth(month: string): string {
+  const first = parseDate(`${month}-01`);
+  return `${MONTH_NAMES[first.getUTCMonth()] ?? ''} ${first.getUTCFullYear()}`;
+}

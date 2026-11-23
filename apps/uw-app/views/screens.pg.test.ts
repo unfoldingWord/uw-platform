@@ -6,19 +6,35 @@ import { rewriteItem, seedPage } from '@uw/db/test-seed';
 import { clock } from '../github/testing/ship-rig.ts';
 import { advanced, enqueuedItem, meteredRun, subscriptionRun } from '../testing/board-world.ts';
 import { accepted, callerOf } from '../testing/commands.ts';
+import { credentialFor } from '../testing/credentials-scene.ts';
 import { gateWorld, type GateWorld } from '../testing/gate-world.ts';
 import { kernelOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml, type Html } from '../testing/views.ts';
+import { ensureBuiltIns } from '../collections/builtins/seed.ts';
+import { personWith, rowIn } from '../testing/collections.ts';
 import { screens, type ScreenEntry } from './registry.ts';
 
 const HOUR = 3_600_000;
 const earlier = { now: () => new Date(clock.now().getTime() - 2 * HOUR) };
 
-type Seeded = GateWorld & { readonly runId: string };
+type Seeded = GateWorld & {
+  readonly runId: string;
+  readonly credentialId: string;
+  readonly programRow: string;
+};
 
 type Rendered = { readonly name: string; readonly email: string; readonly page: Html };
+
+async function programRowIn(db: Database): Promise<string> {
+  await ensureBuiltIns(db, clock.now());
+  const writer = await personWith(db, 'program-writer', [
+    { role: 'editor', area: '80-89' },
+    { role: 'viewer', area: '00-09' },
+  ]);
+  return rowIn(db, writer, { collection: 'program', jdArea: '80-89', title: 'Gateway languages' });
+}
 
 async function seededWorld(db: Database): Promise<Seeded> {
   const world = await gateWorld(db);
@@ -66,7 +82,8 @@ async function seededWorld(db: Database): Promise<Seeded> {
     frontmatter: personaFrontmatter(harnessId),
     slug: 'screens-persona',
   });
-  return { ...world, runId };
+  const credentialId = await credentialFor(db, world.kimEmail, clock);
+  return { ...world, runId, credentialId, programRow: await programRowIn(db) };
 }
 
 const personaPageId = '00000000-0000-4000-8000-00000000be11';
@@ -94,7 +111,18 @@ function pathOf(entry: ScreenEntry, world: Seeded): string {
     .replace(':itemId', world.item.itemId)
     .replace(':runId', world.runId)
     .replace(':indicator', 'spend')
-    .replace(':pageId', personaPageId);
+    .replace(':pageId', personaPageId)
+    .replace(':category', '81')
+    .replace(':area', '80-89')
+    .replace(':version', '1')
+    .replace(':key', 'program')
+    .replace(':viewId', 'c0110000-0000-4000-8000-000000000401')
+    .replace(':tier', 'program')
+    .replace(':nodeId', world.programRow)
+    .replace(':rowId', world.programRow)
+    .replace(':personId', world.kim.personId ?? '')
+
+    .replace(':credentialId', world.credentialId);
 }
 
 async function renderAll(world: Seeded): Promise<readonly Rendered[]> {

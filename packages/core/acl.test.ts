@@ -7,10 +7,16 @@ import {
   grantedAreas,
   minimumRole,
   readableAreas,
+  rowReadRules,
   type AclAction,
   type AclResource,
+  type CredentialCapability,
+  type CredentialResource,
+  type PersonResource,
+  type RestrictedTable,
+  type RowResource,
 } from './acl.ts';
-import { personPrincipal } from './principal.ts';
+import { parsePrincipal, personPrincipal } from './principal.ts';
 
 const personId = '00000000-0000-4000-8000-000000000009';
 const grantId = '00000000-0000-4000-8000-000000000909';
@@ -106,7 +112,14 @@ describe('FD-8 can()', () => {
   );
 
   it('takes a principal, an action and a resource and no database handle', () => {
-    expectTypeOf(can).parameters.toEqualTypeOf<[Principal, AclAction, AclResource, Date]>();
+    expectTypeOf(can).parameters.toEqualTypeOf<
+      [
+        Principal,
+        AclAction | CredentialCapability,
+        AclResource | RowResource | CredentialResource | PersonResource,
+        Date,
+      ]
+    >();
     expectTypeOf(can).returns.toEqualTypeOf<boolean>();
   });
 });
@@ -238,5 +251,76 @@ describe('#111 adminAreas names the areas a person may create a workflow in', ()
   it('names no area for an expired admin grant', () => {
     const expired: Grant = { ...area('admin', '80-89'), expiresAt: at.toISOString() };
     expect(administered(expired)).toEqual({ kind: 'some', areas: [] });
+  });
+});
+
+const owner = '00000000-0000-4000-8000-000000000042';
+
+function row(table: RestrictedTable, rowArea: string | null, ownerId: string | null): RowResource {
+  return { kind: 'row', table, area: rowArea, ownerId };
+}
+
+type RowCase = [string, Grant[], RowResource, boolean];
+
+const rowMatrix: RowCase[] = [
+  ['org viewer', [org('viewer')], row('delegations', '20-29', owner), false],
+  ['org editor', [org('editor')], row('gate_decisions', '20-29', null), false],
+  ['org admin', [org('admin')], row('delegations', '20-29', owner), true],
+  ['viewer on the exact area', [area('viewer', '20-29')], row('delegations', '20-29', owner), true],
+  ['admin on another area', [area('admin', '80-89')], row('delegations', '20-29', owner), false],
+  ['org viewer, an area grant', [org('viewer')], row('role_grants', '20-29', owner), false],
+  [
+    'editor on the grant area',
+    [area('editor', '20-29')],
+    row('role_grants', '20-29', owner),
+    false,
+  ],
+  ['admin of the grant area', [area('admin', '20-29')], row('role_grants', '20-29', owner), true],
+  ['area admin, an org grant', [area('admin', '20-29')], row('role_grants', null, owner), false],
+  ['org admin, an org grant', [org('admin')], row('grant_audit', null, owner), true],
+  [
+    'area admin, a service token',
+    [area('admin', '20-29')],
+    row('service_tokens', null, owner),
+    false,
+  ],
+  ['org admin, a push subscription', [org('admin')], row('push_subscriptions', null, owner), true],
+  ['the person it belongs to', [], row('push_subscriptions', null, personId), true],
+  ['the person a grant is for', [], row('role_grants', '20-29', personId), true],
+  ['the decider with no grant', [], row('gate_decisions', '20-29', personId), false],
+];
+
+describe('#155 a restricted row is read on its own area, by its owner, or by an org admin', () => {
+  it.each(rowMatrix)('%s reads the row: %s', (_who, grants, resource, expected) => {
+    expect(can(holding(...grants), 'read', resource, at)).toBe(expected);
+  });
+
+  it('answers read only, so a row is never written or administered through its rule', () => {
+    const everything = holding(org('admin'), area('admin', '20-29'));
+    expect(can(everything, 'write', row('delegations', '20-29', personId), at)).toBe(false);
+    expect(can(everything, 'admin', row('delegations', '20-29', personId), at)).toBe(false);
+  });
+
+  it('does not let an agent read as the person it is bound to', () => {
+    const agent = parsePrincipal({
+      identity: `agent:${personId}/laptop`,
+      kind: 'agent',
+      personId,
+      email: null,
+      grants: [],
+      interactive: false,
+    });
+    expect(can(agent, 'read', row('service_tokens', null, personId), at)).toBe(false);
+  });
+
+  it('ignores an expired grant on the row area', () => {
+    const lapsed = { ...area('admin', '20-29'), expiresAt: '2026-09-01T00:00:00.000Z' };
+    expect(can(holding(lapsed), 'read', row('delegations', '20-29', owner), at)).toBe(false);
+  });
+
+  it('declares a rule that names an area role, an owner, or both, for every table', () => {
+    for (const rule of Object.values(rowReadRules)) {
+      expect(rule.area !== null || rule.owner).toBe(true);
+    }
   });
 });

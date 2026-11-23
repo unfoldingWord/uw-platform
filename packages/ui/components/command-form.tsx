@@ -4,6 +4,9 @@ import { domId } from './text.ts';
 export const commandButton =
   'inline-flex items-center rounded-md border border-line bg-surface px-3 py-1 text-sm font-heavy text-text outline-offset-2 outline-accent-text hover:border-accent hover:text-accent-text focus-visible:outline-2 aria-disabled:cursor-not-allowed aria-disabled:text-text-3';
 
+export const iconCommandButton =
+  'inline-flex h-size-5 cursor-pointer items-center rounded-md border border-line bg-surface px-2 text-sm font-heavy text-text outline-offset-2 outline-accent-text hover:border-accent hover:text-accent-text focus-visible:outline-2 aria-disabled:cursor-not-allowed aria-disabled:text-text-3';
+
 export const primaryButton =
   'inline-flex items-center rounded-md border border-accent bg-accent px-3 py-1 text-sm font-heavy text-on-accent outline-offset-2 outline-accent-text focus-visible:outline-2 aria-disabled:cursor-not-allowed aria-disabled:opacity-50';
 
@@ -33,6 +36,8 @@ export function PlatformCommandForm(props: {
   readonly command: string;
   readonly scope: string;
   readonly done?: string;
+  readonly autosubmit?: boolean;
+  readonly inline?: boolean;
   readonly children: Child;
 }) {
   return (
@@ -41,9 +46,10 @@ export function PlatformCommandForm(props: {
       data-command={props.command}
       data-endpoint={props.endpoint}
       data-done={props.done}
+      data-autosubmit={props.autosubmit === true ? '' : undefined}
       method="post"
       action="#"
-      class="flex flex-wrap items-end gap-2"
+      class={`flex flex-wrap gap-2 ${props.inline === true ? 'items-center' : 'items-end'}`}
     >
       {props.children}
       <p data-outcome role="status" aria-live="polite" class="m-0 text-sm text-text-3"></p>

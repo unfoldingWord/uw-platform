@@ -67,12 +67,16 @@ async function adminCreatesAndAttaches(db: Database): Promise<void> {
   expect((picked as HTMLSelectElement | null)?.value).toBe(pageId);
   const open = controls.querySelector(`a[href^="/pages/${pageId}"]`);
   expect(open?.textContent).toContain('Open');
-  const editor = await getHtml(db, ROWAN, open?.getAttribute('href') ?? '');
-  expect(editor.status).toBe(200);
-  expect(await screenProblems(editor.text)).toEqual([]);
-  const document = documentOf(editor.text);
+  const opened = await getHtml(db, ROWAN, open?.getAttribute('href') ?? '');
+  expect(opened.status).toBe(200);
+  expect(await screenProblems(opened.text)).toEqual([]);
+  const document = documentOf(opened.text);
   expect(document.querySelector('main h1')?.textContent).toBe('How to package an item');
   expect(document.querySelector(`a[href="${controlsOf(made.harnessId)}"]`)).not.toBeNull();
+  const pencil = document.querySelector('main a[aria-label="Edit this page"]');
+  expect(pencil?.getAttribute('href')).toBe(
+    `/pages/${pageId}/edit?back=${encodeURIComponent(controlsOf(made.harnessId))}`,
+  );
 }
 
 function editForm(version: number, bodyMd: string): URLSearchParams {
@@ -93,7 +97,7 @@ function historyRows(text: string): readonly string[] {
 async function editorSavesAVersion(db: Database): Promise<void> {
   const made = await world(db);
   const { pageId } = await created(db, made);
-  const path = `/pages/${pageId}`;
+  const path = `/pages/${pageId}/edit`;
   const before = documentOf((await getHtml(db, made.editor.email, path)).text);
   const version = Number(
     before.querySelector('input[name="expectedVersion"]')?.getAttribute('value'),
@@ -105,14 +109,15 @@ async function editorSavesAVersion(db: Database): Promise<void> {
     editForm(version, 'Keep it small.'),
     ORIGIN,
   );
-  expect(saved.status).toBe(200);
-  expect(saved.text).toContain('Saved as a new version.');
-  expect(documentOf(saved.text).querySelector('textarea[name="bodyMd"]')?.textContent).toBe(
+  expect(saved.status).toBe(303);
+  const read = await getHtml(db, made.editor.email, saved.headers.get('location') ?? '');
+  expect(read.text).toContain(`Saved as version ${String(version + 1)}.`);
+  expect(documentOf(read.text).querySelector('[data-page-body] p')?.textContent).toBe(
     'Keep it small.',
   );
-  const [newest] = historyRows(saved.text);
+  const [newest] = historyRows(read.text);
   expect(newest?.startsWith(`${String(version + 1)} | `)).toBe(true);
-  expect(newest).toContain(`| ${made.editor.email} |`);
+  expect(newest).toContain(`| EO${made.editor.email} |`);
   const admin = await rowan(db);
   const scope = { itemPageId: null, instructionsPageId: pageId, area: '80-89' as const };
   const context = await contextPages(db, admin, scope, new Date(), () => undefined);
@@ -128,16 +133,18 @@ async function viewerOnlyReads(db: Database): Promise<void> {
   expect(page.status).toBe(200);
   const document = documentOf(page.text);
   expect(document.querySelector('main form')).toBeNull();
-  expect(document.querySelector('main pre')?.textContent).toContain('How to package an item');
+  expect(document.querySelector('main h1')?.textContent).toBe('How to package an item');
   expect(historyRows(page.text)).not.toHaveLength(0);
   const sent = await postForm(
     db,
     made.viewer.email,
-    `/pages/${pageId}`,
-    editForm(2, 'No.'),
+    `/pages/${pageId}/edit`,
+    editForm(1, 'No.'),
     ORIGIN,
   );
   expect(sent.text).toContain('Not saved');
+  const after = await getHtml(db, made.viewer.email, `/pages/${pageId}`);
+  expect(historyRows(after.text)).toHaveLength(historyRows(page.text).length);
 }
 
 async function skillPagesIn(db: Database): Promise<number> {

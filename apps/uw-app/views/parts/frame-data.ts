@@ -11,10 +11,14 @@ import { commitOf, environmentOf } from '../../env.ts';
 import {
   accessPath,
   agentQueuesPath,
+  collectionPath,
+  credentialsPath,
+  crosswalkPath,
   queuePath,
   healthPath,
   homePath,
   logOutPath,
+  wikiPath,
 } from './paths.ts';
 import { moduleCodes, noModules, pageNames, platformAreas, type PlatformModule } from './names.ts';
 
@@ -48,6 +52,18 @@ function switchedOn(report: HealthReport | null, name: string): boolean {
   return found !== undefined && found.status !== 'not_configured' && found.status !== 'not_wired';
 }
 
+const plainModules: ReadonlyMap<string, { readonly href: string; readonly code: string }> = new Map(
+  [
+    ['pages', { href: wikiPath(), code: moduleCodes.pages }],
+    ['access', { href: accessPath(), code: moduleCodes.access }],
+    ['credentials', { href: credentialsPath(), code: moduleCodes.credentials }],
+    ['collections', { href: collectionPath('program'), code: moduleCodes.collections }],
+    ['tasks', { href: collectionPath('tasks'), code: moduleCodes.tasks }],
+    ['directory', { href: collectionPath('directory'), code: moduleCodes.directory }],
+    ['crosswalk', { href: crosswalkPath(), code: moduleCodes.crosswalk }],
+  ],
+);
+
 function builtItems(module: PlatformModule, counts: FrameCounts, watch: number): NavItem[] {
   const base = { label: module.label, icon: module.icon };
   if (module.built === 'today') {
@@ -72,7 +88,8 @@ function builtItems(module: PlatformModule, counts: FrameCounts, watch: number):
         ...(watch === 0 ? {} : { count: { kind: 'watch', text: `${watch} watch` } }),
       },
     ];
-  if (module.built === 'access') return [{ ...base, href: accessPath(), code: moduleCodes.access }];
+  const collection = plainModules.get(module.built ?? '');
+  if (collection !== undefined) return [{ ...base, href: collection.href, code: collection.code }];
   if (module.built === 'agentQueues')
     return [
       { ...base, code: moduleCodes.agentQueues, href: agentQueuesPath() },
