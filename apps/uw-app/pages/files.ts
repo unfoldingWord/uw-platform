@@ -116,12 +116,7 @@ export async function storeFile(
     .onConflictDoNothing({ target: pageFiles.id })
     .returning();
   if (reserved === undefined) return heldFile(db, store, upload, sha256);
-  try {
-    await writeObject(store, reserved, upload);
-  } catch (error) {
-    await db.delete(pageFiles).where(eq(pageFiles.id, reserved.id));
-    throw error;
-  }
+  await writeObject(store, reserved, upload);
   return { ok: true, file: recordOf(reserved) };
 }
 

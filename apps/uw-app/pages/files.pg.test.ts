@@ -200,20 +200,32 @@ async function racedWithOtherBytes(db: Database): Promise<void> {
   expect(fileReplySchema.parse(await second.raw.json()).file).toEqual(recorded);
 }
 
-async function failedWriteLeavesNoRow(db: Database): Promise<void> {
+async function retryOutlivesAFailedFirstWrite(db: Database): Promise<void> {
   const healthy = memoryBucket();
-  const failing: FilesBucket = {
+  let release = (): void => undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let writes = 0;
+  const firstFails: FilesBucket = {
     ...healthy,
-    put: async () => {
-      throw new Error('bucket unavailable');
+    put: async (key, value, options) => {
+      writes += 1;
+      if (writes === 1) {
+        await gate;
+        throw new Error('bucket unavailable');
+      }
+      await healthy.put(key, value, options);
     },
   };
-  const made = await world(db, failing);
+  const made = await world(db, firstFails);
   const fileId = randomUUID();
-  expect((await put(made, made.editor, fileId)).status).toBe(500);
-  const restored = { ...made, bucket: healthy };
-  expect((await put(restored, made.editor, fileId)).status).toBe(200);
-  expect(await servedBytes(restored, fileId)).toEqual([...PNG]);
+  const first = put(made, made.editor, fileId);
+  await untilTrue(() => writes > 0);
+  expect((await put(made, made.editor, fileId)).status).toBe(200);
+  release();
+  expect((await first).status).toBe(500);
+  expect(await servedBytes(made, fileId)).toEqual([...PNG]);
 }
 
 async function retryRestoresMissingObject(db: Database): Promise<void> {
@@ -363,8 +375,8 @@ describe.skipIf(!testServer)('#175 a page can hold pictures and files', () => {
   it('serves the bytes of the upload that owns the record when two uploads race for one id', () =>
     withAppDatabase(racedWithOtherBytes));
 
-  it('keeps no record of an upload whose bytes could not be stored, so a retry succeeds', () =>
-    withAppDatabase(failedWriteLeavesNoRow));
+  it('keeps the file a retry stored when the first write for that id fails afterwards', () =>
+    withAppDatabase(retryOutlivesAFailedFirstWrite));
 
   it('stores the bytes again when a repeated upload finds its record without them', () =>
     withAppDatabase(retryRestoresMissingObject));
