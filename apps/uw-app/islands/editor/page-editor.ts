@@ -7,6 +7,7 @@ import { createMatcher, type Matcher } from '../browser/switcher-match.ts';
 import type { Collaboration } from './collaboration.ts';
 import { pageExtensions } from './extensions.ts';
 import { applyFormat, isFormatActive } from './formats.ts';
+import { MarkdownPaste } from './markdown-paste.ts';
 import { createMenu } from './menu.ts';
 import { suggestionMenus } from './suggestions.ts';
 import { markVideos, videoFilesOf } from './video-files.ts';
@@ -148,6 +149,7 @@ function mount(parts: Parts, deps: EditorDeps, shared: Collaboration | null): Ed
       ...pageExtensions({ history: shared === null }),
       ...(shared?.extensions ?? []),
       ...menus,
+      MarkdownPaste,
     ],
     content: shared === null ? parts.initial : '',
     editorProps: {

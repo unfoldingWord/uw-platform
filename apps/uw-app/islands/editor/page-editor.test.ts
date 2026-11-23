@@ -242,3 +242,66 @@ describe('#214 a video in a working draft shows as a video, and its controls sta
     expect(drag.defaultPrevented).toBe(true);
   });
 });
+
+function clipboard(text: string, html: string): ClipboardEvent {
+  const event = new dom.window.Event('paste', { bubbles: true, cancelable: true });
+  const kinds = new Map([
+    ['text/plain', text],
+    ['text/html', html],
+  ]);
+  const data = { getData: (type: string) => kinds.get(type) ?? '' };
+  Object.defineProperty(event, 'clipboardData', { value: data });
+  return event as ClipboardEvent;
+}
+
+const PASTED = [
+  '> Pro Tip: search this page.',
+  '## Overview',
+  'unfoldingWord uses [Johnny.Decimal](https://johnnydecimal.com/) for **knowledge**.',
+  '- Areas\n- Categories',
+].join('\n\n');
+
+describe('pasting markdown keeps its formatting', () => {
+  it('turns pasted markdown text into headings, quotes, links and lists', async () => {
+    const document = page('', '<p></p>');
+    const editor = await start(document, deps);
+    editor?.view.pasteText(PASTED, clipboard(PASTED, ''));
+    const html = editor?.getHTML() ?? '';
+    expect(html).toContain('<h2>Overview</h2>');
+    expect(html).toContain('<blockquote>');
+    expect(html).toContain('href="https://johnnydecimal.com/"');
+    expect(submit(document)).toBe(PASTED);
+  });
+
+  it('reads markdown from a code editor whose copy carries only coloured text', async () => {
+    const document = page('', '<p></p>');
+    const editor = await start(document, deps);
+    const html = '<div><span style="color:#569cd6">## Overview</span></div>';
+    editor?.view.pasteHTML(html, clipboard('## Overview', html));
+    expect(editor?.getHTML()).toContain('<h2>Overview</h2>');
+  });
+
+  it('keeps formatted text copied from a web page as it was', async () => {
+    const document = page('', '<p></p>');
+    const editor = await start(document, deps);
+    const html = '<p><strong>Bold</strong> # not a heading</p>';
+    editor?.view.pasteHTML(html, clipboard('**Bold** # not a heading', html));
+    expect(editor?.getHTML()).toContain('<strong>Bold</strong> # not a heading');
+  });
+
+  it('pastes plain words as plain words', async () => {
+    const document = page('', '<p></p>');
+    const editor = await start(document, deps);
+    editor?.view.pasteText('Just words.', clipboard('Just words.', ''));
+    expect(submit(document)).toBe('Just words.');
+  });
+
+  it('pastes markdown into a code block as the characters typed', async () => {
+    const document = page('', '<pre><code>x</code></pre>');
+    const editor = await start(document, deps);
+    editor?.commands.setTextSelection(2);
+    editor?.view.pasteText('## Overview', clipboard('## Overview', ''));
+    expect(editor?.getHTML()).toContain('## Overview');
+    expect(editor?.getHTML()).not.toContain('<h2>');
+  });
+});
