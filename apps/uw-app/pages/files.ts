@@ -100,13 +100,8 @@ export async function storeFile(
   const page = await readPage(db, reader.actor, upload.pageId, reader.at);
   const refusal = writeRefusal(reader, page);
   if (refusal !== null || page === null) return refused(refusal ?? 'page_not_found');
-  const [held] = await db.select().from(pageFiles).where(eq(pageFiles.id, upload.fileId));
-  if (held !== undefined) return { ok: true, file: recordOf(held) };
-  await store.put(keyOf({ pageId: page.id, id: upload.fileId }), {
-    bytes: upload.bytes,
-    contentType: upload.contentType,
-  });
-  const [row] = await db
+  const sha256 = await sha256Of(upload.bytes);
+  const [reserved] = await db
     .insert(pageFiles)
     .values({
       id: upload.fileId,
@@ -115,12 +110,37 @@ export async function storeFile(
       name: upload.name.trim(),
       contentType: upload.contentType,
       size: upload.bytes.byteLength,
-      sha256: await sha256Of(upload.bytes),
+      sha256,
       uploadedBy: reader.actor.identity,
     })
+    .onConflictDoNothing({ target: pageFiles.id })
     .returning();
-  if (!row) throw new Error('a stored file must return its row');
-  return { ok: true, file: recordOf(row) };
+  if (reserved === undefined) return heldFile(db, store, upload, sha256);
+  try {
+    await writeObject(store, reserved, upload);
+  } catch (error) {
+    await db.delete(pageFiles).where(eq(pageFiles.id, reserved.id));
+    throw error;
+  }
+  return { ok: true, file: recordOf(reserved) };
+}
+
+async function writeObject(store: FileStore, row: FileRow, upload: Upload): Promise<void> {
+  await store.put(keyOf(row), { bytes: upload.bytes, contentType: row.contentType });
+}
+
+async function heldFile(
+  db: Executor,
+  store: FileStore,
+  upload: Upload,
+  sha256: string,
+): Promise<FileResult> {
+  const [held] = await db.select().from(pageFiles).where(eq(pageFiles.id, upload.fileId));
+  if (held === undefined) throw new Error('a reserved file id must have its row');
+  if (held.sha256 === sha256 && (await store.get(keyOf(held))) === null) {
+    await writeObject(store, held, upload);
+  }
+  return { ok: true, file: recordOf(held) };
 }
 
 export async function serveFile(

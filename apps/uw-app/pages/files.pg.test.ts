@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { fileReplySchema, pageFilesReplySchema, pageReadReplySchema } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
@@ -155,6 +155,77 @@ async function sentTwiceAndNotWired(db: Database): Promise<void> {
   );
 }
 
+async function servedBytes(made: World, fileId: string): Promise<number[]> {
+  const read = await send(made, made.viewer, `/api/files/${fileId}`);
+  return [...new Uint8Array(await read.raw.arrayBuffer())];
+}
+
+function heldFirstWrite(bucket: FilesBucket) {
+  let release = (): void => undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let writes = 0;
+  const held: FilesBucket = {
+    ...bucket,
+    put: async (key, value, options) => {
+      writes += 1;
+      if (writes === 1) await gate;
+      await bucket.put(key, value, options);
+    },
+  };
+  return { held, release, started: () => writes > 0 };
+}
+
+async function untilTrue(check: () => boolean): Promise<void> {
+  for (let tries = 0; tries < 200 && !check(); tries += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+}
+
+async function racedWithOtherBytes(db: Database): Promise<void> {
+  const gated = heldFirstWrite(memoryBucket());
+  const made = await world(db, gated.held);
+  const fileId = randomUUID();
+  const other = Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10, 9, 9, 9, 9]);
+  const first = put(made, made.editor, fileId);
+  await untilTrue(gated.started);
+  const second = await put(made, made.editor, fileId, { body: other });
+  gated.release();
+  const sent = [await first, second];
+  const recorded = fileReplySchema.parse(await (sent[0]?.raw ?? second.raw).json()).file;
+  const bytes = Uint8Array.from(await servedBytes(made, fileId));
+  expect(createHash('sha256').update(bytes).digest('hex')).toBe(recorded.sha256);
+  expect(bytes.byteLength).toBe(recorded.size);
+  expect(fileReplySchema.parse(await second.raw.json()).file).toEqual(recorded);
+}
+
+async function failedWriteLeavesNoRow(db: Database): Promise<void> {
+  const healthy = memoryBucket();
+  const failing: FilesBucket = {
+    ...healthy,
+    put: async () => {
+      throw new Error('bucket unavailable');
+    },
+  };
+  const made = await world(db, failing);
+  const fileId = randomUUID();
+  expect((await put(made, made.editor, fileId)).status).toBe(500);
+  const restored = { ...made, bucket: healthy };
+  expect((await put(restored, made.editor, fileId)).status).toBe(200);
+  expect(await servedBytes(restored, fileId)).toEqual([...PNG]);
+}
+
+async function retryRestoresMissingObject(db: Database): Promise<void> {
+  const made = await world(db);
+  const fileId = randomUUID();
+  await put(made, made.editor, fileId);
+  await made.bucket?.delete(`pages/${made.pageId}/${fileId}`);
+  expect((await send(made, made.viewer, `/api/files/${fileId}`)).status).toBe(404);
+  expect((await put(made, made.editor, fileId)).status).toBe(200);
+  expect(await servedBytes(made, fileId)).toEqual([...PNG]);
+}
+
 async function showsInThePage(db: Database): Promise<void> {
   const made = await world(db);
   const fileId = randomUUID();
@@ -288,6 +359,15 @@ describe.skipIf(!testServer)('#175 a page can hold pictures and files', () => {
 
   it('answers a repeated upload with the first result, and says so when no bucket is bound', () =>
     withAppDatabase(sentTwiceAndNotWired));
+
+  it('serves the bytes of the upload that owns the record when two uploads race for one id', () =>
+    withAppDatabase(racedWithOtherBytes));
+
+  it('keeps no record of an upload whose bytes could not be stored, so a retry succeeds', () =>
+    withAppDatabase(failedWriteLeavesNoRow));
+
+  it('stores the bytes again when a repeated upload finds its record without them', () =>
+    withAppDatabase(retryRestoresMissingObject));
 
   it('shows an uploaded picture in the rendered page', () => withAppDatabase(showsInThePage));
 
