@@ -2,16 +2,9 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { repoFiles } from '../repo-files.ts';
 
-const allowed = [
-  'TEST_DATABASE_URL',
-  'CI',
-  'PATH',
-  'PLAYWRIGHT_BROWSERS_PATH',
-  'UW_SCREENS',
-  'UW_SCREENS_UPDATE',
-];
+const allowed = ['TEST_DATABASE_URL', 'CI', 'PATH'];
 const allowedRead =
-  /^(?:\.(?:TEST_DATABASE_URL|CI|PATH|PLAYWRIGHT_BROWSERS_PATH|UW_SCREENS|UW_SCREENS_UPDATE)\b|\[['"](?:TEST_DATABASE_URL|CI|PATH|PLAYWRIGHT_BROWSERS_PATH|UW_SCREENS|UW_SCREENS_UPDATE)['"]\])/;
+  /^(?:\.(?:TEST_DATABASE_URL|CI|PATH)\b|\[['"](?:TEST_DATABASE_URL|CI|PATH)['"]\])/;
 const envAccess = /process\.env/g;
 const viteEnv = /import\.meta\.env/;
 const testCode =
@@ -53,7 +46,7 @@ function unlisted(paths: readonly string[]): string[] {
 }
 
 describe('DX-8 no test, helper or scenario needs a live account or a secret', () => {
-  it("reads no environment variable but TEST_DATABASE_URL, CI, PATH and the screenshot check's browser path and switches", () => {
+  it('reads no environment variable but TEST_DATABASE_URL, CI and PATH', () => {
     const found = repoFiles()
       .filter((path) => testCode.test(path) && codeFile.test(path))
       .flatMap((path) => forbiddenEnvReads(path, readFileSync(path, 'utf8')));

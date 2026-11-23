@@ -23,4 +23,4 @@ The owner was not happy with how a person moves between pages or with the switch
 - **Edit in place on the read view's address.** The read view promises no field that can change the page (CONTEXT: Read view). A separate address keeps that promise, keeps the editor's 1 MB script off the read view (ADR 0017, point 3), and keeps every existing test of the form post.
 - **The read view's header inside a bordered card, under the ordinary top bar.** Built first; the owner found it did not look like the chosen design, which separates the page's header from its text with a tinted band and no second bar.
 
-**Consequences.** Every knowledge page screen and wiki screen pays two or three extra reads for the branch; they are the same indexed reads the wiki screens already make. The screenshot check's pictures of the page and wiki screens are retaken in CI and reviewed by an owner before they are committed. Source: the owner on 2026-11-21.
+**Consequences.** Every knowledge page screen and wiki screen pays two or three extra reads for the branch; they are the same indexed reads the wiki screens already make. Source: the owner on 2026-11-21.
