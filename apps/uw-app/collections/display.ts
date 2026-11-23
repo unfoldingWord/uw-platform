@@ -64,12 +64,14 @@ export function cellText(property: PropertyDefinition, value: unknown, names: Na
   return scalarText(property, value, names);
 }
 
-function personIds(
+export const personTypes: ReadonlySet<string> = new Set(['person', 'created_by', 'edited_by']);
+
+export function personIdsIn(
   rows: readonly CollectionRow[],
   properties: readonly PropertyDefinition[],
 ): string[] {
   const ids = new Set<string>();
-  for (const property of properties.filter((p) => p.config.type === 'person')) {
+  for (const property of properties.filter((p) => personTypes.has(p.config.type))) {
     for (const row of rows) {
       const value = new Map(Object.entries(row.values)).get(property.key);
       for (const id of Array.isArray(value) ? value : [value])
@@ -84,7 +86,7 @@ export async function namesFor(
   rows: readonly CollectionRow[],
   properties: readonly PropertyDefinition[],
 ): Promise<Names> {
-  const ids = personIds(rows, properties).filter((id) => /^[0-9a-f-]{36}$/.test(id));
+  const ids = personIdsIn(rows, properties).filter((id) => /^[0-9a-f-]{36}$/.test(id));
   if (ids.length === 0) return new Map();
   const found = await db
     .select({ id: people.id, name: people.displayName })

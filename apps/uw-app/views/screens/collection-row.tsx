@@ -13,7 +13,7 @@ import {
   loadCollection,
   type StoredCollection,
 } from '../../collections/definitions.ts';
-import { namesFor, valueOf, type Names } from '../../collections/display.ts';
+import { personIdsIn, valueOf } from '../../collections/display.ts';
 import { incomingRelations, type Incoming } from '../../collections/incoming.ts';
 import { mayReadCollection, readRow } from '../../collections/reader.ts';
 import { renderPage } from '../../pages/render-page.ts';
@@ -25,6 +25,7 @@ import { PropertyEditor, type Choice } from '../parts/collection-edit.tsx';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { areaLabel, moduleCodes, pageNames } from '../parts/names.ts';
 import { pageLink } from '../parts/page-shown.ts';
+import { personChipsFor, type PersonChips } from '../parts/person.tsx';
 import {
   collectionPath,
   collectionRowPath,
@@ -49,7 +50,7 @@ type Db = NonNullable<AppEnv['Variables']['database']>['db'];
 type RowScene = {
   readonly stored: StoredCollection;
   readonly row: CollectionRow;
-  readonly names: Names;
+  readonly personChips: PersonChips;
   readonly people: readonly Choice[];
   readonly found: ReadonlyMap<string, Found>;
   readonly finding: Finding;
@@ -97,13 +98,13 @@ function sectionsOf(
   return [...sections.entries()];
 }
 
-function currentChoices(value: unknown, names: Names): readonly Choice[] {
+function currentChoices(value: unknown, chips: PersonChips): readonly Choice[] {
   const list = Array.isArray(value) ? value : value === null || value === undefined ? [] : [value];
   return list.flatMap((item): Choice[] => {
     if (typeof item === 'object' && item !== null && 'id' in item && 'title' in item) {
       return [{ value: String(item.id), label: String(item.title) }];
     }
-    return typeof item === 'string' ? [{ value: item, label: names.get(item) ?? item }] : [];
+    return typeof item === 'string' ? [{ value: item, label: chips.get(item)?.name ?? item }] : [];
   });
 }
 
@@ -115,7 +116,7 @@ function merged(choices: readonly Choice[], current: readonly Choice[]): readonl
 function factOf(screen: ScreenKernel, scene: RowScene, property: PropertyDefinition): ShownFact {
   const value = valueOf(scene.row, property.key);
   const found = scene.found.get(property.key);
-  const current = currentChoices(value, scene.names);
+  const current = currentChoices(value, scene.personChips);
   const editor = {
     collection: scene.stored.definition.key,
     rowId: scene.row.id,
@@ -130,7 +131,7 @@ function factOf(screen: ScreenKernel, scene: RowScene, property: PropertyDefinit
     label: property.name,
     value: (
       <>
-        <CellValue property={property} value={value} names={scene.names} />
+        <CellValue property={property} value={value} people={scene.personChips} />
         {mayEdit(screen, scene, property) ? (
           <details id={property.key} open={scene.finding.property === property.key}>
             <summary class="cursor-pointer text-xs text-text-3 outline-offset-2 outline-accent-text focus-visible:outline-2">{`Change ${property.name.toLowerCase()}`}</summary>
@@ -207,7 +208,11 @@ async function sceneOf(c: Context<AppEnv>, db: Db, screen: ScreenKernel): Promis
   return {
     stored,
     row,
-    names: await namesFor(db, [row], stored.definition.properties),
+    personChips: await personChipsFor(
+      db,
+      { reader: screen.caller.actor, at: screen.at },
+      personIdsIn([row], stored.definition.properties),
+    ),
     people,
     found: await relationChoices(
       { db, actor: screen.caller.actor, at: screen.at, all: collections },
