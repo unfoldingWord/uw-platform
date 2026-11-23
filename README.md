@@ -46,7 +46,6 @@ Every script is a root script.
 | `pnpm architecture` | The dependency rules in `docs/architecture.md` |
 | `pnpm test` | Vitest. Worker code runs in the Workers runtime, everything else in Node. Tests named `*.pg.test.ts` need `TEST_DATABASE_URL` set to a Postgres server where the role may create databases; without it they are skipped |
 | `pnpm sim:all` / `pnpm walk:all` | Every simulator scenario, and every walk-through |
-| `pnpm screens` / `pnpm screens:update` | The screen pictures: compare them, or record new ones |
 | `pnpm ui:css` / `pnpm ui:islands` | Rebuild the stylesheet and the browser scripts after changing them |
 | `pnpm db:generate` / `pnpm db:migrate` | Write the next migration from the schema, or apply migrations to `DATABASE_URL` |
 | `pnpm build` | Bundle the Workers |
