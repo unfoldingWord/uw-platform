@@ -127,6 +127,8 @@ export const errorReasonSchema = z.enum([
   'template_not_found',
   'filter_not_valid',
   'collection_row',
+  'cascade_node_not_found',
+  'map_not_found',
 ]);
 
 export const refusalSchema = z.object({

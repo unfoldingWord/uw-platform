@@ -37,6 +37,7 @@ export const pageNames = {
   tasks: 'Tasks',
   directory: 'Directory',
   cascade: 'Strategic Cascade',
+  crosswalk: 'JD Crosswalk',
   person: 'Person',
 } as const;
 
@@ -69,7 +70,8 @@ export type BuiltModule =
   | 'credentials'
   | 'collections'
   | 'tasks'
-  | 'directory';
+  | 'directory'
+  | 'crosswalk';
 export type PlatformArea = {
   readonly code: string;
   readonly name: string;
@@ -86,7 +88,7 @@ export const platformAreas: readonly PlatformArea[] = [
       { label: 'Tasks', icon: 'list-check', built: 'tasks' },
       { label: 'Strategic Cascade', icon: 'layer-group', built: 'collections' },
       { label: 'Meetings', icon: 'calendar' },
-      { label: 'JD Crosswalk', icon: 'table-cells' },
+      { label: 'JD Crosswalk', icon: 'table-cells', built: 'crosswalk' },
     ],
   },
   {
@@ -149,10 +151,11 @@ export const moduleCodes: Readonly<Record<BuiltModule, string>> = {
   agentQueues: '32',
   access: '37',
   pages: '01',
-  credentials: '36',
-  collections: '02',
-  tasks: '03',
-  directory: '11',
+  credentials: '37.30',
+  collections: '00.06',
+  tasks: '00',
+  directory: '00.05',
+  crosswalk: '00',
 };
 
 export const noModules = 'No modules enabled for this area';

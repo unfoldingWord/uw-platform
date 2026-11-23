@@ -1,0 +1,24 @@
+{
+  "tiers": ["portfolio", "program", "project"],
+  "rows": [
+    {
+      "jdArea": "20-29",
+      "cells": [
+        {
+          "tier": "program",
+          "counts": { "pages": 2, "tasks": 1, "items": 0 },
+          "links": [
+            {
+              "mapId": "00000000-0000-4000-8000-000000000003",
+              "cascadePageId": "00000000-0000-4000-8000-000000000002",
+              "title": "Example Program",
+              "relation": "supports",
+              "note": null
+            }
+          ]
+        }
+      ],
+      "unplaced": { "pages": 3, "tasks": 0, "items": 0 }
+    }
+  ]
+}

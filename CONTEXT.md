@@ -536,6 +536,36 @@ _Avoid_: item (that is a harness's), to-do, ticket, card
 The directory fields of one person (role, team, employment, joined date, contact details, compliance), a row of `directory_entries` owned by the people module. The directory collection lists people with these fields; a person's row page is their profile (ADR 0025).
 _Avoid_: profile record, contact, employee record
 
+## The two axes
+
+**Johnny.Decimal index**:
+The organization's filing scheme: areas (`00-09`), categories (`00`) and IDs (`00.01`), with the name of each. The index `00.01 unfoldingWord Index (Johnny.Decimal)` is the one source of truth for every number and name; the platform's areas, category names and module numbers follow it. It answers where a thing is filed.
+_Avoid_: JD tree, taxonomy, folder structure
+
+**Strategic Cascade**:
+The organization's purpose axis: Purpose, Objective, Principles, Portfolio, Program, Project and Task. It answers why a thing exists. Neither axis is derived from the other.
+_Avoid_: hierarchy, org chart, strategy tree
+
+**Cascade node**:
+A page that is a place in the Strategic Cascade: a page of type `portfolio`, `program` or `project`, kept by its built-in collection.
+_Avoid_: strategy item, initiative
+
+**Cascade tier**:
+The level of a cascade node: `portfolio`, `program` or `project`, the page's type. The crosswalk has one column per tier.
+_Avoid_: level, rank
+
+**Placement**:
+Where an entity sits in the Strategic Cascade: one cascade node named for one page, task or item, a row of `cascade_placements`. An entity's area and its placement are two separate facts, set separately. A cascade node is placed by being one, at its own tier.
+_Avoid_: cascade field, portfolio select, tag
+
+**JD map**:
+The explicit, many-to-many map from areas to cascade nodes, rows of `jd_cascade_map`. Each row says how one area relates to one node, as one **map relation**: `owns`, `supports`, `funds` or `reports_on`. An org admin declares or removes a row, and every change is kept in `jd_cascade_map_audit`.
+_Avoid_: mapping table, link, crosswalk (that is the screen)
+
+**Crosswalk**:
+The screen at `/crosswalk` that shows both axes at once: areas down, cascade tiers across. Each cell counts the pages, tasks and items in that area placed at that tier, and lists the JD map relations between the area and that tier's nodes. A cell opens the entities it counts; a node opens every area it touches. It counts only areas the reader can read.
+_Avoid_: matrix, pivot, JD/cascade report
+
 ## What GitHub says
 
 **GitHub facts**:

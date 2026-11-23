@@ -21,6 +21,7 @@ import { kernelOn } from '../testing/kernel.ts';
 import { seedSampleKnowledge } from '../testing/knowledge.ts';
 import { ensureBuiltIns } from '../collections/builtins/seed.ts';
 import { personWith, rowIn } from '../testing/collections.ts';
+import { crosswalkNames, crosswalkShots } from '../testing/crosswalk-scene.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { getHtml } from '../testing/views.ts';
 import {
@@ -417,6 +418,7 @@ beforeAll(async () => {
   await withAppDatabase(async (db) => {
     screens = [...screens, ...(await collectionScreens(db))];
   });
+  screens = [...screens, ...(await crosswalkShots(seedClock.now(), viewClock))];
   screens = [...screens, menuOpen(screens), accountMenuOpen(screens)];
 }, 300_000);
 
@@ -504,6 +506,7 @@ const pictured = [
   'collection-list',
   'collection-row',
   'collection-settings',
+  ...crosswalkNames,
   'menu',
   'account-menu',
 ];

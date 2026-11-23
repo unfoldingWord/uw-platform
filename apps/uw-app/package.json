@@ -81,5 +81,5 @@
     "pngjs": "7.0.0",
     "wrangler": "^4.144.0"
   },
-  "contractVersion": "14.11.0"
+  "contractVersion": "14.12.0"
 }

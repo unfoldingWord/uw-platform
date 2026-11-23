@@ -17,6 +17,7 @@ const routeFiles = [
   'apps/uw-app/acl/routes.ts',
   'apps/uw-app/agents/routes.ts',
   'apps/uw-app/credentials/routes.ts',
+  'apps/uw-app/crosswalk/routes.ts',
   'apps/uw-app/pages/routes.ts',
   'apps/uw-app/collections/routes.ts',
   'apps/uw-app/health/routes.tsx',

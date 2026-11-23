@@ -22,6 +22,8 @@ const statusByReason = new Map<ErrorReason, ContentfulStatusCode>([
   ['run_not_found', 404],
   ['not_wired', 404],
   ['draft_not_found', 404],
+  ['cascade_node_not_found', 404],
+  ['map_not_found', 404],
   ['gate_refused_to_agent', 403],
   ['request_in_flight', 409],
   ['decision_in_flight', 409],
