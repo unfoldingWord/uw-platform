@@ -4,7 +4,7 @@ import { Shell } from '@uw/ui/components/shell.tsx';
 import { testFrame } from '@uw/ui/testing/frame';
 import { appCssPath, manifestColours } from '@uw/ui/generated/app-css';
 import { fontFiles } from '@uw/ui/generated/fonts';
-import { markPath, wordmarkPath } from '@uw/ui/generated/mark';
+import { markPath, markWhiteBase64, wordmarkPath } from '@uw/ui/generated/mark';
 import { createApp } from '../app.tsx';
 import { islandsJs, islandsPath, serviceWorkerJs } from '../generated/islands.ts';
 import { recordingDeps } from '../testing/deps.ts';
@@ -35,9 +35,9 @@ describe('the app is installable', () => {
     expect(icon.headers.get('content-type')).toBe('image/svg+xml');
     expect(icon.headers.get('cache-control')).toBe('public, max-age=86400');
     const svg = await icon.text();
-    expect(svg).toContain(`fill="${manifestColours.panel}"`);
-    expect(svg).toContain(`fill="${manifestColours.panelInk}"`);
-    expect(svg).toContain('>uW</text>');
+    expect(svg).toContain(`<rect width="512" height="512" fill="${manifestColours.panel}"/>`);
+    expect(svg).toContain(`href="data:image/png;base64,${markWhiteBase64}"`);
+    expect(svg).not.toContain('<text');
   });
 
   it('WB-7 the service worker is served from the root with its scope header and no long cache', async () => {
