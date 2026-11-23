@@ -75,6 +75,19 @@ function provesChips(w: World, document: Document): void {
   expect(gone?.getAttribute('href')).toBeNull();
 }
 
+function isCreatedBy(term: Element): boolean {
+  return term.textContent === 'Created by';
+}
+
+async function creatorIsLinked(w: World): Promise<void> {
+  const document = await open(w, collectionRowPath('tasks', w.task));
+  const label = [...document.querySelectorAll('main dt')].find(isCreatedBy);
+  const chip = label?.nextElementSibling?.querySelector('[data-person-chip]');
+  expect(chip?.tagName).toBe('A');
+  expect(chip?.textContent).toContain(nameOf(w.blair));
+  expect(chip?.getAttribute('href')).toBe(personPath(idOf(w.blair)));
+}
+
 function run(work: (w: World) => Promise<void>) {
   return withAppDatabase(async (db) => work(await world(db)));
 }
@@ -94,4 +107,6 @@ describe.skipIf(!testServer)('#208 a person property shows as a person chip', ()
     run(async (w) => {
       provesChips(w, await open(w, collectionRowPath('tasks', w.task)));
     }));
+
+  it('links the person who created a row by name on the row page', () => run(creatorIsLinked));
 });

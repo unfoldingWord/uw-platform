@@ -8,7 +8,7 @@ import {
 import { Badge, type BadgeTone } from '@uw/ui/components/badge.tsx';
 import { safeHref } from '@uw/ui/components/href.ts';
 import { PersonChip } from '@uw/ui/components/person-chip.tsx';
-import { cellText, valueOf } from '../../collections/display.ts';
+import { cellText, personTypes, valueOf } from '../../collections/display.ts';
 import { pageLink } from './page-shown.ts';
 import { collectionRowPath } from './paths.ts';
 import type { PersonChips } from './person.tsx';
@@ -124,7 +124,9 @@ export function CellValue(props: {
   if (value === null || value === undefined || (Array.isArray(value) && value.length === 0)) {
     return <span class={quiet}>—</span>;
   }
-  if (property.config.type === 'person') return <People value={value} people={props.people} />;
+  if (personTypes.has(property.config.type)) {
+    return <People value={value} people={props.people} />;
+  }
   const shown = special(property, value);
   if (shown !== undefined) return <>{shown}</>;
   return <span>{cellText(property, value, new Map())}</span>;

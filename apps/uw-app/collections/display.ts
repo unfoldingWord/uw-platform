@@ -64,12 +64,14 @@ export function cellText(property: PropertyDefinition, value: unknown, names: Na
   return scalarText(property, value, names);
 }
 
+export const personTypes: ReadonlySet<string> = new Set(['person', 'created_by', 'edited_by']);
+
 export function personIdsIn(
   rows: readonly CollectionRow[],
   properties: readonly PropertyDefinition[],
 ): string[] {
   const ids = new Set<string>();
-  for (const property of properties.filter((p) => p.config.type === 'person')) {
+  for (const property of properties.filter((p) => personTypes.has(p.config.type))) {
     for (const row of rows) {
       const value = new Map(Object.entries(row.values)).get(property.key);
       for (const id of Array.isArray(value) ? value : [value])
