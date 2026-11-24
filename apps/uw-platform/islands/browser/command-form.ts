@@ -12,6 +12,7 @@ export const OUTCOME_TEXT: Readonly<Record<string, string>> = {
   reorder: 'Moved',
   claim: 'You hold this item now',
   release: 'Released',
+  submit_to_gate: 'Sent',
   approve: 'Approved',
   decide_gates: 'Approved',
   refute_finding: 'Marked refuted',

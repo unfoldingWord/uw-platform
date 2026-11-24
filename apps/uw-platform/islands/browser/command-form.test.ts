@@ -161,6 +161,31 @@ async function linkedControls(): Promise<void> {
   expect(run.sent[0]?.body).toMatchObject({ command: 'set_shadow', shadow: true });
 }
 
+function sendForm(): string {
+  return `<form data-command="submit_to_gate" data-harness="${harnessId}" method="post" action="#"><input type="hidden" name="itemId" value="${itemId}"><button type="submit">Send to next stage</button><p data-outcome role="status"></p></form>`;
+}
+
+async function sendConfirmed(): Promise<void> {
+  const run = wired(page(sendForm()), async () => Response.json({ status: 'accepted', requestId }));
+  submit(run.document, run.document.querySelector('button'));
+  await settled();
+  expect(run.sent).toEqual([
+    {
+      url: `/api/harness/${harnessId}/commands/submit_to_gate`,
+      body: {
+        command: 'submit_to_gate',
+        requestId,
+        itemId,
+        to: null,
+        pullRequest: null,
+        head: null,
+      },
+      busy: 'true',
+    },
+  ]);
+  expect(outcomeOf(run.document)).toBe('Sent');
+}
+
 describe('the command form island', () => {
   it(
     '#108 sends and marks dirty a control linked to the form by its form attribute',
@@ -182,6 +207,7 @@ describe('the command form island', () => {
     dirtyKeptOnRefusal,
   );
   it('the harness id is encoded into the command path', harnessEncoded);
+  it('#232 an accepted send to the next stage confirms on its form', sendConfirmed);
 });
 
 describe('the Activate form', () => {

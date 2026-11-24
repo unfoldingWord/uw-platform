@@ -119,6 +119,7 @@ function ColumnView(props: {
           harnessId={harnessId}
           card={card}
           column={column.cards}
+          exitGate={stage.exitGate}
           viewer={props.viewer}
           last={props.marks.last.get(card.item.itemId)}
           refusal={props.marks.refusals.get(card.item.itemId)}
