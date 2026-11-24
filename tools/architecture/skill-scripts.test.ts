@@ -2,10 +2,10 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { repoFiles } from '../repo-files.ts';
 
-const mcpEndpoint = 'https://<uw-app>/mcp';
+const mcpEndpoint = 'https://<uw-platform>/mcp';
 const refusals: readonly (readonly [string, RegExp])[] = [
   ['names a credential', /(api[_-]?key|token|secret|password|bearer|oauth)/i],
-  ['names a URL other than the MCP endpoint', /https?:\/\/(?!<uw-app>\/mcp)/],
+  ['names a URL other than the MCP endpoint', /https?:\/\/(?!<uw-platform>\/mcp)/],
   ['calls fetch', /\bfetch\(/],
   ['calls curl', /\bcurl\b/],
   ['calls wget', /\bwget\b/],

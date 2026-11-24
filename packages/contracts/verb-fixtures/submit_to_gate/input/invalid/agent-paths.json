@@ -7,5 +7,5 @@
     "number": 7
   },
   "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  "paths": ["apps/uw-app/board.tsx"]
+  "paths": ["apps/uw-platform/board.tsx"]
 }

@@ -32,7 +32,7 @@ const goLiveVars = [
   'ZULIP_CHANNELS',
 ];
 const movedSecretBySecret = ['secrets_store_secrets'];
-const apps = ['uw-app', 'uw-ingest'] as const;
+const apps = ['uw-platform', 'uw-ingest'] as const;
 const deployedEnvironments = ['staging', 'production'] as const;
 const placeholder = 'set-at-go-live';
 
@@ -98,7 +98,7 @@ function producerQueue(queues: Queues, binding: string): string {
 }
 
 function expectQueueWiring(name: string): void {
-  const app = queuesOf(environment('uw-app', name, goLive));
+  const app = queuesOf(environment('uw-platform', name, goLive));
   const ingest = queuesOf(environment('uw-ingest', name, goLive));
   const events = `uw-ingest-events-${name}`;
   expect(app.consumers).toEqual([
@@ -123,7 +123,7 @@ describe('FD-12 the go-live config is the live config plus the bindings whose re
   it('flags a live file that declares a Durable Object binding, a migration or a go-live variable', () => {
     const planted = parse(
       [
-        'name = "uw-app"',
+        'name = "uw-platform"',
         '[[migrations]]',
         'tag = "v1"',
         'new_sqlite_classes = ["HarnessHub"]',
@@ -156,7 +156,7 @@ describe('WB-3 the live hub Durable Object is declared for go-live only', () => 
   it.each(['staging', 'production', 'preview'])(
     '%s binds HARNESS_HUB to the HarnessHub class',
     (name) => {
-      expect(hubBindingsOf(environment('uw-app', name, goLive))).toContainEqual({
+      expect(hubBindingsOf(environment('uw-platform', name, goLive))).toContainEqual({
         name: 'HARNESS_HUB',
         class_name: 'HarnessHub',
       });
@@ -164,7 +164,7 @@ describe('WB-3 the live hub Durable Object is declared for go-live only', () => 
   );
 
   it('binds HARNESS_HUB at the top level and declares HarnessHub as a SQLite class', () => {
-    const config = load(`infra/uw-app/${goLive}`);
+    const config = load(`infra/uw-platform/${goLive}`);
     expect(hubBindingsOf(config)).toEqual([
       { name: 'HARNESS_HUB', class_name: 'HarnessHub' },
       { name: 'PAGE_DRAFT', class_name: 'PageDraft' },
@@ -180,7 +180,7 @@ describe('#175 the page draft Durable Object is declared beside the hub', () => 
   it.each(['staging', 'production', 'preview'])(
     '%s binds PAGE_DRAFT to the PageDraft class',
     (name) => {
-      expect(hubBindingsOf(environment('uw-app', name, goLive))).toContainEqual({
+      expect(hubBindingsOf(environment('uw-platform', name, goLive))).toContainEqual({
         name: 'PAGE_DRAFT',
         class_name: 'PageDraft',
       });
@@ -188,7 +188,7 @@ describe('#175 the page draft Durable Object is declared beside the hub', () => 
   );
 
   it('declares PageDraft as a SQLite class in its own migration', () => {
-    const config = load(`infra/uw-app/${goLive}`);
+    const config = load(`infra/uw-platform/${goLive}`);
     expect(config['migrations'] as Migration[]).toContainEqual({
       tag: 'v3',
       new_sqlite_classes: ['PageDraft'],
@@ -218,15 +218,15 @@ function strayWorkflows(config: Block): string[] {
 
 describe('HE-1 the HarnessRun Workflow is declared for go-live only, in staging and production', () => {
   it('binds HARNESS_RUN to the HarnessRun class under staging and production only', () => {
-    expect(workflowSites(load(`infra/uw-app/${goLive}`))).toEqual([
+    expect(workflowSites(load(`infra/uw-platform/${goLive}`))).toEqual([
       'staging: HARNESS_RUN harness-run-staging HarnessRun',
       'production: HARNESS_RUN harness-run-production HarnessRun',
     ]);
   });
 
   it('declares a Workflow in the live file only once the switch is on', () => {
-    const twin = goLiveSwitchedOn() ? load(`infra/uw-app/${goLive}`) : {};
-    expect(workflowSites(load(`infra/uw-app/${live}`))).toEqual(workflowSites(twin));
+    const twin = goLiveSwitchedOn() ? load(`infra/uw-platform/${goLive}`) : {};
+    expect(workflowSites(load(`infra/uw-platform/${live}`))).toEqual(workflowSites(twin));
   });
 
   it('flags a planted Workflow under preview, at the top level, or in the live file', () => {
@@ -292,8 +292,8 @@ describe('the sandbox containers are declared for go-live only, in staging and p
       `${name}: binding CLAUDE_CODE_SANDBOX ClaudeCodeSandbox`,
       `${name}: binding CODEX_SANDBOX CodexSandbox`,
     ]);
-    expect(sandboxSites(load(`infra/uw-app/${goLive}`)).sort()).toEqual(sites.sort());
-    const config = load(`infra/uw-app/${goLive}`);
+    expect(sandboxSites(load(`infra/uw-platform/${goLive}`)).sort()).toEqual(sites.sort());
+    const config = load(`infra/uw-platform/${goLive}`);
     expect(config['migrations'] as Migration[]).toContainEqual({
       tag: 'v2',
       new_sqlite_classes: sandboxClasses,
@@ -301,8 +301,8 @@ describe('the sandbox containers are declared for go-live only, in staging and p
   });
 
   it('declares a container, sandbox binding or migration in the live file only once the switch is on', () => {
-    const config = load(`infra/uw-app/${live}`);
-    const twin = goLiveSwitchedOn() ? load(`infra/uw-app/${goLive}`) : {};
+    const config = load(`infra/uw-platform/${live}`);
+    const twin = goLiveSwitchedOn() ? load(`infra/uw-platform/${goLive}`) : {};
     expect(sandboxSites(config)).toEqual(sandboxSites(twin));
     expect(config['migrations']).toEqual(twin['migrations']);
   });
@@ -364,8 +364,8 @@ describe('FD-7 the Access variables and ids are placeholders or well formed', ()
     expect(ids.every((id) => idShape.test(id))).toBe(true);
   });
 
-  it('uw-app Access AUD tags and team domains are well formed in every environment', () => {
-    const blocks = Object.values(environments(load(`infra/uw-app/${goLive}`)));
+  it('uw-platform Access AUD tags and team domains are well formed in every environment', () => {
+    const blocks = Object.values(environments(load(`infra/uw-platform/${goLive}`)));
     const settings = blocks.map(varsOf);
     expect(settings.every((vars) => audienceShape.test(vars['ACCESS_AUD'] ?? ''))).toBe(true);
     expect(settings.every((vars) => audienceShape.test(vars['ACCESS_MCP_AUD'] ?? ''))).toBe(true);
@@ -378,14 +378,17 @@ describe('FD-7 the Access variables and ids are placeholders or well formed', ()
 });
 
 describe('P13 per-PR Workers never register as a queue consumer', () => {
-  it.each([live, goLive])('uw-app %s has a preview environment with no queue consumer', (file) => {
-    const preview = environment('uw-app', 'preview', file);
-    expect(Object.keys(preview).length).toBeGreaterThan(0);
-    expect(queuesOf(preview).consumers ?? []).toEqual([]);
-  });
+  it.each([live, goLive])(
+    'uw-platform %s has a preview environment with no queue consumer',
+    (file) => {
+      const preview = environment('uw-platform', 'preview', file);
+      expect(Object.keys(preview).length).toBeGreaterThan(0);
+      expect(queuesOf(preview).consumers ?? []).toEqual([]);
+    },
+  );
 
   it('only staging and production declare a consumer', () => {
-    const consumers = Object.entries(environments(load(`infra/uw-app/${goLive}`)))
+    const consumers = Object.entries(environments(load(`infra/uw-platform/${goLive}`)))
       .filter(([, block]) => (queuesOf(block).consumers ?? []).length > 0)
       .map(([name]) => name);
     expect(consumers.sort()).toEqual(['production', 'staging']);
@@ -395,7 +398,7 @@ describe('P13 per-PR Workers never register as a queue consumer', () => {
 describe('P33 preview shares staging Hyperdrive', () => {
   it('binds the same Hyperdrive id in preview as in staging', () => {
     const idOf = (name: string): string | undefined =>
-      hyperdriveOf(environment('uw-app', name, goLive))[0]?.id;
+      hyperdriveOf(environment('uw-platform', name, goLive))[0]?.id;
     expect(idOf('preview')).toBeDefined();
     expect(idOf('preview')).toBe(idOf('staging'));
   });

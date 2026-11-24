@@ -4,7 +4,7 @@ import { repoFiles } from '../repo-files.ts';
 
 type GuardedRead = { readonly read: RegExp; readonly allowed: readonly string[] };
 
-const healthRoot = 'apps/uw-app/health/';
+const healthRoot = 'apps/uw-platform/health/';
 
 const harnessIds: GuardedRead = {
   read: /\bharnessIdsForHealth\b/,
@@ -16,8 +16,8 @@ const planeTotals: GuardedRead = {
   allowed: [
     'packages/harness/views/',
     healthRoot,
-    'apps/uw-app/views/screens/health.tsx',
-    'apps/uw-app/mcp/verbs/get-health.ts',
+    'apps/uw-platform/views/screens/health.tsx',
+    'apps/uw-platform/mcp/verbs/get-health.ts',
     'sim/scenarios/',
   ],
 };
@@ -51,12 +51,12 @@ describe('the unchecked list of harness ids is read only by health', () => {
 
   it('flags a planted read outside health and allows one inside it', () => {
     const planted = new Map([
-      ['apps/uw-app/commands/routes.ts', 'await kernel.reads.harnessIdsForHealth();'],
-      ['apps/uw-app/health/hub.ts', 'await kernel.reads.harnessIdsForHealth();'],
-      ['apps/uw-app/health/hub.test.ts', 'await kernel.reads.harnessIdsForHealth();'],
+      ['apps/uw-platform/commands/routes.ts', 'await kernel.reads.harnessIdsForHealth();'],
+      ['apps/uw-platform/health/hub.ts', 'await kernel.reads.harnessIdsForHealth();'],
+      ['apps/uw-platform/health/hub.test.ts', 'await kernel.reads.harnessIdsForHealth();'],
     ]);
     expect(strays(harnessIds, [...planted.keys()], (file) => planted.get(file) ?? '')).toEqual([
-      'apps/uw-app/commands/routes.ts',
+      'apps/uw-platform/commands/routes.ts',
     ]);
   });
 });
@@ -68,12 +68,12 @@ describe('the org-wide agent plane totals are read only by health and get_health
 
   it('flags a planted read in a command route and allows the health and get_health ones', () => {
     const planted = new Map([
-      ['apps/uw-app/commands/routes.ts', 'await kernel.views.planeTotals({ at });'],
-      ['apps/uw-app/health/agent-plane.ts', 'await kernel.views.planeTotals({ at });'],
-      ['apps/uw-app/mcp/verbs/get-health.ts', 'await kernel.views.planeTotals({ at });'],
+      ['apps/uw-platform/commands/routes.ts', 'await kernel.views.planeTotals({ at });'],
+      ['apps/uw-platform/health/agent-plane.ts', 'await kernel.views.planeTotals({ at });'],
+      ['apps/uw-platform/mcp/verbs/get-health.ts', 'await kernel.views.planeTotals({ at });'],
     ]);
     expect(strays(planeTotals, [...planted.keys()], (file) => planted.get(file) ?? '')).toEqual([
-      'apps/uw-app/commands/routes.ts',
+      'apps/uw-platform/commands/routes.ts',
     ]);
   });
 });

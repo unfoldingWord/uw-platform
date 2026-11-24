@@ -60,7 +60,7 @@ Every task obeys every line here. The controller passes this section to each imp
 - `packages/harness` imports `packages/contracts` and `@uw/core/acl` and nothing else: no Drizzle, Workers, network, `process`, `fetch`, `zod` directly (use the schemas `@uw/contracts` exports). Its `package.json` lists only `@uw/*` packages (its wiring test enforces this); add `@uw/core` in Task 7, the task that first imports it.
 - `sim/` imports `packages/harness`, `packages/contracts`, `packages/db`, its own files and the Node built-ins listed in `AGENTS.md` rule 2; its tests also Vitest. Never `drizzle-orm`, `@electric-sql/pglite`, `@uw/core` or `fast-check` from `sim/`. Sim fixtures build principals with `principalSchema.parse` from `@uw/contracts`.
 - Property tests live in `tools/properties/*.test.ts` (root workspace, node project) and import `fast-check`, `vitest`, and repository code by relative path (`../../packages/harness/index.ts`, `../../sim/world.ts`).
-- `apps/uw-app` is a composition root. No non-test file in `apps/` imports `packages/harness/port-contracts/`. No route, MCP handler or Workflow is added in this step.
+- `apps/uw-platform` is a composition root. No non-test file in `apps/` imports `packages/harness/port-contracts/`. No route, MCP handler or Workflow is added in this step.
 
 **Ports, gateways and transactions**
 
@@ -74,7 +74,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Contracts**
 
-- The live version moves `2.3.0` → `2.4.0` (Task 1, additive) → `3.0.0` (Task 2, the event vocabulary replaces the four placeholders). Each move changes, together and in one commit: the enum or schema, its fixtures under `packages/contracts/fixtures/<registry key>/{valid,invalid}/`, the `schemaRegistry` entry, `CONTRACT_VERSION` in `packages/contracts/version.ts`, a new last entry in `packages/contracts/contract-lock.json` recording every closed set, and `"contractVersion"` in `apps/uw-app/package.json` and `apps/uw-ingest/package.json`. No later task changes a contract; if one finds it must, it bumps the minor version the same way and records why in the tracker.
+- The live version moves `2.3.0` → `2.4.0` (Task 1, additive) → `3.0.0` (Task 2, the event vocabulary replaces the four placeholders). Each move changes, together and in one commit: the enum or schema, its fixtures under `packages/contracts/fixtures/<registry key>/{valid,invalid}/`, the `schemaRegistry` entry, `CONTRACT_VERSION` in `packages/contracts/version.ts`, a new last entry in `packages/contracts/contract-lock.json` recording every closed set, and `"contractVersion"` in `apps/uw-platform/package.json` and `apps/uw-ingest/package.json`. No later task changes a contract; if one finds it must, it bumps the minor version the same way and records why in the tracker.
 
 **Shared roots**
 
@@ -91,7 +91,7 @@ Every task obeys every line here. The controller passes this section to each imp
 - Name each `describe` (or scenario file) with the requirement ID first: `describe('KN-5 a claim takes a lease', …)`, `sim/scenarios/KN-5.claim-takes-a-lease.ts`. `pnpm trace` counts a requirement proven by a scenario file `sim/scenarios/<ID>.<slug>.ts` or by a string literal in a `*.test.ts` file that starts with the ID and a space. Fixture IDs use the prefix `ZZ-`.
 - A scenario is `defineScenario({ id, title, run })` in `sim/scenarios/<ID>.<slug>.ts`; until Task 10, `run` returns `{ events, state }`; from Task 10 on it returns `{ state }` and the runner supplies the events. Scenarios assert with `node:assert/strict`.
 - Database behaviour that is not a scenario goes in `sim/kernel/*.test.ts` (kernel over the world) or `packages/db/*.test.ts` (schema, on `databaseTargets` from `@uw/db/test-targets`, which is the embedded Postgres and, when `TEST_DATABASE_URL` is set, the server too).
-- Real connections: `apps/uw-app/harness/*.pg.test.ts`, wrapped in `describe.skipIf(!testServer)`, each connection its own `createClient(connectionString)` from `@uw/db/client`. Locally `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test` (a private local server, Postgres 16, already running); CI uses the `postgres:16` service container. No test may need a live account or a secret (PRD DX-8); the only environment variables test code reads are `TEST_DATABASE_URL`, `CI` and `PATH`.
+- Real connections: `apps/uw-platform/harness/*.pg.test.ts`, wrapped in `describe.skipIf(!testServer)`, each connection its own `createClient(connectionString)` from `@uw/db/client`. Locally `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test` (a private local server, Postgres 16, already running); CI uses the `postgres:16` service container. No test may need a live account or a secret (PRD DX-8); the only environment variables test code reads are `TEST_DATABASE_URL`, `CI` and `PATH`.
 - Every test file that opens an embedded Postgres (directly or through `createWorld`) has `afterAll(closeEmbeddedTemplate)` and closes every world or database it opens.
 - Kernel tables (`harnesses`, `harness_stages`, `harness_items`, `harness_events`, `harness_runs`, `gate_decisions`, `delegations`, `measurements`, `personas`) take every instant from the command's `at` (the Clock port) and every id from the Ids port. No `defaultNow()`, `defaultRandom()`, `$defaultFn` or SQL default on any of their `uuid`, `timestamp` or `date` columns; `packages/db/kernel-defaults.test.ts` (Task 3) fails on one. Defaults on other columns (`connector` `'none'`, `wip_limit` `3`, booleans, empty arrays) are fine.
 - Fixed ids in tests are UUIDs; use the patterns already in the repo (`00000000-0000-4000-8000-00000000000N`). The bootstrap migration seeds person `00000000-0000-4000-8000-000000000001` (`rowan.test@unfoldingword.org`) with org admin grant `00000000-0000-4000-8000-000000000101` in every migrated database.
@@ -137,13 +137,13 @@ packages/harness/stages/*                                                      T
 packages/harness/items/{enqueue,repair}.ts, tools/properties/projection.test.ts  Task 12
 packages/harness/delegations/*                                                 Task 13
 packages/harness/items/{claim,leases}.ts                                       Task 14, 15
-apps/uw-app/harness/claims.pg.test.ts                                          Task 16
+apps/uw-platform/harness/claims.pg.test.ts                                          Task 16
 packages/harness/items/{submit,transitions}.ts                                 Task 17, 18
 packages/harness/items/learning.ts                                             Task 19
 packages/harness/risk/*                                                        Task 20
 packages/harness/ship-rule.ts, tools/properties/ship-rule.test.ts              Task 21
 packages/harness/gates/*                                                       Task 22, 23
-apps/uw-app/harness/grant-race.pg.test.ts                                      Task 24
+apps/uw-platform/harness/grant-race.pg.test.ts                                      Task 24
 docs/progress_tracker.md, docs/PRD.md, docs/exceptions.md                      Task 1, 3, 5, 25
 ```
 
@@ -157,7 +157,7 @@ docs/progress_tracker.md, docs/PRD.md, docs/exceptions.md                      T
 - Modify: `packages/contracts/closed-sets.ts`, `packages/contracts/outcomes.ts`, `packages/contracts/registry.ts`, `packages/contracts/index.ts`, `packages/contracts/version.ts`, `packages/contracts/contract-lock.json`, `packages/contracts/contracts.test.ts`, `packages/contracts/fixtures/error-reason/valid/last.json`
 - Create: `packages/contracts/harness.ts`, `packages/contracts/ship-rule.ts`, `packages/contracts/harness.test.ts`
 - Create fixtures (each `valid/*.json` and `invalid/*.json` under `packages/contracts/fixtures/<key>/`): `stage-bracket`, `gate-status`, `branch-state`, `run-outcome`, `delegation-lapse`, `check-conclusion`, `ci-job`, `ship-refusal`, `stage-key`, `persona-identity`, `pull-request-ref`, `harness`, `stage`, `item-state`, `risk-declaration`, `ship-rule-input`, `ship-rule-outcome`
-- Modify: `apps/uw-app/package.json`, `apps/uw-ingest/package.json` (`contractVersion` `2.4.0`)
+- Modify: `apps/uw-platform/package.json`, `apps/uw-ingest/package.json` (`contractVersion` `2.4.0`)
 - Modify (separate `docs(prd):` commit): `docs/PRD.md` sections 8.3 and 8.5
 
 **Interfaces:**
@@ -504,17 +504,17 @@ Fixtures (every `valid` file must round-trip unchanged through parse and `JSON.s
 - `ship-rule-input`: valid `high-two-reviewers.json` (open, not draft, head `abc123`, expectedHead `abc123`, the six jobs `success` on `abc123`, two approvals on `abc123` with providers `anthropic` and `openai`, riskTier `high`, riskDomains `["acl"]`, area `80-89`, approver a person principal for `00000000-0000-4000-8000-000000000001` / `rowan.test@unfoldingword.org` with an org-scope admin grant `00000000-0000-4000-8000-000000000101`, `interactive` true, at `2026-10-01T09:00:00.000Z`, override false); invalid `narrative.json` (the same plus `"narrative":"trust me"`), `no-approver.json` (without `approver`).
 - `ship-rule-outcome`: valid `advance.json` (`{"verdict":"advance"}`), `refuse.json` (`{"verdict":"refuse","reasons":["head_mismatch","checks_not_green"]}`); invalid `refuse-without-reasons.json` (`{"verdict":"refuse","reasons":[]}`).
 
-Set `CONTRACT_VERSION = '2.4.0'`. Append a `2.4.0` entry to `contract-lock.json`: a copy of the `2.3.0` entry's `sets` with the fourteen reasons appended to `error-reason` and these sets added: `branch-state`, `check-conclusion`, `ci-job`, `delegation-lapse`, `gate-status`, `run-outcome`, `ship-refusal`, `stage-bracket`, each listing its options in schema order. `contract-lock.test.ts` (`records every closed set exactly as it is now`) names any mismatch. Set `"contractVersion": "2.4.0"` in `apps/uw-app/package.json` and `apps/uw-ingest/package.json`.
+Set `CONTRACT_VERSION = '2.4.0'`. Append a `2.4.0` entry to `contract-lock.json`: a copy of the `2.3.0` entry's `sets` with the fourteen reasons appended to `error-reason` and these sets added: `branch-state`, `check-conclusion`, `ci-job`, `delegation-lapse`, `gate-status`, `run-outcome`, `ship-refusal`, `stage-bracket`, each listing its options in schema order. `contract-lock.test.ts` (`records every closed set exactly as it is now`) names any mismatch. Set `"contractVersion": "2.4.0"` in `apps/uw-platform/package.json` and `apps/uw-ingest/package.json`.
 
 - [ ] **Step 6: Run the contract tests**
 
-Run: `pnpm vitest run packages/contracts apps/uw-app/contract-conformance.test.ts`
+Run: `pnpm vitest run packages/contracts apps/uw-platform/contract-conformance.test.ts`
 Expected: PASS, including `golden fixtures`, `CT-3 the contract lock` and the new `KN-` describes.
 
 - [ ] **Step 7: Commit the contract (shared root)**
 
 ```bash
-git add packages/contracts apps/uw-app/package.json apps/uw-ingest/package.json
+git add packages/contracts apps/uw-platform/package.json apps/uw-ingest/package.json
 git commit -m "feat(contracts): harness, stage and item shapes, ship-rule input and outcome, step 3 refusal reasons; contract 2.4.0" -m "Shared root packages/contracts: the kernel tables, the ship rule and the gate command need these shapes, sets and reasons published before any table or kernel module uses them. Additive, so a minor version." -m "CT-3 KN-1 KN-11 KN-12 KN-16 KN-17"
 ```
 
@@ -538,7 +538,7 @@ git commit -m "docs(prd): add the step 3 closed sets to 8.3 and the step 3 refus
 - Modify: `packages/contracts/events.ts`, `packages/contracts/registry.ts`, `packages/contracts/index.ts`, `packages/contracts/version.ts`, `packages/contracts/contract-lock.json`, `packages/contracts/contracts.test.ts`
 - Create: `packages/contracts/event-evidence.ts`, `packages/contracts/events.test.ts`
 - Replace fixtures: `packages/contracts/fixtures/event/**`, `packages/contracts/fixtures/event-name/**`; create `packages/contracts/fixtures/new-event/**`
-- Modify: `apps/uw-app/package.json`, `apps/uw-ingest/package.json` (`3.0.0`)
+- Modify: `apps/uw-platform/package.json`, `apps/uw-ingest/package.json` (`3.0.0`)
 - Modify (second commit): `sim/runner/report.ts`, `sim/runner/report.test.ts`
 
 **Interfaces:**
@@ -857,13 +857,13 @@ Export `event-evidence.ts` from `index.ts`. Register `'new-event': newEventSchem
 - In `contracts.test.ts`, replace the loop over `['gate_approved', 'lease_expired', 'delegation_lapsed', 'abandoned']` with one over `['gate_approved', 'lease_expired', 'delegation_lapsed', 'branch_abandoned']` and add `expect(eventNameSchema.safeParse('abandoned').success).toBe(false);`.
 - `CONTRACT_VERSION = '3.0.0'` (removing `abandoned` is breaking). Append a `3.0.0` lock entry: the `2.4.0` sets with `event-name` replaced by the forty-five names. Set both apps' `contractVersion` to `3.0.0`.
 
-Run: `pnpm vitest run packages/contracts apps/uw-app/contract-conformance.test.ts`
+Run: `pnpm vitest run packages/contracts apps/uw-platform/contract-conformance.test.ts`
 Expected: PASS.
 
 - [ ] **Step 5: Commit the contract (shared root)**
 
 ```bash
-git add packages/contracts apps/uw-app/package.json apps/uw-ingest/package.json
+git add packages/contracts apps/uw-platform/package.json apps/uw-ingest/package.json
 git commit -m "feat(contracts): the PRD 8.6 event vocabulary, an envelope with item, position and trace id, typed evidence; contract 3.0.0" -m "Shared root packages/contracts: KN-3 needs the closed vocabulary and the row shape before the event log exists. The four placeholders are replaced (abandoned becomes branch_abandoned), so a major version. Rejected: per-name event schemas as a discriminated union, which would make every new event a breaking change to the union." -m "KN-3 CT-3"
 ```
 
@@ -1589,7 +1589,7 @@ Expected: PASS.
 - Create: `packages/harness/port-contracts/store-gateways.ts`, `packages/harness/port-errors.test.ts` (extend if it exists)
 - Create: `packages/db/store/refusal.ts`, `packages/db/store/types.ts`, `packages/db/store/rows.ts`, `packages/db/store/harnesses.ts`, `packages/db/store/stages.ts`, `packages/db/store/items.ts`, `packages/db/store/pages.ts`
 - Modify: `packages/db/store/store.ts`, `packages/db/store/index.ts`, `packages/db/test-seed.ts`
-- Modify: `sim/adapters/store.contract.test.ts`, `apps/uw-app/ports/store.contract.pg.test.ts` (provide `seedPage`)
+- Modify: `sim/adapters/store.contract.test.ts`, `apps/uw-platform/ports/store.contract.pg.test.ts` (provide `seedPage`)
 - Modify: `.dependency-cruiser.mjs`, `tools/architecture/rules.test.ts`
 - Modify: `docs/exceptions.md` (the `packages/db/test-seed.ts` row now also seeds `pages`)
 
@@ -1719,7 +1719,7 @@ export async function seedPage(db: AnyExecutor, page: SeedPage): Promise<void> {
 
 and pass `seedPage: (page) => seedPage(database.db, page)` (sim) and `seedPage: (page) => seedPage(db, page)` (platform) in the two contract tests.
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run sim/adapters/store.contract.test.ts apps/uw-app/ports/store.contract.pg.test.ts`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run sim/adapters/store.contract.test.ts apps/uw-platform/ports/store.contract.pg.test.ts`
 Expected: FAIL — `tx.harnesses` is undefined (and a type error until Step 2).
 
 - [ ] **Step 2: Extend the port (shared root, own commit)**
@@ -1856,7 +1856,7 @@ Add to `.dependency-cruiser.mjs` `forbidden`:
 },
 ```
 
-Add a case to `tools/architecture/rules.test.ts` in the style of its neighbours: a planted `apps/uw-app/x.ts` importing `../../packages/db/store/store.ts` reports `store-executor-stays-in-the-store`; a planted `packages/db/store/y.ts` importing `./store.ts` does not.
+Add a case to `tools/architecture/rules.test.ts` in the style of its neighbours: a planted `apps/uw-platform/x.ts` importing `../../packages/db/store/store.ts` reports `store-executor-stays-in-the-store`; a planted `packages/db/store/y.ts` importing `./store.ts` does not.
 
 - [ ] **Step 6: Run and commit**
 
@@ -1866,7 +1866,7 @@ Expected: PASS; both Store contract tests ran every new case.
 Update the `packages/db/test-seed.ts` row of `docs/exceptions.md`: the helpers also seed `pages` for the Store contract.
 
 ```bash
-git add packages/harness packages/db/store packages/db/test-seed.ts sim/adapters apps/uw-app/ports .dependency-cruiser.mjs tools/architecture/rules.test.ts docs/exceptions.md
+git add packages/harness packages/db/store packages/db/test-seed.ts sim/adapters apps/uw-platform/ports .dependency-cruiser.mjs tools/architecture/rules.test.ts docs/exceptions.md
 git commit -m "feat(db): the Drizzle gateways for harnesses, stages, items and pages, with store refusals by name" -m "KN-1 KN-2 KN-4 KN-5 DX-2 DX-3"
 ```
 
@@ -1951,7 +1951,7 @@ describe('KN-4 one read function is the only event read path', () => {
     'tx.select().from(schema.harnessEvents)',
     'sql`SELECT * FROM harness_events`',
   ])('flags %j', (source) => {
-    expect(readers(['apps/uw-app/x.ts'], () => source)).toEqual(['apps/uw-app/x.ts']);
+    expect(readers(['apps/uw-platform/x.ts'], () => source)).toEqual(['apps/uw-platform/x.ts']);
   });
 });
 ```
@@ -2597,7 +2597,7 @@ git commit -m "feat(harness): enqueue an item into Package, prove projection equ
 **Files:**
 - Modify (own commit): `packages/harness/ports.ts` (the `delegations` gateway and `Grants.resolveIn`)
 - Modify: `packages/harness/port-contracts/store-gateways.ts`, `packages/harness/port-contracts/grants.ts`, `packages/db/store/grants.ts`, `packages/db/store/store.ts`, `types.ts`, `rows.ts`; create `packages/db/store/delegations.ts`
-- Modify: `apps/uw-app/ports/grants.not-wired.ts`, `apps/uw-app/ports/grants.ts`
+- Modify: `apps/uw-platform/ports/grants.not-wired.ts`, `apps/uw-platform/ports/grants.ts`
 - Create: `packages/harness/delegations/live.ts`, `packages/harness/delegations/beat.ts`, `packages/harness/delegations/commands.ts`, `packages/harness/delegations/beat.test.ts`
 - Modify: `packages/harness/kernel.ts`, `packages/harness/index.ts`
 - Create: `sim/scenarios/KN-16.delegation-lapses-when-grant-revoked.ts`, `sim/kernel/delegations.test.ts`
@@ -2684,7 +2684,7 @@ Semantics:
 
 Add a grants contract case `DX-3 reads grants inside a transaction without a lock` (`resolveIn` sees a grant and, after a revoke, does not) and `resolveIn` to `describeGrantsNotWired`'s list; a Store contract case for the delegations gateway (insert, `live` filters and expiry at an instant, conditional `revoke` and `markLapsed` return `true` once then `false`).
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run sim/kernel/delegations.test.ts packages/harness/delegations sim/adapters apps/uw-app/ports && pnpm sim -- KN-16`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run sim/kernel/delegations.test.ts packages/harness/delegations sim/adapters apps/uw-platform/ports && pnpm sim -- KN-16`
 Expected: FAIL.
 
 - [ ] **Step 2: Extend the port (shared root, own commit)** with the types above and commit alone: `feat(harness): a delegations gateway, and Grants.resolveIn for the beat check inside a transaction` (body: "P14's beat check reads the person's grants inside the claim's transaction without a row lock; resolve outside the transaction would be refused while it is open." and `KN-16 DX-3`).
@@ -2697,7 +2697,7 @@ Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 Expected: PASS.
 
 ```bash
-git add packages/harness packages/db/store apps/uw-app/ports sim
+git add packages/harness packages/db/store apps/uw-platform/ports sim
 git commit -m "feat(harness): delegations with a required expiry, checked at every beat, lapsing once" -m "KN-16"
 ```
 
@@ -2823,7 +2823,7 @@ git commit -m "feat(harness): run steps renew the lease and warn near expiry; a 
 **Requirements:** DX-6 (N concurrent claims on one item; two claims racing one WIP slot), KN-5 (exactly one caller succeeds).
 
 **Files:**
-- Create: `apps/uw-app/testing/kernel.ts`, `apps/uw-app/harness/claims.pg.test.ts`
+- Create: `apps/uw-platform/testing/kernel.ts`, `apps/uw-platform/harness/claims.pg.test.ts`
 
 **Interfaces:**
 - Produces (test helpers, imported only by `*.pg.test.ts`):
@@ -2871,7 +2871,7 @@ describe.skipIf(!testServer)('DX-6 KN-5 claims race on separate connections', ()
 
 `withSharedDatabase(work)` creates one migrated database (`createMigratedDatabase(testServer)`), opens eight `createClient` connections to it, runs `work`, and always ends every client and drops the database. `setUp` activates software as the owner through `kernelOn(connections[0], …)`, sets Package's `agentPickup` to `allowed` and its `wipLimit`, seeds an area editor as the owner, and enqueues. Repeat each race five times inside its `it` (fresh items each round) so an ordering accident cannot pass it once.
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-app/harness/claims.pg.test.ts`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-platform/harness/claims.pg.test.ts`
 Expected: PASS once Tasks 14 and 15 are in (this task adds tests only; if it fails, the claim's lock order or conditional update is wrong — fix it in `packages/harness/items/claim.ts` in this task).
 
 - [ ] **Step 2: Run and commit**
@@ -2880,8 +2880,8 @@ Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 Expected: PASS, and the two races ran (not skipped).
 
 ```bash
-git add apps/uw-app/testing/kernel.ts apps/uw-app/harness/claims.pg.test.ts
-git commit -m "test(uw-app): eight claims on one item and two claims on one WIP slot, on separate connections" -m "DX-6 KN-5"
+git add apps/uw-platform/testing/kernel.ts apps/uw-platform/harness/claims.pg.test.ts
+git commit -m "test(uw-platform): eight claims on one item and two claims on one WIP slot, on separate connections" -m "DX-6 KN-5"
 ```
 
 ### Task 17: Submit and the exit gates
@@ -3085,7 +3085,7 @@ The protected-directory map (P15; reviewed data, one file):
 export const protectedDirectories: readonly ProtectedDirectory[] = [
   { path: 'packages/db/migrations/', domain: 'migration' },
   { path: 'packages/core/acl.ts', domain: 'acl' },
-  { path: 'apps/uw-app/acl/', domain: 'acl' },
+  { path: 'apps/uw-platform/acl/', domain: 'acl' },
   { path: 'infra/', domain: 'infra' },
   { path: '.github/workflows/', domain: 'infra' },
   { path: 'packages/ledger/', domain: 'ledger' },
@@ -3100,7 +3100,7 @@ An entry ending in `/` matches every path under it; any other entry matches that
 
 `risk/risk.test.ts`, describes `KN-17 …`:
 - every protected path appears once, and no entry is a prefix of another, so each path maps to at most one domain;
-- `floorFromPaths(['apps/uw-app/board.tsx'])` is `{ tier: null, domains: [] }`; `['packages/db/migrations/0009_x.sql', 'infra/uw-app/wrangler.toml', './infra/x.json']` is `{ tier: 'high', domains: ['infra', 'migration'] }`; `['packages/core/acl.ts']` is `acl`; `['packages/core/acl.test.ts']` is none;
+- `floorFromPaths(['apps/uw-platform/board.tsx'])` is `{ tier: null, domains: [] }`; `['packages/db/migrations/0009_x.sql', 'infra/uw-platform/wrangler.toml', './infra/x.json']` is `{ tier: 'high', domains: ['infra', 'migration'] }`; `['packages/core/acl.ts']` is `acl`; `['packages/core/acl.test.ts']` is none;
 - `applyDeclaration` with `{ riskTier: 'low', riskDomains: [] }` over a `high` floor stays `high` with the floor's domains; a declaration may add `ledger`; with `null` is `risk_tier_undeclared`;
 - `approverCovers`: an area admin covers `[]` but not `['acl']`; an org admin covers `['acl', 'infra']`; `['ledger']` needs `admin` on `20-29` as well as the area (an org admin has both); one approver must hold every grant; an expired grant at `at` does not count.
 
@@ -3309,7 +3309,7 @@ export function exitThroughConnector(ports: Ports, context: RecordContext, input
 
 - [ ] **Step 1: Write the failing scenarios and tests**
 
-`KN-13.approve-merges-and-advances.ts` (the software path end to end): enqueue; advance to Build with `simAdvance`; the agent submits at Build and Check with `change` `{ pullRequest: { repo: 'unfoldingWord/uw-platform', number: 42 }, head: 'abc123', paths: ['apps/uw-app/board.tsx'], declaration: { riskTier: 'standard', riskDomains: [] } }`; the editor claims Ship and submits → parked; `world.adapters.githubFacts.given({ ref, state: 'open', draft: false, head: 'abc123', checks: <the six jobs success on abc123>, reviews: [{ reviewer: 'uw-reviewer', commit: 'abc123', state: 'approved', provider: 'anthropic' }], freshAt })`; the owner approves → accepted, `advanced: true`; one `gate_decisions` row; the log has `gate_approved`, `connector_succeeded`, `stage_advanced { from: 'ship', to: 'validate' }`; `world.adapters.connectors.calls()` holds one `merge` call with `expectedHead` `abc123`; then Validate and Close (attach a `suggested` labelled learning first) take the item to `done`.
+`KN-13.approve-merges-and-advances.ts` (the software path end to end): enqueue; advance to Build with `simAdvance`; the agent submits at Build and Check with `change` `{ pullRequest: { repo: 'unfoldingWord/uw-platform', number: 42 }, head: 'abc123', paths: ['apps/uw-platform/board.tsx'], declaration: { riskTier: 'standard', riskDomains: [] } }`; the editor claims Ship and submits → parked; `world.adapters.githubFacts.given({ ref, state: 'open', draft: false, head: 'abc123', checks: <the six jobs success on abc123>, reviews: [{ reviewer: 'uw-reviewer', commit: 'abc123', state: 'approved', provider: 'anthropic' }], freshAt })`; the owner approves → accepted, `advanced: true`; one `gate_decisions` row; the log has `gate_approved`, `connector_succeeded`, `stage_advanced { from: 'ship', to: 'validate' }`; `world.adapters.connectors.calls()` holds one `merge` call with `expectedHead` `abc123`; then Validate and Close (attach a `suggested` labelled learning first) take the item to `done`.
 
 `KN-11.ship-rule-refuses-on-facts.ts`: the same item parked at Ship with facts whose head is `def456` → `head_mismatch` with `ship_refused` `{ reasons: ['head_mismatch'] }`, no decision row, no connector call, still parked; facts with a draft PR and a failing `test` job → `pr_is_draft` first and `detail.reasons` `['pr_is_draft', 'checks_not_green']`.
 
@@ -3339,8 +3339,8 @@ git commit -m "feat(harness): approve at Ship runs the ship rule over GitHub fac
 **Requirements:** KN-14, DX-6.
 
 **Files:**
-- Create: `apps/uw-app/harness/grant-race.pg.test.ts`
-- Modify: `apps/uw-app/testing/kernel.ts` (`fixedFacts(facts)`, `pausingGrants(grants, onLocked, pauseMs)`)
+- Create: `apps/uw-platform/harness/grant-race.pg.test.ts`
+- Modify: `apps/uw-platform/testing/kernel.ts` (`fixedFacts(facts)`, `pausingGrants(grants, onLocked, pauseMs)`)
 
 **Interfaces:**
 - Produces (test helpers):
@@ -3389,7 +3389,7 @@ describe.skipIf(!testServer)('KN-14 DX-6 the grant re-read race, in both orders,
 
 `kernelOn` gains an optional third argument of port overrides. `withRace` creates one migrated database, opens the decider's and the revoker's connections, activates software, parks an item at Ship with `expectedHead` `abc123` and tier `standard` (through the kernel, as in Task 23), seeds Kim as `admin` on `80-89`, mints her principal before anything is revoked, and always closes both connections and drops the database. `revokeGrant` runs `UPDATE role_grants SET revoked_at = $at WHERE id = $id` on the revoker's connection; under the decider's `FOR SHARE` lock it blocks until the decision commits. Add a third assertion inside the second test that the revoke was waiting: poll `pg_stat_activity` on a third connection until a backend with `wait_event_type = 'Lock'` running the `UPDATE role_grants` appears, before the pause ends (fail after 2 s). The connectors port is not wired in this kernel, so the approved item stays parked with `connector_refused { reason: 'not_wired' }`; the decision row is what this test proves.
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-app/harness/grant-race.pg.test.ts`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-platform/harness/grant-race.pg.test.ts`
 Expected: PASS (tests only; a failure means the share lock or the transaction boundary in `gates/decide.ts` is wrong — fix it there in this task).
 
 - [ ] **Step 2: Run and commit**
@@ -3398,8 +3398,8 @@ Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 Expected: PASS, and both races ran (not skipped).
 
 ```bash
-git add apps/uw-app/harness/grant-race.pg.test.ts apps/uw-app/testing/kernel.ts
-git commit -m "test(uw-app): revoke then decide refuses, decide then revoke records, on two real connections" -m "KN-14 DX-6"
+git add apps/uw-platform/harness/grant-race.pg.test.ts apps/uw-platform/testing/kernel.ts
+git commit -m "test(uw-platform): revoke then decide refuses, decide then revoke records, on two real connections" -m "KN-14 DX-6"
 ```
 
 ### Task 25: The tracker, and step 3 marked built
@@ -3415,7 +3415,7 @@ Run: `pnpm trace` and confirm none of KN-1 to KN-18 is listed as unproven. Grep 
 
 - [ ] **Step 2: Update `docs/progress_tracker.md`**
 
-- Status table: step 3 `Built`, evidence `docs/plans/2026-10-01-step-03-kernel-and-data.md`; scenarios `sim/scenarios/KN-*.ts`; tests named KN-1 to KN-18; server races `apps/uw-app/harness/*.pg.test.ts`, `packages/db/event-log-order.test.ts`; `pnpm verify` green with `TEST_DATABASE_URL` set.
+- Status table: step 3 `Built`, evidence `docs/plans/2026-10-01-step-03-kernel-and-data.md`; scenarios `sim/scenarios/KN-*.ts`; tests named KN-1 to KN-18; server races `apps/uw-platform/harness/*.pg.test.ts`, `packages/db/event-log-order.test.ts`; `pnpm verify` green with `TEST_DATABASE_URL` set.
 - A `## Step 3 evidence by requirement` table: each of KN-1 to KN-18 and DX-6, its commits (`git log --oneline` for this step) and its scenario and test files.
 - Decisions made during the build (one row each, with why and cost if wrong):
 

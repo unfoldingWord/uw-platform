@@ -12,7 +12,7 @@
     "declaration": {
       "closes": ["#12", "unfoldingWord/uw-platform#14"],
       "risks": "the board renders slower on phones",
-      "touches": "apps/uw-app/board",
+      "touches": "apps/uw-platform/board",
       "riskTier": "standard",
       "riskDomains": []
     }

@@ -8,4 +8,4 @@ docs
 .claude
 dist
 packages/ui/generated/
-apps/uw-app/generated/
+apps/uw-platform/generated/

@@ -14,7 +14,7 @@ The query engine enforces it in SQL before rows leave the database:
 - **Filter, sort and group.** Refused with `property_not_readable` unless the reader's access is `all`, so a reader cannot learn values by grouping or by narrowing a filter. `own` is not enough: filtering on it would still tell other rows apart.
 - **Rollups and computed values.** A rollup over a property the reader may not read, or a computed value with one such input, is left out of the reply, as a withheld property is.
 - **Writes.** A property the reader may not read is not writable by them, whatever their area role.
-- **Page reads.** A collection row is also a page, so `readPage` and `pageVersion` in the pages module drop every frontmatter key whose property the reader may not read on that row (`withoutWithheld` in `apps/uw-app/pages/property-rules.ts`). The page screen, the page verbs and page history never carry a withheld value either.
+- **Page reads.** A collection row is also a page, so `readPage` and `pageVersion` in the pages module drop every frontmatter key whose property the reader may not read on that row (`withoutWithheld` in `apps/uw-platform/pages/property-rules.ts`). The page screen, the page verbs and page history never carry a withheld value either.
 - **Row rules first.** A property on a typed record narrows its record's own row rule, never widens it: the directory's private columns are read only where `directory_private`'s row rule and the property rule both allow.
 
 **Rejected.**

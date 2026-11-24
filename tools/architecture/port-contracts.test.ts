@@ -27,8 +27,8 @@ const notWiredTest = `${notWiredImport} import { hubNotWired } from './hub.not-w
 
 const wired = {
   ...suite,
-  'apps/uw-app/ports/hub.not-wired.ts': '',
-  'apps/uw-app/ports/hub.contract.test.ts': notWiredTest,
+  'apps/uw-platform/ports/hub.not-wired.ts': '',
+  'apps/uw-platform/ports/hub.contract.test.ts': notWiredTest,
   'sim/adapters/hub.ts': '',
   'sim/adapters/hub.contract.test.ts': contractTest,
 };
@@ -83,9 +83,9 @@ describe('DX-3 every port has a contract run against every adapter', () => {
 
 describe('DX-3 the check refuses a misplaced file', () => {
   it('fails on an adapter root file not named for a port', () => {
-    const files = { ...wired, 'apps/uw-app/ports/helpers.ts': '' };
+    const files = { ...wired, 'apps/uw-platform/ports/helpers.ts': '' };
     expect(portContractViolations(['hub'], tree(files))).toContain(
-      'apps/uw-app/ports/helpers.ts: an adapter file must be named for its port',
+      'apps/uw-platform/ports/helpers.ts: an adapter file must be named for its port',
     );
   });
 
@@ -117,9 +117,9 @@ describe('DX-3 the contract is called with the adapter', () => {
 
   it('fails when a contract call stands in for a not-wired adapter', () => {
     const source = `${contractImport} import { hubNotWired } from './hub.not-wired.ts'; describeHubContract('x', hubNotWired);`;
-    const files = { ...wired, 'apps/uw-app/ports/hub.contract.test.ts': source };
+    const files = { ...wired, 'apps/uw-platform/ports/hub.contract.test.ts': source };
     expect(portContractViolations(['hub'], tree(files))).toContain(
-      'apps/uw-app/ports/hub.not-wired.ts: no contract test in apps/uw-app/ports/ runs it against the hub contract',
+      'apps/uw-platform/ports/hub.not-wired.ts: no contract test in apps/uw-platform/ports/ runs it against the hub contract',
     );
   });
 
@@ -139,15 +139,15 @@ describe('DX-3 a message engine turn runs the modelEngine contract beside it', (
     'packages/harness/port-contracts/model-engine.ts':
       'export function describeModelEngineContract(',
   };
-  const turnFile = 'apps/uw-app/engines/claude-messages/turn.ts';
+  const turnFile = 'apps/uw-platform/engines/claude-messages/turn.ts';
   const turnTest =
     "import { describeModelEngineContract } from '@uw/harness/port-contracts/model-engine'; import { claudeTurn } from './turn.ts'; describeModelEngineContract('x', async () => ({ engine: { turn: claudeTurn } }));";
 
   const engineImport =
     "import { describeModelEngineContract } from '@uw/harness/port-contracts/model-engine';";
   const engineAdapters = {
-    'apps/uw-app/ports/model-engine.ts': '',
-    'apps/uw-app/ports/model-engine.contract.test.ts': `${engineImport} import { platformModelEngine } from './model-engine.ts'; describeModelEngineContract('x', async () => ({ engine: platformModelEngine }));`,
+    'apps/uw-platform/ports/model-engine.ts': '',
+    'apps/uw-platform/ports/model-engine.contract.test.ts': `${engineImport} import { platformModelEngine } from './model-engine.ts'; describeModelEngineContract('x', async () => ({ engine: platformModelEngine }));`,
     'sim/adapters/model-engine.ts': '',
     'sim/adapters/model-engine.contract.test.ts': `${engineImport} import { createSimModelEngine } from './model-engine.ts'; describeModelEngineContract('x', async () => ({ engine: createSimModelEngine() }));`,
   };
@@ -157,7 +157,7 @@ describe('DX-3 a message engine turn runs the modelEngine contract beside it', (
       ...engineSuite,
       ...engineAdapters,
       [turnFile]: '',
-      'apps/uw-app/engines/claude-messages/turn.contract.test.ts': turnTest,
+      'apps/uw-platform/engines/claude-messages/turn.contract.test.ts': turnTest,
     };
     expect(portContractViolations(['modelEngine'], tree(files))).toEqual([]);
   });

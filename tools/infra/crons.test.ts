@@ -10,7 +10,7 @@ const minute = /export const MINUTE_CRON = '([^']+)';/;
 const deployed = ['staging', 'production'] as const;
 
 function registeredCron(pattern: RegExp): string {
-  const source = readFileSync('apps/uw-app/cron/registry.ts', 'utf8');
+  const source = readFileSync('apps/uw-platform/cron/registry.ts', 'utf8');
   return pattern.exec(source)?.[1] ?? '';
 }
 
@@ -25,7 +25,7 @@ function environmentIn(text: string, name: string): Block {
 }
 
 function environment(file: string, name: string): Block {
-  return environmentIn(readFileSync(`infra/uw-app/${file}`, 'utf8'), name);
+  return environmentIn(readFileSync(`infra/uw-platform/${file}`, 'utf8'), name);
 }
 
 function everyCron(text: string): unknown[] {
@@ -60,9 +60,11 @@ describe('GH-2 the deployed crons are the registered ones', () => {
 
   it('finds a cron in the live file only once the switch is on', () => {
     const twin = goLiveSwitchedOn()
-      ? readFileSync('infra/uw-app/wrangler.go-live.toml', 'utf8')
+      ? readFileSync('infra/uw-platform/wrangler.go-live.toml', 'utf8')
       : '';
-    expect(everyCron(readFileSync('infra/uw-app/wrangler.toml', 'utf8'))).toEqual(everyCron(twin));
+    expect(everyCron(readFileSync('infra/uw-platform/wrangler.toml', 'utf8'))).toEqual(
+      everyCron(twin),
+    );
   });
 
   it('flags a planted minute cron in the live file, at the top or under an environment', () => {

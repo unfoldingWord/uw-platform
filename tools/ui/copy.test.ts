@@ -12,14 +12,14 @@ const properNouns: ReadonlySet<string> = new Set([
 ]);
 const emoji = /\p{Extended_Pictographic}/u;
 const scannedFiles = [
-  /^apps\/uw-app\/views\/.+\.tsx?$/,
-  /^apps\/uw-app\/auth\/[^/]+\.tsx?$/,
-  /^apps\/uw-app\/health\/[^/]+\.tsx?$/,
+  /^apps\/uw-platform\/views\/.+\.tsx?$/,
+  /^apps\/uw-platform\/auth\/[^/]+\.tsx?$/,
+  /^apps\/uw-platform\/health\/[^/]+\.tsx?$/,
   /^packages\/ui\/components\/[^/]+\.tsx?$/,
 ];
 const scriptSources: ReadonlySet<string> = new Set(['packages/ui/components/inline-scripts.ts']);
 
-const navigationNames = 'apps/uw-app/views/parts/names.ts';
+const navigationNames = 'apps/uw-platform/views/parts/names.ts';
 
 function scanned(path: string): boolean {
   if (scriptSources.has(path) || /\.test\.tsx?$/.test(path)) return false;
@@ -98,7 +98,7 @@ const planted: readonly (readonly [string, string])[] = [
 describe('the screen copy', () => {
   it('UI-17 navigation and page names are the one place Title Case is allowed, and only in their module', () => {
     expect(scanned(navigationNames)).toBe(false);
-    expect(scanned('apps/uw-app/views/screens/home.tsx')).toBe(true);
+    expect(scanned('apps/uw-platform/views/screens/home.tsx')).toBe(true);
   });
 
   it('WB-12 screen copy is sentence case with no exclamation marks, no emoji and no first person or "the user", and unfoldingWord is camelCase', () => {
@@ -110,16 +110,16 @@ describe('the screen copy', () => {
 
   it.each(planted)('flags planted copy %s', (text, problem) => {
     const source = `export const Planted = () => <h1>${text}</h1>;`;
-    expect(copyProblems('apps/uw-app/views/screens/planted.tsx', source)).toEqual([
-      `apps/uw-app/views/screens/planted.tsx: ${problem}: ${text}`,
+    expect(copyProblems('apps/uw-platform/views/screens/planted.tsx', source)).toEqual([
+      `apps/uw-platform/views/screens/planted.tsx: ${problem}: ${text}`,
     ]);
   });
 
   it('reads the copy in the .ts parts beside the screens, and never a test file or an inline script', () => {
     const parts = [
-      'apps/uw-app/views/parts/health-words.ts',
-      'apps/uw-app/views/parts/play-evidence.ts',
-      'apps/uw-app/views/parts/costs.ts',
+      'apps/uw-platform/views/parts/health-words.ts',
+      'apps/uw-platform/views/parts/play-evidence.ts',
+      'apps/uw-platform/views/parts/costs.ts',
       'packages/ui/components/text.ts',
     ];
     expect(parts.filter(scanned)).toEqual(parts);
@@ -133,8 +133,8 @@ describe('the screen copy', () => {
   it('lets a heading of proper nouns stand, and reads string literals as well as JSX text', () => {
     const source =
       "export const label = 'Cloudflare Access';\nexport const P = () => <p>GitHub Zulip</p>;";
-    expect(copyProblems('apps/uw-app/views/screens/planted.tsx', source)).toEqual([]);
+    expect(copyProblems('apps/uw-platform/views/screens/planted.tsx', source)).toEqual([]);
     const quoted = "export const lede = 'Waiting On You';";
-    expect(copyProblems('apps/uw-app/views/screens/planted.tsx', quoted)).toHaveLength(1);
+    expect(copyProblems('apps/uw-platform/views/screens/planted.tsx', quoted)).toHaveLength(1);
   });
 });

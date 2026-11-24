@@ -1,29 +1,29 @@
 import { readFileSync } from 'node:fs';
 import { posix } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { commandRegistry } from '../../apps/uw-app/commands/registry.ts';
+import { commandRegistry } from '../../apps/uw-platform/commands/registry.ts';
 import { commandNames } from '../../packages/contracts/index.ts';
 import { repoFiles } from '../repo-files.ts';
 
-const appRoot = 'apps/uw-app/';
-const handlerRoots = ['apps/uw-app/commands/handlers/', 'apps/uw-app/commands/person/'];
-const dispatcher = 'apps/uw-app/commands/dispatch.ts';
-const commandRoutes = 'apps/uw-app/commands/routes.ts';
-const viewRoutes = 'apps/uw-app/views/routes.tsx';
+const appRoot = 'apps/uw-platform/';
+const handlerRoots = ['apps/uw-platform/commands/handlers/', 'apps/uw-platform/commands/person/'];
+const dispatcher = 'apps/uw-platform/commands/dispatch.ts';
+const commandRoutes = 'apps/uw-platform/commands/routes.ts';
+const viewRoutes = 'apps/uw-platform/views/routes.tsx';
 const routeFiles = [
-  'apps/uw-app/app.tsx',
+  'apps/uw-platform/app.tsx',
   commandRoutes,
-  'apps/uw-app/mcp/routes.ts',
-  'apps/uw-app/acl/routes.ts',
-  'apps/uw-app/agents/routes.ts',
-  'apps/uw-app/credentials/routes.ts',
-  'apps/uw-app/crosswalk/routes.ts',
-  'apps/uw-app/pages/routes.ts',
-  'apps/uw-app/collections/routes.ts',
-  'apps/uw-app/health/routes.tsx',
-  'apps/uw-app/auth/me.ts',
-  'apps/uw-app/notify/routes.ts',
-  'apps/uw-app/assets/routes.ts',
+  'apps/uw-platform/mcp/routes.ts',
+  'apps/uw-platform/acl/routes.ts',
+  'apps/uw-platform/agents/routes.ts',
+  'apps/uw-platform/credentials/routes.ts',
+  'apps/uw-platform/crosswalk/routes.ts',
+  'apps/uw-platform/pages/routes.ts',
+  'apps/uw-platform/collections/routes.ts',
+  'apps/uw-platform/health/routes.tsx',
+  'apps/uw-platform/auth/me.ts',
+  'apps/uw-platform/notify/routes.ts',
+  'apps/uw-platform/assets/routes.ts',
   viewRoutes,
 ];
 
@@ -201,11 +201,11 @@ describe('WB-1 the command routes are checked', () => {
   });
 
   it('WB-1 flags a planted handler without a builder, a planted action that is not a literal, and a planted route file', () => {
-    const bare = 'apps/uw-app/commands/handlers/bare.ts';
-    const computed = 'apps/uw-app/commands/person/computed.ts';
-    const built = 'apps/uw-app/commands/handlers/built.ts';
-    const route = 'apps/uw-app/commands/sneak.ts';
-    const binding = 'apps/uw-app/commands/sneak-binding.ts';
+    const bare = 'apps/uw-platform/commands/handlers/bare.ts';
+    const computed = 'apps/uw-platform/commands/person/computed.ts';
+    const built = 'apps/uw-platform/commands/handlers/built.ts';
+    const route = 'apps/uw-platform/commands/sneak.ts';
+    const binding = 'apps/uw-platform/commands/sneak-binding.ts';
     const read = plantedRead({
       [bare]: "export const h = { name: 'claim', action: 'write', run };",
       [computed]: "export const h = commandHandler({ name: 'pause', action: level, run });",
@@ -250,8 +250,8 @@ describe('the command route checks catch planted mistakes', () => {
       'export async function harnessEvents(c) {\n  return kernel.events.read(caller, query);\n}';
     const files = (view: string) =>
       plantedRead({
-        'apps/uw-app/commands/person/gate-view.ts': view,
-        'apps/uw-app/commands/reads.ts': events,
+        'apps/uw-platform/commands/person/gate-view.ts': view,
+        'apps/uw-platform/commands/reads.ts': events,
       });
     expect(unguardedRoutes(routes, handlerSources(routes, files(guardedView)))).toEqual([]);
     expect(unguardedRoutes(routes, handlerSources(routes, files(bareView)))).toEqual(['gateView']);
@@ -264,9 +264,9 @@ describe('the command route checks catch planted mistakes', () => {
       "routes.get('/:harness/gates/:item', gateView);",
     ].join('\n');
     const read = plantedRead({
-      'apps/uw-app/commands/person/gate-view.ts':
+      'apps/uw-platform/commands/person/gate-view.ts':
         'export async function gateView(c) {\n  return c.json(await viewOf(c));\n}',
-      'apps/uw-app/commands/reads.ts':
+      'apps/uw-platform/commands/reads.ts':
         'export async function gateView(c) {\n  return kernel.gates.view(caller, input);\n}',
     });
     expect(unguardedRoutes(routes, handlerSources(routes, read))).toEqual(['gateView']);
@@ -282,7 +282,7 @@ describe('the command route check follows imports outside the commands directory
     const guarded =
       'export async function connectLive(c) {\n  return kernel.reads.harness(caller, input);\n}';
     const bare = 'export async function connectLive(c) {\n  return stub.fetch(url);\n}';
-    const files = (live: string) => plantedRead({ 'apps/uw-app/live/connect.ts': live });
+    const files = (live: string) => plantedRead({ 'apps/uw-platform/live/connect.ts': live });
     expect(unguardedRoutes(routes, handlerSources(routes, files(guarded)))).toEqual([]);
     expect(unguardedRoutes(routes, handlerSources(routes, files(bare)))).toEqual(['connectLive']);
   });
@@ -297,9 +297,9 @@ describe('the view route check', () => {
       "routes.get('/x', sneakScreen);",
     ].join('\n');
     const read = plantedRead({
-      'apps/uw-app/views/screens/home.tsx':
+      'apps/uw-platform/views/screens/home.tsx':
         'export async function homeScreen(c) {\n  return c.html(await screen.kernel.views.waitingOn(caller));\n}',
-      'apps/uw-app/views/screens/x.tsx':
+      'apps/uw-platform/views/screens/x.tsx':
         'export async function sneakScreen(c) {\n  return c.html(await store.items());\n}',
     });
     expect(unguardedRoutes(routes, handlerSources(routes, read, viewRoutes))).toEqual([

@@ -2,7 +2,7 @@
 
 **Goal:** Stand up the frame every later step plugs into: the ten ports, `createKernel(ports)`, a platform adapter and a test adapter for every port with one shared contract suite run against each, a Store test adapter that is the same Drizzle code over an embedded Postgres (PGlite) running the real migrations, the sim (`pnpm sim -- <scenario>`, `pnpm sim -- all`), `pnpm walk -- <template>` and `pnpm trace`, all joined to `pnpm verify` and CI.
 
-**Architecture:** `packages/harness` holds the port types (`ports.ts`, a shared root), the kernel (`createKernel`), the pure walker, and one contract suite per port under `port-contracts/`. `packages/db/store/` holds the one Drizzle implementation of the Store and Grants ports; `apps/uw-app/ports/` (platform) and `sim/adapters/` (test) each bind it, so the two run the same queries and a drift fails the typecheck. Ports whose service arrives in a later step get a platform adapter that is explicitly *not wired*: every call rejects with `PortNotWiredError`, and its contract suite proves exactly that. `sim/` is a workspace package: test adapters, a `World` (one embedded Postgres clone, the ten test adapters, the kernel), scenarios named for requirement IDs, and the two CLIs. `tools/trace/` reads the PRD, the tracker, the scenario file names and the test titles.
+**Architecture:** `packages/harness` holds the port types (`ports.ts`, a shared root), the kernel (`createKernel`), the pure walker, and one contract suite per port under `port-contracts/`. `packages/db/store/` holds the one Drizzle implementation of the Store and Grants ports; `apps/uw-platform/ports/` (platform) and `sim/adapters/` (test) each bind it, so the two run the same queries and a drift fails the typecheck. Ports whose service arrives in a later step get a platform adapter that is explicitly *not wired*: every call rejects with `PortNotWiredError`, and its contract suite proves exactly that. `sim/` is a workspace package: test adapters, a `World` (one embedded Postgres clone, the ten test adapters, the kernel), scenarios named for requirement IDs, and the two CLIs. `tools/trace/` reads the PRD, the tracker, the scenario file names and the test titles.
 
 **Tech Stack:** TypeScript 6 strict, Node 22.18+ running `.ts` directly (type stripping), Vitest 4 (Workers pool and node project), Drizzle ORM 0.45 over `postgres` 3.4 and over `@electric-sql/pglite` 0.5.8 (`drizzle-orm/pglite`, `drizzle-orm/pglite/migrator`), dependency-cruiser, knip, GitHub Actions.
 
@@ -29,7 +29,7 @@
 | `pgErrorCode`, `pgConstraint` | `packages/db/errors.ts` (`@uw/db/errors`) | KN-18 `stage_edit_refused` with the database's reason, on both drivers |
 | `seedPerson`, `seedGrant`, `revokeSeededGrant` | `packages/db/test-seed.ts` (`@uw/db/test-seed`) | sim fixtures and tests |
 | `createWorld`, `World`, `SimAdapters`, `worldStart`, `defineScenario`, `Scenario`, `ScenarioReport` | `sim/world.ts`, `sim/scenario.ts` | every scenario |
-| `platformPorts(database)`, `platformKernel(database)` | `apps/uw-app/kernel.ts` | the command API (WB-1), MCP surface (AB-1), Workflows (HE-1) |
+| `platformPorts(database)`, `platformKernel(database)` | `apps/uw-platform/kernel.ts` | the command API (WB-1), MCP surface (AB-1), Workflows (HE-1) |
 
 ---
 
@@ -58,14 +58,14 @@ Every task obeys every line here. The controller passes this section to each imp
 - `packages/contracts` imports only `zod`. `packages/core` imports `packages/contracts` and `zod`. `packages/db` imports `packages/contracts`, `packages/core`, `drizzle-orm`, `postgres`, `@electric-sql/pglite` and Node built-ins.
 - `packages/harness` imports `packages/contracts` (and `packages/core` types) and nothing else: no Drizzle, Workers, network, `process`, `fetch`. The one exception: files under `packages/harness/port-contracts/` may also import `vitest` (Task 3 adds the rule). Harness `package.json` dependencies stay `@uw/*` only (its wiring test enforces this); never add `vitest` there.
 - `sim/` imports `packages/harness`, `packages/contracts`, `packages/db`, its own files and the Node built-ins `node:fs`, `node:path`, `node:url`, `node:process`, `node:assert`, `node:assert/strict`, and in tests `node:os` and `node:child_process` and nothing else; its test files may also import `vitest`. Never `drizzle-orm` or `@electric-sql/pglite` directly from `sim/`: go through `@uw/db`.
-- `apps/uw-app` is a composition root and may import `packages/harness`. No non-test file in `apps/` imports anything from `packages/harness/port-contracts/` (Vitest must never enter the Worker bundle).
+- `apps/uw-platform` is a composition root and may import `packages/harness`. No non-test file in `apps/` imports anything from `packages/harness/port-contracts/` (Vitest must never enter the Worker bundle).
 - No vendor SDK anywhere in this step.
 
 **Ports and adapters**
 
 - The ten ports, in this order and with these keys: `clock`, `ids`, `store`, `grants`, `githubFacts`, `connectors`, `modelEngine`, `hub`, `notifier`, `runs`. A port key's file name is its kebab form: `clock`, `ids`, `store`, `grants`, `github-facts`, `connectors`, `model-engine`, `hub`, `notifier`, `runs`.
 - Contract suites: `packages/harness/port-contracts/<kebab>.ts`, each exporting `describe<Pascal>Contract` (`describeClockContract`, `describeIdsContract`, `describeStoreContract`, `describeGrantsContract`, `describeGithubFactsContract`, `describeConnectorsContract`, `describeModelEngineContract`, `describeHubContract`, `describeNotifierContract`, `describeRunsContract`) and, for every port except `clock` and `ids`, `describe<Pascal>NotWired`.
-- Adapter roots: `apps/uw-app/ports/` (platform adapters) and `sim/adapters/` (test adapters). An adapter file sits directly in its root and is named `<kebab>.ts` or `<kebab>.<variant>.ts` (for example `store.not-wired.ts`). Every adapter file is imported (as `'./<file>.ts'`) by a contract test in the same directory named `*.contract.test.ts` or `*.contract.pg.test.ts`, which also imports `'@uw/harness/port-contracts/<kebab>'`. Nothing but adapters and their tests lives directly in an adapter root.
+- Adapter roots: `apps/uw-platform/ports/` (platform adapters) and `sim/adapters/` (test adapters). An adapter file sits directly in its root and is named `<kebab>.ts` or `<kebab>.<variant>.ts` (for example `store.not-wired.ts`). Every adapter file is imported (as `'./<file>.ts'`) by a contract test in the same directory named `*.contract.test.ts` or `*.contract.pg.test.ts`, which also imports `'@uw/harness/port-contracts/<kebab>'`. Nothing but adapters and their tests lives directly in an adapter root.
 - A not-wired platform adapter's every method returns `notWiredCall('<port>', '<method>')`.
 
 **Shared roots**
@@ -74,7 +74,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Dependencies**
 
-- The only new third-party package is `@electric-sql/pglite@^0.5.8` (Apache-2.0, no dependencies, runs in plain Node), in `packages/db` `dependencies` (Task 4). Workspace links added: `@uw/contracts` in `packages/harness` (Task 1); `@uw/harness` in `apps/uw-app` (Task 3); `@uw/harness` (Task 3), `@uw/db` (Task 5) and `@uw/contracts` (Task 11) in `sim`. Add a link in the task that first imports it, never earlier (knip fails on an unused dependency). After any `package.json` change run `pnpm install` and commit `pnpm-lock.yaml` with it.
+- The only new third-party package is `@electric-sql/pglite@^0.5.8` (Apache-2.0, no dependencies, runs in plain Node), in `packages/db` `dependencies` (Task 4). Workspace links added: `@uw/contracts` in `packages/harness` (Task 1); `@uw/harness` in `apps/uw-platform` (Task 3); `@uw/harness` (Task 3), `@uw/db` (Task 5) and `@uw/contracts` (Task 11) in `sim`. Add a link in the task that first imports it, never earlier (knip fails on an unused dependency). After any `package.json` change run `pnpm install` and commit `pnpm-lock.yaml` with it.
 - Do not export what has no consumer yet; export in the task that consumes it. Exports listed in a package's `package.json` `exports` are entries and count as consumed.
 
 **Tests**
@@ -123,16 +123,16 @@ packages/harness/templates.ts                                  Task 11
 pnpm-workspace.yaml, knip.json, sim/package.json, sim/tsconfig.json   Task 3
 .dependency-cruiser.mjs, tools/architecture/rules.test.ts      Task 3
 AGENTS.md                                                      Task 3 (rule 2), Task 13 (cockpit)
-apps/uw-app/package.json                                       Task 3
-apps/uw-app/ports/*                                            Task 3, 5, 6, 7, 8
+apps/uw-platform/package.json                                       Task 3
+apps/uw-platform/ports/*                                            Task 3, 5, 6, 7, 8
 sim/adapters/*                                                 Task 3, 5, 6, 7, 8
 packages/db/package.json, journal.ts, embedded.ts, any-database.ts, migration-ledger.ts, errors.ts, test-targets.ts, both-targets.test.ts   Task 4
-apps/uw-app/http/pg-errors.ts (deleted), acl/grant-commands.ts, pages/store.ts   Task 4, 6
+apps/uw-platform/http/pg-errors.ts (deleted), acl/grant-commands.ts, pages/store.ts   Task 4, 6
 packages/db/store/{index,store}.ts, store.test.ts, store-lock.test.ts   Task 5
 packages/db/store/grants.ts, packages/db/test-seed.ts          Task 6
-apps/uw-app/acl/grant-store.ts (deleted), auth/principal-middleware.ts   Task 6
+apps/uw-platform/acl/grant-store.ts (deleted), auth/principal-middleware.ts   Task 6
 docs/exceptions.md                                             Task 6
-apps/uw-app/kernel.ts, kernel.test.ts, kernel.pg.test.ts       Task 9
+apps/uw-platform/kernel.ts, kernel.test.ts, kernel.pg.test.ts       Task 9
 tools/architecture/port-contracts.ts, port-contracts.test.ts   Task 10 (DX-3)
 sim/world.ts, sim/scenario.ts, sim/runner/*, sim/cli/*, sim/scenarios/*   Task 11
 eslint.config.ts                                               Task 11
@@ -402,7 +402,7 @@ Append to `CONTEXT.md`, in the section "How work runs", directly after the **Por
 
 ```markdown
 **Adapter**:
-One implementation of a port. A **platform adapter** lives in `apps/uw-app/ports/` and reaches the real service; a **test adapter** lives in `sim/adapters/` and is scripted or records what it was asked. The Store and Grants adapters bind the one Drizzle implementation in `packages/db/store/`, so both run the same queries. An adapter whose service is built in a later step is **not wired**: every call rejects with `PortNotWiredError`, which the kernel reports as the refusal `not_wired`.
+One implementation of a port. A **platform adapter** lives in `apps/uw-platform/ports/` and reaches the real service; a **test adapter** lives in `sim/adapters/` and is scripted or records what it was asked. The Store and Grants adapters bind the one Drizzle implementation in `packages/db/store/`, so both run the same queries. An adapter whose service is built in a later step is **not wired**: every call rejects with `PortNotWiredError`, which the kernel reports as the refusal `not_wired`.
 _Avoid_: driver, implementation, mock, fake, stub (say "not wired")
 
 **Port contract**:
@@ -796,28 +796,28 @@ git commit -m "feat(harness): createKernel(ports) with health over the clock and
 
 **Files:**
 - Modify: `AGENTS.md` (own commit, shared root)
-- Modify: `pnpm-workspace.yaml`, `knip.json`, `.dependency-cruiser.mjs`, `tools/architecture/rules.test.ts`, `apps/uw-app/package.json`, `packages/harness/package.json`
+- Modify: `pnpm-workspace.yaml`, `knip.json`, `.dependency-cruiser.mjs`, `tools/architecture/rules.test.ts`, `apps/uw-platform/package.json`, `packages/harness/package.json`
 - Create: `sim/package.json`, `sim/tsconfig.json`
 - Create: `packages/harness/port-contracts/clock.ts`, `packages/harness/port-contracts/ids.ts`
-- Create: `apps/uw-app/ports/clock.ts`, `apps/uw-app/ports/ids.ts`, `apps/uw-app/ports/clock.contract.test.ts`, `apps/uw-app/ports/ids.contract.test.ts`
+- Create: `apps/uw-platform/ports/clock.ts`, `apps/uw-platform/ports/ids.ts`, `apps/uw-platform/ports/clock.contract.test.ts`, `apps/uw-platform/ports/ids.contract.test.ts`
 - Create: `sim/adapters/clock.ts`, `sim/adapters/ids.ts`, `sim/adapters/clock.contract.test.ts`, `sim/adapters/ids.contract.test.ts`, `sim/adapters/clock-and-ids.test.ts`
 
 **Interfaces:**
 - Consumes: `Clock`, `Ids` (Task 2).
-- Produces: `describeClockContract(adapter: string, make: () => Clock): void`, `describeIdsContract(adapter: string, make: () => Ids): void`; `systemClock: Clock`, `randomIds: Ids` (`apps/uw-app/ports/`); `createSimClock(start: Date): SimClock` with `SimClock = Clock & { set(at: Date): void; advance(milliseconds: number): void }`; `createSimIds(): SimIds` with `SimIds = Ids & { issued(): number }`.
+- Produces: `describeClockContract(adapter: string, make: () => Clock): void`, `describeIdsContract(adapter: string, make: () => Ids): void`; `systemClock: Clock`, `randomIds: Ids` (`apps/uw-platform/ports/`); `createSimClock(start: Date): SimClock` with `SimClock = Clock & { set(at: Date): void; advance(milliseconds: number): void }`; `createSimIds(): SimIds` with `SimIds = Ids & { issued(): number }`.
 
 - [ ] **Step 1: The rule text, in its own commit**
 
 In `AGENTS.md` section 4, Rule 1, replace the "New port" line with:
 
 ```markdown
-- New port: `packages/harness/ports.ts`, then the platform adapter in `apps/uw-app/ports/`, the test adapter in `sim/adapters/` and the port's contract suite in `packages/harness/port-contracts/` with a contract test beside each adapter, together, never one without the others. A port whose service is built in a later step gets a platform adapter that is not wired, and its contract test proves that.
+- New port: `packages/harness/ports.ts`, then the platform adapter in `apps/uw-platform/ports/`, the test adapter in `sim/adapters/` and the port's contract suite in `packages/harness/port-contracts/` with a contract test beside each adapter, together, never one without the others. A port whose service is built in a later step gets a platform adapter that is not wired, and its contract test proves that.
 ```
 
-In Rule 2, replace the bullet that ends "nothing outside `apps/uw-app` and `sim/adapters` implements one." with:
+In Rule 2, replace the bullet that ends "nothing outside `apps/uw-platform` and `sim/adapters` implements one." with:
 
 ```markdown
-- Application code reaches Postgres, GitHub, a model, the hub or a notifier only through a port; nothing outside `apps/uw-app`, `sim/adapters` and `packages/db/store` implements one. `packages/db/store` holds the one Drizzle implementation of the Store and Grants ports, which the platform adapter and the sim's test adapter both bind, because both must run the same queries (PRD DX-2).
+- Application code reaches Postgres, GitHub, a model, the hub or a notifier only through a port; nothing outside `apps/uw-platform`, `sim/adapters` and `packages/db/store` implements one. `packages/db/store` holds the one Drizzle implementation of the Store and Grants ports, which the platform adapter and the sim's test adapter both bind, because both must run the same queries (PRD DX-2).
 ```
 
 and replace the bullet that begins "`sim/*` imports" with:
@@ -859,7 +859,7 @@ Add to the `refusals` table:
   ],
   [
     'a non-test app file into a port contract',
-    'apps/uw-app/a.ts',
+    'apps/uw-platform/a.ts',
     "import '../../packages/harness/port-contracts/b.ts';",
     'port-contracts-only-in-tests',
   ],
@@ -963,7 +963,7 @@ Keep the existing `sim-imports-harness-contracts-and-db-only` rule (it still ref
 }
 ```
 
-`knip.json` `workspaces` gains `"sim": { "entry": ["cli/*.ts", "scenarios/*.ts", "**/*.test.ts"], "project": ["**/*.ts"] }`. `packages/harness/package.json` `exports` gains `"./port-contracts/*": "./port-contracts/*.ts"`. `apps/uw-app/package.json` `dependencies` gains `"@uw/harness": "workspace:*"`. Run `pnpm install`.
+`knip.json` `workspaces` gains `"sim": { "entry": ["cli/*.ts", "scenarios/*.ts", "**/*.test.ts"], "project": ["**/*.ts"] }`. `packages/harness/package.json` `exports` gains `"./port-contracts/*": "./port-contracts/*.ts"`. `apps/uw-platform/package.json` `dependencies` gains `"@uw/harness": "workspace:*"`. Run `pnpm install`.
 
 If knip reports `vitest` as an unlisted dependency of `packages/harness` (the port contracts import it), add `"ignoreDependencies": ["vitest"]` to the `packages/*` workspace in `knip.json`; never add `vitest` to the harness `package.json` (its wiring test allows `@uw/*` only).
 
@@ -1023,8 +1023,8 @@ export function describeIdsContract(adapter: string, make: () => Ids): void {
 
 Contract tests (one line of wiring each):
 
-- `apps/uw-app/ports/clock.contract.test.ts`: `import { describeClockContract } from '@uw/harness/port-contracts/clock'; import { systemClock } from './clock.ts'; describeClockContract('the system clock', () => systemClock);`
-- `apps/uw-app/ports/ids.contract.test.ts`: the same with `describeIdsContract('crypto.randomUUID', () => randomIds)` importing `./ids.ts`.
+- `apps/uw-platform/ports/clock.contract.test.ts`: `import { describeClockContract } from '@uw/harness/port-contracts/clock'; import { systemClock } from './clock.ts'; describeClockContract('the system clock', () => systemClock);`
+- `apps/uw-platform/ports/ids.contract.test.ts`: the same with `describeIdsContract('crypto.randomUUID', () => randomIds)` importing `./ids.ts`.
 - `sim/adapters/clock.contract.test.ts`: `describeClockContract('the sim clock', () => createSimClock(new Date('2026-10-01T09:00:00.000Z')));` importing `./clock.ts`.
 - `sim/adapters/ids.contract.test.ts`: `describeIdsContract('the sequential sim ids', () => createSimIds());` importing `./ids.ts`.
 
@@ -1036,9 +1036,9 @@ Run: `pnpm exec vitest run --project node sim` → FAIL (adapters missing).
 
 - [ ] **Step 6: Implement the adapters**
 
-`apps/uw-app/ports/clock.ts`: `import type { Clock } from '@uw/harness'; export const systemClock: Clock = { now: () => new Date() };`
+`apps/uw-platform/ports/clock.ts`: `import type { Clock } from '@uw/harness'; export const systemClock: Clock = { now: () => new Date() };`
 
-`apps/uw-app/ports/ids.ts`: `import type { Ids } from '@uw/harness'; export const randomIds: Ids = { next: () => crypto.randomUUID() };`
+`apps/uw-platform/ports/ids.ts`: `import type { Ids } from '@uw/harness'; export const randomIds: Ids = { next: () => crypto.randomUUID() };`
 
 `sim/adapters/clock.ts`:
 
@@ -1086,7 +1086,7 @@ export function createSimIds(): SimIds {
 
 - [ ] **Step 7: Run the tests**
 
-Run: `pnpm exec vitest run --project node sim tools/architecture && pnpm exec vitest run --project workers apps/uw-app/ports`
+Run: `pnpm exec vitest run --project node sim tools/architecture && pnpm exec vitest run --project workers apps/uw-platform/ports`
 Expected: PASS. Then `pnpm architecture` → no violations (the real repo obeys the new rules).
 
 - [ ] **Step 8: Verify and commit**
@@ -1094,7 +1094,7 @@ Expected: PASS. Then `pnpm architecture` → no violations (the real repo obeys 
 Run `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify` → green.
 
 ```bash
-git add pnpm-workspace.yaml pnpm-lock.yaml knip.json .dependency-cruiser.mjs tools/architecture/rules.test.ts sim apps/uw-app/package.json apps/uw-app/ports packages/harness
+git add pnpm-workspace.yaml pnpm-lock.yaml knip.json .dependency-cruiser.mjs tools/architecture/rules.test.ts sim apps/uw-platform/package.json apps/uw-platform/ports packages/harness
 git commit -m "feat(sim): the sim workspace, and the clock and ids ports with a contract run against both adapters" -m "dependency-cruiser now holds sim to the harness, contracts, db and Node built-ins, lets only port contracts import Vitest outside tests, and keeps port contracts out of non-test app code.
 
 DX-3 DX-4"
@@ -1109,8 +1109,8 @@ DX-3 DX-4"
 **Files:**
 - Modify: `packages/db/package.json`
 - Create: `packages/db/journal.ts`, `packages/db/embedded.ts`, `packages/db/any-database.ts`, `packages/db/migration-ledger.ts`, `packages/db/errors.ts`, `packages/db/test-targets.ts`, `packages/db/both-targets.test.ts`
-- Delete: `apps/uw-app/http/pg-errors.ts` (moved to `packages/db/errors.ts`; grep shows its only importers are `apps/uw-app/acl/grant-commands.ts` and `apps/uw-app/pages/store.ts`)
-- Modify: `apps/uw-app/acl/grant-commands.ts`, `apps/uw-app/pages/store.ts` (import path only)
+- Delete: `apps/uw-platform/http/pg-errors.ts` (moved to `packages/db/errors.ts`; grep shows its only importers are `apps/uw-platform/acl/grant-commands.ts` and `apps/uw-platform/pages/store.ts`)
+- Modify: `apps/uw-platform/acl/grant-commands.ts`, `apps/uw-platform/pages/store.ts` (import path only)
 
 **Interfaces:**
 - Consumes: `schema.ts`, `migrationsFolder` (`packages/db/migrate.ts`), `createClient`, `createMigratedDatabase`, `testServer`.
@@ -1284,7 +1284,7 @@ export async function closeEmbeddedTemplate(): Promise<void> {
 
 One migrated template per process, cloned per database: migrating takes about 2 s, a clone about 0.4 s (measured). `packages/db/migrate.ts` imports `postgres`; that is harmless here (nothing connects) — if knip or the Worker build ever objects, move `migrationsFolder` to its own file.
 
-`packages/db/errors.ts` (the old `apps/uw-app/http/pg-errors.ts`, made driver-neutral):
+`packages/db/errors.ts` (the old `apps/uw-platform/http/pg-errors.ts`, made driver-neutral):
 
 ```ts
 function field(error: unknown, key: string): string | null {
@@ -1309,7 +1309,7 @@ export function pgConstraint(error: unknown): string | null {
 }
 ```
 
-postgres.js reports `constraint_name`; PGlite reports `constraint` (both measured, wrapped by drizzle's `DrizzleQueryError` as `cause`). Delete `apps/uw-app/http/pg-errors.ts`; in `apps/uw-app/acl/grant-commands.ts` and `apps/uw-app/pages/store.ts` replace `from '../http/pg-errors.ts'` with `from '@uw/db/errors'`. Grep `pg-errors` afterwards: zero references outside `dist/`.
+postgres.js reports `constraint_name`; PGlite reports `constraint` (both measured, wrapped by drizzle's `DrizzleQueryError` as `cause`). Delete `apps/uw-platform/http/pg-errors.ts`; in `apps/uw-platform/acl/grant-commands.ts` and `apps/uw-platform/pages/store.ts` replace `from '../http/pg-errors.ts'` with `from '@uw/db/errors'`. Grep `pg-errors` afterwards: zero references outside `dist/`.
 
 `packages/db/test-targets.ts`:
 
@@ -1348,15 +1348,15 @@ export const databaseTargets: readonly DatabaseTarget[] = testServer
 
 - [ ] **Step 4: Run the tests**
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm exec vitest run --project node packages/db apps/uw-app/acl apps/uw-app/pages`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm exec vitest run --project node packages/db apps/uw-platform/acl apps/uw-platform/pages`
 Expected: PASS, with `both-targets.test.ts` reporting both `embedded` and `server` cases.
 
 - [ ] **Step 5: Verify and commit**
 
-Run `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify` → green. Check that the Worker build (`pnpm build`) does not bundle PGlite: `grep -c pglite apps/uw-app/dist/index.js` prints `0`.
+Run `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify` → green. Check that the Worker build (`pnpm build`) does not bundle PGlite: `grep -c pglite apps/uw-platform/dist/index.js` prints `0`.
 
 ```bash
-git add packages/db apps/uw-app/http apps/uw-app/acl/grant-commands.ts apps/uw-app/pages/store.ts pnpm-lock.yaml
+git add packages/db apps/uw-platform/http apps/uw-platform/acl/grant-commands.ts apps/uw-platform/pages/store.ts pnpm-lock.yaml
 git commit -m "feat(db): an embedded Postgres running the real migrations, and one helper to run a test on both databases" -m "PGlite is cloned from one migrated template per process. Postgres error fields are read the same way on both drivers.
 
 DX-2 DX-6"
@@ -1372,12 +1372,12 @@ DX-2 DX-6"
 - Create: `packages/db/store/store.ts`, `packages/db/store/index.ts`, `packages/db/store/store.test.ts`, `packages/db/store/store-lock.test.ts`
 - Modify: `packages/db/package.json` (export `"./store": "./store/index.ts"`), `sim/package.json` (add `"@uw/db": "workspace:*"`)
 - Create: `packages/harness/port-contracts/not-wired-cases.ts`, `packages/harness/port-contracts/store.ts`
-- Create: `apps/uw-app/ports/store.ts`, `apps/uw-app/ports/store.not-wired.ts`, `apps/uw-app/ports/store.contract.pg.test.ts`, `apps/uw-app/ports/not-wired.contract.test.ts`
+- Create: `apps/uw-platform/ports/store.ts`, `apps/uw-platform/ports/store.not-wired.ts`, `apps/uw-platform/ports/store.contract.pg.test.ts`, `apps/uw-platform/ports/not-wired.contract.test.ts`
 - Create: `sim/adapters/store.ts`, `sim/adapters/store.contract.test.ts`
 
 **Interfaces:**
 - Consumes: `AnyDatabase`, `AnyExecutor`, `appliedMigrations` (Task 4); `Store`, `StoreTransaction`, `notWiredCall`, `PortName` (Task 2).
-- Produces: `createDrizzleStore(db: AnyDatabase): DrizzleStore`, `DrizzleStore`, `DrizzleTransaction`, `executorOf(tx: DrizzleTransaction): AnyExecutor` (`@uw/db/store`); `describeNotWired(port: PortName, adapter: string, target: object, methods: Readonly<Record<string, true>>): void`; `describeStoreContract(adapter: string, open: () => Promise<StoreSubject>): void`, `describeStoreNotWired(adapter: string, store: Store): void`, `StoreSubject = { store: Store; expectedMigrations: readonly number[]; close(): Promise<void> }`; `platformStore(db: Database): Store`, `storeNotWired: Store` (`apps/uw-app/ports/`); `createSimStore(database: EmbeddedDatabase): Store` (`sim/adapters/store.ts`).
+- Produces: `createDrizzleStore(db: AnyDatabase): DrizzleStore`, `DrizzleStore`, `DrizzleTransaction`, `executorOf(tx: DrizzleTransaction): AnyExecutor` (`@uw/db/store`); `describeNotWired(port: PortName, adapter: string, target: object, methods: Readonly<Record<string, true>>): void`; `describeStoreContract(adapter: string, open: () => Promise<StoreSubject>): void`, `describeStoreNotWired(adapter: string, store: Store): void`, `StoreSubject = { store: Store; expectedMigrations: readonly number[]; close(): Promise<void> }`; `platformStore(db: Database): Store`, `storeNotWired: Store` (`apps/uw-platform/ports/`); `createSimStore(database: EmbeddedDatabase): Store` (`sim/adapters/store.ts`).
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1490,7 +1490,7 @@ describeStoreContract('the embedded Postgres store', async () => {
 });
 ```
 
-`apps/uw-app/ports/store.contract.pg.test.ts`:
+`apps/uw-platform/ports/store.contract.pg.test.ts`:
 
 ```ts
 import { describe } from 'vitest';
@@ -1516,13 +1516,13 @@ describe.skipIf(!testServer)('DX-3 the platform store on Postgres', () => {
 });
 ```
 
-`apps/uw-app/ports/not-wired.contract.test.ts` (Workers pool; later tasks add one line per not-wired adapter):
+`apps/uw-platform/ports/not-wired.contract.test.ts` (Workers pool; later tasks add one line per not-wired adapter):
 
 ```ts
 import { describeStoreNotWired } from '@uw/harness/port-contracts/store';
 import { storeNotWired } from './store.not-wired.ts';
 
-describeStoreNotWired('uw-app with no database', storeNotWired);
+describeStoreNotWired('uw-platform with no database', storeNotWired);
 ```
 
 `packages/db/store/store.test.ts`:
@@ -1707,7 +1707,7 @@ export type { DrizzleStore, DrizzleTransaction } from './store.ts';
 
 Export `"./store": "./store/index.ts"` from `packages/db/package.json`. The barrel never imports `embedded.ts`, so the Worker never bundles PGlite.
 
-`apps/uw-app/ports/store.ts`:
+`apps/uw-platform/ports/store.ts`:
 
 ```ts
 import type { Database } from '@uw/db/client';
@@ -1719,7 +1719,7 @@ export function platformStore(db: Database): Store {
 }
 ```
 
-`apps/uw-app/ports/store.not-wired.ts`:
+`apps/uw-platform/ports/store.not-wired.ts`:
 
 ```ts
 import { notWiredCall, type Store } from '@uw/harness';
@@ -1746,7 +1746,7 @@ The `Store` return annotation on both adapters is where a drift between `Drizzle
 
 - [ ] **Step 3: Run the tests**
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm exec vitest run --project node packages/db sim apps/uw-app/ports/store.contract.pg.test.ts && pnpm exec vitest run --project workers apps/uw-app/ports`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm exec vitest run --project node packages/db sim apps/uw-platform/ports/store.contract.pg.test.ts && pnpm exec vitest run --project workers apps/uw-platform/ports`
 Expected: PASS; the lock race and the platform store contract ran (not skipped).
 
 - [ ] **Step 4: Verify and commit**
@@ -1754,7 +1754,7 @@ Expected: PASS; the lock race and the platform store contract ran (not skipped).
 Run `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify` → green.
 
 ```bash
-git add packages/db packages/harness/port-contracts apps/uw-app/ports sim pnpm-lock.yaml
+git add packages/db packages/harness/port-contracts apps/uw-platform/ports sim pnpm-lock.yaml
 git commit -m "feat(db): one Drizzle store for both adapters, with its port contract on the embedded Postgres and the server" -m "DX-2 DX-3 DX-6"
 ```
 
@@ -1767,10 +1767,10 @@ git commit -m "feat(db): one Drizzle store for both adapters, with its port cont
 **Files:**
 - Create: `packages/db/store/grants.ts`, `packages/db/test-seed.ts`
 - Modify: `packages/db/store/index.ts`, `packages/db/package.json` (export `"./test-seed": "./test-seed.ts"`)
-- Delete: `apps/uw-app/acl/grant-store.ts` (its three functions move to `packages/db/store/grants.ts`; grep shows its only importers are `apps/uw-app/acl/grant-commands.ts` and `apps/uw-app/auth/principal-middleware.ts`)
-- Modify: `apps/uw-app/acl/grant-commands.ts`, `apps/uw-app/auth/principal-middleware.ts` (import from `@uw/db/store`)
+- Delete: `apps/uw-platform/acl/grant-store.ts` (its three functions move to `packages/db/store/grants.ts`; grep shows its only importers are `apps/uw-platform/acl/grant-commands.ts` and `apps/uw-platform/auth/principal-middleware.ts`)
+- Modify: `apps/uw-platform/acl/grant-commands.ts`, `apps/uw-platform/auth/principal-middleware.ts` (import from `@uw/db/store`)
 - Create: `packages/harness/port-contracts/grants.ts`
-- Create: `apps/uw-app/ports/grants.ts`, `apps/uw-app/ports/grants.not-wired.ts`, `apps/uw-app/ports/grants.contract.pg.test.ts`; modify `apps/uw-app/ports/not-wired.contract.test.ts`
+- Create: `apps/uw-platform/ports/grants.ts`, `apps/uw-platform/ports/grants.not-wired.ts`, `apps/uw-platform/ports/grants.contract.pg.test.ts`; modify `apps/uw-platform/ports/not-wired.contract.test.ts`
 - Create: `sim/adapters/grants.ts`, `sim/adapters/grants.contract.test.ts`
 - Modify: `docs/exceptions.md`
 
@@ -1784,7 +1784,7 @@ In `docs/exceptions.md` add a row:
 
 `| 2026-10-01 | Rule 3: each table is written by exactly one module | packages/db/test-seed.ts | Tests and the sim need people and grants in a database before the code under test runs, and the owning commands (people directory, grants command) need a principal and a request to run. The helpers write only fixture rows, are imported only by test files and sim/, and never run against a platform database. | Revisit if a non-test, non-sim file imports @uw/db/test-seed. |`
 
-In the same file, change the **Review** cell of the six step-1 rows that say "Revisit when the Store port lands in step 2" to: `Revisited 2026-10-01 (step 2): kept. The Store port carries what the kernel reaches; this is a platform module, not kernel code. Revisit when a kernel module needs this table.` For the `apps/uw-app/acl/grant-store.ts` row, change the **File** cell to `packages/db/store/grants.ts (was apps/uw-app/acl/grant-store.ts)` and the **Review** cell to `Superseded 2026-10-01 (step 2): the read is now the shared Drizzle implementation of the Grants port (AGENTS.md rule 2).`
+In the same file, change the **Review** cell of the six step-1 rows that say "Revisit when the Store port lands in step 2" to: `Revisited 2026-10-01 (step 2): kept. The Store port carries what the kernel reaches; this is a platform module, not kernel code. Revisit when a kernel module needs this table.` For the `apps/uw-platform/acl/grant-store.ts` row, change the **File** cell to `packages/db/store/grants.ts (was apps/uw-platform/acl/grant-store.ts)` and the **Review** cell to `Superseded 2026-10-01 (step 2): the read is now the shared Drizzle implementation of the Grants port (AGENTS.md rule 2).`
 
 - [ ] **Step 2: Write the failing tests**
 
@@ -1898,11 +1898,11 @@ describeGrantsContract('the embedded Postgres grants', async () => {
 });
 ```
 
-`apps/uw-app/ports/grants.contract.pg.test.ts`: the same shape as `store.contract.pg.test.ts` (Task 5): inside `describe.skipIf(!testServer)('DX-3 the platform grants on Postgres', ...)`, call `describeGrantsContract('the Drizzle grants over postgres.js', ...)` with `grants: platformGrants(db)`, `store: platformStore(db)` (import `./store.ts`), the seed functions over `db`, and a `close` that ends the client and drops the database.
+`apps/uw-platform/ports/grants.contract.pg.test.ts`: the same shape as `store.contract.pg.test.ts` (Task 5): inside `describe.skipIf(!testServer)('DX-3 the platform grants on Postgres', ...)`, call `describeGrantsContract('the Drizzle grants over postgres.js', ...)` with `grants: platformGrants(db)`, `store: platformStore(db)` (import `./store.ts`), the seed functions over `db`, and a `close` that ends the client and drops the database.
 
-`apps/uw-app/ports/not-wired.contract.test.ts` gains `describeGrantsNotWired('uw-app with no database', grantsNotWired);` importing `./grants.not-wired.ts`.
+`apps/uw-platform/ports/not-wired.contract.test.ts` gains `describeGrantsNotWired('uw-platform with no database', grantsNotWired);` importing `./grants.not-wired.ts`.
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm exec vitest run --project node sim/adapters/grants.contract.test.ts apps/uw-app/ports` → FAIL (modules missing).
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm exec vitest run --project node sim/adapters/grants.contract.test.ts apps/uw-platform/ports` → FAIL (modules missing).
 
 - [ ] **Step 3: Implement**
 
@@ -1966,7 +1966,7 @@ Called with no `at`, `liveGrant` keeps the database clock, so the step-1 callers
 
 `packages/db/store/index.ts` gains `export { createDrizzleGrants, liveGrant, resolveGrants, toGrant } from './grants.ts'; export type { DrizzleGrants, GrantReadOptions } from './grants.ts';`.
 
-Delete `apps/uw-app/acl/grant-store.ts`. In `apps/uw-app/acl/grant-commands.ts` replace `import { liveGrant, toGrant } from './grant-store.ts';` with `import { liveGrant, toGrant } from '@uw/db/store';`; in `apps/uw-app/auth/principal-middleware.ts` replace `import { resolveGrants } from '../acl/grant-store.ts';` with `import { resolveGrants } from '@uw/db/store';`. Grep `grant-store` afterwards: no reference outside `dist/` and `docs/` history rows.
+Delete `apps/uw-platform/acl/grant-store.ts`. In `apps/uw-platform/acl/grant-commands.ts` replace `import { liveGrant, toGrant } from './grant-store.ts';` with `import { liveGrant, toGrant } from '@uw/db/store';`; in `apps/uw-platform/auth/principal-middleware.ts` replace `import { resolveGrants } from '../acl/grant-store.ts';` with `import { resolveGrants } from '@uw/db/store';`. Grep `grant-store` afterwards: no reference outside `dist/` and `docs/` history rows.
 
 `packages/db/test-seed.ts`:
 
@@ -2010,11 +2010,11 @@ export async function revokeSeededGrant(db: AnyExecutor, grantId: string, at: Da
 }
 ```
 
-`apps/uw-app/ports/grants.ts`: `export function platformGrants(db: Database): Grants { return createDrizzleGrants(db); }`. `apps/uw-app/ports/grants.not-wired.ts`: `export const grantsNotWired: Grants = { resolve: () => notWiredCall('grants', 'resolve'), lockAndReread: () => notWiredCall('grants', 'lockAndReread') };`. `sim/adapters/grants.ts`: `export function createSimGrants(database: EmbeddedDatabase): Grants { return createDrizzleGrants(database.db); }`.
+`apps/uw-platform/ports/grants.ts`: `export function platformGrants(db: Database): Grants { return createDrizzleGrants(db); }`. `apps/uw-platform/ports/grants.not-wired.ts`: `export const grantsNotWired: Grants = { resolve: () => notWiredCall('grants', 'resolve'), lockAndReread: () => notWiredCall('grants', 'lockAndReread') };`. `sim/adapters/grants.ts`: `export function createSimGrants(database: EmbeddedDatabase): Grants { return createDrizzleGrants(database.db); }`.
 
 - [ ] **Step 4: Run the tests**
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm exec vitest run --project node sim packages/db apps/uw-app && pnpm exec vitest run --project workers apps/uw-app`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm exec vitest run --project node sim packages/db apps/uw-platform && pnpm exec vitest run --project workers apps/uw-platform`
 Expected: PASS, including every step-1 `acl` and `auth` pg test (behaviour unchanged) and `tools/architecture/owners.test.ts`.
 
 - [ ] **Step 5: Verify and commit**
@@ -2022,8 +2022,8 @@ Expected: PASS, including every step-1 `acl` and `auth` pg test (behaviour uncha
 Run `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify` → green.
 
 ```bash
-git add docs/exceptions.md packages/db packages/harness/port-contracts apps/uw-app sim pnpm-lock.yaml
-git commit -m "feat(db): the grants port runs the platform's queries on both databases and judges expiry at the kernel's instant" -m "The three grant reads move from apps/uw-app/acl/grant-store.ts to packages/db/store/grants.ts so the sim runs the same SQL. Fixture seeding is recorded in docs/exceptions.md.
+git add docs/exceptions.md packages/db packages/harness/port-contracts apps/uw-platform sim pnpm-lock.yaml
+git commit -m "feat(db): the grants port runs the platform's queries on both databases and judges expiry at the kernel's instant" -m "The three grant reads move from apps/uw-platform/acl/grant-store.ts to packages/db/store/grants.ts so the sim runs the same SQL. Fixture seeding is recorded in docs/exceptions.md.
 
 DX-2 DX-3"
 ```
@@ -2037,7 +2037,7 @@ DX-2 DX-3"
 **Files:**
 - Create: `packages/harness/port-contracts/github-facts.ts`, `connectors.ts`, `model-engine.ts`
 - Create: `sim/adapters/github-facts.ts`, `connectors.ts`, `model-engine.ts`, and `sim/adapters/github-facts.contract.test.ts`, `connectors.contract.test.ts`, `model-engine.contract.test.ts`
-- Create: `apps/uw-app/ports/github-facts.not-wired.ts`, `connectors.not-wired.ts`, `model-engine.not-wired.ts`; modify `apps/uw-app/ports/not-wired.contract.test.ts`
+- Create: `apps/uw-platform/ports/github-facts.not-wired.ts`, `connectors.not-wired.ts`, `model-engine.not-wired.ts`; modify `apps/uw-platform/ports/not-wired.contract.test.ts`
 
 **Interfaces:**
 - Consumes: `GitHubFacts`, `PullRequestFacts`, `PullRequestRef`, `Connectors`, `ConnectorRequest`, `ConnectorOutcome`, `EffectConnector`, `ModelEngine`, `TurnRequest`, `TurnResult`, `ToolOutsideToolsetError`, `notWiredCall` (Task 2); `describeNotWired` (Task 5); `connectorSchema` from `@uw/contracts`.
@@ -2046,7 +2046,7 @@ DX-2 DX-3"
   - `describeConnectorsContract(adapter, open: () => Promise<ConnectorsSubject>)`, `ConnectorsSubject = { connectors: Connectors; refuseNext(connector: EffectConnector, reason: string): Promise<void> }`, `describeConnectorsNotWired(adapter, connectors)`.
   - `describeModelEngineContract(adapter, open: () => Promise<ModelEngineSubject>)`, `ModelEngineSubject = { engine: ModelEngine; respondNextWith(result: TurnResult): Promise<void> }`, `describeModelEngineNotWired(adapter, engine)`.
   - `createSimGitHubFacts(): SimGitHubFacts` (`GitHubFacts & { given(facts: PullRequestFacts): void }`); `createSimConnectors(): SimConnectors` (`Connectors & { calls(): readonly ConnectorRequest[]; refuseNext(connector: EffectConnector, reason: string): void }`); `createSimModelEngine(): SimModelEngine` (`ModelEngine & { respondNextWith(result: TurnResult): void; pending(): number }`).
-  - `githubFactsNotWired`, `connectorsNotWired`, `modelEngineNotWired` (`apps/uw-app/ports/`).
+  - `githubFactsNotWired`, `connectorsNotWired`, `modelEngineNotWired` (`apps/uw-platform/ports/`).
 
 - [ ] **Step 1: Write the contract suites (the failing tests)**
 
@@ -2245,12 +2245,12 @@ describeConnectorsContract('the recording sim connectors', async () => {
 
 and likewise `github-facts.contract.test.ts` (`facts`, `given: async (f) => facts.given(f)`) and `model-engine.contract.test.ts` (`engine`, `respondNextWith: async (r) => engine.respondNextWith(r)`). Add to `sim/adapters/` a unit test `sim/adapters/recording-adapters.test.ts` (`describe('DX-4 the recording sim adapters')`): `calls()` returns every request in order and a caller mutating the returned array or a returned request does not change the next `calls()`; a `refuseNext` refusal applies once, then the connector succeeds again; `createSimGitHubFacts().pullRequest` returns a copy (mutating the answer does not change the next answer); `createSimModelEngine()` with nothing scripted returns `{ toolCalls: [], text: null, usage: { inputTokens: 0, outputTokens: 0, costMinor: 0, costBasis: 'metered' }, resolvedProvider: null, resolvedModel: <request.model> }`, and `pending()` counts scripted turns.
 
-`apps/uw-app/ports/not-wired.contract.test.ts` gains:
+`apps/uw-platform/ports/not-wired.contract.test.ts` gains:
 
 ```ts
-describeGithubFactsNotWired('uw-app until GH-2', githubFactsNotWired);
-describeConnectorsNotWired('uw-app until GH-6', connectorsNotWired);
-describeModelEngineNotWired('uw-app until HE-2', modelEngineNotWired);
+describeGithubFactsNotWired('uw-platform until GH-2', githubFactsNotWired);
+describeConnectorsNotWired('uw-platform until GH-6', connectorsNotWired);
+describeModelEngineNotWired('uw-platform until HE-2', modelEngineNotWired);
 ```
 
 with the imports from `@uw/harness/port-contracts/<kebab>` and `./<kebab>.not-wired.ts`.
@@ -2350,17 +2350,17 @@ export function createSimModelEngine(): SimModelEngine {
 
 - [ ] **Step 3: Implement the platform adapters, not wired**
 
-`apps/uw-app/ports/github-facts.not-wired.ts`: `export const githubFactsNotWired: GitHubFacts = { pullRequest: () => notWiredCall('githubFacts', 'pullRequest') };`
-`apps/uw-app/ports/connectors.not-wired.ts`: `export const connectorsNotWired: Connectors = { run: () => notWiredCall('connectors', 'run') };`
-`apps/uw-app/ports/model-engine.not-wired.ts`: `export const modelEngineNotWired: ModelEngine = { turn: () => notWiredCall('modelEngine', 'turn') };`
+`apps/uw-platform/ports/github-facts.not-wired.ts`: `export const githubFactsNotWired: GitHubFacts = { pullRequest: () => notWiredCall('githubFacts', 'pullRequest') };`
+`apps/uw-platform/ports/connectors.not-wired.ts`: `export const connectorsNotWired: Connectors = { run: () => notWiredCall('connectors', 'run') };`
+`apps/uw-platform/ports/model-engine.not-wired.ts`: `export const modelEngineNotWired: ModelEngine = { turn: () => notWiredCall('modelEngine', 'turn') };`
 (each imports `notWiredCall` and the port type from `@uw/harness`).
 
 - [ ] **Step 4: Run, verify, commit**
 
-Run: `pnpm exec vitest run --project node sim && pnpm exec vitest run --project workers apps/uw-app/ports` → PASS. Then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify` → green.
+Run: `pnpm exec vitest run --project node sim && pnpm exec vitest run --project workers apps/uw-platform/ports` → PASS. Then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify` → green.
 
 ```bash
-git add packages/harness/port-contracts sim/adapters apps/uw-app/ports
+git add packages/harness/port-contracts sim/adapters apps/uw-platform/ports
 git commit -m "feat(sim): GitHub facts, connectors and the model engine ports, with contracts run against test and not-wired platform adapters" -m "DX-3 DX-8"
 ```
 
@@ -2373,7 +2373,7 @@ git commit -m "feat(sim): GitHub facts, connectors and the model engine ports, w
 **Files:**
 - Create: `packages/harness/port-contracts/hub.ts`, `notifier.ts`, `runs.ts`
 - Create: `sim/adapters/hub.ts`, `notifier.ts`, `runs.ts`, and `sim/adapters/hub.contract.test.ts`, `notifier.contract.test.ts`, `runs.contract.test.ts`
-- Create: `apps/uw-app/ports/hub.not-wired.ts`, `notifier.not-wired.ts`, `runs.not-wired.ts`; modify `apps/uw-app/ports/not-wired.contract.test.ts`
+- Create: `apps/uw-platform/ports/hub.not-wired.ts`, `notifier.not-wired.ts`, `runs.not-wired.ts`; modify `apps/uw-platform/ports/not-wired.contract.test.ts`
 
 **Interfaces:**
 - Consumes: `Hub`, `Notifier`, `Wake`, `Runs`, `RunAction`, `RunState`, `RunStart`, `RunTransitionError`, `notWiredCall` (Task 2); `describeNotWired` (Task 5).
@@ -2420,7 +2420,7 @@ Plus `describeRunsNotWired` with `{ start: true, hibernate: true, resume: true, 
 
 Every suite follows the Task 7 shape: `describe` titled `<port> port contract on ${adapter}`, cases calling `await open()`, helpers hoisted, the `satisfies Record<keyof Port, true>` record in the not-wired function.
 
-Sim contract tests: `sim/adapters/hub.contract.test.ts` (`describeHubContract('the recording sim hub', async () => { const hub = createSimHub(); return { hub, wakes: async () => hub.wakes() }; })`), `notifier.contract.test.ts` (likewise with `delivered` and `failNext` wrapped async), `runs.contract.test.ts` (`describeRunsContract('the in-process sim runs', async () => createSimRuns())`). `apps/uw-app/ports/not-wired.contract.test.ts` gains `describeHubNotWired('uw-app until WB-3', hubNotWired)`, `describeNotifierNotWired('uw-app until NT-1', notifierNotWired)`, `describeRunsNotWired('uw-app until HE-1', runsNotWired)`.
+Sim contract tests: `sim/adapters/hub.contract.test.ts` (`describeHubContract('the recording sim hub', async () => { const hub = createSimHub(); return { hub, wakes: async () => hub.wakes() }; })`), `notifier.contract.test.ts` (likewise with `delivered` and `failNext` wrapped async), `runs.contract.test.ts` (`describeRunsContract('the in-process sim runs', async () => createSimRuns())`). `apps/uw-platform/ports/not-wired.contract.test.ts` gains `describeHubNotWired('uw-platform until WB-3', hubNotWired)`, `describeNotifierNotWired('uw-platform until NT-1', notifierNotWired)`, `describeRunsNotWired('uw-platform until HE-1', runsNotWired)`.
 
 Run: `pnpm exec vitest run --project node sim/adapters` → FAIL.
 
@@ -2507,16 +2507,16 @@ export function createSimRuns(): Runs {
 
 - [ ] **Step 3: Implement the platform adapters, not wired**
 
-`apps/uw-app/ports/hub.not-wired.ts`: `export const hubNotWired: Hub = { wake: () => notWiredCall('hub', 'wake') };`
-`apps/uw-app/ports/notifier.not-wired.ts`: `export const notifierNotWired: Notifier = { notify: () => notWiredCall('notifier', 'notify') };`
-`apps/uw-app/ports/runs.not-wired.ts`: `export const runsNotWired: Runs = { start: () => notWiredCall('runs', 'start'), hibernate: () => notWiredCall('runs', 'hibernate'), resume: () => notWiredCall('runs', 'resume'), stop: () => notWiredCall('runs', 'stop'), status: () => notWiredCall('runs', 'status') };`
+`apps/uw-platform/ports/hub.not-wired.ts`: `export const hubNotWired: Hub = { wake: () => notWiredCall('hub', 'wake') };`
+`apps/uw-platform/ports/notifier.not-wired.ts`: `export const notifierNotWired: Notifier = { notify: () => notWiredCall('notifier', 'notify') };`
+`apps/uw-platform/ports/runs.not-wired.ts`: `export const runsNotWired: Runs = { start: () => notWiredCall('runs', 'start'), hibernate: () => notWiredCall('runs', 'hibernate'), resume: () => notWiredCall('runs', 'resume'), stop: () => notWiredCall('runs', 'stop'), status: () => notWiredCall('runs', 'status') };`
 
 - [ ] **Step 4: Run, verify, commit**
 
-Run: `pnpm exec vitest run --project node sim && pnpm exec vitest run --project workers apps/uw-app/ports` → PASS. Then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify` → green.
+Run: `pnpm exec vitest run --project node sim && pnpm exec vitest run --project workers apps/uw-platform/ports` → PASS. Then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify` → green.
 
 ```bash
-git add packages/harness/port-contracts sim/adapters apps/uw-app/ports
+git add packages/harness/port-contracts sim/adapters apps/uw-platform/ports
 git commit -m "feat(sim): the hub, notifier and runs ports, with contracts run against test and not-wired platform adapters" -m "DX-3 DX-8"
 ```
 
@@ -2524,18 +2524,18 @@ git commit -m "feat(sim): the hub, notifier and runs ports, with contracts run a
 
 ### Task 9: The Worker composes the kernel over platform adapters
 
-**Proves:** DX-1 (the composition half: `apps/uw-app` constructs the kernel with platform adapters).
+**Proves:** DX-1 (the composition half: `apps/uw-platform` constructs the kernel with platform adapters).
 
 **Files:**
-- Create: `apps/uw-app/kernel.ts`, `apps/uw-app/kernel.test.ts`, `apps/uw-app/kernel.pg.test.ts`
+- Create: `apps/uw-platform/kernel.ts`, `apps/uw-platform/kernel.test.ts`, `apps/uw-platform/kernel.pg.test.ts`
 
 **Interfaces:**
-- Consumes: every adapter in `apps/uw-app/ports/` (Tasks 3, 5 to 8); `DatabaseHandle` (`apps/uw-app/database.ts`); `createKernel`, `Ports`, `Kernel`.
+- Consumes: every adapter in `apps/uw-platform/ports/` (Tasks 3, 5 to 8); `DatabaseHandle` (`apps/uw-platform/database.ts`); `createKernel`, `Ports`, `Kernel`.
 - Produces: `platformPorts(database: DatabaseHandle | null): Ports`, `platformKernel(database: DatabaseHandle | null): Kernel`.
 
 - [ ] **Step 1: Write the failing tests**
 
-`apps/uw-app/kernel.test.ts` (Workers pool):
+`apps/uw-platform/kernel.test.ts` (Workers pool):
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -2588,7 +2588,7 @@ describe('DX-1 the Worker builds the kernel over platform adapters', () => {
 
 The comparison is by identity, so a different object with the same shape fails.
 
-`apps/uw-app/kernel.pg.test.ts` (node project):
+`apps/uw-platform/kernel.pg.test.ts` (node project):
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -2613,9 +2613,9 @@ describe.skipIf(!testServer)('DX-1 the platform kernel on Postgres', () => {
 });
 ```
 
-Run: `pnpm exec vitest run --project workers apps/uw-app/kernel.test.ts` → FAIL (`./kernel.ts` missing).
+Run: `pnpm exec vitest run --project workers apps/uw-platform/kernel.test.ts` → FAIL (`./kernel.ts` missing).
 
-- [ ] **Step 2: Implement** `apps/uw-app/kernel.ts`
+- [ ] **Step 2: Implement** `apps/uw-platform/kernel.ts`
 
 ```ts
 import { createKernel, type Kernel, type Ports } from '@uw/harness';
@@ -2657,11 +2657,11 @@ No route calls it yet; WB-1, AB-1 and HE-1 build their kernel with `platformKern
 
 - [ ] **Step 3: Run, verify, commit**
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm exec vitest run apps/uw-app/kernel` → PASS. Then `pnpm verify` (with `TEST_DATABASE_URL`) → green, and `pnpm build` still bundles no Vitest and no PGlite (`grep -cE 'vitest|pglite' apps/uw-app/dist/index.js` prints `0`).
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm exec vitest run apps/uw-platform/kernel` → PASS. Then `pnpm verify` (with `TEST_DATABASE_URL`) → green, and `pnpm build` still bundles no Vitest and no PGlite (`grep -cE 'vitest|pglite' apps/uw-platform/dist/index.js` prints `0`).
 
 ```bash
-git add apps/uw-app/kernel.ts apps/uw-app/kernel.test.ts apps/uw-app/kernel.pg.test.ts
-git commit -m "feat(uw-app): build the kernel over platform adapters, with not-wired adapters until their step" -m "DX-1"
+git add apps/uw-platform/kernel.ts apps/uw-platform/kernel.test.ts apps/uw-platform/kernel.pg.test.ts
+git commit -m "feat(uw-platform): build the kernel over platform adapters, with not-wired adapters until their step" -m "DX-1"
 ```
 
 ---
@@ -2703,8 +2703,8 @@ const runner = "import { describeHubContract } from '@uw/harness/port-contracts/
 
 const wired = {
   ...suite,
-  'apps/uw-app/ports/hub.not-wired.ts': '',
-  'apps/uw-app/ports/hub.contract.test.ts': `${runner} import { hubNotWired } from './hub.not-wired.ts';`,
+  'apps/uw-platform/ports/hub.not-wired.ts': '',
+  'apps/uw-platform/ports/hub.contract.test.ts': `${runner} import { hubNotWired } from './hub.not-wired.ts';`,
   'sim/adapters/hub.ts': '',
   'sim/adapters/hub.contract.test.ts': `${runner} import { createSimHub } from './hub.ts';`,
 };
@@ -2738,7 +2738,7 @@ describe('DX-3 every port has a contract run against every adapter', () => {
 });
 ```
 
-Add two more cases in a second `describe('DX-3 the check refuses a misplaced file')`: an adapter root file `apps/uw-app/ports/helpers.ts` yields `apps/uw-app/ports/helpers.ts: an adapter file must be named for its port`; a contract test that imports `./hub.ts` but not `@uw/harness/port-contracts/hub` leaves `sim/adapters/hub.ts` reported as not run. If the destructuring `_adapter` trips `@typescript-eslint/no-unused-vars`, build `files` with `Object.fromEntries(Object.entries(wired).filter(([path]) => path !== 'sim/adapters/hub.ts'))` instead.
+Add two more cases in a second `describe('DX-3 the check refuses a misplaced file')`: an adapter root file `apps/uw-platform/ports/helpers.ts` yields `apps/uw-platform/ports/helpers.ts: an adapter file must be named for its port`; a contract test that imports `./hub.ts` but not `@uw/harness/port-contracts/hub` leaves `sim/adapters/hub.ts` reported as not run. If the destructuring `_adapter` trips `@typescript-eslint/no-unused-vars`, build `files` with `Object.fromEntries(Object.entries(wired).filter(([path]) => path !== 'sim/adapters/hub.ts'))` instead.
 
 Run: `pnpm exec vitest run --project node tools/architecture/port-contracts.test.ts` → FAIL (`./port-contracts.ts` missing).
 
@@ -2747,7 +2747,7 @@ Run: `pnpm exec vitest run --project node tools/architecture/port-contracts.test
 ```ts
 export type SourceTree = { readonly paths: readonly string[]; read(path: string): string };
 
-export const adapterRoots = ['apps/uw-app/ports/', 'sim/adapters/'] as const;
+export const adapterRoots = ['apps/uw-platform/ports/', 'sim/adapters/'] as const;
 const contractRoot = 'packages/harness/port-contracts/';
 const contractTest = /\.contract(\.pg)?\.test\.ts$/;
 
@@ -3619,7 +3619,7 @@ function waitingSection(): string {
 }
 
 const platformAdapters = () =>
-  listed().filter((path) => /^apps\/uw-app\/ports\/[^/]+\.ts$/.test(path) && !path.endsWith('.test.ts'));
+  listed().filter((path) => /^apps\/uw-platform\/ports\/[^/]+\.ts$/.test(path) && !path.endsWith('.test.ts'));
 
 describe('DX-8 no test, helper or scenario needs a live account or a secret', () => {
   it('reads no environment variable but TEST_DATABASE_URL, CI and PATH', () => {
@@ -3673,11 +3673,11 @@ DX-4 DX-5"
 
 - [ ] **Step 3: `docs/architecture.md`**
 
-In "The layout" add the lines `apps/uw-app/ports/      platform adapters, one file per port (or port.variant), each beside its contract test`, `packages/db/store/      the one Drizzle implementation of Store and Grants that both adapters bind`, `sim/adapters/           test adapters, one file per port, each beside its contract test`. In "The sim", replace `createSimHarness(template, fixture)` and `createWorld()` description with: "`createWorld()` gives a scenario one clone of an embedded Postgres migrated once per process, the ten test adapters, one settable clock starting `2026-10-01T09:00:00.000Z`, and `createKernel` over them; `createSimHarness(template, fixture)` arrives with the templates in step 3." Under "Every rule is a check", the port-contract row's check becomes "`tools/architecture/port-contracts.test.ts`: each port has a suite in `packages/harness/port-contracts/`, an adapter in `apps/uw-app/ports/` and in `sim/adapters/`, and a contract test beside each adapter that runs it", and add a row "Nothing needs a live account | `tools/architecture/no-live-account.test.ts`".
+In "The layout" add the lines `apps/uw-platform/ports/      platform adapters, one file per port (or port.variant), each beside its contract test`, `packages/db/store/      the one Drizzle implementation of Store and Grants that both adapters bind`, `sim/adapters/           test adapters, one file per port, each beside its contract test`. In "The sim", replace `createSimHarness(template, fixture)` and `createWorld()` description with: "`createWorld()` gives a scenario one clone of an embedded Postgres migrated once per process, the ten test adapters, one settable clock starting `2026-10-01T09:00:00.000Z`, and `createKernel` over them; `createSimHarness(template, fixture)` arrives with the templates in step 3." Under "Every rule is a check", the port-contract row's check becomes "`tools/architecture/port-contracts.test.ts`: each port has a suite in `packages/harness/port-contracts/`, an adapter in `apps/uw-platform/ports/` and in `sim/adapters/`, and a contract test beside each adapter that runs it", and add a row "Nothing needs a live account | `tools/architecture/no-live-account.test.ts`".
 
 - [ ] **Step 4: `docs/progress_tracker.md`**
 
-Status row for step 2: state `Built`; evidence `docs/plans/2026-10-01-step-02-kernel-frame.md`; tests named DX-1 to DX-6 and DX-8 (`packages/harness/kernel.test.ts`, `apps/uw-app/kernel.test.ts`, `apps/uw-app/kernel.pg.test.ts`, `packages/db/both-targets.test.ts`, `packages/db/store/store.test.ts`, `packages/db/store/store-lock.test.ts`, every `*.contract*.test.ts`, `tools/architecture/port-contracts.test.ts`, `sim/runner/*.test.ts`, `sim/cli/cli.test.ts`, `tools/trace/trace.test.ts`, `tools/architecture/no-live-account.test.ts`); scenarios `DX-1`, `DX-2`; `pnpm verify` green with `TEST_DATABASE_URL` set. KN-9 also built. Add a "Step 2 evidence by requirement" table in the step-1 table's form (requirement, commits, tests), filled from `git log`.
+Status row for step 2: state `Built`; evidence `docs/plans/2026-10-01-step-02-kernel-frame.md`; tests named DX-1 to DX-6 and DX-8 (`packages/harness/kernel.test.ts`, `apps/uw-platform/kernel.test.ts`, `apps/uw-platform/kernel.pg.test.ts`, `packages/db/both-targets.test.ts`, `packages/db/store/store.test.ts`, `packages/db/store/store-lock.test.ts`, every `*.contract*.test.ts`, `tools/architecture/port-contracts.test.ts`, `sim/runner/*.test.ts`, `sim/cli/cli.test.ts`, `tools/trace/trace.test.ts`, `tools/architecture/no-live-account.test.ts`); scenarios `DX-1`, `DX-2`; `pnpm verify` green with `TEST_DATABASE_URL` set. KN-9 also built. Add a "Step 2 evidence by requirement" table in the step-1 table's form (requirement, commits, tests), filled from `git log`.
 
 "Decisions made during the build", one row each, dated 2026-10-01, with requirement, decision, why and cost if wrong:
 
@@ -3687,14 +3687,14 @@ Status row for step 2: state `Built`; evidence `docs/plans/2026-10-01-step-02-ke
 | DX-5 | `pnpm trace` is strict; `pnpm trace:built`, the one in `verify`, fails only on unproven Must requirements whose section-13 step the tracker marks Built or Done, or that section 13 places in no step | The build in progress must be honest without being red; the final step makes the two modes equal | A step marked Built too early makes verify red, which is the intent |
 | DX-5 | A requirement is proven by a scenario file `sim/scenarios/<ID>.<slug>.ts` or a test-file string literal that begins with the ID and a space; fixtures use the `ZZ-` prefix | Matches how every test is titled; mechanical | Presence, not adequacy: a test titled with an ID that does not test it passes trace; review catches that |
 | DX-1 | In step 2 the kernel is `{ walk, health }`; `health()` reads the clock and the Store's applied migrations; modules arrive as new `Kernel` members from step 3 | The frame needs one call that crosses ports, and DX-1 must be observable in the sim and the Worker | None known |
-| DX-2 | The one Drizzle implementation of Store and Grants lives in `packages/db/store/`; `apps/uw-app/ports/` and `sim/adapters/` bind it with the port type; AGENTS.md rule 2 amended | DX-2 requires the same adapter; sim and apps may not import each other | A port shape change needs edits in `packages/db/store` and both bindings; the typecheck finds them |
+| DX-2 | The one Drizzle implementation of Store and Grants lives in `packages/db/store/`; `apps/uw-platform/ports/` and `sim/adapters/` bind it with the port type; AGENTS.md rule 2 amended | DX-2 requires the same adapter; sim and apps may not import each other | A port shape change needs edits in `packages/db/store` and both bindings; the typecheck finds them |
 | DX-2 | The sim migrates one PGlite template per process and clones it per world (about 2 s, then 0.4 s each); `closeEmbeddedTemplate` must be called or Node stays alive | Speed; one migration run per process | If `clone()` regresses in a PGlite release, fall back to migrating per world (slower) |
 | DX-2 DX-6 | `@electric-sql/pglite` 0.5.8 (Postgres 18.3) is used with drizzle-orm 0.45.3, whose dev pin is pglite 0.2.12; migrate, select, transactions, triggers, CHECKs, advisory locks, `FOR SHARE`, `CREATE ROLE` and `clone()` were tried before choosing it | The current release; the drizzle pglite driver uses only its stable API | A drizzle or pglite release that breaks the pair; pin exact versions then |
 | DX-3 | A port whose service arrives later has a platform adapter that is not wired (every method returns `notWiredCall`) and a contract test that proves exactly that; the kernel will report `PortNotWiredError` as `not_wired` | AGENTS.md rule 1 asks for platform adapter, test adapter and contract together | Each later step must swap the not-wired adapter and run the full contract against the real one |
-| DX-3 | Adapter roots are `apps/uw-app/ports/` and `sim/adapters/`; files are named for the port's kebab key; the DX-3 check reads imports as text | Discovery by convention; no registry to keep in sync | HE-2 puts engines in `apps/uw-app/engines/<key>/`; that step adds the directory as an adapter root for `modelEngine` |
+| DX-3 | Adapter roots are `apps/uw-platform/ports/` and `sim/adapters/`; files are named for the port's kebab key; the DX-3 check reads imports as text | Discovery by convention; no registry to keep in sync | HE-2 puts engines in `apps/uw-platform/engines/<key>/`; that step adds the directory as an adapter root for `modelEngine` |
 | DX-3 | Contract suites live in `packages/harness/port-contracts/` and import Vitest; a dependency-cruiser rule allows only that and forbids any non-test app or sim file importing them | Both apps and sim must import the suites, and only harness is reachable from both | None known |
 | DX-1 DX-3 | The Grants port takes the instant (`resolve(personId, at)`, `lockAndReread(tx, personId, at)`); the step-1 grant commands and Access middleware keep the database clock | The sim's clock is not the wall clock; expiry must be judged on the kernel's clock | A grant expiring between the two clocks is judged differently by the edge and the kernel for that instant |
-| DX-1 | The step-1 read functions in `apps/uw-app/acl/grant-store.ts` moved to `packages/db/store/grants.ts` (the step-1 decision said the Grants adapter would wrap the old file) | The sim must run the same queries | None |
+| DX-1 | The step-1 read functions in `apps/uw-platform/acl/grant-store.ts` moved to `packages/db/store/grants.ts` (the step-1 decision said the Grants adapter would wrap the old file) | The sim must run the same queries | None |
 | DX-1 | Port value shapes for GitHubFacts, Connectors, ModelEngine, Hub, Notifier and Runs are fixed in `ports.ts` now; `WakeReason` lives there until NT-2 publishes the wake payload as a contract | The frame must exist before the services | Steps 5 to 9 may reshape a port: a shared-root commit and its two adapters |
 | DX-4 | A scenario returns `{ events, state }`; step-2 scenarios report no events, since the event log arrives with KN-3; the printer is proven on contract-valid fixture events | Honest until the log exists | None |
 | DX-4 | `sim/` imports only harness, contracts, db and Node built-ins (tests also Vitest), enforced by dependency-cruiser | AGENTS.md rule 2 | None |
@@ -3712,7 +3712,7 @@ Status row for step 2: state `Built`; evidence `docs/plans/2026-10-01-step-02-ke
 |---|---|---|
 | DX-2 DX-6 | PGlite is Postgres 18.3, the CI service container is Postgres 16, Neon is whatever the project runs; a behaviour difference between versions would show on only one | No version-matched embedded build exists |
 | DX-2 | `appliedMigrations` reads `drizzle.__drizzle_migrations`; the Neon application role's SELECT on the `drizzle` schema is untested | No Neon project |
-| DX-3 | The six not-wired platform adapters (`apps/uw-app/ports/github-facts.not-wired.ts` until GH-2, `connectors.not-wired.ts` until GH-6, `model-engine.not-wired.ts` until HE-2, `hub.not-wired.ts` until WB-3, `notifier.not-wired.ts` until NT-1, `runs.not-wired.ts` until HE-1) and `store.not-wired.ts`, `grants.not-wired.ts` (used while uw-app has no database, FD-12) are proven only to be not wired | Their services are built in later steps |
+| DX-3 | The six not-wired platform adapters (`apps/uw-platform/ports/github-facts.not-wired.ts` until GH-2, `connectors.not-wired.ts` until GH-6, `model-engine.not-wired.ts` until HE-2, `hub.not-wired.ts` until WB-3, `notifier.not-wired.ts` until NT-1, `runs.not-wired.ts` until HE-1) and `store.not-wired.ts`, `grants.not-wired.ts` (used while uw-platform has no database, FD-12) are proven only to be not wired | Their services are built in later steps |
 
 (Write each not-wired adapter's full path in that row, so the DX-8 test finds it.)
 
@@ -3720,7 +3720,7 @@ Status row for step 2: state `Built`; evidence `docs/plans/2026-10-01-step-02-ke
 
 | Requirement | What is written | What is needed to verify it live | From whom |
 |---|---|---|---|
-| DX-2 DX-3 | `apps/uw-app/ports/store.ts` and `apps/uw-app/ports/grants.ts`, the platform Store and Grants over Hyperdrive, proven on the CI Postgres service container | Hyperdrive configs and the Neon database (FD-12's switch-on) | The owner |
+| DX-2 DX-3 | `apps/uw-platform/ports/store.ts` and `apps/uw-platform/ports/grants.ts`, the platform Store and Grants over Hyperdrive, proven on the CI Postgres service container | Hyperdrive configs and the Neon database (FD-12's switch-on) | The owner |
 
 - [ ] **Step 5: Run, verify, commit**
 

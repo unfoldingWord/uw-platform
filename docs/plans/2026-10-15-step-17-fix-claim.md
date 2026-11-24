@@ -2,9 +2,9 @@
 
 **Goal:** An admin can turn a harness's fix claim on. While it is off nothing changes from v0.1.0. While it is on, a review round with a `real` or `plausible` finding opens the item, once, to the Builder persona under a live `fix` delegation: `poll_queue` offers it and `claim_item` takes it, recording the head and the pull request's declaration at that moment. The fix run reads the round's findings as untrusted `review_comment` text, works in a sandbox that cannot push, runs the repository's declared checks, and only then lets the platform push; with no declared checks, or failing ones, the run ends `run_failed` with `checks_not_run_locally` and nothing is pushed. At `submit_to_gate` from a fix claim, `fix_size_cap` and `fix_keeps_purpose` run from the validator registry; either refuses with its own reason and releases the claim, and a passing fix stays at its stage for the next review round.
 
-**Architecture:** No agent verb is added (V2-7): the `fix` capability on the delegation changes what `claim_item` and `submit_to_gate` do. The offer is a pure fold over the item's events (`packages/harness/items/fix-offer.ts`): a counted round (step 15's `countsAsRound`) since the last head and the last stage change, with no `fix_claimed` after it, on a harness with `fix_claim` on and out of shadow, for an item with its own `harness/<item>` branch. `poll_queue` drops items only the `fix` reach would offer when the offer is closed; `claim` checks the same offer under the stage lock and records `fix_claimed`. The declaration snapshot is read from the GitHub facts before the claim's transaction, on both paths into `claimWithin` (`claim` and `startRun`). The two validators are registry entries over a widened `ValidationContext`; the submit reads two diffs through `githubFacts.diff` before its transaction and runs them in place of the stage's exit gate. The fix work spec is three container execs in one session (`apps/uw-app/engines/sandbox/fix-checks.ts`): the model with the GitHub push closed, the declared checks with a read-only package-registry route open, then the platform's own push.
+**Architecture:** No agent verb is added (V2-7): the `fix` capability on the delegation changes what `claim_item` and `submit_to_gate` do. The offer is a pure fold over the item's events (`packages/harness/items/fix-offer.ts`): a counted round (step 15's `countsAsRound`) since the last head and the last stage change, with no `fix_claimed` after it, on a harness with `fix_claim` on and out of shadow, for an item with its own `harness/<item>` branch. `poll_queue` drops items only the `fix` reach would offer when the offer is closed; `claim` checks the same offer under the stage lock and records `fix_claimed`. The declaration snapshot is read from the GitHub facts before the claim's transaction, on both paths into `claimWithin` (`claim` and `startRun`). The two validators are registry entries over a widened `ValidationContext`; the submit reads two diffs through `githubFacts.diff` before its transaction and runs them in place of the stage's exit gate. The fix work spec is three container execs in one session (`apps/uw-platform/engines/sandbox/fix-checks.ts`): the model with the GitHub push closed, the declared checks with a read-only package-registry route open, then the platform's own push.
 
-**Tech Stack:** TypeScript strict, Zod 4, Drizzle and drizzle-kit, Vitest 4 (node project, workers project, and the Postgres service), the sim over the embedded Postgres Store, the fake container host in `apps/uw-app/engines/sandbox/testing.ts`.
+**Tech Stack:** TypeScript strict, Zod 4, Drizzle and drizzle-kit, Vitest 4 (node project, workers project, and the Postgres service), the sim over the embedded Postgres Store, the fake container host in `apps/uw-platform/engines/sandbox/testing.ts`.
 
 **Spec:** `docs/PRD.md` section 7.11.3 (FL-1 to FL-4), sections 8.3, 8.5, 8.6, 13 (step 17) and 18.3 (V2-2, V2-7); the design is `docs/specs/2026-10-15-harness-v0-2-0-design.md` sections 2 (**Fix claim**), 3 (V2-2, V2-7), 5.3, 6 and 7.
 
@@ -45,8 +45,8 @@
 | `diffStat(text)`, `DiffStat` | `packages/harness/github/diff-stat.ts` | none |
 | `readFixDiffs(ports, itemId, change, facts)`, `fixRefusal(tx, submission)`, `FixDiffs` | `packages/harness/items/fix-submit.ts` | none |
 | `runs.reviewComments(caller, runId)` returning `{ comments }` | `packages/harness/runs/fix-comments.ts` via `RunCommands` | none |
-| `fixPrompt(source)`, `ReadText.comments`, `ReadDone.fix` | `apps/uw-app/runs/` | none |
-| `Checkout.fix`, `GitHubEgress.pushes`, `EgressRoutes.registry`, `registryEgress`, `REGISTRY_HOST`, `fixPhase`, `fixFinish`, `readDeclaredChecks`, `NO_CHECKS_EXIT`, `SessionSpec.finish`, `SandboxPlan.finish` | `apps/uw-app/engines/` | GL-1's live run |
+| `fixPrompt(source)`, `ReadText.comments`, `ReadDone.fix` | `apps/uw-platform/runs/` | none |
+| `Checkout.fix`, `GitHubEgress.pushes`, `EgressRoutes.registry`, `registryEgress`, `REGISTRY_HOST`, `fixPhase`, `fixFinish`, `readDeclaredChecks`, `NO_CHECKS_EXIT`, `SessionSpec.finish`, `SandboxPlan.finish` | `apps/uw-platform/engines/` | GL-1's live run |
 | `sim/fix-claims.ts`: `fixWorld`, `reviewedRound`, `claimFix`, `offeredTo`, `pushedFix`, `submitFix`, `diffText`, `fixHead`, `fixerPage` | `sim/` | DX-10 |
 
 ---
@@ -67,13 +67,13 @@ Every task obeys every line here. The controller passes this section to each imp
 
 - TypeScript `strict`, no `any`, no `@ts-ignore`, no `as unknown as`, no non-null assertion.
 - No code comments of any kind.
-- Files under 500 non-blank lines; functions under 50 lines, 25 statements, complexity 10, depth 4, 3 nested callbacks, 5 parameters. `packages/harness/items/submit.ts` gets at most 30 more lines; if it would pass 480, move `handlerOf` and `awaitReview` into `packages/harness/items/submit-gates.ts` and export `submittedDraft` from `submit.ts` for it. `apps/uw-app/runs/run-core.pg.test.ts` and `apps/uw-app/engines/claude-code-sandbox/work.test.ts` get no new test: this step's tests live in new files.
+- Files under 500 non-blank lines; functions under 50 lines, 25 statements, complexity 10, depth 4, 3 nested callbacks, 5 parameters. `packages/harness/items/submit.ts` gets at most 30 more lines; if it would pass 480, move `handlerOf` and `awaitReview` into `packages/harness/items/submit-gates.ts` and export `submittedDraft` from `submit.ts` for it. `apps/uw-platform/runs/run-core.pg.test.ts` and `apps/uw-platform/engines/claude-code-sandbox/work.test.ts` get no new test: this step's tests live in new files.
 - Regular expressions are literals with no nested quantifier.
 - Zod at every boundary. `packages/contracts` imports only `zod`. `packages/harness` imports nothing from Workers, Drizzle or the network.
 - Every exported Zod schema registered in `packages/contracts/registry.ts` has `fixtures/<key>/valid/*.json` and `fixtures/<key>/invalid/*.json`. Any change to a registered `z.enum` appends a full entry to `packages/contracts/contract-lock.json` and changes `CONTRACT_VERSION`.
 - Every route and command has `can()` on the harness's area through the command registry's `action`; `set_fix_claim` is `admin`.
 - Each table keeps its one writer: `harnesses.fix_claim` is written only through `tx.harnesses.write.setFixClaim` in `packages/harness/stages/fix-claim.ts` (the stage command, as design section 6 says); events only through `recordItemEvents` and `recordHarnessEvents`.
-- `untrusted()` is the only constructor of untrusted content; review comments are wrapped in `apps/uw-app/runs/prompt-source.ts` after the step boundary (S13-R6), never inside a step body.
+- `untrusted()` is the only constructor of untrusted content; review comments are wrapped in `apps/uw-platform/runs/prompt-source.ts` after the step boundary (S13-R6), never inside a step body.
 - knip runs in `verify`: export only what a non-test file or a test file imports.
 
 **Contract version**
@@ -92,7 +92,7 @@ Every task obeys every line here. The controller passes this section to each imp
 **Tests**
 
 - A test that proves a requirement has a `describe` or `it` title that starts with the requirement ID and a space, as `tools/trace/proofs.ts` reads it. A scenario's `id` is the requirement ID.
-- Run one file with `npx vitest run <path>` (node project) or `npx vitest run --project workers <path>` (an `apps/uw-app` test that is not `*.pg.test.ts`). Database tests (`*.pg.test.ts`, `packages/db`, the Store contract on the platform adapter) need `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres` after `pg_ctl -D ~/.local/share/uw-platform-test-pg -o "-p 54329" start`. Never run two Vitest suites at once on this machine (WSL runs out of memory); `pnpm verify` runs them in sequence.
+- Run one file with `npx vitest run <path>` (node project) or `npx vitest run --project workers <path>` (an `apps/uw-platform` test that is not `*.pg.test.ts`). Database tests (`*.pg.test.ts`, `packages/db`, the Store contract on the platform adapter) need `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres` after `pg_ctl -D ~/.local/share/uw-platform-test-pg -o "-p 54329" start`. Never run two Vitest suites at once on this machine (WSL runs out of memory); `pnpm verify` runs them in sequence.
 
 ## Review Focus
 
@@ -206,7 +206,7 @@ FL-1 FL-2 FL-3 FL-4."
 - Create: fixtures (Step 4)
 - Modify: `packages/contracts/contracts.test.ts` (new block), `packages/contracts/events.test.ts` (the vocabulary count)
 - Modify: `packages/contracts/contract-lock.json`, `packages/contracts/version.ts`
-- Second commit, not a shared root: `packages/harness/items/fold.ts` (`unchangedNames`), `packages/harness/stages/activate.ts` (`fixClaim: false`), every `Harness` literal `pnpm check` names, `apps/uw-app/generated/islands.ts` (regenerated)
+- Second commit, not a shared root: `packages/harness/items/fold.ts` (`unchangedNames`), `packages/harness/stages/activate.ts` (`fixClaim: false`), every `Harness` literal `pnpm check` names, `apps/uw-platform/generated/islands.ts` (regenerated)
 
 **Interfaces:**
 - Produces: `RunFailure` gains `checks_not_run_locally`; `ErrorReason` gains `fix_size_cap`, `fix_keeps_purpose`; `submitToGateResultSchema` gains `awaiting_review`; `Harness.fixClaim: boolean` (default `false`); `CommandBody<'set_fix_claim'> = { enabled: boolean }`; `EventEvidence['fix_claimed'] = { delegationId: uuid; head: full SHA; declaration: PullRequestDeclaration | null }`; `EventEvidence['fix_claim_set'] = { enabled: boolean }`.
@@ -247,7 +247,7 @@ describe('FL-1 FL-2 FL-3 FL-4 the fix claim contracts', () => {
       declaration: {
         closes: ['#12'],
         risks: 'the board renders slower on phones',
-        touches: 'apps/uw-app/board',
+        touches: 'apps/uw-platform/board',
         riskTier: 'standard',
         riskDomains: [],
       },
@@ -443,7 +443,7 @@ Expected: green. `tools/db/drift.test.ts` stays red until Task 3.
 - [ ] **Step 10: Commit**
 
 ```bash
-git add packages/harness apps/uw-app/generated/islands.ts
+git add packages/harness apps/uw-platform/generated/islands.ts
 git commit -m "feat(harness): every harness names its fix claim, off at activation
 
 fix_claimed and fix_claim_set change no item state in the fold; every
@@ -659,8 +659,8 @@ Expected: FAIL to compile (`setFixClaim` is not bound).
 
 - [ ] **Step 5: Run the Store contract on both adapters**
 
-Run: `pnpm check && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run sim/adapters/store.contract.test.ts apps/uw-app/ports`
-Expected: green, including `DX-3 FL-1 stores the fix claim off …` on the sim and the platform adapter (the platform adapter's Store contract test lives under `apps/uw-app/ports/`; run whichever file `grep -rln describeStore apps/uw-app/ports` names).
+Run: `pnpm check && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run sim/adapters/store.contract.test.ts apps/uw-platform/ports`
+Expected: green, including `DX-3 FL-1 stores the fix claim off …` on the sim and the platform adapter (the platform adapter's Store contract test lives under `apps/uw-platform/ports/`; run whichever file `grep -rln describeStore apps/uw-platform/ports` names).
 
 - [ ] **Step 6: Commit**
 
@@ -678,14 +678,14 @@ FL-1. S17-R3."
 **Files:**
 - Create: `packages/harness/stages/fix-claim.ts`
 - Modify: `packages/harness/stages/commands.ts` (`StageCommands.setFixClaim`)
-- Modify: `apps/uw-app/commands/person/stages.ts` (`setFixClaimCommand`), `apps/uw-app/commands/registry.ts`
+- Modify: `apps/uw-platform/commands/person/stages.ts` (`setFixClaimCommand`), `apps/uw-platform/commands/registry.ts`
 - Modify: `packages/harness/delegations/capability.ts` (`fix` reach; `pageAgrees`)
 - Modify: `packages/harness/runs/backoff.ts` (export `setsHead`)
 - Create: `packages/harness/items/fix-offer.ts`, `packages/harness/items/fix-claim.ts`
 - Modify: `packages/harness/reads/poll.ts` (`claimableIn`'s loop body)
 - Modify: `packages/harness/items/claim.ts` (`takeWithFix`, `claimIn`'s last line, `claimWithin`, `claim`)
 - Modify: `packages/harness/runs/start.ts` (`Start.fix`, the pre-read in `startRun`, `openRun`)
-- Create: `sim/fix-claims.ts`, `sim/kernel/fix-claim.test.ts`, `apps/uw-app/commands/fix-claim.pg.test.ts`
+- Create: `sim/fix-claims.ts`, `sim/kernel/fix-claim.test.ts`, `apps/uw-platform/commands/fix-claim.pg.test.ts`
 - Create: `sim/scenarios/FL-1.the-fix-claim-is-off-until-an-admin-turns-it-on.ts`, `sim/scenarios/FL-2.a-review-round-offers-the-item-once-to-the-builder-under-a-fix-delegation.ts`
 
 **Interfaces:**
@@ -984,7 +984,7 @@ export async function setFixClaim(
 
 `packages/harness/stages/commands.ts`: import `setFixClaim`, `type FixClaimInput` from `./fix-claim.ts`; `StageCommands` gains `setFixClaim(caller: Caller, input: FixClaimInput): Promise<KernelOutcome<HarnessScene>>;`; the factory gains `setFixClaim: (caller, input) => setFixClaim(ports, caller, input),`.
 
-`apps/uw-app/commands/person/stages.ts`, after `setHostedBuilderCommand`:
+`apps/uw-platform/commands/person/stages.ts`, after `setHostedBuilderCommand`:
 
 ```ts
 export const setFixClaimCommand = commandHandler({
@@ -995,7 +995,7 @@ export const setFixClaimCommand = commandHandler({
 });
 ```
 
-`apps/uw-app/commands/registry.ts`: import `setFixClaimCommand` with the other stage commands and add it to `commandRegistry` after `setShadowCommand` (or the last stage command a later step added).
+`apps/uw-platform/commands/registry.ts`: import `setFixClaimCommand` with the other stage commands and add it to `commandRegistry` after `setShadowCommand` (or the last stage command a later step added).
 
 - [ ] **Step 5: The reach and the offer**
 
@@ -1261,7 +1261,7 @@ and `start` becomes `{ caller, input, fix, runId: ports.ids.next(), traceId: por
 
 `sim/scenarios/FL-2.a-review-round-offers-the-item-once-to-the-builder-under-a-fix-delegation.ts` (id `'FL-2'`): `fixWorld(world)`; claim; release; claim again refused `no_review_round`; return `{ state: { first, second } }` with the two statuses and the `fix_claimed` count.
 
-`apps/uw-app/commands/fix-claim.pg.test.ts`, on the frame of `hostedBuilderSwitch` in `apps/uw-app/commands/runs.pg.test.ts`:
+`apps/uw-platform/commands/fix-claim.pg.test.ts`, on the frame of `hostedBuilderSwitch` in `apps/uw-platform/commands/runs.pg.test.ts`:
 
 ```ts
 import { randomUUID } from 'node:crypto';
@@ -1296,13 +1296,13 @@ describe.skipIf(!testServer)('the fix claim switch', () => {
 - [ ] **Step 8: Run the tests**
 
 Run: `pnpm check && npx vitest run sim/kernel/fix-claim.test.ts sim/kernel/claim.test.ts sim/kernel/capability-brackets.test.ts sim/kernel/reads.test.ts sim/kernel/run-start.test.ts sim/kernel/run-beat.test.ts` then `pnpm sim -- FL-1 && pnpm sim -- FL-2 && pnpm sim -- KN-5 && pnpm sim -- AB-4 && pnpm sim -- all`
-Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/commands/fix-claim.pg.test.ts apps/uw-app/commands/registry.test.ts`
+Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/commands/fix-claim.pg.test.ts apps/uw-platform/commands/registry.test.ts`
 Expected: green. KN-5 and AB-4 hold: a `build` delegation is offered and claims exactly what it did before, because `onlyByFix` is false for any reach without `fix`.
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add packages/harness apps/uw-app/commands sim
+git add packages/harness apps/uw-platform/commands sim
 git commit -m "feat(harness): a review round offers the item once to the Builder under a fix delegation
 
 An admin switches the fix claim with set_fix_claim. While it is on and
@@ -1577,7 +1577,7 @@ import { FIX_VALIDATORS, runValidators, validatorRegistry } from './registry.ts'
 const declaration: PullRequestDeclaration = {
   closes: ['#12', '#14'],
   risks: 'the board renders slower on phones',
-  touches: 'apps/uw-app/board',
+  touches: 'apps/uw-platform/board',
   riskTier: 'standard',
   riskDomains: [],
 };
@@ -1627,7 +1627,7 @@ describe('FL-3 fix_size_cap and fix_keeps_purpose', () => {
   it('FL-3 fix_keeps_purpose refuses a changed declaration and reads closes as a set', () => {
     const reordered = { ...declaration, closes: ['#14', '#12'] };
     expect(sameDeclaration(declaration, reordered)).toBe(true);
-    const changed = { ...fits, declaration: { ...declaration, touches: 'apps/uw-app/billing' } };
+    const changed = { ...fits, declaration: { ...declaration, touches: 'apps/uw-platform/billing' } };
     expect(fixKeepsPurpose(context(changed))).toEqual([
       'fix_keeps_purpose: the pull request declaration changed since the fix was claimed',
     ]);
@@ -1798,7 +1798,7 @@ import { createWorld } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
 
-const pull = { 'apps/uw-app/board.tsx': 40 };
+const pull = { 'apps/uw-platform/board.tsx': 40 };
 
 async function claimed(work: (scene: FixWorld) => Promise<void>): Promise<void> {
   const world = await createWorld();
@@ -1818,7 +1818,7 @@ async function tail(scene: FixWorld, count: number) {
 describe('FL-3 a fix that keeps to the rules waits at its stage for the next review', () => {
   it('FL-3 within a quarter of the lines, on the pull request files and a test, it answers awaiting_review', () =>
     claimed(async (scene) => {
-      pushedFix(scene, { pull, fix: { 'apps/uw-app/board.tsx': 8, 'apps/uw-app/board.test.tsx': 2 } });
+      pushedFix(scene, { pull, fix: { 'apps/uw-platform/board.tsx': 8, 'apps/uw-platform/board.test.tsx': 2 } });
       expect(await submitFix(scene)).toMatchObject({
         status: 'accepted',
         value: { result: 'awaiting_review', failures: [] },
@@ -1837,7 +1837,7 @@ describe('FL-3 a fix that keeps to the rules waits at its stage for the next rev
 describe('FL-3 a fix over the cap or off its purpose is refused with its own reason and releases the claim', () => {
   it('FL-3 fix_size_cap refuses more than a quarter, records checks_failed and keeps the reviewed head', () =>
     claimed(async (scene) => {
-      pushedFix(scene, { pull, fix: { 'apps/uw-app/board.tsx': 11 } });
+      pushedFix(scene, { pull, fix: { 'apps/uw-platform/board.tsx': 11 } });
       expect(await submitFix(scene)).toMatchObject({ status: 'error', reason: 'fix_size_cap' });
       expect(await itemOf(scene.world, scene.itemId)).toMatchObject({
         expectedHead: scene.head,
@@ -1851,11 +1851,11 @@ describe('FL-3 a fix over the cap or off its purpose is refused with its own rea
 
   it('FL-3 fix_size_cap refuses a file the pull request does not touch', () =>
     claimed(async (scene) => {
-      pushedFix(scene, { pull, fix: { 'apps/uw-app/billing.ts': 2 } });
+      pushedFix(scene, { pull, fix: { 'apps/uw-platform/billing.ts': 2 } });
       expect(await submitFix(scene)).toMatchObject({
         status: 'error',
         reason: 'fix_size_cap',
-        detail: { failures: ['fix_size_cap: the fix touches apps/uw-app/billing.ts, which the pull request does not'] },
+        detail: { failures: ['fix_size_cap: the fix touches apps/uw-platform/billing.ts, which the pull request does not'] },
       });
     }));
 
@@ -1868,7 +1868,7 @@ describe('FL-3 a fix over the cap or off its purpose is refused with its own rea
   it('FL-3 fix_keeps_purpose refuses a declaration that changed during the fix', () =>
     claimed(async (scene) => {
       const changed = declared({ riskTier: 'low', riskDomains: [] });
-      pushedFix(scene, { pull, fix: { 'apps/uw-app/board.tsx': 4 }, declaration: changed });
+      pushedFix(scene, { pull, fix: { 'apps/uw-platform/board.tsx': 4 }, declaration: changed });
       expect(await submitFix(scene)).toMatchObject({ status: 'error', reason: 'fix_keeps_purpose' });
       expect(await itemOf(scene.world, scene.itemId)).toMatchObject({ expectedHead: scene.head, holder: null });
     }));
@@ -1881,7 +1881,7 @@ describe('FL-3 a claim that is not a fix claim runs no fix validator', () => {
       const scene = await fixWorld(world);
       const author = simAgent(scene.admin, `${scene.admin.personId ?? ''}/builder`, { interactive: true });
       value(await scene.world.kernel.items.claim(simCaller(world, author), { itemId: scene.itemId, delegationId: null }));
-      pushedFix(scene, { pull, fix: { 'apps/uw-app/billing.ts': 400 } });
+      pushedFix(scene, { pull, fix: { 'apps/uw-platform/billing.ts': 400 } });
       expect(await submitFix(scene, author)).toMatchObject({ status: 'accepted', value: { result: 'advanced' } });
     } finally {
       await world.close();
@@ -2128,12 +2128,12 @@ FL-3. S17-R5 S17-R6 S17-R7 S17-R8."
 **Files:**
 - Create: `packages/harness/runs/fix-comments.ts`
 - Modify: `packages/harness/runs/commands.ts` (`RunCommands.reviewComments`)
-- Modify: `apps/uw-app/runs/prompt-source.ts` (`ReadText.comments`, `related`), `apps/uw-app/runs/prompts.ts` (`fixPrompt`)
-- Modify: `apps/uw-app/runs/bodies.ts` (`ReadDone.fix`, `readBody`, `workBody`'s prompt choice, `ModelDone.outcome`, the no-checkout guard, `Submitted.result`)
-- Modify: `apps/uw-app/runs/run-core.ts` (`fixComments`, `afterRead`, `afterWork`)
-- Modify: `apps/uw-app/runs/steps.ts` (`endingReasons`)
-- Modify: `apps/uw-app/runs/prompts.test.ts` (one block), and every `ReadText` literal `pnpm check` names
-- Create: `sim/kernel/fix-comments.test.ts`, `apps/uw-app/runs/fix-run.pg.test.ts`
+- Modify: `apps/uw-platform/runs/prompt-source.ts` (`ReadText.comments`, `related`), `apps/uw-platform/runs/prompts.ts` (`fixPrompt`)
+- Modify: `apps/uw-platform/runs/bodies.ts` (`ReadDone.fix`, `readBody`, `workBody`'s prompt choice, `ModelDone.outcome`, the no-checkout guard, `Submitted.result`)
+- Modify: `apps/uw-platform/runs/run-core.ts` (`fixComments`, `afterRead`, `afterWork`)
+- Modify: `apps/uw-platform/runs/steps.ts` (`endingReasons`)
+- Modify: `apps/uw-platform/runs/prompts.test.ts` (one block), and every `ReadText` literal `pnpm check` names
+- Create: `sim/kernel/fix-comments.test.ts`, `apps/uw-platform/runs/fix-run.pg.test.ts`
 
 **Interfaces:**
 - Consumes: Task 5's `roundFindings`, `fixWorld`, `fixerPage`; step 13's `untrusted`, `scanFences`, `PromptSource.related`.
@@ -2181,7 +2181,7 @@ describe('FL-4 the fix run reads the findings of the round that opened it', () =
 
 `scene.runId` is the Reviewer's run, which has ended: `runScene` refuses it (or the capability check does); either way `not_permitted` or `run_not_found`. If it answers `run_not_found`, assert that and say so in the commit body.
 
-In `apps/uw-app/runs/prompts.test.ts`, add `comments: []` to `fromIssue` and import `fixPrompt`; append:
+In `apps/uw-platform/runs/prompts.test.ts`, add `comments: []` to `fromIssue` and import `fixPrompt`; append:
 
 ```ts
 describe('FL-4 the fix prompt carries the review comments as untrusted content', () => {
@@ -2207,7 +2207,7 @@ describe('FL-4 the fix prompt carries the review comments as untrusted content',
 });
 ```
 
-`apps/uw-app/runs/fix-run.pg.test.ts`:
+`apps/uw-platform/runs/fix-run.pg.test.ts`:
 
 ```ts
 import { randomUUID } from 'node:crypto';
@@ -2269,7 +2269,7 @@ The mapping is proven on a `build` rig because it does not read the capability: 
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `npx vitest run sim/kernel/fix-comments.test.ts && npx vitest run --project workers apps/uw-app/runs/prompts.test.ts`
+Run: `npx vitest run sim/kernel/fix-comments.test.ts && npx vitest run --project workers apps/uw-platform/runs/prompts.test.ts`
 Expected: FAIL; `runs.reviewComments` and `fixPrompt` do not exist.
 
 - [ ] **Step 3: The host read**
@@ -2306,13 +2306,13 @@ export async function reviewComments(
 
 - [ ] **Step 4: The prompt**
 
-`apps/uw-app/runs/prompt-source.ts`: `ReadText` gains `readonly comments: readonly string[];`; in `promptSourceOf`, `related: []` becomes:
+`apps/uw-platform/runs/prompt-source.ts`: `ReadText` gains `readonly comments: readonly string[];`; in `promptSourceOf`, `related: []` becomes:
 
 ```ts
     related: read.comments.map((text) => wrapped('review_comment', text)),
 ```
 
-`apps/uw-app/runs/prompts.ts`, after `workPrompt`:
+`apps/uw-platform/runs/prompts.ts`, after `workPrompt`:
 
 ```ts
 export function fixPrompt(source: PromptSource): string {
@@ -2326,11 +2326,11 @@ export function fixPrompt(source: PromptSource): string {
 }
 ```
 
-Every `ReadText` literal `pnpm check` names (`apps/uw-app/runs/untrusted-prompts.pg.test.ts`, other tests) gains `comments: []`.
+Every `ReadText` literal `pnpm check` names (`apps/uw-platform/runs/untrusted-prompts.pg.test.ts`, other tests) gains `comments: []`.
 
 - [ ] **Step 5: The run host**
 
-`apps/uw-app/runs/bodies.ts`:
+`apps/uw-platform/runs/bodies.ts`:
 - import `fixPrompt` with the other prompts and `type EngineWorkResult` is already imported.
 - `ReadDone` gains `readonly fix: boolean;`; `readBody` returns `comments: [],` and `fix: capability === 'fix',` beside `review`.
 - `ModelDone.outcome` becomes `EngineWorkResult['outcome']`.
@@ -2365,7 +2365,7 @@ function promptOf(read: ReadDone & { readonly diff: string | null }, itemId: str
 
 - `workBody`'s parameter type becomes `read: ReadDone & { readonly diff: string | null }`, and its body computes `const prompt = promptOf(read, item.itemId);` in place of the ternary.
 
-`apps/uw-app/runs/run-core.ts`:
+`apps/uw-platform/runs/run-core.ts`:
 
 ```ts
 type CommentsRead = { readonly kind: 'comments'; readonly comments: string[] };
@@ -2410,19 +2410,19 @@ In `afterWork`, after the `turn_limit` line:
   }
 ```
 
-`apps/uw-app/runs/steps.ts`: `endingReasons` gains `'fix_size_cap'` and `'fix_keeps_purpose'` (the kernel already released the claim and stopped the run, S17-R7).
+`apps/uw-platform/runs/steps.ts`: `endingReasons` gains `'fix_size_cap'` and `'fix_keeps_purpose'` (the kernel already released the claim and stopped the run, S17-R7).
 
 - [ ] **Step 6: Run the tests**
 
-Run: `pnpm check && npx vitest run sim/kernel/fix-comments.test.ts packages/harness/runs && npx vitest run --project workers apps/uw-app/runs`
-Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/runs`
+Run: `pnpm check && npx vitest run sim/kernel/fix-comments.test.ts packages/harness/runs && npx vitest run --project workers apps/uw-platform/runs`
+Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/runs`
 Then: `pnpm architecture`
 Expected: green, including `untrusted-prompts.pg.test.ts`, `run-core.pg.test.ts` and `tools/architecture/untrusted-content.test.ts` (UC-4): the comments are wrapped in `prompt-source.ts` only, and `bodies.ts` and `run-core.ts` pass `read` to the builders, never an outside string.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add packages/harness apps/uw-app/runs sim
+git add packages/harness apps/uw-platform/runs sim
 git commit -m "feat(runs): a fix run reads its round's findings as untrusted review comments
 
 The host reads the real and plausible findings of the round that opened
@@ -2440,16 +2440,16 @@ FL-4. S17-R9 S17-R11."
 ### Task 9: FL-4, the fix work spec: the push closed, the checks run, then the platform pushes
 
 **Files:**
-- Create: `apps/uw-app/engines/sandbox/paths.ts`, `apps/uw-app/engines/sandbox/fix-checks.ts`, `apps/uw-app/engines/sandbox/registry-egress.ts`
-- Modify: `apps/uw-app/engines/sandbox/run.ts` (re-export the paths; `SandboxPlan.finish`; `sandboxWork`; `githubOf`)
-- Modify: `apps/uw-app/engines/sandbox/session.ts` (`SessionSpec.finish`, `SessionRun.finished`)
-- Modify: `apps/uw-app/engines/sandbox/egress.ts` (`EgressRoutes.registry`, the registry hop)
-- Modify: `apps/uw-app/engines/sandbox/github-egress.ts` (`GitHubEgress.pushes`)
-- Modify: `apps/uw-app/engines/seam.ts` (`Checkout.fix`, `EngineWorkResult.outcome`)
-- Modify: `apps/uw-app/engines/claude-code-sandbox/work.ts` (the fix script, tools, section, `finish`), `apps/uw-app/engines/codex-sandbox/work.ts` (`finish: null`)
-- Modify: `apps/uw-app/runs/builder-github.ts` (`builds`, `checkout.fix`)
-- Modify: `apps/uw-app/engines/sandbox/github-egress.test.ts`, `session.test.ts`, `egress.test.ts`, and every `Checkout` or `GitHubEgress` literal `pnpm check` names
-- Create: `apps/uw-app/engines/claude-code-sandbox/fix.test.ts`, `apps/uw-app/engines/sandbox/registry-egress.test.ts`
+- Create: `apps/uw-platform/engines/sandbox/paths.ts`, `apps/uw-platform/engines/sandbox/fix-checks.ts`, `apps/uw-platform/engines/sandbox/registry-egress.ts`
+- Modify: `apps/uw-platform/engines/sandbox/run.ts` (re-export the paths; `SandboxPlan.finish`; `sandboxWork`; `githubOf`)
+- Modify: `apps/uw-platform/engines/sandbox/session.ts` (`SessionSpec.finish`, `SessionRun.finished`)
+- Modify: `apps/uw-platform/engines/sandbox/egress.ts` (`EgressRoutes.registry`, the registry hop)
+- Modify: `apps/uw-platform/engines/sandbox/github-egress.ts` (`GitHubEgress.pushes`)
+- Modify: `apps/uw-platform/engines/seam.ts` (`Checkout.fix`, `EngineWorkResult.outcome`)
+- Modify: `apps/uw-platform/engines/claude-code-sandbox/work.ts` (the fix script, tools, section, `finish`), `apps/uw-platform/engines/codex-sandbox/work.ts` (`finish: null`)
+- Modify: `apps/uw-platform/runs/builder-github.ts` (`builds`, `checkout.fix`)
+- Modify: `apps/uw-platform/engines/sandbox/github-egress.test.ts`, `session.test.ts`, `egress.test.ts`, and every `Checkout` or `GitHubEgress` literal `pnpm check` names
+- Create: `apps/uw-platform/engines/claude-code-sandbox/fix.test.ts`, `apps/uw-platform/engines/sandbox/registry-egress.test.ts`
 - Modify: `docs/exceptions.md` (the 2026-10-04 rule-2 row), `docs/architecture.md` (the sandbox paragraph), in the same commit (rule 5)
 
 **Interfaces:**
@@ -2458,7 +2458,7 @@ FL-4. S17-R9 S17-R11."
 
 - [ ] **Step 1: Write the failing tests**
 
-`apps/uw-app/engines/sandbox/registry-egress.test.ts`:
+`apps/uw-platform/engines/sandbox/registry-egress.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -2501,7 +2501,7 @@ describe('FL-4 the package registry is reachable only while the declared checks 
 });
 ```
 
-In `apps/uw-app/engines/sandbox/github-egress.test.ts`, `rig`'s options gain `readonly pushes?: boolean` and its `github` literal gains `pushes: () => options.pushes ?? true,`; add:
+In `apps/uw-platform/engines/sandbox/github-egress.test.ts`, `rig`'s options gain `readonly pushes?: boolean` and its `github` literal gains `pushes: () => options.pushes ?? true,`; add:
 
 ```ts
 describe('FL-4 a fix run cannot push until the platform opens the push', () => {
@@ -2516,7 +2516,7 @@ describe('FL-4 a fix run cannot push until the platform opens the push', () => {
 
 (`push`, `old`, `next` and `branch` are the file's own helpers.)
 
-`apps/uw-app/engines/claude-code-sandbox/fix.test.ts`:
+`apps/uw-platform/engines/claude-code-sandbox/fix.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -2664,23 +2664,23 @@ If `claudeCodeSandboxEngine`'s config type wants more fields, copy `engineOn` fr
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `npx vitest run --project workers apps/uw-app/engines`
+Run: `npx vitest run --project workers apps/uw-platform/engines`
 Expected: FAIL to compile (`fix` is not on `Checkout`; `registry-egress.ts` does not exist).
 
 - [ ] **Step 3: The seam, the paths and the session**
 
-`apps/uw-app/engines/seam.ts`: `Checkout` gains `readonly fix: boolean;`; `EngineWorkResult.outcome` becomes `'ended' | 'turn_limit' | 'checks_not_run_locally'`.
+`apps/uw-platform/engines/seam.ts`: `Checkout` gains `readonly fix: boolean;`; `EngineWorkResult.outcome` becomes `'ended' | 'turn_limit' | 'checks_not_run_locally'`.
 
-`apps/uw-app/engines/sandbox/paths.ts`:
+`apps/uw-platform/engines/sandbox/paths.ts`:
 
 ```ts
 export const WORKSPACE = '/workspace';
 export const REPOSITORY_DIR = `${WORKSPACE}/repo`;
 ```
 
-`apps/uw-app/engines/sandbox/run.ts`: delete its two `WORKSPACE` and `REPOSITORY_DIR` constants, `import { REPOSITORY_DIR, WORKSPACE } from './paths.ts';` for its own use, and `export { REPOSITORY_DIR, WORKSPACE } from './paths.ts';` so the engines' imports stay.
+`apps/uw-platform/engines/sandbox/run.ts`: delete its two `WORKSPACE` and `REPOSITORY_DIR` constants, `import { REPOSITORY_DIR, WORKSPACE } from './paths.ts';` for its own use, and `export { REPOSITORY_DIR, WORKSPACE } from './paths.ts';` so the engines' imports stay.
 
-`apps/uw-app/engines/sandbox/session.ts`:
+`apps/uw-platform/engines/sandbox/session.ts`:
 
 ```ts
 export type SessionExec = (
@@ -2704,7 +2704,7 @@ export type SessionFinish = (ran: ExecResult, exec: SessionExec) => Promise<Fini
 
 - [ ] **Step 4: The egress**
 
-`apps/uw-app/engines/sandbox/registry-egress.ts`:
+`apps/uw-platform/engines/sandbox/registry-egress.ts`:
 
 ```ts
 export const REGISTRY_HOST = 'registry.internal';
@@ -2749,7 +2749,7 @@ export async function registryEgress(
 }
 ```
 
-`apps/uw-app/engines/sandbox/egress.ts`: import `registryEgress`, `type RegistryRoute` from `./registry-egress.ts`; `EgressRoutes` gains `readonly registry: RegistryRoute | null;`; in `egress`, after the GitHub hop:
+`apps/uw-platform/engines/sandbox/egress.ts`: import `registryEgress`, `type RegistryRoute` from `./registry-egress.ts`; `EgressRoutes` gains `readonly registry: RegistryRoute | null;`; in `egress`, after the GitHub hop:
 
 ```ts
   const registry = await registryEgress(request, routes, fetcher);
@@ -2758,11 +2758,11 @@ export async function registryEgress(
 
 `egress.test.ts`'s route literals gain `registry: null`.
 
-`apps/uw-app/engines/sandbox/github-egress.ts`: `GitHubEgress` gains `readonly pushes: () => boolean;`; `pushAllowed`'s first line becomes `if (!route.pushes() || !plainBody(request)) return null;`.
+`apps/uw-platform/engines/sandbox/github-egress.ts`: `GitHubEgress` gains `readonly pushes: () => boolean;`; `pushAllowed`'s first line becomes `if (!route.pushes() || !plainBody(request)) return null;`.
 
 - [ ] **Step 5: The three execs**
 
-`apps/uw-app/engines/sandbox/fix-checks.ts`:
+`apps/uw-platform/engines/sandbox/fix-checks.ts`:
 
 ```ts
 import type { ExecResult } from './host.ts';
@@ -2818,7 +2818,7 @@ export function fixFinish(phase: FixPhase, ended: (ran: ExecResult) => boolean):
 }
 ```
 
-`apps/uw-app/engines/sandbox/run.ts`:
+`apps/uw-platform/engines/sandbox/run.ts`:
 - import `fixPhase`, `NO_CHECKS_EXIT`, `type FixPhase` from `./fix-checks.ts` and `type SessionFinish`, `type SessionRun` from `./session.ts` (with the names it already imports).
 - `SandboxPlan` gains `readonly finish: ((input: EngineWork, phase: FixPhase) => SessionFinish) | null;`.
 - `githubOf(plan, input, phase: FixPhase)` returns `{ repository, branch, defaultBranch, ...access, pushes: phase.pushes }`.
@@ -2878,7 +2878,7 @@ and the return is unchanged. If `sandboxWork` passes 50 lines, move the `routes`
 
 - [ ] **Step 6: The Claude Code fix work spec**
 
-`apps/uw-app/engines/claude-code-sandbox/work.ts`:
+`apps/uw-platform/engines/claude-code-sandbox/work.ts`:
 - import `fixFinish`, `readDeclaredChecks` from `../sandbox/fix-checks.ts`, `type Checkout` with `type EngineWork` from `../seam.ts`.
 - Beside `BUILD_SCRIPT` and `BUILD_TOOLS`:
 
@@ -2934,9 +2934,9 @@ and use `script` as the third element.
 
 `ended` and `read` are declared in the same file; move `ended` below `read` so it is defined after use is not an issue (function declarations hoist).
 
-`apps/uw-app/engines/codex-sandbox/work.ts`, `codexPlan`: add `finish: null,` (S10-R21: it clones nothing, so it has no fix work spec).
+`apps/uw-platform/engines/codex-sandbox/work.ts`, `codexPlan`: add `finish: null,` (S10-R21: it clones nothing, so it has no fix work spec).
 
-`apps/uw-app/runs/builder-github.ts`: import `type CapabilityWord` from `@uw/contracts`;
+`apps/uw-platform/runs/builder-github.ts`: import `type CapabilityWord` from `@uw/contracts`;
 
 ```ts
 const building: ReadonlySet<CapabilityWord> = new Set<CapabilityWord>(['build', 'fix']);
@@ -2959,18 +2959,18 @@ Every `Checkout` literal `pnpm check` names (`work.test.ts`'s `checkout`, `codex
 `docs/architecture.md`, the **The sandbox engines.** paragraph: append:
 
 ```markdown
-A fix run (FL-4) is three execs in one session: the model, with the GitHub egress refusing every push and the declared checks read from `.harness/checks.sh` at the start commit before Claude Code starts; the declared checks, the only time `registry.internal` forwards (`GET` and `HEAD` to `https://registry.npmjs.org`); and the platform's own `git push`, the only time a push is forwarded. Missing or failing checks make the engine answer `checks_not_run_locally` and nothing is pushed (`apps/uw-app/engines/sandbox/fix-checks.ts`, S17-R10, S17-R11).
+A fix run (FL-4) is three execs in one session: the model, with the GitHub egress refusing every push and the declared checks read from `.harness/checks.sh` at the start commit before Claude Code starts; the declared checks, the only time `registry.internal` forwards (`GET` and `HEAD` to `https://registry.npmjs.org`); and the platform's own `git push`, the only time a push is forwarded. Missing or failing checks make the engine answer `checks_not_run_locally` and nothing is pushed (`apps/uw-platform/engines/sandbox/fix-checks.ts`, S17-R10, S17-R11).
 ```
 
 - [ ] **Step 8: Run the tests**
 
-Run: `pnpm check && npx vitest run --project workers apps/uw-app/engines apps/uw-app/runs` then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/runs` then `pnpm architecture`
-Expected: green, including the PE-5 hosted Builder test (a build run still pushes from its model exec: `pushes()` is always true when not fixing) and the dependency-cruiser rules (`fix-checks.ts` imports nothing from `apps/uw-app/github/`).
+Run: `pnpm check && npx vitest run --project workers apps/uw-platform/engines apps/uw-platform/runs` then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/runs` then `pnpm architecture`
+Expected: green, including the PE-5 hosted Builder test (a build run still pushes from its model exec: `pushes()` is always true when not fixing) and the dependency-cruiser rules (`fix-checks.ts` imports nothing from `apps/uw-platform/github/`).
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add apps/uw-app/engines apps/uw-app/runs docs/exceptions.md docs/architecture.md
+git add apps/uw-platform/engines apps/uw-platform/runs docs/exceptions.md docs/architecture.md
 git commit -m "feat(engines): a fix runs the repository's declared checks before the platform pushes it
 
 The Claude Code fix work spec is three execs in one session: the model
@@ -3013,7 +3013,7 @@ describe('FL-2 FL-3 a fix that passes waits for the next review round, which can
     try {
       const scene = await fixWorld(world);
       value(await claimFix(scene));
-      pushedFix(scene, { pull: { 'apps/uw-app/board.tsx': 40 }, fix: { 'apps/uw-app/board.tsx': 6 } });
+      pushedFix(scene, { pull: { 'apps/uw-platform/board.tsx': 40 }, fix: { 'apps/uw-platform/board.tsx': 6 } });
       expect(value(await submitFix(scene)).result).toBe('awaiting_review');
       expect(await offeredTo(scene, scene.fixer)).not.toContain(scene.itemId);
       const rerun = value(await startOn({ ...scene, pageId: scene.pageId }));
@@ -3064,10 +3064,10 @@ In `docs/progress_tracker.md`:
 
 | Requirement | Commits | Scenarios and tests |
 |---|---|---|
-| FL-1 | Tasks 2 to 5 | `sim/kernel/fix-claim.test.ts` (FL-1 block), `sim/scenarios/FL-1.…`, `apps/uw-app/commands/fix-claim.pg.test.ts`, `packages/db/fix-claim-columns.test.ts`, the Store contract's `DX-3 FL-1` case, `packages/contracts/contracts.test.ts` |
+| FL-1 | Tasks 2 to 5 | `sim/kernel/fix-claim.test.ts` (FL-1 block), `sim/scenarios/FL-1.…`, `apps/uw-platform/commands/fix-claim.pg.test.ts`, `packages/db/fix-claim-columns.test.ts`, the Store contract's `DX-3 FL-1` case, `packages/contracts/contracts.test.ts` |
 | FL-2 | Tasks 5, 6, 10 | `sim/kernel/fix-claim.test.ts` (FL-2 block), `packages/harness/items/fix-offer.test.ts`, `sim/scenarios/FL-2.…`, `sim/kernel/fix-claim-journey.test.ts` |
 | FL-3 | Task 7, 10 | `packages/harness/validators/fix.test.ts`, `packages/harness/github/diff-stat.test.ts`, `sim/kernel/fix-validators.test.ts`, `sim/scenarios/FL-3.…` |
-| FL-4 | Tasks 8, 9 | `apps/uw-app/engines/claude-code-sandbox/fix.test.ts`, `apps/uw-app/engines/sandbox/registry-egress.test.ts`, the FL-4 case in `github-egress.test.ts`, `apps/uw-app/runs/fix-run.pg.test.ts`, `apps/uw-app/runs/prompts.test.ts` (FL-4 block), `sim/kernel/fix-comments.test.ts` |
+| FL-4 | Tasks 8, 9 | `apps/uw-platform/engines/claude-code-sandbox/fix.test.ts`, `apps/uw-platform/engines/sandbox/registry-egress.test.ts`, the FL-4 case in `github-egress.test.ts`, `apps/uw-platform/runs/fix-run.pg.test.ts`, `apps/uw-platform/runs/prompts.test.ts` (FL-4 block), `sim/kernel/fix-comments.test.ts` |
 | FL-2 (red once) | Task 6 | Deleting `nextRound`'s `fix_claimed` line failed the "spends it" test; restored |
 
 3. Under the step's heading in "Decisions made during the build" (the shape `| date | requirement | ruling | why | cost if wrong |` of the S16 rows), S17-R1 to S17-R13 from the top of this plan.

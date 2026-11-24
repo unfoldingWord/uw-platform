@@ -1,7 +1,7 @@
 import { createPrivateKey, createSign } from 'node:crypto';
 import { ORG, targetFor, type DeployEnv, type GitHubAppTarget } from './apps.ts';
 
-type Worker = 'uw-app' | 'uw-ingest';
+type Worker = 'uw-platform' | 'uw-ingest';
 
 export type SecretWrite = {
   readonly worker: Worker;
@@ -118,10 +118,10 @@ function valuesOf(
   installation: number | null,
 ): readonly Value[] {
   return [
-    ['uw-app', `${target.prefix}_ID`, String(conversion.id)],
-    ['uw-app', `${target.prefix}_PRIVATE_KEY`, pem],
+    ['uw-platform', `${target.prefix}_ID`, String(conversion.id)],
+    ['uw-platform', `${target.prefix}_PRIVATE_KEY`, pem],
     [
-      'uw-app',
+      'uw-platform',
       `${target.prefix}_INSTALLATION_ID`,
       installation === null ? null : String(installation),
     ],

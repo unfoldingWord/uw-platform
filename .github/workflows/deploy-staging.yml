@@ -92,7 +92,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       SHA: ${{ github.event.workflow_run.head_sha }}
-      STAGING_URL: https://uw-app-staging.unfoldingword.workers.dev
+      STAGING_URL: https://uw-platform-staging.unfoldingword.workers.dev
     steps:
       - uses: actions/checkout@v4
         with:
@@ -106,12 +106,12 @@ jobs:
         uses: ./.github/actions/setup
       - name: Deploy staging
         if: steps.gate.outputs.configured == 'true'
-        working-directory: apps/uw-app
+        working-directory: apps/uw-platform
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: >-
-          pnpm exec wrangler deploy --config ../../infra/uw-app/wrangler.toml --env staging
+          pnpm exec wrangler deploy --config ../../infra/uw-platform/wrangler.toml --env staging
           --var "COMMIT_SHA:$SHA"
       - name: Confirm /health/probe reports the deployed commit
         if: steps.gate.outputs.configured == 'true'

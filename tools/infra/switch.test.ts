@@ -28,7 +28,10 @@ const settingName = /\b(?:secrets|vars)\.([A-Z][A-Z0-9_]*)\b/g;
 const issuedByGitHub = 'GITHUB_TOKEN';
 const gateRun = /^bash \.github\/scripts\/secret-gate\.sh ([A-Z_]+)$/;
 const placeholder = 'set-at-go-live';
-const goLiveFiles = ['infra/uw-app/wrangler.go-live.toml', 'infra/uw-ingest/wrangler.go-live.toml'];
+const goLiveFiles = [
+  'infra/uw-platform/wrangler.go-live.toml',
+  'infra/uw-ingest/wrangler.go-live.toml',
+];
 const switchHeading = '## Switching on the go-live wiring (FD-12)';
 const runbookStep = /^(\d+)\. \*\*/gm;
 
@@ -222,7 +225,9 @@ describe('GL-1 the runbook switches on what the go-live files leave unset', () =
   it('GL-1 orders the switch in eight steps and ends on the staging probe answering the database through Hyperdrive', () => {
     const section = switchSection();
     expect(runbookSteps(section)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
-    expect(stagingProbe()).toBe('https://uw-app-staging.unfoldingword.workers.dev/health/probe');
+    expect(stagingProbe()).toBe(
+      'https://uw-platform-staging.unfoldingword.workers.dev/health/probe',
+    );
     expect(section).toContain(stagingProbe());
     expect(section).toContain('select(.name == "database")');
     expect(section).toContain('reachable in');

@@ -20,12 +20,12 @@ function withPlanted(planted: Readonly<Record<string, string>>): SourceFiles {
   };
 }
 
-const builderFile = 'apps/uw-app/runs/prompts.ts';
-const bodies = 'apps/uw-app/runs/bodies.ts';
-const promptSource = 'apps/uw-app/runs/prompt-source.ts';
-const sneakCall = 'apps/uw-app/runs/sneak-review.ts';
-const sneakBuilder = 'apps/uw-app/runs/sneak-prompts.ts';
-const sneakCache = 'apps/uw-app/runs/verdict-cache.ts';
+const builderFile = 'apps/uw-platform/runs/prompts.ts';
+const bodies = 'apps/uw-platform/runs/bodies.ts';
+const promptSource = 'apps/uw-platform/runs/prompt-source.ts';
+const sneakCall = 'apps/uw-platform/runs/sneak-review.ts';
+const sneakBuilder = 'apps/uw-platform/runs/sneak-prompts.ts';
+const sneakCache = 'apps/uw-platform/runs/verdict-cache.ts';
 
 describe('UC-4 the tree passes the untrusted content check', () => {
   it('UC-4 finds the prompt builders where they are, and every one takes outside text wrapped', () => {
@@ -66,7 +66,7 @@ const wrapped = [
 describe('UC-4 the check fails on a planted call with an unwrapped outside read', () => {
   it.each(unwrapped)('flags %s', (text) => {
     expect(unwrappedBuilderCalls(withPlanted({ [sneakCall]: text }))).toEqual([
-      expect.stringMatching(/^apps\/uw-app\/runs\/sneak-review\.ts: \w+Prompt$/),
+      expect.stringMatching(/^apps\/uw-platform\/runs\/sneak-review\.ts: \w+Prompt$/),
     ]);
   });
 
@@ -181,7 +181,7 @@ describe('UC-5 the check fails on a planted cache of model output without the cl
   });
 
   it('passes a planted testing helper, as it passes the step runner fake', () => {
-    const file = 'apps/uw-app/testing/verdict-cache.ts';
+    const file = 'apps/uw-platform/testing/verdict-cache.ts';
     expect(cachesWithoutClearance(withPlanted({ [file]: modelCache }))).toEqual([]);
   });
 });

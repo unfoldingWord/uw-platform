@@ -8,7 +8,7 @@ type Env = {
 };
 type Config = { env: Record<string, Env> };
 
-const files = ['infra/uw-app/wrangler.toml', 'infra/uw-app/wrangler.go-live.toml'];
+const files = ['infra/uw-platform/wrangler.toml', 'infra/uw-platform/wrangler.go-live.toml'];
 const deployed = ['staging', 'production'] as const;
 const credential = /API_KEY|TOKEN|SECRET|PRIVATE/;
 

@@ -7,7 +7,7 @@ function keyLines(tier: string): readonly string[] {
   return [
     'closes: #12',
     'risks: the board renders slower on phones',
-    'touches: apps/uw-app/board',
+    'touches: apps/uw-platform/board',
     `risk_tier: ${tier}`,
     'risk_domains: none',
   ];

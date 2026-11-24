@@ -10,7 +10,7 @@
 
 **Requirements covered:** OB-1, OB-2, PI-2 (Must); OB-4 and GL-5 (Should, both built: OB-4 is the reason `/health` counts can be trusted on a repository Dependabot writes to, and GL-5 is design section 4 step 6, the pilot's way onto the whole lifecycle).
 
-**Builds on steps 14 to 18 (built before this plan runs).** Names used exactly as the plans hand them over. From `docs/plans/2026-10-15-step-14-joining.md`: `Harness.shadow`, `Harness.externalReviewerIdentities`, `githubLoginSchema`, `externalReviewerIdentitiesSchema`, `activate_template.shadow` and `.externalReviewerIdentities`, `stages.liftShadow` in `packages/harness/stages/shadow.ts`, `hasPackageStage`, the facts module's `requestedReviewers` path (`payloads.ts`, `records.ts`, `normalise.ts` `pullOf`, `upsert.ts` `pullColumns`), `createSimHarness` options `shadow`, `externalReviewerIdentities`, `dispatchable`, and migration `0029_joining`. From `docs/plans/2026-10-15-step-15-ship-rule-and-gates.md`: contract `13.0.0`, `apps/uw-app/github/facts/heads.ts` (the files writer moved out of `upsert.ts`), `PlaneTotals.reviewerRefutes` and the `reviewer_refutes` indicator appended to `AGENT_PLANE_INDICATORS`, `greenFacts` and `simParkedAtShip` in `sim/ship-fixtures.ts`. From `docs/plans/2026-10-15-step-16-merge-delegation.md`: wake reason `delegated_merge` at rank 2 with `screens` entry `['delegated_merge', 'item']` (the pattern this plan repeats for `silence_alarm`), `/health`'s live delegations indicator counting merge delegations, `Harness.protectedPaths`, `activate_template.protectedPaths`, `joinedPullRequest(item)`. From step 17 (planned after this plan was written): only that it may add a minor contract version and columns on `harnesses`; this plan touches nothing it owns. From `docs/plans/2026-10-15-step-18-epic-intake.md`: `ItemState.epic`, `ItemState.blockedBy` (the precedent for a projected `ItemState` field: contract field with a default, `harness_items` column, `toItemState` and `columnsOf` in the Store, every literal `pnpm check` names), `GitHubFacts.epic` (the precedent for a new facts port method: `ports.ts`, contract suite, sim adapter, platform adapter, not-wired adapter, `fixedFacts`, every `GitHubFacts` literal), `BoardView.epics`, `BoardView.notReady`. Where a file below differs from the text quoted here because those steps changed it, keep their lines and make only this plan's change.
+**Builds on steps 14 to 18 (built before this plan runs).** Names used exactly as the plans hand them over. From `docs/plans/2026-10-15-step-14-joining.md`: `Harness.shadow`, `Harness.externalReviewerIdentities`, `githubLoginSchema`, `externalReviewerIdentitiesSchema`, `activate_template.shadow` and `.externalReviewerIdentities`, `stages.liftShadow` in `packages/harness/stages/shadow.ts`, `hasPackageStage`, the facts module's `requestedReviewers` path (`payloads.ts`, `records.ts`, `normalise.ts` `pullOf`, `upsert.ts` `pullColumns`), `createSimHarness` options `shadow`, `externalReviewerIdentities`, `dispatchable`, and migration `0029_joining`. From `docs/plans/2026-10-15-step-15-ship-rule-and-gates.md`: contract `13.0.0`, `apps/uw-platform/github/facts/heads.ts` (the files writer moved out of `upsert.ts`), `PlaneTotals.reviewerRefutes` and the `reviewer_refutes` indicator appended to `AGENT_PLANE_INDICATORS`, `greenFacts` and `simParkedAtShip` in `sim/ship-fixtures.ts`. From `docs/plans/2026-10-15-step-16-merge-delegation.md`: wake reason `delegated_merge` at rank 2 with `screens` entry `['delegated_merge', 'item']` (the pattern this plan repeats for `silence_alarm`), `/health`'s live delegations indicator counting merge delegations, `Harness.protectedPaths`, `activate_template.protectedPaths`, `joinedPullRequest(item)`. From step 17 (planned after this plan was written): only that it may add a minor contract version and columns on `harnesses`; this plan touches nothing it owns. From `docs/plans/2026-10-15-step-18-epic-intake.md`: `ItemState.epic`, `ItemState.blockedBy` (the precedent for a projected `ItemState` field: contract field with a default, `harness_items` column, `toItemState` and `columnsOf` in the Store, every literal `pnpm check` names), `GitHubFacts.epic` (the precedent for a new facts port method: `ports.ts`, contract suite, sim adapter, platform adapter, not-wired adapter, `fixedFacts`, every `GitHubFacts` literal), `BoardView.epics`, `BoardView.notReady`. Where a file below differs from the text quoted here because those steps changed it, keep their lines and make only this plan's change.
 
 **Rulings made while planning** (recorded here and in `docs/progress_tracker.md` by the last task):
 
@@ -43,7 +43,7 @@
 | `Harness.botAuthors`, `botAuthorsSchema`, `defaultBotAuthors`, `activate_template.botAuthors` | `packages/contracts/harness.ts`, `commands.ts` | DX-10 |
 | `GitHubFacts.authors(refs)`, `PullRequestAuthor`; `gh_prs.author_login`; `uncountedItems(facts, scopes)`, `pullRequestKey(ref)` | `packages/harness/ports.ts`, `packages/db/schema-github.ts`, `packages/harness/views/bots.ts` | GL-1 |
 | `learningSourceSchema`, `LearningSource`; learning frontmatter `source`, `pull_request` | `packages/contracts/closed-sets.ts`, `page-types.ts` | v0.3.0 lessons (design section 10) |
-| `learningProvenance`, `provenanceOf`, `ExternalWriter`; `createPageAs(db, actor, command, request)` | `apps/uw-app/pages/provenance.ts`, `store.ts` | any later external writer |
+| `learningProvenance`, `provenanceOf`, `ExternalWriter`; `createPageAs(db, actor, command, request)` | `apps/uw-platform/pages/provenance.ts`, `store.ts` | any later external writer |
 | Command `change_template`; error reason `template_change_not_allowed`; event `template_changed`; `stages.changeTemplate(caller, { harnessId, template })`; Store `harnesses.write.setTemplate(harnessId, from, to)` | contracts, `packages/harness/stages/template-change.ts`, `store-ports.ts` | DX-10 |
 | sim `SimGitHubFacts.givenAuthor(ref, author)`; `createSimHarness` option `botAuthors` | `sim/adapters/github-facts.ts`, `sim/fixtures.ts` | DX-10 |
 
@@ -71,11 +71,11 @@ Every task obeys every line here. The controller passes this section to each imp
 
 - TypeScript `strict`, no `any`, no `@ts-ignore`, no `as unknown as`, no non-null assertion.
 - No code comments of any kind.
-- Files under 500 non-blank lines; functions under 50 lines, 25 statements, complexity 10, depth 4, 3 nested callbacks, 5 parameters. `apps/uw-app/github/facts/upsert.ts` and `apps/uw-app/github/sweep.ts` are near the limit after steps 14, 15 and 18: Task 6 adds one line to `upsert.ts` (`pullColumns`) and none to `sweep.ts`; if `upsert.ts` is at the limit, move one more reader out to a sibling file first, as steps 15 and 18 did, and say so in the commit body.
+- Files under 500 non-blank lines; functions under 50 lines, 25 statements, complexity 10, depth 4, 3 nested callbacks, 5 parameters. `apps/uw-platform/github/facts/upsert.ts` and `apps/uw-platform/github/sweep.ts` are near the limit after steps 14, 15 and 18: Task 6 adds one line to `upsert.ts` (`pullColumns`) and none to `sweep.ts`; if `upsert.ts` is at the limit, move one more reader out to a sibling file first, as steps 15 and 18 did, and say so in the commit body.
 - Zod at every boundary. `packages/contracts` imports only `zod`. `packages/harness` imports nothing from Workers, Drizzle or the network.
 - Every exported Zod schema registered in `packages/contracts/registry.ts` has `fixtures/<key>/valid/*.json` and `fixtures/<key>/invalid/*.json`. Any change to a registered `z.enum` appends a full entry to `packages/contracts/contract-lock.json` and changes `CONTRACT_VERSION`.
 - Every route and command has `can()` on the harness's area through the command registry's `action`. `change_template` is `admin`. No MCP verb is added and no persona toolset changes (V2-7).
-- `gate_decisions` and `harness_stages` are never written by anything an agent can reach. `harness_stages` is written here only by `editInTransaction`'s plan inside the stage command (`packages/harness/stages/`), which owns it. `harness_events` is written only through `recordHarnessEvents` and `recordItemEvents` (`packages/harness/items/record.ts`). `harnesses` is written only through `tx.harnesses.write.*` from `packages/harness/stages/`. `gh_prs` is written only by `apps/uw-app/github/facts/`. `pages` only by `apps/uw-app/pages/`.
+- `gate_decisions` and `harness_stages` are never written by anything an agent can reach. `harness_stages` is written here only by `editInTransaction`'s plan inside the stage command (`packages/harness/stages/`), which owns it. `harness_events` is written only through `recordHarnessEvents` and `recordItemEvents` (`packages/harness/items/record.ts`). `harnesses` is written only through `tx.harnesses.write.*` from `packages/harness/stages/`. `gh_prs` is written only by `apps/uw-platform/github/facts/`. `pages` only by `apps/uw-platform/pages/`.
 - The system principal is named only in composition roots (`tools/architecture/system-principal.test.ts`): the kernel checks it with `isSystemPrincipal`, the cron builds it.
 - UI: tokens only (no hex, no fixed pixel widths in classes), sentence case, second person, no exclamation marks, no emoji; Kindle orange marks a human action and nothing else, and this step adds no control, so it adds no Kindle; every link has an accessible name and visible focus; light, dark and phone width hold (`tools/ui` checks).
 
@@ -89,7 +89,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Shared roots**
 
-- `CONTEXT.md` (Task 1), `docs/PRD.md` and the design (Task 1, their own commit), `packages/contracts/` (Task 2), `packages/db/schema.ts` and `packages/db/schema-github.ts` with the migration (Task 3), `packages/harness/ports.ts` and `packages/harness/store-ports.ts` with its mirror `packages/db/store/types.ts` (Task 4) are shared roots. Each change to one is its own commit with no feature code, and the message names the root and why. `packages/db/store/`, `packages/db/test-seed.ts`, `apps/uw-app/generated/islands.ts` and the sim are not shared roots.
+- `CONTEXT.md` (Task 1), `docs/PRD.md` and the design (Task 1, their own commit), `packages/contracts/` (Task 2), `packages/db/schema.ts` and `packages/db/schema-github.ts` with the migration (Task 3), `packages/harness/ports.ts` and `packages/harness/store-ports.ts` with its mirror `packages/db/store/types.ts` (Task 4) are shared roots. Each change to one is its own commit with no feature code, and the message names the root and why. `packages/db/store/`, `packages/db/test-seed.ts`, `apps/uw-platform/generated/islands.ts` and the sim are not shared roots.
 - Between Task 2 and Task 3 `tools/db/drift.test.ts` is red (the name checks derive from the enums). Between Task 4's port commit and its adapter commit `pnpm check` is red. Do those pairs back to back.
 
 **Tests**
@@ -207,7 +207,7 @@ OB-2 OB-4 PI-2 GL-5. S19-R13."
 - Create: fixtures (Step 5)
 - Modify: `packages/contracts/events.test.ts` (the vocabulary count), `packages/contracts/contracts.test.ts` (new block)
 - Modify: `packages/contracts/contract-lock.json`, `packages/contracts/version.ts`
-- Second commit, not a shared root: `packages/harness/items/fold.ts` (`unchangedNames`; `created` sets `heldSince: null`), `packages/harness/notify/rank.ts`, `packages/harness/notify/plan.ts` (`screens`), `packages/harness/stages/activate.ts` (the `Harness` literal), every `Harness` and `ItemState` literal `pnpm check` flags, `apps/uw-app/commands/registry.ts`, `apps/uw-app/commands/registry.test.ts`, `apps/uw-app/generated/islands.ts`
+- Second commit, not a shared root: `packages/harness/items/fold.ts` (`unchangedNames`; `created` sets `heldSince: null`), `packages/harness/notify/rank.ts`, `packages/harness/notify/plan.ts` (`screens`), `packages/harness/stages/activate.ts` (the `Harness` literal), every `Harness` and `ItemState` literal `pnpm check` flags, `apps/uw-platform/commands/registry.ts`, `apps/uw-platform/commands/registry.test.ts`, `apps/uw-platform/generated/islands.ts`
 
 **Interfaces:**
 - Produces: `LearningSource = 'platform' | 'external'`; `defaultBotAuthors = ['dependabot[bot]']`; `Harness.botAuthors: string[]` (default `defaultBotAuthors`); `ItemState.heldSince: string | null` (default `null`); `EventEvidence['silence_alarm'] = { level: 'red'; waiting: number; oldestEnteredAt: string; lastReviewStepAt: string | null }`; `EventEvidence['template_changed'] = { from: string; to: string; kept: string[]; added: string[] }`; `CommandBody<'change_template'> = { command; requestId; template: TemplateKey }`; `activate_template.botAuthors` (default `defaultBotAuthors`); learning frontmatter `source: LearningSource` (default `'platform'`), `pull_request: PullRequestRef | null` (default `null`); `healthLink(indicator: string): DeepLink`.
@@ -538,15 +538,15 @@ OB-1 OB-2 OB-4 PI-2 GL-5. S19-R5 S19-R6 S19-R9 S19-R10 S19-R12."
 
 Run `pnpm check`. For each `Harness` object literal it flags, add `botAuthors: []` (a test literal that means a harness without bots) or `botAuthors: ['dependabot[bot]']` (one that compares with a stored harness); for each `ItemState` literal, add `heldSince: null`.
 
-`apps/uw-app/commands/registry.ts`: add `notWiredCommand('change_template', 'admin'),` as the last entry of the `commandRegistryOf([...])` list (import `notWiredCommand` from `./not-wired.ts` if it is not imported). `apps/uw-app/commands/registry.test.ts`: add `change_template: 'admin',` to `actions`.
+`apps/uw-platform/commands/registry.ts`: add `notWiredCommand('change_template', 'admin'),` as the last entry of the `commandRegistryOf([...])` list (import `notWiredCommand` from `./not-wired.ts` if it is not imported). `apps/uw-platform/commands/registry.test.ts`: add `change_template: 'admin',` to `actions`.
 
 Regenerate the islands bundle, which embeds the contract schemas: `pnpm ui:islands`.
 
-Run: `pnpm check && npx vitest run packages/harness/items packages/harness/notify packages/contracts apps/uw-app/commands/registry.test.ts tools/ui/generated-islands.test.ts`
+Run: `pnpm check && npx vitest run packages/harness/items packages/harness/notify packages/contracts apps/uw-platform/commands/registry.test.ts tools/ui/generated-islands.test.ts`
 Expected: green. `tools/db/drift.test.ts` is red until Task 3.
 
 ```bash
-git add packages/harness apps/uw-app sim tools
+git add packages/harness apps/uw-platform sim tools
 git commit -m "chore: the totals the observability contracts force
 
 The two harness events fold to nothing, silence_alarm ranks 3 and opens
@@ -747,7 +747,7 @@ export function describeStoreObservability(adapter: string, subject: Observabili
 
 If `itemOf` refuses `heldSince` because `itemStateSchema` was parsed before Task 2 landed, it will not: Task 2 is committed by now.
 
-Run: `pnpm check && npx vitest run sim/adapters/store.contract.test.ts` then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/ports/store.contract.pg.test.ts packages/db`
+Run: `pnpm check && npx vitest run sim/adapters/store.contract.test.ts` then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/ports/store.contract.pg.test.ts packages/db`
 Expected: green.
 
 ```bash
@@ -767,7 +767,7 @@ OB-2 OB-4."
 **Files:**
 - Modify: `packages/harness/store-ports.ts` and its mirror `packages/db/store/types.ts` (`HarnessesGateway.write.setTemplate`)
 - Modify: `packages/harness/ports.ts` (`PullRequestAuthor`, `GitHubFacts.authors`)
-- Second commit: `packages/db/store/harnesses.ts` (`setTemplate`), `packages/harness/port-contracts/store-observability.ts` (one case), `packages/harness/port-contracts/github-facts.ts` (subject `givenAuthor`; one case; the not-wired record), `sim/adapters/github-facts.ts`, `sim/adapters/github-facts.contract.test.ts`, `apps/uw-app/github/facts/authors.ts` (create), `apps/uw-app/ports/github-facts.ts`, `apps/uw-app/ports/github-facts.not-wired.ts`, `apps/uw-app/ports/github-facts.contract.pg.test.ts`, `apps/uw-app/testing/kernel.ts` (`fixedFacts`), every `GitHubFacts` literal `pnpm check` flags (expect `apps/uw-app/testing/run-host.ts`, `sim/kernel/adopt-branch.test.ts`, `sim/kernel/ship-refresh.test.ts`, `sim/kernel/gate-view.test.ts`, `sim/kernel/connector-exit.test.ts`, `sim/kernel/submit-facts.test.ts`)
+- Second commit: `packages/db/store/harnesses.ts` (`setTemplate`), `packages/harness/port-contracts/store-observability.ts` (one case), `packages/harness/port-contracts/github-facts.ts` (subject `givenAuthor`; one case; the not-wired record), `sim/adapters/github-facts.ts`, `sim/adapters/github-facts.contract.test.ts`, `apps/uw-platform/github/facts/authors.ts` (create), `apps/uw-platform/ports/github-facts.ts`, `apps/uw-platform/ports/github-facts.not-wired.ts`, `apps/uw-platform/ports/github-facts.contract.pg.test.ts`, `apps/uw-platform/testing/kernel.ts` (`fixedFacts`), every `GitHubFacts` literal `pnpm check` flags (expect `apps/uw-platform/testing/run-host.ts`, `sim/kernel/adopt-branch.test.ts`, `sim/kernel/ship-refresh.test.ts`, `sim/kernel/gate-view.test.ts`, `sim/kernel/connector-exit.test.ts`, `sim/kernel/submit-facts.test.ts`)
 
 **Interfaces:**
 - Produces:
@@ -882,7 +882,7 @@ In `describeGithubFactsNotWired`'s record add `authors: true,`.
 
 - [ ] **Step 4: The facts adapters**
 
-`apps/uw-app/github/facts/authors.ts`:
+`apps/uw-platform/github/facts/authors.ts`:
 
 ```ts
 import { and, eq, inArray, isNotNull, sql } from 'drizzle-orm';
@@ -934,9 +934,9 @@ export async function pullRequestAuthors(
 }
 ```
 
-`apps/uw-app/ports/github-facts.ts`: `authors: (refs) => pullRequestAuthors(db, refs),` (import from `../github/facts/authors.ts`). `apps/uw-app/ports/github-facts.not-wired.ts`: `authors: () => notWiredCall('githubFacts', 'authors'),`.
+`apps/uw-platform/ports/github-facts.ts`: `authors: (refs) => pullRequestAuthors(db, refs),` (import from `../github/facts/authors.ts`). `apps/uw-platform/ports/github-facts.not-wired.ts`: `authors: () => notWiredCall('githubFacts', 'authors'),`.
 
-`apps/uw-app/ports/github-facts.contract.pg.test.ts`: the subject gains
+`apps/uw-platform/ports/github-facts.contract.pg.test.ts`: the subject gains
 
 ```ts
       givenAuthor: async (ref, author) => {
@@ -969,17 +969,17 @@ and on the returned object:
 
 (import `PullRequestAuthor` from `@uw/harness`). `sim/adapters/github-facts.contract.test.ts`: the subject gains `givenAuthor: async (ref, author) => facts.givenAuthor(ref, author),`.
 
-`apps/uw-app/testing/kernel.ts` `fixedFacts`: `authors: async () => [],`. Run `pnpm check`; add `authors: async () => [],` to every other `GitHubFacts` literal it flags.
+`apps/uw-platform/testing/kernel.ts` `fixedFacts`: `authors: async () => [],`. Run `pnpm check`; add `authors: async () => [],` to every other `GitHubFacts` literal it flags.
 
 - [ ] **Step 5: Run the contracts and the adapters**
 
-Run: `pnpm check && npx vitest run sim/adapters packages/harness/port-contracts` then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/ports`
+Run: `pnpm check && npx vitest run sim/adapters packages/harness/port-contracts` then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/ports`
 Expected: green, including `DX-3 githubFacts port contract` with the `OB-4` case on both adapters and the not-wired record, and the Store contract's `setTemplate` case.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add packages/db/store packages/harness/port-contracts sim apps/uw-app
+git add packages/db/store packages/harness/port-contracts sim apps/uw-platform
 git commit -m "feat: bind the template write and the author read on every adapter
 
 The Store's setTemplate is a compare-and-set on harnesses.template; the
@@ -999,8 +999,8 @@ OB-4 GL-5. S19-R8."
 - Create: `packages/harness/items/fold-held.test.ts`
 - Create: `packages/harness/views/holder.ts`, `packages/harness/views/holder.test.ts`
 - Modify: `packages/harness/views/types.ts` (`BoardCard.holder`, `PlayByPlay.holder`), `packages/harness/views/board.ts`, `packages/harness/views/play.ts`, `packages/harness/index.ts`
-- Create: `apps/uw-app/views/parts/holder-words.ts`, `apps/uw-app/views/parts/holder-words.test.ts`
-- Modify: `apps/uw-app/views/parts/board-card.tsx` (`CardViewer.at`; the Holder line), `apps/uw-app/views/screens/board.tsx` (`viewerOf`), `apps/uw-app/views/screens/play.tsx` (the holder line)
+- Create: `apps/uw-platform/views/parts/holder-words.ts`, `apps/uw-platform/views/parts/holder-words.test.ts`
+- Modify: `apps/uw-platform/views/parts/board-card.tsx` (`CardViewer.at`; the Holder line), `apps/uw-platform/views/screens/board.tsx` (`viewerOf`), `apps/uw-platform/views/screens/play.tsx` (the holder line)
 - Create: `sim/kernel/holder.test.ts`
 
 **Interfaces:**
@@ -1159,7 +1159,7 @@ describe('OB-2 who holds the ball', () => {
 });
 ```
 
-`apps/uw-app/views/parts/holder-words.test.ts`:
+`apps/uw-platform/views/parts/holder-words.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -1270,7 +1270,7 @@ describe('OB-2 the Board and the item show who holds the ball and since when', (
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `npx vitest run packages/harness/items/fold-held.test.ts packages/harness/views/holder.test.ts apps/uw-app/views/parts/holder-words.test.ts sim/kernel/holder.test.ts`
+Run: `npx vitest run packages/harness/items/fold-held.test.ts packages/harness/views/holder.test.ts apps/uw-platform/views/parts/holder-words.test.ts sim/kernel/holder.test.ts`
 Expected: FAIL; `heldSince` stays `null`, `holder.ts` and `holder-words.ts` do not exist.
 
 - [ ] **Step 3: The clock in the fold**
@@ -1422,7 +1422,7 @@ and add `holder` to the accepted object.
 
 - [ ] **Step 5: The holder on the Board card and the item screen**
 
-`apps/uw-app/views/parts/holder-words.ts`:
+`apps/uw-platform/views/parts/holder-words.ts`:
 
 ```ts
 import { formatDuration } from '@uw/core/dates';
@@ -1443,11 +1443,11 @@ export function holderText(holder: Holder | null, at: Date): string {
 }
 ```
 
-`apps/uw-app/views/parts/board-card.tsx`: `CardViewer` becomes `{ readonly identity: string; readonly admin: boolean; readonly at: Date }`; `metaOf(card)` becomes `metaOf(card, at)` and its Holder line becomes `{ label: 'Holder', value: holderText(card.holder, at) },`; `BoardCardView` calls `metaOf(card, props.viewer.at)`.
+`apps/uw-platform/views/parts/board-card.tsx`: `CardViewer` becomes `{ readonly identity: string; readonly admin: boolean; readonly at: Date }`; `metaOf(card)` becomes `metaOf(card, at)` and its Holder line becomes `{ label: 'Holder', value: holderText(card.holder, at) },`; `BoardCardView` calls `metaOf(card, props.viewer.at)`.
 
-`apps/uw-app/views/screens/board.tsx`: `viewerOf` returns `{ identity, admin, at }` (it already receives `at`).
+`apps/uw-platform/views/screens/board.tsx`: `viewerOf` returns `{ identity, admin, at }` (it already receives `at`).
 
-`apps/uw-app/views/screens/play.tsx`: import `holderText`; directly after `<PageHead ... />` add:
+`apps/uw-platform/views/screens/play.tsx`: import `holderText`; directly after `<PageHead ... />` add:
 
 ```tsx
       <p class="m-0 mb-4 text-sm text-muted">{`Holder: ${holderText(play.holder, screen.at)}`}</p>
@@ -1455,20 +1455,20 @@ export function holderText(holder: Holder | null, at: Date): string {
 
 - [ ] **Step 6: Run them, the harness and the sim**
 
-Run: `pnpm check && npx vitest run packages/harness apps/uw-app/views/parts sim/kernel` then `pnpm sim -- all`
+Run: `pnpm check && npx vitest run packages/harness apps/uw-platform/views/parts sim/kernel` then `pnpm sim -- all`
 Expected: green. A test or scenario that compares a whole `ItemState` with `toEqual` now carries `heldSince`; set it to the `at` of the last claim, release, stage change or parking the test performed (the sim clock does not move unless the test advances it, so it is usually the scene's start), and say so in the commit body. `KN-4 an item is the fold of its events` stays green because the projection and the replay agree.
 
-Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/views tools/ui`
+Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/views tools/ui`
 Expected: green. A Board test asserting the card's `Holder` value for a claimed card now reads `Claimed by <identity>, for <n> min`; update it to that.
 
 - [ ] **Step 7: Check the Board and the item screen in light, dark and phone width**
 
-Run the app locally (`pnpm --filter @uw/uw-app dev` with the dev principal, as step 8 records in the tracker) and load a Board with a claimed card and that item's page, at 360 px wide, in light and in dark. If no browser can run here, add a "Not verified" row to the tracker naming both screens.
+Run the app locally (`pnpm --filter @uw/uw-platform dev` with the dev principal, as step 8 records in the tracker) and load a Board with a claimed card and that item's page, at 360 px wide, in light and in dark. If no browser can run here, add a "Not verified" row to the tracker naming both screens.
 
 - [ ] **Step 8: Commit**
 
 ```bash
-git add packages/harness apps/uw-app sim
+git add packages/harness apps/uw-platform sim
 git commit -m "feat(harness): who holds the ball and for how long, on the Board and the item
 
 The fold stamps heldSince whenever the holder, the gate status or the
@@ -1484,11 +1484,11 @@ OB-2. S19-R1 S19-R2."
 ### Task 6: OB-4, the author on the facts and honest counts on the Board and Home
 
 **Files:**
-- Modify: `apps/uw-app/github/payloads.ts` (`user` on `pullSchema`), `apps/uw-app/github/facts/records.ts` (`PullRequestRecord.authorLogin`), `apps/uw-app/github/facts/normalise.ts` (`pullOf`), `apps/uw-app/github/facts/upsert.ts` (`pullColumns`), `apps/uw-app/github/facts/normalise.test.ts` (one test), every `PullRequestRecord` literal `pnpm check` flags
-- Modify: `packages/harness/stages/activate.ts` (`ActivateInput.botAuthors`), `apps/uw-app/commands/person/stages.ts` (`activateTemplateCommand`), `sim/fixtures.ts` (`createSimHarness` option `botAuthors`)
+- Modify: `apps/uw-platform/github/payloads.ts` (`user` on `pullSchema`), `apps/uw-platform/github/facts/records.ts` (`PullRequestRecord.authorLogin`), `apps/uw-platform/github/facts/normalise.ts` (`pullOf`), `apps/uw-platform/github/facts/upsert.ts` (`pullColumns`), `apps/uw-platform/github/facts/normalise.test.ts` (one test), every `PullRequestRecord` literal `pnpm check` flags
+- Modify: `packages/harness/stages/activate.ts` (`ActivateInput.botAuthors`), `apps/uw-platform/commands/person/stages.ts` (`activateTemplateCommand`), `sim/fixtures.ts` (`createSimHarness` option `botAuthors`)
 - Create: `packages/harness/views/bots.ts`, `packages/harness/views/bots.test.ts`
 - Modify: `packages/harness/views/types.ts` (`BoardColumn.uncounted`, `Waiting.uncounted`), `packages/harness/views/board.ts`, `packages/harness/views/waiting.ts`, `packages/harness/views/index.ts` (the ports the two views take), `packages/harness/index.ts`
-- Modify: `apps/uw-app/views/screens/board.tsx` (the Items count), `apps/uw-app/views/screens/home.tsx` (the lede)
+- Modify: `apps/uw-platform/views/screens/board.tsx` (the Items count), `apps/uw-platform/views/screens/home.tsx` (the lede)
 - Create: `sim/kernel/bot-counts.test.ts`
 
 **Interfaces:**
@@ -1497,7 +1497,7 @@ OB-2. S19-R1 S19-R2."
 
 - [ ] **Step 1: Write the failing tests**
 
-In `apps/uw-app/github/facts/normalise.test.ts` (reuse the file's REST pull fixture and repo record; read its top first):
+In `apps/uw-platform/github/facts/normalise.test.ts` (reuse the file's REST pull fixture and repo record; read its top first):
 
 ```ts
 describe('OB-4 the facts carry the pull request author', () => {
@@ -1658,18 +1658,18 @@ describe('OB-4 counts leave out pull requests a listed bot opened', () => {
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `npx vitest run apps/uw-app/github/facts/normalise.test.ts packages/harness/views/bots.test.ts sim/kernel/bot-counts.test.ts`
+Run: `npx vitest run apps/uw-platform/github/facts/normalise.test.ts packages/harness/views/bots.test.ts sim/kernel/bot-counts.test.ts`
 Expected: FAIL; `authorLogin`, `bots.ts`, `uncounted` and the `botAuthors` option do not exist.
 
 - [ ] **Step 3: The author into the facts**
 
-`apps/uw-app/github/payloads.ts`, in `pullSchema`: `user: z.object({ login: name }).nullable().optional(),`.
+`apps/uw-platform/github/payloads.ts`, in `pullSchema`: `user: z.object({ login: name }).nullable().optional(),`.
 
-`apps/uw-app/github/facts/records.ts`, `PullRequestRecord` gains `readonly authorLogin: string | null;`.
+`apps/uw-platform/github/facts/records.ts`, `PullRequestRecord` gains `readonly authorLogin: string | null;`.
 
-`apps/uw-app/github/facts/normalise.ts`, in `pullOf`'s returned object after `milestoneId`: `authorLogin: pull.user?.login ?? null,`.
+`apps/uw-platform/github/facts/normalise.ts`, in `pullOf`'s returned object after `milestoneId`: `authorLogin: pull.user?.login ?? null,`.
 
-`apps/uw-app/github/facts/upsert.ts`, `pullColumns` gains `authorLogin: ghPrs.authorLogin,` (the insert copies the record, whose field name matches). Run `pnpm check`; add `authorLogin: null` to every `PullRequestRecord` literal it flags.
+`apps/uw-platform/github/facts/upsert.ts`, `pullColumns` gains `authorLogin: ghPrs.authorLogin,` (the insert copies the record, whose field name matches). Run `pnpm check`; add `authorLogin: null` to every `PullRequestRecord` literal it flags.
 
 - [ ] **Step 4: Bot authors at activation**
 
@@ -1682,7 +1682,7 @@ Expected: FAIL; `authorLogin`, `bots.ts`, `uncounted` and the `botAuthors` optio
 
 and the `Harness` literal's `botAuthors: [...defaultBotAuthors],` becomes `botAuthors: bots.data,` (import `botAuthorsSchema` beside `defaultBotAuthors`). If the function passes the statement limit, move the three input checks (repository, step 14's lists, bots) into one `inputRefusal(input)` helper returning `Refused | null` and say so in the commit body.
 
-`apps/uw-app/commands/person/stages.ts`, `activateTemplateCommand`: destructure `botAuthors` from the body beside `shadow` and pass it in `input`.
+`apps/uw-platform/commands/person/stages.ts`, `activateTemplateCommand`: destructure `botAuthors` from the body beside `shadow` and pass it in `input`.
 
 `sim/fixtures.ts`: `SimHarnessOptions` gains `readonly botAuthors?: readonly string[];`; `createSimHarness` passes `...(options.botAuthors === undefined ? {} : { botAuthors: options.botAuthors }),` into the activation input.
 
@@ -1793,7 +1793,7 @@ and in `waitingOn`:
 
 `packages/harness/views/index.ts` already passes `ports` (`ViewPorts` includes `githubFacts`) to both; `pnpm check` names any other caller of `boardView` or `waitingOn`, which passes its kernel's ports the same way.
 
-`apps/uw-app/views/screens/board.tsx`, in `ColumnView` replace the `items` line with:
+`apps/uw-platform/views/screens/board.tsx`, in `ColumnView` replace the `items` line with:
 
 ```tsx
   const items = itemsText(column, view.harness.botAuthors);
@@ -1810,7 +1810,7 @@ function itemsText(column: BoardColumn, botAuthors: readonly string[]): string {
 }
 ```
 
-`apps/uw-app/views/screens/home.tsx`: replace `lede` with
+`apps/uw-platform/views/screens/home.tsx`: replace `lede` with
 
 ```ts
 function lede(count: number, capped: boolean, uncounted: number): string {
@@ -1828,8 +1828,8 @@ and its call becomes `lede(rows.length - waiting.uncounted, notes.length > 0, wa
 
 - [ ] **Step 7: Run them**
 
-Run: `pnpm check && npx vitest run packages/harness/views apps/uw-app/github/facts/normalise.test.ts sim/kernel` then `pnpm sim -- all`
-Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/github apps/uw-app/views apps/uw-app/commands tools/ui`
+Run: `pnpm check && npx vitest run packages/harness/views apps/uw-platform/github/facts/normalise.test.ts sim/kernel` then `pnpm sim -- all`
+Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/github apps/uw-platform/views apps/uw-platform/commands tools/ui`
 Expected: green. A test comparing a whole `BoardColumn` or `Waiting` gains `uncounted: 0`.
 
 - [ ] **Step 8: Check the Board and Home in light, dark and phone width**
@@ -1839,7 +1839,7 @@ As Task 5 Step 7, with one card on a bot's pull request so the "not counting" te
 - [ ] **Step 9: Commit**
 
 ```bash
-git add apps/uw-app packages/harness sim
+git add apps/uw-platform packages/harness sim
 git commit -m "feat: honest counts leave out pull requests a listed bot opened
 
 The facts record each pull request's author; a harness lists its bot
@@ -1858,9 +1858,9 @@ OB-4. S19-R6 S19-R7."
 - Create: `packages/harness/alarms/silence.ts`, `packages/harness/alarms/silence.test.ts`, `packages/harness/alarms/commands.ts`
 - Modify: `packages/harness/kernel.ts` (`Kernel.alarms`), `packages/harness/views/index.ts` (`silence`), `packages/harness/index.ts`
 - Modify: `packages/harness/notify/triggers.ts`, `packages/harness/notify/recipients.ts`, `packages/harness/notify/plan.ts` (`linkOf`)
-- Modify: `apps/uw-app/islands/worker/sw-core.ts` (`PUSH_TITLES`), `apps/uw-app/generated/islands.ts` (regenerated)
-- Modify: `apps/uw-app/cron/minute.ts` (the `silence` step)
-- Create: `apps/uw-app/cron/silence.pg.test.ts`
+- Modify: `apps/uw-platform/islands/worker/sw-core.ts` (`PUSH_TITLES`), `apps/uw-platform/generated/islands.ts` (regenerated)
+- Modify: `apps/uw-platform/cron/minute.ts` (the `silence` step)
+- Create: `apps/uw-platform/cron/silence.pg.test.ts`
 - Create: `sim/kernel/silence.test.ts`, `sim/scenarios/OB-1.a-silent-check-goes-red-and-wakes-the-admins-once-per-cooldown.ts`
 
 **Interfaces:**
@@ -2063,7 +2063,7 @@ export const scenario = defineScenario({
 });
 ```
 
-`apps/uw-app/cron/silence.pg.test.ts`:
+`apps/uw-platform/cron/silence.pg.test.ts`:
 
 ```ts
 import { randomUUID } from 'node:crypto';
@@ -2374,11 +2374,11 @@ and `['silence_alarm', silenceAlarm],` in `byReason`.
   if (trigger.reason === 'silence_alarm') return healthLink('silence_alarm');
 ```
 
-`apps/uw-app/islands/worker/sw-core.ts`: `PUSH_TITLES` gains `silence_alarm: 'Items wait in Check and no review has run',`. Regenerate: `pnpm ui:islands`.
+`apps/uw-platform/islands/worker/sw-core.ts`: `PUSH_TITLES` gains `silence_alarm: 'Items wait in Check and no review has run',`. Regenerate: `pnpm ui:islands`.
 
 - [ ] **Step 6: The minute cron**
 
-`apps/uw-app/cron/minute.ts`: add `const SILENCE_LIMIT = 200;` beside the other limits, and
+`apps/uw-platform/cron/minute.ts`: add `const SILENCE_LIMIT = 200;` beside the other limits, and
 
 ```ts
 async function silence({ kernel, caller, logger }: Minute): Promise<void> {
@@ -2399,14 +2399,14 @@ and in `minuteWith`, after `await guarded(minute, 'beat', beat);` (and after any
 
 - [ ] **Step 7: Run them**
 
-Run: `pnpm check && npx vitest run packages/harness sim/kernel apps/uw-app/islands` then `pnpm sim -- OB-1 && pnpm sim -- all`
-Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/cron tools/architecture tools/ui/generated-islands.test.ts`
+Run: `pnpm check && npx vitest run packages/harness sim/kernel apps/uw-platform/islands` then `pnpm sim -- OB-1 && pnpm sim -- all`
+Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/cron tools/architecture tools/ui/generated-islands.test.ts`
 Expected: green, including `only the composition roots construct the system principal` and the owners check (the alarm writes events only through `recordHarnessEvents`).
 
 - [ ] **Step 8: Commit**
 
 ```bash
-git add packages/harness apps/uw-app sim
+git add packages/harness apps/uw-platform sim
 git commit -m "feat(harness): the silence alarm goes red when Check waits and no review step runs
 
 silenceOf reads the items waiting in Check (unclaimed, unreviewed since
@@ -2425,9 +2425,9 @@ OB-1. S19-R4 S19-R5 S19-R11."
 **Files:**
 - Create: `packages/harness/views/holds.ts`
 - Modify: `packages/harness/views/types.ts` (`PlaneIndicator`), `packages/harness/views/plane-list.ts` (the ports it takes; three readers), `packages/harness/views/index.ts` (`holds`), `packages/harness/index.ts`
-- Create: `apps/uw-app/health/ball.ts`, `apps/uw-app/health/ball.test.ts`
-- Modify: `apps/uw-app/health/agent-plane.ts` (three indicators), `apps/uw-app/views/screens/health-list.tsx` (`planeIndicators`), `apps/uw-app/views/parts/health-words.ts`
-- Modify: `apps/uw-app/views/health.pg.test.ts` (the label list), `apps/uw-app/health/agent-plane.pg.test.ts` (the expected list), `apps/uw-app/mcp/routes.pg.test.ts` (`INDICATORS`)
+- Create: `apps/uw-platform/health/ball.ts`, `apps/uw-platform/health/ball.test.ts`
+- Modify: `apps/uw-platform/health/agent-plane.ts` (three indicators), `apps/uw-platform/views/screens/health-list.tsx` (`planeIndicators`), `apps/uw-platform/views/parts/health-words.ts`
+- Modify: `apps/uw-platform/views/health.pg.test.ts` (the label list), `apps/uw-platform/health/agent-plane.pg.test.ts` (the expected list), `apps/uw-platform/mcp/routes.pg.test.ts` (`INDICATORS`)
 - Create: `sim/kernel/holds.test.ts`, `sim/scenarios/OB-2.a-health-counts-who-has-held-the-ball-too-long.ts`
 
 **Interfaces:**
@@ -2436,7 +2436,7 @@ OB-1. S19-R4 S19-R5 S19-R11."
 
 - [ ] **Step 1: Write the failing tests**
 
-`apps/uw-app/health/ball.test.ts`:
+`apps/uw-platform/health/ball.test.ts`:
 
 ```ts
 import { harnessSchema, itemStateSchema } from '@uw/contracts';
@@ -2637,7 +2637,7 @@ export const scenario = defineScenario({
 });
 ```
 
-In `apps/uw-app/views/health.pg.test.ts`, the expected label list gains, at its end (after `'Reviewer refute rate'` and any label a later step appended): `'Silence alarm'`, `'With a person over 24 hours'`, `'With an agent over 2 hours'`. In `apps/uw-app/health/agent-plane.pg.test.ts`, `statusesFollowTotals`'s expected tuple list gains at its end:
+In `apps/uw-platform/views/health.pg.test.ts`, the expected label list gains, at its end (after `'Reviewer refute rate'` and any label a later step appended): `'Silence alarm'`, `'With a person over 24 hours'`, `'With an agent over 2 hours'`. In `apps/uw-platform/health/agent-plane.pg.test.ts`, `statusesFollowTotals`'s expected tuple list gains at its end:
 
 ```ts
     ['silence_alarm', 'ok', 'No item has waited in Check over 45 minutes without a review step'],
@@ -2645,11 +2645,11 @@ In `apps/uw-app/views/health.pg.test.ts`, the expected label list gains, at its 
     ['held_by_agent', 'ok', 'None over 2 hours'],
 ```
 
-In `apps/uw-app/mcp/routes.pg.test.ts`, `INDICATORS` gains the same three names at its end.
+In `apps/uw-platform/mcp/routes.pg.test.ts`, `INDICATORS` gains the same three names at its end.
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `npx vitest run apps/uw-app/health/ball.test.ts sim/kernel/holds.test.ts` and `pnpm sim -- OB-2`
+Run: `npx vitest run apps/uw-platform/health/ball.test.ts sim/kernel/holds.test.ts` and `pnpm sim -- OB-2`
 Expected: FAIL; `ball.ts`, `views.holds` and the three plane indicators do not exist.
 
 - [ ] **Step 3: The holds read**
@@ -2763,7 +2763,7 @@ and in `readers`:
 
 - [ ] **Step 5: The indicators**
 
-`apps/uw-app/health/ball.ts`:
+`apps/uw-platform/health/ball.ts`:
 
 ```ts
 import type { HealthIndicator, IndicatorStatus } from '@uw/contracts';
@@ -2825,7 +2825,7 @@ export function heldIndicator(name: HeldName, holds: Holds): HealthIndicator {
 }
 ```
 
-`apps/uw-app/health/agent-plane.ts`: import `BALL_INDICATORS, heldIndicator, silenceIndicator` from `./ball.ts`; spread `...BALL_INDICATORS` at the end of `AGENT_PLANE_INDICATORS` (after `'reviewer_refutes'` and anything a later step added); in `agentPlaneIndicators`, read
+`apps/uw-platform/health/agent-plane.ts`: import `BALL_INDICATORS, heldIndicator, silenceIndicator` from `./ball.ts`; spread `...BALL_INDICATORS` at the end of `AGENT_PLANE_INDICATORS` (after `'reviewer_refutes'` and anything a later step added); in `agentPlaneIndicators`, read
 
 ```ts
   const found = await kernel.views.silence({ at });
@@ -2834,7 +2834,7 @@ export function heldIndicator(name: HeldName, holds: Holds): HealthIndicator {
 
 and append `silenceIndicator(found, at), heldIndicator('held_by_person', holds), heldIndicator('held_by_agent', holds),` to the returned list.
 
-`apps/uw-app/views/screens/health-list.tsx`: `planeIndicators` gains `'silence_alarm'`, `'held_by_person'`, `'held_by_agent'`. `apps/uw-app/views/parts/health-words.ts`: `indicatorWords` gains
+`apps/uw-platform/views/screens/health-list.tsx`: `planeIndicators` gains `'silence_alarm'`, `'held_by_person'`, `'held_by_agent'`. `apps/uw-platform/views/parts/health-words.ts`: `indicatorWords` gains
 
 ```ts
   ['silence_alarm', 'Silence alarm'],
@@ -2844,8 +2844,8 @@ and append `silenceIndicator(found, at), heldIndicator('held_by_person', holds),
 
 - [ ] **Step 6: Run them**
 
-Run: `pnpm check && npx vitest run apps/uw-app/health/ball.test.ts packages/harness/views sim/kernel` then `pnpm sim -- OB-2 && pnpm sim -- all`
-Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/health apps/uw-app/views apps/uw-app/mcp/routes.pg.test.ts tools/architecture tools/ui`
+Run: `pnpm check && npx vitest run apps/uw-platform/health/ball.test.ts packages/harness/views sim/kernel` then `pnpm sim -- OB-2 && pnpm sim -- all`
+Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/health apps/uw-platform/views apps/uw-platform/mcp/routes.pg.test.ts tools/architecture tools/ui`
 Expected: green.
 
 - [ ] **Step 7: Check `/health` and the three drill-throughs in light, dark and phone width**
@@ -2855,7 +2855,7 @@ As Task 5 Step 7: `/health` with the three new Kpis, and `/health/silence_alarm`
 - [ ] **Step 8: Commit**
 
 ```bash
-git add packages/harness apps/uw-app sim
+git add packages/harness apps/uw-platform sim
 git commit -m "feat(health): the silence alarm and who has held the ball too long, with their drill-through
 
 /health gains silence_alarm (amber at 45 minutes, red at 90), held_by_person
@@ -2871,11 +2871,11 @@ OB-1 OB-2 OB-4. S19-R3 S19-R7."
 ### Task 9: PI-2, an external runner's learning lands suggested with its source and pull request
 
 **Files:**
-- Create: `apps/uw-app/pages/provenance.ts`, `apps/uw-app/pages/provenance.test.ts`
-- Modify: `apps/uw-app/pages/derive.ts` (`Landing`, the learning branch, `DerivedFrontmatter`), `apps/uw-app/pages/store.ts` (`createPageAs`; `derivedSave`'s landing), `apps/uw-app/pages/agent-write.ts` (`AgentRequest.writer`)
-- Create: `apps/uw-app/mcp/verbs/external-writer.ts`
-- Modify: `apps/uw-app/mcp/verbs/write-page.ts`
-- Create: `apps/uw-app/mcp/external-learning.pg.test.ts`
+- Create: `apps/uw-platform/pages/provenance.ts`, `apps/uw-platform/pages/provenance.test.ts`
+- Modify: `apps/uw-platform/pages/derive.ts` (`Landing`, the learning branch, `DerivedFrontmatter`), `apps/uw-platform/pages/store.ts` (`createPageAs`; `derivedSave`'s landing), `apps/uw-platform/pages/agent-write.ts` (`AgentRequest.writer`)
+- Create: `apps/uw-platform/mcp/verbs/external-writer.ts`
+- Modify: `apps/uw-platform/mcp/verbs/write-page.ts`
+- Create: `apps/uw-platform/mcp/external-learning.pg.test.ts`
 
 **Interfaces:**
 - Consumes: Task 2's learning frontmatter `source`, `pull_request` and `learningSourceSchema`.
@@ -2883,7 +2883,7 @@ OB-1 OB-2 OB-4. S19-R3 S19-R7."
 
 - [ ] **Step 1: Write the failing tests**
 
-`apps/uw-app/pages/provenance.test.ts`:
+`apps/uw-platform/pages/provenance.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -2951,7 +2951,7 @@ describe('PI-2 where a learning came from', () => {
 });
 ```
 
-`apps/uw-app/mcp/external-learning.pg.test.ts`:
+`apps/uw-platform/mcp/external-learning.pg.test.ts`:
 
 ```ts
 import { afterAll, describe, expect, it } from 'vitest';
@@ -3141,16 +3141,16 @@ describe.skipIf(!testServer)('PI-2 the bench posts its rulings as suggested lear
 });
 ```
 
-(`createPageCommandSchema` is strict, so the page drops `expectedVersion` before spreading; if the lint rule on unused variables refuses `_unused`, build the page without it by a small `pageOf(pageId, frontmatter)` that `learning` spreads. If `delegations.grant` refuses `agent:reviewer` because the persona page must agree, seed the persona page the way `apps/uw-app/mcp/delegated.pg.test.ts` does, or use the `iterate` persona name with capability `review` if the grant allows it.)
+(`createPageCommandSchema` is strict, so the page drops `expectedVersion` before spreading; if the lint rule on unused variables refuses `_unused`, build the page without it by a small `pageOf(pageId, frontmatter)` that `learning` spreads. If `delegations.grant` refuses `agent:reviewer` because the persona page must agree, seed the persona page the way `apps/uw-platform/mcp/delegated.pg.test.ts` does, or use the `iterate` persona name with capability `review` if the grant allows it.)
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `npx vitest run apps/uw-app/pages/provenance.test.ts` and `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/mcp/external-learning.pg.test.ts`
+Run: `npx vitest run apps/uw-platform/pages/provenance.test.ts` and `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/mcp/external-learning.pg.test.ts`
 Expected: FAIL; `provenance.ts` does not exist, and the stored learning reads `source: 'platform'`.
 
 - [ ] **Step 3: The provenance rule**
 
-`apps/uw-app/pages/provenance.ts`:
+`apps/uw-platform/pages/provenance.ts`:
 
 ```ts
 import {
@@ -3218,7 +3218,7 @@ export function learningProvenance(input: ProvenanceInput): ProvenanceCheck {
 
 - [ ] **Step 4: The page API derives it**
 
-`apps/uw-app/pages/derive.ts`: import `learningProvenance, type ExternalWriter, type Provenance` from `./provenance.ts`; change
+`apps/uw-platform/pages/derive.ts`: import `learningProvenance, type ExternalWriter, type Provenance` from `./provenance.ts`; change
 
 ```ts
 export type Landing = {
@@ -3251,7 +3251,7 @@ and the learning branch of `derivedFrontmatter`:
   }
 ```
 
-`apps/uw-app/pages/store.ts`: import `provenanceOf, type ExternalWriter` from `./provenance.ts`. Rename `createPage` to `createPageAs` with the signature `(db: Database, actor: Principal, command: CreatePageCommand, request: CreateRequest)` where `export type CreateRequest = { readonly traceId: string; readonly at: Date; readonly writer: ExternalWriter | null };`, use `request.traceId`, `request.at` inside, and build its landing as `{ status: command.status, stored: null, prior: null, writer: request.writer }`. Add back:
+`apps/uw-platform/pages/store.ts`: import `provenanceOf, type ExternalWriter` from `./provenance.ts`. Rename `createPage` to `createPageAs` with the signature `(db: Database, actor: Principal, command: CreatePageCommand, request: CreateRequest)` where `export type CreateRequest = { readonly traceId: string; readonly at: Date; readonly writer: ExternalWriter | null };`, use `request.traceId`, `request.at` inside, and build its landing as `{ status: command.status, stored: null, prior: null, writer: request.writer }`. Add back:
 
 ```ts
 export function createPage(
@@ -3272,11 +3272,11 @@ In `derivedSave`, the landing becomes:
   const landing = { status, stored: stored.status, prior, writer: null };
 ```
 
-`apps/uw-app/pages/agent-write.ts`: `AgentRequest` gains `readonly writer: ExternalWriter | null;`; the create path calls `createPageAs(db, actor, { ...command, ...editable, type, jdArea, status }, { traceId, at, writer: request.writer })`.
+`apps/uw-platform/pages/agent-write.ts`: `AgentRequest` gains `readonly writer: ExternalWriter | null;`; the create path calls `createPageAs(db, actor, { ...command, ...editable, type, jdArea, status }, { traceId, at, writer: request.writer })`.
 
 - [ ] **Step 5: The verb names the external writer**
 
-`apps/uw-app/mcp/verbs/external-writer.ts`:
+`apps/uw-platform/mcp/verbs/external-writer.ts`:
 
 ```ts
 import { delegationIdOf } from '@uw/contracts';
@@ -3295,7 +3295,7 @@ export async function externalWriter(context: VerbContext): Promise<ExternalWrit
 }
 ```
 
-`apps/uw-app/mcp/verbs/write-page.ts`, in `run`:
+`apps/uw-platform/mcp/verbs/write-page.ts`, in `run`:
 
 ```ts
     const writer = input.type === 'learning' ? await externalWriter(context) : null;
@@ -3306,14 +3306,14 @@ Run `pnpm check`; any other caller of `writePageAsAgent` passes `writer: null`.
 
 - [ ] **Step 6: Run them**
 
-Run: `pnpm check && npx vitest run apps/uw-app/pages`
-Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/pages apps/uw-app/mcp apps/uw-app/commands/pages.pg.test.ts tools/architecture`
+Run: `pnpm check && npx vitest run apps/uw-platform/pages`
+Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/pages apps/uw-platform/mcp apps/uw-platform/commands/pages.pg.test.ts tools/architecture`
 Expected: green. A test comparing a stored learning's whole frontmatter gains `source: 'platform', pull_request: null`.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add apps/uw-app
+git add apps/uw-platform
 git commit -m "feat(pages): the bench's rulings land as suggested external learnings
 
 write_page from an external runner on a review delegation stamps a learning
@@ -3331,9 +3331,9 @@ PI-2. S19-R9."
 **Files:**
 - Create: `packages/harness/stages/template-change.ts`
 - Modify: `packages/harness/stages/commands.ts` (`StageCommands.changeTemplate`)
-- Modify: `apps/uw-app/commands/person/stages.ts` (`changeTemplateCommand`), `apps/uw-app/commands/registry.ts` (replace the not-wired entry)
+- Modify: `apps/uw-platform/commands/person/stages.ts` (`changeTemplateCommand`), `apps/uw-platform/commands/registry.ts` (replace the not-wired entry)
 - Create: `sim/kernel/template-change.test.ts`, `sim/scenarios/GL-5.a-check-only-harness-takes-the-software-template-and-keeps-its-items.ts`
-- Create: `apps/uw-app/commands/template-change.pg.test.ts`
+- Create: `apps/uw-platform/commands/template-change.pg.test.ts`
 
 **Interfaces:**
 - Consumes: Task 2's command, refusal and event; Task 4's `setTemplate`; `editInTransaction` and `EditWork` (`packages/harness/stages/edit.ts`), `bypassRefusal` and `stageFromTemplate` (`rules.ts`), `templates`.
@@ -3448,7 +3448,7 @@ describe('GL-5 a template change on a live harness', () => {
 
 `sim/scenarios/GL-5.a-check-only-harness-takes-the-software-template-and-keeps-its-items.ts`: id `'GL-5'`; the first test's steps with `assert.deepEqual` in place of `expect`; returns `{ state: { template: changed.harness.template, stages: changed.stages.map((stage) => stage.key) } }`.
 
-`apps/uw-app/commands/template-change.pg.test.ts`:
+`apps/uw-platform/commands/template-change.pg.test.ts`:
 
 ```ts
 import { randomUUID } from 'node:crypto';
@@ -3602,7 +3602,7 @@ export function changeTemplate(
 
 - [ ] **Step 4: The command**
 
-`apps/uw-app/commands/person/stages.ts`:
+`apps/uw-platform/commands/person/stages.ts`:
 
 ```ts
 export const changeTemplateCommand = commandHandler({
@@ -3618,18 +3618,18 @@ export const changeTemplateCommand = commandHandler({
 });
 ```
 
-`apps/uw-app/commands/registry.ts`: import it and replace `notWiredCommand('change_template', 'admin'),` with `changeTemplateCommand,`.
+`apps/uw-platform/commands/registry.ts`: import it and replace `notWiredCommand('change_template', 'admin'),` with `changeTemplateCommand,`.
 
 - [ ] **Step 5: Run them**
 
 Run: `pnpm check && npx vitest run sim/kernel/template-change.test.ts packages/harness/stages` then `pnpm sim -- GL-5 && pnpm sim -- all && pnpm walk:all`
-Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/commands tools/architecture`
+Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/commands tools/architecture`
 Expected: green, including `WB-1 the command registry` and `command handlers` architecture checks.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add packages/harness apps/uw-app sim
+git add packages/harness apps/uw-platform sim
 git commit -m "feat(harness): an admin moves a check-only harness onto the software template
 
 change_template keeps Check and Ship with their ids, items and settings,
@@ -3657,7 +3657,7 @@ Expected: green, with `pnpm trace:built` reporting none of OB-1, OB-2, PI-2 unpr
 
 In `docs/progress_tracker.md`:
 
-- Change the step 19 row's state from `Not started` to `Built` and its evidence to: the commit SHAs of Tasks 1 to 10; the proofs (OB-1 `packages/harness/alarms/silence.test.ts`, `sim/kernel/silence.test.ts`, `sim/scenarios/OB-1.a-silent-check-goes-red-and-wakes-the-admins-once-per-cooldown.ts`, `apps/uw-app/cron/silence.pg.test.ts`, `apps/uw-app/health/ball.test.ts`; OB-2 `packages/harness/items/fold-held.test.ts`, `packages/harness/views/holder.test.ts`, `sim/kernel/holder.test.ts`, `sim/kernel/holds.test.ts`, `sim/scenarios/OB-2.a-health-counts-who-has-held-the-ball-too-long.ts`, `apps/uw-app/views/parts/holder-words.test.ts`; OB-4 `packages/harness/views/bots.test.ts`, `sim/kernel/bot-counts.test.ts`, `packages/db/observability-columns.test.ts`, the `OB-4` case of the GitHub facts port contract; PI-2 `apps/uw-app/pages/provenance.test.ts`, `apps/uw-app/mcp/external-learning.pg.test.ts`; GL-5 `sim/kernel/template-change.test.ts`, `sim/scenarios/GL-5.a-check-only-harness-takes-the-software-template-and-keeps-its-items.ts`, `apps/uw-app/commands/template-change.pg.test.ts`); `pnpm verify` green locally with the counts; "CI not run (Actions billing)" or the CI run id; the plan path `docs/plans/2026-10-15-step-19-observability-and-hooks.md`.
+- Change the step 19 row's state from `Not started` to `Built` and its evidence to: the commit SHAs of Tasks 1 to 10; the proofs (OB-1 `packages/harness/alarms/silence.test.ts`, `sim/kernel/silence.test.ts`, `sim/scenarios/OB-1.a-silent-check-goes-red-and-wakes-the-admins-once-per-cooldown.ts`, `apps/uw-platform/cron/silence.pg.test.ts`, `apps/uw-platform/health/ball.test.ts`; OB-2 `packages/harness/items/fold-held.test.ts`, `packages/harness/views/holder.test.ts`, `sim/kernel/holder.test.ts`, `sim/kernel/holds.test.ts`, `sim/scenarios/OB-2.a-health-counts-who-has-held-the-ball-too-long.ts`, `apps/uw-platform/views/parts/holder-words.test.ts`; OB-4 `packages/harness/views/bots.test.ts`, `sim/kernel/bot-counts.test.ts`, `packages/db/observability-columns.test.ts`, the `OB-4` case of the GitHub facts port contract; PI-2 `apps/uw-platform/pages/provenance.test.ts`, `apps/uw-platform/mcp/external-learning.pg.test.ts`; GL-5 `sim/kernel/template-change.test.ts`, `sim/scenarios/GL-5.a-check-only-harness-takes-the-software-template-and-keeps-its-items.ts`, `apps/uw-platform/commands/template-change.pg.test.ts`); `pnpm verify` green locally with the counts; "CI not run (Actions billing)" or the CI run id; the plan path `docs/plans/2026-10-15-step-19-observability-and-hooks.md`.
 - Add a "Step 19 evidence by requirement" section after step 18's, one line per requirement naming its proofs as above.
 - Under the rulings, add S19-R1 to S19-R13 from the top of this plan, in the shape of the S18 rows: `| date | requirement | ruling | cost if wrong |`.
 - Under "Not verified": the screens of Tasks 5, 6 and 8 if no browser ran; "OB-1: the silence alarm's push and hub delivery on staging (the sim notifier proves the wake)"; "OB-2: items projected before step 19 read `heldSince: null` until their next event; run `kernel.repair.rebuildItem` on the pilot's open items after the deploy"; "OB-4: authors of pull requests not upserted since the deploy are unknown and counted until their next webhook or sweep".

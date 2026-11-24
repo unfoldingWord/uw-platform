@@ -412,7 +412,7 @@ describe('MD-3 an agent under a merge delegation takes the Ship exit, and the re
 
 describe('MD-4 what a merge delegation never covers', () => {
   it('MD-4 a protected path is refused protected_path_needs_person and the item waits for a person, who can approve', () =>
-    inScene({ protectedPaths: ['apps/uw-app/'] }, protectedPath));
+    inScene({ protectedPaths: ['apps/uw-platform/'] }, protectedPath));
 
   it('MD-4 a standard change under a low delegation is refused tier_above_delegation', () =>
     inScene({}, tierAbove));

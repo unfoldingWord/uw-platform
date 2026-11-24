@@ -43,27 +43,30 @@ describe('WB-11 UI-1 Kindle, the human role, marks a human action', () => {
     ['packages/ui/components/kanban-card.tsx', '<article class="border border-human">x</article>'],
     ['packages/ui/components/lane.tsx', '<span class="bg-human-soft text-text">Paused</span>'],
     ['packages/ui/components/badge.tsx', "const warm = 'bg-human text-on-accent';"],
-    ['apps/uw-app/pages/board.tsx', '<a class="text-human">Open</a>'],
-    ['apps/uw-app/routes/gates.tsx', '<p style="color: var(--uw-kindle)">x</p>'],
-    ['apps/uw-app/islands/live/flash.ts', "element.classList.add('outline-human');"],
+    ['apps/uw-platform/pages/board.tsx', '<a class="text-human">Open</a>'],
+    ['apps/uw-platform/routes/gates.tsx', '<p style="color: var(--uw-kindle)">x</p>'],
+    ['apps/uw-platform/islands/live/flash.ts', "element.classList.add('outline-human');"],
     ['packages/ui/components/badge.tsx', "const tone = 'kindle'; const c = `bg-${tone}`;"],
-    ['apps/uw-app/pages/board.tsx', 'const tones = { warm: "Kindle" };'],
-    ['apps/uw-app/pages/board.css', '.warm { background: var(--uw-kindle); }'],
-    ['apps/uw-app/pages/board.css', '.warm { @apply bg-human-soft; }'],
-    ['apps/uw-app/pages/board.tsx', '<a class="hover:border-human-line">Open</a>'],
-    ['apps/uw-app/pages/board.tsx', '<button class="shadow-person">Open</button>'],
-    ['apps/uw-app/pages/board.css', '.warm { box-shadow: var(--uw-shadow-person); }'],
+    ['apps/uw-platform/pages/board.tsx', 'const tones = { warm: "Kindle" };'],
+    ['apps/uw-platform/pages/board.css', '.warm { background: var(--uw-kindle); }'],
+    ['apps/uw-platform/pages/board.css', '.warm { @apply bg-human-soft; }'],
+    ['apps/uw-platform/pages/board.tsx', '<a class="hover:border-human-line">Open</a>'],
+    ['apps/uw-platform/pages/board.tsx', '<button class="shadow-person">Open</button>'],
+    ['apps/uw-platform/pages/board.css', '.warm { box-shadow: var(--uw-shadow-person); }'],
   ])('flags a planted Kindle use in %s: %s', (path, text) => {
     expect(scanned(path)).toBe(true);
     expect(usesKindle(path, text)).toBe(true);
   });
 
   it.each([
-    ['apps/uw-app/pages/board.tsx', '<HumanActionButton label="Approve" name="d" value="a" />'],
-    ['apps/uw-app/pages/board.tsx', "const kindled = 'kindled';"],
+    [
+      'apps/uw-platform/pages/board.tsx',
+      '<HumanActionButton label="Approve" name="d" value="a" />',
+    ],
+    ['apps/uw-platform/pages/board.tsx', "const kindled = 'kindled';"],
     ['packages/ui/components/badge.tsx', '<span class="bg-ok-soft text-text">x</span>'],
-    ['apps/uw-app/commands/gate.ts', "if (principal.kind === 'human') return;"],
-    ['apps/uw-app/views/parts/gate-panel.tsx', '<p class="text-text-3">A human decides</p>'],
+    ['apps/uw-platform/commands/gate.ts', "if (principal.kind === 'human') return;"],
+    ['apps/uw-platform/views/parts/gate-panel.tsx', '<p class="text-text-3">A human decides</p>'],
   ])('passes a piece that does not use Kindle in %s: %s', (path, text) => {
     expect(usesKindle(path, text)).toBe(false);
   });
@@ -72,7 +75,7 @@ describe('WB-11 UI-1 Kindle, the human role, marks a human action', () => {
     expect(scanned('packages/ui/components/human-action.test.ts')).toBe(false);
     expect(scanned('packages/ui/tokens/theme.css')).toBe(false);
     expect(scanned('packages/ui/app.css')).toBe(false);
-    expect(scanned('apps/uw-app/pages/board.css')).toBe(true);
+    expect(scanned('apps/uw-platform/pages/board.css')).toBe(true);
     expect(scanned('packages/ui/generated/app-css.ts')).toBe(false);
   });
 });

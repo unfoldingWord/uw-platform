@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 type Env = { vars?: Record<string, string> };
 type Config = { env: Record<string, Env> };
 
-const files = ['infra/uw-app/wrangler.toml', 'infra/uw-app/wrangler.go-live.toml'];
+const files = ['infra/uw-platform/wrangler.toml', 'infra/uw-platform/wrangler.go-live.toml'];
 const deployed = ['staging', 'production'] as const;
 const sites = files.flatMap((file) => deployed.map((env) => [file, env] as const));
 const region = 'us-west-2';

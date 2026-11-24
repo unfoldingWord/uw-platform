@@ -2,7 +2,7 @@
 
 **Status:** accepted 2026-11-19 (Jesse took every recommendation below). Finding 1 is fixed by issue #153 and ADR 0015; the rest is filed as issues.
 **Date:** 2026-11-19
-**Reviewed against:** `develop` at `a683d18c`. Sources: `packages/core/acl.ts`, `packages/core/principal.ts`, `packages/db/schema-platform.ts`, `apps/uw-app/auth/`, `apps/uw-app/acl/`, `apps/uw-app/mcp/mint.ts` and `apps/uw-app/env.ts`.
+**Reviewed against:** `develop` at `a683d18c`. Sources: `packages/core/acl.ts`, `packages/core/principal.ts`, `packages/db/schema-platform.ts`, `apps/uw-platform/auth/`, `apps/uw-platform/acl/`, `apps/uw-platform/mcp/mint.ts` and `apps/uw-platform/env.ts`.
 
 ## Part 1. ACL audit: what is in the code today
 
@@ -21,9 +21,9 @@
 ### Findings
 
 1. **Fixed by #153 and ADR 0015: a grant on an area now reads only that area.** Before that fix, an editor or admin on any area could read every area. This was deliberate (spec, the "org-wide read that `editor` anywhere carries"; `acl.test.ts:50,53`) and fits an open, Notion-like culture. It also means an editor in 80–89 can read Finance (20–29). The platform plan (§4) said finance detail and donor history would be excluded from that open read. That exclusion has not been built yet.
-2. **Classification is labelling only, not enforcement.** Every table is labelled `public`, `internal`, `restricted` or `sensitive`. No read path in `apps/uw-app` checks that label. Before any `restricted` or `sensitive` data arrives (credentials, gifts, ledger), reads of those rows must require a grant on that exact area. The broad cross-area read must not reach them. **Ruling (#155):** four restricted tables have no area (`grant_audit`, `service_tokens`, `push_subscriptions`, and `role_grants` for org grants), so they follow the record's owner: grants and their audit are read by org admins, the admin of the grant's area, and the grantee; service tokens and push subscriptions by the person they belong to, plus org admins.
+2. **Classification is labelling only, not enforcement.** Every table is labelled `public`, `internal`, `restricted` or `sensitive`. No read path in `apps/uw-platform` checks that label. Before any `restricted` or `sensitive` data arrives (credentials, gifts, ledger), reads of those rows must require a grant on that exact area. The broad cross-area read must not reach them. **Ruling (#155):** four restricted tables have no area (`grant_audit`, `service_tokens`, `push_subscriptions`, and `role_grants` for org grants), so they follow the record's owner: grants and their audit are read by org admins, the admin of the grant's area, and the grantee; service tokens and push subscriptions by the person they belong to, plus org admins.
 3. **An agent carries all of its person's grants.** For pages and tasks this is acceptable. For credentials it is too broad (Part 2 narrows it).
-4. **No credential store exists.** Every external secret is a Worker-wide environment secret: the model keys, five GitHub App private keys, the Access API token, the VAPID key and the Zulip bot key. Any code in `uw-app` can read all of them, so the blast radius is the whole platform.
+4. **No credential store exists.** Every external secret is a Worker-wide environment secret: the model keys, five GitHub App private keys, the Access API token, the VAPID key and the Zulip bot key. Any code in `uw-platform` can read all of them, so the blast radius is the whole platform.
 5. **The live grants could not be checked.** I could not see who actually holds what on staging and production: there is no database access from this machine, and production needs your go-ahead. Checks to run: list the live `role_grants`; confirm at least two org admins (bus factor); confirm nobody holds org-scope `editor` without need, since that means write access to every area, Finance included.
 
 ## Part 2. The credentials store
@@ -56,7 +56,7 @@ A grant on an area covers that area's categories and IDs. A credential pinned to
 ### How agents and connectors use one
 
 ```
-agent ──(MCP verb with credential_ref)──> connector in uw-app
+agent ──(MCP verb with credential_ref)──> connector in uw-platform
                                            │ checks: run's person has `use` on the area
                                            │         credential is bound to this workflow + connector
                                            │         credential not expired or revoked

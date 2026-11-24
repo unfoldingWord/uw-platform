@@ -96,12 +96,12 @@ jobs:
         uses: ./.github/actions/setup
       - name: Deploy production
         if: steps.gate.outputs.configured == 'true'
-        working-directory: apps/uw-app
+        working-directory: apps/uw-platform
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: >-
-          pnpm exec wrangler deploy --config ../../infra/uw-app/wrangler.toml --env production
+          pnpm exec wrangler deploy --config ../../infra/uw-platform/wrangler.toml --env production
           --var "COMMIT_SHA:$SHA"
 
   deploy-ingest-production:

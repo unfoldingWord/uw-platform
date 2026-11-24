@@ -44,8 +44,12 @@ describe('UI-2 the build fails on a value outside the tokens', () => {
 
 describe('UI-2 the lock catches planted values', () => {
   it.each([
-    ['apps/uw-app/views/screens/board.tsx', '<p class="p-[18px] text-text">x</p>', 'p-[18px]'],
-    ['apps/uw-app/views/screens/board.tsx', '<p class="md:text-[13px]">x</p>', 'md:text-[13px]'],
+    ['apps/uw-platform/views/screens/board.tsx', '<p class="p-[18px] text-text">x</p>', 'p-[18px]'],
+    [
+      'apps/uw-platform/views/screens/board.tsx',
+      '<p class="md:text-[13px]">x</p>',
+      'md:text-[13px]',
+    ],
     ['packages/ui/components/card.tsx', "const c = 'rounded-[14px] flex';", 'rounded-[14px]'],
     ['packages/ui/components/card.tsx', 'const c = `gap-2 -mt-[3px]`;', '-mt-[3px]'],
     ['packages/ui/components/card.tsx', "const c = 'bg-[#fff]';", 'bg-[#fff]'],
@@ -65,9 +69,12 @@ describe('UI-2 the lock catches planted values', () => {
   });
 
   it.each([
-    ['apps/uw-app/views/screens/board.tsx', '<a class="aria-[current=page]:font-heavy p-4">x</a>'],
-    ['apps/uw-app/views/screens/board.tsx', "const route = '/harness/[key]/board';"],
-    ['apps/uw-app/views/screens/board.tsx', "const pick = 'input[type=checkbox]';"],
+    [
+      'apps/uw-platform/views/screens/board.tsx',
+      '<a class="aria-[current=page]:font-heavy p-4">x</a>',
+    ],
+    ['apps/uw-platform/views/screens/board.tsx', "const route = '/harness/[key]/board';"],
+    ['apps/uw-platform/views/screens/board.tsx', "const pick = 'input[type=checkbox]';"],
   ])('UI-2 passes an arbitrary variant or a non-class string in %s: %s', (path, text) => {
     expect(arbitraryClasses(path, text)).toEqual([]);
   });
@@ -91,14 +98,16 @@ describe('UI-2 the lock catches planted raw sizes and shadows', () => {
   });
 
   it.each([
-    ['apps/uw-app/views/screens/board.tsx', '<p style="padding: 18px">x</p>'],
-    ['apps/uw-app/views/screens/board.tsx', "const s = 'font-size:13px';"],
+    ['apps/uw-platform/views/screens/board.tsx', '<p style="padding: 18px">x</p>'],
+    ['apps/uw-platform/views/screens/board.tsx', "const s = 'font-size:13px';"],
     ['packages/ui/components/card.tsx', "const s = 'box-shadow: 0 0 4px';"],
   ])('UI-2 flags a planted raw style value in %s: %s', (path, text) => {
     expect(rawStyleValues(path, text)).toHaveLength(1);
   });
 
   it('UI-2 passes a style string that uses a token', () => {
-    expect(rawStyleValues('apps/uw-app/x.tsx', "const s = 'gap: var(--uw-space-2)';")).toEqual([]);
+    expect(rawStyleValues('apps/uw-platform/x.tsx', "const s = 'gap: var(--uw-space-2)';")).toEqual(
+      [],
+    );
   });
 });

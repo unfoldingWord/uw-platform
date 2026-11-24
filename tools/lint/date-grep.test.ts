@@ -10,15 +10,15 @@ describe('the date grep', () => {
     "format(when, 'yyyy-MM-dd')",
     "format(when, 'DD/MM/YYYY')",
   ])('flags %j', (line) => {
-    expect(findDateViolations('apps/uw-app/page.ts', line)).toEqual([
-      { path: 'apps/uw-app/page.ts', line: 1, text: line },
+    expect(findDateViolations('apps/uw-platform/page.ts', line)).toEqual([
+      { path: 'apps/uw-platform/page.ts', line: 1, text: line },
     ]);
   });
 
   it.each(['formatDate(new Date())', 'when.toISOString()', "const due = '2026-03-03';"])(
     'passes %j',
     (line) => {
-      expect(findDateViolations('apps/uw-app/page.ts', line)).toEqual([]);
+      expect(findDateViolations('apps/uw-platform/page.ts', line)).toEqual([]);
     },
   );
 
@@ -32,7 +32,7 @@ describe('the date grep', () => {
     expect(isScanned('tools/lint/date-patterns.ts')).toBe(false);
     expect(isScanned('packages/core/dates.test.ts')).toBe(true);
     expect(isScanned('packages/core/other.ts')).toBe(true);
-    expect(isScanned('apps/uw-app/island.tsx')).toBe(true);
+    expect(isScanned('apps/uw-platform/island.tsx')).toBe(true);
     expect(isScanned('tools/lint/check-dates.ts')).toBe(true);
   });
 

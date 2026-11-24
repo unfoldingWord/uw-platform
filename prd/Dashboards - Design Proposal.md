@@ -189,7 +189,7 @@ Downloads include the definition or HTML bundle, packaged assets, approved data 
 
 ## 10. Fit with the current repository
 
-The baseline is `develop` at `6ffde9c6`. The [current page registry](../packages/contracts/page-types.ts), [page schema](../packages/db/schema-platform.ts) and [security policy](../apps/uw-app/http/security-headers.ts) provide typed pages, page versions and a restrictive runtime policy. They do not yet provide the dashboard type or this framework. The strategic program/project hierarchy described in the plan is broader than the implemented page-type registry; start with stable page IDs without claiming those future entity types already exist.
+The baseline is `develop` at `6ffde9c6`. The [current page registry](../packages/contracts/page-types.ts), [page schema](../packages/db/schema-platform.ts) and [security policy](../apps/uw-platform/http/security-headers.ts) provide typed pages, page versions and a restrictive runtime policy. They do not yet provide the dashboard type or this framework. The strategic program/project hierarchy described in the plan is broader than the implemented page-type registry; start with stable page IDs without claiming those future entity types already exist.
 
 Coordinate with [#175](https://github.com/unfoldingWord/uw-platform/issues/175) and [#172](https://github.com/unfoldingWord/uw-platform/pull/172) for wiki navigation, typed page reads, files, R2 and embeds. Per-page sharing is outside that knowledge-base issue's scope. Dashboard execution and publication need their own implementation work. `uw-www` is planned rather than an existing public dashboard host.
 
@@ -200,7 +200,7 @@ Coordinate with [#175](https://github.com/unfoldingWord/uw-platform/issues/175) 
 | Dashboard module and ports | Pure validation, context selection and metric interpretation; adapters for data and files; interface tests. Keep dashboard state separate from workflow state. |
 | `packages/db/schema-*.ts` and migrations | Typed definition revisions, bindings, associations and publication records where durable records are needed, with one owner per table. Reuse existing pages/files identities. |
 | `packages/ui` | Native widgets, accessible values and dashboard page/embed rendering. |
-| `apps/uw-app` | Authorized reads, person commands, MCP draft handlers, preview and adapters. |
+| `apps/uw-platform` | Authorized reads, person commands, MCP draft handlers, preview and adapters. |
 | `infra` | Private storage, isolated bundle delivery and public delivery declarations. |
 | Authoring skill and examples | Contract discovery procedure, fixtures and local preview instructions. |
 

@@ -10,7 +10,7 @@
 
 **Requirements covered:** EI-1, EI-2, EI-3, EI-4 (Must) and EI-5 (Should, built: the grouping is one pure function over items the Board view can already read, and the drawing reuses the Flow diagram's SVG idiom).
 
-**Builds on steps 14 to 17 (built before this plan runs).** Names used exactly as `docs/plans/2026-10-15-step-14-joining.md` hands them over: `createdDraft` in `packages/harness/items/record.ts` and the `item_created` evidence with `pullRequest` and `expectedHead` (Task 7 of step 14), `createSimHarness` option `dispatchable` defaulting to `true` so agent claims on a harness with a repository pass the GL-6 gate, `notWiredCommand` in `apps/uw-app/commands/not-wired.ts`, and the step-14 contract procedure (append a lock entry, bump the minor, regenerate the islands bundle). From `docs/plans/2026-10-15-step-15-ship-rule-and-gates.md`: `apps/uw-app/github/facts/heads.ts` (the files writer moved out of `upsert.ts`), the contract at `13.0.0`, and its migration. This plan touches nothing steps 16 and 17 own except one guard line each in `packages/harness/reads/poll.ts` (`claimableIn`) and `packages/harness/items/claim.ts` (`heldRefusal`); if those functions were reshaped by step 17, put the line where the same decision is made and say so in the commit body.
+**Builds on steps 14 to 17 (built before this plan runs).** Names used exactly as `docs/plans/2026-10-15-step-14-joining.md` hands them over: `createdDraft` in `packages/harness/items/record.ts` and the `item_created` evidence with `pullRequest` and `expectedHead` (Task 7 of step 14), `createSimHarness` option `dispatchable` defaulting to `true` so agent claims on a harness with a repository pass the GL-6 gate, `notWiredCommand` in `apps/uw-platform/commands/not-wired.ts`, and the step-14 contract procedure (append a lock entry, bump the minor, regenerate the islands bundle). From `docs/plans/2026-10-15-step-15-ship-rule-and-gates.md`: `apps/uw-platform/github/facts/heads.ts` (the files writer moved out of `upsert.ts`), the contract at `13.0.0`, and its migration. This plan touches nothing steps 16 and 17 own except one guard line each in `packages/harness/reads/poll.ts` (`claimableIn`) and `packages/harness/items/claim.ts` (`heldRefusal`); if those functions were reshaped by step 17, put the line where the same decision is made and say so in the commit body.
 
 **Rulings made while planning** (recorded here and in `docs/progress_tracker.md` by the last task):
 
@@ -42,8 +42,8 @@
 | `GitHubFacts.epic(key: IssueKey): Promise<EpicFacts \| null>`; `IssueKey`, `IssueFact`, `EpicFacts` | `packages/harness/ports.ts` | GL-1's live run (the platform adapter over the read model) |
 | `items.enqueueEpic(caller, EnqueueEpicInput)` returning `EpicEnqueued`; `items.recordNotReady(caller, NotReadyInput)` | `packages/harness/items/epic.ts`, `not-ready.ts` | DX-10 |
 | `BoardView.epics: readonly EpicGroup[]`, `BoardView.notReady: readonly NotReady[]`; `epicGroupsOf`, `notReadyOf` | `packages/harness/views/types.ts`, `views/epics.ts` | OB-2 (the holder on the epic node), OB-4 |
-| `recordSubIssues(db, list)`, `epicFacts(db, key)`, `issueChangeOf(row, repo, had)`, `followSubIssues(deps, changes, logger)`, `GitHubReads.subIssues` | `apps/uw-app/github/facts/sub-issues.ts`, `facts/epics.ts`, `facts/issues.ts`, `github/sub-issues.ts`, `github/client.ts` | GL-1 |
-| `sim/epics.ts`: `epicRepository`, `epicKey`, `epicFact`, `epicOf`, `epicOfFour`, `enqueueEpicAs`; sim `githubFacts.givenEpic`; app test helper `answeringEpic` | `sim/`, `apps/uw-app/testing/kernel.ts` | DX-10 |
+| `recordSubIssues(db, list)`, `epicFacts(db, key)`, `issueChangeOf(row, repo, had)`, `followSubIssues(deps, changes, logger)`, `GitHubReads.subIssues` | `apps/uw-platform/github/facts/sub-issues.ts`, `facts/epics.ts`, `facts/issues.ts`, `github/sub-issues.ts`, `github/client.ts` | GL-1 |
+| `sim/epics.ts`: `epicRepository`, `epicKey`, `epicFact`, `epicOf`, `epicOfFour`, `enqueueEpicAs`; sim `githubFacts.givenEpic`; app test helper `answeringEpic` | `sim/`, `apps/uw-platform/testing/kernel.ts` | DX-10 |
 
 ---
 
@@ -62,7 +62,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 - TypeScript `strict`, no `any`, no `@ts-ignore`, no `as unknown as`, no non-null assertion.
 - No code comments of any kind.
-- Files under 500 non-blank lines; functions under 50 lines, 25 statements, complexity 10, depth 4, 3 nested callbacks, 5 parameters. `apps/uw-app/github/facts/upsert.ts` and `apps/uw-app/github/sweep.ts` are near the limit: Task 4 moves two issue readers out of `upsert.ts` before adding its three lines, and `sweep.ts` gets no new line (the sub-issue read rides `followUpserts`).
+- Files under 500 non-blank lines; functions under 50 lines, 25 statements, complexity 10, depth 4, 3 nested callbacks, 5 parameters. `apps/uw-platform/github/facts/upsert.ts` and `apps/uw-platform/github/sweep.ts` are near the limit: Task 4 moves two issue readers out of `upsert.ts` before adding its three lines, and `sweep.ts` gets no new line (the sub-issue read rides `followUpserts`).
 - Zod at every boundary. `packages/contracts` imports only `zod`. `packages/harness` imports nothing from Workers, Drizzle or the network.
 - Every exported Zod schema registered in `packages/contracts/registry.ts` has `fixtures/<key>/valid/*.json` and `fixtures/<key>/invalid/*.json`. Any change to a registered `z.enum` appends a full entry to `packages/contracts/contract-lock.json` and changes `CONTRACT_VERSION`.
 - Every route and command has `can()` on the harness's area through the command registry's `action`. `enqueue_epic` is a person command: no MCP verb, no persona toolset line (V2-7).
@@ -80,7 +80,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Shared roots**
 
-- `CONTEXT.md` (Task 1), `docs/PRD.md` and the design (Task 1, their own commit), `packages/contracts/` (Task 2), `packages/db/schema.ts` and `packages/db/schema-github.ts` with the migration (Task 3), `packages/harness/ports.ts` (Task 5) are shared roots. Each change to one is its own commit with no feature code, and the message names the root and why. `packages/harness/store-ports.ts` does not change: the Store's item gateway already carries `ItemState`. `packages/db/store/`, `packages/db/test-seed.ts`, `apps/uw-app/generated/islands.ts` and the sim are not shared roots.
+- `CONTEXT.md` (Task 1), `docs/PRD.md` and the design (Task 1, their own commit), `packages/contracts/` (Task 2), `packages/db/schema.ts` and `packages/db/schema-github.ts` with the migration (Task 3), `packages/harness/ports.ts` (Task 5) are shared roots. Each change to one is its own commit with no feature code, and the message names the root and why. `packages/harness/store-ports.ts` does not change: the Store's item gateway already carries `ItemState`. `packages/db/store/`, `packages/db/test-seed.ts`, `apps/uw-platform/generated/islands.ts` and the sim are not shared roots.
 - Between Task 2 and Task 3 `tools/db/drift.test.ts` is red (the name checks derive from the enums). Between Task 5's port commit and its adapter commit `pnpm check` is red. Do those pairs back to back.
 
 **Tests**
@@ -195,7 +195,7 @@ EI-1 EI-2 EI-3. S18-R1 S18-R7 S18-R14."
 - Create: fixtures (Step 5)
 - Modify: `packages/contracts/events.test.ts` (the vocabulary count), `packages/contracts/contracts.test.ts` (new block)
 - Modify: `packages/contracts/contract-lock.json`, `packages/contracts/version.ts`
-- Second commit, not a shared root: `packages/harness/items/fold.ts`, every `ItemState` literal `pnpm check` flags (expect `packages/harness/views/costs.test.ts`, `packages/harness/gates/ship-input.test.ts`, `apps/uw-app/github/review-readback.pg.test.ts`, `sim/kernel/events.test.ts`, `tools/properties/item-events.ts`), `apps/uw-app/commands/registry.ts`, `apps/uw-app/commands/registry.test.ts`, `apps/uw-app/generated/islands.ts`
+- Second commit, not a shared root: `packages/harness/items/fold.ts`, every `ItemState` literal `pnpm check` flags (expect `packages/harness/views/costs.test.ts`, `packages/harness/gates/ship-input.test.ts`, `apps/uw-platform/github/review-readback.pg.test.ts`, `sim/kernel/events.test.ts`, `tools/properties/item-events.ts`), `apps/uw-platform/commands/registry.ts`, `apps/uw-platform/commands/registry.test.ts`, `apps/uw-platform/generated/islands.ts`
 
 **Interfaces:**
 - Produces: `EpicPlace = { issue: IssueRef; title: string; position: number }`; `IntakeVia = 'import' | 'kickstart' | 'enqueue_epic'`; `ItemState.epic: EpicPlace | null` (default `null`), `ItemState.blockedBy: string[]` (default `[]`); `EventEvidence['epic_enqueued'] = { epic: IssueRef; title; items: { itemId; issue: IssueRef; created: boolean; blockedBy: string[] }[]; outside: number[]; doneWhen: string[] }`; `EventEvidence['done_when_missing'] = { via: IntakeVia; issue: IssueRef | null; pageId: string | null; title: string }` (exactly one of `issue` and `pageId`); `CommandBody<'enqueue_epic'> = { command; requestId; repository: string; number: number }`.
@@ -497,15 +497,15 @@ EI-1 EI-2 EI-3. S18-R5 S18-R7 S18-R8 S18-R13."
 
 Run `pnpm check`. For each `ItemState` object literal it flags (outside `fold.ts`), add `epic: null, blockedBy: []`.
 
-`apps/uw-app/commands/registry.ts`: add `notWiredCommand('enqueue_epic', 'write'),` as the last entry of the `commandRegistryOf([...])` list (import `notWiredCommand` from `./not-wired.ts` if step 14's import is gone). `apps/uw-app/commands/registry.test.ts`: add `enqueue_epic: 'write',` to `actions`.
+`apps/uw-platform/commands/registry.ts`: add `notWiredCommand('enqueue_epic', 'write'),` as the last entry of the `commandRegistryOf([...])` list (import `notWiredCommand` from `./not-wired.ts` if step 14's import is gone). `apps/uw-platform/commands/registry.test.ts`: add `enqueue_epic: 'write',` to `actions`.
 
 Regenerate the islands bundle, which embeds the contract schemas: `pnpm ui:islands`.
 
-Run: `pnpm check && npx vitest run packages/harness/items packages/contracts apps/uw-app/commands/registry.test.ts tools/ui/generated-islands.test.ts`
+Run: `pnpm check && npx vitest run packages/harness/items packages/contracts apps/uw-platform/commands/registry.test.ts tools/ui/generated-islands.test.ts`
 Expected: green. `tools/db/drift.test.ts` is red until Task 3.
 
 ```bash
-git add packages/harness apps/uw-app/commands/registry.ts apps/uw-app/commands/registry.test.ts apps/uw-app/generated/islands.ts apps/uw-app/github sim tools/properties
+git add packages/harness apps/uw-platform/commands/registry.ts apps/uw-platform/commands/registry.test.ts apps/uw-platform/generated/islands.ts apps/uw-platform/github sim tools/properties
 git commit -m "chore: the totals the epic intake contracts force
 
 The two harness events fold to nothing, item_created folds the epic place
@@ -783,7 +783,7 @@ Expected: FAIL, the inserted item reads `epic: null` and `blockedBy: []`.
 
 - [ ] **Step 9: Run the Store contract on both adapters**
 
-Run: `pnpm check && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run packages/harness/port-contracts sim/adapters apps/uw-app/ports`
+Run: `pnpm check && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run packages/harness/port-contracts sim/adapters apps/uw-platform/ports`
 Expected: green; `store keeps an item's epic place and blockers` runs on the sim and the platform adapter.
 
 - [ ] **Step 10: Commit**
@@ -806,20 +806,20 @@ EI-3. S18-R7."
 **Files:**
 - Create: `packages/harness/github/issue-body.ts`, `packages/harness/github/issue-body.test.ts`
 - Modify: `packages/harness/index.ts` (export the two parsers)
-- Modify: `apps/uw-app/github/payloads.ts` (`issueSchema` gains `body`, `sub_issues_summary`, `repository_url`)
-- Modify: `apps/uw-app/github/facts/records.ts` (`IssueRecord` and `IssueChange` gain `subIssues`, `doneWhen`, `blockedBy`)
-- Modify: `apps/uw-app/github/facts/normalise.ts` (`issueOf` takes the repository; `subIssuesFromRest`)
-- Create: `apps/uw-app/github/facts/issues.ts` (`lockedLabels`, `storedIssues` moved from `upsert.ts`; `issueChangeOf`)
-- Modify: `apps/uw-app/github/facts/upsert.ts` (drop the two moved functions; three columns)
-- Modify: `apps/uw-app/github/facts/queries.ts` (`issueByNumber`, `issuesAwaitingCrossReference` use `issueChangeOf`)
-- Create: `apps/uw-app/github/facts/sub-issues.ts` (`recordSubIssues`)
-- Modify: `apps/uw-app/github/client.ts` (`GitHubReads.subIssues`)
-- Create: `apps/uw-app/github/sub-issues.ts` (`followSubIssues`)
-- Modify: `apps/uw-app/github/follow-up.ts` (one line)
-- Modify: `apps/uw-app/github/fixtures/issues-labeled.json`, `issues-unlabeled.json`, `rest-issues.json` (issue 12's body gains a done-when)
-- Modify: `apps/uw-app/github/testing/facts-fixtures.ts` (`labelledIssue`), and every `IssueRecord` literal `pnpm check` flags (expect `apps/uw-app/commands/import.pg.test.ts`, `apps/uw-app/github/facts/upsert-race.pg.test.ts`)
-- Modify: `apps/uw-app/github/facts/normalise.test.ts` (one block; the existing issue expectations gain the three fields)
-- Create: `apps/uw-app/github/sub-issues.pg.test.ts`
+- Modify: `apps/uw-platform/github/payloads.ts` (`issueSchema` gains `body`, `sub_issues_summary`, `repository_url`)
+- Modify: `apps/uw-platform/github/facts/records.ts` (`IssueRecord` and `IssueChange` gain `subIssues`, `doneWhen`, `blockedBy`)
+- Modify: `apps/uw-platform/github/facts/normalise.ts` (`issueOf` takes the repository; `subIssuesFromRest`)
+- Create: `apps/uw-platform/github/facts/issues.ts` (`lockedLabels`, `storedIssues` moved from `upsert.ts`; `issueChangeOf`)
+- Modify: `apps/uw-platform/github/facts/upsert.ts` (drop the two moved functions; three columns)
+- Modify: `apps/uw-platform/github/facts/queries.ts` (`issueByNumber`, `issuesAwaitingCrossReference` use `issueChangeOf`)
+- Create: `apps/uw-platform/github/facts/sub-issues.ts` (`recordSubIssues`)
+- Modify: `apps/uw-platform/github/client.ts` (`GitHubReads.subIssues`)
+- Create: `apps/uw-platform/github/sub-issues.ts` (`followSubIssues`)
+- Modify: `apps/uw-platform/github/follow-up.ts` (one line)
+- Modify: `apps/uw-platform/github/fixtures/issues-labeled.json`, `issues-unlabeled.json`, `rest-issues.json` (issue 12's body gains a done-when)
+- Modify: `apps/uw-platform/github/testing/facts-fixtures.ts` (`labelledIssue`), and every `IssueRecord` literal `pnpm check` flags (expect `apps/uw-platform/commands/import.pg.test.ts`, `apps/uw-platform/github/facts/upsert-race.pg.test.ts`)
+- Modify: `apps/uw-platform/github/facts/normalise.test.ts` (one block; the existing issue expectations gain the three fields)
+- Create: `apps/uw-platform/github/sub-issues.pg.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -1003,7 +1003,7 @@ Expected: PASS. If the `marked` closure trips the lint rule on mutation inside a
 
 - [ ] **Step 3: Write the failing facts tests**
 
-In `apps/uw-app/github/facts/normalise.test.ts` (read the top first; reuse its `repo` record and the `issuesLabeled` fixture import, adding the import if absent):
+In `apps/uw-platform/github/facts/normalise.test.ts` (read the top first; reuse its `repo` record and the `issuesLabeled` fixture import, adding the import if absent):
 
 ```ts
 describe('EI-1 the facts read sub-issues and the body facts intake needs', () => {
@@ -1052,7 +1052,7 @@ describe('EI-1 the facts read sub-issues and the body facts intake needs', () =>
 
 Import `factsFromWebhook` and `subIssuesFromRest` from `./normalise.ts`. If `factsFromWebhook` takes other arguments in this file's existing tests, copy that call shape.
 
-`apps/uw-app/github/sub-issues.pg.test.ts`:
+`apps/uw-platform/github/sub-issues.pg.test.ts`:
 
 ```ts
 import { eq } from 'drizzle-orm';
@@ -1137,12 +1137,12 @@ describe.skipIf(!testServer)('EI-1 the sweep reads an epic’s sub-issue list', 
 ```
 
 
-Run: `npx vitest run apps/uw-app/github/facts/normalise.test.ts` and `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/github/sub-issues.pg.test.ts`
+Run: `npx vitest run apps/uw-platform/github/facts/normalise.test.ts` and `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/github/sub-issues.pg.test.ts`
 Expected: FAIL; the records carry no `subIssues` and nothing reads `sub_issues`.
 
 - [ ] **Step 4: Records and payloads**
 
-`apps/uw-app/github/payloads.ts`, in `issueSchema` after `pull_request`:
+`apps/uw-platform/github/payloads.ts`, in `issueSchema` after `pull_request`:
 
 ```ts
   body: z.string().nullable().optional(),
@@ -1150,7 +1150,7 @@ Expected: FAIL; the records carry no `subIssues` and nothing reads `sub_issues`.
   repository_url: z.string().optional(),
 ```
 
-`apps/uw-app/github/facts/records.ts`: `IssueRecord` and `IssueChange` both gain, after `githubUpdatedAt`:
+`apps/uw-platform/github/facts/records.ts`: `IssueRecord` and `IssueChange` both gain, after `githubUpdatedAt`:
 
 ```ts
   readonly subIssues: number;
@@ -1160,7 +1160,7 @@ Expected: FAIL; the records carry no `subIssues` and nothing reads `sub_issues`.
 
 - [ ] **Step 5: Normalise**
 
-`apps/uw-app/github/facts/normalise.ts`: add `blockedByOf, doneWhenOf` to the `@uw/harness` import. Replace `issueOf`:
+`apps/uw-platform/github/facts/normalise.ts`: add `blockedByOf, doneWhenOf` to the `@uw/harness` import. Replace `issueOf`:
 
 ```ts
 type RepoName = Pick<RepoRecord, 'githubId' | 'fullName'>;
@@ -1203,7 +1203,7 @@ export function subIssuesFromRest(
 
 - [ ] **Step 6: Move the issue readers out of `upsert.ts` and write the three columns**
 
-Create `apps/uw-app/github/facts/issues.ts`:
+Create `apps/uw-platform/github/facts/issues.ts`:
 
 ```ts
 import { asc, eq, inArray } from 'drizzle-orm';
@@ -1260,7 +1260,7 @@ export async function storedIssues(
 }
 ```
 
-`apps/uw-app/github/facts/upsert.ts`: delete `lockedLabels` and `storedIssues` and the now-unused `IssueChange` type import; `import { lockedLabels, storedIssues } from './issues.ts';`. Add to `issueColumns` after `githubUpdatedAt`:
+`apps/uw-platform/github/facts/upsert.ts`: delete `lockedLabels` and `storedIssues` and the now-unused `IssueChange` type import; `import { lockedLabels, storedIssues } from './issues.ts';`. Add to `issueColumns` after `githubUpdatedAt`:
 
 ```ts
   subIssues: ghIssues.subIssues,
@@ -1284,13 +1284,13 @@ and in `upsertIssues` replace the values line with:
 
 `parentIssueId` and `parentPosition` are deliberately not in `issueColumns`: an issue upsert never clears the place the sub-issue list gave it.
 
-`apps/uw-app/github/facts/queries.ts`: `import { issueChangeOf } from './issues.ts';`; in `issueByNumber` replace the returned literal with `return issueChangeOf(row.issue, row.repo, null);` (drop the destructuring); in `issuesAwaitingCrossReference` replace the mapped literal with `rows.map(({ issue, repo }) => issueChangeOf(issue, repo, null))`.
+`apps/uw-platform/github/facts/queries.ts`: `import { issueChangeOf } from './issues.ts';`; in `issueByNumber` replace the returned literal with `return issueChangeOf(row.issue, row.repo, null);` (drop the destructuring); in `issuesAwaitingCrossReference` replace the mapped literal with `rows.map(({ issue, repo }) => issueChangeOf(issue, repo, null))`.
 
-Check: `grep -c . apps/uw-app/github/facts/upsert.ts` stays under 500 non-blank lines.
+Check: `grep -c . apps/uw-platform/github/facts/upsert.ts` stays under 500 non-blank lines.
 
 - [ ] **Step 7: The sub-issue writer**
 
-`apps/uw-app/github/facts/sub-issues.ts`:
+`apps/uw-platform/github/facts/sub-issues.ts`:
 
 ```ts
 import { and, eq, notInArray } from 'drizzle-orm';
@@ -1333,7 +1333,7 @@ export function recordSubIssues(db: Database, list: SubIssueList): Promise<numbe
 
 - [ ] **Step 8: The read and the follow**
 
-`apps/uw-app/github/client.ts`: `GitHubReads` gains, after `issuesSince`:
+`apps/uw-platform/github/client.ts`: `GitHubReads` gains, after `issuesSince`:
 
 ```ts
   subIssues(repo: string, number: number): Promise<GitHubResult<List>>;
@@ -1357,7 +1357,7 @@ and `issueReads` gains:
 
 Run `pnpm check`; add a `subIssues` member to any `GitHubReads` test double it flags (answer `{ ok: true, value: [] }`).
 
-`apps/uw-app/github/sub-issues.ts`:
+`apps/uw-platform/github/sub-issues.ts`:
 
 ```ts
 import type { Logger } from '@uw/core/log';
@@ -1415,11 +1415,11 @@ export async function followSubIssues(
 }
 ```
 
-`apps/uw-app/github/follow-up.ts`: `import { followSubIssues } from './sub-issues.ts';` and as the last line of `followUpserts`: `await followSubIssues(unit, report.issues, logger);`. The sweep, the webhook and the import command all pass through `followUpserts`, so all three read the list; `sweep.ts` is unchanged. The children's upsert does not call `followUpserts`, so a sub-issue's own sub-issues are not read through its parent (S18-R4).
+`apps/uw-platform/github/follow-up.ts`: `import { followSubIssues } from './sub-issues.ts';` and as the last line of `followUpserts`: `await followSubIssues(unit, report.issues, logger);`. The sweep, the webhook and the import command all pass through `followUpserts`, so all three read the list; `sweep.ts` is unchanged. The children's upsert does not call `followUpserts`, so a sub-issue's own sub-issues are not read through its parent (S18-R4).
 
 - [ ] **Step 9: Give the labelled fixtures a done-when**
 
-In `apps/uw-app/github/fixtures/issues-labeled.json`, `issues-unlabeled.json` and `rest-issues.json`, change issue 12's `"body": "The board."` to `"body": "The board.\n\n## Done when\n\n- The board lists every stage."`. In `apps/uw-app/github/testing/facts-fixtures.ts`, `labelledIssue` gains:
+In `apps/uw-platform/github/fixtures/issues-labeled.json`, `issues-unlabeled.json` and `rest-issues.json`, change issue 12's `"body": "The board."` to `"body": "The board.\n\n## Done when\n\n- The board lists every stage."`. In `apps/uw-platform/github/testing/facts-fixtures.ts`, `labelledIssue` gains:
 
 ```ts
   subIssues: 0,
@@ -1431,13 +1431,13 @@ Run `pnpm check` and add the same three fields (with `doneWhen: ['The board list
 
 - [ ] **Step 10: Run the tests and the GitHub suite**
 
-Run: `pnpm check && npx vitest run packages/harness/github apps/uw-app/github/facts/normalise.test.ts && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/github`
+Run: `pnpm check && npx vitest run packages/harness/github apps/uw-platform/github/facts/normalise.test.ts && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/github`
 Expected: green, including the sweep, ingest, import and upsert suites and the new `EI-1` tests.
 
 - [ ] **Step 11: Commit**
 
 ```bash
-git add packages/harness/github/issue-body.ts packages/harness/github/issue-body.test.ts packages/harness/index.ts apps/uw-app/github apps/uw-app/commands/import.pg.test.ts
+git add packages/harness/github/issue-body.ts packages/harness/github/issue-body.test.ts packages/harness/index.ts apps/uw-platform/github apps/uw-platform/commands/import.pg.test.ts
 git commit -m "feat(github): the facts read each epic's sub-issue list and the body's done-when and blockers
 
 Every issue upsert reads the sub-issue count and parses the done-when lines
@@ -1457,10 +1457,10 @@ EI-1. S18-R1 S18-R2 S18-R3 S18-R4."
 - Modify: `packages/harness/ports.ts` (`IssueKey`, `IssueFact`, `EpicFacts`, `GitHubFacts.epic`)
 - Modify: `packages/harness/port-contracts/github-facts.ts` (subject `givenEpic`; epic cases; the not-wired record)
 - Modify: `sim/adapters/github-facts.ts`, `sim/adapters/github-facts.contract.test.ts`
-- Create: `apps/uw-app/github/facts/epics.ts` (`epicFacts`)
-- Modify: `apps/uw-app/ports/github-facts.ts`, `apps/uw-app/ports/github-facts.not-wired.ts`, `apps/uw-app/ports/github-facts.contract.pg.test.ts`
-- Modify: `apps/uw-app/testing/kernel.ts` (`fixedFacts` gains `epic`; `answeringEpic`)
-- Modify: every `GitHubFacts` literal `pnpm check` flags (expect `apps/uw-app/testing/run-host.ts`, `sim/kernel/adopt-branch.test.ts`, `sim/kernel/ship-refresh.test.ts`, `sim/kernel/gate-view.test.ts`)
+- Create: `apps/uw-platform/github/facts/epics.ts` (`epicFacts`)
+- Modify: `apps/uw-platform/ports/github-facts.ts`, `apps/uw-platform/ports/github-facts.not-wired.ts`, `apps/uw-platform/ports/github-facts.contract.pg.test.ts`
+- Modify: `apps/uw-platform/testing/kernel.ts` (`fixedFacts` gains `epic`; `answeringEpic`)
+- Modify: every `GitHubFacts` literal `pnpm check` flags (expect `apps/uw-platform/testing/run-host.ts`, `sim/kernel/adopt-branch.test.ts`, `sim/kernel/ship-refresh.test.ts`, `sim/kernel/gate-view.test.ts`)
 
 **Interfaces:**
 - Consumes: Task 4's columns and `recordSubIssues`, `upsertFacts`, `IssueRecord`.
@@ -1592,7 +1592,7 @@ Call `epicCases(open);` inside `describeGithubFactsContract` after `defaultBranc
 
 - [ ] **Step 4: The platform adapter**
 
-`apps/uw-app/github/facts/epics.ts`:
+`apps/uw-platform/github/facts/epics.ts`:
 
 ```ts
 import { and, asc, eq, sql } from 'drizzle-orm';
@@ -1633,11 +1633,11 @@ export async function epicFacts(db: Executor, key: IssueKey): Promise<EpicFacts 
 }
 ```
 
-`apps/uw-app/ports/github-facts.ts`: `import { epicFacts } from '../github/facts/epics.ts';` and `epic: (key) => epicFacts(db, key),`.
+`apps/uw-platform/ports/github-facts.ts`: `import { epicFacts } from '../github/facts/epics.ts';` and `epic: (key) => epicFacts(db, key),`.
 
-`apps/uw-app/ports/github-facts.not-wired.ts`: `epic: () => notWiredCall('githubFacts', 'epic'),`.
+`apps/uw-platform/ports/github-facts.not-wired.ts`: `epic: () => notWiredCall('githubFacts', 'epic'),`.
 
-`apps/uw-app/ports/github-facts.contract.pg.test.ts`: import `IssueFact, EpicFacts` from `@uw/harness`, `emptyBatch, type IssueRecord` from `../github/facts/records.ts`, `recordSubIssues` from `../github/facts/sub-issues.ts`; add:
+`apps/uw-platform/ports/github-facts.contract.pg.test.ts`: import `IssueFact, EpicFacts` from `@uw/harness`, `emptyBatch, type IssueRecord` from `../github/facts/records.ts`, `recordSubIssues` from `../github/facts/sub-issues.ts`; add:
 
 ```ts
 function issueRecord(fact: IssueFact, repoId: number, subIssues: number, at: Date): IssueRecord {
@@ -1677,7 +1677,7 @@ async function givenEpic(db: Database, epic: EpicFacts): Promise<void> {
 
 and the subject gains `givenEpic: (epic) => givenEpic(db, epic),`.
 
-`apps/uw-app/testing/kernel.ts`: `fixedFacts` gains `epic: async () => null,`; add:
+`apps/uw-platform/testing/kernel.ts`: `fixedFacts` gains `epic: async () => null,`; add:
 
 ```ts
 export function answeringEpic(epic: EpicFacts | null): GitHubFacts {
@@ -1698,13 +1698,13 @@ Run `pnpm check`; add `epic: async () => null,` to each remaining `GitHubFacts` 
 
 - [ ] **Step 6: Run the contract on every adapter**
 
-Run: `pnpm check && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run sim/adapters apps/uw-app/ports tools/architecture/port-contracts.test.ts`
+Run: `pnpm check && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run sim/adapters apps/uw-platform/ports tools/architecture/port-contracts.test.ts`
 Expected: green; the four `EI-3` epic cases run on the sim and the platform adapter, and the not-wired suite covers `epic`.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add packages/harness/port-contracts sim/adapters apps/uw-app/github/facts/epics.ts apps/uw-app/ports apps/uw-app/testing sim/kernel
+git add packages/harness/port-contracts sim/adapters apps/uw-platform/github/facts/epics.ts apps/uw-platform/ports apps/uw-platform/testing sim/kernel
 git commit -m "feat(github): the epic read on every GitHub facts adapter, under the port contract
 
 The sim answers what it was given; the platform adapter reads gh_issues for
@@ -1723,12 +1723,12 @@ EI-3. S18-R8."
 - Modify: `packages/harness/items/import.ts` (`ImportIssueInput.doneWhen`; refuse and record)
 - Modify: `packages/harness/items/commands.ts` (`recordNotReady`)
 - Modify: `packages/harness/index.ts` (types `NotReadyInput`, `NotReadySubject`)
-- Modify: `apps/uw-app/github/import.ts` (`importStoredIssue`: epics and missing done-whens)
-- Modify: `apps/uw-app/commands/handlers/items.ts` (`kickstartCommand`)
-- Modify: callers of `kernel.items.importIssue` (add `doneWhen`): `sim/scenarios/GH-3.a-labelled-issue-becomes-one-item.ts`, `sim/kernel/import.test.ts`, `sim/topics.ts`, `apps/uw-app/harness/import-race.pg.test.ts`, `apps/uw-app/harness/lock-after-move.pg.test.ts`
-- Modify: kickstart tests whose product page has no done-when: `apps/uw-app/commands/items.pg.test.ts`, `apps/uw-app/commands/retaken.pg.test.ts` (and any other `kickstart` test `grep -rln "kickstart" apps --include=*.pg.test.ts` finds)
+- Modify: `apps/uw-platform/github/import.ts` (`importStoredIssue`: epics and missing done-whens)
+- Modify: `apps/uw-platform/commands/handlers/items.ts` (`kickstartCommand`)
+- Modify: callers of `kernel.items.importIssue` (add `doneWhen`): `sim/scenarios/GH-3.a-labelled-issue-becomes-one-item.ts`, `sim/kernel/import.test.ts`, `sim/topics.ts`, `apps/uw-platform/harness/import-race.pg.test.ts`, `apps/uw-platform/harness/lock-after-move.pg.test.ts`
+- Modify: kickstart tests whose product page has no done-when: `apps/uw-platform/commands/items.pg.test.ts`, `apps/uw-platform/commands/retaken.pg.test.ts` (and any other `kickstart` test `grep -rln "kickstart" apps --include=*.pg.test.ts` finds)
 - Create: `sim/kernel/not-ready.test.ts`
-- Modify: `apps/uw-app/github/import.pg.test.ts` (one block), `apps/uw-app/commands/items.pg.test.ts` (one test)
+- Modify: `apps/uw-platform/github/import.pg.test.ts` (one block), `apps/uw-platform/commands/items.pg.test.ts` (one test)
 
 **Interfaces:**
 - Consumes: Task 2's `done_when_missing`, `IntakeVia`; Task 4's `IssueChange.doneWhen`, `IssueChange.subIssues`, `doneWhenOf`.
@@ -1961,14 +1961,14 @@ If the callback passes 25 statements, move the lines from `const existing` to th
 
 `packages/harness/index.ts`: `export type { NotReadyInput, NotReadySubject } from './items/not-ready.ts';`.
 
-Add `doneWhen: ['The board lists every stage.']` to each `importIssue` call in `sim/scenarios/GH-3.a-labelled-issue-becomes-one-item.ts`, `sim/kernel/import.test.ts`, `sim/topics.ts`, `apps/uw-app/harness/import-race.pg.test.ts` and `apps/uw-app/harness/lock-after-move.pg.test.ts`. GH-3's `item_created` key assertion is unchanged (the evidence does not carry the done-when).
+Add `doneWhen: ['The board lists every stage.']` to each `importIssue` call in `sim/scenarios/GH-3.a-labelled-issue-becomes-one-item.ts`, `sim/kernel/import.test.ts`, `sim/topics.ts`, `apps/uw-platform/harness/import-race.pg.test.ts` and `apps/uw-platform/harness/lock-after-move.pg.test.ts`. GH-3's `item_created` key assertion is unchanged (the evidence does not carry the done-when).
 
 Run: `npx vitest run sim/kernel/not-ready.test.ts sim/kernel/import.test.ts && pnpm sim -- GH-3`
 Expected: green.
 
 - [ ] **Step 4: Write the failing app tests**
 
-In `apps/uw-app/github/import.pg.test.ts` (read the file first; reuse its rig: the harness it activates, `deliver` or `depsOn` from `testing/import-rig.ts`, its logger lines and its item count helper):
+In `apps/uw-platform/github/import.pg.test.ts` (read the file first; reuse its rig: the harness it activates, `deliver` or `depsOn` from `testing/import-rig.ts`, its logger lines and its item count helper):
 
 ```ts
 describe.skipIf(!testServer)('EI-2 a labelled issue needs a done-when to be imported', () => {
@@ -1999,7 +1999,7 @@ describe.skipIf(!testServer)('EI-2 a labelled issue needs a done-when to be impo
 
 `softwareHarnessOn`, `deliver` and `itemsWithIssues` stand for whatever the file already calls its harness activation, its webhook delivery and its item count: use those names, and add a three-line `itemsWithIssues` (`SELECT count(*)::int FROM harness_items WHERE issue_github_id IS NOT NULL`) only if none exists. `eventsNamed` comes from `../testing/commands.ts`. The delivery with an epic reaches GitHub for the sub-issue list; if the rig's fixture GitHub answers an unprogrammed path with an error, that is logged as `sub_issues_not_read` and does not affect the assertion.
 
-In `apps/uw-app/commands/items.pg.test.ts`, beside the existing kickstart test (copy its seeding of a product page and its `command(...)` call):
+In `apps/uw-platform/commands/items.pg.test.ts`, beside the existing kickstart test (copy its seeding of a product page and its `command(...)` call):
 
 ```ts
   it('EI-2 kickstart refuses a product page with no done-when and records it against the page', () =>
@@ -2015,12 +2015,12 @@ In `apps/uw-app/commands/items.pg.test.ts`, beside the existing kickstart test (
 
 where `productPage(db, bodyMd)` is the file's existing product-page seed, given the body as a parameter (extract it if the body is inline).
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/github/import.pg.test.ts apps/uw-app/commands/items.pg.test.ts`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/github/import.pg.test.ts apps/uw-platform/commands/items.pg.test.ts`
 Expected: FAIL; the bare issue imports and kickstart enqueues.
 
 - [ ] **Step 5: The app's intake checks**
 
-`apps/uw-app/github/import.ts`: replace `importStoredIssue` with the version below and add the two helpers above it.
+`apps/uw-platform/github/import.ts`: replace `importStoredIssue` with the version below and add the two helpers above it.
 
 ```ts
 type Fields = Readonly<Record<string, string | number>>;
@@ -2101,7 +2101,7 @@ export async function importStoredIssue(
 
 Keep the existing `crossReference`, `wrapPage`, `issueOf`, `refusedTarget` and `CrossReferenceTiming` unchanged. If `wrapPage`'s result type does not narrow through `admitted.ok`, give `importAdmitted` an explicit return type union. Prettier will wrap the long lines.
 
-`apps/uw-app/commands/handlers/items.ts`: `import { doneWhenOf } from '@uw/harness';`. In `kickstartCommand.run`, after the page type and area check (and after step 14's `template_has_no_package` check), before the enqueue:
+`apps/uw-platform/commands/handlers/items.ts`: `import { doneWhenOf } from '@uw/harness';`. In `kickstartCommand.run`, after the page type and area check (and after step 14's `template_has_no_package` check), before the enqueue:
 
 ```ts
     const title = page.title.slice(0, 200);
@@ -2126,13 +2126,13 @@ For each kickstart test that seeds a product page (`grep -rln "'kickstart'" apps
 
 - [ ] **Step 7: Run the tests**
 
-Run: `pnpm check && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/github apps/uw-app/commands apps/uw-app/harness && npx vitest run sim/kernel`
+Run: `pnpm check && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/github apps/uw-platform/commands apps/uw-platform/harness && npx vitest run sim/kernel`
 Expected: green, including the new `EI-2` tests.
 
 - [ ] **Step 8: Commit**
 
 ```bash
-git add packages/harness/items packages/harness/index.ts apps/uw-app/github/import.ts apps/uw-app/github/import.pg.test.ts apps/uw-app/commands apps/uw-app/harness sim
+git add packages/harness/items packages/harness/index.ts apps/uw-platform/github/import.ts apps/uw-platform/github/import.pg.test.ts apps/uw-platform/commands apps/uw-platform/harness sim
 git commit -m "feat(harness): intake refuses an issue or page with no done-when, and records it on the harness
 
 The label import (webhook, sweep, import command) and kickstart refuse
@@ -2965,7 +2965,7 @@ describe('EI-3 a blocked item is not offered until every blocker’s item has pa
 });
 ```
 
-The second test plants `done` on the blocker's projection with `rewriteItem` (the same seam `apps/uw-app/views/gates.pg.test.ts` uses for a gate status): carrying an item through Ship needs the ship rule's facts, which steps 15 and 16 own; the meaning of "passed Ship" for every stage is pinned by `packages/harness/items/blockers.test.ts`. This test is not a scenario, so the runner's replay check does not read it.
+The second test plants `done` on the blocker's projection with `rewriteItem` (the same seam `apps/uw-platform/views/gates.pg.test.ts` uses for a gate status): carrying an item through Ship needs the ship rule's facts, which steps 15 and 16 own; the meaning of "passed Ship" for every stage is pinned by `packages/harness/items/blockers.test.ts`. This test is not a scenario, so the runner's replay check does not read it.
 
 Create the EI-3 scenario file with the content in Task 7 Step 7, and `sim/scenarios/EI-4.two-claims-live-and-two-waiting-under-the-wip-limit.ts`:
 
@@ -3096,9 +3096,9 @@ EI-3 EI-4. S18-R9 S18-R10 S18-R11."
 ### Task 9: The `enqueue_epic` person command (EI-3)
 
 **Files:**
-- Create: `apps/uw-app/commands/person/epics.ts`
-- Modify: `apps/uw-app/commands/registry.ts` (replace the not-wired entry)
-- Create: `apps/uw-app/commands/epics.pg.test.ts`
+- Create: `apps/uw-platform/commands/person/epics.ts`
+- Modify: `apps/uw-platform/commands/registry.ts` (replace the not-wired entry)
+- Create: `apps/uw-platform/commands/epics.pg.test.ts`
 
 **Interfaces:**
 - Consumes: Task 7 `kernel.items.enqueueEpic`; Task 4 `upsertFacts`, `recordSubIssues`; Task 5 the platform `epic` read.
@@ -3106,7 +3106,7 @@ EI-3 EI-4. S18-R9 S18-R10 S18-R11."
 
 - [ ] **Step 1: Write the failing route test**
 
-`apps/uw-app/commands/epics.pg.test.ts`:
+`apps/uw-platform/commands/epics.pg.test.ts`:
 
 ```ts
 import { randomUUID } from 'node:crypto';
@@ -3191,12 +3191,12 @@ describe.skipIf(!testServer)('EI-3 enqueue_epic through the command API', () => 
 });
 ```
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/commands/epics.pg.test.ts`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/commands/epics.pg.test.ts`
 Expected: FAIL, `not_wired`.
 
 - [ ] **Step 2: The handler**
 
-`apps/uw-app/commands/person/epics.ts`:
+`apps/uw-platform/commands/person/epics.ts`:
 
 ```ts
 import { sameRepository } from '@uw/harness';
@@ -3219,17 +3219,17 @@ export const enqueueEpicCommand = commandHandler({
 });
 ```
 
-`apps/uw-app/commands/registry.ts`: `import { enqueueEpicCommand } from './person/epics.ts';` and replace `notWiredCommand('enqueue_epic', 'write'),` with `enqueueEpicCommand,` (drop the `notWiredCommand` import if nothing else uses it).
+`apps/uw-platform/commands/registry.ts`: `import { enqueueEpicCommand } from './person/epics.ts';` and replace `notWiredCommand('enqueue_epic', 'write'),` with `enqueueEpicCommand,` (drop the `notWiredCommand` import if nothing else uses it).
 
 - [ ] **Step 3: Run the command tests and the architecture checks**
 
-Run: `pnpm check && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/commands tools/architecture`
+Run: `pnpm check && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/commands tools/architecture`
 Expected: green; `command-routes`, `command-handlers` and `person-surface-rules` accept the new handler.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/uw-app/commands/person/epics.ts apps/uw-app/commands/registry.ts apps/uw-app/commands/epics.pg.test.ts
+git add apps/uw-platform/commands/person/epics.ts apps/uw-platform/commands/registry.ts apps/uw-platform/commands/epics.pg.test.ts
 git commit -m "feat(commands): enqueue_epic, a person command with can() on the harness area
 
 The handler checks the repository is the harness's and hands the epic to the
@@ -3248,10 +3248,10 @@ EI-3. S18-R8."
 - Modify: `packages/harness/views/types.ts` (`EpicNode`, `EpicGroup`, `NotReady`; `BoardView` gains `epics`, `notReady`)
 - Modify: `packages/harness/views/board.ts` (read them on the unfiltered first page)
 - Modify: `packages/harness/index.ts` (export the three types)
-- Create: `apps/uw-app/views/parts/epic-layout.ts`, `apps/uw-app/views/parts/epic-layout.test.ts`
-- Create: `apps/uw-app/views/parts/epic-board.tsx`
-- Modify: `apps/uw-app/views/screens/board.tsx` (render the two sections)
-- Create: `apps/uw-app/views/epic-board.pg.test.ts`
+- Create: `apps/uw-platform/views/parts/epic-layout.ts`, `apps/uw-platform/views/parts/epic-layout.test.ts`
+- Create: `apps/uw-platform/views/parts/epic-board.tsx`
+- Modify: `apps/uw-platform/views/screens/board.tsx` (render the two sections)
+- Create: `apps/uw-platform/views/epic-board.pg.test.ts`
 - Create: `sim/kernel/epic-board.test.ts`
 - Create: `sim/scenarios/EI-5.the-board-groups-an-epic-and-draws-its-blockers.ts`
 
@@ -3577,7 +3577,7 @@ Expected: green.
 
 - [ ] **Step 4: Write the failing layout and screen tests**
 
-`apps/uw-app/views/parts/epic-layout.test.ts`:
+`apps/uw-platform/views/parts/epic-layout.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -3628,7 +3628,7 @@ describe('EI-5 the epic drawing places each item after its blockers', () => {
 });
 ```
 
-`apps/uw-app/views/epic-board.pg.test.ts`:
+`apps/uw-platform/views/epic-board.pg.test.ts`:
 
 ```ts
 import { randomUUID } from 'node:crypto';
@@ -3705,12 +3705,12 @@ describe.skipIf(!testServer)('EI-5 the Board screen draws an epic', () => {
 
 If `boardWorld`'s harness has a repository already, activate this one with `repository: 'unfoldingWord/uw-epics'` and use that name in `epic`; if step 14's dispatch gate refuses nothing here (no agent claims), no platform page is needed.
 
-Run: `npx vitest run apps/uw-app/views/parts/epic-layout.test.ts` and `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/views/epic-board.pg.test.ts`
+Run: `npx vitest run apps/uw-platform/views/parts/epic-layout.test.ts` and `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/views/epic-board.pg.test.ts`
 Expected: FAIL; no layout and no epic section.
 
 - [ ] **Step 5: The layout**
 
-`apps/uw-app/views/parts/epic-layout.ts`:
+`apps/uw-platform/views/parts/epic-layout.ts`:
 
 ```ts
 import type { EpicGroup } from '@uw/harness';
@@ -3785,7 +3785,7 @@ export function epicLayout(group: EpicGroup): EpicLayout {
 
 - [ ] **Step 6: The screen part**
 
-`apps/uw-app/views/parts/epic-board.tsx`:
+`apps/uw-platform/views/parts/epic-board.tsx`:
 
 ```tsx
 import type { EpicGroup, EpicNode, NotReady } from '@uw/harness';
@@ -3918,7 +3918,7 @@ export function NotReadyList(props: { readonly harnessId: string; readonly entri
 
 Read `flow-diagram.tsx` and `board-card.tsx` before writing: use the same token class names they use (`fill-surface`, `stroke-ocean`, `fill-ink`, `fill-muted`, `border-line`, `text-link`). If a class here is not in `packages/ui/tokens/` (the tokens-agree check fails the build on one), use the nearest class those two files use. Prettier will wrap the long JSX lines; the `Drawing` function stays under 50 lines after wrapping only if the node mapping moves into its own `Node` component, so move it there.
 
-`apps/uw-app/views/screens/board.tsx`: `import { EpicGroups, NotReadyList } from '../parts/epic-board.tsx';` and, between `<StageChips … />` and the lanes grid:
+`apps/uw-platform/views/screens/board.tsx`: `import { EpicGroups, NotReadyList } from '../parts/epic-board.tsx';` and, between `<StageChips … />` and the lanes grid:
 
 ```tsx
       <EpicGroups harnessId={harnessId} epics={board.epics} />
@@ -3929,17 +3929,17 @@ Both render nothing when empty, so the existing Board tests (which count `main s
 
 - [ ] **Step 7: Run the tests**
 
-Run: `npx vitest run apps/uw-app/views/parts/epic-layout.test.ts && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/views && pnpm check && pnpm ui:islands && npx vitest run tools/ui`
+Run: `npx vitest run apps/uw-platform/views/parts/epic-layout.test.ts && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/views && pnpm check && pnpm ui:islands && npx vitest run tools/ui`
 Expected: green, including `the board renders with no screen problems` and both `EI-5` screen tests. (`pnpm ui:islands` only rewrites the bundle if a contract changed since Task 2; commit it if it changed.)
 
 - [ ] **Step 8: Load the screen**
 
-Run the app locally the way `docs/architecture.md` describes for screens (or `pnpm --filter uw-app dev` if that is the documented command) against the test database seeded by the pg test's steps, and look at the Board at 375 px wide and at desktop width, in light and in dark. If no local run is possible without an account, record "Board epic section not loaded in a browser; `screenProblems` and the JSDOM assertions are the evidence" under "Not verified" in the tracker in Task 11.
+Run the app locally the way `docs/architecture.md` describes for screens (or `pnpm --filter uw-platform dev` if that is the documented command) against the test database seeded by the pg test's steps, and look at the Board at 375 px wide and at desktop width, in light and in dark. If no local run is possible without an account, record "Board epic section not loaded in a browser; `screenProblems` and the JSDOM assertions are the evidence" under "Not verified" in the tracker in Task 11.
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add packages/harness/views packages/harness/index.ts apps/uw-app/views sim/kernel/epic-board.test.ts sim/scenarios/EI-5.the-board-groups-an-epic-and-draws-its-blockers.ts apps/uw-app/generated/islands.ts
+git add packages/harness/views packages/harness/index.ts apps/uw-platform/views sim/kernel/epic-board.test.ts sim/scenarios/EI-5.the-board-groups-an-epic-and-draws-its-blockers.ts apps/uw-platform/generated/islands.ts
 git commit -m "feat(views): the Board groups each epic, draws its blockers, and lists what is not ready
 
 The Board view reads each open epic's items in sub-issue order with whether
@@ -3967,7 +3967,7 @@ Expected: green. Note the test count, the scenario count (three more than before
 
 In `docs/progress_tracker.md`:
 
-1. The step 18 row: state `Built`; evidence: the commit SHAs of Tasks 1 to 10 in order with one word each, the proofs (EI-1 `apps/uw-app/github/sub-issues.pg.test.ts`, `apps/uw-app/github/facts/normalise.test.ts`, `packages/db/epic-columns.test.ts`; EI-2 `packages/harness/github/issue-body.test.ts`, `sim/kernel/not-ready.test.ts`, `sim/kernel/enqueue-epic.test.ts`, `sim/kernel/epic-board.test.ts`, `apps/uw-app/github/import.pg.test.ts`, `apps/uw-app/commands/items.pg.test.ts`; EI-3 the EI-3 scenario, `packages/harness/items/blockers.test.ts`, `sim/kernel/enqueue-epic.test.ts`, `sim/kernel/epic-poll.test.ts`, `apps/uw-app/commands/epics.pg.test.ts`, the GitHub facts port contract; EI-4 the EI-4 scenario; EI-5 the EI-5 scenario, `apps/uw-app/views/epic-board.pg.test.ts`, `apps/uw-app/views/parts/epic-layout.test.ts`), the `pnpm verify` counts, the contract version this step reached, the migration file name, "CI not run" or the CI run id, and the plan path.
+1. The step 18 row: state `Built`; evidence: the commit SHAs of Tasks 1 to 10 in order with one word each, the proofs (EI-1 `apps/uw-platform/github/sub-issues.pg.test.ts`, `apps/uw-platform/github/facts/normalise.test.ts`, `packages/db/epic-columns.test.ts`; EI-2 `packages/harness/github/issue-body.test.ts`, `sim/kernel/not-ready.test.ts`, `sim/kernel/enqueue-epic.test.ts`, `sim/kernel/epic-board.test.ts`, `apps/uw-platform/github/import.pg.test.ts`, `apps/uw-platform/commands/items.pg.test.ts`; EI-3 the EI-3 scenario, `packages/harness/items/blockers.test.ts`, `sim/kernel/enqueue-epic.test.ts`, `sim/kernel/epic-poll.test.ts`, `apps/uw-platform/commands/epics.pg.test.ts`, the GitHub facts port contract; EI-4 the EI-4 scenario; EI-5 the EI-5 scenario, `apps/uw-platform/views/epic-board.pg.test.ts`, `apps/uw-platform/views/parts/epic-layout.test.ts`), the `pnpm verify` counts, the contract version this step reached, the migration file name, "CI not run" or the CI run id, and the plan path.
 2. A "Step 18 evidence by requirement" section after step 17's, one line per ID naming its proof, in the shape of the step 13 section.
 3. Under "Decisions made during the build", S18-R1 to S18-R14 from the top of this plan, in the shape of the S13 rows (date `2026-10-15`, the requirement IDs, the ruling, why, the cost if wrong).
 4. Under "Not verified": the shape of GitHub's `sub_issues_summary` on an issue and of `GET /repos/{owner}/{repo}/issues/{n}/sub_issues` is taken from GitHub's documentation and proven only against fixtures; whether adding a sub-issue moves the parent's `updated_at` (so the sweep re-reads the list) is inferred, not observed; the `sub_issues` webhook is not subscribed; and Task 10 Step 8's result if the screen was not loaded.

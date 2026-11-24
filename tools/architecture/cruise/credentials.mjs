@@ -1,20 +1,20 @@
 import { npm, testFile } from './shared.mjs';
 
-const kmsClient = '^apps/uw-app/credentials/kms/';
+const kmsClient = '^apps/uw-platform/credentials/kms/';
 
-const store = '^apps/uw-app/credentials/';
-const opensAValue = '^apps/uw-app/credentials/(open|envelope|outcome-guard)\\.ts$';
-const revealsAValue = '^apps/uw-app/credentials/reveal\\.ts$';
-const revealRoute = '^apps/uw-app/credentials/routes\\.ts$';
-const usesAValue = '^apps/uw-app/credentials/(use|secret)\\.ts$';
-const connectorsAdapter = '^apps/uw-app/ports/connectors\\.ts$';
-const agentSurface = '^apps/uw-app/(mcp|engines|runs|agents)/';
+const store = '^apps/uw-platform/credentials/';
+const opensAValue = '^apps/uw-platform/credentials/(open|envelope|outcome-guard)\\.ts$';
+const revealsAValue = '^apps/uw-platform/credentials/reveal\\.ts$';
+const revealRoute = '^apps/uw-platform/credentials/routes\\.ts$';
+const usesAValue = '^apps/uw-platform/credentials/(use|secret)\\.ts$';
+const connectorsAdapter = '^apps/uw-platform/ports/connectors\\.ts$';
+const agentSurface = '^apps/uw-platform/(mcp|engines|runs|agents)/';
 
 export const credentialRules = [
   {
     name: 'aws-signer-only-in-the-kms-client',
     comment:
-      'The AWS request signer is imported only by the KMS client in apps/uw-app/credentials/kms/, so no other module signs a request with the key-encryption credentials.',
+      'The AWS request signer is imported only by the KMS client in apps/uw-platform/credentials/kms/, so no other module signs a request with the key-encryption credentials.',
     severity: 'error',
     from: { pathNot: [kmsClient, testFile] },
     to: { path: npm('aws4fetch') },
@@ -24,7 +24,7 @@ export const credentialRules = [
     comment:
       'Only the credentials store reaches the KMS client, so a data key is wrapped and unwrapped in one place.',
     severity: 'error',
-    from: { pathNot: ['^apps/uw-app/credentials/', testFile] },
+    from: { pathNot: ['^apps/uw-platform/credentials/', testFile] },
     to: { path: kmsClient },
   },
   {

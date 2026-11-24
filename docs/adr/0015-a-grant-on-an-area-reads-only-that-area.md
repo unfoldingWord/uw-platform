@@ -10,7 +10,7 @@ Until now an `editor` or `admin` grant on one Johnny.Decimal area also let its h
 
 - `packages/core/acl.ts`: `readScope` no longer widens an editor or admin grant to every area. `readableAreas` now equals the areas a person holds grants in, plus everything for an `org` grant.
 - Everything that filters by `can(read)` or `readableAreas` narrows with it, without code changes of its own: MCP `search_pages`, `read_page` and `resolve_context`, the untrusted-content clearance key, and the notification holders of an area.
-- An agent's MCP session already runs with its bound person's grants (`apps/uw-app/mcp/mint.ts`), so an agent now also reads only the areas its person holds grants in. A run's beat principal, an `editor` on its workflow's area, reads only that area.
+- An agent's MCP session already runs with its bound person's grants (`apps/uw-platform/mcp/mint.ts`), so an agent now also reads only the areas its person holds grants in. A run's beat principal, an `editor` on its workflow's area, reads only that area.
 
 **To keep the open culture for someone,** an org admin grants them `viewer` at `org` scope. Only an org admin can: `grantRole` requires `admin` on the scope it grants, and an area admin is refused `not_permitted` for an `org` grant. Openness is now a visible, audited grant in `grant_audit`, not a side effect of being an editor somewhere.
 

@@ -28,7 +28,7 @@ These are settled. Work inside them; changing one is an architecture change (sec
 | Concern | Decision |
 |---|---|
 | Language | TypeScript, `strict: true`, no `any`, no `// @ts-ignore` |
-| Platform | Cloudflare Workers: `uw-app` (Hono SSR and islands, command API, MCP surface, live hub, Workflows, crons) and `uw-ingest` (webhooks). Postgres (AWS Aurora) through Hyperdrive, reached over a Cloudflare Tunnel and a Workers VPC service. Declared in `infra/`, never clicked |
+| Platform | Cloudflare Workers: `uw-platform` (Hono SSR and islands, command API, MCP surface, live hub, Workflows, crons) and `uw-ingest` (webhooks). Postgres (AWS Aurora) through Hyperdrive, reached over a Cloudflare Tunnel and a Workers VPC service. Declared in `infra/`, never clicked |
 | Shape | Ports and adapters. The harness kernel is pure TypeScript in `packages/harness`, reached only through ports, the database included. Every port has a platform adapter and a test adapter; the sim drives the kernel in Node (ADR 0001) |
 | Words | "Kernel" is the pure core. "Engine" means only the code behind the model-vendor seam |
 | Agent boundary | Agents reach the platform only through the MCP surface serving the verb registry; approve, merge, deploy, publish and advance do not exist as verbs (ADR 0002) |
@@ -89,14 +89,14 @@ These behaviors are predictable inputs. The repository is shaped so that the con
 Every kind of work has one template. Copy the template, fill the blanks, stop.
 
 - New kernel module: a function on the module's interface in `packages/harness`, a test at that interface, a scenario for the behaviour.
-- New port: `packages/harness/ports.ts`, then the platform adapter in `apps/uw-app/ports/`, the test adapter in `sim/adapters/` and the port's contract suite in `packages/harness/port-contracts/` with a contract test beside each adapter, together, never one without the others. A port whose service is built in a later step gets a platform adapter that is not wired, and its contract test proves that.
+- New port: `packages/harness/ports.ts`, then the platform adapter in `apps/uw-platform/ports/`, the test adapter in `sim/adapters/` and the port's contract suite in `packages/harness/port-contracts/` with a contract test beside each adapter, together, never one without the others. A port whose service is built in a later step gets a platform adapter that is not wired, and its contract test proves that.
 - New event: the enum in `packages/contracts`, its fixtures, and the folds that should count it.
 - New verb: the registry in `packages/contracts`, the MCP handler, the persona toolsets that may hold it.
-- New engine: a directory under `apps/uw-app/engines/<key>/`; the vendor SDK imported there and nowhere else.
+- New engine: a directory under `apps/uw-platform/engines/<key>/`; the vendor SDK imported there and nowhere else.
 - New validator or connector: a registry entry and a handler; a stage row picks it by key.
 - New table or column: the `packages/db/schema.ts` file for its domain (`schema.ts` for the harness, `schema-platform.ts` for the platform) with its classification, and a migration.
 - New command: `packages/contracts`, the Hono route with `can()`, a scenario.
-- New screen: a route, an entry in `apps/uw-app/views/registry.ts`, a test that renders it, tokens only. An island only for behaviour the server cannot render.
+- New screen: a route, an entry in `apps/uw-platform/views/registry.ts`, a test that renders it, tokens only. An island only for behaviour the server cannot render.
 - New word: `CONTEXT.md` first.
 
 If the work does not fit a template, choose the nearest one, say which and why in the pull request description, and continue. Do not improvise silently.
@@ -107,8 +107,8 @@ The build enforces these. A violation is a red build, not a judgment call.
 
 - `packages/harness/*` imports nothing from Workers, Drizzle, a vendor SDK or the network. It is pure TypeScript and runs in plain Node. This is what lets the sim exist.
 - `packages/contracts/*` and `packages/db/*` import nothing from `apps/*`.
-- A vendor SDK (`@anthropic-ai/*`, `openai`, OpenRouter) is imported only inside `apps/uw-app/engines/<key>/`.
-- Application code reaches Postgres, GitHub, a model, the hub or a notifier only through a port; nothing outside `apps/uw-app`, `sim/adapters` and `packages/db/store` implements one. `packages/db/store` holds the one Drizzle implementation of the Store and Grants ports, which the platform adapter and the sim's test adapter both bind, because both must run the same queries (PRD DX-2).
+- A vendor SDK (`@anthropic-ai/*`, `openai`, OpenRouter) is imported only inside `apps/uw-platform/engines/<key>/`.
+- Application code reaches Postgres, GitHub, a model, the hub or a notifier only through a port; nothing outside `apps/uw-platform`, `sim/adapters` and `packages/db/store` implements one. `packages/db/store` holds the one Drizzle implementation of the Store and Grants ports, which the platform adapter and the sim's test adapter both bind, because both must run the same queries (PRD DX-2).
 - No route, tool handler or Workflow step reachable by an agent identity writes `gate_decisions` or `harness_stages`. The one exception is `gate_decisions` written by the delegated Ship exit section 10 names; `harness_stages` has none.
 - Islands never call the kernel directly; they call the command API.
 - `sim/*` imports `packages/harness`, `packages/contracts`, `packages/db` and the Node built-ins `node:fs`, `node:fs/promises`, `node:path`, `node:url`, `node:process`, `node:assert` and `node:assert/strict`, its tests also Vitest, and nothing else. `node:os` and `node:child_process` appear only in sim tests, `sim/cli` and `sim/runner`. It imports `packages/db` because the Store test adapter runs the real migrations on an embedded Postgres (PRD DX-2), and never imports Drizzle or PGlite itself.
@@ -146,7 +146,7 @@ Before writing a utility, a client, a parser or a component, search for an exist
 
 ## 6. UI rules
 
-- Before any UI work read ADR 0007, ADR 0014, then `packages/ui/tokens/`, then the existing screens under `apps/uw-app/views/`, or `design-system/` when it exists. A new screen starts from the closest existing screen and the look rules in ADR 0014, and records which screen it started from.
+- Before any UI work read ADR 0007, ADR 0014, then `packages/ui/tokens/`, then the existing screens under `apps/uw-platform/views/`, or `design-system/` when it exists. A new screen starts from the closest existing screen and the look rules in ADR 0014, and records which screen it started from.
 - Tokens are the only source of a color, size, spacing step, radius or shadow. A value not in the tokens is a design change, not a code change; the build fails on a hard-coded hex, and from v0.3.0 build step 21 also on an arbitrary Tailwind value such as `p-[18px]` (ADR 0011).
 - Every screen renders correctly in light and dark, at phone width, with visible focus and an accessible name on every control.
 - Every control returns an outcome; an unwired control says so. Never silence.
@@ -189,7 +189,7 @@ CI's `Release Source` job refuses a PR into `main` from any branch but `develop`
 No issue is required, and no pull request is required. One push or one pull request can carry a whole epic. Wherever this file says "the pull request description", a direct push puts the same text in its commit message.
 
 - **Direct push:** commit on `develop` in the main checkout, pull with `--rebase` if `develop` moved, and push once the fast local checks pass (section 7, step 6). CI then runs the whole `pnpm verify` on `develop`, in about six minutes; read its result. If it goes red, fixing it comes before anything else.
-- **Pull request,** when an owner wants a review first: branch from `develop` in the main checkout, named for the work (`feat/agent-queues-landing`, `fix/uw-app-role-exists`), never for a version, and never in a git worktree. It does not need to be current with `develop` to merge.
+- **Pull request,** when an owner wants a review first: branch from `develop` in the main checkout, named for the work (`feat/agent-queues-landing`, `fix/uw-platform-role-exists`), never for a version, and never in a git worktree. It does not need to be current with `develop` to merge.
 - **Never force-push.**
 - **Review is an owner's step.** When a pull request is ready, say so and stop. Do not start a review of your own: no review workflow, no multi-agent fan-out, no reviewer subagents. An owner runs the review (Codex) and passes on its comments.
 - **Every review comment is fixed**, whatever its severity, unless there is a concrete, named reason it is wrong; that reason goes in a reply on the comment.

@@ -18,9 +18,9 @@ type Declaration = {
   migrations: { application: Application; policies: Policy[] };
 };
 
-const production = 'uw-app.unfoldingword.workers.dev';
-const staging = 'uw-app-staging.unfoldingword.workers.dev';
-const perPr = 'uw-app-pr-*.unfoldingword.workers.dev';
+const production = 'uw-platform.unfoldingword.workers.dev';
+const staging = 'uw-platform-staging.unfoldingword.workers.dev';
+const perPr = 'uw-platform-pr-*.unfoldingword.workers.dev';
 const everyHost = (suffix: string): string[] =>
   [production, staging, perPr].map((host) => `${host}${suffix}`);
 const anyoneWithGoogle = {
@@ -29,9 +29,9 @@ const anyoneWithGoogle = {
   include: [{ everyone: {} }],
 };
 
-const declaration: Declaration = JSON.parse(readFileSync('infra/access/uw-app.json', 'utf8'));
+const declaration: Declaration = JSON.parse(readFileSync('infra/access/uw-platform.json', 'utf8'));
 
-describe('FD-7 Cloudflare Access in front of uw-app, declared in infra', () => {
+describe('FD-7 Cloudflare Access in front of uw-platform, declared in infra', () => {
   it('covers production, staging and every per-PR Worker', () => {
     expect(declaration.application.domain).toBe(production);
     expect(declaration.application.destinations?.map((d) => d.uri)).toEqual(everyHost(''));

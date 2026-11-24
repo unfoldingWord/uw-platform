@@ -18,8 +18,8 @@ async function twoRounds(world: World): Promise<void> {
   const scene = await fixWorld(world);
   value(await claimFix(scene));
   pushedFix(scene, {
-    pull: { 'apps/uw-app/board.tsx': 40 },
-    fix: { 'apps/uw-app/board.tsx': 6 },
+    pull: { 'apps/uw-platform/board.tsx': 40 },
+    fix: { 'apps/uw-platform/board.tsx': 6 },
   });
   expect(value(await submitFix(scene)).result).toBe('awaiting_review');
   expect(await offeredTo(scene, scene.fixer)).not.toContain(scene.itemId);

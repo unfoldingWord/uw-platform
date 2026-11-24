@@ -12,23 +12,23 @@ import {
   forbidden,
 } from './shared.mjs';
 
-const agentPlane = '^apps/uw-app/health/agent-plane\\.ts$';
+const agentPlane = '^apps/uw-platform/health/agent-plane\\.ts$';
 
 export const githubRules = [
   {
     name: 'github-reads-only-in-github-and-composition-roots',
     comment:
-      'The read-only GitHub client and its transport are imported only under apps/uw-app/github, by the queue root, by the person gate kernel and its GitHub opener, by the run host deps, and by the delegated exits job of the minute cron.',
+      'The read-only GitHub client and its transport are imported only under apps/uw-platform/github, by the queue root, by the person gate kernel and its GitHub opener, by the run host deps, and by the delegated exits job of the minute cron.',
     severity: 'error',
-    from: { pathNot: ['^apps/uw-app/github/', ...readRoots, testFile] },
+    from: { pathNot: ['^apps/uw-platform/github/', ...readRoots, testFile] },
     to: { path: github('(client|transport)') },
   },
   {
     name: 'github-app-config-only-in-github-and-composition-roots',
     comment:
-      'The GitHub App configuration is read only under apps/uw-app/github, by the queue and cron sweep roots, by the delegated exits job of the minute cron, and by the person gate GitHub opener.',
+      'The GitHub App configuration is read only under apps/uw-platform/github, by the queue and cron sweep roots, by the delegated exits job of the minute cron, and by the person gate GitHub opener.',
     severity: 'error',
-    from: { pathNot: ['^apps/uw-app/github/', ...appConfigRoots, testFile] },
+    from: { pathNot: ['^apps/uw-platform/github/', ...appConfigRoots, testFile] },
     to: { path: github('app-config') },
   },
   {
@@ -44,7 +44,7 @@ export const githubRules = [
     comment:
       'The Reviewer review writes are built only by the platform connectors adapter, which posts only for a kernel wired with the Reviewer Apps (the run host).',
     severity: 'error',
-    from: { pathNot: ['^apps/uw-app/ports/connectors\\.ts$', testFile] },
+    from: { pathNot: ['^apps/uw-platform/ports/connectors\\.ts$', testFile] },
     to: { path: github('review-writes') },
   },
   {
@@ -81,7 +81,7 @@ export const githubRules = [
   {
     name: 'github-merge-writes-only-in-merge',
     comment:
-      'The merge and the tag are written only by the merge connector in apps/uw-app/github/merge.ts; the queue and cron roots hold a read-only client.',
+      'The merge and the tag are written only by the merge connector in apps/uw-platform/github/merge.ts; the queue and cron roots hold a read-only client.',
     severity: 'error',
     from: { pathNot: [github('merge'), testFile] },
     to: { path: github('ship-writes') },
@@ -91,26 +91,26 @@ export const githubRules = [
     comment:
       'The merge connector is built only by the platform connectors adapter, so a merge runs only through the connectors port from the kernel stage exit.',
     severity: 'error',
-    from: { pathNot: ['^apps/uw-app/ports/connectors\\.ts$', appTesting, testFile] },
+    from: { pathNot: ['^apps/uw-platform/ports/connectors\\.ts$', appTesting, testFile] },
     to: { path: github('merge') },
   },
   {
     name: 'github-comments-only-in-github',
-    comment: 'The cross-reference comment is written only from apps/uw-app/github.',
+    comment: 'The cross-reference comment is written only from apps/uw-platform/github.',
     severity: 'error',
-    from: { pathNot: ['^apps/uw-app/github/', testFile] },
+    from: { pathNot: ['^apps/uw-platform/github/', testFile] },
     to: { path: github('comments') },
   },
   {
     name: 'github-module-only-in-ports-and-roots',
     comment:
-      'Only the platform adapters, the queue root, the cron sweep root, the kernel composition root (for the read-client type) and the person gate kernel import apps/uw-app/github, so no other module reaches the read client, the comment writer or the sweep.',
+      'Only the platform adapters, the queue root, the cron sweep root, the kernel composition root (for the read-client type) and the person gate kernel import apps/uw-platform/github, so no other module reaches the read client, the comment writer or the sweep.',
     severity: 'error',
     from: {
       pathNot: [
-        '^apps/uw-app/github/',
-        '^apps/uw-app/ports/',
-        '^apps/uw-app/kernel\\.ts$',
+        '^apps/uw-platform/github/',
+        '^apps/uw-platform/ports/',
+        '^apps/uw-platform/kernel\\.ts$',
         gateKernel,
         commandCapabilities,
         agentPlane,
@@ -119,28 +119,28 @@ export const githubRules = [
         testFile,
       ],
     },
-    to: { path: '^apps/uw-app/github/' },
+    to: { path: '^apps/uw-platform/github/' },
   },
   {
     name: 'agent-plane-only-on-the-sweep-queries',
     comment:
-      'The agent plane reads the sweep state of each repository from the read model queries and reaches nothing else under apps/uw-app/github.',
+      'The agent plane reads the sweep state of each repository from the read model queries and reaches nothing else under apps/uw-platform/github.',
     severity: 'error',
     from: { path: agentPlane },
-    to: { path: '^apps/uw-app/github/', pathNot: [github('facts/queries')] },
+    to: { path: '^apps/uw-platform/github/', pathNot: [github('facts/queries')] },
   },
   {
     name: 'import-command-only-on-the-import-path',
     comment:
-      'The command capabilities read issues from the read model and import them through the import path for the person import command; they reach nothing else under apps/uw-app/github.',
+      'The command capabilities read issues from the read model and import them through the import path for the person import command; they reach nothing else under apps/uw-platform/github.',
     severity: 'error',
     from: { path: commandCapabilities },
-    to: { path: '^apps/uw-app/github/', pathNot: [github('import'), github('facts/queries')] },
+    to: { path: '^apps/uw-platform/github/', pathNot: [github('import'), github('facts/queries')] },
   },
   forbidden(
     'github-never-in-mcp-or-engines',
     'Nothing an agent or a model process reaches imports the GitHub client, so no token reaches either.',
-    '^apps/uw-app/(mcp|engines)/',
-    '^apps/uw-app/github/',
+    '^apps/uw-platform/(mcp|engines)/',
+    '^apps/uw-platform/github/',
   ),
 ];

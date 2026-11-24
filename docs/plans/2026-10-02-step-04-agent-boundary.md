@@ -1,8 +1,8 @@
 # Step 4, Agent Boundary: Implementation Plan
 
-**Goal:** Give agents their one way in: a Streamable HTTP MCP endpoint at `/mcp` inside `uw-app`, behind Access, whose tool list is the served verb registry and nothing else; agent identities `agent:<person>/<device>` (and the delegated form) minted at the edge from Access credentials with exactly their owner's grants; every handler gated by `can()` on the harness's area; the eleven served verbs over the kernel and the page, task and record modules; delegated non-interactive runners; the three agent-boundary checks (static, runtime, conformance) each with a planted fixture that makes it fail; and persona activation's tool check (AB-1 to AB-8).
+**Goal:** Give agents their one way in: a Streamable HTTP MCP endpoint at `/mcp` inside `uw-platform`, behind Access, whose tool list is the served verb registry and nothing else; agent identities `agent:<person>/<device>` (and the delegated form) minted at the edge from Access credentials with exactly their owner's grants; every handler gated by `can()` on the harness's area; the eleven served verbs over the kernel and the page, task and record modules; delegated non-interactive runners; the three agent-boundary checks (static, runtime, conformance) each with a planted fixture that makes it fail; and persona activation's tool check (AB-1 to AB-8).
 
-**Architecture:** The MCP surface lives in `apps/uw-app/mcp/` (the composition root, PRD 9). One SDK `Server` is built per request by `createVerbServer(context)`: `tools/list` is `toolsFor(principal, at)` over `verbRegistry` from `@uw/contracts`; `tools/call` is `callVerb`, which refuses an unserved name with the MCP unknown-tool error, parses the input with the verb's own Zod schema, runs the one central `can()` for every gated verb, and maps the handler's reply to an MCP result whose refusals carry a closed-set reason. The HTTP route connects it to the SDK's web-standard Streamable HTTP transport (stateless, JSON responses); the Workflow host (step 7) connects the same server in process. Harness verbs call new kernel reads (`kernel.reads`) and the existing item commands; page, task and record verbs call the platform modules that own those tables. Persona activation's tool check is a kernel command (`kernel.personas.activate`), proven in the sim.
+**Architecture:** The MCP surface lives in `apps/uw-platform/mcp/` (the composition root, PRD 9). One SDK `Server` is built per request by `createVerbServer(context)`: `tools/list` is `toolsFor(principal, at)` over `verbRegistry` from `@uw/contracts`; `tools/call` is `callVerb`, which refuses an unserved name with the MCP unknown-tool error, parses the input with the verb's own Zod schema, runs the one central `can()` for every gated verb, and maps the handler's reply to an MCP result whose refusals carry a closed-set reason. The HTTP route connects it to the SDK's web-standard Streamable HTTP transport (stateless, JSON responses); the Workflow host (step 7) connects the same server in process. Harness verbs call new kernel reads (`kernel.reads`) and the existing item commands; page, task and record verbs call the platform modules that own those tables. Persona activation's tool check is a kernel command (`kernel.personas.activate`), proven in the sim.
 
 **Tech Stack:** TypeScript 6 strict on Node 22.18+, Zod 4, Hono 4, `@modelcontextprotocol/sdk` 1.31.0 (new), `@cfworker/json-schema` 4.1.1 (new, the SDK's Workers validator), Drizzle ORM 0.45 over `postgres` 3.4 and `@electric-sql/pglite` 0.5.8, Vitest 4 (Workers pool and node project), `fast-check` 4, dependency-cruiser, knip.
 
@@ -61,10 +61,10 @@ Every task obeys every line here. The controller passes this section to each imp
 
 - `packages/contracts` imports only `zod`. `packages/core` imports `packages/contracts` and `zod`. `packages/db` imports `packages/contracts`, `packages/core`, `drizzle-orm`, `postgres`, `@electric-sql/pglite` and Node built-ins. `packages/harness` imports `@uw/contracts` and `@uw/core/acl` and nothing else (no Drizzle, Workers, network, `zod` directly).
 - `sim/` imports `packages/harness`, `packages/contracts`, `packages/db`, its own files and the Node built-ins in `AGENTS.md` rule 2; its tests also Vitest. Sim fixtures build principals with `principalSchema.parse` from `@uw/contracts`.
-- `apps/uw-app` is a composition root. The MCP SDK (`@modelcontextprotocol/sdk`, `@cfworker/json-schema`) is imported only under `apps/uw-app/`. The vendor-SDK rule is about model vendors (`@anthropic-ai/*`, `openai`, OpenRouter) and does not apply to the MCP SDK; do not touch `tools/lint/vendor-sdk.ts`.
+- `apps/uw-platform` is a composition root. The MCP SDK (`@modelcontextprotocol/sdk`, `@cfworker/json-schema`) is imported only under `apps/uw-platform/`. The vendor-SDK rule is about model vendors (`@anthropic-ai/*`, `openai`, OpenRouter) and does not apply to the MCP SDK; do not touch `tools/lint/vendor-sdk.ts`.
 - MCP code imports, from the SDK, only these entry points: `@modelcontextprotocol/sdk/server/index.js`, `@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js`, `@modelcontextprotocol/sdk/types.js`, `@modelcontextprotocol/sdk/validation/cfworker`, `@modelcontextprotocol/sdk/inMemory.js`, `@modelcontextprotocol/sdk/client/index.js`; tests may also import `@modelcontextprotocol/sdk/client/streamableHttp.js`. Never `server/streamableHttp.js`, `server/sse.js`, `server/stdio.js` or `server/express.js` (Node-only). Every `Server` and `Client` this code builds passes `jsonSchemaValidator: new CfWorkerJsonSchemaValidator()`; Ajv generates code with `new Function`, which Workers forbid.
-- Rule 2 exceptions: an `apps/uw-app` platform module that uses Drizzle directly (as `pages/store.ts` does) needs its own row in `docs/exceptions.md`, written in the same commit as the code and before it.
-- One writer per table (rule 3): `tasks` is written only by `apps/uw-app/tasks/store.ts` (`owns = ['tasks']`); `service_tokens` only by `apps/uw-app/agents/service-tokens.ts` (`owns = ['service_tokens']`); `pages`, `page_versions` only through `apps/uw-app/pages/store.ts`'s `createPage` and `updatePage`. No file under `apps/uw-app/mcp/` writes any table directly.
+- Rule 2 exceptions: an `apps/uw-platform` platform module that uses Drizzle directly (as `pages/store.ts` does) needs its own row in `docs/exceptions.md`, written in the same commit as the code and before it.
+- One writer per table (rule 3): `tasks` is written only by `apps/uw-platform/tasks/store.ts` (`owns = ['tasks']`); `service_tokens` only by `apps/uw-platform/agents/service-tokens.ts` (`owns = ['service_tokens']`); `pages`, `page_versions` only through `apps/uw-platform/pages/store.ts`'s `createPage` and `updatePage`. No file under `apps/uw-platform/mcp/` writes any table directly.
 - No route, tool handler or Workflow step reachable by an agent identity writes `gate_decisions` or `harness_stages`, or calls `kernel.gates`, `kernel.stages`, `kernel.repair`, `kernel.delegations.grant` or `kernel.delegations.revoke` (Task 17 makes this a check).
 
 **Ports, gateways and transactions**
@@ -74,7 +74,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Contracts**
 
-- The live version moves `3.2.0` → `4.0.0` (Task 2) → `5.0.0` (Task 4). Each move changes, together and in one commit: the schemas, their fixtures under `packages/contracts/fixtures/<registry key>/{valid,invalid}/` (and `packages/contracts/verb-fixtures/<verb>/{input,output}/{valid,invalid}/` for verb I/O), the `schemaRegistry` entries, `CONTRACT_VERSION` in `packages/contracts/version.ts`, a new last entry in `packages/contracts/contract-lock.json` recording every closed set, and `"contractVersion"` in `apps/uw-app/package.json` and `apps/uw-ingest/package.json`. No other task changes a contract; if one finds it must, it bumps the minor version the same way and records why in the tracker.
+- The live version moves `3.2.0` → `4.0.0` (Task 2) → `5.0.0` (Task 4). Each move changes, together and in one commit: the schemas, their fixtures under `packages/contracts/fixtures/<registry key>/{valid,invalid}/` (and `packages/contracts/verb-fixtures/<verb>/{input,output}/{valid,invalid}/` for verb I/O), the `schemaRegistry` entries, `CONTRACT_VERSION` in `packages/contracts/version.ts`, a new last entry in `packages/contracts/contract-lock.json` recording every closed set, and `"contractVersion"` in `apps/uw-platform/package.json` and `apps/uw-ingest/package.json`. No other task changes a contract; if one finds it must, it bumps the minor version the same way and records why in the tracker.
 
 **Shared roots**
 
@@ -82,7 +82,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Dependencies**
 
-- Two new third-party packages, both in `apps/uw-app/package.json` `dependencies`: `@modelcontextprotocol/sdk@^1.31.0` (MIT; the official TypeScript SDK; its `WebStandardStreamableHTTPServerTransport` takes a Web `Request` and returns a `Response`, so it runs on Workers and in Node 22) and `@cfworker/json-schema@^4.1.1` (MIT; the SDK's peer for JSON Schema validation without code generation). Both land in Task 12. If knip reports `@cfworker/json-schema` unused (it is reached through the SDK's `validation/cfworker` entry), add it to `ignoreDependencies` for `apps/uw-app` in `knip.json` and say why in the tracker. If `pnpm audit:prod` reports a high advisory in the SDK's dependency tree, pin the patched version through `pnpm.overrides` in the root `package.json` and record it.
+- Two new third-party packages, both in `apps/uw-platform/package.json` `dependencies`: `@modelcontextprotocol/sdk@^1.31.0` (MIT; the official TypeScript SDK; its `WebStandardStreamableHTTPServerTransport` takes a Web `Request` and returns a `Response`, so it runs on Workers and in Node 22) and `@cfworker/json-schema@^4.1.1` (MIT; the SDK's peer for JSON Schema validation without code generation). Both land in Task 12. If knip reports `@cfworker/json-schema` unused (it is reached through the SDK's `validation/cfworker` entry), add it to `ignoreDependencies` for `apps/uw-platform` in `knip.json` and say why in the tracker. If `pnpm audit:prod` reports a high advisory in the SDK's dependency tree, pin the patched version through `pnpm.overrides` in the root `package.json` and record it.
 - Run `pnpm install` after any `package.json` change and commit `pnpm-lock.yaml` with it. Do not export what has no consumer yet; export in the task that consumes it (test files count as consumers for knip).
 
 **Tests**
@@ -91,7 +91,7 @@ Every task obeys every line here. The controller passes this section to each imp
 - Name each `describe` (or scenario file) with the requirement ID first and a space: `describe('AB-4 claim_item takes a lease', …)`, `sim/scenarios/AB-8.missing-verb-opens-one-item.ts`. A title may lead with an ID only if it proves that requirement's clauses (tracker R36). Fixture IDs use the prefix `ZZ-`.
 - A scenario is `defineScenario({ id, title, run })` returning `{ state }`; the runner supplies the events and checks replay against the projection. Scenarios assert with `node:assert/strict`.
 - Kernel behaviour over the world that is not a scenario goes in `sim/kernel/*.test.ts`; schema behaviour in `packages/db/*.test.ts` on `databaseTargets` from `@uw/db/test-targets`; property tests in `tools/properties/*.test.ts`.
-- `apps/uw-app` tests: pure and Workers-runtime tests are `*.test.ts` (the `workers` Vitest project, no database); anything with a database is `*.pg.test.ts` (the `node` project) on `withAppDatabase` or `createMigratedDatabase(testServer)`, wrapped in `describe.skipIf(!testServer)`. MCP tests drive the app with the SDK `Client` over `StreamableHTTPClientTransport` whose `fetch` is `(url, init) => app.request(url, init, fixtureAccessEnv)`, with Access JWTs from `createAccessFixture()` (`apps/uw-app/testing/access-keys.ts`).
+- `apps/uw-platform` tests: pure and Workers-runtime tests are `*.test.ts` (the `workers` Vitest project, no database); anything with a database is `*.pg.test.ts` (the `node` project) on `withAppDatabase` or `createMigratedDatabase(testServer)`, wrapped in `describe.skipIf(!testServer)`. MCP tests drive the app with the SDK `Client` over `StreamableHTTPClientTransport` whose `fetch` is `(url, init) => app.request(url, init, fixtureAccessEnv)`, with Access JWTs from `createAccessFixture()` (`apps/uw-platform/testing/access-keys.ts`).
 - Locally `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test` (a private local Postgres 16 server, already running); CI uses the `postgres:16` service container. No test may need a live account or a secret (PRD DX-8); the only environment variables test code reads are `TEST_DATABASE_URL`, `CI` and `PATH`.
 - Every test file that opens an embedded Postgres (directly or through `createWorld`) has `afterAll(closeEmbeddedTemplate)` and closes every world or database it opens.
 - Fixed ids are UUIDs in the repo's patterns (`00000000-0000-4000-8000-00000000000N`; sim people `simPersonId(n)`). The bootstrap migration seeds person `00000000-0000-4000-8000-000000000001` (`rowan.test@unfoldingword.org`) with org admin.
@@ -129,27 +129,27 @@ packages/contracts/{verbs,verb-io,event-evidence,closed-sets,agent-commands,plat
   registry,index,version}.ts, verb-fixtures/**, fixtures/**; docs/PRD.md                                  Task 4
 packages/core/acl.ts, acl.test.ts; tools/properties/readable-areas.test.ts                                  Task 5
 packages/db/{schema,schema-platform,columns,checks}.ts, migrations/0010_*; AGENTS.md;
-  packages/db/agent-boundary-tables.test.ts; apps/uw-app/{tasks/store,agents/service-tokens}.ts (owns)     Task 6
-apps/uw-app/tasks/store.ts, store.pg.test.ts; docs/exceptions.md                                            Task 7
-apps/uw-app/agents/{service-tokens,routes}.ts, service-tokens.pg.test.ts; apps/uw-app/app.tsx               Task 8
-apps/uw-app/{deps.ts,auth/principal-middleware.ts}, mcp/mint.ts, mint.test.ts, mint.pg.test.ts              Task 9
+  packages/db/agent-boundary-tables.test.ts; apps/uw-platform/{tasks/store,agents/service-tokens}.ts (owns)     Task 6
+apps/uw-platform/tasks/store.ts, store.pg.test.ts; docs/exceptions.md                                            Task 7
+apps/uw-platform/agents/{service-tokens,routes}.ts, service-tokens.pg.test.ts; apps/uw-platform/app.tsx               Task 8
+apps/uw-platform/{deps.ts,auth/principal-middleware.ts}, mcp/mint.ts, mint.test.ts, mint.pg.test.ts              Task 9
 packages/harness/reads/{index,item,poll}.ts, kernel.ts, index.ts; sim/scenarios/AB-4.*; sim/kernel/reads.test.ts  Task 10
 packages/harness/ports.ts; packages/db/store/pages.ts; packages/db/test-seed.ts;
   packages/harness/port-contracts/store-gateways.ts; packages/harness/personas/{tool-check,activate,commands}.ts;
   sim/scenarios/AB-8.*; sim/kernel/persona-activation.test.ts                                               Task 11
-apps/uw-app/package.json; apps/uw-app/mcp/{context,handler,tools,dispatch,server,routes,in-process}.ts,
-  mcp/verbs/{index,get-health}.ts; apps/uw-app/app.tsx; apps/uw-app/testing/mcp.ts; tests                  Task 12
-apps/uw-app/mcp/verbs/{poll-queue,claim-item,submit-to-gate,record-run-step}.ts;
-  apps/uw-app/mcp/harness-verbs.pg.test.ts; tools/properties/submit-human-gate.test.ts                      Task 13
-apps/uw-app/pages/{reads,agent-write}.ts; apps/uw-app/mcp/verbs/{search-pages,read-page,write-page}.ts;
-  apps/uw-app/mcp/page-verbs.pg.test.ts; docs/exceptions.md                                                 Task 14
-apps/uw-app/pages/context.ts; apps/uw-app/records/queries.ts;
-  apps/uw-app/mcp/verbs/{resolve-context,query-entities,create-task}.ts; tests; docs/exceptions.md          Task 15
-sim/scenarios/AB-6.*; apps/uw-app/mcp/delegated.pg.test.ts                                                  Task 16
+apps/uw-platform/package.json; apps/uw-platform/mcp/{context,handler,tools,dispatch,server,routes,in-process}.ts,
+  mcp/verbs/{index,get-health}.ts; apps/uw-platform/app.tsx; apps/uw-platform/testing/mcp.ts; tests                  Task 12
+apps/uw-platform/mcp/verbs/{poll-queue,claim-item,submit-to-gate,record-run-step}.ts;
+  apps/uw-platform/mcp/harness-verbs.pg.test.ts; tools/properties/submit-human-gate.test.ts                      Task 13
+apps/uw-platform/pages/{reads,agent-write}.ts; apps/uw-platform/mcp/verbs/{search-pages,read-page,write-page}.ts;
+  apps/uw-platform/mcp/page-verbs.pg.test.ts; docs/exceptions.md                                                 Task 14
+apps/uw-platform/pages/context.ts; apps/uw-platform/records/queries.ts;
+  apps/uw-platform/mcp/verbs/{resolve-context,query-entities,create-task}.ts; tests; docs/exceptions.md          Task 15
+sim/scenarios/AB-6.*; apps/uw-platform/mcp/delegated.pg.test.ts                                                  Task 16
 tools/architecture/agent-boundary.ts, agent-boundary.test.ts                                                Task 17
 packages/harness/gates/decide.ts; sim/agent-boundary.ts; sim/scenarios/AB-7.*;
   sim/kernel/{agent-refusals,agent-boundary-runtime}.test.ts                                                Task 18
-apps/uw-app/testing/conformance.ts; apps/uw-app/mcp/conformance.pg.test.ts                                  Task 19
+apps/uw-platform/testing/conformance.ts; apps/uw-platform/mcp/conformance.pg.test.ts                                  Task 19
 docs/progress_tracker.md, docs/architecture.md                                                              Task 20
 ```
 
@@ -188,9 +188,9 @@ docs/progress_tracker.md, docs/architecture.md                                  
 where `testFile` is the pattern the file already defines for test files.
 
 `tools/architecture/system-principal.test.ts`:
-- Replace `composition = ['apps/uw-app/', 'sim/']` with an allowlist: `sim/` (every file), `apps/uw-app/cron/` (the lease-sweep wiring, P8; the directory does not exist yet), and any `apps/` test file (`/\.test\.tsx?$/`). Everything else in `apps/` that names the system principal is flagged.
+- Replace `composition = ['apps/uw-platform/', 'sim/']` with an allowlist: `sim/` (every file), `apps/uw-platform/cron/` (the lease-sweep wiring, P8; the directory does not exist yet), and any `apps/` test file (`/\.test\.tsx?$/`). Everything else in `apps/` that names the system principal is flagged.
 - Add mention patterns for constructed strings: `/agent:\$\{\s*['"`]system['"`]\s*\}/`, `/['"`]agent:['"`]\s*\+\s*['"`]system['"`]/` and `/['"`]agent:sys['"`]\s*\+/`.
-- New `it.each` flag cases: `['apps/uw-app/mcp/server.ts', 'const actor = systemPrincipal();']`, `['apps/uw-app/x.ts', 'const id = `agent:${"system"}`;']`, `['packages/harness/y.ts', "const id = 'agent:' + 'system';"]`. New allow cases: `['apps/uw-app/cron/lease-sweep.ts', 'kernel.items.expireLeases({ actor: systemPrincipal(), traceId })']`, `['apps/uw-app/harness/claims.pg.test.ts', 'systemPrincipal()']`.
+- New `it.each` flag cases: `['apps/uw-platform/mcp/server.ts', 'const actor = systemPrincipal();']`, `['apps/uw-platform/x.ts', 'const id = `agent:${"system"}`;']`, `['packages/harness/y.ts', "const id = 'agent:' + 'system';"]`. New allow cases: `['apps/uw-platform/cron/lease-sweep.ts', 'kernel.items.expireLeases({ actor: systemPrincipal(), traceId })']`, `['apps/uw-platform/harness/claims.pg.test.ts', 'systemPrincipal()']`.
 
 `tools/architecture/lock-keys.test.ts`:
 - `numericLocks` also flags any `pg_try_advisory_` call, any `_shared` variant, and a key that is an uncast template slot: the pattern becomes
@@ -233,7 +233,7 @@ git commit -m "fix(architecture): the connector exit leaves the public barrel, a
 **Files:**
 - Modify: `CONTEXT.md` (own commit, first)
 - Modify: `packages/contracts/identity.ts`, `principal.ts`, `harness.ts`, `page-types.ts`, `registry.ts`, `version.ts`, `contract-lock.json`; fixtures under `packages/contracts/fixtures/{principal,persona-identity,persona-frontmatter,device-segment,persona-slug}/`; `packages/contracts/contracts.test.ts` if it enumerates registry keys
-- Modify: `apps/uw-app/package.json`, `apps/uw-ingest/package.json` (`"contractVersion": "4.0.0"`)
+- Modify: `apps/uw-platform/package.json`, `apps/uw-ingest/package.json` (`"contractVersion": "4.0.0"`)
 - Modify: `packages/core/principal.test.ts` (new cases), and any test that parses a principal whose device segment is not its person id (grep `/laptop`, `/builder`, `kim/`: `sim/kernel/delegations.test.ts` line 235 builds `kim/laptop …`; make it `${kim.personId}/laptop …`)
 
 **Interfaces:**
@@ -361,7 +361,7 @@ Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 Expected: PASS.
 
 ```bash
-git add packages/contracts apps/uw-app/package.json apps/uw-ingest/package.json
+git add packages/contracts apps/uw-platform/package.json apps/uw-ingest/package.json
 git commit -m "feat(contracts): a device identity names its principal's person, the delegated form is built in one place, and system and ingest are reserved persona slugs; contract 4.0.0" -m "Shared root packages/contracts: principalSchema now refuses an agent:<person>/<device> principal whose owner segment is not its personId, because the kernel trusts device identities to be owner-specific (step-3 carry). Rejected: checking only at the minting edge, since principals are also built for queues and Workflows." -m "AB-2 AB-6"
 git add packages/core sim
 git commit -m "test(core): a principal naming another person's device is refused" -m "AB-2"
@@ -423,7 +423,7 @@ git commit -m "fix(harness): refuse a device identity that is not its owner's, a
 - Modify: `packages/contracts/verbs.ts`, `verb-io.ts`, `event-evidence.ts`, `closed-sets.ts`, `platform-commands.ts`, `registry.ts`, `index.ts`, `version.ts`, `contract-lock.json`, `verbs.test.ts`
 - Create: `packages/contracts/agent-commands.ts`
 - Fixtures: `verb-fixtures/submit_to_gate/input/**`, `verb-fixtures/create_task/input/**`, `fixtures/{task-status,persona-activation-refusal,bind-service-token-command,revoke-service-token-command,service-client-id,platform-command-name}/**`, the `persona_activation_failed` cases in the event fixtures
-- Modify: `apps/uw-app/package.json`, `apps/uw-ingest/package.json` (`5.0.0`)
+- Modify: `apps/uw-platform/package.json`, `apps/uw-ingest/package.json` (`5.0.0`)
 - Modify: `docs/PRD.md` (own commit)
 
 **Interfaces:**
@@ -533,7 +533,7 @@ Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 Expected: PASS.
 
 ```bash
-git add packages/contracts apps/uw-app/package.json apps/uw-ingest/package.json
+git add packages/contracts apps/uw-platform/package.json apps/uw-ingest/package.json
 git commit -m "feat(contracts): verb summaries, submit_to_gate's loop target and pull request, create_task's area, task status, the activation failure and the service-token commands; contract 5.0.0" -m "Shared root packages/contracts: the MCP surface needs a description per tool, the submit and task inputs the handlers pass on, and the binding commands minting needs." -m "AB-1 AB-2 AB-4 AB-5 AB-8 CT-3"
 git add docs/PRD.md
 git commit -m "docs(prd): the tasks and service_tokens tables, task status and the activation refusal set" -m "AB-2 AB-5 AB-8"
@@ -587,7 +587,7 @@ git commit -m "test(core): readableAreas agrees with can(read) for every grant s
 **Files:**
 - Create: `packages/db/schema-platform.ts`, `packages/db/columns.ts`, `packages/db/migrations/0010_agent_boundary_tables.sql` (generated) and its meta, `packages/db/agent-boundary-tables.test.ts`
 - Modify: `packages/db/schema.ts`, `packages/db/checks.ts` (`DEVICE_PATTERN`), `AGENTS.md` (own commit)
-- Create (owner constants only): `apps/uw-app/tasks/store.ts` (`export const owns = ['tasks'] as const;`), `apps/uw-app/agents/service-tokens.ts` (`export const owns = ['service_tokens'] as const;`), following `packages/harness/measurements/owns.ts`, an owner with no writer yet, so the owners check sees every table claimed
+- Create (owner constants only): `apps/uw-platform/tasks/store.ts` (`export const owns = ['tasks'] as const;`), `apps/uw-platform/agents/service-tokens.ts` (`export const owns = ['service_tokens'] as const;`), following `packages/harness/measurements/owns.ts`, an owner with no writer yet, so the owners check sees every table claimed
 
 **Interfaces:**
 - Produces (through `@uw/db/schema`, which re-exports `schema-platform.ts`): `tasks`, `serviceTokens`; every existing export unchanged.
@@ -674,7 +674,7 @@ git add packages/db/schema.ts packages/db/schema-platform.ts packages/db/columns
 git commit -m "feat(db): the platform tables move to schema-platform.ts, re-exported by schema.ts, and gain tasks and service_tokens" -m "Shared root packages/db/schema.ts: the file reached 496 of 500 lines; splitting by domain keeps schema.ts the one schema everyone imports and drizzle-kit reads. Rejected: squeezing imports to fit two more tables, which step 5's six tables would break again." -m "AB-2 AB-5 FD-5"
 git add AGENTS.md
 git commit -m "docs(agents): a table goes in the schema file for its domain, which schema.ts re-exports" -m "Shared root AGENTS.md: section 1 and rule 1 follow the schema split." -m "AB-2 AB-5"
-git add packages/db/agent-boundary-tables.test.ts apps/uw-app/tasks/store.ts apps/uw-app/agents/service-tokens.ts
+git add packages/db/agent-boundary-tables.test.ts apps/uw-platform/tasks/store.ts apps/uw-platform/agents/service-tokens.ts
 git commit -m "test(db): tasks and service_tokens refuse what their checks name, and each has its owner" -m "AB-2 AB-5"
 ```
 
@@ -683,8 +683,8 @@ git commit -m "test(db): tasks and service_tokens refuse what their checks name,
 **Requirements:** AB-5 (`create_task` creates a `suggested` task attributed to the agent; `open_tasks` returns no row the principal could not read).
 
 **Files:**
-- Modify: `apps/uw-app/tasks/store.ts`, `docs/exceptions.md` (same commit, row first)
-- Create: `apps/uw-app/tasks/store.pg.test.ts`
+- Modify: `apps/uw-platform/tasks/store.ts`, `docs/exceptions.md` (same commit, row first)
+- Create: `apps/uw-platform/tasks/store.pg.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -710,12 +710,12 @@ export function openTasks(db: Executor, actor: Principal, jdArea: JdArea, at: Da
 
 `describe.skipIf(!testServer)('AB-5 create_task records a suggested task attributed to its creator', …)` on `withAppDatabase`: an agent principal (`agentOf(editor, 'laptop')`) creates a task in 80-89 → `ok`, status `suggested`, `createdBy` the agent identity, `created_at` the given instant; a viewer-only agent → `not_permitted`; a `pageId` the actor cannot read → `page_not_found`; a `pageId` that does not exist → `page_not_found`. `describe(… 'AB-5 open_tasks returns no task the principal could not read', …)`: tasks in 80-89 and 30-39; a viewer on 30-39 sees only 30-39's; an editor sees both areas' when asked for each; `done` and `dismissed` tasks are left out; at most 50, ordered by `created_at` then id.
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-app/tasks/store.pg.test.ts`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-platform/tasks/store.pg.test.ts`
 Expected: FAIL.
 
 - [ ] **Step 2: Implement**
 
-Add the exceptions row first: `| 2026-10-02 | Rule 2: application code reaches Postgres only through a port | apps/uw-app/tasks/store.ts | A platform module, not kernel code: it owns tasks and writes it with Drizzle directly, as pages/store.ts does for pages. | Revisit when a kernel module needs tasks. |`. Then `createTask` (can `write` on the area, `readPage` from `../pages/store.ts` for the page check, one insert) and `openTasks` (empty unless `can(actor, 'read', area, at)`).
+Add the exceptions row first: `| 2026-10-02 | Rule 2: application code reaches Postgres only through a port | apps/uw-platform/tasks/store.ts | A platform module, not kernel code: it owns tasks and writes it with Drizzle directly, as pages/store.ts does for pages. | Revisit when a kernel module needs tasks. |`. Then `createTask` (can `write` on the area, `readPage` from `../pages/store.ts` for the page check, one insert) and `openTasks` (empty unless `can(actor, 'read', area, at)`).
 
 - [ ] **Step 3: Run and commit**
 
@@ -723,8 +723,8 @@ Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 Expected: PASS.
 
 ```bash
-git add apps/uw-app/tasks docs/exceptions.md
-git commit -m "feat(uw-app): the tasks module creates a suggested task attributed to its creator and lists the open tasks of an area the caller may read" -m "AB-5"
+git add apps/uw-platform/tasks docs/exceptions.md
+git commit -m "feat(uw-platform): the tasks module creates a suggested task attributed to its creator and lists the open tasks of an area the caller may read" -m "AB-5"
 ```
 
 ### Task 8: Service-token bindings, bound and revoked by an org admin
@@ -732,8 +732,8 @@ git commit -m "feat(uw-app): the tasks module creates a suggested task attribute
 **Requirements:** AB-2 (agent identities are minted from Access credentials: a service token reaches its owner through a binding).
 
 **Files:**
-- Modify: `apps/uw-app/agents/service-tokens.ts`, `apps/uw-app/app.tsx` (mount `/api/agents`), `docs/exceptions.md` (row first)
-- Create: `apps/uw-app/agents/routes.ts`, `apps/uw-app/agents/service-tokens.pg.test.ts`
+- Modify: `apps/uw-platform/agents/service-tokens.ts`, `apps/uw-platform/app.tsx` (mount `/api/agents`), `docs/exceptions.md` (row first)
+- Create: `apps/uw-platform/agents/routes.ts`, `apps/uw-platform/agents/service-tokens.pg.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -746,18 +746,18 @@ export function liveBinding(db: Executor, clientId: string): Promise<ServiceToke
 export function agentRoutes(): Hono<AppEnv>;
 ```
 
-`POST /api/agents/commands/:name` with `bind_service_token` or `revoke_service_token`, built like `apps/uw-app/pages/routes.ts` (a `Map` of handlers, `readJson`, `malformed`, `reply(toOutcome(...))`); any other name is `not_wired`.
+`POST /api/agents/commands/:name` with `bind_service_token` or `revoke_service_token`, built like `apps/uw-platform/pages/routes.ts` (a `Map` of handlers, `readJson`, `malformed`, `reply(toOutcome(...))`); any other name is `not_wired`.
 
 - [ ] **Step 1: Write the failing test**
 
 `describe.skipIf(!testServer)('AB-2 an org admin binds a service token to a person\'s device', …)` through `createApp(postgresDeps(db, fixture)).request(…)` with the owner's JWT: bind `{ clientId: 'routine-1.access', personId: <editor>, device: 'hourly-routine' }` → `accepted`, and `liveBinding(db, 'routine-1.access')` is that person and device; binding it again → `grant_exists`; an area admin (not org) → `not_permitted`; a target who holds only `viewer` → `not_permitted`; a pending target → `pending_approval`; an unknown person → `person_not_found`; a service-token caller → `not_permitted`; revoke → `accepted` and `liveBinding` is null; revoke again → `grant_not_found`; a malformed body → `malformed_command`.
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-app/agents/service-tokens.pg.test.ts`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-platform/agents/service-tokens.pg.test.ts`
 Expected: FAIL.
 
 - [ ] **Step 2: Implement**
 
-Exceptions row first (the same shape as Task 7's, for `apps/uw-app/agents/service-tokens.ts` and `service_tokens`). Both commands run in one transaction: refuse any caller whose `kind` is not `person` (`not_permitted`); re-read the caller's grants with `resolveGrants(tx, actor.personId, { at })` and require `can(fresh, 'admin', { kind: 'org' }, at)`; for bind, `lockPerson` the target (`person_not_found`, `pending_approval` when pending), require a live `editor` or `admin` grant for the target, insert with `bound_by` the caller's identity and map the primary-key or live-device unique violation (`23505`) to `grant_exists`; for revoke, set `revoked_at` where it is null (`grant_not_found` when nothing changed). Reuse `pgErrorCode` and `pgConstraint` from `@uw/db/errors`.
+Exceptions row first (the same shape as Task 7's, for `apps/uw-platform/agents/service-tokens.ts` and `service_tokens`). Both commands run in one transaction: refuse any caller whose `kind` is not `person` (`not_permitted`); re-read the caller's grants with `resolveGrants(tx, actor.personId, { at })` and require `can(fresh, 'admin', { kind: 'org' }, at)`; for bind, `lockPerson` the target (`person_not_found`, `pending_approval` when pending), require a live `editor` or `admin` grant for the target, insert with `bound_by` the caller's identity and map the primary-key or live-device unique violation (`23505`) to `grant_exists`; for revoke, set `revoked_at` where it is null (`grant_not_found` when nothing changed). Reuse `pgErrorCode` and `pgConstraint` from `@uw/db/errors`.
 
 - [ ] **Step 3: Run and commit**
 
@@ -765,8 +765,8 @@ Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 Expected: PASS.
 
 ```bash
-git add apps/uw-app/agents apps/uw-app/app.tsx docs/exceptions.md
-git commit -m "feat(uw-app): an org admin binds an Access service token to a person's device, and revokes it" -m "AB-2"
+git add apps/uw-platform/agents apps/uw-platform/app.tsx docs/exceptions.md
+git commit -m "feat(uw-platform): an org admin binds an Access service token to a person's device, and revokes it" -m "AB-2"
 ```
 
 ### Task 9: Agent identities minted at the edge
@@ -774,8 +774,8 @@ git commit -m "feat(uw-app): an org admin binds an Access service token to a per
 **Requirements:** AB-2 (minted from Access credentials, grants at or below the owner's, a lost grant is lost on the next request, `editor` may mint under themselves), AB-6 (the delegated form from the runner's headers), AB-3 (the principal minted at the edge is the one the handler receives: `c.get('principal')` is replaced by the minted one).
 
 **Files:**
-- Modify: `apps/uw-app/deps.ts` (Variables gain `access: AccessIdentity | null`), `apps/uw-app/auth/principal-middleware.ts` (sets `access`; the dev path sets `{ kind: 'person', email }`)
-- Create: `apps/uw-app/mcp/mint.ts`, `apps/uw-app/mcp/mint.test.ts`, `apps/uw-app/mcp/mint.pg.test.ts`
+- Modify: `apps/uw-platform/deps.ts` (Variables gain `access: AccessIdentity | null`), `apps/uw-platform/auth/principal-middleware.ts` (sets `access`; the dev path sets `{ kind: 'person', email }`)
+- Create: `apps/uw-platform/mcp/mint.ts`, `apps/uw-platform/mcp/mint.test.ts`, `apps/uw-platform/mcp/mint.pg.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -822,7 +822,7 @@ export function withAgentPrincipal(): MiddlewareHandler<AppEnv>;
 - a service-token JWT (`fixture.sign({ common_name: 'routine-1.access' })`) bound to an editor → `agent:<personId>/hourly-routine`, `interactive: false`; unbound → 401 `unauthenticated`; revoked binding → 401; a device header that differs from the binding → 400;
 - with `x-uw-persona: iterate` and `x-uw-delegation: <uuid>` → the delegated identity.
 
-Run: `pnpm vitest run --project workers apps/uw-app/mcp/mint.test.ts`, then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-app/mcp/mint.pg.test.ts`
+Run: `pnpm vitest run --project workers apps/uw-platform/mcp/mint.test.ts`, then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-platform/mcp/mint.pg.test.ts`
 Expected: FAIL.
 
 - [ ] **Step 2: Implement** as specified. Keep `withAgentPrincipal` within the function limits by splitting the person and service-token owners into two helpers that return the owner or a `Response`.
@@ -833,8 +833,8 @@ Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 Expected: PASS.
 
 ```bash
-git add apps/uw-app/deps.ts apps/uw-app/auth apps/uw-app/mcp
-git commit -m "feat(uw-app): mint agent:<person>/<device>, and its delegated form, at the edge from an Access login or a bound service token, with exactly the owner's grants" -m "AB-2 AB-3 AB-6"
+git add apps/uw-platform/deps.ts apps/uw-platform/auth apps/uw-platform/mcp
+git commit -m "feat(uw-platform): mint agent:<person>/<device>, and its delegated form, at the edge from an Access login or a bound service token, with exactly the owner's grants" -m "AB-2 AB-3 AB-6"
 ```
 
 ### Task 10: Kernel reads for the surface: one harness, one item, one stage, and the queue
@@ -979,11 +979,11 @@ git commit -m "feat(harness): persona activation runs the tool check: a missing 
 
 ### Task 12: The MCP surface: the endpoint, the tool list from the registry, and the one dispatcher
 
-**Requirements:** AB-1 (a Streamable HTTP MCP endpoint in `uw-app` behind Access; the tool list is the registry and nothing else; forbidden verbs absent under any name; calling one is the unknown-tool error), AB-2 (role-gated verbs offered only to a principal whose owner holds the area grant), AB-3 (every handler goes through `can()` with the area; the principal minted at the edge is the one the handler receives).
+**Requirements:** AB-1 (a Streamable HTTP MCP endpoint in `uw-platform` behind Access; the tool list is the registry and nothing else; forbidden verbs absent under any name; calling one is the unknown-tool error), AB-2 (role-gated verbs offered only to a principal whose owner holds the area grant), AB-3 (every handler goes through `can()` with the area; the principal minted at the edge is the one the handler receives).
 
 **Files:**
-- Modify: `apps/uw-app/package.json` (the two dependencies), `pnpm-lock.yaml`, `apps/uw-app/app.tsx` (mount `app.route('/mcp', mcpRoutes(deps))` after `withPrincipal`), `apps/uw-app/deps.ts`, `apps/uw-app/kernel.ts`, `apps/uw-app/auth/principal-middleware.ts`, `apps/uw-app/testing/deps.ts`, `apps/uw-app/testing/postgres.ts` (the clock seam below), `knip.json` only if needed
-- Create: `apps/uw-app/mcp/context.ts`, `handler.ts`, `tools.ts`, `dispatch.ts`, `server.ts`, `routes.ts`, `in-process.ts`, `verbs/index.ts`, `verbs/get-health.ts`; `apps/uw-app/testing/mcp.ts`; tests `apps/uw-app/mcp/tools.test.ts`, `server.test.ts` (Workers pool), `routes.pg.test.ts`
+- Modify: `apps/uw-platform/package.json` (the two dependencies), `pnpm-lock.yaml`, `apps/uw-platform/app.tsx` (mount `app.route('/mcp', mcpRoutes(deps))` after `withPrincipal`), `apps/uw-platform/deps.ts`, `apps/uw-platform/kernel.ts`, `apps/uw-platform/auth/principal-middleware.ts`, `apps/uw-platform/testing/deps.ts`, `apps/uw-platform/testing/postgres.ts` (the clock seam below), `knip.json` only if needed
+- Create: `apps/uw-platform/mcp/context.ts`, `handler.ts`, `tools.ts`, `dispatch.ts`, `server.ts`, `routes.ts`, `in-process.ts`, `verbs/index.ts`, `verbs/get-health.ts`; `apps/uw-platform/testing/mcp.ts`; tests `apps/uw-platform/mcp/tools.test.ts`, `server.test.ts` (Workers pool), `routes.pg.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -1063,7 +1063,7 @@ Results: accepted → `{ content: [{ type: 'text', text: JSON.stringify(output) 
 
 - [ ] **Step 1: Install and write the failing tests**
 
-`pnpm --filter @uw/uw-app add @modelcontextprotocol/sdk@^1.31.0 @cfworker/json-schema@^4.1.1`.
+`pnpm --filter @uw/uw-platform add @modelcontextprotocol/sdk@^1.31.0 @cfworker/json-schema@^4.1.1`.
 
 `tools.test.ts` (Workers pool):
 - `describe('AB-1 the tool list is the served registry and nothing else', …)`: for an editor's agent principal, `toolsFor(...).map((tool) => tool.name)` equals `verbRegistry.filter((verb) => verb.servedInV1).map((verb) => verb.name)` (eleven names, registry order); each tool's description is the registry summary and its `inputSchema.type` is `'object'`; no tool name contains any of `approve`, `merge`, `deploy`, `publish`, `advance` (case-insensitive substring).
@@ -1077,7 +1077,7 @@ Results: accepted → `{ content: [{ type: 'text', text: JSON.stringify(output) 
 
 `routes.pg.test.ts`, `describe.skipIf(!testServer)('AB-1 /mcp is a Streamable HTTP endpoint behind Access', …)`: no JWT → 401; a tampered JWT → 401; an editor's JWT with `x-uw-device: laptop` → the SDK client initialises, `listTools` gives the eleven served names, `callTool('get_health', { harnessId })` on a harness in 80-89 → accepted with indicator names `harness, database, spend, breaker, runs_today, live_delegations, gate_refusals_week, agent_writes, stale_learnings` and the `not_wired` ones marked so; a viewer of another area calling `get_health` → `harness_not_found`; `callTool('approve', {})` → unknown-tool error; `GET /mcp` → 405 with `Allow: POST`.
 
-Run: `pnpm vitest run --project workers apps/uw-app/mcp`, then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-app/mcp/routes.pg.test.ts`
+Run: `pnpm vitest run --project workers apps/uw-platform/mcp`, then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-platform/mcp/routes.pg.test.ts`
 Expected: FAIL.
 
 - [ ] **Step 2: Implement** as specified. Keep each file under 500 lines and each function under 50.
@@ -1088,8 +1088,8 @@ Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 Expected: PASS, including `pnpm build` (the Worker bundles the SDK's web-standard transport) and `pnpm audit:prod`.
 
 ```bash
-git add apps/uw-app pnpm-lock.yaml knip.json
-git commit -m "feat(uw-app): the MCP surface at /mcp: tools listed from the verb registry, one dispatcher that gates every handler with can(), unknown names refused as unknown tools" -m "AB-1 AB-2 AB-3 AB-4"
+git add apps/uw-platform pnpm-lock.yaml knip.json
+git commit -m "feat(uw-platform): the MCP surface at /mcp: tools listed from the verb registry, one dispatcher that gates every handler with can(), unknown names refused as unknown tools" -m "AB-1 AB-2 AB-3 AB-4"
 ```
 
 ### Task 13: The harness verbs
@@ -1097,8 +1097,8 @@ git commit -m "feat(uw-app): the MCP surface at /mcp: tools listed from the verb
 **Requirements:** AB-4 (`poll_queue`, `claim_item` through KN-5 with a `delegation_id`, `submit_to_gate` through KN-6 with no argument or path past a human gate, `record_run_step` renewing the lease, reporting tokens with the cost basis by host and writing the play-by-play event, a step on an expired lease refused, lease expiry and warning on claim and step responses, every refusal in the closed set), AB-3 (every write records the agent identity in the event log).
 
 **Files:**
-- Create: `apps/uw-app/mcp/verbs/poll-queue.ts`, `claim-item.ts`, `submit-to-gate.ts`, `record-run-step.ts`; `apps/uw-app/mcp/harness-verbs.pg.test.ts`; `tools/properties/submit-human-gate.test.ts`
-- Modify: `apps/uw-app/mcp/verbs/index.ts`
+- Create: `apps/uw-platform/mcp/verbs/poll-queue.ts`, `claim-item.ts`, `submit-to-gate.ts`, `record-run-step.ts`; `apps/uw-platform/mcp/harness-verbs.pg.test.ts`; `tools/properties/submit-human-gate.test.ts`
+- Modify: `apps/uw-platform/mcp/verbs/index.ts`
 
 **Interfaces:**
 - Consumes: `kernel.reads.poll`, `kernel.reads.item`, `kernel.items.claim`, `kernel.items.submit`, `kernel.items.recordRunStep`; `gatedHandler`, `rowFilteredHandler`, `fromKernel`, `refusal`.
@@ -1118,7 +1118,7 @@ git commit -m "feat(uw-app): the MCP surface at /mcp: tools listed from the verb
 
 `tools/properties/submit-human-gate.test.ts`, `describe('AB-4 submit_to_gate has no input that advances past a human gate', …)`: fast-check, `numRuns: 25`, one world for the file; each run makes a fresh item held by an agent at Check gated to `human_approval` (add a sim fixture `simHeldAtCheck` beside `simParkedAtCheck` in `sim/fixtures.ts`: it gates Check, enqueues, `simAdvance`s through `package`, `scope`, `plan`, `build`, and has an agent claim at Check; Ship cannot be used because its pickup is `none`), then submits with `to` drawn from every stage key, `null` and arbitrary strings, `pullRequest` and `head` drawn null together or set, and `evidence` arbitrary JSON; the result is never `advanced`, and the item's stage is unchanged afterwards.
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-app/mcp/harness-verbs.pg.test.ts`, then `pnpm vitest run tools/properties/submit-human-gate.test.ts`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-platform/mcp/harness-verbs.pg.test.ts`, then `pnpm vitest run tools/properties/submit-human-gate.test.ts`
 Expected: FAIL (`not_wired` for the four verbs).
 
 - [ ] **Step 2: Implement** the four handlers and register them.
@@ -1129,8 +1129,8 @@ Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 Expected: PASS.
 
 ```bash
-git add apps/uw-app tools/properties sim/fixtures.ts
-git commit -m "feat(uw-app): poll_queue, claim_item, submit_to_gate and record_run_step over the kernel, with the lease on every response and the cost basis set by the host" -m "AB-3 AB-4"
+git add apps/uw-platform tools/properties sim/fixtures.ts
+git commit -m "feat(uw-platform): poll_queue, claim_item, submit_to_gate and record_run_step over the kernel, with the lease on every response and the cost basis set by the host" -m "AB-3 AB-4"
 ```
 
 ### Task 14: The page verbs
@@ -1138,8 +1138,8 @@ git commit -m "feat(uw-app): poll_queue, claim_item, submit_to_gate and record_r
 **Requirements:** AB-5 (`search_pages` and `read_page` return only pages the principal may read; `write_page` runs the page API's validation, records the agent identity, lands gated types as `suggested` and never as an edit, cannot reach a stage row), AB-3 (page version history records the agent identity).
 
 **Files:**
-- Create: `apps/uw-app/pages/reads.ts`, `apps/uw-app/pages/agent-write.ts`, `apps/uw-app/mcp/verbs/search-pages.ts`, `read-page.ts`, `write-page.ts`, `apps/uw-app/mcp/page-verbs.pg.test.ts`
-- Modify: `apps/uw-app/mcp/verbs/index.ts`, `docs/exceptions.md` (a row for `pages/reads.ts`, first)
+- Create: `apps/uw-platform/pages/reads.ts`, `apps/uw-platform/pages/agent-write.ts`, `apps/uw-platform/mcp/verbs/search-pages.ts`, `read-page.ts`, `write-page.ts`, `apps/uw-platform/mcp/page-verbs.pg.test.ts`
+- Modify: `apps/uw-platform/mcp/verbs/index.ts`, `docs/exceptions.md` (a row for `pages/reads.ts`, first)
 
 **Interfaces:**
 - Produces:
@@ -1167,7 +1167,7 @@ Handlers: `search_pages` `rowFilteredHandler` (its file calls `searchPages`, whi
 - `describe('AB-5 write_page runs the page API\'s validation and records the agent', …)`: a new `product` page in 80-89 → accepted, status `draft`, and its `page_versions.edit_source` is `agent:<personId>/laptop` (AB-3); an unknown frontmatter field → `invalid_frontmatter`; a taken slug → `slug_taken`; a stale version → `stale_version`; the viewer writing in 80-89 → `not_permitted`.
 - `describe('AB-5 a gated page lands as suggested and is never edited by an agent', …)`: a new `learning` → status `suggested`; saving it while `suggested` → accepted, still `suggested`; a person sets it `active` with `updatePage`; the agent's save → `not_permitted` `{ why: 'gated_page' }`, no new version, status `active`; the same for an `active` persona page; `type: 'policy'` → `malformed_command`.
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-app/mcp/page-verbs.pg.test.ts`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-platform/mcp/page-verbs.pg.test.ts`
 Expected: FAIL.
 
 - [ ] **Step 2: Implement** as specified (the exceptions row first).
@@ -1178,8 +1178,8 @@ Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 Expected: PASS.
 
 ```bash
-git add apps/uw-app docs/exceptions.md
-git commit -m "feat(uw-app): search_pages, read_page and write_page: only readable pages, the page API's validation, and learning, skill and persona pages only ever suggested" -m "AB-3 AB-5"
+git add apps/uw-platform docs/exceptions.md
+git commit -m "feat(uw-platform): search_pages, read_page and write_page: only readable pages, the page API's validation, and learning, skill and persona pages only ever suggested" -m "AB-3 AB-5"
 ```
 
 ### Task 15: Context and records: `resolve_context`, `query_entities`, `create_task`
@@ -1187,8 +1187,8 @@ git commit -m "feat(uw-app): search_pages, read_page and write_page: only readab
 **Requirements:** AB-5 (`resolve_context` returns the stage's instructions page, the package pages and the applicable confirmed learnings, most specific first, each with `confidence` and `as_of`; `query_entities` runs only whitelisted, parameterised queries and returns no row the principal could not read directly; `create_task` creates a `suggested` task attributed to the agent), AB-1 (every served verb has its handler).
 
 **Files:**
-- Create: `apps/uw-app/pages/context.ts`, `apps/uw-app/records/queries.ts`, `apps/uw-app/mcp/verbs/resolve-context.ts`, `query-entities.ts`, `create-task.ts`, `apps/uw-app/mcp/context-verbs.pg.test.ts`, `apps/uw-app/mcp/verbs/registry.test.ts`
-- Modify: `apps/uw-app/mcp/verbs/index.ts`, `docs/exceptions.md` (a row for `pages/context.ts`, first)
+- Create: `apps/uw-platform/pages/context.ts`, `apps/uw-platform/records/queries.ts`, `apps/uw-platform/mcp/verbs/resolve-context.ts`, `query-entities.ts`, `create-task.ts`, `apps/uw-platform/mcp/context-verbs.pg.test.ts`, `apps/uw-platform/mcp/verbs/registry.test.ts`
+- Modify: `apps/uw-platform/mcp/verbs/index.ts`, `docs/exceptions.md` (a row for `pages/context.ts`, first)
 
 **Interfaces:**
 - Produces:
@@ -1227,7 +1227,7 @@ Handlers: `resolve_context` `gatedHandler` `hiddenAs: 'item_not_found'`, resourc
 - `describe('AB-1 every served verb has exactly one handler and nothing else has one', …)`: the keys of `verbHandlers` equal the served registry names; each handler's `name` equals its key.
 - `describe('AB-3 the gated handlers are exactly the verbs whose registry grant is not null', …)`: `kind === 'gated'` ⇔ `findVerb(name).grant !== null`.
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-app/mcp/context-verbs.pg.test.ts`, then `pnpm vitest run --project workers apps/uw-app/mcp/verbs/registry.test.ts`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-platform/mcp/context-verbs.pg.test.ts`, then `pnpm vitest run --project workers apps/uw-platform/mcp/verbs/registry.test.ts`
 Expected: FAIL.
 
 - [ ] **Step 2: Implement** as specified (the exceptions row first).
@@ -1238,8 +1238,8 @@ Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 Expected: PASS.
 
 ```bash
-git add apps/uw-app docs/exceptions.md
-git commit -m "feat(uw-app): resolve_context, the whitelisted query_entities and create_task, and every served verb has its handler" -m "AB-1 AB-3 AB-5"
+git add apps/uw-platform docs/exceptions.md
+git commit -m "feat(uw-platform): resolve_context, the whitelisted query_entities and create_task, and every served verb has its handler" -m "AB-1 AB-3 AB-5"
 ```
 
 ### Task 16: Delegated runners, end to end
@@ -1247,7 +1247,7 @@ git commit -m "feat(uw-app): resolve_context, the whitelisted query_entities and
 **Requirements:** AB-6 (a non-interactive principal claims only with a live delegation for that persona and harness, otherwise `delegation_required`; an interactive principal needs none; with a live delegation every event carries `agent:<person>/<device> as <persona> via delegation:<id>`, or `agent:<persona>` for a hosted beat; the liveness checks re-run on every `record_run_step` and `submit_to_gate`; a delegation that stops being live writes `delegation_lapsed` and the run stops).
 
 **Files:**
-- Create: `sim/scenarios/AB-6.a-delegated-runner-names-itself-and-stops-on-lapse.ts`, `apps/uw-app/mcp/delegated.pg.test.ts`
+- Create: `sim/scenarios/AB-6.a-delegated-runner-names-itself-and-stops-on-lapse.ts`, `apps/uw-platform/mcp/delegated.pg.test.ts`
 - Modify: only what the tests show is missing (expected: nothing in the kernel; the surface may need nothing beyond Task 9's headers)
 
 - [ ] **Step 1: Write the scenario and the test**
@@ -1256,7 +1256,7 @@ git commit -m "feat(uw-app): resolve_context, the whitelisted query_entities and
 
 `delegated.pg.test.ts`, `describe.skipIf(!testServer)('AB-6 a routine on a service token works only under a live delegation, and names it on every event', …)`: the owner binds `routine-1.access` to admin K's `hourly-routine`; K grants `agent:iterate` a delegation through `platformKernel(...).delegations.grant`; through `httpClient` with the service-token JWT: no delegation headers, `claim_item` with `delegationId: null` → `delegation_required`; with `x-uw-persona: iterate` and `x-uw-delegation: <id>`, `claim_item` with the id → accepted; `record_run_step` with `subscription` → accepted; the item's events since the claim all have actor `agent:<K>/hourly-routine as iterate via delegation:<id>`; after K's delegation is revoked, `record_run_step` → `delegation_lapsed`, `submit_to_gate` → `delegation_lapsed`; `x-uw-delegation` naming another person's delegation → `delegation_not_found`.
 
-Run: `pnpm sim -- AB-6`, then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-app/mcp/delegated.pg.test.ts`
+Run: `pnpm sim -- AB-6`, then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-platform/mcp/delegated.pg.test.ts`
 Expected: these mostly pass on the code from Tasks 3, 9, 10 and 13. Prove each can fail: remove the `delegationIdOf` branch from `withAgentPrincipal`'s identity (mint the plain device) by hand and see the actor assertions go red; restore. If anything fails for a real reason, fix it in the module that owns the behaviour and say so in the commit.
 
 - [ ] **Step 2: Run and commit**
@@ -1265,8 +1265,8 @@ Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 Expected: PASS.
 
 ```bash
-git add sim/scenarios apps/uw-app
-git commit -m "test(uw-app): a delegated routine claims only under a live delegation, names it on every event, and stops when it lapses" -m "AB-6"
+git add sim/scenarios apps/uw-platform
+git commit -m "test(uw-platform): a delegated routine claims only under a live delegation, names it on every event, and stops when it lapses" -m "AB-6"
 ```
 
 ### Task 17: The static boundary checks: nothing agent-reachable touches a gate, and every handler goes through `can()`
@@ -1286,7 +1286,7 @@ export function gateTouches(sources: SourceFiles, files: readonly string[]): str
 export function handlersSkippingCan(sources: SourceFiles): string[];
 ```
 
-- `agentReachable`: start from every non-test source under `apps/uw-app/mcp/` (`.ts`, `.tsx`, `.js`, `.mjs`); follow relative imports (`from './x.ts'`, `from '../pages/store.ts'`, `import('./y.ts')`) transitively while they stay inside `apps/uw-app/`; return the sorted closure. Package imports (`@uw/*`) end the walk: the kernel's own gate code is proven by KN-13 and Task 18.
+- `agentReachable`: start from every non-test source under `apps/uw-platform/mcp/` (`.ts`, `.tsx`, `.js`, `.mjs`); follow relative imports (`from './x.ts'`, `from '../pages/store.ts'`, `import('./y.ts')`) transitively while they stay inside `apps/uw-platform/`; return the sorted closure. Package imports (`@uw/*`) end the walk: the kernel's own gate code is proven by KN-13 and Task 18.
 - `gateTouches`: the files whose text matches
 
 ```ts
@@ -1294,14 +1294,14 @@ const gateReach =
   /\bgateDecisions\b|\bgate_decisions\b|\bharnessStages\b|\bharness_stages\b|\.gates\s*\??\.|\.stages\s*\??\.|\.repair\s*\??\.|\.delegations\s*\??\.\s*(?:grant|revoke)\b|\bexitThroughConnector\b|\bconnectors\s*\??\./;
 ```
 
-- `handlersSkippingCan`: every non-test file in `apps/uw-app/mcp/verbs/` except `index.ts` that does not call `gatedHandler(` or `rowFilteredHandler(`; every file that calls `rowFilteredHandler(` but none of `can(`, `readableAreas(`, `searchPages(`, `.reads.poll(`, `entityQueries`; and `apps/uw-app/mcp/dispatch.ts` if it does not call `can(`.
+- `handlersSkippingCan`: every non-test file in `apps/uw-platform/mcp/verbs/` except `index.ts` that does not call `gatedHandler(` or `rowFilteredHandler(`; every file that calls `rowFilteredHandler(` but none of `can(`, `readableAreas(`, `searchPages(`, `.reads.poll(`, `entityQueries`; and `apps/uw-platform/mcp/dispatch.ts` if it does not call `can(`.
 
 - [ ] **Step 1: Write the failing test**
 
 `agent-boundary.test.ts`:
-- `describe('AB-7 no file an agent principal can reach touches a gate decision or a stage row', …)`: over `repoFiles()` read from disk, `gateTouches(sources, agentReachable(sources))` is `[]`, and the closure contains `apps/uw-app/mcp/dispatch.ts`, `apps/uw-app/pages/store.ts` and `apps/uw-app/tasks/store.ts` (it really follows imports).
-- `describe('AB-7 the static check fails on a planted handler', …)`: a virtual `SourceFiles` holding the real files plus `apps/uw-app/mcp/verbs/approve-sneak.ts` importing `../../gates/sneak.ts`, which contains `await tx.gateDecisions.write.insert(row)` → flagged; plants each of `kernel.gates.decide(caller, input)`, `ports.connectors.run(request)`, `kernel.stages.updateStage(...)`, `kernel.delegations.grant(...)`, `db.insert(harnessStages)` and a `.mjs` variant → each flagged.
-- `describe('AB-3 every MCP handler goes through can()', …)`: over the real files, `handlersSkippingCan` is `[]`; a planted `apps/uw-app/mcp/verbs/raw.ts` exporting an object literal handler → flagged; a planted `rowFilteredHandler({ name: 'search_pages', run: async () => ({ status: 'accepted', output: { pages: [] } }) })` with no filter call → flagged; a planted `dispatch.ts` without `can(` → flagged.
+- `describe('AB-7 no file an agent principal can reach touches a gate decision or a stage row', …)`: over `repoFiles()` read from disk, `gateTouches(sources, agentReachable(sources))` is `[]`, and the closure contains `apps/uw-platform/mcp/dispatch.ts`, `apps/uw-platform/pages/store.ts` and `apps/uw-platform/tasks/store.ts` (it really follows imports).
+- `describe('AB-7 the static check fails on a planted handler', …)`: a virtual `SourceFiles` holding the real files plus `apps/uw-platform/mcp/verbs/approve-sneak.ts` importing `../../gates/sneak.ts`, which contains `await tx.gateDecisions.write.insert(row)` → flagged; plants each of `kernel.gates.decide(caller, input)`, `ports.connectors.run(request)`, `kernel.stages.updateStage(...)`, `kernel.delegations.grant(...)`, `db.insert(harnessStages)` and a `.mjs` variant → each flagged.
+- `describe('AB-3 every MCP handler goes through can()', …)`: over the real files, `handlersSkippingCan` is `[]`; a planted `apps/uw-platform/mcp/verbs/raw.ts` exporting an object literal handler → flagged; a planted `rowFilteredHandler({ name: 'search_pages', run: async () => ({ status: 'accepted', output: { pages: [] } }) })` with no filter call → flagged; a planted `dispatch.ts` without `can(` → flagged.
 
 Run: `pnpm vitest run tools/architecture/agent-boundary.test.ts`
 Expected: FAIL (the module does not exist).
@@ -1374,7 +1374,7 @@ git commit -m "feat(harness): every agent attempt at a gate decision records gat
 **Requirements:** AB-7 conformance (the tool list served to a Workflow-host principal equals the list served to an external-runner principal with the same owner grants, equals the registry, and each verb is callable from both; the check fails on a planted fixture), D5.
 
 **Files:**
-- Create: `apps/uw-app/testing/conformance.ts`, `apps/uw-app/mcp/conformance.pg.test.ts`
+- Create: `apps/uw-platform/testing/conformance.ts`, `apps/uw-platform/mcp/conformance.pg.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -1393,7 +1393,7 @@ export function callableFailures(host: McpHost, results: readonly { readonly ver
 
 `describe('AB-7 the conformance check fails on a planted host-specific tool', …)` (in the same file, no database needed but kept beside its subject): surfaces where the workflow list has an extra `approve_item` tool, or a changed `inputSchema` for `claim_item` → mismatches name them; a planted unknown-tool rejection → `callableFailures` names the verb.
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-app/mcp/conformance.pg.test.ts`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run apps/uw-platform/mcp/conformance.pg.test.ts`
 Expected: FAIL (the helpers do not exist).
 
 - [ ] **Step 2: Implement** `testing/conformance.ts`.
@@ -1404,8 +1404,8 @@ Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 Expected: PASS.
 
 ```bash
-git add apps/uw-app/testing/conformance.ts apps/uw-app/mcp/conformance.pg.test.ts
-git commit -m "test(uw-app): the Workflow host and an external runner are served the same verbs, each callable from both, and a planted host-specific tool fails the check" -m "AB-7"
+git add apps/uw-platform/testing/conformance.ts apps/uw-platform/mcp/conformance.pg.test.ts
+git commit -m "test(uw-platform): the Workflow host and an external runner are served the same verbs, each callable from both, and a planted host-specific tool fails the check" -m "AB-7"
 ```
 
 ### Task 20: The tracker and the architecture, and step 4 marked built
@@ -1417,7 +1417,7 @@ git commit -m "test(uw-app): the Workflow host and an external runner are served
 
 - [ ] **Step 1: Check every requirement has its proof**
 
-Run `pnpm trace` and confirm none of AB-1 to AB-8 is listed. For each ID, grep `sim/scenarios/` and the test titles: AB-1 (`apps/uw-app/mcp/tools.test.ts`, `server.test.ts`, `routes.pg.test.ts`, `verbs/registry.test.ts`), AB-2 (`packages/core/principal.test.ts`, `sim/kernel/owner-binding.test.ts`, `apps/uw-app/mcp/mint*.test.ts`, `apps/uw-app/agents/service-tokens.pg.test.ts`, `packages/db/agent-boundary-tables.test.ts`), AB-3 (`server.test.ts`, `harness-verbs.pg.test.ts`, `page-verbs.pg.test.ts`, `tools/architecture/agent-boundary.test.ts`), AB-4 (`sim/scenarios/AB-4.*`, `sim/kernel/reads.test.ts`, `harness-verbs.pg.test.ts`, `tools/properties/submit-human-gate.test.ts`), AB-5 (`page-verbs.pg.test.ts`, `context-verbs.pg.test.ts`, `apps/uw-app/tasks/store.pg.test.ts`, `packages/core/acl.test.ts`, `tools/properties/readable-areas.test.ts`), AB-6 (`sim/scenarios/AB-6.*`, `apps/uw-app/mcp/delegated.pg.test.ts`, `mint.test.ts`), AB-7 (`sim/scenarios/AB-7.*`, `sim/kernel/agent-boundary-runtime.test.ts`, `tools/architecture/agent-boundary.test.ts`, `apps/uw-app/mcp/conformance.pg.test.ts`), AB-8 (`sim/scenarios/AB-8.*`, `packages/harness/personas/tool-check.test.ts`, `sim/kernel/persona-activation.test.ts`).
+Run `pnpm trace` and confirm none of AB-1 to AB-8 is listed. For each ID, grep `sim/scenarios/` and the test titles: AB-1 (`apps/uw-platform/mcp/tools.test.ts`, `server.test.ts`, `routes.pg.test.ts`, `verbs/registry.test.ts`), AB-2 (`packages/core/principal.test.ts`, `sim/kernel/owner-binding.test.ts`, `apps/uw-platform/mcp/mint*.test.ts`, `apps/uw-platform/agents/service-tokens.pg.test.ts`, `packages/db/agent-boundary-tables.test.ts`), AB-3 (`server.test.ts`, `harness-verbs.pg.test.ts`, `page-verbs.pg.test.ts`, `tools/architecture/agent-boundary.test.ts`), AB-4 (`sim/scenarios/AB-4.*`, `sim/kernel/reads.test.ts`, `harness-verbs.pg.test.ts`, `tools/properties/submit-human-gate.test.ts`), AB-5 (`page-verbs.pg.test.ts`, `context-verbs.pg.test.ts`, `apps/uw-platform/tasks/store.pg.test.ts`, `packages/core/acl.test.ts`, `tools/properties/readable-areas.test.ts`), AB-6 (`sim/scenarios/AB-6.*`, `apps/uw-platform/mcp/delegated.pg.test.ts`, `mint.test.ts`), AB-7 (`sim/scenarios/AB-7.*`, `sim/kernel/agent-boundary-runtime.test.ts`, `tools/architecture/agent-boundary.test.ts`, `apps/uw-platform/mcp/conformance.pg.test.ts`), AB-8 (`sim/scenarios/AB-8.*`, `packages/harness/personas/tool-check.test.ts`, `sim/kernel/persona-activation.test.ts`).
 
 - [ ] **Step 2: Update `docs/architecture.md`**
 
@@ -1436,16 +1436,16 @@ Rewrite "The agent boundary" to state what is built: the endpoint `POST /mcp` be
 | KN-5 | Step-3 carry closed: `packages/db/store/claim-race.test.ts` races `write.claim` on two server connections without the kernel's locks | None |
 | KN-18 | Step-3 carry "a remove-stage command, route or MCP handler enforces P17": no MCP handler reaches the stage command (Task 17's check forbids it), so the row stays for step 6 | None for the MCP surface |
 | AB-7 | Step-3 re-review carry (a): `exitThroughConnector` leaves the public barrel for `@uw/harness/testing`, imported only by tests (dependency-cruiser `harness-testing-only-in-tests`); the connector-callers check scans `.js` and `.mjs` | None |
-| KN-5 | Carry (b): the system-principal check allows `sim/`, `apps/uw-app/cron/` and app tests only, and catches template and concatenated `agent:system` | The lease-sweep cron (P8) must live under `apps/uw-app/cron/` |
+| KN-5 | Carry (b): the system-principal check allows `sim/`, `apps/uw-platform/cron/` and app tests only, and catches template and concatenated `agent:system` | The lease-sweep cron (P8) must live under `apps/uw-platform/cron/` |
 | FD-8 KN-5 | Carry (c): the lock-key check flags `pg_try_advisory_*`, `_shared` locks and an uncast `${…}` key | None |
 | KN-7 | Carry (d): attaching a learning requires an agent to hold the item; a person needs `write` | An agent cannot attach to an item it is not working |
 | KN-16 AB-6 | Carry (e): a delegation of another person is answered exactly as an unknown id (`delegation_not_found`) | None |
 | AB-2 | Carry (f): persona slugs `system` and `ingest` are reserved in persona identities, persona pages, delegations and the `x-uw-persona` header | A persona cannot be called `system` or `ingest` |
 | AB-4 | `AppDeps.clock` (Task 12) feeds both the request instant and the MCP route's kernel, so tests move one clock for both; production passes `systemClock` | A deps object built without it fails to typecheck, which is the intent |
 
-- New dependencies: `2026-10-02 | @modelcontextprotocol/sdk ^1.31.0 (MIT, apps/uw-app) | a hand-written JSON-RPC and Streamable HTTP server, client and in-process transport for the MCP surface`; `2026-10-02 | @cfworker/json-schema ^4.1.1 (MIT, apps/uw-app) | Ajv's code-generating validator, which Workers forbid, as the SDK's JSON Schema validator`; `2026-10-02 | Contract versions 4.0.0 (Task 2, principal and persona schemas tighten) and 5.0.0 (Task 4, additive) | Not a dependency: contractVersion in both apps moved with each`. Add any `pnpm.overrides` or knip ignore that Task 12 needed.
+- New dependencies: `2026-10-02 | @modelcontextprotocol/sdk ^1.31.0 (MIT, apps/uw-platform) | a hand-written JSON-RPC and Streamable HTTP server, client and in-process transport for the MCP surface`; `2026-10-02 | @cfworker/json-schema ^4.1.1 (MIT, apps/uw-platform) | Ajv's code-generating validator, which Workers forbid, as the SDK's JSON Schema validator`; `2026-10-02 | Contract versions 4.0.0 (Task 2, principal and persona schemas tighten) and 5.0.0 (Task 4, additive) | Not a dependency: contractVersion in both apps moved with each`. Add any `pnpm.overrides` or knip ignore that Task 12 needed.
 - Not verified: the MCP endpoint behind a real Access application (a person's Claude Code or Codex signing in through `cloudflared access` and the edge adding `cf-access-jwt-assertion`; a real service-token JWT's `common_name`); the SDK's web-standard transport in a deployed Worker (only `pnpm build` and the Workers Vitest pool ran it); a real client's handling of the stateless server's `405` on `GET`; Postgres full-text search on Neon (only the local Postgres 16 ran it).
-- Waiting on a person: `| 2026-10-02 | AB-2 AB-6 | The /mcp endpoint, service-token bindings and the minting edge | Access service tokens for agent identities (PRD 15), bound with bind_service_token; a first real external run (Claude Code with an MCP server entry for https://<uw-app>/mcp and the x-uw-device header) | The owner |`.
+- Waiting on a person: `| 2026-10-02 | AB-2 AB-6 | The /mcp endpoint, service-token bindings and the minting edge | Access service tokens for agent identities (PRD 15), bound with bind_service_token; a first real external run (Claude Code with an MCP server entry for https://<uw-platform>/mcp and the x-uw-device header) | The owner |`.
 - Carried to later steps: `| 2026-10-02 | Step 4 | Step 5 | GH-5: submit_to_gate's paths and risk declaration come from GitHub facts at the head; today the MCP handler passes paths [] and no declaration, so the ship rule refuses risk_tier_undeclared |`; `| 2026-10-02 | Step 4 | Step 5 | GH-2's six tables go in packages/db/schema-github.ts, re-exported by schema.ts |`; `| 2026-10-02 | Step 4 | Step 7 | HE-1: the Workflow host reaches the platform through connectInProcess with the beat or run principal; record_run_step there is metered |`; `| 2026-10-02 | Step 4 | Step 8 | WB-10: get_health switches its not_wired indicators to WB-10's exported queries |`; `| 2026-10-02 | Step 4 | Step 10 | PE-3: activation's dry run and status flip replace the not_wired success; PE-7: query_entities gains measurements_for_item with measurements' writer; the personas projection joins poll_queue's subscription |`.
 
 - [ ] **Step 4: Verify and commit**

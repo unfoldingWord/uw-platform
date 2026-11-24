@@ -1,6 +1,6 @@
 export type SourceTree = { readonly paths: readonly string[]; read(path: string): string };
 
-const adapterRoots = ['apps/uw-app/ports/', 'sim/adapters/'] as const;
+const adapterRoots = ['apps/uw-platform/ports/', 'sim/adapters/'] as const;
 const contractRoot = 'packages/harness/port-contracts/';
 const contractTest = /\.contract(\.pg)?\.test\.ts$/;
 
@@ -110,7 +110,7 @@ function rootViolations(ports: readonly string[], tree: SourceTree, root: string
 }
 
 const engineTurn =
-  /^apps\/uw-app\/engines\/(?:claude-messages|openrouter-messages|claude-code-sandbox|codex-sandbox|claude-managed-agent|external)\/turn\.ts$/;
+  /^apps\/uw-platform\/engines\/(?:claude-messages|openrouter-messages|claude-code-sandbox|codex-sandbox|claude-managed-agent|external)\/turn\.ts$/;
 
 function engineTurnViolations(ports: readonly string[], tree: SourceTree): string[] {
   if (!ports.includes('modelEngine')) return [];

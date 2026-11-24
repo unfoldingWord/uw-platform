@@ -30,16 +30,16 @@ function skippingWith(planted: Readonly<Record<string, string>>): string[] {
   return handlersSkippingCan(withPlanted(planted));
 }
 
-const sneakVerb = 'apps/uw-app/mcp/verbs/approve-sneak.ts';
-const gateCommands = 'apps/uw-app/commands/person/gates.ts';
-const inProcessHost = 'apps/uw-app/mcp/in-process.ts';
-const commandApi = 'apps/uw-app/commands/';
+const sneakVerb = 'apps/uw-platform/mcp/verbs/approve-sneak.ts';
+const gateCommands = 'apps/uw-platform/commands/person/gates.ts';
+const inProcessHost = 'apps/uw-platform/mcp/in-process.ts';
+const commandApi = 'apps/uw-platform/commands/';
 const gateGitHubHolders = [
-  'apps/uw-app/commands/person/gate-kernel.ts',
-  'apps/uw-app/commands/person/gate-github.ts',
-  'apps/uw-app/commands/person-deps.ts',
+  'apps/uw-platform/commands/person/gate-kernel.ts',
+  'apps/uw-platform/commands/person/gate-github.ts',
+  'apps/uw-platform/commands/person-deps.ts',
 ];
-const sneakGate = 'apps/uw-app/gates/sneak.ts';
+const sneakGate = 'apps/uw-platform/gates/sneak.ts';
 
 const gateCalls = [
   'await kernel.gates.decide(caller, input);',
@@ -109,18 +109,18 @@ describe('AB-7 no file an agent principal can reach touches a gate decision or a
   it('AB-7 nothing the MCP surface reaches imports the command API', () => {
     const closure = mcpReachable(real);
     expect(closure).toContain(inProcessHost);
-    expect(closure).toContain('apps/uw-app/mcp/dispatch.ts');
+    expect(closure).toContain('apps/uw-platform/mcp/dispatch.ts');
     expect(closure.filter((file) => file.startsWith(commandApi))).toEqual([]);
     for (const holder of gateGitHubHolders) expect(closure).not.toContain(holder);
   });
 
   it('reaches every route an agent principal can call, through the app entry', () => {
     const closure = agentReachable(real);
-    expect(closure).toContain('apps/uw-app/app.tsx');
-    expect(closure).toContain('apps/uw-app/acl/routes.ts');
-    expect(closure).toContain('apps/uw-app/agents/routes.ts');
-    expect(closure).toContain('apps/uw-app/pages/routes.ts');
-    expect(closure).toContain('apps/uw-app/mcp/routes.ts');
+    expect(closure).toContain('apps/uw-platform/app.tsx');
+    expect(closure).toContain('apps/uw-platform/acl/routes.ts');
+    expect(closure).toContain('apps/uw-platform/agents/routes.ts');
+    expect(closure).toContain('apps/uw-platform/pages/routes.ts');
+    expect(closure).toContain('apps/uw-platform/mcp/routes.ts');
   });
 
   it('finds no file in the real closure importing out of the app by a relative path', () => {
@@ -129,11 +129,11 @@ describe('AB-7 no file an agent principal can reach touches a gate decision or a
 
   it('follows imports out of the MCP surface into the stores it calls', () => {
     const closure = agentReachable(real);
-    expect(closure).toContain('apps/uw-app/mcp/dispatch.ts');
-    expect(closure).toContain('apps/uw-app/pages/store.ts');
-    expect(closure).toContain('apps/uw-app/tasks/store.ts');
+    expect(closure).toContain('apps/uw-platform/mcp/dispatch.ts');
+    expect(closure).toContain('apps/uw-platform/pages/store.ts');
+    expect(closure).toContain('apps/uw-platform/tasks/store.ts');
     expect(closure.some((file) => file.includes('.test.'))).toBe(false);
-    expect(closure.every((file) => file.startsWith('apps/uw-app/'))).toBe(true);
+    expect(closure.every((file) => file.startsWith('apps/uw-platform/'))).toBe(true);
   });
 });
 
@@ -162,7 +162,7 @@ describe('AB-7 the static check fails on a planted handler', () => {
   it.each(['mjs', 'mts', 'cjs', 'cts', 'jsx'])(
     'flags a planted .%s verb that decides a gate',
     (ext) => {
-      const file = `apps/uw-app/mcp/verbs/approve-sneak.${ext}`;
+      const file = `apps/uw-platform/mcp/verbs/approve-sneak.${ext}`;
       expect(touchedWith({ [file]: 'await kernel.gates.decide(caller, input);' })).toEqual([file]);
     },
   );
@@ -183,7 +183,7 @@ describe('AB-7 the static check fails on a planted handler', () => {
   });
 });
 
-const registryFile = 'apps/uw-app/commands/registry.ts';
+const registryFile = 'apps/uw-platform/commands/registry.ts';
 
 function underRegistry(file: string, text: string): Record<string, string> {
   const specifier = `./${file.slice(commandApi.length)}`;
@@ -218,17 +218,17 @@ const notCarvedOut = [
   ...personaActivations,
 ];
 
-const personSneak = 'apps/uw-app/commands/person/sneak.ts';
+const personSneak = 'apps/uw-platform/commands/person/sneak.ts';
 
 describe('#103 a planted workflow draft touch outside the person surface fails', () => {
   it('#103 flags a workflow draft publish in a command handler outside the person surface', () => {
-    const file = 'apps/uw-app/commands/handlers/publish.ts';
+    const file = 'apps/uw-platform/commands/handlers/publish.ts';
     const text = 'await kernel.drafts.publish(caller, input);';
     expect(touchedWith(underRegistry(file, text))).toEqual([file]);
   });
 
   it('#103 flags a write to the workflow_drafts table outside the person surface', () => {
-    const file = 'apps/uw-app/commands/handlers/drafts.ts';
+    const file = 'apps/uw-platform/commands/handlers/drafts.ts';
     expect(touchedWith(underRegistry(file, 'await tx.workflowDrafts.write.put(row);'))).toEqual([
       file,
     ]);
@@ -237,18 +237,18 @@ describe('#103 a planted workflow draft touch outside the person surface fails',
 
 describe('AB-7 a planted gate touch outside the person surface fails, and a planted MCP import of the command API fails', () => {
   it('flags a gate decision in a command handler outside the person surface', () => {
-    const file = 'apps/uw-app/commands/handlers/sneak.ts';
+    const file = 'apps/uw-platform/commands/handlers/sneak.ts';
     expect(touchedWith(underRegistry(file, carvedOut[0] ?? ''))).toEqual([file]);
   });
 
   it('flags a persona activation in a command handler outside the person surface', () => {
-    const file = 'apps/uw-app/commands/handlers/activate.ts';
+    const file = 'apps/uw-platform/commands/handlers/activate.ts';
     const text = 'await kernel.personas.activate(caller, input);';
     expect(touchedWith(underRegistry(file, text))).toEqual([file]);
   });
 
   it('flags a gate decision in a file that only shares the person surface prefix', () => {
-    const file = 'apps/uw-app/commands/person-sneak.ts';
+    const file = 'apps/uw-platform/commands/person-sneak.ts';
     expect(touchedWith(underRegistry(file, carvedOut[0] ?? ''))).toEqual([file]);
   });
 
@@ -262,7 +262,7 @@ describe('AB-7 a planted gate touch outside the person surface fails, and a plan
 
   it('flags a planted verb importing the command dispatcher', () => {
     const planted = { [sneakVerb]: "import { executeCommand } from '../../commands/dispatch.ts';" };
-    expect(reachedFromMcp(planted)).toContain('apps/uw-app/commands/dispatch.ts');
+    expect(reachedFromMcp(planted)).toContain('apps/uw-platform/commands/dispatch.ts');
   });
 
   it('flags a planted verb importing the person gate commands, which the carve-out would pass', () => {
@@ -274,22 +274,22 @@ describe('AB-7 a planted gate touch outside the person surface fails, and a plan
   it('follows three hops from a planted verb to the person deps', () => {
     const planted = {
       [sneakVerb]: "import { hop } from '../../pages/hop.ts';\nexport const x = hop;",
-      'apps/uw-app/pages/hop.ts': "export { hop } from '../http/hop.ts';",
-      'apps/uw-app/http/hop.ts':
+      'apps/uw-platform/pages/hop.ts': "export { hop } from '../http/hop.ts';",
+      'apps/uw-platform/http/hop.ts':
         "import { platformPersonDeps } from '../commands/person-deps.ts';\nexport const hop = platformPersonDeps;",
     };
-    expect(reachedFromMcp(planted)).toContain('apps/uw-app/commands/person-deps.ts');
+    expect(reachedFromMcp(planted)).toContain('apps/uw-platform/commands/person-deps.ts');
   });
 
   it('follows the in-process host through a dynamic import to the gate kernel', () => {
     const planted = {
       [inProcessHost]: `import { later } from '../agents/hop.ts';\n${real.read(inProcessHost)}`,
-      'apps/uw-app/agents/hop.ts':
+      'apps/uw-platform/agents/hop.ts':
         "export const later = () => import('../commands/person/gate-kernel.ts');",
     };
     const reached = reachedFromMcp(planted);
-    expect(reached).toContain('apps/uw-app/commands/person/gate-kernel.ts');
-    expect(reached).not.toContain('apps/uw-app/commands/person-deps.ts');
+    expect(reached).toContain('apps/uw-platform/commands/person/gate-kernel.ts');
+    expect(reached).not.toContain('apps/uw-platform/commands/person-deps.ts');
   });
 });
 
@@ -297,7 +297,7 @@ describe('persona activation is reached only from the person surface, in every s
   it.each(personaActivations)(
     'flags a command handler outside the person surface that reaches it as %s',
     (text) => {
-      const file = 'apps/uw-app/commands/handlers/activate.ts';
+      const file = 'apps/uw-platform/commands/handlers/activate.ts';
       expect(touchedWith(underRegistry(file, text))).toEqual([file]);
     },
   );
@@ -305,14 +305,14 @@ describe('persona activation is reached only from the person surface, in every s
 
 describe('AB-7 the static check fails on a planted route or a way out of the app', () => {
   it('flags a gate call in an /api route an agent service token reaches', () => {
-    const file = 'apps/uw-app/acl/routes.ts';
+    const file = 'apps/uw-platform/acl/routes.ts';
     const text = `${real.read(file)}\nexport const s = (kernel) => kernel.gates.decide;\n`;
     expect(touchedWith({ [file]: text })).toEqual([file]);
   });
 
   it('follows a planted .cts helper a route imports', () => {
-    const helper = 'apps/uw-app/acl/sneak.cts';
-    const route = 'apps/uw-app/acl/routes.ts';
+    const helper = 'apps/uw-platform/acl/sneak.cts';
+    const route = 'apps/uw-platform/acl/routes.ts';
     const planted = {
       [route]: `import { sneak } from './sneak.cts';\n${real.read(route)}`,
       [helper]: 'export const sneak = (kernel) => kernel.repair.reopen;',
@@ -334,14 +334,14 @@ describe('AB-7 the static check fails on a planted route or a way out of the app
 
 describe('AB-7 the pull-request follow may record a shadow verdict and nothing else at a gate', () => {
   it('passes the shadow verdict call in the follow and flags a gate decision planted beside it', () => {
-    const file = 'apps/uw-app/github/join.ts';
+    const file = 'apps/uw-platform/github/join.ts';
     expect(gateTouches(real, agentReachable(real))).toEqual([]);
     const text = `${real.read(file)}\nexport const s = (kernel) => kernel.gates.decide;\n`;
     expect(touchedWith({ [file]: text })).toEqual([file]);
   });
 
   it('holds exactly one recordShadowVerdicts call in the follow, and flags a second', () => {
-    const file = 'apps/uw-app/github/join.ts';
+    const file = 'apps/uw-platform/github/join.ts';
     const call = /\bkernel\s*\??\.\s*gates\s*\??\.\s*recordShadowVerdicts\s*\(/gu;
     expect(real.read(file).match(call)).toHaveLength(1);
     const text = `${real.read(file)}\nexport const t = (kernel) => kernel.gates.recordShadowVerdicts(null, null);\n`;
@@ -352,19 +352,19 @@ describe('AB-7 the pull-request follow may record a shadow verdict and nothing e
 describe('AB-5 write_page cannot reach a harness_stages row', () => {
   it('reaches the agent page write and nothing it reaches names a stage row', () => {
     const closure = agentReachable(real);
-    expect(closure).toContain('apps/uw-app/mcp/verbs/write-page.ts');
-    expect(closure).toContain('apps/uw-app/pages/agent-write.ts');
+    expect(closure).toContain('apps/uw-platform/mcp/verbs/write-page.ts');
+    expect(closure).toContain('apps/uw-platform/pages/agent-write.ts');
     expect(gateTouches(real, closure)).toEqual([]);
   });
 
   it('flags a planted stage write under the agent page write', () => {
-    const file = 'apps/uw-app/pages/agent-write.ts';
+    const file = 'apps/uw-platform/pages/agent-write.ts';
     const text = `${real.read(file)}\nexport const s = (db) => db.update(harnessStages);\n`;
     expect(touchedWith({ [file]: text })).toEqual([file]);
   });
 });
 
-const rawVerb = 'apps/uw-app/mcp/verbs/raw.ts';
+const rawVerb = 'apps/uw-platform/mcp/verbs/raw.ts';
 
 const unfiltered = [
   "import { rowFilteredHandler } from '../handler.ts';",
@@ -453,7 +453,7 @@ describe('AB-3 every MCP handler goes through can()', () => {
   });
 
   it.each(['dispatch', 'handler'])('flags a planted %s.ts that never calls can()', (name) => {
-    const file = `apps/uw-app/mcp/${name}.ts`;
+    const file = `apps/uw-platform/mcp/${name}.ts`;
     const text = real.read(file).replaceAll(/\bcan\(/g, 'allow(');
     expect(skippingWith({ [file]: text })).toEqual([file]);
   });
@@ -467,8 +467,8 @@ describe('AB-3 a hand-built handler fails the static check', () => {
   });
 
   it('flags a shorthand literal re-exported through a real verb', () => {
-    const file = 'apps/uw-app/mcp/verbs/search-pages.ts';
-    const hidden = 'apps/uw-app/mcp/verbs/hidden.ts';
+    const file = 'apps/uw-platform/mcp/verbs/search-pages.ts';
+    const hidden = 'apps/uw-platform/mcp/verbs/hidden.ts';
     const planted = {
       [hidden]: shorthand,
       [file]: `${real.read(file)}\nexport { hidden } from './hidden.ts';\n`,
@@ -477,7 +477,7 @@ describe('AB-3 a hand-built handler fails the static check', () => {
   });
 
   it('flags a literal handler written inside the verb index', () => {
-    const file = 'apps/uw-app/mcp/verbs/index.ts';
+    const file = 'apps/uw-platform/mcp/verbs/index.ts';
     const planted = { [file]: `${real.read(file)}\n${shorthand}\n` };
     expect(skippingWith(planted)).toEqual([file]);
   });

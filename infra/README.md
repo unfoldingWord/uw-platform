@@ -2,19 +2,19 @@
 
 Everything Cloudflare, Neon and Access that the platform runs on is declared here. A setting that exists only in a dashboard is a defect (plan §19).
 
-## uw-app
+## uw-platform
 
-`uw-app/wrangler.toml` declares two environments, `staging` and `production`. Every command names its environment; the top-level block is never deployed.
+`uw-platform/wrangler.toml` declares two environments, `staging` and `production`. Every command names its environment; the top-level block is never deployed.
 
 | Environment | Worker name | Reachable at | Deployed by |
 |---|---|---|---|
-| staging | `uw-app-staging` | `https://uw-app-staging.<account subdomain>.workers.dev` | every push to `develop`, after CI |
-| production | `uw-app` | `https://uw-app.unfoldingword.workers.dev` (`workers_dev = true`, behind Access) | a `v*` tag on `main`, by dispatch (`gh workflow run deploy-production.yml --ref v<version>`) |
+| staging | `uw-platform-staging` | `https://uw-platform-staging.<account subdomain>.workers.dev` | every push to `develop`, after CI |
+| production | `uw-platform` | `https://uw-platform.unfoldingword.workers.dev` (`workers_dev = true`, behind Access) | a `v*` tag on `main`, by dispatch (`gh workflow run deploy-production.yml --ref v<version>`) |
 
 ### Deploy staging by hand
 
 ```
-pnpm --filter @uw/uw-app deploy:staging
+pnpm --filter @uw/uw-platform deploy:staging
 ```
 
 `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` come from the shell or from the CI secret store. They are never written to a wrangler file. The token is scoped to Workers Scripts edit on the one account, and to Secrets Store edit once a Worker binds a secret from the store (the Platform secrets section).
@@ -23,7 +23,7 @@ The deployed commit reaches the Worker as the `COMMIT_SHA` var, set on the deplo
 
 ### Where each later binding goes
 
-A binding is added by a diff to `uw-app/wrangler.toml`, once in `[env.staging]` and once in `[env.production]`, so the two cannot drift. Each block sits directly under the environment's `[env.<name>.vars]` table.
+A binding is added by a diff to `uw-platform/wrangler.toml`, once in `[env.staging]` and once in `[env.production]`, so the two cannot drift. Each block sits directly under the environment's `[env.<name>.vars]` table.
 
 | Binding | Table to add | Issue |
 |---|---|---|
@@ -43,17 +43,17 @@ Each environment sets `[env.<name>.placement] region = "aws:us-west-2"`. Without
 
 Hyperdrive's query cache is off (`caching.disabled: true`). It keeps a read for up to a minute and is not cleared by writes, so after someone claims an item or decides a gate a page could show the old state. Pages read outside transactions, where the cache would apply. Connection pooling stays on. Staging was switched on 2026-11-19 with `env -u CLOUDFLARE_API_TOKEN npx wrangler hyperdrive update 621c03bdb5ef4087a2a64f1e411779c8 --caching-disabled`; production (`2564258906e94905b1b28d0c28002ff6`) is switched the same way at the release that ships #142.
 
-Every response carries a `Server-Timing` header: `total`, `frame` (the sidebar and status bar) and `db` (queries and transactions). The `request` log line records `queries` and `transactions` too. `apps/uw-app/views/query-budget.pg.test.ts` keeps each page under a query budget and fails if a page's query count grows with the number of workflows or items.
+Every response carries a `Server-Timing` header: `total`, `frame` (the sidebar and status bar) and `db` (queries and transactions). The `request` log line records `queries` and `transactions` too. `apps/uw-platform/views/query-budget.pg.test.ts` keeps each page under a query budget and fails if a page's query count grows with the number of workflows or items.
 
 ### Sandbox containers (HE-8, HE-9)
 
 `containers/claude-code/Dockerfile` and `containers/codex/Dockerfile` are the images the two sandbox engines run: the Node.js 22 slim image at a pinned tag with `git`, the one CLI installed globally at a pinned version, a non-root `runner` user whose home is `/workspace`, and a small HTTP listener on port 3000 that keeps the container alive for `exec`. Cloudflare's `cloudflare/sandbox:1.0.0` base was dropped on 2026-11-12: it has no `/bin/sh`, so neither image could be built. The CI `build` job builds both images and runs `git --version` and the CLI's `--version` in each, so a broken image fails a pull request, not a deploy. Neither image holds a key, a token or a login: the CLI gets a placeholder key and a base URL of `http://model.internal`, and the Worker's egress proxy swaps in the organization's key on the way to AI Gateway (S7-R48). `tools/infra/containers.test.ts` refuses an `ENV` or `ARG` named like a credential, an unpinned base and an image that ends as root.
 
-The classes `ClaudeCodeSandbox` and `CodexSandbox` (`apps/uw-app/engines/sandbox/classes.ts`) start with the internet off and send every outbound HTTP request through one handler, which answers `403 egress refused` for anything but the model host and `mcp.internal` (S7-R47). `wrangler.go-live.toml` declares them for staging and production only: two `[[env.<name>.containers]]` blocks, the `CLAUDE_CODE_SANDBOX` and `CODEX_SANDBOX` Durable Object bindings, and the top-level `v2` migration that adds both as SQLite classes. A deploy with these blocks needs Docker on the runner to build the images.
+The classes `ClaudeCodeSandbox` and `CodexSandbox` (`apps/uw-platform/engines/sandbox/classes.ts`) start with the internet off and send every outbound HTTP request through one handler, which answers `403 egress refused` for anything but the model host and `mcp.internal` (S7-R47). `wrangler.go-live.toml` declares them for staging and production only: two `[[env.<name>.containers]]` blocks, the `CLAUDE_CODE_SANDBOX` and `CODEX_SANDBOX` Durable Object bindings, and the top-level `v2` migration that adds both as SQLite classes. A deploy with these blocks needs Docker on the runner to build the images.
 
 ## Access (FD-7)
 
-`access/uw-app.json` declares Cloudflare Access in front of `uw-app` on production, staging and every per-PR Worker, as three applications. The app application covers the host: people sign in with Google and nothing else (no one-time PIN, since #154), and no service token is admitted. The `mcp` application covers `/mcp` alone with its own AUD tag: people sign their agents in with Google (through `cloudflared access`), and any valid service token passes as a non-identity request and becomes a non-interactive agent principal. Because the two applications have different audiences, a token an agent holds for `/mcp` is refused on every other path, and a browser session is refused on `/mcp` (R34). `/health/probe` alone is bypassed, on every host, so the deploy jobs (`deploy-staging.yml` and `deploy-pr.yml`, through `await-health.sh`) can read the deployed commit; `/health` itself shows the agent plane and needs a signed-in person. The app application sends its session cookie `SameSite=Lax`, so a form posted from another site carries no session. Applying either change on Cloudflare is a person's (Waiting on a person).
+`access/uw-platform.json` declares Cloudflare Access in front of `uw-platform` on production, staging and every per-PR Worker, as three applications. The app application covers the host: people sign in with Google and nothing else (no one-time PIN, since #154), and no service token is admitted. The `mcp` application covers `/mcp` alone with its own AUD tag: people sign their agents in with Google (through `cloudflared access`), and any valid service token passes as a non-identity request and becomes a non-interactive agent principal. Because the two applications have different audiences, a token an agent holds for `/mcp` is refused on every other path, and a browser session is refused on `/mcp` (R34). `/health/probe` alone is bypassed, on every host, so the deploy jobs (`deploy-staging.yml` and `deploy-pr.yml`, through `await-health.sh`) can read the deployed commit; `/health` itself shows the agent plane and needs a signed-in person. The app application sends its session cookie `SameSite=Lax`, so a form posted from another site carries no session. Applying either change on Cloudflare is a person's (Waiting on a person).
 
 The allow policy admits anyone with a Google account on purpose. A person outside `@unfoldingword.org` must reach the app to be recorded as pending (FD-7); an org admin then approves or declines them on the Access screen (`/access`). Authorization is the grants table, not Access, and Google Groups are not read. Because sign-in is Google, Workspace's multi-factor rules and offboarding apply to `@unfoldingword.org` accounts: suspending someone in Google stops their sign-in.
 
@@ -69,7 +69,7 @@ The file holds the bodies of two Cloudflare API calls, applied by a person with 
 - The same two calls for `health_bypass.application` with `health_bypass.policies`.
 - The same two calls for `mcp.application` with `mcp.policies`.
 
-Replace `<google-idp-id>` with the Google identity provider's id from `GET /accounts/{account_id}/access/identity_providers`. To apply a change to an application that already exists, send the same body with `PUT /accounts/{account_id}/access/apps/{app_id}`. After creation, the app application's AUD tag, the `mcp` application's AUD tag and the team domain go into `ACCESS_AUD`, `ACCESS_MCP_AUD` and `ACCESS_TEAM_DOMAIN` in `infra/uw-app/wrangler.go-live.toml` (Task 16 of the step-1 plan). An AUD tag is configuration, not a secret. The three applications cover production, staging and every per-PR Worker; they were applied on 2026-11-10 to the team `unfoldingword.cloudflareaccess.com`.
+Replace `<google-idp-id>` with the Google identity provider's id from `GET /accounts/{account_id}/access/identity_providers`. To apply a change to an application that already exists, send the same body with `PUT /accounts/{account_id}/access/apps/{app_id}`. After creation, the app application's AUD tag, the `mcp` application's AUD tag and the team domain go into `ACCESS_AUD`, `ACCESS_MCP_AUD` and `ACCESS_TEAM_DOMAIN` in `infra/uw-platform/wrangler.go-live.toml` (Task 16 of the step-1 plan). An AUD tag is configuration, not a secret. The three applications cover production, staging and every per-PR Worker; they were applied on 2026-11-10 to the team `unfoldingword.cloudflareaccess.com`.
 
 A fourth application, `migrations`, covers the database hostname `uw-db-production.unfoldingword.us` and admits only the service token `uw-platform GitHub migrations` (replace `<github-migrations-service-token-id>` with its id). Its client id and secret are the `DATABASE_TUNNEL_CLIENT_ID` and `DATABASE_TUNNEL_CLIENT_SECRET` secrets. The tunnel's public TCP hostname, `uw-db-production.unfoldingword.us` to the Aurora endpoint on port 5432, is added on the tunnel itself.
 
@@ -77,7 +77,7 @@ The production Hyperdrive config `uw-platform-production` reaches Aurora through
 
 ## uw-ingest
 
-`uw-ingest/wrangler.toml` declares two environments, `staging` and `production`, like `uw-app`. uw-ingest is a separate Worker and is not behind Access: each webhook source authenticates by its signature over the raw body.
+`uw-ingest/wrangler.toml` declares two environments, `staging` and `production`, like `uw-platform`. uw-ingest is a separate Worker and is not behind Access: each webhook source authenticates by its signature over the raw body.
 
 | Environment | Worker name | Reachable at | Deployed by |
 |---|---|---|---|
@@ -103,7 +103,7 @@ An org owner of `unfoldingWord` sets it up once, awaiting go-live:
 1. Register the App with GitHub's "Register a GitHub App from a manifest" flow (docs.github.com): post the file's JSON, with a `redirect_url` added for the flow's one-time `code`, as the `manifest` field of a form to `https://github.com/organizations/unfoldingWord/settings/apps/new`, then exchange the code with `POST /app-manifests/{code}/conversions`. The answer carries the App id, the webhook secret and a private key, once.
 2. Install the App on `unfoldingWord/uw-platform` only, and note the installation id from the installation's settings URL.
 3. Convert the key to PKCS#8, which the Worker requires: `openssl pkcs8 -topk8 -nocrypt -in key.pem -out key.pkcs8.pem`. Delete both files after step 4.
-4. Set the secrets. For `uw-app` (from `infra/uw-app`):
+4. Set the secrets. For `uw-platform` (from `infra/uw-platform`):
 
    ```
    wrangler secret put GITHUB_APP_ID --env <name>
@@ -117,7 +117,7 @@ An org owner of `unfoldingWord` sets it up once, awaiting go-live:
    wrangler secret put GITHUB_WEBHOOK_SECRET --env <name>
    ```
 
-None of the four appears in any file. Until they are set, `uw-app` treats GitHub as not configured and nothing that runs needs them.
+None of the four appears in any file. Until they are set, `uw-platform` treats GitHub as not configured and nothing that runs needs them.
 
 The production App, `uw-harness`, is a second registration from `github/app-manifest.production.json`, the same manifest with production's ingest URL. Production uw-ingest serves `uw-ingest.unfoldingword.workers.dev` for it.
 
@@ -125,23 +125,23 @@ The webhook host assumes the account's `workers.dev` subdomain is `unfoldingword
 
 ### Tokens and the subrequest budget
 
-`uw-app` signs a JWT with the App key and mints one installation token per unit of work: one queue delivery, one sweep run over one repository, or one connector run. Each token is scoped when it is minted, to the one repository the unit concerns and to the permissions of its client: the read client asks for `contents`, `pull_requests`, `issues`, `checks` and `metadata` read; the comment writer for `issues` write and `metadata` read; the merge and tag writes for `contents` write with `pull_requests` and `metadata` read. A read client's token never carries a write permission, and a client refuses a request for a second repository. Listing the installation's repositories uses a separate token with `metadata` read and no repository. The token lives only inside the client object for that unit, so it never reaches a caller, a log line, a model process or an MCP response. GitHub answers each token with its expiry (an hour); the client mints again when its token is within five minutes of expiry, and never keeps a failed mint, so the next request retries.
+`uw-platform` signs a JWT with the App key and mints one installation token per unit of work: one queue delivery, one sweep run over one repository, or one connector run. Each token is scoped when it is minted, to the one repository the unit concerns and to the permissions of its client: the read client asks for `contents`, `pull_requests`, `issues`, `checks` and `metadata` read; the comment writer for `issues` write and `metadata` read; the merge and tag writes for `contents` write with `pull_requests` and `metadata` read. A read client's token never carries a write permission, and a client refuses a request for a second repository. Listing the installation's repositories uses a separate token with `metadata` read and no repository. The token lives only inside the client object for that unit, so it never reaches a caller, a log line, a model process or an MCP response. GitHub answers each token with its expiry (an hour); the client mints again when its token is within five minutes of expiry, and never keeps a failed mint, so the next request retries.
 
 Each unit therefore spends one subrequest on the token plus one per GitHub request. The client bounds every list it reads: a pull request's files in one comparison of its base and head SHAs (GitHub lists at most 300 files there, and 300 or more counts as too many), the issues of a sweep at the caller's page limit, and any other list at 10 pages. A delivery that refreshes one pull request's facts makes at most 23 subrequests (token, pull request, the comparison, 10 pages of reviews, 10 of check runs) and usually 5. Every unit must stay under the Workers per-invocation subrequest limit of the account's plan.
 
-The nightly sweep (`apps/uw-app/github/sweep.ts`, cron `17 3 * * *`) is one invocation over every repository. It spends one subrequest on the installation token that lists the repositories and one on each repository's own token, so it mints once per repository per run. It starts the repository it attempted least recently first, so a busy repository cannot starve the others. Per repository it reads 100 issues per request, each request starting from the greatest `updated_at` seen so far (keyset, so an item updated mid-listing or tied at a boundary is never skipped), then, for each pull request in that listing or still open in the read model, the pull request, its reviews, the check runs on its head and, when the files at that head and base are not stored, one comparison: 4 subrequests in the usual case and up to 23 with long review or check lists. The sweep counts every subrequest it sends and never sends more than its bound (`maxSubrequests`, 900 by default). It starts a pull request only while 8 remain, starts a repository only while its token, one listing page and one pull request fit, and shrinks the listing's page limit to what remains. A pull request it does not reach, or cannot read, waits for the next night: the watermark moves only to the greatest `updated_at` it listed and stored, never past the first listed pull request it did not store, and never back. Every run records its outcome (`ok`, `capped`, `stalled`, `deferred` or `failed`), the hold point and the reason in `gh_repos.last_sweep`. The bound must stay under the plan's per-invocation limit, which a person confirms before the cron trigger is switched on.
+The nightly sweep (`apps/uw-platform/github/sweep.ts`, cron `17 3 * * *`) is one invocation over every repository. It spends one subrequest on the installation token that lists the repositories and one on each repository's own token, so it mints once per repository per run. It starts the repository it attempted least recently first, so a busy repository cannot starve the others. Per repository it reads 100 issues per request, each request starting from the greatest `updated_at` seen so far (keyset, so an item updated mid-listing or tied at a boundary is never skipped), then, for each pull request in that listing or still open in the read model, the pull request, its reviews, the check runs on its head and, when the files at that head and base are not stored, one comparison: 4 subrequests in the usual case and up to 23 with long review or check lists. The sweep counts every subrequest it sends and never sends more than its bound (`maxSubrequests`, 900 by default). It starts a pull request only while 8 remain, starts a repository only while its token, one listing page and one pull request fit, and shrinks the listing's page limit to what remains. A pull request it does not reach, or cannot read, waits for the next night: the watermark moves only to the greatest `updated_at` it listed and stored, never past the first listed pull request it did not store, and never back. Every run records its outcome (`ok`, `capped`, `stalled`, `deferred` or `failed`), the hold point and the reason in `gh_repos.last_sweep`. The bound must stay under the plan's per-invocation limit, which a person confirms before the cron trigger is switched on.
 
 ## Reviewer Apps (HE-4, HE-9)
 
 Each Reviewer identity is its own GitHub App, so a review it posts is attributed to that identity and nothing else can post as it: `github/reviewer-app-manifest.json` declares `uw-reviewer` (the message engines' Reviewer) and `github/reviewer-codex-app-manifest.json` declares `uw-reviewer-codex` (the Codex engine's). Both are private, ask for `pull_requests` write and `metadata` read and nothing else, and subscribe to no event: the harness reads their reviews back through the harness App's `pull_request_review` webhook, which counts a review toward Ship only when its login (`uw-reviewer[bot]`, `uw-reviewer-codex[bot]`, `packages/harness/github/reviewers.ts`) is a Reviewer identity.
 
-Only the run host's kernel (`apps/uw-app/runs/`) holds these Apps. It mints one token per review, scoped to the one repository and to `pull_requests` write and `metadata` read, and posts `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews` with the head commit as `commit_id`. The MCP, queue, cron and command kernels never receive them.
+Only the run host's kernel (`apps/uw-platform/runs/`) holds these Apps. It mints one token per review, scoped to the one repository and to `pull_requests` write and `metadata` read, and posts `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews` with the head commit as `commit_id`. The MCP, queue, cron and command kernels never receive them.
 
 An org owner of `unfoldingWord` registers each App once, awaiting go-live:
 
 1. Register the App from its manifest with the same "Register a GitHub App from a manifest" flow as the harness App (above), adding a `redirect_url`. The App name must stay `uw-reviewer` or `uw-reviewer-codex`, since its slug is its Reviewer login; confirm GitHub kept the slug.
 2. Install it on `unfoldingWord/uw-platform` only, and note the installation id.
-3. Convert the key to PKCS#8 as above, then set the secrets for `uw-app` (from `infra/uw-app`):
+3. Convert the key to PKCS#8 as above, then set the secrets for `uw-platform` (from `infra/uw-platform`):
 
    ```
    wrangler secret put REVIEWER_GITHUB_APP_ID --env <name>
@@ -158,13 +158,13 @@ Until a Reviewer's three secrets are set, its review answers `not_wired` and the
 
 The hosted Builder pushes its work and opens its pull request as its own GitHub App, `uw-builder` (`github/builder-app-manifest.json`): private, `contents` write, `pull_requests` write, `metadata` read, no webhook and no event. It has no `workflows` permission, so GitHub refuses a push that touches `.github/workflows/`. Its login is `uw-builder[bot]` (`packages/harness/github/builder.ts`), which never counts as a Reviewer.
 
-The sandbox never holds its token. The container reaches GitHub only over plain HTTP to `http://github.internal` and `http://api.github.internal`; the egress proxy in the run host (`apps/uw-app/engines/sandbox/github-egress.ts`) allows a clone and fetch of the harness's one repository, a push whose one ref update targets `refs/heads/harness/<item>` and deletes nothing, and a pull request from that branch into the default branch whose body opens with the `harness` declaration. It then mints one installation token per work step, scoped to that repository (`apps/uw-app/github/builder-app.ts`), and sets it on the forwarded request. Everything else is `403 egress refused`.
+The sandbox never holds its token. The container reaches GitHub only over plain HTTP to `http://github.internal` and `http://api.github.internal`; the egress proxy in the run host (`apps/uw-platform/engines/sandbox/github-egress.ts`) allows a clone and fetch of the harness's one repository, a push whose one ref update targets `refs/heads/harness/<item>` and deletes nothing, and a pull request from that branch into the default branch whose body opens with the `harness` declaration. It then mints one installation token per work step, scoped to that repository (`apps/uw-platform/github/builder-app.ts`), and sets it on the forwarded request. Everything else is `403 egress refused`.
 
 An org owner of `unfoldingWord` registers the App once, awaiting go-live:
 
 1. Register the App from its manifest with the same "Register a GitHub App from a manifest" flow as the harness App (above), adding a `redirect_url`. Keep the name `uw-builder` and confirm GitHub kept the slug, since the slug is the Builder login.
 2. Install it on `unfoldingWord/uw-platform` only, and note the installation id.
-3. Convert the key to PKCS#8 as above, then set the secrets for `uw-app` (from `infra/uw-app`):
+3. Convert the key to PKCS#8 as above, then set the secrets for `uw-platform` (from `infra/uw-platform`):
 
    ```
    wrangler secret put BUILDER_GITHUB_APP_ID --env <name>
@@ -182,20 +182,20 @@ A hosted agent needs three things the code reads but no file holds: an AI Gatewa
 
 | Setting | Kind | Worker | Value or source |
 |---|---|---|---|
-| `AI_GATEWAY_ACCOUNT_ID` | var | uw-app | The account id, in the wrangler files |
-| `AI_GATEWAY_ID` | var | uw-app | `uw-platform-staging` or `uw-platform-production`, in the wrangler files |
-| `AI_SPEND_CAP_MINOR` | var | uw-app | `50000`, $500 a month, in the wrangler files |
-| `ALWAYS_ON_PROVIDER`, `ALWAYS_ON_MODEL` | var | uw-app | `z-ai` and `z-ai/glm-5.3-flash`, in the wrangler files |
-| `SANDBOX_MINOR_PER_HOUR` | var | uw-app | `3`, in the wrangler files (below) |
-| `AI_GATEWAY_TOKEN` | secret | uw-app | The gateway's authentication token |
-| `AI_GATEWAY_ANALYTICS_TOKEN` | secret | uw-app | An API token with Account Analytics: Read on the account, for the spend breaker |
-| `OPENROUTER_API_KEY` | secret | uw-app | The organization's key; the always-on tier |
-| `ANTHROPIC_API_KEY` | secret | uw-app | The organization's key; the Claude Code sandbox and `claude-messages` |
-| `OPENAI_API_KEY` | secret | uw-app | The organization's key; the Codex sandbox and the second reviewer |
-| `GITHUB_APP_*`, `BUILDER_GITHUB_APP_*`, `REVIEWER_GITHUB_APP_*`, `REVIEWER_CODEX_GITHUB_APP_*` | secret | uw-app | Set by `pnpm github-apps:convert` |
+| `AI_GATEWAY_ACCOUNT_ID` | var | uw-platform | The account id, in the wrangler files |
+| `AI_GATEWAY_ID` | var | uw-platform | `uw-platform-staging` or `uw-platform-production`, in the wrangler files |
+| `AI_SPEND_CAP_MINOR` | var | uw-platform | `50000`, $500 a month, in the wrangler files |
+| `ALWAYS_ON_PROVIDER`, `ALWAYS_ON_MODEL` | var | uw-platform | `z-ai` and `z-ai/glm-5.3-flash`, in the wrangler files |
+| `SANDBOX_MINOR_PER_HOUR` | var | uw-platform | `3`, in the wrangler files (below) |
+| `AI_GATEWAY_TOKEN` | secret | uw-platform | The gateway's authentication token |
+| `AI_GATEWAY_ANALYTICS_TOKEN` | secret | uw-platform | An API token with Account Analytics: Read on the account, for the spend breaker |
+| `OPENROUTER_API_KEY` | secret | uw-platform | The organization's key; the always-on tier |
+| `ANTHROPIC_API_KEY` | secret | uw-platform | The organization's key; the Claude Code sandbox and `claude-messages` |
+| `OPENAI_API_KEY` | secret | uw-platform | The organization's key; the Codex sandbox and the second reviewer |
+| `GITHUB_APP_*`, `BUILDER_GITHUB_APP_*`, `REVIEWER_GITHUB_APP_*`, `REVIEWER_CODEX_GITHUB_APP_*` | secret | uw-platform | Set by `pnpm github-apps:convert` |
 | `GITHUB_WEBHOOK_SECRET` | secret | uw-ingest | Set by `pnpm github-apps:convert` |
 
-Each secret is set from `infra/uw-app` (or `infra/uw-ingest`) with `wrangler secret put <NAME> --env staging`, then `--env production`, typed at the prompt and never written to a file or a chat. `tools/infra/agent-settings.test.ts` holds the vars to these values and refuses a var named like a credential.
+Each secret is set from `infra/uw-platform` (or `infra/uw-ingest`) with `wrangler secret put <NAME> --env staging`, then `--env production`, typed at the prompt and never written to a file or a chat. `tools/infra/agent-settings.test.ts` holds the vars to these values and refuses a var named like a credential.
 
 **The sandbox rate.** Both sandboxes run on the `basic` instance type (1/4 vCPU, 1 GiB memory, 4 GB disk); `lite`'s 256 MiB is too small to run a Node CLI and a clone. At Cloudflare's Containers prices (developers.cloudflare.com/containers/pricing, read 2026-11-17: $0.0000025 per GiB-second of memory, $0.000020 per vCPU-second of active CPU, $0.00000007 per GB-second of disk), a fully busy `basic` instance costs about $0.028 an hour, so the rate is 3 cents an hour, rounded up.
 
@@ -220,17 +220,17 @@ Each key is symmetric and single-region, with one key administrator who may not 
 
 | Setting | Kind | Worker | Value or source |
 |---|---|---|---|
-| `CREDENTIALS_KMS_REGION` | var | uw-app | `us-west-2`, in the wrangler files |
-| `CREDENTIALS_KMS_KEY_ID` | var | uw-app | The environment's key ARN, in the wrangler files. An ARN, not the alias, so the key cannot be repointed |
-| `CREDENTIALS_KMS_ACCESS_KEY_ID` | secret | uw-app | The access key of that environment's IAM user |
-| `CREDENTIALS_KMS_SECRET_ACCESS_KEY` | secret | uw-app | Its secret, shown once when the access key is created |
+| `CREDENTIALS_KMS_REGION` | var | uw-platform | `us-west-2`, in the wrangler files |
+| `CREDENTIALS_KMS_KEY_ID` | var | uw-platform | The environment's key ARN, in the wrangler files. An ARN, not the alias, so the key cannot be repointed |
+| `CREDENTIALS_KMS_ACCESS_KEY_ID` | secret | uw-platform | The access key of that environment's IAM user |
+| `CREDENTIALS_KMS_SECRET_ACCESS_KEY` | secret | uw-platform | Its secret, shown once when the access key is created |
 
 `tools/infra/credentials-kms.test.ts` holds the two vars to these values, keeps the two environments on different keys, and gives a preview Worker neither.
 
 **Setting or rotating the access key.** An IAM user may hold two access keys, so the old one works until the new one is in place.
 
 1. In the AWS console open IAM, Users, the environment's user, Security credentials, and create an access key for an application running outside AWS.
-2. From `infra/uw-app`, with `CLOUDFLARE_ACCOUNT_ID` set to the organization's account if your login reaches more than one, run `wrangler secret put CREDENTIALS_KMS_ACCESS_KEY_ID --env <name>` and `wrangler secret put CREDENTIALS_KMS_SECRET_ACCESS_KEY --env <name>`, each typed at the prompt.
+2. From `infra/uw-platform`, with `CLOUDFLARE_ACCOUNT_ID` set to the organization's account if your login reaches more than one, run `wrangler secret put CREDENTIALS_KMS_ACCESS_KEY_ID --env <name>` and `wrangler secret put CREDENTIALS_KMS_SECRET_ACCESS_KEY --env <name>`, each typed at the prompt.
 3. When the store has opened a credential with the new pair, delete the old access key in AWS.
 
 ## Routines (#134)
@@ -239,16 +239,16 @@ A routine is a person's own Claude Code or Codex working a workflow unattended, 
 
 | Setting | Kind | Worker | Value or source |
 |---|---|---|---|
-| `ACCESS_ACCOUNT_ID` | var | uw-app | The account id, in the wrangler files |
-| `ACCESS_SERVICE_TOKENS_API_TOKEN` | secret | uw-app | An API token with only Access: Service Tokens Edit on this account |
+| `ACCESS_ACCOUNT_ID` | var | uw-platform | The account id, in the wrangler files |
+| `ACCESS_SERVICE_TOKENS_API_TOKEN` | secret | uw-platform | An API token with only Access: Service Tokens Edit on this account |
 
-Someone with Zero Trust rights on the account creates the API token (My Profile, API Tokens, Create Custom Token, Account, Access: Service Tokens, Edit, this account only). It is then set from `infra/uw-app` with `wrangler secret put ACCESS_SERVICE_TOKENS_API_TOKEN --env staging`, then `--env production`, typed at the prompt. Until it is set, the Agents tab says routines are not switched on and nothing else changes.
+Someone with Zero Trust rights on the account creates the API token (My Profile, API Tokens, Create Custom Token, Account, Access: Service Tokens, Edit, this account only). It is then set from `infra/uw-platform` with `wrangler secret put ACCESS_SERVICE_TOKENS_API_TOKEN --env staging`, then `--env production`, typed at the prompt. Until it is set, the Agents tab says routines are not switched on and nothing else changes.
 
 ## The notifier: web push and Zulip (NT-1, NT-3)
 
-The notifier reads its configuration from `uw-app`'s variables and secrets. With any piece missing or malformed, that channel answers `not_configured` and logs; nothing fails at startup.
+The notifier reads its configuration from `uw-platform`'s variables and secrets. With any piece missing or malformed, that channel answers `not_configured` and logs; nothing fails at startup.
 
-Variables, in `infra/uw-app/wrangler.go-live.toml` under staging and production only (`set-at-go-live` until then):
+Variables, in `infra/uw-platform/wrangler.go-live.toml` under staging and production only (`set-at-go-live` until then):
 
 | Variable | Value |
 |---|---|
@@ -262,7 +262,7 @@ Variables, in `infra/uw-app/wrangler.go-live.toml` under staging and production 
 Secrets, set with `wrangler secret put <name> --env <name>` and written in no file:
 
 ```bash
-# uw-app (from infra/uw-app)
+# uw-platform (from infra/uw-platform)
 wrangler secret put VAPID_PRIVATE_JWK --env <name>   # the VAPID private key as JWK JSON (kty EC, crv P-256, d, x, y)
 wrangler secret put ZULIP_BOT_API_KEY --env <name>
 # uw-ingest (from infra/uw-ingest)
@@ -275,24 +275,24 @@ A post reaches everyone in its channel, and the platform does not check who that
 
 ## Platform secrets in Cloudflare Secrets Store (#160)
 
-The secrets the platform itself runs on live in the account's Cloudflare Secrets Store, and each Worker binds only the ones it reads. `uw-ingest` binds its two; `uw-app` binds the rest; a per-PR Worker (`preview`) binds none. The list is `infra/secrets-store.json`, under 30-39 Infrastructure: each secret with what it is, who issues it, its owner and the date to rotate it by, per environment. `tools/infra/secrets-store.test.ts` keeps the list, the wrangler files and the code naming the same secrets, and fails when a binding named like a credential is added to a Worker without a row.
+The secrets the platform itself runs on live in the account's Cloudflare Secrets Store, and each Worker binds only the ones it reads. `uw-ingest` binds its two; `uw-platform` binds the rest; a per-PR Worker (`preview`) binds none. The list is `infra/secrets-store.json`, under 30-39 Infrastructure: each secret with what it is, who issues it, its owner and the date to rotate it by, per environment. `tools/infra/secrets-store.test.ts` keeps the list, the wrangler files and the code naming the same secrets, and fails when a binding named like a credential is added to a Worker without a row.
 
 | Secret | Worker | Binding | Name in the store |
 |---|---|---|---|
-| `ACCESS_SERVICE_TOKENS_API_TOKEN` | uw-app | `STORE_ACCESS_SERVICE_TOKENS_API_TOKEN` | `UW_<ENV>_ACCESS_SERVICE_TOKENS_API_TOKEN` |
-| `AI_GATEWAY_ANALYTICS_TOKEN` | uw-app | `STORE_AI_GATEWAY_ANALYTICS_TOKEN` | `UW_<ENV>_AI_GATEWAY_ANALYTICS_TOKEN` |
-| `AI_GATEWAY_TOKEN` | uw-app | `STORE_AI_GATEWAY_TOKEN` | `UW_<ENV>_AI_GATEWAY_TOKEN` |
-| `ANTHROPIC_API_KEY` | uw-app | `STORE_ANTHROPIC_API_KEY` | `UW_<ENV>_ANTHROPIC_API_KEY` |
-| `BUILDER_GITHUB_APP_PRIVATE_KEY` | uw-app | `STORE_BUILDER_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_BUILDER_GITHUB_APP_PRIVATE_KEY` |
-| `CREDENTIALS_KMS_ACCESS_KEY_ID` | uw-app | `STORE_CREDENTIALS_KMS_ACCESS_KEY_ID` | `UW_<ENV>_CREDENTIALS_KMS_ACCESS_KEY_ID` |
-| `CREDENTIALS_KMS_SECRET_ACCESS_KEY` | uw-app | `STORE_CREDENTIALS_KMS_SECRET_ACCESS_KEY` | `UW_<ENV>_CREDENTIALS_KMS_SECRET_ACCESS_KEY` |
-| `GITHUB_APP_PRIVATE_KEY` | uw-app | `STORE_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_GITHUB_APP_PRIVATE_KEY` |
-| `OPENAI_API_KEY` | uw-app | `STORE_OPENAI_API_KEY` | `UW_<ENV>_OPENAI_API_KEY` |
-| `OPENROUTER_API_KEY` | uw-app | `STORE_OPENROUTER_API_KEY` | `UW_<ENV>_OPENROUTER_API_KEY` |
-| `REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY` | uw-app | `STORE_REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY` |
-| `REVIEWER_GITHUB_APP_PRIVATE_KEY` | uw-app | `STORE_REVIEWER_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_REVIEWER_GITHUB_APP_PRIVATE_KEY` |
-| `VAPID_PRIVATE_JWK` | uw-app | `STORE_VAPID_PRIVATE_JWK` | `UW_<ENV>_VAPID_PRIVATE_JWK` |
-| `ZULIP_BOT_API_KEY` | uw-app | `STORE_ZULIP_BOT_API_KEY` | `UW_<ENV>_ZULIP_BOT_API_KEY` |
+| `ACCESS_SERVICE_TOKENS_API_TOKEN` | uw-platform | `STORE_ACCESS_SERVICE_TOKENS_API_TOKEN` | `UW_<ENV>_ACCESS_SERVICE_TOKENS_API_TOKEN` |
+| `AI_GATEWAY_ANALYTICS_TOKEN` | uw-platform | `STORE_AI_GATEWAY_ANALYTICS_TOKEN` | `UW_<ENV>_AI_GATEWAY_ANALYTICS_TOKEN` |
+| `AI_GATEWAY_TOKEN` | uw-platform | `STORE_AI_GATEWAY_TOKEN` | `UW_<ENV>_AI_GATEWAY_TOKEN` |
+| `ANTHROPIC_API_KEY` | uw-platform | `STORE_ANTHROPIC_API_KEY` | `UW_<ENV>_ANTHROPIC_API_KEY` |
+| `BUILDER_GITHUB_APP_PRIVATE_KEY` | uw-platform | `STORE_BUILDER_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_BUILDER_GITHUB_APP_PRIVATE_KEY` |
+| `CREDENTIALS_KMS_ACCESS_KEY_ID` | uw-platform | `STORE_CREDENTIALS_KMS_ACCESS_KEY_ID` | `UW_<ENV>_CREDENTIALS_KMS_ACCESS_KEY_ID` |
+| `CREDENTIALS_KMS_SECRET_ACCESS_KEY` | uw-platform | `STORE_CREDENTIALS_KMS_SECRET_ACCESS_KEY` | `UW_<ENV>_CREDENTIALS_KMS_SECRET_ACCESS_KEY` |
+| `GITHUB_APP_PRIVATE_KEY` | uw-platform | `STORE_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_GITHUB_APP_PRIVATE_KEY` |
+| `OPENAI_API_KEY` | uw-platform | `STORE_OPENAI_API_KEY` | `UW_<ENV>_OPENAI_API_KEY` |
+| `OPENROUTER_API_KEY` | uw-platform | `STORE_OPENROUTER_API_KEY` | `UW_<ENV>_OPENROUTER_API_KEY` |
+| `REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY` | uw-platform | `STORE_REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY` |
+| `REVIEWER_GITHUB_APP_PRIVATE_KEY` | uw-platform | `STORE_REVIEWER_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_REVIEWER_GITHUB_APP_PRIVATE_KEY` |
+| `VAPID_PRIVATE_JWK` | uw-platform | `STORE_VAPID_PRIVATE_JWK` | `UW_<ENV>_VAPID_PRIVATE_JWK` |
+| `ZULIP_BOT_API_KEY` | uw-platform | `STORE_ZULIP_BOT_API_KEY` | `UW_<ENV>_ZULIP_BOT_API_KEY` |
 | `GITHUB_WEBHOOK_SECRET` | uw-ingest | `STORE_GITHUB_WEBHOOK_SECRET` | `UW_<ENV>_GITHUB_WEBHOOK_SECRET` |
 | `ZULIP_WEBHOOK_TOKEN` | uw-ingest | `STORE_ZULIP_WEBHOOK_TOKEN` | `UW_<ENV>_ZULIP_WEBHOOK_TOKEN` |
 
@@ -300,33 +300,33 @@ The secrets the platform itself runs on live in the account's Cloudflare Secrets
 
 ### How a secret is read
 
-A Secrets Store binding is not a string: the Worker reads it with `await env.<BINDING>.get()`. Both Workers do that in one place, `withSecrets` (`apps/uw-app/secrets.ts`, `apps/uw-ingest/secrets.ts`, over `packages/core/platform-secrets.ts`), before any request, queue batch, cron or run is handled. For each secret it reads the `STORE_<NAME>` binding when one is declared; when none is declared it reads the Worker secret `<NAME>`, as before the move. The rest of the code sees a plain string under the old name. A Worker instance keeps what it read for five minutes, so a rotated value arrives without a deploy.
+A Secrets Store binding is not a string: the Worker reads it with `await env.<BINDING>.get()`. Both Workers do that in one place, `withSecrets` (`apps/uw-platform/secrets.ts`, `apps/uw-ingest/secrets.ts`, over `packages/core/platform-secrets.ts`), before any request, queue batch, cron or run is handled. For each secret it reads the `STORE_<NAME>` binding when one is declared; when none is declared it reads the Worker secret `<NAME>`, as before the move. The rest of the code sees a plain string under the old name. A Worker instance keeps what it read for five minutes, so a rotated value arrives without a deploy.
 
-`/health/probe` on `uw-app` and `/health` on `uw-ingest` carry a `secrets` indicator that counts the sources and never names a secret or shows a value, for example `14 from the Secrets Store, 0 from Worker secrets, 0 not set`. If a declared binding cannot be read, the indicator is red and adds `1 unreadable in the Secrets Store`, the Worker logs `secret_store_unreadable` with the secret's name, and that secret is read from its Worker secret while one still exists. So a broken binding is never hidden by the fallback.
+`/health/probe` on `uw-platform` and `/health` on `uw-ingest` carry a `secrets` indicator that counts the sources and never names a secret or shows a value, for example `14 from the Secrets Store, 0 from Worker secrets, 0 not set`. If a declared binding cannot be read, the indicator is red and adds `1 unreadable in the Secrets Store`, the Worker logs `secret_store_unreadable` with the secret's name, and that secret is read from its Worker secret while one still exists. So a broken binding is never hidden by the fallback.
 
 The bindings are declared in each `wrangler.go-live.toml`, with `store_id = "set-at-go-live"`. A block is copied into `wrangler.toml` when its secret exists in the store; a test refuses a block in `wrangler.toml` that differs from the go-live file, has no store id, or whose secret has no owner and rotation date in `infra/secrets-store.json`.
 
 ### Before the first move
 
-Whoever does this needs the Super Administrator or Secrets Store Admin role on the account, and runs `pnpm --filter @uw/uw-app exec wrangler login` first. No value is ever typed into a file, a chat or a command line: `wrangler` asks for it at a hidden prompt, or reads it from a file on standard input.
+Whoever does this needs the Super Administrator or Secrets Store Admin role on the account, and runs `pnpm --filter @uw/uw-platform exec wrangler login` first. No value is ever typed into a file, a chat or a command line: `wrangler` asks for it at a hidden prompt, or reads it from a file on standard input.
 
 1. **Find the store.** An account has one. List it, and create it only if the list is empty:
 
    ```
-   pnpm --filter @uw/uw-app exec wrangler secrets-store store list --remote
-   pnpm --filter @uw/uw-app exec wrangler secrets-store store create uw-platform --remote
+   pnpm --filter @uw/uw-platform exec wrangler secrets-store store list --remote
+   pnpm --filter @uw/uw-platform exec wrangler secrets-store store create uw-platform --remote
    ```
 
-2. **Declare the store id.** A store id is configuration, not a secret. Put it in place of every `store_id = "set-at-go-live"` in `infra/uw-app/wrangler.go-live.toml` and `infra/uw-ingest/wrangler.go-live.toml`, in a pull request:
+2. **Declare the store id.** A store id is configuration, not a secret. Put it in place of every `store_id = "set-at-go-live"` in `infra/uw-platform/wrangler.go-live.toml` and `infra/uw-ingest/wrangler.go-live.toml`, in a pull request:
 
    ```
-   sed -i 's/^store_id = "set-at-go-live"$/store_id = "<store id>"/' infra/uw-app/wrangler.go-live.toml infra/uw-ingest/wrangler.go-live.toml
+   sed -i 's/^store_id = "set-at-go-live"$/store_id = "<store id>"/' infra/uw-platform/wrangler.go-live.toml infra/uw-ingest/wrangler.go-live.toml
    pnpm exec vitest run tools/infra
    ```
 
 3. **Let the deploy bind secrets.** Add Account, Secrets Store, Edit to the API token behind the repository secret `CLOUDFLARE_API_TOKEN`. Cloudflare requires it to deploy a Worker that binds a Secrets Store secret; without it the deploy fails with an authorization error. The token still cannot read a value: nothing can, once a secret is stored.
 
-4. **The KMS key and its user (#157, #186).** These exist: see "The credentials store's key service" above. `infra/aws/credentials-kms.json` declares them, for each environment one symmetric KMS key in `us-west-2` and one IAM user whose only policy, the inline `credentials-data-keys`, allows `kms:Decrypt` and `kms:GenerateDataKey` on that key. The Worker holds a long-lived key pair, so this is an IAM user and not a role. Each key ARN is also `CREDENTIALS_KMS_KEY_ID` under that environment in both `infra/uw-app/wrangler.toml` and `infra/uw-app/wrangler.go-live.toml`; an ARN is configuration, not a secret. To check a user against the declaration, or to put the policy back:
+4. **The KMS key and its user (#157, #186).** These exist: see "The credentials store's key service" above. `infra/aws/credentials-kms.json` declares them, for each environment one symmetric KMS key in `us-west-2` and one IAM user whose only policy, the inline `credentials-data-keys`, allows `kms:Decrypt` and `kms:GenerateDataKey` on that key. The Worker holds a long-lived key pair, so this is an IAM user and not a role. Each key ARN is also `CREDENTIALS_KMS_KEY_ID` under that environment in both `infra/uw-platform/wrangler.toml` and `infra/uw-platform/wrangler.go-live.toml`; an ARN is configuration, not a secret. To check a user against the declaration, or to put the policy back:
 
    ```
    jq --arg arn "<key arn>" '.policy | .Statement[0].Resource = $arn' infra/aws/credentials-kms.json > "$TMPDIR/uw-kms-policy.json"
@@ -344,14 +344,14 @@ Whoever does this needs the Super Administrator or Secrets Store Admin role on t
    ```
    STORE_ID=<store id>
    for name in $(jq -r '.secrets[].name | select(endswith("PRIVATE_KEY") | not)' infra/secrets-store.json); do
-     pnpm --filter @uw/uw-app exec wrangler secrets-store secret create "$STORE_ID" --name "UW_STAGING_$name" --scopes workers --remote
+     pnpm --filter @uw/uw-platform exec wrangler secrets-store secret create "$STORE_ID" --name "UW_STAGING_$name" --scopes workers --remote
    done
    ```
 
    A GitHub App private key has many lines, which the prompt cannot take. Generate an additional private key in the App's settings (an App can hold several), convert it to PKCS#8 as the GitHub App section says, and pass the file on standard input. Delete both files afterwards:
 
    ```
-   pnpm --filter @uw/uw-app exec wrangler secrets-store secret create "$STORE_ID" --name UW_STAGING_GITHUB_APP_PRIVATE_KEY --scopes workers --remote < key.pkcs8.pem
+   pnpm --filter @uw/uw-platform exec wrangler secrets-store secret create "$STORE_ID" --name UW_STAGING_GITHUB_APP_PRIVATE_KEY --scopes workers --remote < key.pkcs8.pem
    ```
 
    The same for `UW_STAGING_BUILDER_GITHUB_APP_PRIVATE_KEY`, `UW_STAGING_REVIEWER_GITHUB_APP_PRIVATE_KEY` and `UW_STAGING_REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY`.
@@ -362,12 +362,12 @@ Whoever does this needs the Super Administrator or Secrets Store Admin role on t
 
 2. **Name the owner and the rotation date.** In `infra/secrets-store.json`, set `owner` (an email address) and `rotate_by.staging` (`YYYY-MM-DD`) for each secret created.
 
-3. **Bind them.** In the same pull request as step 2, copy the `[[env.staging.secrets_store_secrets]]` block of each secret created from `infra/uw-app/wrangler.go-live.toml` into `infra/uw-app/wrangler.toml`, and the same for `uw-ingest`. Run `pnpm exec vitest run tools/infra`. Merging to `develop` deploys staging. The Worker secrets are untouched, so nothing can go missing at this step.
+3. **Bind them.** In the same pull request as step 2, copy the `[[env.staging.secrets_store_secrets]]` block of each secret created from `infra/uw-platform/wrangler.go-live.toml` into `infra/uw-platform/wrangler.toml`, and the same for `uw-ingest`. Run `pnpm exec vitest run tools/infra`. Merging to `develop` deploys staging. The Worker secrets are untouched, so nothing can go missing at this step.
 
 4. **Verify.**
 
    ```
-   curl -fsS https://uw-app-staging.unfoldingword.workers.dev/health/probe \
+   curl -fsS https://uw-platform-staging.unfoldingword.workers.dev/health/probe \
      | jq -e '.indicators[] | select(.name == "secrets")'
    curl -fsS https://uw-ingest-staging.unfoldingword.workers.dev/health \
      | jq -e '.indicators[] | select(.name == "secrets")'
@@ -378,7 +378,7 @@ Whoever does this needs the Super Administrator or Secrets Store Admin role on t
 5. **Delete the Worker secrets that were moved.** For each one, on the Worker that held it:
 
    ```
-   pnpm --filter @uw/uw-app exec wrangler secret delete ANTHROPIC_API_KEY --config ../../infra/uw-app/wrangler.toml --env staging
+   pnpm --filter @uw/uw-platform exec wrangler secret delete ANTHROPIC_API_KEY --config ../../infra/uw-platform/wrangler.toml --env staging
    pnpm --filter @uw/uw-ingest exec wrangler secret delete GITHUB_WEBHOOK_SECRET --config ../../infra/uw-ingest/wrangler.toml --env staging
    ```
 
@@ -391,7 +391,7 @@ Whoever does this needs the Super Administrator or Secrets Store Admin role on t
 Production follows staging, with an owner's word, as part of a release. Repeat step 1 with `UW_PRODUCTION_` names and production's own values, set `rotate_by.production`, and copy the `[[env.production.secrets_store_secrets]]` blocks in a pull request into `develop`. The bindings reach production with the release that carries that pull request (`gh workflow run deploy-production.yml --ref v<version>`). Then verify, delete and revoke as in steps 4 to 6, with `--env production` and:
 
 ```
-curl -fsS https://uw-app.unfoldingword.workers.dev/health/probe \
+curl -fsS https://uw-platform.unfoldingword.workers.dev/health/probe \
   | jq -e '.indicators[] | select(.name == "secrets")'
 curl -fsS https://uw-ingest.unfoldingword.workers.dev/health \
   | jq -e '.indicators[] | select(.name == "secrets")'
@@ -403,8 +403,8 @@ curl -fsS https://uw-ingest.unfoldingword.workers.dev/health \
 - **A wrong value in the store:** replace it. It answers "Do you want to update the secret value?" and then asks for the value; running Workers read it within five minutes, or at once after a deploy:
 
   ```
-  pnpm --filter @uw/uw-app exec wrangler secrets-store secret list "$STORE_ID" --remote --per-page 100
-  pnpm --filter @uw/uw-app exec wrangler secrets-store secret update "$STORE_ID" --secret-id <secret id> --remote
+  pnpm --filter @uw/uw-platform exec wrangler secrets-store secret list "$STORE_ID" --remote --per-page 100
+  pnpm --filter @uw/uw-platform exec wrangler secrets-store secret update "$STORE_ID" --secret-id <secret id> --remote
   ```
 
 - **After the Worker secrets are deleted:** set the Worker secret again with `wrangler secret put <NAME> --env <name>` and remove that secret's block from `wrangler.toml`. With no block, the Worker secret is what is read.
@@ -431,15 +431,15 @@ Nothing in the files is a secret. `logpush = true` is added to `wrangler.go-live
 
 ## Page files: the `uw-files` buckets
 
-Pictures and files attached to pages are stored in R2 through the `FILES` binding of `uw-app`: the bucket `uw-files-staging` for staging and for every per-PR Worker (`preview`), and `uw-files` for production. Both buckets are private, with no public access and no custom domain, and were created on 2026-11-21. The binding is declared in `uw-app/wrangler.toml` and `uw-app/wrangler.go-live.toml`.
+Pictures and files attached to pages are stored in R2 through the `FILES` binding of `uw-platform`: the bucket `uw-files-staging` for staging and for every per-PR Worker (`preview`), and `uw-files` for production. Both buckets are private, with no public access and no custom domain, and were created on 2026-11-21. The binding is declared in `uw-platform/wrangler.toml` and `uw-platform/wrangler.go-live.toml`.
 
 Nothing here is a secret. A file is read only through `GET /api/files/:fileId`, which checks the reader's grant on the area of the page that holds it; the bucket is never exposed. A Worker without the binding answers `not_wired` to an upload, a download or the agent verb `attach_file`, and the edit screen says file storage is not set up.
 
 ## Switching on the go-live wiring (FD-12)
 
-`uw-app/wrangler.go-live.toml` and `uw-ingest/wrangler.go-live.toml` are each their `wrangler.toml` plus the bindings whose resources do not exist yet: `logpush`, the `HYPERDRIVE` binding, the ingest queue producer and consumer, the `INGEST_DLQ` producer, and uw-app's `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD`. A test keeps each file equal to its live twin plus exactly those.
+`uw-platform/wrangler.go-live.toml` and `uw-ingest/wrangler.go-live.toml` are each their `wrangler.toml` plus the bindings whose resources do not exist yet: `logpush`, the `HYPERDRIVE` binding, the ingest queue producer and consumer, the `INGEST_DLQ` producer, and uw-platform's `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD`. A test keeps each file equal to its live twin plus exactly those.
 
-`uw-app/wrangler.toml` also declares a `preview` environment. Per-PR Workers deploy with `--env preview`, so they never register as the staging queue consumer. In the go-live file `preview` binds Hyperdrive and declares no queue consumer. Its Hyperdrive id must equal staging's (P33); a test checks that they match.
+`uw-platform/wrangler.toml` also declares a `preview` environment. Per-PR Workers deploy with `--env preview`, so they never register as the staging queue consumer. In the go-live file `preview` binds Hyperdrive and declares no queue consumer. Its Hyperdrive id must equal staging's (P33); a test checks that they match.
 
 A person adds, in the repository settings:
 
@@ -453,7 +453,7 @@ A person adds, in the repository settings:
 | `DATABASE_TUNNEL_CLIENT_SECRET` | secret | With a tunnel host: that service token's secret |
 | `BOOTSTRAP_ADMIN_EMAIL` | variable | The person who becomes the first org admin. After migrating, each deploy runs `pnpm db:bootstrap-admin`, which adds this person and an org admin grant only when no org admin exists, so on a database that already has one it changes nothing. Unset, the step logs that and adds no one |
 | `BOOTSTRAP_ADMIN_NAME` | variable | Optional: that person's display name; without it the part of the email before the @ is used |
-| `CLOUDFLARE_API_TOKEN` | secret | A Cloudflare API token scoped to Workers Scripts edit on the one account (the uw-app section) |
+| `CLOUDFLARE_API_TOKEN` | secret | A Cloudflare API token scoped to Workers Scripts edit on the one account (the uw-platform section) |
 | `CLOUDFLARE_ACCOUNT_ID` | secret | The Cloudflare account's id |
 
 
@@ -471,15 +471,15 @@ Until that PR, the per-PR and staging Workers run with no database and no queue,
 GL-1 switches the wiring above on. It writes no code: each step creates a resource, sets a secret or a value, or checks one. Every row of `docs/progress_tracker.md` that waits on FD-6, FD-7, FD-10 or FD-12 names the step that closes it. Steps 1 to 5 can run in any order; step 6 needs them all; step 7 is GL-1's release gate.
 
 1. **The database (FD-12).** A Postgres 16 or later database for staging and one for production (AWS RDS, or any Postgres the Hyperdrive config and the GitHub runner can reach). In the repository settings set `DATABASE_URL_STAGING` and `DATABASE_URL_PRODUCTION` as secrets (the table above); the deploy migrates through them, so the database must accept connections from GitHub's runners while it does. When the database is reachable only through a Cloudflare Tunnel (AWS Aurora, set up with the infrastructure team), set `DATABASE_TUNNEL_HOST_STAGING` and `DATABASE_TUNNEL_HOST_PRODUCTION` as variables and `DATABASE_TUNNEL_CLIENT_ID` and `DATABASE_TUNNEL_CLIENT_SECRET` as secrets: the tunnel needs a TCP route to the database behind a Cloudflare Access application that admits that service token, and each migrate job opens it with `.github/scripts/db-tunnel.sh` before migrating, with the `DATABASE_URL_*` secret pointing at `127.0.0.1:15432`.
-2. **Hyperdrive (FD-12, FD-6).** `wrangler hyperdrive create uw-staging --connection-string=<pooled staging string>`, and the same for `uw-production`. Put each Hyperdrive id in place of `set-at-go-live` in `[[env.staging.hyperdrive]]` and `[[env.production.hyperdrive]]` of both go-live files, and staging's Hyperdrive id in uw-app's `[[env.preview.hyperdrive]]` (P33).
+2. **Hyperdrive (FD-12, FD-6).** `wrangler hyperdrive create uw-staging --connection-string=<pooled staging string>`, and the same for `uw-production`. Put each Hyperdrive id in place of `set-at-go-live` in `[[env.staging.hyperdrive]]` and `[[env.production.hyperdrive]]` of both go-live files, and staging's Hyperdrive id in uw-platform's `[[env.preview.hyperdrive]]` (P33).
 3. **Queues, hosts and the deploy token (FD-10).** Create the four queues listed above with `wrangler queues create`. In the repository settings set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as secrets (the table above). Until the token is set, `deploy-pr`, `cleanup-pr`, `deploy-staging`, `deploy-ingest-staging`, `deploy-production` and `deploy-ingest-production` each log the notice "CLOUDFLARE_API_TOKEN is not set" and stay green; check that each now runs its steps. Read the account's `workers.dev` subdomain in the Cloudflare dashboard; if it is not `unfoldingword`, correct `STAGING_URL` and `INGEST_URL` in `.github/workflows/deploy-staging.yml` and the address in step 7.
-4. **Access and origins (FD-7).** Apply the three applications as the Access section says. Put the app application's AUD tag in `ACCESS_AUD`, the `mcp` application's in `ACCESS_MCP_AUD` and the team domain in `ACCESS_TEAM_DOMAIN`, under staging, production and preview of `uw-app/wrangler.go-live.toml`, and the staging origin in `APP_ORIGIN`. `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`, `ZULIP_SITE` and `ZULIP_BOT_EMAIL` come from the notifier section; the push and Zulip halves read their secrets (`VAPID_PRIVATE_JWK`, `ZULIP_BOT_API_KEY`) before these values, so they stay off until those secrets are set.
-5. **Worker secrets (FD-10, GH-1).** Once an org owner has registered the GitHub App (the GitHub App section), set `GITHUB_WEBHOOK_SECRET` on uw-ingest and the `GITHUB_APP_*` secrets on uw-app with `wrangler secret put <name> --env staging`, as that section lists. The other Worker secrets are set the same way and listed where they are used: the Reviewer Apps section, the Builder GitHub App section, and the notifier section (`VAPID_PRIVATE_JWK`, `ZULIP_BOT_API_KEY`). Step 7's probe does not need them; the FD-10 webhook check and the delegated merge's live run do.
-6. **The switch pull request.** In one pull request: copy `uw-app/wrangler.go-live.toml` over `uw-app/wrangler.toml` and `uw-ingest/wrangler.go-live.toml` over `uw-ingest/wrangler.toml`, and set `"switchedOn": true` in `infra/go-live.json`. `pnpm verify` must be green: with the flag on, the live-file tests require each live file to carry everything its go-live twin declares, and with it off they require none of it, so a half switch fails. Merge it on a green CI `test` job; `deploy-staging.yml` then runs `migrate-staging` and deploys both Workers. The deploy builds the sandbox images, so the runner needs Docker (the sandbox section).
+4. **Access and origins (FD-7).** Apply the three applications as the Access section says. Put the app application's AUD tag in `ACCESS_AUD`, the `mcp` application's in `ACCESS_MCP_AUD` and the team domain in `ACCESS_TEAM_DOMAIN`, under staging, production and preview of `uw-platform/wrangler.go-live.toml`, and the staging origin in `APP_ORIGIN`. `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`, `ZULIP_SITE` and `ZULIP_BOT_EMAIL` come from the notifier section; the push and Zulip halves read their secrets (`VAPID_PRIVATE_JWK`, `ZULIP_BOT_API_KEY`) before these values, so they stay off until those secrets are set.
+5. **Worker secrets (FD-10, GH-1).** Once an org owner has registered the GitHub App (the GitHub App section), set `GITHUB_WEBHOOK_SECRET` on uw-ingest and the `GITHUB_APP_*` secrets on uw-platform with `wrangler secret put <name> --env staging`, as that section lists. The other Worker secrets are set the same way and listed where they are used: the Reviewer Apps section, the Builder GitHub App section, and the notifier section (`VAPID_PRIVATE_JWK`, `ZULIP_BOT_API_KEY`). Step 7's probe does not need them; the FD-10 webhook check and the delegated merge's live run do.
+6. **The switch pull request.** In one pull request: copy `uw-platform/wrangler.go-live.toml` over `uw-platform/wrangler.toml` and `uw-ingest/wrangler.go-live.toml` over `uw-ingest/wrangler.toml`, and set `"switchedOn": true` in `infra/go-live.json`. `pnpm verify` must be green: with the flag on, the live-file tests require each live file to carry everything its go-live twin declares, and with it off they require none of it, so a half switch fails. Merge it on a green CI `test` job; `deploy-staging.yml` then runs `migrate-staging` and deploys both Workers. The deploy builds the sandbox images, so the runner needs Docker (the sandbox section).
 7. **The release gate: the staging probe through Hyperdrive.** Run
 
    ```
-   curl -fsS https://uw-app-staging.unfoldingword.workers.dev/health/probe \
+   curl -fsS https://uw-platform-staging.unfoldingword.workers.dev/health/probe \
      | jq -e '.indicators[] | select(.name == "database") | .status == "ok"'
    ```
 

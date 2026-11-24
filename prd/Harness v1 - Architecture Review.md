@@ -6,7 +6,7 @@
 
 ## Verdict
 
-Harness v1 is a faithful, more detailed realization of plan §6 and §8. It connects to the platform at the right seams: it lives inside `uw-app`, takes webhooks through `uw-ingest`, stores in Neon via Hyperdrive with Drizzle as the schema source, runs personas as Cloudflare Workflows behind the AI Gateway spend breaker, and lets agents reach the platform only through the MCP surface — with no gate verbs in existence. Several of the owner's decisions are strictly better than what the plan says today and should be adopted back into it.
+Harness v1 is a faithful, more detailed realization of plan §6 and §8. It connects to the platform at the right seams: it lives inside `uw-platform`, takes webhooks through `uw-ingest`, stores in Neon via Hyperdrive with Drizzle as the schema source, runs personas as Cloudflare Workflows behind the AI Gateway spend breaker, and lets agents reach the platform only through the MCP surface — with no gate verbs in existence. Several of the owner's decisions are strictly better than what the plan says today and should be adopted back into it.
 
 Recommendation: **adopt, with three must-fix items before any build, six should-fix items, and one scope cut.** The must-fixes are all about authority — who may act, under whose grant, and where the human gate is enforced. Everything else is alignment.
 

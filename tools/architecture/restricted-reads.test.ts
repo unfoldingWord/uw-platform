@@ -121,13 +121,13 @@ describe('#155 the scan for reads of a restricted or sensitive table', () => {
     'const { read } = scope.tx.gateDecisions;\nawait scope.tx.gateDecisions.read.forItem(id)',
     'await db.query.routines.findMany()',
   ])('flags %j', (text) => {
-    expect(readers(['apps/uw-app/x.ts'], () => text)).toEqual(['apps/uw-app/x.ts']);
+    expect(readers(['apps/uw-platform/x.ts'], () => text)).toEqual(['apps/uw-platform/x.ts']);
   });
 
   it('leaves a read of an internal table and a write of a restricted one alone', () => {
-    expect(readers(['apps/uw-app/x.ts'], () => 'db.select().from(harnesses)')).toEqual([]);
+    expect(readers(['apps/uw-platform/x.ts'], () => 'db.select().from(harnesses)')).toEqual([]);
     expect(
-      readers(['apps/uw-app/x.ts'], () => 'await tx.delegations.write.revoke(id, at)'),
+      readers(['apps/uw-platform/x.ts'], () => 'await tx.delegations.write.revoke(id, at)'),
     ).toEqual([]);
   });
 
@@ -142,6 +142,6 @@ describe('#155 the scan for reads of a restricted or sensitive table', () => {
     expect(governanceOf(ledger, 'packages/harness/delegations/live.ts')).toEqual({
       how: 'platform',
     });
-    expect(governanceOf(ledger, 'apps/uw-app/x.ts')).toBeNull();
+    expect(governanceOf(ledger, 'apps/uw-platform/x.ts')).toBeNull();
   });
 });

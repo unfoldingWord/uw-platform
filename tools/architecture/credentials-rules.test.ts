@@ -7,7 +7,7 @@ const signer = {
   'node_modules/aws4fetch/index.js': 'export default 1;',
   'node_modules/aws4fetch/package.json': JSON.stringify({ name: 'aws4fetch', main: 'index.js' }),
 };
-const client = { 'apps/uw-app/credentials/kms/aws.ts': "import 'aws4fetch';" };
+const client = { 'apps/uw-platform/credentials/kms/aws.ts': "import 'aws4fetch';" };
 
 async function rules(files: Record<string, string>): Promise<string[]> {
   return (await violations({ ...signer, ...files })).map((violation) => violation.rule);
@@ -17,16 +17,16 @@ describe('#157 the AWS signer and the KMS client stay inside the credentials sto
   it('lets the KMS client import the signer, and the store import the client', async () => {
     const found = await rules({
       ...client,
-      'apps/uw-app/credentials/store.ts': "import './kms/aws.ts';",
-      'apps/uw-app/credentials/kms/aws.test.ts': "import 'aws4fetch'; import './aws.ts';",
+      'apps/uw-platform/credentials/store.ts': "import './kms/aws.ts';",
+      'apps/uw-platform/credentials/kms/aws.test.ts': "import 'aws4fetch'; import './aws.ts';",
     });
     expect(found).toEqual([]);
   });
 
   it.each([
-    ['the store itself', 'apps/uw-app/credentials/store.ts'],
-    ['a connector', 'apps/uw-app/ports/connectors.ts'],
-    ['an MCP verb', 'apps/uw-app/mcp/verbs/x.ts'],
+    ['the store itself', 'apps/uw-platform/credentials/store.ts'],
+    ['a connector', 'apps/uw-platform/ports/connectors.ts'],
+    ['an MCP verb', 'apps/uw-platform/mcp/verbs/x.ts'],
     ['the kernel', 'packages/harness/x.ts'],
   ])('refuses the signer in %s', async (_name, path) => {
     expect(await rules({ [path]: "import 'aws4fetch';" })).toContain(
@@ -35,16 +35,16 @@ describe('#157 the AWS signer and the KMS client stay inside the credentials sto
   });
 
   it.each([
-    ['a connector', 'apps/uw-app/ports/connectors.ts', '../credentials/kms/aws.ts'],
-    ['an MCP verb', 'apps/uw-app/mcp/verbs/x.ts', '../../credentials/kms/aws.ts'],
-    ['a route', 'apps/uw-app/x.ts', './credentials/kms/aws.ts'],
+    ['a connector', 'apps/uw-platform/ports/connectors.ts', '../credentials/kms/aws.ts'],
+    ['an MCP verb', 'apps/uw-platform/mcp/verbs/x.ts', '../../credentials/kms/aws.ts'],
+    ['a route', 'apps/uw-platform/x.ts', './credentials/kms/aws.ts'],
   ])('refuses the KMS client in %s', async (_name, path, specifier) => {
     const found = await rules({ ...client, [path]: `import '${specifier}'; ${leaf}` });
     expect(found).toContain('kms-client-only-in-the-credentials-store');
   });
 });
 
-const store = 'apps/uw-app/credentials';
+const store = 'apps/uw-platform/credentials';
 
 function openedInside(): void {
   it('lets the store open a value and the connectors adapter use one', async () => {
@@ -55,19 +55,19 @@ function openedInside(): void {
       [`${store}/secret.ts`]: leaf,
       [`${store}/use.ts`]: "import './open.ts'; import './secret.ts'; import './outcome-guard.ts';",
       [`${store}/use.pg.test.ts`]: "import './use.ts'; import './secret.ts';",
-      'apps/uw-app/ports/connectors.ts':
+      'apps/uw-platform/ports/connectors.ts':
         "import '../credentials/use.ts'; import '../credentials/secret.ts';",
     });
     expect(found).toEqual([]);
   });
 
   it.each([
-    ['open.ts', 'a connector', 'apps/uw-app/ports/connectors.ts', '../credentials'],
-    ['envelope.ts', 'a connector', 'apps/uw-app/ports/connectors.ts', '../credentials'],
-    ['outcome-guard.ts', 'a connector', 'apps/uw-app/ports/connectors.ts', '../credentials'],
-    ['open.ts', 'a command', 'apps/uw-app/commands/x.ts', '../credentials'],
-    ['open.ts', 'a screen', 'apps/uw-app/views/screens/x.tsx', '../../credentials'],
-    ['open.ts', 'a cron job', 'apps/uw-app/cron/x.ts', '../credentials'],
+    ['open.ts', 'a connector', 'apps/uw-platform/ports/connectors.ts', '../credentials'],
+    ['envelope.ts', 'a connector', 'apps/uw-platform/ports/connectors.ts', '../credentials'],
+    ['outcome-guard.ts', 'a connector', 'apps/uw-platform/ports/connectors.ts', '../credentials'],
+    ['open.ts', 'a command', 'apps/uw-platform/commands/x.ts', '../credentials'],
+    ['open.ts', 'a screen', 'apps/uw-platform/views/screens/x.tsx', '../../credentials'],
+    ['open.ts', 'a cron job', 'apps/uw-platform/cron/x.ts', '../credentials'],
   ])('refuses %s in %s', async (file, _name, path, folder) => {
     const found = await rules({
       [`${store}/${file}`]: leaf,
@@ -79,12 +79,12 @@ function openedInside(): void {
 
 function usedByConnectors(): void {
   it.each([
-    ['use.ts', 'a command', 'apps/uw-app/commands/x.ts', '../credentials'],
-    ['secret.ts', 'a command', 'apps/uw-app/commands/x.ts', '../credentials'],
-    ['secret.ts', 'a screen', 'apps/uw-app/views/screens/x.tsx', '../../credentials'],
-    ['use.ts', 'the queue worker', 'apps/uw-app/queue/x.ts', '../credentials'],
-    ['secret.ts', 'the logger', 'apps/uw-app/request-logger.ts', './credentials'],
-    ['secret.ts', 'the kernel', 'packages/harness/x.ts', '../../apps/uw-app/credentials'],
+    ['use.ts', 'a command', 'apps/uw-platform/commands/x.ts', '../credentials'],
+    ['secret.ts', 'a command', 'apps/uw-platform/commands/x.ts', '../credentials'],
+    ['secret.ts', 'a screen', 'apps/uw-platform/views/screens/x.tsx', '../../credentials'],
+    ['use.ts', 'the queue worker', 'apps/uw-platform/queue/x.ts', '../credentials'],
+    ['secret.ts', 'the logger', 'apps/uw-platform/request-logger.ts', './credentials'],
+    ['secret.ts', 'the kernel', 'packages/harness/x.ts', '../../apps/uw-platform/credentials'],
   ])('refuses %s in %s', async (file, _name, path, folder) => {
     const found = await rules({
       [`${store}/${file}`]: leaf,
@@ -96,11 +96,11 @@ function usedByConnectors(): void {
 
 function keptFromAgents(): void {
   it.each([
-    ['an MCP verb', 'apps/uw-app/mcp/verbs/x.ts', '../../credentials'],
-    ['the MCP server', 'apps/uw-app/mcp/x.ts', '../credentials'],
-    ['an engine', 'apps/uw-app/engines/external/x.ts', '../../credentials'],
-    ['the run host', 'apps/uw-app/runs/x.ts', '../credentials'],
-    ['the agents module', 'apps/uw-app/agents/x.ts', '../credentials'],
+    ['an MCP verb', 'apps/uw-platform/mcp/verbs/x.ts', '../../credentials'],
+    ['the MCP server', 'apps/uw-platform/mcp/x.ts', '../credentials'],
+    ['an engine', 'apps/uw-platform/engines/external/x.ts', '../../credentials'],
+    ['the run host', 'apps/uw-platform/runs/x.ts', '../credentials'],
+    ['the agents module', 'apps/uw-platform/agents/x.ts', '../credentials'],
   ])('refuses every file of the store in %s', async (_name, path, folder) => {
     for (const file of [
       'use.ts',
@@ -133,17 +133,17 @@ describe('#159 a value is revealed only by the reveal route', () => {
       ...reveal,
       [`${store}/routes.ts`]: "import './reveal.ts';",
       [`${store}/routes.pg.test.ts`]: "import './reveal.ts';",
-      'apps/uw-app/app.tsx': "import './credentials/routes.ts';",
+      'apps/uw-platform/app.tsx': "import './credentials/routes.ts';",
     });
     expect(found).toEqual([]);
   });
 
   it.each([
     ['another file of the store', `${store}/use.ts`, './reveal.ts'],
-    ['a screen', 'apps/uw-app/views/screens/credential.tsx', '../../credentials/reveal.ts'],
-    ['a harness command', 'apps/uw-app/commands/x.ts', '../credentials/reveal.ts'],
-    ['a cron job', 'apps/uw-app/cron/x.ts', '../credentials/reveal.ts'],
-    ['the connectors adapter', 'apps/uw-app/ports/connectors.ts', '../credentials/reveal.ts'],
+    ['a screen', 'apps/uw-platform/views/screens/credential.tsx', '../../credentials/reveal.ts'],
+    ['a harness command', 'apps/uw-platform/commands/x.ts', '../credentials/reveal.ts'],
+    ['a cron job', 'apps/uw-platform/cron/x.ts', '../credentials/reveal.ts'],
+    ['the connectors adapter', 'apps/uw-platform/ports/connectors.ts', '../credentials/reveal.ts'],
   ])('refuses the reveal in %s', async (_name, path, specifier) => {
     const found = await rules({ ...reveal, [path]: `import '${specifier}'; ${leaf}` });
     expect(found).toContain('credential-revealed-only-by-its-route');
@@ -153,7 +153,7 @@ describe('#159 a value is revealed only by the reveal route', () => {
     const found = await rules({
       ...reveal,
       [`${store}/routes.ts`]: "import './reveal.ts';",
-      'apps/uw-app/mcp/verbs/x.ts': `import '../../credentials/routes.ts'; ${leaf}`,
+      'apps/uw-platform/mcp/verbs/x.ts': `import '../../credentials/routes.ts'; ${leaf}`,
     });
     expect(found).toContain('no-credential-store-on-the-agent-surface');
   });

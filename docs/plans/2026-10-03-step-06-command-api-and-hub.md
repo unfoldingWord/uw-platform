@@ -17,22 +17,22 @@ Every task obeys every line here. Copy exact values; do not paraphrase them in c
 - **Verify, at the end of every task, green:** `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`. If the local server is down: `/usr/lib/postgresql/16/bin/pg_ctl -D ~/.local/share/uw-platform-test-pg -o "-p 54329 -k '' -c listen_addresses=127.0.0.1" -l ~/.local/share/uw-platform-test-pg.log start`. The local server is private; CI uses a Postgres service container.
 - **R37:** never run two test suites at once. No parallel `pnpm verify`, `pnpm test`, `vitest` or `pnpm sim:all`; wait for one to finish before starting another (concurrent suites kill the WSL VM).
 - **DX-8:** no test, binding or job may need a live account or a secret. Platform adapters are proven against fixtures and test doubles; their live run is recorded as waiting on a person. Never add a binding, job or test that fails when a secret is absent.
-- **Layering (dependency-cruiser and ESLint enforce it):** `packages/contracts` → nothing; `packages/core` → contracts; `packages/db` → contracts, core; `packages/ui` → no workspace code (npm `hono` only); `packages/harness` → contracts, core types, pure (no Workers, Drizzle, vendor SDK or network); `apps/uw-app` → harness, db, contracts, core, ui; `sim/` → harness, contracts, db and the Node built-ins AGENTS.md lists. Islands (`apps/uw-app/islands/`) never import `packages/harness`.
+- **Layering (dependency-cruiser and ESLint enforce it):** `packages/contracts` → nothing; `packages/core` → contracts; `packages/db` → contracts, core; `packages/ui` → no workspace code (npm `hono` only); `packages/harness` → contracts, core types, pure (no Workers, Drizzle, vendor SDK or network); `apps/uw-platform` → harness, db, contracts, core, ui; `sim/` → harness, contracts, db and the Node built-ins AGENTS.md lists. Islands (`apps/uw-platform/islands/`) never import `packages/harness`.
 - **Code:** no comments of any kind (no line, block, JSDoc or directive comments, no commented-out code). Files under 500 lines; functions under 50 lines; ESLint fitness limits: 25 statements, complexity 10, depth 4, 3 nested callbacks, 5 parameters. TypeScript strict, no `any`, no `@ts-ignore`.
 - **Commits:** Conventional Commits. The body's last line lists the requirement IDs the commit proves or serves (for example `WB-1 WB-2`). No `Co-Authored-By` and no attribution footer of any kind. Hooks always pass; never `--no-verify`.
 - **Shared roots** (`packages/db/schema.ts`, `packages/db/schema-*.ts`, `packages/contracts/`, `packages/harness/ports.ts`, `packages/core/acl.ts`, `infra/`, `.github/workflows/`, `AGENTS.md`, `CONTEXT.md`, `docs/adr/`): a change goes in its own commit with no feature code, and the message names the shared root and why it changed. Migrations travel with the `schema*.ts` commit that needs them.
 - **Exceptions:** any exception to AGENTS.md rules 1 to 4 gets its `docs/exceptions.md` row in the same commit as the code, written before it.
-- **Contract version:** Task 1 moves `CONTRACT_VERSION` from `9.1.0` to `10.0.0` and moves `contractVersion` in `apps/uw-app/package.json` and `apps/uw-ingest/package.json` with it. No later task changes the contracts.
+- **Contract version:** Task 1 moves `CONTRACT_VERSION` from `9.1.0` to `10.0.0` and moves `contractVersion` in `apps/uw-platform/package.json` and `apps/uw-ingest/package.json` with it. No later task changes the contracts.
 - **Routes (P22):** commands are `POST /api/harness/:harness/commands/:name`; reads are `GET /api/harness/:harness/events`, `GET /api/harness/:harness/stages/:stage/items`, `GET /api/harness/:harness/gates/:item`; the live socket is `GET /api/harness/:harness/live`. The stylesheet is `GET /assets/app-<hash>.css`.
 - **Command names (closed set, contract 10.0.0):** `kickstart`, `enqueue`, `import`, `reorder`, `claim`, `release`, `submit_to_gate`, `approve`, `reject`, `take_over`, `override`, `prompt_run`, `stop_run`, `pause`, `resume`, `tweak_package`, `schedule_regular_tweak`, `revoke_delegation`, `recover_connectors`, `activate_template`, `create_stage`, `update_stage`, `reorder_stages`, `remove_stage`.
 - **Outcomes:** a command's response body is exactly `{ "status": "accepted", "requestId" }` or `{ "status": "error", "requestId", "reason" }` with `reason` from the closed set; nothing else. New reasons in 10.0.0: `request_in_flight`, `issue_not_found`, `stage_not_empty`. New events: `item_reordered`, `stage_removed`.
 - **Hidden equals missing:** a harness the caller may not read answers `harness_not_found`, byte-identical to a missing one; an item answers `item_not_found`.
 - **Only humans decide gates.** No agent identity can approve, merge, deploy, publish or advance past a human gate by any route. Gate decisions run only through `kernel.gates.decide`, which refuses every non-`human:<personId>` principal and records `gate_refused_to_agent`.
-- **GitHub clients:** only the gate commands (`approve`, `reject`, `take_over`, `override`, `recover_connectors`) build a kernel with a GitHub read client and the ship writes `{ app, transport }`. The MCP, queue and cron kernels never get either; nothing under `apps/uw-app/mcp/` or `apps/uw-app/engines/` reaches a GitHub client; agents never get any GitHub client.
+- **GitHub clients:** only the gate commands (`approve`, `reject`, `take_over`, `override`, `recover_connectors`) build a kernel with a GitHub read client and the ship writes `{ app, transport }`. The MCP, queue and cron kernels never get either; nothing under `apps/uw-platform/mcp/` or `apps/uw-platform/engines/` reaches a GitHub client; agents never get any GitHub client.
 - **Lock order** (docs/architecture.md): stage lock (`harness-stages:<harnessId>` or `harness-stage-claims:<stageId>`, never both), then item rows (several rows: ascending id), then grants, then appends; no lock after the first append. Transactions never nest. Isolation stays READ COMMITTED.
-- **One writer per table.** New table `command_requests` is written only by `apps/uw-app/commands/requests.ts` (exports `owns`). `harnesses` and `harness_stages` are written only by `packages/harness/stages/`. `harness_items` and `harness_events` only by the kernel.
+- **One writer per table.** New table `command_requests` is written only by `apps/uw-platform/commands/requests.ts` (exports `owns`). `harnesses` and `harness_stages` are written only by `packages/harness/stages/`. `harness_items` and `harness_events` only by the kernel.
 - **R36 trace honesty:** a `describe`/`it`/`test` title that leads with a requirement ID must prove that requirement; supporting tests lead with no ID. Scenarios are `sim/scenarios/<ID>.<slug>.ts`. Test files that the trace reads end in `.test.ts`.
-- **UI:** tokens are the only source of a colour, size or radius; no hex literal (and no `rgb(`, `hsl(`, `oklch(`) outside `packages/ui/tokens/*.css` and `packages/ui/generated/app-css.ts`. Kindle marks a human action and nothing else (only `packages/ui/components/human-action.tsx` uses it). No red for status. Copy is sentence case, second person, no exclamation marks, no emoji; `unfoldingWord` is camelCase every time. Every control has an accessible name and visible focus. After any change to a class in `packages/ui/components/` or `apps/uw-app/**/*.tsx`, run `pnpm ui:css` and commit the regenerated `packages/ui/generated/app-css.ts`.
+- **UI:** tokens are the only source of a colour, size or radius; no hex literal (and no `rgb(`, `hsl(`, `oklch(`) outside `packages/ui/tokens/*.css` and `packages/ui/generated/app-css.ts`. Kindle marks a human action and nothing else (only `packages/ui/components/human-action.tsx` uses it). No red for status. Copy is sentence case, second person, no exclamation marks, no emoji; `unfoldingWord` is camelCase every time. Every control has an accessible name and visible focus. After any change to a class in `packages/ui/components/` or `apps/uw-platform/**/*.tsx`, run `pnpm ui:css` and commit the regenerated `packages/ui/generated/app-css.ts`.
 - **Kernel instants:** every kernel read a route makes is judged at the request instant; every command passes `{ actor, traceId, requestId }` as its `Caller`.
 
 ## Review Focus
@@ -63,14 +63,14 @@ Choices the PRD, the spec and AGENTS.md leave open. The final task copies each i
 | S6-D10 | `prompt_run` and `stop_run` resolve the harness and call `can()` and then answer `not_wired` until step 7 wires runs | None |
 | S6-D11 | P17: `remove_stage` refuses `not_permitted` `{ why: 'effect_stage' }` for a stage with a connector (S6-R11), `stage_not_empty` when any item of the harness is at that stage, `stage_not_empty` `{ why: 'stage_has_history' }` when the stage has any gate decision (S6-R12; a closed existing reason with a detail, no contract change), refuses a removal that leaves a dangling `feeds` target or breaks the template property, and records `stage_removed`; the step-5 carry is closed by refusing `decision_in_flight` on a connector change while an approval at that stage waits for its connector outcome, under that stage's `harness-stage-claims:` lock taken after `harness-stages:`, and recovery runs the connector recorded on the decision (S6-R13) | A stage with only done items, or with any decision history, cannot be removed |
 | S6-D12 | The gate view (`kernel.gates.view`) answers from the read model only (no GitHub refresh), evaluates the ship rule for the viewer as approver, and shows the parsed declaration from the current facts, the latest recorded `risk_derived` (tier, domains, head, declaration) and what the rule would derive now; the decision then refreshes. `approve` and `override` carry the head the person saw (`head`), and the kernel refuses `head_mismatch` when it is not the item's expected head | A view up to a webhook's lag old; the head check refuses the decision rather than letting it ride a new head |
-| S6-D13 | The person surface is the directory `apps/uw-app/commands/person/`. The AB-7 static closure still starts at `apps/uw-app/app.tsx`; gate, stage and delegation-grant touches are allowed only in the person surface; the closure seeded from `apps/uw-app/mcp/` must reach nothing under `apps/uw-app/commands/`; dependency-cruiser allows the person surface to be imported only from `apps/uw-app/commands/`. ADR 0009 records it | A person-surface handler that skipped the kernel's own refusals; the kernel refuses agents on every gate, stage and delegation write |
+| S6-D13 | The person surface is the directory `apps/uw-platform/commands/person/`. The AB-7 static closure still starts at `apps/uw-platform/app.tsx`; gate, stage and delegation-grant touches are allowed only in the person surface; the closure seeded from `apps/uw-platform/mcp/` must reach nothing under `apps/uw-platform/commands/`; dependency-cruiser allows the person surface to be imported only from `apps/uw-platform/commands/`. ADR 0009 records it | A person-surface handler that skipped the kernel's own refusals; the kernel refuses agents on every gate, stage and delegation write |
 | S6-D14 | The gate GitHub opener is not in `AppDeps` (which the MCP routes hold): `createApp(deps, person)` takes a second `PersonDeps = { gateGitHub }` passed only to the harness routes | None |
 | S6-D15 | `platformPorts(database, clock, wiring)` and `platformKernel(...)` take `KernelWiring = { hub, reads, ship }`; `hubWiring(hub)` is the only wiring the MCP, queue, cron and non-gate command kernels pass | None |
 | S6-D16 | The person's `import` imports an open issue carrying the `harness` label that the read model holds, in the repository of the harness named in the path; the page is written under the ingest identity (it mirrors GitHub), the `item_created` event under the person; no GitHub client is held, so the cross-reference comment is posted by the nightly sweep | The comment lands up to a day later for a person's import |
 | S6-D17 | The kernel wakes the hub after each committed transaction that appended events, once per harness, awaiting every wake and dropping its failure | A broken hub shows only as a stale last wake on `/health` |
-| S6-D18 | The hub is a Durable Object `HarnessHub` (SQLite-backed, WebSocket Hibernation API), binding `HARNESS_HUB`, one object per harness by `idFromName(harnessId)`, declared in `infra/uw-app/wrangler.toml` and `wrangler.go-live.toml` (no account resource is needed; the deploy creates it). Its logic is `createHubCore(state, timers, now)` so tests run on a fake state; wakes in one tick coalesce to one `setTimeout(…, 0)` flush; it stores only `lastWakeAt`; `ping` auto-answers `pong` | The Durable Object in workerd (hibernation, eviction) runs first on staging |
+| S6-D18 | The hub is a Durable Object `HarnessHub` (SQLite-backed, WebSocket Hibernation API), binding `HARNESS_HUB`, one object per harness by `idFromName(harnessId)`, declared in `infra/uw-platform/wrangler.toml` and `wrangler.go-live.toml` (no account resource is needed; the deploy creates it). Its logic is `createHubCore(state, timers, now)` so tests run on a fake state; wakes in one tick coalesce to one `setTimeout(…, 0)` flush; it stores only `lastWakeAt`; `ping` auto-answers `pong` | The Durable Object in workerd (hibernation, eviction) runs first on staging |
 | S6-D19 | `/health` gains `live_hub`: `not_configured` without the binding, else the sum of connections and the latest wake across at most 50 harnesses (`kernel.reads.harnessIds()`), `amber` if any object fails to answer within 2 s | 50 objects polled per health probe |
-| S6-D20 | The live client (`apps/uw-app/islands/live/session.ts`) holds the cursor; it uses `partysocket` for reconnect with backoff from 1 s doubling to 30 s (P23), polls every 15 s only while the socket is not open, reads once on every open, and coalesces wakes during a read into one more read | A browser that never opens the socket polls every 15 s |
+| S6-D20 | The live client (`apps/uw-platform/islands/live/session.ts`) holds the cursor; it uses `partysocket` for reconnect with backoff from 1 s doubling to 30 s (P23), polls every 15 s only while the socket is not open, reads once on every open, and coalesces wakes during a read into one more read | A browser that never opens the socket polls every 15 s |
 | S6-D21 | Tokens: five brand colours verbatim as `--uw-brand-*`; semantic light values from the prototype and dark values from Key Visuals (ADR 0007); links and the focus ring are Ocean in light and Inspire in dark because Inspire on white is 2.56:1; an `--uw-on-accent` (`#04222F`) for text on Inspire, Cultivate and Kindle; base text 1rem, not the prototype's 13.5px | A visual change if the `design-system/` handoff picks other values; only the token files change |
 | S6-D22 | No web font is loaded: the stack is `'Nunito Sans', 'Avenir', 'Avenir Next', system-ui, sans-serif` | Devices without Nunito Sans render Avenir or the system font |
 | S6-D23 | The Tailwind build output is committed as `packages/ui/generated/app-css.ts` (`appCss`, `appCssPath`) so the per-PR deploy of a prebuilt bundle needs no build step; a test regenerates it and fails on a difference. The stylesheet route is mounted before the principal middleware and has an exceptions row | A forgotten `pnpm ui:css` fails the test, not production |
@@ -87,7 +87,7 @@ Shared root `packages/contracts/` in one commit; the PRD and CONTEXT.md in a sec
 **Files:**
 - Modify: `packages/contracts/commands.ts` (rewrite), `packages/contracts/outcomes.ts`, `packages/contracts/events.ts`, `packages/contracts/event-evidence.ts`, `packages/contracts/registry.ts`, `packages/contracts/index.ts`, `packages/contracts/version.ts`, `packages/contracts/contract-lock.json`, `packages/contracts/contracts.test.ts`, `packages/contracts/events.test.ts`
 - Create: `packages/contracts/live.ts`, `packages/contracts/gate-view.ts`, `packages/contracts/live.test.ts`, `packages/contracts/commands.test.ts`, fixtures `packages/contracts/fixtures/{hub-wake,event-page-reply,gate-view}/{valid,invalid}/*.json` and new cases under `packages/contracts/fixtures/command/` (follow the existing fixture layout exactly)
-- Modify: `apps/uw-app/package.json`, `apps/uw-ingest/package.json` (`"contractVersion": "10.0.0"`)
+- Modify: `apps/uw-platform/package.json`, `apps/uw-ingest/package.json` (`"contractVersion": "10.0.0"`)
 - Modify (second commit): `docs/PRD.md` (8.1, 8.5, 8.6), `CONTEXT.md`
 
 **Interfaces:**
@@ -435,25 +435,25 @@ export type GateView = z.infer<typeof gateViewSchema>;
 
 - [ ] **Step 4: Run them and see them pass**
 
-Run: `pnpm vitest run packages/contracts apps/uw-app/contract-conformance.test.ts`
+Run: `pnpm vitest run packages/contracts apps/uw-platform/contract-conformance.test.ts`
 Expected: PASS.
 
 - [ ] **Step 5: Commit the contracts**
 
 ```bash
-git add packages/contracts apps/uw-app/package.json apps/uw-ingest/package.json
+git add packages/contracts apps/uw-platform/package.json apps/uw-ingest/package.json
 git commit -m "feat(contracts)!: harness command bodies, the hub wake, the event page and the gate view (10.0.0)" -m "Shared root packages/contracts: every Controls row plus import, revoke_delegation, recover_connectors and the stage command become strict command bodies with a requestId; reorder names the item to place before; events carry the requestId; item_reordered, stage_removed and the pause evidence are added; request_in_flight, issue_not_found and stage_not_empty join the reasons; the hub wake has no field that can carry content." -m "WB-1 WB-2 WB-3 CT-3"
 ```
 
 - [ ] **Step 6: Update the PRD and CONTEXT.md, then commit**
 
-`docs/PRD.md`: in 8.1 add the row `| \`command_requests\` | actor, request id, command, harness, outcome, trace id, claimed at, settled at; primary key on actor and request id | the command API's request ledger (\`apps/uw-app/commands/requests.ts\`) |`; in 8.5 add the line `Added in step 6: \`request_in_flight\` (a command whose \`requestId\` is still running), \`issue_not_found\` (an import the read model does not hold), \`stage_not_empty\` (P17).`; in 8.6 add `item_reordered` and `stage_removed` to the vocabulary block and a paragraph: "`item_reordered` (contract 10.0.0) records an item's new priority and, for the moved item, the item it was placed before. `stage_removed` records a removed stage's id, key and columns. `harness_paused` and `harness_resumed` name the lane, or null for the whole harness. Every event carries the `requestId` of the command that appended it, or null."
+`docs/PRD.md`: in 8.1 add the row `| \`command_requests\` | actor, request id, command, harness, outcome, trace id, claimed at, settled at; primary key on actor and request id | the command API's request ledger (\`apps/uw-platform/commands/requests.ts\`) |`; in 8.5 add the line `Added in step 6: \`request_in_flight\` (a command whose \`requestId\` is still running), \`issue_not_found\` (an import the read model does not hold), \`stage_not_empty\` (P17).`; in 8.6 add `item_reordered` and `stage_removed` to the vocabulary block and a paragraph: "`item_reordered` (contract 10.0.0) records an item's new priority and, for the moved item, the item it was placed before. `stage_removed` records a removed stage's id, key and columns. `harness_paused` and `harness_resumed` name the lane, or null for the whole harness. Every event carries the `requestId` of the command that appended it, or null."
 
 `CONTEXT.md`: in **Command** replace the list with the 24 names in words (kickstart, enqueue, import, reorder, claim, release, submit, approve, reject, take over, override, prompt run, stop run, pause, resume, tweak package, schedule regular tweak, revoke delegation, recover connectors, and the stage command: activate template, create, update, reorder and remove stage); add entries:
 
 ```
 **Person surface**:
-The command handlers that decide gates, edit stages and grant or revoke delegations: `apps/uw-app/commands/person/`. Only a person's command reaches them; nothing the MCP surface reaches imports them.
+The command handlers that decide gates, edit stages and grant or revoke delegations: `apps/uw-platform/commands/person/`. Only a person's command reaches them; nothing the MCP surface reaches imports them.
 _Avoid_: admin API, privileged routes
 
 **Gate view**:
@@ -529,7 +529,7 @@ it('DX-3 removes a stage that holds no item', async () => {
 
 - [ ] **Step 2: Run and see them fail**
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run packages/db/command-requests.test.ts packages/db/store sim/adapters/store.contract.test.ts apps/uw-app/ports/store.contract.pg.test.ts`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm vitest run packages/db/command-requests.test.ts packages/db/store sim/adapters/store.contract.test.ts apps/uw-platform/ports/store.contract.pg.test.ts`
 Expected: FAIL.
 
 - [ ] **Step 3: The schema and migration (shared-root commit)**
@@ -947,12 +947,12 @@ git commit -m "feat(harness): the gate view shows the parsed declaration and the
 **Requirements:** WB-1.
 
 **Files:**
-- Create: `apps/uw-app/commands/handler.ts`, `apps/uw-app/commands/dispatch.ts`, `apps/uw-app/commands/scope.ts`, `apps/uw-app/commands/requests.ts`, `apps/uw-app/commands/registry.ts`, `apps/uw-app/commands/routes.ts`, `apps/uw-app/commands/handlers/items.ts`, `apps/uw-app/commands/not-wired.ts`
-- Create (tests): `apps/uw-app/commands/commands.pg.test.ts`, `apps/uw-app/commands/requests.pg.test.ts`, `apps/uw-app/commands/testing.ts` (route helpers: sign as a person, post a command, read the events), `tools/architecture/command-routes.test.ts`
-- Modify: `apps/uw-app/app.tsx` (mount), `apps/uw-app/http/outcomes.ts` (statuses), `docs/exceptions.md` (requests.ts row), `tools/architecture/owners.test.ts` (owner of `command_requests`), `docs/architecture.md` (a "The command API" section)
+- Create: `apps/uw-platform/commands/handler.ts`, `apps/uw-platform/commands/dispatch.ts`, `apps/uw-platform/commands/scope.ts`, `apps/uw-platform/commands/requests.ts`, `apps/uw-platform/commands/registry.ts`, `apps/uw-platform/commands/routes.ts`, `apps/uw-platform/commands/handlers/items.ts`, `apps/uw-platform/commands/not-wired.ts`
+- Create (tests): `apps/uw-platform/commands/commands.pg.test.ts`, `apps/uw-platform/commands/requests.pg.test.ts`, `apps/uw-platform/commands/testing.ts` (route helpers: sign as a person, post a command, read the events), `tools/architecture/command-routes.test.ts`
+- Modify: `apps/uw-platform/app.tsx` (mount), `apps/uw-platform/http/outcomes.ts` (statuses), `docs/exceptions.md` (requests.ts row), `tools/architecture/owners.test.ts` (owner of `command_requests`), `docs/architecture.md` (a "The command API" section)
 
 **Interfaces:**
-- Consumes: `harnessCommandSchemas`, `CommandName`, `CommandBody` (Task 1); `platformKernel` (`apps/uw-app/kernel.ts`); `can` (`@uw/core/acl`); `Caller` with `requestId` (Task 3).
+- Consumes: `harnessCommandSchemas`, `CommandName`, `CommandBody` (Task 1); `platformKernel` (`apps/uw-platform/kernel.ts`); `can` (`@uw/core/acl`); `Caller` with `requestId` (Task 3).
 - Produces:
 
 ```ts
@@ -992,11 +992,11 @@ export type PersonDeps = { readonly gateGitHub: (env: Bindings, now: () => Date)
 export function harnessRoutes(deps: AppDeps, person: PersonDeps): Hono<AppEnv>;
 ```
 
-`PersonDeps` lives in `apps/uw-app/commands/person-deps.ts` with `export const noGateGitHub: PersonDeps = { gateGitHub: () => null }`; Task 9 replaces the platform value. `createApp(deps = platformDeps, person: PersonDeps = platformPersonDeps)` passes `person` only to `harnessRoutes`.
+`PersonDeps` lives in `apps/uw-platform/commands/person-deps.ts` with `export const noGateGitHub: PersonDeps = { gateGitHub: () => null }`; Task 9 replaces the platform value. `createApp(deps = platformDeps, person: PersonDeps = platformPersonDeps)` passes `person` only to `harnessRoutes`.
 
 - [ ] **Step 1: Write the failing tests**
 
-`apps/uw-app/commands/commands.pg.test.ts` (pattern of `apps/uw-app/pages/pages.pg.test.ts`: `createApp(postgresDeps(db, fixture), noGateGitHub).request(path, init, fixtureAccessEnv)`; seed a software harness with `activate` through the kernel as an org admin in the test setup, and grants with `seedGrant`):
+`apps/uw-platform/commands/commands.pg.test.ts` (pattern of `apps/uw-platform/pages/pages.pg.test.ts`: `createApp(postgresDeps(db, fixture), noGateGitHub).request(path, init, fixtureAccessEnv)`; seed a software harness with `activate` through the kernel as an org admin in the test setup, and grants with `seedGrant`):
 
 ```ts
 describe('WB-1 the command API', () => {
@@ -1030,7 +1030,7 @@ describe('WB-1 the command API', () => {
 });
 ```
 
-`apps/uw-app/commands/requests.pg.test.ts`:
+`apps/uw-platform/commands/requests.pg.test.ts`:
 - `WB-1 two claims of one requestId at the same moment: one runs, the other is request_in_flight or replays` (two connections; Review Focus line 1).
 - `WB-1 a pending claim older than five minutes is retaken`.
 - `WB-1 a thrown command releases its claim so a retry runs`.
@@ -1038,9 +1038,9 @@ describe('WB-1 the command API', () => {
 
 `tools/architecture/command-routes.test.ts` (titles lead with WB-1; planted files in a temp dir like `connector-callers.test.ts` does):
 - `WB-1 the registry serves exactly the contract's command names`: import `commandRegistry` and `commandNames`; compare.
-- `WB-1 every command handler is built by commandHandler or notWiredCommand with a literal action`: every non-test file under `apps/uw-app/commands/handlers/` and `apps/uw-app/commands/person/` that declares a `name:` literal matches `/\b(?:commandHandler|notWiredCommand)\s*\(/` and `/action\s*:\s*['"](?:read|write|admin)['"]/` (for `notWiredCommand` the second argument literal).
+- `WB-1 every command handler is built by commandHandler or notWiredCommand with a literal action`: every non-test file under `apps/uw-platform/commands/handlers/` and `apps/uw-platform/commands/person/` that declares a `name:` literal matches `/\b(?:commandHandler|notWiredCommand)\s*\(/` and `/action\s*:\s*['"](?:read|write|admin)['"]/` (for `notWiredCommand` the second argument literal).
 - `WB-1 the dispatcher calls can() before it runs a handler`: `dispatch.ts` contains `can(` and the index of `can(` precedes the index of `.run(`.
-- `WB-1 no route is registered outside the reviewed route files`: scan non-test `apps/uw-app/**/*.{ts,tsx}` for `/\.(?:get|post|put|patch|delete|all|on)\(\s*['"`]/`; allowed files: `apps/uw-app/app.tsx`, `apps/uw-app/commands/routes.ts`, `apps/uw-app/mcp/routes.ts`, `apps/uw-app/acl/routes.ts`, `apps/uw-app/agents/routes.ts`, `apps/uw-app/pages/routes.ts`, `apps/uw-app/health/routes.tsx`, `apps/uw-app/auth/me.ts`, `apps/uw-app/assets/routes.ts` (Task 18 creates it).
+- `WB-1 no route is registered outside the reviewed route files`: scan non-test `apps/uw-platform/**/*.{ts,tsx}` for `/\.(?:get|post|put|patch|delete|all|on)\(\s*['"`]/`; allowed files: `apps/uw-platform/app.tsx`, `apps/uw-platform/commands/routes.ts`, `apps/uw-platform/mcp/routes.ts`, `apps/uw-platform/acl/routes.ts`, `apps/uw-platform/agents/routes.ts`, `apps/uw-platform/pages/routes.ts`, `apps/uw-platform/health/routes.tsx`, `apps/uw-platform/auth/me.ts`, `apps/uw-platform/assets/routes.ts` (Task 18 creates it).
 - `WB-1 flags a planted handler without a builder, a planted action that is not a literal, and a planted route file`.
 
 - [ ] **Step 2: Run them and see them fail.**
@@ -1096,17 +1096,17 @@ The kernel is `platformKernel(database, clock)` built once per request (Task 9 a
 
 `http/outcomes.ts` statuses: `harness_not_found` 404, `item_not_found` 404, `stage_not_found` 404, `issue_not_found` 404, `delegation_not_found` 404, `request_in_flight` 409, `decision_in_flight` 409, `wip_limit_reached` 409, `lease_held` 409, `not_holder` 409, `stage_not_empty` 409, `harness_exists` 409, `gate_refused_to_agent` 403.
 
-`docs/exceptions.md` row (same commit as `requests.ts`): Rule 2, `apps/uw-app/commands/requests.ts`, "A platform module, not kernel code: it owns `command_requests` and writes it with Drizzle directly, one statement per claim, settle or release, outside any kernel transaction, as `tasks/store.ts` does for tasks.", review "Revisit when a kernel module needs the ledger."
+`docs/exceptions.md` row (same commit as `requests.ts`): Rule 2, `apps/uw-platform/commands/requests.ts`, "A platform module, not kernel code: it owns `command_requests` and writes it with Drizzle directly, one statement per claim, settle or release, outside any kernel transaction, as `tasks/store.ts` does for tasks.", review "Revisit when a kernel module needs the ledger."
 
 - [ ] **Step 4: Run them and see them pass.**
 
-Run: `TEST_DATABASE_URL=… pnpm vitest run apps/uw-app/commands tools/architecture/command-routes.test.ts tools/architecture/owners.test.ts tools/architecture/agent-boundary.test.ts`
+Run: `TEST_DATABASE_URL=… pnpm vitest run apps/uw-platform/commands tools/architecture/command-routes.test.ts tools/architecture/owners.test.ts tools/architecture/agent-boundary.test.ts`
 Expected: PASS (the agent-boundary closure from `app.tsx` now includes `commands/`; nothing there touches a gate yet).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git commit -m "feat(uw-app): the command API dispatcher, its request ledger, and enqueue, claim and release as commands" -m "Every harness command resolves the harness (hidden equals missing), calls can() and only then the kernel; a repeated requestId replays the first outcome; unbuilt commands answer not_wired after can()." -m "WB-1"
+git commit -m "feat(uw-platform): the command API dispatcher, its request ledger, and enqueue, claim and release as commands" -m "Every harness command resolves the harness (hidden equals missing), calls can() and only then the kernel; a repeated requestId replays the first outcome; unbuilt commands answer not_wired after can()." -m "WB-1"
 ```
 
 - [ ] **Step 6: Verify** — green.
@@ -1118,11 +1118,11 @@ git commit -m "feat(uw-app): the command API dispatcher, its request ledger, and
 **Requirements:** WB-1, WB-2.
 
 **Files:**
-- Modify: `apps/uw-app/commands/handlers/items.ts`, `apps/uw-app/commands/registry.ts`, `apps/uw-app/commands/routes.ts`
-- Create: `apps/uw-app/commands/reads.ts` (items in a stage), `apps/uw-app/commands/items.pg.test.ts`, `apps/uw-app/commands/reorder.pg.test.ts`
+- Modify: `apps/uw-platform/commands/handlers/items.ts`, `apps/uw-platform/commands/registry.ts`, `apps/uw-platform/commands/routes.ts`
+- Create: `apps/uw-platform/commands/reads.ts` (items in a stage), `apps/uw-platform/commands/items.pg.test.ts`, `apps/uw-platform/commands/reorder.pg.test.ts`
 
 **Interfaces:**
-- Consumes: `kernel.items.submit`, `kernel.items.reorder` (Task 4), `kernel.reads.inStage`, `readPage` (`apps/uw-app/pages/store.ts`).
+- Consumes: `kernel.items.submit`, `kernel.items.reorder` (Task 4), `kernel.reads.inStage`, `readPage` (`apps/uw-platform/pages/store.ts`).
 - Produces: `GET /api/harness/:harness/stages/:stage/items` → `{ items: ItemState[] }` in the kernel's order (`itemStateSchema` per item), `harness_not_found`/`stage_not_found` as refusals.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1156,7 +1156,7 @@ git commit -m "feat(uw-app): the command API dispatcher, its request ledger, and
 - [ ] **Step 5: Commit**
 
 ```bash
-git commit -m "feat(uw-app): kickstart, submit, reorder and tweak package as commands, prompt and stop run not wired, and a stage's items in the server's order" -m "WB-1 WB-2"
+git commit -m "feat(uw-platform): kickstart, submit, reorder and tweak package as commands, prompt and stop run not wired, and a stage's items in the server's order" -m "WB-1 WB-2"
 ```
 
 - [ ] **Step 6: Verify** — green.
@@ -1168,9 +1168,9 @@ git commit -m "feat(uw-app): kickstart, submit, reorder and tweak package as com
 **Requirements:** step-5 carries (person gate route's GitHub read client and ship writes; `kernel.ts` back on the allow-list), GH-6 (only the gate route's kernel gets the ship writes).
 
 **Files:**
-- Modify: `apps/uw-app/kernel.ts`, `apps/uw-app/kernel.test.ts`, `apps/uw-app/testing/kernel.ts`, `apps/uw-app/mcp/routes.ts`, `apps/uw-app/queue/worker.ts`, `apps/uw-app/cron/github-sweep.ts`, `apps/uw-app/commands/dispatch.ts`
-- Create: `apps/uw-app/commands/person/gate-kernel.ts`, `apps/uw-app/commands/person/gate-github.ts`, `apps/uw-app/commands/person/gate-kernel.test.ts`
-- Modify: `apps/uw-app/commands/person-deps.ts` (`platformPersonDeps`), `apps/uw-app/app.tsx`
+- Modify: `apps/uw-platform/kernel.ts`, `apps/uw-platform/kernel.test.ts`, `apps/uw-platform/testing/kernel.ts`, `apps/uw-platform/mcp/routes.ts`, `apps/uw-platform/queue/worker.ts`, `apps/uw-platform/cron/github-sweep.ts`, `apps/uw-platform/commands/dispatch.ts`
+- Create: `apps/uw-platform/commands/person/gate-kernel.ts`, `apps/uw-platform/commands/person/gate-github.ts`, `apps/uw-platform/commands/person/gate-kernel.test.ts`
+- Modify: `apps/uw-platform/commands/person-deps.ts` (`platformPersonDeps`), `apps/uw-platform/app.tsx`
 - Modify (own commit, protected `infra` domain under P15): `.dependency-cruiser.mjs`, `tools/architecture/github-rules.test.ts`, `tools/architecture/connector-callers.test.ts`
 
 **Interfaces:**
@@ -1194,16 +1194,16 @@ export const platformPersonDeps: PersonDeps;
 
 - [ ] **Step 1: Write the failing tests**
 
-`apps/uw-app/kernel.test.ts`:
+`apps/uw-platform/kernel.test.ts`:
 - `GH-6 platformPorts wires the merge connector only when given the ship GitHub, and refresh only when given a read client`: with `hubWiring(hub)` the connectors answer `not_wired` and `githubFacts.refresh` rejects `PortNotWiredError`; with `{ hub, reads, ship }` from a fixture GitHub both reach the fixture.
 - `WB-3 every platform kernel is given the hub it is wired with`.
 
-`apps/uw-app/commands/person/gate-kernel.test.ts`: `GH-6 the gate kernel opens the read client and the ship writes from one GitHub App configuration, and none without it`.
+`apps/uw-platform/commands/person/gate-kernel.test.ts`: `GH-6 the gate kernel opens the read client and the ship writes from one GitHub App configuration, and none without it`.
 
 `tools/architecture/connector-callers.test.ts`: replace `threeArguments` with two checks:
-- `GH-6 the only kernel built with GitHub reads or the ship writes is the gate kernel`: in every non-test source under `apps/uw-app/`, a `platformKernel(`/`platformPorts(` call whose third argument is not `hubWiring(` (regex `/\bplatform(?:Kernel|Ports)\s*\(\s*[^,()]*,\s*[^,()]*,\s*(?!hubWiring\()/`) appears only in `apps/uw-app/commands/person/gate-kernel.ts`.
+- `GH-6 the only kernel built with GitHub reads or the ship writes is the gate kernel`: in every non-test source under `apps/uw-platform/`, a `platformKernel(`/`platformPorts(` call whose third argument is not `hubWiring(` (regex `/\bplatform(?:Kernel|Ports)\s*\(\s*[^,()]*,\s*[^,()]*,\s*(?!hubWiring\()/`) appears only in `apps/uw-platform/commands/person/gate-kernel.ts`.
 - `GH-6 the queue and cron roots name no ship or read wiring` (keep `shipWiring` over the roots and add `/\b(?:reads|ship)\s*:/` to it).
-Keep the planted cases; add a planted `platformKernel(database, clock, { hub, reads, ship })` in `apps/uw-app/queue/w.ts` that the first check flags.
+Keep the planted cases; add a planted `platformKernel(database, clock, { hub, reads, ship })` in `apps/uw-platform/queue/w.ts` that the first check flags.
 
 `tools/architecture/github-rules.test.ts`: planted cases proving the new dependency-cruiser rules below fail.
 
@@ -1212,14 +1212,14 @@ Keep the planted cases; add a planted `platformKernel(database, clock, { hub, re
 - [ ] **Step 3: The dependency rules (own commit)**
 
 In `.dependency-cruiser.mjs`:
-- Add `^apps/uw-app/kernel\.ts$` and `^apps/uw-app/commands/person/gate-kernel\.ts$` to the allowed `from` of `github-reads-only-in-github-and-composition-roots` (`readRoots`) and of `github-module-only-in-ports-and-roots`; add `^apps/uw-app/commands/person/gate-github\.ts$` to `appConfigRoots` and to `github-module-only-in-ports-and-roots`.
-- New rule `gate-kernel-only-in-gate-commands`: from `pathNot: ['^apps/uw-app/commands/person/gates\\.ts$', testFile]` to `^apps/uw-app/commands/person/gate-(kernel|github)\\.ts$`, except that `apps/uw-app/commands/person-deps.ts` may import `gate-github.ts`.
-- New rule `person-surface-only-from-commands`: from `pathNot: ['^apps/uw-app/commands/', appTesting, testFile]` to `^apps/uw-app/commands/person/`.
-- New rule `agent-hosts-never-import-commands`: from `^apps/uw-app/(mcp|engines|queue|cron)/` to `^apps/uw-app/commands/`.
+- Add `^apps/uw-platform/kernel\.ts$` and `^apps/uw-platform/commands/person/gate-kernel\.ts$` to the allowed `from` of `github-reads-only-in-github-and-composition-roots` (`readRoots`) and of `github-module-only-in-ports-and-roots`; add `^apps/uw-platform/commands/person/gate-github\.ts$` to `appConfigRoots` and to `github-module-only-in-ports-and-roots`.
+- New rule `gate-kernel-only-in-gate-commands`: from `pathNot: ['^apps/uw-platform/commands/person/gates\\.ts$', testFile]` to `^apps/uw-platform/commands/person/gate-(kernel|github)\\.ts$`, except that `apps/uw-platform/commands/person-deps.ts` may import `gate-github.ts`.
+- New rule `person-surface-only-from-commands`: from `pathNot: ['^apps/uw-platform/commands/', appTesting, testFile]` to `^apps/uw-platform/commands/person/`.
+- New rule `agent-hosts-never-import-commands`: from `^apps/uw-platform/(mcp|engines|queue|cron)/` to `^apps/uw-platform/commands/`.
 
 ```bash
 git add .dependency-cruiser.mjs tools/architecture/github-rules.test.ts
-git commit -m "build(architecture): the gate kernel alone opens GitHub for a person's decision, and no agent host imports the command API" -m "Step 5 carry: apps/uw-app/kernel.ts is back on the GitHub read-client allow-list because the person gate route's kernel is given a reader; the person surface is imported only from apps/uw-app/commands/." -m "GH-6 WB-1"
+git commit -m "build(architecture): the gate kernel alone opens GitHub for a person's decision, and no agent host imports the command API" -m "Step 5 carry: apps/uw-platform/kernel.ts is back on the GitHub read-client allow-list because the person gate route's kernel is given a reader; the person surface is imported only from apps/uw-platform/commands/." -m "GH-6 WB-1"
 ```
 
 - [ ] **Step 4: Implement**
@@ -1281,7 +1281,7 @@ export function gateKernel(
 - [ ] **Step 5: Run the tests and see them pass; commit**
 
 ```bash
-git commit -m "feat(uw-app): kernels take their wiring, and only the gate kernel is given the GitHub reader and the ship writes" -m "Step 5 carry: the person gate route builds its kernel with a read-only GitHub client for Ship's refresh and the ship writes for the merge connector; MCP, queue and cron kernels get the hub and nothing else." -m "GH-6 WB-1"
+git commit -m "feat(uw-platform): kernels take their wiring, and only the gate kernel is given the GitHub reader and the ship writes" -m "Step 5 carry: the person gate route builds its kernel with a read-only GitHub client for Ship's refresh and the ship writes for the merge connector; MCP, queue and cron kernels get the hub and nothing else." -m "GH-6 WB-1"
 ```
 
 - [ ] **Step 6: Verify** — green.
@@ -1293,36 +1293,36 @@ git commit -m "feat(uw-app): kernels take their wiring, and only the gate kernel
 **Requirements:** WB-1 (approve, reject, take over, override, recover connectors), KN-13 through HTTP, AB-7 (static check kept for the new routes), step-5 carries.
 
 **Files:**
-- Create: `apps/uw-app/commands/person/gates.ts`, `apps/uw-app/commands/gates.pg.test.ts`, `apps/uw-app/commands/agent-gate.pg.test.ts`, `docs/adr/0009-the-person-surface-decides-gates.md`
-- Modify: `apps/uw-app/commands/registry.ts`, `tools/architecture/agent-boundary.ts`, `tools/architecture/agent-boundary.test.ts`, `docs/architecture.md` (the AB-7 table's Static row and a "The person surface" paragraph)
+- Create: `apps/uw-platform/commands/person/gates.ts`, `apps/uw-platform/commands/gates.pg.test.ts`, `apps/uw-platform/commands/agent-gate.pg.test.ts`, `docs/adr/0009-the-person-surface-decides-gates.md`
+- Modify: `apps/uw-platform/commands/registry.ts`, `tools/architecture/agent-boundary.ts`, `tools/architecture/agent-boundary.test.ts`, `docs/architecture.md` (the AB-7 table's Static row and a "The person surface" paragraph)
 
 **Interfaces:**
 - Consumes: `gateKernel` (Task 9), `DecideInput.seenHead` (Task 6), `kernel.gates.recoverConnectors`, `CommandContext.person.gateGitHub`.
-- Produces: handlers `approve`, `reject`, `take_over`, `override` (`action: 'admin'`, `agents: 'recorded'`), `recover_connectors` (`action: 'admin'`, `agents: 'refused'`); `personSurface = 'apps/uw-app/commands/person/'` and `mcpReachable(sources)` in `tools/architecture/agent-boundary.ts`.
+- Produces: handlers `approve`, `reject`, `take_over`, `override` (`action: 'admin'`, `agents: 'recorded'`), `recover_connectors` (`action: 'admin'`, `agents: 'refused'`); `personSurface = 'apps/uw-platform/commands/person/'` and `mcpReachable(sources)` in `tools/architecture/agent-boundary.ts`.
 
 - [ ] **Step 1: Write the failing tests**
 
-`gates.pg.test.ts` (use `apps/uw-app/github/testing/ship-rig.ts` and `fixtureGitHub()` to park an item at Ship with facts, reviews and checks that pass; pass `{ gateGitHub: () => ({ app: fixtureApp, transport: fixture.transport }) }` as `PersonDeps`):
+`gates.pg.test.ts` (use `apps/uw-platform/github/testing/ship-rig.ts` and `fixtureGitHub()` to park an item at Ship with facts, reviews and checks that pass; pass `{ gateGitHub: () => ({ app: fixtureApp, transport: fixture.transport }) }` as `PersonDeps`):
 - `WB-1 approve at Ship through the command API refreshes GitHub facts, writes one gate decision and merges through the connector` (assert one `gate_decisions` row, `gate_approved`, `connector_succeeded`, the fixture saw one merge and one tag, every event carries the `requestId`).
 - `WB-1 approving twice with one requestId writes one decision and replays the outcome` (Review Focus line 1).
 - `WB-1 approve naming a head other than the expected one is head_mismatch and decides nothing` (Review Focus line 2).
 - `WB-1 approve with no GitHub App configured answers not_wired and decides nothing`.
 - `WB-1 reject returns the item with its findings, take_over makes the person its holder, override needs a reason and records it`.
 - `WB-1 an editor's approve is not_permitted before any state`.
-- `WB-1 recover_connectors records a lost connector result` (use the recovery rig from `apps/uw-app/harness/recover-race.pg.test.ts` or `sim/lost-exit.ts`'s pattern on the platform store).
+- `WB-1 recover_connectors records a lost connector result` (use the recovery rig from `apps/uw-platform/harness/recover-race.pg.test.ts` or `sim/lost-exit.ts`'s pattern on the platform store).
 
-`agent-gate.pg.test.ts`: calls `executeCommand` directly with an agent principal (`agentOf` from `apps/uw-app/testing/kernel.ts`) holding admin: `WB-1 an agent principal on a gate command reaches the kernel, which records gate_refused_to_agent and decides nothing`; `WB-1 an agent principal on any other command is not_permitted and appends nothing`; `WB-1 an agent that cannot read the harness gets harness_not_found and nothing is recorded`.
+`agent-gate.pg.test.ts`: calls `executeCommand` directly with an agent principal (`agentOf` from `apps/uw-platform/testing/kernel.ts`) holding admin: `WB-1 an agent principal on a gate command reaches the kernel, which records gate_refused_to_agent and decides nothing`; `WB-1 an agent principal on any other command is not_permitted and appends nothing`; `WB-1 an agent that cannot read the harness gets harness_not_found and nothing is recorded`.
 
 `tools/architecture/agent-boundary.test.ts`:
 - `AB-7 gate, stage and delegation-grant touches reachable from app.tsx live only in the person surface` (replace the current "no gate touch in the closure" assertion: `gateTouches(sources, agentReachable(sources).filter((f) => !f.startsWith(personSurface)))` is empty).
-- `AB-7 nothing the MCP surface reaches imports the command API` (`mcpReachable(sources)` contains no file under `apps/uw-app/commands/`).
+- `AB-7 nothing the MCP surface reaches imports the command API` (`mcpReachable(sources)` contains no file under `apps/uw-platform/commands/`).
 - `AB-7 a planted gate touch outside the person surface fails, and a planted MCP import of the command API fails`.
 
 - [ ] **Step 2: Run them and see them fail.**
 
 - [ ] **Step 3: ADR 0009 (own commit)**
 
-`docs/adr/0009-the-person-surface-decides-gates.md` (front matter `status: accepted`, `date: 2026-10-03`): the person surface (`apps/uw-app/commands/person/`) is the one place in `uw-app` that calls `kernel.gates`, `kernel.stages` and `kernel.delegations.grant`/`revoke`; the AB-7 static closure still starts at `app.tsx` and allows those touches only there; nothing seeded from `apps/uw-app/mcp/` may reach `apps/uw-app/commands/`; the kernel's own refusals (agents never decide, `admin` re-read under lock) remain the enforcement and the static check the backstop; only `person/gates.ts` builds a kernel with GitHub. Rejected: a second Worker for people (doubles deploy surface), a token-level allow-list of individual handlers (drifts as handlers grow). Consequence: a new gate- or stage-touching handler must live in `person/`, where review looks.
+`docs/adr/0009-the-person-surface-decides-gates.md` (front matter `status: accepted`, `date: 2026-10-03`): the person surface (`apps/uw-platform/commands/person/`) is the one place in `uw-platform` that calls `kernel.gates`, `kernel.stages` and `kernel.delegations.grant`/`revoke`; the AB-7 static closure still starts at `app.tsx` and allows those touches only there; nothing seeded from `apps/uw-platform/mcp/` may reach `apps/uw-platform/commands/`; the kernel's own refusals (agents never decide, `admin` re-read under lock) remain the enforcement and the static check the backstop; only `person/gates.ts` builds a kernel with GitHub. Rejected: a second Worker for people (doubles deploy surface), a token-level allow-list of individual handlers (drifts as handlers grow). Consequence: a new gate- or stage-touching handler must live in `person/`, where review looks.
 
 ```bash
 git add docs/adr/0009-the-person-surface-decides-gates.md
@@ -1331,7 +1331,7 @@ git commit -m "docs(adr): 0009 the person surface decides gates" -m "Shared root
 
 - [ ] **Step 4: Implement**
 
-`tools/architecture/agent-boundary.ts`: export `personSurface = 'apps/uw-app/commands/person/'`; `mcpReachable(sources)` is `agentReachable` with seeds limited to files under `mcpRoot`; keep `agentReachable` seeded from `mcpRoot` and the entry points.
+`tools/architecture/agent-boundary.ts`: export `personSurface = 'apps/uw-platform/commands/person/'`; `mcpReachable(sources)` is `agentReachable` with seeds limited to files under `mcpRoot`; keep `agentReachable` seeded from `mcpRoot` and the entry points.
 
 `person/gates.ts`:
 
@@ -1352,12 +1352,12 @@ function decision(name: 'approve' | 'reject' | 'take_over' | 'override') {
 
 `decideInput` maps bodies: `approve` → `{ itemId, decision: 'approve', reason: null, findings: [], seenHead: body.head }`; `override` → `reason: body.reason, seenHead: body.head`; `reject` → `findings: body.findings`; `take_over` → plain. (If one generic `decision(name)` does not type-check against `CommandBody<Name>`, write four small handlers.) `recover_connectors`: `gateKernel(…).gates.recoverConnectors(caller, { harnessId })`. The gate kernel takes `context.hub`, the same hub the dispatcher wired into `context.kernel` (`hubNotWired` until Task 14). Register the five in `registry.ts` in place of their `notWiredCommand` entries.
 
-`docs/architecture.md`: update the AB-7 Static row to "From `apps/uw-app/app.tsx`, gate, stage and delegation-grant touches only in the person surface (`apps/uw-app/commands/person/`, ADR 0009); from `apps/uw-app/mcp/`, nothing under `apps/uw-app/commands/`"; replace "No kernel is given a read client yet …" in "The platform GitHubFacts adapter" with "Only the gate commands' kernel (`apps/uw-app/commands/person/gate-kernel.ts`) is given a read client and the ship writes".
+`docs/architecture.md`: update the AB-7 Static row to "From `apps/uw-platform/app.tsx`, gate, stage and delegation-grant touches only in the person surface (`apps/uw-platform/commands/person/`, ADR 0009); from `apps/uw-platform/mcp/`, nothing under `apps/uw-platform/commands/`"; replace "No kernel is given a read client yet …" in "The platform GitHubFacts adapter" with "Only the gate commands' kernel (`apps/uw-platform/commands/person/gate-kernel.ts`) is given a read client and the ship writes".
 
 - [ ] **Step 5: Run the tests, see them pass; commit**
 
 ```bash
-git commit -m "feat(uw-app): approve, reject, take over, override and connector recovery as commands on the person surface" -m "Only the gate commands build a kernel with the GitHub reader and the ship writes; an agent principal reaching a gate command is recorded as gate_refused_to_agent by the kernel; the AB-7 static check allows gate touches only in apps/uw-app/commands/person/ and keeps the MCP closure away from the command API." -m "WB-1 KN-13 AB-7 GH-6"
+git commit -m "feat(uw-platform): approve, reject, take over, override and connector recovery as commands on the person surface" -m "Only the gate commands build a kernel with the GitHub reader and the ship writes; an agent principal reaching a gate command is recorded as gate_refused_to_agent by the kernel; the AB-7 static check allows gate touches only in apps/uw-platform/commands/person/ and keeps the MCP closure away from the command API." -m "WB-1 KN-13 AB-7 GH-6"
 ```
 
 - [ ] **Step 6: Verify** — green.
@@ -1369,8 +1369,8 @@ git commit -m "feat(uw-app): approve, reject, take over, override and connector 
 **Requirements:** WB-1 (pause, resume, schedule regular tweak), KN-18 (stage command routes), KN-16 (revoke), P17.
 
 **Files:**
-- Create: `apps/uw-app/commands/person/stages.ts`, `apps/uw-app/commands/person/delegations.ts`, `apps/uw-app/commands/stages.pg.test.ts`, `apps/uw-app/commands/delegations.pg.test.ts`
-- Modify: `apps/uw-app/commands/registry.ts`
+- Create: `apps/uw-platform/commands/person/stages.ts`, `apps/uw-platform/commands/person/delegations.ts`, `apps/uw-platform/commands/stages.pg.test.ts`, `apps/uw-platform/commands/delegations.pg.test.ts`
+- Modify: `apps/uw-platform/commands/registry.ts`
 
 **Interfaces:**
 - Consumes: `kernel.stages.activate`, `createStage`, `updateStage`, `reorderStages`, `removeStage`, `pause`, `resume` (Task 5); `kernel.delegations.grant`, `revoke`; `templates` from `@uw/harness`.
@@ -1401,7 +1401,7 @@ git commit -m "feat(uw-app): approve, reject, take over, override and connector 
 - [ ] **Step 5: Commit**
 
 ```bash
-git commit -m "feat(uw-app): the stage command and the delegation commands on the person surface" -m "activate_template, create, update, reorder and remove stage, pause, resume, schedule_regular_tweak and revoke_delegation; P17 and the connector carry hold through the API." -m "WB-1 KN-18 KN-16"
+git commit -m "feat(uw-platform): the stage command and the delegation commands on the person surface" -m "activate_template, create, update, reorder and remove stage, pause, resume, schedule_regular_tweak and revoke_delegation; P17 and the connector carry hold through the API." -m "WB-1 KN-18 KN-16"
 ```
 
 - [ ] **Step 6: Verify** — green.
@@ -1413,15 +1413,15 @@ git commit -m "feat(uw-app): the stage command and the delegation commands on th
 **Requirements:** WB-1 (import), GH-3 (one code path for webhook, sweep and person), step-5 carry.
 
 **Files:**
-- Create: `apps/uw-app/commands/handlers/import.ts`, `apps/uw-app/commands/import.pg.test.ts`
-- Modify: `apps/uw-app/github/facts/queries.ts` (`issueByNumber`), `apps/uw-app/github/import.ts` (extract `importStoredIssue`), `apps/uw-app/commands/registry.ts`, `.dependency-cruiser.mjs` (allow `^apps/uw-app/commands/handlers/import\.ts$` to import `apps/uw-app/github/import.ts` and `apps/uw-app/github/facts/queries.ts`; own commit), `tools/architecture/github-rules.test.ts`
+- Create: `apps/uw-platform/commands/handlers/import.ts`, `apps/uw-platform/commands/import.pg.test.ts`
+- Modify: `apps/uw-platform/github/facts/queries.ts` (`issueByNumber`), `apps/uw-platform/github/import.ts` (extract `importStoredIssue`), `apps/uw-platform/commands/registry.ts`, `.dependency-cruiser.mjs` (allow `^apps/uw-platform/commands/handlers/import\.ts$` to import `apps/uw-platform/github/import.ts` and `apps/uw-platform/github/facts/queries.ts`; own commit), `tools/architecture/github-rules.test.ts`
 
 **Interfaces:**
 - Produces: `issueByNumber(db: Database, repository: string, number: number): Promise<IssueChange | null>` (case-insensitive repository match, the stored row's GitHub id, title, open state and labels); `importStoredIssue(deps: GitHubDeps, caller: Caller, change: IssueChange, logger: Logger): Promise<ImportResult>` with `ImportResult = { readonly ok: true; readonly created: boolean } | { readonly ok: false; readonly reason: ErrorReason }`.
 
 - [ ] **Step 1: Write the failing tests**
 
-`import.pg.test.ts` (seed `gh_repos` and `gh_issues` through `upsertFacts` with the fixture batches in `apps/uw-app/github/testing/batches.ts`):
+`import.pg.test.ts` (seed `gh_repos` and `gh_issues` through `upsertFacts` with the fixture batches in `apps/uw-platform/github/testing/batches.ts`):
 - `WB-1 import takes the issue's GitHub id from the read model and records item_created under the person`: `item_created.evidence.issue.githubId` equals the stored id; the actor is `human:<id>`; the page's first version is written by `agent:ingest`.
 - `WB-1 importing the same issue again creates nothing new`.
 - `WB-1 an issue the read model does not hold is issue_not_found`.
@@ -1444,7 +1444,7 @@ git commit -m "build(architecture): the import command reads issues from the rea
 - [ ] **Step 4: Run them and see them pass; commit**
 
 ```bash
-git commit -m "feat(uw-app): a person imports an issue by reference, with its id taken from GitHub facts" -m "Step 5 carry: the IssueRef comes from gh_issues, never from the person; the webhook, the sweep and the person share importStoredIssue." -m "WB-1 GH-3"
+git commit -m "feat(uw-platform): a person imports an issue by reference, with its id taken from GitHub facts" -m "Step 5 carry: the IssueRef comes from gh_issues, never from the person; the webhook, the sweep and the person share importStoredIssue." -m "WB-1 GH-3"
 ```
 
 - [ ] **Step 5: Verify** — green.
@@ -1456,8 +1456,8 @@ git commit -m "feat(uw-app): a person imports an issue by reference, with its id
 **Requirements:** WB-3 (sessions read after their cursor from one route, filtered by `can()`), step-5 carries (gate view).
 
 **Files:**
-- Modify: `apps/uw-app/commands/reads.ts`, `apps/uw-app/commands/routes.ts`
-- Create: `apps/uw-app/commands/person/gate-view.ts`, `apps/uw-app/commands/events.pg.test.ts`, `apps/uw-app/commands/gate-view.pg.test.ts`
+- Modify: `apps/uw-platform/commands/reads.ts`, `apps/uw-platform/commands/routes.ts`
+- Create: `apps/uw-platform/commands/person/gate-view.ts`, `apps/uw-platform/commands/events.pg.test.ts`, `apps/uw-platform/commands/gate-view.pg.test.ts`
 
 **Interfaces:**
 - Consumes: `kernel.events.read`, `eventQuerySchema`, `eventPageReplySchema`, `kernel.gates.view`, `gateViewSchema`.
@@ -1484,7 +1484,7 @@ git commit -m "feat(uw-app): a person imports an issue by reference, with its id
 - [ ] **Step 4: Run them and see them pass; commit**
 
 ```bash
-git commit -m "feat(uw-app): the one event read route by cursor, and the gate view route" -m "WB-3 GH-5"
+git commit -m "feat(uw-platform): the one event read route by cursor, and the gate view route" -m "WB-3 GH-5"
 ```
 
 - [ ] **Step 5: Verify** — green.
@@ -1496,9 +1496,9 @@ git commit -m "feat(uw-app): the one event read route by cursor, and the gate vi
 **Requirements:** WB-3.
 
 **Files:**
-- Create: `apps/uw-app/live/hub-core.ts`, `apps/uw-app/live/harness-hub.ts`, `apps/uw-app/live/hub-core.test.ts`, `apps/uw-app/ports/hub.ts`, `apps/uw-app/ports/hub.contract.test.ts`, `apps/uw-app/live/testing.ts` (fake hub state and namespace)
-- Modify: `apps/uw-app/index.ts` (`export { HarnessHub } from './live/harness-hub.ts'`), `apps/uw-app/env.ts` (`HARNESS_HUB?: HubNamespace`), `apps/uw-app/mcp/routes.ts`, `apps/uw-app/queue/worker.ts`, `apps/uw-app/cron/github-sweep.ts`, `apps/uw-app/commands/dispatch.ts` (each passes `hubWiring(hubOf(env))`), `docs/architecture.md` (Hub row and a "The live hub" section)
-- Modify (own commit, shared root `infra/`): `infra/uw-app/wrangler.toml`, `infra/uw-app/wrangler.go-live.toml`, `tools/infra/wrangler.test.ts`
+- Create: `apps/uw-platform/live/hub-core.ts`, `apps/uw-platform/live/harness-hub.ts`, `apps/uw-platform/live/hub-core.test.ts`, `apps/uw-platform/ports/hub.ts`, `apps/uw-platform/ports/hub.contract.test.ts`, `apps/uw-platform/live/testing.ts` (fake hub state and namespace)
+- Modify: `apps/uw-platform/index.ts` (`export { HarnessHub } from './live/harness-hub.ts'`), `apps/uw-platform/env.ts` (`HARNESS_HUB?: HubNamespace`), `apps/uw-platform/mcp/routes.ts`, `apps/uw-platform/queue/worker.ts`, `apps/uw-platform/cron/github-sweep.ts`, `apps/uw-platform/commands/dispatch.ts` (each passes `hubWiring(hubOf(env))`), `docs/architecture.md` (Hub row and a "The live hub" section)
+- Modify (own commit, shared root `infra/`): `infra/uw-platform/wrangler.toml`, `infra/uw-platform/wrangler.go-live.toml`, `tools/infra/wrangler.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -1538,7 +1538,7 @@ export function hubOf(env: Bindings): Hub;
 
 `ports/hub.contract.test.ts`: `describeHubContract('the platform hub over a Durable Object namespace', open)` where `open` builds `platformHub(fakeNamespace)` over `createHubCore` instances (one per name) with fake sockets; `wakes()` waits one macrotask and returns the harness ids seen in sent messages. Keep the not-wired contract for `hub.not-wired.ts` in `not-wired.contract.test.ts` (it is still used when the binding is absent).
 
-In `apps/uw-app/kernel.test.ts`: `WB-3 the command, MCP, queue and cron kernels are wired with the hub of their environment` (lexical: each of the four files calls `hubWiring(hubOf(`).
+In `apps/uw-platform/kernel.test.ts`: `WB-3 the command, MCP, queue and cron kernels are wired with the hub of their environment` (lexical: each of the four files calls `hubWiring(hubOf(`).
 
 `tools/infra/wrangler.test.ts`: `WB-3 every environment binds HARNESS_HUB to the HarnessHub class and the migration declares it as a SQLite class`.
 
@@ -1546,7 +1546,7 @@ In `apps/uw-app/kernel.test.ts`: `WB-3 the command, MCP, queue and cron kernels 
 
 - [ ] **Step 3: The wrangler declarations (own commit)**
 
-In both `infra/uw-app/wrangler.toml` and `wrangler.go-live.toml`, add at top level and for each of `env.staging`, `env.production`, `env.preview` (Durable Object bindings do not inherit):
+In both `infra/uw-platform/wrangler.toml` and `wrangler.go-live.toml`, add at top level and for each of `env.staging`, `env.production`, `env.preview` (Durable Object bindings do not inherit):
 
 ```toml
 [[durable_objects.bindings]]
@@ -1565,8 +1565,8 @@ class_name = "HarnessHub"
 (and the same `[[env.production.durable_objects.bindings]]` and `[[env.preview.durable_objects.bindings]]` blocks; `migrations` stays top-level only). No account resource is needed: the deploy creates the namespace from the exported class (S6-D18). Confirm `pnpm build` (the wrangler dry run) accepts the file.
 
 ```bash
-git add infra/uw-app tools/infra/wrangler.test.ts
-git commit -m "build(infra): declare the HarnessHub Durable Object for every uw-app environment" -m "Shared root infra/: WB-3's live hub is one Durable Object per harness; a SQLite-backed class needs no account resource, so the binding is declared in the live wrangler file." -m "WB-3"
+git add infra/uw-platform tools/infra/wrangler.test.ts
+git commit -m "build(infra): declare the HarnessHub Durable Object for every uw-platform environment" -m "Shared root infra/: WB-3's live hub is one Durable Object per harness; a SQLite-backed class needs no account resource, so the binding is declared in the live wrangler file." -m "WB-3"
 ```
 
 - [ ] **Step 4: Implement**
@@ -1640,7 +1640,7 @@ export class HarnessHub extends DurableObject<Bindings> {
 }
 ```
 
-(`hubStateOf(ctx)` adapts `ctx.acceptWebSocket`, `ctx.getWebSockets()` and `ctx.storage.get/put`. If the empty `webSocketMessage` body trips a lint rule, have it ignore the message by returning `undefined` explicitly. The constructor reads the clock once through `() => new Date()` only at wake time; if the no-clock-reads architecture check flags `new Date()` here, take the clock from `systemClock` in `apps/uw-app/ports/clock.ts`.)
+(`hubStateOf(ctx)` adapts `ctx.acceptWebSocket`, `ctx.getWebSockets()` and `ctx.storage.get/put`. If the empty `webSocketMessage` body trips a lint rule, have it ignore the message by returning `undefined` explicitly. The constructor reads the clock once through `() => new Date()` only at wake time; if the no-clock-reads architecture check flags `new Date()` here, take the clock from `systemClock` in `apps/uw-platform/ports/clock.ts`.)
 
 `ports/hub.ts`:
 
@@ -1669,7 +1669,7 @@ Swap `hubWiring(hubNotWired)` for `hubWiring(hubOf(env))` in the MCP routes, the
 - [ ] **Step 5: Run the tests, see them pass, and commit**
 
 ```bash
-git commit -m "feat(uw-app): the live hub, one Durable Object per harness, and the platform Hub adapter that wakes it" -m "Wakes in one tick coalesce to one message that carries only the harness id; the hub stores only its last wake time." -m "WB-3"
+git commit -m "feat(uw-platform): the live hub, one Durable Object per harness, and the platform Hub adapter that wakes it" -m "Wakes in one tick coalesce to one message that carries only the harness id; the hub stores only its last wake time." -m "WB-3"
 ```
 
 - [ ] **Step 6: Verify** — green.
@@ -1681,8 +1681,8 @@ git commit -m "feat(uw-app): the live hub, one Durable Object per harness, and t
 **Requirements:** WB-3 (sessions connect through `can()`; connection count and last wake time are health indicators).
 
 **Files:**
-- Create: `apps/uw-app/live/connect.ts`, `apps/uw-app/live/connect.pg.test.ts`, `apps/uw-app/health/hub.ts`, `apps/uw-app/health/hub.pg.test.ts`
-- Modify: `apps/uw-app/commands/routes.ts` (`routes.get('/:harness/live', connectLive)`), `apps/uw-app/health/indicators.ts`, `apps/uw-app/health/routes.tsx` (pass what the indicator needs), `tools/architecture/command-routes.test.ts` (no change to the allow-list: the route is registered in `commands/routes.ts`)
+- Create: `apps/uw-platform/live/connect.ts`, `apps/uw-platform/live/connect.pg.test.ts`, `apps/uw-platform/health/hub.ts`, `apps/uw-platform/health/hub.pg.test.ts`
+- Modify: `apps/uw-platform/commands/routes.ts` (`routes.get('/:harness/live', connectLive)`), `apps/uw-platform/health/indicators.ts`, `apps/uw-platform/health/routes.tsx` (pass what the indicator needs), `tools/architecture/command-routes.test.ts` (no change to the allow-list: the route is registered in `commands/routes.ts`)
 
 **Interfaces:**
 - Consumes: `hubOf`, `HubNamespace`, `kernel.reads.harness`, `kernel.reads.harnessIds` (Task 6), `deps.timers`.
@@ -1711,7 +1711,7 @@ git commit -m "feat(uw-app): the live hub, one Durable Object per harness, and t
 - [ ] **Step 4: Run them and see them pass; commit**
 
 ```bash
-git commit -m "feat(uw-app): the live socket route behind can(), and live_hub on /health with connections and the last wake" -m "WB-3"
+git commit -m "feat(uw-platform): the live socket route behind can(), and live_hub on /health with connections and the last wake" -m "WB-3"
 ```
 
 - [ ] **Step 5: Verify** — green.
@@ -1723,8 +1723,8 @@ git commit -m "feat(uw-app): the live socket route behind can(), and live_hub on
 **Requirements:** WB-3 (each session holds its cursor; polling is the fallback; killing the object loses nothing).
 
 **Files:**
-- Create: `apps/uw-app/islands/live/session.ts`, `apps/uw-app/islands/live/read-events.ts`, `apps/uw-app/islands/live/session.test.ts`, `apps/uw-app/islands/live/read-events.test.ts`
-- Modify: `apps/uw-app/package.json` (dependency `partysocket`), `docs/progress_tracker.md` is not touched here (Task 21 records the dependency)
+- Create: `apps/uw-platform/islands/live/session.ts`, `apps/uw-platform/islands/live/read-events.ts`, `apps/uw-platform/islands/live/session.test.ts`, `apps/uw-platform/islands/live/read-events.test.ts`
+- Modify: `apps/uw-platform/package.json` (dependency `partysocket`), `docs/progress_tracker.md` is not touched here (Task 21 records the dependency)
 
 **Interfaces:**
 - Produces:
@@ -1780,7 +1780,7 @@ export function readEvents(fetcher: typeof fetch, harnessId: string): (after: nu
 - [ ] **Step 4: Run them and see them pass; commit**
 
 ```bash
-git commit -m "feat(uw-app): the live session holds its cursor, reconnects with backoff, and polls the one read route while the socket is down" -m "Adds partysocket for the reconnecting socket." -m "WB-3"
+git commit -m "feat(uw-platform): the live session holds its cursor, reconnects with backoff, and polls the one read route while the socket is down" -m "Adds partysocket for the reconnecting socket." -m "WB-3"
 ```
 
 - [ ] **Step 5: Verify** — green.
@@ -1793,7 +1793,7 @@ git commit -m "feat(uw-app): the live session holds its cursor, reconnects with 
 
 **Files:**
 - Create: `packages/ui/package.json` (`@uw/ui`, `"type": "module"`, exports map for `./components/*`, `./generated/app-css`; dependency `hono` `^4.13.11`; devDependencies `tailwindcss` and `@tailwindcss/cli` `^4.1.0`, `colorjs.io` `^0.5.2`), `packages/ui/tsconfig.json` (extends the base; `"jsx": "react-jsx"`, `"jsxImportSource": "hono/jsx"`), `packages/ui/tokens/brand.css`, `packages/ui/tokens/theme.css`, `packages/ui/tokens/type.css`, `packages/ui/tokens/layout.css`, `packages/ui/app.css`, `packages/ui/generated/app-css.ts` (generated), `packages/ui/tokens/tokens.test.ts`, `packages/ui/tokens/contrast.test.ts`, `tools/ui/build-css.ts`, `tools/ui/generated-css.test.ts`, `tools/ui/tokens-agree.test.ts`, `tools/ui/no-hex.test.ts`, `tools/ui/css-tokens.ts` (a small parser shared by the tests)
-- Modify: root `package.json` (scripts `"ui:css": "node tools/ui/build-css.ts"`), `knip.json` (workspace `packages/ui` with `project: ["**/*.ts", "**/*.tsx"]`, entry `tools/ui/build-css.ts` in the root workspace), `.prettierignore` (`packages/ui/generated/`), `apps/uw-app/package.json` (`"@uw/ui": "workspace:*"`), `vitest.config.ts` only if `packages/ui` tests need it (they are `.test.ts` and already included by `packages/**/*.test.ts`), `docs/architecture.md` (`packages/ui` line)
+- Modify: root `package.json` (scripts `"ui:css": "node tools/ui/build-css.ts"`), `knip.json` (workspace `packages/ui` with `project: ["**/*.ts", "**/*.tsx"]`, entry `tools/ui/build-css.ts` in the root workspace), `.prettierignore` (`packages/ui/generated/`), `apps/uw-platform/package.json` (`"@uw/ui": "workspace:*"`), `vitest.config.ts` only if `packages/ui` tests need it (they are `.test.ts` and already included by `packages/**/*.test.ts`), `docs/architecture.md` (`packages/ui` line)
 
 **Interfaces:**
 - Produces: token names `--uw-brand-inspire`, `--uw-brand-ocean`, `--uw-brand-tech`, `--uw-brand-cultivate`, `--uw-brand-kindle`; semantic `--uw-bg`, `--uw-surface`, `--uw-ink`, `--uw-muted`, `--uw-line`, `--uw-ocean`, `--uw-ocean-panel`, `--uw-ocean-panel-ink`, `--uw-inspire`, `--uw-inspire-soft`, `--uw-cultivate`, `--uw-cultivate-soft`, `--uw-kindle`, `--uw-kindle-soft`, `--uw-on-accent`, `--uw-link`, `--uw-focus`; type `--uw-font-sans`, `--uw-font-mono`, `--uw-text-xs|sm|base|lg|xl|2xl`; layout `--uw-space`, `--uw-radius-sm|md|lg`, `--uw-breakpoint-md`, `--uw-breakpoint-lg`, `--uw-sidebar`; Tailwind utilities `bg-bg`, `bg-surface`, `text-ink`, `text-muted`, `border-line`, `bg-ocean-panel`, `text-ocean-panel-ink`, `text-ocean`, `bg-inspire`, `bg-inspire-soft`, `bg-cultivate`, `bg-cultivate-soft`, `bg-kindle`, `bg-kindle-soft`, `text-on-accent`, `text-link`, `outline-focus`, `font-sans`, `font-mono`, `text-xs…text-2xl`, `rounded-sm|md|lg`, `md:`, `lg:`; `appCss: string`, `appCssPath: string` from `@uw/ui/generated/app-css`.
@@ -1893,7 +1893,7 @@ git commit -m "feat(uw-app): the live session holds its cursor, reconnects with 
 @import './tokens/layout.css';
 
 @source './components';
-@source '../../apps/uw-app';
+@source '../../apps/uw-platform';
 
 @theme {
   --color-*: initial;
@@ -1999,8 +1999,8 @@ git commit -m "feat(ui): brand tokens, a Tailwind 4 theme that is the tokens and
 **Requirements:** WB-11 (shell pieces exist once; fluid; dark follows the system with a persisted `data-theme` override).
 
 **Files:**
-- Create: `packages/ui/components/shell.tsx`, `packages/ui/components/sidebar.tsx`, `packages/ui/components/top-bar.tsx`, `packages/ui/components/page-head.tsx`, `packages/ui/components/segmented-control.tsx`, `packages/ui/components/theme-switch.tsx`, `packages/ui/components/shell.test.ts`, `packages/ui/components/segmented-control.test.ts`, `apps/uw-app/assets/routes.ts`, `apps/uw-app/assets/routes.test.ts`
-- Modify: `apps/uw-app/app.tsx` (mount the stylesheet before `withPrincipal`; render `/` in the shell), `apps/uw-app/app.test.ts`, `docs/exceptions.md` (stylesheet row), `packages/ui/generated/app-css.ts` (regenerated)
+- Create: `packages/ui/components/shell.tsx`, `packages/ui/components/sidebar.tsx`, `packages/ui/components/top-bar.tsx`, `packages/ui/components/page-head.tsx`, `packages/ui/components/segmented-control.tsx`, `packages/ui/components/theme-switch.tsx`, `packages/ui/components/shell.test.ts`, `packages/ui/components/segmented-control.test.ts`, `apps/uw-platform/assets/routes.ts`, `apps/uw-platform/assets/routes.test.ts`
+- Modify: `apps/uw-platform/app.tsx` (mount the stylesheet before `withPrincipal`; render `/` in the shell), `apps/uw-platform/app.test.ts`, `docs/exceptions.md` (stylesheet row), `packages/ui/generated/app-css.ts` (regenerated)
 
 **Interfaces:**
 - Produces:
@@ -2030,7 +2030,7 @@ export function assetRoutes(): Hono<AppEnv>;
 
 `segmented-control.test.ts`: `WB-11 a segmented control is a fieldset with a legend and one labelled radio per choice, the selected one checked`; `WB-11 every control has visible focus` (each input or label carries `focus-visible:outline-2` and `outline-focus`).
 
-`apps/uw-app/assets/routes.test.ts`: `WB-11 the stylesheet is served at its hashed path as text/css, immutable` and `WB-11 any other asset path is 404`.
+`apps/uw-platform/assets/routes.test.ts`: `WB-11 the stylesheet is served at its hashed path as text/css, immutable` and `WB-11 any other asset path is 404`.
 
 Update `app.test.ts`: `/` renders inside the shell (has `<nav aria-label="Main"` and the deployed commit line).
 
@@ -2088,9 +2088,9 @@ export function Shell(props: {
 
 (`var(--uw-sidebar)` inside a Tailwind arbitrary value is a token reference, not a literal; the no-hex test allows it.) `sidebar.tsx`: `<aside class="bg-ocean-panel text-ocean-panel-ink">` holding the wordmark "unfoldingWord" and one `<details class="group">` whose `<summary class="md:hidden">Menu</summary>` is followed by `<nav aria-label="Main" class="hidden group-open:block md:block">` (one navigation, shown behind the disclosure below `md` and always from `md` up; no JavaScript); each link `aria-current={current === href ? 'page' : undefined}`, with `focus-visible:outline-2 outline-focus`. `top-bar.tsx`: `<header>` with `<nav aria-label="Breadcrumb"><ol>` crumbs and the `ThemeSwitch`. `page-head.tsx`: eyebrow `text-xs text-ocean`, `<h1 class="text-2xl font-extrabold">`, lede `text-muted`, actions slot. `segmented-control.tsx`: `<fieldset><legend class="sr-only">` and one `<label>` per choice wrapping an `<input type="radio" name value checked>` and its text, with `focus-visible` styles on the input. `theme-switch.tsx`: `SegmentedControl` named `theme` with legend "Colour theme" and choices System, Light, Dark, plus an inline script that sets `data-theme` and `localStorage` on change (System removes both); `THEME_KEY = 'uw-theme'`.
 
-`apps/uw-app/assets/routes.ts`: `routes.get(appCssPath, (c) => c.body(appCss, 200, { 'content-type': 'text/css; charset=utf-8', 'cache-control': 'public, max-age=31536000, immutable' }))` and nothing else; `app.tsx` mounts `app.route('/', assetRoutes())` before `app.use(withPrincipal(deps))`, and renders `/` as `<Shell title="unfoldingWord" nav={[{ href: '/', label: 'Home' }, { href: '/health', label: 'Health' }]} current="/" crumbs={[{ label: 'Home' }]} stylesheet={appCssPath}>` with a `PageHead` titled "unfoldingWord" and the line "Deployed commit {commit}.".
+`apps/uw-platform/assets/routes.ts`: `routes.get(appCssPath, (c) => c.body(appCss, 200, { 'content-type': 'text/css; charset=utf-8', 'cache-control': 'public, max-age=31536000, immutable' }))` and nothing else; `app.tsx` mounts `app.route('/', assetRoutes())` before `app.use(withPrincipal(deps))`, and renders `/` as `<Shell title="unfoldingWord" nav={[{ href: '/', label: 'Home' }, { href: '/health', label: 'Health' }]} current="/" crumbs={[{ label: 'Home' }]} stylesheet={appCssPath}>` with a `PageHead` titled "unfoldingWord" and the line "Deployed commit {commit}.".
 
-`docs/exceptions.md` row (same commit): "Section 10: no route without `can()`; PRD FD-7: the Access JWT is verified on every request | `apps/uw-app/assets/routes.ts` (`GET /assets/app-<hash>.css`) | The stylesheet carries no harness, page or person data; it is served before the principal middleware so a page's stylesheet does not mint a principal on every load. Access still fronts the host at the edge. | Any asset that carries data goes behind the principal and `can()`."
+`docs/exceptions.md` row (same commit): "Section 10: no route without `can()`; PRD FD-7: the Access JWT is verified on every request | `apps/uw-platform/assets/routes.ts` (`GET /assets/app-<hash>.css`) | The stylesheet carries no harness, page or person data; it is served before the principal middleware so a page's stylesheet does not mint a principal on every load. Access still fronts the host at the edge. | Any asset that carries data goes behind the principal and `can()`."
 
 Run `pnpm ui:css` and commit the regenerated file with the components.
 
@@ -2100,7 +2100,7 @@ Run `pnpm ui:css` and commit the regenerated file with the components.
 git commit -m "feat(ui): the shell, sidebar, top bar, page head, segmented control and theme switch, and the hashed stylesheet route" -m "WB-11"
 ```
 
-- [ ] **Step 5: Verify** — green. Then, if a browser is available, load `/` with `pnpm --filter @uw/uw-app dev` in light and dark at 390 px width and check focus; if not, say so in the report (Task 21 records it under Not verified).
+- [ ] **Step 5: Verify** — green. Then, if a browser is available, load `/` with `pnpm --filter @uw/uw-platform dev` in light and dark at 390 px width and check focus; if not, say so in the report (Task 21 records it under Not verified).
 
 ---
 
@@ -2233,13 +2233,13 @@ Run: `pnpm trace` and confirm none of WB-1, WB-2, WB-3, WB-11 is listed as unpro
 
 - [ ] **Step 2: Update the tracker**
 
-1. Status table: row 6 → `Built`, with evidence: this plan's path; scenarios `sim/scenarios/WB-1.*`, `WB-2.*`, `WB-3.*`, the new `KN-13.*` and `KN-18.*`; tests named WB-1 (`apps/uw-app/commands/*.pg.test.ts`, `packages/contracts/commands.test.ts`, `tools/architecture/command-routes.test.ts`), WB-2 (`sim/kernel/reorder.test.ts`, `apps/uw-app/commands/reorder.pg.test.ts`), WB-3 (`packages/harness/hub-wakes.test.ts`, `packages/contracts/live.test.ts`, `apps/uw-app/live/*.test.ts`, `apps/uw-app/ports/hub.contract.test.ts`, `apps/uw-app/islands/live/*.test.ts`, `apps/uw-app/commands/events.pg.test.ts`), WB-11 (`packages/ui/**/*.test.ts`, `tools/ui/*.test.ts`, `packages/core/money.test.ts`, `apps/uw-app/assets/routes.test.ts`); the `pnpm trace:built` line with its counts; `pnpm verify` green with `TEST_DATABASE_URL` set.
+1. Status table: row 6 → `Built`, with evidence: this plan's path; scenarios `sim/scenarios/WB-1.*`, `WB-2.*`, `WB-3.*`, the new `KN-13.*` and `KN-18.*`; tests named WB-1 (`apps/uw-platform/commands/*.pg.test.ts`, `packages/contracts/commands.test.ts`, `tools/architecture/command-routes.test.ts`), WB-2 (`sim/kernel/reorder.test.ts`, `apps/uw-platform/commands/reorder.pg.test.ts`), WB-3 (`packages/harness/hub-wakes.test.ts`, `packages/contracts/live.test.ts`, `apps/uw-platform/live/*.test.ts`, `apps/uw-platform/ports/hub.contract.test.ts`, `apps/uw-platform/islands/live/*.test.ts`, `apps/uw-platform/commands/events.pg.test.ts`), WB-11 (`packages/ui/**/*.test.ts`, `tools/ui/*.test.ts`, `packages/core/money.test.ts`, `apps/uw-platform/assets/routes.test.ts`); the `pnpm trace:built` line with its counts; `pnpm verify` green with `TEST_DATABASE_URL` set.
 2. A "Step 6 evidence by requirement" section in the format of step 5's: one row per WB-1, WB-2, WB-3, WB-11, plus rows for KN-13, KN-18, GH-5, GH-6, AB-7 where step 6 added proofs.
 3. "Decisions made during the build": one row per S6-D1 to S6-D24, dated 2026-10-03, with the "Cost if wrong" column from this plan, plus any implementer choice a reviewer accepted.
-4. "New dependencies": `tailwindcss` and `@tailwindcss/cli` (resolved versions; MIT) — hand-written CSS per screen; `colorjs.io` (MIT) — a hand-written WCAG contrast function in the token tests; `partysocket` (MIT) — a hand-written reconnecting WebSocket with backoff; `@uw/ui` workspace link in `uw-app` — not a replacement; contract version `10.0.0` — not a dependency, both apps' `contractVersion` moved with it.
+4. "New dependencies": `tailwindcss` and `@tailwindcss/cli` (resolved versions; MIT) — hand-written CSS per screen; `colorjs.io` (MIT) — a hand-written WCAG contrast function in the token tests; `partysocket` (MIT) — a hand-written reconnecting WebSocket with backoff; `@uw/ui` workspace link in `uw-platform` — not a replacement; contract version `10.0.0` — not a dependency, both apps' `contractVersion` moved with it.
 5. "Not verified": the `HarnessHub` Durable Object in workerd (hibernation, eviction, `ping` auto-response) — tests run its core on a fake state; WebSocket upgrade through Cloudflare Access with the app audience; the screens in a browser in light and dark at 390 px (unless Task 18 ran it); the Tailwind oxide binary on Cloudflare's build image is not needed (the CSS is committed) but CI's install was the only Linux run; the partysocket backoff timings in a real browser.
-6. "Waiting on a person": `apps/uw-app/live/harness-hub.ts` and `apps/uw-app/ports/hub.ts` — a first deploy to staging, one browser session on `/api/harness/<id>/live` behind Access, a wake observed and `live_hub` on `/health`; the gate commands with a real GitHub App — the approve-at-Ship merge through the command API against the test repository (extends the GH-6 row); the `/api/*` command routes behind the real Access application (extends the FD-7 row).
-7. "Carried to later steps": step 7 — `prompt_run` and `stop_run` answer `not_wired` until runs exist (HE-1); pause and resume do not yet stop claims, submits or runs (HE-1, with the existing row); step 8 — the views consume `apps/uw-app/islands/live/session.ts`, the gate view route (WB-6), the stage items route (WB-5) and `packages/ui` components, and bundle the live session for the browser; step 9 — web push reuses the hub's presence (P24).
+6. "Waiting on a person": `apps/uw-platform/live/harness-hub.ts` and `apps/uw-platform/ports/hub.ts` — a first deploy to staging, one browser session on `/api/harness/<id>/live` behind Access, a wake observed and `live_hub` on `/health`; the gate commands with a real GitHub App — the approve-at-Ship merge through the command API against the test repository (extends the GH-6 row); the `/api/*` command routes behind the real Access application (extends the FD-7 row).
+7. "Carried to later steps": step 7 — `prompt_run` and `stop_run` answer `not_wired` until runs exist (HE-1); pause and resume do not yet stop claims, submits or runs (HE-1, with the existing row); step 8 — the views consume `apps/uw-platform/islands/live/session.ts`, the gate view route (WB-6), the stage items route (WB-5) and `packages/ui` components, and bundle the live session for the browser; step 9 — web push reuses the hub's presence (P24).
 8. Close the step-5 and step-3 carry rows step 6 resolved, in the existing "(closed)" style naming the commits: the connector edited to `none` (S6-D11), the S5-R40 gate view, `risk_derived.head`, the person gate route's GitHub client, `kernel.ts` on the allow-list, the import and recovery commands, and P17.
 
 - [ ] **Step 3: Verify and commit**
