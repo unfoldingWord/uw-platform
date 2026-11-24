@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Principles and foundations</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;800&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+a{color:#014964}a:hover{color:#31ade3}
+.label{font-size:12px;font-weight:600;color:#5a6e7a;margin:0}
+.h2{font-size:20px;font-weight:800;letter-spacing:-0.02em;margin:0;color:#0c171f}
+.h3{font-size:16px;font-weight:800;margin:0;color:#0c171f}
+.body{font-size:14px;line-height:1.5;color:#404c55;margin:0}
+.meta{font-size:13px;line-height:1.5;color:#5a6e7a;margin:0}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;color:#5a6e7a}
+.hair{height:1px;background:#e7eef2;border:0;margin:0}
+.sw{display:flex;flex-direction:column;gap:8px;min-width:0}
+.chip{height:56px;border-radius:8px}
+</style>
+</helmet>
+<div style="font-family:'Nunito Sans',Avenir,system-ui,sans-serif;color:#0c171f;background:#ffffff;box-sizing:border-box;padding:64px 24px 96px">
+<div style="max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:64px">
+
+<header style="display:flex;flex-direction:column;gap:12px">
+<p class="mono" style="margin:0;color:#014964">uw-platform · design system v1 · proposal · 2026-11-24</p>
+<h1 style="margin:0;font-size:36px;line-height:1.15;font-weight:800;letter-spacing:-0.035em;color:#014263">Calm by default, clear when it matters.</h1>
+<p class="body" style="font-size:16px;max-width:720px">One page of rules every new screen starts from. It keeps the tokens you already lock in <span class="mono">packages/ui/tokens/</span> and adds the layer that was missing: how pieces combine, when things appear, and which page shape a screen starts from.</p>
+</header>
+
+<section style="display:flex;flex-direction:column;gap:24px">
+<h2 class="h2">Where the app is today</h2>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px">
+<div style="display:flex;flex-direction:column;gap:8px;padding:16px 0;border-top:2px solid #56a0a3">
+<p class="label">Tokens</p>
+<p class="h3">Solid and locked</p>
+<p class="meta">Colour scales, 8 spacing steps, 4 radii, 5 shadows. Arbitrary values fail the build (ADR 0011). Keep all of it.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;padding:16px 0;border-top:2px solid #31ade3">
+<p class="label">Components</p>
+<p class="h3">25 parts, key gaps</p>
+<p class="meta">Card, Badge, Chip, Table, Field, Kpi exist. No Button, Menu, Popover, Tooltip, Tabs, Empty state or Side panel component.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;padding:16px 0;border-top:2px solid #e59d33">
+<p class="label">Drift, measured 2026-11-24</p>
+<p class="h3">Screens re-invent parts</p>
+<p class="meta">13 different &lt;h2&gt; class strings. 19 screen files hand-roll the card frame. 4 local copies of the input style. Buttons are 3 exported class strings, used 50+ times.</p>
+</div>
+</div>
+</section>
+
+<hr class="hair">
+
+<section style="display:flex;flex-direction:column;gap:24px">
+<h2 class="h2">Five principles</h2>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px 48px">
+<div style="display:flex;gap:16px"><span class="mono" style="color:#31ade3;font-size:14px;font-weight:600">01</span><div style="display:flex;flex-direction:column;gap:4px"><p class="h3">A page, not a pile of cards</p><p class="body">Content sits on one white surface. Groups are separated by space and a soft hairline. A bordered card is kept for an object you can open, move or act on: a queue item, a record, a figure.</p></div></div>
+<div style="display:flex;gap:16px"><span class="mono" style="color:#31ade3;font-size:14px;font-weight:600">02</span><div style="display:flex;flex-direction:column;gap:4px"><p class="h3">Quiet until asked</p><p class="body">Row actions, menus and handles appear on hover or keyboard focus. On touch screens they are always shown. Nothing is reachable only by hover.</p></div></div>
+<div style="display:flex;gap:16px"><span class="mono" style="color:#31ade3;font-size:14px;font-weight:600">03</span><div style="display:flex;flex-direction:column;gap:4px"><p class="h3">One loud thing per view</p><p class="body">At most one Inspire-filled primary button per view. Kindle orange still marks a human action and nothing else. Everything else is ghost or secondary.</p></div></div>
+<div style="display:flex;gap:16px"><span class="mono" style="color:#31ade3;font-size:14px;font-weight:600">04</span><div style="display:flex;flex-direction:column;gap:4px"><p class="h3">Reveal in steps</p><p class="body">Hover shows a hint, click opens a menu, open shows a side panel that keeps your place, and only then a full page. Reading never needs a modal. Editing is asked for with a pencil or Edit, and happens in place: nothing on the page moves.</p></div></div>
+<div style="display:flex;gap:16px"><span class="mono" style="color:#31ade3;font-size:14px;font-weight:600">05</span><div style="display:flex;flex-direction:column;gap:4px"><p class="h3">One way to do each thing</p><p class="body">A screen imports parts from <span class="mono">packages/ui</span>; it never writes a button, card or heading class string itself. A missing part is added there first.</p></div></div>
+<div style="display:flex;gap:16px"><span class="mono" style="color:#5a6e7a;font-size:14px;font-weight:600">✓</span><div style="display:flex;flex-direction:column;gap:4px"><p class="h3">Unchanged from today</p><p class="body">Light and dark, phone width, visible focus, sentence-case copy, Title Case navigation, no red for status, refusals shown in place on the control.</p></div></div>
+</div>
+</section>
+
+<hr class="hair">
+
+<section style="display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;flex-direction:column;gap:4px"><h2 class="h2">Colour: mostly quiet</h2><p class="meta">Same roles as <span class="mono">theme.css</span>. The change is how much of each a screen uses.</p></div>
+<div style="display:flex;height:16px;border-radius:9999px;overflow:hidden">
+<span style="flex:80;background:#e7eef2"></span><span style="flex:14;background:#014263"></span><span style="flex:4;background:#31ade3"></span><span style="flex:2;background:#e59d33"></span>
+</div>
+<div style="display:flex;gap:24px;flex-wrap:wrap" class="meta"><span>80% neutrals: surface, canvas, lines, text</span><span>14% Ocean: sidebar and titles</span><span>4% Inspire: primary, links, focus, selection</span><span>2% Kindle: human actions only</span></div>
+<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px">
+<div class="sw"><div class="chip" style="background:#ffffff;border:1px solid #c4d3db"></div><p class="label" style="color:#0c171f">surface</p><p class="mono">grey-0</p></div>
+<div class="sw"><div class="chip" style="background:#f4f8fa;border:1px solid #e7eef2"></div><p class="label" style="color:#0c171f">canvas · raised</p><p class="mono">grey-50</p></div>
+<div class="sw"><div class="chip" style="background:#e7eef2"></div><p class="label" style="color:#0c171f">hover · line-soft</p><p class="mono">grey-100</p></div>
+<div class="sw"><div class="chip" style="background:#c4d3db"></div><p class="label" style="color:#0c171f">line</p><p class="mono">grey-300</p></div>
+<div class="sw"><div class="chip" style="background:#5a6e7a"></div><p class="label" style="color:#0c171f">text-3</p><p class="mono">grey-600</p></div>
+<div class="sw"><div class="chip" style="background:#0c171f"></div><p class="label" style="color:#0c171f">text</p><p class="mono">grey-900</p></div>
+<div class="sw"><div class="chip" style="background:#014263"></div><p class="label" style="color:#0c171f">side · title</p><p class="mono">ocean-800</p></div>
+<div class="sw"><div class="chip" style="background:#31ade3"></div><p class="label" style="color:#0c171f">accent</p><p class="mono">inspire-400</p></div>
+<div class="sw"><div class="chip" style="background:#daf1fe"></div><p class="label" style="color:#0c171f">accent-soft</p><p class="mono">inspire-100</p></div>
+<div class="sw"><div class="chip" style="background:#e59d33"></div><p class="label" style="color:#0c171f">human</p><p class="mono">kindle-400</p></div>
+<div class="sw"><div class="chip" style="background:#fff5ea;border:1px solid #ffd29c"></div><p class="label" style="color:#0c171f">human-soft</p><p class="mono">kindle-50</p></div>
+<div class="sw"><div class="chip" style="background:#defeff;border:1px solid #9eebed"></div><p class="label" style="color:#0c171f">ok-soft</p><p class="mono">cultivate-50</p></div>
+</div>
+</section>
+
+<hr class="hair">
+
+<section style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:48px">
+<div style="display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;flex-direction:column;gap:4px"><h2 class="h2">Type: six styles, no more</h2><p class="meta">Hierarchy from weight and colour first, size second. Uppercase is kept for table heads only.</p></div>
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px"><span style="font-size:30px;font-weight:800;letter-spacing:-0.035em;color:#014263;line-height:1.15">Document title</span><span class="mono">2xl · 800</span></div>
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px"><span style="font-size:24px;font-weight:800;letter-spacing:-0.02em;line-height:1.15">Page title</span><span class="mono">xl · 800</span></div>
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px"><span style="font-size:16px;font-weight:800">Section heading</span><span class="mono">md · 800</span></div>
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px"><span style="font-size:14px;color:#404c55">Body text for anything you read</span><span class="mono">base · 400</span></div>
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px"><span style="font-size:13px;color:#5a6e7a">Meta: who, when, how many</span><span class="mono">sm · 400 · text-3</span></div>
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px"><span style="font-size:12px;font-weight:600;color:#5a6e7a">Field label, sentence case</span><span class="mono">xs · 600 · text-3</span></div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;flex-direction:column;gap:4px"><h2 class="h2">Space: more between, less within</h2><p class="meta">Every value is an existing <span class="mono">--uw-space-*</span> step.</p></div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;gap:16px"><span style="width:4px;height:12px;background:#31ade3;border-radius:2px"></span><span class="mono" style="width:40px">4</span><span class="meta">icon to its label</span></div>
+<div style="display:flex;align-items:center;gap:16px"><span style="width:8px;height:12px;background:#31ade3;border-radius:2px"></span><span class="mono" style="width:40px">8</span><span class="meta">between buttons, chips, badges</span></div>
+<div style="display:flex;align-items:center;gap:16px"><span style="width:12px;height:12px;background:#31ade3;border-radius:2px"></span><span class="mono" style="width:40px">12</span><span class="meta">row padding, label to field</span></div>
+<div style="display:flex;align-items:center;gap:16px"><span style="width:16px;height:12px;background:#31ade3;border-radius:2px"></span><span class="mono" style="width:40px">16</span><span class="meta">inside an object card, field to field</span></div>
+<div style="display:flex;align-items:center;gap:16px"><span style="width:24px;height:12px;background:#31ade3;border-radius:2px"></span><span class="mono" style="width:40px">24</span><span class="meta">heading to its content, page gutter on phone</span></div>
+<div style="display:flex;align-items:center;gap:16px"><span style="width:48px;height:12px;background:#31ade3;border-radius:2px"></span><span class="mono" style="width:40px">48</span><span class="meta">between sections of a page</span></div>
+</div>
+</div>
+</section>
+
+<hr class="hair">
+
+<section style="display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;flex-direction:column;gap:4px"><h2 class="h2">Shape, depth and motion</h2><p class="meta">Depth says how far a thing sits from the page. The page itself is flat.</p></div>
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px;background:#f4f8fa;border-radius:12px;padding:32px">
+<div style="display:flex;flex-direction:column;gap:12px"><div style="height:88px;background:#ffffff;border-radius:8px"></div><p class="h3">0 · Page</p><p class="meta">No border, no shadow. Sections, lists, text.</p></div>
+<div style="display:flex;flex-direction:column;gap:12px"><div style="height:88px;background:#ffffff;border-radius:8px;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 0 0 1px #c4d3db"></div><p class="h3">1 · Object</p><p class="meta">shadow-1, radius 8. Queue cards, figures, records.</p></div>
+<div style="display:flex;flex-direction:column;gap:12px"><div style="height:88px;background:#ffffff;border-radius:12px;box-shadow:0 0 0 1px #9da6ad,0 12px 28px -12px rgba(4,13,21,.12)"></div><p class="h3">2 · Popover</p><p class="meta">shadow-2, radius 12. Menus, tooltips, pickers.</p></div>
+<div style="display:flex;flex-direction:column;gap:12px"><div style="height:88px;background:#ffffff;border-radius:12px;box-shadow:0 0 0 1px #9da6ad,0 32px 64px -24px rgba(4,13,21,.12)"></div><p class="h3">3 · Panel</p><p class="meta">shadow-3, radius 12. Side panel, dialog, switcher.</p></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px">
+<div style="display:flex;flex-direction:column;gap:4px"><p class="label">Radius</p><p class="meta">4 badges · 8 controls and cards · 12 popovers and panels · full chips and avatars</p></div>
+<div style="display:flex;flex-direction:column;gap:4px"><p class="label">Motion · new tokens</p><p class="meta">120 ms reveal · 160 ms popover · 200 ms panel, ease-out</p></div>
+<div style="display:flex;flex-direction:column;gap:4px"><p class="label">Delay · new token</p><p class="meta">Tooltip waits 500 ms; hover actions show at once</p></div>
+<div style="display:flex;flex-direction:column;gap:4px"><p class="label">Reduced motion</p><p class="meta">All of it becomes an instant swap</p></div>
+</div>
+</section>
+
+<hr class="hair">
+
+<section style="display:flex;flex-direction:column;gap:16px">
+<h2 class="h2">What adopting this changes in the repo</h2>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 48px">
+<p class="body">• ADR 0029 amends 0014: the prototype's frame stays, its bordered-card canvas gives way to the page surface (ADR 0029).</p>
+<p class="body">• Three motion tokens in <span class="mono">effects.css</span>; no colour, space or type token changes.</p>
+<p class="body">• New parts in <span class="mono">packages/ui</span>: Button, IconButton, Menu, Tooltip, Tabs, Section, ListRow, SidePanel, EmptyState.</p>
+<p class="body">• A lint rule: screens may not write <span class="mono">&lt;button class=</span>, <span class="mono">&lt;h2 class=</span> or the card frame string.</p>
+<p class="body">• This canvas becomes the <span class="mono">design-system/</span> source AGENTS.md already reserves.</p>
+<p class="body">• Screens move over one page shape at a time, starting from Today.</p>
+<p class="body">• ADR 0026 point 3 amended by ADR 0029: the edit view keeps its address but draws the read view's frame, so editing happens in place.</p>
+</div>
+</section>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":2280}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

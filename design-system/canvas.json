@@ -1,0 +1,79 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-11-24T17:00:00Z" },
+  "title": "uW Platform Design System",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 2280,
+      "title": "1 · Principles & foundations",
+      "expand": "fill"
+    },
+    "Components.dc.html": {
+      "x": 1360,
+      "y": 0,
+      "w": 1280,
+      "h": 2240,
+      "title": "2 · Components",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "Interactions.dc.html": {
+      "x": 2720,
+      "y": 0,
+      "w": 1280,
+      "h": 1640,
+      "title": "3 · Reveal & disclosure",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "Layouts.dc.html": {
+      "x": 4080,
+      "y": 0,
+      "w": 1280,
+      "h": 1960,
+      "title": "4 · Page shapes",
+      "expand": "fill"
+    },
+    "Today.dc.html": {
+      "x": 5440,
+      "y": 0,
+      "w": 1440,
+      "h": 1040,
+      "title": "5 · Today, in the new system",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "EditInPlace.dc.html": {
+      "x": 6960,
+      "y": 0,
+      "w": 1280,
+      "h": 1560,
+      "title": "6 · Edit in place",
+      "expand": "fill",
+      "is_interactive": true
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Components.dc.html",
+    "Interactions.dc.html",
+    "Layouts.dc.html",
+    "Today.dc.html",
+    "EditInPlace.dc.html"
+  ],
+  "notes": {
+    "title": {
+      "x": 0,
+      "y": -300,
+      "text": "uW Platform design system — calm by default, clear when it matters",
+      "kind": "title1",
+      "maxW": 8240
+    }
+  },
+  "designSystems": []
+}

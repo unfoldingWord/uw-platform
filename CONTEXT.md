@@ -411,8 +411,8 @@ The branch of the sidebar under "Pages & Wiki" on wiki and knowledge page screen
 _Avoid_: file tree, outline, navigator, explorer
 
 **Edit mode**:
-What `/pages/:pageId/edit` shows to a person who may write the page, reached by the pencil: the page's title and text on one editable sheet, full window, with no sidebar, under one bar holding Back to reading, Discard draft and Save. Leaving it asks first when what was typed is not in a working draft. Nothing in it reaches the read view until Save.
-_Avoid_: editor (that is the Milkdown Crepe component inside it), editing view, focus mode (in the UI)
+What `/pages/:pageId/edit` shows to a person who may write the page, reached by Edit: the read view's own frame and layout, with the title and text turned into fields where they stood and the band's actions replaced by Cancel and Save. Nothing on the page moves on the way in or out (ADR 0029). Leaving it asks first when what was typed is not in a working draft. Nothing in it reaches the read view until Save.
+_Avoid_: editor (that is the Milkdown Crepe component inside it), editing view, focus mode
 
 **Working draft**:
 The unsaved text of a page in edit mode, shared live by everyone editing it and held by the page's **sync hub**. Save publishes it as one version; Discard throws it away.
@@ -653,6 +653,14 @@ _Avoid_: variable, style constant
 **Shell**:
 The page frame every screen renders inside: sidebar, top bar and content, fluid from phone width up.
 _Avoid_: layout, chrome, template (that is a stage graph)
+
+**Page shape**:
+One of the five arrangements of a screen's content inside the shell: List, Document, Form, Board and Overview, each a component in `packages/ui/shapes/` (ADR 0029). Every screen is one of them.
+_Avoid_: template (that is a stage graph), layout, page type
+
+**Side panel**:
+The panel that opens on the right of a List when a person opens a row, keeping the list in view and the row in the address as `?peek=`. Read and act there; a full page is for long work.
+_Avoid_: peek view, drawer, modal, flyout
 
 **Home**:
 The app root, where "Waiting on you" lists what the person can act on, ranked.

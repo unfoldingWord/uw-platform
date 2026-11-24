@@ -1,8 +1,11 @@
 ---
-status: accepted
+status: amended
 date: 2026-11-12
+amended: 2026-11-24
 ---
 # The prototype is the visual authority; its values snap to the token scales
+
+> Amended on 2026-11-24 by [ADR 0029](0029-the-design-system-is-a-calm-page-with-edit-in-place.md). The prototype's frame stands: the Ocean sidebar grouped by area, the white top bar, figure cards with an accent top rule and pale lanes of compact cards. What no longer holds: the canvas of bordered cards with a header and a body as every screen's container, small uppercase labels, heavy badges, unbuilt modules shown dimmed in the sidebar, and the status bar. Screens now follow `design-system/`. The token rules below stand.
 
 The screens look like the original Claude Design prototype (`ui-design/`, removed from the repository and from its history before the repository was made public, because it held internal material; this record keeps its look in words). It sets the layout, the parts and the colour use: an Ocean sidebar grouped by area code with the white unfoldingWord logo, a white top bar with the area code and breadcrumb, a pale canvas of bordered cards with a header and a body, small uppercase labels, compact badges and chips, figure cards with an accent top rule, and pale lanes of compact cards. The v0.3.0 design document (`docs/specs/2026-11-04-harness-v0-3-0-design.md`) stops being the authority for how a screen looks; it still explains what each screen holds.
 
