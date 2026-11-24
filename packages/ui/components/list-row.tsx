@@ -24,6 +24,7 @@ export function ListRow(props: {
   readonly actions?: Child | undefined;
   readonly selected?: boolean | undefined;
   readonly attrs?: Readonly<Record<string, string | undefined>> | undefined;
+  readonly linkAttrs?: Readonly<Record<string, string | undefined>> | undefined;
 }) {
   const href = props.href === undefined ? undefined : safeHref(props.href);
   const tint =
@@ -39,7 +40,7 @@ export function ListRow(props: {
         {href === undefined ? (
           <p class="m-0 text-base font-semibold text-text">{props.title}</p>
         ) : (
-          <a href={href} class={link}>
+          <a href={href} class={link} {...(props.linkAttrs ?? {})}>
             {props.title}
           </a>
         )}

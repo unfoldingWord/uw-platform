@@ -4,9 +4,9 @@ import { formatCount, formatMoney } from '@uw/core/money';
 import type { DailyPoint, PlaneTotals } from '@uw/harness';
 import { Badge } from '@uw/ui/components/badge.tsx';
 import { DailyChart } from '@uw/ui/components/chart.tsx';
-import { Card } from '@uw/ui/components/card.tsx';
 import { Kpi, KpiRow } from '@uw/ui/components/kpi.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
+import { OverviewShape } from '@uw/ui/shapes/overview.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { AGENT_PLANE_INDICATORS } from '../../health/agent-plane.ts';
 import { spendCapOf } from '../../health/spend-cap.ts';
@@ -45,7 +45,7 @@ function ledeOf(report: HealthReport): string {
 function StatusMark(props: { readonly indicator: HealthIndicator }) {
   const status = statusOf(props.indicator.status);
   if (props.indicator.status === 'ok')
-    return <span class="text-xs text-text-3">{status.words}</span>;
+    return <span class="text-sm text-text-3">{status.words}</span>;
   return (
     <Badge tone={props.indicator.status === 'amber' ? 'info' : status.tone}>{status.words}</Badge>
   );
@@ -65,7 +65,10 @@ function IndicatorRow(props: { readonly indicator: HealthIndicator }) {
   if (!drilled.has(indicator.name)) return <li>{row}</li>;
   return (
     <li>
-      <a href={healthPath(indicator.name)} class={`block hover:bg-raised ${focus}`}>
+      <a
+        href={healthPath(indicator.name)}
+        class={`block rounded-md no-underline transition-colors motion-reveal hover:bg-raised ${focus}`}
+      >
         {row}
       </a>
     </li>
@@ -83,7 +86,7 @@ function Figures(props: { readonly totals: PlaneTotals; readonly capMinor: numbe
   const runs = Object.values(shapes).reduce((sum, count) => sum + count, 0);
   const refusals = Object.values(totals.gateRefusals.byReason).reduce((a, b) => a + b, 0);
   return (
-    <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <>
       <Kpi
         label="Spend this month"
         value={money(spent)}
@@ -100,7 +103,21 @@ function Figures(props: { readonly totals: PlaneTotals; readonly capMinor: numbe
         detail={`${formatCount(totals.liveDelegations.merge)} to merge`}
       />
       <Kpi label="Gate refusals" value={formatCount(refusals)} detail="in the last 7 days" />
-    </div>
+    </>
+  );
+}
+
+function Legend(props: { readonly waits: number }) {
+  return (
+    <span class="flex items-center gap-4 text-sm text-text-3">
+      <span class="flex items-center gap-1">
+        <span aria-hidden="true" class="size-size-1 rounded-full bg-accent"></span>runs per day
+      </span>
+      <span class="flex items-center gap-1">
+        <span aria-hidden="true" class="h-px w-size-2 bg-text-2"></span>
+        {`gate waits · ${formatCount(props.waits)}`}
+      </span>
+    </span>
   );
 }
 
@@ -108,36 +125,28 @@ function RunsChart(props: { readonly days: readonly DailyPoint[] }) {
   const total = props.days.reduce((sum, day) => sum + day.runs, 0);
   const waits = props.days.reduce((sum, day) => sum + day.gateWaits, 0);
   return (
-    <section aria-label="Agent runs" class="flex flex-col rounded-md border border-line bg-surface">
-      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-3">
-        <h2 class="m-0 text-md font-heavy text-text">Agent runs</h2>
-        <p class="m-0 text-xs font-semibold text-text-3">{props.days.length} days</p>
-        <p
-          data-total
-          class="m-0 rounded-sm bg-accent-soft px-1 text-xs leading-normal font-heavy text-accent-text"
-        >
-          {`${formatCount(total)} runs`}
-        </p>
-        <p class="m-0 ml-auto flex items-center gap-4 text-xs text-text-3">
-          <span class="flex items-center gap-1">
-            <span aria-hidden="true" class="size-size-1 rounded-full bg-accent"></span>runs per day
+    <Section
+      title="Agent runs"
+      headingId="agent-runs-heading"
+      attrs={{ 'aria-label': 'Agent runs' }}
+      sub={
+        <span class="inline-flex items-center gap-2">
+          {`${props.days.length} days`}
+          <span data-total>
+            <Badge tone="info">{`${formatCount(total)} runs`}</Badge>
           </span>
-          <span class="flex items-center gap-1">
-            <span aria-hidden="true" class="h-px w-size-2 bg-text-2"></span>
-            {`gate waits · ${formatCount(waits)}`}
-          </span>
-        </p>
-      </div>
-      <div class="px-4 py-3">
-        <DailyChart
-          id="runs-30"
-          label={`Agent runs per day and gate waits, the last ${props.days.length} days`}
-          days={props.days.map((day) => day.day.slice(5))}
-          bars={props.days.map((day) => day.runs)}
-          line={props.days.map((day) => day.gateWaits)}
-        />
-      </div>
-    </section>
+        </span>
+      }
+      actions={<Legend waits={waits} />}
+    >
+      <DailyChart
+        id="runs-30"
+        label={`Agent runs per day and gate waits, the last ${props.days.length} days`}
+        days={props.days.map((day) => day.day.slice(5))}
+        bars={props.days.map((day) => day.runs)}
+        line={props.days.map((day) => day.gateWaits)}
+      />
+    </Section>
   );
 }
 
@@ -159,22 +168,26 @@ export async function healthScreen(c: Context<AppEnv>, report: HealthReport): Pr
   return renderScreen(
     c,
     spec,
-    <div class="flex flex-col gap-5">
-      <PageHead
-        eyebrow="Agent plane · one trace id end to end"
-        title={sentenceOf(report)}
-        lede={ledeOf(report)}
-        flush
-      />
-      {totals === null ? null : <Figures totals={totals} capMinor={spendCapOf(c.env).capMinor} />}
+    <OverviewShape
+      head={{
+        eyebrow: 'Agent plane · one trace id end to end',
+        title: sentenceOf(report),
+        lede: ledeOf(report),
+      }}
+      figures={
+        totals === null ? undefined : (
+          <Figures totals={totals} capMinor={spendCapOf(c.env).capMinor} />
+        )
+      }
+    >
       {days.length === 0 ? null : <RunsChart days={days} />}
-      <Card title="Indicators" sub="each one with a detail page opens it" flush>
-        <ul aria-label="Indicators" class="m-0 list-none p-0">
+      <Section title="Indicators" sub="each one with a detail page opens it">
+        <ul aria-label="Indicators" class="-mx-4 m-0 list-none p-0">
           {report.indicators.map((indicator) => (
             <IndicatorRow indicator={indicator} />
           ))}
         </ul>
-      </Card>
-    </div>,
+      </Section>
+    </OverviewShape>,
   );
 }

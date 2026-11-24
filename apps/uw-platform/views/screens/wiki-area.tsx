@@ -4,9 +4,12 @@ import { jdAreaSchema, type Page } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
 import { can } from '@uw/core/acl';
-import { Card } from '@uw/ui/components/card.tsx';
+import { ButtonLink } from '@uw/ui/components/button.tsx';
+import { EmptyState } from '@uw/ui/components/empty-state.tsx';
+import { ListRow, RowList } from '@uw/ui/components/list-row.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
+import { ListShape } from '@uw/ui/shapes/list.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { areaHome, type AreaHome } from '../../pages/area-homes.ts';
 import { commitOf } from '../../env.ts';
@@ -15,36 +18,27 @@ import { readPage } from '../../pages/store.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { wikiBranch } from '../parts/wiki-tree.ts';
 import { areaLabel, moduleCodes, pageNames } from '../parts/names.ts';
-import { pageLink } from '../parts/page-shown.ts';
 import { pageManagePath, pagePath, wikiAreaPath, wikiPath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
-import { countWords } from './wiki.tsx';
-
-const row =
-  'flex items-baseline gap-3 rounded-sm px-2 py-1 text-sm text-text outline-offset-2 outline-accent-text hover:bg-hover focus-visible:outline-2';
+import { CategoryTitle } from './wiki.tsx';
 
 function Categories(props: { readonly home: AreaHome }) {
   const { categories } = props.home;
   return (
-    <aside class="shrink-0 lg:w-aside">
-      <Card title="Categories">
-        {categories.length === 0 ? (
-          <p class="m-0 text-sm text-text-2">No page is filed in this area yet.</p>
-        ) : (
-          <ul data-area-categories="" class="m-0 flex list-none flex-col gap-1 p-0">
-            {categories.map((entry) => (
-              <li>
-                <a href={wikiPath(entry.code)} class={row}>
-                  <span class="font-mono text-sm font-semibold text-accent-text">{entry.code}</span>
-                  {entry.name === null ? null : <span class="font-heavy">{entry.name}</span>}
-                  <span class="ml-auto text-xs text-text-3">{countWords(entry.pages)}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-    </aside>
+    <Section title="Categories" attrs={{ 'data-area-categories': '' }}>
+      {categories.length === 0 ? (
+        <EmptyState title="No categories yet" text="No page is filed in this area yet." />
+      ) : (
+        <RowList label="Categories">
+          {categories.map((entry) => (
+            <ListRow
+              href={wikiPath(entry.code)}
+              title={<CategoryTitle code={entry.code} name={entry.name} pages={entry.pages} />}
+            />
+          ))}
+        </RowList>
+      )}
+    </Section>
   );
 }
 
@@ -62,20 +56,22 @@ function HomePage(props: { readonly shown: Shown; readonly admin: boolean }) {
     );
   }
   return (
+    <Section title={shown.page.title}>
+      <div data-page-body="">{raw(shown.html)}</div>
+    </Section>
+  );
+}
+
+function HomeActions(props: { readonly shown: Page; readonly admin: boolean }) {
+  const { shown } = props;
+  return (
     <>
-      <Card title={shown.page.title}>
-        <div data-page-body="">{raw(shown.html)}</div>
-      </Card>
-      <p class="m-0 flex flex-wrap gap-4 text-sm">
-        <a href={pagePath(shown.page.id)} class={pageLink}>
-          Open the home page
-        </a>
-        {admin ? (
-          <a href={pageManagePath(shown.page.id)} class={pageLink}>
-            Change the home page
-          </a>
-        ) : null}
-      </p>
+      <ButtonLink href={pagePath(shown.id)}>Open the home page</ButtonLink>
+      {props.admin ? (
+        <ButtonLink href={pageManagePath(shown.id)} variant="ghost">
+          Change the home page
+        </ButtonLink>
+      ) : null}
     </>
   );
 }
@@ -116,14 +112,15 @@ export async function wikiAreaScreen(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead eyebrow={pageNames.wiki} title={title} />
-      <div class="flex flex-col gap-5 lg:flex-row lg:items-start">
-        <div class="flex min-w-0 flex-1 flex-col gap-3">
-          <HomePage shown={shown} admin={admin} />
-        </div>
-        <Categories home={home} />
-      </div>
-    </>,
+    <ListShape
+      head={{
+        eyebrow: pageNames.wiki,
+        title,
+        actions: shown === null ? undefined : <HomeActions shown={shown.page} admin={admin} />,
+      }}
+    >
+      <HomePage shown={shown} admin={admin} />
+      <Categories home={home} />
+    </ListShape>,
   );
 }

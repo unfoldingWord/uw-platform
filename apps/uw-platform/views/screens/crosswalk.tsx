@@ -1,9 +1,11 @@
 import type { Context } from 'hono';
 import type { CrosswalkCell, CrosswalkReply, EntityCounts } from '@uw/contracts';
 import { can } from '@uw/core/acl';
-import { Card } from '@uw/ui/components/card.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { ButtonLink } from '@uw/ui/components/button.tsx';
+import { EmptyState } from '@uw/ui/components/empty-state.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
+import { ListShape } from '@uw/ui/shapes/list.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { cascadeNodes } from '../../crosswalk/nodes.ts';
 import { crosswalk, mapLinks, type AreaLink } from '../../crosswalk/read.ts';
@@ -18,7 +20,7 @@ import {
 } from '../parts/crosswalk-forms.tsx';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { areaLabel, moduleCodes, pageNames } from '../parts/names.ts';
-import { pageLink } from '../parts/page-shown.ts';
+import { cellLink } from '../parts/collection-cells.tsx';
 import {
   collectionPath,
   crosswalkCellPath,
@@ -27,7 +29,6 @@ import {
   wikiAreaPath,
 } from '../parts/paths.ts';
 
-const empty = 'm-0 px-4 py-3 text-sm text-text-3';
 const quiet = 'text-xs text-text-3';
 
 const lede =
@@ -40,7 +41,7 @@ function Links(props: { readonly cell: CrosswalkCell }) {
       {props.cell.links.map((link) => (
         <li class="text-xs">
           <span class="text-text-3">{relationWord(link.relation)} </span>
-          <a href={crosswalkNodePath(link.cascadePageId)} class={pageLink}>
+          <a href={crosswalkNodePath(link.cascadePageId)} class={cellLink}>
             {link.title}
           </a>
         </li>
@@ -61,7 +62,7 @@ function Cell(props: {
       {words === 'None' ? (
         <span class={quiet}>None</span>
       ) : (
-        <a href={crosswalkCellPath(props.area, props.tier)} class={pageLink}>
+        <a href={crosswalkCellPath(props.area, props.tier)} class={cellLink}>
           {words}
         </a>
       )}
@@ -81,7 +82,7 @@ function columnsOf(reply: CrosswalkReply) {
 function rowsOf(reply: CrosswalkReply) {
   return reply.rows.map((row) => ({
     area: (
-      <a href={wikiAreaPath(row.jdArea)} class={pageLink}>
+      <a href={wikiAreaPath(row.jdArea)} class={cellLink}>
         {areaLabel(row.jdArea)}
       </a>
     ),
@@ -97,18 +98,18 @@ function rowsOf(reply: CrosswalkReply) {
 
 function TierLinks(props: { readonly reply: CrosswalkReply }) {
   return (
-    <p class="m-0 flex flex-wrap gap-4 text-sm">
+    <>
       {props.reply.tiers.map((tier) => (
-        <a href={collectionPath(tier)} class={pageLink}>
-          Every {tierWord(tier).toLowerCase()}
-        </a>
+        <ButtonLink href={collectionPath(tier)} variant="ghost" size="sm">
+          {`Every ${tierWord(tier).toLowerCase()}`}
+        </ButtonLink>
       ))}
-    </p>
+    </>
   );
 }
 
 function MapTable(props: { readonly links: readonly AreaLink[] }) {
-  if (props.links.length === 0) return <p class={empty}>No relation is declared yet.</p>;
+  if (props.links.length === 0) return <EmptyState title="No relation is declared yet." />;
   const columns = [
     { key: 'area', label: 'Area' },
     { key: 'relation', label: 'Relation' },
@@ -120,7 +121,7 @@ function MapTable(props: { readonly links: readonly AreaLink[] }) {
     area: areaLabel(link.jdArea),
     relation: relationWord(link.relation),
     node: (
-      <a href={crosswalkNodePath(link.cascadePageId)} class={pageLink}>
+      <a href={crosswalkNodePath(link.cascadePageId)} class={cellLink}>
         {`${tierWord(link.tier)} · ${link.title}`}
       </a>
     ),
@@ -132,7 +133,7 @@ function MapTable(props: { readonly links: readonly AreaLink[] }) {
       />
     ),
   }));
-  return <Table caption="JD map" columns={columns} rows={rows} bare />;
+  return <Table caption="JD map" columns={columns} rows={rows} />;
 }
 
 async function AdminPanel(props: { readonly c: Context<AppEnv>; readonly at: Date }) {
@@ -145,12 +146,12 @@ async function AdminPanel(props: { readonly c: Context<AppEnv>; readonly at: Dat
   ]);
   return (
     <>
-      <Card title="Declare a relation" sub="Org admins only. Every change is audited.">
+      <Section title="Declare a relation" sub="Org admins only. Every change is audited.">
         <DeclareForm areas={decades} nodes={nodes} />
-      </Card>
-      <Card title="JD map" sub="Every declared relation" flush>
+      </Section>
+      <Section title="JD map" sub="Every declared relation">
         <MapTable links={links} />
-      </Card>
+      </Section>
     </>
   );
 }
@@ -171,19 +172,19 @@ export async function crosswalkScreen(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead title={pageNames.crosswalk} lede={lede} />
+    <ListShape head={{ title: pageNames.crosswalk, lede }}>
       <KeptOutcome />
-      <div class="flex flex-col gap-5">
-        <Card title="Areas and the cascade" sub={<TierLinks reply={reply} />} flush>
-          {reply.rows.length === 0 ? (
-            <p class={empty}>You can read no area yet.</p>
-          ) : (
-            <Table caption="JD crosswalk" columns={columnsOf(reply)} rows={rowsOf(reply)} bare />
-          )}
-        </Card>
-        {admin ? await AdminPanel({ c, at: screen.at }) : null}
-      </div>
-    </>,
+      <Section title="Areas and the cascade" actions={<TierLinks reply={reply} />}>
+        {reply.rows.length === 0 ? (
+          <EmptyState
+            title="You can read no area yet."
+            text="Areas you hold a grant on will appear here."
+          />
+        ) : (
+          <Table caption="JD crosswalk" columns={columnsOf(reply)} rows={rowsOf(reply)} />
+        )}
+      </Section>
+      {admin ? await AdminPanel({ c, at: screen.at }) : null}
+    </ListShape>,
   );
 }

@@ -304,7 +304,9 @@ async function lookOfBoard(world: BoardWorld): Promise<void> {
   const head = document.querySelector('main [aria-label="Figures"]');
   const figures = [...(head?.querySelectorAll('dt') ?? [])].map((term) => term.textContent?.trim());
   expect(figures).toEqual(['Agents working', 'Waiting on you', 'Spent on these items']);
-  const toolbar = document.querySelector(`main a[href="${waitingPath(world.harnessId)}"]`);
+  const toolbar = document.querySelector(
+    `main [data-shape="board"] a[href="${waitingPath(world.harnessId)}"]`,
+  );
   expect(toolbar?.textContent).toContain('Waiting on you');
   expect(document.querySelector('main section[data-folded="true"]')).not.toBeNull();
   const card = document.querySelector('main article');

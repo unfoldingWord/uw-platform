@@ -1,11 +1,16 @@
 import type { Context } from 'hono';
+import type { Child } from 'hono/jsx';
+import { formatMoney } from '@uw/core/money';
 import type { KernelOutcome, PersonaDashboard } from '@uw/harness';
 import { Badge } from '@uw/ui/components/badge.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { fieldLabel } from '@uw/ui/components/field.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
+import { DocumentShape } from '@uw/ui/shapes/document.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { idParam } from '../parts/params.ts';
 import { Checks, JobCard } from '../parts/agent-card.tsx';
+import { engineWord, runShapeWord } from '../parts/agent-words.ts';
 import { agentsPath } from '../parts/paths.ts';
 import type { SavedToolset } from '../parts/persona-controls.tsx';
 import { waitingCount } from '../parts/waiting-count.ts';
@@ -33,6 +38,8 @@ const statusWords: Readonly<Record<PersonaDashboard['page']['status'], string>> 
   retired: 'Retired',
 };
 
+const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
+
 function personaPeople(
   c: Context<AppEnv>,
   screen: ScreenKernel,
@@ -45,16 +52,81 @@ function personaPeople(
   ]);
 }
 
-function Owner(props: { readonly owner: string; readonly holding: Holding }) {
-  const { holding } = props;
+function Property(props: { readonly label: string; readonly children: Child }) {
   return (
-    <p class="m-0 flex flex-wrap items-center gap-2 text-sm text-text-3">
-      <span>Owner</span>
+    <div class="flex min-w-0 flex-col gap-1">
+      <p class={`m-0 ${fieldLabel}`}>{props.label}</p>
+      <div class="flex min-w-0 flex-wrap items-center gap-2 text-sm text-text">
+        {props.children}
+      </div>
+    </div>
+  );
+}
+
+function Owner(props: { readonly owner: string; readonly holding: Holding | null }) {
+  const { holding } = props;
+  if (holding === null) return null;
+  return (
+    <Property label="Owner">
       <Who
         reading={holding.reading}
         who={shownIdentity(props.owner, holding.names, (owner) => owner)}
       />
-    </p>
+    </Property>
+  );
+}
+
+function Rail(props: { readonly dashboard: PersonaDashboard; readonly holding: Holding | null }) {
+  const { dashboard } = props;
+  const { page, harness, frontmatter } = dashboard;
+  return (
+    <div class="grid grid-cols-2 gap-5 lg:grid-cols-1">
+      <Property label="Status">
+        <Badge tone={page.status === 'active' ? 'success' : 'neutral'}>
+          {statusWords[page.status]}
+        </Badge>
+      </Property>
+      <Owner owner={frontmatter.owner} holding={props.holding} />
+      <Property label="Workflow">
+        <a
+          href={agentsPath(harness.id)}
+          class={`font-semibold text-accent-text no-underline hover:underline ${focus}`}
+        >
+          {harness.title}
+        </a>
+      </Property>
+      <Property label="Runs on">{runShapeWord(frontmatter.run_shape)}</Property>
+      <Property label="Engine">{engineWord(frontmatter.engine)}</Property>
+      <Property label="Model">
+        <span class="font-mono break-all">{frontmatter.model}</span>
+      </Property>
+      <Property label="Monthly budget">
+        {formatMoney({ amountMinor: frontmatter.budget.monthly_minor, currency: 'USD' })}
+      </Property>
+    </div>
+  );
+}
+
+function Body(props: {
+  readonly dashboard: PersonaDashboard;
+  readonly holding: Holding | null;
+  readonly saved: SavedToolset | null;
+}) {
+  const { dashboard, holding } = props;
+  return (
+    <>
+      <Checks dashboard={dashboard} />
+      <JobCard dashboard={dashboard} requestId={crypto.randomUUID()} saved={props.saved} />
+      <Section title="Today">
+        <PersonaKpis dashboard={dashboard} />
+      </Section>
+      <Section title="Last runs">
+        <LastRuns dashboard={dashboard} />
+      </Section>
+      <Section title="Standing permissions" sub="Let it work without someone starting each run">
+        {holding === null ? null : <Delegations dashboard={dashboard} holding={holding} />}
+      </Section>
+    </>
   );
 }
 
@@ -77,31 +149,16 @@ export async function renderPersona(
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead
-        eyebrow="Agent"
-        title={page.title}
-        lede={`${dashboard.persona} on ${harness.title} · today ${dashboard.today}`}
-        actions={
-          <Badge tone={page.status === 'active' ? 'success' : 'neutral'}>
-            {statusWords[page.status]}
-          </Badge>
-        }
-      />
-      <div class="flex flex-col gap-5">
-        {holding === null ? null : <Owner owner={dashboard.frontmatter.owner} holding={holding} />}
-        <Checks dashboard={dashboard} />
-        <JobCard dashboard={dashboard} requestId={crypto.randomUUID()} saved={saved} />
-        <section>
-          <h2 class="mt-0 mb-2 text-md font-heavy text-text">Today</h2>
-          <PersonaKpis dashboard={dashboard} />
-          <h2 class="mt-5 mb-2 text-md font-heavy text-text">Last runs</h2>
-          <LastRuns dashboard={dashboard} />
-          <h2 class="mt-5 mb-2 text-md font-heavy text-text">Standing permissions</h2>
-          {holding === null ? null : <Delegations dashboard={dashboard} holding={holding} />}
-        </section>
-      </div>
-    </>,
+    <DocumentShape
+      head={{
+        eyebrow: 'Agent',
+        title: page.title,
+        lede: `${dashboard.persona} on ${harness.title} · today ${dashboard.today}`,
+      }}
+      rail={<Rail dashboard={dashboard} holding={holding} />}
+    >
+      <Body dashboard={dashboard} holding={holding} saved={saved} />
+    </DocumentShape>,
   );
 }
 

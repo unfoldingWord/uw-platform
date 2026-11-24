@@ -9,11 +9,13 @@ import { Badge, type BadgeTone } from '@uw/ui/components/badge.tsx';
 import { safeHref } from '@uw/ui/components/href.ts';
 import { PersonChip } from '@uw/ui/components/person-chip.tsx';
 import { cellText, personTypes, valueOf } from '../../collections/display.ts';
-import { pageLink } from './page-shown.ts';
 import { collectionRowPath } from './paths.ts';
 import type { PersonChips } from './person.tsx';
 
 const quiet = 'text-text-3';
+
+export const cellLink =
+  'font-semibold text-accent-text underline underline-offset-2 outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 function optionsOf(property: PropertyDefinition): readonly SelectOption[] {
   const { config } = property;
@@ -44,7 +46,7 @@ function Relations(props: {
   return (
     <span class="flex flex-wrap gap-x-2">
       {props.value.filter(isLinked).map((item) => (
-        <a href={collectionRowPath(target, item.id)} class={pageLink}>
+        <a href={collectionRowPath(target, item.id)} class={cellLink}>
           {item.title}
         </a>
       ))}
@@ -69,7 +71,7 @@ function Link(props: { readonly href: string; readonly text: string }) {
   const href = safeHref(props.href);
   if (href === undefined) return <span>{props.text}</span>;
   return (
-    <a href={href} class={pageLink} rel="noopener noreferrer">
+    <a href={href} class={cellLink} rel="noopener noreferrer">
       {props.text}
     </a>
   );
@@ -134,7 +136,7 @@ export function CellValue(props: {
 
 export function RowTitle(props: { readonly collection: string; readonly row: CollectionRow }) {
   return (
-    <a href={collectionRowPath(props.collection, props.row.id)} class={pageLink}>
+    <a href={collectionRowPath(props.collection, props.row.id)} class={cellLink}>
       {props.row.title === '' ? 'Untitled' : props.row.title}
     </a>
   );

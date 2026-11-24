@@ -5,11 +5,10 @@ import {
   jdCategorySchema,
   knowledgeFrontmatterSchema,
 } from '@uw/contracts';
-import { Card } from '@uw/ui/components/card.tsx';
-import { commandButton, primaryButton } from '@uw/ui/components/command-form.tsx';
+import { Button, ButtonLink } from '@uw/ui/components/button.tsx';
 import { SelectField, TextField } from '@uw/ui/components/field.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { FormActions, FormShape } from '@uw/ui/shapes/form.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import type { Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
@@ -50,45 +49,43 @@ function NewForm(props: { readonly typed: Typed; readonly templates: readonly Te
     ...props.templates.map((entry) => ({ value: entry.id, label: entry.title })),
   ];
   return (
-    <Card title="New page" sub="It opens in edit mode once it is filed">
-      <form method="post" action="/wiki/new" class="flex flex-col gap-4">
-        <input type="hidden" name="requestId" value={crypto.randomUUID()} />
-        <input type="hidden" name="parent" value={typed.parent} />
-        <TextField
-          name="title"
-          label="Title"
-          scope="new"
-          value={typed.title}
-          maxLength={200}
-          required
-        />
-        <TextField
-          name="category"
-          label="Category"
-          scope="new"
-          value={typed.category}
-          maxLength={2}
-          required
-          hint="Two digits, such as 61. The page is filed in that category's area."
-        />
-        <SelectField
-          name="template"
-          label="Start from"
-          scope="new"
-          choices={starts}
-          selected={typed.template}
-          hint="Any page tagged template is offered here."
-        />
-        <p class="m-0 flex flex-wrap items-center gap-2">
-          <button type="submit" class={primaryButton}>
-            Create page
-          </button>
-          <a href={wikiPath()} class={commandButton}>
-            Cancel
-          </a>
-        </p>
-      </form>
-    </Card>
+    <form method="post" action="/wiki/new" aria-label="New page" class="flex flex-col gap-4">
+      <input type="hidden" name="requestId" value={crypto.randomUUID()} />
+      <input type="hidden" name="parent" value={typed.parent} />
+      <TextField
+        name="title"
+        label="Title"
+        scope="new"
+        value={typed.title}
+        maxLength={200}
+        required
+      />
+      <TextField
+        name="category"
+        label="Category"
+        scope="new"
+        value={typed.category}
+        maxLength={2}
+        required
+        hint="Two digits, such as 61. The page is filed in that category's area."
+      />
+      <SelectField
+        name="template"
+        label="Start from"
+        scope="new"
+        choices={starts}
+        selected={typed.template}
+        hint="Any page tagged template is offered here."
+      />
+      <FormActions>
+        <ButtonLink href={wikiPath()} variant="ghost">
+          Cancel
+        </ButtonLink>
+        <Button type="submit" variant="primary">
+          Create page
+        </Button>
+      </FormActions>
+    </form>
   );
 }
 
@@ -102,17 +99,16 @@ async function render(c: Context<AppEnv>, typed: Typed, refused: string | null):
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead
-        eyebrow={pageNames.wiki}
-        title="New page"
-        lede="Name the page and say where it is filed. You write it next."
-      />
-      <div class="flex flex-col gap-5">
-        {refused === null ? null : <Note>{refusalText(refused)}</Note>}
-        <NewForm typed={typed} templates={templates} />
-      </div>
-    </>,
+    <FormShape
+      head={{
+        eyebrow: pageNames.wiki,
+        title: 'New page',
+        lede: 'Name the page and say where it is filed. It opens in edit mode once it is filed, and you write it next.',
+      }}
+    >
+      {refused === null ? null : <Note>{refusalText(refused)}</Note>}
+      <NewForm typed={typed} templates={templates} />
+    </FormShape>,
   );
 }
 

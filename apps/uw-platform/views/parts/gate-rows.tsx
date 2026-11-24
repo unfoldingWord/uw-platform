@@ -1,6 +1,7 @@
 import { formatDuration } from '@uw/core/dates';
 import type { GateRow } from '@uw/harness';
 import { HumanDot, humanBadge } from '@uw/ui/components/human-action.tsx';
+import { SectionHeading } from '@uw/ui/components/section.tsx';
 import type { Approvable } from './approve-all.tsx';
 import { showsDecisions } from './decider.ts';
 import type { ScreenKernel } from './frame.tsx';
@@ -71,12 +72,15 @@ export async function panelsOf(screen: ScreenKernel, rows: readonly GateRow[]): 
 
 function InboxHead(props: { readonly count: number }) {
   return (
-    <p class="m-0 flex items-center gap-2 border-b border-line px-4 py-3 text-md font-heavy text-text">
-      Decide
-      <span class={`rounded-sm px-1 font-mono text-xs leading-normal ${humanBadge}`}>
-        {props.count}
-      </span>
-    </p>
+    <SectionHeading
+      id="decisions-heading"
+      title="Decide"
+      sub={
+        <span class={`rounded-sm px-1 font-mono text-xs leading-normal ${humanBadge}`}>
+          {props.count}
+        </span>
+      }
+    />
   );
 }
 
@@ -92,12 +96,12 @@ function InboxEntry(props: {
       <a
         href={gatePath(row.harness.id, row.item.itemId)}
         aria-current={props.current ? 'page' : undefined}
-        class={`flex items-start gap-3 rounded-md border border-line px-3 py-2 hover:border-accent aria-[current=page]:border-accent aria-[current=page]:bg-accent-soft ${focus}`}
+        class={`flex items-start gap-3 rounded-md px-2 py-2 no-underline transition-colors motion-reveal hover:bg-raised aria-[current=page]:bg-accent-soft ${focus}`}
       >
         <HumanDot />
         <span class="min-w-0 flex-1">
           <span class="flex items-baseline gap-2">
-            <span class="min-w-0 flex-1 truncate text-sm font-heavy text-text">
+            <span class="min-w-0 flex-1 truncate text-sm font-semibold text-text">
               {row.item.title}
             </span>
             {place.waited === null ? null : (
@@ -124,10 +128,15 @@ export function Inbox(props: {
   return (
     <nav
       aria-label="Decisions"
-      class={`min-w-0 flex-col rounded-md border border-line bg-surface md:flex md:w-inbox md:shrink-0 ${props.phone === 'shown' ? 'flex' : 'hidden'}`}
+      class={`min-w-0 flex-col gap-3 md:flex ${props.phone === 'shown' ? 'flex' : 'hidden'}`}
     >
       <InboxHead count={props.rows.length} />
-      <ul class="m-0 flex list-none flex-col gap-2 p-3">
+      {props.rows.length === 0 ? (
+        <p class="m-0 text-sm text-text-3">
+          No gate in this workflow is waiting for you to decide.
+        </p>
+      ) : null}
+      <ul class="-mx-2 m-0 flex list-none flex-col gap-1 p-0">
         {props.rows.map((row) => (
           <InboxEntry row={row} at={props.at} current={row.item.itemId === props.selected} />
         ))}

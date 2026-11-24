@@ -4,9 +4,11 @@ import {
   type MapRelation,
   type PlacedEntityKind,
 } from '@uw/contracts';
-import { PlatformCommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
-import { SelectField, TextField } from '@uw/ui/components/field.tsx';
+import { Button } from '@uw/ui/components/button.tsx';
+import { PlatformCommandForm } from '@uw/ui/components/command-form.tsx';
+import { SelectField, TextField, fieldControl } from '@uw/ui/components/field.tsx';
 import { HumanActionButton } from '@uw/ui/components/human-action.tsx';
+import { domId } from '@uw/ui/components/text.ts';
 import type { CascadeNode } from '../../crosswalk/nodes.ts';
 import { areaLabel, pageNames } from './names.ts';
 import { crosswalkPath } from './paths.ts';
@@ -51,7 +53,7 @@ export function DeclareForm(props: {
     label: `${tierWord(node.tier)} · ${node.title}`,
   }));
   if (nodes.length === 0) {
-    return <p class="m-0 text-sm text-text-2">There is no portfolio, program or project yet.</p>;
+    return <p class="m-0 text-sm text-text-3">There is no portfolio, program or project yet.</p>;
   }
   return (
     <PlatformCommandForm
@@ -103,6 +105,7 @@ export function PlaceForm(props: {
   readonly nodeId: string | null;
   readonly choices: readonly { readonly value: string; readonly label: string }[];
 }) {
+  const id = domId('field', 'cascadePageId', props.entityId);
   return (
     <PlatformCommandForm
       endpoint={ENDPOINT}
@@ -113,16 +116,15 @@ export function PlaceForm(props: {
     >
       <input type="hidden" name="entityKind" value={props.kind} />
       <input type="hidden" name="entityId" value={props.entityId} />
-      <SelectField
-        name="cascadePageId"
-        label={`Place ${props.title} under`}
-        scope={props.entityId}
-        choices={props.choices}
-        selected={props.nodeId ?? ''}
-      />
-      <button type="submit" class={commandButton}>
-        Place
-      </button>
+      <label for={id} class="sr-only">{`Place ${props.title} under`}</label>
+      <select id={id} name="cascadePageId" class={`min-w-0 ${fieldControl}`}>
+        {props.choices.map((choice) => (
+          <option value={choice.value} selected={choice.value === (props.nodeId ?? '')}>
+            {choice.label}
+          </option>
+        ))}
+      </select>
+      <Button type="submit">Place</Button>
     </PlatformCommandForm>
   );
 }

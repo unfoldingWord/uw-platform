@@ -1,4 +1,5 @@
 import type { EpicGroup, EpicNode, NotReady } from '@uw/harness';
+import { Section } from '@uw/ui/components/section.tsx';
 import { domId } from '@uw/ui/components/text.ts';
 import { epicLayout, NODE_HEIGHT, NODE_WIDTH, nodeLabel, type EpicLayout } from './epic-layout.ts';
 import { issueUrl, itemPath } from './paths.ts';
@@ -99,7 +100,7 @@ function Drawing(props: {
   const descId = domId('epic', key, 'desc');
   const byId = new Map(group.nodes.map((node) => [node.itemId, node]));
   return (
-    <div class="overflow-x-auto rounded-lg border border-line bg-surface p-2">
+    <div class="overflow-x-auto rounded-md border border-line-soft p-2">
       <svg
         role="group"
         aria-labelledby={`${titleId} ${descId}`}
@@ -143,18 +144,18 @@ function Group(props: { readonly harnessId: string; readonly group: EpicGroup })
     <section
       data-epic={String(group.epic.number)}
       aria-labelledby={headingId}
-      class="mb-4 rounded-lg border border-line bg-surface p-4"
+      class="flex min-w-0 flex-col gap-2"
     >
-      <h3 id={headingId} class="mb-2 font-heavy text-text">
+      <h3 id={headingId} class="m-0 text-base font-semibold text-text">
         {`#${group.epic.number} ${group.title}`}
       </h3>
       <Drawing harnessId={props.harnessId} group={group} laid={epicLayout(group)} />
-      <ol class="mt-2 list-decimal pl-5 text-sm text-text">
+      <ol class="m-0 list-decimal pl-5 text-sm text-text">
         {group.nodes.map((node) => (
           <li>
             <a
               href={itemPath(props.harnessId, node.itemId)}
-              class={`text-accent-text underline ${focus}`}
+              class={`text-accent-text underline-offset-2 hover:underline ${focus}`}
             >
               {`${nameOf(node)} ${node.title}`}
             </a>
@@ -173,14 +174,11 @@ export function EpicGroups(props: {
   if (props.epics.length === 0) return null;
   const headingId = domId('board', props.harnessId, 'epics');
   return (
-    <section aria-labelledby={headingId} class="mb-5">
-      <h2 id={headingId} class="mb-2 text-lg font-heavy text-text">
-        Epics
-      </h2>
+    <Section title="Epics" headingId={headingId} sub={String(props.epics.length)}>
       {props.epics.map((group) => (
         <Group harnessId={props.harnessId} group={group} />
       ))}
-    </section>
+    </Section>
   );
 }
 
@@ -207,19 +205,16 @@ export function NotReadyList(props: {
   if (props.entries.length === 0) return null;
   const headingId = domId('board', props.harnessId, 'not-ready');
   return (
-    <section aria-labelledby={headingId} class="mb-5 rounded-lg border border-line bg-surface p-4">
-      <h2 id={headingId} class="mb-1 text-lg font-heavy text-text">
-        Not ready
-      </h2>
-      <p class="mb-2 text-sm text-text-3">
+    <Section title="Not ready" headingId={headingId}>
+      <p class="m-0 text-sm text-text-3">
         These have no Done when heading, so intake refused them. Add a Done when heading with at
         least one line under it, then try again.
       </p>
-      <ul class="list-disc pl-5 text-sm text-text">
+      <ul class="m-0 list-disc pl-5 text-sm text-text">
         {props.entries.map((entry) => (
           <NotReadyEntry entry={entry} />
         ))}
       </ul>
-    </section>
+    </Section>
   );
 }

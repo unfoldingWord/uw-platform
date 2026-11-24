@@ -18,7 +18,7 @@ import { agentQueuesPath, pagePath, wikiPath } from './paths.ts';
 import { wikiBranch } from './wiki-tree.ts';
 
 export const pageLink =
-  'font-heavy text-accent-text underline outline-offset-2 outline-accent-text focus-visible:outline-2';
+  'font-semibold text-accent-text underline outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 export const typeWords: Readonly<Record<string, string>> = {
   skill: 'Instructions page',
@@ -94,6 +94,12 @@ export function pageSpec(shown: ShownPage, last: string | null) {
     code: wiki ? moduleCodes.pages : moduleCodes.agentQueues,
     crumbs: [...lead, ...here],
   };
+}
+
+export function markOf(page: Page): string {
+  const filed = knowledgeFrontmatterSchema.safeParse(page.frontmatter);
+  const jdId = page.type === 'knowledge' && filed.success ? filed.data.jd_id : null;
+  return jdId ?? typeWords[page.type] ?? page.type;
 }
 
 export function categoryOf(page: Page): JdCategory | null {

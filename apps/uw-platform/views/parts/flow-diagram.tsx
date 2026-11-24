@@ -99,7 +99,5 @@ export function FlowDiagram(props: {
     editable: false,
     gate: gateStyle,
   });
-  return (
-    <div class="overflow-x-auto rounded-lg border border-line bg-surface p-2">{mapSvg(root)}</div>
-  );
+  return <div class="overflow-x-auto rounded-md border border-line-soft p-2">{mapSvg(root)}</div>;
 }

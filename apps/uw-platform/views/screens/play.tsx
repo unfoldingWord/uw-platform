@@ -1,5 +1,5 @@
 import type { Context } from 'hono';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { DocumentShape } from '@uw/ui/shapes/document.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { idParam } from '../parts/params.ts';
@@ -65,11 +65,14 @@ export async function playScreen(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead eyebrow="Item" title={item.title} lede={`At ${stage.title} on ${harness.title}`} />
-      <p class="m-0 mb-4 text-sm text-text-3">
-        Holder: <HolderOf holder={play.holder} holding={holding} />
-      </p>
+    <DocumentShape
+      head={{ eyebrow: 'Item', title: item.title, lede: `At ${stage.title} on ${harness.title}` }}
+      rail={
+        <p class="m-0 text-sm text-text-3">
+          Holder: <HolderOf holder={play.holder} holding={holding} />
+        </p>
+      }
+    >
       <ItemHistory
         play={play}
         zulipUrl={zulipUrl}
@@ -77,6 +80,6 @@ export async function playScreen(c: Context<AppEnv>): Promise<Response> {
         kind={kindParam(c.req.query('kind'))}
         holding={holding}
       />
-    </>,
+    </DocumentShape>,
   );
 }

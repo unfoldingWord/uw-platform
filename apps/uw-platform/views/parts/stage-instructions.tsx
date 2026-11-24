@@ -1,12 +1,13 @@
 import type { Stage } from '@uw/contracts';
 import type { StageControlsView } from '@uw/harness';
-import { CommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
+import { Button } from '@uw/ui/components/button.tsx';
+import { CommandForm } from '@uw/ui/components/command-form.tsx';
+import { fieldControl } from '@uw/ui/components/field.tsx';
 import { controlsPath, pagePath } from './paths.ts';
 
 const link =
-  'text-sm font-heavy text-accent-text underline outline-offset-2 outline-accent-text focus-visible:outline-2';
-const input =
-  'min-w-0 flex-1 rounded-md border border-line bg-surface px-2 py-1 text-sm text-text outline-offset-2 outline-accent-text focus-visible:outline-2';
+  'text-sm font-semibold text-accent-text underline-offset-2 hover:underline outline-offset-2 outline-accent-text focus-visible:outline-2';
+const input = `${fieldControl} min-w-0 flex-1`;
 
 export function InstructionsExtras(props: {
   readonly view: StageControlsView;
@@ -35,13 +36,9 @@ export function InstructionsExtras(props: {
             aria-label={`Title of a new instructions page for ${stage.title}`}
             class={input}
           />
-          <button
-            type="submit"
-            class={commandButton}
-            aria-label={`Create an instructions page for ${stage.title}`}
-          >
+          <Button type="submit" size="sm" label={`Create an instructions page for ${stage.title}`}>
             New page
-          </button>
+          </Button>
         </CommandForm>
       ) : null}
     </div>

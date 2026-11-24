@@ -23,7 +23,7 @@ function Links(props: { readonly play: PlayByPlay; readonly zulipUrl: string | n
   const { item } = props.play;
   const pull = item.pullRequest;
   return (
-    <nav aria-label="Links for this item" class="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+    <nav aria-label="Links for this item" class="flex flex-wrap items-center gap-x-4 gap-y-2">
       {pull === null ? null : (
         <>
           <a href={pullRequestUrl(pull)} class={link}>
@@ -60,7 +60,7 @@ export function ItemHistory(props: {
 }) {
   const { play, base, kind } = props;
   return (
-    <>
+    <div class="flex min-w-0 flex-col gap-4">
       <Links play={play} zulipUrl={props.zulipUrl} />
       <KindFilters base={base} kind={kind} />
       <Timeline
@@ -70,12 +70,12 @@ export function ItemHistory(props: {
         holding={props.holding}
       />
       {play.next === null ? null : (
-        <p class="mt-4">
+        <p class="m-0">
           <a href={`${base}?after=${String(play.next)}`} class={link}>
             Show later events
           </a>
         </p>
       )}
-    </>
+    </div>
   );
 }

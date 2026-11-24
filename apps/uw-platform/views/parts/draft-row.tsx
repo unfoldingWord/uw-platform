@@ -1,12 +1,12 @@
 import type { Child } from 'hono/jsx';
 import type { DraftProblem, DraftStage } from '@uw/contracts';
-import { commandButton } from '@uw/ui/components/command-form.tsx';
+import { Button } from '@uw/ui/components/button.tsx';
+import { fieldControl, fieldLabel } from '@uw/ui/components/field.tsx';
 import { draftChoices, type Choice } from './draft-words.ts';
 
-const control =
-  'rounded-md border border-line bg-surface px-3 py-1 text-sm text-text outline-offset-2 outline-accent-text focus-visible:outline-2 disabled:text-text-3';
+const control = `${fieldControl} disabled:text-text-3`;
 const loopBox = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
-const caption = 'text-xs font-heavy tracking-wide text-text-3 uppercase';
+const caption = fieldLabel;
 
 function Field(props: { readonly label: string; readonly children: Child }) {
   return (
@@ -67,15 +67,15 @@ function LoopChoices(props: {
 function RowActions() {
   return (
     <div class="flex flex-wrap items-center gap-2">
-      <button type="button" data-move="up" class={commandButton}>
+      <Button variant="ghost" size="sm" attrs={{ 'data-move': 'up' }}>
         Move up
-      </button>
-      <button type="button" data-move="down" class={commandButton}>
+      </Button>
+      <Button variant="ghost" size="sm" attrs={{ 'data-move': 'down' }}>
         Move down
-      </button>
-      <button type="button" data-remove class={commandButton}>
+      </Button>
+      <Button variant="ghost" size="sm" icon="trash" attrs={{ 'data-remove': '' }}>
         Remove
-      </button>
+      </Button>
     </div>
   );
 }
@@ -165,10 +165,10 @@ export function DraftRow(props: {
       data-key={stage.key}
       data-instructions={stage.instructionsPageId ?? ''}
       data-validators={stage.validators.join(',')}
-      class="flex min-w-0 flex-col gap-3 border-b border-line px-4 py-4 last:border-b-0"
+      class="flex min-w-0 flex-col gap-3 border-b border-line-soft py-4 last:border-b-0"
     >
       <div class="flex flex-wrap items-center gap-2">
-        <span class="font-heavy text-text">
+        <span class="font-semibold text-text">
           {stage.title.trim() === '' ? 'New stage' : stage.title}
         </span>
         <code class="text-xs text-text-3">{stage.key}</code>

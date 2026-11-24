@@ -7,11 +7,13 @@ import {
 } from '@uw/contracts';
 import { can } from '@uw/core/acl';
 import { formatInstant } from '@uw/core/dates';
-import { Card } from '@uw/ui/components/card.tsx';
-import { commandButton, primaryButton } from '@uw/ui/components/command-form.tsx';
+import { Button } from '@uw/ui/components/button.tsx';
+import { EmptyState } from '@uw/ui/components/empty-state.tsx';
 import { TextAreaField } from '@uw/ui/components/field.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
+import { DocumentShape } from '@uw/ui/shapes/document.tsx';
+import { FormActions } from '@uw/ui/shapes/form.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import type { AppEnv } from '../../deps.ts';
 import { renderMarkdown } from '../../markdown/render.ts';
@@ -23,6 +25,7 @@ import { pageLink, pageScreenSpec, shownPage, type ShownPage } from '../parts/pa
 import { idParam } from '../parts/params.ts';
 import { namesOf, shownIdentity, Who, type Reading, type Someone } from '../parts/person.tsx';
 import { pageCommentsPath, pagePath } from '../parts/paths.ts';
+import { PageBand } from '../parts/page-read.tsx';
 import { notFound } from './not-found.tsx';
 
 type Found = { readonly screen: ScreenKernel; readonly shown: ShownPage };
@@ -42,13 +45,11 @@ function Comment(props: {
   return (
     <li
       data-comment={comment.id}
-      class="flex flex-col gap-2 border-b border-line-soft px-4 py-3 last:border-b-0"
+      class="flex flex-col gap-2 border-b border-line-soft py-4 first:pt-0 last:border-b-0"
     >
-      <p class="m-0 flex flex-wrap items-center gap-2 text-xs text-text-3">
+      <p class="m-0 flex flex-wrap items-center gap-2 text-sm text-text-3">
         <Who reading={props.reading} who={comment.who} />
-        <span class="font-heavy tracking-wide uppercase">
-          {`${when}${comment.resolvedAt === null ? '' : ', resolved'}`}
-        </span>
+        <span>{`${when}${comment.resolvedAt === null ? '' : ', resolved'}`}</span>
       </p>
       {comment.quote === null ? null : (
         <blockquote
@@ -64,9 +65,9 @@ function Comment(props: {
           <input type="hidden" name="intent" value="resolve" />
           <input type="hidden" name="requestId" value={crypto.randomUUID()} />
           <input type="hidden" name="commentId" value={comment.id} />
-          <button type="submit" class={commandButton}>
+          <Button type="submit" size="sm">
             Resolve
-          </button>
+          </Button>
         </form>
       )}
     </li>
@@ -75,7 +76,7 @@ function Comment(props: {
 
 function AddForm(props: { readonly pageId: string; readonly typed: Typed }) {
   return (
-    <Card title="Add a comment" sub="Say what is wrong, missing or unclear">
+    <Section title="Add a comment" sub="Say what is wrong, missing or unclear">
       <form method="post" action={pageCommentsPath(props.pageId)} class="flex flex-col gap-4">
         <input type="hidden" name="intent" value="add" />
         <input type="hidden" name="requestId" value={crypto.randomUUID()} />
@@ -97,13 +98,13 @@ function AddForm(props: { readonly pageId: string; readonly typed: Typed }) {
           maxLength={10_000}
           hint="Markdown works here."
         />
-        <p class="m-0">
-          <button type="submit" class={primaryButton}>
+        <FormActions>
+          <Button type="submit" variant="primary">
             Add comment
-          </button>
-        </p>
+          </Button>
+        </FormActions>
       </form>
-    </Card>
+    </Section>
   );
 }
 
@@ -142,6 +143,11 @@ async function shownComments(c: Context<AppEnv>, found: Found): Promise<readonly
 }
 
 type Typed = { readonly bodyMd: string; readonly quote: string };
+
+function commentCount(count: number): string {
+  if (count === 0) return 'No comments';
+  return count === 1 ? '1 comment' : `${String(count)} comments`;
+}
 type State = { readonly refused: string | null; readonly typed: Typed };
 
 async function render(c: Context<AppEnv>, found: Found, state: State): Promise<Response> {
@@ -150,37 +156,44 @@ async function render(c: Context<AppEnv>, found: Found, state: State): Promise<R
   return renderScreen(
     c,
     await pageScreenSpec(c, found.screen, found.shown, pageNames.pageComments),
-    <>
-      <PageHead
-        eyebrow={pageNames.wiki}
-        title={page.title}
-        lede="Comments on this page, oldest first. Anyone who can read the page can comment."
-      />
-      <div class="flex flex-col gap-5">
-        {state.refused === null ? null : <Note>{`Not added: ${reasonText(state.refused)}.`}</Note>}
-        <p class="m-0">
-          <a href={pagePath(page.id)} class={pageLink}>
-            Back to the page
-          </a>
-        </p>
-        <Card title="Comments" flush>
-          {comments.length === 0 ? (
-            <p class="m-0 px-4 py-3 text-sm text-text-2">No one has commented yet.</p>
-          ) : (
-            <ul class="m-0 flex list-none flex-col p-0">
-              {comments.map((comment) => (
-                <Comment
-                  pageId={page.id}
-                  comment={comment}
-                  reading={{ reader: found.screen.caller.actor, at: found.screen.at }}
-                />
-              ))}
-            </ul>
-          )}
-        </Card>
-        <AddForm pageId={page.id} typed={state.typed} />
-      </div>
-    </>,
+    <DocumentShape
+      band={
+        <PageBand
+          status={commentCount(comments.length)}
+          actions={
+            <a href={pagePath(page.id)} class={pageLink}>
+              Back to the page
+            </a>
+          }
+        />
+      }
+      head={{
+        eyebrow: pageNames.wiki,
+        title: page.title,
+        lede: 'Comments on this page, oldest first. Anyone who can read the page can comment.',
+      }}
+    >
+      {state.refused === null ? null : <Note>{`Not added: ${reasonText(state.refused)}.`}</Note>}
+      <Section title="Comments">
+        {comments.length === 0 ? (
+          <EmptyState
+            title="No one has commented yet."
+            text="Select words on the page and use Comment, or write below."
+          />
+        ) : (
+          <ul class="m-0 flex list-none flex-col p-0">
+            {comments.map((comment) => (
+              <Comment
+                pageId={page.id}
+                comment={comment}
+                reading={{ reader: found.screen.caller.actor, at: found.screen.at }}
+              />
+            ))}
+          </ul>
+        )}
+      </Section>
+      <AddForm pageId={page.id} typed={state.typed} />
+    </DocumentShape>,
   );
 }
 

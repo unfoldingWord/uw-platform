@@ -1,7 +1,8 @@
 import { formatDuration, formatInstant } from '@uw/core/dates';
 import type { CostBasis, ExitGate, GateStatus, HarnessEvent } from '@uw/contracts';
 import type { BoardCard, CardHost } from '@uw/harness';
-import { CommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
+import { Button } from '@uw/ui/components/button.tsx';
+import { CommandForm } from '@uw/ui/components/command-form.tsx';
 import { SelectField } from '@uw/ui/components/field.tsx';
 import { HumanWaitChip } from '@uw/ui/components/human-action.tsx';
 import { Icon } from '@uw/ui/components/icon.tsx';
@@ -71,9 +72,9 @@ function OneButton(props: ItemForm & { readonly command: string; readonly label:
   return (
     <CommandForm harnessId={props.harnessId} command={props.command} itemId={props.itemId}>
       <input type="hidden" name="itemId" value={props.itemId} />
-      <button type="submit" class={commandButton}>
+      <Button type="submit" size="sm">
         {props.label}
-      </button>
+      </Button>
     </CommandForm>
   );
 }
@@ -133,9 +134,7 @@ function ReorderForm(props: ItemForm & { readonly others: readonly BoardCard[] }
         choices={choices}
         selected=""
       />
-      <button type="submit" class={commandButton}>
-        Move
-      </button>
+      <Button type="submit">Move</Button>
     </CommandForm>
   );
 }
@@ -146,7 +145,7 @@ function PersonaLink(props: { readonly card: BoardCard }) {
   return (
     <a
       href={personaPath(pageId)}
-      class="text-sm text-accent-text underline outline-offset-2 outline-accent-text focus-visible:outline-2"
+      class="text-sm text-accent-text underline-offset-2 hover:underline outline-offset-2 outline-accent-text focus-visible:outline-2"
     >
       See the persona running this item
     </a>

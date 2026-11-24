@@ -1,12 +1,12 @@
 import { rowQuerySchema, type PropertyDefinition, type RowQuery } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
-import { commandButton } from '@uw/ui/components/command-form.tsx';
+import { Button } from '@uw/ui/components/button.tsx';
 import { TextField } from '@uw/ui/components/field.tsx';
 import type { Executor } from '@uw/db/client';
 import type { StoredCollection } from '../../collections/definitions.ts';
 import { readRows } from '../../collections/reader.ts';
 import type { Choice } from './collection-edit.tsx';
-import { pageLink } from './page-shown.ts';
+import { cellLink } from './collection-cells.tsx';
 
 export const PICKER_PAGE = 50;
 
@@ -117,12 +117,10 @@ export function RelationFinder(props: {
           value={found.text}
           maxLength={MOST_SEARCH}
         />
-        <button type="submit" class={commandButton}>
-          Find
-        </button>
+        <Button type="submit">Find</Button>
       </form>
       {found.next === null ? null : (
-        <a href={moreHref(path, property.key, found, found.next)} class={`text-sm ${pageLink}`}>
+        <a href={moreHref(path, property.key, found, found.next)} class={`text-sm ${cellLink}`}>
           {`More ${property.name.toLowerCase()}`}
         </a>
       )}

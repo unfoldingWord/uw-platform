@@ -1,14 +1,14 @@
 import type { Context } from 'hono';
 import { z } from 'zod';
 import { formatDate } from '@uw/core/dates';
-import { Card } from '@uw/ui/components/card.tsx';
+import { ButtonLink } from '@uw/ui/components/button.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
+import { FormShape } from '@uw/ui/shapes/form.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import type { AppEnv } from '../../deps.ts';
 import { exportPath, readExport, type ExportRecord } from '../../pdf/exports.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
-import { pageLink } from '../parts/page-shown.ts';
 import { notFound } from './not-found.tsx';
 
 const REFRESH_EVERY_MS = 5_000;
@@ -36,17 +36,17 @@ function Ready(props: { readonly found: ExportRecord }) {
   const { found } = props;
   return (
     <>
-      <p class="m-0 text-sm">
-        <a href={found.file} class={pageLink} download="">
+      <p class="m-0">
+        <ButtonLink href={found.file} variant="primary" icon="file-export" attrs={{ download: '' }}>
           Download the PDF
-        </a>
+        </ButtonLink>
       </p>
-      <p class="m-0 text-xs text-text-3">{`Available until ${formatDate(found.expiresAt)}.`}</p>
-      <p class="m-0 text-xs text-text-3">
+      <p class="m-0 text-sm text-text-3">{`Available until ${formatDate(found.expiresAt)}.`}</p>
+      <p class="m-0 text-sm text-text-3">
         {'File SHA-256 '}
         <code class="font-mono break-all">{found.fileSha256}</code>
       </p>
-      <p class="m-0 text-xs text-text-3">
+      <p class="m-0 text-sm text-text-3">
         {'Source SHA-256 '}
         <code class="font-mono break-all">{found.sourceSha256}</code>
       </p>
@@ -77,11 +77,10 @@ export async function exportScreen(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead eyebrow={EYEBROW} title={found.title} lede={found.reference} />
-      <Card title="Status">
+    <FormShape head={{ eyebrow: EYEBROW, title: found.title, lede: found.reference }}>
+      <Section title="Status">
         <Status found={found} />
-      </Card>
-    </>,
+      </Section>
+    </FormShape>,
   );
 }

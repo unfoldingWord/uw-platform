@@ -3,11 +3,12 @@ import type { Harness } from '@uw/contracts';
 import { formatMoney } from '@uw/core/money';
 import type { AgentSummary, AgentsView } from '@uw/harness';
 import { Badge } from '@uw/ui/components/badge.tsx';
-import { Card } from '@uw/ui/components/card.tsx';
-import { primaryButton } from '@uw/ui/components/command-form.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { ButtonLink } from '@uw/ui/components/button.tsx';
+import { EmptyState } from '@uw/ui/components/empty-state.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
+import { ListShape } from '@uw/ui/shapes/list.tsx';
 import { can } from '@uw/core/acl';
 import { accessTokensConfigOf } from '../../agents/access-tokens.ts';
 import { readableRoutines } from '../../agents/routine-reads.ts';
@@ -27,7 +28,7 @@ import { workflowCrumbs, workflowTabs } from '../parts/workflow-tabs.ts';
 import { notFound } from './not-found.tsx';
 
 const link =
-  'font-heavy text-accent-text underline outline-offset-2 outline-accent-text focus-visible:outline-2';
+  'font-semibold text-accent-text no-underline outline-offset-2 outline-accent-text hover:underline focus-visible:outline-2';
 
 const statusWords: Readonly<Record<AgentSummary['status'], string>> = {
   draft: 'Draft',
@@ -48,7 +49,7 @@ function budgetText(agent: AgentSummary): string {
 
 const agentColumns = [
   { key: 'agent', label: 'Agent' },
-  { key: 'does', label: 'Does' },
+  { key: 'does', label: 'Does', wide: 'medium' as const },
   { key: 'runs', label: 'Runs on' },
   { key: 'model', label: 'Model' },
   { key: 'budget', label: 'Budget' },
@@ -70,13 +71,16 @@ function AgentList(props: { readonly view: AgentsView }) {
     status: <StatusBadge status={agent.status} />,
   }));
   return (
-    <Card title="Agents on this workflow" sub="Open an agent to see what it may do" flush>
+    <Section title="Agents on this workflow" sub="Open an agent to see what it may do">
       {rows.length === 0 ? (
-        <p class="m-0 px-4 py-3 text-sm text-text-3">No agents on this workflow yet.</p>
+        <EmptyState
+          title="No agents on this workflow yet."
+          text="An admin of the area adds one from a template agent."
+        />
       ) : (
         <Table caption="Agents on this workflow" columns={agentColumns} rows={rows} bare />
       )}
-    </Card>
+    </Section>
   );
 }
 
@@ -93,7 +97,7 @@ function Reach(props: { readonly view: AgentsView }) {
       const cells = view.stages.map((stage) => [
         stage.key,
         reach.has(stage.key) ? (
-          <span class="font-heavy text-ok-text" aria-label="Can work here">
+          <span class="font-semibold text-ok-text" aria-label="Can work here">
             ✓
           </span>
         ) : (
@@ -105,17 +109,16 @@ function Reach(props: { readonly view: AgentsView }) {
       return { agent: agent.title, ...Object.fromEntries(cells) };
     });
   return (
-    <Card
+    <Section
       title="Where each agent can work"
       sub="Worked out from each stage's “agents pick up” and the agent's standing permissions"
-      flush
     >
       {rows.length === 0 ? (
-        <p class="m-0 px-4 py-3 text-sm text-text-3">No agents to show.</p>
+        <p class="m-0 text-sm text-text-3">No agents to show.</p>
       ) : (
         <Table caption="Where each agent can work" columns={columns} rows={rows} bare />
       )}
-    </Card>
+    </Section>
   );
 }
 
@@ -130,7 +133,7 @@ function Access(props: { readonly view: AgentsView }) {
   return (
     <div class="flex flex-wrap items-center gap-3">
       <Badge tone="neutral">View only</Badge>
-      <p class="m-0 text-sm font-semibold text-text-3">
+      <p class="m-0 text-sm text-text-3">
         {`Only admins of area ${props.view.harness.jdArea} can add agents or grant permissions.`}
       </p>
     </div>
@@ -218,27 +221,24 @@ export async function agentsScreen(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead
-        eyebrow={`Workflow · ${view.harness.template} template`}
-        title={view.harness.title}
-        lede="The agents on this workflow, what each may do, and where each can work."
-        actions={
-          view.admin ? (
-            <a href={newAgentPath(harnessId)} class={primaryButton}>
-              Add an agent
-            </a>
-          ) : undefined
-        }
-      />
-      <div class="flex flex-col gap-5">
-        {notice === null ? null : <Note>{notice}</Note>}
-        <Access view={view} />
-        <AgentList view={view} />
-        <StandingPermissions view={view} viewer={viewer} />
-        <Routines view={view} viewer={routines.viewer} routines={routines.rows} at={screen.at} />
-        <Reach view={view} />
-      </div>
-    </>,
+    <ListShape
+      head={{
+        eyebrow: `Workflow · ${view.harness.template} template`,
+        title: view.harness.title,
+        lede: 'The agents on this workflow, what each may do, and where each can work.',
+        actions: view.admin ? (
+          <ButtonLink href={newAgentPath(harnessId)} variant="primary">
+            Add an agent
+          </ButtonLink>
+        ) : undefined,
+      }}
+      filters={<Access view={view} />}
+    >
+      {notice === null ? null : <Note>{notice}</Note>}
+      <AgentList view={view} />
+      <StandingPermissions view={view} viewer={viewer} />
+      <Routines view={view} viewer={routines.viewer} routines={routines.rows} at={screen.at} />
+      <Reach view={view} />
+    </ListShape>,
   );
 }

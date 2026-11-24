@@ -3,11 +3,12 @@ import type { GateView } from '@uw/contracts';
 import { CommandForm } from '@uw/ui/components/command-form.tsx';
 import { TextField } from '@uw/ui/components/field.tsx';
 import { HumanActionButton } from '@uw/ui/components/human-action.tsx';
+import { IconButton } from '@uw/ui/components/button.tsx';
 import { Table, type Column } from '@uw/ui/components/table.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import { refusalsOf } from './gate-panel.tsx';
 import type { Shown } from './gate-rows.tsx';
-import { gatePath } from './paths.ts';
+import { gatePath, waitingPath } from './paths.ts';
 import { failingReasons, reasonsText } from './ship-input.tsx';
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
@@ -77,26 +78,42 @@ const columns: readonly Column[] = [
   { key: 'decide', label: 'Decide' },
 ];
 
-function ItemCell(props: { readonly shown: Shown }) {
+function peekPath(shown: Shown): string {
+  const { harness, item } = shown.row;
+  return `${waitingPath(harness.id)}?peek=${encodeURIComponent(item.itemId)}`;
+}
+
+function ItemCell(props: { readonly shown: Shown; readonly selected: boolean }) {
   const { row, gate } = props.shown;
   const number = gate.place?.number ?? null;
   return (
-    <>
-      <a
-        href={gatePath(row.harness.id, row.item.itemId)}
-        class={`font-heavy text-text hover:text-accent-text hover:underline ${focus}`}
-      >
-        {row.item.title}
-      </a>
-      {number === null ? null : <span class="block font-mono text-xs text-text-3">{number}</span>}
-    </>
+    <span class="flex min-w-0 items-start gap-2">
+      <span class="min-w-0 flex-1">
+        <a
+          href={gatePath(row.harness.id, row.item.itemId)}
+          aria-current={props.selected ? 'true' : undefined}
+          class={`font-semibold text-text no-underline hover:text-accent-text hover:underline aria-[current=true]:text-accent-text aria-[current=true]:underline ${focus}`}
+        >
+          {row.item.title}
+        </a>
+        {number === null ? null : <span class="block font-mono text-xs text-text-3">{number}</span>}
+      </span>
+      {props.selected ? null : (
+        <IconButton
+          icon="file-lines"
+          label={`Preview ${row.item.title} beside the list`}
+          size="sm"
+          href={peekPath(props.shown)}
+        />
+      )}
+    </span>
   );
 }
 
-function rowOf(shown: Shown): Readonly<Record<string, Child>> {
+function rowOf(shown: Shown, peek: string | null): Readonly<Record<string, Child>> {
   const { row, gate } = shown;
   return {
-    item: <ItemCell shown={shown} />,
+    item: <ItemCell shown={shown} selected={row.item.itemId === peek} />,
     stage: row.stage.title,
     checks: <span class="text-text-3">{checksText(gate.view)}</span>,
     waiting: gate.place?.waited ?? '',
@@ -104,12 +121,17 @@ function rowOf(shown: Shown): Readonly<Record<string, Child>> {
   };
 }
 
-export function WaitingTable(props: { readonly shown: readonly Shown[] }) {
+export function WaitingTable(props: {
+  readonly shown: readonly Shown[];
+  readonly peek?: string | null | undefined;
+}) {
+  const peek = props.peek ?? null;
   return (
     <Table
       caption="Gates waiting for you to decide"
       columns={columns}
-      rows={props.shown.map(rowOf)}
+      rows={props.shown.map((shown) => rowOf(shown, peek))}
+      selected={props.shown.findIndex((shown) => shown.row.item.itemId === peek)}
     />
   );
 }

@@ -40,15 +40,15 @@ export function DraftMap(props: {
     gate: gateStyle,
   });
   return (
-    <div class="flex flex-col gap-2 px-4 pt-3">
-      {props.editable ? <p class="m-0 text-sm text-text-2">{mapHint}</p> : null}
+    <div class="flex flex-col gap-2">
+      {props.editable ? <p class="m-0 text-sm text-text-3">{mapHint}</p> : null}
       <div
         data-draft-map
         data-map-id={id}
         data-map-title={title}
         data-gate-box={gateStyle.box}
         data-gate-line={gateStyle.line}
-        class="overflow-x-auto rounded-lg border border-line bg-surface p-2"
+        class="overflow-x-auto rounded-md border border-line-soft p-2"
       >
         {mapSvg(root)}
       </div>

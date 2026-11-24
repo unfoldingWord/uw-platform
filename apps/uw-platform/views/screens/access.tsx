@@ -2,9 +2,10 @@ import type { Context } from 'hono';
 import { jdAreaSchema } from '@uw/contracts';
 import { formatDate, formatInstant } from '@uw/core/dates';
 import { readAccessRecords, type AccessPerson } from '@uw/db/store';
-import { Card } from '@uw/ui/components/card.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { EmptyState } from '@uw/ui/components/empty-state.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
+import { ListShape } from '@uw/ui/shapes/list.tsx';
 import type { AppEnv } from '../../deps.ts';
 import {
   DecideControl,
@@ -30,8 +31,6 @@ import { moduleCodes, pageNames } from '../parts/names.ts';
 import { idParam } from '../parts/params.ts';
 import { Person, Who } from '../parts/person.tsx';
 import { accessPath } from '../parts/paths.ts';
-
-const empty = 'm-0 px-4 py-3 text-sm text-text-3';
 
 const waitingColumns = [
   { key: 'person', label: 'Person' },
@@ -73,7 +72,7 @@ function PersonCell(props: { readonly view: AccessView; readonly person: AccessP
   return (
     <span class="flex min-w-0 flex-col items-start gap-1">
       {name === undefined ? null : <Person reading={view.reading} person={name} />}
-      <span class="text-xs text-text-3">{person.email}</span>
+      <span class="text-sm text-text-3">{person.email}</span>
     </span>
   );
 }
@@ -87,9 +86,12 @@ function decideCell(view: AccessView, person: AccessPerson) {
 function Waiting(props: { readonly view: AccessView }) {
   const { view } = props;
   return (
-    <Card title="Waiting for access" sub="Signed in, with nothing they can reach yet" flush>
+    <Section title="Waiting for access" sub="Signed in, with nothing they can reach yet" flush>
       {view.waiting.length === 0 ? (
-        <p class={empty}>Nobody is waiting.</p>
+        <EmptyState
+          title="Nobody is waiting."
+          text="People who sign in with no grant appear here."
+        />
       ) : (
         <Table
           caption="Waiting for access"
@@ -102,7 +104,7 @@ function Waiting(props: { readonly view: AccessView }) {
           bare
         />
       )}
-    </Card>
+    </Section>
   );
 }
 
@@ -122,12 +124,10 @@ function grantRows(view: AccessView, holder: Holder) {
 function Holders(props: { readonly view: AccessView; readonly filter: AccessFilter }) {
   const { view } = props;
   return (
-    <Card title="Who has access" sub="Live grants you can see" flush>
-      <div class="border-b border-line px-4 py-3">
-        <FilterForm view={view} filter={props.filter} />
-      </div>
+    <Section title="Who has access" sub="Live grants you can see">
+      <FilterForm view={view} filter={props.filter} />
       {view.holders.length === 0 ? (
-        <p class={empty}>No grants to show.</p>
+        <EmptyState title="No grants to show." text="Change the scope or person to see more." />
       ) : (
         <Table
           caption="Who has access"
@@ -136,16 +136,16 @@ function Holders(props: { readonly view: AccessView; readonly filter: AccessFilt
           bare
         />
       )}
-    </Card>
+    </Section>
   );
 }
 
 function History(props: { readonly view: AccessView }) {
   const { history } = props.view;
   return (
-    <Card title="History" sub="Who changed what, newest first" flush>
+    <Section title="History" sub="Who changed what, newest first" flush>
       {history.length === 0 ? (
-        <p class={empty}>No changes recorded.</p>
+        <EmptyState title="No changes recorded." />
       ) : (
         <Table
           caption="Access history"
@@ -159,7 +159,7 @@ function History(props: { readonly view: AccessView }) {
           bare
         />
       )}
-    </Card>
+    </Section>
   );
 }
 
@@ -189,19 +189,16 @@ export async function accessScreen(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead title={pageNames.access} lede={ledeOf(view)} />
+    <ListShape head={{ title: pageNames.access, lede: ledeOf(view) }}>
       <KeptOutcome />
-      <div class="flex flex-col gap-5">
-        {admin ? <Waiting view={view} /> : null}
-        {admin ? (
-          <Card title="Grant a role" sub="Only in the scopes you’re an admin of">
-            <GrantForm view={view} />
-          </Card>
-        ) : null}
-        <Holders view={view} filter={filter} />
-        <History view={view} />
-      </div>
-    </>,
+      {admin ? <Waiting view={view} /> : null}
+      {admin ? (
+        <Section title="Grant a role" sub="Only in the scopes you’re an admin of">
+          <GrantForm view={view} />
+        </Section>
+      ) : null}
+      <Holders view={view} filter={filter} />
+      <History view={view} />
+    </ListShape>,
   );
 }

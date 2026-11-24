@@ -1,10 +1,10 @@
 import { engineSchema, runShapeSchema } from '@uw/contracts';
 import { formatMoney } from '@uw/core/money';
 import type { ActivationCheck, PersonaDashboard } from '@uw/harness';
-import { Card } from '@uw/ui/components/card.tsx';
-import { commandButton, primaryButton } from '@uw/ui/components/command-form.tsx';
-import { SelectField, TextAreaField, TextField } from '@uw/ui/components/field.tsx';
+import { Button } from '@uw/ui/components/button.tsx';
+import { fieldLabel, SelectField, TextAreaField, TextField } from '@uw/ui/components/field.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
 import { SegmentedControl } from '@uw/ui/components/segmented-control.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import {
@@ -21,7 +21,7 @@ import { personaPath } from './paths.ts';
 import { ActivateForm, type SavedToolset } from './persona-controls.tsx';
 
 const box = 'mt-1 outline-offset-2 outline-accent-text focus-visible:outline-2';
-const groupTitle = 'm-0 mb-1 text-xs font-heavy tracking-wide text-text-3 uppercase';
+const groupTitle = `m-0 mb-1 ${fieldLabel}`;
 
 function Action(props: {
   readonly words: ActionWords;
@@ -72,7 +72,7 @@ function Actions(props: { readonly dashboard: PersonaDashboard }) {
   const groups = [...actionGroups, { title: 'Other', actions: otherServedActions() }];
   return (
     <fieldset class="m-0 flex min-w-0 flex-col gap-3 border-0 p-0">
-      <legend class="mb-1 p-0 text-md font-heavy text-text">Actions it may take</legend>
+      <legend class="mb-1 p-0 text-base font-semibold text-text">Actions it may take</legend>
       <p class="m-0 text-sm text-text-3">
         Its keyring. An action not ticked here is impossible for it, whatever its instructions say.
       </p>
@@ -196,14 +196,14 @@ function Buttons(props: {
   const { dashboard } = props;
   if (!dashboard.canEdit) return <Outcome saved={props.saved} />;
   return (
-    <div class="flex flex-wrap items-center gap-3 border-t border-line pt-3">
-      <button type="submit" class={primaryButton}>
+    <div class="flex flex-wrap items-center gap-3">
+      <Button type="submit" variant="primary">
         Save and re-check
-      </button>
+      </Button>
       {dashboard.page.status === 'retired' ? null : (
-        <button type="submit" name="retire" value="retire" class={commandButton}>
+        <Button type="submit" name="retire" value="retire">
           Retire
-        </button>
+        </Button>
       )}
       <Outcome saved={props.saved} />
     </div>
@@ -218,7 +218,7 @@ export function JobCard(props: {
   const { dashboard } = props;
   const { page } = dashboard;
   return (
-    <Card title="Job card">
+    <Section title="Job card" sub="What it may do, what it runs on and its instructions">
       {dashboard.canEdit ? null : (
         <Note>
           {`Only admins of area ${dashboard.harness.jdArea} can change an agent. You can see what it may do.`}
@@ -229,7 +229,7 @@ export function JobCard(props: {
         <input type="hidden" name="requestId" value={props.requestId} />
         <fieldset
           disabled={!dashboard.canEdit}
-          class="m-0 grid min-w-0 grid-cols-1 gap-6 border-0 p-0 lg:grid-cols-2"
+          class="m-0 flex min-w-0 flex-col gap-7 border-0 p-0"
         >
           <legend class="sr-only">{`What ${page.title} may do`}</legend>
           <Actions dashboard={dashboard} />
@@ -242,7 +242,7 @@ export function JobCard(props: {
         ) : null}
         <Buttons dashboard={dashboard} saved={props.saved} />
       </form>
-    </Card>
+    </Section>
   );
 }
 
@@ -256,7 +256,7 @@ function CheckRow(props: { readonly check: ActivationCheck }) {
       data-check={check.key}
       data-passed={String(check.passed)}
     >
-      <span class={`font-heavy ${tone}`} aria-hidden="true">
+      <span class={`font-semibold ${tone}`} aria-hidden="true">
         {mark}
       </span>
       <span class="flex min-w-0 flex-col">
@@ -275,13 +275,13 @@ function CheckRow(props: { readonly check: ActivationCheck }) {
 export function Checks(props: { readonly dashboard: PersonaDashboard }) {
   const { dashboard } = props;
   return (
-    <Card title="Checks before it goes live" sub="Run again every time you open or save it">
+    <Section title="Checks before it goes live" sub="Run again every time you open or save it">
       <ul class="m-0 flex list-none flex-col gap-2 p-0">
         {dashboard.checks.map((check) => (
           <CheckRow check={check} />
         ))}
       </ul>
       {dashboard.canActivate ? <ActivateForm dashboard={dashboard} /> : null}
-    </Card>
+    </Section>
   );
 }

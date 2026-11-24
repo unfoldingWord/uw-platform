@@ -5,10 +5,11 @@ import { formatDuration } from '@uw/core/dates';
 import { formatCount } from '@uw/core/money';
 import { VIEW_LIMIT, type PhaseCount, type QueueCard } from '@uw/harness';
 import { Badge } from '@uw/ui/components/badge.tsx';
-import { primaryButton } from '@uw/ui/components/command-form.tsx';
+import { ButtonLink } from '@uw/ui/components/button.tsx';
+import { ListRow, RowList } from '@uw/ui/components/list-row.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
-import { domId } from '@uw/ui/components/text.ts';
+import { Section } from '@uw/ui/components/section.tsx';
+import { ListShape } from '@uw/ui/shapes/list.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { liveCursors } from '../parts/cursors.ts';
 import { bracketText } from '../parts/flow-diagram.tsx';
@@ -17,7 +18,6 @@ import { moduleCodes, pageNames } from '../parts/names.ts';
 import { agentQueuesPath, newWorkflowPath, queuePath } from '../parts/paths.ts';
 
 const REFRESH_EVERY_MS = 60_000;
-const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 const phaseFill: Readonly<Record<StageBracket, string>> = {
   product_package: 'fill-ok',
@@ -75,19 +75,15 @@ function PhaseBar(props: { readonly phases: readonly PhaseCount[] }) {
 
 function PhaseCounts(props: { readonly phases: readonly PhaseCount[] }) {
   return (
-    <ul aria-label="Open items by phase" class="m-0 grid list-none grid-cols-2 gap-3 p-0">
+    <span role="group" aria-label="Open items by phase" class="flex flex-wrap gap-x-3 gap-y-1">
       {props.phases.map((phase) => (
-        <li class="flex flex-col gap-1">
-          <span class="text-md leading-tight font-heavy text-text tabular-nums">
-            {formatCount(phase.count)}
-          </span>
-          <span class="flex items-center gap-1 text-xs font-semibold text-text-3">
-            <span aria-hidden="true" class={`size-2 rounded-sm ${phaseSwatch[phase.phase]}`} />
-            {bracketText(phase.phase)}
-          </span>
-        </li>
+        <span class="inline-flex items-center gap-1">
+          <span aria-hidden="true" class={`size-2 rounded-sm ${phaseSwatch[phase.phase]}`} />
+          <span class="font-semibold text-text tabular-nums">{formatCount(phase.count)}</span>
+          {bracketText(phase.phase)}
+        </span>
       ))}
-    </ul>
+    </span>
   );
 }
 
@@ -101,36 +97,35 @@ function WaitingBadge(props: { readonly waiting: number }) {
   return <Badge tone="person">{`${formatCount(props.waiting)} waiting on you`}</Badge>;
 }
 
-function WorkflowCard(props: { readonly card: QueueCard; readonly at: Date }) {
+function cappedText(card: QueueCard): string | null {
+  return card.capped ? `Counts the first ${formatCount(VIEW_LIMIT)} open items.` : null;
+}
+
+function WorkflowMeta(props: { readonly card: QueueCard; readonly at: Date }) {
   const { card } = props;
-  const { harness } = card;
-  const titleId = domId('queue', harness.id);
   return (
-    <section
-      aria-labelledby={titleId}
-      class="flex min-w-0 flex-col gap-3 rounded-md border border-line bg-surface p-4"
-    >
-      <h2 id={titleId} class="m-0 text-md font-heavy">
-        <a href={queuePath(harness.id)} class={`text-text hover:text-accent-text ${focus}`}>
-          {harness.title}
-        </a>
-      </h2>
-      <p class="m-0 flex flex-wrap items-center gap-2 text-sm text-text-3">
-        <span class="rounded-sm bg-accent-soft px-1 font-mono text-xs text-accent-text">
-          {harness.jdArea}
-        </span>
-        <span>{harness.repository ?? 'No repository'}</span>
-      </p>
+    <span class="mt-1 flex flex-col gap-2">
+      <span class="flex flex-wrap items-center gap-x-2">
+        <span class="font-mono text-xs text-accent-text">{card.harness.jdArea}</span>
+        <span>{card.harness.repository ?? 'No repository'}</span>
+        <span>{`· ${oldestText(card, props.at)}`}</span>
+      </span>
       <PhaseBar phases={card.phases} />
       <PhaseCounts phases={card.phases} />
-      {card.capped ? (
-        <p class="m-0 text-xs text-text-3">{`Counts the first ${formatCount(VIEW_LIMIT)} open items.`}</p>
-      ) : null}
-      <p class="m-0 flex flex-wrap items-center justify-between gap-2 border-t border-line-soft pt-3 text-sm text-text-3">
-        <span>{oldestText(card, props.at)}</span>
-        <WaitingBadge waiting={card.waiting} />
-      </p>
-    </section>
+      {cappedText(card)}
+    </span>
+  );
+}
+
+function WorkflowRow(props: { readonly card: QueueCard; readonly at: Date }) {
+  const { card } = props;
+  return (
+    <ListRow
+      title={card.harness.title}
+      href={queuePath(card.harness.id)}
+      meta={<WorkflowMeta card={card} at={props.at} />}
+      trail={<WaitingBadge waiting={card.waiting} />}
+    />
   );
 }
 
@@ -144,11 +139,13 @@ function Workflows(props: { readonly cards: readonly QueueCard[]; readonly at: D
     );
   }
   return (
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-      {props.cards.map((card) => (
-        <WorkflowCard card={card} at={props.at} />
-      ))}
-    </div>
+    <Section title="Workflows" sub={formatCount(props.cards.length)}>
+      <RowList label="Workflows">
+        {props.cards.map((card) => (
+          <WorkflowRow card={card} at={props.at} />
+        ))}
+      </RowList>
+    </Section>
   );
 }
 
@@ -177,21 +174,19 @@ export async function agentQueuesScreen(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
     spec,
-    <div class="flex flex-col gap-5">
-      <PageHead
-        eyebrow={pageNames.agentQueues}
-        title="Your workflows"
-        lede="A workflow is a set of stages that work moves through, with the people and agents who do it. You see the workflows in the areas you have access to."
-        actions={
-          canCreate(creatable) ? (
-            <a href={newWorkflowPath()} class={primaryButton}>
-              New workflow
-            </a>
-          ) : undefined
-        }
-        flush
-      />
+    <ListShape
+      head={{
+        eyebrow: pageNames.agentQueues,
+        title: 'Your workflows',
+        lede: 'A workflow is a set of stages that work moves through, with the people and agents who do it. You see the workflows in the areas you have access to.',
+        actions: canCreate(creatable) ? (
+          <ButtonLink href={newWorkflowPath()} variant="primary" icon="plus">
+            New workflow
+          </ButtonLink>
+        ) : undefined,
+      }}
+    >
       <Workflows cards={cards} at={screen.at} />
-    </div>,
+    </ListShape>,
   );
 }

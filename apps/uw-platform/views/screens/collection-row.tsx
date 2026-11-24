@@ -3,9 +3,11 @@ import { raw } from 'hono/html';
 import type { Child } from 'hono/jsx';
 import { isWritableProperty, type CollectionRow, type PropertyDefinition } from '@uw/contracts';
 import { can } from '@uw/core/acl';
-import { Card } from '@uw/ui/components/card.tsx';
+import { ButtonLink } from '@uw/ui/components/button.tsx';
 import { FactList, type ShownFact } from '@uw/ui/components/kanban-card.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { ListRow, RowList } from '@uw/ui/components/list-row.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
+import { DocumentShape } from '@uw/ui/shapes/document.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { ensureBuiltIns } from '../../collections/builtins/seed.ts';
 import {
@@ -21,10 +23,9 @@ import { readPage } from '../../pages/store.ts';
 import { mayWriteDirectory, type DirectoryColumn } from '../../people/directory-entries.ts';
 import { activePeople } from '../../people/directory.ts';
 import { CellValue } from '../parts/collection-cells.tsx';
-import { PropertyEditor, type Choice } from '../parts/collection-edit.tsx';
+import { EditInPlace, PropertyEditor, type Choice } from '../parts/collection-edit.tsx';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { areaLabel, moduleCodes, pageNames } from '../parts/names.ts';
-import { pageLink } from '../parts/page-shown.ts';
 import { personChipsFor, type PersonChips } from '../parts/person.tsx';
 import {
   collectionPath,
@@ -33,8 +34,8 @@ import {
   pageCommentsPath,
   pageEditPath,
 } from '../parts/paths.ts';
-import { ProfileBodyCard, profileBody } from '../parts/profile-body.tsx';
-import { ProfileListCards, profileLists } from '../parts/profile-lists.tsx';
+import { ProfileBodySection, profileBody } from '../parts/profile-body.tsx';
+import { ProfileListSections, profileLists } from '../parts/profile-lists.tsx';
 import { notFound } from './not-found.tsx';
 import { withViews } from '../parts/view-embed.tsx';
 import {
@@ -113,11 +114,10 @@ function merged(choices: readonly Choice[], current: readonly Choice[]): readonl
   return [...choices, ...current.filter((choice) => !known.has(choice.value))];
 }
 
-function factOf(screen: ScreenKernel, scene: RowScene, property: PropertyDefinition): ShownFact {
-  const value = valueOf(scene.row, property.key);
+function editorOf(scene: RowScene, property: PropertyDefinition, value: unknown): Child {
   const found = scene.found.get(property.key);
   const current = currentChoices(value, scene.personChips);
-  const editor = {
+  const target = {
     collection: scene.stored.definition.key,
     rowId: scene.row.id,
     rowTitle: scene.row.title,
@@ -127,52 +127,72 @@ function factOf(screen: ScreenKernel, scene: RowScene, property: PropertyDefinit
     people: merged(scene.people, property.config.type === 'person' ? current : []),
     rows: merged(found?.choices ?? [], property.config.type === 'relation' ? current : []),
   };
+  return (
+    <>
+      {found === undefined ? null : (
+        <RelationFinder
+          path={collectionRowPath(scene.stored.definition.key, scene.row.id)}
+          property={property}
+          found={found}
+        />
+      )}
+      <PropertyEditor target={target} />
+    </>
+  );
+}
+
+function factOf(screen: ScreenKernel, scene: RowScene, property: PropertyDefinition): ShownFact {
+  const value = valueOf(scene.row, property.key);
+  const shown = <CellValue property={property} value={value} people={scene.personChips} />;
+  if (!mayEdit(screen, scene, property)) return { label: property.name, value: shown };
   return {
     label: property.name,
     value: (
-      <>
-        <CellValue property={property} value={value} people={scene.personChips} />
-        {mayEdit(screen, scene, property) ? (
-          <details id={property.key} open={scene.finding.property === property.key}>
-            <summary class="cursor-pointer text-xs text-text-3 outline-offset-2 outline-accent-text focus-visible:outline-2">{`Change ${property.name.toLowerCase()}`}</summary>
-            <div class="mt-2 flex flex-col gap-3">
-              {found === undefined ? null : (
-                <RelationFinder
-                  path={collectionRowPath(scene.stored.definition.key, scene.row.id)}
-                  property={property}
-                  found={found}
-                />
-              )}
-              <PropertyEditor target={editor} />
-            </div>
-          </details>
-        ) : null}
-      </>
+      <EditInPlace
+        id={property.key}
+        open={scene.finding.property === property.key}
+        label={`Change ${property.name.toLowerCase()}`}
+        editor={editorOf(scene, property, value)}
+      >
+        {shown}
+      </EditInPlace>
     ),
   };
+}
+
+function PropertySections(props: { readonly screen: ScreenKernel; readonly scene: RowScene }) {
+  const { screen, scene } = props;
+  return (
+    <>
+      {sectionsOf(shownProperties(scene)).map(([name, properties]) => (
+        <Section title={name} tight>
+          <FactList roomy facts={properties.map((property) => factOf(screen, scene, property))} />
+        </Section>
+      ))}
+    </>
+  );
 }
 
 function Relations(props: { readonly scene: RowScene }) {
   if (props.scene.incoming.length === 0) return null;
   const byId = new Map([...props.scene.collections.values()].map((s) => [s.id, s]));
   return (
-    <Card title="Linked from">
-      <ul class="m-0 flex list-none flex-col gap-1 p-0 text-sm">
+    <Section title="Linked from" sub={String(props.scene.incoming.length)}>
+      <RowList label="Linked from">
         {props.scene.incoming.map((link) => {
           const source = link.collectionId === null ? undefined : byId.get(link.collectionId);
           const [, key = ''] = link.rel.split('.');
           const via = source?.definition.properties.find((p) => p.key === key)?.name ?? key;
           return (
-            <li>
-              <a href={collectionRowPath(source?.definition.key ?? '', link.id)} class={pageLink}>
-                {link.title}
-              </a>
-              <span class="text-text-3">{` · ${source?.definition.name ?? ''} ${via}`}</span>
-            </li>
+            <ListRow
+              title={link.title}
+              href={collectionRowPath(source?.definition.key ?? '', link.id)}
+              meta={`${source?.definition.name ?? ''} ${via}`}
+            />
           );
         })}
-      </ul>
-    </Card>
+      </RowList>
+    </Section>
   );
 }
 
@@ -190,8 +210,8 @@ async function profileOf(db: Db, screen: ScreenKernel, scene: RowScene): Promise
   ]);
   return (
     <>
-      <ProfileBodyCard body={body} />
-      <ProfileListCards lists={lists} />
+      <ProfileBodySection body={body} />
+      <ProfileListSections lists={lists} />
     </>
   );
 }
@@ -251,24 +271,24 @@ async function bodyOf(db: Db, screen: ScreenKernel, scene: RowScene): Promise<Ch
   );
   const actions = (
     <>
-      {writable ? (
-        <a href={pageEditPath(page.id)} class={pageLink}>
-          Edit body
-        </a>
-      ) : null}
-      <a href={pageCommentsPath(page.id)} class={pageLink}>
+      <ButtonLink href={pageCommentsPath(page.id)} variant="ghost" size="sm" icon="comment">
         Comments
-      </a>
+      </ButtonLink>
+      {writable ? (
+        <ButtonLink href={pageEditPath(page.id)} size="sm" icon="pen">
+          Edit body
+        </ButtonLink>
+      ) : null}
     </>
   );
   return (
-    <Card title="Page" actions={actions}>
+    <Section title="Page" actions={actions}>
       {page.bodyMd.trim() === '' ? (
         <p class="m-0 text-sm text-text-3">Nothing written yet.</p>
       ) : (
         <div data-page-body="">{raw(rendered.html)}</div>
       )}
-    </Card>
+    </Section>
   );
 }
 
@@ -291,21 +311,21 @@ export async function rowScreen(c: Context<AppEnv>): Promise<Response> {
     ],
   };
   const lede = scene.row.jdArea === null ? undefined : areaLabel(scene.row.jdArea);
+  const reading = [
+    <Relations scene={scene} />,
+    await profileOf(database.db, screen, scene),
+    await bodyOf(database.db, screen, scene),
+  ];
+  const properties = <PropertySections screen={screen} scene={scene} />;
+  const hasReading = scene.incoming.length > 0 || definition.rowSource !== 'tasks';
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead eyebrow={definition.name} title={rowTitle} lede={lede} />
-      <div class="flex flex-col gap-5">
-        {sectionsOf(shownProperties(scene)).map(([name, properties]) => (
-          <Card title={name}>
-            <FactList roomy facts={properties.map((property) => factOf(screen, scene, property))} />
-          </Card>
-        ))}
-        <Relations scene={scene} />
-        {await profileOf(database.db, screen, scene)}
-        {await bodyOf(database.db, screen, scene)}
-      </div>
-    </>,
+    <DocumentShape
+      head={{ eyebrow: definition.name, title: rowTitle, lede }}
+      rail={hasReading ? properties : undefined}
+    >
+      {hasReading ? reading : properties}
+    </DocumentShape>,
   );
 }

@@ -1,12 +1,5 @@
 import type { Child } from 'hono/jsx';
-import { buttonClass } from './button.tsx';
 import { domId } from './text.ts';
-
-export const commandButton = buttonClass('secondary');
-
-export const iconCommandButton = buttonClass('secondary', 'md');
-
-export const primaryButton = buttonClass('primary');
 
 export function CommandForm(props: {
   readonly harnessId: string;

@@ -28,6 +28,7 @@ export function Table(props: {
   readonly columns: readonly Column[];
   readonly rows: readonly Readonly<Record<string, Child>>[];
   readonly bare?: boolean;
+  readonly selected?: number | undefined;
 }) {
   const frame = props.bare === true ? '' : '';
   return (
@@ -47,10 +48,14 @@ export function Table(props: {
           </tr>
         </thead>
         <tbody>
-          {props.rows.map((row) => {
+          {props.rows.map((row, index) => {
             const cells = new Map(Object.entries(row));
+            const chosen = index === props.selected;
             return (
-              <tr class="border-b border-line-soft transition-colors motion-reveal last:border-b-0 hover:bg-raised">
+              <tr
+                aria-current={chosen ? 'true' : undefined}
+                class={`border-b border-line-soft transition-colors motion-reveal last:border-b-0 ${chosen ? 'bg-accent-soft' : 'hover:bg-raised'}`}
+              >
                 {props.columns.map((column) => (
                   <td class={`px-3 py-2 align-middle ${cellClasses(column)}`}>
                     {cells.get(column.key) ?? null}

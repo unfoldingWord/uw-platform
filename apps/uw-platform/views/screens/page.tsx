@@ -1,13 +1,12 @@
 import type { Context } from 'hono';
-import type { Child } from 'hono/jsx';
-import type { Crumb } from '@uw/ui/components/top-bar.tsx';
 import { raw } from 'hono/html';
 import { formatInstant } from '@uw/core/dates';
 import { knowledgeFrontmatterSchema, type PageEntry } from '@uw/contracts';
 import type { Executor } from '@uw/db/client';
 import type { PersonName } from '../../people/directory.ts';
 import { FavouriteToggle } from '@uw/ui/components/chip.tsx';
-import { HumanActionLink } from '@uw/ui/components/human-action.tsx';
+import { ButtonLink } from '@uw/ui/components/button.tsx';
+import { DocumentShape } from '@uw/ui/shapes/document.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
 import type { AppEnv } from '../../deps.ts';
@@ -26,18 +25,21 @@ import {
   categoryOf,
   pageLink,
   pageScreenSpec,
+  markOf,
   shownPage,
-  typeWords,
   type ShownPage,
 } from '../parts/page-shown.ts';
-import { PageStatusBadge, isNotLive } from '../parts/page-status.tsx';
+import { PageStatusLine, pageFacts } from '../parts/page-status.tsx';
 import {
   CommentButton,
   Connected,
+  Contents,
   MoreMenu,
+  PageBand,
   Pager,
-  ReadBand,
+  Properties,
   commentWords,
+  type Fact,
 } from '../parts/page-read.tsx';
 import { neighboursOf } from '../parts/wiki-tree.ts';
 import { printedPage } from '../parts/page-printed.ts';
@@ -89,12 +91,12 @@ function History(props: {
     { key: 'title', label: 'Title' },
   ];
   return (
-    <details data-history="" data-pdf-hidden="" class="rounded-md border border-line bg-surface">
-      <summary class="cursor-pointer px-4 py-3 text-sm font-heavy text-text outline-offset-2 outline-accent-text focus-visible:outline-2">
+    <details data-history="" data-pdf-hidden="" class="flex flex-col gap-3">
+      <summary class="cursor-pointer text-sm font-semibold text-text-2 outline-offset-2 outline-accent-text hover:text-text focus-visible:outline-2">
         {`History, ${String(rows.length)} ${rows.length === 1 ? 'version' : 'versions'}, newest first`}
       </summary>
       {rows.length === 0 ? (
-        <p class="m-0 px-4 py-3 text-sm text-text-3">No saved versions yet.</p>
+        <p class="m-0 pt-3 text-sm text-text-3">No saved versions yet.</p>
       ) : (
         <Table caption="Versions of this page" columns={columns} rows={rows} bare />
       )}
@@ -149,28 +151,30 @@ function Notices(props: { readonly shown: ShownPage; readonly extras: Extras }) 
   );
 }
 
-function facts(shown: ShownPage, extras: Extras): readonly Child[] {
+function facts(shown: ShownPage, extras: Extras): readonly Fact[] {
   const { page } = shown;
   const reading = { reader: extras.reader, at: extras.at };
   const verification =
     page.type === 'knowledge' ? verificationOf(page.frontmatter, extras.at) : null;
-  const shownFacts: Child[] = isNotLive(page) ? [<PageStatusBadge status={page.status} />] : [];
+  const shownFacts: Fact[] = [];
   if (extras.owner !== null) {
-    shownFacts.push(
-      <span>
-        <Who reading={reading} who={shownPerson(extras.owner)} />
-      </span>,
-    );
+    shownFacts.push({
+      label: 'Owner',
+      value: <Who reading={reading} who={shownPerson(extras.owner)} />,
+    });
   }
   if (verification?.state === 'verified') {
-    shownFacts.push(<span>{`Verified until ${verification.until}`}</span>);
+    shownFacts.push({ label: 'Verification', value: `Verified until ${verification.until}` });
   }
-  shownFacts.push(<span>{`Version ${String(page.version)} in area ${page.jdArea}`}</span>);
-  shownFacts.push(
-    <a href={pageCommentsPath(page.id)} class={pageLink}>
-      {commentWords(extras.openComments)}
-    </a>,
-  );
+  shownFacts.push(...pageFacts(page));
+  shownFacts.push({
+    label: 'Comments',
+    value: (
+      <a href={pageCommentsPath(page.id)} class={pageLink}>
+        {commentWords(extras.openComments)}
+      </a>
+    ),
+  });
   return shownFacts;
 }
 
@@ -186,65 +190,56 @@ function Actions(props: { readonly shown: ShownPage; readonly extras: Extras }) 
         subpages={props.shown.children.length > 0}
       />
       {canEdit ? (
-        <HumanActionLink
+        <ButtonLink
           href={withBack(pageEditPath(page.id), props.extras.back)}
-          label="Edit"
-          name="Edit this page"
+          label="Edit this page"
           icon="pen"
-        />
+        >
+          Edit
+        </ButtonLink>
       ) : null}
     </>
   );
 }
 
-function markOf(shown: ShownPage): { readonly mark: string; readonly mono: boolean } {
-  const filed = knowledgeFrontmatterSchema.safeParse(shown.page.frontmatter);
-  const jdId = shown.page.type === 'knowledge' && filed.success ? filed.data.jd_id : null;
-  if (jdId !== null) return { mark: jdId, mono: true };
-  return { mark: typeWords[shown.page.type] ?? shown.page.type, mono: false };
-}
-
-type Lead = { readonly code?: string | undefined; readonly crumbs: readonly Crumb[] };
-
-function Band(props: { readonly shown: ShownPage; readonly extras: Extras; readonly lead: Lead }) {
+function Rail(props: { readonly shown: ShownPage; readonly extras: Extras }) {
   const { shown, extras } = props;
   return (
-    <ReadBand
-      code={props.lead.code}
-      crumbs={props.lead.crumbs}
-      actions={<Actions shown={shown} extras={extras} />}
-      {...markOf(shown)}
-      title={shown.page.title}
-      facts={facts(shown, extras)}
-      headings={extras.rendered.headings}
-    />
+    <>
+      <Properties facts={facts(shown, extras)} />
+      <Contents headings={extras.rendered.headings} />
+      <Connected title="Pages under this one" mark="children" pages={shown.children} />
+      <Connected title="Linked from" mark="backlinks" pages={shown.backlinks} />
+    </>
   );
 }
 
-function body(shown: ShownPage, extras: Extras, lead: Lead) {
+function body(shown: ShownPage, extras: Extras) {
   const { page } = shown;
   const category = categoryOf(page);
   const { previous, next } = neighboursOf(extras.filed, page.id);
   return (
-    <>
-      <Band shown={shown} extras={extras} lead={lead} />
-      <div class="mx-auto flex w-full max-w-flow flex-col gap-6 pt-6">
-        <Notices shown={shown} extras={extras} />
-        <div data-page-sheet="">
-          <div data-page-body="">{raw(extras.rendered.html)}</div>
-        </div>
-        {category === null ? null : <Pager category={category} previous={previous} next={next} />}
-        <div class="flex flex-col gap-5 md:flex-row">
-          <Connected title="Pages under this one" mark="children" pages={shown.children} />
-          <Connected title="Linked from" mark="backlinks" pages={shown.backlinks} />
-        </div>
-        <History
-          pageId={page.id}
-          versions={shown.versions}
-          reading={{ reader: extras.reader, at: extras.at }}
+    <DocumentShape
+      band={
+        <PageBand
+          status={<PageStatusLine page={page} />}
+          actions={<Actions shown={shown} extras={extras} />}
         />
+      }
+      head={{ eyebrow: markOf(page), title: page.title }}
+      rail={<Rail shown={shown} extras={extras} />}
+    >
+      <Notices shown={shown} extras={extras} />
+      <div data-page-sheet="">
+        <div data-page-body="">{raw(extras.rendered.html)}</div>
       </div>
-    </>
+      {category === null ? null : <Pager category={category} previous={previous} next={next} />}
+      <History
+        pageId={page.id}
+        versions={shown.versions}
+        reading={{ reader: extras.reader, at: extras.at }}
+      />
+    </DocumentShape>
   );
 }
 
@@ -322,7 +317,6 @@ export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
     saved: savedVersion(c.req.query('saved')),
   };
   const spec = await pageScreenSpec(c, screen, shown, null, extras.filed);
-  const lead = { code: spec.code, crumbs: spec.crumbs };
   const printed = await printedPage(c, shown.page);
-  return renderScreen(c, { ...spec, ...printed, bare: true }, body(shown, extras, lead));
+  return renderScreen(c, { ...spec, ...printed }, body(shown, extras));
 }

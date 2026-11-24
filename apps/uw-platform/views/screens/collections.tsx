@@ -1,13 +1,47 @@
 import type { Context } from 'hono';
-import { Card } from '@uw/ui/components/card.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { formatCount } from '@uw/core/money';
+import { EmptyState } from '@uw/ui/components/empty-state.tsx';
+import { Icon } from '@uw/ui/components/icon.tsx';
+import { ListRow, RowList } from '@uw/ui/components/list-row.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
+import { ListShape } from '@uw/ui/shapes/list.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { ensureBuiltIns } from '../../collections/builtins/seed.ts';
-import { readableCollections } from '../../collections/definitions.ts';
+import { readableCollections, type StoredCollection } from '../../collections/definitions.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { areaLabel, moduleCodes, pageNames } from '../parts/names.ts';
-import { pageLink } from '../parts/page-shown.ts';
 import { collectionPath, collectionsPath } from '../parts/paths.ts';
+
+function Tile() {
+  return (
+    <span class="grid size-size-5 shrink-0 place-items-center rounded-md bg-raised text-text-2">
+      <Icon name="table-cells" size={2} />
+    </span>
+  );
+}
+
+function Found(props: { readonly found: readonly StoredCollection[] }) {
+  if (props.found.length === 0) {
+    return (
+      <EmptyState
+        title="You can read no collection yet."
+        text="Collections in the areas you can read will appear here."
+      />
+    );
+  }
+  return (
+    <RowList label="Collections">
+      {props.found.map((stored) => (
+        <ListRow
+          lead={<Tile />}
+          title={stored.definition.name}
+          href={collectionPath(stored.definition.key)}
+          meta={stored.definition.description || undefined}
+        />
+      ))}
+    </RowList>
+  );
+}
 
 export async function collectionsScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
@@ -24,28 +58,16 @@ export async function collectionsScreen(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead
-        eyebrow={areaLabel('00-09')}
-        title={pageNames.collections}
-        lede="Lists of pages and records you can filter, sort, group and lay out as tables, boards, lists, galleries, calendars and charts."
-      />
-      <Card title="Collections" flush>
-        {found.length === 0 ? (
-          <p class="m-0 p-4 text-sm text-text-2">You can read no collection yet.</p>
-        ) : (
-          <ul class="m-0 flex list-none flex-col divide-y divide-line-soft p-0">
-            {found.map((stored) => (
-              <li class="flex flex-col gap-1 px-4 py-3">
-                <a href={collectionPath(stored.definition.key)} class={pageLink}>
-                  {stored.definition.name}
-                </a>
-                <p class="m-0 text-sm text-text-2">{stored.definition.description}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-    </>,
+    <ListShape
+      head={{
+        eyebrow: areaLabel('00-09'),
+        title: pageNames.collections,
+        lede: 'Lists of pages and records you can filter, sort, group and lay out as tables, boards, lists, galleries, calendars and charts.',
+      }}
+    >
+      <Section title="Collections" sub={formatCount(found.length)}>
+        <Found found={found} />
+      </Section>
+    </ListShape>,
   );
 }

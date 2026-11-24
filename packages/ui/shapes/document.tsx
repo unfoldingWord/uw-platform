@@ -5,6 +5,8 @@ export function DocumentShape(props: {
   readonly head: Head;
   readonly band?: Child | undefined;
   readonly rail?: Child | undefined;
+  readonly railLabel?: string | undefined;
+  readonly railOnPhone?: boolean | undefined;
   readonly children?: Child | undefined;
 }) {
   const reading = 'flex min-w-0 max-w-flow flex-col gap-7';
@@ -18,8 +20,8 @@ export function DocumentShape(props: {
         <div class="grid grid-cols-1 gap-7 lg:grid-cols-document">
           <div class={reading}>{props.children}</div>
           <aside
-            aria-label="Properties"
-            class="order-first flex min-w-0 flex-col gap-5 text-sm lg:order-none lg:border-l lg:border-line-soft lg:pl-5"
+            aria-label={props.railLabel ?? 'Properties'}
+            class={`order-first min-w-0 flex-col gap-5 text-sm lg:order-none lg:flex lg:border-l lg:border-line-soft lg:pl-5 ${props.railOnPhone === false ? 'hidden' : 'flex'}`}
           >
             {props.rail}
           </aside>

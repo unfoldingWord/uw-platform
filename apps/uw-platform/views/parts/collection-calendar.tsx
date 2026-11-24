@@ -1,10 +1,12 @@
 import type { CollectionRow, PropertyDefinition, RowGroup } from '@uw/contracts';
+import { ButtonLink } from '@uw/ui/components/button.tsx';
 import { CategoryChart } from '@uw/ui/components/chart.tsx';
+import { SectionHeading } from '@uw/ui/components/section.tsx';
+import { domId } from '@uw/ui/components/text.ts';
 import { Table } from '@uw/ui/components/table.tsx';
 import { formatDate, formatMonth, parseDate } from '@uw/core/dates';
 import { propertyValue, RowTitle } from './collection-cells.tsx';
 import type { LayoutProps } from './collection-layouts.tsx';
-import { pageLink } from './page-shown.ts';
 import { collectionViewPath } from './paths.ts';
 
 const DAY = 86_400_000;
@@ -66,6 +68,34 @@ function Day(props: {
   );
 }
 
+function MonthHead(props: { readonly layout: LayoutProps }) {
+  const { layout } = props;
+  const view = layout.reply.view;
+  const viewPath = (month: string) =>
+    collectionViewPath(layout.definition.key, view?.id ?? '', `?month=${month}`);
+  return (
+    <SectionHeading
+      id={domId('month', layout.definition.key, view?.id ?? '', layout.month)}
+      title={formatMonth(layout.month)}
+      actions={
+        <>
+          <ButtonLink
+            href={viewPath(shifted(layout.month, -1))}
+            size="sm"
+            variant="ghost"
+            icon="chevron-left"
+          >
+            Previous month
+          </ButtonLink>
+          <ButtonLink href={viewPath(shifted(layout.month, 1))} size="sm" variant="ghost">
+            Next month
+          </ButtonLink>
+        </>
+      }
+    />
+  );
+}
+
 export function CalendarLayout(props: LayoutProps) {
   const view = props.reply.view;
   const property = props.definition.properties.find((p) => p.key === view?.settings.dateProperty);
@@ -73,26 +103,16 @@ export function CalendarLayout(props: LayoutProps) {
     const found = span(row, property);
     return found === null ? [] : [{ row, start: found[0], end: found[1] }];
   });
-  const viewPath = (month: string) =>
-    collectionViewPath(props.definition.key, view?.id ?? '', `?month=${month}`);
   return (
     <div class="flex flex-col gap-3">
-      <div class="flex flex-wrap items-center gap-3">
-        <a href={viewPath(shifted(props.month, -1))} class={pageLink}>
-          Previous month
-        </a>
-        <h2 class="m-0 text-md font-heavy">{formatMonth(props.month)}</h2>
-        <a href={viewPath(shifted(props.month, 1))} class={pageLink}>
-          Next month
-        </a>
-      </div>
+      <MonthHead layout={props} />
       <div class="overflow-x-auto">
         <ol
           class="m-0 grid min-w-content grid-cols-7 gap-1 p-0"
           aria-label={`${props.definition.name}, ${formatMonth(props.month)}`}
         >
           {WEEKDAYS.map((day) => (
-            <li aria-hidden="true" class="list-none text-center text-xs font-heavy text-text-3">
+            <li aria-hidden="true" class="list-none text-center text-xs font-semibold text-text-3">
               {day}
             </li>
           ))}

@@ -1,41 +1,13 @@
-import type { Page } from '@uw/contracts';
-import { knowledgeFrontmatterSchema } from '@uw/contracts';
+import { Button, ButtonLink } from '@uw/ui/components/button.tsx';
 import { HumanSubmit } from '@uw/ui/components/human-action.tsx';
-import { Icon } from '@uw/ui/components/icon.tsx';
-
-const onSide = 'outline-offset-2 outline-side-code focus-visible:outline-2';
-
-const sideButton = `inline-flex cursor-pointer items-center gap-2 rounded-md border border-side-line px-3 py-1 text-sm font-heavy text-side-text hover:bg-side-hover ${onSide}`;
-
-function jdIdOf(page: Page): string | null {
-  const filed = knowledgeFrontmatterSchema.safeParse(page.frontmatter);
-  return page.type === 'knowledge' && filed.success ? filed.data.jd_id : null;
-}
-
-function BackLink(props: { readonly read: string }) {
-  return (
-    <nav aria-label="Page">
-      <a
-        href={props.read}
-        data-leave-edit=""
-        class={`inline-flex items-center gap-2 rounded-sm text-sm font-heavy text-side-text ${onSide}`}
-      >
-        <Icon name="chevron-left" size={1} />
-        Back to reading
-        <kbd class="hidden rounded-sm border border-side-line px-1 font-mono text-xs text-side-text-3 md:inline">
-          Esc
-        </kbd>
-      </a>
-    </nav>
-  );
-}
+import { PageBand } from './page-read.tsx';
 
 function DraftMode(props: { readonly drafting: boolean }) {
   return (
-    <span class="hidden items-center gap-2 text-side-text-3 md:inline-flex">
+    <span class="inline-flex items-center gap-2">
       <span
         aria-hidden="true"
-        class="size-size-1 rounded-full bg-side-text-3 group-data-draft-live/edit:bg-ok"
+        class="size-size-1 rounded-full bg-text-3 group-data-draft-live/edit:bg-ok"
       ></span>
       <span data-editor-mode="" role="status" aria-live="polite">
         {props.drafting ? 'Joining the working draft' : 'Editing on your own'}
@@ -44,38 +16,46 @@ function DraftMode(props: { readonly drafting: boolean }) {
   );
 }
 
-export function EditBar(props: {
-  readonly page: Page;
-  readonly read: string;
-  readonly drafting: boolean;
-}) {
-  const jdId = jdIdOf(props.page);
+function Status(props: { readonly drafting: boolean }) {
   return (
-    <div
-      data-edit-bar=""
-      class="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 bg-side px-4 py-2 text-side-text md:px-5"
-    >
-      <BackLink read={props.read} />
-      <p class="m-0 flex min-w-0 items-center gap-2 text-sm">
-        {jdId === null ? null : <span class="font-mono text-side-code">{jdId}</span>}
-        <span class="truncate font-heavy">{props.page.title}</span>
-        <span aria-hidden="true" class="hidden text-side-text-3 md:inline">
-          ·
-        </span>
-        <DraftMode drafting={props.drafting} />
-      </p>
-      <div class="flex flex-wrap items-center gap-2">
-        <p
-          data-editor-people=""
-          role="status"
-          aria-live="polite"
-          class="m-0 text-xs font-heavy text-side-text-3 empty:hidden"
-        ></p>
-        <button type="button" data-editor-discard="" hidden class={sideButton}>
-          Discard draft
-        </button>
-        <HumanSubmit label="Save" icon="check" />
-      </div>
-    </div>
+    <>
+      <DraftMode drafting={props.drafting} />
+      <span
+        data-editor-people=""
+        role="status"
+        aria-live="polite"
+        class="text-sm text-text-3 empty:hidden"
+      ></span>
+    </>
+  );
+}
+
+function Leave(props: { readonly read: string }) {
+  return (
+    <ButtonLink href={props.read} variant="ghost" attrs={{ 'data-leave-edit': '' }}>
+      Cancel
+      <span class="sr-only">. Back to reading</span>
+      <kbd class="hidden rounded-sm border border-line px-1 font-mono text-xs text-text-3 md:inline">
+        Esc
+      </kbd>
+    </ButtonLink>
+  );
+}
+
+export function EditBar(props: { readonly read: string; readonly drafting: boolean }) {
+  return (
+    <PageBand
+      attrs={{ 'data-edit-bar': '' }}
+      status={<Status drafting={props.drafting} />}
+      actions={
+        <>
+          <Button variant="ghost" attrs={{ 'data-editor-discard': '', hidden: true }}>
+            Discard draft
+          </Button>
+          <Leave read={props.read} />
+          <HumanSubmit label="Save" icon="check" />
+        </>
+      }
+    />
   );
 }

@@ -1,9 +1,11 @@
 import type { Context } from 'hono';
 import type { Child } from 'hono/jsx';
 import type { Page } from '@uw/contracts';
-import { Card } from '@uw/ui/components/card.tsx';
+import { buttonClass } from '@uw/ui/components/button.tsx';
+import { fieldControl, fieldLabel } from '@uw/ui/components/field.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
+import { DocumentShape } from '@uw/ui/shapes/document.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import type { AppEnv } from '../../deps.ts';
 import { editorCssPath, editorPath } from '../../generated/editor.ts';
@@ -16,19 +18,20 @@ import { EditBar } from '../parts/edit-bar.tsx';
 import { Icon } from '@uw/ui/components/icon.tsx';
 import {
   backOf,
+  markOf,
   pageLink,
+  pageScreenSpec,
   pageSpec,
   shownPage,
-  typeWords,
   type ShownPage,
 } from '../parts/page-shown.ts';
+import { Properties } from '../parts/page-read.tsx';
+import { pageFacts } from '../parts/page-status.tsx';
 import { idParam } from '../parts/params.ts';
 import { pageEditPath, pagePath, withBack } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 
 const BODY_ROWS = 24;
-const sheetEdge =
-  'rounded-t-lg border border-b-0 border-line bg-surface px-4 pt-6 pb-8 shadow-2 md:px-8 md:pt-7';
 const instructionsHint =
   'Agents at a stage using this page receive this text as their instructions.';
 const markdownHint = 'Write in markdown.';
@@ -53,19 +56,27 @@ function refusalText(reason: string): string {
   return `Not saved: ${reasonText(reason)}.`;
 }
 
-const fileLink =
-  'inline-flex cursor-pointer items-center gap-2 rounded-md border border-line px-3 py-1 text-sm font-heavy text-text-2 outline-offset-2 outline-accent-text hover:border-accent hover:text-accent-text has-focus-visible:outline-2 group-data-editor-active/edit:hidden';
+const uploadLabel = `${buttonClass('ghost', 'sm')} has-focus-visible:outline-2 group-data-editor-active/edit:hidden`;
 
 function UploadControl(props: { readonly pageId: string }) {
   const id = uploadIdOf(props.pageId);
   return (
-    <div data-upload="" data-page={props.pageId} class="flex min-w-0 flex-col items-start gap-1">
-      <label for={id} class={fileLink}>
+    <div
+      data-upload=""
+      data-page={props.pageId}
+      class="sticky bottom-4 z-10 flex max-w-full min-w-0 flex-wrap items-center gap-2 self-start rounded-full bg-surface px-2 py-1 shadow-3"
+    >
+      <label for={id} class={uploadLabel}>
         <Icon name="paperclip" size={1} />
         Add a picture or file
         <input id={id} type="file" data-upload-input="" class="sr-only" />
       </label>
-      <p data-upload-status="" role="status" aria-live="polite" class="m-0 text-xs text-text-3">
+      <p
+        data-upload-status=""
+        role="status"
+        aria-live="polite"
+        class="m-0 px-1 text-xs text-text-3"
+      >
         Pictures, PDFs and office files up to 20 MB. It is added where your cursor is.
       </p>
     </div>
@@ -81,14 +92,11 @@ type FormProps = {
   readonly children?: Child;
 };
 
-const titleInput =
-  'w-full rounded-sm border-0 bg-transparent p-0 text-xl leading-tight md:text-3xl font-heavy tracking-heading text-text outline-offset-4 outline-accent-text focus-visible:outline-2';
-
 function TitleField(props: { readonly page: Page; readonly title: string }) {
   const id = `title-${props.page.id}`;
   return (
-    <div>
-      <label for={id} class="sr-only">
+    <div class="flex min-w-0 flex-col gap-1">
+      <label for={id} class={fieldLabel}>
         Title
       </label>
       <input
@@ -98,23 +106,26 @@ function TitleField(props: { readonly page: Page; readonly title: string }) {
         value={props.title}
         maxLength={200}
         required
-        class={titleInput}
+        class={`${fieldControl} w-full`}
       />
     </div>
   );
 }
 
-const bodyInput =
-  'min-h-aside w-full resize-y rounded-md border-0 bg-transparent p-0 font-mono text-sm leading-normal text-text outline-offset-4 outline-accent-text focus-visible:outline-2';
-
 function BodyField(props: { readonly page: Page; readonly bodyMd: string }) {
   const id = `body-${props.page.id}`;
   return (
-    <div data-editor-text="">
-      <label for={id} class="sr-only">
+    <div data-editor-text="" class="flex min-w-0 flex-col gap-1">
+      <label for={id} class={fieldLabel}>
         Text
       </label>
-      <textarea id={id} name="bodyMd" rows={BODY_ROWS} maxLength={1_000_000} class={bodyInput}>
+      <textarea
+        id={id}
+        name="bodyMd"
+        rows={BODY_ROWS}
+        maxLength={1_000_000}
+        class={`${fieldControl} w-full resize-y font-mono`}
+      >
         {props.bodyMd}
       </textarea>
     </div>
@@ -129,24 +140,35 @@ function hintOf(page: Page, asText: boolean): string {
     : `${saved} Type / for blocks and [[ to link or embed a page.`;
 }
 
-function EditSheet(props: FormProps & { readonly typed: Typed }) {
+function EditRail(props: { readonly page: Page; readonly asText: boolean }) {
+  return (
+    <>
+      <Properties facts={pageFacts(props.page)} />
+      <p class="m-0 text-sm text-text-3">{hintOf(props.page, props.asText)}</p>
+    </>
+  );
+}
+
+function EditBody(props: FormProps & { readonly typed: Typed }) {
   const { page, options, typed } = props;
   return (
-    <div class={`${sheetEdge} flex flex-1 flex-col gap-4`}>
-      <TitleField page={page} title={typed.title} />
-      <p class="m-0 text-sm text-text-3">{hintOf(page, options.asText)}</p>
-      {options.asText ? null : (
-        <EditorFrame pageId={page.id} draft={props.draft} styleNonce={props.styleNonce} />
-      )}
-      <BodyField page={page} bodyMd={typed.bodyMd} />
-      <p
-        data-editor-status=""
-        role="status"
-        aria-live="polite"
-        class="m-0 text-sm text-text-3 empty:hidden"
-      ></p>
+    <>
+      {props.children}
+      <div class="flex min-w-0 flex-col gap-4">
+        <TitleField page={page} title={typed.title} />
+        {options.asText ? null : (
+          <EditorFrame pageId={page.id} draft={props.draft} styleNonce={props.styleNonce} />
+        )}
+        <BodyField page={page} bodyMd={typed.bodyMd} />
+        <p
+          data-editor-status=""
+          role="status"
+          aria-live="polite"
+          class="m-0 text-sm text-text-3 empty:hidden"
+        ></p>
+      </div>
       <UploadControl pageId={page.id} />
-    </div>
+    </>
   );
 }
 
@@ -163,32 +185,25 @@ function EditForm(props: FormProps) {
       action={pageEditPath(page.id)}
       data-page-edit=""
       data-unsaved={options.typed === null ? undefined : ''}
-      class="group/edit flex min-h-dvh flex-col"
+      class="group/edit"
     >
       <input type="hidden" name="expectedVersion" value={String(typed.expectedVersion)} />
       <input type="hidden" name="requestId" value={crypto.randomUUID()} />
       {options.back === null ? null : <input type="hidden" name="back" value={options.back} />}
-      <EditBar page={page} read={props.read} drafting={props.draft !== null} />
-      <div class="flex flex-1 justify-center px-4 pt-6 md:px-5">
-        <div class="flex w-full max-w-flow flex-col gap-4">
-          {props.children}
-          <EditSheet
-            page={page}
-            options={options}
-            draft={props.draft}
-            styleNonce={props.styleNonce}
-            read={props.read}
-            typed={typed}
-          />
-        </div>
-      </div>
+      <DocumentShape
+        band={<EditBar read={props.read} drafting={props.draft !== null} />}
+        head={{ eyebrow: markOf(page), title: page.title }}
+        rail={<EditRail page={page} asText={options.asText} />}
+      >
+        <EditBody {...props} typed={typed} />
+      </DocumentShape>
     </form>
   );
 }
 
 function ReadOnly(props: { readonly page: Page; readonly read: string }) {
   return (
-    <Card title="Read only">
+    <Section title="Read only">
       <p class="m-0 text-sm text-text-2">
         You can read this page. Editing it needs the editor role in area {props.page.jdArea}.
       </p>
@@ -197,7 +212,7 @@ function ReadOnly(props: { readonly page: Page; readonly read: string }) {
           Back to the page
         </a>
       </p>
-    </Card>
+    </Section>
   );
 }
 
@@ -265,13 +280,10 @@ function readOnlyScreen(c: Context<AppEnv>, shown: ShownPage, options: EditOptio
   return renderScreen(
     c,
     pageSpec(shown, pageNames.pageEdit),
-    <>
-      <PageHead eyebrow={typeWords[page.type] ?? page.type} title={page.title} />
-      <div class="flex flex-col gap-5">
-        {options.refused === null ? null : <Note>{refusalText(options.refused)}</Note>}
-        <ReadOnly page={page} read={read} />
-      </div>
-    </>,
+    <DocumentShape head={{ eyebrow: markOf(page), title: page.title }}>
+      {options.refused === null ? null : <Note>{refusalText(options.refused)}</Note>}
+      <ReadOnly page={page} read={read} />
+    </DocumentShape>,
   );
 }
 
@@ -288,7 +300,7 @@ export async function renderPageEdit(
   if (!shown.canEdit) return readOnlyScreen(c, shown, options, read);
   return renderScreen(
     c,
-    { ...pageSpec(shown, pageNames.pageEdit), focus: true },
+    await pageScreenSpec(c, screen, shown, pageNames.pageEdit),
     <Editable page={page} editing={editingOf(c, shown, screen, options)} read={read} />,
   );
 }

@@ -1,13 +1,14 @@
 import { raw } from 'hono/html';
 import { PROFILE_BODY_MOST, type Page } from '@uw/contracts';
-import { Card } from '@uw/ui/components/card.tsx';
-import { PlatformCommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
+import { Button, ButtonLink, buttonClass } from '@uw/ui/components/button.tsx';
+import { PlatformCommandForm } from '@uw/ui/components/command-form.tsx';
 import { TextAreaField } from '@uw/ui/components/field.tsx';
+import { Icon } from '@uw/ui/components/icon.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
 import { renderPage } from '../../pages/render-page.ts';
 import { readPage } from '../../pages/store.ts';
 import { mayWriteProfileBody, profilePageId } from '../../people/profile-body.ts';
 import type { ScreenKernel } from './frame.tsx';
-import { pageLink } from './page-shown.ts';
 import { pageCommentsPath } from './paths.ts';
 import { withViews } from './view-embed.tsx';
 
@@ -42,57 +43,73 @@ export async function profileBody(
 
 function BodyForm(props: { readonly body: ProfileBody }) {
   const { body } = props;
-  const label = body.self ? 'Write about yourself' : 'Change what this says';
   return (
-    <details>
-      <summary class="cursor-pointer text-xs text-text-3 outline-offset-2 outline-accent-text focus-visible:outline-2">
-        {label}
-      </summary>
-      <div class="mt-2">
-        <PlatformCommandForm
-          endpoint={PROFILE_ENDPOINT}
-          command="save_profile_body"
+    <PlatformCommandForm
+      endpoint={PROFILE_ENDPOINT}
+      command="save_profile_body"
+      scope={body.personId}
+      done="Saved."
+    >
+      <input type="hidden" name="personId" value={body.personId} />
+      <input type="hidden" name="expectedVersion" value={String(body.page?.version ?? '')} />
+      <div class="flex w-full min-w-0 flex-col">
+        <TextAreaField
+          name="bodyMd"
+          label="About"
           scope={body.personId}
-          done="Saved."
-        >
-          <input type="hidden" name="personId" value={body.personId} />
-          <input type="hidden" name="expectedVersion" value={String(body.page?.version ?? '')} />
-          <TextAreaField
-            name="bodyMd"
-            label="About"
-            scope={body.personId}
-            hint="Markdown. Everyone who can read the directory sees this."
-            maxLength={PROFILE_BODY_MOST}
-            value={body.page?.bodyMd ?? ''}
-            rows={8}
-          />
-          <button type="submit" class={commandButton}>
-            Save
-          </button>
-        </PlatformCommandForm>
+          hint="Markdown. Everyone who can read the directory sees this."
+          maxLength={PROFILE_BODY_MOST}
+          value={body.page?.bodyMd ?? ''}
+          rows={8}
+        />
       </div>
-    </details>
+      <div class="flex w-full justify-end">
+        <Button type="submit" variant="human">
+          Save
+        </Button>
+      </div>
+    </PlatformCommandForm>
   );
 }
 
-export function ProfileBodyCard(props: { readonly body: ProfileBody }) {
+function Written(props: { readonly body: ProfileBody }) {
+  if (props.body.html === null) return <p class="m-0 text-sm text-text-3">Nothing written yet.</p>;
+  return <div data-page-body="">{raw(props.body.html)}</div>;
+}
+
+function Editable(props: { readonly body: ProfileBody }) {
+  const { body } = props;
+  const label = body.self ? 'Write about yourself' : 'Change what this says';
+  return (
+    <div class="flex flex-col gap-3">
+      <details class="group/edit peer flex flex-col gap-3">
+        <summary class={`${buttonClass('secondary', 'sm')} list-none self-start`}>
+          <Icon name="pen" size={1} class="group-open/edit:hidden" />
+          <span class="group-open/edit:hidden">{label}</span>
+          <span class="hidden group-open/edit:inline">Cancel</span>
+        </summary>
+        <div class="mt-3">
+          <BodyForm body={body} />
+        </div>
+      </details>
+      <div class="peer-open:hidden">
+        <Written body={body} />
+      </div>
+    </div>
+  );
+}
+
+export function ProfileBodySection(props: { readonly body: ProfileBody }) {
   const { body } = props;
   const actions =
     body.page === null ? undefined : (
-      <a href={pageCommentsPath(body.page.id)} class={pageLink}>
+      <ButtonLink href={pageCommentsPath(body.page.id)} variant="ghost" size="sm" icon="comment">
         Comments
-      </a>
+      </ButtonLink>
     );
   return (
-    <Card title="About" actions={actions}>
-      <div class="flex flex-col gap-3">
-        {body.html === null ? (
-          <p class="m-0 text-sm text-text-3">Nothing written yet.</p>
-        ) : (
-          <div data-page-body="">{raw(body.html)}</div>
-        )}
-        {body.writable ? <BodyForm body={body} /> : null}
-      </div>
-    </Card>
+    <Section title="About" actions={actions}>
+      {body.writable ? <Editable body={body} /> : <Written body={body} />}
+    </Section>
   );
 }

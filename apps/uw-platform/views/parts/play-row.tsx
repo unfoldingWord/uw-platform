@@ -65,7 +65,7 @@ function Comment(props: { readonly event: HarnessEvent; readonly holding: Holdin
   return (
     <>
       <Evidence event={props.event} holding={props.holding} />
-      <blockquote class="m-0 whitespace-pre-wrap break-words border-l-2 border-line pl-3 text-text">
+      <blockquote class="m-0 whitespace-pre-wrap break-words border-l-2 border-line-soft pl-3 text-text">
         {typeof text === 'string' ? text : ''}
       </blockquote>
     </>
@@ -114,11 +114,11 @@ export function PlayRow(props: {
 }) {
   const { event } = props;
   return (
-    <li class="flex gap-3 rounded-md bg-surface p-3 shadow-1">
+    <li class="flex gap-3 border-b border-line-soft py-3 last:border-b-0">
       {props.dot}
       <div class="flex min-w-0 flex-1 flex-col gap-2">
         <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span class="font-heavy text-text">{reasonText(event.name)}</span>
+          <span class="font-semibold text-text">{reasonText(event.name)}</span>
           <span class="text-sm text-text-3">{formatInstant(new Date(event.at))}</span>
           <Actor
             actor={event.actor}

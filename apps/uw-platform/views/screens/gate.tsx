@@ -2,7 +2,7 @@ import type { Context } from 'hono';
 import type { Harness, ItemState, Stage } from '@uw/contracts';
 import type { GateRow } from '@uw/harness';
 import { Note } from '@uw/ui/components/note.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { DocumentShape } from '@uw/ui/shapes/document.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { showsDecisions } from '../parts/decider.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
@@ -64,29 +64,26 @@ function GateBody(props: {
 }) {
   const { scene, gate, notice, rows } = props;
   const { harness, item } = scene;
+  const head = {
+    eyebrow: 'Gate',
+    title: item.title,
+    lede: `At ${scene.stage.title} on ${harness.title}`,
+  };
   return (
-    <>
-      <PageHead
-        eyebrow="Gate"
-        title={item.title}
-        lede={`At ${scene.stage.title} on ${harness.title}`}
-      />
-      <div class="flex flex-col gap-5 md:flex-row md:items-start">
-        <Inbox rows={rows} at={props.at} selected={item.itemId} phone="hidden" />
-        <div class="flex min-w-0 flex-1 flex-col gap-4">
-          {notice === null ? null : <Note>{notice}</Note>}
-          <GatePanel gate={notice === null ? gate : { ...gate, decides: false }} />
-          <p class="m-0">
-            <a
-              href={itemPath(harness.id, item.itemId)}
-              class={`text-accent-text underline ${focus}`}
-            >
-              See everything that happened on this item
-            </a>
-          </p>
-        </div>
-      </div>
-    </>
+    <DocumentShape
+      head={head}
+      rail={<Inbox rows={rows} at={props.at} selected={item.itemId} phone="hidden" />}
+      railLabel="Decisions waiting"
+      railOnPhone={false}
+    >
+      {notice === null ? null : <Note>{notice}</Note>}
+      <GatePanel gate={notice === null ? gate : { ...gate, decides: false }} />
+      <p class="m-0">
+        <a href={itemPath(harness.id, item.itemId)} class={`text-accent-text underline ${focus}`}>
+          See everything that happened on this item
+        </a>
+      </p>
+    </DocumentShape>
   );
 }
 

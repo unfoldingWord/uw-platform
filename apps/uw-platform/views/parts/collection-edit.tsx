@@ -1,11 +1,14 @@
+import type { Child } from 'hono/jsx';
 import type { PropertyDefinition } from '@uw/contracts';
-import { PlatformCommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
+import { Button, buttonClass } from '@uw/ui/components/button.tsx';
+import { PlatformCommandForm } from '@uw/ui/components/command-form.tsx';
+import { fieldControl } from '@uw/ui/components/field.tsx';
+import { Icon } from '@uw/ui/components/icon.tsx';
 import { domId } from '@uw/ui/components/text.ts';
 
 export const COLLECTIONS_ENDPOINT = '/api/collections/commands';
 
-const control =
-  'min-w-0 rounded-md border border-line bg-surface px-2 py-1 text-sm text-text outline-offset-2 outline-accent-text focus-visible:outline-2';
+const control = `min-w-0 ${fieldControl}`;
 
 const focusRing = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
@@ -187,6 +190,21 @@ function Control(props: {
   );
 }
 
+function SaveButton(props: { readonly compact: boolean; readonly label: string }) {
+  if (props.compact) {
+    return (
+      <button type="submit" class={`sr-only focus:not-sr-only ${focusRing}`}>
+        {`Save ${props.label}`}
+      </button>
+    );
+  }
+  return (
+    <Button type="submit" variant="human" size="sm" label={`Save ${props.label}`}>
+      Save
+    </Button>
+  );
+}
+
 export function PropertyEditor(props: { readonly target: EditTarget }) {
   const { target } = props;
   const scope = `${target.rowId}-${target.property.key}`;
@@ -206,12 +224,62 @@ export function PropertyEditor(props: { readonly target: EditTarget }) {
       <input type="hidden" name="property" value={target.property.key} />
       <input type="hidden" name="valueKind" value={kindOf(target.property)} />
       <Control target={target} id={id} label={label} />
-      <button
-        type="submit"
-        class={target.compact ? `sr-only focus:not-sr-only ${focusRing}` : commandButton}
-      >
-        {`Save ${label}`}
-      </button>
+      <SaveButton compact={target.compact} label={label} />
     </PlatformCommandForm>
+  );
+}
+
+const pencil =
+  'absolute top-0 right-0 grid size-size-4 cursor-pointer list-none place-items-center rounded-sm text-text-3 opacity-0 transition-opacity motion-reveal outline-offset-2 outline-accent-text hover:bg-hover hover:text-text focus-visible:opacity-100 focus-visible:outline-2 group-focus-within/prop:opacity-100 group-hover/prop:opacity-100 group-open/edit:opacity-100 pointer-coarse:opacity-100';
+
+export function EditInPlace(props: {
+  readonly id: string;
+  readonly open: boolean;
+  readonly label: string;
+  readonly editor: Child;
+  readonly children: Child;
+}) {
+  return (
+    <div class="group/prop relative flex w-full min-w-0 flex-col pr-size-5">
+      <details id={props.id} open={props.open} class="group/edit peer">
+        <summary class={pencil}>
+          <Icon name="pen" size={1} class="group-open/edit:hidden" />
+          <Icon name="xmark" size={1} class="hidden group-open/edit:block" />
+          <span class="sr-only">{props.label}</span>
+        </summary>
+        <div class="flex flex-col gap-3">{props.editor}</div>
+      </details>
+      <div class="flex min-w-0 flex-col items-start gap-1 break-words text-text peer-open:hidden">
+        {props.children}
+      </div>
+    </div>
+  );
+}
+
+export function Confirmed(props: {
+  readonly opener: string;
+  readonly loss: string;
+  readonly children: Child;
+}) {
+  return (
+    <details>
+      <summary class={`${buttonClass('ghost', 'sm')} list-none`}>{props.opener}</summary>
+      <div class="absolute top-full right-0 z-10 mt-1 flex w-col-max max-w-full flex-col gap-3 rounded-lg bg-surface p-3 shadow-3">
+        <p class="m-0 text-sm text-text">{props.loss}</p>
+        {props.children}
+      </div>
+    </details>
+  );
+}
+
+export function Fields(props: { readonly children: Child }) {
+  return <div class="flex w-full min-w-0 flex-col gap-4">{props.children}</div>;
+}
+
+export function Submit(props: { readonly children: Child }) {
+  return (
+    <div class="flex w-full justify-end">
+      <Button type="submit">{props.children}</Button>
+    </div>
   );
 }

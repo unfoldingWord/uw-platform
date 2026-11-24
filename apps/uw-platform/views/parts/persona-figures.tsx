@@ -2,6 +2,7 @@ import { formatCount, formatMoney } from '@uw/core/money';
 import { formatInstant } from '@uw/core/dates';
 import type { ApproveAt } from '@uw/contracts';
 import type { PersonaDashboard, PersonaRunSummary } from '@uw/harness';
+import { EmptyState } from '@uw/ui/components/empty-state.tsx';
 import { Kpi } from '@uw/ui/components/kpi.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
@@ -10,7 +11,7 @@ import { itemPath } from './paths.ts';
 import { shownIdentity, Who } from './person.tsx';
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
-const link = `text-accent-text underline ${focus}`;
+const link = `font-semibold text-accent-text no-underline hover:underline ${focus}`;
 
 function money(amountMinor: number): string {
   return formatMoney({ amountMinor, currency: 'USD' });
@@ -39,7 +40,7 @@ export function PersonaKpis(props: { readonly dashboard: PersonaDashboard }) {
   const escalation = escalationText(props.dashboard);
   const spent = `${money(spend.costMinor)} metered, ${money(spend.computeMinor)} compute; ${formatCount(spend.subscriptionTokens)} subscription tokens`;
   return (
-    <div class="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <Kpi
         label="Runs today"
         value={formatCount(runsToday.total)}
@@ -90,7 +91,9 @@ function stepsText(run: PersonaRunSummary): string {
 
 export function LastRuns(props: { readonly dashboard: PersonaDashboard }) {
   const { lastRuns, harness } = props.dashboard;
-  if (lastRuns.length === 0) return <p class="mb-5 text-sm text-text-3">No runs yet</p>;
+  if (lastRuns.length === 0) {
+    return <EmptyState title="No runs yet" text="Runs appear here once it picks up an item." />;
+  }
   const rows = lastRuns.map((run) => ({
     started: formatInstant(new Date(run.startedAt)),
     item: (
@@ -103,11 +106,7 @@ export function LastRuns(props: { readonly dashboard: PersonaDashboard }) {
     outcome: reasonText(run.outcome),
     steps: stepsText(run),
   }));
-  return (
-    <div class="mb-5">
-      <Table caption="The last runs of this persona" columns={runColumns} rows={rows} />
-    </div>
-  );
+  return <Table caption="The last runs of this persona" columns={runColumns} rows={rows} />;
 }
 
 const delegationColumns = [
@@ -122,9 +121,16 @@ export function Delegations(props: {
 }) {
   const { count, live } = props.dashboard.delegations;
   if (live === null) {
-    return <p class="mb-5 text-sm text-text-3">{`${formatCount(count)} live delegations`}</p>;
+    return <p class="m-0 text-sm text-text-3">{`${formatCount(count)} live delegations`}</p>;
   }
-  if (live.length === 0) return <p class="mb-5 text-sm text-text-3">No live delegations</p>;
+  if (live.length === 0) {
+    return (
+      <EmptyState
+        title="No live delegations"
+        text="A standing permission granted on the workflow's Agents page appears here."
+      />
+    );
+  }
   const rows = live.map((delegation) => ({
     person: (
       <Who
@@ -141,14 +147,14 @@ export function Delegations(props: {
   }));
   const more = count - live.length;
   return (
-    <div class="mb-5">
+    <div class="flex flex-col gap-2">
       <Table
         caption="The live delegations of this persona"
         columns={delegationColumns}
         rows={rows}
       />
       {more > 0 ? (
-        <p class="mt-2 text-sm text-text-3">{`and ${formatCount(more)} more live delegations`}</p>
+        <p class="m-0 text-sm text-text-3">{`and ${formatCount(more)} more live delegations`}</p>
       ) : null}
     </div>
   );

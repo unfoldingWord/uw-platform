@@ -1,10 +1,8 @@
 import type { Child } from 'hono/jsx';
 import type { PageEntry } from '@uw/contracts';
-import { iconCommandButton } from '@uw/ui/components/command-form.tsx';
-import { Icon } from '@uw/ui/components/icon.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
-import { QuickSwitcherButton } from '@uw/ui/components/quick-switcher.tsx';
-import { Crumbs, type Crumb } from '@uw/ui/components/top-bar.tsx';
+import { IconButton } from '@uw/ui/components/button.tsx';
+import { fieldLabel } from '@uw/ui/components/field.tsx';
+import { Menu, MenuItem, MenuLink, MenuRule } from '@uw/ui/components/menu.tsx';
 import type { Heading } from '../../markdown/render.ts';
 import { pageLink } from './page-shown.ts';
 import {
@@ -19,87 +17,90 @@ const MIN_CONTENTS = 2;
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
-const chip = `inline-flex items-center rounded-full border border-line bg-surface px-3 py-1 text-sm font-heavy text-accent-text hover:bg-hover ${focus}`;
+const railLink = `text-sm text-text-2 no-underline hover:text-accent-text ${focus}`;
 
-const menuRow = `block w-full cursor-pointer rounded-sm px-3 py-2 text-left text-sm font-semibold text-text hover:bg-hover ${focus}`;
-
-const pagerCard = `flex min-w-0 flex-1 flex-col gap-1 rounded-md border border-line bg-surface px-4 py-3 hover:bg-hover ${focus}`;
+const pagerLink = `flex min-w-0 flex-1 flex-col gap-1 rounded-md px-3 py-2 no-underline transition-colors motion-reveal hover:bg-raised ${focus}`;
 
 export function commentWords(open: number): string {
   if (open === 0) return 'Comments';
   return open === 1 ? '1 open comment' : `${String(open)} open comments`;
 }
 
-export function ReadBand(props: {
-  readonly code?: string | undefined;
-  readonly crumbs: readonly Crumb[];
+export function PageBand(props: {
+  readonly status: Child;
   readonly actions: Child;
-  readonly mark: string;
-  readonly mono: boolean;
-  readonly title: string;
-  readonly facts: readonly Child[];
-  readonly headings: readonly Heading[];
+  readonly attrs?: Readonly<Record<string, string>> | undefined;
 }) {
   return (
     <div
       data-band=""
-      class="-mx-4 -mt-4 flex flex-col gap-5 border-b border-band-line bg-band px-4 pt-3 pb-6 md:-mx-5 md:-mt-5 md:px-7"
+      {...(props.attrs ?? {})}
+      class="flex min-h-size-5 flex-wrap items-center gap-3 border-b border-line-soft pb-3"
     >
-      <div class="flex flex-wrap items-center gap-3">
-        <Crumbs code={props.code} crumbs={props.crumbs} />
-        <div data-pdf-hidden="" class="ml-auto flex flex-wrap items-center gap-2">
-          <QuickSwitcherButton />
-          {props.actions}
-        </div>
+      <div class="flex min-w-0 flex-wrap items-center gap-2 text-sm text-text-3">
+        {props.status}
       </div>
-      <div class="mx-auto flex w-full max-w-flow flex-col gap-3">
-        <PageHead eyebrow={props.mark} document={props.mono} title={props.title} flush />
-        <p
-          data-page-facts=""
-          class="m-0 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-text-3"
-        >
-          {props.facts.map((fact, index) => (
-            <>
-              {index === 0 ? null : <span aria-hidden="true">·</span>}
-              {fact}
-            </>
-          ))}
-        </p>
-        <Contents headings={props.headings} />
+      <div data-pdf-hidden="" class="ml-auto flex flex-wrap items-center gap-2">
+        {props.actions}
       </div>
     </div>
   );
 }
 
-function Contents(props: { readonly headings: readonly Heading[] }) {
+export type Fact = { readonly label: string; readonly value: Child };
+
+export function Properties(props: { readonly facts: readonly Fact[] }) {
+  return (
+    <ul data-page-facts="" class="m-0 flex list-none flex-col gap-3 p-0">
+      {props.facts.map((fact) => (
+        <li class="flex min-w-0 flex-col gap-1">
+          <span class={fieldLabel}>{fact.label}</span>
+          <span class="text-sm text-text">{fact.value}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function RailList(props: {
+  readonly label: string;
+  readonly attrs?: Readonly<Record<string, string>> | undefined;
+  readonly children: Child;
+}) {
+  return (
+    <div class="flex min-w-0 flex-col gap-2">
+      <p class={`m-0 ${fieldLabel}`}>{props.label}</p>
+      <ul class="m-0 flex list-none flex-col gap-1 p-0" {...(props.attrs ?? {})}>
+        {props.children}
+      </ul>
+    </div>
+  );
+}
+
+export function Contents(props: { readonly headings: readonly Heading[] }) {
   if (props.headings.length < MIN_CONTENTS) return null;
   return (
-    <nav aria-label="On this page">
-      <ul class="m-0 flex list-none flex-wrap gap-2 p-0">
+    <nav aria-label="On this page" data-pdf-hidden="">
+      <RailList label="On this page">
         {props.headings.map((heading) => (
           <li>
-            <a href={`#${heading.id}`} class={chip}>
+            <a href={`#${heading.id}`} class={railLink}>
               {heading.text}
             </a>
           </li>
         ))}
-      </ul>
+      </RailList>
     </nav>
   );
 }
 
 export function CommentButton(props: { readonly pageId: string }) {
   return (
-    <button
-      type="button"
-      data-comment-passage=""
-      data-href={pageCommentsPath(props.pageId)}
-      aria-label="Comment on the selected words"
-      title="Comment on the selected words"
-      class={iconCommandButton}
-    >
-      <Icon name="comment" size={1} />
-    </button>
+    <IconButton
+      icon="comment"
+      label="Comment on the selected words"
+      attrs={{ 'data-comment-passage': '', 'data-href': pageCommentsPath(props.pageId) }}
+    />
   );
 }
 
@@ -110,10 +111,24 @@ function Subpages(props: { readonly pageId: string }) {
     <form method="post" action={EXPORTS_ENDPOINT}>
       <input type="hidden" name="kind" value="binder" />
       <input type="hidden" name="rootPageId" value={props.pageId} />
-      <button type="submit" class={menuRow}>
+      <MenuItem type="submit" icon="layer-group">
         Export with subpages as PDF
-      </button>
+      </MenuItem>
     </form>
+  );
+}
+
+function ManageItems(props: { readonly pageId: string }) {
+  return (
+    <>
+      <MenuRule />
+      <MenuLink href={wikiNewPath({ parent: props.pageId })} icon="plus">
+        New page under this one
+      </MenuLink>
+      <MenuLink href={pageManagePath(props.pageId)} icon="folder">
+        Move, copy or retire
+      </MenuLink>
+    </>
   );
 }
 
@@ -124,34 +139,36 @@ export function MoreMenu(props: {
 }) {
   const { pageId } = props;
   return (
-    <details data-page-more="" class="relative">
-      <summary class={`${iconCommandButton} list-none`} title="More">
-        <Icon name="ellipsis" size={1} />
-        <span class="sr-only">More</span>
-      </summary>
-      <div class="absolute right-0 z-10 mt-2 flex w-aside flex-col gap-1 rounded-md border border-line bg-surface p-1 shadow-3">
-        <a href={pageExportPath(pageId)} class={menuRow}>
+    <span data-page-more="" class="inline-flex">
+      <Menu id={`page-more-${pageId}`} label="More">
+        <MenuLink href={pageExportPath(pageId)} icon="file-code">
           Export as markdown
-        </a>
-        <a href={`${pagePath(pageId)}?format=pdf`} class={menuRow}>
+        </MenuLink>
+        <MenuLink href={`${pagePath(pageId)}?format=pdf`} icon="file-export">
           Export as PDF
-        </a>
+        </MenuLink>
         {props.subpages ? <Subpages pageId={pageId} /> : null}
-        <button type="button" data-print="" class={menuRow}>
+        <MenuItem icon="file-lines" attrs={{ 'data-print': '' }}>
           Print
-        </button>
-        {props.manage ? (
-          <>
-            <a href={wikiNewPath({ parent: pageId })} class={menuRow}>
-              New page under this one
-            </a>
-            <a href={pageManagePath(pageId)} class={menuRow}>
-              Move, copy or retire
-            </a>
-          </>
-        ) : null}
-      </div>
-    </details>
+        </MenuItem>
+        {props.manage ? <ManageItems pageId={pageId} /> : null}
+      </Menu>
+    </span>
+  );
+}
+
+function PagerLink(props: {
+  readonly entry: PageEntry | null;
+  readonly rel: 'prev' | 'next';
+  readonly label: string;
+}) {
+  if (props.entry === null) return <span class="hidden flex-1 md:block"></span>;
+  const align = props.rel === 'next' ? 'md:text-right' : '';
+  return (
+    <a href={pagePath(props.entry.id)} rel={props.rel} class={`${pagerLink} ${align}`}>
+      <span class="text-sm text-text-3">{props.label}</span>
+      <span class="truncate text-base font-semibold text-accent-text">{props.entry.title}</span>
+    </a>
   );
 }
 
@@ -162,23 +179,12 @@ export function Pager(props: {
 }) {
   if (props.previous === null && props.next === null) return null;
   return (
-    <nav aria-label={`Pages in ${props.category}`} class="flex flex-col gap-3 md:flex-row">
-      {props.previous === null ? (
-        <span class="hidden flex-1 md:block"></span>
-      ) : (
-        <a href={pagePath(props.previous.id)} rel="prev" class={pagerCard}>
-          <span class="text-xs font-heavy text-text-3">{`Previous in ${props.category}`}</span>
-          <span class="truncate text-md font-heavy text-accent-text">{props.previous.title}</span>
-        </a>
-      )}
-      {props.next === null ? (
-        <span class="hidden flex-1 md:block"></span>
-      ) : (
-        <a href={pagePath(props.next.id)} rel="next" class={`${pagerCard} md:text-right`}>
-          <span class="text-xs font-heavy text-text-3">{`Next in ${props.category}`}</span>
-          <span class="truncate text-md font-heavy text-accent-text">{props.next.title}</span>
-        </a>
-      )}
+    <nav
+      aria-label={`Pages in ${props.category}`}
+      class="-mx-3 flex flex-col gap-2 border-t border-line-soft pt-4 md:flex-row"
+    >
+      <PagerLink entry={props.previous} rel="prev" label={`Previous in ${props.category}`} />
+      <PagerLink entry={props.next} rel="next" label={`Next in ${props.category}`} />
     </nav>
   );
 }
@@ -189,19 +195,15 @@ export function Connected(props: {
   readonly pages: readonly PageEntry[];
 }) {
   if (props.pages.length === 0) return null;
-  const marked = { [`data-${props.mark}`]: '' };
   return (
-    <section class="flex min-w-0 flex-1 flex-col gap-2">
-      <h2 class="m-0 text-xs font-heavy tracking-wide text-text-3 uppercase">{props.title}</h2>
-      <ul class="m-0 flex list-none flex-col gap-1 p-0" {...marked}>
-        {props.pages.map((entry) => (
-          <li>
-            <a href={pagePath(entry.id)} class={pageLink}>
-              {entry.title}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <RailList label={props.title} attrs={{ [`data-${props.mark}`]: '' }}>
+      {props.pages.map((entry) => (
+        <li>
+          <a href={pagePath(entry.id)} class={pageLink}>
+            {entry.title}
+          </a>
+        </li>
+      ))}
+    </RailList>
   );
 }
