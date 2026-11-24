@@ -257,12 +257,3 @@
     text-decoration-style: dashed;
   }
 }
-
-@media print {
-  [data-side],
-  [data-chrome],
-  [data-print],
-  dialog {
-    display: none;
-  }
-}

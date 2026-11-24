@@ -40,6 +40,7 @@ import {
   commentWords,
 } from '../parts/page-read.tsx';
 import { neighboursOf } from '../parts/wiki-tree.ts';
+import { printedPage } from '../parts/page-printed.ts';
 import { pagesInCategory } from '../../pages/categories.ts';
 import { namesOf, shownIdentity } from '../parts/person-names.ts';
 import { idParam } from '../parts/params.ts';
@@ -88,7 +89,7 @@ function History(props: {
     { key: 'title', label: 'Title' },
   ];
   return (
-    <details data-history="" class="rounded-md border border-line bg-surface">
+    <details data-history="" data-pdf-hidden="" class="rounded-md border border-line bg-surface">
       <summary class="cursor-pointer px-4 py-3 text-sm font-heavy text-text outline-offset-2 outline-accent-text focus-visible:outline-2">
         {`History, ${String(rows.length)} ${rows.length === 1 ? 'version' : 'versions'}, newest first`}
       </summary>
@@ -179,7 +180,11 @@ function Actions(props: { readonly shown: ShownPage; readonly extras: Extras }) 
     <>
       <FavouriteToggle pageId={page.id} on={props.extras.favourite} compact />
       <CommentButton pageId={page.id} />
-      <MoreMenu pageId={page.id} manage={canEdit && page.type === 'knowledge'} />
+      <MoreMenu
+        pageId={page.id}
+        manage={canEdit && page.type === 'knowledge'}
+        subpages={props.shown.children.length > 0}
+      />
       {canEdit ? (
         <HumanActionLink
           href={withBack(pageEditPath(page.id), props.extras.back)}
@@ -318,5 +323,6 @@ export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
   };
   const spec = await pageScreenSpec(c, screen, shown, null, extras.filed);
   const lead = { code: spec.code, crumbs: spec.crumbs };
-  return renderScreen(c, { ...spec, bare: true }, body(shown, extras, lead));
+  const printed = await printedPage(c, shown.page);
+  return renderScreen(c, { ...spec, ...printed, bare: true }, body(shown, extras, lead));
 }

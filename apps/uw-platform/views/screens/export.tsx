@@ -1,0 +1,82 @@
+import type { Context } from 'hono';
+import { z } from 'zod';
+import { formatDate } from '@uw/core/dates';
+import { Card } from '@uw/ui/components/card.tsx';
+import { Note } from '@uw/ui/components/note.tsx';
+import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { reasonText } from '@uw/ui/components/text.ts';
+import type { AppEnv } from '../../deps.ts';
+import { exportPath, readExport, type ExportRecord } from '../../pdf/exports.ts';
+import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
+import { pageLink } from '../parts/page-shown.ts';
+import { notFound } from './not-found.tsx';
+
+const REFRESH_EVERY_MS = 5_000;
+const EYEBROW = 'PDF export';
+
+function Status(props: { readonly found: ExportRecord }) {
+  const { found } = props;
+  if (found.status === 'queued') {
+    return (
+      <p class="m-0 text-sm">
+        This PDF is being prepared. This screen refreshes until it is ready.
+      </p>
+    );
+  }
+  if (found.status === 'failed') {
+    return <Note>{`Not exported: ${reasonText(found.failure ?? 'internal_error')}.`}</Note>;
+  }
+  if (found.status === 'expired') {
+    return <p class="m-0 text-sm">This PDF has expired. Export it again from its page.</p>;
+  }
+  return <Ready found={found} />;
+}
+
+function Ready(props: { readonly found: ExportRecord }) {
+  const { found } = props;
+  return (
+    <>
+      <p class="m-0 text-sm">
+        <a href={found.file} class={pageLink} download="">
+          Download the PDF
+        </a>
+      </p>
+      <p class="m-0 text-xs text-text-3">
+        {`Available until ${formatDate(found.expiresAt)}. SHA-256 `}
+        <code class="font-mono break-all">{found.sha256}</code>
+      </p>
+    </>
+  );
+}
+
+function liveWhile(found: ExportRecord) {
+  if (found.status !== 'queued') return undefined;
+  return { screen: 'home' as const, harnesses: [], refreshEveryMs: REFRESH_EVERY_MS };
+}
+
+export async function exportScreen(c: Context<AppEnv>): Promise<Response> {
+  const screen = screenKernel(c);
+  const database = c.get('database');
+  if (screen === null || database === null) return screenRefusal(c);
+  const id = z.uuid().safeParse(c.req.param('exportId'));
+  const { actor } = screen.caller;
+  const found = id.success ? await readExport(database.db, actor, id.data, screen.at) : null;
+  if (found === null) return notFound(c);
+  const live = liveWhile(found);
+  const spec = {
+    title: found.title,
+    current: exportPath(found.exportId),
+    crumbs: [{ label: EYEBROW }, { label: found.title }],
+    ...(live === undefined ? {} : { live }),
+  };
+  return renderScreen(
+    c,
+    spec,
+    <>
+      <PageHead eyebrow={EYEBROW} title={found.title} lede={found.reference} />
+      <Card title="Status">
+        <Status found={found} />
+      </Card>
+    </>,
+  );
+}

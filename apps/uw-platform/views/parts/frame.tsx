@@ -11,6 +11,8 @@ import type { AppEnv } from '../../deps.ts';
 import { islandsPath } from '../../generated/islands.ts';
 import { refuse } from '../../http/outcomes.ts';
 import { platformKernel } from '../../kernel.ts';
+import type { Printed } from '../../pdf/print-document.ts';
+import { pdfOfScreen, screenPrinted } from '../../pdf/screen.ts';
 import { frameOf } from './frame-data.ts';
 
 type LiveHarness = { readonly harnessId: string; readonly cursor: number };
@@ -31,6 +33,7 @@ export type ScreenSpec = {
   readonly branch?: Branch;
   readonly focus?: boolean;
   readonly bare?: boolean;
+  readonly printed?: Printed;
 };
 
 export type Branch = { readonly under: string; readonly items: readonly NavItem[] };
@@ -112,14 +115,19 @@ function LiveMarkers(props: { readonly live: ScreenSpec['live'] }) {
   );
 }
 
+export function wantsPdf(c: Context<AppEnv>): boolean {
+  return c.req.method === 'GET' && c.req.query('format') === 'pdf';
+}
+
+function printedScreen(c: Context<AppEnv>, spec: ScreenSpec, html: string): Promise<Response> {
+  return pdfOfScreen(c, spec.title, html, spec.printed ?? screenPrinted(c, html));
+}
+
 export async function renderScreen(
   c: Context<AppEnv>,
   spec: ScreenSpec,
   body: Child,
 ): Promise<Response> {
-  c.header('cache-control', 'no-store');
-  c.header('vary', 'x-uw-fragment');
-  c.header('link', `<${appCssPath}>; rel=preload; as=style, <${islandsPath}>; rel=modulepreload`);
   const status = spec.status ?? 200;
   const main = (
     <>
@@ -127,6 +135,10 @@ export async function renderScreen(
       {body}
     </>
   );
+  if (status === 200 && wantsPdf(c)) return printedScreen(c, spec, String(await main.toString()));
+  c.header('cache-control', 'no-store');
+  c.header('vary', 'x-uw-fragment');
+  c.header('link', `<${appCssPath}>; rel=preload; as=style, <${islandsPath}>; rel=modulepreload`);
   if (c.req.header('x-uw-fragment') === 'main') return c.html(main, status);
   const frame = await (startedFrames.get(c) ?? readFrame(c, screenKernel(c)));
   const page = (

@@ -1,0 +1,146 @@
+@import './tokens/print-theme.css';
+
+@page {
+  size: letter;
+}
+
+@media print {
+  body {
+    background: var(--uw-surface);
+    color: var(--uw-text);
+  }
+
+  [data-side],
+  [data-chrome],
+  [data-print],
+  [data-pdf-hidden],
+  dialog,
+  form,
+  button {
+    display: none;
+  }
+
+  tr,
+  [data-card],
+  figure,
+  svg,
+  img,
+  pre,
+  blockquote,
+  details,
+  section[data-embed] {
+    break-inside: avoid;
+  }
+
+  :is(h1, h2, h3, h4, h5, h6) {
+    break-after: avoid;
+  }
+
+  :is(p, li) {
+    orphans: 3;
+    widows: 3;
+  }
+
+  table {
+    display: table;
+    width: 100%;
+    overflow: visible;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  pre {
+    overflow: visible;
+    white-space: pre-wrap;
+  }
+
+  :is(img, svg, video) {
+    max-width: 100%;
+  }
+
+  sup[data-footnote] {
+    margin-inline-start: var(--uw-space-1);
+    color: var(--uw-accent-text);
+    font-size: var(--uw-text-xs);
+    font-weight: var(--uw-weight-semibold);
+    line-height: 0;
+  }
+
+  [data-pdf-links] {
+    margin-block-start: var(--uw-space-6);
+    padding-block-start: var(--uw-space-4);
+    border-block-start: thin solid var(--uw-line);
+    color: var(--uw-text-2);
+    font-size: var(--uw-text-sm);
+  }
+
+  [data-pdf-links] ol {
+    padding-inline-start: var(--uw-space-5);
+    list-style: decimal;
+  }
+
+  [data-pdf-links] li {
+    margin-block: var(--uw-space-1);
+    overflow-wrap: anywhere;
+  }
+
+  [data-pdf-provenance] {
+    margin-block-start: var(--uw-space-6);
+    padding: var(--uw-space-3) var(--uw-space-4);
+    border: thin dashed var(--uw-line-strong);
+    border-radius: var(--uw-radius-md);
+    color: var(--uw-text-2);
+    font-size: var(--uw-text-xs);
+    break-inside: avoid;
+  }
+
+  [data-pdf-provenance] :is(h2, h3) {
+    margin-block: 0 var(--uw-space-2);
+    color: var(--uw-text);
+    font-size: var(--uw-text-sm);
+    font-weight: var(--uw-weight-heavy);
+  }
+
+  [data-pdf-provenance] :is(code, [data-hash]) {
+    font-family: var(--uw-font-mono);
+    overflow-wrap: anywhere;
+  }
+
+  [data-pdf-cover] {
+    padding-block-start: var(--uw-space-8);
+    break-after: page;
+  }
+
+  [data-pdf-cover] h1 {
+    margin-block: 0 var(--uw-space-4);
+    color: var(--uw-text);
+    font-size: var(--uw-text-3xl);
+    font-weight: var(--uw-weight-heavy);
+    line-height: var(--uw-leading-tight);
+    letter-spacing: var(--uw-tracking-heading);
+  }
+
+  [data-pdf-contents] {
+    break-after: page;
+  }
+
+  [data-pdf-contents] ol {
+    padding-inline-start: var(--uw-space-5);
+    list-style: decimal;
+  }
+
+  [data-pdf-contents] a {
+    color: var(--uw-text);
+    text-decoration: none;
+  }
+
+  [data-pdf-section] {
+    break-before: page;
+  }
+}

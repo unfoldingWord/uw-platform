@@ -5,6 +5,7 @@ export const verbNames = [
   'read_page',
   'write_page',
   'attach_file',
+  'render_pdf',
   'resolve_context',
   'query_entities',
   'create_task',

@@ -46,6 +46,37 @@ export type FilesBucket = {
   delete(key: string): Promise<unknown>;
 };
 
+export type PdfQuickAction = {
+  readonly html: string;
+  readonly pdfOptions: {
+    readonly format: 'letter' | 'a4';
+    readonly printBackground: boolean;
+    readonly preferCSSPageSize: boolean;
+    readonly displayHeaderFooter: boolean;
+    readonly headerTemplate: string;
+    readonly footerTemplate: string;
+    readonly margin: {
+      readonly top: string;
+      readonly bottom: string;
+      readonly left: string;
+      readonly right: string;
+    };
+    readonly outline: boolean;
+    readonly tagged: boolean;
+  };
+  readonly emulateMediaType: 'print';
+  readonly setJavaScriptEnabled: false;
+  readonly allowRequestPattern: readonly string[];
+  readonly cacheTTL: 0;
+};
+export type BrowserBinding = {
+  quickAction(action: 'pdf', options: PdfQuickAction): Promise<Response>;
+};
+export type PdfExportStart = { readonly exportId: string; readonly traceId: string };
+export type PdfExportBinding = {
+  create(options: { readonly id: string; readonly params: PdfExportStart }): Promise<unknown>;
+};
+
 type DraftStub = { fetch(input: string, init?: RequestInit): Promise<Response> };
 export type DraftNamespace = { idFromName(name: string): unknown; get(id: unknown): DraftStub };
 
@@ -55,6 +86,7 @@ export type Bindings = {
   AI_GATEWAY_ID?: string;
   AI_GATEWAY_TOKEN?: string;
   AI_SPEND_CAP_MINOR?: string;
+  BROWSER?: BrowserBinding;
   BUILDER_GITHUB_APP_ID?: string;
   BUILDER_GITHUB_APP_INSTALLATION_ID?: string;
   BUILDER_GITHUB_APP_PRIVATE_KEY?: string;
@@ -86,6 +118,7 @@ export type Bindings = {
   INGEST_DLQ?: QueueProducer<unknown>;
   OPENAI_API_KEY?: string;
   PAGE_DRAFT?: DraftNamespace;
+  PDF_EXPORT?: PdfExportBinding;
   OPENROUTER_API_KEY?: string;
   REVIEWER_CODEX_GITHUB_APP_ID?: string;
   REVIEWER_CODEX_GITHUB_APP_INSTALLATION_ID?: string;

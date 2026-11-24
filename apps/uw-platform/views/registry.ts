@@ -152,6 +152,11 @@ export const screens: readonly ScreenEntry[] = [
     path: '/collections/:key/settings',
   },
   {
+    name: 'export',
+    file: 'apps/uw-platform/views/screens/export.tsx',
+    path: '/exports/:exportId',
+  },
+  {
     name: 'not-found',
     file: 'apps/uw-platform/views/screens/not-found.tsx',
     path: '/harnesses/00000000-0000-4000-8000-000000000000',

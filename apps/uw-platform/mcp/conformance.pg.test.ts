@@ -38,10 +38,12 @@ import {
   type CallResult,
   type ToolSurface,
 } from '../testing/conformance.ts';
+import { fakeBrowser } from '../testing/browser.ts';
 import { listForDispatch } from '../testing/dispatch.ts';
 import { kernelOn, personOn } from '../testing/kernel.ts';
 import { httpClient } from '../testing/mcp.ts';
 import { postgresDeps } from '../testing/postgres.ts';
+import { browserPdf } from '../pdf/renderer.ts';
 import type { McpHost, VerbContext } from './context.ts';
 import { serveVerbsForTest } from '../testing/in-process.ts';
 import { verbHandlers } from './verbs/index.ts';
@@ -230,6 +232,8 @@ function workflowContext(r: Rig, principal: Principal): Omit<VerbContext, 'host'
     commit: 'test-commit',
     cap: DEFAULT_SPEND_CAP,
     files: workflowFiles(),
+    pdf: browserPdf(fakeBrowser()),
+    origin: 'http://uw.test',
     logger: createLogger(
       { traceId: 'trace', commit: 'test-commit', route: 'workflow', principal: null },
       () => undefined,
@@ -247,7 +251,7 @@ async function hostsOf(
   const external = await httpClient(
     app,
     { 'cf-access-jwt-assertion': token, 'x-uw-device': 'laptop', ...headers },
-    filesEnv(fixtureAccessEnv),
+    { ...filesEnv(fixtureAccessEnv), BROWSER: fakeBrowser() },
   );
   const workflow = await serveVerbsForTest(workflowContext(r, inProcess));
   return { external, workflow };
@@ -317,6 +321,7 @@ function sceneCalls(host: McpHost, scene: Scene): Call[] {
     { verb: 'read_page', args: { pageId: scene.pageId } },
     { verb: 'write_page', args: pageArgs(host) },
     { verb: 'attach_file', args: attachArgs(scene.pageId) },
+    { verb: 'render_pdf', args: { target: { kind: 'page', pageId: scene.pageId } } },
     { verb: 'query_entities', args: { query: 'stage_items', params: stageItems } },
     {
       verb: 'create_task',
@@ -326,20 +331,15 @@ function sceneCalls(host: McpHost, scene: Scene): Call[] {
   ];
 }
 
-const expectedOutcomes = new Map<string, 'accepted' | ErrorReason>([
-  ['poll_queue', 'accepted'],
-  ['claim_item', 'accepted'],
-  ['record_run_step', 'accepted'],
-  ['resolve_context', 'accepted'],
-  ['submit_to_gate', 'accepted'],
-  ['get_health', 'accepted'],
-  ['search_pages', 'accepted'],
-  ['read_page', 'accepted'],
-  ['write_page', 'accepted'],
-  ['attach_file', 'accepted'],
-  ['query_entities', 'accepted'],
-  ['create_task', 'accepted'],
-]);
+const acceptedEverywhere = [
+  ...['poll_queue', 'claim_item', 'record_run_step', 'resolve_context', 'submit_to_gate'],
+  ...['get_health', 'search_pages', 'read_page', 'write_page', 'attach_file', 'render_pdf'],
+  ...['query_entities', 'create_task'],
+];
+
+const expectedOutcomes = new Map<string, 'accepted' | ErrorReason>(
+  acceptedEverywhere.map((verb) => [verb, 'accepted']),
+);
 
 function outcomeOf(client: Client, name: string, args: Body): Promise<unknown> {
   return client.callTool({ name, arguments: args }).then(

@@ -6,7 +6,7 @@ import { hyperdriveDatabase, type DatabaseHandle } from '../database.ts';
 import { engineConfigOf } from '../engines/config.ts';
 import { gatewaySpend } from '../engines/gateway/spend.ts';
 import { engineRegistryOf, type EngineRegistry } from '../engines/registry.ts';
-import { commitOf, type Bindings } from '../env.ts';
+import { commitOf, type Bindings, type PdfExportBinding } from '../env.ts';
 import { githubAppOf } from '../github/app-config.ts';
 import { builderAppOf, builderTokens } from '../github/builder-app.ts';
 import { defaultBranchOf, openPullRequestFrom } from '../github/facts/queries.ts';
@@ -21,6 +21,7 @@ import { notifierOf } from '../ports/notifier.ts';
 import { platformModelEngine } from '../ports/model-engine.ts';
 import { runsOf } from '../ports/runs.ts';
 import { bucketFiles, type FileStore } from '../pages/file-store.ts';
+import { pdfRendererOf, type PdfRenderer } from '../pdf/renderer.ts';
 
 export type BuilderGitHub = {
   readonly defaultBranch: (repository: string) => Promise<string | null>;
@@ -44,6 +45,9 @@ export type RunDeps = {
   readonly scout: { readonly model: string; readonly provider: string };
   readonly builder: BuilderGitHub;
   readonly files: FileStore | null;
+  readonly pdf?: PdfRenderer | null;
+  readonly pdfExport?: PdfExportBinding | null;
+  readonly origin?: string;
 };
 
 export type OpenedRunDeps = { readonly deps: RunDeps; release(): Promise<void> };
@@ -114,6 +118,9 @@ export function runDepsOf(env: Bindings, traceId: string): OpenedRunDeps {
     },
     builder: builderOf(env, database.db),
     files: env.FILES === undefined ? null : bucketFiles(env.FILES),
+    pdf: pdfRendererOf(env),
+    pdfExport: env.PDF_EXPORT ?? null,
+    origin: env.APP_ORIGIN ?? '',
   };
   return { deps, release: () => database.release() };
 }

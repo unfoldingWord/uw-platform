@@ -458,6 +458,22 @@ _Avoid_: reference, incoming link, linked mention
 `![[Page title]]` or `![[Page title#Heading]]`: another page's saved text, or one section of it, shown in place and edited only at its source. Access is checked for the reader.
 _Avoid_: transclusion (in the UI; the design documents use it), synced block, include, snippet
 
+**PDF export**:
+A PDF printed from the platform's own HTML by Cloudflare Browser Run (ADR 0028). Any screen prints with `?format=pdf` and streams back at once; a **binder**, or an export the agent verb `render_pdf` asks for, is a row of `pdf_exports` with its file in the `uw-files` bucket, downloaded only through `/api/exports/:exportId/file` by a signed-in person who may read every area it covers, for seven days. A PDF is an output, never a record: the page version or view it was printed from is.
+_Avoid_: report (that is a page or a view), printout, document, snapshot (that is a page version)
+
+**Binder**:
+An ordered set of pages printed as one PDF export, with a cover, a contents list and continuous page numbers. It is named by a titled list of up to fifty pages, or by a root page with the pages under it, depth-first. A page the requester may not read is left out, as a missing one is. A binder always prints in the background (`PdfExportRun`) and opens at `/exports/:exportId`.
+_Avoid_: document set (the plan's word), packet, bundle, book, document
+
+**Provenance footer**:
+What every PDF export says about where it came from: the running footer's short line (reference, export date, the first twelve characters of the sha256, page n of N), and the full Provenance block that closes the body: source address, reference, filters, who exported it, the date and the whole sha256. For a page the reference is `<area>/<slug>@v<version>` and the sha256 is recomputable from that version in `page_versions`; for a saved view it is `<collection>/<view>` with the filters in words and a sha256 over the view, its settings, the place and the rows printed.
+_Avoid_: watermark, stamp, signature (nothing is signed), checksum (alone)
+
+**Print stylesheet**:
+`packages/ui/print.css`, the part of the app stylesheet that applies only on paper: light tokens whatever the theme, controls and anything marked `data-pdf-hidden` left out, table headers repeated on each page, and nothing split across a page that should stay whole. Paper size and margins are tokens (`--uw-print-*`).
+_Avoid_: print theme, PDF CSS
+
 ## Collections
 
 **Collection**:

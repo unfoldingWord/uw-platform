@@ -1,6 +1,7 @@
 import { readdirSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
+import type { Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
 import { rewriteItem, seedPage } from '@uw/db/test-seed';
 import { clock } from '../github/testing/ship-rig.ts';
@@ -14,6 +15,7 @@ import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml, type Html } from '../testing/views.ts';
 import { ensureBuiltIns } from '../collections/builtins/seed.ts';
 import { personWith, rowIn } from '../testing/collections.ts';
+import { queueExport } from '../pdf/exports.ts';
 import { screens, type ScreenEntry } from './registry.ts';
 
 const HOUR = 3_600_000;
@@ -23,6 +25,7 @@ type Seeded = GateWorld & {
   readonly runId: string;
   readonly credentialId: string;
   readonly programRow: string;
+  readonly exportId: string;
 };
 
 type Rendered = { readonly name: string; readonly email: string; readonly page: Html };
@@ -83,7 +86,21 @@ async function seededWorld(db: Database): Promise<Seeded> {
     slug: 'screens-persona',
   });
   const credentialId = await credentialFor(db, world.kimEmail, clock);
-  return { ...world, runId, credentialId, programRow: await programRowIn(db) };
+  const exportId = await seededExport(db, world.kim);
+  return { ...world, runId, credentialId, exportId, programRow: await programRowIn(db) };
+}
+
+async function seededExport(db: Database, actor: Principal): Promise<string> {
+  const { exportId } = await queueExport(db, {
+    kind: 'binder',
+    title: 'Seeded export',
+    reference: 'Seeded export',
+    areas: ['80-89'],
+    request: { kind: 'binder', rootPageId: personaPageId },
+    actor,
+    at: clock.now(),
+  });
+  return exportId;
 }
 
 const personaPageId = '00000000-0000-4000-8000-00000000be11';
@@ -121,7 +138,7 @@ function pathOf(entry: ScreenEntry, world: Seeded): string {
     .replace(':nodeId', world.programRow)
     .replace(':rowId', world.programRow)
     .replace(':personId', world.kim.personId ?? '')
-
+    .replace(':exportId', world.exportId)
     .replace(':credentialId', world.credentialId);
 }
 

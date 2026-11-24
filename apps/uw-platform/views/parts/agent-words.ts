@@ -37,6 +37,11 @@ export const actionGroups: readonly ActionGroup[] = [
         'To a page it may edit, for the page to show.',
       ),
       action(
+        'render_pdf',
+        'Make a PDF',
+        'Of a page, a saved view or a binder it may read, for a signed-in person to download.',
+      ),
+      action(
         'resolve_context',
         "Load an item's context",
         "The stage's instructions, the item's pages and the learnings that apply.",

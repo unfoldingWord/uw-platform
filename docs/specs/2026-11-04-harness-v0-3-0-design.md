@@ -177,6 +177,7 @@ Contrast, computed with the WCAG formula: every text role (`--text`, `--text-2`,
 | Radius | 4, 8, 12 and full |
 | Shadow | `--shadow-1` (resting: a lit top edge and a hairline), `--shadow-2` (lifted), `--shadow-3` (floating), `--shadow-key` (a button's lit top and dark bottom edge), `--shadow-person` (the orange glow, only where a person acts) |
 | Layout | Named widths: sidebar 248, gates list 340, decision aside 260, content 1080, board column 150 to 320 (px) |
+| Print | `--print-paper` letter (unfoldingWord is US-based); page margins `--print-margin-top` 22, `--print-margin-bottom` 20, `--print-margin-left` 16, `--print-margin-right` 16 (mm); running header text `--print-header-text` 9 and footer text `--print-footer-text` 8 (px); header mark `--print-mark-height` 6 (mm). The build resolves them into `printMetrics`, and the light `--text`, `--text-3`, `--line` and `--accent-text` into `printColours`, both in `packages/ui/generated/app-css.ts`, for the PDF header and footer templates. Under `@media print`, `tokens/print-theme.css` re-points every role to its light value, so dark never prints (ADR 0011, #198) |
 
 How the type is used: page titles 36 heavy; screen titles 30 heavy; section heads and harness names 16 heavy; card and row titles 14 heavy; body 13 or 14; labels and meta 12. Hierarchy comes from weight and colour before size: one heavy title line, then one quiet line of facts.
 

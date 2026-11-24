@@ -216,11 +216,13 @@ function strayWorkflows(config: Block): string[] {
   );
 }
 
-describe('HE-1 the HarnessRun Workflow is declared for go-live only, in staging and production', () => {
-  it('binds HARNESS_RUN to the HarnessRun class under staging and production only', () => {
+describe('HE-1 the HarnessRun and PdfExportRun Workflows are declared for go-live only, in staging and production', () => {
+  it('#198 binds HARNESS_RUN and PDF_EXPORT to their classes under staging and production only', () => {
     expect(workflowSites(load(`infra/uw-platform/${goLive}`))).toEqual([
       'staging: HARNESS_RUN harness-run-staging HarnessRun',
+      'staging: PDF_EXPORT pdf-export-staging PdfExportRun',
       'production: HARNESS_RUN harness-run-production HarnessRun',
+      'production: PDF_EXPORT pdf-export-production PdfExportRun',
     ]);
   });
 
@@ -255,6 +257,26 @@ describe('HE-1 the HarnessRun Workflow is declared for go-live only, in staging 
       'preview: workflows',
       'staging: workflows',
     ]);
+  });
+});
+
+function browserOf(block: Block): unknown {
+  return block['browser'];
+}
+
+describe('#198 the Browser Run binding is declared in every deployed environment and on previews', () => {
+  it.each(
+    ['staging', 'production', 'preview'].flatMap((name) => [
+      [name, live],
+      [name, goLive],
+    ]),
+  )('#198 %s in %s binds BROWSER', (name, file) => {
+    expect(browserOf(environment('uw-platform', name, file))).toEqual({ binding: 'BROWSER' });
+  });
+
+  it('#198 binds no browser at the top level, since environments do not inherit it', () => {
+    expect(browserOf(load(`infra/uw-platform/${live}`))).toBeUndefined();
+    expect(browserOf(load(`infra/uw-platform/${goLive}`))).toBeUndefined();
   });
 });
 
@@ -378,14 +400,11 @@ describe('FD-7 the Access variables and ids are placeholders or well formed', ()
 });
 
 describe('P13 per-PR Workers never register as a queue consumer', () => {
-  it.each([live, goLive])(
-    'uw-platform %s has a preview environment with no queue consumer',
-    (file) => {
-      const preview = environment('uw-platform', 'preview', file);
-      expect(Object.keys(preview).length).toBeGreaterThan(0);
-      expect(queuesOf(preview).consumers ?? []).toEqual([]);
-    },
-  );
+  it.each([live, goLive])('uw-platform %s has a preview environment with no queue consumer', (file) => {
+    const preview = environment('uw-platform', 'preview', file);
+    expect(Object.keys(preview).length).toBeGreaterThan(0);
+    expect(queuesOf(preview).consumers ?? []).toEqual([]);
+  });
 
   it('only staging and production declare a consumer', () => {
     const consumers = Object.entries(environments(load(`infra/uw-platform/${goLive}`)))

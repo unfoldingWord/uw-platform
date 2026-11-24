@@ -32,7 +32,7 @@ export type CollectionScene = {
 
 type Db = NonNullable<AppEnv['Variables']['database']>['db'];
 
-function cursorOf(c: Context<AppEnv>): string | null {
+export function cursorOf(c: Context<AppEnv>): string | null {
   const asked = c.req.query('cursor') ?? '';
   return /^[0-9]{1,7}$/.test(asked) ? asked : null;
 }

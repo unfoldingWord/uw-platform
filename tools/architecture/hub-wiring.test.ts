@@ -118,6 +118,7 @@ const cloudflareImport = /(?:from\s*|import\s*\(?\s*)['"](cloudflare[^'"]*)['"]/
 const runtimeModuleHosts: ReadonlySet<string> = new Set([
   'apps/uw-platform/live/harness-hub.ts',
   'apps/uw-platform/runs/workflow.ts',
+  'apps/uw-platform/pdf/workflow.ts',
 ]);
 
 function isSource(file: string): boolean {
@@ -137,18 +138,15 @@ function cloudflareStrays(files: readonly string[], read: (file: string) => stri
   );
 }
 
-describe('the Workers runtime module is imported only by the hub Durable Object and the HarnessRun Workflow', () => {
-  it('finds cloudflare imported only as cloudflare:workers and only from the HarnessHub and HarnessRun files', () => {
+describe('the Workers runtime module is imported only by the hub Durable Object and the HarnessRun and PdfExportRun Workflows', () => {
+  it('finds cloudflare imported only as cloudflare:workers and only from the HarnessHub, HarnessRun and PdfExportRun files', () => {
     const others = repoFiles().filter((file) => file !== 'tools/architecture/hub-wiring.test.ts');
     expect(cloudflareStrays(others, (file) => readFileSync(file, 'utf8'))).toEqual([]);
   });
 
   it('flags the cloudflare package, and the runtime module outside the hub file', () => {
     const planted = new Map([
-      [
-        'apps/uw-platform/live/harness-hub.ts',
-        "import { DurableObject } from 'cloudflare:workers';",
-      ],
+      ['apps/uw-platform/live/harness-hub.ts', "import { DurableObject } from 'cloudflare:workers';"],
       [
         'apps/uw-platform/runs/workflow.ts',
         "import { WorkflowEntrypoint } from 'cloudflare:workers';\nimport { NonRetryableError } from 'cloudflare:workflows';",
@@ -162,6 +160,20 @@ describe('the Workers runtime module is imported only by the hub Durable Object 
       'apps/uw-platform/live/other.ts imports cloudflare:workers',
       'apps/uw-platform/ports/sdk.ts imports cloudflare',
       'apps/uw-platform/ports/lazy.ts imports cloudflare/resources',
+    ]);
+  });
+});
+
+describe('#198 the PdfExportRun Workflow hosts the Workers runtime module', () => {
+  it('#198 lets the PDF export Workflow file import cloudflare:workers and nothing else from cloudflare', () => {
+    const planted = new Map([
+      ['apps/uw-platform/pdf/workflow.ts', "import { WorkflowEntrypoint } from 'cloudflare:workers';"],
+      ['apps/uw-platform/pdf/renderer.ts', "import { WorkflowEntrypoint } from 'cloudflare:workers';"],
+      ['apps/uw-platform/pdf/steps.ts', "import { NonRetryableError } from 'cloudflare:workflows';"],
+    ]);
+    expect(cloudflareStrays([...planted.keys()], (file) => planted.get(file) ?? '')).toEqual([
+      'apps/uw-platform/pdf/renderer.ts imports cloudflare:workers',
+      'apps/uw-platform/pdf/steps.ts imports cloudflare:workflows',
     ]);
   });
 });
