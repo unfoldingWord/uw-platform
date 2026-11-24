@@ -21,6 +21,7 @@ const trustedCheckoutRefs: Record<string, (string | null)[]> = {
   'deploy-pr.yml': [null],
   'deploy-production.yml': [null, null, null, null],
   'deploy-staging.yml': [workflowRunHead, workflowRunHead, workflowRunHead],
+  'relabel-storage.yml': [null, null],
   'main-alarm.yml': [],
 };
 

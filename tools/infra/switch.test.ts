@@ -179,6 +179,7 @@ describe('GL-1 every go-live job runs when its secret exists and skips while it 
       'deploy-staging.yml migrate-staging',
       'deploy-staging.yml deploy-staging',
       'deploy-staging.yml deploy-ingest-staging',
+      'relabel-storage.yml delete-classes',
     ]);
     for (const { site, job } of jobs) {
       expect(gateFaults(job), site).toEqual([]);

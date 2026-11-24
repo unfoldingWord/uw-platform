@@ -51,6 +51,15 @@ Every response carries a `Server-Timing` header: `total`, `frame` (the sidebar a
 
 The classes `ClaudeCodeSandbox` and `CodexSandbox` (`apps/uw-platform/engines/sandbox/classes.ts`) start with the internet off and send every outbound HTTP request through one handler, which answers `403 egress refused` for anything but the model host and `mcp.internal` (S7-R47). `wrangler.go-live.toml` declares them for staging and production only: two `[[env.<name>.containers]]` blocks, the `CLAUDE_CODE_SANDBOX` and `CODEX_SANDBOX` Durable Object bindings, and the top-level `v2` migration that adds both as SQLite classes. A deploy with these blocks needs Docker on the runner to build the images.
 
+### Durable Object storage labels (v0.6.2)
+
+Cloudflare names a Durable Object namespace after the Worker when it creates it, and cannot rename it. After the rename to uw-platform, staging and production each got their own migration history in `wrangler.toml`: `v4` deletes the four classes and `v5` creates them again. Cloudflare refuses both in one deploy, so the change ships in two:
+
+1. `gh workflow run relabel-storage.yml --ref <ref> -f environment=<staging|production>`: production from its `v*` tag on main, staging from `develop`, behind the same deployer and green-CI checks as a production deploy. It rewrites its own checkout's `wrangler.toml` with `tools/infra/relabel.ts` so the environment stops at `v4` with no Durable Object bindings or containers, deploys that, then deletes the container applications whose namespace is gone.
+2. The normal deploy of the same commit applies `v5`, which creates the classes and the container applications again.
+
+Between the two, the live hub, page drafts and sandboxes do not work, and their data is gone. Previews keep the top-level history (`v1` to `v3`), because a new Worker cannot delete a class it never had. Staging was relabelled on 2026-11-24.
+
 ## Access (FD-7)
 
 `access/uw-platform.json` declares Cloudflare Access in front of `uw-platform` on production, staging and every per-PR Worker, as three applications. The app application covers the host: people sign in with Google and nothing else (no one-time PIN, since #154), and no service token is admitted. The `mcp` application covers `/mcp` alone with its own AUD tag: people sign their agents in with Google (through `cloudflared access`), and any valid service token passes as a non-identity request and becomes a non-interactive agent principal. Because the two applications have different audiences, a token an agent holds for `/mcp` is refused on every other path, and a browser session is refused on `/mcp` (R34). `/health/probe` alone is bypassed, on every host, so the deploy jobs (`deploy-staging.yml` and `deploy-pr.yml`, through `await-health.sh`) can read the deployed commit; `/health` itself shows the agent plane and needs a signed-in person. The app application sends its session cookie `SameSite=Lax`, so a form posted from another site carries no session. Applying either change on Cloudflare is a person's (Waiting on a person).

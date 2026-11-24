@@ -1,5 +1,5 @@
 import { formatDuration, formatInstant } from '@uw/core/dates';
-import type { CostBasis, GateStatus, HarnessEvent } from '@uw/contracts';
+import type { CostBasis, ExitGate, GateStatus, HarnessEvent } from '@uw/contracts';
 import type { BoardCard, CardHost } from '@uw/harness';
 import { CommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
 import { SelectField } from '@uw/ui/components/field.tsx';
@@ -78,17 +78,44 @@ function OneButton(props: ItemForm & { readonly command: string; readonly label:
   );
 }
 
-function holdAction(card: BoardCard, harnessId: string, viewer: CardViewer) {
+const sendWords: Readonly<Record<ExitGate, string>> = {
+  none: 'Send to next stage',
+  checks: 'Run checks and send on',
+  human_approval: 'Ask a person to approve',
+};
+
+function SendOn(props: ItemForm & { readonly card: BoardCard; readonly exitGate: ExitGate }) {
+  const { gateStatus } = props.card.item;
+  if (gateStatus === 'parked' || gateStatus === 'done') return null;
+  return (
+    <OneButton
+      harnessId={props.harnessId}
+      itemId={props.itemId}
+      command="submit_to_gate"
+      label={sendWords[props.exitGate]}
+    />
+  );
+}
+
+function holdAction(card: BoardCard, harnessId: string, viewer: CardViewer, exitGate: ExitGate) {
   const { holder, itemId } = card.item;
   if (holder === null) {
     const closed = card.item.gateStatus === 'parked' || card.item.gateStatus === 'done';
     if (!viewer.canClaim || closed) return null;
     return <OneButton harnessId={harnessId} itemId={itemId} command="claim" label="Claim" />;
   }
-  if (holder === viewer.identity || viewer.admin) {
-    return <OneButton harnessId={harnessId} itemId={itemId} command="release" label="Release" />;
+  const release = (
+    <OneButton harnessId={harnessId} itemId={itemId} command="release" label="Release" />
+  );
+  if (holder === viewer.identity) {
+    return (
+      <>
+        <SendOn harnessId={harnessId} itemId={itemId} card={card} exitGate={exitGate} />
+        {release}
+      </>
+    );
   }
-  return null;
+  return viewer.admin ? release : null;
 }
 
 function ReorderForm(props: ItemForm & { readonly others: readonly BoardCard[] }) {
@@ -248,6 +275,7 @@ export function QueueCardView(props: {
   readonly harnessId: string;
   readonly card: BoardCard;
   readonly column: readonly BoardCard[];
+  readonly exitGate: ExitGate;
   readonly viewer: CardViewer;
   readonly last?: HarnessEvent | undefined;
   readonly refusal?: HarnessEvent | undefined;
@@ -275,7 +303,7 @@ export function QueueCardView(props: {
       actions={
         <>
           <PersonaLink card={card} />
-          {holdAction(card, harnessId, props.viewer)}
+          {holdAction(card, harnessId, props.viewer, props.exitGate)}
           <details>
             <summary class="cursor-pointer text-xs text-text-3 outline-offset-2 outline-accent-text focus-visible:outline-2">
               Move
