@@ -1,8 +1,8 @@
-import { createNodeFromContent, type Editor, type Extensions } from '@tiptap/core';
-import Collaboration, { isChangeOrigin } from '@tiptap/extension-collaboration';
-import CollaborationCaret from '@tiptap/extension-collaboration-caret';
-import type { Node as PageNode, Schema } from '@tiptap/pm/model';
-import { prosemirrorToYXmlFragment } from '@tiptap/y-tiptap';
+import { parserCtx, type Editor } from '@milkdown/kit/core';
+import { collab, collabServiceCtx } from '@milkdown/plugin-collab';
+import type { MilkdownPlugin } from '@milkdown/kit/ctx';
+import { replaceAll } from '@milkdown/kit/utils';
+import { prosemirrorToYXmlFragment, ySyncPluginKey } from 'y-prosemirror';
 import type { Awareness } from 'y-protocols/awareness';
 import { applyUpdate, Doc, encodeSnapshot, encodeStateAsUpdate, snapshot } from 'yjs';
 
@@ -23,9 +23,14 @@ export type Connect = (doc: Doc, room: Room) => Link;
 
 export type Joined = 'seeded' | 'joined' | 'unavailable';
 
+export type Surface = {
+  readonly editor: Editor;
+  setReadonly(value: boolean): void;
+};
+
 export type Collaboration = {
-  readonly extensions: Extensions;
-  readonly ready: (editor: Editor, html: string) => Promise<Joined>;
+  readonly plugins: readonly MilkdownPlugin[];
+  readonly ready: (surface: Surface, markdown: string) => Promise<Joined>;
   readonly snapshot: () => string;
   readonly destroy: () => void;
 };
@@ -36,7 +41,7 @@ type Waits = {
   readonly currentVersion?: (pageId: string) => Promise<number | null>;
 };
 
-const FIELD = 'default';
+const FIELD = 'prosemirror';
 const SEED_CLIENT = 1;
 const SYNC_WAIT_MS = 4000;
 
@@ -54,8 +59,8 @@ export function roomIn(root: HTMLElement): Room | null {
   return { pageId, version, person };
 }
 
-export function seedUpdate(schema: Schema, html: string): Uint8Array {
-  const node = createNodeFromContent(html, schema, { slice: false }) as PageNode;
+export function seedUpdate(editor: Editor, markdown: string): Uint8Array {
+  const node = editor.action((ctx) => ctx.get(parserCtx)(markdown));
   const seed = new Doc();
   seed.clientID = SEED_CLIENT;
   seed.transact(() => {
@@ -65,12 +70,12 @@ export function seedUpdate(schema: Schema, html: string): Uint8Array {
   return encodeStateAsUpdate(seed);
 }
 
-function caret(user: Record<string, unknown>): HTMLElement {
+function caret(user: { readonly name?: unknown }): HTMLElement {
   const mark = document.createElement('span');
   mark.className = 'collab-caret';
   const label = document.createElement('span');
   label.className = 'collab-caret-label';
-  label.textContent = typeof user['name'] === 'string' ? user['name'] : '';
+  label.textContent = typeof user.name === 'string' ? user.name : '';
   mark.append(label);
   return mark;
 }
@@ -117,17 +122,43 @@ export function discardQuestion(others: number): string {
 
 type Draft = {
   readonly doc: Doc;
-  readonly html: string;
+  readonly markdown: string;
   readonly link: Link;
   readonly waits: Waits;
 };
 
-function wireDraft(root: HTMLElement, editor: Editor, draft: Draft): void {
-  const { doc, html } = draft;
+const EDITS = ['keydown', 'beforeinput', 'paste', 'drop', 'cut', 'pointerdown'] as const;
+
+function markDirtyOnEdits(root: HTMLElement, doc: Doc): void {
   const meta = doc.getMap('meta');
-  editor.on('update', ({ transaction }) => {
-    if (!isChangeOrigin(transaction) && meta.get('dirty') !== true) meta.set('dirty', true);
+  let touched = false;
+  for (const kind of EDITS) {
+    root.addEventListener(
+      kind,
+      () => {
+        touched = true;
+      },
+      { capture: true },
+    );
+  }
+  (root.closest('form') ?? root).addEventListener(
+    'change',
+    (event) => {
+      if (event.target instanceof Element && event.target.matches('[data-upload-input]')) {
+        touched = true;
+      }
+    },
+    { capture: true },
+  );
+  doc.on('update', (_update: Uint8Array, origin: unknown) => {
+    if (touched && origin === ySyncPluginKey && meta.get('dirty') !== true) meta.set('dirty', true);
   });
+}
+
+function wireDraft(root: HTMLElement, surface: Surface, draft: Draft): void {
+  const { doc, markdown } = draft;
+  const meta = doc.getMap('meta');
+  markDirtyOnEdits(root, doc);
   const scope = root.closest('form') ?? root;
   const discard = scope.querySelector<HTMLButtonElement>('[data-editor-discard]');
   if (discard === null) return;
@@ -135,7 +166,7 @@ function wireDraft(root: HTMLElement, editor: Editor, draft: Draft): void {
   discard.addEventListener('click', () => {
     const others = namesOf(draft.link.awareness).length;
     if (!draft.waits.confirm(discardQuestion(others))) return;
-    editor.commands.setContent(html);
+    surface.editor.action(replaceAll(markdown));
     meta.set('dirty', false);
     say(root, '[data-editor-status]', 'Draft discarded. The page is as it was last saved.');
   });
@@ -173,20 +204,58 @@ export function watchVersion(root: HTMLElement, room: Room, waits: Waits): void 
 const SAVED_BEHIND =
   'Someone saved a new version, but your latest changes were not in it. They are still here: copy them, then open the page.';
 
-function heard(root: HTMLElement, editor: Editor, link: Link, message: string): void {
+function heard(root: HTMLElement, surface: Surface, link: Link, message: string): void {
   if (message === 'saved-behind') {
     say(root, '[data-editor-status]', SAVED_BEHIND);
     unshared(root);
     return;
   }
   if (message !== 'saved') return;
-  editor.setEditable(false);
+  surface.setReadonly(true);
   link.destroy();
   say(
     root,
     '[data-editor-status]',
     'This draft was saved as a new version. Open the page to carry on from it.',
   );
+}
+
+function bind(surface: Surface, doc: Doc, link: Link, room: Room): void {
+  link.awareness.setLocalStateField('user', { name: room.person });
+  surface.editor.action((ctx) => {
+    ctx
+      .get(collabServiceCtx)
+      .bindDoc(doc)
+      .setAwareness(link.awareness)
+      .setOptions({
+        yCursorOpts: {
+          cursorBuilder: caret,
+          selectionBuilder: () => ({ class: 'collab-selection' }),
+        },
+      })
+      .connect();
+  });
+}
+
+function joining(root: HTMLElement, parts: Omit<Draft, 'markdown'> & { readonly room: Room }) {
+  const { doc, link, waits, room } = parts;
+  return async (surface: Surface, markdown: string): Promise<Joined> => {
+    if (!(await whenSynced(link, waits))) return 'unavailable';
+    const meta = doc.getMap('meta');
+    const seeded = meta.get('seeded') === true;
+    if (!seeded) applyUpdate(doc, seedUpdate(surface.editor, markdown));
+    bind(surface, doc, link, room);
+    wireDraft(root, surface, { doc, markdown, link, waits });
+    showPeople(root, link.awareness);
+    watchVersion(root, room, waits);
+    link.onMessage((message) => {
+      heard(root, surface, link, message);
+    });
+    if (seeded && meta.get('dirty') === true) {
+      say(root, '[data-editor-status]', 'You are continuing an unsaved draft of this page.');
+    }
+    return seeded ? 'joined' : 'seeded';
+  };
 }
 
 export function collaborationFor(
@@ -198,37 +267,13 @@ export function collaborationFor(
   if (room === null) return null;
   const doc = new Doc();
   const link = connect(doc, room);
-  const destroy = () => {
-    link.destroy();
-    doc.destroy();
-  };
   return {
-    extensions: [
-      Collaboration.configure({ document: doc, field: FIELD }),
-      CollaborationCaret.configure({
-        provider: { awareness: link.awareness },
-        user: { name: room.person },
-        render: caret,
-        selectionRender: () => ({ nodeName: 'span', class: 'collab-selection' }),
-      }),
-    ],
-    ready: async (editor, html) => {
-      if (!(await whenSynced(link, waits))) return 'unavailable';
-      const meta = doc.getMap('meta');
-      const seeded = meta.get('seeded') === true;
-      if (!seeded) applyUpdate(doc, seedUpdate(editor.schema, html));
-      wireDraft(root, editor, { doc, html, link, waits });
-      showPeople(root, link.awareness);
-      watchVersion(root, room, waits);
-      link.onMessage((message) => {
-        heard(root, editor, link, message);
-      });
-      if (seeded && meta.get('dirty') === true) {
-        say(root, '[data-editor-status]', 'You are continuing an unsaved draft of this page.');
-      }
-      return seeded ? 'joined' : 'seeded';
-    },
+    plugins: [collab],
+    ready: joining(root, { doc, link, waits, room }),
     snapshot: () => base64Of(encodeSnapshot(snapshot(doc))),
-    destroy,
+    destroy: () => {
+      link.destroy();
+      doc.destroy();
+    },
   };
 }

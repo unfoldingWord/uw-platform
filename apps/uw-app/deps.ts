@@ -28,6 +28,7 @@ export type AppEnv = {
     logger: Logger;
     database: DatabaseHandle | null;
     principal: Principal | null;
+    styleNonce?: string;
     access: AccessIdentity | null;
     outcome: string | null;
     frameHealth: () => Promise<HealthReport | null>;

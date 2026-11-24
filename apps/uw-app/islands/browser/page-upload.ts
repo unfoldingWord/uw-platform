@@ -5,7 +5,7 @@ export type UploadDeps = {
   readonly uuid: () => string;
 };
 
-type Placed = { readonly name: string; readonly contentType: string; readonly url: string };
+export type Placed = { readonly name: string; readonly contentType: string; readonly url: string };
 
 const refusalWords: ReadonlyMap<string, string> = new Map([
   ['file_type_not_allowed', 'this kind of file cannot be stored here'],
@@ -14,7 +14,7 @@ const refusalWords: ReadonlyMap<string, string> = new Map([
   ['not_permitted', 'you cannot change this page'],
 ]);
 
-export function showsInPlace(contentType: string): boolean {
+function showsInPlace(contentType: string): boolean {
   return contentType.startsWith('image/') || contentType.startsWith('video/');
 }
 
@@ -36,6 +36,10 @@ function placedOf(body: unknown): Placed | null {
   return { name, contentType, url };
 }
 
+export function notAdded(reason: string): string {
+  return `Not added: ${refusalWords.get(reason) ?? reasonText(reason).toLowerCase()}.`;
+}
+
 function reasonOf(body: unknown): string {
   const reason = typeof body === 'object' && body !== null && 'reason' in body ? body.reason : null;
   return typeof reason === 'string' ? reason : 'internal_error';
@@ -52,7 +56,11 @@ function insert(area: HTMLTextAreaElement, text: string): void {
   if (view !== null) area.dispatchEvent(new view.Event('input', { bubbles: true }));
 }
 
-async function upload(region: Element, file: File, deps: UploadDeps): Promise<Placed | string> {
+export async function uploadFile(
+  region: Element,
+  file: File,
+  deps: UploadDeps,
+): Promise<Placed | string> {
   const page = region.getAttribute('data-page') ?? '';
   const name = encodeURIComponent(file.name);
   const url = `/api/files/${deps.uuid()}?page=${encodeURIComponent(page)}&name=${name}`;
@@ -75,9 +83,9 @@ async function onChosen(region: Element, input: HTMLInputElement, deps: UploadDe
     if (status !== null) status.textContent = words;
   };
   say(`Adding ${file.name}`);
-  const outcome = await upload(region, file, deps);
+  const outcome = await uploadFile(region, file, deps);
   if (typeof outcome === 'string') {
-    say(`Not added: ${refusalWords.get(outcome) ?? reasonText(outcome).toLowerCase()}.`);
+    say(notAdded(outcome));
     return;
   }
   insert(area, markdownFor(outcome));

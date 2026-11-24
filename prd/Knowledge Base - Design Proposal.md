@@ -175,9 +175,9 @@ A small island in the shell, present on every screen.
 
 ### The editor
 
-Tiptap (MIT) on ProseMirror, as the plan chose, loaded only on the edit route. It reads and writes markdown; the stored body never becomes editor JSON.
+Milkdown (MIT) with its Crepe interface, on ProseMirror, loaded only on the edit route. Milkdown parses and writes markdown itself, through remark, so markdown is the editor's own source; the stored body never becomes editor JSON. ADR 0017 records the decision.
 
-**The risk to manage:** the official `@tiptap/markdown` package still describes itself as an early release, and its documentation does not promise a lossless round trip. `prosemirror-markdown` (MIT, used by Outline) is the alternative. Before either is adopted, a golden-file test opens and saves every imported article unchanged and fails on any difference. A page that does not survive the round trip opens in a plain markdown editor instead, which is today's textarea and remains available to anyone who prefers it.
+**The risk to manage:** remark writes some markdown differently from how it was typed (bullet markers, table padding) and escapes syntax it does not know, such as `[[wiki links]]`. A golden-file test (`apps/uw-app/markdown/editor-round-trip.node.test.ts`) opens and saves sample articles and fails on any change of meaning, and a small plugin keeps the wiki's own syntax as typed. A page that does not survive the round trip opens in a plain markdown editor instead, which is today's textarea and remains available to anyone who prefers it.
 
 **Live co-editing with Yjs, from the start** (decision 2, and the platform plan's original position).
 
@@ -237,7 +237,7 @@ No product is adopted and no code is copied. Licences were read from each projec
 | HedgeDoc | AGPL-3.0 | Whole-document markdown with view and edit modes (not verified beyond the licence) |
 | AppFlowy, AFFiNE, Logseq, SiYuan, Anytype, Trilium | AGPL, MPL or source-available | Reviewed; block or object stores that do not fit a markdown document model |
 
-**New dependencies this plan would add**, all permissive, each named again in the pull request that adds it: `unified`, `remark`, `rehype` and a sanitiser (MIT); Tiptap core, its collaboration extensions and the chosen markdown bridge (MIT); `yjs` and `y-partyserver` (MIT; licences to be confirmed in the pull request); a fuzzy matcher (MIT); a diff library (plan §11 names `diff-match-patch`, Apache-2.0); `@notionhq/client` (MIT) for the import only.
+**New dependencies this plan would add**, all permissive, each named again in the pull request that adds it: `unified`, `remark`, `rehype` and a sanitiser (MIT); Milkdown and its Crepe interface, with its collaboration plugin and `y-prosemirror` (MIT); `yjs` and `y-partyserver` (MIT; licences to be confirmed in the pull request); a fuzzy matcher (MIT); a diff library (plan §11 names `diff-match-patch`, Apache-2.0); `@notionhq/client` (MIT) for the import only.
 
 ## Part 6. The Notion import
 
@@ -276,7 +276,7 @@ Two issues, each one pull request into `develop`.
 5. Quick Switcher on Cmd/Ctrl+O and Cmd/Ctrl+K, with recently viewed pages and the six-browser check; the search screen.
 6. Wiki links and `page_links`; backlinks; transclusion.
 7. Files and images.
-8. The editor: the markdown round-trip golden test, Tiptap, the `[[` picker and slash menu, then the sync hub, drafts and presence.
+8. The editor: the markdown round-trip golden test, Milkdown Crepe, the `[[` picker and slash menu, then the sync hub, drafts and presence.
 9. Create, rename, move, retire, restore, duplicate; history compare and restore.
 10. Owner and verification with the reminder; favourites; templates; comments; export to markdown and PDF.
 
@@ -291,5 +291,5 @@ Shared roots it touches: `packages/contracts`, `packages/db/schema-platform.ts`,
 ## What this review did not verify
 
 - The Notion workspace was sampled, not crawled. Page counts beyond the wiki are unknown until the dry run.
-- Cmd/Ctrl+O interception in real browsers; markdown-to-Yjs conversion inside a Durable Object; the markdown pipeline's CPU time in a Worker; `pg_trgm` in the sim's embedded Postgres; the fidelity of Notion's markdown endpoint on our content; Tiptap's markdown round trip on our content. Each is a step of issue 1 or 2.
+- Cmd/Ctrl+O interception in real browsers; markdown-to-Yjs conversion inside a Durable Object; the markdown pipeline's CPU time in a Worker; `pg_trgm` in the sim's embedded Postgres; the fidelity of Notion's markdown endpoint on our content; the editor's markdown round trip on our content. Each is a step of issue 1 or 2.
 - No code was written or run for this proposal.

@@ -6,7 +6,7 @@ import { startPageEditor } from './page-editor.ts';
 const connect: Connect = (doc, room) => {
   const provider = new YProvider(
     window.location.host,
-    `${room.pageId}.${String(room.version)}`,
+    `${room.pageId}.${String(room.version)}.milkdown`,
     doc,
     {
       prefix: `/api/pages/${room.pageId}/draft`,

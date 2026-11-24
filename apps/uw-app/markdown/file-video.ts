@@ -12,7 +12,7 @@ const FILE_IN_TEXT =
   /\/api\/files\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/g;
 const UNNAMED = 'the video';
 
-export function fileIdOf(url: string): string | null {
+function fileIdOf(url: string): string | null {
   return FILE_ADDRESS.exec(url)?.[1] ?? null;
 }
 

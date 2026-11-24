@@ -39,11 +39,23 @@ function hashedPath(js: string, name = 'islands'): string {
   return `/assets/${name}-${createHash('sha256').update(js).digest('hex').slice(0, 12)}.js`;
 }
 
+function hashedCssPath(css: string): string {
+  return `/assets/editor-${createHash('sha256').update(css).digest('hex').slice(0, 12)}.css`;
+}
+
+async function stylesheet(entry: string): Promise<string> {
+  const result = await build({ ...shared, entryPoints: [entry], loader: { '.css': 'css' } });
+  return result.outputFiles[0]?.text ?? '';
+}
+
 async function editorModuleText(): Promise<string> {
   const editorJs = await bundled('apps/uw-app/islands/editor/main.ts', 'esm');
+  const editorCss = await stylesheet('apps/uw-app/islands/editor/editor.css');
   return [
     `export const editorPath = ${JSON.stringify(hashedPath(editorJs, 'editor'))};`,
     `export const editorJs = ${JSON.stringify(editorJs)};`,
+    `export const editorCssPath = ${JSON.stringify(hashedCssPath(editorCss))};`,
+    `export const editorCss = ${JSON.stringify(editorCss)};`,
     '',
   ].join('\n');
 }
