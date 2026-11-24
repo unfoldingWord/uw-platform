@@ -49,18 +49,24 @@ function SkipLink() {
   );
 }
 
-function Main(props: { readonly children?: Child; readonly tabs: readonly Tab[] }) {
+function ViewTabs(props: { readonly tabs: readonly Tab[] }) {
+  if (props.tabs.length === 0) return null;
+  return (
+    <div class="bg-surface px-5 pt-2 md:px-6">
+      <div class="mx-auto w-full max-w-content">
+        <Tabs tabs={props.tabs} />
+      </div>
+    </div>
+  );
+}
+
+function Main(props: { readonly children?: Child }) {
   return (
     <main
       id="main"
       tabindex={-1}
       class="relative min-w-0 flex-1 bg-surface px-5 pt-6 pb-8 md:min-h-0 md:overflow-y-auto md:px-6 md:pt-7"
     >
-      {props.tabs.length === 0 ? null : (
-        <div class="mx-auto mb-6 w-full max-w-content">
-          <Tabs tabs={props.tabs} />
-        </div>
-      )}
       {props.children}
     </main>
   );
@@ -120,7 +126,8 @@ function Framed(props: {
             status={frame.status}
           />
         )}
-        <Main tabs={props.tabs ?? []}>{props.children}</Main>
+        <ViewTabs tabs={props.tabs ?? []} />
+        <Main>{props.children}</Main>
       </div>
     </div>
   );
