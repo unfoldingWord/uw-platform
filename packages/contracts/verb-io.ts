@@ -3,6 +3,7 @@ import { jdAreaSchema } from './areas.ts';
 import { costBasisSchema, evidenceLabelSchema } from './closed-sets.ts';
 import { healthReportSchema } from './health.ts';
 import { fileContentTypes, fileSchema, MAX_AGENT_FILE_BASE64_LENGTH } from './page-reads.ts';
+import { pdfExportReplySchema, pdfTargetSchema } from './pdf-exports.ts';
 import { pullRequestRefSchema, stageKeySchema } from './harness.ts';
 import { runStepCosts, runStepSchema } from './runs.ts';
 import { fullShaSchema } from './ship-rule.ts';
@@ -79,6 +80,10 @@ export const verbIo = {
       contentBase64: z.base64().min(1).max(MAX_AGENT_FILE_BASE64_LENGTH),
     }),
     output: z.object({ file: fileSchema }),
+  },
+  render_pdf: {
+    input: z.strictObject({ target: pdfTargetSchema }),
+    output: pdfExportReplySchema,
   },
   resolve_context: {
     input: z.object({ itemId: z.uuid() }),

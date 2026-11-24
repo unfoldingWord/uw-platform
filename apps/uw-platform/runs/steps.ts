@@ -78,6 +78,9 @@ export async function openStep(
     cap: deps.cap,
     logger: deps.logger,
     files: deps.files,
+    pdf: deps.pdf ?? null,
+    pdfExport: deps.pdfExport ?? null,
+    origin: deps.origin ?? '',
     within,
   });
   return opened.status === 'accepted' ? opened.value : haltedBy(opened.reason, opened.detail);

@@ -21,9 +21,10 @@ import {
   typeWords,
   type ShownPage,
 } from '../parts/page-shown.ts';
+import { printedPage } from '../parts/page-printed.ts';
 import { idParam } from '../parts/params.ts';
 import { pagePath, pageVersionPath } from '../parts/paths.ts';
-import { shownPerson, shownText, Who } from '../parts/person.tsx';
+import { shownPerson, shownText, Who, type Reading } from '../parts/person.tsx';
 import { notFound } from './not-found.tsx';
 import { commitOf } from '../../env.ts';
 
@@ -117,6 +118,20 @@ async function oldOf(c: Context<AppEnv>): Promise<Old | null> {
   return { screen, shown, snapshot: { page: shown.page, saved: null } };
 }
 
+function SavedBy(props: { readonly saved: Kept['saved']; readonly reading: Reading }) {
+  const { saved } = props;
+  if (saved === null) return null;
+  return (
+    <p class="m-0 flex flex-wrap items-center gap-2 text-sm text-text-3">
+      <span>Saved by</span>
+      <Who
+        reading={props.reading}
+        who={saved.saver === null ? shownText(saved.savedBy) : shownPerson(saved.saver)}
+      />
+    </p>
+  );
+}
+
 function ledeOf(snapshot: Kept): string {
   const version = `Version ${String(snapshot.page.version)}`;
   if (snapshot.saved === null) return `${version}, the current version.`;
@@ -133,9 +148,10 @@ async function render(c: Context<AppEnv>, old: Old, refused: string | null): Pro
       : await renderPage(database.db, actor, snapshot.page, screen.at, commitOf(c.env));
   const current = snapshot.page.version === shown.page.version;
   const label = `${pageNames.pageVersion} ${String(snapshot.page.version)}`;
+  const spec = await pageScreenSpec(c, screen, shown, label);
   return renderScreen(
     c,
-    await pageScreenSpec(c, screen, shown, label),
+    { ...spec, ...(await printedPage(c, snapshot.page)) },
     <>
       <PageHead
         eyebrow={typeWords[shown.page.type] ?? shown.page.type}
@@ -144,19 +160,7 @@ async function render(c: Context<AppEnv>, old: Old, refused: string | null): Pro
       />
       <div class="flex flex-col gap-5">
         {refused === null ? null : <Note>{`Not restored: ${reasonText(refused)}.`}</Note>}
-        {snapshot.saved === null ? null : (
-          <p class="m-0 flex flex-wrap items-center gap-2 text-sm text-text-3">
-            <span>Saved by</span>
-            <Who
-              reading={{ reader: actor, at: screen.at }}
-              who={
-                snapshot.saved.saver === null
-                  ? shownText(snapshot.saved.savedBy)
-                  : shownPerson(snapshot.saved.saver)
-              }
-            />
-          </p>
-        )}
+        <SavedBy saved={snapshot.saved} reading={{ reader: actor, at: screen.at }} />
         <p class="m-0">
           <a href={pagePath(shown.page.id)} class={pageLink}>
             {current ? 'This is the current version' : 'Back to the current version'}
@@ -165,7 +169,11 @@ async function render(c: Context<AppEnv>, old: Old, refused: string | null): Pro
         <Card>
           <div data-page-body="">{raw(rendered.html)}</div>
         </Card>
-        {current ? null : <Changes old={old} />}
+        {current ? null : (
+          <div data-pdf-hidden="">
+            <Changes old={old} />
+          </div>
+        )}
         {current || !shown.canEdit ? null : <Restore old={old} />}
       </div>
     </>,

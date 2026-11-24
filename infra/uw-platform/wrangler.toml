@@ -92,10 +92,18 @@ class_name = "PageDraft"
 binding = "FILES"
 bucket_name = "uw-files-staging"
 
+[env.staging.browser]
+binding = "BROWSER"
+
 [[env.staging.workflows]]
 name = "harness-run-staging"
 binding = "HARNESS_RUN"
 class_name = "HarnessRun"
+
+[[env.staging.workflows]]
+name = "pdf-export-staging"
+binding = "PDF_EXPORT"
+class_name = "PdfExportRun"
 
 [[env.staging.containers]]
 class_name = "ClaudeCodeSandbox"
@@ -178,10 +186,18 @@ class_name = "PageDraft"
 binding = "FILES"
 bucket_name = "uw-files"
 
+[env.production.browser]
+binding = "BROWSER"
+
 [[env.production.workflows]]
 name = "harness-run-production"
 binding = "HARNESS_RUN"
 class_name = "HarnessRun"
+
+[[env.production.workflows]]
+name = "pdf-export-production"
+binding = "PDF_EXPORT"
+class_name = "PdfExportRun"
 
 [[env.production.containers]]
 class_name = "ClaudeCodeSandbox"
@@ -235,6 +251,9 @@ class_name = "PageDraft"
 [[env.preview.r2_buckets]]
 binding = "FILES"
 bucket_name = "uw-files-staging"
+
+[env.preview.browser]
+binding = "BROWSER"
 
 [[env.staging.migrations]]
 tag = "v1"

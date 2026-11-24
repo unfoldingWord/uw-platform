@@ -60,3 +60,17 @@ describe('the module registry', () => {
     expect(moduleSchema.safeParse({ key: 'core', name: 'Core' }).success).toBe(false);
   });
 });
+
+describe('#198 the pdf export routes', () => {
+  it('#198 declares the pdf export routes and the export screen under core', () => {
+    const core = modules.find((declared) => declared.key === 'core');
+    expect(core?.routes).toEqual(
+      expect.arrayContaining([
+        '/api/exports',
+        '/api/exports/:exportId',
+        '/api/exports/:exportId/file',
+        '/exports/:exportId',
+      ]),
+    );
+  });
+});

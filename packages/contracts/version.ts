@@ -1,4 +1,4 @@
-export const CONTRACT_VERSION = '14.12.0';
+export const CONTRACT_VERSION = '14.13.0';
 
 export function assertLiveContractVersion(pinned: string): void {
   if (pinned !== CONTRACT_VERSION) {

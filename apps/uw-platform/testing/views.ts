@@ -8,21 +8,27 @@ import { postgresDeps } from './postgres.ts';
 
 export type Html = { readonly status: number; readonly text: string; readonly headers: Headers };
 
+export type Fetched = {
+  readonly status: number;
+  readonly bytes: Uint8Array;
+  readonly headers: Headers;
+};
+
 let fixture: Promise<AccessFixture> | null = null;
 
 type HtmlRequest = {
   readonly headers: Readonly<Record<string, string>>;
   readonly clock: Clock;
-  readonly env: Readonly<Record<string, string>>;
+  readonly env: Readonly<Record<string, unknown>>;
   readonly form?: URLSearchParams;
 };
 
-async function htmlRequest(
+async function respond(
   db: Database,
   email: string,
   path: string,
   request: HtmlRequest,
-): Promise<Html> {
+): Promise<Response> {
   fixture ??= createAccessFixture();
   const keys = await fixture;
   const token = await keys.sign({ email });
@@ -36,8 +42,29 @@ async function htmlRequest(
           headers: { ...headers, 'content-type': 'application/x-www-form-urlencoded' },
           body: request.form.toString(),
         };
-  const response = await app.request(path, init, { ...fixtureAccessEnv, ...request.env });
+  return app.request(path, init, { ...fixtureAccessEnv, ...request.env });
+}
+
+async function htmlRequest(
+  db: Database,
+  email: string,
+  path: string,
+  request: HtmlRequest,
+): Promise<Html> {
+  const response = await respond(db, email, path, request);
   return { status: response.status, text: await response.text(), headers: response.headers };
+}
+
+export async function getWithBindings(
+  db: Database,
+  email: string,
+  path: string,
+  env: Readonly<Record<string, unknown>>,
+  clock: Clock = systemClock,
+): Promise<Fetched> {
+  const response = await respond(db, email, path, { headers: {}, clock, env });
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  return { status: response.status, bytes, headers: response.headers };
 }
 
 export function getHtml(

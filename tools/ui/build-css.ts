@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compile, optimize } from '@tailwindcss/node';
 import { Scanner } from '@tailwindcss/oxide';
-import { resolveToken, themeTokens } from './css-tokens.ts';
+import { blockAt, resolveToken, themeTokens, tokenFile } from './css-tokens.ts';
 
 const input = fileURLToPath(new URL('../../packages/ui/app.css', import.meta.url));
 const generated = new URL('../../packages/ui/generated/app-css.ts', import.meta.url);
@@ -46,12 +46,43 @@ function manifestColours(): string {
   return `export const manifestColours = ${JSON.stringify(colours)};`;
 }
 
+function printMetrics(): string {
+  const layout = blockAt(tokenFile('layout'), ':root');
+  const token = (name: string): string => resolveToken(`--uw-print-${name}`, layout);
+  const metrics = {
+    paper: token('paper'),
+    margin: {
+      top: token('margin-top'),
+      bottom: token('margin-bottom'),
+      left: token('margin-left'),
+      right: token('margin-right'),
+    },
+    headerFontSize: token('header-text'),
+    footerFontSize: token('footer-text'),
+    markHeight: token('mark-height'),
+  };
+  return `export const printMetrics = ${JSON.stringify(metrics)} as const;`;
+}
+
+function printColours(): string {
+  const light = themeTokens('light');
+  const colours = {
+    ink: resolveToken('--uw-text', light),
+    muted: resolveToken('--uw-text-3', light),
+    line: resolveToken('--uw-line', light),
+    accent: resolveToken('--uw-accent-text', light),
+  };
+  return `export const printColours = ${JSON.stringify(colours)};`;
+}
+
 function moduleFor(css: string): string {
   const hash = createHash('sha256').update(css).digest('hex').slice(0, 12);
   return [
     `export const appCssPath = '/assets/app-${hash}.css';`,
     `export const appCss = ${JSON.stringify(css)};`,
     manifestColours(),
+    printMetrics(),
+    printColours(),
     '',
   ].join('\n');
 }

@@ -7,6 +7,7 @@
 @import './tokens/layout.css';
 @import './generated/fonts.css';
 @import './page-body.css';
+@import './print.css';
 
 @source './components/**/*.tsx';
 @source '../../apps/uw-platform/**/*.tsx';

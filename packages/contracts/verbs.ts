@@ -72,6 +72,12 @@ export const verbRegistry: readonly VerbDefinition[] = [
     'Attach a picture or file to a page you may edit; embed it in the page body by the url it answers.',
   ),
   verb(
+    'render_pdf',
+    'pages_and_context',
+    onResource('viewer'),
+    'Render a page, a saved view or a binder of pages you may read as a PDF; it answers an export a signed-in person can download.',
+  ),
+  verb(
     'resolve_context',
     'pages_and_context',
     onResource('viewer'),

@@ -32,6 +32,7 @@ A binding is added by a diff to `uw-platform/wrangler.toml`, once in `[env.stagi
 | Queue producer | `[[env.<name>.queues.producers]]` with `binding`, `queue` | #10 |
 | Durable Objects | `[[env.<name>.durable_objects.bindings]]` with `name`, `class_name`, plus `[[env.<name>.migrations]]` | live hub |
 | Workflows | `[[env.<name>.workflows]]` with `name`, `binding`, `class_name` | runs |
+| Browser Run | `[env.<name>.browser]` with `binding`, in `preview` too, because environments do not inherit it | #198 |
 | Containers | `[[env.<name>.containers]]` with `class_name`, `image`, `max_instances`, plus a Durable Object binding per class and a migration | sandbox engines |
 | Crons | `[env.<name>.triggers]` with `crons` | later |
 
@@ -443,6 +444,16 @@ Nothing in the files is a secret. `logpush = true` is added to `wrangler.go-live
 Pictures and files attached to pages are stored in R2 through the `FILES` binding of `uw-platform`: the bucket `uw-files-staging` for staging and for every per-PR Worker (`preview`), and `uw-files` for production. Both buckets are private, with no public access and no custom domain, and were created on 2026-11-21. The binding is declared in `uw-platform/wrangler.toml` and `uw-platform/wrangler.go-live.toml`.
 
 Nothing here is a secret. A file is read only through `GET /api/files/:fileId`, which checks the reader's grant on the area of the page that holds it; the bucket is never exposed. A Worker without the binding answers `not_wired` to an upload, a download or the agent verb `attach_file`, and the edit screen says file storage is not set up.
+
+## PDF export: Browser Run and the `PdfExportRun` Workflow (#198)
+
+`uw-platform` prints PDFs through Cloudflare Browser Run (formerly Browser Rendering). The `BROWSER` binding is declared as `[env.<name>.browser] binding = "BROWSER"` under `staging`, `production` and `preview`, identically in `uw-platform/wrangler.toml` and `uw-platform/wrangler.go-live.toml`. Wrangler does not let an environment inherit `browser`, so a binding at the top level would reach no deployed Worker. The Worker calls the binding's `quickAction('pdf', ...)` with one self-contained HTML document: CSS, fonts and images inlined, JavaScript off, every request but `data:` blocked, and the quick-action cache off (`cacheTTL: 0`). The headless browser never fetches the app, so Access needs no change for it. A Worker without the binding answers `not_wired` to a PDF request.
+
+Binders print as a Cloudflare Workflow: `pdf-export-staging` and `pdf-export-production`, both bound as `PDF_EXPORT` to the class `PdfExportRun` (`apps/uw-platform/pdf/workflow.ts`), declared under `staging` and `production` only, like `HARNESS_RUN`. Per-PR Workers (`preview`) declare no Workflow, so a binder there answers `not_wired`; a single page or view still prints. `tools/infra/go-live.test.ts` pins both Workflows and the browser binding in every environment.
+
+The finished PDF is stored in the `FILES` bucket under `exports/<exportId>.pdf` and is read only through `GET /api/exports/:exportId/file`, which re-checks the reader's grant on every area the export covers. Exports expire after seven days; the nightly cron deletes the object and marks the export expired.
+
+Nothing here is a secret. Browser Run bills by browser hours, and the Workers Free plan allows ten browser minutes a day; whether the account is on Workers Paid with Browser Run enabled was not checked from the repository, and a person confirms it in the dashboard before the first staging deploy that prints.
 
 ## Switching on the go-live wiring (FD-12)
 

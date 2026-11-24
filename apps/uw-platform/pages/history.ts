@@ -5,7 +5,7 @@ import type { Executor } from '@uw/db/client';
 import { pages, pageVersions, people } from '@uw/db/schema';
 import type { PersonName } from '../people/directory.ts';
 import { authorName, authorPersonIs } from './author.ts';
-import { withoutWithheld } from './property-rules.ts';
+import { shownFields } from './property-rules.ts';
 import { readPage } from './store.ts';
 
 const HISTORY_LIMIT = 50;
@@ -72,12 +72,25 @@ export type PageSnapshot = {
   readonly saver: PersonName | null;
 };
 
+export type ShownSnapshot = { readonly snapshot: PageSnapshot; readonly withheld: boolean };
+
+type VersionKey = { readonly pageId: string; readonly version: number };
+
 export async function pageVersion(
   db: Executor,
   actor: Principal,
-  key: { readonly pageId: string; readonly version: number },
+  key: VersionKey,
   at: Date,
 ): Promise<PageSnapshot | null> {
+  return (await shownVersion(db, actor, key, at))?.snapshot ?? null;
+}
+
+export async function shownVersion(
+  db: Executor,
+  actor: Principal,
+  key: VersionKey,
+  at: Date,
+): Promise<ShownSnapshot | null> {
   if ((await readPage(db, actor, key.pageId, at)) === null) return null;
   const [row] = await db
     .select({ snapshot: pageVersions, saver: saverColumns })
@@ -98,11 +111,11 @@ export async function pageVersion(
     version: snapshot.version,
     status: snapshot.status,
   });
-  const collectionId = await collectionOf(db, key.pageId);
-  return {
-    page: await withoutWithheld(db, actor, page, collectionId, at),
+  const shown = await shownFields(db, actor, page, await collectionOf(db, key.pageId), at);
+  const saved = {
     savedAt: snapshot.savedAt,
     savedBy: authorName(snapshot.editSource, row.saver?.name ?? null),
     saver: saverOf(snapshot.editSource, row.saver),
   };
+  return { snapshot: { page: shown.page, ...saved }, withheld: shown.withheld };
 }

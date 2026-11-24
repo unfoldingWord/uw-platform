@@ -28,6 +28,7 @@ export * from './outcomes.ts';
 export * from './page-reads.ts';
 export * from './page-types.ts';
 export * from './pages.ts';
+export * from './pdf-exports.ts';
 export * from './platform-commands.ts';
 export * from './principal.ts';
 export * from './runs.ts';

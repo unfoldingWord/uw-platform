@@ -8,6 +8,7 @@ import { hubWiring, platformKernel } from '../kernel.ts';
 import { hubOf } from '../ports/hub.ts';
 import { notifierOf } from '../ports/notifier.ts';
 import { bucketFiles } from '../pages/file-store.ts';
+import { pdfRendererOf } from '../pdf/renderer.ts';
 import { requestLogger } from '../request-logger.ts';
 import { jsonRpcError, MCP_MAX_BODY_BYTES, singleMessage } from './body.ts';
 import { withAgentPrincipal } from './mint.ts';
@@ -38,6 +39,9 @@ async function serve(c: Context<AppEnv>, deps: McpDeps): Promise<Response> {
     cap: spendCapOf(c.env),
     logger,
     files: c.env.FILES === undefined ? null : bucketFiles(c.env.FILES),
+    pdf: pdfRendererOf(c.env, logger),
+    pdfExport: c.env.PDF_EXPORT ?? null,
+    origin: c.env.APP_ORIGIN ?? new URL(c.req.url).origin,
   });
   const transport = new WebStandardStreamableHTTPServerTransport({
     enableJsonResponse: true,

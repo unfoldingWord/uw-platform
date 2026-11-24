@@ -29,4 +29,12 @@
   --uw-layout-flow: 48rem;
   --uw-breakpoint-md: 48rem;
   --uw-breakpoint-lg: 64rem;
+  --uw-print-paper: letter;
+  --uw-print-margin-top: 22mm;
+  --uw-print-margin-bottom: 20mm;
+  --uw-print-margin-left: 16mm;
+  --uw-print-margin-right: 16mm;
+  --uw-print-header-text: 9px;
+  --uw-print-footer-text: 8px;
+  --uw-print-mark-height: 6mm;
 }

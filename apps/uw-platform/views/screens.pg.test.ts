@@ -8,12 +8,14 @@ import { advanced, enqueuedItem, meteredRun, subscriptionRun } from '../testing/
 import { accepted, callerOf } from '../testing/commands.ts';
 import { credentialFor } from '../testing/credentials-scene.ts';
 import { gateWorld, type GateWorld } from '../testing/gate-world.ts';
-import { kernelOn } from '../testing/kernel.ts';
+import { kernelOn, personOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml, type Html } from '../testing/views.ts';
 import { ensureBuiltIns } from '../collections/builtins/seed.ts';
 import { personWith, rowIn } from '../testing/collections.ts';
+import { personByEmail } from '../people/directory.ts';
+import { queueExport } from '../pdf/exports.ts';
 import { screens, type ScreenEntry } from './registry.ts';
 
 const HOUR = 3_600_000;
@@ -23,6 +25,7 @@ type Seeded = GateWorld & {
   readonly runId: string;
   readonly credentialId: string;
   readonly programRow: string;
+  readonly exportIds: ReadonlyMap<string, string>;
 };
 
 type Rendered = { readonly name: string; readonly email: string; readonly page: Html };
@@ -83,7 +86,29 @@ async function seededWorld(db: Database): Promise<Seeded> {
     slug: 'screens-persona',
   });
   const credentialId = await credentialFor(db, world.kimEmail, clock);
-  return { ...world, runId, credentialId, programRow: await programRowIn(db) };
+  const exportIds = await seededExports(db, [world.kimEmail, world.viewerEmail]);
+  return { ...world, runId, credentialId, exportIds, programRow: await programRowIn(db) };
+}
+
+async function seededExports(db: Database, emails: readonly string[]) {
+  const exportIds = new Map<string, string>();
+  for (const email of emails) exportIds.set(email, await seededExport(db, email));
+  return exportIds;
+}
+
+async function seededExport(db: Database, email: string): Promise<string> {
+  const personId = (await personByEmail(db, email))?.personId ?? '';
+  const actor = await personOn(db, personId, email, clock.now());
+  const { exportId } = await queueExport(db, {
+    kind: 'binder',
+    title: 'Seeded export',
+    reference: 'Seeded export',
+    areas: ['80-89'],
+    request: { kind: 'binder', rootPageId: personaPageId },
+    actor,
+    at: clock.now(),
+  });
+  return exportId;
 }
 
 const personaPageId = '00000000-0000-4000-8000-00000000be11';
@@ -105,7 +130,7 @@ function personaFrontmatter(harnessId: string) {
   };
 }
 
-function pathOf(entry: ScreenEntry, world: Seeded): string {
+function pathOf(entry: ScreenEntry, world: Seeded, email: string): string {
   return entry.path
     .replace(':harnessId', world.item.harnessId)
     .replace(':itemId', world.item.itemId)
@@ -121,7 +146,7 @@ function pathOf(entry: ScreenEntry, world: Seeded): string {
     .replace(':nodeId', world.programRow)
     .replace(':rowId', world.programRow)
     .replace(':personId', world.kim.personId ?? '')
-
+    .replace(':exportId', world.exportIds.get(email) ?? '')
     .replace(':credentialId', world.credentialId);
 }
 
@@ -129,7 +154,7 @@ async function renderAll(world: Seeded): Promise<readonly Rendered[]> {
   const rendered: Rendered[] = [];
   for (const email of [world.kimEmail, world.viewerEmail]) {
     for (const entry of screens) {
-      const page = await getHtml(world.db, email, pathOf(entry, world), {}, clock);
+      const page = await getHtml(world.db, email, pathOf(entry, world, email), {}, clock);
       rendered.push({ name: entry.name, email, page });
     }
   }

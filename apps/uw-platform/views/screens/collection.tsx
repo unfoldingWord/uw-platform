@@ -10,6 +10,7 @@ import type { AppEnv } from '../../deps.ts';
 import { collectionReply } from '../../collections/replies.ts';
 import { drawLayout } from '../parts/collection-draw.tsx';
 import { COLLECTIONS_ENDPOINT } from '../parts/collection-edit.tsx';
+import { collectionPrinted } from '../parts/collection-printed.ts';
 import { collectionScene, type CollectionScene } from '../parts/collection-scene.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { areaLabel, everyArea, moduleCodes, pageNames } from '../parts/names.ts';
@@ -96,13 +97,18 @@ function Body(props: { readonly scene: CollectionScene }) {
   return <>{drawLayout(scene.view.settings.layout, scene.layout)}</>;
 }
 
+function monthQuery(scene: CollectionScene): string {
+  const { view, layout } = scene;
+  return view?.settings.layout === 'calendar' ? `&month=${layout?.month ?? ''}` : '';
+}
+
 function More(props: { readonly scene: CollectionScene }) {
   const { stored, view, layout } = props.scene;
   const next = layout?.reply.next ?? null;
   if (view === null || next === null) return null;
-  const month = view.settings.layout === 'calendar' ? `&month=${layout?.month ?? ''}` : '';
+  const month = monthQuery(props.scene);
   return (
-    <p class="m-0 text-sm">
+    <p data-pdf-hidden="" class="m-0 text-sm">
       <a
         href={collectionViewPath(stored.definition.key, view.id, `?cursor=${next}${month}`)}
         class={pageLink}
@@ -119,11 +125,20 @@ function Actions(props: { readonly scene: CollectionScene; readonly admin: boole
   return (
     <>
       {view === null ? null : (
-        <a href={collectionExportPath(key, view.id)} class={pageLink}>
-          Export CSV
-        </a>
+        <>
+          <a href={collectionExportPath(key, view.id)} data-pdf-hidden="" class={pageLink}>
+            Export CSV
+          </a>
+          <a
+            href={collectionViewPath(key, view.id, `?format=pdf${monthQuery(props.scene)}`)}
+            data-pdf-hidden=""
+            class={pageLink}
+          >
+            Export as PDF
+          </a>
+        </>
       )}
-      <a href={collectionSettingsPath(key)} class={pageLink}>
+      <a href={collectionSettingsPath(key)} data-pdf-hidden="" class={pageLink}>
         {props.admin ? 'Properties and views' : 'Properties'}
       </a>
     </>
@@ -153,7 +168,7 @@ async function renderCollection(c: Context<AppEnv>, viewId: string | null): Prom
   const areas = definition.rowSource === 'people' ? [] : writableAreas(screen);
   return renderScreen(
     c,
-    specOf(scene),
+    { ...specOf(scene), ...(await collectionPrinted(c, scene)) },
     <>
       <PageHead
         eyebrow={areaLabel(definition.jdArea)}

@@ -34,12 +34,13 @@ function groupOf(name: string): string | undefined {
 }
 
 describe('CT-2 the verb registry', () => {
-  it('registers the thirteen verbs of PRD section 8.2, attach_file and the four collection verbs', () => {
+  it('registers the thirteen verbs of PRD section 8.2, attach_file, render_pdf and the four collection verbs', () => {
     expect(names()).toEqual([
       'search_pages',
       'read_page',
       'write_page',
       'attach_file',
+      'render_pdf',
       'resolve_context',
       'query_entities',
       'create_task',
@@ -87,11 +88,27 @@ describe('CT-2 the verb registry', () => {
   });
 });
 
+describe('#198 render_pdf in the verb registry', () => {
+  it('#198 registers render_pdf as a viewer verb on pages and context', () => {
+    expect(findVerb('render_pdf')?.group).toBe('pages_and_context');
+    expect(findVerb('render_pdf')?.grant).toEqual({ scope: 'resource_area', role: 'viewer' });
+  });
+
+  it('#198 gives render_pdf no field that could name a recipient or a destination', () => {
+    const target = { kind: 'page', pageId: '00000000-0000-4000-8000-000000000001' };
+    const input = verbIo.render_pdf.input;
+    expect(input.safeParse({ target }).success).toBe(true);
+    for (const field of ['recipient', 'url', 'email', 'to']) {
+      expect(input.safeParse({ target, [field]: 'someone@example.org' }).success).toBe(false);
+    }
+  });
+});
+
 describe('CT-2 the verb manifest is contract data', () => {
   it('is plain JSON-serialisable contract data', () => {
     const manifest = verbManifest();
     expect(JSON.parse(JSON.stringify(manifest))).toEqual(manifest);
-    expect(manifest).toHaveLength(18);
+    expect(manifest).toHaveLength(19);
   });
 
   it('serialises the registry with its Zod schemas stripped', () => {

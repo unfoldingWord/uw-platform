@@ -6,8 +6,10 @@ import { CONTRACT_VERSION, type VerbName } from '@uw/contracts';
 import type { Logger } from '@uw/core/log';
 import type { Database } from '@uw/db/client';
 import type { Caller, Kernel, KernelOutcome, RunScene } from '@uw/harness';
+import type { PdfExportBinding } from '../env.ts';
 import type { SpendCap } from '../health/spend-cap.ts';
 import type { FileStore } from '../pages/file-store.ts';
+import type { PdfRenderer } from '../pdf/renderer.ts';
 import { MAX_BODY_BYTES } from '../http/body.ts';
 import type { VerbContext } from './context.ts';
 import { refusal, type VerbHandler, type VerbRefusal } from './handler.ts';
@@ -25,6 +27,9 @@ export type RunStepConnection = {
   readonly cap: SpendCap;
   readonly logger: Logger;
   readonly files?: FileStore | null;
+  readonly pdf?: PdfRenderer | null;
+  readonly pdfExport?: PdfExportBinding | null;
+  readonly origin?: string;
   readonly within: ReadonlySet<VerbName> | null;
 };
 
@@ -113,6 +118,9 @@ export async function connectInProcess(
     cap: connection.cap,
     logger: connection.logger,
     files: connection.files ?? null,
+    pdf: connection.pdf ?? null,
+    pdfExport: connection.pdfExport ?? null,
+    origin: connection.origin ?? '',
   };
   const verbs = modelVerbs(scene, connection.within);
   const guard = sceneGuard(connection);

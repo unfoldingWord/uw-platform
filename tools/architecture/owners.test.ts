@@ -17,6 +17,7 @@ import { owns as crosswalk } from '../../apps/uw-platform/crosswalk/owns.ts';
 import { owns as githubFacts } from '../../apps/uw-platform/github/facts/owns.ts';
 import { owns as notify } from '../../apps/uw-platform/notify/push/owns.ts';
 import { owns as pages } from '../../apps/uw-platform/pages/store.ts';
+import { owns as pdf } from '../../apps/uw-platform/pdf/owns.ts';
 import { owns as people } from '../../apps/uw-platform/people/directory.ts';
 import { owns as queue } from '../../apps/uw-platform/queue/watermarks.ts';
 import { owns as tasks } from '../../apps/uw-platform/tasks/store.ts';
@@ -56,6 +57,7 @@ const owners: Owner[] = [
   { dir: 'apps/uw-platform/commands/', tables: commandRequests },
   { dir: 'apps/uw-platform/credentials/', tables: credentialStore },
   { dir: 'apps/uw-platform/crosswalk/', tables: crosswalk },
+  { dir: 'apps/uw-platform/pdf/', tables: pdf },
   { dir: 'apps/uw-platform/github/facts/', tables: githubFacts },
   { dir: 'apps/uw-platform/notify/push/', tables: notify },
   { dir: 'apps/uw-ingest/deliveries/', tables: deliveries },

@@ -8,6 +8,7 @@ import { pollQueue } from './poll-queue.ts';
 import { queryEntities } from './query-entities.ts';
 import { readPageVerb } from './read-page.ts';
 import { recordRunStep } from './record-run-step.ts';
+import { renderPdfVerb } from './render-pdf.ts';
 import { resolveContext } from './resolve-context.ts';
 import { searchPagesVerb } from './search-pages.ts';
 import { submitToGate } from './submit-to-gate.ts';
@@ -23,6 +24,7 @@ const handlers: readonly VerbHandler[] = [
   readPageVerb,
   writePageVerb,
   attachFileVerb,
+  renderPdfVerb,
   resolveContext,
   queryEntities,
   createTaskVerb,

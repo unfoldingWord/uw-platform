@@ -19,6 +19,7 @@ import { pushRoutes } from './notify/routes.ts';
 import { observe, serverTiming } from './observe.ts';
 import { mountCollections } from './collections/routes.ts';
 import { mountKnowledgeBase } from './pages/routes.ts';
+import { mountExports } from './pdf/routes.ts';
 import { requestLogger } from './request-logger.ts';
 import { viewRoutes } from './views/routes.tsx';
 import { notFound } from './views/screens/not-found.tsx';
@@ -27,6 +28,7 @@ function mountContent(app: Hono<AppEnv>): void {
   mountKnowledgeBase(app);
   mountCollections(app);
   mountCrosswalk(app);
+  mountExports(app);
 }
 
 export function createApp(

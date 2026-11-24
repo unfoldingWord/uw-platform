@@ -129,6 +129,12 @@ export const errorReasonSchema = z.enum([
   'collection_row',
   'cascade_node_not_found',
   'map_not_found',
+  'pdf_render_failed',
+  'export_not_found',
+  'export_not_ready',
+  'binder_empty',
+  'binder_too_large',
+  'export_limit_reached',
 ]);
 
 export const refusalSchema = z.object({

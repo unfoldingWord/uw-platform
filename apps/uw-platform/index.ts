@@ -7,6 +7,7 @@ import { withSecrets, type WorkerEnv } from './secrets.ts';
 export { ClaudeCodeSandbox, CodexSandbox, ContainerProxy } from './engines/sandbox/classes.ts';
 export { HarnessHub } from './live/harness-hub.ts';
 export { PageDraft } from './pages/draft-hub.ts';
+export { PdfExportRun } from './pdf/workflow.ts';
 export { HarnessRun } from './runs/workflow.ts';
 
 const app = createApp();

@@ -20,6 +20,7 @@ const routeFiles = [
   'apps/uw-platform/crosswalk/routes.ts',
   'apps/uw-platform/pages/routes.ts',
   'apps/uw-platform/collections/routes.ts',
+  'apps/uw-platform/pdf/routes.ts',
   'apps/uw-platform/health/routes.tsx',
   'apps/uw-platform/auth/me.ts',
   'apps/uw-platform/notify/routes.ts',

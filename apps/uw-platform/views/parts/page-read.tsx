@@ -47,7 +47,7 @@ export function ReadBand(props: {
     >
       <div class="flex flex-wrap items-center gap-3">
         <Crumbs code={props.code} crumbs={props.crumbs} />
-        <div class="ml-auto flex flex-wrap items-center gap-2">
+        <div data-pdf-hidden="" class="ml-auto flex flex-wrap items-center gap-2">
           <QuickSwitcherButton />
           {props.actions}
         </div>
@@ -103,7 +103,25 @@ export function CommentButton(props: { readonly pageId: string }) {
   );
 }
 
-export function MoreMenu(props: { readonly pageId: string; readonly manage: boolean }) {
+const EXPORTS_ENDPOINT = '/api/exports';
+
+function Subpages(props: { readonly pageId: string }) {
+  return (
+    <form method="post" action={EXPORTS_ENDPOINT}>
+      <input type="hidden" name="kind" value="binder" />
+      <input type="hidden" name="rootPageId" value={props.pageId} />
+      <button type="submit" class={menuRow}>
+        Export with subpages as PDF
+      </button>
+    </form>
+  );
+}
+
+export function MoreMenu(props: {
+  readonly pageId: string;
+  readonly manage: boolean;
+  readonly subpages: boolean;
+}) {
   const { pageId } = props;
   return (
     <details data-page-more="" class="relative">
@@ -115,8 +133,12 @@ export function MoreMenu(props: { readonly pageId: string; readonly manage: bool
         <a href={pageExportPath(pageId)} class={menuRow}>
           Export as markdown
         </a>
+        <a href={`${pagePath(pageId)}?format=pdf`} class={menuRow}>
+          Export as PDF
+        </a>
+        {props.subpages ? <Subpages pageId={pageId} /> : null}
         <button type="button" data-print="" class={menuRow}>
-          Print or save as PDF
+          Print
         </button>
         {props.manage ? (
           <>

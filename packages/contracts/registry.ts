@@ -183,6 +183,13 @@ import {
   shipRuleOutcomeSchema,
 } from './ship-rule.ts';
 import { shadowComparisonSchema, shadowRowSchema, shadowVerdictValueSchema } from './shadow.ts';
+import {
+  binderRequestSchema,
+  pdfExportKindSchema,
+  pdfExportReplySchema,
+  pdfExportStatusSchema,
+  pdfTargetSchema,
+} from './pdf-exports.ts';
 import { recordRunStepReplySchema, submitToGateResultSchema } from './verb-io.ts';
 import { forbiddenVerbSchema, verbNameSchema } from './verb-names.ts';
 import { verbGrantSchema, verbGroupSchema } from './verbs.ts';
@@ -401,4 +408,9 @@ export const schemaRegistry: Record<string, ZodType> = {
   'zulip-topic': zulipTopicSchema,
   'zulip-outgoing': zulipOutgoingSchema,
   'zulip-message': zulipMessageSchema,
+  'pdf-export-kind': pdfExportKindSchema,
+  'pdf-export-status': pdfExportStatusSchema,
+  'binder-request': binderRequestSchema,
+  'pdf-target': pdfTargetSchema,
+  'pdf-export-reply': pdfExportReplySchema,
 };
